@@ -446,6 +446,16 @@ type CastSpellParams struct {
 	// cannot carry.
 	Fuse bool
 
+	// PermissionType is the card type a play or cast through a per-type
+	// permission spends (#2167, CastPermission.PerType): Muldrotha's "if
+	// a card has multiple permanent types, choose one as you play it",
+	// and the same choice under Aminatou's Augury. One of the lowercase
+	// CR 205.2a names PermissionTypeChoices lists for the card as it is
+	// cast. Empty is fine when the card could spend only one type;
+	// otherwise the cast is refused with ErrPermissionTypeRequired, and a
+	// type on a cast whose permission keeps no such budget is refused too.
+	PermissionType string
+
 	// PhyrexianLife is how many of the cost's Phyrexian symbols the
 	// caster is paying with life instead of mana — 2 life each
 	// (CR 107.4f, which covers the ten hybrid Phyrexian symbols
@@ -750,6 +760,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0141, CR 702.103b and 702.103d: a spell cast bestowed is an
+	// Aura enchantment with enchant creature and not a creature, and
+	// only those characteristics are evaluated to see whether it can be
+	// cast. Stamped on the working copy here, right after the claim, so
+	// every gate below — the path, the timing, the cast restrictions —
+	// reads the Aura spell, and on the stack card once it is there.
+	if alt != nil && alt.Bestow {
+		card.Bestowed = true
+	}
 	// S29: the cast PATH — zone and price together. Runs here, right
 	// after the claim is known to be an offer the card makes and
 	// before any targeting work, because the rewrite an alternative
@@ -808,6 +827,28 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if alt != nil && alt.FaceDown != nil {
 		faceDown = alt.FaceDown.Kind
 		card.SetFaceDown(faceDown)
+	}
+	// #2167: a permission spent once per card type (Muldrotha, Aminatou's
+	// Augury) spends the type the caster names, judged against the card
+	// AS IT IS PLAYED OR CAST — the face settled above and, for a
+	// face-down cast, the CR 708.2 object just stamped — because the
+	// ruling reads the type off the spell. Settled here, before anything
+	// moves; spent once the play or cast is made. A cast the card's own
+	// text allows spends nothing, for CastsLeft's reason.
+	permType := ""
+	if grant != nil && len(grant.PerType) > 0 && g.castUsesGrantLocked(grantCard, src.Kind, alt) {
+		permType, err = settlePermissionTypeLocked(grant, card, params.PermissionType)
+	} else if params.PermissionType != "" {
+		err = ErrPermissionTypeNotOffered
+	}
+	if err != nil {
+		slog.Warn("cast_spell rejected: bad permission type",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"permission_type", params.PermissionType,
+			"err", err,
+		)
+		return err
 	}
 	// CR 118.6: no mana cost is an unpayable cost, and paying it is
 	// illegal, so a cast that would pay it is refused here. Checked
@@ -1397,6 +1438,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
+			// #2167: the play is made; only its entry waits on a
+			// prompt, so the type it used is spent now.
+			g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
 			return nil
 		}
 		if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
@@ -1430,6 +1474,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			setFaceInZoneLocked(src, cardID, wasFace)
 			return err
 		}
+		// #2167: Muldrotha's land play spends "land" — beside the turn's
+		// land drop, which the entry above has already counted.
+		g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
 		// Playing a land is a special action (CR 116.2a); the player
 		// keeps priority and CR 117.5 drains any landfall-style
 		// triggers onto the stack here rather than at the next wrap.
@@ -1531,6 +1578,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// (CR 708.5) reads it too, and needs it before the landing
 			// below asks.
 			g.Stack.Cards[i].Controller = playerID
+			// ADR 0141, CR 702.103b: and a bestowed spell is an Aura
+			// spell on the stack. MoveCard cleared the flag (CR 400.7).
+			g.Stack.Cards[i].Bestowed = card.Bestowed
 		}
 	}
 	if faceDown != FaceDownNone {
@@ -1846,6 +1896,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	if spendsGrant {
 		g.consumeLimitedGrantLocked(playerID, grantCard, grant)
 	}
+	g.spendPermissionTypeLocked(playerID, grantCard, grant, permType)
 	for _, key := range promiseFollowUps {
 		if err := g.runCastFollowUpLocked(key, CastFollowUp{Player: playerID, Spell: cardID}); err != nil {
 			return err
@@ -3342,6 +3393,14 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
+	//
+	// ADR 0141, CR 702.103e and 608.3b: the one exception. A bestowed
+	// Aura spell whose target is illegal is not countered: it ceases
+	// to be bestowed and resolves on as a creature spell with no
+	// target, so the re-check below finds nothing to fizzle on.
+	if g.bestowTargetIllegalLocked(&top, item) {
+		g.endBestowOnStackLocked(&top, item)
+	}
 	if spellAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The

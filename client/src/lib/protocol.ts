@@ -3229,6 +3229,15 @@ export interface CastSurfaceView {
   // clauses under the readout. Absent for nearly every card and on
   // opponents' cards the viewer cannot read.
   target_cost_notes?: string[];
+  // #2167: the card types a cast or play of this face may spend under a
+  // permission that opens one of each type — Muldrotha, the Gravetide's
+  // "a permanent spell of each permanent type", Aminatou's Augury's "for
+  // each nonland card type". The viewer's own answer, ranked: the first
+  // is the type the permission's other cards need least, which the type
+  // picker selects by default. Two or more entries mean the cast chain
+  // asks which one (PermissionTypeModal) and sends it as
+  // `permission_type`; one needs no question. Absent on every other cast.
+  permission_types?: string[];
   // CR 107.4 (#916): how many symbols in the printed cost carry the
   // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
   // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The

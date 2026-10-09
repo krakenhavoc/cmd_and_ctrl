@@ -207,6 +207,14 @@ type Config struct {
 	// also takes a mana source. Zero (the baseline) prices awaken at
 	// nothing, so the bot casts an awaken spell for its mana cost.
 	AwakenLandShare float64
+	// BestowShare prices a bestowed cast (ADR 0141, #2862): the share of
+	// the card's own body added for surviving its host as a creature
+	// (CR 702.103f), on top of the card's value without the
+	// summoning-sick discount when the host can attack now. A bestowed
+	// cast onto an opponent's creature hands them the bonus and is priced
+	// below nothing. Zero (the baseline) prices the bestowed target as
+	// any other pick, an opponent's creature as removal.
+	BestowShare float64
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -577,6 +585,7 @@ func DefaultConfig() Config {
 		DiscardWeight:       0.60,
 		TokenWeight:         0.50,
 		AwakenLandShare:     0.75,
+		BestowShare:         0.25,
 		PriceSweeps:         true,
 		DiscardCostByCard:   true,
 		LastLandDiscard:     1.00,
@@ -710,6 +719,8 @@ func BaselineConfig() Config {
 	c.TokenWeight = 0
 	// ADR 0135 §3: awaken, priced at nothing before it.
 	c.AwakenLandShare = 0
+	// ADR 0141: bestow, priced as any other cast before it.
+	c.BestowShare = 0
 	// ADR 0129 §7: energy, priced at nothing before it.
 	c.Weights.Energy = 0
 	c.PriceSweeps = false

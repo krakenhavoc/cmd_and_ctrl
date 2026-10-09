@@ -142,11 +142,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **5513** |
-| — whole cards (bare `oracle_id`) | **5312** |
+| Registry keys (`len(effects.All())`) | **5523** |
+| — whole cards (bare `oracle_id`) | **5322** |
 | — back faces (`<oracle_id>#1`) | 201 |
-| Declared `full` | 5176 |
-| Declared `caveats` | 298 |
+| Declared `full` | 5191 |
+| Declared `caveats` | 293 |
 | Declared `unreviewed` | 39 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
@@ -486,8 +486,7 @@ Geier Reach Sanitarium, Sram, Entish Restoration, Urza's Cave,
 Dispatch, Expedition Map, Sheoldred the Apocalypse, Living Death,
 Mental Misstep, Pyroblast, Fabricate.
 
-Declared weaker: Entish Restoration's sacrifice as an additional cost
-(Victimize's posture); Mental Misstep's Phyrexian pip paid with {U}
+Declared weaker: Mental Misstep's Phyrexian pip paid with {U}
 only; Warren Soultrader's "another" enforced by name; Geier Reach's
 loot seat by seat; the bounce lands inherit the Chancery's
 choice-as-target. One stronger corner, declared: Land Tax's

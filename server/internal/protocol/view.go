@@ -3113,6 +3113,17 @@ type CastSurfaceView struct {
 	// (ADR 0048 addendum, open question 2). Absent for nearly every
 	// card. Added for #746.
 	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
+	// PermissionTypes are the card types a cast or play of this face
+	// may spend under the per-type permission that opens it (#2167):
+	// Muldrotha, the Gravetide's "a permanent spell of each permanent
+	// type", Aminatou's Augury's "for each nonland card type". The
+	// viewer's own answer, ranked so the type the permission's other
+	// cards need least comes first (the picker's default). Two or more
+	// entries mean the client asks which one and sends it as
+	// cast_spell's `permission_type`; one needs no question. Absent for
+	// every cast that spends no such budget, which is nearly all of
+	// them.
+	PermissionTypes []string `json:"permission_types,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
 	// already implied by the surface: the graveyard, a library top
@@ -5084,6 +5095,9 @@ func (s castStamps) applyPublicToFace(f *CardFaceView, kind game.ZoneKind) {
 // player".
 func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
+	// #2167: which types a per-type permission leaves is the holder's
+	// answer about their own budget.
+	s.PermissionTypes = nil
 	s.LegalTargets = nil
 	s.Clauses = nil
 	// #1389: a price is one seat's answer — a cost modifier may be
@@ -5778,16 +5792,42 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// override, the per-player grants and the per-player restrictions
 	// in CR 101.2's order, so the client cannot render a cast button
 	// out of a rule it reimplemented.
+	// #2167: the types a per-type permission lets this face spend — the
+	// engine's own list, the one the enumerator walks. A face with no
+	// type left under any price it may claim is no cast surface, whatever
+	// else opens it. The list stamped is the printed cast's, or the first
+	// price's that has one (a bestow cast, whose Aura spell is an
+	// enchantment, may have a type left when the creature does not).
+	typesOK := true
+	if haveLive {
+		typesOK = false
+		for _, o := range offers {
+			types, ok := g.PermissionTypeOptionsLocked(caster, live, kind, grant, o)
+			if !ok {
+				continue
+			}
+			if !typesOK && types[0] != "" {
+				out.PermissionTypes = types
+			}
+			typesOK = true
+			if o == nil {
+				break
+			}
+		}
+		if len(offers) == 0 {
+			typesOK = true
+		}
+	}
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = haveLive && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+			out.CastableHere = typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
 	case game.ZoneCommand:
@@ -9147,6 +9187,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// #2581: a printed X ceiling says the card has {X} and what it
 	// counts, which names it as loudly as its text.
 	out.XMax = nil
+	// #2167: the types a card could spend are its card types.
+	out.PermissionTypes = nil
 	// ADR 0073 §7: "Cast this spell only if you control a legendary
 	// creature or planeswalker" says the card is a legendary sorcery,
 	// which is more than its mana cost gives away. CR 708.2 also

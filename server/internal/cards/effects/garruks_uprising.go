@@ -20,23 +20,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // clause explicitly excludes the source so an Uprising that is
 // somehow a creature could not double-dip on its own arrival.
 //
-// SANDBOX SIMPLIFICATION — the intervening-if (CR 603.4) is checked
-// only when the trigger is put on the stack, not again on
-// resolution. In paper, a board where the power-4 creature dies in
-// response makes the trigger do nothing; here the draw still
-// happens. That is the STRONGER direction, and it is worth being
-// explicit about rather than quiet: it needs a re-check hook on the
-// built StackItem that no catalog trigger has today, and it is the
-// same posture every intervening-if card in the catalog takes.
-// It is a corner case — it needs an opponent to respond to the
-// trigger by removing the creature that enabled it — but it is a
-// real divergence.
+// The ETB clause is an intervening if (CR 603.4): it is checked when
+// the trigger would go on the stack and again as it resolves
+// (drawIfYouControlPowerFourOrGreater), so a power-4 creature removed
+// in response leaves no card. The ongoing clause is not an intervening
+// if: its power test is what the entering creature triggers on.
 func init() {
 	Register(Spec{
 		OracleID:     "3127ae9b-a7a7-43ec-89d7-688f8445b33d",
 		Name:         "Garruk's Uprising",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The enter-the-battlefield draw still happens even if your power-4 creature is removed in response; the condition isn't rechecked on resolution."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -55,7 +48,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.CardID == source.InstanceID &&
 					youControlPowerFourOrGreater(g, source.Controller)
-			}, "Garruk's Uprising — draw a card", Do(DrawCards{N: 1})),
+			}, "Garruk's Uprising — draw a card", drawIfYouControlPowerFourOrGreater),
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == source.InstanceID {
 					return false

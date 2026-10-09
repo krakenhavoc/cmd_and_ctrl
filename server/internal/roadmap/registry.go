@@ -3001,16 +3001,6 @@ var items = []Item{
 		EngineNotes: "produced-mana grammar: `\"{W|U|B|R|G:2}\"` is ONE slot (`ProducedManaEntry.Distinct`, `effects.DifferentColors(n)`), because two independent pipes would allow {U}{U}. A colour named up front (#1443) is refused if repeated (`validateUpfrontManaColors`); otherwise one `mana_pick` carries `ManaDifferent` and asks a colour at a time, striking each answer from the next, and adds all N together on the last answer, so a \"tapped for mana\" trigger fires once. The auto-tapper offers one candidate per set of colours (`appendTapSource`, `plannedTap.DifferentColors`). The view marks the row `different_colors`. See `game/mana_different_colors.go` and the closed-seam entry.",
 	},
 	{
-		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Permissions that let you cast one spell of each card type, such as Muldrotha, the Gravetide's \"a permanent spell of each permanent type from your graveyard\" during each of your turns and Aminatou's Augury's free casts from among the cards it exiled.",
-		Missing:     "A permission can allow a number of casts, but can't allow one for each card type, so these cards can't be added yet.",
-		Rules:       []string{"601.3", "205.2a"},
-		Issue:       2167,
-		Tracked:     "#2167 (S58 tracker #2077)",
-		Waiting:     []string{"Aminatou's Augury", "Muldrotha, the Gravetide"},
-		EngineNotes: "cast permission: `game.CastPermission` (`game/cast_permission.go`) spends one flat `CastsLeft` (#1729) and its `PermissionFilter` matches a card by fixed type flags; nothing records which card type a cast through the permission used, so \"one of each type\" can't be enforced, and a card with two permanent types has to choose which one it uses as it is played (Muldrotha's reminder text). Muldrotha's is a standing graveyard permission renewed each of your turns, with a land play beside it; Aminatou's Augury's is made as it resolves, over the eight exiled cards, free, for each nonland card type, until end of turn (its land half already works). `budgeted-free-casts` (#2017) is the mana value sibling.",
-	},
-	{
 		Slug: "draw-replacement-with-choice", Name: "Draws replaced by a choice", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Effects that replace each of your draws with something you choose, such as Underrealm Lich's \"look at the top three cards of your library, then put one into your hand and the rest into your graveyard\".",
 		Rules:       []string{"121.6", "121.6b", "614.1a"},
@@ -3199,6 +3189,21 @@ var items = []Item{
 		Rules:    []string{"608.2d", "107.1b", "614.12a", "119.4"},
 		ADR:      "0129-energy-getting-and-paying-it.md",
 		Examples: []string{"Volcano Hellion", "Phyrexian Processor", "Necrodominance"},
+	},
+	{
+		Slug: "bestow", Name: "Bestow", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures you may cast as an Aura on a creature for their bestow cost. If the creature leaves, or is gone when the spell resolves, the card is a creature instead.",
+		Rules:    []string{"702.103", "608.3b"},
+		ADR:      "0141-bestow.md",
+		Mechanic: "bestow",
+		Examples: []string{"Nighthowler", "Boon Satyr", "Eidolon of Countless Battles"},
+	},
+	{
+		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Permissions that let you cast one spell of each card type, such as Muldrotha, the Gravetide's \"a permanent spell of each permanent type from your graveyard\" during each of your turns and Aminatou's Augury's free casts from among the cards it exiled.",
+		Rules:    []string{"601.3", "205.2a"},
+		ADR:      "0066-granted-cast-and-play-permissions.md",
+		Examples: []string{"Muldrotha, the Gravetide", "Aminatou's Augury"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

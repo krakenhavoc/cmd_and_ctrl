@@ -788,6 +788,13 @@ type enumerator struct {
 	// finding out what a cap cut. EnumerateFor — the bot — leaves it
 	// off and pays nothing for the report it would throw away.
 	report bool
+	// permType is the card type the casts being expanded announce under
+	// a per-type permission (#2167, CastSpellParams.PermissionType), set
+	// by castMovesFromZone around each castMovesForCard and empty
+	// everywhere else. A field rather than a parameter because the
+	// expansion it rides is four calls deep and every one of them would
+	// pass it on untouched.
+	permType string
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the

@@ -578,13 +578,9 @@ func TestShamanicRevelationDrawsPerCreatureAndGainsPerBigOne(t *testing.T) {
 	}
 }
 
-func TestEntishRestorationSacrificesALandAndSearchesTwoOrThree(t *testing.T) {
-	g := newCatalogGame(t)
+func castEntishRestoration(t *testing.T, g *game.Game) uuid.UUID {
+	t.Helper()
 	me := g.Seats[0]
-	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
-	for i := 0; i < 4; i++ {
-		stapleLibraryCard(me, "Forest", "Basic Land — Forest")
-	}
 	for g.Turn.Step != game.StepPrecombatMain {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatal(err)
@@ -593,13 +589,33 @@ func TestEntishRestorationSacrificesALandAndSearchesTwoOrThree(t *testing.T) {
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Entish Restoration", TypeLine: "Instant",
 		OracleID: b03EntishRestorationOracle, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{SacrificeIDs: []uuid.UUID{land}}); err != nil {
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	if g.Battlefield.Contains(land) {
-		t.Error("the land is sacrificed as a cost")
+	return id
+}
+
+// #2876: the sacrifice is part of the effect, chosen as the spell
+// resolves, and the search follows it.
+func TestEntishRestorationSacrificesALandOnResolutionAndSearchesTwoOrThree(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	land := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
+	for i := 0; i < 4; i++ {
+		stapleLibraryCard(me, "Forest", "Basic Land — Forest")
+	}
+	castEntishRestoration(t, g)
+	if !g.Battlefield.Contains(land) {
+		t.Fatal("nothing is sacrificed at cast")
 	}
 	passPriorityAroundTable(t, g)
+	if sacrificeChoiceFor(g, me.ID) == nil {
+		t.Fatal("the caster is asked to sacrifice a land as the spell resolves")
+	}
+	answerSacrifice(t, g, me.ID, land)
+	if !me.Graveyard.Contains(land) {
+		t.Error("the chosen land is sacrificed")
+	}
 	c := searchChoiceFor(g, me.ID)
 	if c == nil || c.SearchMax != 2 {
 		t.Fatalf("without a power-4 creature the search is for up to TWO, got %+v", c)
@@ -609,15 +625,29 @@ func TestEntishRestorationSacrificesALandAndSearchesTwoOrThree(t *testing.T) {
 	// With a big creature it is three.
 	pushVanillaCreature(g, me.ID, "Giant", 4, 4)
 	land2 := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
-	id2 := uuid.New()
-	me.Hand.PushTop(game.Card{InstanceID: id2, Name: "Entish Restoration", TypeLine: "Instant",
-		OracleID: b03EntishRestorationOracle, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id2, game.CastSpellParams{SacrificeIDs: []uuid.UUID{land2}}); err != nil {
-		t.Fatalf("CastSpell: %v", err)
-	}
+	castEntishRestoration(t, g)
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, land2)
 	if c := searchChoiceFor(g, me.ID); c == nil || c.SearchMax != 3 {
 		t.Fatalf("with a power-4 creature the search is for up to THREE, got %+v", c)
+	}
+}
+
+// With no land the spell is still castable and still searches, as
+// printed: the sacrifice is not an "if you do".
+func TestEntishRestorationWithNoLandStillSearches(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	for i := 0; i < 4; i++ {
+		stapleLibraryCard(me, "Forest", "Basic Land — Forest")
+	}
+	castEntishRestoration(t, g)
+	passPriorityAroundTable(t, g)
+	if sacrificeChoiceFor(g, me.ID) != nil {
+		t.Fatal("a caster with no land is not asked to sacrifice")
+	}
+	if c := searchChoiceFor(g, me.ID); c == nil || c.SearchMax != 2 {
+		t.Fatalf("the search still happens, got %+v", c)
 	}
 }
 
@@ -805,5 +835,28 @@ func TestSheoldredGainsOnYourDrawAndDrainsOnTheirs(t *testing.T) {
 	}
 	if !eotHasAbility(effectiveAbilities(t, g, sheoldred), "deathtouch") {
 		t.Error("printed deathtouch did not reach the effective abilities")
+	}
+}
+
+// #2876: a countered Entish Restoration costs no land, which the old
+// cast-time cost could not say.
+func TestEntishRestorationCounteredKeepsTheLand(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	land := seedLandOnBattlefield(g, opp.ID, "Forest", "Basic Land — Forest")
+	spell := batch01OpponentCasts(t, g, opp, "Entish Restoration", b03EntishRestorationOracle, "", nil)
+
+	castCatalogSpell(t, g, "Arcane Denial", "Instant", arcaneDenialOracle,
+		[]game.TargetRef{{Kind: game.TargetCard, ID: spell}})
+	passPriorityAroundTable(t, g)
+
+	if !opp.Graveyard.Contains(spell) {
+		t.Fatal("Entish Restoration was not countered")
+	}
+	if !g.Battlefield.Contains(land) {
+		t.Error("the land was sacrificed even though the spell was countered")
+	}
+	if sacrificeChoiceFor(g, opp.ID) != nil || sacrificeChoiceFor(g, me.ID) != nil {
+		t.Error("a countered spell asks for no sacrifice")
 	}
 }
