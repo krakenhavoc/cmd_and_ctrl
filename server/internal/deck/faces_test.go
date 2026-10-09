@@ -253,11 +253,13 @@ func TestSingleFacedImportIsUntouched(t *testing.T) {
 // reject a whole deck over a cosmetic simplification; saying nothing
 // is what produced #265.
 func TestUnsupportedLayoutIsWarnedNotRefused(t *testing.T) {
+	flip := cards.Card{Name: "Erayo, Soratami Ascendant", Layout: "flip", TypeLine: "Legendary Creature — Spirit"}
 	list := &List{
 		Mainboard: []cards.Card{
-			jacePrint(),               // transform
-			fireIcePrint(),            // split
+			jacePrint(),               // transform — NOT a warning (stale, #2688)
+			fireIcePrint(),            // split — NOT a warning (ADR 0103)
 			seaGateRestorationPrint(), // modal_dfc — NOT a warning
+			flip,                      // flip — still a warning
 			{Name: "Island", Layout: "normal", TypeLine: "Basic Land — Island"},
 		},
 	}
@@ -268,17 +270,20 @@ func TestUnsupportedLayoutIsWarnedNotRefused(t *testing.T) {
 		byCode[v.Code]++
 		joined += v.Message + "\n"
 	}
-	// ADR 0103: split is played now (either half, fuse, aftermath),
-	// so only the transform card is warned about.
+	// Only the flip card is warned about: transform is implemented
+	// (#2688) and split is played now (ADR 0103).
 	if byCode[CodeUnsupportedLayout] != 1 {
-		t.Fatalf("got %d layout warnings, want 1 (transform): %v",
+		t.Fatalf("got %d layout warnings, want 1 (flip): %v",
 			byCode[CodeUnsupportedLayout], vs)
 	}
 	if strings.Contains(joined, "Fire") {
 		t.Error("a split card was warned about; ADR 0103 plays either half")
 	}
-	if !strings.Contains(joined, "Jace, Vryn's Prodigy") {
-		t.Errorf("warning does not name the FRONT face: %q", joined)
+	if strings.Contains(joined, "Jace, Vryn's Prodigy") {
+		t.Errorf("a transform card was warned about; transform is implemented: %q", joined)
+	}
+	if !strings.Contains(joined, "Erayo, Soratami Ascendant") {
+		t.Errorf("warning does not name the flip card: %q", joined)
 	}
 	if strings.Contains(joined, "Sea Gate") {
 		t.Error("a modal DFC was warned about; both its faces are " +
@@ -289,24 +294,32 @@ func TestUnsupportedLayoutIsWarnedNotRefused(t *testing.T) {
 	}
 }
 
+// TestTransformCardIsNotWarned pins #2688: transform is implemented,
+// so a deck of transform cards gets no layout banner at all.
+func TestTransformCardIsNotWarned(t *testing.T) {
+	list := &List{Mainboard: []cards.Card{jacePrint(), jacePrint()}}
+	if vs := unsupportedLayoutViolations(list); len(vs) != 0 {
+		t.Fatalf("transform cards drew a layout warning: %v", vs)
+	}
+}
+
 // TestLayoutWarningGroupsRatherThanSpams: a deck running a dozen
-// transform cards gets one banner naming them, not a dozen banners.
+// flip cards gets one banner naming them, not a dozen banners.
 func TestLayoutWarningGroupsRatherThanSpams(t *testing.T) {
-	a, b := jacePrint(), jacePrint()
-	b.Name = "Delver of Secrets // Insectile Aberration"
-	b.CardFaces[0].Name = "Delver of Secrets"
+	a := cards.Card{Name: "Erayo, Soratami Ascendant", Layout: "flip", TypeLine: "Legendary Creature — Spirit"}
+	b := cards.Card{Name: "Kitsune Blademaster", Layout: "flip", TypeLine: "Creature — Fox Samurai"}
 	list := &List{Mainboard: []cards.Card{a, a, a, b}}
 	vs := unsupportedLayoutViolations(list)
 	if len(vs) != 1 {
 		t.Fatalf("got %d warnings, want 1 grouped by layout: %v", len(vs), vs)
 	}
 	msg := vs[0].Message
-	if !strings.Contains(msg, "Delver of Secrets") || !strings.Contains(msg, "Jace, Vryn's Prodigy") {
+	if !strings.Contains(msg, "Kitsune Blademaster") || !strings.Contains(msg, "Erayo, Soratami Ascendant") {
 		t.Errorf("grouped warning does not name both cards: %q", msg)
 	}
-	if strings.Count(msg, "Jace, Vryn's Prodigy") != 1 {
+	if strings.Count(msg, "Erayo, Soratami Ascendant") != 1 {
 		t.Errorf("a card running three copies is named %d times, want once: %q",
-			strings.Count(msg, "Jace, Vryn's Prodigy"), msg)
+			strings.Count(msg, "Erayo, Soratami Ascendant"), msg)
 	}
 }
 

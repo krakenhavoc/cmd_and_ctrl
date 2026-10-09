@@ -323,10 +323,15 @@ func identitySet(syms []string) map[string]struct{} {
 // catalog gap — an Adventure half with no Spec resolves manually, and a
 // preparation card with no Spec never becomes prepared, which is the
 // `unimplemented` badge's job (ADR 0037) and not a layout warning.
+//
+// `transform` left it too: the engine turns a permanent over in place
+// (game.TransformPermanentForEffect, server/internal/game/transform.go),
+// and the roadmap marks transform implemented. A transform card with a
+// back face the engine cannot yet produce says so through its Caveats
+// or its `unimplemented` badge (ADR 0037), not through a layout banner.
 var layoutSimplifications = map[string]string{
-	"transform": "imports as its front face; transforming it isn't implemented yet",
-	"flip":      "imports as its front face only",
-	"meld":      "imports as its front face only; melding isn't implemented yet",
+	"flip": "imports as its front face only",
+	"meld": "imports as its front face only; melding isn't implemented yet",
 }
 
 // unsupportedLayoutViolations reports one non-fatal violation per
