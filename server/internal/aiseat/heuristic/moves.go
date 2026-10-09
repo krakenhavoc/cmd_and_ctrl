@@ -509,6 +509,11 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
 		return castEntryFor(card, cp, t)
 	}, card, card)
+	// ADR 0141: a bestowed cast's target is the creature it pumps, not
+	// a creature it removes (bestow.go).
+	if p.isBestowCast(cp) {
+		targetV, targetsPriced = p.bestowTargetsValue(st, card, targets), false
+	}
 	var v float64
 	reason := "cast"
 	if cp.AlternativeCost != "" {

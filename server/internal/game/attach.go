@@ -226,6 +226,9 @@ func (g *Game) UnattachForEffect(attachmentID uuid.UUID) error {
 		return nil
 	}
 	host := c.AttachedTo
+	// ADR 0141, CR 702.103f: a bestowed Aura that becomes unattached
+	// ceases to be bestowed, and is an enchantment creature again.
+	g.unbestowLocked(c)
 	c.AttachedTo = TargetRef{}
 	c.AttachedAt = 0
 	g.EmitEvent(Event{
@@ -337,6 +340,12 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		if g.attachPromptOpenForLocked(c.InstanceID) {
 			return true
 		}
+		// ADR 0141, CR 702.103f: a bestowed Aura attached to nothing is
+		// not legal either. attachmentSBALocked keeps it on the
+		// battlefield as a creature rather than burying it.
+		if c.Bestowed {
+			return false
+		}
 		return !c.IsAura() || (TargetSpecFor(catalogKeyOf(c)) == nil && !c.IsRole())
 	}
 	// CR 702.16c-d: a permanent with protection from a quality can't
@@ -381,6 +390,11 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 				return false
 			}
 		}
+	}
+	// ADR 0141, CR 702.103b: a bestowed Aura's enchant clause is the
+	// enchant creature it gained, not its card's own (it prints none).
+	if c.Bestowed {
+		return g.bestowedAttachmentLegalLocked(c)
 	}
 	if c.IsAura() {
 		if spec := TargetSpecFor(catalogKeyOf(c)); spec != nil {
@@ -477,6 +491,9 @@ func (g *Game) attachmentSBALocked() bool {
 	type doomedAttachment struct {
 		id   uuid.UUID
 		aura bool
+		// bestowed is CR 702.103f's exception to 704.5m: a bestowed
+		// Aura becomes unattached and stays (ADR 0141).
+		bestowed bool
 	}
 	var doomed []doomedAttachment
 	for i := range g.Battlefield.Cards {
@@ -488,7 +505,7 @@ func (g *Game) attachmentSBALocked() bool {
 		if g.attachmentLegalLocked(c) {
 			continue
 		}
-		doomed = append(doomed, doomedAttachment{id: c.InstanceID, aura: c.IsAura()})
+		doomed = append(doomed, doomedAttachment{id: c.InstanceID, aura: c.IsAura(), bestowed: c.Bestowed})
 	}
 	// CR 704.5z: a permanent with two or more Roles controlled by the
 	// same player keeps only the newest of that player's Roles on it;
@@ -530,6 +547,15 @@ func (g *Game) attachmentSBALocked() bool {
 			continue
 		}
 		c := &g.Battlefield.Cards[idx]
+		// ADR 0141, CR 702.103f: a bestowed Aura attached to an illegal
+		// object, or to nothing, becomes unattached and ceases to be
+		// bestowed, which is an exception to CR 704.5m. Cleared before
+		// the unattach is announced, so a listener sees the enchantment
+		// creature it now is. A 0/0 then dies to CR 704.5f on the next
+		// pass of the loop.
+		if d.bestowed {
+			g.unbestowLocked(c)
+		}
 		// An Aura that was never attached has no link to break and no
 		// unattach to announce — emitting one would put a "became
 		// unattached from nobody" line in the game log and bump the
@@ -547,7 +573,7 @@ func (g *Game) attachmentSBALocked() bool {
 				Target: host.ID,
 			})
 		}
-		if d.aura {
+		if d.aura && !d.bestowed {
 			// CR 704.5m. Routed through the normal battlefield-leave
 			// path, so the CR 614 replacement pipeline and the
 			// commander-zone built-in both apply — an enchantment

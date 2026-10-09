@@ -521,6 +521,10 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// creature. One more source list into the same gather; see
 	// reconfigure.go.
 	out = append(out, g.reconfigureContinuousEffectsLocked()...)
+	// CR 702.103b (ADR 0141, #2862): a bestowed Aura is an Aura
+	// enchantment and not a creature. One more source list into the
+	// same gather; see bestow.go.
+	out = append(out, g.bestowContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}

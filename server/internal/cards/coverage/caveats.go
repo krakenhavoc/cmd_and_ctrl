@@ -305,6 +305,14 @@ var mechanics = []Mechanic{
 		Adopt:      `Evoke("{cost}") or EvokePitch(…) — both bundle SacrificeOnEntry`,
 	},
 	{
+		Name:       "bestow",
+		Phrases:    []string{"bestow"},
+		Implements: altCost(game.BestowKey),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "bestow") resolves`,
+		Confidence: Exact,
+		Adopt:      `Bestow("{cost}") — it bundles the enchant creature target and the Aura spell (ADR 0141)`,
+	},
+	{
 		Name:       "overload",
 		Phrases:    []string{"overload"},
 		Implements: altCost("overload"),

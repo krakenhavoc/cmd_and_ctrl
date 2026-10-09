@@ -750,6 +750,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// ADR 0141, CR 702.103b and 702.103d: a spell cast bestowed is an
+	// Aura enchantment with enchant creature and not a creature, and
+	// only those characteristics are evaluated to see whether it can be
+	// cast. Stamped on the working copy here, right after the claim, so
+	// every gate below — the path, the timing, the cast restrictions —
+	// reads the Aura spell, and on the stack card once it is there.
+	if alt != nil && alt.Bestow {
+		card.Bestowed = true
+	}
 	// S29: the cast PATH — zone and price together. Runs here, right
 	// after the claim is known to be an offer the card makes and
 	// before any targeting work, because the rewrite an alternative
@@ -1531,6 +1540,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			// (CR 708.5) reads it too, and needs it before the landing
 			// below asks.
 			g.Stack.Cards[i].Controller = playerID
+			// ADR 0141, CR 702.103b: and a bestowed spell is an Aura
+			// spell on the stack. MoveCard cleared the flag (CR 400.7).
+			g.Stack.Cards[i].Bestowed = card.Bestowed
 		}
 	}
 	if faceDown != FaceDownNone {
@@ -3342,6 +3354,14 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// Self / none targets don't re-check (self is the caster; none
 	// has no referent) and count as always-legal for the all-illegal
 	// short-circuit.
+	//
+	// ADR 0141, CR 702.103e and 608.3b: the one exception. A bestowed
+	// Aura spell whose target is illegal is not countered: it ceases
+	// to be bestowed and resolves on as a creature spell with no
+	// target, so the re-check below finds nothing to fizzle on.
+	if g.bestowTargetIllegalLocked(&top, item) {
+		g.endBestowOnStackLocked(&top, item)
+	}
 	if spellAllTargetsIllegalLocked(g, item) {
 		// "Countered by game rules" — permanents and non-permanents
 		// alike go to the owner's graveyard (CR 608.2b). The
