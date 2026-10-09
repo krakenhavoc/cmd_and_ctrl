@@ -210,6 +210,7 @@ func buildDef(spec Spec) *game.CardDef {
 		AnyColorSpend:              spec.AnyColorSpend,
 		LifeForMana:                spec.LifeForMana,
 		LegendRuleExemptions:       spec.LegendRuleExemptions,
+		ZeroLoyaltyExemptions:      spec.ZeroLoyaltyExemptions,
 		OpponentEffectProtections:  spec.OpponentEffectProtections,
 		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,

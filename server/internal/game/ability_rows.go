@@ -219,6 +219,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "AnyColorSpend", fallback: "Spend mana as though it were any color"},
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
 	{field: "LegendRuleExemptions", fallback: "The legend rule doesn't apply"},
+	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty"},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice"},
 	{field: "GameEndGates", fallback: "Changes who can win or lose"},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},

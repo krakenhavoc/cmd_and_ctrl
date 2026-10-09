@@ -4377,6 +4377,10 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// because a regeneration shield replaces the first two and not the
 	// last three. The set still leaves as one simultaneous event.
 	var doomed []doomedPermanent
+	var (
+		zeroLoyaltyExemption  zeroLoyaltyExempt
+		zeroLoyaltyExemptRead bool
+	)
 	for _, c := range g.Battlefield.Cards {
 		// #605: a permanent whose exit is already paused on a player
 		// prompt is still HERE, with whatever doomed it intact — a
@@ -4444,9 +4448,17 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 				}
 			}
 		}
-		// 704.5i — planeswalker with 0 loyalty counters.
+		// 704.5i — planeswalker with 0 loyalty counters, unless a static
+		// says it isn't put into the graveyard for that (Sanctum Lurker,
+		// zero_loyalty_exemption.go). Read lazily: nearly every pass has
+		// no walker at zero, and the exemption read is a battlefield scan.
 		if c.IsPlaneswalker() && (c.Counters == nil || c.Counters[CounterLoyalty] <= 0) {
-			doom, destruction = true, false
+			if !zeroLoyaltyExemptRead {
+				zeroLoyaltyExemption, zeroLoyaltyExemptRead = g.zeroLoyaltyExemptControllersLocked(), true
+			}
+			if !zeroLoyaltyExemption.covers(c.Controller) {
+				doom, destruction = true, false
+			}
 		}
 		// 704.5v/w — battle with 0 defense counters.
 		if c.IsBattle() && (c.Counters == nil || c.Counters[CounterDefense] <= 0) {

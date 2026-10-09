@@ -4109,6 +4109,9 @@ seats[].seat	number:int
 seats[].speed	number:int
 seats[].statics	array
 seats[].statics[]	object
+seats[].statics[].activationTiming	object
+seats[].statics[].activationTiming.subtype	string
+seats[].statics[].activationTiming.timing	string
 seats[].statics[].cantAttack	object
 seats[].statics[].cantAttack.fromTurnsBegun	number:int
 seats[].statics[].cantAttack.protected	custom(uuid.UUID)

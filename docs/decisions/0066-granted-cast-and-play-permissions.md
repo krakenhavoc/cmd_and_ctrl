@@ -3122,3 +3122,33 @@ The owner chose option (a), the recommended one, on every question.
 3. **Do not stamp `Card.ExiledWith` in the new helper.** The general move of ability-resolution exiles onto the link, with an ability ref, is [#2651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2651).
 4. **Only the holder closes the window.** It closes only when the permission's holder exiles another card with the same source object.
 5. **One PR with all three cards.** It holds the engine change plus Unstable Amulet, Furious Rise and Superior Foes of Spider-Man.
+
+
+## Amendment — 2026-10-09 (#2797): the stored half of an activation-timing statement ("until end of turn")
+
+The ACTIVATION twin of the cast-timing statement (#1208, above) is derived: a permanent or an emblem makes it
+for as long as it is there, so the source's presence is the duration and nothing is stored. A resolving
+INSTANT has no presence to derive from, and Jace's Machinations says "Until end of turn, you may activate
+loyalty abilities of Jace planeswalkers you control on any player's turn any time you could cast an instant".
+
+That statement is stored, the way a granted cast-timing statement is (`GrantCastTimingForEffect`): a
+`PlayerStatic` with a CR 611.2 `Duration`, swept and read through `durationExpiredLocked`. It is the eleventh
+payload on that slice, `PlayerStatic.ActivationTiming` (`game.ActivationTimingGrant{Timing, Subtype}`,
+`game/activation_timing_grant.go`), told apart from the others by `Timing` being non-empty. It is PLAIN DATA,
+not the derived statement's `Covers` closure, because it is snapshotted and a closure could not be brought
+back. What the printed card narrows on is two facts and both are data: the ability is a LOYALTY ability, and
+its permanent is a planeswalker of the named subtype that the holder controls. `Subtype` empty is every
+planeswalker (the Teferi emblem's width).
+
+The reader is the same `activationTimingVerdictLocked`, which folds the holder's stored statements first and
+then the battlefield's and the emblems' derived ones, so the engine, the bot's list and the wire's
+`timing_closed` all agree (`TestEnumeratorAndViewHonourAStoredInstantSpeedStatement`). The three narrowings the
+Teferi helpers document hold here too, and CR 606.3's other half is untouched: it opens the WINDOW, and the
+once-per-permanent tally is read after it. The card side is `effects.GrantLoyaltyAbilitiesAtInstantSpeed{Subtype}`
+(`activation_timing_grant.go`).
+
+Pinned by `TestMachinationsOpensJaceLoyaltyAbilitiesAtInstantSpeed` (a Jace in the declare attackers step, a
+Chandra not, a second ability the same turn refused), `TestMachinationsStatementCoversMyJacesOnAnOpponentsTurnAndEndsWithTheTurn`
+and `TestMachinationsStatementSurvivesASnapshotRestore`. The snapshot shape is additive
+(`seats[].statics[].activationTiming`, recorded in `v7.txt`): a file written before it reads as no statement, and a
+binary before it drops the key and loses only a temporary grant, so there is no version bump.

@@ -303,6 +303,12 @@ type CardDef struct {
 	// Sakashima of a Thousand Faces. Read from the battlefield through
 	// CatalogLegendRuleExemptions; see legend_rule_exemption.go.
 	LegendRuleExemptions []LegendRuleExemption
+	// ZeroLoyaltyExemptions are this permanent's printed "planeswalkers
+	// you control aren't put into their owners' graveyards for having 0
+	// loyalty" statics (CR 704.5i, #2797) — Sanctum Lurker. Read from the
+	// battlefield through CatalogZeroLoyaltyExemptions; see
+	// zero_loyalty_exemption.go.
+	ZeroLoyaltyExemptions []ZeroLoyaltyExemption
 	// OpponentEffectProtections are this permanent's printed "spells and
 	// abilities your opponents control can't cause you to discard /
 	// sacrifice" statics (#2178). Read from the battlefield through
@@ -840,6 +846,12 @@ func init() {
 	CatalogLegendRuleExemptions = func(key string) []LegendRuleExemption {
 		if d := catalogDef(key); d != nil {
 			return d.LegendRuleExemptions
+		}
+		return nil
+	}
+	CatalogZeroLoyaltyExemptions = func(key string) []ZeroLoyaltyExemption {
+		if d := catalogDef(key); d != nil {
+			return d.ZeroLoyaltyExemptions
 		}
 		return nil
 	}

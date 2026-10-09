@@ -1095,6 +1095,17 @@ type Spec struct {
 	// game.CatalogLegendRuleExemptions, keyed by CatalogAbilityKey.
 	LegendRuleExemptions []game.LegendRuleExemption
 
+	// ZeroLoyaltyExemptions declares a printed "planeswalkers you
+	// control aren't put into their owners' graveyards for having 0
+	// loyalty" static (CR 704.5i, #2797):
+	//
+	//	ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty(), // Sanctum Lurker
+	//
+	// Read from the battlefield by the state-based pass whenever it meets
+	// a planeswalker with no loyalty, through
+	// game.CatalogZeroLoyaltyExemptions, keyed by CatalogAbilityKey.
+	ZeroLoyaltyExemptions []game.ZeroLoyaltyExemption
+
 	// OpponentEffectProtections declares a printed "spells and abilities
 	// your opponents control can't cause you to discard cards / sacrifice
 	// permanents" static (#2178):

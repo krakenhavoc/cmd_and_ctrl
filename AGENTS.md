@@ -535,6 +535,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [When NOT to add a catalog entry](docs/adding-cards.md#when-not-to-add-a-catalog-entry)
   - [Adding a trigger doubler (#752)](docs/adding-cards.md#adding-a-trigger-doubler-752)
   - [Emblems (#623)](docs/adding-cards.md#emblems-623)
+  - [Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)](docs/adding-cards.md#planeswalker-statics-eminence-and-loyalty-timing-adr-0140-and-amendments-2797)
   - [The Ring tempts you (ADR 0114, #2076)](docs/adding-cards.md#the-ring-tempts-you-adr-0114-2076)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](docs/adding-cards.md#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Suspect (CR 701.60, #2698)](docs/adding-cards.md#suspect-cr-70160-2698)
