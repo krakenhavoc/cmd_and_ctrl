@@ -271,12 +271,15 @@ jobs:
   # ~14 min in all. Each shard is now its own job on its own runner,
   # with the same flags. scripts/ci-test-shard.sh decides what a shard
   # runs: the heavy packages are pinned to shards of their own by
-  # measured time, and every other package -- including any added later
+  # measured time, internal/game is split by test name across game-1
+  # (`-skip=RE`) and game-2 (`-run=RE`, the same RE, so the halves are
+  # complements), and every other package -- including any added later
   # -- falls into `rest` from `go list ./...` at run time. The matrix
   # below must list the script's shards (`--names`) in its order;
   # TestCITestShardsCoverEveryPackageOnce (internal/docsguard) fails if
-  # it does not, or if the shards' union is not exactly `go list ./...`.
-  # To rebalance, edit PINNED in the script, not this job.
+  # it does not, or if any package is run by no shard or by two that
+  # are not the halves of one split. To rebalance, edit PINNED or
+  # SPLITS in the script, then this matrix.
   #
   # cmdctrl-ci reads `needs.server-test.result`, which for a matrix job
   # is `failure` if any shard failed, so one red shard fails the gate.
@@ -289,7 +292,7 @@ jobs:
       # Every shard reports, so one failure does not hide another.
       fail-fast: false
       matrix:
-        shard: [game, effects, lobby, rest]
+        shard: [game-1, game-2, effects, lobby, rest]
     # Explicit rather than relying on the workflow-level default above,
     # so it stays true if that default ever changes. Discussion #1231
     # review point 2 (Luke, 2026-09-23): the `contents: write` this job
@@ -308,16 +311,18 @@ jobs:
       - *setup-go
       - *free-disk
 
-      # The packages this shard runs, from go list ./... (see the job's
-      # comment). Printed so a run says what it tested.
+      # This shard's `go test` arguments: a -run or -skip filter for a
+      # split package, then the packages, from go list ./... (see the
+      # job's comment). Printed so a run says what it tested.
       - name: Server — pick this shard's packages
         id: shard
         working-directory: server
         run: |
+          set -f
           pkgs=$(../scripts/ci-test-shard.sh "${{ matrix.shard }}")
           echo "$pkgs"
           {
-            echo "packages=$(echo $pkgs)"
+            echo "args=$(echo $pkgs)"
             if grep -qx 'github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/coverage' <<<"$pkgs"; then
               echo "coverage=true"
             fi
@@ -395,13 +400,15 @@ jobs:
         # which census_test.go treats the same as unset: skip a stale
         # block instead of failing it (Discussion #1231).
         #
-        # Sharded (#2766): same flags, this shard's packages instead of
-        # ./... (the "pick" step above). Unquoted on purpose: one word
-        # per package.
+        # Sharded (#2766): same flags, this shard's arguments instead of
+        # ./... (the "pick" step above). Unquoted on purpose, one word
+        # per argument, with globbing off so a -run pattern stays as is.
         env:
           CENSUS_ENFORCE: ${{ github.event_name == 'push' && '1' || '' }}
-          PACKAGES: ${{ steps.shard.outputs.packages }}
-        run: go test -race -cover -timeout 30m $PACKAGES
+          SHARD_ARGS: ${{ steps.shard.outputs.args }}
+        run: |
+          set -f
+          go test -race -cover -timeout 30m $SHARD_ARGS
 
       # The commit-and-push half of this used to live here (Discussion
       # #1231 P1a / #1247: "Census -- commit refresh"). Luke's review
