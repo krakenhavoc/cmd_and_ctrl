@@ -721,8 +721,9 @@ async function joinAsPlayer(
   inviteToken: string,
   name: string,
   gameplay: Record<string, unknown> = S19_GAMEPLAY,
+  viewport?: { width: number; height: number },
 ): Promise<JoinedPlayer> {
-  const context = await browser.newContext();
+  const context = await browser.newContext(viewport ? { viewport } : {});
   // Written only when absent so a later navigation does not undo what
   // the app saved.
   await context.addInitScript((seed) => {
@@ -917,6 +918,12 @@ export interface S19Options {
   // defaults, which is the only way to watch smart autopass hold.
   casterGameplay?: Record<string, unknown>;
   opponentGameplay?: Record<string, unknown>;
+  // A deck in place of the S19 caster's or opponent's (buildDeck in
+  // s19-deck-fixture.ts). Still 100 cards.
+  casterDeck?: string;
+  opponentDeck?: string;
+  // Both browsers' viewport, in place of Playwright's default.
+  viewport?: { width: number; height: number };
 }
 
 export async function setupS19Game(
@@ -934,6 +941,7 @@ export async function setupS19Game(
     game.invite_token,
     "Caster",
     opts.casterGameplay,
+    opts.viewport,
   );
   const opponent = await joinAsPlayer(
     browser,
@@ -941,10 +949,23 @@ export async function setupS19Game(
     game.invite_token,
     "Opponent",
     opts.opponentGameplay,
+    opts.viewport,
   );
 
-  const up1 = await uploadDeckAs(request, adminToken, game.id, caster.playerID, makeS19CasterDeck());
-  const up2 = await uploadDeckAs(request, adminToken, game.id, opponent.playerID, makeS19OpponentDeck());
+  const up1 = await uploadDeckAs(
+    request,
+    adminToken,
+    game.id,
+    caster.playerID,
+    opts.casterDeck ?? makeS19CasterDeck(),
+  );
+  const up2 = await uploadDeckAs(
+    request,
+    adminToken,
+    game.id,
+    opponent.playerID,
+    opts.opponentDeck ?? makeS19OpponentDeck(),
+  );
   if (up1.card_count !== 100) {
     throw new Error(`caster deck card_count=${up1.card_count}, want 100`);
   }

@@ -17,7 +17,10 @@
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
 
 import ChoiceDockHarness from "./test/ChoiceDockHarness.svelte";
+import { get } from "svelte/store";
 import { _resetForTests as resetDock } from "./dock";
+import { boardChoicePick, pickOnBoard } from "./boardChoicePick";
+import { L } from "./labels";
 import { _resetForTests as resetModals } from "./modalLayers";
 import { defaultSettings, settings } from "./settings";
 import type { ActionType, CardView, GameView, PendingChoiceView } from "./protocol";
@@ -496,5 +499,120 @@ describe("a sheet's refusal", () => {
     expect(alert?.textContent).toContain("Not accepted");
     expect(alert?.textContent).toContain("that is not a legal order");
     expectSheet("Opt — scry 1");
+  });
+});
+
+// #2880: a choice whose options are permanents on the battlefield shares
+// its selection with the board (lib/boardChoicePick.ts). Board.svelte's
+// click is pickOnBoard; here it is called directly, as the board would.
+describe("a sacrifice picked on the board", () => {
+  const nazgul = [card("n1", "Nazgûl"), card("n2", "Nazgûl")];
+  const fleshbag = (over: Partial<PendingChoiceView> = {}) =>
+    snap(
+      {
+        kind: "sacrifice_choice",
+        reason: "Fleshbag Marauder — sacrifice a creature",
+        count: 1,
+        options: nazgul,
+        ...over,
+      },
+      { battlefield: [...nazgul, card("f", "Forest")] },
+    );
+
+  afterEach(() => boardChoicePick.set(null));
+
+  it("publishes the permanents the board may pick, and clears them with the prompt", () => {
+    const r = mount(fleshbag());
+    const s = get(boardChoicePick)!;
+    expect(s.choiceID).toBe("choice-1");
+    expect([...s.eligible].sort()).toEqual(["n1", "n2"]);
+    expect(s.selected.size).toBe(0);
+    expect([s.min, s.max]).toEqual([1, 1]);
+    expect(sheetPanel()!.textContent).toContain("click the highlighted permanents on the board");
+    r.setProps({ snap: { ...fleshbag(), pending_choices: [] } } as never);
+    flushSync();
+    expect(get(boardChoicePick)).toBeNull();
+  });
+
+  it("a board click picks in the sheet, enables the dock's Sacrifice, and sends the sheet's answer", () => {
+    const { sent } = mount(fleshbag());
+    expect(nameOf(barPrimary()!)).toBe(L.sacrifice);
+    expect(barPrimary()!.disabled).toBe(true);
+
+    expect(pickOnBoard("n2")).toBe(true);
+    flushSync();
+    const tiles = inSheet("button.card-pick");
+    expect(tiles[1].getAttribute("aria-pressed")).toBe("true");
+    expect(tiles[0].getAttribute("aria-pressed")).toBe("false");
+    expect(sheetPanel()!.querySelector(".prompt-count")?.textContent).toContain("1 / 1 selected");
+    expect(barPrimary()!.disabled).toBe(false);
+
+    click(barPrimary()!);
+    expect(sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["n2"] } },
+    ]);
+  });
+
+  it("a second board click puts it back, and the dock waits again", () => {
+    mount(fleshbag());
+    pickOnBoard("n1");
+    flushSync();
+    expect(barPrimary()!.disabled).toBe(false);
+    pickOnBoard("n1");
+    flushSync();
+    expect(barPrimary()!.disabled).toBe(true);
+    expect(inSheet("button.card-pick")[0].getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("a pick in the sheet shows on the board", () => {
+    mount(fleshbag());
+    click(inSheet("button.card-pick")[0]);
+    flushSync();
+    expect([...get(boardChoicePick)!.selected]).toEqual(["n1"]);
+  });
+
+  it("a permanent the choice does not offer is not picked", () => {
+    mount(fleshbag());
+    expect(pickOnBoard("f")).toBe(true);
+    flushSync();
+    expect(get(boardChoicePick)!.selected.size).toBe(0);
+    expect(barPrimary()!.disabled).toBe(true);
+  });
+
+  it("choose N of M: picks up to the ceiling, and the confirm waits for the floor", () => {
+    const perms = [card("a", "Bear"), card("b", "Elf"), card("c", "Ogre")];
+    const { sent } = mount(
+      snap(
+        {
+          kind: "own_permanents",
+          reason: "Choose two of your permanents",
+          choose_min: 2,
+          choose_max: 2,
+          options: perms,
+        },
+        { battlefield: perms },
+      ),
+    );
+    pickOnBoard("a");
+    flushSync();
+    expect(barPrimary()!.disabled).toBe(true);
+    pickOnBoard("c");
+    pickOnBoard("b");
+    flushSync();
+    expect(sheetPanel()!.querySelector(".prompt-count")?.textContent).toContain("2 / 2 selected");
+    click(barPrimary()!);
+    expect(sent[0].params).toEqual({ choice_id: "choice-1", card_ids: ["a", "c"] });
+  });
+
+  it("a grid of cards in a hand publishes nothing", () => {
+    mount(
+      snap({
+        kind: "discard_choice",
+        reason: "Mind Rot",
+        count: 1,
+        options: [card("x", "X")],
+      }),
+    );
+    expect(get(boardChoicePick)).toBeNull();
   });
 });
