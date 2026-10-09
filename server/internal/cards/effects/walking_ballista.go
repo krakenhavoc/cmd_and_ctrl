@@ -39,6 +39,7 @@ func init() {
 				Label:   "Remove a +1/+1 counter from this creature: It deals 1 damage to any target.",
 				Cost:    RemoveCountersFromThis(game.CounterPlusOne, 1),
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 1)),
 				Effect:  b33DamageChosenTargetFromSource(1),
 			},
 		},

@@ -53,6 +53,7 @@ func init() {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			},
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 2)),
 			Key:     "Sword of Fire and Ice — 2 damage, draw a card",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

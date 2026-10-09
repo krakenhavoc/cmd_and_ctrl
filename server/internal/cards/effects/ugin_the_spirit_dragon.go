@@ -65,6 +65,7 @@ func init() {
 				Label:   "+2: Ugin deals 3 damage to any target.",
 				Cost:    LoyaltyCost(2),
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 3)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					if len(item.Targets) == 0 {

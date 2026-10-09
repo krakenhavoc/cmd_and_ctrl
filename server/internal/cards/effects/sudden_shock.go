@@ -23,6 +23,7 @@ func init() {
 		Name:            "Sudden Shock",
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordSplitSecond},
+		Purpose:         ForTargets(DamageToTarget(0, 2)),
 		Targets:         TargetAny(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b10DamageEachLegalTarget(ctx, 2)

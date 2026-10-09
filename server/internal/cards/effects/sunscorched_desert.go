@@ -26,6 +26,7 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Targets:   targetPlayerOrPlaneswalker(),
+			Purpose:   ForTargets(DamageToTarget(0, 1)),
 			Key:       "Sunscorched Desert — 1 damage to target player or planeswalker",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

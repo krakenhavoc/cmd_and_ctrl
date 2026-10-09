@@ -17,6 +17,7 @@ func init() {
 		OracleID:     "a6fc0b0c-9ba2-47f2-ab92-26fd20d0f86d",
 		Name:         "Skullcrack",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		Targets:      targetPlayerOrPlaneswalker(),
 		OnResolve:    skullcrackShape(3),
 	})

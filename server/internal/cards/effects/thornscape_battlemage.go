@@ -25,9 +25,9 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: Kickers("{R}", "{W}"),
 		Triggered: []game.TriggeredAbility{
-			Targeting(On(game.EventETB, AllOf(Self, ThisKickedWith("{R}")),
+			TriggerWithPurpose(Targeting(On(game.EventETB, AllOf(Self, ThisKickedWith("{R}")),
 				"Thornscape Battlemage — kicked with {R}, 2 damage to any target",
-				sourceDealsDamageToEachLegalTarget(2)), TargetAny()),
+				sourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
 			Targeting(On(game.EventETB, AllOf(Self, ThisKickedWith("{W}")),
 				"Thornscape Battlemage — kicked with {W}, destroy target artifact",
 				destroyChosenPermanent), TargetPermanent("target artifact", Artifact())),

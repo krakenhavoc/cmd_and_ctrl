@@ -57,6 +57,7 @@ func init() {
 				Label:   "+2: Sorin Markov deals 2 damage to any target and you gain 2 life.",
 				Cost:    LoyaltyCost(2),
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 2)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					// CR 608.2b: a target that left in response is

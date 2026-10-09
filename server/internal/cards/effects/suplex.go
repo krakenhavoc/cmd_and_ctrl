@@ -17,8 +17,8 @@ func init() {
 		Name:         "Suplex",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Suplex deals 3 damage to target creature. If that creature would die this turn, exile it instead.",
-				TargetCreature("target creature"), damageModesTargetExileIfItDies(3)),
+			ModeWithPurpose(ModeDoing("Suplex deals 3 damage to target creature. If that creature would die this turn, exile it instead.",
+				TargetCreature("target creature"), damageModesTargetExileIfItDies(3)), ForTargets(DamageToTarget(0, 3))),
 			ModeDoing("Exile target artifact.",
 				TargetPermanent("target artifact", Artifact()), exileTheModesTarget),
 		),

@@ -27,6 +27,7 @@ func init() {
 			Label:   "{2}{R}, Discard this card: It deals 3 damage to target creature or planeswalker",
 			Cost:    Plus(ManaCost("{2}{R}"), DiscardThis()),
 			Zones:   []game.ZoneKind{game.ZoneHand},
+			Purpose: ForTargets(DamageToTarget(0, 3)),
 			Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

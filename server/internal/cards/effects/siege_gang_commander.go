@@ -30,6 +30,7 @@ func init() {
 			Label:   "{1}{R}, Sacrifice a Goblin: This creature deals 2 damage to any target.",
 			Cost:    Plus(ManaCost("{1}{R}"), game.AbilityCost{SacrificeOther: b12SacrificeAGoblin()}),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 2)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return ctx.Game.DamageInstanceForEffect(func() error {

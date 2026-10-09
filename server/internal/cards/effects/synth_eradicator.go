@@ -36,6 +36,7 @@ func init() {
 			Label:   "{T}, Pay {E}{E}{E}: This creature deals 3 damage to any target.",
 			Cost:    Plus(TapCost(), PayEnergy(3)),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 3)),
 			Effect:  sourceDealsDamageToEachLegalTarget(3),
 		}},
 	})

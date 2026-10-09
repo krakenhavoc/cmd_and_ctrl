@@ -21,6 +21,7 @@ func init() {
 		OracleID:      "e42fb51e-254a-43ac-ad02-9f0fad0f4c8a",
 		Name:          "Scorching Lava",
 		Completeness:  CompletenessFull,
+		Purpose:       ForTargets(DamageToTarget(0, 2)),
 		Targets:       TargetAny(),
 		OptionalCosts: []game.AdditionalCost{Kicker("{R}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

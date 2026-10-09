@@ -21,6 +21,7 @@ func init() {
 		OracleID:     "37994591-3494-4314-a7da-49c112b0866f",
 		Name:         "Smite the Deathless",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		Targets:      TargetCreature("target creature"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)

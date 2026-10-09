@@ -32,8 +32,8 @@ func init() {
 		Name:         "Warrior's Blades",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Warrior's Blades — 3 damage to any target and you gain 3 life", warriorsBladesETB),
-				TargetAny()),
+			TriggerWithPurpose(Targeting(WhenThisEnters("Warrior's Blades — 3 damage to any target and you gain 3 life", warriorsBladesETB),
+				TargetAny()), ForTargets(DamageToTarget(0, 3))),
 		},
 		Static:    []game.StaticAbility{PumpAttached(2, 1)},
 		Activated: []ActivatedAbility{equip},

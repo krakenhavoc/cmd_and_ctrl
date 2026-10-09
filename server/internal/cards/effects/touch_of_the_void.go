@@ -21,6 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Targets:         TargetAny(),
+		Purpose:         ForTargets(DamageToTarget(0, 3)),
 		OnResolve:       damageAnyTargetExileIfDealtDies(fixedAmount(3), false),
 	})
 }
