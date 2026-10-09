@@ -4569,6 +4569,7 @@ declare blockers" (`dockHint.ts`).
   declaration happened before they were defending. That is the legacy shape
   above. Closing it needs a "the declaration as a whole is over" record beside
   `blocksDeclared` ([#2021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2021)).
+  *Closed by #2021 (Decision 74, amendment of 2026-10-09).*
 - **Triggers that wait in the parked step.** Triggers drained at the step's
   entry ("at the beginning of the declare blockers step", or one a completion
   point 1 declaration set off) go on the stack while priority is parked and
@@ -4666,3 +4667,103 @@ players.
   one permanent. It is another target restriction of the same kind, and
   should be a sibling field next to this one rather than an overload of
   it.
+
+## Amendment (2026-10-09, [#2021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2021)): a player who becomes a defending player after the declaration does not declare
+
+Closes the first item in the #1501 amendment's "What this does NOT decide".
+Decisions 1–73 stand. Decision 69's paragraph on completion point 3 is
+narrowed: of its two shapes, only the restore point written before #1501
+remains. Sprint S37 (combat correctness), tracker
+[#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880).
+
+### The rule
+
+- **CR 509.1.** "First, the defending player declares blockers." It is one
+  turn-based action, taken as the declare blockers step begins. Only a player
+  who is a defending player at that moment declares.
+- **CR 508.5 / 802.2a.** A creature's defending player is the player it is
+  attacking, the controller of the planeswalker it is attacking, or the
+  protector of the battle it is attacking. That can change after the
+  declaration: CR 508.7a reselects what an attacker is attacking, and CR
+  508.4 puts a creature onto the battlefield attacking a player the attacking
+  player chooses. A control change of an attacked planeswalker or battle does
+  not, since that removes it from combat (CR 506.4, #1376), and its attackers
+  keep the defending player recorded for them (CR 506.4c, #1364).
+- **CR 509.1h.** An attacker with no blockers declared for it is unblocked,
+  and one with blockers is blocked, until it leaves combat or an effect says
+  otherwise. A player who becomes its defending player afterwards changes
+  neither.
+
+### Decision 74: the declaration as a whole closes once
+
+`Game.blockDeclarationClosed` records that the CR 509.1 action is over. It is
+set by `noteBlockDeclarationClosedIfCompleteLocked` (`block_completion.go`) the
+moment every player defending at that moment has completed their declaration.
+That check runs at each completion, at the step's entry once completion point 1
+has run (so a step with nobody to wait for closes as it begins), when the
+cursor leaves the step, and in the settle after an action. It is never cleared
+within the step. `clearBlockStateLocked` clears it with the rest of combat. It
+rides `Clone` / `RestoreFrom` and the snapshot (`blockDeclarationClosed`,
+additive, no bump) for `blocksDeclared`'s reason.
+
+Every "has this defender declared" question now asks
+`blockDeclarationDoneLocked(seat)`, which is `blocksDeclared[seat]` or the
+closed record, never `blocksDeclared` directly. So, for a player who becomes a
+defending player after the declaration closed:
+
+- `BlockDeclarationStatusLocked` answers `declared`. The wire lists them in
+  `blocks_declared_seats`, not `block_pending_seats`, so the client shows no
+  "No blocks" / "Done blocking" control and the dock does not wait on them.
+- The option generator offers them nothing. The #328 signal
+  (`block_decision_seats`), the enumerator's block moves and its
+  `finish_blocks` move follow from it and from the status.
+- The verb refuses their block with `blocks_declared` (Decision 68), checked
+  last as before. Its sentence still reads "You have already finished
+  declaring blockers this combat." It is accurate in substance (the table's
+  declaration is finished) and the reason stays one wire value.
+- `completeBlockDeclarationLocked` does nothing for them, so no
+  `EventBlockersDeclared` is emitted for a declaration they never made, at
+  `finish_blocks` (an idempotent no-op), at their pass, or as the step ends.
+  Their pass is an ordinary pass in the CR 117.4 succession and does not hand
+  the active player priority again.
+- `allBlockDeclarationsCompleteLocked` is true once closed, so nothing waits
+  on them.
+
+A player who is defending when the step begins and is still declaring is
+unaffected. While any defender is still declaring, priority is parked
+(Decision 69), so nothing can resolve and make a new defending player in that
+window. The closed record only matters after the active player has priority.
+
+### Snapshot and wire
+
+One additive game-level snapshot key, `blockDeclarationClosed`, recorded in
+`snapshot_shape/v7.txt`. A file written before it restores as false. That is
+the shape before this change, where such a player is asked to declare. A
+binary before it drops the key with the same result. No wire field changes:
+the existing `block_pending_seats` / `blocks_declared_seats` carry the answer.
+
+### Tests
+
+- `game/block_late_defender_test.go`: an attack reselected onto a fourth seat
+  after the declaration closed. That seat reads declared on the status and the
+  wire, is offered nothing and owes no decision, is refused with
+  `blocks_declared`, gets a no-op `finish_blocks`, passes as an ordinary pass,
+  is never announced as declaring, and takes the unblocked attacker's damage.
+  The same for a creature put onto the battlefield attacking a new player. The
+  record is not set while a second defender is still declaring, and is set by
+  the last one. It round-trips undo and the snapshot, and clear combat
+  forgets it.
+- `game/block_defender_test.go`: `TestBlockAfterAReselectIsRefusedToBothDefenders`
+  (formerly `…FollowsTheNewDefender`, which pinned the permissive behaviour)
+  refuses the new defender's block on the reselected attacker.
+- `legal/finish_blocks_test.go`: the late defender is offered neither a block
+  nor `finish_blocks`.
+
+### What this does NOT decide
+
+- **The sentence for a late defender.** "You have already finished declaring
+  blockers" is said to someone who never declared. A sentence of its own would
+  need the refusal to carry which case it is. No card makes this common.
+- **A sandbox move that makes a new defending player while priority is
+  parked.** It can only come from a manual verb. That player is pending and is
+  waited on like any other declaring defender.

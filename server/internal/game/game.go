@@ -586,6 +586,23 @@ type Game struct {
 	// declaration whose triggers have already fired.
 	blocksDeclared map[uuid.UUID]bool
 
+	// blockDeclarationClosed is whether this combat's CR 509.1
+	// declaration AS A WHOLE is over (#2021, ADR 0045 Decision 74):
+	// set the moment every player defending at that moment has
+	// completed theirs. blocksDeclared is per seat, so on its own it
+	// cannot tell "has not declared yet" from "was not a defending
+	// player when the declaration was made" — and a player who becomes
+	// one afterwards (an attack reselected onto them, CR 508.7a; a
+	// creature put onto the battlefield attacking them, CR 508.4) never
+	// declares: the turn-based action happened once, as the step began
+	// (CR 509.1, 509.1h). With this set every defending player reads
+	// as declared.
+	//
+	// Cleared with the rest of combat, and carried by Clone /
+	// RestoreFrom and the persisted snapshot for blocksDeclared's
+	// reason.
+	blockDeclarationClosed bool
+
 	// attacksDeclared is the ATTACK side's completion point for CR
 	// 508.1d (#1571, attack_requirements.go): true once the active
 	// player's declaration this combat has passed its requirement

@@ -220,8 +220,8 @@ func TestPriorityIsParkedUntilTheDefenderDeclares(t *testing.T) {
 
 // Completion point 3 is kept for the one shape in which a defender
 // still declaring holds priority: a restore point written before #1501
-// mid-step, or a player who became a defending player after the step
-// began. Their PASS is still "done", and the last one hands the active
+// mid-step. (A player who became a defending player after the
+// declaration closed is not declaring at all, #2021.) Their PASS is still "done", and the last one hands the active
 // player priority instead of wrapping the step.
 func TestPendingDefenderHoldingPriorityCompletesByPassing(t *testing.T) {
 	g := newActiveGame(t)

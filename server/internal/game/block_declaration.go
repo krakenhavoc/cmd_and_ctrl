@@ -305,7 +305,9 @@ func (g *Game) checkBlockRestrictionsLocked(base blockAssignment, decls []BlockD
 			// legal block completed as the step began without doing
 			// anything, and "it has flying" tells them more than "you
 			// have finished declaring" would.
-			if late == nil && g.blocksDeclared[blocker.Controller] {
+			// #2021: and a player who became the defending player
+			// after the declaration closed never declares at all.
+			if late == nil && g.blockDeclarationDoneLocked(blocker.Controller) {
 				late = g.blockRefusedErrorLocked(attacker, blocker,
 					BlockRefusal{Reason: BlockReasonBlocksDeclared, Source: blocker.InstanceID})
 			}
@@ -519,7 +521,7 @@ func (g *Game) blockOptionsLocked(seat uuid.UUID, perAttackerCap, maxTotal int) 
 	// this seat still declaring". Since #1501 the verb agrees and
 	// refuses a late block (blocks_declared), so the enumerator, the
 	// bot and the #328 auto-pass signal never offer one it would take.
-	if g.blocksDeclared[seat] {
+	if g.blockDeclarationDoneLocked(seat) {
 		return nil
 	}
 	if perAttackerCap <= 0 {

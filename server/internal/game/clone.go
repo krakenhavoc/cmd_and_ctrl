@@ -370,6 +370,9 @@ func (g *Game) cloneLocked() *Game {
 	// finish_blocks reopens it, so the attacker they had not blocked
 	// is not "unblocked" to ninjutsu until they choose again.
 	out.blocksDeclared = copyBoolMap(g.blocksDeclared)
+	// #2021: and whether the declaration as a whole is over, for the
+	// same reason.
+	out.blockDeclarationClosed = g.blockDeclarationClosed
 	out.attacksDeclared = g.attacksDeclared
 	// #716: and the combat damage steps' participation record rewinds
 	// with the combat it belongs to. An undo back into the priority
@@ -1097,6 +1100,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.announcedAttacks = src.announcedAttacks
 	g.attackDefenders = src.attackDefenders
 	g.blocksDeclared = src.blocksDeclared
+	g.blockDeclarationClosed = src.blockDeclarationClosed
 	g.attacksDeclared = src.attacksDeclared
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners

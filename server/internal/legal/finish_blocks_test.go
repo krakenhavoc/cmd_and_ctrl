@@ -92,6 +92,42 @@ func TestFinishBlocksIsOfferedToADeclaringDefender(t *testing.T) {
 	}
 }
 
+// TestALateDefenderIsOfferedNoBlockAndNoFinish — #2021, CR 509.1. A
+// player an attack is reselected onto after the declaration closed was
+// not defending when blockers were declared, so they never declare:
+// the enumerator offers them neither a block nor finish_blocks.
+func TestALateDefenderIsOfferedNoBlockAndNoFinish(t *testing.T) {
+	g := newTable(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	def := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	late := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+	clearHand(me)
+	clearHand(def)
+	clearHand(late)
+	bear := freshCreature(g, me, "Bear")
+	freshCreature(g, def, "Wall")
+	freshCreature(g, late, "Late Wall")
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(bear, def.ID); err != nil {
+		t.Fatal(err)
+	}
+	advanceTo(t, g, game.StepDeclareBlockers)
+	if err := g.FinishBlocks(def.ID); err != nil {
+		t.Fatal(err)
+	}
+	var err error
+	g.WithWriteLock(func() { err = g.ReselectAttackTargetForEffect(bear, late.ID) })
+	if err != nil {
+		t.Fatalf("ReselectAttackTargetForEffect: %v", err)
+	}
+	if got := g.BlockDeclarationStatusOf(late.ID); got != game.BlockDeclarationDeclared {
+		t.Fatalf("the late defender reads %q, want declared", got)
+	}
+	if moves := legal.EnumerateFor(g, late.ID); finishMove(moves) != nil || countKind(moves, legal.KindBlock) != 0 {
+		t.Errorf("the late defender is offered a block or a finish: %v", labels(moves))
+	}
+}
+
 // TestEveryDeclaringDefenderCanAlwaysFinish is the stall guard a bot
 // depends on: at a four-seat table with three defenders — one with a
 // creature, one owing a CR 509.1c requirement, one with nothing to

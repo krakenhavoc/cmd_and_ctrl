@@ -55,8 +55,18 @@ import "github.com/google/uuid"
 // mana ability that sacrificed the last attacker — the dispatcher's
 // SettleBlockDeclaration after each action. Point (3) remains for a
 // pending defender who holds priority anyway: a restore point written
-// before #1501 mid-step, or a player who became a defending player
-// after the step began.
+// before #1501 mid-step.
+//
+// The declaration happens once (#2021). When every player defending at
+// that moment has completed theirs, the CR 509.1 action as a whole is
+// over and Game.blockDeclarationClosed records it. A player who becomes
+// a defending player afterwards — an attack reselected onto them
+// (CR 508.7a), a creature put onto the battlefield attacking them
+// (CR 508.4) — was not defending when the turn-based action happened,
+// so they never declare: they read as declared, are offered no block,
+// are refused one (blocks_declared), and their pass is an ordinary
+// pass. An attacker pointed at them stays as the declaration left it,
+// blocked or unblocked (CR 509.1h).
 //
 // And a declaration that is complete is complete (#1501). The block
 // verbs refuse a block from a defender whose declaration is done
@@ -106,10 +116,41 @@ func (g *Game) BlockDeclarationStatusLocked(seat uuid.UUID) BlockDeclarationStat
 	if !g.blockersDeclaredStepLocked() || !g.isDefendingPlayerLocked(seat) {
 		return BlockDeclarationNone
 	}
-	if g.Turn.Step != StepDeclareBlockers || g.blocksDeclared[seat] {
+	if g.Turn.Step != StepDeclareBlockers || g.blockDeclarationDoneLocked(seat) {
 		return BlockDeclarationDeclared
 	}
 	return BlockDeclarationPending
+}
+
+// blockDeclarationDoneLocked reports whether `seat` can no longer
+// declare blockers this combat: their own declaration is complete, or
+// the declaration as a whole is over (#2021) — which answers for a
+// player who became a defending player after it ended and so never
+// made one. Every "has this defender declared" question in the engine
+// asks this, never blocksDeclared directly.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) blockDeclarationDoneLocked(seat uuid.UUID) bool {
+	return g.blockDeclarationClosed || g.blocksDeclared[seat]
+}
+
+// noteBlockDeclarationClosedIfCompleteLocked records that the CR 509.1
+// declaration as a whole is over once every player defending right now
+// has completed theirs (#2021). Called wherever a declaration can be
+// the last one — each completion, the step's entry with nobody to
+// wait for, the step's exit, and the settle after an action — so the
+// record never lags the moment the active player could receive
+// priority. Never cleared within the step; clearBlockStateLocked
+// clears it with the rest of combat.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) noteBlockDeclarationClosedIfCompleteLocked() {
+	if g.blockDeclarationClosed || g.State != StateActive || g.Turn.Step != StepDeclareBlockers {
+		return
+	}
+	if g.allBlockDeclarationsCompleteLocked() {
+		g.blockDeclarationClosed = true
+	}
 }
 
 // BlockDeclarationSeatsLocked returns the seat INDICES of the defending
@@ -268,10 +309,14 @@ func (g *Game) defendingSeatsAPNAPLocked() []uuid.UUID {
 
 // allBlockDeclarationsCompleteLocked reports whether every defending
 // player's declaration is complete — the CR 509.1 turn-based action as
-// a whole. True with no defending players at all.
+// a whole. True with no defending players at all, and true once the
+// declaration has closed (#2021), whoever is defending since.
 //
 // Caller must hold g.mu (read or write).
 func (g *Game) allBlockDeclarationsCompleteLocked() bool {
+	if g.blockDeclarationClosed {
+		return true
+	}
 	for _, seat := range g.defendingSeatsAPNAPLocked() {
 		if !g.blocksDeclared[seat] {
 			return false
@@ -295,7 +340,7 @@ func (g *Game) blockDeclarationCompleteForAttackerLocked(attacker *Card) bool {
 		return true
 	}
 	if d := g.defendingPlayerForAttackerLocked(attacker); d != uuid.Nil {
-		return g.blocksDeclared[d]
+		return g.blockDeclarationDoneLocked(d)
 	}
 	return g.allBlockDeclarationsCompleteLocked()
 }
@@ -310,14 +355,16 @@ func (g *Game) blockAnnounceableLocked(blocker *Card) bool {
 	if g.Turn.Step != StepDeclareBlockers {
 		return true
 	}
-	return g.blocksDeclared[blocker.Controller]
+	return g.blockDeclarationDoneLocked(blocker.Controller)
 }
 
 // completeBlockDeclarationLocked completes `seat`'s block declaration:
 // marks it, locks in its staged blocks, and emits EventBlockersDeclared
 // with the number of creatures it blocked with. Reports whether it
 // completed anything — false outside the declare-blockers step, for a
-// seat that is not defending, and for one already complete, so every
+// seat that is not defending, for one already complete, and for one
+// who became a defending player after the declaration closed (#2021):
+// they never declared, so nothing is announced for them. Every
 // completion point can call it unconditionally.
 //
 // Triggers the announcement produces are queued, not drained; the
@@ -328,7 +375,7 @@ func (g *Game) completeBlockDeclarationLocked(seat uuid.UUID) bool {
 	if g.State != StateActive || g.Turn.Step != StepDeclareBlockers {
 		return false
 	}
-	if g.blocksDeclared[seat] || !g.isDefendingPlayerLocked(seat) {
+	if g.blockDeclarationDoneLocked(seat) || !g.isDefendingPlayerLocked(seat) {
 		return false
 	}
 	if g.blocksDeclared == nil {
@@ -351,6 +398,7 @@ func (g *Game) completeBlockDeclarationLocked(seat uuid.UUID) bool {
 		Actor:  seat,
 		Amount: blockers,
 	})
+	g.noteBlockDeclarationClosedIfCompleteLocked()
 	return true
 }
 
@@ -374,6 +422,7 @@ func (g *Game) completeAllBlockDeclarationsLocked() bool {
 			completed = true
 		}
 	}
+	g.noteBlockDeclarationClosedIfCompleteLocked()
 	g.unparkBlockPriorityLocked()
 	return completed
 }
@@ -391,6 +440,9 @@ func (g *Game) completeAllBlockDeclarationsLocked() bool {
 // Caller must hold g.mu in write mode, with fresh layers.
 func (g *Game) beginBlockDeclarationLocked() {
 	g.autoCompleteBlockDeclarationsLocked()
+	// #2021: with nobody left declaring (or nobody defending at all)
+	// the declaration is over as the step begins.
+	g.noteBlockDeclarationClosedIfCompleteLocked()
 	if !g.allBlockDeclarationsCompleteLocked() {
 		g.grantPriorityLocked(NoPriority)
 	}
@@ -480,6 +532,7 @@ func (g *Game) closeBlockDeclarationIfCompleteLocked() bool {
 	if !g.allBlockDeclarationsCompleteLocked() {
 		return false
 	}
+	g.noteBlockDeclarationClosedIfCompleteLocked()
 	g.runStateChecksLocked()
 	if g.State == StateActive {
 		g.grantPriorityLocked(g.Turn.ActiveSeat)

@@ -315,6 +315,7 @@ battlefield.cards[].unlocked	number:uint8
 battlefield.cards[].variableToughness	bool
 battlefield.kind	string
 battlefield.owner	custom(uuid.UUID)
+blockDeclarationClosed	bool
 blocksDeclared	map:array
 blocksDeclared{}	bool
 continuations	object

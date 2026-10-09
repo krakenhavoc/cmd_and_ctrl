@@ -1,0 +1,6 @@
+---
+title: "A player who becomes a defending player after the block declaration does not declare"
+date: 2026-10-09
+issues: [2021]
+---
+**A player who becomes a defending player after the block declaration does not declare** (#2021, CR 509.1 / 509.1h / 508.7a / 508.4, [ADR 0045 amendment 2026-10-09 (#2021)](decisions/0045-combat-restrictions.md) Decision 74) — the shape #1501 left open. `blocksDeclared` is per seat, so a player an attack was reselected onto, or a creature was put onto the battlefield attacking, after every defender had declared read as *pending*: offered blocks, accepted by the verb, listed in `block_pending_seats` with the "No blocks" control, and completed by their pass, which handed the active player priority again. `Game.blockDeclarationClosed` (carried by undo and the snapshot, cleared with combat) now records that the declaration as a whole is over, set the moment every player defending at that moment has completed theirs. With it set every defending player reads `declared`: no option, no #328 signal, no `finish_blocks` move, the verb refuses with `blocks_declared`, no `EventBlockersDeclared` is emitted for them, and their pass is an ordinary pass. The attacker stays as the declaration left it, blocked or unblocked. Completion by `pass_priority` remains only for restore points written before #1501.
