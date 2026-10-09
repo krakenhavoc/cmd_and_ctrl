@@ -39,7 +39,7 @@ import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./p
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { askedByHandText, canRemember } from "./autoAnswerPref";
 import { L } from "./labels";
-import { energyShortBy, energyShortReason, payAmountHint } from "./payEnergy";
+import { energyShortBy, energyShortReason, payAmountHint, payAmountResource } from "./payEnergy";
 
 // "Short" for an option_pick / entry_controller (ADR 0111 §2: "Inline
 // when every option is a short label; a sheet when an option embeds
@@ -273,9 +273,11 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
     }
     case "pay_amount": {
       const pa = c.pay_amount;
+      const resource = pa ? payAmountResource(pa) : "energy";
+      const what = resource === "none" ? "choose a number" : `pay ${resource}`;
       return {
-        title: reason || `${ctx.sourceName} — pay energy?`,
-        tag: "pay energy",
+        title: reason || `${ctx.sourceName} — ${what}?`,
+        tag: what,
         hint: pa ? payAmountHint(pa, ctx.sourceName) : undefined,
       };
     }
@@ -399,13 +401,27 @@ function answersFor(
       // ADR 0129 §3 (owner decision 3): the stepper in the body sets the
       // amount; Pay sends it, and the decline sends 0. No keys: the
       // stepper's field takes digits, and Enter in it pays.
+      // #1941: a life payment reads "Pay N life", and a number that is
+      // not paid reads "Choose N" with no decline (0 is an ordinary
+      // answer there, when the card allows it).
       const n = ctx.payAmount ?? 0;
       const onAmount = h.onAmount ?? (() => {});
       const min = c.pay_amount?.min ?? 0;
+      const resource = c.pay_amount ? payAmountResource(c.pay_amount) : "energy";
+      if (resource === "none") {
+        return {
+          primary: {
+            id: "choose",
+            label: L.chooseNumber(n),
+            disabled: ctx.payAmountAnswerable === false,
+            onPress: () => onAmount(n),
+          },
+        };
+      }
       return {
         primary: {
           id: "pay",
-          label: L.payEnergy(n),
+          label: resource === "life" ? L.payLife(n) : L.payEnergy(n),
           disabled: n <= 0 || ctx.payAmountAnswerable === false,
           onPress: () => onAmount(n),
         },

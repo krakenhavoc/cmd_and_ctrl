@@ -681,6 +681,22 @@ type Card struct {
 	// #1572; see ADR 0071's amendment of 2026-09-27.
 	ChosenOption string
 
+	// ChosenNumber is the NUMBER chosen for this permanent as it
+	// entered (CR 614.12a, #1941): Phyrexian Processor's "As this
+	// artifact enters, pay any amount of life", read back by its
+	// "where X is the life paid as this artifact entered". Zero is both
+	// "chose zero" and "chose nothing", which read the same for every
+	// card that asks.
+	//
+	// The sixth member of the family, with its lifecycle: per INSTANCE,
+	// carried by the snapshot and by clone, cleared when the permanent
+	// leaves the battlefield (CR 400.7), and NOT a copiable value
+	// (CR 707.2), so a copy of a Processor pays its own life as IT
+	// enters. Written by Game.SetChosenNumberForEffect (choose_number.go)
+	// and by nothing else; read with Game.ChosenNumberOf, or off
+	// PermanentInfo.ChosenNumber once the permanent has gone.
+	ChosenNumber int
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.

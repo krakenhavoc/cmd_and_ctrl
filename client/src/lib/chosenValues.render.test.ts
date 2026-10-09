@@ -69,6 +69,13 @@ describe("chosenValueChips", () => {
     expect(chip.title).toContain('"the chosen option"');
   });
 
+  it("labels the life paid as it entered (#1941, Phyrexian Processor), and not zero", () => {
+    const chip = chosenValueChips({ chosen_number: 7 })[0];
+    expect(chip.kind).toBe("number");
+    expect(chip.label).toBe("Paid: 7");
+    expect(chosenValueChips({ chosen_number: 0 })).toEqual([]);
+  });
+
   it("labels a chosen name (#1210, Pithing Needle) as named", () => {
     const chip = chosenValueChips({ chosen_name: "Sol Ring" })[0];
     expect(chip.kind).toBe("name");

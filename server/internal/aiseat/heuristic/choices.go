@@ -127,7 +127,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 
 	switch kind {
 	case choicePayAmount:
-		return payAmountValue(ch, cp.Amount)
+		return st.payAmountValue(ch, cp.Amount)
 	case choiceEntryController:
 		return st.entryControllerValue(ch, cp.OptionIndex)
 	case choiceEntryReadAhead:

@@ -5706,6 +5706,30 @@ A chosen player is not a target in either form: it is named without
 the stack, nothing may respond to it, and nothing re-checks it against
 the board.
 
+**A number** (#1941, ADR 0129's amendment of 2026-10-09,
+[choose_number.go](../server/internal/cards/effects/choose_number.go))
+is ADR 0129 §3's `pay_amount` prompt, with `Resource` saying what each
+point costs. Three builders:
+
+- `ChooseNumber{Min, Max, NoMax, Unit, SelfDamage, Goal, Marks, Then}`:
+  "an amount of damage of your choice" (Volcano Hellion). Nothing is
+  paid; `NoMax` is a number with no printed ceiling (CR 107.1b).
+- `PayLifeAmount{Unit, Goal, Then}`: "you may pay any amount of life. If
+  you do, …" (Necrodominance). The ceiling is the payer's life total
+  (CR 119.4); `Then` gets the life paid, 0 on a decline.
+- `PayAnyAmountOfLifeAsEnters(label, unit, goal)` for `Spec.AsEnters`:
+  "As this enters, pay any amount of life" (Phyrexian Processor). The
+  amount lands on `game.Card.ChosenNumber`; read it in the permanent's
+  abilities with `LifePaidAsEntered(ctx)`, which falls back to the
+  permanent's last-known information once it has left (CR 608.2h).
+
+`Goal` is the number that does what the card is for (the target's
+lethal damage, the cards that fill a hand). The bot answers it when the
+life it costs leaves it at 10 or more, and a person's stepper opens on
+it, so declare it whenever the card has one. `Marks` are other numbers
+worth offering a bot. A payment in mana ("you may pay {X}{R}") is not
+here yet (#2727).
+
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for
 `StackItem.Effect`'s reason: an undo restores a clone and the branch

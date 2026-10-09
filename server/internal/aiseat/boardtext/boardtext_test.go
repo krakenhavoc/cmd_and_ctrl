@@ -97,11 +97,17 @@ func TestRenderEnergyPrompts(t *testing.T) {
 		{ID: "p1", Kind: "pay_unless", Chooser: "a", Reason: "Thriving Rhino — pay {E}{E}?", Count: 1, PayEnergy: &two},
 		{ID: "p2", Kind: "pay_amount", Chooser: "a", Reason: "Harnessed Lightning", Count: 1,
 			PayAmount: &protocol.PayAmountView{Min: 0, Max: 5, Goal: 3, Unit: "damage"}},
+		{ID: "p3", Kind: "pay_amount", Chooser: "a", Reason: "Necrodominance", Count: 1,
+			PayAmount: &protocol.PayAmountView{Min: 0, Max: 30, Goal: 3, Unit: "cards", Resource: "life"}},
+		{ID: "p4", Kind: "pay_amount", Chooser: "a", Reason: "Volcano Hellion", Count: 1,
+			PayAmount: &protocol.PayAmountView{Min: 0, Max: 1_000_000, NoMax: true, Goal: 4, Unit: "damage", Resource: "none", SelfDamage: true}},
 	}
 	got := boardtext.Render(v, "a", boardtext.Options{})
 	for _, want := range []string{
 		"YOU OWE A CHOICE: pay_unless — Thriving Rhino — pay {E}{E}? (pay 2 energy) (choose 1)\n",
 		"YOU OWE A CHOICE: pay_amount — Harnessed Lightning (pay nothing, or 1 to 5 energy; 3 reaches the card's threshold; one energy is one point of damage)\n",
+		"YOU OWE A CHOICE: pay_amount — Necrodominance (pay no life, or 1 to 30 life; 3 reaches the card's threshold; one life is one point of cards)\n",
+		"YOU OWE A CHOICE: pay_amount — Volcano Hellion (choose a number, 0 or more; 4 reaches the card's threshold; you are dealt the same amount; each point is one point of damage)\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)

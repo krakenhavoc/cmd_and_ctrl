@@ -59,7 +59,7 @@ import "github.com/google/uuid"
 // LostLastCounter, BattleX/Y, the combat targets, Goads,
 // DamageMarked, RegenerationShields, AttachedTo, AttachedAt,
 // BaseController, NamedTribe, ChosenColor, ChosenPlayer, ChosenName,
-// ChosenOption, Provenance, ClassLevel, Solved, ProtectorPlayerID,
+// ChosenOption, ChosenNumber, Provenance, ClassLevel, Solved, ProtectorPlayerID,
 // EnteredBattlefieldAt, SummonedThisTurn and the face-down state — is
 // a field CR 702.26d says to keep. Reading that block is the clearest
 // statement of why phasing must not travel through it.

@@ -1437,11 +1437,15 @@ type PayCardsView struct {
 }
 
 // PayAmountView is the wire shape of a "pay_amount" prompt (ADR 0129
-// §3): how much energy the chooser may pay.
+// §3): how much energy the chooser may pay, or — since the ADR's
+// amendment of 2026-10-09 (#1941) — how much life, or a number that is
+// chosen and not paid.
 type PayAmountView struct {
 	// Min is 0 for "any amount" and 1 for "one or more".
 	Min int `json:"min"`
-	// Max is the chooser's energy when the prompt was asked.
+	// Max is the chooser's energy (or life) when the prompt was asked,
+	// or the printed ceiling. With no_max it is the engine's overflow
+	// guard, which a client need not draw.
 	Max int `json:"max"`
 	// Goal is the smallest amount that reaches the card's own threshold
 	// (Harnessed Lightning: the target's toughness), or 0 for none. The
@@ -1450,6 +1454,18 @@ type PayAmountView struct {
 	// Unit says what each counter paid buys: "damage", "counters",
 	// "cards", "power", "tax" or "other".
 	Unit string `json:"unit"`
+	// Resource is what each point costs the chooser: "energy", "life"
+	// or "none" (a number chosen and not paid). Absent reads as energy.
+	// A payment may be declined with 0; a number that is not paid is
+	// min..max alone.
+	Resource string `json:"resource,omitempty"`
+	// NoMax is a number with no printed ceiling (Volcano Hellion).
+	NoMax bool `json:"no_max,omitempty"`
+	// Marks are further numbers the card names as meaningful, ascending:
+	// the chooser's life total for Volcano Hellion.
+	Marks []int `json:"marks,omitempty"`
+	// SelfDamage says each point is also dealt to the chooser.
+	SelfDamage bool `json:"self_damage,omitempty"`
 }
 
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
@@ -2713,6 +2729,12 @@ type CardView struct {
 	// permanent's OWN printed abilities exists (ADR 0071's gate), so
 	// without it the table cannot tell which half of a Siege is live.
 	ChosenOption string `json:"chosen_option,omitempty"`
+	// ChosenNumber is the family's sixth answer (#1941): the number
+	// chosen as this permanent entered — the life Phyrexian Processor's
+	// controller paid, which is the size of every token it makes.
+	// Absent at zero, and cleared by the non-knower redaction for the
+	// reasons above.
+	ChosenNumber int `json:"chosen_number,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -7515,7 +7537,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 		}
 		if pa := c.PayAmount; pa != nil {
-			v.PayAmount = &PayAmountView{Min: pa.Min, Max: pa.Max, Goal: pa.Goal, Unit: pa.Unit}
+			v.PayAmount = &PayAmountView{
+				Min: pa.Min, Max: pa.Max, Goal: pa.Goal, Unit: pa.Unit,
+				Resource: pa.ResourceOrEnergy(), NoMax: pa.NoMax,
+				Marks: append([]int(nil), pa.Marks...), SelfDamage: pa.SelfDamage,
+			}
 		}
 		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
 			doubledBy, doubledByName := c.TriggerDoubler()
@@ -9241,6 +9267,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.NamedTribe = ""
 	out.ChosenName = ""
 	out.ChosenOption = ""
+	out.ChosenNumber = 0
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
 	// (mintTokenLocked adds every seat as a knower), so in practice
@@ -9501,6 +9528,7 @@ func viewOfCard(c game.Card) CardView {
 		NamedTribe:   c.NamedTribe,
 		ChosenName:   c.ChosenName,
 		ChosenOption: c.ChosenOption,
+		ChosenNumber: c.ChosenNumber,
 		knowers:      knowers,
 		Layout:       c.Layout,
 		Faces:        viewOfFaces(c),

@@ -385,21 +385,21 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoicePayAmount:
 			// ADR 0129 §3 (owner decision 3): nothing, the smallest
-			// payment, the card's own threshold and the ceiling, so a
-			// 50-energy prompt is at most four moves and not 51. Every one is within the bounds
-			// the engine validates against.
+			// payment, the card's own threshold, its marks and the
+			// ceiling, so a 50-energy prompt is at most four moves and
+			// not 51, and a number with no ceiling (ADR 0129's
+			// amendment of 2026-10-09) is a handful rather than
+			// unbounded. Every one is within the bounds the engine
+			// validates against.
 			pa := c.PayAmount
 			if pa == nil {
 				continue
 			}
-			for _, n := range payAmountOffers(pa) {
+			for i, n := range payAmountOffers(pa) {
 				amount := n
 				p := base()
 				p.Amount = &amount
-				label := fmt.Sprintf("%s: pay %d {E}", reason, amount)
-				if amount == 0 {
-					label = reason + ": pay nothing"
-				}
+				label, cost := payAmountMove(reason, pa, amount)
 				m := Move{
 					Type:   TypeResolveChoice,
 					Player: e.seat,
@@ -407,10 +407,11 @@ func (e *enumerator) choiceMoves() bool {
 					Label:  label,
 					Source: c.Source,
 					Params: mustJSON(p),
-					Cost:   withEnergy(nil, amount),
-					// Paying nothing is the one answer the engine
-					// can never refuse.
-					AlwaysLegal: amount == 0,
+					Cost:   cost,
+					// The first offer is nothing for a payment, which
+					// the engine can never refuse, and the floor for a
+					// number that is not paid, which it can't either.
+					AlwaysLegal: i == 0,
 				}
 				e.add(m)
 			}

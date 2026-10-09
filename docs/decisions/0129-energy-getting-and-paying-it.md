@@ -274,3 +274,48 @@ Each question lists the recommended option first, then the others. The owner cho
    - (c) PR 1 only, with the two waiting cards and the fixed activations, about 30 cards. It closes #1995 quickly and leaves every resolution payer, which is most of the energy cards, on the backlog.
 
    **Answered: (a), as recommended (owner decision 6).**
+
+---
+
+## Amendment (2026-10-09, #1941): choosing a number as an ability resolves
+
+**Context.** Some effects ask for any number as they resolve (CR 608.2d), and the engine could only ask for an option over a fixed list (`option_pick`) or a mode chosen at announce. Three cards waited on the registry row `choose-a-number-on-resolution`:
+
+- **Volcano Hellion**: "When this creature enters, it deals an amount of damage of your choice to you and target creature. The damage can't be prevented." A number with no ceiling, chosen and not paid. CR 107.1b only rules out a negative one. A capped list would be weaker than printed whenever the amount matters past lethal (lifelink, a "whenever this is dealt damage" creature).
+- **Necrodominance**: "At the beginning of your end step, you may pay any amount of life. If you do, draw that many cards." A life payment made on resolution (CR 118.12), at most the payer's life total (CR 119.4).
+- **Phyrexian Processor** (deck request #2065): "As this artifact enters, pay any amount of life. {4}, {T}: Create an X/X black Phyrexian Minion creature token, where X is the life paid as this artifact entered." The same payment made as a permanent enters (CR 614.1c, 614.12a), and the number has to stay on the permanent.
+
+**Decision: widen `pay_amount`, add no kind.** Question 3 chose a min-max stepper prompt "that can later serve 'pay any amount of life' or mana" (owner decision 3). This amendment makes it do so. `PayAmountPrompt` gains four fields, each zero for every energy prompt so nothing written before changes:
+
+```go
+Resource   string // PayResourceEnergy ("" reads as energy), PayResourceLife, PayResourceNone
+NoMax      bool   // no printed ceiling; Max holds PayAmountNoMaxCeiling (1,000,000), an overflow guard
+Marks      []int  // further numbers the card names, for the enumerator
+SelfDamage bool   // each point is also dealt to the chooser
+```
+
+The wire's `pay_amount` carries them as `resource`, `no_max`, `marks` and `self_damage`. The answer is the same `{amount}`, routed by kind. The gate row (blocks), the departure row (`dropDefault`), the `chooseValueResume` frame, the census and the client's stepper are energy's. A new kind would have duplicated each of those rows and the stepper for the same question.
+
+- **Answers.** A payment (energy or life) may always be declined with 0, so its answers are 0 and `Min`..`Max`. A number that is not paid has no decline: its answers are `Min`..`Max` (`PayAmountPrompt.AnswerInBounds`, the one check the resolver and the enumerator share).
+- **Life.** `Game.QueueChooseNumberForEffect` with `PayResourceLife` sets the ceiling to the payer's life total when asked (CR 119.4). Nobody is asked, and `Then` runs with 0, when the payer has no life to pay or their life total can't change (CR 119.8). The answer is re-checked against `CanPayLifeLocked` and paid through `payLifeAsCostLocked`, the path every life cost takes.
+- **A number that is not paid.** `PayResourceNone` pays nothing and hands the number on. With `NoMax`, the ceiling is the overflow guard, which no client draws and the enumerator never offers.
+- **Stored on a permanent.** `effects.PayAnyAmountOfLifeAsEnters` is a `Spec.AsEnters` hook: it asks the entering permanent's controller and writes the answer to `game.Card.ChosenNumber`, the sixth member of the as-enters family (`ChosenColor`, `NamedTribe`, `ChosenPlayer`, `ChosenName`, `ChosenOption`). It has their lifecycle: per object, an additive snapshot field (`chosenNumber`), cleared on leaving the battlefield (CR 400.7), not a copiable value (CR 707.2), and remembered in `PermanentInfo.ChosenNumber` so an ability that resolves after the permanent has gone reads its last-known value (CR 608.2h). `effects.LifePaidAsEntered` reads it. Like every as-enters choice in the catalog, the prompt is queued from the hook rather than by pausing the CR 614 pipeline, so the permanent is briefly on the battlefield with nothing paid. The prompt blocks the table, so nothing can act in that window.
+- **Builders.** `effects.ChooseNumber` (a number, optionally with no ceiling), `effects.PayLifeAmount` (life on resolution) and `PayAnyAmountOfLifeAsEnters`. `effects.PayEnergyAmount` is unchanged.
+
+**The bot.** The enumerator offers the floor (0 for a payment), the card's `Goal`, each of its `Marks` and the ceiling (not the overflow guard), so a number with no ceiling is a handful of moves. A life payment's moves carry `cost.life`; an unpaid number's carry none. The heuristic answers the goal, as it does for energy, but an answer that costs life (`resource: "life"`, or `self_damage`) is held to the floor Phyrexian life is held to: it is taken only when it leaves the seat at 10 life or more, refused outright if it would take the seat's last life, and otherwise the seat answers the floor. Each card declares its goal:
+
+| Card | Goal | Marks |
+|---|---|---|
+| Volcano Hellion | the target's lethal damage when an opponent controls it, else 0 | the target's lethal damage and the chooser's life total |
+| Necrodominance | the cards that fill the hand to five, capped by the library and by 10 life kept | none |
+| Phyrexian Processor | half the life total, keeping 10 | none |
+
+The board text describes the prompt per resource ("pay no life, or 1 to 30 life", "choose a number, 0 or more; you are dealt the same amount").
+
+**The client.** The same stepper. Its primary reads "Pay N {E}", "Pay N life" or "Choose N" (new contract labels `payLife`, `chooseNumber`, and the groups `lifeToPay` and `numberToChoose`). A payment keeps its decline. A number that is not paid has none, opens at its floor (0 included) and draws no ceiling when `no_max` is set. A permanent with a chosen number shows a "Paid: N" chip, from `CardView.chosen_number`.
+
+**Mana is next, and is #2727.** Tilonalli's Summoner's "you may pay {X}{R}" chooses X as the trigger resolves and pays mana. That stays on #2727. The shape it can take with no new prompt: choose X here with `PayResourceNone` and a ceiling of what the payer could pay, then queue the existing `pay_unless` prompt for "{X}{R}" with X filled in, so the mana is paid through the one path that pays mana for an effect. A `PayResourceMana` that charged the pool directly is the alternative #2727 can weigh.
+
+**Cards.** Volcano Hellion, Phyrexian Processor and Necrodominance ship Full. Necrodominance's other clauses already existed: `SkipYourDrawStep`, `YourMaxHandSizeIs(5)` and `GraveyardBecomesExile{YoursOnly: true}`. The registry row is closed.
+
+**Out of scope.** Choosing a number as a spell is cast or an ability is activated is X (CR 107.3a) and unchanged. A number divided among several recipients (CR 608.2d's last sentence) is the existing division prompts' business.

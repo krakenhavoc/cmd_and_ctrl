@@ -316,6 +316,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		NamedTribe:    "Elf",
 		ChosenName:    "Sol Ring",
 		ChosenOption:  "Khans",
+		ChosenNumber:  7,
 		ManaCost:      "{2}{U}",
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		// ADR 0093: the granted-ability text list. Redacted with the

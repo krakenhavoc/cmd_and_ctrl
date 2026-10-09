@@ -57,6 +57,8 @@
     // card (#1210).
     chosenOption?: string;
     chosenName?: string;
+    // #1941: the number chosen (life paid) as it entered.
+    chosenNumber?: number;
     // #662, CR 702.16. The qualities the SERVER parsed; the client
     // owns no protection grammar.
     protection?: ProtectionView[];
@@ -74,6 +76,7 @@
     namedTribe,
     chosenOption,
     chosenName,
+    chosenNumber,
     protection = [],
     riotHaste = false,
     abilityRows = null,
@@ -85,6 +88,7 @@
       named_tribe: namedTribe,
       chosen_option: chosenOption,
       chosen_name: chosenName,
+      chosen_number: chosenNumber,
     }),
   );
 
@@ -267,5 +271,8 @@
   }
   .kw-chosen-name {
     background: rgba(58, 28, 58, 0.82);
+  }
+  .kw-chosen-number {
+    background: rgba(70, 24, 28, 0.82);
   }
 </style>

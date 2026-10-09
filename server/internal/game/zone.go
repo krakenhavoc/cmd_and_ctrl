@@ -277,6 +277,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.
 		c.ChosenOption = ""
+		// #1941 / CR 614.12a: and so does the number chosen as it
+		// entered. A Phyrexian Processor that is bounced and recast
+		// pays life again.
+		c.ChosenNumber = 0
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's

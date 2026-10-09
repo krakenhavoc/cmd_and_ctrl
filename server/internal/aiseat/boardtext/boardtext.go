@@ -185,15 +185,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			fmt.Fprintf(&b, " (pay %d energy)", *ch.PayEnergy)
 		}
 		if pa := ch.PayAmount; pa != nil {
-			lo := pa.Min
-			if lo < 1 {
-				lo = 1
-			}
-			fmt.Fprintf(&b, " (pay nothing, or %d to %d energy", lo, pa.Max)
-			if pa.Goal > 0 {
-				fmt.Fprintf(&b, "; %d reaches the card's threshold", pa.Goal)
-			}
-			fmt.Fprintf(&b, "; one energy is one point of %s)", pa.Unit)
+			writePayAmount(&b, pa)
 		}
 		if ch.Count > 0 && ch.PayAmount == nil {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
@@ -202,6 +194,43 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	}
 
 	return b.String()
+}
+
+// writePayAmount describes a pay_amount prompt's answers (ADR 0129 §3
+// and its amendment of 2026-10-09): what is paid, the bounds, the card's
+// threshold and what each point buys. An energy prompt reads as it
+// always has.
+func writePayAmount(b *strings.Builder, pa *protocol.PayAmountView) {
+	lo := pa.Min
+	if lo < 1 {
+		lo = 1
+	}
+	switch pa.Resource {
+	case "life":
+		fmt.Fprintf(b, " (pay no life, or %d to %d life", lo, pa.Max)
+	case "none":
+		if pa.NoMax {
+			fmt.Fprintf(b, " (choose a number, %d or more", pa.Min)
+		} else {
+			fmt.Fprintf(b, " (choose a number from %d to %d", pa.Min, pa.Max)
+		}
+	default:
+		fmt.Fprintf(b, " (pay nothing, or %d to %d energy", lo, pa.Max)
+	}
+	if pa.Goal > 0 {
+		fmt.Fprintf(b, "; %d reaches the card's threshold", pa.Goal)
+	}
+	if pa.SelfDamage {
+		b.WriteString("; you are dealt the same amount")
+	}
+	switch pa.Resource {
+	case "life":
+		fmt.Fprintf(b, "; one life is one point of %s)", pa.Unit)
+	case "none":
+		fmt.Fprintf(b, "; each point is one point of %s)", pa.Unit)
+	default:
+		fmt.Fprintf(b, "; one energy is one point of %s)", pa.Unit)
+	}
 }
 
 func battlefieldOf(v *protocol.GameView, seat string, opts Options) string {

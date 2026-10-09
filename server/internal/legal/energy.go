@@ -1,6 +1,11 @@
 package legal
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+	"slices"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // energy.go — ADR 0129 §7: the enumerator's half of paying energy.
 //
@@ -47,14 +52,44 @@ func capEnergyX(pay abilityManaPayment, cost game.AbilityCost, ceiling, floor in
 }
 
 // payAmountOffers is what a pay_amount prompt (ADR 0129 §3) is offered
-// as: nothing, the smallest payment, the card's own threshold when it
-// names one, and the ceiling, each once, ascending.
+// as: nothing (a payment may always be declined), the smallest answer,
+// the card's own threshold when it names one, the card's other marks
+// (ADR 0129's amendment of 2026-10-09: the chooser's life total, for
+// Volcano Hellion) and the ceiling, each once, ascending. A number with
+// no ceiling does not offer its overflow guard. Every one is an answer
+// the engine validates against (PayAmountPrompt.AnswerInBounds).
 func payAmountOffers(pa *game.PayAmountPrompt) []int {
-	out := []int{0}
-	for _, n := range []int{pa.Min, pa.Goal, pa.Max} {
-		if n > out[len(out)-1] && n >= pa.Min && n <= pa.Max {
+	candidates := []int{0, pa.Min, pa.Goal}
+	candidates = append(candidates, pa.Marks...)
+	if !pa.NoMax {
+		candidates = append(candidates, pa.Max)
+	}
+	var out []int
+	for _, n := range candidates {
+		if pa.AnswerInBounds(n) && !slices.Contains(out, n) {
 			out = append(out, n)
 		}
 	}
+	slices.Sort(out)
 	return out
+}
+
+// payAmountMove is one offered answer's label and price: "pay 3 {E}",
+// "pay 5 life", "choose 4". The price is what the answer pays; a number
+// that is not paid costs nothing, and its self-damage is the policy's
+// to read off the prompt.
+func payAmountMove(reason string, pa *game.PayAmountPrompt, amount int) (string, *MoveCost) {
+	switch pa.ResourceOrEnergy() {
+	case game.PayResourceLife:
+		if amount == 0 {
+			return reason + ": pay no life", nil
+		}
+		return fmt.Sprintf("%s: pay %d life", reason, amount), &MoveCost{Life: amount}
+	case game.PayResourceNone:
+		return fmt.Sprintf("%s: choose %d", reason, amount), nil
+	}
+	if amount == 0 {
+		return reason + ": pay nothing", nil
+	}
+	return fmt.Sprintf("%s: pay %d {E}", reason, amount), withEnergy(nil, amount)
 }
