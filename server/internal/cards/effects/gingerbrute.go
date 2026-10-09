@@ -31,16 +31,9 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}: This creature can't be blocked this turn except by creatures with haste.",
-				Cost:  ManaCost("{1}"),
-				Effect: func(g *game.Game, item *game.StackItem) error {
-					return CantBeBlockedThisTurnExceptBy{
-						Target:   item.SourceCardID,
-						Keywords: []string{"haste"},
-						Text:     "creatures with haste",
-						Label:    "Gingerbrute — can't be blocked except by creatures with haste",
-					}.Apply(NewContext(g, item))
-				},
+				Label:  "{1}: This creature can't be blocked this turn except by creatures with haste.",
+				Cost:   ManaCost("{1}"),
+				Effect: rfCreatureBGingerbruteEvade,
 			},
 			{
 				Label: "{2}, {T}, Sacrifice this creature: You gain 3 life.",

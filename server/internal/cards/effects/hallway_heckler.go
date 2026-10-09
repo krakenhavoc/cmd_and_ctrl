@@ -32,13 +32,6 @@ func init() {
 		Name:         "Vicious Verse",
 		Completeness: CompletenessFull,
 		Targets:      TargetPlayer("target opponent", Opponent()),
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetPlayer {
-					return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
-				}
-			}
-			return nil
-		},
+		OnResolve:    viciousVerseResolve,
 	})
 }

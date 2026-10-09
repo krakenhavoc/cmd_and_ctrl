@@ -227,3 +227,160 @@ func frDealDamageWithExcess(ctx *Context, target uuid.UUID, amount int) (int, er
 	}
 	return excess, nil
 }
+
+// --- fra-planeswalker-a ---------------------------------------------
+
+// youControlAPlaneswalker is the Reality Fracture land condition —
+// "unless you control a planeswalker". Read once as the land enters
+// (CR 614.12), against effective types so a planeswalker that is also
+// something else still counts.
+func youControlAPlaneswalker(g *game.Game, controller uuid.UUID) bool {
+	for _, c := range g.BattlefieldCardsForEffect() {
+		if c.Controller == controller && c.IsPlaneswalker() {
+			return true
+		}
+	}
+	return false
+}
+
+// AjanisPridemateToken is Ajani Resolute's −4 token: a 2/2 white Cat
+// Soldier named Ajani's Pridemate with "Whenever you gain life, put a
+// +1/+1 counter on this token."
+func AjanisPridemateToken() game.Card { return tokenFromCatalog(printedAjanisPridemateToken) }
+
+// printedAjanisPridemateToken is that token as PRINTED, ability included.
+func printedAjanisPridemateToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "ajanis-pridemate",
+		Card: game.Card{
+			Name:      "Ajani's Pridemate",
+			TypeLine:  "Token Creature — Cat Soldier",
+			Power:     2,
+			Toughness: 2,
+			Colors:    []string{"W"},
+		},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", putCounterOnSelf),
+		},
+		Text: "Whenever you gain life, put a +1/+1 counter on this token.",
+	}
+}
+
+// surveilKeepNoncreatureNonland is Chandra, Chill of Compliance's first
+// +1: "Surveil 1. If you put a noncreature, nonland card into your
+// graveyard this way, put that card into your hand."
+//
+// Surveil.Then is told which cards were put away only by what changed,
+// so the graveyard is read before the prompt opens and again when the
+// player has answered: every card that is new in it was put there by the
+// surveil (nothing else moves a card into this graveyard while the
+// prompt is open), and each noncreature, nonland one is returned to hand.
+func surveilKeepNoncreatureNonland(g *game.Game, item *game.StackItem) error {
+	me := item.Controller
+	p := g.PlayerByIDForEffect(me)
+	if p == nil {
+		return nil
+	}
+	before := map[uuid.UUID]bool{}
+	for _, c := range p.Graveyard.Cards {
+		before[c.InstanceID] = true
+	}
+	g.SurveilThenForEffect(me, item.SourceCardID, 1, func(g *game.Game) error {
+		q := g.PlayerByIDForEffect(me)
+		if q == nil {
+			return nil
+		}
+		var back []uuid.UUID
+		for _, c := range q.Graveyard.Cards {
+			if !before[c.InstanceID] && !c.IsCreature() && !c.IsLand() {
+				back = append(back, c.InstanceID)
+			}
+		}
+		ctx := NewContext(g, item)
+		for _, id := range back {
+			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	return nil
+}
+
+// --- fra-prepare-b -------------------------------------------------
+
+// fraThresholdMet is threshold (ability word): seven or more cards in
+// the controller's graveyard.
+func fraThresholdMet(g *game.Game, controller uuid.UUID) bool {
+	return b31GraveyardSize(g, controller) >= 7
+}
+
+// fraThresholdSelfPT is "Threshold — This creature gets +P/+T as long
+// as there are seven or more cards in your graveyard": a layer 7c
+// self-modifier read live on every recompute.
+func fraThresholdSelfPT(power, toughness int) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:    game.Layer7PT,
+		SubLayer: game.SubLayer7C_Modify,
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Power += power
+			c.Toughness += toughness
+		},
+	}
+}
+
+// fraThresholdSelfKeywords is "Threshold — This creature has <keywords>
+// as long as there are seven or more cards in your graveyard".
+func fraThresholdSelfKeywords(keywords ...string) game.StaticAbility {
+	return b16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
+	}, keywords...)
+}
+
+// fraBecomesPreparedAtUpkeep is "At the beginning of your upkeep, if
+// this creature isn't prepared, it becomes prepared." The condition is
+// an intervening if (CR 603.4): checked when the upkeep begins, so a
+// creature that is already prepared never puts the ability on the
+// stack, and BecomePrepared re-checks as it resolves.
+func fraBecomesPreparedAtUpkeep(name string) game.TriggeredAbility {
+	return On(game.EventBeginUpkeep,
+		func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+			return ByYou(ev, source, lki, g) && !g.IsPreparedForEffect(source.InstanceID)
+		},
+		name+" — becomes prepared",
+		func(g *game.Game, item *game.StackItem) error {
+			return BecomePrepared{Target: item.SourceCardID}.Apply(NewContext(g, item))
+		})
+}
+
+// omitVariablesResolve is Omit Variables, the prepare spell of Paradox
+// Shaper, Theorix Metamage and Void Extrapolator: "Mill three cards."
+func omitVariablesResolve(_ *game.StackItem, ctx *Context) error {
+	return MillCards{N: 3}.Apply(ctx)
+}
+
+// peerReviewResolve is Peer Review, the prepare spell of Prudent
+// Fateseer and Semester Foreseer: "Create a 2/2 colorless Wizard Soldier
+// creature token named Cadet. Surveil 1." The surveil runs after the
+// token is made, in printed order.
+func peerReviewResolve(_ *game.StackItem, ctx *Context) error {
+	if err := (CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1}).Apply(ctx); err != nil {
+		return err
+	}
+	return Surveil{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// viciousVerseResolve is Vicious Verse, the prepare spell of Stingerquill
+// Voxmancer and Whiplash Wordsmith: "Vicious Verse deals 1 damage to
+// target opponent."
+func viciousVerseResolve(item *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
+		}
+	}
+	return nil
+}

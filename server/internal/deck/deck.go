@@ -344,6 +344,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	wantProtection := false
 	wantToxic := false
 	wantAnnihilator := false
+	wantRenown := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -369,6 +370,11 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// oracle line ("Annihilator 4"), ADR 0113 §2.
 			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordAnnihilator) {
 				wantAnnihilator = true
+			}
+			// RENOWN (CR 702.112) too: the array says "Renown" and the
+			// number is only in the oracle line ("Renown 2"), #2049.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordRenown) {
+				wantRenown = true
 			}
 			continue
 		}
@@ -448,6 +454,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	}{
 		{wantToxic, game.ToxicValue},
 		{wantAnnihilator, game.AnnihilatorValue},
+		{wantRenown, game.RenownValue},
 	} {
 		if !want.on {
 			continue

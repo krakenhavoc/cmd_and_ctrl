@@ -217,7 +217,8 @@ func TestSoulTetherMakesAHeartwoodToken(t *testing.T) {
 	}
 }
 
-// Heartwood Crafter taps for {C} but only toward activated abilities.
+// Heartwood Crafter taps for {C} that can't be spent to cast spells
+// from your hand (#2811), and ships whole.
 func TestHeartwoodCrafterManaIsRestricted(t *testing.T) {
 	spec, ok := Lookup(fraCrafterOracle)
 	if !ok || len(spec.ManaAbilities) != 1 {
@@ -227,11 +228,11 @@ func TestHeartwoodCrafterManaIsRestricted(t *testing.T) {
 	if ab.Produced != "{C}" || !ab.Cost.Tap {
 		t.Errorf("mana ability = %+v, want {T}: Add {C}", ab)
 	}
-	if len(ab.Restrictions) != 1 || ab.Restrictions[0] != ManaRestrictActivate {
-		t.Errorf("restrictions = %v, want only activated-ability costs", ab.Restrictions)
+	if len(ab.Restrictions) != 1 || ab.Restrictions[0] != ManaRestrictNotFromHand {
+		t.Errorf("restrictions = %v, want only the not-from-hand restriction", ab.Restrictions)
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Heartwood Crafter must declare its one caveat, got %v %v", spec.Completeness, spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Heartwood Crafter ships full, got %v %v", spec.Completeness, spec.Caveats)
 	}
 }
 

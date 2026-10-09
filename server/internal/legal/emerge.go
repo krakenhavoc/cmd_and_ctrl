@@ -69,7 +69,10 @@ func (e *enumerator) emergePayments(
 		if !e.canPayExcluding(priced, xFloor, spend, game.CastAutoTapExclusions(game.CastSpellParams{AltCostIDs: pay}, offer)) {
 			continue
 		}
-		saves := full.Generic - priced.Generic
+		// #2701: what the reduction could not take off the printed
+		// generic it takes off the X, which buys a larger X for the
+		// same mana, so it is saved too.
+		saves := full.Generic - priced.Generic + priced.XReduced - full.XReduced
 		score := -float64(saves)
 		if e.opts.OrderCostFuel != nil {
 			score = e.opts.OrderCostFuel(TargetCandidate{ID: id, Saves: saves})

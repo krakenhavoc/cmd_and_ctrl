@@ -158,7 +158,7 @@ func delveBudget(cost ParsedCost, xValue int) int {
 	if xValue < 0 {
 		xValue = 0
 	}
-	n := cost.Generic + cost.XSlots*xValue
+	n := cost.GenericWithX(xValue)
 	if cost.SpendOnly != nil && cost.SpendOnly.XOnly {
 		// #2556: "Spend only black mana on X" — the X mana is coloured
 		// mana, not generic, so there is nothing in it to delve away
@@ -201,11 +201,7 @@ func delveAdjusted(cost ParsedCost, n, xValue int) ParsedCost {
 	}
 	out := cost
 	out.Required = append([]ColorRequirement(nil), cost.Required...)
-	if xValue < 0 {
-		xValue = 0
-	}
-	out.Generic += out.XSlots * xValue
-	out.XSlots = 0
+	out = out.SettleX(xValue)
 	out.Generic -= n
 	return out
 }

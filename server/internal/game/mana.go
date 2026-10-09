@@ -91,7 +91,7 @@ func (p *ManaPool) EmptyPool() int {
 // path knows what it is paying for and should say so.
 //
 // `xValue` is the announce-time X value the caller picked; the
-// pool needs cost.Generic + cost.XSlots*xValue generic-tradeable
+// pool needs cost.GenericWithX(xValue) generic-tradeable
 // mana. Pass 0 for spells without X.
 func (p ManaPool) CanPay(cost ParsedCost, xValue int) bool {
 	return p.CanPayFor(cost, xValue, ManaSpendContext{})
@@ -260,7 +260,7 @@ func (p ManaPool) attemptSpend(cost ParsedCost, xValue int, ctx ManaSpendContext
 	// not spent yet, because those cards count colours rather than
 	// mana. Every bucket is walked either way, so the answer to
 	// "payable?" is the same under both.
-	need := cost.Generic + cost.XSlots*xValue + deferred
+	need := cost.GenericWithX(xValue) + deferred
 	// #2170: mana that can't pay generic costs may still pay the
 	// slots that only LOOK generic here — a widened coloured symbol
 	// and a coloured symbol a cast permission folded into Generic. It
@@ -532,7 +532,7 @@ func (p ManaPool) MissingFor(cost ParsedCost, xValue int, ctx ManaSpendContext) 
 		owner[idx] = ri
 	}
 
-	generic := cost.Generic + cost.XSlots*xValue
+	generic := cost.GenericWithX(xValue)
 	need := len(deferred) + generic
 	need -= spendNoGenericSlots(work, used, order, noGenericSlots(cost, len(deferred)))
 	for _, color := range []string{"C", "W", "U", "B", "R", "G"} {

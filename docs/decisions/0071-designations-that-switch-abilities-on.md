@@ -1509,3 +1509,107 @@ Incriminating Impetus carries Shiny Impetus's goad caveat.
   take-control trigger on two lost players.
 - **Airtight Alibi** says "can't become suspected", which is a restriction on
   the suspect action that `SuspectForEffect` does not yet read.
+
+## Amendment (2026-10-09): an eighth designation, Renowned, and the renown keyword (CR 702.112, #2049)
+
+**Status:** Accepted · 2026-10-09 · tracked on
+[#2049](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2049) (found
+landing [ADR 0108](0108-turn-scoped-effects-object-history-and-damage-shields.md)
+Delivery PR 7, #1904: Enshrouding Mist's shield shipped there and the card
+waited on the designation). No new ADR number: this extends the designation
+family this ADR owns, and the keyword trigger copies annihilator's shape
+([ADR 0113](0113-small-seams-for-the-s58-deck-requests.md) §2). The rule text
+below was checked against the Comprehensive Rules effective September 25,
+2026.
+
+### Context
+
+> **702.112a** Renown is a triggered ability. "Renown N" means "When this
+> creature deals combat damage to a player, if it isn't renowned, put N +1/+1
+> counters on it and it becomes renowned."
+> **702.112b** Renowned is a designation that has no rules meaning other than
+> to act as a marker that the renown ability and other spells and abilities
+> can identify. Only permanents can be or become renowned. Once a permanent
+> becomes renowned, it stays renowned until it leaves the battlefield.
+> Renowned is neither an ability nor part of the permanent's copiable values.
+> **702.112c** If a creature has multiple instances of renown, each triggers
+> separately. The first such ability to resolve will cause the creature to
+> become renowned, and subsequent abilities will have no effect. (See rule
+> 603.4)
+
+22 Commander-legal cards print renown or ask whether something is renowned.
+None could be written: there was no marker, and renown is a keyword (Aragorn,
+Hornburg Hero grants it), so a catalog-only trigger would not reach a
+deck-imported card whose only text is keywords and renown, or a granted
+instance.
+
+### Decision: Monstrous's designation, annihilator's keyword
+
+- **`Card.Renowned bool`** in the bool block. Monstrous's lifecycle in every
+  respect: not copiable (`CopiableValuesOf` never reads it), kept through a
+  control change, cleared at both CR 400.7 sites (`zone.go`'s battlefield exit
+  and `entry_tail.go`'s new-object reset), carried by clone and the snapshot
+  (`cardSnapshot.Renowned`, `carried` in `snapshot_drift_test.go`). Additive
+  with a correct zero value ("not renowned"), so the v7 shape file was updated
+  in place with no schema bump. `PermanentInfo.Renowned` keeps it for
+  last-known information.
+- **`DesignationRenowned`** is appended to the enum (no existing value moves),
+  `Active` answers `c.Renowned`, and `game.RenownedGate()` builds the gate.
+  **`EventBecameRenowned`** (Amount = N) bumps the layer version beside
+  `EventBecameMonstrous`, so an "as long as this creature is renowned" static
+  switches on as the designation lands.
+- **The keyword.** `renown` joins `canonicalKeywords` as a family key, like
+  `annihilator`: the tokens are `renown N` (`CanonicalRenownToken`), a bare
+  `renown` is refused, the deck importer reads N off the oracle line, and the
+  token is cumulative (CR 702.112c), so a printed renown and a granted one are
+  two triggers. `keywordTriggersFor` derives one trigger per instance
+  (`game/renown.go`), so a creature whose only text is keywords and renown
+  needs no card file.
+- **The trigger** watches `EventDealDamage` marked `Combat`, from the
+  creature, to a player, with a positive amount: never a planeswalker, a
+  battle or a creature. The intervening if (CR 603.4) is read twice: a
+  renowned creature does not trigger, and a trigger whose creature became
+  renowned while it waited does nothing. That second read is the whole of CR
+  702.112c. The resolution is keyed (`renown/grow`, an on-disk identity with
+  N in `Params.Amount`), so a table with one on the stack is a restore point;
+  a v7 corpus board (`renown_trigger_pending`) freezes it.
+- **The resolution is monstrosity's.** N +1/+1 counters through the CR 614
+  window, placed by the ability's controller (Hardened Scales and Doubling
+  Season apply); then, as the placement's continuation, the designation and
+  the event. It becomes renowned even when the counters are replaced away. A
+  source that left the battlefield, or came back as a new object, gets
+  nothing (CR 400.7).
+- **Wire and client.** `CardView.renowned`, public, set straight off the card
+  like `monstrous` and cleared for a viewer who does not know the card. A
+  RENOWNED badge in the designation slot, after MONSTROUS.
+
+### Card vocabulary
+
+`effects.Renowned()` (the gate), `RenownedKeywords(...)` ("as long as this
+creature is renowned, it has …"), `WhenACreatureYouControlBecomesRenowned`,
+`g.IsRenowned(id)` ("if it's renowned" on a target), and the intervening-if
+pair `ThisIsRenowned(source)` / `ThisWasRenowned(ctx)`, the second read from
+last-known information if the source has left (CR 608.2h).
+
+### Cards
+
+Eight card files, all `full`: Enshrouding Mist, Goblin Glory Chaser, Valeron
+Wardens, Kytheon's Irregulars, Undercity Troll, Outland Colossus, Consul's
+Lieutenant and Scab-Clan Berserker. Nine more need no card file, because
+their only text is keywords and renown: Akroan Sergeant, Citadel Castellan,
+Firefiend Elemental, Knight of the Pilgrim's Road, Pharika's Disciple, Rhox
+Maulers, Stalwart Aven, Topan Freeblade and War Oracle.
+
+### Still not covered
+
+- **Aragorn, Hornburg Hero** grants renown to attacking creatures and doubles
+  the counters on a renowned creature that deals combat damage; the trigger
+  ordering between the two is the open part.
+- **Relic Seeker**'s "when this creature becomes renowned, you may search for
+  an Equipment card" is Stoneforge Mystic's search, which wants a shared
+  helper first (the clone gate).
+- **Constable of the Realm** ("whenever one or more +1/+1 counters are put on
+  this creature, exile … until this creature leaves"), **Acolyte of the
+  Inferno** ("whenever this creature becomes blocked by a creature, it deals 2
+  damage to that creature") and **Honored Hierarch** (a mana ability behind
+  the gate) are card work on other seams.

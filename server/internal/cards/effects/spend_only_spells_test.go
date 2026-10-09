@@ -340,6 +340,32 @@ func TestSoulBurnGainsAsMuchAsTheBlackSpentOnX(t *testing.T) {
 	}
 }
 
+// #2701: four Goblin Electromancers take {4} off Soul Burn's total at
+// X = 3: the printed {2} and two of the X, so the cast pays one mana for
+// X and the {B}. Two black pay that, and only one of them can have paid
+// X, so the gain is one, not two.
+func TestSoulBurnCountsOnlyTheXAReductionLeft(t *testing.T) {
+	g, me, opp := spendTable(t)
+	for i := 0; i < 4; i++ {
+		pushCatalogPermanent(g, me.ID, "Goblin Electromancer", "Creature — Goblin Wizard", "81f06f84-1580-43c0-89d5-08d34541a519", false)
+	}
+	spell := catalogHandSpell(me, "Soul Burn", "Sorcery", soulBurnOracle, "{X}{2}{B}")
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{B}{B}"); err != nil {
+		t.Fatal(err)
+	}
+	before, oppBefore := me.Life, opp.Life
+	if err := g.CastSpell(me.ID, spell, game.CastSpellParams{Strict: true, XValue: 3, Targets: atPlayer(opp)}); err != nil {
+		t.Fatalf("X=3 off two black under {4} less: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if opp.Life != oppBefore-3 {
+		t.Errorf("opponent life %d → %d, want -3: X stays 3", oppBefore, opp.Life)
+	}
+	if gain := me.Life - before; gain != 1 {
+		t.Errorf("gained %d, want 1 — one mana paid X", gain)
+	}
+}
+
 // --- Imperiosaur and Myr Superion: "produced by …" --------------------
 
 // Four basic Forests pay for it; a Command Tower-shaped nonbasic, a Sol

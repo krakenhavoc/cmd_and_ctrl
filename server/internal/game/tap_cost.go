@@ -157,7 +157,7 @@ func tapPermanentsBudget(c *TapPermanentsCost, cost ParsedCost, xValue int) int 
 		// Only the generic half is payable by tapping.
 		return extra.Generic + extra.XSlots*xValue
 	}
-	return cost.Generic + cost.XSlots*xValue + len(cost.Required)
+	return cost.GenericWithX(xValue) + len(cost.Required)
 }
 
 // TapPermanentsBudgetFor is the view layer's read of the same
@@ -192,10 +192,8 @@ func tapPermanentsAdjusted(cost ParsedCost, c *TapPermanentsCost, payers []Card,
 	if c.Empty() {
 		return cost
 	}
-	out := cost
+	out := cost.SettleX(xValue)
 	out.Required = append([]ColorRequirement(nil), cost.Required...)
-	out.Generic += out.XSlots * xValue
-	out.XSlots = 0
 
 	if c.Extra != "" {
 		// Waterbend: the keyword adds a cost of its own, and the
