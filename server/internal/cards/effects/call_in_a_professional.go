@@ -19,6 +19,7 @@ func init() {
 		Name:         "Call In a Professional",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    skullcrackShape(3),
 	})
 }

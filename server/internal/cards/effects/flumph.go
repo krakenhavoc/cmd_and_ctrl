@@ -28,6 +28,8 @@ func init() {
 				return b17SourceDealtDamageToSelf(ev, source)
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
+			// You draw one, and so does the opponent you aim it at.
+			Purpose: game.Purpose{Draws: 1, Targets: game.ForTargets(game.TargetPurpose{Slot: 0, Draws: 1})},
 			Key:     "Flumph — you and target opponent each draw a card",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

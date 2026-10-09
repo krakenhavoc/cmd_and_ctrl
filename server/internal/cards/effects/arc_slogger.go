@@ -19,6 +19,7 @@ func init() {
 			Label:   "{R}, Exile the top ten cards of your library: This creature deals 2 damage to any target.",
 			Cost:    Plus(ManaCost("{R}"), ExileTopOfLibrary(10)),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 2)),
 			Effect:  sourceDealsDamageToEachLegalTarget(2),
 		}},
 	})

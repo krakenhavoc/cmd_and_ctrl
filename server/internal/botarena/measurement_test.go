@@ -123,9 +123,10 @@ func TestRunReportsContestantsAndCards(t *testing.T) {
 		if tm.Turns == 0 || tm.Stranded > tm.Idle || tm.Idle > tm.Turns {
 			t.Errorf("%s: impossible or empty turn-mana tally %+v", row.Policy, tm)
 		}
-		// No plan is made before ADR 0136 PR 4.
-		if tm.Planned != 0 || tm.Checked != 0 || tm.Misses != 0 {
-			t.Errorf("%s: plan numbers before there is a plan: %+v", row.Policy, tm)
+		// ADR 0136 PR 4: a plan miss is a checked window, and a checked
+		// window follows a planned one.
+		if tm.Misses > tm.Checked || tm.Checked > tm.Planned {
+			t.Errorf("%s: impossible plan numbers: %+v", row.Policy, tm)
 		}
 	}
 	md := sum.Markdown()

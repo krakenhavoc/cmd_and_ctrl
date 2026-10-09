@@ -33,6 +33,7 @@ func init() {
 			Label:   "{2}{R}, {T}: This creature deals 1 damage to any target.",
 			Cost:    Plus(ManaCost("{2}{R}"), TapCost()),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  sourceDealsDamageToEachLegalTarget(1),
 		}},
 	})
@@ -45,6 +46,7 @@ func init() {
 			Label:   "{2}{R}: This creature deals 1 damage to any target. A creature dealt damage this way can't block this turn.",
 			Cost:    ManaCost("{2}{R}"),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  ballistaWielderPing,
 		}},
 	})

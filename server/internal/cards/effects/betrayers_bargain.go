@@ -22,6 +22,7 @@ func init() {
 			ManaAdditionalCost("{2}").Keyed("mana"),
 		),
 		Targets:   TargetCreature("target creature"),
+		Purpose:   ForTargets(DamageToTarget(0, 5)),
 		OnResolve: damageFirstTargetExileIfItDies(fixedAmount(5)),
 	})
 }

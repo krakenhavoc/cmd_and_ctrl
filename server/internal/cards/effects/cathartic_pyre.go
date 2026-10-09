@@ -45,8 +45,9 @@ func init() {
 		Name:         "Cathartic Pyre",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Cathartic Pyre deals 3 damage to target creature or planeswalker.",
+			ModeWithPurpose(Mode("Cathartic Pyre deals 3 damage to target creature or planeswalker.",
 				TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker()))),
+				ForTargets(DamageToTarget(0, 3))),
 			Mode("Discard up to two cards, then draw that many cards."),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

@@ -35,6 +35,7 @@ func init() {
 				return ev.Source == source.InstanceID
 			},
 			Targets: TargetPlayer("target opponent", Opponent()),
+			Purpose: ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1}),
 			Key:     "Forbidden Orchard — target opponent creates a 1/1 Spirit",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {

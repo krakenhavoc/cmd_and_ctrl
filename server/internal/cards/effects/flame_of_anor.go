@@ -28,7 +28,8 @@ func init() {
 		Name:         "Flame of Anor",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Target player draws two cards.", TargetPlayer("target player")),
+			ModeWithPurpose(Mode("Target player draws two cards.", TargetPlayer("target player")),
+				ForTargets(game.TargetPurpose{Slot: 0, Draws: 2})),
 			Mode("Destroy target artifact.", TargetPermanent("target artifact", Artifact())),
 			Mode("Flame of Anor deals 5 damage to target creature.", TargetCreature("target creature")),
 		).OrUpToIf(2, YouControlAWizard),

@@ -2011,6 +2011,16 @@ func modeSelections(options []int, lo, hi int, repeatable bool, budget int) [][]
 // picks, in step order, capped at `budget` (#764, ADR 0065 §6). An
 // announcement with no steps yields the single empty set, which is
 // how an untargeted cast stays one move.
+//
+// #2746: the budget is spent across the earlier clauses' picks
+// round-robin, like #2681's mode selections: every prefix gets one
+// extension before any gets a second. Before this the product was
+// prefix-major, so when a bot's OrderTargets ranked one candidate
+// first (the caster's own seat, on some boards) and the next clause
+// had a budget's worth of picks, every offered pair started with
+// that candidate — Arc Trail's 2 damage could only be aimed at its
+// caster. Under the budget nothing changes: every prefix keeps every
+// extension, in the same order.
 func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.AnnouncedClause, budget int) [][]game.TargetRef {
 	out := [][]game.TargetRef{nil}
 	for i := range steps {
@@ -2019,14 +2029,9 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 		if len(picks) == 0 {
 			return nil
 		}
-		next := make([][]game.TargetRef, 0, budget)
-		for _, prefix := range out {
+		queues := make([][][]game.TargetRef, len(out))
+		for qi, prefix := range out {
 			for _, pick := range picks {
-				if len(next) >= budget {
-					// ADR 0122 §6.2: a pairing the budget never built.
-					e.budgetSpent()
-					break
-				}
 				combined := append([]game.TargetRef(nil), prefix...)
 				skip := false
 				for _, p := range pick {
@@ -2045,8 +2050,17 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 				if skip {
 					continue
 				}
-				next = append(next, combined)
+				queues[qi] = append(queues[qi], combined)
 			}
+		}
+		take := roundRobin(queues, budget)
+		next := make([][]game.TargetRef, 0, budget)
+		for qi, n := range take {
+			if n < len(queues[qi]) {
+				// ADR 0122 §6.2: a pairing the budget never built.
+				e.budgetSpent()
+			}
+			next = append(next, queues[qi][:n]...)
 		}
 		if len(next) == 0 {
 			return nil

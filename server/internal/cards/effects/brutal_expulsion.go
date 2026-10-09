@@ -32,8 +32,9 @@ func init() {
 		Modes: ChooseN("Choose one or both", 1, 2,
 			ModeDoing("Return target spell or creature to its owner's hand.",
 				TargetSpellOrPermanent("target spell or creature", nil, Creature()), returnModesSpellOrPermanentToHand),
-			ModeDoing("Brutal Expulsion deals 2 damage to target creature or planeswalker. If that creature or planeswalker would die this turn, exile it instead.",
+			ModeWithPurpose(ModeDoing("Brutal Expulsion deals 2 damage to target creature or planeswalker. If that creature or planeswalker would die this turn, exile it instead.",
 				TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())), damageModesTargetExileIfItDies(2)),
+				ForTargets(DamageToTarget(0, 2))),
 		),
 	})
 }

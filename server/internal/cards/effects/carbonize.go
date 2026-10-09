@@ -13,6 +13,7 @@ func init() {
 		Name:         "Carbonize",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    damageThenIfCreatureNoRegenExileIfDies(fixedAmount(3)),
 	})
 }

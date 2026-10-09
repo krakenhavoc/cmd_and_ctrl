@@ -34,6 +34,7 @@ func init() {
 				return ev.Actor == source.Controller
 			},
 			Targets: TargetPlayer("target player"),
+			Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 1, LifeLoss: 1}),
 			Key:     "Bloodgift Demon — target player draws a card and loses 1 life",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {

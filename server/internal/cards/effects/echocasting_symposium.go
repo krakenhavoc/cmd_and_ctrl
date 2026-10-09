@@ -46,6 +46,8 @@ func init() {
 		Caveats: []string{
 			"Paradigm isn't implemented — the spell goes to your graveyard and never offers you the repeating copies it promises.",
 		},
+		// Slot 0 makes the token: a copy of the creature in slot 1.
+		Purpose: ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1}),
 		Targets: Clauses(
 			TargetPlayer("target player"),
 			TargetCreature("target creature you control", YouControl()),

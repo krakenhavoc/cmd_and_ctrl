@@ -20,6 +20,7 @@ func init() {
 		CantBeCountered:            true,
 		SpellDamageCantBePrevented: Always(),
 		Targets:                    TargetCreature("target white or blue creature", Or(OfColor("W"), OfColor("U"))),
+		Purpose:                    ForTargets(DamageToTarget(0, 5)),
 		OnResolve:                  damageToFirstTarget(5),
 	})
 }

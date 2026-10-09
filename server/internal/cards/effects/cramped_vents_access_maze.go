@@ -24,10 +24,11 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Access Maze's pay-life casting isn't implemented, so that half does nothing."},
 		Left: Door{Triggered: []game.TriggeredAbility{
-			Targeting(
+			TriggerWithPurpose(Targeting(
 				WhenYouUnlockThisDoor(game.DoorLeft, "Cramped Vents — 6 damage to target creature an opponent controls; gain life equal to the excess",
 					crampedVentsDamage),
 				TargetCreature("target creature an opponent controls", OpponentControls())),
+				ForTargets(DamageToTarget(0, 6))),
 		}},
 	}))
 }

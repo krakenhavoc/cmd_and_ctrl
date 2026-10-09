@@ -5936,7 +5936,8 @@ type ProtectionView struct {
 	// Kind is which characteristic of a source the quality is
 	// compared against: "color", "card_type", "subtype",
 	// "everything", "player", "mana_value_at_most" (Value is the
-	// bound N, #2181) or "ring_bearer" (#2145). Stable tokens; see
+	// bound N, #2181), "ring_bearer" (#2145) or "opponents" (#2745).
+	// Stable tokens; see
 	// game.ProtectionQualityKind.
 	Kind string `json:"kind"`
 	// Value is what the rules actually compare — the wire colour
@@ -5954,6 +5955,9 @@ type ProtectionView struct {
 	//
 	// Empty for a player quality whose permanent has not been answered
 	// yet, which reads correctly as "protected from nobody".
+	//
+	// For "opponents" (#2745) it is the seat that HAS the protection:
+	// a source matches when its controller is any other seat.
 	Value string `json:"value,omitempty"`
 }
 
@@ -5977,6 +5981,12 @@ func viewOfProtection(c *game.Card) []ProtectionView {
 		// resolved it off the permanent (#980).
 		if q.Player != uuid.Nil {
 			v.Value = q.Player.String()
+		}
+		// "Each of your opponents" (#2745): the seat whose opponents
+		// these are, so the client compares a source's controller
+		// against it the same way.
+		if q.Holder != uuid.Nil {
+			v.Value = q.Holder.String()
 		}
 		out = append(out, v)
 	}

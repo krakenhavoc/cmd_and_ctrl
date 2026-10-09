@@ -29,6 +29,8 @@ func init() {
 		OracleID:     "ba4d644f-1931-4fc4-aed5-681a476a5a58",
 		Name:         "Cease",
 		Completeness: CompletenessFull,
+		// Slot 0 is the graveyard cards exiled; slot 1 gains 2 life and draws.
+		Purpose: ForTargets(game.TargetPurpose{Slot: 1, LifeGain: 2, Draws: 1}),
 		Targets: Clauses(
 			upToNCardsFromASingleGraveyard(2),
 			TargetPlayer("target player"),

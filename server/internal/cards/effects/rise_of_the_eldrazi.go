@@ -27,6 +27,8 @@ func init() {
 		Name:            "Rise of the Eldrazi",
 		Completeness:    CompletenessFull,
 		CantBeCountered: true,
+		// Slot 0 is destroyed (removal, not declared here); slot 1 draws four.
+		Purpose: ForTargets(game.TargetPurpose{Slot: 1, Draws: 4}),
 		Targets: Clauses(
 			TargetPermanent("target permanent"),
 			TargetPlayer("target player"),
