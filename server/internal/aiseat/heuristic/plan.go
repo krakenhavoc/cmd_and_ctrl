@@ -33,8 +33,10 @@ import (
 //     premium for the set goes back, measured against the deficit of
 //     the cards NOT in the set.
 //   - The order (§4, owner answer 5): mana first, then draws and tutors,
-//     cheapest first, then the rest, highest value first. The bot makes
-//     the first move; the next window plans again. Nothing is stored.
+//     cheapest first, then the rest, highest value first. A permanent
+//     that grants extra land drops orders as mana (the amendment of
+//     2026-10-08, Config.PlanLandDropsAsRamp). The bot makes the first
+//     move; the next window plans again. Nothing is stored.
 //   - The commander tax (§6, owner answer 7) is in the move's mana, so a
 //     taxed commander competes with whatever else that mana buys.
 //
@@ -82,11 +84,17 @@ type manaCost struct {
 func (c manaCost) total() int { return c.generic + len(c.colored) }
 
 // manaSource is one activation in the model: the mana it adds, one mask
-// per mana, and the generic mana it consumes first (a filter, a
-// Signet's {1}).
+// per mana, and the mana it consumes first (a filter, a Signet's {1}).
 type manaSource struct {
 	units []uint8
 	input int
+	// in is the input as a cost: a Signet's {1}, or with
+	// Config.PlanFilterLands a filter land's {G/U}, which only its
+	// colours can pay. Generic mana of size input when unset.
+	in manaCost
+	// fallback is what the source makes when the filter cannot be fed:
+	// the plain {C} row of a land that has one (Flooded Grove).
+	fallback []uint8
 }
 
 func (s manaSource) net() int { return len(s.units) - s.input }
@@ -103,8 +111,13 @@ type planCandidate struct {
 	cost    manaCost
 	// adds is the mana the card makes this turn once it resolves.
 	adds []manaSource
-	// class is §4's order: 0 adds mana, 1 draws or tutors, 2 the rest.
+	// class is §4's order: 0 adds mana (or, with PlanLandDropsAsRamp,
+	// is a permanent that grants extra land drops), 1 draws or tutors,
+	// 2 the rest.
 	class int
+	// baseClass is class without PlanLandDropsAsRamp: the order a set
+	// falls back to when the amended order cannot pay for it.
+	baseClass int
 	// sweep is a declared sweep (ADR 0126 §4). Its price is what it
 	// removes from the board as it stands, so among the rest it goes
 	// before any permanent the plan adds.
@@ -140,7 +153,7 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 	if len(cands) < 2 {
 		return turnPlan{}, false
 	}
-	base := st.manaAvailable()
+	base := st.manaAvailable(p.cfg.PlanFilterLands)
 	maxMana := len(base)
 	for _, c := range cands {
 		for _, a := range c.adds {
@@ -153,7 +166,26 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 	sources := st.manaSourcesTotal()
 
 	n := len(cands)
+	order := make([]int, n)
+	for i := range order {
+		order[i] = i
+	}
+	// alt is §4's order before the amendment of 2026-10-08, for a set
+	// whose extra-land-drop member cannot go first and still leave the
+	// later members payable.
+	var alt []int
+	var amended uint
+	for i, c := range cands {
+		if c.class != c.baseClass {
+			amended |= 1 << i
+		}
+	}
+	if amended != 0 {
+		alt = append([]int(nil), order...)
+		sort.SliceStable(alt, func(i, j int) bool { return planBefore(cands[alt[i]], cands[alt[j]], true) })
+	}
 	bestMask, bestVal := uint(0), 0.0
+	var bestOrder []int
 	units := make([]uint8, 0, maxMana)
 	for mask := uint(1); mask < 1<<n; mask++ {
 		if mask%64 == 0 && ctx.Err() != nil {
@@ -191,16 +223,20 @@ func (p *Policy) planTurn(ctx context.Context, st *state, moves []legal.Move, va
 		if !better {
 			continue
 		}
-		if !planFeasible(base, cands, mask, units) {
-			continue
+		used := order
+		if !planFeasible(base, cands, order, mask, units) {
+			if mask&amended == 0 || !planFeasible(base, cands, alt, mask, units) {
+				continue
+			}
+			used = alt
 		}
-		bestMask, bestVal = mask, value
+		bestMask, bestVal, bestOrder = mask, value, used
 	}
 	if bestMask == 0 {
 		return turnPlan{}, false
 	}
 	out := turnPlan{value: bestVal}
-	for i := 0; i < n; i++ {
+	for _, i := range bestOrder {
 		if bestMask&(1<<i) != 0 {
 			out.members = append(out.members, cands[i])
 		}
@@ -267,50 +303,74 @@ func (p *Policy) planCandidates(st *state, moves []legal.Move, vals []float64) [
 				c.amount += ps.lands
 			}
 		}
-		c.adds = castAddsMana(c.card, ps)
+		c.adds = castAddsMana(c.card, ps, p.cfg.PlanFilterLands)
 		switch {
 		case len(c.adds) > 0:
-			c.class = 0
+			c.baseClass = 0
 		case ps.draws > 0 || ps.tutors > 0:
-			c.class = 1
+			c.baseClass = 1
 		default:
-			c.class = 2
+			c.baseClass = 2
+		}
+		c.class = c.baseClass
+		if p.cfg.PlanLandDropsAsRamp && c.class > 0 && ps.extraLands > 0 && isPermanentSpell(c.card) && !isLand(c.card) {
+			// The amendment of 2026-10-08: a permanent that grants extra
+			// land drops is ramp in §4's order, cast before the draws so
+			// a land they find can still be played this turn.
+			c.class = 0
 		}
 		c.sweep = p.cfg.PriceSweeps && len(ps.sweeps) > 0
 	}
 	// §4's order, so a set's members are always taken in it.
-	sort.SliceStable(out, func(i, j int) bool {
-		a, b := out[i], out[j]
-		if a.class != b.class {
-			return a.class < b.class
-		}
-		if a.class < 2 && a.cost.total() != b.cost.total() {
-			return a.cost.total() < b.cost.total()
-		}
-		if a.sweep != b.sweep {
-			return a.sweep
-		}
-		if a.value != b.value {
-			return a.value > b.value
-		}
-		return a.index < b.index
-	})
+	sort.SliceStable(out, func(i, j int) bool { return planBefore(out[i], out[j], false) })
 	return out
 }
 
-// planFeasible reports whether the members in mask can be paid in §4's
-// order from base, each member's mana arriving for the ones after it.
-// scratch is reused between calls.
-func planFeasible(base []uint8, cands []*planCandidate, mask uint, scratch []uint8) bool {
+// planBefore is §4's order: mana first, then draws and tutors, the
+// cheapest first in each, then the rest with a declared sweep first and
+// then the highest value. base orders by each candidate's class before
+// the amendment of 2026-10-08 (planCandidate.baseClass).
+func planBefore(a, b *planCandidate, base bool) bool {
+	ac, bc := a.class, b.class
+	if base {
+		ac, bc = a.baseClass, b.baseClass
+	}
+	if ac != bc {
+		return ac < bc
+	}
+	if ac < 2 && a.cost.total() != b.cost.total() {
+		return a.cost.total() < b.cost.total()
+	}
+	if a.sweep != b.sweep {
+		return a.sweep
+	}
+	if a.value != b.value {
+		return a.value > b.value
+	}
+	return a.index < b.index
+}
+
+// planFeasible reports whether the members in mask can be paid in
+// order (indices into cands: §4's order, or the order before its
+// amendment) from base, each member's mana arriving for the ones after
+// it. scratch is reused between calls.
+//
+// A set holding a permanent that grants extra land drops is tried in
+// the amended order first. Only if that order cannot pay for it is the
+// set tried in the order before the amendment (the draw first): the
+// amendment changes which member goes first, never which sets the bot
+// can afford.
+func planFeasible(base []uint8, cands []*planCandidate, order []int, mask uint, scratch []uint8) bool {
 	units := append(scratch[:0], base...)
-	for i, c := range cands {
+	for k, i := range order {
 		if mask&(1<<i) == 0 {
 			continue
 		}
+		c := cands[i]
 		// The coloured symbols of the members still to come: generic
 		// mana is paid around them.
 		var later []uint8
-		for j := i + 1; j < len(cands); j++ {
+		for _, j := range order[k+1:] {
 			if mask&(1<<j) != 0 {
 				later = append(later, cands[j].cost.colored...)
 			}
@@ -463,8 +523,9 @@ func colorMask(letter string) uint8 {
 
 // manaAvailable is the mana the bot can make now (§2): its pool, and
 // each untapped permanent it controls with a repeatable mana ability it
-// can activate, filters already run.
-func (st *state) manaAvailable() []uint8 {
+// can activate, filters already run. With filterLands, a filter land is
+// its filter (manaSourceOf).
+func (st *state) manaAvailable(filterLands bool) []uint8 {
 	var units []uint8
 	if st.seat != nil {
 		for _, sym := range st.seat.ManaPool {
@@ -479,7 +540,7 @@ func (st *state) manaAvailable() []uint8 {
 		if c.Controller != st.me || c.Tapped || (isCreature(c) && c.SummoningSick) {
 			continue
 		}
-		src, ok := manaSourceOf(c)
+		src, ok := manaSourceOf(c, filterLands)
 		if !ok {
 			continue
 		}
@@ -499,15 +560,20 @@ func (st *state) manaAvailable() []uint8 {
 // a {T} ability with no sacrifice, exile or other non-mana cost that is
 // not greyed out. A life cost or a damage rider still counts. Rows that
 // net the same mana are merged, so a painland is one source of either
-// colour, and a filter row loses to a plain one that nets as much. A
+// colour, and a filter row loses to a plain one that nets as much,
+// unless filterLands is set and the plain row makes only colourless
+// mana: then the filter is the source (§2: "a filter ability (a Signet,
+// Flooded Grove) is an entry that consumes one mana and makes its
+// output"), its input paid with the colours it names, and the plain
+// row is what it makes when nothing can feed it. A
 // row whose mana may be spent only on some spells (Delighted Halfling's
 // colours, Ancient Ziggurat) is left out: the model cannot tell which
 // casts it pays for. A
 // land with no mana rows (a fetchland) makes no mana: every land that
 // taps for mana carries a row, its intrinsic ones included.
-func manaSourceOf(c *protocol.CardView) (manaSource, bool) {
-	var best manaSource
-	found := false
+func manaSourceOf(c *protocol.CardView, filterLands bool) (manaSource, bool) {
+	var best, filter manaSource
+	found, haveFilter := false, false
 	for i := range c.ManaAbilities {
 		ab := &c.ManaAbilities[i]
 		if !ab.TapCost || ab.SacrificeCost || ab.ExileSelf || ab.AddsNoMana || ab.ConditionUnmet ||
@@ -521,10 +587,15 @@ func manaSourceOf(c *protocol.CardView) (manaSource, bool) {
 			cost = *ab.ChargedManaCost
 		}
 		src := manaSource{units: abilityUnits(ab), input: manaValue(cost, 0)}
+		src.in = manaCost{generic: src.input}
 		if ab.LifeCost > 0 || strings.Contains(strings.ToLower(ab.Label), "damage to you") {
 			for k := range src.units {
 				src.units[k] |= manaPain
 			}
+		}
+		if filterLands && src.input > 0 && colouredOnly(src.units) && (!haveFilter || src.net() > filter.net()) {
+			filter, haveFilter = src, true
+			filter.in = parseManaCost(cost, 0)
 		}
 		switch {
 		case !found || src.net() > best.net() || (src.net() == best.net() && src.input < best.input):
@@ -538,7 +609,31 @@ func manaSourceOf(c *protocol.CardView) (manaSource, bool) {
 			}
 		}
 	}
+	if haveFilter && found && best.input == 0 && filter.net() == best.net() && !colouredAny(best.units) {
+		filter.fallback = best.units
+		return filter, true
+	}
 	return best, found && best.net() > 0
+}
+
+// colouredOnly reports whether every unit is a painless coloured mana.
+func colouredOnly(units []uint8) bool {
+	for _, u := range units {
+		if u&manaAnyColor == 0 || u&manaPain != 0 {
+			return false
+		}
+	}
+	return len(units) > 0
+}
+
+// colouredAny reports whether any unit can be coloured mana.
+func colouredAny(units []uint8) bool {
+	for _, u := range units {
+		if u&manaAnyColor != 0 {
+			return true
+		}
+	}
+	return false
 }
 
 // abilityUnits is the mana one activation adds, one mask per mana: from
@@ -606,10 +701,10 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 // untapped and has no summoning sickness, CR 302.6), a hasty creature's,
 // and one mana of any colour for each land its purpose says enters
 // untapped (PurposeView.lands_untapped, owner answer 4).
-func castAddsMana(c *protocol.CardView, ps purposeSet) []manaSource {
+func castAddsMana(c *protocol.CardView, ps purposeSet, filterLands bool) []manaSource {
 	var out []manaSource
 	if !isLand(c) && isPermanentSpell(c) && (!isCreature(c) || hasKeyword(c, "haste")) {
-		if src, ok := manaSourceOf(c); ok && len(c.ManaAbilities) > 0 {
+		if src, ok := manaSourceOf(c, filterLands); ok && len(c.ManaAbilities) > 0 {
 			out = append(out, src)
 		}
 	}
@@ -727,8 +822,16 @@ func removeUnit(units []uint8, k int) []uint8 {
 
 // addSource activates src: a filter consumes its input as generic mana
 // is paid (engineOrder), and is not run when there is not enough to
-// feed it.
+// feed it. A filter whose input names colours (PlanFilterLands) pays it
+// as a cast would (payMana), and makes its fallback when it cannot.
 func addSource(units []uint8, src manaSource, later []uint8) []uint8 {
+	if len(src.in.colored) > 0 {
+		rest, ok := payMana(append([]uint8(nil), units...), src.in, later)
+		if !ok {
+			return append(units, src.fallback...)
+		}
+		return append(rest, src.units...)
+	}
 	if src.input > 0 {
 		if len(units) < src.input {
 			return units

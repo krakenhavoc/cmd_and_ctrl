@@ -227,12 +227,23 @@ func TestPlanMissesCountOnlyTheModelsOwnMisses(t *testing.T) {
 	}
 	next("precombat_main", f.spell)
 
-	got := w.forSeat(f.me)
-	if got.Planned != 8 || got.Checked != 5 || got.Misses != 2 {
-		t.Errorf("planned %d, checked %d, misses %d; want 8, 5, 2", got.Planned, got.Checked, got.Misses)
+	// 10. With the rock still on the stack, the seat casts the spell
+	//     itself, at instant speed: the plan's next cast was payable and
+	//     made. Checked, no miss, though the next main-phase window no
+	//     longer offers the spell.
+	planFirst("precombat_main")
+	{
+		v, m := main("precombat_main", true, f.spell)
+		w.Observe(f.event(f.me, v, m, 1, true))
 	}
-	if got.MissShare() != 2.0/8 {
-		t.Errorf("MissShare = %v, want 2/8", got.MissShare())
+	next("precombat_main", f.other)
+
+	got := w.forSeat(f.me)
+	if got.Planned != 9 || got.Checked != 6 || got.Misses != 2 {
+		t.Errorf("planned %d, checked %d, misses %d; want 9, 6, 2", got.Planned, got.Checked, got.Misses)
+	}
+	if got.MissShare() != 2.0/9 {
+		t.Errorf("MissShare = %v, want 2/9", got.MissShare())
 	}
 }
 
