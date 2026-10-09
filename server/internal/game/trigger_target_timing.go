@@ -48,11 +48,12 @@ package game
 //     dropped and no item reaches the stack.
 //   - the CR 707.10c "you may choose new targets for the copy"
 //     re-target (copyResume), for a spell copy or an ability copy.
-//     Empty set ⇒ the choice has become impossible, which is the same
-//     state offerCopyTargetsLocked handles at queue time: the copy is
-//     created keeping the original's
-//     targets. It is NOT dropped — the copy exists either way, and
-//     losing it would be a second bug in place of the first.
+//     Its offer is the open step's legal new targets plus the step's
+//     original ones (#2622). Nothing left to change to ⇒ the step keeps
+//     its targets, which is the same state offerCopyTargetsLocked
+//     handles at queue time, and the walk goes on to the next step or
+//     creates the copy. It is NOT dropped — the copy exists either way,
+//     and losing it would be a second bug in place of the first.
 //
 // Both are engine withdrawals of a prompt nobody answered, so they go
 // through dropChoiceLocked rather than dequeueChoiceLocked: no player
@@ -66,51 +67,53 @@ func (g *Game) refreshTargetChoicesLocked() {
 	// Deferred so the copy lands after the scan: createSpellCopyLocked
 	// emits EventBecomesTarget, which can harvest further triggers and
 	// queue further prompts, and a harvest running inside this walk
-	// would be mutating the slice it is iterating.
-	var keepOriginalTargets []*copyFrame
+	// would be mutating the slice it is iterating. The same goes for a
+	// walk's next step, which queues a prompt.
+	var keepStepTargets []*copyFrame
 	for i := len(g.PendingChoices) - 1; i >= 0; i-- {
 		c := g.PendingChoices[i]
 		if c == nil || c.Kind != PendingChoicePickTarget {
 			continue
 		}
-		var (
-			spec *TargetSpec
-			// #662: the SOURCE, not just the chooser. Each frame
-			// already keeps a value copy of the object whose ability
-			// (or spell) is picking, which is what CR 702.16b tests
-			// the quality against.
-			src = SourceChooser(c.Chooser)
-		)
-		switch {
-		case c.pickTargetResume != nil:
-			// #764: the clause the OPEN step is asking about, not the
-			// ability's first — a multi-clause trigger re-reads
-			// whichever one the prompt belongs to.
-			spec = c.pickTargetResume.currentClause()
-			src = SourceObject(c.pickTargetResume.source.Controller, &c.pickTargetResume.source)
-		case c.copyResume != nil:
-			spec = c.copyResume.spec
-			src = g.copyTargetSourceLocked(c.copyResume)
+		if cf := c.copyResume; cf != nil {
+			if pos := cf.stepRefs(); len(pos) > 0 {
+				if lt, fresh := g.copyStepCandidatesLocked(cf, pos); fresh {
+					c.PickTargetPlayers, c.PickTargetCards = lt.Players, lt.Cards
+					continue
+				}
+			}
+			keepStepTargets = append(keepStepTargets, cf)
+			g.dropChoiceLocked(i)
+			continue
 		}
+		f := c.pickTargetResume
+		if f == nil {
+			continue
+		}
+		// #764: the clause the OPEN step is asking about, not the
+		// ability's first — a multi-clause trigger re-reads whichever
+		// one the prompt belongs to.
+		spec := f.currentClause()
 		if spec == nil {
 			continue
 		}
-		lt := g.legalTargetsLocked(src, spec)
+		// #662: the SOURCE, not just the chooser. The frame keeps a
+		// value copy of the object whose ability is picking, which is
+		// what CR 702.16b tests the quality against.
+		lt := g.legalTargetsLocked(SourceObject(f.source.Controller, &f.source), spec)
 		if len(lt.Players) > 0 || len(lt.Cards) > 0 {
 			c.PickTargetPlayers, c.PickTargetCards = lt.Players, lt.Cards
 			continue
 		}
-		if cf := c.copyResume; cf != nil {
-			keepOriginalTargets = append(keepOriginalTargets, cf)
-		}
 		g.dropChoiceLocked(i)
 	}
-	for _, cf := range keepOriginalTargets {
-		item := cf.item
-		// createCopyLocked, not the spell builder: the frame may be an
-		// ABILITY copy's (#1223), whose `src` is the source permanent,
-		// and the spell builder would put a spell copy of that card on
-		// the stack (#1449).
-		g.createCopyLocked(cf.src, &item, cf.controller, item.Targets)
+	for _, cf := range keepStepTargets {
+		// The step keeps its targets; the walk asks the next one or
+		// creates the copy through createCopyLocked — not the spell
+		// builder: the frame may be an ABILITY copy's (#1223), whose
+		// `src` is the source permanent, and the spell builder would put
+		// a spell copy of that card on the stack (#1449).
+		cf.step++
+		g.queueCopyTargetStepLocked(cf)
 	}
 }

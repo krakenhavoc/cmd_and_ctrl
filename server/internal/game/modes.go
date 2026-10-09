@@ -489,9 +489,9 @@ func castClauseSources(oracleID string) (*TargetSpec, *ModeSpec) {
 
 // castTargetSpecForItem is the clause list a SPELL item on the stack
 // was announced under, for the callers that still want one spec
-// rather than the step list: the CR 707.10 copy re-target (which
-// re-targets the first clause only — ADR 0065 "Out of scope") and
-// the S22 alternative-cost rewrite.
+// rather than the step list: the CR 707.10 copy re-target's fallback
+// when the copied item carries no clause list of its own (#2622 walks
+// every step; see copyStepsFor) and the S22 alternative-cost rewrite.
 //
 // For a modal item it returns the first chosen option that targets,
 // which is what the copy path did before per-mode targets existed.

@@ -180,8 +180,8 @@ coinFlipFrame.spec                           census:ChoiceResumeFrames          
 confirmFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onAccept
 confirmFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onDecline
 copyFrame.item                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.item
-copyFrame.spec                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.spec
 copyFrame.src                                census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.src
+copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps
 costCommanderFrame.announce                  census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume.announce
 counterTail.then                             census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.counterTail.then
 damageTail.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail.then
