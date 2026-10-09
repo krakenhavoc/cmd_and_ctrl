@@ -36,11 +36,12 @@ func init() {
 		Name:         "Wedding Ring",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(
+			TriggerWithPurpose(Targeting(
 				On(game.EventETB, AllOf(Self, weddingRingWasCast),
 					"Wedding Ring — target opponent creates a token that's a copy of it",
 					weddingRingCopyForOpponent),
 				TargetPlayer("target opponent", Opponent())),
+				ForTargets(game.TargetPurpose{Slot: 0, Tokens: 1})),
 			On(game.EventDrawCard, weddingRingOpponentDrew,
 				"Wedding Ring — you draw a card",
 				Do(DrawCards{N: 1})),

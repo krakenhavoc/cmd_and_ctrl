@@ -21,6 +21,7 @@ func init() {
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{3}{R}")},
 		Targets:          TargetCreature("target creature"),
+		Purpose:          ForTargets(DamageToTarget(0, 1)),
 		OnResolve:        damageFirstTargetThenNoRegen(1, nil),
 	})
 }

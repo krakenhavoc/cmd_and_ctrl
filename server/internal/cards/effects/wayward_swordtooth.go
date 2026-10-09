@@ -35,6 +35,7 @@ func init() {
 		Completeness:        CompletenessFull,
 		PrintedKeywords:     []string{game.KeywordAscend},
 		AdditionalLandPlays: 1,
+		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		Static:              []game.StaticAbility{CantAttackUnlessYouHaveTheCitysBlessing()},
 		BlockRules:          []game.BlockRule{CantBlockUnlessYouHaveTheCitysBlessing()},
 	})

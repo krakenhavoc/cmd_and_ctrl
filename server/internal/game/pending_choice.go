@@ -882,6 +882,18 @@ type PendingChoice struct {
 	// that has no recommendation.
 	ChooseSuggested []uuid.UUID
 
+	// ChooseDestination says where a PendingChoiceChooseCards sends
+	// what is named, when the card says so (#2680): "battlefield" for
+	// "put a land card from your hand onto the battlefield", and
+	// "battlefield_tapped" for the same clause with "tapped". Empty is
+	// a prompt that declares nothing, which is every other choose_cards
+	// (a discard, a loot's half, a library look). Plain data for the
+	// bot, the same shape as ColorPurpose and #2115's PickDestination:
+	// a policy that cannot see where a named card goes prices putting
+	// a land onto the battlefield as discarding it. The resolver never
+	// reads it; the continuation is what moves the card.
+	ChooseDestination ChooseDestination
+
 	// chooseCardsResume is the server-only continuation for a
 	// PendingChoiceChooseCards: what the picks mean, plus the zone
 	// they are re-checked against. Not serialised. See

@@ -66,16 +66,26 @@ import (
 // #2675, #2690 and #2676 turned off, which still gives the old digest:
 // the first 292 lines are identical.
 //
-// A fifth deliberate exception, re-pinned by hand (ADR 0136 PR 4,
+// A fifth deliberate exception, re-pinned by hand (#2689, 2026-10-08):
+// declared damage at a player is priced per point (ADR 0126's amendment
+// of 2026-10-08, D1, `DamageByLethality`). The battle deck's Lightning
+// Bolt at a player on 40 life was "cast spell (+1.20)", the flat attack
+// price; it is now 3 × DamageToOpponent through the opposition weights,
+// less the card, +0.15 at two seats, so the heuristic seat holds it. In
+// every seed the first difference is that cast: seed 1503 at move 57
+// (346 moves to the same turn 3 instead of 359), seed 31 at move 9 (399
+// moves to the same turn 9 instead of 398), and seed 107 at move 14,
+// whose first declared attack now comes after 576 moves instead of 440.
+// Checked by diffing the move logs with DamageByLethality off, which
+// still gives the old digests: every line before those is identical.
+//
+// A sixth deliberate exception, re-pinned by hand (ADR 0136 PR 4,
 // 2026-10-08): the turn plan names itself in the reason. The move log
-// records each decision's reason, and in three windows the heuristic
-// now makes the same move for its plan: seed 31's "Cast Drake" (move
-// 204, "plan: Drake → Bear") and "Cast Commander Bear from the command
-// zone" (move 234), and seed 107's first "Cast Lightning Bolt" (move
-// 193). Every move is the same. Checked by playing both seeds with
-// every seat `heuristic-noplan` (the plan off): with the contestant
-// name read as `heuristic`, both logs give the old digests exactly,
-// and they differ from the new logs in those three reasons only.
+// records each decision's reason, and on top of #2689's re-pin only
+// seed 31 changes: the heuristic makes the same moves, and some of its
+// reasons now name its plan. Seed 107's Lightning Bolt, whose reason
+// changed before #2689, is now held, so its digest is #2689's. Every
+// move, turn and winner is the same as #2689's pin.
 //
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
@@ -110,7 +120,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 359, turns: 3, winner: -1, digest: "296da15d6f1c0f8953b18f7d41ecedecae065bbcf88b2d0858745a8f7d75dd27",
+			moves: 346, turns: 3, winner: -1, digest: "82e0b2b6f5074e68ecb39c9987859470e52da06da4c71c3746e18b8566c71545",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -118,7 +128,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 398, turns: 9, winner: -1, digest: "07dd5f68bc5f42d1f5993a8faded7b22d387fbdb6957a9466bb930698395ea5c",
+			moves: 399, turns: 9, winner: -1, digest: "b5c43024d7deab239bdb0a7a26483e2e2bdf68a075d3dcf18ffbef7b16e1695c",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -131,7 +141,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 440, digest: "ab4bc9eb49592cdfca467a73daac89c6b5f9ec0bfc72a2ca0c421843706e1c2f",
+			opening: true, moves: 576, digest: "9c1082665a302894a239c9358931e4226d83418bc4d1fc7d5324e004bae96312",
 		},
 	}
 	for _, c := range cases {

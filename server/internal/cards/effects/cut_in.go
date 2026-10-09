@@ -27,6 +27,8 @@ func init() {
 			TargetCreature("target creature"),
 			TargetCreature("up to one target creature you control", YouControl()).WithCount(0, 1),
 		),
+		// Slot 1 is given a Role token, which no amount says.
+		Purpose: ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if t, ok := ctx.ClauseTarget(0); ok && t.Kind == game.TargetCard {
 				if err := (DealDamage{Source: ctx.Source(), Target: t.ID, Amount: 4}).Apply(ctx); err != nil {

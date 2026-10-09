@@ -852,6 +852,52 @@ whether the lands enter tapped. Harrow's do not; Roiling Regrowth and
 Cycle of Renewal, whose lands do, declare no purpose, and one should not
 be declared for them before the purpose can say so.
 
+**A target is priced by what the purpose does to it**
+([ADR 0126's amendment of 2026-10-08](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills),
+#2689, `PriceTargetPurposes`, `target_purpose.go`). A purpose's
+`targets` entries say what happens to the pick for each target clause:
+cards drawn and discarded, tokens made, life gained and lost. A player
+pick with such an entry is priced by those amounts, not as an attack:
+
+```
+x = Hand × draws − DiscardWeight × discards + TokenWeight × tokens
+    + the life gained and lost, at what Strength counts it
+    (+ the bot's discard payoffs, when the bot is the target)
+```
+
+and the move is worth the change in `ScoreEval` when that seat's
+strength moves by `x`, the way a sweep is priced. Given to the bot it
+is +x. Given to an opponent it costs `OpponentMean + OpponentMax` of
+x at a two-seat table (1.5), a third of `OpponentMean` plus
+`OpponentMax` for the strongest of three opponents, and a third of
+`OpponentMean` for any other. A cast or row with such a pick drops the
+mana-value proxy (or `ActivateBase`), because what it does is declared.
+Prismari Command's loot and Treasure at the bot is then +0.50, and at
+the opponent −3.75. Sign in Blood at the bot beats Sign in Blood at
+an opponent. A pick with no entry keeps the old price.
+
+**Declared damage is priced by whether it kills** (the same amendment,
+`DamageByLethality`, `damageKills`). An entry's `damage` is priced by
+what it does to its pick:
+
+- **A creature:** removal if the damage kills it, and `DamageChip`
+  (0.00) of removal if it does not. Marked damage is removed in
+  cleanup, so 2 damage to a 2/4 is worth nothing. The kill test is the
+  combat planner's: toughness less the damage already marked, no kill
+  through indestructible or protection from the source, any damage from
+  a deathtouch source. The bot's own creature costs its value if it
+  dies and nothing if it survives.
+- **A planeswalker:** the share of its loyalty removed, all of it at or
+  above its loyalty.
+- **A player:** `DamageToOpponent` (0.30) per point, as a strength
+  change through the opposition weights, the bot's own life at
+  `MarginalLife`, and `LethalBonus` when the life the move takes reaches
+  the player's total.
+- **A battle**, or a pick the view does not show, keeps the old price.
+
+Lightning Bolt at a player on 40 is then +0.15 at two seats, not +1.20,
+so the bot keeps it for a creature it kills or for the last points.
+
 ### Board wipes
 
 A purpose's `sweep` names what it removes (`matches`), how (`destroy`,
@@ -939,6 +985,24 @@ names) is priced by `handKeepValue` (`card_choices.go`), not
 The cast-cost discard (`DiscardCostByCard` above), the scry, the
 sacrifice and the fuel pricer still read `cardValue`.
 
+### The mulligan checks for something to cast (#2693)
+
+The heuristic keeps a hand of two to five lands (`KeepMinLands`,
+`KeepMaxLands`) and digs at most `MaxMulligans` (2) times, never to five.
+The engine's first mulligan is free (it redraws seven) and each one
+after it draws a card fewer; nothing goes to the bottom. Counting lands
+alone kept review game 2's Mountain, Exotic Orchard and five spells of
+three to seven mana, and the bot missed its next two land drops.
+
+With `KeepNeedsCast` a hand at the land floor is kept only if it holds
+a spell it can cast soon: a nonland card whose mana value is at most
+the lands in hand plus `KeepCastReach` (0), with its coloured pips made
+by those lands. A land whose abilities name no colour (a fetch land,
+Exotic Orchard) counts as any colour; a land that makes only {C} counts
+as none. A hand without such a spell takes the free mulligan. When the
+mulligan would cost a card the check does not apply, and the hand is
+kept on its land count as before. `BaselineConfig` turns it off.
+
 ### Which land a search takes (#2677)
 
 A library search scores each answer by `cardValue`, and every land is
@@ -951,6 +1015,44 @@ it. So a G-hungry hand with no G source fetches Breeding Pool over
 Island, a dual beats a basic that meets the hand equally, and a
 missing colour beats a fourth source of one the bot has. The same score
 picks a land out of a `choose_cards` look at the library.
+
+### Putting a card onto the battlefield, and giving up a permanent (#2680)
+
+A `choose_cards` prompt over the bot's own hand is scored as a discard:
+an answer is worth what it leaves in hand. "You may put a land card from
+your hand onto the battlefield" (Uro, Eureka Moment, Growth Spiral and
+the other users of `PutFromHandOntoBattlefield`) is not a discard, so
+that prompt says where the card goes: `choose_destination` is
+`battlefield`, or `battlefield_tapped` for the "tapped" rider. With
+`PricePutsFromHand` on (`puts.go`), each candidate is worth what keeping
+it is worth, and the named one adds what it brings onto the
+battlefield: a land is `ManaSource` (`TappedManaSource` when it enters
+tapped) plus the ramp premium while the bot has fewer than `RampWantCap`
+sources, 0.3 of that after, plus its colour fit; any other permanent is
+what casting it would be worth. Every put is taken, and the land the
+hand wants most is the one put.
+
+An `own_permanents` pick (a karoo's "return a land you control to its
+owner's hand", Lotus Field's sacrifice, annihilator) had no rule at all:
+every answer scored 0 and the enumerator's order chose. With
+`PriceOwnPermanentPicks` on, a fixed-count pick gives up the permanents
+worth least to keep: their `permanentValue`, with a land counted once
+per mana it makes and its ability rows added. So a karoo returns a
+tapped basic, not itself and not an untapped land. A pick whose count
+is the chooser's ("sacrifice any number of lands", or Tragic
+Arrogance's own leg, where what is named is kept) has no sign the rule
+can read, and keeps the enumerator's order.
+
+### An extra land drop (#2678)
+
+`purpose.extra_land_drops` is declared on every card with the engine's
+`AdditionalLandPlays` (Oracle of Mul Daya, Exploration, Dryad of the
+Ilysian Grove, Azusa, …), and on Explore for its one-turn drop. With
+`PriceExtraLandDrops` on, a cast adds one land this turn for each drop
+the bot has a land in hand for and could not otherwise play (its turn,
+lands in hand beyond the drops left), at `ManaSource` plus the ramp
+premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
+while the bot has fewer than `RampWantCap` sources.
 
 ### Sacrifices
 
@@ -1656,6 +1758,12 @@ game.
     than a pass in between; a `plan miss` is a checked window in which
     the plan's next cast (skipping members held for the end step) is not
     offered. `miss % of planned` is P6's measure, held under 5%.
+- **Opening hands** (#2693) — per policy and per contestant: the
+  seat-games that kept a hand, the mulligans they took and mulligans per
+  keep, the kept hands by size, and the seat's own turns 2–4 it reached
+  with the ones in which it played no land (`missed land drops`). A land
+  a spell puts onto the battlefield is not a land drop, so a ramp deck's
+  misses read high. `summary.json` carries it as `opening`.
 - **Funnel** — windows by layer, escalations, model calls, timeouts,
   fallback reasons, tokens, median prompt size. A model tier whose
   every window fell back to Layer B has the heuristic's win rate and a

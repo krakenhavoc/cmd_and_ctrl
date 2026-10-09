@@ -75,6 +75,10 @@ func TestEurekaMomentPutsALandFromHand(t *testing.T) {
 	if !hasID(pick.ChooseCards, land) {
 		t.Fatal("the land in hand was not offered")
 	}
+	if pick.ChooseDestination != game.ChooseOntoBattlefield {
+		t.Errorf("destination %q, want %q: the bot prices the put by it rather than as a discard (#2680)",
+			pick.ChooseDestination, game.ChooseOntoBattlefield)
+	}
 
 	answerChooseCards(t, g, me.ID, land)
 	if !g.Battlefield.Contains(land) {
@@ -166,6 +170,9 @@ func TestInsidiousFungusPutsALandTapped(t *testing.T) {
 	b06AddMana(me, "C", "C")
 	b16Activate(t, g, me.ID, fungus, 2, game.ActivateAbilityParams{})
 
+	if pick := chooseCardsChoiceFor(g, me.ID); pick == nil || pick.ChooseDestination != game.ChooseOntoBattlefieldTapped {
+		t.Fatalf("prompt = %+v, want destination %q: the bot prices the put by it (#2680)", pick, game.ChooseOntoBattlefieldTapped)
+	}
 	answerChooseCards(t, g, me.ID, land)
 	if !g.Battlefield.Contains(land) {
 		t.Fatal("the land did not reach the battlefield")

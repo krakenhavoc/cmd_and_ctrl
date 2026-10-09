@@ -421,6 +421,9 @@ type SeatResult struct {
 	// TurnMana is this seat's ADR 0136 §8 numbers for this game:
 	// stranded mana and plan misses (turnmana.go).
 	TurnMana TurnMana `json:"turn_mana"`
+	// Opening is this seat's mulligans, kept hand and land drops on its
+	// own turns 2–4 (opening.go).
+	Opening Opening `json:"opening"`
 
 	// raw carries the samples the two distributions above were
 	// computed from, so that Run can take a run-wide percentile
@@ -587,6 +590,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 	seats := make([]SeatResult, 0, n)
 	metersAndFunnels := make([]seatInstruments, 0, n)
 	tallies := make([]*cardTally, 0, n)
+	openings := make([]*openingWatch, 0, n)
 	// One for the whole table: a plan miss needs to see the other
 	// seats' moves (turnmana.go).
 	manaWatch := newTurnManaWatch()
@@ -610,7 +614,8 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		// *decisionlog.GameLog in an interface slot is a non-nil
 		// interface holding a nil pointer, and calling Observe on it
 		// panics on the runner's own goroutine.
-		obs := fanOut{raw, tally, manaWatch}
+		opening := newOpeningWatch(p.ID)
+		obs := fanOut{raw, tally, manaWatch, opening}
 		if gameLog != nil {
 			obs = append(obs, gameLog)
 		}
@@ -631,6 +636,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		seats = append(seats, SeatResult{Spec: spec, Position: pos, Policy: pol.Name(), raw: raw})
 		seatIDs = append(seatIDs, p.ID)
 		tallies = append(tallies, tally)
+		openings = append(openings, opening)
 		metersAndFunnels = append(metersAndFunnels, inst)
 	}
 
@@ -689,6 +695,7 @@ func Play(ctx context.Context, cfg Config, seed uint64, order []int) (GameResult
 		raw.mu.Unlock()
 		seats[i].Cards = tallies[i].list()
 		seats[i].TurnMana = manaWatch.forSeat(seatIDs[i])
+		seats[i].Opening = openings[i].result()
 	}
 	res.Seats = seats
 	return res, nil

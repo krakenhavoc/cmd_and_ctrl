@@ -50,6 +50,7 @@ func init() {
 				ManaCost("{1}"),
 				RemoveCountersFromThis(game.CounterPlusOne, 4),
 			),
+			Purpose: ForTargets(game.TargetPurpose{Slot: 0, Draws: 3}),
 			Targets: TargetPlayer("target player"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

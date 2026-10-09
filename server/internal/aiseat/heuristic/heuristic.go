@@ -154,6 +154,31 @@ type Config struct {
 	// than under the gross. Off (the zero value) prices every land the
 	// purpose declares as ramp and floors before the sacrifice.
 	NetLandSwaps bool
+	// PriceTargetPurposes prices a target a declared purpose describes
+	// by what happens to it (ADR 0126's amendment of 2026-10-08, A1 and
+	// B1; target_purpose.go): a draw, a discard, a token or a life
+	// change given to the bot is worth what the same amounts are worth
+	// untargeted, and given to an opponent it is that seat's strength
+	// change, priced through ScoreEval's opposition weights as §4 prices
+	// a sweep. A cast or row whose targets are so priced drops the
+	// mana-value proxy and ActivateBase. Off (the zero value) prices
+	// every player target as an attack and every permanent as removal,
+	// whatever the spell does to it.
+	PriceTargetPurposes bool
+	// DamageByLethality prices a declared damage entry by what the
+	// damage does (ADR 0126's amendment of 2026-10-08, C1 and D1;
+	// target_purpose.go). At a creature: removal if it dies (CR 120.6,
+	// 702.2b, 702.12b, 702.16e), DamageChip of removal if it survives,
+	// since marked damage goes in cleanup (CR 514.2). At a planeswalker:
+	// the share of its loyalty removed (CR 120.3c, 704.5i). At a player:
+	// DamageToOpponent per point through the opposition weights, with
+	// LethalBonus when it reaches their life (CR 704.5a). It needs
+	// PriceTargetPurposes. Off (the zero value) prices a damage entry as
+	// targetsValue does: every creature as removed, every player as hit.
+	DamageByLethality bool
+	// DamageChip is the share of a creature's removal value that damage
+	// which does not kill it is worth (owner answer 3: none).
+	DamageChip float64
 	// TutorWeight is a card searched out to hand or the top of the
 	// library, in cards drawn: above one, because the bot picks it.
 	TutorWeight float64
@@ -235,6 +260,31 @@ type Config struct {
 	// to a three-mana one (1.5 against 0.6 per mana before, 2.5 against
 	// 1.0 now).
 	DiscardLandFloor float64
+	// PricePutsFromHand prices a choose_cards prompt that puts the card
+	// it names from the bot's hand onto the battlefield (#2680,
+	// puts.go): Uro's land, Eureka Moment, Growth Spiral, the
+	// `choose_destination` the prompt carries. The named card is worth
+	// what it keeps in hand plus what it adds on the battlefield, so a
+	// land is put while lands are wanted (and still put after). Off
+	// (the zero value) prices the prompt as a discard of the named card.
+	PricePutsFromHand bool
+	// PriceOwnPermanentPicks scores a fixed-count own_permanents pick
+	// (a karoo's "return a land you control", Lotus Field's sacrifice)
+	// by what each named permanent is worth to keep (#2680, puts.go):
+	// the cheapest goes, a land priced by the mana it makes. Off (the
+	// zero value) scores every answer 0 and the enumerator's order
+	// decides.
+	PriceOwnPermanentPicks bool
+	// PriceExtraLandDrops prices a declared extra land drop (#2678,
+	// puts.go): one more land this turn while the bot holds a land it
+	// could not otherwise play, at ManaSource plus the ramp premium,
+	// and ExtraLandDropRecurring per drop for a permanent while the
+	// bot has fewer than RampWantCap mana sources. Off (the zero value)
+	// prices Oracle of Mul Daya and Exploration by their bodies alone.
+	PriceExtraLandDrops bool
+	// ExtraLandDropRecurring is what one extra land drop on each later
+	// turn adds to a permanent's cast price.
+	ExtraLandDropRecurring float64
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -388,6 +438,18 @@ type Config struct {
 	// KeepMinLands / KeepMaxLands bound a keepable opening hand.
 	KeepMinLands int
 	KeepMaxLands int
+	// KeepNeedsCast checks a hand at the KeepMinLands floor for a spell
+	// it can cast soon (#2693, mulligan.go): one whose mana value is at
+	// most the lands in hand plus KeepCastReach, with its coloured pips
+	// covered by those lands. A hand without one is mulliganed when the
+	// mulligan is free (the first one), and kept as before when
+	// it would cost a card. Off (the zero value) counts lands only, and
+	// a two-land hand of five-drops is kept.
+	KeepNeedsCast bool
+	// KeepCastReach is how far past the lands in hand a spell may cost
+	// and still count as castable soon: the land drops the hand is
+	// relying on drawing.
+	KeepCastReach int
 	// MaxMulligans caps how far the bot will dig. London mulligans
 	// cost a card each; three is already a losing hand.
 	MaxMulligans int
@@ -450,16 +512,19 @@ func DefaultConfig() Config {
 		RampPerMana:    1.00,
 		RampWantCap:    7,
 
-		PricePurposes:     true,
-		NetLandSwaps:      true,
-		TutorWeight:       1.00,
-		SelfMillWeight:    0.50,
-		DiscardWeight:     0.60,
-		TokenWeight:       0.50,
-		AwakenLandShare:   0.75,
-		PriceSweeps:       true,
-		DiscardCostByCard: true,
-		LastLandDiscard:   1.00,
+		PricePurposes:       true,
+		NetLandSwaps:        true,
+		PriceTargetPurposes: true,
+		DamageByLethality:   true,
+		DamageChip:          0.00,
+		TutorWeight:         1.00,
+		SelfMillWeight:      0.50,
+		DiscardWeight:       0.60,
+		TokenWeight:         0.50,
+		AwakenLandShare:     0.75,
+		PriceSweeps:         true,
+		DiscardCostByCard:   true,
+		LastLandDiscard:     1.00,
 
 		PriceDiscardPayoffs: true,
 
@@ -473,6 +538,11 @@ func DefaultConfig() Config {
 		DiscardLandFloor:    2.50,
 		PlanTurnMana:        true,
 		PlanMaxCards:        10,
+
+		PricePutsFromHand:      true,
+		PriceOwnPermanentPicks: true,
+		PriceExtraLandDrops:    true,
+		ExtraLandDropRecurring: 0.50,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -511,6 +581,9 @@ func DefaultConfig() Config {
 		KeepMinLands: 2,
 		KeepMaxLands: 5,
 		MaxMulligans: 2,
+		// The lands in hand only: a two-land hand keeps a two-drop.
+		KeepNeedsCast: true,
+		KeepCastReach: 0,
 
 		BlockChumpLife: 8,
 		AttackReserve:  1,
@@ -560,6 +633,11 @@ func BaselineConfig() Config {
 	c.PricePurposes = false
 	// #2469: a land swap priced by what it nets.
 	c.NetLandSwaps = false
+	// ADR 0126's amendment of 2026-10-08: a target priced by what the
+	// purpose does to it.
+	c.PriceTargetPurposes = false
+	c.DamageByLethality = false
+	c.DamageChip = 0
 	c.TutorWeight = 0
 	c.SelfMillWeight = 0
 	c.DiscardWeight = 0
@@ -592,6 +670,15 @@ func BaselineConfig() Config {
 	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
 	c.PlanTurnMana = false
 	c.PlanMaxCards = 0
+	// #2680 and #2678: puts from hand, own-permanent picks and extra
+	// land drops.
+	c.PricePutsFromHand = false
+	c.PriceOwnPermanentPicks = false
+	c.PriceExtraLandDrops = false
+	c.ExtraLandDropRecurring = 0
+	// #2693: the mulligan counted lands only.
+	c.KeepNeedsCast = false
+	c.KeepCastReach = 0
 	return c
 }
 
@@ -954,9 +1041,17 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing worth doing"}, nil
 }
 
-// decideMulligan keeps any hand that can cast something. Two to five
-// lands in seven is the standard keepable range; below the floor the
-// hand cannot function and above the ceiling it is all lands.
+// decideMulligan keeps a hand that has the lands to function. Two to
+// five lands in seven is the standard keepable range; below the floor
+// the hand cannot function and above the ceiling it is all lands. With
+// KeepNeedsCast, a hand at the floor must also hold a spell it can cast
+// soon, or it takes the free mulligan (#2693, mulligan.go).
+//
+// The engine's mulligan (the multiplayer free first mulligan, as
+// legal.mulliganMoves offers it) redraws a full seven the first time
+// and one card fewer each time after; nothing goes to the bottom
+// (game.Mulligan). So `next` below is the size of the hand a mulligan
+// would draw, and a mulligan is free while next is the hand's size.
 func (p *Policy) decideMulligan(st *state, moves []legal.Move) aiseat.Decision {
 	keep := indexOfType(moves, legal.TypeKeepHand)
 	mull := indexOfType(moves, legal.TypeMulligan)
@@ -989,6 +1084,12 @@ func (p *Policy) decideMulligan(st *state, moves []legal.Move) aiseat.Decision {
 		return aiseat.Decision{
 			Index:  mull,
 			Reason: fmt.Sprintf("mulligan: %d lands in %d", lands, size),
+		}
+	}
+	if p.cfg.KeepNeedsCast && lands == lo && next >= size && !p.castableSoon(st.seat.Hand.Cards, lands) {
+		return aiseat.Decision{
+			Index:  mull,
+			Reason: fmt.Sprintf("mulligan: %d lands in %d and nothing castable by %d mana", lands, size, lands+p.cfg.KeepCastReach),
 		}
 	}
 	return aiseat.Decision{Index: keep, Reason: fmt.Sprintf("keep: %d lands in %d", lands, size)}

@@ -1310,3 +1310,195 @@ Run 1's deck shares moved: esper 26 to 20 of 64, izzet 5 to 7, black 18 to 25, s
 So the row measures how often black runs out of better plays before the game ends. The change gives it more of them (seeds 22 and 14), and it moves when the game ends and what the opponents do (seeds 32 and 52). Casting a card-draw spell or a creature over a tapped three-mana rock at seven mana is consistent with how §2 prices a rock once the deficit closes. Nothing in this change was adjusted for it.
 
 The extra land discards in run 1 are late: in a 16-game diagnostic of the after build, 65 of 67 land discards came with seven or more mana sources on the battlefield. That is where the floor stops and a spare land is the right card to pitch, and it is what the rise in turns with no land played counts. A land drop offered and not taken stayed rare: 5 turns before and 1 after in run 1, none in run 2. The suite is 41 of 41 before and after, and no position's pick changed.
+
+### Amendment PR 3: target purposes priced (2026-10-08)
+
+`PriceTargetPurposes` (`target_purpose.go`), A1 and B1 of the [amendment of 2026-10-08](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills). A player pick whose declared entry gives it cards, tokens or life is priced as that seat's strength change through `ScoreEval`, and the cast drops the mana proxy. Damage entries keep today's price until `DamageByLethality` (PR 4). `BaselineConfig` turns it off.
+
+Before is `develop` at `32886c5cc` (PR 2 merged), after is the branch; every run is `--rotate --lockstep` with the real dump, 0 stalls in every run. Lockstep tie-breaks are not yet fully deterministic (#2730), so read the intervals.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 26, 40.6% (29.5%–52.9%) | 23, 35.9% (25.3%–48.2%) |
+| Run 1 | izzet-aggro | 5, 7.8% (3.4%–17.0%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 18, 28.1% (18.6%–40.1%) | 19, 29.7% (19.9%–41.8%) |
+| Run 1 | simic-ramp | 15, 23.4% (14.7%–35.1%) | 18, 28.1% (18.6%–40.1%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 33 / 96, 34.4% (25.6%–44.3%) | 33 / 96, same |
+| Run 2 | heuristic-baseline | 15 / 96, 15.6% | 15 / 96, same |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 31 / 96, same |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 17 / 96, same |
+| Targeted (izzet and black, 96 games) | heuristic | 64 / 192, 33.3% (27.0%–40.3%) | 64 / 192, same |
+| Targeted | heuristic-baseline | 32 / 192, 16.7% | 32 / 192, same |
+
+Run 1's turns p50 is 14 before and 15 after; run 2's is 12. A2 and A3 rows move by at most three games and none crosses its bar (Harrow stays below A3 at 11 of 26 and 10 of 23).
+
+A head-to-head with the knob alone (today's heuristic against itself with `PriceTargetPurposes` off, a local build, izzet and simic, 48 games each at seeds 1 and 1001): with the knob 44 / 192, 22.9% (17.5%–29.4%); without 52 / 192, 27.1% (21.3%–33.8%). The intervals overlap and both contain the null; the direction is against the knob in both seeds, mostly on izzet at seed 1 (2 against 7 wins).
+
+Who the cards were aimed at in the targeted run (after, from the decision logs; before, every cast aimed at an opponent by construction, as `heuristic-baseline`'s 23 Sign in Blood and 11 of 14 Prismari casts are):
+
+| Contestant | Card | Aimed at | Casts |
+|---|---|---|---:|
+| heuristic | Sign in Blood | itself | 6 |
+| heuristic | Sign in Blood | an opponent on 2 life (3) or 6 | 4 |
+| heuristic | Prismari Command | 2 damage at an opponent, destroy an artifact | 8 |
+| heuristic | Prismari Command | 2 damage at an opponent, loot itself | 3 |
+| heuristic | Prismari Command | loot itself, destroy an artifact | 3 |
+| heuristic | Prismari Command | loot itself, Treasure itself | 2 |
+| heuristic-baseline | Prismari Command | 2 damage and loot, both at an opponent | 11 |
+| heuristic-baseline | Prismari Command | 2 damage at an opponent, destroy an artifact | 3 |
+| heuristic-baseline | Sign in Blood | an opponent | 23 |
+
+`heuristic` cast Sign in Blood in fewer games (14 of 16 to 10 of 16; run 1, 11 of 12 to 6 of 11): at itself it is +0.96, not +2.40, so it loses more main phases to a creature. At seq 248 of review game 2, with PR 2's declarations put on the logged view, the chosen line moves from 2 at Y'shtola and loot Claude (9.12) to 2 at Y'shtola and loot the bot (6.72); the lines that loot Claude fall by 5.40 and those that give Claude the Treasure by 4.35. The cast stays above `InstantThreshold` because 2 damage at a 2/4 is still priced as removal (6.72), which is PR 4's to fix. The suite is 41 of 41 before and after.
+
+### Amendment PR 4: damage priced by whether it kills, measured with PR 3 (2026-10-08)
+
+The owner held PR 3 to measure it together with PR 4. `DamageByLethality` (`target_purpose.go`, `damageKills` shared with `combat.go`'s `kills`), C1 and D1 with owner answers 3, 4 and 6:
+- A declared damage entry at a creature is removal if it kills and `DamageChip` (0.00) of removal if it does not.
+- At a planeswalker it is the share of loyalty removed.
+- At a player it is `DamageToOpponent` per point through the opposition weights, with `LethalBonus` at or above their life.
+
+Arc Trail is now two clauses, 2 damage and 1 to another target, and declares both. This changes its moves: the second pick names slot 1. `BaselineConfig` turns the knob off.
+
+Before is `develop` at `8ecec05ba`, and after is the branch with both knobs (develop merged in). Every run is `--rotate --lockstep` with the real dump, and every run had 0 stalls.
+
+| Run | Contestant | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | esper-control | 20, 31.2% (21.2%–43.4%) | 28, 43.8% (32.3%–55.9%) |
+| Run 1 | izzet-aggro | 7, 10.9% (5.4%–20.9%) | 4, 6.2% (2.5%–15.0%) |
+| Run 1 | mono-black-aristocrats | 25, 39.1% (28.1%–51.3%) | 20, 31.2% (21.2%–43.4%) |
+| Run 1 | simic-ramp | 12, 18.8% (11.1%–30.0%) | 12, 18.8% (11.1%–30.0%) |
+| Run 2 (izzet and simic, 48 games, seed 1) | heuristic | 32 / 96, 33.3% (24.7%–43.2%) | 37 / 96, 38.5% (29.4%–48.5%) |
+| Run 2, seed 1 | heuristic-baseline | 16 / 96, 16.7% | 11 / 96, 11.5% |
+| Run 2, seed 1001 | heuristic | 31 / 96, 32.3% (23.8%–42.2%) | 32 / 96, 33.3% (24.7%–43.2%) |
+| Run 2, seed 1001 | heuristic-baseline | 17 / 96, 17.7% | 16 / 96, 16.7% |
+| Targeted (izzet and black, 96 games) | heuristic | 62 / 192, 32.3% (26.1%–39.2%) | 57 / 192, 29.7% (23.7%–36.5%) |
+| Targeted | heuristic-baseline | 34 / 192, 17.7% | 39 / 192, 20.3% |
+
+Izzet-aggro over run 1 and both run 2 seeds: 20 of 160 before and 21 of 160 after. Run 1's turns p50 goes from 15 to 14, and run 2's stays at 12.
+
+A2 and A3 rows move by up to 7 games, all on simic-ramp, which holds no declared target. Bars are crossed both ways:
+- Run 1: Delighted Halfling and Rhystic Study fall below their bars, and Harrow rises above its bar (12 of 27 to 16 of 25).
+- Run 2: Birds of Paradise and Ornithopter rise above their bars.
+- Run 2, seed 1001: Delighted Halfling, Sol Ring and Rhystic Study rise above their bars.
+
+That is a diverged game, not a price.
+
+**Knob-alone head-to-head.** This is today's heuristic against a local build with both knobs off, on izzet and simic, 48 games each:
+- seed 1: 25 against 23 wins
+- seed 1001: 21 against 27 wins
+- pooled: with the knobs 46 / 192, 24.0% (18.5%–30.5%); without 50 / 192, 26.0% (20.3%–32.7%)
+- on izzet: 2 against 2 at seed 1, and 5 against 5 at seed 1001
+
+**What the burn and the gifts were aimed at** (the targeted run's decision logs, after):
+
+| Card | `heuristic` | `heuristic-baseline` |
+|---|---|---|
+| Lightning Bolt | 11 at creatures it killed | 5 killed, 6 at creatures that survived, 4 at players (1 lethal) |
+| Shock | 14 killed | 2 killed, 8 survived, 4 at players |
+| Fiery Temper | 16 killed, 2 survived | 10 killed, 11 survived, 2 at players |
+| Izzet Charm (damage) | 19 killed | 6 killed, 11 survived |
+| Arc Trail | 2 at an opponent with 1 killing a creature: 6; 2 at itself with 1 killing a creature: 4; lethal at an opponent: 1 | 3 killed, 6 survived, 3 at players only |
+| Prismari Command | loot and Treasure at itself 5; loot itself with damage or artifact removal 7; 2 at an opponent with artifact removal 3 | 2 and loot both at an opponent 11 |
+| Sign in Blood | at itself 7; at an opponent on 3 life or less 7 | at an opponent 21 |
+
+Sign in Blood's cast rate (games used of games offered) is close to before:
+- run 1: 11 of 11 before, 8 of 9 after
+- targeted run: 16 of 17 before, 14 of 16 after
+
+With PR 3 alone it was 6 of 11 and 10 of 16. PR 4 makes the burn and the bodies the bot would otherwise cast cheaper to hold, which leaves room in the main phase.
+
+**Arc Trail at itself.** The 4 casts that put Arc Trail's 2 at the bot are the enumerator's doing. `legalStepSets` is a cartesian product capped at 12, in candidate order, and candidates are ordered by threat. So slot 0 takes the top-threat candidate in every offered set, and on some boards that candidate is the bot itself. In one logged window the only Arc Trail move offered was "2 at the bot, 1 at Fleshbag Marauder". This is a follow-up for the enumerator, like #2681. `heuristic-baseline` shows the same shape once.
+
+**Seq 248 of review game 2**, with PR 2's declarations put on the logged view: every Prismari Command line is now below `InstantThreshold`. The best is "2 at Claude, loot the bot" at +0.90, and pass is 0, so the bot passes the draw step, as the amendment predicted. The table is in the PR. The suite is 41 of 41 before and after.
+
+**Pins.** `TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow` was re-pinned by hand (its fifth exception). The battle deck's Lightning Bolt at a player on 40 life is now held. With the knob off, the old digests still match.
+
+**Real-dump audit.** The branch E2E's `realdump` job fails on `TestRealDumpPurposeAudit` over Eliminate the Impossible, a card from #2734 that reads as a wipe and declares no sweep. `develop` at `8ecec05ba` fails the same way. Arc Trail passes the audit.
+
+### #2680 and #2678: puts from hand, own-permanent picks and extra land drops (2026-10-08)
+
+Three things the 2026-10-08 review games found the heuristic pricing as nothing, or as the opposite of what they are (`puts.go`).
+
+- **#2680, `PricePutsFromHand`.** "You may put a land card from your hand onto the battlefield" is a `choose_cards` over the bot's own hand, which `valueKeptInHand` prices as a discard of the named card, so the bot declined every one. The prompt now carries `choose_destination` (`battlefield`, or `battlefield_tapped`: an additive `PendingChoice.ChooseDestination`, recorded by the shape guard, withheld from non-choosers with the bounds), set by `PutFromHandOntoBattlefield`. A named land adds `ManaSource` (`TappedManaSource` when it enters tapped) and the ramp premium while the bot has fewer than `RampWantCap` sources, 0.3 of that after, plus `landColorFit`; any other permanent adds its resolved value.
+- **#2680, `PriceOwnPermanentPicks`.** An `own_permanents` pick had no branch, so every answer scored 0 and the enumerator's cheapest-fuel-first order chose. A fixed-count pick now gives up what is worth least to keep: `permanentValue`, a land multiplied by the mana it makes and with its ability rows added. A pick whose count is the chooser's (Scapeshift, Tragic Arrogance's own leg) keeps the enumerator's order.
+- **#2678, `PriceExtraLandDrops`, `ExtraLandDropRecurring` (0.50).** `purpose.extra_land_drops` is declared on every catalog card with `AdditionalLandPlays` (Register refuses a number that disagrees; `TestCuratedDeckPurposes` and `TestEveryExtraLandDropIsDeclared` hold the declarations), and on Explore. A cast adds `ManaSource` plus the ramp premium for each extra drop the bot holds a land for and could not otherwise play this turn, and, for a permanent, `ExtraLandDropRecurring` per drop while it has fewer than `RampWantCap` sources.
+
+`BaselineConfig` zeroes all four. Before is `develop` at `c98668a15`, after is this branch; every run is `--rotate --lockstep` with the real dump and `--decision-log`. No run stalled and no move was rejected. The counters come from a scratch script over the decision logs.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | Uro's land put accepted | 0 / 72 | 81 / 81 |
+| | Eureka Moment's land put accepted | 0 / 12 | 11 / 11 |
+| | karoo returned itself | 78 / 96 | 0 / 43 |
+| | karoo returned a tapped land when one was offered | 17 / 17 | 16 / 16 |
+| | Oracle of Mul Daya cast, windows / games used of offered | 22 / 117, 22 / 28 | 25 / 82, 24 / 27 |
+| | Exploration cast, windows / games used of offered | 15 / 92, 15 / 22 | 20 / 89, 18 / 25 |
+| | land drop offered and not taken | 1 turn | 2 turns |
+| | turns p50 | 15 | 14 |
+| | simic-ramp wins | 12 / 64 | 21 / 64 |
+| Run 2, seed 1 | `heuristic` wins | 32 / 96, 33.3% (24.7%–43.2%) | 30 / 96, 31.2% (22.9%–41.1%) |
+| | `heuristic-baseline` wins | 16 / 96 | 18 / 96 |
+| Run 2, seed 1001 | `heuristic` wins | 31 / 96, 32.3% (23.8%–42.2%) | 24 / 96, 25.0% (17.4%–34.5%) |
+| | `heuristic-baseline` wins | 17 / 96 | 24 / 96 |
+| Run 2, seed 2001 | `heuristic` wins | 23 / 96, 24.0% (16.5%–33.4%) | 26 / 96, 27.1% (19.2%–36.7%) |
+| | `heuristic-baseline` wins | 25 / 96 | 22 / 96 |
+| Run 2, pooled | `heuristic` wins | 86 / 288, 29.9% | 80 / 288, 27.8% |
+| | `heuristic-baseline` wins | 58 / 288 | 64 / 288 |
+
+Run 2 is `--seats heuristic-baseline,heuristic-baseline,heuristic,heuristic --decks izzet-aggro,simic-ramp,izzet-aggro,simic-ramp --games 48`, so each policy plays each deck 48 times per seed. The pooled difference is six games of 288, inside the run-to-run spread (seed 1001 moved seven games one way, seed 2001 three the other), and in no run does the baseline win more than `heuristic`. Turns p50 is 12 to 11 at seed 1 and 12 both times at seeds 1001 and 2001. Run 1's karoo returns before were the source itself in 78 of 96, because the enumerator offers the cheapest fuel first and a tapped karoo ties a tapped basic; after, with no other tapped land offered it returns an untapped land (27 times) rather than itself.
+
+In run 1, every A3 canary meets its bar after (Harrow 12 / 27 before, 15 / 29 after, now meeting it). A2 rows meeting their bar fell from 6 to 4: Delighted Halfling (85% to 76%) and Ornithopter of Paradise (83% to 64%) in simic-ramp, whose early turns now also hold an Exploration or an Oracle priced above a body. In run 2 the met A2 and A3 rows went from 6 to 11 at seed 1, 8 to 10 at seed 1001 and 9 to 10 at seed 2001. The suite is 41 of 41 before and after, and no position's pick changed.
+
+### #2693: the mulligan checks for something to cast (2026-10-08)
+
+- **`KeepNeedsCast`, `KeepCastReach` (0).** `decideMulligan` counted lands only, so review game 2 kept two lands and five spells of three to seven mana and missed its next two land drops. A hand at `KeepMinLands` is now kept only if it holds a nonland spell whose mana value is at most its lands plus `KeepCastReach`, with its coloured pips made by those lands (a land that names no colour, such as a fetch land or Exotic Orchard, counts as any). Otherwise it takes the mulligan, but only while the mulligan is free (the engine's first redraws seven); a mulligan that costs a card keeps the old land-count rule. A reach of 1, the issue's "lands + 1", would still keep game 2's hand on Chaos Warp, so the default is 0.
+- The arena has a new **Opening hands** section (`botarena/opening.go`): mulligans per keep, kept hands by size, and land drops missed on each seat's own turns 2–4, from the runner's observer.
+
+`BaselineConfig` zeroes both. Before is this branch with `KeepNeedsCast` off, which takes the old code path exactly; every run is `--rotate --lockstep` with the real dump. No run stalled.
+
+| Run | Measure | Before | After |
+|---|---|---|---|
+| Run 1 (§8, 64 games, seed 1) | mulligans per keep (all four decks) | 62 / 256, 0.24 | 67 / 256, 0.26 |
+| | kept 7 / 6 | 246 / 10 | 246 / 10 |
+| | land drops missed on own turns 2–4 | 77 / 768, 10.0% | 77 / 768, 10.0% |
+| | turns p50 | 14 | 14 |
+| | wins: esper / izzet / mono-black / simic | 15 / 5 / 23 / 21 | 15 / 4 / 25 / 20 |
+| Run 2, seeds 1, 1001, 2001 pooled | `heuristic` wins | 86 / 288, 29.9% | 84 / 288, 29.2% |
+| | `heuristic-baseline` wins | 58 / 288 | 60 / 288 |
+| | `heuristic` izzet-aggro: wins, mulligans per keep, missed drops | 8 / 144, 0.25, 39 / 432 | 6 / 144, 0.26, 39 / 432 |
+| | `heuristic` simic-ramp: wins, mulligans per keep, missed drops | 78 / 144, 0.23, 49 / 432 | 78 / 144, 0.28, 51 / 432 |
+| | turns p50 | 11 | 11 |
+
+Run 2 is `--seats heuristic,heuristic-baseline,heuristic,heuristic-baseline --decks izzet-aggro,izzet-aggro,simic-ramp,simic-ramp --games 48` per seed. The rule fires rarely: 5 extra mulligans in run 1's 256 seat-games and 9 in run 2's 288 `heuristic` seat-games, changing 5 and 7 games. In run 2's seven changed games the seat that took the new mulligan won two it had lost and lost two it had won. Every difference is inside its interval, and `heuristic` stays ahead of the baseline. In run 1 every A3 canary meets its bar before and after, and A2 rows move by at most two games. The suite is 41 of 41 before and after; it has no mulligan position.
+
+### #2689 PR 5: target gifts across the catalog (2026-10-08)
+
+Owner answer 5a: every catalog spell, mode or row that gives its target player a draw, a token, life or a loot declares a target entry (`Purpose.Targets`), so `PriceTargetPurposes` prices it as the seat's strength change instead of as a hit. Burn is not in this batch.
+
+Declared (23 cards): Ancestral Vision, Atlantis Attacks (the Leviathan mode), Blessed Alliance (the life mode), Blood Pact, Bloodgift Demon, Cease // Desist (Cease), Cephalid Coliseum, Compulsive Research, Deep Analysis, Depth Defiler (the loot mode), Echocasting Symposium, Etched Oracle, Flame of Anor (the draw mode), Flumph, Forbidden Orchard, Insatiable Avarice (the drain-and-draw mode), Loran of the Third Path, Oona's Grace, Rise of the Eldrazi (slot 1 only), Scheming Silvertongue's Sign in Blood, Secret Rendezvous, Sublime Epiphany (the draw mode) and Wedding Ring. Flumph, Loran and Secret Rendezvous also declare the controller's own draw, because "you and target opponent each draw" is two gifts. Compulsive Research declares the printed two discards, not the one-land alternative.
+
+Left undeclared, because no printed number says the amount:
+- X, or an amount counted at resolution: Blue Sun's Zenith, Damnable Pact, Drown in Dreams, Heliod's Intervention, Inscription of Abundance (the greatest power), Kozilek's Command, Peer into the Abyss (half a library), Stroke of Genius.
+- Generous Plunderer: the target opponent is chosen by a reflexive trigger, which has no row to carry a purpose.
+- Treacherous Pit-Dweller: what it hands over is a creature.
+
+The real-dump audit's "target gift" list goes from 30 cards to those 10. The gifts to the controller of a removal spell's target (Swords to Plowshares and the rest of #2679's list) cannot be declared here: their clause is a creature, and the guard refuses a player amount on one.
+
+**Curated decks.** Only Loran of the Third Path (esper-control) gains an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `50d5c34ec` and from this branch: 0 stalls in both, turns p50 13 in both, and wins esper-control 18 / 17, izzet-aggro 3 / 3, mono-black-aristocrats 21 / 21, simic-ramp 22 / 23. Nine games differ, and every one has a Loran in play: Loran's activation is taken 0 to 2 times in eight of them and 6 times in one, against 1 to 4 before, because aiming a symmetric draw at an opponent is no longer priced as an attack. Two more games differ without a Loran in either deck; a control run of the `develop` binary over seeds 1 to 3 differs from its own earlier run on seed 3 in the runner counters, so that is the residual tie-break nondeterminism, not this change. The suite is 41 of 41 before and after.
+
+#### Burn batch 1 (2026-10-08)
+
+The first burn batch of PR 5 declares a damage target entry (`DamageToTarget`, per clause and slot) on the dump audit's undeclared burn list, A through E in alphabetical order. No price code changed: declared burn goes through the existing `DamageByLethality` and `PriceTargetPurposes` code, and undeclared burn keeps today's price.
+
+Declared (34 cards): Aethertorch Renegade (both abilities), Agate Assault (the damage mode), Annihilating Fire, Arc-Slogger, Archangel of Wrath (both triggers), Balduvian Trading Post, Ballista Watcher // Ballista Wielder (both faces), Barbarian Ring, Betrayer's Bargain, Blasting Station, Bonecrusher Giant // Stomp (Stomp), Boros Charm (the damage mode), Bot Bashing Time, Breya, Etherium Shaper (the player-or-planeswalker ability), Brutal Expulsion (the damage mode), Burn the Accursed (the 5 at the creature; the 2 to its controller is not a target clause), Call In a Professional, Carbonize, Cathartic Pyre (the damage mode), Collective Defiance (the creature and opponent modes), Combust, Consulate Turret, Cramped Vents // Access Maze (Cramped Vents' 6; the life gained from the excess is not declared), Cut In (slot 0 only), Dawnsire, Sunstar Dreadnought (100), Demonic Pact (the damage mode), Desert, Dracosaur Auxiliary, Dynavolt Tower, Eiganjo, Seat of the Empire (channel), Electrickery (the single-target cast; overload clears the clause), Elspeth's Smite, Engulfing Flames and Explosive Derailment (the damage mode).
+
+Left undeclared (5):
+- Arrow Storm: 4, or 5 with raid, read as it resolves.
+- Burst Lightning: 2, or 4 kicked; the kicker is chosen at cast.
+- Cinder Strike: 2, or 4 if blight was paid.
+- Court of Ire: 2, or 7 if you are the monarch.
+- Drakuseth, Maw of Flames: 4 to the first target and 3 to each other target of one clause, which one entry per clause cannot say.
+
+The audit's burn list goes from 165 cards to 131: 34 declared, the 5 above left in A through E, and 126 from F on. Batch 2 starts at Fall of Cair Andros.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `a544704cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. One game of 64 differs between the two. A second run of the `develop` binary differs from its own first run in 2 games and ends at 20 / 2 / 22 / 20, the branch's numbers, so the difference is the run-to-run tie-break nondeterminism of #2730, not this change. The suite is 41 of 41 before and after.

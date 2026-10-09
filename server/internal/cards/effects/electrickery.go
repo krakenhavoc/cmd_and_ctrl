@@ -33,6 +33,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets: TargetCreature("target creature you don't control",
 			OpponentControls()),
+		// The overload cast clears the clause (it is the sweep below).
+		Purpose: ForTargets(DamageToTarget(0, 1)),
 		AlternativeCosts: []game.AlternativeCost{
 			CostWithPurpose(Overload("{1}{R}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, OpponentsOnly: true}}),
 		},

@@ -37,12 +37,12 @@ func init() {
 					}
 					return DrawCards{Player: t.ID, N: n}.Apply(ctx)
 				}),
-			ModeDoing("Collective Defiance deals 4 damage to target creature.",
+			ModeWithPurpose(ModeDoing("Collective Defiance deals 4 damage to target creature.",
 				TargetCreature("target creature"),
-				DealFixedDamageToModesTarget(4)),
-			ModeDoing("Collective Defiance deals 3 damage to target opponent or planeswalker.",
+				DealFixedDamageToModesTarget(4)), ForTargets(DamageToTarget(0, 4))),
+			ModeWithPurpose(ModeDoing("Collective Defiance deals 3 damage to target opponent or planeswalker.",
 				targetOpponentOrPlaneswalker(),
-				DealFixedDamageToModesTarget(3)),
+				DealFixedDamageToModesTarget(3)), ForTargets(DamageToTarget(0, 3))),
 		), EscalateMana("{1}")),
 	})
 }

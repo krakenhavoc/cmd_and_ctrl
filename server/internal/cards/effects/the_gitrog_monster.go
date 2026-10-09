@@ -40,6 +40,7 @@ func init() {
 		Completeness:        CompletenessFull,
 		PrintedKeywords:     []string{"deathtouch"},
 		AdditionalLandPlays: 1,
+		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("The Gitrog Monster — sacrifice this unless you sacrifice a land", gitrogUpkeepEffect),
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventLTB}, gitrogLandToGraveyard,
