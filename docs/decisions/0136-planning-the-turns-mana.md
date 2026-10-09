@@ -316,6 +316,33 @@ The two contestants are the same policy here, so the gap is the deck split, whic
 
 **Unchanged decisions.** `boteval suite run --policy heuristic` gives 41 of 41 (100%) on this branch and on `develop`, with the same move, layer and reason string at every position. Run 1 on `develop` at `e2b731dd3` gives the same winner and the same turn count in all 64 games. Its Cards table differs from this branch's by one window at a time on a few cards (Day of Judgment against Wrath of God, Sheoldred, Commander's Sphere). A second `develop` run differs from the first in the same way (Damnation against Day of Judgment), so this is run-to-run noise in how lockstep games break ties between equally priced cards, not this PR.
 
+### PR 4c: a rock against a spell over two turns, and an idle late rock (2026-10-09)
+
+"Before" is `develop` at `02da8bccb`, which includes PR 4b. "After" is the same tree with `PlanRockTwoTurns`, `PlanNextTurnDiscount` 0.75 and `IdleLateRocks` on. All runs use `--rotate --lockstep` and the real dump. **0 stalls in every run.** P1 is counted the owner's way from run 1's and run 3's decision logs: seat-games in which a rock or dork was offered in the bot's main phase while the deficit was open. A seat-game counts as used if the rock was cast at any point in the game. The stricter count requires the rock to have been cast in a window where the deficit was still open. The idle-rock rule casts some rocks later, after the deficit has closed, so the two counts now differ more than they did.
+
+| # | Measure | Before | After |
+|---|---|---|---|
+| P1 | run 1, rock used in a game where it was offered with an open deficit | 187 / 262, 71.4% (65.6–76.5); 6 of 18 cards at ≥ 80% | **211 / 249, 84.7% (79.7–88.7); 13 of 18 cards** |
+| P1 | the same, cast while the deficit was open | 174 / 262, 66.4% | 178 / 249, 71.5% |
+| P1 | run 3 (40 logged games), both counts | 122 / 142, 85.9%; 115 / 142 | 132 / 142, 93.0%; 124 / 142 |
+| | class (d) in run 1: windows, and turns in games where the rock was never cast | 100; 56 | **65; 24** |
+| P2 | run 1 stranded share | 281 / 3,063, 9.2% (`noplan` 8.7%) | **109 / 2,971, 3.7%** (`noplan` 109 / 2,996, 3.6%) |
+| | stranded turns whose best cast was a rock or dork priced ≤ 0 (run 1) | 169 of 248 | 15 of 107 |
+| P3 | run 2, `heuristic` won (seed 1, 96 games) | 51 / 192, 26.6% (20.8–33.2) | 44 / 192, 22.9% (17.5–29.4) |
+| P3 | run 2 with seed 101 added (192 games) | 101 / 384, 26.3% (22.1–30.9); `noplan` 91 | 92 / 384, 24.0% (20.0–28.5); `noplan` 100 |
+| P5 | suite | 41 / 41 | 41 / 41, the same move, layer and reason at every position |
+| P6 | plan misses, runs 1 / 2 (seed 1) / 3 | 6.0% / 3.9% / 5.7% | 6.0% / 4.4% / 5.7% |
+| P6 | turns p50, runs 1 / 3 | 14 / 10, 11 | 13 / 10, 11 |
+| P7 | decision p99, run 1, `heuristic` / `noplan` | 380 / 456 µs | 445 / 562 µs |
+
+Both rules act on `heuristic-noplan` differently. The two-turn comparison is part of the plan, so `noplan` never runs it. The idle late rock is ADR 0126's price, so `noplan` has it too. That is why `noplan`'s stranded share fell with `heuristic`'s, from 8.7% to 3.6%, and why P2 is not met against this branch's `noplan` (3.7% against a bar of 1.8%). Against `develop`'s `noplan` (8.7%) the bar is 4.35%, which is met.
+
+**The two-turn comparison alone.** In a scratch build, a contestant with only `PlanRockTwoTurns` off sat against `heuristic`, over the same two run-2 seed blocks. `heuristic` won 95 / 384 (24.7%, 20.7–29.3) and the contestant 97 / 384. The rule makes no detectable difference to strength. Run 2's move against `noplan` (101 to 92 wins) is within its noise: its interval still clears P3's bar.
+
+**Canaries (A3).** Run 1: Rhystic Study on simic-ramp 11 / 24 → 9 / 24 (below its 50% bar before and after), on esper-control 13 / 19 → 15 / 19; Harrow 14 / 30 → 14 / 25. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after. Run 3, pooled: Rhystic Study 108 / 218 (49.5%) → 108 / 229 (47.2%); Harrow 89 / 245 (36.3%) → 81 / 256 (31.6%). On simic-ramp an open deficit now sends the turn's mana to a rock that the bot used to spend on Rhystic Study or Harrow. Harrow's P4 is PR 5's.
+
+**The review-game windows** (game `8a9f18d7`), re-decided on this branch. On the logged views nothing changes: seq 133, 226 and 292 cast Arcane Signet, 180 casts Explosive Vegetation, and 402 and 475 cast Harmonize. With Oracle of Mul Daya's purpose as the catalog declares it today, 292 casts the Oracle and 402 and 475 cast the Oracle first, as before. Seq 180 changes. Before this change it cast the Oracle. Now the two-turn comparison casts Explosive Vegetation (`two turns: Explosive Vegetation now, then Arcane Signet → Tatyova, Benthic Druid (+6.19) over Oracle of Mul Daya now, then Explosive Vegetation (+5.36)`), which is the choice the worked table above gives for 180.
+
 ---
 
 ## Out of scope
