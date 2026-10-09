@@ -130,7 +130,12 @@
     setStackHoldStatus,
     stackHoldRemainingMs,
   } from "../lib/stackHold";
-  import { newTriggerOrderPrefState, triggerOrderPrefToSend } from "../lib/triggerOrderPref";
+  import {
+    newTriggerOrderPrefState,
+    triggerOrderPrefRefused,
+    triggerOrderPrefSent,
+    triggerOrderPrefToSend,
+  } from "../lib/triggerOrderPref";
   import { autoAnswersToSend, newAutoAnswersPrefState } from "../lib/autoAnswerPref";
   import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
   import {
@@ -811,10 +816,11 @@
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
 
-  // #1530: keep the server's copy of "always ask me to order my
-  // triggers" in step with the setting. The effect reads the live
-  // snapshot, never a replay frame, and sends only when the viewer's own
-  // seat disagrees (toggle, reconnect, restart). See triggerOrderPref.ts.
+  // #1530, #1968: keep the server's copy of the trigger-order setting in
+  // step with Settings. The effect reads the live snapshot, never a
+  // replay frame, and sends only when the viewer's own seat disagrees
+  // (a change, reconnect, restart). A refused send is forgotten, so the
+  // next frame tries again. See triggerOrderPref.ts.
   const triggerOrderPrefState = newTriggerOrderPrefState();
   $effect(() => {
     if (replaying) return;
@@ -822,11 +828,17 @@
       triggerOrderPrefState,
       $snapshot,
       viewerID,
-      $settings.gameplay.alwaysAskTriggerOrder,
+      $settings.gameplay.triggerOrder,
     );
     if (want !== null && viewerID) {
-      client.sendAction("set_trigger_order_preference", viewerID, { always_ask: want });
+      triggerOrderPrefSent(
+        triggerOrderPrefState,
+        client.sendAction("set_trigger_order_preference", viewerID, { trigger_order: want }),
+      );
     }
+  });
+  $effect(() => {
+    triggerOrderPrefRefused(triggerOrderPrefState, $lastError);
   });
 
   // ADR 0127 §3: the same for the standing answers. The server answers

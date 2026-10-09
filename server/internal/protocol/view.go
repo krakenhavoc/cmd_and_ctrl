@@ -1722,13 +1722,18 @@ type PlayerView struct {
 	// mulligan (CR 103.5, #2237). At most one seat has it; none does
 	// outside the mulligan window or while the opening roll is open.
 	MulliganTurn bool `json:"mulligan_turn,omitempty"`
-	// TriggerOrderAlwaysAsk reflects Player.TriggerOrderAlwaysAsk
-	// (#1530). Private to its seat: FilterViewFor clears it for every
-	// other viewer. The client compares it with its local setting and
-	// re-sends set_trigger_order_preference when they differ.
+	// TriggerOrder reflects Player.TriggerOrder (#1968): "always" or
+	// "never", omitted for the default, "when_it_matters". Private to
+	// its seat: FilterViewFor clears it for every other viewer. The
+	// client compares it with its synced setting and re-sends
+	// set_trigger_order_preference when they differ.
+	TriggerOrder string `json:"trigger_order,omitempty"`
+	// TriggerOrderAlwaysAsk is true when TriggerOrder is "always": the
+	// #1530 field, kept for a client from before #1968, which compares
+	// only this. Private to its seat like TriggerOrder.
 	TriggerOrderAlwaysAsk bool `json:"trigger_order_always_ask,omitempty"`
 	// AutoAnswers reflects Player.AutoAnswers (ADR 0127 §3), sorted by
-	// key. Private to its seat, like TriggerOrderAlwaysAsk: the client
+	// key. Private to its seat, like TriggerOrder: the client
 	// compares it with its synced setting and sends set_auto_answers
 	// when they differ.
 	AutoAnswers []AutoAnswerRuleView `json:"auto_answers,omitempty"`
@@ -8165,7 +8170,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		TriggerOrder:          viewOfTriggerOrder(p.TriggerOrder),
+		TriggerOrderAlwaysAsk: p.TriggerOrder == game.TriggerOrderAlways,
 		AutoAnswers:           viewOfAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
@@ -8477,8 +8483,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
 		out := p
-		// #1530: the trigger-ordering preference is the seat's own.
+		// #1530, #1968: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
+			out.TriggerOrder = ""
 			out.TriggerOrderAlwaysAsk = false
 			// ADR 0127 §8: and so are its standing answers.
 			out.AutoAnswers = nil
@@ -10835,4 +10842,14 @@ func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.
 		return nil
 	}
 	return out
+}
+
+// viewOfTriggerOrder is a seat's trigger-order mode as PlayerView
+// carries it: empty for the default, so a seat that never chose sends
+// nothing (#1968).
+func viewOfTriggerOrder(m game.TriggerOrderMode) string {
+	if m == game.TriggerOrderWhenItMatters {
+		return ""
+	}
+	return m.Wire()
 }

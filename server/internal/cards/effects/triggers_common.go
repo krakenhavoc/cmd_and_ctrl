@@ -72,8 +72,18 @@ type Applier interface {
 //
 // The first error stops the sequence and is reported as the item's
 // effect error; the item has still resolved (CR 608.2m).
+//
+// Not inlined, so every Do closure shares one code pointer and the
+// registry can recognise one (source_blind.go, #1968).
+//
+//go:noinline
 func Do(steps ...Applier) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
+		if item == doStepsProbe {
+			// The registry asking which primitives this is
+			// (source_blind.go). Never a real item.
+			return doSteps(steps)
+		}
 		ctx := NewContext(g, item)
 		for _, s := range steps {
 			if err := s.Apply(ctx); err != nil {

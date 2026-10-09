@@ -162,9 +162,12 @@ func TestDoubleBlockIsOneAfflictAndOneBlockTriggerPerBlocker(t *testing.T) {
 	if n := len(bdBlockEvents(g, game.EventBlock, h1)) + len(bdBlockEvents(g, game.EventBlock, h2)); n != 2 {
 		t.Errorf("each blocker blocks: %d block events, want 2", n)
 	}
-	// Two simultaneous triggers under one controller are ordered by
-	// that controller (CR 603.3b) before anything reaches the stack.
-	answerTriggerOrderInOfferedOrder(t, g)
+	// Two simultaneous triggers under one controller, but copies of one
+	// source-blind ability ("create a Food"), so no CR 603.3b order is
+	// asked for (#1968, ADR 0018's #1968 amendment).
+	if ch := triggerOrderPrompt(g); ch != nil {
+		t.Fatalf("asked to order two Savvy Hunters' Food triggers: %+v", ch)
+	}
 	passPriorityAroundTable(t, g)
 	if got := b30TokensNamed(g, opp.ID, "Food"); got != 2 {
 		t.Errorf("one Food per blocking Hunter: %d", got)

@@ -164,3 +164,4 @@ body tether-technician/strike
 option option-pick/lim-duls-hex-pay
 option option-pick/thrull-wizard-pay
 option option-pick/winters-chill-pay
+body synthetic-destiny/reveal-that-many-creatures

@@ -4492,6 +4492,7 @@ seats[].statics[].timing.filter.withCounter	string
 seats[].statics[].timing.fromZone	string
 seats[].statics[].timing.label	string
 seats[].statics[].timing.timing	string
+seats[].triggerOrder	string
 seats[].triggerOrderAlwaysAsk	bool
 seats[].turnsBegun	number:int
 seats[].undosRemaining	number:int
