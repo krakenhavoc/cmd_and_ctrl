@@ -21,17 +21,18 @@ import (
 // The name is NOT kept, so a copy of your own legend is a second
 // legend of that name, which the exemption is there to allow.
 //
-// Partner is not modelled, as for every partner card: the deck checker
-// allows one commander only. It is deck construction, not battlefield
-// behaviour.
+// Partner is deck construction, not battlefield behaviour (CR
+// 702.124h): internal/deck reads it off the oracle text (#2874), so
+// Sakashima can be one of two partner commanders.
+//
+// No simplification.
 const sakashimaFacesGrant = "sakashima-of-a-thousand-faces/legend-rule"
 
 func init() {
 	Register(Spec{
 		OracleID:             "8ecdaf4b-4442-42da-9714-4257a83faf50",
 		Name:                 "Sakashima of a Thousand Faces",
-		Completeness:         CompletenessCaveats,
-		Caveats:              []string{"Partner does nothing — a deck can still only have one commander."},
+		Completeness:         CompletenessFull,
 		LegendRuleExemptions: LegendRuleDoesntApplyToYours(),
 		Grants: []AbilityGrant{{
 			Key:              sakashimaFacesGrant,

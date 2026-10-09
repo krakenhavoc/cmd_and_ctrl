@@ -33,17 +33,16 @@ import (
 // "Put that card into its owner's hand" moves it for its owner, not
 // for the Ghost's controller.
 //
-// Sandbox simplification, declared, the one Breeches, Brazen Plunderer
-// carries: Partner is not implemented, and the deck importer refuses a
-// commander whose text mentions it (deck.mentionsUnsupportedMechanic),
-// so the Ghost can't be a commander at all. As a card in the deck it
-// is complete.
+// Partner is a deck-construction rule (CR 702.124h) that internal/deck
+// reads off the oracle text (#2874), so the Ghost can be one of two
+// partner commanders.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "07fe0fb5-cf34-4ba4-a3f3-ac0cc919bf91",
 		Name:         "Ghost of Ramirez DePietro",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Partner isn't supported, so the Ghost can't be your commander."},
+		Completeness: CompletenessFull,
 		BlockRules: []game.BlockRule{
 			CantBeBlockedBy(OnSelf(), ToughnessGE(3), "creatures with toughness 3 or greater"),
 		},

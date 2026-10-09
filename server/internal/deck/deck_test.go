@@ -216,16 +216,17 @@ func TestResolveUnknownNamesBatched(t *testing.T) {
 	}
 }
 
-// TestResolvePartnerSniff covers the oracle-text heuristic for
-// catching cards with unsupported mechanics. Uses a synthetic card
-// because the partner keyword depends on real oracle text.
-func TestResolvePartnerSniff(t *testing.T) {
-	partner := basicLegal("Thrasios, Triton Hero", "Legendary Creature — Merfolk Wizard", "U", "G")
-	partner.OracleText = "Whenever Thrasios deals combat damage. Partner (You can have two commanders if both have partner.)"
-	idx := indexWith(partner)
-	_, err := Resolve(idx, "t", []Entry{{Name: "Thrasios, Triton Hero", Count: 1, IsCommander: true}})
+// TestResolveCompanionSniff covers the oracle-text heuristic for
+// catching cards with unsupported mechanics: a commander that prints
+// companion is refused (#2874 left it the only one). Uses a synthetic
+// card because the keyword depends on real oracle text.
+func TestResolveCompanionSniff(t *testing.T) {
+	lurrus := basicLegal("Lurrus of the Dream-Den", "Legendary Creature — Cat Nightmare", "W", "B")
+	lurrus.OracleText = "Companion \u2014 Each permanent card in your starting deck has mana value 2 or less.\nLifelink"
+	idx := indexWith(lurrus)
+	_, err := Resolve(idx, "t", []Entry{{Name: "Lurrus of the Dream-Den", Count: 1, IsCommander: true}})
 	if !errors.Is(err, ErrUnsupportedMechanic) {
-		t.Errorf("partner: got %v, want ErrUnsupportedMechanic", err)
+		t.Errorf("companion: got %v, want ErrUnsupportedMechanic", err)
 	}
 }
 
@@ -248,19 +249,19 @@ func TestResolvePartnerSniffCommanderOnly(t *testing.T) {
 }
 
 // TestResolveUnsupportedMechanicErrorShape covers the new structured
-// error that Resolve returns for partner/companion so the HTTP layer
-// can emit `{"violations": [...]}` without pattern-matching messages.
+// error that Resolve returns for companion so the HTTP layer can emit
+// `{"violations": [...]}` without pattern-matching messages.
 func TestResolveUnsupportedMechanicErrorShape(t *testing.T) {
-	partner := basicLegal("Thrasios, Triton Hero", "Legendary Creature", "U", "G")
-	partner.OracleText = "Partner (You can have two commanders if both have partner.)"
-	idx := indexWith(partner)
-	_, err := Resolve(idx, "t", []Entry{{Name: "Thrasios, Triton Hero", Count: 1, IsCommander: true}})
+	lurrus := basicLegal("Lurrus of the Dream-Den", "Legendary Creature", "W", "B")
+	lurrus.OracleText = "Companion \u2014 Each permanent card in your starting deck has mana value 2 or less."
+	idx := indexWith(lurrus)
+	_, err := Resolve(idx, "t", []Entry{{Name: "Lurrus of the Dream-Den", Count: 1, IsCommander: true}})
 	var ume *UnsupportedMechanicError
 	if !errors.As(err, &ume) {
 		t.Fatalf("Resolve: got %v, want *UnsupportedMechanicError", err)
 	}
-	if ume.Card != "Thrasios, Triton Hero" {
-		t.Errorf("card: got %q, want Thrasios", ume.Card)
+	if ume.Card != "Lurrus of the Dream-Den" {
+		t.Errorf("card: got %q, want Lurrus", ume.Card)
 	}
 	vs := ume.Violations()
 	if len(vs) != 1 || vs[0].Code != CodeUnsupportedMechanic {

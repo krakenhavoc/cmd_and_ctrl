@@ -39,13 +39,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed card, and it is why a commander wearing this is not
 // actually safe.
 //
-// PARTNER IS NOT MODELLED, and that is the catalog-wide posture
-// rather than a gap in this file: the engine has no two-commander
-// deck construction, so the keyword has nothing to grant. Nothing
-// about the indestructible grant depends on it — it reads
-// Card.IsCommander, so whichever commanders a deck does have are
-// covered. Declared as a caveat because a player sleeving Anara is
-// sleeving her for the partner slot.
+// Partner is a deck-construction rule (CR 702.124h) that internal/deck
+// reads off the oracle text (#2874): Anara and another partner card
+// are a legal pair of commanders. Nothing about the indestructible
+// grant depends on it — it reads Card.IsCommander.
+//
+// No simplification.
 func init() {
 	commanderYouControlOnYourTurn := func(target *game.Card, g *game.Game, source *game.Card) bool {
 		return target.IsCommander &&
@@ -55,8 +54,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a59ff932-f758-476e-ba31-0623bd748231",
 		Name:         "Anara, Wolvid Familiar",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Partner does nothing — a deck can still only have one commander."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:     game.Layer6Ability,
 			AppliesTo: commanderYouControlOnYourTurn,

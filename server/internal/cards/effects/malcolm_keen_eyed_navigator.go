@@ -32,14 +32,16 @@ import (
 // each), and three Pirates into the SAME opponent now makes one, not
 // three.
 //
-// Partner is a deck-construction rule, not a game action, and is
-// not modelled.
+// Partner is a deck-construction rule (CR 702.124h) that internal/deck
+// reads off the oracle text (#2874), so Malcolm can be one of two
+// partner commanders.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "a66f8b44-0163-4456-b152-4acefab896a4",
 		Name:            "Malcolm, Keen-Eyed Navigator",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Partner isn't supported, so Malcolm can't be your commander."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatchPerPlayer(On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
