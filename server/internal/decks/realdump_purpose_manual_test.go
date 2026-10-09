@@ -128,6 +128,7 @@ var reviewedNotAWipe = map[string]string{
 	"Soul-Guide Lantern":                       "exiles graveyards",
 	"Soulblast":                                "sacrifices only its caster's creatures, as a cost (#2097); the heuristic declines the cast",
 	"Sundial of the Infinite":                  "ends the turn",
+	"Synthetic Destiny":                        "exiles only its caster's creatures, then returns that many from the library",
 	"Time Stop":                                "ends the turn",
 	"Ugin's Binding":                           "a single target, and an exile from the graveyard",
 	"Ugin, the Spirit Dragon":                  "the -X sweep is not registered (its caveat says so)",
