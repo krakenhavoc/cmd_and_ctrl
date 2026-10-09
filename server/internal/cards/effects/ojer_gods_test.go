@@ -127,6 +127,66 @@ func TestOjerAxonilReturnsAsTempleOfPower(t *testing.T) {
 	}
 }
 
+// Temple of Power (#2662): the transform needs 4 noncombat damage from
+// red sources its controller controlled this turn, and sorcery timing.
+// A green source's damage does not count; 3 + 1 from red sources does.
+func TestTempleOfPowerTransformsAfterFourRedNoncombat(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	god := importToBattlefield(t, g, ojerAxonilRow(), me)
+	ojerKill(t, g, god)
+	passPriorityAroundTable(t, g)
+	temple := ojerOnBattlefield(g, ojerAxonilOracleID)
+	if temple == nil {
+		t.Fatal("no Temple")
+	}
+	id := temple.InstanceID
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	red := pushVanillaCreature(g, me.ID, "Red Pinger", 1, 1)
+	green := pushVanillaCreature(g, me.ID, "Green Pinger", 1, 1)
+	g.WithWriteLock(func() {
+		for i := range g.Battlefield.Cards {
+			switch g.Battlefield.Cards[i].InstanceID {
+			case red:
+				g.Battlefield.Cards[i].Colors = []string{"R"}
+			case green:
+				g.Battlefield.Cards[i].Colors = []string{"G"}
+			}
+		}
+	})
+	ping := func(src uuid.UUID, n int) {
+		t.Helper()
+		var err error
+		g.WithWriteLock(func() { err = g.DealDamageToPlayerForEffect(src, opp.ID, n) })
+		if err != nil {
+			t.Fatalf("ping: %v", err)
+		}
+	}
+	try := func() error {
+		g.WithWriteLock(func() { ojerOnBattlefield(g, ojerAxonilOracleID).Tapped = false })
+		me.ManaPool.EmptyPool()
+		fillPoolColored(me, "R", 3)
+		return g.ActivateCatalogAbility(me.ID, id, 0, game.ActivateAbilityParams{})
+	}
+
+	ping(green, 5)
+	ping(red, 3)
+	if err := try(); err == nil {
+		t.Fatal("transformed with 3 red noncombat damage (and 5 green)")
+	}
+	ping(red, 1)
+	if err := try(); err != nil {
+		t.Fatalf("activate with 4 red noncombat damage: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	back := ojerOnBattlefield(g, ojerAxonilOracleID)
+	if back == nil || back.ActiveFace != 0 || back.Name != "Ojer Axonil, Deepest Might" {
+		t.Fatalf("after the transform: %+v, want the God again", back)
+	}
+}
+
 // Temple of Cyclical Time: each tap adds {U} and removes a time
 // counter; a land with none left still taps and removes nothing; the
 // transform needs no counters and sorcery timing.

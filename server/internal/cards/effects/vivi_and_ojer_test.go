@@ -235,11 +235,9 @@ func TestOjerAxonilLeavesCombatDamageAlone(t *testing.T) {
 	}
 }
 
-// The declared simplification, pinned: the dies trigger exists now
-// (#1900); what is left is the back face's transform-back ability, and
-// the card says so where a player reads it. This test flips when the
-// noncombat-damage tally lands.
-func TestOjerAxonilShipsWithoutTheTempleTransformBack(t *testing.T) {
+// Both faces ship whole since #2662: the noncombat-damage tally is the
+// Temple's condition, so the transform-back ability is registered.
+func TestOjerAxonilShipsWithTheTempleTransformBack(t *testing.T) {
 	spec, ok := Lookup(ojerAxonilOracle)
 	if !ok {
 		t.Fatal("Ojer Axonil is registered")
@@ -247,11 +245,12 @@ func TestOjerAxonilShipsWithoutTheTempleTransformBack(t *testing.T) {
 	if len(spec.Triggered) != 1 {
 		t.Errorf("want the dies trigger, got %d triggers", len(spec.Triggered))
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("completeness %v with %d caveats, want caveats with exactly one", spec.Completeness, len(spec.Caveats))
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("completeness %v with %d caveats, want full with none", spec.Completeness, len(spec.Caveats))
 	}
-	if back, ok := Lookup(ojerAxonilOracle + "#1"); !ok || len(back.Activated) != 0 {
-		t.Error("the Temple's transform ability would be stronger than printed without its condition")
+	back, ok := Lookup(ojerAxonilOracle + "#1")
+	if !ok || back.Completeness != CompletenessFull || len(back.Caveats) != 0 || len(back.Activated) != 1 {
+		t.Error("Temple of Power ships full with its transform ability")
 	}
 	if !hasAbility(spec.PrintedKeywords, "trample") {
 		t.Error("Ojer prints trample")
