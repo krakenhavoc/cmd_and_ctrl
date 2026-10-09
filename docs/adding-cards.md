@@ -418,6 +418,11 @@ PendingChoice for the controller to resolve:
 - `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
   tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
   choose-a-color card" below.
+- `"{W|U|B|R|G:2}"` — Firemind Vessel (#2558): "Add two mana of
+  different colors", ONE slot whose two mana must be two different
+  colours. Use `DifferentColors(n)`. Never write it as two pipes,
+  `"{W|U|B|R|G}{W|U|B|R|G}"`: that allows `{U}{U}`, stronger than
+  printed. See "Adding a choose-a-color card" below.
 
 Mana abilities can carry cost components beyond `{T}`:
 
@@ -6478,6 +6483,17 @@ they are mutually exclusive, and the plan carries the colour through to
 the executor — so a Gilded Lotus funds `{3}{U}{U}` beside two Islands
 and never funds `{W}{U}` alone, and the surplus floats
 ([ADR 0040](decisions/0040-mana-pipeline.md) #779 addendum).
+
+**"N mana of different colors"** (#2558) is the opposite constraint:
+N picks that must all DIFFER, written `DifferentColors(2)`
+(`"{W|U|B|R|G:2}"`). A click names the pair up front and a repeat is
+refused before anything is paid; the `mana_pick` prompt asks one colour
+at a time with the earlier answers struck out and adds both mana
+together after the last; the auto-tapper offers one candidate per pair.
+A spell or trigger may add it through `AddManaForEffect` too, without
+restrictions (Firemind Vessel, Guild Globe, Component Pouch, Interplanar
+Beacon; tests in
+[different_colors_cards_test.go](../server/internal/cards/effects/different_colors_cards_test.go)).
 
 **Tests**: `pushChosenColorPermanent` and `answerColor` in
 [color_choice_cards_test.go](../server/internal/cards/effects/color_choice_cards_test.go).

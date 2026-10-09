@@ -3989,6 +3989,11 @@ export interface ManaAbilityView {
   // answer up front as `activate_mana_ability`'s `color` / `colors`, so
   // nothing is tapped until the player has chosen.
   color_options?: string[][];
+  // #2558: the ability adds "N mana of different colors" (Firemind
+  // Vessel, "{W|U|B|R|G:2}"). Its N lists in color_options are one per
+  // mana and the answer must name N DIFFERENT colours; the server
+  // refuses a repeated one before anything is paid.
+  different_colors?: boolean;
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's

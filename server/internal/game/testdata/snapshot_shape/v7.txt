@@ -1697,6 +1697,10 @@ pendingChoices[].loopShortcutKey	string
 pendingChoices[].loopShortcutRepeat	bool
 pendingChoices[].manaAmounts	map:string
 pendingChoices[].manaAmounts{}	number:int
+pendingChoices[].manaChosen	array
+pendingChoices[].manaChosen[]	string
+pendingChoices[].manaDifferent	number:int
+pendingChoices[].manaLabel	string
 pendingChoices[].manaRestrictions	array
 pendingChoices[].manaRestrictions[]	string
 pendingChoices[].manaRiders	array

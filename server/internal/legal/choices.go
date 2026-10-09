@@ -197,6 +197,12 @@ func (e *enumerator) choiceMoves() bool {
 				if v, ok := c.ManaAmounts[color]; ok {
 					n = v
 				}
+				// #2558: one colour of "N mana of different colors" adds
+				// nothing on its own until the last is named.
+				if c.ManaDifferent > 0 {
+					e.addChoice(c, reason+": name {"+color+"}", p)
+					continue
+				}
 				e.addChoice(c, reason+": add "+strings.Repeat("{"+color+"}", n), p)
 			}
 

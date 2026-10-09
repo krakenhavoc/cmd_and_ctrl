@@ -2976,6 +2976,16 @@ var items = []Item{
 		EngineNotes: "mana pool: `emptyAllManaPoolsLocked` (`game/mana.go`) now calls `sweepManaPoolLocked` (`game/mana_keep.go`, #2166), which keeps or converts each token from three sources: a static over the pool derived from the battlefield (`Spec.ManaPool`, read through `CatalogManaPool`: keep all, keep some colours, or Kruphix's becomes-colourless, which keeps the token's restrictions), a granted player statement with a duration (`PlayerStatic.KeepManaColors`, `GrantKeepManaForEffect`; The Last Agni Kai), and a per-mana mark (`ManaRiderKeepUntilEndOfTurn`, `effects.KeepManaUntilEndOfTurn()` in `AddMana.Riders`; Karn, Savage Ventmaw) that expires when the cleanup step begins. Not built: Omnath, Locus of Mana (its +1/+1 per unspent green mana needs a layer 7 read of the pool, which nothing recomputes when the pool changes), and Leyline Tyrant's dies trigger.",
 	},
 	{
+		Slug: "mana-of-different-colors", Name: "Two mana of different colors", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Mana abilities that add two mana of different colors, such as Firemind Vessel's and Guild Globe's: you name two colors, and you can't name the same one twice.",
+		Rules:       []string{"106.1a", "605.3b", "106.12a"},
+		Issue:       2558,
+		ADR:         "0040-mana-pipeline.md",
+		Printed:     `(?i)\bmana of different colors\b`,
+		Examples:    []string{"Firemind Vessel", "Guild Globe", "Interplanar Beacon", "Component Pouch"},
+		EngineNotes: "produced-mana grammar: `\"{W|U|B|R|G:2}\"` is ONE slot (`ProducedManaEntry.Distinct`, `effects.DifferentColors(n)`), because two independent pipes would allow {U}{U}. A colour named up front (#1443) is refused if repeated (`validateUpfrontManaColors`); otherwise one `mana_pick` carries `ManaDifferent` and asks a colour at a time, striking each answer from the next, and adds all N together on the last answer, so a \"tapped for mana\" trigger fires once. The auto-tapper offers one candidate per set of colours (`appendTapSource`, `plannedTap.DifferentColors`). The view marks the row `different_colors`. See `game/mana_different_colors.go` and the closed-seam entry.",
+	},
+	{
 		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Permissions that let you cast one spell of each card type, such as Muldrotha, the Gravetide's \"a permanent spell of each permanent type from your graveyard\" during each of your turns and Aminatou's Augury's free casts from among the cards it exiled.",
 		Missing:     "A permission can allow a number of casts, but can't allow one for each card type, so these cards can't be added yet.",

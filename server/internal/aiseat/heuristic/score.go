@@ -821,7 +821,8 @@ func repeatableMana(c *protocol.CardView) int {
 // from its `produced` string. Each brace is one mana: "{C}{C}" is two,
 // and a choice "{W|U|B|R|G}" is one. A choice of N of one colour is
 // written with the count on each option ("{W3|U3|B3|R3|G3}",
-// effects.OneColorOfAmount) and is N. An empty string is a derived
+// effects.OneColorOfAmount) and is N, and so is N mana of different
+// colors ("{W|U|B|R|G:2}", effects.DifferentColors). An empty string is a derived
 // output the view cannot size (Cabal Coffers, Gaea's Cradle), counted
 // as one.
 func manaAmount(produced string) int {
@@ -840,6 +841,13 @@ func manaAmount(produced string) int {
 		}
 		sym := produced[i+1 : i+j]
 		produced = produced[i+j+1:]
+		// #2558: "{W|U|B|R|G:2}" is two mana of different colors.
+		if k := strings.LastIndexByte(sym, ':'); k >= 0 {
+			if m, err := strconv.Atoi(sym[k+1:]); err == nil && m > 0 {
+				total += m
+				continue
+			}
+		}
 		if k := strings.IndexByte(sym, '|'); k >= 0 {
 			sym = sym[:k]
 		}

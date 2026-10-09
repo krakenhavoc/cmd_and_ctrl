@@ -331,6 +331,12 @@ func (g *Game) describePlanLocked(controller uuid.UUID, plan tapPlan) []AutoTapP
 type plannedTap struct {
 	CardID   uuid.UUID
 	OneColor string
+	// DifferentColors is the set of colours the solver booked a
+	// "two mana of different colors" source for (#2558), carried for
+	// OneColor's reason: the source is one pick of N colours, and the
+	// executor must mint the set the plan priced, not re-derive one.
+	// Nil on every other source.
+	DifferentColors []string
 	// Ref names the mana ability the solver booked (ADR 0093 Decision
 	// 6): a permanent may offer several since the planner stopped
 	// taking only the first, and the executor must fire the one the
@@ -662,6 +668,14 @@ type tapSource struct {
 	//
 	// Empty on every ordinary source.
 	OneColor string
+
+	// DifferentColors is OneColor's sibling for an "N mana of different
+	// colors" source (#2558): the one set of colours this candidate
+	// spends the source's pick on, with Slots already expanded to one
+	// fixed slot per colour. Firemind Vessel contributes ten such
+	// candidates, one per pair, and they are alternatives exactly as a
+	// Gilded Lotus's are. Nil on every other source.
+	DifferentColors []string
 
 	// Wanted marks a source whose kinds satisfy the announcement's
 	// wish (#1212) — a Treasure, when the spell being cast reads "if
@@ -1164,6 +1178,33 @@ func oneColorSlot(slots []ProducedManaEntry) int {
 // added Sacrifices, #1228 LeavesHand) without this function growing
 // another positional bool for each.
 func appendTapSource(out []tapSource, proto tapSource, slots []ProducedManaEntry) []tapSource {
+	// #2558: an "N mana of different colors" slot is one candidate per
+	// set of N colours, each with the slot expanded to one fixed slot
+	// per colour — the Lotus expansion below, with a set in place of a
+	// colour. A source that also has a one-colour pick, or two such
+	// slots, is a shape no printed card has; the planner declines it
+	// and the player taps it by hand.
+	switch di := differentColorSlot(slots); di {
+	case oneColorSlotNone:
+	case oneColorSlotUnplannable:
+		return out
+	default:
+		if oneColorSlot(slots) != oneColorSlotNone {
+			return out
+		}
+		pick := slots[di]
+		for _, set := range differentColorSets(pick.Options, pick.DistinctCount(pick.Options)) {
+			variant, ok := expandDifferentColors(slots, set)
+			if !ok {
+				continue
+			}
+			candidate := proto
+			candidate.Slots = variant
+			candidate.DifferentColors = set
+			out = append(out, candidate)
+		}
+		return out
+	}
 	idx := oneColorSlot(slots)
 	switch idx {
 	case oneColorSlotNone:
@@ -1829,7 +1870,7 @@ func solveColored(
 			if !wasUsed {
 				used[i] = true
 				pain.spend(sources[i])
-				*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
+				*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, DifferentColors: sources[i].DifferentColors, Ref: sources[i].Ref})
 			}
 			consumed[i][slotIdx] = true
 			if solveColored(sources, used, consumed, plan, reqs, reqIdx+1, budget, deferred, pain) {
@@ -1980,7 +2021,7 @@ func recruitGeneric(
 		}
 		pain.spend(sources[i])
 		used[i] = true
-		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, Ref: sources[i].Ref})
+		*plan = append(*plan, plannedTap{CardID: sources[i].CardID, OneColor: sources[i].OneColor, DifferentColors: sources[i].DifferentColors, Ref: sources[i].Ref})
 		deficit -= len(sources[i].Slots)
 		if deficit <= 0 {
 			return true
