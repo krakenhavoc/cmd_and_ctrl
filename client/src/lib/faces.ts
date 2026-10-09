@@ -183,6 +183,7 @@ export function castSurfaceOf(s: CastSurfaceView) {
     tap_cost: s.tap_cost,
     delve: s.delve,
     target_cost_notes: s.target_cost_notes,
+    permission_types: s.permission_types,
     phyrexian_symbols: s.phyrexian_symbols,
     phyrexian_granted: s.phyrexian_granted,
     castable_here: s.castable_here,
