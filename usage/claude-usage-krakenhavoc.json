@@ -1,0 +1,122 @@
+{
+ "days": {
+  "2026-05-29": {
+   "claude-opus-4-8": {
+    "cache_read": 74967101,
+    "cache_write_1h": 658246,
+    "cache_write_5m": 0,
+    "input": 7145,
+    "output": 334048,
+    "requests": 274
+   }
+  },
+  "2026-09-04": {
+   "claude-fable-5-1": {
+    "cache_read": 7425963,
+    "cache_write_1h": 553345,
+    "cache_write_5m": 0,
+    "input": 790,
+    "output": 25201,
+    "requests": 14
+   }
+  },
+  "2026-09-05": {
+   "claude-fable-5-1": {
+    "cache_read": 1227213,
+    "cache_write_1h": 563463,
+    "cache_write_5m": 0,
+    "input": 114,
+    "output": 3147,
+    "requests": 3
+   }
+  },
+  "2026-09-10": {
+   "claude-opus-5": {
+    "cache_read": 343275345,
+    "cache_write_1h": 1016917,
+    "cache_write_5m": 4567934,
+    "input": 3568,
+    "output": 719141,
+    "requests": 1784,
+    "subagent_requests": 1527
+   }
+  },
+  "2026-09-11": {
+   "claude-opus-5": {
+    "cache_read": 2091382318,
+    "cache_write_1h": 1436449,
+    "cache_write_5m": 23764186,
+    "input": 20296,
+    "output": 3366687,
+    "requests": 10148,
+    "subagent_requests": 9601
+   },
+   "claude-sonnet-5": {
+    "cache_read": 1182291,
+    "cache_write_1h": 0,
+    "cache_write_5m": 66023,
+    "input": 56,
+    "output": 9057,
+    "requests": 28,
+    "subagent_requests": 28
+   }
+  },
+  "2026-09-13": {
+   "claude-opus-5": {
+    "cache_read": 151358913,
+    "cache_write_1h": 1308851,
+    "cache_write_5m": 1527624,
+    "input": 1432,
+    "output": 331200,
+    "requests": 716,
+    "subagent_requests": 562
+   }
+  },
+  "2026-09-14": {
+   "claude-opus-5": {
+    "cache_read": 1357539747,
+    "cache_write_1h": 448676,
+    "cache_write_5m": 16232094,
+    "input": 13506,
+    "output": 2016346,
+    "requests": 6753,
+    "subagent_requests": 6484
+   }
+  },
+  "2026-09-18": {
+   "claude-opus-5": {
+    "cache_read": 656633640,
+    "cache_write_1h": 1062400,
+    "cache_write_5m": 7963488,
+    "input": 6336,
+    "output": 2278922,
+    "requests": 3168,
+    "subagent_requests": 2710
+   }
+  },
+  "2026-10-02": {
+   "claude-opus-5": {
+    "cache_read": 199300,
+    "cache_write_1h": 3159,
+    "cache_write_5m": 0,
+    "input": 2,
+    "output": 1252,
+    "requests": 1
+   }
+  },
+  "2026-10-09": {
+   "claude-opus-5-5": {
+    "cache_read": 1231846,
+    "cache_write_1h": 113564,
+    "cache_write_5m": 0,
+    "input": 20,
+    "output": 3862,
+    "requests": 10
+   }
+  }
+ },
+ "person": "krakenhavoc",
+ "schema": 1,
+ "transcripts_cover_from": "2026-05-29",
+ "updated": "2026-10-09T16:13:03+00:00"
+}
