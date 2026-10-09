@@ -20,6 +20,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"wither"},
 		Targets:         TargetAny(),
+		Purpose:         ForTargets(DamageToTarget(0, 3)),
 		OnResolve:       damageToFirstTarget(3),
 	})
 }

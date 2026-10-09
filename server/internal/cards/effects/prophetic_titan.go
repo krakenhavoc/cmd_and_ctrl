@@ -25,9 +25,9 @@ func init() {
 	t := WhenThisEnters("Prophetic Titan — choose one; both with delirium",
 		func(*game.Game, *game.StackItem) error { return nil })
 	t.Modes = ChooseOne(
-		ModeDoing("This creature deals 4 damage to any target.",
+		ModeWithPurpose(ModeDoing("This creature deals 4 damage to any target.",
 			TargetAny(),
-			DealFixedDamageToModesTarget(4)),
+			DealFixedDamageToModesTarget(4)), ForTargets(DamageToTarget(0, 4))),
 		ModeDoing("Look at the top four cards of your library. Put one of them into your hand and the rest on the bottom of your library in a random order.",
 			nil,
 			func(item *game.StackItem, ctx *Context, _ int) error {

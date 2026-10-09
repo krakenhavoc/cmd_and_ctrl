@@ -41,6 +41,7 @@ func init() {
 					return ok && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Elemental")
 				},
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 3)),
 				Key:     "Omnath, Locus of Rage — 3 damage to any target",
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					if len(item.Targets) == 0 {

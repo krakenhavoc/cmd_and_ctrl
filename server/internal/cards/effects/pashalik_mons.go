@@ -37,6 +37,7 @@ func init() {
 				return cardDied(ev, source) || b25AnotherGoblinYouControlDied(ev, source, g)
 			},
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Key:     "Pashalik Mons — deal 1 damage to any target",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

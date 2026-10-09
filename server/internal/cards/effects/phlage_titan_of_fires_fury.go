@@ -44,7 +44,7 @@ func init() {
 		AlternativeCosts: []game.AlternativeCost{Escape("{R}{R}{W}{W}", 5)},
 		Triggered: []game.TriggeredAbility{
 			SacrificeThisUnlessItEscaped("Phlage"),
-			Targeting(
+			TriggerWithPurpose(Targeting(
 				WhenThisEntersOrAttacks("Phlage — 3 damage to any target, gain 3 life", func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					if len(item.Targets) > 0 {
@@ -63,7 +63,7 @@ func init() {
 					return GainLife{Player: item.Controller, Amount: 3}.Apply(ctx)
 				}),
 				TargetAny(),
-			),
+			), ForTargets(DamageToTarget(0, 3))),
 		},
 	})
 }

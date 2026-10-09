@@ -32,6 +32,7 @@ func init() {
 				return ev.CardID != uuid.Nil
 			},
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Key:     "Mayhem Devil — deal 1 damage",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 {

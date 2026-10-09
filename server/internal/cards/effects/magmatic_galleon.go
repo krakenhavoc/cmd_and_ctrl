@@ -37,9 +37,9 @@ func init() {
 		Name:         "Magmatic Galleon",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Magmatic Galleon — 5 damage to target creature an opponent controls",
+			TriggerWithPurpose(Targeting(WhenThisEnters("Magmatic Galleon — 5 damage to target creature an opponent controls",
 				magmaticGalleonETBDamage),
-				TargetCreature("target creature an opponent controls", OpponentControls())),
+				TargetCreature("target creature an opponent controls", OpponentControls())), ForTargets(DamageToTarget(0, 5))),
 			OncePerBatch(On(game.EventDealDamage, magmaticGalleonExcessNoncombatDamage,
 				"Magmatic Galleon — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1}))),
 		},
