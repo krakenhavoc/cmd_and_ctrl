@@ -60,6 +60,14 @@ type GrantedAbility struct {
 	// nothing else — the rules never ask who granted an ability, only
 	// whether the object has it (CR 113.10).
 	Source uuid.UUID
+	// Activator is the "you" of the granting effect: the controller of
+	// the static's source, or of the resolving spell or ability whose
+	// duration grant this is, as the layer pass writes it. Nothing reads
+	// it but a granted row that says "Only you may activate this
+	// ability" (ActivatedAbilityShape.GrantorOnly, ADR 0106 §1 amendment
+	// 2026-10-09, #1947). A creature that changes hands keeps the player
+	// who gave it the ability, because that is who "you" was.
+	Activator uuid.UUID
 }
 
 // GrantAbility appends one granted bundle to a characteristic. It is
@@ -70,12 +78,12 @@ type GrantedAbility struct {
 //
 // Identical grants are NOT merged (ADR 0093 Decision 5, CR 113.2c): two
 // Cryptolith Rites give a creature two instances of the ability.
-func (c *Characteristic) GrantAbility(key string, source uuid.UUID) {
+func (c *Characteristic) GrantAbility(key string, source, activator uuid.UUID) {
 	key = GrantKey(key)
 	if key == "" {
 		return
 	}
-	c.GrantedAbilities = append(c.GrantedAbilities, GrantedAbility{Key: key, Source: source})
+	c.GrantedAbilities = append(c.GrantedAbilities, GrantedAbility{Key: key, Source: source, Activator: activator})
 }
 
 // layeredGrants returns the object's current layer-6 grants, or nil for
@@ -185,6 +193,10 @@ type AbilityOrigin struct {
 	// GrantedBy is the granting object for a granted row; uuid.Nil
 	// otherwise.
 	GrantedBy uuid.UUID
+	// Activator is the player the grant's "you" was when it was
+	// written (GrantedAbility.Activator); uuid.Nil for an own or
+	// intrinsic row.
+	Activator uuid.UUID
 }
 
 // Granted reports whether the row is a layer-6 grant.
@@ -317,6 +329,7 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 					Ref:       GrantedAbilityRef(gr.Key, i, n),
 					Grant:     gr.Key,
 					GrantedBy: gr.Source,
+					Activator: gr.Activator,
 				})
 			}
 		}

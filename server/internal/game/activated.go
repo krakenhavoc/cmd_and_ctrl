@@ -870,6 +870,16 @@ type ActivatedAbilityShape struct {
 	OpponentsOnly bool
 	OwnerOnly     bool
 
+	// GrantorOnly is "Only you may activate this ability" inside a
+	// GRANTED ability (Martyrdom, ADR 0106 §1 amendment 2026-10-09,
+	// #1947): the one player who may activate the row is the "you" of
+	// the effect that granted it, recorded on the grant when the layer
+	// pass wrote it (GrantedAbility.Activator), not the permanent's
+	// controller, who may be somebody else by now. MayActivate reads it
+	// from the row's AbilityOrigin. Register accepts it only in an
+	// AbilityGrant bundle and refuses it beside the other three.
+	GrantorOnly bool
+
 	// Purpose is what the ability does, as printed amounts (ADR 0126
 	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
 	// also what the row buys an activator who does not control the
@@ -1247,7 +1257,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
 	// Before anything is validated or paid, so a refusal costs nothing.
-	if !MayActivate(playerID, *source, srcZone, ab) {
+	if !MayActivate(playerID, *source, srcZone, ab, origins.At(index)) {
 		return ErrCardCallerMismatch
 	}
 	// Who controlled the permanent when another player reached across

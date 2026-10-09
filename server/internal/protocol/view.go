@@ -3844,6 +3844,14 @@ type ActivatedAbilityView struct {
 	// the same per-seat copy as any_player rows).
 	OpponentsOnly bool `json:"opponents_only,omitempty"`
 	OwnerOnly     bool `json:"owner_only,omitempty"`
+	// GrantorOnly is a granted row's "Only you may activate this ability"
+	// (Martyrdom, ADR 0106 §1 amendment 2026-10-09, #1947) and Activator is
+	// the one player who may: the "you" of the effect that granted it,
+	// whoever controls the permanent now. The client opens the row to the
+	// viewer only when viewer == activator; whether it is live is still the
+	// digest's answer.
+	GrantorOnly bool   `json:"grantor_only,omitempty"`
+	Activator   string `json:"activator,omitempty"`
 	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
 	// set by effects.EquipAbility and nothing else, #1208). Absent on
 	// every other row. Bot data (#2449): an equip that moves an
@@ -6682,7 +6690,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 // reachesAcross reports whether the row names an activator other than
 // the plain controller (any player, only opponents, only the owner).
 func (a ActivatedAbilityView) reachesAcross() bool {
-	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly
+	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly || a.GrantorOnly
 }
 
 // stampAnyPlayerOffers files, for every seat that does not control the
@@ -9889,8 +9897,16 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			AnyPlayer:     a.AnyPlayer,
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,
+			GrantorOnly:   a.GrantorOnly,
 			Equip:         a.Equip,
 			UntapSelf:     a.UntapSelf,
+		}
+		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
+		// "Only you may activate" row is open to.
+		if a.GrantorOnly {
+			if who := origins.At(i).Activator; who != uuid.Nil {
+				v.Activator = who.String()
+			}
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
 		// and the bot's reason to reach across.

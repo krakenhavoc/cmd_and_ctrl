@@ -35,11 +35,42 @@ func TestMayActivateNamedActivators(t *testing.T) {
 		// Off the battlefield CR 108.4a stays the owner's, whatever the row says.
 		{"opponents-only in a graveyard: an opponent", thief, mine, ZoneGraveyard, opponents, false},
 	} {
-		if got := MayActivate(tc.player, tc.c, tc.zone, tc.ab); got != tc.want {
+		if got := MayActivate(tc.player, tc.c, tc.zone, tc.ab, AbilityOrigin{}); got != tc.want {
 			t.Errorf("%s: MayActivate = %v, want %v", tc.name, got, tc.want)
 		}
 	}
 	if !opponents.ReachesAcross() || !ownerOnly.ReachesAcross() || (ActivatedAbilityShape{}).ReachesAcross() {
 		t.Error("ReachesAcross disagrees with the flags")
+	}
+}
+
+// ADR 0106 §1's 2026-10-09 amendment (#1947): a grantor-only row is open
+// to the player its grant recorded and to no one else, whoever controls
+// or owns the permanent; an ungranted row, or a grant with no recorded
+// player, is open to nobody.
+func TestMayActivateGrantorOnly(t *testing.T) {
+	caster, holder, third := uuid.New(), uuid.New(), uuid.New()
+	creature := Card{Owner: holder, Controller: holder}
+	row := ActivatedAbilityShape{GrantorOnly: true}
+	granted := AbilityOrigin{Ref: "grant:x:0:0", Grant: GrantKey("x"), Activator: caster}
+	for _, tc := range []struct {
+		name   string
+		player uuid.UUID
+		origin AbilityOrigin
+		want   bool
+	}{
+		{"the grantor", caster, granted, true},
+		{"the controller", holder, granted, false},
+		{"a third player", third, granted, false},
+		{"an own row", caster, AbilityOrigin{Ref: OwnAbilityRef(0)}, false},
+		{"a grant that recorded no one", holder, AbilityOrigin{Ref: "grant:x:0:0", Grant: GrantKey("x")}, false},
+		{"a grant that recorded no one: the nil player", uuid.Nil, AbilityOrigin{Ref: "grant:x:0:0", Grant: GrantKey("x")}, false},
+	} {
+		if got := MayActivate(tc.player, creature, ZoneBattlefield, row, tc.origin); got != tc.want {
+			t.Errorf("%s: MayActivate = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+	if !row.ReachesAcross() {
+		t.Error("a grantor-only row does not reach across")
 	}
 }

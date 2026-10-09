@@ -29,6 +29,16 @@ import (
 // never chosen by a bot reaching across the table, and the bot prices
 // another player's row by its Draws and ControllerLosesLife alone.
 
+// checkGrantorOnlyIsGranted refuses GrantorOnly on a card's OWN row
+// (ADR 0106 §1 amendment 2026-10-09, #1947): the row's only activator is
+// the "you" of the effect that gave it, and a printed row was given by
+// nobody, so the flag would open it to no one.
+func checkGrantorOnlyIsGranted(name string, i int, ab ActivatedAbility) {
+	if ab.GrantorOnly {
+		panic(fmt.Sprintf("effects.Register: %q ability %d is GrantorOnly outside an ability grant — only a granted row has a grantor (ADR 0106 §1)", name, i))
+	}
+}
+
 // checkAnyPlayerAbility is ADR 0106 §1 decision 1's registration guard.
 // Each failure is a card file that is wrong in a way no game would show
 // until somebody tried it:
@@ -44,7 +54,7 @@ import (
 // ControllerLosesLife only here, on an any-player row.
 func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	named := 0
-	for _, b := range []bool{ab.AnyPlayer, ab.OpponentsOnly, ab.OwnerOnly} {
+	for _, b := range []bool{ab.AnyPlayer, ab.OpponentsOnly, ab.OwnerOnly, ab.GrantorOnly} {
 		if b {
 			named++
 		}
@@ -54,9 +64,9 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	}
 	switch {
 	case named > 1:
-		panic(fmt.Sprintf("effects.Register: %q %s names more than one of AnyPlayer, OpponentsOnly and OwnerOnly (ADR 0106 §1)", name, where))
-	case ab.OpponentsOnly && ab.Purpose != (game.Purpose{}):
-		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose on an opponents-only row; the bot never reads one there (ADR 0106 §1 amendment 2026-10-07)", name, where))
+		panic(fmt.Sprintf("effects.Register: %q %s names more than one of AnyPlayer, OpponentsOnly, OwnerOnly and GrantorOnly (ADR 0106 §1)", name, where))
+	case (ab.OpponentsOnly || ab.GrantorOnly) && ab.Purpose != (game.Purpose{}):
+		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose on an opponents-only or grantor-only row; the bot never reads one there (ADR 0106 §1 amendments 2026-10-07 and 2026-10-09)", name, where))
 	case ab.Cost.Tap:
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability with a {T} cost — not modelled (ADR 0106 §1)", name, where))
 	case ab.Cost.Loyalty != nil:

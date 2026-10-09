@@ -292,9 +292,15 @@ export function anyPlayerRows(card: CardView): ActivatedAbilityView[] {
 
 // reachesAcross says a row names an activator other than the plain
 // controller: any player, only the controller's opponents, or only the
-// owner (CR 602.2, ADR 0106 §1 and its 2026-10-07 amendment).
+// owner, or only the player who granted it (CR 602.2, ADR 0106 §1 and its
+// 2026-10-07 and 2026-10-09 amendments).
 export function reachesAcross(a: ActivatedAbilityView): boolean {
-  return a.any_player === true || a.opponents_only === true || a.owner_only === true;
+  return (
+    a.any_player === true ||
+    a.opponents_only === true ||
+    a.owner_only === true ||
+    a.grantor_only === true
+  );
 }
 
 // rowOpenToViewer mirrors game.MayActivate for a permanent on the
@@ -312,6 +318,7 @@ export function rowOpenToViewer(
   const controller = card.controller || card.owner;
   if (a.opponents_only === true) return viewerID !== controller;
   if (a.owner_only === true) return viewerID === card.owner;
+  if (a.grantor_only === true) return !!a.activator && viewerID === a.activator;
   return viewerID === controller;
 }
 
@@ -1132,7 +1139,7 @@ export function abilityRowBlocked(
     kind === "activated" &&
     ctx.card &&
     viewer &&
-    (named.opponents_only === true || named.owner_only === true) &&
+    (named.opponents_only === true || named.owner_only === true || named.grantor_only === true) &&
     !rowOpenToViewer(named as ActivatedAbilityView, ctx.card, viewer)
   ) {
     return ROW_NOT_OPEN_TO_YOU;

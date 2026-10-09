@@ -51,11 +51,19 @@ func declaresAnyPlayerActivation(s effects.Spec) bool {
 
 // declaresNamedActivator reports whether the spec prints an "Only your
 // opponents may activate" or "Only this creature's owner may activate"
-// row (ADR 0106 §1 amendment 2026-10-07, #1947).
+// row (ADR 0106 §1 amendment 2026-10-07, #1947), or grants an ability
+// only its granter may activate (the 2026-10-09 amendment).
 func declaresNamedActivator(s effects.Spec) bool {
 	for _, a := range s.Activated {
 		if a.OpponentsOnly || a.OwnerOnly {
 			return true
+		}
+	}
+	for _, gr := range s.Grants {
+		for _, a := range gr.Activated {
+			if a.GrantorOnly {
+				return true
+			}
 		}
 	}
 	return false

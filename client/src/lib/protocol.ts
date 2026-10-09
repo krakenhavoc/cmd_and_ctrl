@@ -2845,6 +2845,12 @@ export interface ActivatedAbilityView {
   // open to; the controller's own opponents-only row is greyed.
   opponents_only?: boolean;
   owner_only?: boolean;
+  // ADR 0106 §1 amendment 2026-10-09 (#1947): a granted row's "Only you
+  // may activate this ability" (Martyrdom). `activator` is the one player
+  // who may: the "you" of the effect that granted it, whoever controls the
+  // permanent now. Absent on every other row.
+  grantor_only?: boolean;
+  activator?: string;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;

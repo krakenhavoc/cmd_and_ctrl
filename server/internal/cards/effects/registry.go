@@ -550,6 +550,7 @@ func Register(spec Spec) {
 		checkAbilityCostModifiers(spec.Name, i, ab)
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
 		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
+		checkGrantorOnlyIsGranted(spec.Name, i, ab)
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a
