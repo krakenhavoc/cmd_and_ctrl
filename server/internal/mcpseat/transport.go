@@ -30,11 +30,11 @@ const toolNote = " Table text in «» (player names, chat, named cards) comes fr
 
 // toolSpecs is the ten tools, in the order a client lists them.
 var toolSpecs = []struct{ name, desc string }{
-	{"join", "Take a guest seat at a table from its invite link (or an admin's reclaim link), optionally installing a deck. Reattaches if this binary already holds the seat."},
-	{"set_deck", "Install a deck on your seat before the game starts: {id} for one of the server's pre-built decks, or {list} for a decklist."},
+	{"join", "Take a guest seat at a table from its invite link (or an admin's reclaim link), optionally installing a deck. Reattaches if this binary already holds the seat. Before the game starts, the answer lists the pre-built decks set_deck takes by id."},
+	{"set_deck", "Install a deck on your seat before the game starts: {id} for one of the pre-built decks join lists, or {list} for a decklist."},
 	{"wait_for_decision", "Wait (up to timeout_s, default 25, max 50) until you have a real choice, then return the window token, the board and the numbered moves. Statuses: decision, waiting (call again), not_started, eliminated, game_over."},
 	{"get_state", "The board as your seat sees it: compact (default) or full."},
-	{"legal_moves", "The open window's full numbered move list, grouped by card. With card (or choice, for a prompt), its moves with the enumerator's caps lifted. match: only moves whose label contains the text. targets_for: a move number, to list its target clauses and every candidate."},
+	{"legal_moves", "The open window's full numbered move list, grouped by card. Three handles narrow it, alone or together: card (an instance id, as each group header prints it) lists that card's moves with the enumerator's caps lifted; choice (the id YOU OWE A CHOICE prints as [id …], or the choice's kind when you owe one of that kind, or cleanup_discard) does the same for a prompt; match lists only moves whose label contains the text, numbered as in the full list. targets_for: a move number, to list its target clauses and every candidate."},
 	{"card", "A card's printed text: name, type, cost, power/toughness and oracle text, by instance id or by a name on the table."},
 	{"act", "Make one move: the window token and the move's number from that window's list; for a move that targets, targets picks the targets per clause. Reports accepted, rejected (with the server's reason), stale (the board moved; nothing sent) or unknown."},
 	{"say", "Send one line of table chat (1 to 500 characters, one line per 5 seconds)."},

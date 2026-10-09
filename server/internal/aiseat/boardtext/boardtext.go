@@ -41,6 +41,10 @@ type Options struct {
 	// that has no primer explaining it (the MCP seat, ADR 0122 §5). The
 	// bot leaves it off and keeps its terse "(unimplemented)".
 	NoteUnimplemented bool
+	// ChoiceIDs prints each owed choice's id beside its kind, the handle
+	// the MCP seat's legal_moves(choice) takes (#2794). The bot has no
+	// such tool and leaves it off, so its prompt does not grow.
+	ChoiceIDs bool
 }
 
 func (o Options) maxZoneCards() int {
@@ -159,6 +163,9 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			continue
 		}
 		fmt.Fprintf(&b, "\nYOU OWE A CHOICE: %s", ch.Kind)
+		if opts.ChoiceIDs && ch.ID != "" {
+			fmt.Fprintf(&b, " [id %s]", ch.ID)
+		}
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}
