@@ -38,6 +38,7 @@ func init() {
 			Label:   "{T}: This creature deals 1 damage to target creature it's blocking.",
 			Cost:    TapCost(),
 			Targets: BlockedBySource(TargetCreature("target creature it's blocking")),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  goblinSnowmanPings,
 		}},
 	})

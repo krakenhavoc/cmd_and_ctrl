@@ -21,6 +21,7 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: SacrificeCost("a permanent", Permanent()),
 		Targets:        TargetAny(),
+		Purpose:        ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := damageToFirstTarget(4)(item, ctx); err != nil {
 				return err

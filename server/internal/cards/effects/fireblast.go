@@ -19,6 +19,7 @@ func init() {
 		Name:         "Fireblast",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 4)),
 		AlternativeCosts: []game.AlternativeCost{
 			SacrificeInstead(2, "two Mountains", 0, HasSubtype("Mountain")),
 		},

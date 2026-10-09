@@ -21,6 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordDevoid},
 		Targets:         TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Purpose:         ForTargets(DamageToTarget(0, 4)),
 		OnResolve:       damageFirstTargetExileIfItDies(fixedAmount(4)),
 	})
 }

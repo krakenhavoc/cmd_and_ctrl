@@ -16,6 +16,7 @@ func init() {
 		Name:         "Lightning Strike",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
 				return nil

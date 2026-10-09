@@ -19,6 +19,7 @@ func init() {
 		Name:         "Lightning Helix",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var target game.TargetRef
 			if len(item.Targets) > 0 {

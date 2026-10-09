@@ -31,10 +31,10 @@ func init() {
 		PrintedKeywords: []string{"reach"},
 		SpecialActions:  []game.SpecialAction{Plot("{3}{R}")},
 		Triggered: []game.TriggeredAbility{
-			Targeting(
+			TriggerWithPurpose(Targeting(
 				WhenThisBecomesPlotted("Longhorn Sharpshooter — 2 damage to any target", longhornSharpshooterDamage),
 				TargetAny(),
-			),
+			), ForTargets(DamageToTarget(0, 2))),
 		},
 	})
 }

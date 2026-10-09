@@ -13,6 +13,7 @@ func init() {
 		Name:         "Flame-Blessed Bolt",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(2)),
 	})
 }

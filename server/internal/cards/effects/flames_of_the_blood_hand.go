@@ -24,6 +24,7 @@ func init() {
 		Completeness:               CompletenessFull,
 		SpellDamageCantBePrevented: Always(),
 		Targets:                    targetPlayerOrPlaneswalker(),
+		Purpose:                    ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			targets := ctx.LegalTargets()
 			if len(targets) == 0 {

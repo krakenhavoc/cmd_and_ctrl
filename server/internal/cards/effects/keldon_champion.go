@@ -17,8 +17,8 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{
 			Echo("Keldon Champion", "{2}{R}{R}"),
-			Targeting(WhenThisEnters("Keldon Champion — 3 damage to target player or planeswalker", sourceDealsDamageToEachLegalTarget(3)),
-				targetPlayerOrPlaneswalker()),
+			TriggerWithPurpose(Targeting(WhenThisEnters("Keldon Champion — 3 damage to target player or planeswalker", sourceDealsDamageToEachLegalTarget(3)),
+				targetPlayerOrPlaneswalker()), ForTargets(DamageToTarget(0, 3))),
 		},
 	})
 }

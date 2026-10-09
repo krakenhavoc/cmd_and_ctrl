@@ -22,6 +22,7 @@ func init() {
 			Label:   "{4}: This creature deals 1 damage to target creature.",
 			Cost:    ManaCost("{4}"),
 			Targets: TargetCreature("target creature"),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  DealDamageToTheTarget(1),
 		}},
 	})

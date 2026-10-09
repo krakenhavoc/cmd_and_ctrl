@@ -19,6 +19,7 @@ func init() {
 		Name:          "Lava Dart",
 		Completeness:  CompletenessFull,
 		Targets:       TargetAny(),
+		Purpose:       ForTargets(DamageToTarget(0, 1)),
 		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{
 			FlashbackSacrifice(1, "a Mountain", HasSubtype("Mountain")),
