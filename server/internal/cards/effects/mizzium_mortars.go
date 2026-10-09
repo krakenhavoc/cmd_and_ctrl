@@ -27,6 +27,7 @@ func init() {
 		Name:         "Mizzium Mortars",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature you don't control", OpponentControls()),
+		Purpose:      ForTargets(DamageToTarget(0, 4)),
 		AlternativeCosts: []game.AlternativeCost{
 			CostWithPurpose(Overload("{3}{R}{R}{R}"), game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 4, OpponentsOnly: true}}),
 		},

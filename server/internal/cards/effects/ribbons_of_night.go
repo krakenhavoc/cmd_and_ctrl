@@ -34,6 +34,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so Ribbons of Night never draws the card."},
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if err := ctx.Game.DamageInstanceForEffect(func() error {
 				for _, ref := range ctx.LegalTargets() {

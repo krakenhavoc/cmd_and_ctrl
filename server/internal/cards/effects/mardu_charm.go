@@ -29,9 +29,9 @@ func init() {
 		Name:         "Mardu Charm",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			ModeDoing("Mardu Charm deals 4 damage to target creature.",
+			ModeWithPurpose(ModeDoing("Mardu Charm deals 4 damage to target creature.",
 				TargetCreature("target creature"),
-				DealFixedDamageToModesTarget(4)),
+				DealFixedDamageToModesTarget(4)), ForTargets(DamageToTarget(0, 4))),
 			ModeDoing("Create two 1/1 white Warrior creature tokens. They gain first strike until end of turn.", nil,
 				marduCharmWarriors),
 			ModeDoing("Target opponent reveals their hand. You choose a noncreature, nonland card from it. That player discards that card.",

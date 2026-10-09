@@ -35,6 +35,7 @@ func init() {
 			Label:   "{T}: This creature deals 1 damage to any target.",
 			Cost:    TapCost(),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  sourceDealsOneToFirstTarget,
 		}},
 	})

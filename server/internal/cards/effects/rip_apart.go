@@ -22,8 +22,8 @@ func init() {
 		Name:         "Rip Apart",
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Rip Apart deals 3 damage to target creature or planeswalker.",
-				TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker()))),
+			ModeWithPurpose(Mode("Rip Apart deals 3 damage to target creature or planeswalker.",
+				TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker()))), ForTargets(DamageToTarget(0, 3))),
 			Mode("Destroy target artifact or enchantment.",
 				TargetPermanent("target artifact or enchantment", Or(Artifact(), Enchantment()))),
 		),

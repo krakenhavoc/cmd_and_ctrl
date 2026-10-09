@@ -19,6 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Delve:        true,
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Purpose:      ForTargets(DamageToTarget(0, 5)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil

@@ -16,6 +16,7 @@ func init() {
 		Name:         "Rage of Purphoros",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 4)),
 		OnResolve: damageFirstTargetThenNoRegen(4, func(ctx *Context) error {
 			return Scry{N: 1}.Apply(ctx)
 		}),

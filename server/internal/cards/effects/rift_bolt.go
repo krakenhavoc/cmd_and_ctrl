@@ -22,6 +22,7 @@ func init() {
 		Name:         "Rift Bolt",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		SpecialActions: []game.SpecialAction{
 			Suspend(1, "{R}"),
 		},

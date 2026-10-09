@@ -15,8 +15,8 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Echo("Orcish Hellraiser", "{R}"),
-			Targeting(WhenThisDies("Orcish Hellraiser — 2 damage to target player or planeswalker", sourceDealsDamageToEachLegalTarget(2)),
-				targetPlayerOrPlaneswalker()),
+			TriggerWithPurpose(Targeting(WhenThisDies("Orcish Hellraiser — 2 damage to target player or planeswalker", sourceDealsDamageToEachLegalTarget(2)),
+				targetPlayerOrPlaneswalker()), ForTargets(DamageToTarget(0, 2))),
 		},
 	})
 }
