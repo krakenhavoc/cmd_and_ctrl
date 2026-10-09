@@ -781,6 +781,9 @@ type Policy struct {
 	// the end step before the bot's next one (Config.PlanHoldInstants,
 	// holdinstants.go).
 	heldThisTurn *turnHolds
+	// freeThisTurn is the free activations the policy chose this turn
+	// (#2777, free_repeat.go).
+	freeThisTurn *turnFreeActivations
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -811,6 +814,7 @@ func (p *Policy) Reset() {
 	p.hopelessTurns, p.hopelessTurn = 0, 0
 	p.tail = nil
 	p.heldThisTurn = nil
+	p.freeThisTurn = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -1043,6 +1047,7 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	d, plan := p.decideGeneral(ctx, st, in.Moves)
 	p.notePlan(st, in.Moves, plan)
 	p.noteHolds(st, in.Moves, plan)
+	p.noteFreeActivation(st, in.Moves, d)
 	return d, plan, nil
 }
 
