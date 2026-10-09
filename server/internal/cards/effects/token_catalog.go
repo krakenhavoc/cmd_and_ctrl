@@ -218,6 +218,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 	// ADR 0139 (#2796): the Jace planeswalker token Empower Jace makes,
 	// the first token whose abilities are loyalty abilities.
 	printedJaceToken,
+
+	// Reality Fracture: Ajani Resolute's Ajani's Pridemate.
+	printedAjanisPridemateToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
