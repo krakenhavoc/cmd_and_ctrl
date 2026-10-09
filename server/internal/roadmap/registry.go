@@ -3122,19 +3122,15 @@ var items = []Item{
 		Waiting:     []string{"Galactus, Devourer of Worlds"},
 		EngineNotes: "`game.AttackRequirement` (`attack_requirements.go`) is \"attacks each combat\" with an optional `OtherThan` (goad). It needs a set of obeying players, the opponents tied for most life among the controller's opponents, read at declaration, counted by the CR 508.1d maximisation and named in the refusal sentence. `attack-requirement-on-a-permanent` (#2567) needs a similar target field, so the two should share a shape. Galactus's \"unless you control a creature named Silver Surfer, Galactus's Herald\" is a condition on the static.",
 	},
-	{
-		Slug: "player-protection-from-opponents", Name: "Protection from each of your opponents", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Effects that give you protection from each of your opponents, such as Absolute Virtue's, so nothing your opponents control can damage, enchant or target you.",
-		Missing:     "You can have protection from a quality or from everything, but not from your opponents.",
-		Rules:       []string{"702.16"},
-		Issue:       2745,
-		Tracked:     "#2745 (S58 tracker #2077)",
-		Waiting:     []string{"Absolute Virtue"},
-		EngineNotes: "the protection grammar (`parseQuality`, `game/protection.go`) has no quality that is a set of players: `ProtectionQualityPlayer` is \"the chosen player\" off a permanent's as-enters choice, and a player-quality token on a player protects from nobody. Needs a quality matched by the source's controller being an opponent of the protected player, read through `ProtectionQuality.Matches`, with a wire token for the client badge and the bot's `protectedFrom`.",
-	},
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.
+	{
+		Slug: "player-protection-from-opponents", Name: "Protection from each of your opponents", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that give you protection from each of your opponents, such as Absolute Virtue's, so nothing your opponents control can damage, enchant or target you.",
+		Rules:    []string{"702.16"},
+		Examples: []string{"Absolute Virtue"},
+	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
