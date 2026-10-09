@@ -3092,16 +3092,6 @@ var items = []Item{
 		Waiting:     []string{"Get Lost"},
 		EngineNotes: "The explore keyword action has no primitive: `effects/explore.go` is the card Explore, not the action. Get Lost also needs a predefined Map token (\"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\") beside `ClueToken` and `FoodToken` in `effects/tokens.go`. Lodestone Needle's back face waits on the same action and is listed on the craft row. Look up the action's rule number in the pinned TXT before citing it.",
 	},
-	{
-		Slug: "attack-requirement-most-life-opponent", Name: "Creatures that must attack the opponent with the most life", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Creatures that must attack an opponent with the most life each combat, such as Galactus, Devourer of Worlds.",
-		Missing:     "A creature can be made to attack each combat, but not to attack a particular opponent.",
-		Rules:       []string{"508.1d"},
-		Issue:       2744,
-		Tracked:     "#2744 (S58 tracker #2077)",
-		Waiting:     []string{"Galactus, Devourer of Worlds"},
-		EngineNotes: "`game.AttackRequirement` (`attack_requirements.go`) is \"attacks each combat\" with an optional `OtherThan` (goad). It needs a set of obeying players, the opponents tied for most life among the controller's opponents, read at declaration, counted by the CR 508.1d maximisation and named in the refusal sentence. `attack-requirement-on-a-permanent` (#2567) needs a similar target field, so the two should share a shape. Galactus's \"unless you control a creature named Silver Surfer, Galactus's Herald\" is a condition on the static.",
-	},
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.
@@ -3122,6 +3112,13 @@ var items = []Item{
 		Summary:  "Permanents that choose a card type as they enter and then give protection from it, such as Serra's Emissary's \"You and creatures you control have protection from the chosen card type\".",
 		Rules:    []string{"702.16", "614.12"},
 		Examples: []string{"Serra's Emissary"},
+	},
+	{
+		Slug: "attack-requirement-most-life-opponent", Name: "Creatures that must attack the opponent with the most life", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures that must attack an opponent with the most life each combat, such as Galactus, Devourer of Worlds.",
+		Rules:    []string{"508.1d"},
+		ADR:      "0045-combat-restrictions.md",
+		Examples: []string{"Galactus, Devourer of Worlds"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
