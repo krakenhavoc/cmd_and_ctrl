@@ -13,26 +13,26 @@ import (
 // a few) each.
 
 const (
-	fraAvatarOracle       = "08e8a63c-9fcc-48cf-a9af-15cbaeec943f"
-	fraFateholdOracle     = "313aee0e-4090-4589-b323-a4edbda21c68"
-	fraHexhavenOracle     = "158823ed-6015-437a-82b0-8dadb1e9aab2"
-	fraTethermageOracle   = "80c2784b-f27d-4a51-9380-171eb32b961d"
-	fraMachinationsOracle = "89bd056d-8f5b-4d0e-b80a-58a984e21100"
-	fraOverwriteOracle    = "d0372cde-bf30-4a1b-93bb-9ff4ac1c116d"
-	fraLurkerOracle       = "3ebd64d2-c178-45a2-a51f-9869754baa0f"
-	fraProxyOracle        = "0089acfe-da66-4dd7-b1e5-4d7407f58257"
-	fraSanctumOracle      = "37513bd8-7303-4ac6-a7a7-224184faf758"
-	fraEchoesOracle       = "e8ecec61-cc47-4051-a599-0e7470764488"
-	fraCryoOracle         = "7d32c63d-aa9e-4f5d-a3e6-51377a786009"
-	fraDeathbringerOracle = "54775625-bf44-4035-969e-7e70578c8b98"
-	fraHealerOracle       = "cb27dc83-85ee-4f54-b032-41cd1806d3ac"
-	fraMentorOracle       = "ce924285-f4c5-44e6-909b-f5f7d302ebaf"
-	fraMindSculptorOracle = "94be2e86-ba0e-4b8d-9b9c-114adacb26db"
-	fraNecromancerOracle  = "f3087daa-d2ff-4227-abff-3398da6297af"
-	fraParadoxOracle      = "76771cd1-6b74-49bb-9421-8845fe344567"
-	fraPyromancerOracle   = "68d3f547-674a-4d8a-b02f-01bc2f161916"
-	fraWarlordOracle      = "10721d62-dc68-43b4-bfa2-dcb8cf8ea980"
-	fraWildspeakerOracle  = "501580b9-692c-4804-be34-012a25ba8adf"
+	fraAvatarOracle        = "08e8a63c-9fcc-48cf-a9af-15cbaeec943f"
+	fraFateholdCharmOracle = "313aee0e-4090-4589-b323-a4edbda21c68"
+	fraHexhavenOracle      = "158823ed-6015-437a-82b0-8dadb1e9aab2"
+	fraTethermageOracle    = "80c2784b-f27d-4a51-9380-171eb32b961d"
+	fraMachinationsOracle  = "89bd056d-8f5b-4d0e-b80a-58a984e21100"
+	fraOverwriteOracle     = "d0372cde-bf30-4a1b-93bb-9ff4ac1c116d"
+	fraLurkerOracle        = "3ebd64d2-c178-45a2-a51f-9869754baa0f"
+	fraProxyOracle         = "0089acfe-da66-4dd7-b1e5-4d7407f58257"
+	fraSanctumOracle       = "37513bd8-7303-4ac6-a7a7-224184faf758"
+	fraEchoesOracle        = "e8ecec61-cc47-4051-a599-0e7470764488"
+	fraCryoOracle          = "7d32c63d-aa9e-4f5d-a3e6-51377a786009"
+	fraDeathbringerOracle  = "54775625-bf44-4035-969e-7e70578c8b98"
+	fraHealerOracle        = "cb27dc83-85ee-4f54-b032-41cd1806d3ac"
+	fraMentorOracle        = "ce924285-f4c5-44e6-909b-f5f7d302ebaf"
+	fraMindSculptorOracle  = "94be2e86-ba0e-4b8d-9b9c-114adacb26db"
+	fraNecromancerOracle   = "f3087daa-d2ff-4227-abff-3398da6297af"
+	fraParadoxOracle       = "76771cd1-6b74-49bb-9421-8845fe344567"
+	fraPyromancerOracle    = "68d3f547-674a-4d8a-b02f-01bc2f161916"
+	fraWarlordOracle       = "10721d62-dc68-43b4-bfa2-dcb8cf8ea980"
+	fraWildspeakerOracle   = "501580b9-692c-4804-be34-012a25ba8adf"
 
 	fraEnchantmentLine = "Legendary Enchantment"
 )
@@ -554,7 +554,7 @@ func TestFateholdCharmModes(t *testing.T) {
 		g := newCatalogGame(t)
 		me := g.Seats[g.Turn.ActiveSeat]
 		before := handSize(me)
-		castCatalogSpellWithModes(t, g, "Fatehold Charm", "Instant", fraFateholdOracle, []int{0})
+		castCatalogSpellWithModes(t, g, "Fatehold Charm", "Instant", fraFateholdCharmOracle, []int{0})
 		passPriorityAroundTable(t, g)
 		if handSize(me) != before+1 {
 			t.Errorf("hand %d -> %d, want +1 (the charm left, one drawn: net 0 from the cast, +1 draw)", before, handSize(me))
@@ -568,7 +568,7 @@ func TestFateholdCharmModes(t *testing.T) {
 		me, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 		mine := b16Creature(g, me.ID, "My Bear", "Creature — Bear", 2, 2)
 		theirs := b16Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
-		castCatalogSpellWithModes(t, g, "Fatehold Charm", "Instant", fraFateholdOracle, []int{2})
+		castCatalogSpellWithModes(t, g, "Fatehold Charm", "Instant", fraFateholdCharmOracle, []int{2})
 		passPriorityAroundTable(t, g)
 		if effectivePower(t, g, mine) != 3 || effectiveToughness(t, g, mine) != 4 {
 			t.Errorf("my bear is %d/%d, want 3/4", effectivePower(t, g, mine), effectiveToughness(t, g, mine))
@@ -587,7 +587,7 @@ func TestFateholdCharmModes(t *testing.T) {
 		active := g.Seats[g.Turn.ActiveSeat]
 		id := uuid.New()
 		active.Hand.PushTop(game.Card{InstanceID: id, Name: "Fatehold Charm", TypeLine: "Instant",
-			OracleID: fraFateholdOracle, Owner: active.ID, Controller: active.ID})
+			OracleID: fraFateholdCharmOracle, Owner: active.ID, Controller: active.ID})
 		toMain(t, g)
 		if err := g.CastSpell(active.ID, id, game.CastSpellParams{
 			Modes:   []int{1},
