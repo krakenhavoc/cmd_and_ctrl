@@ -149,3 +149,4 @@ pick revealed-pick/solve-for-disappointment-empower-jace
 body decayed/sacrifice
 body decayed/schedule
 body renown/grow
+body winter-tormented-loner/edict
