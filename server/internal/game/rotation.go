@@ -306,6 +306,13 @@ func (g *Game) onTurnBeganLocked() {
 	// is the same boundary, and a creature goaded by two players loses
 	// only the goad of the player whose turn is beginning.
 	g.sweepExpiredGoadsLocked()
+	// ADR 0139 (#2796): and the delayed triggers with a stated
+	// duration, at the same boundary. "Until your next turn, whenever a
+	// creature attacks you …" (Jace, Reality Sculptor's −3) is the
+	// first delayed trigger whose duration ends as a turn BEGINS; the
+	// cleanup sweep alone left it queued through its controller's whole
+	// next turn.
+	g.clearExpiredDelayedTriggersLocked(false)
 	if g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) && g.Seats[g.Turn.ActiveSeat] != nil {
 		active := g.Seats[g.Turn.ActiveSeat]
 		active.UndosRemaining = g.Settings.UndoLimit

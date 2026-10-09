@@ -213,6 +213,10 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Twisted Sewer-Witch's Rat (#1945).
 	printedCantBlockRatToken,
+
+	// ADR 0139 (#2796): the Jace planeswalker token Empower Jace makes,
+	// the first token whose abilities are loyalty abilities.
+	printedJaceToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

@@ -143,3 +143,6 @@ body curse-of-the-werefox/fight
 condition cast/you-next-cast-at-most-mv
 body speed/increase
 body graveyard/return-the-object-under-your-control
+body jace-reality-sculptor/attacker-gets-minus-five
+condition attack/attacks-you-or-a-planeswalker-you-control
+pick revealed-pick/solve-for-disappointment-empower-jace

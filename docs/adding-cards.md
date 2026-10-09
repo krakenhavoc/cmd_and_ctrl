@@ -7348,6 +7348,44 @@ Tests set the speed with `g.SetSpeedForTest(player, n)` (it goes through
 the one write and its event) rather than playing turns: see
 `speed_cards_test.go`.
 
+### Empower Jace and the Jace token (ADR 0139, #2796, CR 701.71)
+
+"Empower Jace N" is one primitive, and it is the whole keyword action:
+find a Jace planeswalker token you control, create the blue Jace token
+first if you have none, ask which one if you have several, and put N
+loyalty counters on it.
+
+```go
+EmpowerJace{N: 2}.Apply(ctx)                                    // "Empower Jace 2."
+Do(EmpowerJace{N: 4})                                           // a trigger's Effect: "When this creature enters, empower Jace 4."
+EmpowerJace{Count: func(ctx *Context) int { return … }}         // "Empower Jace X, where X is …", counted as it resolves
+EmpowerJace{N: 6, Then: func(ctx *Context) error { … }}         // "Empower Jace 6. Draw a card."
+AdditionalCost: BeholdOrPay("a", "Jace", "{1}"),                // "behold a Jace or pay {1}" (Countersculpt)
+```
+
+- **Never create the token and add the counters as two steps.** The token
+  has 0 loyalty until the counters land, and only the one instruction
+  keeps the state-based actions away from it (CR 704.3). `JaceToken()`
+  exists for tests and for a card that makes the token some other way.
+- **Anything printed after "Empower Jace N." goes in `Then`.** The action
+  can pause (the choice between two Jaces, or a CR 616 ordering prompt),
+  so a draw written on the next line happens before the Jace is chosen.
+- **The counters are put by an effect**, so Doubling Season doubles them
+  (and doubles the token: the controller then picks one of the two).
+  A loyalty COST is not an effect and is never doubled (ADR 0032 §8).
+- **"A Jace token" is any token that is a Jace planeswalker**
+  (`IsJacePlaneswalkerToken`), never a Jace planeswalker card. "Among
+  Jaces you control" counts both: `JaceLoyaltyAmong(g, player)`.
+- The token's loyalty abilities are ordinary `LoyaltyCost` rows on a
+  catalog token template (`printedJaceToken`), so nothing on the view,
+  the enumerator or the bots is special to it. A future planeswalker
+  token is the same: a template in `token_catalog.go`'s list with
+  `LoyaltyCost` rows.
+
+Tests: `seedJaceToken`, `onlyJaceToken` and `jaceTokensOf` in
+`empower_jace_test.go`. Answer the "which Jace?" question with
+`answerOwnPermanents`.
+
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
 A **designation** is a marker a permanent has on the battlefield that
