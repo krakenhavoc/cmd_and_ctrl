@@ -1428,9 +1428,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// discarded, sacrificed, pitched, escaped or delved commander is
 	// paid like any other card and offered the command zone afterwards
 	// by the CR 903.9a state-based action.
-	var asking []uuid.UUID
+	var asking []costCommanderMove
 	if alt != nil && alt.ReturnToHand != nil {
-		asking = params.AltCostIDs
+		asking = costCommanderMovesTo(ZoneHand, params.AltCostIDs...)
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, card.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {

@@ -19,11 +19,13 @@ import (
 //     no. In hand it is cast for its printed cost; from the command
 //     zone it pays the CR 903.8 tax. ADR 0115's owner decision 2 for
 //     the graveyard question, pointed at the one zone a commander can
-//     always be cast from.
-//   - CR 903.9b, a commander headed for a LIBRARY, and #1397's question
-//     asked before a cost is paid: yes. A library is where a commander
-//     is lost; the cost path's frame does not say which zone it is
-//     going to, and the command zone is never worse than a library.
+//     always be cast from. Since #2420 that includes #1397's question
+//     asked before a cost is paid — ninjutsu's return, "return a
+//     creature you control to its owner's hand", Daze's alternative
+//     cost — whose frame now records where the card is going.
+//   - CR 903.9b, a commander headed for a LIBRARY (an effect's tuck, or
+//     a cost that puts it on top): yes. A library is where a commander
+//     is lost, and the command zone is never worse than a library.
 //   - Library of Leng's "put the discarded card on top of your library
 //     instead": yes. The card the bot is discarding is not on the
 //     prompt — naming a card in a hand there would hand the table the
