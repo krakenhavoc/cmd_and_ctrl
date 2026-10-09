@@ -29,15 +29,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			Targeting(On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Target == source.InstanceID && b33CountersPlacedDelta(ev, game.CounterPlusOne, g) > 0
-			}, label, func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if t.Kind == game.TargetCard {
-						return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneHand}.Apply(ctx)
-					}
-				}
-				return nil
-			}), TargetCardInGraveyard("target permanent card from your graveyard", Permanent(), YouOwn())),
+			}, label, returnTargetGraveyardCardToHand), TargetCardInGraveyard("target permanent card from your graveyard", Permanent(), YouOwn())),
 		},
 	})
 }
