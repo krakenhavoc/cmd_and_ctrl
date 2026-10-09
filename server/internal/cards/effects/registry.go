@@ -506,6 +506,11 @@ func Register(spec Spec) {
 				spec.Name, spec.Madness, err))
 		}
 	}
+	// #2581: a printed X ceiling with no count would read as "no
+	// ceiling", a card stronger than printed.
+	if xc := spec.XCeiling; xc != nil && (xc.Count == nil || xc.Label == "") {
+		panic(fmt.Sprintf("effects.Register: %q declares an X ceiling with no count or no label", spec.Name))
+	}
 	// An activated ability's mana component is the only place an X
 	// can live (game.AbilityCost.DemandsX says why), so both ways of
 	// getting a variable cost wrong are visible from here, and both

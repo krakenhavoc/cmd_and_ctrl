@@ -824,6 +824,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
 	}
+	// #2581: and a printed "X can't be greater than <count>" bounds
+	// the same announcement without pricing it (x.go). Only where the
+	// cost this cast pays has an {X} to announce: a free cast's X is
+	// locked at 0 (CR 107.3b), and announcedX reads a ceiling on a cost
+	// with no {X} slot as the PRICE of X, which this is not.
+	if cost.XSlots > 0 {
+		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), xLifeCeiling)
+	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
 	// together never claim more than the seat has (CR 119.4). A "pay X

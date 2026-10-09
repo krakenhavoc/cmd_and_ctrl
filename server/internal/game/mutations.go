@@ -889,6 +889,21 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return ErrInvalidParam
 	}
+	// #2581, CR 107.3a / 601.2b: a printed "X can't be greater than
+	// <count>" bounds the announcement, so the count is read HERE, as
+	// X is announced, and never again — the stack item keeps the X
+	// announced (x_ceiling.go). Refused rather than clamped, for the
+	// reason the X lock above is.
+	if ceiling, ok := g.SpellXCeilingLocked(playerID, CatalogKey(card)); ok && params.XValue > ceiling {
+		slog.Warn("cast_spell rejected: X above the printed ceiling",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"x_value", params.XValue,
+			"x_ceiling", ceiling,
+			"ceiling", XCeilingFor(CatalogKey(card)).Label,
+		)
+		return ErrInvalidParam
+	}
 	// ADR 0073, CR 601.2b: the optional additional costs the caster
 	// chooses to pay — kicker, multikicker, buyback. Announced HERE,
 	// with the modes and before the targets, for two reasons that

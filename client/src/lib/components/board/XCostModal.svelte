@@ -49,6 +49,12 @@
     // energy. The server refuses more (CR 118.3), so the input does
     // too. Undefined is no ceiling.
     maxX?: number;
+    // #2581: a spell's printed "X can't be greater than <count>" —
+    // the card's `x_max`, read for the viewer. The server refuses more
+    // (CR 601.2b), so the input does too. The live preview reports the
+    // same count as `x_max` and, once it has answered, its number wins:
+    // it is the fresher read. Undefined is no ceiling.
+    xCeiling?: number;
     // #696: the rest of the announcement the preview prices against —
     // source zone, alternative cost, optional costs, face. All of them
     // are chosen before X, so the affordable / missing readout can be
@@ -69,6 +75,7 @@
     costLabel = undefined,
     minX = 0,
     maxX = undefined,
+    xCeiling = undefined,
     castParams = {},
     confirmVerb = "Cast",
     onConfirm,
@@ -84,6 +91,19 @@
   let x = $state(0);
   let preview = $state<AutoTapPreview | null>(null);
   let loading = $state(false);
+
+  // The printed ceiling, from the preview once it has answered and from
+  // the card's stamp until then.
+  const printedCeiling = $derived(preview?.x_max ?? xCeiling);
+  // The one ceiling the field holds X under: the smaller of the energy
+  // ceiling and the printed one. Undefined is no ceiling.
+  const ceiling = $derived(
+    maxX === undefined
+      ? printedCeiling
+      : printedCeiling === undefined
+        ? maxX
+        : Math.min(maxX, printedCeiling),
+  );
 
   // Reset when a different card — or a different ability on the same
   // card — opens the prompt.
@@ -119,9 +139,15 @@
       });
   });
 
-  // capX holds X under the energy ceiling, when there is one.
+  // A ceiling that falls under the X already in the field (the preview
+  // read a smaller count than the card's stamp) pulls X down to it.
+  $effect(() => {
+    if (ceiling !== undefined && x > ceiling) x = capX(x);
+  });
+
+  // capX holds X under the ceiling, when there is one.
   function capX(n: number): number {
-    return maxX !== undefined && n > maxX ? Math.max(floor, maxX) : n;
+    return ceiling !== undefined && n > ceiling ? Math.max(floor, ceiling) : n;
   }
 
   function clampX(raw: string): void {
@@ -186,12 +212,17 @@
       <!-- ADR 0129 §8: "Pay X {E}" — X energy, at most what the seat has. -->
       <p class="prompt-hint">You'll pay {x} energy (you can pay up to {maxX}).</p>
     {/if}
+    {#if printedCeiling !== undefined}
+      <!-- #2581: a printed ceiling, counted now. The server refuses
+           more, so this is a rule rather than advice. -->
+      <p class="prompt-hint">This spell's X can't be greater than {printedCeiling} right now.</p>
+    {/if}
     <label class="x-row">
       <span class="x-label">X =</span>
       <input
         type="number"
         min={floor}
-        max={maxX}
+        max={ceiling}
         step="1"
         value={x}
         oninput={(e) => clampX((e.currentTarget as HTMLInputElement).value)}
