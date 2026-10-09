@@ -17,33 +17,42 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with the limit set by that branch — "up to" is the chooser's
 // minimum of zero.
 //
-// Sandbox simplification, Victimize's posture before #2863: "Sacrifice a land"
-// is modelled as an ADDITIONAL COST TO CAST, not a resolution-time
-// action, because no sacrifice-then-continue prompt exists. Every
-// observable difference runs the weaker way — the land is gone even
-// if the spell is countered, and the spell cannot be cast with no
-// land to sacrifice (printed, it can be cast to search for nothing).
+// "Sacrifice a land" is part of the EFFECT, not a cost (#2876, the
+// Victimize pattern of #2863, ADR 0013's amendment of 2026-10-09). It
+// is a one-seat sacrifice run (PlayerSacrificesThenForEffect): the
+// caster picks a land as the spell resolves and the search follows,
+// whether or not a land was sacrificed ("Sacrifice a land. Search..." is
+// not an "if you do"). So a countered spell costs no land, and the
+// spell can be cast with no land at all. The power-4 check is read
+// after the sacrifice, as the printed sequence has it.
 func init() {
 	Register(Spec{
-		OracleID:       "736017e2-bc33-49e8-812d-1639443fdb51",
-		Name:           "Entish Restoration",
-		Completeness:   CompletenessCaveats,
-		Caveats:        []string{"The land sacrifice is paid when you cast it, so you lose the land even if the spell is countered, and you can't cast it with no land to sacrifice."},
-		AdditionalCost: SacrificeCost("a land", Land()),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			limit := 2
-			if youControlPowerFourOrGreater(ctx.Game, ctx.Controller()) {
-				limit = 3
-			}
-			return SearchLibrary{
-				Player:        ctx.Controller(),
-				Predicate:     IsBasicLand,
-				Dest:          game.ZoneBattlefield,
-				Limit:         limit,
-				Shuffle:       true,
-				TappedOnEntry: true,
-				Reason:        "Entish Restoration — basic lands, onto the battlefield tapped",
-			}.Apply(ctx)
+		OracleID:     "736017e2-bc33-49e8-812d-1639443fdb51",
+		Name:         "Entish Restoration",
+		Completeness: CompletenessFull,
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			controller := ctx.Controller()
+			return ctx.Game.PlayerSacrificesThenForEffect(
+				ctx.Source(), controller,
+				sacrificeSpec("a land", Land()),
+				"Entish Restoration — sacrifice a land",
+				1,
+				func(g *game.Game, _ game.PromptedSacrifices) error {
+					ctx := NewContext(g, item)
+					limit := 2
+					if youControlPowerFourOrGreater(g, controller) {
+						limit = 3
+					}
+					return SearchLibrary{
+						Player:        controller,
+						Predicate:     IsBasicLand,
+						Dest:          game.ZoneBattlefield,
+						Limit:         limit,
+						Shuffle:       true,
+						TappedOnEntry: true,
+						Reason:        "Entish Restoration — basic lands, onto the battlefield tapped",
+					}.Apply(ctx)
+				})
 		},
 	})
 }
