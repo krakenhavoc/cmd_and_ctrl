@@ -341,6 +341,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	wantToxic := false
 	wantAnnihilator := false
 	wantRenown := false
+	wantModular := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -371,6 +372,10 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// number is only in the oracle line ("Renown 2"), #2049.
 			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordRenown) {
 				wantRenown = true
+			}
+			// MODULAR (CR 702.43, #2012) is the same shape again.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordModular) {
+				wantModular = true
 			}
 			continue
 		}
@@ -451,6 +456,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 		{wantToxic, game.ToxicValue},
 		{wantAnnihilator, game.AnnihilatorValue},
 		{wantRenown, game.RenownValue},
+		{wantModular, game.ModularValue},
 	} {
 		if !want.on {
 			continue

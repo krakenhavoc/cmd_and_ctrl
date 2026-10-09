@@ -198,6 +198,10 @@ func KeywordIsCumulative(kw string) bool {
 	if _, ok := RenownValue(kw); ok {
 		return true
 	}
+	// Modular (CR 702.43b, #2012): each instance works separately.
+	if _, ok := ModularValue(kw); ok {
+		return true
+	}
 	// Undying and persist (#2075, ADR 0113 §4): no rule of their own on
 	// the point, so CR 113.2c's "each instance functions independently"
 	// — each instance is its own dies trigger.

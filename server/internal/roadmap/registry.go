@@ -948,14 +948,21 @@ var items = []Item{
 		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Dack Fayden, Helping Hand: its enters trigger reveals until X creature cards (X is the number of opponents), puts them onto the battlefield, then goads them \"for the rest of the game\". The engine's goad ends as the goader's next turn begins (`game/goad.go`, CR 701.15a), with no permanent form. It then has the controller choose a different opponent for each of those permanents and gives each that opponent's control, which is a distribution of permanents across opponents with no prompt shape (the existing own-permanents and choose-player prompts take one pick each, not a matching). Pyre Rhymer: Molten Tide is \"Until end of turn, whenever YOU tap a Mountain for mana, add an additional {R}\". `effects.TurnManaTrigger` (`DelayedTrigger.ManaTapSubtype`, read by `fireManaTriggersLocked` in `game/mana_trigger.go`) fires for every player's Mountain, because High Tide and Bubbling Muck print \"a player\". Using it here would hand opponents the extra mana, which is not what the card says. It needs a controller filter on the delayed mana trigger (an engine change in `game/`). Each blocker is listed here by card as slices land. Loot, the Anomaly: \"If Loot's power is negative, he assigns combat damage as though his power were positive\" needs the combat damage step to read a creature's absolute power; it snapshots `CurrentPower()`, which clamps a negative power to zero (CR 510.1a), at one site in `assignAndDealCombatDamageLocked` (`game/mutations.go`). Shipping him without it would make a card whose whole point is a negative power deal no damage, and his threshold ability (Sacrifice another creature or planeswalker: -2/-0) do nothing. Each blocker is listed here by card as slices land. Each blocker is listed here by card as slices land. Null Summoner: its threshold clause lets you cast the card it exiled from an opponent's hand for as long as it is on the battlefield. The engine has the pieces (a gated standing cast permission, any-type mana, the revealed-hand exile) but not the link: only a replacement effect stamps `Card.ExiledWith`, so a card exiled by a resolving ability can't be named by a standing permission. Shipping the exile alone would leave the card uncastable, which is the point of the card.",
 	},
 	{
-		Slug: "modular", Name: "Modular", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Modular lets an artifact creature enter with +1/+1 counters and, when it dies, move those counters onto another artifact creature.",
-		Missing:     "Modular isn't implemented yet, so a creature with it enters without its counters and passes nothing on when it dies.",
-		Rules:       []string{"702.43"},
-		Issue:       2012,
-		Waiting:     []string{"Arcbound Slasher"},
-		Phrases:     []string{"modular"},
-		EngineNotes: "primitive: modular (CR 702.43a) is two abilities, an entry with N +1/+1 counters and a dies trigger that moves one counter per +1/+1 counter the permanent had onto target artifact creature; CR 702.43b makes each instance work separately. Neither half exists: `modular` is not in `canonicalKeywords`. The likely shape is an engine-derived keyword like riot (ADR 0109 §10): the counters as one entry replacement per instance through the entry look-ahead, and the dies trigger reading last-known counters (`LastKnownCountersForEffect`, CR 603.10a). Arcbound Slasher's riot already works (#1556). Found landing the riot cards.",
+		// #2012: a NUMBERED dies-and-entry keyword the engine derives
+		// from the ability list (game/modular.go): one entry
+		// replacement per instance through the entry look-ahead, and
+		// one dies trigger per instance off the last-known ability list
+		// and counters. A creature whose only text is modular and other
+		// canonical keywords (Arcbound Worker, Arcbound Slasher) needs
+		// no card file.
+		Slug: "modular", Name: "Modular", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A permanent with modular N enters with N +1/+1 counters, once for each instance, and when it dies you may put its +1/+1 counters on target artifact creature.",
+		Rules:    []string{"702.43", "614.12", "603.10a"},
+		Issue:    2012,
+		Keywords: []string{game.KeywordModular},
+		Printed:  printedLine("Modular"),
+		Phrases:  []string{"modular"},
+		Examples: []string{"Arcbound Ravager"},
 	},
 	{
 		Slug: "text-changing-effects", Name: "Text-changing effects", Kind: KindSeam, Status: StatusMissing,
