@@ -195,7 +195,14 @@ surface tiny.
    order. `ModeDoing` works on a spell too, and is the way to write a
    card whose bullets can see each other; a card that branches in
    `OnResolve` walks `ctx.ModeOccurrences()` (printed order), never
-   `0..len(ctx.Modes())`. Inside a bullet, read its
+   `0..len(ctx.Modes())`. **A bullet that asks something** — a
+   search, a scry, a discard — only queues the prompt, so a later
+   bullet must not run on the line below it. `ModeDoing` bodies get
+   this for free: the engine parks the bullets after a paused one
+   and runs them once the prompt is answered (#2789,
+   `game/mode_walk.go`). An `if ctx.HasMode(i)` chain does not, so a
+   modal card with a prompting bullet followed by another bullet is
+   written with `ModeDoing`. Inside a bullet, read its
    own targets with `ModeTarget(ctx, occurrence)` /
    `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
    belongs to whichever bullet was chosen first.

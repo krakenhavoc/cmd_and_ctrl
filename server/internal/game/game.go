@@ -795,6 +795,12 @@ type Game struct {
 	resolutionOpen  bool
 	resolutionDepth int
 
+	// pausedModeWalk is the rest of a modal item's chosen bullets,
+	// parked behind a prompt an earlier bullet queued (#2789, CR
+	// 608.2c). Non-nil only while a resolution is open and paused.
+	// Clone and the persisted snapshot carry it. See mode_walk.go.
+	pausedModeWalk *modeWalk
+
 	// promptKeys is the transient bookkeeping behind the keys of the
 	// prompts a resolution or an answered prompt's branch queues (ADR
 	// 0127 §2, auto_answer.go). Reset where each begins, so neither

@@ -538,29 +538,18 @@ func PrintedModeOrder(modes []int) []int {
 // in. A nil Effect means the card resolves its modes inside its own
 // OnResolve instead, which is the older and still-supported shape.
 //
+// A bullet that leaves a prompt open holds the bullets after it until
+// the prompt is answered (#2789, mode_walk.go).
+//
 // Caller must hold g.mu in write mode.
-func (g *Game) runChosenModeEffectsLocked(item *StackItem, ms *ModeSpec) {
+//
+// `key` is the catalog key a spell's `ms` was read from, kept with a
+// parked walk so a restore reads the same bullets; empty for an ability.
+func (g *Game) runChosenModeEffectsLocked(item *StackItem, ms *ModeSpec, key string) {
 	if item == nil || ms == nil {
 		return
 	}
-	for _, occ := range PrintedModeOrder(item.Modes) {
-		opt := item.Modes[occ]
-		if opt < 0 || opt >= len(ms.Options) {
-			continue
-		}
-		fn := ms.Options[opt].Effect
-		if fn == nil {
-			continue
-		}
-		if err := fn(g, item, occ); err != nil {
-			g.EmitEvent(Event{
-				Kind:     EventEffectError,
-				Actor:    item.Controller,
-				Source:   item.SourceCardID,
-				ErrorMsg: err.Error(),
-			})
-		}
-	}
+	g.runModeOccurrencesLocked(item, ms, key, PrintedModeOrder(item.Modes))
 }
 
 // choosableModeOptionsLocked lists the option indexes a chooser may

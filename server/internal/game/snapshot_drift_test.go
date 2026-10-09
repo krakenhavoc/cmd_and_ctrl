@@ -191,6 +191,7 @@ var gameFields = plan(
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
+	"pausedModeWalk", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
 	// ADR 0127 §2: the ordinals behind the keys of the prompts one
 	// resolution or one answered prompt's branch queues.

@@ -3357,7 +3357,7 @@ func (g *Game) resolveTopOfStackLocked() error {
 	// order, once per occurrence. A modal card that branches inside
 	// its OnResolve on ctx.HasMode declares no ModeOption.Effect and
 	// this is a no-op for it (#764).
-	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)))
+	g.runChosenModeEffectsLocked(item, ModeSpecFor(CatalogKey(top)), CatalogKey(top))
 	// #489, CR 608.2n: the spell may have MOVED ITSELF. Everything
 	// below this line routes the object that is still on the stack —
 	// to the battlefield, out of existence, or to a graveyard — and a
@@ -3712,7 +3712,7 @@ func (g *Game) resolveTopAbilityLocked() {
 	// CR 608.2c: a modal triggered or activated ability resolves its
 	// chosen bullets in printed order, after whatever body the item
 	// itself carries (#764).
-	g.runChosenModeEffectsLocked(top, top.modeSpec)
+	g.runChosenModeEffectsLocked(top, top.modeSpec, "")
 }
 
 // routeStackCardToGraveyardLocked moves a card off Game.Stack and
