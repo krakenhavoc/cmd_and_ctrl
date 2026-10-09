@@ -78,6 +78,18 @@ describe("stepperSlots: when the stepper answers an ability", () => {
     expect(stepperSlots(ability({ produced: "{U|R}{U|R}" }))).toBeNull();
     expect(stepperSlots(ability({ color_options: [UR, []] }))).toBeNull();
   });
+
+  it("leaves two mana of different colors to its buttons (#2558)", () => {
+    expect(
+      stepperSlots(
+        ability({
+          produced: "{W|U|B|R|G:2}",
+          color_options: times(2, FIVE),
+          different_colors: true,
+        }),
+      ),
+    ).toBeNull();
+  });
 });
 
 describe("splitColors: the rows, in the server's order", () => {

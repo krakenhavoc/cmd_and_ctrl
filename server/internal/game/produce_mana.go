@@ -369,6 +369,14 @@ func (g *Game) priceProducedSlotsLocked(
 			out = append(out, slot)
 			continue
 		}
+		if slot.DifferentColors() {
+			// #2558: N different colours that a replacement multiplies
+			// is a shape the planner's grammar cannot say (two of each
+			// of two colours, still one pick). Decline the source, the
+			// weaker direction: the player taps it by hand and the real
+			// window applies.
+			return nil
+		}
 		changed = true
 		if len(slot.Options) == 1 {
 			color := slot.Options[0]

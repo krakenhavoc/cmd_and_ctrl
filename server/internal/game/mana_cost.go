@@ -478,6 +478,45 @@ type ProducedManaEntry struct {
 	// into three ordinary {G} slots, so nothing downstream of the
 	// parser has to learn about amounts for the common case.
 	Amounts map[string]int
+
+	// Distinct is N for "Add N mana of different colors" (#2558):
+	// the controller picks N DIFFERENT colours from Options and the
+	// slot adds one mana of each. Zero on every other slot, which picks
+	// one colour (or, with Amounts, N of one colour).
+	//
+	// It is one slot rather than N pipe slots because the constraint
+	// runs ACROSS the picks: "{W|U|B|R|G}{W|U|B|R|G}" answers each pick
+	// independently and would add {U}{U}, which is stronger than the
+	// printed card (#259). A reader that has not learned the field
+	// treats the slot as one ordinary pick and adds ONE mana — the
+	// weaker direction, never the stronger one.
+	//
+	// Written ":N" after the options: "{W|U|B|R|G:2}". The parser
+	// refuses a count below two, an option with an amount, colourless
+	// (not a colour, CR 106.1a), and fewer options than N; exactly N
+	// options is no choice at all and expands to one fixed slot each.
+	// Only a multi-option slot carries it, so len(Options) > Distinct.
+	Distinct int
+}
+
+// DifferentColors reports whether the slot is an "N mana of different
+// colors" pick (#2558): Distinct colours, one mana each.
+func (e ProducedManaEntry) DifferentColors() bool {
+	return e.Distinct >= 2
+}
+
+// DistinctCount is how many different colours the slot picks given the
+// colours actually on offer: Distinct, or fewer when a narrowing has
+// left fewer options than that (CR 609.3, as much as possible). Zero
+// for a slot that is not a different-colours pick.
+func (e ProducedManaEntry) DistinctCount(options []string) int {
+	if !e.DifferentColors() {
+		return 0
+	}
+	if len(options) < e.Distinct {
+		return len(options)
+	}
+	return e.Distinct
 }
 
 // AmountFor is how many mana this slot adds when `color` is picked.
@@ -513,6 +552,8 @@ func (e ProducedManaEntry) OneColorAmounts() bool {
 //	"{G3}"            → expanded to three {G} slots
 //	"{G0|U2}"         → a zero-amount option is dropped, so this is
 //	                     two {U} slots
+//	"{W|U|B|R|G:2}"   → one pick of two DIFFERENT colours, one mana
+//	                     each (Firemind Vessel, #2558); see Distinct
 //
 // A count follows the colour letter inside the brace. It is a
 // produced-mana extension only — ParseCost has no such form, since a
@@ -554,6 +595,19 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 			buf[j] = b
 		}
 		u := string(buf)
+		// #2558: ":N" closes a different-colours slot.
+		distinct := 0
+		if k := strings.LastIndexByte(u, ':'); k >= 0 {
+			if k+1 == len(u) || !allDigits(u[k+1:]) {
+				return nil, fmt.Errorf("produced mana: bad different-colors count in %q", s)
+			}
+			v, err := strconv.Atoi(u[k+1:])
+			if err != nil || v < 2 {
+				return nil, fmt.Errorf("produced mana: a different-colors count must be at least 2 in %q", s)
+			}
+			distinct = v
+			u = u[:k]
+		}
 		var options []string
 		amounts := map[string]int{}
 		counted := false
@@ -590,6 +644,26 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 			}
 		}
 		i = end + 1
+		if distinct > 0 {
+			if counted {
+				return nil, fmt.Errorf("produced mana: a different-colors slot takes no amounts in %q", s)
+			}
+			if containsColor(options, "C") {
+				return nil, fmt.Errorf("produced mana: colorless is not a color in %q", s)
+			}
+			switch {
+			case len(options) < distinct:
+				return nil, fmt.Errorf("produced mana: %d different colors from %d options in %q", distinct, len(options), s)
+			case len(options) == distinct:
+				// Every option is taken: no choice, one fixed slot each.
+				for _, c := range options {
+					out = append(out, ProducedManaEntry{Options: []string{c}})
+				}
+			default:
+				out = append(out, ProducedManaEntry{Options: options, Distinct: distinct})
+			}
+			continue
+		}
 		switch {
 		case len(options) == 0:
 			// Every option counted zero: the slot adds nothing.

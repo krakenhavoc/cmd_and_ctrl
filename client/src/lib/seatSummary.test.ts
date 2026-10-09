@@ -88,6 +88,17 @@ describe("manaAvailable", () => {
     expect(mana.sources).toBe(1);
   });
 
+  it("counts two mana of different colors as two flexible mana (#2558)", () => {
+    const vessel = card({
+      instance_id: "vessel",
+      type_line: "Artifact",
+      mana_abilities: [{ index: 0, produced: "{W|U|B|R|G:2}", tap_cost: true }],
+    });
+    const mana = manaAvailable([vessel]);
+    expect(mana.flexible).toBe(2);
+    expect(mana.byColor).toEqual({});
+  });
+
   it("adds two colourless for Temple of the False God's {C}{C}", () => {
     expect(manaAvailable([land("temple", "{C}{C}")]).byColor).toEqual({ C: 2 });
   });

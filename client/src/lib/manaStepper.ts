@@ -40,11 +40,17 @@ export type SplitCounts = Record<string, number>;
  *   - one list keeps its buttons, `OneColorOfAmount` included;
  *   - a picking slot whose option carries a count (#742, "{W3|U3|…}")
  *     beside a second picking slot keeps one button per answer. No
- *     catalog card has that shape today.
+ *     catalog card has that shape today;
+ *   - "N mana of different colors" (#2558, `different_colors`) keeps one
+ *     button per set of different colours.
  */
 export function stepperSlots(a: ManaAbilityView): string[][] | null {
   const lists = a.color_options;
   if (!lists || lists.length < 2) return null;
+  // #2558: "N mana of different colors" keeps one button per answer,
+  // each a set of different colours; a count per colour could not say
+  // "at most one of each".
+  if (a.different_colors) return null;
   if (lists.some((l) => l.length === 0)) return null;
   if (!lists.some((l) => l.length >= 2)) return null;
   const counted = manaSymbols(a.produced ?? "").some(

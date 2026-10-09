@@ -18,6 +18,7 @@ import (
 //	ProducedColorOrChosen(c)               "{T}: Add {U} or one mana of the chosen color."
 //	ChosenColorAnthem(p, t)                "Creatures you control of the chosen color get +p/+t."
 //	ProducedOneColor(n)                    "Add N mana of any one color."
+//	DifferentColors(n)                     "Add N mana of different colors."
 //	ChooseColorThen(…)                     "Choose a color. <rest of the effect>"
 //
 // Every reader of a stored colour treats "not chosen yet" as the
@@ -200,4 +201,22 @@ func ProducedAnyCombinationOfColors(n func(g *game.Game, controller, source uuid
 	return func(g *game.Game, controller, source uuid.UUID) string {
 		return AnyCombinationOfColors(n(g, controller, source))
 	}
+}
+
+// DifferentColors is the produced-mana string for "Add N mana of
+// different colors" (#2558, Firemind Vessel, Guild Globe):
+// "{W|U|B|R|G:2}" for two. ONE slot, so the controller names N
+// DIFFERENT colours and gets one mana of each — not N independent
+// any-colour slots (AnyCombinationOfColors), which would allow {U}{U}
+// and be stronger than printed (#259). Fewer than two, or more than
+// five, produces nothing.
+//
+// "Different colors" is a constraint on the colours, not on the
+// commander: every printed card in the family says it flatly, so the
+// ability leaves NarrowToCommanderIdentity off.
+func DifferentColors(n int) string {
+	if n < 2 || n > len(game.AllColors) {
+		return ""
+	}
+	return "{" + strings.Join(game.AllColors, "|") + ":" + strconv.Itoa(n) + "}"
 }
