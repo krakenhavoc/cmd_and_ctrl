@@ -83,6 +83,90 @@
     "subagent_requests": 6484
    }
   },
+  "2026-09-15": {
+   "claude-fable-5-1": {
+    "cache_read": 1685968,
+    "cache_write_1h": 151280,
+    "cache_write_5m": 0,
+    "input": 618,
+    "output": 17983,
+    "requests": 24
+   },
+   "claude-opus-5": {
+    "cache_read": 4380523,
+    "cache_write_1h": 200018,
+    "cache_write_5m": 0,
+    "input": 1180,
+    "output": 48168,
+    "requests": 47
+   }
+  },
+  "2026-09-16": {
+   "claude-fable-5-1": {
+    "cache_read": 3011169,
+    "cache_write_1h": 112988,
+    "cache_write_5m": 0,
+    "input": 592,
+    "output": 33544,
+    "requests": 25
+   },
+   "claude-opus-4-7": {
+    "cache_read": 26466330,
+    "cache_write_1h": 0,
+    "cache_write_5m": 868115,
+    "input": 357,
+    "output": 187028,
+    "requests": 317,
+    "subagent_requests": 317
+   },
+   "claude-opus-5": {
+    "cache_read": 1128060915,
+    "cache_write_1h": 3619517,
+    "cache_write_5m": 26165305,
+    "input": 22034,
+    "output": 6911452,
+    "requests": 9115,
+    "subagent_requests": 8452
+   },
+   "claude-sonnet-5": {
+    "cache_read": 252973830,
+    "cache_write_1h": 0,
+    "cache_write_5m": 15245847,
+    "input": 5774,
+    "output": 4680256,
+    "requests": 2887,
+    "subagent_requests": 2887
+   }
+  },
+  "2026-09-17": {
+   "claude-fable-5-1": {
+    "cache_read": 30651951,
+    "cache_write_1h": 373465,
+    "cache_write_5m": 723320,
+    "input": 4022,
+    "output": 223910,
+    "requests": 153,
+    "subagent_requests": 73
+   },
+   "claude-opus-5": {
+    "cache_read": 1029105915,
+    "cache_write_1h": 1747677,
+    "cache_write_5m": 28130192,
+    "input": 12366,
+    "output": 4867978,
+    "requests": 6155,
+    "subagent_requests": 5813
+   },
+   "claude-sonnet-5": {
+    "cache_read": 13585845,
+    "cache_write_1h": 0,
+    "cache_write_5m": 287399,
+    "input": 240,
+    "output": 34127,
+    "requests": 120,
+    "subagent_requests": 120
+   }
+  },
   "2026-09-18": {
    "claude-opus-5": {
     "cache_read": 656633640,
@@ -94,29 +178,317 @@
     "subagent_requests": 2710
    }
   },
-  "2026-10-02": {
+  "2026-09-19": {
    "claude-opus-5": {
-    "cache_read": 199300,
-    "cache_write_1h": 3159,
+    "cache_read": 696029898,
+    "cache_write_1h": 2455648,
+    "cache_write_5m": 9065620,
+    "input": 7836,
+    "output": 913489,
+    "requests": 3746,
+    "subagent_requests": 2838
+   },
+   "claude-sonnet-5": {
+    "cache_read": 497946790,
+    "cache_write_1h": 0,
+    "cache_write_5m": 6300585,
+    "input": 5606,
+    "output": 322026,
+    "requests": 2803,
+    "subagent_requests": 2803
+   }
+  },
+  "2026-09-20": {
+   "claude-opus-5": {
+    "cache_read": 216550412,
+    "cache_write_1h": 454581,
+    "cache_write_5m": 1861463,
+    "input": 1636,
+    "output": 142063,
+    "requests": 818,
+    "subagent_requests": 552
+   },
+   "claude-opus-5@fast": {
+    "cache_read": 7893809,
+    "cache_write_1h": 549973,
     "cache_write_5m": 0,
-    "input": 2,
-    "output": 1252,
-    "requests": 1
+    "input": 42,
+    "output": 16236,
+    "requests": 21
+   },
+   "claude-sonnet-5": {
+    "cache_read": 11426295,
+    "cache_write_1h": 0,
+    "cache_write_5m": 50536,
+    "input": 78,
+    "output": 644,
+    "requests": 39,
+    "subagent_requests": 39
+   }
+  },
+  "2026-09-23": {
+   "claude-opus-5-5": {
+    "cache_read": 86064905,
+    "cache_write_1h": 554071,
+    "cache_write_5m": 715954,
+    "input": 864,
+    "output": 199356,
+    "requests": 413,
+    "subagent_requests": 172
+   },
+   "claude-sonnet-5": {
+    "cache_read": 44999583,
+    "cache_write_1h": 0,
+    "cache_write_5m": 588822,
+    "input": 384,
+    "output": 32590,
+    "requests": 192,
+    "subagent_requests": 192
+   }
+  },
+  "2026-09-24": {
+   "claude-opus-5-5": {
+    "cache_read": 1186004732,
+    "cache_write_1h": 2105793,
+    "cache_write_5m": 17879605,
+    "input": 6188,
+    "output": 927688,
+    "requests": 3017,
+    "subagent_requests": 2299
+   },
+   "claude-sonnet-5": {
+    "cache_read": 347862229,
+    "cache_write_1h": 0,
+    "cache_write_5m": 3291863,
+    "input": 2526,
+    "output": 252334,
+    "requests": 1263,
+    "subagent_requests": 1263
+   }
+  },
+  "2026-09-25": {
+   "claude-opus-5-5": {
+    "cache_read": 621837485,
+    "cache_write_1h": 1854613,
+    "cache_write_5m": 7535495,
+    "input": 3806,
+    "output": 466343,
+    "requests": 1817,
+    "subagent_requests": 1303
+   },
+   "claude-sonnet-5": {
+    "cache_read": 1334850594,
+    "cache_write_1h": 0,
+    "cache_write_5m": 8439117,
+    "input": 7644,
+    "output": 733235,
+    "requests": 3822,
+    "subagent_requests": 3822
+   }
+  },
+  "2026-09-30": {
+   "claude-opus-5-5": {
+    "cache_read": 2033471011,
+    "cache_write_1h": 1374677,
+    "cache_write_5m": 29062459,
+    "input": 10704,
+    "output": 1037921,
+    "requests": 5258,
+    "subagent_requests": 4781
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 401473095,
+    "cache_write_1h": 0,
+    "cache_write_5m": 8577898,
+    "input": 3208,
+    "output": 202309,
+    "requests": 1583,
+    "subagent_requests": 1583
+   }
+  },
+  "2026-10-01": {
+   "claude-opus-5-5": {
+    "cache_read": 1681867035,
+    "cache_write_1h": 862223,
+    "cache_write_5m": 14093080,
+    "input": 11846,
+    "output": 1407091,
+    "requests": 5819,
+    "subagent_requests": 5499
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 6683505,
+    "cache_write_1h": 0,
+    "cache_write_5m": 372344,
+    "input": 162,
+    "output": 1146,
+    "requests": 81,
+    "subagent_requests": 81
+   }
+  },
+  "2026-10-02": {
+   "claude-opus-5-5": {
+    "cache_read": 1790769817,
+    "cache_write_1h": 1188432,
+    "cache_write_5m": 32172290,
+    "input": 13702,
+    "output": 1453394,
+    "requests": 6663,
+    "subagent_requests": 6085
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 139955645,
+    "cache_write_1h": 0,
+    "cache_write_5m": 6011799,
+    "input": 1768,
+    "output": 93420,
+    "requests": 868,
+    "subagent_requests": 868
+   }
+  },
+  "2026-10-03": {
+   "claude-opus-5-5": {
+    "cache_read": 1874797166,
+    "cache_write_1h": 1092109,
+    "cache_write_5m": 32006575,
+    "input": 11256,
+    "output": 1356760,
+    "requests": 5479,
+    "subagent_requests": 5156
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 13932023,
+    "cache_write_1h": 0,
+    "cache_write_5m": 558377,
+    "input": 272,
+    "output": 4757,
+    "requests": 136,
+    "subagent_requests": 136
+   }
+  },
+  "2026-10-04": {
+   "claude-opus-5-5": {
+    "cache_read": 2812658697,
+    "cache_write_1h": 1905006,
+    "cache_write_5m": 76239475,
+    "input": 21774,
+    "output": 1949073,
+    "requests": 10629,
+    "subagent_requests": 9589
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 333591970,
+    "cache_write_1h": 0,
+    "cache_write_5m": 11618736,
+    "input": 3770,
+    "output": 184238,
+    "requests": 1872,
+    "subagent_requests": 1872
+   }
+  },
+  "2026-10-05": {
+   "claude-opus-5-5": {
+    "cache_read": 1003334540,
+    "cache_write_1h": 2743748,
+    "cache_write_5m": 22634361,
+    "input": 8378,
+    "output": 1523786,
+    "requests": 4038,
+    "subagent_requests": 2577
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 21948221,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1534667,
+    "input": 402,
+    "output": 30136,
+    "requests": 194,
+    "subagent_requests": 194
+   }
+  },
+  "2026-10-06": {
+   "claude-opus-5-5": {
+    "cache_read": 1013301576,
+    "cache_write_1h": 1025158,
+    "cache_write_5m": 29610959,
+    "input": 7520,
+    "output": 610737,
+    "requests": 3669,
+    "subagent_requests": 3266
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 27589384,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1213185,
+    "input": 432,
+    "output": 16154,
+    "requests": 208,
+    "subagent_requests": 208
+   }
+  },
+  "2026-10-07": {
+   "claude-opus-5-5": {
+    "cache_read": 1335599952,
+    "cache_write_1h": 1688422,
+    "cache_write_5m": 39235335,
+    "input": 9032,
+    "output": 862507,
+    "requests": 4370,
+    "subagent_requests": 3648
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 36290719,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1834972,
+    "input": 512,
+    "output": 30813,
+    "requests": 251,
+    "subagent_requests": 251
+   }
+  },
+  "2026-10-08": {
+   "claude-opus-5-5": {
+    "cache_read": 1225919689,
+    "cache_write_1h": 1161128,
+    "cache_write_5m": 39665644,
+    "input": 10584,
+    "output": 789200,
+    "requests": 5154,
+    "subagent_requests": 4556
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 101435835,
+    "cache_write_1h": 0,
+    "cache_write_5m": 5925984,
+    "input": 1372,
+    "output": 32849,
+    "requests": 679,
+    "subagent_requests": 679
    }
   },
   "2026-10-09": {
    "claude-opus-5-5": {
-    "cache_read": 1231846,
-    "cache_write_1h": 113564,
-    "cache_write_5m": 0,
-    "input": 20,
-    "output": 3862,
-    "requests": 10
+    "cache_read": 278907896,
+    "cache_write_1h": 400752,
+    "cache_write_5m": 11600529,
+    "input": 2492,
+    "output": 169935,
+    "requests": 1195,
+    "subagent_requests": 1016
+   },
+   "claude-sonnet-5-5": {
+    "cache_read": 35640503,
+    "cache_write_1h": 0,
+    "cache_write_5m": 1942420,
+    "input": 542,
+    "output": 4067,
+    "requests": 270,
+    "subagent_requests": 270
    }
   }
  },
  "person": "krakenhavoc",
  "schema": 1,
- "transcripts_cover_from": "2026-05-29",
- "updated": "2026-10-09T16:13:03+00:00"
+ "transcripts_cover_from": "2026-09-15",
+ "updated": "2026-10-09T17:39:36+00:00"
 }
