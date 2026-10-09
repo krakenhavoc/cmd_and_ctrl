@@ -36,7 +36,7 @@ var toolSpecs = []struct{ name, desc string }{
 	{"get_state", "The board as your seat sees it: compact (default) or full."},
 	{"legal_moves", "The open window's full numbered move list, grouped by card. With card (or choice, for a prompt), its moves with the enumerator's caps lifted. match: only moves whose label contains the text. targets_for: a move number, to list its target clauses and every candidate."},
 	{"card", "A card's printed text: name, type, cost, power/toughness and oracle text, by instance id or by a name on the table."},
-	{"act", "Make one move: the window token and the move's number from that window's list; for a move that targets, targets picks the targets per clause. Reports accepted, rejected (with the server's reason), stale (the board moved; nothing sent) or unknown."},
+	{"act", "Make one move: the window token and the move's number from that window's list; for a move that targets, targets picks the targets per clause. Reports accepted, rejected (with the server's reason), stale (the board moved; nothing sent) or unknown. In your attack window, declare attackers one move each or with an \"attack with all\" move, then pass priority: that pass ends the declaration."},
 	{"say", "Send one line of table chat (1 to 500 characters, one line per 5 seconds)."},
 	{"concede", "Concede the game (confirm: true required)."},
 	{"leave", "Disconnect and delete the saved session. Refused while the game is live and your seat is in it: concede first."},

@@ -226,6 +226,21 @@ What to know about how they behave:
   model. A request the server answers `no_decision` closes the window
   (the board moved); `rate_limited` is retried after 300 ms, up to three
   times.
+- **Attacks are declared in your own attack window, and passing ends
+  it.** The list offers one move per creature and opponent, and since
+  #2793 also `Attack «X» with all N creatures that can attack them` for
+  each opponent two or more of your creatures may attack: the browser's
+  "attack with all", one `declare_attackers` action for the whole set.
+  It is built only from the per-creature attacks the same list offers,
+  so it allows nothing the list does not; it exerts no one (exerting
+  stays a per-creature move), carries an attack tax's total on its label,
+  and is left out under a count limit it would break (Silent Arbiter),
+  for a tax paid with life, on a list the server could only send cut,
+  and for planeswalkers and battles. Your pass in that window commits the
+  declaration, and its label says so: `No attack: pass priority without
+  declaring attackers` before anything is declared, `Done declaring
+  attackers: pass priority, attacking with N creatures` after. Once you
+  have passed, no attack can be added this combat.
 - **`value` is only for open sets**: any card name (up to 200
   characters) where the rules let a player name one, or a number for X
   inside the stated range.
