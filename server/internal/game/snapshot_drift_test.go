@@ -948,6 +948,11 @@ var pendingChoiceFields = plan(
 	// options ARE the prompt, and a restored game that forgot them
 	// would put a question with no answers in front of a seat.
 	"PickOptions", carried, "",
+	// #2854: the IDs a keyed option pick's continuation is handed
+	// (its key is PickThen). Carried because they are half the
+	// continuation: a restored prompt that forgot them would answer
+	// about nothing.
+	"OptionCarry", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a

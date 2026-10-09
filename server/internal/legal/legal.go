@@ -273,7 +273,7 @@ type MoveCost struct {
 	Counters []CounterPrice `json:"counters,omitempty"`
 
 	// Mana is a mana cost string the move charges that `params`
-	// cannot name. Two kinds of move carry it:
+	// cannot name. Three kinds of move carry it:
 	//
 	//   - An attack: the CR 508.1a attack tax (ADR 0080, #1063), "{2}"
 	//     for an attack into Propaganda. An attack has no printed cost,
@@ -292,6 +292,10 @@ type MoveCost struct {
 	//     are struck (they are on Life); the rest render as their
 	//     coloured half, because the move pays them with mana. "{0}"
 	//     for a cast that charges no mana. See castManaCost.
+	//   - An option_pick answer whose option costs mana (#2854):
+	//     Winter's Chill's "pay {2}" carries "{2}". `params` names only
+	//     the option's index; the engine pays the cost when it is
+	//     chosen.
 	//
 	// A cost STRING rather than a number because that is what the
 	// engine charges and concatenates ("{2}{2}" for two taxes), and a

@@ -602,6 +602,11 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 		if m.Cost.Exert {
 			notes = append(notes, "exerts it: it won't untap during your next untap step")
 		}
+		// #2854: an answer to a prompt that pays mana (Winter's Chill's
+		// "pay {2}"); the server taps for it when the answer arrives.
+		if m.Kind == legal.KindChoice && m.Cost.Mana != "" {
+			notes = append(notes, "pays "+m.Cost.Mana+", tapped for you")
+		}
 	}
 	if m.IdleHint != "" {
 		notes = append(notes, m.IdleHint)

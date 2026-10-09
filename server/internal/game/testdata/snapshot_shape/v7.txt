@@ -1958,6 +1958,8 @@ pendingChoices[].modeUsedIndex[]	number:int
 pendingChoices[].modeUsedLabel	array
 pendingChoices[].modeUsedLabel[]	string
 pendingChoices[].noLegalTarget	bool
+pendingChoices[].optionCarry	array
+pendingChoices[].optionCarry[]	custom(uuid.UUID)
 pendingChoices[].owedInStep	object
 pendingChoices[].owedInStep.Step	string
 pendingChoices[].owedInStep.Turn	number:int
@@ -1973,6 +1975,7 @@ pendingChoices[].pickOptions[].Cards	array
 pendingChoices[].pickOptions[].Cards[]	custom(uuid.UUID)
 pendingChoices[].pickOptions[].Label	string
 pendingChoices[].pickOptions[].LifeCost	number:int
+pendingChoices[].pickOptions[].ManaCost	string
 pendingChoices[].pickOptions[].Player	custom(uuid.UUID)
 pendingChoices[].pickTargetCards	array
 pendingChoices[].pickTargetCards[]	custom(uuid.UUID)

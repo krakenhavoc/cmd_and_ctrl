@@ -1683,6 +1683,14 @@ export interface PickOptionView {
    * — so it is never redacted. #994.
    */
   player?: string;
+  /**
+   * The mana this option costs its chooser ("{1}", "{B}"), paid by the
+   * server when the option is chosen (#2854): Winter's Chill's "may pay
+   * {1} or {2}". Absent on an option that costs no mana. Only options
+   * the chooser can pay are listed; an answer the board can no longer
+   * pay is refused and the prompt stays open.
+   */
+  mana_cost?: string;
 }
 
 export interface ReplacementOptionView {

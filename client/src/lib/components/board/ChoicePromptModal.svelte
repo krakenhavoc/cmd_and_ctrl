@@ -39,6 +39,7 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import ManaCost from "./ManaCost.svelte";
   import { findCardView } from "../../commanderReturn";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
@@ -1910,6 +1911,10 @@
           <li>
             <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
               <span class="pick-label">{opt.label}</span>
+              {#if opt.mana_cost}
+                <!-- #2854: the mana this option costs; the server pays it when chosen. -->
+                <span class="pick-cost"><ManaCost cost={opt.mana_cost} size={14} /></span>
+              {/if}
               {#if opt.cards && opt.cards.length > 0}
                 <span class="pick-cards">
                   {#each opt.cards as c (c.instance_id)}
@@ -2446,6 +2451,10 @@
   }
   .pick-label {
     font-weight: 600;
+  }
+  .pick-cost {
+    display: inline-flex;
+    align-items: center;
   }
   .pick-cards {
     display: grid;

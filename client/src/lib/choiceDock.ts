@@ -32,7 +32,7 @@ import type { Snippet } from "svelte";
 import { guardedWritable } from "./guardedStore";
 
 import type { DockAction, DockRequest } from "./dock";
-import type { PendingChoiceView, PlayerView, VoteView } from "./protocol";
+import type { PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
 import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
@@ -70,6 +70,15 @@ export function shortOptions(c: Pick<PendingChoiceView, "pick_options">): boolea
   return opts.every(
     (o) => (o.cards?.length ?? 0) === 0 && (o.label ?? "").length <= INLINE_LABEL_MAX,
   );
+}
+
+// pickOptionText is an option_pick button's text: its label, and the
+// mana it costs (#2854) when the label does not already say it —
+// "Pay {2}" stays as it is, "Keep it" becomes "Keep it ({2})".
+export function pickOptionText(o: Pick<PickOptionView, "label" | "mana_cost">): string {
+  const cost = o.mana_cost ?? "";
+  if (!cost || o.label.includes(cost)) return o.label;
+  return `${o.label} (${cost})`;
 }
 
 // isInlineChoice reports whether a pending choice is answered inline in
@@ -439,7 +448,7 @@ function answersFor(
         rowLayout: "stack",
         row: (c.pick_options ?? []).map((o, i) => ({
           id: `option-${i}`,
-          label: o.label,
+          label: pickOptionText(o),
           onPress: () => h.onOption(i),
         })),
       };

@@ -260,6 +260,18 @@ actually do (CR 608.2), and the branch it puts first is one that never
 fails ("lose 3 life", which needs no permanent and no card in hand).
 A policy with nothing better to say takes it, which terminates.
 
+**An option pick whose options cost mana (`option_pick`, #2854).**
+Winter's Chill's "its controller may pay {1} or {2}" and Lim-Dûl's
+Hex's "unless they pay {B} or {3}". A costed option is offered only
+when the seat can pay it now (the enumerator asks the pay-unless
+probe), and its move carries the price as `cost.mana`; the free option
+is still first and always legal. The heuristic pays: every costed
+option is worth more than paying nothing, and among them it takes the
+cheapest by mana value, keeping the most mana for the rest of the turn
+(`heuristic/costed_options.go`). On Winter's Chill that is the {1}
+branch: the creature survives and deals no combat damage. An option
+pick with no costed option keeps the enumerator's first answer.
+
 **A choose-a-player prompt (`option_pick` again, #929).** "Choose a
 player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
 is an option pick whose branches are SEATS, one option per eligible

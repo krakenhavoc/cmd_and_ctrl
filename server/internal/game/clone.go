@@ -265,6 +265,7 @@ func (g *Game) cloneLocked() *Game {
 			// a shallow copy would share the pile arrays with the
 			// undo snapshot.
 			cloned.PickOptions = cloneChoiceOptions(c.PickOptions)
+			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox
