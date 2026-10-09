@@ -220,14 +220,22 @@ export interface Settings {
     smartAutoPass: boolean;
     // #1307: what counts as a response for smartAutoPass. Each is a
     // category of the viewer's own legal moves; mana abilities and
-    // land plays are never responses. All on by default.
-    //   respondCounterspells  — casts / activations that target the stack
-    //   respondInstants       — any other instant-speed cast
-    //   respondAbilities      — any other non-mana activated ability
-    //   respondSpecialActions — foretell, suspend, turning face up
+    // land plays are never responses. All on by default except
+    // respondUntargetedAbilities (#2853, schema v22).
+    //   respondCounterspells       — casts / activations that target the stack
+    //   respondInstants            — any other instant-speed cast
+    //   respondAbilities           — any other activated ability that
+    //                                targets or protects (a sacrifice
+    //                                outlet, regeneration, a pump)
+    //   respondUntargetedAbilities — any other non-mana activated
+    //                                ability: pure value (Mind Stone, a
+    //                                fetch land, cycling). Off by
+    //                                default: not interaction.
+    //   respondSpecialActions      — foretell, suspend, turning face up
     respondCounterspells: boolean;
     respondInstants: boolean;
     respondAbilities: boolean;
+    respondUntargetedAbilities: boolean;
     respondSpecialActions: boolean;
     // #1307: stop for every opponent item on the stack, answer or
     // not — the pre-#1307 behaviour. Off by default: with smart
@@ -351,7 +359,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 21;
+export const SETTINGS_VERSION = 22;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -473,10 +481,12 @@ export function defaultSettings(): Settings {
       // might want to respond" instead of "stop every time."
       smartAutoPass: true,
       // #1307 defaults: every response category counts, and an
-      // opponent's spell you can't answer passes.
+      // opponent's spell you can't answer passes. #2853: except an
+      // untargeted ability, which is not interaction.
       respondCounterspells: true,
       respondInstants: true,
       respondAbilities: true,
+      respondUntargetedAbilities: false,
       respondSpecialActions: true,
       alwaysStopOpponentStack: false,
       // #1307 bluff defaults: off, timed, 1.5–4 s. A bluff slows the
@@ -615,6 +625,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     respondCounterspells: "synced",
     respondInstants: "synced",
     respondAbilities: "synced",
+    respondUntargetedAbilities: "synced",
     respondSpecialActions: "synced",
     alwaysStopOpponentStack: "synced",
     bluffCounterspell: "synced",
@@ -993,6 +1004,35 @@ function migrate(raw: unknown): Settings {
     seen: normalizeSeen(merged.help?.seen),
     tipsOff: merged.help?.tipsOff === true,
   };
+  // v21 → v22 (#2853, owner decision 1): respondAbilities splits.
+  // It now means an ability that targets, and the new
+  // respondUntargetedAbilities (default false) covers the rest: Mind
+  // Stone, fetch lands, Clues, cycling. A stored blob is materialised,
+  // so a `true` from the all-on v12 default cannot be told from a
+  // chosen one. What can be told apart is a "Stop for" list that is
+  // not the old default: a player who changed any of the four
+  // categories looked at the list and left abilities as they wanted
+  // them, so they keep the old meaning (untargeted follows
+  // respondAbilities). Everyone still on the all-on default moves to
+  // the new default. An account copy from a v21 client goes through
+  // here too (applySyncedCopy). From v22 on, the stored choice stands.
+  const gp = merged.gameplay as Settings["gameplay"];
+  if (storedVersion < 22) {
+    const old = s.gameplay as Partial<Settings["gameplay"]> | undefined;
+    const customised =
+      !!old &&
+      [
+        old.respondCounterspells,
+        old.respondInstants,
+        old.respondAbilities,
+        old.respondSpecialActions,
+      ].some((v) => v === false);
+    gp.respondUntargetedAbilities = customised
+      ? gp.respondAbilities !== false
+      : d.gameplay.respondUntargetedAbilities;
+  } else if (typeof gp.respondUntargetedAbilities !== "boolean") {
+    gp.respondUntargetedAbilities = d.gameplay.respondUntargetedAbilities;
+  }
   // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
   // gameplay.triggerOrder. No version bump: the old key itself says
   // which blob this is. A stored or synced blob that has a valid

@@ -925,8 +925,19 @@
                   checked={$settings.gameplay.respondAbilities}
                   onchange={(e) => change("gameplay", "respondAbilities", e.currentTarget.checked)}
                 />
-                Activated abilities (not mana abilities)
+                Abilities that target or protect something (pumps, sacrifice outlets, regeneration)
                 {#if isFresh("gameplay.respondAbilities")}<span class="saved">✓</span>{/if}
+              </label>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.respondUntargetedAbilities}
+                  onchange={(e) =>
+                    change("gameplay", "respondUntargetedAbilities", e.currentTarget.checked)}
+                />
+                Value abilities (Mind Stone, fetch lands, Clues, cycling)
+                {#if isFresh("gameplay.respondUntargetedAbilities")}<span class="saved">✓</span
+                  >{/if}
               </label>
               <label>
                 <input
@@ -948,6 +959,19 @@
                 Always stop for opponents' spells and abilities
                 {#if isFresh("gameplay.alwaysStopOpponentStack")}<span class="saved">✓</span>{/if}
               </label>
+              <p class="help">
+                By default an opponent's spell or ability stops you only for real interaction: an
+                instant you can cast, a counterspell, or an ability that targets or protects
+                something (a sacrifice outlet, regeneration, a pump, protection, a blink). A value
+                ability such as drawing off Mind Stone, cracking a fetch land or cycling a card is
+                something you can do at any time, so it does not stop you unless you tick it. Mana
+                abilities never count, except a sacrifice outlet that makes mana.
+              </p>
+              <p class="help">
+                While an opponent's spell waits on the stack the action dock counts down to the
+                automatic pass. Click <strong>wait</strong> there (or press the hold key) to keep priority
+                on that stack and respond.
+              </p>
               <p class="help">
                 The last one stops on every opponent item on the stack even when you can't answer
                 it, which is how auto-pass worked before. Stopping every time also means a pause
@@ -1066,7 +1090,8 @@
               When you do want to respond to your own spell or trigger (stacking two effects,
               holding up a counter, responding to your own ETB), click <strong>hold</strong> in the
               action dock <em>before</em> you cast — the pass fires the instant the spell is announced.
-              Turn this off to stop on every stack, always.
+              Hold keeps priority on every stack item, an opponent's too, and turns itself off once the
+              stack is empty. Turn this setting off to stop on every stack, always.
             </p>
 
             <label class="danger">

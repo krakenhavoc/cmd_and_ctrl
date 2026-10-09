@@ -930,6 +930,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// a modal ability's stack-targeting mode
 									// is flagged on its own.
 									TargetsStack: targetsStackObject(g, targets),
+									HasTargets:   hasTargets(targets),
+									Interacts:    !hasTargets(targets) && abilityInteracts(ab),
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,
@@ -2272,6 +2274,9 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							Label:  label,
 							Source: source.InstanceID,
 							Cost:   cost,
+							// #2853: a sacrifice outlet that makes mana
+							// still answers removal.
+							Interacts: manaAbilityInteracts(ab.SacrificeOther),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,

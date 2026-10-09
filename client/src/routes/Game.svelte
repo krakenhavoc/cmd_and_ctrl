@@ -137,7 +137,13 @@
     triggerOrderPrefToSend,
   } from "../lib/triggerOrderPref";
   import { autoAnswersToSend, newAutoAnswersPrefState } from "../lib/autoAnswerPref";
-  import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
+  import {
+    holdPriority,
+    noteStackForHold,
+    ownsEveryStackItem,
+    stackIsLive,
+    toggleHoldPriority,
+  } from "../lib/holdPriority";
   import {
     openShortcutsHelp,
     registerShortcutHandlers,
@@ -476,6 +482,7 @@
       counter: gp.respondCounterspells,
       instant: gp.respondInstants,
       ability: gp.respondAbilities,
+      untargeted: gp.respondUntargetedAbilities,
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
@@ -534,6 +541,14 @@
     };
   });
   const autopassVerdict = $derived(autopassDecision(autopassGates));
+
+  // #2853: the hold toggle holds one stack. Once the stack it was on
+  // for has emptied, it turns itself off. The hold only matters on a
+  // non-empty stack, so clearing it on the empty frame changes no
+  // verdict on that frame.
+  $effect(() => {
+    noteStackForHold(stackIsLive(view));
+  });
 
   $effect(() => {
     const gates = autopassGates;

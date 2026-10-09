@@ -1592,6 +1592,7 @@ func (e *enumerator) castMoveEmitter(
 			// per ANNOUNCEMENT, not per card, so only the modes that
 			// actually chose a stack target come back flagged.
 			TargetsStack: targetsStackObject(g, targets),
+			HasTargets:   hasTargets(targets),
 			IdleHint:     idle,
 			Value:        xv,
 			Params: mustJSON(castParams{

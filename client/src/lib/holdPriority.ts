@@ -28,7 +28,14 @@
 // wired to a visible button in the action dock (always on screen)
 // and in the stack card's header (on screen exactly while the stack
 // is live). While it is on, the pre-#323 behaviour is restored
-// verbatim — every stack stops.
+// verbatim — every stack stops, an opponent's item included, whatever
+// smart autopass would have said about it.
+//
+// #2853 (owner decision 2): it is a hold for ONE stack, not for the
+// rest of the session. Once the stack it held has emptied, it clears
+// itself (noteStackForHold). It is armed before a cast, on an empty
+// stack, so arming it never clears it: only a stack that was live
+// while it was on and has since emptied does.
 //
 // Scope note: this module decides *whether the client volunteers a
 // pass*, never what counts as a legal response. The legality
@@ -39,6 +46,10 @@ import { guardedWritable } from "./guardedStore";
 import type { GameView } from "./protocol";
 
 const held = guardedWritable(false, "holdPriority");
+
+// sawStack: the hold has been on while the stack was live, so the next
+// empty stack is the end of what it was armed for.
+let sawStack = false;
 
 // holdPriority is the read-only view for reactive consumers
 // (PhaseDisplay's button, StackOverlay's header, the auto-pass
@@ -58,12 +69,43 @@ export function toggleHoldPriority(): boolean {
     next = !v;
     return next;
   });
+  sawStack = false;
   return next;
 }
 
 // setHoldPriority pins the hatch to an explicit value.
 export function setHoldPriority(on: boolean): void {
   held.set(on);
+  sawStack = false;
+}
+
+// noteStackForHold is called with every frame (#2853). `stackLive` is
+// a non-empty stack or a trigger still queuing. While the hold is on,
+// a live stack is remembered; the first frame after it with nothing on
+// the stack and nothing queuing turns the hold off. Returns whether it
+// cleared the hold.
+export function noteStackForHold(stackLive: boolean): boolean {
+  if (!get(held)) {
+    sawStack = false;
+    return false;
+  }
+  if (stackLive) {
+    sawStack = true;
+    return false;
+  }
+  if (!sawStack) return false;
+  sawStack = false;
+  held.set(false);
+  return true;
+}
+
+// stackIsLive is noteStackForHold's argument for a frame: an item on
+// the stack (either representation) or a trigger waiting to go on it.
+export function stackIsLive(snap: GameView | null | undefined): boolean {
+  if (!snap) return false;
+  if ((snap.pending_triggers?.length ?? 0) > 0) return true;
+  if ((snap.stack_items?.length ?? 0) > 0) return true;
+  return (snap.stack?.cards?.length ?? 0) > 0;
 }
 
 // isHoldingPriority is the non-reactive read, for callers outside a
@@ -112,4 +154,5 @@ export function ownsEveryStackItem(
 // _resetForTests is the vitest teardown hook. Not for prod use.
 export function _resetForTests(): void {
   held.set(false);
+  sawStack = false;
 }

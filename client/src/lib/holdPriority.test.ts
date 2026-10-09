@@ -4,8 +4,10 @@ import { get } from "svelte/store";
 import {
   holdPriority,
   isHoldingPriority,
+  noteStackForHold,
   ownsEveryStackItem,
   setHoldPriority,
+  stackIsLive,
   toggleHoldPriority,
   _resetForTests,
 } from "./holdPriority";
@@ -110,6 +112,59 @@ describe("holdPriority store", () => {
     expect(isHoldingPriority()).toBe(true);
     setHoldPriority(false);
     expect(isHoldingPriority()).toBe(false);
+  });
+});
+
+// #2853, owner decision 2: the hold is for one stack. It clears itself
+// once the stack it was on for has emptied, and never before.
+describe("noteStackForHold", () => {
+  beforeEach(() => _resetForTests());
+
+  it("keeps a hold armed on an empty stack, before the cast", () => {
+    toggleHoldPriority();
+    expect(noteStackForHold(false)).toBe(false);
+    expect(noteStackForHold(false)).toBe(false);
+    expect(isHoldingPriority()).toBe(true);
+  });
+
+  it("clears the hold when the stack it held empties", () => {
+    toggleHoldPriority();
+    noteStackForHold(false);
+    expect(noteStackForHold(true)).toBe(false);
+    expect(noteStackForHold(true)).toBe(false);
+    expect(isHoldingPriority()).toBe(true);
+    expect(noteStackForHold(false)).toBe(true);
+    expect(get(holdPriority)).toBe(false);
+  });
+
+  it("clears a hold armed with something already on the stack", () => {
+    noteStackForHold(true);
+    toggleHoldPriority();
+    expect(noteStackForHold(true)).toBe(false);
+    expect(noteStackForHold(false)).toBe(true);
+    expect(isHoldingPriority()).toBe(false);
+  });
+
+  it("does nothing while the hold is off, and a fresh arm starts over", () => {
+    expect(noteStackForHold(true)).toBe(false);
+    expect(noteStackForHold(false)).toBe(false);
+    expect(isHoldingPriority()).toBe(false);
+    // Armed, saw a stack, released by hand, armed again on an empty
+    // stack: the old stack does not count against the new hold.
+    toggleHoldPriority();
+    noteStackForHold(true);
+    toggleHoldPriority();
+    toggleHoldPriority();
+    expect(noteStackForHold(false)).toBe(false);
+    expect(isHoldingPriority()).toBe(true);
+  });
+
+  it("stackIsLive counts either stack representation and a queuing trigger", () => {
+    expect(stackIsLive(null)).toBe(false);
+    expect(stackIsLive(snap())).toBe(false);
+    expect(stackIsLive(snap({ stackItems: [item("x", "p1")] }))).toBe(true);
+    expect(stackIsLive(snap({ stackCards: [stackCard("c", "p1")] }))).toBe(true);
+    expect(stackIsLive(snap({ pendingTriggers: [item("t", "p0", "triggered")] }))).toBe(true);
   });
 });
 
