@@ -36,6 +36,9 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller := ctx.Controller()
 			source := ctx.Source()
+			if cultivateOnlyOneBasic(ctx, controller) {
+				return cultivateLoneBasic(ctx, controller, source, "Kodama's Reach")
+			}
 			return SearchLibrary{
 				Player:        controller,
 				Source:        source,
