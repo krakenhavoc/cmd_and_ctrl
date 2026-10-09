@@ -79,6 +79,14 @@ import (
 // Checked by diffing the move logs with DamageByLethality off, which
 // still gives the old digests: every line before those is identical.
 //
+// A sixth deliberate exception, re-pinned by hand (ADR 0136 PR 4,
+// 2026-10-08): the turn plan names itself in the reason. The move log
+// records each decision's reason, and on top of #2689's re-pin only
+// seed 31 changes: the heuristic makes the same moves, and some of its
+// reasons now name its plan. Seed 107's Lightning Bolt, whose reason
+// changed before #2689, is now held, so its digest is #2689's. Every
+// move, turn and winner is the same as #2689's pin.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -120,7 +128,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 399, turns: 9, winner: -1, digest: "8571487c58f438604d8572d31045426f4a45eed52c1ce8f86e2fb94b322012ea",
+			moves: 399, turns: 9, winner: -1, digest: "b5c43024d7deab239bdb0a7a26483e2e2bdf68a075d3dcf18ffbef7b16e1695c",
 		},
 		{
 			name: "four heuristic seats to a winner",

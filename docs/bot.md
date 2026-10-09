@@ -1559,7 +1559,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 
 | Flag | What it does |
 |---|---|
-| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone; until the plan lands (ADR 0136 PR 4) it plays exactly as `heuristic`. Arena names only; the lobby and `GET /bot/options` never offer them. |
+| `--seats` | one contestant per chair, comma-separated. 2–4 chairs. A contestant is a tier, `heuristic-baseline`, `heuristic-noexert` or `heuristic-noplan`. `heuristic-baseline` is the heuristic frozen as it priced cards before S66 ([ADR 0126](decisions/0126-bots-that-play-their-decks.md) §1, `heuristic.BaselineConfig`). `heuristic-noexert` is today's heuristic with [ADR 0130](decisions/0130-exert.md) §9's exert pricing off, to measure that pricing alone. `heuristic-noplan` is today's heuristic with [ADR 0136](decisions/0136-planning-the-turns-mana.md)'s turn plan off (`PlanTurnMana`), to measure the plan alone. Arena names only; the lobby and `GET /bot/options` never offer them. |
 | `--decks` | one curated deck id per chair, or none at all — a partial list is refused. No `--decks` deals a synthetic 65-card red deck that needs no Scryfall dump, and `exert-battle` (also synthetic) is that deck in red and white with fifteen exert cards, for [ADR 0130](decisions/0130-exert.md) §9's measurement, and `monolith-battle` is that deck with six Basalt Monoliths and four Grim Monoliths, for #2500's. |
 | `--names` | one tally name per chair. Use it when every chair is the same tier and the thing being compared is the deck or the configuration. |
 | `--games`, `--seed` | game *i* uses `seed+i`, so two policies can be compared on the same deals. By default the seats run one goroutine each, so the seed fixes the deal and the policies' randomness, not the interleaving — a rerun is the same deals, not always the same games (#1409). Add `--lockstep` for the same games. |
@@ -1753,11 +1753,11 @@ game.
   - **Plan misses.** `planned windows` carried a turn plan of two or
     more casts (the decision log's `trace.plan`). After the seat makes a
     plan's first move, its next main-phase window with an empty stack in
-    the same phase is `checked`, unless another seat made a move other
+    the same phase in which it holds priority (not a prompt the first
+    move raised as it resolved) is `checked`, unless another seat made a move other
     than a pass in between; a `plan miss` is a checked window in which
     the plan's next cast (skipping members held for the end step) is not
-    offered. `miss % of planned` is P6's measure, held under 5%. No plan
-    is made before ADR 0136 PR 4, so these columns read 0 until then.
+    offered. `miss % of planned` is P6's measure, held under 5%.
 - **Opening hands** (#2693) — per policy and per contestant: the
   seat-games that kept a hand, the mulligans they took and mulligans per
   keep, the kept hands by size, and the seat's own turns 2–4 it reached
@@ -2641,10 +2641,15 @@ and left black's win rate where it was. The deck, not this price, is
 what [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)
 rebalances.
 
-**No plan for the turn.** The heuristic prices one move at a time. It
-does not cast a cantrip first to see what it draws before deploying
-([#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458)), it
-does not treat a cycling card as a cheap discard or its own draw step
+**A plan for the turn's casts only.** In its own main phase with an
+empty stack the heuristic plans which casts this turn's mana buys and in
+what order: mana first, then draws, then the rest
+([ADR 0136](decisions/0136-planning-the-turns-mana.md),
+[#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458);
+`aiseat/heuristic/plan.go`). Everywhere else it prices one move at a
+time. It does not hold an instant in the plan for the end step before its
+turn (ADR 0136 PR 5), it does not plan activated abilities or casts with
+a non-mana cost, it does not treat a cycling card as a cheap discard or its own draw step
 as a spend window
 ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), and
 it does not cast a ritual or crack a Treasure for a specific spell.

@@ -51,6 +51,9 @@ type purposeSet struct {
 	// awaken is the N of an awaken cast (ADR 0135 §3): the counters on
 	// the land it makes a hasty 0/0 creature.
 	awaken int
+	// landsUntapped is how many of `lands` enter untapped (ADR 0136 §2):
+	// mana the turn plan may spend this turn. Not priced.
+	landsUntapped int
 	// extraLands is the additional land drops it declares (#2678,
 	// puts.go). Not one of hasAmounts' amounts: it is priced under its
 	// own Config switch, beside the purpose rather than in place of a
@@ -72,6 +75,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.draws += p.Draws
 	ps.discards += p.Discards
 	ps.lands += p.Lands
+	ps.landsUntapped += p.LandsUntapped
 	ps.tutors += p.Tutors
 	ps.selfMill += p.SelfMillTutor
 	ps.tokens += p.Tokens

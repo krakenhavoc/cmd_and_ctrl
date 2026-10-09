@@ -288,13 +288,13 @@ type Config struct {
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
-	// zero value, and BaselineConfig) decides one move at a time.
-	//
-	// Nothing reads it yet: the plan lands in ADR 0136 PR 4. It exists
-	// now so the arena's `heuristic-noplan` contestant (DefaultConfig
-	// with it off) is in place for PR 2's baseline, and plays exactly as
-	// `heuristic` until then.
+	// zero value, BaselineConfig, and the arena's `heuristic-noplan`)
+	// decides one move at a time. See plan.go.
 	PlanTurnMana bool
+	// PlanMaxCards is how many cards the plan considers: the ones whose
+	// best single cast prices highest (ADR 0136 §1). Ten, so at most
+	// 1,024 sets. Zero or less considers every card on offer.
+	PlanMaxCards int
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -537,6 +537,7 @@ func DefaultConfig() Config {
 		DiscardSpellPerMana: 1.00,
 		DiscardLandFloor:    2.50,
 		PlanTurnMana:        true,
+		PlanMaxCards:        10,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -668,6 +669,7 @@ func BaselineConfig() Config {
 	c.DiscardLandFloor = 0
 	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
 	c.PlanTurnMana = false
+	c.PlanMaxCards = 0
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
 	c.PricePutsFromHand = false
@@ -908,16 +910,23 @@ func (st *state) permanentValue(c *protocol.CardView) float64 {
 
 // Decide is the aiseat.Policy entry point.
 func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, error) {
+	d, _, err := p.decide(ctx, in)
+	return d, err
+}
+
+// decide is Decide with the turn plan it chose, if any (ADR 0136 §7),
+// which DecideTraced records.
+func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, []aiseat.PlanMember, error) {
 	if len(in.Moves) == 0 {
-		return aiseat.Decision{}, aiseat.ErrNoMoves
+		return aiseat.Decision{}, nil, aiseat.ErrNoMoves
 	}
 	if len(in.Moves) == 1 {
-		return aiseat.Decision{Index: 0, Reason: "only legal move"}, nil
+		return aiseat.Decision{Index: 0, Reason: "only legal move"}, nil, nil
 	}
 	// ADR 0121 §4: the opening roll. Roll, or take the first turn —
 	// the same answer Layer A gives, from the same function.
 	if i, why := aiseat.OpeningRollIndex(in); i >= 0 {
-		return aiseat.Decision{Index: i, Reason: why}, nil
+		return aiseat.Decision{Index: i, Reason: why}, nil, nil
 	}
 	p.mu.Lock()
 	defer p.mu.Unlock()
@@ -928,9 +937,9 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	// nothing else. Each is answered on its own terms.
 	switch {
 	case allKind(in.Moves, legal.KindMulligan):
-		return p.decideMulligan(st, in.Moves), nil
+		return p.decideMulligan(st, in.Moves), nil, nil
 	case allKind(in.Moves, legal.KindChoice):
-		return p.decideChoice(ctx, st, in.Moves), nil
+		return p.decideChoice(ctx, st, in.Moves), nil, nil
 	}
 
 	// Combat first: a block that saves eight damage beats any cast on
@@ -938,16 +947,17 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	// ever wins.
 	if anyKind(in.Moves, legal.KindBlock) {
 		if d, ok := p.decideBlock(st, in.Moves); ok {
-			return d, nil
+			return d, nil, nil
 		}
 	}
 	if anyKind(in.Moves, legal.KindAttack) {
 		if d, ok := p.decideAttack(st, in.Moves); ok {
-			return d, nil
+			return d, nil, nil
 		}
 	}
 
-	return p.decideGeneral(ctx, st, in.Moves), nil
+	d, plan := p.decideGeneral(ctx, st, in.Moves)
+	return d, plan, nil
 }
 
 // decideGeneral prices every move against passing and takes the best
@@ -955,7 +965,12 @@ func (p *Policy) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 // about ctx, and it returns best-so-far the moment the deadline
 // lands rather than blowing through it (ADR 0033 §10 — the table
 // never waits on a bot).
-func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Move) aiseat.Decision {
+//
+// With Config.PlanTurnMana on, in the bot's own main phase with an
+// empty stack, it then asks ADR 0136's turn plan (plan.go) whether a set
+// of casts is worth more than the best single move, and if so makes the
+// plan's first move. It returns that plan, nil when none was chosen.
+func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Move) (aiseat.Decision, []aiseat.PlanMember) {
 	threshold := p.cfg.PassThreshold
 	if !st.sorcerySpeed {
 		threshold = p.cfg.InstantThreshold
@@ -967,6 +982,7 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	// whenever take exists, which is the pre-S66 rule exactly.
 	best, bestVal, bestReason := -1, 0.0, ""
 	take, takeVal, takeReason := -1, 0.0, ""
+	vals := make([]float64, len(moves))
 	for i := range moves {
 		if i%16 == 0 && ctx.Err() != nil {
 			break
@@ -975,6 +991,7 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 			continue
 		}
 		v, reason := p.valueOf(st, moves[i])
+		vals[i] = v
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
 		}
@@ -999,26 +1016,29 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		// the pass it stands in for.
 		passIdx = indexOfKind(moves, legal.KindFinishBlocks)
 	}
+	if d, plan, ok := p.decidePlan(ctx, st, moves, vals, best, bestVal, threshold, leftover); ok {
+		return d, plan
+	}
 	if take >= 0 {
-		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}
+		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}, nil
 	}
 	if passIdx >= 0 {
-		return aiseat.Decision{Index: passIdx, Reason: "nothing worth doing"}
+		return aiseat.Decision{Index: passIdx, Reason: "nothing worth doing"}, nil
 	}
 	if best >= 0 && bestVal > 0 {
-		return aiseat.Decision{Index: best, Reason: bestReason + " (no pass on offer)"}
+		return aiseat.Decision{Index: best, Reason: bestReason + " (no pass on offer)"}, nil
 	}
 	// #1571: no pass, but an answer the enumerator marks always-legal
 	// — the attack a CR 508.1d requirement owes while the active
 	// player's pass is withheld. This seat holds priority, so a
 	// decline would stall the table; take the owed answer.
 	if si := aiseat.SafeIndex(moves); si >= 0 {
-		return aiseat.Decision{Index: si, Reason: "owed: " + moves[si].Label}
+		return aiseat.Decision{Index: si, Reason: "owed: " + moves[si].Label}, nil
 	}
 	// No pass means this seat does not hold priority — a combat
 	// declaration window, most likely. Declining is safe there and
 	// the runner turns a decline into a pass whenever one exists.
-	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing worth doing"}
+	return aiseat.Decision{Index: aiseat.Decline, Reason: "nothing worth doing"}, nil
 }
 
 // decideMulligan keeps a hand that has the lands to function. Two to

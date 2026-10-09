@@ -101,9 +101,7 @@ const NoExertContestant = string(tiers.Heuristic) + "-" + VariantNoExert
 // VariantNoPlan is today's heuristic with ADR 0136's turn plan off
 // (Config.PlanTurnMana false), seated as `heuristic-noplan` (ADR 0136
 // §8, owner answer 8): a run of `heuristic` against it measures the
-// plan alone. Until ADR 0136 PR 4 nothing reads PlanTurnMana, so it
-// plays exactly as `heuristic`. An arena name only, like
-// heuristic-baseline.
+// plan alone. An arena name only, like heuristic-baseline.
 const VariantNoPlan = "noplan"
 
 // NoPlanContestant is VariantNoPlan's contestant name.
