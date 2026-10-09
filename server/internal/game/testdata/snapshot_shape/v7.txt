@@ -4843,6 +4843,13 @@ turnTally.modesChosen	map:string
 turnTally.modesChosen{}	array
 turnTally.modesChosen{}[]	number:int
 turnTally.monarchAtStart	custom(uuid.UUID)
+turnTally.noncombatDamage	array
+turnTally.noncombatDamage[]	object
+turnTally.noncombatDamage[].amount	number:int
+turnTally.noncombatDamage[].colors	array
+turnTally.noncombatDamage[].colors[]	string
+turnTally.noncombatDamage[].controller	custom(uuid.UUID)
+turnTally.noncombatDamage[].source	custom(uuid.UUID)
 turnTally.phaseStarted	number:int
 turnTally.phasesBegun	map:string
 turnTally.phasesBegun{}	number:int

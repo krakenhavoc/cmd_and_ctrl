@@ -1,6 +1,7 @@
 package game
 
 import (
+	"slices"
 	"strconv"
 	"strings"
 
@@ -231,6 +232,15 @@ type TurnTally struct {
 	// state-based check, and the list outlives it. Additive: omitted
 	// when empty, so an older snapshot reads back as no records.
 	DamageDealers []DamageDealtRecord `json:"damageDealers,omitempty"`
+	// NoncombatDamage records every amount of noncombat damage dealt
+	// this turn, to any player or permanent, with the source's colours
+	// and controller as they were when it dealt the damage (#2662,
+	// CR 608.2h): "red sources you controlled dealt 4 or more
+	// noncombat damage this turn" (Temple of Power). One entry per
+	// damage event, in the order the damage was dealt. Read through
+	// NoncombatDamageThisTurnForEffect. Additive: omitted when empty,
+	// so an older snapshot reads back as no damage.
+	NoncombatDamage []NoncombatDamageRecord `json:"noncombatDamage,omitempty"`
 	// LoopRun is Resolved restarted at every player decision: the
 	// CR 732 loop breaker's count of how many times one ability has
 	// resolved with nobody casting, activating, answering a prompt
@@ -704,6 +714,59 @@ type DamageDealtRecord struct {
 	Combat bool      `json:"combat,omitempty"`
 }
 
+// NoncombatDamageRecord is one amount of noncombat damage dealt
+// (#2662). Controller and Colors are the source's as it dealt the
+// damage — the damage event's snapshot of it, so a burn spell is read
+// as it stood on the stack and a creature that has left as it last
+// existed on the battlefield.
+type NoncombatDamageRecord struct {
+	Source     uuid.UUID `json:"source"`
+	Controller uuid.UUID `json:"controller"`
+	Colors     []string  `json:"colors,omitempty"`
+	Amount     int       `json:"amount"`
+}
+
+// recordNoncombatDamageLocked notes `amount` of noncombat damage dealt
+// by the damage event's source. A source the engine cannot read is not
+// recorded, which errs weaker: no condition can count it. Caller must
+// hold g.mu.
+func (g *Game) recordNoncombatDamageLocked(ev *ReplacementEvent, amount int) {
+	if ev == nil || amount <= 0 {
+		return
+	}
+	src := ev.SourceLKI
+	if src == nil {
+		src = g.damageSourceLKILocked(ev.DamageSource)
+	}
+	if src == nil {
+		return
+	}
+	g.TurnTally.NoncombatDamage = append(g.TurnTally.NoncombatDamage, NoncombatDamageRecord{
+		Source:     ev.DamageSource,
+		Controller: src.Controller,
+		Colors:     append([]string(nil), src.Colors...),
+		Amount:     amount,
+	})
+}
+
+// NoncombatDamageThisTurnForEffect is how much noncombat damage sources
+// `controller` controlled dealt this turn, counting only sources that
+// were `color` ("R") as they dealt it; an empty color counts every
+// source. Caller must hold g.mu.
+func (g *Game) NoncombatDamageThisTurnForEffect(controller uuid.UUID, color string) int {
+	n := 0
+	for _, r := range g.TurnTally.NoncombatDamage {
+		if r.Controller != controller {
+			continue
+		}
+		if color != "" && !slices.Contains(r.Colors, color) {
+			continue
+		}
+		n += r.Amount
+	}
+	return n
+}
+
 // recordDamageDealerLocked notes that the creature `dealer` dealt
 // damage to `victim`, once per (object, victim, kind). Only a
 // creature is recorded: "a creature that dealt damage to you" is not
@@ -984,6 +1047,13 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
 	if len(t.DamageDealers) > 0 {
 		out.DamageDealers = append([]DamageDealtRecord(nil), t.DamageDealers...)
+	}
+	if len(t.NoncombatDamage) > 0 {
+		out.NoncombatDamage = make([]NoncombatDamageRecord, len(t.NoncombatDamage))
+		for i, r := range t.NoncombatDamage {
+			r.Colors = append([]string(nil), r.Colors...)
+			out.NoncombatDamage[i] = r
+		}
 	}
 	out.Triggered = copyStringIntMap(t.Triggered)
 	out.LoopRun = copyStringIntMap(t.LoopRun)

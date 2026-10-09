@@ -52,25 +52,14 @@ import (
 // of 2026-10-08). The card comes back as Temple of Power, tapped, a
 // new object that never transformed.
 //
-// ONE DECLARED SIMPLIFICATION: Temple of Power's second ability,
-// "{2}{R}, {T}: Transform this land. Activate only if red sources you
-// controlled dealt 4 or more noncombat damage this turn and only as a
-// sorcery", is not registered. The turn tally keeps no per-source
-// amount of noncombat damage by colour (DamageDealtRecord is a
-// once-per-creature flag), and an activation with its condition
-// dropped would be STRONGER than printed (#259). The land taps for
-// {R} and stays a land, which is weaker; the condition lands with
-// that tally.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        ojerAxonilOracleID,
 		Name:            "Ojer Axonil, Deepest Might",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
-		Caveats: []string{
-			"Temple of Power's ability to transform back into Ojer Axonil isn't implemented — once the God dies and returns as the land, it stays a land.",
-		},
-		Triggered: []game.TriggeredAbility{ojerDiesReturnTransformed("Ojer Axonil", nil)},
+		Triggered:       []game.TriggeredAbility{ojerDiesReturnTransformed("Ojer Axonil", nil)},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			// It only ever raises the amount ("deals damage equal to
@@ -133,22 +122,38 @@ func ojerDamageHitsAnOpponentOf(ev *game.ReplacementEvent, g *game.Game, control
 //	 controlled dealt 4 or more noncombat damage this turn and only as
 //	 a sorcery."
 //
-// Only the mana ability is registered; see the declared simplification
-// on the front face.
+// The condition reads the turn tally's noncombat damage record
+// (#2662), which keeps each amount with the source's colour and
+// controller as it dealt the damage (CR 608.2h). "Red sources you
+// controlled" is read then, not now: a red creature that pinged and
+// has since died or changed colour still counts, and damage dealt by a
+// source you controlled only later does not.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     ojerAxonilOracleID + "#1",
 		Name:         "Temple of Power",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The {2}{R}, {T} ability to transform back into Ojer Axonil isn't implemented — the land only taps for {R}.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",
 			Label:    "{T}: Add {R}",
 		}},
+		Activated: []ActivatedAbility{{
+			Label:        "{2}{R}, {T}: Transform this land. Activate only if red sources you controlled dealt 4 or more noncombat damage this turn and only as a sorcery.",
+			Cost:         Plus(ManaCost("{2}{R}"), TapCost()),
+			SorcerySpeed: true,
+			Condition:    redSourcesDealtFourNoncombat,
+			Effect:       Do(TransformThis{}),
+		}},
 	})
+}
+
+// redSourcesDealtFourNoncombat is "Activate only if red sources you
+// controlled dealt 4 or more noncombat damage this turn".
+func redSourcesDealtFourNoncombat(g *game.Game, controller, _ uuid.UUID) bool {
+	return g.NoncombatDamageThisTurnForEffect(controller, "R") >= 4
 }
 
 const ojerAxonilOracleID = "d3b7b541-6f05-46c1-8031-c848c4bd4635"

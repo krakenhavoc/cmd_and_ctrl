@@ -955,6 +955,12 @@ func (g *Game) placeDamageResultCountersLocked(ev *ReplacementEvent, t *damageTa
 //
 // Caller must hold g.mu.
 func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLifeLoss int) {
+	// #2662: the noncombat amount, recorded here rather than by the
+	// tally listener because the event's source snapshot is in hand
+	// here and gone from the emitted Event.
+	if !t.combat {
+		g.recordNoncombatDamageLocked(ev, ev.DamageAmount)
+	}
 	g.EmitEvent(Event{
 		Kind:              EventDealDamage,
 		Actor:             t.actor,
