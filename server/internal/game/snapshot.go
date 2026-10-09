@@ -901,6 +901,12 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Renowned is the CR 702.112b renowned designation (ADR 0071
+	// amendment 2026-10-09, #2049), carried for Monstrous's reason: "not
+	// renowned" is a legal zero value, so a restore that dropped it
+	// would let a renowned creature's renown trigger a second time.
+	// Additive within v7: an older binary ignores the key.
+	Renowned bool `json:"renowned,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -2048,6 +2054,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Renowned:                 c.Renowned,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -2899,6 +2906,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Renowned:                 c.Renowned,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,

@@ -333,6 +333,7 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Solved = false
 		c.Harnessed = false
 		c.Monstrous = false
+		c.Renowned = false
 		c.Saddled = false
 		c.SaddledBy = nil
 		c.Suspected = false

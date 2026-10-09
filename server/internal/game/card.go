@@ -1396,6 +1396,22 @@ type Card struct {
 	// Suspected is the CR 701.60 designation described above
 	// (SuspectedAt). Here for alignment, beside the other bools.
 	Suspected bool
+
+	// Renowned is the CR 702.112b renowned designation (ADR 0071
+	// amendment 2026-10-09, #2049): the marker a renown trigger sets
+	// as it resolves (renown.go), and what "if it's renowned" and "as
+	// long as this creature is renowned" read.
+	//
+	// Set by becomeRenownedLocked and by nothing else. Once set it
+	// STAYS set for as long as the permanent is on the battlefield (CR
+	// 702.112b: "Once a permanent becomes renowned, it stays renowned
+	// until it leaves the battlefield"), and it is "neither an ability
+	// nor part of the permanent's copiable values" — so it is
+	// Monstrous's field in every respect: not copiable
+	// (CopiableValuesOf never reads it), kept through a control change,
+	// cleared at both CR 400.7 sites, carried by clone and the
+	// snapshot. Here for alignment, beside the other bools.
+	Renowned bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
