@@ -486,8 +486,7 @@ Geier Reach Sanitarium, Sram, Entish Restoration, Urza's Cave,
 Dispatch, Expedition Map, Sheoldred the Apocalypse, Living Death,
 Mental Misstep, Pyroblast, Fabricate.
 
-Declared weaker: Entish Restoration's sacrifice as an additional cost
-(Victimize's posture); Mental Misstep's Phyrexian pip paid with {U}
+Declared weaker: Mental Misstep's Phyrexian pip paid with {U}
 only; Warren Soultrader's "another" enforced by name; Geier Reach's
 loot seat by seat; the bounce lands inherit the Chancery's
 choice-as-target. One stronger corner, declared: Land Tax's
