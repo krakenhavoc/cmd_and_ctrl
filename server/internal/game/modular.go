@@ -50,10 +50,6 @@ import (
 // "modular N"; see CanonicalModularToken.
 const KeywordModular = "modular"
 
-// maxModularValue bounds what ModularValue accepts. Printed modular
-// tops out at 6 (Arcbound Overseer).
-const maxModularValue = 999
-
 // modularReplacementIDBase is the sixth stride of the self-replacement
 // range: riot's is the third and unleash's the fourth (riot.go), and
 // read ahead's single ID opens the fifth (read_ahead.go).
@@ -61,7 +57,7 @@ const modularReplacementIDBase = selfReplacementIDBase + 5*MaxCatalogReplacement
 
 // ModularValue parses one ability token as "modular N".
 func ModularValue(token string) (int, bool) {
-	return numberedKeywordValue(token, KeywordModular, maxModularValue)
+	return numberedKeywordValue(token, KeywordModular)
 }
 
 // CanonicalModularToken normalises one printed modular clause to the

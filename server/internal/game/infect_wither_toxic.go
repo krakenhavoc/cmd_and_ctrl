@@ -43,13 +43,6 @@ const (
 // refuses a bare "protection".
 const KeywordToxic = "toxic"
 
-// maxToxicValue bounds what ToxicValue will accept. Printed toxic
-// tops out at 4 (Tyrranax Rex), so anything past three digits is a
-// malformed oracle line rather than a card, and refusing it leaves
-// the card flagged unimplemented — weaker than printed, never
-// stronger, which is the direction every parse in this engine errs.
-const maxToxicValue = 999
-
 // ToxicValue parses one ability token as CR 702.164's numbered
 // keyword, reporting the N it carries.
 //
@@ -65,7 +58,7 @@ const maxToxicValue = 999
 // plus trim CanonicalKeywords applies, so a raw oracle line can be
 // handed straight in.
 func ToxicValue(token string) (int, bool) {
-	return numberedKeywordValue(token, KeywordToxic, maxToxicValue)
+	return numberedKeywordValue(token, KeywordToxic)
 }
 
 // CanonicalToxicToken normalises one printed toxic clause to the
