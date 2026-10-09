@@ -306,3 +306,81 @@ func surveilKeepNoncreatureNonland(g *game.Game, item *game.StackItem) error {
 	})
 	return nil
 }
+
+// --- fra-prepare-b -------------------------------------------------
+
+// fraThresholdMet is threshold (ability word): seven or more cards in
+// the controller's graveyard.
+func fraThresholdMet(g *game.Game, controller uuid.UUID) bool {
+	return b31GraveyardSize(g, controller) >= 7
+}
+
+// fraThresholdSelfPT is "Threshold — This creature gets +P/+T as long
+// as there are seven or more cards in your graveyard": a layer 7c
+// self-modifier read live on every recompute.
+func fraThresholdSelfPT(power, toughness int) game.StaticAbility {
+	return game.StaticAbility{
+		Layer:    game.Layer7PT,
+		SubLayer: game.SubLayer7C_Modify,
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+			c.Power += power
+			c.Toughness += toughness
+		},
+	}
+}
+
+// fraThresholdSelfKeywords is "Threshold — This creature has <keywords>
+// as long as there are seven or more cards in your graveyard".
+func fraThresholdSelfKeywords(keywords ...string) game.StaticAbility {
+	return b16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
+		return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
+	}, keywords...)
+}
+
+// fraBecomesPreparedAtUpkeep is "At the beginning of your upkeep, if
+// this creature isn't prepared, it becomes prepared." The condition is
+// an intervening if (CR 603.4): checked when the upkeep begins, so a
+// creature that is already prepared never puts the ability on the
+// stack, and BecomePrepared re-checks as it resolves.
+func fraBecomesPreparedAtUpkeep(name string) game.TriggeredAbility {
+	return On(game.EventBeginUpkeep,
+		func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
+			return ByYou(ev, source, lki, g) && !g.IsPreparedForEffect(source.InstanceID)
+		},
+		name+" — becomes prepared",
+		func(g *game.Game, item *game.StackItem) error {
+			return BecomePrepared{Target: item.SourceCardID}.Apply(NewContext(g, item))
+		})
+}
+
+// omitVariablesResolve is Omit Variables, the prepare spell of Paradox
+// Shaper, Theorix Metamage and Void Extrapolator: "Mill three cards."
+func omitVariablesResolve(_ *game.StackItem, ctx *Context) error {
+	return MillCards{N: 3}.Apply(ctx)
+}
+
+// peerReviewResolve is Peer Review, the prepare spell of Prudent
+// Fateseer and Semester Foreseer: "Create a 2/2 colorless Wizard Soldier
+// creature token named Cadet. Surveil 1." The surveil runs after the
+// token is made, in printed order.
+func peerReviewResolve(_ *game.StackItem, ctx *Context) error {
+	if err := (CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1}).Apply(ctx); err != nil {
+		return err
+	}
+	return Surveil{Player: ctx.Controller(), N: 1}.Apply(ctx)
+}
+
+// viciousVerseResolve is Vicious Verse, the prepare spell of Stingerquill
+// Voxmancer and Whiplash Wordsmith: "Vicious Verse deals 1 damage to
+// target opponent."
+func viciousVerseResolve(item *game.StackItem, ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind == game.TargetPlayer {
+			return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 1}.Apply(ctx)
+		}
+	}
+	return nil
+}

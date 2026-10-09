@@ -28,11 +28,6 @@ func init() {
 		OracleID:     id + "#1",
 		Name:         "Peer Review",
 		Completeness: CompletenessFull,
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if err := (CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1}).Apply(ctx); err != nil {
-				return err
-			}
-			return Surveil{Player: ctx.Controller(), N: 1}.Apply(ctx)
-		},
+		OnResolve:    peerReviewResolve,
 	})
 }
