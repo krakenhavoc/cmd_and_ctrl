@@ -364,6 +364,57 @@ Both rules act on `heuristic-noplan` differently. The two-turn comparison is par
 
 **The review-game windows** (game `8a9f18d7`), re-decided on this branch. On the logged views nothing changes: seq 133, 226 and 292 cast Arcane Signet, 180 casts Explosive Vegetation, and 402 and 475 cast Harmonize. With Oracle of Mul Daya's purpose as the catalog declares it today, 292 casts the Oracle and 402 and 475 cast the Oracle first, as before. Seq 180 changes. Before this change it cast the Oracle. Now the two-turn comparison casts Explosive Vegetation (`two turns: Explosive Vegetation now, then Arcane Signet → Tatyova, Benthic Druid (+6.19) over Oracle of Mul Daya now, then Explosive Vegetation (+5.36)`), which is the choice the worked table above gives for 180.
 
+### PR 5: held instants (2026-10-09)
+
+`Config.PlanHoldInstants`, on in `DefaultConfig()` and off in `BaselineConfig()` (`aiseat/heuristic/holdinstants.go`). What it implements:
+
+- **§5's rule, in a plan of two or more casts.** Every instant-speed member (an instant, or a card with flash) starts held. While the set cannot be paid, the first held member in §4's order that adds mana is cast now instead, because a later member needs its mana. Then each held member that draws or tutors is cast now if any mana is left right after it.
+- **A held member's mana is reserved.** The mana model (§2) pays it after every member cast this turn, so no other member can spend it. What it adds arrives only for the other held members. It keeps its value in the plan. When every member is held the bot passes.
+- **Harrow is a member.** §1 leaves out casts with a sacrifice, but §2 and §5 name Harrow as a member, so under this switch a cast whose only other cost is sacrificing lands that its own purpose more than replaces is one (`landSacrificeIsNetMana`, #2469's rule). Its lands are counted net of the one it sacrifices.
+- **The trace and the arena.** The trace marks held members and the reason names them ("Harrow at the end step"). The arena does not count a plan with fewer than two members cast this turn as a planned window, because it names no next cast to look for.
+
+A plan of one is still today's choice (§3). The plan is rebuilt in every window, so once the members cast this turn have resolved, the held member is a plan of one and is cast in that window. The hold lasts one window. Whether a plan of one should be held is the owner question below.
+
+"Before" is `develop` at `067a66153`. "After" is this branch. All runs use `--rotate --lockstep` and the real dump. **0 stalls in every run.**
+
+| # | Measure | Before | After |
+|---|---|---|---|
+| P4 | run 3, Harrow used in a seat-game where it was offered (both blocks) | 75 / 254, 29.5% (24.3–35.4) | **206 / 244, 84.4% (79.3–88.4)** |
+| P4 | run 3 (40 logged games), Harrow cast in the end step before the bot's turn | 0 of 20 casts | 0 of 45 casts |
+| P4 | run 3 win rate | simic ×4, 25.0% by construction | the same |
+| P1 | run 1, rocks offered with the deficit open and used | 212 / 250, 84.8% | 211 / 245, 86.1% |
+| P2 | run 1 stranded share | 103 / 2,965, 3.5% | 96 / 2,936, 3.3% |
+| P3 | run 2, `heuristic` won (seeds 1 and 101, 384 seat-games) | 92 / 384, 24.0% (20.0–28.5); `noplan` 100 | 97 / 384, 25.3% (21.2–29.8); `noplan` 95 |
+| | heuristic against `heuristic-baseline`, izzet-aggro and simic-ramp, 48 games | 28 / 96 against 20 / 96 | 30 / 96 against 18 / 96 |
+| P5 | suite | 41 / 41 | 41 / 41, the same move, layer and reason at every position |
+| P6 | plan misses, runs 1 / 2 (seed 1) / 3 | 3.8% / 2.7% / 2.7% | 4.1% / 3.5% / 3.5% |
+| P6 | turns p50, runs 1 / 3 | 13 / 10, 11 | 13 / 11, 11 |
+| P7 | decision p99, run 2 seed 1, `heuristic` / `noplan`, halves A and B | 367 / 435 µs; 365 / 349 µs | 356 / 442 µs; 416 / 370 µs |
+
+Harrow's use rises because Harrow is now a plan member, so the plan casts it beside a rock or a spell that its lands pay for. The hold itself moves few casts. In run 3's logged games it held Harrow in 26 windows, and none of those holds reached the end step: Harrow was never offered in the end step before the bot's turn, before or after. In the before run the bot reached that step with Harrow in hand 200 times, with two or fewer lands untapped every time. The runner does offer that window: the before run has 1,465 such windows for heuristic seats, and ADR 0119's stack hold does not apply with the stack empty.
+
+Canaries (A3): Rhystic Study on simic-ramp 10 / 23 → 9 / 22 in run 1 and 110 / 225 → 114 / 248 in run 3. Entomb, Mary Read's loot, Viscera Seer and Sol Ring meet their bars before and after.
+
+**A scratch build that also holds a plan of one** (the option the owner question recommends, not on this branch) shows what persisting the hold does. On the same seeds:
+
+- Harrow cast in the end step before the bot's turn in 5 of 47 casts in run 3's logged games, and used in 212 / 252 seat-games (84.1%). In the logged games Harrow was held in 41 windows. In the cases traced by hand, a later window's plan used Harrow's mana for its lands, or an opponent's Rhystic Study tax spent it.
+- Run 1's stranded share rose from 3.3% to 5.1%, because the held mana is counted as unspent at the bot's last main-phase pass.
+- Run 2: `heuristic` won 93 / 384 (24.2%), against 97 on this branch.
+- Run 1: esper-control won 16 games, against 17 on this branch, and izzet-aggro 1 against 3.
+- It fails the gated position `harrow-sacrifices-the-tapped-land` by passing: a lone Harrow in the first main phase is held. It also passes on Lightning Bolt in `never-bolt-yourself`, which is not gated.
+
+**Open owner questions (PR 5).**
+
+1. **Is a plan of one held?** §5's "if every remaining member is held, the bot passes" can only happen in a later window if a plan of one can be held, because the plan is rebuilt in every window and §3 makes a plan of one today's choice.
+   - (a) Recommended: a lone instant-speed cast that §5 would hold is held, in every main phase. This is the reading that keeps the hold until the end step, and the one #2668 asks for. It needs `harrow-sacrifices-the-tapped-land` relabelled to accept the pass, or captured again in the end step.
+   - (b) A lone member is held only when it is what remains of a plan chosen earlier in the same turn. The policy would keep that plan for the turn, as it keeps the plan for a tax prompt today. The gated position is unchanged.
+   - (c) As this branch ships: hold only inside a plan of two or more.
+2. **Which instants does §5 hold?**
+   - (a) Recommended: every instant-speed member, as §5 says. Its two exceptions are for mana and draws, so removal, burn and flash creatures are held.
+   - (b) Only instants whose purpose is ramp or draw.
+
+   The answer matters only if question 1 is answered (a) or (b): within a plan of two or more, a held removal spell is cast in the next window anyway.
+
 ---
 
 ## Out of scope
