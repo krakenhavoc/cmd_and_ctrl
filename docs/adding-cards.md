@@ -7590,6 +7590,32 @@ Three things to get right:
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
 
+### Partner with (CR 702.124j, #2142)
+
+"Partner with [name]" is two abilities. The deck-construction one needs
+nothing from the card file: `internal/deck` reads the "Partner with"
+line off Scryfall's oracle text and accepts the two cards as commanders
+when each names the other. The entry trigger is one row:
+
+```go
+Triggered: []game.TriggeredAbility{
+    PartnerWith("Sam, Loyal Attendant", "Frodo, Adventurous Hobbit"),
+    // … the card's other triggers
+},
+```
+
+The first argument is the card's own name and the second the partner's,
+exactly as printed. The row targets a player (any player, chosen as it
+goes on the stack), asks that player whether to search, and searches
+their library for a card with that name, revealed into their hand, then
+shuffles. Declining searches and shuffles nothing; they may also search
+and fail to find (CR 701.23b). Write it for a nonlegendary card too
+(Ley Weaver): the trigger works there, and only the pairing needs a
+legendary card. Plain partner, partner—[text], choose a Background and
+Doctor's companion are not supported: the deck importer still refuses
+them, and a card whose only gap is one of them is fine to add, since
+those abilities do nothing in a game.
+
 ### Renown (CR 702.112, #2049)
 
 Renown is a keyword the engine runs (`"renown N"` in `PrintedKeywords`), and

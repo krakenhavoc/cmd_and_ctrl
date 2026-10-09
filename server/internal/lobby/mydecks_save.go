@@ -132,7 +132,9 @@ func (d *deckCheck) saveDeck(c Config, w http.ResponseWriter, r *http.Request) e
 		name = strings.TrimSpace(fetched)
 	}
 	if name == "" && len(commanders) > 0 {
-		name = commanders[0]
+		// A "Partner with" pair (#2142) is named for both commanders,
+		// as libraryFallbackName names it.
+		name = strings.Join(commanders, " / ")
 	}
 	if name == "" {
 		name = "Untitled deck"

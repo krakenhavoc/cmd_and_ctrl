@@ -2858,13 +2858,11 @@ var items = []Item{
 	},
 
 	{
-		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "\"Partner with [name]\" lets two named legendary cards be your commanders together, and searches for the other one when it enters.",
-		Missing:     "Partner with isn't supported: neither card of the pair can be paired as a commander, and the search when it enters doesn't happen.",
-		Rules:       []string{"702.124j"},
-		Issue:       2142,
-		Waiting:     []string{"Frodo, Adventurous Hobbit"},
-		EngineNotes: "deck + trigger: `deck.hasUnsupportedPhrase` flags every partner variant, so no partner pair passes Commander validation, and there is no \"search for a card named [name]\" entry trigger. Pir, Imaginative Rascal ships with a caveat for it. Found landing ADR 0114 PR 5.",
+		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "\"Partner with [name]\" lets two named legendary cards be your commanders together, and searches for the other one when it enters.",
+		Rules:    []string{"702.124j"},
+		Probe:    declaresPartnerWith,
+		Examples: []string{"Frodo, Adventurous Hobbit", "Sam, Loyal Attendant", "Pir, Imaginative Rascal"},
 	},
 	{
 		Slug: "voting", Name: "Voting and will of the council", Kind: KindSeam, Status: StatusMissing,

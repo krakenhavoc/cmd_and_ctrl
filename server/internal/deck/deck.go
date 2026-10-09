@@ -39,10 +39,11 @@ type List struct {
 	// the lobby.
 	Name string `json:"name,omitempty"`
 
-	// Commanders is the set of cards placed in the command zone. At
-	// S05 this must have exactly one entry; partner / companion
-	// support is deferred (and the parser emits an explicit
-	// "unsupported" error when it sees those mechanics).
+	// Commanders is the set of cards placed in the command zone: one
+	// card, or two that are a "Partner with" pair (#2142, CR
+	// 702.124j). The other partner abilities and companion are still
+	// deferred (the parser emits an explicit "unsupported" error for
+	// plain partner, partner—[text] and companion).
 	Commanders []cards.Card `json:"commanders"`
 
 	// Mainboard is the 99 (or more, pre-validation) cards placed in
@@ -127,7 +128,7 @@ func (e *UnsupportedMechanicError) Violations() []Violation {
 	return []Violation{{
 		Code:    CodeUnsupportedMechanic,
 		Card:    e.Card,
-		Message: fmt.Sprintf("%q uses partner/companion, which is deferred to a later sprint", e.Card),
+		Message: fmt.Sprintf("%q uses partner or companion, which is deferred to a later sprint (only \"Partner with\" pairs are supported)", e.Card),
 	}}
 }
 
@@ -187,7 +188,9 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 // split cards keep their legal text on one of the faces). We use a
 // coarse substring match against "Partner" and "Companion —"
 // (with the em-dash separator Scryfall uses), which is precise
-// enough to cover both partner variants and every companion.
+// enough to cover plain partner, partner—[text] and every companion.
+// "Partner with [name]" is not flagged (#2142): Validate judges the
+// pair instead.
 func mentionsUnsupportedMechanic(c cards.Card) bool {
 	if hasUnsupportedPhrase(c.OracleText) {
 		return true
@@ -201,12 +204,13 @@ func mentionsUnsupportedMechanic(c cards.Card) bool {
 }
 
 func hasUnsupportedPhrase(text string) bool {
-	// "Partner with" is the named-partner variant; plain "Partner"
-	// anchors the generic one. Companion uses the em-dash delimiter
-	// that Scryfall ships (U+2014) to introduce the restriction.
-	if strings.Contains(text, "Partner with ") {
-		return true
-	}
+	// "Partner with [name]" is supported (#2142, partner.go): its
+	// lines are dropped first, so the word-boundary match below does
+	// not read them as plain partner. Plain "Partner" and
+	// "Partner—[text]" (Friends forever) are still refused. Companion
+	// uses the em-dash delimiter that Scryfall ships (U+2014) to
+	// introduce the restriction.
+	text = withoutPartnerWithLines(text)
 	if strings.Contains(text, "Companion \u2014 ") {
 		return true
 	}
