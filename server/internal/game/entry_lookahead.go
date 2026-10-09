@@ -60,6 +60,8 @@ type entryLookAhead struct {
 	// ahead choice may name.
 	readAhead    bool
 	finalChapter int
+	// modular is the N of each modular instance (#2012, CR 702.43b).
+	modular []int
 }
 
 // entryLookAheadCache is one entry event's memo of its look-ahead,
@@ -109,6 +111,10 @@ func (g *Game) entryLookAheadLocked(ev *ReplacementEvent) entryLookAhead {
 				result.sunburst++
 			case KeywordReadAhead:
 				result.readAhead = true
+			default:
+				if n, ok := ModularValue(a); ok {
+					result.modular = append(result.modular, n)
+				}
 			}
 		}
 		if result.readAhead && IsSaga(perm) {

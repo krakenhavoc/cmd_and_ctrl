@@ -147,24 +147,32 @@ func diesReturnTrigger(k diesReturnKeyword) TriggeredAbility {
 // per persist token (CR 113.2c). harvestLTB's counterpart of
 // keywordTriggersFor.
 func ltbKeywordTriggersFor(lki Characteristic) []TriggeredAbility {
-	undying, persist := 0, 0
+	undying, persist, modular := 0, 0, 0
 	for _, a := range lki.Abilities {
 		switch a {
 		case KeywordUndying:
 			undying++
 		case KeywordPersist:
 			persist++
+		default:
+			// #2012: one modular dies trigger per instance (modular.go).
+			if _, ok := ModularValue(a); ok {
+				modular++
+			}
 		}
 	}
-	if undying+persist == 0 {
+	if undying+persist+modular == 0 {
 		return nil
 	}
-	out := make([]TriggeredAbility, 0, undying+persist)
+	out := make([]TriggeredAbility, 0, undying+persist+modular)
 	for i := 0; i < undying; i++ {
 		out = append(out, undyingTrigger)
 	}
 	for i := 0; i < persist; i++ {
 		out = append(out, persistTrigger)
+	}
+	for i := 0; i < modular; i++ {
+		out = append(out, modularTrigger)
 	}
 	return out
 }

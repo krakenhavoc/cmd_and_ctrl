@@ -66,20 +66,25 @@ import (
 // tokens are "annihilator N".
 const KeywordAnnihilator = "annihilator"
 
-// maxAnnihilatorValue bounds what AnnihilatorValue accepts. Printed
-// annihilator tops out at 6 (Emrakul, the Aeons Torn), so a longer
-// number is a malformed line and is refused, which errs weaker.
-const maxAnnihilatorValue = 999
+// maxNumberedKeywordValue bounds the N every numbered keyword accepts.
+// Printed values top out in single digits (toxic 4 on Tyrranax Rex,
+// annihilator 6 on Emrakul, the Aeons Torn, renown 6 on Outland
+// Colossus, modular 6 on Arcbound Overseer), so anything past three
+// digits is a malformed oracle line rather than a card, and refusing
+// it leaves the card flagged unimplemented — weaker than printed,
+// never stronger, which is the direction every parse in this engine
+// errs.
+const maxNumberedKeywordValue = 999
 
 // numberedKeywordValue parses one ability token as a numbered keyword
 // `word N`: the word, exactly one space and a positive decimal integer
-// no greater than max, with nothing after it. Case and surrounding
+// no greater than maxNumberedKeywordValue, with nothing after it. Case and surrounding
 // whitespace are normalised, so a raw oracle line can be handed in.
 // Leading zeros are accepted and normalised away.
 //
-// Shared by toxic (ToxicValue) and annihilator (AnnihilatorValue), so
-// the two numbered keywords can never disagree on what a number is.
-func numberedKeywordValue(token, word string, max int) (int, bool) {
+// Shared by toxic, annihilator, renown and modular, so the numbered
+// keywords can never disagree on what a number is.
+func numberedKeywordValue(token, word string) (int, bool) {
 	rest, ok := strings.CutPrefix(strings.ToLower(strings.TrimSpace(token)), word)
 	if !ok {
 		return 0, false
@@ -95,7 +100,7 @@ func numberedKeywordValue(token, word string, max int) (int, bool) {
 			return 0, false
 		}
 		n = n*10 + int(d-'0')
-		if n > max {
+		if n > maxNumberedKeywordValue {
 			return 0, false
 		}
 	}
@@ -109,7 +114,7 @@ func numberedKeywordValue(token, word string, max int) (int, bool) {
 // keyword, reporting the N it carries. "annihilator" alone,
 // "annihilator 0" and "annihilator two" answer false.
 func AnnihilatorValue(token string) (int, bool) {
-	return numberedKeywordValue(token, KeywordAnnihilator, maxAnnihilatorValue)
+	return numberedKeywordValue(token, KeywordAnnihilator)
 }
 
 // CanonicalAnnihilatorToken normalises one printed annihilator clause

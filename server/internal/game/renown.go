@@ -74,16 +74,11 @@ import (
 // tokens are "renown N".
 const KeywordRenown = "renown"
 
-// maxRenownValue bounds what RenownValue accepts. Printed renown tops
-// out at 6 (Outland Colossus), so a longer number is a malformed line
-// and is refused, which errs weaker.
-const maxRenownValue = 999
-
 // RenownValue parses one ability token as CR 702.112's numbered
 // keyword, reporting the N it carries. "renown" alone, "renown 0" and
 // "renown two" answer false.
 func RenownValue(token string) (int, bool) {
-	return numberedKeywordValue(token, KeywordRenown, maxRenownValue)
+	return numberedKeywordValue(token, KeywordRenown)
 }
 
 // CanonicalRenownToken normalises one printed renown clause to the
