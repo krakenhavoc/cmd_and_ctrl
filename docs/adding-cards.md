@@ -7151,9 +7151,16 @@ every planeswalker you control. It opens the window only; the once-per-permanent
 reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
 0140). The modifier is gathered from every seat's command zone, "you" is the player whose zone it is, and it
 applies from no hand, library, graveyard or exile. An ordinary modifier on a command-zone card still does nothing
-there (CR 113.6), so a card whose static is not a cost modifier does not get an eminence by being a commander:
-eminence triggers and eminence replacements are not built, and a card that prints one ships without that line and
-says so in `Caveats`.
+there (CR 113.6), so a card whose static is not a cost modifier does not get an eminence by being a commander.
+
+An **eminence trigger** ("Whenever …, if [this] is in the command zone or on the battlefield, …") wraps the
+ordinary trigger in `EminenceTrigger(...)` (#2802, ADR 0140 amendment 2026-10-09): it watches from both zones, "you"
+from the command zone is the zone's owner, and the intervening "if" is checked again on resolution. It composes
+with the usual wrappers, inside or out: `EminenceTrigger(OncePerBatch(On(game.EventAttack, …)))` (Sidar Jabari of
+Zhalfir), `EminenceTrigger(Targeting(AtBeginningOfYourCombat(…), Another(…)))` (Arahbo, Roar of the World),
+`EminenceTrigger(On(game.EventETB, AnotherNontokenCreatureOfTypeEnteredUnderYourControl("Wizard"), …))` (Inalla,
+Archmage Ritualist). The wrapped trigger must declare its `Effect`. Eminence replacements are not built: a card
+that prints one ships without that line and says so in `Caveats`.
 
 ### The Ring tempts you (ADR 0114, #2076)
 
