@@ -307,6 +307,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && src != nil && st.idleSelfUntap(src, cp) {
 			return idleEquipMove, "untap for no net mana"
 		}
+		// #2777: a free activation the bot already made this turn
+		// buys nothing more (free_repeat.go).
+		if !across && p.repeatsFreeActivation(st, m) {
+			return freeRepeat, "free activation already made this turn"
+		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
 		// place of the flat ActivateBase, and a row that sacrifices its

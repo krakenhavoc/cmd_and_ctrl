@@ -14,39 +14,39 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolves. In a five-colour Atraxa list the filter is the whole
 // reason to run it over a basic.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): the {1}, {T} filter
-// ability is NOT implemented. "Add two mana of DIFFERENT COLORS" is a
-// constraint ACROSS two produced symbols, and the mana grammar has no
-// way to say it — a pipe slot ("{W|U|B|R|G}{W|U|B|R|G}") picks each
-// symbol independently and would happily produce {U}{U}, which is
-// STRONGER than the printed card and is the direction #259 forbids.
-// Rather than ship a filter that is better than the one on the card,
-// the Beacon ships without it: a colourless land with a lifegain
-// trigger. That is strictly less than printed.
+// The {1}, {T} filter is "two mana of different colors" (#2558,
+// DifferentColors(2)): one pick of two DIFFERENT colours, never {U}{U},
+// and both carry the planeswalker-only spend restriction (#352's
+// ManaRestrictCast + ManaRestrictType). It shipped without that ability
+// until the produced-mana grammar could say "different"; the caveat
+// went with #2558. The auto-tapper never plans it, as it never plans
+// any restricted mana; the player activates it from the card.
 //
-// The rest is complete. "Whenever you CAST a planeswalker spell" is a
+// "Whenever you CAST a planeswalker spell" is a
 // cast trigger, so it fires with the spell still on the stack and
 // pays even if the planeswalker is countered. The type is read off
 // the spell, so a creature that is also a planeswalker (Gideon) and
 // an artifact planeswalker both count.
 //
-// The restricted-mana machinery the missing ability would need does
-// exist since #352 (ManaRestrictCast + ManaRestrictType), so when the
-// grammar grows a "different colors" slot this file is a two-line
-// change and the caveat goes away.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "073169f2-da3a-4a93-8c01-b3fd8558d225",
 		Name:         "Interplanar Beacon",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The {1}, {T} ability that adds two mana of different colors for planeswalker spells isn't available — the Beacon taps for {C} only.",
+		Completeness: CompletenessFull,
+		ManaAbilities: []ManaAbility{
+			{
+				Cost:     ManaAbilityCost{Tap: true},
+				Produced: "{C}",
+				Label:    "Add {C}",
+			},
+			{
+				Cost:         ManaAbilityCost{Mana: "{1}", Tap: true},
+				Produced:     DifferentColors(2),
+				Label:        "{1}, {T}: Add two mana of different colors. Spend this mana only to cast planeswalker spells.",
+				Restrictions: []string{ManaRestrictCast, ManaRestrictType("Planeswalker")},
+			},
 		},
-		ManaAbilities: []ManaAbility{{
-			Cost:     ManaAbilityCost{Tap: true},
-			Produced: "{C}",
-			Label:    "Add {C}",
-		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

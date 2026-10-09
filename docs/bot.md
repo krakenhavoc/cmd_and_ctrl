@@ -3114,6 +3114,20 @@ nets 0 and Grim Monolith (`{4}`) nets -1, so neither is taken. This is
 does not model an untap that enables a spell this window, because the
 mana that spell would spend is the mana the untap costs.
 
+**A bot makes a free activation once a turn.** Shaman en-Kor's "{0}: The
+next 1 damage that would be dealt to this creature this turn is dealt to
+target creature you control instead" costs nothing, so priced like any
+activation of the bot's own it beat passing in every window, and a
+heuristic seat bought the same shield over and over until the CR 732
+breaker paused the table
+([#2777](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2777), the
+same shape as #2449 and #2500). What a free row buys is not on the wire,
+but the policy knows what it chose: a row of its own that costs nothing
+at all (no mana, no tap of anything, no other cost component) keeps its
+usual price the first time in a turn and is priced below passing after
+that, until the turn ends. A row that costs anything is bounded by what
+it costs and is not capped.
+
 **An X paid in LIFE is priced the same way, one short of the life
 total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is
 announced by paying X life as an additional cost — so the affordable-X

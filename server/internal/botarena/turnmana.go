@@ -360,13 +360,21 @@ func sourceMana(c *protocol.CardView) int {
 // producedAmount counts the mana one activation adds from its
 // `produced` string, as the heuristic's manaAmount does: each brace is
 // one mana, a choice "{W|U}" is one, a counted choice "{W3|U3}" is
-// three, and an empty string (an output the view cannot size) is one.
+// three, "N mana of different colors" ("{W|U|B|R|G:2}") is N, and an
+// empty string (an output the view cannot size) is one.
 func producedAmount(produced string) int {
 	if produced == "" {
 		return 1
 	}
 	total := 0
 	for _, sym := range symbols(produced) {
+		// #2558: "{W|U|B|R|G:2}" is two mana of different colors.
+		if k := strings.LastIndexByte(sym, ':'); k >= 0 {
+			if m, err := strconv.Atoi(sym[k+1:]); err == nil && m > 0 {
+				total += m
+				continue
+			}
+		}
 		if k := strings.IndexByte(sym, '|'); k >= 0 {
 			sym = sym[:k]
 		}

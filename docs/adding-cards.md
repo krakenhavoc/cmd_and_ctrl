@@ -418,6 +418,11 @@ PendingChoice for the controller to resolve:
 - `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
   tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
   choose-a-color card" below.
+- `"{W|U|B|R|G:2}"` — Firemind Vessel (#2558): "Add two mana of
+  different colors", ONE slot whose two mana must be two different
+  colours. Use `DifferentColors(n)`. Never write it as two pipes,
+  `"{W|U|B|R|G}{W|U|B|R|G}"`: that allows `{U}{U}`, stronger than
+  printed. See "Adding a choose-a-color card" below.
 
 Mana abilities can carry cost components beyond `{T}`:
 
@@ -2127,6 +2132,7 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"exalted"` | Exalted (CR 702.83) — #2538, a TRIGGERED keyword built like prowess: one trigger per instance (`game/exalted.go`, CR 113.2c) when exactly one creature is declared as an attacker (CR 506.5) and you control it; the attacker gets +1/+1 until end of turn. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`, and each exalted counter (`game.CounterExalted`) is one more instance. Declare it in `PrintedKeywords`; never write an exalted trigger by hand (the old `effects.Exalted()` constructor is gone, and `TestNoCatalogRowIsAnExaltedConstructor` keeps it gone). A creature whose only text is exalted and other tokens here needs no card file ([ADR 0101 amendment 2026-10-08](decisions/0101-keyword-counters.md)) |
 | `"annihilator N"` | Annihilator (CR 702.86) — #2073, the third TRIGGERED keyword: numbered like toxic and triggered like prowess. One attack trigger per instance (`game/annihilator.go`, CR 702.86b); the defending player (CR 508.5, read per attacker) chooses N permanents they control in one prompt and sacrifices them together. Declare it in `PrintedKeywords` (`"annihilator 4"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.AnnihilatorAmounts`, never `HasKeyword`. "Annihilator X" read at resolution is the catalog row `AnnihilatorCounted(label, count)` (Ulamog, the Defiler). A creature whose only text is annihilator and other tokens here needs no card file ([ADR 0113 §2](decisions/0113-small-seams-for-the-s58-deck-requests.md#2-annihilator-2073)) |
 | `"renown N"` | Renown (CR 702.112) — #2049, a TRIGGERED keyword numbered like annihilator. One trigger per instance (`game/renown.go`, CR 702.112c) on combat damage to a player — not a planeswalker, a battle or a creature — with the intervening "if it isn't renowned" read as it triggers and again as it resolves (CR 603.4). It puts N +1/+1 counters on the creature through the CR 614 window, then sets `Card.Renowned` and emits `game.EventBecameRenowned` (Amount = N). Declare it in `PrintedKeywords` (`"renown 2"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.RenownAmounts`, never `HasKeyword`. A creature whose only text is renown and other tokens here needs no card file. What reads the designation is in [Renown](#renown-cr-702112-2049) ([ADR 0071 amendment 2026-10-09](decisions/0071-designations-that-switch-abilities-on.md)) |
+| `"modular N"` | Modular (CR 702.43) — #2012, a NUMBERED entry-and-dies keyword: one entry replacement per instance through the entry look-ahead ("enters with N +1/+1 counters", every entry path, never ordered against other entry replacements), and one dies trigger per instance off the last-known ability list and counters (`game/modular.go`), a "you may" that targets an artifact creature. Declare it in `PrintedKeywords` (`"modular 2"`); cumulative (CR 702.43b). Modular—Sunburst is not this token (Arcbound Wanderer's own card file). A creature whose only text is modular and other tokens here needs no card file |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
 | `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
@@ -6480,6 +6486,17 @@ the executor — so a Gilded Lotus funds `{3}{U}{U}` beside two Islands
 and never funds `{W}{U}` alone, and the surplus floats
 ([ADR 0040](decisions/0040-mana-pipeline.md) #779 addendum).
 
+**"N mana of different colors"** (#2558) is the opposite constraint:
+N picks that must all DIFFER, written `DifferentColors(2)`
+(`"{W|U|B|R|G:2}"`). A click names the pair up front and a repeat is
+refused before anything is paid; the `mana_pick` prompt asks one colour
+at a time with the earlier answers struck out and adds both mana
+together after the last; the auto-tapper offers one candidate per pair.
+A spell or trigger may add it through `AddManaForEffect` too, without
+restrictions (Firemind Vessel, Guild Globe, Component Pouch, Interplanar
+Beacon; tests in
+[different_colors_cards_test.go](../server/internal/cards/effects/different_colors_cards_test.go)).
+
 **Tests**: `pushChosenColorPermanent` and `answerColor` in
 [color_choice_cards_test.go](../server/internal/cards/effects/color_choice_cards_test.go).
 
@@ -7135,9 +7152,16 @@ every planeswalker you control. It opens the window only; the once-per-permanent
 reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
 0140). The modifier is gathered from every seat's command zone, "you" is the player whose zone it is, and it
 applies from no hand, library, graveyard or exile. An ordinary modifier on a command-zone card still does nothing
-there (CR 113.6), so a card whose static is not a cost modifier does not get an eminence by being a commander:
-eminence triggers and eminence replacements are not built, and a card that prints one ships without that line and
-says so in `Caveats`.
+there (CR 113.6), so a card whose static is not a cost modifier does not get an eminence by being a commander.
+
+An **eminence trigger** ("Whenever …, if [this] is in the command zone or on the battlefield, …") wraps the
+ordinary trigger in `EminenceTrigger(...)` (#2802, ADR 0140 amendment 2026-10-09): it watches from both zones, "you"
+from the command zone is the zone's owner, and the intervening "if" is checked again on resolution. It composes
+with the usual wrappers, inside or out: `EminenceTrigger(OncePerBatch(On(game.EventAttack, …)))` (Sidar Jabari of
+Zhalfir), `EminenceTrigger(Targeting(AtBeginningOfYourCombat(…), Another(…)))` (Arahbo, Roar of the World),
+`EminenceTrigger(On(game.EventETB, AnotherNontokenCreatureOfTypeEnteredUnderYourControl("Wizard"), …))` (Inalla,
+Archmage Ritualist). The wrapped trigger must declare its `Effect`. Eminence replacements are not built: a card
+that prints one ships without that line and says so in `Caveats`.
 
 ### The Ring tempts you (ADR 0114, #2076)
 
@@ -7573,6 +7597,32 @@ Three things to get right:
   and the ability's source is that same card (Presumed Dead's granted
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
+
+### Partner with (CR 702.124j, #2142)
+
+"Partner with [name]" is two abilities. The deck-construction one needs
+nothing from the card file: `internal/deck` reads the "Partner with"
+line off Scryfall's oracle text and accepts the two cards as commanders
+when each names the other. The entry trigger is one row:
+
+```go
+Triggered: []game.TriggeredAbility{
+    PartnerWith("Sam, Loyal Attendant", "Frodo, Adventurous Hobbit"),
+    // … the card's other triggers
+},
+```
+
+The first argument is the card's own name and the second the partner's,
+exactly as printed. The row targets a player (any player, chosen as it
+goes on the stack), asks that player whether to search, and searches
+their library for a card with that name, revealed into their hand, then
+shuffles. Declining searches and shuffles nothing; they may also search
+and fail to find (CR 701.23b). Write it for a nonlegendary card too
+(Ley Weaver): the trigger works there, and only the pairing needs a
+legendary card. Plain partner, partner—[text], choose a Background and
+Doctor's companion are not supported: the deck importer still refuses
+them, and a card whose only gap is one of them is fine to add, since
+those abilities do nothing in a game.
 
 ### Renown (CR 702.112, #2049)
 

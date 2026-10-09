@@ -2256,6 +2256,14 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if len(slots) == 0 {
 			continue
 		}
+		// #2558: the set of different colours the plan booked, checked
+		// BEFORE the tap like the one colour below. The slot becomes one
+		// fixed slot per booked colour, the shape the planner priced.
+		expanded, ok := expandDifferentColors(slots, planned.DifferentColors)
+		if !ok {
+			continue
+		}
+		slots = expanded
 		// #779: the planned colour, checked BEFORE the tap for the
 		// same reason the CR 903.4f drop above is — a stale plan (the
 		// Nyx Lotus's devotion moved in response, the ability changed)
@@ -2621,6 +2629,13 @@ func (g *Game) materializeExiledManaSourceLocked(
 		// battlefield arm takes about tapping a land for nothing.
 		return
 	}
+	// #2558: the booked set of different colours, as the battlefield
+	// arm checks it, before the card is spent.
+	expanded, ok := expandDifferentColors(slots, planned.DifferentColors)
+	if !ok {
+		return
+	}
+	slots = expanded
 	// #779: the plan's booked colour, checked BEFORE the card is
 	// spent, exactly as the battlefield arm checks it before the tap.
 	oneColorIdx := oneColorSlot(slots)
@@ -7217,6 +7232,39 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 			// with no identity — no commander, or a colourless one —
 			// adds no mana. No token, and no prompt: an empty picker
 			// is not a choice anybody can answer.
+			continue
+		}
+		// #2558: "N mana of different colors". Named up front, the N
+		// colours (validated distinct before the cost was paid) are
+		// produced together; otherwise one pick asks for them one at a
+		// time and adds nothing until the last (ResolveManaChoice).
+		if slot.DifferentColors() {
+			n := slot.DistinctCount(options)
+			if len(upfront) >= n {
+				named := upfront[:n]
+				upfront = upfront[n:]
+				if differentColorsAllowed(options, n, named) {
+					addedColors = append(addedColors, g.produceManaLocked(
+						p, cardID,
+						append([]string(nil), named...),
+						restrictionsFor(g, &ab, playerID, cardID),
+						ab.SpendRiders,
+						srcKinds,
+						ab.TapCost,
+						nil,
+					)...)
+					continue
+				}
+			}
+			g.queueDifferentColorsPickLocked(PendingChoice{
+				Chooser:          playerID,
+				FromPlayer:       playerID,
+				Source:           cardID,
+				ManaRestrictions: restrictionsFor(g, &ab, playerID, cardID),
+				ManaSourceKinds:  srcKinds,
+				ManaRiders:       copyManaRiders(ab.SpendRiders),
+				ManaTapped:       ab.TapCost,
+			}, options, n, ab.Label)
 			continue
 		}
 		// The PRINTED width decides whether this is a pick, not the

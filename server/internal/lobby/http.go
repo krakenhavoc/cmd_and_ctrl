@@ -3019,15 +3019,21 @@ func saveToLibrary(ctx context.Context, c Config, p auth.Principal, gameID, play
 
 // libraryFallbackName names a deck being saved to the library when
 // its parsed List carries no name — every plain-text paste, since
-// that format has nowhere to put one (deck.ParseText). The first
-// commander is a more useful label than a blank row. Two different
+// that format has nowhere to put one (deck.ParseText). The commander
+// is a more useful label than a blank row; a "Partner with" pair
+// (#2142) is both names joined by " / ", as the deck subtitle and a
+// deck request's title already write them. Two different
 // decks on the same commander and no other name collide under the
 // update rule (same owner, same name) exactly as two Moxfield exports
 // named identically would; a player who wants both kept separate
 // names one of them.
 func libraryFallbackName(list *deck.List) string {
 	if len(list.Commanders) > 0 {
-		return list.Commanders[0].Name
+		names := make([]string, 0, len(list.Commanders))
+		for _, c := range list.Commanders {
+			names = append(names, c.Name)
+		}
+		return strings.Join(names, " / ")
 	}
 	return "Untitled deck"
 }

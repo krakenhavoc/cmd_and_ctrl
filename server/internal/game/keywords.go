@@ -248,6 +248,13 @@ var canonicalKeywords = map[string]bool{
 	// "renown" is refused. CUMULATIVE (CR 702.112c: each instance
 	// triggers separately).
 	KeywordRenown: true,
+	// modular (CR 702.43) joins with #2012, in the same change that
+	// teaches the engine to honour it. NUMBERED like annihilator: the
+	// tokens are "modular N" minted by CanonicalModularToken, and a
+	// bare "modular" is refused. Its consumers are modular.go: an entry
+	// replacement per instance (gathered like riot's) and a dies trigger
+	// per instance (ltbKeywordTriggersFor). CUMULATIVE (CR 702.43b).
+	KeywordModular: true,
 	// exalted (CR 702.83) joins with #2538 (ADR 0101 amendment
 	// 2026-10-08), in the same change that teaches the engine to honour
 	// it. The fourth TRIGGERED keyword, built like prowess
@@ -530,7 +537,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // same call for "Hexproof from").
 func CanonicalKeywords(s string) ([]string, bool) {
 	kw := strings.ToLower(strings.TrimSpace(s))
-	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown {
+	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown || kw == KeywordModular {
 		return nil, false
 	}
 	if canonicalKeywords[kw] {
@@ -551,6 +558,10 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	// Renown (CR 702.112) too: "Renown 2" is one token, "renown 2"
 	// (#2049).
 	if tok, ok := CanonicalRenownToken(s); ok {
+		return []string{tok}, true
+	}
+	// Modular (CR 702.43), #2012: "Modular 2" is "modular 2".
+	if tok, ok := CanonicalModularToken(s); ok {
 		return []string{tok}, true
 	}
 	if toks, ok := ProtectionTokens(s); ok {

@@ -4167,6 +4167,14 @@ type ManaAbilityView struct {
 	// the server accepts, in the server's order. Stamped by
 	// stampManaIdentity, the pass with a game handle.
 	ColorOptions [][]string `json:"color_options,omitempty"`
+	// DifferentColors marks an ability that adds "N mana of different
+	// colors" (#2558, Firemind Vessel): its N lists in ColorOptions are
+	// one per mana, and the answer must name N DIFFERENT colours — the
+	// server refuses a repeated one with ErrIllegalManaColor before
+	// anything is paid. A client offers only the answers whose colours
+	// all differ. Absent for every other ability. Stamped by
+	// stampManaIdentity, beside ColorOptions.
+	DifferentColors bool `json:"different_colors,omitempty"`
 	// CantActivate is ActivatedAbilityView.CantActivate for a mana
 	// ability (#1210): the printed clause of a board-wide "can't be
 	// activated" static that refuses this one. Cursed Totem's
@@ -7063,6 +7071,9 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 		// ability that adds nothing, whose picking slots all narrowed
 		// away.
 		views[i].ColorOptions = game.ManaAbilityColorOptions(g, controller, card.InstanceID, raw[i])
+		if len(views[i].ColorOptions) > 0 {
+			views[i].DifferentColors = game.ManaAbilityAddsDifferentColors(g, controller, card.InstanceID, raw[i])
+		}
 	}
 }
 

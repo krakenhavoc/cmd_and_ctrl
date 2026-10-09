@@ -41,6 +41,10 @@ type Options struct {
 	// that has no primer explaining it (the MCP seat, ADR 0122 §5). The
 	// bot leaves it off and keeps its terse "(unimplemented)".
 	NoteUnimplemented bool
+	// ChoiceIDs prints each owed choice's id beside its kind, the handle
+	// the MCP seat's legal_moves(choice) takes (#2794). The bot has no
+	// such tool and leaves it off, so its prompt does not grow.
+	ChoiceIDs bool
 }
 
 func (o Options) maxZoneCards() int {
@@ -58,10 +62,10 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	max := opts.maxZoneCards()
 	var b strings.Builder
 
-	// Number is the ROUND (every seat has had a turn); Seq counts turns,
-	// the figure the game log's turn field carries. Print both, labelled,
-	// so a model never has to reconcile "Turn 8" here with a log that
-	// counts differently (#2279). The human client's "T4" is the round.
+	// Number is the ROUND (every seat has had a turn); Seq counts turns.
+	// Print both, labelled, in the words the log's step lines use,
+	// "Turn 3 (round 2) — …", so a model never reconciles two counts
+	// under one name (#2279, #2790). The human client's "T4" is the round.
 	if v.Turn.Seq > 0 {
 		fmt.Fprintf(&b, "TURN %d (round %d) — %s", v.Turn.Seq, v.Turn.Number, StepName(v.Turn.Step))
 	} else {
@@ -159,6 +163,9 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			continue
 		}
 		fmt.Fprintf(&b, "\nYOU OWE A CHOICE: %s", ch.Kind)
+		if opts.ChoiceIDs && ch.ID != "" {
+			fmt.Fprintf(&b, " [id %s]", ch.ID)
+		}
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}

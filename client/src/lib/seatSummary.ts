@@ -137,6 +137,13 @@ function manaFromProduced(produced: string | undefined, into: ManaAvailability):
   for (const m of produced.matchAll(SYMBOL)) {
     matched = true;
     const sym = m[1].toUpperCase();
+    // #2558: "{W|U|B|R|G:2}" is two mana of different colors —
+    // real mana of a colour this summary does not know yet.
+    const distinct = /:(\d+)$/.exec(sym);
+    if (distinct) {
+      into.flexible += Math.max(1, Number(distinct[1]));
+      continue;
+    }
     if (MANA_ORDER.includes(sym)) {
       into.byColor[sym] = (into.byColor[sym] ?? 0) + 1;
       continue;

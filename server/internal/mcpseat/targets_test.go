@@ -103,6 +103,58 @@ func TestACutPromptNamesItsChoiceEvenWithASource(t *testing.T) {
 	}
 }
 
+// #2794: an uncut prompt still prints its id, and legal_moves(choice)
+// takes the kind the window prints when one choice of it is owed.
+func TestAnOwedChoicePrintsItsIDAndItsKindExpandsIt(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	joinFake(t, f, s)
+	route, choice := uuid.New(), uuid.NewString()
+	v := activeView(f)
+	v.PendingChoices = []protocol.PendingChoiceView{{ID: choice, Kind: "search_library", Chooser: f.playerID.String(),
+		Source: route.String(), Reason: "Circuitous Route", Count: 2}}
+	moves := []legal.Move{searchMove(f, route, choice, "Forest", uuid.New()), searchMove(f, route, choice, "Basilica Gate", uuid.New())}
+	f.mu.Lock()
+	f.fullMoves = moves
+	f.choiceMoves = map[string][]legal.Move{choice: moves}
+	f.mu.Unlock()
+	f.setState(v, moves, false)
+	_, text := decisionWindow(t, s)
+	if want := "YOU OWE A CHOICE: search_library [id " + choice + "] — Circuitous Route"; !strings.Contains(text, want) {
+		t.Fatalf("the window does not print the choice id (want %q):\n%s", want, text)
+	}
+
+	r, _ := s.LegalMoves(context.Background(), LegalMovesInput{Choice: "search_library", Match: "Gate"})
+	if r.IsError || !strings.Contains(r.Text, "  1: Demonic Tutor: Basilica Gate") || strings.Contains(r.Text, "Forest") {
+		t.Fatalf("legal_moves(choice: kind, match):\n%s", r.Text)
+	}
+	f.mu.Lock()
+	reqs := append([]protocol.LegalMovesRequestPayload(nil), f.moveReqs...)
+	f.mu.Unlock()
+	if len(reqs) == 0 || reqs[len(reqs)-1].Choice != choice {
+		t.Errorf("requests = %+v; want the kind sent as choice id %s", reqs, choice)
+	}
+}
+
+// Two owed choices of one kind: the kind is ambiguous, and the answer
+// names both ids instead of guessing.
+func TestAnAmbiguousChoiceKindNamesTheIDs(t *testing.T) {
+	me := uuid.NewString()
+	v := &protocol.GameView{PendingChoices: []protocol.PendingChoiceView{
+		{ID: "a", Kind: "search_library", Chooser: me},
+		{ID: "b", Kind: "search_library", Chooser: me},
+		{ID: "c", Kind: "choose_cards", Chooser: uuid.NewString()},
+	}}
+	if _, err := resolveChoice(v, me, "search_library"); err == nil || !strings.Contains(err.Error(), "a, b") {
+		t.Errorf("err = %v; want both ids", err)
+	}
+	for in, want := range map[string]string{"b": "b", "cleanup_discard": "cleanup_discard", "choose_cards": "choose_cards"} {
+		if got, err := resolveChoice(v, me, in); err != nil || got != want {
+			t.Errorf("resolveChoice(%q) = %q, %v; want %q", in, got, err, want)
+		}
+	}
+}
+
 func targetView(f *fakeServer, spell uuid.UUID, lt *protocol.LegalTargetsView, cl []protocol.LegalTargetsView) protocol.GameView {
 	v := activeView(f)
 	v.Seats[0].Hand.Cards = []protocol.CardView{{InstanceID: spell.String(), Name: "Spell", ManaCost: "{1}",
