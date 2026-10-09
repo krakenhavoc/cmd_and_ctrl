@@ -49,6 +49,10 @@ func init() {
 					return ok && !c.IsCreature()
 				},
 				Key: "Mystic Remora — draw unless caster pays {4}",
+				// What a decline gives the Remora's controller (ADR 0126
+				// §6): the card a tax-paying bot weighs (ADR 0136,
+				// 2026-10-09).
+				Purpose: game.Purpose{Draws: 1},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return PayUnless{
 						Chooser:  item.Trigger.Event.Actor,

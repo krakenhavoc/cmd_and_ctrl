@@ -31,6 +31,10 @@ func init() {
 			Watches:   []game.EventKind{game.EventCast},
 			AppliesTo: AnOpponentCastTheirFirstNoncreatureSpellThisTurn,
 			Key:       "Esper Sentinel — draw unless caster pays {X}",
+			// What a decline gives the Sentinel's controller (ADR 0126
+			// §6): the card a tax-paying bot weighs (ADR 0136,
+			// 2026-10-09).
+			Purpose: game.Purpose{Draws: 1},
 			// The Sentinel's power at trigger time is a board read the
 			// effect cannot re-derive from item.Trigger alone (ADR 0041
 			// P9's fill-in Build): it is the CR 603.10 fallback X if the

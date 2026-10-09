@@ -31,6 +31,9 @@ func init() {
 				return ev.Actor != source.Controller
 			},
 			Key: "Rhystic Study — draw unless caster pays {1}",
+			// What a decline gives the Study's controller (ADR 0126 §6):
+			// the card a tax-paying bot weighs (ADR 0136, 2026-10-09).
+			Purpose: game.Purpose{Draws: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return PayUnless{

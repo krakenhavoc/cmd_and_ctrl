@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/heuristic"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
@@ -107,7 +108,7 @@ func TestCardsSectionNeverAndCanaries(t *testing.T) {
 		return GameResult{Seats: []SeatResult{{Spec: spec, Cards: cards}}}
 	}
 	acc.add(game(
-		CardUse{Name: "Sol Ring", Action: ActionCast, ManaSource: true, Offered: 3, Taken: 1},
+		CardUse{Name: "Sol Ring", Action: ActionCast, ManaSource: true, Offered: 3, Taken: 1, OfferedDeficit: 2},
 		CardUse{Name: "Rhystic Study", Action: ActionCast, Offered: 4},
 	))
 	acc.add(game(
@@ -153,6 +154,14 @@ func TestCardsSectionNeverAndCanaries(t *testing.T) {
 	if ring2 == nil || ring2.Rate != 0.5 || ring2.Meets || ring2.Want != ManaSourceBar {
 		t.Errorf("A2 Sol Ring: %+v", ring2)
 	}
+	// #2435: counted the owner's way, the one game with an open deficit
+	// is a game it was used in.
+	if ring2 == nil || ring2.OfferedDeficit != 1 || ring2.UsedDeficit != 1 || ring2.RateDeficit != 1 || !ring2.MeetsDeficit {
+		t.Errorf("A2 Sol Ring, deficit open: %+v", ring2)
+	}
+	if ring3 != nil && (ring3.OfferedDeficit != 0 || ring3.MeetsDeficit) {
+		t.Errorf("an A3 row carries A2's deficit columns: %+v", ring3)
+	}
 	if ring3 == nil || !ring3.Meets || ring3.Want != CanaryBar {
 		t.Errorf("A3 Sol Ring at 1 of 2 games meets a 50%% bar: %+v", ring3)
 	}
@@ -168,14 +177,61 @@ func TestCardsSectionNeverAndCanaries(t *testing.T) {
 	md := b.String()
 	for _, want := range []string{
 		"| heuristic · esper-control | 3 | 2 | 1 | Rhystic Study |",
-		"| A2 | Sol Ring | mana rock or dork | heuristic · esper-control | 2 | 1 | 50% | 80% | no |",
-		"| A3 | Viscera Seer | sacrifice outlet | — | 0 | 0 | — | 50% | not offered |",
+		"| A2 | Sol Ring | mana rock or dork | heuristic · esper-control | 2 | 1 | 50% | 1 | 1 | 100% | 80% | no | yes |",
+		"| A3 | Sol Ring | mana rock | heuristic · esper-control | 2 | 1 | 50% | — | — | — | 50% | yes | — |",
+		"| A3 | Viscera Seer | sacrifice outlet | — | 0 | 0 | — | — | — | — | 50% | not offered | — |",
 		"| A3 | Mary Read and Anne Bonny (activate) |",
 		"<details><summary>heuristic · esper-control: 2 cards offered, 1 never</summary>",
 		"| Rhystic Study | cast |  | 5 | 0 | 2 | 0 | **never** |",
 	} {
 		if !strings.Contains(md, want) {
 			t.Errorf("the Cards section is missing %q:\n%s", want, md)
+		}
+	}
+}
+
+// TestCardTallyCountsOffersWithTheDeficitOpen is #2435: a rock's offer
+// is counted the owner's way when the heuristic's own deficit is open
+// for it, and not when the seat's sources already cover its hand.
+func TestCardTallyCountsOffersWithTheDeficitOpen(t *testing.T) {
+	w := newCardsWindow()
+	ev := w.event(1, true)
+	me := w.seat.String()
+	hand := &ev.Input.View.Seats[0].Hand
+	hand.Cards[0].ManaCost = "{1}"
+	big := protocol.CardView{InstanceID: uuid.NewString(), Name: "Avenger of Zendikar", Owner: me, Controller: me,
+		TypeLine: "Creature — Elemental", ManaCost: "{5}{G}{G}"}
+	hand.Cards = append(hand.Cards, big)
+
+	tally := newCardTally()
+	tally.Observe(ev) // seven-drop in hand, no sources: the deficit is open
+	if !heuristic.DeficitOpen(ev.Input, w.ring.String()) {
+		t.Fatal("DeficitOpen is false with a seven-drop in hand and no mana sources")
+	}
+
+	// Seven repeatable sources on the battlefield close it.
+	closed := w.event(aiseat.Decline, true)
+	closed.Input.View.Seats[0].Hand.Cards = append([]protocol.CardView(nil), hand.Cards...)
+	for i := 0; i < 7; i++ {
+		closed.Input.View.Battlefield.Cards = append(closed.Input.View.Battlefield.Cards, protocol.CardView{
+			InstanceID: uuid.NewString(), Name: "Forest", Owner: me, Controller: me, TypeLine: "Basic Land — Forest",
+			ManaAbilities: []protocol.ManaAbilityView{{TapCost: true, Produced: "{G}"}}})
+	}
+	if heuristic.DeficitOpen(closed.Input, w.ring.String()) {
+		t.Fatal("DeficitOpen is true with seven sources for a seven-drop")
+	}
+	tally.Observe(closed)
+
+	for _, u := range tally.list() {
+		switch u.Name {
+		case "Sol Ring":
+			if u.Offered != 2 || u.OfferedDeficit != 1 || u.Taken != 1 {
+				t.Errorf("Sol Ring %+v, want offered 2, 1 of them with the deficit open, taken 1", u)
+			}
+		default:
+			if u.OfferedDeficit != 0 {
+				t.Errorf("%s is not a mana source and counts a deficit offer: %+v", u.Name, u)
+			}
 		}
 	}
 }
