@@ -1,6 +1,6 @@
 # ADR 0142 — Declared answers on catalog abilities
 
-**Status:** Proposed · 2026-10-09 · S60 — Table clarity: a stack you can follow. Waiting on the owner's answers to [Questions for the owner](#questions-for-the-owner). No code changed with it.
+**Status:** Accepted · 2026-10-09 · S60 — Table clarity: a stack you can follow. The owner answered all seven [questions](#questions-for-the-owner-answered-2026-10-09) on 2026-10-09, each with the recommended option (a). No code changed with it. The changes land in the PRs under [Delivery](#8-delivery).
 **Issue:** [#2872](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2872). Related: [#2871](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2871) (smart auto-pass: "stop only if I can respond", and combat abilities counted during combat), [#2853](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2853) / PR #2856 (where `interacts` came from).
 **Amends:** [ADR 0126](0126-bots-that-play-their-decks.md) §6 (`Purpose` gains one field) and [ADR 0009](0009-smart-priority-autopass.md)'s [#2853 amendment](0009-smart-priority-autopass.md#amendment-only-real-interaction-stops-you-2853) (`interacts` reads the declaration first). Both ADRs keep their decisions; this one changes where one input comes from.
 **Numbering:** the AGENTS.md §4 sweep on 2026-10-09 (`git fetch --all --prune`, then `docs/decisions/` listed on every remote head: `origin/develop`, `origin/main`, `pr/2326`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/2862-bestow`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/one-cast-per-card-type`, `origin/feat/playmats`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default`). The highest number on any of them is 0141 (`0141-bestow.md` on `origin/feat/2862-bestow`). This ADR takes **0142**.
@@ -76,7 +76,7 @@ Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerValue}, // refu
 | `AnswerMakesBlocker` | `makes_blocker` | combat | creates one or more creature tokens at instant speed | Dawn of Hope, Dragonkin Berserker |
 | `AnswerValue` | `value` | — | declared: answers nothing. Draw, mana, ramp, a fetch, scry, a non-creature token, a counter that only counts | Mind Stone, Evolving Wilds, a Clue, cycling |
 
-The brief's "protect, pump, sac outlet, prevent, remove or combat-grant" are all here. `restrict`, `animate` and `makes_blocker` cover the rows the audit's "yes" and #2871's combat list hold that none of those six describe. First strike, double strike and deathtouch move from the stack tier (today's text read counts them everywhere) to the combat tier. That is [Q2](#questions-for-the-owner).
+The brief's "protect, pump, sac outlet, prevent, remove or combat-grant" are all here. `restrict`, `animate` and `makes_blocker` cover the rows the audit's "yes" and #2871's combat list hold that none of those six describe. First strike, double strike and deathtouch move from the stack tier (today's text read counts them everywhere) to the combat tier. That is [Q2](#questions-for-the-owner-answered-2026-10-09).
 
 **Rules for a declaration**, enforced by `effects.Register` at boot like every other `Purpose` check:
 
@@ -97,7 +97,7 @@ The brief's "protect, pump, sac outlet, prevent, remove or combat-grant" are all
 | Granted activated row (ADR 0093 bundle) | `AbilityGrant.Activated[].Purpose.Answers` | the same, on the granted row | the same |
 | Token activated row | `token_catalog` `Activated[].Purpose.Answers` | the same | the same |
 | Mana ability | `effects.ManaAbility.Answers` (only `sac_outlet` or `value`) | not on the wire | `legal.manaAbilityInteracts` |
-| Spell, mode, alternative cost | `Spec.Purpose`, `ModeWithPurpose`, `CostWithPurpose` | `purpose.answers` | none yet: refused until [Q5](#questions-for-the-owner)'s follow-up |
+| Spell, mode, alternative cost | `Spec.Purpose`, `ModeWithPurpose`, `CostWithPurpose` | `purpose.answers` | none yet: refused until [Q5](#questions-for-the-owner-answered-2026-10-09)'s follow-up |
 | Triggered row | `TriggerWithPurpose` | `ability_rows[].purpose.answers` | none yet: refused until a bot PR reads an opponent's trigger on the stack |
 
 An activated ability carried on a card instance (`Card.ActivatedAbilities`, built at run time by an effect) is not catalog data and has no declaration. It keeps the fallback. Decision 3 counts catalog rows only.
@@ -124,7 +124,7 @@ CombatInteracts: !hasTargets(targets) && answers.HasTier(game.TierCombat), // #2
 - **The move flags do not change meaning.** `interacts` is still "this untargeted activation can answer the stack". `combat_interacts` is #2871's "…in a combat window". The client's classes in ADR 0009 are unchanged. Only the input is better.
 - **Mana abilities** read `ManaAbility.Answers` first, then today's `sacrificeInteracts` on the cost label.
 
-**The self-sacrifice case** ([Q4](#questions-for-the-owner)). "Sacrifice this creature: …" is an answer only when the creature is about to be lost. The enumerator knows when that is without a declaration. If the source is a creature, and it is a target of an item on the stack that its controller does not control, or it is attacking or blocking in a combat window, the move gets `interacts` (or `combat_interacts`) whatever its declaration says. That is read from game state, not text, so it is no part of the fallback, and the ratchet does not count it.
+**The self-sacrifice case** ([Q4](#questions-for-the-owner-answered-2026-10-09)). "Sacrifice this creature: …" is an answer only when the creature is about to be lost. The enumerator knows when that is without a declaration. If the source is a creature, and it is a target of an item on the stack that its controller does not control, or it is attacking or blocking in a combat window, the move gets `interacts` (or `combat_interacts`) whatever its declaration says. That is read from game state, not text, so it is no part of the fallback, and the ratchet does not count it.
 
 ### 4. The ratchet: the fallback only shrinks
 
@@ -153,11 +153,11 @@ A second, non-failing file is the **review record**: `testdata/answers_disagreem
 | S1 | **The 245 interacting rows**, by answer kind, so a reviewer checks one kind at a time: pump and counters (about 85), prevent and redirect (about 80), protect (regenerate, indestructible, hexproof, phasing, blink, self-bounce; about 45), sacrifice outlets (about 35), remove and restrict (about 15). Some rows have two kinds; each goes in the batch of its first. | 245 less S0's | ≤ 40 rows | 6–7 |
 | S2 | **The 461 value rows**, by card-file name, alphabetical, each declared `value` or, where the batch finds one, an answer the text read missed. | 461 less S0's | ≤ 80 rows | 6 |
 | S3 | **Combat rows** once #2871's reader is in: the audit's 26 "no" rows that grant a combat keyword, an extra block or a body, and any that S2 declared `value` but that #2871 would count. | ~30 | one PR | 1 |
-| S4 | **The fallback at zero** ([Q3](#questions-for-the-owner)): `answers_fallback.txt` is empty, the ceiling is 0, and the text read is retired as Q3 decides. | — | one PR | 1 |
+| S4 | **The fallback at zero** ([Q3](#questions-for-the-owner-answered-2026-10-09)): `answers_fallback.txt` is empty, the ceiling is 0, and the text read is retired as Q3 decides. | — | one PR | 1 |
 
 **Sonnet-sized batches.** Every S1 and S2 batch is `tier:1-mechanical`: one answer kind (or one alphabetical slice), a recipe in `docs/adding-cards.md`, a sibling to copy, and the ratchet and disagreement record as its acceptance test. A batch touches at most about 60 card files and changes no behaviour except the verdicts the disagreement diff shows. The signal PR is `tier:3-design`, S0 is `tier:2-standard`, and the bot PR (decision 6) is `tier:3-design`. The batches touch only `Purpose` declarations, so they change no oracle fixture and no `Completeness`. Each still runs the real-dump audits (`go test ./internal/decks/ -run RealDump` with `CMDCTRL_SCRYFALL_DUMP`), as every catalog PR does.
 
-**What a batch PR does when the declaration and the text read disagree.** It declares what the card does, never what the text read said, and lists each flip in the PR body under "Verdicts changed", from the disagreement diff. [Q6](#questions-for-the-owner) decides who reads that list before merge.
+**What a batch PR does when the declaration and the text read disagree.** It declares what the card does, never what the text read said, and lists each flip in the PR body under "Verdicts changed", from the disagreement diff. [Q6](#questions-for-the-owner-answered-2026-10-09) decides who reads that list before merge.
 
 ### 6. What the bot gains
 
@@ -192,7 +192,7 @@ The bot reads `activated_abilities[].purpose.answers` on the wire, like every pu
 
 | # | PR | Depends on | Acceptance |
 |---|---|---|---|
-| 1 | This ADR | — | docsguard; the owner's answers recorded here |
+| 1 | This ADR | — | docsguard; the owner's answers recorded here (done, 2026-10-09) |
 | 2 | **The signal.** `game.Answers`, its constants and tiers, `Purpose.Answers`, `ManaAbility.Answers`, the guard (decision 1's rules and decision 3's cost coupling), `PurposeView.answers` and `Priced()`, `docs/protocol.md`, `protocol.ts`. `answersOf` and `fallbackAnswers` in `legal`. The fallback is today's code, so no verdict changes. The self-sacrifice rule if Q4 is (a). The ratchet, bootstrapped, and the empty disagreement record. `docs/adding-cards.md`. Pointer lines in ADR 0009 and ADR 0126. | 1 | Every `interacts` verdict on the catalog is unchanged (a test compares `answersOf` with the old `abilityInteracts` over every row in scope, then is deleted in S4). `interacts_internal_test.go` passes unchanged. Bot run 1 and run 2 identical. Branch E2E, because it touches the legal-move flags auto-pass reads. |
 | 3 | **S0, helpers.** | 2 | The ratchet's list shrinks; the disagreement record shows every flip. |
 | 4–10 | **S1 batches**, ≤ 40 rows each. | 2 (3 for helper-built rows) | As 3, plus the real-dump audits. |
@@ -218,14 +218,14 @@ The bot PR can land any time after PR 2. It is placed after S1 because what it p
 - **Keep growing the text read.** Every fix narrows or widens a rule for the whole catalog. That is the #2853 experience, and it cannot reach "no missed windows" without a parser.
 - **Derive answers from the effect closure** (run it on a scratch game and diff the board). ADR 0033 §3 and `moves.go` rule out cloning a game for a policy, and the enumerator would pay that cost on every priority window.
 - **Infer from existing `Purpose` amounts alone.** Most interacting rows (regenerate, hexproof, a fog, a lock) have no amount to declare, so the field would still be empty for them.
-- **A single boolean `Interacts` on the row.** It fixes auto-pass and leaves the bot and #2871 nothing: neither can tell a regeneration shield from a combat grant. It is [Q1](#questions-for-the-owner)'s option (b).
+- **A single boolean `Interacts` on the row.** It fixes auto-pass and leaves the bot and #2871 nothing: neither can tell a regeneration shield from a combat grant. It is [Q1](#questions-for-the-owner-answered-2026-10-09)'s option (b).
 - **Making every undeclared row interact now.** Conservative, but it brings back the pre-#2853 stop on every Mind Stone until the sweep finishes. The fallback is today's behaviour, so nothing gets worse while the sweep runs.
 
 ---
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-09)
 
-Each question lists the recommended option first.
+Each question lists the recommended option first. The owner chose (a), the recommended option, on all seven. No section above changed. The answers are recorded under [Owner answers](#owner-answers-2026-10-09) below and bind the delivery PRs.
 
 1. **Q1. The vocabulary.**
    - **(a) Recommended:** the ten values in decision 1: six stack answers (`protect`, `pump`, `prevent`, `remove`, `sac_outlet`, `restrict`), three combat answers (`combat_grant`, `animate`, `makes_blocker`), and `value`. Enough for auto-pass's two tiers and for the bot to price a save, with a short table a card author can apply.
@@ -251,3 +251,13 @@ Each question lists the recommended option first.
 7. **Q7. How far the sweep goes.**
    - **(a) Recommended:** to zero: the 245 interacting rows, then all 461 value rows, then the combat rows. The issue's "done" is the ratchet at zero, and an undeclared value row is a misread waiting to happen.
    - **(b)** The 245 interacting rows and the combat rows only. Value rows stay on the fallback, which already says "no" for them, and the ratchet stops at about 460.
+
+### Owner answers (2026-10-09)
+
+1. **The ten values.** `Purpose.Answers` uses decision 1's vocabulary: six stack answers, three combat answers and `value` (Q1 (a)).
+2. **Combat only.** Granting first strike, double strike or deathtouch is `combat_grant` and counts only in combat windows (Q2 (a)).
+3. **Delete the text read at zero.** When the fallback reaches zero, S4 deletes the text read, and an undeclared row counts as interacting (ADR 0009 §3). The cost read stays for mana abilities only (Q3 (a)).
+4. **Self-sacrifice when threatened.** A "Sacrifice this creature: …" move stops you when its creature is a target of an item on the stack that its controller does not control, or is attacking or blocking in a combat window. This is read from game state, not declared, and it lands in the signal PR (Q4 (a)).
+5. **Spells later.** The field is refused on spells, modes and alternative costs. How a castable instant declared `value` is classed is a separate, later decision (Q5 (a)).
+6. **Merge on green.** Each sweep PR lists its flips under "Verdicts changed", taken from the disagreement diff, and merges on green under the standing develop rule. The owner reads the lists afterwards (Q6 (a)).
+7. **Sweep to zero.** The sweep covers the 245 interacting rows, then all 461 value rows, then the combat rows, until the ratchet reaches zero (Q7 (a)).
