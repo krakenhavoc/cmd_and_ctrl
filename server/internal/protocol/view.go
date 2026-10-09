@@ -2609,6 +2609,13 @@ type CardView struct {
 	// Public, like Harnessed, and set straight off the card for the
 	// same reason: no card type owns monstrosity.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Renowned is a permanent's CR 702.112b renowned designation (ADR
+	// 0071 amendment 2026-10-09, #2049) — set when one of its renown
+	// triggers resolves and kept until the permanent leaves the
+	// battlefield. Public, set straight off the card like Monstrous, and
+	// cleared for a viewer who does not know the card, for Monstrous's
+	// reason.
+	Renowned bool `json:"renowned,omitempty"`
 	// Saddled is a Mount's CR 702.171 saddled designation (ADR 0071
 	// amendment 2026-10-08, #2695) — set until end of turn and gone when
 	// the turn ends or the Mount leaves. Public, set straight off the
@@ -9139,6 +9146,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// to be false — only a permanent with a monstrosity ability can
 	// become monstrous, so the badge would hint at the hidden card.
 	out.Monstrous = false
+	// #2049: and renowned, for the same reason — only a creature with
+	// renown becomes renowned, so the badge would hint at the card.
+	out.Renowned = false
 	// #2695: cleared with the other designations rather than trusted to
 	// be false — a face-down permanent is not a Mount (CR 708.2).
 	out.Saddled = false
@@ -9469,6 +9479,7 @@ func viewOfCard(c game.Card) CardView {
 		}
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
+		view.Renowned = c.Renowned
 		view.Saddled = c.Saddled
 		view.Suspected = c.Suspected
 		view.Prepared = c.Prepared

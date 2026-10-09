@@ -127,6 +127,19 @@ describe("the designation badge", () => {
     expect(badgeText(container)).toBe("MONSTROUS");
   });
 
+  // ADR 0071 amendment 2026-10-09, #2049 (CR 702.112b): a renowned
+  // creature, whose "as long as this creature is renowned" lines are on.
+  it("shows a renowned creature", () => {
+    const { container } = mount(
+      permanent({
+        name: "Goblin Glory Chaser",
+        type_line: "Creature — Goblin Warrior",
+        renowned: true,
+      }),
+    );
+    expect(badgeText(container)).toBe("RENOWNED");
+  });
+
   // #2695 (CR 702.171): a saddled Mount says its "attacks while saddled"
   // abilities are live, which is nowhere else on the card.
   it("shows a saddled Mount", () => {

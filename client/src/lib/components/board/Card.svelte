@@ -522,6 +522,10 @@
   // now (menace, can't block), so it wins the slot when it shares it
   // with a monstrous or harnessed creature.
   //
+  // #2049 adds RENOWNED (CR 702.112b) beside MONSTROUS: the same kind
+  // of marker, kept until the permanent leaves the battlefield. No
+  // printed creature is both monstrous and renowned.
+  //
   // ADR 0071's addendums add a fourth and fifth tenant, #1705:
   // HARNESSED (CR 701.64) and MONSTROUS (CR 701.37b). Unlike Class /
   // Case / preparation, neither carries a subtype gate — any
@@ -543,9 +547,11 @@
               ? "HARNESSED"
               : card.monstrous
                 ? "MONSTROUS"
-                : card.saddled
-                  ? "SADDLED"
-                  : "",
+                : card.renowned
+                  ? "RENOWNED"
+                  : card.saddled
+                    ? "SADDLED"
+                    : "",
   );
   const designationTitle = $derived(
     card.suspected
@@ -558,9 +564,11 @@
             ? "harnessed — its ∞ ability lines are on (CR 701.64)"
             : card.monstrous
               ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
-              : card.saddled
-                ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
-                : `Class level ${card.class_level ?? 1}`,
+              : card.renowned
+                ? 'renowned — its "as long as this creature is renowned" lines are on (CR 702.112b)'
+                : card.saddled
+                  ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
+                  : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to

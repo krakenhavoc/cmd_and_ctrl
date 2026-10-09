@@ -209,6 +209,12 @@ func corpusBoards() []corpusBoard {
 		// annihilator/sacrifice body — waiting on the stack, carrying
 		// the defending player and N in its params.
 		{"annihilator_trigger_pending", corpusAnnihilatorTriggerPending},
+		// v7, added by #2049 (ADR 0071 amendment 2026-10-09) as a new
+		// file: a renown trigger — an engine keyword trigger keyed by
+		// its renown/grow body — waiting on the stack after combat
+		// damage, with N in its params, beside a creature that is
+		// already renowned (Card.renowned on disk).
+		{"renown_trigger_pending", corpusRenownTriggerPending},
 		// v7, added by #1858 (ADR 0107 §1) as a new file: a CR 603.8
 		// state trigger — a catalog row with a State condition and no
 		// event — waiting on the stack. Its latch is derived from this
@@ -2551,6 +2557,29 @@ func corpusAnnihilatorTriggerPending(t *testing.T) *game.Game {
 	it := corpusSettleTrigger(t, g, eldrazi)
 	if it.Body != "annihilator/sacrifice" || it.Params.Player != opp || it.Params.Amount != 2 {
 		t.Fatalf("setup: the annihilator trigger is %+v, want body annihilator/sacrifice for the defender, N = 2", it)
+	}
+	return g
+}
+
+// corpusRenownTriggerPending is a "renown 2" trigger waiting on the
+// stack in the combat damage step, its creature not yet renowned, with
+// a second creature that is renowned already (#2049).
+func corpusRenownTriggerPending(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)].ID
+	castellan := corpusCreature(me, "Citadel Castellan", 2, 3)
+	castellan.Keywords = []string{"vigilance", "renown 2"}
+	knight := pushBattlefieldCardWithTimestamp(g, castellan)
+	famous := corpusCreature(me, "Topan Freeblade", 3, 3)
+	famous.Keywords = []string{"vigilance", "renown 1"}
+	famous.Renowned = true
+	famous.Counters = map[string]int{game.CounterPlusOne: 1}
+	pushBattlefieldCardWithTimestamp(g, famous)
+	attackWith(t, g, opp, knight)
+	it := corpusSettleTrigger(t, g, knight)
+	if it.Body != "renown/grow" || it.Params.Amount != 2 {
+		t.Fatalf("setup: the renown trigger is %+v, want body renown/grow with N = 2", it)
 	}
 	return g
 }
