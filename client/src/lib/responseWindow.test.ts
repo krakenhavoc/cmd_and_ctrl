@@ -139,6 +139,9 @@ describe("classifyMove", () => {
   it("#2853: an activation is an ability when it targets, untargeted when it does not", () => {
     expect(classifyMove(move("activate", { has_targets: true }), false)).toBe("ability");
     expect(classifyMove(move("activate"), false)).toBe("untargeted");
+    // Owner answer 2: an untargeted answer is an ability too.
+    expect(classifyMove(move("activate", { interacts: true }), false)).toBe("ability");
+    expect(classifyMove(move("activate", { interacts: true }), true)).toBe("play");
     // An older server sends neither bit.
     expect(classifyMove(move("activate", { has_targets: undefined }), false)).toBe("untargeted");
     // A counter is a counter, whatever has_targets says.
@@ -259,6 +262,28 @@ describe("hasResponse — #2853's default categories on an opponent's stack item
   it("cycling from hand is an untargeted activation and does not stop you", () => {
     const cycling = move("activate", { source: "hand-card", label: "Cycle Lonely Sandbar" });
     expect(hasResponse(onOppStack([pass, cycling]), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  // Owner answer 2: an untargeted ability that can answer the stack
+  // still stops you. The server marks it `interacts`.
+  it("a sacrifice outlet, a regeneration shield and a pump hold", () => {
+    for (const [source, label] of [
+      ["viscera-seer", "Viscera Seer: Sacrifice a creature: Scry 1."],
+      ["undercity-troll", "Undercity Troll: {2}{G}: Regenerate this creature."],
+      ["evernight-shade", "Evernight Shade: {B}: This creature gets +1/+1 until end of turn."],
+    ]) {
+      const m = move("activate", { source, label, interacts: true });
+      expect(hasResponse(onOppStack([...valueBoard, m]), "p0", DEFAULT_RESPONSES), source).toBe(
+        true,
+      );
+    }
+  });
+
+  it("a mana ability that is a sacrifice outlet holds; plain mana does not", () => {
+    const altar = move("mana", { source: "ashnods-altar", interacts: true });
+    expect(hasResponse(onOppStack([...valueBoard, altar]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    expect(classifyMove(altar, true)).toBe("none");
+    expect(classifyMove(move("mana"), false)).toBe("none");
   });
 
   it("an ability that targets holds", () => {

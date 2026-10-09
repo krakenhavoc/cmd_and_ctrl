@@ -211,8 +211,8 @@ type GameView struct {
 	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
 	// LegalMovesTruncated is true when capLegalMoves dropped anything
 	// from LegalMoves — the list on this frame is then one move per
-	// (source, kind, targets_stack, has_targets) rather than every move (ADR 0122
-	// §6.1). Absent otherwise. A seat that needs the rest sends a
+	// (source, kind, targets_stack, has_targets, interacts) rather than
+	// every move (ADR 0122 §6.1). Absent otherwise. A seat that needs the rest sends a
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
 	LegalMovesTruncated bool `json:"legal_moves_truncated,omitempty"`
@@ -4569,7 +4569,8 @@ const legalMovesWireCap = 48
 // server" bug this whole sub-PR exists to kill.
 //
 // So the degraded list keeps the FIRST move of every (source, kind,
-// targets_stack, has_targets) tuple and drops only the alternatives.
+// targets_stack, has_targets, interacts) tuple and drops only the
+// alternatives.
 // Every card that had a move still has one; what is lost is the choice between
 // its twelve targets, which no client consumes today (targeting is
 // driven by CardView.legal_targets, and targeting.ts stays the
@@ -4578,11 +4579,11 @@ const legalMovesWireCap = 48
 // card with a counter mode and a burn mode is two different moves
 // that happen to share a source and a kind, and keeping only the
 // burn one would silently delete the counterspell response smart
-// autopass needs to see. HasTargets rides along for the same reason
-// (#2853): an ability with a targeted mode and an untargeted one is
-// two moves, and keeping only the untargeted one would tell smart
-// autopass the seat has nothing to answer with. docs/protocol.md
-// states both as part of the fields' contract.
+// autopass needs to see. HasTargets and Interacts ride along for the
+// same reason (#2853): an ability with a targeted mode and an
+// untargeted one is two moves, and keeping only the untargeted one
+// would tell smart autopass the seat has nothing to answer with.
+// docs/protocol.md states all three as part of the fields' contract.
 //
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
@@ -4596,11 +4597,12 @@ func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 		kind         legal.Kind
 		targetsStack bool
 		hasTargets   bool
+		interacts    bool
 	}
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
-		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets}
+		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts}
 		if seen[k] {
 			continue
 		}

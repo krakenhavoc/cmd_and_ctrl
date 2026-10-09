@@ -221,12 +221,13 @@ export interface Settings {
     // respondUntargetedAbilities (#2853, schema v22).
     //   respondCounterspells       — casts / activations that target the stack
     //   respondInstants            — any other instant-speed cast
-    //   respondAbilities           — any other non-mana activated ability
-    //                                that targets
-    //   respondUntargetedAbilities — a non-mana activated ability with no
-    //                                target (Mind Stone, a fetch land,
-    //                                cycling). Off by default: not
-    //                                interaction.
+    //   respondAbilities           — any other activated ability that
+    //                                targets or protects (a sacrifice
+    //                                outlet, regeneration, a pump)
+    //   respondUntargetedAbilities — any other non-mana activated
+    //                                ability: pure value (Mind Stone, a
+    //                                fetch land, cycling). Off by
+    //                                default: not interaction.
     //   respondSpecialActions      — foretell, suspend, turning face up
     respondCounterspells: boolean;
     respondInstants: boolean;

@@ -435,9 +435,9 @@ func TestCapLegalMovesKeepsTargetsStackDistinct(t *testing.T) {
 }
 
 // TestCapLegalMovesKeepsHasTargetsDistinct is #2853: an ability with a
-// targeted announcement and an untargeted one is two moves to smart
-// autopass, so the cap keeps one of each rather than whichever came
-// first.
+// targeted announcement, an interacting one and a value one is three
+// moves to smart autopass, so the cap keeps one of each rather than
+// whichever came first.
 func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
 	source := uuid.New()
 	moves := make([]LegalMoveView, 0, legalMovesWireCap+3)
@@ -450,23 +450,27 @@ func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
 	moves = append(moves,
 		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "draw mode", Source: source},
 		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "ping mode", Source: source, HasTargets: true},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "shield mode", Source: source, Interacts: true},
 	)
 
 	out, _ := capLegalMoves(moves)
-	var sawUntargeted, sawTargeted bool
+	var sawUntargeted, sawTargeted, sawInteracts bool
 	for _, m := range out {
 		if m.Source != source {
 			continue
 		}
-		if m.HasTargets {
+		switch {
+		case m.HasTargets:
 			sawTargeted = true
-		} else {
+		case m.Interacts:
+			sawInteracts = true
+		default:
 			sawUntargeted = true
 		}
 	}
-	if !sawUntargeted || !sawTargeted {
-		t.Errorf("cap dropped one of %s's two announcements: untargeted kept=%v, targeted kept=%v (%v)",
-			source, sawUntargeted, sawTargeted, labelsOf(out))
+	if !sawUntargeted || !sawTargeted || !sawInteracts {
+		t.Errorf("cap dropped one of %s's three announcements: untargeted kept=%v, targeted kept=%v, interacts kept=%v (%v)",
+			source, sawUntargeted, sawTargeted, sawInteracts, labelsOf(out))
 	}
 }
 

@@ -232,6 +232,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the action dock; the tutorial's move-along step and its detours anchor here",
   }),
+  waitToRespond: label({
+    name: "wait, let me respond",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the stack hold countdown's one-click hold (#2853): keeps priority on the stack auto-pass was about to pass",
+  }),
   priorityControls: label({
     name: "priority controls",
     kind: "aria",

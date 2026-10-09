@@ -32,18 +32,22 @@ import { ownsEveryStackItem } from "./holdPriority";
 import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 
 // MoveClass is what a move means to autopass.
-//   none        — pass, mana, and an activation of a permanent another
-//                 player controls (ADR 0106 §1): never a reason to hold.
+//   none        — pass, mana (but see ability), and an activation of a
+//                 permanent another player controls (ADR 0106 §1):
+//                 never a reason to hold.
 //   play        — a land, or a cast / activation in the viewer's own
 //                 sorcery window. Only ever counts on a ticked step.
 //   counter     — a cast or activation that targets the stack.
 //   instant     — any other cast (instant, flash, split second's
 //                 exceptions — whatever the enumerator offered).
-//   ability     — any other non-mana activated ability that targets
-//                 (#2853: `has_targets`).
-//   untargeted  — a non-mana activated ability with no target: Mind
-//                 Stone, a fetch land, a Clue, cycling. Its own class
-//                 so it can stop counting as a response by default.
+//   ability     — any other activated ability that targets or protects
+//                 (#2853: `has_targets`, or `interacts`: a sacrifice
+//                 outlet, regeneration, a pump, a blink, a shield; a
+//                 mana ability only when it is a sacrifice outlet).
+//   untargeted  — any other non-mana activated ability: pure value
+//                 like Mind Stone, a fetch land, a Clue, cycling. Its
+//                 own class so it does not count as a response by
+//                 default.
 //   special     — a CR 116.2 special action (foretell, suspend, …).
 //   declaration — an attack or a block.
 //   other       — a choice answer, a mulligan, a kind this client
@@ -78,8 +82,8 @@ export const ALL_RESPONSES: ResponseCategories = {
 
 // DEFAULT_RESPONSES is what a player who never touched "Stop for"
 // gets (#2853, owner decision 1): an opponent's stack item stops you
-// for an instant, a counter, or an ability that targets. An untargeted
-// value ability is not interaction.
+// for an instant, a counter, or an ability that targets or protects
+// (owner answer 2). A pure value ability is not interaction.
 export const DEFAULT_RESPONSES: ResponseCategories = {
   ...ALL_RESPONSES,
   untargeted: false,
@@ -117,8 +121,12 @@ export function classifyMove(
   }
   switch (m.kind) {
     case "pass":
-    case "mana":
       return "none";
+    case "mana":
+      // #2853: a sacrifice outlet that makes mana (Ashnod's Altar)
+      // still answers removal. Never a play: it is not why the viewer
+      // stopped on their own main phase.
+      return m.interacts && !sorceryWindow ? "ability" : "none";
     case "land":
       return "play";
     case "cast":
@@ -126,7 +134,7 @@ export function classifyMove(
       if (sorceryWindow) return "play";
       if (m.targets_stack) return "counter";
       if (m.kind === "cast") return "instant";
-      return m.has_targets ? "ability" : "untargeted";
+      return m.has_targets || m.interacts ? "ability" : "untargeted";
     case "special_action":
       return "special";
     // #1501: finishing a block declaration is part of the declaration.

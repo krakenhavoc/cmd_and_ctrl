@@ -78,6 +78,87 @@ func TestHasTargetsIsSetOnlyOnMovesThatChooseATarget(t *testing.T) {
 	}
 }
 
+// #2853, owner answer 2: an untargeted ability that can answer
+// something on the stack sets interacts. A sacrifice outlet (Viscera
+// Seer), a regeneration shield (Undercity Troll) and a pump (Evernight
+// Shade) do; Mind Stone's draw and Evolving Wilds' search do not.
+const (
+	oracleViscerSeerHT     = "f82a4e85-526d-4456-b700-7760043a31be"
+	oracleUndercityTrollHT = "b7851b17-faa2-4767-9716-86997b882690"
+	oracleEvernightShadeHT = "9af1b6c4-295f-41d2-b3a0-0863798330d4"
+	interactsTestForestsN  = 4
+)
+
+func TestInteractsIsSetOnUntargetedAnswersOnly(t *testing.T) {
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepPrecombatMain)
+	for range interactsTestForestsN {
+		battlefieldCard(g, seat, basic("Forest", "Forest"))
+	}
+	battlefieldCard(g, seat, basic("Swamp", "Swamp"))
+	seer := battlefieldCard(g, seat, game.Card{
+		Name: "Viscera Seer", TypeLine: "Creature — Vampire Wizard", OracleID: oracleViscerSeerHT,
+		ManaCost: "{B}", Power: 1, Toughness: 1,
+	})
+	troll := battlefieldCard(g, seat, game.Card{
+		Name: "Undercity Troll", TypeLine: "Creature — Troll", OracleID: oracleUndercityTrollHT,
+		ManaCost: "{1}{G}", Power: 2, Toughness: 2,
+	})
+	shade := battlefieldCard(g, seat, game.Card{
+		Name: "Evernight Shade", TypeLine: "Creature — Shade", OracleID: oracleEvernightShadeHT,
+		ManaCost: "{3}{B}", Power: 1, Toughness: 1,
+	})
+	stone := battlefieldCard(g, seat, game.Card{
+		Name: "Mind Stone", TypeLine: "Artifact", ManaCost: "{2}", OracleID: oracleMindStoneHT,
+	})
+	wilds := battlefieldCard(g, seat, game.Card{
+		Name: "Evolving Wilds", TypeLine: "Land", OracleID: oracleEvolvingWildsHT,
+	})
+
+	moves := legal.EnumerateFor(g, seat.ID)
+	dispatchAll(t, g, seat.ID, moves)
+
+	check := func(name string, source uuid.UUID, want bool) {
+		t.Helper()
+		got := movesFrom(moves, source, legal.KindActivate)
+		if len(got) == 0 {
+			t.Fatalf("%s offered no activation: %v", name, labels(moves))
+		}
+		for _, m := range got {
+			if m.HasTargets {
+				t.Errorf("%s: has_targets set on an untargeted ability (%s)", name, m.Label)
+			}
+			if m.Interacts != want {
+				t.Errorf("%s: interacts = %v, want %v (%s)", name, m.Interacts, want, m.Label)
+			}
+		}
+	}
+	check("Viscera Seer's sacrifice", seer, true)
+	check("Undercity Troll's regeneration", troll, true)
+	check("Evernight Shade's pump", shade, true)
+	check("Mind Stone's draw", stone, false)
+	check("Evolving Wilds' search", wilds, false)
+
+	for _, m := range moves {
+		if m.Kind == legal.KindMana && m.Interacts {
+			t.Errorf("mana move %q from a land or a rock has interacts set", m.Label)
+		}
+	}
+}
+
+// A targeted activation answers through has_targets, so it never also
+// carries interacts.
+func TestInteractsIsNotSetOnATargetedAbility(t *testing.T) {
+	g, seat, lava, _ := lavamancerBoard(t, 2)
+	for _, m := range movesFrom(legal.EnumerateFor(g, seat.ID), lava, legal.KindActivate) {
+		if !m.HasTargets || m.Interacts {
+			t.Errorf("Grim Lavamancer: has_targets=%v interacts=%v, want true/false (%s)", m.HasTargets, m.Interacts, m.Label)
+		}
+	}
+}
+
 // A counterspell targets the stack, so it sets both bits.
 func TestCounterspellSetsHasTargetsAndTargetsStack(t *testing.T) {
 	g := newTable(t)

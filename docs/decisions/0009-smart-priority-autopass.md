@@ -298,6 +298,17 @@ value ability no longer stops you, and a setting brings the old behaviour back.
 opponent's item included. Its tooltip and shortcut hint now say so, and it
 clears itself once the stack empties.
 
+**Owner answer 2 (2026-10-09, on review).** An untargeted ability that DOES
+interact must still stop you by default ("Stop for these too"): a sacrifice
+outlet, regeneration, protection, indestructible, hexproof or shroud, phasing,
+a blink, damage prevention, a pump or counters. Special actions stay on by
+default (owner answer 1; a separate issue will look at them).
+
+**The goal (owner, 2026-10-09).** "Make the autopass as smart as possible and as
+convenient as possible so most of the time players are not thinking why do I
+have to click to pass or thinking I missed my window to respond." Two halves,
+both held: no pointless stops, and no missed windows.
+
 ### What changed
 
 - **`has_targets` on the legal move.** The enumerator sets it on every `cast`
@@ -306,22 +317,59 @@ clears itself once the stack empties.
   announcement, like `targets_stack`, and rides in `capLegalMoves`' key
   `(source, kind, targets_stack, has_targets)`, so a capped list never merges a
   targeted mode into an untargeted one.
+- **`interacts` on the legal move.** For an untargeted activation that can still
+  answer the stack, the enumerator sets `interacts`
+  (`server/internal/legal/interacts.go`, `docs/protocol.md`). It reads the
+  ability's shape, because the effect is a closure:
+  - the cost: sacrificing, exiling or returning a creature you control (a
+    sacrifice outlet or a save). Sacrificing a land, a Food, a Treasure, a Clue
+    or a plain artifact is a price, not an answer;
+  - the declared purpose (ADR 0126 §6): a pump, a combat-damage shield, damage
+    to a creature, a sweep;
+  - the printed effect text after the cost: regenerate, protection,
+    indestructible, hexproof, shroud, persist, undying, first strike, double
+    strike, deathtouch, phasing, prevention or redirection, a power/toughness
+    change or +1/+1 and -1/-1 counters (monstrosity and adapt included), a
+    blink, returning itself to hand, damage to each creature, a destroy that is
+    not "destroy this", and "can't cast".
+
+  On a mana ability only a creature sacrifice outlet (Ashnod's Altar, Phyrexian
+  Altar) sets it. The rules lean to "interacts" only where the text cannot say.
+  `interacts_internal_test.go` pins a list of printed answers and a list of
+  printed value rows. An audit of the catalog's 706 untargeted instant-speed
+  activated rows marked 245 as interacting; those outside the plain categories
+  (regenerate, a pump, protection, prevention) were read one by one, and the
+  value rows it caught at first (charge and storage counters, damage to each
+  opponent, "destroy this enchantment", sacrificing Foods, Treasures and
+  lands) were moved out by narrowing the rules. `interacts` is in the cap key
+  too.
 - **A new class.** `classifyMove` keeps `counter` and `instant` as they were and
   splits the rest of the activations:
 
   | Move | Class |
   |---|---|
-  | `activate` with `has_targets` (not `targets_stack`) | ability |
+  | `activate` with `has_targets` or `interacts` (not `targets_stack`) | ability |
+  | `mana` with `interacts`, outside the viewer's sorcery window | ability |
   | any other `activate` | untargeted |
 
   Cycling is an `activate` from the hand, with no target, so it is untargeted.
   Special actions keep their own `special` class and setting. A server that
   sends no `has_targets` gets every non-counter activation classed as
   untargeted.
-- **A fifth "Stop for" category.** `respondUntargetedAbilities` ("Untargeted
-  abilities"), off by default. `respondAbilities` now reads "Activated abilities
-  that target something". Ticking the new one restores the pre-#2853 meaning of
-  "Activated abilities". The Settings page says what the default stops for.
+- **A fifth "Stop for" category.** `respondUntargetedAbilities` ("Value
+  abilities (Mind Stone, fetch lands, Clues, cycling)"), off by default.
+  `respondAbilities` now reads "Abilities that target or protect something
+  (pumps, sacrifice outlets, regeneration)". Ticking the new one restores the
+  pre-#2853 meaning of "Activated abilities". The Settings page says what the
+  default stops for.
+- **No missed windows: a visible "wait".** While the ADR 0119 §2 stack hold
+  counts down to an automatic pass on an opponent's item, the action dock
+  already showed "auto-pass in 1.4 s". It now carries a **wait** button beside
+  it (`L.waitToRespond`, "wait, let me respond"). One click, or the hold key
+  `h`, arms the hold toggle: the verdict turns to hold, the pending pass is
+  cancelled, and the hold clears itself when that stack empties. A real answer
+  in hand never reaches the countdown at all: the verdict is hold, and the
+  timed pass re-asks the decision when it fires and goes only on a pass.
 - **The hold toggle is for one stack.** `holdPriority` still holds every
   non-empty stack (rule 6 checks it before the own-versus-opponent split, as
   before). `noteStackForHold`, called with every frame, remembers a live stack
@@ -352,10 +400,12 @@ falls back to the default.
 
 - A player who wanted a stop to crack a fetch land in response must now tick
   "Untargeted abilities", pin the step, or arm the hold.
-- An untargeted ability that is still interaction (a sacrifice outlet in
-  response to removal, a regeneration shield) no longer stops you by default.
-  The owner chose the narrower default knowing this; the setting and the hold
-  are the way back.
+- `interacts` is read from printed text, so a row whose label is worded unusually
+  can be misread either way. The test lists are where a misread is fixed.
+- Some combat-relevant untargeted rows still do not stop you: granting flying,
+  haste, trample, menace or lifelink, "can block an additional creature", and a
+  land or artifact that becomes a creature until end of turn. A board full of
+  them would stop on every opponent spell, so they are left out for now.
 
 ## Context
 

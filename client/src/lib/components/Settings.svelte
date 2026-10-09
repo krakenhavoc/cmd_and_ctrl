@@ -919,7 +919,7 @@
                   checked={$settings.gameplay.respondAbilities}
                   onchange={(e) => change("gameplay", "respondAbilities", e.currentTarget.checked)}
                 />
-                Activated abilities that target something
+                Abilities that target or protect something (pumps, sacrifice outlets, regeneration)
                 {#if isFresh("gameplay.respondAbilities")}<span class="saved">✓</span>{/if}
               </label>
               <label>
@@ -929,7 +929,7 @@
                   onchange={(e) =>
                     change("gameplay", "respondUntargetedAbilities", e.currentTarget.checked)}
                 />
-                Untargeted abilities (Mind Stone, fetch lands, Clues, cycling)
+                Value abilities (Mind Stone, fetch lands, Clues, cycling)
                 {#if isFresh("gameplay.respondUntargetedAbilities")}<span class="saved">✓</span
                   >{/if}
               </label>
@@ -955,9 +955,16 @@
               </label>
               <p class="help">
                 By default an opponent's spell or ability stops you only for real interaction: an
-                instant you can cast, a counterspell, or an ability that targets. An untargeted
-                ability such as cracking a fetch land or cycling a card is something you can do at
-                any time, so it does not stop you unless you tick it. Mana abilities never count.
+                instant you can cast, a counterspell, or an ability that targets or protects
+                something (a sacrifice outlet, regeneration, a pump, protection, a blink). A value
+                ability such as drawing off Mind Stone, cracking a fetch land or cycling a card is
+                something you can do at any time, so it does not stop you unless you tick it. Mana
+                abilities never count, except a sacrifice outlet that makes mana.
+              </p>
+              <p class="help">
+                While an opponent's spell waits on the stack the action dock counts down to the
+                automatic pass. Click <strong>wait</strong> there (or press the hold key) to keep priority
+                on that stack and respond.
               </p>
               <p class="help">
                 The last one stops on every opponent item on the stack even when you can't answer

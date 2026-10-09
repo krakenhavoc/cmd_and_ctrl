@@ -473,9 +473,10 @@ export interface GameView {
   legal_moves?: LegalMoveView[];
   // ADR 0122 §6.1: true when the 48-move wire cap dropped anything
   // from legal_moves — the list then has one move per (source, kind,
-  // targets_stack, has_targets), not every alternative. Absent otherwise. Own seat
-  // only. The browser reads nothing from legal_moves that the cap
-  // loses (legalActions.ts), so it only needs to know.
+  // targets_stack, has_targets, interacts), not every alternative.
+  // Absent otherwise. Own seat only. The browser reads nothing from
+  // legal_moves that the cap loses (legalActions.ts), so it only needs
+  // to know.
   legal_moves_truncated?: boolean;
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
@@ -735,6 +736,12 @@ export interface LegalMoveView {
   // land, cycling). Absent on older servers, which the client treats
   // as untargeted.
   has_targets?: boolean;
+  // #2853 (owner answer 2): true on an activation with no target, or a
+  // mana ability, that can still answer something on the stack: a
+  // sacrifice outlet, regeneration, protection or indestructible,
+  // phasing, a blink, damage prevention, a pump. Smart autopass stops
+  // for it as for a targeted ability. Absent on older servers.
+  interacts?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never

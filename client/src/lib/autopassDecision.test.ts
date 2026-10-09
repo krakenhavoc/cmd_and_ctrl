@@ -598,9 +598,16 @@ describe("autopassDecision — #2853: an untargeted value ability is not a respo
     );
   });
 
-  it("holds for a targeted ability, an instant and a counter", () => {
+  // The owner's other half: no missed windows. A real answer means the
+  // decision is hold, so neither the immediate pass nor the stack
+  // hold's timed pass (which re-asks this decision when it fires) goes.
+  it("holds for a targeted ability, an interacting one, an instant and a counter", () => {
     for (const extra of [
       mv("activate", { source: "pinger", has_targets: true }),
+      mv("activate", { source: "viscera-seer", interacts: true }),
+      mv("activate", { source: "undercity-troll", interacts: true }),
+      mv("activate", { source: "evernight-shade", interacts: true }),
+      mv("mana", { source: "ashnods-altar", interacts: true }),
       mv("cast", { source: "instant" }),
       mv("cast", { source: "counter", targets_stack: true, has_targets: true }),
     ]) {

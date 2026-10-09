@@ -164,6 +164,15 @@ type Move struct {
 	// with a targeted and an untargeted mode ships both, correctly split.
 	HasTargets bool `json:"has_targets,omitempty"`
 
+	// Interacts is true on an activation (or a mana ability) with no
+	// target that can still answer something on the stack: a sacrifice
+	// outlet, regeneration, protection or indestructible, phasing, a
+	// blink, damage prevention, a pump or counters (#2853, owner answer
+	// 2). Smart autopass stops for it as it does for a targeted ability.
+	// Pure value (draw, mana, a fetch, tokens, scry) never sets it. See
+	// abilityInteracts.
+	Interacts bool `json:"interacts,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you
