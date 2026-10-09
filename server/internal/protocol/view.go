@@ -716,6 +716,14 @@ type PickOptionView struct {
 	// it instead of only the rendered Label — and may do nothing with
 	// it, which is what it does today. #994.
 	Player string `json:"player,omitempty"`
+	// ManaCost is the mana this branch costs the chooser ("{1}",
+	// "{B}"), paid by the engine when it is chosen (#2854): Winter's
+	// Chill's "may pay {1} or {2}". Absent on a branch that costs no
+	// mana. Only options the chooser can pay are listed, so every one
+	// on the wire is an answer the engine will take — unless the board
+	// moves before the answer, when it is refused and the prompt stays
+	// open.
+	ManaCost string `json:"mana_cost,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -7732,7 +7740,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
-				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
+				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost}
 				if opt.Player != uuid.Nil {
 					out.Player = opt.Player.String()
 				}

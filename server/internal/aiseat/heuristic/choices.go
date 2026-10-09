@@ -132,6 +132,12 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return st.entryControllerValue(ch, cp.OptionIndex)
 	case choiceEntryReadAhead:
 		return readAheadValue(cp.OptionIndex)
+	case choiceOptionPick:
+		// #2854: options that cost mana (costed_options.go). An option
+		// pick with none keeps the enumerator's first answer.
+		if v, why, ok := costedOptionValue(ch, cp.OptionIndex); ok {
+			return v, why
+		}
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:

@@ -103,6 +103,8 @@ func ledgerLineResolves(line string) bool {
 		return KnownEffectCondition(fields[1])
 	case "pick":
 		return KnownRevealedPickThen(fields[1])
+	case "option":
+		return KnownOptionPickThen(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()
@@ -147,7 +149,8 @@ const effectKeysHeader = `# effect_keys.txt — ADR 0041 phase 3's effect-key le
 # on-disk identities: APPEND-ONLY. Never delete or edit a line; rename a
 # key with game.EffectAlias(old, new), which keeps the old one resolving.
 # "pick <key>" is a revealed-hand pick's continuation (#2115), which
-# has no alias: never rename one.
+# has no alias: never rename one. "option <key>" is a keyed option
+# pick's continuation (#2854), on the same terms.
 #
 # Append new keys with:
 #   go test ./internal/cards/effects -run TestEveryPersistedEffectKeyResolves -args -update-effect-keys

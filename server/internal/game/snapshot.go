@@ -1409,6 +1409,7 @@ type pendingChoiceSnapshot struct {
 	// goes, whether choosing nothing is an answer, whether the
 	// revealing player's graveyard is offered, and the KEY of its
 	// continuation (checkEffectKeys refuses one this binary lacks).
+	// pickThen is also a keyed option_pick's continuation (#2854).
 	PickDestination   PickDestination `json:"pickDestination,omitempty"`
 	PickOptional      bool            `json:"pickOptional,omitempty"`
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
@@ -1457,6 +1458,9 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
+	// #2854: the IDs a keyed option pick's continuation is handed
+	// (option_pick_keyed.go). Its key rides pickThen.
+	OptionCarry []uuid.UUID `json:"optionCarry,omitempty"`
 	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
@@ -2435,6 +2439,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
+		OptionCarry:          copyUUIDs(c.OptionCarry),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -3275,6 +3280,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
+		OptionCarry:          copyUUIDs(c.OptionCarry),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,

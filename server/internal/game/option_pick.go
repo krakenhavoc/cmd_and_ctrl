@@ -1,6 +1,7 @@
 package game
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -61,7 +62,9 @@ import (
 //
 // Every offered option is accepted: ResolveOptionPick validates the
 // index and nothing else, exactly as ResolveConfirm validates nothing
-// about the board. The legality lives at QUEUE time — an effect builds
+// about the board — except an option that costs mana (#2854,
+// ChoiceOption.ManaCost), which it pays and refuses when it no longer
+// can be paid. The legality lives at QUEUE time — an effect builds
 // the option list out of what the chooser can actually do, dropping
 // "sacrifice a nonland permanent" for a player who controls none — and
 // must offer at least one option that always works, which is the one
@@ -149,6 +152,24 @@ type ChoiceOption struct {
 	// checks. The two are set together by one function
 	// (seatChoiceOptionsLocked) so they cannot disagree.
 	Player uuid.UUID
+
+	// ManaCost is the mana this branch costs the chooser, as a cost
+	// string ("{1}", "{B}", "{3}"), or "" for a branch that costs no
+	// mana (#2854). Winter's Chill: "its controller may pay {1} or
+	// {2}" is three branches — pay {2}, pay {1}, pay nothing — and the
+	// first two carry their price here.
+	//
+	// Unlike LifeCost, the ENGINE pays it: the option is a payment
+	// (CR 118.12, a cost paid as the effect resolves), so it is paid
+	// the way every other resolution-time payment is, through
+	// payCostLocked (the pay_unless payer: the floating pool first,
+	// then the auto-tapper, no spend-restricted mana, nothing tapped
+	// when it cannot be paid in full). An option the chooser cannot
+	// afford is not offered (CR 118.3, 608.2d): QueueOptionPickForEffect
+	// drops it, and ResolveOptionPick refuses it if the board moved
+	// between the question and the answer. No {X}, and never on the
+	// first option, which is the always-legal way out.
+	ManaCost string `json:",omitempty"`
 }
 
 // cloneChoiceOptions deep-copies an option list. Each option owns a
@@ -345,6 +366,11 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		// speaks; an ANSWER can never be empty (CanonicalCreatureType
 		// refuses it), so it cannot be mistaken for one.
 		err = c.chooseValueResume.runWithNoChoice(g)
+	case c.Kind == PendingChoiceOptionPick && c.PickThen != "":
+		// #2854: a keyed option pick, run with nobody's choice.
+		err = runOptionPickThen(g, c.PickThen, OptionPicked{
+			Chooser: c.Chooser, Source: c.Source, Index: NoChoiceIndex, Carry: copyUUIDs(c.OptionCarry),
+		})
 	default:
 		err = c.optionPickResume.runWithNoChoice(g)
 	}
@@ -406,6 +432,17 @@ type OptionPickPrompt struct {
 	// attachPromptOpenForLocked, which is what keeps CR 704.5m from
 	// sweeping the Aura away while the question is still open.
 	attachesSource bool
+
+	// ThenKey is Then as a REGISTERED continuation
+	// (RegisterOptionPickThen, option_pick_keyed.go), and Carry is the
+	// plain data it is handed with the answer (#2854). A prompt queued
+	// with a key holds no closure, so a table waiting on it is still a
+	// restore point: the key and the carried IDs are written with the
+	// prompt, and the running binary looks the continuation up when the
+	// answer arrives. Set ThenKey or Then/ThenSeat, never both; with a
+	// key, Then and ThenSeat are ignored.
+	ThenKey OptionPickThen
+	Carry   []uuid.UUID
 }
 
 // QueueOptionPickForEffect queues a "choose one of the following" and
@@ -421,6 +458,15 @@ type OptionPickPrompt struct {
 // 701.9a says "as many as you can"; a question with no answers was
 // never asked at all.
 //
+// Options that carry a ManaCost (#2854) are offered only when the
+// chooser can pay them now (CR 118.3): an unaffordable one is dropped
+// here, and Then is still handed the index the CARD printed, so a
+// dropped option does not renumber the card's switch. A keyed
+// continuation reads the chosen option itself (OptionPicked.Option).
+// A costed option with an unparseable or {X} cost, or a cost on the
+// FIRST option, is a bug in the card: it is reported as an effect
+// error and nothing is queued.
+//
 // Caller must hold g.mu.
 func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 	if len(p.Options) == 0 {
@@ -430,20 +476,108 @@ func (g *Game) QueueOptionPickForEffect(p OptionPickPrompt) uuid.UUID {
 	if from == uuid.Nil {
 		from = p.Chooser
 	}
-	return g.QueueChoiceForEffect(PendingChoice{
+	options, printed, err := g.affordableOptionsLocked(p.Chooser, p.Source, p.Options)
+	if err != nil {
+		g.emitChoiceEffectErrorLocked(p.Chooser, p.Source, err)
+		return uuid.Nil
+	}
+	c := PendingChoice{
 		Kind:        PendingChoiceOptionPick,
 		Chooser:     p.Chooser,
 		FromPlayer:  from,
 		Count:       1,
 		Source:      p.Source,
 		Reason:      p.Question,
-		PickOptions: cloneChoiceOptions(p.Options),
-		optionPickResume: &optionPickFrame{
-			then:           p.Then,
-			thenSeat:       p.ThenSeat,
-			attachesSource: p.attachesSource,
-		},
-	})
+		PickOptions: options,
+	}
+	if key := p.ThenKey.key; key != "" {
+		c.PickThen = key
+		c.OptionCarry = copyUUIDs(p.Carry)
+		return g.QueueChoiceForEffect(c)
+	}
+	then := p.Then
+	if then != nil && printed != nil {
+		// Hand the card back the index it printed, not the offset into
+		// the shorter list the chooser was shown.
+		inner := then
+		then = func(g *Game, index int) error {
+			if index >= 0 && index < len(printed) {
+				index = printed[index]
+			}
+			return inner(g, index)
+		}
+	}
+	c.optionPickResume = &optionPickFrame{
+		then:           then,
+		thenSeat:       p.ThenSeat,
+		attachesSource: p.attachesSource,
+	}
+	return g.QueueChoiceForEffect(c)
+}
+
+// affordableOptionsLocked is the option list as offered: every option
+// that costs no mana, and every costed one `chooser` can pay right now
+// through the payer ResolveOptionPick will use (canPayCostLocked asks
+// payCostLocked on a throwaway clone). `printed` maps each offered
+// index back to its index in `opts`, or is nil when nothing was
+// dropped. Caller must hold g.mu.
+func (g *Game) affordableOptionsLocked(chooser, source uuid.UUID, opts []ChoiceOption) ([]ChoiceOption, []int, error) {
+	costed := false
+	for i, o := range opts {
+		if o.ManaCost == "" {
+			continue
+		}
+		if i == 0 {
+			return nil, nil, fmt.Errorf("option pick: the first option (%q) is the always-legal one and cannot cost mana", o.Label)
+		}
+		cost, err := ParseCost(o.ManaCost)
+		if err != nil {
+			return nil, nil, fmt.Errorf("option pick: unparseable cost %s: %w", o.ManaCost, err)
+		}
+		if cost.XSlots > 0 {
+			return nil, nil, fmt.Errorf("option pick: cost %s has an X", o.ManaCost)
+		}
+		costed = true
+	}
+	if !costed {
+		return cloneChoiceOptions(opts), nil, nil
+	}
+	p := g.playerByIDLocked(chooser)
+	var out []ChoiceOption
+	var printed []int
+	for i, o := range opts {
+		if o.ManaCost != "" {
+			cost, _ := ParseCost(o.ManaCost)
+			if p == nil || !g.canPayCostLocked(p, cost, source) {
+				continue
+			}
+		}
+		out = append(out, o)
+		printed = append(printed, i)
+	}
+	out = cloneChoiceOptions(out)
+	if len(printed) == len(opts) {
+		return out, nil, nil
+	}
+	return out, printed, nil
+}
+
+// payChosenOptionLocked pays the chosen option's ManaCost, if it has
+// one. False, with nothing paid, when the chooser can no longer pay it
+// (the board moved since the question went up). Caller must hold g.mu.
+func (g *Game) payChosenOptionLocked(chooser, source uuid.UUID, o ChoiceOption) bool {
+	if o.ManaCost == "" {
+		return true
+	}
+	cost, err := ParseCost(o.ManaCost)
+	if err != nil {
+		return false
+	}
+	p := g.playerByIDLocked(chooser)
+	if p == nil {
+		return false
+	}
+	return g.payCostLocked(p, cost, source, nil)
 }
 
 // ResolveOptionPick answers a PendingChoiceOptionPick: `index` is the
@@ -497,6 +631,26 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 		// report an answer as an absence. Refused before the dequeue,
 		// like an out-of-range index, so the prompt stays open.
 		return ErrInvalidParam
+	}
+	// #2854: an option that costs mana is paid now, before the prompt
+	// goes, through the pay_unless payer. The option was affordable
+	// when it was offered; if the board has moved since (a land left,
+	// the pool emptied), it is REFUSED with the prompt still open and
+	// nothing paid — CR 118.3: a cost that cannot be paid cannot be
+	// chosen — and the chooser answers again. The free first option is
+	// always there to answer with.
+	chosen := choice.PickOptions[index]
+	if !g.payChosenOptionLocked(chooserID, source, chosen) {
+		return ErrInsufficientMana
+	}
+	if key := choice.PickThen; key != "" {
+		carry := copyUUIDs(choice.OptionCarry)
+		g.dequeueChoiceLocked(idx)
+		g.emitChoiceEffectErrorLocked(chooserID, source, runOptionPickThen(g, key, OptionPicked{
+			Chooser: chooserID, Source: source, Index: index, Option: &chosen, Carry: carry,
+		}))
+		g.runStateChecksLocked()
+		return nil
 	}
 	g.dequeueChoiceLocked(idx)
 	if frame == nil || (frame.then == nil && frame.thenSeat == nil && frame.thenSubject == nil) {

@@ -5640,6 +5640,30 @@ branch that always works FIRST — the enumerator marks that one
 always-legal, and a prompt whose every branch can fail is a seat that
 can be stuck (#544).
 
+**A choice among payments (#2854).** "May pay {1} or {2}", "unless
+they pay {B} or {3}": give each paid option its price in
+`game.ChoiceOption.ManaCost` and put the free option first. The engine
+does the rest — it drops an option the chooser cannot pay when the
+prompt is queued (CR 118.3), pays the chosen one through the auto-tapper
+as a pay-unless is paid, and refuses it, prompt still open, if the
+board moved in between. A cost on the first option, an `{X}` or an
+unparseable cost is refused as a card bug. `Then` still receives the
+index the card printed, even when an earlier option was dropped.
+
+**Keyed continuations (`ThenKey`, `Carry`).** A `Then` closure makes
+the table unrestorable while the prompt is open. For a question asked
+once per creature or per player, register the continuation instead:
+`var x game.OptionPickThen` assigned in the card's `init` with
+`effects.OptionPickThen("option-pick/<card>-<what>", fn)`, and pass
+`ThenKey: x, Carry: ids`. `fn(ctx, r)` gets a Context rebuilt with the
+asking effect's controller and the card as source, `r.Option` (the
+chosen option, nil when nobody chose) and `r.Carry`. Read the branch
+off `r.Option.ManaCost` or `Label`, not `r.Index`: options that could
+not be paid were never shown. The key is an on-disk identity, so append
+it to the ledger (`go test ./internal/cards/effects -run
+TestEveryPersistedEffectKeyResolves -args -update-effect-keys`). Winter's
+Chill, Lim-Dûl's Hex and Thrull Wizard are the worked examples.
+
 **`PileSplit{Splitter, Chooser, Owner, Cards, Then}`** is "an opponent
 separates those cards into two piles; you take one" — two chained
 prompts to two different seats, and no kind of its own. **Reveal the

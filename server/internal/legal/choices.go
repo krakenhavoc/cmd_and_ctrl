@@ -666,9 +666,10 @@ func (e *enumerator) choiceMoves() bool {
 			// seat — Torment of Hailfire's three-way question, and
 			// the pile a Fact or Fiction chooser takes.
 			//
-			// ResolveOptionPick validates the INDEX and nothing else,
-			// so every offered option is an answer the engine will
-			// accept. The legality lives at queue time: an effect
+			// ResolveOptionPick validates the INDEX and, for an option
+			// that costs mana (#2854), the payment; nothing else. So
+			// every free option is an answer the engine will accept.
+			// The legality lives at queue time: an effect
 			// builds the list out of what this seat can actually do.
 			// So every option is offered, in the card's printed order,
 			// and the FIRST is the always-legal way out — the kind's
@@ -694,6 +695,25 @@ func (e *enumerator) choiceMoves() bool {
 					e.addAlwaysLegalChoice(c, reason+": "+label, p)
 					continue
 				}
+				// #2854: an option that costs mana is paid by the
+				// engine when it is chosen, and refused if it cannot
+				// be. The queue offered only the ones the chooser could
+				// pay, but the board can move before the answer, so
+				// each is asked again here through the probe every
+				// pay_unless move asks (zero spend context, matching
+				// payCostLocked) and left out when it can no longer be
+				// paid (#544). It carries its price as MoveCost.Mana.
+				price := moveCost(opt.LifeCost, 0)
+				if opt.ManaCost != "" {
+					cost, err := game.ParseCost(opt.ManaCost)
+					if err != nil || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+						continue
+					}
+					if price == nil {
+						price = &MoveCost{}
+					}
+					price.Mana = opt.ManaCost
+				}
 				e.add(Move{
 					Type:   TypeResolveChoice,
 					Player: e.seat,
@@ -701,7 +721,7 @@ func (e *enumerator) choiceMoves() bool {
 					Label:  reason + ": " + label,
 					Source: c.Source,
 					Params: mustJSON(p),
-					Cost:   moveCost(opt.LifeCost, 0),
+					Cost:   price,
 				})
 			}
 
