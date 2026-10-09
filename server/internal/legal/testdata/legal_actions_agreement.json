@@ -466,7 +466,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -488,7 +489,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -510,7 +512,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -532,7 +535,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -571,7 +575,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Seat 1",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -594,7 +599,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Seat 1",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -617,7 +623,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Seat 2",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -640,7 +647,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Seat 2",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -663,7 +671,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Sacrificial Bear",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -686,7 +695,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Sacrificial Bear",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -709,7 +719,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Vivi Ornitier",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -732,7 +743,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Vivi Ornitier",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_mana_ability",

@@ -449,7 +449,7 @@ describe("settings", () => {
         );
         const { settings, SETTINGS_VERSION } = await freshModule();
         const s = get(settings);
-        expect(SETTINGS_VERSION).toBe(21);
+        expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(21);
         expect(s.__version).toBe(SETTINGS_VERSION);
         expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
         expect(s.gameplay.smartAutoPass).toBe(false);
@@ -783,6 +783,100 @@ describe("per-step stops and the first-strike damage step", () => {
   });
 });
 
+// ---- #2853: untargeted abilities split out of respondAbilities ----
+
+describe("respondUntargetedAbilities (v21 → v22)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+
+  it("is off for a new player, and the other four categories are on", async () => {
+    const { defaultSettings } = await freshModule();
+    const gp = defaultSettings().gameplay;
+    expect(gp.respondUntargetedAbilities).toBe(false);
+    expect(gp.respondCounterspells).toBe(true);
+    expect(gp.respondInstants).toBe(true);
+    expect(gp.respondAbilities).toBe(true);
+    expect(gp.respondSpecialActions).toBe(true);
+  });
+
+  it("moves a player still on the old all-on default to the new default", async () => {
+    const { mod, s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: true,
+        respondInstants: true,
+        respondAbilities: true,
+        respondSpecialActions: true,
+        smartAutoPass: true,
+      },
+    });
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(22);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+
+  it("moves a blob from before the categories existed to the new default", async () => {
+    const { s } = await load({ __version: 11, gameplay: { smartAutoPass: true } });
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+
+  it("keeps the old meaning for a player who changed the Stop for list", async () => {
+    // Counters off, abilities left on: they looked at the list and kept
+    // "any ability", so untargeted abilities still stop them.
+    let { s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: false,
+        respondInstants: true,
+        respondAbilities: true,
+        respondSpecialActions: true,
+      },
+    });
+    expect(s.gameplay.respondCounterspells).toBe(false);
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(true);
+
+    // Abilities off: both halves stay off.
+    ({ s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: true,
+        respondInstants: true,
+        respondAbilities: false,
+        respondSpecialActions: true,
+      },
+    }));
+    expect(s.gameplay.respondAbilities).toBe(false);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+
+  it("from v22 on, a stored choice stands and survives a save", async () => {
+    const { mod } = await load({
+      __version: 22,
+      gameplay: { respondUntargetedAbilities: true },
+    });
+    expect(get(mod.settings).gameplay.respondUntargetedAbilities).toBe(true);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.respondUntargetedAbilities).toBe(true);
+  });
+
+  it("a v22 blob with a malformed value falls back to the default", async () => {
+    const { s } = await load({
+      __version: 22,
+      gameplay: { respondUntargetedAbilities: "yes" },
+    });
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+});
+
 // ---- ADR 0125 §4: the help group (first-use hints) ----
 
 describe("the help group (v20 → v21)", () => {
@@ -798,8 +892,8 @@ describe("the help group (v20 → v21)", () => {
     );
     const { settings, SETTINGS_VERSION } = await freshModule();
     const s = get(settings);
-    expect(SETTINGS_VERSION).toBe(21);
-    expect(s.__version).toBe(21);
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(21);
+    expect(s.__version).toBe(SETTINGS_VERSION);
     expect(s.help).toEqual({ seen: {}, tipsOff: false });
     expect(s.display.theme).toBe("light");
   });

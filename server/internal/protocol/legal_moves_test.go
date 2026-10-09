@@ -434,6 +434,42 @@ func TestCapLegalMovesKeepsTargetsStackDistinct(t *testing.T) {
 	}
 }
 
+// TestCapLegalMovesKeepsHasTargetsDistinct is #2853: an ability with a
+// targeted announcement and an untargeted one is two moves to smart
+// autopass, so the cap keeps one of each rather than whichever came
+// first.
+func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
+	source := uuid.New()
+	moves := make([]LegalMoveView, 0, legalMovesWireCap+3)
+	for i := 0; i <= legalMovesWireCap; i++ {
+		moves = append(moves, LegalMoveView{
+			Type: legal.TypeCastSpell, Kind: legal.KindCast,
+			Label: fmt.Sprintf("filler %d", i), Source: uuid.New(),
+		})
+	}
+	moves = append(moves,
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "draw mode", Source: source},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "ping mode", Source: source, HasTargets: true},
+	)
+
+	out, _ := capLegalMoves(moves)
+	var sawUntargeted, sawTargeted bool
+	for _, m := range out {
+		if m.Source != source {
+			continue
+		}
+		if m.HasTargets {
+			sawTargeted = true
+		} else {
+			sawUntargeted = true
+		}
+	}
+	if !sawUntargeted || !sawTargeted {
+		t.Errorf("cap dropped one of %s's two announcements: untargeted kept=%v, targeted kept=%v (%v)",
+			source, sawUntargeted, sawTargeted, labelsOf(out))
+	}
+}
+
 // BenchmarkViewOfGame measures the projection on the same busy
 // four-player board, with and without the enumeration.
 //

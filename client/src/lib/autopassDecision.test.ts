@@ -1,6 +1,10 @@
 import { describe, it, expect } from "vitest";
 
 import { autopassDecision, isBluff, type AutopassGates } from "./autopassDecision";
+import { ownsEveryStackItem } from "./holdPriority";
+import type { GameView, LegalMoveView, PlayerView } from "./protocol";
+import { DEFAULT_RESPONSES, hasPlay, hasResponse } from "./responseWindow";
+import { noteStackSeen, stackHoldRemainingMs } from "./stackHold";
 
 // A viewer holding priority on an empty stack at their opponent's
 // upkeep with the default settings: nothing pinned, nothing owed, the
@@ -510,5 +514,101 @@ describe("autopassDecision — #1307: bluffs", () => {
     const g = gates({ step: "declare_attackers", combatWindow: true });
     expect(isBluff(autopassDecision({ ...g, bluffInstant: true }))).toBe(true);
     expect(autopassDecision({ ...g, bluffCounter: true })).toBe("pass");
+  });
+});
+
+// #2853 end to end: the gates built from a real frame through
+// responseWindow, the way Game.svelte builds them. The issue's board —
+// lands, Llanowar Elves, Mind Stone and Evolving Wilds — with an
+// opponent's spell on the stack. With the default "Stop for" list the
+// ADR 0119 stack hold runs its course and then auto-pass passes.
+describe("autopassDecision — #2853: an untargeted value ability is not a response", () => {
+  const me = "p0";
+  const seatOf = (id: string, seat: number): PlayerView => ({
+    id,
+    name: id,
+    seat,
+    life: 40,
+    library: { kind: "library", owner: id, count: 0, cards: [] },
+    hand: { kind: "hand", owner: id, count: 0, cards: [] },
+    graveyard: { kind: "graveyard", owner: id, count: 0, cards: [] },
+    command: { kind: "command", owner: id, count: 0, cards: [] },
+    commander_damage: {},
+    life_history: [],
+  });
+  const mv = (kind: LegalMoveView["kind"], extras: Partial<LegalMoveView> = {}): LegalMoveView => ({
+    type: "x",
+    player: me,
+    kind,
+    label: kind,
+    ...extras,
+  });
+  const valueBoard: LegalMoveView[] = [
+    mv("pass"),
+    mv("mana", { source: "forest" }),
+    mv("mana", { source: "elves" }),
+    mv("activate", { source: "mind-stone" }),
+    mv("activate", { source: "evolving-wilds" }),
+  ];
+  const frame = (moves: LegalMoveView[]): GameView => ({
+    id: "g",
+    state: "active",
+    seats: [seatOf("p0", 0), seatOf("p1", 1)],
+    battlefield: { kind: "battlefield", owner: "", count: 0, cards: [] },
+    stack: { kind: "stack", owner: "", count: 0, cards: [] },
+    exile: { kind: "exile", owner: "", count: 0, cards: [] },
+    turn: {
+      seq: 1,
+      number: 1,
+      active_seat: 1,
+      priority_holder: 0,
+      phase: "x",
+      step: "precombat_main",
+    },
+    mulligans_open: false,
+    stack_items: [
+      { id: "opp-spell", kind: "spell", controller: "p1", owner: "p1", source_card_id: "c" },
+    ],
+    split_second_active: false,
+    legal_moves: moves,
+  });
+  const gatesFor = (view: GameView, cats = DEFAULT_RESPONSES): AutopassGates =>
+    gates({
+      step: view.turn.step,
+      stackEmpty: false,
+      ownsEveryStackItem: ownsEveryStackItem(view, me),
+      hasResponse: hasResponse(view, me, cats),
+      hasPlay: hasPlay(view, me, cats),
+    });
+
+  it("passes once the stack hold has run out", () => {
+    const view = frame(valueBoard);
+    expect(autopassDecision(gatesFor(view))).toBe("pass");
+    const firstSeen = noteStackSeen(new Map(), view, 0);
+    const hold = (now: number) =>
+      stackHoldRemainingMs({ view, viewerID: me, firstSeen, holdMs: 2000, now });
+    expect(hold(0)).toBe(2000);
+    expect(hold(2000)).toBe(0);
+  });
+
+  it("holds with untargeted abilities ticked, as before #2853", () => {
+    const view = frame(valueBoard);
+    expect(autopassDecision(gatesFor(view, { ...DEFAULT_RESPONSES, untargeted: true }))).toBe(
+      "hold",
+    );
+  });
+
+  it("holds for a targeted ability, an instant and a counter", () => {
+    for (const extra of [
+      mv("activate", { source: "pinger", has_targets: true }),
+      mv("cast", { source: "instant" }),
+      mv("cast", { source: "counter", targets_stack: true, has_targets: true }),
+    ]) {
+      expect(autopassDecision(gatesFor(frame([...valueBoard, extra]))), extra.source).toBe("hold");
+    }
+  });
+
+  it("the hold toggle holds it whatever the categories say", () => {
+    expect(autopassDecision({ ...gatesFor(frame(valueBoard)), holdPriority: true })).toBe("hold");
   });
 });

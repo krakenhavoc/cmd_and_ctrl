@@ -395,7 +395,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -417,7 +418,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -439,7 +441,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -1540,7 +1543,8 @@
           "source": "00000026-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -1562,7 +1566,8 @@
           "source": "00000026-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "activate_mana_ability",
@@ -2122,7 +2127,8 @@
           "source": "00000035-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -2144,7 +2150,8 @@
           "source": "00000035-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "activate_mana_ability",

@@ -480,7 +480,8 @@
     <!-- #323: the escape hatch for "I DO want to respond to my own
          spell". It has to be clickable BEFORE the cast — once the spell
          is announced the client auto-passes on the following snapshot.
-         Sticky until clicked off. -->
+         #2853: it holds every stack item, an opponent's too, and turns
+         itself off once the stack it held has emptied. -->
     <button
       type="button"
       class="action hold"
@@ -490,8 +491,8 @@
       disabled={preGame}
       onclick={toggleHoldPriority}
       title={($holdPriority
-        ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
-        : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them") +
+        ? "hold ON — you keep priority on every stack item, yours and opponents', until the stack empties; click to release"
+        : "hold OFF — click to keep priority on every stack item, yours and opponents', until the stack empties. Click before you cast to respond to your own spell") +
         keyHint(keys.holdPriority)}
     >
       {$holdPriority ? "hold ✓" : "hold"}

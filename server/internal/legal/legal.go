@@ -154,6 +154,16 @@ type Move struct {
 	// targetsStackObject.
 	TargetsStack bool `json:"targets_stack,omitempty"`
 
+	// HasTargets is true when this move chooses at least one target, on
+	// the stack or anywhere else. It is what lets the
+	// client's smart autopass tell an activated ability that answers
+	// something (Prodigal Sorcerer, an outlet that exiles a target) from
+	// an untargeted value ability (Mind Stone, a fetch land, a Clue,
+	// cycling), which is no reason to stop on an opponent's spell
+	// (#2853). Like TargetsStack it is per ANNOUNCEMENT, so a modal move
+	// with a targeted and an untargeted mode ships both, correctly split.
+	HasTargets bool `json:"has_targets,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you
@@ -814,6 +824,13 @@ func isActiveSeat(g *game.Game, seat uuid.UUID) bool {
 // halves resolve through TargetCard, exactly as specMatchLocked reads
 // them in internal/game — so any non-card ref (player, self, none)
 // is skipped outright.
+// hasTargets reports whether an announcement chose any target at all:
+// refs are the move's chosen targets, so an empty list is a move with
+// no target clause.
+func hasTargets(refs []game.TargetRef) bool {
+	return len(refs) > 0
+}
+
 func targetsStackObject(g *game.Game, refs []game.TargetRef) bool {
 	for _, r := range refs {
 		if r.Kind != game.TargetCard {

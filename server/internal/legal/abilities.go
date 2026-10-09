@@ -930,6 +930,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// a modal ability's stack-targeting mode
 									// is flagged on its own.
 									TargetsStack: targetsStackObject(g, targets),
+									HasTargets:   hasTargets(targets),
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,

@@ -18,6 +18,10 @@ owner decision 8, #2188), 2026-10-04 — rule 8 also holds the viewer's own
 main phase when the engine may not see their mana: a spell in hand left out
 for mana alone while they control a mana source the engine does not run. See
 the precedence list below.
+**Amended by:** S60 (#2853), 2026-10-09 — an untargeted activated ability is
+no longer a response by default, and the hold toggle clears itself once the
+stack it held has emptied. See "Amendment: only real interaction stops you
+(#2853)" below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -271,6 +275,87 @@ It is derived entirely client-side, from public data and elapsed time
 pass clears in about one round trip, well inside 800 ms. So a real hold, a
 timed bluff, a manual bluff and a player who has stepped away all look the
 same, which is the point. Bot seats keep their own `botThinking` chip.
+
+## Amendment: only real interaction stops you (#2853)
+
+**Status:** Accepted · 2026-10-09 · Sprint S60
+
+In a real Commander game smart autopass almost never passed an opponent's
+stack item. `classifyMove` counted every affordable non-mana activated ability
+as an `ability` response, and `respondAbilities` was on by default, so a Mind
+Stone, a fetch land, a Clue, a Wayfarer's Bauble or a card with cycling in hand
+held every opponent spell. A probe in `internal/legal` reproduced it: three
+Forests and Llanowar Elves give only pass and mana moves, and adding Mind Stone
+and Evolving Wilds adds two `activate` moves with nothing to say they answer
+anything.
+
+**Owner decision 1 (2026-10-09).** By default an opponent's stack item stops you
+only for real interaction: an instant you can cast, a counterspell or anything
+else targeting the stack, or an activated ability that targets. An untargeted
+value ability no longer stops you, and a setting brings the old behaviour back.
+
+**Owner decision 2 (2026-10-09).** The hold toggle keeps holding every stack, an
+opponent's item included. Its tooltip and shortcut hint now say so, and it
+clears itself once the stack empties.
+
+### What changed
+
+- **`has_targets` on the legal move.** The enumerator sets it on every `cast`
+  and `activate` announcement that chose at least one target, on the stack or
+  anywhere else (`legal.Move.HasTargets`, `docs/protocol.md`). It is per
+  announcement, like `targets_stack`, and rides in `capLegalMoves`' key
+  `(source, kind, targets_stack, has_targets)`, so a capped list never merges a
+  targeted mode into an untargeted one.
+- **A new class.** `classifyMove` keeps `counter` and `instant` as they were and
+  splits the rest of the activations:
+
+  | Move | Class |
+  |---|---|
+  | `activate` with `has_targets` (not `targets_stack`) | ability |
+  | any other `activate` | untargeted |
+
+  Cycling is an `activate` from the hand, with no target, so it is untargeted.
+  Special actions keep their own `special` class and setting. A server that
+  sends no `has_targets` gets every non-counter activation classed as
+  untargeted.
+- **A fifth "Stop for" category.** `respondUntargetedAbilities` ("Untargeted
+  abilities"), off by default. `respondAbilities` now reads "Activated abilities
+  that target something". Ticking the new one restores the pre-#2853 meaning of
+  "Activated abilities". The Settings page says what the default stops for.
+- **The hold toggle is for one stack.** `holdPriority` still holds every
+  non-empty stack (rule 6 checks it before the own-versus-opponent split, as
+  before). `noteStackForHold`, called with every frame, remembers a live stack
+  while the hold is on (an item in either stack representation, or a trigger
+  still queuing) and turns the hold off on the first frame after it with
+  nothing there. Arming it on an empty stack, before a cast, never clears it.
+
+The precedence list above is unchanged.
+
+### The settings migration (schema v22)
+
+A stored blob is materialised (see v15 → v16), so a stored
+`respondAbilities: true` from the all-on v12 default cannot be told from a
+chosen one. A `Stop for` list that differs from that default can be: a player
+who turned any of the four v12 categories off looked at the list and left
+abilities as they wanted them. So, for a blob from before v22:
+
+- all four categories still on (or not stored at all): `respondUntargetedAbilities`
+  takes the new default, `false`;
+- any of the four off: `respondUntargetedAbilities` follows `respondAbilities`,
+  which keeps their old "any ability" meaning.
+
+An account copy from a v21 client goes through the same migrate
+(`applySyncedCopy`). From v22 on, the stored value stands, and a non-boolean
+falls back to the default.
+
+### Costs
+
+- A player who wanted a stop to crack a fetch land in response must now tick
+  "Untargeted abilities", pin the step, or arm the hold.
+- An untargeted ability that is still interaction (a sacrifice outlet in
+  response to removal, a regeneration shield) no longer stops you by default.
+  The owner chose the narrower default knowing this; the setting and the hold
+  are the way back.
 
 ## Context
 

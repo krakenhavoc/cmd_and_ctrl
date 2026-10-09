@@ -473,7 +473,7 @@ export interface GameView {
   legal_moves?: LegalMoveView[];
   // ADR 0122 §6.1: true when the 48-move wire cap dropped anything
   // from legal_moves — the list then has one move per (source, kind,
-  // targets_stack), not every alternative. Absent otherwise. Own seat
+  // targets_stack, has_targets), not every alternative. Absent otherwise. Own seat
   // only. The browser reads nothing from legal_moves that the cap
   // loses (legalActions.ts), so it only needs to know.
   legal_moves_truncated?: boolean;
@@ -728,6 +728,13 @@ export interface LegalMoveView {
   // stack" from "has some instant". Absent on older servers, which
   // the client treats as a plain instant-speed move.
   targets_stack?: boolean;
+  // #2853: true on a cast or activation that chooses at least one
+  // target, on the stack or anywhere else. Smart autopass reads it to
+  // tell an ability that answers something (a pinger, a removal
+  // activation) from an untargeted value ability (Mind Stone, a fetch
+  // land, cycling). Absent on older servers, which the client treats
+  // as untargeted.
+  has_targets?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never

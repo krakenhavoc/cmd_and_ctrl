@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 
 import {
   ALL_RESPONSES,
+  DEFAULT_RESPONSES,
   classifyMove,
   hasPlay,
   hasResponse,
@@ -102,6 +103,7 @@ const only = (k: keyof ResponseCategories): ResponseCategories => ({
   counter: false,
   instant: false,
   ability: false,
+  untargeted: false,
   special: false,
   [k]: true,
 });
@@ -129,9 +131,20 @@ describe("classifyMove", () => {
     expect(classifyMove(move("activate", { targets_stack: true }), false)).toBe("counter");
   });
 
-  it("any other cast is an instant, any other activation an ability", () => {
+  it("any other cast is an instant, targeted or not", () => {
     expect(classifyMove(move("cast"), false)).toBe("instant");
-    expect(classifyMove(move("activate"), false)).toBe("ability");
+    expect(classifyMove(move("cast", { has_targets: true }), false)).toBe("instant");
+  });
+
+  it("#2853: an activation is an ability when it targets, untargeted when it does not", () => {
+    expect(classifyMove(move("activate", { has_targets: true }), false)).toBe("ability");
+    expect(classifyMove(move("activate"), false)).toBe("untargeted");
+    // An older server sends neither bit.
+    expect(classifyMove(move("activate", { has_targets: undefined }), false)).toBe("untargeted");
+    // A counter is a counter, whatever has_targets says.
+    expect(classifyMove(move("activate", { targets_stack: true, has_targets: true }), false)).toBe(
+      "counter",
+    );
   });
 
   it("an older server with no targets_stack reads a counterspell as an instant", () => {
@@ -184,7 +197,8 @@ describe("hasResponse", () => {
     const rows: [LegalMoveView, keyof ResponseCategories][] = [
       [move("cast", { targets_stack: true }), "counter"],
       [move("cast"), "instant"],
-      [move("activate"), "ability"],
+      [move("activate", { has_targets: true }), "ability"],
+      [move("activate"), "untargeted"],
       [move("special_action"), "special"],
     ];
     for (const [m, k] of rows) {
@@ -215,13 +229,71 @@ describe("hasResponse", () => {
   });
 });
 
+// #2853, owner decision 1: an opponent's stack item stops you only for
+// real interaction. The issue's board: three Forests, Llanowar Elves,
+// Mind Stone and Evolving Wilds, with an opponent's spell on the stack.
+describe("hasResponse — #2853's default categories on an opponent's stack item", () => {
+  const onOppStack = (moves: LegalMoveView[]) =>
+    snap({ step: "precombat_main", active: 1, holder: 0, moves, stackItems: [stackItem("p1")] });
+  const valueBoard = [
+    pass,
+    move("mana", { source: "forest-1" }),
+    move("mana", { source: "forest-2" }),
+    move("mana", { source: "forest-3" }),
+    move("mana", { source: "elves" }),
+    move("mana", { source: "mind-stone" }),
+    move("activate", { source: "mind-stone", label: "Mind Stone: draw a card" }),
+    move("activate", { source: "evolving-wilds", label: "Evolving Wilds: search" }),
+  ];
+
+  it("the Mind Stone / Evolving Wilds board has no response by default", () => {
+    expect(hasResponse(onOppStack(valueBoard), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  it("the old behaviour comes back with untargeted abilities ticked", () => {
+    expect(
+      hasResponse(onOppStack(valueBoard), "p0", { ...DEFAULT_RESPONSES, untargeted: true }),
+    ).toBe(true);
+  });
+
+  it("cycling from hand is an untargeted activation and does not stop you", () => {
+    const cycling = move("activate", { source: "hand-card", label: "Cycle Lonely Sandbar" });
+    expect(hasResponse(onOppStack([pass, cycling]), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  it("an ability that targets holds", () => {
+    const ping = move("activate", { source: "pinger", has_targets: true });
+    expect(hasResponse(onOppStack([...valueBoard, ping]), "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+
+  it("an instant holds, targeted or not", () => {
+    for (const extras of [{}, { has_targets: true }]) {
+      const inst = move("cast", { source: "instant", ...extras });
+      expect(hasResponse(onOppStack([...valueBoard, inst]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    }
+  });
+
+  it("a counter holds, cast or activated", () => {
+    for (const kind of ["cast", "activate"] as const) {
+      const counter = move(kind, { source: "counter", targets_stack: true, has_targets: true });
+      expect(hasResponse(onOppStack([...valueBoard, counter]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    }
+  });
+});
+
 describe("hasPlay", () => {
   it("a land is a play in the viewer's own main phase", () => {
     expect(hasPlay(snap({ moves: [pass, move("land")] }), "p0", ALL_RESPONSES)).toBe(true);
   });
 
   it("a sorcery-speed cast is a play even with every response category off", () => {
-    const none = { counter: false, instant: false, ability: false, special: false };
+    const none = {
+      counter: false,
+      instant: false,
+      ability: false,
+      untargeted: false,
+      special: false,
+    };
     expect(hasPlay(snap({ moves: [pass, move("cast")] }), "p0", none)).toBe(true);
   });
 
@@ -282,8 +354,8 @@ describe("keyWindow", () => {
 describe("an activation of another player's permanent", () => {
   const xantcha = card("xantcha", { owner: "p1", controller: "p1" });
   const mine = card("mine");
-  const across = move("activate", { source: "xantcha" });
-  const own = move("activate", { source: "mine" });
+  const across = move("activate", { source: "xantcha", has_targets: true });
+  const own = move("activate", { source: "mine", has_targets: true });
   const board = [xantcha, mine];
 
   it("classifies as none with the frame's controllers, and as before without them", () => {
@@ -297,7 +369,7 @@ describe("an activation of another player's permanent", () => {
     // The existing two-argument call is unchanged.
     expect(classifyMove(across, false)).toBe("ability");
     // A source the map does not know keeps today's class.
-    const elsewhere = move("activate", { source: "elsewhere" });
+    const elsewhere = move("activate", { source: "elsewhere", has_targets: true });
     expect(classifyMove(elsewhere, false, controllers, "p0")).toBe("ability");
   });
 

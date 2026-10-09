@@ -12,8 +12,10 @@
 // Two questions now, over the same server-enumerated move list:
 //
 //   hasResponse — could the viewer answer what is happening? Counters,
-//     instants, non-mana abilities and special actions, each one a
-//     category the player can switch off. Mana and land never count.
+//     instants, targeted abilities, untargeted abilities and special
+//     actions, each one a category the player can switch off. Mana and
+//     land never count, and untargeted abilities are off by default
+//     (#2853).
 //   hasPlay — is there anything to do on a step the player ticked?
 //     A response, or a land, a sorcery-speed cast, a declaration.
 //
@@ -37,7 +39,11 @@ import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 //   counter     — a cast or activation that targets the stack.
 //   instant     — any other cast (instant, flash, split second's
 //                 exceptions — whatever the enumerator offered).
-//   ability     — any other non-mana activated ability.
+//   ability     — any other non-mana activated ability that targets
+//                 (#2853: `has_targets`).
+//   untargeted  — a non-mana activated ability with no target: Mind
+//                 Stone, a fetch land, a Clue, cycling. Its own class
+//                 so it can stop counting as a response by default.
 //   special     — a CR 116.2 special action (foretell, suspend, …).
 //   declaration — an attack or a block.
 //   other       — a choice answer, a mulligan, a kind this client
@@ -48,15 +54,17 @@ export type MoveClass =
   | "counter"
   | "instant"
   | "ability"
+  | "untargeted"
   | "special"
   | "declaration"
   | "other";
 
-// ResponseCategories are the four gameplay.respond* toggles.
+// ResponseCategories are the five gameplay.respond* toggles.
 export interface ResponseCategories {
   counter: boolean;
   instant: boolean;
   ability: boolean;
+  untargeted: boolean;
   special: boolean;
 }
 
@@ -64,7 +72,17 @@ export const ALL_RESPONSES: ResponseCategories = {
   counter: true,
   instant: true,
   ability: true,
+  untargeted: true,
   special: true,
+};
+
+// DEFAULT_RESPONSES is what a player who never touched "Stop for"
+// gets (#2853, owner decision 1): an opponent's stack item stops you
+// for an instant, a counter, or an ability that targets. An untargeted
+// value ability is not interaction.
+export const DEFAULT_RESPONSES: ResponseCategories = {
+  ...ALL_RESPONSES,
+  untargeted: false,
 };
 
 // classifyMove sorts one enumerated move. `sorceryWindow` is "the
@@ -75,7 +93,8 @@ export const ALL_RESPONSES: ResponseCategories = {
 // An older server sends no `targets_stack`, so a counterspell there
 // reads as `instant`. With both categories on (the default) that
 // changes nothing; it only matters to a player who turned instants
-// off and kept counters on.
+// off and kept counters on. Nor does it send `has_targets`, so every
+// non-counter activation there reads as `untargeted`.
 //
 // ADR 0106 §1 decision 7 (owner decision 1, #1793): `controllers` maps
 // a battlefield permanent's instance ID to its controller, and `me` is
@@ -106,7 +125,8 @@ export function classifyMove(
     case "activate":
       if (sorceryWindow) return "play";
       if (m.targets_stack) return "counter";
-      return m.kind === "cast" ? "instant" : "ability";
+      if (m.kind === "cast") return "instant";
+      return m.has_targets ? "ability" : "untargeted";
     case "special_action":
       return "special";
     // #1501: finishing a block declaration is part of the declaration.
@@ -156,6 +176,8 @@ function isEnabledResponse(c: MoveClass, cats: ResponseCategories): boolean {
       return cats.instant;
     case "ability":
       return cats.ability;
+    case "untargeted":
+      return cats.untargeted;
     case "special":
       return cats.special;
     default:
