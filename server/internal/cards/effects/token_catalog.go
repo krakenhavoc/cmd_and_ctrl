@@ -223,6 +223,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Reality Fracture: Ajani Resolute's Ajani's Pridemate.
 	printedAjanisPridemateToken,
+
+	// Reality Fracture: Vraska, Soul of Stone's Sculpture Treasure.
+	printedSculptureTreasureToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init
