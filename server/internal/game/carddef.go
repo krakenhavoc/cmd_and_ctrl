@@ -361,6 +361,11 @@ type CardDef struct {
 	// effects.Spec.XMatters and internal/legal/x.go.
 	XMatters bool
 
+	// XCeiling is the spell's printed "X can't be greater than
+	// <count>" (#2581), read at announce through XCeilingFor; see
+	// x_ceiling.go. Nil for nearly every card.
+	XCeiling *XCeiling
+
 	// WantsDistinctColors marks a spell that READS the colours of the
 	// mana that paid for it — converge (CR 702.86) and sunburst (CR
 	// 702.44), and nothing else today. It picks the colour-maximising
@@ -886,6 +891,12 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogXCeiling = func(key string) *XCeiling {
+		if d := catalogDef(key); d != nil {
+			return d.XCeiling
+		}
+		return nil
 	}
 	CatalogCastPermissions = func(key string) []CastPermission {
 		if d := catalogDef(key); d != nil {

@@ -506,6 +506,11 @@ func Register(spec Spec) {
 				spec.Name, spec.Madness, err))
 		}
 	}
+	// #2581: a printed X ceiling with no count would read as "no
+	// ceiling", a card stronger than printed.
+	if xc := spec.XCeiling; xc != nil && (xc.Count == nil || xc.Label == "") {
+		panic(fmt.Sprintf("effects.Register: %q declares an X ceiling with no count or no label", spec.Name))
+	}
 	// An activated ability's mana component is the only place an X
 	// can live (game.AbilityCost.DemandsX says why), so both ways of
 	// getting a variable cost wrong are visible from here, and both
@@ -700,6 +705,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
 	}
 	checkVariableSacrificePlan(spec)
+	checkSacrificeAllCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
 	// number, with game.MaxCatalogReplacementSlots as the stride. A

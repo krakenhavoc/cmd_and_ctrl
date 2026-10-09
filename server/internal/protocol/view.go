@@ -807,6 +807,14 @@ type LegalTargetsView struct {
 	// holds its confirm button until they do, and "Choose for me" fills
 	// it with a set that does. Absent on every clause without one.
 	EachOf []SacrificeGroupView `json:"each_of,omitempty"`
+
+	// All marks a SACRIFICE clause that takes every permanent listed in
+	// `cards` and lets the caster choose none of them (#2097, Soulblast's
+	// "sacrifice all creatures you control"): min and max are both the
+	// number listed, which may be zero. The client confirms rather than
+	// picks, and may send `sacrifice_ids` empty (the server fills it) or
+	// exactly these. Absent on every other clause.
+	All bool `json:"all,omitempty"`
 }
 
 // SacrificeGroupView is one entry of LegalTargetsView.EachOf: the
@@ -3162,6 +3170,17 @@ type CastSurfaceView struct {
 	// cost modifier can be scoped to one player ("spells you cast
 	// cost {1} less"), so one seat's price is not another's.
 	CastPrices []CastPriceView `json:"cast_prices,omitempty"`
+	// XMax is the largest X THIS viewer may announce for the spell
+	// right now, under its printed "X can't be greater than <count>"
+	// — Winter's Chill's snow lands, Open the Way's players (#2581).
+	// game.SpellXCeilingForEffect, the number CastSpell refuses above
+	// and the bot enumerator searches under, so the client's X picker
+	// stops where the server does. Absent for every card that prints
+	// no ceiling; present-and-0 means X = 0 is the only announcement.
+	//
+	// PER VIEWER, like `cast_prices`: "snow lands YOU control" is one
+	// seat's count.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // CastPriceView is one price a cast may claim, as the engine will
@@ -5031,6 +5050,8 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	// #1389: a price is one seat's answer — a cost modifier may be
 	// scoped to one player.
 	s.CastPrices = nil
+	// #2581: and so is an X ceiling read off one seat's board.
+	s.XMax = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -5566,6 +5587,11 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
 	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	// #2581: the printed X ceiling, read for this caster now — the
+	// count CastSpell will read as X is announced (CR 601.2b).
+	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
+		out.XMax = &ceiling
+	}
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
@@ -6412,6 +6438,12 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		// shroud gate must not narrow the list the client offers. The
 		// same list, count and order the abilities ship (#747).
 		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+		if ac.SacrificeAll {
+			// #2097: "sacrifice all" — the engine's own set, the one
+			// CastSpell will take, as a demand of exactly that many.
+			all := g.SacrificeAllCandidatesForEffect(caster, ac.Sacrifice)
+			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+		}
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator
@@ -9067,6 +9099,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// #1389: a foretold card's price is its foretell cost, which names
 	// the card as loudly as its mana cost does.
 	out.CastPrices = nil
+	// #2581: a printed X ceiling says the card has {X} and what it
+	// counts, which names it as loudly as its text.
+	out.XMax = nil
 	// ADR 0073 §7: "Cast this spell only if you control a legendary
 	// creature or planeswalker" says the card is a legendary sorcery,
 	// which is more than its mana cost gives away. CR 708.2 also

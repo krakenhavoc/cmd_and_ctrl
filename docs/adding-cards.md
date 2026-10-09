@@ -3344,6 +3344,20 @@ plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
 life"; "any number" on an ability is still refused, because a cost an
 ability can pay with nothing is free.
 
+**"Sacrifice all creatures you control" (#2097):** the clause the caster
+does not choose at all.
+
+```go
+AdditionalCost: SacrificeAllCost("creatures you control", Creature()), // Soulblast
+```
+
+The engine takes every matching permanent the caster controls as the
+spell is cast (a phased-out one is left, an indestructible one goes), and
+none is a legal payment. Read what it took with `ctx.Sacrificed()` and
+`ctx.SacrificedTotalPower()` as for any other sacrifice. Mandatory slot
+only: Register refuses it in an optional cost or an either/or branch.
+The heuristic bot declines these casts outright.
+
 **The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
 payment record names each one (`PaidCost.SacrificedObjects`, written at
 every payment site: a spell's additional cost, an activated ability and

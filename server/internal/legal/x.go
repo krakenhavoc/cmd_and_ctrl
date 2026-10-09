@@ -60,7 +60,8 @@ func enumeratedXFloor(catalogKey string, printedFloor int) int {
 }
 
 // noXCeiling means "no cost component other than the mana cost prices
-// X", which is every card but the pay-X-life family today.
+// X, and the card prints no ceiling on it", which is every card but the
+// pay-X-life and blight-X families and the printed ceilings (#2581).
 const noXCeiling = -1
 
 // xCeilingFromCost is the largest X a NON-MANA cost component lets the
@@ -105,6 +106,34 @@ func (e *enumerator) blightXCeiling(addCost *game.AdditionalCost) int {
 		return noXCeiling
 	}
 	return e.g.BlightXCeilingForEffect(e.seat)
+}
+
+// printedXCeiling folds a spell's printed "X can't be greater than
+// <count>" (#2581, game/x_ceiling.go) into `ceiling`, the bound a cost
+// already puts on X (xCeilingFromCost, blightXCeiling), keeping the
+// smaller. noXCeiling in, and no printed ceiling, is noXCeiling out.
+//
+// It rides the cost ceiling's slot rather than a slot of its own
+// because announcedX already takes the smaller of that slot and what
+// the mana can pay for, which is exactly the rule for a printed
+// ceiling too: the largest X every bound allows. The count is the
+// engine's own SpellXCeilingForEffect, the number CastSpell refuses
+// above, so the enumerator never offers an X the engine refuses
+// (#544), and the open X range a move carries (openX) stops at it.
+//
+// The caller folds it in only when the cost being searched has an {X}
+// slot, so announcedX's "no {X} slot, the cost ceiling is the whole
+// answer" branch (Toxic Deluge) never reads a printed ceiling as a
+// price: a free cast of Winter's Chill still announces X=0.
+func (e *enumerator) printedXCeiling(key string, ceiling int) int {
+	c, ok := e.g.SpellXCeilingForEffect(e.seat, key)
+	if !ok {
+		return ceiling
+	}
+	if ceiling == noXCeiling || c < ceiling {
+		return c
+	}
+	return ceiling
 }
 
 // announcedX is the one number a cast announces for X: the largest

@@ -1480,6 +1480,18 @@ type Spec struct {
 	// shuffle and its {X} look) are never confused by one flag.
 	XMatters bool
 
+	// XCeiling is the spell's printed "X can't be greater than
+	// <count>" — Winter's Chill's "the number of snow lands you
+	// control", Open the Way's "the number of players in the game"
+	// (#2581, CR 107.3a, 601.2b). The count is read once, as X is
+	// announced: the cast is refused above it, the legal-move
+	// enumerator never offers more, and the client's X picker stops
+	// at it. A count that changes once the spell is cast changes
+	// nothing about its X. See game/x_ceiling.go, and the declared
+	// ceilings in x_ceiling.go here. Spells only; nil for nearly every
+	// card.
+	XCeiling *game.XCeiling
+
 	// Discovers declares that the card's text discovers (CR 701.57, ADR
 	// 0099) — that some effect of the card calls Discover or DiscoverN.
 	// Nothing in the engine reads it: discover is an instruction inside

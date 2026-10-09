@@ -2995,6 +2995,11 @@ export interface LegalTargetsView {
   // #2526: a SACRIFICE clause's set rule — the picks must fill every
   // group with a different permanent. See sacrificeCost.ts.
   each_of?: SacrificeGroupView[];
+  // #2097: a SACRIFICE clause that takes every permanent in `cards`
+  // ("sacrifice all creatures you control"); min and max are their
+  // number. The client confirms rather than picks, and sends
+  // `sacrifice_ids` empty for the server to fill.
+  all?: boolean;
   players?: string[];
   cards?: string[];
   min?: number;
@@ -3253,6 +3258,12 @@ export interface CastSurfaceView {
   // timing included — and is what the castable-from-exile strip
   // lights a card by.
   cast_prices?: CastPriceView[];
+  // #2581: the largest X THIS viewer may announce for the spell right
+  // now, under its printed "X can't be greater than <count>" (Winter's
+  // Chill's snow lands, Open the Way's players). The server refuses a
+  // larger X, so the X picker stops here. Absent for every card with no
+  // printed ceiling; present-and-0 means X = 0 is the only announcement.
+  x_max?: number;
 }
 
 // CastPriceView is one price a cast out of exile may claim (#1389).
