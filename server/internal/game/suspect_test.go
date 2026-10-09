@@ -207,9 +207,8 @@ func TestSuspectedCreatureCannotBeDeclaredAsABlocker(t *testing.T) {
 
 // Layer 6 ordering (CR 613.7): the menace grant is ordered at the
 // moment the creature became suspected. A "loses all abilities" that
-// is OLDER leaves the menace; one that is NEWER takes it away. The
-// can't-block half is a restriction and no layer touches it, which is
-// the declared, stricter-than-printed reading in suspect.go.
+// is OLDER leaves the menace and can't block; one that is NEWER takes
+// both away (#2737).
 func TestSuspectMenaceIsOrderedByTimestampAgainstAbilityRemoval(t *testing.T) {
 	g := newActiveGame(t)
 	seat := g.Seats[0].ID
@@ -265,7 +264,32 @@ func TestSuspectMenaceIsRemovedByANewerAbilityRemoval(t *testing.T) {
 	if HasKeyword(&c, "menace") {
 		t.Error("a removal newer than the designation left the menace on")
 	}
+	if Restricted(&c, CantBlock) {
+		t.Error("a removal newer than the designation left can't block on")
+	}
 	if !c.Suspected {
 		t.Error("losing abilities un-suspected the creature; it should stay suspected")
+	}
+}
+
+// #2737: once unsuspected, neither the ability nor the restriction it
+// folds into is left behind, and a suspected creature that lost its
+// abilities (the newer-removal test above) may block.
+func TestSuspectCantBlockAbilityLeavesNoRestrictionOnUnsuspect(t *testing.T) {
+	g := newActiveGame(t)
+	seat := g.Seats[0].ID
+	id := pushTypedTestCard(g, Card{
+		Name: "Suspect", TypeLine: "Creature — Human", Power: 2, Toughness: 2,
+		Owner: seat, Controller: seat,
+	})
+	suspectNow(t, g, id)
+	c := suspectedCard(t, g, id)
+	if !containsKeyword(c.Effective().Abilities, KeywordCantBlock) {
+		t.Fatal("a suspected creature has no can't-block ability")
+	}
+	g.WithWriteLock(func() { g.UnsuspectForEffect(id) })
+	c = suspectedCard(t, g, id)
+	if Restricted(&c, CantBlock) || containsKeyword(c.Effective().Abilities, KeywordCantBlock) {
+		t.Error("unsuspecting left can't block behind")
 	}
 }

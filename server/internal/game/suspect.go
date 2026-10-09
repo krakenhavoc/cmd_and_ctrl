@@ -31,21 +31,19 @@ import "github.com/google/uuid"
 //
 // # The two halves of the grant
 //
-//   - Menace is a keyword, granted in layer 6 at the moment the
-//     permanent became suspected (SuspectedAt, CR 613.7). A "loses all
-//     abilities" older than that leaves the menace; a newer one takes
-//     it away. Everything downstream — combat's block-count check, the
-//     enumerator, the badge — reads the one effective ability list.
-//   - "Can't block" is a restriction bit (CantBlock, restrictions.go),
-//     written by the same effect. Restrictions have no layer (CR 613)
-//     and nothing clears them, so a suspected creature that loses all
-//     abilities after the fact STILL cannot block. That is the one
-//     place this is stricter than a literal reading of the rule, which
-//     calls "can't block" an ability the creature has: it errs toward
-//     the restriction, never toward a creature that blocks when the
-//     table expected it not to. The block gate, the enumerator and the
-//     view already read CantBlock through Restricted, so no consumer
-//     changed.
+// Both are abilities in the effective ability list, appended by the one
+// layer-6 effect at the moment the permanent became suspected
+// (SuspectedAt, CR 613.7). A "loses all abilities" older than that
+// leaves them; a newer one takes both away (CR 701.60c, #2737).
+//
+//   - Menace is the keyword itself. Everything downstream — combat's
+//     block-count check, the enumerator, the badge — reads the list.
+//   - "Can't block" is the token KeywordCantBlock. Restrictions have no
+//     layer and nothing clears them, so the token is only the ABILITY;
+//     foldSuspectedCantBlockLocked turns it into the CantBlock bit once
+//     the pass is over (CR 613.11), the way foldUnleashLocked does for
+//     unleash. The block gate, the enumerator and the view already read
+//     CantBlock through Restricted, so no consumer changed.
 //
 // # Lifetime
 //
@@ -76,8 +74,7 @@ func (g *Game) SuspectForEffect(cardID uuid.UUID) bool {
 	}
 	c.Suspected = true
 	c.SuspectedAt = timeNowUnixNano()
-	// The menace grant and the block restriction both come out of the
-	// layer pass, so the cached characteristics are stale now.
+	// The menace and can't-block grants both come out of the layer pass, so the cached characteristics are stale now.
 	g.layerVersion.Add(1)
 	return true
 }
@@ -109,7 +106,7 @@ func (g *Game) IsSuspected(cardID uuid.UUID) bool {
 }
 
 // suspectedEffect is one suspected permanent's CR 701.60c grant, as a
-// layer-6 continuous effect: menace, and the can't-block restriction.
+// layer-6 continuous effect: the menace and can't-block abilities.
 type suspectedEffect struct {
 	target    uuid.UUID
 	timestamp int64
@@ -122,10 +119,33 @@ func (e suspectedEffect) AppliesTo(target *Card, _ *Game) bool {
 }
 func (e suspectedEffect) Apply(c *Characteristic, _ *Card, _ *Game) {
 	c.Abilities = AppendKeywordAbility(c.Abilities, "menace")
-	c.Restrictions |= CantBlock
+	c.Abilities = AppendKeywordAbility(c.Abilities, KeywordCantBlock)
 }
 func (e suspectedEffect) RemovesAbilities() bool      { return false }
 func (e suspectedEffect) ContinuesAfterRemoval() bool { return false }
+
+// KeywordCantBlock is the ability token for "This creature can't block"
+// as CR 701.60c grants it. It is not a printed keyword: it exists so the
+// grant sits in the ability list, where a layer-6 removal reaches it.
+const KeywordCantBlock = "can't block"
+
+// foldSuspectedCantBlockLocked turns a granted KeywordCantBlock ability
+// into the CantBlock restriction once the layer pass is over, so a
+// suspected permanent that has lost its abilities may block (CR 701.60c).
+// A CantBlock from any other source is untouched.
+//
+// Caller must hold g.mu (write).
+func (g *Game) foldSuspectedCantBlockLocked() {
+	if g.Battlefield == nil {
+		return
+	}
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.effective != nil && containsKeyword(c.effective.Abilities, KeywordCantBlock) {
+			c.effective.Restrictions |= CantBlock
+		}
+	}
+}
 
 // suspectContinuousEffectsLocked is the layer pass's source list for
 // the suspected designation: one effect per suspected battlefield

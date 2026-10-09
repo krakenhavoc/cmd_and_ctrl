@@ -556,7 +556,7 @@ type Card struct {
 	FaceTurnedAt int64
 
 	// SuspectedAt is the CR 613.7 timestamp the suspected designation's
-	// menace grant is ordered at in layer 6: the moment it BECAME
+	// menace and can't-block grants are ordered at in layer 6: the moment it BECAME
 	// suspected, so a "loses all abilities" older than the designation
 	// leaves the menace and one newer takes it away. Zero on a card
 	// that is not suspected, and on one restored from a point written
