@@ -713,10 +713,10 @@ func clonePlayer(p *Player) *Player {
 }
 
 // cloneCastPermissions deep-copies a player's granted permissions.
-// The only reference-typed fields are Cards and Faces, so two
+// The slice fields are Cards, Faces, PerType and PerTypeUsed, so four
 // reallocations per permission are the whole copy; everything else is
-// scalar, which is exactly the property that lets the snapshot mirror
-// the type rather than rebuild it.
+// scalar or never written through, which is exactly the property that
+// lets the snapshot mirror the type rather than rebuild it.
 func cloneCastPermissions(in []CastPermission) []CastPermission {
 	if len(in) == 0 {
 		return nil
@@ -729,6 +729,13 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 		}
 		if len(in[i].Faces) > 0 {
 			out[i].Faces = append([]int(nil), in[i].Faces...)
+		}
+		// #2167: the per-type budget and what it has spent.
+		if len(in[i].PerType) > 0 {
+			out[i].PerType = append([]string(nil), in[i].PerType...)
+		}
+		if len(in[i].PerTypeUsed) > 0 {
+			out[i].PerTypeUsed = append([]string(nil), in[i].PerTypeUsed...)
 		}
 	}
 	return out

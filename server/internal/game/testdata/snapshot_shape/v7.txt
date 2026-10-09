@@ -2817,6 +2817,10 @@ seats[].castPermissions[].lifeEqualToManaValue	bool
 seats[].castPermissions[].maxSpellManaValue	number:int
 seats[].castPermissions[].notBeforeSeq	number:int
 seats[].castPermissions[].notBeforeTurn	number:int
+seats[].castPermissions[].perType	array
+seats[].castPermissions[].perTypeUsed	array
+seats[].castPermissions[].perTypeUsed[]	string
+seats[].castPermissions[].perType[]	string
 seats[].castPermissions[].player	custom(uuid.UUID)
 seats[].castPermissions[].requiresNoSpellsCast	bool
 seats[].castPermissions[].scope	string
@@ -5119,6 +5123,8 @@ turnTally.noncombatDamage[].colors	array
 turnTally.noncombatDamage[].colors[]	string
 turnTally.noncombatDamage[].controller	custom(uuid.UUID)
 turnTally.noncombatDamage[].source	custom(uuid.UUID)
+turnTally.permissionTypes	map:string
+turnTally.permissionTypes{}	number:int
 turnTally.phaseStarted	number:int
 turnTally.phasesBegun	map:string
 turnTally.phasesBegun{}	number:int

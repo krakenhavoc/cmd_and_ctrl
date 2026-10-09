@@ -211,6 +211,19 @@ var (
 	// mana value is less than or equal to N" (CR 701.57a) and cascade's
 	// "less than this spell's mana value" (CR 702.85a). ADR 0099.
 	ErrSpellManaValueTooHigh = errors.New("game: that spell's mana value is too high for this free cast")
+	// ErrPermissionTypeRequired: the permission this play or cast uses
+	// opens one of each card type (CastPermission.PerType, #2167), the
+	// card could spend more than one of the types left, and the cast
+	// named none — Muldrotha's "if a card has multiple permanent types,
+	// choose one as you play it".
+	ErrPermissionTypeRequired = errors.New("game: choose which card type this uses")
+	// ErrPermissionTypeSpent: every card type this card could spend under
+	// the permission has been used already (#2167).
+	ErrPermissionTypeSpent = errors.New("game: you have already used that card type")
+	// ErrPermissionTypeNotOffered: the cast named a card type the card
+	// does not have, one the permission's budget does not name or has
+	// spent, or one on a cast whose permission has no per-type budget.
+	ErrPermissionTypeNotOffered = errors.New("game: that card type can't be used for this card")
 
 	// ErrNoManaCost is returned by cast_spell when a non-land card
 	// with no mana cost (Ancestral Vision, Living End) is cast by

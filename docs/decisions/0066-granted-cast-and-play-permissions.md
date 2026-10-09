@@ -351,7 +351,8 @@ Mm'menon-style "not cast from hand" restrictions will read `library` and
   of each type from your graveyard *during each of your turns*" is a
   per-type, per-turn allowance. `ScopeStanding` + `PermissionFilter` is the
   right home for the permission half; the per-type-per-turn tally is a second
-  mechanism and is not built.
+  mechanism and is not built. (Since built, with Aminatou's Augury beside it —
+  see the amendment of 2026-10-09, #2167.)
 - **Resolution-time "reveal it and cast it free"** — Descendants' Path,
   Rashmi, Planetarium of Wan Shi Tong. Those cast during a resolution and
   ignore timing; they belong to the `PendingChoiceMayCast` cascade family and
@@ -3152,3 +3153,113 @@ Chandra not, a second ability the same turn refused), `TestMachinationsStatement
 and `TestMachinationsStatementSurvivesASnapshotRestore`. The snapshot shape is additive
 (`seats[].statics[].activationTiming`, recorded in `v7.txt`): a file written before it reads as no statement, and a
 binary before it drops the key and loses only a temporary grant, so there is no version bump.
+
+
+## Amendment — 2026-10-09 (#2167): a permission spent once per card type
+
+Two cards want a permission whose budget is not a count of casts but one use per card TYPE:
+
+- **Muldrotha, the Gravetide**: "During each of your turns, you may play a land and cast a permanent
+  spell of each permanent type from your graveyard. (If a card has multiple permanent types, choose one
+  as you play it.)" A STANDING graveyard permission, derived off the battlefield, and the card this ADR
+  put out of scope in 2026-09.
+- **Aminatou's Augury**: "Until end of turn, for each nonland card type, you may cast a spell of that
+  type from among the exiled cards without paying its mana cost." A STORED permission over the eight
+  cards it exiled, made as it resolves.
+
+`CastsLeft` (#1729) is one flat count, and nothing recorded which type a cast through a permission used.
+
+### Decision 1 — the budget is data on the permission, read by `CoversCard`
+
+`CastPermission` gains `PerType []string`, the card types it opens one use of each (CR 205.2a's names,
+lowercase, the spelling `Card.HasCardType` reads), and `PerTypeUsed []string`, the ones spent. Empty
+`PerType` is no budget, which is every permission written before the field. `game.PermanentPermissionTypes`
+(Muldrotha's six) and `game.NonlandPermissionTypes` (Augury's eight) are the two budgets the cards declare.
+
+`CoversCard` asks the budget as well as the scope (`perTypeOpens`): a permission opens a card only while
+some face its holder may cast has a type left to spend. That is the one test the cast path, the bot
+enumerator and the view already share, so a spent type closes the card on all three at once. Every face
+is asked, because CR 712.11c judges the face being cast: under Augury, a creature with an Adventure is
+still open as a sorcery once its creature use is spent.
+
+`PermissionTypeChoices(card)` lists the types a play or cast of `card` could spend. **A land is played,
+never cast (CR 305.1), so it can spend only "land"**, whatever else it is: an artifact land under
+Muldrotha uses the land play, and under Augury (no "land" in the budget) it opens nothing, which is the
+ruling that an exiled land with another type can't be played later. A spell can never spend "land".
+
+### Decision 2 — the type is the caster's, named at announce, judged against the spell
+
+`CastSpellParams.PermissionType` (wire `permission_type`) names the type. It is settled in `CastSpell`
+after the face is materialised and after a face-down cast is stamped, because Muldrotha's ruling
+(2020-11-10) reads the type "of the card as it's played or cast". One possible type needs no answer;
+two or more without one is `ErrPermissionTypeRequired`, because the reminder text makes it the player's
+choice and the engine choosing would spend a type they meant to keep. A type the spell lacks, the budget
+does not name or has spent, or any type on a cast that spends no budget, is `ErrPermissionTypeNotOffered`;
+a card with no type left is `ErrPermissionTypeSpent`.
+
+A cast the card's OWN text allows spends nothing, by `CastsLeft`'s rule (`castUsesGrantLocked`): the
+Muldrotha ruling "if multiple effects allow you to play a card from your graveyard, you must announce
+which permission you're using".
+
+The type is spent once the play or cast is made: beside `consumeLimitedGrantLocked` for a spell, after
+the entry for a land (or when its entry pauses on a prompt, since the play is already made). A land play
+through Muldrotha is still a land play: the CR 305.2 drop is checked and counted as for any other.
+
+### Decision 3 — where the spent types live follows where the permission lives
+
+A STORED permission (Augury's) carries `PerTypeUsed` itself, written copy-on-write for the undo reason
+`sweepCastPermissionsLocked` gives, and is dropped once its whole budget is spent.
+
+A DERIVED permission (Muldrotha's) is rebuilt on every query and can hold nothing, so its spent types go
+to a new turn-tally cell, `TurnTally.PermissionTypes`, keyed (holder, granting object, type) with
+`ObjectTallyKey`. `standingCastPermissionsLocked` copies them back onto the stamped permission, which is
+what lets `CoversCard` read both kinds the same way. The key carries the rulings:
+
+- the turn tally empties as each turn begins, which is "during each of your turns";
+- the granting OBJECT is CR 400.7, so "a new Muldrotha … you may play another land or spell of that type";
+- the HOLDER is control, so a Muldrotha that changes hands opens its new controller's own set.
+
+`TimingYourTurnOnly` (#2179) is the "during each of your turns" window for spells and leaves each card's
+own timing in force ("you must follow the normal timing permissions").
+
+### Decision 4 — the client asks, the bot is offered one move per type
+
+The view stamps `permission_types` on the cast surface (`CastSurfaceView`, per face, the holder's answer
+only — `publicIn` strips it), from `Game.PermissionTypeOptionsLocked`, the same list the enumerator
+walks. A face with no type left is not `castable_here`. The list is RANKED
+(`RankPermissionTypesLocked`): the type the permission's other cards need least comes first, so an
+artifact creature cast beside a plain creature in Muldrotha's graveyard defaults to the artifact.
+
+The client's cast chain asks the type right after the face, when the face carries two or more
+(`PermissionTypeModal`), with that first entry selected, and sends it as `permission_type`.
+
+The enumerator offers one move per type when there are two or more, in the ranked order and labelled
+"… as an artifact", so the heuristic, which takes the first of equal moves, spends the scarce type.
+A land play with "land" spent, and a cast with no type left, are not offered.
+
+### Snapshot
+
+Additive within v7: `seats[].castPermissions[].perType`, `…perTypeUsed` and `turnTally.permissionTypes`,
+all omitted when empty. An older binary drops them and reads the permission as unbudgeted, which is
+stronger than printed for at most the rest of one turn on a rollback. No version bump, as for every other
+`CastPermission` field added inside v7.
+
+### Decision 5 — a permission that charges the printed cost lists the card's other prices
+
+Muldrotha's ruling: "You must pay the costs to cast a spell this way. If it has an alternative cost, you
+may cast it for that cost instead", and "you can cast a card with bestow as an enchantment spell"
+(ADR 0141). The announce path already accepted an unbound claim (evoke, bestow, overload) out of a zone
+a permission opens, since `validateCastPathLocked`'s rule 1 binds only a zone-bound offer, but
+`CastOffersForLocked` listed only the zone-bound ones, so neither the client nor the bot could choose
+it. It now lists the card's unbound offers too, for a permission that charges the PRINTED cost (no
+`AltCostKey`, no `Cost`): Muldrotha, and every impulse exile, where the same rule holds. A permission
+with a price of its own ("without paying its mana cost", escape, Bolas's Citadel) lists none, because
+CR 118.9a allows one alternative cost per cast — Aminatou's Augury's ruling.
+
+`perTypeOpens` asks a bestow card's Aura spell as well as its printed face, so a bestow creature stays
+open as the enchantment once the creature use is spent; `PermissionTypeOptionsLocked` reads a bestow
+offer's spell the same way, and the view counts a face as a cast surface if any price leaves it a type.
+
+### Out of scope, stated
+
+- **`budgeted-free-casts`** (#2017), the mana-value sibling, is a different budget and is not built here.
