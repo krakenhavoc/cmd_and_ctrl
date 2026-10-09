@@ -4637,3 +4637,32 @@ stronger than printed, so the card waited.
   set.
 - **A Lure that spares a creature type or a keyword and a player together.**
   The two narrowings compose by both applying; no card needs it.
+
+## Amendment (2026-10-08, [#2744](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2744)): "attacks an opponent with the most life"
+
+Galactus, Devourer of Worlds prints "Galactus attacks an opponent with
+the most life among your opponents each combat if able unless you
+control a creature named Silver Surfer, Galactus's Herald." It is one
+CR 508.1d requirement, but it can only be obeyed by attacking certain
+players.
+
+- **The shape.** `AttackRequirement` gains a third form,
+  `MostLifeOpponentOf`: the seat whose opponents are compared, which is
+  the source's controller. `obeyedBy` accepts an attack only on a player
+  who is still in the game, is not that seat, and has the most life
+  among that seat's opponents. Ties count each tied player.
+- **When life is read.** At judgement, like every other `obeyedBy`
+  read. The CR 508.1d maximisation, the verb refusals, the checkpoint,
+  `MustAttackForEffect` and the enumerator all see the life totals as
+  they are when the attack is declared, so nothing goes stale.
+- **The sentence.** "Galactus, Devourer of Worlds must attack an
+  opponent with the most life if able."
+- **The exemption.** "Unless you control a creature named …" is the
+  static's `AppliesTo`. It reads the card's own name and type line,
+  which layer 1 has already rewritten for a copy (ADR 0043), so a Clone
+  of the named creature counts.
+- **Still open.** Gideon Jura's "attacks Gideon Jura if able"
+  (`attack-requirement-on-a-permanent`, #2567) needs a requirement on
+  one permanent. It is another target restriction of the same kind, and
+  should be a sibling field next to this one rather than an overload of
+  it.

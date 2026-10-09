@@ -800,6 +800,7 @@ lastKnownBattlefield{}.AllCreatureTypes	bool
 lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
@@ -900,6 +901,7 @@ lastKnownPermanents{}[].characteristic.AllCreatureTypes	bool
 lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
@@ -1593,6 +1595,7 @@ pendingChoices[].damageAssignment.SourceLKI.AllCreatureTypes	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].OtherThan	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string

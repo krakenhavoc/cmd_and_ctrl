@@ -75,6 +75,53 @@ func AttacksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, sour
 	}
 }
 
+// AttacksAnOpponentWithTheMostLifeEachCombat is "~ attacks an opponent
+// with the most life among your opponents each combat if able" — a
+// requirement a creature prints on itself (Galactus, Devourer of
+// Worlds, #2744). CR 508.1d counts it obeyed only by an attack on one
+// of the opponents tied for the most life, read as the attack is
+// judged; "your" is the source's controller.
+//
+// `exempt`, when set, switches it off: Galactus's "unless you control a
+// creature named Silver Surfer, Galactus's Herald". It is asked during
+// the layer pass, so it reads printed values (see
+// youControlACreatureNamed).
+func AttacksAnOpponentWithTheMostLifeEachCombat(exempt func(g *game.Game, source *game.Card) bool) game.StaticAbility {
+	return game.StaticAbility{
+		Layer: game.Layer6Ability,
+		Label: "Attacks an opponent with the most life each combat if able.",
+		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
+			if !target.IsCreature() || !selfOnly(target, g, source) {
+				return false
+			}
+			return exempt == nil || !exempt(g, source)
+		},
+		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
+			r := requirementFrom(source, uuid.Nil)
+			r.MostLifeOpponentOf = source.Controller
+			c.AttackRequirements = append(c.AttackRequirements, r)
+		},
+	}
+}
+
+// youControlACreatureNamed reports whether the source's controller
+// controls a creature with the given name (CR 201.2). It is read inside
+// the layer pass, so it asks the card's own name and type line rather
+// than the effective ones a layer is still computing. A copy is still
+// seen: layer 1 rewrites that baseline before the pass (ADR 0043), so a
+// Clone of the named creature has its name.
+func youControlACreatureNamed(name string) func(g *game.Game, source *game.Card) bool {
+	return func(g *game.Game, source *game.Card) bool {
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.Controller == source.Controller && c.IsCreature() && game.CardNameMatches(*c, name) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
 // GoadAttached is "enchanted creature is goaded" as a STATIC ability
 // (Shiny Impetus): the goading player is the attachment's controller
 // and the goad lasts exactly as long as the Aura is attached.
