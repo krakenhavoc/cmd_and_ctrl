@@ -2781,6 +2781,7 @@ seats[].castPermissions[].exileOtherFromGraveyard	number:int
 seats[].castPermissions[].faces	array
 seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
+seats[].castPermissions[].filter.artifactOrColorlessOnly	bool
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
 seats[].castPermissions[].filter.creatureTypesAny	array
@@ -4358,6 +4359,7 @@ seats[].statics[].cantBeCountered.except	object
 seats[].statics[].cantBeCountered.except.epoch	number:int
 seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
+seats[].statics[].cantBeCountered.filter.artifactOrColorlessOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
 seats[].statics[].cantBeCountered.filter.creatureTypesAny	array
@@ -4382,6 +4384,7 @@ seats[].statics[].cantBeCountered.whose	number:uint8
 seats[].statics[].castBan	object
 seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
+seats[].statics[].castBan.filter.artifactOrColorlessOnly	bool
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
 seats[].statics[].castBan.filter.creatureTypesAny	array
@@ -4445,6 +4448,7 @@ seats[].statics[].nextSpell.cantBeCountered	bool
 seats[].statics[].nextSpell.counterKind	string
 seats[].statics[].nextSpell.counters	number:int
 seats[].statics[].nextSpell.filter	object
+seats[].statics[].nextSpell.filter.artifactOrColorlessOnly	bool
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
 seats[].statics[].nextSpell.filter.creatureTypesAny	array
@@ -4471,6 +4475,7 @@ seats[].statics[].source	custom(uuid.UUID)
 seats[].statics[].timing	object
 seats[].statics[].timing.affects	string
 seats[].statics[].timing.filter	object
+seats[].statics[].timing.filter.artifactOrColorlessOnly	bool
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
 seats[].statics[].timing.filter.creatureTypesAny	array

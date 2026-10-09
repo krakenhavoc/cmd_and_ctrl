@@ -191,6 +191,13 @@ type PermissionFilter struct {
 	// historic (an artifact or legendary land) qualifies as a play.
 	HistoricOnly bool `json:"historicOnly,omitempty"`
 
+	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
+	// colorless spells": an OR of two properties read from the card's
+	// effective characteristics, so a colored artifact and a colorless
+	// non-artifact (an Eldrazi) both qualify. Pair it with NonLandOnly,
+	// because a land is never cast and a colorless land is not a spell.
+	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -281,6 +288,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.HistoricOnly && !c.IsArtifact() && !c.IsLegendary() && !c.HasSubtype("Saga") {
+		return false
+	}
+	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
