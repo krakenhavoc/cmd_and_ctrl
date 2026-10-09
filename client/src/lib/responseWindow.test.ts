@@ -8,6 +8,7 @@ import {
   hasResponse,
   inCombatWindow,
   inSorceryWindow,
+  isDefending,
   keyWindow,
   type ResponseCategories,
 } from "./responseWindow";
@@ -471,5 +472,47 @@ describe("combat_interacts", () => {
     expect(hasResponse(main, "p0", DEFAULT_RESPONSES)).toBe(false);
     // With value abilities ticked it counts anywhere, as before.
     expect(hasResponse(main, "p0", { ...DEFAULT_RESPONSES, untargeted: true })).toBe(true);
+  });
+
+  // Owner answer (#2871): a creature-token maker is a blocker, so it
+  // counts only while the viewer is being attacked.
+  const tokens = move("activate", {
+    source: "castle",
+    combat_interacts: true,
+    combat_defender_only: true,
+  });
+  const attacker = (target: string, defending: string = target): CardView =>
+    card("attacker", {
+      owner: "p1",
+      controller: "p1",
+      attacking_target: target,
+      defending_player: defending,
+    });
+
+  it("classifies a token maker as ability only when defending", () => {
+    expect(classifyMove(tokens, false, undefined, undefined, true, true)).toBe("ability");
+    expect(classifyMove(tokens, false, undefined, undefined, true, false)).toBe("untargeted");
+    expect(classifyMove(tokens, false, undefined, undefined, false, true)).toBe("untargeted");
+    // A crew is not narrowed.
+    expect(classifyMove(crew, false, undefined, undefined, true, false)).toBe("ability");
+  });
+
+  it("isDefending: a creature attacks me, or a planeswalker I defend", () => {
+    expect(isDefending(snap({ battlefield: [attacker("p0")] }), "p0")).toBe(true);
+    expect(isDefending(snap({ battlefield: [attacker("pw-1", "p0")] }), "p0")).toBe(true);
+    expect(isDefending(snap({ battlefield: [attacker("p2")] }), "p0")).toBe(false);
+    expect(isDefending(snap({ battlefield: [] }), "p0")).toBe(false);
+  });
+
+  it("a token maker stops me when I am attacked, not when another player is", () => {
+    const at = (target: string) =>
+      snap({
+        step: "declare_attackers",
+        active: 1,
+        moves: [pass, tokens],
+        battlefield: [attacker(target)],
+      });
+    expect(hasResponse(at("p0"), "p0", DEFAULT_RESPONSES)).toBe(true);
+    expect(hasResponse(at("p2"), "p0", DEFAULT_RESPONSES)).toBe(false);
   });
 });

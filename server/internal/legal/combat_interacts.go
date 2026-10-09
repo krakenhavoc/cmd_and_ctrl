@@ -18,6 +18,11 @@ import (
 // declare blockers, or an attack or block trigger on the stack). ADR
 // 0009, amendment #2871.
 //
+// A creature-token maker is narrower still (owner answer, 2026-10-09):
+// its token is a blocker, so it matters only to a player who is being
+// attacked. It also sets Move.CombatDefenderOnly, and the client counts
+// it only while the viewer defends against an attacker.
+//
 // It is read from the ability's shape, like abilityInteracts:
 //
 //  1. a crew cost (CR 702.122), the Vehicle becoming an artifact
@@ -32,12 +37,22 @@ import (
 //       able";
 //     - tapping or untapping the enchanted creature;
 //     - double damage;
-//     - making a creature token that enters untapped, which can block
-//       (a token that "enters tapped and attacking" counts too), and
-//       populate or amass, which make or grow one.
+//     - tokens that enter "tapped and attacking";
+//  3. defender only: making a creature token that enters untapped,
+//     populate or amass. A row that also grants a combat keyword
+//     ("They gain haste") is read by rule 2 instead.
 //
 // abilityInteracts is asked first: a row it already marks is never
 // also marked here.
+
+// combatKind is how an untargeted ability matters in combat.
+type combatKind int
+
+const (
+	combatNone     combatKind = iota
+	combatAny                 // in any combat window
+	combatDefender            // only to a player being attacked
+)
 
 // combatPhrases are effect-text fragments of a combat ability, lower
 // case. The keyword ones are matched as whole words (combatKeyword).
@@ -49,6 +64,12 @@ var combatPhrases = []string{
 	"attack this turn if able",
 	"tap enchanted creature",
 	"deals double",
+	"tapped and attacking",
+}
+
+// defenderPhrases make or grow a creature token without saying so in
+// a power and toughness.
+var defenderPhrases = []string{
 	"populate",
 	"amass",
 }
@@ -69,40 +90,45 @@ var (
 	createsCreature = regexp.MustCompile(`\bcreate (?:a |an |one |two |three |four |five |x |that many )?(tapped )?[^.]*?(?:\b(?:[0-9]+|x)/(?:[0-9]+|x)\b|\bcreature tokens?\b)`)
 )
 
-// abilityCombatInteracts reports whether an untargeted activated
-// ability changes attacks or blocks.
-func abilityCombatInteracts(ab game.ActivatedAbilityShape) bool {
+// abilityCombatKind reports how an untargeted activated ability
+// changes attacks or blocks.
+func abilityCombatKind(ab game.ActivatedAbilityShape) combatKind {
 	if ab.Cost.Crew > 0 || strings.HasPrefix(strings.ToLower(ab.Label), "crew") {
-		return true
+		return combatAny
 	}
-	return combatTextInteracts(ab.Label)
+	return combatTextKind(ab.Label)
 }
 
-// combatTextInteracts reads the printed effect after the cost. A label
-// with no colon is read whole.
-func combatTextInteracts(label string) bool {
+// combatTextKind reads the printed effect after the cost. A label with
+// no colon is read whole.
+func combatTextKind(label string) combatKind {
 	text := strings.ToLower(label)
 	if i := strings.Index(text, ":"); i >= 0 {
 		text = text[i+1:]
 	}
 	for _, p := range combatPhrases {
 		if strings.Contains(text, p) {
-			return true
+			return combatAny
 		}
 	}
-	if becomesCreature.MatchString(text) {
-		return true
+	if becomesCreature.MatchString(text) || grantsCombatKeyword(text) {
+		return combatAny
+	}
+	for _, p := range defenderPhrases {
+		if strings.Contains(text, p) {
+			return combatDefender
+		}
 	}
 	if m := createsCreature.FindStringSubmatch(text); m != nil && m[1] == "" {
-		return true
+		return combatDefender
 	}
-	return grantsCombatKeyword(text)
+	return combatNone
 }
 
 // grantsCombatKeyword: the keyword is something the ability gives or
 // takes away ("gains flying", "have trample", "loses flying"), not a
 // word in a "with flying" filter or a token's description, which the
-// token rule above already judged.
+// token rule judges.
 var grantsKeyword = regexp.MustCompile(`\b(gains?|has|have|loses?)\b[^.]*`)
 
 func grantsCombatKeyword(text string) bool {

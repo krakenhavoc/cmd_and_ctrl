@@ -668,6 +668,11 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
   const instant = mv("cast", { source: "instant" });
   const crew = mv("activate", { source: "copter", combat_interacts: true });
   const manland = mv("activate", { source: "anchorage", combat_interacts: true });
+  const castle = mv("activate", {
+    source: "castle-ardenvale",
+    combat_interacts: true,
+    combat_defender_only: true,
+  });
 
   interface Frame {
     step: string;
@@ -675,6 +680,8 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
     moves: LegalMoveView[];
     stack?: StackItemView[];
     attacking?: boolean;
+    // Whom the attacker attacks; the viewer by default.
+    attacked?: string;
   }
   const frame = (f: Frame): GameView => {
     const attackers: CardView[] = f.attacking
@@ -685,7 +692,8 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
             owner: "p1",
             controller: "p1",
             type_line: "Creature",
-            attacking_target: me,
+            attacking_target: f.attacked ?? me,
+            defending_player: f.attacked ?? me,
           },
         ]
       : [];
@@ -805,6 +813,41 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
         stack: [sorcery],
       });
       expect(decide(view, true), ability.source).toBe("pass");
+    }
+  });
+
+  // Owner answer: a creature-token maker counts only for a player who
+  // is being attacked; crew and manlands count for everyone.
+  it("a token maker stops you when you are attacked, not when another player is", () => {
+    for (const step of ["declare_attackers", "declare_blockers"]) {
+      const me0 = frame({ step, active: 1, moves: [...quiet, castle], attacking: true });
+      expect(decide(me0, false), step).toBe("hold");
+      const other = frame({
+        step,
+        active: 1,
+        moves: [...quiet, castle],
+        attacking: true,
+        attacked: "p2",
+      });
+      expect(decide(other, false), step).toBe("pass");
+      expect(decide(other, true), step).toBe("pass");
+    }
+    // Before attackers are declared nobody is defending yet.
+    expect(
+      decide(frame({ step: "begin_combat", active: 1, moves: [...quiet, castle] }), true),
+    ).toBe("pass");
+  });
+
+  it("crew and manlands stop you whoever is attacked", () => {
+    for (const ability of [crew, manland]) {
+      const other = frame({
+        step: "declare_attackers",
+        active: 1,
+        moves: [...quiet, ability],
+        attacking: true,
+        attacked: "p2",
+      });
+      expect(decide(other, false), ability.source).toBe("hold");
     }
   });
 

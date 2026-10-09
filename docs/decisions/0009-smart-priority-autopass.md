@@ -466,11 +466,22 @@ else, because a board of them would stop the viewer on every spell.
     artifact), gives or takes away flying, haste, trample, menace, lifelink,
     vigilance or reach, lets a creature block an additional creature or any
     number, makes it unblockable, lures ("must be blocked"), forces attacks,
-    taps or untaps the enchanted creature, doubles damage, or makes a creature
-    token that does not enter tapped (populate and amass included).
+    taps or untaps the enchanted creature, doubles damage, or makes tokens
+    that enter tapped and attacking.
+- **`combat_defender_only`, for token makers (owner answer, 2026-10-09).** An
+  activation that makes a creature token that does not enter tapped, populates
+  or amasses, and grants no combat keyword, sets `combat_interacts` and
+  `combat_defender_only`. A token is a blocker, so it counts as a response only
+  while the viewer is a defending player in this combat (`isDefending`: some
+  attacker's defending player is the viewer, which covers a planeswalker they
+  control and a battle they protect). When another player is attacked, or
+  before attackers are declared, it stays untargeted. Crew, manlands and the
+  keyword grants are not narrowed. A token row that also grants haste
+  (Sokenzan, Ingris Stingerquill) or makes attacking tokens (Dalkovan
+  Encampment) is a plain combat ability.
 
-  It rides in `capLegalMoves`' key, now `(source, kind, targets_stack,
-  has_targets, interacts, combat_interacts)`. The change to `interacts.go` is
+  Both bits ride in `capLegalMoves`' key, now `(source, kind, targets_stack,
+  has_targets, interacts, combat_interacts, combat_defender_only)`. The change to `interacts.go` is
   none: `abilityInteracts` is asked first, and a row it marks is never marked
   again.
 - **The combat window** (`inCombatWindow`, `client/src/lib/responseWindow.ts`):
@@ -480,11 +491,12 @@ else, because a board of them would stop the viewer on every spell.
   `classifyMove` classes a `combat_interacts` activation as `ability` (on by
   default); elsewhere it stays `untargeted` (off by default). So a crew or a
   manland stops you at an opponent's declare attackers or blockers, and on a
-  ticked beginning of combat, and not for an opponent's main-phase sorcery.
+  ticked beginning of combat, and not for an opponent's main-phase sorcery. A
+  token maker stops you there only when you are the one attacked.
 - **The audit.** Of the catalog's 478 untargeted, instant-speed activated rows
-  that `interacts` does not mark, the rules mark 110 as combat abilities: 27
+  that `interacts` does not mark, the rules mark 58 as combat abilities (27
   crew rows, the manlands and animated artifacts, the keyword grants, the
-  extra-block rows and the untapped creature-token makers. The rest were read
+  extra-block rows) and 52 as defender-only token makers. The rest were read
   one by one. A tapped token (Automated Assembly Line) and a non-creature token
   (Treasure, Food, Clue, Blood) do not count; "becomes that type" and "becomes
   prepared" do not either. `combat_interacts_internal_test.go` pins both lists.
@@ -500,9 +512,10 @@ non-boolean falls back to the default (on).
 
 ### Costs
 
-- A token maker with `{T}` (Castle Ardenvale, Kjeldoran Outpost) now stops you
-  at every opponent's declare attackers, whoever is attacked. A chump blocker
-  is a real play, and the owner's goal weighs a missed block above a click.
+- A token maker counts only while you defend, so a boast token maker
+  (Dragonkin Berserker, Usher of the Fallen) or Goro-Goro's Dragon, usable only
+  while you attack, never stops you. Their own turn's combat is the active
+  player's to stop on (a ticked step or a pin).
 - `combat_interacts` is read from printed text like `interacts`, with the same
   risk of a misread either way; the test lists are where one is fixed.
 - A pump written without a `+N/+N` ("Double this creature's power") is still

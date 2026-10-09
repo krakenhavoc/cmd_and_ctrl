@@ -437,7 +437,8 @@ func TestCapLegalMovesKeepsTargetsStackDistinct(t *testing.T) {
 // TestCapLegalMovesKeepsHasTargetsDistinct is #2853: an ability with a
 // targeted announcement, an interacting one and a value one is three
 // moves to smart autopass, so the cap keeps one of each rather than
-// whichever came first. #2871 adds a fourth, a combat ability.
+// whichever came first. #2871 adds a combat ability and a defender-only
+// one.
 func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
 	source := uuid.New()
 	moves := make([]LegalMoveView, 0, legalMovesWireCap+3)
@@ -452,10 +453,11 @@ func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
 		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "ping mode", Source: source, HasTargets: true},
 		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "shield mode", Source: source, Interacts: true},
 		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "fly mode", Source: source, CombatInteracts: true},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "token mode", Source: source, CombatInteracts: true, CombatDefenderOnly: true},
 	)
 
 	out, _ := capLegalMoves(moves)
-	var sawUntargeted, sawTargeted, sawInteracts, sawCombat bool
+	var sawUntargeted, sawTargeted, sawInteracts, sawCombat, sawDefender bool
 	for _, m := range out {
 		if m.Source != source {
 			continue
@@ -465,15 +467,17 @@ func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
 			sawTargeted = true
 		case m.Interacts:
 			sawInteracts = true
+		case m.CombatDefenderOnly:
+			sawDefender = true
 		case m.CombatInteracts:
 			sawCombat = true
 		default:
 			sawUntargeted = true
 		}
 	}
-	if !sawUntargeted || !sawTargeted || !sawInteracts || !sawCombat {
-		t.Errorf("cap dropped one of %s's four announcements: untargeted kept=%v, targeted kept=%v, interacts kept=%v, combat kept=%v (%v)",
-			source, sawUntargeted, sawTargeted, sawInteracts, sawCombat, labelsOf(out))
+	if !sawUntargeted || !sawTargeted || !sawInteracts || !sawCombat || !sawDefender {
+		t.Errorf("cap dropped one of %s's five announcements: untargeted kept=%v, targeted kept=%v, interacts kept=%v, combat kept=%v, defender kept=%v (%v)",
+			source, sawUntargeted, sawTargeted, sawInteracts, sawCombat, sawDefender, labelsOf(out))
 	}
 }
 

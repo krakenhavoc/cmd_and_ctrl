@@ -6,7 +6,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
-// #2871: the effect-text half of abilityCombatInteracts, against printed
+// #2871: the effect-text half of abilityCombatKind, against printed
 // rows. A false "yes" is a pointless stop in combat and a false "no" a
 // missed block, so both lists matter.
 func TestCombatTextInteracts(t *testing.T) {
@@ -21,10 +21,9 @@ func TestCombatTextInteracts(t *testing.T) {
 		"{1}{W}{U}: Until end of turn, this land becomes a 2/3 white and blue Bird creature with flying. It's still a land.",
 		"Pay {E}{E}{E}{E}: This Vehicle becomes an artifact creature until end of turn.",
 		"{4}{R}: This artifact becomes a 4/4 red Giant artifact creature with trample until end of turn.",
-		"{1}{R}, {T}: Create a 0/1 red Kobold creature token named Kobolds of Kher Keep.",
-		"{T}: Create X 1/1 Goblins, where X is the number of Goblins you control",
 		"{2}{W}, {T}: Whenever you attack this turn, create two 1/1 red Warrior tokens tapped and attacking; sacrifice them at the next end step",
-		"{1}{G}{W}, {T}: Populate.",
+		"{4}: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Then creatures you control gain haste until end of turn.",
+		"Channel — {3}{R}, Discard this card: Create two 1/1 colorless Spirit creature tokens. They gain haste until end of turn",
 		"{3}{R}{R}{G}{G}: Anzrag must be blocked each combat this turn if able.",
 		"{1}{U}, {T}: Creatures your opponents control attack this turn if able.",
 		"{U}: Untap enchanted creature",
@@ -43,14 +42,30 @@ func TestCombatTextInteracts(t *testing.T) {
 		"{T}: Put a charge counter on this artifact.",
 		"Cycling {2} ({2}, Discard this card: Draw a card.)",
 	}
+	// Owner answer (#2871): a token is a blocker, so these count only
+	// for a player who is being attacked.
+	defender := []string{
+		"{1}{R}, {T}: Create a 0/1 red Kobold creature token named Kobolds of Kher Keep.",
+		"{2}{W}{W}, {T}: Create a 1/1 white Human creature token.",
+		"{T}: Create X 1/1 Goblins, where X is the number of Goblins you control",
+		"{3}, {T}: Create a 2/2 blue Shapeshifter with changeling",
+		"{8}: Create a 4/4 red Dragon creature token with flying and firebending 4.",
+		"{1}{G}{W}, {T}: Populate.",
+		"{X}{X}{B}, {T}: Amass Orcs X. Activate only if a creature died this turn.",
+	}
 	for _, l := range combat {
-		if !combatTextInteracts(l) {
-			t.Errorf("combat row read as value: %q", l)
+		if got := combatTextKind(l); got != combatAny {
+			t.Errorf("combat row read as %v: %q", got, l)
+		}
+	}
+	for _, l := range defender {
+		if got := combatTextKind(l); got != combatDefender {
+			t.Errorf("token row read as %v: %q", got, l)
 		}
 	}
 	for _, l := range value {
-		if combatTextInteracts(l) {
-			t.Errorf("value row read as combat: %q", l)
+		if got := combatTextKind(l); got != combatNone {
+			t.Errorf("value row read as %v: %q", got, l)
 		}
 	}
 }
@@ -58,10 +73,10 @@ func TestCombatTextInteracts(t *testing.T) {
 // A crew cost is a combat ability whatever its label says, and a crew
 // row whose cost is printed another way is read from its label.
 func TestCrewIsACombatAbility(t *testing.T) {
-	if !abilityCombatInteracts(game.ActivatedAbilityShape{Label: "Crew 3", Cost: game.AbilityCost{Crew: 3}}) {
+	if abilityCombatKind(game.ActivatedAbilityShape{Label: "Crew 3", Cost: game.AbilityCost{Crew: 3}}) != combatAny {
 		t.Error("Crew 3 is not a combat ability")
 	}
-	if !abilityCombatInteracts(game.ActivatedAbilityShape{Label: "Crew — remove a loyalty counter from a planeswalker you control"}) {
+	if abilityCombatKind(game.ActivatedAbilityShape{Label: "Crew — remove a loyalty counter from a planeswalker you control"}) != combatAny {
 		t.Error("Heart of Kiran's loyalty crew is not a combat ability")
 	}
 }

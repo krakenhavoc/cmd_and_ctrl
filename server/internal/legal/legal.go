@@ -179,8 +179,15 @@ type Move struct {
 	// keyword, "can block an additional creature", a creature token
 	// (#2871). Smart autopass counts it only in a combat window, so it
 	// is a bit of its own rather than part of Interacts. Never set
-	// alongside Interacts. See abilityCombatInteracts.
+	// alongside Interacts. See abilityCombatKind.
 	CombatInteracts bool `json:"combat_interacts,omitempty"`
+
+	// CombatDefenderOnly narrows CombatInteracts: the ability makes a
+	// creature token (or populates, or amasses), which matters only as
+	// a blocker, so smart autopass counts it only while the viewer is
+	// a defending player in this combat (owner answer, #2871). Only
+	// ever set alongside CombatInteracts.
+	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
 
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
