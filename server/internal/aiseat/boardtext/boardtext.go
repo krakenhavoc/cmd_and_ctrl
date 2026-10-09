@@ -62,10 +62,10 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	max := opts.maxZoneCards()
 	var b strings.Builder
 
-	// Number is the ROUND (every seat has had a turn); Seq counts turns,
-	// the figure the game log's turn field carries. Print both, labelled,
-	// so a model never has to reconcile "Turn 8" here with a log that
-	// counts differently (#2279). The human client's "T4" is the round.
+	// Number is the ROUND (every seat has had a turn); Seq counts turns.
+	// Print both, labelled, in the words the log's step lines use,
+	// "Turn 3 (round 2) — …", so a model never reconciles two counts
+	// under one name (#2279, #2790). The human client's "T4" is the round.
 	if v.Turn.Seq > 0 {
 		fmt.Fprintf(&b, "TURN %d (round %d) — %s", v.Turn.Seq, v.Turn.Number, StepName(v.Turn.Step))
 	} else {

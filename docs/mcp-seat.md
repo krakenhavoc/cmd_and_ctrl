@@ -579,7 +579,7 @@ The same day, the same setup, a new prod table: an `esper-control`
 mirror this time, so that judgement (what to counter, when to wipe the
 board) decided more of the game. Codex won the opening roll with a 14 and
 chose to go first. The roll's winner was asked, and a model made the
-choice. Codex won in round 8 (log turn 16), during Claude's draw step,
+choice. Codex won in round 8 (turn 16), during Claude's draw step,
 about twelve minutes after the roll.
 
 | Quantity | Claude Code | Codex |
