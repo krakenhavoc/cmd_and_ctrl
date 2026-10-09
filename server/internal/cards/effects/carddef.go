@@ -46,6 +46,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			Zones:         a.Zones,
 			Cycling:       a.Cycling,
 			Equip:         a.Equip,
+			Reconfigure:   a.Reconfigure,
 			UntapSelf:     a.UntapSelf,
 			Condition:     a.Condition,
 			ActiveWhen:    a.ActiveWhen,

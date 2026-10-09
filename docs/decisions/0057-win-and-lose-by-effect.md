@@ -1157,3 +1157,27 @@ and Angel's Grace now declares it and carries only the life-floor
 caveat.)*
 The rest of list (b) no longer waits on this seam and is checked for
 other blockers in its own card PRs, as question 3 said.
+
+## Amendment (2026-10-09, #2639): a gate whose "you" is another permanent's controller
+
+Decision 4 left Cloudsteel Kirin blocked because the engine could not
+grant a non-keyword static. The Kirin's quoted ability is Platinum
+Angel's, given to the equipped creature, so the only thing the existing
+reader got wrong was whose "you" it is (CR 109.5): the creature's
+controller, not the Kirin's.
+
+`GameEndGate` gains `You func(g *Game, source Card) uuid.UUID`, which is
+never stored, like `While`. When it is set, the reader uses its answer
+in place of the source's controller, and it skips the gate when the
+answer is `uuid.Nil`. The Kirin declares the two Platinum Angel gates
+itself, with `You` returning the controller of the creature it is
+attached to. It returns nobody when the Kirin is unattached or when that
+creature has lost all its abilities.
+
+This is not the general grant of a static ability that decision 4
+describes. The Book of Exalted Deeds ("It gains …" on a creature with
+counters, for as long as it has them) still waits on that. One
+difference from the printed card is declared as a caveat: a creature
+that lost its abilities BEFORE the Kirin was attached would have the
+grant by timestamp order (CR 613.7), and the Kirin's gate is off for it.
+That errs weaker than printed.

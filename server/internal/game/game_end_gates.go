@@ -81,11 +81,19 @@ type GameEndGate struct {
 	// Nil means always. Never stored (a granted gate refuses one), so
 	// it never reaches a snapshot.
 	While func(g *Game, source Card) bool `json:"-"`
+	// You names the player the gate's "you" is, for a statement a
+	// permanent makes for another permanent's controller: Cloudsteel
+	// Kirin's equipped creature has "You can't lose the game …", and
+	// that "you" is the creature's controller (CR 109.5), not the
+	// Kirin's (#2639). Nil means the source's controller. A uuid.Nil
+	// answer means nobody, and the gate is skipped. Never stored, like
+	// While.
+	You func(g *Game, source Card) uuid.UUID `json:"-"`
 }
 
 // IsZero reports whether the gate says nothing.
 func (gate GameEndGate) IsZero() bool {
-	return gate.Scope == 0 && !gate.CantLose && !gate.CantWin && len(gate.Causes) == 0 && gate.While == nil
+	return gate.Scope == 0 && !gate.CantLose && !gate.CantWin && len(gate.Causes) == 0 && gate.While == nil && gate.You == nil
 }
 
 // GameEndGrant is a GameEndGate as a PlayerStatic stores it: the same
@@ -156,13 +164,13 @@ var CatalogGameEndGates func(key string) []GameEndGate
 // zero-value Duration (until end of turn). The gate outlives its
 // source; the sweep and the reader both test the duration.
 //
-// A gate with a While refuses to register: a granted gate has no
-// permanent to read a condition off, and a closure can't be written
+// A gate with a While or a You refuses to register: a granted gate has
+// no permanent to read a condition off, and a closure can't be written
 // to a snapshot. A zero gate is a no-op.
 //
 // Caller must hold g.mu (write).
 func (g *Game) GrantGameEndGateForEffect(you uuid.UUID, gate GameEndGate, label string, source uuid.UUID, d Duration) {
-	if gate.IsZero() || gate.While != nil {
+	if gate.IsZero() || gate.While != nil || gate.You != nil {
 		return
 	}
 	p := g.playerByIDLocked(you)
@@ -226,7 +234,13 @@ func (g *Game) forEachGameEndGateLocked(p *Player, fn func(gate GameEndGate, sou
 			return true
 		}
 		for _, gate := range gates {
-			if !gate.appliesTo(c.Controller, p.ID) {
+			you := c.Controller
+			if gate.You != nil {
+				if you = gate.You(g, *c); you == uuid.Nil {
+					continue
+				}
+			}
+			if !gate.appliesTo(you, p.ID) {
 				continue
 			}
 			if gate.While != nil && !gate.While(g, *c) {
