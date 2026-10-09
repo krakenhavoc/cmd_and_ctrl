@@ -27,6 +27,7 @@ func init() {
 		Name:         "Grapeshot",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 1)),
 		Triggered:    []game.TriggeredAbility{Storm()},
 		OnResolve:    damageToFirstTarget(1),
 	})

@@ -13,6 +13,7 @@ func init() {
 		Name:         "Feed the Flames",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 5)),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(5)),
 	})
 }

@@ -15,6 +15,7 @@ func init() {
 		Name:         "Impractical Joke",
 		Completeness: CompletenessFull,
 		Targets:      TargetPermanent("up to one target creature or planeswalker", Or(Creature(), Planeswalker())).WithCount(0, 1),
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		OnResolve:    damageCantBePreventedThen(damageToFirstTarget(3)),
 	})
 }

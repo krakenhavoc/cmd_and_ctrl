@@ -1502,3 +1502,22 @@ Left undeclared (5):
 The audit's burn list goes from 165 cards to 131: 34 declared, the 5 above left in A through E, and 126 from F on. Batch 2 starts at Fall of Cair Andros.
 
 **Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with the binaries built from `develop` at `a544704cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. One game of 64 differs between the two. A second run of the `develop` binary differs from its own first run in 2 games and ends at 20 / 2 / 22 / 20, the branch's numbers, so the difference is the run-to-run tie-break nondeterminism of #2730, not this change. The suite is 41 of 41 before and after.
+
+#### Burn batch 2 (2026-10-08)
+
+The second burn batch of PR 5 declares a damage target entry on the audit's undeclared burn list from Fall of Cair Andros through Loot, the Pathfinder (F to L). No price code changed.
+
+Declared (34 cards): Fall of Cair Andros (the 7-damage ability), Fanged Flames, Feed the Flames, Fervent Paincaster (the player-or-planeswalker ping), Fireblast, Firemaw Kavu (both triggers), Flame Jab, Flame-Blessed Bolt, Flames of the Blood Hand, Foundry Helix, Ghitu Slinger, Glassworks // Shattered Yard (Glassworks), Goblin Bombardment, Goblin Sharpshooter, Goblin Snowman, Grapeshot, Grim Lavamancer, Gut Shot, Idol of the Deep King // Sovereign's Macuahuitl (the Idol's trigger), Impractical Joke, Incendiary Flow, Incinerate, Insult // Injury (Injury, one entry per clause), Jaya Ballard, Task Mage (the 3-damage ability), Keldon Champion, Kolaghan's Command (the damage mode), Lava Coil, Lava Dart, Lesser Masticore, Lightning Axe, Lightning Helix and Lightning Strike (the 3 at the target; the life gained is not declared), Longhorn Sharpshooter, Loot, the Pathfinder (the 3-damage exhaust).
+
+Left undeclared (7):
+- Furystoke Giant: the 2 damage is an ability it grants to other creatures, and the audit and the wire's ability rows do not carry a target entry from a grant.
+- Garruk Relentless: the creature deals damage back to him, which the fields cannot say.
+- Glorybringer: already declared for the exert pricer as `DamageToCreature`; a target entry beside it would price the same hit twice. (Fervent Paincaster's exert ability is the same, and keeps its `DamageToCreature`.)
+- Helicarrier Strike: 2, or 4 with teamwork, chosen at cast.
+- Invasion of Tarkir: X plus 2, where X is the Dragons revealed.
+- Land's Edge: the damage depends on the discarded card being a land.
+- Lightning Surge: 4, or 6 with threshold, read as it resolves.
+
+The audit's burn list goes from 131 cards to 97: 34 declared, leaving the 5 from batch 1, the 7 above and 85 from M on. Batch 3 starts at Mage il-Vec.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena` with the same command as batch 1, with binaries built from `develop` at `e0139b738` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. A second run of the `develop` binary differs from its own first run in 1 game and ends at 20 / 2 / 22 / 20, the branch's numbers: the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. The regenerated `legal_actions_agreement.json` gains Goblin Bombardment's declared entry, the one card of the batch in that fixture.

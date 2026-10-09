@@ -29,7 +29,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(WhenThisEnters("Idol of the Deep King — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2)), TargetAny()),
+			TriggerWithPurpose(Targeting(WhenThisEnters("Idol of the Deep King — 2 damage to any target", sourceDealsDamageToEachLegalTarget(2)), TargetAny()), ForTargets(DamageToTarget(0, 2))),
 		},
 		Activated: []ActivatedAbility{
 			Craft("Craft with artifact {2}{R}", "{2}{R}", CraftWith("artifact")),

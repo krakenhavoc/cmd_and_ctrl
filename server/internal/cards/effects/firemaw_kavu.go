@@ -19,10 +19,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Echo("Firemaw Kavu", "{5}{R}"),
-			Targeting(WhenThisEnters("Firemaw Kavu — 2 damage to target creature", sourceDealsDamageToEachLegalTarget(2)),
-				TargetCreature("target creature")),
-			Targeting(WhenThisLeaves("Firemaw Kavu — 4 damage to target creature", sourceDealsDamageToEachLegalTarget(4)),
-				TargetCreature("target creature")),
+			TriggerWithPurpose(Targeting(WhenThisEnters("Firemaw Kavu — 2 damage to target creature", sourceDealsDamageToEachLegalTarget(2)),
+				TargetCreature("target creature")), ForTargets(DamageToTarget(0, 2))),
+			TriggerWithPurpose(Targeting(WhenThisLeaves("Firemaw Kavu — 4 damage to target creature", sourceDealsDamageToEachLegalTarget(4)),
+				TargetCreature("target creature")), ForTargets(DamageToTarget(0, 4))),
 		},
 	})
 }

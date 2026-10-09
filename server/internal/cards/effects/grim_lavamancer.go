@@ -27,6 +27,7 @@ func init() {
 			Label:   "{R}, {T}, Exile two cards from your graveyard: This creature deals 2 damage to any target.",
 			Cost:    Plus(ManaCost("{R}"), TapCost(), ExileFromGraveyard(2, "two cards", nil)),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 2)),
 			Effect:  b33DamageChosenTargetFromSource(2),
 		}},
 	})

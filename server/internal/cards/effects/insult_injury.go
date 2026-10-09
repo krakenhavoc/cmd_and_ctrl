@@ -46,6 +46,7 @@ func init() {
 		Name:         "Injury",
 		Completeness: CompletenessFull,
 		Targets:      Clauses(TargetCreature("target creature"), targetPlayerOrPlaneswalker()),
+		Purpose:      ForTargets(DamageToTarget(0, 2), DamageToTarget(1, 2)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return ctx.Game.DamageInstanceForEffect(func() error {
 				for slot := 0; slot < 2; slot++ {

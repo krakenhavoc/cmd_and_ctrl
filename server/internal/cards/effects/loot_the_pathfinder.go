@@ -76,6 +76,7 @@ func init() {
 				Exhaust: true,
 				Cost:    Plus(ManaCost("{R}"), TapCost()),
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 3)),
 				Effect:  b33DamageChosenTargetFromSource(3),
 			},
 		},

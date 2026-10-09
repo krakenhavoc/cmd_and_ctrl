@@ -36,6 +36,7 @@ func init() {
 				Label:   "{1}{R}, {T}, Discard a card: Jaya Ballard deals 3 damage to any target. A creature dealt damage this way can't be regenerated this turn.",
 				Cost:    Plus(ManaCost("{1}{R}"), TapCost(), DiscardACard()),
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 3)),
 				Effect:  abilityBody(damageAnyTargetNoRegenIfDealt(fixedAmount(3))),
 			},
 			{
