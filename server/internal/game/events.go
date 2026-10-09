@@ -1491,6 +1491,11 @@ type Event struct {
 	// Added with #650.
 	DiscardCause DiscardCause `json:"discard_cause,omitempty"`
 
+	// FromRadiation marks an EventChangeLife caused by the rad
+	// counters' inherent trigger (CR 728.1a, "life loss from
+	// radiation"; rad_counters.go, #2042). False on every other event.
+	FromRadiation bool `json:"from_radiation,omitempty"`
+
 	// Cause, CauseController and CauseItem say WHAT moved a card, on
 	// the events a routed zone change emits (EventZoneMove, EventMill,
 	// EventDiscardCard, EventCounterSpell and the EventLTB beside

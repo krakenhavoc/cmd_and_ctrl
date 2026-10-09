@@ -1015,6 +1015,10 @@ func NewGame() *Game {
 	// no source either, so it rides the registry for the monarch's
 	// reason and right after it. See speed.go.
 	g.Listeners = append(g.Listeners, speedTriggers{})
+	// #2042, CR 728.1: rad counters' inherent trigger has no source
+	// either, so it rides the registry for the same reason. See
+	// rad_counters.go.
+	g.Listeners = append(g.Listeners, radTriggers{})
 	// #1729, CR 610.3: an exile "until" an event ends when the event
 	// happens, and that is a rule rather than a triggered ability — so
 	// it watches the event log on its own, after the monarch's CR 725.4
