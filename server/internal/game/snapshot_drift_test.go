@@ -220,6 +220,10 @@ var gameFields = plan(
 	// invented it would read an attacker unblocked before the
 	// defender chose.
 	"blocksDeclared", carried, "",
+	// #2021: whether the declaration as a whole is over. Carried with
+	// blocksDeclared: a restore that dropped it would ask a player who
+	// became a defending player afterwards to declare.
+	"blockDeclarationClosed", carried, "",
 	// #1571: the attack declaration's CR 508.1d checkpoint. Carried
 	// with blocksDeclared: a restore that dropped it would re-judge a
 	// declaration whose triggers have fired, and one that invented it

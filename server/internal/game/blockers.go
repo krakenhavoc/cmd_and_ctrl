@@ -356,6 +356,7 @@ func (g *Game) clearBlockStateLocked() {
 	g.blockedAttackers = nil
 	// #1279: and which defenders have completed it.
 	g.blocksDeclared = nil
+	g.blockDeclarationClosed = false
 }
 
 // attackerBlockedLocked reports whether the attacker is blocked

@@ -312,7 +312,7 @@ func (g *Game) blockRequirementsJudgedLocked(defender uuid.UUID) bool {
 	if g.State != StateActive || g.Turn.Step != StepDeclareBlockers {
 		return true
 	}
-	if g.blocksDeclared[defender] {
+	if g.blockDeclarationDoneLocked(defender) {
 		return true
 	}
 	return !g.isDefendingPlayerLocked(defender)

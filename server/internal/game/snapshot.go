@@ -471,6 +471,16 @@ type GameSnapshot struct {
 	// schema bump.
 	BlocksDeclared map[uuid.UUID]bool `json:"blocksDeclared,omitempty"`
 
+	// BlockDeclarationClosed is whether this combat's CR 509.1
+	// declaration as a whole is over (#2021,
+	// Game.blockDeclarationClosed): every player defending when it
+	// ended had declared, so a player who becomes a defending player
+	// afterwards does not declare. False outside the declare-blockers
+	// step's combat, and a file written before it restores as false —
+	// the shape before #2021, where such a player is asked to declare.
+	// No schema bump.
+	BlockDeclarationClosed bool `json:"blockDeclarationClosed,omitempty"`
+
 	// AttacksDeclared is whether this combat's attack declaration has
 	// passed its CR 508.1d requirement checkpoint (#1571,
 	// Game.attacksDeclared). False outside the declare-attackers step's
@@ -1726,6 +1736,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.AnnouncedAttacks = copyBoolMap(g.announcedAttacks)
 	s.AttackDefenders = copyUUIDPairMap(g.attackDefenders)
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
+	s.BlockDeclarationClosed = g.blockDeclarationClosed
 	s.AttacksDeclared = g.attacksDeclared
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
@@ -2584,6 +2595,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.announcedAttacks = copyBoolMap(s.AnnouncedAttacks)
 	g.attackDefenders = copyUUIDPairMap(s.AttackDefenders)
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
+	g.blockDeclarationClosed = s.BlockDeclarationClosed
 	g.attacksDeclared = s.AttacksDeclared
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
