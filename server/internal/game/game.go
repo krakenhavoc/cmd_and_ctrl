@@ -723,6 +723,15 @@ type Game struct {
 	stateTriggerHold     int
 	stateTriggerChecking bool
 
+	// landingEntryCounters is the permanent whose "enters with"
+	// counters applyEntryCountersLocked is putting on right now. Those
+	// counters land after the move and before EventETB, so the turn
+	// tally does not yet say the permanent entered this turn; read
+	// ahead's chapter rule (CR 702.155a, read_ahead.go) reads this
+	// instead while they land. Defer-cleared, so it is uuid.Nil between
+	// actions and is neither snapshotted nor cloned.
+	landingEntryCounters uuid.UUID
+
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,
 	// not pushed. A card entering the battlefield sits in the zone it

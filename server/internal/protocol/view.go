@@ -396,9 +396,10 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
-	// EntryKeyword names the entry keyword an "entry_riot" or
-	// "optional_replacement" prompt is asking about — "riot" or
-	// "unleash" (ADR 0109 §10) — so the client can word the question
+	// EntryKeyword names the entry keyword an "entry_riot",
+	// "entry_read_ahead" or "optional_replacement" prompt is asking
+	// about — "riot", "unleash" (ADR 0109 §10) or "read ahead" (#2123)
+	// — so the client can word the question
 	// and a policy can tell unleash's "may" from any other.
 	// The entering card rides Source. Absent on every other prompt.
 	EntryKeyword string `json:"entry_keyword,omitempty"`
@@ -7676,7 +7677,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// ADR 0102's entry_controller rides the same projection: its
 		// options are seats (Player set), and its purpose goes beside
 		// them.
-		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController) && len(c.PickOptions) > 0 {
+		//
+		// So does read ahead's entry_read_ahead (#2123): one option per
+		// chapter, option N being chapter N+1.
+		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController ||
+			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
 				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
@@ -7700,7 +7705,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 		}
-		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement) && len(c.ReplacementEffectIDs) == 1 {
+		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement ||
+			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.ReplacementEffectIDs) == 1 {
 			v.EntryKeyword = game.EntryKeywordOfReplacement(c.ReplacementEffectIDs[0])
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's

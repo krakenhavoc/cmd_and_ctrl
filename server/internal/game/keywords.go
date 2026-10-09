@@ -342,6 +342,15 @@ var canonicalKeywords = map[string]bool{
 	// a decayed token, a deck-imported card or a decayed counter works
 	// with no catalog entry. CUMULATIVE (CR 113.2c).
 	KeywordDecayed: true,
+	// read ahead (CR 702.155) joins with #2123, in the same change that
+	// teaches the engine to honour it. Its consumers are read_ahead.go:
+	// the entry look-ahead reports it and the gather derives the
+	// "choose a chapter" entry replacement, and fireSagaChaptersLocked
+	// (sagas.go) applies its chapter rule. REDUNDANT (CR 702.155c).
+	// Stamped by the deck importer like every other canonical token; a
+	// Saga with no catalog chapters has no final chapter to choose up
+	// to, and enters with the one lore counter of any unknown Saga.
+	KeywordReadAhead: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR

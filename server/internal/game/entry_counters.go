@@ -438,6 +438,11 @@ func (g *Game) applyEntryCountersLocked(cardID uuid.UUID, counters map[string]in
 		kinds = append(kinds, name)
 	}
 	sort.Strings(kinds)
+	// Read ahead (CR 702.155a) asks whether a Saga entered this turn
+	// while its lore counters land, before EventETB says so.
+	prev := g.landingEntryCounters
+	g.landingEntryCounters = cardID
+	defer func() { g.landingEntryCounters = prev }()
 	for _, name := range kinds {
 		_ = g.AddCounterForEffect(cardID, name, counters[name])
 	}

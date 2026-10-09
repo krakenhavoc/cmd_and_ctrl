@@ -1286,6 +1286,12 @@ export interface PendingChoiceView {
     // Mandatory — both answers are always accepted. accept_label and
     // decline_label name the two; source is the entering card.
     | "entry_riot"
+    // #2123, CR 702.155b: read ahead's "choose the chapter this Saga
+    // starts on", asked before the Saga enters. The chapters ride
+    // pick_options in order ("Chapter I", "Chapter II", …) and the
+    // answer is {option_index: N}, chapter N+1. source is the entering
+    // Saga; entry_keyword is "read ahead".
+    | "entry_read_ahead"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1430,9 +1436,10 @@ export interface PendingChoiceView {
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
   // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
-  // the entry keyword it asks about — "riot" or "unleash". Absent on
-  // every other prompt, and on a "may" that is not unleash's.
-  entry_keyword?: "riot" | "unleash" | string;
+  // the entry keyword it asks about — "riot" or "unleash" — and on an
+  // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
+  // other prompt, and on a "may" that is not unleash's.
+  entry_keyword?: "riot" | "unleash" | "read ahead" | string;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.

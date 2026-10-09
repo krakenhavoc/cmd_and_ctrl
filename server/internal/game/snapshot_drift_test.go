@@ -289,6 +289,7 @@ var gameFields = plan(
 	// guard. Both are defer-cleared inside one mutation.
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
 	"stateTriggerChecking", dropped, "not game state: a re-entrancy guard for one check, defer-cleared, so it is false between actions",
+	"landingEntryCounters", dropped, "not game state: the permanent whose enters-with counters are landing inside one call, defer-cleared, so it is uuid.Nil between actions (#2123)",
 )
 
 var cardFields = plan(

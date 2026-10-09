@@ -98,6 +98,8 @@ func EntryKeywordOfReplacement(id ReplacementEffectID) string {
 		return KeywordRiot
 	case id >= unleashReplacementIDBase && id < unleashReplacementIDBase+MaxCatalogReplacementSlots:
 		return KeywordUnleash
+	case id == readAheadReplacementID:
+		return KeywordReadAhead
 	}
 	return ""
 }
@@ -110,6 +112,8 @@ func entryKeywordLabel(keyword string) string {
 		return "Riot"
 	case KeywordUnleash:
 		return "Unleash"
+	case KeywordReadAhead:
+		return "Read ahead"
 	}
 	return ""
 }

@@ -37,7 +37,8 @@ import (
 // zones (ADR 0094).
 //
 // It reads keywords, counting instances (CR 702.136b), and through them
-// ability removal, and nothing else. A face-down entry has no abilities
+// ability removal, and — for read ahead — the final chapter number, and
+// nothing else. A face-down entry has no abilities
 // (CR 708.2a) and is never looked at.
 
 // entryLookAheadNamespace seeds the ID the dry permanent runs under.
@@ -52,6 +53,13 @@ type entryLookAhead struct {
 	// counts (Lux Artillery's grant to the spell, carried by CR 400.7a),
 	// and a permanent entering under Dress Down has none.
 	sunburst int
+	// readAhead (CR 702.155, #2123): whether the permanent would have
+	// read ahead — one flag, since instances are redundant (CR
+	// 702.155c) — and finalChapter its final chapter number as it
+	// would exist on the battlefield (CR 714.2d), the most the read
+	// ahead choice may name.
+	readAhead    bool
+	finalChapter int
 }
 
 // entryLookAheadCache is one entry event's memo of its look-ahead,
@@ -90,8 +98,8 @@ func (g *Game) entryLookAheadLocked(ev *ReplacementEvent) entryLookAhead {
 		return c.result
 	}
 	var result entryLookAhead
-	if ch, ok := g.entryCharacteristicsLocked(ev); ok {
-		for _, a := range ch.Abilities {
+	if perm, ok := g.entryCharacteristicsLocked(ev); ok {
+		for _, a := range perm.effective.Abilities {
 			switch a {
 			case KeywordRiot:
 				result.riot++
@@ -99,7 +107,12 @@ func (g *Game) entryLookAheadLocked(ev *ReplacementEvent) entryLookAhead {
 				result.unleash++
 			case KeywordSunburst:
 				result.sunburst++
+			case KeywordReadAhead:
+				result.readAhead = true
 			}
+		}
+		if result.readAhead && IsSaga(perm) {
+			result.finalChapter = SagaFinalChapter(perm)
 		}
 	}
 	ev.lookAhead = &entryLookAheadCache{version: version, actor: ev.Actor, copyOf: ev.EntersAsCopyOf, result: result}
@@ -107,14 +120,16 @@ func (g *Game) entryLookAheadLocked(ev *ReplacementEvent) entryLookAhead {
 }
 
 // entryCharacteristicsLocked is the dry run itself: the entering
-// permanent's effective characteristics as they would be on the
-// battlefield. ok is false when the entering card cannot be found.
+// permanent as it would be on the battlefield, its layer cache holding
+// its effective characteristics (so SagaFinalChapter and the other
+// readers of a permanent's abilities can be asked of it). ok is false
+// when the entering card cannot be found.
 //
 // Caller must hold g.mu (write).
-func (g *Game) entryCharacteristicsLocked(ev *ReplacementEvent) (Characteristic, bool) {
+func (g *Game) entryCharacteristicsLocked(ev *ReplacementEvent) (Card, bool) {
 	entering, ok := g.LookupCardForEffect(ev.CardID)
 	if !ok {
-		return Characteristic{}, false
+		return Card{}, false
 	}
 	onStack := g.Stack != nil && g.Stack.Contains(ev.CardID)
 	stackEpoch := entering.ObjectEpoch
@@ -181,11 +196,11 @@ func (g *Game) entryCharacteristicsLocked(ev *ReplacementEvent) (Characteristic,
 	g.Battlefield.Cards = dry
 	defer func() { g.Battlefield.Cards = orig }()
 	g.layerPassWithLocked(extra)
-	ch := dry[len(dry)-1].effective
-	if ch == nil {
-		return Characteristic{}, false
+	out := dry[len(dry)-1]
+	if out.effective == nil {
+		return Card{}, false
 	}
-	return *ch, true
+	return out, true
 }
 
 // lookAheadEntryStampLocked is the entry stamp the dry permanent runs

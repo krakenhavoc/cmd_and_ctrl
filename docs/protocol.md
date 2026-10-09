@@ -753,6 +753,29 @@ an additional +1/+1 counter on it" — with `entry_keyword: "unleash"` and
 has a +1/+1 counter on it", is an ordinary can't-block restriction the
 block gate reads.
 
+### `entry_read_ahead` — the chapter a Saga starts on (#2123, CR 702.155b)
+
+`pending_choices` may carry `kind: "entry_read_ahead"`. It is read
+ahead's "As this Saga enters, choose a number between one and this
+Saga's final chapter number", asked of the would-be controller before
+the Saga enters (CR 614.12a). `source` is the entering card and
+`entry_keyword` is `"read ahead"`.
+
+- **The options are the chapters.** They ride `pick_options`, one per
+  chapter in order, labelled "Chapter I", "Chapter II" and so on.
+- **The answer is `resolve_choice { choice_id, option_index }`**, the
+  payload `option_pick` and `entry_controller` take: option N is
+  chapter N+1, and the Saga enters with that many lore counters. Every
+  offered chapter is a legal answer.
+- **Skipped chapters never trigger.** The turn a Saga with read ahead
+  entered, a chapter triggers only if the Saga has exactly that
+  chapter's number of lore counters (CR 702.155a).
+
+The answer is narrated as `choose_option` ("chose chapter III for The
+Cruelty of Gix"). A Saga with one chapter is not asked, and an entry
+that cannot pause starts on chapter I. Like every prompt that pauses an
+entry, it blocks the table.
+
 ### `retarget` — changing a spell's or ability's target (#1196, CR 115.7)
 
 `pending_choices` may carry `kind: "retarget"`. It is the prompt behind

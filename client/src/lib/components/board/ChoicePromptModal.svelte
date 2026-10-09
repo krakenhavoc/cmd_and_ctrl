@@ -723,6 +723,10 @@
   // sentence. The permanent is not on the battlefield yet, and nothing
   // can happen until an opponent is named.
   const isEntryController = $derived(active?.kind === "entry_controller");
+  // #2123 entry_read_ahead — read ahead's starting chapter (CR
+  // 702.155b). The chapter buttons and the {option_index} answer of
+  // option_pick. Answered inline in the dock; this is its sheet.
+  const isEntryReadAhead = $derived(active?.kind === "entry_read_ahead");
   const entryControllerHint = $derived(
     active?.control_purpose === "benefit"
       ? "Whoever you choose will control it and get what it does."
@@ -1453,6 +1457,15 @@
         secondary: [],
       };
     }
+    if (isEntryReadAhead) {
+      return {
+        label: c.reason || "Read ahead — choose the starting chapter",
+        src: "read ahead · CR 702.155b",
+        width: 560,
+        primary: null,
+        secondary: [],
+      };
+    }
     if (isModePick) {
       return {
         label: triggerSourceName(c.source),
@@ -1904,6 +1917,20 @@
                   {/each}
                 </span>
               {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else if isEntryReadAhead}
+      <p class="prompt-hint">
+        It hasn't entered yet: it enters with that many lore counters, and the chapters before it
+        never happen.
+      </p>
+      <ul class="pick-options">
+        {#each pickOptions as opt, i (i)}
+          <li>
+            <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+              <span class="pick-label">{opt.label}</span>
             </button>
           </li>
         {/each}

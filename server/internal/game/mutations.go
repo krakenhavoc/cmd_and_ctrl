@@ -9721,6 +9721,12 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 				Actor:  placer,
 				Source: source,
 			})
+			// CR 714.2b: lore counters put on a Saga fire the chapters
+			// they crossed, whatever put them there (#2123). After the
+			// counter event, so a chapter's trigger sees the count.
+			if name == CounterLore && delta > 0 && z == g.Battlefield {
+				g.loreCountersPutLocked(cardID, newAmount-delta, newAmount)
+			}
 			return nil
 		}
 	}

@@ -48,6 +48,7 @@ const (
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
 	choiceEntryController     = "entry_controller"
+	choiceEntryReadAhead      = "entry_read_ahead"
 	choiceMayCast             = "may_cast"
 	choiceChooseSource        = "choose_source"
 	choiceCommanderReturn     = "commander_return"
@@ -129,6 +130,8 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return payAmountValue(ch, cp.Amount)
 	case choiceEntryController:
 		return st.entryControllerValue(ch, cp.OptionIndex)
+	case choiceEntryReadAhead:
+		return readAheadValue(cp.OptionIndex)
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
@@ -1004,6 +1007,18 @@ func (st *state) seatHand() []protocol.CardView {
 		return nil
 	}
 	return st.seat.Hand.Cards
+}
+
+// readAheadValue scores one chapter of a read ahead prompt (#2123,
+// CR 702.155b): the earlier the better, so the bot starts on chapter I
+// and gets every chapter the Saga prints. Skipping ahead trades the
+// chapters it passes for tempo, and the heuristic has no measure of
+// when that trade is worth it, so it never makes it.
+func readAheadValue(index *int) (float64, string) {
+	if index == nil || *index < 0 {
+		return 0, "read ahead: chapter I"
+	}
+	return -float64(*index), "read ahead: start early and get every chapter"
 }
 
 // entryControllerValue scores one seat of an entry_controller prompt —
