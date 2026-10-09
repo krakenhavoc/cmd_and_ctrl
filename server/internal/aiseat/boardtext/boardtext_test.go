@@ -109,6 +109,20 @@ func TestRenderEnergyPrompts(t *testing.T) {
 	}
 }
 
+// #2794: the MCP seat asks for each owed choice's id, the handle its
+// legal_moves(choice) takes; the bot's prompt keeps the kind alone.
+func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {
+	v := view()
+	v.PendingChoices = []protocol.PendingChoiceView{{ID: "c-1", Kind: "search_library", Chooser: "a", Reason: "Circuitous Route", Count: 2}}
+	if got := boardtext.Render(v, "a", boardtext.Options{ChoiceIDs: true}); !strings.Contains(got,
+		"YOU OWE A CHOICE: search_library [id c-1] — Circuitous Route (choose 2)\n") {
+		t.Errorf("no choice id:\n%s", got)
+	}
+	if got := boardtext.Render(v, "a", boardtext.Options{}); strings.Contains(got, "c-1") {
+		t.Errorf("the bot's board printed the choice id:\n%s", got)
+	}
+}
+
 func TestRenderNoteUnimplementedForTheAgent(t *testing.T) {
 	got := boardtext.Render(view(), "a", boardtext.Options{NoteUnimplemented: true})
 	for _, want := range []string{

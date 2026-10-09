@@ -233,54 +233,103 @@ func trimOpponentBattlefields(v *protocol.GameView, me string, keep int) {
 }
 
 // boardOptions are the renderer's knobs for this reader: the bot's zone
-// cap, and the unimplemented note spelled out (§5).
+// cap, the unimplemented note spelled out (§5), and each owed choice's id
+// for legal_moves(choice) (#2794).
 func boardOptions(maxZone int) boardtext.Options {
-	return boardtext.Options{MaxZoneCards: maxZone, NoteUnimplemented: true}
+	return boardtext.Options{MaxZoneCards: maxZone, NoteUnimplemented: true, ChoiceIDs: true}
+}
+
+// sinceLog is the public log since the last decision as the window shows
+// it: runs of one repeated line collapsed to one line each (lines), how
+// many entries each stands for (weights), and how many older entries were
+// cut (dropped), which the window says rather than hiding (#2791).
+type sinceLog struct {
+	lines   []string
+	weights []int
+	dropped int
+}
+
+// collapseLog folds each run of identical consecutive lines into one,
+// marked "(xN)": a mass counter or token effect writes one line per
+// object, and thirty of them pushed everything that resolved before them
+// out of the window (#2791).
+func collapseLog(lines []string) sinceLog {
+	var out sinceLog
+	for i := 0; i < len(lines); {
+		j := i + 1
+		for j < len(lines) && lines[j] == lines[i] {
+			j++
+		}
+		line := lines[i]
+		if n := j - i; n > 1 {
+			line += fmt.Sprintf(" (x%d)", n)
+		}
+		out.lines = append(out.lines, line)
+		out.weights = append(out.weights, j-i)
+		i = j
+	}
+	return out
+}
+
+// keepLast cuts all but the newest n lines, counting what it cut.
+func (l *sinceLog) keepLast(n int) {
+	for len(l.lines) > n {
+		l.dropOldest()
+	}
+}
+
+func (l *sinceLog) dropOldest() {
+	l.dropped += l.weights[0]
+	l.lines, l.weights = l.lines[1:], l.weights[1:]
 }
 
 // compactBoard is the board in wait_for_decision and get_state(compact),
 // with the public log and chat lines since the last decision, held to
 // budgetCompact. Over the cap it degrades in §5's order: graveyards to
 // counts, then opponents' battlefields to their 12 highest-power
-// permanents, then log and chat lines from the oldest.
-func compactBoard(v *protocol.GameView, me string, logLines, chatLines []string) string {
+// permanents, then log and chat lines from the oldest. A cut log says how
+// many entries it left out.
+func compactBoard(v *protocol.GameView, me string, log sinceLog, chatLines []string) string {
 	sv := safeView(v)
 	board := boardtext.Render(sv, me, boardOptions(compactZoneCards))
-	text := joinBoard(board, logLines, chatLines)
+	text := joinBoard(board, log, chatLines)
 	if len(text) <= budgetCompact {
 		return text
 	}
 	graveyardsToCounts(sv)
 	board = boardtext.Render(sv, me, boardOptions(compactZoneCards))
-	if text = joinBoard(board, logLines, chatLines); len(text) <= budgetCompact {
+	if text = joinBoard(board, log, chatLines); len(text) <= budgetCompact {
 		return text
 	}
 	trimOpponentBattlefields(sv, me, trimmedBattlefield)
 	board = boardtext.Render(sv, me, boardOptions(compactZoneCards))
-	for len(logLines)+len(chatLines) > 0 {
-		if text = joinBoard(board, logLines, chatLines); len(text) <= budgetCompact {
+	for len(log.lines)+len(chatLines) > 0 {
+		if text = joinBoard(board, log, chatLines); len(text) <= budgetCompact {
 			return text
 		}
 		// Drop the older of the two oldest lines; with no timestamps to
 		// compare, log goes first because the board already shows its
 		// result.
-		if len(logLines) > 0 {
-			logLines = logLines[1:]
+		if len(log.lines) > 0 {
+			log.dropOldest()
 		} else {
 			chatLines = chatLines[1:]
 		}
 	}
-	return hardCut(joinBoard(board, nil, nil), budgetCompact)
+	return hardCut(joinBoard(board, sinceLog{dropped: log.dropped}, nil), budgetCompact)
 }
 
-func joinBoard(board string, logLines, chatLines []string) string {
+func joinBoard(board string, log sinceLog, chatLines []string) string {
 	var b strings.Builder
-	if len(logLines) > 0 || len(chatLines) > 0 {
+	if len(log.lines) > 0 || len(chatLines) > 0 {
 		b.WriteString(untrustedNote + "\n")
 	}
-	if len(logLines) > 0 {
+	if len(log.lines) > 0 || log.dropped > 0 {
 		b.WriteString("SINCE YOUR LAST DECISION (public log, oldest first)\n")
-		for _, l := range logLines {
+		if log.dropped > 0 {
+			fmt.Fprintf(&b, "  … %d earlier log entries not shown (get_state(detail: \"full\") has the last %d)\n", log.dropped, fullLogLines)
+		}
+		for _, l := range log.lines {
 			b.WriteString("  " + l + "\n")
 		}
 	}
@@ -335,7 +384,7 @@ func fullBoard(v *protocol.GameView, me string) string {
 		logLines = append(logLines, logLine(e, nw))
 	}
 	var b strings.Builder
-	b.WriteString(joinBoard(board, logLines, nil))
+	b.WriteString(joinBoard(board, sinceLog{lines: logLines}, nil))
 	if len(v.Reveals) > 0 {
 		b.WriteString("\nREVEALED THIS TURN\n")
 		for _, r := range v.Reveals {
