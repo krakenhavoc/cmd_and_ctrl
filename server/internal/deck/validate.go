@@ -37,6 +37,10 @@ const (
 	// imports as its front face and works as that half. The message
 	// says which half, and what is lost.
 	CodeUnsupportedLayout = "unsupported_layout"
+	// CodeInvalidPartnerPair flags two commanders that are not a
+	// "Partner with" pair: one of them names a different card, or
+	// names nothing (CR 702.124j, #2142). Carries the card at fault.
+	CodeInvalidPartnerPair = "invalid_partner_pair"
 	// CodeUnknownCard flags a decklist row whose name did not resolve
 	// against the Scryfall index. Surfaced via UnknownCardError and
 	// translated into the 422 violations[] list so the client can
@@ -94,7 +98,8 @@ func (e *ValidationError) Error() string {
 // Validate enforces Commander-format rules on a resolved List. At S05
 // those rules are:
 //
-//  1. Exactly one commander.
+//  1. Exactly one commander, or two that are a "Partner with" pair
+//     (CR 702.124j, #2142).
 //  2. Commander itself must be Scryfall-legal in the commander format
 //     (type line is "Legendary Creature" or oracle text contains the
 //     "can be your commander" clause via the "legalities.commander"
@@ -104,7 +109,7 @@ func (e *ValidationError) Error() string {
 //  5. Every card is legal in the commander format — specifically,
 //     legalities.commander != "banned" and != "not_legal".
 //  6. Every card's color_identity is a subset of the commander's
-//     color identity (union when we add partner support later).
+//     color identity (the union of a pair's, CR 702.124c).
 //
 // Sideboard cards are surfaced as a warning, not an error — Commander
 // doesn't use a sideboard but "I accidentally pasted a Standard deck"
@@ -115,16 +120,22 @@ func Validate(list *List) error {
 	}
 	var vs []Violation
 
-	// Commander presence
+	// Commander presence. Two commanders are allowed for a "Partner
+	// with" pair, each naming the other (CR 702.124j, #2142); no
+	// partner ability allows more than two (CR 702.124g).
 	switch len(list.Commanders) {
 	case 0:
 		vs = append(vs, Violation{Code: CodeMissingCommander, Message: "deck has no commander"})
 	case 1:
 		// happy path
+	case 2:
+		if v := commanderPairViolation(list.Commanders[0], list.Commanders[1]); v != nil {
+			vs = append(vs, *v)
+		}
 	default:
 		vs = append(vs, Violation{
 			Code:    CodeTooManyCommanders,
-			Message: fmt.Sprintf("deck has %d commanders; partner/companion is not supported at S05", len(list.Commanders)),
+			Message: fmt.Sprintf("deck has %d commanders; at most two are allowed, and only for a \"Partner with\" pair", len(list.Commanders)),
 		})
 	}
 
@@ -132,9 +143,9 @@ func Validate(list *List) error {
 	// card must be legal in the commander format. The "can be your
 	// commander" oracle clause (Planeswalker commanders like Oloro or
 	// the "creature type commander" mechanics) is captured by the
-	// legalities.commander = "legal" flag.
-	if len(list.Commanders) >= 1 {
-		cmd := list.Commanders[0]
+	// legalities.commander = "legal" flag. Each commander of a pair is
+	// judged on its own (CR 702.124a: "two legendary cards").
+	for _, cmd := range list.Commanders {
 		if !isLegalCommander(cmd) {
 			vs = append(vs, Violation{
 				Code:    CodeNotLegalCommander,
@@ -198,15 +209,23 @@ func Validate(list *List) error {
 	// Color identity: every mainboard card's identity must be a
 	// subset of the commander's identity. Uses string set ops on the
 	// single-letter WUBRG values.
-	if len(list.Commanders) == 1 {
-		allowed := identitySet(list.Commanders[0].ColorIdentity)
+	//
+	// Two commanders' identities combine (CR 702.124c, 903.4).
+	if len(list.Commanders) == 1 || len(list.Commanders) == 2 {
+		allowed := map[string]struct{}{}
+		for _, cmd := range list.Commanders {
+			for sym := range identitySet(cmd.ColorIdentity) {
+				allowed[sym] = struct{}{}
+			}
+		}
+		allowedList := commanderIdentityList(allowed)
 		for _, c := range list.Mainboard {
 			for _, sym := range c.ColorIdentity {
 				if _, ok := allowed[sym]; !ok {
 					vs = append(vs, Violation{
 						Code:    CodeColorIdentity,
 						Card:    c.Name,
-						Message: fmt.Sprintf("%q has color identity %v but commander allows %v", c.Name, c.ColorIdentity, list.Commanders[0].ColorIdentity),
+						Message: fmt.Sprintf("%q has color identity %v but commander allows %v", c.Name, c.ColorIdentity, allowedList),
 					})
 					break // one violation per card — don't spam
 				}
@@ -440,4 +459,16 @@ func deckCopyLimit(c cards.Card) copyLimit {
 		}
 	}
 	return lim
+}
+
+// commanderIdentityList is a combined identity set as WUBRG-ordered
+// letters, for a violation message.
+func commanderIdentityList(set map[string]struct{}) []string {
+	out := make([]string, 0, len(set))
+	for _, sym := range []string{"W", "U", "B", "R", "G"} {
+		if _, ok := set[sym]; ok {
+			out = append(out, sym)
+		}
+	}
+	return out
 }

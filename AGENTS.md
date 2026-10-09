@@ -539,6 +539,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [The Ring tempts you (ADR 0114, #2076)](docs/adding-cards.md#the-ring-tempts-you-adr-0114-2076)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](docs/adding-cards.md#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Suspect (CR 701.60, #2698)](docs/adding-cards.md#suspect-cr-70160-2698)
+  - [Partner with (CR 702.124j, #2142)](docs/adding-cards.md#partner-with-cr-702124j-2142)
   - [Adding a Room or a split card (ADR 0103, #1756)](docs/adding-cards.md#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](docs/adding-cards.md#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](docs/adding-cards.md#special-actions-from-the-hand-658-659)
