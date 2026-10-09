@@ -169,6 +169,7 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedGoldToken,
 	printedFoodToken,
 	printedClueToken,
+	printedMapToken,
 	printedBloodToken,
 	printedPowerstoneToken,
 	printedEldraziSpawnToken,

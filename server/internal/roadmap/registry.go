@@ -2800,9 +2800,9 @@ var items = []Item{
 		Waiting: []string{
 			"Altar of the Wretched", "Sunbird Standard", "Saheeli's Lattice", "Paleontologist's Pick-Axe",
 			"Eye of Ojer Taq", "Throne of the Grim Captain", "The Enigma Jewel", "Ore-Rich Stalactite",
-			"Unstable Glyphbridge", "Lodestone Needle", "Master's Guide-Mural", "Dire Flail", "Tetzin, Gnome Champion",
+			"Unstable Glyphbridge", "Master's Guide-Mural", "Dire Flail", "Tetzin, Gnome Champion",
 		},
-		EngineNotes: "**Shipped for fixed-count materials of one card type or subtype** (#2124, [ADR 0137](decisions/0137-craft.md)): `game.ExilePermanentsCost` gained `FromGraveyard` (CR 702.167b's second zone: the activator's own graveyard, judged on the card's front face, CR 712.8a) and `Subtype` (\"Craft with Island / Cave\"); `game.ReturnCraftedFromExileForEffect` returns the exiled card on its back face as a new object under its owner's control; `Card.CraftedWith []ObjectRef` is CR 702.167c's link (delve's shape), resolved by `CraftMaterialsForEffect`, carried by clone, the snapshot and `PermanentInfo`. `effects.Craft` with `CraftWith` / `CraftWithN` / `CraftWithSubtype` is the keyword. **Still open** (#2709): \"one or more\" (an announced count: Altar of the Wretched, Sunbird Standard, Saheeli's Lattice, Paleontologist's Pick-Axe); a rule over the set (Eye of Ojer Taq's \"two that share a card type\", Throne of the Grim Captain's four subtypes, The Enigma Jewel's \"four or more nonlands with activated abilities\"); graveyard-only and variable (Ore-Rich Stalactite). **Waiting on another face, not on craft:** Unstable Glyphbridge (\"they can't attack you … this turn\" and a cast ban on opponents who attacked you this turn; `GrantCantAttackPlayerForEffect` covers only the next turn), Lodestone Needle (explore is not implemented), Master's Guide-Mural (\"if an artifact entered the battlefield under your control this turn\" needs a card-type entry tally), Dire Flail (an Equipment granting a trigger with a reflexive \"when you do\"), Tetzin, Gnome Champion (its back face transforms another double-faced artifact). See Closed seams.",
+		EngineNotes: "**Shipped for fixed-count materials of one card type or subtype** (#2124, [ADR 0137](decisions/0137-craft.md)): `game.ExilePermanentsCost` gained `FromGraveyard` (CR 702.167b's second zone: the activator's own graveyard, judged on the card's front face, CR 712.8a) and `Subtype` (\"Craft with Island / Cave\"); `game.ReturnCraftedFromExileForEffect` returns the exiled card on its back face as a new object under its owner's control; `Card.CraftedWith []ObjectRef` is CR 702.167c's link (delve's shape), resolved by `CraftMaterialsForEffect`, carried by clone, the snapshot and `PermanentInfo`. `effects.Craft` with `CraftWith` / `CraftWithN` / `CraftWithSubtype` is the keyword. **Still open** (#2709): \"one or more\" (an announced count: Altar of the Wretched, Sunbird Standard, Saheeli's Lattice, Paleontologist's Pick-Axe); a rule over the set (Eye of Ojer Taq's \"two that share a card type\", Throne of the Grim Captain's four subtypes, The Enigma Jewel's \"four or more nonlands with activated abilities\"); graveyard-only and variable (Ore-Rich Stalactite). **Waiting on another face, not on craft:** Unstable Glyphbridge (\"they can't attack you … this turn\" and a cast ban on opponents who attacked you this turn; `GrantCantAttackPlayerForEffect` covers only the next turn), Master's Guide-Mural (\"if an artifact entered the battlefield under your control this turn\" needs a card-type entry tally), Dire Flail (an Equipment granting a trigger with a reflexive \"when you do\"), Tetzin, Gnome Champion (its back face transforms another double-faced artifact). See Closed seams.",
 	},
 
 	{
@@ -3083,15 +3083,6 @@ var items = []Item{
 		Issue:            2183,
 		NoCatalogExample: "Its one catalogued card, Ob Nixilis, Captive Kingpin, carries a caveat about the end-step edge of its play window, so none is listed as fully automated.",
 	},
-	{
-		Slug: "explore", Name: "Explore", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Creatures that explore: reveal the top card of your library, put a land into your hand, or otherwise put a +1/+1 counter on the creature and choose whether to put the card into your graveyard.",
-		Missing:     "Nothing can explore yet, so Map tokens can't be made either.",
-		Issue:       2720,
-		Tracked:     "#2720 (S58 tracker #2077)",
-		Waiting:     []string{"Get Lost"},
-		EngineNotes: "The explore keyword action has no primitive: `effects/explore.go` is the card Explore, not the action. Get Lost also needs a predefined Map token (\"{1}, {T}, Sacrifice this token: Target creature you control explores. Activate only as a sorcery.\") beside `ClueToken` and `FoodToken` in `effects/tokens.go`. Lodestone Needle's back face waits on the same action and is listed on the craft row. Look up the action's rule number in the pinned TXT before citing it.",
-	},
 
 	// Seams that have fully closed. They stay so the page can say so;
 	// their history is in engine-seams.md's Closed seams list.
@@ -3119,6 +3110,12 @@ var items = []Item{
 		Rules:    []string{"508.1d"},
 		ADR:      "0045-combat-restrictions.md",
 		Examples: []string{"Galactus, Devourer of Worlds"},
+	},
+	{
+		Slug: "explore", Name: "Explore", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Creatures that explore: reveal the top card of your library, put a land into your hand, or otherwise put a +1/+1 counter on the creature and choose whether to put the card into your graveyard.",
+		Rules:    []string{"701.44", "111.10s"},
+		Examples: []string{"Get Lost", "Lodestone Needle"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

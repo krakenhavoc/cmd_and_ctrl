@@ -7361,6 +7361,31 @@ offer it (`rambling_possum.go`); a TARGET that must be one of them cannot
 be written yet (#2704). Read the state a trigger needs when it is BUILT,
 not when it resolves, if the Mount might leave in response
 (`caustic_bronco.go` carries it on `item.Params`).
+### Explore (CR 701.44, #2720)
+
+"<Permanent> explores" is `Game.ExploreForEffect(source, explorer
+ObjectRef, controller, then)` (`game/explore.go`). The card side is in
+`cards/effects/explores.go`. (`explore.go` in that package is the card
+named Explore.)
+
+```go
+Explores{Explorer: id, Then: rest}.Apply(ctx)                                     // "it explores, then …"
+Effect:  targetCreatureYouControlExplores, Targets: targetCreatureYouControl()  // Guidestone Compass
+CreateToken{Controller: p, Template: MapToken(), N: 2}.Apply(ctx)                 // Get Lost
+```
+
+- Anything after the explore goes in `Then`. The graveyard question is
+  a prompt, so a following statement would run before it is answered.
+- `Explores` reads the explorer's object identity when it applies. A
+  creature that leaves and returns is a new object and gets no counter
+  (CR 400.7), but the reveal still happens (CR 701.44c).
+- "Whenever a creature you control explores" watches
+  `game.EventExplored`: `CardID` is the explorer and `Actor` its
+  controller. It fires once the process is complete, including when the
+  library was empty (CR 701.44b).
+- Not built: simultaneous explores in APNAP order (CR 701.44d), and a
+  replacement window on the action (Topography Tracker).
+
 ### Suspect (CR 701.60, #2698)
 
 Suspected is a designation that **gives** abilities rather than switching
