@@ -65,7 +65,14 @@ var defaultTriggerZones = []ZoneKind{ZoneBattlefield}
 // and for nothing else. The library has no card asking yet, and a
 // zone nothing walks would be a declaration the engine silently
 // ignored. `effects.Register` refuses the rest at boot.
-var supportedTriggerZones = []ZoneKind{ZoneGraveyard, ZoneExile, ZoneHand}
+//
+// The command zone joined with eminence triggers (#2802, ADR 0140
+// amendment): "Whenever you cast another Vampire spell, if Edgar Markov
+// is in the command zone or on the battlefield, …". Such an ability
+// declares BOTH zones, {ZoneBattlefield, ZoneCommand} — the one shape
+// in which the battlefield is named alongside another zone, because
+// the printed text names it.
+var supportedTriggerZones = []ZoneKind{ZoneGraveyard, ZoneExile, ZoneHand, ZoneCommand}
 
 // TriggerZones is the zones a triggered ability watches from. Never
 // empty.
@@ -99,15 +106,31 @@ func TriggerWatchesFromZone(t TriggeredAbility, zone ZoneKind) bool {
 // leave a card with a trigger nothing ever walks.
 func TriggerZoneUnsupported(zone ZoneKind) string {
 	switch zone {
-	case ZoneGraveyard, ZoneExile, ZoneHand:
+	case ZoneGraveyard, ZoneExile, ZoneHand, ZoneCommand:
 		return ""
 	case ZoneBattlefield:
 		return "the battlefield is what an empty Zones means — declare nothing"
 	case ZoneStack:
 		return "a trigger on a spell on the stack is TriggeredAbility.FromStack (cascade, CR 702.85a)"
 	default:
-		return "only the graveyard, exile and the hand are walked (#925, #1665); add the zone to supportedTriggerZones with the card that needs it"
+		return "only the graveyard, exile, the hand and the command zone are walked (#925, #1665, #2802); add the zone to supportedTriggerZones with the card that needs it"
 	}
+}
+
+// TriggerZonesUnsupported is TriggerZoneUnsupported over a whole
+// declaration. The battlefield may be named only beside another zone
+// (an eminence trigger's {ZoneBattlefield, ZoneCommand}, #2802): alone
+// it is what an empty list already means.
+func TriggerZonesUnsupported(zones []ZoneKind) (ZoneKind, string) {
+	for _, zone := range zones {
+		if zone == ZoneBattlefield && len(zones) > 1 {
+			continue
+		}
+		if why := TriggerZoneUnsupported(zone); why != "" {
+			return zone, why
+		}
+	}
+	return "", ""
 }
 
 // triggerZoneIndex is the catalog-wide index of non-battlefield
@@ -203,10 +226,31 @@ func (g *Game) harvestFromDeclaredZones(pass *harvestPass) {
 		return
 	}
 	for _, kind := range triggerZones.zonesFor(pass.ev.Kind) {
-		for _, z := range g.zonesOfKindLocked(kind) {
+		for _, z := range g.triggerZonesOfKindLocked(kind) {
 			g.harvestFromDeclaredZone(pass, z, kind)
 		}
 	}
+}
+
+// triggerZonesOfKindLocked is every zone of `kind` the declared-zone
+// harvest walks. zonesOfKindLocked answers for the shared zones and
+// the per-seat graveyards and hands; the command zone is answered
+// here, one per seat, rather than added there, because
+// zonesOfKindLocked is also the TARGET zone walk and nothing targets a
+// card in a command zone.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerZonesOfKindLocked(kind ZoneKind) []*Zone {
+	if kind != ZoneCommand {
+		return g.zonesOfKindLocked(kind)
+	}
+	out := make([]*Zone, 0, len(g.Seats))
+	for _, p := range g.Seats {
+		if p != nil && p.Command != nil {
+			out = append(out, p.Command)
+		}
+	}
+	return out
 }
 
 // harvestFromDeclaredZone walks one zone for abilities that declared

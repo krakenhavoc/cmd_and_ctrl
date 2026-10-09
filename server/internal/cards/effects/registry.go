@@ -930,11 +930,9 @@ func checkRestriction(card, kind, label string, forbidsNothing bool) {
 
 func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	for i, t := range triggers {
-		for _, zone := range t.Zones {
-			if why := game.TriggerZoneUnsupported(zone); why != "" {
-				panic(fmt.Sprintf("effects.Register: %q %s %d watches from %s — %s",
-					card, what, i, zone, why))
-			}
+		if zone, why := game.TriggerZonesUnsupported(t.Zones); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s %d watches from %s — %s",
+				card, what, i, zone, why))
 		}
 	}
 }

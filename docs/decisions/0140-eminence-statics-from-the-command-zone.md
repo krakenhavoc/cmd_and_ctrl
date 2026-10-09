@@ -63,3 +63,12 @@ The other four planeswalker pieces of #2797 are not new decisions, so each is a 
 - **[ADR 0032](0032-planeswalkers.md)** — the CR 704.5i exemption (Sanctum Lurker).
 - **[ADR 0018](0018-triggers-on-the-stack.md)** — "whenever you put one or more loyalty counters on a planeswalker" (Inspired Tethermage).
 - **[ADR 0066](0066-granted-cast-and-play-permissions.md) (the activation twin, #1208)** — the stored half of an activation-timing statement, "until end of turn, you may activate loyalty abilities of Jace planeswalkers you control … any time you could cast an instant" (Jace's Machinations).
+
+## Amendment 2026-10-09 — eminence triggers (#2802)
+
+The Consequences above left eminence **triggers** for later and named `TriggeredAbility.Zones` as their likely home. That is where they went, as an extension of #925's declared-zone harvest rather than a new gatherer:
+
+- **The command zone is a declared trigger zone.** `supportedTriggerZones` gains `ZoneCommand`, and the declared-zone harvest walks each seat's command zone (`triggerZonesOfKindLocked`), only for the event kinds a registered card watches from there, exactly as it walks graveyards, exile and hands. The source handed to the trigger has its owner as controller (CR 108.4), so "you" is the zone's owner, the same rule §2 states for the cost form. `zonesOfKindLocked`, which is also the target-zone walk, is not changed: nothing targets a card in a command zone.
+- **An eminence trigger declares both zones.** `effects.EminenceTrigger(t)` sets `Zones` to `{ZoneBattlefield, ZoneCommand}`. It is the one declaration in which the battlefield is named beside another zone, because the printed text names it; `game.TriggerZonesUnsupported` accepts the battlefield only in that company, and `effects.Register` refuses it alone as before. A declared list is still the whole list, so the battlefield walk keeps firing it through `TriggerWatchesFromZone`.
+- **The intervening "if" (CR 603.4).** On trigger it holds by construction: those are the only two zones the ability watches from. On resolution the wrapper checks again that the source is in the command zone or on the battlefield, and does nothing if it is not (a commander cast in response is on the stack).
+- **Cards.** Edgar Markov (Full) and The Ur-Dragon (Full; its eminence line is §1's cost form, and its attack trigger shares The Ur-Sphinx's batch count, now `attackersOfSubtypeInTheSameBatch`). Sidar Jabari of Zhalfir, Inalla, Archmage Ritualist and Arahbo, Roar of the World use the same wrapper and are left for card PRs.
