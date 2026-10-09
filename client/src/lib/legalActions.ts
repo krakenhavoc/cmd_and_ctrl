@@ -367,7 +367,9 @@ export function acrossActions(
     if ((c.controller || c.owner) === viewerID) continue;
     const own = new Set(
       (c.activated_abilities ?? [])
-        .filter((a) => (a.any_player || a.opponents_only || a.owner_only) && a.ref)
+        .filter(
+          (a) => (a.any_player || a.opponents_only || a.owner_only || a.grantor_only) && a.ref,
+        )
         .map((a) => a.ref),
     );
     if (own.size === 0) continue;

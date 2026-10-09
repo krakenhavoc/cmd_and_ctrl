@@ -437,12 +437,12 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 	// layer-6 bucket, so a removal sorted after it empties them and one
 	// sorted before it cannot reach them (CR 613.6).
 	if len(e.ability.GrantAbilities) > 0 {
-		var from uuid.UUID
+		var from, you uuid.UUID
 		if e.source != nil {
-			from = e.source.InstanceID
+			from, you = e.source.InstanceID, e.source.Controller
 		}
 		for _, key := range e.ability.GrantAbilities {
-			c.GrantAbility(key, from)
+			c.GrantAbility(key, from, you)
 		}
 	}
 }

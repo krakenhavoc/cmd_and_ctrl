@@ -1589,6 +1589,12 @@ type ActivatedAbility struct {
 	// game.ActivatedAbilityShape.OpponentsOnly.
 	OpponentsOnly bool
 	OwnerOnly     bool
+	// GrantorOnly is "Only you may activate this ability" on a row of an
+	// AbilityGrant bundle (Martyrdom): the only activator is the "you" of
+	// the effect that granted the row, whoever controls the creature now.
+	// Register refuses it outside a bundle and beside the other named
+	// activators. See game.ActivatedAbilityShape.GrantorOnly.
+	GrantorOnly bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does

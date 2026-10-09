@@ -121,3 +121,41 @@ func TestOwnerOnlyRowIsMarked(t *testing.T) {
 		t.Errorf("the owner's digest entry = %+v, want abilities [own:0]", e)
 	}
 }
+
+// ADR 0106 §1's 2026-10-09 amendment (#1947): a granted grantor-only row
+// is marked `grantor_only` with the one `activator`, on every seat's
+// copy, and only the grantor's digest lists it.
+func TestGrantorOnlyRowIsMarkedAndOnlyInTheGrantorsDigest(t *testing.T) {
+	g := busyTable(t, 1)
+	caster := g.Seats[g.Turn.ActiveSeat]
+	holder := g.Seats[(g.Turn.ActiveSeat+1)%4]
+	spell := put(g.Battlefield, caster, game.Card{Name: "Martyrdom stand-in", TypeLine: "Enchantment"})
+	creature := put(g.Battlefield, holder, game.Card{Name: "Martyr", TypeLine: "Creature — Test", Power: 2, Toughness: 2})
+	g.WithWriteLock(func() {
+		if !g.RegisterScopedEffectForEffect(spell, g.PinnedObjectsLocked(creature),
+			[]game.Mod{game.GrantAbilitiesMod("martyrdom/redirect")}, g.UntilEndOfTurnDuration(), "test — Martyrdom") {
+			t.Fatal("setup: the grant registered nothing")
+		}
+		g.RecomputeLayersIfStaleLocked()
+	})
+	knowTheTable(g)
+
+	for _, seat := range []*game.Player{caster, holder} {
+		row := rowOf(t, ViewOfGameFor(g, seat.ID.String()), creature)
+		if !row.GrantorOnly || row.Activator != caster.ID.String() || row.AnyPlayer || row.OpponentsOnly || row.OwnerOnly {
+			t.Errorf("%s's copy of the row = %+v, want grantor-only with the caster as activator", seat.Name, row)
+		}
+	}
+	cav := ViewOfGameFor(g, caster.ID.String())
+	if cav.LegalActions == nil {
+		t.Fatal("the caster got no digest")
+	}
+	if e := cav.LegalActions.Sources[creature.String()]; e == nil || len(e.Abilities) != 1 {
+		t.Errorf("the caster's digest entry = %+v, want the one granted row", e)
+	}
+	if hav := ViewOfGameFor(g, holder.ID.String()); hav.LegalActions != nil {
+		if e := hav.LegalActions.Sources[creature.String()]; e != nil && len(e.Abilities) != 0 {
+			t.Errorf("the controller's digest lists the grantor-only row: %+v", e)
+		}
+	}
+}

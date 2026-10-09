@@ -2774,6 +2774,15 @@ Feral Hydra, Excavation) says everyone.
   `any_player` row does; the controller's own opponents-only row, and a
   thief's owner-only row, are the client's to grey from the card's
   `controller` and `owner`. `purpose` is never declared on these rows.
+- **`grantor_only: true` and `activator` on a granted row** (2026-10-09,
+  #1947). "Only you may activate this ability" inside an ability another
+  effect granted (Martyrdom). `activator` is the player ID of the one
+  player who may activate it: the "you" of the granting effect, whoever
+  controls the permanent now. Additive, absent on every other row. The
+  server refuses anyone else, the permanent's controller included, with
+  `game: caller does not control this card`. The row rides the per-seat
+  copy as an `any_player` row does; the client opens it to the viewer
+  whose ID is `activator` and greys it for everyone else.
 - **Each seat's copy is stamped for that seat.** For a seat that does
   not control the permanent, every `any_player` row is computed with that
   seat as the activator: `charged_mana_cost`, `life_cost`,

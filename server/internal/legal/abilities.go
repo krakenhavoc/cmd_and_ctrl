@@ -225,7 +225,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// all — its controller always, anyone else only when the row
 		// says "Any player may activate this ability". The predicate
 		// ActivateCatalogAbility refuses on (#544).
-		if !game.MayActivate(e.seat, *source, zone, ab) {
+		if !game.MayActivate(e.seat, *source, zone, ab, origins.At(idx)) {
 			continue
 		}
 		// #1208: ONE identity for both reads below, built the way
