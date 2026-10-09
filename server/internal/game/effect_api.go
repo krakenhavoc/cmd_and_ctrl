@@ -3533,6 +3533,9 @@ func (g *Game) PutFromHandOntoBattlefieldForEffect(cardID uuid.UUID, opts HandEn
 // ordinary "one mana of any color", or the "N mana of any one color"
 // form (#742) when the slot adds more than one.
 func addManaReason(slot ProducedManaEntry) string {
+	if slot.DifferentColors() {
+		return "Add " + strconv.Itoa(slot.Distinct) + " mana of different colors"
+	}
 	if slot.OneColorAmounts() {
 		return "Add mana of any one color"
 	}
@@ -3668,6 +3671,29 @@ func (g *Game) addManaSlotsLocked(
 			// with no identity adds nothing, and an empty picker is not
 			// a choice anybody can answer. An empty printed slot lands
 			// here too, as it always did.
+			continue
+		}
+		// #2558: "N mana of different colors" — a greedy set of
+		// different colours in the auto-tap mode, one pick naming them
+		// one at a time otherwise. A pick cannot carry restrictions on
+		// this path, as below.
+		if slot.DifferentColors() {
+			if len(restrictions) > 0 {
+				return ErrInvalidParam
+			}
+			n := slot.DistinctCount(colorOptions)
+			if pending != nil {
+				picked := pickDifferentColors(colorOptions, n, pending)
+				g.produceManaLocked(p, source, picked, nil, riders, srcKinds, false, pending)
+				continue
+			}
+			g.queueDifferentColorsPickLocked(PendingChoice{
+				Chooser:         p.ID,
+				FromPlayer:      p.ID,
+				Source:          source,
+				ManaSourceKinds: srcKinds,
+				ManaRiders:      copyManaRiders(riders),
+			}, colorOptions, n, reason(slot))
 			continue
 		}
 		if len(slot.Options) == 1 {

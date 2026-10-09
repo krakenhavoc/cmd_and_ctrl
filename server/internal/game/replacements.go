@@ -1707,6 +1707,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		// only those are candidates on this pass. The rest are gathered
 		// again afterwards, against the new controller (CR 616.1f).
 		applicable = entryControlTier(applicable)
+		// CR 702.43a (#2012): a modular instance only adds counters to
+		// the entry, so it commutes with every other entry replacement
+		// and is applied alone rather than ordered.
+		if len(applicable) > 1 {
+			if i := firstModular(applicable); i >= 0 {
+				applicable = applicable[i : i+1]
+			}
+		}
 		// CR 702.136b (#1556): instances of one entry keyword — a
 		// printed riot and Rhythm of the Wild's — each work
 		// separately, and which is asked first changes nothing. The

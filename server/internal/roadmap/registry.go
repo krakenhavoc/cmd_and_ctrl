@@ -944,18 +944,25 @@ var items = []Item{
 		Summary:     "Reality Fracture cards that wait on a mechanic the engine doesn't have yet.",
 		Missing:     "These cards need a rule the game doesn't have yet, so they can't be played.",
 		Issue:       2795,
-		Waiting:     []string{"Extrapolate the Impossible", "Dack Fayden, Helping Hand", "Pyre Rhymer", "Loot, the Anomaly"},
-		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Dack Fayden, Helping Hand: its enters trigger reveals until X creature cards (X is the number of opponents), puts them onto the battlefield, then goads them \"for the rest of the game\". The engine's goad ends as the goader's next turn begins (`game/goad.go`, CR 701.15a), with no permanent form. It then has the controller choose a different opponent for each of those permanents and gives each that opponent's control, which is a distribution of permanents across opponents with no prompt shape (the existing own-permanents and choose-player prompts take one pick each, not a matching). Pyre Rhymer: Molten Tide is \"Until end of turn, whenever YOU tap a Mountain for mana, add an additional {R}\". `effects.TurnManaTrigger` (`DelayedTrigger.ManaTapSubtype`, read by `fireManaTriggersLocked` in `game/mana_trigger.go`) fires for every player's Mountain, because High Tide and Bubbling Muck print \"a player\". Using it here would hand opponents the extra mana, which is not what the card says. It needs a controller filter on the delayed mana trigger (an engine change in `game/`). Each blocker is listed here by card as slices land. Loot, the Anomaly: \"If Loot's power is negative, he assigns combat damage as though his power were positive\" needs the combat damage step to read a creature's absolute power; it snapshots `CurrentPower()`, which clamps a negative power to zero (CR 510.1a), at one site in `assignAndDealCombatDamageLocked` (`game/mutations.go`). Shipping him without it would make a card whose whole point is a negative power deal no damage, and his threshold ability (Sacrifice another creature or planeswalker: -2/-0) do nothing. Each blocker is listed here by card as slices land.",
+		Waiting:     []string{"Extrapolate the Impossible", "Dack Fayden, Helping Hand", "Pyre Rhymer", "Loot, the Anomaly", "Null Summoner"},
+		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Dack Fayden, Helping Hand: its enters trigger reveals until X creature cards (X is the number of opponents), puts them onto the battlefield, then goads them \"for the rest of the game\". The engine's goad ends as the goader's next turn begins (`game/goad.go`, CR 701.15a), with no permanent form. It then has the controller choose a different opponent for each of those permanents and gives each that opponent's control, which is a distribution of permanents across opponents with no prompt shape (the existing own-permanents and choose-player prompts take one pick each, not a matching). Pyre Rhymer: Molten Tide is \"Until end of turn, whenever YOU tap a Mountain for mana, add an additional {R}\". `effects.TurnManaTrigger` (`DelayedTrigger.ManaTapSubtype`, read by `fireManaTriggersLocked` in `game/mana_trigger.go`) fires for every player's Mountain, because High Tide and Bubbling Muck print \"a player\". Using it here would hand opponents the extra mana, which is not what the card says. It needs a controller filter on the delayed mana trigger (an engine change in `game/`). Each blocker is listed here by card as slices land. Loot, the Anomaly: \"If Loot's power is negative, he assigns combat damage as though his power were positive\" needs the combat damage step to read a creature's absolute power; it snapshots `CurrentPower()`, which clamps a negative power to zero (CR 510.1a), at one site in `assignAndDealCombatDamageLocked` (`game/mutations.go`). Shipping him without it would make a card whose whole point is a negative power deal no damage, and his threshold ability (Sacrifice another creature or planeswalker: -2/-0) do nothing. Each blocker is listed here by card as slices land. Each blocker is listed here by card as slices land. Null Summoner: its threshold clause lets you cast the card it exiled from an opponent's hand for as long as it is on the battlefield. The engine has the pieces (a gated standing cast permission, any-type mana, the revealed-hand exile) but not the link: only a replacement effect stamps `Card.ExiledWith`, so a card exiled by a resolving ability can't be named by a standing permission. Shipping the exile alone would leave the card uncastable, which is the point of the card.",
 	},
 	{
-		Slug: "modular", Name: "Modular", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Modular lets an artifact creature enter with +1/+1 counters and, when it dies, move those counters onto another artifact creature.",
-		Missing:     "Modular isn't implemented yet, so a creature with it enters without its counters and passes nothing on when it dies.",
-		Rules:       []string{"702.43"},
-		Issue:       2012,
-		Waiting:     []string{"Arcbound Slasher"},
-		Phrases:     []string{"modular"},
-		EngineNotes: "primitive: modular (CR 702.43a) is two abilities, an entry with N +1/+1 counters and a dies trigger that moves one counter per +1/+1 counter the permanent had onto target artifact creature; CR 702.43b makes each instance work separately. Neither half exists: `modular` is not in `canonicalKeywords`. The likely shape is an engine-derived keyword like riot (ADR 0109 §10): the counters as one entry replacement per instance through the entry look-ahead, and the dies trigger reading last-known counters (`LastKnownCountersForEffect`, CR 603.10a). Arcbound Slasher's riot already works (#1556). Found landing the riot cards.",
+		// #2012: a NUMBERED dies-and-entry keyword the engine derives
+		// from the ability list (game/modular.go): one entry
+		// replacement per instance through the entry look-ahead, and
+		// one dies trigger per instance off the last-known ability list
+		// and counters. A creature whose only text is modular and other
+		// canonical keywords (Arcbound Worker, Arcbound Slasher) needs
+		// no card file.
+		Slug: "modular", Name: "Modular", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "A permanent with modular N enters with N +1/+1 counters, once for each instance, and when it dies you may put its +1/+1 counters on target artifact creature.",
+		Rules:    []string{"702.43", "614.12", "603.10a"},
+		Issue:    2012,
+		Keywords: []string{game.KeywordModular},
+		Printed:  printedLine("Modular"),
+		Phrases:  []string{"modular"},
+		Examples: []string{"Arcbound Ravager"},
 	},
 	{
 		Slug: "text-changing-effects", Name: "Text-changing effects", Kind: KindSeam, Status: StatusMissing,
@@ -2796,7 +2803,7 @@ var items = []Item{
 		ADR:         "0140-eminence-statics-from-the-command-zone.md",
 		Examples:    []string{"Kiora of Salt and Sand", "The Ur-Sphinx"},
 		Printed:     `(?i)planeswalkers you control have|eminence —|for having 0 loyalty|loyalty counters? on a planeswalker`,
-		EngineNotes: "**Shipped** (#2797, [ADR 0140](decisions/0140-eminence-statics-from-the-command-zone.md) and dated amendments to ADRs 0093, 0032, 0018 and 0066). Five pieces. (1) A loyalty ability granted to a CLASS of planeswalkers: `effects.GrantAbilitiesToYourPlaneswalkers(keys…)` over an ADR 0093 bundle whose row has a `LoyaltyCost`; the row is the walker's, so CR 606.3's one activation a turn is shared with its printed rows and every other grantor's, in either order. (2) `Spec.ZeroLoyaltyExemptions` (`game/zero_loyalty_exemption.go`, `PlaneswalkersSurviveZeroLoyalty()`): a static that stops CR 704.5i applying to its controller's planeswalkers, read live by the state-based pass and keyed by `CatalogAbilityKey` (the legend-rule exemption pattern); every other state-based action still applies. (3) `effects.WheneverYouPutLoyaltyCountersOnAPlaneswalker`: one trigger per `EventCounterPlaced`, so a +2, a doubled placement and a single bulk placement are each one, and \"each planeswalker\" is one per walker; the placer is the event's Actor, falling back to `b12CountersPlacedBy`. (4) `PlayerStatic.ActivationTiming` (`game.ActivationTimingGrant{Timing, Subtype}`, `game/activation_timing_grant.go`), the stored half of the activation-timing statement, read by `activationTimingVerdictLocked` beside the derived statements; `effects.GrantLoyaltyAbilitiesAtInstantSpeed{Subtype}` from a resolving spell. Additive snapshot data (`seats[].statics[].activationTiming`). (5) Eminence: `game.CostModifier.Eminence` makes a cost modifier work from the owner's command zone as well as the battlefield, bound with the zone's owner as \"you\" and gathered in `activeCostModifiersLocked`; `effects.Eminence(...)` and `OtherSpellOfCreatureType`. Eminence TRIGGERS followed (#2802, ADR 0140 amendment 2026-10-09): the command zone is a declared trigger zone, and `effects.EminenceTrigger(...)` watches from it and the battlefield and checks the intervening \"if\" again on resolution. Eminence replacements are not built. **Cards**, all Full: Kiora of Salt and Sand, The Ur-Sphinx, Edgar Markov and The Ur-Dragon. The cards that also need `empower Jace` wait on the next row.",
+		EngineNotes: "**Shipped** (#2797, [ADR 0140](decisions/0140-eminence-statics-from-the-command-zone.md) and dated amendments to ADRs 0093, 0032, 0018 and 0066). Five pieces. (1) A loyalty ability granted to a CLASS of planeswalkers: `effects.GrantAbilitiesToYourPlaneswalkers(keys…)` over an ADR 0093 bundle whose row has a `LoyaltyCost`; the row is the walker's, so CR 606.3's one activation a turn is shared with its printed rows and every other grantor's, in either order. (2) `Spec.ZeroLoyaltyExemptions` (`game/zero_loyalty_exemption.go`, `PlaneswalkersSurviveZeroLoyalty()`): a static that stops CR 704.5i applying to its controller's planeswalkers, read live by the state-based pass and keyed by `CatalogAbilityKey` (the legend-rule exemption pattern); every other state-based action still applies. (3) `effects.WheneverYouPutLoyaltyCountersOnAPlaneswalker`: one trigger per `EventCounterPlaced`, so a +2, a doubled placement and a single bulk placement are each one, and \"each planeswalker\" is one per walker; the placer is the event's Actor, falling back to `b12CountersPlacedBy`. (4) `PlayerStatic.ActivationTiming` (`game.ActivationTimingGrant{Timing, Subtype}`, `game/activation_timing_grant.go`), the stored half of the activation-timing statement, read by `activationTimingVerdictLocked` beside the derived statements; `effects.GrantLoyaltyAbilitiesAtInstantSpeed{Subtype}` from a resolving spell. Additive snapshot data (`seats[].statics[].activationTiming`). (5) Eminence: `game.CostModifier.Eminence` makes a cost modifier work from the owner's command zone as well as the battlefield, bound with the zone's owner as \"you\" and gathered in `activeCostModifiersLocked`; `effects.Eminence(...)` and `OtherSpellOfCreatureType`. Eminence TRIGGERS followed (#2802, ADR 0140 amendment 2026-10-09): the command zone is a declared trigger zone, and `effects.EminenceTrigger(...)` watches from it and the battlefield and checks the intervening \"if\" again on resolution. Eminence replacements are not built. **Cards**, all Full: Kiora of Salt and Sand, The Ur-Sphinx, Edgar Markov, The Ur-Dragon, Sidar Jabari of Zhalfir, Inalla, Archmage Ritualist and Arahbo, Roar of the World. The cards that also need `empower Jace` wait on the next row.",
 	},
 	{
 		Slug: "attractions", Name: "Attractions", Kind: KindSeam, Status: StatusMissing,
@@ -2859,13 +2866,11 @@ var items = []Item{
 	},
 
 	{
-		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "\"Partner with [name]\" lets two named legendary cards be your commanders together, and searches for the other one when it enters.",
-		Missing:     "Partner with isn't supported: neither card of the pair can be paired as a commander, and the search when it enters doesn't happen.",
-		Rules:       []string{"702.124j"},
-		Issue:       2142,
-		Waiting:     []string{"Frodo, Adventurous Hobbit"},
-		EngineNotes: "deck + trigger: `deck.hasUnsupportedPhrase` flags every partner variant, so no partner pair passes Commander validation, and there is no \"search for a card named [name]\" entry trigger. Pir, Imaginative Rascal ships with a caveat for it. Found landing ADR 0114 PR 5.",
+		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "\"Partner with [name]\" lets two named legendary cards be your commanders together, and searches for the other one when it enters.",
+		Rules:    []string{"702.124j"},
+		Probe:    declaresPartnerWith,
+		Examples: []string{"Frodo, Adventurous Hobbit", "Sam, Loyal Attendant", "Pir, Imaginative Rascal"},
 	},
 	{
 		Slug: "voting", Name: "Voting and will of the council", Kind: KindSeam, Status: StatusMissing,
@@ -2990,6 +2995,16 @@ var items = []Item{
 		Printed:     `(?i)(?:don't lose (?:this|unspent)[^.]*mana|if you would lose unspent mana)`,
 		Examples:    []string{"Upwelling", "Karn, Legacy Reforged", "The Last Agni Kai", "Kruphix, God of Horizons"},
 		EngineNotes: "mana pool: `emptyAllManaPoolsLocked` (`game/mana.go`) now calls `sweepManaPoolLocked` (`game/mana_keep.go`, #2166), which keeps or converts each token from three sources: a static over the pool derived from the battlefield (`Spec.ManaPool`, read through `CatalogManaPool`: keep all, keep some colours, or Kruphix's becomes-colourless, which keeps the token's restrictions), a granted player statement with a duration (`PlayerStatic.KeepManaColors`, `GrantKeepManaForEffect`; The Last Agni Kai), and a per-mana mark (`ManaRiderKeepUntilEndOfTurn`, `effects.KeepManaUntilEndOfTurn()` in `AddMana.Riders`; Karn, Savage Ventmaw) that expires when the cleanup step begins. Not built: Omnath, Locus of Mana (its +1/+1 per unspent green mana needs a layer 7 read of the pool, which nothing recomputes when the pool changes), and Leyline Tyrant's dies trigger.",
+	},
+	{
+		Slug: "mana-of-different-colors", Name: "Two mana of different colors", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Mana abilities that add two mana of different colors, such as Firemind Vessel's and Guild Globe's: you name two colors, and you can't name the same one twice.",
+		Rules:       []string{"106.1a", "605.3b", "106.12a"},
+		Issue:       2558,
+		ADR:         "0040-mana-pipeline.md",
+		Printed:     `(?i)\bmana of different colors\b`,
+		Examples:    []string{"Firemind Vessel", "Guild Globe", "Interplanar Beacon", "Component Pouch"},
+		EngineNotes: "produced-mana grammar: `\"{W|U|B|R|G:2}\"` is ONE slot (`ProducedManaEntry.Distinct`, `effects.DifferentColors(n)`), because two independent pipes would allow {U}{U}. A colour named up front (#1443) is refused if repeated (`validateUpfrontManaColors`); otherwise one `mana_pick` carries `ManaDifferent` and asks a colour at a time, striking each answer from the next, and adds all N together on the last answer, so a \"tapped for mana\" trigger fires once. The auto-tapper offers one candidate per set of colours (`appendTapSource`, `plannedTap.DifferentColors`). The view marks the row `different_colors`. See `game/mana_different_colors.go` and the closed-seam entry.",
 	},
 	{
 		Slug: "one-cast-per-card-type", Name: "One spell of each card type", Kind: KindSeam, Status: StatusMissing,

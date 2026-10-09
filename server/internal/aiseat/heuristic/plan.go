@@ -839,6 +839,26 @@ func abilityUnits(ab *protocol.ManaAbilityView) []uint8 {
 	}
 	var units []uint8
 	for _, sym := range manaSymbols(ab.Produced) {
+		// #2558: "{W|U|B|R|G:2}" is two mana of different colors — one
+		// unit per mana, each from its own color_options list. A unit
+		// mask cannot say "different", so two such units read as one
+		// pair of any colours, which the server's move list corrects.
+		if k := strings.LastIndexByte(sym, ':'); k >= 0 {
+			if v, err := strconv.Atoi(sym[k+1:]); err == nil && v > 0 {
+				var mask uint8
+				for _, opt := range strings.Split(sym[:k], "|") {
+					mask |= colorMask(opt)
+				}
+				for i := 0; i < v; i++ {
+					u := mask
+					if m := optionMask(); m != 0 {
+						u = m
+					}
+					units = append(units, u)
+				}
+				continue
+			}
+		}
 		n := 1
 		var mask uint8
 		choice := strings.IndexByte(sym, '|') >= 0

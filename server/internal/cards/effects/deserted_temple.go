@@ -1,7 +1,5 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-
 // Deserted Temple — Land (EDHREC rank 1603):
 //
 //	"{T}: Add {C}.
@@ -28,15 +26,7 @@ func init() {
 			Label:   "{1}, {T}: Untap target land.",
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Targets: TargetPermanent("target land", Land()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, t := range ctx.LegalTargets() {
-					if err := (UntapTarget{Target: t.ID}).Apply(ctx); err != nil {
-						return err
-					}
-				}
-				return nil
-			},
+			Effect:  UntapEachLegalTarget,
 		}},
 	})
 }

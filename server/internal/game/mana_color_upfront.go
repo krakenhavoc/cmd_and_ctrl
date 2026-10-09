@@ -71,8 +71,23 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 // and the identity in hand — the one loop the view, the up-front check
 // and nothing else reads, so the three agree on which slots pick.
 func pickingSlotOptions(slots []ProducedManaEntry, identity commanderIdentity, narrow bool) [][]string {
-	var out [][]string
-	for _, slot := range slots {
+	lists, _ := pickingSlotGroups(slots, identity, narrow)
+	return lists
+}
+
+// pickingSlotGroups is pickingSlotOptions with, beside each list, the
+// different-colours group it belongs to (#2558): -1 for an ordinary
+// pick, otherwise the index of the slot whose N mana must all differ.
+// A "{W|U|B|R|G:2}" slot is TWO lists, one per mana it adds, both in
+// one group, so the answer up front is one colour per mana as it is for
+// a filter land's two pipes — and the group is what forbids naming one
+// colour twice.
+func pickingSlotGroups(slots []ProducedManaEntry, identity commanderIdentity, narrow bool) ([][]string, []int) {
+	var (
+		out    [][]string
+		groups []int
+	)
+	for si, slot := range slots {
 		if len(slot.Options) <= 1 {
 			continue
 		}
@@ -80,9 +95,33 @@ func pickingSlotOptions(slots []ProducedManaEntry, identity commanderIdentity, n
 		if len(options) == 0 {
 			continue
 		}
+		if slot.DifferentColors() {
+			for k := 0; k < slot.DistinctCount(options); k++ {
+				out = append(out, options)
+				groups = append(groups, si)
+			}
+			continue
+		}
 		out = append(out, options)
+		groups = append(groups, -1)
 	}
-	return out
+	return out, groups
+}
+
+// ManaAbilityAddsDifferentColors reports whether `ab`'s output, read
+// now, has an "N mana of different colors" slot (#2558): the bit the
+// view publishes beside ColorOptions so a client never offers an answer
+// that names one colour twice. Read-only. Caller must hold g.mu.
+func ManaAbilityAddsDifferentColors(g *Game, playerID, cardID uuid.UUID, ab ManaAbilityShape) bool {
+	if g == nil {
+		return false
+	}
+	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	slots, err := ParseProducedMana(produced)
+	if err != nil {
+		return false
+	}
+	return differentColorSlot(slots) != oneColorSlotNone
 }
 
 // validateUpfrontManaColors is the #1443 check: `colors` names one
@@ -90,18 +129,38 @@ func pickingSlotOptions(slots []ProducedManaEntry, identity commanderIdentity, n
 // the ordinary activation and always passes. Called before anything is
 // validated or paid, so a refusal leaves the source untapped.
 //
+// #2558: the colours named for one different-colours slot must also
+// differ from each other, so Firemind Vessel's {U}{U} is refused here,
+// before the Vessel taps.
+//
 // Caller must hold g.mu.
 func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbilityShape, colors []string) error {
 	if len(colors) == 0 {
 		return nil
 	}
-	options := ManaAbilityColorOptions(g, playerID, cardID, ab)
+	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
+	slots, err := ParseProducedMana(produced)
+	if err != nil || !hasMultiOptionSlot(slots) {
+		return ErrIllegalManaColor
+	}
+	identity := commanderIdentityFor(g, g.playerByIDLocked(playerID))
+	options, groups := pickingSlotGroups(slots, identity, ab.NarrowToCommanderIdentity)
 	if len(options) != len(colors) {
 		return ErrIllegalManaColor
 	}
+	named := map[int]map[string]bool{}
 	for i, c := range colors {
 		if !containsColor(options[i], c) {
 			return ErrIllegalManaColor
+		}
+		if grp := groups[i]; grp >= 0 {
+			if named[grp] == nil {
+				named[grp] = map[string]bool{}
+			}
+			if named[grp][c] {
+				return ErrIllegalManaColor
+			}
+			named[grp][c] = true
 		}
 	}
 	return nil

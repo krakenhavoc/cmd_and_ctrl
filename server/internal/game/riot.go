@@ -85,13 +85,17 @@ func entryKeywordReplacementID(keyword string, i int) ReplacementEffectID {
 	if keyword == KeywordUnleash {
 		return unleashReplacementIDBase + ReplacementEffectID(i)
 	}
+	if keyword == KeywordModular {
+		return modularReplacementIDBase + ReplacementEffectID(i)
+	}
 	return riotReplacementIDBase + ReplacementEffectID(i)
 }
 
 // EntryKeywordOfReplacement reports which entry keyword a replacement
-// ID stands for — KeywordRiot, KeywordUnleash, or "" for any other
-// effect. The view reads it to tell a policy and the table which
-// question an optional_replacement or entry_riot prompt is.
+// ID stands for — KeywordRiot, KeywordUnleash, KeywordReadAhead,
+// KeywordModular, or "" for any other effect. The view reads it to
+// tell a policy and the table which question an optional_replacement
+// or entry_riot prompt is.
 func EntryKeywordOfReplacement(id ReplacementEffectID) string {
 	switch {
 	case id >= riotReplacementIDBase && id < riotReplacementIDBase+MaxCatalogReplacementSlots:
@@ -100,6 +104,8 @@ func EntryKeywordOfReplacement(id ReplacementEffectID) string {
 		return KeywordUnleash
 	case id == readAheadReplacementID:
 		return KeywordReadAhead
+	case id >= modularReplacementIDBase && id < modularReplacementIDBase+MaxCatalogReplacementSlots:
+		return KeywordModular
 	}
 	return ""
 }
@@ -114,6 +120,8 @@ func entryKeywordLabel(keyword string) string {
 		return "Unleash"
 	case KeywordReadAhead:
 		return "Read ahead"
+	case KeywordModular:
+		return "Modular"
 	}
 	return ""
 }
@@ -145,7 +153,7 @@ func sameEntryKeyword(applicable []activeReplacement) bool {
 // Caller must hold g.mu (write).
 func (g *Game) gatherEntryKeywordReplacementsLocked(ev *ReplacementEvent, applied map[ReplacementEffectID]bool, out []activeReplacement) []activeReplacement {
 	la := g.entryLookAheadLocked(ev)
-	if la.riot == 0 && la.unleash == 0 {
+	if la.riot == 0 && la.unleash == 0 && len(la.modular) == 0 {
 		return out
 	}
 	entering, ok := g.LookupCardForEffect(ev.CardID)
@@ -161,6 +169,15 @@ func (g *Game) gatherEntryKeywordReplacementsLocked(ev *ReplacementEvent, applie
 	for i := 0; i < la.unleash && i < MaxCatalogReplacementSlots; i++ {
 		if id := entryKeywordReplacementID(KeywordUnleash, i); !applied[id] {
 			out = append(out, activeReplacement{effect: unleashReplacement(src.Name), source: &src, id: id})
+		}
+	}
+	// #2012: one modular N instance each (modular.go).
+	for i, n := range la.modular {
+		if i >= MaxCatalogReplacementSlots {
+			break
+		}
+		if id := entryKeywordReplacementID(KeywordModular, i); !applied[id] {
+			out = append(out, activeReplacement{effect: modularReplacement(n), source: &src, id: id})
 		}
 	}
 	return out

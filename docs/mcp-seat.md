@@ -185,11 +185,11 @@ good in the window it was shown in.
 
 | Tool | Input | What it does |
 |---|---|---|
-| `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default: the MCP client's name, see below), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. |
-| `set_deck` | `deck`, as above | Installs a deck before the game starts. An unknown id answers with the ids the server has. |
-| `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, or `my_turn_or_stack`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
+| `join` | `invite_url` (required: the invite link, or an admin's seat-reclaim link), `display_name` (default: the MCP client's name, see below), `deck` (optional `{id}` for a pre-built deck or `{list}` for a decklist) | Takes a guest seat, or reattaches to the seat this binary already holds (`resumed`). One binary holds one seat: a second table needs `leave` first. Refused for an origin not on `--allow-origin`. A 429 is retried after 1, 2, 4 s. Before the game starts, the answer lists the server's pre-built decks (id, name, commander, colours, archetype) from `GET /decks`, the catalog `set_deck` validates against. |
+| `set_deck` | `deck`, as above | Installs a deck before the game starts. `{id}` takes one of the ids `join` lists. An unknown id answers with the ids the server has. |
+| `wait_for_decision` | `timeout_s` (1 to 50, default 25), `pass_until` (`none`, or `my_turn_or_stack`) | Waits for a real choice. Statuses: `decision` (with `window`, `kind`, the compact board, the numbered moves, and the log and chat since last time plus a count of what was answered automatically; a run of identical log lines shows once as `(xN)`, and a log cut to its 30 lines or to the board's budget says how many earlier entries it left out), `waiting` (call again), `not_started`, `eliminated`, `game_over` (with the outcome and the report below), `disconnected` (an error). |
 | `get_state` | `detail`: `compact` (default) or `full` | The board as the seat sees it. |
-| `legal_moves` | `card` (an instance id) or `choice` (a pending choice id, or `cleanup_discard`), `match` (text), `targets_for` (a move number), all optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). A one-card request with no moves answers an empty list. `match` keeps only the moves whose label contains the text (case-insensitive), numbered as in the full list: `legal_moves(choice: "<id>", match: "Black Lotus")` finds one card in a search. `targets_for: N` lists move N's target clauses, see [Targets](#targets). |
+| `legal_moves` | `card` (an instance id, as each group header prints it) or `choice` (a pending choice id, which `YOU OWE A CHOICE: <kind> [id <id>]` prints; the kind itself when the seat owes one choice of that kind; or `cleanup_discard`), `match` (text), `targets_for` (a move number), all optional | The open window's full numbered list, grouped by card. With `card` or `choice`, that card's or prompt's moves with the enumerator's caps lifted (up to 512). Two owed choices of one kind make the kind ambiguous; the answer lists their ids. A one-card request with no moves answers an empty list. `match` keeps only the moves whose label contains the text (case-insensitive), numbered as in the full list: `legal_moves(choice: "<id>", match: "Black Lotus")` finds one card in a search. `targets_for: N` lists move N's target clauses, see [Targets](#targets). |
 | `card` | `ref`: an instance id or a card name on the table | Name, type, cost, power/toughness and oracle text, with a note when the engine does not run the card's text. Cached per id. |
 | `act` | `window` (required), `move` (required), `value` (only for a move marked open), `targets` (only for a move that targets) | Makes one move. `status`: `accepted` (the server's ack), `rejected` (the server's code and message), `stale` (the board moved; nothing was sent, and the new window is returned), `unknown` (the socket dropped or no answer came; read the state), `not_sent`, `cancelled`. |
 | `say` | `text` (1 to 500 characters) | One line of table chat. `sent` or `rate_limited` with when to retry. |
@@ -226,6 +226,21 @@ What to know about how they behave:
   model. A request the server answers `no_decision` closes the window
   (the board moved); `rate_limited` is retried after 300 ms, up to three
   times.
+- **Attacks are declared in your own attack window, and passing ends
+  it.** The list offers one move per creature and opponent, and since
+  #2793 also `Attack «X» with all N creatures that can attack them` for
+  each opponent two or more of your creatures may attack: the browser's
+  "attack with all", one `declare_attackers` action for the whole set.
+  It is built only from the per-creature attacks the same list offers,
+  so it allows nothing the list does not; it exerts no one (exerting
+  stays a per-creature move), carries an attack tax's total on its label,
+  and is left out under a count limit it would break (Silent Arbiter),
+  for a tax paid with life, on a list the server could only send cut,
+  and for planeswalkers and battles. Your pass in that window commits the
+  declaration, and its label says so: `No attack: pass priority without
+  declaring attackers` before anything is declared, `Done declaring
+  attackers: pass priority, attacking with N creatures` after. Once you
+  have passed, no attack can be added this combat.
 - **`value` is only for open sets**: any card name (up to 200
   characters) where the rules let a player name one, or a number for X
   inside the stated range.
@@ -564,7 +579,7 @@ The same day, the same setup, a new prod table: an `esper-control`
 mirror this time, so that judgement (what to counter, when to wipe the
 board) decided more of the game. Codex won the opening roll with a 14 and
 chose to go first. The roll's winner was asked, and a model made the
-choice. Codex won in round 8 (log turn 16), during Claude's draw step,
+choice. Codex won in round 8 (turn 16), during Claude's draw step,
 about twelve minutes after the roll.
 
 | Quantity | Claude Code | Codex |

@@ -659,6 +659,9 @@ func (s *Seat) expandSearches(ctx context.Context, w *window) {
 func (s *Seat) openDecisionLocked(w *window) {
 	w.state = winDecision
 	w.openedAt = s.now()
+	// #2793: only the model's list is extended; Layer A answered from
+	// the server's own.
+	w.moves = withAttackDeclaration(s.view, s.sess.PlayerID.String(), w.moves, w.partial)
 	w.kind = windowKind(s.view, s.sess.PlayerID.String(), w.moves)
 	s.stats.shown++
 	s.broadcastLocked()

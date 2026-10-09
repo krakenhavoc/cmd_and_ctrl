@@ -410,6 +410,26 @@ type PendingChoice struct {
 	// snapshot. Added for #742.
 	ManaAmounts map[string]int
 
+	// ManaDifferent is N for a PendingChoiceMana that names N DIFFERENT
+	// colours one answer at a time — "Add two mana of different colors"
+	// (#2558, ProducedManaEntry.Distinct). Zero for every ordinary pick.
+	// Each answer is struck from ColorOptions and recorded in
+	// ManaChosen, and the choice stays open, with a fresh ID, until the
+	// N-th answer; only then is any mana added, all N at once (CR
+	// 605.3b), and the triggered mana abilities fire once (CR 106.12a).
+	// Carried by the snapshot, so a restore with the pick half answered
+	// resumes it.
+	ManaDifferent int
+
+	// ManaChosen is the colours already named for a ManaDifferent pick,
+	// in answer order. None of them is in ColorOptions. Deep-copied by
+	// clone.go and carried by the snapshot.
+	ManaChosen []string
+
+	// ManaLabel is the ability's own label for a ManaDifferent pick, the
+	// stem Reason is rebuilt from after each answer.
+	ManaLabel string
+
 	// ManaTapped marks a PendingChoiceMana that is part of TAPPING A
 	// PERMANENT FOR MANA (CR 106.12a) — a mana ability with a {T} cost
 	// whose colour the controller is still choosing.
@@ -1448,6 +1468,19 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	if v, ok := choice.ManaAmounts[color]; ok {
 		n = v
 	}
+	produced := repeatColor(color, n)
+	// #2558: "N mana of different colors" mints nothing until its last
+	// colour is named, and then all N together.
+	if choice.ManaDifferent > 0 {
+		all, done, err := g.advanceDifferentColorsPickLocked(choice, color)
+		if err != nil {
+			return err
+		}
+		if !done {
+			return nil
+		}
+		produced = all
+	}
 	tapped := choice.ManaTapped
 	// #1222: through the one production body, which opens the
 	// CR 106.12b window on the amount. This is the ONLY place a
@@ -1459,7 +1492,7 @@ func (g *Game) ResolveManaChoice(choiceID, chooserID uuid.UUID, color string) er
 	// be dequeued and the tokens outlive it.
 	colors := g.produceManaLocked(
 		p, choice.Source,
-		repeatColor(color, n),
+		produced,
 		copyRestrictions(choice.ManaRestrictions),
 		// #1547: and its spend riders, carried the same way.
 		choice.ManaRiders,

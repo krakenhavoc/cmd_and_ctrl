@@ -263,12 +263,15 @@ func TestTheCompactBoardHoldsItsBudgetAndTheMovesAreNeverCut(t *testing.T) {
 		logLines = append(logLines, untrusted(fmt.Sprintf("Player 1 cast a very long spell name number %d at Player 2", i), maxLogLen))
 		chat = append(chat, chatLine(protocol.ChatPayload{AuthorName: "Bob", Text: strings.Repeat("blah ", 50)}))
 	}
-	board := compactBoard(v, me, logLines, chat)
+	board := compactBoard(v, me, sinceLog{lines: logLines, weights: ones(len(logLines))}, chat)
 	if len(board) > budgetCompact {
 		t.Fatalf("compact board is %d bytes, budget %d", len(board), budgetCompact)
 	}
 	if !strings.Contains(board, "(YOU)") {
 		t.Errorf("the seat's own line was cut:\n%s", board)
+	}
+	if !strings.Contains(board, "earlier log entries not shown") {
+		t.Errorf("log lines cut to fit the budget went unmentioned:\n%s", board)
 	}
 	full := fullBoard(v, me)
 	if len(full) > budgetFull {
@@ -289,8 +292,52 @@ func TestTheUnimplementedNoteIsSpelledOut(t *testing.T) {
 	me := uuid.NewString()
 	v := &protocol.GameView{State: "active", Seats: []protocol.PlayerView{{ID: me, Name: "Agent"}}}
 	v.Battlefield.Cards = []protocol.CardView{{InstanceID: "a", Controller: me, Name: "Odd Card", Unimplemented: true}}
-	board := compactBoard(v, me, nil, nil)
+	board := compactBoard(v, me, sinceLog{}, nil)
 	if !strings.Contains(board, "unimplemented: the engine does not run this card's text") {
 		t.Errorf("no unimplemented note:\n%s", board)
+	}
+}
+
+func ones(n int) []int {
+	out := make([]int, n)
+	for i := range out {
+		out[i] = 1
+	}
+	return out
+}
+
+// #2791: a mass counter effect writes one line per Plant. Repeats collapse
+// to one line with a count, so what resolved before them stays in the
+// window, and whatever the cap still cuts is counted, not hidden.
+func TestTheSinceLogCollapsesRepeatsAndCountsWhatItCuts(t *testing.T) {
+	var lines []string
+	lines = append(lines, "«Field of the Dead — create a 2/2 Zombie resolved»")
+	for i := 0; i < 6; i++ {
+		lines = append(lines, "«Plant now has 3 +1/+1 counters»")
+	}
+	lines = append(lines, "«Avenger of Zendikar — +1/+1 counter on each Plant (landfall) resolved»")
+	for i := 0; i < 14; i++ {
+		lines = append(lines, "«Plant now has 4 +1/+1 counters»")
+	}
+	got := collapseLog(lines)
+	want := []string{
+		"«Field of the Dead — create a 2/2 Zombie resolved»",
+		"«Plant now has 3 +1/+1 counters» (x6)",
+		"«Avenger of Zendikar — +1/+1 counter on each Plant (landfall) resolved»",
+		"«Plant now has 4 +1/+1 counters» (x14)",
+	}
+	if strings.Join(got.lines, "\n") != strings.Join(want, "\n") || got.dropped != 0 {
+		t.Fatalf("collapsed = %q (dropped %d); want %q", got.lines, got.dropped, want)
+	}
+
+	got.keepLast(2)
+	if got.dropped != 7 || len(got.lines) != 2 {
+		t.Fatalf("keepLast(2): dropped %d (want 7: one line and a run of six), lines %q", got.dropped, got.lines)
+	}
+	me := uuid.NewString()
+	v := &protocol.GameView{State: "active", Seats: []protocol.PlayerView{{ID: me, Name: "Agent"}}}
+	board := compactBoard(v, me, got, nil)
+	if !strings.Contains(board, "SINCE YOUR LAST DECISION (public log, oldest first)\n  … 7 earlier log entries not shown (get_state(detail: \"full\") has the last 24)\n  «Avenger") {
+		t.Errorf("the cut is not stated:\n%s", board)
 	}
 }

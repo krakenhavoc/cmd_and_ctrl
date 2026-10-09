@@ -1352,6 +1352,9 @@ type pendingChoiceSnapshot struct {
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
+	ManaDifferent        int                    `json:"manaDifferent,omitempty"`
+	ManaChosen           []string               `json:"manaChosen,omitempty"`
+	ManaLabel            string                 `json:"manaLabel,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
@@ -2360,6 +2363,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
+		ManaDifferent:        c.ManaDifferent,
+		ManaChosen:           copyStrings(c.ManaChosen),
+		ManaLabel:            c.ManaLabel,
 		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
@@ -3196,6 +3202,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
+		ManaDifferent:        c.ManaDifferent,
+		ManaChosen:           copyStrings(c.ManaChosen),
+		ManaLabel:            c.ManaLabel,
 		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,

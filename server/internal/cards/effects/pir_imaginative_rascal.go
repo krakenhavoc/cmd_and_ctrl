@@ -16,27 +16,26 @@ import (
 // adds a loyalty counter to your planeswalker's +1 and a defense
 // counter to your battle, and Hardened Scales does neither.
 //
-// TWO DECLARED SIMPLIFICATIONS, both weaker than printed.
-//
 // "Your team" is read as "you". Two-Headed Giant is not a format this
 // engine has, so a team is one player and the two readings coincide
 // at every table it will ever see. Stated rather than silently
 // assumed, because the day a team format arrives this is where the
 // assumption is.
 //
-// Partner with is absent. It is a pair of abilities — a
-// tutor-on-entry trigger and a Commander deck-construction
-// permission — and the engine has neither a "search your library for
-// a card by NAME" primitive nor partner-aware commander validation.
-// Shipping the tutor half without the deck-construction half would be
-// the wrong subset anyway: the trigger is the small half, and the
-// reason anybody plays Pir is the +1.
+// Partner with is CR 702.124j's two abilities: the commander pairing
+// with Toothy (internal/deck) and the entry search for a card named
+// Toothy (PartnerWith). Until #2142 neither existed and Pir shipped
+// with a caveat for both.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "7683c2b2-a06f-4691-9cc5-1968dc032885",
 		Name:         "Pir, Imaginative Rascal",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"\"Partner with Toothy\" is missing — no search trigger, and Pir can't be paired as a commander."},
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			PartnerWith("Pir, Imaginative Rascal", "Toothy, Imaginary Friend"),
+		},
 		Replacements: []game.ReplacementEffect{
 			{
 				Watches: []game.EventKind{game.EventCounterPlaced},
