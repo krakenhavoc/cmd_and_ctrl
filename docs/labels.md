@@ -62,6 +62,10 @@ registered, or when this file is stale.
 | `energyToPay` | `energy to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper (ADR 0129 §3): how much energy to pay, from its floor to the seat's energy |
 | `payEnergy` | `Pay <N> {E}` (ends with ` {E}`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary: pays the stepper's amount |
 | `payNothing` | `Pay nothing` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more |
+| `lifeToPay` | `life to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper when it asks for life (#1941): how much life to pay, from nothing to the seat's life total |
+| `payLife` | `Pay <N> life` (ends with ` life`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for life (#1941): pays the stepper's amount |
+| `numberToChoose` | `number to choose` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's field when it asks for a number that is not paid (#1941): Volcano Hellion's amount of damage |
+| `chooseNumber` | `Choose <N>` (starts with `Choose `) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number |
 | `payLifeForMana` | `Pay life for {B}…` | menuitem | text | `lib/payLifeForMana.ts` | the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4) |
 | `rollForFirstTurn` | `roll for the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the opening roll's request; the tutorial's roll step anchors here while the viewer owes a die |
 | `roll` | `Roll` | button | text | `lib/components/board/OpeningRollDock.svelte` | the opening roll's primary |

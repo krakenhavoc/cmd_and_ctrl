@@ -2406,12 +2406,24 @@ export interface DelveView {
 // the clause's kind they control for a sacrifice); one payment names
 // exactly `count` of them.
 // ADR 0129 §3: the bounds of a pay_amount prompt. goal is the card's
-// own threshold (the stepper starts there); unit is what one energy buys.
+// own threshold (the stepper starts there); unit is what one point buys.
+// ADR 0129's amendment of 2026-10-09 (#1941): `resource` is what each
+// point costs — energy (also when absent), life, or none for a number
+// that is chosen and not paid ("an amount of damage of your choice").
+// A payment may always be declined with 0; a number that is not paid is
+// min..max alone. With `no_max` the number has no ceiling and `max` is
+// only the server's overflow guard. `marks` are other numbers the card
+// names (the bot's offers); `self_damage` says the chooser is dealt the
+// same amount.
 export interface PayAmountView {
   min: number;
   max: number;
   goal?: number;
   unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
+  resource?: "energy" | "life" | "none";
+  no_max?: boolean;
+  marks?: number[];
+  self_damage?: boolean;
 }
 
 export interface PayCardsView {
@@ -3719,6 +3731,11 @@ export interface CardView extends CastSurfaceView {
   // permanent's OWN printed abilities exists. Same lifecycle,
   // PUBLIC/redaction and rendering module as chosen_color above.
   chosen_option?: string;
+  // #1941: the number chosen as this permanent entered — the life
+  // Phyrexian Processor's controller paid, the size of its tokens.
+  // Absent at zero. Same lifecycle, PUBLIC/redaction and rendering
+  // module as chosen_color above.
+  chosen_number?: number;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the

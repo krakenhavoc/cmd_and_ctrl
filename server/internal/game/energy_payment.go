@@ -150,6 +150,64 @@ type PayAmountPrompt struct {
 	// Unit says what each counter paid buys: PayAmountDamage,
 	// PayAmountCounters, PayAmountCards, … Read by the heuristic.
 	Unit string
+
+	// The fields below were added by ADR 0129's amendment of
+	// 2026-10-09 (#1941), which widens the prompt from energy to any
+	// number a resolving effect asks for (choose_number.go). Their zero
+	// values are the energy prompt exactly as it was.
+
+	// Resource is what each point of the answer costs the chooser:
+	// PayResourceEnergy (the empty string reads as energy, so a prompt
+	// that predates the field is unchanged), PayResourceLife ("pay any
+	// amount of life", CR 119.4) or PayResourceNone (a number chosen
+	// and not paid: "an amount of damage of your choice", CR 608.2d).
+	Resource string
+	// NoMax is a number with no printed ceiling (CR 107.1b only rules
+	// out a negative one). Max then holds PayAmountNoMaxCeiling, the
+	// engine's guard against an overflow, which no client draws.
+	NoMax bool
+	// Marks are further numbers the card names as meaningful, offered
+	// by the enumerator beside Min, Goal and Max: the chooser's life
+	// total, for Volcano Hellion. Ascending; may be empty.
+	Marks []int
+	// SelfDamage says each point is also dealt to the chooser as damage
+	// (Volcano Hellion's "to you and target creature"), so a policy
+	// prices the answer in life even though nothing is paid.
+	SelfDamage bool
+}
+
+// The resources a pay_amount prompt charges (PayAmountPrompt.Resource).
+const (
+	PayResourceEnergy = "energy"
+	PayResourceLife   = "life"
+	PayResourceNone   = "none"
+)
+
+// PayAmountNoMaxCeiling is the largest answer a prompt with no printed
+// ceiling takes. No card needs more, and damage, life and token sizes
+// are ints the engine adds and doubles.
+const PayAmountNoMaxCeiling = 1_000_000
+
+// ResourceOrEnergy is Resource with the empty string read as energy.
+func (pa *PayAmountPrompt) ResourceOrEnergy() string {
+	if pa == nil || pa.Resource == "" {
+		return PayResourceEnergy
+	}
+	return pa.Resource
+}
+
+// AnswerInBounds reports whether n is an answer the prompt's bounds
+// admit. A payment (energy or life) may always be declined, so 0 is an
+// answer as well as Min..Max; a number that is not paid is Min..Max
+// alone.
+func (pa *PayAmountPrompt) AnswerInBounds(n int) bool {
+	if pa == nil || n < 0 {
+		return false
+	}
+	if n >= pa.Min && n <= pa.Max {
+		return true
+	}
+	return n == 0 && pa.ResourceOrEnergy() != PayResourceNone
 }
 
 // The units a pay_amount prompt declares (PayAmountPrompt.Unit).
@@ -226,7 +284,7 @@ func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
 		Count:     1,
 		Source:    p.Source,
 		Reason:    p.Question,
-		PayAmount: &PayAmountPrompt{Min: minimum, Max: maximum, Goal: goal, Unit: p.Unit},
+		PayAmount: &PayAmountPrompt{Min: minimum, Max: maximum, Goal: goal, Unit: p.Unit, Resource: PayResourceEnergy},
 		chooseValueResume: &chooseValueFrame{then: func(g *Game, value string) error {
 			// "" is the drop (the chooser left, CR 800.4f): nothing
 			// was paid. An answer is always a validated number.
@@ -244,10 +302,13 @@ func (g *Game) QueuePayEnergyAmountForEffect(p PayEnergyAmount) error {
 }
 
 // ResolvePayAmount answers a PendingChoicePayAmount with `amount`. The
-// amount must be 0 or lie within the prompt's bounds, and within the
-// chooser's energy now (CR 118.3); one that does not is refused with the prompt
-// left in place. A legal answer pays the energy through payEnergyLocked
-// and then runs the rest of the card with the amount.
+// amount must be an answer the prompt's bounds admit
+// (PayAmountPrompt.AnswerInBounds), and a payment must be one the
+// chooser can make now (CR 118.3, 119.4); one that is not is refused
+// with the prompt left in place. A legal answer pays its resource —
+// energy through payEnergyLocked, life through the life-payment path,
+// nothing for a number that is only chosen — and then runs the rest of
+// the card with the amount.
 //
 // Caller must NOT hold g.mu.
 func (g *Game) ResolvePayAmount(choiceID, chooserID uuid.UUID, amount int) error {
@@ -267,16 +328,31 @@ func (g *Game) ResolvePayAmount(choiceID, chooserID uuid.UUID, amount int) error
 		return ErrNotTheChooser
 	}
 	pa := choice.PayAmount
-	if amount != 0 && (amount < pa.Min || amount > pa.Max) {
+	if !pa.AnswerInBounds(amount) {
 		return ErrInvalidParam
 	}
-	if err := EnergyShortfall(g.playerByIDLocked(chooserID), amount); err != nil {
-		return err
+	resource := pa.ResourceOrEnergy()
+	switch resource {
+	case PayResourceEnergy:
+		if err := EnergyShortfall(g.playerByIDLocked(chooserID), amount); err != nil {
+			return err
+		}
+	case PayResourceLife:
+		if !g.CanPayLifeLocked(g.playerByIDLocked(chooserID), amount) {
+			return ErrInvalidParam
+		}
 	}
 	frame := choice.chooseValueResume
 	source := choice.Source
 	g.dequeueChoiceLocked(idx)
-	if err := g.payEnergyLocked(chooserID, amount, source); err != nil {
+	var err error
+	switch resource {
+	case PayResourceEnergy:
+		err = g.payEnergyLocked(chooserID, amount, source)
+	case PayResourceLife:
+		err = g.payLifeAsCostLocked(source, chooserID, amount)
+	}
+	if err != nil {
 		g.emitChoiceEffectErrorLocked(chooserID, source, err)
 		amount = 0
 	}

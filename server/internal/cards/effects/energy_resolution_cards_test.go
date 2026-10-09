@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -237,7 +238,7 @@ func TestHarnessedLightningPaysForDamage(t *testing.T) {
 	if c == nil {
 		t.Fatal("no pay_amount prompt")
 	}
-	if *c.PayAmount != (game.PayAmountPrompt{Min: 0, Max: 4, Goal: 3, Unit: game.PayAmountDamage}) {
+	if !reflect.DeepEqual(*c.PayAmount, game.PayAmountPrompt{Min: 0, Max: 4, Goal: 3, Unit: game.PayAmountDamage, Resource: game.PayResourceEnergy}) {
 		t.Errorf("prompt = %+v", *c.PayAmount)
 	}
 	if err := g.ResolvePayAmount(c.ID, me.ID, 3); err != nil {

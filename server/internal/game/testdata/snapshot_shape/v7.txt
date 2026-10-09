@@ -50,6 +50,7 @@ battlefield.cards[].catalogAbilities.static	number:int
 battlefield.cards[].catalogAbilities.triggered	number:int
 battlefield.cards[].chosenColor	string
 battlefield.cards[].chosenName	string
+battlefield.cards[].chosenNumber	number:int
 battlefield.cards[].chosenOption	string
 battlefield.cards[].chosenPlayer	custom(uuid.UUID)
 battlefield.cards[].classLevel	number:int
@@ -513,6 +514,7 @@ exile.cards[].catalogAbilities.static	number:int
 exile.cards[].catalogAbilities.triggered	number:int
 exile.cards[].chosenColor	string
 exile.cards[].chosenName	string
+exile.cards[].chosenNumber	number:int
 exile.cards[].chosenOption	string
 exile.cards[].chosenPlayer	custom(uuid.UUID)
 exile.cards[].classLevel	number:int
@@ -986,6 +988,7 @@ lastKnownPermanents{}[].characteristic.Toughness	number:int
 lastKnownPermanents{}[].characteristic.Types	array
 lastKnownPermanents{}[].characteristic.Types[]	string
 lastKnownPermanents{}[].chosenColor	string
+lastKnownPermanents{}[].chosenNumber	number:int
 lastKnownPermanents{}[].controller	custom(uuid.UUID)
 lastKnownPermanents{}[].counters	map:string
 lastKnownPermanents{}[].counters{}	number:int
@@ -1035,6 +1038,7 @@ lastKnownStack[].card.catalogAbilities.static	number:int
 lastKnownStack[].card.catalogAbilities.triggered	number:int
 lastKnownStack[].card.chosenColor	string
 lastKnownStack[].card.chosenName	string
+lastKnownStack[].card.chosenNumber	number:int
 lastKnownStack[].card.chosenOption	string
 lastKnownStack[].card.chosenPlayer	custom(uuid.UUID)
 lastKnownStack[].card.classLevel	number:int
@@ -2250,6 +2254,7 @@ phasedOut.cards[].catalogAbilities.static	number:int
 phasedOut.cards[].catalogAbilities.triggered	number:int
 phasedOut.cards[].chosenColor	string
 phasedOut.cards[].chosenName	string
+phasedOut.cards[].chosenNumber	number:int
 phasedOut.cards[].chosenOption	string
 phasedOut.cards[].chosenPlayer	custom(uuid.UUID)
 phasedOut.cards[].classLevel	number:int
@@ -2846,6 +2851,7 @@ seats[].command.cards[].catalogAbilities.static	number:int
 seats[].command.cards[].catalogAbilities.triggered	number:int
 seats[].command.cards[].chosenColor	string
 seats[].command.cards[].chosenName	string
+seats[].command.cards[].chosenNumber	number:int
 seats[].command.cards[].chosenOption	string
 seats[].command.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].command.cards[].classLevel	number:int
@@ -3150,6 +3156,7 @@ seats[].emblems.cards[].catalogAbilities.static	number:int
 seats[].emblems.cards[].catalogAbilities.triggered	number:int
 seats[].emblems.cards[].chosenColor	string
 seats[].emblems.cards[].chosenName	string
+seats[].emblems.cards[].chosenNumber	number:int
 seats[].emblems.cards[].chosenOption	string
 seats[].emblems.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].emblems.cards[].classLevel	number:int
@@ -3445,6 +3452,7 @@ seats[].graveyard.cards[].catalogAbilities.static	number:int
 seats[].graveyard.cards[].catalogAbilities.triggered	number:int
 seats[].graveyard.cards[].chosenColor	string
 seats[].graveyard.cards[].chosenName	string
+seats[].graveyard.cards[].chosenNumber	number:int
 seats[].graveyard.cards[].chosenOption	string
 seats[].graveyard.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].graveyard.cards[].classLevel	number:int
@@ -3738,6 +3746,7 @@ seats[].hand.cards[].catalogAbilities.static	number:int
 seats[].hand.cards[].catalogAbilities.triggered	number:int
 seats[].hand.cards[].chosenColor	string
 seats[].hand.cards[].chosenName	string
+seats[].hand.cards[].chosenNumber	number:int
 seats[].hand.cards[].chosenOption	string
 seats[].hand.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].hand.cards[].classLevel	number:int
@@ -4042,6 +4051,7 @@ seats[].library.cards[].catalogAbilities.static	number:int
 seats[].library.cards[].catalogAbilities.triggered	number:int
 seats[].library.cards[].chosenColor	string
 seats[].library.cards[].chosenName	string
+seats[].library.cards[].chosenNumber	number:int
 seats[].library.cards[].chosenOption	string
 seats[].library.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].library.cards[].classLevel	number:int
@@ -4547,6 +4557,7 @@ stack.cards[].catalogAbilities.static	number:int
 stack.cards[].catalogAbilities.triggered	number:int
 stack.cards[].chosenColor	string
 stack.cards[].chosenName	string
+stack.cards[].chosenNumber	number:int
 stack.cards[].chosenOption	string
 stack.cards[].chosenPlayer	custom(uuid.UUID)
 stack.cards[].classLevel	number:int

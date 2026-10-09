@@ -160,6 +160,12 @@ type PermanentInfo struct {
 	ChosenColor string `json:"chosenColor,omitempty"`
 	NamedTribe  string `json:"namedTribe,omitempty"`
 
+	// ChosenNumber is the number chosen for it as it entered
+	// (Card.ChosenNumber, #1941), as it last existed: Phyrexian
+	// Processor's token is still the size of the life paid when the
+	// Processor is sacrificed in response to its own ability (CR 608.2h).
+	ChosenNumber int `json:"chosenNumber,omitempty"`
+
 	// ManaValue is the permanent's mana value as it last existed on the
 	// battlefield (#1600): Food Chain's "1 plus the exiled creature's
 	// mana value". Read off the card's mana cost while it was a
@@ -236,6 +242,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		CraftedWith:    cloneObjectRefs(c.CraftedWith),
 		ChosenColor:    c.ChosenColor,
 		NamedTribe:     c.NamedTribe,
+		ChosenNumber:   c.ChosenNumber,
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
 		Suspected:      c.Suspected,

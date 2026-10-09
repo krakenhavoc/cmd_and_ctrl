@@ -1682,19 +1682,6 @@ var items = []Item{
 		Examples: []string{"Deranged Hermit", "Karmic Guide", "Skizzik Surger"},
 	},
 	{
-		// Found landing ADR 0108 PR 4 (#1888): Volcano Hellion's echo
-		// shipped, its enters trigger did not.
-		Slug: "choose-a-number-on-resolution", Name: "Choosing a number as an ability resolves", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Effects that let a player choose any number as they resolve, such as Volcano Hellion's \"an amount of damage of your choice\", or as a permanent enters, such as Phyrexian Processor's \"pay any amount of life\".",
-		Missing:     "A player can't yet choose an arbitrary number while a spell or ability resolves, or as a permanent enters.",
-		Rules:       []string{"608.2d", "107.1b", "614.12a"},
-		Issue:       1941,
-		Tracked:     "#1941 (found landing ADR 0108 PR 4, #1888)",
-		Waiting:     []string{"Volcano Hellion", "Necrodominance", "Phyrexian Processor"},
-		Phrases:     []string{"amount of your choice", "number of your choice"},
-		EngineNotes: "prompt: the only number a resolving effect can ask for today is an option pick over a fixed list (`PendingChoiceOptionPick`) or a mode picked at announce (Expel the Interlopers' caveat); the loop shortcut's integer is its own kind. Volcano Hellion's \"deals an amount of damage of your choice to you and target creature\" is chosen on resolution (CR 608.2d) and has no ceiling, and a capped list is weaker than printed whenever the amount matters past lethal (lifelink, a \"whenever this is dealt damage\" creature). Its echo {X} (X = your life total, read on resolution) shipped with ADR 0108 PR 4 as `effects.EchoX`, and its \"The damage can't be prevented\" with ADR 0107 PR 6. Needs a resolution-time number prompt: a pending-choice kind with a min and an optional max, a number field in the client, and an enumerator that offers a handful of meaningful values. Phyrexian Processor (S58 deck requests, #2077): \"As this artifact enters, pay any amount of life\" is the same number chosen as a permanent enters (CR 614.12a); `PendingChoiceEntryPayLife` (`game/entry_choice.go`) asks only about a fixed amount, and the number has to stay on the permanent for its token's X.",
-	},
-	{
 		// #1889; built by ADR 0108 §10 (PR 10).
 		Slug: "damage-as-though-wither", Name: "Damage dealt as though its source had wither or infect", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Statics that change how every source's damage is dealt, such as Everlasting Torment's \"All damage is dealt as though its source had wither\".",
@@ -2772,7 +2759,7 @@ var items = []Item{
 			return len(s.HandSize) > 0
 		},
 		Examples:    []string{"Jin-Gitaxias, Core Augur", "Null Profusion", "Price of Knowledge"},
-		EngineNotes: "**Shipped** (ADR 0113 §3): `Spec.HandSize` declares `game.HandSizeStatic{Players, Kind, N, When}` (you, each opponent, each player or the chosen player; no maximum, set to N or change by N), and `Spec.NoMaxHandSize` folds into it. `Game.EffectiveMaxHandSizeLocked` folds every entry that reaches a player in CR 613.11 timestamp order from seven: battlefield statics through `CatalogAbilityKey` at `Card.layerTimestamp()`, and the player's own grant at `Player.MaxHandSizeAt` (an additive snapshot field). The result is no maximum or max(0, value) (CR 107.1b). The cleanup discard still asks only the active player, against their own maximum (CR 514.1). **The pool** (#2074 pool PR): `HandSizeStatic.Dynamic` reads an entry's number, and whether it applies, when the maximum is asked for (Midnight Oil's hour counters, Winter, Misanthropic Guide's delirium), keeping the permanent's timestamp. Sixteen more cards ship on the slot. Inspired Idea and Enter the Infinite shipped on `max-hand-size-grants` (#2108). The Second Doctor shipped on `cant-attack-you-next-turn` (#2109). Cecily, Haunted Mage on `free-cast-from-hand-during-resolution` (#2110), and Necrodominance on `choose-a-number-on-resolution` (#1941).",
+		EngineNotes: "**Shipped** (ADR 0113 §3): `Spec.HandSize` declares `game.HandSizeStatic{Players, Kind, N, When}` (you, each opponent, each player or the chosen player; no maximum, set to N or change by N), and `Spec.NoMaxHandSize` folds into it. `Game.EffectiveMaxHandSizeLocked` folds every entry that reaches a player in CR 613.11 timestamp order from seven: battlefield statics through `CatalogAbilityKey` at `Card.layerTimestamp()`, and the player's own grant at `Player.MaxHandSizeAt` (an additive snapshot field). The result is no maximum or max(0, value) (CR 107.1b). The cleanup discard still asks only the active player, against their own maximum (CR 514.1). **The pool** (#2074 pool PR): `HandSizeStatic.Dynamic` reads an entry's number, and whether it applies, when the maximum is asked for (Midnight Oil's hour counters, Winter, Misanthropic Guide's delirium), keeping the permanent's timestamp. Sixteen more cards ship on the slot. Inspired Idea and Enter the Infinite shipped on `max-hand-size-grants` (#2108). The Second Doctor shipped on `cant-attack-you-next-turn` (#2109). Cecily, Haunted Mage on `free-cast-from-hand-during-resolution` (#2110), and Necrodominance with `choose-a-number-on-resolution` (#1941).",
 	},
 	{
 		Slug: "free-cast-from-hand-during-resolution", Name: "Casting a spell from your hand for free as an ability resolves", Kind: KindSeam, Status: StatusMissing,
@@ -3205,6 +3192,13 @@ var items = []Item{
 		Rules:    []string{"608.2c", "701.21a"},
 		ADR:      "0013-replacement-effects.md",
 		Examples: []string{"Victimize", "Rise of the Witch-king", "Lich-Knights' Conquest"},
+	},
+	{
+		Slug: "choose-a-number-on-resolution", Name: "Choosing a number as an ability resolves", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that let a player choose any number as they resolve, such as Volcano Hellion's \"an amount of damage of your choice\", or pay any amount of life, as it resolves or as a permanent enters, such as Phyrexian Processor's.",
+		Rules:    []string{"608.2d", "107.1b", "614.12a", "119.4"},
+		ADR:      "0129-energy-getting-and-paying-it.md",
+		Examples: []string{"Volcano Hellion", "Phyrexian Processor", "Necrodominance"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

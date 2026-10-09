@@ -64,8 +64,10 @@
   import {
     energyShortBy,
     payAmountAnswerable,
+    payAmountCanSubmit,
     payAmountClamp,
     payAmountFloor,
+    payAmountResource,
     payAmountStart,
   } from "../../payEnergy";
   import { L } from "../../labels";
@@ -840,6 +842,18 @@
   });
   const payAmountOK = $derived(
     payAmountView !== null && payAmountAnswerable(payAmountView, payAmountValue),
+  );
+  // #1941: what the stepper counts — energy, life, or a number that is
+  // not paid — for its labels.
+  const payAmountUnit = $derived(payAmountView ? payAmountResource(payAmountView) : "energy");
+  const payAmountLess = $derived(
+    payAmountUnit === "none" ? "One less" : `One less ${payAmountUnit}`,
+  );
+  const payAmountMore = $derived(
+    payAmountUnit === "none" ? "One more" : `One more ${payAmountUnit}`,
+  );
+  const payAmountField = $derived(
+    payAmountUnit === "none" ? "Number" : `Amount of ${payAmountUnit}`,
   );
   function stepPayAmount(delta: number): void {
     if (!payAmountView) return;
@@ -1687,24 +1701,34 @@
 
 {#snippet payAmountBody()}
   {#if payAmountView}
-    <div class="pay-amount" role="group" aria-label={L.energyToPay}>
+    <!-- #1941: the same stepper asks for life, or for a number that is
+         not paid (Volcano Hellion's damage), which may have no ceiling. -->
+    <div
+      class="pay-amount"
+      role="group"
+      aria-label={payAmountUnit === "energy"
+        ? L.energyToPay
+        : payAmountUnit === "life"
+          ? L.lifeToPay
+          : L.numberToChoose}
+    >
       <button
         type="button"
         class="pay-amount-step"
-        aria-label="One less energy"
+        aria-label={payAmountLess}
         disabled={payAmountValue <= payAmountFloor(payAmountView)}
         onclick={() => stepPayAmount(-1)}>−</button
       >
       <input
         type="number"
         min={payAmountFloor(payAmountView)}
-        max={payAmountView.max}
+        max={payAmountView.no_max ? undefined : payAmountView.max}
         step="1"
         bind:value={payAmountValue}
-        aria-label="Amount of energy"
+        aria-label={payAmountField}
         onkeydown={(e) => {
-          // The number typed is the answer: Enter in the field pays it.
-          if (e.key !== "Enter" || !payAmountOK || payAmountValue <= 0) return;
+          // The number typed is the answer: Enter in the field answers it.
+          if (e.key !== "Enter" || !payAmountCanSubmit(payAmountView, payAmountValue)) return;
           e.preventDefault();
           submitPayAmount(payAmountValue);
         }}
@@ -1712,11 +1736,17 @@
       <button
         type="button"
         class="pay-amount-step"
-        aria-label="One more energy"
+        aria-label={payAmountMore}
         disabled={payAmountValue >= payAmountView.max}
         onclick={() => stepPayAmount(1)}>+</button
       >
-      <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
+      {#if payAmountUnit === "energy"}
+        <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
+      {:else if payAmountUnit === "life"}
+        <span class="pay-amount-of">of {payAmountView.max} life</span>
+      {:else if !payAmountView.no_max}
+        <span class="pay-amount-of">up to {payAmountView.max}</span>
+      {/if}
     </div>
   {/if}
 {/snippet}

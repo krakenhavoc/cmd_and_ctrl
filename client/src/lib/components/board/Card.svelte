@@ -917,6 +917,7 @@
       namedTribe={card.named_tribe}
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
+      chosenNumber={card.chosen_number}
       protection={card.protection}
       riotHaste={card.riot_haste}
       abilityRows={artTile ? card.ability_rows : null}
@@ -1070,6 +1071,7 @@
       namedTribe={card.named_tribe}
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
+      chosenNumber={card.chosen_number}
       protection={card.protection}
       riotHaste={card.riot_haste}
     />

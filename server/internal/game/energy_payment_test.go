@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -179,7 +180,7 @@ func TestPayAmountBoundsPaysAndHandsOn(t *testing.T) {
 	if c == nil || c.PayAmount == nil {
 		t.Fatal("no pay_amount queued")
 	}
-	if *c.PayAmount != (PayAmountPrompt{Min: 1, Max: 5, Goal: 3, Unit: PayAmountDamage}) {
+	if !reflect.DeepEqual(*c.PayAmount, PayAmountPrompt{Min: 1, Max: 5, Goal: 3, Unit: PayAmountDamage, Resource: PayResourceEnergy}) {
 		t.Errorf("PayAmount = %+v", *c.PayAmount)
 	}
 	if !ChoiceBlocksTable(PendingChoicePayAmount) {
