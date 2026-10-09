@@ -933,8 +933,8 @@ var items = []Item{
 		Summary:     "Reality Fracture cards that wait on a mechanic the engine doesn't have yet.",
 		Missing:     "These cards need a rule the game doesn't have yet, so they can't be played.",
 		Issue:       2795,
-		Waiting:     []string{"Extrapolate the Impossible"},
-		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Each blocker is listed here by card as slices land.",
+		Waiting:     []string{"Extrapolate the Impossible", "Dack Fayden, Helping Hand"},
+		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed. Dack Fayden, Helping Hand: its enters trigger reveals until X creature cards (X is the number of opponents), puts them onto the battlefield, then goads them \"for the rest of the game\". The engine's goad ends as the goader's next turn begins (`game/goad.go`, CR 701.15a), with no permanent form. It then has the controller choose a different opponent for each of those permanents and gives each that opponent's control, which is a distribution of permanents across opponents with no prompt shape (the existing own-permanents and choose-player prompts take one pick each, not a matching). Each blocker is listed here by card as slices land.",
 	},
 	{
 		Slug: "modular", Name: "Modular", Kind: KindSeam, Status: StatusMissing,
