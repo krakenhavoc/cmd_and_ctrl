@@ -44,6 +44,9 @@ func TestExertBattleDeck(t *testing.T) {
 }
 
 func TestArenaTalliesExertAttacks(t *testing.T) {
+	// Parallel (#2766): a lockstep arena run owns its games, rooms and
+	// seeds, so it replays the same tables beside other tests.
+	t.Parallel()
 	deck := botarena.ExertDeckID
 	cfg := botarena.Config{
 		Seats: []botarena.SeatSpec{

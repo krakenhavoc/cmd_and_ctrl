@@ -2917,7 +2917,12 @@ func TestSnapshotCorpusRestores(t *testing.T) {
 			t.Errorf("%s holds no fixtures", dir)
 		}
 		for _, f := range files {
-			t.Run(e.Name()+"/"+filepath.Base(f), func(t *testing.T) { checkCorpusFixture(t, f, version) })
+			t.Run(e.Name()+"/"+filepath.Base(f), func(t *testing.T) {
+				// Parallel (#2766): each fixture is read and restored
+				// into its own game.
+				t.Parallel()
+				checkCorpusFixture(t, f, version)
+			})
 		}
 	}
 	if !haveCurrent {
