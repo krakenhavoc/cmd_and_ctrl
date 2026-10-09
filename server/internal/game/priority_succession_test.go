@@ -34,7 +34,7 @@ func successionGameAt(t *testing.T, seats, active int, step Step) *Game {
 		if g.Turn.ActiveSeat == active {
 			break
 		}
-		if err := g.PassTurn(); err != nil {
+		if err := g.EndTurnNowForTest(); err != nil {
 			t.Fatalf("PassTurn: %v", err)
 		}
 	}

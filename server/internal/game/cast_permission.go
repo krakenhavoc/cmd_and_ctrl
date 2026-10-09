@@ -1583,7 +1583,7 @@ func (g *Game) sweepCastPermissionsLocked(endOfTurn bool) {
 			}
 			// ADR 0099 §4's backstop. A pass-closed grant normally ends
 			// on its holder's next pass, but the sandbox can move the
-			// turn without one (pass_turn). Dropping it silently would
+			// turn without one (EndTurnNowForTest). Dropping it silently would
 			// strand a discovered card in exile and leave its discover
 			// unfinished, so it lapses exactly as a pass would have.
 			if perm.LapseOnPass != "" && perm.Scope == ScopeCards {

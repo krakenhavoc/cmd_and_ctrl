@@ -158,6 +158,7 @@ var gameFields = plan(
 	// validates against. A restored game is a NEW *Game — zero
 	// generation, empty slot — and its first view refolds the carried
 	// Events from scratch, so there is nothing to serialise.
+	"passTurn", dropped, "restores empty: the active player's standing pass turn (#2881, pass_turn.go); after a restore they hold priority as if they had not pressed it, and press Pass turn again. Nothing is passed that they did not pass",
 	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",

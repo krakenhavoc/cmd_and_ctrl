@@ -287,7 +287,7 @@ func TestBorneUponAWindGrantsFlashForTheTurnAndDraws(t *testing.T) {
 	passPriorityAroundTable(t, g)
 
 	// And it ends with the turn (CR 514.2).
-	if err := g.PassTurn(); err != nil {
+	if err := g.EndTurnNowForTest(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if n := ctStoredTimings(me); n != 0 {

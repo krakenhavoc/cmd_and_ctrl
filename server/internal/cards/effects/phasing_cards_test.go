@@ -40,7 +40,7 @@ func passTurnsTo(t *testing.T, g *game.Game, seat int) {
 		if g.Turn.ActiveSeat == seat && i > 0 {
 			return
 		}
-		if err := g.PassTurn(); err != nil {
+		if err := g.EndTurnNowForTest(); err != nil {
 			t.Fatalf("PassTurn: %v", err)
 		}
 		if g.Turn.ActiveSeat == seat {

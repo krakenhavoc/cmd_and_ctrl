@@ -30,7 +30,7 @@ const (
 // cleanup would stop on the discard.
 func endTurn(t *testing.T, g *game.Game) {
 	t.Helper()
-	if err := g.PassTurn(); err != nil {
+	if err := g.EndTurnNowForTest(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 }

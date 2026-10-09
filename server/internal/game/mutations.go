@@ -8173,6 +8173,16 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.passPriorityAsHolderLocked()
+}
+
+// passPriorityAsHolderLocked is PassPriority under the caller's lock:
+// the holder's pass-closed windows, then the pass. A standing pass
+// turn (pass_turn.go, #2881) passes through it, so its passes are the
+// same passes a click on "next" makes.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) passPriorityAsHolderLocked() error {
 	// #1665: passing is the decline of a resolved miracle's cast
 	// (CR 702.94a) — see miracle.go. Before the pass, because this
 	// pass can resolve the next miracle trigger.
@@ -9546,50 +9556,6 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	// priority is parked for their declaration was the one the table
 	// was waiting on; if nobody else is, the declaration is over.
 	g.settleBlockDeclarationLocked()
-	return nil
-}
-
-// PassTurn skips to the next player's untap step, regardless of
-// whatever step the current turn is in. Useful for forfeiting a turn
-// or when all steps are uneventful. Lands on Untap with NoPriority
-// (S13); the entry hook auto-untaps and walks the cursor on to
-// Upkeep, matching the normal-flow behaviour of priority wraps and
-// AdvanceStep so callers always end at a priority-granting step.
-//
-// The rest of the turn ends through the rotation seam (rotation.go,
-// #766): attackers and blockers leave combat, and the cleanup sweep
-// removes marked damage and ends "until end of turn" effects. The
-// steps in between do not happen — no end step, so no "at the
-// beginning of the end step" triggers — and the cleanup discard to
-// hand size is skipped. This is a sandbox verb, not a rules action;
-// a player who wants the discard and the end step passes priority
-// through them instead.
-func (g *Game) PassTurn() error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.State != StateActive {
-		return ErrGameNotActive
-	}
-	// #730: gated for the same reason advance_step is, and more so —
-	// this verb walks the cursor through every remaining step of the
-	// turn. A prompt left open behind it is unanswerable in practice.
-	// See choice_gate.go.
-	if c := g.blockingChoiceLocked(); c != nil {
-		return choicePendingErrorLocked(c)
-	}
-	// End the turn through the shared seam so eliminated seats are
-	// skipped, the cleanup sweep runs and per-turn caches clear.
-	g.clearCombatLocked()
-	g.sweepTurnEndLocked()
-	g.beginNextTurnLocked()
-	// Refresh per-turn budgets (undo, future per-turn counters) on
-	// the new active seat — same hook AdvanceStep / PassPriority's
-	// wrap branch run when stepping into untap. The hook also auto-
-	// untaps and advances past Untap (no priority) so the cursor
-	// lands at Upkeep.
-	g.runStepEntryHooksLocked()
-	// CR 117.5 / 704.3: new priority grant → run SBAs.
-	g.runStateChecksLocked()
 	return nil
 }
 

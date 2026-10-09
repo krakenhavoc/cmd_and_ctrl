@@ -1,5 +1,5 @@
 {
-  "seq": 4,
+  "seq": 16,
   "generation": 0,
   "game": {
     "id": "\u003cuuid-001\u003e",
@@ -160,6 +160,7 @@
         },
         "commander_damage": {},
         "life_history": [],
+        "hand_kept": true,
         "max_hand_size": 7,
         "land_drops_per_turn": 1,
         "lands_played_this_turn": 0
@@ -203,6 +204,7 @@
         },
         "commander_damage": {},
         "life_history": [],
+        "hand_kept": true,
         "max_hand_size": 7,
         "land_drops_per_turn": 1,
         "lands_played_this_turn": 0
@@ -216,8 +218,7 @@
           "instance_id": "\u003cuuid-025\u003e",
           "name": "Test Filler 11",
           "owner": "\u003cuuid-002\u003e",
-          "controller": "\u003cuuid-002\u003e",
-          "tapped": true
+          "controller": "\u003cuuid-002\u003e"
         }
       ]
     },
@@ -240,15 +241,12 @@
       "seq": 2,
       "number": 1,
       "active_seat": 1,
-      "priority_holder": -1,
+      "priority_holder": 1,
       "phase": "beginning",
-      "step": "untap",
+      "step": "upkeep",
       "phase_id": 1,
+      "phase_ordinal": 1,
       "upcoming": [
-        {
-          "step": "upkeep",
-          "phase_id": 1
-        },
         {
           "step": "draw",
           "phase_id": 1
@@ -295,7 +293,7 @@
         }
       ]
     },
-    "mulligans_open": true,
+    "mulligans_open": false,
     "undo_limit": 1,
     "settings": {
       "undo_limit": 1,
@@ -313,6 +311,118 @@
         "seat": 0,
         "amount": 1,
         "text": "Player 1 drew a card"
+      },
+      {
+        "seq": 3,
+        "kind": "step",
+        "turn": 1,
+        "step": "untap",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · untap"
+      },
+      {
+        "seq": 5,
+        "kind": "step",
+        "turn": 1,
+        "step": "upkeep",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · upkeep"
+      },
+      {
+        "seq": 7,
+        "kind": "step",
+        "turn": 1,
+        "step": "draw",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · draw"
+      },
+      {
+        "seq": 8,
+        "kind": "step",
+        "turn": 1,
+        "step": "precombat_main",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · precombat main"
+      },
+      {
+        "seq": 10,
+        "kind": "step",
+        "turn": 1,
+        "step": "begin_combat",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · begin combat"
+      },
+      {
+        "seq": 11,
+        "kind": "step",
+        "turn": 1,
+        "step": "declare_attackers",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · declare attackers"
+      },
+      {
+        "seq": 12,
+        "kind": "step",
+        "turn": 1,
+        "step": "declare_blockers",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · declare blockers"
+      },
+      {
+        "seq": 13,
+        "kind": "step",
+        "turn": 1,
+        "step": "combat_damage",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · combat damage"
+      },
+      {
+        "seq": 14,
+        "kind": "step",
+        "turn": 1,
+        "step": "end_combat",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · end combat"
+      },
+      {
+        "seq": 15,
+        "kind": "step",
+        "turn": 1,
+        "step": "postcombat_main",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · postcombat main"
+      },
+      {
+        "seq": 16,
+        "kind": "step",
+        "turn": 1,
+        "step": "end",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · end"
+      },
+      {
+        "seq": 18,
+        "kind": "step",
+        "turn": 1,
+        "step": "cleanup",
+        "seat": 0,
+        "text": "Turn 1 (round 1) — Player 1 · cleanup"
+      },
+      {
+        "seq": 20,
+        "kind": "step",
+        "turn": 2,
+        "step": "untap",
+        "seat": 1,
+        "text": "Turn 2 (round 1) — Player 2 · untap"
+      },
+      {
+        "seq": 21,
+        "kind": "step",
+        "turn": 2,
+        "step": "upkeep",
+        "seat": 1,
+        "text": "Turn 2 (round 1) — Player 2 · upkeep"
       }
     ]
   }

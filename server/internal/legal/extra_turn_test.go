@@ -37,7 +37,7 @@ func TestLoyaltyActivationIsOfferedAgainInAnExtraTurn(t *testing.T) {
 	}
 
 	g.WithWriteLock(func() { g.TakeExtraTurnsForEffect(active.ID, uuid.Nil, 1) })
-	if err := g.PassTurn(); err != nil {
+	if err := g.EndTurnNowForTest(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if g.Turn.ActiveSeat != active.Seat || !g.Turn.Extra {

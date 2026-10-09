@@ -273,14 +273,34 @@ func TestDispatchPassPriorityRotates(t *testing.T) {
 	}
 }
 
+// TestDispatchPassTurnWrapsSeat: pass_turn passes for the active
+// player every time they get priority (#2881); the opponent still
+// passes in each step, and the turn wraps to them once every step has
+// been walked.
 func TestDispatchPassTurnWrapsSeat(t *testing.T) {
 	g := newGame(t)
+	active := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[1-g.Turn.ActiveSeat].ID
 	a, _ := Decode(string(TypePassTurn), "", nil)
+	a.Caller = active
 	if err := Dispatch(g, a); err != nil {
 		t.Fatalf("Dispatch: %v", err)
 	}
+	pass, _ := Decode(string(TypePassPriority), "", nil)
+	pass.Caller = opp
+	for i := 0; i < 64 && g.Turn.ActiveSeat == 0; i++ {
+		if h := g.Turn.PriorityHolder; h < 0 || g.Seats[h].ID != opp {
+			t.Fatalf("at %s priority is %d, want the opponent: the active player's passes stopped", g.Turn.Step, h)
+		}
+		if err := Dispatch(g, pass); err != nil {
+			t.Fatalf("opponent pass at %s: %v", g.Turn.Step, err)
+		}
+	}
 	if g.Turn.ActiveSeat != 1 {
 		t.Errorf("seat after pass_turn: got %d, want 1", g.Turn.ActiveSeat)
+	}
+	if g.PassingTurn() {
+		t.Errorf("the pass outlived its turn")
 	}
 }
 

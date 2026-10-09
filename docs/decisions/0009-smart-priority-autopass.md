@@ -22,6 +22,10 @@ the precedence list below.
 no longer a response by default, and the hold toggle clears itself once the
 stack it held has emptied. See "Amendment: only real interaction stops you
 (#2853)" below.
+**Amended by:** S59 (#2881), 2026-10-09 — `pass turn` no longer jumps to the
+next turn. It passes priority for the active player until their turn ends, so
+every step still happens and its triggers fire. See "Amendment: pass turn walks
+the turn (#2881)" below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -406,6 +410,43 @@ falls back to the default.
   haste, trample, menace or lifelink, "can block an additional creature", and a
   land or artifact that becomes a creature until end of turn. A board full of
   them would stop on every opponent spell, so they are left out for now.
+
+## Amendment: pass turn walks the turn (#2881)
+
+**Status:** Accepted · 2026-10-09 · Sprint S59
+
+Decision 6 calls `pass turn` an "active-player-only whole-turn skip". It was
+built as one: the server jumped the cursor to the next seat's untap step, so
+the steps left in the turn never began. "At the beginning of combat", "at the
+beginning of your end step" and every other step trigger was skipped with them,
+for every player, and so was the cleanup discard. CR 500.1 has every phase
+happen every turn, and CR 500.6 fires an "at the beginning of" trigger as its
+step begins.
+
+**Now:** `pass_turn` is a standing instruction to pass priority for the active
+player every time they would hold it, until their turn ends
+(`server/internal/game/pass_turn.go`). The steps are walked by the ordinary
+priority engine, so each one begins, its triggers go on the stack the next
+time a player would receive priority (CR 117.5, 603.3), and they resolve.
+
+- **Only the active player is passed for.** The other players still get
+  priority in every step (CR 117.3d). Their own automatic passing (this ADR's
+  smart autopass, or a bot runner) decides whether they stop, so nobody misses
+  a window because someone else passed the turn.
+- **A decision stops it.** A "may", a target, a trigger ordering, the cleanup
+  discard or any other prompt the table waits for, any prompt owed by the
+  passing player, the CR 732 loop notice, or a pass the rules refuse (an attack
+  requirement, CR 508.1d). The player answers, and the passing resumes on its
+  own: `actions.Dispatch` settles it after every action, the room after every
+  automatic answer.
+- **It ends with the turn**, by any route, and an undo of the `pass_turn` takes
+  it back. It is not part of a restore point; after a server restart the
+  active player presses Pass turn again.
+- **A turn passed at a table of bots is slower than the old jump**: each bot
+  passes each step at its table pace.
+
+The old jump survives only as `Game.EndTurnNowForTest`, which tests use to
+reach the next turn. No player-facing path reaches it.
 
 ## Context
 

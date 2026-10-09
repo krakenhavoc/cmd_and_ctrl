@@ -6,7 +6,8 @@ package game
 //   - the cursor walking past cleanup (advanceCursorLocked),
 //   - the active player leaving the game (advancePastEliminatedLocked,
 //     reached from Concede and from the SBA loss pass),
-//   - the sandbox pass_turn verb (PassTurn).
+//   - EndTurnNowForTest, the old sandbox pass_turn jump, which tests
+//     use to reach the next turn (pass_turn walks the turn since #2881).
 //
 // Before this seam the last two wrote the next seat's Untap into
 // g.Turn by hand. The departed player's turn never ran its cleanup
@@ -20,8 +21,8 @@ package game
 // still part of a resolution. Beginning a turn untaps, resets the
 // per-turn state, announces steps and queues upkeep triggers, and none
 // of that may happen in the middle of a spell. The callers today are
-// the cursor advance, an SBA pass and a player action (Concede,
-// PassTurn), which are all action boundaries. A state-based loss during
+// the cursor advance, an SBA pass, a player action (Concede) and
+// EndTurnNowForTest, which are all action boundaries. A state-based loss during
 // a resolution sets a flag (Player.AttemptedEmptyDraw, or life at 0)
 // that the next SBA pass reads. An effect loss (ADR 0057,
 // LoseTheGameForEffect) takes the player out at once, and when that
@@ -145,7 +146,7 @@ func (g *Game) sweepTurnEndLocked() {
 // that seat's Untap, then runs the turn-began hook. It does not run
 // the step entry hooks: callers do, as they did before the seam
 // existed (the cursor advance's caller, advancePastEliminatedLocked,
-// PassTurn).
+// EndTurnNowForTest).
 //
 // The next turn is the most recently queued extra turn of a seat still
 // in the game (CR 500.7, extra_turns.go), when there is one. Otherwise

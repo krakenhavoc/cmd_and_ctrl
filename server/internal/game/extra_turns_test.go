@@ -29,7 +29,7 @@ func takeExtraTurns(t *testing.T, g *Game, seat, n int) []int {
 // through the same rotation seam as the cursor walking past cleanup.
 func passTurn(t *testing.T, g *Game) {
 	t.Helper()
-	if err := g.PassTurn(); err != nil {
+	if err := g.EndTurnNowForTest(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 }

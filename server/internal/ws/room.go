@@ -350,7 +350,14 @@ const maxAutoAnswersPerCommit = 64
 // a lobby step — is answered the same way, also when no socket is
 // connected, and a lockstep arena replays the same answers in the same
 // order. Caller MUST hold r.mu.
+//
+// #2881: an active player who passed the turn passes again once a
+// commit hands them priority. actions.Dispatch already does that for
+// every action; the settle here covers the commits that are not
+// actions (a lobby step) and every automatic answer, whose pass is
+// part of the answer's commit.
 func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) {
+	r.Game.SettlePassTurn()
 	for i := 0; i < maxAutoAnswersPerCommit; i++ {
 		choiceID, chooser, ok := r.Game.NextAutoAnswer()
 		if !ok {
@@ -370,6 +377,7 @@ func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) 
 			r.Game.MarkAskedByHand(choiceID, game.AskedByHandUndone)
 			continue
 		}
+		r.Game.SettlePassTurn()
 		r.pushUndoLocked(undoEntry{pre: pre, caller: chooser, freeUndo: true, autoAnswered: choiceID, autoAnswerSeq: seq})
 	}
 	return r.captureLocked(true)

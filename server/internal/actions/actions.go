@@ -538,10 +538,15 @@ var playerScopedActions = map[Type]struct{}{
 // #1501: SettleBlockDeclaration is the same backstop for a block
 // declaration whose priority is parked with nobody left declaring — a
 // sandbox verb that took the last attacker out of combat, say.
+//
+// #2881: SettlePassTurn last, so an active player who passed the turn
+// passes again whenever this action handed them priority — an
+// opponent's pass, an answered prompt, a resolution.
 func Dispatch(g *game.Game, a Action) error {
 	err := dispatch(g, a)
 	g.SettleResolution()
 	g.SettleBlockDeclaration()
+	g.SettlePassTurn()
 	return err
 }
 
