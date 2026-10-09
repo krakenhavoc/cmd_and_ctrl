@@ -161,3 +161,4 @@ body primal-witchstalker/land
 body modular/move-counters
 body seasoned-cryomancer/tap-and-stun
 body tether-technician/strike
+body synthetic-destiny/reveal-that-many-creatures

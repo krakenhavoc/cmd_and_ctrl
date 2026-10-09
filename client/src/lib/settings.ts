@@ -194,12 +194,15 @@ export interface Settings {
     // tracking posture. A card the board can't pay for still offers
     // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
-    // #1530: always raise the CR 603.3b "order your triggers" prompt,
-    // even for a batch the server would order itself because every item
-    // commutes (an all-prowess batch, #1511). The decision is the
+    // #1968 (replacing #1530's alwaysAskTriggerOrder): when to raise
+    // the CR 603.3b "order your triggers" prompt. "when_it_matters"
+    // (default) lets the server order a batch whose order cannot change
+    // the game (#1511's prowess, #1968's copies of one ability);
+    // "always" asks for every batch; "never" never asks and puts the
+    // batch on the stack in the order it triggered. The decision is the
     // server's, so the server holds the seat's copy and the client keeps
-    // it in step (triggerOrderPref.ts). Default off.
-    alwaysAskTriggerOrder: boolean;
+    // it in step (triggerOrderPref.ts).
+    triggerOrder: TriggerOrderMode;
     // ADR 0127 §3: standing answers to repeated prompts ("never pay
     // for Rhystic Study"), one per prompt key. Ask is the absence of a
     // rule. `card` and `prompt` are display copies so Settings can list
@@ -469,8 +472,8 @@ export function defaultSettings(): Settings {
       // click taps the lands for it. Off (the S15 default) is the
       // sandbox / paper-tracking posture, still a supported choice.
       strictMana: true,
-      // #1530 default: off. The server orders a commuting batch itself.
-      alwaysAskTriggerOrder: false,
+      // #1968 default: ask only when the order can change the game.
+      triggerOrder: DEFAULT_TRIGGER_ORDER,
       // ADR 0127 default: no rules; every prompt is asked.
       autoAnswers: [],
       // S13.6 default: on. The step-stops grid is the intent
@@ -614,7 +617,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     autoPassPriority: "synced",
     stepStops: "synced",
     strictMana: "synced",
-    alwaysAskTriggerOrder: "synced",
+    triggerOrder: "synced",
     // ADR 0127 §3: the cards are in a person's decks, so the answers
     // travel with the person.
     autoAnswers: "synced",
@@ -1030,12 +1033,48 @@ function migrate(raw: unknown): Settings {
   } else if (typeof gp.respondUntargetedAbilities !== "boolean") {
     gp.respondUntargetedAbilities = d.gameplay.respondUntargetedAbilities;
   }
+  // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
+  // gameplay.triggerOrder. No version bump: the old key itself says
+  // which blob this is. A stored or synced blob that has a valid
+  // triggerOrder keeps it; one that has only the old key maps `true` to
+  // "always" and anything else to the default (an untouched `false` and
+  // a chosen one look the same, and both meant "ask only when it
+  // matters"). The old key is dropped. An account copy from an older
+  // client goes through here too (applySyncedCopy), so a checkbox ticked
+  // on another device arrives as "always".
+  const gameplay = merged.gameplay as Settings["gameplay"] & { alwaysAskTriggerOrder?: unknown };
+  const storedGameplay = (s.gameplay ?? {}) as Record<string, unknown>;
+  if (isTriggerOrderMode(storedGameplay.triggerOrder)) {
+    gameplay.triggerOrder = storedGameplay.triggerOrder;
+  } else if (storedGameplay.alwaysAskTriggerOrder === true) {
+    gameplay.triggerOrder = "always";
+  } else {
+    gameplay.triggerOrder = DEFAULT_TRIGGER_ORDER;
+  }
+  delete gameplay.alwaysAskTriggerOrder;
   // ADR 0127 §3: gameplay.autoAnswers. New fields fill from the default
   // (empty) through the shallow merge, so SETTINGS_VERSION stands. The
   // list is checked, not trusted: only well-formed rules survive, one
   // per key, at most MAX_AUTO_ANSWERS.
   merged.gameplay.autoAnswers = normalizeAutoAnswers(merged.gameplay.autoAnswers);
   return absorbLegacy(merged);
+}
+
+// ---- #1968: when to ask for a trigger order ------------------------------
+
+/** When the game asks this seat to order its triggers (#1968). */
+export type TriggerOrderMode = "when_it_matters" | "always" | "never";
+
+export const TRIGGER_ORDER_MODES: readonly TriggerOrderMode[] = [
+  "when_it_matters",
+  "always",
+  "never",
+];
+
+export const DEFAULT_TRIGGER_ORDER: TriggerOrderMode = "when_it_matters";
+
+export function isTriggerOrderMode(v: unknown): v is TriggerOrderMode {
+  return typeof v === "string" && (TRIGGER_ORDER_MODES as readonly string[]).includes(v);
 }
 
 // ---- ADR 0127: standing answers ------------------------------------------
