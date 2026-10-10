@@ -66,7 +66,7 @@
     class="card"
     class:pop={motion}
     role="dialog"
-    aria-modal="true"
+    aria-modal="false"
     aria-labelledby="fanfare-headline"
     aria-describedby="fanfare-detail"
   >
@@ -96,9 +96,13 @@
     place-items: center;
     background: color-mix(in srgb, var(--bg) 72%, transparent);
     overflow: hidden;
+    /* #2934: the scrim is only a tint. It must never swallow a click
+       meant for the game-over dialog or the dock underneath. */
+    pointer-events: none;
   }
   .card {
     position: relative;
+    pointer-events: auto;
     min-width: min(420px, 90vw);
     max-width: 90vw;
     padding: 28px 36px;
