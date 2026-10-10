@@ -50,9 +50,10 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 4",
-			Cost:   CrewCost(4),
-			Effect: CrewEffect("Cybership"),
+			Label:   "Crew 4",
+			Cost:    CrewCost(4),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Cybership"),
 		}},
 	})
 }

@@ -50,9 +50,10 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		BlockRules:      []game.BlockRule{CantBeBlockedWhile(OnSelf(), descendEight)},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 1",
-			Cost:   CrewCost(1),
-			Effect: CrewEffect("Watertight Gondola"),
+			Label:   "Crew 1",
+			Cost:    CrewCost(1),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Watertight Gondola"),
 		}},
 	})
 }

@@ -66,9 +66,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "Crew 2",
-				Cost:   CrewCost(2),
-				Effect: CrewEffect("Rangers' Refueler"),
+				Label:   "Crew 2",
+				Cost:    CrewCost(2),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Rangers' Refueler"),
 			},
 		},
 	})

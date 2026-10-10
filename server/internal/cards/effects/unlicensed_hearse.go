@@ -33,9 +33,10 @@ func init() {
 		Activated: []ActivatedAbility{
 			ExileFromASingleGraveyardAbility("{T}", TapCost(), 2),
 			{
-				Label:  "Crew 2",
-				Cost:   CrewCost(2),
-				Effect: CrewEffect("Unlicensed Hearse"),
+				Label:   "Crew 2",
+				Cost:    CrewCost(2),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Unlicensed Hearse"),
 			},
 		},
 		Static: []game.StaticAbility{{

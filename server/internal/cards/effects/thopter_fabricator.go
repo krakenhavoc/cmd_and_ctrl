@@ -46,9 +46,10 @@ func init() {
 				Do(CreateToken{Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 2",
-			Cost:   CrewCost(2),
-			Effect: CrewEffect("Thopter Fabricator"),
+			Label:   "Crew 2",
+			Cost:    CrewCost(2),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Thopter Fabricator"),
 		}},
 	})
 }

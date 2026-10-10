@@ -46,14 +46,16 @@ func init() {
 		PrintedKeywords: []string{"flying", "vigilance"},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "Crew 3",
-				Cost:   CrewCost(3),
-				Effect: CrewEffect("Heart of Kiran"),
+				Label:   "Crew 3",
+				Cost:    CrewCost(3),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Heart of Kiran"),
 			},
 			{
-				Label:  "Crew — remove a loyalty counter from a planeswalker you control",
-				Cost:   RemoveCountersFrom(game.CounterLoyalty, 1, "a planeswalker you control", Planeswalker()),
-				Effect: CrewEffect("Heart of Kiran"),
+				Label:   "Crew — remove a loyalty counter from a planeswalker you control",
+				Cost:    RemoveCountersFrom(game.CounterLoyalty, 1, "a planeswalker you control", Planeswalker()),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Heart of Kiran"),
 			},
 		},
 	})

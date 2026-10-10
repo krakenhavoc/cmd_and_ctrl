@@ -50,9 +50,10 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 2",
-			Cost:   CrewCost(2),
-			Effect: CrewEffect("Cryptcaller Chariot"),
+			Label:   "Crew 2",
+			Cost:    CrewCost(2),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Cryptcaller Chariot"),
 		}},
 	})
 }

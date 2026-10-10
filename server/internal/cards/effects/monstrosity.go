@@ -73,6 +73,8 @@ func monstrosityAbility(cost game.AbilityCost, n string, amount func(*game.Stack
 	return ActivatedAbility{
 		Label: label,
 		Cost:  cost,
+		// ADR 0142: +1/+1 counters, and the creature becomes monstrous.
+		Purpose: game.Purpose{Answers: game.AnswerPump},
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			// #1432: a creature that left and came back is a new
 			// object; the monstrosity ability of the old one does

@@ -43,6 +43,8 @@ func Cycling(cost string) ActivatedAbility {
 		Cost:    Plus(ManaCost(cost), DiscardThis()),
 		Zones:   []game.ZoneKind{game.ZoneHand},
 		Cycling: true,
+		// ADR 0142: a draw (or, for typecycling, a tutor) answers nothing.
+		Purpose: game.Purpose{Answers: game.AnswerValue},
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 		},
