@@ -744,6 +744,18 @@ export interface LegalMoveView {
   // phasing, a blink, damage prevention, a pump. Smart autopass stops
   // for it as for a targeted ability. Absent on older servers.
   interacts?: boolean;
+  // #2871: true on an activation with no target that changes a fight
+  // without answering a spell: crew, a manland, a granted flying or
+  // menace, "can block an additional creature", a creature token.
+  // Smart autopass counts it only in a combat window (inCombatWindow).
+  // Never set beside `interacts`. Absent on older servers.
+  combat_interacts?: boolean;
+  // #2871 (owner answer): narrows combat_interacts. The activation
+  // makes a creature token (or populates, or amasses), which matters
+  // only as a blocker, so smart autopass counts it only while the
+  // viewer is a defending player in this combat. Only ever set beside
+  // combat_interacts.
+  combat_defender_only?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never

@@ -328,6 +328,7 @@ function gates(over: Partial<AutopassGates> = {}): AutopassGates {
     ownsEveryStackItem: false,
     stepStop: false,
     smartAutoPass: true,
+    stepStopsOnlyWhenCanAct: true,
     alwaysStopOpponentStack: false,
     hasResponse: false,
     hasPlay: false,

@@ -918,6 +918,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
 								}
+								combat := combatNone
+								if !hasTargets(targets) && !abilityInteracts(ab) {
+									combat = abilityCombatKind(ab)
+								}
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -932,6 +936,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									TargetsStack: targetsStackObject(g, targets),
 									HasTargets:   hasTargets(targets),
 									Interacts:    !hasTargets(targets) && abilityInteracts(ab),
+									// #2871: a combat ability, counted only in combat.
+									CombatInteracts:    combat != combatNone,
+									CombatDefenderOnly: combat == combatDefender,
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,
