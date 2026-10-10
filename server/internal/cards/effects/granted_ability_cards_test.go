@@ -273,8 +273,8 @@ func TestJaheiraGivesEveryTokenYouControlGreen(t *testing.T) {
 	if grantedManaRowsOf(g, nontoken) != 0 {
 		t.Error("a nontoken does not")
 	}
-	if spec, _ := Lookup(gaJaheiraOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the Background gap is declared")
+	if spec, _ := Lookup(gaJaheiraOracle); spec.Completeness != CompletenessFull {
+		t.Error("Choose a Background is supported since #2874: Jaheira is Full")
 	}
 }
 

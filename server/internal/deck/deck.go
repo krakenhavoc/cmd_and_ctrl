@@ -40,10 +40,12 @@ type List struct {
 	Name string `json:"name,omitempty"`
 
 	// Commanders is the set of cards placed in the command zone: one
-	// card, or two that are a "Partner with" pair (#2142, CR
-	// 702.124j). The other partner abilities and companion are still
-	// deferred (the parser emits an explicit "unsupported" error for
-	// plain partner, partner—[text] and companion).
+	// card, or two that a partner ability pairs (CR 702.124: partner,
+	// partner—[text], partner with [name], choose a Background,
+	// Doctor's companion; #2142, #2874). Validate judges the pair; a
+	// Background is listed after the commander that chose it.
+	// Companion is still deferred (the parser emits an explicit
+	// "unsupported" error).
 	Commanders []cards.Card `json:"commanders"`
 
 	// Mainboard is the 99 (or more, pre-validation) cards placed in
@@ -74,10 +76,10 @@ type Entry struct {
 }
 
 // ErrUnsupportedMechanic is returned when a decklist advertises
-// partner, companion, or similar mechanics that S05 doesn't model.
-// Surfaced as a parse error (not a validation error) because the
-// parser bails out before producing a List.
-var ErrUnsupportedMechanic = errors.New("deck: unsupported mechanic (partner/companion) — deferred to a later sprint")
+// companion, which the server doesn't model. Surfaced as a parse error
+// (not a validation error) because the parser bails out before
+// producing a List. Every partner ability is supported since #2874.
+var ErrUnsupportedMechanic = errors.New("deck: unsupported mechanic (companion) — deferred to a later sprint")
 
 // UnknownCardError is returned when a decklist references a card the
 // Scryfall index doesn't know about. Surfaces all unknown names at
@@ -111,8 +113,8 @@ func (e *UnknownCardError) Violations() []Violation {
 }
 
 // UnsupportedMechanicError is returned when Resolve finds a card
-// whose oracle text leans on a mechanic (partner/companion) the
-// server doesn't model yet. Carries the offending card name so the
+// whose oracle text leans on a mechanic (companion) the server
+// doesn't model yet. Carries the offending card name so the
 // HTTP layer can surface it as a structured violation.
 type UnsupportedMechanicError struct {
 	Card string
@@ -128,7 +130,7 @@ func (e *UnsupportedMechanicError) Violations() []Violation {
 	return []Violation{{
 		Code:    CodeUnsupportedMechanic,
 		Card:    e.Card,
-		Message: fmt.Sprintf("%q uses partner or companion, which is deferred to a later sprint (only \"Partner with\" pairs are supported)", e.Card),
+		Message: fmt.Sprintf("%q uses companion, which is deferred to a later sprint", e.Card),
 	}}
 }
 
@@ -152,10 +154,9 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 			unknown = append(unknown, e.Name)
 			continue
 		}
-		// Unsupported-mechanic sniff: if the oracle text mentions
-		// partner or companion at all, the deck is probably leaning
-		// on a mechanic we don't model yet. Bail rather than silently
-		// coerce the second commander into the mainboard.
+		// Unsupported-mechanic sniff: a commander that prints
+		// companion leans on a mechanic we don't model yet. Bail
+		// rather than silently coerce it into the command zone.
 		if e.IsCommander && mentionsUnsupportedMechanic(c) {
 			return nil, &UnsupportedMechanicError{Card: c.Name}
 		}
@@ -178,19 +179,16 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 	if len(unknown) > 0 {
 		return nil, &UnknownCardError{Names: unknown}
 	}
+	backgroundsLast(list.Commanders)
 	return list, nil
 }
 
 // mentionsUnsupportedMechanic returns true if a card advertises a
-// mechanic we defer to a later sprint. Match is on the top-level
-// oracle text as well as each face's oracle text (partner cards
-// like Thrasios have the clause on the card's main face; meld /
-// split cards keep their legal text on one of the faces). We use a
-// coarse substring match against "Partner" and "Companion —"
-// (with the em-dash separator Scryfall uses), which is precise
-// enough to cover plain partner, partner—[text] and every companion.
-// "Partner with [name]" is not flagged (#2142): Validate judges the
-// pair instead.
+// mechanic we defer to a later sprint: companion. Match is on the
+// top-level oracle text as well as each face's oracle text. Companion
+// uses the em-dash delimiter that Scryfall ships (U+2014) to introduce
+// its restriction. The partner abilities are not flagged: Validate
+// judges a pair (partner.go, #2142, #2874).
 func mentionsUnsupportedMechanic(c cards.Card) bool {
 	if hasUnsupportedPhrase(c.OracleText) {
 		return true
@@ -204,36 +202,7 @@ func mentionsUnsupportedMechanic(c cards.Card) bool {
 }
 
 func hasUnsupportedPhrase(text string) bool {
-	// "Partner with [name]" is supported (#2142, partner.go): its
-	// lines are dropped first, so the word-boundary match below does
-	// not read them as plain partner. Plain "Partner" and
-	// "Partner—[text]" (Friends forever) are still refused. Companion
-	// uses the em-dash delimiter that Scryfall ships (U+2014) to
-	// introduce the restriction.
-	text = withoutPartnerWithLines(text)
-	if strings.Contains(text, "Companion \u2014 ") {
-		return true
-	}
-	// Word-boundary match for plain "Partner". Avoid false positives
-	// on card names or flavor text by requiring a non-letter
-	// character on each side.
-	needle := "Partner"
-	idx := strings.Index(text, needle)
-	for idx != -1 {
-		leftOK := idx == 0 || !isLetter(text[idx-1])
-		rightIdx := idx + len(needle)
-		rightOK := rightIdx == len(text) || !isLetter(text[rightIdx])
-		if leftOK && rightOK {
-			return true
-		}
-		text = text[idx+1:]
-		idx = strings.Index(text, needle)
-	}
-	return false
-}
-
-func isLetter(b byte) bool {
-	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
+	return strings.Contains(text, "Companion \u2014 ")
 }
 
 // ToGameCards converts a resolved List into the []game.Card slice

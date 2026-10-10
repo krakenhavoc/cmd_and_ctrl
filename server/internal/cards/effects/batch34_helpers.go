@@ -215,23 +215,6 @@ func b34SelfOrAnotherNontokenHistoricYouControlEntered(ev game.Event, source *ga
 	return ok && !IsToken(c) && b09IsHistoric(c)
 }
 
-// b34CommanderCreatureYouOwnAttackedAPlayer is Guild Artisan's
-// condition before its intervening-if: a creature that is a
-// commander the source's controller OWNS, and currently controls,
-// was declared as an attacker against a player. "You own" is the
-// printed clause; control is what makes the granted ability exist
-// on the Background's side (see the card file).
-func b34CommanderCreatureYouOwnAttackedAPlayer(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	if !ok || !c.IsCommander || c.Owner != source.Controller || !c.IsCreature() {
-		return false
-	}
-	return g.ClassifyAttackTargetForEffect(ev.Target) == game.AttackTargetPlayer
-}
-
 // b34VampireYouControlAttacked is Crossway Troublemakers' first
 // condition: a Vampire the source's controller controls was declared
 // as an attacker — the Troublemakers themselves included. Effective
