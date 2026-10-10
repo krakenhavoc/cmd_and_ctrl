@@ -38,7 +38,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Pay six {E}, Sacrifice this enchantment: Draw three cards.",
 			Cost:    Plus(PayEnergy(6), SacrificeThis()),
-			Purpose: game.Purpose{Draws: 3},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 3},
 			Effect:  Do(DrawCards{N: 3}),
 		}},
 	})

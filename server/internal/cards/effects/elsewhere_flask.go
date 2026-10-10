@@ -26,8 +26,9 @@ func init() {
 			WhenThisEnters("Elsewhere Flask — draw a card", Do(DrawCards{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice this artifact: Choose a basic land type. Each land you control becomes that type until end of turn.",
-			Cost:  SacrificeThis(),
+			Label:   "Sacrifice this artifact: Choose a basic land type. Each land you control becomes that type until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    SacrificeThis(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return eachLandYouControlBecomesChosenTypeUntilEOT(NewContext(g, item), "Elsewhere Flask")
 			},

@@ -65,9 +65,10 @@ func init() {
 			AtYourUpkeep("The One Ring — lose 1 life for each burden counter", theOneRingUpkeepBurden),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring.",
-			Cost:   TapCost(),
-			Effect: theOneRingTapDraw,
+			Label:   "{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  theOneRingTapDraw,
 		}},
 	})
 }

@@ -28,8 +28,9 @@ func init() {
 		Name:         "Obeka, Brute Chronologist",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}: The player whose turn it is may end the turn.",
-			Cost:  TapCost(),
+			Label:   "{T}: The player whose turn it is may end the turn.",
+			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return ActivePlayerMayEndTheTurn{}.Apply(NewContext(g, item))
 			},

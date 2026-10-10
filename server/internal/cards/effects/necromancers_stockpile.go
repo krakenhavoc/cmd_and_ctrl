@@ -20,8 +20,9 @@ func init() {
 		Name:         "Necromancer's Stockpile",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}, Discard a creature card: Draw a card. If the discarded card was a Zombie card, create a tapped 2/2 black Zombie creature token.",
-			Cost:  Plus(ManaCost("{1}{B}"), DiscardCardsMatching(1, "a creature card", MatchCreature)),
+			Label:   "{1}{B}, Discard a creature card: Draw a card. If the discarded card was a Zombie card, create a tapped 2/2 black Zombie creature token.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{B}"), DiscardCardsMatching(1, "a creature card", MatchCreature)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {

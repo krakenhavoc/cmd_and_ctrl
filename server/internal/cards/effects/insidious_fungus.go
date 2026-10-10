@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Insidious Fungus — Creature — Fungus {G}, 1/2 (EDHREC rank 1900):
 //
 //	"{2}, Sacrifice this creature: Choose one —
@@ -44,8 +46,9 @@ func init() {
 				Effect:  destroyFirstLegalTarget,
 			},
 			{
-				Label: "{2}, Sacrifice Insidious Fungus: Draw a card, then you may put a land from your hand onto the battlefield tapped",
-				Cost:  fungusCost,
+				Label:   "{2}, Sacrifice Insidious Fungus: Draw a card, then you may put a land from your hand onto the battlefield tapped",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    fungusCost,
 				Effect: Do(
 					DrawCards{N: 1},
 					MayPutALandFromHandTapped("Insidious Fungus"),

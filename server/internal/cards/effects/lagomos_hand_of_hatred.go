@@ -50,6 +50,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Search your library for a card, put it into your hand, then shuffle. Activate only if five or more creatures died this turn.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      TapCost(),
 			Condition: lagomosFiveCreaturesDied,
 			Effect: func(g *game.Game, item *game.StackItem) error {

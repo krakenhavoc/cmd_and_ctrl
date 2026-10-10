@@ -22,8 +22,9 @@ func init() {
 		Completeness:  CompletenessFull,
 		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: You gain 1 life for each colorless creature you control.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: You gain 1 life for each colorless creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GainLife{
 					Player: item.Controller,

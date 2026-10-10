@@ -82,7 +82,7 @@ func TestAnyPlayerRowIsInTheNonControllersDigest(t *testing.T) {
 	if !row.AnyPlayer {
 		t.Error("Xantcha's row is not marked any_player")
 	}
-	if row.Purpose == nil || *row.Purpose != (ActivationPurposeView{Draws: 1, ControllerLosesLife: 2}) {
+	if row.Purpose == nil || !row.Purpose.Priced() || withoutAnswers(*row.Purpose) != (ActivationPurposeView{Draws: 1, ControllerLosesLife: 2}) {
 		t.Errorf("purpose = %+v", row.Purpose)
 	}
 	if row.Ref != e.Abilities[0] {
@@ -189,4 +189,10 @@ func TestAnyPlayerActivationIsNarrated(t *testing.T) {
 			t.Errorf("the controller's own activation was narrated as reaching across: %q", e.Text)
 		}
 	}
+}
+
+// withoutAnswers drops a declared Answers, which this test does not pin.
+func withoutAnswers(p ActivationPurposeView) ActivationPurposeView {
+	p.Answers = nil
+	return p
 }

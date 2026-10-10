@@ -66,7 +66,7 @@ const (
 	// answersFallbackCeiling is the longest the fallback list may be.
 	// The signal PR bootstrapped it at the measured count; each sweep PR
 	// lowers it to its new length, and nothing raises it. S4 makes it 0.
-	answersFallbackCeiling = 331
+	answersFallbackCeiling = 251
 )
 
 // answersRow is one catalog row the enumerator asks answersOf (or, for

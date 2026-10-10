@@ -26,8 +26,9 @@ func init() {
 			AtYourUpkeep("Tamiyo's Journal — investigate", Do(CreateToken{Template: ClueToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice three Clues: Search your library for a card, put that card into your hand, then shuffle.",
-			Cost:  Plus(TapCost(), SacrificeN(3, "three Clues", HasSubtype("Clue"))),
+			Label:   "{T}, Sacrifice three Clues: Search your library for a card, put that card into your hand, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeN(3, "three Clues", HasSubtype("Clue"))),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

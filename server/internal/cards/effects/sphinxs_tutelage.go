@@ -29,9 +29,10 @@ func init() {
 		Name:         "Sphinx's Tutelage",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{5}{U}: Draw a card, then discard a card.",
-			Cost:   ManaCost("{5}{U}"),
-			Effect: b35LootOne,
+			Label:   "{5}{U}: Draw a card, then discard a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{5}{U}"),
+			Effect:  b35LootOne,
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDrawCard},

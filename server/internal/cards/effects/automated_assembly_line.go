@@ -28,7 +28,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Pay {E}{E}{E}: Create a tapped 3/3 colorless Robot artifact creature token.",
 			Cost:    PayEnergy(3),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Tokens: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				_, err := g.CreateTokensForEffect(item.Controller, assemblyLineRobotToken(), 1, game.TokenEntryOptions{Tapped: true})
 				return err

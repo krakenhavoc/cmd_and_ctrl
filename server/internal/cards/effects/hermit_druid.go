@@ -26,8 +26,9 @@ func init() {
 		Name:         "Hermit Druid",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{G}, {T}: Reveal cards from the top of your library until you reveal a basic land card. Put that card into your hand and the rest into your graveyard.",
-			Cost:  Plus(ManaCost("{G}"), TapCost()),
+			Label:   "{G}, {T}: Reveal cards from the top of your library until you reveal a basic land card. Put that card into your hand and the rest into your graveyard.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{G}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b21RevealUntilBasicLandToHand(NewContext(g, item), item.Controller)
 			},

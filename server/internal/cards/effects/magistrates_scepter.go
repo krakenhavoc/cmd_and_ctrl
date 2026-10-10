@@ -23,14 +23,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{4}, {T}: Put a charge counter on this artifact.",
-				Cost:   Plus(ManaCost("{4}"), TapCost()),
-				Effect: b33PutChargeCounterOnSelf,
+				Label:   "{4}, {T}: Put a charge counter on this artifact.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{4}"), TapCost()),
+				Effect:  b33PutChargeCounterOnSelf,
 			},
 			{
-				Label:  "{T}, Remove three charge counters from this artifact: Take an extra turn after this one.",
-				Cost:   Plus(TapCost(), RemoveCountersFromThis(game.CounterCharge, 3)),
-				Effect: youTakeAnExtraTurnEffect,
+				Label:   "{T}, Remove three charge counters from this artifact: Take an extra turn after this one.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), RemoveCountersFromThis(game.CounterCharge, 3)),
+				Effect:  youTakeAnExtraTurnEffect,
 			},
 		},
 	})

@@ -41,8 +41,9 @@ func init() {
 		Name:         "Quicksilver Amulet",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{4}, {T}: You may put a creature card from your hand onto the battlefield.",
-			Cost:  Plus(ManaCost("{4}"), TapCost()),
+			Label:   "{4}, {T}: You may put a creature card from your hand onto the battlefield.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{4}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return PutFromHandOntoBattlefield{
 					Match:    Creature(),

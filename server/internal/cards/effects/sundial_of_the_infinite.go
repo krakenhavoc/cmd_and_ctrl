@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Sundial of the Infinite — {2} Artifact:
 //
 //	"{1}, {T}: End the turn. Activate only during your turn. (Exile all
@@ -29,6 +31,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{1}, {T}: End the turn. Activate only during your turn.",
+			Purpose:   game.Purpose{Answers: game.AnswerRemove},
 			Cost:      Plus(ManaCost("{1}"), TapCost()),
 			Condition: DuringYourTurn(),
 			Effect:    endTheTurnEffect,

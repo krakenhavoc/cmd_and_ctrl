@@ -54,9 +54,10 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{B}{R}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if an opponent has been dealt noncombat damage this turn.",
-			Cost:  ManaCost("{B}{R}"),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{B}{R}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if an opponent has been dealt noncombat damage this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{B}{R}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
 				return rfCreatureBAnOpponentWasDealtNoncombatDamage(g, controller)
 			},

@@ -33,6 +33,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{5}, {T}: Draw a card. Activate only if you have the city's blessing.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{5}"), TapCost()),
 			Condition: YouHaveTheCitysBlessingCondition(),
 			Effect:    b36DrawOne,

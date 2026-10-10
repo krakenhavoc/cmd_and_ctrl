@@ -44,8 +44,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Double the number of time counters on The Millennium Calendar.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Double the number of time counters on The Millennium Calendar.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				c, ok := g.LookupCardForEffect(item.SourceCardID)
 				if !ok || !onBattlefield(g, item.SourceCardID) || c.Counters[game.CounterTime] <= 0 {

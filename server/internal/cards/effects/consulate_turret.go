@@ -20,7 +20,7 @@ func init() {
 			{
 				Label:   "{T}: You get {E}.",
 				Cost:    TapCost(),
-				Purpose: game.Purpose{Energy: 1},
+				Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 1},
 				Effect:  ebYouGetEnergy(1),
 			},
 			{

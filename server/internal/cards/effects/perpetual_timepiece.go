@@ -36,8 +36,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{T}: Mill two cards.",
-				Cost:  TapCost(),
+				Label:   "{T}: Mill two cards.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return MillCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 				},

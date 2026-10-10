@@ -20,9 +20,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "haste"},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: The next instant or sorcery spell you cast this turn costs {X} less to cast, where X is the number of Wizards you control as this ability resolves.",
-			Cost:   TapCost(),
-			Effect: kazaRoilChaserPromise,
+			Label:   "{T}: The next instant or sorcery spell you cast this turn costs {X} less to cast, where X is the number of Wizards you control as this ability resolves.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  kazaRoilChaserPromise,
 		}},
 	})
 }

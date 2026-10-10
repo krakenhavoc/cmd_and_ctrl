@@ -28,8 +28,9 @@ func init() {
 			WhenThisEnters("Aftermath Analyst — mill three cards", Do(MillCards{N: 3})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{G}, Sacrifice this creature: Return all land cards from your graveyard to the battlefield tapped.",
-			Cost:  Plus(ManaCost("{3}{G}"), SacrificeThis()),
+			Label:   "{3}{G}, Sacrifice this creature: Return all land cards from your graveyard to the battlefield tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}{G}"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b10ReturnAllLandCardsFromGraveyardTapped(NewContext(g, item), item.Controller)
 			},
