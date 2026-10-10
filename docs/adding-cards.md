@@ -7364,6 +7364,32 @@ Three things to know:
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
 
+### A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)
+
+A "−X:" loyalty ability is `Cost: LoyaltyMinusX()`. The activator announces X with the activation
+(CR 107.3a), no more than the loyalty the planeswalker has (CR 606.6), and the effect reads it with
+`ctx.X()`. Everything else `LoyaltyCost` derives (sorcery timing, once per turn) comes with it.
+`effects.Register` refuses `LoyaltyX` set by hand on a non-zero loyalty cost, and beside any other
+component that claims the X.
+
+```go
+{
+    Label:   "−X: Chandra deals X damage to target creature or planeswalker. …",
+    Cost:    LoyaltyMinusX(),
+    Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+    Purpose: ForTargets(DamageXToTarget(0)),
+    Effect:  …ctx.X()…,
+}
+```
+
+- **`XMatters`.** The X guard (`x_matters_guard_test.go`) asks every card that reads X to declare it.
+  Declare `XMatters: true` when the −X at X = 0 does nothing (Chandra's damage), and the enumerator
+  stops offering X = 0. When X = 0 still does something (Chandra, Chill of Compliance still taps; Ugin
+  still exiles coloured permanents of mana value 0), leave it off and add an allowlist entry saying so.
+- **Purpose.** A damage row declares `DamageXToTarget(slot)` (`TargetPurpose.DamageIsX`), so the bot
+  picks the smallest lethal X. A sweep declares `Sweep.AmountIsX`.
+- No printed loyalty ability costs +X, so there is no constructor for one.
+
 ### Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)
 
 Reality Fracture prints five things about planeswalkers that no earlier card needed. Each is a declaration

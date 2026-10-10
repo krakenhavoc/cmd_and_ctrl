@@ -549,6 +549,7 @@ func Register(spec Spec) {
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
 		checkEnergyCost(spec.Name, i, ab.Cost)
+		checkLoyaltyX(spec.Name, i, ab.Cost)
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
@@ -1771,6 +1772,28 @@ func checkEnergyCost(name string, i int, cost game.AbilityCost) {
 	if cost.EnergyX && (game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
 		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
 			name, i))
+	}
+}
+
+// checkLoyaltyX is the boot-time refusal for a −X loyalty cost (#1944):
+//
+//   - LoyaltyX with no loyalty component, or beside a printed loyalty
+//     other than 0, is a card-file mistake: every printed −X is the
+//     whole cost, and LoyaltyMinusX builds it;
+//   - beside any other component that claims the announced X ({X} in
+//     the mana, "Pay X {E}", a count of sacrificed, tapped, discarded or
+//     revealed cards) it is refused: one announced X cannot pay both,
+//     and no printed card asks it to.
+func checkLoyaltyX(name string, i int, cost game.AbilityCost) {
+	if !cost.LoyaltyX {
+		return
+	}
+	if cost.Loyalty == nil || *cost.Loyalty != 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d sets LoyaltyX without a zero loyalty cost — build it with LoyaltyMinusX", name, i))
+	}
+	if cost.XSlots() > 0 || cost.EnergyX || game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers) ||
+		game.DiscardCountFromX(cost.DiscardCards) || game.DiscardManaValueX(cost.DiscardCards) || game.RevealCardsCountFromX(cost.RevealCards) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d removes X loyalty AND pays X another way — one announced X cannot pay both", name, i))
 	}
 }
 

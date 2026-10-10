@@ -113,6 +113,19 @@ func rowEntryFor(src *protocol.CardView, index int, t targetRef) *protocol.Targe
 	return entryAt(rowPurpose(src, index), t.Slot)
 }
 
+// entryAtX is a target entry with its X resolved (#1944): an entry
+// declared DamageIsX deals the X the move announces. Every other entry
+// is returned as it is. A copy, so the card's own view is untouched.
+func entryAtX(e *protocol.TargetPurposeView, x int) *protocol.TargetPurposeView {
+	if e == nil || !e.DamageIsX {
+		return e
+	}
+	out := *e
+	out.Damage = max(x, 0)
+	out.DamageIsX = false
+	return &out
+}
+
 // pricedTargetsValue prices a move's targets: each pick whose declared
 // entry this Config prices goes through giftsValue (a player) or
 // damageCardValue (a permanent), and every other pick through

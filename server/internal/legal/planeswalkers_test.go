@@ -1,6 +1,7 @@
 package legal_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -86,7 +87,9 @@ func TestS27PlaneswalkerLoyaltyAbilitiesAreOfferedAndAccepted(t *testing.T) {
 					// Teferi's [0] really is a zero cost; the
 					// others must carry theirs so a policy can
 					// tell a plus from a minus.
-					if tc.oracle != oracleTeferiPilgrim {
+					// #1944: so is a −X announced at X=0 (Ugin's
+					// sweep of mana value 0, the coloured tokens).
+					if tc.oracle != oracleTeferiPilgrim && !strings.Contains(m.Label, "−X:") {
 						t.Errorf("activation %q carries no loyalty cost", m.Label)
 					}
 				}

@@ -88,7 +88,7 @@ func TestUginMinusTenGainsLifeAndDraws(t *testing.T) {
 	advanceToMainOf(t, g, seat)
 	life, hand := owner.Life, owner.Hand.Size()
 
-	if err := g.ActivateCatalogAbility(owner.ID, ugin, 1, game.ActivateAbilityParams{}); err != nil {
+	if err := g.ActivateCatalogAbility(owner.ID, ugin, 2, game.ActivateAbilityParams{}); err != nil {
 		t.Fatalf("−10: %v", err)
 	}
 	if got := loyaltyOf(g, ugin); got != 2 {
@@ -101,29 +101,6 @@ func TestUginMinusTenGainsLifeAndDraws(t *testing.T) {
 	}
 	if got := owner.Hand.Size() - hand; got != 7 {
 		t.Errorf("cards drawn = %d, want 7", got)
-	}
-}
-
-// TestUginHasNoVariableLoyaltyAbility is the finding, pinned. The −X
-// is not registered because a loyalty cost is a fixed number: #550's
-// {X} lives in an ability's MANA component and there is no mana
-// component on a loyalty ability. If a variable loyalty cost ever
-// lands, this test is the one that should start failing.
-func TestUginHasNoVariableLoyaltyAbility(t *testing.T) {
-	spec, ok := Lookup(uginSpiritDragonOracle)
-	if !ok {
-		t.Fatal("Ugin is not registered")
-	}
-	if len(spec.Activated) != 2 {
-		t.Fatalf("Ugin declares %d abilities, want 2 (+2 and −10)", len(spec.Activated))
-	}
-	for i, ab := range spec.Activated {
-		if ab.Cost.DemandsX() {
-			t.Errorf("ability %d announces an X; loyalty costs are fixed", i)
-		}
-		if ab.Cost.Loyalty == nil {
-			t.Errorf("ability %d is not a loyalty ability", i)
-		}
 	}
 }
 

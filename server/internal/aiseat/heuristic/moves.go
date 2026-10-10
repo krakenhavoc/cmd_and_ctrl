@@ -321,7 +321,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// ADR 0126's amendment of 2026-10-08: a pick the row's purpose
 		// declares an entry for is priced by what the row does to it.
 		targetV, targetsPriced := p.pricedTargetsValue(st, cp.Targets, func(t targetRef) *protocol.TargetPurposeView {
-			return rowEntryFor(src, cp.AbilityIndex, t)
+			return entryAtX(rowEntryFor(src, cp.AbilityIndex, t), cp.XValue)
 		}, nil, src)
 		if !across {
 			var ps purposeSet
@@ -526,7 +526,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// declares an entry for is priced by what the spell does to it, and
 	// the cast is then priced by its purpose rather than its mana value.
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
-		return castEntryFor(card, cp, t)
+		return entryAtX(castEntryFor(card, cp, t), cp.XValue)
 	}, card, card)
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not
 	// a creature it removes (bestow.go).

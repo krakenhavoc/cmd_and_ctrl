@@ -3656,6 +3656,11 @@ type ActivatedAbilityView struct {
 	// to stay different, since only the first leaves the ability
 	// activatable more than once a turn. Added in S27 (#329, #334).
 	LoyaltyCost *int `json:"loyalty_cost,omitempty"`
+	// LoyaltyCostX marks a loyalty cost of −X (#1944, ADR 0032's
+	// amendment of 2026-10-10): LoyaltyCost is 0, the announced X is
+	// removed on top of it, and DemandsX is set, so the client caps its
+	// X stepper at the permanent's loyalty (CR 606.6).
+	LoyaltyCostX bool `json:"loyalty_cost_x,omitempty"`
 	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
 	// creature"-style cost: the clause and the permanents the
 	// controller may pay with right now. Absent when the cost has
@@ -10137,6 +10142,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
+			LoyaltyCostX:  a.Cost.LoyaltyX,
 			AnyPlayer:     a.AnyPlayer,
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,

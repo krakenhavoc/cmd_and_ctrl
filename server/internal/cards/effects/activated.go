@@ -237,6 +237,16 @@ func PayXEnergy() game.AbilityCost { return game.AbilityCost{EnergyX: true} }
 // game.AbilityCost.Loyalty.
 func LoyaltyCost(n int) game.AbilityCost { return game.AbilityCost{Loyalty: &n} }
 
+// LoyaltyMinusX is the "−X" loyalty cost (#1944, CR 107.3a): the
+// activator announces X, and the activation removes X loyalty counters,
+// no more than the permanent has (CR 606.6). The effect reads the X
+// back through Context.X(). Everything LoyaltyCost derives, this does
+// too.
+func LoyaltyMinusX() game.AbilityCost {
+	zero := 0
+	return game.AbilityCost{Loyalty: &zero, LoyaltyX: true}
+}
+
 // Plus merges cost components: Plus(ManaCost("{2}"), TapCost()) is
 // "{2}, {T}". Later components win for scalar fields, which only
 // matters if a caller passes two mana strings (they shouldn't).
@@ -289,6 +299,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		}
 		if c.Loyalty != nil {
 			out.Loyalty = c.Loyalty
+		}
+		if c.LoyaltyX {
+			out.LoyaltyX = true
 		}
 		if c.Crew != 0 {
 			out.Crew = c.Crew

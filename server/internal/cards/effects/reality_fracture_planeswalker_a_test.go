@@ -77,8 +77,8 @@ func TestRFAAllSeventeenAreRegistered(t *testing.T) {
 			t.Errorf("%s ships without a completeness declaration", spec.Name)
 		}
 	}
-	if spec, _ := Lookup(rfaChandra); spec.Completeness != CompletenessCaveats {
-		t.Error("Chandra omits her -X, so she declares caveats")
+	if spec, _ := Lookup(rfaChandra); spec.Completeness != CompletenessFull {
+		t.Error("Chandra has all four abilities since her -X landed (#1944), so she is Full")
 	}
 }
 
@@ -804,7 +804,7 @@ func TestRFAChandraEmblemDrawsOnEverySpell(t *testing.T) {
 		pushLibraryCardForTest(me, game.Card{Name: "Filler", TypeLine: "Sorcery", Owner: me.ID, Controller: me.ID})
 	}
 	advanceToMain(t, g)
-	b16Activate(t, g, me.ID, chandra, 2, game.ActivateAbilityParams{})
+	b16Activate(t, g, me.ID, chandra, 3, game.ActivateAbilityParams{})
 	passPriorityAroundTable(t, g)
 	if me.Emblems.Size() != 1 {
 		t.Fatalf("one emblem: %d", me.Emblems.Size())

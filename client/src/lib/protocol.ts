@@ -2677,6 +2677,10 @@ export interface ActivatedAbilityView {
   // so test for `!== undefined`, never for truthiness. Added with
   // #329 / #334.
   loyalty_cost?: number;
+  // #1944: a loyalty cost of −X. loyalty_cost is 0, demands_x is set,
+  // and the announced X is removed, at most the permanent's loyalty
+  // (CR 606.6).
+  loyalty_cost_x?: boolean;
   // A "Sacrifice a creature"-style cost: the clause, and the
   // permanents the controller can pay it with right now. #747: min /
   // max are the clause's count ("Sacrifice two artifacts" is 2 / 2;
@@ -2994,6 +2998,8 @@ export interface TargetPurposeView {
   life_gain?: number;
   life_loss?: number;
   damage?: number;
+  // #1944: the damage is the announced X; `damage` is then absent.
+  damage_is_x?: boolean;
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
 }
