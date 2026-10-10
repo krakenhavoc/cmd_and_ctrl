@@ -1022,8 +1022,10 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
 Smart autopass stops on an opponent's stack item only when you can
 respond, and for an activated ability with no target it asks what the
 row **answers**. Declare that on the row as `Purpose.Answers`, beside any
-amounts. A row in scope that declares nothing is read from its printed
-text instead, and that fallback only shrinks.
+amounts. The declaration is the only thing read: there is no
+printed-text fallback (ADR 0142 S4), and a row that declares nothing
+stops its controller on every opponent's spell. Every catalog row in
+scope must declare.
 
 **Which rows.** Every activated row (a card's own, a granted bundle's, a
 token template's) that is not sorcery speed or a loyalty ability, and
@@ -1082,18 +1084,17 @@ both where both are true; neither is derived from the other.
 - on a mana ability, anything but `AnswerSacOutlet` or `AnswerValue`, or
   a creature-sacrifice cost declared without `AnswerSacOutlet`.
 
-**The ratchet.** `TestAnswersFallbackOnlyShrinks`
-(`internal/cards/effects`) lists every undeclared row in scope in
-`testdata/answers_fallback.txt`. A new card's undeclared row fails it,
-naming the row. When you declare a listed row, delete its line (or run
-`go test ./internal/cards/effects -run TestAnswersFallbackOnlyShrinks
--args -update-answers-fallback`, which only removes lines) and lower
-`answersFallbackCeiling` to the new count. Then regenerate the review
-record with `go test ./internal/cards/effects -run
-TestAnswersDisagreementsAreCurrent -args -update-answers-disagreements`:
-`testdata/answers_disagreements.txt` lists every declared row whose tier
-differs from what the text read said, and its diff is the PR's "Verdicts
-changed" list. Declare what the card does, never what the text read said.
+**The guard test.** `TestEveryAnswersRowDeclares`
+(`internal/cards/effects`) fails on any catalog row in scope that
+declares nothing, naming the card, the row's ref and its label. A new
+card's undeclared row fails it. Declare what the card does.
+
+Only two inputs are read without a declaration. A mana ability that
+declares nothing is read from its sacrifice cost: a creature sacrifice
+is an outlet, a land or a token is not. An activated ability carried on
+a card instance (`Card.ActivatedAbilities`, built at run time) is not
+catalog data and cannot declare, so it counts as interacting (ADR 0142
+owner answer 3).
 
 A "Sacrifice this creature: …" row needs no special declaration for the
 moment its creature is threatened: the enumerator sets `interacts` while

@@ -43,7 +43,11 @@ fire. See "Amendment: pass turn walks the turn (#2881)" below.
 **Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
 2026-10-09 — `interacts` reads what the ability row declares it answers
 (`Purpose.Answers`) before the printed-text read, and `combat_interacts`
-carries the combat tier. The response classes here are unchanged.
+carries the combat tier. The response classes here are unchanged. Since
+ADR 0142 S4 (2026-10-10) the printed-text read is gone, including the combat
+read in the "Combat abilities count in combat" amendment below: every catalog
+row declares, and a row that declares nothing (one carried on a card
+instance in practice) sets `interacts`, a false-positive stop over a false-negative skip.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as

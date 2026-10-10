@@ -10,10 +10,11 @@ import (
 // answers.go — ADR 0142: the registration guard for a declared
 // Purpose.Answers on an activated row, and ManaAbility.Answers on a mana
 // ability. The vocabulary and its tiers are game/answers.go; the reader
-// is internal/legal's answersOf.
+// is internal/legal's untargetedFlags (manaMoveInteracts for a mana
+// ability).
 //
-// A declaration wins outright over the printed-text read, so the guard
-// keeps it honest where it can without reading text. It refuses:
+// A declaration is the only thing the reader reads, so the guard keeps
+// it honest where it can without reading text. It refuses:
 //
 //   - a bit that names no answer;
 //   - AnswerValue beside any other answer;
@@ -78,9 +79,10 @@ func sorcerySpeedRow(ab game.ActivatedAbilityShape) bool {
 	return ab.SorcerySpeed || ab.Cost.Loyalty != nil
 }
 
-// answersInScope reports whether smart autopass asks answersOf about the
-// row: it may be activated at instant speed with no target (ADR 0142
-// §4). The ratchet lists every such catalog row that declares nothing.
+// answersInScope reports whether smart autopass reads the row's answers:
+// it may be activated at instant speed with no target (ADR 0142 §4).
+// TestEveryAnswersRowDeclares fails on such a catalog row that declares
+// nothing.
 func answersInScope(ab game.ActivatedAbilityShape) bool {
 	return !sorcerySpeedRow(ab) && hasUntargetedAnnouncement(ab)
 }

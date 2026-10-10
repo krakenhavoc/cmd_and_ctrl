@@ -170,8 +170,8 @@ type Move struct {
 	// blink, damage prevention, a pump or counters (#2853, owner answer
 	// 2). Smart autopass stops for it as it does for a targeted ability.
 	// Pure value (draw, mana, a fetch, tokens, scry) never sets it. See
-	// answersOf (ADR 0142: the row's declared Purpose.Answers, else the
-	// printed-text read). Owner answer 4: a "Sacrifice this creature"
+	// untargetedFlags (ADR 0142: the row's declared Purpose.Answers; an
+	// undeclared row sets it). Owner answer 4: a "Sacrifice this creature"
 	// move also sets it while an opponent's stack item targets the
 	// creature.
 	Interacts bool `json:"interacts,omitempty"`
@@ -183,7 +183,7 @@ type Move struct {
 	// (#2871). Smart autopass counts it only in a combat window, so it
 	// is a bit of its own rather than part of Interacts. Never set
 	// alongside Interacts. Read from the row's combat-tier answers
-	// (answersOf, ADR 0142), and set while a "Sacrifice this creature"
+	// (untargetedFlags, ADR 0142), and set while a "Sacrifice this creature"
 	// move's creature attacks or blocks (owner answer 4).
 	CombatInteracts bool `json:"combat_interacts,omitempty"`
 

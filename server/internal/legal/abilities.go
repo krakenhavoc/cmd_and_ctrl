@@ -918,8 +918,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
 								}
-								// ADR 0142: the row's declared answers (or the
-								// text read for an undeclared row), by tier.
+								// ADR 0142: the row's declared answers, by tier
+								// (an undeclared row interacts).
 								interacts, combat := untargetedFlags(g, source, zone, ab, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
