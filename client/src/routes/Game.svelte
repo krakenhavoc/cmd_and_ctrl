@@ -3,6 +3,8 @@
   import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
+  import GameEndFanfare from "../lib/components/GameEndFanfare.svelte";
+  import { fanfareFor } from "../lib/gameEndFanfare";
   import { beatsPrimeKey as beatsPrimeKeyOf, replayJumpEpoch } from "../lib/combatBeats";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
@@ -916,6 +918,9 @@
   const loopNotice = $derived(loopNoticeText(view));
   const gameOver = $derived(gameOverText(view));
   const winner = $derived(gameOver.winner);
+  // #2920: the game-end overlay, until the viewer keeps looking at the board.
+  let fanfareDismissed = $state(false);
+  const fanfare = $derived(fanfareFor(view, viewerID));
 
   // Mulligan window: open between Start and the moment everyone has
   // KeptHand. The dialog blocks the viewer's normal toolbar until
@@ -2328,6 +2333,14 @@
         {/if}
         {#if voteDockRequest}
           <DockRequest request={voteDockRequest} />
+        {/if}
+        {#if fanfare && !fanfareDismissed}
+          <GameEndFanfare
+            {fanfare}
+            motion={$settings.animations.enabled && !$settings.accessibility.reduceMotion}
+            onback={back}
+            ondismiss={() => (fanfareDismissed = true)}
+          />
         {/if}
         {#if gameOverDockRequest}
           <DockRequest request={gameOverDockRequest} />
