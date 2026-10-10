@@ -9,6 +9,10 @@
   // `motion` is the caller's verdict from the animation settings
   // (master switch on, not reduced motion). Without it the card appears
   // at once and nothing moves; sound is the existing win/loss cue.
+  //
+  // `armed` is the dock's game-over grace (#2919, GAME_OVER_GRACE_MS):
+  // Back to lobby stays disabled, and a press is refused, until a click
+  // meant for the last pass can no longer take the player off the table.
   import { onMount } from "svelte";
   import type { Fanfare } from "../gameEndFanfare";
   import Icon from "./Icon.svelte";
@@ -16,10 +20,11 @@
   interface Props {
     fanfare: Fanfare;
     motion: boolean;
+    armed?: boolean;
     onback: () => void;
     ondismiss: () => void;
   }
-  let { fanfare, motion, onback, ondismiss }: Props = $props();
+  let { fanfare, motion, armed = true, onback, ondismiss }: Props = $props();
 
   // A fixed fan of pieces: position, delay and drift are arithmetic on
   // the index, so a render is the same every time and tests can count.
@@ -81,7 +86,14 @@
     </h2>
     <p id="fanfare-detail" class="detail">{fanfare.detail}</p>
     <div class="actions">
-      <button type="button" class="primary" onclick={onback}>Back to lobby</button>
+      <button
+        type="button"
+        class="primary"
+        disabled={!armed}
+        onclick={() => {
+          if (armed) onback();
+        }}>Back to lobby</button
+      >
       <button type="button" bind:this={keep} onclick={ondismiss}>Keep looking at the board</button>
     </div>
   </div>

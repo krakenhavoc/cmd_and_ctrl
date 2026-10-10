@@ -24,10 +24,10 @@ const ended = (outcome?: GameView["outcome"]): GameView =>
 
 const WIN = { kind: "win", winner: "b", cause: "last_standing" } as GameView["outcome"];
 
-function mount(f: Fanfare, motion: boolean) {
+function mount(f: Fanfare, motion: boolean, armed = true) {
   const onback = vi.fn();
   const ondismiss = vi.fn();
-  const r = render(GameEndFanfare, { fanfare: f, motion, onback, ondismiss });
+  const r = render(GameEndFanfare, { fanfare: f, motion, armed, onback, ondismiss });
   return { r, onback, ondismiss, q: (s: string) => r.container.querySelector<HTMLElement>(s) };
 }
 
@@ -125,6 +125,18 @@ describe("GameEndFanfare", () => {
     flushSync();
     expect(ondismiss).toHaveBeenCalledTimes(2);
     expect(q("[role=dialog]")).not.toBeNull();
+  });
+
+  // #2919's grace covers the card's Back to lobby too: a click meant for
+  // the last pass must not take the player off the table.
+  it("refuses Back to lobby until the game-over grace has passed", () => {
+    const { r, onback } = mount(fanfareFor(ended(WIN), "b")!, false, false);
+    const back = [...r.container.querySelectorAll("button")].find(
+      (b) => b.textContent?.trim() === "Back to lobby",
+    )!;
+    expect(back.disabled).toBe(true);
+    back.click();
+    expect(onback).not.toHaveBeenCalled();
   });
 
   // #2934: the scrim sat over the dock and swallowed the click on its
