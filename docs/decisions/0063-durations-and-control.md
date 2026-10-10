@@ -757,3 +757,48 @@ Additive: `seats[].statics[].cantAttack.{protected,fromTurnsBegun}`, recorded in
 
 - Showing the restriction on the seat or the creatures as a chip. The refusal sentence and the withheld moves carry it.
 - A restriction that names a creature subset or lasts for another window: a new payload field when a card needs it.
+
+## Amendment (2026-10-10, #2719): "this turn", and what of yours it protects
+
+The #2109 amendment's out-of-scope line said another window or a narrower subject would be a new payload field when a card needed it. Three cards need both:
+
+- **Sandswirl Wanderglyph** (Unstable Glyphbridge's back face): "Whenever an opponent casts a spell during their turn, they can't attack you or planeswalkers you control this turn."
+- **Web of Inertia**: "At the beginning of combat on each opponent's turn, that player may exile a card from their graveyard. If the player doesn't, creatures they control can't attack you this turn."
+- **Jace, Multiverse Architect**: "At the beginning of combat on each opponent's turn, they may pay {2}. If they don't, creatures they control can't attack Jaces you control this turn." It shipped with a caveat because the only player-level grant was next-turn and covered everything.
+
+### The rules
+
+- **CR 508.1c.** The restriction is checked when attackers are declared. **CR 611.2a / 514.2.** A "this turn" effect from a resolving ability ends in the cleanup step.
+- The Wanderglyph's rulings: once the trigger resolves, the opponent can't attack you or your planeswalkers that turn even if the Wanderglyph leaves; and its abilities don't stop attacks on battles you protect. Web of Inertia's ruling: a creature that can't attack you can still attack a planeswalker you control.
+- "Planeswalkers you control" and "permanents you control" differ only on a battle you control (an opponent's battle you cast). "You" alone names no permanent.
+
+### Decision
+
+1. **A second writer, the same payload.** `Game.GrantCantAttackPlayerThisTurnForEffect(attacker, protected, scope, label, source)` writes the same `CantAttackGrant` with `FromTurnsBegun` at the restricted player's CURRENT count and `UntilEndOfTurnDuration()`. The reader is unchanged: the floor is met now, and the duration ends at cleanup. On a turn that isn't the attacker's it restricts nothing they can use, which is what every printed card resolves in anyway. The two writers share one body (`grantCantAttackLocked`).
+2. **`CantAttackGrant.Scope`, a `CantAttackScope`.** Four fields, each only removing something from the default:
+   - `PlayerOnly`: the player, none of their permanents ("can't attack you").
+   - `PlayerExempt`: their permanents, not the player ("can't attack Jaces you control").
+   - `PlaneswalkersOnly`: of their permanents, planeswalkers only. A battle they control is open.
+   - `Subtype`: of those, only this subtype ("Jace").
+   The zero scope is The Second Doctor's "you or permanents you control", so every grant already stored reads as it did. `CantAttackScope.covers` replaces `attackTargetIsOrBelongsToLocked` inside `playerCantAttackRefusalLocked`; the planeswalker and subtype tests read the permanent's layered characteristics at the declaration. `PlayerCantAttackError` carries the scope, and its sentence names what is covered ("Alice or planeswalkers they control", "Jaces Alice controls").
+3. **A pay-or-else at the beginning of combat halts the table.** Jace's tax is `UpkeepPayUnless` asked of the active opponent. #997 anchors the halt to the step the prompt was raised in, so declare attackers waits for the answer. Web of Inertia's choice is an ordinary `choose_cards` prompt (min 0, max 1) over the opponent's graveyard, which already blocks; an empty graveyard skips the prompt and restricts.
+
+Rejected: a separate `CantAttackThisTurn` payload. The reader, the enumerator hook and the error would be copied for a difference of two numbers.
+
+### Cards
+
+- **Unstable Glyphbridge // Sandswirl Wanderglyph: Full.** The front face is The Eternal Wanderer's −4 shape (`ChoosePermanents`, one leg per player, APNAP from the active player) with a power-2-or-less candidate list and a destroy. The ruling "you must choose a creature with power 2 or less … if you can" is a floor of one wherever the board has one. "If you cast it" is `b16EnteredFromStack`. The back face's cast ban is ADR 0066's amendment of the same date.
+- **Web of Inertia: Full.**
+- **Jace, Multiverse Architect: Full**, the caveat removed.
+
+### Tests
+
+`game/cant_attack_player_test.go` (a this-turn grant applies at once and is over on their next turn; each scope against the player, a Jace, another planeswalker and a battle they control; the sentence per scope) and `cards/effects/unstable_glyphbridge_test.go` (each card end to end, including the battle and the next turn).
+
+### Snapshot impact
+
+Additive: `seats[].statics[].cantAttack.scope.{playerOnly,playerExempt,planeswalkersOnly,subtype}`, recorded in `snapshot_shape/v7.txt`. A grant restored from a file without it has the zero scope, which is what every such grant meant. A binary that predates it drops the key on restore and reads a narrower grant as the widest; that is stronger than printed for the rest of one turn, accepted for a rollback.
+
+### Out of scope
+
+- "Can't attack you this combat" (Champions of Minas Tirith): the window is the combat, not the turn, and an extra combat phase would see it end. A third writer when a card in a deck needs it.

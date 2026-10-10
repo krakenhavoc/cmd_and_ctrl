@@ -174,3 +174,128 @@ func TestCantAttackGrantCloneIsolates(t *testing.T) {
 		t.Errorf("clone lost the earlier grant: %d statics", got)
 	}
 }
+
+// --- #2719: "this turn", and narrower scopes ---------------------------
+
+// A this-turn grant made during the restricted player's turn applies at
+// once and ends with the turn.
+func TestCantAttackPlayerThisTurnAppliesNowAndEndsWithTheTurn(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	protected, restricted := g.Seats[0], g.Seats[1]
+	c := readyCreatureFor(g, restricted.ID, "Raider")
+	advanceToDeclareOf(t, g, 1)
+	g.WithWriteLock(func() {
+		g.GrantCantAttackPlayerThisTurnForEffect(restricted.ID, protected.ID, CantAttackScope{}, "Test grant", uuid.Nil)
+	})
+	if slices.Contains(attackTargetsOf(g, c), protected.ID) {
+		t.Fatal("the turn in progress must be restricted")
+	}
+	advanceToDeclareOf(t, g, 2)
+	advanceToDeclareOf(t, g, 1)
+	g.WithWriteLock(func() { findBattlefieldCard(g, c).SummonedThisTurn = false })
+	if !slices.Contains(attackTargetsOf(g, c), protected.ID) {
+		t.Error("their next turn must not be restricted")
+	}
+}
+
+// Each scope covers exactly what its clause names.
+func TestCantAttackScopeCoversWhatItNames(t *testing.T) {
+	type covered struct{ player, jace, walker, battle bool }
+	for _, tc := range []struct {
+		name  string
+		scope CantAttackScope
+		want  covered
+	}{
+		{"you or permanents you control", CantAttackScope{}, covered{true, true, true, true}},
+		{"you or planeswalkers you control", CantAttackScope{PlaneswalkersOnly: true}, covered{true, true, true, false}},
+		{"you", CantAttackScope{PlayerOnly: true}, covered{true, false, false, false}},
+		{"Jaces you control", CantAttackScope{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"}, covered{false, true, false, false}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := newFourPlayerActiveGame(t)
+			protected, restricted, third := g.Seats[0], g.Seats[1], g.Seats[2]
+			jace := pushTypedTestCard(g, Card{
+				Name: "A Jace", TypeLine: "Legendary Planeswalker — Jace",
+				Owner: protected.ID, Controller: protected.ID, Counters: map[string]int{CounterLoyalty: 3},
+			})
+			walker := pushPlaneswalkerForTest(g, protected.ID, "Other Walker", 3)
+			battle := pushTypedTestCard(g, Card{
+				Name: "A Siege", TypeLine: "Battle — Siege", ProtectorPlayerID: third.ID,
+				Owner: protected.ID, Controller: protected.ID, Counters: map[string]int{CounterDefense: 3},
+			})
+			c := readyCreatureFor(g, restricted.ID, "Raider")
+			advanceToDeclareOf(t, g, 1)
+			g.WithWriteLock(func() {
+				g.GrantCantAttackPlayerThisTurnForEffect(restricted.ID, protected.ID, tc.scope, "Test grant", uuid.Nil)
+			})
+			got := attackTargetsOf(g, c)
+			for target, want := range map[uuid.UUID]bool{protected.ID: tc.want.player, jace: tc.want.jace, walker: tc.want.walker, battle: tc.want.battle} {
+				if slices.Contains(got, target) == want {
+					t.Errorf("target %s: covered = %v, want %v (offered %v)", target, !want, want, got)
+				}
+			}
+			if !slices.Contains(got, third.ID) {
+				t.Error("a third player is never covered")
+			}
+		})
+	}
+}
+
+// The refusal says what the scope covers.
+func TestPlayerCantAttackErrorSentenceFollowsTheScope(t *testing.T) {
+	for scope, want := range map[CantAttackScope]string{
+		{}:                        "Raider can't attack Alice or permanents they control this turn (Src).",
+		{PlaneswalkersOnly: true}: "Raider can't attack Alice or planeswalkers they control this turn (Src).",
+		{PlayerOnly: true}:        "Raider can't attack Alice this turn (Src).",
+		{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"}: "Raider can't attack Jaces Alice controls this turn (Src).",
+	} {
+		e := &PlayerCantAttackError{AttackerName: "Raider", ProtectedName: "Alice", SourceName: "Src", Scope: scope}
+		if got := e.Sentence(); got != want {
+			t.Errorf("%+v: %q, want %q", scope, got, want)
+		}
+	}
+}
+
+// An attack on a planeswalker records who controlled it then, and the
+// "attacked you or a planeswalker you control" read uses that record
+// after the planeswalker is gone. An attack on a battle is neither.
+func TestAttackedYouOrYourPlaneswalkerThisTurnReadsTheDeclaration(t *testing.T) {
+	g := newFourPlayerActiveGame(t)
+	you, attacker, third := g.Seats[0], g.Seats[1], g.Seats[2]
+	walker := pushPlaneswalkerForTest(g, you.ID, "Walker", 3)
+	battle := pushTypedTestCard(g, Card{
+		Name: "A Siege", TypeLine: "Battle — Siege", ProtectorPlayerID: third.ID,
+		Owner: you.ID, Controller: you.ID, Counters: map[string]int{CounterDefense: 3},
+	})
+	c := readyCreatureFor(g, attacker.ID, "Raider")
+	advanceToDeclareOf(t, g, 1)
+	attacked := func() (b bool) {
+		g.WithWriteLock(func() { b = g.AttackedYouOrYourPlaneswalkerThisTurn(attacker.ID, you.ID) })
+		return
+	}
+	if attacked() {
+		t.Fatal("nothing has attacked yet")
+	}
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventAttack, Actor: attacker.ID, CardID: c, Target: third.ID})
+		g.EmitEvent(Event{Kind: EventAttack, Actor: attacker.ID, CardID: c, Target: battle})
+	})
+	if attacked() {
+		t.Fatal("an attack on another player or on a battle you control is not an attack on you")
+	}
+	g.WithWriteLock(func() {
+		g.EmitEvent(Event{Kind: EventAttack, Actor: attacker.ID, CardID: c, Target: walker})
+		g.Battlefield.Remove(walker)
+	})
+	if !attacked() {
+		t.Error("an attack on your planeswalker counts after it has left")
+	}
+	if got := g.TurnTally.Attacks[len(g.TurnTally.Attacks)-1].PlaneswalkerController; got != you.ID {
+		t.Errorf("record's planeswalker controller = %s, want %s", got, you.ID)
+	}
+	g.WithWriteLock(func() {
+		if g.AttackedYouOrYourPlaneswalkerThisTurn(third.ID, you.ID) {
+			t.Error("a player who is not the active player attacked nobody this turn")
+		}
+	})
+}
