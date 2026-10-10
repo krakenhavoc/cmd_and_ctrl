@@ -3720,7 +3720,7 @@ whose text the engine leaves to the table, a state trigger (CR 603.8 reads the g
 static, or a continuing effect that is more than a fixed change to the characteristics of the objects it locked
 in (CR 611.2c): a prevention or replacement, a "can't", a doubling, or a rule read live.
 
-**Unknown always asks:** a hand-written closure, a `Build`, a count of the board, a "may", a mode clause or chosen
+**Unknown always asks:** a hand-written closure, a `Build` (since relaxed, see the note below), a count of the board, a "may", a mode clause or chosen
 modes, a `TargetsFrom` clause, an item with a payload, X, a division or `Params` of its own, and any step not in the
 table.
 
@@ -3758,3 +3758,15 @@ inspected anyway. (b) Keep every `Build` as unknown.
   other seat's prompt and placed below it in collected order.
 - `game/trigger_independence_test.go`: every `CardDef` slot is classified, `defBearsRules`, the ID walk, and
   undescribed items still ask.
+
+### Note (2026-10-09): a plain `Build` is accepted
+
+The owner answered the question above with (a). A row with a `Build` fill-in now gets the footprint of its declared
+`Effect` like any other row; the footprint never comes from the `Build`. At the check, an item such a row built is
+accepted only when it is exactly what the footprint describes (`builtItemIsPlain`, `game/trigger_independence.go`).
+It may set only the fields the engine stamps and the footprint reads: identity, kind, controller and owner, source,
+label, the triggering event, the row stamp in `Params.Ability`, and targets from the row's declared target clause.
+Any other field set, such as `Params`, a payload, X, a division or modes, keeps the prompt, and so does a new
+`StackItem` field until it is added to that list. Ugin, Eye of the Storms' cast trigger moved onto
+`Do(ExileChosenTarget{})`, so casting Ugin with Vivi out no longer asks unless Ugin targets Vivi. Tests:
+`cards/effects/trigger_independence_built_test.go`.

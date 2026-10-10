@@ -234,8 +234,10 @@ type TriggeredAbility struct {
 	//
 	// ENGINE-OWNED, like SourceBlind: the catalog registry derives it as
 	// it files each definition (effects.classifyFootprint), from a row
-	// with no Build, no "you may" and no mode clause whose Effect is an
-	// effects.Do of primitives that each declare a step. A card file
+	// with no "you may" and no mode clause whose Effect is an
+	// effects.Do of primitives that each declare a step. A row with a
+	// Build gets one too; the check accepts an item it built only when
+	// that item carries nothing the footprint does not read. A card file
 	// never sets it, and the registry overwrites whatever a row carried.
 	Footprint []FootprintStep
 
