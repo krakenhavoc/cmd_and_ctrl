@@ -127,6 +127,17 @@ type Config struct {
 	// Remembrance) adds to every creature it sacrifices (ADR 0126 §7).
 	// Zero is the pre-S66 price.
 	DeathPayoff float64
+	// PriceAnswers reads the answers an activated row declares (ADR
+	// 0142 decision 6, answers.go). In a window with something on the
+	// stack, an untargeted protect, pump or prevent row on a creature
+	// an item there would remove is priced by what it saves, and a row
+	// declared `value` waits for the stack to resolve. A row that
+	// sacrifices its own source, or exiles a creature for a
+	// `sac_outlet` row, pays for it by the chance the bot would have
+	// kept it (sacrifice.go's dying anyway). It also switches on Layer
+	// A's value-only rule for the tier (rules.Options). Off (the zero
+	// value) is the heuristic before ADR 0142.
+	PriceAnswers bool
 
 	// RampPerMana is the cast-time premium per mana a new repeatable
 	// mana source closes of the bot's mana deficit (ADR 0126 §2,
@@ -642,6 +653,8 @@ func DefaultConfig() Config {
 		SacrificeDyingAnyway: true,
 		DeathPayoff:          0.60,
 
+		PriceAnswers: true,
+
 		DamageToOpponent: 0.30,
 		DesperateDamage:  2.00,
 		FocusBonus:       1.00,
@@ -729,6 +742,8 @@ func BaselineConfig() Config {
 	// §7, sacrifice outlets (PR 8).
 	c.SacrificeDyingAnyway = false
 	c.DeathPayoff = 0
+	// ADR 0142 decision 6: declared answers.
+	c.PriceAnswers = false
 	// ADR 0126's amendment of 2026-10-06: discard payoffs.
 	c.PriceDiscardPayoffs = false
 	// ADR 0130 §9: exert, never taken before it.

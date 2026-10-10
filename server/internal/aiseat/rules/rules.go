@@ -36,6 +36,10 @@
 //   - the opening roll (ADR 0121 §4) — a die to roll (opening-roll),
 //     or the winner taking the first turn (opening-choice); no hand
 //     exists yet to argue otherwise
+//   - something is on the stack and the only non-pass moves are rows
+//     their cards declare `value` (ADR 0142 decision 6, value-only):
+//     a declared value row answers nothing, and what it buys is the
+//     same once the stack resolves
 //
 // Anything that needs a view on what the board is worth — which
 // removal spell, whether to block, whether to hold up the counter —
@@ -95,7 +99,22 @@ const (
 	// its own rule because it is a choice, not a die: the MCP seat
 	// (ADR 0122 §4) absorbs the die and hands this to its model.
 	RuleOpeningChoice = "opening-choice"
+	// RuleValueOnly passes a window with something on the stack whose
+	// only alternatives to passing are activations of rows declared
+	// `value` (ADR 0142 decision 6), and floating mana. Off under
+	// Options.NoValueOnly.
+	RuleValueOnly = "value-only"
 )
+
+// Options turns individual rules off. The zero value is every rule on,
+// which is what Resolve runs.
+type Options struct {
+	// NoValueOnly turns RuleValueOnly off: the heuristic tier seated
+	// with a Config whose PriceAnswers is off (the arena's
+	// heuristic-baseline) would take some of those activations, and
+	// Layer A must never change how its tier plays.
+	NoValueOnly bool
+}
 
 // Verdict is Layer A's answer for one window.
 type Verdict struct {
@@ -113,10 +132,13 @@ type Verdict struct {
 // Absorbed reports whether the verdict resolved the window.
 func (v Verdict) Absorbed() bool { return v.Outcome == Take }
 
-// Resolve runs the filter with a few passes over the move list. Coin
+// Resolve runs the filter with every rule on.
+func Resolve(in aiseat.Input) Verdict { return ResolveWith(in, Options{}) }
+
+// ResolveWith runs the filter with a few passes over the move list. Coin
 // choices decode their answer parameters; the common priority paths
 // allocate nothing.
-func Resolve(in aiseat.Input) Verdict {
+func ResolveWith(in aiseat.Input, opt Options) Verdict {
 	moves := in.Moves
 	// The opening roll (ADR 0121 §4) is a die to roll or, for the
 	// winner, the choice of who goes first. Neither is a decision about
@@ -202,6 +224,10 @@ func Resolve(in aiseat.Input) Verdict {
 		}
 	}
 	if other > 0 {
+		if lands == 0 && !opt.NoValueOnly && valueOnly(in) {
+			return Verdict{Outcome: Take, Index: pass, Rule: RuleValueOnly,
+				Reason: "nothing on offer answers the stack: every ability is declared value"}
+		}
 		return escalate(RuleNone)
 	}
 

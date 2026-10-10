@@ -112,6 +112,27 @@ func (p *PurposeView) Priced() bool {
 	return q != PurposeView{}
 }
 
+// Declares reports whether the purpose declares answer a, a wire name
+// from Answers ("protect", "pump", …). Nil-safe.
+func (p *PurposeView) Declares(a string) bool {
+	if p == nil || p.Answers == nil {
+		return false
+	}
+	for _, x := range *p.Answers {
+		if x == a {
+			return true
+		}
+	}
+	return false
+}
+
+// AnswersNothing reports whether the purpose is declared "value" (ADR
+// 0142 decision 1): the row answers nothing on the stack or in combat.
+// False for a row that declares no answers at all. Nil-safe.
+func (p *PurposeView) AnswersNothing() bool {
+	return p != nil && p.Answers != nil && len(*p.Answers) == 1 && (*p.Answers)[0] == "value"
+}
+
 // TargetPurposeView is game.TargetPurpose on the wire: what the spell
 // or ability does to the target picked for clause `slot`. Every amount
 // is omitted when zero; `slot` is always sent.

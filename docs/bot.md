@@ -1168,6 +1168,57 @@ The Altars' mana abilities sacrifice a creature, so the bot does not
 activate them for floating mana. The auto-tapper uses them when a cast
 needs the mana, as it always did.
 
+### Declared answers (ADR 0142)
+
+Every catalog activated row in scope declares what it can do in
+response (`activated_abilities[].purpose.answers`,
+[ADR 0142](decisions/0142-declared-answers-on-catalog-abilities.md)).
+With `PriceAnswers` on (`answers.go`), the bot reads it while anything
+is on the stack:
+
+- **Saving a creature.** When an opponent's item on the stack targets
+  one of the bot's creatures, or a declared sweep would remove it, an
+  untargeted row on that creature is priced by what it saves: the
+  creature's value times the chance the bot loses it
+  (`RemovalConfidence` for a target, the sweep's share for a sweep).
+  - `protect` (regenerate, indestructible, hexproof, a blink, …) saves
+    it from anything.
+  - `prevent` saves it only when every threat is declared damage that
+    can be prevented: a target entry's `damage`, or a damage sweep.
+  - `pump` saves it only when one activation's declared `pump` keeps it
+    alive against the declared damage and −N/−N.
+
+  A row already activated from that creature, above the threats on the
+  stack, has answered them, so the bot does not stack a second shield.
+  A pump that needs several activations to cover the damage is not
+  priced.
+- **A `value` row waits.** A row declared `value` is priced below a pass
+  while anything is on the stack: what it buys is the same once the
+  stack resolves. The exception is a row whose cost spends a permanent
+  the bot is about to lose (above).
+- **Outlets the cost does not name.** A row that sacrifices its own
+  source (Sakura-Tribe Elder) pays for the source at the dying-anyway
+  price, purposed or not, and so does the creature a `sac_outlet` row
+  exiles (The Soul Stone). Each clears `LeftoverThreshold` when that is
+  all it costs besides mana and taps. So a targeted Elder is sacrificed
+  for its land in response, and an untargeted one is not.
+
+Layer A has a matching rule, `value-only`: a window with something on
+the stack whose only alternatives to passing are rows declared `value`
+(and floating mana) is a pass, with no model call. It escalates whenever
+the heuristic might spend a permanent there: a move's source or cost is
+a target on the stack or is in combat, a spell on the stack declares a
+sweep, or the move is marked `interacts`. The heuristic tier turns the
+rule off when its Config has `PriceAnswers` off, so
+`heuristic-baseline` plays as before.
+
+The model tiers' prompt and the MCP seat's move list show a row's
+answers after its label, "(answers: protect)".
+
+Not covered: a combat grant (the combat planner's business), a row on
+another permanent that saves this one (Selfless Spirit), and spells,
+which declare no answers yet.
+
 ### The old prices, kept runnable
 
 Every term above is a `Config` or `Weights` field whose zero value is

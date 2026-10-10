@@ -232,6 +232,9 @@ func New(t Tier, opt Options) (aiseat.Policy, error) {
 		}
 		f := rules.NewFilter(h, opt.Meter)
 		f.Tier = string(Heuristic)
+		// Layer A's value-only rule agrees with the heuristic only when
+		// it prices declared answers (ADR 0142 decision 6).
+		f.Options.NoValueOnly = opt.Heuristic != nil && !opt.Heuristic.PriceAnswers
 		return f, nil
 
 	case Assisted, Strong:

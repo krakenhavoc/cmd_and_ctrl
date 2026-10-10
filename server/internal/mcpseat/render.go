@@ -629,6 +629,10 @@ func moveLine(i int, m legal.Move, v *protocol.GameView, me string, nw nameWrapp
 	if m.AlwaysLegal {
 		notes = append(notes, "always legal")
 	}
+	// ADR 0142 decision 6: what the row declares it answers.
+	if a := boardtext.AnswersNote(v, m); a != "" {
+		notes = append(notes, a)
+	}
 	line := fmt.Sprintf("  %d: %s", i, nw.apply(m.Label))
 	if len(notes) > 0 {
 		line += " (" + strings.Join(notes, "; ") + ")"
