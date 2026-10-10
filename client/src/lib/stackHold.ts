@@ -4,7 +4,7 @@
 // in about one round trip, so the item is often on screen for less
 // than a second. The hold keeps an AUTOMATIC pass waiting until the
 // top stack item has been on this client's screen for
-// gameplay.stackHoldMs, when that item is controlled by someone other
+// the table's pace (ADR 0143 §2.6), when that item is controlled by someone other
 // than the viewer. The rules let a player take their time before
 // passing (CR 117.3d), and the item resolves only once every seat has
 // passed (CR 117.4), so one seat's hold is the table's.
@@ -15,26 +15,49 @@
 //
 // autopassDecision stays the pure precedence and does not know about
 // time. This module answers how much longer a `pass` verdict should
-// wait, from the stack, the viewer, the first-seen times, the setting
+// wait, from the stack, the viewer, the first-seen times, the hold
 // and now. Game.svelte owns the first-seen map and the timer, the same
 // machinery as the timed bluff (bluff.ts), and the action dock shows
 // the countdown through stackHoldStatus below.
 
 import type { Readable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
-import type { GameView } from "./protocol";
+import type { GameView, TableSettingsView } from "./protocol";
 
-/** The largest hold the setting offers. The considering chip waits past it. */
+/** The longest hold any pace sets (Slow). The considering chip waits past it. */
 export const STACK_HOLD_MAX_MS = 3000;
 
-/** The default: about 2 s, as the owner asked (ADR 0119 owner answer 2a). */
+/** Normal pace's hold, about 2 s (ADR 0119 owner answer 2a). */
 export const DEFAULT_STACK_HOLD_MS = 2000;
 
-/** The Settings select's choices, in milliseconds. 0 turns the hold off. */
-export const STACK_HOLD_CHOICES_MS: readonly number[] = [0, 1000, 2000, 3000];
+/** A table's pace, the host's setting (`settings.bot_pace` on the wire). */
+export type TablePace = TableSettingsView["bot_pace"];
 
 /**
- * clampStackHoldMs reads the stored setting the way bluff.ts reads its
+ * ADR 0143 §2.6: the hold is the table's, set by its pace, for people
+ * and bots alike. These are aiseat's botPacePresets StackHold values
+ * (server/internal/aiseat/runner.go), and stackHold.test.ts reads that
+ * file so the two tables cannot drift apart.
+ */
+export const STACK_HOLD_BY_PACE: Readonly<Record<TablePace, number>> = Object.freeze({
+  fast: 0,
+  normal: 2000,
+  slow: 3000,
+});
+
+/**
+ * stackHoldMsForPace is the hold for a table's pace. An unknown pace
+ * (an older server, a frame with no settings) is Normal's, the default
+ * pace.
+ */
+export function stackHoldMsForPace(pace: unknown): number {
+  return typeof pace === "string" && pace in STACK_HOLD_BY_PACE
+    ? STACK_HOLD_BY_PACE[pace as TablePace]
+    : DEFAULT_STACK_HOLD_MS;
+}
+
+/**
+ * clampStackHoldMs reads a hold the way bluff.ts reads its
  * bounds: clamped where it is used, so a hand-edited blob can neither
  * stall the table nor go negative. A value that is not a number at all
  * falls back to the default.

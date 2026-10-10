@@ -16,7 +16,8 @@
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
-  import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
+  import { stackHoldMsForPace, type TablePace } from "../stackHold";
+  import { currentTablePace } from "../tableSettings";
   import type { StackStyle } from "../stackLane";
   import type { TableLayout } from "../tableLayout";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
@@ -46,6 +47,13 @@
   import { L } from "../labels";
   import { navigate } from "../router";
   import { session } from "../session";
+
+  // ADR 0143 §3.2: the table pace's names, for the Reading time line.
+  const PACE_NAMES: Record<TablePace, string> = {
+    fast: "Fast",
+    normal: "Normal",
+    slow: "Slow",
+  };
 
   // ADR 0143 §2.1 and §3.2: the one Auto-pass choice, and its copy.
   const PASS_MODE_CHOICES: readonly { mode: PassMode; label: string }[] = [
@@ -904,23 +912,19 @@
 
             <section class="gp-section" aria-labelledby="gp-reading">
               <h4 id="gp-reading" class="gp-heading">Reading time</h4>
-              <label class="slider-row">
-                <span
-                  >Let other players' spells sit on the stack for at least … before auto-pass lets
-                  them resolve</span
-                >
-                <select
-                  value={clampStackHoldMs($settings.gameplay.stackHoldMs)}
-                  onchange={(e) => change("gameplay", "stackHoldMs", Number(e.currentTarget.value))}
-                >
-                  {#each STACK_HOLD_CHOICES_MS as ms (ms)}
-                    <option value={ms}>{ms === 0 ? "Off" : `${ms / 1000} s`}</option>
-                  {/each}
-                </select>
-                {#if isFresh("gameplay.stackHoldMs")}<span class="saved">✓</span>{/if}
-              </label>
-              <p class="help">
-                Click <strong>wait</strong> on the countdown to keep priority and respond.
+              <!-- ADR 0143 §2.6 and §3.2: the hold is the table's pace,
+                   which the host sets. Outside a game there is no table
+                   to name, so the line gives all three. -->
+              <p class="help reading-time">
+                {#if $currentTablePace}
+                  This table's pace is {PACE_NAMES[$currentTablePace]}: other players' spells stay
+                  on the stack for {stackHoldMsForPace($currentTablePace) / 1000} s before they resolve.
+                {:else}
+                  Each table's pace sets this: other players' spells stay on the stack for 0 s
+                  (Fast), 2 s (Normal) or 3 s (Slow) before they resolve.
+                {/if}
+                The host sets it in Table settings. Click <strong>wait</strong> on the countdown to keep
+                priority and respond.
               </p>
             </section>
 

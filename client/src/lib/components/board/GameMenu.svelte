@@ -242,7 +242,7 @@
         role="menuitem"
         onclick={via(props.onTableSettings)}
         title={props.canManage
-          ? "the table's house rules — undos, life, commander damage, bot speed, spawning"
+          ? "the table's house rules — undos, life, commander damage, table pace, spawning"
           : "the table's house rules (only the host can change them)"}
       >
         <Icon name="gear" size={15} /> Table settings…

@@ -11,15 +11,16 @@ import {
 // opponent's item the viewer could not answer in one round trip, so it
 // was often on screen for less than a second. Now an automatic pass on
 // someone else's top item waits until that item has been on this
-// client's screen for gameplay.stackHoldMs (2 s by default).
+// client's screen for the table's pace (ADR 0143 §2.6: 2 s at Normal,
+// the default pace).
 //
-// The opponent here is on the shipped defaults: smart auto-pass on, no
-// "always stop", the 2 s hold. Its deck has no instants and it has no
-// lands out, so it cannot answer anything and smart auto-pass would
-// pass at once without the hold. The caster keeps the S19 seed
-// (stackHoldMs 0), and its own item passes at once under
-// autoPassOwnStack, as before. So the time the item spends on the stack
-// is the opponent's hold.
+// The opponent here is on the shipped defaults: Smart auto-pass, at a
+// Normal-pace table. Its deck has no instants and it has no lands out,
+// so it cannot answer anything and smart auto-pass would pass at once
+// without the hold. The caster keeps the S19 seed, and its own item
+// passes at once under autoPassOwnStack, as before: the hold never
+// covers your own item. So the time the item spends on the stack is the
+// opponent's hold.
 //
 // The item is Mulldrifter's enters trigger, put there by an admin move,
 // the same way the S19 suite stages it: no mana, no casting UI. It is

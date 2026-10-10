@@ -4231,7 +4231,8 @@ export interface TableSettingsView {
   starting_life: number;
   // Damage from one commander that loses the game.
   commander_damage: number;
-  // AI seat pacing preset.
+  // The table pace (ADR 0143 §2.6): bot think time, and the stack hold
+  // every seat waits before auto-passing another player's spell.
   bot_pace: "fast" | "normal" | "slow";
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).

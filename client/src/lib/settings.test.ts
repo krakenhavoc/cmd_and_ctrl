@@ -405,26 +405,45 @@ describe("settings", () => {
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
   });
 
-  // ADR 0119 §2: the stack hold arrives on, at 2 s, for everyone.
-  it("v17 → v18 seeds the stack hold at 2 s, and keeps a stored choice", async () => {
-    localStorage.setItem(
-      "cmdctrl.settings.v1",
-      JSON.stringify({ __version: 17, gameplay: { bluffInstant: true } }),
-    );
-    let mod = await freshModule();
-    let s = get(mod.settings);
-    expect(s.__version).toBe(mod.SETTINGS_VERSION);
-    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(18);
-    expect(s.gameplay.stackHoldMs).toBe(2000);
-    expect(s.gameplay.bluffInstant).toBe(true);
+  // ADR 0143 §2.6: the personal stack hold (ADR 0119 §2, v18) is gone
+  // at v26. The table's pace sets the hold, so a stored value, whatever
+  // it was, is dropped, and nothing else moves with it.
+  it("v25 → v26 drops gameplay.stackHoldMs", async () => {
+    for (const [version, stored] of [
+      [18, 0],
+      [22, 3000],
+      [25, 2000],
+      [25, "x"],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({
+          __version: version,
+          gameplay: { stackHoldMs: stored, bluffInstant: true },
+        }),
+      );
+      const mod = await freshModule();
+      const s = get(mod.settings);
+      expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(26);
+      expect(s.__version).toBe(mod.SETTINGS_VERSION);
+      expect("stackHoldMs" in s.gameplay, `v${version} ${String(stored)}`).toBe(false);
+      expect(s.gameplay.bluffInstant).toBe(true);
+      // And it is gone from disk once the settings are saved again.
+      mod.updateSettings("gameplay", "confirmExit", false);
+      const disk = JSON.parse(localStorage.getItem("cmdctrl.settings.v1") ?? "{}");
+      expect("stackHoldMs" in disk.gameplay).toBe(false);
+    }
+  });
 
-    localStorage.setItem(
-      "cmdctrl.settings.v1",
-      JSON.stringify({ __version: 18, gameplay: { stackHoldMs: 0 } }),
-    );
-    mod = await freshModule();
-    s = get(mod.settings);
-    expect(s.gameplay.stackHoldMs).toBe(0);
+  it("a new player has no personal stack hold", async () => {
+    const { defaultSettings } = await freshModule();
+    expect("stackHoldMs" in defaultSettings().gameplay).toBe(false);
+  });
+
+  it("an account copy from a v25 client loses stackHoldMs too", async () => {
+    const { applySyncedCopy, defaultSettings } = await freshModule();
+    const next = applySyncedCopy(defaultSettings(), { gameplay: { stackHoldMs: 3000 } }, 25);
+    expect("stackHoldMs" in next.gameplay).toBe(false);
   });
 
   // ADR 0118 §1, owner decision 5: strict payment is the default, and
