@@ -31,8 +31,9 @@ func init() {
 			Label:    "Add {G}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{G}, {T}, Tap an untapped creature you control: Create a Food token.",
-			Cost:  Plus(ManaCost("{1}{G}"), TapCost(), TapAnotherUntapped("an untapped creature you control", Creature())),
+			Label:   "{1}{G}, {T}, Tap an untapped creature you control: Create a Food token.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{G}"), TapCost(), TapAnotherUntapped("an untapped creature you control", Creature())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{
 					Controller: item.Controller,

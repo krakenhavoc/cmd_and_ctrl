@@ -52,9 +52,10 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Each opponent loses 1 life and you gain 1 life",
-			Cost:   TapCost(),
-			Effect: drainEachOpponent,
+			Label:   "{T}: Each opponent loses 1 life and you gain 1 life",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  drainEachOpponent,
 		}},
 	})
 }

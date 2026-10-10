@@ -27,6 +27,7 @@ func init() {
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Activated: []ActivatedAbility{{
 			Label:     "{B}, {T}: Each opponent loses 1 life. Activate only if you control two or more black permanents.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{B}"), TapCost()),
 			Condition: ControlsAtLeast(2, MatchColor("B")),
 			Effect: func(g *game.Game, item *game.StackItem) error {

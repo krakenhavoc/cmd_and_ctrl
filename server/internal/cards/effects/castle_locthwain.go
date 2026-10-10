@@ -27,8 +27,9 @@ func init() {
 			Label:    "Add {B}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}{B}, {T}: Draw a card, then you lose life equal to the number of cards in your hand.",
-			Cost:  Plus(ManaCost("{1}{B}{B}"), TapCost()),
+			Label:   "{1}{B}{B}, {T}: Draw a card, then you lose life equal to the number of cards in your hand.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{B}{B}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (DrawCards{Player: item.Controller, N: 1}).Apply(ctx); err != nil {

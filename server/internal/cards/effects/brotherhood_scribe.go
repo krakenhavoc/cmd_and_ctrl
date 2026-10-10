@@ -26,7 +26,7 @@ func init() {
 			Label:     "Metalcraft — {T}: You get {E}. Activate only if you control three or more artifacts.",
 			Cost:      TapCost(),
 			Condition: ControlsAtLeast(3, MatchArtifact),
-			Purpose:   game.Purpose{Energy: 1},
+			Purpose:   game.Purpose{Answers: game.AnswerValue, Energy: 1},
 			Effect:    Do(GetEnergy{N: 1}),
 		}},
 		Triggered: []game.TriggeredAbility{

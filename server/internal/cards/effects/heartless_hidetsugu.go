@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Heartless Hidetsugu — Legendary Creature — Ogre Shaman {3}{R}{R},
 // 4/3 (EDHREC rank 3043):
 //
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Heartless Hidetsugu",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Heartless Hidetsugu deals damage to each player equal to half that player's life total, rounded down.",
-			Cost:   TapCost(),
-			Effect: b29DamageEachPlayerHalfTheirLife,
+			Label:   "{T}: Heartless Hidetsugu deals damage to each player equal to half that player's life total, rounded down.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  b29DamageEachPlayerHalfTheirLife,
 		}},
 	})
 }

@@ -69,9 +69,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "{2}, Sacrifice two artifacts: You gain 5 life",
-				Cost:   cost,
-				Effect: Do(GainLife{Amount: 5}),
+				Label:   "{2}, Sacrifice two artifacts: You gain 5 life",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    cost,
+				Effect:  Do(GainLife{Amount: 5}),
 			},
 		},
 	})

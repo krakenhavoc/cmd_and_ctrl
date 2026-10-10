@@ -26,8 +26,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{U}{R}, {T}: Draw a card, then discard a card",
-			Cost:  Plus(ManaCost("{1}{U}{R}"), TapCost()),
+			Label:   "{1}{U}{R}, {T}: Draw a card, then discard a card",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{U}{R}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return lootOne(g, item, 1)
 			},

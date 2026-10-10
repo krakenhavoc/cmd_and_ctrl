@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Throne of the High City — Land:
 //
 //	"{T}: Add {C}.
@@ -25,9 +27,10 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}, {T}, Sacrifice this land: You become the monarch",
-			Cost:   Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
-			Effect: Do(BecomeTheMonarch{}),
+			Label:   "{4}, {T}, Sacrifice this land: You become the monarch",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
+			Effect:  Do(BecomeTheMonarch{}),
 		}},
 	})
 }

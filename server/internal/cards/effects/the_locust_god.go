@@ -37,8 +37,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{U}{R}: Draw a card, then discard a card.",
-			Cost:  ManaCost("{2}{U}{R}"),
+			Label:   "{2}{U}{R}: Draw a card, then discard a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{2}{U}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return lootOne(g, item, 1)
 			},

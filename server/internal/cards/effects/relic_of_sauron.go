@@ -27,8 +27,9 @@ func init() {
 			Label:    "Add two mana in any combination of {U}, {B}, and/or {R}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}: Draw two cards, then discard a card.",
-			Cost:  Plus(ManaCost("{3}"), TapCost()),
+			Label:   "{3}, {T}: Draw two cards, then discard a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b16DrawThenDiscard(g, item, 2, 1)
 			},

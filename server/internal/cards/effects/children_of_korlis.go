@@ -35,8 +35,9 @@ func init() {
 		Name:         "Children of Korlis",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice this creature: You gain life equal to the life you've lost this turn.",
-			Cost:  SacrificeThis(),
+			Label:   "Sacrifice this creature: You gain life equal to the life you've lost this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    SacrificeThis(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GainLife{
 					Player: item.Controller,

@@ -44,9 +44,10 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{U}: Surveil 1.",
-			Cost:   ManaCost("{3}{U}"),
-			Effect: Do(Surveil{N: 1}),
+			Label:   "{3}{U}: Surveil 1.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{3}{U}"),
+			Effect:  Do(Surveil{N: 1}),
 		}},
 	})
 }

@@ -37,10 +37,11 @@ func init() {
 			SetAttachedBasePT(5, 5),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}{G}: Return this card from your graveyard to your hand.",
-			Cost:   ManaCost("{4}{G}"),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: returnThisCardFromYourGraveyardToYourHand,
+			Label:   "{4}{G}: Return this card from your graveyard to your hand.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{4}{G}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect:  returnThisCardFromYourGraveyardToYourHand,
 		}},
 	})
 }

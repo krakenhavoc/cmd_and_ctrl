@@ -40,8 +40,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{U}{U}: Until end of turn, whenever Lyra deals combat damage to a player, draw two cards.",
-			Cost:  ManaCost("{3}{U}{U}"),
+			Label:   "{3}{U}{U}: Until end of turn, whenever Lyra deals combat damage to a player, draw two cards.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{3}{U}{U}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DelayedOnEvent{
 					Label:     "Lyra, Tolarian Archangel — draw two cards",

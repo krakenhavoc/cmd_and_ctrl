@@ -22,9 +22,10 @@ func init() {
 			WhenThisEntersYouGetEnergy("Aether Theorist", 3),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Pay {E}: Scry 1.",
-			Cost:   Plus(TapCost(), PayEnergy(1)),
-			Effect: Do(Scry{N: 1}),
+			Label:   "{T}, Pay {E}: Scry 1.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), PayEnergy(1)),
+			Effect:  Do(Scry{N: 1}),
 		}},
 	})
 }

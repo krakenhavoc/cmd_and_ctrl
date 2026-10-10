@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Magus of the Wheel — Creature — Human Wizard {2}{R}, 3/3 (EDHREC
 // rank 1148):
 //
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Magus of the Wheel",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{R}, {T}, Sacrifice this creature: Each player discards their hand, then draws seven cards.",
-			Cost:   Plus(ManaCost("{1}{R}"), TapCost(), SacrificeThis()),
-			Effect: b10EachPlayerWheels,
+			Label:   "{1}{R}, {T}, Sacrifice this creature: Each player discards their hand, then draws seven cards.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{R}"), TapCost(), SacrificeThis()),
+			Effect:  b10EachPlayerWheels,
 		}},
 	})
 }

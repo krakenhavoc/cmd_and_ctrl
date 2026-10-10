@@ -27,9 +27,10 @@ func init() {
 		Replacements:  []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, {T}, Sacrifice this land: Search your library for a Forest card and a Plains card, put them onto the battlefield tapped, then shuffle.",
-			Cost:   Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-			Effect: b08KrosanVergeFetch,
+			Label:   "{2}, {T}, Sacrifice this land: Search your library for a Forest card and a Plains card, put them onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+			Effect:  b08KrosanVergeFetch,
 		}},
 	})
 }

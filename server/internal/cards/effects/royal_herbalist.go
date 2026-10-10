@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Royal Herbalist — Creature — Human Cleric {W}, 1/1:
 //
 //	"{2}, Exile the top card of your library: You gain 1 life."
@@ -15,9 +17,10 @@ func init() {
 		Name:         "Royal Herbalist",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, Exile the top card of your library: You gain 1 life.",
-			Cost:   Plus(ManaCost("{2}"), ExileTopOfLibrary(1)),
-			Effect: Do(GainLife{Amount: 1}),
+			Label:   "{2}, Exile the top card of your library: You gain 1 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), ExileTopOfLibrary(1)),
+			Effect:  Do(GainLife{Amount: 1}),
 		}},
 	})
 }

@@ -48,6 +48,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:         "Channel — {3}{B}, Discard this card: Mill three cards, then return a creature or planeswalker card from your graveyard to your hand.",
+			Purpose:       game.Purpose{Answers: game.AnswerValue},
 			Cost:          game.AbilityCost{Mana: "{3}{B}", DiscardSelf: true},
 			Zones:         []game.ZoneKind{game.ZoneHand},
 			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},
