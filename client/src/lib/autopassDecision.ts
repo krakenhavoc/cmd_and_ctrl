@@ -39,7 +39,9 @@
 //     fall through. ADR 0143 §2.2: this runs in Smart and Careful
 //     alike, with no switch, so no setting can cost the viewer a
 //     window they can respond in.
-//  8. stepStops[step] === true → hold, unless "only when I can act"
+//  8. The active player's column ticks this step (ADR 0143 §2.3:
+//     stepStops on the viewer's turn, stepStopsOpponents otherwise;
+//     stepStopFor) → hold, unless "only when I can act"
 //     (#2871, stepStopsOnlyWhenCanAct) says there is nothing to play
 //     (#599 keeps the declare-attackers review window open through
 //     this rule, via hasPlay). On the
@@ -60,6 +62,27 @@
 // turn.
 
 import type { PassMode } from "./settings";
+import { stopKeyFor, type StepID } from "./turn";
+
+/**
+ * stepStopFor reads rule 8's tick for this step from the column for
+ * whoever is active (ADR 0143 §2.3): the My-turn column (stepStops)
+ * on the viewer's own turn, the Opponents'-turns column on everyone
+ * else's. The two combat damage steps share one stop (turn.ts
+ * stopKeyFor). Undefined when there is no step or the map omits it.
+ */
+export function stepStopFor(
+  columns: {
+    stepStops: Record<string, boolean>;
+    stepStopsOpponents: Record<string, boolean>;
+  },
+  step: string | null | undefined,
+  viewerIsActive: boolean,
+): boolean | undefined {
+  if (!step) return undefined;
+  const column = viewerIsActive ? columns.stepStops : columns.stepStopsOpponents;
+  return column[stopKeyFor(step as StepID)];
+}
 
 // AutopassGates is the fully-resolved state the decision reads. All
 // fields are plain data so the caller does the reactive reads and
@@ -98,7 +121,9 @@ export interface AutopassGates {
   autoPassOwnStack: boolean;
   // Every item on the stack belongs to the viewer (#323).
   ownsEveryStackItem: boolean;
-  // gameplay.stepStops[step] — undefined for steps the map omits.
+  // The active player's column at this step (stepStopFor): stepStops
+  // on the viewer's own turn, stepStopsOpponents on anyone else's.
+  // Undefined for steps the map omits.
   stepStop: boolean | undefined;
   // gameplay.stepStopsOnlyWhenCanAct (#2871): a ticked step stops only
   // when hasPlay or engineMayMissMana says there is something to do.

@@ -103,6 +103,9 @@ describe("SYNCED_FIELDS", () => {
 
   it("syncs passMode and none of the three keys it replaced (ADR 0143 §5)", () => {
     expect(SYNCED_FIELDS.gameplay.passMode).toBe("synced");
+    // ADR 0143 §2.3: both columns of the stops grid travel with the person.
+    expect(SYNCED_FIELDS.gameplay.stepStops).toBe("synced");
+    expect(SYNCED_FIELDS.gameplay.stepStopsOpponents).toBe("synced");
     for (const k of ["autoPassPriority", "smartAutoPass", "alwaysStopOpponentStack"]) {
       expect(k in SYNCED_FIELDS.gameplay, k).toBe(false);
     }

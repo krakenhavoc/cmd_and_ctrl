@@ -1120,11 +1120,12 @@ describe("passMode (v23 → v24)", () => {
       await modeOf({ __version: 1, gameplay: { autoPassPriority: false, stepStops: {} } }),
     ).toBe("smart");
     // v2 on the seeded grid: the v2 → v3 hotfix turned it on too.
+    // (The v2-v24 default grid ticked the end step; ADR 0143 dropped it.)
     const { defaultStepStops } = await freshModule();
     expect(
       await modeOf({
         __version: 2,
-        gameplay: { autoPassPriority: false, stepStops: defaultStepStops() },
+        gameplay: { autoPassPriority: false, stepStops: { ...defaultStepStops(), end: true } },
       }),
     ).toBe("smart");
   });
@@ -1175,5 +1176,149 @@ describe("passMode (v23 → v24)", () => {
     for (const k of RETIRED) expect(k in next.gameplay, k).toBe(false);
     const manual = applySyncedCopy(base, { gameplay: { autoPassPriority: false } }, 23);
     expect(manual.gameplay.passMode).toBe("manual");
+  });
+});
+
+// ---- ADR 0143 §2.3 and §5: stops by whose turn it is ----
+
+describe("stepStops and stepStopsOpponents (v24 → v25)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+  // Every stoppable step, all off; then the ticks named.
+  const grid = (...ticked: string[]) => {
+    const out: Record<string, boolean> = {};
+    for (const id of [
+      "upkeep",
+      "draw",
+      "precombat_main",
+      "begin_combat",
+      "declare_attackers",
+      "declare_blockers",
+      "combat_damage",
+      "end_combat",
+      "postcombat_main",
+      "end",
+    ]) {
+      out[id] = ticked.includes(id);
+    }
+    return out;
+  };
+  const OLD_DEFAULT = grid(
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+    "end",
+  );
+  const NEW_MINE = grid(
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+  );
+  const NONE = grid();
+
+  it("a new player: My turn without the end step, and nothing on opponents' turns", async () => {
+    const { defaultSettings, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(25);
+    const gp = defaultSettings().gameplay;
+    expect(gp.stepStops).toEqual(NEW_MINE);
+    expect(gp.stepStopsOpponents).toEqual(NONE);
+  });
+
+  it("moves a player on the untouched old default to the new defaults", async () => {
+    const { mod, s } = await load({ __version: 24, gameplay: { stepStops: OLD_DEFAULT } });
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.stepStops).toEqual(NEW_MINE);
+    expect(s.gameplay.stepStopsOpponents).toEqual(NONE);
+  });
+
+  it("keeps a tuned grid in both columns", async () => {
+    for (const tuned of [
+      grid("upkeep", "precombat_main", "end"),
+      grid("precombat_main", "declare_attackers", "declare_blockers", "postcombat_main"),
+      NONE,
+      { ...OLD_DEFAULT, end_combat: true },
+    ]) {
+      const { s } = await load({ __version: 24, gameplay: { stepStops: tuned } });
+      expect(s.gameplay.stepStops, JSON.stringify(tuned)).toEqual(tuned);
+      expect(s.gameplay.stepStopsOpponents, JSON.stringify(tuned)).toEqual(tuned);
+      // A copy, not the same object.
+      expect(s.gameplay.stepStopsOpponents).not.toBe(s.gameplay.stepStops);
+    }
+  });
+
+  it("gives the new defaults to a blob that never stored a grid", async () => {
+    for (const blob of [
+      { __version: 12, gameplay: {} },
+      { gameplay: { passMode: "careful" } },
+      { __version: 1, gameplay: { stepStops: {} } },
+    ]) {
+      const { s } = await load(blob);
+      expect(s.gameplay.stepStops, JSON.stringify(blob)).toEqual(NEW_MINE);
+      expect(s.gameplay.stepStopsOpponents, JSON.stringify(blob)).toEqual(NONE);
+    }
+  });
+
+  it("drops untap and cleanup from an old grid before comparing it", async () => {
+    const { s } = await load({
+      __version: 10,
+      gameplay: { stepStops: { ...OLD_DEFAULT, untap: true, cleanup: false } },
+    });
+    expect(s.gameplay.stepStops).toEqual(NEW_MINE);
+    expect(s.gameplay.stepStopsOpponents).toEqual(NONE);
+  });
+
+  it("from v25 on, both stored columns stand and survive a save", async () => {
+    const mine = grid("upkeep", "end");
+    const theirs = grid("begin_combat");
+    const { mod } = await load({
+      __version: 25,
+      gameplay: { stepStops: mine, stepStopsOpponents: theirs },
+    });
+    expect(get(mod.settings).gameplay.stepStops).toEqual(mine);
+    expect(get(mod.settings).gameplay.stepStopsOpponents).toEqual(theirs);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.stepStops).toEqual(mine);
+    expect(get(again.settings).gameplay.stepStopsOpponents).toEqual(theirs);
+  });
+
+  it("a v25 blob keeps an old-default-looking My turn column as it is", async () => {
+    // From v25 the old default is a choice like any other.
+    const { s } = await load({
+      __version: 25,
+      gameplay: { stepStops: OLD_DEFAULT, stepStopsOpponents: NONE },
+    });
+    expect(s.gameplay.stepStops).toEqual(OLD_DEFAULT);
+  });
+
+  it("a malformed Opponents' column falls back to empty", async () => {
+    for (const bad of ["x", [true], null, 3]) {
+      const { s } = await load({ __version: 25, gameplay: { stepStopsOpponents: bad } });
+      expect(s.gameplay.stepStopsOpponents, String(bad)).toEqual(NONE);
+    }
+    const { s } = await load({
+      __version: 25,
+      gameplay: { stepStopsOpponents: { upkeep: true, end: "yes", untap: true } },
+    });
+    expect(s.gameplay.stepStopsOpponents).toEqual({ upkeep: true });
+  });
+
+  it("an account copy from a v24 client splits the same way", async () => {
+    const { applySyncedCopy, defaultSettings } = await freshModule();
+    const base = defaultSettings();
+    const tuned = grid("upkeep", "end");
+    const next = applySyncedCopy(base, { gameplay: { stepStops: tuned } }, 24);
+    expect(next.gameplay.stepStops).toEqual(tuned);
+    expect(next.gameplay.stepStopsOpponents).toEqual(tuned);
+    const untouched = applySyncedCopy(base, { gameplay: { stepStops: OLD_DEFAULT } }, 24);
+    expect(untouched.gameplay.stepStops).toEqual(NEW_MINE);
+    expect(untouched.gameplay.stepStopsOpponents).toEqual(NONE);
   });
 });
