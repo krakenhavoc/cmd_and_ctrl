@@ -73,8 +73,9 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "Pay 1 life: Exile the top card of your library face down. Put that card into your hand at the beginning of your next end step.",
-			Cost:  PayLife(1),
+			Label:   "Pay 1 life: Exile the top card of your library face down. Put that card into your hand at the beginning of your next end step.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    PayLife(1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				var exiled []uuid.UUID

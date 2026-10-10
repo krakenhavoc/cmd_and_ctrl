@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Verdant Catacombs — Land (EDHREC rank 48):
 //
 //	"{T}, Pay 1 life, Sacrifice this land: Search your library for
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Verdant Catacombs",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle.",
-			Cost:   fetchlandCost(),
-			Effect: fetchDual("swamp", "forest"),
+			Label:   "{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    fetchlandCost(),
+			Effect:  fetchDual("swamp", "forest"),
 		}},
 	})
 }

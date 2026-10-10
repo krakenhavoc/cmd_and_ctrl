@@ -37,8 +37,9 @@ func init() {
 				"Cowards can't block Warriors"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: karganIntimidatorLabel,
-			Cost:  ManaCost("{1}"),
+			Label:   karganIntimidatorLabel,
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    ManaCost("{1}"),
 			Modes: ChooseOneNotChosenThisTurn(
 				ModeDoing("This creature gets +1/+1 until end of turn.", nil,
 					func(item *game.StackItem, ctx *Context, _ int) error {

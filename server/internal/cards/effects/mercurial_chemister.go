@@ -22,9 +22,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{U}, {T}: Draw two cards.",
-				Cost:   Plus(ManaCost("{U}"), TapCost()),
-				Effect: Do(DrawCards{N: 2}),
+				Label:   "{U}, {T}: Draw two cards.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{U}"), TapCost()),
+				Effect:  Do(DrawCards{N: 2}),
 			},
 			{
 				Label:   "{R}, {T}, Discard a card: This creature deals damage to target creature equal to the discarded card's mana value.",

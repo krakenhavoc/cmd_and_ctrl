@@ -32,8 +32,9 @@ func init() {
 				YourSpell(), tamPlaneswalkerSpell),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{U}{B}{R}{G}, {T}: Proliferate X times, where X is the number of planeswalker types among planeswalkers you control.",
-			Cost:  Plus(ManaCost("{W}{U}{B}{R}{G}"), TapCost()),
+			Label:   "{W}{U}{B}{R}{G}, {T}: Proliferate X times, where X is the number of planeswalker types among planeswalkers you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{W}{U}{B}{R}{G}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return tamProliferate(g, ctx.Controller(), ctx.Source(), planeswalkerTypesAmong(g, ctx.Controller()))

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Master Transmuter — Artifact Creature — Human Artificer {3}{U},
 // 1/2:
 //
@@ -43,7 +45,8 @@ func init() {
 		Name:         "Master Transmuter",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{U}, {T}, Return an artifact you control to its owner's hand: You may put an artifact card from your hand onto the battlefield.",
+			Label:   "{U}, {T}, Return an artifact you control to its owner's hand: You may put an artifact card from your hand onto the battlefield.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
 			Cost: Plus(
 				ManaCost("{U}"),
 				TapCost(),

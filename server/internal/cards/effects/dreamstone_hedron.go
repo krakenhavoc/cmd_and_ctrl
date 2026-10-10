@@ -24,8 +24,9 @@ func init() {
 			Label:    "Add {C}{C}{C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}, Sacrifice this artifact: Draw three cards.",
-			Cost:  Plus(ManaCost("{3}"), TapCost(), SacrificeThis()),
+			Label:   "{3}, {T}, Sacrifice this artifact: Draw three cards.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
 			},

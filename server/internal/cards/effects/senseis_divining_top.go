@@ -39,15 +39,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}: Look at the top three cards of your library, then put them back in any order.",
-				Cost:  game.AbilityCost{Mana: "{1}"},
+				Label:   "{1}: Look at the top three cards of your library, then put them back in any order.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    game.AbilityCost{Mana: "{1}"},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return LookAtTop{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label: "{T}: Draw a card, then put this artifact on top of its owner's library.",
-				Cost:  game.AbilityCost{Tap: true},
+				Label:   "{T}: Draw a card, then put this artifact on top of its owner's library.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    game.AbilityCost{Tap: true},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					// Order is load-bearing: draw off the library as
 					// the player left it, THEN tuck. Tucking first

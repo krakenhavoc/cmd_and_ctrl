@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Orcish Lumberjack — Creature — Orc {R}, 1/1 (EDHREC rank 2914):
 //
 //	"{T}, Sacrifice a Forest: Add three mana in any combination of
@@ -28,6 +30,7 @@ func init() {
 			},
 			Produced: "{R|G}{R|G}{R|G}",
 			Label:    "{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}",
+			Answers:  game.AnswerValue,
 		}},
 	})
 }

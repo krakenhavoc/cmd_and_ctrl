@@ -42,8 +42,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{4}, {T}: Create a Treasure token.",
-				Cost:  Plus(ManaCost("{4}"), TapCost()),
+				Label:   "{4}, {T}: Create a Treasure token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{4}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
 				},

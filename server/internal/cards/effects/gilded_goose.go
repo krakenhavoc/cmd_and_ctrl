@@ -38,8 +38,9 @@ func init() {
 			WhenThisEnters("Gilded Goose — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{G}, {T}: Create a Food token.",
-			Cost:  Plus(ManaCost("{1}{G}"), TapCost()),
+			Label:   "{1}{G}, {T}: Create a Food token.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{G}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
 			},
@@ -51,6 +52,7 @@ func init() {
 			},
 			Produced: "{W|U|B|R|G}",
 			Label:    "{T}, Sacrifice a Food: Add one mana of any color",
+			Answers:  game.AnswerValue,
 		}},
 	})
 }

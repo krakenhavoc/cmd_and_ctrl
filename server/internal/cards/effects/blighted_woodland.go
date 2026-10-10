@@ -23,8 +23,9 @@ func init() {
 		Completeness:  CompletenessFull,
 		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{G}, {T}, Sacrifice this land: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
-			Cost:  Plus(ManaCost("{3}{G}"), TapCost(), SacrificeThis()),
+			Label:   "{3}{G}, {T}, Sacrifice this land: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}{G}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:        item.Controller,

@@ -264,7 +264,7 @@ Each question lists the recommended option first. The owner chose (a), the recom
 
 ### Sweep rulings (owner, 2026-10-09)
 
-Four rulings from the first S1 batches, for the rows the vocabulary table does not settle. They bind the remaining batches and any new card.
+Rulings from the first sweep batches, for the rows the vocabulary table does not settle. They bind the remaining batches and any new card.
 
 1. **Shrink effects are `remove`.** A row that gives a creature -X/-X or otherwise shrinks it (Flailing Manticore, Flailing Ogre, Flailing Soldier, Oona's Prowler) declares `remove`.
 2. **Trades are `pump`.** A row that raises one of power and toughness while lowering the other (+2/-2, +1/-1, "+1/-1 or -1/+1": Multiform Wonder, Shipwreck Moray, Unliving Psychopath, Undulating Witness, Endling) declares `pump`.
@@ -272,3 +272,8 @@ Four rulings from the first S1 batches, for the rows the vocabulary table does n
 4. **Modal, conditional and mixed rows declare the union.** A row whose modes or conditions can give different answers declares every answer any of them can give (Lost Jitte, Storm Elemental, Repeat Offender, Aerid Konstrari, Peema Trailblazer, Thran Weaponry, Gallia, and the mixed `protect|pump` and `protect|sac_outlet` rows).
 
 Applied by analogy (owner, 2026-10-09): ruling 3 also covers a row that turns off its own controller's protection, so Glittering Lion and Glittering Lynx ("loses \"Prevent all damage that would be dealt to this creature\"", any player may activate) declare `restrict`.
+
+Two more rulings (owner, 2026-10-10):
+
+5. **A self-destroying lock lifter is `restrict`.** Aether Storm ("Pay 4 life: Destroy Aether Storm", any player may activate) declares `restrict`: destroying it changes what players can cast in response. Applied by analogy in S2 batch 1, Experimental Frenzy ("{3}{R}: Destroy this enchantment", which lifts its own "can't play cards from your hand") declares `restrict` too.
+6. **A delayed return answers nothing.** Sakashima the Impostor's granted "Return this creature to its owner's hand at the beginning of the next end step" is `value`, not `protect`: the return is delayed, so it saves nothing on the stack. This flips the verdict S1 batch 5 declared.

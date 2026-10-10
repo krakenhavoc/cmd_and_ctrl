@@ -56,7 +56,10 @@ func apbRequireAnyPlayerRows(t *testing.T, g *game.Game, id uuid.UUID, want ...i
 		if r.AnyPlayer != isWanted[i] {
 			t.Errorf("row %d (%q) AnyPlayer = %v, want %v", i, r.Label, r.AnyPlayer, isWanted[i])
 		}
-		if !r.Purpose.IsZero() {
+		// Answers (ADR 0142) is not a bot price; only the amounts are.
+		priced := r.Purpose
+		priced.Answers = 0
+		if !priced.IsZero() {
 			t.Errorf("row %d (%q) declares a purpose %+v; none of this batch's rows should", i, r.Label, r.Purpose)
 		}
 	}

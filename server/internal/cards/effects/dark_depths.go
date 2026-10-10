@@ -29,9 +29,10 @@ func init() {
 			b10EntersWithCounters(ice, 10, "Dark Depths: enters with ten ice counters"),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}: Remove an ice counter from Dark Depths.",
-			Cost:   ManaCost("{3}"),
-			Effect: removeACounterFromThis(ice),
+			Label:   "{3}: Remove an ice counter from Dark Depths.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{3}"),
+			Effect:  removeACounterFromThis(ice),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisHasNo(ice, "Dark Depths — sacrifice it and create Marit Lage",

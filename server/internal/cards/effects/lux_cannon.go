@@ -41,8 +41,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{T}: Put a charge counter on this artifact.",
-				Cost:  TapCost(),
+				Label:   "{T}: Put a charge counter on this artifact.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					if !b09SourceStillOnBattlefield(g, item) {
 						return nil

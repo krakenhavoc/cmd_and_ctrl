@@ -20,8 +20,9 @@ func init() {
 		Name:         "Greed",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{B}, Pay 2 life: Draw a card",
-			Cost:  Plus(ManaCost("{B}"), PayLife(2)),
+			Label:   "{B}, Pay 2 life: Draw a card",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{B}"), PayLife(2)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

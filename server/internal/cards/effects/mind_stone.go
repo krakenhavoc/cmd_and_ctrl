@@ -30,7 +30,8 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice Mind Stone: Draw a card.",
+			Label:   "{1}, {T}, Sacrifice Mind Stone: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: game.AbilityCost{
 				Tap:           true,
 				SacrificeSelf: true,

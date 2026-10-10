@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Wooded Foothills — Land (EDHREC rank 47):
 //
 //	"{T}, Pay 1 life, Sacrifice this land: Search your library for
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Wooded Foothills",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.",
-			Cost:   fetchlandCost(),
-			Effect: fetchDual("mountain", "forest"),
+			Label:   "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    fetchlandCost(),
+			Effect:  fetchDual("mountain", "forest"),
 		}},
 	})
 }

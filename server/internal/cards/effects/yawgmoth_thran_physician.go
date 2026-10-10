@@ -51,8 +51,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{B}{B}, Discard a card: Proliferate.",
-				Cost:  Plus(ManaCost("{B}{B}"), DiscardACard()),
+				Label:   "{B}{B}, Discard a card: Proliferate.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    Plus(ManaCost("{B}{B}"), DiscardACard()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return Proliferate{}.Apply(NewContext(g, item))
 				},

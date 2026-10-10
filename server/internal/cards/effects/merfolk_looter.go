@@ -33,9 +33,10 @@ func init() {
 		Name:         "Merfolk Looter",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Draw a card, then discard a card.",
-			Cost:   TapCost(),
-			Effect: func(g *game.Game, item *game.StackItem) error { return lootOne(g, item, 1) },
+			Label:   "{T}: Draw a card, then discard a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  func(g *game.Game, item *game.StackItem) error { return lootOne(g, item, 1) },
 		}},
 	})
 }

@@ -21,8 +21,9 @@ func init() {
 		Name:         "Zuran Orb",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice a land: You gain 2 life.",
-			Cost:  b08SacrificeALand(),
+			Label:   "Sacrifice a land: You gain 2 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    b08SacrificeALand(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GainLife{Player: item.Controller, Amount: 2}.Apply(NewContext(g, item))
 			},

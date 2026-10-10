@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-			Purpose: game.Purpose{Lands: 1},
+			Purpose: game.Purpose{Lands: 1, Answers: game.AnswerValue},
 			Cost:    SacrificeThis(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
