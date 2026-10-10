@@ -34,6 +34,13 @@ type gideonAnimation struct {
 	Colors []string
 	// Power and Toughness are the base P/T the becoming sets (layer 7b).
 	Power, Toughness int
+	// SizeFromLoyalty is "with power and toughness each equal to the
+	// number of loyalty counters on him" (Gideon, Champion of Justice,
+	// #2569). The count is read once, as the ability resolves (CR
+	// 608.2h; ADR 0032 amendment of 2026-10-09), and becomes a fixed
+	// layer 7b value in place of Power and Toughness: loyalty he gains
+	// or loses later in the turn does not resize him.
+	SizeFromLoyalty bool
 	// Indestructible is "with indestructible".
 	Indestructible bool
 }
@@ -45,6 +52,11 @@ func animateGideon(g *game.Game, item *game.StackItem, a gideonAnimation) error 
 	self := item.SourceCardID
 	if z := g.FindCardZoneForEffect(self); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
+	}
+	if a.SizeFromLoyalty {
+		c, _ := g.LookupCardForEffect(self)
+		n := c.Counters[game.CounterLoyalty]
+		a.Power, a.Toughness = n, n
 	}
 	mods := []game.Mod{
 		game.AddTypesMod("Creature"),
