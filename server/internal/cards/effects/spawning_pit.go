@@ -34,8 +34,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "Sacrifice a creature: Put a charge counter on this artifact",
-				Cost:  SacrificeACreature(),
+				Label:   "Sacrifice a creature: Put a charge counter on this artifact",
+				Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+				Cost:    SacrificeACreature(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return AddCounter{
 						Target: item.SourceCardID,

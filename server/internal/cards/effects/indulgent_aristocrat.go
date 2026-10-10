@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Indulgent Aristocrat — Creature — Vampire Noble {B}, 1/1 (EDHREC
 // rank 2555):
 //
@@ -23,9 +25,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, Sacrifice a creature: Put a +1/+1 counter on each Vampire you control.",
-			Cost:   Plus(ManaCost("{2}"), SacrificeACreature()),
-			Effect: b17PutCounterOnEachVampireYouControl,
+			Label:   "{2}, Sacrifice a creature: Put a +1/+1 counter on each Vampire you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{2}"), SacrificeACreature()),
+			Effect:  b17PutCounterOnEachVampireYouControl,
 		}},
 	})
 }

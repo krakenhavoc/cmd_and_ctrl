@@ -48,8 +48,9 @@ func init() {
 			}, "Toxrill — create a 1/1 black Slug", Do(CreateToken{Template: TokenCard("1/1 black Slug"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{U}{B}, Sacrifice a Slug: Draw a card.",
-			Cost:  Plus(ManaCost("{U}{B}"), game.AbilityCost{SacrificeOther: sacrificeSpec("a Slug", Subtype("Slug"))}),
+			Label:   "{U}{B}, Sacrifice a Slug: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{U}{B}"), game.AbilityCost{SacrificeOther: sacrificeSpec("a Slug", Subtype("Slug"))}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

@@ -44,6 +44,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:     "{U}{U}, Sacrifice a creature: Untap this creature. Activate only during your upkeep.",
+				Purpose:   game.Purpose{Answers: game.AnswerSacOutlet},
 				Cost:      Plus(ManaCost("{U}{U}"), SacrificeACreature()),
 				Condition: DuringYourUpkeep(),
 				Effect: func(g *game.Game, item *game.StackItem) error {

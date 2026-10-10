@@ -24,10 +24,11 @@ func init() {
 		PrintedKeywords: []string{"annihilator 1"},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "Sacrifice two Eldrazi: Return this card from your graveyard to your hand.",
-				Cost:   SacrificeN(2, "two Eldrazi", HasSubtype("Eldrazi")),
-				Zones:  []game.ZoneKind{game.ZoneGraveyard},
-				Effect: returnThisCardFromYourGraveyardToYourHand,
+				Label:   "Sacrifice two Eldrazi: Return this card from your graveyard to your hand.",
+				Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+				Cost:    SacrificeN(2, "two Eldrazi", HasSubtype("Eldrazi")),
+				Zones:   []game.ZoneKind{game.ZoneGraveyard},
+				Effect:  returnThisCardFromYourGraveyardToYourHand,
 			},
 			Cycling("{2}"),
 		},

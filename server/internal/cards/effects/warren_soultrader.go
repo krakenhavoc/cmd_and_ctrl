@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "Pay 1 life, Sacrifice another creature: Create a Treasure token.",
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet, Tokens: 1},
 			Cost: Plus(PayLife(1), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),

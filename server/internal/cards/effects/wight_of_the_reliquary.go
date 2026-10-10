@@ -43,7 +43,8 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle.",
+			Label:   "{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: Plus(TapCost(), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),

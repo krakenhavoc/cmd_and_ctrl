@@ -28,8 +28,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice a creature: You gain 1 life.",
-			Cost:  Plus(TapCost(), SacrificeACreature()),
+			Label:   "{T}, Sacrifice a creature: You gain 1 life.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(TapCost(), SacrificeACreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
 			},

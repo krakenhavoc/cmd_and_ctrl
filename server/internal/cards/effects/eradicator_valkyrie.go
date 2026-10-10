@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Eradicator Valkyrie — Creature — Angel Berserker {2}{B}{B}, 4/3:
 //
 //	"Flying, lifelink, hexproof from planeswalkers
@@ -25,7 +27,8 @@ func init() {
 		},
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Activated: []ActivatedAbility{
-			Boast(
+			BoastAnswering(
+				game.AnswerSacOutlet|game.AnswerRemove,
 				"{1}{B}, Sacrifice a creature: Each opponent sacrifices a creature or planeswalker.",
 				Plus(ManaCost("{1}{B}"), SacrificeACreature()),
 				eachOpponentSacrificesACreatureOrPlaneswalker),

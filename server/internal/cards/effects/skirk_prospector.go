@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Skirk Prospector — Creature — Goblin {R}, 1/1 (EDHREC rank 1335):
 //
 //	"Sacrifice a Goblin: Add {R}."
@@ -23,6 +25,7 @@ func init() {
 			},
 			Produced: "{R}",
 			Label:    "Sacrifice a Goblin: Add {R}",
+			Answers:  game.AnswerSacOutlet,
 		}},
 	})
 }

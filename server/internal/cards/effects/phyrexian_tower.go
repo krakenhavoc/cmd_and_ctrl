@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Phyrexian Tower — Legendary Land (EDHREC rank 198):
 //
 //	"{T}: Add {C}.
@@ -39,6 +41,7 @@ func init() {
 				},
 				Produced: "{B}{B}",
 				Label:    "{T}, Sacrifice a creature: Add {B}{B}",
+				Answers:  game.AnswerSacOutlet,
 			},
 		},
 	})

@@ -15,8 +15,9 @@ func init() {
 		Name:         "Disciple of Griselbrand",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.",
-			Cost:  Plus(ManaCost("{1}"), SacrificeACreature()),
+			Label:   "{1}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{1}"), SacrificeACreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				fed, ok := b17PermanentSacrificedToPay(g, item)
 				if !ok {

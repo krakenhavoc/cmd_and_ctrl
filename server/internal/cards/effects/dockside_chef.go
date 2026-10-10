@@ -21,8 +21,9 @@ func init() {
 		Name:         "Dockside Chef",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}, Sacrifice an artifact or creature: Draw a card",
-			Cost:  Plus(ManaCost("{1}{B}"), b30SacrificeAnArtifactOrCreature()),
+			Label:   "{1}{B}, Sacrifice an artifact or creature: Draw a card",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{1}{B}"), b30SacrificeAnArtifactOrCreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

@@ -32,8 +32,9 @@ func init() {
 		Name:         "Greater Good",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards.",
-			Cost:  SacrificeACreature(),
+			Label:   "Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    SacrificeACreature(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				fed, ok := b17PermanentSacrificedToPay(g, item)
 				if !ok {

@@ -40,7 +40,8 @@ func init() {
 			}, "Ayara — each opponent loses 1, you gain 1", drainEachOpponent),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice another black creature: Draw a card.",
+			Label:   "{T}, Sacrifice another black creature: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: Plus(TapCost(), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another black creature",
 					Creature(), OfColor("B"))),
