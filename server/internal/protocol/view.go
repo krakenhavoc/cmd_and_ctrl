@@ -2428,7 +2428,10 @@ type CardView struct {
 	// Goaders is every player whose goad is on this creature, oldest
 	// goad first, each ending as that player's next turn begins
 	// (CR 701.15a). Omitted when not goaded; when present its last
-	// entry equals GoadedBy. #1598.
+	// entry equals GoadedBy. #1598. Since #2733 a goad from a continuous
+	// effect (an Aura's "enchanted creature is goaded", Hot Pursuit's)
+	// is listed too, ahead of the resolved goads, and lasts as long as
+	// that effect does.
 	Goaders []string `json:"goaders,omitempty"`
 	// MustAttack is true on a creature the active player owes an
 	// attack with right now (#1571, CR 508.1d): during
@@ -2842,7 +2845,8 @@ type CardView struct {
 
 	// Restrictions is the S24 restriction set as stable snake_case
 	// tokens — "cant_attack", "cant_block", "cant_be_blocked",
-	// "cant_activate", "cant_activate_mana". Empty for the permanent
+	// "cant_activate", "cant_activate_mana", and (#2733)
+	// "cant_become_suspected". Empty for the permanent
 	// nothing is restricting, which is almost all of them.
 	//
 	// It is deliberately NOT folded into Abilities. A restriction is
@@ -9707,9 +9711,12 @@ func viewOfCard(c game.Card) CardView {
 			view.BlockCapacity = n
 		}
 	}
-	if c.IsGoaded() {
-		view.GoadedBy = c.LatestGoader().String()
-		goaders := c.Goaders()
+	// #2733: a continuous goad (an Aura's, Hot Pursuit's) is shown as a
+	// goad too. AllGoaders lists those first, so the last entry, which
+	// the legacy single field repeats, is the latest marker goader
+	// whenever there is one.
+	if goaders := c.AllGoaders(); len(goaders) > 0 {
+		view.GoadedBy = goaders[len(goaders)-1].String()
 		view.Goaders = make([]string, len(goaders))
 		for i, id := range goaders {
 			view.Goaders[i] = id.String()

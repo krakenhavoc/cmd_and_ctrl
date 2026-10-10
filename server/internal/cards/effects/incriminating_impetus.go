@@ -14,17 +14,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // pair that ends when the Aura falls off) with Convenient Target's
 // enters trigger. Suspect gives the host menace and stops it blocking,
 // so a goaded, suspected creature is one that must attack and can't
-// stay home.
+// stay home. A card that asks whether a creature is goaded sees the
+// static goad (Card.Goaded, #2733).
 //
-// Declared weaker than printed, and the same one Shiny Impetus
-// carries: the enchanted creature is not in Card.Goads, so a card that
-// asks "is this creature goaded?" does not see it.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "75a7cad2-782c-4a5b-9193-5ba789bf5326",
 		Name:         "Incriminating Impetus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Cards that check whether a creature is goaded don't count the enchanted creature as goaded."},
+		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Static: []game.StaticAbility{
 			PumpAttached(2, 2),

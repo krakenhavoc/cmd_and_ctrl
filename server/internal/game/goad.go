@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+)
 
 // goad.go is the goad marker (CR 701.15): who has goaded a creature,
 // and until when. #1598, ADR 0045 amendment of 2026-09-28, Decision 53.
@@ -66,6 +70,72 @@ func (c Card) LatestGoader() uuid.UUID {
 		return uuid.Nil
 	}
 	return c.Goads[len(c.Goads)-1].By
+}
+
+// GoadRequirements is goad's CR 701.15b pair as a continuous effect
+// writes it (#2733): "attacks each combat if able" and "attacks a
+// player other than `by` if able", both with GoadedBy set and
+// attributed to `source`, so the refusal sentence names the card. The
+// static form (effects.GoadAttached, Shiny Impetus) and the resolved
+// form (ModGoad, Hot Pursuit) both write exactly this.
+func GoadRequirements(source *Card, by uuid.UUID) []AttackRequirement {
+	plain := AttackRequirement{GoadedBy: by}
+	other := AttackRequirement{GoadedBy: by, OtherThan: by}
+	if source != nil {
+		plain.Source, plain.SourceName = source.InstanceID, source.Name
+		other.Source, other.SourceName = source.InstanceID, source.Name
+	}
+	return []AttackRequirement{plain, other}
+}
+
+// StaticGoaders lists the players whose goad is on the creature as a
+// CONTINUOUS effect rather than as the marker (#2733): an Aura's
+// "enchanted creature is goaded" (Shiny Impetus, Incriminating
+// Impetus) or Hot Pursuit's "that creature is also goaded". They are
+// the GoadedBy of the requirements the layer pass wrote, once each, in
+// the order the pass wrote them. Nil when there are none.
+//
+// Read off the effective characteristic, so the caller must have fresh
+// layers, as for every other post-layer read.
+func (c Card) StaticGoaders() []uuid.UUID {
+	var out []uuid.UUID
+	for _, r := range effectiveOf(&c).AttackRequirements {
+		if r.GoadedBy == uuid.Nil || slices.Contains(out, r.GoadedBy) {
+			continue
+		}
+		out = append(out, r.GoadedBy)
+	}
+	return out
+}
+
+// Goaded reports whether the creature is goaded in any way (#2733):
+// by a resolved goad (the marker, IsGoaded) or by a continuous one
+// (StaticGoaders). This is what a card asks when it prints "goaded
+// creature" — Vengeful Ancestor, Puppet Master, Hot Pursuit — since a
+// creature an Aura goads is goaded exactly as one a spell goaded is.
+// The marker accessors stay marker-only because the snapshot carries
+// the marker and the layer pass rebuilds the rest.
+//
+// Caller must have fresh layers.
+func (c Card) Goaded() bool {
+	return c.IsGoaded() || len(c.StaticGoaders()) > 0
+}
+
+// AllGoaders is every player whose goad is on the creature: the
+// continuous goads a marker does not also name, then the marker goads,
+// oldest first, so the last entry is the latest marker goader whenever
+// there is one. Nil when it is not goaded. The wire's goader list
+// (#2733).
+//
+// Caller must have fresh layers.
+func (c Card) AllGoaders() []uuid.UUID {
+	var out []uuid.UUID
+	for _, p := range c.StaticGoaders() {
+		if !c.IsGoadedBy(p) {
+			out = append(out, p)
+		}
+	}
+	return append(out, c.Goaders()...)
 }
 
 // cloneGoads copies the slice so a clone never aliases the live card's

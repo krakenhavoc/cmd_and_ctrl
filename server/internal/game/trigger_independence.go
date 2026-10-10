@@ -538,7 +538,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true,
 	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 	ModGrantAbilities: true, ModCantAttackUnlessDefenderControls: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,

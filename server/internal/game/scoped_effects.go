@@ -75,6 +75,15 @@ const (
 	// ModAddRestrictions is: not a characteristic, written where the
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
+	// ModGoad is goad as a continuous effect from a resolved ability
+	// (#2733): "as long as this enchantment remains on the battlefield,
+	// that creature is also goaded" (Hot Pursuit). Player is the
+	// goading player. It writes goad's two CR 701.15b requirements with
+	// GoadedBy set, as GoadAttached's static does, so the creature
+	// attacks as a goaded one must and reads as goaded (Card.Goaded).
+	// Its own kind rather than ModAddAttackRequirement with a flag, so
+	// an older binary refuses a file that names it.
+	ModGoad ModKind = "goad" // layer 6
 	// ModAddBlockRequirement is a CR 509.1c block requirement (#1597):
 	// Text names which one (BlockRequirementKind — "blocks", "lure",
 	// "mustBeBlocked", "exactlyOne", "blocksAttacker"). Layer 6 for
@@ -798,6 +807,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #2733
+	ModGoad: {layer: Layer6Ability},
 	// #1597
 	ModAddBlockRequirement: {layer: Layer6Ability},
 	// #1715
@@ -999,6 +1010,10 @@ func SetBaseToughnessMod(n int) Mod { return Mod{Kind: ModSetBaseToughness, Toug
 func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
 }
+
+// GoadMod is goad from a resolved ability for as long as its duration
+// lasts (#2733, ModGoad): `by` is the goading player.
+func GoadMod(by uuid.UUID) Mod { return Mod{Kind: ModGoad, Player: by} }
 
 // AddBlockRequirementMod is a CR 509.1c block requirement (#1597) of
 // the given kind. The requirement is attributed to the record's source,
@@ -1763,6 +1778,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModGoad:
+		by := m.Player
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			ch.AttackRequirements = append(ch.AttackRequirements, GoadRequirements(src, by)...)
 		}
 	case ModCantAttackUnlessDefenderControls:
 		qs := clonePermanentQueries(m.Queries)
