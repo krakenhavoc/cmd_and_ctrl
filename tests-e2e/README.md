@@ -30,6 +30,7 @@ tests-e2e/
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call
+    ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
     ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)

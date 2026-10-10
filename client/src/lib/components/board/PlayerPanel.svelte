@@ -1114,11 +1114,27 @@
     /* Across-table seats: one more size down (the top row is the
        short one), rows reversed so the hand hugs the top edge and
        creatures face the centre of the table. #2491: the top row is
-       the tucked commander, half a card, so H = 2h + ~72px and
-       h ≈ 50cqh - 36px. */
+       the tucked commander, half a card.
+       #2961: the creature row must fit its card WITH the P/T badge at
+       the card's foot, or the row's own overflow cuts it off at the
+       panel's bottom edge. The rows measured at 1600x900: the top row
+       is the taller of the pile tiles (~74px) and the hand (0.55h);
+       the back row is a small card (0.5h) plus ~32px of padding and
+       label; the creature row is a card plus 24px of padding; and the
+       panel adds 12px of gaps and 16px of padding. So
+         piles tall:  H = 1.5h + 158px   (short panels)
+         hand tall:   H = 2.05h + 84px   (tall panels)
+       and the card is the smaller of the two heights, so neither row
+       takes more than it was given. The floors sit below any card the
+       formula can ask for at 720px, so a floor never pushes the rows
+       past the panel. */
     --card-h-max: 168px;
-    --card-h: clamp(70px, calc((50cqh - 36px) * var(--card-scale-opponent, 1)), var(--card-h-max));
-    --card-h-sm: clamp(48px, calc(var(--card-h) * 0.5), 90px);
+    --card-h: clamp(
+      44px,
+      calc(min((100cqh - 158px) / 1.5, (100cqh - 84px) / 2.05) * var(--card-scale-opponent, 1)),
+      var(--card-h-max)
+    );
+    --card-h-sm: clamp(24px, calc(var(--card-h) * 0.5), 90px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
     --avatar-size-base: 60px;
