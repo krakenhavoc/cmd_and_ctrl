@@ -204,6 +204,7 @@ describe("the verdict it produces", () => {
     ownsEveryStackItem: false,
     stepStop: true,
     smartAutoPass: true,
+    stepStopsOnlyWhenCanAct: true,
     alwaysStopOpponentStack: false,
     hasResponse: false,
     hasPlay: false,

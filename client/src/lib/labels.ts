@@ -451,6 +451,13 @@ export const LABEL_SPECS = {
     owners: ["lib/choiceDock.ts"],
     doc: "the pay_amount prompt's primary when it asks for life (#1941): pays the stepper's amount",
   }),
+  sacrifice: label({
+    name: "Sacrifice",
+    kind: "text",
+    role: "button",
+    owners: [`${BOARD}ChoicePromptModal.svelte`],
+    doc: "a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice): enabled once the permanents are picked, in the sheet or on the board (#2880)",
+  }),
   numberToChoose: label({
     name: "number to choose",
     kind: "aria",

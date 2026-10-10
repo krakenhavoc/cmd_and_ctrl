@@ -6,7 +6,9 @@ import {
   classifyMove,
   hasPlay,
   hasResponse,
+  inCombatWindow,
   inSorceryWindow,
+  isDefending,
   keyWindow,
   type ResponseCategories,
 } from "./responseWindow";
@@ -421,5 +423,96 @@ describe("an activation of another player's permanent", () => {
       battlefield: board,
     });
     expect(hasResponse(s, "p1", ALL_RESPONSES)).toBe(true);
+  });
+});
+
+// #2871: a combat ability is a response in a combat window only.
+describe("combat_interacts", () => {
+  const crew = move("activate", { source: "copter", combat_interacts: true });
+
+  it("classifies as ability in combat and untargeted elsewhere", () => {
+    expect(classifyMove(crew, false, undefined, undefined, true)).toBe("ability");
+    expect(classifyMove(crew, false, undefined, undefined, false)).toBe("untargeted");
+    expect(classifyMove(crew, false)).toBe("untargeted");
+    // The viewer's own main phase: a play, as any activation is.
+    expect(classifyMove(crew, true, undefined, undefined, true)).toBe("play");
+  });
+
+  it("inCombatWindow: beginning of combat, attackers and blockers, nothing later", () => {
+    for (const step of ["begin_combat", "declare_attackers", "declare_blockers"]) {
+      expect(inCombatWindow(snap({ step })), step).toBe(true);
+    }
+    for (const step of ["upkeep", "precombat_main", "combat_damage", "end_combat", "end"]) {
+      expect(inCombatWindow(snap({ step })), step).toBe(false);
+    }
+  });
+
+  it("inCombatWindow: an attack or block trigger on the stack, not a spell", () => {
+    const trig = (label: string, kind: StackItemView["kind"] = "triggered"): StackItemView => ({
+      ...stackItem("p1"),
+      kind,
+      label,
+    });
+    const at = (it: StackItemView) => inCombatWindow(snap({ step: "end", stackItems: [it] }));
+    expect(at(trig("Whenever this creature blocks, it gets +1/+1."))).toBe(true);
+    expect(at(trig("Whenever a creature attacks you, draw a card."))).toBe(true);
+    expect(at(trig("At the beginning of your end step, draw a card."))).toBe(false);
+    expect(at(trig("Blocking Party", "spell"))).toBe(false);
+  });
+
+  it("hasResponse counts it at declare blockers and not on an opponent's main phase", () => {
+    const blockers = snap({ step: "declare_blockers", active: 1, moves: [pass, crew] });
+    expect(hasResponse(blockers, "p0", DEFAULT_RESPONSES)).toBe(true);
+    const main = snap({
+      step: "precombat_main",
+      active: 1,
+      moves: [pass, crew],
+      stackItems: [stackItem("p1")],
+    });
+    expect(hasResponse(main, "p0", DEFAULT_RESPONSES)).toBe(false);
+    // With value abilities ticked it counts anywhere, as before.
+    expect(hasResponse(main, "p0", { ...DEFAULT_RESPONSES, untargeted: true })).toBe(true);
+  });
+
+  // Owner answer (#2871): a creature-token maker is a blocker, so it
+  // counts only while the viewer is being attacked.
+  const tokens = move("activate", {
+    source: "castle",
+    combat_interacts: true,
+    combat_defender_only: true,
+  });
+  const attacker = (target: string, defending: string = target): CardView =>
+    card("attacker", {
+      owner: "p1",
+      controller: "p1",
+      attacking_target: target,
+      defending_player: defending,
+    });
+
+  it("classifies a token maker as ability only when defending", () => {
+    expect(classifyMove(tokens, false, undefined, undefined, true, true)).toBe("ability");
+    expect(classifyMove(tokens, false, undefined, undefined, true, false)).toBe("untargeted");
+    expect(classifyMove(tokens, false, undefined, undefined, false, true)).toBe("untargeted");
+    // A crew is not narrowed.
+    expect(classifyMove(crew, false, undefined, undefined, true, false)).toBe("ability");
+  });
+
+  it("isDefending: a creature attacks me, or a planeswalker I defend", () => {
+    expect(isDefending(snap({ battlefield: [attacker("p0")] }), "p0")).toBe(true);
+    expect(isDefending(snap({ battlefield: [attacker("pw-1", "p0")] }), "p0")).toBe(true);
+    expect(isDefending(snap({ battlefield: [attacker("p2")] }), "p0")).toBe(false);
+    expect(isDefending(snap({ battlefield: [] }), "p0")).toBe(false);
+  });
+
+  it("a token maker stops me when I am attacked, not when another player is", () => {
+    const at = (target: string) =>
+      snap({
+        step: "declare_attackers",
+        active: 1,
+        moves: [pass, tokens],
+        battlefield: [attacker(target)],
+      });
+    expect(hasResponse(at("p0"), "p0", DEFAULT_RESPONSES)).toBe(true);
+    expect(hasResponse(at("p2"), "p0", DEFAULT_RESPONSES)).toBe(false);
   });
 });

@@ -4811,6 +4811,16 @@ the second its own `AltCostKey`: the caster claims it like an
 alternative cost, `CastOffersForLocked` lists it, and a cast that does
 not claim it uses the first.
 
+**"One of each card type" (#2167).** `PerType` is a budget of one play
+or cast per card type: `game.PermanentPermissionTypes` for Muldrotha,
+the Gravetide's "a land and a permanent spell of each permanent type",
+`game.NonlandPermissionTypes` for Aminatou's Augury's "for each nonland
+card type". Nothing else is needed: the engine asks the caster which
+type a multi-type card uses (`cast_spell.permission_type`), keeps the
+spent types (on a stored permission, or in the turn tally for one a
+permanent grants, per granting object), and a land can only spend
+"land", beside the turn's land drop.
+
 **"If you do, …" after a cast permission (#2173).** Set
 `CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
 func(g, f) error {...})` returns, declared as a package-level `var` in the

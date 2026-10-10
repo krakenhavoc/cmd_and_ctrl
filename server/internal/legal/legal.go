@@ -173,6 +173,22 @@ type Move struct {
 	// abilityInteracts.
 	Interacts bool `json:"interacts,omitempty"`
 
+	// CombatInteracts is true on an activation with no target that
+	// changes attacks or blocks without answering a spell: crew, a
+	// manland or an animated artifact, a granted evasion or combat
+	// keyword, "can block an additional creature", a creature token
+	// (#2871). Smart autopass counts it only in a combat window, so it
+	// is a bit of its own rather than part of Interacts. Never set
+	// alongside Interacts. See abilityCombatKind.
+	CombatInteracts bool `json:"combat_interacts,omitempty"`
+
+	// CombatDefenderOnly narrows CombatInteracts: the ability makes a
+	// creature token (or populates, or amasses), which matters only as
+	// a blocker, so smart autopass counts it only while the viewer is
+	// a defending player in this combat (owner answer, #2871). Only
+	// ever set alongside CombatInteracts.
+	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you
@@ -779,6 +795,13 @@ type enumerator struct {
 	// finding out what a cap cut. EnumerateFor — the bot — leaves it
 	// off and pays nothing for the report it would throw away.
 	report bool
+	// permType is the card type the casts being expanded announce under
+	// a per-type permission (#2167, CastSpellParams.PermissionType), set
+	// by castMovesFromZone around each castMovesForCard and empty
+	// everywhere else. A field rather than a parameter because the
+	// expansion it rides is four calls deep and every one of them would
+	// pass it on untouched.
+	permType string
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the

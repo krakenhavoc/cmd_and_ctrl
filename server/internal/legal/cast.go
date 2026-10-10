@@ -72,6 +72,11 @@ type castParams struct {
 	// Fuse casts both halves of a split card with fuse from hand
 	// (CR 702.102a, ADR 0103) — CastSpellParams.Fuse.
 	Fuse bool `json:"fuse,omitempty"`
+	// PermissionType is the card type a cast through a per-type
+	// permission spends (#2167) — CastSpellParams.PermissionType. One
+	// move per type the card could spend, the type the permission's
+	// other cards need least first (game.RankPermissionTypesLocked).
+	PermissionType string `json:"permission_type,omitempty"`
 }
 
 // castZone is one pile the walk below looks in. `mine` says the pile
@@ -276,7 +281,22 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			if offer != nil && offer.Life > 0 && e.p.Life <= offer.Life {
 				continue
 			}
-			e.castMovesForCard(card, from, kind, perm, offer)
+			// #2167: under a per-type permission (Muldrotha, Aminatou's
+			// Augury) a card with two types the budget has left is two
+			// casts, one per type, and one with none left is no cast.
+			// The engine's own list, ranked, so the first move spends
+			// the type the permission's other cards need least.
+			types, ok := g.PermissionTypeOptionsLocked(e.seat, card, kind, perm, offer)
+			if !ok {
+				continue
+			}
+			for _, t := range types {
+				if len(types) > 1 {
+					e.permType = t
+				}
+				e.castMovesForCard(card, from, kind, perm, offer)
+			}
+			e.permType = ""
 		}
 	}
 	// ADR 0103, CR 702.102a: a split card with fuse in hand may also be
@@ -309,6 +329,12 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 	// CR 305.1: playing a land is not casting, so a cast-only
 	// permission strands it.
 	if perm != nil && perm.CastOnly {
+		return
+	}
+	// #2167: a per-type permission's land play spends "land" (Muldrotha),
+	// and once that is spent it opens no land play, whatever else it
+	// still opens.
+	if _, ok := e.g.PermissionTypeOptionsLocked(e.seat, card, kind, perm, nil); !ok {
 		return
 	}
 	// ADR 0109 §4, CR 101.2: "can't" beats "can". The engine's own gate,
@@ -1518,6 +1544,7 @@ func (e *enumerator) castMoveEmitter(
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
+	permType := e.permType
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		label := "Cast " + card.Name
 		switch from {
@@ -1525,6 +1552,10 @@ func (e *enumerator) castMoveEmitter(
 			label += " from the command zone"
 		case "graveyard", "exile", "library":
 			label += " from " + from
+		}
+		// #2167: which of the card's types a per-type permission spends.
+		if permType != "" {
+			label += " as " + game.PermissionTypeArticle(permType)
 		}
 		if setX > 0 {
 			label += fmt.Sprintf(" for X=%d", setX)
@@ -1620,6 +1651,8 @@ func (e *enumerator) castMoveEmitter(
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,
 				Fuse: card.Fused,
+				// #2167: set only when the card has a choice to make.
+				PermissionType: permType,
 			}),
 		})
 	}
