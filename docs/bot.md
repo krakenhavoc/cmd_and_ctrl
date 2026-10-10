@@ -1196,10 +1196,12 @@ is on the stack:
   while anything is on the stack: what it buys is the same once the
   stack resolves. The exception is a row whose cost spends a permanent
   the bot is about to lose (above).
-- **Outlets the cost does not name.** A row that sacrifices its own
-  source (Sakura-Tribe Elder) pays for the source at the dying-anyway
-  price, purposed or not, and so does the creature a `sac_outlet` row
-  exiles (The Soul Stone). Each clears `LeftoverThreshold` when that is
+- **Outlets the cost does not name.** A purpose-priced row that
+  sacrifices its own source (Sakura-Tribe Elder) pays for the source at
+  the dying-anyway price, and so does the creature a `sac_outlet` row
+  exiles (The Soul Stone). A self-sacrifice row with no priced purpose
+  (Mind Stone's draw, declared only `value`) still pays nothing for its
+  source, as before. Each clears `LeftoverThreshold` when that is
   all it costs besides mana and taps. So a targeted Elder is sacrificed
   for its land in response, and an untargeted one is not.
 

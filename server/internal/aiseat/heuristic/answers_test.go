@@ -1,7 +1,6 @@
 package heuristic_test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/google/uuid"
@@ -184,29 +183,6 @@ func TestSacrificeTheElderItTargets(t *testing.T) {
 	in = input(0, respond([]protocol.CardView{elder()}, div, di), passMove(0), activate(t, 0, cardID(1), "Sacrifice the Elder", nil))
 	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Pass priority" {
 		t.Errorf("against Divination the heuristic chose %q, want a pass", got)
-	}
-}
-
-// A self-sacrifice row with no priced purpose costs its source. Before
-// PriceAnswers it cost nothing past the blocker it taps.
-func TestSelfSacrificeIsNotFree(t *testing.T) {
-	c := creature(cardID(1), 0, "Bear", 2, 2)
-	a := []string{"protect"}
-	c.ActivatedAbilities = []protocol.ActivatedAbilityView{{Index: 0, Label: "Sacrifice this creature: Regenerate target creature.",
-		SacrificeSelf: true, Purpose: &protocol.PurposeView{Answers: &a}}}
-	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)}, withBattlefield(c), withTurn(5, 0, "precombat_main"))
-	in := input(0, v, passMove(0), activate(t, 0, cardID(1), "Sacrifice", nil))
-	price := func(p *heuristic.Policy) float64 {
-		for _, cand := range p.Rank(context.Background(), in) {
-			if cand.Index == 1 {
-				return cand.Value
-			}
-		}
-		t.Fatal("the sacrifice was not ranked")
-		return 0
-	}
-	if with, without := price(heuristic.New()), price(noAnswers()); with >= without-1 {
-		t.Errorf("the sacrifice is priced %.2f with PriceAnswers and %.2f without; want it to pay for the Bear", with, without)
 	}
 }
 

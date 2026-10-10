@@ -31,11 +31,11 @@ import (
 //     is ADR 0126 §7's use-it-or-lose-it move. Layer A's value-only
 //     rule (rules.RuleValueOnly) passes those windows without asking.
 //   - DYING ANYWAY, FOR EVERY OUTLET. ADR 0126 §7 priced only the
-//     permanents a move's sacrifice_ids name. A row that sacrifices its
-//     own source (Sakura-Tribe Elder), or exiles a creature for a
-//     `sac_outlet` row (The Soul Stone), now pays the same keep-chance
-//     price, and clears the same leftover bar when that is all it costs
-//     besides mana and taps.
+//     permanents a move's sacrifice_ids name. A purpose-priced row that
+//     sacrifices its own source (Sakura-Tribe Elder), or a `sac_outlet`
+//     row that exiles a creature (The Soul Stone), now pays the same
+//     keep-chance price, and clears the same leftover bar when that is
+//     all it costs besides mana and taps.
 //
 // What it does not price: a combat grant (the combat planner's
 // business, ADR 0142 decision 6 "Not covered"), a row on another
@@ -252,11 +252,14 @@ func (p *Policy) valueWaits(st *state, src *protocol.CardView, row *protocol.Act
 	return true
 }
 
-// selfSacrificeCost is what a row that sacrifices its own source pays
-// for it under PriceAnswers: its value times the chance the bot would
-// have kept it.
+// selfSacrificeCost is what a purpose-priced row that sacrifices its
+// own source pays for it: the whole source, and under PriceAnswers its
+// value times the chance the bot would have kept it. A row with no
+// priced purpose still pays nothing for it, as before ADR 0142: its
+// payoff is the flat ActivateBase, and charging a Mind Stone's whole
+// value against that would never crack it.
 func (p *Policy) selfSacrificeCost(st *state, src *protocol.CardView) float64 {
-	if !p.cfg.SacrificeDyingAnyway {
+	if !p.cfg.PriceAnswers || !p.cfg.SacrificeDyingAnyway {
 		return st.permanentValue(src)
 	}
 	return (1 - p.dyingAnyway(st, src)) * st.permanentValue(src)

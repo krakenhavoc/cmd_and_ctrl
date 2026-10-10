@@ -333,21 +333,17 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				// A row that taps a creature pays for it below, by when the
 				// tap happens (tapCreatureCost): a loot before combat
 				// costs the attack it replaces.
-				if row != nil && row.SacrificeSelf && !p.cfg.PriceAnswers {
-					v -= st.permanentValue(src)
+				if row != nil && row.SacrificeSelf {
+					v -= p.selfSacrificeCost(st, src)
 				}
 			}
 			// ADR 0142 decision 6 (answers.go): a row declared `value`
-			// waits for the stack; a row that sacrifices its own source
-			// pays for it by the chance the bot would have kept it,
-			// purposed or not; and a protect, pump or prevent row on a
-			// creature the stack would remove is priced by what it saves.
+			// waits for the stack, and a protect, pump or prevent row on
+			// a creature the stack would remove is priced by what it
+			// saves.
 			if p.cfg.PriceAnswers {
 				if p.valueWaits(st, src, row, cp) {
 					return valueInResponse, "declared value: waits for the stack"
-				}
-				if row != nil && row.SacrificeSelf && src != nil {
-					v -= p.selfSacrificeCost(st, src)
 				}
 				if saved, why, ok := p.answerSave(st, src, row, cp); ok && saved > v {
 					v, reason = saved, why

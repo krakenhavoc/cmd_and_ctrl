@@ -131,8 +131,8 @@ type Config struct {
 	// 0142 decision 6, answers.go). In a window with something on the
 	// stack, an untargeted protect, pump or prevent row on a creature
 	// an item there would remove is priced by what it saves, and a row
-	// declared `value` waits for the stack to resolve. A row that
-	// sacrifices its own source, or exiles a creature for a
+	// declared `value` waits for the stack to resolve. A purpose-priced
+	// row that sacrifices its own source, or exiles a creature for a
 	// `sac_outlet` row, pays for it by the chance the bot would have
 	// kept it (sacrifice.go's dying anyway). It also switches on Layer
 	// A's value-only rule for the tier (rules.Options). Off (the zero
