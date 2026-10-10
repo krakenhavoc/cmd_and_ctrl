@@ -2856,6 +2856,7 @@ func (g *Game) revealLibraryCardsLocked(spec SearchLibrarySpec, p *Player, ids [
 		Source: spec.Source,
 		Reason: reason,
 		Cards:  inLibrary,
+		To:     spec.Dest,
 	})
 }
 

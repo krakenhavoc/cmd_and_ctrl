@@ -1561,6 +1561,14 @@ type Event struct {
 	// Zero on every other kind. Added in S22.
 	RevealSeq uint64 `json:"reveal_seq,omitempty"`
 
+	// RevealTo is set on an EventRevealCards that a library search
+	// made: the zone the searcher is sending the found card to
+	// ("battlefield" for a fetch, "hand" for Kodama's Reach). Empty on
+	// every other reveal. The card still does not move; this says where
+	// the search is taking it, so the log and banner can say "fetched"
+	// instead of "revealed" when nothing was revealed. Added with #2965.
+	RevealTo ZoneKind `json:"reveal_to,omitempty"`
+
 	// Combat marks an EventDealDamage as combat damage (CR 510) —
 	// dealt by an attacking or blocking creature in the combat
 	// damage step, including trample overflow routed through the

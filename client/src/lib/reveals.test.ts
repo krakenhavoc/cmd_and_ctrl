@@ -12,6 +12,7 @@ import {
   primeRandomEvents,
   primeRevealState,
   revealHeadline,
+  revealVerb,
   trackRandomEvents,
   trackReveals,
 } from "./reveals";
@@ -171,5 +172,26 @@ describe("revealHeadline", () => {
   it("falls back when the source is not in a zone the table can see", () => {
     expect(revealHeadline(reveal(1), "Alice")).toBe("Alice revealed");
     expect(revealHeadline(reveal(1), "")).toBe("A player revealed");
+  });
+  it("says fetched, not revealed, when a search put the card onto the battlefield", () => {
+    // #2965: a fetchland reveals nothing to the table; the land just
+    // went onto the battlefield from the library.
+    const fetch = reveal(1, { source: "Wooded Foothills", to: "battlefield" });
+    expect(revealHeadline(fetch, "krakenhavoc")).toBe("krakenhavoc fetched · Wooded Foothills");
+    expect(revealHeadline(reveal(1, { to: "battlefield" }), "")).toBe("A player fetched");
+  });
+
+  it("keeps revealed for a search that sends the card to hand", () => {
+    // Kodama's Reach really does show the basics to the table.
+    const kodama = reveal(1, { source: "Kodama's Reach", to: "hand" });
+    expect(revealHeadline(kodama, "Alice")).toBe("Alice revealed · Kodama's Reach");
+  });
+});
+
+describe("revealVerb", () => {
+  it("is fetched only for a battlefield destination", () => {
+    expect(revealVerb(reveal(1, { to: "battlefield" }))).toBe("fetched");
+    expect(revealVerb(reveal(1, { to: "hand" }))).toBe("revealed");
+    expect(revealVerb(reveal(1))).toBe("revealed");
   });
 });
