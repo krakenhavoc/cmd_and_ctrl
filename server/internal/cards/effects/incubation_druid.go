@@ -61,8 +61,9 @@ func init() {
 			Label: "Add one mana of any type a land you control could produce (three with a +1/+1 counter)",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{G}{G}: Adapt 3",
-			Cost:  ManaCost("{3}{G}{G}"),
+			Label:   "{3}{G}{G}: Adapt 3",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{3}{G}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				src, ok := g.LookupCardForEffect(item.SourceCardID)
 				if !ok || src.Counters["+1/+1"] > 0 {

@@ -19,7 +19,7 @@ func init() {
 		Name:         "Battershield Warrior",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			Boast("{1}{W}: Creatures you control get +1/+1 until end of turn.",
+			BoastAnswering(game.AnswerPump, "{1}{W}: Creatures you control get +1/+1 until end of turn.",
 				ManaCost("{1}{W}"),
 				func(g *game.Game, item *game.StackItem) error {
 					return BoostUntilEOT{

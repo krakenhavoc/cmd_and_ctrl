@@ -59,9 +59,10 @@ func init() {
 		XMatters:                   true,
 		Completeness:               CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{4}: Put a +1/+1 counter on this creature.",
-			Cost:   ManaCost("{4}"),
-			Effect: putCounterOnSelf,
+			Label:   "{4}: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{4}"),
+			Effect:  putCounterOnSelf,
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},

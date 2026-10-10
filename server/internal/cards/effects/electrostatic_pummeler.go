@@ -25,8 +25,9 @@ func init() {
 			WhenThisEntersYouGetEnergy("Electrostatic Pummeler", 3),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Pay {E}{E}{E}: This creature gets +X/+X until end of turn, where X is its power.",
-			Cost:  PayEnergy(3),
+			Label:   "Pay {E}{E}{E}: This creature gets +X/+X until end of turn, where X is its power.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    PayEnergy(3),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {
 					return nil

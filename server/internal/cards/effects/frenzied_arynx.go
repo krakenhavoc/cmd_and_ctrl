@@ -20,9 +20,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRiot, "trample"},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}{R}{G}: This creature gets +3/+0 until end of turn.",
-			Cost:   ManaCost("{4}{R}{G}"),
-			Effect: thisGetsUntilEndOfTurn(3, 0, "Frenzied Arynx — +3/+0"),
+			Label:   "{4}{R}{G}: This creature gets +3/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{4}{R}{G}"),
+			Effect:  thisGetsUntilEndOfTurn(3, 0, "Frenzied Arynx — +3/+0"),
 		}},
 	})
 }

@@ -27,8 +27,9 @@ func init() {
 				Do(CreateToken{Template: TokenCard("5/5 red Dragon with flying"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{R}: Dragons you control get +1/+0 until end of turn",
-			Cost:  ManaCost("{1}{R}"),
+			Label:   "{1}{R}: Dragons you control get +1/+0 until end of turn",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{1}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return BoostUntilEOT{
 					Match: And(OfCreatureType("Dragon"), YouControl()),

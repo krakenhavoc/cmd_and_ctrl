@@ -42,9 +42,10 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{G}{G}: Double the number of +1/+1 counters on each creature you control.",
-			Cost:   ManaCost("{3}{G}{G}"),
-			Effect: b08DoubleCountersOnEachCreatureYouControl,
+			Label:   "{3}{G}{G}: Double the number of +1/+1 counters on each creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{3}{G}{G}"),
+			Effect:  b08DoubleCountersOnEachCreatureYouControl,
 		}},
 	})
 }

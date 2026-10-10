@@ -16,8 +16,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label: "{R}: This creature gets +0/+1 until end of turn.",
-			Cost:  ManaCost("{R}"),
+			Label:   "{R}: This creature gets +0/+1 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return BoostUntilEOT{Target: ctx.Source(), Toughness: 1, Label: "Basalt Gargoyle — +0/+1"}.Apply(ctx)

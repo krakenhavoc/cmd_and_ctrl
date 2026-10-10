@@ -16,8 +16,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{W}: This creature gets +0/+1 until end of turn.",
-				Cost:  ManaCost("{W}"),
+				Label:   "{W}: This creature gets +0/+1 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{W}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return BoostUntilEOT{
 						Target:    item.SourceCardID,

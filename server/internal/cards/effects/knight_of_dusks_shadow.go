@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Knight of Dusk's Shadow — Creature — Human Knight {1}{B}, 2/2:
 //
 //	"Menace
@@ -19,9 +21,10 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		CantGainLife:    OpponentsCantGainLife(),
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{B}: This creature gets +1/+1 until end of turn.",
-			Cost:   ManaCost("{1}{B}"),
-			Effect: thisGetsUntilEndOfTurn(1, 1, "Knight of Dusk's Shadow — +1/+1 until end of turn"),
+			Label:   "{1}{B}: This creature gets +1/+1 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{1}{B}"),
+			Effect:  thisGetsUntilEndOfTurn(1, 1, "Knight of Dusk's Shadow — +1/+1 until end of turn"),
 		}},
 	})
 }

@@ -31,8 +31,9 @@ func init() {
 			Morph("{3}{R}{R}{R}"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{R}: Akroma gets +1/+0 until end of turn.",
-			Cost:  ManaCost("{R}"),
+			Label:   "{R}: Akroma gets +1/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return BoostUntilEOT{Target: ctx.Source(), Power: 1, Label: "Akroma, Angel of Fury — +1/+0"}.Apply(ctx)

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Canyon Drake — Creature — Drake {2}{R}{R}, 1/2:
 //
 //	"Flying
@@ -19,9 +21,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}, Discard a card at random: This creature gets +2/+0 until end of turn.",
-			Cost:   Plus(ManaCost("{1}"), DiscardAtRandom(1, "a card at random")),
-			Effect: thisGetsUntilEndOfTurn(2, 0, "Canyon Drake — +2/+0"),
+			Label:   "{1}, Discard a card at random: This creature gets +2/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{1}"), DiscardAtRandom(1, "a card at random")),
+			Effect:  thisGetsUntilEndOfTurn(2, 0, "Canyon Drake — +2/+0"),
 		}},
 	})
 }

@@ -21,8 +21,9 @@ func init() {
 		Completeness:  CompletenessFull,
 		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{G}{W}, {T}: Put a +1/+1 counter on each creature you control.",
-			Cost:  Plus(ManaCost("{2}{G}{W}"), TapCost()),
+			Label:   "{2}{G}{W}, {T}: Put a +1/+1 counter on each creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{2}{G}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b11PutCountersOnEachCreatureYouControl(g, item, 1)
 			},
