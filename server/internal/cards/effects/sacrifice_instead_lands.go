@@ -103,6 +103,7 @@ func init() {
 				},
 				Produced: "{B}{B}{B}{B}",
 				Label:    "Sacrifice a Swamp: Add {B}{B}{B}{B}",
+				Answers:  game.AnswerValue,
 			},
 		},
 	})
@@ -144,8 +145,9 @@ func init() {
 			Label:    "Add {C}{U}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Scry 1.",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   "{1}, {T}: Scry 1.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

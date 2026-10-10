@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Krark-Clan Ironworks — Artifact {4} (EDHREC rank 1329):
 //
 //	"Sacrifice an artifact: Add {C}{C}."
@@ -27,6 +29,7 @@ func init() {
 			},
 			Produced: "{C}{C}",
 			Label:    "Sacrifice an artifact: Add {C}{C}",
+			Answers:  game.AnswerValue,
 		}},
 	})
 }

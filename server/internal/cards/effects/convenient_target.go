@@ -28,10 +28,11 @@ func init() {
 			WhenThisEnters("Convenient Target — suspect enchanted creature", suspectEnchantedCreature),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{R}: Return this card from your graveyard to your hand.",
-			Cost:   ManaCost("{2}{R}"),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: returnThisCardFromYourGraveyardToYourHand,
+			Label:   "{2}{R}: Return this card from your graveyard to your hand.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{2}{R}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect:  returnThisCardFromYourGraveyardToYourHand,
 		}},
 	})
 }

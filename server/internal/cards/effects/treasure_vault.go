@@ -38,8 +38,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens.",
-			Cost:  Plus(ManaCost("{X}{X}"), TapCost(), SacrificeThis()),
+			Label:   "{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{X}{X}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return CreateToken{

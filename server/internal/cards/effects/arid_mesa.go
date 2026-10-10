@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Arid Mesa — Land (EDHREC rank 57):
 //
 //	"{T}, Pay 1 life, Sacrifice this land: Search your library for
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Arid Mesa",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
-			Cost:   fetchlandCost(),
-			Effect: fetchDual("mountain", "plains"),
+			Label:   "{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    fetchlandCost(),
+			Effect:  fetchDual("mountain", "plains"),
 		}},
 	})
 }

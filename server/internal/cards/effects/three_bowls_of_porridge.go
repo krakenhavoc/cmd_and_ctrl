@@ -32,8 +32,9 @@ func init() {
 		Name:         "Three Bowls of Porridge",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: threeBowlsOfPorridgeLabel,
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   threeBowlsOfPorridgeLabel,
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Modes: ChooseOneNotChosen(
 				ModeDoing("This artifact deals 2 damage to target creature.", TargetCreature("target creature"),
 					func(item *game.StackItem, ctx *Context, occ int) error {

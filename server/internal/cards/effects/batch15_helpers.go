@@ -281,8 +281,9 @@ func b15CanopyLand(oracleID, name, a, b string) Spec {
 			Label:    "{T}, Pay 1 life: Add {" + a + "} or {" + b + "}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice this land: Draw a card.",
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
+			Label:   "{1}, {T}, Sacrifice this land: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

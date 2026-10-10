@@ -53,8 +53,9 @@ func init() {
 				Effect:  destroyFirstLegalCardTarget,
 			},
 			{
-				Label: "{T}, Pay 3 life: Proliferate.",
-				Cost:  Plus(TapCost(), PayLife(3)),
+				Label:   "{T}, Pay 3 life: Proliferate.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    Plus(TapCost(), PayLife(3)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return Proliferate{}.Apply(NewContext(g, item))
 				},

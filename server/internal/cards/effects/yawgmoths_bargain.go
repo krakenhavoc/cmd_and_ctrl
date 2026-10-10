@@ -29,8 +29,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SkipYourDrawStep()},
 		Activated: []ActivatedAbility{{
-			Label: "Pay 1 life: Draw a card",
-			Cost:  PayLife(1),
+			Label:   "Pay 1 life: Draw a card",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    PayLife(1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

@@ -23,9 +23,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle.",
-			Cost:   Plus(TapCost(), SacrificeThis()),
-			Effect: fetchDual("swamp", "mountain"),
+			Label:   "{T}, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeThis()),
+			Effect:  fetchDual("swamp", "mountain"),
 		}},
 	})
 }

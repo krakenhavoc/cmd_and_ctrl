@@ -28,8 +28,9 @@ func init() {
 		Static:          []game.StaticAbility{godUnlessDevotion("B")},
 		CantGainLife:    OpponentsCantGainLife(),
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}, Pay 2 life: Draw a card.",
-			Cost:  Plus(ManaCost("{1}{B}"), PayLife(2)),
+			Label:   "{1}{B}, Pay 2 life: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{B}"), PayLife(2)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{N: 1}.Apply(NewContext(g, item))
 			},

@@ -24,9 +24,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-				Cost:   Plus(TapCost(), SacrificeThis()),
-				Effect: fetchBasicTapped,
+				Label:   "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), SacrificeThis()),
+				Effect:  fetchBasicTapped,
 			},
 			{
 				Label:   "{T}, Sacrifice this land: Target creature with power 2 or less can't be blocked this turn.",

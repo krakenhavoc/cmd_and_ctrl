@@ -37,6 +37,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "Pay 4 life: Destroy this enchantment. It can't be regenerated. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerRestrict},
 			Cost:      game.AbilityCost{Life: 4},
 			AnyPlayer: true,
 			Effect:    destroyThisPermanent(true),

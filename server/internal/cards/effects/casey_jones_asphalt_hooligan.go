@@ -34,6 +34,7 @@ func init() {
 		PrintedKeywords: []string{"double strike"},
 		Activated: []ActivatedAbility{{
 			Label:     "{4}: Double Casey Jones's power until end of turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerPump},
 			Cost:      ManaCost("{4}"),
 			AnyPlayer: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {

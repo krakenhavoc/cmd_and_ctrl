@@ -17,8 +17,9 @@ func init() {
 		OracleID: "bd85fe4d-1d62-416f-ac2d-e287911c84e3",
 		Name:     "Crystal Ball",
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Scry 2.",
-			Cost:  game.AbilityCost{Mana: "{1}", Tap: true},
+			Label:   "{1}, {T}: Scry 2.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    game.AbilityCost{Mana: "{1}", Tap: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Scry{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 			},

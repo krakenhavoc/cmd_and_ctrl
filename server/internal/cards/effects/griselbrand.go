@@ -29,8 +29,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Activated: []ActivatedAbility{{
-			Label: "Pay 7 life: Draw seven cards",
-			Cost:  PayLife(7),
+			Label:   "Pay 7 life: Draw seven cards",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    PayLife(7),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 7}.Apply(NewContext(g, item))
 			},

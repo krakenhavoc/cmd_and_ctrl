@@ -30,9 +30,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: nil,
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}: Return this card from your graveyard to the battlefield tapped.",
-			Cost:  ManaCost("{1}{B}"),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{1}{B}: Return this card from your graveyard to the battlefield tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{1}{B}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return returnThisFromGraveyardTapped(g, item)
 			},

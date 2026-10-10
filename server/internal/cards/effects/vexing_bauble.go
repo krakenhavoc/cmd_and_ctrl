@@ -57,8 +57,9 @@ func init() {
 			Effect: counterTheSpellIfNoManaWasSpent,
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice this artifact: Draw a card.",
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
+			Label:   "{1}, {T}, Sacrifice this artifact: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{N: 1}.Apply(NewContext(g, item))
 			},

@@ -32,8 +32,9 @@ func init() {
 		Name:         "Survivor's Med Kit",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: survivorsMedKitLabel,
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   survivorsMedKitLabel,
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Modes: ChooseOneNotChosen(
 				ModeDoing("Stimpak — Draw a card.", nil,
 					func(item *game.StackItem, ctx *Context, _ int) error {
