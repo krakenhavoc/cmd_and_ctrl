@@ -14,9 +14,12 @@ import (
 // Effect is an effects.Do answers a probe with its steps. Each step that
 // can say what it touches implements footprinter, and a row's
 // game.TriggeredAbility.Footprint is the list of those answers. One step
-// that cannot answer, or a row with a Build, a "you may", a mode clause
+// that cannot answer, or a row with a "you may", a mode clause
 // or a clause built from the trigger, leaves the footprint nil, and the
-// row's triggers keep their prompt.
+// row's triggers keep their prompt. A row with a Build fill-in still
+// gets the footprint of its declared Effect; the check accepts an item
+// it built only when the item carries nothing the footprint does not
+// read (game.builtItemIsPlain).
 //
 // Adding a primitive here needs the argument the amendment makes for
 // the ones there: every object and player it touches is the item's
@@ -77,7 +80,7 @@ func (ExileChosenTarget) footprint() (game.FootprintStep, bool) {
 // footprintOfRow is a row's declared footprint, or nil when the row is
 // anything the check cannot describe.
 func footprintOfRow(t game.TriggeredAbility) []game.FootprintStep {
-	if t.Build != nil || t.OptionalPrompt != nil || t.Modes != nil || t.TargetsFrom != nil || t.TargetsFromReadsBoard {
+	if t.OptionalPrompt != nil || t.Modes != nil || t.TargetsFrom != nil || t.TargetsFromReadsBoard {
 		return nil
 	}
 	steps, ok := doStepsOf(t.Effect)

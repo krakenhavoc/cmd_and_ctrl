@@ -104,7 +104,7 @@ func TestTheRegistryDeclaresFootprints(t *testing.T) {
 		want   []game.FootprintKind
 	}{
 		{"Vivi Ornitier", viviOrnitierOracle, 0, []game.FootprintKind{game.FootprintCounterOnSource, game.FootprintDamageEachOpponent}},
-		{"Ugin's cast trigger has a Build", uginEyeOfTheStormsOracle, 0, nil},
+		{"Ugin's cast trigger (a Build fill-in)", uginEyeOfTheStormsOracle, 0, []game.FootprintKind{game.FootprintExileTargets}},
 		{"Ugin's battlefield trigger", uginEyeOfTheStormsOracle, 1, []game.FootprintKind{game.FootprintExileTargets}},
 		{"Guttersnipe", b03GuttersnipeOracle, 0, []game.FootprintKind{game.FootprintDamageEachOpponent}},
 		{"Firebrand Archer", firebrandArcherOracle, 0, []game.FootprintKind{game.FootprintDamageEachOpponent}},
@@ -136,12 +136,10 @@ func TestTheRegistryDeclaresFootprints(t *testing.T) {
 
 func TestFootprintOfRowRefusesWhatItCannotRead(t *testing.T) {
 	gain := Do(GainLife{Amount: 1})
-	build := func(game.Event, *game.Card, game.Characteristic, *game.Game) *game.StackItem { return nil }
 	for _, c := range []struct {
 		name string
 		row  game.TriggeredAbility
 	}{
-		{"a Build", game.TriggeredAbility{Effect: gain, Build: build}},
 		{"a you may", game.TriggeredAbility{Effect: gain, OptionalPrompt: &game.TriggerOptionalPrompt{}}},
 		{"a mode clause", game.TriggeredAbility{Effect: gain, Modes: &game.ModeSpec{}}},
 		{"a closure", game.TriggeredAbility{Effect: func(*game.Game, *game.StackItem) error { return nil }}},

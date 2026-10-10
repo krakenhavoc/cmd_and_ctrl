@@ -282,11 +282,19 @@ func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
 	if outcome != abilityRefMatched || len(row.Footprint) == 0 {
 		return triggerAccess{}, false
 	}
-	// Unknown: a Build fill-in, a "you may", a mode clause or chosen
-	// modes, a clause built from the trigger, or anything recorded on
-	// the item for it alone.
-	if row.Build != nil || row.OptionalPrompt != nil || row.Modes != nil ||
+	// Unknown: a "you may", a mode clause or chosen modes, a clause
+	// built from the trigger, or anything recorded on the item for it
+	// alone.
+	if row.OptionalPrompt != nil || row.Modes != nil ||
 		row.TargetsFrom != nil || row.TargetsFromReadsBoard || len(t.Modes) > 0 {
+		return triggerAccess{}, false
+	}
+	// A Build fill-in (owner answer to ADR 0018's #2884 question,
+	// 2026-10-09) is accepted only when the item it built is exactly
+	// what the footprint describes: the effect is still the row's
+	// declared one, and the item carries nothing beyond the fields the
+	// engine stamps and the footprint reads.
+	if row.Build != nil && !builtItemIsPlain(t, row) {
 		return triggerAccess{}, false
 	}
 	params := t.Params
@@ -318,6 +326,38 @@ func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
 		}
 	}
 	return a, true
+}
+
+// builtItemPlainFields are the StackItem fields a built item may set and
+// still be read by its footprint alone: the engine's own stamps (identity,
+// kind, ordering, the triggering event, the source object, the catalog
+// row), the controller and owner the footprint resolves "you" against,
+// the label, and the targets of a declared target clause. Params are
+// checked separately (only the row stamp may be set). Every other field
+// a Build sets makes the item one the check cannot describe.
+var builtItemPlainFields = map[string]bool{
+	"ID": true, "Kind": true, "Controller": true, "BaseController": true, "Owner": true,
+	"SourceCardID": true, "SourceEpoch": true, "SourceObject": true, "Label": true,
+	"DoubledBy": true, "DoubledByName": true, "Targets": true, "Trigger": true,
+	"Seq": true, "Effect": true, "Body": true, "Params": true, "Ordered": true,
+	"TargetsAnnouncePending": true, "targetSpec": true,
+}
+
+// builtItemIsPlain reports whether an item a row's Build made sets only
+// builtItemPlainFields, and targets only through the row's declared
+// target clause.
+func builtItemIsPlain(t *StackItem, row TriggeredAbility) bool {
+	if len(t.Targets) > 0 && row.Targets == nil {
+		return false
+	}
+	v := reflect.ValueOf(t).Elem()
+	ty := v.Type()
+	for i := 0; i < v.NumField(); i++ {
+		if !builtItemPlainFields[ty.Field(i).Name] && !v.Field(i).IsZero() {
+			return false
+		}
+	}
+	return true
 }
 
 // addFootprintStepLocked adds one step's reads, writes and events.

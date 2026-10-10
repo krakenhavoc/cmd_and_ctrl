@@ -80,7 +80,7 @@ func init() {
 					item.Controller, item.Owner = ev.Actor, ev.Actor
 					return item
 				},
-				Effect: b27ExileChosenTarget,
+				Effect: Do(ExileChosenTarget{}),
 			},
 			Targeting(
 				WheneverYouCast(Colorless(),
