@@ -64,6 +64,7 @@ ActivatedAbilityShape.Targets                census:IntrinsicAbilityCards       
 AnnouncedClause.Clause                       census:ChoiceResumeFrames          # Game.PendingChoices.pickTargetResume.steps.Clause
 Card.ActivatedAbilities                      census:IntrinsicAbilityCards       # Game.simultaneousExit.ActivatedAbilities
 Card.ManaAbilities                           census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities
+Card.MeldedFrom                              rebuilt                            # Game.simultaneousExit.MeldedFrom
 CoinFlipSpec.Then                            census:ChoiceResumeFrames          # Game.PendingChoices.coinFlipResume.spec.Then
 CopySelector.Candidates                      census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Candidates
 CopySelector.Except                          census:ChoiceResumeFrames          # Game.BuiltinReplacements.CopySelector.Except

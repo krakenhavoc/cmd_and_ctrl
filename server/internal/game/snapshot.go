@@ -376,6 +376,10 @@ type GameSnapshot struct {
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
+	// LoyaltyActivatedTwiceThisTurn is Game's (ADR 0145): the second
+	// loyalty activation of a permanent that may make two. Additive.
+	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool `json:"loyaltyActivatedTwiceThisTurn,omitempty"`
+
 	// Activations is the per-(object, ability) activation record
 	// (#1181). Carried because its game-lifetime half IS game state a
 	// player can lose on: a restore that forgot it would hand every
@@ -895,6 +899,19 @@ type cardSnapshot struct {
 	// Attendant would gain no life. Additive within the schema; old
 	// files have no key and read as "not crafted".
 	CraftedWith []ObjectRef `json:"craftedWith,omitempty"`
+	// Meld is the card's printed meld data and MeldedFrom a melded
+	// permanent's two cards (ADR 0145). Both carried: the print is
+	// stamped from the Scryfall record at import and nothing in the
+	// engine can rebuild it, and a melded permanent's cards ARE the
+	// cards its owner will get back when it leaves. Additive within the
+	// schema; an older file has neither key and reads as an ordinary
+	// card.
+	Meld       *MeldPrint     `json:"meld,omitempty"`
+	MeldedFrom []cardSnapshot `json:"meldedFrom,omitempty"`
+	// MeldSplitFrom is CR 712.21c's link from the card that carried a
+	// melded permanent out of play to the other card it became, carried
+	// because a delayed "return it" can outlive a restore. ADR 0145.
+	MeldSplitFrom *ObjectRef `json:"meldSplitFrom,omitempty"`
 	// ClassLevel is the CR 716.2 level designation and Solved the
 	// CR 719.3 solved designation (ADR 0071 decision 6). Both carried,
 	// for NamedTribe's reason and one more: they are legal zero
@@ -1827,6 +1844,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.ScopedEffects = deepCopyScopedEffects(g.ScopedEffects)
 
 	s.LoyaltyActivatedThisTurn = copyBoolMap(g.LoyaltyActivatedThisTurn)
+	s.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
 	s.SpellsCastThisTurn = copyTallyMap(g.SpellsCastThisTurn)
 	s.ForetoldThisTurn = copyIntMap(g.ForetoldThisTurn)
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
@@ -2079,6 +2097,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
 		CraftedWith:              cloneObjectRefs(c.CraftedWith),
+		Meld:                     c.Meld.clone(),
+		MeldSplitFrom:            objectRefPtr(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -2126,6 +2146,9 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 	if intrinsicAbilitiesLost(c) {
 		cen.IntrinsicAbilityCards++
 		cen.note("intrinsic abilities the catalog cannot re-derive: %s", labelOr(c.Name, c.InstanceID.String()))
+	}
+	for i := range c.MeldedFrom {
+		out.MeldedFrom = append(out.MeldedFrom, snapshotCard(c.MeldedFrom[i], cen))
 	}
 	return out
 }
@@ -2756,6 +2779,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	}
 
 	g.LoyaltyActivatedThisTurn = copyBoolMap(s.LoyaltyActivatedThisTurn)
+	g.LoyaltyActivatedTwiceThisTurn = copyBoolMap(s.LoyaltyActivatedTwiceThisTurn)
 	g.SpellsCastThisTurn = copyTallyMap(s.SpellsCastThisTurn)
 	g.ForetoldThisTurn = copyIntMap(s.ForetoldThisTurn)
 	g.TurnTally = cloneTurnTally(s.TurnTally)
@@ -2939,6 +2963,8 @@ func restoreCard(c *cardSnapshot) Card {
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
 		CraftedWith:              cloneObjectRefs(c.CraftedWith),
+		Meld:                     c.Meld.clone(),
+		MeldSplitFrom:            objectRefValue(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
@@ -3020,6 +3046,9 @@ func restoreCard(c *cardSnapshot) Card {
 	}
 	// `effective` is intentionally left nil: it is a derived cache,
 	// and restoreGame bumps layerVersion so the next read recomputes.
+	for i := range c.MeldedFrom {
+		out.MeldedFrom = append(out.MeldedFrom, restoreCard(&c.MeldedFrom[i]))
+	}
 	return out
 }
 

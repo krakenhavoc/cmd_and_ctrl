@@ -429,6 +429,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// CR 607.2a / 400.7 (#2530): the "exiled with" link names the card
 	// as it sat in exile, and any move ends that object.
 	c.ExiledWith = PermissionCardRef{}
+	// ADR 0145, CR 712.21c: the link to the other card of a melded
+	// permanent belongs to the place the split left them; any later
+	// move of the carrier ends it.
+	c.MeldSplitFrom = ObjectRef{}
 	// CR 712.8a: a double-faced card is FRONT face up in every zone
 	// except the battlefield and the stack. Keyed on the DESTINATION
 	// rather than the source, because that is how the rule is written
@@ -491,6 +495,17 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// is where the destination's kind is known, so no mover has to
 	// remember it (commander_return.go).
 	c.CommanderReturnDue = commanderReturnDueOn(c, dst.Kind)
+	// CR 712.21, ADR 0145: a melded permanent is one object and two
+	// cards. Anywhere but the battlefield and the stack it is the two
+	// cards, each pushed as its own card (meld.go). The returned value
+	// is still the melded object, so a caller can name the card that
+	// is not its carrier (meldPassengers) and owe it a landing.
+	if c.IsMelded() && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
+		for _, part := range splitMeldedForMove(c, dst.Kind) {
+			dst.PushTop(part)
+		}
+		return c, nil
+	}
 	dst.PushTop(c)
 	return c, nil
 }

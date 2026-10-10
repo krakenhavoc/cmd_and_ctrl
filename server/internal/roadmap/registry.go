@@ -3230,6 +3230,16 @@ var items = []Item{
 		Examples: []string{"The Irencrag", "Gemcutter Buccaneer", "Puresteel Paladin"},
 	},
 	{
+		// #2699 (ADR 0145): meld. Two cards become one permanent with the
+		// combined back face's characteristics, and leave as two cards.
+		Slug: "meld", Name: "Meld", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Two specific cards that exile themselves and come back as one permanent, the oversized card printed across their backs, such as Urza, Lord Protector and The Mightstone and Weakstone becoming Urza, Planeswalker. It has only the combined card's characteristics, and when it leaves the battlefield both cards go to the new zone, in the order their owner picks.",
+		Rules:    []string{"701.42", "712.4", "712.8g", "712.16", "712.21", "903.9c"},
+		ADR:      "0145-meld.md",
+		Printed:  `(?i)\bmeld them into\b`,
+		Examples: []string{"Urza, Lord Protector", "Hanweir Battlements"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

@@ -352,6 +352,10 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// Both identify the card, so both go with the name.
 		Doors: &RoomDoorsView{Left: true, Right: false},
 		Fused: &CardFaceView{Name: "Hidden // Back", ManaCost: "{6}{U}{1}{U}", CastSurfaceView: everyFieldCastSurface(lt)},
+		// ADR 0145: a melded permanent's cards and a meld card's
+		// combined back face both name the card.
+		MeldedFrom: []CardFaceView{{Name: "Hidden Half", Image: "/cards/half/image"}},
+		MeldsInto:  &CardFaceView{Name: "Hidden Whole", Image: "/cards/whole/image"},
 	}
 }
 

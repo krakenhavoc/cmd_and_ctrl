@@ -94,6 +94,14 @@ type NextSpellPromise struct {
 	// when the promise is spent.
 	FollowUp CastFollowUpKey `json:"followUp,omitempty"`
 
+	// EveryMatchingSpell makes the promise about EVERY matching spell
+	// cast while it lasts rather than the next one: it is never spent,
+	// and it ends with its duration. "Artifact, instant, and sorcery
+	// spells you cast this turn cost {2} less to cast" (Urza,
+	// Planeswalker; ADR 0145). Only the price rider (Reduce) is read for
+	// one; the other riders describe a single spell.
+	EveryMatchingSpell bool `json:"everyMatchingSpell,omitempty"`
+
 	// Text is the clause as printed, for the log and the panel. Not a
 	// rules input.
 	Text string `json:"text,omitempty"`
@@ -229,7 +237,7 @@ func (g *Game) spendNextSpellPromisesLocked(caster, spellID uuid.UUID) []CastFol
 		followUps []CastFollowUpKey
 	)
 	for _, s := range p.Statics {
-		if g.livePromise(s) && s.NextSpell.Filter.Matches(*spell) {
+		if g.livePromise(s) && !s.NextSpell.EveryMatchingSpell && s.NextSpell.Filter.Matches(*spell) {
 			spent = append(spent, s)
 			continue
 		}

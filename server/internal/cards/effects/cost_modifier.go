@@ -462,3 +462,11 @@ func NoArtifactSpellCastYetThisTurn() CostPredicate {
 		return q.Game == nil || q.Game.CastTallyFor(q.Controller).Artifact == 0
 	}
 }
+
+// ArtifactInstantOrSorcerySpell passes on an artifact, instant or
+// sorcery spell — Urza, Lord Protector.
+func ArtifactInstantOrSorcerySpell() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Card.IsArtifact() || q.Card.IsInstant() || q.Card.IsSorcery()
+	}
+}

@@ -274,6 +274,11 @@ type CardDef struct {
 	// Ancient Adamantoise). Read from the battlefield through
 	// CatalogAbilityKey; see cleanup_damage.go.
 	DamageStaysThroughCleanup bool
+	// LoyaltyTwiceEachTurn is this permanent's printed "You may activate
+	// the loyalty abilities of <this> twice each turn rather than only
+	// once" (CR 606.3, Urza, Planeswalker). Read from the battlefield
+	// through CatalogAbilityKey; see loyalty_limit.go.
+	LoyaltyTwiceEachTurn bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -817,6 +822,10 @@ func init() {
 	CatalogDamageStaysThroughCleanup = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.DamageStaysThroughCleanup
+	}
+	CatalogLoyaltyTwiceEachTurn = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.LoyaltyTwiceEachTurn
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {

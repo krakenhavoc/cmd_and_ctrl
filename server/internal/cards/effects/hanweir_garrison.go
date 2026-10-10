@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Hanweir Garrison — Creature — Human Soldier {2}{R}, 2/3 (EDHREC
 // rank 4257):
@@ -34,37 +30,18 @@ import (
 // defender has left the game between declaration and resolution makes
 // no tokens rather than tokens attacking nobody.
 //
-// Declared simplification, weaker than printed (#259): MELD is not
-// modelled. Hanweir Garrison and Hanweir Battlements will never become
-// Hanweir, the Writhing Township, so the pair is two ordinary
-// permanents. Nothing else about either card changes.
+// The reminder line is the other half of Hanweir Battlements' meld
+// ability (CR 701.42, 712.5b; ADR 0145, #2699): the Battlements' {3}{R}{R}
+// exiles both and returns them as Hanweir, the Writhing Township. The
+// attack trigger is shared with the Township
+// (whenThisAttacksTokensTappedAndAttacking, meld.go).
 func init() {
 	Register(Spec{
 		OracleID:     "7cb29569-48e1-4782-9906-fad155ebfafe",
 		Name:         "Hanweir Garrison",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"It never melds with Hanweir Battlements — the two stay separate permanents and Hanweir, the Writhing Township can't be made.",
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			whenThisAttacksTokensTappedAndAttacking("Hanweir Garrison — two tapped and attacking Humans", "1/1 red Human", 2),
 		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:   []game.EventKind{game.EventAttack},
-			AppliesTo: ThisAttacked,
-			Key:       "Hanweir Garrison — two tapped and attacking Humans",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Hanweir Garrison — two tapped and attacking Humans")
-				item.Params.Player = b17DefendingPlayer(g, ev)
-				return item
-			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				defender := item.Params.Player
-				if defender == uuid.Nil {
-					return nil
-				}
-				tmpl := TokenCard("1/1 red Human")
-				tmpl.Tapped = true
-				tmpl.AttackingTarget = defender
-				return CreateToken{Controller: item.Controller, Template: tmpl, N: 2}.Apply(NewContext(g, item))
-			},
-		}},
 	})
 }

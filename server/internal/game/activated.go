@@ -1418,7 +1418,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// CR 606.3: once per turn per permanent. The flag was S13.1's
 		// and only the sandbox action consulted it; this is the path
 		// that matters now.
-		if g.LoyaltyActivatedThisTurn[cardID] {
+		if g.LoyaltySpentLocked(cardID) {
 			return ErrLoyaltyAlreadyActivated
 		}
 		// CR 606.5: you can't activate a −N ability with fewer than
@@ -1861,10 +1861,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
 			return err
 		}
-		if g.LoyaltyActivatedThisTurn == nil {
-			g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
-		}
-		g.LoyaltyActivatedThisTurn[cardID] = true
+		g.recordLoyaltyActivationLocked(cardID)
 	}
 	// #625: a "remove N counters" component. After life and loyalty,
 	// before sacrifices — a self-form removal on a source that is

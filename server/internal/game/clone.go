@@ -117,6 +117,7 @@ func (g *Game) cloneLocked() *Game {
 			out.LoyaltyActivatedThisTurn[k] = v
 		}
 	}
+	out.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -606,6 +607,15 @@ func cloneCard(c Card) Card {
 	out.Provenance = c.Provenance.Clone()
 	// ADR 0137: the craft link is a slice, aliased by a value copy.
 	out.CraftedWith = cloneObjectRefs(c.CraftedWith)
+	// ADR 0145: the meld print is a pointer and a melded permanent's
+	// cards are a slice of whole cards, each with its own maps.
+	out.Meld = c.Meld.clone()
+	if len(c.MeldedFrom) > 0 {
+		out.MeldedFrom = make([]Card, len(c.MeldedFrom))
+		for i := range c.MeldedFrom {
+			out.MeldedFrom[i] = cloneCard(c.MeldedFrom[i])
+		}
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -1071,6 +1081,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.NextPhaseID = src.NextPhaseID
 	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
+	g.LoyaltyActivatedTwiceThisTurn = src.LoyaltyActivatedTwiceThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn

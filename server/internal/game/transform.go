@@ -60,8 +60,9 @@ import (
 //     is a double-faced card — turning Foulmire Knight into Profane
 //     Insight on the battlefield is not a thing that can happen.
 //     Keying on len(Faces) == 2 alone would have made it one.
-//   - A meld card can't transform (CR 712.4c), and none is modelled;
-//     the layout check refuses it for free.
+//   - A meld card can't transform (CR 712.4c), and neither can a
+//     melded permanent (ADR 0145); the layout check refuses both, since
+//     neither has a `transform` or `modal_dfc` layout.
 //   - An instruction whose target face is an instant or sorcery face
 //     does nothing (CR 701.27d, CR 712.10).
 func CanTransform(c Card) bool {

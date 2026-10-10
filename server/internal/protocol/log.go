@@ -372,6 +372,12 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogMeld — two cards were melded into one permanent (CR 701.42a).
+	// `CardID` is the melded permanent and `Label` names the two cards
+	// it was melded from, which no other line says: the exile and the
+	// entry each name one object. Narrated for LogTransform's reason.
+	// ADR 0145.
+	LogMeld LogKind = "meld"
 	// LogDayNight — the game became day or night (CR 731.1). `Label` is
 	// the new designation ("day" or "night"). Narrated because the
 	// untap-step check (CR 502.2) changes it with no spell or ability
@@ -1671,6 +1677,14 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventMeld:
+		// CR 701.42a. The entry already logged the permanent arriving;
+		// this is the line that says it is two cards.
+		base.Kind = LogMeld
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventDayNightChanged:
 		// CR 731.1. Not tied to a card: the untap-step check and a
 		// daybound permanent arriving both change it with no source.
@@ -2405,6 +2419,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s has max speed", actor)
 		}
 		return fmt.Sprintf("%s's speed is now %d", actor, e.Amount)
+	case LogMeld:
+		if e.Label == "" {
+			return fmt.Sprintf("%s was melded", card)
+		}
+		return fmt.Sprintf("%s melded into %s", e.Label, card)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

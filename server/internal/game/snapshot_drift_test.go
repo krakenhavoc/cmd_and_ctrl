@@ -121,6 +121,7 @@ var gameFields = plan(
 	"planAt", rebuilt, "derived from the restored cursor: a restored plan describes the cursor it was captured with",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
+	"LoyaltyActivatedTwiceThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
@@ -477,6 +478,12 @@ var cardFields = plan(
 	// reason — the craft ability that wrote it is gone, so nothing could
 	// rebuild it, and a restored Jadeheart Attendant would gain no life.
 	"CraftedWith", carried, "",
+	// ADR 0145: a meld card's printed meld data, stamped at import and
+	// rebuildable from nothing, and a melded permanent's two cards,
+	// which are what its owner gets back when it leaves.
+	"Meld", carried, "",
+	"MeldedFrom", carried, "",
+	"MeldSplitFrom", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
 	// two above — both zero values are LEGAL states ("level 1",

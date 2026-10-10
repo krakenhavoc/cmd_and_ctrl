@@ -173,6 +173,10 @@ type PermissionFilter struct {
 	// sorcery card in your graveyard".
 	InstantOrSorceryOnly bool `json:"instantOrSorceryOnly,omitempty"`
 
+	// ArtifactInstantOrSorceryOnly is Urza's "artifact, instant, and
+	// sorcery spells" (ADR 0145).
+	ArtifactInstantOrSorceryOnly bool `json:"artifactInstantOrSorceryOnly,omitempty"`
+
 	// NoncreatureOnly is the half of "noncreature spells" nothing in
 	// ADR 0066 needed and a timing statement does (#1195) — Borne
 	// Upon a Wind's sibling clause, and the shape a "you may cast
@@ -279,6 +283,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.InstantOrSorceryOnly && !c.IsInstant() && !c.IsSorcery() {
+		return false
+	}
+	if f.ArtifactInstantOrSorceryOnly && !c.IsArtifact() && !c.IsInstant() && !c.IsSorcery() {
 		return false
 	}
 	if f.NoncreatureOnly && c.IsCreature() {
