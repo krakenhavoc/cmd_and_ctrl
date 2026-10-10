@@ -30,8 +30,9 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Activated: []ActivatedAbility{{
-			Label: "{X}: Until end of turn, creatures you control have base power and toughness X/X and gain all creature types.",
-			Cost:  ManaCost("{X}"),
+			Label:   "{X}: Until end of turn, creatures you control have base power and toughness X/X and gain all creature types.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{X}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				x := ctx.X()

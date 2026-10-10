@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Pardic Swordsmith — Creature — Dwarf {2}{R}, 1/1:
 //
 //	"{R}, Discard a card at random: This creature gets +2/+0 until end of
@@ -17,9 +19,10 @@ func init() {
 		Name:         "Pardic Swordsmith",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{R}, Discard a card at random: This creature gets +2/+0 until end of turn.",
-			Cost:   Plus(ManaCost("{R}"), DiscardAtRandom(1, "a card at random")),
-			Effect: thisGetsUntilEndOfTurn(2, 0, "Pardic Swordsmith — +2/+0"),
+			Label:   "{R}, Discard a card at random: This creature gets +2/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{R}"), DiscardAtRandom(1, "a card at random")),
+			Effect:  thisGetsUntilEndOfTurn(2, 0, "Pardic Swordsmith — +2/+0"),
 		}},
 	})
 }

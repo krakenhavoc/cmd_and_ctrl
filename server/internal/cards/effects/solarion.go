@@ -21,8 +21,9 @@ func init() {
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Double the number of +1/+1 counters on this creature.",
-			Cost:  TapCost(),
+			Label:   "{T}: Double the number of +1/+1 counters on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b23DoublePlusOneCountersOn(NewContext(g, item), item.SourceCardID)
 			},

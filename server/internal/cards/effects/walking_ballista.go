@@ -31,9 +31,10 @@ func init() {
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{4}: Put a +1/+1 counter on this creature.",
-				Cost:   ManaCost("{4}"),
-				Effect: plusOneCountersOnThis(1),
+				Label:   "{4}: Put a +1/+1 counter on this creature.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{4}"),
+				Effect:  plusOneCountersOnThis(1),
 			},
 			{
 				Label:   "Remove a +1/+1 counter from this creature: It deals 1 damage to any target.",

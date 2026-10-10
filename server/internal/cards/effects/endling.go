@@ -32,9 +32,10 @@ func init() {
 				Effect: thisGainsKeywordUntilEndOfTurn("deathtouch", "Endling — deathtouch until end of turn"),
 			},
 			{
-				Label:  "{B}: This creature gains undying until end of turn.",
-				Cost:   ManaCost("{B}"),
-				Effect: thisGainsKeywordUntilEndOfTurn(game.KeywordUndying, "Endling — undying until end of turn"),
+				Label:   "{B}: This creature gains undying until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Cost:    ManaCost("{B}"),
+				Effect:  thisGainsKeywordUntilEndOfTurn(game.KeywordUndying, "Endling — undying until end of turn"),
 			},
 			{
 				Label: "{1}: This creature gets +1/-1 or -1/+1 until end of turn.",

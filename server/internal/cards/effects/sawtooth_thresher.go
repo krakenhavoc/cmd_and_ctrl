@@ -21,8 +21,9 @@ func init() {
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{
-			Label: "Remove two +1/+1 counters from this creature: It gets +4/+4 until end of turn.",
-			Cost:  RemoveCountersFromThis(game.CounterPlusOne, 2),
+			Label:   "Remove two +1/+1 counters from this creature: It gets +4/+4 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    RemoveCountersFromThis(game.CounterPlusOne, 2),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return BoostUntilEOT{Target: item.SourceCardID, Power: 4, Toughness: 4}.Apply(NewContext(g, item))
 			},

@@ -27,7 +27,8 @@ func init() {
 				"Tenured Tethermage — sacrifice a land to create two tapped Heartwood tokens?"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Tap two untapped artifacts you control: Put two +1/+1 counters on this creature.",
+			Label:   "Tap two untapped artifacts you control: Put two +1/+1 counters on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost: game.AbilityCost{TapOthers: &game.TapOthersCost{
 				Count:  2,
 				Filter: TargetPermanent("two untapped artifacts you control", Artifact()),
