@@ -163,6 +163,12 @@ func (p *Policy) buildDelta(in aiseat.Input, cands []heuristic.Candidate, fallba
 	b.WriteString("\nYOUR LEGAL MOVES — answer with one of these numbers\n")
 	for _, m := range shown {
 		fmt.Fprintf(&b, "  %d: %s", m.index, m.label)
+		// ADR 0142 decision 6: what the row declares it answers, as a
+		// human sees it in the stop. Not part of the label: normLabel
+		// takes it off a label the model copied along with it.
+		if note := boardtext.AnswersNote(&in.View, in.Moves[m.index]); note != "" {
+			b.WriteString(" (" + note + ")")
+		}
 		if m.index == fallback {
 			b.WriteString("   " + fallbackMarker)
 		}

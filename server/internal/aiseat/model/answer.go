@@ -3,6 +3,8 @@ package model
 import (
 	"strconv"
 	"strings"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/boardtext"
 )
 
 // answer.go turns a model's reply into a move, or into nothing
@@ -142,6 +144,10 @@ func labelNames(label string, shown []Choice) (int, bool) {
 func normLabel(s string) string {
 	s = strings.Join(strings.Fields(s), " ")
 	if i := strings.Index(s, fallbackMarker); i >= 0 {
+		s = strings.TrimSpace(s[:i])
+	}
+	// The answers note the prompt prints after a label (ADR 0142).
+	if i := strings.LastIndex(s, " ("+boardtext.AnswersPrefix); i >= 0 && strings.HasSuffix(s, ")") {
 		s = strings.TrimSpace(s[:i])
 	}
 	if colon := strings.IndexByte(s, ':'); colon > 0 {
