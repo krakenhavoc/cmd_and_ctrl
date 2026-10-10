@@ -458,6 +458,20 @@ type AbilityCost struct {
 	// which is stamped before the payment.
 	ReturnSelf bool
 
+	// BottomSelf puts the SOURCE PERMANENT on the bottom of its
+	// owner's library as part of the cost (#2726) — Timestream
+	// Navigator's "{2}{U}{U}, {T}, Put this creature on the bottom of
+	// its owner's library:". ReturnSelf's sibling one zone over, with
+	// the same shape: paid at announce (CR 602.2b, CR 601.2h), so the
+	// permanent is gone before anyone can respond; the leaves-the-
+	// battlefield triggers see it leave; the effect reads "this
+	// permanent" through the item's SourceObject, stamped before the
+	// payment (last-known information, CR 608.2h; the library card is
+	// a new object, CR 400.7). Battlefield only
+	// (AbilityNeedsPermanentSource), one component per permanent
+	// (CR 118.3), and a commander is asked CR 903.9b first (ADR 0115).
+	BottomSelf bool
+
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
 	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
@@ -1470,7 +1484,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// cost exiles it — because one permanent pays one component
 	// (CR 118.3).
 	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.Cost.ExilePermanents, params.ExilePermanentIDs,
-		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf, sacrifices, params.ReturnIDs)); err != nil {
+		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, sacrifices, params.ReturnIDs)); err != nil {
 		return err
 	}
 	// #2028: "Return this enchantment to its owner's hand". Nothing to
@@ -1479,6 +1493,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// components that move permanents, made here with the rest so a
 	// refusal costs nothing.
 	if err := validateReturnSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
+		return err
+	}
+	// #2726: and the put-this-on-the-bottom twin of the same checks.
+	if err := validateBottomSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
@@ -1668,7 +1686,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
 	moving = append(append(append(moving, tops...), libraryExiles...), randoms...)
-	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf {
+	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf {
 		moving = append(moving, cardID)
 	}
 	// #1427: every permanent the payment TAPS — the {T}, the crew,
@@ -1702,6 +1720,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// before anything is paid, like any other returned commander.
 	if ab.Cost.ReturnSelf {
 		asking = append(asking, costCommanderMovesTo(ZoneHand, cardID)...)
+	}
+	// #2726: and the source a put-on-the-bottom cost sends to its owner's
+	// library, asked the same way.
+	if ab.Cost.BottomSelf {
+		asking = append(asking, costCommanderMovesTo(ZoneLibrary, cardID)...)
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
@@ -1904,6 +1927,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the effect still names the permanent that paid (CR 400.7) and reads
 	// it through its last-known information (CR 608.2h).
 	if err := g.payReturnSelfCostLocked(playerID, cardID, ab.Cost, params.commanderAnswers); err != nil {
+		return err
+	}
+	// #2726: the put-this-on-the-bottom half, the same exit one zone
+	// over and for the same reasons.
+	if err := g.payBottomSelfCostLocked(playerID, cardID, ab.Cost, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1600: the exile-a-permanent component, beside the returns and for

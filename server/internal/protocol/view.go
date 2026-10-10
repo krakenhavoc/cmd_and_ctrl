@@ -3652,6 +3652,11 @@ type ActivatedAbilityView struct {
 	// It is here so a client or a bot can tell that activating the row
 	// returns the permanent without parsing the label.
 	ReturnSelf bool `json:"return_self,omitempty"`
+	// BottomSelf is the "Put this creature on the bottom of its owner's
+	// library" cost component (#2726): Timestream Navigator. Advisory,
+	// like `return_self`: the source is the payment, so nothing is
+	// collected and nothing rides the payload.
+	BottomSelf bool `json:"bottom_self,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -10048,6 +10053,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			DiscardSelf:   a.Cost.DiscardSelf,
 			ExileSelf:     a.Cost.ExileSelf,
 			ReturnSelf:    a.Cost.ReturnSelf,
+			BottomSelf:    a.Cost.BottomSelf,
 			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
@@ -10129,7 +10135,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf)
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf || a.Cost.BottomSelf)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew

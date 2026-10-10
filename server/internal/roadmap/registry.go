@@ -1727,7 +1727,7 @@ var items = []Item{
 		// the city's blessing it grants is a per-player designation.
 		Slug: "ascend", Name: "Ascend and the city's blessing", Kind: KindKeyword, Status: StatusPartial,
 		Summary:     "Ascend gives you the city's blessing for the rest of the game once you control ten or more permanents: a permanent with ascend does it as soon as you do, and an instant or sorcery with ascend as it resolves. You keep the blessing even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
-		Missing:     "Two cards that read the city's blessing aren't built yet: Timestream Navigator's cost has no component for putting itself on the bottom of its owner's library, and Tilonalli's Summoner can't pay a chosen X as its trigger resolves.",
+		Missing:     "One card that reads the city's blessing isn't built yet: Tilonalli's Summoner can't pay a chosen X as its trigger resolves.",
 		Rules:       []string{"702.131"},
 		Issue:       2706,
 		ADR:         "0096-the-monarch-from-a-card-effect.md",
@@ -1736,8 +1736,8 @@ var items = []Item{
 		Probe:       hasKeyword(game.KeywordAscend),
 		Printed:     printedKeyword("ascend"),
 		Examples:    []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Secrets of the Golden City"},
-		Waiting:     []string{"Tilonalli's Summoner", "Timestream Navigator"},
-		EngineNotes: "rules shipped (#2696, ADR 0096's 2026-10-08 amendment); what is left is cards. `Player.CitysBlessing` (`game/citys_blessing.go`) is the designation (CR 702.131c): written only by `grantCitysBlessingLocked`, which emits `EventCitysBlessing` (the layer pass is invalidated on it, and the log narrates it), never cleared, carried by `Clone`, undo and the snapshot (`seats[].citysBlessing`, additive in schema 7) and on the wire as `PlayerView.citys_blessing`. `ascend` is a canonical keyword the deck importer stamps, with two consumers: `citysBlessingSweepLocked`, CR 702.131b's static ability on a permanent, run from `stateBasedActionsLocked` after the layer recompute (not a state-based action, and it does not count toward `sbaFired`; it gives the blessing to any player who controls an ascend permanent and ten permanents, and walks nothing once every living player has it), and `ascendSpellLocked`, CR 702.131a's spell ability on an instant or sorcery, run as the spell resolves before its other instructions. Card side (`effects/citys_blessing.go`): `YouHaveTheCitysBlessing`, `YouHaveTheCitysBlessingCondition` (an activation condition), `YouHaveTheCitysBlessingNow` (an intervening \"if\" trigger condition), `WhileCitysBlessing`, `SelfPumpWhileCitysBlessing`, `SelfKeywordWhileCitysBlessing`, and `CantAttackUnlessYouHaveTheCitysBlessing` (the new `AttackTargetRestriction.ControllerMustHaveCitysBlessing` clause) with `CantBlockUnlessYouHaveTheCitysBlessing`. **The Waiting cards are not blocked on this row**: they are the ascend cards nobody has built yet (#2706); Timestream Navigator also needs a put-this-on-the-bottom-of-its-owner's-library cost and Tilonalli's Summoner a \"may pay {X}{R}\" as its trigger resolves, and each says so in its slice.",
+		Waiting:     []string{"Tilonalli's Summoner"},
+		EngineNotes: "rules shipped (#2696, ADR 0096's 2026-10-08 amendment); what is left is cards. `Player.CitysBlessing` (`game/citys_blessing.go`) is the designation (CR 702.131c): written only by `grantCitysBlessingLocked`, which emits `EventCitysBlessing` (the layer pass is invalidated on it, and the log narrates it), never cleared, carried by `Clone`, undo and the snapshot (`seats[].citysBlessing`, additive in schema 7) and on the wire as `PlayerView.citys_blessing`. `ascend` is a canonical keyword the deck importer stamps, with two consumers: `citysBlessingSweepLocked`, CR 702.131b's static ability on a permanent, run from `stateBasedActionsLocked` after the layer recompute (not a state-based action, and it does not count toward `sbaFired`; it gives the blessing to any player who controls an ascend permanent and ten permanents, and walks nothing once every living player has it), and `ascendSpellLocked`, CR 702.131a's spell ability on an instant or sorcery, run as the spell resolves before its other instructions. Card side (`effects/citys_blessing.go`): `YouHaveTheCitysBlessing`, `YouHaveTheCitysBlessingCondition` (an activation condition), `YouHaveTheCitysBlessingNow` (an intervening \"if\" trigger condition), `WhileCitysBlessing`, `SelfPumpWhileCitysBlessing`, `SelfKeywordWhileCitysBlessing`, and `CantAttackUnlessYouHaveTheCitysBlessing` (the new `AttackTargetRestriction.ControllerMustHaveCitysBlessing` clause) with `CantBlockUnlessYouHaveTheCitysBlessing`. **The Waiting cards are not blocked on this row**: they are the ascend cards nobody has built yet (#2706); Timestream Navigator shipped with the put-this-on-the-bottom cost (#2726); Tilonalli's Summoner still needs a \"may pay {X}{R}\" as its trigger resolves, and says so in its slice.",
 	},
 	{
 		// #1552 (ADR 0109 §11 decision 2): sunburst is a keyword read off
@@ -3212,6 +3212,15 @@ var items = []Item{
 		ADR:      "0144-choose-a-background-and-the-partner-pairings.md",
 		Printed:  `(?i)\bchoose a background\b|\bcommander creatures you own\b`,
 		Examples: []string{"Karlach, Fury of Avernus", "Agent of the Iron Throne", "Jaheira, Friend of the Forest"},
+	},
+	{
+		Slug: "bottom-of-library-cost", Name: "Putting the permanent itself on the bottom of its owner's library as a cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Activated abilities whose cost puts the permanent itself on the bottom of its owner's library, such as Timestream Navigator's \"Put this creature on the bottom of its owner's library\".",
+		Rules:       []string{"602.2b", "601.2h", "118.3", "400.7", "608.2h", "903.9b"},
+		Issue:       2726,
+		Tracked:     "#2726 (found building the ascend cards, #2706)",
+		Examples:    []string{"Timestream Navigator"},
+		EngineNotes: "`game.AbilityCost.BottomSelf` (`effects.PutThisOnTheBottomOfItsOwnersLibrary`) is `ReturnSelf`'s sibling one zone over (`game/bottom_self_cost.go`). It is paid at announce, before the stack item is built, through the one zone-route exit with cause cost to the bottom of the OWNER's library, so the leaves-the-battlefield triggers see it go and sit above the ability, and the item's `SourceObject` (stamped before the payment) gives the effect the permanent's last-known information (CR 400.7, 608.2h). A commander that puts itself there is asked CR 903.9b first, with the library as its destination (ADR 0115). Battlefield only (`AbilityNeedsPermanentSource`), never beside a sacrifice-this, exile-this, return-this or exert cost, and never a sacrifice, return or exile pick of the same activation (CR 118.3). The wire carries it as `bottom_self`; the legal enumerator keeps the source out of the other components' picks and the auto-tapper's plan; the heuristic charges `selfReturnCost`. **Cards:** Timestream Navigator.",
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
