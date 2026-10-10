@@ -5791,7 +5791,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		if !seatNeedsTriggerOrder(items, p.TriggerOrder) {
+		if !g.seatNeedsTriggerOrderLocked(items, p.TriggerOrder) {
 			continue
 		}
 		held = true
@@ -5891,10 +5891,12 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 //     Two Soul Wardens, or a set of tokens with the same trigger. The
 //     rules argument is in ADR 0018's #1968 amendment.
 //
-// Anything else prompts, including a batch that is all commutative
+// Anything else prompts here, including a batch that is all commutative
 // items plus ONE other trigger: where that trigger sits among the
 // pumps is a real choice whenever it reads what they change. See
-// ADR 0018's #1511 amendment.
+// ADR 0018's #1511 amendment. The drain asks through
+// Game.seatNeedsTriggerOrderLocked, which also skips a batch whose
+// items are pairwise independent (#2884, trigger_independence.go).
 //
 // An auto-ordered batch keeps its queue order, which is harvest
 // order; the drain below places it exactly as it places an answered
@@ -8212,6 +8214,16 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.passPriorityAsHolderLocked()
+}
+
+// passPriorityAsHolderLocked is PassPriority under the caller's lock:
+// the holder's pass-closed windows, then the pass. A standing pass
+// turn (pass_turn.go, #2881) passes through it, so its passes are the
+// same passes a click on "next" makes.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) passPriorityAsHolderLocked() error {
 	// #1665: passing is the decline of a resolved miracle's cast
 	// (CR 702.94a) — see miracle.go. Before the pass, because this
 	// pass can resolve the next miracle trigger.
@@ -9601,8 +9613,9 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 // steps in between do not happen — no end step, so no "at the
 // beginning of the end step" triggers — and the cleanup discard to
 // hand size is skipped. This is a sandbox verb, not a rules action;
-// a player who wants the discard and the end step passes priority
-// through them instead.
+// the dock's Pass turn button sends end_turn (EndTurnByPassing,
+// pass_turn.go, #2881), which walks those steps and fires their
+// triggers.
 func (g *Game) PassTurn() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

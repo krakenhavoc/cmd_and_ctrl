@@ -32,8 +32,8 @@ describe("pressBluff", () => {
     expect(get(settings).gameplay.bluffCounterspell).toBe(false);
   });
 
-  it("does nothing while smart autopass is off", () => {
-    settings.update((s) => ({ ...s, gameplay: { ...s.gameplay, smartAutoPass: false } }));
+  it("does nothing outside Smart auto-pass", () => {
+    settings.update((s) => ({ ...s, gameplay: { ...s.gameplay, passMode: "careful" } }));
     expect(pressBluff()).toBe(false);
     expect(get(bluffArmed)).toBe(false);
     expect(get(settings).gameplay.bluffCounterspell).toBe(false);

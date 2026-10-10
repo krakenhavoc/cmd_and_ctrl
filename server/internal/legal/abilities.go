@@ -410,7 +410,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if ab.Cost.SacrificeOther != nil {
 			// #2028: a return-this cost spends the source as surely as a
 			// sacrifice-this one, so it is no sacrifice pick either.
-			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf || ab.Cost.ReturnSelf, ab.Cost.SacrificeOther)
+			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, ab.Cost.SacrificeOther)
 			// #1213: a VARIABLE count is an announcement, so the
 			// enumerator offers a bounded ladder of counts rather
 			// than one payment — see variableSacrificePayments.
@@ -1328,7 +1328,7 @@ func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, s
 	for _, id := range sacs {
 		spent[id] = true
 	}
-	if cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf {
+	if cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf || cost.BottomSelf {
 		spent[sourceID] = true
 	}
 	var out []permanentCostPair
@@ -1336,7 +1336,7 @@ func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, s
 		// #2028: a return-this cost already returns the source, so a
 		// "return a permanent you control" pick may not name it again
 		// (validateReturnSelfCostLocked).
-		if cost.ReturnSelf && overlapsAny(rets, nil, map[uuid.UUID]bool{sourceID: true}) {
+		if (cost.ReturnSelf || cost.BottomSelf) && overlapsAny(rets, nil, map[uuid.UUID]bool{sourceID: true}) {
 			continue
 		}
 		for _, exs := range exileSets {

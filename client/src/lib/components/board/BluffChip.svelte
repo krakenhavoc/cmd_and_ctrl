@@ -6,8 +6,8 @@
   // gameplay.bluff* settings the Settings panel writes, so the two never
   // disagree. The pause range stays in Settings, linked from here.
   //
-  // Disabled, not hidden, while smart auto-pass is off: with it off you
-  // stop at every opponent spell, so a pause tells nobody anything.
+  // Disabled, not hidden, outside Smart auto-pass (ADR 0143 §4.3): in
+  // Careful or Manual you stop anyway, so a pause tells nobody anything.
 
   import { bluffArmed, pressBluff } from "../../bluff";
   import { openSettings, settings, updateSettings } from "../../settings";
@@ -24,7 +24,8 @@
   const { keyHint = "", keyShortcuts, locked = false }: Props = $props();
 
   const gp = $derived($settings.gameplay);
-  const enabled = $derived(gp.smartAutoPass && !locked);
+  const enabled = $derived(gp.passMode === "smart" && !locked);
+  const modeName = $derived(gp.passMode === "manual" ? "Manual" : "Careful");
   let open = $state(false);
   let root: HTMLElement | undefined = $state();
 
@@ -39,7 +40,7 @@
     (locked
       ? "nothing to bluff before the first turn"
       : !enabled
-        ? "bluffing needs smart auto-pass: with it off you stop at every opponent spell, so a pause gives nothing away"
+        ? `bluffing needs Smart auto-pass: in ${modeName} you stop anyway, so a pause gives nothing away`
         : $bluffArmed
           ? "bluff ON — when you have no answer, pause anyway so a pause gives nothing away; click to stop bluffing this game"
           : "bluff OFF — windows you can't answer pass instantly; click to bluff for the rest of this game") +

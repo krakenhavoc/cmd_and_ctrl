@@ -71,7 +71,7 @@ function storedSettings() {
   const s = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? "{}");
   return {
     strictMana: s.gameplay?.strictMana,
-    autoPassPriority: s.gameplay?.autoPassPriority,
+    passMode: s.gameplay?.passMode,
     tableLayout: s.display?.tableLayout,
     cardSize: s.display?.cardSize,
   };
@@ -79,7 +79,7 @@ function storedSettings() {
 
 const MY_SETTINGS = {
   strictMana: false,
-  autoPassPriority: true,
+  passMode: "careful",
   tableLayout: "row",
   cardSize: "large",
 } as const;
@@ -90,7 +90,7 @@ async function openPractice() {
   const m = await load();
   m.setSession(MINE);
   m.updateSettings("gameplay", "strictMana", false);
-  m.updateSettings("gameplay", "autoPassPriority", true);
+  m.updateSettings("gameplay", "passMode", "careful");
   m.updateSettings("display", "tableLayout", "row");
   m.updateSettings("display", "cardSize", "large");
   m.installPracticeExits();
@@ -230,7 +230,7 @@ describe("leaving the practice table", () => {
     // forced settings and the record.
     expect(storedSettings()).toEqual({
       strictMana: true,
-      autoPassPriority: false,
+      passMode: "manual",
       tableLayout: "quadrant",
       cardSize: "medium",
     });
@@ -342,7 +342,7 @@ describe("the forced values", () => {
     const m = await load();
     expect(m.FORCED_SETTINGS).toEqual({
       strictMana: true,
-      autoPassPriority: false,
+      passMode: "manual",
       tableLayout: "quadrant",
       cardSize: "medium",
     });
@@ -355,13 +355,13 @@ describe("helpers", () => {
     const before = get(m.settings);
     const after = m.withSettings(before, m.FORCED_SETTINGS);
     expect(after.gameplay.strictMana).toBe(true);
-    expect(after.gameplay.autoPassPriority).toBe(false);
+    expect(after.gameplay.passMode).toBe("manual");
     expect(after.display.tableLayout).toBe("quadrant");
     expect(after.display.cardSize).toBe("medium");
-    expect({ ...after.gameplay, strictMana: 0, autoPassPriority: 0 }).toEqual({
+    expect({ ...after.gameplay, strictMana: 0, passMode: 0 }).toEqual({
       ...before.gameplay,
       strictMana: 0,
-      autoPassPriority: 0,
+      passMode: 0,
     });
     expect(after.audio).toEqual(before.audio);
   });
@@ -391,6 +391,29 @@ describe("helpers", () => {
     expect(
       m.parseRecord(JSON.stringify({ ...good, saved: { ...MY_SETTINGS, cardSize: "huge" } })),
     ).toBeNull();
+    expect(
+      m.parseRecord(JSON.stringify({ ...good, saved: { ...MY_SETTINGS, passMode: "fast" } })),
+    ).toBeNull();
+  });
+
+  // ADR 0143: a record written before passMode existed saved
+  // autoPassPriority. It still restores: off is Manual, on is Smart.
+  it("parseRecord reads a record from before ADR 0143", async () => {
+    const m = await load();
+    const { passMode: _drop, ...rest } = MY_SETTINGS;
+    void _drop;
+    const old = (autoPassPriority: unknown) =>
+      JSON.stringify({
+        v: 1,
+        gameID: "g",
+        practiceToken: "t",
+        saved: { ...rest, autoPassPriority },
+        previous: null,
+        aliveAt: 1,
+      });
+    expect(m.parseRecord(old(true))?.saved.passMode).toBe("smart");
+    expect(m.parseRecord(old(false))?.saved.passMode).toBe("manual");
+    expect(m.parseRecord(old("yes"))).toBeNull();
   });
 
   it("isStale is STALE_MS since the last heartbeat", async () => {

@@ -27,6 +27,7 @@ func lookupDef(key string) *game.CardDef { return defs[key] }
 func fileDef(key string, d *game.CardDef) {
 	game.IdentifyCatalogRows(key, d)
 	classifySourceBlind(d)
+	classifyFootprint(d)
 	defs[key] = d
 }
 

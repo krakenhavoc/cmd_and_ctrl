@@ -1210,8 +1210,17 @@ Violation codes (stable strings, keyable by the client):
 - `not_legal_in_format` — card is banned or not legal in Commander
 - `unknown_card` — decklist name that did not resolve against the
   Scryfall index (carries `card`)
-- `unsupported_mechanic` — resolved commander uses partner/companion,
-  deferred to a later sprint (carries `card`)
+- `invalid_partner_pair` — two commanders that no partner ability pairs,
+  when at least one has one or is a Background: a "Partner with" card
+  naming another card, a Choose a Background commander beside a card
+  that is not a Background, two partner—[text] cards with different
+  text, and so on (CR 702.124, #2142, #2874). Carries the card at fault.
+  Two commanders with no partner ability and no Background are
+  `too_many_commanders`, and a Background alone is
+  `not_a_legal_commander` (CR 702.124k)
+- `unsupported_mechanic` — resolved commander uses companion, deferred
+  to a later sprint (carries `card`). Every partner ability is
+  supported (ADR 0144)
 - `unknown_source` — URL-based import (S06.5+) whose host is not one
   of the supported deck-builders; carries the URL in `card`
 - `deck_not_found` — URL-based import where the upstream returned

@@ -226,6 +226,21 @@ type TriggeredAbility struct {
 	// keeps asking.
 	SourceBlind bool
 
+	// Footprint is what this row's Effect does, step by step, in the
+	// declared vocabulary the trigger-order independence check reads
+	// (#2884, trigger_independence.go, ADR 0018's #2884 amendment). Nil
+	// means the engine cannot describe the effect, and a batch with such
+	// an item keeps its CR 603.3b prompt.
+	//
+	// ENGINE-OWNED, like SourceBlind: the catalog registry derives it as
+	// it files each definition (effects.classifyFootprint), from a row
+	// with no "you may" and no mode clause whose Effect is an
+	// effects.Do of primitives that each declare a step. A row with a
+	// Build gets one too; the check accepts an item it built only when
+	// that item carries nothing the footprint does not read. A card file
+	// never sets it, and the registry overwrites whatever a row carried.
+	Footprint []FootprintStep
+
 	// row is the catalog identity the registry stamped on this row
 	// (IdentifyCatalogRows): the key whose Triggered list holds it and
 	// its index there. Zero for a row the catalog did not register — an

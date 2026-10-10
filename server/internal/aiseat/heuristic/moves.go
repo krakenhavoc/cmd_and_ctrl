@@ -343,7 +343,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// one would bounce Gossamer Chains at any unblocked creature for
 		// the flat ActivateBase.
 		if !across {
-			if row := rowAt(src, cp.AbilityIndex); row != nil && row.ReturnSelf {
+			if row := rowAt(src, cp.AbilityIndex); row != nil && (row.ReturnSelf || row.BottomSelf) {
 				v -= st.selfReturnCost(src)
 			}
 		}

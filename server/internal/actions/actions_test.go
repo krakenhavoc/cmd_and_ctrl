@@ -284,6 +284,49 @@ func TestDispatchPassTurnWrapsSeat(t *testing.T) {
 	}
 }
 
+// TestDispatchEndTurnWalksTheTurn: end_turn passes for the active
+// player every time they get priority (#2881); the opponent still
+// passes in each step, and the turn moves to them once every step has
+// been walked.
+func TestDispatchEndTurnWalksTheTurn(t *testing.T) {
+	g := newGame(t)
+	active := g.Seats[g.Turn.ActiveSeat].ID
+	opp := g.Seats[1-g.Turn.ActiveSeat].ID
+	seq := g.Turn.Seq
+	a, _ := Decode(string(TypeEndTurn), "", nil)
+	a.Caller = opp
+	if err := Dispatch(g, a); !errors.Is(err, ErrNotActivePlayer) {
+		t.Fatalf("end_turn from the non-active player: got %v, want ErrNotActivePlayer", err)
+	}
+	a.Caller = active
+	if err := Dispatch(g, a); err != nil {
+		t.Fatalf("Dispatch: %v", err)
+	}
+	pass, _ := Decode(string(TypePassPriority), "", nil)
+	pass.Caller = opp
+	steps := map[game.Step]bool{}
+	for i := 0; i < 64 && g.Turn.Seq == seq; i++ {
+		steps[g.Turn.Step] = true
+		if h := g.Turn.PriorityHolder; h < 0 || g.Seats[h].ID != opp {
+			t.Fatalf("at %s priority is %d, want the opponent: the active player's passes stopped", g.Turn.Step, h)
+		}
+		if err := Dispatch(g, pass); err != nil {
+			t.Fatalf("opponent pass at %s: %v", g.Turn.Step, err)
+		}
+	}
+	if g.Seats[g.Turn.ActiveSeat].ID != opp {
+		t.Fatalf("the turn did not move to the opponent")
+	}
+	for _, s := range []game.Step{game.StepBeginCombat, game.StepPostcombatMain, game.StepEnd} {
+		if !steps[s] {
+			t.Errorf("the opponent never had priority in %s: the step was skipped", s)
+		}
+	}
+	if g.PassingTurn() {
+		t.Errorf("the pass outlived its turn")
+	}
+}
+
 func TestDispatchPassPriorityRejectsNonHolder(t *testing.T) {
 	g := newGame(t)
 	holder := g.Seats[g.Turn.PriorityHolder].ID

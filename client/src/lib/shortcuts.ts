@@ -144,7 +144,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   {
     id: "toggleBluff",
     label: "Toggle bluff",
-    hint: "Arm or disarm bluffing: pause on windows you can't answer so a pause gives nothing away. Needs smart auto-pass.",
+    hint: "Arm or disarm bluffing: pause on windows you can't answer so a pause gives nothing away. Needs Smart auto-pass.",
     group: "priority",
     defaultBinding: "b",
     kind: "view",

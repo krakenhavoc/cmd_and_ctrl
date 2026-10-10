@@ -26,8 +26,9 @@ import (
 //
 // Doctor's companion is a deck-construction rule ("you can have two
 // commanders if the other is the Doctor") and needs nothing on the
-// card, as Partner needs nothing on Thrasios; the deck validator
-// accepts one commander only, so the pairing itself is not offered.
+// card, as Partner needs nothing on Thrasios: internal/deck reads it
+// off the oracle text and pairs Nardole with a lone Time Lord Doctor
+// (CR 702.124m, #2874).
 func init() {
 	Register(Spec{
 		OracleID:        "81c515b7-9174-4b34-ad07-4144e3dbaaac",

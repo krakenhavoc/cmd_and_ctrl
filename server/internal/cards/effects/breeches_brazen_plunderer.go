@@ -38,14 +38,16 @@ import (
 // is what "exile the top card of EACH of those opponents' libraries"
 // needs, since each trigger exiles from its own one victim.
 //
-// Partner is a deck-construction rule, not a game action, and is
-// not modelled.
+// Partner is a deck-construction rule (CR 702.124h) that internal/deck
+// reads off the oracle text (#2874), so Breeches can be one of two
+// partner commanders.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "eb77f7dc-e9e4-44ef-8616-9f4e737e8ca5",
 		Name:            "Breeches, Brazen Plunderer",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Partner isn't supported, so Breeches can't be your commander."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatchPerPlayer(game.TriggeredAbility{

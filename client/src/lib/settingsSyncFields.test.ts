@@ -96,9 +96,16 @@ describe("SYNCED_FIELDS", () => {
 
   it("syncs the two forced practice-table fields that are per person, and not the two that are per device", () => {
     expect(SYNCED_FIELDS.gameplay.strictMana).toBe("synced");
-    expect(SYNCED_FIELDS.gameplay.autoPassPriority).toBe("synced");
+    expect(SYNCED_FIELDS.gameplay.passMode).toBe("synced");
     expect(SYNCED_FIELDS.display.tableLayout).toBe("device");
     expect(SYNCED_FIELDS.display.cardSize).toBe("device");
+  });
+
+  it("syncs passMode and none of the three keys it replaced (ADR 0143 §5)", () => {
+    expect(SYNCED_FIELDS.gameplay.passMode).toBe("synced");
+    for (const k of ["autoPassPriority", "smartAutoPass", "alwaysStopOpponentStack"]) {
+      expect(k in SYNCED_FIELDS.gameplay, k).toBe(false);
+    }
   });
 });
 

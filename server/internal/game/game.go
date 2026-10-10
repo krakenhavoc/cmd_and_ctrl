@@ -76,6 +76,12 @@ type Game struct {
 	// Plain data, carried by Clone and the snapshot.
 	TurnEndPending bool
 
+	// passTurn is the active player's standing end_turn (#2881,
+	// pass_turn.go): priority is passed for them whenever they hold it
+	// until their turn ends. Carried by Clone and RestoreFrom so an undo
+	// takes it back; not part of a restore point.
+	passTurn *passTurnOrder
+
 	// harvestDepth counts the trigger-harvest passes in progress
 	// (triggerHarvester.OnEvent). While it is non-zero the battlefield
 	// is being walked, so nothing reached from a harvest may move a

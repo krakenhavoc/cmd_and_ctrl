@@ -178,7 +178,7 @@ func autoTapMayUse(excluded map[uuid.UUID]bool, id uuid.UUID, ab *ManaAbilitySha
 // graveyard it is the list being right in advance, as above.
 func AbilityAutoTapExclusions(sourceID uuid.UUID, cost AbilityCost, tapIDs, sacrificeIDs, discardIDs, exileIDs []uuid.UUID) map[uuid.UUID]bool {
 	var self []uuid.UUID
-	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf {
+	if cost.Tap || cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf || cost.BottomSelf {
 		self = []uuid.UUID{sourceID}
 	}
 	return unionIDs(self, tapIDs, sacrificeIDs, discardIDs, exileIDs)
