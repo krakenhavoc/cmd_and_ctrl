@@ -83,9 +83,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.",
-				Cost:   TapCost(),
-				Effect: currencyConverterPutAwayAnExiledCard,
+				Label:   "{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    TapCost(),
+				Effect:  currencyConverterPutAwayAnExiledCard,
 			},
 		},
 	})

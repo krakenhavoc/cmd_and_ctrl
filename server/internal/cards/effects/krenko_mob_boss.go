@@ -18,8 +18,9 @@ func init() {
 		Name:         "Krenko, Mob Boss",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Create X 1/1 Goblins, where X is the number of Goblins you control",
-			Cost:  TapCost(),
+			Label:   "{T}: Create X 1/1 Goblins, where X is the number of Goblins you control",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				n := 0

@@ -23,7 +23,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Pay eight {E}: Create a 6/6 colorless Beast artifact creature token.",
 			Cost:    PayEnergy(8),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 			Effect: Do(CreateToken{N: 1, Template: game.Card{
 				Name:      "Beast",
 				TypeLine:  "Token Artifact Creature — Beast",

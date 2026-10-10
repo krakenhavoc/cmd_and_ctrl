@@ -58,8 +58,9 @@ func init() {
 				}),
 			},
 			{
-				Label: "{T}, Sacrifice a noncreature artifact: Create two 1/1 colorless Construct artifact creature tokens.",
-				Cost:  Plus(TapCost(), SacrificeN(1, "a noncreature artifact", Artifact(), Noncreature())),
+				Label:   "{T}, Sacrifice a noncreature artifact: Create two 1/1 colorless Construct artifact creature tokens.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(TapCost(), SacrificeN(1, "a noncreature artifact", Artifact(), Noncreature())),
 				Effect: Do(CreateToken{
 					Template: TokenCard("1/1 colorless Construct artifact"),
 					N:        2,

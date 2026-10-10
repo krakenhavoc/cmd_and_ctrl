@@ -58,8 +58,9 @@ func init() {
 				Effect:  Do(CreateToken{Template: TreasureToken(), N: 1}),
 			},
 			{
-				Label: "{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.",
-				Cost:  Plus(TapCost(), b10SacrificeAnArtifact()),
+				Label:   "{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(TapCost(), b10SacrificeAnArtifact()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TokenCard("2/1 white and black Inkling with flying"), N: 1}.Apply(NewContext(g, item))
 				},

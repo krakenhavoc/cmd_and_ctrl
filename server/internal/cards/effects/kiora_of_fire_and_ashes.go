@@ -20,9 +20,10 @@ func init() {
 			WhenThisEnters("Kiora of Fire and Ashes — create a 5/5 red Dragon with flying", dragon),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{8}: Create a 5/5 red Dragon creature token with flying.",
-			Cost:   ManaCost("{8}"),
-			Effect: dragon,
+			Label:   "{8}: Create a 5/5 red Dragon creature token with flying.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{8}"),
+			Effect:  dragon,
 		}},
 	})
 }

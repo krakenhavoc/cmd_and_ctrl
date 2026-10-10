@@ -70,8 +70,9 @@ func init() {
 			AllCreatureTypesGrant(TribeFilter{YoursOnly: true}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}: Create a 2/2 blue Shapeshifter with changeling",
-			Cost:  Plus(ManaCost("{3}"), TapCost()),
+			Label:   "{3}, {T}: Create a 2/2 blue Shapeshifter with changeling",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{
 					Controller: item.Controller,

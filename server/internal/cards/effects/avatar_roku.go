@@ -44,9 +44,10 @@ func init() {
 			WheneverThisAttacks("Avatar Roku — firebending 4", Do(AddMana{Produced: "{R}{R}{R}{R}"})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{8}: Create a 4/4 red Dragon creature token with flying and firebending 4.",
-			Cost:   ManaCost("{8}"),
-			Effect: Do(CreateToken{Template: firebendingDragonToken(), N: 1}),
+			Label:   "{8}: Create a 4/4 red Dragon creature token with flying and firebending 4.",
+			Cost:    ManaCost("{8}"),
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Effect:  Do(CreateToken{Template: firebendingDragonToken(), N: 1}),
 		}},
 	})
 }

@@ -47,6 +47,7 @@ func init() {
 			},
 			{
 				Label:     "{3}{R}{R}: Create a 5/5 red Dragon Spirit creature token with flying. Activate only if you control an attacking modified creature.",
+				Purpose:   game.Purpose{Answers: game.AnswerMakesBlocker},
 				Cost:      ManaCost("{3}{R}{R}"),
 				Condition: goroGoroAttackingModifiedCreature,
 				Effect: func(g *game.Game, item *game.StackItem) error {

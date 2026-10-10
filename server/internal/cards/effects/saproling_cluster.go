@@ -26,6 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{1}, Discard a card: Create a 1/1 green Saproling creature token. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost:      Plus(ManaCost("{1}"), DiscardACard()),
 			AnyPlayer: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {

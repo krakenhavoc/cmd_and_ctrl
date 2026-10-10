@@ -25,8 +25,9 @@ func init() {
 				Do(CreateToken{Template: TokenCard("1/1 white Human Soldier"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}: Create X 1/1 white Human Soldier creature tokens, where X is the number of Humans you control",
-			Cost:  Plus(ManaCost("{3}"), TapCost()),
+			Label:   "{3}, {T}: Create X 1/1 white Human Soldier creature tokens, where X is the number of Humans you control",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{3}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				n := b43CreaturesOfSubtypeControlled(g, item.Controller, "Human")
 				if n <= 0 {

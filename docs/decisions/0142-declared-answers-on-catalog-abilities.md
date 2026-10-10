@@ -290,3 +290,11 @@ Three more rulings (owner, 2026-10-10, S2 batch 3):
 11. **"Your next spell can't be countered" at instant speed is `protect`.** Theorist's Proxy and Mistrise Village declare `protect`: activated in response, they keep the next spell off the counter.
 12. **Plague Boiler is `remove`; Deadly Designs is `sac_outlet`.**
 13. **The remaining value-looking rows are declared from their effect.** Each row the text read left as none (Emergence Zone, Armageddon Clock, Infinite Hourglass, Volrath's Dungeon, Codie, Magus of the Will, The Grim Captain's Locker, Multani, Captain Sisay, and any similar row) is declared from its effect using the table above, and defaults to `value`. A row whose effect truly fits two tiers is reported rather than guessed.
+
+Three more rulings (owner, 2026-10-10, S3 batch 1):
+
+14. **Freed from the Real, and damage doubling.** The tap row ("{U}: Tap enchanted creature") is `restrict`: tapping stops the creature attacking or blocking. The untap row ("{U}: Untap enchanted creature") is `combat_grant`, a vigilance-like effect. Doubling damage is `pump` (Goblin Goliath, Quest for Pure Flame).
+15. **Token rows of unclear shape take the union of what they can do.**
+    - Amass is `pump|makes_blocker` (Barad-dûr, Moria Scavenger).
+    - Populate is `makes_blocker` (Vitu-Ghazi Guildmage, Trostani, Selesnya's Voice).
+    - Currency Converter's "Treasure or 2/2" row is `makes_blocker`, since `value` cannot sit beside another answer.

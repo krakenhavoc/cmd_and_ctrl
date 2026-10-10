@@ -39,9 +39,10 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"An effect that takes away Idol of False Gods's abilities also stops it being a creature."},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{C}, {T}: Create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
-			Cost:   Plus(ManaCost("{1}{C}"), TapCost()),
-			Effect: Do(CreateToken{Template: EldraziSpawnToken(), N: 1}),
+			Label:   "{1}{C}, {T}: Create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{1}{C}"), TapCost()),
+			Effect:  Do(CreateToken{Template: EldraziSpawnToken(), N: 1}),
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, anotherEldraziYouControlDied,

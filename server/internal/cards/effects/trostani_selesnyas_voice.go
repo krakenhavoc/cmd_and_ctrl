@@ -34,9 +34,10 @@ func init() {
 			Effect: b20GainLifeEqualToToughnessEffect,
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{G}{W}, {T}: Populate.",
-			Cost:   Plus(ManaCost("{1}{G}{W}"), TapCost()),
-			Effect: Do(Populate{}),
+			Label:   "{1}{G}{W}, {T}: Populate.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{1}{G}{W}"), TapCost()),
+			Effect:  Do(Populate{}),
 		}},
 	})
 }
