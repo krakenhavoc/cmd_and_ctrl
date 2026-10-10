@@ -263,7 +263,7 @@ describe("combat in the action dock", () => {
     const c = await mountGame(declareAttackers({ undos_remaining: 0 }));
     const undo = buttons(dockOf(c), /undo/i)[0]!;
     expect(undo.disabled).toBe(true);
-    expect(undo.getAttribute("aria-label")).toBe("Undo (0 left)");
+    expect(undo.getAttribute("aria-label")).toContain("no undos remaining");
   });
 
   it("has no Undo left in the ⋯ menu", async () => {

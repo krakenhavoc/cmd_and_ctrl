@@ -1975,6 +1975,12 @@ export interface PlayerView {
   // automatic answer while it is the top undo entry, so `undo` takes it
   // back. Own view only; absent once anything else sits on top.
   undo_auto_answer?: number;
+  // Why an `undo` from this seat would be refused by the undo stack
+  // right now (#2963): "nothing" (nothing on the stack), "not_yours"
+  // (the most recent action is another seat's) or "game_over". Absent
+  // means the stack allows it; the per-turn budget is separate
+  // (undos_remaining). Own view only.
+  undo_blocked?: "nothing" | "not_yours" | "game_over";
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.

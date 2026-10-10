@@ -720,6 +720,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	view := protocol.ViewOfGame(r.Game)
 	r.stampHostLocked(&view)
 	r.stampUndoAutoAnswerLocked(&view)
+	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
 
 	// Consume any annotation the committing caller left for this
@@ -917,6 +918,30 @@ func (r *Room) stampUndoAutoAnswerLocked(view *protocol.GameView) {
 	for i := range view.Seats {
 		if view.Seats[i].ID == id {
 			view.Seats[i].UndoAutoAnswer = top.autoAnswerSeq
+		}
+	}
+}
+
+// stampUndoBlockedLocked tells each seat why an `undo` from it would be
+// refused by the stack, using the same gates as undo(): an empty stack,
+// the game's end (checked before the caller gate, ADR 0057), and a top
+// entry some other seat owns. Room state, like the host: the engine
+// does not know the undo stack. Caller MUST hold r.mu.
+func (r *Room) stampUndoBlockedLocked(view *protocol.GameView) {
+	ended := r.Game.CurrentState() == game.StateEnded
+	var top undoEntry
+	if len(r.undoStack) > 0 {
+		top = r.undoStack[len(r.undoStack)-1]
+	}
+	for i := range view.Seats {
+		id, err := uuid.Parse(view.Seats[i].ID)
+		switch {
+		case len(r.undoStack) == 0:
+			view.Seats[i].UndoBlocked = protocol.UndoBlockedNothing
+		case ended:
+			view.Seats[i].UndoBlocked = protocol.UndoBlockedGameOver
+		case err == nil && top.caller != uuid.Nil && top.caller != id:
+			view.Seats[i].UndoBlocked = protocol.UndoBlockedNotYours
 		}
 	}
 }

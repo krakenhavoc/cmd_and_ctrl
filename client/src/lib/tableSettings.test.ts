@@ -6,6 +6,7 @@ import {
   formatUndoCount,
   hasUndoBudget,
   isUnlimitedUndo,
+  undoBlockedReason,
 } from "./tableSettings";
 
 // ADR 0075 §2.2/§2.3. Two properties, and the first one is the bug
@@ -69,5 +70,35 @@ describe("canManageTable", () => {
     expect(canManageTable("spectator", seat({ is_host: true }))).toBe(false);
     expect(canManageTable("identified", null)).toBe(false);
     expect(canManageTable(undefined, null)).toBe(false);
+  });
+});
+
+// #2963: the dock offered "Undo 1" while the server refused the undo
+// because the most recent action was not the viewer's.
+describe("undoBlockedReason", () => {
+  it("is null when the stack allows it and budget is left", () => {
+    expect(undoBlockedReason(seat({ undos_remaining: 1 }), false)).toBeNull();
+    expect(undoBlockedReason(seat({ undos_remaining: UNDO_UNLIMITED }), false)).toBeNull();
+  });
+
+  it("names the stack's reason even with budget left", () => {
+    const nothing = undoBlockedReason(seat({ undos_remaining: 1, undo_blocked: "nothing" }), false);
+    expect(nothing).toContain("nothing to undo");
+    const theirs = undoBlockedReason(
+      seat({ undos_remaining: 1, undo_blocked: "not_yours" }),
+      false,
+    );
+    expect(theirs).toContain("only undo your own most recent action");
+    const over = undoBlockedReason(seat({ undos_remaining: 1, undo_blocked: "game_over" }), false);
+    expect(over).toContain("game is over");
+  });
+
+  it("names the spent budget when the stack allows it", () => {
+    expect(undoBlockedReason(seat({ undos_remaining: 0 }), false)).toContain("no undos remaining");
+  });
+
+  it("never blocks an unseated admin", () => {
+    expect(undoBlockedReason(null, true)).toBeNull();
+    expect(undoBlockedReason(seat({ undo_blocked: "not_yours" }), true)).toBeNull();
   });
 });

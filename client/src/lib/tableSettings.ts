@@ -53,6 +53,30 @@ export function hasUndoBudget(seat: PlayerView | null, isAdmin: boolean): boolea
 }
 
 /**
+ * Why the dock's Undo is unavailable to this viewer, as a short phrase,
+ * or null when an undo is allowed (#2963). Mirrors the server's undo
+ * gates: the stack reason the room stamps on the seat
+ * (`undo_blocked`), then the per-turn budget. An unseated admin
+ * bypasses both. A frame with no `undo_blocked` (older server, replay)
+ * is read as "the stack allows it".
+ */
+export function undoBlockedReason(seat: PlayerView | null, isAdmin: boolean): string | null {
+  if (isAdmin) return null;
+  switch (seat?.undo_blocked) {
+    case "nothing":
+      return "nothing to undo yet";
+    case "not_yours":
+      return "the last action was not yours — you can only undo your own most recent action";
+    case "game_over":
+      return "the game is over — only the admin can undo past its end";
+  }
+  if (!hasUndoBudget(seat, false)) {
+    return "no undos remaining this turn (refreshes on your next untap)";
+  }
+  return null;
+}
+
+/**
  * True when the viewer may change the table's settings — the table
  * host, or an admin (ADR 0075 §2.1, `lobby.CanManageTable`). `admin` is
  * lib/admin.ts's isAdmin(session): the shared token, or a signed-in
