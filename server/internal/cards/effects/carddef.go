@@ -312,6 +312,9 @@ func buildDef(spec Spec) *game.CardDef {
 	if asTransforms := spec.AsTransformsInto; asTransforms != nil {
 		d.AsTransformsInto = liveCardHook(asTransforms)
 	}
+	if asAttached := spec.AsAttached; asAttached != nil {
+		d.AsAttached = liveCardHook(asAttached)
+	}
 	d.Activated = activatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)
 	// S18 sub-PR 2: the printed keywords become one self-only Layer 6

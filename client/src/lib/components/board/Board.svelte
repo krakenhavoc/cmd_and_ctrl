@@ -158,6 +158,7 @@
   import { castPreviewParams } from "../../castPreview";
   import {
     castSacrificeRange,
+    exilePermanentAutoPick,
     exilePermanentOptions,
     orderSacrificeOptions,
     sacrificeRange,
@@ -2087,18 +2088,15 @@
   // #1600: the exile-a-permanent pick, after the return pick and for
   // the same reason, skipped the same way when the board offers exactly
   // the permanents the clause demands.
+  // ADR 0137's amendment: craft's "one or more" and set rules ask
+  // whenever there is a choice to make (exilePermanentAutoPick).
   function askAbilityExilePermanentCost(card: CardView, ability: ActivatedAbilityView): void {
-    if (ability.exile_permanent_options) {
-      const options = ability.exile_permanent_options.cards ?? [];
-      const need = ability.exile_permanent_options.max ?? ability.exile_permanent_options.min ?? 1;
-      if (options.length > need) {
-        abilityExilePermanentPrompt = { card, ability };
-        return;
-      }
-      abilityExilePermanentIDs = options;
-    } else {
-      abilityExilePermanentIDs = [];
+    const auto = exilePermanentAutoPick(ability.exile_permanent_options);
+    if (auto === null) {
+      abilityExilePermanentPrompt = { card, ability };
+      return;
     }
+    abilityExilePermanentIDs = auto;
     askAbilityTapCost(card, ability);
   }
 
@@ -3724,6 +3722,9 @@
     label={abilityExilePermanentPrompt?.ability.exile_permanent_label ?? "a creature you control"}
     options={abilityExilePermanentOptions}
     count={abilityExilePermanentPrompt?.ability.exile_permanent_options?.max ?? 1}
+    min={abilityExilePermanentPrompt?.ability.exile_permanent_options?.min}
+    eachOf={abilityExilePermanentPrompt?.ability.exile_permanent_options?.each_of}
+    shares={abilityExilePermanentPrompt?.ability.exile_permanent_options?.shares}
     verb="Exile"
     onConfirm={confirmAbilityExilePermanentCost}
     onCancel={() => {

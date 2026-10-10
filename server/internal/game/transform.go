@@ -96,6 +96,16 @@ func isDoubleFacedPermanent(c Card) bool {
 	return false
 }
 
+// IsDoubleFacedForEffect reports whether `c` is a double-faced card or
+// permanent (CR 712.1): a transforming or modal double-faced card, a
+// meld card, or a melded permanent — Tetzin, Gnome Champion's "another
+// double-faced artifact" and The Golden-Gear Colossus's target (#2709).
+// Whether it can then TRANSFORM is CanTransform's question; the
+// Colossus may target a modal double-faced artifact that will not.
+func IsDoubleFacedForEffect(c Card) bool {
+	return isDoubleFacedPermanent(c) || c.IsMeldCard() || c.IsMelded()
+}
+
 // faceIsInstantOrSorcery is CR 712.10's guard, asked of a face rather
 // than of a card because the card is still showing the other one.
 //

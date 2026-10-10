@@ -817,6 +817,17 @@ type LegalTargetsView struct {
 	// it with a set that does. Absent on every clause without one.
 	EachOf []SacrificeGroupView `json:"each_of,omitempty"`
 
+	// Shares is a craft clause's other set rule (ADR 0137's 2026-10-10
+	// amendment, Eye of Ojer Taq's "two that share a card type"): every
+	// pick must have at least one key that every other pick also has.
+	// A candidate may have several keys (an artifact creature is both),
+	// and only keys enough candidates share to pay the count are listed,
+	// so a candidate with none listed cannot be part of any payment. The
+	// picker greys a candidate that shares no key with the picks so far
+	// and holds its confirm button until the picks share one. Absent on
+	// every clause without the rule.
+	Shares *TargetSharesView `json:"shares,omitempty"`
+
 	// All marks a SACRIFICE clause that takes every permanent listed in
 	// `cards` and lets the caster choose none of them (#2097, Soulblast's
 	// "sacrifice all creatures you control"): min and max are both the
@@ -824,6 +835,13 @@ type LegalTargetsView struct {
 	// picks, and may send `sacrifice_ids` empty (the server fills it) or
 	// exactly these. Absent on every other clause.
 	All bool `json:"all,omitempty"`
+}
+
+// TargetSharesView is LegalTargetsView.Shares: the rule's printed words
+// and each candidate's keys, by wire id.
+type TargetSharesView struct {
+	Label string              `json:"label"`
+	Keys  map[string][]string `json:"keys,omitempty"`
 }
 
 // SacrificeGroupView is one entry of LegalTargetsView.EachOf: the
@@ -10592,14 +10610,32 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 // option offered here is one validateExilePermanentsCostLocked accepts.
 //
 // Caller must hold g.mu.
+//
+// ADR 0137's amendment (#2709) adds craft's variants, each in a shape
+// the picker already reads or one beside it: an open count ("one or
+// more") is min Count, max 0; "a Dinosaur, a Merfolk, a Pirate, and a
+// Vampire" is each_of, the sacrifice set rule's groups (#2526); "two
+// that share a card type" is `shares`, every candidate's card types.
 func exilePermanentCostOptions(g *game.Game, controller, sourceID uuid.UUID, ec *game.ExilePermanentsCost) *LegalTargetsView {
 	if ec.Empty() {
 		return nil
 	}
-	ids := g.ExilePermanentsOptionsForEffect(controller, sourceID, ec)
-	out := &LegalTargetsView{Min: ec.Count, Max: ec.Count}
-	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+	ids := g.SacrificePaymentOrderForEffect(g.ExilePermanentsOptionsForEffect(controller, sourceID, ec), sourceID)
+	lo, hi := game.ExilePermanentsCostBounds(ec)
+	out := &LegalTargetsView{Min: lo, Max: hi}
+	for _, id := range ids {
 		out.Cards = append(out.Cards, id.String())
+	}
+	for _, grp := range g.ExileSubtypeGroupsForEffect(controller, ec, ids) {
+		out.EachOf = append(out.EachOf, SacrificeGroupView{Label: grp.Label, Cards: cardIDStrings(grp.Candidates)})
+	}
+	if ec.ShareCardType {
+		out.Shares = &TargetSharesView{Label: "share a card type", Keys: map[string][]string{}}
+		for _, grp := range g.ExileSharedTypeGroupsForEffect(controller, ec, ids) {
+			for _, id := range grp.Candidates {
+				out.Shares.Keys[id.String()] = append(out.Shares.Keys[id.String()], grp.CardType)
+			}
+		}
 	}
 	return out
 }

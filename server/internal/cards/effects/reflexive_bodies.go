@@ -34,6 +34,11 @@ import (
 //     registration and ignores both arguments.
 
 var (
+	// Dire Blunderbuss (#2709): the equipped creature deals damage
+	// equal to its power to target creature.
+	direBlunderbussDamageBody = game.ReflexiveBody("dire-blunderbuss/damage", simpleBody(direBlunderbussDamage),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature") }))
+
 	// Generous Plunderer: target opponent creates a tapped Treasure.
 	generousPlundererGiftBody = game.ReflexiveBody("generous-plunderer/gift", simpleBody(generousPlundererGift),
 		constTargets(func() *game.TargetSpec { return TargetPlayer("target opponent", Opponent()) }))

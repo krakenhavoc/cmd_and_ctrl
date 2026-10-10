@@ -29,12 +29,7 @@ func init() {
 					return err
 				}
 			}
-			return b39MayDiscardThenDraw(1, false, label, func(discarded int) int {
-				if discarded > 0 {
-					return 2
-				}
-				return 0
-			})(ctx)
+			return mayDiscardACardToDrawTwo(label)(ctx)
 		},
 	})
 }

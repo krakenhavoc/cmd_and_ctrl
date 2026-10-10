@@ -1295,15 +1295,79 @@ func (e *enumerator) returnPayments(pool []uuid.UUID, rc *game.ReturnToHandCost,
 // printed card has ("Exile a creature you control"), cheapest to keep
 // first, and the first Count of that order for a larger one. Nil when
 // the pool cannot reach the count, so the ability is not offered (#544).
+//
+// ADR 0137's amendment (#2709), craft's variants:
+//
+//   - "Two that share a card type": one payment per card type enough
+//     candidates share, the cheapest Count of each, because the type
+//     the pair shares is what Apex Observatory may later name.
+//   - "A Dinosaur, a Merfolk, a Pirate, and a Vampire": the one
+//     matching game.ExilePermanentsPaymentForEffect finds, a changeling
+//     kept for the entry nothing else fills.
+//   - "One or more" / "four or more": the floor (one move per candidate
+//     at a floor of one, as above), then every graveyard material on
+//     offer when that is more than the floor — cheap fuel that grows a
+//     Wretched Bonemass or a Sunbird Effigy — then everything on offer.
+//     Two or three counts, never every subset: ADR 0100 §6's
+//     discipline for a variable sacrifice.
 func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePermanentsCost, sourceID uuid.UUID) [][]uuid.UUID {
 	if ec.Empty() || len(pool) < ec.Count {
 		return nil
 	}
 	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
-	if ec.Count > 1 {
-		return [][]uuid.UUID{ordered[:ec.Count]}
+	switch {
+	case ec.ShareCardType:
+		var out [][]uuid.UUID
+		seen := map[string]bool{}
+		for _, grp := range e.g.ExileSharedTypeGroupsForEffect(e.seat, ec, ordered) {
+			pick := grp.Candidates[:ec.Count]
+			key := fmt.Sprint(pick)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, pick)
+		}
+		return out
+	case len(ec.EachSubtype) > 0:
+		if pick := e.g.ExilePermanentsPaymentForEffect(e.seat, ec, ordered); pick != nil {
+			return [][]uuid.UUID{pick}
+		}
+		return nil
 	}
-	return e.combos(ordered, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
+	var out [][]uuid.UUID
+	if ec.Count > 1 {
+		out = [][]uuid.UUID{ordered[:ec.Count]}
+	} else {
+		out = e.combos(ordered, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
+	}
+	if !ec.OrMore {
+		return out
+	}
+	var graveyard []uuid.UUID
+	for _, id := range ordered {
+		if !e.onBattlefield(id) {
+			graveyard = append(graveyard, id)
+		}
+	}
+	if len(graveyard) > ec.Count {
+		out = append(out, graveyard)
+	}
+	if len(ordered) > ec.Count && len(ordered) > len(graveyard) {
+		out = append(out, ordered)
+	}
+	return out
+}
+
+// onBattlefield reports whether `id` names a permanent on the
+// battlefield.
+func (e *enumerator) onBattlefield(id uuid.UUID) bool {
+	for i := range e.g.Battlefield.Cards {
+		if e.g.Battlefield.Cards[i].InstanceID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // permanentCostPair is one payment of an ability's permanent-MOVING

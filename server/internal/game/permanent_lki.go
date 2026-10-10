@@ -160,6 +160,12 @@ type PermanentInfo struct {
 	ChosenColor string `json:"chosenColor,omitempty"`
 	NamedTribe  string `json:"namedTribe,omitempty"`
 
+	// ChosenOption is the option chosen for it as it entered
+	// (Card.ChosenOption, CR 614.12), as it last existed: Apex
+	// Observatory's tap ability still names its card type when it
+	// resolves after the Observatory has gone (CR 608.2h, #2709).
+	ChosenOption string `json:"chosenOption,omitempty"`
+
 	// ChosenNumber is the number chosen for it as it entered
 	// (Card.ChosenNumber, #1941), as it last existed: Phyrexian
 	// Processor's token is still the size of the life paid when the
@@ -241,6 +247,7 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		Delved:         append([]ObjectRef(nil), c.Provenance.Delved...),
 		CraftedWith:    cloneObjectRefs(c.CraftedWith),
 		ChosenColor:    c.ChosenColor,
+		ChosenOption:   c.ChosenOption,
 		NamedTribe:     c.NamedTribe,
 		ChosenNumber:   c.ChosenNumber,
 		ManaValue:      permanentManaValue(c),

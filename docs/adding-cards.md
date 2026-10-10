@@ -3224,8 +3224,9 @@ anything is paid. The exiled permanents are on `ctx.Exiled()` (and on a
 mana ability's `paid.Exiled`); read "the exiled creature's mana value"
 with `g.LastKnownPermanentForEffect(id).ManaValue`, as it last existed
 on the battlefield. The auto-tapper never uses a mana ability with it.
-A variable count ("one or more other artifacts with total mana value
-X") and craft's two-zone clause have no shape yet.
+A count bounded by a total ("one or more other artifacts with total
+mana value X") has no shape yet; craft's two zones, open count and set
+rules are the Craft section's.
 
 **Library costs and random discards (ADR 0109 §7, #1902):**
 `ExileTopOfLibrary(n)` is "Exile the top N cards of your library"
@@ -6497,15 +6498,30 @@ sorcery", and the return. Never hand-write any of those halves:
   still finds them. A token material ceased to exist in exile and is not
   one of them. Jadeheart Attendant is the pattern.
 
-Not yet expressible (the craft row, #2709): "Craft with one or more …",
-a rule over the chosen set ("two that share a card type", "a Dinosaur,
-a Merfolk, a Pirate, and a Vampire"), and graveyard-only materials
-("four or more red instant and/or sorcery cards").
+The other printed material clauses (#2709, ADR 0137's 2026-10-10
+amendment) each have a constructor:
+
+```go
+CraftWithOneOrMore("creature")              // Altar of the Wretched; "" is Sunbird Standard's bare "one or more"
+CraftWithOneOrMoreSubtype("Dinosaur")       // Saheeli's Lattice
+CraftWithTwoSharingACardType()              // Eye of Ojer Taq
+CraftWithEachOf("Dinosaur", "Merfolk", "Pirate", "Vampire") // Throne of the Grim Captain
+CraftWithCardsOrMore(4, "R", "red", "instant", "sorcery")   // Ore-Rich Stalactite, graveyard only
+```
+
+A back face that reads its materials from a static ability (a
+characteristic-defining ability, a keyword grant, a mana ability) reads
+them off the permanent itself: `craftMaterialsOf(g, source)`, and
+`craftMaterialsTotalPower` / `craftMaterialColors` for the two printed
+sums (Mastercraft Raptor, Wretched Bonemass, Sunbird Effigy). An
+Equipment's "As this Equipment becomes attached to a creature, …" is
+`Spec.AsAttached` (Dinosaur Headdress).
 
 **Tests** build the card through the import road
 (`transformRow` + `deck.ToGameCard`), because a flat fixture has no back
-face; `craft_test.go` has `pushCraftCard` and `activateCraft`, and
-`craft_cards_test.go` has `craftInto`.
+face; `craft_test.go` has `pushCraftCard` and `activateCraft`,
+`craft_cards_test.go` has `craftInto`, and `craft_variants_test.go` has
+`pushGraveyardMaterial` and `pushMaterialPermanent`.
 
 ### Adding a creature-type card (S26+)
 

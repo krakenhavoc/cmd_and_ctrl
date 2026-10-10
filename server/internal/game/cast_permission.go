@@ -2,6 +2,7 @@ package game
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -183,6 +184,12 @@ type PermissionFilter struct {
 	// noncreature spells as though they had flash" card wants.
 	NoncreatureOnly bool `json:"noncreatureOnly,omitempty"`
 
+	// CardType is a card type a qualifying card must have, lowercase
+	// ("artifact", "instant") — Apex Observatory's "the next spell you
+	// cast this turn of the chosen type" (#2709). Empty constrains
+	// nothing.
+	CardType string `json:"cardType,omitempty"`
+
 	// SorceryOnly is Teferi, Time Raveler's +1: "you may cast SORCERY
 	// spells as though they had flash" (#1195). Narrower than
 	// InstantOrSorceryOnly, which would also open an instant that
@@ -289,6 +296,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.NoncreatureOnly && c.IsCreature() {
+		return false
+	}
+	if f.CardType != "" && !c.HasCardType(strings.ToLower(f.CardType)) {
 		return false
 	}
 	if f.SorceryOnly && !c.IsSorcery() {

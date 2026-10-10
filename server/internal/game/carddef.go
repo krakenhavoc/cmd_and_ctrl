@@ -46,6 +46,11 @@ type CardDef struct {
 	// transform. Nil for nearly every face. #1574, ADR 0079 amendment
 	// 2026-09-24.
 	AsTransformsInto func(g *Game, cardID uuid.UUID) error
+	// AsAttached runs the permanent's "As this <permanent> becomes
+	// attached to a creature, …" clause (Dinosaur Headdress, #2709),
+	// off the stack, as AttachForEffect attaches it to a new host. Nil
+	// for nearly every card.
+	AsAttached func(g *Game, cardID uuid.UUID) error
 
 	StartingLoyalty int
 	BattleDefense   int

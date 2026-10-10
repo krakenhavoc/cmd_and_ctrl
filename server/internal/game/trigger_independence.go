@@ -785,7 +785,7 @@ const (
 // the map counts as defFieldRules, and
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
-	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsTransformsInto": defFieldInert,
+	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,

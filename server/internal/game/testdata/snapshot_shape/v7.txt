@@ -1041,6 +1041,7 @@ lastKnownPermanents{}[].characteristic.Types	array
 lastKnownPermanents{}[].characteristic.Types[]	string
 lastKnownPermanents{}[].chosenColor	string
 lastKnownPermanents{}[].chosenNumber	number:int
+lastKnownPermanents{}[].chosenOption	string
 lastKnownPermanents{}[].controller	custom(uuid.UUID)
 lastKnownPermanents{}[].counters	map:string
 lastKnownPermanents{}[].counters{}	number:int
@@ -2896,6 +2897,7 @@ seats[].castPermissions[].faces[]	number:int
 seats[].castPermissions[].filter	object
 seats[].castPermissions[].filter.artifactInstantOrSorceryOnly	bool
 seats[].castPermissions[].filter.artifactOrColorlessOnly	bool
+seats[].castPermissions[].filter.cardType	string
 seats[].castPermissions[].filter.creatureOnly	bool
 seats[].castPermissions[].filter.creatureType	string
 seats[].castPermissions[].filter.creatureTypesAny	array
@@ -4620,6 +4622,7 @@ seats[].statics[].cantBeCountered.except.id	custom(uuid.UUID)
 seats[].statics[].cantBeCountered.filter	object
 seats[].statics[].cantBeCountered.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].cantBeCountered.filter.artifactOrColorlessOnly	bool
+seats[].statics[].cantBeCountered.filter.cardType	string
 seats[].statics[].cantBeCountered.filter.creatureOnly	bool
 seats[].statics[].cantBeCountered.filter.creatureType	string
 seats[].statics[].cantBeCountered.filter.creatureTypesAny	array
@@ -4646,6 +4649,7 @@ seats[].statics[].castBan.exceptFromZone	string
 seats[].statics[].castBan.filter	object
 seats[].statics[].castBan.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].castBan.filter.artifactOrColorlessOnly	bool
+seats[].statics[].castBan.filter.cardType	string
 seats[].statics[].castBan.filter.creatureOnly	bool
 seats[].statics[].castBan.filter.creatureType	string
 seats[].statics[].castBan.filter.creatureTypesAny	array
@@ -4712,6 +4716,7 @@ seats[].statics[].nextSpell.everyMatchingSpell	bool
 seats[].statics[].nextSpell.filter	object
 seats[].statics[].nextSpell.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].nextSpell.filter.artifactOrColorlessOnly	bool
+seats[].statics[].nextSpell.filter.cardType	string
 seats[].statics[].nextSpell.filter.creatureOnly	bool
 seats[].statics[].nextSpell.filter.creatureType	string
 seats[].statics[].nextSpell.filter.creatureTypesAny	array
@@ -4734,12 +4739,14 @@ seats[].statics[].nextSpell.flash	bool
 seats[].statics[].nextSpell.followUp	string
 seats[].statics[].nextSpell.reduce	number:int
 seats[].statics[].nextSpell.text	string
+seats[].statics[].nextSpell.withoutPayingManaCost	bool
 seats[].statics[].source	custom(uuid.UUID)
 seats[].statics[].timing	object
 seats[].statics[].timing.affects	string
 seats[].statics[].timing.filter	object
 seats[].statics[].timing.filter.artifactInstantOrSorceryOnly	bool
 seats[].statics[].timing.filter.artifactOrColorlessOnly	bool
+seats[].statics[].timing.filter.cardType	string
 seats[].statics[].timing.filter.creatureOnly	bool
 seats[].statics[].timing.filter.creatureType	string
 seats[].statics[].timing.filter.creatureTypesAny	array
@@ -5361,6 +5368,8 @@ turnTally.damageDealers[].epoch	number:int
 turnTally.damageDealers[].source	custom(uuid.UUID)
 turnTally.damageDealers[].victim	custom(uuid.UUID)
 turnTally.entered	map:array
+turnTally.enteredCardTypes	map:string
+turnTally.enteredCardTypes{}	number:int
 turnTally.enteredSubtypes	map:string
 turnTally.enteredSubtypes{}	number:int
 turnTally.entered{}	number:int
