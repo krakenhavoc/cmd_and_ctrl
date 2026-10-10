@@ -28,6 +28,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Exhaust — Pay six {E}: Put two +1/+1 counters on this creature. Then draw cards equal to the greatest power among creatures you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Exhaust: true,
 			Cost:    PayEnergy(6),
 			Effect: func(g *game.Game, item *game.StackItem) error {

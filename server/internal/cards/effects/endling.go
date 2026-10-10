@@ -38,8 +38,9 @@ func init() {
 				Effect:  thisGainsKeywordUntilEndOfTurn(game.KeywordUndying, "Endling — undying until end of turn"),
 			},
 			{
-				Label: "{1}: This creature gets +1/-1 or -1/+1 until end of turn.",
-				Cost:  ManaCost("{1}"),
+				Label:   "{1}: This creature gets +1/-1 or -1/+1 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{1}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return MayChoice{
 						Question: "Endling — +1/-1 or -1/+1 until end of turn?",

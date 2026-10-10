@@ -1046,6 +1046,15 @@ both where both are true; neither is derived from the other.
 **Helpers declare for their rows.** A row built by a shared helper
 (cycling, monstrosity, crew, boast) is declared once, in the helper.
 
+**Sweep rulings (owner, 2026-10-09; ADR 0142).**
+
+- A shrink effect (-X/-X on a creature) is `AnswerRemove`.
+- A trade (+2/-2, +1/-1, "+1/-1 or -1/+1") is `AnswerPump`.
+- Turning off an opponent's protection (removing hexproof or
+  indestructible, "can't be regenerated") is `AnswerRestrict`.
+- A modal, conditional or mixed row declares the union of every answer
+  any mode or condition can give.
+
 **What `effects.Register` refuses:**
 
 - `AnswerValue` beside any other answer;

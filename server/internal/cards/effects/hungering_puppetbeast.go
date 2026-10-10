@@ -43,8 +43,9 @@ func init() {
 				Do(CreateToken{Template: HeartwoodToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Sacrifice another artifact: Put a +1/+1 counter on this creature. It gains your choice of trample, hexproof, or haste until end of turn.",
-			Cost:  Plus(ManaCost("{1}"), SacrificeAnotherN(1, "another artifact", Artifact())),
+			Label:   "{1}, Sacrifice another artifact: Put a +1/+1 counter on this creature. It gains your choice of trample, hexproof, or haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerProtect | game.AnswerCombatGrant},
+			Cost:    Plus(ManaCost("{1}"), SacrificeAnotherN(1, "another artifact", Artifact())),
 			Modes: ChooseOne(
 				ModeDoing("Put a +1/+1 counter on it. It gains trample until end of turn.", nil, grant("trample")),
 				ModeDoing("Put a +1/+1 counter on it. It gains hexproof until end of turn.", nil, grant("hexproof")),

@@ -32,7 +32,7 @@ func init() {
 		XMatters:     true,
 		Activated: []ActivatedAbility{{
 			Label:   "{X}: This creature deals X damage to each creature and each player. Spend only black mana on X.",
-			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true}},
+			Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true}},
 			Cost:    Plus(ManaCost("{X}"), SpendOnlyOnX("B")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

@@ -28,7 +28,8 @@ func init() {
 				"Gallia, Tragic Host: enters with a +1/+1 counter"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}{B}, Exile another creature card from your graveyard: Return this card from your graveyard to the battlefield tapped with a +1/+1 counter on her.",
+			Label:   "{4}{B}, Exile another creature card from your graveyard: Return this card from your graveyard to the battlefield tapped with a +1/+1 counter on her.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost: Plus(ManaCost("{4}{B}"),
 				ExileFromGraveyard(1, "another creature card", func(c game.Card) bool { return c.IsCreature() })),
 			Zones: []game.ZoneKind{game.ZoneGraveyard},

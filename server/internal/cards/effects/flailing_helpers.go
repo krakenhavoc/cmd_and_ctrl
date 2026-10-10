@@ -26,16 +26,16 @@ func flailingAbilities(name string) []ActivatedAbility {
 			Label:     "{1}: This creature gets +1/+1 until end of turn. Any player may activate this ability.",
 			Cost:      ManaCost("{1}"),
 			AnyPlayer: true,
-			// ADR 0142: the -1/-1 row stays undeclared; the ADR does not
-			// say whether shrinking this creature "removes" it.
-			Purpose: game.Purpose{Answers: game.AnswerPump},
-			Effect:  thisGetsUntilEndOfTurn(1, 1, name+" — +1/+1 until end of turn"),
+			Purpose:   game.Purpose{Answers: game.AnswerPump},
+			Effect:    thisGetsUntilEndOfTurn(1, 1, name+" — +1/+1 until end of turn"),
 		},
 		{
 			Label:     "{1}: This creature gets -1/-1 until end of turn. Any player may activate this ability.",
 			Cost:      ManaCost("{1}"),
 			AnyPlayer: true,
-			Effect:    thisGetsUntilEndOfTurn(-1, -1, name+" — -1/-1 until end of turn"),
+			// ADR 0142 sweep rulings: a shrink effect is remove.
+			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Effect:  thisGetsUntilEndOfTurn(-1, -1, name+" — -1/-1 until end of turn"),
 		},
 	}
 }

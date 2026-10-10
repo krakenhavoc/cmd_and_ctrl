@@ -34,6 +34,8 @@ func noRegenerationRow(cost string) ActivatedAbility {
 		Label:         cost + ": This creature can't be regenerated this turn. Only your opponents may activate this ability.",
 		Cost:          ManaCost(cost),
 		OpponentsOnly: true,
+		// ADR 0142 sweep rulings: turning off a protection is restrict.
+		Purpose: game.Purpose{Answers: game.AnswerRestrict},
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			return CantBeRegeneratedThisTurn{Target: ctx.Source()}.Apply(ctx)

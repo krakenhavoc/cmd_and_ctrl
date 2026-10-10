@@ -261,3 +261,12 @@ Each question lists the recommended option first. The owner chose (a), the recom
 5. **Spells later.** The field is refused on spells, modes and alternative costs. How a castable instant declared `value` is classed is a separate, later decision (Q5 (a)).
 6. **Merge on green.** Each sweep PR lists its flips under "Verdicts changed", taken from the disagreement diff, and merges on green under the standing develop rule. The owner reads the lists afterwards (Q6 (a)).
 7. **Sweep to zero.** The sweep covers the 245 interacting rows, then all 461 value rows, then the combat rows, until the ratchet reaches zero (Q7 (a)).
+
+### Sweep rulings (owner, 2026-10-09)
+
+Four rulings from the first S1 batches, for the rows the vocabulary table does not settle. They bind the remaining batches and any new card.
+
+1. **Shrink effects are `remove`.** A row that gives a creature -X/-X or otherwise shrinks it (Flailing Manticore, Flailing Ogre, Flailing Soldier, Oona's Prowler) declares `remove`.
+2. **Trades are `pump`.** A row that raises one of power and toughness while lowering the other (+2/-2, +1/-1, "+1/-1 or -1/+1": Multiform Wonder, Shipwreck Moray, Unliving Psychopath, Undulating Witness, Endling) declares `pump`.
+3. **Turning off an opponent's protection is `restrict`.** A row that removes hexproof, indestructible or regeneration from what an opponent controls, or stops them regenerating (Arcane Lighthouse, Detection Tower, Shadowspear, Knight and Clergy of the Holy Nimbus), declares `restrict`.
+4. **Modal, conditional and mixed rows declare the union.** A row whose modes or conditions can give different answers declares every answer any of them can give (Lost Jitte, Storm Elemental, Repeat Offender, Aerid Konstrari, Peema Trailblazer, Thran Weaponry, Gallia, and the mixed `protect|pump` and `protect|sac_outlet` rows).

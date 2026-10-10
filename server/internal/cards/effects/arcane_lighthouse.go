@@ -34,8 +34,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud.",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   "{1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud.",
+			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return LoseAndCantHaveUntilEOT{
 					Match:    And(Creature(), OpponentControls()),
