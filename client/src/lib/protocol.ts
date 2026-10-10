@@ -2724,6 +2724,9 @@ export interface ActivatedAbilityView {
   // Chains, Shigeki). Advisory like `exile_self`: the source is the
   // payment, so nothing is picked and nothing is sent.
   return_self?: boolean;
+  // #2726: "Put this creature on the bottom of its owner's library"
+  // (Timestream Navigator). Advisory like `return_self`.
+  bottom_self?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.

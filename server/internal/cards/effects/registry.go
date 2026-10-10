@@ -578,9 +578,14 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d returns its source to hand AND sacrifices or exiles it — one permanent pays one cost component",
 				spec.Name, i))
 		}
+		// #2726: the same one-component rule for the bottom-of-library cost.
+		if ab.Cost.BottomSelf && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d puts its source on the bottom of the library AND sacrifices, exiles or returns it — one permanent pays one cost component",
+				spec.Name, i))
+		}
 		// ADR 0130 §4: no printed card exerts a source its own cost also
 		// moves, and the exert would expire with the object (CR 400.7).
-		if ab.Cost.Exert && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf) {
+		if ab.Cost.Exert && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)",
 				spec.Name, i))
 		}

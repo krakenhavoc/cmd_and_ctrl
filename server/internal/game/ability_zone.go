@@ -80,6 +80,10 @@ func AbilityNeedsPermanentSource(cost AbilityCost) string {
 		// #2028: "Return this enchantment to its owner's hand" returns
 		// a permanent; a card in a hand or a graveyard is not one.
 		return "a return-this-to-hand cost"
+	case cost.BottomSelf:
+		// #2726: "Put this creature on the bottom of its owner's
+		// library" moves a permanent; a card elsewhere is not one.
+		return "a put-this-on-the-bottom-of-the-library cost"
 	case cost.Exert:
 		// ADR 0130 §4, CR 701.43c: an object that isn't on the
 		// battlefield can't be exerted.
