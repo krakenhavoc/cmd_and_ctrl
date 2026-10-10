@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Ashnod's Altar — Artifact {3}:
 //
 //	"Sacrifice a creature: Add {C}{C}."
@@ -30,6 +32,7 @@ func init() {
 			},
 			Produced: "{C}{C}",
 			Label:    "Sacrifice a creature: Add {C}{C}",
+			Answers:  game.AnswerSacOutlet,
 		}},
 	})
 }

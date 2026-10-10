@@ -37,7 +37,8 @@ func init() {
 				Do(CreateToken{Template: TokenCard("0/1 white Goat"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice another creature: Scry 1.",
+			Label:   "Sacrifice another creature: Scry 1.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			},

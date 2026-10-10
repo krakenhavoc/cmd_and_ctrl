@@ -23,8 +23,9 @@ func init() {
 				Do(CreateToken{Template: TokenCard("1/1 colorless Servo artifact"), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Sacrifice a creature: Scry 1.",
-			Cost:  Plus(ManaCost("{1}"), SacrificeACreature()),
+			Label:   "{1}, Sacrifice a creature: Scry 1.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{1}"), SacrificeACreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

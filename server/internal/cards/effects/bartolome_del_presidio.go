@@ -19,7 +19,8 @@ func init() {
 		Name:         "Bartolomé del Presidio",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice another creature or artifact: Put a +1/+1 counter on Bartolomé del Presidio.",
+			Label:   "Sacrifice another creature or artifact: Put a +1/+1 counter on Bartolomé del Presidio.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
 			Cost: game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature or artifact",
 					Or(Creature(), Artifact()))),

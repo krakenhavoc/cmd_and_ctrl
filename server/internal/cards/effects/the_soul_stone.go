@@ -31,6 +31,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
+	harness := Harness("{6}{B}, {T}, Exile a creature you control: Harness The Soul Stone.",
+		Plus(ManaCost("{6}{B}"), TapCost(), ExileACreatureYouControl()))
+	// ADR 0142: the cost exiles a creature you control.
+	harness.Purpose = game.Purpose{Answers: game.AnswerSacOutlet}
 	Register(Spec{
 		OracleID:        "92cfba68-12f6-4f97-9187-0f6a39656a0f",
 		Name:            "The Soul Stone",
@@ -41,10 +45,7 @@ func init() {
 			Produced: "{B}",
 			Label:    "Add {B}",
 		}},
-		Activated: []ActivatedAbility{
-			Harness("{6}{B}, {T}, Exile a creature you control: Harness The Soul Stone.",
-				Plus(ManaCost("{6}{B}"), TapCost(), ExileACreatureYouControl())),
-		},
+		Activated: []ActivatedAbility{harness},
 		Triggered: []game.TriggeredAbility{theSoulStoneUpkeepReturn()},
 	})
 }

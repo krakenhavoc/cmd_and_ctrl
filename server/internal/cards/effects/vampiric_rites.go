@@ -20,7 +20,7 @@ func init() {
 		Name:     "Vampiric Rites",
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, Sacrifice a creature: You gain 1 life and draw a card.",
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet, Draws: 1},
 			Cost: func() game.AbilityCost {
 				c := SacrificeACreature()
 				c.Mana = "{1}{B}"

@@ -33,6 +33,7 @@ func init() {
 			Cost:     ManaAbilityCost{SacrificeOther: sacrificeSpec("a Spirit", HasSubtype("Spirit"))},
 			Produced: "{R}",
 			Label:    "Sacrifice a Spirit: Add {R}",
+			Answers:  game.AnswerSacOutlet,
 		}},
 	})
 }

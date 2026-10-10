@@ -25,8 +25,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{B}{G}, {T}, Sacrifice a creature: Draw a card.",
-			Cost:  Plus(ManaCost("{2}{B}{G}"), TapCost(), SacrificeACreature()),
+			Label:   "{2}{B}{G}, {T}, Sacrifice a creature: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{2}{B}{G}"), TapCost(), SacrificeACreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

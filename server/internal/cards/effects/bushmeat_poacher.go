@@ -16,8 +16,9 @@ func init() {
 		Name:         "Bushmeat Poacher",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice another creature: You gain life equal to the sacrificed creature's toughness. Draw a card.",
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeAnotherN(1, "another creature", Creature())),
+			Label:   "{1}, {T}, Sacrifice another creature: You gain life equal to the sacrificed creature's toughness. Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeAnotherN(1, "another creature", Creature())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if fed, ok := b17PermanentSacrificedToPay(g, item); ok {
