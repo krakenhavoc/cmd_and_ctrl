@@ -24,7 +24,12 @@ test.describe("board layout", () => {
     const game = await createGame(request, adminToken, `Board ${Date.now()}`);
     expect(game.invite_token).toBeTruthy();
 
-    const alice = await joinAsPlayer(browser, game.id, game.invite_token!, "Alice");
+    const alice = await joinAsPlayer(
+      browser,
+      game.id,
+      game.invite_token!,
+      "Alice",
+    );
     const bob = await joinAsPlayer(browser, game.id, game.invite_token!, "Bob");
 
     const deck = makeCommanderDeck();
@@ -38,11 +43,15 @@ test.describe("board layout", () => {
     // button to enable; run them side by side.
     await Promise.all(
       [alice, bob].map(async (p) => {
-        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toBeVisible({
+        await expect(
+          p.page.getByRole("dialog", { name: /keep or mulligan/i }),
+        ).toBeVisible({
           timeout: 10_000,
         });
         await p.page.getByRole("button", { name: "Keep hand" }).click();
-        await expect(p.page.getByRole("dialog", { name: /keep or mulligan/i })).toHaveCount(0, {
+        await expect(
+          p.page.getByRole("dialog", { name: /keep or mulligan/i }),
+        ).toHaveCount(0, {
           timeout: 10_000,
         });
       }),
@@ -57,9 +66,13 @@ test.describe("board layout", () => {
     const selfBoard = page.getByRole("region", { name: "your board" });
     // toBeAttached, not toBeVisible: an empty row is a zero-height
     // flex container (Playwright: "hidden") until a card lands in it.
-    await expect(selfBoard.getByRole("list", { name: "creatures" })).toBeAttached();
+    await expect(
+      selfBoard.getByRole("list", { name: "creatures" }),
+    ).toBeAttached();
     await expect(selfBoard.getByRole("list", { name: "lands" })).toBeAttached();
-    await expect(selfBoard.getByRole("list", { name: "enchant / artifact" })).toBeAttached();
+    await expect(
+      selfBoard.getByRole("list", { name: "enchant / artifact" }),
+    ).toBeAttached();
     await expect(page.getByLabel("your hand")).toBeVisible();
     await expect(page.getByLabel("Alice piles")).toBeVisible();
     // #2395: the fan fits its row, between the piles' corner and the
@@ -77,9 +90,15 @@ test.describe("board layout", () => {
     // command zone (its own affordance since the CMD pile button was
     // replaced by the cast UI). Scoped to the self board — the
     // opponent's panel renders the same piles.
-    await expect(selfBoard.getByRole("button", { name: /exile: \d+/ })).toBeVisible();
-    await expect(selfBoard.getByRole("button", { name: /grave: \d+/ })).toBeVisible();
-    await expect(selfBoard.getByRole("button", { name: /library: \d+/ })).toBeVisible();
+    await expect(
+      selfBoard.getByRole("button", { name: /exile: \d+/ }),
+    ).toBeVisible();
+    await expect(
+      selfBoard.getByRole("button", { name: /grave: \d+/ }),
+    ).toBeVisible();
+    await expect(
+      selfBoard.getByRole("button", { name: /library: \d+/ }),
+    ).toBeVisible();
     await expect(selfBoard.getByLabel(/command zone, \d+ card/)).toBeVisible();
 
     // ADR 0111 §1 (PR 2): the action dock, bottom right. Its label is
@@ -89,20 +108,30 @@ test.describe("board layout", () => {
     const dock = page.getByRole("region", { name: "actions", exact: true });
     await expect(dock).toBeVisible();
     await expect(dock.getByLabel("turn and phase indicator")).toBeVisible();
-    await expect(dock.getByRole("group", { name: "priority controls" })).toBeVisible();
+    await expect(
+      dock.getByRole("group", { name: "priority controls" }),
+    ).toBeVisible();
     // ADR 0111 PR 3: the one Undo, in the toggles row with its count.
     await expect(
-      dock.getByRole("group", { name: "priority controls" }).getByRole("button", { name: /^Undo/ }),
+      dock
+        .getByRole("group", { name: "priority controls" })
+        .getByRole("button", { name: /^Undo/ }),
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /^Undo/ })).toHaveCount(1);
-    await expect(dock.getByRole("button", { name: "next", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "next", exact: true })).toHaveCount(1);
+    await expect(
+      dock.getByRole("button", { name: "next", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "next", exact: true }),
+    ).toHaveCount(1);
     // ADR 0143 §4.2: End turn (formerly Pass turn) is drawn for the
     // active seat only, so exactly one of the two pages has it, once.
     await expect
       .poll(async () => {
         const counts = await Promise.all(
-          [alice, bob].map((p) => p.page.getByRole("button", { name: "End turn" }).count()),
+          [alice, bob].map((p) =>
+            p.page.getByRole("button", { name: "End turn" }).count(),
+          ),
         );
         return counts.sort().join(",");
       })
@@ -118,21 +147,30 @@ test.describe("board layout", () => {
     // rail, so this checks the piles' own box: wholly above the dock,
     // or wholly left of it.
     const piles = (await page.getByLabel("Alice piles").boundingBox())!;
-    const clear = piles.y + piles.height <= box.y + 1 || piles.x + piles.width <= box.x + 1;
+    const clear =
+      piles.y + piles.height <= box.y + 1 || piles.x + piles.width <= box.x + 1;
     expect(clear, "the self piles overlap the action dock").toBe(true);
 
     // ADR 0111 §5: the bluff split button is always on the table, even
     // on a default install where neither bluff setting is on.
-    await expect(dock.getByRole("button", { name: "bluff", exact: true })).toBeVisible();
-    await expect(dock.getByRole("button", { name: "bluff options" })).toBeVisible();
+    await expect(
+      dock.getByRole("button", { name: "bluff", exact: true }),
+    ).toBeVisible();
+    await expect(
+      dock.getByRole("button", { name: "bluff options" }),
+    ).toBeVisible();
 
     // ADR 0111 §4 / §10 (PR 4): the attention strip is region
     // "attention", the tutorial's step-9 anchor. Asked nothing of the
     // player here, it is empty but on the page; what it used to ask
     // (targeting's Done and Cancel, the insufficient-mana prompt) is the
     // dock's.
-    await expect(page.getByRole("region", { name: "attention", exact: true })).toBeAttached();
-    await expect(page.getByRole("region", { name: "attention", exact: true })).toHaveCount(1);
+    await expect(
+      page.getByRole("region", { name: "attention", exact: true }),
+    ).toBeAttached();
+    await expect(
+      page.getByRole("region", { name: "attention", exact: true }),
+    ).toHaveCount(1);
 
     // Stack overlay should be hidden when nothing is on the stack.
     await expect(page.getByLabel(/stack: \d+ on the stack/)).toHaveCount(0);
@@ -141,7 +179,10 @@ test.describe("board layout", () => {
     // Read the count from the hand zone's child elements (one card per
     // entry); the toolbar's "draw" button works too but we want to
     // exercise the pile-button click path specifically.
-    const handCardsBefore = await page.getByLabel("your hand").locator(".hand-slot").count();
+    const handCardsBefore = await page
+      .getByLabel("your hand")
+      .locator(".hand-slot")
+      .count();
     // #2374: with the pointer on the hand, the hand lifts over the
     // board. The library in the corner above the hand's left end must
     // still take the click: the lifted strip's empty end used to cover
@@ -149,10 +190,14 @@ test.describe("board layout", () => {
     // pointer over the hand, which is how the nightly found it.)
     await page.getByLabel("your hand").locator(".hand-slot").last().hover();
     await selfBoard.getByRole("button", { name: /library: \d+/ }).click();
-    await expect(page.getByLabel("your hand").locator(".hand-slot")).toHaveCount(
-      handCardsBefore + 1,
-      { timeout: 5_000 },
-    );
+    // #2962: the click only opens a menu; the draw is the menu row.
+    await expect(
+      page.getByLabel("your hand").locator(".hand-slot"),
+    ).toHaveCount(handCardsBefore);
+    await page.getByRole("menuitem", { name: "Draw a card" }).click();
+    await expect(
+      page.getByLabel("your hand").locator(".hand-slot"),
+    ).toHaveCount(handCardsBefore + 1, { timeout: 5_000 });
 
     await alice.context.close();
     await bob.context.close();

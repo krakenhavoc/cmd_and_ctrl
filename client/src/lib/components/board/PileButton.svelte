@@ -6,10 +6,9 @@
   // the top card is public). DECK uses a stylised back; EXILE and
   // CMD ZONE show counts only at v1.
   //
-  // Click is dispatched up to the parent so PileBar can route it —
-  // the only wired action at v1 is "draw from your own library";
-  // GRAVEYARD / EXILE / CMD ZONE clicks are stubbed to no-op until
-  // a pile-browser modal lands in a follow-up.
+  // Click is dispatched up to the parent so PileBar can route it:
+  // the library opens its draw / shuffle menu (#2962), GRAVEYARD and
+  // EXILE open the zone browser.
 
   import type { CardView, ZoneView } from "../../protocol";
   import Card from "./Card.svelte";
@@ -37,6 +36,9 @@
     // is not the viewer's to act on — "7 theirs to play" on a seat whose
     // own exiled cards it may play (Memory Vessel). Also read out.
     note?: string;
+    // #2962: the click opens a menu (the library's draw / shuffle).
+    haspopup?: boolean;
+    expanded?: boolean;
   }
 
   const {
@@ -49,6 +51,8 @@
     pile,
     owner,
     note,
+    haspopup = false,
+    expanded = false,
   }: Props = $props();
 
   const topCard = $derived(zone.cards.length > 0 ? zone.cards[zone.cards.length - 1] : null);
@@ -76,6 +80,8 @@
   data-pile={pile}
   data-pile-owner={owner}
   onclick={onClick}
+  aria-haspopup={haspopup ? "menu" : undefined}
+  aria-expanded={haspopup ? expanded : undefined}
   aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}${note ? `, ${note}` : ""}`}
   title={`${label} · ${zone.count}${readyCount > 0 ? ` · ${readyCount} ready` : ""}${note ? ` · ${note}` : ""}`}
 >
