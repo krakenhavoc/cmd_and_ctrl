@@ -1722,24 +1722,6 @@ var items = []Item{
 		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
 	},
 	{
-		// #2696 (ADR 0096 amendment 2026-10-08): ascend is a canonical
-		// keyword read by two engine paths (game/citys_blessing.go), and
-		// the city's blessing it grants is a per-player designation.
-		Slug: "ascend", Name: "Ascend and the city's blessing", Kind: KindKeyword, Status: StatusPartial,
-		Summary:     "Ascend gives you the city's blessing for the rest of the game once you control ten or more permanents: a permanent with ascend does it as soon as you do, and an instant or sorcery with ascend as it resolves. You keep the blessing even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
-		Missing:     "One card that reads the city's blessing isn't built yet: Tilonalli's Summoner can't pay a chosen X as its trigger resolves.",
-		Rules:       []string{"702.131"},
-		Issue:       2706,
-		ADR:         "0096-the-monarch-from-a-card-effect.md",
-		Tracked:     "#2706 (the cards; the rules shipped with #2696)",
-		Keywords:    []string{game.KeywordAscend},
-		Probe:       hasKeyword(game.KeywordAscend),
-		Printed:     printedKeyword("ascend"),
-		Examples:    []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Secrets of the Golden City"},
-		Waiting:     []string{"Tilonalli's Summoner"},
-		EngineNotes: "rules shipped (#2696, ADR 0096's 2026-10-08 amendment); what is left is cards. `Player.CitysBlessing` (`game/citys_blessing.go`) is the designation (CR 702.131c): written only by `grantCitysBlessingLocked`, which emits `EventCitysBlessing` (the layer pass is invalidated on it, and the log narrates it), never cleared, carried by `Clone`, undo and the snapshot (`seats[].citysBlessing`, additive in schema 7) and on the wire as `PlayerView.citys_blessing`. `ascend` is a canonical keyword the deck importer stamps, with two consumers: `citysBlessingSweepLocked`, CR 702.131b's static ability on a permanent, run from `stateBasedActionsLocked` after the layer recompute (not a state-based action, and it does not count toward `sbaFired`; it gives the blessing to any player who controls an ascend permanent and ten permanents, and walks nothing once every living player has it), and `ascendSpellLocked`, CR 702.131a's spell ability on an instant or sorcery, run as the spell resolves before its other instructions. Card side (`effects/citys_blessing.go`): `YouHaveTheCitysBlessing`, `YouHaveTheCitysBlessingCondition` (an activation condition), `YouHaveTheCitysBlessingNow` (an intervening \"if\" trigger condition), `WhileCitysBlessing`, `SelfPumpWhileCitysBlessing`, `SelfKeywordWhileCitysBlessing`, and `CantAttackUnlessYouHaveTheCitysBlessing` (the new `AttackTargetRestriction.ControllerMustHaveCitysBlessing` clause) with `CantBlockUnlessYouHaveTheCitysBlessing`. **The Waiting cards are not blocked on this row**: they are the ascend cards nobody has built yet (#2706); Timestream Navigator shipped with the put-this-on-the-bottom cost (#2726); Tilonalli's Summoner still needs a \"may pay {X}{R}\" as its trigger resolves, and says so in its slice.",
-	},
-	{
 		// #1552 (ADR 0109 §11 decision 2): sunburst is a keyword read off
 		// the resolving stack card (game/entry_counters.go).
 		Slug: "sunburst", Name: "Sunburst", Kind: KindKeyword, Status: StatusPartial,
@@ -3218,6 +3200,27 @@ var items = []Item{
 		Rules:    []string{"608.2h", "613.4b"},
 		ADR:      "0032-planeswalkers.md",
 		Examples: []string{"Gideon, Champion of Justice"},
+	},
+	{
+		Slug: "pay-x-on-resolution", Name: "Paying {X} as an ability resolves", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that let you pay a cost with {X} in it as they resolve, choosing X then, such as Tilonalli's Summoner's \"you may pay {X}{R}\" for X Elementals that enter tapped and attacking, each attacking the opponent, planeswalker or battle you choose.",
+		Rules:    []string{"608.2d", "118.12", "508.4"},
+		ADR:      "0129-energy-getting-and-paying-it.md",
+		Examples: []string{"Tilonalli's Summoner", "Flameblast Dragon"},
+	},
+	{
+		// #2696 (ADR 0096 amendment 2026-10-08): ascend is a canonical
+		// keyword read by two engine paths (game/citys_blessing.go), and
+		// the city's blessing it grants is a per-player designation.
+		// Closed with the last ascend cards (#2706, #2726, #2727).
+		Slug: "ascend", Name: "Ascend and the city's blessing", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Ascend gives you the city's blessing for the rest of the game once you control ten or more permanents: a permanent with ascend does it as soon as you do, and an instant or sorcery with ascend as it resolves. You keep the blessing even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
+		Rules:    []string{"702.131"},
+		ADR:      "0096-the-monarch-from-a-card-effect.md",
+		Keywords: []string{game.KeywordAscend},
+		Probe:    hasKeyword(game.KeywordAscend),
+		Printed:  printedKeyword("ascend"),
+		Examples: []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Tilonalli's Summoner"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

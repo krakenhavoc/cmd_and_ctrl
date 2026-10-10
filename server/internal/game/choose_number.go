@@ -44,11 +44,11 @@ import (
 // (ContinuationCensus.ChoiceResumeFrames).
 //
 // A payment in MANA ("you may pay {X}{R}", Tilonalli's Summoner, #2727)
-// is the obvious next resource, and is left to that issue. The shape it
-// would take: the number is chosen here with PayResourceNone and a
-// ceiling of what the payer could pay, and Then queues the existing
-// pay_unless prompt for the cost with X filled in, so the mana is paid
-// through the one path that pays mana for an effect.
+// takes exactly that shape (pay_x_on_resolution.go): the number is
+// chosen here with PayResourceNone and a ceiling of what the payer could
+// pay, and Then queues the existing pay_unless prompt for the cost with
+// X filled in, so the mana is paid through the one path that pays mana
+// for an effect.
 
 // ChooseNumber is what QueueChooseNumberForEffect is handed.
 type ChooseNumber struct {

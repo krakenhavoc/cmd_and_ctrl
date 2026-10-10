@@ -5737,8 +5737,27 @@ point costs. Three builders:
 lethal damage, the cards that fill a hand). The bot answers it when the
 life it costs leaves it at 10 or more, and a person's stepper opens on
 it, so declare it whenever the card has one. `Marks` are other numbers
-worth offering a bot. A payment in mana ("you may pay {X}{R}") is not
-here yet (#2727).
+worth offering a bot.
+
+**A payment with {X} in it** (#2727, the same ADR's next amendment,
+[may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is
+`MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, OnPay}`: "you may
+pay {X}{R}. If you do, …" (Tilonalli's Summoner, Flameblast Dragon).
+X is asked first, from 0 to the most the chooser can pay now, then the
+cost with X settled is an ordinary `MayPay`. `OnPay` gets X and runs
+only once the mana is paid. `Goal` gets that ceiling
+(`XAsHighAsYouCan` for "more is better"); nil keeps a bot's mana. Set
+`InThisStep` when what X buys belongs to the step in progress (tokens
+that enter attacking).
+
+**Tokens "that are tapped and attacking"** with no player named are
+`CreateTokensAttackingYourChoice{Template, N, Tapped, Prefer, Label,
+Then}`: CR 508.4 lets the controller choose what each attacks, so with
+more than one player, planeswalker or battle to attack they are asked
+how many go at each, `Prefer` (what the creature whose trigger it is
+attacks) first. Prefer it to `CreateTokensAttackingForEffect` with a
+fixed defender, which is a caveat ("attacks the player X attacked
+rather than a player of your choice").
 
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for
