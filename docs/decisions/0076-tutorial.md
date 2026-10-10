@@ -57,7 +57,7 @@ The ones that cannot be deduced from looking at the table:
   supposed to pay for anything.
 - **Combat is two clicks in two different places**: your creature, then the
   opponent's portrait.
-- **The rail piles do different things.** Library draws; graveyard and exile
+- **The rail piles do different things.** Library opens a menu (draw, shuffle; #2962, it drew at once before); graveyard and exile
   open the zone browser.
 
 What already exists to build on: the bot seat (ADR 0033, `internal/aiseat`, the

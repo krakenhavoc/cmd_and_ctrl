@@ -603,7 +603,7 @@ export const HANDOFF: TutorialStep = {
   body: ({ helpKey, settingsKey }) => {
     const help = helpKey ? `Press ${helpKey} for the keymap` : "The keymap is in Settings";
     const set = settingsKey ? ` and ${settingsKey} for settings` : "";
-    return `${help}${set}. Your zone piles are on the rail: library draws, graveyard and exile open a browser. Help, in the ⋯ menu here and in the header elsewhere, replays any of this.`;
+    return `${help}${set}. Your zone piles are on the rail: library opens a draw menu, graveyard and exile open a browser. Help, in the ⋯ menu here and in the header elsewhere, replays any of this.`;
   },
   teaches: ["table.more", "table.shortcuts"],
 };
