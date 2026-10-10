@@ -168,6 +168,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // whisper (#1256) — louder than the quiet choose_* / scry-family
   // tones, toned like the other permanent motions (token, cycle).
   transform: "tone-zone",
+  // ADR 0145: two cards becoming one permanent, toned like a turn-over.
+  meld: "tone-zone",
   phase_out: "tone-zone",
   phase_in: "tone-zone",
   // The game becoming day or night turns permanents over with no card

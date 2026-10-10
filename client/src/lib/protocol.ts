@@ -988,6 +988,10 @@ export type LogKind =
   // a player announces out loud, and a reader scrolling back wants
   // to know when it happened.
   | "transform"
+  // ADR 0145: two cards were melded into one permanent (CR 701.42a).
+  // `card_id` is the melded permanent and `label` names the two cards
+  // it was melded from.
+  | "meld"
   // #1199, ADR 0084: a permanent phased out or in (CR 702.26).
   // Narrated for `transform`'s reason and one more that is stronger
   // here — phasing out is not a zone change (CR 702.26d), so no
@@ -3857,6 +3861,15 @@ export interface CardView extends CastSurfaceView {
   // right half's). The face picker offers it as a third choice and the
   // cast sends `fuse: true`.
   fused?: CardFaceView;
+  // ADR 0145 (CR 712.4a): a MELDED permanent's two cards, carrier
+  // first. Everything above describes the combined back face, which
+  // is the permanent; this is what it is made of, and what its owner
+  // gets back when it leaves. Absent on every other card.
+  melded_from?: CardFaceView[];
+  // ADR 0145 (CR 712.4): a meld card's combined back face — the
+  // permanent it and its partner become when they meld. Absent on
+  // every other card and on a melded permanent.
+  melds_into?: CardFaceView;
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
