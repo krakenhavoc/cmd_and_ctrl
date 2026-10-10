@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Ribbon Snake — Creature — Snake {1}{U}{U}, 2/3:
 //
 //	"Flying
@@ -26,6 +28,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: This creature loses flying until end of turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerCombatGrant},
 			Cost:      ManaCost("{2}"),
 			AnyPlayer: true,
 			Effect:    thisLosesKeywordUntilEndOfTurn("flying", "Ribbon Snake — loses flying until end of turn"),

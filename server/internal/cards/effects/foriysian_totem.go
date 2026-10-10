@@ -39,9 +39,10 @@ func init() {
 			Label:    "Add {R}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}{R}: This artifact becomes a 4/4 red Giant artifact creature with trample until end of turn.",
-			Cost:   ManaCost("{4}{R}"),
-			Effect: foriysianTotemAnimate,
+			Label:   "{4}{R}: This artifact becomes a 4/4 red Giant artifact creature with trample until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Cost:    ManaCost("{4}{R}"),
+			Effect:  foriysianTotemAnimate,
 		}},
 		Static: []game.StaticAbility{
 			CanBlockAdditional(func(target *game.Card, _ *game.Game, source *game.Card) bool {

@@ -26,7 +26,7 @@ func init() {
 			{
 				Label:   "{W}, {T}, Exert Basri: Create a 1/1 white Cat creature token with lifelink.",
 				Cost:    Plus(ManaCost("{W}"), TapCost(), ExertThis()),
-				Purpose: game.Purpose{Tokens: 1},
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Template: TokenCard("1/1 white Cat with lifelink"), N: 1}.Apply(NewContext(g, item))
 				},

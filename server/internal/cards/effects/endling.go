@@ -22,14 +22,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{B}: This creature gains menace until end of turn.",
-				Cost:   ManaCost("{B}"),
-				Effect: thisGainsKeywordUntilEndOfTurn("menace", "Endling — menace until end of turn"),
+				Label:   "{B}: This creature gains menace until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{B}"),
+				Effect:  thisGainsKeywordUntilEndOfTurn("menace", "Endling — menace until end of turn"),
 			},
 			{
-				Label:  "{B}: This creature gains deathtouch until end of turn.",
-				Cost:   ManaCost("{B}"),
-				Effect: thisGainsKeywordUntilEndOfTurn("deathtouch", "Endling — deathtouch until end of turn"),
+				Label:   "{B}: This creature gains deathtouch until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{B}"),
+				Effect:  thisGainsKeywordUntilEndOfTurn("deathtouch", "Endling — deathtouch until end of turn"),
 			},
 			{
 				Label:   "{B}: This creature gains undying until end of turn.",

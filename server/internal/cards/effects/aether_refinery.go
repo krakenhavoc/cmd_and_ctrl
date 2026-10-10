@@ -46,7 +46,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{T}: You get {E}, then you may pay one or more {E}. If you do, create an X/X black Aetherborn creature token, where X is the amount of {E} paid this way.",
 			Cost:    TapCost(),
-			Purpose: game.Purpose{Energy: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Energy: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (GetEnergy{N: 1}).Apply(ctx); err != nil {

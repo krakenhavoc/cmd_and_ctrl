@@ -22,7 +22,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Exert this creature: Create a 1/1 white Warrior creature token with vigilance.",
 			Cost:    Plus(TapCost(), ExertThis()),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TokenCard("1/1 white Warrior with vigilance"), N: 1}.Apply(NewContext(g, item))
 			},

@@ -298,3 +298,12 @@ Three more rulings (owner, 2026-10-10, S3 batch 1):
     - Amass is `pump|makes_blocker` (Barad-dûr, Moria Scavenger).
     - Populate is `makes_blocker` (Vitu-Ghazi Guildmage, Trostani, Selesnya's Voice).
     - Currency Converter's "Treasure or 2/2" row is `makes_blocker`, since `value` cannot sit beside another answer.
+
+Two more rulings (owner, 2026-10-10, S3 batch 2):
+
+16. **"Loses a keyword", "must be blocked" and "must attack" rows are `combat_grant`.** Vintara Elephant, Zerapa Minotaur, Ribbon Snake, Anzrag and Bident of Thassa, and similar rows.
+17. **Combat edge rows.**
+    - Ingris Stingerquill is `makes_blocker|combat_grant`.
+    - Sokenzan's channel and Aether Refinery are `makes_blocker`.
+    - Goro-Goro's haste row is `combat_grant`.
+    - Dalkovan Encampment is `value`: its tokens enter tapped and attacking and can never block.

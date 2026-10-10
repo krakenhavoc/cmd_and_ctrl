@@ -28,8 +28,9 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{W}{W}, {T}: Create a 1/1 white Human creature token.",
-			Cost:  Plus(ManaCost("{2}{W}{W}"), TapCost()),
+			Label:   "{2}{W}{W}, {T}: Create a 1/1 white Human creature token.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{2}{W}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{
 					Controller: item.Controller,

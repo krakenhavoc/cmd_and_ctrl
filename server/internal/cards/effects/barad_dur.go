@@ -31,6 +31,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{X}{X}{B}, {T}: Amass Orcs X. Activate only if a creature died this turn.",
+			Purpose:   game.Purpose{Answers: game.AnswerPump | game.AnswerMakesBlocker},
 			Cost:      Plus(ManaCost("{X}{X}{B}"), TapCost()),
 			Condition: ACreatureDiedThisTurn(),
 			Effect: func(g *game.Game, item *game.StackItem) error {

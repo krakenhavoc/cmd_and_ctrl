@@ -37,8 +37,9 @@ func init() {
 			YouGainTwiceThatMuchLife("The Wind Crystal: gain twice that much life"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}{W}{W}, {T}: Creatures you control gain flying and lifelink until end of turn.",
-			Cost:  Plus(ManaCost("{4}{W}{W}"), TapCost()),
+			Label:   "{4}{W}{W}, {T}: Creatures you control gain flying and lifelink until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    Plus(ManaCost("{4}{W}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Match:    And(Creature(), YouControl()),

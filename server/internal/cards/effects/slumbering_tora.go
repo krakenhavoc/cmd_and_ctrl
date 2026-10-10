@@ -25,7 +25,8 @@ func init() {
 		Name:         "Slumbering Tora",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{2}, Discard a Spirit or Arcane card: This artifact becomes an X/X Cat artifact creature until end of turn, where X is the discarded card's mana value.",
+			Label:   "{2}, Discard a Spirit or Arcane card: This artifact becomes an X/X Cat artifact creature until end of turn, where X is the discarded card's mana value.",
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
 			Cost: Plus(ManaCost("{2}"), DiscardCardsMatching(1, "a Spirit or Arcane card", func(c game.Card) bool {
 				return c.HasSubtype("Spirit") || c.HasSubtype("Arcane")
 			})),

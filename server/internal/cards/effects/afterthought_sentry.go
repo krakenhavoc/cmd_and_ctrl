@@ -25,8 +25,9 @@ func init() {
 				TargetCardInGraveyard("up to one target card from a graveyard").WithCount(0, 1)),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}: This creature gains flying until end of turn",
-			Cost:  ManaCost("{2}"),
+			Label:   "{2}: This creature gains flying until end of turn",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    ManaCost("{2}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Target:   item.SourceCardID,

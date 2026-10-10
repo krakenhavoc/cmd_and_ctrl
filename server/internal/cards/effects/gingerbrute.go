@@ -31,9 +31,10 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{1}: This creature can't be blocked this turn except by creatures with haste.",
-				Cost:   ManaCost("{1}"),
-				Effect: rfCreatureBGingerbruteEvade,
+				Label:   "{1}: This creature can't be blocked this turn except by creatures with haste.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{1}"),
+				Effect:  rfCreatureBGingerbruteEvade,
 			},
 			{
 				Label:   "{2}, {T}, Sacrifice this creature: You gain 3 life.",

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Zerapa Minotaur — Creature — Minotaur {2}{R}{R}, 3/3:
 //
 //	"First strike
@@ -26,6 +28,7 @@ func init() {
 		PrintedKeywords: []string{"first strike"},
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: This creature loses first strike until end of turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerCombatGrant},
 			Cost:      ManaCost("{2}"),
 			AnyPlayer: true,
 			Effect:    thisLosesKeywordUntilEndOfTurn("first strike", "Zerapa Minotaur — loses first strike until end of turn"),

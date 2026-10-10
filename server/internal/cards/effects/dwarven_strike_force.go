@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Dwarven Strike Force — Creature — Dwarf Berserker {4}{R}, 4/3:
 //
 //	"Discard a card at random: This creature gains first strike and haste
@@ -17,9 +19,10 @@ func init() {
 		Name:         "Dwarven Strike Force",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "Discard a card at random: This creature gains first strike and haste until end of turn.",
-			Cost:   DiscardAtRandom(1, "a card at random"),
-			Effect: thisCreatureUntilEOT("Dwarven Strike Force — first strike and haste", 0, 0, "first strike", "haste"),
+			Label:   "Discard a card at random: This creature gains first strike and haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    DiscardAtRandom(1, "a card at random"),
+			Effect:  thisCreatureUntilEOT("Dwarven Strike Force — first strike and haste", 0, 0, "first strike", "haste"),
 		}},
 	})
 }

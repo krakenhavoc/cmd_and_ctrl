@@ -36,8 +36,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{W}{U}: Until end of turn, this land becomes a 2/3 white and blue Bird creature with flying. It's still a land.",
-			Cost:  ManaCost("{1}{W}{U}"),
+			Label:   "{1}{W}{U}: Until end of turn, this land becomes a 2/3 white and blue Bird creature with flying. It's still a land.",
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Cost:    ManaCost("{1}{W}{U}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {
 					return nil

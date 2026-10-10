@@ -37,8 +37,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with \"During your turn, this creature has first strike.\" It's still a land.",
-			Cost:  ManaCost("{U}{R}"),
+			Label:   "{U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with \"During your turn, this creature has first strike.\" It's still a land.",
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Cost:    ManaCost("{U}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {
 					return nil

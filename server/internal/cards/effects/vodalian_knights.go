@@ -35,8 +35,9 @@ func init() {
 			WhenYouControlNo(q, "Vodalian Knights — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{U}: This creature gains flying until end of turn.",
-			Cost:  ManaCost("{U}"),
+			Label:   "{U}: This creature gains flying until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    ManaCost("{U}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{Target: item.SourceCardID, Keywords: []string{"flying"},
 					Label: "Vodalian Knights — flying"}.Apply(NewContext(g, item))

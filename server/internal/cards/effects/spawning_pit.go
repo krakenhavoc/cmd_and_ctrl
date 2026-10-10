@@ -46,8 +46,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{1}, Remove two charge counters from this artifact: Create a 2/2 colorless Spawn artifact creature token",
-				Cost:  Plus(ManaCost("{1}"), RemoveCountersFromThis(game.CounterCharge, 2)),
+				Label:   "{1}, Remove two charge counters from this artifact: Create a 2/2 colorless Spawn artifact creature token",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(ManaCost("{1}"), RemoveCountersFromThis(game.CounterCharge, 2)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{
 						Controller: item.Controller,
