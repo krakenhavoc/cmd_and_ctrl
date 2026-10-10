@@ -3,16 +3,17 @@ package deck
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 )
 
-// partner_test.go — "Partner with [name]" as a deck-construction
-// permission (#2142, CR 702.124j): "You may designate two legendary
-// cards as your commander rather than one if each has a 'partner with
-// [name]' ability with the other's name."
+// partner_test.go — the partner abilities as deck-construction
+// permissions (CR 702.124): "Partner with [name]" (#2142, CR
+// 702.124j), and partner, partner—[text], choose a Background and
+// Doctor's companion (#2874, CR 702.124h, i, k, m).
 
 // frodoCard and samCard carry their Scryfall oracle text: Frodo's
 // printing has no reminder text, Sam's has it.
@@ -197,19 +198,240 @@ func TestPartnerPairChecksBothCommanders(t *testing.T) {
 	}
 }
 
-// The other partner abilities are unchanged by #2142: plain partner and
-// partner—[text] are still refused at Resolve, and a Background pairing
-// is two commanders that are not a partner-with pair.
-func TestOtherPartnerAbilitiesAreStillRefused(t *testing.T) {
-	friends := basicLegal("Friend", "Legendary Creature — Human", "W")
-	friends.OracleText = "Partner—Friends forever (You can have two commanders if both have friends forever.)"
-	idx := indexWith(friends)
-	if _, err := Resolve(idx, "t", []Entry{{Name: "Friend", Count: 1, IsCommander: true}}); !errors.Is(err, ErrUnsupportedMechanic) {
-		t.Errorf("friends forever: got %v, want ErrUnsupportedMechanic", err)
+// karlachCard, agentCard and the rest carry their Scryfall oracle
+// text and type lines (#2874, CR 702.124k): Karlach chooses a
+// Background, Agent of the Iron Throne is one.
+func karlachCard() cards.Card {
+	c := basicLegal("Karlach, Fury of Avernus", "Legendary Creature — Tiefling Barbarian", "R")
+	c.OracleText = "Whenever you attack, if it's the first combat phase of the turn, untap all attacking creatures. They gain first strike until end of turn. After this phase, there is an additional combat phase.\nChoose a Background (You can have a Background as a second commander.)"
+	return c
+}
+
+func agentCard() cards.Card {
+	c := basicLegal("Agent of the Iron Throne", "Legendary Enchantment — Background", "B")
+	c.OracleText = "Commander creatures you own have \"Whenever an artifact or creature you control is put into a graveyard from the battlefield, each opponent loses 1 life.\""
+	return c
+}
+
+func facelessOneCard() cards.Card {
+	c := basicLegal("Faceless One", "Legendary Enchantment Creature — Background", "W", "U", "B", "R", "G")
+	c.OracleText = "If Faceless One is your commander, choose a color before the game begins. Faceless One is the chosen color.\nChoose a Background (You can have a Background as a second commander.)"
+	return c
+}
+
+func plainPartnerCard(name, color string) cards.Card {
+	c := basicLegal(name, "Legendary Creature — Human", color)
+	c.OracleText = "Flying\nPartner (You can have two commanders if both have partner.)"
+	return c
+}
+
+func friendsForeverCard(name, color string) cards.Card {
+	c := basicLegal(name, "Legendary Creature — Human", color)
+	c.OracleText = "Vigilance\nPartner—Friends forever (You can have two commanders if both have this ability.)"
+	return c
+}
+
+func companionCard() cards.Card {
+	c := basicLegal("Nardole, Resourceful Cyborg", "Legendary Artifact Creature — Scientist", "U")
+	c.OracleText = "Undying\n{T}: Add {U} for each counter on Nardole. Spend this mana only to cast noncreature spells.\nDoctor's companion (You can have two commanders if the other is the Doctor.)"
+	return c
+}
+
+func doctorCard() cards.Card {
+	return basicLegal("The Second Doctor", "Legendary Creature — Time Lord Doctor", "W")
+}
+
+func TestPartnerAbilitiesReadEveryKeywordLine(t *testing.T) {
+	cases := map[string][]partnerAbility{
+		karlachCard().OracleText:                {{kind: chooseABackground}},
+		companionCard().OracleText:              {{kind: doctorsCompanion}},
+		"Doctor’s companion":                    {{kind: doctorsCompanion}},
+		plainPartnerCard("x", "W").OracleText:   {{kind: partnerPlain}},
+		friendsForeverCard("x", "W").OracleText: {{kind: partnerText, arg: "Friends forever"}},
+		"Partner—Survivors":                     {{kind: partnerText, arg: "Survivors"}},
+		samCard().OracleText:                    {{kind: partnerWith, arg: "Frodo, Adventurous Hobbit"}},
+		"Choose target creature with partner.\nThe partner keyword is cool.": nil,
+		agentCard().OracleText: nil,
+	}
+	for text, want := range cases {
+		got := partnerAbilitiesIn(text)
+		if !slices.Equal(got, want) {
+			t.Errorf("%q: got %+v, want %+v", text, got, want)
+		}
+	}
+}
+
+// Karlach and a Background are a legal pair, Resolve puts the
+// Background second whichever order the list gives them, and the
+// deck's colour identity is the pair's union (CR 702.124c).
+func TestChooseABackgroundPairIsAllowed(t *testing.T) {
+	idx := indexWith(karlachCard(), agentCard())
+	list, err := Resolve(idx, "t", []Entry{
+		{Name: "Agent of the Iron Throne", Count: 1, IsCommander: true},
+		{Name: "Karlach, Fury of Avernus", Count: 1, IsCommander: true},
+	})
+	if err != nil {
+		t.Fatalf("Resolve refused the pair: %v", err)
+	}
+	if got := commanderNames(list); !slices.Equal(got, []string{"Karlach, Fury of Avernus", "Agent of the Iron Throne"}) {
+		t.Fatalf("commanders %q, want Karlach then the Background", got)
+	}
+	d := pairDeck(karlachCard(), agentCard())
+	for i := range d.Mainboard {
+		switch {
+		case i == 0:
+			d.Mainboard[i] = basicLegal("Black Spell", "Instant", "B")
+		case i == 1:
+			d.Mainboard[i] = basicLegal("Rakdos Spell", "Instant", "B", "R")
+		case i < 38:
+			d.Mainboard[i] = basicLegal(fmt.Sprintf("Red Spell %d", i), "Instant", "R")
+		default:
+			d.Mainboard[i] = basicLegal("Mountain", "Basic Land — Mountain", "R")
+		}
+	}
+	if err := Validate(d); err != nil {
+		t.Fatalf("Validate refused Karlach and a Background: %v", err)
+	}
+	d.Mainboard[2] = basicLegal("White Spell", "Instant", "W")
+	vs := violationsOf(t, Validate(d))
+	if len(vs) != 1 || vs[0].Code != CodeColorIdentity || vs[0].Card != "White Spell" {
+		t.Errorf("violations %+v, want one colour identity violation for White Spell", vs)
+	}
+}
+
+func commanderNames(l *List) []string {
+	out := make([]string, 0, len(l.Commanders))
+	for _, c := range l.Commanders {
+		out = append(out, c.Name)
+	}
+	return out
+}
+
+// A Background is never a commander on its own (CR 702.124k), unless
+// it has Choose a Background itself (Faceless One), and Faceless One
+// may choose another Background.
+func TestBackgroundAloneIsNotACommander(t *testing.T) {
+	list := pairDeck(karlachCard(), agentCard())
+	list.Commanders = []cards.Card{agentCard()}
+	list.Mainboard = append(list.Mainboard, basicLegal("Plains", "Basic Land — Plains", "W"))
+	vs := violationsOf(t, Validate(list))
+	found := false
+	for _, v := range vs {
+		if v.Code == CodeNotLegalCommander && v.Card == "Agent of the Iron Throne" {
+			found = true
+		}
+	}
+	if !found {
+		t.Errorf("a lone Background passed: %+v", vs)
 	}
 
-	chooser := basicLegal("Chooser", "Legendary Creature — Human", "W")
-	chooser.OracleText = "Choose a Background (You can have a Background as a second commander.)"
-	bg := basicLegal("Some Background", "Legendary Enchantment — Background", "W")
-	assertHasViolation(t, Validate(pairDeck(chooser, bg)), CodeTooManyCommanders)
+	list.Commanders = []cards.Card{facelessOneCard()}
+	if err := Validate(list); err != nil {
+		t.Errorf("Faceless One alone: %v", err)
+	}
+	if err := Validate(pairDeck(facelessOneCard(), agentCard())); err != nil {
+		t.Errorf("Faceless One and a Background: %v", err)
+	}
+	// A Choose a Background commander alone is an ordinary commander.
+	list.Commanders = []cards.Card{karlachCard()}
+	list.Mainboard = pairDeck(karlachCard(), agentCard()).Mainboard
+	list.Mainboard = append(list.Mainboard, basicLegal("Plains", "Basic Land — Plains", "W"))
+	for i := range list.Mainboard[:38] {
+		list.Mainboard[i] = basicLegal(fmt.Sprintf("Red Spell %d", i), "Instant", "R")
+	}
+	for i := 38; i < len(list.Mainboard); i++ {
+		list.Mainboard[i] = basicLegal("Mountain", "Basic Land — Mountain", "R")
+	}
+	if err := Validate(list); err != nil {
+		t.Errorf("Karlach alone: %v", err)
+	}
+}
+
+// Choose a Background pairs only with a Background, and a Background
+// only with a Choose a Background commander. The violation names the
+// card that does not meet the other's requirement.
+func TestChooseABackgroundRefusesOtherPairs(t *testing.T) {
+	notBackground := basicLegal("Some Legend", "Legendary Creature — Human", "R")
+	nonLegendaryBG := basicLegal("Odd Background", "Enchantment — Background", "R")
+	twin := agentCard()
+	twin.Name = "Another Background"
+	cases := []struct {
+		a, b    cards.Card
+		culprit string
+	}{
+		{karlachCard(), notBackground, "Some Legend"},
+		{agentCard(), notBackground, "Some Legend"},
+		{agentCard(), twin, "Another Background"},
+		{karlachCard(), nonLegendaryBG, "Odd Background"},
+		{karlachCard(), plainPartnerCard("Partner Guy", "R"), "Partner Guy"},
+		{agentCard(), plainPartnerCard("Partner Guy", "R"), "Partner Guy"},
+	}
+	for _, tc := range cases {
+		vs := violationsOf(t, Validate(pairDeck(tc.a, tc.b)))
+		found := false
+		for _, v := range vs {
+			if v.Code == CodeInvalidPartnerPair && v.Card == tc.culprit {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("%s + %s: want %s naming %s, got %+v", tc.a.Name, tc.b.Name, CodeInvalidPartnerPair, tc.culprit, vs)
+		}
+	}
+}
+
+// Plain partner: both have it (CR 702.124h). Partner—[text]: both have
+// the same one (CR 702.124i). Different partner abilities never
+// combine (CR 702.124f).
+func TestPartnerAndPartnerTextPairs(t *testing.T) {
+	if err := Validate(pairDeck(plainPartnerCard("Thrasios", "W"), plainPartnerCard("Tymna", "W"))); err != nil {
+		t.Errorf("two partners: %v", err)
+	}
+	if err := Validate(pairDeck(friendsForeverCard("Will", "W"), friendsForeverCard("Mike", "W"))); err != nil {
+		t.Errorf("two friends forever: %v", err)
+	}
+	survivor := basicLegal("Abby", "Legendary Creature — Human Survivor", "W")
+	survivor.OracleText = "Partner—Survivors"
+	refused := [][2]cards.Card{
+		{friendsForeverCard("Will", "W"), survivor},
+		{plainPartnerCard("Thrasios", "W"), friendsForeverCard("Will", "W")},
+		{plainPartnerCard("Thrasios", "W"), frodoCard()},
+		{plainPartnerCard("Thrasios", "W"), basicLegal("No Partner", "Legendary Creature — Human", "W")},
+	}
+	for _, pair := range refused {
+		assertHasViolation(t, Validate(pairDeck(pair[0], pair[1])), CodeInvalidPartnerPair)
+	}
+	// Resolve no longer refuses a partner commander.
+	idx := indexWith(plainPartnerCard("Thrasios", "W"), friendsForeverCard("Will", "W"))
+	if _, err := Resolve(idx, "t", []Entry{{Name: "Thrasios", Count: 1, IsCommander: true}, {Name: "Will", Count: 1, IsCommander: true}}); err != nil {
+		t.Errorf("Resolve: %v", err)
+	}
+}
+
+// Doctor's companion: two legendary creature cards, one with the
+// ability and the other a Time Lord Doctor with no other creature types
+// (CR 702.124m).
+func TestDoctorsCompanionPairsWithALoneDoctor(t *testing.T) {
+	if err := Validate(pairDeck(doctorCard(), companionCard())); err != nil {
+		t.Errorf("the Doctor and a companion: %v", err)
+	}
+	notOnlyDoctor := basicLegal("Romana", "Legendary Creature — Time Lord Scientist", "W")
+	twoCompanions := companionCard()
+	twoCompanions.Name = "Another Companion"
+	for _, other := range []cards.Card{notOnlyDoctor, twoCompanions, plainPartnerCard("Partner Guy", "W")} {
+		vs := violationsOf(t, Validate(pairDeck(companionCard(), other)))
+		found := false
+		for _, v := range vs {
+			if v.Code == CodeInvalidPartnerPair && v.Card == other.Name {
+				found = true
+			}
+		}
+		if !found {
+			t.Errorf("companion + %s: want %s naming it, got %+v", other.Name, CodeInvalidPartnerPair, vs)
+		}
+	}
+	// Two Doctors are not a pair: the ability is the companion's.
+	other := doctorCard()
+	other.Name = "The War Doctor"
+	assertHasViolation(t, Validate(pairDeck(doctorCard(), other)), CodeTooManyCommanders)
 }

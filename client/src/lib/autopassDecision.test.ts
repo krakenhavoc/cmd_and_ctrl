@@ -2,9 +2,10 @@ import { describe, it, expect } from "vitest";
 
 import { autopassDecision, isBluff, type AutopassGates } from "./autopassDecision";
 import { ownsEveryStackItem } from "./holdPriority";
-import type { GameView, LegalMoveView, PlayerView } from "./protocol";
-import { DEFAULT_RESPONSES, hasPlay, hasResponse } from "./responseWindow";
+import type { CardView, GameView, LegalMoveView, PlayerView, StackItemView } from "./protocol";
+import { DEFAULT_RESPONSES, hasPlay, hasResponse, keyWindow } from "./responseWindow";
 import { noteStackSeen, stackHoldRemainingMs } from "./stackHold";
+import { stackEmpty } from "./timing";
 
 // A viewer holding priority on an empty stack at their opponent's
 // upkeep with the default settings: nothing pinned, nothing owed, the
@@ -31,6 +32,7 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     ownsEveryStackItem: false,
     stepStop: undefined,
     smartAutoPass: true,
+    stepStopsOnlyWhenCanAct: true,
     alwaysStopOpponentStack: false,
     hasResponse: false,
     hasPlay: false,
@@ -163,10 +165,10 @@ describe("autopassDecision — #599: the declare-attackers review window", () =>
     expect(autopassDecision(declareAttackers({ autopassToggle: true }))).toBe("pass");
   });
 
-  it("smartAutoPass off keeps a stopped declare-attackers window", () => {
-    expect(autopassDecision(declareAttackers({ smartAutoPass: false, hasPlay: false }))).toBe(
-      "hold",
-    );
+  it("stop-only-when-I-can-act off keeps a stopped declare-attackers window", () => {
+    expect(
+      autopassDecision(declareAttackers({ stepStopsOnlyWhenCanAct: false, hasPlay: false })),
+    ).toBe("hold");
   });
 });
 
@@ -258,11 +260,11 @@ describe("autopassDecision — stop if the engine may be wrong", () => {
     expect(autopassDecision(ownMain({ engineMayMissMana: true, stepStop: false }))).toBe("pass");
   });
 
-  it("changes nothing with smart autopass off: the stop already holds", () => {
-    expect(autopassDecision(ownMain({ smartAutoPass: false }))).toBe("hold");
-    expect(autopassDecision(ownMain({ smartAutoPass: false, engineMayMissMana: true }))).toBe(
-      "hold",
-    );
+  it("changes nothing with stop-only-when-I-can-act off: the stop already holds", () => {
+    expect(autopassDecision(ownMain({ stepStopsOnlyWhenCanAct: false }))).toBe("hold");
+    expect(
+      autopassDecision(ownMain({ stepStopsOnlyWhenCanAct: false, engineMayMissMana: true })),
+    ).toBe("hold");
   });
 
   it("does not out-vote the autopass toggle or the safety belt", () => {
@@ -318,9 +320,18 @@ describe("autopassDecision — the conventional path", () => {
     expect(autopassDecision(gates({ stepStop: true, hasPlay: false }))).toBe("pass");
   });
 
-  it("holds a stopped step with smartAutoPass off", () => {
+  it("holds a stopped step with stop-only-when-I-can-act off", () => {
+    expect(
+      autopassDecision(gates({ stepStop: true, stepStopsOnlyWhenCanAct: false, hasPlay: false })),
+    ).toBe("hold");
+  });
+
+  // #2871: the setting is its own now. Smart auto-pass off (every
+  // opponent stack item stops) leaves a ticked step skipping when there
+  // is nothing to do, and the other way round.
+  it("skips an empty ticked step with smart auto-pass off", () => {
     expect(autopassDecision(gates({ stepStop: true, smartAutoPass: false, hasPlay: false }))).toBe(
-      "hold",
+      "pass",
     );
   });
 
@@ -617,5 +628,244 @@ describe("autopassDecision — #2853: an untargeted value ability is not a respo
 
   it("the hold toggle holds it whatever the categories say", () => {
     expect(autopassDecision({ ...gatesFor(frame(valueBoard)), holdPriority: true })).toBe("hold");
+  });
+});
+
+// #2871: a ticked step stops only when the viewer can do something
+// there, and a combat ability (crew, a manland, a granted keyword) is
+// something to do in combat and nowhere else. These run the frame
+// through the same helpers Game.svelte does, with the default "Stop
+// for" categories.
+describe("autopassDecision — #2871: stop at a ticked step only when you can act", () => {
+  const me = "p0";
+  const seatOf = (id: string, seat: number): PlayerView => ({
+    id,
+    name: id,
+    seat,
+    life: 40,
+    library: { kind: "library", owner: id, count: 0, cards: [] },
+    hand: { kind: "hand", owner: id, count: 0, cards: [] },
+    graveyard: { kind: "graveyard", owner: id, count: 0, cards: [] },
+    command: { kind: "command", owner: id, count: 0, cards: [] },
+    commander_damage: {},
+    life_history: [],
+  });
+  const mv = (kind: LegalMoveView["kind"], extras: Partial<LegalMoveView> = {}): LegalMoveView => ({
+    type: "x",
+    player: me,
+    kind,
+    label: kind,
+    ...extras,
+  });
+  // Lands, a mana rock and a value ability: nothing to do off your own
+  // main phase.
+  const quiet: LegalMoveView[] = [
+    mv("pass"),
+    mv("mana", { source: "forest" }),
+    mv("mana", { source: "mind-stone" }),
+    mv("activate", { source: "mind-stone" }),
+  ];
+  const instant = mv("cast", { source: "instant" });
+  const crew = mv("activate", { source: "copter", combat_interacts: true });
+  const manland = mv("activate", { source: "anchorage", combat_interacts: true });
+  const castle = mv("activate", {
+    source: "castle-ardenvale",
+    combat_interacts: true,
+    combat_defender_only: true,
+  });
+
+  interface Frame {
+    step: string;
+    active: number;
+    moves: LegalMoveView[];
+    stack?: StackItemView[];
+    attacking?: boolean;
+    // Whom the attacker attacks; the viewer by default.
+    attacked?: string;
+  }
+  const frame = (f: Frame): GameView => {
+    const attackers: CardView[] = f.attacking
+      ? [
+          {
+            instance_id: "attacker",
+            name: "attacker",
+            owner: "p1",
+            controller: "p1",
+            type_line: "Creature",
+            attacking_target: f.attacked ?? me,
+            defending_player: f.attacked ?? me,
+          },
+        ]
+      : [];
+    return {
+      id: "g",
+      state: "active",
+      seats: [seatOf("p0", 0), seatOf("p1", 1)],
+      battlefield: { kind: "battlefield", owner: "", count: attackers.length, cards: attackers },
+      stack: { kind: "stack", owner: "", count: 0, cards: [] },
+      exile: { kind: "exile", owner: "", count: 0, cards: [] },
+      turn: {
+        seq: 1,
+        number: 1,
+        active_seat: f.active,
+        priority_holder: 0,
+        phase: "x",
+        step: f.step,
+      },
+      mulligans_open: false,
+      stack_items: f.stack ?? [],
+      split_second_active: false,
+      legal_moves: f.moves,
+    };
+  };
+  const decide = (view: GameView, ticked: boolean, over: Partial<AutopassGates> = {}) => {
+    const kw = keyWindow(view, me);
+    return autopassDecision(
+      gates({
+        step: view.turn.step,
+        viewerIsActive: view.turn.active_seat === 0,
+        stackEmpty: stackEmpty(view),
+        ownsEveryStackItem: ownsEveryStackItem(view, me),
+        stepStop: ticked,
+        hasResponse: hasResponse(view, me, DEFAULT_RESPONSES),
+        hasPlay: hasPlay(view, me, DEFAULT_RESPONSES),
+        combatWindow: kw.combat,
+        oppEndWindow: kw.oppEnd,
+        ...over,
+      }),
+    );
+  };
+
+  it("a ticked upkeep with nothing to do passes; with an instant in hand it stops", () => {
+    for (const active of [0, 1]) {
+      expect(decide(frame({ step: "upkeep", active, moves: quiet }), true)).toBe("pass");
+      expect(decide(frame({ step: "upkeep", active, moves: [...quiet, instant] }), true)).toBe(
+        "hold",
+      );
+    }
+  });
+
+  it("a ticked upkeep stops every time with the setting off", () => {
+    const view = frame({ step: "upkeep", active: 1, moves: quiet });
+    expect(decide(view, true, { stepStopsOnlyWhenCanAct: false })).toBe("hold");
+  });
+
+  it("a ticked own main phase stops for any play: a land, a sorcery, a value ability", () => {
+    for (const play of [
+      mv("land", { source: "land-in-hand" }),
+      mv("cast", { source: "sorcery" }),
+      mv("activate", { source: "mind-stone" }),
+      crew,
+    ]) {
+      const view = frame({ step: "precombat_main", active: 0, moves: [mv("pass"), play] });
+      expect(decide(view, true), play.source).toBe("hold");
+      const post = frame({ step: "postcombat_main", active: 0, moves: [mv("pass"), play] });
+      expect(decide(post, true), play.source).toBe("hold");
+    }
+  });
+
+  it("a ticked own main phase with only mana passes", () => {
+    const view = frame({
+      step: "postcombat_main",
+      active: 0,
+      moves: [mv("pass"), mv("mana", { source: "forest" })],
+    });
+    expect(decide(view, true)).toBe("pass");
+  });
+
+  it("a crew or a manland stops you at declare blockers", () => {
+    for (const ability of [crew, manland]) {
+      const view = frame({
+        step: "declare_blockers",
+        active: 1,
+        moves: [...quiet, ability],
+        attacking: true,
+      });
+      // Ticked (the default) and unticked: combat is a key window.
+      expect(decide(view, true), ability.source).toBe("hold");
+      expect(decide(view, false), ability.source).toBe("hold");
+    }
+    // Without one, the same window passes.
+    const none = frame({ step: "declare_blockers", active: 1, moves: quiet, attacking: true });
+    expect(decide(none, true)).toBe("pass");
+  });
+
+  it("a crew or a manland stops you at beginning of combat when the step is ticked", () => {
+    const view = frame({ step: "begin_combat", active: 1, moves: [...quiet, manland] });
+    expect(decide(view, true)).toBe("hold");
+    expect(decide(view, false)).toBe("pass");
+  });
+
+  it("a crew or a manland does not stop you for an opponent's main-phase sorcery", () => {
+    const sorcery: StackItemView = {
+      id: "s",
+      kind: "spell",
+      controller: "p1",
+      owner: "p1",
+      source_card_id: "c",
+      label: "Divination",
+    };
+    for (const ability of [crew, manland]) {
+      const view = frame({
+        step: "precombat_main",
+        active: 1,
+        moves: [...quiet, ability],
+        stack: [sorcery],
+      });
+      expect(decide(view, true), ability.source).toBe("pass");
+    }
+  });
+
+  // Owner answer: a creature-token maker counts only for a player who
+  // is being attacked; crew and manlands count for everyone.
+  it("a token maker stops you when you are attacked, not when another player is", () => {
+    for (const step of ["declare_attackers", "declare_blockers"]) {
+      const me0 = frame({ step, active: 1, moves: [...quiet, castle], attacking: true });
+      expect(decide(me0, false), step).toBe("hold");
+      const other = frame({
+        step,
+        active: 1,
+        moves: [...quiet, castle],
+        attacking: true,
+        attacked: "p2",
+      });
+      expect(decide(other, false), step).toBe("pass");
+      expect(decide(other, true), step).toBe("pass");
+    }
+    // Before attackers are declared nobody is defending yet.
+    expect(
+      decide(frame({ step: "begin_combat", active: 1, moves: [...quiet, castle] }), true),
+    ).toBe("pass");
+  });
+
+  it("crew and manlands stop you whoever is attacked", () => {
+    for (const ability of [crew, manland]) {
+      const other = frame({
+        step: "declare_attackers",
+        active: 1,
+        moves: [...quiet, ability],
+        attacking: true,
+        attacked: "p2",
+      });
+      expect(decide(other, false), ability.source).toBe("hold");
+    }
+  });
+
+  it("an attack trigger on the stack is a combat window", () => {
+    const trigger: StackItemView = {
+      id: "t",
+      kind: "triggered",
+      controller: "p1",
+      owner: "p1",
+      source_card_id: "c",
+      label: "Whenever this creature attacks, create a 1/1 token.",
+    };
+    const view = frame({
+      step: "postcombat_main",
+      active: 1,
+      moves: [...quiet, crew],
+      stack: [trigger],
+    });
+    expect(decide(view, false)).toBe("hold");
   });
 });

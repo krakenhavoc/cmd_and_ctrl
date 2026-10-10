@@ -46,7 +46,14 @@
   import DockRequest from "./DockRequest.svelte";
   import DockSheet from "./DockSheet.svelte";
   import { confirmAction, type DockAction } from "../../dock";
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
+  import {
+    boardChoicePick,
+    boardPickEligible,
+    publishBoardPick,
+    sameSelection,
+    selectionLegal,
+  } from "../../boardChoicePick";
   import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
   import { get } from "svelte/store";
   import { settings, updateSettings } from "../../settings";
@@ -370,7 +377,43 @@
         ? (active?.choose_min ?? 0)
         : (active?.count ?? 0),
   );
-  const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
+  const canSubmit = $derived(selectionLegal(selected.size, pickMin, pickMax));
+
+  // #2880: the grid's permanents are picked on the board too. While the
+  // sheet is up and some of its options are permanents on the
+  // battlefield, the board highlights them and a click there toggles the
+  // same `selected` set this grid reads (lib/boardChoicePick.ts). The
+  // count and the dock's confirm follow it, and the answer is the one
+  // `submit` sends.
+  const boardEligible = $derived(
+    open && docked && !inline ? boardPickEligible(active, snap) : null,
+  );
+  // This component's selection, out to the board.
+  $effect(() => {
+    const c = active;
+    const eligible = boardEligible;
+    if (!c || !eligible) {
+      publishBoardPick(null);
+      return;
+    }
+    publishBoardPick({
+      choiceID: c.id,
+      eligible,
+      selected: new Set(selected),
+      min: pickMin,
+      max: pickMax,
+    });
+  });
+  // A pick made on the board, back into this selection. `selected` is
+  // read untracked: only a change in the store runs this, so a click in
+  // the grid is never undone by a store that has not caught up yet.
+  $effect(() => {
+    const s = $boardChoicePick;
+    if (!s || !active || s.choiceID !== active.id) return;
+    const mine = untrack(() => selected);
+    if (!sameSelection(s.selected, mine)) selected = new Set(s.selected);
+  });
+  onDestroy(() => publishBoardPick(null));
 
   // ADR 0116: a revealed-hand pick shows the whole hand, but only the
   // cards the card lets you choose ("a nonland card") can be picked.
@@ -1589,7 +1632,7 @@
                                   isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
                                 ];
     const verb = isSacrifice
-      ? "Sacrifice"
+      ? L.sacrifice
       : isSearch
         ? none
           ? "Fail to find"
@@ -1609,7 +1652,7 @@
                   ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
                   : "Discard"
                 : isEntrySacrifice
-                  ? "Sacrifice"
+                  ? L.sacrifice
                   : isChooseSource
                     ? "Choose this source"
                     : isProliferate
@@ -1627,7 +1670,9 @@
       label,
       src,
       count: `${selected.size} / ${pickMax} selected`,
-      width: 720,
+      // #2880: with the permanents pickable on the board, a narrower
+      // sheet leaves more of the board in view.
+      width: boardEligible ? 520 : 720,
       // An empty pick where empty is legal is a decline: no Enter.
       primary: confirmAction(verb, submit, {
         disabled: !canSubmit,
@@ -2347,6 +2392,10 @@
             /^\d+ of these, each /,
             "",
           )} are greyed out.
+        {/if}
+        {#if boardEligible}
+          Pick here, or click the highlighted permanents on the board — fold this sheet down to see
+          them all.
         {/if}
       </p>
       <div class="card-grid">

@@ -877,6 +877,23 @@
                   </label>
                 {/each}
               </div>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.stepStopsOnlyWhenCanAct}
+                  onchange={(e) =>
+                    change("gameplay", "stepStopsOnlyWhenCanAct", e.currentTarget.checked)}
+                />
+                Only stop at my ticked steps when I can do something
+                {#if isFresh("gameplay.stepStopsOnlyWhenCanAct")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                A ticked step passes when you have nothing to do there, so &ldquo;stop on
+                upkeep&rdquo; means &ldquo;stop if I have something to do,&rdquo; not &ldquo;stop
+                every time.&rdquo; On your own main phase anything you can play counts, a land
+                included. Anywhere else it takes a move from the &ldquo;Stop for&rdquo; list below.
+                Turn this off to stop at every ticked step.
+              </p>
             </fieldset>
 
             <label>
@@ -889,16 +906,20 @@
               {#if isFresh("gameplay.smartAutoPass")}<span class="saved">✓ saved</span>{/if}
             </label>
             <p class="help">
-              Two things. A ticked step passes when you have nothing to play there, so &ldquo;stop
-              on upkeep&rdquo; means &ldquo;stop if I have something to do,&rdquo; not &ldquo;stop
-              every time.&rdquo; And outside the ticked steps, it stops you in the key windows
-              &mdash; an opponent's spell or ability on the stack, declared attackers or blockers,
-              an opponent's end step &mdash; only when you hold a response from the list below. Mana
-              abilities and land drops never count as a response. Turn this off to stop on every
-              ticked step and every opponent stack item.
+              Outside the ticked steps, it stops you in the key windows &mdash; an opponent's spell
+              or ability on the stack, declared attackers or blockers, an opponent's end step
+              &mdash; only when you hold a response from the list below. Mana abilities and land
+              drops never count as a response. In combat (beginning of combat, attackers and
+              blockers) crewing a Vehicle, turning a land into a creature, or giving a creature
+              flying, menace or an extra block counts too. Turn this off to stop on every opponent
+              stack item.
             </p>
 
-            <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
+            <fieldset
+              class="step-stops"
+              disabled={!$settings.gameplay.smartAutoPass &&
+                !$settings.gameplay.stepStopsOnlyWhenCanAct}
+            >
               <legend>Stop for</legend>
               <label>
                 <input

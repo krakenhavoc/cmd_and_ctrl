@@ -34,6 +34,7 @@
     ZoneView,
   } from "../../protocol";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
+  import { boardChoicePick, isBoardPickable, pickOnBoard } from "../../boardChoicePick";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
@@ -2856,6 +2857,12 @@
   // legal target for that prompt; the caller stops default
   // processing (tap-toggle) in that case.
   function handleTargetCard(card: CardView): boolean {
+    // #2880: a pending choice whose permanents are picked on the board.
+    // A click toggles an offered permanent in the sheet's selection, and
+    // a click on any other permanent is swallowed while the game waits.
+    // A card in a zone browser (a graveyard) is not a permanent.
+    const onBattlefield = view.battlefield.cards.some((c) => c.instance_id === card.instance_id);
+    if (onBattlefield && pickOnBoard(card.instance_id)) return true;
     const state = $targeting;
     if (!state) return false;
     // S20: with a server legal set, membership decides; free-form
@@ -2889,7 +2896,9 @@
       {
         isSelf: pos === "self",
         isActiveSeat: seat.id === activeSeatID,
-        controlsLegalTarget: seatControlsLegalTarget($targeting, seat.id, controlled),
+        controlsLegalTarget:
+          seatControlsLegalTarget($targeting, seat.id, controlled) ||
+          controlled.some((c) => isBoardPickable($boardChoicePick, c.instance_id)),
         hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
         isLegalDefender: defenderIDs.has(seat.id),
       },

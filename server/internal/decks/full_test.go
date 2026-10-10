@@ -23,10 +23,6 @@ var minorCaveats = map[string]string{
 	// Landfall always makes the Treasure, which is what a ramp deck
 	// would pick.
 	"Tireless Provisioner": "the Food option is never offered",
-	// Partner is not modelled, so neither can be a commander; both are
-	// mainboard creatures here.
-	"Malcolm, Keen-Eyed Navigator": "partner is not supported",
-	"Breeches, Brazen Plunderer":   "partner is not supported",
 	// Dash is unavailable; the one-drop's combat trigger is what the
 	// Izzet deck plays it for.
 	"Ragavan, Nimble Pilferer": "dash is not available",

@@ -3206,6 +3206,14 @@ var items = []Item{
 		Examples: []string{"Muldrotha, the Gravetide", "Aminatou's Augury"},
 	},
 	{
+		Slug: "choose-a-background", Name: "Choose a Background and the other partner pairings", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "A commander with Choose a Background and a Background enchantment as your two commanders, whose \"commander creatures you own have\" abilities work, and the same pairing for partner, partner—Friends forever and the other partner—[text] abilities, and Doctor's companion.",
+		Rules:    []string{"702.124h", "702.124i", "702.124k", "702.124m"},
+		ADR:      "0144-choose-a-background-and-the-partner-pairings.md",
+		Printed:  `(?i)\bchoose a background\b|\bcommander creatures you own\b`,
+		Examples: []string{"Karlach, Fury of Avernus", "Agent of the Iron Throne", "Jaheira, Friend of the Forest"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

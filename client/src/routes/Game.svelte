@@ -527,6 +527,7 @@
       // to see damage most wants.
       stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
       smartAutoPass: gp.smartAutoPass,
+      stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
       alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),

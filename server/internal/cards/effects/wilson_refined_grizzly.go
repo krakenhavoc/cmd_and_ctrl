@@ -38,25 +38,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // later countered, and it does nothing about the Bear's own
 // controller targeting it.
 //
-// # Declared simplification (weaker than printed): no Background
+// # Choose a Background
 //
-// "Choose a Background" is a deckbuilding permission — it lets the
-// Bear share the command zone with a Background enchantment as a
-// second commander (CR 702.124b's partner family). The engine has one
-// commander slot and no partner machinery, so the Bear is a
-// single commander and a Background cannot ride along with it.
+// A deck-construction rule (CR 702.124k): the Bear may share the
+// command zone with a Background enchantment as a second commander.
+// internal/deck reads it off the oracle text (#2874), so nothing here
+// implements it.
 //
-// That is strictly LESS than the card offers: the deck loses a second
-// command-zone card and whatever colours it would have added, and
-// nothing about it lets a deck do something paper would not. It costs
-// the Bear nothing on the battlefield — every printed ability above
-// works — it only costs the deck the second commander.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "d2766fd7-5cf9-4037-9f34-9ae3982c613a",
 		Name:            "Wilson, Refined Grizzly",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The Background half isn't available — Wilson can be your commander, but not alongside a Background as a second one."},
+		Completeness:    CompletenessFull,
 		CantBeCountered: true,
 		PrintedKeywords: []string{"reach", "vigilance", "trample"},
 		Triggered: []game.TriggeredAbility{

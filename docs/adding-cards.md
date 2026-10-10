@@ -7728,10 +7728,41 @@ their library for a card with that name, revealed into their hand, then
 shuffles. Declining searches and shuffles nothing; they may also search
 and fail to find (CR 701.23b). Write it for a nonlegendary card too
 (Ley Weaver): the trigger works there, and only the pairing needs a
-legendary card. Plain partner, partner—[text], choose a Background and
-Doctor's companion are not supported: the deck importer still refuses
-them, and a card whose only gap is one of them is fine to add, since
-those abilities do nothing in a game.
+legendary card. The other partner abilities need nothing in the card
+file either: see the next section.
+
+### Choose a Background, partner and Doctor's companion (ADR 0144, #2874)
+
+Every partner ability (CR 702.124: partner, partner—[text] such as
+Friends forever, partner with [name], choose a Background, Doctor's
+companion) is a deck-construction rule that `internal/deck` reads off
+Scryfall's oracle text. A card that prints one needs no field, no
+comment caveat and no caveat string for it: write the rest of the card
+and declare it Full if the rest is.
+
+A **Background** ("Commander creatures you own have …") is an ADR 0093
+grant, built with `grantToCommanderCreaturesYouOwn`:
+
+```go
+const flamingFistGrant = "flaming-fist/double-strike"
+
+Grants: []AbilityGrant{{
+    Key:       flamingFistGrant,
+    Triggered: []game.TriggeredAbility{WheneverThisAttacks("Flaming Fist — double strike until end of turn", …)},
+    Text:      "Whenever this creature attacks, it gains double strike until end of turn.",
+}},
+Static: []game.StaticAbility{grantToCommanderCreaturesYouOwn(flamingFistGrant)},
+```
+
+The granted ability is the commander's own: "this creature" is
+`ctx.Source()` and "you" is the creature's controller, so a stolen
+commander keeps it and it works for the thief, as printed. Do not put
+the ability on the Background gated on a commander you control; that
+loses the stolen case. A characteristic change ("get +3/+3", "base power
+and toughness 10/10", "are Giants") is a plain static on the Background
+with `commanderCreatureYouOwn` as its `AppliesTo` (Raised by Giants).
+"Whenever this creature attacks a player, if no opponent has more life
+than that player" is `wheneverThisAttacksAPlayerNoOpponentRicher`.
 
 ### Renown (CR 702.112, #2049)
 

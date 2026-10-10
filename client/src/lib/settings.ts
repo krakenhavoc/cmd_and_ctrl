@@ -210,13 +210,18 @@ export interface Settings {
     // answers for the player (autoAnswerPref.ts keeps it in step).
     // At most MAX_AUTO_ANSWERS. Default empty.
     autoAnswers: AutoAnswerRule[];
-    // S13.6: when a stopped step lands on the viewer but the
-    // legality engine reports no legal response (no castable hand
-    // cards, no battlefield activations, no commander cast),
-    // auto-pass anyway. Defaults on — the step-stops grid gets to
-    // mean "stop if there's something to consider" instead of
-    // "stop every time regardless." Flip off to restore strict
-    // pre-S13.6 behaviour where every stop demands a click.
+    // #2871 (schema v23): a ticked step stops only when the viewer has
+    // a real play there. On their own main phase that is anything
+    // castable or playable, a land included; elsewhere it is a move in
+    // an enabled "Stop for" category. Defaults on. Off, every ticked
+    // step demands a click. Until v23 this was the first half of
+    // smartAutoPass, and the v23 migration copies that setting.
+    stepStopsOnlyWhenCanAct: boolean;
+    // S13.6: smart auto-pass. Since #2871 it governs the windows
+    // outside the ticked steps: an opponent's item on the stack and the
+    // key windows (combat, an opponent's end step) stop the viewer only
+    // for a response in an enabled "Stop for" category. Defaults on.
+    // Off, every opponent stack item stops and no key window does.
     smartAutoPass: boolean;
     // #1307: what counts as a response for smartAutoPass. Each is a
     // category of the viewer's own legal moves; mana abilities and
@@ -359,7 +364,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 22;
+export const SETTINGS_VERSION = 23;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -476,9 +481,11 @@ export function defaultSettings(): Settings {
       triggerOrder: DEFAULT_TRIGGER_ORDER,
       // ADR 0127 default: no rules; every prompt is asked.
       autoAnswers: [],
-      // S13.6 default: on. The step-stops grid is the intent
-      // affordance; smartAutoPass lets it mean "stop if I
-      // might want to respond" instead of "stop every time."
+      // #2871 default: on. The step-stops grid is the intent
+      // affordance; this lets it mean "stop if I can do something
+      // here" instead of "stop every time."
+      stepStopsOnlyWhenCanAct: true,
+      // S13.6 default: on.
       smartAutoPass: true,
       // #1307 defaults: every response category counts, and an
       // opponent's spell you can't answer passes. #2853: except an
@@ -621,6 +628,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     // ADR 0127 §3: the cards are in a person's decks, so the answers
     // travel with the person.
     autoAnswers: "synced",
+    stepStopsOnlyWhenCanAct: "synced",
     smartAutoPass: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
@@ -1032,6 +1040,19 @@ function migrate(raw: unknown): Settings {
       : d.gameplay.respondUntargetedAbilities;
   } else if (typeof gp.respondUntargetedAbilities !== "boolean") {
     gp.respondUntargetedAbilities = d.gameplay.respondUntargetedAbilities;
+  }
+  // v22 → v23 (#2871): "stop at a ticked step only when I can do
+  // something" becomes its own setting. Until v23 it was half of
+  // smartAutoPass, so a blob from before v23 copies that choice: a
+  // player who turned smart auto-pass off still stops at every ticked
+  // step, and everyone else keeps skipping the empty ones. An account
+  // copy from a v22 client goes through here too (applySyncedCopy).
+  // From v23 on, the stored choice stands.
+  if (storedVersion < 23) {
+    gp.stepStopsOnlyWhenCanAct =
+      typeof gp.smartAutoPass === "boolean" ? gp.smartAutoPass : d.gameplay.stepStopsOnlyWhenCanAct;
+  } else if (typeof gp.stepStopsOnlyWhenCanAct !== "boolean") {
+    gp.stepStopsOnlyWhenCanAct = d.gameplay.stepStopsOnlyWhenCanAct;
   }
   // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
   // gameplay.triggerOrder. No version bump: the old key itself says

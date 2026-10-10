@@ -37,9 +37,12 @@ const (
 	// imports as its front face and works as that half. The message
 	// says which half, and what is lost.
 	CodeUnsupportedLayout = "unsupported_layout"
-	// CodeInvalidPartnerPair flags two commanders that are not a
-	// "Partner with" pair: one of them names a different card, or
-	// names nothing (CR 702.124j, #2142). Carries the card at fault.
+	// CodeInvalidPartnerPair flags two commanders that no partner
+	// ability pairs, when at least one of them has one or is a
+	// Background: a "Partner with" card naming a different card, a
+	// Choose a Background commander beside a card that is not a
+	// Background, and so on (CR 702.124, #2142, #2874). Carries the
+	// card at fault.
 	CodeInvalidPartnerPair = "invalid_partner_pair"
 	// CodeUnknownCard flags a decklist row whose name did not resolve
 	// against the Scryfall index. Surfaced via UnknownCardError and
@@ -47,7 +50,7 @@ const (
 	// highlight every offending row at once.
 	CodeUnknownCard = "unknown_card"
 	// CodeUnsupportedMechanic flags a resolved card that leans on a
-	// mechanic (partner/companion) the server hasn't modeled yet.
+	// mechanic (companion) the server hasn't modeled yet.
 	CodeUnsupportedMechanic = "unsupported_mechanic"
 	// CodeUnknownSource flags a URL-based import whose host isn't
 	// one of the supported deck-builders (S06.5). Carries the offending
@@ -98,8 +101,9 @@ func (e *ValidationError) Error() string {
 // Validate enforces Commander-format rules on a resolved List. At S05
 // those rules are:
 //
-//  1. Exactly one commander, or two that are a "Partner with" pair
-//     (CR 702.124j, #2142).
+//  1. Exactly one commander, or two that a partner ability pairs
+//     (CR 702.124, #2142, #2874). A Background is never the only
+//     commander (CR 702.124k).
 //  2. Commander itself must be Scryfall-legal in the commander format
 //     (type line is "Legendary Creature" or oracle text contains the
 //     "can be your commander" clause via the "legalities.commander"
@@ -120,14 +124,16 @@ func Validate(list *List) error {
 	}
 	var vs []Violation
 
-	// Commander presence. Two commanders are allowed for a "Partner
-	// with" pair, each naming the other (CR 702.124j, #2142); no
+	// Commander presence. Two commanders are allowed when a partner
+	// ability pairs them (partner.go, CR 702.124, #2142, #2874); no
 	// partner ability allows more than two (CR 702.124g).
 	switch len(list.Commanders) {
 	case 0:
 		vs = append(vs, Violation{Code: CodeMissingCommander, Message: "deck has no commander"})
 	case 1:
-		// happy path
+		if v := loneCommanderViolation(list.Commanders[0]); v != nil {
+			vs = append(vs, *v)
+		}
 	case 2:
 		if v := commanderPairViolation(list.Commanders[0], list.Commanders[1]); v != nil {
 			vs = append(vs, *v)
@@ -135,7 +141,7 @@ func Validate(list *List) error {
 	default:
 		vs = append(vs, Violation{
 			Code:    CodeTooManyCommanders,
-			Message: fmt.Sprintf("deck has %d commanders; at most two are allowed, and only for a \"Partner with\" pair", len(list.Commanders)),
+			Message: fmt.Sprintf("deck has %d commanders; at most two are allowed, and only when a partner ability pairs them", len(list.Commanders)),
 		})
 	}
 
@@ -144,7 +150,9 @@ func Validate(list *List) error {
 	// commander" oracle clause (Planeswalker commanders like Oloro or
 	// the "creature type commander" mechanics) is captured by the
 	// legalities.commander = "legal" flag. Each commander of a pair is
-	// judged on its own (CR 702.124a: "two legendary cards").
+	// judged on its own (CR 702.124a: "two legendary cards"); a
+	// Background is a legendary enchantment, so it passes here and
+	// the pair rule above decides whether it may be a commander.
 	for _, cmd := range list.Commanders {
 		if !isLegalCommander(cmd) {
 			vs = append(vs, Violation{
