@@ -14,8 +14,9 @@ func init() {
 		Name:         "Urza's Blueprints",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Draw a card.",
-			Cost:  TapCost(),
+			Label:   "{T}: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

@@ -31,8 +31,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Draw a card, then discard a card.",
-			Cost:  TapCost(),
+			Label:   "{T}: Draw a card, then discard a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return drawThenDiscard(g, item.Controller, item.SourceCardID, 1, 1, "Arni, Humble Scribe — discard a card")
 			},

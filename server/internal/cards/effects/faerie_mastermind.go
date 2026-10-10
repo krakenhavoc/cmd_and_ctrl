@@ -30,8 +30,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{3}{U}: Each player draws a card.",
-				Cost:  ManaCost("{3}{U}"),
+				Label:   "{3}{U}: Each player draws a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{3}{U}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b05EachPlayerDraws(g, item, 1)
 				},

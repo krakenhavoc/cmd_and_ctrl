@@ -15,10 +15,11 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"lifelink"},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{W/B}: Return this card from your graveyard to your hand.",
-			Cost:   ManaCost("{2}{W/B}"),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: returnThisCardFromYourGraveyardToYourHand,
+			Label:   "{2}{W/B}: Return this card from your graveyard to your hand.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{2}{W/B}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect:  returnThisCardFromYourGraveyardToYourHand,
 		}},
 	})
 }

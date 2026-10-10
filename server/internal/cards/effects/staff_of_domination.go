@@ -25,15 +25,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}: Untap this artifact.",
-				Cost:  ManaCost("{1}"),
+				Label:   "{1}: Untap this artifact.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{1}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label: "{2}, {T}: You gain 1 life.",
-				Cost:  Plus(ManaCost("{2}"), TapCost()),
+				Label:   "{2}, {T}: You gain 1 life.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
 				},
@@ -56,8 +58,9 @@ func init() {
 				Effect:  tapChosenPermanent,
 			},
 			{
-				Label: "{5}, {T}: Draw a card.",
-				Cost:  Plus(ManaCost("{5}"), TapCost()),
+				Label:   "{5}, {T}: Draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{5}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				},

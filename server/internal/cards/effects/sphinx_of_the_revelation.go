@@ -26,8 +26,9 @@ func init() {
 			WheneverYouGainLife("Sphinx of the Revelation — you get that many {E}", youGetThatManyEnergy),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{U}{U}, {T}, Pay X {E}: Draw X cards.",
-			Cost:  Plus(ManaCost("{W}{U}{U}"), TapCost(), PayXEnergy()),
+			Label:   "{W}{U}{U}, {T}, Pay X {E}: Draw X cards.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{W}{U}{U}"), TapCost(), PayXEnergy()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return DrawCards{N: ctx.X()}.Apply(ctx)

@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{2}, {T}: Draw a card. Activate only if you control three or more lands with the same name.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{2}"), TapCost()),
 			Condition: endlessAtlasThreeLandsSharingAName,
 			Effect:    b36DrawOne,

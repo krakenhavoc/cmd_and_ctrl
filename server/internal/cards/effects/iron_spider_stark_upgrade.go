@@ -39,7 +39,8 @@ func init() {
 			Cost:    TapCost(),
 			Effect:  b30PutCounterOnEachArtifactCreatureOrVehicleYouControl,
 		}, {
-			Label: "{2}, Remove two +1/+1 counters from among artifacts you control: Draw a card.",
+			Label:   "{2}, Remove two +1/+1 counters from among artifacts you control: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: Plus(
 				ManaCost("{2}"),
 				RemoveCountersAmong(game.CounterPlusOne, 2, "artifacts you control", Artifact()),

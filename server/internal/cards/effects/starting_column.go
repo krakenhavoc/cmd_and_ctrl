@@ -24,8 +24,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			MaxSpeedActivated(ActivatedAbility{
-				Label: "Max speed — {T}, Sacrifice this artifact: Draw two cards, then discard a card.",
-				Cost:  Plus(TapCost(), SacrificeThis()),
+				Label:   "Max speed — {T}, Sacrifice this artifact: Draw two cards, then discard a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), SacrificeThis()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b16DrawThenDiscard(g, item, 2, 1)
 				},

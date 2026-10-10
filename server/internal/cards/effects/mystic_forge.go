@@ -32,8 +32,9 @@ func init() {
 				"Cast an artifact or colorless spell from the top of your library (Mystic Forge)"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Pay 1 life: Exile the top card of your library.",
-			Cost:  Plus(TapCost(), PayLife(1)),
+			Label:   "{T}, Pay 1 life: Exile the top card of your library.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), PayLife(1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return MillToZone{Player: ctx.Controller(), N: 1, To: game.ZoneExile}.Apply(ctx)

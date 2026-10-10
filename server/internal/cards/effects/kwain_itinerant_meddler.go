@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Kwain, Itinerant Meddler — Legendary Creature — Rabbit Wizard
 // {W}{U}, 1/3 (EDHREC rank 2151):
 //
@@ -29,9 +31,10 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Every player draws and gains the life — nobody is asked whether they want to, though a player with no library left is skipped."},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Each player draws a card, then each player who drew gains 1 life",
-			Cost:   TapCost(),
-			Effect: b20EachPlayerDrawsAndGainsOne,
+			Label:   "{T}: Each player draws a card, then each player who drew gains 1 life",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  b20EachPlayerDrawsAndGainsOne,
 		}},
 	})
 }

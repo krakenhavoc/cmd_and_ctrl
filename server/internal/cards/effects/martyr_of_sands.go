@@ -20,8 +20,9 @@ func init() {
 		Completeness: CompletenessFull,
 		XMatters:     true,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Reveal X white cards from your hand, Sacrifice this creature: You gain three times X life.",
-			Cost:  Plus(ManaCost("{1}"), RevealX("X white cards", "W"), SacrificeThis()),
+			Label:   "{1}, Reveal X white cards from your hand, Sacrifice this creature: You gain three times X life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), RevealX("X white cards", "W"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return GainLife{Player: item.Controller, Amount: 3 * ctx.X()}.Apply(ctx)

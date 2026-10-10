@@ -27,6 +27,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:     "{T}: Draw a card. Activate only if you created a token this turn.",
+				Purpose:   game.Purpose{Answers: game.AnswerValue},
 				Cost:      TapCost(),
 				Condition: idolOfOblivionCreatedATokenThisTurn,
 				Effect:    b36DrawOne,

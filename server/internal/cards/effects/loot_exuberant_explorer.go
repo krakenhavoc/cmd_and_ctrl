@@ -32,8 +32,9 @@ func init() {
 		AdditionalLandPlays: 1,
 		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		Activated: []ActivatedAbility{{
-			Label: "{4}{G}{G}, {T}: Look at the top six cards of your library. You may reveal a creature card with mana value less than or equal to the number of lands you control from among them and put it onto the battlefield. Put the rest on the bottom in a random order.",
-			Cost:  Plus(ManaCost("{4}{G}{G}"), TapCost()),
+			Label:   "{4}{G}{G}, {T}: Look at the top six cards of your library. You may reveal a creature card with mana value less than or equal to the number of lands you control from among them and put it onto the battlefield. Put the rest on the bottom in a random order.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{4}{G}{G}"), TapCost()),
 			Effect: LookAtTopThenMayPutOntoBattlefield(6, lootCreatureWithinLandCount, 1,
 				"Loot, Exuberant Explorer — put a creature card onto the battlefield"),
 		}},

@@ -24,8 +24,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{R}, {T}: Shivan Gorge deals 1 damage to each opponent.",
-			Cost:  Plus(ManaCost("{2}{R}"), TapCost()),
+			Label:   "{2}{R}, {T}: Shivan Gorge deals 1 damage to each opponent.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}{R}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
 			},

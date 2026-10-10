@@ -26,8 +26,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Each player draws a card.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Each player draws a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, id := range tablePlayers(ctx) {

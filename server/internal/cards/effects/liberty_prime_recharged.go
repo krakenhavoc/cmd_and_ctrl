@@ -33,7 +33,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice an artifact: You get {E}{E} and draw a card.",
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeN(1, "an artifact", Artifact())),
-			Purpose: game.Purpose{Energy: 2, Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2, Draws: 1},
 			Effect:  Do(GetEnergy{N: 2}, DrawCards{N: 1}),
 		}},
 	})

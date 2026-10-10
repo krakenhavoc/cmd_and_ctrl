@@ -37,8 +37,9 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{W}{W}, {T}: Look at the top five cards of your library. You may reveal a historic card from among them and put it into your hand. Put the rest on the bottom of your library in a random order",
-			Cost:  Plus(ManaCost("{2}{W}{W}"), TapCost()),
+			Label:   "{2}{W}{W}, {T}: Look at the top five cards of your library. You may reveal a historic card from among them and put it into your hand. Put the rest on the bottom of your library in a random order",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}{W}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				player := item.Controller
 				return TakeFromLibraryToHand{

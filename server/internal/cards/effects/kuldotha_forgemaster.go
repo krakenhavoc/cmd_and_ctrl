@@ -31,8 +31,9 @@ func init() {
 		Name:         "Kuldotha Forgemaster",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice three artifacts: Search your library for an artifact card, put it onto the battlefield, then shuffle.",
-			Cost:  Plus(TapCost(), SacrificeN(3, "three artifacts", Artifact())),
+			Label:   "{T}, Sacrifice three artifacts: Search your library for an artifact card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeN(3, "three artifacts", Artifact())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

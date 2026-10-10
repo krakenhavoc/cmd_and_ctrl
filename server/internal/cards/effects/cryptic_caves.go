@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Cryptic Caves — Land (EDHREC rank 4374):
 //
 //	"{T}: Add {C}.
@@ -25,6 +27,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{1}, {T}, Sacrifice this land: Draw a card. Activate only if you control five or more lands.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Condition: ControlsAtLeast(5, MatchLand),
 			Effect:    b36DrawOne,
