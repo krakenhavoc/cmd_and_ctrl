@@ -40,6 +40,16 @@ of a file. Rows for games that did not come back are **kept**, not
 pruned: a finished game has no restore point by design, and its row is
 the history "my games" reads. The engine artifacts (`restore/`,
 `replays/`, `games/`) are unchanged.
+**Amended by:** [#2919](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2919)
+(2026-10-10, S69) — an ended table keeps a restore point. The room
+writes its final state as one (or, if that state cannot be written,
+removes the older live one), and a boot brings it back, still ended,
+for `ws.EndedTableRetention` (7 days) after it ended; past that the file
+is removed as before. Players stay on an ended table until they leave
+it, and a deploy in the meantime used to take it from everyone still
+looking at it: their redial found "game not found". Bots are not
+relaunched for an ended table, and `cmdctrl_boot_restore_games{outcome="ended"}`
+now counts only the tables past their retention.
 **Amended by:** the phase 3 amendment of 2026-09-24
 ([#1497](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1497)) at
 the end of this file. It replaces the priority order in "Phase 3 (not

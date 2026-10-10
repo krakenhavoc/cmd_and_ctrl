@@ -65,7 +65,12 @@
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
-  import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
+  import {
+    GAME_OVER_GRACE_MS,
+    gameOverRequest,
+    inlineRefusal,
+    voteRequest,
+  } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import { showChoiceAsList } from "../lib/boardAnsweredChoice";
   import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
@@ -1786,7 +1791,16 @@
         })
       : null,
   );
-  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back) : null);
+  // #2919: Back to lobby is held for a moment after the game ends, so a
+  // click meant for `next`, whose corner it takes, cannot leave the table.
+  let gameOverArmed = $state(false);
+  $effect(() => {
+    gameOverArmed = false;
+    if (!gameEnded) return;
+    const t = setTimeout(() => (gameOverArmed = true), GAME_OVER_GRACE_MS);
+    return () => clearTimeout(t);
+  });
+  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back, gameOverArmed) : null);
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
   // The sandbox tools, life history, the table, spawn, the vote
