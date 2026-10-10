@@ -418,7 +418,7 @@ describe("the practice table's forced settings never reach the account", () => {
   }
   const SAVED = {
     strictMana: false,
-    autoPassPriority: true,
+    passMode: "careful",
     tableLayout: "row",
     cardSize: "large",
   } as const;
@@ -432,11 +432,11 @@ describe("the practice table's forced settings never reach the account", () => {
     m.put.mockClear();
 
     m.updateSettings("gameplay", "strictMana", false);
-    m.updateSettings("gameplay", "autoPassPriority", true);
+    m.updateSettings("gameplay", "passMode", "careful");
     await vi.advanceTimersByTimeAsync(1_000);
     m.put.mockClear();
 
-    // Open the tutorial: it forces strictMana on and autoPassPriority off,
+    // Open the tutorial: it forces strictMana on and passMode Manual,
     // and the practice seat's session keeps the same person.
     m.practice.installPracticeExits();
     vi.mocked((await import("./api")).createPracticeTable).mockResolvedValue({
@@ -458,7 +458,7 @@ describe("the practice table's forced settings never reach the account", () => {
     const sent = lastPut(m.put);
     expect(sent.body.display.theme).toBe("light");
     expect(sent.body.gameplay.strictMana).toBe(false);
-    expect(sent.body.gameplay.autoPassPriority).toBe(true);
+    expect(sent.body.gameplay.passMode).toBe("careful");
     for (const call of m.put.mock.calls) {
       const body = call[2] as Record<string, Record<string, unknown>>;
       expect(body.gameplay.strictMana).toBe(false);
@@ -469,7 +469,7 @@ describe("the practice table's forced settings never reach the account", () => {
     // Disk after the crash: the forced values, and the record of the
     // player's own. No code has run to restore them.
     storeBrowserSettings({
-      gameplay: { strictMana: true, autoPassPriority: false },
+      gameplay: { strictMana: true, passMode: "manual" },
       display: { tableLayout: "quadrant", cardSize: "medium" },
     });
     localStorage.setItem(RECORD_KEY, JSON.stringify(practiceRecord(SAVED)));
@@ -478,14 +478,14 @@ describe("the practice table's forced settings never reach the account", () => {
     expect(m.put).toHaveBeenCalledOnce();
     const sent = lastPut(m.put);
     expect(sent.body.gameplay.strictMana).toBe(false);
-    expect(sent.body.gameplay.autoPassPriority).toBe(true);
+    expect(sent.body.gameplay.passMode).toBe("careful");
     expect(sent.body.display).not.toHaveProperty("tableLayout");
     expect(sent.body.display).not.toHaveProperty("cardSize");
   });
 
   it("a copy that arrives during the tutorial lands in the record, and the forced values stay live", async () => {
     storeBrowserSettings({
-      gameplay: { strictMana: true, autoPassPriority: false },
+      gameplay: { strictMana: true, passMode: "manual" },
       display: { tableLayout: "quadrant", cardSize: "medium" },
     });
     localStorage.setItem(RECORD_KEY, JSON.stringify(practiceRecord(SAVED)));
@@ -494,7 +494,7 @@ describe("the practice table's forced settings never reach the account", () => {
       version: m.SETTINGS_VERSION,
       revision: 3,
       settings: {
-        gameplay: { strictMana: true, autoPassPriority: true },
+        gameplay: { strictMana: true, passMode: "smart" },
         display: { theme: "light" },
       },
     });
@@ -506,11 +506,11 @@ describe("the practice table's forced settings never reach the account", () => {
     expect(live.display.theme).toBe("light");
     // Still the tutorial's while it runs.
     expect(live.gameplay.strictMana).toBe(true);
-    expect(live.gameplay.autoPassPriority).toBe(false);
+    expect(live.gameplay.passMode).toBe("manual");
     // The restore will put the account's values back.
     expect(m.practice.practiceSaved()).toEqual({
       strictMana: true,
-      autoPassPriority: true,
+      passMode: "smart",
       tableLayout: "row",
       cardSize: "large",
     });

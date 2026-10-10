@@ -25,15 +25,13 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     viewerIsActive: false,
     autopassPersistThroughTurns: false,
     manualStop: false,
-    autoPassPriority: true,
+    passMode: "smart",
     stackEmpty: true,
     holdPriority: false,
     autoPassOwnStack: true,
     ownsEveryStackItem: false,
     stepStop: undefined,
-    smartAutoPass: true,
     stepStopsOnlyWhenCanAct: true,
-    alwaysStopOpponentStack: false,
     hasResponse: false,
     hasPlay: false,
     engineMayMissMana: false,
@@ -55,8 +53,8 @@ describe("autopassDecision — the baseline", () => {
     expect(autopassDecision(gates({ viewerHasPriority: false }))).toBe("hold");
   });
 
-  it("holds with autoPassPriority off", () => {
-    expect(autopassDecision(gates({ autoPassPriority: false }))).toBe("hold");
+  it("holds in Manual", () => {
+    expect(autopassDecision(gates({ passMode: "manual" }))).toBe("hold");
   });
 
   it("holds on an unknown step", () => {
@@ -85,13 +83,13 @@ describe("autopassDecision — #526: a manual stop beats autopass", () => {
     expect(autopassDecision(gates({ autopassToggle: false, manualStop: true }))).toBe("hold");
   });
 
-  it("holds a pinned step that smartAutoPass would otherwise skip", () => {
+  it("holds a pinned step that only-when-I-can-act would otherwise skip", () => {
     // The stops grid says stop, the predicate says "nothing to do",
     // and without the pin that combination passes. ADR 0009 §5: a pin
     // is "I want the cursor even though the engine sees no reason for
     // it" — bluffing, thinking, or an action the catalog doesn't
     // model yet.
-    const g = gates({ stepStop: true, smartAutoPass: true, hasPlay: false });
+    const g = gates({ stepStop: true, hasPlay: false });
     expect(autopassDecision({ ...g, manualStop: false })).toBe("pass");
     expect(autopassDecision({ ...g, manualStop: true })).toBe("hold");
   });
@@ -114,7 +112,6 @@ describe("autopassDecision — #526: a manual stop beats autopass", () => {
     const g = gates({
       autopassToggle: true,
       stepStop: false,
-      smartAutoPass: true,
       hasPlay: false,
       step: "declare_blockers",
       manualStop: true,
@@ -138,7 +135,6 @@ describe("autopassDecision — #599: the declare-attackers review window", () =>
       step: "declare_attackers",
       viewerIsActive: true,
       stepStop: true,
-      smartAutoPass: true,
       // hasPlay returns true here via hasDeclaredAttackers
       // even though the enumerator has only `pass` left to offer.
       hasPlay: true,
@@ -153,7 +149,7 @@ describe("autopassDecision — #599: the declare-attackers review window", () =>
     expect(autopassDecision(declareAttackers({ manualStop: true }))).toBe("hold");
   });
 
-  it("passes it with smartAutoPass off and the step unstopped", () => {
+  it("passes it with nothing to review and the step unstopped", () => {
     // Nothing to review and no stop: smart-skip's own case.
     expect(autopassDecision(declareAttackers({ stepStop: false, hasPlay: false }))).toBe("pass");
   });
@@ -326,11 +322,11 @@ describe("autopassDecision — the conventional path", () => {
     ).toBe("hold");
   });
 
-  // #2871: the setting is its own now. Smart auto-pass off (every
-  // opponent stack item stops) leaves a ticked step skipping when there
-  // is nothing to do, and the other way round.
-  it("skips an empty ticked step with smart auto-pass off", () => {
-    expect(autopassDecision(gates({ stepStop: true, smartAutoPass: false, hasPlay: false }))).toBe(
+  // #2871: the setting is its own now. Careful (every opponent stack
+  // item stops) leaves a ticked step skipping when there is nothing to
+  // do, and the other way round.
+  it("skips an empty ticked step in Careful", () => {
+    expect(autopassDecision(gates({ stepStop: true, passMode: "careful", hasPlay: false }))).toBe(
       "pass",
     );
   });
@@ -377,12 +373,8 @@ describe("autopassDecision — #1307: an opponent's stack", () => {
     expect(autopassDecision(oppStack({ hasPlay: true, stepStop: true }))).toBe("pass");
   });
 
-  it("alwaysStopOpponentStack restores the old stop", () => {
-    expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("hold");
-  });
-
-  it("smart autopass off keeps the legacy stop", () => {
-    expect(autopassDecision(oppStack({ smartAutoPass: false }))).toBe("hold");
+  it("Careful stops at every opponent item, answer or not", () => {
+    expect(autopassDecision(oppStack({ passMode: "careful" }))).toBe("hold");
   });
 
   it("hold-priority still holds", () => {
@@ -436,9 +428,10 @@ describe("autopassDecision — #1307: key windows", () => {
     expect(autopassDecision({ ...g, bluffCounter: true })).toBe("pass");
   });
 
-  it("smart autopass off ignores key windows", () => {
-    const g = gates({ step: "end", oppEndWindow: true, hasResponse: true, smartAutoPass: false });
-    expect(autopassDecision(g)).toBe("pass");
+  it("Careful keeps the key windows (ADR 0143 §2.2)", () => {
+    // Before ADR 0143, turning smart auto-pass off dropped these.
+    const g = gates({ step: "end", oppEndWindow: true, hasResponse: true, passMode: "careful" });
+    expect(autopassDecision(g)).toBe("hold");
   });
 
   it("a ticked key window with no response falls through to the stops grid", () => {
@@ -479,8 +472,15 @@ describe("autopassDecision — #1307: the autopass toggle", () => {
     expect(autopassDecision(g)).toBe("pass");
   });
 
-  it("ignores alwaysStopOpponentStack", () => {
-    expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("pass");
+  it("ignores Careful and Manual", () => {
+    expect(autopassDecision(oppStack({ passMode: "careful" }))).toBe("pass");
+    expect(autopassDecision(oppStack({ passMode: "manual" }))).toBe("pass");
+    expect(autopassDecision(oppStack({ passMode: "careful", hasResponse: true }))).toBe("hold");
+  });
+
+  it("bluffs only in Smart (ADR 0143 §4.3)", () => {
+    expect(autopassDecision(oppStack({ passMode: "careful", bluffCounter: true }))).toBe("pass");
+    expect(autopassDecision(oppStack({ passMode: "manual", bluffCounter: true }))).toBe("pass");
   });
 });
 
@@ -510,9 +510,15 @@ describe("autopassDecision — #1307: bluffs", () => {
   });
 
   it("does not bluff where smart autopass would hold anyway", () => {
-    expect(autopassDecision(oppStack({ alwaysStopOpponentStack: true }))).toBe("hold");
-    expect(autopassDecision(oppStack({ smartAutoPass: false }))).toBe("hold");
-    expect(autopassDecision(oppStack({ autoPassPriority: false }))).toBe("hold");
+    expect(autopassDecision(oppStack({ passMode: "careful" }))).toBe("hold");
+    expect(autopassDecision(oppStack({ passMode: "manual" }))).toBe("hold");
+  });
+
+  it("does not bluff a key window outside Smart (ADR 0143 §4.3)", () => {
+    const g = gates({ step: "end", oppEndWindow: true, ...armed });
+    expect(isBluff(autopassDecision(g))).toBe(true);
+    expect(autopassDecision({ ...g, passMode: "careful" })).toBe("pass");
+    expect(autopassDecision({ ...g, passMode: "manual" })).toBe("hold");
   });
 
   it("does not bluff a quiet step, ticked or not", () => {
@@ -628,6 +634,92 @@ describe("autopassDecision — #2853: an untargeted value ability is not a respo
 
   it("the hold toggle holds it whatever the categories say", () => {
     expect(autopassDecision({ ...gatesFor(frame(valueBoard)), holdPriority: true })).toBe("hold");
+  });
+
+  // ADR 0143 finding 3: the categories decide the autopass toggle's
+  // hold too, in every mode, so the UI never greys them out.
+  it("the autopass toggle reads the categories, in every mode", () => {
+    const view = frame([...valueBoard, mv("cast", { source: "instant" })]);
+    for (const passMode of ["smart", "careful", "manual"] as const) {
+      const on = { ...gatesFor(view), autopassToggle: true, passMode };
+      expect(autopassDecision(on), passMode).toBe("hold");
+      const off = {
+        ...gatesFor(view, { ...DEFAULT_RESPONSES, instant: false }),
+        autopassToggle: true,
+        passMode,
+      };
+      expect(autopassDecision(off), passMode).toBe("pass");
+    }
+  });
+});
+
+// ADR 0143 §2.1 and §2.2: the three modes against each key window.
+// Smart and Careful stop at an opponent's item, at combat once
+// attackers are declared, and at an opponent's end step whenever the
+// viewer can respond, and pass when they can't (Careful still stops at
+// every opponent item). Manual stops everywhere.
+describe("autopassDecision — ADR 0143: pass modes and the key windows", () => {
+  const windows: Record<string, Partial<AutopassGates>> = {
+    "an opponent's spell": { step: "precombat_main", stackEmpty: false, ownsEveryStackItem: false },
+    "combat once attackers are declared": { step: "declare_attackers", combatWindow: true },
+    "combat at declare blockers": { step: "declare_blockers", combatWindow: true },
+    "an opponent's end step": { step: "end", oppEndWindow: true },
+  };
+  // What each mode does there with nothing to respond with.
+  const noResponse: Record<string, Record<string, "hold" | "pass">> = {
+    smart: {
+      "an opponent's spell": "pass",
+      "combat once attackers are declared": "pass",
+      "combat at declare blockers": "pass",
+      "an opponent's end step": "pass",
+    },
+    careful: {
+      "an opponent's spell": "hold",
+      "combat once attackers are declared": "pass",
+      "combat at declare blockers": "pass",
+      "an opponent's end step": "pass",
+    },
+  };
+
+  for (const passMode of ["smart", "careful"] as const) {
+    for (const [name, w] of Object.entries(windows)) {
+      it(`${passMode}: stops at ${name} when you can respond`, () => {
+        expect(autopassDecision(gates({ ...w, passMode, hasResponse: true }))).toBe("hold");
+      });
+      it(`${passMode}: ${name} when you can't respond → ${noResponse[passMode][name]}`, () => {
+        expect(autopassDecision(gates({ ...w, passMode, hasResponse: false }))).toBe(
+          noResponse[passMode][name],
+        );
+      });
+      it(`${passMode}: an unticked ${name} still stops for a response`, () => {
+        expect(
+          autopassDecision(gates({ ...w, passMode, stepStop: false, hasResponse: true })),
+        ).toBe("hold");
+      });
+    }
+  }
+
+  for (const [name, w] of Object.entries(windows)) {
+    it(`manual: stops at ${name} with or without a response`, () => {
+      expect(autopassDecision(gates({ ...w, passMode: "manual", hasResponse: true }))).toBe("hold");
+      expect(autopassDecision(gates({ ...w, passMode: "manual", hasResponse: false }))).toBe(
+        "hold",
+      );
+    });
+  }
+
+  it("manual stops a quiet step too", () => {
+    expect(autopassDecision(gates({ passMode: "manual" }))).toBe("hold");
+    expect(autopassDecision(gates({ passMode: "smart" }))).toBe("pass");
+    expect(autopassDecision(gates({ passMode: "careful" }))).toBe("pass");
+  });
+
+  it("no mode turns the key windows off: a held response always holds", () => {
+    for (const passMode of ["smart", "careful", "manual"] as const) {
+      for (const w of Object.values(windows)) {
+        expect(autopassDecision(gates({ ...w, passMode, hasResponse: true }))).toBe("hold");
+      }
+    }
   });
 });
 
