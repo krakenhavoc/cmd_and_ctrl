@@ -1,11 +1,13 @@
 package effects
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // fetchlands_test.go — the sacrifice-to-fetch land family, the two
@@ -137,6 +139,34 @@ func TestFetchlandTakesNonbasicDualUntapped(t *testing.T) {
 	}
 	if got.Tapped {
 		t.Error("a fetched land arrives untapped; that is what the life pays for")
+	}
+}
+
+// #2965: a fetch is not a reveal. The land goes from the library onto
+// the battlefield, so the public log says it was fetched there, and
+// never that the table saw it revealed.
+func TestFetchlandLogsFetchNotReveal(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	delta := pushCatalogPermanent(g, me.ID, "Polluted Delta", "Land", pollutedDeltaOracle, false)
+	stapleLibraryCard(me, "Watery Grave", "Land — Island Swamp")
+
+	if err := g.ActivateCatalogAbility(me.ID, delta, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("activate: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+
+	var reveals []string
+	for _, e := range protocol.ViewOfGame(g).Log {
+		if e.Kind == protocol.LogReveal {
+			reveals = append(reveals, e.Text)
+		}
+	}
+	if len(reveals) != 1 {
+		t.Fatalf("reveal log lines %q, want exactly one fetch line", reveals)
+	}
+	if !strings.Contains(reveals[0], "fetched Watery Grave") || !strings.HasSuffix(reveals[0], "onto the battlefield") {
+		t.Errorf("fetch log line %q, want it to say the land was fetched onto the battlefield", reveals[0])
 	}
 }
 

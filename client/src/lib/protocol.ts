@@ -590,6 +590,10 @@ export interface RevealView {
   // Zone the cards were revealed out of ("library", "hand"). The cards
   // did not move; a reveal is not a zone change.
   from?: string;
+  // Zone a library search is sending the cards to ("battlefield" for a
+  // fetch). Absent for a reveal that is not part of a search: the
+  // banner says "fetched" off this, never "revealed".
+  to?: string;
   // The revealed cards, in the order the table saw them. Truncated to
   // 8 — compare against `count`.
   cards: RevealedCardView[];

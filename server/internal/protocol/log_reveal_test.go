@@ -287,3 +287,36 @@ func TestLogRingPushedTracksEviction(t *testing.T) {
 		t.Error("an ordinal never pushed returned an entry")
 	}
 }
+
+// TestPublicLogSearchRevealWordsItsDestination pins #2965: a library
+// search reveal says "fetched ... onto the battlefield" when the card
+// goes onto the battlefield, and keeps "revealed" when it goes to a
+// hand (Kodama's Reach really does show the table its basics).
+func TestPublicLogSearchRevealWordsItsDestination(t *testing.T) {
+	cases := []struct {
+		name string
+		to   game.ZoneKind
+		want string
+	}{
+		{"battlefield is fetched", game.ZoneBattlefield, "P1 fetched %s from their library onto the battlefield"},
+		{"hand is revealed", game.ZoneHand, "P1 revealed %s from their library"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			g := buildActiveGame(t)
+			revealer := g.Seats[0]
+			top := topNames(g, revealer, 1)[0]
+			g.WithWriteLock(func() {
+				id := revealer.Library.Cards[revealer.Library.Size()-1].InstanceID
+				g.RevealForEffect(game.RevealSpec{Player: revealer.ID, Reason: "Search", Cards: []uuid.UUID{id}, To: tc.to})
+			})
+			reveals := revealLogEntries(ViewOfGameFor(g, "").Log)
+			if len(reveals) != 1 {
+				t.Fatalf("%d reveal entries, want 1: %+v", len(reveals), reveals)
+			}
+			if want := fmt.Sprintf(tc.want, top); reveals[0].Text != want {
+				t.Errorf("text %q, want %q", reveals[0].Text, want)
+			}
+		})
+	}
+}

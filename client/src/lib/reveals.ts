@@ -177,10 +177,19 @@ export function hiddenRevealCount(r: RevealView): number {
   return Math.max(0, total - r.cards.length);
 }
 
-// revealHeadline is the one line the banner leads with: who revealed,
-// and what made them.
+// revealVerb is what the banner says the seat did. A library search
+// that puts the card onto the battlefield (a fetchland) fetched it:
+// nothing was revealed. Every other reveal, Kodama's Reach included,
+// really did show the cards to the table.
+export function revealVerb(r: RevealView): string {
+  return r.to === "battlefield" ? "fetched" : "revealed";
+}
+
+// revealHeadline is the one line the banner leads with: who revealed
+// (or fetched), and what made them.
 export function revealHeadline(r: RevealView, seatName: string): string {
   const who = seatName || "A player";
-  if (r.source) return `${who} revealed · ${r.source}`;
-  return `${who} revealed`;
+  const verb = revealVerb(r);
+  if (r.source) return `${who} ${verb} · ${r.source}`;
+  return `${who} ${verb}`;
 }
