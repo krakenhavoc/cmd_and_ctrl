@@ -44,6 +44,24 @@ import "github.com/google/uuid"
 // control). A battle's PROTECTOR is not the controller, and "permanents
 // you control" does not name it, so a battle is covered by who controls
 // it, never by who protects it.
+//
+// # This turn, and narrower scopes (#2719)
+//
+// ADR 0063's 2026-10-10 amendment adds a second window and narrower
+// things a grant may cover. "They can't attack you or planeswalkers you
+// control this turn" (Sandswirl Wanderglyph) is
+// GrantCantAttackPlayerThisTurnForEffect: the floor is the restricted
+// player's CURRENT seat-turn count and the duration is "until end of
+// turn", so it reaches the turn in progress and no other. The
+// CantAttackScope on the grant narrows the protected half: a
+// planeswalker-only grant leaves a battle the protected player controls
+// open (the Wanderglyph's ruling), a player-only one leaves every
+// permanent open ("creatures they control can't attack you this turn",
+// Web of Inertia), and a player-exempt one with a subtype covers only
+// those planeswalkers ("can't attack Jaces you control this turn",
+// Jace, Multiverse Architect). The zero scope is The Second Doctor's
+// "you or permanents you control", so every grant made before it reads
+// as it did.
 
 // CantAttackGrant is a granted "can't attack <Protected> or permanents
 // they control" statement. It lives on the RESTRICTED player's
@@ -59,6 +77,76 @@ type CantAttackGrant struct {
 	// plus one, so it covers their NEXT turn and never the one in
 	// progress. See the window above.
 	FromTurnsBegun int `json:"fromTurnsBegun"`
+
+	// Scope narrows what of Protected's the grant covers. The zero
+	// scope is the player and every permanent they control.
+	//
+	// No `omitzero`, for PlayerStatic.Timing's reason (#1492).
+	Scope CantAttackScope `json:"scope"`
+}
+
+// CantAttackScope narrows a CantAttackGrant (#2719). Each field only
+// ever removes something from the default "the player and permanents
+// they control", so the zero scope is the widest grant.
+type CantAttackScope struct {
+	// PlayerOnly covers the protected player and none of their
+	// permanents: "creatures they control can't attack you".
+	PlayerOnly bool `json:"playerOnly,omitempty"`
+
+	// PlayerExempt leaves the protected player open and covers only
+	// their permanents: "can't attack Jaces you control".
+	PlayerExempt bool `json:"playerExempt,omitempty"`
+
+	// PlaneswalkersOnly covers, of their permanents, planeswalkers
+	// alone: "you or planeswalkers you control". A battle they control
+	// is not covered.
+	PlaneswalkersOnly bool `json:"planeswalkersOnly,omitempty"`
+
+	// Subtype, when set, narrows the covered permanents to that
+	// subtype: "Jaces you control" is PlaneswalkersOnly with "Jace".
+	Subtype string `json:"subtype,omitempty"`
+}
+
+// covers reports whether the attack target `target` is something this
+// scope protects, given that `who` is the protected player. A battle
+// counts by its controller, not its protector (see the file comment).
+//
+// Caller must hold g.mu with fresh layers.
+func (s CantAttackScope) covers(g *Game, target, who uuid.UUID) bool {
+	if target == who {
+		return !s.PlayerExempt
+	}
+	if s.PlayerOnly {
+		return false
+	}
+	c := findBattlefieldCard(g, target)
+	if c == nil || c.Controller != who {
+		return false
+	}
+	if s.PlaneswalkersOnly && !c.IsPlaneswalker() {
+		return false
+	}
+	return s.Subtype == "" || c.HasSubtype(s.Subtype)
+}
+
+// protectedPhrase is what the scope covers, in a refusal's words:
+// "Alice or permanents they control", "Jaces Alice controls".
+func (s CantAttackScope) protectedPhrase(name string) string {
+	kind := "permanents"
+	if s.PlaneswalkersOnly {
+		kind = "planeswalkers"
+	}
+	if s.Subtype != "" {
+		kind = s.Subtype + "s"
+	}
+	switch {
+	case s.PlayerOnly:
+		return name
+	case s.PlayerExempt:
+		return kind + " " + name + " controls"
+	default:
+		return name + " or " + kind + " they control"
+	}
 }
 
 // GrantCantAttackPlayerForEffect makes `attacker` unable to attack
@@ -71,6 +159,27 @@ type CantAttackGrant struct {
 // Several grants may live at once: two Second Doctors protect their two
 // controllers.
 func (g *Game) GrantCantAttackPlayerForEffect(attacker, protected uuid.UUID, label string, source uuid.UUID) {
+	g.grantCantAttackLocked(attacker, protected, CantAttackScope{}, g.turnsBegunForLocked(attacker)+1,
+		g.UntilEndOfYourNextTurnDuration(attacker), label, source)
+}
+
+// GrantCantAttackPlayerThisTurnForEffect makes `attacker` unable to
+// attack what `scope` covers of `protected`'s for the rest of the
+// current turn (#2719): Sandswirl Wanderglyph's "they can't attack you
+// or planeswalkers you control this turn", Web of Inertia's "creatures
+// they control can't attack you this turn". The window opens now (the
+// floor is the attacker's current seat-turn count) and closes as this
+// turn ends, so on any turn but the attacker's own it restricts
+// nothing. Same no-ops and caller contract as
+// GrantCantAttackPlayerForEffect.
+func (g *Game) GrantCantAttackPlayerThisTurnForEffect(attacker, protected uuid.UUID, scope CantAttackScope, label string, source uuid.UUID) {
+	g.grantCantAttackLocked(attacker, protected, scope, g.turnsBegunForLocked(attacker),
+		g.UntilEndOfTurnDuration(), label, source)
+}
+
+// grantCantAttackLocked is both writers' one body. Caller must hold
+// g.mu (write).
+func (g *Game) grantCantAttackLocked(attacker, protected uuid.UUID, scope CantAttackScope, from int, d Duration, label string, source uuid.UUID) {
 	if attacker == uuid.Nil || protected == uuid.Nil || attacker == protected {
 		return
 	}
@@ -81,11 +190,12 @@ func (g *Game) GrantCantAttackPlayerForEffect(attacker, protected uuid.UUID, lab
 	p.Statics = append(p.Statics, PlayerStatic{
 		CantAttack: CantAttackGrant{
 			Protected:      protected,
-			FromTurnsBegun: g.turnsBegunForLocked(attacker) + 1,
+			FromTurnsBegun: from,
+			Scope:          scope,
 		},
 		Source:   source,
 		Label:    label,
-		Duration: g.UntilEndOfYourNextTurnDuration(attacker),
+		Duration: d,
 	})
 }
 
@@ -104,6 +214,9 @@ type PlayerCantAttackError struct {
 	ProtectedName string
 	Source        uuid.UUID
 	SourceName    string
+	// Scope is what of the protected player's the grant covers, for
+	// the sentence.
+	Scope CantAttackScope
 }
 
 func (e *PlayerCantAttackError) Error() string { return "game: " + e.Sentence() }
@@ -113,7 +226,7 @@ func (e *PlayerCantAttackError) Unwrap() error { return ErrIllegalAttackTarget }
 
 // Sentence is the refusal in a player's words.
 func (e *PlayerCantAttackError) Sentence() string {
-	s := e.AttackerName + " can't attack " + e.ProtectedName + " or permanents they control this turn"
+	s := e.AttackerName + " can't attack " + e.Scope.protectedPhrase(e.ProtectedName) + " this turn"
 	if e.SourceName != "" {
 		s += " (" + e.SourceName + ")"
 	}
@@ -147,7 +260,7 @@ func (g *Game) playerCantAttackRefusalLocked(attacker *Card, target uuid.UUID) e
 		if g.durationExpiredLocked(s.Duration, false) {
 			continue
 		}
-		if !g.attackTargetIsOrBelongsToLocked(target, s.CantAttack.Protected) {
+		if !s.CantAttack.Scope.covers(g, target, s.CantAttack.Protected) {
 			continue
 		}
 		return &PlayerCantAttackError{
@@ -157,22 +270,10 @@ func (g *Game) playerCantAttackRefusalLocked(attacker *Card, target uuid.UUID) e
 			ProtectedName: g.playerNameLocked(s.CantAttack.Protected),
 			Source:        s.Source,
 			SourceName:    s.Label,
+			Scope:         s.CantAttack.Scope,
 		}
 	}
 	return nil
-}
-
-// attackTargetIsOrBelongsToLocked reports whether `target` is the
-// player `who`, or a permanent `who` controls. A battle counts by its
-// controller, not its protector (see the file comment).
-//
-// Caller must hold g.mu.
-func (g *Game) attackTargetIsOrBelongsToLocked(target, who uuid.UUID) bool {
-	if target == who {
-		return true
-	}
-	c := findBattlefieldCard(g, target)
-	return c != nil && c.Controller == who
 }
 
 // playerHasCantAttackGrantLocked is the cheap early-out for the

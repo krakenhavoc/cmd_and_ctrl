@@ -120,6 +120,25 @@ func OpponentsCantCast(label string, match CardPredicate) game.CastRestriction {
 	}
 }
 
+// OpponentsWhoAttackedYouCantCast is Sandswirl Wanderglyph's "Each
+// opponent who attacked you or a planeswalker you control this turn
+// can't cast spells." (#2719, ADR 0066's 2026-10-10 amendment).
+//
+// A static on the permanent, so its presence is the duration: the
+// card's ruling is that once the Wanderglyph leaves, that opponent can
+// cast spells again. "Attacked" is read off this turn's attack record
+// (Game.AttackedYouOrYourPlaneswalkerThisTurn), which knows who
+// controlled each attacked planeswalker as the attack was declared. An
+// attack on a battle you protect does not count.
+func OpponentsWhoAttackedYouCantCast(label string) game.CastRestriction {
+	return game.CastRestriction{
+		Label: label,
+		Forbids: func(q game.CastQuery) bool {
+			return q.Game.AttackedYouOrYourPlaneswalkerThisTurn(q.Controller, q.Source.Controller)
+		},
+	}
+}
+
 // matchCastCard runs a card predicate against a SPELL being announced
 // rather than against a permanent on the battlefield. The spell is
 // still in its source zone at announce, so the predicate sees printed

@@ -4241,6 +4241,7 @@ seats[].lastTurnAttacks[].attacker	custom(uuid.UUID)
 seats[].lastTurnAttacks[].defender	custom(uuid.UUID)
 seats[].lastTurnAttacks[].epoch	number:int
 seats[].lastTurnAttacks[].phaseId	number:int
+seats[].lastTurnAttacks[].planeswalkerController	custom(uuid.UUID)
 seats[].library	object
 seats[].library.cards	array
 seats[].library.cards[]	object
@@ -4606,6 +4607,11 @@ seats[].statics[].activationTiming.timing	string
 seats[].statics[].cantAttack	object
 seats[].statics[].cantAttack.fromTurnsBegun	number:int
 seats[].statics[].cantAttack.protected	custom(uuid.UUID)
+seats[].statics[].cantAttack.scope	object
+seats[].statics[].cantAttack.scope.planeswalkersOnly	bool
+seats[].statics[].cantAttack.scope.playerExempt	bool
+seats[].statics[].cantAttack.scope.playerOnly	bool
+seats[].statics[].cantAttack.scope.subtype	string
 seats[].statics[].cantBeCountered	object
 seats[].statics[].cantBeCountered.active	bool
 seats[].statics[].cantBeCountered.except	object
@@ -5342,6 +5348,7 @@ turnTally.attacks[].attacker	custom(uuid.UUID)
 turnTally.attacks[].defender	custom(uuid.UUID)
 turnTally.attacks[].epoch	number:int
 turnTally.attacks[].phaseId	number:int
+turnTally.attacks[].planeswalkerController	custom(uuid.UUID)
 turnTally.casts	array
 turnTally.casts[]	custom(uuid.UUID)
 turnTally.combatDamagedPlayers	map:string

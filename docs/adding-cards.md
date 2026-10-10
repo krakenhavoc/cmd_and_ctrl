@@ -2604,6 +2604,25 @@ never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
 
+**A PLAYER who can't attack you** (every creature they control, including
+ones that arrive later) is a grant on that player, not a bit on their
+creatures ([ADR 0063](decisions/0063-durations-and-control.md)'s
+amendments of 2026-10-08 and 2026-10-10):
+
+```go
+g.GrantCantAttackPlayerForEffect(opp, you, label, source)                  // "during their next turn" (The Second Doctor)
+g.GrantCantAttackPlayerThisTurnForEffect(opp, you, game.CantAttackScope{   // "this turn"
+    PlaneswalkersOnly: true}, label, source)                               // "you or planeswalkers you control" (Sandswirl Wanderglyph)
+// PlayerOnly: "can't attack you" (Web of Inertia);
+// PlayerExempt + PlaneswalkersOnly + Subtype "Jace": "Jaces you control".
+```
+
+The zero scope is "you or permanents you control". "Each opponent who
+attacked you or a planeswalker you control this turn can't cast spells"
+is a printed static, `OpponentsWhoAttackedYouCantCast(label)` on
+`Spec.CastRestrictions` ([ADR 0066](decisions/0066-granted-cast-and-play-permissions.md),
+2026-10-10).
+
 ### "Players can't play lands" (ADR 0109 §4, #1895)
 
 A land play is a special action, not a cast (CR 305.1, CR 116.2a), so a
