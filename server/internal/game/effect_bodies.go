@@ -200,6 +200,10 @@ func checkEffectKey(kind, key string) {
 	if _, dup := optionPickThens[key]; dup {
 		panic(fmt.Sprintf("game: %s key %q is already an option pick continuation", kind, key))
 	}
+	// ADR 0146: and a vote's.
+	if _, dup := voteThens[key]; dup {
+		panic(fmt.Sprintf("game: %s key %q is already a vote continuation", kind, key))
+	}
 }
 
 // DelayedBody registers a body. Call it once, from a package-level var
@@ -327,7 +331,7 @@ func KnownEffectCondition(key string) bool { _, ok := lookupCondition(key); retu
 func RegisteredEffectKeys() []string {
 	effectRegistryMu.RLock()
 	defer effectRegistryMu.RUnlock()
-	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens))
+	out := make([]string, 0, len(effectBodies)+len(effectConditions)+len(effectAliases)+len(revealedPickThens)+len(optionPickThens)+len(voteThens))
 	for k := range effectBodies {
 		out = append(out, "body "+k)
 	}
@@ -339,6 +343,7 @@ func RegisteredEffectKeys() []string {
 	}
 	out = append(out, registeredRevealedPickKeysLocked()...)
 	out = append(out, registeredOptionPickKeysLocked()...)
+	out = append(out, registeredVoteKeysLocked()...)
 	sort.Strings(out)
 	return out
 }

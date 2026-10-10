@@ -465,6 +465,8 @@ function answersFor(
         row: (c.pick_options ?? []).map((o, i) => ({
           id: `option-${i}`,
           label: pickOptionText(o),
+          // ADR 0146: a ballot shows each option's votes so far.
+          note: ballotNote(c, i),
           onPress: () => h.onOption(i),
         })),
       };
@@ -472,6 +474,16 @@ function answersFor(
       // mana_pick, choose_color: the symbols in the body are the answer.
       return { primary: null, secondary: [] };
   }
+}
+
+// ballotNote is a ballot option's vote count so far (ADR 0146), or
+// undefined on a prompt that is not a ballot and on "Don't vote again".
+export function ballotNote(c: PendingChoiceView, i: number): string | undefined {
+  const v = c.council_vote;
+  if (!v) return undefined;
+  const opt = v.offered[i] ?? -1;
+  if (opt < 0) return undefined;
+  return String(v.tally[opt] ?? 0);
 }
 
 // rememberTitle names the card and the question the toggle remembers an
@@ -558,43 +570,88 @@ export const inlineRefusal = guardedWritable<unknown>(null, "inlineRefusal");
 // dialog keeps the panel's name, "open vote"; each option is a button
 // named by its text and its tally, pressed for the viewer's own ballot.
 
+//
+// A RULES vote (ADR 0146, CR 701.38: Council's Judgment, Plea for Power)
+// is drawn with the same request for every seat that is not voting right
+// now (councilVoteRequest): the options and their tallies as each vote
+// is cast, read-only, with no end button. The voter answers their own
+// ballot, an ordinary option_pick, whose buttons carry the same tallies
+// (ballotNote).
+
 export interface VoteRequestInput {
   vote: VoteView;
   viewerID: string | null;
   seats: Pick<PlayerView, "id" | "name">[];
-  onCast: (optionIndex: number) => void;
-  onEnd: () => void;
+  // Absent for a rules vote: nobody may cast out of turn, or end it.
+  onCast?: (optionIndex: number) => void;
+  onEnd?: () => void;
+  // A rules vote's counts (a player may hold several votes) and its
+  // own name and detail line.
+  tally?: number[];
+  label?: string;
+  detail?: string;
 }
 
 export function voteRequest(input: VoteRequestInput): DockRequest {
-  const { vote, viewerID, seats } = input;
-  const counts = new Array(vote.options.length).fill(0) as number[];
-  for (const opt of Object.values(vote.ballots ?? {})) {
-    if (opt >= 0 && opt < counts.length) counts[opt]++;
+  const { vote, viewerID, seats, onCast, onEnd } = input;
+  let counts = input.tally;
+  if (!counts) {
+    counts = new Array(vote.options.length).fill(0) as number[];
+    for (const opt of Object.values(vote.ballots ?? {})) {
+      if (opt >= 0 && opt < counts.length) counts[opt]++;
+    }
   }
-  const mine = viewerID ? (vote.ballots?.[viewerID] ?? null) : null;
+  const mine = viewerID && onCast ? (vote.ballots?.[viewerID] ?? null) : null;
   const initiator = seats.find((s) => s.id === vote.initiator)?.name ?? "?";
+  const row: DockAction[] = vote.options.map(
+    (option, i): DockAction => ({
+      id: `vote-${i}`,
+      label: option,
+      note: String(counts[i] ?? 0),
+      pressed: onCast ? mine === i : undefined,
+      emphasis: mine === i,
+      disabled: !onCast,
+      onPress: () => onCast?.(i),
+    }),
+  );
+  if (onEnd) row.push({ id: "end-vote", label: "end vote", alignEnd: true, onPress: onEnd });
   return {
     rank: "step",
-    label: "open vote",
+    label: input.label ?? "open vote",
     tag: "vote",
     tone: "plain",
     question: vote.topic || "(no topic)",
-    detail: `called by ${initiator}`,
-    row: [
-      ...vote.options.map(
-        (option, i): DockAction => ({
-          id: `vote-${i}`,
-          label: option,
-          note: String(counts[i] ?? 0),
-          pressed: mine === i,
-          emphasis: mine === i,
-          onPress: () => input.onCast(i),
-        }),
-      ),
-      { id: "end-vote", label: "end vote", alignEnd: true, onPress: input.onEnd },
-    ],
+    detail: input.detail ?? `called by ${initiator}`,
+    row,
   };
+}
+
+// councilVoteRequest is a rules vote as the seats that are not voting
+// right now see it (ADR 0146): whose ballot it is, and each option's
+// votes so far. Null when `c` is not a ballot or the viewer is its
+// voter (their own prompt answers it).
+export function councilVoteRequest(
+  c: PendingChoiceView | null | undefined,
+  viewerID: string | null,
+  seats: Pick<PlayerView, "id" | "name">[],
+): DockRequest | null {
+  const v = c?.council_vote;
+  if (!c || !v || c.chooser === viewerID) return null;
+  const voter = seats.find((s) => s.id === c.chooser)?.name ?? "A player";
+  return voteRequest({
+    vote: {
+      id: c.id,
+      topic: c.reason ?? "",
+      options: v.options,
+      initiator: v.controller,
+      ballots: {},
+    },
+    viewerID,
+    seats,
+    tally: v.tally,
+    label: "vote",
+    detail: `${voter} is voting`,
+  });
 }
 
 // ---- the game's end ---------------------------------------------------------

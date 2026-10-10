@@ -214,6 +214,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
+	{field: "ExtraVote", label: extraVoteRows},
 	{field: "DamageCantBePrevented", fallback: "Damage can't be prevented"},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
 	{field: "DamageAsThough", fallback: "Changes how damage is dealt"},
@@ -290,6 +291,17 @@ func boolRow(label string) func(reflect.Value) []string {
 		}
 		return nil
 	}
+}
+
+// extraVoteRows is the ExtraVote slot's row (ADR 0146).
+func extraVoteRows(v reflect.Value) []string {
+	switch ExtraVote(v.Int()) {
+	case ExtraVoteYouGet:
+		return []string{"While voting, you get an additional vote."}
+	case ExtraVoteYouMay:
+		return []string{"While voting, you may vote an additional time."}
+	}
+	return nil
 }
 
 func playerKeywordRows(v reflect.Value) []string {

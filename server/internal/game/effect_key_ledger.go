@@ -105,6 +105,8 @@ func ledgerLineResolves(line string) bool {
 		return KnownRevealedPickThen(fields[1])
 	case "option":
 		return KnownOptionPickThen(fields[1])
+	case "vote":
+		return KnownVoteThen(fields[1])
 	case "alias":
 		effectRegistryMu.RLock()
 		defer effectRegistryMu.RUnlock()

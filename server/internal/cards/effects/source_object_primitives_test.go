@@ -645,6 +645,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		// "Shuffle Beacon of Tomorrows into its owner's library." and
 		// "Exile Rise of the Eldrazi." (S58 PR 5)
 		"beacon_of_tomorrows.go": true, "rise_of_the_eldrazi.go": true,
+		// "Exile Expropriate." (ADR 0146, #2143)
+		"expropriate.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

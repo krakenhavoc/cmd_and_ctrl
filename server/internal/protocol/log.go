@@ -249,6 +249,12 @@ const (
 	// "forced" when that creature was their only one and was chosen
 	// for them (owner decision 2).
 	LogRingTempted LogKind = "ring_tempted"
+	// LogVote — a player cast a vote (CR 701.38, ADR 0146). `Seat`
+	// voted, `Choice` is the option as the card prints it (a word, or
+	// the name of the permanent or player voted for) and `CardID` the
+	// card that called the vote. One line per vote, as it is cast, so
+	// the table sees the tally move.
+	LogVote LogKind = "vote"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -1375,6 +1381,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventVoteCast:
+		// ADR 0146. Actor voted, Source called the vote, Label is the
+		// option. The option's label is public: a word printed on the
+		// card, or the name of a permanent or player on the table.
+		base.Kind = LogVote
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Choice = ev.Label
+		return base, true
+
 	case game.EventControlChanged:
 		// CR 613.1b, #930 / #1008. "Ian gained control of Grizzly
 		// Bears" is a thing a player says out loud, and until #1021
@@ -2274,6 +2289,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		default:
 			return fmt.Sprintf("%s chose %d cards for %s", actor, e.Amount, target)
 		}
+	case LogVote:
+		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
 	case LogRingTempted:
 		// ADR 0114 §9 and owner decision 2: "The Ring tempts Alice (2)
 		// — Alice chooses Nazgûl as their Ring-bearer". The engine

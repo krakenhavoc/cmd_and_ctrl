@@ -121,11 +121,7 @@ func b43ALandAnOpponentControlsEntered(ev game.Event, source *game.Card, g *game
 // arrivals the tally has to reach two before the clause is
 // satisfied.
 func b43AnotherHumanEnteredThisTurn(g *game.Game, source *game.Card) bool {
-	need := 1
-	if b06EnteredThisTurn(g, source.InstanceID) {
-		need = 2
-	}
-	return g.EnteredWithSubtypeThisTurn(source.Controller, "Human") >= need
+	return anotherEnteredWithSubtypeThisTurn(g, source, "Human")
 }
 
 // b43NontokenMerfolkYouControlBecameTapped is Deeproot Pilgrimage's

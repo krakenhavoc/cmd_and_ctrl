@@ -693,6 +693,45 @@ type PendingChoiceView struct {
 	// present only on trigger_prompt and pick_target choices.
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+	// CouncilVote marks an option_pick as one player's BALLOT in a
+	// vote (CR 701.38, ADR 0146) and carries the vote so far. Public:
+	// every seat sees each vote as it is cast. Absent on every other
+	// prompt.
+	CouncilVote *CouncilVoteView `json:"council_vote,omitempty"`
+}
+
+// CouncilVoteView is a vote in progress (game.CouncilVote), as the open
+// ballot carries it.
+type CouncilVoteView struct {
+	// Controller is the controller of the ability that called the vote
+	// ("you" on the card); Voter is the player voting now.
+	Controller string `json:"controller"`
+	Voter      string `json:"voter"`
+	// Options are the vote's choices in printed order, and Tally the
+	// votes each has so far.
+	Options []string `json:"options"`
+	Tally   []int    `json:"tally"`
+	// Ballots are the votes cast so far, in order.
+	Ballots []CouncilBallotView `json:"ballots,omitempty"`
+	// Offered maps each of the prompt's pick_options to its index in
+	// Options; -1 is the "don't vote again" option of an optional vote.
+	Offered []int `json:"offered"`
+	// Optional is true when this ballot is an extra vote the voter may
+	// decline (CR 701.38d). VotesLeft counts the votes the voter must
+	// still cast, this one included.
+	Optional  bool `json:"optional,omitempty"`
+	VotesLeft int  `json:"votes_left,omitempty"`
+	// ForController and ForOpponents are the card's hints to a bot:
+	// how much the vote's controller, and an opponent of theirs, wants
+	// each option to win. Absent when the card gives none.
+	ForController []int `json:"for_controller,omitempty"`
+	ForOpponents  []int `json:"for_opponents,omitempty"`
+}
+
+// CouncilBallotView is one vote cast.
+type CouncilBallotView struct {
+	Voter  string `json:"voter"`
+	Option int    `json:"option"`
 }
 
 // PickOptionView is one branch of an "option_pick" prompt (#568):
@@ -7901,6 +7940,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PickOptions = append(v.PickOptions, out)
 			}
 		}
+		if c.CouncilVote != nil {
+			v.CouncilVote = viewOfCouncilVote(c.CouncilVote, c.PickOptions)
+		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
@@ -8502,6 +8544,36 @@ func viewOfVote(v *game.Vote) *VoteView {
 		Initiator: v.Initiator.String(),
 		Ballots:   ballots,
 	}
+}
+
+// viewOfCouncilVote is the wire form of a ballot's vote so far (ADR
+// 0146). `offered` is the prompt's option list, mapped back to the
+// vote's own indices.
+func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *CouncilVoteView {
+	out := &CouncilVoteView{
+		Controller:    v.Controller.String(),
+		Voter:         v.Voter.String(),
+		Options:       make([]string, len(v.Options)),
+		Tally:         make([]int, len(v.Options)),
+		Offered:       make([]int, len(offered)),
+		Optional:      v.Optional(),
+		VotesLeft:     v.VotesLeft,
+		ForController: append([]int(nil), v.ForController...),
+		ForOpponents:  append([]int(nil), v.ForOpponents...),
+	}
+	for i, o := range v.Options {
+		out.Options[i] = o.Label
+	}
+	for _, b := range v.Ballots {
+		if b.Option >= 0 && b.Option < len(out.Tally) {
+			out.Tally[b.Option]++
+		}
+		out.Ballots = append(out.Ballots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+	}
+	for i, o := range offered {
+		out.Offered[i] = v.OptionIndex(o)
+	}
+	return out
 }
 
 // uuidStringOrEmpty returns u.String() unless u is the zero UUID, in

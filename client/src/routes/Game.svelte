@@ -69,6 +69,7 @@
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
   import {
     GAME_OVER_GRACE_MS,
+    councilVoteRequest,
     gameOverRequest,
     inlineRefusal,
     voteRequest,
@@ -1796,6 +1797,17 @@
         })
       : null,
   );
+  // ADR 0146: a rules vote (Council's Judgment), read-only for every
+  // seat but the one voting now, whose own ballot is an option_pick.
+  const councilVoteDockRequest = $derived(
+    view && viewerID
+      ? councilVoteRequest(
+          view.pending_choices?.find((c) => c.council_vote) ?? null,
+          viewerID,
+          view.seats,
+        )
+      : null,
+  );
   // #2919: Back to lobby is held for a moment after the game ends, so a
   // click meant for `next`, whose corner it takes, cannot leave the table.
   let gameOverArmed = $state(false);
@@ -2347,6 +2359,9 @@
         {/if}
         {#if voteDockRequest}
           <DockRequest request={voteDockRequest} />
+        {/if}
+        {#if councilVoteDockRequest}
+          <DockRequest request={councilVoteDockRequest} />
         {/if}
         {#if fanfare && !fanfareDismissed}
           <GameEndFanfare

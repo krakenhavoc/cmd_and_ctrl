@@ -202,7 +202,20 @@ var carriedFixture = map[string]any{
 			// refused at restore when this binary does not know them.
 			c.PickThen = carriedTestPickKey.Key()
 			c.PickDestination = PickExile
+			// ADR 0146: so is a ballot's vote continuation.
+			if c.CouncilVote != nil {
+				c.CouncilVote.Then = carriedTestVoteKey.Key()
+			}
 		}
+		return out
+	},
+	"PendingChoice.CouncilVote": func(*Game) any {
+		v, err := generateNonZero(reflect.TypeOf(&CouncilVote{}), "PendingChoice.CouncilVote", 0)
+		if err != nil {
+			panic(err)
+		}
+		out := v.Interface().(*CouncilVote)
+		out.Then = carriedTestVoteKey.Key()
 		return out
 	},
 	"PendingChoice.PickThen":        carriedTestPickKey.Key(),
@@ -851,6 +864,9 @@ var (
 	// #2115: a revealed-hand pick's continuation key.
 	carriedTestPickKey = RegisterRevealedPickThen(testEffectKeyPrefix+"carried-pick",
 		func(*Game, RevealedPick) error { return nil })
+	// ADR 0146: a ballot's vote continuation key.
+	carriedTestVoteKey = RegisterVoteThen(testEffectKeyPrefix+"carried-vote",
+		func(*Game, VoteResult) error { return nil })
 )
 
 // carriedTestRiderCount is the counted-rider key the carried probes use
