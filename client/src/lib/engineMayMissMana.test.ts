@@ -195,7 +195,6 @@ describe("the verdict it produces", () => {
     step: v.turn?.step,
     autopassToggle: false,
     viewerIsActive: v.turn?.active_seat === 0,
-    autopassPersistThroughTurns: false,
     manualStop: false,
     passMode: "smart",
     stackEmpty: true,

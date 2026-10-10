@@ -319,7 +319,6 @@ function gates(over: Partial<AutopassGates> = {}): AutopassGates {
     step: "upkeep",
     autopassToggle: false,
     viewerIsActive: false,
-    autopassPersistThroughTurns: false,
     manualStop: false,
     passMode: "smart",
     stackEmpty: true,

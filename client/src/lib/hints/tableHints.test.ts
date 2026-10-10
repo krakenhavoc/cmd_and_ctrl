@@ -86,7 +86,7 @@ const withStack = (controller: string): GameView => {
 };
 
 describe("the table's hints", () => {
-  it("are the nine the ADR names and ADR 0130's exert, at version 1, under the ids the tutorial will teach", () => {
+  it("are the nine the ADR names and ADR 0130's exert, at their versions, under the ids the tutorial will teach", () => {
     expect(TABLE.map((h) => h.id).sort()).toEqual(
       [
         "table.attention",
@@ -102,7 +102,9 @@ describe("the table's hints", () => {
       ].sort(),
     );
     for (const h of TABLE) {
-      expect(h.version, h.id).toBe(1);
+      // ADR 0143 §4.2 renamed the dock's Pass turn and autopass, so the
+      // dock's hint is offered again at version 2 (ADR 0125 §7).
+      expect(h.version, h.id).toBe(h.id === "table.dock" ? 2 : 1);
       expect(h.place, h.id).toBe("table");
     }
     expect(new Set(TABLE.map((h) => h.order)).size).toBe(TABLE.length);

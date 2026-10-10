@@ -345,7 +345,7 @@ describe("the yes/no family, inline in the dock", () => {
       expect(yes[0].getAttribute("aria-keyshortcuts")).toBe("Y");
       expect(no[0].getAttribute("aria-keyshortcuts")).toBe("N");
       expect(buttons(c, "next")).toHaveLength(0);
-      expect(buttons(c, "Pass turn")).toHaveLength(0);
+      expect(buttons(c, "End turn")).toHaveLength(0);
 
       click(no[0]);
       click(yes[0]);
@@ -793,7 +793,7 @@ describe("the vote, in the dock", () => {
     expect(dlg.textContent).toContain("called by Opp");
     // A vote never stops the game: next and Pass turn stay.
     expect(buttons(c, "next")).toHaveLength(1);
-    expect(buttons(c, "Pass turn")).toHaveLength(1);
+    expect(buttons(c, "End turn")).toHaveLength(1);
     // No floating panel as well.
     expect(c.querySelector(".vote-modal")).toBeNull();
 

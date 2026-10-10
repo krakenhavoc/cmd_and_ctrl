@@ -244,14 +244,14 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "group",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's toggles: autopass, undo, the ⋯ menu",
+    doc: "the dock's toggles: Skip to my turn, undo, the ⋯ menu",
   }),
-  autopass: label({
-    name: "autopass",
+  skipToMyTurn: label({
+    name: "Skip to my turn",
     kind: "aria",
     role: "button",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's autopass toggle (state in aria-pressed); the tutorial's let-the-bot-play step anchors here, within actions",
+    doc: "the dock's Skip to my turn toggle (ADR 0143 §4.2, formerly autopass; state in aria-pressed): passes for you until your next main phase; the tutorial's let-the-bot-play step anchors here, within actions",
   }),
   next: label({
     name: "next",
@@ -260,12 +260,19 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's primary: pass priority",
   }),
-  passTurn: label({
-    name: "Pass turn",
+  endTurn: label({
+    name: "End turn",
     kind: "text",
     role: "button",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's secondary: skip the rest of the turn",
+    doc: "the dock's secondary, shown to the active player only (ADR 0143 §4.2, formerly Pass turn): passes for you through every step of the rest of your turn",
+  }),
+  sandboxPassTurn: label({
+    name: "Skip to next turn (sandbox)",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's sandbox jump to the next turn (pass_turn): skips the end step, its triggers and the cleanup discard, and the log says so",
   }),
   declareAttackers: label({
     name: "declare attackers",

@@ -446,6 +446,48 @@ describe("settings", () => {
     expect("stackHoldMs" in next.gameplay).toBe(false);
   });
 
+  // ADR 0143 §4.2: Skip to my turn always clears at the viewer's own
+  // main 1, so the danger setting that kept the old autopass on is gone
+  // at v27, whatever it held.
+  it("v26 → v27 drops gameplay.autopassPersistThroughTurns", async () => {
+    for (const [version, stored] of [
+      [6, true],
+      [20, false],
+      [26, true],
+      [26, "yes"],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({
+          __version: version,
+          gameplay: { autopassPersistThroughTurns: stored, autoPassOwnStack: false },
+        }),
+      );
+      const mod = await freshModule();
+      const s = get(mod.settings);
+      expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(27);
+      expect(s.__version).toBe(mod.SETTINGS_VERSION);
+      const label = `v${version} ${String(stored)}`;
+      expect("autopassPersistThroughTurns" in s.gameplay, label).toBe(false);
+      expect(s.gameplay.autoPassOwnStack, label).toBe(false);
+      mod.updateSettings("gameplay", "confirmExit", false);
+      const disk = JSON.parse(localStorage.getItem("cmdctrl.settings.v1") ?? "{}");
+      expect("autopassPersistThroughTurns" in disk.gameplay, label).toBe(false);
+    }
+  });
+
+  it("has no autopassPersistThroughTurns for a new player, a synced field or a v26 copy", async () => {
+    const { applySyncedCopy, defaultSettings, SYNCED_FIELDS } = await freshModule();
+    expect("autopassPersistThroughTurns" in defaultSettings().gameplay).toBe(false);
+    expect("autopassPersistThroughTurns" in SYNCED_FIELDS.gameplay).toBe(false);
+    const next = applySyncedCopy(
+      defaultSettings(),
+      { gameplay: { autopassPersistThroughTurns: true } },
+      26,
+    );
+    expect("autopassPersistThroughTurns" in next.gameplay).toBe(false);
+  });
+
   // ADR 0118 §1, owner decision 5: strict payment is the default, and
   // every existing player is moved to it once. A stored false from
   // before v19 is the old default materialised, so it moves; from v19

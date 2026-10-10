@@ -47,6 +47,8 @@
 // Actions                                                          //
 // ---------------------------------------------------------------- //
 
+import { L } from "./labels";
+
 export type ShortcutID =
   | "passPriority"
   | "passTurn"
@@ -116,8 +118,8 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   },
   {
     id: "passTurn",
-    label: "Pass turn",
-    hint: "Skip the rest of your turn. Only while you are the active player.",
+    label: "End turn",
+    hint: "Pass for you through every step of the rest of your turn; triggers still happen. Only while you are the active player.",
     group: "priority",
     defaultBinding: "t",
     kind: "action",
@@ -134,8 +136,8 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   },
   {
     id: "toggleAutopass",
-    label: "Toggle autopass",
-    hint: "Pass every priority window until you turn it off.",
+    label: L.skipToMyTurn,
+    hint: "Pass for you until your next main phase, stopping only when you can answer an opponent's spell, an attack or an opponent's end step.",
     group: "priority",
     defaultBinding: "Shift+p",
     kind: "view",
