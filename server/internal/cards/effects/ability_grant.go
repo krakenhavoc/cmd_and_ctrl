@@ -252,6 +252,7 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 			panic(where("mana ability", i) + " functions outside the battlefield — a granted ability is a permanent's")
 		}
 	}
+	checkManaAbilitiesAnswers(name, "ability grant "+gr.Key, gr.Mana)
 }
 
 // checkStaticGrants refuses a StaticAbility.GrantAbilities outside the

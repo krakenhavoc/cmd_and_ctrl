@@ -37,6 +37,10 @@ steps and combat abilities (#2871)" below.
 to the next turn. It sends `end_turn`, which passes priority for the active
 player until their turn ends, so every step still happens and its triggers
 fire. See "Amendment: pass turn walks the turn (#2881)" below.
+**Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
+2026-10-09 — `interacts` reads what the ability row declares it answers
+(`Purpose.Answers`) before the printed-text read, and `combat_interacts`
+carries the combat tier. The response classes here are unchanged.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as

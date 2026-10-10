@@ -87,6 +87,29 @@ type PurposeView struct {
 	// are the controller's; an entry's are its target's. Absent when
 	// empty. A pointer so PurposeView stays comparable.
 	Targets *[]TargetPurposeView `json:"targets,omitempty"`
+	// Answers is what the row can do in response (ADR 0142): the wire
+	// names of game.Answers, in the vocabulary's order ("protect",
+	// "pump", "prevent", "remove", "sac_outlet", "restrict",
+	// "combat_grant", "animate", "makes_blocker", "value"). Absent when
+	// the row declares none; ["value"] is a declared "answers nothing".
+	// On an activated row only. It is not an amount: a purpose that
+	// declares only answers is not Priced. A pointer so PurposeView
+	// stays comparable.
+	Answers *[]string `json:"answers,omitempty"`
+}
+
+// Priced reports whether the purpose declares anything the bot prices:
+// an amount, a sweep, a payoff, a pump or a target entry. Answers alone
+// is not one (ADR 0142 §7). A reader that drops its proxy price for a
+// declared purpose asks this, not "is purpose non-nil", so a row that
+// declares only what it answers keeps the price it had. Nil-safe.
+func (p *PurposeView) Priced() bool {
+	if p == nil {
+		return false
+	}
+	q := *p
+	q.Answers = nil
+	return q != PurposeView{}
 }
 
 // TargetPurposeView is game.TargetPurpose on the wire: what the spell
@@ -216,6 +239,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			}
 		}
 		v.Targets = &out
+	}
+	if w := p.Answers.Wire(); len(w) > 0 {
+		v.Answers = &w
 	}
 	if s := p.Sweep; !s.IsZero() {
 		v.Sweep = &SweepView{

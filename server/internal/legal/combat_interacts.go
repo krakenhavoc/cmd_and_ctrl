@@ -8,7 +8,7 @@ import (
 )
 
 // combat_interacts.go — #2871. Some untargeted activated abilities are
-// not an answer to a spell, so abilityInteracts leaves them out, but
+// not an answer to a spell, so the stack-tier read (answersOf) leaves them out, but
 // they change a fight: a creature that gains flying or menace before
 // blocks, a manland or a crewed Vehicle that becomes a blocker, a
 // creature that can block an additional creature. Counted on every
@@ -23,7 +23,7 @@ import (
 // attacked. It also sets Move.CombatDefenderOnly, and the client counts
 // it only while the viewer defends against an attacker.
 //
-// It is read from the ability's shape, like abilityInteracts:
+// It is read from the ability's shape, like the stack-tier read:
 //
 //  1. a crew cost (CR 702.122), the Vehicle becoming an artifact
 //     creature until end of turn, or a crew row whose cost is printed
@@ -42,8 +42,13 @@ import (
 //     populate or amass. A row that also grants a combat keyword
 //     ("They gain haste") is read by rule 2 instead.
 //
-// abilityInteracts is asked first: a row it already marks is never
+// The stack tier is asked first: a row it already marks is never
 // also marked here.
+//
+// ADR 0142: this read is the combat tier of fallbackAnswers, the
+// printed-text read of a row that declares no Purpose.Answers. An
+// animation or crew is animate, a creature token blocker makes_blocker,
+// and the rest combat_grant (combatAnswers).
 
 // combatKind is how an untargeted ability matters in combat.
 type combatKind int
@@ -138,4 +143,27 @@ func grantsCombatKeyword(text string) bool {
 		}
 	}
 	return false
+}
+
+// combatAnswers is the combat read mapped onto ADR 0142's vocabulary,
+// for fallbackAnswers: a crew row or an animation is animate, a token
+// blocker is makes_blocker, any other combat ability combat_grant.
+func combatAnswers(ab game.ActivatedAbilityShape) game.Answers {
+	switch abilityCombatKind(ab) {
+	case combatDefender:
+		return game.AnswerMakesBlocker
+	case combatAny:
+		text := strings.ToLower(ab.Label)
+		if ab.Cost.Crew > 0 || strings.HasPrefix(text, "crew") {
+			return game.AnswerAnimate
+		}
+		if i := strings.Index(text, ":"); i >= 0 {
+			text = text[i+1:]
+		}
+		if becomesCreature.MatchString(text) {
+			return game.AnswerAnimate
+		}
+		return game.AnswerCombatGrant
+	}
+	return 0
 }

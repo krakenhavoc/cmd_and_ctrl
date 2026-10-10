@@ -1645,6 +1645,16 @@ type ManaAbility struct {
 	Produced string
 	Label    string
 
+	// Answers is what the ability can do in response (ADR 0142 §2):
+	// game.AnswerSacOutlet for a creature sacrifice outlet (Ashnod's
+	// Altar's "Sacrifice a creature: Add {C}{C}"), game.AnswerValue for
+	// one that answers nothing. Nothing else is allowed here. Zero is
+	// "not declared", and smart autopass then reads the sacrifice cost.
+	// Register refuses a creature-sacrifice cost declared without
+	// AnswerSacOutlet. See docs/adding-cards.md, "Declaring what an
+	// ability answers".
+	Answers game.Answers
+
 	// Zones is the CR 113.6 dimension: the zones this mana ability
 	// functions from (#1228). Nil means the battlefield and nowhere
 	// else, which is every mana ability in the catalog but the two

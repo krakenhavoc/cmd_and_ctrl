@@ -65,7 +65,9 @@ func checkAnyPlayerAbility(name, where string, ab ActivatedAbility) {
 	switch {
 	case named > 1:
 		panic(fmt.Sprintf("effects.Register: %q %s names more than one of AnyPlayer, OpponentsOnly, OwnerOnly and GrantorOnly (ADR 0106 §1)", name, where))
-	case (ab.OpponentsOnly || ab.GrantorOnly) && ab.Purpose != (game.Purpose{}):
+	case (ab.OpponentsOnly || ab.GrantorOnly) && ab.Purpose != (game.Purpose{Answers: ab.Purpose.Answers}):
+		// ADR 0142: Answers alone is allowed — smart autopass reads it
+		// for whoever may activate the row.
 		panic(fmt.Sprintf("effects.Register: %q %s declares a Purpose on an opponents-only or grantor-only row; the bot never reads one there (ADR 0106 §1 amendments 2026-10-07 and 2026-10-09)", name, where))
 	case ab.Cost.Tap:
 		panic(fmt.Sprintf("effects.Register: %q %s is an any-player ability with a {T} cost — not modelled (ADR 0106 §1)", name, where))

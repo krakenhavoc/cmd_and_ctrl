@@ -1,0 +1,12 @@
+# answers_disagreements.txt — ADR 0142 §4's review record (#2872).
+#
+# Every catalog row that declares its Answers where the declared tiers
+# differ from what the printed-text read (legal.FallbackAnswers) would
+# have said: the verdicts the declarations changed, a pointless stop
+# removed or a missed window closed. Generated, never edited by hand:
+#   go test ./internal/cards/effects -run TestAnswersDisagreementsAreCurrent -args -update-answers-disagreements
+# Read its diff in review.
+#
+# One row per line, tab-separated, sorted:
+# <oracle_id> <card name> <ref> <label> declared=<answers> (<tiers>) fallback=<answers> (<tiers>)
+

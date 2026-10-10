@@ -46,6 +46,8 @@ import (
 //     2026-10-08) that names no clause of its statement, names one
 //     twice, says nothing, or says what the clause's pick cannot be
 //     given (checkTargetPurposes).
+//   - Answers (ADR 0142) off an activated row, or a declaration
+//     answers.go refuses (checkActivatedAnswers, checkManaAnswers).
 
 // purposeSlot says where a Purpose was declared, for the guard's rules.
 type purposeSlot int
@@ -96,12 +98,22 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.PreventCombatDamageToSelf && !onSource {
 		fail("sets PreventCombatDamageToSelf off a triggered or activated row")
 	}
+	if p.Answers != 0 && !onActivated(slot) {
+		fail("declares Answers off an activated row — nothing reads it there yet (ADR 0142 §2)")
+	}
+	checkAnswerBits(p.Answers, fail)
 	if p.AwakenLand != 0 && slot != purposeOnAltCost {
 		fail("sets AwakenLand off an alternative cost — it is what an awaken offer adds (ADR 0135 §3)")
 	}
 	checkPump(p.Pump, fail)
 	checkDiscardPayoff(p.DiscardPayoff, fail)
 	checkSweep(p.Sweep, fail)
+}
+
+// onActivated reports whether a slot is an activated row, the one slot
+// Answers may be declared on (ADR 0142 §2).
+func onActivated(slot purposeSlot) bool {
+	return slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
 }
 
 // checkPump is checkPurpose's half for a declared Pump (ADR 0130's
@@ -214,6 +226,7 @@ func checkSpecPurposes(spec Spec) {
 	for i, t := range spec.Triggered {
 		checkTriggeredPurpose(name, fmt.Sprintf("triggered ability %d", i), t)
 	}
+	checkManaAbilitiesAnswers(name, "card", spec.ManaAbilities)
 }
 
 // checkActivatedPurpose checks one activated row's purpose and its
@@ -225,6 +238,7 @@ func checkActivatedPurpose(name, where string, a ActivatedAbility) {
 		slot = purposeOnAnyPlayerActivated
 	}
 	checkPurpose(name, where, slot, a.Purpose)
+	checkActivatedAnswers(name, where, activatedShapeOf(a))
 	checkTargetPurposes(name, where, a.Purpose, a.Targets, true)
 	checkModePurposes(name, where, a.Modes)
 }

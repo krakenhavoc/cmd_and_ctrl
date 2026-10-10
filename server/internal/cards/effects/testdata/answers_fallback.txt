@@ -1,0 +1,769 @@
+# answers_fallback.txt — ADR 0142 §4's ratchet (#2872).
+#
+# Every catalog row smart autopass asks about (an instant-speed
+# activated row that can be announced with no target, or a mana ability
+# that sacrifices another permanent) that does not declare
+# Purpose.Answers (ManaAbility.Answers), so it is still read from its
+# printed text and cost.
+#
+# One row per line, tab-separated, sorted: <oracle_id> <card name> <ref> <label>.
+# The list ONLY SHRINKS. Declare the row's Answers (docs/adding-cards.md,
+# "Declaring what an ability answers") and delete its line, or run
+#   go test ./internal/cards/effects -run TestAnswersFallbackOnlyShrinks -args -update-answers-fallback
+# which deletes stale lines and never adds one. A new undeclared row
+# fails the test instead of being added here.
+
+0056fc91-4398-471c-b561-7ff99750ac8a	Escape Tunnel	own:0	{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+00625242-9348-4ef4-b975-f2ac82fee21d	Savai Triome	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+0089acfe-da66-4dd7-b1e5-4d7407f58257	Theorist's Proxy	own:0	{U}, Sacrifice this creature: The next spell you cast this turn can't be countered.
+008cb342-79f5-4df6-a6b7-0e9e22ed693f	Coalition Relic	own:0	{T}: Put a charge counter on Coalition Relic
+02079e18-ac14-4255-95c4-741eb76c4799	Albino Troll	own:0	{1}{G}: Regenerate this creature.
+022dae2e-7fc3-486e-9168-59652d9ab21c	Prismatic Circle	own:0	{1}: The next time a source of your choice of the chosen color would deal damage to you this turn, prevent that damage.
+02679a2e-303d-412f-87d8-0a37a8ca259c	Blighted Woodland	own:0	{3}{G}, {T}, Sacrifice this land: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.
+026f4a4b-eedd-44e1-9d37-ca4fb8d6db98	Fiery Islet	own:0	{1}, {T}, Sacrifice this land: Draw a card.
+0287d541-3f73-4c8b-9a77-87f99898758d	Bushmeat Poacher	own:0	{1}, {T}, Sacrifice another creature: You gain life equal to the sacrificed creature's toughness. Draw a card.
+02b41d0e-82e7-4307-8cc4-8175ff78ea1f	Kiora of Fire and Ashes	own:0	{8}: Create a 5/5 red Dragon creature token with flying.
+032b8a0d-491a-4a12-ab9f-689010054d5b	Prismatic Vista	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield, then shuffle.
+038463c8-d2e1-4e7b-829d-67a744ae2660	Unliving Psychopath	own:0	{B}: This creature gets +1/-1 until end of turn.
+03a4cbe2-cf35-4c2c-b035-666f994ffd09	Anavolver	own:0	Pay 3 life: Regenerate this creature.
+03d32ace-dd99-48c6-bcae-9b915d041aef	Freed from the Real	own:0	{U}: Tap enchanted creature
+03d32ace-dd99-48c6-bcae-9b915d041aef	Freed from the Real	own:1	{U}: Untap enchanted creature
+03fe19bb-8e22-4030-8299-2ddd2d5a7eb2	Miren, the Moaning Well	own:0	{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.
+0405e0a9-6d02-4691-bdb8-59c72b824dab	Marketback Walker	own:0	{4}: Put a +1/+1 counter on this creature.
+04152e7a-969c-4858-841b-0a569a9fc1bf	Professional Face-Breaker	own:0	Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn.
+043192d8-6077-46c3-b43f-b7caf6762869	City of Shadows	own:0	{T}, Exile a creature you control: Put a storage counter on this land.
+044a169e-32ae-464a-a642-8d3409e82d9f	Flailing Manticore	own:0	{1}: This creature gets +1/+1 until end of turn. Any player may activate this ability.
+044a169e-32ae-464a-a642-8d3409e82d9f	Flailing Manticore	own:1	{1}: This creature gets -1/-1 until end of turn. Any player may activate this ability.
+045bf1fd-f375-47a0-9983-7e2ebfed7854	Kargan Intimidator	own:0	{1}: Choose one that hasn't been chosen this turn
+046e25ee-c96d-4cff-93be-f7e3379d713c	Moonblade Shinobi	own:0	Ninjutsu {2}{U} ({2}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)
+06b77a80-4968-4385-960a-fb66bb4faa94	Dragonkin Berserker	own:0	Boast — {4}{R}: Create a 5/5 red Dragon creature token with flying.
+06b7987d-c876-4369-9c2d-ce1d35a01097	Eradicator Valkyrie	own:0	Boast — {1}{B}, Sacrifice a creature: Each opponent sacrifices a creature or planeswalker.
+06d62e22-df9c-488e-8d2d-793eaf4cd75c	Consulate Surveillance	own:0	Pay {E}{E}: Prevent all damage that would be dealt to you this turn by a source of your choice.
+07c42f46-800e-4d2a-b844-c125ab93190d	Circle of Protection: Shadow	own:0	{1}: The next time a creature of your choice with shadow would deal damage to you this turn, prevent that damage.
+08cb8a30-9cb4-4517-bee5-8848aa60d1a2	Zuran Orb	own:0	Sacrifice a land: You gain 2 life.
+092dd5be-da62-4198-b7fa-0813f075047c	Rune of Protection: Blue	own:0	{W}: The next time a blue source of your choice would deal damage to you this turn, prevent that damage.
+092dd5be-da62-4198-b7fa-0813f075047c	Rune of Protection: Blue	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+0951b529-646c-4dfd-88ad-84ee117ce722	Phantom Nantuko	own:0	{T}: Put a +1/+1 counter on this creature.
+0987b5e9-0012-4189-8745-45f10e9557f3	Whirling Catapult	own:0	{2}, Exile the top two cards of your library: This artifact deals 1 damage to each creature with flying and each player.
+09dd85aa-47bc-4713-a9b9-8b52ff2285ed	Misty Rainforest	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Island card, put it onto the battlefield, then shuffle.
+0a73b4da-9b5c-480e-b58b-6a82a52ea71e	Vintara Elephant	own:0	{3}: This creature loses trample until end of turn. Any player may activate this ability.
+0a8d0217-ff24-4177-b6be-707eb2b6b9e9	Insidious Fungus	own:2	{2}, Sacrifice Insidious Fungus: Draw a card, then you may put a land from your hand onto the battlefield tapped
+0b67c4e2-f88b-4e01-85a1-9d5f5b8db13b	Commander's Sphere	own:0	Sacrifice this artifact: Draw a card.
+0b7393aa-d563-45bc-9946-8e7d1729d498	Mountain Valley	own:0	{T}, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.
+0b8517c0-0441-4fd9-99ec-2274e57c3cb6	Kaza, Roil Chaser	own:0	{T}: The next instant or sorcery spell you cast this turn costs {X} less to cast, where X is the number of Wizards you control as this ability resolves.
+0c0845c3-f4b5-444e-8f42-da0c7dbf2841#1	Henrika, Infernal Seer	own:0	{1}{B}{B}: Each creature you control with flying, deathtouch, and/or lifelink gets +1/+0 until end of turn.
+0c4e2c90-c17b-42cc-b4d7-cf75970fbe90	Staff of the Storyteller	own:0	{W}, {T}, Remove a story counter from this artifact: Draw a card.
+0c85b8f7-0bd0-4680-9ec5-d4b110460a54	Fabled Passage	own:0	{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle. Then if you control four or more lands, untap that land.
+0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9	Restless Spire	own:0	{U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with "During your turn, this creature has first strike." It's still a land.
+0cd5eef6-6830-4c6d-8578-2726900c39a5	Kill Switch	own:0	{2}, {T}: Tap all other artifacts. They don't untap during their controllers' untap steps for as long as this artifact remains tapped.
+0cdc86c4-8c68-4ba6-8165-511f32156a4c	Ember Swallower	own:0	{5}{R}{R}: Monstrosity 3.
+0ce47c8b-1e1f-463f-94f0-35ca00be89e6	Inferno Titan	own:0	{R}: This creature gets +1/+0 until end of turn.
+0d9a31f5-20d0-4266-95ec-38b4fa96b8aa	Luminous Guardian	own:0	{W}: This creature gets +0/+1 until end of turn.
+0d9a31f5-20d0-4266-95ec-38b4fa96b8aa	Luminous Guardian	own:1	{2}: This creature can block an additional creature this turn.
+0e07f1af-5ff6-4da5-8683-aea4cc390975	Evolution Witness	own:0	{1}{G}: Adapt 2
+0e2575be-c596-4c8c-bf07-7941ca065721	Dreamstone Hedron	own:0	{3}, {T}, Sacrifice this artifact: Draw three cards.
+0f0f3712-8d13-41a5-b332-2ab34e48d79d	Xantcha, Sleeper Agent	own:0	{3}: Xantcha's controller loses 2 life and you draw a card. Any player may activate this ability.
+0f5b0c77-1e3d-46a1-ae0e-03ed79196cd9	Al-abara's Carpet	own:0	{5}, {T}: Prevent all damage that would be dealt to you this turn by attacking creatures without flying.
+0fbe0610-8565-4910-bf35-2c10e38b633a	Glassblower's Puzzleknot	own:0	{2}{U}, Sacrifice this artifact: Scry 2, then you get {E}{E}.
+104095ed-55e3-408e-bf70-4fe06bb16d2f	Crypt Rats	own:0	{X}: This creature deals X damage to each creature and each player. Spend only black mana on X.
+1093fdb6-bd4f-46a8-92e3-5aa46b52bb4f	Weathered Wayfarer	own:0	{W}, {T}: Search your library for a land card, reveal it, put it into your hand, then shuffle. Activate only if an opponent controls more lands than you.
+10b8d4c7-7553-4d76-b643-d98b80701e13	Gingerbrute	own:0	{1}: This creature can't be blocked this turn except by creatures with haste.
+10b8d4c7-7553-4d76-b643-d98b80701e13	Gingerbrute	own:1	{2}, {T}, Sacrifice this creature: You gain 3 life.
+10dda10f-2549-47e5-9a8b-fb414cf38d3f	Memorial Vault	own:0	{T}, Sacrifice another artifact: Exile the top X cards of your library, where X is one plus the mana value of the sacrificed artifact. You may play those cards this turn.
+11c7662f-e688-40a6-98fd-6ae89d231b44	Staff of Compleation	own:1	{T}, Pay 3 life: Proliferate.
+11c7662f-e688-40a6-98fd-6ae89d231b44	Staff of Compleation	own:2	{T}, Pay 4 life: Draw a card.
+11c7662f-e688-40a6-98fd-6ae89d231b44	Staff of Compleation	own:3	{5}: Untap this artifact.
+12a8c546-d0d1-4c3d-bfca-c1e59cef349a	Moonlight Geist	own:0	{3}{W}: Prevent all combat damage that would be dealt to and dealt by this creature this turn.
+12c98c1e-7e02-473d-b494-ad8a0731fe82	Lagomos, Hand of Hatred	own:0	{T}: Search your library for a card, put it into your hand, then shuffle. Activate only if five or more creatures died this turn.
+12db6263-75c2-442f-a1a5-7af7915f8f9f	Umbral Collar Zealot	own:0	Sacrifice another creature or artifact: Surveil 1.
+131069a6-8f30-4caf-8934-3588837b5f7f	Goblin Goliath	own:0	{3}{R}, {T}: If a source you control would deal damage to an opponent this turn, it deals double that damage to that player instead.
+13575cf9-65c1-4861-b21e-eb2155e07766	Sensei's Divining Top	own:0	{1}: Look at the top three cards of your library, then put them back in any order.
+13575cf9-65c1-4861-b21e-eb2155e07766	Sensei's Divining Top	own:1	{T}: Draw a card, then put this artifact on top of its owner's library.
+136596a0-b179-40be-b42d-c0b992621c95	Mage-Ring Network	own:0	{1}, {T}: Put a storage counter on this land.
+136c9ecb-59b4-4ef6-bcb2-7b8d3df3ee75	Razaketh, the Foulblooded	own:0	Pay 2 life, Sacrifice another creature: Search your library for a card and put it into your hand
+14c3ff84-1e82-4606-a433-869fc52cc382	Syr Konrad, the Grim	own:0	{1}{B}: Each player mills a card.
+14d71432-c2e6-4c81-92ef-cf98e1fcf5f8	Consulate Turret	own:0	{T}: You get {E}.
+14ebedd1-7a2d-413b-9b76-8610511292a4	Circle of Solace	own:0	{1}{W}: The next time a creature of the chosen type would deal damage to you this turn, prevent that damage.
+158823ed-6015-437a-82b0-8dadb1e9aab2	Hexhaven Battalion	own:0	Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+158db438-52ba-4c30-b7bf-d1c4f76da917	Sphinx's Tutelage	own:0	{5}{U}: Draw a card, then discard a card.
+15fef45d-f1a9-49b2-abaa-fe77bb9d1afd	Lathliss, Dragon Queen	own:0	{1}{R}: Dragons you control get +1/+0 until end of turn
+16f6438d-2a29-41cb-bf0c-4d02bd66112b	Hermit Druid	own:0	{G}, {T}: Reveal cards from the top of your library until you reveal a basic land card. Put that card into your hand and the rest into your graveyard.
+172a8f58-c420-4497-b962-c5853f923667	Aerid Konstrari	own:0	{6}: Create a Heartwood token. Then Aerid Konstrari gets +X/+0 until end of turn, where X is the number of artifacts you control
+17b4778b-82b1-4845-ad08-00f3ff66877b	Perpetual Timepiece	own:0	{T}: Mill two cards.
+17e905ca-c0bd-473d-95a7-e180ba5fea43	Mirror Entity	own:0	{X}: Until end of turn, creatures you control have base power and toughness X/X and gain all creature types.
+1861e642-21d5-4232-89f3-b5557f2946c1	Phyrexian Tower	mana:1	{T}, Sacrifice a creature: Add {B}{B}
+186b2256-4af3-48cb-96b0-b0e80a7ee6dc	Oliphaunt	own:0	Mountaincycling {1} ({1}, Discard this card: Search your library for a Mountain card, reveal it, put it into your hand, then shuffle.)
+188da0ad-8524-4fb2-915e-1876dc9df89f	Peregrin Took	own:0	Sacrifice three Foods: Draw a card.
+1917bda6-c0e1-4c80-8009-74c28cf6b8e9	Edgar, Moonlit Sovereign	own:0	{4}{G}: Put a +1/+1 counter on each creature you control with a +1/+1 counter on it.
+1ad5766b-9ae3-437b-bd91-c4c988a8b095	Agonasaur Rex	own:0	Cycling {2}{G} ({2}{G}, Discard this card: Draw a card.)
+1adcc4a8-b2dd-4d9a-bded-188b81c84a10	Grim Roustabout	own:0	{1}{B}: Regenerate this creature.
+1af303ef-dd76-4684-97a1-355b7eee53e4	Thran Weaponry	own:0	{2}, {T}: All creatures get +2/+2 for as long as this artifact remains tapped.
+1b122fbb-c2e1-42d1-bfc5-fcacacdfa0bc	Burnout Bashtronaut	own:0	{2}: This creature gets +1/+0 until end of turn.
+1b5e6560-ff2e-4475-96cb-63f64c8a86db	Soul-Guide Lantern	own:0	{T}, Sacrifice this artifact: Exile each opponent's graveyard.
+1b5e6560-ff2e-4475-96cb-63f64c8a86db	Soul-Guide Lantern	own:1	{1}, {T}, Sacrifice this artifact: Draw a card.
+1bb2b090-19a4-40d9-823a-671f6eaca9f9	Pardic Lancer	own:0	Discard a card at random: This creature gets +1/+0 and gains first strike until end of turn.
+1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a	Terramorphic Expanse	own:0	{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+1cfc7b12-a595-492d-81ee-bd100ba7de6a	Erebos, God of the Dead	own:0	{1}{B}, Pay 2 life: Draw a card.
+1e1d4d81-4a45-41b5-a781-ae2227b4f4c0	Cho-Arrim Alchemist	own:0	{1}{W}{W}, {T}, Discard a card: The next time a source of your choice would deal damage to you this turn, prevent that damage. You gain life equal to the damage prevented this way.
+1eaa37a3-8769-4213-bcd5-39bcf4771273	Casey Jones, Asphalt Hooligan	own:0	{4}: Double Casey Jones's power until end of turn. Any player may activate this ability.
+1f250443-8d5e-46c9-920e-8e9373780e32	The Millennium Calendar	own:0	{2}, {T}: Double the number of time counters on The Millennium Calendar.
+1f3c2b00-0000-4ae1-9650-9553accac52e	Ninja of the Deep Hours	own:0	Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)
+1ff62220-be95-4901-b8d8-812b9a1a1b0a	Greed	own:0	{B}, Pay 2 life: Draw a card
+201b8936-18f4-4881-a1d4-c308cf3832bf#1	Avatar Kuruk	own:0	Exhaust — Waterbend {20}: Take an extra turn after this one.
+2031b17c-0536-446f-a9aa-b46fe79b7ea7	Canyon Slough	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+2037c4bf-bf0d-46ab-8b4b-61d9a50c431e	Protective Sphere	own:0	{1}, Pay 1 life: Prevent all damage that would be dealt to you this turn by a source of your choice that shares a color with the mana spent on this activation cost.
+20591a83-7138-4876-b088-035bd3788be3	Tamiyo's Journal	own:0	{T}, Sacrifice three Clues: Search your library for a card, put that card into your hand, then shuffle.
+212d058b-69c6-4dc2-8c93-bdfe26dc2ffe	Hammer of Purphoros	own:0	{2}{R}, {T}, Sacrifice a land: Create a 3/3 colorless Golem enchantment artifact creature token.
+21570481-190e-4cfa-a5fd-a0642e2af569	Glaring Spotlight	own:0	{3}, Sacrifice this artifact: Creatures you control gain hexproof until end of turn and can't be blocked this turn.
+21b76a94-d9f3-4c34-ab24-7e89321b04f0	Obeka, Brute Chronologist	own:0	{T}: The player whose turn it is may end the turn.
+22517690-3ec1-49c9-951f-93eb3114423a	Mounted Archers	own:0	{W}: This creature can block an additional creature this turn.
+22528380-4f47-4bd9-a1d4-79f700cba4f5	Trained Pronghorn	own:0	Discard a card: Prevent all damage that would be dealt to this creature this turn.
+2283e409-c6c7-4de9-899b-2b3caea5f35e	Instant Ramen	own:0	{2}, {T}, Sacrifice this artifact: You gain 3 life
+228fbae1-423e-461d-b8c3-55786938a3cb	Thermo-Alchemist	own:0	{T}: This creature deals 1 damage to each opponent.
+229d6627-1292-4ae1-8849-b0f956fa6540	Grim Monolith	own:0	{4}: Untap Grim Monolith
+22d0a848-2126-48f0-9050-38daaf93b1d0	Agna Qel'a	own:0	{2}{U}, {T}: Draw a card, then discard a card.
+22f6391e-2634-440f-af1b-9581d1bff818	Tomb of the Spirit Dragon	own:0	{2}, {T}: You gain 1 life for each colorless creature you control.
+23270e4a-a222-4ffb-a946-d0e20d665187	Zacama, Primal Calamity	own:2	{2}{W}: You gain 3 life.
+234fb291-0b62-4092-9071-81311c71bd53	Katara, Water Tribe's Hope	own:0	Waterbend {X}: Creatures you control have base power and toughness X/X until end of turn. X can't be 0. Activate only during your turn.
+237758f3-84b2-4e5b-a2c7-b28c893e2790	Goblin Surveyor	own:0	Max speed — {3}, Exile this card from your graveyard: Draw a card.
+23f0d43c-f84d-48cf-8ee7-bfda6e0f7e29	Maximus, Knight Apparent	own:0	{1}, Sacrifice an artifact: You get {E}{E}.
+240f0835-36af-4ad8-9336-d6d3d816d293	The Wind Crystal	own:0	{4}{W}{W}, {T}: Creatures you control gain flying and lifelink until end of turn.
+24aebda0-315f-4d2f-8bd9-00bbaf5bd76a	Remote Isle	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+24d22bcb-8a77-4c47-a508-6f4bc093c1d0	Parhelion II	own:0	Crew 4
+253d0cf7-65d3-4f13-aaf2-aae5bb60ac46	Apex Witchstalker	own:0	Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+2549bc57-9ffb-4053-9f10-f2a5f792b845	Myriad Landscape	own:0	{2}, {T}, Sacrifice this land: Search your library for up to two basic land cards that share a land type, put them onto the battlefield tapped, then shuffle.
+2550099d-b3e2-4eb6-9f36-0fc412828ca6	Rivendell	own:0	{1}{U}, {T}: Scry 2. Activate only if you control a legendary creature.
+25977c02-e2d4-4afd-b12d-37ce4d58f453	Golden Egg	own:0	{2}, {T}, Sacrifice this artifact: You gain 3 life
+25a73cfc-a40d-47ea-a7b1-61c7b62a9e6c	Eldrazi Ravager	own:0	Sacrifice two Eldrazi: Return this card from your graveyard to your hand.
+25a73cfc-a40d-47ea-a7b1-61c7b62a9e6c	Eldrazi Ravager	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+262a5d83-506c-4781-9bc9-1a2b5d83955c	Horizon Canopy	own:0	{1}, {T}, Sacrifice this land: Draw a card.
+265204a9-0ce2-4a0a-a9ea-8537cd94b079	Pentagram of the Ages	own:0	{4}, {T}: The next time a source of your choice would deal damage to you this turn, prevent that damage.
+276dc5c8-c8cf-4b9c-ad75-31876e6e040a	The Indomitable	own:0	Crew 3
+27a7610e-acbe-4a2b-9f61-81b383eb20a5	The Regalia	own:0	Crew 1
+28196fd9-00c9-4cd0-b603-0eec8511ec79	Contaminated Landscape	own:0	{T}, Sacrifice this land: Search your library for a basic Plains, Island, or Swamp card, put it onto the battlefield tapped, then shuffle.
+28196fd9-00c9-4cd0-b603-0eec8511ec79	Contaminated Landscape	own:1	Cycling {W}{U}{B} ({W}{U}{B}, Discard this card: Draw a card.)
+28b1ed69-784c-4642-86c7-104792d5afc2	Phyrexian Devourer	own:0	Exile the top card of your library: Put X +1/+1 counters on this creature, where X is the exiled card's mana value.
+293c6f8f-9e6b-4267-a15d-1d5ce95fb5b4	Deadly Designs	own:0	{2}: Put a plot counter on this enchantment. Any player may activate this ability.
+2951671b-ac01-4e65-857f-0b7b7c7478ce	Reaver Titan	own:0	Crew 4
+29737a60-3ebd-40d9-b935-c4f54b90d45d	Windswept Heath	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Forest or Plains card, put it onto the battlefield, then shuffle.
+29931e18-9dac-46fe-b9a4-72d838d79882	The Grim Captain's Locker	own:0	{T}: Surveil 1.
+29931e18-9dac-46fe-b9a4-72d838d79882	The Grim Captain's Locker	own:1	{T}: Until end of turn, each creature card in your graveyard gains "Escape—{3}{B}, Exile four other cards from your graveyard."
+2b80faaf-92fd-4fa0-a3f6-8bb263e7ff1d	Akroma, Angel of Fury	own:0	{R}: Akroma gets +1/+0 until end of turn.
+2bdd0bcb-6cfb-48e7-972e-355ff46621a4	Cryptcaller Chariot	own:0	Crew 2
+2c1dd6f4-2db5-449d-9ed8-579d98cfcfb8	Flailing Soldier	own:0	{1}: This creature gets +1/+1 until end of turn. Any player may activate this ability.
+2c1dd6f4-2db5-449d-9ed8-579d98cfcfb8	Flailing Soldier	own:1	{1}: This creature gets -1/-1 until end of turn. Any player may activate this ability.
+2c769dfc-79be-4fcb-840c-b72cafdd0a23	Rapid Decay	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+2d584333-b25e-4291-a2c9-80c6d9f8732a	Squirrel Nest	grant:squirrel-nest/make-a-squirrel:0	{T}: Create a 1/1 green Squirrel creature token
+2d8aa053-289d-40d9-baa7-9bd1c5b8e957	Greenbelt Guardian	own:1	Exhaust — {3}{G}: Put three +1/+1 counters on this creature.
+2d92a035-dd7a-4426-a8c0-f04e0b836dad	Disciple of Griselbrand	own:0	{1}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.
+2e61e9c0-a2b9-4a24-8cb0-5160accce183	Circle of Protection: Artifacts	own:0	{2}: The next time an artifact source of your choice would deal damage to you this turn, prevent that damage.
+2e7a9ea9-f76c-4c12-950f-c613fa16cfa8	Captain Sisay	own:0	{T}: Search your library for a legendary card, reveal that card, put it into your hand, then shuffle.
+2eb1b429-8d11-42f3-8815-5a60b6a4e2d5	Witch-king of Angmar	own:0	Discard a card: Witch-king of Angmar gains indestructible until end of turn. Tap him
+2f214dcf-9601-4ccb-bdac-2f9b9f6dff99	Convenient Target	own:0	{2}{R}: Return this card from your graveyard to your hand.
+2f26f270-26d9-46d3-957f-19f52d51eb03#1	Avatar Roku	own:0	{8}: Create a 4/4 red Dragon creature token with flying and firebending 4.
+2f554218-2072-4d9b-b4d4-34f161f1f2a9	Mortivore	own:0	{B}: Regenerate this creature.
+2fb13687-0518-4ba0-a5ae-dd609464b026	Roadside Reliquary	own:0	{2}, {T}, Sacrifice Roadside Reliquary: Draw a card if you control an artifact. Draw a card if you control an enchantment.
+30820f71-9fd4-453c-b377-c2e0b01c07a7	Waterlogged Hulk	own:0	{T}: Mill a card.
+30820f71-9fd4-453c-b377-c2e0b01c07a7#1	Watertight Gondola	own:0	Crew 1
+30ac68e6-160a-41f9-9f0f-0e0eef383150	Arcane Lighthouse	own:0	{1}, {T}: Until end of turn, creatures your opponents control lose hexproof and shroud and can't have hexproof or shroud.
+3123ec89-8e95-4761-ba17-747ec667509f	Spara's Headquarters	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+31b990e3-9bad-4b0a-a9d5-f5b9ed2ad0b0	Fain, the Broker	own:1	{T}, Remove a counter from a creature you control: Create a Treasure token.
+31b990e3-9bad-4b0a-a9d5-f5b9ed2ad0b0	Fain, the Broker	own:2	{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.
+31b990e3-9bad-4b0a-a9d5-f5b9ed2ad0b0	Fain, the Broker	own:3	{3}{B}: Untap Fain.
+31f15274-301b-47c5-ba19-0ced04520878	Wayfarer's Bauble	own:0	{2}, {T}, Sacrifice Wayfarer's Bauble: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+32263baa-d3f0-463f-92b3-4e9938476add	Hedron Archive	own:0	{2}, {T}, Sacrifice this artifact: Draw two cards.
+328d5ef0-b25e-4f2a-80fe-35c6ae419e8a	Crashing Drawbridge	own:0	{T}: Creatures you control gain haste until end of turn.
+3334b218-01e3-47a3-8a28-5cc2decbedea	Woodweaver's Puzzleknot	own:0	{2}{G}, Sacrifice this artifact: You gain 3 life and get {E}{E}{E}.
+339f5334-b65a-445a-a016-20e997e0b4bb	Mistrise Village	own:0	{U}, {T}: The next spell you cast this turn can't be countered.
+33a90122-7280-4481-9b97-5879194cae40	Dalkovan Encampment	own:0	{2}{W}, {T}: Whenever you attack this turn, create two 1/1 red Warrior tokens tapped and attacking; sacrifice them at the next end step
+33e9db5a-986d-4731-88c9-87de6f967db4	Blaring Recruiter	own:0	{2}{W}: Create a 1/1 white Warrior creature token.
+3437d504-bf62-4c27-b15f-f6330182ff7e	The World Tree	own:0	{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}, {T}, Sacrifice this land: Search for any number of God cards
+34428f42-03ac-4795-8286-6cbea796df2b	Incubation Druid	own:0	{3}{G}{G}: Adapt 3
+34cadd9d-b8e6-422c-b0ec-a2420cd983ad	Mourner's Shield	own:0	{2}, {T}: Prevent all damage that would be dealt this turn by a source of your choice that shares a color with the exiled card.
+34f83b7a-45a7-40a8-abcb-31d7aae4cea1	Roiling Vortex	own:0	{R}: Your opponents can't gain life this turn.
+351c4f85-8792-4710-8cc9-d3e36657f6db	Sealock Monster	own:0	{5}{U}{U}: Monstrosity 3.
+354defd2-f63f-4a48-9fd4-2526b3878a84	Ingenious Infiltrator	own:0	Ninjutsu {U}{B} ({U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)
+355603d1-f62d-407a-8fa9-74e7dca8ecf9	Era of Innovation	own:0	Pay six {E}, Sacrifice this enchantment: Draw three cards.
+3589bcfc-42b0-414a-adce-bc690dc631c8	Windbrisk Heights	own:0	{W}, {T}: You may play the exiled card without paying its mana cost if you attacked with three or more creatures this turn.
+35b8fa77-4e85-418b-b335-cd1af127075c	Fauna Shaman	own:0	{G}, {T}, Discard a creature card: Search your library for a creature card, reveal it, put it into your hand, then shuffle.
+35c60b66-8c85-432e-90fe-99c19d21ed15	Cori Mountain Monastery	own:0	{3}{R}, {T}: Exile the top card of your library. Until the end of your next turn, you may play that card.
+35e2730e-b3aa-4080-aae8-7b3ad1e59848	Kithkin Armor	own:0	Sacrifice this Aura: The next time a source of your choice would deal damage to enchanted creature this turn, prevent that damage.
+3686fd97-49ff-4a92-9cb2-7d8e9438d945	Agency Coroner	own:0	{2}{B}, Sacrifice another creature: Draw a card. If the sacrificed creature was suspected, draw two cards instead.
+36c800cb-b1ca-4432-ad3c-4d8b90337f4c	Phyrexian Processor	own:0	{4}, {T}: Create an X/X black Phyrexian Minion creature token, where X is the life paid as this artifact entered.
+36dda03b-a3c1-4ef4-ae62-da318028a39e	Tuskeri Firewalker	own:0	Boast — {1}: Exile the top card of your library. You may play that card this turn.
+3715e8b8-31df-499b-8a91-1bcd1199d6eb	Experimental Frenzy	own:0	{3}{R}: Destroy this enchantment.
+373395b2-f04b-46c9-b9f4-4f6815b71009	Moonsilver Key	own:0	{1}, {T}, Sacrifice this artifact: Search your library for an artifact card with a mana ability or a basic land card, reveal it, put it into your hand, then shuffle.
+374e54d8-8e73-4268-9dde-c28c77bbbf32	Aftermath Analyst	own:0	{3}{G}, Sacrifice this creature: Return all land cards from your graveyard to the battlefield tapped.
+37513bd8-7303-4ac6-a7a7-224184faf758	Theorist's Sanctum	own:0	{2}{U}, {T}: Empower Jace 2.
+37ff5ba6-0763-4c73-85bf-66856e67b8f3	Prahv, Spires of Order	own:0	{4}{W}{U}, {T}: Prevent all damage a source of your choice would deal this turn.
+383e3fe4-8558-4561-8632-6eadb5d5963c	Orcish Lumberjack	mana:0	{T}, Sacrifice a Forest: Add three mana in any combination of {R} and/or {G}
+388168b3-ec68-4af2-b88c-6a5ec88c15f6	Ayara, First of Locthwain	own:0	{T}, Sacrifice another black creature: Draw a card.
+397f53f7-f801-4442-a778-2f26ac246b62	Dark Sphere	own:0	{T}, Sacrifice this artifact: The next time a source of your choice would deal damage to you this turn, prevent half that damage, rounded down.
+39b51f62-8421-42d1-86d3-74fd6e6f31a2	Skull Prophet	own:0	{T}: Mill two cards.
+3a46d85b-ce1a-4842-a342-92a5bddb1053	Scrounging Skyray	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+3a8f382e-0bc6-4e79-87e2-9f99d907d234	Sawtooth Thresher	own:0	Remove two +1/+1 counters from this creature: It gets +4/+4 until end of turn.
+3aa83ed2-f48b-4ce6-a614-2c54ddf50538	The One Ring	own:0	{T}: Put a burden counter on The One Ring, then draw a card for each burden counter on The One Ring.
+3adbd963-e85d-4569-963a-4472594f06f9	Woe Strider	own:0	Sacrifice another creature: Scry 1.
+3b64051e-d320-4991-bc9e-6e1435a23c17	Saproling Cluster	own:0	{1}, Discard a card: Create a 1/1 green Saproling creature token. Any player may activate this ability.
+3b96b8c3-b9c8-4712-a3b1-243a67cc013a	Meloku the Clouded Mirror	own:0	{1}, Return a land you control to its owner's hand: Create a 1/1 blue Illusion creature token with flying.
+3bb518ff-399b-4ce7-b9ad-a1d563dd7792	Arch of Orazca	own:0	{5}, {T}: Draw a card. Activate only if you have the city's blessing.
+3c43efd6-b1a8-452c-ae20-9a936c3340ab	Treasure Vault	own:0	{X}{X}, {T}, Sacrifice this land: Create X Treasure tokens.
+3cd7ef87-4cb4-42ff-842f-e9a465dab165	Roil Cartographer	own:0	{T}, Pay six {E}: Draw three cards.
+3d268e48-3004-4384-bf52-e63243fb5e02	Magda, Brazen Outlaw	own:0	Sacrifice five Treasures: Search your library for an artifact or Dragon card, put that card onto the battlefield, then shuffle.
+3d867016-2601-4a37-a73d-308898d3bd37	Thrasios, Triton Hero	own:0	{4}: Scry 1, then reveal the top card of your library. If it's a land card, put it onto the battlefield tapped. Otherwise, draw a card.
+3fa71348-fa4d-4f39-a451-cf1570591991	Imperious Perfect	own:0	{G}, {T}: Create a 1/1 green Elf Warrior creature token.
+3fdee2ab-7ec6-4fc6-ad99-f04571f94583	Marjhan	own:0	{U}{U}, Sacrifice a creature: Untap this creature. Activate only during your upkeep.
+4022e540-8fa0-4eee-bcf1-df5046289f2b	Solarion	own:0	{T}: Double the number of +1/+1 counters on this creature.
+4061572b-b7ff-4d06-9f71-9e66e064593d	Darwin, Adaptive Mutant	own:0	Remove two +1/+1 counters from Darwin: He gains indestructible until end of turn.
+406eabe2-df62-49e2-bb39-c0227509d875	Irrigated Farmland	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+41b0f347-1398-4778-bf3f-4007d8a77162	Circle of Protection: Green	own:0	{1}: The next time a green source of your choice would deal damage to you this turn, prevent that damage.
+4243baf6-9ac2-4f87-988d-3ebf5e177f3b	Mercurial Chemister	own:0	{U}, {T}: Draw two cards.
+4306a9e5-6845-4fd4-96ad-8888147612aa	Jolted Awake	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+43f2d81e-aa01-4fa9-9046-6a27a05dbd2d	Contagion Clasp	own:0	{4}, {T}: Proliferate
+4474ecee-0ec3-409b-90df-738d9313fe3c	Urza's Cave	own:0	{3}, {T}, Sacrifice this land: Search your library for a land card, put it onto the battlefield tapped, then shuffle.
+4507df69-6bf7-43d6-a609-c032b61835d5	Wight of the Reliquary	own:0	{T}, Sacrifice another creature: Search your library for a land card, put it onto the battlefield tapped, then shuffle.
+4514777d-0589-4631-978b-ff244167c176	Vexing Bauble	own:0	{1}, {T}, Sacrifice this artifact: Draw a card.
+4520c630-3650-462f-ab01-215eb2bdbbf5	Zerapa Minotaur	own:0	{2}: This creature loses first strike until end of turn. Any player may activate this ability.
+469c4b77-733e-472b-aeae-6015b409beb2	Rune of Protection: Artifacts	own:0	{W}: The next time an artifact source of your choice would deal damage to you this turn, prevent that damage.
+469c4b77-733e-472b-aeae-6015b409beb2	Rune of Protection: Artifacts	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+4716ab91-30e6-4c63-8389-a9db8f9414d8	Tekuthal, Inquiry Dominus	own:0	{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus.
+48296cc0-0141-47c6-9ec8-ada6171fee6f	Boom Scholar	own:0	Exhaust — {4}{R}{G}: Creatures and Vehicles you control gain trample until end of turn. Put two +1/+1 counters on this creature.
+487485a6-cf79-48c0-bea9-0ec6b3ee253c	Magistrate's Scepter	own:0	{4}, {T}: Put a charge counter on this artifact.
+487485a6-cf79-48c0-bea9-0ec6b3ee253c	Magistrate's Scepter	own:1	{T}, Remove three charge counters from this artifact: Take an extra turn after this one.
+48b84b58-1a06-4bb4-be1f-ad3ca69e66dc	Orazca Relic	own:0	{T}, Sacrifice this artifact: You gain 3 life and draw a card. Activate only if you have the city's blessing.
+49136bdc-bc50-49a2-999a-1ef9c16ea130	Smuggler's Copter	own:0	Crew 1
+49b689a3-9197-4a04-a62f-218b245d6e23	Haazda Shield Mate	own:0	{W}: The next time a source of your choice would deal damage to you this turn, prevent that damage.
+4a01db2e-cd43-4b1a-a480-169018f82501	Doom Whisperer	own:0	Pay 2 life: Surveil 2.
+4a338863-d599-46e7-9c30-e11b898ae1b0	Chitterspitter	own:0	{G}, {T}: Create a 1/1 green Squirrel creature token.
+4a9e0294-c967-4e90-b776-6d3195034a23	Wrecking Gecko	own:0	{6}{G}{G}: This creature gets +4/+4 and gains trample until end of turn.
+4adcd967-9ff7-4940-b8b9-0c4215bbcb75	Anzrag, the Quake-Mole	own:0	{3}{R}{R}{G}{G}: Anzrag must be blocked each combat this turn if able.
+4b033a0a-c1ae-44d7-9662-72cbbfda024b	Aether Spellbomb	own:1	{1}, Sacrifice this artifact: Draw a card.
+4b515bb0-f275-4400-8032-3173b799ab40	Walking Ballista	own:0	{4}: Put a +1/+1 counter on this creature.
+4b62f9fe-e3f4-4a21-aa6b-4dbd411d0c44	Elvish Refueler	own:0	Exhaust — {1}{G}: Put a +1/+1 counter on this creature.
+4b8bf64b-4800-45ff-81c6-2857f34999b5	Multani, Yavimaya's Avatar	own:0	{1}{G}, Return two lands you control to their owner's hand: Return this card from your graveyard to your hand.
+4baa7847-dfcc-4aa3-aa64-2deeaa3f013b	Murmuring Volume	own:0	{2}, {T}, Discard a card: Draw a card.
+4bb1863e-50f3-4e08-884e-1f58ee55817f	Component Pouch	own:0	{T}: Roll a d20.
+4c6a0c30-b547-4eff-8ff4-0ca25803c076	Urza's Saga	grant:urzas-saga/construct:0	{2}, {T}: Create a 0/0 Construct with +1/+1 for each artifact you control
+4d1885d1-212e-47ae-865f-e6dc4148ddf2	Repeat Offender	own:0	{2}{B}: If this creature is suspected, put a +1/+1 counter on it. Otherwise, suspect it.
+4d18bcba-a346-445e-a182-6cc30b7e066d	Ashnod's Altar	mana:0	Sacrifice a creature: Add {C}{C}
+4da3e510-e495-4077-997f-8efc04f01892	Endling	own:0	{B}: This creature gains menace until end of turn.
+4da3e510-e495-4077-997f-8efc04f01892	Endling	own:1	{B}: This creature gains deathtouch until end of turn.
+4da3e510-e495-4077-997f-8efc04f01892	Endling	own:2	{B}: This creature gains undying until end of turn.
+4da3e510-e495-4077-997f-8efc04f01892	Endling	own:3	{1}: This creature gets +1/-1 or -1/+1 until end of turn.
+4e11c838-68a7-4c97-b064-a46833cf1d2f	Volrath the Fallen	own:0	{1}{B}, Discard a creature card: Volrath gets +X/+X until end of turn, where X is the discarded card's mana value.
+4e6238d8-bd6a-4952-a7dd-9c41a78a2cba	Gonti's Machinations	own:0	Pay {E}{E}, Sacrifice this enchantment: Each opponent loses 3 life. You gain life equal to the life lost this way.
+4e81ead0-df8b-4d9d-b1cb-d1d9dc503d4c	Suncrusher	own:1	{2}, Remove a +1/+1 counter from this creature: Return this creature to its owner's hand.
+4e92c705-19c2-42df-ad12-808d272c505e	Knight of the Holy Nimbus	own:0	{2}: This creature can't be regenerated this turn. Only your opponents may activate this ability.
+4f87252e-3218-4759-accc-a4f186fa8857	Oona's Prowler	own:0	Discard a card: This creature gets -2/-0 until end of turn. Any player may activate this ability.
+4fc7c7a0-bfff-4833-a0d0-a38dc29e9dfb	Skilled Battlecarver	own:0	{1}{R}: This creature gets +1/+0 until end of turn.
+4fdbbec2-e921-4b63-958d-f9ba1e417197	Purphoros, God of the Forge	own:0	{2}{R}: Creatures you control get +1/+0 until end of turn.
+50b14338-9318-4327-a1dd-c0ef38903cc4	Skysovereign, Consul Flagship	own:0	Crew 3
+50bf5af6-50d7-4dea-936e-508e24db0a03	Squallmonger	own:0	{2}: This creature deals 1 damage to each creature with flying and each player. Any player may activate this ability.
+514df71a-138f-460f-a03c-bd1af8e146e2	Shielded Aether Thief	own:0	{T}, Pay {E}{E}{E}: Draw a card.
+51780f71-bf60-4208-94ea-76fa84790fb6	Drivnod, Carnage Dominus	own:0	{B/P}{B/P}, Exile three creature cards from your graveyard: Put an indestructible counter on Drivnod, Carnage Dominus.
+517b702a-2c5c-40d7-825e-6c674019b298	Soothsaying	own:0	{3}{U}{U}: Shuffle your library.
+517b702a-2c5c-40d7-825e-6c674019b298	Soothsaying	own:1	{X}: Look at the top X cards of your library, then put them back in any order.
+5182de2d-aceb-450e-bd20-8bc7db124334	Mary Read and Anne Bonny	own:0	{T}: Draw a card, then discard a card
+51d4f95e-aad2-4e5f-9f15-a68bbdf9ab3e	World Map	own:0	{1}, {T}, Sacrifice this artifact: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.
+51d4f95e-aad2-4e5f-9f15-a68bbdf9ab3e	World Map	own:1	{3}, {T}, Sacrifice this artifact: Search your library for a land card, reveal it, put it into your hand, then shuffle.
+52241b9c-7a69-4176-9234-8bdab09d8e64	Sai, Master Thopterist	own:0	{1}{U}, Sacrifice two artifacts: Draw a card.
+5324192b-6687-41e4-8e56-326b21a5dbf3	Moorland Haunt	own:0	{W}{U}, {T}, Exile a creature card from your graveyard: Create a 1/1 white Spirit creature token with flying.
+535e2af0-7b08-4026-b1bf-87626407dd42	Archfiend of Ifnir	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+5369e40a-5fd6-4a9d-bdc9-4af510449649	Three Bowls of Porridge	own:0	{2}, {T}: Choose one that hasn't been chosen
+53b2c8f2-db9a-4ab0-a4e8-17385b2fa3bd	Aethertide Whale	own:0	Pay {E}{E}{E}{E}: Return this creature to its owner's hand.
+549e6de7-56e9-4f5c-8c88-30e446bc53bb	Glittering Lion	own:0	{3}: Until end of turn, this creature loses "Prevent all damage that would be dealt to this creature." Any player may activate this ability.
+55bc7f55-f73b-40b5-8912-9bf76c129ccc	Azlask, the Swelling Scourge	own:0	{W}{U}{B}{R}{G}: Creatures you control get +X/+X until end of turn, where X is the number of experience counters you have. Scions and Spawns you control gain indestructible and annihilator 1 until end of turn.
+571cb06d-55b5-46e4-9678-1f74aca73068	Tenured Tethermage	own:0	Tap two untapped artifacts you control: Put two +1/+1 counters on this creature.
+57296ea3-3c0d-49b7-bc08-0d0d8414e9ad	Nightscape Familiar	own:0	{1}{B}: Regenerate this creature.
+58257464-278e-45fa-8e0b-bcd9a7500bc1	Ash Barrens	own:0	Basic landcycling {1} ({1}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+58285b70-0d13-4723-b5a4-91fb6f9ccf03	Gallia, Tragic Host	own:0	{4}{B}, Exile another creature card from your graveyard: Return this card from your graveyard to the battlefield tapped with a +1/+1 counter on her.
+583cdebe-0195-45be-bd2e-5765f07cb902	Mines of Moria	own:0	{3}{R}, {T}, Exile three cards from your graveyard: Create two Treasure tokens.
+58616e15-531f-4680-8294-35ab7e962c96	Scarecrow	own:0	{6}, {T}: Prevent all damage that would be dealt to you this turn by creatures with flying.
+59322432-591a-4e8d-aff5-12ca1feb1028	Magmatic Galleon	own:0	Crew 2
+594132ac-32a7-41d5-b7f0-3692bbed7f6f	Prowcatcher Specialist	own:0	Exhaust — {3}{R}: Put two +1/+1 counters on this creature.
+5a620d20-f14e-43d0-8e57-c2a197e2ec51	Urza's Factory	own:0	{7}, {T}: Create a 2/2 colorless Assembly-Worker artifact creature token.
+5b9a2b81-a645-43be-8001-03817ac210ca	Throne of Eldraine	own:0	{3}, {T}: Draw two cards. Spend only mana of the chosen color to activate this ability.
+5baa7abe-5bdf-40ce-9a83-a93b7cae71a3	Soldevi Excavations	own:0	{1}, {T}: Scry 1.
+5bb06e6f-e3af-4caa-b66d-77248ad46b61	Lilypad Village	own:0	{U}, {T}: Surveil 2. Activate only if a Bird, Frog, Otter, or Rat entered the battlefield under your control this turn.
+5bf93d4f-be59-4aa7-83d5-7c35d1f07fae	Righteous Aura	own:0	{W}, Pay 2 life: The next time a source of your choice would deal damage to you this turn, prevent that damage.
+5c0ffe37-16ce-4788-a434-58b6fc34bd9c	Tempest Harvester	own:0	{T}, Pay {E}: Draw a card, then discard a card.
+5cdb69e5-9395-4ef6-be18-71e3dd70df66	Swashbuckler's Whip	grant:swashbucklers-whip/tap-and-discover:1	{8}, {T}: Discover 10
+5ea46ccf-5e36-4889-bf64-00d4f327e9b2	Attunement	own:0	Return this enchantment to its owner's hand: Draw three cards, then discard four cards.
+5ea93956-085d-409b-bd95-dd669fa69eeb	Ginger, Queen of Sweets	own:0	{2}, {T}, Sacrifice Ginger: You gain 6 life.
+5ece7d03-9ee7-4953-a06e-9d8e41874903	Scavenger Grounds	own:0	{2}, {T}, Sacrifice a Desert: Exile all graveyards.
+5effaa94-7f87-4485-8959-473d584c5034	Grim Backwoods	own:0	{2}{B}{G}, {T}, Sacrifice a creature: Draw a card.
+5f46f86a-9779-4ed3-99cb-76a03d380598	Circle of Protection: White	own:0	{1}: The next time a white source of your choice would deal damage to you this turn, prevent that damage.
+602132c2-8ee8-41f8-bfac-cb17d32203f5	Savvy Hunter	own:0	Sacrifice two Foods: Draw a card.
+605dd1b5-8946-4bd0-b31b-e99bf63a1bc4	Rune of Protection: Lands	own:0	{W}: The next time a land source of your choice would deal damage to you this turn, prevent that damage.
+605dd1b5-8946-4bd0-b31b-e99bf63a1bc4	Rune of Protection: Lands	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+610618f9-8186-44b6-8041-0a5b70f11cc1	Elsewhere Flask	own:0	Sacrifice this artifact: Choose a basic land type. Each land you control becomes that type until end of turn.
+61295adf-9a58-479a-b6e5-403aa0876c22	Fearless Pup	own:0	Boast — {2}{R}: This creature gets +2/+0 until end of turn.
+613a8774-165e-4cf6-ad43-124f9ffc9980	Nautiloid Ship	own:0	Crew 3
+619173f4-0403-49cd-9659-2fedd5028a90	Shire Terrace	own:0	{1}, {T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+622a53bd-d894-422c-a606-7126041afa02	Fomori Vault	own:0	{3}, {T}, Discard a card: Look at the top X cards of your library, where X is the number of artifacts you control. Put one of those cards into your hand and the rest on the bottom of your library in a random order
+62320290-ac8e-4f92-bb06-3368f66ae0a9	Keys to the House	own:0	{1}, {T}, Sacrifice this artifact: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.
+62e7e7b1-9887-4d15-b0e5-a8ddc711bd88	Arcbound Ravager	own:0	Sacrifice an artifact: Put a +1/+1 counter on this creature.
+63788566-e25a-44bb-bb55-197e1b93b3e8	Trading Post	own:0	{1}, {T}, Pay 1 life: Create a 0/1 white Goat
+63788566-e25a-44bb-bb55-197e1b93b3e8	Trading Post	own:2	{1}, {T}, Sacrifice an artifact: Draw a card
+63c04040-e109-494e-baa6-c639a6c9a996	Bag of Holding	own:0	{2}, {T}: Draw a card, then discard a card.
+63c04040-e109-494e-baa6-c639a6c9a996	Bag of Holding	own:1	{4}, {T}, Sacrifice this artifact: Return all cards exiled with this artifact to their owner's hand.
+64ad5657-78e9-4f34-8877-18c4f51fff9a	Glint-Horn Buccaneer	own:0	{1}{R}, Discard a card: Draw a card. Activate only if this creature is attacking.
+6587a463-a108-4854-b6d1-944e89b8c8a4	Wooded Foothills	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Forest card, put it onto the battlefield, then shuffle.
+660de988-b6fb-4f36-8006-42af3e7f908d	Vampiric Rites	own:0	{1}{B}, Sacrifice a creature: You gain 1 life and draw a card.
+66566999-f70a-4f14-9bf0-23325295a977	Clergy of the Holy Nimbus	own:0	{1}: This creature can't be regenerated this turn. Only your opponents may activate this ability.
+66a22b35-3dc0-4a74-8474-e73293403de6	Solitary Cell	own:0	{1}, {T}, Discard a legendary card: Draw a card.
+66dd0e68-f5ec-45e5-991f-d588aa726387	Dwarven Strike Force	own:0	Discard a card at random: This creature gains first strike and haste until end of turn.
+67362406-b1ca-49e2-800d-9050bfe8742a	Merfolk Looter	own:0	{T}: Draw a card, then discard a card.
+6754753d-790e-4a95-a150-76741c4a02d4	RMS Titanic	own:0	Crew 3
+67d60b24-d429-4ded-90d9-06e49f28c396	Verdant Catacombs	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Forest card, put it onto the battlefield, then shuffle.
+683089a8-d5a9-438a-a463-77cc6148125e	Terraformer	own:0	{1}: Choose a basic land type. Each land you control becomes that type until end of turn.
+68418069-f615-40ef-ae0d-764192acae00	Krenko, Mob Boss	own:0	{T}: Create X 1/1 Goblins, where X is the number of Goblins you control
+686f4a37-b5e4-46d4-9e0e-11794b2d12cd	Golgari Grave-Troll	own:0	{1}, Remove a +1/+1 counter from this creature: Regenerate this creature.
+68c7e459-0932-4644-a3c0-9a1eae1db7a3	Loot, the Pathfinder	own:0	Exhaust — {U}, {T}: Draw three cards.
+68e1f7e0-a9b3-437f-8086-0c0cb85f2880	Krark-Clan Ironworks	mana:0	Sacrifice an artifact: Add {C}{C}
+690ae865-87bd-46b2-8e65-c53bd80c1a18	Hungering Puppetbeast	own:0	{1}, Sacrifice another artifact: Put a +1/+1 counter on this creature. It gains your choice of trample, hexproof, or haste until end of turn.
+690c7f8e-fea2-4920-afa7-02ff120701a1	Spinerock Knoll	own:0	{R}, {T}: You may play the exiled card without paying its mana cost if an opponent was dealt 7 or more damage this turn.
+69428825-3c40-486d-b051-14e97a598ce6	Gonti's Aether Heart	own:0	Pay eight {E}, Exile Gonti's Aether Heart: Take an extra turn after this one.
+69f55a7c-6ddf-412e-b63b-b395731a1ff2	Secluded Starforge	own:1	{5}, {T}: Create a 2/2 colorless Robot artifact creature token.
+6a618c4a-e604-4dce-a078-755fd35ac5d9	Izzet Generatorium	own:0	{T}: Draw a card. Activate only if you've paid or lost four or more {E} this turn.
+6a7f3e1f-6798-4644-b64c-7765f81f0938	Vibrant Cityscape	own:0	{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+6b8cf2a0-b045-4d91-9d91-c602d40c6237	Basalt Monolith	own:0	{3}: Untap Basalt Monolith
+6bae00e8-06cf-4ac4-a1cc-757e454109fe	Ketria Triome	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+6c0b07c4-bb7c-4100-81e5-b0ee95d18625	Shipwreck Moray	own:0	Pay {E}: This creature gets +2/-2 until end of turn.
+6cfb03e5-aca6-4fe2-a3f1-93e1f0cbf9e1	Nuka-Cola Vending Machine	own:0	{1}, {T}: Create a Food token.
+6d03971a-8365-449a-8fbe-07b5b9bb42dc	Prosperous Thief	own:0	Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)
+6d9746bc-0b72-4ac4-b48a-742b63b1c41b	Backslide	own:0	Cycling {U} ({U}, Discard this card: Draw a card.)
+6dff1def-5b94-40c8-a942-dea8743ab47c	Nirkana Revenant	own:0	{B}: This creature gets +1/+1 until end of turn
+6e0b3317-394d-42cc-a350-cb5ce051787a	Ill-Tempered Loner	own:0	{1}{R}: This creature gets +2/+0 until end of turn.
+6e0b3317-394d-42cc-a350-cb5ce051787a#1	Howlpack Avenger	own:0	{1}{R}: This creature gets +2/+0 until end of turn.
+6e24a5bd-0ce3-4dc1-98c6-60d527bfdcfd	Automated Assembly Line	own:0	Pay {E}{E}{E}: Create a tapped 3/3 colorless Robot artifact creature token.
+6e49a5b8-6bc4-4c7b-82c1-957f1fb0ca5f	Personal Incarnation	own:0	{0}: The next 1 damage that would be dealt to this creature this turn is dealt to its owner instead. Only this creature's owner may activate this ability.
+6e9ef5ef-6aed-4d3e-a59b-9e3dc8740b1b	Raffine's Tower	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+6eb4b649-c578-4b29-8da1-7c757412bec0	Frenetic Ogre	own:0	{R}, Discard a card at random: This creature gets +3/+0 until end of turn.
+6f214a42-e38f-4923-8afc-832efdde7975	Rune of Protection: White	own:0	{W}: The next time a white source of your choice would deal damage to you this turn, prevent that damage.
+6f214a42-e38f-4923-8afc-832efdde7975	Rune of Protection: White	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+7071aee8-b5ca-4be5-9ba0-2df7e3af303b	Story Circle	own:0	{W}: The next time a source of your choice of the chosen color would deal damage to you this turn, prevent that damage.
+70bb275b-3458-4690-a50f-b231fbf0bccb	Burrenton Forge-Tender	own:0	Sacrifice this creature: Prevent all damage a red source of your choice would deal this turn.
+70d90ef4-0cda-405f-abf1-734fa909efa6	Armageddon Clock	own:0	{4}: Remove a doom counter from this artifact. Any player may activate this ability but only during any upkeep step.
+70fa2eba-565e-4fed-adc9-7f5d9fcbf1fa	Waterlogged Grove	own:0	{1}, {T}, Sacrifice this land: Draw a card.
+71220cc2-5f3d-4c97-ae66-05b1b79adef1	Quest for Pure Flame	own:0	Remove four quest counters from this enchantment and sacrifice it: If any source you control would deal damage to a permanent or player this turn, it deals double that damage to that permanent or player instead.
+71a80491-eea2-4661-9446-26a87efbf4a8	Kykar, Wind's Fury	mana:0	Sacrifice a Spirit: Add {R}
+71c52bf5-2a5d-488e-8b15-7ef290e4b77d	War Room	own:0	{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card
+71d785a9-ddc8-472e-a778-a551b444a4bd	Selfless Spirit	own:0	Sacrifice this creature: Creatures you control gain indestructible until end of turn.
+71e28800-c42c-48c0-95e5-0296be54a4e8	Naya Panorama	own:0	{1}, {T}, Sacrifice this land: Search your library for a basic Mountain, Forest, or Plains card, put it onto the battlefield tapped, then shuffle.
+7267ab16-2157-4b86-93ea-ca2c0fee064a	Vexing Puzzlebox	own:0	{T}, Remove 100 charge counters from this artifact: Search your library for an artifact card, put that card onto the battlefield, then shuffle.
+74716642-fc8c-4f62-a556-154ed0b4af0e	Heroism	own:0	Sacrifice a white creature: For each attacking red creature, prevent all combat damage that would be dealt by that creature this turn unless its controller pays {2}{R}.
+74e6dd0f-2866-4d45-a214-8b09b837bc02	Slipstream Eel	own:0	Cycling {1}{U} ({1}{U}, Discard this card: Draw a card.)
+7536eb66-959d-4dca-9b75-895572ef733c	Emergence Zone	own:0	{1}, {T}, Sacrifice this land: You may cast spells this turn as though they had flash.
+75719f87-ce1a-40d6-ac5a-5ebf0c936c84	Blitzball	own:0	GOOOOAAAALLL! — {T}, Sacrifice this artifact: Draw two cards. Activate only if an opponent was dealt combat damage by a legendary creature this turn.
+7673d0db-07d6-4b40-a32e-f2c98d7ea7c1	Intruding Soulrager	own:0	{T}, Sacrifice a Room: This creature deals 2 damage to each opponent. Draw a card.
+772873f4-74b9-44da-bd69-e4c8de797a26	Frenzied Arynx	own:0	{4}{R}{G}: This creature gets +3/+0 until end of turn.
+77b684b8-227b-40de-80b4-15d0e70914f4	Undulating Witness	own:0	{2}: This creature gets +1/-1 until end of turn.
+77b684b8-227b-40de-80b4-15d0e70914f4	Undulating Witness	own:1	Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+7818d6e0-74d8-46ae-94f6-d2a349c9507b	Penance	own:0	Put a card from your hand on top of your library: The next time a black or red source of your choice would deal damage this turn, prevent that damage.
+783a62c0-3b06-4250-a1cb-5cf4042611aa	Auriok Replica	own:0	{W}, Sacrifice this creature: Prevent all damage a source of your choice would deal to you this turn.
+78780f37-f215-4ae1-adce-6255b0146873	Pestilent Cauldron	own:0	{T}, Discard a card: Create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."
+78780f37-f215-4ae1-adce-6255b0146873	Pestilent Cauldron	own:1	{1}, {T}: Each opponent mills cards equal to the amount of life you gained this turn.
+79638767-fbc7-451a-b29f-d93f2ac6f102	Kher Keep	own:0	{1}{R}, {T}: Create a 0/1 red Kobold creature token named Kobolds of Kher Keep.
+79676f10-9fca-4bca-acc5-6994955142b4	Electrostatic Pummeler	own:0	Pay {E}{E}{E}: This creature gets +X/+X until end of turn, where X is its power.
+79d46e09-2548-440f-9c02-3c3dc39a0cd1	Sundial of the Infinite	own:0	{1}, {T}: End the turn. Activate only during your turn.
+7a5a8414-4da4-4dd0-93ae-210d50f4d6f6	Circle of Protection: Black	own:0	{1}: The next time a black source of your choice would deal damage to you this turn, prevent that damage.
+7a770865-9383-45aa-883f-21ee649d1ea3	Stormbreath Dragon	own:0	{5}{R}{R}: Monstrosity 3.
+7b0d7e62-0287-454a-8702-b0bfa7b41245	Minas Tirith	own:0	{1}{W}, {T}: Draw a card. Activate only if you attacked with two or more creatures this turn.
+7b3e74ad-0179-480b-871c-9e3bc30a43ff	Aethersphere Harvester	own:0	Pay {E}: This Vehicle gains lifelink until end of turn.
+7b3e74ad-0179-480b-871c-9e3bc30a43ff	Aethersphere Harvester	own:1	Crew 1
+7b9fafe7-d26a-4ed5-b4c4-ce13763770b5	Geier Reach Sanitarium	own:0	{2}, {T}: Each player draws a card, then discards a card.
+7bf8bb41-6f46-492c-b6cf-5cfb29f973a4	Apothecary White	own:0	{W}, {T}, Tap X untapped Foods you control: Create X 1/1 white Human creature tokens.
+7c59ad65-ad1f-4dc4-bcf2-ea6b2b48fad8	Infinite Hourglass	own:0	{3}: Remove a time counter from this artifact. Any player may activate this ability but only during any upkeep step.
+7cb9e29f-835f-4155-a2a5-4b778866c773	Mosswort Bridge	own:0	{G}, {T}: You may play the exiled card without paying its mana cost if creatures you control have total power 10 or greater.
+7d6641e7-4d14-4a06-b588-0c752af529bd	Shatterwing Pegasus	own:0	{4}{W}: Creatures you control get +1/+1 until end of turn.
+7e60a641-1f2d-45ff-b3f2-d389be938b22	Lumbering Worldwagon	own:0	Crew 4
+7e8c2a18-e404-40ff-a9e0-ec3eeb6d576e	Command Beacon	own:0	{T}, Sacrifice this land: Put your commander into your hand from the command zone
+7f00bc45-7c65-4455-9db0-58bd79bcdb4b	Martyr of Ashes	own:0	{2}, Reveal X red cards from your hand, Sacrifice this creature: This creature deals X damage to each creature without flying.
+7fd4c452-07f2-492c-9c78-d1c6362d9eec	Yavimaya Elder	own:0	{2}, Sacrifice this creature: Draw a card.
+800fb917-8898-4eba-9f94-aec6e9d75236	Mazemind Tome	own:0	{T}, Put a page counter on this artifact: Scry 1.
+800fb917-8898-4eba-9f94-aec6e9d75236	Mazemind Tome	own:1	{2}, {T}, Put a page counter on this artifact: Draw a card.
+803815c5-12be-48b3-a101-f416c1ef9b7b	Silent Gravestone	own:0	{4}, {T}: Exile this artifact and all cards from all graveyards. Draw a card.
+80c2784b-f27d-4a51-9380-171eb32b961d	Inspired Tethermage	own:0	{6}: Empower Jace 2.
+815ae30f-f455-4795-96eb-4bcc41d415e8	Knight of Dusk's Shadow	own:0	{1}{B}: This creature gets +1/+1 until end of turn.
+81d6b42e-9c41-4d1e-bd28-4662e1fde572	Lurking Evil	own:0	Pay half your life, rounded up: This enchantment becomes a 4/4 Phyrexian Horror creature with flying
+82372776-bedd-4893-92ad-f1272f9c3250	Quicksilver Wall	own:0	{4}: Return this creature to its owner's hand. Any player may activate this ability.
+8291543f-d086-48aa-b2b7-5481ca8c9198	Xander's Lounge	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+82f3faa8-39fa-450b-843f-d60a4c36d8f7	Mikaeus, the Lunarch	own:0	{T}: Put a +1/+1 counter on Mikaeus.
+82f3faa8-39fa-450b-843f-d60a4c36d8f7	Mikaeus, the Lunarch	own:1	{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.
+83409a22-10de-4d51-90a3-e0579ca8cbea	Insight Engine	own:0	{2}, {T}: Put a charge counter on Insight Engine, then draw a card for each charge counter on it.
+83a38c8d-e2f6-404b-83be-9cfce037d6e2	Basalt Gargoyle	own:0	{R}: This creature gets +0/+1 until end of turn.
+8460abd9-ab5d-4a7e-8132-185b4a310190	Leashling	own:0	Put a card from your hand on top of your library: Return this creature to its owner's hand.
+84856b92-5ce8-47f3-9a1c-78d6a3e26aca	Eden, Seat of the Sanctum	own:0	{5}, {T}: Mill two cards. Then you may sacrifice this land. When you do, return another target permanent card from your graveyard to your hand.
+8520ee67-439b-4f15-838b-420bacbb8b13	Experiment One	own:0	Remove two +1/+1 counters from this creature: Regenerate it.
+853c6cc0-ed2b-4d65-add1-2449ade8cf68	Planar Bridge	own:0	{8}, {T}: Search your library for a permanent card, put it onto the battlefield, then shuffle.
+861eb7d7-7616-4620-a4fd-4b8c3bf00dd1	Promising Vein	own:0	{1}, {T}, Sacrifice Promising Vein: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+86ef06b3-2049-494d-9ecb-ca14766d3b68#1	Braided Quipu	own:0	{3}{U}, {T}: Draw a card for each artifact you control, then put this artifact into its owner's library third from the top.
+86fb3749-37d6-48a6-8524-71e996850307	High Market	own:0	{T}, Sacrifice a creature: You gain 1 life.
+8709b5b1-ef9e-45b2-bf4f-ef4c4d613dcd	Rocky Tar Pit	own:0	{T}, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle.
+87e65e36-9483-49fe-b644-2caca092107f	Jarad, Golgari Lich Lord	own:0	{1}{B}{G}, Sacrifice another creature: Each opponent loses life equal to the sacrificed creature's power
+87e65e36-9483-49fe-b644-2caca092107f	Jarad, Golgari Lich Lord	own:1	Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand
+88159872-d37d-4847-b048-e4a9af6437bd	Barad-dûr	own:0	{X}{X}{B}, {T}: Amass Orcs X. Activate only if a creature died this turn.
+88600bd4-4dcc-4788-bba4-78b6cf5ad8f8	Peema Trailblazer	own:0	Exhaust — Pay six {E}: Put two +1/+1 counters on this creature. Then draw cards equal to the greatest power among creatures you control.
+88777fc0-286d-47fc-8e94-1e289b4964c4	Horn of Gondor	own:0	{3}, {T}: Create X 1/1 white Human Soldier creature tokens, where X is the number of Humans you control
+890ffe31-642f-46e3-9f09-c744351653b5	Glittering Lynx	own:0	{2}: Until end of turn, this creature loses "Prevent all damage that would be dealt to this creature." Any player may activate this ability.
+893fed41-c144-433f-af88-bc7d419b7fb3	Burnished Hart	own:0	{3}, Sacrifice Burnished Hart: Search your library for up to two basic land cards, put them onto the battlefield tapped, then shuffle.
+895f23a2-55b7-4cc0-8939-2efaaf097e6f	Solphim, Mayhem Dominus	own:0	{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.
+8a44e4e7-dfa2-427b-bbff-11c398fa60bb	Gavony Township	own:0	{2}{G}{W}, {T}: Put a +1/+1 counter on each creature you control.
+8a7183cc-161c-444d-a889-a17519c8061b	Arcanis the Omnipotent	own:0	{T}: Draw three cards.
+8a7183cc-161c-444d-a889-a17519c8061b	Arcanis the Omnipotent	own:1	{2}{U}{U}: Return Arcanis to its owner's hand.
+8aab9181-c306-471a-8061-9a7a7654dab5	Thopter Fabricator	own:0	Crew 2
+8b27326f-e7b8-4a4d-b589-df459246d19a	Shadowspear	own:0	{1}: Permanents your opponents control lose hexproof and indestructible until end of turn
+8b370db5-dfb9-4ea0-9017-bae3e767b041	Kjeldoran Outpost	own:0	{1}{W}, {T}: Create a 1/1 white Soldier creature token.
+8b9043d3-a1c6-4f49-9c49-ef78bbfbd4ac	Scarab Feast	own:0	Cycling {B} ({B}, Discard this card: Draw a card.)
+8c0520fa-276b-4d21-b4a9-dce1fce59f6b	Shark Typhoon	own:0	Cycling {X}{1}{U} ({X}{1}{U}, Discard this card: Draw a card.)
+8c45bf9d-a017-43bf-9e32-67810a8a217b	Talon Gates of Madara	own:0	{4}: Put this card from your hand onto the battlefield.
+8cf77dc4-763b-41b7-a5da-0ef2734f08e6	Dragon's Hoard	own:0	{T}, Remove a gold counter from this artifact: Draw a card.
+8d02b297-97c4-4379-9862-0a462400f66f	Phyrexian Altar	mana:0	Sacrifice a creature: Add one mana of any color
+8d38194e-b607-4ff4-9c19-0e8636d463bf	Raging Ravine	own:0	{2}{R}{G}: Until end of turn, this land becomes a 3/3 red and green Elemental creature with "Whenever this creature attacks, put a +1/+1 counter on it." It's still a land.
+8e7ac64d-42c3-4e3b-9a20-9f09ee9d8a7a	Rangers' Refueler	own:0	Exhaust — {4}: This Vehicle becomes an artifact creature. Put a +1/+1 counter on it.
+8e7ac64d-42c3-4e3b-9a20-9f09ee9d8a7a	Rangers' Refueler	own:1	Crew 2
+8e7b079d-9ede-421c-bd2b-f9a5126a8e6f	Esika's Chariot	own:0	Crew 4
+8ed932ff-986c-4592-ad70-53b3fac80d69	Nurturing Peatland	own:0	{1}, {T}, Sacrifice this land: Draw a card.
+8fa0fe02-2452-4386-8e0c-165757b0f0a3	Witch's Oven	own:0	{T}, Sacrifice a creature: Create a Food token. If the sacrificed creature's toughness was 4 or greater, create two Food tokens instead.
+8fb48d65-406b-4231-83ea-9cf3bb8dff76	Ravenous Squirrel	own:0	{1}{B}{G}, Sacrifice an artifact or creature: You gain 1 life and draw a card.
+8fcf50cd-e6d0-4516-850f-d42ee75dcc3a	Expedition Map	own:0	{2}, {T}, Sacrifice this artifact: Search your library for a land card, reveal it, put it into your hand, then shuffle.
+90076bf5-aa9a-4a6e-9035-9aa97fd5561e	Luminarch Ascension	own:0	{1}{W}: Create a 4/4 white Angel creature token with flying. Activate only if this enchantment has four or more quest counters on it.
+900b9409-9c16-414d-8674-2ea42c2415a1	Magmakin Artillerist	own:0	Cycling {1}{R} ({1}{R}, Discard this card: Draw a card.)
+90194ff1-db61-463f-b5a3-15cd85311d0e	Beledros Witherbloom	own:0	Pay 10 life: Untap all lands you control. Activate only once each turn.
+9030d508-5cfe-46ed-954b-21d970bc3b5a	Folio of Fancies	own:0	{X}{X}, {T}: Each player draws X cards.
+9030d508-5cfe-46ed-954b-21d970bc3b5a	Folio of Fancies	own:1	{2}{U}, {T}: Each opponent mills cards equal to the number of cards in their hand.
+91320daf-f69c-4350-b0fc-4bb37a6904b1	Restless Anchorage	own:0	{1}{W}{U}: Until end of turn, this land becomes a 2/3 white and blue Bird creature with flying. It's still a land.
+91b5688d-4dd6-477b-998f-bdc7612de37a	Henchfiend of Ukor	own:0	{B/R}: This creature gets +1/+0 until end of turn.
+91d4a5fe-fd6d-4b14-a63f-61b4d0ecd9c4	Inventors' Fair	own:0	{4}, {T}, Sacrifice Inventors' Fair: Search your library for an artifact card, reveal it, put it into your hand, then shuffle. Activate only if you control three or more artifacts.
+91f34686-cb96-49c0-b4a7-49dd1fd076e2	Sea Gate Wreckage	own:0	{2}{C}, {T}: Draw a card. Activate only if you have no cards in hand.
+92045f6c-9ec2-4bf0-826c-e21ef253011c	Aethergeode Miner	own:0	Pay {E}{E}: Exile this creature, then return it to the battlefield under its owner's control.
+9221b29b-9351-4f70-9af4-8b9a33b43138	Hedron Detonator	own:0	{T}, Sacrifice two artifacts: Exile the top card of your library. You may play that card this turn.
+9263287d-f782-4318-9ab8-e2e5f8107f5e	Resonating Lute	own:0	{T}: Draw a card. Activate only if you have seven or more cards in your hand.
+927fb139-0493-48be-8cc4-2c7d854d6a55	Radha, Heart of Keld	own:0	{4}{R}{G}: Radha gets +X/+X until end of turn, where X is the number of lands you control
+92cfba68-12f6-4f97-9187-0f6a39656a0f	The Soul Stone	own:0	{6}{B}, {T}, Exile a creature you control: Harness The Soul Stone.
+9317e70d-3d01-4652-b9ea-b4015a0f7b80	Slumbering Tora	own:0	{2}, Discard a Spirit or Arcane card: This artifact becomes an X/X Cat artifact creature until end of turn, where X is the discarded card's mana value.
+931d3dcb-4bbb-4f1a-95e2-7e315faf4158	Conversion Apparatus	own:0	{3}, {T}: You get {E}{E}{E}.
+93695c16-c441-492d-af12-b57df9739846	Detection Tower	own:0	{1}, {T}: Until end of turn, your opponents and creatures your opponents control with hexproof can be the targets of spells and abilities you control as though they didn't have hexproof.
+93e38650-ce22-4ab9-b79d-cc7b6477c075	The Gold Saucer	own:0	{2}, {T}: Flip a coin. If you win the flip, create a Treasure token.
+93e38650-ce22-4ab9-b79d-cc7b6477c075	The Gold Saucer	own:1	{3}, {T}, Sacrifice two artifacts: Draw a card.
+9431c81f-7b71-4c5d-a63c-1b5aba03601b	Degavolver	own:0	Pay 3 life: Regenerate this creature.
+946d770f-0a59-415b-b334-8f7353b96046	Pardic Swordsmith	own:0	{R}, Discard a card at random: This creature gets +2/+0 until end of turn.
+9485db26-7e03-4a66-beeb-627a3bc6f367	Propagator Drone	own:0	{3}{G}: Create a 0/1 colorless Eldrazi Spawn creature token with "Sacrifice this token: Add {C}."
+94a844d2-0574-45a7-b347-e0e329767c42	Necropotence	own:0	Pay 1 life: Exile the top card of your library face down. Put that card into your hand at the beginning of your next end step.
+94e8b0a9-44a1-4dce-8d44-78681ae638a1	Fountainport	own:0	{2}, {T}, Sacrifice a token: Draw a card.
+94e8b0a9-44a1-4dce-8d44-78681ae638a1	Fountainport	own:1	{3}, {T}, Pay 1 life: Create a 1/1 blue Fish creature token.
+94e8b0a9-44a1-4dce-8d44-78681ae638a1	Fountainport	own:2	{4}, {T}: Create a Treasure token.
+94f01534-7bb3-4b1e-8f77-e84156408686	Elvish Reclaimer	own:0	{2}, {T}, Sacrifice a land: Search your library for a land card, put it onto the battlefield tapped, then shuffle.
+954aaaa7-c3c1-4696-9ace-bcb5359b1709	Hundred-Handed One	own:0	{3}{W}{W}{W}: Monstrosity 3.
+9575d7ce-f26d-4b90-87a3-6329e9799572	Abandoned Air Temple	own:0	{3}{W}, {T}: Put a +1/+1 counter on each creature you control.
+959acb66-84ca-4535-bca2-ad591895735e	Niv-Mizzet, the Firemind	own:0	{T}: Draw a card.
+959b672e-d4e4-49a1-874a-5148f040fadd	Pilgrim of Justice	own:0	{W}, Sacrifice this creature: The next time a red source of your choice would deal damage this turn, prevent that damage.
+95c3976c-33f3-490b-bfd3-7f1af2fe0416	Chromatic Orrery	own:0	{5}, {T}: Draw a card for each color among permanents you control
+95fd897e-9086-42c4-8e0d-61bb02333c5f	Engineered Explosives	own:0	{2}, Sacrifice this artifact: Destroy each nonland permanent with mana value equal to the number of charge counters on this artifact.
+96230edf-568a-47dd-b877-9d92aa58fac8	Nevinyrral's Disk	own:0	{1}, {T}: Destroy all artifacts, creatures, and enchantments
+9684447a-5955-4bc7-8ad0-8bb8b316873b	Throne of the High City	own:0	{4}, {T}, Sacrifice this land: You become the monarch
+97db6c39-e690-49b6-93a6-e51b8dfad10b	Spore Frog	own:0	Sacrifice this creature: Prevent all combat damage that would be dealt this turn.
+9809d975-7ef8-4946-9041-607c4e954b13	Polluted Mire	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+981298e6-ddee-49c0-9377-f47f019b4138	Currency Converter	own:0	{2}, {T}: Draw a card, then discard a card.
+981298e6-ddee-49c0-9377-f47f019b4138	Currency Converter	own:1	{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.
+98295bdc-db58-4e1f-ad4c-63092aea207e	Allosaurus Shepherd	own:0	{4}{G}{G}: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a Dinosaur in addition to its other creature types.
+9849c743-9492-4a1b-83bf-1be54614b85f	Multiform Wonder	own:0	Pay {E}: This creature gains your choice of flying, vigilance, or lifelink until end of turn.
+9849c743-9492-4a1b-83bf-1be54614b85f	Multiform Wonder	own:1	Pay {E}: This creature gets +2/-2 or -2/+2 until end of turn.
+986ae327-f433-4c58-93dc-afc544b9bfcb	Steel Overseer	own:0	{T}: Put a +1/+1 counter on each artifact creature you control.
+98b53af9-af1b-4d5d-ae5a-bd444c1339d2	Ribbon Snake	own:0	{2}: This creature loses flying until end of turn. Any player may activate this ability.
+994bc16d-fdc6-475c-96df-beeb4d5aa03e	Mystic Forge	own:0	{T}, Pay 1 life: Exile the top card of your library.
+9956f9b7-0140-484c-b606-3685690b84cc	Aryel, Knight of Windgrace	own:0	{2}{W}, {T}: Create a 2/2 white Knight creature token with vigilance.
+995c8dac-fd27-468a-abd4-02372cf0c850	Mount Doom	own:0	{1}{B}{R}, {T}: Mount Doom deals 1 damage to each opponent.
+9991c9f2-cb6e-4cfe-a3b7-650212454195	Fan Favorite	own:0	{2}: This creature gets +1/+1 until end of turn. Any player may activate this ability.
+99e2b36b-1fab-4b09-b371-d97a6854dfbc	Well of Knowledge	own:0	{2}: Draw a card. Any player may activate this ability but only during their draw step.
+9a3e3a8f-7c19-4b52-a1b4-08eb09f6127a	Deftblade Elite	own:0	{1}{W}: Prevent all combat damage that would be dealt to and dealt by this creature this turn.
+9abf9a0e-8e7d-406b-a01d-d4870b30134e	The Shire	own:0	{1}{G}, {T}, Tap an untapped creature you control: Create a Food token.
+9ac57a10-3402-4656-9079-f713884cde35	Pyrohemia	own:0	{R}: Pyrohemia deals 1 damage to each creature and each player.
+9af1b6c4-295f-41d2-b3a0-0863798330d4	Evernight Shade	own:0	{B}: This creature gets +1/+1 until end of turn.
+9b2cdbed-c733-409b-b0e4-2c8960c25111	Maskwood Nexus	own:0	{3}, {T}: Create a 2/2 blue Shapeshifter with changeling
+9b3f6b29-675a-4153-9582-03318851b20e	Rune of Protection: Red	own:0	{W}: The next time a red source of your choice would deal damage to you this turn, prevent that damage.
+9b3f6b29-675a-4153-9582-03318851b20e	Rune of Protection: Red	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+9b884dfd-59f4-45c0-bf1e-6ad9f5b58895	Feldon's Cane	own:0	{T}, Exile this artifact: Shuffle your graveyard into your library.
+9b8d9236-0452-4509-aca4-a53a399fff85	Chivalric Alliance	own:0	{2}, Discard a card: Create a 2/2 white and blue Knight creature token with vigilance.
+9b8f6c6a-49a1-4061-a2c4-5be612e138fa	Sphinx of the Revelation	own:0	{W}{U}{U}, {T}, Pay X {E}: Draw X cards.
+9c4ff8fe-7d69-42b9-bad1-9e2c8a3e29f1	Dr. Madison Li	own:1	{T}, Pay {E}{E}{E}: Draw a card.
+9c6ac895-0644-47ea-8a40-8f35cbbeba42	Cybership	own:0	Crew 4
+9d96671c-7a98-48ec-b479-bc451e18264d	Mercenaries	own:0	{3}: The next time this creature would deal damage to you this turn, prevent that damage. Any player may activate this ability.
+9dbc3530-b278-4c8d-b2cc-a09dfac9d5e5	Reassembling Skeleton	own:0	{1}{B}: Return this card from your graveyard to the battlefield tapped.
+9e4fb4b1-9b28-4a49-b4ac-d5549c08594d	Hydra Broodmaster	own:0	{X}{X}{G}: Monstrosity X.
+9e9cde32-0568-44bc-a00a-9709f15c1350	Aether Refinery	own:0	{T}: You get {E}, then you may pay one or more {E}. If you do, create an X/X black Aetherborn creature token, where X is the amount of {E} paid this way.
+9f7b2ec6-a828-499b-a2ac-766bdaaf30c1	Excavation	own:0	{1}, Sacrifice a land: Draw a card. Any player may activate this ability.
+9fb8cd81-403a-4988-8f1c-b8eccf8abd9c	Karn's Bastion	own:0	{4}, {T}: Proliferate
+a07483b4-c04f-42a4-b979-8b77c11fa8f5	Slate of Ancestry	own:0	{4}, {T}, Discard your hand: Draw a card for each creature you control.
+a131c32d-2b4f-4ee4-aab2-ab05ab010978	Pride Sovereign	own:0	{W}, {T}, Exert this creature: Create two 1/1 white Cat creature tokens with lifelink.
+a17e414c-8de0-47fd-bcbc-540c7fec7642	Codie, Ravenous Codex	own:0	{W}{U}{B}{R}{G}, {T}: Each creature you control becomes prepared.
+a1cc5e37-b09a-4b7f-afd5-77c1c35aa425	Carrion Feeder	own:0	Sacrifice a creature: put a +1/+1 counter on this creature
+a1e232c0-dc38-47be-a5a0-f68bc1d86a29	Yawgmoth, Thran Physician	own:1	{B}{B}, Discard a card: Proliferate.
+a1ed2274-7774-4c65-a95b-28ae5e225994	Beacon of Destiny	own:0	{T}: The next time a source of your choice would deal damage to you this turn, that damage is dealt to this creature instead.
+a4580a1d-141e-449b-9018-e0258130634b	Mikokoro, Center of the Sea	own:0	{2}, {T}: Each player draws a card.
+a5019399-91a8-4233-b16f-399718c4be9c	Olivia's Dragoon	own:0	Discard a card: This creature gains flying until end of turn.
+a5350327-e84c-44b6-8359-87882e521048	Niv-Mizzet, Ghost Counsel	own:0	{T}: Each opponent loses 1 life and you gain 1 life
+a598e824-ad8e-4947-896b-70c5275b615a	Moria Scavenger	own:0	{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1.
+a680d1ab-99f2-43d0-b289-5fdba4083d03	Arni, Humble Scribe	own:0	{T}: Draw a card, then discard a card.
+a68e57f3-f138-4c26-b8d5-55d1adec44a8	Transmutation Font	own:0	{T}: Create a Blood token.
+a68e57f3-f138-4c26-b8d5-55d1adec44a8	Transmutation Font	own:1	{T}: Create a Clue token.
+a68e57f3-f138-4c26-b8d5-55d1adec44a8	Transmutation Font	own:2	{T}: Create a Food token.
+a6eb06dc-a62d-4fdb-b336-e304d8d68c92	Usher of the Fallen	own:0	Boast — {1}{W}: Create a 1/1 white Human Warrior creature token.
+a7043fbd-1dfd-42cf-be4b-cc343d0949e5	Yuriko, the Tiger's Shadow	own:0	Commander ninjutsu {U}{B} ({U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand or the command zone tapped and attacking.)
+a7243d25-22a2-4df5-adaf-1f40f5330ec1	Sakashima the Impostor	grant:sakashima-the-impostor/return-at-end:0	{2}{U}{U}: Return this creature to its owner's hand at the beginning of the next end step.
+a75445d3-1303-4bb5-89ad-26ea93fecd48	Evolving Wilds	own:0	{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+a7dc2e62-1c50-4ed7-b71f-2d782a447a5e	Cauldron Familiar	own:0	Sacrifice a Food: Return this card from your graveyard to the battlefield.
+a8b968ea-76f3-4ee7-9d53-d251d8a9faf6	Volrath's Dungeon	own:0	Pay 5 life: Destroy this enchantment. Any player may activate this ability but only during their turn.
+a8fdbcdf-479d-4582-9ad5-9fbd4c740c29	Spectral Sailor	own:0	{3}{U}: Draw a card.
+a984db23-40ea-428d-829f-e944267280f8	Faerie Mastermind	own:0	{3}{U}: Each player draws a card.
+a9c5b155-7c09-4100-9679-8fca2b5e9222	Child of the Pack	own:0	{2}{R}{G}: Create a 2/2 green Wolf creature token.
+a9d72f78-2ab5-4e2e-ab7b-ef875e0a0609	Lost Jitte	own:0	Remove a charge counter from Lost Jitte: Choose one — untap target land; or target creature can't block this turn; or put a +1/+1 counter on equipped creature.
+aa6dbdf2-2379-4ff5-8a6c-70258784dc35	Desolate Lighthouse	own:0	{1}{U}{R}, {T}: Draw a card, then discard a card
+ab42fb8b-c463-45db-b71d-ed847c9abf1f	Lunar Avenger	own:0	Remove a +1/+1 counter from this creature: This creature gains your choice of flying, first strike, or haste until end of turn.
+ab46b957-5206-4390-a2f6-aba2e8d1debe	Radiant Kavu	own:0	{R}{G}{W}: Prevent all combat damage blue creatures and black creatures would deal this turn.
+ac161100-46b7-4f0f-a72b-84aaa45980ad	Jackdaw	own:0	Crew 3
+ac2dd694-d2f1-4025-8400-12332bdc882a	Takenuma, Abandoned Mire	own:0	Channel — {3}{B}, Discard this card: Mill three cards, then return a creature or planeswalker card from your graveyard to your hand.
+ace86e56-efde-4eb7-8815-71456a4c3abe	Warren Soultrader	own:0	Pay 1 life, Sacrifice another creature: Create a Treasure token.
+ad75efdb-3e36-4253-be47-1df5a3cf8204	Urza's Blueprints	own:0	{T}: Draw a card.
+aeec8e85-6571-4da6-8a48-f5d3985ca10b	Sylvan Reclamation	own:0	Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+aff4e43d-cafa-47de-8e39-011f9254a26a	Marwyn, the Clearcutter	own:0	{2}, {T}, Sacrifice an artifact or land: Draw a card
+b027302f-80c2-441d-a9fd-bbe64bf5cf8a	Rune of Protection: Black	own:0	{W}: The next time a black source of your choice would deal damage to you this turn, prevent that damage.
+b027302f-80c2-441d-a9fd-bbe64bf5cf8a	Rune of Protection: Black	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+b03eb0c4-89a4-420d-8a23-1a868a07d9cf	Greater Realm of Preservation	own:0	{1}{W}: The next time a black or red source of your choice would deal damage to you this turn, prevent that damage.
+b057c8ff-f169-41cd-a594-026f1a6cb0f9	Fabrication Module	own:0	{4}, {T}: You get {E}.
+b07ef53e-46db-457e-a5a2-846bb9805b70	Aether Theorist	own:0	{T}, Pay {E}: Scry 1.
+b0b93253-6432-401e-9a01-94c41fb72c10	Fearless Liberator	own:0	Boast — {2}{R}: Create a 2/1 red Dwarf Berserker creature token.
+b0f99367-4313-4bb1-a9fd-7711bc4ce40e	Kuldotha Forgemaster	own:0	{T}, Sacrifice three artifacts: Search your library for an artifact card, put it onto the battlefield, then shuffle.
+b1412eda-e3a4-41b2-932e-795a0ba0f7f8	PuPu UFO	own:0	{T}: You may put a land card from your hand onto the battlefield.
+b1412eda-e3a4-41b2-932e-795a0ba0f7f8	PuPu UFO	own:1	{3}: Until end of turn, this creature's base power becomes equal to the number of Towns you control.
+b145952b-52e3-4a66-b47e-f08a489f9443	Tome Shredder	own:0	{T}, Exile an instant or sorcery card from your graveyard: Put a +1/+1 counter on this creature.
+b168e4e6-f572-4d9f-b98f-95b2611354cb	Zopandrel, Hunger Dominus	own:0	{G/P}{G/P}, Sacrifice two other creatures: Put an indestructible counter on Zopandrel.
+b175e826-09e8-4fae-9f2e-b902f95b282d	The Mind Stone	own:0	{5}{W}, {T}: Harness The Mind Stone.
+b2b0a5d0-0084-43a4-b6dc-e893ef42cdb7	Unruly Catapult	own:0	{T}: This creature deals 1 damage to each opponent
+b2eb7a64-a307-4a78-a25d-63fb3ae1e237	Cryptic Caves	own:0	{1}, {T}, Sacrifice this land: Draw a card. Activate only if you control five or more lands.
+b30d583b-e770-47e8-9f26-fca7ef43285c	Idol of False Gods	own:0	{1}{C}, {T}: Create a 0/1 colorless Eldrazi Spawn creature token with "Sacrifice this token: Add {C}."
+b31026fe-faad-49b3-93b0-1324e32bb816	Liberty Prime, Recharged	own:0	{2}, {T}, Sacrifice an artifact: You get {E}{E} and draw a card.
+b3779fbe-7701-433b-afad-bebd6096a3c8	Ajani's Aid	own:0	Sacrifice this enchantment: Prevent all combat damage a creature of your choice would deal this turn.
+b3a81bb1-cbd5-41a0-8dd4-faea06593f84	Relic of Sauron	own:0	{3}, {T}: Draw two cards, then discard a card.
+b3b23c58-0b7a-4fe4-a8e8-5320a7605724	Bristling Hydra	own:0	Pay {E}{E}{E}: Put a +1/+1 counter on this creature. It gains hexproof until end of turn.
+b3baf498-3be7-4a22-8fed-806d8d8ac748	Royal Herbalist	own:0	{2}, Exile the top card of your library: You gain 1 life.
+b4d19e3a-c2f8-4503-bcfa-1b46bde972e5	Afterburner Expert	own:0	Exhaust — {2}{G}{G}: Put two +1/+1 counters on this creature.
+b56cebe0-3752-4ce5-afbd-911543784015	Atla Palani, Nest Tender	own:0	{2}, {T}: Create a 0/1 green Egg creature token with defender.
+b5918fb0-c33f-4e33-ac6d-8f94723d4296	Vinelasher Adept	own:0	Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+b5b46c99-1cc1-465a-a831-3fd6665ef560	Canyon Drake	own:0	{1}, Discard a card at random: This creature gets +2/+0 until end of turn.
+b5d5dd1f-2d31-4849-8cb9-08354dd48d31	Feral Hydra	own:0	{3}: Put a +1/+1 counter on this creature. Any player may activate this ability.
+b68e965a-96f4-447a-99be-35dbd27846e9	Heartless Hidetsugu	own:0	{T}: Heartless Hidetsugu deals damage to each player equal to half that player's life total, rounded down.
+b6c8ac69-daa7-4e2e-a1d9-439731a81870	Jace's Archivist	own:0	{U}, {T}: Each player discards their hand, then draws cards equal to the greatest number discarded
+b6d65fa3-26a9-44b2-a93d-a295bd080729	Domesticated Hydra	own:0	{X}{G}{G}{G}: Monstrosity X.
+b7851b17-faa2-4767-9716-86997b882690	Undercity Troll	own:0	{2}{G}: Regenerate this creature.
+b8020a8b-557b-465d-865d-b59fecd7abc1	Threefold Thunderhulk	own:0	{2}, Sacrifice another artifact: Put a +1/+1 counter on Threefold Thunderhulk
+b80df711-af51-4f9a-9a3f-f7a4cddc9c2c	Goro-Goro, Disciple of Ryusei	own:0	{R}: Creatures you control gain haste until end of turn.
+b80df711-af51-4f9a-9a3f-f7a4cddc9c2c	Goro-Goro, Disciple of Ryusei	own:1	{3}{R}{R}: Create a 5/5 red Dragon Spirit creature token with flying. Activate only if you control an attacking modified creature.
+b90d2f4d-b4ea-40af-aea0-1ab4234ab80f	Spawnsire of Ulamog	own:0	{4}: Create two 0/1 colorless Eldrazi Spawn creature tokens. They have "Sacrifice this token: Add {C}."
+b97648b7-ae98-45c9-8f0f-a52d6faf2d2d	Surveillance Phantasm	own:0	{3}{U}: Surveil 1.
+ba11a517-1dbd-4797-9f5e-46ce0f6c77c0	Scene of the Crime	own:0	{2}, Sacrifice this land: Draw a card.
+bae92332-1a0b-476b-8719-190e8d8cc03a	Warmonger	own:0	{2}: This creature deals 1 damage to each creature without flying and each player. Any player may activate this ability.
+bbfc5011-a9b7-442d-a443-974a5a64de46	Heaped Harvest	own:0	{2}, {T}, Sacrifice this artifact: You gain 3 life.
+bcd56fbf-fde3-41c2-83f5-9636e92d2893	Bulwark Ox	own:0	Sacrifice this creature: Creatures you control with counters on them gain hexproof and indestructible until end of turn.
+bce30fd0-ed1e-495d-9149-6a4c81c45c7b	Axgard Armory	own:0	{1}{R}{R}{W}, {T}, Sacrifice this land: Search your library for an Aura card and/or an Equipment card, reveal them, put them into your hand, then shuffle.
+bd85fe4d-1d62-416f-ac2d-e287911c84e3	Crystal Ball	own:0	{1}, {T}: Scry 2.
+bda098cb-31ec-41a1-a9d7-122877cc69d2	Ingris Stingerquill	own:0	{4}: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Then creatures you control gain haste until end of turn.
+bdb94ccd-1bb5-4bb7-9539-e1b1c97c19c5	Pashalik Mons	own:0	{3}{R}, Sacrifice a Goblin: Create two 1/1 red Goblin creature tokens
+bdf476e5-1d57-4b17-b45b-d52fd75aadeb	Lake of the Dead	mana:1	Sacrifice a Swamp: Add {B}{B}{B}{B}
+be0fc708-b205-4307-85f3-f8fd1efd4cf6	Lightning Dragon	own:0	{R}: This creature gets +1/+0 until end of turn.
+be6cab52-b3ae-46a2-a581-2468a49bff25	Architect of the Untamed	own:0	Pay eight {E}: Create a 6/6 colorless Beast artifact creature token.
+be811e70-aaaa-41f3-bf9e-5d3f9f719b49	Castle Locthwain	own:0	{1}{B}{B}, {T}: Draw a card, then you lose life equal to the number of cards in your hand.
+bec585af-0c59-46a7-838f-d747c80a9e97	Arbor Colossus	own:0	{3}{G}{G}{G}: Monstrosity 3.
+bf325b3a-0b28-4660-8b51-4334b59a9034	Steelshaper Apprentice	own:0	{W}, {T}, Return this creature to its owner's hand: Search your library for an Equipment card, reveal that card, put it into your hand, then shuffle.
+c0516c2c-d7c9-4763-9180-980f60205a28	Dauntless Escort	own:0	Sacrifice this creature: Creatures you control gain indestructible until end of turn.
+c18013e4-0b99-44e3-a2b2-027ace68723a	Skirk Prospector	mana:0	Sacrifice a Goblin: Add {R}
+c1a9d60f-a469-48f9-8f1c-3ca5ae86bd64	Campus Crier	own:0	{1}, Exile this card from your graveyard: Empower Jace 2.
+c1eb530c-dd36-40ae-8617-6bb6969565e1	Cultivator's Caravan	own:0	Crew 3
+c232d974-9c65-4bce-b045-e5a7cc0c62e0	Idol of Oblivion	own:0	{T}: Draw a card. Activate only if you created a token this turn.
+c232d974-9c65-4bce-b045-e5a7cc0c62e0	Idol of Oblivion	own:1	{8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.
+c30f9be4-c274-4ad0-b5d7-7d3421aa4277	Drownyard Temple	own:0	{3}: Return this card from your graveyard to the battlefield tapped.
+c3936db3-d3b6-4a92-9773-6f3c52dc419d	Seasoned Cryomancer	own:0	{3}{U}{U}, Exile this card from your graveyard: Draw two cards.
+c428cbe2-17fd-4bd2-9810-de2561519f14	Hydra Trainer	own:0	{2}{G}: Adapt 2
+c48ce123-bb07-4221-b3b3-0a458e101ca1	Djeru's Resolve	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+c48df45c-3513-4d56-aed6-30c2f3a759cd	Monumental Henge	own:0	{2}{W}{W}, {T}: Look at the top five cards of your library. You may reveal a historic card from among them and put it into your hand. Put the rest on the bottom of your library in a random order
+c5acf2a5-40f4-433d-a74d-1cb56c521464	Arid Mesa	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Mountain or Plains card, put it onto the battlefield, then shuffle.
+c5ee72d5-3a9e-4fe5-8802-3286ee612055	Sokenzan, Crucible of Defiance	own:0	Channel — {3}{R}, Discard this card: Create two 1/1 colorless Spirit creature tokens. They gain haste until end of turn
+c612ba0a-5134-45fa-a762-f4621bda4f83	Proctor of Potential	own:0	{W}{U}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if you've scried or surveilled this turn.
+c640654c-487e-4a2c-aced-126ed835b78f	Unlicensed Hearse	own:1	Crew 2
+c68faebc-b2cd-461b-b93e-e1fcd4816810	Midnight Clock	own:0	{2}{U}: Put an hour counter on this artifact
+c7054a2d-2e7b-4487-8fc3-f6a47a716fd3	Indulgent Aristocrat	own:0	{2}, Sacrifice a creature: Put a +1/+1 counter on each Vampire you control.
+c71b2325-bde6-4364-a93b-8477ffeb25d8	Toxrill, the Corrosive	own:0	{U}{B}, Sacrifice a Slug: Draw a card.
+c7fa1dda-9312-4ec8-82cd-a1ba7bc33497	Raugrin Triome	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+c7fca3f3-b48e-4ac5-be31-ce7ae3c7432c	Rune of Protection: Green	own:0	{W}: The next time a green source of your choice would deal damage to you this turn, prevent that damage.
+c7fca3f3-b48e-4ac5-be31-ce7ae3c7432c	Rune of Protection: Green	own:1	Cycling {2} ({2}, Discard this card: Draw a card.)
+c85fc672-12d8-4ab0-b18d-ccd590ac063c	Immortal Coil	own:0	{T}, Exile two cards from your graveyard: Draw a card.
+c92c7744-0c92-4a36-9ada-4ffca812009e	Tam, the Possibility	own:0	{W}{U}{B}{R}{G}, {T}: Proliferate X times, where X is the number of planeswalker types among planeswalkers you control.
+c97361b5-af16-4a7b-af85-a429dbaf4ad2	Mind Stone	own:0	{1}, {T}, Sacrifice Mind Stone: Draw a card.
+c9b82110-7dfd-4617-9399-9510be449043	Dark Depths	own:0	{3}: Remove an ice counter from Dark Depths.
+ca16b735-26c7-4d0b-959b-b031f6cb376e	Genku, Future Shaper	own:0	{3}{W}{U}: Put a +1/+1 counter on each creature you control.
+cab2bc93-f38b-4301-ac42-05765615586b	Edgar, Ancient Bloodlord	own:0	{2}, Sacrifice another creature or planeswalker: Put a +1/+1 counter on Edgar. He gains menace until end of turn.
+cada3481-cc2b-4412-b9b5-0436af53aad2	Ranger-Captain of Eos	own:0	Sacrifice this creature: Your opponents can't cast noncreature spells this turn.
+cb027150-848c-4a66-88ad-e20222304dd8	Scalding Tarn	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.
+cb3edb86-ddd5-461c-98b5-ffb4df437a39	Boommobile	own:1	Crew 2
+cb491d8a-2e9f-46fe-9590-44c3b4a25f1b	Jan Jansen, Chaos Crafter	own:0	{T}, Sacrifice an artifact creature: Create two Treasure tokens.
+cb491d8a-2e9f-46fe-9590-44c3b4a25f1b	Jan Jansen, Chaos Crafter	own:1	{T}, Sacrifice a noncreature artifact: Create two 1/1 colorless Construct artifact creature tokens.
+cb68d1e4-36aa-4a00-b671-8959e7d526d4	Lunar Convocation	own:0	{1}{B}, Pay 2 life: Draw a card
+cb814e16-acf7-41d5-a357-1323dcc369f3	Devoted Druid	own:0	Put a -1/-1 counter on this creature: Untap this creature.
+cb923c4d-1d2e-4039-90bb-72d1981b9738	Endless Atlas	own:0	{2}, {T}: Draw a card. Activate only if you control three or more lands with the same name.
+cbad3570-5417-42e6-b3ef-f42194098314	Shigeki, Jukai Visionary	own:0	{1}{G}, {T}, Return Shigeki to its owner's hand: Reveal the top four cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest into your graveyard.
+cbbad3da-695e-4527-9678-0942f3751287	Jaya Ballard, Task Mage	own:2	{5}{R}{R}, {T}, Discard a card: Jaya Ballard deals 6 damage to each creature and each player.
+cbf09050-39d0-463b-96db-9e22011ae0d8	Aang, Swift Savior	own:0	Waterbend {8}: Transform Aang.
+cce17310-585d-4738-8d5b-bbad65008c37	Lingering Mirage	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+cd68cc31-12fd-48ff-b37b-bccfe4172974	Sonic Screwdriver	own:1	{2}, {T}: Scry 1.
+cdf41cf4-4e77-453d-be5b-0abbbd358934	Castle Vantress	own:0	{2}{U}{U}, {T}: Scry 2.
+cdfcfd2b-966a-4e03-8ed5-4fa7fab423d0	Bespoke Battlewagon	own:0	{T}: You get {E}{E}.
+cdfcfd2b-966a-4e03-8ed5-4fa7fab423d0	Bespoke Battlewagon	own:2	{T}, Pay {E}{E}{E}: Draw a card.
+cdfcfd2b-966a-4e03-8ed5-4fa7fab423d0	Bespoke Battlewagon	own:3	Pay {E}{E}{E}{E}: This Vehicle becomes an artifact creature until end of turn.
+cdfcfd2b-966a-4e03-8ed5-4fa7fab423d0	Bespoke Battlewagon	own:4	Crew 4
+ce6a85b5-e249-4582-a6be-ce200da5fd53	Kwain, Itinerant Meddler	own:0	{T}: Each player draws a card, then each player who drew gains 1 life
+cef5361a-a189-4e05-a8b8-fc764aed73b9	All-Fates Scroll	own:0	{7}, {T}, Sacrifice this artifact: Draw X cards, where X is the number of differently named lands you control.
+cfb1a656-0bf1-484d-b099-33087914250b	HELIOS One	own:0	{1}, {T}: You get {E} (an energy counter).
+d053ea00-e727-4030-8c64-0d32ae57f169	Foriysian Totem	own:0	{4}{R}: This artifact becomes a 4/4 red Giant artifact creature with trample until end of turn.
+d0d4ab83-8b9b-49cd-86b8-720abd0550f4	Axgard Braggart	own:0	Boast — {1}{W}: Untap this creature. Put a +1/+1 counter on it.
+d12e5ce0-5705-4c35-9a93-b883db52c80c	Batterskull	own:0	{3}: Return this Equipment to its owner's hand
+d13c111a-ebfc-48ac-b734-f203c7c29d21	Puppet Crafting	own:0	{4}{G}: Return this card from your graveyard to your hand.
+d1af8018-35b5-4b6f-93c8-1ed6bd8c92b1	Hallway Heckler	own:0	{T}, Discard a card: Draw a card.
+d2e78392-096a-4bd0-be19-9c54dfb8451f	Longtusk Cub	own:0	Pay {E}{E}: Put a +1/+1 counter on this creature.
+d3b2d8a2-d3bc-448c-9cf6-6bead6010c28	Bristly Bill, Spine Sower	own:0	{3}{G}{G}: Double the number of +1/+1 counters on each creature you control.
+d44a8f89-b9c0-4e8a-9179-baa0c448a3c9	Children of Korlis	own:0	Sacrifice this creature: You gain life equal to the life you've lost this turn.
+d460a9e2-5a7d-4562-880e-45174be19a9d	Breya, Etherium Shaper	own:2	{2}, Sacrifice two artifacts: You gain 5 life
+d5b80895-621a-40df-bf48-6c7295658f21	Cankerbloom	own:0	{1}, Sacrifice this creature: Choose one — destroy target artifact; destroy target enchantment; or proliferate.
+d608a3fa-faee-44a4-9ab6-be701d3b7a49	Starting Column	own:0	Max speed — {T}, Sacrifice this artifact: Draw two cards, then discard a card.
+d72b57e5-1c6e-4f02-968f-7e2dd24f0d3c	Boromir, Warden of the Tower	own:0	Sacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you
+d7572f17-f85d-45c0-ac64-43aac760eafe	Circle of Protection: Blue	own:0	{1}: The next time a blue source of your choice would deal damage to you this turn, prevent that damage.
+d78518ee-df79-48d1-b9d5-4f968b441899	Coin of Mastery	own:0	{T}: Create a Treasure token.
+d7888719-647d-4022-a211-822fa09f0791	Staff of Domination	own:0	{1}: Untap this artifact.
+d7888719-647d-4022-a211-822fa09f0791	Staff of Domination	own:1	{2}, {T}: You gain 1 life.
+d7888719-647d-4022-a211-822fa09f0791	Staff of Domination	own:4	{5}, {T}: Draw a card.
+d7a38484-2acc-49a6-b32d-d54dddb14d31	Dawn of Hope	own:0	{3}{W}: Create a 1/1 white Soldier creature token with lifelink.
+d7c2f27c-8c82-4283-a17d-f979ee636542	Seasoned Tactician	own:0	{3}, Exile the top four cards of your library: The next time a source of your choice would deal damage to you this turn, prevent that damage.
+d83c86c1-126d-49e9-9b13-9e55784c49c5	Leechridden Swamp	own:0	{B}, {T}: Each opponent loses 1 life. Activate only if you control two or more black permanents.
+d8956775-fda8-475d-9e8a-b61196a958ea	Aether Syphon	own:0	{2}, {T}: Draw a card.
+d8e1e9ba-708c-4f54-abc3-817004a2f2ac	Basri, Tomorrow's Champion	own:0	{W}, {T}, Exert Basri: Create a 1/1 white Cat creature token with lifelink.
+d8e1e9ba-708c-4f54-abc3-817004a2f2ac	Basri, Tomorrow's Champion	own:1	Cycling {2}{W} ({2}{W}, Discard this card: Draw a card.)
+d9060fff-0b65-4b3d-930d-6e36315b802c	Lyra, Tolarian Archangel	own:0	{3}{U}{U}: Until end of turn, whenever Lyra deals combat damage to a player, draw two cards.
+d958321b-789d-4f9a-bdbe-f907166a0216	Pendant of Prosperity	own:0	{2}, {T}: Draw a card, then you may put a land card from your hand onto the battlefield. This artifact's owner draws a card, then that player may put a land card from their hand onto the battlefield.
+d9a10971-f32b-4978-952d-fed0a5bc9e36	Krosan Verge	own:0	{2}, {T}, Sacrifice this land: Search your library for a Forest card and a Plains card, put them onto the battlefield tapped, then shuffle.
+d9ec9a4f-0644-47c5-bc09-1201d5251bde	Aetherwind Basker	own:0	Pay {E}: This creature gets +1/+1 until end of turn.
+da46786e-28df-4638-ab3d-121011d2f150	Master Transmuter	own:0	{U}, {T}, Return an artifact you control to its owner's hand: You may put an artifact card from your hand onto the battlefield.
+da6f79ec-5f7e-4099-89c5-6d2bfc14d957	Vitu-Ghazi Guildmage	own:0	{4}{G}{W}: Create a 3/3 green Centaur creature token.
+da6f79ec-5f7e-4099-89c5-6d2bfc14d957	Vitu-Ghazi Guildmage	own:1	{2}{G}{W}: Populate.
+da95382c-0536-49aa-a0db-3b52926bf559	Coastline Chimera	own:0	{1}{W}: This creature can block an additional creature this turn.
+dab520d0-20b4-4273-ba6b-eb07f85ea433	Marsh Flats	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Swamp card, put it onto the battlefield, then shuffle.
+dafe63ef-f3d6-45e7-877a-573da92ba85e	Pestilence	own:0	{B}: Pestilence deals 1 damage to each creature and each player.
+db8d8643-3d0b-4f20-bf53-f4cd26a0e8df	Sheltered Thicket	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+dbd22a65-4ccb-4435-ae27-03a47a86d630	Fangblade Brigand	own:0	{1}{R}: This creature gets +1/+0 and gains first strike until end of turn.
+dbd22a65-4ccb-4435-ae27-03a47a86d630#1	Fangblade Eviscerator	own:0	{1}{R}: This creature gets +1/+0 and gains first strike until end of turn.
+dbd22a65-4ccb-4435-ae27-03a47a86d630#1	Fangblade Eviscerator	own:1	{4}{R}: Creatures you control get +2/+0 until end of turn.
+dc0593c2-ccb4-4648-a592-c5bcd121dc72	Greater Good	own:0	Sacrifice a creature: Draw cards equal to the sacrificed creature's power, then discard three cards.
+dc47a97b-f511-4b97-97b2-e0309055544b	Necromancer's Stockpile	own:0	{1}{B}, Discard a creature card: Draw a card. If the discarded card was a Zombie card, create a tapped 2/2 black Zombie creature token.
+dcaf3c6f-06e2-4762-82aa-625113e375a1	Steward of Solidarity	own:0	{T}, Exert this creature: Create a 1/1 white Warrior creature token with vigilance.
+ddb2fb87-235a-4365-aa25-40c197425e43	Bloodflow Connoisseur	own:0	Sacrifice a creature: put a +1/+1 counter on this creature
+dde55256-5259-44e7-a267-fca45a7f0d04	Hangarback Walker	own:0	{1}, {T}: Put a +1/+1 counter on this creature.
+ddfc7dac-f921-4529-935c-6c588890c522	Bone Mask	own:0	{2}, {T}: The next time a source of your choice would deal damage to you this turn, prevent that damage. Exile cards from the top of your library equal to the damage prevented this way.
+df13dafb-f82e-42ac-b6dc-efe82af5db58	Magus of the Wheel	own:0	{1}{R}, {T}, Sacrifice this creature: Each player discards their hand, then draws seven cards.
+df2738fe-9cd1-4347-8808-105fcfde1190	Circle of Protection: Red	own:0	{1}: The next time a red source of your choice would deal damage to you this turn, prevent that damage.
+e025a714-02da-4b0c-8021-cf3e8dc9b19e	The Locust God	own:0	{2}{U}{R}: Draw a card, then discard a card.
+e0610ab1-88d3-4502-84b7-3a08d0170167	Horizon Seeker	own:0	Boast — {1}{G}: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.
+e1096a98-a631-43f5-97d8-325001d608b3	Quicksilver Amulet	own:0	{4}, {T}: You may put a creature card from your hand onto the battlefield.
+e123fd7d-ace9-48a4-9510-eedcc837d8e8	Iron Spider, Stark Upgrade	own:0	{T}: Put a +1/+1 counter on each artifact creature and/or Vehicle you control
+e123fd7d-ace9-48a4-9510-eedcc837d8e8	Iron Spider, Stark Upgrade	own:1	{2}, Remove two +1/+1 counters from among artifacts you control: Draw a card.
+e1afaef7-9fa3-4662-a95f-adfb0da9fd11	Bident of Thassa	own:0	{1}{U}, {T}: Creatures your opponents control attack this turn if able.
+e1bce9c3-300c-4a9d-abe0-a1f02d3a1105	Underrealm Lich	own:0	Pay 4 life: This creature gains indestructible until end of turn. Tap it.
+e22bb590-9c9a-4a99-8cd7-1dbe742f4cdd	Brotherhood Scribe	own:0	Metalcraft — {T}: You get {E}. Activate only if you control three or more artifacts.
+e2ab0f84-8402-472d-be66-9661b85e08fc	Knight Paladin	own:0	Crew 1
+e2b472dd-047d-47eb-9ebb-df6aa4b52dd4	Perilous Landscape	own:0	{T}, Sacrifice this land: Search your library for a basic Island, Mountain, or Plains card, put it onto the battlefield tapped, then shuffle.
+e2b472dd-047d-47eb-9ebb-df6aa4b52dd4	Perilous Landscape	own:1	Cycling {U}{R}{W} ({U}{R}{W}, Discard this card: Draw a card.)
+e2c35551-1ba5-4424-baf9-821b49bbcc8c	Avishkar Raceway	own:0	Max speed — {3}, {T}, Discard a card: Draw a card.
+e2ee410f-2467-4f1f-84a0-8a79faedc0b3	Heart of Kiran	own:0	Crew 3
+e2ee410f-2467-4f1f-84a0-8a79faedc0b3	Heart of Kiran	own:1	Crew — remove a loyalty counter from a planeswalker you control
+e2f73743-95e7-4f03-9b98-5ab5ebc4b724	Pilgrim of Virtue	own:0	{W}, Sacrifice this creature: The next time a black source of your choice would deal damage this turn, prevent that damage.
+e349be42-5f14-44a9-9608-281985c10e2d	Marauding Mako	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+e3afc704-220f-498f-9eaa-0821b17dc24c	Sakura-Tribe Elder	own:0	Sacrifice Sakura-Tribe Elder: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.
+e3c8cdf7-a26a-45eb-9498-99b618cfba99	Fleecemane Lion	own:0	{3}{G}{W}: Monstrosity 1.
+e4acac65-112b-48fc-bea3-44747c1389a3	Opal-Eye, Konda's Yojimbo	own:0	{T}: The next time a source of your choice would deal damage this turn, that damage is dealt to Opal-Eye instead.
+e4acac65-112b-48fc-bea3-44747c1389a3	Opal-Eye, Konda's Yojimbo	own:1	{1}{W}: Prevent the next 1 damage that would be dealt to Opal-Eye this turn.
+e503a4f2-a785-4e7a-89a7-a9b24fb98831	Ifh-Bíff Efreet	own:0	{G}: This creature deals 1 damage to each creature with flying and each player. Any player may activate this ability.
+e7286688-ffbe-4d25-ad55-27990f005368	Sliver Hive	own:0	{5}, {T}: Create a 1/1 colorless Sliver creature token. Activate only if you control a Sliver.
+e729fce5-a1cf-4e95-9fd5-fccf4f704d31	Awaken the Inferno	own:0	Basic landcycling {2} ({2}, Discard this card: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.)
+e81fe764-8b26-40b3-8e17-741ab5e231b4	Flailing Ogre	own:0	{1}: This creature gets +1/+1 until end of turn. Any player may activate this ability.
+e81fe764-8b26-40b3-8e17-741ab5e231b4	Flailing Ogre	own:1	{1}: This creature gets -1/-1 until end of turn. Any player may activate this ability.
+e853e2fb-f90d-4934-aa70-c8d3cdf12e56	Grim Repriser	own:0	{B}{R}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if an opponent has been dealt noncombat damage this turn.
+e87906d2-db1a-4e19-b910-adb4eb339945	Urza, Lord High Artificer	own:0	{5}: Shuffle your library, then exile the top card. Until end of turn, you may play that card without paying its mana cost.
+e88027a6-24cc-4a8b-86db-734f26149ea8	Oran-Rief, the Vastwood	own:0	{T}: Put a +1/+1 counter on each green creature that entered this turn.
+e90a1381-c9c1-4f57-928c-5d19dc065274	Shivan Gorge	own:0	{2}{R}, {T}: Shivan Gorge deals 1 damage to each opponent.
+e94ef397-f5c5-4b8d-ae27-528352fa1d1e	Trostani, Selesnya's Voice	own:0	{1}{G}{W}, {T}: Populate.
+ea7b0704-7715-4f8a-b32f-d2d2f3b36054	Spawning Pit	own:0	Sacrifice a creature: Put a charge counter on this artifact
+ea7b0704-7715-4f8a-b32f-d2d2f3b36054	Spawning Pit	own:1	{1}, Remove two charge counters from this artifact: Create a 2/2 colorless Spawn artifact creature token
+ea93acc8-0c1f-42a2-bed3-f385d210d58f	Aegis of Honor	own:0	{1}: The next time an instant or sorcery spell would deal damage to you this turn, that spell deals that damage to its controller instead.
+ebdf26a4-77ee-4635-8d52-926bdca623f7	Lux Cannon	own:0	{T}: Put a charge counter on this artifact.
+ec2b3779-55f7-4169-aa66-6312fb52721f	Indatha Triome	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+ecbf5560-853a-43a9-bf70-ac8d403b0ce8	Polukranos, World Eater	own:0	{X}{X}{G}: Monstrosity X.
+ee8ab29b-0749-463a-abbd-eb0b9013aec8	Hell-Bent Raider	own:0	Discard a card at random: This creature gains protection from white until end of turn.
+ef86989d-ce80-4e55-aece-7d11710eeffa	Polluted Delta	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Swamp card, put it onto the battlefield, then shuffle.
+f0c533a2-751a-4c5a-8cec-b83da3c8c62f	Afterthought Sentry	own:0	{2}: This creature gains flying until end of turn
+f1fee486-660e-4356-896e-671e8b675ad8	Storm Elemental	own:1	{U}, Exile the top card of your library: If the exiled card is a snow land, this creature gets +1/+1 until end of turn.
+f2048140-b691-4753-8239-1aa75059e389	Martyr of Sands	own:0	{1}, Reveal X white cards from your hand, Sacrifice this creature: You gain three times X life.
+f22665cd-4710-48df-83c1-3c9081097cb5	Hedge Shredder	own:0	Crew 1
+f2f09757-1931-47c0-a5f0-39280445489d	Gilded Goose	mana:0	{T}, Sacrifice a Food: Add one mana of any color
+f2f09757-1931-47c0-a5f0-39280445489d	Gilded Goose	own:0	{1}{G}, {T}: Create a Food token.
+f32c5530-6692-4d47-8789-c73da23fd5b7	Magus of the Will	own:0	{2}{B}, {T}, Exile this creature: Until end of turn, you may play lands and cast spells from your graveyard. If a card would be put into your graveyard from anywhere this turn, exile that card instead.
+f33ce38a-34ec-4b65-a0fc-160484a02007	Bonders' Enclave	own:0	{3}, {T}: Draw a card. Activate only if you control a creature with power 4 or greater.
+f3c7af78-a77d-4134-82a2-a5ce84285a84	Flooded Strand	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Plains or Island card, put it onto the battlefield, then shuffle.
+f3d4f5ab-0ff4-48e1-8cf0-163b290804a5	Unstable Amulet	own:0	{T}, Pay {E}{E}: Exile the top card of your library. You may play it until you exile another card with this artifact.
+f460ff80-8175-43f7-9810-540cf3817085	Collector's Vault	own:0	{2}, {T}: Draw a card, then discard a card. Create a Treasure token.
+f47e4c56-0a0b-422d-bf3d-7a20ee289f15	Bartolomé del Presidio	own:0	Sacrifice another creature or artifact: Put a +1/+1 counter on Bartolomé del Presidio.
+f5896356-5744-4f7e-a4e5-1cc36dde5958	Jetmir's Garden	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+f5ded323-75c8-471e-a516-238b9d6b06d3	Hidden Stockpile	own:0	{1}, Sacrifice a creature: Scry 1.
+f6476884-f73f-465f-8e7f-ea312a5b306d	Loot, Exuberant Explorer	own:0	{4}{G}{G}, {T}: Look at the top six cards of your library. You may reveal a creature card with mana value less than or equal to the number of lands you control from among them and put it onto the battlefield. Put the rest on the bottom in a random order.
+f6daa28f-e5ce-440c-8dc2-b36f59ae0d4f	Vodalian Knights	own:0	{U}: This creature gains flying until end of turn.
+f71fcdc3-5e96-416e-a49d-37019806e2e2	Lembas	own:0	{2}, {T}, Sacrifice this artifact: You gain 3 life
+f759d112-76db-4091-a22b-b9f19ab6fa5f	Griselbrand	own:0	Pay 7 life: Draw seven cards
+f7e7b78c-c769-4720-8585-1874773eb342	Ziatora's Proving Ground	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+f7f76f39-a0de-4bda-86b6-0f291892fcec	Yawgmoth's Bargain	own:0	Pay 1 life: Draw a card
+f82a4e85-526d-4456-b700-7760043a31be	Viscera Seer	own:0	Sacrifice a creature: Scry 1.
+f82da236-e567-4221-a0bc-439a0c7e2b03	Whirler Virtuoso	own:0	Pay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying.
+f8b12c43-d83a-4e5b-a525-5ee1ae850817	Dusk Legion Sergeant	own:0	{1}{B}, Sacrifice this creature: Each nontoken Vampire creature you control gains persist until end of turn.
+f8b5d2f4-58a8-408c-bb67-6b5f9ba5b678	Urborg Phantom	own:0	{U}: Prevent all combat damage that would be dealt to and dealt by this creature this turn.
+f8d2a94f-7be1-4b17-8556-398dde531360	The Water Crystal	own:0	{4}{U}{U}, {T}: Each opponent mills cards equal to the number of cards in your hand.
+f8e8cdc6-5685-4986-a14b-20bb9e31d9cf	Battershield Warrior	own:0	Boast — {1}{W}: Creatures you control get +1/+1 until end of turn.
+f8f4fc60-725d-46d8-8e8f-e68e00d20589	Castle Ardenvale	own:0	{2}{W}{W}, {T}: Create a 1/1 white Human creature token.
+f97fd068-b83a-4621-bf8c-cc96e880ce90	Sunbaked Canyon	own:0	{1}, {T}, Sacrifice this land: Draw a card.
+fa08400f-b7ca-4c5c-b7ca-a6583b783878	Survivor's Med Kit	own:0	{1}, {T}: Choose one that hasn't been chosen
+fa1ed9fa-5f77-4f7d-bab0-47c719cdc5bc#1	Bladewheel Chariot	own:0	Tap two other untapped artifacts you control: This Vehicle becomes an artifact creature until end of turn.
+fa1ed9fa-5f77-4f7d-bab0-47c719cdc5bc#1	Bladewheel Chariot	own:1	Crew 1
+fa8f3827-8cd9-4896-ab0c-26fecacceb40	Fend Off	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+fa944633-e078-41bb-9c7d-4f6b669c27a5	Death Tyrant	own:0	{5}{B}: Return this card from your graveyard to the battlefield tapped.
+fb81e4d3-1d8c-4779-be62-87cf49277e51#1	Harnfel, Horn of Bounty	own:0	Discard a card: Exile the top two cards of your library. You may play those cards this turn.
+fbd6dda7-ccee-4640-805d-78a9d60f45ef	Restless Apparition	own:0	{W/B}{W/B}{W/B}: This creature gets +3/+3 until end of turn.
+fc0707c7-d504-4ccf-a0d2-3eb6e26e7a57	Bloodstained Mire	own:0	{T}, Pay 1 life, Sacrifice this land: Search your library for a Swamp or Mountain card, put it onto the battlefield, then shuffle.
+fc7c0197-bfa1-43b8-87c8-f134192b14c0	Vantress Gargoyle	own:0	{T}: Each player mills a card.
+fc8032e9-c83a-4cf9-92e1-b1d2d9642695	Temple Bell	own:0	{T}: Each player draws a card
+fd275ea7-9ccc-4148-9b33-392a612486dd	Anurid Swarmsnapper	own:0	{1}{G}: This creature can block an additional creature this turn.
+fd45063f-c83c-431c-9104-f139c497ec0d	Silent Clearing	own:0	{1}, {T}, Sacrifice this land: Draw a card.
+fdba89eb-1cf5-46e6-9d09-1adb9bc40fcd	Yahenni, Undying Partisan	own:0	Sacrifice another creature: Yahenni gains indestructible until end of turn.
+fdd46004-eaba-4024-8687-39b23dc6a58c	Zagoth Triome	own:0	Cycling {3} ({3}, Discard this card: Draw a card.)
+fe99d90e-4809-4310-a3f7-ceb540511d55	Blessed Ghoul	own:0	{2}{W/B}: Return this card from your graveyard to your hand.
+fed12a16-8920-403c-be63-0601a9d864b0	Dockside Chef	own:0	{1}{B}, Sacrifice an artifact or creature: Draw a card
+fef502af-6e79-4c55-a86a-b45adb3fc64a	Plague Boiler	own:0	{1}{B}{G}: Put a plague counter on this artifact or remove a plague counter from it.
+ff24d18d-9c5d-4ffe-846f-a8d568b32724	Scurry of Gremlins	own:0	Pay {E}{E}{E}{E}: Creatures you control get +1/+0 and gain haste until end of turn.
+ff321c13-03ae-4cb9-b371-1242290f8433	Aggressive Mining	own:0	Sacrifice a land: Draw two cards. Activate only once each turn.
+ff4297d3-3d96-4bd6-a606-1bdc20a6df2b	Aether Storm	own:0	Pay 4 life: Destroy this enchantment. It can't be regenerated. Any player may activate this ability.
+ff59a95c-28de-44cf-abbe-772417851ffa	Veiled Serpent	own:0	Cycling {2} ({2}, Discard this card: Draw a card.)
+test-sacrifice-n-ability	Two-Creature Outlet	own:0	Sacrifice two creatures: You gain 1 life.
+test-sacrifice-n-mana	Two-Creature Altar	mana:0	Sacrifice two creatures: Add {C}{C}{C}
+test-sacrifice-n-self-too	Self And Two Outlet	own:0	Sacrifice this and two creatures: You gain 1 life.
+test-sacrifice-self-and-one-other	Self And One Outlet	own:0	Sacrifice this and a creature: no effect.
+token	Blood token	token:blood:0	{1}, {T}, Sacrifice this artifact: Draw a card (discard cost not yet modelled)
+token	Clue token	token:clue:0	{2}, Sacrifice this artifact: Draw a card
+token	Dragon token	token:dragon-nesting:0	{R}: This token gets +1/+0 until end of turn
+token	Food token	token:food:0	{2}, {T}, Sacrifice this artifact: You gain 3 life
+token	Gingerbrute token	token:gingerbrute:0	{1}: This token can't be blocked this turn except by creatures with haste.
+token	Gingerbrute token	token:gingerbrute:1	{2}, {T}, Sacrifice this token: You gain 3 life.
+token	Lander token	token:lander:0	{2}, {T}, Sacrifice this token: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle
