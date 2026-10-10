@@ -38,8 +38,9 @@ func init() {
 			}, game.KeywordEvolve),
 		},
 		Activated: []ActivatedAbility{{
-			Label: `{3}{G}: Create a 0/1 colorless Eldrazi Spawn creature token with "Sacrifice this token: Add {C}."`,
-			Cost:  ManaCost("{3}{G}"),
+			Label:   `{3}{G}: Create a 0/1 colorless Eldrazi Spawn creature token with "Sacrifice this token: Add {C}."`,
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{3}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: EldraziSpawnToken(), N: 1}.Apply(NewContext(g, item))
 			},

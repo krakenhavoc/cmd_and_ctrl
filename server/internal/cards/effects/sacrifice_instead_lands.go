@@ -73,8 +73,9 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{W}, {T}: Create a 1/1 white Soldier creature token.",
-			Cost:  Plus(ManaCost("{1}{W}"), TapCost()),
+			Label:   "{1}{W}, {T}: Create a 1/1 white Soldier creature token.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{1}{W}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TokenCard("1/1 white Soldier"), N: 1}.Apply(NewContext(g, item))
 			},

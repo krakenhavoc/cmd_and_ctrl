@@ -28,8 +28,9 @@ func init() {
 			b16GrantKeywords(b16CreaturesYouControl, "haste"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{R}, {T}, Sacrifice a land: Create a 3/3 colorless Golem enchantment artifact creature token.",
-			Cost:  Plus(ManaCost("{2}{R}"), TapCost(), game.AbilityCost{SacrificeOther: b29SacrificeALand()}),
+			Label:   "{2}{R}, {T}, Sacrifice a land: Create a 3/3 colorless Golem enchantment artifact creature token.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{2}{R}"), TapCost(), game.AbilityCost{SacrificeOther: b29SacrificeALand()}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: TokenCard("3/3 colorless Golem artifact"), N: 1}.Apply(NewContext(g, item))
 			},

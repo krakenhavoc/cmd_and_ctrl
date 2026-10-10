@@ -34,7 +34,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{W}, {T}, Exert this creature: Create two 1/1 white Cat creature tokens with lifelink.",
 			Cost:    Plus(ManaCost("{W}"), TapCost(), ExertThis()),
-			Purpose: game.Purpose{Tokens: 2},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 2},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TokenCard("1/1 white Cat with lifelink"), N: 2}.Apply(NewContext(g, item))
 			},

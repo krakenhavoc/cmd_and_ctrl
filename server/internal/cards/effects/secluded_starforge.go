@@ -36,8 +36,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{5}, {T}: Create a 2/2 colorless Robot artifact creature token.",
-				Cost:  Plus(ManaCost("{5}"), TapCost()),
+				Label:   "{5}, {T}: Create a 2/2 colorless Robot artifact creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(ManaCost("{5}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TokenCard("2/2 colorless Robot artifact"), N: 1}.Apply(NewContext(g, item))
 				},

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Usher of the Fallen — Creature — Spirit Warrior {W}, 2/1:
 //
 //	"Boast — {1}{W}: Create a 1/1 white Human Warrior creature token. (Activate only if
@@ -17,7 +19,7 @@ func init() {
 		Name:         "Usher of the Fallen",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			Boast("{1}{W}: Create a 1/1 white Human Warrior creature token.",
+			BoastAnswering(game.AnswerMakesBlocker, "{1}{W}: Create a 1/1 white Human Warrior creature token.",
 				ManaCost("{1}{W}"), createTheToken("1/1 white Human Warrior")),
 		},
 	})

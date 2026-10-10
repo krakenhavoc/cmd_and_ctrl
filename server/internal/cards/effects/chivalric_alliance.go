@@ -33,8 +33,9 @@ func init() {
 			}, b28ChivalricAllianceLabel, Do(DrawCards{N: 1}))),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, Discard a card: Create a 2/2 white and blue Knight creature token with vigilance.",
-			Cost:  Plus(ManaCost("{2}"), DiscardACard()),
+			Label:   "{2}, Discard a card: Create a 2/2 white and blue Knight creature token with vigilance.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{2}"), DiscardACard()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{
 					Controller: item.Controller,

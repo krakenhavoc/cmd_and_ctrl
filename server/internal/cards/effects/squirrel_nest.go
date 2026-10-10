@@ -25,8 +25,9 @@ func init() {
 		Grants: []AbilityGrant{{
 			Key: squirrelNestGrant,
 			Activated: []ActivatedAbility{{
-				Label: "{T}: Create a 1/1 green Squirrel creature token",
-				Cost:  TapCost(),
+				Label:   "{T}: Create a 1/1 green Squirrel creature token",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    TapCost(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{
 						Controller: item.Controller,

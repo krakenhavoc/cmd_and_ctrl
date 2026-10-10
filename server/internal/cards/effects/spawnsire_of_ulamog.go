@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Spawnsire of Ulamog — Creature — Eldrazi {10}, 7/11:
 //
 //	"Annihilator 1
@@ -24,9 +26,10 @@ func init() {
 		Caveats:         []string{"The {20} ability isn't implemented — you can't cast Eldrazi spells from outside the game."},
 		PrintedKeywords: []string{"annihilator 1"},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}: Create two 0/1 colorless Eldrazi Spawn creature tokens. They have \"Sacrifice this token: Add {C}.\"",
-			Cost:   ManaCost("{4}"),
-			Effect: Do(CreateToken{Template: EldraziSpawnToken(), N: 2}),
+			Label:   "{4}: Create two 0/1 colorless Eldrazi Spawn creature tokens. They have \"Sacrifice this token: Add {C}.\"",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{4}"),
+			Effect:  Do(CreateToken{Template: EldraziSpawnToken(), N: 2}),
 		}},
 	})
 }

@@ -27,9 +27,10 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{2}{W}, {T}: Create a 2/2 white Knight creature token with vigilance.",
-				Cost:   Plus(ManaCost("{2}{W}"), TapCost()),
-				Effect: Do(CreateToken{Template: TokenCard("2/2 white Knight with vigilance"), N: 1}),
+				Label:   "{2}{W}, {T}: Create a 2/2 white Knight creature token with vigilance.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(ManaCost("{2}{W}"), TapCost()),
+				Effect:  Do(CreateToken{Template: TokenCard("2/2 white Knight with vigilance"), N: 1}),
 			},
 			{
 				Label:   "{B}, {T}, Tap X untapped Knights you control: Destroy target creature with power X or less.",
