@@ -1,8 +1,9 @@
 // abilityPopover — which card's light ability popover is open (ADR 0117
 // §1). Keyed by instance ID, in the shape of manaSourcePicker.ts.
 //
-// The popover itself is drawn by Card (ManaAbilityMenu, anchored inside
-// the card), but since ADR 0117 a LEFT-click can open it, and that
+// The popover itself is drawn by Card (ManaAbilityMenu, a fixed box moved
+// into the board's popover host and placed against the card, #2960:
+// menuPlacement.ts), but since ADR 0117 a LEFT-click can open it, and that
 // click lands in PlayerPanel's router, several components above the
 // Card. So the open card lives here: the router writes it, a right-click
 // or a pip writes it, and the one Card with that instance ID draws the

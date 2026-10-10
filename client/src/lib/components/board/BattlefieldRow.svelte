@@ -581,13 +581,15 @@
     padding-right: calc(var(--card-h, 123px) * 0.2);
   }
   .row.strip .pile {
-    margin-left: calc(var(--card-w, 88px) * -0.6);
+    margin-left: calc(
+      var(--card-w, 88px) * -0.6 * var(--strip-k, 1) + 6px * (1 - var(--strip-k, 1))
+    );
   }
   .row.strip .pile:first-child {
     margin-left: 0;
   }
   .row.strip .pile.tapped {
-    margin-left: calc(var(--card-w, 88px) * -0.35);
+    margin-left: calc(var(--card-w, 88px) * -0.35 * var(--strip-k, 1));
   }
   .row.strip .pile:not(.tapped) + .pile.tapped {
     margin-left: calc(var(--card-h, 123px) * 0.2);

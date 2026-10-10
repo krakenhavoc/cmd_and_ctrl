@@ -1,6 +1,27 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { MAX_OVERLAP, MIN_CARD_H, fitOverlap, fitScale, tappedRoom } from "./rowFit";
+import { MAX_OVERLAP, MIN_CARD_H, fitOverlap, fitScale, stripOpen, tappedRoom } from "./rowFit";
+
+// #2960: the land strip uses its room before it overlaps.
+describe("stripOpen", () => {
+  it("is 0 while the lands fit edge to edge", () => {
+    expect(stripOpen(616, 360, 1000)).toBe(0);
+    expect(stripOpen(616, 360, 616)).toBe(0);
+  });
+
+  it("opens exactly as far as the room allows", () => {
+    expect(stripOpen(616, 360, 488)).toBeCloseTo(0.5, 9);
+  });
+
+  it("is fully overlapped when even the packed strip does not fit", () => {
+    expect(stripOpen(616, 360, 300)).toBe(1);
+  });
+
+  it("is steady for a lone pile and an unmeasured row", () => {
+    expect(stripOpen(88, 88, 50)).toBe(1);
+    expect(stripOpen(616, 360, 0)).toBe(0);
+  });
+});
 
 // #2442: a tapped card takes the width of its 90 degree turn.
 describe("tappedRoom", () => {

@@ -272,7 +272,15 @@ describe("act through it (ADR 0120 §3)", () => {
     click(tile);
     expect(get(abilityPopover)).toEqual({ cardID: "relic", surface: "expanded" });
     expect(document.querySelectorAll(".mana-menu")).toHaveLength(1);
-    expect(overlay()!.querySelectorAll(".mana-menu")).toHaveLength(1);
+    // #2960: drawn in the board's popover host, out of the card and the
+    // overlay's clipping, and from the overlay's copy only.
+    expect(document.querySelectorAll("[data-popover-host] .mana-menu")).toHaveLength(1);
+    expect(overlay()!.querySelectorAll(".mana-menu")).toHaveLength(0);
+    // Placed against the viewport (menuPlacement.ts), above or below.
+    const anchor = document.querySelector<HTMLElement>("[data-popover-host] .mana-menu-anchor")!;
+    expect(["above", "below"]).toContain(anchor.dataset.side);
+    expect(anchor.style.left).toMatch(/px$/);
+    expect(anchor.style.maxHeight).toMatch(/px$/);
   });
 });
 
