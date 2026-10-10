@@ -4256,7 +4256,7 @@ export interface TurnView {
   phase: string;
   step: string;
   // ADR 0059 Decision 11 (#753): this turn was created by an effect
-  // (CR 500.7). `number` is still the round, so the board keeps "T3"
+  // (CR 500.7). `number` is still the round, so the board keeps "R3"
   // and adds an "Extra turn" mark. Absent on a normal turn.
   extra?: boolean;
   // Seat indices of queued extra turns, in the order they will be
