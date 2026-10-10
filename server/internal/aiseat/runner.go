@@ -518,7 +518,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			Moves: moves,
 		}
 		if in.View.ID == "" && r.needsView() {
-			in.View = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
+			in.View = r.room.ViewFor(r.seat.String())
 		}
 		if r.concede(ctx, in) {
 			return false
@@ -633,7 +633,7 @@ func (r *Runner) step(ctx context.Context) bool {
 			// frame when there is a grace to hold for.
 			view := in.View
 			if view.ID == "" {
-				view = protocol.ViewOfGameFor(r.room.Game, r.seat.String())
+				view = r.room.ViewFor(r.seat.String())
 			}
 			if r.shouldHoldForBlockers(view) {
 				r.holdForBlockers(ctx)
@@ -1070,7 +1070,7 @@ func (r *Runner) holdForBlockers(ctx context.Context) {
 	deadline := time.Now().Add(r.cfg.BlockGrace)
 	for time.Now().Before(deadline) && ctx.Err() == nil {
 		r.hold(ctx, 100*time.Millisecond)
-		if !r.shouldHoldForBlockers(protocol.ViewOfGameFor(r.room.Game, r.seat.String())) {
+		if !r.shouldHoldForBlockers(r.room.ViewFor(r.seat.String())) {
 			return
 		}
 	}

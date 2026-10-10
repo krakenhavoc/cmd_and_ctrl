@@ -681,6 +681,23 @@ func (r *Room) Snapshot() (protocol.GameView, uint64, error) {
 	return r.captureLocked(false)
 }
 
+// ViewFor returns the view a client seated at viewerID receives: the
+// full projection with the room's own stamps (host, undo, playmats),
+// then the per-seat filter. A bot runner reads its input here, so it
+// sees the same bytes a human at that seat does (aiseat's
+// TestBotInputViewIsByteIdenticalToTheHumanView). Unlike Snapshot it
+// writes nothing to disk and leaves the pending annotation alone.
+func (r *Room) ViewFor(viewerID string) protocol.GameView {
+	r.mu.Lock()
+	view := protocol.ViewOfGame(r.Game)
+	r.stampHostLocked(&view)
+	r.stampUndoAutoAnswerLocked(&view)
+	r.stampUndoBlockedLocked(&view)
+	r.stampPlaymatsLocked(&view)
+	r.mu.Unlock()
+	return protocol.FilterViewFor(view, viewerID)
+}
+
 // Seq returns the current sequence counter without capturing a view.
 // Cheap — the hub's post-admit re-check uses it to detect whether a
 // broadcast landed in the pre-stage→admit gap before paying for a
