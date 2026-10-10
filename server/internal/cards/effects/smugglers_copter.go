@@ -38,9 +38,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 1",
-			Cost:   CrewCost(1),
-			Effect: CrewEffect("Smuggler's Copter"),
+			Label:   "Crew 1",
+			Cost:    CrewCost(1),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Smuggler's Copter"),
 		}},
 		Triggered: []game.TriggeredAbility{
 			Optional(OnAny([]game.EventKind{game.EventAttack, game.EventBlock},

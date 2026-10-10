@@ -48,9 +48,10 @@ func init() {
 			}, "The Indomitable — draw a card", Do(DrawCards{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 3",
-			Cost:   CrewCost(3),
-			Effect: CrewEffect("The Indomitable"),
+			Label:   "Crew 3",
+			Cost:    CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("The Indomitable"),
 		}},
 	})
 }

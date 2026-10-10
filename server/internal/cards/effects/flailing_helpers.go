@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // flailing_helpers.go — the Flailing creatures' two abilities (ADR 0106
 // §1, #1793). Flailing Manticore, Flailing Ogre and Flailing Soldier
 // print the same pair word for word:
@@ -24,7 +26,10 @@ func flailingAbilities(name string) []ActivatedAbility {
 			Label:     "{1}: This creature gets +1/+1 until end of turn. Any player may activate this ability.",
 			Cost:      ManaCost("{1}"),
 			AnyPlayer: true,
-			Effect:    thisGetsUntilEndOfTurn(1, 1, name+" — +1/+1 until end of turn"),
+			// ADR 0142: the -1/-1 row stays undeclared; the ADR does not
+			// say whether shrinking this creature "removes" it.
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Effect:  thisGetsUntilEndOfTurn(1, 1, name+" — +1/+1 until end of turn"),
 		},
 		{
 			Label:     "{1}: This creature gets -1/-1 until end of turn. Any player may activate this ability.",

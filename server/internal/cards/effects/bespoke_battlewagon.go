@@ -50,9 +50,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "Crew 4",
-				Cost:   CrewCost(4),
-				Effect: CrewEffect("Bespoke Battlewagon"),
+				Label:   "Crew 4",
+				Cost:    CrewCost(4),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Bespoke Battlewagon"),
 			},
 		},
 	})

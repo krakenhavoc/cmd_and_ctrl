@@ -110,13 +110,15 @@ func printedGingerbruteToken() tokenTemplate {
 		Text: "Haste\n{1}: This token can't be blocked this turn except by creatures with haste.\n{2}, {T}, Sacrifice this token: You gain 3 life.",
 		Activated: []game.ActivatedAbilityShape{
 			{
-				Label:  "{1}: This token can't be blocked this turn except by creatures with haste.",
-				Cost:   game.AbilityCost{Mana: "{1}"},
-				Effect: rfCreatureBGingerbruteEvade,
+				Label:   "{1}: This token can't be blocked this turn except by creatures with haste.",
+				Cost:    game.AbilityCost{Mana: "{1}"},
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Effect:  rfCreatureBGingerbruteEvade,
 			},
 			{
-				Label: "{2}, {T}, Sacrifice this token: You gain 3 life.",
-				Cost:  game.AbilityCost{Mana: "{2}", Tap: true, SacrificeSelf: true},
+				Label:   "{2}, {T}, Sacrifice this token: You gain 3 life.",
+				Cost:    game.AbilityCost{Mana: "{2}", Tap: true, SacrificeSelf: true},
+				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
 				},

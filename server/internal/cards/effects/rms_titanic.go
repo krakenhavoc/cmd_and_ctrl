@@ -40,9 +40,10 @@ func init() {
 			Effect: rmsTitanicSacrificeAndTreasure,
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 3",
-			Cost:   CrewCost(3),
-			Effect: CrewEffect("RMS Titanic"),
+			Label:   "Crew 3",
+			Cost:    CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("RMS Titanic"),
 		}},
 	})
 }

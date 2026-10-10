@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Cultivator's Caravan — Artifact — Vehicle, 5/5, for {3}:
 //
 //	"{T}: Add one mana of any color.
@@ -25,9 +27,10 @@ func init() {
 			Label:    "{T}: Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 3",
-			Cost:   CrewCost(3),
-			Effect: CrewEffect("Cultivator's Caravan"),
+			Label:   "Crew 3",
+			Cost:    CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Cultivator's Caravan"),
 		}},
 	})
 }

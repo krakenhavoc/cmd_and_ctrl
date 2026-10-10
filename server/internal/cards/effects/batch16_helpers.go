@@ -57,6 +57,7 @@ func printedB16LanderToken() tokenTemplate {
 				SacrificeSelf: true,
 				Mana:          "{2}",
 			},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b07SearchBasicOntoBattlefield(g, item, item.Controller, true, false,
 					"Lander — a basic land, onto the battlefield tapped")

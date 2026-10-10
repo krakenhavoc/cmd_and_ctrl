@@ -63,6 +63,7 @@ func shieldAgainstTargetsRow(label string, cost game.AbilityCost, targets *game.
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
+		Purpose: preventsDamageUnlessTargeted(targets),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shieldAgainstEachTarget(NewContext(g, item), combatOnly)
 		},

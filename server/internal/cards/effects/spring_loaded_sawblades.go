@@ -55,12 +55,14 @@ func init() {
 					ExcludeSource: true,
 					Label:         "two other untapped artifacts you control",
 				}},
-				Effect: CrewEffect("Bladewheel Chariot"),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Bladewheel Chariot"),
 			},
 			{
-				Label:  "Crew 1",
-				Cost:   CrewCost(1),
-				Effect: CrewEffect("Bladewheel Chariot"),
+				Label:   "Crew 1",
+				Cost:    CrewCost(1),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Bladewheel Chariot"),
 			},
 		},
 	})

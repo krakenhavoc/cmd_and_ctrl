@@ -32,9 +32,10 @@ func init() {
 				Effect: thisGainsKeywordUntilEndOfTurn("lifelink", "Aethersphere Harvester — lifelink until end of turn"),
 			},
 			{
-				Label:  "Crew 1",
-				Cost:   CrewCost(1),
-				Effect: CrewEffect("Aethersphere Harvester"),
+				Label:   "Crew 1",
+				Cost:    CrewCost(1),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Aethersphere Harvester"),
 			},
 		},
 	})

@@ -25,9 +25,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 1",
-			Cost:   CrewCost(1),
-			Effect: CrewEffect("Knight Paladin"),
+			Label:   "Crew 1",
+			Cost:    CrewCost(1),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Knight Paladin"),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Knight Paladin — Rapid-fire Battle Cannon: 4 damage to each opponent",
