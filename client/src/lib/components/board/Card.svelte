@@ -63,6 +63,7 @@
   import ManaCost from "./ManaCost.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
+  import { anchoredMenu } from "../../menuPlacement";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import DamageStepper from "./DamageStepper.svelte";
   import { boardDamageAssign } from "../../damageAssignment";
@@ -1282,7 +1283,7 @@
     <DamageStepper cardID={card.instance_id} name={displayName(card)} />
   {/if}
   {#if manaMenuOpen && hasMenu}
-    <div class="mana-menu-anchor">
+    <div class="mana-menu-anchor" use:anchoredMenu>
       <ManaAbilityMenu
         special={specialRows}
         onSpecialAction={(action) => onSpecialAction?.(action)}
@@ -1825,15 +1826,19 @@
     overflow: visible;
   }
   .mana-menu-anchor {
-    /* Float the menu below the card. Anchored via the .card's
-       position: relative; .card.menu-open disables overflow:hidden
-       so the pop-over extends past the card frame without
-       needing a portal. */
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
-    z-index: 60;
+    /* #2960: a fixed box placed from the card's on-screen rect, above
+       the card or flipped below, inside the viewport (menuPlacement.ts).
+       The action moves it into the board's popover host, out of the
+       card's transform and out of the lands row's scroll. The first
+       paint is off-screen until it is placed. */
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    z-index: 70;
+    box-sizing: border-box;
+    max-width: calc(100vw - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .badge.cost {
     /* Top-right to mirror the printed-card convention. Only shown in

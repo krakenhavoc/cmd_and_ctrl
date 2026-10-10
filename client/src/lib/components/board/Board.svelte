@@ -3968,6 +3968,10 @@
       {legalGate}
     />
   {/if}
+  <!-- #2960: where a card's ability menu is moved to (menuPlacement.ts):
+       out of the card's transform and the lands row's scroll, so it is
+       placed against the viewport like the picker below. -->
+  <div data-popover-host style="display: contents"></div>
   {#if $manaSourcePicker}
     <!-- #1438: the anchored "which mana?" picker a left-click on a
          source with several mana abilities opens. Its pick routes

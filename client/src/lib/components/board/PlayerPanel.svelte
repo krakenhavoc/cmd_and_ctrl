@@ -1188,6 +1188,13 @@
     min-width: 160px;
     max-width: 100%;
   }
+  /* #2960: the land strip takes the room the other back-row zone leaves
+     instead of shrink-wrapping its overlapped cards. fitRow then opens
+     the strip (--strip-k) until the lands sit edge to edge, and
+     overlaps them only when they no longer fit. */
+  .grid-middle > :global(.row.strip) {
+    flex: 1 1 0;
+  }
   .grid-bottom {
     grid-area: bottom;
     min-height: 0;
