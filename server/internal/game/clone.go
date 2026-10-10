@@ -52,6 +52,9 @@ func (g *Game) cloneLocked() *Game {
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
+		// #2881: the active player's standing end_turn. Its own
+		// pointer, so a clone never shares the live order.
+		passTurn: clonePassTurnOrder(g.passTurn),
 		// #628: both halves of the CR 732 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
@@ -1058,6 +1061,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.TurnEndPending = src.TurnEndPending
+	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers

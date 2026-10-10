@@ -31,7 +31,8 @@ const (
 	TypeUntap                  Type = "untap"
 	TypeUntapAll               Type = "untap_all"
 	TypePassPriority           Type = "pass_priority"
-	TypePassTurn               Type = "pass_turn"
+	TypePassTurn               Type = "pass_turn" // the sandbox jump: skips the rest of the turn's steps
+	TypeEndTurn                Type = "end_turn"  // the dock's Pass turn (#2881): walks every step, passing for the active player
 	TypeMulligan               Type = "mulligan"
 	TypeShuffleLibrary         Type = "shuffle_library"
 	TypeChangeLife             Type = "change_life"
@@ -538,10 +539,15 @@ var playerScopedActions = map[Type]struct{}{
 // #1501: SettleBlockDeclaration is the same backstop for a block
 // declaration whose priority is parked with nobody left declaring — a
 // sandbox verb that took the last attacker out of combat, say.
+//
+// #2881: SettlePassTurn last, so an active player who passed the turn
+// passes again whenever this action handed them priority — an
+// opponent's pass, an answered prompt, a resolution.
 func Dispatch(g *game.Game, a Action) error {
 	err := dispatch(g, a)
 	g.SettleResolution()
 	g.SettleBlockDeclaration()
+	g.SettlePassTurn()
 	return err
 }
 
@@ -880,6 +886,12 @@ func dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.PassTurn()
+
+	case TypeEndTurn:
+		if err := requireActivePlayer(g, a.Caller); err != nil {
+			return err
+		}
+		return g.EndTurnByPassing()
 
 	case TypeMulligan:
 		if a.Player == uuid.Nil {

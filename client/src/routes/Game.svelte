@@ -1012,8 +1012,12 @@
     client.sendAction("pass_priority");
   }
 
+  // #2881: the dock's Pass turn walks the rest of the turn. The server
+  // passes for the active seat in every step, so step triggers fire and
+  // the cleanup discard happens. `pass_turn` is the sandbox jump that
+  // skips them (ADR 0143 Q5 moves it to the ⋯ menu).
   function passTurn(): void {
-    client.sendAction("pass_turn");
+    client.sendAction("end_turn");
   }
 
   function draw(): void {

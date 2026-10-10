@@ -210,6 +210,7 @@ export type ActionType =
   | "mulligan"
   | "pass_priority"
   | "pass_turn"
+  | "end_turn"
   | "resolve_choice"
   // ADR 0121 §5: "Roll a die" — `{die: "d6" | "d20" | "coin"}`, a roll
   // at the table for fun. Never a game roll, never undoable, and the
