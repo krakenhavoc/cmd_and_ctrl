@@ -2367,6 +2367,7 @@
           <GameEndFanfare
             {fanfare}
             motion={$settings.animations.enabled && !$settings.accessibility.reduceMotion}
+            armed={gameOverArmed}
             onback={back}
             ondismiss={() => (fanfareDismissed = true)}
           />
