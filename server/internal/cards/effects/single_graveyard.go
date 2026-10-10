@@ -46,7 +46,9 @@ func upToNCardsFromASingleGraveyard(n int) *game.TargetSpec {
 // Ghoul and Unlicensed Hearse with other costs and counts.
 func ExileFromASingleGraveyardAbility(costText string, cost game.AbilityCost, n int) ActivatedAbility {
 	return ActivatedAbility{
-		Label:   costText + ": Exile up to " + numberWord(n) + " target cards from a single graveyard.",
+		Label: costText + ": Exile up to " + numberWord(n) + " target cards from a single graveyard.",
+		// ADR 0142 sweep ruling 9: graveyard hate is restrict.
+		Purpose: game.Purpose{Answers: game.AnswerRestrict},
 		Cost:    cost,
 		Targets: upToNCardsFromASingleGraveyard(n),
 		Effect:  ExileTargetCards,

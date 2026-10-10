@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Stonespeaker Crystal — Artifact {4} (EDHREC rank 3147):
 //
 //	"{T}: Add {C}{C}.
@@ -26,6 +28,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice Stonespeaker Crystal: Exile any number of target players' graveyards. Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerRestrict},
 			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Targets: TargetPlayer("any number of target players").WithCount(0, 0),
 			Effect:  b30ExileTargetGraveyardsThenDraw,

@@ -38,6 +38,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "Pay 1 life, Sacrifice another creature: Put a -1/-1 counter on up to one target creature and draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerRemove},
 				Cost:    Plus(PayLife(1), SacrificeAnotherN(1, "another creature", Creature())),
 				Targets: TargetCreature("up to one target creature").WithCount(0, 1),
 				Effect: func(g *game.Game, item *game.StackItem) error {

@@ -1029,10 +1029,13 @@ scope must declare.
 
 **Which rows.** Every activated row (a card's own, a granted bundle's, a
 token template's) that is not sorcery speed or a loyalty ability, and
-that can be announced with no target: it has no `Targets`, or it is
-modal with at least one untargeted mode. Also every mana ability whose
+that can be announced with no target: it has no `Targets`, or its target
+clause allows zero ("up to one", "any number of": `Min` 0), or it is
+modal with at least one such mode. Also every mana ability whose
 cost sacrifices another permanent, which declares `ManaAbility.Answers`.
-A targeted row declares nothing: its move already stops you.
+A row that must name a target declares nothing: its move already stops
+you. An "up to" row is announced both ways, so declare it too; its
+targeted moves still carry `has_targets`.
 
 **The vocabulary.** Use the smallest set that is true. The tier is fixed
 in code, not declared.
