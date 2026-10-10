@@ -74,7 +74,7 @@ func answersOf(ab game.ActivatedAbilityShape) (game.Answers, bool) {
 // fallbackAnswers is the #2853 read of an undeclared row, mapped onto
 // ADR 0142's vocabulary.
 func fallbackAnswers(ab game.ActivatedAbilityShape) game.Answers {
-	return CostAnswers(ab.Cost) | purposeAnswers(ab.Purpose) | effectTextAnswers(ab.Label)
+	return CostAnswers(ab.Cost) | purposeAnswers(ab.Purpose) | effectTextAnswers(ab.Label) | combatAnswers(ab)
 }
 
 // AnswersOf is answersOf for the catalog tests in internal/cards/effects
@@ -153,20 +153,45 @@ func selfSacrificeThreatened(g *game.Game, source *game.Card, zone game.ZoneKind
 	return false, combat
 }
 
-// untargetedFlags is an activate move's interacts and combat_interacts:
-// the row's answers by tier, and owner answer 4's threatened
-// self-sacrifice. A move with a target sets neither (has_targets
-// already stops you), and combat_interacts is never set beside
-// interacts, which already counts in every window (#2871).
-func untargetedFlags(g *game.Game, source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape, targets []game.TargetRef) (interacts, combat bool) {
+// combatFlags is an activate move's combat_interacts and
+// combat_defender_only.
+type combatFlags struct {
+	any, defenderOnly bool
+}
+
+// untargetedFlags is an activate move's interacts and combat flags: the
+// row's answers by tier, and owner answer 4's threatened self-sacrifice.
+// A move with a target sets none (has_targets already stops you).
+func untargetedFlags(g *game.Game, source *game.Card, zone game.ZoneKind, ab game.ActivatedAbilityShape, targets []game.TargetRef) (bool, combatFlags) {
 	if hasTargets(targets) {
-		return false, false
+		return false, combatFlags{}
 	}
 	answers, _ := answersOf(ab)
 	threatened, fighting := selfSacrificeThreatened(g, source, zone, ab.Cost.SacrificeSelf)
-	interacts = answers.HasTier(game.TierStack) || threatened
-	combat = !interacts && (answers.HasTier(game.TierCombat) || fighting)
-	return interacts, combat
+	return answerFlags(answers, threatened, fighting)
+}
+
+// answerFlags maps a row's answers and its threatened self-sacrifice
+// onto the move's flags. combat_interacts is never set beside interacts,
+// which already counts in every window (#2871), and an ability whose
+// only combat answer is a token blocker (makes_blocker) matters only to
+// a defending player (combat_defender_only).
+func answerFlags(answers game.Answers, threatened, fighting bool) (bool, combatFlags) {
+	if answers.HasTier(game.TierStack) || threatened {
+		return true, combatFlags{}
+	}
+	if !answers.HasTier(game.TierCombat) && !fighting {
+		return false, combatFlags{}
+	}
+	blockerOnly := answers&(game.AnswerCombatGrant|game.AnswerAnimate|game.AnswerMakesBlocker) == game.AnswerMakesBlocker
+	return false, combatFlags{any: true, defenderOnly: blockerOnly && !fighting}
+}
+
+// AnswerFlags is answerFlags for the catalog test in internal/legal's
+// external tests: interacts, combat_interacts, combat_defender_only.
+func AnswerFlags(answers game.Answers) (interacts, combat, defenderOnly bool) {
+	i, c := answerFlags(answers, false, false)
+	return i, c.any, c.defenderOnly
 }
 
 // manaMoveInteracts is a mana move's interacts: a declared or read

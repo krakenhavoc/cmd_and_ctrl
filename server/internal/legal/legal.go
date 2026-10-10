@@ -171,18 +171,29 @@ type Move struct {
 	// 2). Smart autopass stops for it as it does for a targeted ability.
 	// Pure value (draw, mana, a fetch, tokens, scry) never sets it. See
 	// answersOf (ADR 0142: the row's declared Purpose.Answers, else the
-	// printed-text read).
+	// printed-text read). Owner answer 4: a "Sacrifice this creature"
+	// move also sets it while an opponent's stack item targets the
+	// creature.
 	Interacts bool `json:"interacts,omitempty"`
 
 	// CombatInteracts is true on an activation with no target that
 	// changes attacks or blocks without answering a spell: crew, a
-	// manland or an animated artifact, a granted combat keyword (#2871),
-	// or (ADR 0142 owner answer 4) a creature that sacrifices itself
-	// while it is attacking or blocking. Smart autopass counts it only in
-	// a combat window, so it is a bit of its own rather than part of
-	// Interacts. Never set alongside Interacts. Read from the row's
-	// combat-tier answers (answersOf).
+	// manland or an animated artifact, a granted evasion or combat
+	// keyword, "can block an additional creature", a creature token
+	// (#2871). Smart autopass counts it only in a combat window, so it
+	// is a bit of its own rather than part of Interacts. Never set
+	// alongside Interacts. Read from the row's combat-tier answers
+	// (answersOf, ADR 0142), and set while a "Sacrifice this creature"
+	// move's creature attacks or blocks (owner answer 4).
 	CombatInteracts bool `json:"combat_interacts,omitempty"`
+
+	// CombatDefenderOnly narrows CombatInteracts: the ability makes a
+	// creature token (or populates, or amasses), which matters only as
+	// a blocker, so smart autopass counts it only while the viewer is
+	// a defending player in this combat (owner answer, #2871): its only
+	// combat answer is makes_blocker (ADR 0142). Only ever set alongside
+	// CombatInteracts.
+	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
 
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
@@ -790,6 +801,13 @@ type enumerator struct {
 	// finding out what a cap cut. EnumerateFor — the bot — leaves it
 	// off and pays nothing for the report it would throw away.
 	report bool
+	// permType is the card type the casts being expanded announce under
+	// a per-type permission (#2167, CastSpellParams.PermissionType), set
+	// by castMovesFromZone around each castMovesForCard and empty
+	// everywhere else. A field rather than a parameter because the
+	// expansion it rides is four calls deep and every one of them would
+	// pass it on untouched.
+	permType string
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the

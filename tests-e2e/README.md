@@ -15,6 +15,7 @@ tests-e2e/
     ├── auth.spec.ts           # admin login, logout, invite-URL paste
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
+    ├── board-pick-2880.spec.ts # #2880: a sacrifice picked by clicking the creature on the board, confirmed in the dock
     ├── cast-anyway-2188.spec.ts # ADR 0118 §2: Cast anyway (don't pay) asks first, casts unpaid, logs it
     ├── combat-strike-2614.spec.ts # ADR 0134: an attacker's copy lunges and is gone in 2 s, none with combat motion off; first strike before regular, a double block lunged at once, trample's streak, blockers crumbling
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)

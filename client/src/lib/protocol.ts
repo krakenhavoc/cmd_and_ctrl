@@ -744,11 +744,18 @@ export interface LegalMoveView {
   // phasing, a blink, damage prevention, a pump. Smart autopass stops
   // for it as for a targeted ability. Absent on older servers.
   interacts?: boolean;
-  // #2871, ADR 0142: true on an activation with no target that changes a
-  // fight without answering a spell: crew, a manland, a granted combat
-  // keyword, a creature token. Smart autopass counts it only in a combat
-  // window. Never set beside `interacts`. Absent on older servers.
+  // #2871: true on an activation with no target that changes a fight
+  // without answering a spell: crew, a manland, a granted flying or
+  // menace, "can block an additional creature", a creature token.
+  // Smart autopass counts it only in a combat window (inCombatWindow).
+  // Never set beside `interacts`. Absent on older servers.
   combat_interacts?: boolean;
+  // #2871 (owner answer): narrows combat_interacts. The activation
+  // makes a creature token (or populates, or amasses), which matters
+  // only as a blocker, so smart autopass counts it only while the
+  // viewer is a defending player in this combat. Only ever set beside
+  // combat_interacts.
+  combat_defender_only?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never
@@ -2945,26 +2952,7 @@ export interface PurposeView {
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
   targets?: TargetPurposeView[];
-  // ADR 0142: what an activated row can do in response, declared on the
-  // card file. ["value"] is a declared "answers nothing". Absent when
-  // the row declares none.
-  answers?: PurposeAnswer[];
 }
-
-// PurposeAnswer is one name in ADR 0142's vocabulary, in the order the
-// server lists them. The first six are stack answers, the next three
-// combat answers.
-export type PurposeAnswer =
-  | "protect"
-  | "pump"
-  | "prevent"
-  | "remove"
-  | "sac_outlet"
-  | "restrict"
-  | "combat_grant"
-  | "animate"
-  | "makes_blocker"
-  | "value";
 
 // TargetPurposeView is what a spell or an ability does to the target
 // picked for clause `slot` (ADR 0126, amendment of 2026-10-08). The
@@ -3247,6 +3235,15 @@ export interface CastSurfaceView {
   // clauses under the readout. Absent for nearly every card and on
   // opponents' cards the viewer cannot read.
   target_cost_notes?: string[];
+  // #2167: the card types a cast or play of this face may spend under a
+  // permission that opens one of each type — Muldrotha, the Gravetide's
+  // "a permanent spell of each permanent type", Aminatou's Augury's "for
+  // each nonland card type". The viewer's own answer, ranked: the first
+  // is the type the permission's other cards need least, which the type
+  // picker selects by default. Two or more entries mean the cast chain
+  // asks which one (PermissionTypeModal) and sends it as
+  // `permission_type`; one needs no question. Absent on every other cast.
+  permission_types?: string[];
   // CR 107.4 (#916): how many symbols in the printed cost carry the
   // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
   // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The

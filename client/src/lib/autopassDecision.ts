@@ -37,9 +37,10 @@
 //  7. Empty stack, smart autopass on, a combat or opponent's-end-step
 //     key window: a response → hold; an instant bluff → bluff; else
 //     fall through.
-//  8. stepStops[step] === true → hold, unless smart autopass says
-//     there is nothing to play (#599 keeps the declare-attackers
-//     review window open through this rule, via hasPlay). On the
+//  8. stepStops[step] === true → hold, unless "only when I can act"
+//     (#2871, stepStopsOnlyWhenCanAct) says there is nothing to play
+//     (#599 keeps the declare-attackers review window open through
+//     this rule, via hasPlay). On the
 //     viewer's own main phase, a spell left out for mana alone while
 //     a manual mana source is out counts as something to play (ADR
 //     0118 owner decision 8, engineMayMissMana).
@@ -91,8 +92,11 @@ export interface AutopassGates {
   ownsEveryStackItem: boolean;
   // gameplay.stepStops[step] — undefined for steps the map omits.
   stepStop: boolean | undefined;
-  // gameplay.smartAutoPass.
+  // gameplay.smartAutoPass: opponent stack items and the key windows.
   smartAutoPass: boolean;
+  // gameplay.stepStopsOnlyWhenCanAct (#2871): a ticked step stops only
+  // when hasPlay or engineMayMissMana says there is something to do.
+  stepStopsOnlyWhenCanAct: boolean;
   // gameplay.alwaysStopOpponentStack — the pre-#1307 "every opponent
   // stack item stops" behaviour.
   alwaysStopOpponentStack: boolean;
@@ -204,8 +208,9 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
     if (g.bluffInstant) return bluff;
   }
 
-  // 8. The stops grid. smartAutoPass is the escape hatch: a stop the
-  // viewer cannot act on is dead air. hasPlay counts lands and
+  // 8. The stops grid. stepStopsOnlyWhenCanAct (#2871; until then
+  // part of smartAutoPass) is the escape hatch: a stop the viewer
+  // cannot act on is dead air. hasPlay counts lands and
   // sorcery-speed casts, and carries #328's block window and #599's
   // declare-attackers review window.
   //
@@ -215,7 +220,7 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   // engine may simply not see that mana, and Cast anyway exists for
   // exactly that, so the stop holds.
   if (g.stepStop === true) {
-    const canAct = g.smartAutoPass ? g.hasPlay || g.engineMayMissMana : true;
+    const canAct = g.stepStopsOnlyWhenCanAct ? g.hasPlay || g.engineMayMissMana : true;
     if (canAct) return "hold";
   }
 

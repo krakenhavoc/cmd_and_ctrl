@@ -675,6 +675,11 @@ func dispatch(g *game.Game, a Action) error {
 			// Fuse casts both halves of a split card with fuse from
 			// hand (CR 702.102a, ADR 0103).
 			Fuse bool `json:"fuse,omitempty"`
+			// #2167 — the card type a play or cast through a per-type
+			// permission spends (Muldrotha, Aminatou's Augury): one of
+			// the card's `permission_types`. Absent is fine when there
+			// is only one to spend.
+			PermissionType string `json:"permission_type,omitempty"`
 			// CR 107.4 / CR 601.2b (#787) — how many of the cost's
 			// Phyrexian symbols are being paid with 2 life each
 			// instead of mana. Absent (0) pays every symbol with its
@@ -701,6 +706,7 @@ func dispatch(g *game.Game, a Action) error {
 			AlternativeCost: p.AlternativeCost,
 			Face:            p.Face,
 			Fuse:            p.Fuse,
+			PermissionType:  p.PermissionType,
 			PhyrexianLife:   p.PhyrexianLife,
 		}
 		if len(p.DiscardIDs) > 0 {

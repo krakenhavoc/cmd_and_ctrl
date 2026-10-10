@@ -34,6 +34,7 @@
     ZoneView,
   } from "../../protocol";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
+  import { boardChoicePick, isBoardPickable, pickOnBoard } from "../../boardChoicePick";
   import { seatPlacements, type SeatPosition } from "../../cardTypes";
   import { consideringDelayMs, isResponseWindowFor, responseWindowKey } from "../../considering";
   import PlayerPanel from "./PlayerPanel.svelte";
@@ -195,6 +196,8 @@
   } from "../../libraryCost";
   import AlternativeCostModal from "./AlternativeCostModal.svelte";
   import FacePickerModal from "./FacePickerModal.svelte";
+  import PermissionTypeModal from "./PermissionTypeModal.svelte";
+  import { needsPermissionTypePicker } from "../../permissionTypes";
   import { cardAsFace, cardAsFused, faceOptions, needsFacePicker } from "../../faces";
   import { unlockParams, unlockRequest } from "../../roomDoors";
   import TapCostModal from "./TapCostModal.svelte";
@@ -1096,7 +1099,28 @@
     afterFace(cardAsFace(card, face), { ...base, face });
   }
 
+  // #2167: a cast through a permission that opens one of each card type
+  // (Muldrotha, the Gravetide; Aminatou's Augury) asks which type the
+  // chosen face uses when it has two or more left — "choose one as you
+  // play it". Asked here, after the face and before the costs, because
+  // it is a question about what the chosen face is being cast as.
+  let permissionTypePromptCard = $state<CardView | null>(null);
+  let permissionTypePromptChoices: CastChoices = {};
+  function confirmPermissionType(permissionType: string): void {
+    const card = permissionTypePromptCard;
+    const choices = permissionTypePromptChoices;
+    permissionTypePromptCard = null;
+    permissionTypePromptChoices = {};
+    if (!card) return;
+    afterFace(card, { ...choices, permissionType });
+  }
+
   function afterFace(card: CardView, choices: CastChoices): void {
+    if (choices.permissionType === undefined && needsPermissionTypePicker(card)) {
+      permissionTypePromptChoices = choices;
+      permissionTypePromptCard = card;
+      return;
+    }
     // ADR 0073: a card with kicker and no alternative cost opens the
     // same picker with only the add-ons showing — one prompt for one
     // question (CR 601.2b), rather than a second modal asking the
@@ -2833,6 +2857,12 @@
   // legal target for that prompt; the caller stops default
   // processing (tap-toggle) in that case.
   function handleTargetCard(card: CardView): boolean {
+    // #2880: a pending choice whose permanents are picked on the board.
+    // A click toggles an offered permanent in the sheet's selection, and
+    // a click on any other permanent is swallowed while the game waits.
+    // A card in a zone browser (a graveyard) is not a permanent.
+    const onBattlefield = view.battlefield.cards.some((c) => c.instance_id === card.instance_id);
+    if (onBattlefield && pickOnBoard(card.instance_id)) return true;
     const state = $targeting;
     if (!state) return false;
     // S20: with a server legal set, membership decides; free-form
@@ -2866,7 +2896,9 @@
       {
         isSelf: pos === "self",
         isActiveSeat: seat.id === activeSeatID,
-        controlsLegalTarget: seatControlsLegalTarget($targeting, seat.id, controlled),
+        controlsLegalTarget:
+          seatControlsLegalTarget($targeting, seat.id, controlled) ||
+          controlled.some((c) => isBoardPickable($boardChoicePick, c.instance_id)),
         hasAttackersOnViewer: seatHasAttackersOn(viewerID, controlled),
         isLegalDefender: defenderIDs.has(seat.id),
       },
@@ -3476,6 +3508,14 @@
     zone={facePromptZone}
     onConfirm={confirmFace}
     onCancel={() => (facePromptCard = null)}
+  />
+  <PermissionTypeModal
+    card={permissionTypePromptCard}
+    onConfirm={confirmPermissionType}
+    onCancel={() => {
+      permissionTypePromptCard = null;
+      permissionTypePromptChoices = {};
+    }}
   />
   <AlternativeCostModal
     card={altCostPromptCard}

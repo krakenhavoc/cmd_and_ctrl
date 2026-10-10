@@ -1002,3 +1002,54 @@ describe("the help group (v20 → v21)", () => {
     expect(JSON.stringify(syncedSubset(s)).length).toBeLessThan(32 * 1024);
   });
 });
+
+// ---- #2871: stop at a ticked step only when I can act ----
+
+describe("stepStopsOnlyWhenCanAct (v22 → v23)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+
+  it("is on for a new player", async () => {
+    const { defaultSettings, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(23);
+    expect(defaultSettings().gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+  });
+
+  it("copies smart auto-pass from a v22 blob", async () => {
+    let { mod, s } = await load({ __version: 22, gameplay: { smartAutoPass: true } });
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+
+    // Smart auto-pass off meant every ticked step stops; it still does.
+    ({ mod, s } = await load({ __version: 22, gameplay: { smartAutoPass: false } }));
+    expect(s.gameplay.smartAutoPass).toBe(false);
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(false);
+  });
+
+  it("takes the default for an older blob that never stored smart auto-pass", async () => {
+    const { s } = await load({ __version: 4, gameplay: {} });
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+  });
+
+  it("from v23 on, a stored choice stands and survives a save", async () => {
+    const { mod } = await load({
+      __version: 23,
+      gameplay: { smartAutoPass: true, stepStopsOnlyWhenCanAct: false },
+    });
+    expect(get(mod.settings).gameplay.stepStopsOnlyWhenCanAct).toBe(false);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.stepStopsOnlyWhenCanAct).toBe(false);
+    expect(get(again.settings).gameplay.smartAutoPass).toBe(true);
+  });
+
+  it("a v23 blob with a malformed value falls back to the default", async () => {
+    const { s } = await load({ __version: 23, gameplay: { stepStopsOnlyWhenCanAct: "yes" } });
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+  });
+});

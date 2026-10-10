@@ -920,7 +920,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								}
 								// ADR 0142: the row's declared answers (or the
 								// text read for an undeclared row), by tier.
-								interacts, combatInteracts := untargetedFlags(g, source, zone, ab, targets)
+								interacts, combat := untargetedFlags(g, source, zone, ab, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -936,7 +936,8 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									HasTargets:   hasTargets(targets),
 									Interacts:    interacts,
 									// #2871: a combat ability, counted only in combat.
-									CombatInteracts: combatInteracts,
+									CombatInteracts:    combat.any,
+									CombatDefenderOnly: combat.defenderOnly,
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,

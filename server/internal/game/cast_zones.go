@@ -287,6 +287,25 @@ func (g *Game) CastOffersForLocked(playerID uuid.UUID, card Card, zone ZoneKind,
 		offer := ac
 		add(&offer, grant)
 	}
+	// #2167: a permission that opens a zone and charges the PRINTED cost
+	// (Muldrotha, an impulse exile) lets the card be cast for any
+	// alternative cost it prints instead — Muldrotha's ruling of
+	// 2020-11-10, "If it has an alternative cost, you may cast it for that
+	// cost instead", which is how a bestow card is cast from the
+	// graveyard as an enchantment. The announce path already accepted
+	// such a claim (validateCastPathLocked's rule 1 binds only a
+	// zone-bound offer); this lists it. A permission with a price of its
+	// own ("without paying its mana cost", escape, Bolas's Citadel)
+	// lists none: CR 118.9a allows one alternative cost per cast.
+	if grant != nil && grant.AltCostKey == "" && grant.Cost == "" && zone != ZoneHand && zone != ZoneCommand {
+		for _, ac := range AlternativeCostsOfferedFromZone(CatalogKey(card), ZoneHand) {
+			if ac.FromZone != "" {
+				continue
+			}
+			offer := ac
+			add(&offer, grant)
+		}
+	}
 	add(grant.AlternativeCostFor(card), grant)
 	// #1729: a second stored permission over the same card, priced
 	// under an offer of its own (Court of Locthwain's free cast beside
