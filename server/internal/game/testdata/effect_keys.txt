@@ -168,3 +168,10 @@ body synthetic-destiny/reveal-that-many-creatures
 body ascend/exile-listed-unless-citys-blessing
 option meld/order
 body dire-blunderbuss/damage
+vote vote/coercive-portal
+vote vote/councils-judgment
+vote vote/expropriate
+vote vote/galadriel-elven-queen
+vote vote/magister-of-worth
+vote vote/plea-for-power
+vote vote/tivit-seller-of-secrets

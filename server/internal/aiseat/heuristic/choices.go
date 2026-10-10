@@ -133,6 +133,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceEntryReadAhead:
 		return readAheadValue(cp.OptionIndex)
 	case choiceOptionPick:
+		// ADR 0146: a ballot (vote.go).
+		if v, why, ok := st.voteValue(ch, cp.OptionIndex); ok {
+			return v, why
+		}
 		// #2854: options that cost mana (costed_options.go). An option
 		// pick with none keeps the enumerator's first answer.
 		if v, why, ok := costedOptionValue(ch, cp.OptionIndex); ok {

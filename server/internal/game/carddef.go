@@ -284,6 +284,11 @@ type CardDef struct {
 	// once" (CR 606.3, Urza, Planeswalker). Read from the battlefield
 	// through CatalogAbilityKey; see loyalty_limit.go.
 	LoyaltyTwiceEachTurn bool
+	// ExtraVote is this permanent's printed "While voting, you get an
+	// additional vote" or "you may vote an additional time" (CR
+	// 701.38d, ADR 0146). Read from the battlefield through
+	// CatalogExtraVote, keyed by CatalogAbilityKey; see council_vote.go.
+	ExtraVote ExtraVote
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -831,6 +836,12 @@ func init() {
 	CatalogLoyaltyTwiceEachTurn = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.LoyaltyTwiceEachTurn
+	}
+	CatalogExtraVote = func(key string) ExtraVote {
+		if d := catalogDef(key); d != nil {
+			return d.ExtraVote
+		}
+		return ExtraVoteNone
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {

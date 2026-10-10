@@ -7505,6 +7505,59 @@ Three things to know:
   `WheneverYouChooseARingBearer`, Ringsight's search in `Then` (read the
   board there, after the tempt: the new Ring-bearer is legendary).
 
+### Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)
+
+"Starting with you, each player votes for <A> or <B>" is `effects.Vote`,
+and everything printed after the vote is a registered continuation that
+reads the tally ([vote.go](../server/internal/cards/effects/vote.go)):
+
+```go
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+    return Vote{
+        Question:      "Plea for Power — vote for time or knowledge",
+        Words:         []string{"time", "knowledge"},
+        ForController: []int{2, 1}, // the bot's hints, one per option
+        ForOpponents:  []int{0, 1},
+        Then:          pleaForPowerVoted,
+    }.Apply(ctx)
+},
+
+var pleaForPowerVoted = VoteResultThen("vote/plea-for-power", func(ctx *Context, r game.VoteResult) error {
+    if r.MoreVotes(0, 1) { … }   // "if time gets more votes"
+    …                            // "if knowledge gets more votes or the vote is tied"
+})
+```
+
+- **The result.** Will of the council is `r.MoreVotes(i, j)` (put the
+  tie in the branch the card prints it in). Council's dilemma is
+  `r.Votes(i)` ("for each time vote") and `r.VotersFor(i)` ("choose a
+  permanent owned by the voter", one entry per vote). An object vote is
+  `r.MostVotes()` ("each permanent with the most votes or tied") with
+  `VotedPermanent(r, i)`.
+- **An object vote** builds its options as it starts:
+  `Options: VoteForPermanents(ctx.Game, ids)` (Council's Judgment). It is
+  not a target. An option whose permanent has left is dropped from the
+  next ballot; a vote with nothing to vote for runs `Then` with no
+  ballots.
+- **`Then` gets a rebuilt Context**: the vote's controller and the card
+  that called it, never the stack item. Anything else it needs goes in
+  `Carry` (Coercive Portal carries itself only when the trigger's source
+  is still the same object, read with `sourceIsNewObject` as the trigger
+  resolves). The key is an on-disk identity; append it to the ledger
+  (`-update-effect-keys`) and never rename it.
+- **The hints** say how much the vote's controller, and an opponent of
+  theirs, wants each word to win. They steer the bot and nothing else.
+  Compute them from the board if the answer depends on it (Magister of
+  Worth).
+- **Extra votes** are a static: `ExtraVote: game.ExtraVoteYouGet` for
+  "While voting, you get an additional vote", `game.ExtraVoteYouMay` for
+  "you may vote an additional time" (CR 701.38d).
+
+The engine asks every player in turn order from the controller, logs
+each vote as it is cast, shows the tally on every seat's dock, and skips
+a player who has left. Secret council (#2926) and "whenever players
+finish voting" (#2927) are not this shape.
+
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 
 The game itself can be day or night. The designation, the untap-step

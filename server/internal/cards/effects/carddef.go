@@ -210,6 +210,7 @@ func buildDef(spec Spec) *game.CardDef {
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
 		DamageStaysThroughCleanup:  spec.DamageStaysThroughCleanup,
 		LoyaltyTwiceEachTurn:       spec.LoyaltyTwiceEachTurn,
+		ExtraVote:                  spec.ExtraVote,
 		DamageCantBePrevented:      spec.DamageCantBePrevented,
 		CantGainLife:               spec.CantGainLife,
 		DamageAsThough:             spec.DamageAsThough,

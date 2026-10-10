@@ -2810,14 +2810,23 @@ var items = []Item{
 		Examples: []string{"Frodo, Adventurous Hobbit", "Sam, Loyal Attendant", "Pir, Imaginative Rascal"},
 	},
 	{
-		Slug: "voting", Name: "Voting and will of the council", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Cards on which every player votes for one of several options, starting with a named player, and the result decides what happens.",
-		Missing:     "Voting isn't supported, so cards with will of the council or council's dilemma can't be added yet.",
+		Slug: "secret-council", Name: "Secret council", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Cards on which every player votes in secret, and the votes are revealed together once everyone has voted.",
+		Missing:     "Secret votes aren't supported, so cards with secret council can't be added yet.",
+		Issue:       2926,
+		Waiting:     []string{"Mob Verdict", "Círdan the Shipwright", "Trap the Trespassers", "Truth or Consequences", "Vault 11: Voter's Dilemma"},
+		Phrases:     []string{"secret council", "secretly votes"},
+		EngineNotes: "prompt: ADR 0146's vote is open — each ballot is logged and shown to every seat as it is cast — so a secret vote needs ballots hidden from the wire, the log and the bot's view until the last one is in. Elrond of the White Council waits on the attack-restriction row and on this one. Found landing ADR 0146 (#2143).",
+	},
+	{
+		Slug: "players-finish-voting", Name: "\"Whenever players finish voting\"", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Triggered abilities that read who voted for what once a vote has ended.",
+		Missing:     "Abilities that trigger when players finish voting aren't supported yet.",
 		Rules:       []string{"701.38"},
-		Issue:       2143,
-		Waiting:     []string{"Galadriel, Elven-Queen", "Expropriate", "Selvala's Stampede"},
-		Phrases:     []string{"will of the council", "council's dilemma"},
-		EngineNotes: "prompt: no vote action and no prompt that collects one answer from every player in turn order and tallies them (CR 701.38a). Elrond of the White Council's secret vote waits on the attack-restriction row for the same primitive. Found landing ADR 0114 PR 5. Expropriate and Selvala's Stampede are council's dilemma, where each vote does its own thing (S58 deck requests, #2077); Expropriate's extra turns and control changes and Selvala's reveal-until and put-from-hand are expressible.",
+		Issue:       2927,
+		Waiting:     []string{"Grudge Keeper", "Model of Unity", "Erestor of the Council"},
+		Phrases:     []string{"finish voting"},
+		EngineNotes: "trigger: ADR 0146 logs each ballot (`EventVoteCast`) but emits no event when the vote ends and keeps no record of the finished vote's ballots for a trigger to read as it resolves. Found landing ADR 0146 (#2143).",
 	},
 	{
 		Slug: "set-creature-types", Name: "Effects that set a creature's types", Kind: KindSeam, Status: StatusMissing,
@@ -3264,6 +3273,17 @@ var items = []Item{
 		ADR:      "0032-planeswalkers.md",
 		Printed:  `(?m)^−X:`,
 		Examples: []string{"Chandra, Awakened Inferno", "Chandra, Chill of Compliance", "Jeska, Thrice Reborn"},
+	},
+	{
+		// #2143 (ADR 0146): voting. Each player in turn order from a
+		// named player votes for one option, with any extra votes, and
+		// the effect reads the tally.
+		Slug: "voting", Name: "Voting and will of the council", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Cards on which every player votes for one of several options, starting with a named player and going in turn order, and the result decides what happens: will of the council's \"if this gets more votes\", council's dilemma's \"for each vote\", and votes for a permanent. Each vote is shown to the table as it is cast, and \"while voting, you get an additional vote\" works.",
+		Rules:    []string{"701.38"},
+		ADR:      "0146-voting.md",
+		Printed:  `(?i)\beach player votes for\b|\bwhile voting\b`,
+		Examples: []string{"Galadriel, Elven-Queen", "Council's Judgment", "Expropriate"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

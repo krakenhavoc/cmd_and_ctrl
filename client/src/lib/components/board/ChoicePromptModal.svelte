@@ -54,7 +54,7 @@
     sameSelection,
     selectionLegal,
   } from "../../boardChoicePick";
-  import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
+  import { ballotNote, choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
   import { get } from "svelte/store";
   import { settings, updateSettings } from "../../settings";
   import { rememberedRule, ruleRefusalText, withRule } from "../../autoAnswerPref";
@@ -1986,6 +1986,10 @@
           <li>
             <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
               <span class="pick-label">{opt.label}</span>
+              {#if active && ballotNote(active, i) !== undefined}
+                <!-- ADR 0146: a ballot shows each option's votes so far. -->
+                <span class="pick-votes">{ballotNote(active, i)} votes</span>
+              {/if}
               {#if opt.mana_cost}
                 <!-- #2854: the mana this option costs; the server pays it when chosen. -->
                 <span class="pick-cost"><ManaCost cost={opt.mana_cost} size={14} /></span>
@@ -2534,6 +2538,10 @@
   .pick-cost {
     display: inline-flex;
     align-items: center;
+  }
+  .pick-votes {
+    color: var(--fg-muted);
+    font-size: 0.85em;
   }
   .pick-cards {
     display: grid;

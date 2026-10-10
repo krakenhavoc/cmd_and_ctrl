@@ -1033,6 +1033,14 @@ type Spec struct {
 	// permanent that lost its abilities is held to one. ADR 0145.
 	LoyaltyTwiceEachTurn bool
 
+	// ExtraVote declares the printed static "While voting, you get an
+	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
+	// or "While voting, you may vote an additional time"
+	// (game.ExtraVoteYouMay, Ballot Broker): CR 701.38d, ADR 0146.
+	// Judged through CatalogAbilityKey, so a permanent that lost its
+	// abilities gives no extra vote.
+	ExtraVote game.ExtraVote
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//

@@ -180,6 +180,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}
+		// ADR 0146: a ballot's vote continuation is a key too.
+		if c.CouncilVote != nil && !KnownVoteThen(c.CouncilVote.Then) {
+			unknown = append(unknown, "vote continuation "+c.CouncilVote.Then)
+		}
 		if !knownPickDestination(c.PickDestination) {
 			unknown = append(unknown, "revealed-hand pick destination "+string(c.PickDestination))
 		}

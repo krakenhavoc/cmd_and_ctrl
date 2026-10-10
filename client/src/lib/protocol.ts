@@ -916,6 +916,10 @@ export type LogKind =
   // (absent when they controlled none); `cause` is "forced" when it was
   // their only creature and was chosen for them.
   | "ring_tempted"
+  // ADR 0146: `seat` cast a vote (CR 701.38). `choice` is the option as
+  // the card prints it (a word, or the name of the permanent or player
+  // voted for) and `card_id` the card that called the vote.
+  | "vote"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -1598,6 +1602,12 @@ export interface PendingChoiceView {
    * not see arrives with the label and no cards at all.
    */
   pick_options?: PickOptionView[];
+  /**
+   * ADR 0146: present when this option_pick is one player's BALLOT in a
+   * vote (CR 701.38), carrying the vote so far. Public: every seat sees
+   * each vote as it is cast.
+   */
+  council_vote?: CouncilVoteView;
 
   accept_label?: string;
   decline_label?: string;
@@ -1867,6 +1877,29 @@ export interface TargetRefView {
   // announcement.
   slot?: number;
   mode?: number;
+}
+
+// CouncilVoteView is a rules vote in progress (ADR 0146, CR 701.38), as
+// the open ballot carries it. Not the sandbox VoteView below: nobody can
+// re-cast or end it, and the ability that called it reads the tally.
+export interface CouncilVoteView {
+  // The controller of the ability that called the vote, and the player
+  // voting now.
+  controller: string;
+  voter: string;
+  // The vote's choices in printed order, and the votes each has so far.
+  options: string[];
+  tally: number[];
+  ballots?: { voter: string; option: number }[];
+  // Each of the prompt's pick_options as an index into `options`; -1 is
+  // the "Don't vote again" option of an extra vote the voter may decline.
+  offered: number[];
+  optional?: boolean;
+  votes_left?: number;
+  // Bot hints: how much the controller, and an opponent, wants each
+  // option to win.
+  for_controller?: number[];
+  for_opponents?: number[];
 }
 
 export interface VoteView {
