@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -343,10 +344,93 @@ func TestRestorePointHoldsAtTheLastCleanBoundary(t *testing.T) {
 	}
 }
 
-// TestEndedGameIsNotResurrected — a finished table has nothing to
-// resume, and leaving its file behind would have every future boot
-// rebuild it.
-func TestEndedGameIsNotResurrected(t *testing.T) {
+// TestEndedTableComesBackEnded (#2919) — the players stay on an ended
+// table until they leave it, so a deploy brings it back as it ended:
+// the final state and seq, still ended.
+func TestEndedTableComesBackEnded(t *testing.T) {
+	dir := t.TempDir()
+	mgr := restoreTestManager(t, dir)
+
+	g := newPersistGame(t)
+	room := mgr.Create(g)
+	seat0 := g.Seats[0].ID
+
+	if _, _, err := room.Apply(seat0, func() error {
+		g.WithWriteLock(func() {
+			g.Seats[0].Life = 0
+			g.State = game.StateEnded
+		})
+		return nil
+	}); err != nil {
+		t.Fatalf("Apply end: %v", err)
+	}
+	endSeq := room.Seq()
+
+	mgr = restoreTestManager(t, dir)
+	outcomes := mgr.RestoreRooms()
+	if len(outcomes) != 1 || !outcomes[0].Restored() {
+		t.Fatalf("ended table did not come back: %+v", outcomes)
+	}
+	back := mgr.Get(g.ID)
+	if back.Game.CurrentState() != game.StateEnded {
+		t.Errorf("state = %q, want ended", back.Game.CurrentState())
+	}
+	if back.Seq() != endSeq {
+		t.Errorf("seq = %d, want %d", back.Seq(), endSeq)
+	}
+	if back.Game.Seats[0].Life != 0 {
+		t.Errorf("life = %d, want 0 (the final state)", back.Game.Seats[0].Life)
+	}
+}
+
+// TestOldEndedTableIsNotResurrected — past EndedTableRetention a
+// finished table is not rebuilt, and its file goes, so boots do not
+// rebuild it forever.
+func TestOldEndedTableIsNotResurrected(t *testing.T) {
+	dir := t.TempDir()
+	mgr := restoreTestManager(t, dir)
+
+	g := newPersistGame(t)
+	room := mgr.Create(g)
+	if _, _, err := room.Apply(g.Seats[0].ID, func() error {
+		g.WithWriteLock(func() { g.State = game.StateEnded })
+		return nil
+	}); err != nil {
+		t.Fatalf("Apply end: %v", err)
+	}
+
+	path := restorePointPath(dir, g.ID)
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read restore point: %v", err)
+	}
+	var file restorePointFile
+	if err := json.Unmarshal(raw, &file); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	file.Snapshot.TakenAt = time.Now().Add(-EndedTableRetention - time.Hour)
+	aged, err := json.Marshal(file)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if err := os.WriteFile(path, aged, 0o644); err != nil {
+		t.Fatalf("write: %v", err)
+	}
+
+	mgr = restoreTestManager(t, dir)
+	outcomes := mgr.RestoreRooms()
+	if len(outcomes) != 1 || outcomes[0].Restored() || outcomes[0].Skipped == "" {
+		t.Fatalf("outcomes = %+v, want one skipped", outcomes)
+	}
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Errorf("old ended restore point was not removed (err=%v)", err)
+	}
+}
+
+// TestUnwritableEndDropsTheLiveRestorePoint — an ended state that cannot
+// be written as a restore point must not leave the older, live one on
+// disk: a boot would bring the finished table back as active.
+func TestUnwritableEndDropsTheLiveRestorePoint(t *testing.T) {
 	dir := t.TempDir()
 	mgr := restoreTestManager(t, dir)
 
@@ -364,15 +448,27 @@ func TestEndedGameIsNotResurrected(t *testing.T) {
 		t.Fatalf("setup: no restore point was written: %v", err)
 	}
 
+	// The game ends holding a continuation, so the end cannot be
+	// written as a restore point.
 	if _, _, err := room.Apply(seat0, func() error {
-		g.WithWriteLock(func() { g.State = game.StateEnded })
+		g.WithWriteLock(func() {
+			g.State = game.StateEnded
+			id := uuid.New()
+			g.StackMeta = map[uuid.UUID]*game.StackItem{id: {
+				ID:         id,
+				Kind:       game.StackItemActivated,
+				Controller: seat0,
+				Label:      "some ability",
+				Effect:     func(*game.Game, *game.StackItem) error { return nil },
+			}}
+		})
 		return nil
 	}); err != nil {
 		t.Fatalf("Apply end: %v", err)
 	}
 
 	if _, err := os.Stat(restorePointPath(dir, g.ID)); !os.IsNotExist(err) {
-		t.Errorf("restore point survived the game ending (err=%v)", err)
+		t.Errorf("the live restore point survived an unwritable end (err=%v)", err)
 	}
 	mgr = restoreTestManager(t, dir)
 	if n := len(mgr.RestoreRooms()); n != 0 {

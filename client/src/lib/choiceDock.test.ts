@@ -326,4 +326,12 @@ describe("voteRequest and gameOverRequest", () => {
     r.primary!.onPress();
     expect(back).toHaveBeenCalledOnce();
   });
+
+  it("game over before its grace is disabled and refuses a press (#2919)", () => {
+    const back = vi.fn();
+    const r = gameOverRequest(back, false);
+    expect(r.primary?.disabled).toBe(true);
+    r.primary!.onPress();
+    expect(back).not.toHaveBeenCalled();
+  });
 });

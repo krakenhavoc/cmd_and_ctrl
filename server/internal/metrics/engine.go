@@ -80,7 +80,7 @@ var (
 
 	bootRestoreGames = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "cmdctrl_boot_restore_games",
-		Help: "The last boot's restore pass: restore points that came back, that were for ended games, and that were abandoned.",
+		Help: "The last boot's restore pass: restore points that came back, that were for ended games past their retention and dropped, and that were abandoned.",
 	}, []string{"outcome"})
 
 	bootRestoreDegradedCards = prometheus.NewGauge(prometheus.GaugeOpts{

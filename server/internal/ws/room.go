@@ -783,12 +783,18 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	// a restore point costs a rewind on the next deploy; refusing the
 	// player's action costs them the move they just made.
 	if r.dumpDir != "" && advanceSeq {
-		if r.Game.CurrentState() == game.StateEnded {
-			// Nothing left to resume. Drop the file so every future
-			// boot does not rebuild a finished table.
-			r.RemoveRestorePoint()
-		} else if _, err := r.writeRestorePointLocked(nextSeq); err != nil {
+		wrote, err := r.writeRestorePointLocked(nextSeq)
+		if err != nil {
 			r.log.Warn("restore point write failed", "err", err, "seq", nextSeq)
+		}
+		// An ended table keeps its final state as its restore point, so
+		// a deploy does not take it from the players still looking at it
+		// (#2919; RestoreRooms brings it back for EndedTableRetention).
+		// If that state could not be written, the older file on disk is
+		// a live game: drop it rather than let a boot resurrect the
+		// table as active.
+		if !wrote && r.Game.CurrentState() == game.StateEnded {
+			r.RemoveRestorePoint()
 		}
 	}
 	return view, nextSeq, nil

@@ -602,11 +602,28 @@ export function voteRequest(input: VoteRequestInput): DockRequest {
 // ADR 0111 §1, rule 4: once the game has ended, Back to lobby is the
 // primary. The banner (who won, and how) stays in the attention strip.
 // No Enter: leaving the table is not a confirm of something picked.
-export function gameOverRequest(onBack: () => void): DockRequest {
+//
+// GAME_OVER_GRACE_MS (#2919): how long Back to lobby stays disabled after
+// the game ends. The request takes the bar, so the button lands in the
+// corner `next` held a moment ago, and a click meant for `next` (the pass
+// that resolved the lethal blow, a double click) would otherwise take the
+// player off the table. `armed` is false until the grace has passed.
+export const GAME_OVER_GRACE_MS = 1500;
+
+export function gameOverRequest(onBack: () => void, armed = true): DockRequest {
   return {
     rank: "gameOver",
     label: "game over",
-    primary: { id: "back", label: "Back to lobby", onPress: onBack },
+    // The press is refused too, not only the button disabled: a click
+    // already dispatched at the old corner must not get through.
+    primary: {
+      id: "back",
+      label: "Back to lobby",
+      disabled: !armed,
+      onPress: () => {
+        if (armed) onBack();
+      },
+    },
     secondary: [],
   };
 }
