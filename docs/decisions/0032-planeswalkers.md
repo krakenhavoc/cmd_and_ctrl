@@ -631,7 +631,8 @@ printed* the moment it was dealt damage that wasn't prevented.
 - **Gideon, Champion of Justice's size.** "Power and toughness each equal to the number of loyalty
   counters on him" needs a Mod that reads a count at every layer pass, and an owner answer to whether the
   count is live or locked when the ability resolves
-  ([#2569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2569)).
+  ([#2569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2569)). Answered and shipped by the
+  2026-10-09 amendment below: locked, with no new Mod.
 - **Attacking and being attacked.** An animated Gideon attacks like any creature (summoning sickness is
   CR 302.6 and applies to him, which is why "He can't attack if he was cast this turn" on the Oathsworn
   is reminder text), and is a legal attack target while he is a planeswalker (CR 506.4); nothing about
@@ -657,3 +658,42 @@ opponent's still die (`TestZeroLoyaltyExemptionKeepsYourPlaneswalkersOnTheBattle
 A walker left at 0 loyalty is still a walker. CR 606.6 still asks for N counters, so it can use a plus
 ability and no minus (`TestZeroLoyaltyWalkerCanOnlyUsePlusAbilities`). The card side is
 `Spec.ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()`.
+
+
+## Amendment (2026-10-09, #2569): a size counted once, as the ability resolves (Gideon, Champion of Justice)
+
+"0: Until end of turn, Gideon becomes a Human Soldier creature with power and toughness each equal to the
+number of loyalty counters on him and gains indestructible." The 2026-10-07 amendment left this Gideon out
+because there were two readings, and they give different cards. **Live:** the count is read at every layer
+pass, so damage that can't be prevented shrinks him as it takes loyalty, and a proliferate grows him.
+**Locked:** the count is read once, as the ability resolves, and he stays that size for the turn.
+
+**Decision (owner, 2026-10-09).** Locked. CR 608.2h: when an effect needs information from the game, such as
+a number of counters, the answer is determined once, when the effect is applied. A resolved ability's
+"until end of turn" is such an effect. CR 611.2c, which the live reading leaned on, only fixes *which objects*
+a characteristic-changing effect from a resolving ability affects; it does not make a number in it live. A
+characteristic-defining ability or a static ability ("is equal to", printed on the permanent) is what reads a
+count continuously (CR 604.3, 613.4a), and this is neither.
+
+**What changed.** Nothing in the layer system. A locked count is a fixed number by the time the layered
+record is made, and `ModSetBasePower` / `ModSetBaseToughness` already carry one. `gideonAnimation` gained
+`SizeFromLoyalty`: `animateGideon` reads the loyalty counters on the source as it resolves (after the CR 606.4
+cost, so the 0 costs nothing and the number is what he has) and writes that into the layer 7b mods in place of
+the printed power and toughness. The record, the shield and the CR 704.5i/704.5g interplay are the
+2026-10-07 amendment's, unchanged. A Gideon that left in response is a new object and nothing happens, so no
+count is read off a card in another zone.
+
+**The card.** Gideon, Champion of Justice is Full:
+
+- **+1** counts the creatures the target opponent controls as it resolves (CR 608.2h again) and puts that many
+  loyalty counters on him; zero creatures is zero counters on top of the cost.
+- **0** is the becoming above. Tests pin the locked size: a 7/7 dealt 3 damage that can't be prevented has 4
+  loyalty and is still 7/7, and 5 loyalty added later leaves him 7/7 (`TestGideonChampionZeroSizeIsLockedAtResolution`).
+  He is still a planeswalker, so taking his last loyalty counter puts him into the graveyard however
+  indestructible he is.
+- **−15** exiles every other permanent, everyone's, lands and tokens included.
+
+**What this deliberately does not do.** It adds no live-count Mod. No card in the catalog waits on one: a
+"power and toughness each equal to X" on a permanent is a characteristic-defining or static ability and is
+already a `StaticAbility` computing its number at each layer pass. A resolved effect whose count follows the
+board would be a new seam with its own row.

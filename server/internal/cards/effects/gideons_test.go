@@ -18,6 +18,7 @@ const (
 	gideonParagonOracle    = "4cbce730-7b70-41bd-b463-bfec46afe3b0"
 	gideonOathswornOracle  = "19a81aa7-823b-43fa-abc2-b2700a122bc1"
 	gideonBlackbladeOracle = "813c19f5-3580-488d-9eee-c7a563def532"
+	gideonChampionOracle   = "5843bf12-27db-4e7d-81ee-98874bea72c7"
 )
 
 // pushGideon seats a Gideon planeswalker (subtype Gideon, as printed)
@@ -493,5 +494,171 @@ func TestGideonBlackbladeMinusSixExilesANonlandPermanent(t *testing.T) {
 	}
 	if got := loyaltyCount(g2, walker); got != 6 {
 		t.Errorf("a refused activation spent loyalty: %d, want 6", got)
+	}
+}
+
+// --- Gideon, Champion of Justice (#2569) -----------------------------
+
+func TestGideonChampionPlusOneCountsTheTargetOpponentsCreatures(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 4)
+	for _, n := range []string{"Bear A", "Bear B", "Bear C"} {
+		pushVanillaCreature(g, opp.ID, n, 2, 2)
+	}
+	pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
+	pushCatalogPermanent(g, opp.ID, "Their Forest", "Basic Land — Forest", "", false)
+	b16Activate(t, g, me.ID, gideon, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+	})
+
+	// 4, +1 for the cost, +3 for their three creatures; mine and their
+	// land are not counted.
+	if got := loyaltyCount(g, gideon); got != 8 {
+		t.Errorf("loyalty = %d, want 8", got)
+	}
+}
+
+func TestGideonChampionPlusOneAgainstNoCreaturesIsJustTheCost(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 4)
+	pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
+	b16Activate(t, g, me.ID, gideon, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}},
+	})
+	if got := loyaltyCount(g, gideon); got != 5 {
+		t.Errorf("loyalty = %d, want 5", got)
+	}
+}
+
+// The +1 targets an opponent; its controller is not a legal target.
+func TestGideonChampionPlusOneCannotTargetItsController(t *testing.T) {
+	g := newCatalogGame(t)
+	me, _ := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 4)
+	if err := g.ActivateCatalogAbility(me.ID, gideon, 0, game.ActivateAbilityParams{
+		Targets: []game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}},
+	}); err == nil {
+		t.Error("the +1 accepted its own controller as the target opponent")
+	}
+}
+
+// The 0 reads his loyalty as it resolves (CR 608.2h; ADR 0032 amendment
+// of 2026-10-09): 6 counters make a 6/6 Human Soldier with
+// indestructible that is still a planeswalker.
+func TestGideonChampionZeroIsAsBigAsHisLoyalty(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 6)
+	bear := pushCatalogPermanent(g, opp.ID, "Bear", "Creature — Bear", "", false)
+	b16Activate(t, g, me.ID, gideon, 1, game.ActivateAbilityParams{})
+
+	c := wantCreaturePlaneswalker(t, g, gideon, 6, 6)
+	if !c.HasSubtype("Human") || !c.HasSubtype("Soldier") || !c.HasSubtype("Gideon") {
+		t.Errorf("subtypes = %v, want Human Soldier Gideon", c.Effective().Subtypes)
+	}
+	if !game.HasKeyword(&c, "indestructible") {
+		t.Error("no indestructible")
+	}
+	if cols := c.Effective().Colors; len(cols) != 0 {
+		t.Errorf("colors = %v, want none (he gains no colour)", cols)
+	}
+	// Ordinary damage is prevented whole.
+	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(bear, gideon, 3) })
+	if got := loyaltyCount(g, gideon); got != 6 {
+		t.Errorf("loyalty after prevented damage = %d, want 6", got)
+	}
+}
+
+// The owner's ruling on #2569: the size is locked when the ability
+// resolves. Unpreventable damage that removes loyalty does not shrink
+// him, and loyalty added later does not grow him.
+func TestGideonChampionZeroSizeIsLockedAtResolution(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 7)
+	bear := pushCatalogPermanent(g, opp.ID, "Bear", "Creature — Bear", "", false)
+	b16Activate(t, g, me.ID, gideon, 1, game.ActivateAbilityParams{})
+	wantCreaturePlaneswalker(t, g, gideon, 7, 7)
+
+	unpreventableDamage(t, g, bear, gideon, 3)
+	c := wantCreaturePlaneswalker(t, g, gideon, 7, 7)
+	if got := c.Counters[game.CounterLoyalty]; got != 4 || c.DamageMarked != 3 {
+		t.Errorf("after 3 unpreventable damage: loyalty %d, marked %d; want 4 and 3", got, c.DamageMarked)
+	}
+
+	g.WithWriteLock(func() {
+		if err := g.AddCounterForEffect(gideon, game.CounterLoyalty, 5); err != nil {
+			t.Fatalf("add loyalty: %v", err)
+		}
+	})
+	g.RunStateChecksForTest()
+	c = wantCreaturePlaneswalker(t, g, gideon, 7, 7)
+	if got := c.Counters[game.CounterLoyalty]; got != 9 {
+		t.Errorf("loyalty = %d, want 9", got)
+	}
+
+	// He is still a planeswalker: the last loyalty counter takes him
+	// however indestructible he is (CR 704.5i).
+	unpreventableDamage(t, g, bear, gideon, 9)
+	if g.Battlefield.Contains(gideon) {
+		t.Error("an indestructible Gideon with no loyalty counters stayed on the battlefield (CR 704.5i)")
+	}
+}
+
+// The becoming ends with the turn.
+func TestGideonChampionZeroEndsAtEndOfTurn(t *testing.T) {
+	g := newCatalogGame(t)
+	me, _ := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 4)
+	b16Activate(t, g, me.ID, gideon, 1, game.ActivateAbilityParams{})
+	wantCreaturePlaneswalker(t, g, gideon, 4, 4)
+
+	for i := 0; i < 60 && g.Turn.ActiveSeat == me.Seat; i++ {
+		if _, err := g.AdvanceStep(); err != nil {
+			t.Fatalf("AdvanceStep: %v", err)
+		}
+	}
+	g.RunStateChecksForTest()
+	c, ok := battlefieldCard(g, gideon)
+	if !ok {
+		t.Fatal("Gideon left the battlefield")
+	}
+	if c.IsCreature() || !c.IsPlaneswalker() {
+		t.Errorf("next turn: types %v, want a plain planeswalker", c.Effective().Types)
+	}
+}
+
+func TestGideonChampionMinusFifteenExilesEveryOtherPermanent(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := a109p6Seats(g)
+	toMain(t, g)
+	gideon := pushGideon(g, me.ID, "Gideon, Champion of Justice", gideonChampionOracle, 16)
+	others := []uuid.UUID{
+		pushVanillaCreature(g, me.ID, "My Bear", 2, 2),
+		pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2),
+		pushCatalogPermanent(g, me.ID, "My Plains", "Basic Land — Plains", "", false),
+		pushCatalogPermanent(g, opp.ID, "Their Forest", "Basic Land — Forest", "", false),
+		pushCatalogPermanent(g, opp.ID, "Their Relic", "Artifact", "", false),
+	}
+	b16Activate(t, g, me.ID, gideon, 2, game.ActivateAbilityParams{})
+
+	for _, id := range others {
+		if g.Battlefield.Contains(id) {
+			t.Errorf("%s is still on the battlefield", id)
+		}
+	}
+	if !g.Battlefield.Contains(gideon) {
+		t.Fatal("Gideon exiled himself")
+	}
+	if got := loyaltyCount(g, gideon); got != 1 {
+		t.Errorf("loyalty = %d, want 1", got)
 	}
 }

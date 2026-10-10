@@ -2134,16 +2134,6 @@ var items = []Item{
 		EngineNotes: "three missing pieces, none of which is a planeswalker rule. (1) `game.AttackRequirement` (attack_requirements.go) is \"attacks each combat\" or \"attacks a player other than X\"; it needs a target field obeyed only by attacking exactly that permanent, counted by the CR 508.1d maximisation and named in the refusal sentence. (2) `DurationUntilYourNextTurn` ends as the named player's next turn BEGINS; \"during target opponent's next turn\" has to end at the end of THAT player's next turn. (3) `ScopeOpponentsCreatures` is every opponent's creatures; Gideon Jura names one opponent's, and in a four-player game another opponent's turn before the target's would wrongly be required to attack him, stronger than printed. It needs a scope or a player parameter for \"creatures that player controls\", read live (CR 611.2c). Kytheon's back face is the same requirement pinned to one creature \"during its controller's next turn\"; his front face also needs \"at end of combat, if Kytheon and at least two other creatures attacked this combat, exile him, then return him transformed\".",
 	},
 	{
-		Slug: "base-pt-from-a-count", Name: "Power and toughness set to a count", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Abilities that set a permanent's power and toughness to a number counted on the board, such as Gideon, Champion of Justice's \"power and toughness each equal to the number of loyalty counters on him\".",
-		Missing:     "An until-end-of-turn effect can set power and toughness to a fixed number, but not to a number counted on the board.",
-		Rules:       []string{"611.2c", "613.4b"},
-		Issue:       2569,
-		Tracked:     "#2569 (found building #2046)",
-		Waiting:     []string{"Gideon, Champion of Justice"},
-		EngineNotes: "`ModSetBasePower` / `ModSetBaseToughness` carry a fixed integer; a `StaticAbility` can compute one but belongs to a permanent, not to a one-shot until-end-of-turn record. It needs a Mod kind that reads a counter kind off the affected object at every layer pass. Owner question first (#2569): is the count live (the size follows his loyalty as damage and costs change it) or locked when the ability resolves? The two readings give different cards and the Oracle ruling is not in the repository.",
-	},
-	{
 		Slug: "damage-prevented-triggers", Name: "\"Whenever damage is prevented\"", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Triggered abilities that trigger when damage is prevented, such as Selfless Squire's \"Whenever damage that would be dealt to you is prevented, put that many +1/+1 counters on this creature\".",
 		Missing:     "Damage can be prevented, but nothing can trigger on it being prevented.",
@@ -3221,6 +3211,13 @@ var items = []Item{
 		Tracked:     "#2726 (found building the ascend cards, #2706)",
 		Examples:    []string{"Timestream Navigator"},
 		EngineNotes: "`game.AbilityCost.BottomSelf` (`effects.PutThisOnTheBottomOfItsOwnersLibrary`) is `ReturnSelf`'s sibling one zone over (`game/bottom_self_cost.go`). It is paid at announce, before the stack item is built, through the one zone-route exit with cause cost to the bottom of the OWNER's library, so the leaves-the-battlefield triggers see it go and sit above the ability, and the item's `SourceObject` (stamped before the payment) gives the effect the permanent's last-known information (CR 400.7, 608.2h). A commander that puts itself there is asked CR 903.9b first, with the library as its destination (ADR 0115). Battlefield only (`AbilityNeedsPermanentSource`), never beside a sacrifice-this, exile-this, return-this or exert cost, and never a sacrifice, return or exile pick of the same activation (CR 118.3). The wire carries it as `bottom_self`; the legal enumerator keeps the source out of the other components' picks and the auto-tapper's plan; the heuristic charges `selfReturnCost`. **Cards:** Timestream Navigator.",
+	},
+	{
+		Slug: "base-pt-from-a-count", Name: "Power and toughness set to a count", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that set a permanent's power and toughness to a number counted on the board as they resolve, such as Gideon, Champion of Justice's \"power and toughness each equal to the number of loyalty counters on him\".",
+		Rules:    []string{"608.2h", "613.4b"},
+		ADR:      "0032-planeswalkers.md",
+		Examples: []string{"Gideon, Champion of Justice"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
