@@ -46,14 +46,16 @@ func init() {
 		Completeness:               CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}: Put a +1/+1 counter on Mikaeus.",
-				Cost:   TapCost(),
-				Effect: putCounterOnSelf,
+				Label:   "{T}: Put a +1/+1 counter on Mikaeus.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    TapCost(),
+				Effect:  putCounterOnSelf,
 			},
 			{
-				Label:  "{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.",
-				Cost:   Plus(TapCost(), RemoveCountersFromThis(game.CounterPlusOne, 1)),
-				Effect: putCounterOnEachOtherCreatureYouControl,
+				Label:   "{T}, Remove a +1/+1 counter from Mikaeus: Put a +1/+1 counter on each other creature you control.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    Plus(TapCost(), RemoveCountersFromThis(game.CounterPlusOne, 1)),
+				Effect:  putCounterOnEachOtherCreatureYouControl,
 			},
 		},
 	})

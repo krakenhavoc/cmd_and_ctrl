@@ -19,7 +19,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // battlefield, or left and came back as a new object (CR 400.7), gets
 // nothing.
 //
-// No Purpose: the bot never pays to grow a creature it does not
+// No amounts declared: the bot never pays to grow a creature it does not
 // control (ADR 0106 owner decision 2).
 //
 // No simplification.
@@ -32,6 +32,7 @@ func init() {
 		XMatters:                   true,
 		Activated: []ActivatedAbility{{
 			Label:     "{3}: Put a +1/+1 counter on this creature. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerPump},
 			Cost:      ManaCost("{3}"),
 			AnyPlayer: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {

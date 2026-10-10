@@ -36,9 +36,10 @@ func init() {
 			genkuFutureShaperTrigger(),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{W}{U}: Put a +1/+1 counter on each creature you control.",
-			Cost:   ManaCost("{3}{W}{U}"),
-			Effect: b11PutCounterOnEachCreatureYouControl,
+			Label:   "{3}{W}{U}: Put a +1/+1 counter on each creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{3}{W}{U}"),
+			Effect:  b11PutCounterOnEachCreatureYouControl,
 		}},
 	})
 }

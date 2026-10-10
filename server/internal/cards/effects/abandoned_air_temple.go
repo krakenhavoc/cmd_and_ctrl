@@ -29,9 +29,10 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{W}, {T}: Put a +1/+1 counter on each creature you control.",
-			Cost:   Plus(ManaCost("{3}{W}"), TapCost()),
-			Effect: b11PutCounterOnEachCreatureYouControl,
+			Label:   "{3}{W}, {T}: Put a +1/+1 counter on each creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{3}{W}"), TapCost()),
+			Effect:  b11PutCounterOnEachCreatureYouControl,
 		}},
 	})
 }

@@ -38,8 +38,9 @@ func init() {
 		Activated: []ActivatedAbility{
 			firebreathing("Fangblade Eviscerator"),
 			{
-				Label: "{4}{R}: Creatures you control get +2/+0 until end of turn.",
-				Cost:  ManaCost("{4}{R}"),
+				Label:   "{4}{R}: Creatures you control get +2/+0 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{4}{R}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return BoostUntilEOT{
 						Match: And(Creature(), YouControl()),

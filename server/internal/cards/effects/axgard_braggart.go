@@ -19,7 +19,7 @@ func init() {
 		Name:         "Axgard Braggart",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			Boast("{1}{W}: Untap this creature. Put a +1/+1 counter on it.",
+			BoastAnswering(game.AnswerPump, "{1}{W}: Untap this creature. Put a +1/+1 counter on it.",
 				ManaCost("{1}{W}"),
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)

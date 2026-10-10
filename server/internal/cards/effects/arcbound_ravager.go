@@ -22,8 +22,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"modular 1"},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice an artifact: Put a +1/+1 counter on this creature.",
-			Cost:  game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())},
+			Label:   "Sacrifice an artifact: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}.Apply(ctx)

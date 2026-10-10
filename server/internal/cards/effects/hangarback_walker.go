@@ -64,8 +64,9 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Put a +1/+1 counter on this creature.",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   "{1}, {T}: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
 					return nil

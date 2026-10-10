@@ -51,6 +51,7 @@ func init() {
 			},
 			{
 				Label:   "Exhaust — {3}{G}: Put three +1/+1 counters on this creature.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
 				Exhaust: true,
 				Cost:    ManaCost("{3}{G}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
