@@ -806,8 +806,22 @@ on the recipient takes an earlier grant and not a later one (CR
 (CR 613.8a). A layer-6 grant is not copied (CR 707.2). `Register`
 refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
-refuses a grant naming an unregistered bundle or a bundle with a
-`Static` slot.
+refuses a grant naming an unregistered bundle or a bundle whose static
+is anything but a layer-7c "+N/+N".
+
+A bundle's `Static` may be a layer-7c power/toughness modify (#2562,
+ADR 0093 amendment 2026-10-10): "Equipped creature gets +3/+3" is
+`PumpAttached(3, 3)` in the bundle, gathered after layer 6 with the
+recipient as its source, so it follows whatever the recipient is
+attached to. Any other granted static is refused
+(`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
+in a bundle's `Activated`: it is the recipient's own row and attaches
+the recipient. "<Permanents> are Equipment in addition to their other
+types" is `AreAlsoEquipment(label, applies)` (Gemcutter Buccaneer). A
+resolved "becomes a legendary Equipment artifact named …" is one
+`ScopedEffectFor` with `game.SetNameMod` (layer 3, CR 612.8) and
+`game.SetTypesMod` (layer 4, CR 205.1a's set) beside the removal and
+the grant; see `the_irencrag.go`.
 
 A TOKEN that grants an ability (a Role: "Enchanted creature has 'Whenever
 this creature attacks, scry 1.'") declares its bundles in
@@ -862,8 +876,8 @@ reader, ref, removal and copy rule is the static grant's. It is data, so
 the table stays a restore point. A zero `Duration` is "until end of
 turn"; the affected set is pinned at resolution (CR 611.2c), so a
 creature that dies and returns is a new object without the grant. Keys
-must name a registered bundle with no `Static` slot: `Apply` refuses
-one at resolution, `TestEveryDurationGrantKeyResolves` scans the
+must name a registered bundle whose statics are layer-7c only: `Apply`
+refuses one at resolution, `TestEveryDurationGrantKeyResolves` scans the
 catalog's source for literal and constant keys, and a restore point
 naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is

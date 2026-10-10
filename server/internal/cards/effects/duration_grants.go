@@ -106,10 +106,11 @@ func (s GrantAbilitiesFor) Apply(ctx *Context) error {
 }
 
 // checkGrantMods refuses a grantAbilities mod naming a bundle the
-// catalog does not register, or one with a Static slot — ADR 0093
-// Decision 10: the layer pass gathers every static before layer 1, so
-// a static that only exists after layer 6 would never be gathered. The
-// same refusal TestEveryGrantKeyResolves makes of a granting static.
+// catalog does not register, or one with a static the layer pass cannot
+// apply — ADR 0093 Decision 10, amended 2026-10-10 (#2562): the pass
+// gathers a granted static after layer 6, so only a layer-7c one
+// (game.GrantedStaticProblem). The same refusal
+// TestEveryGrantKeyResolves makes of a granting static.
 func checkGrantMods(mods []game.Mod) error {
 	for _, m := range mods {
 		if m.Kind != game.ModGrantAbilities {
@@ -128,16 +129,28 @@ func checkGrantMods(mods []game.Mod) error {
 }
 
 // durationGrantKeyProblem is the one reading of "may a resolving
-// effect grant this bundle": registered, and without a Static slot.
-// Empty when it may. Shared by the resolution-time check and the
-// build-time scan.
+// effect grant this bundle": registered, and every static in it one a
+// layer-6 grant can give. Empty when it may. Shared by the
+// resolution-time check and the build-time scan.
 func durationGrantKeyProblem(key string) string {
 	def := defs[game.GrantKey(key)]
 	if def == nil {
 		return fmt.Sprintf("ability grant %q names no bundle any card registers in Spec.Grants", key)
 	}
-	if len(def.Static) > 0 {
-		return fmt.Sprintf("ability grant %q names a bundle with a Static slot — a layer-6 grant cannot give a static ability (ADR 0093 Decision 10)", key)
+	if problem := layerGrantStaticProblem(def); problem != "" {
+		return fmt.Sprintf("ability grant %q names a bundle with a static it cannot give: %s", key, problem)
+	}
+	return ""
+}
+
+// layerGrantStaticProblem is the first static in a bundle that a
+// layer-6 grant cannot give (game.GrantedStaticProblem), or "" when
+// there is none. ADR 0093 Decision 10 as amended 2026-10-10 (#2562).
+func layerGrantStaticProblem(def *game.CardDef) string {
+	for _, s := range def.Static {
+		if problem := game.GrantedStaticProblem(s); problem != "" {
+			return problem
+		}
 	}
 	return ""
 }

@@ -3223,6 +3223,13 @@ var items = []Item{
 		Examples: []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Tilonalli's Summoner"},
 	},
 	{
+		Slug: "permanent-becomes-equipment", Name: "A permanent that becomes an Equipment, with a granted equip and \"equipped creature gets\"", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that turn a permanent into an Equipment, rename it, or give it equip and an \"Equipped creature gets +N/+N\" ability, such as The Irencrag becoming Everflame, Heroes' Legacy and Gemcutter Buccaneer's Treasures.",
+		Rules:    []string{"612.8", "205.1a", "205.4b", "613.4c", "702.6a", "702.6d"},
+		ADR:      "0093-abilities-granted-to-other-permanents.md",
+		Examples: []string{"The Irencrag", "Gemcutter Buccaneer", "Puresteel Paladin"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

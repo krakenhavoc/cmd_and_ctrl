@@ -4,6 +4,8 @@
 **Amended:** 2026-09-24 — the owner answered four of the five open questions; see "Owner decisions".
 2026-09-24 — PR 1's implementation notes; see "Amendment 2026-09-24 — what PR 1 built".
 2026-09-24 — PR 4 (duration grants, #1584); see "Amendment 2026-09-24 — what PR 4 built".
+2026-10-10 — Decision 10 lifted for layer-7c statics, and a name and type-line set (#2562); see
+"Amendment 2026-10-10 — a permanent that becomes an Equipment".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -412,6 +414,8 @@ names a key no card registered, or if a layer-6 grant names a bundle with a `Sta
   second gather after layer 6, restricted to layer 7. A granted static that would apply in layers 1-5
   is a CR 613 question this engine should not open for 81 mostly-niche cards. `Register` refuses the
   combination until an ADR amendment does it.
+  *Lifted for a layer-7c static ("Equipped creature gets +3/+3") by the amendment of 2026-10-10
+  (#2562): the second gather after layer 6. Layers 1-6, 7a and 7b stay refused.*
 - **Granted replacement effects and the CR 614.12 look-ahead**, including riot (Rhythm of the Wild).
   Riot is a keyword, so granting it already works once the keyword exists. What is missing is riot
   and "abilities it would have on the battlefield" as it enters. PR 1 moves Rhythm of the Wild off
@@ -771,3 +775,91 @@ at once, one that changes control stops being limited, and every limit ends when
 Pinned by `TestTomikLimitsEachOfYourPlaneswalkersToOneAttacker` (two walkers counted on their own, the
 player unlimited, and the enumerator agreeing with the verb at every target) and
 `TestTomikLimitEndsWithTomik`.
+
+## Amendment 2026-10-10 — a permanent that becomes an Equipment (#2562)
+
+The Irencrag reads: "Whenever a legendary creature you control enters, you may have The Irencrag become a
+legendary Equipment artifact named Everflame, Heroes' Legacy. If you do, it gains equip {3} and 'Equipped
+creature gets +3/+3' and loses all other abilities." The 2023-09-01 ruling says the change lasts indefinitely.
+The issue named three missing pieces: a mod that sets a NAME, a granted equip on a permanent that was not an
+Equipment, and a granted STATIC, which Decision 10 refused. This amendment adds the first and third. The
+second was already there.
+
+**1. A granted static, layer 7c only.** Decision 10 said what doing it properly needs: a second gather after
+layer 6, restricted to layer 7. `game.grantedStaticEffectsLocked` (`game/granted_statics.go`) is that gather.
+The layer pass calls it once the layer-6 bucket and the can't-have strip have run, so each permanent's
+`GrantedAbilities` is final. It appends one effect per static of each granted bundle, with the HOST as the
+static's source. So "equipped creature" is whatever the host is attached to (CR 301.5f), read by the static's
+own `AttachedToSource`. The rules this leans on all come out right with no further code:
+
+- CR 613.6. A removal on the host sorted after the grant empties `GrantedAbilities` in its own slot, so the
+  static is never gathered. One sorted before it leaves the grant, and the static applies. So the gathered
+  effect is not `live`: whether the host still has the ability is what the grant list already says. The host's
+  `AbilitiesRemoved`, which The Irencrag's own "loses all other abilities" sets, is about its OWN abilities.
+- CR 613.8a. A removal on the GRANTOR takes the grant, so nothing is gathered.
+- CR 707.2. A layer-6 grant is not copiable, so neither is the static it carries.
+
+Only sublayer 7c (CR 613.4c, "+N/+N") is allowed. Every 7c effect adds, and addition commutes, so the
+effect's timestamp cannot change the answer. A granted 7a or 7b static would need CR 613.7a's timestamp ("the
+timestamp of the effect that created the ability, if that is later"), and `GrantedAbility` does not carry it.
+No card needs one yet. `game.GrantedStaticProblem` is the one statement of what a layer-6 bundle may carry: a
+7c static with `AppliesTo` and `Apply`, no removal, no grant, no `ActiveWhen`, no zones and no invalidation
+hint (the hints are read off the battlefield's own statics, which a granted one is not). Three readers use it:
+
+- `TestEveryGrantKeyResolves`, for a static grant;
+- `GrantAbilitiesFor` / `checkGrantMods` and `TestEveryDurationGrantKeyResolves`, for a resolved grant;
+- the gather itself, which skips any other shape.
+
+A copy grant (CR 707.9a) may still carry any static, since the copy's own statics are gathered before layer 1.
+
+**2. Two new `ScopedEffect` mods** (`game/become_named.go`). Each is an on-disk identity like every other
+kind, and an older binary refuses a file naming one (ADR 0041 P4):
+
+- `setName`, layer 3. CR 612.8: an effect that sets an object's name is a text-changing effect, and the
+  object "loses any names it had and has only the specified name". It reads `Text`. The legend rule
+  (`legendRuleChoicesLocked`), every "named" check (`PermanentHasName`) and the wire already read the
+  EFFECTIVE name, so the new name is the one they see. Two Everflames are a legend-rule pair. An Everflame
+  and an unchanged Irencrag are not.
+- `setTypes`, layer 4. "Becomes a [supertype] [subtype] [card type]" with no "in addition to its other
+  types" is CR 205.1a's set. The card types become `Types`, but an instant or sorcery keeps that type. Each
+  new subtype replaces the object's subtypes of the same set (artifact types, creature types, and so on).
+  The subtypes of a card type the object no longer has go with it. `Supertypes` are gained and the others
+  kept (CR 205.4b). The subtype sets are CR 205.3g-k's lists. A subtype on none of them, in practice a
+  planeswalker type, is never dropped, which is the conservative reading for a list the engine does not
+  carry. `Mod.Supertypes` is the one new field. It is additive, recorded in the shape file, and refused on
+  every other kind.
+
+**3. Granted equip needed nothing new.** Equip is an activated ability of the permanent (CR 702.6a). A bundle
+row built with `effects.EquipAbility` is the host's own row (Decision 4), so its controller activates it, at
+sorcery speed, and `AttachSourceToTarget` attaches the host. The attach legality checks (CR 301.5c, 704.5n)
+already read the EFFECTIVE subtype. So a permanent that becomes an Equipment in layer 4 can be attached, and
+one that stops being one falls off. An Equipment that is also a creature still can't equip
+(`equipmentCreatureMayEquipLocked`, ADR 0036 decision 21), whichever effect made it either.
+
+**The Irencrag** resolves one `ScopedEffect` record pinned to itself with no duration
+(`IndefiniteDuration`, pinned, so it ends only if the permanent becomes a new object). The record is:
+
+- `setName("Everflame, Heroes' Legacy")`;
+- `setTypes([Artifact], [Equipment], Legendary)`;
+- `loseAllAbilities`;
+- `grantAbilities(equip {3}, "+3/+3")`.
+
+All four mods share one timestamp. The removal comes before the grant in the same slot (ADR 0046 §2). It is
+data, so the table stays a restore point.
+
+**Other cards on the seam.** Gemcutter Buccaneer ("Treasures you control are Equipment in addition to their
+other types and have 'Equipped creature gets +2/+0,' equip Pirate {1}, and equip {3}") is a layer-4
+`effects.AreAlsoEquipment` plus a layer-6 grant of three bundles. Puresteel Paladin's metalcraft clause grants
+equip {0} beside each Equipment's own (CR 702.6d). Both drop their caveats.
+
+**Not covered.** A granted static in layers 1-6, 7a or 7b ("As long as enchanted permanent is an Equipment, it
+has 'Equipped creature gets +1/+0 and has haste'", the Runes) stays refused. So does Dan Lewis's "noncreature,
+non-Equipment artifacts … are Equipment … and have …", whose layer-6 half would read the layer-4 result it
+depends on, and Bludgeon Brawl's equip {X} with X per artifact.
+
+Pinned by `TestTheIrencragBecomesEverflameAndEquips`, `TestTheIrencragDeclinedStaysTheIrencrag`,
+`TestTheIrencragIgnoresAnOrdinaryCreature`, `TestTheLegendRuleSeesEverflamesName`,
+`TestEverflameSurvivesASnapshotRoundTrip`, `TestGemcutterBuccaneerTreasuresAreEquipment`,
+`TestPuresteelPaladinGrantsEquipZeroWithMetalcraft` (`internal/cards/effects`) and, in `internal/game`,
+`TestSetTypesFollowsTheTypeRules`, `TestBecomeNamedModProblems` and the two new rows of
+`TestEveryModKindAppliesInItsLayer`.

@@ -62,11 +62,13 @@ type AbilityGrant struct {
 	// engine reads off a permanent, declared exactly as a card declares
 	// its own.
 	//
-	// Static is for a COPY grant only. A layer-6 grant that names a
-	// bundle with a Static slot is refused (TestEveryGrantKeyResolves,
-	// ADR 0093 Decision 10): the layer pass gathers every static before
-	// layer 1, so a static that only exists after layer 6 would never
-	// be gathered.
+	// Static is any static for a COPY grant. A layer-6 grant may name a
+	// bundle with a Static slot only when every static in it is a
+	// layer-7c power/toughness modify — "Equipped creature gets +3/+3"
+	// (ADR 0093 Decision 10, amended 2026-10-10, #2562): the layer pass
+	// gathers those after layer 6 (game/granted_statics.go), and nothing
+	// earlier. TestEveryGrantKeyResolves and GrantAbilitiesFor refuse
+	// any other (game.GrantedStaticProblem).
 	//
 	// Mana is for a LAYER-6 grant (ADR 0093) — no printed copy effect
 	// grants one.

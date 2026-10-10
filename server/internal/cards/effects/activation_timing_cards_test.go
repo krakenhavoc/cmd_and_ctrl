@@ -218,7 +218,13 @@ func TestTeferiMasterOfTimeMinusThreePhasesOut(t *testing.T) {
 // prevent: a hand-written equip that Leonin Shikari cannot see.
 func TestEveryEquipAbilityIsMarked(t *testing.T) {
 	for _, spec := range All() {
-		for _, ab := range spec.Activated {
+		rows := spec.Activated
+		// #2562: a granted equip (Everflame's, a Gemcutter Treasure's) is
+		// the recipient's equip ability, and Leonin Shikari reads it too.
+		for _, gr := range spec.Grants {
+			rows = append(rows[:len(rows):len(rows)], gr.Activated...)
+		}
+		for _, ab := range rows {
 			isEquip := strings.HasPrefix(ab.Label, "Equip ") || strings.HasPrefix(ab.Label, "Equip—")
 			if isEquip && !ab.Equip {
 				t.Errorf("%s: %q looks like an equip ability and is not marked — use EquipAbility or EquipOnlyAbility", spec.Name, ab.Label)

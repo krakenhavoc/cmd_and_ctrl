@@ -102,6 +102,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := loseOwnAbilityModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #2562: a name or type line with nothing in it, or
+			// supertypes on another kind, is a newer binary's shape.
+			if problem := becomeNamedModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

@@ -435,6 +435,10 @@ type Mod struct {
 	Subtypes []string `json:"subtypes,omitempty"`
 	Colors   []string `json:"colors,omitempty"`
 	Keywords []string `json:"keywords,omitempty"`
+	// Supertypes is ModSetTypes' "becomes a legendary …" (#2562):
+	// supertypes the object gains (CR 205.4b). Refused on every other
+	// kind (becomeNamedModProblem).
+	Supertypes []string `json:"supertypes,omitempty"`
 	// Slot and Row are ModLoseOwnAbility's: the definition slot
 	// ("replacement", "triggered", "activated") and the row's index in
 	// its full declared list. Refused on every other kind.
@@ -463,7 +467,8 @@ type Mod struct {
 	Then string `json:"then,omitempty"`
 	// Text is ModCantBeBlockedExceptBy's printed parameter — "creatures
 	// with haste", "Spirits" — read by the refusal sentence
-	// (BlockRule.Label).
+	// (BlockRule.Label). On ModSetName (#2562) it is the name the object
+	// has (CR 612.8).
 	Text string `json:"text,omitempty"`
 	// Objects are the objects a mod names — the one attacking object a
 	// "blocksAttacker" block requirement names (#1684;
@@ -837,6 +842,10 @@ var modKinds = map[ModKind]modKindSpec{
 	ModWaiveHexproof:    {reader: readerTargeting},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
+	// #2562: The Irencrag's "become a legendary Equipment artifact named
+	// Everflame, Heroes' Legacy" (become_named.go).
+	ModSetName:  {layer: Layer3Text},
+	ModSetTypes: {layer: Layer4Type},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1220,6 +1229,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := loseOwnAbilityModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := becomeNamedModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
@@ -1271,6 +1283,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Subtypes = copyStrings(m.Subtypes)
 		m.Colors = copyStrings(m.Colors)
 		m.Keywords = copyStrings(m.Keywords)
+		m.Supertypes = copyStrings(m.Supertypes)
 		m.Grants = copyStrings(m.Grants)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
@@ -1657,6 +1670,16 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 	case ModAllCreatureTypes:
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.AllCreatureTypes = true
+		}
+	case ModSetTypes:
+		types, subtypes, supertypes := m.Types, m.Subtypes, m.Supertypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.setTypes(types, subtypes, supertypes)
+		}
+	case ModSetName:
+		name := m.Text
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.Name = name
 		}
 	case ModSetBasicLandTypes:
 		// The engine has already emptied the abilities (removes: true,
