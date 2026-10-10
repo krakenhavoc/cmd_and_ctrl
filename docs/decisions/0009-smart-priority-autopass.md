@@ -1,6 +1,13 @@
 # ADR 0009 — Smart priority auto-pass (S13.6)
 
 **Status:** Accepted · 2026-04-23 · Sprint S13.6
+**Amended by:** S60, 2026-10-09 — [ADR 0143](0143-gameplay-settings-overhaul.md)
+replaces `autoPassPriority`, `smartAutoPass` and `alwaysStopOpponentStack` with
+one Auto-pass choice (Smart, Careful, Manual), keeps the key windows on in Smart
+and Careful, and splits the stops grid by whose turn it is. Its §2.5 is the
+current precedence list, and `client/src/lib/autopassDecision.ts` follows it.
+The settings that tune auto-pass live under Settings → Gameplay → Passing
+priority and its Advanced section (ADR 0143 §3).
 **Amended by:** S31 sub-PR 2 ([ADR 0033](0033-ai-bot-seat.md) §1, PR #429) — the
 mechanism under decisions 2–4 is gone, the policy above it is not.
 **Amended by:** S35 (#526) — **decision 6 is reversed on one point: the autopass

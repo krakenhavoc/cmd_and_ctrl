@@ -2,6 +2,7 @@
 
 **Status:** Implemented · 2026-09-10 · Branch `feat/admin-context-menu`
 **Amended:** 2026-09-16 · #170 closeout: the stale #164 references corrected, and the two unshipped items handed to their own issues (see the amendment at the end)
+**Relabelled:** 2026-10-09 · [ADR 0143](0143-gameplay-settings-overhaul.md) §3.2: the "Enable admin overrides" setting (`gameplay.adminOverrides`, unchanged) is now **Manual card controls on right-click**, under Settings → Gameplay → Advanced.
 **Issue:** [#170](https://github.com/krakenhavoc/cmd_and_ctrl/issues/170)
 
 ## Context
