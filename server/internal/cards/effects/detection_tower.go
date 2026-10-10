@@ -36,8 +36,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Until end of turn, your opponents and creatures your opponents control with hexproof can be the targets of spells and abilities you control as though they didn't have hexproof.",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   "{1}, {T}: Until end of turn, your opponents and creatures your opponents control with hexproof can be the targets of spells and abilities you control as though they didn't have hexproof.",
+			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return WaiveHexproofUntilEOT{Label: "Detection Tower — hexproof waived"}.Apply(NewContext(g, item))
 			},

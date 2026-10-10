@@ -28,8 +28,9 @@ func init() {
 			redirectRow("{T}: The next time a source of your choice would deal damage this turn, that damage is dealt to Opal-Eye instead.",
 				TapCost(), nil, RedirectDamage{Choose: true, Protect: ShieldAnything, Next: true, To: RedirectToThis}),
 			{
-				Label: "{1}{W}: Prevent the next 1 damage that would be dealt to Opal-Eye this turn.",
-				Cost:  ManaCost("{1}{W}"),
+				Label:   "{1}{W}: Prevent the next 1 damage that would be dealt to Opal-Eye this turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPrevent},
+				Cost:    ManaCost("{1}{W}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return PreventNextDamage{Target: item.SourceCardID, Amount: 1, Label: "Opal-Eye — prevent the next 1 damage"}.Apply(NewContext(g, item))
 				},

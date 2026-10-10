@@ -43,7 +43,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{1}, {T}: Destroy all artifacts, creatures, and enchantments",
 			// ADR 0126 §6: artifacts, creatures and enchantments, the smallest listed class that holds all three.
-			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
+			Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
 			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)

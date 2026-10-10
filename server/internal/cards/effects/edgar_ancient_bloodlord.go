@@ -42,7 +42,8 @@ func init() {
 			Effect:  Do(GainLife{Amount: 1}),
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, Sacrifice another creature or planeswalker: Put a +1/+1 counter on Edgar. He gains menace until end of turn.",
+			Label:   "{2}, Sacrifice another creature or planeswalker: Put a +1/+1 counter on Edgar. He gains menace until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet | game.AnswerCombatGrant},
 			Cost: Plus(ManaCost("{2}"), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature or planeswalker", Or(Creature(), Planeswalker()))),
 			}),

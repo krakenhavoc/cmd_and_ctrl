@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Oona's Prowler — Creature — Faerie Rogue {1}{B}, 3/1:
 //
 //	"Flying
@@ -25,6 +27,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
 			Label:     "Discard a card: This creature gets -2/-0 until end of turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerRemove},
 			Cost:      DiscardACard(),
 			AnyPlayer: true,
 			Effect:    thisGetsUntilEndOfTurn(-2, 0, "Oona's Prowler — -2/-0 until end of turn"),

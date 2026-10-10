@@ -23,8 +23,9 @@ func init() {
 			WhenThisEntersYouGetEnergy("Bristling Hydra", 3),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Pay {E}{E}{E}: Put a +1/+1 counter on this creature. It gains hexproof until end of turn.",
-			Cost:  PayEnergy(3),
+			Label:   "Pay {E}{E}{E}: Put a +1/+1 counter on this creature. It gains hexproof until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerProtect},
+			Cost:    PayEnergy(3),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {
 					return nil

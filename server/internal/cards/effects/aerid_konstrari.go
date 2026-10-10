@@ -27,8 +27,9 @@ func init() {
 				Do(CreateToken{Template: HeartwoodToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{6}: Create a Heartwood token. Then Aerid Konstrari gets +X/+0 until end of turn, where X is the number of artifacts you control",
-			Cost:  ManaCost("{6}"),
+			Label:   "{6}: Create a Heartwood token. Then Aerid Konstrari gets +X/+0 until end of turn, where X is the number of artifacts you control",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{6}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (CreateToken{Template: HeartwoodToken(), N: 1}).Apply(ctx); err != nil {

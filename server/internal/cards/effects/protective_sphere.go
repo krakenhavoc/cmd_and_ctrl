@@ -23,8 +23,9 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so Protective Sphere prevents nothing."},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Pay 1 life: Prevent all damage that would be dealt to you this turn by a source of your choice that shares a color with the mana spent on this activation cost.",
-			Cost:  Plus(ManaCost("{1}"), PayLife(1)),
+			Label:   "{1}, Pay 1 life: Prevent all damage that would be dealt to you this turn by a source of your choice that shares a color with the mana spent on this activation cost.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
+			Cost:    Plus(ManaCost("{1}"), PayLife(1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				colors := ctx.ColorsSpent()

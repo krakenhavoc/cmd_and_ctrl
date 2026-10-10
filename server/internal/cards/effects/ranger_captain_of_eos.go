@@ -42,9 +42,10 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice this creature: Your opponents can't cast noncreature spells this turn.",
-			Cost:   SacrificeThis(),
-			Effect: rangerCaptainOfEosBanNoncreatureSpells,
+			Label:   "Sacrifice this creature: Your opponents can't cast noncreature spells this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Cost:    SacrificeThis(),
+			Effect:  rangerCaptainOfEosBanNoncreatureSpells,
 		}},
 	})
 }
