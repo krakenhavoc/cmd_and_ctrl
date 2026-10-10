@@ -3261,6 +3261,19 @@ var items = []Item{
 		Examples: []string{"Memory Vessel", "Rocco, Street Chef"},
 	},
 	{
+		// #2733 (ADR 0071 amendment 2026-10-10): the four suspect cards
+		// #2698 left out. "Can't become suspected" is a restriction the
+		// suspect action reads, a "one or more ... enter" ability reads
+		// its batch back out of the event log, and a goad can be a
+		// continuous effect that "goaded" reads.
+		Slug: "suspect-leftovers", Name: "Can't become suspected, passing the suspicion on, and goads that last", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that stop a creature becoming suspected, that move the suspicion onto one of the creatures that just entered, and that goad a creature for as long as an enchantment stays, such as Airtight Alibi, Frantic Scapegoat and Hot Pursuit. A creature goaded by an Aura or an enchantment counts as goaded for every card that asks.",
+		Rules:    []string{"701.60", "701.15", "603.2c", "603.4"},
+		ADR:      "0071-designations-that-switch-abilities-on.md",
+		Printed:  `(?i)\bcan't become suspected\b|\bsuspect one of the other creatures\b|\bgoad all suspected creatures\b|\bgoaded and/or suspected\b`,
+		Examples: []string{"Airtight Alibi", "Frantic Scapegoat", "Nelly Borca, Impulsive Accuser", "Hot Pursuit"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

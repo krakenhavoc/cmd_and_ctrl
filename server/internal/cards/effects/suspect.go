@@ -117,15 +117,27 @@ func SuspectEachLegalTarget(g *game.Game, item *game.StackItem) error {
 // "enchanted creature" still means the host.
 func suspectEnchantedCreature(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	ref, ok := ctx.SourceRef()
+	host, ok := enchantedCreatureAsItResolves(ctx)
 	if !ok {
 		return nil
 	}
-	aura, ok := g.PermanentForEffect(ref)
-	if !ok || aura.AttachedTo.Kind != game.TargetCard {
-		return nil
+	return Suspect{Target: host}.Apply(ctx)
+}
+
+// enchantedCreatureAsItResolves is "enchanted creature" in an Aura's
+// own triggered ability: the permanent the Aura is attached to as the
+// ability resolves, or was attached to when it left (CR 608.2h). False
+// when the Aura is attached to no card.
+func enchantedCreatureAsItResolves(ctx *Context) (uuid.UUID, bool) {
+	ref, ok := ctx.SourceRef()
+	if !ok {
+		return uuid.Nil, false
 	}
-	return Suspect{Target: aura.AttachedTo.ID}.Apply(ctx)
+	aura, ok := ctx.Game.PermanentForEffect(ref)
+	if !ok || aura.AttachedTo.Kind != game.TargetCard {
+		return uuid.Nil, false
+	}
+	return aura.AttachedTo.ID, true
 }
 
 // SacrificeASuspectedCreature is the cost "Sacrifice a suspected

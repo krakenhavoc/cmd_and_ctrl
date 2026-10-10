@@ -146,6 +146,15 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("attack requirements = %+v, want a plain one and one naming the player", c.AttackRequirements)
 			}
 		}},
+		// #2733: goad's CR 701.15b pair, with the goader on both, so the
+		// creature reads as goaded.
+		{"goad", []Mod{GoadMod(attackRequirementTestPlayer)}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			p := attackRequirementTestPlayer
+			if len(c.AttackRequirements) != 2 || c.AttackRequirements[0].GoadedBy != p || c.AttackRequirements[0].OtherThan != uuid.Nil ||
+				c.AttackRequirements[1].GoadedBy != p || c.AttackRequirements[1].OtherThan != p {
+				t.Errorf("attack requirements = %+v, want goad's pair for the goader", c.AttackRequirements)
+			}
+		}},
 		// #1651: "can't have" beats even a grant in the same record, and
 		// is recorded for the strip.
 		{"cantHaveKeywords", []Mod{CantHaveKeywordsMod("hexproof"), AddKeywordsMod("hexproof")}, func(t *testing.T, _, c Characteristic, _ *Game) {
@@ -233,7 +242,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModSetBasicLandTypes:                true,

@@ -7861,6 +7861,22 @@ Three things to get right:
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
 
+Since #2733 (ADR 0071 amendment 2026-10-10):
+
+- "Can't become suspected" is `RestrictAttached(game.CantBecomeSuspected)`
+  (Airtight Alibi). `SuspectForEffect` reads it; a card that offers a choice
+  of creatures to suspect builds the offer with `g.CanBecomeSuspected(id)`.
+- "One of the other creatures" in a "whenever one or more … enter" ability
+  is `enteredInTriggeringBatch(ctx)`: the permanents of the triggering
+  batch still on the battlefield, each with the controller it entered under
+  (Frantic Scapegoat).
+- A goad that lasts as long as something else does is a continuous effect:
+  `GoadAttached()` for an Aura, and `ScopedEffectFor{Mods:
+  []game.Mod{game.GoadMod(ctx.Controller())}, Duration: …}` from a resolving
+  ability (Hot Pursuit). "Goaded creature" in a condition is `c.Goaded()`,
+  which sees those as well as the goad marker; `c.IsGoaded()` is the marker
+  only.
+
 ### Meld (ADR 0145, #2699, CR 701.42)
 
 A meld pair is three catalog files: the two meld cards and the combined

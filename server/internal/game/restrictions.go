@@ -28,7 +28,7 @@ import "github.com/google/uuid"
 // matter and timestamp order does not matter — which is exactly
 // CR 613's position on effects that are not applied in a layer.
 //
-// # The taxonomy, and why these five bits
+// # The taxonomy, and why these bits
 //
 // The shapes printed on real cards are not interchangeable and the
 // difference is WHO is restricted, not what the text says:
@@ -40,6 +40,8 @@ import "github.com/google/uuid"
 //	 can't be activated"      CantActivate     non-mana activations
 //	 (…unless they're
 //	  mana abilities)         CantActivateMana mana activations
+//	"can't become suspected"  CantBecomeSuspected  the suspect action
+//	                          (CR 701.60, #2733)
 //
 // CantBeBlocked lives on the attacker because that is the permanent
 // the effect is attached to, but it is consumed on the defender's
@@ -126,6 +128,14 @@ const (
 	// because the engine activates the two through different entry
 	// points.
 	CantActivateMana
+
+	// CantBecomeSuspected is "~ can't become suspected" (Airtight
+	// Alibi, #2733): SuspectForEffect refuses the permanent, the way
+	// it refuses one that is already suspected (CR 701.60d). Like
+	// every bit here it belongs to the SOURCE (the Aura), so a layer-6
+	// "loses all abilities" leaves it. It stops the suspect action
+	// only: a creature that is already suspected stays suspected.
+	CantBecomeSuspected
 )
 
 // CantAttackOrBlock is the pair every "can't attack or block" card
@@ -157,6 +167,7 @@ func (r Restriction) Names() []string {
 		{CantBeBlocked, "cant_be_blocked"},
 		{CantActivate, "cant_activate"},
 		{CantActivateMana, "cant_activate_mana"},
+		{CantBecomeSuspected, "cant_become_suspected"},
 	} {
 		if r&e.bit != 0 {
 			out = append(out, e.name)

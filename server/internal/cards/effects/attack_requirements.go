@@ -131,9 +131,10 @@ func youControlACreatureNamed(name string) func(g *game.Game, source *game.Card)
 // goad has no such end, so it is written the way goad's own two
 // requirements are (CR 701.15b): one "attacks each combat if able"
 // and one "attacks a player other than the goader if able", both
-// counted by CR 508.1d. It is NOT in Card.Goads, so a card that asks
-// whether a creature is goaded does not see it — the one thing it is
-// weaker than printed at.
+// counted by CR 508.1d. It is not in Card.Goads, which the snapshot
+// carries; the GoadedBy on the two requirements is what makes
+// Card.Goaded see it, so a card that asks whether a creature is goaded
+// counts the enchanted creature (#2733).
 func GoadAttached() game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
@@ -141,11 +142,7 @@ func GoadAttached() game.StaticAbility {
 			return target.IsCreature() && AttachedToSource(target, g, source)
 		},
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
-			plain := requirementFrom(source, uuid.Nil)
-			plain.GoadedBy = source.Controller
-			other := requirementFrom(source, source.Controller)
-			other.GoadedBy = source.Controller
-			c.AttackRequirements = append(c.AttackRequirements, plain, other)
+			c.AttackRequirements = append(c.AttackRequirements, game.GoadRequirements(source, source.Controller)...)
 		},
 	}
 }
