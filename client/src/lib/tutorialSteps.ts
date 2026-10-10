@@ -40,12 +40,12 @@
 //     is held still until the deal (heldByOpeningRoll). A practice bot
 //     that wins hands the first turn to the player.
 //   - The game opens in the player's upkeep once hands are kept, and the
-//     table forces autoPassPriority off, so nothing moves until the
+//     table forces Manual auto-pass, so nothing moves until the
 //     player presses `next`. A land and a creature wait for a main phase,
 //     so steps 4 and 7 carry a detour that says so and points at the
 //     dock. Steps 3, 4 and 7 point at the opening hand first while it
 //     is still to be kept: it is a stage over the whole table (#2346).
-//   - With autoPassPriority off, a spell the player casts waits on the
+//   - In Manual auto-pass, a spell the player casts waits on the
 //     stack until they press `next`: step 8 teaches the stack while it
 //     waits. The bot's turn waits on them at every step, so step 12
 //     teaches the dock's autopass toggle for that (the owner's choice),
@@ -480,7 +480,7 @@ const autopassOn = (c: StepContext): boolean => c.client?.autopass === true;
 
 /**
  * Step 12 teaches the autopass toggle (the owner's choice, 2026-10-02):
- * the practice table forces autoPassPriority off, so without it the
+ * the practice table forces Manual auto-pass, so without it the
  * bot's turn waits on the player at every step. The toggle is session
  * state, separate from that setting, and its safety belt switches it off
  * when the player's own main phase comes round (autopassDecision.ts

@@ -15,8 +15,8 @@
 // clearing the toggle) and the reactive reads; this module owns the
 // precedence, as data in and a verdict out.
 //
-// PRECEDENCE, strongest first. See ADR 0009 §5, §6 and the #1307
-// amendment.
+// PRECEDENCE, strongest first. See ADR 0009 §5, §6, the #1307
+// amendment, and ADR 0143 §2.5, which replaces rules 5-7.
 //
 //  1. Table- and viewer-level blocks that are not questions about
 //     what the viewer *may* do: no priority, mulligans open, game
@@ -26,17 +26,19 @@
 //  2. The autopass safety belt (ADR 0009 §7): entering the viewer's
 //     own precombat_main clears the toggle instead of passing.
 //  3. A manual one-time stop on this step → hold (#526). Beats the
-//     autopass toggle, the stops grid, and smartAutoPass.
+//     autopass toggle, the stops grid, and the pass mode.
 //  4. The autopass toggle: an opponent's stack item the viewer can
 //     answer → hold; one they could bluff at → bluff; else pass.
-//  5. settings.autoPassPriority off → hold.
+//  5. passMode "manual" → hold (ADR 0143 §2.1).
 //  6. A non-empty stack: hold-priority armed → hold; entirely the
-//     viewer's own → the #323 carve-out; otherwise hold if smart
-//     autopass is off or alwaysStopOpponentStack is on, hold on a
-//     response, bluff if armed, else pass (#1307).
-//  7. Empty stack, smart autopass on, a combat or opponent's-end-step
-//     key window: a response → hold; an instant bluff → bluff; else
-//     fall through.
+//     viewer's own → the #323 carve-out; passMode "careful" → hold;
+//     a response → hold; a bluff if armed (Smart only); else pass
+//     (#1307).
+//  7. Empty stack, a combat or opponent's-end-step key window: a
+//     response → hold; an instant bluff (Smart only) → bluff; else
+//     fall through. ADR 0143 §2.2: this runs in Smart and Careful
+//     alike, with no switch, so no setting can cost the viewer a
+//     window they can respond in.
 //  8. stepStops[step] === true → hold, unless "only when I can act"
 //     (#2871, stepStopsOnlyWhenCanAct) says there is nothing to play
 //     (#599 keeps the declare-attackers review window open through
@@ -46,12 +48,18 @@
 //     0118 owner decision 8, engineMayMissMana).
 //  9. Otherwise → pass.
 //
+// Bluffing is Smart's alone (ADR 0143 §4.3). Careful stops at every
+// opponent item anyway, Manual stops everywhere, and the dock's bluff
+// chip is disabled in both, so the decision never bluffs there either.
+//
 // Rule 3 sits *below* rule 2 deliberately, and it costs nothing:
 // "clear-toggle" holds the cursor too, so a pinned own-precombat_main
 // still stops — it just also disarms the forgotten toggle, which is
 // the whole point of the belt. Putting the pin first would let a pin
 // on your own main phase keep autopass armed for the rest of the
 // turn.
+
+import type { PassMode } from "./settings";
 
 // AutopassGates is the fully-resolved state the decision reads. All
 // fields are plain data so the caller does the reactive reads and
@@ -80,8 +88,8 @@ export interface AutopassGates {
   autopassPersistThroughTurns: boolean;
   // A manual one-time stop is pinned on `step`.
   manualStop: boolean;
-  // gameplay.autoPassPriority.
-  autoPassPriority: boolean;
+  // gameplay.passMode (ADR 0143 §2.1): Smart, Careful or Manual.
+  passMode: PassMode;
   // The stack is empty.
   stackEmpty: boolean;
   // The session hold-priority toggle (#323's escape hatch).
@@ -92,14 +100,9 @@ export interface AutopassGates {
   ownsEveryStackItem: boolean;
   // gameplay.stepStops[step] — undefined for steps the map omits.
   stepStop: boolean | undefined;
-  // gameplay.smartAutoPass: opponent stack items and the key windows.
-  smartAutoPass: boolean;
   // gameplay.stepStopsOnlyWhenCanAct (#2871): a ticked step stops only
   // when hasPlay or engineMayMissMana says there is something to do.
   stepStopsOnlyWhenCanAct: boolean;
-  // gameplay.alwaysStopOpponentStack — the pre-#1307 "every opponent
-  // stack item stops" behaviour.
-  alwaysStopOpponentStack: boolean;
   // hasResponse(view, viewerID, categories) — the viewer could answer
   // (responseWindow.ts). Mana and land never count.
   hasResponse: boolean;
@@ -109,7 +112,7 @@ export interface AutopassGates {
   // engineMayMissMana(view, viewerID) — the viewer's own main phase,
   // a spell in hand the move list leaves out for mana alone, and a
   // manual mana source on the battlefield (ADR 0118 owner decision 8,
-  // engineMayMissMana.ts). Holds rule 8 under smart autopass.
+  // engineMayMissMana.ts). Holds rule 8 under only-when-can-act.
   engineMayMissMana: boolean;
   // keyWindow().combat / .oppEnd. The stack key window is derived
   // here from stackEmpty and ownsEveryStackItem.
@@ -164,7 +167,7 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
 
   // 3. #526: a manual one-time stop is the player asking, this
   // cycle, for the cursor. It outranks the autopass toggle below as
-  // well as the stops grid and smartAutoPass further down — a pin is
+  // well as the stops grid and the pass mode further down — a pin is
   // a later, narrower instruction than either. The pin is consumed
   // on the next step transition, so autopass resumes on its own
   // immediately afterwards without another click.
@@ -172,6 +175,10 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
 
   const stackOpp = !g.stackEmpty && !g.ownsEveryStackItem;
   const bluff: BluffVerdict = { kind: "bluff", manual: g.bluffManual };
+  // ADR 0143 §4.3: only Smart bluffs, under the toggle as well. The
+  // bluff chip is disabled in Careful and Manual, and a bluff left armed
+  // from an earlier game must not slip through it.
+  const smart = g.passMode === "smart";
 
   // 4. The session toggle: "I'm out, stop asking" — except for an
   // opponent's spell the viewer can actually answer (#1307). The
@@ -179,12 +186,12 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   // tapped out; a live counterspell says otherwise.
   if (g.autopassToggle) {
     if (stackOpp && g.hasResponse) return "hold";
-    if (stackOpp && (g.bluffCounter || g.bluffInstant)) return bluff;
+    if (stackOpp && smart && (g.bluffCounter || g.bluffInstant)) return bluff;
     return "pass";
   }
 
-  // 5-9. The conventional path.
-  if (!g.autoPassPriority) return "hold";
+  // 5. Manual: every priority window waits for a click.
+  if (g.passMode === "manual") return "hold";
 
   if (!g.stackEmpty) {
     if (g.holdPriority) return "hold";
@@ -192,24 +199,26 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
     // this step already answered the "give me the cursor here"
     // question the stops grid asks.
     if (g.ownsEveryStackItem) return g.autoPassOwnStack ? "pass" : "hold";
-    // Something an opponent put up. Before #1307 this always held;
-    // smart autopass now holds only when there is an answer.
-    if (!g.smartAutoPass || g.alwaysStopOpponentStack) return "hold";
+    // Something an opponent put up. Careful sees every one; Smart
+    // holds only when there is an answer (#1307).
+    if (g.passMode === "careful") return "hold";
     if (g.hasResponse) return "hold";
-    if (g.bluffCounter || g.bluffInstant) return bluff;
+    if (smart && (g.bluffCounter || g.bluffInstant)) return bluff;
     return "pass";
   }
 
   // 7. Empty-stack key windows: attackers are in, or it is an
   // opponent's end step. Worth a stop for a real response even when
-  // the step is not ticked.
-  if (g.smartAutoPass && (g.combatWindow || g.oppEndWindow)) {
+  // the step is not ticked. Always on in Smart and Careful (ADR 0143
+  // §2.2): before it, turning smart auto-pass off to "see everything"
+  // quietly dropped these stops.
+  if (g.combatWindow || g.oppEndWindow) {
     if (g.hasResponse) return "hold";
-    if (g.bluffInstant) return bluff;
+    if (smart && g.bluffInstant) return bluff;
   }
 
   // 8. The stops grid. stepStopsOnlyWhenCanAct (#2871; until then
-  // part of smartAutoPass) is the escape hatch: a stop the viewer
+  // part of the old smartAutoPass setting) is the escape hatch: a stop the viewer
   // cannot act on is dead air. hasPlay counts lands and
   // sorcery-speed casts, and carries #328's block window and #599's
   // declare-attackers review window.
