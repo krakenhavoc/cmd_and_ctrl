@@ -27,7 +27,9 @@ func init() {
 			Label:     "{2}{U}{U}, {T}, Put this creature on the bottom of its owner's library: Take an extra turn after this one. Activate only if you have the city's blessing.",
 			Cost:      Plus(ManaCost("{2}{U}{U}"), TapCost(), PutThisOnTheBottomOfItsOwnersLibrary()),
 			Condition: YouHaveTheCitysBlessingCondition(),
-			Effect:    youTakeAnExtraTurnEffect,
+			// ADR 0142: an extra turn answers nothing on the stack.
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Effect:  youTakeAnExtraTurnEffect,
 		}},
 	})
 }
