@@ -48,6 +48,24 @@
   import { confirmAction, type DockAction } from "../../dock";
   import { onDestroy, untrack } from "svelte";
   import {
+    assignedTotal,
+    autoAssignHolds,
+    autoAssignRecords,
+    boardDamageAssign,
+    canDealDamage,
+    initialShares,
+    lethalOf,
+    publishBoardDamage,
+    sameShares,
+    setBlocker,
+    setTrample,
+    stepBlocker,
+    stepTrample,
+    toAnswer,
+    trampleShort,
+    type DamageShares,
+  } from "../../damageAssignment";
+  import {
     boardChoicePick,
     boardPickEligible,
     publishBoardPick,
@@ -129,6 +147,15 @@
       // "commander's color identity" source has no identity; this is
       // the floor under that.
       if (!colorPromptAnswerable(c)) continue;
+      // #2956: a damage assignment that covers lethal for every
+      // blocker is assigned for the viewer (DamageAutoAssign.svelte)
+      // while "Auto-assign combat damage" is on. The sheet holds back
+      // until that answer lands, or asks if it does not.
+      if (
+        autoAssignHolds(c, viewerID, $settings.gameplay.autoAssignCombatDamage, $autoAssignRecords)
+      ) {
+        continue;
+      }
       if (c.chooser === viewerID) return c;
     }
     return null;
@@ -1300,56 +1327,78 @@
   const isDamageAssignment = $derived(active?.kind === "damage_assignment");
   const damageFrame = $derived<DamageAssignmentView | null>(active?.damage_assignment ?? null);
 
-  // Ordered blocker IDs (reorderable). Damage amount per blocker,
-  // keyed by blocker ID. Trample-to-player bucket.
-  let blockerOrder = $state<string[]>([]);
-  let damageAmounts = $state<Record<string, number>>({});
-  let trampleToPlayer = $state(0);
+  // #2956 (ADR 0147): the split in progress, opened on the server's
+  // suggested split (lethal to each blocker, trample's leftover on the
+  // player). The board's steppers (DamageStepper on each blocker) and
+  // this sheet share it through lib/damageAssignment.ts's store.
+  let damageShares = $state<DamageShares>({ amounts: {}, trample: 0 });
 
   // Reset assignment state when the prompt's identity changes — the
-  // same untracked last-id pattern as the selected/ordered reset
-  // above. Keying on content equality with blockerOrder here would
-  // make the user's own ▲/▼ reorder re-trigger the effect and revert
-  // their order (and zero their amounts) on the first click.
+  // same untracked last-id pattern as the selected/ordered reset above.
   let lastDamageChoiceID: string | null = null;
   $effect(() => {
     const nextID = active?.id ?? null;
     if (nextID === lastDamageChoiceID) return;
     lastDamageChoiceID = nextID;
     if (!damageFrame) return;
-    blockerOrder = [...damageFrame.blocker_card_ids];
-    const next: Record<string, number> = {};
-    for (const id of damageFrame.blocker_card_ids) next[id] = 0;
-    damageAmounts = next;
-    trampleToPlayer = 0;
+    damageShares = initialShares(damageFrame);
   });
 
-  const assignedTotal = $derived(
-    blockerOrder.reduce((acc, id) => acc + (damageAmounts[id] ?? 0), 0) + trampleToPlayer,
-  );
-
+  const assignedDamage = $derived(assignedTotal(damageShares));
+  const damageShortOfLethal = $derived(damageFrame ? trampleShort(damageFrame, damageShares) : []);
   const canSubmitAssignment = $derived(
-    damageFrame !== null && assignedTotal === damageFrame.attacker_power,
+    damageFrame !== null && canDealDamage(damageFrame, damageShares),
   );
 
-  function moveBlocker(id: string, delta: -1 | 1): void {
-    const idx = blockerOrder.indexOf(id);
-    if (idx < 0) return;
-    const target = idx + delta;
-    if (target < 0 || target >= blockerOrder.length) return;
-    const next = [...blockerOrder];
-    [next[idx], next[target]] = [next[target], next[idx]];
-    blockerOrder = next;
-  }
+  // This sheet's split, out to the board, while the sheet is up.
+  $effect(() => {
+    const c = active;
+    const frame = damageFrame;
+    if (!c || !frame || !open || !docked || inline) {
+      publishBoardDamage(null);
+      return;
+    }
+    const lethal: Record<string, number> = {};
+    for (const id of frame.blocker_card_ids) {
+      const n = lethalOf(frame, id);
+      if (n !== null) lethal[id] = n;
+    }
+    publishBoardDamage({
+      choiceID: c.id,
+      attackerID: frame.attacker_card_id,
+      power: frame.attacker_power,
+      allowTrample: !!frame.allow_trample && !frame.blocker_divides,
+      blockerDivides: !!frame.blocker_divides,
+      lethal,
+      shares: damageShares,
+    });
+  });
+  // A tick made on the board, back into this sheet. `damageShares` is
+  // read untracked, as the board pick's selection is.
+  $effect(() => {
+    const s = $boardDamageAssign;
+    if (!s || !active || s.choiceID !== active.id) return;
+    const mine = untrack(() => damageShares);
+    if (!sameShares(s.shares, mine)) damageShares = s.shares;
+  });
+  onDestroy(() => publishBoardDamage(null));
 
   function setDamageAmount(id: string, raw: string): void {
-    const n = Math.max(0, Math.floor(Number(raw) || 0));
-    damageAmounts = { ...damageAmounts, [id]: n };
+    damageShares = setBlocker(damageShares, id, Number(raw));
   }
 
   function setTrampleAmount(raw: string): void {
-    const n = Math.max(0, Math.floor(Number(raw) || 0));
-    trampleToPlayer = n;
+    damageShares = setTrample(damageShares, Number(raw));
+  }
+
+  function stepDamage(id: string, delta: 1 | -1): void {
+    if (!damageFrame) return;
+    damageShares = stepBlocker(damageShares, id, delta, damageFrame.attacker_power);
+  }
+
+  function stepTrampleDamage(delta: 1 | -1): void {
+    if (!damageFrame) return;
+    damageShares = stepTrample(damageShares, delta, damageFrame.attacker_power);
   }
 
   function blockerName(id: string): string {
@@ -1367,11 +1416,7 @@
   function submitDamageAssignment(): void {
     if (!active || !viewerID || !damageFrame) return;
     if (!canSubmitAssignment) return;
-    const assignments = blockerOrder.map((id) => ({
-      blocker_id: id,
-      amount: damageAmounts[id] ?? 0,
-    }));
-    answer({ assignments, trample_to_player: trampleToPlayer });
+    answer({ ...toAnswer(damageFrame, damageShares) });
   }
 
   // ADR 0108 §7 divide_shield — CR 615.7: a charged shield ("prevent
@@ -1564,10 +1609,16 @@
       return {
         label: c.reason || "Assign combat damage",
         src: "CR 510.1c",
-        count: `${assignedTotal} / ${damageFrame.attacker_power} assigned`,
+        count: `${assignedDamage} / ${damageFrame.attacker_power} assigned`,
         width: 560,
         primary: confirmAction("Deal damage", submitDamageAssignment, {
           disabled: !canSubmitAssignment,
+          title:
+            damageShortOfLethal.length > 0
+              ? "Trample damage goes over only once every blocker has lethal damage"
+              : assignedDamage !== damageFrame.attacker_power
+                ? `Assign exactly ${damageFrame.attacker_power}`
+                : undefined,
         }),
         secondary: [],
       };
@@ -2149,11 +2200,11 @@
       {:else}
         <p class="prompt-hint">
           <strong>{attackerName(damageFrame.attacker_card_id)}</strong>
-          is blocked by {damageFrame.blocker_card_ids.length} creatures. Order them and divide
-          {damageFrame.attacker_power} damage — earlier blockers must be dealt at-least-lethal before
-          the next gets any.
+          is blocked by {damageFrame.blocker_card_ids.length} creatures. Divide its
+          {damageFrame.attacker_power} damage among them as you like, here or with − and + on the blockers
+          themselves.
           {#if damageFrame.allow_trample}
-            Trample lets leftover damage spill to the defending player.
+            Trample sends damage on to the defending player once every blocker has lethal damage.
           {/if}
           {#if damageFrame.has_deathtouch}
             Deathtouch makes 1 damage lethal.
@@ -2161,59 +2212,88 @@
         </p>
       {/if}
       <ul class="assign-list">
-        {#each blockerOrder as id, i (id)}
-          <li class="assign-row">
-            <div class="assign-order">
+        {#each damageFrame.blocker_card_ids as id (id)}
+          {@const lethal = lethalOf(damageFrame, id)}
+          {@const amount = damageShares.amounts[id] ?? 0}
+          <li class="assign-row" class:lethal={lethal !== null && amount >= lethal}>
+            <span class="assign-name">
+              {blockerName(id)}
+              {#if lethal !== null}
+                <small class="assign-lethal">lethal {lethal}</small>
+              {/if}
+            </span>
+            <span class="assign-step">
               <button
                 type="button"
-                class="reorder-btn"
-                disabled={i === 0}
-                onclick={() => moveBlocker(id, -1)}
-                aria-label={`move ${blockerName(id)} up`}
+                class="step-btn"
+                aria-label={L.removeDamage(blockerName(id))}
+                disabled={amount <= 0}
+                onclick={() => stepDamage(id, -1)}>−</button
               >
-                ▲
-              </button>
-              <span class="assign-pos">{i + 1}</span>
+              <label class="assign-input">
+                <span class="sr-only">damage to {blockerName(id)}</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={damageFrame.attacker_power}
+                  value={amount}
+                  oninput={(e) => setDamageAmount(id, (e.currentTarget as HTMLInputElement).value)}
+                />
+              </label>
               <button
                 type="button"
-                class="reorder-btn"
-                disabled={i === blockerOrder.length - 1}
-                onclick={() => moveBlocker(id, 1)}
-                aria-label={`move ${blockerName(id)} down`}
+                class="step-btn"
+                aria-label={L.addDamage(blockerName(id))}
+                disabled={assignedDamage >= damageFrame.attacker_power && damageShares.trample <= 0}
+                onclick={() => stepDamage(id, 1)}>+</button
               >
-                ▼
-              </button>
-            </div>
-            <span class="assign-name">{blockerName(id)}</span>
-            <label class="assign-input">
-              <span class="sr-only">damage to {blockerName(id)}</span>
-              <input
-                type="number"
-                min="0"
-                max={damageFrame.attacker_power}
-                value={damageAmounts[id] ?? 0}
-                oninput={(e) => setDamageAmount(id, (e.currentTarget as HTMLInputElement).value)}
-              />
-            </label>
+            </span>
           </li>
         {/each}
-        {#if damageFrame.allow_trample}
+        {#if damageFrame.allow_trample && !damageFrame.blocker_divides}
           <li class="assign-row trample">
-            <div class="assign-order"><span class="assign-pos">→</span></div>
             <span class="assign-name">Defending player (trample)</span>
-            <label class="assign-input">
-              <span class="sr-only">trample damage to defending player</span>
-              <input
-                type="number"
-                min="0"
-                max={damageFrame.attacker_power}
-                value={trampleToPlayer}
-                oninput={(e) => setTrampleAmount((e.currentTarget as HTMLInputElement).value)}
-              />
-            </label>
+            <span class="assign-step">
+              <button
+                type="button"
+                class="step-btn"
+                aria-label={L.removeDamage("the defending player")}
+                disabled={damageShares.trample <= 0}
+                onclick={() => stepTrampleDamage(-1)}>−</button
+              >
+              <label class="assign-input">
+                <span class="sr-only">trample damage to defending player</span>
+                <input
+                  type="number"
+                  min="0"
+                  max={damageFrame.attacker_power}
+                  value={damageShares.trample}
+                  oninput={(e) => setTrampleAmount((e.currentTarget as HTMLInputElement).value)}
+                />
+              </label>
+              <button
+                type="button"
+                class="step-btn"
+                aria-label={L.addDamage("the defending player")}
+                disabled={assignedDamage >= damageFrame.attacker_power}
+                onclick={() => stepTrampleDamage(1)}>+</button
+              >
+            </span>
           </li>
         {/if}
       </ul>
+      {#if damageShortOfLethal.length > 0}
+        <p class="prompt-hint sub warn">
+          Trample damage goes over only once every blocker has lethal damage. Short:
+          {damageShortOfLethal.map(blockerName).join(", ")}.
+        </p>
+      {:else if assignedDamage !== damageFrame.attacker_power}
+        <p class="prompt-hint sub">
+          {damageFrame.attacker_power - assignedDamage > 0
+            ? `${damageFrame.attacker_power - assignedDamage} left to assign`
+            : `${assignedDamage - damageFrame.attacker_power} too many`}
+        </p>
+      {/if}
     {:else if isDivideShield && divideFrame}
       <!-- ADR 0108 §7, CR 615.7: which of this damage the shield
            prevents. Each row is one damage event; the shares add up to
@@ -2708,7 +2788,7 @@
   }
   .assign-row {
     display: grid;
-    grid-template-columns: auto 1fr auto;
+    grid-template-columns: 1fr auto;
     align-items: center;
     gap: 12px;
     padding: 8px 12px;
@@ -2719,32 +2799,37 @@
   .assign-row.trample {
     border-color: color-mix(in srgb, var(--danger) 35%, transparent);
   }
-  .assign-order {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-  }
-  .assign-pos {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 22px;
-    height: 22px;
-    border-radius: 6px;
-    background: var(--surface-raised);
-    color: var(--fg-dim);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    font-weight: 700;
-  }
-  .reorder-btn {
-    padding: 2px 7px;
-    font-size: 10px;
-    border-radius: 6px;
+  .assign-row.lethal {
+    border-color: color-mix(in srgb, var(--target) 45%, transparent);
   }
   .assign-name {
     font-weight: 600;
     font-size: 13px;
+  }
+  .assign-lethal {
+    margin-left: 6px;
+    font-weight: 400;
+    font-size: 11px;
+    color: var(--fg-muted);
+  }
+  .assign-row.lethal .assign-lethal {
+    color: var(--target);
+  }
+  .assign-step {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .step-btn {
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border-radius: 50%;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .prompt-hint.warn {
+    color: var(--danger);
   }
   .assign-input input {
     width: 70px;

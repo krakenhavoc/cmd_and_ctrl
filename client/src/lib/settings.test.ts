@@ -668,6 +668,30 @@ describe("settings", () => {
     expect(get(settings).gameplay.highlightLegalActions).toBe(true);
   });
 
+  // #2956: Auto-assign combat damage is on by default, for a new player
+  // and for a stored blob from before the field, and a player's own
+  // choice to turn it off is kept.
+  it("defaults autoAssignCombatDamage on, and keeps a stored off", async () => {
+    let mod = await freshModule();
+    expect(get(mod.settings).gameplay.autoAssignCombatDamage).toBe(true);
+    expect(mod.SYNCED_FIELDS.gameplay.autoAssignCombatDamage).toBe("synced");
+    for (const [stored, want] of [
+      [undefined, true],
+      ["no", true],
+      [true, true],
+      [false, false],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 27, gameplay: { autoAssignCombatDamage: stored } }),
+      );
+      mod = await freshModule();
+      expect(get(mod.settings).gameplay.autoAssignCombatDamage, `stored ${String(stored)}`).toBe(
+        want,
+      );
+    }
+  });
+
   it("keeps a chosen fan, spotlight or ribbon across the v17 upgrade", async () => {
     for (const version of [14, 15, 16]) {
       for (const style of ["fan", "spotlight", "ribbon"] as const) {

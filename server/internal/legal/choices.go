@@ -1650,8 +1650,55 @@ func shieldDivisionLabel(p *game.DivideShieldPrompt, dist map[uuid.UUID]int) str
 }
 
 // canonicalDamageAssignment builds the one split the enumerator offers
-// for a damage-assignment prompt: the one that kills the most the
-// attacker's power can buy (#2692).
+// for a damage-assignment prompt: CanonicalDamageSplit, as the
+// resolve_choice params.
+func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choiceParams) (choiceParams, bool) {
+	split, ok := CanonicalDamageSplit(e.g, c)
+	if !ok {
+		return p, false
+	}
+	p.TrampleTo = split.TrampleTo
+	assigns := make([]assignParam, 0, len(split.Assignments))
+	for _, a := range split.Assignments {
+		assigns = append(assigns, assignParam{BlockerID: a.BlockerID.String(), Amount: a.Amount})
+	}
+	p.Assignments = assigns
+	return p, true
+}
+
+// DamageShare is one blocker's share of a DamageSplit.
+type DamageShare struct {
+	BlockerID uuid.UUID
+	Amount    int
+}
+
+// DamageSplit is the canonical answer to a damage-assignment prompt.
+type DamageSplit struct {
+	// Assignments is every blocker's share: the killed blockers first,
+	// then the survivor that takes what is left over, then the rest at
+	// 0. Every blocker of the frame appears once.
+	Assignments []DamageShare
+	// TrampleTo is what goes on to the player or permanent the
+	// attacker is attacking (CR 702.19b).
+	TrampleTo int
+	// Lethal is the damage the split counts as lethal for each blocker,
+	// indexed like the frame's BlockerIDs: 1 from deathtouch (CR
+	// 702.2c), else toughness less the damage already marked, never
+	// below 1.
+	Lethal []int
+	// CoversLethal is true when the power is enough to assign lethal
+	// damage to every blocker. The split then has no real choice left
+	// in it (#2956): every blocker gets its lethal damage, and the rest
+	// goes over with trample, or onto the last blocker without.
+	CoversLethal bool
+}
+
+// CanonicalDamageSplit is the one split the enumerator offers for a
+// damage-assignment prompt: the one that kills the most the attacker's
+// power can buy (#2692). The bots answer with it, and the view ships it
+// to the chooser as the prompt's pre-filled answer and, when it covers
+// lethal for every blocker, as the answer the client may send for them
+// (#2956, ADR 0147).
 //
 // CR 510.1c divides a blocked creature's damage among its blockers "as
 // its controller chooses among them", and CR 510.1d does the same for
@@ -1659,55 +1706,50 @@ func shieldDivisionLabel(p *game.DivideShieldPrompt, dist map[uuid.UUID]int) str
 // order, so which of them die is the chooser's pick: any set whose
 // lethal damage (1 from deathtouch, CR 702.2c, else toughness less the
 // damage already marked) adds up to no more than the power.
-// KillingSet picks that set. A trampler with power enough to assign
-// lethal to every blocker does so and puts the rest on the player it
-// is attacking (CR 702.19b).
+// KillingSet picks that set. Power enough to assign lethal to every
+// blocker does so (#2956): a trampler puts the rest on the player it is
+// attacking (CR 702.19b), and anything else puts it on the last
+// blocker.
 //
 // The killed blockers come first, then the survivor that takes what is
 // left over, then the rest at 0, so the answer is also lethal down its
 // own order.
-func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choiceParams) (choiceParams, bool) {
-	f := c.DamageAssignment
-	if f == nil {
-		return p, false
+//
+// Caller must hold g's lock (read or write).
+func CanonicalDamageSplit(g *game.Game, c *game.PendingChoice) (DamageSplit, bool) {
+	if c == nil || c.DamageAssignment == nil {
+		return DamageSplit{}, false
 	}
+	f := c.DamageAssignment
 	n := len(f.BlockerIDs)
-	attacker := findBattlefield(e.g, f.AttackerID)
+	attacker := findBattlefield(g, f.AttackerID)
 	cost := make([]int, n)
 	value := make([]int, n)
+	need := 0
 	for i, id := range f.BlockerIDs {
 		cost[i] = 1
-		b := findBattlefield(e.g, id)
-		if b == nil {
-			continue
+		if b := findBattlefield(g, id); b != nil {
+			if !f.HasDeathtouch {
+				cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
+			}
+			value[i] = killValue(b, attacker)
 		}
-		if !f.HasDeathtouch {
-			cost[i] = max(b.CurrentToughness()-b.DamageMarked, 1)
-		}
-		value[i] = killValue(b, attacker)
+		need += cost[i]
 	}
 	kill := KillingSet(cost, value, f.AttackerPower)
-	trample := f.AllowTrample && !f.BlockerDivides
-	if trample {
-		need := 0
-		for _, x := range cost {
-			need += x
-		}
-		if need <= f.AttackerPower {
-			for i := range kill {
-				kill[i] = true
-			}
+	covers := n > 0 && need <= f.AttackerPower
+	if covers {
+		for i := range kill {
+			kill[i] = true
 		}
 	}
+	trample := f.AllowTrample && !f.BlockerDivides
 	remaining := f.AttackerPower
 	amount := make([]int, n)
-	allLethal := true
 	for i := range f.BlockerIDs {
 		if kill[i] {
 			amount[i] = cost[i]
 			remaining -= cost[i]
-		} else {
-			allLethal = false
 		}
 	}
 	// sink takes whatever is left: the survivor worth most, else the
@@ -1721,19 +1763,20 @@ func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choicePa
 	if sink < 0 {
 		sink = n - 1
 	}
+	out := DamageSplit{Lethal: cost, CoversLethal: covers}
 	if remaining > 0 {
 		switch {
-		case trample && allLethal:
-			p.TrampleTo = remaining
+		case trample && covers:
+			out.TrampleTo = remaining
 		case n > 0:
 			amount[sink] += remaining
 		default:
-			return p, false
+			return DamageSplit{}, false
 		}
 	}
-	assigns := make([]assignParam, 0, n)
+	out.Assignments = make([]DamageShare, 0, n)
 	add := func(i int) {
-		assigns = append(assigns, assignParam{BlockerID: f.BlockerIDs[i].String(), Amount: amount[i]})
+		out.Assignments = append(out.Assignments, DamageShare{BlockerID: f.BlockerIDs[i], Amount: amount[i]})
 	}
 	for i := range f.BlockerIDs {
 		if kill[i] {
@@ -1748,11 +1791,10 @@ func (e *enumerator) canonicalDamageAssignment(c *game.PendingChoice, p choicePa
 			add(i)
 		}
 	}
-	if len(assigns) == 0 && p.TrampleTo == 0 && f.AttackerPower > 0 {
-		return p, false
+	if len(out.Assignments) == 0 && out.TrampleTo == 0 && f.AttackerPower > 0 {
+		return DamageSplit{}, false
 	}
-	p.Assignments = assigns
-	return p, true
+	return out, true
 }
 
 // killValue is what destroying blocker b is worth to the attacker's

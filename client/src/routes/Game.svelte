@@ -55,6 +55,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
@@ -2490,6 +2491,14 @@
         docked={dockShown}
       />
       <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
+      <DamageAutoAssign
+        view={$snapshot}
+        {viewerID}
+        live={!replaying}
+        {sendAction}
+        canUndo={canSpendUndo}
+        onUndo={undo}
+      />
       <AutoTapPreviewModal
         {gameID}
         snap={view}

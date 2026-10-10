@@ -1562,6 +1562,30 @@ type DamageAssignmentView struct {
 	// controller divides its damage among them as they choose — no
 	// order to keep and no trample.
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
+	// #2956 (ADR 0147): the canonical split, legal.CanonicalDamageSplit,
+	// which the bots answer with. The client pre-fills the prompt with
+	// it, and sends it unasked when covers_lethal is set and the
+	// player's "Auto-assign combat damage" setting is on. Lethal is
+	// what the split counts as lethal for each blocker, indexed like
+	// blocker_card_ids. All three are a suggestion:
+	// ResolveDamageAssignment still checks whatever the client sends.
+	Suggested    *DamageSplitView `json:"suggested,omitempty"`
+	Lethal       []int            `json:"lethal,omitempty"`
+	CoversLethal bool             `json:"covers_lethal,omitempty"`
+}
+
+// DamageSplitView is a damage-assignment answer as the resolve_choice
+// payload spells it: per-blocker amounts and the trample overflow
+// (#2956).
+type DamageSplitView struct {
+	Assignments     []DamageShareView `json:"assignments"`
+	TrampleToPlayer int               `json:"trample_to_player,omitempty"`
+}
+
+// DamageShareView is one blocker's share of a DamageSplitView.
+type DamageShareView struct {
+	BlockerID string `json:"blocker_id"`
+	Amount    int    `json:"amount"`
 }
 
 // DivideShieldView is the wire shape of a divide_shield prompt (ADR 0108
@@ -8102,6 +8126,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				AllowTrample:   frame.AllowTrample,
 				HasDeathtouch:  frame.HasDeathtouch,
 				BlockerDivides: frame.BlockerDivides,
+			}
+			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
+				shares := make([]DamageShareView, len(split.Assignments))
+				for i, a := range split.Assignments {
+					shares[i] = DamageShareView{BlockerID: a.BlockerID.String(), Amount: a.Amount}
+				}
+				v.DamageAssignment.Suggested = &DamageSplitView{Assignments: shares, TrampleToPlayer: split.TrampleTo}
+				v.DamageAssignment.Lethal = split.Lethal
+				v.DamageAssignment.CoversLethal = split.CoversLethal
 			}
 		}
 		// ADR 0108 §7: divide_shield — the shield's charge and the
