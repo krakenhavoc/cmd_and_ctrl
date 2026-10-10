@@ -85,7 +85,7 @@ func init() {
 			Targeting(
 				WheneverYouCast(Colorless(),
 					"Ugin, Eye of the Storms — exile a colored permanent",
-					b27ExileChosenTarget),
+					Do(ExileChosenTarget{})),
 				uginEyeOfTheStormsTarget()),
 		},
 		Activated: []ActivatedAbility{

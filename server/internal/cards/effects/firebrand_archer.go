@@ -22,9 +22,7 @@ func init() {
 		Name:         "Firebrand Archer",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(Noncreature(), "Firebrand Archer — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}),
+			WheneverYouCast(Noncreature(), "Firebrand Archer — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 	})
 }
