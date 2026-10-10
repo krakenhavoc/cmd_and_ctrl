@@ -43,9 +43,10 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, {T}, Sacrifice this land: Search your library for up to two basic land cards that share a land type, put them onto the battlefield tapped, then shuffle.",
-			Cost:   Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-			Effect: myriadLandscapeFetch,
+			Label:   "{2}, {T}, Sacrifice this land: Search your library for up to two basic land cards that share a land type, put them onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+			Effect:  myriadLandscapeFetch,
 		}},
 	})
 }

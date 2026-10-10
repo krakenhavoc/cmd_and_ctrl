@@ -81,8 +81,9 @@ func init() {
 				Label:    "Add " + mana,
 			}},
 			Activated: []ActivatedAbility{{
-				Label: label,
-				Cost:  Plus(ManaCost(mana), TapCost()),
+				Label:   label,
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost(mana), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					if !land.condition(g, item.Controller) {
 						return nil

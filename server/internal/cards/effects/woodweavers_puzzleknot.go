@@ -23,7 +23,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{G}, Sacrifice this artifact: You gain 3 life and get {E}{E}{E}.",
 			Cost:    Plus(ManaCost("{2}{G}"), SacrificeThis()),
-			Purpose: game.Purpose{Energy: 3},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 3},
 			Effect:  gainLifeAndGetEnergy(3, 3),
 		}},
 	})

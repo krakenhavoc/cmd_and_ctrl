@@ -35,9 +35,10 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, {T}, Sacrifice Roadside Reliquary: Draw a card if you control an artifact. Draw a card if you control an enchantment.",
-			Cost:   Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-			Effect: roadsideReliquaryDraws,
+			Label:   "{2}, {T}, Sacrifice Roadside Reliquary: Draw a card if you control an artifact. Draw a card if you control an enchantment.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+			Effect:  roadsideReliquaryDraws,
 		}},
 	})
 }

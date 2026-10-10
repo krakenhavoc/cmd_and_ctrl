@@ -61,14 +61,16 @@ func init() {
 				},
 			},
 			{
-				Label:  "{T}, Pay 4 life: Draw a card.",
-				Cost:   Plus(TapCost(), PayLife(4)),
-				Effect: Do(DrawCards{N: 1}),
+				Label:   "{T}, Pay 4 life: Draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), PayLife(4)),
+				Effect:  Do(DrawCards{N: 1}),
 			},
 			{
-				Label:  "{5}: Untap this artifact.",
-				Cost:   ManaCost("{5}"),
-				Effect: b31UntapSelf,
+				Label:   "{5}: Untap this artifact.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{5}"),
+				Effect:  b31UntapSelf,
 			},
 		},
 	})

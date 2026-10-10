@@ -22,8 +22,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "trample"},
 		Activated: []ActivatedAbility{{
-			Label: "Pay 2 life: Surveil 2.",
-			Cost:  PayLife(2),
+			Label:   "Pay 2 life: Surveil 2.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    PayLife(2),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Surveil{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 			},

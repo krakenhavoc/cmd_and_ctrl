@@ -33,8 +33,9 @@ func init() {
 			Label:    "Add {U}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{U}, {T}: Empower Jace 2.",
-			Cost:  Plus(ManaCost("{2}{U}"), TapCost()),
+			Label:   "{2}{U}, {T}: Empower Jace 2.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}{U}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return EmpowerJace{N: 2}.Apply(NewContext(g, item))
 			},

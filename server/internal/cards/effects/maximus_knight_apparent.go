@@ -30,7 +30,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{1}, Sacrifice an artifact: You get {E}{E}.",
 			Cost:    Plus(ManaCost("{1}"), game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())}),
-			Purpose: game.Purpose{Energy: 2},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2},
 			Effect:  Do(GetEnergy{N: 2}),
 		}},
 	})

@@ -32,9 +32,10 @@ func init() {
 			WhenThisEnters("Cauldron Familiar — each opponent loses 1 life and you gain 1 life", drainEachOpponent),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice a Food: Return this card from your graveyard to the battlefield.",
-			Cost:  game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))},
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "Sacrifice a Food: Return this card from your graveyard to the battlefield.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("a Food", HasSubtype("Food"))},
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return returnThisFromGraveyardToBattlefield(g, item)
 			},

@@ -26,8 +26,9 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Only artifacts whose mana ability the game already knows about can be found; any basic land can."},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice this artifact: Search your library for an artifact card with a mana ability or a basic land card, reveal it, put it into your hand, then shuffle.",
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
+			Label:   "{1}, {T}, Sacrifice this artifact: Search your library for an artifact card with a mana ability or a basic land card, reveal it, put it into your hand, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

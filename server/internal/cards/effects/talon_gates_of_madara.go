@@ -58,9 +58,10 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}: Put this card from your hand onto the battlefield.",
-			Cost:  ManaCost("{4}"),
-			Zones: []game.ZoneKind{game.ZoneHand},
+			Label:   "{4}: Put this card from your hand onto the battlefield.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{4}"),
+			Zones:   []game.ZoneKind{game.ZoneHand},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				// #2620: the ability's source is a card in hand, and a
 				// discard (or a bounce and re-draw) in response moves it.

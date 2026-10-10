@@ -19,7 +19,7 @@ func init() {
 		Name:         "Tuskeri Firewalker",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			Boast("{1}: Exile the top card of your library. You may play that card this turn.",
+			BoastAnswering(game.AnswerValue, "{1}: Exile the top card of your library. You may play that card this turn.",
 				ManaCost("{1}"),
 				func(g *game.Game, item *game.StackItem) error {
 					_, err := b12ImpulseExileForTurn(g, item, 1)

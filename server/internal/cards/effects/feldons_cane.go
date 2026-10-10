@@ -21,8 +21,9 @@ func init() {
 		Name:         "Feldon's Cane",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Exile this artifact: Shuffle your graveyard into your library.",
-			Cost:  Plus(TapCost(), ExileThis()),
+			Label:   "{T}, Exile this artifact: Shuffle your graveyard into your library.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), ExileThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return finaleShuffleGraveyardIntoLibrary(NewContext(g, item), item.Controller)
 			},

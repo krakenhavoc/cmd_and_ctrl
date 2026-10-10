@@ -25,7 +25,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{U}, Sacrifice this artifact: Scry 2, then you get {E}{E}.",
 			Cost:    Plus(ManaCost("{2}{U}"), SacrificeThis()),
-			Purpose: game.Purpose{Energy: 2},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2},
 			Effect:  scryThenGetEnergy(2, 2),
 		}},
 	})

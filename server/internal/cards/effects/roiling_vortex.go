@@ -54,8 +54,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{R}: Your opponents can't gain life this turn.",
-			Cost:  ManaCost("{R}"),
+			Label:   "{R}: Your opponents can't gain life this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return PlayersCantGainLifeThisTurn{Opponents: true, Label: "Roiling Vortex — your opponents can't gain life this turn"}.Apply(NewContext(g, item))
 			},

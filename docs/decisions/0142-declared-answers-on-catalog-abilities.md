@@ -277,3 +277,10 @@ Two more rulings (owner, 2026-10-10):
 
 5. **A self-destroying lock lifter is `restrict`.** Aether Storm ("Pay 4 life: Destroy Aether Storm", any player may activate) declares `restrict`: destroying it changes what players can cast in response. Applied by analogy in S2 batch 1, Experimental Frenzy ("{3}{R}: Destroy this enchantment", which lifts its own "can't play cards from your hand") declares `restrict` too.
 6. **A delayed return answers nothing.** Sakashima the Impostor's granted "Return this creature to its owner's hand at the beginning of the next end step" is `value`, not `protect`: the return is delayed, so it saves nothing on the stack. This flips the verdict S1 batch 5 declared.
+
+Four more rulings (owner, 2026-10-10, S2 batch 2):
+
+7. **A creature put onto the battlefield at instant speed is `makes_blocker` if it enters untapped, `value` if it enters tapped.** Talon Gates of Madara, Quicksilver Amulet, PuPu UFO, Proctor of Potential, Grim Repriser and Cauldron Familiar declare `makes_blocker`. A tapped token (Automated Assembly Line, Necromancer's Stockpile) is `value`: it cannot block this turn.
+8. **Ending the turn is `remove`.** Sundial of the Infinite and Obeka, Brute Chronologist exile the whole stack, so they answer any item on it.
+9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`.
+10. **Leftovers.** Fountainport's "Sacrifice a token: Draw a card" is `sac_outlet`. Aang, Swift Savior ("Waterbend {8}: Transform Aang") is `pump`. Elsewhere Flask, Terraformer and Roiling Vortex are `value`. Experimental Frenzy `restrict` and Master Transmuter `protect` (S2 batch 1) are confirmed.

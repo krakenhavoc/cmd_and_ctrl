@@ -32,8 +32,9 @@ func init() {
 				"Staff of the Storyteller — put a story counter on it", putACounterOnThis(story))),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}, {T}, Remove a story counter from this artifact: Draw a card.",
-			Cost:  Plus(ManaCost("{W}"), TapCost(), RemoveCountersFromThis(story, 1)),
+			Label:   "{W}, {T}, Remove a story counter from this artifact: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{W}"), TapCost(), RemoveCountersFromThis(story, 1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

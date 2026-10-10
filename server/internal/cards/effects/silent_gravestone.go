@@ -35,9 +35,10 @@ func init() {
 			CardsInGraveyardsCantBeTargeted("Cards in graveyards can't be the targets of spells or abilities."),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}, {T}: Exile this artifact and all cards from all graveyards. Draw a card.",
-			Cost:   Plus(ManaCost("{4}"), TapCost()),
-			Effect: silentGravestoneExile,
+			Label:   "{4}, {T}: Exile this artifact and all cards from all graveyards. Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Cost:    Plus(ManaCost("{4}"), TapCost()),
+			Effect:  silentGravestoneExile,
 		}},
 	})
 }
