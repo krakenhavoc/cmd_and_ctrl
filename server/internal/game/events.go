@@ -1113,6 +1113,18 @@ const (
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
 	EventTransform EventKind = "transform"
 
+	// EventMeld — two cards were melded (CR 701.42a) and CardID is the
+	// melded permanent that has just entered the battlefield. Actor is
+	// its controller and Label names the two cards it was melded from
+	// ("Urza, Lord Protector and The Mightstone and Weakstone"), which
+	// is the only place those names survive: the permanent's own name
+	// is the combined back face's.
+	//
+	// Emitted after the entry's own zone move and ETB, so it adds a
+	// log line and nothing else: the entry already did everything a
+	// permanent entering does. ADR 0145.
+	EventMeld EventKind = "meld"
+
 	// EventPhaseOut / EventPhaseIn — CardID phased out or in
 	// (CR 702.26). Actor is its controller; Source, on a phase-out, is
 	// the card whose effect said so (uuid.Nil for CR 502.1's

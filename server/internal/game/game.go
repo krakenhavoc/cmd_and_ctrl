@@ -257,6 +257,14 @@ type Game struct {
 	// Added in S13.1.
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool
 
+	// LoyaltyActivatedTwiceThisTurn flags the permanents in
+	// LoyaltyActivatedThisTurn whose SECOND loyalty activation this turn
+	// has been made — only a permanent whose own static lets it activate
+	// them twice (Urza, Planeswalker; loyalty_limit.go) ever gets one.
+	// Keyed, cleared and forgotten exactly as LoyaltyActivatedThisTurn
+	// is. ADR 0145.
+	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool
+
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"
 	// bookkeeping; also the storm count once storm ships). Bumped

@@ -1016,6 +1016,13 @@ type Spec struct {
 	// Issue #2058.
 	DamageStaysThroughCleanup bool
 
+	// LoyaltyTwiceEachTurn declares the printed static "You may activate
+	// the loyalty abilities of <this> twice each turn rather than only
+	// once" (Urza, Planeswalker): CR 606.3's one-per-turn limit is two
+	// for this permanent. Judged through CatalogAbilityKey, so a
+	// permanent that lost its abilities is held to one. ADR 0145.
+	LoyaltyTwiceEachTurn bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//

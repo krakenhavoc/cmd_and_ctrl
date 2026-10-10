@@ -706,7 +706,8 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	// face-down state on the way through (CR 400.7), so "was this a
 	// face-down permanent" can only be asked before it runs.
 	before, hadBefore := g.cardInZoneLocked(src, ev.CardID)
-	if _, err := MoveCard(src, dstZone, ev.CardID); err != nil {
+	moved, err := MoveCard(src, dstZone, ev.CardID)
+	if err != nil {
 		return err
 	}
 	// CR 708.9: a face-down PERMANENT that moves to another zone is
@@ -869,6 +870,21 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// Same reason executeBattlefieldLeaveLocked re-checks here:
 		// the state-check loop does not run while a choice is queued.
 		g.pruneSacrificeChoicesLocked()
+	}
+	// CR 712.21, ADR 0145: a melded permanent landed as two cards. The
+	// carrier is ev.CardID and has had everything above; the other card
+	// gets its own landing here. CR 903.9c first: a melded commander
+	// sent to the command zone instead takes only its commander card
+	// there, and the other goes where the move was going.
+	if moved.IsMelded() {
+		landed := dstZone
+		if redirected && dstZone.Kind == ZoneCommand {
+			g.sendMeldPassengersOnLocked(moved, dstZone, r.Dst, actor)
+		} else {
+			g.landMeldPassengersLocked(moved, src.Kind, landed, actor,
+				r.ToBottom && !redirected, depthIf(!redirected, r.Depth),
+				!(ev.ShuffleDestinationLibrary && landed.Kind == ZoneLibrary))
+		}
 	}
 	// #1045: and any choose-cards prompt that still OFFERS this card
 	// as a candidate is offering a card that is no longer in the zone

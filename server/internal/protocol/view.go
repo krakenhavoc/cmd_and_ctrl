@@ -2600,6 +2600,10 @@ type CardView struct {
 	// only. Before S27 this lived only in the server's
 	// Game.LoyaltyActivatedThisTurn map, which is why the client's
 	// canActivateLoyalty had to guess. Added in S27 (#329, #334).
+	// Since ADR 0145 it means "no loyalty activation is LEFT this
+	// turn" (Game.LoyaltySpentLocked): a permanent that may activate
+	// them twice each turn (Urza, Planeswalker) is greyed after its
+	// second, not its first.
 	LoyaltyActivated bool `json:"loyalty_activated,omitempty"`
 	// ClassLevel is a Class permanent's CR 716.2 level designation —
 	// 1 for a Class nobody has levelled, up from there (ADR 0071).
@@ -2888,6 +2892,20 @@ type CardView struct {
 	// ActiveFace indexes Faces. Omitted when zero, which is the
 	// front face and every single-faced card.
 	ActiveFace int `json:"active_face,omitempty"`
+
+	// MeldedFrom is a MELDED permanent's two cards (CR 712.4a, ADR
+	// 0145), carrier first: their names, costs, type lines and art.
+	// Everything above already describes the combined back face, which
+	// is the permanent; this is what the hover panel shows beside it,
+	// and what the two cards will be when it leaves. Absent on every
+	// other card.
+	MeldedFrom []CardFaceView `json:"melded_from,omitempty"`
+
+	// MeldsInto is a meld card's combined back face (CR 712.4): the
+	// permanent this card and its partner become when they meld, for
+	// the hover panel's preview. Absent on every other card and on a
+	// melded permanent (whose own face it is).
+	MeldsInto *CardFaceView `json:"melds_into,omitempty"`
 }
 
 // NoUntapView is the public projection of a permanent's untap-step
@@ -6807,7 +6825,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// SpecialActionsOfferedByCard answers nothing for a face-up
 		// permanent, and the declared kinds are hand keywords.
 		c.SpecialActions = viewOfSpecialActions(g, card, controller, game.ZoneBattlefield)
-		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
+		c.LoyaltyActivated = g.LoyaltySpentLocked(instanceID)
 		c.EchoDue = g.EchoDueLocked(&card)
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
@@ -9216,6 +9234,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Fused = nil
 	out.Layout = ""
 	out.ActiveFace = 0
+	// ADR 0145: a melded permanent's cards and a meld card's back face
+	// name the card as loudly as its faces do.
+	out.MeldedFrom = nil
+	out.MeldsInto = nil
 	// #95: everything below is read off the card's own text or type
 	// line — the catalog entry, its abilities, its target prompt — and
 	// so names it as surely as the fields above. A face-down Forest
@@ -9584,6 +9606,8 @@ func viewOfCard(c game.Card) CardView {
 		knowers:      knowers,
 		Layout:       c.Layout,
 		Faces:        viewOfFaces(c),
+		MeldedFrom:   viewOfMeldedFrom(c),
+		MeldsInto:    viewOfMeldsInto(c),
 		ActiveFace:   c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
 		// oracle text for the client to fetch by scryfall_id and a
@@ -10620,6 +10644,49 @@ func withoutID(ids []string, drop string) []string {
 		}
 	}
 	return out
+}
+
+// viewOfMeldedFrom projects a melded permanent's two cards (ADR 0145).
+// nil for every other card.
+func viewOfMeldedFrom(c game.Card) []CardFaceView {
+	if !c.IsMelded() {
+		return nil
+	}
+	out := make([]CardFaceView, 0, len(c.MeldedFrom))
+	for _, part := range c.MeldedFrom {
+		v := CardFaceView{
+			Name:      part.Name,
+			TypeLine:  part.TypeLine,
+			ManaCost:  part.ManaCost,
+			Power:     part.Power,
+			Toughness: part.Toughness,
+		}
+		if part.ScryfallID != "" {
+			v.Image = fmt.Sprintf("/cards/%s/image", part.ScryfallID)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// viewOfMeldsInto projects a meld card's combined back face (ADR
+// 0145). nil for every other card, and for a melded permanent.
+func viewOfMeldsInto(c game.Card) *CardFaceView {
+	if !c.IsMeldCard() || c.IsMelded() {
+		return nil
+	}
+	r := c.Meld.Result
+	v := &CardFaceView{
+		Name:       r.Name,
+		TypeLine:   r.TypeLine,
+		OracleText: r.OracleText,
+		Power:      r.Power,
+		Toughness:  r.Toughness,
+	}
+	if c.Meld.ResultScryfallID != "" {
+		v.Image = fmt.Sprintf("/cards/%s/image", c.Meld.ResultScryfallID)
+	}
+	return v
 }
 
 // viewOfFaces projects a multi-face card's printed faces onto the

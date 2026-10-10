@@ -14,14 +14,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The enters trigger is a modal triggered ability (#764): the mode is
 // picked as it goes on the stack and the -5/-5 mode's target is chosen
 // then and re-checked on resolution. The mana ability carries the
-// nonartifact-spell restriction Karn, Legacy Reforged uses. Meld
-// (CR 702.145) is not implemented; the card plays as its front face.
+// nonartifact-spell restriction Karn, Legacy Reforged uses.
+//
+// The reminder line is the other half of Urza, Lord Protector's meld
+// ability (CR 701.42, 712.5e; ADR 0145, #2699): the card carries its
+// printed meld data from the deck import, so Urza's {7} finds it, exiles
+// both and returns them as Urza, Planeswalker. Nothing on this card does
+// anything for that; the ability is Urza's.
 func init() {
 	Register(Spec{
 		OracleID:     "c396db03-bf11-4e20-b630-4f9aa8fd78da",
 		Name:         "The Mightstone and Weakstone",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Meld isn't implemented — it can't combine with Urza, Lord Protector."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:         ManaAbilityCost{Tap: true},
 			Produced:     "{C}{C}",

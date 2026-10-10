@@ -77,6 +77,11 @@ func catalogPool(t *testing.T, idx *cards.Index) []cards.Card {
 		if !ok || c.TypeLine == "" {
 			continue
 		}
+		// A meld pair's combined back face (ADR 0145) is not a card a
+		// deck can hold either; it is reached only by melding.
+		if c.IsMeldBackFace() {
+			continue
+		}
 		pool = append(pool, c)
 	}
 	// Deterministic order before any seeded shuffle: effects.All()

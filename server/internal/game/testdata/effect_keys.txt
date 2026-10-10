@@ -166,3 +166,4 @@ option option-pick/thrull-wizard-pay
 option option-pick/winters-chill-pay
 body synthetic-destiny/reveal-that-many-creatures
 body ascend/exile-listed-unless-citys-blessing
+option meld/order

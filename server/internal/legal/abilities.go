@@ -283,7 +283,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// CR 606 asks about the permanent and its cost symbol, not
 		// about the card type.
 		if ab.Cost.Loyalty != nil {
-			if g.LoyaltyActivatedThisTurn[source.InstanceID] {
+			if g.LoyaltySpentLocked(source.InstanceID) {
 				continue
 			}
 			if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {

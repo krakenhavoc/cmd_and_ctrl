@@ -676,6 +676,12 @@ func CanTurnFaceDown(c Card) bool {
 	if c.FaceDown {
 		return false
 	}
+	// CR 712.16's first word: a melded permanent is represented by two
+	// meld cards and has no Faces of its own, so the double-faced
+	// allowlist does not see it (ADR 0145).
+	if c.IsMelded() {
+		return false
+	}
 	return !isDoubleFacedPermanent(c)
 }
 

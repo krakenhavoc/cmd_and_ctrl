@@ -329,6 +329,10 @@ func (g *Game) forgetPerObjectTurnStateLocked(cardID uuid.UUID) {
 	if len(g.LoyaltyActivatedThisTurn) == 0 {
 		g.LoyaltyActivatedThisTurn = nil
 	}
+	delete(g.LoyaltyActivatedTwiceThisTurn, cardID)
+	if len(g.LoyaltyActivatedTwiceThisTurn) == 0 {
+		g.LoyaltyActivatedTwiceThisTurn = nil
+	}
 	delete(g.announcedAttacks, cardID)
 	if len(g.announcedAttacks) == 0 {
 		g.announcedAttacks = nil

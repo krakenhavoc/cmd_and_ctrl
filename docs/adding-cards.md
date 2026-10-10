@@ -7823,6 +7823,40 @@ Three things to get right:
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
 
+### Meld (ADR 0145, #2699, CR 701.42)
+
+A meld pair is three catalog files: the two meld cards and the combined
+back face, which is its own Scryfall record with its own oracle ID
+(Urza, Planeswalker; Hanweir, the Writhing Township). The deck importer
+stamps the back face's printed characteristics on both halves
+(`game.Card.Meld`), and the melded permanent IS that record: its oracle
+ID, name, type line, image and catalog entry are the back face's, so
+the back face's `Spec` is written like any other card's and is never in
+a deck. A card file only writes the meld ability, on whichever half
+prints it:
+
+```go
+Effect: Do(MeldWith{Partner: "The Mightstone and Weakstone", PartnerType: "artifact"}),  // Urza, Lord Protector's {7}
+AppliesTo: ... && YouOwnAndControlThisAndANamed("Midnight Scavengers", "creature")(g, source)  // a trigger's intervening if
+```
+
+`MeldWith` checks "if you both own and control <this> and a <type> named
+<partner>" as it resolves and does nothing when it fails;
+`Game.MeldForEffect` exiles both together and returns them melded, or
+leaves them in exile when they are not a real pair (CR 701.42c). The
+other half's "(Melds with …)" line is reminder text and needs nothing.
+
+Three things to get right:
+
+- **Never reach into `Card.MeldedFrom` for "the cards on the
+  battlefield".** The melded permanent is one object. `MoveCard` alone
+  turns it back into two cards when it leaves (CR 712.21).
+- **The back face's keywords and loyalty come from the import.** Don't
+  declare them on its `Spec`; a planeswalker back face enters with its
+  printed loyalty like any planeswalker.
+- **Its mana value is its cards' total** (CR 712.8g). Hanweir, the
+  Writhing Township is 3, not 0.
+
 ### Partner with (CR 702.124j, #2142)
 
 "Partner with [name]" is two abilities. The deck-construction one needs
