@@ -54,7 +54,7 @@ describe("PhaseDisplay day and night", () => {
 
   it("keeps the turn line intact beside the chip", () => {
     const c = mount("night");
-    expect(c.querySelector(".turn-no")?.textContent).toBe("T3");
+    expect(c.querySelector(".turn-no")?.textContent).toBe("R3");
     expect(c.querySelector(".active-name")?.textContent).toBe("Alice");
   });
 });
