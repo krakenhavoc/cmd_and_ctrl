@@ -76,7 +76,7 @@ type Game struct {
 	// Plain data, carried by Clone and the snapshot.
 	TurnEndPending bool
 
-	// passTurn is the active player's standing "pass turn" (#2881,
+	// passTurn is the active player's standing end_turn (#2881,
 	// pass_turn.go): priority is passed for them whenever they hold it
 	// until their turn ends. Carried by Clone and RestoreFrom so an undo
 	// takes it back; not part of a restore point.
@@ -1583,7 +1583,7 @@ func (g *Game) advanceCursorLocked() {
 	// the step BEGINS, from the step-entry hook's announcement, with
 	// the creatures still in combat.
 	//
-	// The manual ClearCombat verb, EndTurnNowForTest and the eliminated-seat
+	// The manual ClearCombat verb, PassTurn and the eliminated-seat
 	// rotation keep their own calls — a turn that ends early never
 	// reaches this seam.
 	if g.Turn.Step == StepEndCombat {
@@ -2064,7 +2064,7 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 		// CR 514.2: marked damage is removed and "until end of turn"
 		// and "this turn" effects end. The sweep is its own function
 		// (rotation.go) because a turn that ends early — its active
-		// player left the game, or the EndTurnNowForTest jump — ends
+		// player left the game, or the sandbox pass_turn verb — ends
 		// through the same code (ADR 0059 Decision 6, #766).
 		g.sweepTurnEndLocked()
 		// CR 514.3 / 514.3a: the turn ends here — unless a state-based

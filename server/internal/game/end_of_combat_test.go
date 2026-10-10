@@ -105,7 +105,7 @@ func TestTheNextTurnsUntapIsUnaffected(t *testing.T) {
 
 	// Round the table back to seat 0's turn.
 	for range len(g.Seats) {
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn: %v", err)
 		}
 	}
@@ -132,7 +132,7 @@ func TestPassTurnFromTheEndOfCombatStepStillClearsCombat(t *testing.T) {
 	declareAttacks(t, g, attacker)
 	passUntilStep(t, g, StepEndCombat)
 
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if c := findCard(g, attacker); c == nil || c.AttackingTarget != uuid.Nil {

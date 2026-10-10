@@ -134,7 +134,7 @@ func TestPhasingIsNarratedInTheLog(t *testing.T) {
 	// phases it in — through the real turn machinery, so the line the
 	// log carries is the one a player would actually see.
 	for range 2 {
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("pass turn: %v", err)
 		}
 	}

@@ -125,7 +125,7 @@ func TestPre683RestorePointBackfillsTurnIdentity(t *testing.T) {
 	}
 
 	before := g.Turn.Seq
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn after legacy restore: %v", err)
 	}
 	if g.Turn.Seq != before+1 {

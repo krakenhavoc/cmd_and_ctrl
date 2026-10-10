@@ -131,7 +131,7 @@ func TestTurnRotationSkipsEliminatedSeats(t *testing.T) {
 		}
 	}
 	// PassTurn takes the same seam.
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatal(err)
 	}
 	if g.Turn.ActiveSeat != 3 {

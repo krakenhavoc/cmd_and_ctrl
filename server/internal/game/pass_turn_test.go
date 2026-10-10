@@ -114,14 +114,14 @@ func opponentPassesUntil(t *testing.T, g *Game, opp *Player, stop func() bool) {
 	t.Fatalf("the table did not reach the stop in 200 passes")
 }
 
-// TestPassTurnWalksEveryStepAndFiresStepTriggers is #2881's repro:
-// pass turn from the precombat main phase must still begin every step
+// TestEndTurnWalksEveryStepAndFiresStepTriggers is #2881's repro:
+// "pass turn" from the dock (end_turn) from the precombat main phase must still begin every step
 // left in the turn (CR 500.1), put each step's triggers on the stack
 // the next time a player would receive priority (CR 500.6, 603.3) and
 // resolve them, and stop for a trigger that needs its controller's
 // decision. The opponent keeps priority in every step (CR 117.3d) and
 // their "each end step" trigger fires too.
-func TestPassTurnWalksEveryStepAndFiresStepTriggers(t *testing.T) {
+func TestEndTurnWalksEveryStepAndFiresStepTriggers(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	active, opp := g.Seats[g.Turn.ActiveSeat], g.Seats[1-g.Turn.ActiveSeat]
@@ -129,11 +129,11 @@ func TestPassTurnWalksEveryStepAndFiresStepTriggers(t *testing.T) {
 	seq := g.Turn.Seq
 	activeLife, oppLife := active.Life, opp.Life
 
-	if err := g.PassTurn(); err != nil {
-		t.Fatalf("PassTurn: %v", err)
+	if err := g.EndTurnByPassing(); err != nil {
+		t.Fatalf("EndTurnByPassing: %v", err)
 	}
 	if g.Turn.Seq != seq {
-		t.Fatalf("pass turn jumped to turn %d: the rest of turn %d never happened (CR 500.1)", g.Turn.Seq, seq)
+		t.Fatalf("end turn jumped to turn %d: the rest of turn %d never happened (CR 500.1)", g.Turn.Seq, seq)
 	}
 
 	// Beginning of combat: the active player's trigger resolves with
@@ -196,9 +196,9 @@ func TestPassTurnWalksEveryStepAndFiresStepTriggers(t *testing.T) {
 	})
 }
 
-// TestPassTurnRefusedWhilePromptOpen: as before #2881, a prompt the
-// table waits for is answered before the turn is passed (#730).
-func TestPassTurnRefusedWhilePromptOpen(t *testing.T) {
+// TestEndTurnRefusedWhilePromptOpen: like pass_turn, a prompt the
+// table waits for is answered before the turn is ended (#730).
+func TestEndTurnRefusedWhilePromptOpen(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	active := g.Seats[g.Turn.ActiveSeat]
@@ -207,32 +207,32 @@ func TestPassTurnRefusedWhilePromptOpen(t *testing.T) {
 			Kind: PendingChoiceTriggerPrompt, Chooser: active.ID, Count: 1, Reason: "test",
 		})
 	})
-	if err := g.PassTurn(); !errors.Is(err, ErrChoicePending) {
-		t.Fatalf("PassTurn with a prompt open = %v, want ErrChoicePending", err)
+	if err := g.EndTurnByPassing(); !errors.Is(err, ErrChoicePending) {
+		t.Fatalf("EndTurnByPassing with a prompt open = %v, want ErrChoicePending", err)
 	}
 	if g.PassingTurn() {
-		t.Fatalf("a refused pass turn left a standing pass")
+		t.Fatalf("a refused end turn left a standing pass")
 	}
 }
 
-// TestUndoTakesPassTurnBack: the standing pass is part of the game a
+// TestUndoTakesEndTurnBack: the standing pass is part of the game a
 // clone carries, so restoring the pre-pass clone ends it.
-func TestUndoTakesPassTurnBack(t *testing.T) {
+func TestUndoTakesEndTurnBack(t *testing.T) {
 	g := newActiveGame(t)
 	advanceTo(t, g, StepPrecombatMain)
 	pre := g.Clone()
-	if err := g.PassTurn(); err != nil {
-		t.Fatalf("PassTurn: %v", err)
+	if err := g.EndTurnByPassing(); err != nil {
+		t.Fatalf("EndTurnByPassing: %v", err)
 	}
 	if !g.PassingTurn() {
-		t.Fatalf("setup: no standing pass after PassTurn")
+		t.Fatalf("setup: no standing pass after EndTurnByPassing")
 	}
 	g.WithWriteLock(func() { g.RestoreFrom(pre) })
 	if g.PassingTurn() {
-		t.Fatalf("the undone pass turn is still standing")
+		t.Fatalf("the undone end turn is still standing")
 	}
-	if err := g.PassTurn(); err != nil {
-		t.Fatalf("PassTurn: %v", err)
+	if err := g.EndTurnByPassing(); err != nil {
+		t.Fatalf("EndTurnByPassing: %v", err)
 	}
 	if c := g.Clone(); !c.PassingTurn() {
 		t.Fatalf("a clone dropped the standing pass")

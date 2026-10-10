@@ -213,7 +213,7 @@ func TestPerTurnCachesClearWhenActiveSeatConcedes(t *testing.T) {
 func TestPassTurnSweepsTheTurn(t *testing.T) {
 	p := newRotationProbe(t)
 	cut := len(p.g.Events)
-	if err := p.g.EndTurnNowForTest(); err != nil {
+	if err := p.g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	p.assertCleanNextTurn(t)

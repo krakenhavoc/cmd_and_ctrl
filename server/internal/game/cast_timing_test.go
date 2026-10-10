@@ -370,7 +370,7 @@ func TestAStoredFlashGrantEndsAtEndOfTurn(t *testing.T) {
 	if !timingOpenFor(t, g, me, bear) {
 		t.Fatal("the grant died before the turn did")
 	}
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if timingOpenFor(t, g, me, bear) {
@@ -406,7 +406,7 @@ func TestAStoredGrantUntilYourNextTurnEndsAsThatTurnBegins(t *testing.T) {
 		if timingOpenFor(t, g, me, bear) && g.Seats[g.Turn.ActiveSeat].ID != me.ID {
 			t.Fatalf("the sorcery-only window opened a creature spell during %s", who)
 		}
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn %d: %v", i, err)
 		}
 	}

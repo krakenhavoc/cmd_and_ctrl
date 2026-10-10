@@ -13,6 +13,7 @@ var allTypes = []Type{
 	TypeUntapAll,
 	TypePassPriority,
 	TypePassTurn,
+	TypeEndTurn,
 	TypeMulligan,
 	TypeShuffleLibrary,
 	TypeChangeLife,

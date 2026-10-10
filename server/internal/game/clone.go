@@ -52,7 +52,7 @@ func (g *Game) cloneLocked() *Game {
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
-		// #2881: the active player's standing pass turn. Its own
+		// #2881: the active player's standing end_turn. Its own
 		// pointer, so a clone never shares the live order.
 		passTurn: clonePassTurnOrder(g.passTurn),
 		// #628: both halves of the CR 732 breaker. The threshold is

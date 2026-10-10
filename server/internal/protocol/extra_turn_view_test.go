@@ -58,7 +58,7 @@ func TestExtraTurnsAreOnTheTurnViewAndInTheLog(t *testing.T) {
 	}
 
 	round := v.Turn.Number
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	v = ViewOfGame(g)

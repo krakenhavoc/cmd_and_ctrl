@@ -195,7 +195,7 @@ func TestSpellsCastThisTurnTallyAndReset(t *testing.T) {
 	if got.Total != 2 || got.Noncreature != 1 {
 		t.Errorf("tally after bolt + bear: %+v, want {Total:2 Noncreature:1}", got)
 	}
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if got := g.CastTallyFor(p.ID); got != (CastTally{}) {

@@ -31,7 +31,8 @@ const (
 	TypeUntap                  Type = "untap"
 	TypeUntapAll               Type = "untap_all"
 	TypePassPriority           Type = "pass_priority"
-	TypePassTurn               Type = "pass_turn"
+	TypePassTurn               Type = "pass_turn" // the sandbox jump: skips the rest of the turn's steps
+	TypeEndTurn                Type = "end_turn"  // the dock's Pass turn (#2881): walks every step, passing for the active player
 	TypeMulligan               Type = "mulligan"
 	TypeShuffleLibrary         Type = "shuffle_library"
 	TypeChangeLife             Type = "change_life"
@@ -885,6 +886,12 @@ func dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.PassTurn()
+
+	case TypeEndTurn:
+		if err := requireActivePlayer(g, a.Caller); err != nil {
+			return err
+		}
+		return g.EndTurnByPassing()
 
 	case TypeMulligan:
 		if a.Player == uuid.Nil {

@@ -2,20 +2,25 @@ package game
 
 import "github.com/google/uuid"
 
-// pass_turn.go — the active player's "Pass turn" (#2881).
+// pass_turn.go — the two ways the active player gives up the rest of
+// their turn (#2881).
 //
-// Pass turn used to jump the cursor straight to the next seat's untap
-// step. Every step left in the turn was skipped outright, so "at the
-// beginning of combat", "at the beginning of your end step" and every
-// other step trigger never fired, and the cleanup discard never
-// happened. CR 500.1 has every phase happen every turn, even if
-// nothing happens in it, and CR 500.6 has an "at the beginning of"
-// trigger fire as its step begins.
+// end_turn (EndTurnByPassing) is what the dock's Pass turn button
+// sends, and the one that follows the rules. pass_turn (PassTurn) is
+// the sandbox jump, kept for the table's ⋯ menu (ADR 0143 Q5).
 //
-// Pass turn is now a standing instruction to pass priority for the
-// active player, every time they would hold it, until their turn ends.
-// The steps are walked by the one priority engine (passPriorityLocked),
-// so each step begins, its turn-based actions happen, its triggers go on
+// The dock used to send pass_turn, which jumps the cursor straight to
+// the next seat's untap step. Every step left in the turn was skipped
+// outright, so "at the beginning of combat", "at the beginning of your
+// end step" and every other step trigger never fired, and the cleanup
+// discard never happened. CR 500.1 has every phase happen every turn,
+// even if nothing happens in it, and CR 500.6 has an "at the beginning
+// of" trigger fire as its step begins.
+//
+// end_turn is a standing instruction to pass priority for the active
+// player, every time they would hold it, until their turn ends. The
+// steps are walked by the one priority engine (passPriorityLocked), so
+// each step begins, its turn-based actions happen, its triggers go on
 // the stack the next time a player would receive priority (CR 117.5,
 // 603.3), and everything on the stack resolves only after every player
 // has passed in succession (CR 117.4).
@@ -23,7 +28,7 @@ import "github.com/google/uuid"
 // Only the active player is passed for. Every other player still
 // receives priority in each step (CR 117.3d) and passes or acts as they
 // would without it: their own client's automatic passing, or their bot
-// runner, decides, so pass turn never makes them miss a window.
+// runner, decides, so ending your turn never makes them miss a window.
 //
 // The passing stops, and the player gets the decision, whenever:
 //
@@ -38,10 +43,14 @@ import "github.com/google/uuid"
 // SettlePassTurn after every action, and the room after every
 // automatic answer. It ends when the turn does, by any route.
 //
-// Carried by Clone and RestoreFrom, so undoing the pass_turn takes the
+// Carried by Clone and RestoreFrom, so undoing the end_turn takes the
 // instruction back with it. Not part of a restore point: a server that
-// restarts in the middle of a passed turn leaves the active player
-// holding priority, and they press Pass turn again.
+// restarts in the middle of an ended turn leaves the active player
+// holding priority, and they press the button again.
+//
+// Not CR 724's "end the turn" (end_turn.go, EndTheTurnForEffect): that
+// is what Sundial of the Infinite does, and it skips the steps on
+// purpose. This one is a player passing.
 
 // passTurnOrder is the standing pass: who asked, and in which turn.
 type passTurnOrder struct {
@@ -64,13 +73,13 @@ func clonePassTurnOrder(o *passTurnOrder) *passTurnOrder {
 // next action settles again.
 const maxPassTurnPasses = 512
 
-// PassTurn is the active player's "pass turn": pass priority for them
-// whenever they hold it until the turn ends, walking every remaining
-// step (CR 500.1). See the file comment.
+// EndTurnByPassing is the active player's end_turn: pass priority for
+// them whenever they hold it until the turn ends, walking every
+// remaining step (CR 500.1). See the file comment.
 //
 // Refused while a prompt the table waits for is open (#730,
-// choice_gate.go): it is answered first, as before.
-func (g *Game) PassTurn() error {
+// choice_gate.go): it is answered first, as for pass_turn.
+func (g *Game) EndTurnByPassing() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -88,16 +97,16 @@ func (g *Game) PassTurn() error {
 	return nil
 }
 
-// PassingTurn reports whether the active player has passed the turn
-// and the passing is still standing.
+// PassingTurn reports whether the active player has ended the turn by
+// passing (EndTurnByPassing) and the passing is still standing.
 func (g *Game) PassingTurn() bool {
 	g.mu.RLock()
 	defer g.mu.RUnlock()
 	return g.passTurnLiveLocked()
 }
 
-// SettlePassTurn passes priority for an active player who passed the
-// turn, for as long as they hold it and nothing stops the passing. A
+// SettlePassTurn passes priority for an active player who ended the
+// turn (EndTurnByPassing), for as long as they hold it and nothing stops the passing. A
 // no-op without a standing pass. actions.Dispatch calls it after every
 // action, beside SettleResolution, and the room after each automatic
 // answer.
@@ -155,27 +164,4 @@ func (g *Game) choiceOwedByLocked(player uuid.UUID) bool {
 		}
 	}
 	return false
-}
-
-// EndTurnNowForTest is the old sandbox pass_turn: it ends the turn at
-// once and starts the next seat's, without the steps in between (no
-// end step, so no "at the beginning of the end step" triggers, and no
-// cleanup discard). Combat ends and the cleanup sweep runs through the
-// rotation seam (rotation.go, #766). Tests use it to reach the next
-// turn without walking this one; no player-facing path reaches it.
-func (g *Game) EndTurnNowForTest() error {
-	g.mu.Lock()
-	defer g.mu.Unlock()
-	if g.State != StateActive {
-		return ErrGameNotActive
-	}
-	if c := g.blockingChoiceLocked(); c != nil {
-		return choicePendingErrorLocked(c)
-	}
-	g.clearCombatLocked()
-	g.sweepTurnEndLocked()
-	g.beginNextTurnLocked()
-	g.runStepEntryHooksLocked()
-	g.runStateChecksLocked()
-	return nil
 }

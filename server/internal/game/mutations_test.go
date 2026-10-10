@@ -616,7 +616,7 @@ func TestPriorityHolderResetsOnAdvanceStep(t *testing.T) {
 func TestPassTurnResetsPriorityHolder(t *testing.T) {
 	g := newFourPlayerActiveGame(t)
 	_ = g.PassPriority()
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if g.Turn.PriorityHolder != g.Turn.ActiveSeat {
@@ -1152,7 +1152,7 @@ func TestPassTurnSkipsToNextSeat(t *testing.T) {
 	// Put the cursor mid-turn.
 	_, _ = g.AdvanceStep()
 	_, _ = g.AdvanceStep()
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if g.Turn.ActiveSeat != 1 {
@@ -1167,8 +1167,8 @@ func TestPassTurnSkipsToNextSeat(t *testing.T) {
 func TestPassTurnWrapsToNextRound(t *testing.T) {
 	g := newActiveGame(t)
 	// Only 2 players; two PassTurns should wrap to seat 0 turn 2.
-	_ = g.EndTurnNowForTest()
-	_ = g.EndTurnNowForTest()
+	_ = g.PassTurn()
+	_ = g.PassTurn()
 	if g.Turn.Round != 2 {
 		t.Errorf("turn number: got %d, want 2", g.Turn.Round)
 	}
@@ -2207,7 +2207,7 @@ func TestS131ActivateLoyaltyResetsOnNewTurn(t *testing.T) {
 	if err := g.ActivateLoyalty(caster.ID, pwID, "+1", 1); err != nil {
 		t.Fatalf("ActivateLoyalty: %v", err)
 	}
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if g.LoyaltyActivatedThisTurn[pwID] {
@@ -3117,7 +3117,7 @@ func TestPassTurnRunsSBAs(t *testing.T) {
 		Owner:      owner.ID,
 		Controller: owner.ID,
 	})
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if g.Battlefield.Contains(pwID) {

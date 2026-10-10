@@ -9598,6 +9598,51 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	return nil
 }
 
+// PassTurn skips to the next player's untap step, regardless of
+// whatever step the current turn is in. Useful for forfeiting a turn
+// or when all steps are uneventful. Lands on Untap with NoPriority
+// (S13); the entry hook auto-untaps and walks the cursor on to
+// Upkeep, matching the normal-flow behaviour of priority wraps and
+// AdvanceStep so callers always end at a priority-granting step.
+//
+// The rest of the turn ends through the rotation seam (rotation.go,
+// #766): attackers and blockers leave combat, and the cleanup sweep
+// removes marked damage and ends "until end of turn" effects. The
+// steps in between do not happen — no end step, so no "at the
+// beginning of the end step" triggers — and the cleanup discard to
+// hand size is skipped. This is a sandbox verb, not a rules action;
+// the dock's Pass turn button sends end_turn (EndTurnByPassing,
+// pass_turn.go, #2881), which walks those steps and fires their
+// triggers.
+func (g *Game) PassTurn() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if g.State != StateActive {
+		return ErrGameNotActive
+	}
+	// #730: gated for the same reason advance_step is, and more so —
+	// this verb walks the cursor through every remaining step of the
+	// turn. A prompt left open behind it is unanswerable in practice.
+	// See choice_gate.go.
+	if c := g.blockingChoiceLocked(); c != nil {
+		return choicePendingErrorLocked(c)
+	}
+	// End the turn through the shared seam so eliminated seats are
+	// skipped, the cleanup sweep runs and per-turn caches clear.
+	g.clearCombatLocked()
+	g.sweepTurnEndLocked()
+	g.beginNextTurnLocked()
+	// Refresh per-turn budgets (undo, future per-turn counters) on
+	// the new active seat — same hook AdvanceStep / PassPriority's
+	// wrap branch run when stepping into untap. The hook also auto-
+	// untaps and advances past Untap (no priority) so the cursor
+	// lands at Upkeep.
+	g.runStepEntryHooksLocked()
+	// CR 117.5 / 704.3: new priority grant → run SBAs.
+	g.runStateChecksLocked()
+	return nil
+}
+
 // Mulligan shuffles the player's entire hand back into their library
 // and draws newHandSize cards. This is the simplified "London
 // mulligan" shape without the card-to-bottom penalty — S08 keeps the

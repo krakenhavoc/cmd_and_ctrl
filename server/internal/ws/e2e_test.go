@@ -881,39 +881,15 @@ func TestE2EScriptedTurn(t *testing.T) {
 		t.Error("after tap: card should be tapped")
 	}
 
-	// 4) Pass turn (#2881): a standing pass for seat 0. The mulligan
-	// window is still open, so nobody holds priority and nothing moves
-	// yet.
-	afterPassTurn := sendActionAndWait(t, conn, protocol.ActionPayload{
+	// 4) Pass turn to seat 1.
+	afterPass := sendActionAndWait(t, conn, protocol.ActionPayload{
 		Type: "pass_turn",
 	})
-	if afterPassTurn.Game.Turn.ActiveSeat != 0 {
-		t.Fatalf("pass_turn with the mulligan window open moved the turn to seat %d", afterPassTurn.Game.Turn.ActiveSeat)
-	}
-
-	// 5) Both seats keep. Seat 0's priority in upkeep is passed for
-	// them at once, and seat 1 passes in each step until the turn is
-	// theirs: every step of seat 0's turn is walked.
-	connB := dialAs(t, wsURL, g.Seats[1].ID)
-	defer connB.Close()
-	readSnapshotFrame(t, connB) // its initial snapshot, before anything else
-	afterKeep := sendActionAndWait(t, conn, protocol.ActionPayload{Type: "keep_hand", Player: seat0})
-	catchUpTo(t, connB, afterKeep.Seq)
-	latest := sendActionAndWait(t, connB, protocol.ActionPayload{Type: "keep_hand", Player: g.Seats[1].ID.String()})
-	for i := 0; i < 64 && latest.Game.Turn.ActiveSeat == 0; i++ {
-		if latest.Game.Turn.PriorityHolder != 1 {
-			t.Fatalf("at %s priority is %d, want seat 1: seat 0's passes stopped",
-				latest.Game.Turn.Step, latest.Game.Turn.PriorityHolder)
-		}
-		latest = sendActionAndWait(t, connB, protocol.ActionPayload{Type: "pass_priority"})
-	}
-	afterPass := catchUpTo(t, conn, latest.Seq)
 	if afterPass.Game.Turn.ActiveSeat != 1 {
 		t.Errorf("after pass_turn: seat=%d, want 1", afterPass.Game.Turn.ActiveSeat)
 	}
-	if afterPass.Game.Turn.Step != "upkeep" || afterPass.Game.Turn.PriorityHolder != 1 {
-		t.Errorf("after pass_turn: step=%q holder=%d, want seat 1's upkeep with priority",
-			afterPass.Game.Turn.Step, afterPass.Game.Turn.PriorityHolder)
+	if afterPass.Game.Turn.Step != "untap" {
+		t.Errorf("after pass_turn: step=%q, want untap", afterPass.Game.Turn.Step)
 	}
 
 	// Final state must match the golden file after UUID normalization.
@@ -951,10 +927,54 @@ func TestE2EScriptedTurn(t *testing.T) {
 	}
 }
 
+// TestE2EEndTurnWalksTheTurn drives the dock's Pass turn (end_turn,
+// #2881) through the real hub: seat 0 sends it while the mulligan
+// window is still open, both seats keep, and from then on seat 0's
+// priority is passed for it inside each commit. Seat 1 still gets
+// priority in every step of seat 0's turn and passes it by hand until
+// the turn is theirs.
+func TestE2EEndTurnWalksTheTurn(t *testing.T) {
+	wsURL, g, cleanup := newE2EServer(t)
+	defer cleanup()
+	seat0, seat1 := g.Seats[0].ID, g.Seats[1].ID
+	connA := dialAs(t, wsURL, seat0)
+	defer connA.Close()
+	readSnapshotFrame(t, connA)
+	connB := dialAs(t, wsURL, seat1)
+	defer connB.Close()
+	readSnapshotFrame(t, connB)
+
+	afterEnd := sendActionAndWait(t, connA, protocol.ActionPayload{Type: "end_turn"})
+	if afterEnd.Game.Turn.ActiveSeat != 0 {
+		t.Fatalf("end_turn with the mulligan window open moved the turn to seat %d", afterEnd.Game.Turn.ActiveSeat)
+	}
+	afterKeep := sendActionAndWait(t, connA, protocol.ActionPayload{Type: "keep_hand", Player: seat0.String()})
+	catchUpTo(t, connB, afterEnd.Seq)
+	catchUpTo(t, connB, afterKeep.Seq)
+	latest := sendActionAndWait(t, connB, protocol.ActionPayload{Type: "keep_hand", Player: seat1.String()})
+	steps := map[string]bool{}
+	for i := 0; i < 64 && latest.Game.Turn.ActiveSeat == 0; i++ {
+		steps[latest.Game.Turn.Step] = true
+		if latest.Game.Turn.PriorityHolder != 1 {
+			t.Fatalf("at %s priority is %d, want seat 1: seat 0's passes stopped",
+				latest.Game.Turn.Step, latest.Game.Turn.PriorityHolder)
+		}
+		latest = sendActionAndWait(t, connB, protocol.ActionPayload{Type: "pass_priority"})
+	}
+	if latest.Game.Turn.ActiveSeat != 1 || latest.Game.Turn.Step != "upkeep" || latest.Game.Turn.PriorityHolder != 1 {
+		t.Fatalf("after end_turn: seat %d step %q holder %d, want seat 1's upkeep with priority",
+			latest.Game.Turn.ActiveSeat, latest.Game.Turn.Step, latest.Game.Turn.PriorityHolder)
+	}
+	for _, s := range []string{"upkeep", "draw", "precombat_main", "begin_combat", "declare_attackers", "end_combat", "postcombat_main", "end"} {
+		if !steps[s] {
+			t.Errorf("seat 1 never had priority in seat 0's %s: the step was skipped", s)
+		}
+	}
+}
+
 // catchUpTo reads conn's frames until the snapshot of commit seq,
-// skipping the snapshots of earlier commits and every other frame
-// (another connection's acks are never sent here, but chat and the
-// like may be). Used when two connections take turns acting.
+// skipping the snapshots of earlier commits and every other frame.
+// Used when two connections take turns acting.
 func catchUpTo(t *testing.T, conn *websocket.Conn, seq uint64) protocol.SnapshotPayload {
 	t.Helper()
 	for {

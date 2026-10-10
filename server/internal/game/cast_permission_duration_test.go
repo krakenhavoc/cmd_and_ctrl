@@ -61,7 +61,7 @@ func TestPermissionUntilEndOfTurnEndsAtThatTurnsCleanup(t *testing.T) {
 	if !castableFromExileBy(g, id, me.ID) {
 		t.Fatal("the grant is live on the turn it was made")
 	}
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if castableFromExileBy(g, id, me.ID) {
@@ -88,7 +88,7 @@ func TestPermissionUntilEndOfYourNextTurnRidesOutThreeOpponents(t *testing.T) {
 		if !castableFromExileBy(g, id, me.ID) {
 			t.Fatalf("the grant died during %s", who)
 		}
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn %d: %v", i, err)
 		}
 	}
@@ -99,7 +99,7 @@ func TestPermissionUntilEndOfYourNextTurnRidesOutThreeOpponents(t *testing.T) {
 	if !castableFromExileBy(g, id, me.ID) {
 		t.Fatal("the grant is live through the whole of your next turn")
 	}
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if castableFromExileBy(g, id, me.ID) {
@@ -119,14 +119,14 @@ func TestPermissionUntilYourNextTurnEndsAsThatTurnBegins(t *testing.T) {
 	id := exiledWithGrant(t, g, me, "Borrowed Bolt", CastPermission{Player: me.ID, Duration: window})
 
 	for i := 0; i < 3; i++ {
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn %d: %v", i, err)
 		}
 		if !castableFromExileBy(g, id, me.ID) {
 			t.Fatalf("the grant died on opponent %d's turn", i+1)
 		}
 	}
-	if err := g.EndTurnNowForTest(); err != nil {
+	if err := g.PassTurn(); err != nil {
 		t.Fatalf("PassTurn: %v", err)
 	}
 	if castableFromExileBy(g, id, me.ID) {
@@ -153,7 +153,7 @@ func TestPermissionNotBeforeSeqIsAFloorUnderAZoneBoundWindow(t *testing.T) {
 	}
 	// Rotate once; the very next turn lifts the CR 702.185a floor.
 	for i := 0; i < len(g.Seats); i++ {
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn %d: %v", i, err)
 		}
 	}
@@ -177,7 +177,7 @@ func TestZoneBoundPermissionEndsOnTheZoneChange(t *testing.T) {
 
 	// Turns do not touch it.
 	for i := 0; i < len(g.Seats)+1; i++ {
-		if err := g.EndTurnNowForTest(); err != nil {
+		if err := g.PassTurn(); err != nil {
 			t.Fatalf("PassTurn %d: %v", i, err)
 		}
 	}
