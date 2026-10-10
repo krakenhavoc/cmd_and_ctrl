@@ -307,7 +307,10 @@ func checkTargetPurposes(name, where string, p game.Purpose, stmt *game.TargetSp
 		if e.HasPlayerAmount() && !clause.Players {
 			fail(fmt.Sprintf("gives a player amount to slot %d, whose clause %q cannot target a player", e.Slot, clause.Label))
 		}
-		if e.Damage != 0 && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
+		if e.DamageIsX && e.Damage != 0 {
+			fail(fmt.Sprintf("sets both Damage and DamageIsX on slot %d", e.Slot))
+		}
+		if (e.Damage != 0 || e.DamageIsX) && !clause.Players && !slices.Contains(clause.Zones, game.ZoneBattlefield) {
 			fail(fmt.Sprintf("deals damage to slot %d, whose clause %q can target neither a player nor a permanent", e.Slot, clause.Label))
 		}
 		if r := e.Returns; !r.IsZero() {
@@ -348,6 +351,13 @@ func RemovalReturning(slot int, r game.TargetReturn) game.TargetPurpose {
 // of clause `slot`: Lightning Bolt is ForTargets(DamageToTarget(0, 3)).
 func DamageToTarget(slot, n int) game.TargetPurpose {
 	return game.TargetPurpose{Slot: slot, Damage: n}
+}
+
+// DamageXToTarget is the target entry for "deals X damage to" the pick
+// of clause `slot`, where X is the announced X (#1944): Chandra,
+// Awakened Inferno's −X is ForTargets(DamageXToTarget(0)).
+func DamageXToTarget(slot int) game.TargetPurpose {
+	return game.TargetPurpose{Slot: slot, DamageIsX: true}
 }
 
 // ModeWithPurpose is a mode bullet with its declared purpose: the

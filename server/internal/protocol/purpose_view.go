@@ -123,6 +123,9 @@ type TargetPurposeView struct {
 	LifeGain int `json:"life_gain,omitempty"`
 	LifeLoss int `json:"life_loss,omitempty"`
 	Damage   int `json:"damage,omitempty"`
+	// DamageIsX: the damage is the spell's or ability's X (#1944);
+	// Damage is then absent.
+	DamageIsX bool `json:"damage_is_x,omitempty"`
 	// Returns is what the target's controller is given when the target
 	// is removed (#2679). Absent when nothing comes back.
 	Returns *TargetReturnView `json:"returns,omitempty"`
@@ -229,7 +232,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		for i, t := range ts {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
-				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage,
+				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX,
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{

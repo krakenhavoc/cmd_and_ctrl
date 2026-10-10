@@ -186,6 +186,11 @@ type TargetPurpose struct {
 	LifeLoss int
 	// Damage is the damage dealt to the target: Lightning Bolt 3.
 	Damage int
+	// DamageIsX is set when the damage dealt to the target is the
+	// spell's or ability's X (#1944: Chandra, Awakened Inferno's −X).
+	// Damage is then zero, and a reader takes the X the move names, as
+	// Sweep.AmountIsX does.
+	DamageIsX bool
 	// Returns is what the target's CONTROLLER is given when the spell
 	// or ability removes the target (#2679): Rapid Hybridization's 3/3
 	// Frog Lizard, Swords to Plowshares' life, Path to Exile's basic
@@ -227,7 +232,7 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0 && t.Returns.IsZero()
+	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero()
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a

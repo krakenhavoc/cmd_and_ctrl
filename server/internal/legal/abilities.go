@@ -290,6 +290,13 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				continue
 			}
 		}
+		// #1944: a −X loyalty cost bounds X by the loyalty there
+		// (CR 606.6). -1 for every other ability.
+		loyaltyCeiling := loyaltyXCeiling(ab.Cost, source.Counters[game.CounterLoyalty], e.opts.MaxX)
+		loyaltyFloor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+		if ab.Cost.LoyaltyX && loyaltyCeiling < loyaltyFloor {
+			continue
+		}
 		if ab.Cost.Tap {
 			if source.Tapped {
 				continue
@@ -589,6 +596,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			continue
 		}
 		budget := e.opts.MaxExpansionPerSource
+		// #1944: each X a −X loyalty cost may announce is its own move
+		// (loyaltyXRungs), so the budget is per rung: every X reaches
+		// as many targets as one fixed cost would.
+		if ab.Cost.LoyaltyX {
+			budget *= loyaltyCeiling - loyaltyFloor + 1
+		}
 		// #764: a modal activated ability announces its modes with
 		// its targets (CR 602.2b), so the enumerator expands the
 		// same product a modal cast does.
@@ -657,9 +670,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// (HELIOS One's "destroy target nonland permanent with
 				// mana value X") tries every X the seat's energy pays
 				// for, floor up, as the mana ladder below does.
-				if ab.Cost.EnergyX && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
+				// #1944: and a −X loyalty cost (Liliana, Defiant
+				// Necromancer's "mana value X") every X the loyalty pays.
+				if (ab.Cost.EnergyX || ab.Cost.LoyaltyX) && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
 					floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
-					for x := floor; x <= energyCeiling; x++ {
+					ceiling := energyCeiling
+					if ab.Cost.LoyaltyX {
+						ceiling = loyaltyCeiling
+					}
+					for x := floor; x <= ceiling; x++ {
 						xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
 						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 						game.BindStepsXForEffect(xs, x)
@@ -750,10 +769,6 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// reads them off the ability. Without this a policy
 		// cannot tell "Pay 7 life: Draw seven cards" from a
 		// free ability and activates itself to death.
-		loyalty := 0
-		if ab.Cost.Loyalty != nil {
-			loyalty = *ab.Cost.Loyalty
-		}
 		for _, ann := range announcements {
 			targets := ann.targets
 			pay := basePay
@@ -829,10 +844,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					}
 					for _, moved := range permanentCostPairs(returnSets, permanentSets, sacs, source.InstanceID, ab.Cost) {
 						rets, perms := moved.returned, moved.exiled
-						for _, taps := range tapSets {
+						for _, tr := range tapsAtRungs(tapSets, loyaltyXRungs(ab.Cost, ann.xValue, loyaltyFloor, loyaltyCeiling)) {
+							taps := tr.taps
 							tapXValue := xValue
 							if game.TapOthersCountFromX(ab.Cost.TapOthers) {
 								tapXValue = len(taps)
+							}
+							// #1944: a −X loyalty cost's X, one move per
+							// value the loyalty pays.
+							if tr.rung >= 0 {
+								tapXValue = tr.rung
 							}
 							// #759: the same #1242 rule for the tapped
 							// permanents — the auto-tapper will not spend a
@@ -895,7 +916,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// four-life activation as free. #1594: and
 								// the computed component is `life`, the
 								// amount the engine will charge.
-								cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
+								cost := withPhyrexianLife(moveCost(life, ab.Cost.LoyaltyDelta(tapXValue)), phyrexianLife)
 								// ADR 0129 §7: the energy this move removes.
 								cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
 								// ADR 0130 §4: and whether it exerts its source.

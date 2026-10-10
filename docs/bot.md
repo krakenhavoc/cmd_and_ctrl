@@ -3211,6 +3211,21 @@ offered while the seat could cast an instant: holding priority, owing
 no prompt, with no prompt stopping the table. The auto-tapper never
 cracks one to pay for a cast.
 
+**A −X loyalty cost is a choice of X** (#1944, [ADR
+0032](decisions/0032-planeswalkers.md)'s amendment of 2026-10-10). A mana
+{X} is offered once, at the largest X the seat can pay, because more X
+only buys more. A −X loyalty cost is the other way round: each point is
+a loyalty counter lost, and the last one loses the planeswalker. So the
+enumerator offers every X from the floor to the loyalty there (CR 606.6),
+one move per X, with `Move.Cost.Loyalty` −X. The heuristic already
+charges `Weights.Loyalty` per counter and the whole permanent for the
+last one. A damage row declared `damage_is_x` (Chandra, Awakened
+Inferno's −X, Jeska's) is priced at the X the move names, by whether it
+kills: so the bot takes the smallest X that kills its target, and a
+bigger X is loyalty spent for nothing. A row with no declared purpose
+keeps the mana-value proxy per point of X, which outweighs the loyalty
+price, so it takes the largest X that keeps the planeswalker alive.
+
 **Energy is priced at a flat amount per counter** ([ADR
 0129](decisions/0129-energy-getting-and-paying-it.md) §7, owner decision
 5). An activation that pays energy is only offered when the seat has it,

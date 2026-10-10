@@ -464,7 +464,8 @@ scope and none is made harder by this change.
   path taken, with one correction: `ActivateLoyalty` was hardened
   rather than retired, because it is still the only way to drive the
   planeswalkers the catalog has never heard of.
-- **A VARIABLE loyalty cost** — Ugin, the Spirit Dragon's "−X: Exile
+- ~~**A VARIABLE loyalty cost**~~ **Shipped** in the amendment of
+  2026-10-10 (#1944), below. Ugin, the Spirit Dragon's "−X: Exile
   each permanent with mana value X or less that's one or more
   colors". `AbilityCost.Loyalty` is a single `*int`, paid down at
   announce and checked against the card's counters by CR 606.6, and
@@ -697,3 +698,59 @@ count is read off a card in another zone.
 "power and toughness each equal to X" on a permanent is a characteristic-defining or static ability and is
 already a `StaticAbility` computing its number at each layer pass. A resolved effect whose count follows the
 board would be a new seam with its own row.
+
+## Amendment (2026-10-10, #1944): a loyalty cost of −X
+
+"What this deliberately does not do" left Ugin's −X out because `DemandsX` read the mana cost and
+nothing else, and a second answer to "what is X" would have split the engine. That reason has since gone:
+#1213, #1421 and ADR 0129 §2 made `DemandsX` a question asked of the COST, and it had seven
+claimants (an {X} in the mana, "Pay X {E}", a count of sacrificed, tapped, discarded or revealed cards). A
+−X loyalty cost is one more claimant of the same one X, not a second mechanism.
+
+**Rules.** CR 107.3a: an X in an activation cost, "[−X]" by name, is chosen and announced as the ability is
+activated; CR 107.3k: it is independent of every other X on the object. CR 606.4: the cost is to remove
+that many loyalty counters. CR 606.6: a negative loyalty cost, "taking into account any additional costs",
+can't be activated unless the permanent has at least that many loyalty counters. (The old comment in
+`ActivateCatalogAbility` cited 606.5 for this; 606.5 is the rule that combines several loyalty costs into
+one, and the citation is corrected.)
+
+**Decisions.**
+
+1. **`AbilityCost.LoyaltyX bool`, beside a zero `Loyalty`.** `Loyalty` stays the marker of a loyalty ability
+   (a pointer, so [0] is real) and the fixed part of the cost; `LoyaltyX` adds "less the announced X".
+   `effects.LoyaltyMinusX()` builds it, and `effects.Register` refuses it without a zero `Loyalty` or beside
+   another X claimant. A bool rather than a sign because no printed loyalty ability costs +X: the
+   catalog's Scryfall dump has 22 planeswalkers with a −X and none with a +X.
+2. **One reading of the cost: `AbilityCost.LoyaltyDelta(x)`.** The counters an activation puts on or takes
+   off at X. `ActivateCatalogAbility` checks CR 606.6 with it (an X above the loyalty is
+   `ErrInsufficientLoyalty`, before anything is paid) and pays it through `payCostCounterLocked`, the
+   cost path the fixed loyalty already used (CR 614.16: no counter doubler applies). `internal/legal`
+   bounds X with the same number, and Way of the Mind Sculptor's "removed two or more loyalty counters"
+   reads it with the X on the ability's stack item.
+3. **`DemandsX` counts it**, so the view (`demands_x`), the enumerator and the client ask for X exactly as
+   for an {X} in a mana cost. The wire adds `loyalty_cost_x` so the client can cap its X picker at the
+   permanent's loyalty, read live, and say "you'll remove X loyalty".
+4. **The enumerator offers every X, not the largest.** A mana {X} is offered once at the largest affordable
+   value because more X only buys more. Here every point of X is a loyalty counter, and the last is the
+   planeswalker, so X is a real choice: one move per X from the floor (`enumeratedXFloor`, so a card whose
+   −X does nothing at 0 declares `XMatters`) to the loyalty, each with its own `MoveCost.Loyalty`. The
+   per-source expansion budget is multiplied by the number of rungs, so every X reaches as many targets as
+   a fixed cost would. A target clause bound by X (Liliana, Defiant Necromancer's "mana value X") is
+   enumerated per X the way ADR 0129 §7 does it for "Pay X {E}".
+5. **The bot's policy is the heuristic's ordinary pricing.** It already charges `Weights.Loyalty` per counter
+   and the whole permanent for the last one. `TargetPurpose.DamageIsX` (`effects.DamageXToTarget`, wire
+   `damage_is_x`) lets a damage row say its damage is the X, and the heuristic reads the move's X into it
+   before pricing the kill, so the smallest lethal X wins. A row with no purpose keeps the mana-value proxy
+   per point of X (0.60 against 0.40 a counter), so it takes the largest X that keeps the planeswalker.
+6. **Not `pay_amount`.** ADR 0129's `pay_amount` / choose-a-number prompt (and its amendment, PR #2869) asks
+   for a number while a spell RESOLVES. A −X is announced before the ability is on the stack, so it rides
+   the activation's existing `x_value` and the existing X picker; nothing is paused.
+
+**Cards.** Chandra, Awakened Inferno, Chandra Nalaar and Jeska, Thrice Reborn ship Full; Chandra, Chill of
+Compliance gains her −X and is Full; Ugin, the Spirit Dragon gains his −X and keeps only the −10's caveat.
+`TestUginHasNoVariableLoyaltyAbility` is retired as this section said it would be. Tests:
+`loyalty_x_cards_test.go` (effects), `loyalty_x_test.go` (legal and heuristic), `abilityX.test.ts`.
+
+**Not done.** The other −X planeswalkers in the dump wait on seams of their own (a spellbook, a static that
+shares loyalty abilities, "mana value X" from a graveyard, a chosen planeswalker name), or are simply not
+yet catalogued.

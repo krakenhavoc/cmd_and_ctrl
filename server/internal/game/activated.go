@@ -188,6 +188,24 @@ type AbilityCost struct {
 	// SorcerySpeed therefore does not need to be set alongside it.
 	Loyalty *int
 
+	// LoyaltyX is a loyalty cost of −X (CR 107.3a, CR 606.4; ADR 0032's
+	// amendment of 2026-10-10, #1944): Chandra, Awakened Inferno's
+	// "−X: Chandra deals X damage to target creature or planeswalker".
+	// The activator announces X with the activation, and the cost
+	// removes that many loyalty counters on top of Loyalty, which is
+	// the printed fixed part and is always 0 on a printed card
+	// (effects.LoyaltyMinusX). DemandsX counts it, so the view, the
+	// enumerator and the client ask for X as for an {X} in Mana.
+	//
+	// CR 606.6 holds the whole cost to the counters: X may not exceed
+	// the loyalty the permanent has (LoyaltyDelta, read by
+	// ActivateCatalogAbility, internal/legal and the client). There is
+	// no +X: no printed loyalty ability costs one, so the field is a
+	// bool for the one sign that exists. effects.Register refuses it
+	// without Loyalty, beside a non-zero Loyalty, and beside any other
+	// component that claims the announced X.
+	LoyaltyX bool
+
 	// Crew is the crew number of a Vehicle's crew ability (CR
 	// 702.122a): "Tap any number of untapped creatures you control
 	// with total power N or more". Zero means "not a crew cost",
@@ -568,8 +586,25 @@ type AbilityCost struct {
 // ADR 0129 §2: "Pay X {E}" (EnergyX) is a third such owner — Sphinx of
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LoyaltyX ||
 		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
+}
+
+// LoyaltyDelta is the loyalty counters an activation of this cost puts
+// on (positive) or removes from (negative) its source when X is
+// announced as x (CR 606.4): the printed amount, less x for a −X cost
+// (LoyaltyX, CR 107.3a). Zero for an ability with no loyalty
+// component, which is also the [0] cost — the caller asks Loyalty !=
+// nil for "is this a loyalty ability".
+func (c AbilityCost) LoyaltyDelta(x int) int {
+	if c.Loyalty == nil {
+		return 0
+	}
+	n := *c.Loyalty
+	if c.LoyaltyX && x > 0 {
+		n -= x
+	}
+	return n
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -1421,11 +1456,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		if g.LoyaltySpentLocked(cardID) {
 			return ErrLoyaltyAlreadyActivated
 		}
-		// CR 606.5: you can't activate a −N ability with fewer than
+		// CR 606.6: you can't activate a −N ability with fewer than
 		// N loyalty counters. Paying down to exactly 0 is legal and
 		// the 704.5i SBA sweeps the permanent afterwards — when it is
 		// a planeswalker, which is the one place that rule does ask.
-		if n := *ab.Cost.Loyalty; n < 0 && source.Counters[CounterLoyalty] < -n {
+		// A −X cost is the same rule at the announced X (#1944): X may
+		// not exceed the loyalty there.
+		if n := ab.Cost.LoyaltyDelta(params.XValue); n < 0 && source.Counters[CounterLoyalty] < -n {
 			return ErrInsufficientLoyalty
 		}
 	}
@@ -1858,7 +1895,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// (Vorinclex, Monstrous Raider) does apply, which is why this
 		// goes through the CR 614 window at all rather than writing the
 		// map directly. ADR 0073's 2026-09-28 amendment, #1710.
-		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
+		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, ab.Cost.LoyaltyDelta(params.XValue)); err != nil {
 			return err
 		}
 		g.recordLoyaltyActivationLocked(cardID)

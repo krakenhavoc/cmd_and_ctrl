@@ -19,18 +19,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // or an activated ability) and empties with the step. The emblem triggers
 // on every spell its owner casts, one draw each.
 //
-// The −X is NOT offered: a loyalty ability whose cost is X has no shape
-// yet (the loyalty-cost-x seam, #1944), the same gap Ugin, the Spirit
-// Dragon ships with. Printing it with a fixed cost would be wrong either
-// way, so the card is a planeswalker with three of its four abilities.
+// The −X is a loyalty cost of X (LoyaltyMinusX, #1944): X is announced
+// with the activation, no more than her loyalty (CR 606.6), and the
+// stun counters read it back. At X = 0 it only taps.
 func init() {
 	Register(Spec{
-		OracleID:     "c3dfa1e2-6785-49a0-a194-fb842a8eb63c",
-		Name:         "Chandra, Chill of Compliance",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The -X ability isn't offered — an ability whose loyalty cost is X has no shape yet.",
-		},
+		OracleID:        "c3dfa1e2-6785-49a0-a194-fb842a8eb63c",
+		Name:            "Chandra, Chill of Compliance",
+		Completeness:    CompletenessFull,
 		StartingLoyalty: 3,
 		Emblem: &EmblemSpec{
 			Label: "Chandra, Chill of Compliance emblem",
@@ -53,6 +49,25 @@ func init() {
 						Produced:     "{U}",
 						Restrictions: []string{ManaRestrictCast, ManaRestrictNotType("Creature")},
 					}.Apply(NewContext(g, item))
+				},
+			},
+			{
+				Label:   "−X: Tap target artifact or creature. Put X stun counters on it.",
+				Cost:    LoyaltyMinusX(),
+				Targets: TargetPermanent("target artifact or creature", Or(Artifact(), Creature())),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					ts := ctx.LegalTargets()
+					if len(ts) == 0 {
+						return nil
+					}
+					if err := (TapTarget{Target: ts[0].ID}).Apply(ctx); err != nil {
+						return err
+					}
+					if x := ctx.X(); x > 0 {
+						return AddCounter{Target: ts[0].ID, Kind: game.CounterStun, N: x}.Apply(ctx)
+					}
+					return nil
 				},
 			},
 			{

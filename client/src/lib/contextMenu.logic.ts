@@ -659,6 +659,8 @@ export interface AbilityCost {
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
+  // #1944: a −X loyalty cost; the X picker holds X under the loyalty.
+  loyalty_cost_x?: boolean;
   // #1690: a "Pay N life" cost component — Greed's printed one, and
   // since #1688 a computed one (War Room, Murderous Betrayal, priced
   // through the controller's board state). Carried by both mana and
