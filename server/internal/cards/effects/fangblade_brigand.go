@@ -18,9 +18,10 @@ func init() {
 	const oracle = "dbd22a65-4ccb-4435-ae27-03a47a86d630"
 	firebreathing := func(name string) ActivatedAbility {
 		return ActivatedAbility{
-			Label:  "{1}{R}: This creature gets +1/+0 and gains first strike until end of turn.",
-			Cost:   ManaCost("{1}{R}"),
-			Effect: thisCreatureUntilEOT(name+" — +1/+0 and first strike", 1, 0, "first strike"),
+			Label:   "{1}{R}: This creature gets +1/+0 and gains first strike until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    ManaCost("{1}{R}"),
+			Effect:  thisCreatureUntilEOT(name+" — +1/+0 and first strike", 1, 0, "first strike"),
 		}
 	}
 	Register(Spec{

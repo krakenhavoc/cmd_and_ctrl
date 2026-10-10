@@ -11,6 +11,7 @@
 # <oracle_id> <card name> <ref> <label> declared=<answers> (<tiers>) fallback=<answers> (<tiers>)
 
 046e25ee-c96d-4cff-93be-f7e3379d713c	Moonblade Shinobi	own:0	Ninjutsu {2}{U} ({2}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)
+0c0845c3-f4b5-444e-8f42-da0c7dbf2841#1	Henrika, Infernal Seer	own:0	{1}{B}{B}: Each creature you control with flying, deathtouch, and/or lifelink gets +1/+0 until end of turn.	declared=pump (stack)	fallback=pump|combat_grant (stack+combat)
 1f3c2b00-0000-4ae1-9650-9553accac52e	Ninja of the Deep Hours	own:0	Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)
 354defd2-f63f-4a48-9fd4-2526b3878a84	Ingenious Infiltrator	own:0	Ninjutsu {U}{B} ({U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)
 6d03971a-8365-449a-8fbe-07b5b9bb42dc	Prosperous Thief	own:0	Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)

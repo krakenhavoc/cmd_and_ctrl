@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Leashling — Artifact Creature — Dog {6}, 3/3:
 //
 //	"Put a card from your hand on top of your library: Return this
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Leashling",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "Put a card from your hand on top of your library: Return this creature to its owner's hand.",
-			Cost:   PutACardFromHandOnTop(),
-			Effect: returnThisPermanentToOwnersHand,
+			Label:   "Put a card from your hand on top of your library: Return this creature to its owner's hand.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    PutACardFromHandOnTop(),
+			Effect:  returnThisPermanentToOwnersHand,
 		}},
 	})
 }

@@ -25,8 +25,9 @@ func init() {
 		XMatters:     true,
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, AmountIsX: true, Partial: true}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, Reveal X red cards from your hand, Sacrifice this creature: This creature deals X damage to each creature without flying.",
-			Cost:  Plus(ManaCost("{2}"), RevealX("X red cards", "R"), SacrificeThis()),
+			Label:   "{2}, Reveal X red cards from your hand, Sacrifice this creature: This creature deals X damage to each creature without flying.",
+			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Cost:    Plus(ManaCost("{2}"), RevealX("X red cards", "R"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				x := ctx.X()

@@ -58,7 +58,8 @@ func init() {
 			ProliferateTwice("Tekuthal, Inquiry Dominus — proliferate twice"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus.",
+			Label:   "{1}{U/P}{U/P}, Remove three counters from among other artifacts, creatures, and planeswalkers you control: Put an indestructible counter on Tekuthal, Inquiry Dominus.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
 			Cost: Plus(
 				ManaCost("{1}{U/P}{U/P}"),
 				RemoveCountersAmongOthers("", 3, "other artifacts, creatures, and planeswalkers you control",

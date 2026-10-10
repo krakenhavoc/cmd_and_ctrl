@@ -33,8 +33,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Pay {E}{E}{E}{E}: Creatures you control get +1/+0 and gain haste until end of turn.",
-			Cost:  PayEnergy(4),
+			Label:   "Pay {E}{E}{E}{E}: Creatures you control get +1/+0 and gain haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    PayEnergy(4),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				yours := And(Creature(), YouControl())

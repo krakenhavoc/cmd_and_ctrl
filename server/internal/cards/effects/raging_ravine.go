@@ -63,8 +63,9 @@ func init() {
 			Text: "Whenever this creature attacks, put a +1/+1 counter on it.",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{R}{G}: Until end of turn, this land becomes a 3/3 red and green Elemental creature with \"Whenever this creature attacks, put a +1/+1 counter on it.\" It's still a land.",
-			Cost:  ManaCost("{2}{R}{G}"),
+			Label:   "{2}{R}{G}: Until end of turn, this land becomes a 3/3 red and green Elemental creature with \"Whenever this creature attacks, put a +1/+1 counter on it.\" It's still a land.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerAnimate},
+			Cost:    ManaCost("{2}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {
 					return nil

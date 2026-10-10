@@ -32,7 +32,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{G}: This creature deals 1 damage to each creature with flying and each player. Any player may activate this ability.",
 			// ADR 0126 §6: only creatures with flying.
-			Purpose:   game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
+			Purpose:   game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
 			Cost:      ManaCost("{G}"),
 			AnyPlayer: true,
 			Effect:    thisDealsDamageToEachCreatureMatchingAndEachPlayer(HasKeyword("flying"), 1),

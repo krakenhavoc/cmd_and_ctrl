@@ -31,9 +31,10 @@ func init() {
 			SpellsYouControlCantBeCountered("Green spells you control can't be countered.", OfColor("G")),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a Dinosaur in addition to its other creature types.",
-			Cost:   ManaCost("{4}{G}{G}"),
-			Effect: allosaurusShepherdElvesBecomeDinosaurs,
+			Label:   "{4}{G}{G}: Until end of turn, each Elf creature you control has base power and toughness 5/5 and becomes a Dinosaur in addition to its other creature types.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerAnimate},
+			Cost:    ManaCost("{4}{G}{G}"),
+			Effect:  allosaurusShepherdElvesBecomeDinosaurs,
 		}},
 	})
 }

@@ -61,6 +61,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "Exhaust — {4}{R}{G}: Creatures and Vehicles you control gain trample until end of turn. " +
 				"Put two +1/+1 counters on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
 			Exhaust: true,
 			Cost:    ManaCost("{4}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
