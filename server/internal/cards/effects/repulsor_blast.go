@@ -21,6 +21,7 @@ func init() {
 		Completeness:  CompletenessFull,
 		OptionalCosts: []game.AdditionalCost{Teamwork(2)},
 		Targets:       TargetCreature("target creature"),
+		Purpose:       ForTargets(DamageToTarget(0, 5)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			t, ok := ctx.ClauseTarget(0)
 			if !ok {

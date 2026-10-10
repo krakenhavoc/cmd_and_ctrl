@@ -434,6 +434,53 @@ func TestCapLegalMovesKeepsTargetsStackDistinct(t *testing.T) {
 	}
 }
 
+// TestCapLegalMovesKeepsHasTargetsDistinct is #2853: an ability with a
+// targeted announcement, an interacting one and a value one is three
+// moves to smart autopass, so the cap keeps one of each rather than
+// whichever came first. #2871 adds a combat ability and a defender-only
+// one.
+func TestCapLegalMovesKeepsHasTargetsDistinct(t *testing.T) {
+	source := uuid.New()
+	moves := make([]LegalMoveView, 0, legalMovesWireCap+3)
+	for i := 0; i <= legalMovesWireCap; i++ {
+		moves = append(moves, LegalMoveView{
+			Type: legal.TypeCastSpell, Kind: legal.KindCast,
+			Label: fmt.Sprintf("filler %d", i), Source: uuid.New(),
+		})
+	}
+	moves = append(moves,
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "draw mode", Source: source},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "ping mode", Source: source, HasTargets: true},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "shield mode", Source: source, Interacts: true},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "fly mode", Source: source, CombatInteracts: true},
+		LegalMoveView{Type: legal.TypeActivateAbility, Kind: legal.KindActivate, Label: "token mode", Source: source, CombatInteracts: true, CombatDefenderOnly: true},
+	)
+
+	out, _ := capLegalMoves(moves)
+	var sawUntargeted, sawTargeted, sawInteracts, sawCombat, sawDefender bool
+	for _, m := range out {
+		if m.Source != source {
+			continue
+		}
+		switch {
+		case m.HasTargets:
+			sawTargeted = true
+		case m.Interacts:
+			sawInteracts = true
+		case m.CombatDefenderOnly:
+			sawDefender = true
+		case m.CombatInteracts:
+			sawCombat = true
+		default:
+			sawUntargeted = true
+		}
+	}
+	if !sawUntargeted || !sawTargeted || !sawInteracts || !sawCombat || !sawDefender {
+		t.Errorf("cap dropped one of %s's five announcements: untargeted kept=%v, targeted kept=%v, interacts kept=%v, combat kept=%v, defender kept=%v (%v)",
+			source, sawUntargeted, sawTargeted, sawInteracts, sawCombat, sawDefender, labelsOf(out))
+	}
+}
+
 // BenchmarkViewOfGame measures the projection on the same busy
 // four-player board, with and without the enumeration.
 //

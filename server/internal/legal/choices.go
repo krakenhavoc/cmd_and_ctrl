@@ -197,6 +197,12 @@ func (e *enumerator) choiceMoves() bool {
 				if v, ok := c.ManaAmounts[color]; ok {
 					n = v
 				}
+				// #2558: one colour of "N mana of different colors" adds
+				// nothing on its own until the last is named.
+				if c.ManaDifferent > 0 {
+					e.addChoice(c, reason+": name {"+color+"}", p)
+					continue
+				}
 				e.addChoice(c, reason+": add "+strings.Repeat("{"+color+"}", n), p)
 			}
 
@@ -379,21 +385,21 @@ func (e *enumerator) choiceMoves() bool {
 
 		case game.PendingChoicePayAmount:
 			// ADR 0129 §3 (owner decision 3): nothing, the smallest
-			// payment, the card's own threshold and the ceiling, so a
-			// 50-energy prompt is at most four moves and not 51. Every one is within the bounds
-			// the engine validates against.
+			// payment, the card's own threshold, its marks and the
+			// ceiling, so a 50-energy prompt is at most four moves and
+			// not 51, and a number with no ceiling (ADR 0129's
+			// amendment of 2026-10-09) is a handful rather than
+			// unbounded. Every one is within the bounds the engine
+			// validates against.
 			pa := c.PayAmount
 			if pa == nil {
 				continue
 			}
-			for _, n := range payAmountOffers(pa) {
+			for i, n := range payAmountOffers(pa) {
 				amount := n
 				p := base()
 				p.Amount = &amount
-				label := fmt.Sprintf("%s: pay %d {E}", reason, amount)
-				if amount == 0 {
-					label = reason + ": pay nothing"
-				}
+				label, cost := payAmountMove(reason, pa, amount)
 				m := Move{
 					Type:   TypeResolveChoice,
 					Player: e.seat,
@@ -401,10 +407,11 @@ func (e *enumerator) choiceMoves() bool {
 					Label:  label,
 					Source: c.Source,
 					Params: mustJSON(p),
-					Cost:   withEnergy(nil, amount),
-					// Paying nothing is the one answer the engine
-					// can never refuse.
-					AlwaysLegal: amount == 0,
+					Cost:   cost,
+					// The first offer is nothing for a payment, which
+					// the engine can never refuse, and the floor for a
+					// number that is not paid, which it can't either.
+					AlwaysLegal: i == 0,
 				}
 				e.add(m)
 			}
@@ -660,9 +667,10 @@ func (e *enumerator) choiceMoves() bool {
 			// seat — Torment of Hailfire's three-way question, and
 			// the pile a Fact or Fiction chooser takes.
 			//
-			// ResolveOptionPick validates the INDEX and nothing else,
-			// so every offered option is an answer the engine will
-			// accept. The legality lives at queue time: an effect
+			// ResolveOptionPick validates the INDEX and, for an option
+			// that costs mana (#2854), the payment; nothing else. So
+			// every free option is an answer the engine will accept.
+			// The legality lives at queue time: an effect
 			// builds the list out of what this seat can actually do.
 			// So every option is offered, in the card's printed order,
 			// and the FIRST is the always-legal way out — the kind's
@@ -688,6 +696,25 @@ func (e *enumerator) choiceMoves() bool {
 					e.addAlwaysLegalChoice(c, reason+": "+label, p)
 					continue
 				}
+				// #2854: an option that costs mana is paid by the
+				// engine when it is chosen, and refused if it cannot
+				// be. The queue offered only the ones the chooser could
+				// pay, but the board can move before the answer, so
+				// each is asked again here through the probe every
+				// pay_unless move asks (zero spend context, matching
+				// payCostLocked) and left out when it can no longer be
+				// paid (#544). It carries its price as MoveCost.Mana.
+				price := moveCost(opt.LifeCost, 0)
+				if opt.ManaCost != "" {
+					cost, err := game.ParseCost(opt.ManaCost)
+					if err != nil || !e.canPay(cost, 0, game.ManaSpendContext{}) {
+						continue
+					}
+					if price == nil {
+						price = &MoveCost{}
+					}
+					price.Mana = opt.ManaCost
+				}
 				e.add(Move{
 					Type:   TypeResolveChoice,
 					Player: e.seat,
@@ -695,7 +722,7 @@ func (e *enumerator) choiceMoves() bool {
 					Label:  reason + ": " + label,
 					Source: c.Source,
 					Params: mustJSON(p),
-					Cost:   moveCost(opt.LifeCost, 0),
+					Cost:   price,
 				})
 			}
 
@@ -888,6 +915,27 @@ func (e *enumerator) choiceMoves() bool {
 					Params: mustJSON(p),
 					Cost:   moveCost(c.LifeCost, 0),
 				})
+			}
+
+		case game.PendingChoiceEntryReadAhead:
+			// Read ahead (CR 702.155b, #2123): the chapter the Saga
+			// starts on, one answer per chapter. ResolveEntryReadAhead
+			// accepts every one, and chapter I — the lore count an entry
+			// that cannot ask takes, and the one that skips nothing — is
+			// the always-legal answer.
+			for i, opt := range c.PickOptions {
+				p := base()
+				idx := i
+				p.OptionIndex = &idx
+				label := opt.Label
+				if label == "" {
+					label = "chapter " + strconv.Itoa(i+1)
+				}
+				if i == 0 {
+					e.addAlwaysLegalChoice(c, reason+": "+label, p)
+					continue
+				}
+				e.addChoice(c, reason+": "+label, p)
 			}
 
 		case game.PendingChoiceEntryRiot:

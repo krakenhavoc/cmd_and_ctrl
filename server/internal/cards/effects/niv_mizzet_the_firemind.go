@@ -40,6 +40,7 @@ func init() {
 				return ev.Actor == source.Controller
 			},
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Key:     "Niv-Mizzet, the Firemind — deal 1 damage to any target",
 			Effect:  sourceDealsDamageToEachLegalTarget(1),
 		}},

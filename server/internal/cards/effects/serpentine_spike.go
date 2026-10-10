@@ -31,6 +31,7 @@ func init() {
 			Distinct(TargetCreature("another target creature")),
 			Distinct(TargetCreature("a third target creature")),
 		),
+		Purpose: ForTargets(DamageToTarget(0, 2), DamageToTarget(1, 3), DamageToTarget(2, 4)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var steps []damageStep
 			for slot, amount := range []int{2, 3, 4} {

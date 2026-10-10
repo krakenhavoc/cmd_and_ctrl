@@ -208,6 +208,39 @@ type TriggeredAbility struct {
 	// opponent stopped needing the flag. No catalog row sets it today.
 	TargetsFromReadsBoard bool
 
+	// SourceBlind records that this row's Effect reads nothing of its
+	// stack item but the controller: not its source object, not its
+	// trigger context, not its targets, modes or Params. Two items of
+	// such a row with the same controller are then one effect queued
+	// twice, so the CR 603.3b order between them cannot change the game
+	// and seatNeedsTriggerOrder skips the prompt for a batch of them
+	// (#1968, ADR 0018's #1968 amendment).
+	//
+	// ENGINE-OWNED, like StackItem.Commutes. A card file never sets it:
+	// the catalog registry computes it as it files each definition
+	// (effects.fileDef) and overwrites whatever the row carried. It is
+	// true only for a row with no Build, no target or mode clause, whose
+	// Effect is an effects.Do of primitives on the registry's
+	// source-blind list. Anything else — a hand-written closure, a
+	// primitive that reads or acts through its source — is false and
+	// keeps asking.
+	SourceBlind bool
+
+	// Footprint is what this row's Effect does, step by step, in the
+	// declared vocabulary the trigger-order independence check reads
+	// (#2884, trigger_independence.go, ADR 0018's #2884 amendment). Nil
+	// means the engine cannot describe the effect, and a batch with such
+	// an item keeps its CR 603.3b prompt.
+	//
+	// ENGINE-OWNED, like SourceBlind: the catalog registry derives it as
+	// it files each definition (effects.classifyFootprint), from a row
+	// with no "you may" and no mode clause whose Effect is an
+	// effects.Do of primitives that each declare a step. A row with a
+	// Build gets one too; the check accepts an item it built only when
+	// that item carries nothing the footprint does not read. A card file
+	// never sets it, and the registry overwrites whatever a row carried.
+	Footprint []FootprintStep
+
 	// row is the catalog identity the registry stamped on this row
 	// (IdentifyCatalogRows): the key whose Triggered list holds it and
 	// its index there. Zero for a row the catalog did not register — an

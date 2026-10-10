@@ -32,6 +32,8 @@ func init() {
 				return b17OpponentsCreatureAttackedYou(ev, source, g)
 			},
 			Key: "Kazuul — a 3/3 Ogre unless the attacker pays {3}",
+			// What a decline gives Kazuul's controller (ADR 0126 §6).
+			Purpose: game.Purpose{Tokens: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return PayUnless{
 					Chooser:  item.Trigger.Event.Actor,

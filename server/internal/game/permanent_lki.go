@@ -160,6 +160,12 @@ type PermanentInfo struct {
 	ChosenColor string `json:"chosenColor,omitempty"`
 	NamedTribe  string `json:"namedTribe,omitempty"`
 
+	// ChosenNumber is the number chosen for it as it entered
+	// (Card.ChosenNumber, #1941), as it last existed: Phyrexian
+	// Processor's token is still the size of the life paid when the
+	// Processor is sacrificed in response to its own ability (CR 608.2h).
+	ChosenNumber int `json:"chosenNumber,omitempty"`
+
 	// ManaValue is the permanent's mana value as it last existed on the
 	// battlefield (#1600): Food Chain's "1 plus the exiled creature's
 	// mana value". Read off the card's mana cost while it was a
@@ -182,6 +188,14 @@ type PermanentInfo struct {
 	// creature to a graveyard, where the designation is gone (CR
 	// 400.7); only this record remembers it.
 	Suspected bool `json:"suspected,omitempty"`
+
+	// Renowned is whether it was renowned (CR 702.112b) as it last
+	// existed on the battlefield (#2049). "Whenever this creature
+	// attacks, if it's renowned" (Consul's Lieutenant) and "if this
+	// creature is renowned" (Scab-Clan Berserker) re-check the
+	// condition as they resolve (CR 603.4), and a source that has left
+	// by then is read as it last existed (CR 608.2h).
+	Renowned bool `json:"renowned,omitempty"`
 
 	// Attacking is whether it was an attacking creature (CR 508.1k) as
 	// it last existed on the battlefield, and Enchanted whether an Aura
@@ -228,9 +242,11 @@ func permanentInfoOf(c *Card) PermanentInfo {
 		CraftedWith:    cloneObjectRefs(c.CraftedWith),
 		ChosenColor:    c.ChosenColor,
 		NamedTribe:     c.NamedTribe,
+		ChosenNumber:   c.ChosenNumber,
 		ManaValue:      permanentManaValue(c),
 		RingBearer:     IsRingBearerOf(*c, c.Controller),
 		Suspected:      c.Suspected,
+		Renowned:       c.Renowned,
 		Attacking:      c.AttackingTarget != uuid.Nil,
 		Blocking:       c.BlockedAttackers(),
 	}

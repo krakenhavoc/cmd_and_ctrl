@@ -20,6 +20,7 @@ func init() {
 			Label:   "{T}: This artifact deals 1 damage to target Spirit creature. If that creature would die this turn, exile it instead.",
 			Cost:    TapCost(),
 			Targets: TargetCreature("target Spirit creature", Subtype("Spirit")),
+			Purpose: ForTargets(DamageToTarget(0, 1)),
 			Effect:  abilityBody(damageFirstTargetExileIfItDies(fixedAmount(1))),
 		}},
 	})

@@ -60,6 +60,34 @@ type ParsedCost struct {
 	// XValue to produce the total generic-mana demand.
 	XSlots int
 
+	// XReduced is generic mana a cost reduction will take off the mana
+	// announced for {X} (#2701). CR 601.2f totals the cost with X at its
+	// announced value (CR 107.3a) before it takes the reductions off, and
+	// CR 118.7a lets a generic reduction eat any generic mana in that
+	// total — X's included. So a {X}{G} spell announced at X = 3 under a
+	// {2} reduction costs {1}{G}.
+	//
+	// The pricer cannot fold X into Generic, because it often runs
+	// before X is known: the legal-move enumerator prices a cost once
+	// and then searches for the largest affordable X against it, and an
+	// activation's row is priced before the activator picks X. So
+	// reduceGeneric spends the printed generic first and puts what is
+	// left of the reduction here, and every reader of "how much generic
+	// does this cost at X = x" asks GenericWithX, which takes it off
+	// XSlots*x and stops at zero (a reduction never reaches a coloured
+	// symbol, CR 118.7a, and never goes below {0}, CR 601.2f).
+	//
+	// It lowers what is PAID, never X itself: the announced X on the
+	// stack item, the mana value on the stack (CR 202.3e) and anything
+	// that reads "the value of X" are untouched. Like SpendOnly,
+	// String() and ManaValue() ignore it, so a row priced before X is
+	// announced still reads {X} — an honest upper bound.
+	//
+	// The printed generic goes first so that a "Spend only black mana
+	// on X" restriction (spend_only.go) keeps as much of the cost
+	// restricted as it can: the weaker direction for the payer.
+	XReduced int
+
 	// HasPhyrexian is true if any Phyrexian token was parsed — {W/P}
 	// or a hybrid Phyrexian {W/U/P} (CR 107.4). The "pay 2 life
 	// instead" half is announced on the cast
@@ -250,6 +278,39 @@ func (c ParsedCost) String() string {
 	return b.String()
 }
 
+// XMana is the generic mana the {X} symbols ask for at the announced
+// x, less what a cost reduction took off them (XReduced, #2701), and
+// never below zero. A negative x reads as zero.
+func (c ParsedCost) XMana(x int) int {
+	if x < 0 {
+		x = 0
+	}
+	n := c.XSlots*x - c.XReduced
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// GenericWithX is the whole generic demand of the cost at the
+// announced x: the generic component plus XMana. The one way every
+// payment solver, affordability probe and fold reads it, so none of
+// them can forget XReduced.
+func (c ParsedCost) GenericWithX(x int) int {
+	return c.Generic + c.XMana(x)
+}
+
+// SettleX is the cost with X settled at the announced x: XMana(x)
+// joins Generic, and XSlots and XReduced are cleared. Solving the
+// result at any X is solving `c` at x. Pure.
+func (c ParsedCost) SettleX(x int) ParsedCost {
+	out := c
+	out.Generic = c.GenericWithX(x)
+	out.XSlots = 0
+	out.XReduced = 0
+	return out
+}
+
 // Empty reports whether the cost has nothing left to pay — no
 // generic mana, no {X}, no colored requirement. A cost modifier can
 // discount a mana ability's own component all the way to this
@@ -417,6 +478,45 @@ type ProducedManaEntry struct {
 	// into three ordinary {G} slots, so nothing downstream of the
 	// parser has to learn about amounts for the common case.
 	Amounts map[string]int
+
+	// Distinct is N for "Add N mana of different colors" (#2558):
+	// the controller picks N DIFFERENT colours from Options and the
+	// slot adds one mana of each. Zero on every other slot, which picks
+	// one colour (or, with Amounts, N of one colour).
+	//
+	// It is one slot rather than N pipe slots because the constraint
+	// runs ACROSS the picks: "{W|U|B|R|G}{W|U|B|R|G}" answers each pick
+	// independently and would add {U}{U}, which is stronger than the
+	// printed card (#259). A reader that has not learned the field
+	// treats the slot as one ordinary pick and adds ONE mana — the
+	// weaker direction, never the stronger one.
+	//
+	// Written ":N" after the options: "{W|U|B|R|G:2}". The parser
+	// refuses a count below two, an option with an amount, colourless
+	// (not a colour, CR 106.1a), and fewer options than N; exactly N
+	// options is no choice at all and expands to one fixed slot each.
+	// Only a multi-option slot carries it, so len(Options) > Distinct.
+	Distinct int
+}
+
+// DifferentColors reports whether the slot is an "N mana of different
+// colors" pick (#2558): Distinct colours, one mana each.
+func (e ProducedManaEntry) DifferentColors() bool {
+	return e.Distinct >= 2
+}
+
+// DistinctCount is how many different colours the slot picks given the
+// colours actually on offer: Distinct, or fewer when a narrowing has
+// left fewer options than that (CR 609.3, as much as possible). Zero
+// for a slot that is not a different-colours pick.
+func (e ProducedManaEntry) DistinctCount(options []string) int {
+	if !e.DifferentColors() {
+		return 0
+	}
+	if len(options) < e.Distinct {
+		return len(options)
+	}
+	return e.Distinct
 }
 
 // AmountFor is how many mana this slot adds when `color` is picked.
@@ -452,6 +552,8 @@ func (e ProducedManaEntry) OneColorAmounts() bool {
 //	"{G3}"            → expanded to three {G} slots
 //	"{G0|U2}"         → a zero-amount option is dropped, so this is
 //	                     two {U} slots
+//	"{W|U|B|R|G:2}"   → one pick of two DIFFERENT colours, one mana
+//	                     each (Firemind Vessel, #2558); see Distinct
 //
 // A count follows the colour letter inside the brace. It is a
 // produced-mana extension only — ParseCost has no such form, since a
@@ -493,6 +595,19 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 			buf[j] = b
 		}
 		u := string(buf)
+		// #2558: ":N" closes a different-colours slot.
+		distinct := 0
+		if k := strings.LastIndexByte(u, ':'); k >= 0 {
+			if k+1 == len(u) || !allDigits(u[k+1:]) {
+				return nil, fmt.Errorf("produced mana: bad different-colors count in %q", s)
+			}
+			v, err := strconv.Atoi(u[k+1:])
+			if err != nil || v < 2 {
+				return nil, fmt.Errorf("produced mana: a different-colors count must be at least 2 in %q", s)
+			}
+			distinct = v
+			u = u[:k]
+		}
 		var options []string
 		amounts := map[string]int{}
 		counted := false
@@ -529,6 +644,26 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 			}
 		}
 		i = end + 1
+		if distinct > 0 {
+			if counted {
+				return nil, fmt.Errorf("produced mana: a different-colors slot takes no amounts in %q", s)
+			}
+			if containsColor(options, "C") {
+				return nil, fmt.Errorf("produced mana: colorless is not a color in %q", s)
+			}
+			switch {
+			case len(options) < distinct:
+				return nil, fmt.Errorf("produced mana: %d different colors from %d options in %q", distinct, len(options), s)
+			case len(options) == distinct:
+				// Every option is taken: no choice, one fixed slot each.
+				for _, c := range options {
+					out = append(out, ProducedManaEntry{Options: []string{c}})
+				}
+			default:
+				out = append(out, ProducedManaEntry{Options: options, Distinct: distinct})
+			}
+			continue
+		}
 		switch {
 		case len(options) == 0:
 			// Every option counted zero: the slot adds nothing.

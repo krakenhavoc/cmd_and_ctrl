@@ -63,6 +63,13 @@ import (
 // reduceGeneric is deliberately the only place in the engine that
 // knows how to spend a reduction.
 //
+// The mana announced for {X} is generic mana in that total (CR 107.3a:
+// on the stack X "equals the announced value"), so a reduction the
+// printed generic cannot absorb comes off it (#2701). The pricer may
+// run before X is announced, so that part is kept on
+// ParsedCost.XReduced and taken off XSlots*x when the cost is solved
+// (ParsedCost.GenericWithX). X itself is never lowered.
+//
 // (The sprint brief cited "a floor of {1} per CR 117.13". There is
 // no such rule: CR 117 is timing and priority, and the real floor is
 // zero generic mana with coloured requirements untouched, which is
@@ -416,6 +423,21 @@ type CostModifier struct {
 	// start taxing a foretell, and Ranar's clause can never start
 	// discounting an ordinary cast.
 	SpecialActions bool
+
+	// Eminence declares that this modifier works while its card is in
+	// its owner's command zone as well as on the battlefield — "Eminence —
+	// As long as The Ur-Sphinx is in the command zone or on the
+	// battlefield, other Sphinx spells you cast cost {1} less to cast."
+	// ADR 0140.
+	//
+	// A modifier without the flag is a battlefield static and does
+	// nothing from the command zone (CR 113.6: an ability functions only
+	// on the battlefield unless it says otherwise). With it, the
+	// modifier is gathered from every seat's command zone, bound with
+	// that seat as its controller, and never from a hand, library,
+	// graveyard or exile. Use the effects.Eminence constructor rather
+	// than setting it by hand.
+	Eminence bool
 }
 
 // UnitProblem says why a modifier's Unit cannot be applied, or ""
@@ -515,6 +537,55 @@ type boundCostModifier struct {
 	source   Card
 }
 
+// pricesAnnouncement reports whether this modifier prices the kind of
+// announcement q describes. #1184, widened by #1319: a cast, an
+// activation and a special action are three different announcements,
+// and a modifier prices exactly one of them — never the other two. See
+// CostModifier.Activations and CostModifier.SpecialActions.
+func (m CostModifier) pricesAnnouncement(q CostQuery) bool {
+	switch {
+	case q.Ability != nil:
+		return m.Activations
+	case q.SpecialAction != nil:
+		return m.SpecialActions
+	default:
+		return !m.Activations && !m.SpecialActions
+	}
+}
+
+// appendEminenceCostModifiersLocked adds the Eminence modifiers of every
+// card in a seat's command zone (ADR 0140). The source is bound with the
+// zone's owner as its controller: a card in the command zone carries no
+// controller of its own, and "you" in the printed clause is the player
+// whose command zone it is.
+//
+// Caller must hold g.mu.
+func (g *Game) appendEminenceCostModifiersLocked(out []boundCostModifier, q CostQuery) []boundCostModifier {
+	if CatalogCostModifiers == nil {
+		return out
+	}
+	for _, p := range g.Seats {
+		if p == nil || p.Command == nil {
+			continue
+		}
+		for i := range p.Command.Cards {
+			mods := costModifiersOf(&p.Command.Cards[i])
+			if len(mods) == 0 {
+				continue
+			}
+			src := p.Command.Cards[i]
+			src.Controller = p.ID
+			for _, m := range mods {
+				if !m.Eminence || !m.pricesAnnouncement(q) {
+					continue
+				}
+				out = append(out, boundCostModifier{modifier: m, source: src})
+			}
+		}
+	}
+	return out
+}
+
 // activeCostModifiersLocked collects every cost modifier that bears
 // on this cast — one entry per (battlefield permanent, declared
 // modifier) pair, then the spell's own self modifiers.
@@ -556,29 +627,20 @@ func (g *Game) activeCostModifiersLocked(q CostQuery) []boundCostModifier {
 			}
 			src := g.Battlefield.Cards[i]
 			for _, m := range mods {
-				// #1184, widened by #1319: a cast, an activation and a
-				// special action are three different announcements,
-				// and a modifier prices exactly one of them — never
-				// the other two. See CostModifier.Activations and
-				// CostModifier.SpecialActions.
-				switch {
-				case q.Ability != nil:
-					if !m.Activations {
-						continue
-					}
-				case q.SpecialAction != nil:
-					if !m.SpecialActions {
-						continue
-					}
-				default:
-					if m.Activations || m.SpecialActions {
-						continue
-					}
+				if !m.pricesAnnouncement(q) {
+					continue
 				}
 				out = append(out, boundCostModifier{modifier: m, source: src})
 			}
 		}
 	}
+	// ADR 0140: eminence. A cost modifier that declares Eminence also
+	// works while its card is in its owner's command zone (The Ur-Sphinx:
+	// "As long as this is in the command zone or on the battlefield,
+	// other Sphinx spells you cast cost {1} less"). Nothing else a
+	// command-zone card says works there, so a modifier without the flag
+	// is skipped, and a card in any other zone is never asked.
+	out = g.appendEminenceCostModifiersLocked(out, q)
 	// #1184: an ability's cost is not its source's cost, and #1319
 	// widens the same fact to a special action's. The self slot is
 	// "THIS SPELL costs {N} less to cast" (CR 113.6d) and is about the
@@ -646,6 +708,19 @@ func (g *Game) CastPriceReadsTargetsForEffect(card Card) bool {
 		for _, m := range CatalogCostModifiers(CatalogAbilityKey(g.Battlefield.Cards[i])) {
 			if m.ReadsTargets {
 				return true
+			}
+		}
+	}
+	// ADR 0140: an eminence modifier in a command zone prices casts too.
+	for _, p := range g.Seats {
+		if p == nil || p.Command == nil {
+			continue
+		}
+		for i := range p.Command.Cards {
+			for _, m := range CatalogCostModifiers(CatalogAbilityKey(p.Command.Cards[i])) {
+				if m.Eminence && m.ReadsTargets {
+					return true
+				}
 			}
 		}
 	}
@@ -1151,12 +1226,22 @@ func increaseBy(cost ParsedCost, n int, unit *ParsedCost) ParsedCost {
 //
 // The one rule this function exists to keep: a reduction that
 // overshoots is not carried forward and does not start eating {B}.
+//
+// The generic mana announced for {X} is generic mana in the total
+// cost too (CR 107.3a, 601.2f, 118.7a; #2701), so what the printed
+// generic cannot absorb is kept on XReduced for a cost with {X}, and
+// comes off XSlots*x when the cost is solved at the announced X
+// (ParsedCost.GenericWithX). It is still never carried past the X:
+// GenericWithX stops at zero. A cost with no {X} drops the rest.
 func reduceGeneric(cost ParsedCost, n int) ParsedCost {
 	if n <= 0 {
 		return cost
 	}
 	out := cost
 	if n >= out.Generic {
+		if out.XSlots > 0 {
+			out.XReduced += n - out.Generic
+		}
 		out.Generic = 0
 		return out
 	}
@@ -1237,8 +1322,12 @@ func (c ParsedCost) ManaValueWithX(x int) int {
 // (see ColorRequirement), which is the nonhybrid equivalent the
 // engine announces on the caster's behalf (CR 601.2b). A cost-setting
 // effect (Trinisphere) measures this, not the mana value.
+//
+// A reduction already taken off the X (XReduced, #2701) is not
+// charged, so it is not counted: Trinisphere measures what the spell
+// "would cost" after every reduction.
 func (c ParsedCost) totalManaWithX(x int) int {
-	return c.Generic + c.XSlots*x + len(c.Required)
+	return c.GenericWithX(x) + len(c.Required)
 }
 
 // ManaValue is the card's printed mana value, or zero when the cost

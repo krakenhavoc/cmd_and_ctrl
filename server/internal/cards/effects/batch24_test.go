@@ -432,75 +432,119 @@ func TestB24SoulsFireBitesWithACreatureYouControl(t *testing.T) {
 	}
 }
 
-func TestB24LichKnightsConquestSacrificesThatManyAndReanimates(t *testing.T) {
+func TestB24LichKnightsConquestSacrificesAnyNumberThenChoosesThatMany(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	deadA := b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{1}{G}")
-	deadB := b17GraveyardCard(me, "Dead Golem", "Artifact Creature — Golem", "{4}")
 	deadC := b17GraveyardCard(me, "Dead Wurm", "Creature — Wurm", "{5}{G}")
 	treasure := pushToken(g, me.ID, TreasureToken())
 	signet := b12Permanent(g, me.ID, "Signet", "Artifact")
 	aura := b12Permanent(g, me.ID, "Rancor", "Enchantment — Aura")
+	golem := b12Creature(g, me.ID, "Living Golem", "Artifact Creature — Golem", 3, 3)
 	bear := b12Creature(g, me.ID, "Living Bear", "Creature — Bear", 2, 2)
-	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: deadA}, {Kind: game.TargetCard, ID: deadB}})
+	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle, nil)
 	passPriorityAroundTable(t, g)
-	// #1019: "that many" is how many were SACRIFICED, so nothing comes
-	// back while the prompts are open.
-	if g.Battlefield.Contains(deadA) || g.Battlefield.Contains(deadB) {
-		t.Fatal("the creature cards came back before a single Treasure had been chosen")
+
+	// #2863: "sacrifice any number" is one pick on resolution over the
+	// artifacts, enchantments and tokens, with a floor of zero.
+	sac := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if sac == nil {
+		t.Fatalf("the caster chooses what to sacrifice as the spell resolves: %+v", g.PendingChoices)
 	}
-	// Two sacrifice prompts, each over the artifacts, enchantments
-	// and tokens — never the nontoken creature, and never the
-	// artifact creature that is going to come back.
-	prompts := 0
-	for _, c := range g.PendingChoices {
-		if c == nil || c.Kind != game.PendingChoiceSacrifice || c.Chooser != me.ID {
-			continue
-		}
-		prompts++
-		if hasID(c.SacrificeOptions, bear) || hasID(c.SacrificeOptions, deadB) {
-			t.Error("a nontoken creature that is not an artifact is not a legal sacrifice, nor is the returned Golem")
-		}
-		if !hasID(c.SacrificeOptions, treasure) || !hasID(c.SacrificeOptions, signet) || !hasID(c.SacrificeOptions, aura) {
-			t.Error("a token, an artifact and an enchantment are all legal")
+	if sac.ChooseMin != 0 || sac.ChooseMax != 4 {
+		t.Errorf("ANY NUMBER of the four: bounds %d..%d", sac.ChooseMin, sac.ChooseMax)
+	}
+	for _, id := range []uuid.UUID{treasure, signet, aura, golem} {
+		if !hasID(sac.ChooseCards, id) {
+			t.Errorf("%s is an artifact, enchantment or token and is on offer", id)
 		}
 	}
-	if prompts != 2 {
-		t.Fatalf("two cards returned, two sacrifices owed: %d prompts", prompts)
+	if hasID(sac.ChooseCards, bear) {
+		t.Error("a nontoken creature that is not an artifact is not on offer")
 	}
-	answerSacrifice(t, g, me.ID, treasure)
-	if g.Battlefield.Contains(deadA) || g.Battlefield.Contains(deadB) {
-		t.Error("the run waits for BOTH prompts before it returns anything")
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Fatal("the creature cards were offered before the sacrifice")
 	}
-	answerSacrifice(t, g, me.ID, aura)
-	if g.Battlefield.Contains(treasure) || g.Battlefield.Contains(aura) || !g.Battlefield.Contains(signet) {
+	if err := g.ResolveOwnPermanents(sac.ID, me.ID, []uuid.UUID{treasure, golem}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
+	if g.Battlefield.Contains(treasure) || g.Battlefield.Contains(golem) ||
+		!g.Battlefield.Contains(signet) || !g.Battlefield.Contains(aura) {
 		t.Error("exactly the two chosen permanents are sacrificed")
 	}
-	if !g.Battlefield.Contains(deadA) || !g.Battlefield.Contains(deadB) {
-		t.Fatal("both chosen creature cards return once the sacrifices have landed")
+
+	// "Return that many" is chosen now, from the graveyard as it is
+	// after the sacrifice: the Golem just sacrificed is an artifact
+	// creature CARD and is on offer; the Treasure was a token and is
+	// gone.
+	ret := chooseCardsChoiceFor(g, me.ID)
+	if ret == nil {
+		t.Fatal("the caster chooses the creature cards on resolution")
+	}
+	if ret.ChooseMin != 2 || ret.ChooseMax != 2 {
+		t.Errorf("THAT MANY is two, exactly: bounds %d..%d", ret.ChooseMin, ret.ChooseMax)
+	}
+	if !hasID(ret.ChooseCards, golem) || !hasID(ret.ChooseCards, deadA) || !hasID(ret.ChooseCards, deadC) {
+		t.Errorf("offer %v: want both dead creatures and the sacrificed Golem", ret.ChooseCards)
+	}
+	if hasID(ret.ChooseCards, treasure) {
+		t.Error("a sacrificed token is not a card in the graveyard")
+	}
+	answerChooseCards(t, g, me.ID, golem, deadA)
+	if !g.Battlefield.Contains(golem) || !g.Battlefield.Contains(deadA) {
+		t.Fatal("both chosen creature cards return, the sacrificed Golem among them")
 	}
 	if g.Battlefield.Contains(deadC) {
 		t.Error("only the chosen cards return")
 	}
-	if sacrificeChoiceFor(g, me.ID) != nil {
-		t.Error("no third prompt")
-	}
-	// Capped by what can be sacrificed: one eligible permanent (the
-	// returned Golem is an artifact, so it dies first), one creature
-	// back.
-	b18Kill(t, g, deadB)
-	deadD := b17GraveyardCard(me, "Dead Drake", "Creature — Drake", "{2}{U}")
-	advanceToPrecombatMainOf(t, g, 0)
-	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle,
-		[]game.TargetRef{{Kind: game.TargetCard, ID: deadC}, {Kind: game.TargetCard, ID: deadD}})
+}
+
+// TestB24LichKnightsConquestSacrificingNothingReturnsNothing — a floor
+// of zero is a real answer, and "that many" is then zero.
+func TestB24LichKnightsConquestSacrificingNothingReturnsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	dead := b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{1}{G}")
+	signet := b12Permanent(g, me.ID, "Signet", "Artifact")
+	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle, nil)
 	passPriorityAroundTable(t, g)
-	answerSacrifice(t, g, me.ID, signet)
-	if !g.Battlefield.Contains(deadC) || g.Battlefield.Contains(deadD) {
-		t.Error("one eligible permanent: the first chosen card returns, the second does not")
+	sac := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if sac == nil {
+		t.Fatal("no sacrifice prompt")
 	}
-	if spec, _ := Lookup(b24LichKnightsConquestOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the choice order is a declared gap")
+	if err := g.ResolveOwnPermanents(sac.ID, me.ID, nil); err != nil {
+		t.Fatalf("ResolveOwnPermanents(empty): %v", err)
+	}
+	if chooseCardsChoiceFor(g, me.ID) != nil || g.Battlefield.Contains(dead) || !g.Battlefield.Contains(signet) {
+		t.Error("nothing sacrificed, nothing returned")
+	}
+}
+
+// TestB24LichKnightsConquestReturnsAllWhenThereAreTooFew — three
+// sacrificed, one creature card: the one comes back (CR 608.2).
+func TestB24LichKnightsConquestReturnsAllWhenThereAreTooFew(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	dead := b17GraveyardCard(me, "Dead Bear", "Creature — Bear", "{1}{G}")
+	a := pushToken(g, me.ID, TreasureToken())
+	b := pushToken(g, me.ID, TreasureToken())
+	c := b12Permanent(g, me.ID, "Signet", "Artifact")
+	castCatalogSpell(t, g, "Lich-Knights' Conquest", "Sorcery", b24LichKnightsConquestOracle, nil)
+	passPriorityAroundTable(t, g)
+	sac := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if sac == nil {
+		t.Fatal("no sacrifice prompt")
+	}
+	if err := g.ResolveOwnPermanents(sac.ID, me.ID, []uuid.UUID{a, b, c}); err != nil {
+		t.Fatalf("ResolveOwnPermanents: %v", err)
+	}
+	ret := chooseCardsChoiceFor(g, me.ID)
+	if ret == nil || ret.ChooseMin != 1 || ret.ChooseMax != 1 {
+		t.Fatalf("one creature card on offer, and it must be taken: %+v", ret)
+	}
+	answerChooseCards(t, g, me.ID, dead)
+	if !g.Battlefield.Contains(dead) {
+		t.Error("the only creature card returns")
 	}
 }
 

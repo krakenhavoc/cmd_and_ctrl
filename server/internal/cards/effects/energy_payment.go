@@ -110,8 +110,6 @@ type PayEnergyAmount struct {
 }
 
 func (p PayEnergyAmount) Apply(ctx *Context) error {
-	item := ctx.Item
-	then := p.Then
 	goal := 0
 	if p.Goal != nil {
 		goal = p.Goal(ctx)
@@ -123,12 +121,7 @@ func (p PayEnergyAmount) Apply(ctx *Context) error {
 		Goal:     goal,
 		Unit:     p.Unit,
 		Question: p.Question,
-		Then: func(g *game.Game, paid int) error {
-			if then == nil {
-				return nil
-			}
-			return then(NewContext(g, item), paid)
-		},
+		Then:     amountThen(ctx.Item, p.Then),
 	})
 }
 

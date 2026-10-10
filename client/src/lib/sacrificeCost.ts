@@ -32,6 +32,9 @@ export interface SacrificeOptionsShape {
   // #2526: the clause's set rule ("Sacrifice a Swamp and a Forest"):
   // the picks must fill every group one-to-one. See fillsEachOf.
   each_of?: SacrificeGroupView[];
+  // #2097: the clause takes every permanent in `cards` ("sacrifice all
+  // creatures you control"). See sacrificesAll.
+  all?: boolean;
 }
 
 // sacrificeCount is how many permanents the clause sacrifices: the
@@ -244,7 +247,29 @@ export function castSacrificeRange(opts: SacrificeOptionsShape | undefined): Sac
 // castSacrificeFloor is how many permanents the cast must be able to
 // sacrifice to be castable at all — 0 for the two variable counts.
 export function castSacrificeFloor(opts: SacrificeOptionsShape | undefined): number {
+  // #2097: "sacrifice all" is paid by whatever is there, nothing included.
+  if (opts?.all) return 0;
   return castSacrificeRange(opts).min;
+}
+
+// --- #2097: "sacrifice all creatures you control" --------------------------
+//
+// The server ships `all: true` with min = max = the number of permanents
+// listed: the cost takes every one of them and the caster chooses none.
+// The picker becomes a confirmation, and the cast sends `sacrifice_ids`
+// empty so the server takes the set as it is when the spell is cast (a
+// creature that arrived while the sheet was open goes too).
+
+// sacrificesAll reports a clause that takes everything it lists.
+export function sacrificesAll(opts: SacrificeOptionsShape | undefined): boolean {
+  return opts?.all === true;
+}
+
+// sacrificeAllWarning is the sheet's warning line: how many permanents
+// the cast takes, said plainly.
+export function sacrificeAllWarning(count: number): string {
+  if (count === 1) return "This sacrifices the one permanent below. You don't choose.";
+  return `This sacrifices all ${count} permanents below. You don't choose.`;
 }
 
 // --- #2526: a clause with a SET RULE ---------------------------------------

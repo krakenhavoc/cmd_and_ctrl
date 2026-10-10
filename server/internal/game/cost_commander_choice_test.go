@@ -497,6 +497,12 @@ func TestCostCommanderChoice(t *testing.T) {
 						t.Fatalf("announce: %v", err)
 					}
 					c := parkedCostPrompt(t, g, owner, s.card)
+					// #2420: the prompt says where a "no" sends the
+					// commander, as CR 903.9b's question about an
+					// effect's move does.
+					if got, want := c.CommanderHeadedFor(), s.declined(g).Kind; got != want {
+						t.Errorf("CommanderHeadedFor() = %q, want %q", got, want)
+					}
 					// Nothing is paid while the owner decides.
 					if !s.from(g).Contains(s.card) {
 						t.Fatalf("the card left %s before its owner answered", s.from(g).Kind)

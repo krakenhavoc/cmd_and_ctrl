@@ -225,7 +225,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// all — its controller always, anyone else only when the row
 		// says "Any player may activate this ability". The predicate
 		// ActivateCatalogAbility refuses on (#544).
-		if !game.MayActivate(e.seat, *source, zone, ab) {
+		if !game.MayActivate(e.seat, *source, zone, ab, origins.At(idx)) {
 			continue
 		}
 		// #1208: ONE identity for both reads below, built the way
@@ -918,6 +918,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
 								}
+								combat := combatNone
+								if !hasTargets(targets) && !abilityInteracts(ab) {
+									combat = abilityCombatKind(ab)
+								}
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -930,6 +934,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// a modal ability's stack-targeting mode
 									// is flagged on its own.
 									TargetsStack: targetsStackObject(g, targets),
+									HasTargets:   hasTargets(targets),
+									Interacts:    !hasTargets(targets) && abilityInteracts(ab),
+									// #2871: a combat ability, counted only in combat.
+									CombatInteracts:    combat != combatNone,
+									CombatDefenderOnly: combat == combatDefender,
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,
@@ -2272,6 +2281,9 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							Label:  label,
 							Source: source.InstanceID,
 							Cost:   cost,
+							// #2853: a sacrifice outlet that makes mana
+							// still answers removal.
+							Interacts: manaAbilityInteracts(ab.SacrificeOther),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,

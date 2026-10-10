@@ -1159,6 +1159,10 @@ export interface AutoTapPreview {
   // ADR 0100: how many graveyard cards the announcement may exile to
   // delve. Absent for a card with no delve.
   delve_budget?: number;
+  // #2581: the spell's printed X ceiling, read now for the caster —
+  // the largest X the cast may announce. Absent for a card with no
+  // ceiling and on the ability branch.
+  x_max?: number;
 }
 
 // AutoTapPreviewSource is one planned source: where it is and what

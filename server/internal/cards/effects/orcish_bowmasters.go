@@ -42,12 +42,12 @@ func init() {
 		Caveats:         []string{"Every card an opponent draws during their own draw step is left alone, not just the first one."},
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(
+			TriggerWithPurpose(Targeting(
 				OnAny([]game.EventKind{game.EventETB, game.EventDrawCard},
 					orcishBowmastersFires,
 					"Orcish Bowmasters — 1 damage to any target, then amass Orcs 1",
 					orcishBowmastersShoot),
-				TargetAny()),
+				TargetAny()), ForTargets(DamageToTarget(0, 1))),
 		},
 	})
 }

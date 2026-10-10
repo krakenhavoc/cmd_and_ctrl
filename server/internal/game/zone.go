@@ -199,6 +199,12 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// pinned grants are handed to the permanent separately (CR
 	// 400.7a, inheritSpellControlLocked).
 	c.stackGranted = nil
+	// ADR 0141 / CR 400.7, CR 702.103: bestowed belongs to the spell
+	// and the permanent it becomes, never to the card. Every zone
+	// change ends it, a resolving one included: the battlefield entry
+	// of a bestowed spell seeds it afresh (bestow.go), and a countered
+	// or bounced one is an ordinary creature card in its new zone.
+	c.Bestowed = false
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.
@@ -277,6 +283,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// that is bounced and recast chooses its anchor word again,
 		// and one in a graveyard has neither ability.
 		c.ChosenOption = ""
+		// #1941 / CR 614.12a: and so does the number chosen as it
+		// entered. A Phyrexian Processor that is bounced and recast
+		// pays life again.
+		c.ChosenNumber = 0
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's
@@ -307,6 +317,10 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// is monstrous — a flickered Polukranos is a new object that
 		// can become monstrous again.
 		c.Monstrous = false
+		// ADR 0071 amendment 2026-10-09 (#2049) / CR 400.7 + CR
+		// 702.112b: and so is renowned — a flickered renown creature is
+		// a new object whose renown can trigger again.
+		c.Renowned = false
 		c.Saddled = false
 		c.SaddledBy = nil
 		// ADR 0071 amendment (#2698) / CR 400.7 + CR 701.60: and so is

@@ -477,6 +477,38 @@ func TestGameOverReportsAndDeletesTheSession(t *testing.T) {
 	}
 }
 
+// #2786: join names the decks set_deck takes, from the server's own
+// catalog, while the table is still in the lobby.
+func TestJoinListsThePrebuiltDecks(t *testing.T) {
+	f := newFakeServer(t)
+	s := newTestSeat(t, nil)
+	text := joinFake(t, f, s)[0]
+	for _, want := range []string{
+		"pre-built decks (set_deck with {id}",
+		"  izzet-aggro — Izzet Aggro (commander Niv-Mizzet, UR, aggro)",
+		"  mono-white — Mono White (commander Test Commander, W)",
+	} {
+		if !strings.Contains(text, want) {
+			t.Errorf("join does not list %q:\n%s", want, text)
+		}
+	}
+	// Reattaching in the lobby lists them again.
+	r, _ := s.Join(context.Background(), JoinInput{InviteURL: f.inviteURL()})
+	if !strings.Contains(r.Text, "izzet-aggro — Izzet Aggro") {
+		t.Errorf("a reattach does not list the decks:\n%s", r.Text)
+	}
+}
+
+// Once the game has started there is no deck to set, so join lists none.
+func TestJoinListsNoDecksOnceTheGameHasStarted(t *testing.T) {
+	f := newFakeServer(t)
+	f.view = activeView(f)
+	s := newTestSeat(t, nil)
+	if text := joinFake(t, f, s)[0]; strings.Contains(text, "pre-built decks") {
+		t.Errorf("a started game lists decks:\n%s", text)
+	}
+}
+
 func TestSetDeckAndCard(t *testing.T) {
 	f := newFakeServer(t)
 	s := newTestSeat(t, nil)

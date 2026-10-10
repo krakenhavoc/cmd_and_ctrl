@@ -31,6 +31,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { targeting, isLegalCardTarget, isPicked } from "../../targeting";
+  import { boardChoicePick, isBoardPickable, isBoardPicked } from "../../boardChoicePick";
   import { autoTapHighlight } from "../../dragCast";
   import { noUntapAppliesToController } from "../../noUntap";
   import { deathMarkBadge } from "../../deathMarks";
@@ -273,15 +274,38 @@
     onClick?: (card: CardView, ev: MouseEvent) => void;
   }
 
+  // #2880: a pending choice whose permanents are picked on the board
+  // (lib/boardChoicePick.ts). Only a clickable permanent on the board
+  // takes part: the sheet's own copies of the cards and the hand do not.
+  const inChoicePick = $derived.by(
+    () => $boardChoicePick !== null && !!onClick && readyZone === "battlefield",
+  );
+  const choicePickable = $derived.by(
+    () =>
+      inChoicePick &&
+      (memberIDs ?? [card.instance_id]).some((id) => isBoardPickable($boardChoicePick, id)),
+  );
+  // Every other permanent is dimmed and not clickable while it is open.
+  const choiceDimmed = $derived(inChoicePick && !choicePickable);
+
   // S20: while a cast-targeting prompt is live, cards in the legal
-  // set get a ring so the player can see what they may click.
+  // set get a ring so the player can see what they may click. #2880:
+  // so do the permanents a pending choice offers.
   const targetable = $derived.by(() => {
+    if (choicePickable) return true;
     const t = $targeting;
     if (t === null) return false;
     return (memberIDs ?? [card.instance_id]).some((id) => isLegalCardTarget(t, id));
   });
-  // S20 sub-PR 5: already picked in a multi-target prompt.
+  // S20 sub-PR 5: already picked in a multi-target prompt (#2880: or in
+  // a pending choice's selection).
   const picked = $derived.by(() => {
+    if (
+      inChoicePick &&
+      (memberIDs ?? [card.instance_id]).some((id) => isBoardPicked($boardChoicePick, id))
+    ) {
+      return true;
+    }
     const t = $targeting;
     if (t === null) return false;
     return (memberIDs ?? [card.instance_id]).some((id) => isPicked(t, id));
@@ -468,7 +492,7 @@
   const damage = $derived(damageBadge(card));
   const interactive = $derived(!!onClick && !phasedOut);
   // ADR 0117 §1: the pointer affordance follows what a click would do.
-  const clickable = $derived(interactive && (!inert || targetable));
+  const clickable = $derived(interactive && !choiceDimmed && (!inert || targetable));
 
   // ADR 0069 — a face-down object the viewer IS allowed to look at:
   // the controller of their own morph or manifest (CR 708.5), the
@@ -522,6 +546,10 @@
   // now (menace, can't block), so it wins the slot when it shares it
   // with a monstrous or harnessed creature.
   //
+  // #2049 adds RENOWNED (CR 702.112b) beside MONSTROUS: the same kind
+  // of marker, kept until the permanent leaves the battlefield. No
+  // printed creature is both monstrous and renowned.
+  //
   // ADR 0071's addendums add a fourth and fifth tenant, #1705:
   // HARNESSED (CR 701.64) and MONSTROUS (CR 701.37b). Unlike Class /
   // Case / preparation, neither carries a subtype gate — any
@@ -543,9 +571,11 @@
               ? "HARNESSED"
               : card.monstrous
                 ? "MONSTROUS"
-                : card.saddled
-                  ? "SADDLED"
-                  : "",
+                : card.renowned
+                  ? "RENOWNED"
+                  : card.saddled
+                    ? "SADDLED"
+                    : "",
   );
   const designationTitle = $derived(
     card.suspected
@@ -558,9 +588,11 @@
             ? "harnessed — its ∞ ability lines are on (CR 701.64)"
             : card.monstrous
               ? 'monstrous — its "as long as this creature is monstrous" lines are on (CR 701.37b)'
-              : card.saddled
-                ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
-                : `Class level ${card.class_level ?? 1}`,
+              : card.renowned
+                ? 'renowned — its "as long as this creature is renowned" lines are on (CR 702.112b)'
+                : card.saddled
+                  ? "saddled until end of turn — its “attacks while saddled” abilities are on (CR 702.171)"
+                  : `Class level ${card.class_level ?? 1}`,
   );
 
   // Hover delay (settings.display.hoverDelayMs) defers the write to
@@ -747,6 +779,7 @@
   class:selected
   class:targetable
   class:picked
+  class:choice-dimmed={choiceDimmed}
   class:autotap-planned={$autoTapHighlight.has(card.instance_id)}
   class:attacking
   class:blocking
@@ -909,6 +942,7 @@
       namedTribe={card.named_tribe}
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
+      chosenNumber={card.chosen_number}
       protection={card.protection}
       riotHaste={card.riot_haste}
       abilityRows={artTile ? card.ability_rows : null}
@@ -1062,6 +1096,7 @@
       namedTribe={card.named_tribe}
       chosenOption={card.chosen_option}
       chosenName={card.chosen_name}
+      chosenNumber={card.chosen_number}
       protection={card.protection}
       riotHaste={card.riot_haste}
     />
@@ -2027,6 +2062,11 @@
   .card.autotap-planned {
     outline: 2px dashed color-mix(in srgb, var(--accent-strong) 85%, transparent);
     outline-offset: 2px;
+  }
+  /* #2880: a permanent the open choice does not offer. */
+  .card.choice-dimmed {
+    filter: brightness(0.62) saturate(0.6);
+    cursor: default;
   }
   .card.picked {
     box-shadow:

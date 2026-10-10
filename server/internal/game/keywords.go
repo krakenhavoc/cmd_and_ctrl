@@ -240,6 +240,21 @@ var canonicalKeywords = map[string]bool{
 	// refused. CUMULATIVE (CR 702.86b: each instance triggers
 	// separately).
 	KeywordAnnihilator: true,
+	// renown (CR 702.112) joins with #2049 (ADR 0071 amendment
+	// 2026-10-09), in the same change that teaches the engine to honour
+	// it. A TRIGGERED keyword built like annihilator (keywordTriggersFor,
+	// renown.go) and NUMBERED like it: stored as its family key, the
+	// tokens are "renown N" minted by CanonicalRenownToken, and a bare
+	// "renown" is refused. CUMULATIVE (CR 702.112c: each instance
+	// triggers separately).
+	KeywordRenown: true,
+	// modular (CR 702.43) joins with #2012, in the same change that
+	// teaches the engine to honour it. NUMBERED like annihilator: the
+	// tokens are "modular N" minted by CanonicalModularToken, and a
+	// bare "modular" is refused. Its consumers are modular.go: an entry
+	// replacement per instance (gathered like riot's) and a dies trigger
+	// per instance (ltbKeywordTriggersFor). CUMULATIVE (CR 702.43b).
+	KeywordModular: true,
 	// exalted (CR 702.83) joins with #2538 (ADR 0101 amendment
 	// 2026-10-08), in the same change that teaches the engine to honour
 	// it. The fourth TRIGGERED keyword, built like prowess
@@ -327,6 +342,22 @@ var canonicalKeywords = map[string]bool{
 	// by the deck importer like every other canonical token, so an
 	// uncatalogued speed card still starts its controller's speed.
 	KeywordStartYourEngines: true,
+	// decayed (CR 702.147) joins with #2650, in the same change that
+	// teaches the engine to honour it. Its consumers are decayed.go:
+	// keywordTriggersFor derives its attack trigger, and
+	// foldDecayedLocked adds its "can't block" after the layer pass, so
+	// a decayed token, a deck-imported card or a decayed counter works
+	// with no catalog entry. CUMULATIVE (CR 113.2c).
+	KeywordDecayed: true,
+	// read ahead (CR 702.155) joins with #2123, in the same change that
+	// teaches the engine to honour it. Its consumers are read_ahead.go:
+	// the entry look-ahead reports it and the gather derives the
+	// "choose a chapter" entry replacement, and fireSagaChaptersLocked
+	// (sagas.go) applies its chapter rule. REDUNDANT (CR 702.155c).
+	// Stamped by the deck importer like every other canonical token; a
+	// Saga with no catalog chapters has no final chapter to choose up
+	// to, and enters with the one lore counter of any unknown Saga.
+	KeywordReadAhead: true,
 }
 
 // KeywordChangeling is the canonical token for changeling (CR
@@ -506,7 +537,7 @@ func CanonicalKeyword(s string) (string, bool) {
 // same call for "Hexproof from").
 func CanonicalKeywords(s string) ([]string, bool) {
 	kw := strings.ToLower(strings.TrimSpace(s))
-	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator {
+	if kw == KeywordProtection || kw == KeywordToxic || kw == KeywordAnnihilator || kw == KeywordRenown || kw == KeywordModular {
 		return nil, false
 	}
 	if canonicalKeywords[kw] {
@@ -524,6 +555,15 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	if tok, ok := CanonicalAnnihilatorToken(s); ok {
 		return []string{tok}, true
 	}
+	// Renown (CR 702.112) too: "Renown 2" is one token, "renown 2"
+	// (#2049).
+	if tok, ok := CanonicalRenownToken(s); ok {
+		return []string{tok}, true
+	}
+	// Modular (CR 702.43), #2012: "Modular 2" is "modular 2".
+	if tok, ok := CanonicalModularToken(s); ok {
+		return []string{tok}, true
+	}
 	if toks, ok := ProtectionTokens(s); ok {
 		return toks, true
 	}
@@ -539,7 +579,8 @@ func CanonicalKeywords(s string) ([]string, bool) {
 // intimidate, shadow, horsemanship, skulk, infect, wither, prowess, evolve,
 // "split second", rebound, sunburst, devoid, and the landwalk tokens ("islandwalk", "nonbasic landwalk", …). Toxic is NOT
 // asked through here: its token carries an amount, so it is read with
-// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts.
+// ToxicTotal. Nor is annihilator, read with AnnihilatorAmounts, or
+// renown, read with RenownAmounts.
 //
 // On-battlefield: reads c.Effective().Abilities, so keywords granted
 // by static abilities (Lord of Atlantis's islandwalk on other

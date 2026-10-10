@@ -72,6 +72,11 @@ type castParams struct {
 	// Fuse casts both halves of a split card with fuse from hand
 	// (CR 702.102a, ADR 0103) — CastSpellParams.Fuse.
 	Fuse bool `json:"fuse,omitempty"`
+	// PermissionType is the card type a cast through a per-type
+	// permission spends (#2167) — CastSpellParams.PermissionType. One
+	// move per type the card could spend, the type the permission's
+	// other cards need least first (game.RankPermissionTypesLocked).
+	PermissionType string `json:"permission_type,omitempty"`
 }
 
 // castZone is one pile the walk below looks in. `mine` says the pile
@@ -276,7 +281,22 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 			if offer != nil && offer.Life > 0 && e.p.Life <= offer.Life {
 				continue
 			}
-			e.castMovesForCard(card, from, kind, perm, offer)
+			// #2167: under a per-type permission (Muldrotha, Aminatou's
+			// Augury) a card with two types the budget has left is two
+			// casts, one per type, and one with none left is no cast.
+			// The engine's own list, ranked, so the first move spends
+			// the type the permission's other cards need least.
+			types, ok := g.PermissionTypeOptionsLocked(e.seat, card, kind, perm, offer)
+			if !ok {
+				continue
+			}
+			for _, t := range types {
+				if len(types) > 1 {
+					e.permType = t
+				}
+				e.castMovesForCard(card, from, kind, perm, offer)
+			}
+			e.permType = ""
 		}
 	}
 	// ADR 0103, CR 702.102a: a split card with fuse in hand may also be
@@ -309,6 +329,12 @@ func (e *enumerator) landPlayMove(card game.Card, kind game.ZoneKind, from strin
 	// CR 305.1: playing a land is not casting, so a cast-only
 	// permission strands it.
 	if perm != nil && perm.CastOnly {
+		return
+	}
+	// #2167: a per-type permission's land play spends "land" (Muldrotha),
+	// and once that is spent it opens no land play, whatever else it
+	// still opens.
+	if _, ok := e.g.PermissionTypeOptionsLocked(e.seat, card, kind, perm, nil); !ok {
 		return
 	}
 	// ADR 0109 §4, CR 101.2: "can't" beats "can". The engine's own gate,
@@ -798,7 +824,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// nothing reads targets, which is every board without such a
 	// card; otherwise each (modes, targets) set below is priced on its
 	// own and carries its own X.
-	spend := game.ManaSpendForCast(card)
+	spend := game.ManaSpendForCastFrom(card, fromZone)
 	perTarget := e.g.CastPriceReadsTargetsForEffect(card)
 	// Additional costs (CR 601.2f). Read before the X search because
 	// one of them can PRICE X: Toxic Deluge's "pay X life" is the
@@ -823,6 +849,14 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
 		// #2174: "blight X" is the other non-mana price on X.
 		xLifeCeiling = bx
+	}
+	// #2581: and a printed "X can't be greater than <count>" bounds
+	// the same announcement without pricing it (x.go). Only where the
+	// cost this cast pays has an {X} to announce: a free cast's X is
+	// locked at 0 (CR 107.3b), and announcedX reads a ceiling on a cost
+	// with no {X} slot as the PRICE of X, which this is not.
+	if cost.XSlots > 0 {
+		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), xLifeCeiling)
 	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two
@@ -994,7 +1028,13 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 				pool = append(pool, id)
 			}
 		}
-		if varSac {
+		if addCost != nil && addCost.SacrificeAll && addCost.Sacrifice == sacrifice {
+			// #2097: "sacrifice all" has one payment, the engine's own
+			// set (empty included). It is named on the move so a policy
+			// prices what the cast gives up (sacrificeCost), and priced
+			// per payment below as a variable clause is.
+			sacrificeSets = [][]uuid.UUID{g.SacrificeAllCandidatesForEffect(e.seat, sacrifice)}
+		} else if varSac {
 			sacOrdered = g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), uuid.Nil)
 			sacrificeSets = e.castVariableSacrificePayments(sacOrdered, sacrifice, xFloor)
 		} else {
@@ -1504,6 +1544,7 @@ func (e *enumerator) castMoveEmitter(
 	// board, never the targets (a cast it applies to has none).
 	idle := e.idleCastHint(card, offer, chosen)
 	modeSpec := game.ModeSpecFor(game.CatalogKey(card))
+	permType := e.permType
 	return func(altPaid []uuid.UUID, modes []int, targets []game.TargetRef, setX, phyLife int, mana game.ParsedCost, dist map[uuid.UUID]int, discards, sacs, delve []uuid.UUID, xv *MoveValue) {
 		label := "Cast " + card.Name
 		switch from {
@@ -1511,6 +1552,10 @@ func (e *enumerator) castMoveEmitter(
 			label += " from the command zone"
 		case "graveyard", "exile", "library":
 			label += " from " + from
+		}
+		// #2167: which of the card's types a per-type permission spends.
+		if permType != "" {
+			label += " as " + game.PermissionTypeArticle(permType)
 		}
 		if setX > 0 {
 			label += fmt.Sprintf(" for X=%d", setX)
@@ -1542,7 +1587,11 @@ func (e *enumerator) castMoveEmitter(
 		}
 		// ADR 0100 §6: the counts of a variable sacrifice are otherwise
 		// the same line in the move log.
-		if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
+		if paying != nil && paying.SacrificeAll {
+			// #2097: said outright, so a model seat or an MCP client
+			// reading the move list sees it gives up its whole board.
+			label += sacrificeAllLabel(g, paying, sacs)
+		} else if paying != nil && game.SacrificeCostVariable(paying.Sacrifice) {
 			label += sacrificeLabel(g, sacs)
 		}
 		// #2681: the modes, so two moves with the same targets and
@@ -1574,6 +1623,7 @@ func (e *enumerator) castMoveEmitter(
 			// per ANNOUNCEMENT, not per card, so only the modes that
 			// actually chose a stack target come back flagged.
 			TargetsStack: targetsStackObject(g, targets),
+			HasTargets:   hasTargets(targets),
 			IdleHint:     idle,
 			Value:        xv,
 			Params: mustJSON(castParams{
@@ -1601,6 +1651,8 @@ func (e *enumerator) castMoveEmitter(
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,
 				Fuse: card.Fused,
+				// #2167: set only when the card has a choice to make.
+				PermissionType: permType,
 			}),
 		})
 	}

@@ -260,6 +260,18 @@ actually do (CR 608.2), and the branch it puts first is one that never
 fails ("lose 3 life", which needs no permanent and no card in hand).
 A policy with nothing better to say takes it, which terminates.
 
+**An option pick whose options cost mana (`option_pick`, #2854).**
+Winter's Chill's "its controller may pay {1} or {2}" and Lim-Dûl's
+Hex's "unless they pay {B} or {3}". A costed option is offered only
+when the seat can pay it now (the enumerator asks the pay-unless
+probe), and its move carries the price as `cost.mana`; the free option
+is still first and always legal. The heuristic pays: every costed
+option is worth more than paying nothing, and among them it takes the
+cheapest by mana value, keeping the most mana for the rest of the turn
+(`heuristic/costed_options.go`). On Winter's Chill that is the {1}
+branch: the creature survives and deals no combat damage. An option
+pick with no costed option keeps the enumerator's first answer.
+
 **A choose-a-player prompt (`option_pick` again, #929).** "Choose a
 player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
 is an option pick whose branches are SEATS, one option per eligible
@@ -323,6 +335,11 @@ entering creature would be the bot's only untapped creature, which a
 counter would stop from blocking (CR 702.98a). See
 `aiseat/heuristic/riot.go`.
 
+**Read ahead (`entry_read_ahead`, #2123).** The bot starts every
+read-ahead Saga on chapter I, so it gets every chapter the Saga prints.
+It has no measure of when trading the skipped chapters for tempo is
+worth it. See `readAheadValue` in `aiseat/heuristic/choices.go`.
+
 **Sending a commander home (`commander_return`, [ADR 0115](decisions/0115-commanders-die.md),
 CR 903.9a).** When the bot's commander has been put into a graveyard or
 exile, the state-based action asks its owner whether it goes to the
@@ -354,8 +371,10 @@ answer of its own (`aiseat/heuristic/replacement.go`, `dredge.go`):
 - **A commander headed for a hand** (CR 903.9b; the prompt sets
   `playable_from_zone`): no. In hand it is cast without the commander tax,
   which is owner decision 2 of ADR 0115 applied to the one zone a commander
-  can always be cast from. Headed for a library, or asked before a cost is
-  paid: yes.
+  can always be cast from. That includes the question asked before a cost
+  is paid (ninjutsu, "return a creature you control to its owner's hand",
+  Daze's alternative cost), which says where the card is going since #2420.
+  Headed for a library: yes.
 - **Library of Leng and Moonlit Meditation**: yes. Leng's prompt does not
   name the discarded card (it is in a hand), so the bot cannot price it, and
   keeping a card beats losing it. Moonlit Meditation enchants a permanent
@@ -1082,6 +1101,41 @@ lands in hand beyond the drops left), at `ManaSource` plus the ramp
 premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
 while the bot has fewer than `RampWantCap` sources.
 
+### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
+
+An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,
+and Smothering Tithe asks "pay {2}?" when it draws. Both prompts arrive
+between two casts of the bot's turn plan, after the first cast and
+before the next. With `PlanWeighTaxes` on (`tax.go`), the bot checks two
+things when one of these taxes would leave the plan's next cast
+unpayable this turn, and when declining would leave it payable:
+
+- **What declining gives the opponent.** This is read from the triggered
+  ability rows that the prompt's source declares
+  (`purpose.draws` or `purpose.tokens` on the row). It is priced like any
+  gift to an opponent (`giftsValue`): `Hand` for each card and
+  `TokenWeight` for each token, a Treasure included, weighed by the
+  opposition weights. In the arena a card for one opponent cost the bot
+  0.40 to 1.80: more when that opponent is the strongest seat, or one of
+  fewer opponents.
+- **What the next cast is worth.** This is its price in the window that
+  chose the plan.
+
+If the cast is worth more, the bot declines the tax. Otherwise it pays,
+as it did before. The bot also pays as before when paying still leaves
+the cast payable, when the source declares no gift, and when no plan
+was chosen this phase. Rhystic Study, Mystic Remora, Esper Sentinel,
+Smothering Tithe and Kazuul declare their gift. A ward prompt is never
+weighed this way, because its decline counters the bot's own spell.
+
+The tax prompt offers only "pay" and "decline", so the window that
+answers it cannot rebuild the plan. The policy therefore remembers the
+plan's members from the window that chose it, until the phase ends.
+This is the only part of the plan the policy keeps between decisions.
+Replaying a tax window offline from the decision log answers it as if
+no plan was chosen, unless the plan window before it is replayed first
+on the same policy.
+
 ### Sacrifices
 
 With `SacrificeDyingAnyway` on, a permanent sacrificed to pay a cost
@@ -1119,6 +1173,233 @@ exactly what S66 changed. `TestBaselineConfigRanksTheSuiteAsBefore`
 holds the baseline to the rankings the policy gave every suite position
 before S66. The measured effect is in ADR 0126's
 [Measurements](decisions/0126-bots-that-play-their-decks.md#measurements).
+
+## How the heuristic plans a turn
+
+[ADR 0136](decisions/0136-planning-the-turns-mana.md) (S67,
+[#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458)). The
+prices above are for one move at a time. In its own main phase with an
+empty stack, the heuristic also asks what the rest of this turn's mana
+buys. So it casts the Signet before the two-drop, and it casts two
+spells where one would leave mana unused. This section explains what
+you see in its reasons and trace. The rules themselves are in the ADR,
+and its [Measurements](decisions/0136-planning-the-turns-mana.md#measurements)
+section has the arena numbers.
+
+### When it plans
+
+It plans only in its own first or second main phase, with an empty stack
+(§1). A land drop on offer comes first. While a land is the best move,
+the bot plays it and plans the rest in the next window. Every other
+window is decided one move at a time, as before.
+
+A plan is rebuilt in every window from what the bot can see. After the
+Signet resolves, the next window plans again with the Signet on the
+battlefield. If a draw finds something better, the new plan uses it.
+The bot keeps only two pieces of plan state between windows, both
+described below: the plan it chose this phase, for an opponent's tax,
+and the instants it held this turn.
+
+### The mana model
+
+The bot counts its own mana from the view (§2, `plan.go`):
+
+- **Its mana:** the floating pool, plus one source for each untapped
+  permanent it controls whose repeatable mana ability it can use now.
+  A summoning-sick creature without haste is left out. So is a source
+  whose mana is restricted (Delighted Halfling's coloured mana), and a
+  land with no mana ability of its own (a fetchland).
+- **Each spell's cost:** the total mana the cast move charges,
+  including X, the commander tax and any cost reduction. The enumerator
+  stamps this on the move as `cost.mana`.
+- **Mana added during the turn:** a rock, a hasty dork, or a ramp spell
+  whose lands enter untapped (`purpose.lands_untapped`) adds its mana
+  for the spells after it.
+- **Filter lands:** a filter land such as Flooded Grove counts as a
+  filter, paid with one of the colours its cost names. When nothing can
+  pay that cost, it counts as its plain {C} ability.
+
+The bot pays in the same order as the engine's auto-tapper: painless
+sources before painful ones, then the source with the fewest colours.
+Where the auto-tapper could break a tie either way, the model assumes
+the worse case. The model is advisory. When it is wrong, the next spell
+is not offered in the next window, the bot plans again, and the worst
+case is a one-spell turn. The arena counts these windows as plan
+misses ([Reading the report](#reading-the-report)).
+
+### Which sets it compares
+
+A plan holds only casts whose sole costs are mana and the card itself
+(§1). A cast with a sacrifice, a discard or another extra cost still
+competes, but on its own. One exception is a land swap that nets a land
+(Harrow), described under held instants below. Each card contributes at
+most one of its cast moves. The candidates are the `PlanMaxCards` (10)
+cards whose best single cast is priced highest, so the bot searches at
+most 1,024 sets. It skips any set its mana cannot pay for.
+
+A set is worth the sum of its spells' prices, with the ramp premium
+shared (§3). Two rocks cast in one turn do not each claim the whole
+mana deficit. The bot takes the most valuable set it can pay for, and a
+smaller set wins a tie. It follows the plan only when the plan has two
+or more spells, is worth more than the best single move, and clears the
+window's bar (`PassThreshold`, or `LeftoverThreshold` in a leftover
+window). Otherwise it makes the single move it would have made anyway.
+
+The commander tax is part of the cast's mana (§6). So a commander
+recast for {2} or {4} more competes with whatever else that mana could
+buy. In the review game that showed the problem, Oracle of Mul Daya and
+Harmonize beat recasting Tatyova with tax at 8 and at 9 mana.
+
+### The order: rocks first, then draws, then the rest
+
+The plan decides which spells to cast. The order decides which one to
+cast now (§4):
+
+1. **Mana first:** a rock, a hasty dork, or a ramp spell whose lands
+   enter untapped, so its mana is there for the rest. A permanent that
+   grants extra land drops (Oracle of Mul Daya, Exploration) counts as
+   mana here, so a land that a later draw finds can still be played.
+   Among these, the cheapest goes first.
+2. **Then draws and tutors, cheapest first.** The card drawn is in hand
+   when the next window plans the rest, so it can still change the
+   plan. This is "draw before deploying": with five Swamps, Night's
+   Whisper and Bastion of Remembrance, the bot casts Night's Whisper
+   first.
+3. **Then the rest, highest value first.**
+
+The order does not change any price. A board wipe the plan casts goes
+before the other spells, because its price assumes the board as it is
+now.
+
+### Two spells over one
+
+Because the plan compares sets, two cheaper spells beat one expensive
+spell when together they are worth more for the same mana. The ADR's
+[worked table](decisions/0136-planning-the-turns-mana.md#worked-the-evidence-windows-under-the-plan)
+shows this on the review game's turns. For example, Arcane Signet then
+Ornithopter of Paradise beats Ornithopter alone on three lands, and
+Oracle of Mul Daya plus Harmonize beats a taxed Tatyova.
+
+### A rock now or the spell now: two turns
+
+Sometimes this turn's mana pays for a rock or for the spell the plan
+wants, but not both. Arcane Signet (+0.80) against a two-drop (+1.59)
+on two lands is the usual case. When the mana deficit is open, the bot
+then compares two lines over this turn and the next
+([amendment of 2026-10-09](decisions/0136-planning-the-turns-mana.md#amendment-2026-10-09-a-rock-against-a-spell-over-two-turns)):
+
+- the rock now, then the best set next turn's mana buys with the rock on
+  the battlefield;
+- the spell now, then the best set next turn's mana buys without the
+  rock.
+
+Next turn counts at `PlanNextTurnDiscount` (0.75) of this turn. Next
+turn's mana is every mana source the bot controls, plus one land if it
+holds one, plus whatever this turn's casts leave behind. If both lines
+cast the same cards over the two turns, the spell goes first. The rock
+goes first only when its mana lets next turn buy more, such as a
+four-drop a turn early. Only the bot's hand, command zone and its mana
+are read. Nothing about the opponents is simulated.
+
+### An idle rock late in the turn
+
+A rock cast with no deficit open is priced below zero (−0.20 for a
+Signet; see [Mana sources](#mana-sources)). In the turn's last
+main-phase window, a rock with no deficit open is priced at
+`LeftoverThreshold` instead. It is cast when no other move is priced
+above that bar, so its mana is not wasted
+([ADR 0126 §2's amendment of 2026-10-09](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-09-an-idle-late-rock)).
+This is a price, not part of the plan, so `heuristic-noplan` uses it as
+well.
+
+### Opponents' taxes
+
+An opponent's Rhystic Study or Smothering Tithe can ask the bot to pay
+between two spells of its plan. When paying would leave the next spell
+unaffordable, the bot weighs the tax against that spell. See
+[An opponent's tax against the turn plan](#an-opponents-tax-against-the-turn-plan-adr-0136-2026-10-09)
+above, and the ADR's
+[amendment](decisions/0136-planning-the-turns-mana.md#amendment-2026-10-09-an-opponents-tax-against-the-plan).
+To do this, the policy remembers the plan it chose until the phase
+ends.
+
+### Held ramp and draw instants
+
+An instant-speed ramp or draw spell in the plan, such as Harrow, an
+instant cantrip or an instant tutor, is held for the end step before
+the bot's turn (§5 and the
+[held-instants amendment](decisions/0136-planning-the-turns-mana.md#amendment-2026-10-09-held-instants)).
+It is cast now instead only in two cases:
+
+- a later spell in the plan needs its mana; or
+- it draws, and there is mana left after it to cast what it finds.
+
+A held spell keeps its mana set aside, and no other spell in the plan
+may spend it. When every spell left in the plan is held, the bot passes.
+ADR 0126 §5's end-step window then casts the held spell
+([The two leftover windows](#the-two-leftover-windows)). Removal, burn
+and flash creatures are never held.
+
+The policy remembers the cards a plan held until the turn ends. In a
+later main-phase window, a lone instant that a plan held earlier this
+turn is held again. Any other lone instant is cast as before. A Harrow
+alone in the first main phase, with no plan made that turn, is cast.
+
+Harrow is a plan member even though it sacrifices a land, because the
+lands it puts onto the battlefield more than replace it. The plan
+counts its lands net of the one it sacrifices.
+
+In practice the end-step cast is rare. Most Harrows go into a
+first-main-phase plan, because the spell after Harrow uses Harrow's
+lands. The ADR's PR 5 measurements give the breakdown.
+
+### What you see in the reasons and the trace
+
+The decision's reason names what the plan did:
+
+| Reason | Meaning |
+|---|---|
+| `plan: Arcane Signet → Ornithopter of Paradise (+2.76)` | The plan, in cast order, and its value. The first name is the move made now. |
+| `plan: Harmonize → Harrow at the end step (+…)` | A held member is named "at the end step". Held members come last, so if the first name is held, every member is, and the bot passes. |
+| `plan: held for the end step before my turn: Harrow (+…)` | A lone instant that a plan held earlier this turn, held again. The bot passes. |
+| `two turns: Explosive Vegetation now, then Arcane Signet → Tatyova, Benthic Druid (+6.19) over Oracle of Mul Daya now, then Explosive Vegetation (+5.36)` | The two-turn comparison: the line taken, then the line it beat. Each total counts next turn at the discount. |
+| `cast idle mana source, leftover mana (+0.00)` | The idle late rock. |
+| `tax: keep the mana for Ornithopter of Paradise (+1.96) over a card for its owner (−0.90)` | A tax declined to keep the plan's next spell ("a token" for a Smothering Tithe). `tax: pay it; …` is the other way round. |
+
+Each move's own price in `Rank` is unchanged, so the candidate list in
+[Show bot reasoning](#show-bot-reasoning) and the decision log reads as
+it always did. A window that chose a plan also has `trace.plan`: the
+members in cast order, each with `index` and `label`, and `held: true`
+on a held instant ([Decision log](#decision-log)).
+
+### The knobs, and measuring the plan
+
+Each rule is a `heuristic.Config` field. Each is on in `DefaultConfig()`
+and off in `BaselineConfig()`:
+
+| Field | Default | What it turns on |
+|---|---|---|
+| `PlanTurnMana` | on | The plan itself (§1–§4, §6, §7). |
+| `PlanMaxCards` | 10 | How many cards the search considers. |
+| `PlanLandDropsAsRamp` | on | Extra land drops order with the mana (§4, 2026-10-08). |
+| `PlanFilterLands` | on | Filter lands modelled as filters (§2). |
+| `PlanRockTwoTurns`, `PlanNextTurnDiscount` | on, 0.75 | The two-turn comparison. |
+| `IdleLateRocks` | on | The idle late rock (ADR 0126 §2). |
+| `PlanWeighTaxes` | on | An opponent's tax weighed against the plan. |
+| `PlanHoldInstants` | on | Held ramp and draw instants, and Harrow as a member (§5). |
+
+Two [arena](#arena) contestants measure the plan:
+
+- `heuristic-noplan` is `DefaultConfig()` with `PlanTurnMana` off. It
+  measures the plan alone, and every plan rule above except the idle
+  late rock is off with it.
+- `heuristic-baseline` is the heuristic as it priced cards before S66,
+  with every rule above off ([The old prices, kept runnable](#the-old-prices-kept-runnable)).
+
+The arena's Turn mana section reports stranded mana and plan misses for
+each contestant ([Reading the report](#reading-the-report)). The
+acceptance bars P1 to P7, and how the final run met them, are in the
+ADR's [Measurements](decisions/0136-planning-the-turns-mana.md#measurements).
 
 ## An attached permanent is priced once, by its role (#727)
 
@@ -1755,7 +2036,17 @@ game.
   Lotus Petal or an Altar), and the six A3 canaries (Sol Ring, Rhystic
   Study, Mary Read and Anne Bonny's loot, Entomb, Harrow, Viscera Seer),
   each with the share of games it was used in and the bar it is held
-  to. A canary nobody was dealt says `not offered`. The full per-card
+  to. A canary nobody was dealt says `not offered`. Each A2 row also
+  counts the owner's way (#2435), in the `deficit open` columns. These
+  count the seat-games in which the rock or dork was offered while the
+  seat's mana deficit was open, and the seat-games among those in which
+  it was used. `heuristic.DeficitOpen` gives that answer from the
+  heuristic's own deficit (`rampFor` under `DefaultConfig`, ADR 0126
+  §2), and the same rule is used for every contestant. A rock offered
+  only after the seat's sources already covered its hand is counted in
+  the every-offer columns only. In `summary.json` these columns are
+  `games_offered_deficit`, `games_used_deficit`, `rate_deficit` and
+  `meets_deficit`. The full per-card
   tables are folded under `<details>`. The tally is the runner's
   observer, so it needs no decision log; `summary.json` carries it as
   `cards` and `canaries`, and each game's per-seat counts are in
@@ -2675,10 +2966,10 @@ what order: mana first, then draws, then the rest
 ([ADR 0136](decisions/0136-planning-the-turns-mana.md),
 [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458);
 `aiseat/heuristic/plan.go`). Everywhere else it prices one move at a
-time. It does not hold an instant in the plan for the end step before its
-turn (ADR 0136 PR 5), it does not plan activated abilities or casts with
-a non-mana cost, it does not treat a cycling card as a cheap discard or its own draw step
-as a spend window
+time ([How the heuristic plans a turn](#how-the-heuristic-plans-a-turn)).
+It does not plan activated abilities or casts with a non-mana cost
+(Harrow's land swap aside), it does not treat a cycling card as a cheap
+discard or its own draw step as a spend window
 ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), and
 it does not cast a ritual or crack a Treasure for a specific spell.
 
@@ -2834,6 +3125,20 @@ nets 0 and Grim Monolith (`{4}`) nets -1, so neither is taken. This is
 #2493's "no gain, no move" for an activated row that nets nothing; it
 does not model an untap that enables a spell this window, because the
 mana that spell would spend is the mana the untap costs.
+
+**A bot makes a free activation once a turn.** Shaman en-Kor's "{0}: The
+next 1 damage that would be dealt to this creature this turn is dealt to
+target creature you control instead" costs nothing, so priced like any
+activation of the bot's own it beat passing in every window, and a
+heuristic seat bought the same shield over and over until the CR 732
+breaker paused the table
+([#2777](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2777), the
+same shape as #2449 and #2500). What a free row buys is not on the wire,
+but the policy knows what it chose: a row of its own that costs nothing
+at all (no mana, no tap of anything, no other cost component) keeps its
+usual price the first time in a turn and is priced below passing after
+that, until the turn ends. A row that costs anything is bounded by what
+it costs and is not capped.
 
 **An X paid in LIFE is priced the same way, one short of the life
 total.** Toxic Deluge is `{2}{B}` with no `{X}` in it — its X is

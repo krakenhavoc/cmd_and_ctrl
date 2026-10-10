@@ -31,6 +31,13 @@ import "github.com/google/uuid"
 //	        ability of its own still on the stack, is sacrificed
 //	        → sagasReadyToSacrificeLocked, from stateBasedActionsLocked
 //
+// And the chapter abilities themselves (CR 714.2b: "When one or more
+// lore counters are put onto this Saga …") fire from wherever the lore
+// counters come from — the entry counter, the turn-based action, a
+// proliferate, a read-ahead entry (read_ahead.go) — because they fire
+// from the one place a counter is put on anything: applyCounterByLocked
+// calls loreCountersPutLocked (#2123).
+//
 // The "still on the stack" clause in the last one is the whole
 // reason the rule is worded that way: the final chapter has to
 // RESOLVE before the Saga leaves, or Elspeth Conquers Death's third
@@ -79,7 +86,7 @@ func SagaFinalChapter(c Card) int {
 // fires the chapter events for whatever chapters that counter
 // reached.
 //
-// Routed through AddCounterThenForEffect — the CR 614 replacement
+// Routed through AddCounterForEffect — the CR 614 replacement
 // pipeline — for the same reason the starting-loyalty stamp is: the
 // counter is put on "as it enters", which is a counter-placement
 // event Doubling Season replaces. A Saga entering under a Doubling
@@ -100,25 +107,26 @@ func (g *Game) sagaEntersWithLoreCounterLocked(cardID uuid.UUID) {
 	if card.Counters[CounterLore] > 0 {
 		return
 	}
-	// #1282: the chapter check is the placement's CONTINUATION, not
-	// the next line. The placement can pause on a CR 616 ordering
-	// prompt (a Doubling Season beside a second lore-counter
-	// replacement) and return with nothing placed; read on the next
-	// line, the lore count was still zero, no chapter fired, and the
-	// resume then placed the counter without ever asking again —
-	// chapter I was lost. The continuation runs when the counter
-	// really lands, inline or from the resume.
-	err := g.AddCounterThenForEffect(cardID, CounterLore, 1, func(g *Game, _ int) error {
-		// Re-read: the placement may have gone through a replacement
-		// that changed the delta, and the battlefield slice may have
-		// been reallocated underneath the old pointer.
-		after := findBattlefieldCard(g, cardID)
-		if after == nil {
-			return nil
-		}
-		g.fireSagaChaptersLocked(*after, 0, after.Counters[CounterLore])
-		return nil
-	})
+	// CR 714.3a is the ability of a Saga WITHOUT read ahead. A Saga
+	// with it chose its lore count as it entered (CR 714.3b,
+	// read_ahead.go), so it gets no second counter here — unless the
+	// catalog has no chapters for it, in which case there was no number
+	// to choose and it is the sandbox Saga the file header describes.
+	g.RecomputeLayersIfStaleLocked()
+	if card = findBattlefieldCard(g, cardID); card == nil {
+		return
+	}
+	if HasKeyword(card, KeywordReadAhead) && SagaFinalChapter(*card) > 0 {
+		return
+	}
+	// #1282: the chapter check rides the placement, not the next line.
+	// The placement can pause on a CR 616 ordering prompt (a Doubling
+	// Season beside a second lore-counter replacement) and return with
+	// nothing placed; read on the next line, the lore count was still
+	// zero and chapter I was lost. The chapters fire when the counter
+	// really lands, inline or from the resume, from
+	// applyCounterByLocked (loreCountersPutLocked).
+	err := g.AddCounterForEffect(cardID, CounterLore, 1)
 	if err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
@@ -164,27 +172,39 @@ func (g *Game) advanceSagasForActiveSeatLocked() {
 	}
 }
 
-// advanceSagaLocked puts one lore counter on the named Saga and
-// fires the chapter events it crossed. Caller must hold g.mu.
+// advanceSagaLocked puts one lore counter on the named Saga; the
+// placement fires the chapter events it crossed
+// (loreCountersPutLocked). Caller must hold g.mu.
 func (g *Game) advanceSagaLocked(cardID uuid.UUID) {
 	card := findBattlefieldCard(g, cardID)
 	if card == nil || !IsSaga(*card) {
 		return
 	}
-	before := card.Counters[CounterLore]
 	if err := g.applyCounterLocked(cardID, CounterLore, 1); err != nil {
 		g.EmitEvent(Event{
 			Kind:     EventEffectError,
 			Source:   cardID,
 			ErrorMsg: err.Error(),
 		})
+	}
+}
+
+// loreCountersPutLocked is CR 714.2b's trigger event: lore counters
+// were just put on `cardID`, taking it from `before` to `after`. A Saga
+// on the battlefield fires the chapters it crossed.
+//
+// Called by applyCounterByLocked for every positive lore placement, so
+// every source of lore counters — the entry counter, the turn-based
+// action, proliferate, a read-ahead entry, a counter a player adds by
+// hand — fires chapters the same way, and none fires them twice.
+//
+// Caller must hold g.mu.
+func (g *Game) loreCountersPutLocked(cardID uuid.UUID, before, after int) {
+	card := findBattlefieldCard(g, cardID)
+	if card == nil || !IsSaga(*card) {
 		return
 	}
-	after := findBattlefieldCard(g, cardID)
-	if after == nil {
-		return
-	}
-	g.fireSagaChaptersLocked(*after, before, after.Counters[CounterLore])
+	g.fireSagaChaptersLocked(*card, before, after)
 }
 
 // fireSagaChaptersLocked emits one EventSagaChapter per chapter
@@ -195,15 +215,24 @@ func (g *Game) advanceSagaLocked(cardID uuid.UUID) {
 // last chapter, and a card that gained an extra lore counter from
 // somewhere has nothing left to trigger.
 //
+// Read ahead (CR 702.155a): on the turn a Saga with read ahead
+// entered, a chapter fires only if the Saga now has exactly that
+// chapter's number of lore counters, so the chapters it skipped never
+// trigger. See readAheadRestrictsLocked.
+//
 // Caller must hold g.mu.
 func (g *Game) fireSagaChaptersLocked(saga Card, from, to int) {
 	if to <= from {
 		return
 	}
 	final := SagaFinalChapter(saga)
+	exactOnly := g.readAheadRestrictsLocked(saga.InstanceID)
 	for n := from + 1; n <= to; n++ {
 		if final > 0 && n > final {
 			return
+		}
+		if exactOnly && n != to {
+			continue
 		}
 		g.EmitEvent(Event{
 			Kind:   EventSagaChapter,

@@ -55,3 +55,35 @@ func TestInsatiableAvariceDrawsThreeAndDrainsAlone(t *testing.T) {
 		t.Errorf("opponent's life after the drain bullet = %d, want %d", got, want)
 	}
 }
+
+// Both bullets (#2789, CR 608.2c): "search for a card, put it on top",
+// THEN "target player draws three". The draw waits for the search, so
+// casting it on yourself draws the card you tutored.
+func TestInsatiableAvariceDrawsTheTutoredCard(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	ids := seedSearchLibrary(me,
+		game.Card{Name: "Tutored", TypeLine: "Sorcery"},
+		game.Card{Name: "Filler A", TypeLine: "Sorcery"},
+		game.Card{Name: "Filler B", TypeLine: "Sorcery"},
+		game.Card{Name: "Filler C", TypeLine: "Sorcery"},
+		game.Card{Name: "Filler D", TypeLine: "Sorcery"},
+	)
+	handBefore := me.Hand.Size()
+
+	castModal(t, g, "Insatiable Avarice", "Sorcery", insatiableAvariceOracle,
+		[]int{1, 0}, []game.TargetRef{modeRef(game.TargetPlayer, me.ID, 0, 0)})
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != handBefore {
+		t.Fatalf("the draw ran before the search was answered: hand %d → %d", handBefore, got)
+	}
+	answerSearchNamed(t, g, me.ID, "Tutored")
+	g.SettleResolution()
+
+	if got, want := me.Hand.Size(), handBefore+3; got != want {
+		t.Errorf("hand after the draw = %d, want %d", got, want)
+	}
+	if !me.Hand.Contains(ids[0]) {
+		t.Error("the tutored card was put on top before the draw, so it is drawn")
+	}
+}

@@ -46,6 +46,10 @@ func newCopyRetargetScene(t *testing.T, kind StackItemKind, redOnBattlefield boo
 
 	s := &copyRetargetScene{g: g, me: me}
 	s.plain = pushColouredCreature(g, opp, "Plain", []string{"W"})
+	// A second legal target, so the copy has something to change to and
+	// the prompt opens (#2622: a copy with nothing to change to keeps its
+	// targets without asking).
+	pushColouredCreature(g, opp, "Plain 2", []string{"W"})
 	s.proRed = pushColouredCreature(g, opp, "Pro-Red", []string{"W"}, "protection from red")
 	if redOnBattlefield {
 		s.src = pushLKISource(g, me.ID, nil)
@@ -212,6 +216,7 @@ func TestSpellCopyRetargetStillReadsTheSpell(t *testing.T) {
 	withLKIColourPainters(t, nil, bleached)
 
 	plain := pushColouredCreature(g, opp, "Plain", []string{"W"})
+	pushColouredCreature(g, opp, "Plain 2", []string{"W"}) // something to change to (#2622)
 	proRed := pushColouredCreature(g, opp, "Pro-Red", []string{"W"}, "protection from red")
 	lapsed := pushLKISource(g, me.ID, []string{"R"})
 	bleached[lapsed] = true

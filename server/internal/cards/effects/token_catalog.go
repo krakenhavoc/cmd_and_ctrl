@@ -168,10 +168,13 @@ var tokenTemplates = []tokenTemplateBuilder{
 	printedTreasureToken,
 	printedGoldToken,
 	printedFoodToken,
+	printedGingerbruteToken,
 	printedClueToken,
 	printedMapToken,
 	printedBloodToken,
 	printedPowerstoneToken,
+	printedHeartwoodToken,
+	printedLotusToken,
 	printedEldraziSpawnToken,
 	printedB28EldraziScionToken,
 	printedB16LanderToken,
@@ -213,6 +216,19 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Twisted Sewer-Witch's Rat (#1945).
 	printedCantBlockRatToken,
+
+	// Reality Fracture: Skrelv's Hive and White Sun's Twilight's Mite.
+	printedPhyrexianMiteToken,
+
+	// ADR 0139 (#2796): the Jace planeswalker token Empower Jace makes,
+	// the first token whose abilities are loyalty abilities.
+	printedJaceToken,
+
+	// Reality Fracture: Ajani Resolute's Ajani's Pridemate.
+	printedAjanisPridemateToken,
+
+	// Reality Fracture: Vraska, Soul of Stone's Sculpture Treasure.
+	printedSculptureTreasureToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

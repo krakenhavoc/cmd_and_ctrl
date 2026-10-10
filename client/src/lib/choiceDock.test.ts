@@ -89,7 +89,7 @@ describe("isInlineChoice", () => {
 
   it("an option pick is inline only when short: six options, no cards, short labels", () => {
     const opts = (n: number, label = "Draw a card") => Array.from({ length: n }, () => ({ label }));
-    for (const kind of ["option_pick", "entry_controller"]) {
+    for (const kind of ["option_pick", "entry_controller", "entry_read_ahead"]) {
       expect(isInlineChoice(choice({ kind, pick_options: opts(INLINE_OPTION_MAX) }))).toBe(true);
       expect(isInlineChoice(choice({ kind, pick_options: opts(INLINE_OPTION_MAX + 1) }))).toBe(
         false,
@@ -114,6 +114,49 @@ describe("isInlineChoice", () => {
 });
 
 describe("choiceRequest", () => {
+  it("read ahead offers one button per chapter and answers with its index (#2123)", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({
+        kind: "entry_read_ahead",
+        reason: "Read ahead — choose the chapter The Cruelty of Gix starts on",
+        entry_keyword: "read ahead",
+        pick_options: [{ label: "Chapter I" }, { label: "Chapter II" }, { label: "Chapter III" }],
+      }),
+      { sourceName: "The Cruelty of Gix" },
+      h,
+    );
+    expect(r.label).toBe("Read ahead — choose the chapter The Cruelty of Gix starts on");
+    expect(r.primary).toBeNull();
+    expect(r.row?.map((a) => a.label)).toEqual(["Chapter I", "Chapter II", "Chapter III"]);
+    r.row?.[2].onPress();
+    expect(h.onOption).toHaveBeenCalledWith(2);
+  });
+
+  it("shows the mana an option costs when its label does not (#2854)", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({
+        kind: "option_pick",
+        reason: "Winter's Chill — pay {1} or {2} for Bear?",
+        pick_options: [
+          { label: "Pay nothing: destroy Bear at end of combat" },
+          { label: "Pay {1}: no combat damage", mana_cost: "{1}" },
+          { label: "Keep fighting", mana_cost: "{2}" },
+        ],
+      }),
+      { sourceName: "Winter's Chill" },
+      h,
+    );
+    expect(r.row?.map((a) => a.label)).toEqual([
+      "Pay nothing: destroy Bear at end of combat",
+      "Pay {1}: no combat damage",
+      "Keep fighting ({2})",
+    ]);
+    r.row?.[1].onPress();
+    expect(h.onOption).toHaveBeenCalledWith(1);
+  });
+
   it("is a choice, named by the reason, focusing its dialog", () => {
     const r = choiceRequest(
       choice({ reason: "Mulldrifter — draw two cards?" }),
@@ -151,6 +194,7 @@ describe("choiceRequest", () => {
       { kind: "mana_pick", color_options: ["G"] },
       { kind: "choose_color", color_options: ["G"] },
       { kind: "option_pick", pick_options: [{ label: "A" }] },
+      { kind: "entry_read_ahead", pick_options: [{ label: "Chapter I" }] },
     ];
     for (const over of kinds) {
       const r = choiceRequest(

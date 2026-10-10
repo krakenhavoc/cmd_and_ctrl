@@ -58,7 +58,7 @@ func TestSeatNeedsTriggerOrderCommutingBatches(t *testing.T) {
 		{"one item", []*StackItem{other("A")}, false},
 	}
 	for _, c := range cases {
-		if got := seatNeedsTriggerOrder(c.items, false); got != c.want {
+		if got := seatNeedsTriggerOrder(c.items, TriggerOrderWhenItMatters); got != c.want {
 			t.Errorf("%s: seatNeedsTriggerOrder = %v, want %v", c.name, got, c.want)
 		}
 	}

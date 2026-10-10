@@ -39,10 +39,13 @@ type List struct {
 	// the lobby.
 	Name string `json:"name,omitempty"`
 
-	// Commanders is the set of cards placed in the command zone. At
-	// S05 this must have exactly one entry; partner / companion
-	// support is deferred (and the parser emits an explicit
-	// "unsupported" error when it sees those mechanics).
+	// Commanders is the set of cards placed in the command zone: one
+	// card, or two that a partner ability pairs (CR 702.124: partner,
+	// partner—[text], partner with [name], choose a Background,
+	// Doctor's companion; #2142, #2874). Validate judges the pair; a
+	// Background is listed after the commander that chose it.
+	// Companion is still deferred (the parser emits an explicit
+	// "unsupported" error).
 	Commanders []cards.Card `json:"commanders"`
 
 	// Mainboard is the 99 (or more, pre-validation) cards placed in
@@ -73,10 +76,10 @@ type Entry struct {
 }
 
 // ErrUnsupportedMechanic is returned when a decklist advertises
-// partner, companion, or similar mechanics that S05 doesn't model.
-// Surfaced as a parse error (not a validation error) because the
-// parser bails out before producing a List.
-var ErrUnsupportedMechanic = errors.New("deck: unsupported mechanic (partner/companion) — deferred to a later sprint")
+// companion, which the server doesn't model. Surfaced as a parse error
+// (not a validation error) because the parser bails out before
+// producing a List. Every partner ability is supported since #2874.
+var ErrUnsupportedMechanic = errors.New("deck: unsupported mechanic (companion) — deferred to a later sprint")
 
 // UnknownCardError is returned when a decklist references a card the
 // Scryfall index doesn't know about. Surfaces all unknown names at
@@ -110,8 +113,8 @@ func (e *UnknownCardError) Violations() []Violation {
 }
 
 // UnsupportedMechanicError is returned when Resolve finds a card
-// whose oracle text leans on a mechanic (partner/companion) the
-// server doesn't model yet. Carries the offending card name so the
+// whose oracle text leans on a mechanic (companion) the server
+// doesn't model yet. Carries the offending card name so the
 // HTTP layer can surface it as a structured violation.
 type UnsupportedMechanicError struct {
 	Card string
@@ -127,7 +130,7 @@ func (e *UnsupportedMechanicError) Violations() []Violation {
 	return []Violation{{
 		Code:    CodeUnsupportedMechanic,
 		Card:    e.Card,
-		Message: fmt.Sprintf("%q uses partner/companion, which is deferred to a later sprint", e.Card),
+		Message: fmt.Sprintf("%q uses companion, which is deferred to a later sprint", e.Card),
 	}}
 }
 
@@ -151,10 +154,9 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 			unknown = append(unknown, e.Name)
 			continue
 		}
-		// Unsupported-mechanic sniff: if the oracle text mentions
-		// partner or companion at all, the deck is probably leaning
-		// on a mechanic we don't model yet. Bail rather than silently
-		// coerce the second commander into the mainboard.
+		// Unsupported-mechanic sniff: a commander that prints
+		// companion leans on a mechanic we don't model yet. Bail
+		// rather than silently coerce it into the command zone.
 		if e.IsCommander && mentionsUnsupportedMechanic(c) {
 			return nil, &UnsupportedMechanicError{Card: c.Name}
 		}
@@ -177,17 +179,16 @@ func Resolve(idx *cards.Index, name string, entries []Entry) (*List, error) {
 	if len(unknown) > 0 {
 		return nil, &UnknownCardError{Names: unknown}
 	}
+	backgroundsLast(list.Commanders)
 	return list, nil
 }
 
 // mentionsUnsupportedMechanic returns true if a card advertises a
-// mechanic we defer to a later sprint. Match is on the top-level
-// oracle text as well as each face's oracle text (partner cards
-// like Thrasios have the clause on the card's main face; meld /
-// split cards keep their legal text on one of the faces). We use a
-// coarse substring match against "Partner" and "Companion —"
-// (with the em-dash separator Scryfall uses), which is precise
-// enough to cover both partner variants and every companion.
+// mechanic we defer to a later sprint: companion. Match is on the
+// top-level oracle text as well as each face's oracle text. Companion
+// uses the em-dash delimiter that Scryfall ships (U+2014) to introduce
+// its restriction. The partner abilities are not flagged: Validate
+// judges a pair (partner.go, #2142, #2874).
 func mentionsUnsupportedMechanic(c cards.Card) bool {
 	if hasUnsupportedPhrase(c.OracleText) {
 		return true
@@ -201,35 +202,7 @@ func mentionsUnsupportedMechanic(c cards.Card) bool {
 }
 
 func hasUnsupportedPhrase(text string) bool {
-	// "Partner with" is the named-partner variant; plain "Partner"
-	// anchors the generic one. Companion uses the em-dash delimiter
-	// that Scryfall ships (U+2014) to introduce the restriction.
-	if strings.Contains(text, "Partner with ") {
-		return true
-	}
-	if strings.Contains(text, "Companion \u2014 ") {
-		return true
-	}
-	// Word-boundary match for plain "Partner". Avoid false positives
-	// on card names or flavor text by requiring a non-letter
-	// character on each side.
-	needle := "Partner"
-	idx := strings.Index(text, needle)
-	for idx != -1 {
-		leftOK := idx == 0 || !isLetter(text[idx-1])
-		rightIdx := idx + len(needle)
-		rightOK := rightIdx == len(text) || !isLetter(text[rightIdx])
-		if leftOK && rightOK {
-			return true
-		}
-		text = text[idx+1:]
-		idx = strings.Index(text, needle)
-	}
-	return false
-}
-
-func isLetter(b byte) bool {
-	return (b >= 'A' && b <= 'Z') || (b >= 'a' && b <= 'z')
+	return strings.Contains(text, "Companion \u2014 ")
 }
 
 // ToGameCards converts a resolved List into the []game.Card slice
@@ -340,6 +313,8 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	wantProtection := false
 	wantToxic := false
 	wantAnnihilator := false
+	wantRenown := false
+	wantModular := false
 	out := make([]string, 0, len(c.Keywords))
 	for _, raw := range c.Keywords {
 		kws, ok := game.CanonicalKeywords(raw)
@@ -365,6 +340,15 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// oracle line ("Annihilator 4"), ADR 0113 §2.
 			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordAnnihilator) {
 				wantAnnihilator = true
+			}
+			// RENOWN (CR 702.112) too: the array says "Renown" and the
+			// number is only in the oracle line ("Renown 2"), #2049.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordRenown) {
+				wantRenown = true
+			}
+			// MODULAR (CR 702.43, #2012) is the same shape again.
+			if strings.EqualFold(strings.TrimSpace(raw), game.KeywordModular) {
+				wantModular = true
 			}
 			continue
 		}
@@ -444,6 +428,8 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	}{
 		{wantToxic, game.ToxicValue},
 		{wantAnnihilator, game.AnnihilatorValue},
+		{wantRenown, game.RenownValue},
+		{wantModular, game.ModularValue},
 	} {
 		if !want.on {
 			continue

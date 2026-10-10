@@ -403,6 +403,10 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 		srcOwner   uuid.UUID
 		moved      Card
 		stackEpoch int
+		// ADR 0141, CR 702.103b: the spell was bestowed, so the
+		// permanent it becomes is a bestowed Aura. Read off the stack
+		// card before MoveCard clears it (CR 400.7).
+		bestowed bool
 	)
 	src := g.findCardZoneLocked(ev.CardID)
 	switch {
@@ -435,6 +439,7 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 			for i := range src.Cards {
 				if src.Cards[i].InstanceID == ev.CardID {
 					stackEpoch = src.Cards[i].ObjectEpoch
+					bestowed = src.Cards[i].Bestowed && ev.stackItem != nil
 					break
 				}
 			}
@@ -519,6 +524,13 @@ func (g *Game) landEntryLocked(ev *ReplacementEvent) (l entryLanding, ok bool, e
 	// resolving spell, and writes nothing. See cast_provenance.go.
 	g.stampCastProvenanceLocked(entered, ev.stackItem)
 	moved.Provenance = g.CastProvenanceForEffect(entered)
+	// ADR 0141, CR 702.103b: a bestowed spell becomes a bestowed Aura.
+	// After the CR 400.7 reset, and before the Aura attach and
+	// EventETB in announceEntryLocked, so the attach finds an Aura and
+	// an enters trigger finds no creature.
+	if bestowed {
+		g.seedBestowedEntryLocked(entered, &moved)
+	}
 	// ADR 0104 (CR 110.2b, CR 400.7a): a permanent spell whose control
 	// was changed on the stack keeps that change as a permanent, and
 	// its default controller is the player who put the spell on the

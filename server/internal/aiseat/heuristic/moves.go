@@ -307,6 +307,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		if !across && src != nil && st.idleSelfUntap(src, cp) {
 			return idleEquipMove, "untap for no net mana"
 		}
+		// #2777: a free activation the bot already made this turn
+		// buys nothing more (free_repeat.go).
+		if !across && p.repeatsFreeActivation(st, m) {
+			return freeRepeat, "free activation already made this turn"
+		}
 		// ADR 0126 §6: a row of the bot's own that declares what it
 		// does — a loot, a land search, a sweep — is priced by that, in
 		// place of the flat ActivateBase, and a row that sacrifices its
@@ -490,6 +495,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
 	card := st.castSource(cp.InstanceID)
+	if castSacrificesAll(card) {
+		return sacrificeAllDeclined, "cast declined: its cost sacrifices everything (#2097)"
+	}
 	// ADR 0135 §3: an awaken cast's last target is its own land, which
 	// awakenValue prices as the body it becomes; it is not a pump on a
 	// permanent of the bot's (OwnPermanentTarget), and it does not make
@@ -501,6 +509,11 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
 		return castEntryFor(card, cp, t)
 	}, card, card)
+	// ADR 0141: a bestowed cast's target is the creature it pumps, not
+	// a creature it removes (bestow.go).
+	if p.isBestowCast(cp) {
+		targetV, targetsPriced = p.bestowTargetsValue(st, card, targets), false
+	}
 	var v float64
 	reason := "cast"
 	if cp.AlternativeCost != "" {

@@ -80,6 +80,7 @@ func newFakeServer(t *testing.T) *fakeServer {
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /games/{id}/join", f.handleJoin)
 	mux.HandleFunc("POST /games/{id}/decks", f.handleDecks)
+	mux.HandleFunc("GET /decks", f.handleDeckCatalog)
 	mux.HandleFunc("GET /me", f.handleMe)
 	mux.HandleFunc("GET /cards/{id}", f.handleCard)
 	mux.HandleFunc("GET /ws", f.handleWS)
@@ -161,6 +162,17 @@ func (f *fakeServer) handleDecks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	_ = json.NewEncoder(w).Encode(map[string]any{"deck_name": "Mono White", "card_count": 100, "commanders": []string{"Test Commander"}})
+}
+
+func (f *fakeServer) handleDeckCatalog(w http.ResponseWriter, r *http.Request) {
+	if !f.authed(r) {
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+	_ = json.NewEncoder(w).Encode(map[string]any{"decks": []map[string]any{
+		{"id": "izzet-aggro", "name": "Izzet Aggro", "archetype": "aggro", "commander": "Niv-Mizzet", "colors": []string{"U", "R"}, "card_count": 100},
+		{"id": "mono-white", "name": "Mono White", "commander": "Test Commander", "colors": []string{"W"}, "card_count": 100},
+	}})
 }
 
 func (f *fakeServer) handleCard(w http.ResponseWriter, r *http.Request) {

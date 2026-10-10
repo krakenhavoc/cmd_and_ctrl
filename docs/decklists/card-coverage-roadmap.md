@@ -142,11 +142,11 @@ registry disagree.
 
 | Measured | Count |
 |---|---:|
-| Registry keys (`len(effects.All())`) | **5154** |
-| — whole cards (bare `oracle_id`) | **4974** |
-| — back faces (`<oracle_id>#1`) | 180 |
-| Declared `full` | 4823 |
-| Declared `caveats` | 292 |
+| Registry keys (`len(effects.All())`) | **5529** |
+| — whole cards (bare `oracle_id`) | **5328** |
+| — back faces (`<oracle_id>#1`) | 201 |
+| Declared `full` | 5207 |
+| Declared `caveats` | 283 |
 | Declared `unreviewed` | 39 |
 
 A back face is usually half a card: the modal-DFC land cycle registers
@@ -291,12 +291,9 @@ Two engine seams grew to make the ready cards honest:
 - **Mana Drain** — fires at your next **precombat** main phase; a
   Drain cast in your own precombat main waits a turn instead of paying
   out in that turn's postcombat main.
-- **Victimize** — the sacrifice is an additional cost to cast, not a
-  resolution-time action (no sacrifice-then-continue prompt exists).
-  The engine validates targets before it pays the cost, so the
-  sacrificed creature can never be one of the two targets — same as
-  printed. The returned creatures enter untapped and are tapped a beat
-  later.
+- **Victimize** — ~~the sacrifice is an additional cost to cast, not a
+  resolution-time action~~. Closed: the creatures enter tapped together
+  since #1867, and the sacrifice happens on resolution since #2863.
 - **Tireless Provisioner** — always a Treasure, never a Food (no
   resolution-time option prompt for a trigger).
 - **Storm-Kiln Artist** — "cast or **copy**": no spell-copy event
@@ -489,8 +486,7 @@ Geier Reach Sanitarium, Sram, Entish Restoration, Urza's Cave,
 Dispatch, Expedition Map, Sheoldred the Apocalypse, Living Death,
 Mental Misstep, Pyroblast, Fabricate.
 
-Declared weaker: Entish Restoration's sacrifice as an additional cost
-(Victimize's posture); Mental Misstep's Phyrexian pip paid with {U}
+Declared weaker: Mental Misstep's Phyrexian pip paid with {U}
 only; Warren Soultrader's "another" enforced by name; Geier Reach's
 loot seat by seat; the bounce lands inherit the Chancery's
 choice-as-target. One stronger corner, declared: Land Tax's

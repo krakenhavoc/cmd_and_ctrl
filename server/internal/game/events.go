@@ -917,6 +917,20 @@ const (
 	// the layer version for EventBecameMonstrous's reason.
 	EventBecameSaddled EventKind = "became_saddled"
 
+	// EventBecameRenowned — a permanent became renowned (CR 702.112,
+	// ADR 0071 amendment 2026-10-09, #2049). Source / CardID / Target =
+	// the permanent, Actor = its controller, Amount = the N of the
+	// renown ability that made it renowned (the announced N, not the
+	// counters that landed after Hardened Scales or Doubling Season).
+	//
+	// Emitted once per object: a renown trigger does nothing for a
+	// permanent that is already renowned (CR 603.4, 702.112c), so a
+	// second instance fires no "becomes renowned" trigger (Relic
+	// Seeker, Valeron Wardens). Bumps the layer version for
+	// EventBecameMonstrous's reason — an "as long as this creature is
+	// renowned" static switches on (Goblin Glory Chaser).
+	EventBecameRenowned EventKind = "became_renowned"
+
 	// EventEvolved — a creature evolved (CR 702.100b): one or more
 	// +1/+1 counters were put on it as a result of its evolve ability
 	// resolving. CardID / Target / Source = the creature, Actor = the
@@ -1490,6 +1504,11 @@ type Event struct {
 	// cares reads it beside Source, which names the card that asked.
 	// Added with #650.
 	DiscardCause DiscardCause `json:"discard_cause,omitempty"`
+
+	// FromRadiation marks an EventChangeLife caused by the rad
+	// counters' inherent trigger (CR 728.1a, "life loss from
+	// radiation"; rad_counters.go, #2042). False on every other event.
+	FromRadiation bool `json:"from_radiation,omitempty"`
 
 	// Cause, CauseController and CauseItem say WHAT moved a card, on
 	// the events a routed zone change emits (EventZoneMove, EventMill,

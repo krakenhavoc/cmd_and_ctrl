@@ -93,7 +93,7 @@ const (
 	// they mill a number of cards equal to their rad counters, then
 	// lose 1 life and remove one rad counter for each NONLAND card
 	// milled that way — not a draw-based trigger. The trigger is
-	// S14+ territory.
+	// rad_counters.go (#2042).
 	CounterRad = "rad"
 )
 

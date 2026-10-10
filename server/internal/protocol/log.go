@@ -2137,13 +2137,16 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogTableRoll:
 		return renderTableRollLogText(e, actor)
 	case LogStep:
-		round := e.Round
-		if round == 0 {
+		// "Turn" counts turns and the round rides beside it, the same
+		// two numbers in the same words as the agent's board header,
+		// "TURN 3 (round 2)" (#2790). Printing the round as "Turn 2"
+		// put two different counts under one name in the same prompt.
+		if e.Round == 0 || e.Turn == 0 {
 			// Backward-compatible rendering for persisted pre-ADR-0059
 			// EventStepBegan entries, which carry only Amount.
-			round = e.Turn
+			return fmt.Sprintf("Turn %d — %s · %s", e.Turn, actor, prettyStep(e.Step))
 		}
-		return fmt.Sprintf("Turn %d — %s · %s", round, actor, prettyStep(e.Step))
+		return fmt.Sprintf("Turn %d (round %d) — %s · %s", e.Turn, e.Round, actor, prettyStep(e.Step))
 	case LogCast:
 		// ADR 0118 owner decision 4: an unpaid cast says so, in these
 		// words, after the zone.

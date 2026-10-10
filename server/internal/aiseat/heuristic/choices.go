@@ -48,6 +48,7 @@ const (
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
 	choiceEntryController     = "entry_controller"
+	choiceEntryReadAhead      = "entry_read_ahead"
 	choiceMayCast             = "may_cast"
 	choiceChooseSource        = "choose_source"
 	choiceCommanderReturn     = "commander_return"
@@ -126,9 +127,17 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 
 	switch kind {
 	case choicePayAmount:
-		return payAmountValue(ch, cp.Amount)
+		return st.payAmountValue(ch, cp.Amount)
 	case choiceEntryController:
 		return st.entryControllerValue(ch, cp.OptionIndex)
+	case choiceEntryReadAhead:
+		return readAheadValue(cp.OptionIndex)
+	case choiceOptionPick:
+		// #2854: options that cost mana (costed_options.go). An option
+		// pick with none keeps the enumerator's first answer.
+		if v, why, ok := costedOptionValue(ch, cp.OptionIndex); ok {
+			return v, why
+		}
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
@@ -493,6 +502,18 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 					return 0.25, "trade: the spell is not worth the creature"
 				}
 				return 1, "trade: keep the creature"
+			}
+		}
+		// ADR 0136's amendment of 2026-10-09: an opponent's tax that
+		// would leave the turn plan's next member unpayable is weighed
+		// against that member (tax.go).
+		if kind == choicePayUnless {
+			if decline, why, ok := p.taxAgainstPlan(st, ch); ok {
+				yes := cp.Apply != nil && *cp.Apply
+				if yes == decline {
+					return 0.25, why
+				}
+				return 1, why
 			}
 		}
 		// The enumerator only offers "pay" when the cost is payable,
@@ -992,6 +1013,18 @@ func (st *state) seatHand() []protocol.CardView {
 		return nil
 	}
 	return st.seat.Hand.Cards
+}
+
+// readAheadValue scores one chapter of a read ahead prompt (#2123,
+// CR 702.155b): the earlier the better, so the bot starts on chapter I
+// and gets every chapter the Saga prints. Skipping ahead trades the
+// chapters it passes for tempo, and the heuristic has no measure of
+// when that trade is worth it, so it never makes it.
+func readAheadValue(index *int) (float64, string) {
+	if index == nil || *index < 0 {
+		return 0, "read ahead: chapter I"
+	}
+	return -float64(*index), "read ahead: start early and get every chapter"
 }
 
 // entryControllerValue scores one seat of an entry_controller prompt —

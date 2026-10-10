@@ -132,6 +132,14 @@ A ramp spell (Rampant Growth, Harrow, Farseek, Three Visits, Nature's Lore) gets
 
 Rituals and one-shot sources (Dark Ritual, Lotus Petal, a Treasure) stay as they are. Their value is the spell they let the bot cast this turn, which needs a plan the heuristic does not make (see [Out of scope](#out-of-scope)).
 
+#### Amendment 2026-10-09: an idle late rock
+
+The owner's decision on ADR 0136 PR 4b's question 2. The table's "Arcane Signet, turn 9" row priced a rock with no open deficit at −0.20, below even §5's `LeftoverThreshold`, so the sentence above ("unless §5's leftover-mana window takes it") never came true. ADR 0136 PR 4b found that 170 of the 249 turns run 1 ended with stranded mana were exactly that rock, left in hand with its mana unspent.
+
+In the turn's last main-phase window (§5's first window: the bot's own last main phase, stack empty), a cast of a nonland permanent with a repeatable mana ability, no ramp premium (the deficit is closed) and only mana and taps for its cost is priced at `LeftoverThreshold` when its mana would otherwise go unused, that is, when no other move on offer is priced above `LeftoverThreshold`. The bot then casts it rather than pass. A rock's mana is still useful past `RampWantCap`: it pays a commander's growing tax and an X. If several such rocks are on offer, the one that makes the most mana goes first. The first main phase is unchanged, because combat and the draw may still give that mana a use, and so is every price above zero. The row now reads: Arcane Signet, turn 9, deficit 0: −0.20, and `LeftoverThreshold` (0.00, cast) in the turn's last main phase when nothing else on offer is priced above it.
+
+It is `Config.IdleLateRocks`, on in `DefaultConfig()` and off in `BaselineConfig()`. It is a price, not part of ADR 0136's plan, so `heuristic-noplan` has it too. Measured in [ADR 0136](0136-planning-the-turns-mana.md#amendment-2026-10-09-a-rock-against-a-spell-over-two-turns)'s PR 4c, which also carries the same day's two-turn amendment.
+
 ### 3. Other permanents: priced by mana value and by what their rows say
 
 Ranked second. This covers the enchantment and artifact engines, Equipment, Vehicles, Altars, and every small creature.
@@ -1625,3 +1633,36 @@ Left undeclared (7):
 The audit's burn list goes from 131 cards to 97: 34 declared, leaving the 5 from batch 1, the 7 above and 85 from M on. Batch 3 starts at Mage il-Vec.
 
 **Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena` with the same command as batch 1, with binaries built from `develop` at `e0139b738` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 19 / 20, izzet-aggro 2 / 2, mono-black-aristocrats 22 / 22, simic-ramp 21 / 20. A second run of the `develop` binary differs from its own first run in 1 game and ends at 20 / 2 / 22 / 20, the branch's numbers: the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. The regenerated `legal_actions_agreement.json` gains Goblin Bombardment's declared entry, the one card of the batch in that fixture.
+
+#### Burn batch 3 (2026-10-09)
+
+The third burn batch of PR 5 declares a damage target entry on the audit's undeclared burn list from Mage il-Vec through Rip Apart (M to R). No price code changed.
+
+Declared (41 cards): Mage il-Vec, Magma Spray, Magmatic Galleon (the 5-damage enters trigger), Magmatic Sinkhole, Mardu Charm (the damage mode), Marjhan (the 1 damage to an attacker), Mayhem Devil, Meteor Storm, Mizzium Mortars (the single-target cast; overload clears the clause), Moonrager's Slash, Narset's Rebuke, Naya Charm (the damage mode), Nicol Bolas, God-Pharaoh (the 7-damage minus ability), Nine-Ringed Bo, Niv-Mizzet, Parun, Niv-Mizzet, the Firemind, Obliterating Bolt, Ogre Shaman, Omnath, Locus of Rage (the 3-damage trigger), Orcish Bowmasters (the damage; the amass is not declared), Orcish Hellraiser, Outpost Siege (the Dragons line), Pashalik Mons (the damage trigger), Phlage, Titan of Fire's Fury (the 3 at the target; the life gained is not declared), Pillar of Flame, Pinecone Strike (the damage mode), Pinpoint Avalanche, Pirate Ship, Prophetic Titan (the 4-damage mode), Pumpkin Bombardment, Puncture Blast, Puncturing Blow, Pyromania (both abilities), Rage of Purphoros, Ranger's Firebrand, Reduce to Ashes, Reiterating Bolt, Repulsor Blast (the 5 at the creature; the teamwork 2 to its controller is not a target clause, like Burn the Accursed), Ribbons of Night (the 4; the life and draw are not declared), Rift Bolt and Rip Apart (the damage mode).
+
+Left undeclared (1):
+- Razorgrass Ambush // Razorgrass Field: the spell face is a row of the shared modal-land table (`mdfc_lands.go`), which has no per-card purpose field, and this batch adds no fields.
+
+The audit's burn list goes from 97 cards to 56: 41 declared, leaving the 12 from batches 1 and 2, Razorgrass Ambush and 43 from S on. Batch 4 starts at Savage Alliance.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with binaries built from `develop` at `a33469d45` and from this branch: 0 stalls in both, turns p50 14 in both, and the two reports are identical game for game (seed, turns, winner): esper-control 24, izzet-aggro 4, mono-black-aristocrats 26, simic-ramp 10 wins in both. The suite is 41 of 41 before and after. `TestLegalActionsAgreement` did not go stale, because none of the batch is in its fixture. `TestRealDumpPurposeAudit` already fails on `develop` for an unrelated reason (Call Forth the Tempest reads as a wipe with no Sweep); the burn list above is read from its output.
+
+#### Burn batch 4 (2026-10-09)
+
+The last burn batch of PR 5 declares a damage target entry on the audit's undeclared burn list from Savage Alliance through Zacama, Primal Calamity (S to Z). No price code changed.
+
+Declared (33 cards): Savage Alliance (the 2 at a creature; its sweep mode keeps its Sweep), Scorching Dragonfire, Scorching Lava (the 2; the kicker rider changes no amount), Scorchmark, Serpentine Spike (2, 3 and 4 on slots 0, 1 and 2), Siege-Gang Commander, Skullcrack, Skysovereign, Consul Flagship, Smite the Deathless, Sorin Markov (the +2), Spikefield Hazard, Spring-Loaded Sawblades, Staggershock, Stormbind, Sudden Shock, Sunscorched Desert, Suplex (the damage mode), Sword of Fire and Ice (the 2; the draw is not declared), Synth Eradicator, Task Mage Assembly, Thornscape Battlemage (the kicked-with-{R} trigger), Thunderous Wrath, Ticking Gnomes, Touch of the Void, Trumpeting Carnosaur (the discard ability), Ugin, the Spirit Dragon (the +2), Walking Ballista, Warrior's Blades (the 3; the life gained is not declared), Wild Slash, Wilt in the Heat, Wrenn and Six (the -1), Yamabushi's Flame and Zacama, Primal Calamity (the 3-damage ability).
+
+Left undeclared (10), which with the 13 from batches 1 to 3 is every undeclared card the audit still lists:
+- Slaying Fire: 3, or 4 with adamant, read as it resolves.
+- Stormscale Anarch: 2, or 4 if the card discarded at random was multicolored.
+- Torch the Tower: 2, or 3 if bargained.
+- Urza's Rage: 3, or 10 kicked.
+- Unstable Footing: the 5 is dealt to a target chosen only when kicked, and that clause hangs on the kicker, not on the statement; `checkTargetPurposes` refuses slot 0 because the statement has no target clause.
+- Three Bowls of Porridge: a modal activated ability. Only a spell's mode bullets carry a purpose the bot reads, and an activated row reads entries for its first mode only.
+- Thornbite Staff: the 1 damage is an ability it grants to the equipped creature; the audit and the wire's ability rows do not carry an entry from a grant (like Furystoke Giant).
+- Spiked Corridor // Torture Pit, Tibalt, Rakish Instigator and Weapons Manufacturing: the damage is a created token's own trigger (the Devil's 1, the Munitions' 2). The audit reads the card, not the token it makes, and a token's trigger is shared by every card that makes it, so it is not declared here.
+
+The audit's burn list goes from 56 cards to 23: 33 declared. The 23 left are the 12 from batches 1 and 2, Razorgrass Ambush (batch 3) and the 10 above.
+
+**Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with binaries built from `develop` at `800eff6cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 23 / 24, izzet-aggro 4 / 4, mono-black-aristocrats 27 / 26, simic-ramp 10 / 10. One game of 64 differs (the 48th, 16 turns against 13). A second run of the branch binary differs from its own first run in that same game and matches `develop` game for game, while two runs of the `develop` binary were identical, so the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. `TestLegalActionsAgreement` did not go stale. `TestRealDumpPurposeAudit` still fails on `develop` for Call Forth the Tempest (#2771), the only failure; the burn list above is read from its output.

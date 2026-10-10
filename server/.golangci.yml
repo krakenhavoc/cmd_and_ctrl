@@ -47,6 +47,8 @@ linters:
         - compleation
         - compleat
         - compleated
+        # Theorix Metamage (Reality Fracture) is a printed card name.
+        - metamage
   exclusions:
     # v1's defaults, written out by `migrate`: lax generated-file
     # detection and the three conventional directories. No preset is

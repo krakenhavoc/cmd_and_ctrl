@@ -18,6 +18,14 @@ owner decision 8, #2188), 2026-10-04 — rule 8 also holds the viewer's own
 main phase when the engine may not see their mana: a spell in hand left out
 for mana alone while they control a mana source the engine does not run. See
 the precedence list below.
+**Amended by:** S60 (#2853), 2026-10-09 — an untargeted activated ability is
+no longer a response by default, and the hold toggle clears itself once the
+stack it held has emptied. See "Amendment: only real interaction stops you
+(#2853)" below.
+**Amended by:** S60 (#2871), 2026-10-09 — "stop at a ticked step only when I
+can do something" becomes its own setting, and crew, manlands and granted
+combat keywords count as a response in combat windows. See "Amendment: ticked
+steps and combat abilities (#2871)" below.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -271,6 +279,248 @@ It is derived entirely client-side, from public data and elapsed time
 pass clears in about one round trip, well inside 800 ms. So a real hold, a
 timed bluff, a manual bluff and a player who has stepped away all look the
 same, which is the point. Bot seats keep their own `botThinking` chip.
+
+## Amendment: only real interaction stops you (#2853)
+
+**Status:** Accepted · 2026-10-09 · Sprint S60
+
+In a real Commander game smart autopass almost never passed an opponent's
+stack item. `classifyMove` counted every affordable non-mana activated ability
+as an `ability` response, and `respondAbilities` was on by default, so a Mind
+Stone, a fetch land, a Clue, a Wayfarer's Bauble or a card with cycling in hand
+held every opponent spell. A probe in `internal/legal` reproduced it: three
+Forests and Llanowar Elves give only pass and mana moves, and adding Mind Stone
+and Evolving Wilds adds two `activate` moves with nothing to say they answer
+anything.
+
+**Owner decision 1 (2026-10-09).** By default an opponent's stack item stops you
+only for real interaction: an instant you can cast, a counterspell or anything
+else targeting the stack, or an activated ability that targets. An untargeted
+value ability no longer stops you, and a setting brings the old behaviour back.
+
+**Owner decision 2 (2026-10-09).** The hold toggle keeps holding every stack, an
+opponent's item included. Its tooltip and shortcut hint now say so, and it
+clears itself once the stack empties.
+
+**Owner answer 2 (2026-10-09, on review).** An untargeted ability that DOES
+interact must still stop you by default ("Stop for these too"): a sacrifice
+outlet, regeneration, protection, indestructible, hexproof or shroud, phasing,
+a blink, damage prevention, a pump or counters. Special actions stay on by
+default (owner answer 1; a separate issue will look at them).
+
+**The goal (owner, 2026-10-09).** "Make the autopass as smart as possible and as
+convenient as possible so most of the time players are not thinking why do I
+have to click to pass or thinking I missed my window to respond." Two halves,
+both held: no pointless stops, and no missed windows.
+
+### What changed
+
+- **`has_targets` on the legal move.** The enumerator sets it on every `cast`
+  and `activate` announcement that chose at least one target, on the stack or
+  anywhere else (`legal.Move.HasTargets`, `docs/protocol.md`). It is per
+  announcement, like `targets_stack`, and rides in `capLegalMoves`' key
+  `(source, kind, targets_stack, has_targets)`, so a capped list never merges a
+  targeted mode into an untargeted one.
+- **`interacts` on the legal move.** For an untargeted activation that can still
+  answer the stack, the enumerator sets `interacts`
+  (`server/internal/legal/interacts.go`, `docs/protocol.md`). It reads the
+  ability's shape, because the effect is a closure:
+  - the cost: sacrificing, exiling or returning a creature you control (a
+    sacrifice outlet or a save). Sacrificing a land, a Food, a Treasure, a Clue
+    or a plain artifact is a price, not an answer;
+  - the declared purpose (ADR 0126 §6): a pump, a combat-damage shield, damage
+    to a creature, a sweep;
+  - the printed effect text after the cost: regenerate, protection,
+    indestructible, hexproof, shroud, persist, undying, first strike, double
+    strike, deathtouch, phasing, prevention or redirection, a power/toughness
+    change or +1/+1 and -1/-1 counters (monstrosity and adapt included), a
+    blink, returning itself to hand, damage to each creature, a destroy that is
+    not "destroy this", and "can't cast".
+
+  On a mana ability only a creature sacrifice outlet (Ashnod's Altar, Phyrexian
+  Altar) sets it. The rules lean to "interacts" only where the text cannot say.
+  `interacts_internal_test.go` pins a list of printed answers and a list of
+  printed value rows. An audit of the catalog's 706 untargeted instant-speed
+  activated rows marked 245 as interacting; those outside the plain categories
+  (regenerate, a pump, protection, prevention) were read one by one, and the
+  value rows it caught at first (charge and storage counters, damage to each
+  opponent, "destroy this enchantment", sacrificing Foods, Treasures and
+  lands) were moved out by narrowing the rules. `interacts` is in the cap key
+  too.
+- **A new class.** `classifyMove` keeps `counter` and `instant` as they were and
+  splits the rest of the activations:
+
+  | Move | Class |
+  |---|---|
+  | `activate` with `has_targets` or `interacts` (not `targets_stack`) | ability |
+  | `mana` with `interacts`, outside the viewer's sorcery window | ability |
+  | any other `activate` | untargeted |
+
+  Cycling is an `activate` from the hand, with no target, so it is untargeted.
+  Special actions keep their own `special` class and setting. A server that
+  sends no `has_targets` gets every non-counter activation classed as
+  untargeted.
+- **A fifth "Stop for" category.** `respondUntargetedAbilities` ("Value
+  abilities (Mind Stone, fetch lands, Clues, cycling)"), off by default.
+  `respondAbilities` now reads "Abilities that target or protect something
+  (pumps, sacrifice outlets, regeneration)". Ticking the new one restores the
+  pre-#2853 meaning of "Activated abilities". The Settings page says what the
+  default stops for.
+- **No missed windows: a visible "wait".** While the ADR 0119 §2 stack hold
+  counts down to an automatic pass on an opponent's item, the action dock
+  already showed "auto-pass in 1.4 s". It now carries a **wait** button beside
+  it (`L.waitToRespond`, "wait, let me respond"). One click, or the hold key
+  `h`, arms the hold toggle: the verdict turns to hold, the pending pass is
+  cancelled, and the hold clears itself when that stack empties. A real answer
+  in hand never reaches the countdown at all: the verdict is hold, and the
+  timed pass re-asks the decision when it fires and goes only on a pass.
+- **The hold toggle is for one stack.** `holdPriority` still holds every
+  non-empty stack (rule 6 checks it before the own-versus-opponent split, as
+  before). `noteStackForHold`, called with every frame, remembers a live stack
+  while the hold is on (an item in either stack representation, or a trigger
+  still queuing) and turns the hold off on the first frame after it with
+  nothing there. Arming it on an empty stack, before a cast, never clears it.
+
+The precedence list above is unchanged.
+
+### The settings migration (schema v22)
+
+A stored blob is materialised (see v15 → v16), so a stored
+`respondAbilities: true` from the all-on v12 default cannot be told from a
+chosen one. A `Stop for` list that differs from that default can be: a player
+who turned any of the four v12 categories off looked at the list and left
+abilities as they wanted them. So, for a blob from before v22:
+
+- all four categories still on (or not stored at all): `respondUntargetedAbilities`
+  takes the new default, `false`;
+- any of the four off: `respondUntargetedAbilities` follows `respondAbilities`,
+  which keeps their old "any ability" meaning.
+
+An account copy from a v21 client goes through the same migrate
+(`applySyncedCopy`). From v22 on, the stored value stands, and a non-boolean
+falls back to the default.
+
+### Costs
+
+- A player who wanted a stop to crack a fetch land in response must now tick
+  "Untargeted abilities", pin the step, or arm the hold.
+- `interacts` is read from printed text, so a row whose label is worded unusually
+  can be misread either way. The test lists are where a misread is fixed.
+- Some combat-relevant untargeted rows still do not stop you: granting flying,
+  haste, trample, menace or lifelink, "can block an additional creature", and a
+  land or artifact that becomes a creature until end of turn. A board full of
+  them would stop on every opponent spell, so they are left out for now.
+
+## Amendment: ticked steps and combat abilities (#2871)
+
+**Status:** Accepted · 2026-10-09 · Sprint S60
+
+The owner's goal, which governs every choice here, is the one #2853 states:
+"make the autopass as smart as possible and as convenient as possible so most
+of the time players are not thinking why do I have to click to pass or thinking
+I missed my window to respond".
+
+### Stop at a ticked step only when I can do something
+
+Rule 8 already skipped a ticked step with nothing to do in it, but only as one
+half of `smartAutoPass`, whose other half governs the opponent's stack and the
+key windows. A player who turned smart auto-pass off to see every opponent spell
+also lost the skip, and nothing on the Settings page said the two were joined.
+
+- **A setting of its own.** `gameplay.stepStopsOnlyWhenCanAct`, "Only stop at
+  my ticked steps when I can do something", sits under the step grid, on by
+  default. Rule 8 reads it in place of `smartAutoPass`:
+  `stepStopsOnlyWhenCanAct ? hasPlay || engineMayMissMana : true`.
+  `smartAutoPass` keeps rules 6 and 7 (opponent stack items and the key
+  windows).
+- **One toggle, not one per step.** The issue asked for a per-step option. One
+  global toggle is simpler, and every step wants the same answer: a ticked step
+  you cannot act on is dead air, whichever step it is. A player who wants one
+  step to stop every time pins it (§5) or turns the toggle off. A per-step
+  column would double the grid for a choice nobody has asked to make per step.
+- **What counts as something to do** is `hasPlay`, unchanged:
+  - on the viewer's own main phase with an empty stack, any cast, activation or
+    land the enumerator offers (a value ability and a crew included), plus
+    ADR 0118 owner decision 8's spell held back for mana alone. A main phase
+    with any play in it is never skipped; only one with mana moves and nothing
+    else is;
+  - elsewhere, a move in an enabled "Stop for" category, a declaration, a
+    choice, an unknown kind, an owed block (#328) or a declared attack (#599).
+- **The "Stop for" list** applies whenever either setting is on, so its
+  fieldset is disabled only when both are off.
+
+### Combat abilities count in combat
+
+#2853's costs named a gap: some untargeted abilities change a fight without
+answering a spell, so `interacts` leaves them out, and smart auto-pass passed
+the window to use them. They are now a response in a combat window and nowhere
+else, because a board of them would stop the viewer on every spell.
+
+- **`combat_interacts` on the legal move**, a server bit of its own rather
+  than a wider `interacts`, so the client can gate it on the window
+  (`server/internal/legal/combat_interacts.go`, `docs/protocol.md`). It is set
+  on an untargeted activation that `interacts` does not mark, read from the
+  ability's shape:
+  - a crew cost (CR 702.122), or a crew row whose cost is printed another way;
+  - printed effect text that makes it a creature (a manland, an animated
+    artifact), gives or takes away flying, haste, trample, menace, lifelink,
+    vigilance or reach, lets a creature block an additional creature or any
+    number, makes it unblockable, lures ("must be blocked"), forces attacks,
+    taps or untaps the enchanted creature, doubles damage, or makes tokens
+    that enter tapped and attacking.
+- **`combat_defender_only`, for token makers (owner answer, 2026-10-09).** An
+  activation that makes a creature token that does not enter tapped, populates
+  or amasses, and grants no combat keyword, sets `combat_interacts` and
+  `combat_defender_only`. A token is a blocker, so it counts as a response only
+  while the viewer is a defending player in this combat (`isDefending`: some
+  attacker's defending player is the viewer, which covers a planeswalker they
+  control and a battle they protect). When another player is attacked, or
+  before attackers are declared, it stays untargeted. Crew, manlands and the
+  keyword grants are not narrowed. A token row that also grants haste
+  (Sokenzan, Ingris Stingerquill) or makes attacking tokens (Dalkovan
+  Encampment) is a plain combat ability.
+
+  Both bits ride in `capLegalMoves`' key, now `(source, kind, targets_stack,
+  has_targets, interacts, combat_interacts, combat_defender_only)`. The change to `interacts.go` is
+  none: `abilityInteracts` is asked first, and a row it marks is never marked
+  again.
+- **The combat window** (`inCombatWindow`, `client/src/lib/responseWindow.ts`):
+  beginning of combat, declare attackers and declare blockers, or a triggered
+  or activated item on the stack whose text names an attack or a block. Combat
+  damage and end of combat are too late to make a blocker. There,
+  `classifyMove` classes a `combat_interacts` activation as `ability` (on by
+  default); elsewhere it stays `untargeted` (off by default). So a crew or a
+  manland stops you at an opponent's declare attackers or blockers, and on a
+  ticked beginning of combat, and not for an opponent's main-phase sorcery. A
+  token maker stops you there only when you are the one attacked.
+- **The audit.** Of the catalog's 478 untargeted, instant-speed activated rows
+  that `interacts` does not mark, the rules mark 58 as combat abilities (27
+  crew rows, the manlands and animated artifacts, the keyword grants, the
+  extra-block rows) and 52 as defender-only token makers. The rest were read
+  one by one. A tapped token (Automated Assembly Line) and a non-creature token
+  (Treasure, Food, Clue, Blood) do not count; "becomes that type" and "becomes
+  prepared" do not either. `combat_interacts_internal_test.go` pins both lists.
+
+### The settings migration (schema v23)
+
+A blob from before v23 copies `stepStopsOnlyWhenCanAct` from its
+`smartAutoPass`, so nobody's behaviour changes: a player who turned smart
+auto-pass off still stops at every ticked step, and everyone else keeps
+skipping the empty ones. An account copy from a v22 client goes through the
+same migrate (`applySyncedCopy`). From v23 on, the stored value stands, and a
+non-boolean falls back to the default (on).
+
+### Costs
+
+- A token maker counts only while you defend, so a boast token maker
+  (Dragonkin Berserker, Usher of the Fallen) or Goro-Goro's Dragon, usable only
+  while you attack, never stops you. Their own turn's combat is the active
+  player's to stop on (a ticked step or a pin).
+- `combat_interacts` is read from printed text like `interacts`, with the same
+  risk of a misread either way; the test lists are where one is fixed.
+- A pump written without a `+N/+N` ("Double this creature's power") is still
+  read as value by `interacts`; #2872's declared answers is the place to fix
+  that, not this text reader.
 
 ## Context
 

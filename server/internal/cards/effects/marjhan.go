@@ -54,6 +54,7 @@ func init() {
 				Label:   "{U}{U}: This creature gets -1/-0 until end of turn and deals 1 damage to target attacking creature without flying.",
 				Cost:    ManaCost("{U}{U}"),
 				Targets: TargetCreature("target attacking creature without flying", AttackingCreature(), WithoutKeyword("flying")),
+				Purpose: ForTargets(DamageToTarget(0, 1)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					if onBattlefield(g, item.SourceCardID) {

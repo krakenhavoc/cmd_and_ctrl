@@ -195,7 +195,14 @@ surface tiny.
    order. `ModeDoing` works on a spell too, and is the way to write a
    card whose bullets can see each other; a card that branches in
    `OnResolve` walks `ctx.ModeOccurrences()` (printed order), never
-   `0..len(ctx.Modes())`. Inside a bullet, read its
+   `0..len(ctx.Modes())`. **A bullet that asks something** — a
+   search, a scry, a discard — only queues the prompt, so a later
+   bullet must not run on the line below it. `ModeDoing` bodies get
+   this for free: the engine parks the bullets after a paused one
+   and runs them once the prompt is answered (#2789,
+   `game/mode_walk.go`). An `if ctx.HasMode(i)` chain does not, so a
+   modal card with a prompting bullet followed by another bullet is
+   written with `ModeDoing`. Inside a bullet, read its
    own targets with `ModeTarget(ctx, occurrence)` /
    `ctx.ModeTargets(occurrence)` — never `item.Targets[0]`, which
    belongs to whichever bullet was chosen first.
@@ -418,6 +425,11 @@ PendingChoice for the controller to resolve:
 - `"{W3|U3|B3|R3|G3}"` — Gilded Lotus (#742): ONE pick that adds three
   tokens of the picked colour. Use `OneColorOfAmount(n)`; see "Adding a
   choose-a-color card" below.
+- `"{W|U|B|R|G:2}"` — Firemind Vessel (#2558): "Add two mana of
+  different colors", ONE slot whose two mana must be two different
+  colours. Use `DifferentColors(n)`. Never write it as two pipes,
+  `"{W|U|B|R|G}{W|U|B|R|G}"`: that allows `{U}{U}`, stronger than
+  printed. See "Adding a choose-a-color card" below.
 
 Mana abilities can carry cost components beyond `{T}`:
 
@@ -2126,8 +2138,11 @@ canonicalised forms the engine expects. Canonical tokens:
 | `"evolve"` | Evolve (CR 702.100) — #1805, the second TRIGGERED keyword, built exactly like prowess: one trigger per instance (`game/evolve.go`), the CR 702.100a comparison made on entry and again on resolution (CR 603.4), and `game.EventEvolved` when a counter lands (CR 702.100b) — "whenever this creature evolves" is `WhenThisEvolves(label, effect)`. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is evolve and other tokens here needs no card file. Never write an evolve trigger by hand ([ADR 0106 §3](decisions/0106-five-small-seams-from-the-s50-rechecks.md#3-evolve-1805)) |
 | `"exalted"` | Exalted (CR 702.83) — #2538, a TRIGGERED keyword built like prowess: one trigger per instance (`game/exalted.go`, CR 113.2c) when exactly one creature is declared as an attacker (CR 506.5) and you control it; the attacker gets +1/+1 until end of turn. Cumulative, so grant it through `KeywordGrant` / `game.AppendKeywordAbility`, and each exalted counter (`game.CounterExalted`) is one more instance. Declare it in `PrintedKeywords`; never write an exalted trigger by hand (the old `effects.Exalted()` constructor is gone, and `TestNoCatalogRowIsAnExaltedConstructor` keeps it gone). A creature whose only text is exalted and other tokens here needs no card file ([ADR 0101 amendment 2026-10-08](decisions/0101-keyword-counters.md)) |
 | `"annihilator N"` | Annihilator (CR 702.86) — #2073, the third TRIGGERED keyword: numbered like toxic and triggered like prowess. One attack trigger per instance (`game/annihilator.go`, CR 702.86b); the defending player (CR 508.5, read per attacker) chooses N permanents they control in one prompt and sacrifices them together. Declare it in `PrintedKeywords` (`"annihilator 4"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.AnnihilatorAmounts`, never `HasKeyword`. "Annihilator X" read at resolution is the catalog row `AnnihilatorCounted(label, count)` (Ulamog, the Defiler). A creature whose only text is annihilator and other tokens here needs no card file ([ADR 0113 §2](decisions/0113-small-seams-for-the-s58-deck-requests.md#2-annihilator-2073)) |
+| `"renown N"` | Renown (CR 702.112) — #2049, a TRIGGERED keyword numbered like annihilator. One trigger per instance (`game/renown.go`, CR 702.112c) on combat damage to a player — not a planeswalker, a battle or a creature — with the intervening "if it isn't renowned" read as it triggers and again as it resolves (CR 603.4). It puts N +1/+1 counters on the creature through the CR 614 window, then sets `Card.Renowned` and emits `game.EventBecameRenowned` (Amount = N). Declare it in `PrintedKeywords` (`"renown 2"`) and grant it through `KeywordGrant` / `game.AppendKeywordAbility`; read it with `game.RenownAmounts`, never `HasKeyword`. A creature whose only text is renown and other tokens here needs no card file. What reads the designation is in [Renown](#renown-cr-702112-2049) ([ADR 0071 amendment 2026-10-09](decisions/0071-designations-that-switch-abilities-on.md)) |
+| `"modular N"` | Modular (CR 702.43) — #2012, a NUMBERED entry-and-dies keyword: one entry replacement per instance through the entry look-ahead ("enters with N +1/+1 counters", every entry path, never ordered against other entry replacements), and one dies trigger per instance off the last-known ability list and counters (`game/modular.go`), a "you may" that targets an artifact creature. Declare it in `PrintedKeywords` (`"modular 2"`); cumulative (CR 702.43b). Modular—Sunburst is not this token (Arcbound Wanderer's own card file). A creature whose only text is modular and other tokens here needs no card file |
 | `"riot"` | Riot (CR 702.136) — #1556, an ENTRY keyword: the entry look-ahead (`game/entry_lookahead.go`) reads the permanent as it would exist on the battlefield (CR 614.12) and the gather asks one `entry_riot` question per instance (`game/riot.go`) — a +1/+1 counter or haste. Cumulative (CR 702.136b), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a printed riot and Rhythm of the Wild's ask twice. Never write a riot replacement by hand ([ADR 0109 §10](decisions/0109-rule-gates-land-types-mana-and-cost-components.md#10-riot-and-unleash-1556)) |
 | `"unleash"` | Unleash (CR 702.98) — #1556, riot's sibling: one optional "enter with an additional +1/+1 counter" per instance through the same look-ahead, and "can't block as long as it has a +1/+1 counter on it" folded into the restrictions after the layer pass (`foldUnleashLocked`). Cumulative (CR 113.2c). A creature whose only text is riot or unleash and other tokens here needs no card file |
+| `"decayed"` | Decayed (CR 702.147) — #2650, a static and a TRIGGERED keyword: "can't block" is folded into the restrictions after the layer pass (`foldDecayedLocked`), and one attack trigger per instance (`game/decayed.go`) queues a delayed trigger that sacrifices the creature at the beginning of the end of combat step. Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`; a decayed counter (`game.CounterDecayed`) is one more instance. Put it on a token through the template (`TokenCard("2/2 black Zombie with decayed")`). Never write the restriction or the sacrifice by hand |
 | `"undying"`, `"persist"` | Undying (CR 702.93) and persist (CR 702.79) — #2075, DIES keywords: `harvestLTB` derives one trigger per instance from the departed permanent's LAST-KNOWN ability list (`game/undying_persist.go`, CR 603.10a), checks the counters it last had, and the keyed bodies `undying/return` / `persist/return` return the card only while it is still the graveyard object it became (CR 400.7e), under its owner's control with the counter on the entry event (so Hardened Scales applies). Cumulative (CR 113.2c), so grant it through `KeywordGrant` / `game.AppendKeywordAbility`. A creature whose only text is undying or persist and other tokens here needs no card file. Never write a "return it with a counter" dies trigger for either by hand ([ADR 0113 §4](decisions/0113-small-seams-for-the-s58-deck-requests.md#4-undying-and-persist-2075)) |
 | `"split second"` | Split second (CR 702.61) — #1519, a SPELL's keyword: `castHasSplitSecond` (`game/split_second.go`) stamps `StackItem.SplitSecond` at announce, and while it is on the stack nobody casts or activates a non-mana ability. Declare it on an instant or sorcery exactly like flash; never pass the sandbox `SplitSecond` cast flag from a card ([ADR 0007 amendment 2026-09-24](decisions/0007-stack-foundation.md)) |
 | `"rebound"` | Rebound (CR 702.88) — #1854, a SPELL's keyword read as it RESOLVES: `spellRebounds` (`game/rebound.go`) exiles a spell cast from its controller's hand instead of putting it into the graveyard, and the upkeep delayed trigger `rebound/cast` offers the free cast. Declare it on an instant or sorcery; the card file writes only the rest of its text. To GIVE a spell rebound (or any keyword) on the stack, use `ThatSpellGains{Keywords}` for "that spell gains …" from a cast trigger, and `SpellsYouControlHave(pred, kw…)` for "… spells you control have …" (a static with `AffectsSpells`, which never reaches a permanent); both are applied by the stack step of the layer pass (`game/spell_keywords.go`) ([ADR 0107 §3](decisions/0107-state-triggers-rebound-disturb-and-damage-prevention.md#3-rebound-1854)) |
@@ -2145,18 +2160,19 @@ keyword to "creatures with a flying counter" (the retired
 silenced by the source losing its abilities, and it has the wrong
 timestamp. "Returns … with a hexproof counter on it" rides the entry
 event (`ReturnFromGraveyardWithCountersForEffect`, Perennation). The
-kinds are the fourteen in `game.KeywordCounterKinds()`, spelled as the
+kinds are the fifteen in `game.KeywordCounterKinds()`, spelled as the
 keyword token (`game.CounterFirstStrike` is `"first strike"`). Exalted
 counters are cumulative: each one is one more instance of exalted (the
-Emissary of Soulfire ruling), where two flying counters are one flying.
-Decayed and "hexproof from" counters are not read yet, because those
-keywords are not enforced: a card that places one ships with a caveat.
+Emissary of Soulfire ruling), and so are decayed counters, where two
+flying counters are one flying. "Hexproof from" counters are not read
+yet, because that keyword is not enforced: a card that places one ships
+with a caveat.
 
 **A keyword that is a trigger** has two shapes, and ADR 0014's
 2026-09-24 amendment says which to use. A constructor on
 `Spec.Triggered` (`Cascade()`, `Storm()`, `Ward(...)`) when the keyword
 carries a parameter a bare token cannot hold or triggers from the
-stack; a token here with an engine-side trigger (prowess, evolve, exalted, undying, persist) when it lives
+stack; a token here with an engine-side trigger (prowess, evolve, exalted, decayed, undying, persist) when it lives
 on permanents, is granted and printed on tokens, and needs to work on a
 card with no catalog entry. Either way the trigger carries its name in
 `game.TriggeredAbility.Keyword`, which `cards/coverage` reads (#1258).
@@ -2787,6 +2803,12 @@ BlockRules: []game.BlockRule{
   trigger's effect, a turn-scoped `BlockRule.Limit` with
   `LimitPerDefender`, so each defending player is counted on their
   own.
+- **A limit granted to other permanents** (#2821): "Planeswalkers you
+  control have 'No more than one creature can attack this planeswalker
+  each combat.'" (Tomik, Orzhov Lawmage) is an `AbilityGrant` whose
+  `AttackLimits` slot holds `NoMoreThanNCanAttackThisEachCombat(1)`,
+  named by `GrantAbilitiesToYourPlaneswalkers(key)`. "This" is the
+  recipient, so each walker is counted on its own.
 
 Tests: [block_rules_test.go](../server/internal/cards/effects/block_rules_test.go)
 pins every shape through the verb, `legal.EnumerateFor` and
@@ -3327,6 +3349,20 @@ optional cost or an either/or branch, beside any other sacrifice in the
 plan (a sacrificing kicker or buyback), and "sacrifice X" beside "pay X
 life"; "any number" on an ability is still refused, because a cost an
 ability can pay with nothing is free.
+
+**"Sacrifice all creatures you control" (#2097):** the clause the caster
+does not choose at all.
+
+```go
+AdditionalCost: SacrificeAllCost("creatures you control", Creature()), // Soulblast
+```
+
+The engine takes every matching permanent the caster controls as the
+spell is cast (a phased-out one is left, an indestructible one goes), and
+none is a legal payment. Read what it took with `ctx.Sacrificed()` and
+`ctx.SacrificedTotalPower()` as for any other sacrifice. Mandatory slot
+only: Register refuses it in an optional cost or an either/or branch.
+The heuristic bot declines these casts outright.
 
 **The sacrificed permanents themselves (ADR 0113 §1, #2072):** the
 payment record names each one (`PaidCost.SacrificedObjects`, written at
@@ -4775,6 +4811,16 @@ the second its own `AltCostKey`: the caster claims it like an
 alternative cost, `CastOffersForLocked` lists it, and a cast that does
 not claim it uses the first.
 
+**"One of each card type" (#2167).** `PerType` is a budget of one play
+or cast per card type: `game.PermanentPermissionTypes` for Muldrotha,
+the Gravetide's "a land and a permanent spell of each permanent type",
+`game.NonlandPermissionTypes` for Aminatou's Augury's "for each nonland
+card type". Nothing else is needed: the engine asks the caster which
+type a multi-type card uses (`cast_spell.permission_type`), keeps the
+spent types (on a stored permission, or in the turn tally for one a
+permanent grants, per granting object), and a land can only spend
+"land", beside the turn's land drop.
+
 **"If you do, …" after a cast permission (#2173).** Set
 `CastPermission.FollowUp` to the key `game.RegisterCastFollowUp("key",
 func(g, f) error {...})` returns, declared as a package-level `var` in the
@@ -5604,6 +5650,30 @@ branch that always works FIRST — the enumerator marks that one
 always-legal, and a prompt whose every branch can fail is a seat that
 can be stuck (#544).
 
+**A choice among payments (#2854).** "May pay {1} or {2}", "unless
+they pay {B} or {3}": give each paid option its price in
+`game.ChoiceOption.ManaCost` and put the free option first. The engine
+does the rest — it drops an option the chooser cannot pay when the
+prompt is queued (CR 118.3), pays the chosen one through the auto-tapper
+as a pay-unless is paid, and refuses it, prompt still open, if the
+board moved in between. A cost on the first option, an `{X}` or an
+unparseable cost is refused as a card bug. `Then` still receives the
+index the card printed, even when an earlier option was dropped.
+
+**Keyed continuations (`ThenKey`, `Carry`).** A `Then` closure makes
+the table unrestorable while the prompt is open. For a question asked
+once per creature or per player, register the continuation instead:
+`var x game.OptionPickThen` assigned in the card's `init` with
+`effects.OptionPickThen("option-pick/<card>-<what>", fn)`, and pass
+`ThenKey: x, Carry: ids`. `fn(ctx, r)` gets a Context rebuilt with the
+asking effect's controller and the card as source, `r.Option` (the
+chosen option, nil when nobody chose) and `r.Carry`. Read the branch
+off `r.Option.ManaCost` or `Label`, not `r.Index`: options that could
+not be paid were never shown. The key is an on-disk identity, so append
+it to the ledger (`go test ./internal/cards/effects -run
+TestEveryPersistedEffectKeyResolves -args -update-effect-keys`). Winter's
+Chill, Lim-Dûl's Hex and Thrull Wizard are the worked examples.
+
 **`PileSplit{Splitter, Chooser, Owner, Cards, Then}`** is "an opponent
 separates those cards into two piles; you take one" — two chained
 prompts to two different seats, and no kind of its own. **Reveal the
@@ -5645,6 +5715,30 @@ carry it into a copy** — CR 707.2, which you get for free because
 A chosen player is not a target in either form: it is named without
 the stack, nothing may respond to it, and nothing re-checks it against
 the board.
+
+**A number** (#1941, ADR 0129's amendment of 2026-10-09,
+[choose_number.go](../server/internal/cards/effects/choose_number.go))
+is ADR 0129 §3's `pay_amount` prompt, with `Resource` saying what each
+point costs. Three builders:
+
+- `ChooseNumber{Min, Max, NoMax, Unit, SelfDamage, Goal, Marks, Then}`:
+  "an amount of damage of your choice" (Volcano Hellion). Nothing is
+  paid; `NoMax` is a number with no printed ceiling (CR 107.1b).
+- `PayLifeAmount{Unit, Goal, Then}`: "you may pay any amount of life. If
+  you do, …" (Necrodominance). The ceiling is the payer's life total
+  (CR 119.4); `Then` gets the life paid, 0 on a decline.
+- `PayAnyAmountOfLifeAsEnters(label, unit, goal)` for `Spec.AsEnters`:
+  "As this enters, pay any amount of life" (Phyrexian Processor). The
+  amount lands on `game.Card.ChosenNumber`; read it in the permanent's
+  abilities with `LifePaidAsEntered(ctx)`, which falls back to the
+  permanent's last-known information once it has left (CR 608.2h).
+
+`Goal` is the number that does what the card is for (the target's
+lethal damage, the cards that fill a hand). The bot answers it when the
+life it costs leaves it at 10 or more, and a person's stepper opens on
+it, so declare it whenever the card has one. `Marks` are other numbers
+worth offering a bot. A payment in mana ("you may pay {X}{R}") is not
+here yet (#2727).
 
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for
@@ -6477,6 +6571,17 @@ the executor — so a Gilded Lotus funds `{3}{U}{U}` beside two Islands
 and never funds `{W}{U}` alone, and the surplus floats
 ([ADR 0040](decisions/0040-mana-pipeline.md) #779 addendum).
 
+**"N mana of different colors"** (#2558) is the opposite constraint:
+N picks that must all DIFFER, written `DifferentColors(2)`
+(`"{W|U|B|R|G:2}"`). A click names the pair up front and a repeat is
+refused before anything is paid; the `mana_pick` prompt asks one colour
+at a time with the earlier answers struck out and adds both mana
+together after the last; the auto-tapper offers one candidate per pair.
+A spell or trigger may add it through `AddManaForEffect` too, without
+restrictions (Firemind Vessel, Guild Globe, Component Pouch, Interplanar
+Beacon; tests in
+[different_colors_cards_test.go](../server/internal/cards/effects/different_colors_cards_test.go)).
+
 **Tests**: `pushChosenColorPermanent` and `answerColor` in
 [color_choice_cards_test.go](../server/internal/cards/effects/color_choice_cards_test.go).
 
@@ -7085,6 +7190,66 @@ Three things to know:
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
 
+### Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)
+
+Reality Fracture prints five things about planeswalkers that no earlier card needed. Each is a declaration
+on a `Spec` or a trigger shape; none needs an engine change in the card file.
+
+**"Planeswalkers you control have '[−8]: …'"** is an ADR 0093 bundle whose ability row costs `LoyaltyCost(−8)`,
+granted to the class with `GrantAbilitiesToYourPlaneswalkers` (`planeswalker_grants.go`):
+
+```go
+Grants: []AbilityGrant{{
+    Key: "kiora-of-salt-and-sand/leviathan",
+    Activated: []ActivatedAbility{{Label: "−8: Create an 8/8 blue Leviathan creature token with hexproof.",
+        Cost: LoyaltyCost(-8), Effect: …}},
+    Text: "[−8]: Create an 8/8 blue Leviathan creature token with hexproof.",
+}},
+Static: []game.StaticAbility{GrantAbilitiesToYourPlaneswalkers("kiora-of-salt-and-sand/leviathan")},
+```
+
+Nothing else to declare. The row is the planeswalker's: it pays the cost (CR 606.6) and CR 606.3's one
+activation a turn is the walker's, shared with its printed rows and with every other grantor's. The recipient
+set is read live every layer pass, so a walker that arrives later has the row and one that leaves takes it.
+The token is `item.Controller`'s, the activator's. `PlaneswalkersYouControl` is the bare predicate for a
+static that is not a grant. "You've activated a loyalty ability this turn" (an intervening "if") is
+`youActivatedALoyaltyAbilityThisTurn(g, you)`; it reads the turn's activation events, so a granted row counts.
+A bundle can also carry an attack limit instead of an ability row (Tomik, Orzhov Lawmage, #2821): see the
+combat-limits section.
+
+**"Planeswalkers you control aren't put into their owners' graveyards for having 0 loyalty"** (Sanctum
+Lurker) is `ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()` on the `Spec`. It is a static that stops
+CR 704.5i applying, not indestructible and not a replacement: every other state-based action still does, and a
+walker at 0 can use a plus ability and no minus. Read live off the battlefield, so a source that loses its
+abilities or leaves exempts nothing.
+
+**"Whenever you put one or more loyalty counters on a planeswalker"** (Inspired Tethermage) is
+`WheneverYouPutLoyaltyCountersOnAPlaneswalker(label, effect)`. One trigger per placement EVENT, so a +2 is one
+trigger and a doubled placement is one; a minus is a removal and triggers nothing; "each planeswalker you
+control" is one trigger per walker. Do not wrap it in `OncePerBatch`.
+
+**"Until end of turn, you may activate loyalty abilities of Jace planeswalkers you control … any time you
+could cast an instant"** (Jace's Machinations) is `GrantLoyaltyAbilitiesAtInstantSpeed{Subtype: "Jace"}`,
+applied from the spell's `OnResolve`. It stores a plain-data statement on the player with a duration (ADR 0066's
+2026-10-09 amendment), unlike the derived `ThisSourcesLoyaltyAbilitiesAtInstantSpeed` and
+`LoyaltyAbilitiesOfYourPlaneswalkersAtInstantSpeed` a permanent or an emblem declares. An empty `Subtype` is
+every planeswalker you control. It opens the window only; the once-per-permanent count still holds.
+
+**Eminence** (The Ur-Sphinx) is a static that also works while its card is in its owner's command zone. For a cost
+reduction wrap the modifier: `Eminence(CostsLess(1, "…", YourSpell(), OtherSpellOfCreatureType("Sphinx")))` (ADR
+0140). The modifier is gathered from every seat's command zone, "you" is the player whose zone it is, and it
+applies from no hand, library, graveyard or exile. An ordinary modifier on a command-zone card still does nothing
+there (CR 113.6), so a card whose static is not a cost modifier does not get an eminence by being a commander.
+
+An **eminence trigger** ("Whenever …, if [this] is in the command zone or on the battlefield, …") wraps the
+ordinary trigger in `EminenceTrigger(...)` (#2802, ADR 0140 amendment 2026-10-09): it watches from both zones, "you"
+from the command zone is the zone's owner, and the intervening "if" is checked again on resolution. It composes
+with the usual wrappers, inside or out: `EminenceTrigger(OncePerBatch(On(game.EventAttack, …)))` (Sidar Jabari of
+Zhalfir), `EminenceTrigger(Targeting(AtBeginningOfYourCombat(…), Another(…)))` (Arahbo, Roar of the World),
+`EminenceTrigger(On(game.EventETB, AnotherNontokenCreatureOfTypeEnteredUnderYourControl("Wizard"), …))` (Inalla,
+Archmage Ritualist). The wrapped trigger must declare its `Effect`. Eminence replacements are not built: a card
+that prints one ships without that line and says so in `Caveats`.
+
 ### The Ring tempts you (ADR 0114, #2076)
 
 "The Ring tempts you" (CR 701.54) is one primitive. Its player is the
@@ -7297,6 +7462,74 @@ Tests set the speed with `g.SetSpeedForTest(player, n)` (it goes through
 the one write and its event) rather than playing turns: see
 `speed_cards_test.go`.
 
+### Rad counters (#2042, CR 728)
+
+The rad counters' own trigger is the engine's (`game/rad_counters.go`):
+at the beginning of a player's precombat main phase they mill one card
+per rad counter, then lose 1 life and remove a counter for each nonland
+card milled. It is on the stack, with no source, controlled by the active
+player. A card only gives the counters, through the helpers in
+`effects/rad_counters.go`:
+
+```go
+playerGetsRadCounters(g, item.Controller, player, 2)  // "target player gets two rad counters"
+eachPlayerGetsRadCounters(g, item.Controller, 4)      // "each player gets four rad counters"
+eachOpponentGetsRadCounters(g, item.Controller, n)    // "each opponent gets …"
+damagedPlayerGetsRadCounters(4)                       // "… deals combat damage to a player, they get four"
+On(game.EventMill, ANonlandCardWasMilled, label, fn)  // "whenever a player mills a nonland card"
+```
+
+- **The giver is the item's controller** (CR 120.3b's "you give"), so a
+  counter replacement such as Vorinclex sees who put them.
+- **"Life loss from radiation"** (CR 728.1a) is the life change the
+  trigger makes. A replacement reads `ev.LifeFromRadiation` on a
+  `RepEventLife`; a trigger reads `ev.FromRadiation` on the landed
+  `EventChangeLife`.
+- **"One or more nonland cards are milled"** (Mirelurk Queen, The Wise
+  Mothman) is a batch trigger, not `ANonlandCardWasMilled`, which fires
+  once per card. Nothing builds that batch yet (#2809).
+
+Tests give counters with `g.AddPlayerCounter(player, game.CounterRad, n)`
+and read `p.Counters[game.CounterRad]`: see `rad_counter_cards_test.go`.
+
+### Empower Jace and the Jace token (ADR 0139, #2796, CR 701.71)
+
+"Empower Jace N" is one primitive, and it is the whole keyword action:
+find a Jace planeswalker token you control, create the blue Jace token
+first if you have none, ask which one if you have several, and put N
+loyalty counters on it.
+
+```go
+EmpowerJace{N: 2}.Apply(ctx)                                    // "Empower Jace 2."
+Do(EmpowerJace{N: 4})                                           // a trigger's Effect: "When this creature enters, empower Jace 4."
+EmpowerJace{Count: func(ctx *Context) int { return … }}         // "Empower Jace X, where X is …", counted as it resolves
+EmpowerJace{N: 6, Then: func(ctx *Context) error { … }}         // "Empower Jace 6. Draw a card."
+AdditionalCost: BeholdOrPay("a", "Jace", "{1}"),                // "behold a Jace or pay {1}" (Countersculpt)
+```
+
+- **Never create the token and add the counters as two steps.** The token
+  has 0 loyalty until the counters land, and only the one instruction
+  keeps the state-based actions away from it (CR 704.3). `JaceToken()`
+  exists for tests and for a card that makes the token some other way.
+- **Anything printed after "Empower Jace N." goes in `Then`.** The action
+  can pause (the choice between two Jaces, or a CR 616 ordering prompt),
+  so a draw written on the next line happens before the Jace is chosen.
+- **The counters are put by an effect**, so Doubling Season doubles them
+  (and doubles the token: the controller then picks one of the two).
+  A loyalty COST is not an effect and is never doubled (ADR 0032 §8).
+- **"A Jace token" is any token that is a Jace planeswalker**
+  (`IsJacePlaneswalkerToken`), never a Jace planeswalker card. "Among
+  Jaces you control" counts both: `JaceLoyaltyAmong(g, player)`.
+- The token's loyalty abilities are ordinary `LoyaltyCost` rows on a
+  catalog token template (`printedJaceToken`), so nothing on the view,
+  the enumerator or the bots is special to it. A future planeswalker
+  token is the same: a template in `token_catalog.go`'s list with
+  `LoyaltyCost` rows.
+
+Tests: `seedJaceToken`, `onlyJaceToken` and `jaceTokensOf` in
+`empower_jace_test.go`. Answer the "which Jace?" question with
+`answerOwnPermanents`.
+
 ### Designations: Class levels, solved Cases, station thresholds (#757, #759)
 
 A **designation** is a marker a permanent has on the battlefield that
@@ -7414,6 +7647,28 @@ Activated: ReconfigureOneOf("Reconfigure—Pay {2} or {E}{E}{E}",
   `g.AttachedToACreatureForEffect(source)`.
 - Never set `Reconfigure` or `Equip` on a row by hand.
 
+### Bestow (ADR 0141, #2862, CR 702.103)
+
+"Bestow [cost]" is one alternative cost from `cards/effects/bestow.go`.
+The rules side is `game/bestow.go`.
+
+```go
+AlternativeCosts: []game.AlternativeCost{Bestow("{3}{G}{G}")},       // Boon Satyr
+Static: []game.StaticAbility{PumpAttached(4, 2)},                    // "Enchanted creature gets +4/+2"
+Static: []game.StaticAbility{PumpSelfCreatureOrAttachedPer(1, 1, count)}, // "This creature and enchanted creature each get …" (Nighthowler)
+```
+
+- Write the "Enchanted creature …" lines as for any Aura (`PumpAttached`,
+  `GrantToAttached`). They reach nothing while the card is a creature,
+  because it is attached to nothing.
+- Do not declare `Spec.Targets`: the creature cast has no target, and
+  `Bestow` carries the enchant creature clause for the bestowed one.
+- The engine makes the bestowed spell and Aura a noncreature "Enchantment
+  — Aura", attaches it, resolves it as a creature if its target is gone
+  (CR 702.103e), and keeps it as a creature when it becomes unattached
+  (CR 702.103f). Write none of that.
+- Never build the offer by hand: `Bestow` is what sets `AlternativeCost.Bestow`.
+
 ### Suspect (CR 701.60, #2698)
 
 Suspected is a designation that **gives** abilities rather than switching
@@ -7451,6 +7706,86 @@ Three things to get right:
   and the ability's source is that same card (Presumed Dead's granted
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
+
+### Partner with (CR 702.124j, #2142)
+
+"Partner with [name]" is two abilities. The deck-construction one needs
+nothing from the card file: `internal/deck` reads the "Partner with"
+line off Scryfall's oracle text and accepts the two cards as commanders
+when each names the other. The entry trigger is one row:
+
+```go
+Triggered: []game.TriggeredAbility{
+    PartnerWith("Sam, Loyal Attendant", "Frodo, Adventurous Hobbit"),
+    // … the card's other triggers
+},
+```
+
+The first argument is the card's own name and the second the partner's,
+exactly as printed. The row targets a player (any player, chosen as it
+goes on the stack), asks that player whether to search, and searches
+their library for a card with that name, revealed into their hand, then
+shuffles. Declining searches and shuffles nothing; they may also search
+and fail to find (CR 701.23b). Write it for a nonlegendary card too
+(Ley Weaver): the trigger works there, and only the pairing needs a
+legendary card. The other partner abilities need nothing in the card
+file either: see the next section.
+
+### Choose a Background, partner and Doctor's companion (ADR 0144, #2874)
+
+Every partner ability (CR 702.124: partner, partner—[text] such as
+Friends forever, partner with [name], choose a Background, Doctor's
+companion) is a deck-construction rule that `internal/deck` reads off
+Scryfall's oracle text. A card that prints one needs no field, no
+comment caveat and no caveat string for it: write the rest of the card
+and declare it Full if the rest is.
+
+A **Background** ("Commander creatures you own have …") is an ADR 0093
+grant, built with `grantToCommanderCreaturesYouOwn`:
+
+```go
+const flamingFistGrant = "flaming-fist/double-strike"
+
+Grants: []AbilityGrant{{
+    Key:       flamingFistGrant,
+    Triggered: []game.TriggeredAbility{WheneverThisAttacks("Flaming Fist — double strike until end of turn", …)},
+    Text:      "Whenever this creature attacks, it gains double strike until end of turn.",
+}},
+Static: []game.StaticAbility{grantToCommanderCreaturesYouOwn(flamingFistGrant)},
+```
+
+The granted ability is the commander's own: "this creature" is
+`ctx.Source()` and "you" is the creature's controller, so a stolen
+commander keeps it and it works for the thief, as printed. Do not put
+the ability on the Background gated on a commander you control; that
+loses the stolen case. A characteristic change ("get +3/+3", "base power
+and toughness 10/10", "are Giants") is a plain static on the Background
+with `commanderCreatureYouOwn` as its `AppliesTo` (Raised by Giants).
+"Whenever this creature attacks a player, if no opponent has more life
+than that player" is `wheneverThisAttacksAPlayerNoOpponentRicher`.
+
+### Renown (CR 702.112, #2049)
+
+Renown is a keyword the engine runs (`"renown N"` in `PrintedKeywords`), and
+renowned is a designation it sets: `Card.Renowned`, kept until the permanent
+leaves the battlefield, not copiable, carried by the snapshot ([ADR
+0071](decisions/0071-designations-that-switch-abilities-on.md) amendment
+2026-10-09). A card file only writes what reads it, from
+[renown.go](../server/internal/cards/effects/renown.go):
+
+```go
+PrintedKeywords: []string{"renown 1"},                                       // the engine does the trigger
+Static:    []game.StaticAbility{RenownedKeywords("menace")},                 // "As long as this creature is renowned, it has menace" (Goblin Glory Chaser)
+Triggered: []game.TriggeredAbility{WhenACreatureYouControlBecomesRenowned("…", effect)}, // Valeron Wardens
+if ctx.Game.IsRenowned(id) { … }                                             // "If it's renowned, untap it" on a target (Enshrouding Mist)
+```
+
+`Renowned()` is the `ActiveWhen` gate for any other "as long as this creature is
+renowned" line. "Whenever this creature attacks, if it's renowned" and "if this
+creature is renowned" are intervening ifs (CR 603.4): read `ThisIsRenowned(source)`
+in `AppliesTo` and `ThisWasRenowned(ctx)` in the effect, which reads the source
+as it last existed if it has left (Consul's Lieutenant, Scab-Clan Berserker).
+Never write a renown trigger by hand, and never set `Card.Renowned` from a card.
 
 ### Adding a Room or a split card (ADR 0103, #1756)
 

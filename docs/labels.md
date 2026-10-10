@@ -37,6 +37,7 @@ registered, or when this file is stale.
 | `turnPhase` | `turn and phase indicator` | generic | aria | `lib/components/board/PhaseDisplay.svelte` | the turn number, the active player and the step |
 | `abilityChip` | `<N> <kind> ability, or <N> <kind> abilities (kind: triggered, static or activated)` (contains ` abilit`) | button | aria | `lib/components/board/AbilityKindChips.svelte` | an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's |
 | `actions` | `actions` | region | aria | `lib/components/board/ActionDock.svelte` | the action dock; the tutorial's move-along step and its detours anchor here |
+| `waitToRespond` | `wait, let me respond` | button | aria | `lib/components/board/ActionDock.svelte` | the stack hold countdown's one-click hold (#2853): keeps priority on the stack auto-pass was about to pass |
 | `priorityControls` | `priority controls` | group | aria | `lib/components/board/ActionDock.svelte` | the dock's toggles: autopass, undo, the ⋯ menu |
 | `autopass` | `autopass` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's autopass toggle (state in aria-pressed); the tutorial's let-the-bot-play step anchors here, within actions |
 | `next` | `next` | button | text | `lib/components/board/ActionDock.svelte` | the dock's primary: pass priority |
@@ -61,6 +62,11 @@ registered, or when this file is stale.
 | `energyToPay` | `energy to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper (ADR 0129 §3): how much energy to pay, from its floor to the seat's energy |
 | `payEnergy` | `Pay <N> {E}` (ends with ` {E}`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary: pays the stepper's amount |
 | `payNothing` | `Pay nothing` | button | text | `lib/choiceDock.ts` | the pay_amount prompt's decline when the card says any amount; it reads Don't pay when the card says one or more |
+| `lifeToPay` | `life to pay` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's stepper when it asks for life (#1941): how much life to pay, from nothing to the seat's life total |
+| `payLife` | `Pay <N> life` (ends with ` life`) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for life (#1941): pays the stepper's amount |
+| `sacrifice` | `Sacrifice` | button | text | `lib/components/board/ChoicePromptModal.svelte` | a sacrifice choice's confirm in the dock (sacrifice_choice, entry_sacrifice): enabled once the permanents are picked, in the sheet or on the board (#2880) |
+| `numberToChoose` | `number to choose` | group | aria | `lib/components/board/ChoicePromptModal.svelte` | the pay_amount prompt's field when it asks for a number that is not paid (#1941): Volcano Hellion's amount of damage |
+| `chooseNumber` | `Choose <N>` (starts with `Choose `) | button | text | `lib/choiceDock.ts` | the pay_amount prompt's primary when it asks for a number that is not paid (#1941): answers the field's number |
 | `payLifeForMana` | `Pay life for {B}…` | menuitem | text | `lib/payLifeForMana.ts` | the card menu's row that opens the life stepper for the {B} in a cost, under K'rrik (ADR 0131 §4) |
 | `rollForFirstTurn` | `roll for the first turn` | dialog | aria | `lib/components/board/OpeningRollDock.svelte` | the opening roll's request; the tutorial's roll step anchors here while the viewer owes a die |
 | `roll` | `Roll` | button | text | `lib/components/board/OpeningRollDock.svelte` | the opening roll's primary |

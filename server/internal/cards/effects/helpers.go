@@ -1487,3 +1487,46 @@ func plusOneCounterOnChosenTargets(g *game.Game, item *game.StackItem) error {
 	}
 	return nil
 }
+
+// searchForACardThenLoseLife is "Search your library for a card, put
+// that card into your hand, then shuffle. You lose N life." as an
+// ability's Effect body (The Cruelty of Gix's chapter II; Grim Tutor
+// is the spell). The life is lost in the search's continuation, after
+// the card is in hand, and whether or not a card was taken: it is not a
+// cost.
+func searchForACardThenLoseLife(item *game.StackItem, ctx *Context, reason string, life int) error {
+	source, controller := item.SourceCardID, item.Controller
+	return SearchLibrary{
+		Player:  controller,
+		Dest:    game.ZoneHand,
+		Limit:   1,
+		Shuffle: true,
+		Reason:  reason,
+		Then: func(g *game.Game, _ []uuid.UUID) error {
+			return g.ChangePlayerLifeForEffect(source, controller, -life)
+		},
+	}.Apply(ctx)
+}
+
+// damageEachCreatureAndEachOpponent is "~ deals N damage to each
+// creature and each opponent" (The Elder Dragon War's chapter I): one
+// damage instance, every creature on the battlefield and then each
+// opponent still in the game, in seat order. The controller is not
+// dealt any — Pyrohemia's "each player" is the sibling that is.
+func damageEachCreatureAndEachOpponent(ctx *Context, n int) error {
+	controller := ctx.Controller()
+	return ctx.Game.DamageInstanceForEffect(func() error {
+		if err := damageEachMatching(ctx, Creature(), n); err != nil {
+			return err
+		}
+		for _, p := range ctx.Game.Seats {
+			if p == nil || p.Eliminated || p.ID == controller {
+				continue
+			}
+			if err := (DealDamage{Source: ctx.Source(), Target: p.ID, Amount: n}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}

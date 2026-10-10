@@ -151,48 +151,76 @@ func (g *Game) copySpellFromLocked(src Card, item *StackItem, controller uuid.UU
 // #1449). `item` decides which copy gets built on the far side, off
 // its Kind, which is the only thing the two paths do differently.
 //
-// Creating the copy NOW is the right answer in three cases and they
-// are all the printed outcome rather than a shortcut: the card does
-// not offer the choice, the original named no target anybody chose,
-// and nothing on the board qualifies any more — CR 707.10c's choice
-// is optional, and a copy that keeps an illegal target is countered
+// The prompt walks the copied announcement one target STEP at a time
+// (#2622), the way a trigger's CR 603.3d walk does: one step per clause
+// of each chosen mode, in the order they were chosen. Each step is
+// asked over exactly the number of targets the original chose for it,
+// because CR 115.7 changes which objects are targeted and never how
+// many, and each step's offer holds that step's original targets as
+// well as its legal new ones, because CR 707.10c lets the player leave
+// any target unchanged "even if those targets would be illegal".
+// Before #2622 the prompt asked the FIRST clause only and checked the
+// answer against the whole list, so every answer to a copy of a spell
+// with two clauses (Bite Down) or targets in two modes (Dromoka's
+// Command) was refused and a bot table stopped.
+//
+// A step with nothing to change to — no legal target but the ones it
+// already has — is not asked: its targets stay, which is the only
+// thing the player could choose. When no step is asked the copy is
+// created at once with the original's targets, and that is the printed
+// outcome rather than a shortcut: the card does not offer the choice,
+// the original named no target anybody chose, or nothing on the board
+// qualifies any more. A copy that keeps an illegal target is countered
 // by game rules on resolution, which is what the card does in paper.
 // The alternative is a prompt with no answers, which since #791 is a
 // table that cannot move.
 //
+// `spec` is the clause list a caller already knows; the frame's steps
+// come from the item when it carries its own (see copyStepsFor).
+//
 // Caller must hold g.mu.
 func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid.UUID, spec *TargetSpec, mayChooseNewTargets bool) {
-	if !mayChooseNewTargets || spec == nil || !itemHasChosenTarget(item) {
+	if !mayChooseNewTargets || !itemHasChosenTarget(item) {
 		g.createCopyLocked(src, item, controller, item.Targets)
 		return
 	}
+	steps := copyStepsFor(src, item, spec)
+	if len(steps) == 0 {
+		g.createCopyLocked(src, item, controller, item.Targets)
+		return
+	}
+	orig := assignAnnouncedSlots(steps, item.Targets)
 	frame := &copyFrame{
 		src:        src,
 		item:       *item,
 		controller: controller,
-		spec:       spec,
+		steps:      steps,
+		orig:       orig,
+		next:       append([]TargetRef(nil), orig...),
 	}
-	lt := g.legalTargetsLocked(g.copyTargetSourceLocked(frame), spec)
-	if len(lt.Players) == 0 && len(lt.Cards) == 0 {
-		g.createCopyLocked(src, item, controller, item.Targets)
-		return
+	g.queueCopyTargetStepLocked(frame)
+}
+
+// copyStepsFor is the copied announcement's target steps: the item's
+// own clause list when it carries one (a cast spell, an ability), and
+// otherwise the catalog's for the copied card — the modal list when the
+// card is modal, so a target chosen for the second mode is asked as the
+// second mode's (#2622). `spec` is the fallback a caller computed.
+func copyStepsFor(src Card, item *StackItem, spec *TargetSpec) []AnnouncedClause {
+	var steps []AnnouncedClause
+	key := CatalogKey(src)
+	switch {
+	case item.modeSpec != nil && len(item.Modes) > 0:
+		steps = AnnouncedClauses(nil, item.modeSpec, item.Modes)
+	case item.targetSpec != nil:
+		steps = AnnouncedClauses(item.targetSpec, nil, nil)
+	case item.Kind == StackItemSpell && TargetSpecFor(key) == nil && ModeSpecFor(key) != nil:
+		steps = AnnouncedClauses(nil, ModeSpecFor(key), item.Modes)
+	default:
+		steps = AnnouncedClauses(spec, nil, nil)
 	}
-	label := spec.Label
-	if label == "" {
-		label = "targets"
-	}
-	g.QueueChoiceForEffect(PendingChoice{
-		Kind:              PendingChoicePickTarget,
-		Chooser:           controller,
-		Count:             1,
-		Source:            src.InstanceID,
-		Reason:            "Choose new " + label + " for the copy (or re-pick the same)",
-		PickTargetPlayers: lt.Players,
-		PickTargetCards:   lt.Cards,
-		PickTargetMin:     spec.Min,
-		PickTargetMax:     spec.Max,
-		copyResume:        frame,
-	})
+	bindStepsBound(steps, AnnouncedBound{X: item.XValue, CountersRemoved: item.Paid.CountersRemoved})
+	return steps
 }
 
 // copyFrame is the continuation for the CR 707.10c "you may choose
@@ -209,11 +237,144 @@ func (g *Game) offerCopyTargetsLocked(src Card, item *StackItem, controller uuid
 // SPELL copy it is the copied spell itself, for an ABILITY copy the
 // permanent the ability came from. Nothing between here and
 // createCopyLocked has to know which.
+//
+// `steps` is the copied announcement's step list, `orig` the original's
+// targets stamped with their steps, and `next` the copy's targets so
+// far: `orig` with each answered step's picks in place. `step` is the
+// step the open prompt asks. Answering moves `step` and rewrites `next`,
+// so an undo snapshot gets its own copy of both (cloneCopyFrame).
 type copyFrame struct {
 	src        Card
 	item       StackItem
 	controller uuid.UUID
-	spec       *TargetSpec
+	steps      []AnnouncedClause
+	orig       []TargetRef
+	next       []TargetRef
+	step       int
+}
+
+// currentClause is the clause the open step asks about, or nil.
+func (f *copyFrame) currentClause() *TargetClause {
+	if f == nil || f.step < 0 || f.step >= len(f.steps) {
+		return nil
+	}
+	return &f.steps[f.step].Clause
+}
+
+// stepRefs is the positions in `next` that answer the current step.
+func (f *copyFrame) stepRefs() []int {
+	if f.step < 0 || f.step >= len(f.steps) {
+		return nil
+	}
+	st := f.steps[f.step]
+	var out []int
+	for i, t := range f.next {
+		if (t.Kind == TargetCard || t.Kind == TargetPlayer) && t.Mode == st.Mode && t.Slot == st.Slot {
+			out = append(out, i)
+		}
+	}
+	return out
+}
+
+// copyStepCandidatesLocked is what the current step offers: every
+// legal target of its clause that the CR 115.7 gate accepts in one of
+// the step's slots, then the step's original targets, which may always
+// stay (CR 707.10c). `fresh` reports whether anything but the
+// originals is on offer.
+//
+// Caller must hold g.mu.
+func (g *Game) copyStepCandidatesLocked(f *copyFrame, pos []int) (lt LegalTargets, fresh bool) {
+	src := g.copyTargetSourceLocked(f)
+	st := f.steps[f.step]
+	isOrig := make(map[uuid.UUID]bool, len(pos))
+	for _, p := range pos {
+		isOrig[f.orig[p].ID] = true
+	}
+	fits := func(ref TargetRef) bool {
+		ref.Mode, ref.Slot = st.Mode, st.Slot
+		trial := append([]TargetRef(nil), f.next...)
+		for _, p := range pos {
+			trial[p] = ref
+			if g.retargetCheckLocked(src, f.steps, f.orig, trial, RetargetChooseNew) == nil {
+				return true
+			}
+			trial[p] = f.next[p]
+		}
+		return false
+	}
+	offered := g.legalTargetsLocked(src, &st.Clause)
+	seen := make(map[uuid.UUID]bool)
+	for _, id := range offered.Players {
+		if isOrig[id] || fits(TargetRef{Kind: TargetPlayer, ID: id}) {
+			lt.Players = append(lt.Players, id)
+			seen[id] = true
+			fresh = fresh || !isOrig[id]
+		}
+	}
+	for _, id := range offered.Cards {
+		if isOrig[id] || fits(TargetRef{Kind: TargetCard, ID: id}) {
+			lt.Cards = append(lt.Cards, id)
+			seen[id] = true
+			fresh = fresh || !isOrig[id]
+		}
+	}
+	for _, p := range pos {
+		o := f.orig[p]
+		if seen[o.ID] {
+			continue
+		}
+		seen[o.ID] = true
+		if o.Kind == TargetPlayer {
+			lt.Players = append(lt.Players, o.ID)
+		} else {
+			lt.Cards = append(lt.Cards, o.ID)
+		}
+	}
+	return lt, fresh
+}
+
+// queueCopyTargetStepLocked opens the prompt for the first step from
+// `f.step` on that has something to change to, or — when none has —
+// creates the copy with the targets the walk arrived at. It reports
+// whether a prompt is open.
+//
+// Caller must hold g.mu.
+func (g *Game) queueCopyTargetStepLocked(f *copyFrame) bool {
+	for ; f.step < len(f.steps); f.step++ {
+		pos := f.stepRefs()
+		if len(pos) == 0 {
+			// "Up to one target" with nothing chosen: there is no
+			// target to change, and CR 115.7 adds none.
+			continue
+		}
+		lt, fresh := g.copyStepCandidatesLocked(f, pos)
+		if !fresh {
+			continue
+		}
+		label := f.steps[f.step].Clause.Label
+		if label == "" {
+			label = "targets"
+		}
+		g.QueueChoiceForEffect(PendingChoice{
+			Kind:              PendingChoicePickTarget,
+			Chooser:           f.controller,
+			Count:             1,
+			Source:            f.src.InstanceID,
+			Reason:            "Choose new " + label + " for the copy (or re-pick the same)",
+			PickTargetPlayers: lt.Players,
+			PickTargetCards:   lt.Cards,
+			PickTargetMin:     len(pos),
+			PickTargetMax:     len(pos),
+			copyResume:        f,
+		})
+		return true
+	}
+	item := f.item
+	// CR 115.7f: the division stays as it was, carried onto whichever
+	// object took each divided slot.
+	item.Distribution = remapDistributionLocked(item.Distribution, f.orig, f.next)
+	g.createCopyLocked(f.src, &item, f.controller, f.next)
+	return false
 }
 
 // copyTargetSourceLocked is the TargetSource a copy's new targets are
@@ -455,19 +616,26 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 
 // resolveCopyTargetsLocked is the submit half of the CR 707.10c
 // re-target prompt, reached from ResolvePickTargets when the choice
-// carries a copyFrame. Validates the refs against the copied object's
-// own clause — the same spec the original was announced under — then
-// creates the copy on top of the stack.
+// carries a copyFrame. The refs answer the walk's current step: they
+// are put in that step's slots, the whole list is checked, and the
+// walk goes on to the next step or, after the last, creates the copy
+// on top of the stack.
 //
 // #1196: the check is the CR 115.7 one (retargetCheckLocked), not the
 // announce gate. "You may choose new targets for the copy" is CR
-// 707.10c, and CR 707.10c is CR 115.7c by reference — so a target the
-// player LEFT ALONE may stay even if it has since become illegal,
-// and the NUMBER of targets may not change. validateTargetsLocked
-// had both backwards: it refused the first and allowed the second.
-// What is still this file's own is the APPLICATION — a copy builds a
-// new object rather than rewriting one, because its characteristics
-// are a snapshot and the original may be gone.
+// 707.10c, which says what CR 115.7d says for "choose new targets" —
+// so a target the player LEFT ALONE may stay even if it has since
+// become illegal, and the NUMBER of targets may not change.
+// validateTargetsLocked had both backwards: it refused the first and
+// allowed the second. What is still this file's own is the
+// APPLICATION — a copy builds a new object rather than rewriting one,
+// because its characteristics are a snapshot and the original may be
+// gone.
+//
+// An answer is a SET of objects for the step (#2622): one that names a
+// target the step already had keeps it in the slot it held, so leaving
+// a target alone does not depend on the order the picks were listed
+// in, and the rest fill the step's other slots in order.
 //
 // Caller must hold g.mu and must have located the choice at `idx`.
 func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []TargetRef) error {
@@ -476,23 +644,47 @@ func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []Target
 			return ErrInvalidParam
 		}
 	}
+	pos := cf.stepRefs()
+	if len(pos) == 0 || len(targets) != len(pos) {
+		return ErrInvalidParam
+	}
+	st := cf.steps[cf.step]
+	trial := append([]TargetRef(nil), cf.next...)
+	kept := make([]bool, len(pos))
+	var moved []TargetRef
+	for _, t := range targets {
+		t.Mode, t.Slot = st.Mode, st.Slot
+		placed := false
+		for j, p := range pos {
+			if !kept[j] && cf.orig[p].Kind == t.Kind && cf.orig[p].ID == t.ID {
+				trial[p], kept[j], placed = t, true, true
+				break
+			}
+		}
+		if !placed {
+			moved = append(moved, t)
+		}
+	}
+	for j, p := range pos {
+		if !kept[j] {
+			trial[p], moved = moved[0], moved[1:]
+		}
+	}
 	// A SNAPSHOT, deliberately: the original spell can be countered
 	// between the prompt and the answer, and the copy's
 	// characteristics are the original's as they were (CR 707.10).
 	// cf.src is the value copy the frame kept for exactly this — or,
 	// for an ability whose source has left, the source's last-known
 	// record (#1449).
-	src := g.copyTargetSourceLocked(cf)
-	steps := AnnouncedClauses(cf.spec, nil, nil)
-	stamped := assignAnnouncedSlots(steps, targets)
-	if err := g.retargetCheckLocked(src, steps, cf.item.Targets, stamped, RetargetChooseNew); err != nil {
+	if err := g.retargetCheckLocked(g.copyTargetSourceLocked(cf), cf.steps, cf.orig, trial, RetargetChooseNew); err != nil {
 		return err
 	}
-	targets = stamped
 	g.dequeueChoiceLocked(idx)
-	item := cf.item
-	g.createCopyLocked(cf.src, &item, cf.controller, targets)
-	g.runStateChecksLocked()
+	cf.next = trial
+	cf.step++
+	if !g.queueCopyTargetStepLocked(cf) {
+		g.runStateChecksLocked()
+	}
 	return nil
 }
 
@@ -562,12 +754,20 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	// and from a copy of the targets, so nothing captured is the live
 	// stack item.
 	targets := append([]TargetRef(nil), item.Targets...)
+	// ADR 0141, CR 702.103c: a copy of a bestowed Aura spell is a
+	// bestowed Aura spell, and the token it becomes a bestowed Aura,
+	// attached the same way. Bestowed is not a copiable value, so the
+	// template does not carry it; the copy's stack card does.
+	bestowed := top.Bestowed
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,
 		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},
 		Source:     item.SourceCardID,
 	}, func(g *Game, created []uuid.UUID) error {
 		for _, id := range created {
+			if bestowed {
+				g.seedBestowedEntryLocked(id, nil)
+			}
 			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
 			g.adoptSpellControlLocked(controlRecords, id, controlBase)
 		}

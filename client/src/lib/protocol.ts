@@ -215,8 +215,10 @@ export type ActionType =
   // at the table for fun. Never a game roll, never undoable, and the
   // server takes one per seat per 2 s.
   | "roll_table_die"
-  // #1530: `{always_ask: boolean}` — the seat's own "always ask me to
-  // order my triggers" preference. A setting, not a play: never undoable.
+  // #1968: `{trigger_order: "when_it_matters" | "always" | "never"}` —
+  // when the game asks this seat to order its triggers (the #1530
+  // `{always_ask: boolean}` form is still read). A setting, not a play:
+  // never undoable.
   | "set_trigger_order_preference"
   // ADR 0127 §3: `{rules: [{key, answer}]}` — the seat's standing
   // answers to repeated prompts, replacing the list ("always" or
@@ -473,9 +475,10 @@ export interface GameView {
   legal_moves?: LegalMoveView[];
   // ADR 0122 §6.1: true when the 48-move wire cap dropped anything
   // from legal_moves — the list then has one move per (source, kind,
-  // targets_stack), not every alternative. Absent otherwise. Own seat
-  // only. The browser reads nothing from legal_moves that the cap
-  // loses (legalActions.ts), so it only needs to know.
+  // targets_stack, has_targets, interacts), not every alternative.
+  // Absent otherwise. Own seat only. The browser reads nothing from
+  // legal_moves that the cap loses (legalActions.ts), so it only needs
+  // to know.
   legal_moves_truncated?: boolean;
   // ADR 0105 (#1789): a per-card digest of the same enumeration, built
   // before the 48-move cap, so it stays exact down to the ability row.
@@ -728,6 +731,31 @@ export interface LegalMoveView {
   // stack" from "has some instant". Absent on older servers, which
   // the client treats as a plain instant-speed move.
   targets_stack?: boolean;
+  // #2853: true on a cast or activation that chooses at least one
+  // target, on the stack or anywhere else. Smart autopass reads it to
+  // tell an ability that answers something (a pinger, a removal
+  // activation) from an untargeted value ability (Mind Stone, a fetch
+  // land, cycling). Absent on older servers, which the client treats
+  // as untargeted.
+  has_targets?: boolean;
+  // #2853 (owner answer 2): true on an activation with no target, or a
+  // mana ability, that can still answer something on the stack: a
+  // sacrifice outlet, regeneration, protection or indestructible,
+  // phasing, a blink, damage prevention, a pump. Smart autopass stops
+  // for it as for a targeted ability. Absent on older servers.
+  interacts?: boolean;
+  // #2871: true on an activation with no target that changes a fight
+  // without answering a spell: crew, a manland, a granted flying or
+  // menace, "can block an additional creature", a creature token.
+  // Smart autopass counts it only in a combat window (inCombatWindow).
+  // Never set beside `interacts`. Absent on older servers.
+  combat_interacts?: boolean;
+  // #2871 (owner answer): narrows combat_interacts. The activation
+  // makes a creature token (or populates, or amasses), which matters
+  // only as a blocker, so smart autopass counts it only while the
+  // viewer is a defending player in this combat. Only ever set beside
+  // combat_interacts.
+  combat_defender_only?: boolean;
   // #1918: a player-facing sentence on a LEGAL cast that would do
   // nothing on the board as it stands ("Overloaded, this does nothing
   // right now: there's no spell you don't control."). Advice, never
@@ -1286,6 +1314,12 @@ export interface PendingChoiceView {
     // Mandatory — both answers are always accepted. accept_label and
     // decline_label name the two; source is the entering card.
     | "entry_riot"
+    // #2123, CR 702.155b: read ahead's "choose the chapter this Saga
+    // starts on", asked before the Saga enters. The chapters ride
+    // pick_options in order ("Chapter I", "Chapter II", …) and the
+    // answer is {option_index: N}, chapter N+1. source is the entering
+    // Saga; entry_keyword is "read ahead".
+    | "entry_read_ahead"
     // ADR 0098: Mox Diamond's "if this would enter, you may discard a
     // land card instead. If you don't, put it into its owner's
     // graveyard." The reveal's payload and bounds, and — like it — the
@@ -1430,9 +1464,10 @@ export interface PendingChoiceView {
   // picker reads it only for its wording.
   control_purpose?: "harm" | "benefit" | string;
   // ADR 0109 §10: on an "entry_riot" or "optional_replacement" prompt,
-  // the entry keyword it asks about — "riot" or "unleash". Absent on
-  // every other prompt, and on a "may" that is not unleash's.
-  entry_keyword?: "riot" | "unleash" | string;
+  // the entry keyword it asks about — "riot" or "unleash" — and on an
+  // "entry_read_ahead" prompt "read ahead" (#2123). Absent on every
+  // other prompt, and on a "may" that is not unleash's.
+  entry_keyword?: "riot" | "unleash" | "read ahead" | string;
   // ADR 0104: on a "trigger_prompt" whose yes TRADES the source for a
   // spell (Perplexing Chimera) — that spell's instance ID. The client
   // does not read it; the bot weighs the trade with it.
@@ -1676,6 +1711,14 @@ export interface PickOptionView {
    * — so it is never redacted. #994.
    */
   player?: string;
+  /**
+   * The mana this option costs its chooser ("{1}", "{B}"), paid by the
+   * server when the option is chosen (#2854): Winter's Chill's "may pay
+   * {1} or {2}". Absent on an option that costs no mana. Only options
+   * the chooser can pay are listed; an answer the board can no longer
+   * pay is refused and the prompt stays open.
+   */
+  mana_cost?: string;
 }
 
 export interface ReplacementOptionView {
@@ -1865,9 +1908,12 @@ export interface PlayerView {
   // mulligan. Mulligan decisions go in turn order, starting player
   // first. Omitempty: absent on every other seat.
   mulligan_turn?: boolean;
-  // #1530: this seat's "always ask me to order my triggers" preference.
-  // Present (true) only in the seat's OWN view; the server blanks it for
-  // everyone else. Omitempty: absent means off.
+  // #1968: this seat's trigger-order mode, "always" or "never"; absent
+  // means the default, "when_it_matters". Present only in the seat's OWN
+  // view; the server blanks it for everyone else.
+  trigger_order?: "always" | "never";
+  // #1530: true when trigger_order is "always", kept for older clients.
+  // Own view only, like trigger_order.
   trigger_order_always_ask?: boolean;
   // ADR 0127 §3: this seat's standing answers, sorted by key. Own view
   // only; the client reconciles it with gameplay.autoAnswers.
@@ -2372,12 +2418,24 @@ export interface DelveView {
 // the clause's kind they control for a sacrifice); one payment names
 // exactly `count` of them.
 // ADR 0129 §3: the bounds of a pay_amount prompt. goal is the card's
-// own threshold (the stepper starts there); unit is what one energy buys.
+// own threshold (the stepper starts there); unit is what one point buys.
+// ADR 0129's amendment of 2026-10-09 (#1941): `resource` is what each
+// point costs — energy (also when absent), life, or none for a number
+// that is chosen and not paid ("an amount of damage of your choice").
+// A payment may always be declined with 0; a number that is not paid is
+// min..max alone. With `no_max` the number has no ceiling and `max` is
+// only the server's overflow guard. `marks` are other numbers the card
+// names (the bot's offers); `self_damage` says the chooser is dealt the
+// same amount.
 export interface PayAmountView {
   min: number;
   max: number;
   goal?: number;
   unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
+  resource?: "energy" | "life" | "none";
+  no_max?: boolean;
+  marks?: number[];
+  self_damage?: boolean;
 }
 
 export interface PayCardsView {
@@ -2845,6 +2903,12 @@ export interface ActivatedAbilityView {
   // open to; the controller's own opponents-only row is greyed.
   opponents_only?: boolean;
   owner_only?: boolean;
+  // ADR 0106 §1 amendment 2026-10-09 (#1947): a granted row's "Only you
+  // may activate this ability" (Martyrdom). `activator` is the one player
+  // who may: the "you" of the effect that granted it, whoever controls the
+  // permanent now. Absent on every other row.
+  grantor_only?: boolean;
+  activator?: string;
   // #2449: a CR 702.6 equip ability. Bot data; the client does not
   // read it.
   equip?: boolean;
@@ -2975,6 +3039,11 @@ export interface LegalTargetsView {
   // #2526: a SACRIFICE clause's set rule — the picks must fill every
   // group with a different permanent. See sacrificeCost.ts.
   each_of?: SacrificeGroupView[];
+  // #2097: a SACRIFICE clause that takes every permanent in `cards`
+  // ("sacrifice all creatures you control"); min and max are their
+  // number. The client confirms rather than picks, and sends
+  // `sacrifice_ids` empty for the server to fill.
+  all?: boolean;
   players?: string[];
   cards?: string[];
   min?: number;
@@ -3166,6 +3235,15 @@ export interface CastSurfaceView {
   // clauses under the readout. Absent for nearly every card and on
   // opponents' cards the viewer cannot read.
   target_cost_notes?: string[];
+  // #2167: the card types a cast or play of this face may spend under a
+  // permission that opens one of each type — Muldrotha, the Gravetide's
+  // "a permanent spell of each permanent type", Aminatou's Augury's "for
+  // each nonland card type". The viewer's own answer, ranked: the first
+  // is the type the permission's other cards need least, which the type
+  // picker selects by default. Two or more entries mean the cast chain
+  // asks which one (PermissionTypeModal) and sends it as
+  // `permission_type`; one needs no question. Absent on every other cast.
+  permission_types?: string[];
   // CR 107.4 (#916): how many symbols in the printed cost carry the
   // "or 2 life" option — 1 for Gitaxian Probe's "{U/P}", 2 for
   // Dismember's "{1}{B/P}{B/P}", 1 for a compleated planeswalker. The
@@ -3233,6 +3311,12 @@ export interface CastSurfaceView {
   // timing included — and is what the castable-from-exile strip
   // lights a card by.
   cast_prices?: CastPriceView[];
+  // #2581: the largest X THIS viewer may announce for the spell right
+  // now, under its printed "X can't be greater than <count>" (Winter's
+  // Chill's snow lands, Open the Way's players). The server refuses a
+  // larger X, so the X picker stops here. Absent for every card with no
+  // printed ceiling; present-and-0 means X = 0 is the only announcement.
+  x_max?: number;
 }
 
 // CastPriceView is one price a cast out of exile may claim (#1389).
@@ -3615,6 +3699,12 @@ export interface CardView extends CastSurfaceView {
   // `harnessed` is — no card type owns monstrosity. Absent — not
   // `false` — for everything else.
   monstrous?: boolean;
+  // ADR 0071 amendment 2026-10-09, #2049 (CR 702.112b): this permanent
+  // is renowned — one of its renown triggers resolved, and it stays
+  // renowned until it leaves the battlefield. Switches on its "as long
+  // as this creature is renowned" lines. Read straight off the card,
+  // like `monstrous`. Absent — not `false` — for everything else.
+  renowned?: boolean;
   // ADR 0071 amendment 2026-10-08, #2695 (CR 702.171): this Mount is
   // saddled — until end of turn, or until it leaves the battlefield.
   // Switches on its "while saddled" lines and is what its "attacks
@@ -3662,6 +3752,11 @@ export interface CardView extends CastSurfaceView {
   // permanent's OWN printed abilities exists. Same lifecycle,
   // PUBLIC/redaction and rendering module as chosen_color above.
   chosen_option?: string;
+  // #1941: the number chosen as this permanent entered — the life
+  // Phyrexian Processor's controller paid, the size of its tokens.
+  // Absent at zero. Same lifecycle, PUBLIC/redaction and rendering
+  // module as chosen_color above.
+  chosen_number?: number;
   // S15: raw Scryfall mana-cost string ("{1}{R}", "{W/U}", "{X}{B}"),
   // rendered as a read-only chip on hand-zone cards. Omitted for
   // lands and for placeholder / demo-seed cards. Also zeroed on the
@@ -3983,6 +4078,11 @@ export interface ManaAbilityView {
   // answer up front as `activate_mana_ability`'s `color` / `colors`, so
   // nothing is tapped until the player has chosen.
   color_options?: string[][];
+  // #2558: the ability adds "N mana of different colors" (Firemind
+  // Vessel, "{W|U|B|R|G:2}"). Its N lists in color_options are one per
+  // mana and the answer must name N DIFFERENT colours; the server
+  // refuses a repeated one before anything is paid.
+  different_colors?: boolean;
   // S32 (#352): spend restrictions the produced mana will carry —
   // Ancient Ziggurat's "only to cast a creature spell", Eldrazi
   // Temple's "only colorless Eldrazi". Informational; the server's

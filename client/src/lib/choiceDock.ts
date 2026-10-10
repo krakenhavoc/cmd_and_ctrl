@@ -10,8 +10,8 @@
 // optional_replacement, commander_return, confirm, may_cast, entry_pay_life,
 // entry_riot), pay_amount's single number (ADR 0129 §3), pay_unless
 // without card or tap picks, coin_call, loop_shortcut, mana_pick,
-// choose_color, option_pick and entry_controller when every option is
-// a short label, and an open vote. Everything else is a sheet (PR 6)
+// choose_color, option_pick, entry_controller and entry_read_ahead when
+// every option is a short label, and an open vote. Everything else is a sheet (PR 6)
 // and stays in ChoicePromptModal until then.
 //
 // An inline prompt is not a modal: it blurs and blocks nothing, so the
@@ -32,14 +32,14 @@ import type { Snippet } from "svelte";
 import { guardedWritable } from "./guardedStore";
 
 import type { DockAction, DockRequest } from "./dock";
-import type { PendingChoiceView, PlayerView, VoteView } from "./protocol";
+import type { PendingChoiceView, PickOptionView, PlayerView, VoteView } from "./protocol";
 import { colorPromptCopy } from "./manaPick";
 import { mayCastCopy } from "./mayCast";
 import { PhyrexianLifePerSymbol, maxPhyrexianLife, phyrexianLifeCost } from "./phyrexianLife";
 import { doubledTriggerLabel } from "./triggerDoubling";
 import { askedByHandText, canRemember } from "./autoAnswerPref";
 import { L } from "./labels";
-import { energyShortBy, energyShortReason, payAmountHint } from "./payEnergy";
+import { energyShortBy, energyShortReason, payAmountHint, payAmountResource } from "./payEnergy";
 
 // "Short" for an option_pick / entry_controller (ADR 0111 §2: "Inline
 // when every option is a short label; a sheet when an option embeds
@@ -72,6 +72,15 @@ export function shortOptions(c: Pick<PendingChoiceView, "pick_options">): boolea
   );
 }
 
+// pickOptionText is an option_pick button's text: its label, and the
+// mana it costs (#2854) when the label does not already say it —
+// "Pay {2}" stays as it is, "Keep it" becomes "Keep it ({2})".
+export function pickOptionText(o: Pick<PickOptionView, "label" | "mana_cost">): string {
+  const cost = o.mana_cost ?? "";
+  if (!cost || o.label.includes(cost)) return o.label;
+  return `${o.label} (${cost})`;
+}
+
 // isInlineChoice reports whether a pending choice is answered inline in
 // the dock rather than in ChoicePromptModal.
 export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean {
@@ -90,6 +99,7 @@ export function isInlineChoice(c: PendingChoiceView | null | undefined): boolean
       return true;
     case "option_pick":
     case "entry_controller":
+    case "entry_read_ahead":
       return shortOptions(c);
     default:
       return false;
@@ -263,9 +273,11 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
     }
     case "pay_amount": {
       const pa = c.pay_amount;
+      const resource = pa ? payAmountResource(pa) : "energy";
+      const what = resource === "none" ? "choose a number" : `pay ${resource}`;
       return {
-        title: reason || `${ctx.sourceName} — pay energy?`,
-        tag: "pay energy",
+        title: reason || `${ctx.sourceName} — ${what}?`,
+        tag: what,
         hint: pa ? payAmountHint(pa, ctx.sourceName) : undefined,
       };
     }
@@ -306,6 +318,12 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         title: reason || "Choose one",
         tag: "choose one",
         hint: "Someone else's spell or ability is asking you. Every option is one you can take.",
+      };
+    case "entry_read_ahead":
+      return {
+        title: reason || "Read ahead — choose the starting chapter",
+        tag: "read ahead",
+        hint: "It hasn't entered yet: it enters with that many lore counters, and the chapters before it never happen.",
       };
     case "entry_controller":
       return {
@@ -383,13 +401,27 @@ function answersFor(
       // ADR 0129 §3 (owner decision 3): the stepper in the body sets the
       // amount; Pay sends it, and the decline sends 0. No keys: the
       // stepper's field takes digits, and Enter in it pays.
+      // #1941: a life payment reads "Pay N life", and a number that is
+      // not paid reads "Choose N" with no decline (0 is an ordinary
+      // answer there, when the card allows it).
       const n = ctx.payAmount ?? 0;
       const onAmount = h.onAmount ?? (() => {});
       const min = c.pay_amount?.min ?? 0;
+      const resource = c.pay_amount ? payAmountResource(c.pay_amount) : "energy";
+      if (resource === "none") {
+        return {
+          primary: {
+            id: "choose",
+            label: L.chooseNumber(n),
+            disabled: ctx.payAmountAnswerable === false,
+            onPress: () => onAmount(n),
+          },
+        };
+      }
       return {
         primary: {
           id: "pay",
-          label: L.payEnergy(n),
+          label: resource === "life" ? L.payLife(n) : L.payEnergy(n),
           disabled: n <= 0 || ctx.payAmountAnswerable === false,
           onPress: () => onAmount(n),
         },
@@ -424,6 +456,7 @@ function answersFor(
     }
     case "option_pick":
     case "entry_controller":
+    case "entry_read_ahead":
       // No bar: a click on an option is the answer.
       return {
         primary: null,
@@ -431,7 +464,7 @@ function answersFor(
         rowLayout: "stack",
         row: (c.pick_options ?? []).map((o, i) => ({
           id: `option-${i}`,
-          label: o.label,
+          label: pickOptionText(o),
           onPress: () => h.onOption(i),
         })),
       };

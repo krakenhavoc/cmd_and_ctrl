@@ -19,6 +19,7 @@ func init() {
 		Name:         "Ranger's Firebrand",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			tempt := ringTemptsYouNext(item)
 			return ctx.Game.DealDamageEachThenForEffect(ctx.Source(), legalTargetIDs(ctx), 2,

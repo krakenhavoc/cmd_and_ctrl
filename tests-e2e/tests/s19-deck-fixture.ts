@@ -62,7 +62,9 @@ const OPPONENT_NON_BASICS = [
   "Smothering Tithe",
 ];
 
-function buildDeck(
+// buildDeck is exported for specs that need a deck of their own on the
+// same table setup (setupS19Game's casterDeck / opponentDeck).
+export function buildDeck(
   nonBasics: string[],
   filler: string,
   fillerCount: number,

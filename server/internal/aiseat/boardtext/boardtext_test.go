@@ -97,15 +97,35 @@ func TestRenderEnergyPrompts(t *testing.T) {
 		{ID: "p1", Kind: "pay_unless", Chooser: "a", Reason: "Thriving Rhino — pay {E}{E}?", Count: 1, PayEnergy: &two},
 		{ID: "p2", Kind: "pay_amount", Chooser: "a", Reason: "Harnessed Lightning", Count: 1,
 			PayAmount: &protocol.PayAmountView{Min: 0, Max: 5, Goal: 3, Unit: "damage"}},
+		{ID: "p3", Kind: "pay_amount", Chooser: "a", Reason: "Necrodominance", Count: 1,
+			PayAmount: &protocol.PayAmountView{Min: 0, Max: 30, Goal: 3, Unit: "cards", Resource: "life"}},
+		{ID: "p4", Kind: "pay_amount", Chooser: "a", Reason: "Volcano Hellion", Count: 1,
+			PayAmount: &protocol.PayAmountView{Min: 0, Max: 1_000_000, NoMax: true, Goal: 4, Unit: "damage", Resource: "none", SelfDamage: true}},
 	}
 	got := boardtext.Render(v, "a", boardtext.Options{})
 	for _, want := range []string{
 		"YOU OWE A CHOICE: pay_unless — Thriving Rhino — pay {E}{E}? (pay 2 energy) (choose 1)\n",
 		"YOU OWE A CHOICE: pay_amount — Harnessed Lightning (pay nothing, or 1 to 5 energy; 3 reaches the card's threshold; one energy is one point of damage)\n",
+		"YOU OWE A CHOICE: pay_amount — Necrodominance (pay no life, or 1 to 30 life; 3 reaches the card's threshold; one life is one point of cards)\n",
+		"YOU OWE A CHOICE: pay_amount — Volcano Hellion (choose a number, 0 or more; 4 reaches the card's threshold; you are dealt the same amount; each point is one point of damage)\n",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q in\n%s", want, got)
 		}
+	}
+}
+
+// #2794: the MCP seat asks for each owed choice's id, the handle its
+// legal_moves(choice) takes; the bot's prompt keeps the kind alone.
+func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {
+	v := view()
+	v.PendingChoices = []protocol.PendingChoiceView{{ID: "c-1", Kind: "search_library", Chooser: "a", Reason: "Circuitous Route", Count: 2}}
+	if got := boardtext.Render(v, "a", boardtext.Options{ChoiceIDs: true}); !strings.Contains(got,
+		"YOU OWE A CHOICE: search_library [id c-1] — Circuitous Route (choose 2)\n") {
+		t.Errorf("no choice id:\n%s", got)
+	}
+	if got := boardtext.Render(v, "a", boardtext.Options{}); strings.Contains(got, "c-1") {
+		t.Errorf("the bot's board printed the choice id:\n%s", got)
 	}
 }
 

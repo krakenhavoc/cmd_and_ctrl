@@ -20,6 +20,7 @@ func init() {
 			Label:   "{2}, Discard a card at random: This enchantment deals 2 damage to any target.",
 			Cost:    Plus(ManaCost("{2}"), DiscardAtRandom(1, "a card at random")),
 			Targets: TargetAny(),
+			Purpose: ForTargets(DamageToTarget(0, 2)),
 			Effect:  sourceDealsDamageToEachLegalTarget(2),
 		}},
 	})

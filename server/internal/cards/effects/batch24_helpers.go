@@ -282,8 +282,8 @@ func b24PlayerSacrificesGreatestPowerCreatureAndLosesLife(g *game.Game, item *ga
 
 // b24ReturnGraveyardTargetsToBattlefield puts up to `n` of the
 // spell's still-legal graveyard targets onto the battlefield under
-// their owner's control — Lich-Knights' Conquest's return half, and
-// Reveillark's. The first `n` in announce order are taken, and they
+// their owner's control — Reveillark's return half. (Lich-Knights'
+// Conquest used it too until #2863 moved its pick to resolution.) The first `n` in announce order are taken, and they
 // enter together (#1867, CR 603.6a), so each sees the others enter.
 func b24ReturnGraveyardTargetsToBattlefield(ctx *Context, n int) error {
 	ids := legalTargetCardIDs(ctx)

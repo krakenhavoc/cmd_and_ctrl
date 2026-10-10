@@ -26,13 +26,17 @@ func (c *PendingChoice) DredgeOffer() int {
 }
 
 // CommanderHeadedFor is where the commander goes if its owner declines
-// CR 903.9b's "may": ZoneHand or ZoneLibrary, read off the paused move.
-// Empty on every other prompt, and on #1397's question asked before a
-// cost is paid, whose frame parks an announcement rather than a move
-// (cost_commander_choice.go).
+// CR 903.9b's "may": ZoneHand or ZoneLibrary, read off the paused move,
+// or — for #1397's question asked before a cost is paid, whose frame
+// parks an announcement rather than a move — off the destination the
+// cost's caller recorded on that frame (#2420, cost_commander_choice.go).
+// Empty on every other prompt.
 func (c *PendingChoice) CommanderHeadedFor() ZoneKind {
 	if c == nil || c.Kind != PendingChoiceOptionalReplacement {
 		return ""
+	}
+	if parked := c.costCommanderResume; parked != nil {
+		return parked.headedFor
 	}
 	f := c.replacementResume
 	if f == nil || f.ev == nil || len(f.applicable) != 1 || !f.applicable[0].effect.commanderZone {

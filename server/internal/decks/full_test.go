@@ -20,15 +20,9 @@ var minorCaveats = map[string]string{
 	// With strict mana off a spell cast with its mana can still be
 	// countered; it is in the Simic deck as a one-drop mana creature.
 	"Delighted Halfling": "a mana creature whose \"can't be countered\" rider is the missing clause",
-	// Only with exactly one basic left in the library.
-	"Cultivate": "the hand-or-battlefield choice is lost only with one basic left",
 	// Landfall always makes the Treasure, which is what a ramp deck
 	// would pick.
 	"Tireless Provisioner": "the Food option is never offered",
-	// Partner is not modelled, so neither can be a commander; both are
-	// mainboard creatures here.
-	"Malcolm, Keen-Eyed Navigator": "partner is not supported",
-	"Breeches, Brazen Plunderer":   "partner is not supported",
 	// Dash is unavailable; the one-drop's combat trigger is what the
 	// Izzet deck plays it for.
 	"Ragavan, Nimble Pilferer": "dash is not available",

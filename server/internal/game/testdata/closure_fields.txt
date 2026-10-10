@@ -87,6 +87,7 @@ Game.StackMeta                               census:IntrinsicAbilityCards       
 Game.enteringTokens                          census:ChoiceResumeFrames          # Game.enteringTokens
 Game.lastKnownStack                          census:IntrinsicAbilityCards       # Game.lastKnownStack
 Game.logProjection                           rebuilt                            # Game.logProjection
+Game.pausedModeWalk                          keyed                              # Game.pausedModeWalk
 Game.promptRuns                              census:ChoiceResumeFrames          # Game.promptRuns
 Game.resolving                               census:ChoiceResumeFrames          # Game.resolving
 Game.scopedEffectMemo                        rebuilt                            # Game.scopedEffectMemo
@@ -180,8 +181,8 @@ coinFlipFrame.spec                           census:ChoiceResumeFrames          
 confirmFrame.onAccept                        census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onAccept
 confirmFrame.onDecline                       census:ChoiceResumeFrames          # Game.PendingChoices.confirmResume.onDecline
 copyFrame.item                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.item
-copyFrame.spec                               census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.spec
 copyFrame.src                                census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.src
+copyFrame.steps                              census:ChoiceResumeFrames          # Game.PendingChoices.copyResume.steps
 costCommanderFrame.announce                  census:ChoiceResumeFrames          # Game.PendingChoices.costCommanderResume.announce
 counterTail.then                             census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.counterTail.then
 damageTail.then                              census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.damageTail.then
@@ -202,6 +203,7 @@ mayCastFrame.onDecline                       census:ChoiceResumeFrames          
 millTail.then                                census:ChoiceResumeFrames          # Game.PendingChoices.replacementResume.ev.mill.then
 modePickFrame.ability                        census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.ability
 modePickFrame.source                         census:ChoiceResumeFrames          # Game.PendingChoices.modePickResume.source
+modeWalk.item                                keyed                              # Game.pausedModeWalk.item
 optionPickFrame.then                         census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.then
 optionPickFrame.thenSeat                     census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.thenSeat
 optionPickFrame.thenSubject                  census:ChoiceResumeFrames          # Game.PendingChoices.optionPickResume.thenSubject

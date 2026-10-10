@@ -506,6 +506,11 @@ func Register(spec Spec) {
 				spec.Name, spec.Madness, err))
 		}
 	}
+	// #2581: a printed X ceiling with no count would read as "no
+	// ceiling", a card stronger than printed.
+	if xc := spec.XCeiling; xc != nil && (xc.Count == nil || xc.Label == "") {
+		panic(fmt.Sprintf("effects.Register: %q declares an X ceiling with no count or no label", spec.Name))
+	}
 	// An activated ability's mana component is the only place an X
 	// can live (game.AbilityCost.DemandsX says why), so both ways of
 	// getting a variable cost wrong are visible from here, and both
@@ -550,6 +555,7 @@ func Register(spec Spec) {
 		checkAbilityCostModifiers(spec.Name, i, ab)
 		// ADR 0106 §1 decision 1: "Any player may activate this ability".
 		checkAnyPlayerAbility(spec.Name, fmt.Sprintf("ability %d", i), ab)
+		checkGrantorOnlyIsGranted(spec.Name, i, ab)
 		// CR 113.6 / ADR 0062 Decision 1: an ability that functions
 		// somewhere other than the battlefield has no permanent to
 		// tap, sacrifice, crew or put loyalty counters on. Such a
@@ -699,6 +705,7 @@ func Register(spec Spec) {
 		checkSacrificeClause(spec.Name, "additional cost", spec.AdditionalCost.Sacrifice, false, true, true)
 	}
 	checkVariableSacrificePlan(spec)
+	checkSacrificeAllCost(spec)
 	// #801: a replacement's per-instance ReplacementEffectID packs the
 	// source's battlefield index and its slot in this slice into one
 	// number, with game.MaxCatalogReplacementSlots as the stride. A
@@ -929,11 +936,9 @@ func checkRestriction(card, kind, label string, forbidsNothing bool) {
 
 func checkTriggerZones(card, what string, triggers []game.TriggeredAbility) {
 	for i, t := range triggers {
-		for _, zone := range t.Zones {
-			if why := game.TriggerZoneUnsupported(zone); why != "" {
-				panic(fmt.Sprintf("effects.Register: %q %s %d watches from %s — %s",
-					card, what, i, zone, why))
-			}
+		if zone, why := game.TriggerZonesUnsupported(t.Zones); why != "" {
+			panic(fmt.Sprintf("effects.Register: %q %s %d watches from %s — %s",
+				card, what, i, zone, why))
 		}
 	}
 }

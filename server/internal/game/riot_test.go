@@ -379,7 +379,7 @@ func TestEntryKeywordReplacementIDsNameTheirKeyword(t *testing.T) {
 	for _, tc := range []struct {
 		kw string
 		i  int
-	}{{KeywordRiot, 0}, {KeywordRiot, 3}, {KeywordUnleash, 0}, {KeywordUnleash, 2}} {
+	}{{KeywordRiot, 0}, {KeywordRiot, 3}, {KeywordUnleash, 0}, {KeywordUnleash, 2}, {KeywordModular, 0}, {KeywordModular, 1}} {
 		id := entryKeywordReplacementID(tc.kw, tc.i)
 		if got := EntryKeywordOfReplacement(id); got != tc.kw {
 			t.Errorf("%s #%d: decodes as %q", tc.kw, tc.i, got)
@@ -390,6 +390,11 @@ func TestEntryKeywordReplacementIDsNameTheirKeyword(t *testing.T) {
 		if label, _ := g.ReplacementOptionMetaForEffect(id); label != entryKeywordLabel(tc.kw) {
 			t.Errorf("%s #%d: label %q", tc.kw, tc.i, label)
 		}
+	}
+	// Read ahead's one ID sits in a stride of its own, clear of every
+	// counted keyword's.
+	if got := EntryKeywordOfReplacement(readAheadReplacementID); got != KeywordReadAhead {
+		t.Errorf("read ahead's id decodes as %q", got)
 	}
 	if EntryKeywordOfReplacement(selfReplacementIDBase) != "" {
 		t.Error("a card's own slot 0 decodes as a keyword")

@@ -25,12 +25,12 @@ import (
 type JoinInput struct {
 	InviteURL   string     `json:"invite_url" jsonschema:"the table's invite link (…/#/games/<id>/join?t=…) or an admin's seat-reclaim link"`
 	DisplayName string     `json:"display_name,omitempty" jsonschema:"the seat's name at the table (default: the MCP client's name, else Agent)"`
-	Deck        *DeckInput `json:"deck,omitempty" jsonschema:"optional deck to install: {id} for a pre-built deck or {list} for a decklist"`
+	Deck        *DeckInput `json:"deck,omitempty" jsonschema:"optional deck to install: {id} for a pre-built deck (join lists them) or {list} for a decklist"`
 }
 
 // SetDeckInput is `set_deck`'s input.
 type SetDeckInput struct {
-	Deck DeckInput `json:"deck" jsonschema:"{id} for a pre-built deck or {list} for a decklist"`
+	Deck DeckInput `json:"deck" jsonschema:"{id} for one of the pre-built decks join lists, or {list} for a decklist"`
 }
 
 // WaitInput is `wait_for_decision`'s input.
@@ -47,7 +47,7 @@ type GetStateInput struct {
 // LegalMovesInput is `legal_moves`'s input.
 type LegalMovesInput struct {
 	Card   string `json:"card,omitempty" jsonschema:"optional card instance id: list that card's moves with the enumerator's caps lifted"`
-	Choice string `json:"choice,omitempty" jsonschema:"optional pending choice id, or cleanup_discard: list that prompt's answers with the caps lifted"`
+	Choice string `json:"choice,omitempty" jsonschema:"optional pending choice: its id (YOU OWE A CHOICE prints it as [id …]), its kind when you owe one choice of that kind (search_library), or cleanup_discard. Lists that prompt's answers with the caps lifted"`
 	// Match and TargetsFor are #2277 / #2276: both work on the window's
 	// own list, so neither asks the server for anything.
 	Match      string `json:"match,omitempty" jsonschema:"optional text: list only the moves whose label contains it (case-insensitive), numbered as in the full list. Combine with choice to find one card in a capped search"`
@@ -107,7 +107,7 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 	s.mu.Unlock()
 	if held != nil {
 		if held.GameID == inv.GameID && held.Origin == inv.Origin {
-			return s.joinedText(true, nil), nil
+			return s.joinedText(true, s.deckCatalogLines(ctx)), nil
 		}
 		return errorResult("this binary already holds a seat at game %s; one binary holds one seat. Call leave first.", held.GameID), nil
 	}
@@ -151,7 +151,45 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 		r := s.installDeck(ctx, *in.Deck)
 		deckNote = append(deckNote, r.Text)
 	}
-	return s.joinedText(resumed, deckNote), nil
+	return s.joinedText(resumed, append(s.deckCatalogLines(ctx), deckNote...)), nil
+}
+
+// deckCatalogLines names the pre-built decks set_deck's {id} takes, while
+// a deck can still be set (#2786). Before it, an agent found the ids only
+// by sending a wrong one and reading the refusal.
+func (s *Seat) deckCatalogLines(ctx context.Context) []string {
+	s.mu.Lock()
+	sess, view := s.sess, s.view
+	s.mu.Unlock()
+	if sess == nil || view == nil || view.State != "lobby" {
+		return nil
+	}
+	decks, err := s.api.decks(ctx, sess.Origin, sess.Token)
+	if err != nil {
+		return []string{fmt.Sprintf("pre-built decks: could not list them (%v); set_deck with {list} takes a decklist", err)}
+	}
+	if len(decks) == 0 {
+		return []string{"pre-built decks: none on this server; set_deck with {list} takes a decklist"}
+	}
+	lines := []string{"pre-built decks (set_deck with {id}; or {list} for a decklist):"}
+	for _, d := range decks {
+		line := "  " + d.ID + " — " + d.Name
+		var about []string
+		if d.Commander != "" {
+			about = append(about, "commander "+d.Commander)
+		}
+		if len(d.Colors) > 0 {
+			about = append(about, strings.Join(d.Colors, ""))
+		}
+		if d.Archetype != "" {
+			about = append(about, d.Archetype)
+		}
+		if len(about) > 0 {
+			line += " (" + strings.Join(about, ", ") + ")"
+		}
+		lines = append(lines, line)
+	}
+	return lines
 }
 
 // claim finds a saved session for the table and checks it still works, or
@@ -479,9 +517,8 @@ func (s *Seat) decisionTextLocked(w *window) Result {
 			maxSeq = e.Seq
 		}
 	}
-	if len(logLines) > sinceLogLines {
-		logLines = logLines[len(logLines)-sinceLogLines:]
-	}
+	since := collapseLog(logLines)
+	since.keepLast(sinceLogLines)
 	var head []string
 	head = append(head, "status: decision", "window: "+w.token, "kind: "+w.kind)
 	if self := mySeat(v, me); self != nil {
@@ -494,7 +531,7 @@ func (s *Seat) decisionTextLocked(w *window) Result {
 	if sum := absorbedSummary(s.autoSince); sum != "" {
 		head = append(head, sum)
 	}
-	board := compactBoard(v, me, logLines, s.chatSince)
+	board := compactBoard(v, me, since, s.chatSince)
 	moves := renderMoves(v, w, "")
 	s.stats.noteMovesShown(len(w.moves), len(moves))
 
@@ -525,7 +562,7 @@ func (s *Seat) GetState(_ context.Context, in GetStateInput) (Result, error) {
 	}
 	switch in.Detail {
 	case "", "compact":
-		return textResult(header, untrustedNote, "", compactBoard(s.view, me, nil, nil)), nil
+		return textResult(header, untrustedNote, "", compactBoard(s.view, me, sinceLog{}, nil)), nil
 	case "full":
 		return textResult(header, "", fullBoard(s.view, me)), nil
 	default:
@@ -557,6 +594,14 @@ func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, erro
 			return errorResult("%v", err), nil
 		}
 		return textResult("window: "+w.token, text), nil
+	}
+	if req.Choice != "" {
+		id, err := resolveChoice(view, s.sess.PlayerID.String(), req.Choice)
+		if err != nil {
+			s.mu.Unlock()
+			return errorResult("%v", err), nil
+		}
+		req.Choice = id
 	}
 	if req.Source == "" && req.Choice == "" {
 		text := renderMovesMatching(view, w, "", in.Match)
@@ -601,6 +646,37 @@ func (s *Seat) LegalMoves(ctx context.Context, in LegalMovesInput) (Result, erro
 		note = "The server lists no moves for it right now."
 	}
 	return textResult("window: "+w.token, note, text), nil
+}
+
+// resolveChoice turns legal_moves' choice into the id the server takes.
+// An id, or cleanup_discard, passes through; the kind the window prints
+// ("search_library") names the one choice of that kind the seat owes
+// (#2794). Two owed choices of one kind are ambiguous: the answer lists
+// their ids.
+func resolveChoice(v *protocol.GameView, me, choice string) (string, error) {
+	if choice == "cleanup_discard" {
+		return choice, nil
+	}
+	var ids []string
+	for _, ch := range v.PendingChoices {
+		if ch.Chooser != me {
+			continue
+		}
+		if ch.ID == choice {
+			return choice, nil
+		}
+		if ch.Kind == choice {
+			ids = append(ids, ch.ID)
+		}
+	}
+	switch len(ids) {
+	case 0:
+		return choice, nil // the server's refusal names what it takes
+	case 1:
+		return ids[0], nil
+	default:
+		return "", fmt.Errorf("you owe %d %s choices; name one by its id: %s", len(ids), choice, strings.Join(ids, ", "))
+	}
 }
 
 // mergeMoves appends a card's expanded moves to the window, so every

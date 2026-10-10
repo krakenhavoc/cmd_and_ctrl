@@ -19,6 +19,7 @@ func init() {
 		Name:         "Wild Slash",
 		Completeness: CompletenessFull,
 		Targets:      TargetAny(),
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if b24ControlsCreatureWithPowerAtLeast(ctx.Game, ctx.Controller(), 4) {
 				if err := (DamageCantBePreventedThisTurn{}).Apply(ctx); err != nil {

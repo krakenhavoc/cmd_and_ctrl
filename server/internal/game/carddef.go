@@ -303,6 +303,12 @@ type CardDef struct {
 	// Sakashima of a Thousand Faces. Read from the battlefield through
 	// CatalogLegendRuleExemptions; see legend_rule_exemption.go.
 	LegendRuleExemptions []LegendRuleExemption
+	// ZeroLoyaltyExemptions are this permanent's printed "planeswalkers
+	// you control aren't put into their owners' graveyards for having 0
+	// loyalty" statics (CR 704.5i, #2797) — Sanctum Lurker. Read from the
+	// battlefield through CatalogZeroLoyaltyExemptions; see
+	// zero_loyalty_exemption.go.
+	ZeroLoyaltyExemptions []ZeroLoyaltyExemption
 	// OpponentEffectProtections are this permanent's printed "spells and
 	// abilities your opponents control can't cause you to discard /
 	// sacrifice" statics (#2178). Read from the battlefield through
@@ -354,6 +360,11 @@ type CardDef struct {
 	// legal-move enumerator, through XMattersFor; see
 	// effects.Spec.XMatters and internal/legal/x.go.
 	XMatters bool
+
+	// XCeiling is the spell's printed "X can't be greater than
+	// <count>" (#2581), read at announce through XCeilingFor; see
+	// x_ceiling.go. Nil for nearly every card.
+	XCeiling *XCeiling
 
 	// WantsDistinctColors marks a spell that READS the colours of the
 	// mana that paid for it — converge (CR 702.86) and sunburst (CR
@@ -843,6 +854,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogZeroLoyaltyExemptions = func(key string) []ZeroLoyaltyExemption {
+		if d := catalogDef(key); d != nil {
+			return d.ZeroLoyaltyExemptions
+		}
+		return nil
+	}
 	CatalogOpponentEffectProtections = func(key string) []OpponentEffectProtection {
 		if d := catalogDef(key); d != nil {
 			return d.OpponentEffectProtections
@@ -874,6 +891,12 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogXCeiling = func(key string) *XCeiling {
+		if d := catalogDef(key); d != nil {
+			return d.XCeiling
+		}
+		return nil
 	}
 	CatalogCastPermissions = func(key string) []CastPermission {
 		if d := catalogDef(key); d != nil {

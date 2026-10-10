@@ -71,7 +71,7 @@
   import { foreignModalOpen } from "../../modalLayers";
   import { tick } from "svelte";
   import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
-  import { holdPriority, toggleHoldPriority } from "../../holdPriority";
+  import { holdPriority, setHoldPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
   import { stackHoldStatus, stackHoldStatusText } from "../../stackHold";
   import { settings } from "../../settings";
@@ -468,7 +468,20 @@
     {:else if holdLine}
       <!-- ADR 0119 §2. Only the viewer sees this line. A timer, not a
            status: a countdown read aloud ten times a second is noise. -->
-      <span class="hold-status" role="timer">{holdLine}</span>
+      <span class="hold-line">
+        <span class="hold-status" role="timer">{holdLine}</span>
+        <!-- #2853: the one-click "let me respond" for a stack item auto-pass
+             is about to let resolve. It arms the hold, which keeps this
+             stack and clears itself once the stack empties; `h` does the
+             same from the keyboard. -->
+        <button
+          type="button"
+          class="wait-respond"
+          aria-label={L.waitToRespond}
+          title={"keep priority on this stack so you can respond" + keyHint(keys.holdPriority)}
+          onclick={() => setHoldPriority(true)}>wait</button
+        >
+      </span>
     {:else if hint && !reqTakesBar}
       <!-- What `next` will do — not while a request has taken the bar
            and `next` is not on it. -->
@@ -480,7 +493,8 @@
     <!-- #323: the escape hatch for "I DO want to respond to my own
          spell". It has to be clickable BEFORE the cast — once the spell
          is announced the client auto-passes on the following snapshot.
-         Sticky until clicked off. -->
+         #2853: it holds every stack item, an opponent's too, and turns
+         itself off once the stack it held has emptied. -->
     <button
       type="button"
       class="action hold"
@@ -490,8 +504,8 @@
       disabled={preGame}
       onclick={toggleHoldPriority}
       title={($holdPriority
-        ? "hold ON — your own spells and triggers keep the cursor so you can respond to them; click to release"
-        : "hold OFF — your own spells and triggers resolve without asking. Click before you cast to keep priority and respond to them") +
+        ? "hold ON — you keep priority on every stack item, yours and opponents', until the stack empties; click to release"
+        : "hold OFF — click to keep priority on every stack item, yours and opponents', until the stack empties. Click before you cast to respond to your own spell") +
         keyHint(keys.holdPriority)}
     >
       {$holdPriority ? "hold ✓" : "hold"}
@@ -839,6 +853,27 @@
   .hold-status {
     color: var(--fg-dim);
     font-variant-numeric: tabular-nums;
+  }
+  .hold-line {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+  }
+  .wait-respond {
+    flex: none;
+    font: inherit;
+    font-size: 0.72rem;
+    line-height: 1.2;
+    padding: 1px 8px;
+    border-radius: 4px;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    background: var(--accent-soft);
+    color: var(--accent-strong);
+    cursor: pointer;
+  }
+  .wait-respond:hover {
+    background: color-mix(in srgb, var(--accent) 24%, transparent);
   }
   .loop-notice {
     display: flex;

@@ -171,13 +171,19 @@ export function manaAbilityOption(
   ctx: ManaOptionContext = {},
 ): ManaPickOption {
   const produced = a.produced ?? "";
-  const slots = manaSymbols(produced);
+  // #2558: "{W|U|B|R|G:2}" closes its options with the number of
+  // different colours it adds; the options are the symbols.
+  const slots = manaSymbols(produced).map((s) => s.replace(/:\d+$/, ""));
   const choice = slots.some((s) => s.includes("|"));
   const symbols = slots.flatMap((s) => s.split("|"));
   // ADR 0093: a granted row names its grantor beside the cost rider.
   const granted = grantedFromLabel(a);
   const rider = [manaAbilityRider(a), granted].filter(Boolean).join(" · ");
-  const caption = captionFor(symbols, choice) || a.label || "Add mana";
+  const different = differentColorsCount(produced);
+  const caption =
+    (different > 0 ? `${different} different colors` : captionFor(symbols, choice)) ||
+    a.label ||
+    "Add mana";
   const disabled = blockedReason(card, a, ctx);
   const what = a.label || (produced ? `Add ${produced}` : "Add mana");
   return {
@@ -191,6 +197,18 @@ export function manaAbilityOption(
     abilityIndex: a.index,
     granted: granted || undefined,
   };
+}
+
+/**
+ * differentColorsCount is N for an output that adds "N mana of
+ * different colors" (#2558, "{W|U|B|R|G:2}"), else 0.
+ */
+export function differentColorsCount(produced: string): number {
+  for (const slot of manaSymbols(produced)) {
+    const m = /:(\d+)$/.exec(slot);
+    if (m) return Number(m[1]);
+  }
+  return 0;
 }
 
 /**
@@ -279,7 +297,11 @@ export function manaAbilityOptionsFor(
       },
     ];
   }
-  const combos = colorCombos(slots);
+  // #2558: an answer to "N mana of different colors" names each colour
+  // once; the server refuses a repeat.
+  const combos = colorCombos(slots).filter(
+    (colors) => !a.different_colors || new Set(colors).size === colors.length,
+  );
   return combos.map((colors) => {
     const symbols = symbolsForAnswer(a.produced ?? "", colors);
     const adds = `Add ${symbols.map((sym) => `{${sym}}`).join("")}`;

@@ -280,6 +280,12 @@ func printedShared(c *Card) Characteristic {
 	if c.faceDownPermanent() {
 		return faceDownCharacteristic(*c)
 	}
+	// ADR 0141, CR 702.103b: a bestowed spell is an Aura enchantment
+	// and not a creature. Off the battlefield there is no layer pass to
+	// apply it, so it is the cold baseline. Not cached; see bestow.go.
+	if c.Bestowed {
+		return bestowBaseline(c)
+	}
 	in := printedInputsOf(c)
 	var ch Characteristic
 	if e := c.printed; e != nil && e.in.sameAs(&in) {

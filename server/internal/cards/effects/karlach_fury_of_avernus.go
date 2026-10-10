@@ -19,15 +19,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // of combat goes straight to the next beginning of combat (the
 // 2022-06-10 ruling).
 //
-// Choose a Background is a deckbuilding permission the deck validator
-// doesn't implement, declared as the caveat Jaheira carries.
+// Choose a Background is a deck-construction rule (CR 702.124k) that
+// internal/deck reads off the oracle text: Karlach may share the
+// command zone with a Background as a second commander (#2874).
+//
+// No simplification.
 func init() {
 	const label = "Karlach, Fury of Avernus — untap attackers, first strike, additional combat"
 	Register(Spec{
 		OracleID:     "037355be-71e7-4866-80a6-80352c304970",
 		Name:         "Karlach, Fury of Avernus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Choose a Background isn't supported — Karlach can be your commander, but not alongside a Background."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attackDeclaredByYou(ev, source.Controller) && IsFirstCombatPhase(g)

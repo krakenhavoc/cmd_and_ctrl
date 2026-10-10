@@ -191,6 +191,13 @@ type PermissionFilter struct {
 	// historic (an artifact or legendary land) qualifies as a play.
 	HistoricOnly bool `json:"historicOnly,omitempty"`
 
+	// ArtifactOrColorlessOnly is Mystic Forge's "artifact spells and
+	// colorless spells": an OR of two properties read from the card's
+	// effective characteristics, so a colored artifact and a colorless
+	// non-artifact (an Eldrazi) both qualify. Pair it with NonLandOnly,
+	// because a land is never cast and a colorless land is not a spell.
+	ArtifactOrColorlessOnly bool `json:"artifactOrColorlessOnly,omitempty"`
+
 	// FromChosenType marks a filter whose creature type is the one
 	// named as the SOURCE permanent entered (CR 614.12, S26's
 	// Card.NamedTribe) — Realmwalker. The catalog declares the flag;
@@ -281,6 +288,9 @@ func (f PermissionFilter) Matches(c Card) bool {
 		return false
 	}
 	if f.HistoricOnly && !c.IsArtifact() && !c.IsLegendary() && !c.HasSubtype("Saga") {
+		return false
+	}
+	if f.ArtifactOrColorlessOnly && !c.IsArtifact() && !c.IsColorless() {
 		return false
 	}
 	if f.CreatureType != "" && !cardHasCreatureType(c, f.CreatureType) {
@@ -622,6 +632,31 @@ type CastPermission struct {
 	// permission that prints a count is CastOnly.
 	CastsLeft int `json:"castsLeft,omitempty"`
 
+	// PerType is a budget of ONE use per card type (#2167, ADR 0066's
+	// 2026-10-09 amendment): the card types, in CR 205.2a's lowercase
+	// spelling, this permission opens one cast or play of each.
+	// Muldrotha, the Gravetide's "a land and a permanent spell of each
+	// permanent type" is the six permanent types; Aminatou's Augury's
+	// "for each nonland card type, … a spell of that type" is the eight
+	// nonland ones. A card the permission opens spends ONE type: the one
+	// its holder chooses among the types the card (as it is played or
+	// cast) has and the budget has left (CastSpellParams.PermissionType,
+	// PermissionTypeChoices). A land is PLAYED, so it can only spend
+	// "land"; a spell can never spend "land".
+	//
+	// Empty is no budget, which is every permission written before the
+	// field existed. A budget composes with everything else the
+	// permission says, CastsLeft included.
+	PerType []string `json:"perType,omitempty"`
+
+	// PerTypeUsed are the types of PerType already spent. A STORED
+	// permission writes them here as they are spent
+	// (spendPermissionTypeLocked). A DERIVED one is rebuilt on every
+	// query, so its spent types live in TurnTally.PermissionTypes and
+	// the derivation copies them in here — which is what lets CoversCard,
+	// the one test every surface asks, read both kinds the same way.
+	PerTypeUsed []string `json:"perTypeUsed,omitempty"`
+
 	// FollowUp names a registered body (RegisterCastFollowUp) that runs
 	// when a cast is made BECAUSE of this permission — "if you do, you
 	// can't cast additional spells this turn" (Conduit of Worlds, CR
@@ -715,9 +750,9 @@ func (p *CastPermission) CoversCard(c Card, zone ZoneKind) bool {
 		return false
 	}
 	if p.Scope == ScopeStanding {
-		return p.Filter.Matches(c)
+		return p.Filter.Matches(c) && p.perTypeOpens(c)
 	}
-	return p.NamesCard(c)
+	return p.NamesCard(c) && p.perTypeOpens(c)
 }
 
 // GrantsFaces returns the faces this permission opens, when it names
@@ -1439,6 +1474,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 		if CatalogCastPermissions != nil {
 			for _, perm := range CatalogCastPermissions(key) {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
+					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					out = append(out, stamped)
 				}
 			}
@@ -1454,6 +1490,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 				continue
 			}
 			if stamped, ok := stampStandingPermissionLocked(gp.Permission, p, c); ok {
+				g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 				out = append(out, stamped)
 			}
 		}
@@ -1475,6 +1512,7 @@ func (g *Game) standingCastPermissionsLocked(p *Player) []CastPermission {
 			}
 			for _, perm := range CatalogCastPermissions(key) {
 				if stamped, ok := stampStandingPermissionLocked(perm, p, c); ok {
+					g.fillDerivedPerTypeUsedLocked(&stamped, p.ID, c)
 					out = append(out, stamped)
 				}
 			}

@@ -305,6 +305,14 @@ var mechanics = []Mechanic{
 		Adopt:      `Evoke("{cost}") or EvokePitch(…) — both bundle SacrificeOnEntry`,
 	},
 	{
+		Name:       "bestow",
+		Phrases:    []string{"bestow"},
+		Implements: altCost(game.BestowKey),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "bestow") resolves`,
+		Confidence: Exact,
+		Adopt:      `Bestow("{cost}") — it bundles the enchant creature target and the Aura spell (ADR 0141)`,
+	},
+	{
 		Name:       "overload",
 		Phrases:    []string{"overload"},
 		Implements: altCost("overload"),
@@ -704,6 +712,18 @@ var mechanics = []Mechanic{
 		Adopt:      `PrintedKeywords: []string{"annihilator N"} — the engine does the rest; "annihilator X" is AnnihilatorCounted`,
 	},
 	{
+		// #2049 (ADR 0071 amendment 2026-10-09): renown is a numbered
+		// canonicalKeywords token ("renown N") whose trigger the engine
+		// derives from the ability list (game/renown.go), annihilator's
+		// shape.
+		Name:       "renown",
+		Phrases:    []string{"renown"},
+		Implements: renownProbe,
+		Evidence:   `game.CatalogPrintedKeywords(oracleID) has a "renown N" token`,
+		Confidence: Exact,
+		Adopt:      `PrintedKeywords: []string{"renown N"} — the engine does the rest`,
+	},
+	{
 		// #1556 (ADR 0109 §10): riot and unleash are canonicalKeywords
 		// tokens whose entry replacements the engine derives from the
 		// CR 614.12 look-ahead (game/riot.go). Same probe as evolve.
@@ -799,6 +819,20 @@ func printedKeywordProbe(token string) func(effects.Spec) bool {
 		}
 		return false
 	}
+}
+
+// renownProbe is the exact probe for renown: a printed "renown N"
+// token.
+func renownProbe(s effects.Spec) bool {
+	if game.CatalogPrintedKeywords == nil {
+		return false
+	}
+	for _, kw := range game.CatalogPrintedKeywords(s.OracleID) {
+		if _, ok := game.RenownValue(kw); ok {
+			return true
+		}
+	}
+	return false
 }
 
 // annihilatorProbe is the exact probe for annihilator: a printed

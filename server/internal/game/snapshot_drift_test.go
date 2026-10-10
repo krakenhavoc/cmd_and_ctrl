@@ -191,6 +191,7 @@ var gameFields = plan(
 	// #1289: a resolution paused on one of its own prompts holds the
 	// CR 704.3 boundary. Carried with each choice's midResolution.
 	"resolutionOpen", carried, "",
+	"pausedModeWalk", carried, "",
 	"resolutionDepth", dropped, "not game state: it counts resolution functions on the Go stack, so it is zero between actions (#1289)",
 	// ADR 0127 §2: the ordinals behind the keys of the prompts one
 	// resolution or one answered prompt's branch queues.
@@ -289,6 +290,7 @@ var gameFields = plan(
 	// guard. Both are defer-cleared inside one mutation.
 	"stateTriggerHold", dropped, "not game state: it counts the open sections of one mutation the per-event check skips, defer-cleared, so it is zero between actions",
 	"stateTriggerChecking", dropped, "not game state: a re-entrancy guard for one check, defer-cleared, so it is false between actions",
+	"landingEntryCounters", dropped, "not game state: the permanent whose enters-with counters are landing inside one call, defer-cleared, so it is uuid.Nil between actions (#2123)",
 )
 
 var cardFields = plan(
@@ -453,6 +455,10 @@ var cardFields = plan(
 	// chosen as the permanent entered. A player's choice, so nothing
 	// can rebuild it — and it decides which printed ability exists.
 	"ChosenOption", carried, "",
+	// #1941, CR 614.12a: the number chosen as the permanent entered
+	// (Phyrexian Processor's life paid). A player's choice, so nothing
+	// can rebuild it — and it is the size of every token it makes.
+	"ChosenNumber", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.
@@ -485,6 +491,12 @@ var cardFields = plan(
 	// ADR 0071 amendment (#1700): the CR 701.37b monstrous
 	// designation, carried for Harnessed's reason.
 	"Monstrous", carried, "",
+	// ADR 0071 amendment 2026-10-09 (#2049): the CR 702.112b renowned
+	// designation, carried for Monstrous's reason.
+	"Renowned", carried, "",
+	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
+	// Monstrous's reason.
+	"Bestowed", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for
 	// Monstrous's reason.
@@ -577,7 +589,7 @@ var playerFields = plan(
 	"Eliminated", carried, "",
 	"HandKept", carried, "",
 	"MulliganDecided", carried, "",
-	"TriggerOrderAlwaysAsk", carried, "",
+	"TriggerOrder", carried, "",
 	"AutoAnswers", carried, "",
 	"MulligansTaken", carried, "",
 	"DeckImported", carried, "",
@@ -831,6 +843,9 @@ var pendingChoiceFields = plan(
 	// #742: how many tokens each colour of a one-pick-N-mana choice
 	// mints (Gilded Lotus). Without it a restored pick adds one.
 	"ManaAmounts", carried, "",
+	"ManaDifferent", carried, "",
+	"ManaChosen", carried, "",
+	"ManaLabel", carried, "",
 	// #763: whether answering this pick is "a permanent was tapped for
 	// mana" (CR 106.12a), which is what fires the triggered mana
 	// abilities. A restored Birds pick that lost it would put the mana
@@ -940,6 +955,11 @@ var pendingChoiceFields = plan(
 	// options ARE the prompt, and a restored game that forgot them
 	// would put a question with no answers in front of a seat.
 	"PickOptions", carried, "",
+	// #2854: the IDs a keyed option pick's continuation is handed
+	// (its key is PickThen). Carried because they are half the
+	// continuation: a restored prompt that forgot them would answer
+	// about nothing.
+	"OptionCarry", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a

@@ -27,7 +27,7 @@ import type { CardView } from "./protocol";
 /** One chip: what it says, and what its tooltip says. */
 export interface ChosenValueChip {
   /** Stable key for `{#each}`, and the CSS modifier for the chip. */
-  kind: "color" | "tribe" | "option" | "name";
+  kind: "color" | "tribe" | "option" | "name" | "number";
   /**
    * The rendered text — "Green", "Elf" for colour/tribe, which read
    * fine bare in context. "Temur" and "Sol Ring" alone do not (a
@@ -59,7 +59,10 @@ export interface ChosenValueChip {
  * server's decision (#429).
  */
 export function chosenValueChips(
-  card: Pick<CardView, "chosen_color" | "named_tribe" | "chosen_option" | "chosen_name">,
+  card: Pick<
+    CardView,
+    "chosen_color" | "named_tribe" | "chosen_option" | "chosen_name" | "chosen_number"
+  >,
 ): ChosenValueChip[] {
   const chips: ChosenValueChip[] = [];
   const color = card.chosen_color;
@@ -96,6 +99,16 @@ export function chosenValueChips(
       kind: "name",
       label: `Named: ${name}`,
       title: `"the chosen name" is ${name} (CR 614.12)`,
+    });
+  }
+  // #1941: a number chosen (or life paid) as the permanent entered —
+  // Phyrexian Processor's, the size of every token it makes.
+  const number = card.chosen_number;
+  if (number) {
+    chips.push({
+      kind: "number",
+      label: `Paid: ${number}`,
+      title: `${number} was paid as it entered (CR 614.12a)`,
     });
   }
   return chips;

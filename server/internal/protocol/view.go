@@ -211,8 +211,9 @@ type GameView struct {
 	LegalMoves []LegalMoveView `json:"legal_moves,omitempty"`
 	// LegalMovesTruncated is true when capLegalMoves dropped anything
 	// from LegalMoves — the list on this frame is then one move per
-	// (source, kind, targets_stack) rather than every move (ADR 0122
-	// §6.1). Absent otherwise. A seat that needs the rest sends a
+	// (source, kind, targets_stack, has_targets, interacts,
+	// combat_interacts, combat_defender_only) rather than every move
+	// (ADR 0122 §6.1). Absent otherwise. A seat that needs the rest sends a
 	// legal_moves_request (docs/protocol.md). OWN SEAT ONLY, projected
 	// out of legalTruncatedBySeat exactly as LegalMoves is.
 	LegalMovesTruncated bool `json:"legal_moves_truncated,omitempty"`
@@ -396,9 +397,10 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
-	// EntryKeyword names the entry keyword an "entry_riot" or
-	// "optional_replacement" prompt is asking about — "riot" or
-	// "unleash" (ADR 0109 §10) — so the client can word the question
+	// EntryKeyword names the entry keyword an "entry_riot",
+	// "entry_read_ahead" or "optional_replacement" prompt is asking
+	// about — "riot", "unleash" (ADR 0109 §10) or "read ahead" (#2123)
+	// — so the client can word the question
 	// and a policy can tell unleash's "may" from any other.
 	// The entering card rides Source. Absent on every other prompt.
 	EntryKeyword string `json:"entry_keyword,omitempty"`
@@ -715,6 +717,14 @@ type PickOptionView struct {
 	// it instead of only the rendered Label — and may do nothing with
 	// it, which is what it does today. #994.
 	Player string `json:"player,omitempty"`
+	// ManaCost is the mana this branch costs the chooser ("{1}",
+	// "{B}"), paid by the engine when it is chosen (#2854): Winter's
+	// Chill's "may pay {1} or {2}". Absent on a branch that costs no
+	// mana. Only options the chooser can pay are listed, so every one
+	// on the wire is an answer the engine will take — unless the board
+	// moves before the answer, when it is refused and the prompt stays
+	// open.
+	ManaCost string `json:"mana_cost,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -806,6 +816,14 @@ type LegalTargetsView struct {
 	// holds its confirm button until they do, and "Choose for me" fills
 	// it with a set that does. Absent on every clause without one.
 	EachOf []SacrificeGroupView `json:"each_of,omitempty"`
+
+	// All marks a SACRIFICE clause that takes every permanent listed in
+	// `cards` and lets the caster choose none of them (#2097, Soulblast's
+	// "sacrifice all creatures you control"): min and max are both the
+	// number listed, which may be zero. The client confirms rather than
+	// picks, and may send `sacrifice_ids` empty (the server fills it) or
+	// exactly these. Absent on every other clause.
+	All bool `json:"all,omitempty"`
 }
 
 // SacrificeGroupView is one entry of LegalTargetsView.EachOf: the
@@ -1420,11 +1438,15 @@ type PayCardsView struct {
 }
 
 // PayAmountView is the wire shape of a "pay_amount" prompt (ADR 0129
-// §3): how much energy the chooser may pay.
+// §3): how much energy the chooser may pay, or — since the ADR's
+// amendment of 2026-10-09 (#1941) — how much life, or a number that is
+// chosen and not paid.
 type PayAmountView struct {
 	// Min is 0 for "any amount" and 1 for "one or more".
 	Min int `json:"min"`
-	// Max is the chooser's energy when the prompt was asked.
+	// Max is the chooser's energy (or life) when the prompt was asked,
+	// or the printed ceiling. With no_max it is the engine's overflow
+	// guard, which a client need not draw.
 	Max int `json:"max"`
 	// Goal is the smallest amount that reaches the card's own threshold
 	// (Harnessed Lightning: the target's toughness), or 0 for none. The
@@ -1433,6 +1455,18 @@ type PayAmountView struct {
 	// Unit says what each counter paid buys: "damage", "counters",
 	// "cards", "power", "tax" or "other".
 	Unit string `json:"unit"`
+	// Resource is what each point costs the chooser: "energy", "life"
+	// or "none" (a number chosen and not paid). Absent reads as energy.
+	// A payment may be declined with 0; a number that is not paid is
+	// min..max alone.
+	Resource string `json:"resource,omitempty"`
+	// NoMax is a number with no printed ceiling (Volcano Hellion).
+	NoMax bool `json:"no_max,omitempty"`
+	// Marks are further numbers the card names as meaningful, ascending:
+	// the chooser's life total for Volcano Hellion.
+	Marks []int `json:"marks,omitempty"`
+	// SelfDamage says each point is also dealt to the chooser.
+	SelfDamage bool `json:"self_damage,omitempty"`
 }
 
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
@@ -1705,13 +1739,18 @@ type PlayerView struct {
 	// mulligan (CR 103.5, #2237). At most one seat has it; none does
 	// outside the mulligan window or while the opening roll is open.
 	MulliganTurn bool `json:"mulligan_turn,omitempty"`
-	// TriggerOrderAlwaysAsk reflects Player.TriggerOrderAlwaysAsk
-	// (#1530). Private to its seat: FilterViewFor clears it for every
-	// other viewer. The client compares it with its local setting and
-	// re-sends set_trigger_order_preference when they differ.
+	// TriggerOrder reflects Player.TriggerOrder (#1968): "always" or
+	// "never", omitted for the default, "when_it_matters". Private to
+	// its seat: FilterViewFor clears it for every other viewer. The
+	// client compares it with its synced setting and re-sends
+	// set_trigger_order_preference when they differ.
+	TriggerOrder string `json:"trigger_order,omitempty"`
+	// TriggerOrderAlwaysAsk is true when TriggerOrder is "always": the
+	// #1530 field, kept for a client from before #1968, which compares
+	// only this. Private to its seat like TriggerOrder.
 	TriggerOrderAlwaysAsk bool `json:"trigger_order_always_ask,omitempty"`
 	// AutoAnswers reflects Player.AutoAnswers (ADR 0127 §3), sorted by
-	// key. Private to its seat, like TriggerOrderAlwaysAsk: the client
+	// key. Private to its seat, like TriggerOrder: the client
 	// compares it with its synced setting and sends set_auto_answers
 	// when they differ.
 	AutoAnswers []AutoAnswerRuleView `json:"auto_answers,omitempty"`
@@ -2609,6 +2648,13 @@ type CardView struct {
 	// Public, like Harnessed, and set straight off the card for the
 	// same reason: no card type owns monstrosity.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Renowned is a permanent's CR 702.112b renowned designation (ADR
+	// 0071 amendment 2026-10-09, #2049) — set when one of its renown
+	// triggers resolves and kept until the permanent leaves the
+	// battlefield. Public, set straight off the card like Monstrous, and
+	// cleared for a viewer who does not know the card, for Monstrous's
+	// reason.
+	Renowned bool `json:"renowned,omitempty"`
 	// Saddled is a Mount's CR 702.171 saddled designation (ADR 0071
 	// amendment 2026-10-08, #2695) — set until end of turn and gone when
 	// the turn ends or the Mount leaves. Public, set straight off the
@@ -2684,6 +2730,12 @@ type CardView struct {
 	// permanent's OWN printed abilities exists (ADR 0071's gate), so
 	// without it the table cannot tell which half of a Siege is live.
 	ChosenOption string `json:"chosen_option,omitempty"`
+	// ChosenNumber is the family's sixth answer (#1941): the number
+	// chosen as this permanent entered — the life Phyrexian Processor's
+	// controller paid, which is the size of every token it makes.
+	// Absent at zero, and cleared by the non-knower redaction for the
+	// reasons above.
+	ChosenNumber int `json:"chosen_number,omitempty"`
 	// ManaCost is the printed casting cost as Scryfall returns it —
 	// "{1}{R}", "{W/U}", "{X}{B}{B}", etc. Empty for lands and for
 	// placeholder / demo-seed cards. Rendered by the client as a
@@ -3062,6 +3114,17 @@ type CastSurfaceView struct {
 	// (ADR 0048 addendum, open question 2). Absent for nearly every
 	// card. Added for #746.
 	TargetCostNotes []string `json:"target_cost_notes,omitempty"`
+	// PermissionTypes are the card types a cast or play of this face
+	// may spend under the per-type permission that opens it (#2167):
+	// Muldrotha, the Gravetide's "a permanent spell of each permanent
+	// type", Aminatou's Augury's "for each nonland card type". The
+	// viewer's own answer, ranked so the type the permission's other
+	// cards need least comes first (the picker's default). Two or more
+	// entries mean the client asks which one and sends it as
+	// cast_spell's `permission_type`; one needs no question. Absent for
+	// every cast that spends no such budget, which is nearly all of
+	// them.
+	PermissionTypes []string `json:"permission_types,omitempty"`
 	// CastableHere is the S29 "this card can be cast from the zone
 	// you are looking at it in" bit, for the zones where that is not
 	// already implied by the surface: the graveyard, a library top
@@ -3154,6 +3217,17 @@ type CastSurfaceView struct {
 	// cost modifier can be scoped to one player ("spells you cast
 	// cost {1} less"), so one seat's price is not another's.
 	CastPrices []CastPriceView `json:"cast_prices,omitempty"`
+	// XMax is the largest X THIS viewer may announce for the spell
+	// right now, under its printed "X can't be greater than <count>"
+	// — Winter's Chill's snow lands, Open the Way's players (#2581).
+	// game.SpellXCeilingForEffect, the number CastSpell refuses above
+	// and the bot enumerator searches under, so the client's X picker
+	// stops where the server does. Absent for every card that prints
+	// no ceiling; present-and-0 means X = 0 is the only announcement.
+	//
+	// PER VIEWER, like `cast_prices`: "snow lands YOU control" is one
+	// seat's count.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // CastPriceView is one price a cast may claim, as the engine will
@@ -3844,6 +3918,14 @@ type ActivatedAbilityView struct {
 	// the same per-seat copy as any_player rows).
 	OpponentsOnly bool `json:"opponents_only,omitempty"`
 	OwnerOnly     bool `json:"owner_only,omitempty"`
+	// GrantorOnly is a granted row's "Only you may activate this ability"
+	// (Martyrdom, ADR 0106 §1 amendment 2026-10-09, #1947) and Activator is
+	// the one player who may: the "you" of the effect that granted it,
+	// whoever controls the permanent now. The client opens the row to the
+	// viewer only when viewer == activator; whether it is live is still the
+	// digest's answer.
+	GrantorOnly bool   `json:"grantor_only,omitempty"`
+	Activator   string `json:"activator,omitempty"`
 	// Equip marks a CR 702.6 equip ability (game.ActivatedAbility.Equip,
 	// set by effects.EquipAbility and nothing else, #1208). Absent on
 	// every other row. Bot data (#2449): an equip that moves an
@@ -4140,6 +4222,14 @@ type ManaAbilityView struct {
 	// the server accepts, in the server's order. Stamped by
 	// stampManaIdentity, the pass with a game handle.
 	ColorOptions [][]string `json:"color_options,omitempty"`
+	// DifferentColors marks an ability that adds "N mana of different
+	// colors" (#2558, Firemind Vessel): its N lists in ColorOptions are
+	// one per mana, and the answer must name N DIFFERENT colours — the
+	// server refuses a repeated one with ErrIllegalManaColor before
+	// anything is paid. A client offers only the answers whose colours
+	// all differ. Absent for every other ability. Stamped by
+	// stampManaIdentity, beside ColorOptions.
+	DifferentColors bool `json:"different_colors,omitempty"`
 	// CantActivate is ActivatedAbilityView.CantActivate for a mana
 	// ability (#1210): the printed clause of a board-wide "can't be
 	// activated" static that refuses this one. Cursed Totem's
@@ -4526,8 +4616,9 @@ const legalMovesWireCap = 48
 // server" bug this whole sub-PR exists to kill.
 //
 // So the degraded list keeps the FIRST move of every (source, kind,
-// targets_stack) tuple and drops only the alternatives. Every card
-// that had a move still has one; what is lost is the choice between
+// targets_stack, has_targets, interacts, combat_interacts,
+// combat_defender_only) tuple and drops only the alternatives.
+// Every card that had a move still has one; what is lost is the choice between
 // its twelve targets, which no client consumes today (targeting is
 // driven by CardView.legal_targets, and targeting.ts stays the
 // presentation layer for it). TargetsStack rides along in the key
@@ -4535,8 +4626,13 @@ const legalMovesWireCap = 48
 // card with a counter mode and a burn mode is two different moves
 // that happen to share a source and a kind, and keeping only the
 // burn one would silently delete the counterspell response smart
-// autopass needs to see. docs/protocol.md states this as part of the
-// field's contract.
+// autopass needs to see. HasTargets and Interacts ride along for the
+// same reason (#2853): an ability with a targeted mode and an
+// untargeted one is two moves, and keeping only the untargeted one
+// would tell smart autopass the seat has nothing to answer with.
+// CombatInteracts and CombatDefenderOnly ride along for the same reason
+// (#2871).
+// docs/protocol.md states all five as part of the fields' contract.
 //
 // The second result says whether anything was dropped, which the view
 // carries as legal_moves_truncated (ADR 0122 §6.1): a list over the cap
@@ -4549,11 +4645,15 @@ func capLegalMoves(moves []LegalMoveView) ([]LegalMoveView, bool) {
 		source       uuid.UUID
 		kind         legal.Kind
 		targetsStack bool
+		hasTargets   bool
+		interacts    bool
+		combat       bool
+		defenderOnly bool
 	}
 	seen := make(map[key]bool, len(moves))
 	out := make([]LegalMoveView, 0, legalMovesWireCap)
 	for _, m := range moves {
-		k := key{m.Source, m.Kind, m.TargetsStack}
+		k := key{m.Source, m.Kind, m.TargetsStack, m.HasTargets, m.Interacts, m.CombatInteracts, m.CombatDefenderOnly}
 		if seen[k] {
 			continue
 		}
@@ -4998,11 +5098,16 @@ func (s castStamps) applyPublicToFace(f *CardFaceView, kind game.ZoneKind) {
 // player".
 func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastableHere = false
+	// #2167: which types a per-type permission leaves is the holder's
+	// answer about their own budget.
+	s.PermissionTypes = nil
 	s.LegalTargets = nil
 	s.Clauses = nil
 	// #1389: a price is one seat's answer — a cost modifier may be
 	// scoped to one player.
 	s.CastPrices = nil
+	// #2581: and so is an X ceiling read off one seat's board.
+	s.XMax = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -5538,6 +5643,11 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
 	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	// #2581: the printed X ceiling, read for this caster now — the
+	// count CastSpell will read as X is announced (CR 601.2b).
+	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
+		out.XMax = &ceiling
+	}
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
@@ -5685,16 +5795,42 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// override, the per-player grants and the per-player restrictions
 	// in CR 101.2's order, so the client cannot render a cast button
 	// out of a rule it reimplemented.
+	// #2167: the types a per-type permission lets this face spend — the
+	// engine's own list, the one the enumerator walks. A face with no
+	// type left under any price it may claim is no cast surface, whatever
+	// else opens it. The list stamped is the printed cast's, or the first
+	// price's that has one (a bestow cast, whose Aura spell is an
+	// enchantment, may have a type left when the creature does not).
+	typesOK := true
+	if haveLive {
+		typesOK = false
+		for _, o := range offers {
+			types, ok := g.PermissionTypeOptionsLocked(caster, live, kind, grant, o)
+			if !ok {
+				continue
+			}
+			if !typesOK && types[0] != "" {
+				out.PermissionTypes = types
+			}
+			typesOK = true
+			if o == nil {
+				break
+			}
+		}
+		if len(offers) == 0 {
+			typesOK = true
+		}
+	}
 	switch kind {
 	case game.ZoneGraveyard, game.ZoneLibrary:
-		out.CastableHere = haveLive && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+		out.CastableHere = haveLive && typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
 	case game.ZoneExile:
 		// #1389: exile joins them, for the castable-from-exile strip.
 		// A seat reaches this only through stampGrantedPermissions,
 		// which asks the engine for a LIVE permission first, so warp's
 		// and foretell's "on a later turn" never gets here early.
 		if haveLive {
-			out.CastableHere = castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
+			out.CastableHere = typesOK && castableNow(g, caster, gated, kind, grant, out.CantCast, offers)
 			out.CastPrices = viewOfCastPrices(g, caster, live, offers, kind)
 		}
 	case game.ZoneCommand:
@@ -6384,6 +6520,12 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 		// shroud gate must not narrow the list the client offers. The
 		// same list, count and order the abilities ship (#747).
 		out.SacrificeOptions = sacrificeCostOptions(g, caster, ac.Sacrifice, uuid.Nil, false)
+		if ac.SacrificeAll {
+			// #2097: "sacrifice all" — the engine's own set, the one
+			// CastSpell will take, as a demand of exactly that many.
+			all := g.SacrificeAllCandidatesForEffect(caster, ac.Sacrifice)
+			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+		}
 	}
 	if ac.BlightX {
 		// #2174: the same creature walk, and the ceiling the validator
@@ -6682,7 +6824,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 // reachesAcross reports whether the row names an activator other than
 // the plain controller (any player, only opponents, only the owner).
 func (a ActivatedAbilityView) reachesAcross() bool {
-	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly
+	return a.AnyPlayer || a.OpponentsOnly || a.OwnerOnly || a.GrantorOnly
 }
 
 // stampAnyPlayerOffers files, for every seat that does not control the
@@ -7029,6 +7171,9 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 		// ability that adds nothing, whose picking slots all narrowed
 		// away.
 		views[i].ColorOptions = game.ManaAbilityColorOptions(g, controller, card.InstanceID, raw[i])
+		if len(views[i].ColorOptions) > 0 {
+			views[i].DifferentColors = game.ManaAbilityAddsDifferentColors(g, controller, card.InstanceID, raw[i])
+		}
 	}
 }
 
@@ -7437,7 +7582,11 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			}
 		}
 		if pa := c.PayAmount; pa != nil {
-			v.PayAmount = &PayAmountView{Min: pa.Min, Max: pa.Max, Goal: pa.Goal, Unit: pa.Unit}
+			v.PayAmount = &PayAmountView{
+				Min: pa.Min, Max: pa.Max, Goal: pa.Goal, Unit: pa.Unit,
+				Resource: pa.ResourceOrEnergy(), NoMax: pa.NoMax,
+				Marks: append([]int(nil), pa.Marks...), SelfDamage: pa.SelfDamage,
+			}
 		}
 		if c.Kind == game.PendingChoiceTriggerPrompt || c.Kind == game.PendingChoicePickTarget {
 			doubledBy, doubledByName := c.TriggerDoubler()
@@ -7661,10 +7810,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// ADR 0102's entry_controller rides the same projection: its
 		// options are seats (Player set), and its purpose goes beside
 		// them.
-		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController) && len(c.PickOptions) > 0 {
+		//
+		// So does read ahead's entry_read_ahead (#2123): one option per
+		// chapter, option N being chapter N+1.
+		if (c.Kind == game.PendingChoiceOptionPick || c.Kind == game.PendingChoiceEntryController ||
+			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
-				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost}
+				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost}
 				if opt.Player != uuid.Nil {
 					out.Player = opt.Player.String()
 				}
@@ -7685,7 +7838,8 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 		}
-		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement) && len(c.ReplacementEffectIDs) == 1 {
+		if (c.Kind == game.PendingChoiceEntryRiot || c.Kind == game.PendingChoiceOptionalReplacement ||
+			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.ReplacementEffectIDs) == 1 {
 			v.EntryKeyword = game.EntryKeywordOfReplacement(c.ReplacementEffectIDs[0])
 		}
 		// PendingChoiceModePick — #764, CR 603.3c: a modal trigger's
@@ -8093,7 +8247,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
 		MulliganTurn:          g.MulliganDeciderLocked() == p.Seat,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		TriggerOrder:          viewOfTriggerOrder(p.TriggerOrder),
+		TriggerOrderAlwaysAsk: p.TriggerOrder == game.TriggerOrderAlways,
 		AutoAnswers:           viewOfAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
@@ -8405,8 +8560,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 	seats := make([]PlayerView, len(v.Seats))
 	for i, p := range v.Seats {
 		out := p
-		// #1530: the trigger-ordering preference is the seat's own.
+		// #1530, #1968: the trigger-ordering preference is the seat's own.
 		if p.ID != viewerID {
+			out.TriggerOrder = ""
 			out.TriggerOrderAlwaysAsk = false
 			// ADR 0127 §8: and so are its standing answers.
 			out.AutoAnswers = nil
@@ -9031,6 +9187,11 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// #1389: a foretold card's price is its foretell cost, which names
 	// the card as loudly as its mana cost does.
 	out.CastPrices = nil
+	// #2581: a printed X ceiling says the card has {X} and what it
+	// counts, which names it as loudly as its text.
+	out.XMax = nil
+	// #2167: the types a card could spend are its card types.
+	out.PermissionTypes = nil
 	// ADR 0073 §7: "Cast this spell only if you control a legendary
 	// creature or planeswalker" says the card is a legendary sorcery,
 	// which is more than its mana cost gives away. CR 708.2 also
@@ -9131,6 +9292,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// to be false — only a permanent with a monstrosity ability can
 	// become monstrous, so the badge would hint at the hidden card.
 	out.Monstrous = false
+	// #2049: and renowned, for the same reason — only a creature with
+	// renown becomes renowned, so the badge would hint at the card.
+	out.Renowned = false
 	// #2695: cleared with the other designations rather than trusted to
 	// be false — a face-down permanent is not a Mount (CR 708.2).
 	out.Saddled = false
@@ -9150,6 +9314,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.NamedTribe = ""
 	out.ChosenName = ""
 	out.ChosenOption = ""
+	out.ChosenNumber = 0
 	// ADR 0083: a token's printed text is public on a token the
 	// viewer can see, and a token is always known to every seat
 	// (mintTokenLocked adds every seat as a knower), so in practice
@@ -9410,6 +9575,7 @@ func viewOfCard(c game.Card) CardView {
 		NamedTribe:   c.NamedTribe,
 		ChosenName:   c.ChosenName,
 		ChosenOption: c.ChosenOption,
+		ChosenNumber: c.ChosenNumber,
 		knowers:      knowers,
 		Layout:       c.Layout,
 		Faces:        viewOfFaces(c),
@@ -9461,6 +9627,7 @@ func viewOfCard(c game.Card) CardView {
 		}
 		view.Harnessed = c.Harnessed
 		view.Monstrous = c.Monstrous
+		view.Renowned = c.Renowned
 		view.Saddled = c.Saddled
 		view.Suspected = c.Suspected
 		view.Prepared = c.Prepared
@@ -9889,8 +10056,16 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			AnyPlayer:     a.AnyPlayer,
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,
+			GrantorOnly:   a.GrantorOnly,
 			Equip:         a.Equip,
 			UntapSelf:     a.UntapSelf,
+		}
+		// ADR 0106 §1 amendment 2026-10-09: the one player a granted
+		// "Only you may activate" row is open to.
+		if a.GrantorOnly {
+			if who := origins.At(i).Activator; who != uuid.Nil {
+				v.Activator = who.String()
+			}
 		}
 		// ADR 0106 §1 decision 8 and ADR 0126 §6: what the row does,
 		// and the bot's reason to reach across.
@@ -10748,4 +10923,14 @@ func emergePricesView(g *game.Game, caster uuid.UUID, card game.Card, zone game.
 		return nil
 	}
 	return out
+}
+
+// viewOfTriggerOrder is a seat's trigger-order mode as PlayerView
+// carries it: empty for the default, so a seat that never chose sends
+// nothing (#1968).
+func viewOfTriggerOrder(m game.TriggerOrderMode) string {
+	if m == game.TriggerOrderWhenItMatters {
+		return ""
+	}
+	return m.Wire()
 }

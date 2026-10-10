@@ -33,9 +33,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
-			Targeting(
+			TriggerWithPurpose(Targeting(
 				WhenThisEnters("Spring-Loaded Sawblades — 5 damage to target tapped creature an opponent controls", sourceDealsDamageToEachLegalTarget(5)),
-				TargetCreature("target tapped creature an opponent controls", tappedPermanent(), OpponentControls())),
+				TargetCreature("target tapped creature an opponent controls", tappedPermanent(), OpponentControls())), ForTargets(DamageToTarget(0, 5))),
 		},
 		Activated: []ActivatedAbility{
 			Craft("Craft with artifact {3}{W}", "{3}{W}", CraftWith("artifact")),

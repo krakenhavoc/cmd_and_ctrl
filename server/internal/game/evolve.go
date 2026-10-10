@@ -122,7 +122,19 @@ func evolveComparisonHolds(enteredIsCreature bool, enteredPower, enteredToughnes
 // ADR 0041 P9): an on-disk identity, never renamed. An older binary
 // refuses a restore point naming it with ErrUnknownEffectKey, which is
 // the designed rollback case.
-var evolveGrowBody = SimpleDelayedBody("evolve/grow", resolveEvolve)
+//
+// Built from the key and registered in init (annihilatorSacrificeBody's
+// shape), because resolveEvolve places a counter, a counter placement
+// reaches the replacement window and the Saga chapter check, and both
+// read a permanent's triggers — which include evolveTrigger. Initialised
+// with the function, the var would be a package initialization cycle.
+const evolveGrowKey = "evolve/grow"
+
+var evolveGrowBody = BodyRef{key: evolveGrowKey}
+
+func init() {
+	SimpleDelayedBody(evolveGrowKey, resolveEvolve)
+}
 
 // resolveEvolve re-checks the comparison (CR 603.4) and, if it still
 // holds, puts one +1/+1 counter on the evolving creature, then emits

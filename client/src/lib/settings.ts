@@ -174,10 +174,17 @@ export interface Settings {
   gameplay: {
     // Confirm-before-exit when navigating away from an active game.
     confirmExit: boolean;
-    // Pass priority automatically outside the stops grid and the
-    // #1307 key windows. Off means every priority window waits for a
-    // click. The rules live in autopassDecision.ts.
-    autoPassPriority: boolean;
+    // ADR 0143 §2.1 (schema v24): the one Auto-pass choice, replacing
+    // autoPassPriority, smartAutoPass and alwaysStopOpponentStack.
+    //   "smart"   (default) stops at a ticked step when there is
+    //             something to do there, and at an opponent's spell,
+    //             combat once attackers are declared, and an opponent's
+    //             end step when the viewer can respond. Passes the rest.
+    //   "careful" Smart, plus every opponent spell and ability, answer
+    //             or not.
+    //   "manual"  never passes for the viewer.
+    // The rules live in autopassDecision.ts.
+    passMode: PassMode;
     // Per-step stops (S13). For each priority-granting step, true
     // means "stop here when priority lands on me" and false means
     // "auto-pass through it". Untap and Cleanup are not stoppable
@@ -194,12 +201,15 @@ export interface Settings {
     // tracking posture. A card the board can't pay for still offers
     // "Cast anyway (don't pay)", which casts with `force_cast: true`.
     strictMana: boolean;
-    // #1530: always raise the CR 603.3b "order your triggers" prompt,
-    // even for a batch the server would order itself because every item
-    // commutes (an all-prowess batch, #1511). The decision is the
+    // #1968 (replacing #1530's alwaysAskTriggerOrder): when to raise
+    // the CR 603.3b "order your triggers" prompt. "when_it_matters"
+    // (default) lets the server order a batch whose order cannot change
+    // the game (#1511's prowess, #1968's copies of one ability);
+    // "always" asks for every batch; "never" never asks and puts the
+    // batch on the stack in the order it triggered. The decision is the
     // server's, so the server holds the seat's copy and the client keeps
-    // it in step (triggerOrderPref.ts). Default off.
-    alwaysAskTriggerOrder: boolean;
+    // it in step (triggerOrderPref.ts).
+    triggerOrder: TriggerOrderMode;
     // ADR 0127 §3: standing answers to repeated prompts ("never pay
     // for Rhystic Study"), one per prompt key. Ask is the absence of a
     // rule. `card` and `prompt` are display copies so Settings can list
@@ -207,30 +217,34 @@ export interface Settings {
     // answers for the player (autoAnswerPref.ts keeps it in step).
     // At most MAX_AUTO_ANSWERS. Default empty.
     autoAnswers: AutoAnswerRule[];
-    // S13.6: when a stopped step lands on the viewer but the
-    // legality engine reports no legal response (no castable hand
-    // cards, no battlefield activations, no commander cast),
-    // auto-pass anyway. Defaults on — the step-stops grid gets to
-    // mean "stop if there's something to consider" instead of
-    // "stop every time regardless." Flip off to restore strict
-    // pre-S13.6 behaviour where every stop demands a click.
-    smartAutoPass: boolean;
-    // #1307: what counts as a response for smartAutoPass. Each is a
+    // #2871 (schema v23): a ticked step stops only when the viewer has
+    // a real play there. On their own main phase that is anything
+    // castable or playable, a land included; elsewhere it is a move in
+    // an enabled "Stop for" category. Defaults on. Off, every ticked
+    // step demands a click. Until v23 this was the first half of
+    // smartAutoPass, and the v23 migration copies that setting.
+    stepStopsOnlyWhenCanAct: boolean;
+    // #1307: what counts as a response, in every pass mode (ADR 0143
+    // §2.5: read always, so never greyed out). Each is a
     // category of the viewer's own legal moves; mana abilities and
-    // land plays are never responses. All on by default.
-    //   respondCounterspells  — casts / activations that target the stack
-    //   respondInstants       — any other instant-speed cast
-    //   respondAbilities      — any other non-mana activated ability
-    //   respondSpecialActions — foretell, suspend, turning face up
+    // land plays are never responses. All on by default except
+    // respondUntargetedAbilities (#2853, schema v22).
+    //   respondCounterspells       — casts / activations that target the stack
+    //   respondInstants            — any other instant-speed cast
+    //   respondAbilities           — any other activated ability that
+    //                                targets or protects (a sacrifice
+    //                                outlet, regeneration, a pump)
+    //   respondUntargetedAbilities — any other non-mana activated
+    //                                ability: pure value (Mind Stone, a
+    //                                fetch land, cycling). Off by
+    //                                default: not interaction.
+    //   respondSpecialActions      — foretell, suspend, turning face up
     respondCounterspells: boolean;
     respondInstants: boolean;
     respondAbilities: boolean;
+    respondUntargetedAbilities: boolean;
     respondSpecialActions: boolean;
-    // #1307: stop for every opponent item on the stack, answer or
-    // not — the pre-#1307 behaviour. Off by default: with smart
-    // autopass on, a spell you can't respond to now passes.
-    alwaysStopOpponentStack: boolean;
-    // #1307 bluffing. When smart autopass would pass a window you
+    // #1307 bluffing (Smart pass mode only, ADR 0143 §4.3). When smart autopass would pass a window you
     // cannot answer, act as if you could instead, so a pause gives
     // nothing away.
     //   bluffCounterspell — represent a counter: bluff at an
@@ -348,7 +362,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 21;
+export const SETTINGS_VERSION = 24;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -450,32 +464,29 @@ export function defaultSettings(): Settings {
     },
     gameplay: {
       confirmExit: true,
-      // S13 default: on. Pre-S13 this was off because the only
-      // gating was "not on viewer's own turn", which felt too
-      // aggressive. The S13 stops grid (defaultStepStops) gives
-      // the user fine control, so auto-pass-on is now the right
-      // default — stops are the affordance for "stop here".
-      autoPassPriority: true,
+      // ADR 0143 §2.1 default: Smart.
+      passMode: DEFAULT_PASS_MODE,
       stepStops: defaultStepStops(),
       // ADR 0118 §1 default: on. A spell costs what it says, and a
       // click taps the lands for it. Off (the S15 default) is the
       // sandbox / paper-tracking posture, still a supported choice.
       strictMana: true,
-      // #1530 default: off. The server orders a commuting batch itself.
-      alwaysAskTriggerOrder: false,
+      // #1968 default: ask only when the order can change the game.
+      triggerOrder: DEFAULT_TRIGGER_ORDER,
       // ADR 0127 default: no rules; every prompt is asked.
       autoAnswers: [],
-      // S13.6 default: on. The step-stops grid is the intent
-      // affordance; smartAutoPass lets it mean "stop if I
-      // might want to respond" instead of "stop every time."
-      smartAutoPass: true,
+      // #2871 default: on. The step-stops grid is the intent
+      // affordance; this lets it mean "stop if I can do something
+      // here" instead of "stop every time."
+      stepStopsOnlyWhenCanAct: true,
       // #1307 defaults: every response category counts, and an
-      // opponent's spell you can't answer passes.
+      // opponent's spell you can't answer passes. #2853: except an
+      // untargeted ability, which is not interaction.
       respondCounterspells: true,
       respondInstants: true,
       respondAbilities: true,
+      respondUntargetedAbilities: false,
       respondSpecialActions: true,
-      alwaysStopOpponentStack: false,
       // #1307 bluff defaults: off, timed, 1.5–4 s. A bluff slows the
       // table, so nobody gets one they didn't ask for.
       bluffCounterspell: false,
@@ -549,7 +560,7 @@ export function defaultSettings(): Settings {
 // too. Nobody can ship a setting without deciding where it lives.
 //
 // The practice table (practiceTable.ts) forces four fields. Two are
-// synced (strictMana, autoPassPriority) and settingsSync.ts never
+// synced (strictMana, passMode) and settingsSync.ts never
 // uploads their forced values; two are per device (tableLayout,
 // cardSize) and never upload at all.
 
@@ -601,19 +612,19 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
   },
   gameplay: {
     confirmExit: "synced",
-    autoPassPriority: "synced",
+    passMode: "synced",
     stepStops: "synced",
     strictMana: "synced",
-    alwaysAskTriggerOrder: "synced",
+    triggerOrder: "synced",
     // ADR 0127 §3: the cards are in a person's decks, so the answers
     // travel with the person.
     autoAnswers: "synced",
-    smartAutoPass: "synced",
+    stepStopsOnlyWhenCanAct: "synced",
     respondCounterspells: "synced",
     respondInstants: "synced",
     respondAbilities: "synced",
+    respondUntargetedAbilities: "synced",
     respondSpecialActions: "synced",
-    alwaysStopOpponentStack: "synced",
     bluffCounterspell: "synced",
     bluffInstant: "synced",
     bluffMode: "synced",
@@ -754,10 +765,13 @@ function migrate(raw: unknown): Settings {
   // their stops grid (also being seeded here) prevents.
   const storedVersion = typeof s.__version === "number" ? s.__version : 0;
   const fromV1 = storedVersion < 2;
+  // The keys v24 retired (ADR 0143 §5) are read and written through
+  // this view until the v24 block below turns them into passMode.
+  const legacyGameplay = merged.gameplay as unknown as Record<string, unknown>;
   if (Object.keys(merged.gameplay.stepStops).length === 0) {
     merged.gameplay.stepStops = defaultStepStops();
     if (fromV1) {
-      merged.gameplay.autoPassPriority = true;
+      legacyGameplay.autoPassPriority = true;
     }
   } else {
     for (const id of NO_PRIORITY_STEPS) {
@@ -774,7 +788,7 @@ function migrate(raw: unknown): Settings {
   // either knob, so re-applying the new pairing is safe. Users who
   // customised stops keep their autoPassPriority value untouched.
   if (storedVersion === 2 && stepStopsMatchDefault(merged.gameplay.stepStops)) {
-    merged.gameplay.autoPassPriority = true;
+    legacyGameplay.autoPassPriority = true;
   }
   // v3 → v4 (S15): the gameplay.strictMana toggle is new. The
   // shallow merge above already populated it from defaults
@@ -990,12 +1004,141 @@ function migrate(raw: unknown): Settings {
     seen: normalizeSeen(merged.help?.seen),
     tipsOff: merged.help?.tipsOff === true,
   };
+  // v21 → v22 (#2853, owner decision 1): respondAbilities splits.
+  // It now means an ability that targets, and the new
+  // respondUntargetedAbilities (default false) covers the rest: Mind
+  // Stone, fetch lands, Clues, cycling. A stored blob is materialised,
+  // so a `true` from the all-on v12 default cannot be told from a
+  // chosen one. What can be told apart is a "Stop for" list that is
+  // not the old default: a player who changed any of the four
+  // categories looked at the list and left abilities as they wanted
+  // them, so they keep the old meaning (untargeted follows
+  // respondAbilities). Everyone still on the all-on default moves to
+  // the new default. An account copy from a v21 client goes through
+  // here too (applySyncedCopy). From v22 on, the stored choice stands.
+  const gp = merged.gameplay as Settings["gameplay"];
+  if (storedVersion < 22) {
+    const old = s.gameplay as Partial<Settings["gameplay"]> | undefined;
+    const customised =
+      !!old &&
+      [
+        old.respondCounterspells,
+        old.respondInstants,
+        old.respondAbilities,
+        old.respondSpecialActions,
+      ].some((v) => v === false);
+    gp.respondUntargetedAbilities = customised
+      ? gp.respondAbilities !== false
+      : d.gameplay.respondUntargetedAbilities;
+  } else if (typeof gp.respondUntargetedAbilities !== "boolean") {
+    gp.respondUntargetedAbilities = d.gameplay.respondUntargetedAbilities;
+  }
+  // v22 → v23 (#2871): "stop at a ticked step only when I can do
+  // something" becomes its own setting. Until v23 it was half of
+  // smartAutoPass, so a blob from before v23 copies that choice: a
+  // player who turned smart auto-pass off still stops at every ticked
+  // step, and everyone else keeps skipping the empty ones. An account
+  // copy from a v22 client goes through here too (applySyncedCopy).
+  // From v23 on, the stored choice stands.
+  if (storedVersion < 23) {
+    gp.stepStopsOnlyWhenCanAct =
+      typeof legacyGameplay.smartAutoPass === "boolean"
+        ? legacyGameplay.smartAutoPass
+        : d.gameplay.stepStopsOnlyWhenCanAct;
+  } else if (typeof gp.stepStopsOnlyWhenCanAct !== "boolean") {
+    gp.stepStopsOnlyWhenCanAct = d.gameplay.stepStopsOnlyWhenCanAct;
+  }
+  // v23 → v24 (ADR 0143 §2.1 and §5): autoPassPriority, smartAutoPass
+  // and alwaysStopOpponentStack become the one gameplay.passMode.
+  //   autoPassPriority false                      → "manual"
+  //   else smartAutoPass false                    → "careful"
+  //   else alwaysStopOpponentStack true           → "careful"
+  //   else                                        → "smart"
+  // smartAutoPass off maps to Careful, not to a mode without the key
+  // windows: no mode has that any more (§2.2), so this player gets the
+  // combat and opponent-end-step stops back, only where they can
+  // respond. The defaults no longer carry the old keys, so a value seen
+  // here is the stored one (or the v1-v3 blocks' rescue above). A blob
+  // from before v24 that has any of the three keys is mapped from them,
+  // even if it also carries a passMode: an older client keeps a newer
+  // client's unknown keys, and the old keys are the ones it last wrote.
+  // Otherwise a valid stored passMode stands (a hand-seeded blob with
+  // no version, such as the e2e suite's), and anything else is the
+  // default. The old keys are deleted either way, because the shallow
+  // merge keeps unknown keys. An account copy from an older client goes
+  // through here too (applySyncedCopy).
+  const storedPassMode = (s.gameplay as Record<string, unknown> | undefined)?.passMode;
+  const hasLegacyPass =
+    storedVersion < 24 &&
+    ["autoPassPriority", "smartAutoPass", "alwaysStopOpponentStack"].some(
+      (k) => legacyGameplay[k] !== undefined,
+    );
+  if (hasLegacyPass) {
+    if (legacyGameplay.autoPassPriority === false) gp.passMode = "manual";
+    else if (legacyGameplay.smartAutoPass === false) gp.passMode = "careful";
+    else if (legacyGameplay.alwaysStopOpponentStack === true) gp.passMode = "careful";
+    else gp.passMode = "smart";
+  } else {
+    gp.passMode = isPassMode(storedPassMode) ? storedPassMode : DEFAULT_PASS_MODE;
+  }
+  delete legacyGameplay.autoPassPriority;
+  delete legacyGameplay.smartAutoPass;
+  delete legacyGameplay.alwaysStopOpponentStack;
+  // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
+  // gameplay.triggerOrder. No version bump: the old key itself says
+  // which blob this is. A stored or synced blob that has a valid
+  // triggerOrder keeps it; one that has only the old key maps `true` to
+  // "always" and anything else to the default (an untouched `false` and
+  // a chosen one look the same, and both meant "ask only when it
+  // matters"). The old key is dropped. An account copy from an older
+  // client goes through here too (applySyncedCopy), so a checkbox ticked
+  // on another device arrives as "always".
+  const gameplay = merged.gameplay as Settings["gameplay"] & { alwaysAskTriggerOrder?: unknown };
+  const storedGameplay = (s.gameplay ?? {}) as Record<string, unknown>;
+  if (isTriggerOrderMode(storedGameplay.triggerOrder)) {
+    gameplay.triggerOrder = storedGameplay.triggerOrder;
+  } else if (storedGameplay.alwaysAskTriggerOrder === true) {
+    gameplay.triggerOrder = "always";
+  } else {
+    gameplay.triggerOrder = DEFAULT_TRIGGER_ORDER;
+  }
+  delete gameplay.alwaysAskTriggerOrder;
   // ADR 0127 §3: gameplay.autoAnswers. New fields fill from the default
   // (empty) through the shallow merge, so SETTINGS_VERSION stands. The
   // list is checked, not trusted: only well-formed rules survive, one
   // per key, at most MAX_AUTO_ANSWERS.
   merged.gameplay.autoAnswers = normalizeAutoAnswers(merged.gameplay.autoAnswers);
   return absorbLegacy(merged);
+}
+
+// ---- ADR 0143 §2.1: the one Auto-pass choice ----------------------------
+
+/** How auto-pass behaves for this person (ADR 0143 §2.1). */
+export type PassMode = "smart" | "careful" | "manual";
+
+export const PASS_MODES: readonly PassMode[] = ["smart", "careful", "manual"];
+
+export const DEFAULT_PASS_MODE: PassMode = "smart";
+
+export function isPassMode(v: unknown): v is PassMode {
+  return typeof v === "string" && (PASS_MODES as readonly string[]).includes(v);
+}
+
+// ---- #1968: when to ask for a trigger order ------------------------------
+
+/** When the game asks this seat to order its triggers (#1968). */
+export type TriggerOrderMode = "when_it_matters" | "always" | "never";
+
+export const TRIGGER_ORDER_MODES: readonly TriggerOrderMode[] = [
+  "when_it_matters",
+  "always",
+  "never",
+];
+
+export const DEFAULT_TRIGGER_ORDER: TriggerOrderMode = "when_it_matters";
+
+export function isTriggerOrderMode(v: unknown): v is TriggerOrderMode {
+  return typeof v === "string" && (TRIGGER_ORDER_MODES as readonly string[]).includes(v);
 }
 
 // ---- ADR 0127: standing answers ------------------------------------------

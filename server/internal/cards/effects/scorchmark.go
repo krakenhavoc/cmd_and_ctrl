@@ -12,6 +12,7 @@ func init() {
 		OracleID:     "8dc1148f-c6bc-469c-8d1a-7e3efd2de7e2",
 		Name:         "Scorchmark",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(DamageToTarget(0, 2)),
 		Targets:      TargetCreature("target creature"),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(2)),
 	})

@@ -130,9 +130,20 @@
     setStackHoldStatus,
     stackHoldRemainingMs,
   } from "../lib/stackHold";
-  import { newTriggerOrderPrefState, triggerOrderPrefToSend } from "../lib/triggerOrderPref";
+  import {
+    newTriggerOrderPrefState,
+    triggerOrderPrefRefused,
+    triggerOrderPrefSent,
+    triggerOrderPrefToSend,
+  } from "../lib/triggerOrderPref";
   import { autoAnswersToSend, newAutoAnswersPrefState } from "../lib/autoAnswerPref";
-  import { holdPriority, ownsEveryStackItem, toggleHoldPriority } from "../lib/holdPriority";
+  import {
+    holdPriority,
+    noteStackForHold,
+    ownsEveryStackItem,
+    stackIsLive,
+    toggleHoldPriority,
+  } from "../lib/holdPriority";
   import {
     openShortcutsHelp,
     registerShortcutHandlers,
@@ -337,19 +348,19 @@
     return () => window.removeEventListener("beforeunload", handler);
   });
 
-  // settings.gameplay.autoPassPriority + settings.gameplay.stepStops
+  // settings.gameplay.passMode + settings.gameplay.stepStops
   // (S13): when the viewer holds priority on an empty stack, auto-
   // pass unless the current step is one they opted to stop on. The
   // pre-S13 behaviour was "auto-pass through opponents' turns only";
   // S13 generalises that to "auto-pass through every step the user
   // hasn't pinned." Active-turn stops default-on for the main phases
   // and combat declarations, so the active player still gets stopped
-  // for their plays even with autoPassPriority enabled.
+  // for their plays even in Smart mode.
   // S13.6: autopass mode is a session-scoped toggle ("get me
   // through this turn" / "I'm tapped out, don't ask me"). Stays on
   // until the viewer clicks the button again — not a one-shot.
-  // When on, it overrides settings.autoPassPriority, the stepStops
-  // grid and the smartAutoPass predicate. It does NOT override a
+  // When on, it overrides settings.passMode, the stepStops
+  // grid and the response predicate. It does NOT override a
   // manual one-time pin (#526) — see autopassDecision.ts for the
   // full precedence and why. The effect still requires the viewer to
   // actually hold priority (so we don't spam the server with "you do
@@ -471,6 +482,7 @@
       counter: gp.respondCounterspells,
       instant: gp.respondInstants,
       ability: gp.respondAbilities,
+      untargeted: gp.respondUntargetedAbilities,
       special: gp.respondSpecialActions,
     };
     const kw = keyWindow(view, viewerID);
@@ -504,7 +516,7 @@
       // re-runs this effect and resumes auto-pass immediately rather
       // than on the next snapshot.
       manualStop: !!step && $manualStops.has(step as StepID),
-      autoPassPriority: $settings.gameplay.autoPassPriority,
+      passMode: gp.passMode,
       stackEmpty: stackEmpty(view),
       holdPriority: $holdPriority,
       autoPassOwnStack: $settings.gameplay.autoPassOwnStack,
@@ -514,8 +526,7 @@
       // first-strike step too, which is the window a player who asked
       // to see damage most wants.
       stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
-      smartAutoPass: gp.smartAutoPass,
-      alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
+      stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
       // ADR 0118 owner decision 8: stop if the engine may be wrong.
@@ -529,6 +540,14 @@
     };
   });
   const autopassVerdict = $derived(autopassDecision(autopassGates));
+
+  // #2853: the hold toggle holds one stack. Once the stack it was on
+  // for has emptied, it turns itself off. The hold only matters on a
+  // non-empty stack, so clearing it on the empty frame changes no
+  // verdict on that frame.
+  $effect(() => {
+    noteStackForHold(stackIsLive(view));
+  });
 
   $effect(() => {
     const gates = autopassGates;
@@ -811,10 +830,11 @@
   const viewerSeat = $derived(seats.find((s) => s.id === viewerID) ?? null);
   const viewerHasPriority = $derived(viewerID !== null && priorityPlayer?.id === viewerID);
 
-  // #1530: keep the server's copy of "always ask me to order my
-  // triggers" in step with the setting. The effect reads the live
-  // snapshot, never a replay frame, and sends only when the viewer's own
-  // seat disagrees (toggle, reconnect, restart). See triggerOrderPref.ts.
+  // #1530, #1968: keep the server's copy of the trigger-order setting in
+  // step with Settings. The effect reads the live snapshot, never a
+  // replay frame, and sends only when the viewer's own seat disagrees
+  // (a change, reconnect, restart). A refused send is forgotten, so the
+  // next frame tries again. See triggerOrderPref.ts.
   const triggerOrderPrefState = newTriggerOrderPrefState();
   $effect(() => {
     if (replaying) return;
@@ -822,11 +842,17 @@
       triggerOrderPrefState,
       $snapshot,
       viewerID,
-      $settings.gameplay.alwaysAskTriggerOrder,
+      $settings.gameplay.triggerOrder,
     );
     if (want !== null && viewerID) {
-      client.sendAction("set_trigger_order_preference", viewerID, { always_ask: want });
+      triggerOrderPrefSent(
+        triggerOrderPrefState,
+        client.sendAction("set_trigger_order_preference", viewerID, { trigger_order: want }),
+      );
     }
+  });
+  $effect(() => {
+    triggerOrderPrefRefused(triggerOrderPrefState, $lastError);
   });
 
   // ADR 0127 §3: the same for the standing answers. The server answers

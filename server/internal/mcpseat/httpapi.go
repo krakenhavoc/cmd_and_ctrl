@@ -246,7 +246,7 @@ func (a *api) me(ctx context.Context, origin, token string) (*mePrincipal, error
 // DeckInput is a deck for set_deck and join: a pre-built deck id from the
 // server, or a pasted decklist. Exactly one.
 type DeckInput struct {
-	ID   string `json:"id,omitempty" jsonschema:"a pre-built deck id from this server"`
+	ID   string `json:"id,omitempty" jsonschema:"a pre-built deck id, as join lists them"`
 	List string `json:"list,omitempty" jsonschema:"a decklist, as text (Commander: / Mainboard: sections, or one card per line)"`
 }
 
@@ -274,6 +274,27 @@ func (a *api) setDeck(ctx context.Context, origin, token string, gameID, playerI
 		return nil, err
 	}
 	return &out, nil
+}
+
+// prebuiltDeck is one entry of GET /decks: the ids set_deck's {id} takes,
+// read from the same catalog the server validates against (#2786).
+type prebuiltDeck struct {
+	ID        string   `json:"id"`
+	Name      string   `json:"name"`
+	Archetype string   `json:"archetype"`
+	Commander string   `json:"commander"`
+	Colors    []string `json:"colors"`
+}
+
+// decks lists the server's pre-built decks.
+func (a *api) decks(ctx context.Context, origin, token string) ([]prebuiltDeck, error) {
+	var out struct {
+		Decks []prebuiltDeck `json:"decks"`
+	}
+	if err := a.do(ctx, http.MethodGet, origin+"/decks", token, nil, &out); err != nil {
+		return nil, err
+	}
+	return out.Decks, nil
 }
 
 // cardMeta is GET /cards/{id}'s Scryfall metadata, as far as `card` shows it.

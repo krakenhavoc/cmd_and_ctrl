@@ -239,6 +239,10 @@ var curatedPermanentPurposes = map[string]string{
 	"Marauding Mako":       "discard payoff",
 	"Scrounging Skyray":    "discard payoff",
 	"Magmakin Artillerist": "discard payoff",
+	// an opponent's tax, on the triggered row: what a decline gives
+	// (ADR 0136's amendment of 2026-10-09)
+	"Rhystic Study":    "tax gift",
+	"Smothering Tithe": "tax gift",
 }
 
 // specDeclaresPurpose reports whether a spell declares what it does on
@@ -291,6 +295,12 @@ func declaresIn(s effects.Spec, slot string) bool {
 	case "discard payoff":
 		for _, t := range s.Triggered {
 			if t.Purpose.DiscardPayoff != nil {
+				return true
+			}
+		}
+	case "tax gift":
+		for _, t := range s.Triggered {
+			if t.Purpose.Draws > 0 || t.Purpose.Tokens > 0 {
 				return true
 			}
 		}

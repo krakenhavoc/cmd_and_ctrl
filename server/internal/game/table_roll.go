@@ -2,6 +2,7 @@ package game
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/google/uuid"
 )
@@ -131,11 +132,14 @@ func (g *Game) reemitTableRollsLocked() {
 	}
 }
 
-// SetTriggerOrderPreference sets playerID's "always ask me to order my
-// triggers" preference (#1530). It is a seat setting, not a play: it
-// emits no event and mints no undo entry (actions.MintsNoUndo), and
+// SetTriggerOrderPreference sets playerID's trigger-order mode (#1530,
+// three modes since #1968). It is a seat setting, not a play: it emits
+// no event and mints no undo entry (actions.MintsNoUndo), and
 // RestoreFrom carries it across an undo. Takes the write lock.
-func (g *Game) SetTriggerOrderPreference(playerID uuid.UUID, alwaysAsk bool) error {
+func (g *Game) SetTriggerOrderPreference(playerID uuid.UUID, mode TriggerOrderMode) error {
+	if !mode.valid() {
+		return fmt.Errorf("unknown trigger order mode %q", string(mode))
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	if g.State != StateActive {
@@ -145,6 +149,6 @@ func (g *Game) SetTriggerOrderPreference(playerID uuid.UUID, alwaysAsk bool) err
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	p.TriggerOrderAlwaysAsk = alwaysAsk
+	p.TriggerOrder = mode
 	return nil
 }

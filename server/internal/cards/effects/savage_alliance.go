@@ -38,9 +38,9 @@ func init() {
 						Label:    "Savage Alliance",
 					}.Apply(ctx)
 				}),
-			ModeDoing("Savage Alliance deals 2 damage to target creature.",
+			ModeWithPurpose(ModeDoing("Savage Alliance deals 2 damage to target creature.",
 				TargetCreature("target creature"),
-				DealFixedDamageToModesTarget(2)),
+				DealFixedDamageToModesTarget(2)), ForTargets(DamageToTarget(0, 2))),
 			ModeWithPurpose(ModeDoing("Savage Alliance deals 1 damage to each creature target opponent controls.",
 				TargetPlayer("target opponent", Opponent()),
 				func(item *game.StackItem, ctx *Context, occ int) error {

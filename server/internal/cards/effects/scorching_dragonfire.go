@@ -12,6 +12,7 @@ func init() {
 		OracleID:     "d14f313c-fea6-49c4-8197-5b74ee584a6b",
 		Name:         "Scorching Dragonfire",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(DamageToTarget(0, 3)),
 		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve:    damageFirstTargetExileIfItDies(fixedAmount(3)),
 	})

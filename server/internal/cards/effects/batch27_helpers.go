@@ -514,14 +514,7 @@ const b27DuplicantLabel = "Duplicant — exile target nontoken creature"
 // b27ExileChosenTarget exiles whatever the pick_target prompt
 // stamped into the item, if it is still legal.
 func b27ExileChosenTarget(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return ExileTarget{Target: t.ID}.Apply(ctx)
-	}
-	return nil
+	return ExileChosenTarget{}.Apply(NewContext(g, item))
 }
 
 // b27LoseOneAndYouGainOne is Revenge of Ravens' drain: the attacker's

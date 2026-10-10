@@ -213,6 +213,14 @@ func TestEveryXDefinedTargetCountIsSound(t *testing.T) {
 			t.Logf("skipping %s: its X is a tap cost's, not the mana cost's", spec.Name)
 			continue
 		}
+		if spec.CastCondition != nil {
+			// The probe casts in the precombat main phase. A spell that
+			// may be cast only at another time (Winter's Chill: during
+			// combat, before blockers, at attacking creatures) is never
+			// offered here, which says nothing about its targets.
+			t.Logf("skipping %s: it has a cast condition the main-phase probe does not meet", spec.Name)
+			continue
+		}
 		probed++
 		id := handCard(active, game.Card{
 			Name: spec.Name, TypeLine: "Sorcery", ManaCost: "{X}{R}", OracleID: spec.OracleID,

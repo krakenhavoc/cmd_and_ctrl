@@ -321,14 +321,13 @@ function gates(over: Partial<AutopassGates> = {}): AutopassGates {
     viewerIsActive: false,
     autopassPersistThroughTurns: false,
     manualStop: false,
-    autoPassPriority: true,
+    passMode: "smart",
     stackEmpty: true,
     holdPriority: false,
     autoPassOwnStack: true,
     ownsEveryStackItem: false,
     stepStop: false,
-    smartAutoPass: true,
-    alwaysStopOpponentStack: false,
+    stepStopsOnlyWhenCanAct: true,
     hasResponse: false,
     hasPlay: false,
     engineMayMissMana: false,
@@ -371,6 +370,26 @@ describe("when highlights show", () => {
     expect(highlightsLive(true, "clear-toggle")).toBe(true);
     // No verdict yet (no frame): nothing to suppress.
     expect(highlightsLive(true, null)).toBe(true);
+  });
+
+  // ADR 0143: the new verdicts light the board where they hold. Manual
+  // holds every window; Careful holds an opponent's item; and a key
+  // window with a response holds in every mode.
+  it("each pass mode lights the windows it holds", () => {
+    const quiet = gates();
+    const oppItem = gates({ stackEmpty: false, ownsEveryStackItem: false });
+    const oppEnd = gates({ step: "end", oppEndWindow: true, hasResponse: true });
+    const cases: [AutopassGates, boolean][] = [
+      [{ ...quiet, passMode: "manual" }, true],
+      [{ ...quiet, passMode: "careful" }, false],
+      [{ ...oppItem, passMode: "careful" }, true],
+      [{ ...oppItem, passMode: "smart" }, false],
+      [{ ...oppEnd, passMode: "smart" }, true],
+      [{ ...oppEnd, passMode: "careful" }, true],
+    ];
+    for (const [g, lit] of cases) {
+      expect(highlightsLive(true, autopassDecision(g)), JSON.stringify(g.passMode)).toBe(lit);
+    }
   });
 
   it("suppressing the highlights never touches the pass answer the gates read", () => {

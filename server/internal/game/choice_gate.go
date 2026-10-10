@@ -270,6 +270,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// asked before the permanent enters, with the CR 614 pipeline
 	// suspended on the answer: entry_controller's reason.
 	PendingChoiceEntryRiot: true,
+	// CR 702.155b, #2123. Read ahead's starting chapter is chosen as
+	// the Saga enters, with the CR 614 pipeline suspended on the
+	// answer: entry_riot's reason.
+	PendingChoiceEntryReadAhead: true,
 	// ADR 0098: "if this would enter, you may discard a land card
 	// instead" and "sacrifice a Forest instead". The same reason: the
 	// entry is suspended on the answer.

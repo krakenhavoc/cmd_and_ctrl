@@ -164,7 +164,15 @@ func (s *GameSnapshot) checkEffectKeys() error {
 		// destination a closed vocabulary. Restored without either, the
 		// pick would move the card somewhere else or skip the rest of
 		// the card.
-		if c.PickThen != "" && !KnownRevealedPickThen(c.PickThen) {
+		// #2854: on an option_pick it is a keyed option pick's
+		// continuation, from the other registry.
+		switch {
+		case c.PickThen == "":
+		case c.Kind == PendingChoiceOptionPick:
+			if !KnownOptionPickThen(c.PickThen) {
+				unknown = append(unknown, "option pick continuation "+c.PickThen)
+			}
+		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
 		}
 		if !knownPickDestination(c.PickDestination) {

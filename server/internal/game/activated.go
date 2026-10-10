@@ -870,6 +870,16 @@ type ActivatedAbilityShape struct {
 	OpponentsOnly bool
 	OwnerOnly     bool
 
+	// GrantorOnly is "Only you may activate this ability" inside a
+	// GRANTED ability (Martyrdom, ADR 0106 §1 amendment 2026-10-09,
+	// #1947): the one player who may activate the row is the "you" of
+	// the effect that granted it, recorded on the grant when the layer
+	// pass wrote it (GrantedAbility.Activator), not the permanent's
+	// controller, who may be somebody else by now. MayActivate reads it
+	// from the row's AbilityOrigin. Register accepts it only in an
+	// AbilityGrant bundle and refuses it beside the other three.
+	GrantorOnly bool
+
 	// Purpose is what the ability does, as printed amounts (ADR 0126
 	// §6): a loot's draw and discard, a sweep. On an AnyPlayer row it is
 	// also what the row buys an activator who does not control the
@@ -1247,7 +1257,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// CR 602.2 / ADR 0106 §1 decision 2: may THIS player activate THIS
 	// row. The one predicate the enumerator and the view also ask.
 	// Before anything is validated or paid, so a refusal costs nothing.
-	if !MayActivate(playerID, *source, srcZone, ab) {
+	if !MayActivate(playerID, *source, srcZone, ab, origins.At(index)) {
 		return ErrCardCallerMismatch
 	}
 	// Who controlled the permanent when another player reached across
@@ -1684,12 +1694,14 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// on top. A sacrificed, discarded or exiled commander is paid like
 	// any other card and offered the command zone afterwards by the
 	// CR 903.9a state-based action.
-	asking := append(append([]uuid.UUID(nil), params.ReturnIDs...), tops...)
+	// #2420: each with the zone it is headed for, so the prompt can say
+	// a returned commander would stay castable from its owner's hand.
+	asking := append(costCommanderMovesTo(ZoneHand, params.ReturnIDs...), costCommanderMovesTo(ZoneLibrary, tops...)...)
 	// #2028: and the source a return-this cost puts into its owner's
 	// hand. A commander that returns itself is asked CR 903.9b here,
 	// before anything is paid, like any other returned commander.
 	if ab.Cost.ReturnSelf {
-		asking = append(asking, cardID)
+		asking = append(asking, costCommanderMovesTo(ZoneHand, cardID)...)
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
@@ -2369,7 +2381,8 @@ func (g *Game) payAbilityManaCostLocked(p *Player, sourceID uuid.UUID, sourceNam
 		return paid, err
 	}
 	// The announced X multiplies into the generic demand exactly as
-	// it does for a cast: cost.Generic + cost.XSlots*x. Treasure
+	// it does for a cast: cost.GenericWithX(x), which leaves out what a
+	// reduction took off the X (#2701). Treasure
 	// Vault's "{X}{X}" has two slots, so X=3 costs six.
 	x := params.XValue
 	if !params.Strict && !params.AutoTap {

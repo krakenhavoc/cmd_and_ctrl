@@ -437,12 +437,12 @@ func (e staticContinuousEffect) Apply(c *Characteristic, target *Card, g *Game) 
 	// layer-6 bucket, so a removal sorted after it empties them and one
 	// sorted before it cannot reach them (CR 613.6).
 	if len(e.ability.GrantAbilities) > 0 {
-		var from uuid.UUID
+		var from, you uuid.UUID
 		if e.source != nil {
-			from = e.source.InstanceID
+			from, you = e.source.InstanceID, e.source.Controller
 		}
 		for _, key := range e.ability.GrantAbilities {
-			c.GrantAbility(key, from)
+			c.GrantAbility(key, from, you)
 		}
 	}
 }
@@ -521,6 +521,10 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 	// creature. One more source list into the same gather; see
 	// reconfigure.go.
 	out = append(out, g.reconfigureContinuousEffectsLocked()...)
+	// CR 702.103b (ADR 0141, #2862): a bestowed Aura is an Aura
+	// enchantment and not a creature. One more source list into the
+	// same gather; see bestow.go.
+	out = append(out, g.bestowContinuousEffectsLocked()...)
 	if g.Battlefield == nil || CatalogStaticAbilities == nil {
 		return out
 	}
@@ -992,6 +996,8 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 	// CR 702.98a (#1556): unleash's "can't block as long as it has a
 	// +1/+1 counter on it", read off the finished ability list.
 	g.foldUnleashLocked()
+	// CR 702.147a (#2650): decayed's "can't block".
+	g.foldDecayedLocked()
 	// CR 701.60c (#2737): a suspected permanent's granted "can't block".
 	g.foldSuspectedCantBlockLocked()
 }

@@ -30,6 +30,7 @@
   import { onDestroy } from "svelte";
   import type { CardView, GameView, PlayerView } from "../../protocol";
   import { targeting, isLegalCardTarget } from "../../targeting";
+  import { boardChoicePick, isBoardPickable, isBoardPicked } from "../../boardChoicePick";
   import { attackRefusal, BLOCKER_LABELS, planAttackAll, seatLabel } from "../../attackAll";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { attackersDefendedBy } from "../../attackTargets";
@@ -89,7 +90,10 @@
   const open = $derived(members.length > 0);
   const own = $derived(!!viewerID && members[0]?.controller === viewerID);
 
+  // #2880: a pending choice's permanents are picked here too, through
+  // the same handler a board click uses.
   const legal = (c: CardView) => {
+    if (isBoardPickable($boardChoicePick, c.instance_id)) return true;
     const t = $targeting;
     return t !== null && isLegalCardTarget(t, c.instance_id);
   };
@@ -102,7 +106,9 @@
   const defenders = $derived<PlayerView[]>(planAttackAll(view, viewerID, legalGate).defenders);
 
   const mode = $derived.by((): GroupListMode => {
-    if ($targeting !== null && !!onTarget && members.some(legal)) return "target";
+    if (($targeting !== null || $boardChoicePick !== null) && !!onTarget && members.some(legal)) {
+      return "target";
+    }
     if (own && combatMode === "attack" && !!onAttack) return "attack";
     if (own && combatMode === "block" && !!onBlock && incoming.length > 0) return "block";
     if (canTap && !!onTapToggle) return "tap";
@@ -169,6 +175,11 @@
   function target(): void {
     if (!onTarget) return;
     for (const c of pickedForAction) {
+      if ($boardChoicePick !== null) {
+        // A choice's pick toggles, so one already picked stays picked.
+        if (!isBoardPicked($boardChoicePick, c.instance_id)) onTarget(c);
+        continue;
+      }
       if ($targeting === null) break;
       onTarget(c);
     }
@@ -235,7 +246,9 @@
   const title = $derived(members[0]?.name ?? "");
   const hint = $derived(
     mode === "target"
-      ? "Pick which of these to target."
+      ? $boardChoicePick !== null
+        ? "Pick which of these to choose."
+        : "Pick which of these to target."
       : mode === "attack"
         ? "Pick which of these attack. Select N takes untapped, non-summoning-sick tokens first."
         : mode === "block"
@@ -324,7 +337,8 @@
             type="button"
             class="primary"
             disabled={pickedForAction.length === 0}
-            onclick={target}>Target {pickedForAction.length}</button
+            onclick={target}
+            >{$boardChoicePick !== null ? "Choose" : "Target"} {pickedForAction.length}</button
           >
         {:else if mode === "attack"}
           {#each defenders as seat (seat.id)}

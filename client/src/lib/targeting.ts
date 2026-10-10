@@ -140,6 +140,11 @@ export interface CastChoices {
   // ADR 0103 (CR 702.102a): cast BOTH halves of a split card with fuse,
   // from hand. Sent as `fuse: true`; the face stays 0.
   fuse?: boolean;
+  // #2167: the card type a cast through a per-type permission spends
+  // (Muldrotha, Aminatou's Augury) — one of the face's
+  // `permission_types`. Asked right after the face, because it is a
+  // choice about what the chosen face is being cast AS.
+  permissionType?: string;
   // S29: the zone the cast comes out of. Undefined is the hand,
   // which is every cast the Board's own surfaces fire.
   //
@@ -232,6 +237,10 @@ export function applyCastChoices(
   // and an absent field are the same byte on the wire anyway.
   if (choices.face !== undefined && choices.face > 0) params.face = choices.face;
   if (choices.fuse) params.fuse = true;
+  // #2167: omitted unless the type picker asked, which it does only when
+  // the face has two or more types left; the server settles a single one.
+  if (choices.permissionType !== undefined && choices.permissionType !== "")
+    params.permission_type = choices.permissionType;
   // S29: omitted for a hand cast, for the same reason face 0 is.
   if (choices.fromZone !== undefined) params.from_zone = choices.fromZone;
   // #1508: a dragged cast always pays strictly and lets the engine tap

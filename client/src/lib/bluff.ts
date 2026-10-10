@@ -63,11 +63,11 @@ export function toggleBluffArmed(): boolean {
 // (ADR 0111 §5). It flips the switch, and when it ARMS with neither
 // kind chosen it also turns on "represent a counterspell", the narrower
 // one, because a switch with no kind behind it does nothing. Returns the
-// new armed state. With smart autopass off it does nothing: bluffing is
-// moot there, since every opponent item stops you anyway.
+// new armed state. Outside Smart auto-pass it does nothing: bluffing is
+// moot there, since every opponent item stops you anyway (ADR 0143 §4.3).
 export function pressBluff(): boolean {
   const gp = get(settings).gameplay;
-  if (!gp.smartAutoPass) return get(armed);
+  if (gp.passMode !== "smart") return get(armed);
   if (get(armed)) {
     armed.set(false);
     return false;

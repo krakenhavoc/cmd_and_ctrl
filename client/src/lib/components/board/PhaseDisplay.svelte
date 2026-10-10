@@ -182,7 +182,7 @@
 
   // S13.6: manual one-time stops. Click a priority-granting icon to
   // pin the cursor there the next time the viewer holds priority.
-  // Overrides autoPassPriority + smartAutoPass + the autopass
+  // Overrides the pass mode, the stops grid and the autopass
   // toggle (#526) so the viewer can "fake a game action" — stop to
   // think / bluff / respond even when the engine sees nothing to do.
   // Consumed on step transition by the consumer in Game.svelte.

@@ -679,6 +679,20 @@ func (t TapTarget) Apply(ctx *Context) error {
 	return ctx.Game.TapTargetForEffect(t.Target)
 }
 
+// UntapEachLegalTarget is "Untap target land" / "Untap two target
+// lands" as a whole effect: every target still legal as it resolves
+// (CR 608.2b) is untapped, in announce order. Deserted Temple, Ley
+// Weaver.
+func UntapEachLegalTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if err := (UntapTarget{Target: t.ID}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // UntapTarget untaps a battlefield card. No effect if the card is not
 // on the battlefield.
 type UntapTarget struct {

@@ -35,6 +35,9 @@ func init() {
 				return ev.Actor != uuid.Nil && ev.Actor != source.Controller
 			},
 			Key: "Smothering Tithe — Treasure unless drawer pays {2}",
+			// What a decline gives the Tithe's controller (ADR 0126 §6):
+			// the Treasure a tax-paying bot weighs (ADR 0136, 2026-10-09).
+			Purpose: game.Purpose{Tokens: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return PayUnless{

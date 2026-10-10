@@ -73,7 +73,7 @@ var activatedRowScopes = map[string]rowScope{
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"
 	// and the catalog's declared purpose for it.
-	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "Purpose": rowPublic,
+	"AnyPlayer": rowPublic, "OpponentsOnly": rowPublic, "OwnerOnly": rowPublic, "GrantorOnly": rowPublic, "Activator": rowPublic, "Purpose": rowPublic,
 	// #2449: the printed equip keyword (CR 702.6).
 	"Equip": rowPublic, "UntapSelf": rowPublic,
 	// The printed discard clause: the count in "Discard two cards"
@@ -139,7 +139,7 @@ var manaRowScopes = map[string]rowScope{
 	"CantActivate": rowPublic, "AddsNoMana": rowPublic,
 	// #1443: the commander identity it is narrowed and ordered by is
 	// public (the command zone, and CR 903.4a fixes it before the game).
-	"ColorOptions": rowPublic,
+	"ColorOptions": rowPublic, "DifferentColors": rowPublic,
 	"DiscardCostN": rowPublic, "DiscardCostLabel": rowPublic,
 	"ExileCostN": rowPublic, "ExileCostLabel": rowPublic, "ExileCostZone": rowPublic,
 	"CounterCostN": rowPublic, "CounterCostKind": rowPublic, "CounterCostSelf": rowPublic,

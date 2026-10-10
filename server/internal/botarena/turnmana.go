@@ -26,7 +26,9 @@ import (
 //     (aiseat.Trace.Plan) named a next member that is not offered now,
 //     though no other seat acted in between. The next window is the
 //     seat's next one in which it holds priority: a prompt the first
-//     move raised as it resolved is not it. P6 holds them under 5% of
+//     move raised as it resolved is not it, and a member the seat cast
+//     itself before that window (at instant speed, with the first move
+//     still on the stack) is checked and found. P6 holds them under 5% of
 //     planned windows. It says how good the plan's mana model is: a
 //     miss is a plan that thought a second cast was payable and was
 //     wrong.
@@ -67,12 +69,14 @@ type TurnMana struct {
 	// with nothing castable left on the table.
 	Idle int `json:"idle"`
 	// Planned is the windows whose trace carried a plan of two or more
-	// members (aiseat.Trace.Plan): the plan-miss denominator.
+	// members cast this turn (aiseat.Trace.Plan; a member held for the
+	// end step is not one): the plan-miss denominator.
 	Planned int `json:"planned_windows"`
 	// Checked is the windows in which a plan's next member was looked
 	// for: the seat's next main-phase window with an empty stack after
 	// it made the plan's first move, in the same phase, with no other
-	// seat having acted in between.
+	// seat having acted in between; or the window before it in which the
+	// seat cast that member itself.
 	Checked int `json:"plan_checked"`
 	// Misses is the Checked windows in which that member was not
 	// offered.
@@ -181,6 +185,17 @@ func (w *turnManaWatch) Observe(ev aiseat.DecisionEvent) {
 	s := w.seat(ev.Seat)
 	main := ownMainPhaseEmptyStack(v, ev.Seat)
 
+	// The seat cast the plan's next member itself before that window
+	// came, at instant speed with the first member still on the stack:
+	// the plan's second cast was payable, and it was made. That is a
+	// checked window with no miss, not a miss because the card has left
+	// the hand by the time the check looks for it.
+	if p := s.pending; p != nil && ok && dispatched.Kind == legal.KindCast && dispatched.Source == p.source &&
+		p.turn == v.Turn.Seq && !p.interrupted {
+		s.pending = nil
+		s.checked++
+	}
+
 	// The check waits for a window in which the seat holds priority: a
 	// prompt the plan's first move raised as it resolved (a search, a
 	// "may", a trigger order) is answered first, in the same main phase
@@ -195,7 +210,7 @@ func (w *turnManaWatch) Observe(ev aiseat.DecisionEvent) {
 		}
 	}
 
-	if plan := ev.Trace.Plan; len(plan) >= 2 {
+	if plan := ev.Trace.Plan; castNow(plan) >= 2 {
 		s.planned++
 		if ok && ev.Index == plan[0].Index && main {
 			for _, m := range plan[1:] {
@@ -256,6 +271,21 @@ func ownMainPhaseEmptyStack(v *protocol.GameView, seat uuid.UUID) bool {
 		return false
 	}
 	return v.Turn.Step == "precombat_main" || v.Turn.Step == "postcombat_main"
+}
+
+// castNow is how many of a plan's members are cast this turn: a member
+// held for the end step before the seat's turn (ADR 0136 §5) is not,
+// and is never looked for by the plan-miss check. A plan with fewer
+// than two such members names no next member, so it is not a planned
+// window.
+func castNow(plan []aiseat.PlanMember) int {
+	n := 0
+	for _, m := range plan {
+		if !m.Held {
+			n++
+		}
+	}
+	return n
 }
 
 func offersPass(moves []legal.Move) bool {
@@ -330,13 +360,21 @@ func sourceMana(c *protocol.CardView) int {
 // producedAmount counts the mana one activation adds from its
 // `produced` string, as the heuristic's manaAmount does: each brace is
 // one mana, a choice "{W|U}" is one, a counted choice "{W3|U3}" is
-// three, and an empty string (an output the view cannot size) is one.
+// three, "N mana of different colors" ("{W|U|B|R|G:2}") is N, and an
+// empty string (an output the view cannot size) is one.
 func producedAmount(produced string) int {
 	if produced == "" {
 		return 1
 	}
 	total := 0
 	for _, sym := range symbols(produced) {
+		// #2558: "{W|U|B|R|G:2}" is two mana of different colors.
+		if k := strings.LastIndexByte(sym, ':'); k >= 0 {
+			if m, err := strconv.Atoi(sym[k+1:]); err == nil && m > 0 {
+				total += m
+				continue
+			}
+		}
 		if k := strings.IndexByte(sym, '|'); k >= 0 {
 			sym = sym[:k]
 		}

@@ -371,8 +371,8 @@ describe("settings", () => {
     expect(s.gameplay.respondInstants).toBe(true);
     expect(s.gameplay.respondAbilities).toBe(true);
     expect(s.gameplay.respondSpecialActions).toBe(true);
-    expect(s.gameplay.alwaysStopOpponentStack).toBe(false);
-    expect(s.gameplay.smartAutoPass).toBe(false);
+    // v24 (ADR 0143): smart auto-pass off is now Careful.
+    expect(s.gameplay.passMode).toBe("careful");
     expect(s.gameplay.autoPassOwnStack).toBe(false);
   });
 
@@ -449,10 +449,10 @@ describe("settings", () => {
         );
         const { settings, SETTINGS_VERSION } = await freshModule();
         const s = get(settings);
-        expect(SETTINGS_VERSION).toBe(21);
+        expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(21);
         expect(s.__version).toBe(SETTINGS_VERSION);
         expect(s.gameplay.strictMana, `v${version} stored ${String(stored)}`).toBe(true);
-        expect(s.gameplay.smartAutoPass).toBe(false);
+        expect(s.gameplay.passMode).toBe("careful");
       }
     }
   });
@@ -589,7 +589,7 @@ describe("settings", () => {
       expect(s.__version).toBe(SETTINGS_VERSION);
       expect(s.gameplay.highlightLegalActions, `stored ${String(stored)}`).toBe(true);
       expect(s.display.stackStyle).toBe("fan");
-      expect(s.gameplay.smartAutoPass).toBe(false);
+      expect(s.gameplay.passMode).toBe("careful");
     }
   });
 
@@ -783,6 +783,100 @@ describe("per-step stops and the first-strike damage step", () => {
   });
 });
 
+// ---- #2853: untargeted abilities split out of respondAbilities ----
+
+describe("respondUntargetedAbilities (v21 → v22)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+
+  it("is off for a new player, and the other four categories are on", async () => {
+    const { defaultSettings } = await freshModule();
+    const gp = defaultSettings().gameplay;
+    expect(gp.respondUntargetedAbilities).toBe(false);
+    expect(gp.respondCounterspells).toBe(true);
+    expect(gp.respondInstants).toBe(true);
+    expect(gp.respondAbilities).toBe(true);
+    expect(gp.respondSpecialActions).toBe(true);
+  });
+
+  it("moves a player still on the old all-on default to the new default", async () => {
+    const { mod, s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: true,
+        respondInstants: true,
+        respondAbilities: true,
+        respondSpecialActions: true,
+        smartAutoPass: true,
+      },
+    });
+    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(22);
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+
+  it("moves a blob from before the categories existed to the new default", async () => {
+    const { s } = await load({ __version: 11, gameplay: { smartAutoPass: true } });
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+
+  it("keeps the old meaning for a player who changed the Stop for list", async () => {
+    // Counters off, abilities left on: they looked at the list and kept
+    // "any ability", so untargeted abilities still stop them.
+    let { s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: false,
+        respondInstants: true,
+        respondAbilities: true,
+        respondSpecialActions: true,
+      },
+    });
+    expect(s.gameplay.respondCounterspells).toBe(false);
+    expect(s.gameplay.respondAbilities).toBe(true);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(true);
+
+    // Abilities off: both halves stay off.
+    ({ s } = await load({
+      __version: 21,
+      gameplay: {
+        respondCounterspells: true,
+        respondInstants: true,
+        respondAbilities: false,
+        respondSpecialActions: true,
+      },
+    }));
+    expect(s.gameplay.respondAbilities).toBe(false);
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+
+  it("from v22 on, a stored choice stands and survives a save", async () => {
+    const { mod } = await load({
+      __version: 22,
+      gameplay: { respondUntargetedAbilities: true },
+    });
+    expect(get(mod.settings).gameplay.respondUntargetedAbilities).toBe(true);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.respondUntargetedAbilities).toBe(true);
+  });
+
+  it("a v22 blob with a malformed value falls back to the default", async () => {
+    const { s } = await load({
+      __version: 22,
+      gameplay: { respondUntargetedAbilities: "yes" },
+    });
+    expect(s.gameplay.respondUntargetedAbilities).toBe(false);
+  });
+});
+
 // ---- ADR 0125 §4: the help group (first-use hints) ----
 
 describe("the help group (v20 → v21)", () => {
@@ -798,8 +892,8 @@ describe("the help group (v20 → v21)", () => {
     );
     const { settings, SETTINGS_VERSION } = await freshModule();
     const s = get(settings);
-    expect(SETTINGS_VERSION).toBe(21);
-    expect(s.__version).toBe(21);
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(21);
+    expect(s.__version).toBe(SETTINGS_VERSION);
     expect(s.help).toEqual({ seen: {}, tipsOff: false });
     expect(s.display.theme).toBe("light");
   });
@@ -906,5 +1000,180 @@ describe("the help group (v20 → v21)", () => {
       Array.from({ length: 1000 }, (_, i) => [`table.hint-${i}`, 1]),
     );
     expect(JSON.stringify(syncedSubset(s)).length).toBeLessThan(32 * 1024);
+  });
+});
+
+// ---- #2871: stop at a ticked step only when I can act ----
+
+describe("stepStopsOnlyWhenCanAct (v22 → v23)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+
+  it("is on for a new player", async () => {
+    const { defaultSettings, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(23);
+    expect(defaultSettings().gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+  });
+
+  it("copies smart auto-pass from a v22 blob", async () => {
+    let { mod, s } = await load({ __version: 22, gameplay: { smartAutoPass: true } });
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+
+    // Smart auto-pass off meant every ticked step stops; it still does.
+    ({ mod, s } = await load({ __version: 22, gameplay: { smartAutoPass: false } }));
+    expect(s.gameplay.passMode).toBe("careful");
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(false);
+  });
+
+  it("takes the default for an older blob that never stored smart auto-pass", async () => {
+    const { s } = await load({ __version: 4, gameplay: {} });
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+  });
+
+  it("from v23 on, a stored choice stands and survives a save", async () => {
+    const { mod } = await load({
+      __version: 23,
+      gameplay: { smartAutoPass: true, stepStopsOnlyWhenCanAct: false },
+    });
+    expect(get(mod.settings).gameplay.stepStopsOnlyWhenCanAct).toBe(false);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.stepStopsOnlyWhenCanAct).toBe(false);
+    expect(get(again.settings).gameplay.passMode).toBe("smart");
+    expect("smartAutoPass" in get(again.settings).gameplay).toBe(false);
+  });
+
+  it("a v23 blob with a malformed value falls back to the default", async () => {
+    const { s } = await load({ __version: 23, gameplay: { stepStopsOnlyWhenCanAct: "yes" } });
+    expect(s.gameplay.stepStopsOnlyWhenCanAct).toBe(true);
+  });
+});
+
+// ---- ADR 0143 §2.1 and §5: one Auto-pass choice ----
+
+describe("passMode (v23 → v24)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+  const modeOf = async (blob: unknown) => (await load(blob)).s.gameplay.passMode;
+  const RETIRED = ["autoPassPriority", "smartAutoPass", "alwaysStopOpponentStack"];
+
+  it("is Smart for a new player, and the retired keys are gone", async () => {
+    const { defaultSettings, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(24);
+    const gp = defaultSettings().gameplay;
+    expect(gp.passMode).toBe("smart");
+    for (const k of RETIRED) expect(k in gp, k).toBe(false);
+  });
+
+  // Every combination of the three retired keys, as a v23 client wrote
+  // them (always all three, materialised).
+  it("maps every combination of the three retired keys", async () => {
+    for (const autoPassPriority of [true, false]) {
+      for (const smartAutoPass of [true, false]) {
+        for (const alwaysStopOpponentStack of [true, false]) {
+          const { mod, s } = await load({
+            __version: 23,
+            gameplay: { autoPassPriority, smartAutoPass, alwaysStopOpponentStack },
+          });
+          const want = !autoPassPriority
+            ? "manual"
+            : !smartAutoPass || alwaysStopOpponentStack
+              ? "careful"
+              : "smart";
+          const label = JSON.stringify({
+            autoPassPriority,
+            smartAutoPass,
+            alwaysStopOpponentStack,
+          });
+          expect(s.__version).toBe(mod.SETTINGS_VERSION);
+          expect(s.gameplay.passMode, label).toBe(want);
+          for (const k of RETIRED) expect(k in s.gameplay, `${label} ${k}`).toBe(false);
+        }
+      }
+    }
+  });
+
+  it("maps a blob that stored only some of the keys", async () => {
+    expect(await modeOf({ __version: 12, gameplay: { autoPassPriority: false } })).toBe("manual");
+    expect(await modeOf({ __version: 12, gameplay: { smartAutoPass: false } })).toBe("careful");
+    expect(await modeOf({ __version: 12, gameplay: { alwaysStopOpponentStack: true } })).toBe(
+      "careful",
+    );
+    expect(await modeOf({ __version: 12, gameplay: { smartAutoPass: true } })).toBe("smart");
+    expect(await modeOf({ __version: 4, gameplay: {} })).toBe("smart");
+  });
+
+  it("keeps the v1 and v3 rescues of autoPassPriority", async () => {
+    // v1 with an empty grid: the v1 → v2 block turned auto-pass on.
+    expect(
+      await modeOf({ __version: 1, gameplay: { autoPassPriority: false, stepStops: {} } }),
+    ).toBe("smart");
+    // v2 on the seeded grid: the v2 → v3 hotfix turned it on too.
+    const { defaultStepStops } = await freshModule();
+    expect(
+      await modeOf({
+        __version: 2,
+        gameplay: { autoPassPriority: false, stepStops: defaultStepStops() },
+      }),
+    ).toBe("smart");
+  });
+
+  it("from v24 on, a stored mode stands and survives a save", async () => {
+    for (const mode of ["smart", "careful", "manual"] as const) {
+      const { mod } = await load({ __version: 24, gameplay: { passMode: mode } });
+      expect(get(mod.settings).gameplay.passMode).toBe(mode);
+      mod.updateSettings("gameplay", "confirmExit", false);
+      const again = await freshModule();
+      expect(get(again.settings).gameplay.passMode).toBe(mode);
+      const stored = JSON.parse(localStorage.getItem("cmdctrl.settings.v1") ?? "{}");
+      expect(stored.gameplay.passMode).toBe(mode);
+      for (const k of RETIRED) expect(k in stored.gameplay, k).toBe(false);
+    }
+  });
+
+  it("a bad value is Smart", async () => {
+    for (const bad of ["fast", 3, null, true]) {
+      expect(await modeOf({ __version: 24, gameplay: { passMode: bad } }), String(bad)).toBe(
+        "smart",
+      );
+    }
+  });
+
+  it("a hand-seeded blob with no version keeps its passMode (the e2e seed)", async () => {
+    expect(await modeOf({ gameplay: { passMode: "careful" } })).toBe("careful");
+  });
+
+  it("an older client's write wins over a passMode it carried along", async () => {
+    // A v23 tab keeps the unknown passMode and writes its own keys.
+    expect(
+      await modeOf({
+        __version: 23,
+        gameplay: { passMode: "manual", autoPassPriority: true, smartAutoPass: false },
+      }),
+    ).toBe("careful");
+  });
+
+  it("an account copy from a v23 client moves the same way", async () => {
+    const { applySyncedCopy, defaultSettings } = await freshModule();
+    const base = defaultSettings();
+    const copy = {
+      gameplay: { autoPassPriority: true, smartAutoPass: true, alwaysStopOpponentStack: true },
+    };
+    const next = applySyncedCopy(base, copy, 23);
+    expect(next.gameplay.passMode).toBe("careful");
+    for (const k of RETIRED) expect(k in next.gameplay, k).toBe(false);
+    const manual = applySyncedCopy(base, { gameplay: { autoPassPriority: false } }, 23);
+    expect(manual.gameplay.passMode).toBe("manual");
   });
 });

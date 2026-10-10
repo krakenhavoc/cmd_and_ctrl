@@ -327,7 +327,7 @@ func costedShapeKey(s tapSource) string {
 		b.WriteString("|")
 		b.WriteString(strings.Join(slot.Options, ","))
 	}
-	b.WriteString("|" + s.OneColor + "|" + strconv.Itoa(s.Pain) + "|" + strconv.Itoa(s.Energy))
+	b.WriteString("|" + s.OneColor + "|" + strings.Join(s.DifferentColors, ",") + "|" + strconv.Itoa(s.Pain) + "|" + strconv.Itoa(s.Energy))
 	for _, bit := range []bool{s.Frozen, s.Sacrifices, s.SacrificesCreature, s.Wanted, s.GrantedCreature} {
 		if bit {
 			b.WriteString("1")
@@ -374,7 +374,7 @@ func solveCostedChain(
 	s := &costedSolver{
 		m:            m,
 		taken:        map[uuid.UUID]bool{},
-		spellGeneric: cost.Generic + cost.XSlots*xValue,
+		spellGeneric: cost.GenericWithX(xValue),
 		costGeneric:  make([]int, m),
 		pain:         painBudget,
 		budget:       budget,
@@ -590,7 +590,7 @@ func (s *costedSolver) freeSlotFor(owner int) (int, int) {
 func (s *costedSolver) plan() tapPlan {
 	entry := func(i int) plannedTap {
 		src := s.srcs[i]
-		e := plannedTap{CardID: src.CardID, OneColor: src.OneColor, Ref: src.Ref}
+		e := plannedTap{CardID: src.CardID, OneColor: src.OneColor, DifferentColors: src.DifferentColors, Ref: src.Ref}
 		e.Slots = make([]plannedSlot, len(src.Slots))
 		for k, slot := range src.Slots {
 			c := s.color[i][k]

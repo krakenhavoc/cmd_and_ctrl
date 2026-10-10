@@ -3167,6 +3167,8 @@ number on her controller's row only while she is tapped.
   a `DelayedTrigger` field, not a combat-limit shape.
 - **Tomik, Orzhov Lawmage** grants the Wanderer's line to other planeswalkers.
   It needs the granted-abilities seam as well, and it is not Commander-legal.
+  *Built by #2821: an ADR 0093 bundle carries the limit (ADR 0093 amendment
+  of 2026-10-09).*
 - **Extra combats.** See "This combat" above.
 
 ## Amendment (2026-09-24, [#1571](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1571)): attack requirements (CR 508.1d)

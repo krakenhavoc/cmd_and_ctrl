@@ -3450,3 +3450,323 @@ choice back sets a preference.
 
 Item 1 of #1530 (commutativity for token triggers) is unchanged and
 stays open.
+
+
+## Amendment 2026-10-09 — "whenever you put one or more loyalty counters on a planeswalker" (#2797)
+
+Inspired Tethermage's trigger is one trigger per placement, not per counter (CR 603.2c). The engine already
+gives it: `EventCounterPlaced` is one event per KIND per permanent per placement, carrying the total after the
+change, and loyalty is one kind. A +2 loyalty ability, a Doubling Season that makes one counter two, and a
+"put three loyalty counters" are each one event and so one trigger
+(`TestLoyaltyCounterTriggerFiresOncePerPlacementNotPerCounter`, `…IsOneEventWhenTheCountersAreDoubled`); a
+−N cost or damage is a removal and triggers nothing.
+
+What the trigger must NOT collapse is two planeswalkers: "put a loyalty counter on each planeswalker you
+control" is one placement per permanent, and a trigger on "a planeswalker" (an object) fires for each
+(`TestLoyaltyCounterTriggerFiresForEachPlaneswalker`). So it is deliberately NOT `OncePerBatch`, which is
+the right tool for "one or more counters on THIS permanent" (Aragorn) and the wrong one here.
+
+"You put" reads the event's Actor first (a loyalty cost names its activating player, CR 606.4, and so does
+any effect that goes through `AddCounterBy…`), and falls back to `b12CountersPlacedBy`'s attribution when
+nobody is named, which credits only a planeswalker's controller. The fallback is weaker than printed where
+it is wrong (a counter you put on an opponent's planeswalker by an effect that names no placer is not
+credited), never stronger. A planeswalker entering with its counters counts (CR 122.6: "put" covers an
+object given counters as it enters). The card side is `effects.WheneverYouPutLoyaltyCountersOnAPlaneswalker`
+(`loyalty_counter_trigger.go`).
+
+
+## Amendment 2026-10-09 — three trigger-order modes, and copies of one ability need no order (#1968) · Accepted · S60
+
+Issue [#1968](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1968). Builds on #1511's skip and #1530's
+"always ask", both above. Item 1 of [#1530](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1530)
+(Mentor and Sokka boards) is unchanged.
+
+### Owner decisions (2026-10-09)
+
+1. #1530's checkbox becomes a three-way setting, `gameplay.triggerOrder`:
+   - **Ask only when the order matters** (`when_it_matters`): the default, and the old checkbox off.
+   - **Always ask** (`always`): the old checkbox on.
+   - **Never ask: order them for me** (`never`): no CR 603.3b prompt for this seat at all.
+2. When the game orders a seat's triggers, it uses **the order they triggered in**: the order the batch was
+   collected in, which is what every skipped batch has always used.
+3. The default skip widens to copies of the same ability with no targets and no modes, from different source
+   objects too: two Soul Wardens, or a set of tokens with the same trigger.
+
+### Decision: the mode
+
+- **`Player.TriggerOrder` (`game.TriggerOrderMode`) replaces `Player.TriggerOrderAlwaysAsk`.** The zero value
+  is `when_it_matters`, so a seat that never chose has the default. `seatNeedsTriggerOrder(items, mode)` returns
+  false for `never`, keeps #1530's rule for `always` (any batch of two or more with an item not yet `Ordered`),
+  and runs the skips for `when_it_matters`. A mode this binary does not know behaves as the default. A `never`
+  batch is placed by the same APNAP drain as any other, in queue order, and it still waits for other seats'
+  prompts (CR 603.3b is APNAP).
+- **Wire.** `set_trigger_order_preference` takes `{trigger_order: "when_it_matters" | "always" | "never"}`. The
+  #1530 form `{always_ask: bool}` is still read for a cached client: `true` is `always`, `false` is
+  `when_it_matters`, and `trigger_order` wins when both are sent. The seat's own `PlayerView` carries
+  `trigger_order` (`"always"` or `"never"`, absent for the default) and still carries
+  `trigger_order_always_ask` (true for `always`) for an older client. Both are private to the seat.
+- **Snapshot, additive.** The seat gains `triggerOrder` (recorded with `-update-shape`, no bump). An `always` seat
+  still writes `triggerOrderAlwaysAsk: true`, so a binary from before this change restores it as always; a
+  `never` seat reads there as the default. A file from before it has only the boolean, and `true` restores as
+  `always`. An unknown `triggerOrder` is kept as it is, so a roll-forward gets it back.
+- **Undo** carries the live mode across `RestoreFrom`, as it carried the flag. It mints no undo entry.
+- **Bots** are unchanged: they never set the mode, so they have the default and answer any prompt with their
+  policy as before.
+- **Client.** `gameplay.triggerOrder` (synced) replaces `gameplay.alwaysAskTriggerOrder` with no settings version
+  bump, because the old key says which blob it is: a stored or synced `alwaysAskTriggerOrder: true` becomes
+  `always`, anything else the default, and the old key is dropped. An account copy from an older client goes
+  through the same migration (ADR 0110 §4). The reconcile (`triggerOrderPref.ts`) sends the enum, and now
+  forgets a send the server refused (matched by the error frame's `replyTo`), so the next frame sends it again.
+
+### Decision: copies of one source-blind ability
+
+**A seat's batch drains without a prompt when every item is a copy of one source-blind catalog ability**
+(`copiesOfOneSourceBlindAbility`, `game/mutations.go`):
+
+- every item is a stamped catalog trigger (`Body` `catalog/triggered`) naming the **same `AbilityRef`**: the same
+  catalog key, slot, row and label. Two Soul Wardens share their oracle ID's row; tokens from one template share
+  the token's key; a granted bundle's rows share the bundle's key. Two different cards with the same words are
+  two rows and still ask;
+- the running catalog still hands that row back under the ref (`abilityRefMatched`), and the row is
+  **`TriggeredAbility.SourceBlind`**;
+- no item carries anything of its own: no targets, modes, payload, X or division.
+
+**`SourceBlind` is engine-owned.** The catalog registry computes it as it files each definition
+(`effects.fileDef` → `classifySourceBlind`, `cards/effects/source_blind.go`) and overwrites whatever a card file
+set. A row is source-blind only when it has no `Build`, no target or mode clause, and its `Effect` is an
+`effects.Do` whose every step is on a short list: `GainLife`, `DrawCards`, `MillCards`, `GetEnergy`,
+`CreateToken`, `BecomeTheMonarch`, and `Scry` / `Surveil` with no `Then`. The registry can see the steps because
+`Do`'s closure answers a probe item with them (and `Do` is `noinline`, so every Do closure shares one code
+pointer the registry can recognise). Anything it cannot see, a hand-written closure above all, is not
+source-blind and keeps asking. The safe direction: a row wrongly left off costs a click; a row wrongly put on
+takes a real choice away.
+
+### Why such copies commute (CR 603.3b)
+
+CR 603.3b lets the controller put their simultaneous triggers on the stack "in any order they choose". The
+order is theirs; the engine picks it only where every order gives the same game, or where they asked it to.
+
+A triggered ability on the stack "has the text of the ability that created it, and no other characteristics"
+(CR 603.3), and once triggered it exists independently of its source (CR 113.7a). Two copies of one row have the
+same text and the same controller (the drain buckets by controller). What can still differ between them is
+their source object, their trigger context, and anything chosen or recorded for each as it was put on the
+stack. The conditions above rule out the last; a source-blind effect reads neither of the first two. So each
+copy applies the same function of the game state, and resolving them in either order applies it, lets whatever
+it caused go on the stack above the next copy and resolve first, then applies it again. The two orders produce
+the same sequence of game states.
+
+**Exceptions found, which keep asking:**
+
+- **An effect that reads its source.** CR 608.2h: an effect that needs information from a specific object,
+  "including the source of the ability itself", uses that object's current or last known information. Two
+  sources can differ (counters, power, tapped, attachments), and one copy can change what the other reads: "Double
+  the +1/+1 counters on this creature, then put a +1/+1 counter on each other creature you control" from two
+  sources gives different boards in the two orders. No primitive on the list reads its source this way.
+- **An effect whose source performs the action**, damage above all. A source's damage carries its own
+  characteristics (lifelink, CR 702.15b; deathtouch; infect; commander damage), and state-based actions run
+  between the two resolutions, so the first copy's damage can remove a creature the second would have hit, and
+  which source dealt it decides who gains life. Impact Tremors is the example: two of them still ask
+  (`TestTwoImpactTremorsStillAsk`).
+- **An effect that reads its trigger context.** Two copies in one batch can come from different events ("you
+  gain life equal to that creature's toughness"). No primitive on the list reads the event.
+- **A continuation closure** (`Scry.Then`), a `Build` fill-in (per-source `Params`, payload or label), a target
+  or mode clause: each can differ per copy, or cannot be read.
+
+**What is left, stated honestly.** `GainLife` passes its source on as the gain's attribution (CR 119.9: "whenever
+a source causes [a player] to gain life"), and `Scry` / `Surveil` as the prompt's. So the two orders differ in
+which of two objects with the same ability is named first on two otherwise identical events. And, as with
+#1511, opponents get priority between the two resolutions (CR 117.3b), so they can respond with the first copy
+resolved and the second waiting; because the copies are interchangeable, which one is waiting does not change
+what a response can do. **Always ask** gives the choice back to anyone who wants it.
+
+Only the existing identical skip (same source and label) still ignores the trigger context. That shape is
+unchanged.
+
+### Rejected
+
+- **Widen by identity alone** (same oracle ID and label, no targets or modes). That is the shape #1511 rejected,
+  for the reason it gave: a shared row says the closures are the same code, not that they commute. The class
+  above is identity plus a check of what the effect reads.
+- **Simulate both orders on a clone and compare.** Exact in principle, but token IDs, prompts, hidden zones and
+  random effects make the two results different objects even when they are the same game, and it would cost a
+  clone per batch.
+- **Mark source-blind rows by hand in card files.** It would rot and could be wrong silently. The registry
+  derives it from what the row declares, and a card file cannot set it.
+
+### Tests
+
+- `game/trigger_order_mode_test.go`: each mode on two different untargeted triggers (when_it_matters and always
+  ask; never does not, and keeps the collected order); never on a targeted pair; APNAP across a `never` seat and
+  a default seat; always on an all-prowess batch; restore from the old boolean, the snapshot round trip, undo, the
+  refusals and the parser; two copies of a source-blind row (no prompt, collected order), of a row that is not
+  (prompt), under always (prompt), and with a target, mode, payload, X, another row or no stamp on one copy
+  (prompt).
+- `cards/effects/source_blind_test.go`: the `Do` probe; the classification table (a gain, a draw and a token,
+  scry with and without `Then`, a damage step, a hand-written closure, an empty `Do`, a target clause, a `Build`);
+  the registry marks Soul Warden and not Impact Tremors; two Soul Wardens see a creature enter, go on the stack
+  with no prompt and gain 2; two Impact Tremors still ask; under never they do not.
+- `actions/trigger_order_preference_test.go`: the enum through `Dispatch`, the old boolean, both keys.
+- `protocol/trigger_order_preference_view_test.go`: each seat sees only its own mode.
+- Client: `settingsTriggerOrder.test.ts` (the migration, local and synced), `triggerOrderPref.test.ts` (the
+  reconcile sends the enum, reads an older server's boolean, and retries a refused send).
+
+## Amendment 2026-10-09 — independent triggers need no order (#2884) · Accepted · S60
+
+Issue [#2884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2884). Builds on the #1968 amendment above, whose
+three modes and copies skip are unchanged.
+
+### Owner report and decision (2026-10-09)
+
+Vivi Ornitier ("put a +1/+1 counter on Vivi Ornitier and it deals 1 damage to each opponent") and Ugin, Eye of the
+Storms ("exile up to one target permanent that's one or more colors") triggered off one spell, and the game asked
+the owner to order them under **Ask only when the order matters**. The two effects cannot touch each other unless
+Ugin targets Vivi. Decision: "when it matters" asks only when one trigger's result can change what another does.
+
+### Decision
+
+**In `when_it_matters` mode (and for a mode this binary does not know), a seat's batch drains without a prompt when
+its items are pairwise independent** (`Game.triggersIndependentLocked`, `game/trigger_independence.go`), after the
+existing skips. It goes on the stack in the order it was collected, like every skipped batch, and APNAP placement is
+unchanged. `always` and `never` are unchanged.
+
+**The read and write sets are declared data.** Each catalog row carries an engine-owned
+`TriggeredAbility.Footprint`, a list of `FootprintStep`s that the registry derives as it files the definition
+(`effects.classifyFootprint`, `cards/effects/footprint.go`), next to `SourceBlind`. The registry reads the steps of
+an `effects.Do` through the probe #1968 added, and asks each step to declare itself (`footprinter`). A row gets a
+footprint only when it has no `Build`, no "you may" (`OptionalPrompt`), no mode clause, no `TargetsFrom` clause,
+and every step declares one. Otherwise the footprint is nil and the row's triggers keep asking. `Purpose` and
+ADR 0142's declared answers are not used: they say what an ability is for, are declared by hand, and are never read
+by the rules engine. A footprint is derived from the effect the engine runs.
+
+Three primitives were added so that rows which were hand-written closures can be declared:
+
+- `CounterOnThis{Kind, N}`: N counters on the item's source, only while it is on the battlefield.
+- `DamageEachOpponent{N}`: the source deals N damage to each opponent, in one damage event (`damageToEachOpponent`).
+- `ExileChosenTarget{}`: exile the first card among the item's targets that is still legal (CR 608.2b), the body
+  `b27ExileChosenTarget` now calls.
+
+Four cards moved onto them with no change in behaviour: Vivi Ornitier, Ugin, Eye of the Storms' battlefield
+trigger, Guttersnipe and Firebrand Archer. Ugin's cast trigger keeps its `Build` (it fills in the caster as
+controller), so it still asks: see the question below.
+
+### Why independent items commute (CR 603.3b, 603.3d, 608.2)
+
+CR 603.3b lets each player put their triggered abilities on the stack "in any order they choose". As in #1511 and
+#1968, the engine picks the order only where every order gives the same game.
+
+CR 603.3d says the rest of putting a triggered ability on the stack is the casting process of 601.2c–d, so each
+item's targets are chosen as it goes on the stack and are fixed before any item resolves. The check runs at the
+drain, after the last target has been chosen (the #1529 hold), so it reads the targets the items will resolve with.
+
+CR 608.2 is what resolving reads. An item checks its targets' legality (608.2b), follows its instructions in order
+(608.2c), and takes any information it needs from the game or from an object when the effect is applied (608.2h).
+So an item's result is a function of the part of the game state it reads at its own resolution. If nothing item A
+writes is read or written by item B, and the other way round, B reads the same state whether A resolved first or
+not, and each writes the same things in either order. The two orders end in the same state.
+
+Two things happen between the resolutions, and the check covers both:
+
+- **State-based actions** are checked before a player receives priority (CR 117.3b, 704). The ones a footprint can
+  cause are a player losing at 0 or less life (CR 104.3b, 704.5a) or after drawing from an empty library
+  (CR 104.3c). The check works out which players the whole batch could eliminate (its total life loss against
+  their life, its total draws against their library). A player who leaves the game takes what they own with them,
+  and abilities they control on the stack cease to exist (CR 800.4a). So the batch asks if its controller could be
+  eliminated, and a pair asks if one item could eliminate a player the other touches (a gain of life, a library,
+  a target, or an object they own or control). Two losses of life on one player commute even then.
+- **Abilities that trigger during a resolution** go on the stack before the next priority (the last sentences of
+  CR 603.3b), above the items still waiting, so where they land depends on the order. The check asks whenever
+  anything watches an event kind the batch causes, whether or not it would fire: a triggered ability on a
+  permanent or an emblem, one that works from another zone, a delayed trigger or an "until" return, a replacement
+  effect (they change the event itself), and speed's inherent trigger (CR 702.179d). Damage from a source with
+  lifelink (CR 702.15b), infect, wither or toxic is not on the list at all.
+
+### What counts as a read and a write
+
+Objects are cards and permanents by instance ID; "you" is the item's controller.
+
+| Step | Reads | Writes | Events |
+| --- | --- | --- | --- |
+| `GainLife` | | your life, up | life change |
+| `DamageEachOpponent` | the source (on the battlefield, with no lifelink, infect, wither or toxic) | each opponent's life, down | damage, life change |
+| `CounterOnThis` | the source | the source, if on the battlefield | counter placed |
+| `ExileChosenTarget` | the targets | each card target | zone move, leaves the battlefield, unattach |
+| `DrawCards` | | your library and hand (and a loss on an empty library) | draw |
+| `MillCards`, `Surveil` (no `Then`) | | your library and graveyard | mill or surveil, zone move |
+| `Scry` (no `Then`) | | your library | scry |
+| `GetEnergy` | | nothing another step reads (energy only adds up) | player counter placed |
+| `CreateToken` | | nothing another step reads (a token whose template has no text) | token created, enters, zone move |
+| `BecomeTheMonarch` | | the monarch | monarch changed |
+
+Every chosen target is a read. A pair conflicts when:
+
+- one writes an object the other reads or writes. A tie on one object always asks, whatever the two do to it: Ugin
+  targeting Vivi while Vivi puts a counter on herself;
+- both touch one player's library or graveyard, or both become the monarch;
+- one gains a player life and the other makes them lose it, and that player could reach 0 in between;
+- one could eliminate a player the other touches (above);
+- one writes an object that shapes the rules the other resolves under. That is an object with a static ability, a
+  replacement effect, a trigger doubler or suppressor, or a rules-bearing slot; one whose text the engine leaves to
+  the table; one that is attached or has something attached; or one named by a delayed trigger, an "until" return,
+  a continuing effect's duration, or another card's record (found by walking those records for its ID, so a
+  record the check has never heard of still counts).
+
+A token step is declared only for a template whose definition has no triggered ability, no static ability or
+replacement effect and no rules-bearing slot.
+
+**The board can make the whole check give up** (`triggerOrderBoardOpaqueLocked`): a permanent or emblem with a
+rules-bearing slot ("can't gain life", "damage can't be prevented", a player's hexproof, "can't lose", targeting
+restrictions; `cardDefFieldClass` classifies every `CardDef` slot, and a test fails on a new one), a permanent
+whose text the engine leaves to the table, a state trigger (CR 603.8 reads the game state itself), a player
+static, or a continuing effect that is more than a fixed change to the characteristics of the objects it locked
+in (CR 611.2c): a prevention or replacement, a "can't", a doubling, or a rule read live.
+
+**Unknown always asks:** a hand-written closure, a `Build` (since relaxed, see the note below), a count of the board, a "may", a mode clause or chosen
+modes, a `TargetsFrom` clause, an item with a payload, X, a division or `Params` of its own, and any step not in the
+table.
+
+### What is still given up
+
+- **A static ability whose condition reads what an item writes.** The check reads the abilities of the objects an
+  item writes, not the conditions of every static on the board. A static on another permanent that turns on or off
+  with a life total, a counter or a count of permanents, and that changes a characteristic another item reads (the
+  damage source's lifelink, the color Ugin's target needs), could make the order matter. The rules-bearing slots
+  and continuing effects above are covered; layer statics on uninvolved permanents are not.
+- **Priority between the resolutions.** As in #1511 and #1968, opponents get priority between the items
+  (CR 117.3b) and can respond with one resolved and the other waiting.
+- **Which object did it, and when.** Two damage triggers on an opponent who dies after the first: the second deals
+  no damage to them, so "dealt damage by this source this turn" differs between the orders. Two token makers give
+  their tokens different timestamps. The board is otherwise the same.
+
+**Always ask** gives the choice back to anyone who wants it.
+
+### Question for the owner
+
+Ugin, Eye of the Storms' cast trigger has a `Build` that only fills in the caster as the controller, so casting
+Ugin with Vivi out still asks. The check could accept a `Build` whose item carries nothing the footprint does not
+read (no `Params`, payload, X or division). Recommended: **(a) yes**, in a follow-up, since the built item is
+inspected anyway. (b) Keep every `Build` as unknown.
+
+### Tests
+
+- `cards/effects/trigger_independence_2884_test.go`: the registry's footprints (Vivi, both Ugin rows, Guttersnipe,
+  Firebrand Archer, Soul Warden, Impact Tremors, two probes) and what it refuses; Vivi and Ugin on another
+  permanent (no prompt, collected order, both resolve); Ugin targeting Vivi (asks); Guttersnipe and Firebrand Archer
+  (no prompt), with an Ajani's Pridemate on the board (asks), with a lifelink source (asks); Soul Warden and Essence
+  Warden (no prompt) and with a Pridemate (asks); a token maker beside a creature count (asks) and beside damage
+  (no prompt); damage that can eliminate the opponent whose permanent Ugin targets (asks); always ask on an
+  independent pair (asks); APNAP through a JSON restore, with the active seat's independent pair held behind the
+  other seat's prompt and placed below it in collected order.
+- `game/trigger_independence_test.go`: every `CardDef` slot is classified, `defBearsRules`, the ID walk, and
+  undescribed items still ask.
+
+### Note (2026-10-09): a plain `Build` is accepted
+
+The owner answered the question above with (a). A row with a `Build` fill-in now gets the footprint of its declared
+`Effect` like any other row; the footprint never comes from the `Build`. At the check, an item such a row built is
+accepted only when it is exactly what the footprint describes (`builtItemIsPlain`, `game/trigger_independence.go`).
+It may set only the fields the engine stamps and the footprint reads: identity, kind, controller and owner, source,
+label, the triggering event, the row stamp in `Params.Ability`, and targets from the row's declared target clause.
+Any other field set, such as `Params`, a payload, X, a division or modes, keeps the prompt, and so does a new
+`StackItem` field until it is added to that list. Ugin, Eye of the Storms' cast trigger moved onto
+`Do(ExileChosenTarget{})`, so casting Ugin with Vivi out no longer asks unless Ugin targets Vivi. Tests:
+`cards/effects/trigger_independence_built_test.go`.

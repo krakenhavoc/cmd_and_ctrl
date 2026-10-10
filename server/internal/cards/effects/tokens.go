@@ -281,6 +281,29 @@ func printedPowerstoneToken() tokenTemplate {
 	}
 }
 
+// HeartwoodToken is the red and green Heartwood artifact token of
+// Reality Fracture ("{T}: Add {R} or {G}."). Both colours are offered;
+// unlike a Signet-style source it is not narrowed to a commander's
+// identity because the printed text does not say so.
+func HeartwoodToken() game.Card { return tokenFromCatalog(printedHeartwoodToken) }
+
+func printedHeartwoodToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "heartwood",
+		Card: game.Card{
+			Name:     "Heartwood",
+			TypeLine: "Token Artifact — Heartwood",
+			Colors:   []string{"R", "G"},
+		},
+		Mana: []game.ManaAbilityShape{{
+			TapCost:  true,
+			Produced: "{R|G}",
+			Label:    "{T}: Add {R} or {G}",
+		}},
+		Text: "{T}: Add {R} or {G}.",
+	}
+}
+
 // RedGoblinToken is kept as a function because a card passes it as a value; the data lives in tokens_table.go.
 func RedGoblinToken() game.Card { return TokenCard("1/1 red Goblin") }
 

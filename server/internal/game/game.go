@@ -723,6 +723,15 @@ type Game struct {
 	stateTriggerHold     int
 	stateTriggerChecking bool
 
+	// landingEntryCounters is the permanent whose "enters with"
+	// counters applyEntryCountersLocked is putting on right now. Those
+	// counters land after the move and before EventETB, so the turn
+	// tally does not yet say the permanent entered this turn; read
+	// ahead's chapter rule (CR 702.155a, read_ahead.go) reads this
+	// instead while they land. Defer-cleared, so it is uuid.Nil between
+	// actions and is neither snapshotted nor cloned.
+	landingEntryCounters uuid.UUID
+
 	// enteringTokens holds the tokens whose CR 614 battlefield-entry
 	// window is open and which are therefore in NO zone yet: minted,
 	// not pushed. A card entering the battlefield sits in the zone it
@@ -785,6 +794,12 @@ type Game struct {
 	// is zero between actions by construction.
 	resolutionOpen  bool
 	resolutionDepth int
+
+	// pausedModeWalk is the rest of a modal item's chosen bullets,
+	// parked behind a prompt an earlier bullet queued (#2789, CR
+	// 608.2c). Non-nil only while a resolution is open and paused.
+	// Clone and the persisted snapshot carry it. See mode_walk.go.
+	pausedModeWalk *modeWalk
 
 	// promptKeys is the transient bookkeeping behind the keys of the
 	// prompts a resolution or an answered prompt's branch queues (ADR
@@ -1015,6 +1030,10 @@ func NewGame() *Game {
 	// no source either, so it rides the registry for the monarch's
 	// reason and right after it. See speed.go.
 	g.Listeners = append(g.Listeners, speedTriggers{})
+	// #2042, CR 728.1: rad counters' inherent trigger has no source
+	// either, so it rides the registry for the same reason. See
+	// rad_counters.go.
+	g.Listeners = append(g.Listeners, radTriggers{})
 	// #1729, CR 610.3: an exile "until" an event ends when the event
 	// happens, and that is a rule rather than a triggered ability — so
 	// it watches the event log on its own, after the monarch's CR 725.4

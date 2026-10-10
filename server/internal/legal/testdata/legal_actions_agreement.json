@@ -466,7 +466,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -488,7 +489,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -510,7 +512,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -532,7 +535,8 @@
           "source": "00000007-0000-4000-8000-000000000000",
           "cost": {
             "mana": "{R}"
-          }
+          },
+          "has_targets": true
         },
         {
           "type": "cast_spell",
@@ -571,7 +575,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Seat 1",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -594,7 +599,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Seat 1",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -617,7 +623,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Seat 2",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -640,7 +647,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Seat 2",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -663,7 +671,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Sacrificial Bear",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -686,7 +695,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Sacrificial Bear",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -709,7 +719,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Sacrificial Bear) targeting Vivi Ornitier",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_ability",
@@ -732,7 +743,8 @@
           },
           "kind": "activate",
           "label": "Goblin Bombardment: Sacrifice a creature: deal 1 damage to any target (sacrificing Vivi Ornitier) targeting Vivi Ornitier",
-          "source": "00000010-0000-4000-8000-000000000000"
+          "source": "00000010-0000-4000-8000-000000000000",
+          "has_targets": true
         },
         {
           "type": "activate_mana_ability",
@@ -853,7 +865,7 @@
           "round": 1,
           "step": "untap",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · untap"
+          "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
         {
           "seq": 2,
@@ -862,7 +874,7 @@
           "round": 1,
           "step": "upkeep",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · upkeep"
+          "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
         {
           "seq": 4,
@@ -871,7 +883,7 @@
           "round": 1,
           "step": "draw",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · draw"
+          "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
         {
           "seq": 5,
@@ -880,7 +892,7 @@
           "round": 1,
           "step": "precombat_main",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · precombat main"
+          "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         }
       ]
     },
@@ -1227,7 +1239,7 @@
           "round": 1,
           "step": "untap",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · untap"
+          "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
         {
           "seq": 2,
@@ -1236,7 +1248,7 @@
           "round": 1,
           "step": "upkeep",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · upkeep"
+          "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
         {
           "seq": 4,
@@ -1245,7 +1257,7 @@
           "round": 1,
           "step": "draw",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · draw"
+          "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
         {
           "seq": 5,
@@ -1254,7 +1266,7 @@
           "round": 1,
           "step": "precombat_main",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · precombat main"
+          "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         }
       ]
     },
@@ -1531,7 +1543,7 @@
           "round": 1,
           "step": "untap",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · untap"
+          "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
         {
           "seq": 2,
@@ -1540,7 +1552,7 @@
           "round": 1,
           "step": "upkeep",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · upkeep"
+          "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
         {
           "seq": 4,
@@ -1549,7 +1561,7 @@
           "round": 1,
           "step": "draw",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · draw"
+          "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
         {
           "seq": 5,
@@ -1558,7 +1570,7 @@
           "round": 1,
           "step": "precombat_main",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · precombat main"
+          "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         },
         {
           "seq": 7,
@@ -1567,7 +1579,7 @@
           "round": 1,
           "step": "begin_combat",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · begin combat"
+          "text": "Turn 1 (round 1) — Seat 1 · begin combat"
         },
         {
           "seq": 8,
@@ -1576,7 +1588,7 @@
           "round": 1,
           "step": "declare_attackers",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · declare attackers"
+          "text": "Turn 1 (round 1) — Seat 1 · declare attackers"
         }
       ]
     },
@@ -1909,7 +1921,7 @@
           "round": 1,
           "step": "untap",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · untap"
+          "text": "Turn 1 (round 1) — Seat 1 · untap"
         },
         {
           "seq": 2,
@@ -1918,7 +1930,7 @@
           "round": 1,
           "step": "upkeep",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · upkeep"
+          "text": "Turn 1 (round 1) — Seat 1 · upkeep"
         },
         {
           "seq": 4,
@@ -1927,7 +1939,7 @@
           "round": 1,
           "step": "draw",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · draw"
+          "text": "Turn 1 (round 1) — Seat 1 · draw"
         },
         {
           "seq": 5,
@@ -1936,7 +1948,7 @@
           "round": 1,
           "step": "precombat_main",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · precombat main"
+          "text": "Turn 1 (round 1) — Seat 1 · precombat main"
         },
         {
           "seq": 7,
@@ -1945,7 +1957,7 @@
           "round": 1,
           "step": "begin_combat",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · begin combat"
+          "text": "Turn 1 (round 1) — Seat 1 · begin combat"
         },
         {
           "seq": 8,
@@ -1954,7 +1966,7 @@
           "round": 1,
           "step": "declare_attackers",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · declare attackers"
+          "text": "Turn 1 (round 1) — Seat 1 · declare attackers"
         },
         {
           "seq": 9,
@@ -1972,7 +1984,7 @@
           "round": 1,
           "step": "declare_blockers",
           "seat": 0,
-          "text": "Turn 1 — Seat 1 · declare blockers"
+          "text": "Turn 1 (round 1) — Seat 1 · declare blockers"
         }
       ]
     },

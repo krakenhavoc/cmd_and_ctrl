@@ -672,7 +672,9 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 // clearExpiredDelayedTriggersLocked drops every delayed trigger whose
 // duration has run out, fired or not (CR 514.2). Called from
 // sweepTurnEndLocked beside the scoped-static and turn-scoped
-// replacement sweeps — the same "this turn is over" pass — and it
+// replacement sweeps — the same "this turn is over" pass — and, with
+// endOfTurn false, from the turn-began hook beside the scoped statics'
+// "until your next turn" sweep (ADR 0139, #2796). Either way it
 // asks the same question they do: durationExpiredLocked is the ONE
 // place in the engine that decides when a duration is over, and a
 // second answer here would be a second rule.

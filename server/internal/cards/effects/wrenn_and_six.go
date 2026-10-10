@@ -66,6 +66,7 @@ func init() {
 				Label:   "−1: Wrenn and Six deals 1 damage to any target.",
 				Cost:    LoyaltyCost(-1),
 				Targets: TargetAny(),
+				Purpose: ForTargets(DamageToTarget(0, 1)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					if len(item.Targets) == 0 {

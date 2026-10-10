@@ -21,9 +21,13 @@ func lookupDef(key string) *game.CardDef { return defs[key] }
 // fileDef is the one writer of `defs`: it stamps every triggered row of
 // the definition with its catalog identity (the key and its index —
 // game.IdentifyCatalogRows, ADR 0041 P9) and files it. A row the engine
-// can name is a row whose waiting stack item can be restored.
+// can name is a row whose waiting stack item can be restored. It also
+// marks which rows are source-blind (#1968, source_blind.go), on the
+// copy IdentifyCatalogRows made, so the card file's slice is untouched.
 func fileDef(key string, d *game.CardDef) {
 	game.IdentifyCatalogRows(key, d)
+	classifySourceBlind(d)
+	classifyFootprint(d)
 	defs[key] = d
 }
 
@@ -57,6 +61,7 @@ func activatedShapes(in []ActivatedAbility) []game.ActivatedAbilityShape {
 			AnyPlayer:     a.AnyPlayer,
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,
+			GrantorOnly:   a.GrantorOnly,
 			Purpose:       a.Purpose,
 			Effect:        a.Effect,
 		}
@@ -209,12 +214,14 @@ func buildDef(spec Spec) *game.CardDef {
 		AnyColorSpend:              spec.AnyColorSpend,
 		LifeForMana:                spec.LifeForMana,
 		LegendRuleExemptions:       spec.LegendRuleExemptions,
+		ZeroLoyaltyExemptions:      spec.ZeroLoyaltyExemptions,
 		OpponentEffectProtections:  spec.OpponentEffectProtections,
 		GameEndGates:               spec.GameEndGates,
 		WantsDistinctColors:        spec.WantsDistinctColors,
 		WantsManaFrom:              spec.WantsManaFrom,
 		AdditionalLandPlays:        spec.AdditionalLandPlays,
 		XMatters:                   spec.XMatters,
+		XCeiling:                   spec.XCeiling,
 		CastPermissions:            standingCastPermissions(spec.CastPermissions),
 		GatedCastPermissions:       gatedStandingCastPermissions(spec.GatedCastPermissions),
 		CastTimings:                spec.CastTimings,

@@ -63,14 +63,67 @@ type PickOption struct {
 
 	// Then receives the index of the chosen option, or -1 when no
 	// question could be asked. Runs with g.mu held; may queue
-	// further choices.
+	// further choices. An option that costs mana (ChoiceOption.ManaCost,
+	// #2854) and that the chooser cannot pay is not offered, and Then
+	// still receives the index the card printed.
 	Then func(ctx *Context, index int) error
+
+	// ThenKey is Then as a registered continuation (OptionPickThen),
+	// with Carry the IDs it is handed (#2854). A prompt queued with a
+	// key holds no closure, so the table stays a restore point while it
+	// waits. Set ThenKey or Then, not both.
+	ThenKey game.OptionPickThen
+	Carry   []uuid.UUID
+}
+
+// OptionPickThen registers a keyed option pick's continuation, as a
+// card file's package-level var (#2854). The body is handed a Context
+// rebuilt from values — the controller of the effect that asked as its
+// controller, the card that asked as its source — never from the stack
+// item it began with, which has long resolved; and the answer, with
+// Carry as the card put it on the prompt. r.Option is nil, and r.Index
+// is -1, when nobody chose (the chooser left the game). The key is an
+// on-disk identity ("option-pick/<card>-<what>"): never renamed, never
+// reused.
+func OptionPickThen(key string, body func(ctx *Context, r game.OptionPicked) error) game.OptionPickThen {
+	return game.RegisterOptionPickThen(key, func(g *game.Game, r game.OptionPicked) error {
+		controller := r.Chooser
+		if len(r.Carry) > 0 {
+			// PickOption.Apply puts the asking effect's controller
+			// first; the card's own Carry follows it.
+			controller, r.Carry = r.Carry[0], r.Carry[1:]
+		}
+		return body(NewContext(g, &game.StackItem{
+			Kind:         game.StackItemSpell,
+			Controller:   controller,
+			Owner:        controller,
+			SourceCardID: r.Source,
+		}), r)
+	})
 }
 
 func (p PickOption) Apply(ctx *Context) error {
 	chooser := p.Player
 	if chooser == uuid.Nil {
 		chooser = ctx.Controller()
+	}
+	if p.ThenKey.Key() != "" {
+		carry := append([]uuid.UUID{ctx.Controller()}, p.Carry...)
+		queued := ctx.Game.QueueOptionPickForEffect(game.OptionPickPrompt{
+			Chooser:    chooser,
+			FromPlayer: p.From,
+			Source:     ctx.Source(),
+			Question:   p.Question,
+			Options:    p.Options,
+			ThenKey:    p.ThenKey,
+			Carry:      carry,
+		})
+		if queued != uuid.Nil {
+			return nil
+		}
+		return ctx.Game.RunOptionPickThenForEffect(p.ThenKey, game.OptionPicked{
+			Chooser: chooser, Source: ctx.Source(), Index: game.NoChoiceIndex, Carry: carry,
+		})
 	}
 	item := ctx.Item
 	then := p.Then

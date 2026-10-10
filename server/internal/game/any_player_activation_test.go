@@ -179,7 +179,7 @@ func TestMayActivate(t *testing.T) {
 		{"my card in my hand", mine, ZoneHand, plain, true},
 	}
 	for _, tc := range cases {
-		if got := MayActivate(me, tc.c, tc.zone, tc.ab); got != tc.want {
+		if got := MayActivate(me, tc.c, tc.zone, tc.ab, AbilityOrigin{}); got != tc.want {
 			t.Errorf("%s: MayActivate = %v, want %v", tc.name, got, tc.want)
 		}
 	}

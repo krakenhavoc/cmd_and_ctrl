@@ -39,13 +39,21 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import ManaCost from "./ManaCost.svelte";
   import { findCardView } from "../../commanderReturn";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
   import ModalLayer from "../ModalLayer.svelte";
   import DockRequest from "./DockRequest.svelte";
   import DockSheet from "./DockSheet.svelte";
   import { confirmAction, type DockAction } from "../../dock";
-  import { onDestroy } from "svelte";
+  import { onDestroy, untrack } from "svelte";
+  import {
+    boardChoicePick,
+    boardPickEligible,
+    publishBoardPick,
+    sameSelection,
+    selectionLegal,
+  } from "../../boardChoicePick";
   import { choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
   import { get } from "svelte/store";
   import { settings, updateSettings } from "../../settings";
@@ -63,8 +71,10 @@
   import {
     energyShortBy,
     payAmountAnswerable,
+    payAmountCanSubmit,
     payAmountClamp,
     payAmountFloor,
+    payAmountResource,
     payAmountStart,
   } from "../../payEnergy";
   import { L } from "../../labels";
@@ -367,7 +377,43 @@
         ? (active?.choose_min ?? 0)
         : (active?.count ?? 0),
   );
-  const canSubmit = $derived(selected.size >= pickMin && selected.size <= pickMax);
+  const canSubmit = $derived(selectionLegal(selected.size, pickMin, pickMax));
+
+  // #2880: the grid's permanents are picked on the board too. While the
+  // sheet is up and some of its options are permanents on the
+  // battlefield, the board highlights them and a click there toggles the
+  // same `selected` set this grid reads (lib/boardChoicePick.ts). The
+  // count and the dock's confirm follow it, and the answer is the one
+  // `submit` sends.
+  const boardEligible = $derived(
+    open && docked && !inline ? boardPickEligible(active, snap) : null,
+  );
+  // This component's selection, out to the board.
+  $effect(() => {
+    const c = active;
+    const eligible = boardEligible;
+    if (!c || !eligible) {
+      publishBoardPick(null);
+      return;
+    }
+    publishBoardPick({
+      choiceID: c.id,
+      eligible,
+      selected: new Set(selected),
+      min: pickMin,
+      max: pickMax,
+    });
+  });
+  // A pick made on the board, back into this selection. `selected` is
+  // read untracked: only a change in the store runs this, so a click in
+  // the grid is never undone by a store that has not caught up yet.
+  $effect(() => {
+    const s = $boardChoicePick;
+    if (!s || !active || s.choiceID !== active.id) return;
+    const mine = untrack(() => selected);
+    if (!sameSelection(s.selected, mine)) selected = new Set(s.selected);
+  });
+  onDestroy(() => publishBoardPick(null));
 
   // ADR 0116: a revealed-hand pick shows the whole hand, but only the
   // cards the card lets you choose ("a nonland card") can be picked.
@@ -723,6 +769,10 @@
   // sentence. The permanent is not on the battlefield yet, and nothing
   // can happen until an opponent is named.
   const isEntryController = $derived(active?.kind === "entry_controller");
+  // #2123 entry_read_ahead — read ahead's starting chapter (CR
+  // 702.155b). The chapter buttons and the {option_index} answer of
+  // option_pick. Answered inline in the dock; this is its sheet.
+  const isEntryReadAhead = $derived(active?.kind === "entry_read_ahead");
   const entryControllerHint = $derived(
     active?.control_purpose === "benefit"
       ? "Whoever you choose will control it and get what it does."
@@ -835,6 +885,18 @@
   });
   const payAmountOK = $derived(
     payAmountView !== null && payAmountAnswerable(payAmountView, payAmountValue),
+  );
+  // #1941: what the stepper counts — energy, life, or a number that is
+  // not paid — for its labels.
+  const payAmountUnit = $derived(payAmountView ? payAmountResource(payAmountView) : "energy");
+  const payAmountLess = $derived(
+    payAmountUnit === "none" ? "One less" : `One less ${payAmountUnit}`,
+  );
+  const payAmountMore = $derived(
+    payAmountUnit === "none" ? "One more" : `One more ${payAmountUnit}`,
+  );
+  const payAmountField = $derived(
+    payAmountUnit === "none" ? "Number" : `Amount of ${payAmountUnit}`,
   );
   function stepPayAmount(delta: number): void {
     if (!payAmountView) return;
@@ -1453,6 +1515,15 @@
         secondary: [],
       };
     }
+    if (isEntryReadAhead) {
+      return {
+        label: c.reason || "Read ahead — choose the starting chapter",
+        src: "read ahead · CR 702.155b",
+        width: 560,
+        primary: null,
+        secondary: [],
+      };
+    }
     if (isModePick) {
       return {
         label: triggerSourceName(c.source),
@@ -1561,7 +1632,7 @@
                                   isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
                                 ];
     const verb = isSacrifice
-      ? "Sacrifice"
+      ? L.sacrifice
       : isSearch
         ? none
           ? "Fail to find"
@@ -1581,7 +1652,7 @@
                   ? `Don't discard — put ${enteringCardName(c.source)} into its owner's graveyard`
                   : "Discard"
                 : isEntrySacrifice
-                  ? "Sacrifice"
+                  ? L.sacrifice
                   : isChooseSource
                     ? "Choose this source"
                     : isProliferate
@@ -1599,7 +1670,9 @@
       label,
       src,
       count: `${selected.size} / ${pickMax} selected`,
-      width: 720,
+      // #2880: with the permanents pickable on the board, a narrower
+      // sheet leaves more of the board in view.
+      width: boardEligible ? 520 : 720,
       // An empty pick where empty is legal is a decline: no Enter.
       primary: confirmAction(verb, submit, {
         disabled: !canSubmit,
@@ -1673,24 +1746,34 @@
 
 {#snippet payAmountBody()}
   {#if payAmountView}
-    <div class="pay-amount" role="group" aria-label={L.energyToPay}>
+    <!-- #1941: the same stepper asks for life, or for a number that is
+         not paid (Volcano Hellion's damage), which may have no ceiling. -->
+    <div
+      class="pay-amount"
+      role="group"
+      aria-label={payAmountUnit === "energy"
+        ? L.energyToPay
+        : payAmountUnit === "life"
+          ? L.lifeToPay
+          : L.numberToChoose}
+    >
       <button
         type="button"
         class="pay-amount-step"
-        aria-label="One less energy"
+        aria-label={payAmountLess}
         disabled={payAmountValue <= payAmountFloor(payAmountView)}
         onclick={() => stepPayAmount(-1)}>−</button
       >
       <input
         type="number"
         min={payAmountFloor(payAmountView)}
-        max={payAmountView.max}
+        max={payAmountView.no_max ? undefined : payAmountView.max}
         step="1"
         bind:value={payAmountValue}
-        aria-label="Amount of energy"
+        aria-label={payAmountField}
         onkeydown={(e) => {
-          // The number typed is the answer: Enter in the field pays it.
-          if (e.key !== "Enter" || !payAmountOK || payAmountValue <= 0) return;
+          // The number typed is the answer: Enter in the field answers it.
+          if (e.key !== "Enter" || !payAmountCanSubmit(payAmountView, payAmountValue)) return;
           e.preventDefault();
           submitPayAmount(payAmountValue);
         }}
@@ -1698,11 +1781,17 @@
       <button
         type="button"
         class="pay-amount-step"
-        aria-label="One more energy"
+        aria-label={payAmountMore}
         disabled={payAmountValue >= payAmountView.max}
         onclick={() => stepPayAmount(1)}>+</button
       >
-      <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
+      {#if payAmountUnit === "energy"}
+        <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
+      {:else if payAmountUnit === "life"}
+        <span class="pay-amount-of">of {payAmountView.max} life</span>
+      {:else if !payAmountView.no_max}
+        <span class="pay-amount-of">up to {payAmountView.max}</span>
+      {/if}
     </div>
   {/if}
 {/snippet}
@@ -1897,6 +1986,10 @@
           <li>
             <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
               <span class="pick-label">{opt.label}</span>
+              {#if opt.mana_cost}
+                <!-- #2854: the mana this option costs; the server pays it when chosen. -->
+                <span class="pick-cost"><ManaCost cost={opt.mana_cost} size={14} /></span>
+              {/if}
               {#if opt.cards && opt.cards.length > 0}
                 <span class="pick-cards">
                   {#each opt.cards as c (c.instance_id)}
@@ -1904,6 +1997,20 @@
                   {/each}
                 </span>
               {/if}
+            </button>
+          </li>
+        {/each}
+      </ul>
+    {:else if isEntryReadAhead}
+      <p class="prompt-hint">
+        It hasn't entered yet: it enters with that many lore counters, and the chapters before it
+        never happen.
+      </p>
+      <ul class="pick-options">
+        {#each pickOptions as opt, i (i)}
+          <li>
+            <button type="button" class="pick-option" onclick={() => answerOptionPick(i)}>
+              <span class="pick-label">{opt.label}</span>
             </button>
           </li>
         {/each}
@@ -2286,6 +2393,10 @@
             "",
           )} are greyed out.
         {/if}
+        {#if boardEligible}
+          Pick here, or click the highlighted permanents on the board — fold this sheet down to see
+          them all.
+        {/if}
       </p>
       <div class="card-grid">
         {#each optionCards as c (c.instance_id)}
@@ -2419,6 +2530,10 @@
   }
   .pick-label {
     font-weight: 600;
+  }
+  .pick-cost {
+    display: inline-flex;
+    align-items: center;
   }
   .pick-cards {
     display: grid;

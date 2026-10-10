@@ -23,8 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the payment record (#761) — not at resolution, when a countered Abby
 // has already left the stack.
 //
-// Partner—Survivors is a deck-building rule: Abby in the 99 is fine,
-// and as a commander the deck validator still refuses a partner pair.
+// Partner—Survivors is a deck-building rule (CR 702.124i) that
+// internal/deck reads off the oracle text: Abby and another Survivors
+// card are a legal pair of commanders (#2874).
 //
 // Declared simplification (weaker than printed): with strict mana off
 // the engine does not know what was spent, and "unknown" is always the

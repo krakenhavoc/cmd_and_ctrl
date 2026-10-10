@@ -206,6 +206,11 @@ func (g *Game) cloneLocked() *Game {
 			// choice. A map, so it needs its own copy for the same
 			// reason the slices do.
 			cloned.ManaAmounts = copyManaAmounts(c.ManaAmounts)
+			// #2558: the colours a different-colours pick has already
+			// named.
+			if len(c.ManaChosen) > 0 {
+				cloned.ManaChosen = append([]string(nil), c.ManaChosen...)
+			}
 			if len(c.TriggerOrderIDs) > 0 {
 				cloned.TriggerOrderIDs = append([]uuid.UUID(nil), c.TriggerOrderIDs...)
 			}
@@ -260,6 +265,7 @@ func (g *Game) cloneLocked() *Game {
 			// a shallow copy would share the pile arrays with the
 			// undo snapshot.
 			cloned.PickOptions = cloneChoiceOptions(c.PickOptions)
+			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox
@@ -287,6 +293,10 @@ func (g *Game) cloneLocked() *Game {
 			// trigger. The snapshot gets its own cursor and picks;
 			// the steps, spec and source it only reads stay shared.
 			cloned.pickTargetResume = clonePickTargetFrame(c.pickTargetResume)
+			// #2622: the CR 707.10c copy walk, for the same reason —
+			// answering a step advances its cursor and rewrites its
+			// target list.
+			cloned.copyResume = cloneCopyFrame(c.copyResume)
 			out.PendingChoices[i] = &cloned
 		}
 	}
@@ -475,6 +485,8 @@ func (g *Game) cloneLocked() *Game {
 	// taken inside a resolution must not inherit a function it is not
 	// running.
 	out.resolutionOpen = g.resolutionOpen
+	// #2789: the bullets parked behind that paused prompt.
+	out.pausedModeWalk = cloneModeWalk(g.pausedModeWalk)
 	if len(g.replacementsAppliedThisEvent) > 0 {
 		out.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool, len(g.replacementsAppliedThisEvent))
 		for evID, set := range g.replacementsAppliedThisEvent {
@@ -607,33 +619,33 @@ func cloneCard(c Card) Card {
 
 func clonePlayer(p *Player) *Player {
 	out := &Player{
-		ID:                    p.ID,
-		Name:                  p.Name,
-		Seat:                  p.Seat,
-		Life:                  p.Life,
-		Poison:                p.Poison,
-		Energy:                p.Energy,
-		TurnsBegun:            p.TurnsBegun,
-		UpkeepsBegun:          p.UpkeepsBegun,
-		EndStepTurn:           p.EndStepTurn,
-		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:            p.Eliminated,
-		HandKept:              p.HandKept,
-		MulliganDecided:       p.MulliganDecided,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
-		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
-		MulligansTaken:        p.MulligansTaken,
-		DeckImported:          p.DeckImported,
-		UndosRemaining:        p.UndosRemaining,
-		DiscordID:             p.DiscordID,
-		DiscordAvatarHash:     p.DiscordAvatarHash,
-		DisplayName:           p.DisplayName,
-		IsBot:                 p.IsBot,
-		BotTier:               p.BotTier,
-		BotDeck:               p.BotDeck,
-		Agent:                 p.Agent,
-		AgentClient:           p.AgentClient,
-		CitysBlessing:         p.CitysBlessing,
+		ID:                p.ID,
+		Name:              p.Name,
+		Seat:              p.Seat,
+		Life:              p.Life,
+		Poison:            p.Poison,
+		Energy:            p.Energy,
+		TurnsBegun:        p.TurnsBegun,
+		UpkeepsBegun:      p.UpkeepsBegun,
+		EndStepTurn:       p.EndStepTurn,
+		LastTurnAttacks:   append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:        p.Eliminated,
+		HandKept:          p.HandKept,
+		MulliganDecided:   p.MulliganDecided,
+		TriggerOrder:      p.TriggerOrder,
+		AutoAnswers:       copyAutoAnswers(p.AutoAnswers),
+		MulligansTaken:    p.MulligansTaken,
+		DeckImported:      p.DeckImported,
+		UndosRemaining:    p.UndosRemaining,
+		DiscordID:         p.DiscordID,
+		DiscordAvatarHash: p.DiscordAvatarHash,
+		DisplayName:       p.DisplayName,
+		IsBot:             p.IsBot,
+		BotTier:           p.BotTier,
+		BotDeck:           p.BotDeck,
+		Agent:             p.Agent,
+		AgentClient:       p.AgentClient,
+		CitysBlessing:     p.CitysBlessing,
 	}
 	out.Library = cloneZone(p.Library)
 	out.Hand = cloneZone(p.Hand)
@@ -698,10 +710,10 @@ func clonePlayer(p *Player) *Player {
 }
 
 // cloneCastPermissions deep-copies a player's granted permissions.
-// The only reference-typed fields are Cards and Faces, so two
+// The slice fields are Cards, Faces, PerType and PerTypeUsed, so four
 // reallocations per permission are the whole copy; everything else is
-// scalar, which is exactly the property that lets the snapshot mirror
-// the type rather than rebuild it.
+// scalar or never written through, which is exactly the property that
+// lets the snapshot mirror the type rather than rebuild it.
 func cloneCastPermissions(in []CastPermission) []CastPermission {
 	if len(in) == 0 {
 		return nil
@@ -714,6 +726,13 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 		}
 		if len(in[i].Faces) > 0 {
 			out[i].Faces = append([]int(nil), in[i].Faces...)
+		}
+		// #2167: the per-type budget and what it has spent.
+		if len(in[i].PerType) > 0 {
+			out[i].PerType = append([]string(nil), in[i].PerType...)
+		}
+		if len(in[i].PerTypeUsed) > 0 {
+			out[i].PerTypeUsed = append([]string(nil), in[i].PerTypeUsed...)
 		}
 	}
 	return out
@@ -819,6 +838,18 @@ func clonePickTargetFrame(f *pickTargetFrame) *pickTargetFrame {
 	out.picked = append([]TargetRef(nil), f.picked...)
 	out.modes = append([]int(nil), f.modes...)
 	out.dist = cloneDistributionLocked(f.dist)
+	return &out
+}
+
+// cloneCopyFrame gives an undo snapshot its own cursor and target list
+// for a CR 707.10c copy walk; the steps, originals, source and item it
+// only reads stay shared.
+func cloneCopyFrame(f *copyFrame) *copyFrame {
+	if f == nil {
+		return nil
+	}
+	out := *f
+	out.next = append([]TargetRef(nil), f.next...)
 	return &out
 }
 
@@ -988,23 +1019,23 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.ID = src.ID
 	g.CreatedAt = src.CreatedAt
 	g.State = src.State
-	// #1530: a seat's trigger-ordering preference is a setting, not a
+	// #1530, #1968: a seat's trigger-ordering preference is a setting, not a
 	// play. It is set without an undo entry, so the snapshot predates
 	// it; carry the live value across the restore (by player ID) so an
 	// undo of some earlier action cannot flip it back.
 	// ADR 0127 §8: so are its standing answers, by the same rule.
-	live := make(map[uuid.UUID]bool, len(g.Seats))
+	live := make(map[uuid.UUID]TriggerOrderMode, len(g.Seats))
 	liveAnswers := make(map[uuid.UUID]map[string]AutoAnswer, len(g.Seats))
 	for _, p := range g.Seats {
 		if p != nil {
-			live[p.ID] = p.TriggerOrderAlwaysAsk
+			live[p.ID] = p.TriggerOrder
 			liveAnswers[p.ID] = p.AutoAnswers
 		}
 	}
 	g.Seats = src.Seats
 	for _, p := range g.Seats {
 		if p != nil {
-			p.TriggerOrderAlwaysAsk = live[p.ID]
+			p.TriggerOrder = live[p.ID]
 			p.AutoAnswers = copyAutoAnswers(liveAnswers[p.ID])
 		}
 	}
@@ -1128,6 +1159,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	// it — see cloneLocked.
 	g.resolving = src.resolving
 	g.resolutionOpen = src.resolutionOpen
+	g.pausedModeWalk = src.pausedModeWalk
 	// The randomness rewinds with everything else: the key, the
 	// per-stream draw counters and the turn they belong to (ADR 0054
 	// Decision 4). Adopted like the other fields — src is consumed.

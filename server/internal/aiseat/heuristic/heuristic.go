@@ -207,6 +207,14 @@ type Config struct {
 	// also takes a mana source. Zero (the baseline) prices awaken at
 	// nothing, so the bot casts an awaken spell for its mana cost.
 	AwakenLandShare float64
+	// BestowShare prices a bestowed cast (ADR 0141, #2862): the share of
+	// the card's own body added for surviving its host as a creature
+	// (CR 702.103f), on top of the card's value without the
+	// summoning-sick discount when the host can attack now. A bestowed
+	// cast onto an opponent's creature hands them the bonus and is priced
+	// below nothing. Zero (the baseline) prices the bestowed target as
+	// any other pick, an opponent's creature as removal.
+	BestowShare float64
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -305,6 +313,50 @@ type Config struct {
 	// best single cast prices highest (ADR 0136 §1). Ten, so at most
 	// 1,024 sets. Zero or less considers every card on offer.
 	PlanMaxCards int
+	// PlanLandDropsAsRamp orders a permanent that declares extra land
+	// drops (purpose.extra_land_drops) with the plan's mana members,
+	// ahead of its draws, so a land a draw finds can still be played
+	// this turn (ADR 0136 §4, the amendment of 2026-10-08). Off (the
+	// zero value) orders it with the rest, as PR 4 shipped.
+	PlanLandDropsAsRamp bool
+	// PlanFilterLands makes a filter land (Flooded Grove's "{G/U}, {T}:
+	// Add {G}{G}, {G}{U}, or {U}{U}") a filter in the plan's mana model,
+	// as ADR 0136 §2 describes one, its input paid with the colours it
+	// names, instead of the plain {C} row that nets as much. Off (the
+	// zero value) models the land as its {C} row, as PR 4 shipped.
+	PlanFilterLands bool
+	// PlanRockTwoTurns weighs a mana source against the turn's chosen
+	// line over two turns when this turn's mana pays for one or the
+	// other, not both (ADR 0136's amendment of 2026-10-09, rocknow.go):
+	// the source now and what next turn's mana then buys with it,
+	// against the line now and what next turn's mana buys without it.
+	// Off (the zero value) takes the line, as PR 4b shipped.
+	PlanRockTwoTurns bool
+	// PlanNextTurnDiscount is what next turn's casts are worth, per
+	// point, against this turn's in that comparison.
+	PlanNextTurnDiscount float64
+	// IdleLateRocks casts a mana source with no open deficit in the
+	// turn's last main-phase window when nothing else on offer is priced
+	// above LeftoverThreshold, so its mana is not left unused (ADR 0126
+	// §2's amendment of 2026-10-09, rocknow.go). Off (the zero value)
+	// leaves it at its §2 price, below the bar.
+	IdleLateRocks bool
+	// PlanWeighTaxes weighs an opponent's optional mana tax (Rhystic
+	// Study's "pay {1}?", Smothering Tithe's "pay {2}?") against the
+	// turn plan's next member when paying would leave that member
+	// unpayable this turn, and declines when the member is worth more
+	// than what the tax prevents (ADR 0136's amendment of 2026-10-09,
+	// tax.go). Off (the zero value) pays every tax it can, as before.
+	PlanWeighTaxes bool
+	// PlanHoldInstants holds the turn plan's instant-speed members for
+	// the end step before the bot's turn, unless a later member needs
+	// their mana or they draw with mana left after them (ADR 0136 §5,
+	// owner answer 6, #2668, holdinstants.go). A held member keeps its
+	// mana reserved in the plan; when every member left is held the bot
+	// passes, and ADR 0126 §5 casts it in that end step. It also lets a
+	// land swap that nets lands (Harrow) be a plan member. Off (the zero
+	// value) casts instants like sorceries, as PR 4 shipped.
+	PlanHoldInstants bool
 
 	// FuelFloor is what a LAND in a graveyard or in exile is worth to
 	// its owner (#1013, fuel.go). The bottom of the scale: a land card
@@ -533,6 +585,7 @@ func DefaultConfig() Config {
 		DiscardWeight:       0.60,
 		TokenWeight:         0.50,
 		AwakenLandShare:     0.75,
+		BestowShare:         0.25,
 		PriceSweeps:         true,
 		DiscardCostByCard:   true,
 		LastLandDiscard:     1.00,
@@ -549,6 +602,15 @@ func DefaultConfig() Config {
 		DiscardLandFloor:    2.50,
 		PlanTurnMana:        true,
 		PlanMaxCards:        10,
+		PlanLandDropsAsRamp: true,
+		PlanFilterLands:     true,
+		// A quarter off next turn: see ADR 0136's amendment of
+		// 2026-10-09 for the reason.
+		PlanRockTwoTurns:     true,
+		PlanNextTurnDiscount: 0.75,
+		IdleLateRocks:        true,
+		PlanWeighTaxes:       true,
+		PlanHoldInstants:     true,
 
 		PricePutsFromHand:      true,
 		PriceOwnPermanentPicks: true,
@@ -657,6 +719,8 @@ func BaselineConfig() Config {
 	c.TokenWeight = 0
 	// ADR 0135 §3: awaken, priced at nothing before it.
 	c.AwakenLandShare = 0
+	// ADR 0141: bestow, priced as any other cast before it.
+	c.BestowShare = 0
 	// ADR 0129 §7: energy, priced at nothing before it.
 	c.Weights.Energy = 0
 	c.PriceSweeps = false
@@ -683,6 +747,14 @@ func BaselineConfig() Config {
 	// ADR 0136: the turn plan, which the pre-S66 heuristic never had.
 	c.PlanTurnMana = false
 	c.PlanMaxCards = 0
+	c.PlanLandDropsAsRamp = false
+	c.PlanFilterLands = false
+	c.PlanRockTwoTurns = false
+	c.PlanNextTurnDiscount = 0
+	// ADR 0126 §2's amendment of 2026-10-09: an idle late rock.
+	c.IdleLateRocks = false
+	c.PlanWeighTaxes = false
+	c.PlanHoldInstants = false
 	// #2680 and #2678: puts from hand, own-permanent picks and extra
 	// land drops.
 	c.PricePutsFromHand = false
@@ -712,6 +784,17 @@ type Policy struct {
 	// counted on, so one turn cannot count twice.
 	hopelessTurns int
 	hopelessTurn  int
+	// tail is the turn plan the last sorcery-speed window chose, kept
+	// for an opponent's tax prompt before the plan's next cast
+	// (Config.PlanWeighTaxes, tax.go).
+	tail *planTail
+	// heldThisTurn is the cards a plan chosen earlier this turn held for
+	// the end step before the bot's next one (Config.PlanHoldInstants,
+	// holdinstants.go).
+	heldThisTurn *turnHolds
+	// freeThisTurn is the free activations the policy chose this turn
+	// (#2777, free_repeat.go).
+	freeThisTurn *turnFreeActivations
 }
 
 // New returns a heuristic policy with the default tuning.
@@ -740,6 +823,9 @@ func (p *Policy) Reset() {
 	defer p.mu.Unlock()
 	p.agg.reset()
 	p.hopelessTurns, p.hopelessTurn = 0, 0
+	p.tail = nil
+	p.heldThisTurn = nil
+	p.freeThisTurn = nil
 }
 
 // state is everything one decision needs, computed once. Building it
@@ -970,6 +1056,9 @@ func (p *Policy) decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, 
 	}
 
 	d, plan := p.decideGeneral(ctx, st, in.Moves)
+	p.notePlan(st, in.Moves, plan)
+	p.noteHolds(st, in.Moves, plan)
+	p.noteFreeActivation(st, in.Moves, d)
 	return d, plan, nil
 }
 
@@ -1029,8 +1118,41 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		// the pass it stands in for.
 		passIdx = indexOfKind(moves, legal.KindFinishBlocks)
 	}
-	if d, plan, ok := p.decidePlan(ctx, st, moves, vals, best, bestVal, threshold, leftover); ok {
+	d, plan, pl, searched, chosen := p.decidePlan(ctx, st, moves, vals, best, bestVal, threshold, leftover)
+	if searched {
+		// ADR 0136's amendment of 2026-10-09: a mana source the turn's
+		// mana cannot pay for beside the chosen line, weighed against it
+		// over two turns (rocknow.go).
+		var line []int
+		lineVal := takeVal
+		switch {
+		case chosen:
+			for _, c := range pl.members {
+				line = append(line, c.index)
+			}
+			lineVal = pl.value
+		case take >= 0:
+			line = []int{take}
+		}
+		if d2, plan2, ok := p.decideRockNow(ctx, st, moves, vals, pl, line, lineVal, threshold, leftover); ok {
+			return d2, plan2
+		}
+	}
+	if chosen {
 		return d, plan
+	}
+	if p.holdRemainder(st, moves, vals, take) {
+		// ADR 0136 §5 and the owner's decision of 2026-10-09: what is
+		// left of this turn's plan is a member it held. It waits for
+		// the end step before the bot's turn, its mana kept up.
+		return holdDecision(moves, take, takeVal)
+	}
+	if take < 0 {
+		// ADR 0126 §2's amendment of 2026-10-09: a late mana source is
+		// cast with mana that would otherwise go unused.
+		if i := p.idleRock(st, moves, vals); i >= 0 {
+			return aiseat.Decision{Index: i, Reason: fmt.Sprintf("cast idle mana source, leftover mana (+%.2f)", p.cfg.LeftoverThreshold)}, nil
+		}
 	}
 	if take >= 0 {
 		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}, nil

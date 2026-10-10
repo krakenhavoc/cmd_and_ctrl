@@ -1000,6 +1000,15 @@ type ReplacementEvent struct {
 	LifePlayer uuid.UUID
 	LifeDelta  int
 
+	// LifeFromRadiation marks life lost "from radiation" (CR 728.1a):
+	// the loss the rad counters' inherent trigger causes
+	// (rad_counters.go, #2042). A replacement worded about radiation —
+	// Strong, the Brutish Thespian's "you gain life rather than lose
+	// life from radiation" — reads it; every other life replacement
+	// ignores it. The landed EventChangeLife carries it as
+	// Event.FromRadiation.
+	LifeFromRadiation bool
+
 	// lifeTail is the life half's answer to damageTail: the rest of
 	// the effect that asked for this change, run with the amount that
 	// actually moved once the pipeline settles. Set by the *Then*
@@ -1698,6 +1707,14 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		// only those are candidates on this pass. The rest are gathered
 		// again afterwards, against the new controller (CR 616.1f).
 		applicable = entryControlTier(applicable)
+		// CR 702.43a (#2012): a modular instance only adds counters to
+		// the entry, so it commutes with every other entry replacement
+		// and is applied alone rather than ordered.
+		if len(applicable) > 1 {
+			if i := firstModular(applicable); i >= 0 {
+				applicable = applicable[i : i+1]
+			}
+		}
 		// CR 702.136b (#1556): instances of one entry keyword — a
 		// printed riot and Rhythm of the Wild's — each work
 		// separately, and which is asked first changes nothing. The
@@ -1917,7 +1934,7 @@ func sameModification(applicable []activeReplacement) bool {
 // rather than quietly by deciding.
 func asksItsOwnQuestion(e ReplacementEffect) bool {
 	return e.Optional || e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.CopySelector != nil ||
-		e.entryKeyword == KeywordRiot
+		e.entryKeyword == KeywordRiot || e.entryKeyword == KeywordReadAhead
 }
 
 // declineIsReplace reports that this effect's Replace IS the "you
@@ -1937,8 +1954,14 @@ func asksItsOwnQuestion(e ReplacementEffect) bool {
 // entry_controller takes for the same situation. Riot is mandatory —
 // one of its two outcomes always happens — so skipping it would be a
 // third outcome the card never prints.
+//
+// Read ahead (CR 702.155b, #2123) is the fourth, for riot's reason: its
+// Replace is one lore counter, the answer that skips no chapter, and a
+// Saga that entered with none would be an outcome the rules never give
+// it.
 func declineIsReplace(e ReplacementEffect) bool {
-	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.entryKeyword == KeywordRiot
+	return e.EntryLifeCost > 0 || e.EntryCardChoice != nil || e.entryKeyword == KeywordRiot ||
+		e.entryKeyword == KeywordReadAhead
 }
 
 // skipOwnQuestionLocked settles an effect that asks its own question
@@ -1991,6 +2014,9 @@ func (g *Game) offerOwnQuestionLocked(ev *ReplacementEvent, chosen activeReplace
 	case chosen.effect.entryKeyword == KeywordRiot:
 		// Riot's counter or haste (CR 702.136a) — riot.go.
 		return g.offerEntryRiotLocked(ev, chosen), true
+	case chosen.effect.entryKeyword == KeywordReadAhead:
+		// Read ahead's starting chapter (CR 702.155b) — read_ahead.go.
+		return g.offerEntryReadAheadLocked(ev, chosen), true
 	case chosen.effect.Optional:
 		// A "may" (#847) — the owner decides each time. The two cases
 		// that decline it inline — a chooser who has left, an event
@@ -2362,6 +2388,9 @@ func (g *Game) gatherActiveReplacementsLocked(ev *ReplacementEvent) []activeRepl
 	// above because a keyword needs no catalog entry: the deck importer
 	// stamps a printed riot on the card itself.
 	out = g.gatherEntryKeywordReplacementsLocked(ev, applied, out)
+	// Read ahead (CR 702.155b, #2123), the same way: one replacement,
+	// since its instances are redundant (CR 702.155c).
+	out = g.gatherReadAheadReplacementLocked(ev, applied, out)
 
 	// Scoped replacements — the replacement mods of ScopedEffect
 	// records (ADR 0041 P8, tier 3b): Fog, a prevention shield, the

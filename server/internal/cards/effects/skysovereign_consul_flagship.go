@@ -37,7 +37,8 @@ func init() {
 			},
 			Targets: TargetPermanent("target creature or planeswalker an opponent controls",
 				Or(Creature(), Planeswalker()), OpponentControls()),
-			Key: "Skysovereign — 3 damage",
+			Key:     "Skysovereign — 3 damage",
+			Purpose: ForTargets(DamageToTarget(0, 3)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil

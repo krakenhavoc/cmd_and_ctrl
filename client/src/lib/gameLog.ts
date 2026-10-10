@@ -18,7 +18,7 @@ export interface LogGroup {
   // Stable key for the keyed each — the seq of the step entry, or 0
   // for the pre-history block.
   key: number;
-  // Header line ("Turn 7 — Aang · precombat main"), or null for
+  // Header line ("Turn 13 (round 7) — Aang · precombat main"), or null for
   // entries that arrived before the first step announcement in the
   // window the ring happens to hold.
   header: string | null;

@@ -30,6 +30,7 @@
     chooseSacrificeSetForMe,
     fillsEachOf,
     keepAvailablePicks,
+    sacrificeAllWarning,
     sacrificeCeiling,
     toggleSacrificePickInRange,
   } from "../../sacrificeCost";
@@ -74,6 +75,10 @@
     // pricer. Shown beside each option, so the player sees what each
     // creature saves.
     prices?: Record<string, AltCostPriceView>;
+    // #2097: the clause takes EVERY option ("sacrifice all creatures you
+    // control"). Nothing is picked: the list shows what goes, all of it
+    // marked, and the button confirms. onConfirm gets every option.
+    all?: boolean;
     onConfirm: (instanceIDs: string[]) => void;
     onCancel: () => void;
   }
@@ -89,6 +94,7 @@
     eachOf,
     castName,
     prices,
+    all = false,
     onConfirm,
     onCancel,
   }: Props = $props();
@@ -126,12 +132,15 @@
   });
 
   const ready = $derived(
-    canConfirmSacrificeRange(chosen, range, options.length) && fillsEachOf(chosen, eachOf),
+    all || (canConfirmSacrificeRange(chosen, range, options.length) && fillsEachOf(chosen, eachOf)),
   );
-  const short = $derived(options.length < range.min || !canFillEachOf(eachOf));
-  const chooseForMeButton = $derived(chooseForMeState(range.min, options.length));
+  const short = $derived(!all && (options.length < range.min || !canFillEachOf(eachOf)));
+  const chooseForMeButton = $derived(
+    all ? { shown: false, disabled: true } : chooseForMeState(range.min, options.length),
+  );
 
   function pick(id: string): void {
+    if (all) return;
     chosen = toggleSacrificePickInRange(chosen, id, ceiling, range.min);
   }
 
@@ -145,7 +154,7 @@
 
   function confirm(): void {
     if (!ready) return;
-    onConfirm([...chosen]);
+    onConfirm(all ? options.map((c) => c.instance_id) : [...chosen]);
   }
 
   const secondary = $derived<DockAction[]>([
@@ -173,10 +182,15 @@
     count={chooseForMeButton.shown
       ? `${chosen.length} / ${range.max > 0 ? range.max : `${range.min}+`} picked`
       : undefined}
-    primary={confirmAction(verb, confirm, { disabled: !ready })}
+    primary={confirmAction(all ? `${verb} all` : verb, confirm, { disabled: !ready })}
     {secondary}
   >
-    <p class="prompt-hint">{hint}</p>
+    {#if all}
+      <p class="prompt-hint">{label} to cast {source.name}.</p>
+      <p class="prompt-hint error">{sacrificeAllWarning(options.length)}</p>
+    {:else}
+      <p class="prompt-hint">{hint}</p>
+    {/if}
     {#if eachOf && eachOf.length > 0}
       <p class="prompt-hint">
         One permanent for each part: {eachOf.map((g) => g.label).join(", ")}.
@@ -187,7 +201,9 @@
     {:else if range.min === 0 && options.length > 0}
       <p class="prompt-hint">Pick as many as you like, or none.</p>
     {/if}
-    {#if options.length === 0}
+    {#if options.length === 0 && all}
+      <p class="prompt-hint">Nothing to sacrifice now: the cost is paid with nothing.</p>
+    {:else if options.length === 0}
       <p class="prompt-hint error">Nothing you control can pay this cost.</p>
     {:else}
       {#if short}
@@ -201,14 +217,14 @@
       {/if}
       <ul class="prompt-options">
         {#each options as c (c.instance_id)}
-          {@const on = chosen.includes(c.instance_id)}
+          {@const on = all || chosen.includes(c.instance_id)}
           <li>
             <button
               type="button"
               class="prompt-opt"
               class:on
               aria-pressed={on}
-              disabled={!on && ceiling > 1 && chosen.length >= ceiling}
+              disabled={all || (!on && ceiling > 1 && chosen.length >= ceiling)}
               onclick={() => pick(c.instance_id)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>

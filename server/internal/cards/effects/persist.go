@@ -14,7 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // its owner's control, which for a card from your own graveyard is
 // you (Zombify's shape, not Reanimate's).
 //
-// Sandbox simplification, declared (the Victimize posture): the
+// Sandbox simplification, declared (Victimize's old posture): the
 // engine's graveyard-return path has no "enters with counters" hook
 // for the RETURNING effect, so the creature enters without the
 // counter and receives it a beat later inside the same resolution.

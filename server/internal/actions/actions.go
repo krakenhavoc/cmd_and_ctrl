@@ -168,8 +168,12 @@ const (
 	// is active, the opening roll and the mulligan included; mints no
 	// undo entry (MintsNoUndo). The hub allows one per seat per 2 s.
 	TypeRollTableDie Type = "roll_table_die"
-	// #1530 — "Always ask me to order my triggers": a seat's own
-	// preference, params `{always_ask: bool}`. A setting, not a play:
+	// #1530, #1968 — when to ask a seat to order its triggers: a seat's
+	// own preference, params `{trigger_order: "when_it_matters" |
+	// "always" | "never"}`. The #1530 form `{always_ask: bool}` is still
+	// read for a client from before #1968: true is "always", false
+	// "when_it_matters"; trigger_order wins when both are sent. A
+	// setting, not a play:
 	// legal while the game is active (the opening roll included) and
 	// mints no undo entry (MintsNoUndo); undo carries it forward. Never
 	// a bot move — the enumerator does not offer it.
@@ -671,6 +675,11 @@ func dispatch(g *game.Game, a Action) error {
 			// Fuse casts both halves of a split card with fuse from
 			// hand (CR 702.102a, ADR 0103).
 			Fuse bool `json:"fuse,omitempty"`
+			// #2167 — the card type a play or cast through a per-type
+			// permission spends (Muldrotha, Aminatou's Augury): one of
+			// the card's `permission_types`. Absent is fine when there
+			// is only one to spend.
+			PermissionType string `json:"permission_type,omitempty"`
 			// CR 107.4 / CR 601.2b (#787) — how many of the cost's
 			// Phyrexian symbols are being paid with 2 life each
 			// instead of mana. Absent (0) pays every symbol with its
@@ -697,6 +706,7 @@ func dispatch(g *game.Game, a Action) error {
 			AlternativeCost: p.AlternativeCost,
 			Face:            p.Face,
 			Fuse:            p.Fuse,
+			PermissionType:  p.PermissionType,
 			PhyrexianLife:   p.PhyrexianLife,
 		}
 		if len(p.DiscardIDs) > 0 {
@@ -985,15 +995,27 @@ func dispatch(g *game.Game, a Action) error {
 			return ErrInvalidPlayer
 		}
 		var p struct {
-			AlwaysAsk *bool `json:"always_ask"`
+			TriggerOrder *string `json:"trigger_order"`
+			AlwaysAsk    *bool   `json:"always_ask"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
 		}
-		if p.AlwaysAsk == nil {
-			return fmt.Errorf("%w: %s always_ask", ErrMissingParams, a.Type)
+		switch {
+		case p.TriggerOrder != nil:
+			mode, err := game.ParseTriggerOrderMode(*p.TriggerOrder)
+			if err != nil {
+				return fmt.Errorf("%s: %w", a.Type, err)
+			}
+			return g.SetTriggerOrderPreference(a.Player, mode)
+		case p.AlwaysAsk != nil:
+			mode := game.TriggerOrderWhenItMatters
+			if *p.AlwaysAsk {
+				mode = game.TriggerOrderAlways
+			}
+			return g.SetTriggerOrderPreference(a.Player, mode)
 		}
-		return g.SetTriggerOrderPreference(a.Player, *p.AlwaysAsk)
+		return fmt.Errorf("%w: %s trigger_order", ErrMissingParams, a.Type)
 
 	case TypeSetAutoAnswers:
 		if a.Player == uuid.Nil {
@@ -1838,6 +1860,11 @@ func dispatch(g *game.Game, a Action) error {
 		// option_pick, routed by kind for the same reason.
 		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryController {
 			return g.ResolveEntryController(choiceID, a.Player, p.OptionIndex)
+		}
+		// #2123, CR 702.155b: read ahead's starting chapter. The same
+		// {option_index} payload; option N is chapter N+1.
+		if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceEntryReadAhead {
+			return g.ResolveEntryReadAhead(choiceID, a.Player, p.OptionIndex)
 		}
 		// #764, CR 603.3c: the mode of a modal triggered ability,
 		// chosen as the ability is put on the stack. Routed by kind

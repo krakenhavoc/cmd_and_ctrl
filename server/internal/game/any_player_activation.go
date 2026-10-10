@@ -49,10 +49,19 @@ import "github.com/google/uuid"
 // functions from a hidden zone, and Register refuses one that declares
 // a zone (checkAnyPlayerAbility in the effects package).
 //
+// A third named activator is the granting effect's "you" (ADR 0106 §1
+// amendment 2026-10-09, #1947): Martyrdom's granted "Only you may
+// activate this ability" is open to the player who controlled the spell
+// when it resolved, and to no one else, the creature's controller
+// included. The row cannot know that player, so `origin` (the row's
+// AbilityOrigin, parallel to the ability list) carries it. A
+// GrantorOnly row with no recorded grantor is open to nobody, which is
+// weaker than printed, never stronger.
+//
 // CanActivateAbilities (Arrest) and the board-wide gate are NOT asked
 // here. They restrict the object or the ability, not the activator, so
 // they apply to every player and are asked by each caller beside this.
-func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape) bool {
+func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbilityShape, origin AbilityOrigin) bool {
 	if zone == ZoneBattlefield {
 		switch {
 		case ab.AnyPlayer:
@@ -61,6 +70,8 @@ func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbili
 			return source.Controller != player
 		case ab.OwnerOnly:
 			return source.Owner == player
+		case ab.GrantorOnly:
+			return origin.Granted() && origin.Activator != uuid.Nil && origin.Activator == player
 		}
 		return source.Controller == player
 	}
@@ -68,10 +79,10 @@ func MayActivate(player uuid.UUID, source Card, zone ZoneKind, ab ActivatedAbili
 }
 
 // ReachesAcross reports whether the row names an activator other than
-// the plain controller: any player, only the controller's opponents, or
-// only the owner.
+// the plain controller: any player, only the controller's opponents,
+// only the owner, or only the player who granted the row.
 func (ab ActivatedAbilityShape) ReachesAcross() bool {
-	return ab.AnyPlayer || ab.OpponentsOnly || ab.OwnerOnly
+	return ab.AnyPlayer || ab.OpponentsOnly || ab.OwnerOnly || ab.GrantorOnly
 }
 
 // HasAnyPlayerAbility reports whether any activated ability `c` offers

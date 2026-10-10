@@ -723,3 +723,51 @@ This is a product decision the code and the rules do not settle. The ADR does no
    Rites) show as one row or two? Should a permanent carrying a granted ability get a board-level
    marker, or is the labelled row in its menu enough? *Working default until decided:* one row per
    grantor, labelled with the grantor's name, and no board marker (Decision 8).
+
+
+## Amendment 2026-10-09 — a bundle can be granted to a CLASS of planeswalkers (#2797, ADR 0140)
+
+Decision 10's loyalty exclusion was lifted by ADR 0109 §2 for an Aura that enchants one planeswalker.
+Reality Fracture prints the same grant to **every planeswalker its controller controls**: "Planeswalkers
+you control have '[−8]: Create an 8/8 blue Leviathan creature token with hexproof.'" (Kiora of Salt and
+Sand), and the same shape on Sanctum Lurker, Avatar of Burgeoning Echoes and the "Way of the …" cycle.
+
+Nothing in the engine changes. A bundle row with a `LoyaltyCost` is the recipient's row, so the walker
+pays the cost (CR 606.6) and CR 606.3's once-per-turn count is the walker's, shared with its printed rows
+and with every other grantor's, in either order. What the class form adds is the recipient predicate,
+read live every layer pass: a planeswalker that arrives after the grantor has the row at once, and one
+that leaves takes it with it. The card side is `effects.PlaneswalkersYouControl` and
+`effects.GrantAbilitiesToYourPlaneswalkers(keys…)` (`planeswalker_grants.go`).
+
+Pinned by `TestKioraGrantsTheLoyaltyAbilityToEveryPlaneswalkerYouControl` (mine, an opponent's, one that
+arrives later, the grantor leaving), `TestKioraGrantedMinusEightMakesALeviathan`,
+`TestClassGrantedLoyaltyAbilitySharesTheWalkersOncePerTurn` (three orders, including two grantors), and in
+`internal/legal` `TestEnumeratorOffersTheClassGrantedLoyaltyAbility` and `TestWireViewShowsTheClassGrantedLoyaltyRow`
+(the bot's list and the client's menu). A granted STATIC to planeswalkers (Tomik, Orzhov Lawmage's
+"No more than one creature can attack this planeswalker each combat") stays out of scope under Decision 10.
+
+## Amendment 2026-10-09 — a bundle can carry an attack limit (#2821)
+
+Tomik, Orzhov Lawmage reads 'Planeswalkers you control have "No more than one creature can attack this
+planeswalker each combat."' The amendment above left it out under Decision 10, as a granted static. It is
+not one in Decision 10's sense. Decision 10 refuses a granted `StaticAbility` because the layer pass gathers
+statics before layer 1, so one that only exists after layer 6 would never be gathered. An attack limit
+(`game.AttackLimit`, ADR 0045 Decisions 43-47) is not a layer effect: the attack check reads every limit live
+through `CatalogAttackLimits`, keyed by `catalogAbilityKeyOf`, and that key is already the recipient's
+composite key with its layer-6 grants on it.
+
+So the change is one bundle slot:
+
+- `AbilityGrant.AttackLimits []game.AttackLimit` (`cards/effects/ability_grant.go`), projected by
+  `buildGrantDef` and counted by `checkGrants` as an ability.
+- `mergeCatalogParts` (`game/copy_grants.go`) appends a bundle's `AttackLimits` to the merged definition,
+  as it does `LegendRuleExemptions`.
+
+The limit's source is the recipient, so `AttackLimitAttackingThis` counts attacks on the recipient and each
+planeswalker is limited on its own. The grant follows the layer pass: a walker that arrives later is limited
+at once, one that changes control stops being limited, and every limit ends when Tomik leaves. A
+`StaticAbility` in a layer-6 bundle is still refused.
+
+Pinned by `TestTomikLimitsEachOfYourPlaneswalkersToOneAttacker` (two walkers counted on their own, the
+player unlimited, and the enumerator agreeing with the verb at every target) and
+`TestTomikLimitEndsWithTomik`.

@@ -74,6 +74,47 @@ describe("opponents-only rows", () => {
   });
 });
 
+const martyr = (controller: string): CardView => ({
+  instance_id: "martyr",
+  name: "Martyr",
+  owner: ALICE,
+  controller,
+  type_line: "Creature — Test",
+  activated_abilities: [
+    row({ ref: "grant:martyrdom/redirect:0:0", grantor_only: true, activator: CARA }),
+  ],
+});
+
+describe("grantor-only rows (Martyrdom)", () => {
+  it("are the grantor's, whoever controls the permanent", () => {
+    const c = martyr(BOB);
+    expect(rowOpenToViewer(c.activated_abilities![0], c, CARA)).toBe(true);
+    expect(rowOpenToViewer(c.activated_abilities![0], c, BOB)).toBe(false);
+    expect(rowOpenToViewer(c.activated_abilities![0], c, ALICE)).toBe(false);
+  });
+
+  it("let the grantor open a permanent it does not control, and nobody else", () => {
+    expect(mayActivateAcross(martyr(BOB), CARA)).toBe(true);
+    expect(mayActivateAcross(martyr(BOB), ALICE)).toBe(false);
+    expect(menuAbilityRows(martyr(BOB), ALICE)).toEqual([]);
+  });
+
+  it("grey for the controller who is not the grantor, with a reason", () => {
+    const c = martyr(BOB);
+    expect(abilityRowBlocked(c.activated_abilities![0], "activated", ctx(c, BOB))).toBe(
+      ROW_NOT_OPEN_TO_YOU,
+    );
+    expect(abilityRowBlocked(c.activated_abilities![0], "activated", ctx(c, CARA))).not.toBe(
+      ROW_NOT_OPEN_TO_YOU,
+    );
+  });
+
+  it("are open to nobody when no activator was recorded", () => {
+    const c: CardView = { ...martyr(BOB), activated_abilities: [row({ grantor_only: true })] };
+    expect(rowOpenToViewer(c.activated_abilities![0], c, BOB)).toBe(false);
+  });
+});
+
 describe("owner-only rows", () => {
   it("are the owner's, not the thief's", () => {
     const c = incarnation(BOB);

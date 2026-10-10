@@ -406,6 +406,39 @@ describe("colour chosen before the tap (#1443)", () => {
     expect(opts.map((o) => o.colors)).toEqual([["G"], ["W"], ["U"], ["B"], ["R"]]);
   });
 
+  it("offers only pairs of different colours for two mana of different colors (#2558)", () => {
+    const five = ["W", "U", "B", "R", "G"];
+    const vessel = card({
+      name: "Firemind Vessel",
+      type_line: "Artifact",
+      mana_abilities: [
+        ability(0, {
+          produced: "{W|U|B|R|G:2}",
+          color_options: [five, five],
+          different_colors: true,
+        }),
+      ],
+    });
+    const opts = manaAbilityOptions(vessel);
+    expect(opts).toHaveLength(10);
+    for (const o of opts) {
+      expect(o.split).toBeFalsy();
+      expect(o.colors).toHaveLength(2);
+      expect(new Set(o.colors).size).toBe(2);
+      expect(o.symbols).toEqual(o.colors);
+    }
+    expect(opts[0]).toMatchObject({ colors: ["W", "U"], title: "Add {W}{U}" });
+    expect(manaClickPlan(vessel)?.kind).toBe("pick");
+  });
+
+  it("captions a different-colours ability without its count suffix (#2558)", () => {
+    const [opt] = manaAbilityOptions(
+      card({ mana_abilities: [ability(0, { produced: "{W|U|B|R|G:2}" })] }),
+    );
+    expect(opt.symbols).toEqual(["W", "U", "B", "R", "G"]);
+    expect(opt.caption).toBe("2 different colors");
+  });
+
   it("taps a one-colour answer at once and names the colour (mono-green Command Tower)", () => {
     const tower = card({
       name: "Command Tower",

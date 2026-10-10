@@ -43,6 +43,7 @@ func init() {
 				Label:   "{2}{R}: Zacama deals 3 damage to target creature.",
 				Cost:    ManaCost("{2}{R}"),
 				Targets: TargetCreature("target creature"),
+				Purpose: ForTargets(DamageToTarget(0, 3)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					id, ok := b16FirstLegalTargetCard(ctx)

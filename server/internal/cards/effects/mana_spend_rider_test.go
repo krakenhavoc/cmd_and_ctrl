@@ -588,3 +588,26 @@ func settleKeepingCopyTargets(t *testing.T, g *game.Game, caster, victim uuid.UU
 		t.Fatalf("answered %d copy-target prompts, want %d", answered, copies)
 	}
 }
+
+// #2876: the Halfling's caveat, pinned. With strict mana off the cast is
+// OnPaper (ADR 0068 §3): the engine never takes a token out of the pool,
+// so it cannot know the Halfling's mana paid for the spell, and "unknown
+// is never the stronger answer". Marking the spell uncounterable from the
+// mere presence of the Halfling's mana in the pool would be a guess that
+// can protect a spell the Halfling never paid for, so the spell stays
+// counterable and the card keeps its caveat.
+func TestDelightedHalflingWithStrictManaOffIsCounterable(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	advanceToMain(t, g)
+	halfling := seedPermanentWithOracle(g, me.ID, "Delighted Halfling", "Creature — Halfling Citizen", delightedHalflingOracl)
+	activateManaFor(t, g, me.ID, halfling, 1, game.ManaAbilityParams{Colors: []string{"G"}})
+
+	id := castFromHandForTest(t, g, me, "Yeva, Nature's Herald", "Legendary Creature — Elf Shaman", "{G}", "", game.CastSpellParams{})
+	if !g.StackMeta[id].Paid.OnPaper {
+		t.Fatal("setup: a permissive cast recorded a payment")
+	}
+	if counterByEffect(t, g, id) {
+		t.Error("a permissive-mode Halfling cast was uncounterable, which the caveat says it is not")
+	}
+}

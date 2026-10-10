@@ -12,10 +12,15 @@
 // Two questions now, over the same server-enumerated move list:
 //
 //   hasResponse — could the viewer answer what is happening? Counters,
-//     instants, non-mana abilities and special actions, each one a
-//     category the player can switch off. Mana and land never count.
+//     instants, targeted abilities, untargeted abilities and special
+//     actions, each one a category the player can switch off. Mana and
+//     land never count, and untargeted abilities are off by default
+//     (#2853).
 //   hasPlay — is there anything to do on a step the player ticked?
 //     A response, or a land, a sorcery-speed cast, a declaration.
+//
+// Both read the combat window (#2871): crewing a Vehicle, animating a
+// manland or granting flying is a response there and nowhere else.
 //
 // and one about the moment: keyWindow says whether the cursor is in a
 // window where a response is worth stopping for even without a tick.
@@ -25,19 +30,32 @@
 // autopassDecision.ts; this module only answers questions.
 
 import type { GameView, LegalMoveView } from "./protocol";
+import { attackersDefendedBy } from "./attackTargets";
 import { hasDeclaredAttackers, owesBlockDecision } from "./priority";
 import { ownsEveryStackItem } from "./holdPriority";
 import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 
 // MoveClass is what a move means to autopass.
-//   none        — pass, mana, and an activation of a permanent another
-//                 player controls (ADR 0106 §1): never a reason to hold.
+//   none        — pass, mana (but see ability), and an activation of a
+//                 permanent another player controls (ADR 0106 §1):
+//                 never a reason to hold.
 //   play        — a land, or a cast / activation in the viewer's own
 //                 sorcery window. Only ever counts on a ticked step.
 //   counter     — a cast or activation that targets the stack.
 //   instant     — any other cast (instant, flash, split second's
 //                 exceptions — whatever the enumerator offered).
-//   ability     — any other non-mana activated ability.
+//   ability     — any other activated ability that targets or protects
+//                 (#2853: `has_targets`, or `interacts`: a sacrifice
+//                 outlet, regeneration, a pump, a blink, a shield; a
+//                 mana ability only when it is a sacrifice outlet), or
+//                 one that changes a fight, in a combat window only
+//                 (#2871: `combat_interacts`: crew, a manland, a
+//                 granted keyword, an extra block; a creature token
+//                 only while the viewer defends, `combat_defender_only`).
+//   untargeted  — any other non-mana activated ability: pure value
+//                 like Mind Stone, a fetch land, a Clue, cycling. Its
+//                 own class so it does not count as a response by
+//                 default.
 //   special     — a CR 116.2 special action (foretell, suspend, …).
 //   declaration — an attack or a block.
 //   other       — a choice answer, a mulligan, a kind this client
@@ -48,15 +66,17 @@ export type MoveClass =
   | "counter"
   | "instant"
   | "ability"
+  | "untargeted"
   | "special"
   | "declaration"
   | "other";
 
-// ResponseCategories are the four gameplay.respond* toggles.
+// ResponseCategories are the five gameplay.respond* toggles.
 export interface ResponseCategories {
   counter: boolean;
   instant: boolean;
   ability: boolean;
+  untargeted: boolean;
   special: boolean;
 }
 
@@ -64,7 +84,17 @@ export const ALL_RESPONSES: ResponseCategories = {
   counter: true,
   instant: true,
   ability: true,
+  untargeted: true,
   special: true,
+};
+
+// DEFAULT_RESPONSES is what a player who never touched "Stop for"
+// gets (#2853, owner decision 1): an opponent's stack item stops you
+// for an instant, a counter, or an ability that targets or protects
+// (owner answer 2). A pure value ability is not interaction.
+export const DEFAULT_RESPONSES: ResponseCategories = {
+  ...ALL_RESPONSES,
+  untargeted: false,
 };
 
 // classifyMove sorts one enumerated move. `sorceryWindow` is "the
@@ -75,7 +105,14 @@ export const ALL_RESPONSES: ResponseCategories = {
 // An older server sends no `targets_stack`, so a counterspell there
 // reads as `instant`. With both categories on (the default) that
 // changes nothing; it only matters to a player who turned instants
-// off and kept counters on.
+// off and kept counters on. Nor does it send `has_targets`, so every
+// non-counter activation there reads as `untargeted`.
+//
+// `combat` is inCombatWindow: there, an activation the server marks
+// `combat_interacts` is an `ability`; elsewhere it is `untargeted`.
+// `defending` is isDefending: an activation also marked
+// `combat_defender_only` (a creature-token maker) is an `ability` only
+// when the viewer is being attacked as well (owner answer, #2871).
 //
 // ADR 0106 §1 decision 7 (owner decision 1, #1793): `controllers` maps
 // a battlefield permanent's instance ID to its controller, and `me` is
@@ -92,21 +129,32 @@ export function classifyMove(
   sorceryWindow: boolean,
   controllers?: ReadonlyMap<string, string>,
   me?: string | null,
+  combat = false,
+  defending = false,
 ): MoveClass {
   if (m.kind === "activate" && controllers && me && activatesAcross(m, controllers, me)) {
     return "none";
   }
   switch (m.kind) {
     case "pass":
-    case "mana":
       return "none";
+    case "mana":
+      // #2853: a sacrifice outlet that makes mana (Ashnod's Altar)
+      // still answers removal. Never a play: it is not why the viewer
+      // stopped on their own main phase.
+      return m.interacts && !sorceryWindow ? "ability" : "none";
     case "land":
       return "play";
     case "cast":
     case "activate":
       if (sorceryWindow) return "play";
       if (m.targets_stack) return "counter";
-      return m.kind === "cast" ? "instant" : "ability";
+      if (m.kind === "cast") return "instant";
+      if (m.has_targets || m.interacts) return "ability";
+      if (combat && m.combat_interacts && (!m.combat_defender_only || defending)) {
+        return "ability";
+      }
+      return "untargeted";
     case "special_action":
       return "special";
     // #1501: finishing a block declaration is part of the declaration.
@@ -143,6 +191,40 @@ export function battlefieldControllers(
   return out;
 }
 
+// COMBAT_STEPS are the steps where a combat ability is a response
+// (#2871): the last moment to make a blocker or an attacker, and the
+// two declarations. Combat damage and end of combat are too late.
+const COMBAT_STEPS: ReadonlySet<string> = new Set([
+  "begin_combat",
+  "declare_attackers",
+  "declare_blockers",
+]);
+
+// ATTACK_OR_BLOCK names a stack item about an attack or a block: an
+// attack trigger, a "whenever this blocks" trigger.
+const ATTACK_OR_BLOCK = /\b(attack|attacks|attacking|attacked|block|blocks|blocking|blocked)\b/i;
+
+// inCombatWindow reports whether a combat ability counts as a response
+// now (#2871): beginning of combat, declare attackers or declare
+// blockers, or an attack or block trigger on the stack. Elsewhere a
+// board of them would stop the viewer on every spell.
+export function inCombatWindow(view: GameView | null | undefined): boolean {
+  if (!view) return false;
+  if (COMBAT_STEPS.has(view.turn?.step ?? "")) return true;
+  return (view.stack_items ?? []).some(
+    (it) => it.kind !== "spell" && ATTACK_OR_BLOCK.test(it.label ?? ""),
+  );
+}
+
+// isDefending reports whether the viewer is a defending player in this
+// combat (#2871): a creature is attacking them, or a planeswalker or
+// battle they defend. A creature token is a blocker, so a token maker
+// counts as a response only then.
+export function isDefending(view: GameView | null | undefined, me: string | null): boolean {
+  if (!view || !me) return false;
+  return attackersDefendedBy(view, me).length > 0;
+}
+
 // inSorceryWindow: the viewer's own main phase, stack empty.
 export function inSorceryWindow(view: GameView | null | undefined, me: string | null): boolean {
   return isActivePlayer(view, me) && isMainPhase(view) && stackEmpty(view);
@@ -156,6 +238,8 @@ function isEnabledResponse(c: MoveClass, cats: ResponseCategories): boolean {
       return cats.instant;
     case "ability":
       return cats.ability;
+    case "untargeted":
+      return cats.untargeted;
     case "special":
       return cats.special;
     default:
@@ -178,8 +262,12 @@ export function hasResponse(
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);
+  const combat = inCombatWindow(view);
+  const defending = isDefending(view, me);
   const controllers = battlefieldControllers(view);
-  return moves.some((m) => isEnabledResponse(classifyMove(m, sw, controllers, me), cats));
+  return moves.some((m) =>
+    isEnabledResponse(classifyMove(m, sw, controllers, me, combat, defending), cats),
+  );
 }
 
 // hasPlay reports whether a ticked step has anything in it for the
@@ -203,9 +291,11 @@ export function hasPlay(
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);
+  const combat = inCombatWindow(view);
+  const defending = isDefending(view, me);
   const controllers = battlefieldControllers(view);
   return moves.some((m) => {
-    const c = classifyMove(m, sw, controllers, me);
+    const c = classifyMove(m, sw, controllers, me, combat, defending);
     if (c === "play" || c === "declaration" || c === "other") return true;
     return isEnabledResponse(c, cats);
   });

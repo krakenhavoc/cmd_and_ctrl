@@ -154,6 +154,41 @@ type Move struct {
 	// targetsStackObject.
 	TargetsStack bool `json:"targets_stack,omitempty"`
 
+	// HasTargets is true when this move chooses at least one target, on
+	// the stack or anywhere else. It is what lets the
+	// client's smart autopass tell an activated ability that answers
+	// something (Prodigal Sorcerer, an outlet that exiles a target) from
+	// an untargeted value ability (Mind Stone, a fetch land, a Clue,
+	// cycling), which is no reason to stop on an opponent's spell
+	// (#2853). Like TargetsStack it is per ANNOUNCEMENT, so a modal move
+	// with a targeted and an untargeted mode ships both, correctly split.
+	HasTargets bool `json:"has_targets,omitempty"`
+
+	// Interacts is true on an activation (or a mana ability) with no
+	// target that can still answer something on the stack: a sacrifice
+	// outlet, regeneration, protection or indestructible, phasing, a
+	// blink, damage prevention, a pump or counters (#2853, owner answer
+	// 2). Smart autopass stops for it as it does for a targeted ability.
+	// Pure value (draw, mana, a fetch, tokens, scry) never sets it. See
+	// abilityInteracts.
+	Interacts bool `json:"interacts,omitempty"`
+
+	// CombatInteracts is true on an activation with no target that
+	// changes attacks or blocks without answering a spell: crew, a
+	// manland or an animated artifact, a granted evasion or combat
+	// keyword, "can block an additional creature", a creature token
+	// (#2871). Smart autopass counts it only in a combat window, so it
+	// is a bit of its own rather than part of Interacts. Never set
+	// alongside Interacts. See abilityCombatKind.
+	CombatInteracts bool `json:"combat_interacts,omitempty"`
+
+	// CombatDefenderOnly narrows CombatInteracts: the ability makes a
+	// creature token (or populates, or amasses), which matters only as
+	// a blocker, so smart autopass counts it only while the viewer is
+	// a defending player in this combat (owner answer, #2871). Only
+	// ever set alongside CombatInteracts.
+	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
+
 	// IdleHint is set on a LEGAL cast that would do nothing if it
 	// resolved on the board as it stands, and says why, for the player:
 	// "Overloaded, this does nothing right now: there's no spell you
@@ -273,7 +308,7 @@ type MoveCost struct {
 	Counters []CounterPrice `json:"counters,omitempty"`
 
 	// Mana is a mana cost string the move charges that `params`
-	// cannot name. Two kinds of move carry it:
+	// cannot name. Three kinds of move carry it:
 	//
 	//   - An attack: the CR 508.1a attack tax (ADR 0080, #1063), "{2}"
 	//     for an attack into Propaganda. An attack has no printed cost,
@@ -292,6 +327,10 @@ type MoveCost struct {
 	//     are struck (they are on Life); the rest render as their
 	//     coloured half, because the move pays them with mana. "{0}"
 	//     for a cast that charges no mana. See castManaCost.
+	//   - An option_pick answer whose option costs mana (#2854):
+	//     Winter's Chill's "pay {2}" carries "{2}". `params` names only
+	//     the option's index; the engine pays the cost when it is
+	//     chosen.
 	//
 	// A cost STRING rather than a number because that is what the
 	// engine charges and concatenates ("{2}{2}" for two taxes), and a
@@ -756,6 +795,13 @@ type enumerator struct {
 	// finding out what a cap cut. EnumerateFor — the bot — leaves it
 	// off and pays nothing for the report it would throw away.
 	report bool
+	// permType is the card type the casts being expanded announce under
+	// a per-type permission (#2167, CastSpellParams.PermissionType), set
+	// by castMovesFromZone around each castMovesForCard and empty
+	// everywhere else. A field rather than a parameter because the
+	// expansion it rides is four calls deep and every one of them would
+	// pass it on untouched.
+	permType string
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the
@@ -814,6 +860,13 @@ func isActiveSeat(g *game.Game, seat uuid.UUID) bool {
 // halves resolve through TargetCard, exactly as specMatchLocked reads
 // them in internal/game — so any non-card ref (player, self, none)
 // is skipped outright.
+// hasTargets reports whether an announcement chose any target at all:
+// refs are the move's chosen targets, so an empty list is a move with
+// no target clause.
+func hasTargets(refs []game.TargetRef) bool {
+	return len(refs) > 0
+}
+
 func targetsStackObject(g *game.Game, refs []game.TargetRef) bool {
 	for _, r := range refs {
 		if r.Kind != game.TargetCard {

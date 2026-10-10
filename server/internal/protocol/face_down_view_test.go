@@ -302,6 +302,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Solved:            true,
 		Harnessed:         true,
 		Monstrous:         true,
+		Renowned:          true,
 		Saddled:           true,
 		RingBearer:        true,
 		Suspected:         true,
@@ -315,6 +316,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		NamedTribe:    "Elf",
 		ChosenName:    "Sol Ring",
 		ChosenOption:  "Khans",
+		ChosenNumber:  7,
 		ManaCost:      "{2}{U}",
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		// ADR 0093: the granted-ability text list. Redacted with the
@@ -402,6 +404,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		TapCost:                 &TapCostView{Key: "convoke", Options: lt},
 		Delve:                   &DelveView{Options: lt, Max: 1},
 		TargetCostNotes:         []string{"This spell costs {1} more to cast for each target beyond the first."},
+		PermissionTypes:         []string{"artifact", "creature"},
 		PhyrexianSymbols:        1,
 		PhyrexianGranted:        1,
 		CastableHere:            true,
@@ -412,6 +415,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		CantCast: "Each player can't cast more than one spell each turn.",
 		// #1389: the viewer's own exile price list.
 		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Energy: 1, Printed: true}},
+		// #2581: the viewer's own printed X ceiling.
+		XMax: new(int),
 	}
 }
 
@@ -809,6 +814,11 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	// #1389: what the asking seat would be charged. A cost modifier
 	// may be scoped to one player, so it is theirs alone.
 	"CastPrices": surfacePrivate,
+	// #2581: a count read off the asking seat's board.
+	"XMax": surfacePrivate,
+	// #2167: which types a per-type permission leaves is the holder's
+	// own budget.
+	"PermissionTypes": surfacePrivate,
 	// #1169: cost-shaped facts about the card. Public on a public
 	// pile — an escape offer is priced by a graveyard everybody can
 	// count — and not on a hand card the viewer was shown one of.

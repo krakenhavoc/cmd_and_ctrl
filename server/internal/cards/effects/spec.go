@@ -1095,6 +1095,17 @@ type Spec struct {
 	// game.CatalogLegendRuleExemptions, keyed by CatalogAbilityKey.
 	LegendRuleExemptions []game.LegendRuleExemption
 
+	// ZeroLoyaltyExemptions declares a printed "planeswalkers you
+	// control aren't put into their owners' graveyards for having 0
+	// loyalty" static (CR 704.5i, #2797):
+	//
+	//	ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty(), // Sanctum Lurker
+	//
+	// Read from the battlefield by the state-based pass whenever it meets
+	// a planeswalker with no loyalty, through
+	// game.CatalogZeroLoyaltyExemptions, keyed by CatalogAbilityKey.
+	ZeroLoyaltyExemptions []game.ZeroLoyaltyExemption
+
 	// OpponentEffectProtections declares a printed "spells and abilities
 	// your opponents control can't cause you to discard cards / sacrifice
 	// permanents" static (#2178):
@@ -1469,6 +1480,18 @@ type Spec struct {
 	// shuffle and its {X} look) are never confused by one flag.
 	XMatters bool
 
+	// XCeiling is the spell's printed "X can't be greater than
+	// <count>" — Winter's Chill's "the number of snow lands you
+	// control", Open the Way's "the number of players in the game"
+	// (#2581, CR 107.3a, 601.2b). The count is read once, as X is
+	// announced: the cast is refused above it, the legal-move
+	// enumerator never offers more, and the client's X picker stops
+	// at it. A count that changes once the spell is cast changes
+	// nothing about its X. See game/x_ceiling.go, and the declared
+	// ceilings in x_ceiling.go here. Spells only; nil for nearly every
+	// card.
+	XCeiling *game.XCeiling
+
 	// Discovers declares that the card's text discovers (CR 701.57, ADR
 	// 0099) — that some effect of the card calls Discover or DiscoverN.
 	// Nothing in the engine reads it: discover is an instruction inside
@@ -1589,6 +1612,12 @@ type ActivatedAbility struct {
 	// game.ActivatedAbilityShape.OpponentsOnly.
 	OpponentsOnly bool
 	OwnerOnly     bool
+	// GrantorOnly is "Only you may activate this ability" on a row of an
+	// AbilityGrant bundle (Martyrdom): the only activator is the "you" of
+	// the effect that granted the row, whoever controls the creature now.
+	// Register refuses it outside a bundle and beside the other named
+	// activators. See game.ActivatedAbilityShape.GrantorOnly.
+	GrantorOnly bool
 	// Purpose is what the ability does, as printed amounts, for the bot
 	// (ADR 0126 §6): a loot's {Draws: 1, Discards: 1}, a sweep. On an
 	// AnyPlayer row it is also what the row buys an activator who does

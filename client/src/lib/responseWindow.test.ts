@@ -2,10 +2,13 @@ import { describe, it, expect } from "vitest";
 
 import {
   ALL_RESPONSES,
+  DEFAULT_RESPONSES,
   classifyMove,
   hasPlay,
   hasResponse,
+  inCombatWindow,
   inSorceryWindow,
+  isDefending,
   keyWindow,
   type ResponseCategories,
 } from "./responseWindow";
@@ -102,6 +105,7 @@ const only = (k: keyof ResponseCategories): ResponseCategories => ({
   counter: false,
   instant: false,
   ability: false,
+  untargeted: false,
   special: false,
   [k]: true,
 });
@@ -129,9 +133,23 @@ describe("classifyMove", () => {
     expect(classifyMove(move("activate", { targets_stack: true }), false)).toBe("counter");
   });
 
-  it("any other cast is an instant, any other activation an ability", () => {
+  it("any other cast is an instant, targeted or not", () => {
     expect(classifyMove(move("cast"), false)).toBe("instant");
-    expect(classifyMove(move("activate"), false)).toBe("ability");
+    expect(classifyMove(move("cast", { has_targets: true }), false)).toBe("instant");
+  });
+
+  it("#2853: an activation is an ability when it targets, untargeted when it does not", () => {
+    expect(classifyMove(move("activate", { has_targets: true }), false)).toBe("ability");
+    expect(classifyMove(move("activate"), false)).toBe("untargeted");
+    // Owner answer 2: an untargeted answer is an ability too.
+    expect(classifyMove(move("activate", { interacts: true }), false)).toBe("ability");
+    expect(classifyMove(move("activate", { interacts: true }), true)).toBe("play");
+    // An older server sends neither bit.
+    expect(classifyMove(move("activate", { has_targets: undefined }), false)).toBe("untargeted");
+    // A counter is a counter, whatever has_targets says.
+    expect(classifyMove(move("activate", { targets_stack: true, has_targets: true }), false)).toBe(
+      "counter",
+    );
   });
 
   it("an older server with no targets_stack reads a counterspell as an instant", () => {
@@ -184,7 +202,8 @@ describe("hasResponse", () => {
     const rows: [LegalMoveView, keyof ResponseCategories][] = [
       [move("cast", { targets_stack: true }), "counter"],
       [move("cast"), "instant"],
-      [move("activate"), "ability"],
+      [move("activate", { has_targets: true }), "ability"],
+      [move("activate"), "untargeted"],
       [move("special_action"), "special"],
     ];
     for (const [m, k] of rows) {
@@ -215,13 +234,93 @@ describe("hasResponse", () => {
   });
 });
 
+// #2853, owner decision 1: an opponent's stack item stops you only for
+// real interaction. The issue's board: three Forests, Llanowar Elves,
+// Mind Stone and Evolving Wilds, with an opponent's spell on the stack.
+describe("hasResponse — #2853's default categories on an opponent's stack item", () => {
+  const onOppStack = (moves: LegalMoveView[]) =>
+    snap({ step: "precombat_main", active: 1, holder: 0, moves, stackItems: [stackItem("p1")] });
+  const valueBoard = [
+    pass,
+    move("mana", { source: "forest-1" }),
+    move("mana", { source: "forest-2" }),
+    move("mana", { source: "forest-3" }),
+    move("mana", { source: "elves" }),
+    move("mana", { source: "mind-stone" }),
+    move("activate", { source: "mind-stone", label: "Mind Stone: draw a card" }),
+    move("activate", { source: "evolving-wilds", label: "Evolving Wilds: search" }),
+  ];
+
+  it("the Mind Stone / Evolving Wilds board has no response by default", () => {
+    expect(hasResponse(onOppStack(valueBoard), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  it("the old behaviour comes back with untargeted abilities ticked", () => {
+    expect(
+      hasResponse(onOppStack(valueBoard), "p0", { ...DEFAULT_RESPONSES, untargeted: true }),
+    ).toBe(true);
+  });
+
+  it("cycling from hand is an untargeted activation and does not stop you", () => {
+    const cycling = move("activate", { source: "hand-card", label: "Cycle Lonely Sandbar" });
+    expect(hasResponse(onOppStack([pass, cycling]), "p0", DEFAULT_RESPONSES)).toBe(false);
+  });
+
+  // Owner answer 2: an untargeted ability that can answer the stack
+  // still stops you. The server marks it `interacts`.
+  it("a sacrifice outlet, a regeneration shield and a pump hold", () => {
+    for (const [source, label] of [
+      ["viscera-seer", "Viscera Seer: Sacrifice a creature: Scry 1."],
+      ["undercity-troll", "Undercity Troll: {2}{G}: Regenerate this creature."],
+      ["evernight-shade", "Evernight Shade: {B}: This creature gets +1/+1 until end of turn."],
+    ]) {
+      const m = move("activate", { source, label, interacts: true });
+      expect(hasResponse(onOppStack([...valueBoard, m]), "p0", DEFAULT_RESPONSES), source).toBe(
+        true,
+      );
+    }
+  });
+
+  it("a mana ability that is a sacrifice outlet holds; plain mana does not", () => {
+    const altar = move("mana", { source: "ashnods-altar", interacts: true });
+    expect(hasResponse(onOppStack([...valueBoard, altar]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    expect(classifyMove(altar, true)).toBe("none");
+    expect(classifyMove(move("mana"), false)).toBe("none");
+  });
+
+  it("an ability that targets holds", () => {
+    const ping = move("activate", { source: "pinger", has_targets: true });
+    expect(hasResponse(onOppStack([...valueBoard, ping]), "p0", DEFAULT_RESPONSES)).toBe(true);
+  });
+
+  it("an instant holds, targeted or not", () => {
+    for (const extras of [{}, { has_targets: true }]) {
+      const inst = move("cast", { source: "instant", ...extras });
+      expect(hasResponse(onOppStack([...valueBoard, inst]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    }
+  });
+
+  it("a counter holds, cast or activated", () => {
+    for (const kind of ["cast", "activate"] as const) {
+      const counter = move(kind, { source: "counter", targets_stack: true, has_targets: true });
+      expect(hasResponse(onOppStack([...valueBoard, counter]), "p0", DEFAULT_RESPONSES)).toBe(true);
+    }
+  });
+});
+
 describe("hasPlay", () => {
   it("a land is a play in the viewer's own main phase", () => {
     expect(hasPlay(snap({ moves: [pass, move("land")] }), "p0", ALL_RESPONSES)).toBe(true);
   });
 
   it("a sorcery-speed cast is a play even with every response category off", () => {
-    const none = { counter: false, instant: false, ability: false, special: false };
+    const none = {
+      counter: false,
+      instant: false,
+      ability: false,
+      untargeted: false,
+      special: false,
+    };
     expect(hasPlay(snap({ moves: [pass, move("cast")] }), "p0", none)).toBe(true);
   });
 
@@ -282,8 +381,8 @@ describe("keyWindow", () => {
 describe("an activation of another player's permanent", () => {
   const xantcha = card("xantcha", { owner: "p1", controller: "p1" });
   const mine = card("mine");
-  const across = move("activate", { source: "xantcha" });
-  const own = move("activate", { source: "mine" });
+  const across = move("activate", { source: "xantcha", has_targets: true });
+  const own = move("activate", { source: "mine", has_targets: true });
   const board = [xantcha, mine];
 
   it("classifies as none with the frame's controllers, and as before without them", () => {
@@ -297,7 +396,7 @@ describe("an activation of another player's permanent", () => {
     // The existing two-argument call is unchanged.
     expect(classifyMove(across, false)).toBe("ability");
     // A source the map does not know keeps today's class.
-    const elsewhere = move("activate", { source: "elsewhere" });
+    const elsewhere = move("activate", { source: "elsewhere", has_targets: true });
     expect(classifyMove(elsewhere, false, controllers, "p0")).toBe("ability");
   });
 
@@ -324,5 +423,96 @@ describe("an activation of another player's permanent", () => {
       battlefield: board,
     });
     expect(hasResponse(s, "p1", ALL_RESPONSES)).toBe(true);
+  });
+});
+
+// #2871: a combat ability is a response in a combat window only.
+describe("combat_interacts", () => {
+  const crew = move("activate", { source: "copter", combat_interacts: true });
+
+  it("classifies as ability in combat and untargeted elsewhere", () => {
+    expect(classifyMove(crew, false, undefined, undefined, true)).toBe("ability");
+    expect(classifyMove(crew, false, undefined, undefined, false)).toBe("untargeted");
+    expect(classifyMove(crew, false)).toBe("untargeted");
+    // The viewer's own main phase: a play, as any activation is.
+    expect(classifyMove(crew, true, undefined, undefined, true)).toBe("play");
+  });
+
+  it("inCombatWindow: beginning of combat, attackers and blockers, nothing later", () => {
+    for (const step of ["begin_combat", "declare_attackers", "declare_blockers"]) {
+      expect(inCombatWindow(snap({ step })), step).toBe(true);
+    }
+    for (const step of ["upkeep", "precombat_main", "combat_damage", "end_combat", "end"]) {
+      expect(inCombatWindow(snap({ step })), step).toBe(false);
+    }
+  });
+
+  it("inCombatWindow: an attack or block trigger on the stack, not a spell", () => {
+    const trig = (label: string, kind: StackItemView["kind"] = "triggered"): StackItemView => ({
+      ...stackItem("p1"),
+      kind,
+      label,
+    });
+    const at = (it: StackItemView) => inCombatWindow(snap({ step: "end", stackItems: [it] }));
+    expect(at(trig("Whenever this creature blocks, it gets +1/+1."))).toBe(true);
+    expect(at(trig("Whenever a creature attacks you, draw a card."))).toBe(true);
+    expect(at(trig("At the beginning of your end step, draw a card."))).toBe(false);
+    expect(at(trig("Blocking Party", "spell"))).toBe(false);
+  });
+
+  it("hasResponse counts it at declare blockers and not on an opponent's main phase", () => {
+    const blockers = snap({ step: "declare_blockers", active: 1, moves: [pass, crew] });
+    expect(hasResponse(blockers, "p0", DEFAULT_RESPONSES)).toBe(true);
+    const main = snap({
+      step: "precombat_main",
+      active: 1,
+      moves: [pass, crew],
+      stackItems: [stackItem("p1")],
+    });
+    expect(hasResponse(main, "p0", DEFAULT_RESPONSES)).toBe(false);
+    // With value abilities ticked it counts anywhere, as before.
+    expect(hasResponse(main, "p0", { ...DEFAULT_RESPONSES, untargeted: true })).toBe(true);
+  });
+
+  // Owner answer (#2871): a creature-token maker is a blocker, so it
+  // counts only while the viewer is being attacked.
+  const tokens = move("activate", {
+    source: "castle",
+    combat_interacts: true,
+    combat_defender_only: true,
+  });
+  const attacker = (target: string, defending: string = target): CardView =>
+    card("attacker", {
+      owner: "p1",
+      controller: "p1",
+      attacking_target: target,
+      defending_player: defending,
+    });
+
+  it("classifies a token maker as ability only when defending", () => {
+    expect(classifyMove(tokens, false, undefined, undefined, true, true)).toBe("ability");
+    expect(classifyMove(tokens, false, undefined, undefined, true, false)).toBe("untargeted");
+    expect(classifyMove(tokens, false, undefined, undefined, false, true)).toBe("untargeted");
+    // A crew is not narrowed.
+    expect(classifyMove(crew, false, undefined, undefined, true, false)).toBe("ability");
+  });
+
+  it("isDefending: a creature attacks me, or a planeswalker I defend", () => {
+    expect(isDefending(snap({ battlefield: [attacker("p0")] }), "p0")).toBe(true);
+    expect(isDefending(snap({ battlefield: [attacker("pw-1", "p0")] }), "p0")).toBe(true);
+    expect(isDefending(snap({ battlefield: [attacker("p2")] }), "p0")).toBe(false);
+    expect(isDefending(snap({ battlefield: [] }), "p0")).toBe(false);
+  });
+
+  it("a token maker stops me when I am attacked, not when another player is", () => {
+    const at = (target: string) =>
+      snap({
+        step: "declare_attackers",
+        active: 1,
+        moves: [pass, tokens],
+        battlefield: [attacker(target)],
+      });
+    expect(hasResponse(at("p0"), "p0", DEFAULT_RESPONSES)).toBe(true);
+    expect(hasResponse(at("p2"), "p0", DEFAULT_RESPONSES)).toBe(false);
   });
 });

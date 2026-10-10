@@ -4607,3 +4607,89 @@ picked on the board the way a battlefield `choose_cards` is
 (`isBoardPickedCardSetKind`), because a seat has no card to click there.
 The wire's non-chooser view is the same as the chooser's: counters are on
 the table.
+
+## Amendment (2026-10-09) — graveyard cards chosen after a sacrifice (#2863)
+
+§5x gave a prompted sacrifice a continuation, and §5x item 6 converted
+Rise of the Witch-king and Lich-Knights' Conquest to read the run's
+answer. It did not move the OTHER choice those cards make. Both printed
+cards return cards from your graveyard that are chosen as the spell
+resolves, after the sacrifice; both picked them as targets at cast,
+because no card had yet put a graveyard pick inside a continuation.
+Victimize sacrificed as a cast cost, from the time before §5x, when a
+cost was the only sacrifice with a choice in it. Three caveats followed:
+opponents saw the picks and could respond to them; the creature you
+sacrificed could never be the card that came back; and Victimize could
+not be cast with no creature, and its sacrifice's death triggers
+resolved before it did.
+
+**1. The order is the printed order (CR 608.2c).** The sacrifice
+happens, the continuation runs once it has landed (§5x item 3), and only
+then is the graveyard read. Whatever the sacrifice put there is on
+offer. Nothing about this needs a new engine piece: the continuation is
+§5x's, and the pick is the existing `choose_cards` prompt with its
+`Then`, queued from inside it, with `Zone: ZoneGraveyard` so a card that
+leaves while the question is open is refused on submit.
+
+**2. One shape for the catalog.** `effects.ReturnChosenFromGraveyard`
+(`cards/effects/graveyard_return_together.go`) is "return N cards of a
+kind from your graveyard to the battlefield", chosen when it runs:
+`Match` narrows the permanent cards on offer (a token is never one: it
+has ceased to exist), `Min` and `Max` bound the pick, `Except`
+is "another", and `Tapped` is the printed "tapped". The chosen cards
+enter together through `ReturnFromGraveyardTogether` (#1867). With
+nothing on offer there is no prompt. A mandatory "that many" with too
+few cards takes all of them (CR 608.2: the queue clamps `Min` to the
+offer). `Destination` is declared (`battlefield`, #2680's vocabulary),
+and the heuristic already scores a pick from its own graveyard as cards
+it gets (`valueTakenFromGraveyard`, #2523), so a bot takes the return.
+It is not a target: no card is announced at cast, and the spell cannot
+fizzle for want of one.
+
+**3. The three cards.**
+
+- **Victimize** keeps its two targets at cast (they ARE targets), and
+  its sacrifice is a one-seat `PlayerSacrificesThenForEffect` run on
+  resolution. "If you do" is `Sacrificed(controller)`; the targets are
+  re-checked then. It can be cast with no creature and does nothing, a
+  countered Victimize costs no creature, and the creature's death
+  triggers go on the stack after it has resolved. The sacrificed
+  creature still cannot be one of the two: the targets were chosen
+  before it died, which is the printed card too.
+- **Rise of the Witch-king** keeps its APNAP edict
+  (`EachPlayerSacrificesThenForEffect`) and its gate. The return is a
+  `ReturnChosenFromGraveyard` of any permanent card, floor zero ("you
+  may"), ceiling one. "Another" is another than Rise itself, which is on
+  the stack as it resolves; the creature you just sacrificed is a legal
+  choice.
+- **Lich-Knights' Conquest** asks "sacrifice any number of artifacts,
+  enchantments, and/or tokens" as ONE own-permanents pick with a floor of
+  zero (`ChoosePermanents`, Scapeshift's shape, #1214), sacrifices the
+  chosen ones together (`SacrificeAllThenForEffect`), and reads "that
+  many" off what really left the battlefield, not off the clicks (§5x's
+  rule). Then it asks for exactly that many creature cards. A sacrificed
+  artifact creature card is in the graveyard by then and can return; a
+  sacrificed creature token cannot. The old form asked one sacrifice
+  prompt per targeted card, capped by the targets, which made the
+  sacrifice count a consequence of the return rather than the other way
+  round.
+
+The printed card's sacrifice is part of the effect, not an additional
+cost (the oracle text has no "as an additional cost"), and it stays on
+resolution.
+
+**4. What did not change.** No snapshot field, no closure route, no
+pending-choice kind, no wire change. An undo across either prompt
+replays as every `choose_cards` and run prompt already does, because
+the continuation holds the stack item and rebuilds its `Context` from
+the live `*Game` (`resumeClause`'s contract).
+
+**5. Cards freed.** Victimize, Rise of the Witch-king and Lich-Knights'
+Conquest lose their caveats and are `CompletenessFull`. The roadmap row
+`graveyard-choice-after-a-sacrifice` is closed.
+
+**Not done.** Grapple with the Past ("mill three cards, then you may
+return a creature or land card") picks its card at cast, before the
+mill, in the posture Rise of the Witch-king had. It can move to the same
+helper inside its mill's continuation; it is not a sacrifice and is left
+to its own change.

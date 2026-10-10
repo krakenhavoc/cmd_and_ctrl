@@ -37,6 +37,7 @@ func init() {
 			Label:        "{2}: This enchantment deals 1 damage to target creature. Any player may activate this ability but only as a sorcery.",
 			Cost:         game.AbilityCost{Mana: "{2}"},
 			Targets:      TargetCreature("target creature"),
+			Purpose:      ForTargets(DamageToTarget(0, 1)),
 			SorcerySpeed: true,
 			AnyPlayer:    true,
 			Effect:       sourceDealsOneToFirstTarget,

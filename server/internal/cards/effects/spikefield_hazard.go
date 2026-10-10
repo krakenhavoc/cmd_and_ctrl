@@ -20,6 +20,7 @@ func init() {
 		OracleID:     "81036c9f-fe0a-45a7-bcd5-0d344f31055a",
 		Name:         "Spikefield Hazard",
 		Completeness: CompletenessFull,
+		Purpose:      ForTargets(DamageToTarget(0, 1)),
 		Targets:      TargetAny(),
 		OnResolve:    damageAnyTargetExileIfDealtDies(fixedAmount(1), true),
 	})

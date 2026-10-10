@@ -126,7 +126,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   {
     id: "holdPriority",
     label: "Hold priority",
-    hint: "Arm the hold toggle so your own spells and triggers keep the cursor.",
+    hint: "Hold priority on every stack item, yours and opponents', until the stack empties.",
     group: "priority",
     defaultBinding: "h",
     kind: "view",
@@ -144,7 +144,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   {
     id: "toggleBluff",
     label: "Toggle bluff",
-    hint: "Arm or disarm bluffing: pause on windows you can't answer so a pause gives nothing away. Needs smart auto-pass.",
+    hint: "Arm or disarm bluffing: pause on windows you can't answer so a pause gives nothing away. Needs Smart auto-pass.",
     group: "priority",
     defaultBinding: "b",
     kind: "view",

@@ -41,6 +41,10 @@ type Options struct {
 	// that has no primer explaining it (the MCP seat, ADR 0122 §5). The
 	// bot leaves it off and keeps its terse "(unimplemented)".
 	NoteUnimplemented bool
+	// ChoiceIDs prints each owed choice's id beside its kind, the handle
+	// the MCP seat's legal_moves(choice) takes (#2794). The bot has no
+	// such tool and leaves it off, so its prompt does not grow.
+	ChoiceIDs bool
 }
 
 func (o Options) maxZoneCards() int {
@@ -58,10 +62,10 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	max := opts.maxZoneCards()
 	var b strings.Builder
 
-	// Number is the ROUND (every seat has had a turn); Seq counts turns,
-	// the figure the game log's turn field carries. Print both, labelled,
-	// so a model never has to reconcile "Turn 8" here with a log that
-	// counts differently (#2279). The human client's "T4" is the round.
+	// Number is the ROUND (every seat has had a turn); Seq counts turns.
+	// Print both, labelled, in the words the log's step lines use,
+	// "Turn 3 (round 2) — …", so a model never reconciles two counts
+	// under one name (#2279, #2790). The human client's "T4" is the round.
 	if v.Turn.Seq > 0 {
 		fmt.Fprintf(&b, "TURN %d (round %d) — %s", v.Turn.Seq, v.Turn.Number, StepName(v.Turn.Step))
 	} else {
@@ -159,6 +163,9 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			continue
 		}
 		fmt.Fprintf(&b, "\nYOU OWE A CHOICE: %s", ch.Kind)
+		if opts.ChoiceIDs && ch.ID != "" {
+			fmt.Fprintf(&b, " [id %s]", ch.ID)
+		}
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}
@@ -178,15 +185,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			fmt.Fprintf(&b, " (pay %d energy)", *ch.PayEnergy)
 		}
 		if pa := ch.PayAmount; pa != nil {
-			lo := pa.Min
-			if lo < 1 {
-				lo = 1
-			}
-			fmt.Fprintf(&b, " (pay nothing, or %d to %d energy", lo, pa.Max)
-			if pa.Goal > 0 {
-				fmt.Fprintf(&b, "; %d reaches the card's threshold", pa.Goal)
-			}
-			fmt.Fprintf(&b, "; one energy is one point of %s)", pa.Unit)
+			writePayAmount(&b, pa)
 		}
 		if ch.Count > 0 && ch.PayAmount == nil {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
@@ -195,6 +194,43 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 	}
 
 	return b.String()
+}
+
+// writePayAmount describes a pay_amount prompt's answers (ADR 0129 §3
+// and its amendment of 2026-10-09): what is paid, the bounds, the card's
+// threshold and what each point buys. An energy prompt reads as it
+// always has.
+func writePayAmount(b *strings.Builder, pa *protocol.PayAmountView) {
+	lo := pa.Min
+	if lo < 1 {
+		lo = 1
+	}
+	switch pa.Resource {
+	case "life":
+		fmt.Fprintf(b, " (pay no life, or %d to %d life", lo, pa.Max)
+	case "none":
+		if pa.NoMax {
+			fmt.Fprintf(b, " (choose a number, %d or more", pa.Min)
+		} else {
+			fmt.Fprintf(b, " (choose a number from %d to %d", pa.Min, pa.Max)
+		}
+	default:
+		fmt.Fprintf(b, " (pay nothing, or %d to %d energy", lo, pa.Max)
+	}
+	if pa.Goal > 0 {
+		fmt.Fprintf(b, "; %d reaches the card's threshold", pa.Goal)
+	}
+	if pa.SelfDamage {
+		b.WriteString("; you are dealt the same amount")
+	}
+	switch pa.Resource {
+	case "life":
+		fmt.Fprintf(b, "; one life is one point of %s)", pa.Unit)
+	case "none":
+		fmt.Fprintf(b, "; each point is one point of %s)", pa.Unit)
+	default:
+		fmt.Fprintf(b, "; one energy is one point of %s)", pa.Unit)
+	}
 }
 
 func battlefieldOf(v *protocol.GameView, seat string, opts Options) string {

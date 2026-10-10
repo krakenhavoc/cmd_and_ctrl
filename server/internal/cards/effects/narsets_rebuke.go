@@ -20,6 +20,7 @@ func init() {
 		Name:         "Narset's Rebuke",
 		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
+		Purpose:      ForTargets(DamageToTarget(0, 5)),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			id, ok := b16FirstLegalTargetCard(ctx)
 			if !ok {

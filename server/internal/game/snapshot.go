@@ -426,6 +426,12 @@ type GameSnapshot struct {
 	// the old behaviour (the boundary is not held). No schema bump.
 	ResolutionOpen bool `json:"resolutionOpen,omitempty"`
 
+	// PausedModeWalk is Game.pausedModeWalk (#2789, mode_walk.go): a
+	// modal item's bullets parked behind a prompt an earlier bullet
+	// queued. A file written before it restores nil, which is the old
+	// behaviour (the later bullets had already run). No schema bump.
+	PausedModeWalk *modeWalkSnapshot `json:"pausedModeWalk,omitempty"`
+
 	// AnnouncedBlocks / BlockedAttackers are what the block
 	// declaration's lock-in produced (#830, #715, blockers.go): which
 	// blocker has had its EventBlock announced against which
@@ -638,9 +644,16 @@ type playerSnapshot struct {
 	// file written before it restores with false for every seat, which
 	// reads as a fresh round of decisions.
 	MulliganDecided bool `json:"mulliganDecided,omitempty"`
-	// TriggerOrderAlwaysAsk is Player.TriggerOrderAlwaysAsk (#1530).
-	// Additive: a file written before it restores with false, the default.
+	// TriggerOrderAlwaysAsk is #1530's always-ask flag, true when
+	// Player.TriggerOrder is "always". Still written beside TriggerOrder
+	// so a binary from before #1968, which reads only this key, restores
+	// an "always" seat as always; a "never" seat reads there as the
+	// default. Additive: a file written before it restores with false.
 	TriggerOrderAlwaysAsk bool `json:"triggerOrderAlwaysAsk,omitempty"`
+	// TriggerOrder is Player.TriggerOrder (#1968): "always" or "never",
+	// omitted for the default. Additive: a file written before it
+	// restores from TriggerOrderAlwaysAsk (restoredTriggerOrder).
+	TriggerOrder string `json:"triggerOrder,omitempty"`
 	// AutoAnswers is Player.AutoAnswers (ADR 0127 §8). Additive: a file
 	// written before it restores with none, which asks every prompt;
 	// the client's reconcile sends the rules again on the next frame.
@@ -841,6 +854,11 @@ type cardSnapshot struct {
 	// the permanent's two printed abilities exists, so a restore that
 	// lost it would bring a Siege back with neither.
 	ChosenOption string `json:"chosenOption,omitempty"`
+	// ChosenNumber is the number chosen as this permanent entered
+	// (#1941, CR 614.12a) — the life Phyrexian Processor's controller
+	// paid. Carried for ChosenPlayer's reason: a player chose it and
+	// nothing can re-derive it. Old snapshots have no key and read zero.
+	ChosenNumber int `json:"chosenNumber,omitempty"`
 	// Devoured is CR 702.82b's count of creatures this permanent
 	// devoured as it entered. Old snapshots have no key and read zero.
 	Devoured int `json:"devoured,omitempty"`
@@ -901,6 +919,19 @@ type cardSnapshot struct {
 	// would silently hand a monstrous Polukranos a second
 	// "becomes monstrous" trigger.
 	Monstrous bool `json:"monstrous,omitempty"`
+	// Renowned is the CR 702.112b renowned designation (ADR 0071
+	// amendment 2026-10-09, #2049), carried for Monstrous's reason: "not
+	// renowned" is a legal zero value, so a restore that dropped it
+	// would let a renowned creature's renown trigger a second time.
+	// Additive within v7: an older binary ignores the key.
+	Renowned bool `json:"renowned,omitempty"`
+	// Bestowed is CR 702.103b's bestowed status (ADR 0141, #2862): a
+	// spell cast bestowed, or the Aura it became. Carried because "not
+	// bestowed" is a legal zero value: a restore that dropped it would
+	// turn a bestowed Aura into a creature still attached to its host,
+	// and a bestowed spell on the stack into a creature spell. Additive
+	// within v7: an older binary ignores the key.
+	Bestowed bool `json:"bestowed,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -1346,6 +1377,9 @@ type pendingChoiceSnapshot struct {
 	ManaRiders           []ManaSpendRider       `json:"manaRiders,omitempty"`
 	ManaSourceKinds      ManaSourceKinds        `json:"manaSourceKinds,omitempty"`
 	ManaAmounts          map[string]int         `json:"manaAmounts,omitempty"`
+	ManaDifferent        int                    `json:"manaDifferent,omitempty"`
+	ManaChosen           []string               `json:"manaChosen,omitempty"`
+	ManaLabel            string                 `json:"manaLabel,omitempty"`
 	ManaTapped           bool                   `json:"manaTapped,omitempty"`
 	ReplacementEffectIDs []ReplacementEffectID  `json:"replacementEffectIds,omitempty"`
 	DamageAssignment     *DamageAssignmentFrame `json:"damageAssignment,omitempty"`
@@ -1387,6 +1421,7 @@ type pendingChoiceSnapshot struct {
 	// goes, whether choosing nothing is an answer, whether the
 	// revealing player's graveyard is offered, and the KEY of its
 	// continuation (checkEffectKeys refuses one this binary lacks).
+	// pickThen is also a keyed option_pick's continuation (#2854).
 	PickDestination   PickDestination `json:"pickDestination,omitempty"`
 	PickOptional      bool            `json:"pickOptional,omitempty"`
 	PickFromGraveyard bool            `json:"pickFromGraveyard,omitempty"`
@@ -1435,6 +1470,9 @@ type pendingChoiceSnapshot struct {
 	// that forgot them would render a question with no answers.
 	PickOptions []ChoiceOption `json:"pickOptions,omitempty"`
 	ChooseMax   int            `json:"chooseMax,omitempty"`
+	// #2854: the IDs a keyed option pick's continuation is handed
+	// (option_pick_keyed.go). Its key rides pickThen.
+	OptionCarry []uuid.UUID `json:"optionCarry,omitempty"`
 	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
@@ -1826,6 +1864,9 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.PendingChoices = append(s.PendingChoices, snapshotPendingChoice(c, cen))
 		}
 	}
+	// #2789: a modal item's later bullets parked behind one of those
+	// prompts (mode_walk.go).
+	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)
 
 	if len(g.Events) > 0 {
 		s.Events = make([]Event, len(g.Events))
@@ -2042,12 +2083,15 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		ChosenNumber:             c.ChosenNumber,
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Renowned:                 c.Renowned,
+		Bestowed:                 c.Bestowed,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -2107,7 +2151,8 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Eliminated:            p.Eliminated,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
+		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
+		TriggerOrder:          string(p.TriggerOrder),
 		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
 		MulligansTaken:        p.MulligansTaken,
 		DeckImported:          p.DeckImported,
@@ -2353,6 +2398,9 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
+		ManaDifferent:        c.ManaDifferent,
+		ManaChosen:           copyStrings(c.ManaChosen),
+		ManaLabel:            c.ManaLabel,
 		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
@@ -2405,6 +2453,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
+		OptionCarry:          copyUUIDs(c.OptionCarry),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -2588,6 +2637,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.eventSeq = s.EventSeq
 	g.eventBatch = s.EventBatch
 	g.resolutionOpen = s.ResolutionOpen
+	g.pausedModeWalk = restoreModeWalk(s.PausedModeWalk)
 	g.oncePerBatchFired = copyStringUint64Map(s.OncePerBatchFired)
 	g.preventionFollowUps = clonePreventionFollowUps(s.PreventionFollowUps)
 	g.announcedBlocks = joinAnnouncedBlocks(s.AnnouncedBlocks, s.AnnouncedAlsoBlocks)
@@ -2893,12 +2943,15 @@ func restoreCard(c *cardSnapshot) Card {
 		ChosenPlayer:             c.ChosenPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
+		ChosenNumber:             c.ChosenNumber,
 		Devoured:                 c.Devoured,
 		ModesChosen:              copyModesChosen(c.ModesChosen),
 		ClassLevel:               c.ClassLevel,
 		Solved:                   c.Solved,
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
+		Renowned:                 c.Renowned,
+		Bestowed:                 c.Bestowed,
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -2972,44 +3025,44 @@ func restoreCard(c *cardSnapshot) Card {
 
 func restorePlayer(p *playerSnapshot) *Player {
 	out := &Player{
-		ID:                    p.ID,
-		Name:                  p.Name,
-		Seat:                  p.Seat,
-		Life:                  p.Life,
-		Poison:                p.Poison,
-		Energy:                p.Energy,
-		Library:               restoreZone(p.Library, ZoneLibrary),
-		Hand:                  restoreZone(p.Hand, ZoneHand),
-		Graveyard:             restoreZone(p.Graveyard, ZoneGraveyard),
-		Command:               restoreZone(p.Command, ZoneCommand),
-		Emblems:               restoreZone(p.Emblems, ZoneCommand),
-		TurnsBegun:            p.TurnsBegun,
-		UpkeepsBegun:          p.UpkeepsBegun,
-		EndStepTurn:           p.EndStepTurn,
-		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
-		Eliminated:            p.Eliminated,
-		HandKept:              p.HandKept,
-		MulliganDecided:       p.MulliganDecided,
-		TriggerOrderAlwaysAsk: p.TriggerOrderAlwaysAsk,
-		AutoAnswers:           copyAutoAnswers(p.AutoAnswers),
-		MulligansTaken:        p.MulligansTaken,
-		DeckImported:          p.DeckImported,
-		UndosRemaining:        p.UndosRemaining,
-		DiscordID:             p.DiscordID,
-		DiscordAvatarHash:     p.DiscordAvatarHash,
-		DisplayName:           p.DisplayName,
-		IsBot:                 p.IsBot,
-		BotTier:               p.BotTier,
-		BotDeck:               p.BotDeck,
-		Agent:                 p.Agent,
-		AgentClient:           p.AgentClient,
-		CitysBlessing:         p.CitysBlessing,
-		AttemptedEmptyDraw:    p.AttemptedEmptyDraw,
-		Counters:              copyStringIntMap(p.Counters),
-		MaxHandSize:           p.MaxHandSize,
-		MaxHandSizeAt:         p.MaxHandSizeAt,
-		Speed:                 p.Speed,
-		LandDropsPerTurn:      p.LandDropsPerTurn,
+		ID:                 p.ID,
+		Name:               p.Name,
+		Seat:               p.Seat,
+		Life:               p.Life,
+		Poison:             p.Poison,
+		Energy:             p.Energy,
+		Library:            restoreZone(p.Library, ZoneLibrary),
+		Hand:               restoreZone(p.Hand, ZoneHand),
+		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
+		Command:            restoreZone(p.Command, ZoneCommand),
+		Emblems:            restoreZone(p.Emblems, ZoneCommand),
+		TurnsBegun:         p.TurnsBegun,
+		UpkeepsBegun:       p.UpkeepsBegun,
+		EndStepTurn:        p.EndStepTurn,
+		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
+		Eliminated:         p.Eliminated,
+		HandKept:           p.HandKept,
+		MulliganDecided:    p.MulliganDecided,
+		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
+		AutoAnswers:        copyAutoAnswers(p.AutoAnswers),
+		MulligansTaken:     p.MulligansTaken,
+		DeckImported:       p.DeckImported,
+		UndosRemaining:     p.UndosRemaining,
+		DiscordID:          p.DiscordID,
+		DiscordAvatarHash:  p.DiscordAvatarHash,
+		DisplayName:        p.DisplayName,
+		IsBot:              p.IsBot,
+		BotTier:            p.BotTier,
+		BotDeck:            p.BotDeck,
+		Agent:              p.Agent,
+		AgentClient:        p.AgentClient,
+		CitysBlessing:      p.CitysBlessing,
+		AttemptedEmptyDraw: p.AttemptedEmptyDraw,
+		Counters:           copyStringIntMap(p.Counters),
+		MaxHandSize:        p.MaxHandSize,
+		MaxHandSizeAt:      p.MaxHandSizeAt,
+		Speed:              p.Speed,
+		LandDropsPerTurn:   p.LandDropsPerTurn,
 	}
 	// #500: a snapshot written before the field existed carries no
 	// value for it, and restoring 0 would seat a player who may never
@@ -3188,6 +3241,9 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ManaRiders:           copyManaRiders(c.ManaRiders),
 		ManaSourceKinds:      c.ManaSourceKinds,
 		ManaAmounts:          copyManaAmounts(c.ManaAmounts),
+		ManaDifferent:        c.ManaDifferent,
+		ManaChosen:           copyStrings(c.ManaChosen),
+		ManaLabel:            c.ManaLabel,
 		ManaTapped:           c.ManaTapped,
 		ReplacementEffectIDs: copyReplacementEffectIDs(c.ReplacementEffectIDs),
 		NoLegalTarget:        c.NoLegalTarget,
@@ -3240,6 +3296,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		ChooseMin:            c.ChooseMin,
 		ChooseMax:            c.ChooseMax,
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
+		OptionCarry:          copyUUIDs(c.OptionCarry),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,

@@ -6,7 +6,13 @@ import { describe, it, expect, vi } from "vitest";
 
 import { choiceRequest, isInlineChoice } from "./choiceDock";
 import { L } from "./labels";
-import { energyShortBy, payAmountAnswerable, payAmountClamp, payAmountStart } from "./payEnergy";
+import {
+  energyShortBy,
+  payAmountAnswerable,
+  payAmountCanSubmit,
+  payAmountClamp,
+  payAmountStart,
+} from "./payEnergy";
 import type { PayAmountView, PendingChoiceView } from "./protocol";
 
 const choice = (over: Partial<PendingChoiceView>): PendingChoiceView =>
@@ -103,5 +109,67 @@ describe("a pay_amount", () => {
     );
     expect(req.secondary?.[0]?.label).toBe("Don't pay");
     expect(req.primary?.disabled).toBe(true);
+  });
+});
+
+// #1941, ADR 0129's amendment of 2026-10-09: the same prompt asks for
+// life, and for a number that is chosen and not paid.
+describe("a pay_amount in life", () => {
+  const pa: PayAmountView = { min: 0, max: 30, goal: 3, unit: "cards", resource: "life" };
+  const necro = choice({ kind: "pay_amount", pay_amount: pa, reason: "Necrodominance" });
+
+  it("reads Pay N life with a decline, and names life in the hint", () => {
+    const h = handlers();
+    const req = choiceRequest(
+      necro,
+      { sourceName: "Necrodominance", payAmount: 3, payAmountAnswerable: true },
+      h,
+    );
+    expect(req.primary?.label).toBe(L.payLife(3));
+    expect(req.tag).toBe("pay life");
+    expect(req.hint).toContain("Pay any amount of life, up to 30, or nothing.");
+    req.primary?.onPress();
+    expect(h.onAmount).toHaveBeenCalledWith(3);
+    expect(req.secondary?.[0]?.label).toBe(L.payNothing);
+  });
+});
+
+describe("a pay_amount that is only chosen", () => {
+  const pa: PayAmountView = {
+    min: 0,
+    max: 1_000_000,
+    goal: 4,
+    unit: "damage",
+    resource: "none",
+    no_max: true,
+    marks: [4, 40],
+    self_damage: true,
+  };
+  const hellion = choice({ kind: "pay_amount", pay_amount: pa, reason: "Volcano Hellion" });
+
+  it("starts at 0 when there is no goal, takes 0, and has no decline", () => {
+    expect(payAmountStart({ ...pa, goal: 0 })).toBe(0);
+    expect(payAmountAnswerable(pa, 0)).toBe(true);
+    expect(payAmountCanSubmit(pa, 0)).toBe(true);
+    expect(payAmountAnswerable({ ...pa, min: 1 }, 0)).toBe(false);
+    const h = handlers();
+    const req = choiceRequest(
+      hellion,
+      { sourceName: "Volcano Hellion", payAmount: 0, payAmountAnswerable: true },
+      h,
+    );
+    expect(req.primary?.label).toBe(L.chooseNumber(0));
+    expect(req.primary?.disabled).toBeFalsy();
+    expect(req.secondary ?? []).toEqual([]);
+    expect(req.tag).toBe("choose a number");
+    expect(req.hint).toContain("Choose any number from 0 up.");
+    expect(req.hint).toContain("you are dealt the same amount");
+    req.primary?.onPress();
+    expect(h.onAmount).toHaveBeenCalledWith(0);
+  });
+
+  it("takes a number past any goal", () => {
+    expect(payAmountAnswerable(pa, 500)).toBe(true);
+    expect(payAmountClamp(pa, 500)).toBe(500);
   });
 });
