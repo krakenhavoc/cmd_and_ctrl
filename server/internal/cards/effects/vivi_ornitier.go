@@ -92,15 +92,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Noncreature(), "Vivi Ornitier — +1/+1 counter and 1 damage to each opponent",
-				func(g *game.Game, item *game.StackItem) error {
-					if b15OnBattlefield(g, item.SourceCardID) {
-						add := AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}
-						if err := add.Apply(NewContext(g, item)); err != nil {
-							return err
-						}
-					}
-					return damageToEachOpponent(g, item, 1)
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}, DamageEachOpponent{N: 1})),
 		},
 	})
 }

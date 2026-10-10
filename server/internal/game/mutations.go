@@ -5752,7 +5752,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		if !seatNeedsTriggerOrder(items, p.TriggerOrder) {
+		if !g.seatNeedsTriggerOrderLocked(items, p.TriggerOrder) {
 			continue
 		}
 		held = true
@@ -5852,10 +5852,12 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 //     Two Soul Wardens, or a set of tokens with the same trigger. The
 //     rules argument is in ADR 0018's #1968 amendment.
 //
-// Anything else prompts, including a batch that is all commutative
+// Anything else prompts here, including a batch that is all commutative
 // items plus ONE other trigger: where that trigger sits among the
 // pumps is a real choice whenever it reads what they change. See
-// ADR 0018's #1511 amendment.
+// ADR 0018's #1511 amendment. The drain asks through
+// Game.seatNeedsTriggerOrderLocked, which also skips a batch whose
+// items are pairwise independent (#2884, trigger_independence.go).
 //
 // An auto-ordered batch keeps its queue order, which is harvest
 // order; the drain below places it exactly as it places an answered
