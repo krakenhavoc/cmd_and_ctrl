@@ -43,8 +43,9 @@ func init() {
 				Effect:  ebDrawACard,
 			},
 			{
-				Label: "Pay {E}{E}{E}{E}: This Vehicle becomes an artifact creature until end of turn.",
-				Cost:  PayEnergy(4),
+				Label:   "Pay {E}{E}{E}{E}: This Vehicle becomes an artifact creature until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Cost:    PayEnergy(4),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return BecomeCreatureUntilEOT{Label: "Bespoke Battlewagon — becomes an artifact creature"}.Apply(NewContext(g, item))
 				},

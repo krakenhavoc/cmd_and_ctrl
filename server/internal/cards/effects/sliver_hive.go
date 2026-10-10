@@ -43,8 +43,9 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{5}, {T}: Create a 1/1 colorless Sliver creature token. Activate only if you control a Sliver.",
-			Cost:  Plus(ManaCost("{5}"), TapCost()),
+			Label:   "{5}, {T}: Create a 1/1 colorless Sliver creature token. Activate only if you control a Sliver.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{5}"), TapCost()),
 			Condition: ControlsAtLeast(1, func(c game.Card) bool {
 				return c.HasSubtype("Sliver")
 			}),

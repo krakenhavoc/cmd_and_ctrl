@@ -27,9 +27,10 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "Pay {E}: This Vehicle gains lifelink until end of turn.",
-				Cost:   PayEnergy(1),
-				Effect: thisGainsKeywordUntilEndOfTurn("lifelink", "Aethersphere Harvester — lifelink until end of turn"),
+				Label:   "Pay {E}: This Vehicle gains lifelink until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    PayEnergy(1),
+				Effect:  thisGainsKeywordUntilEndOfTurn("lifelink", "Aethersphere Harvester — lifelink until end of turn"),
 			},
 			{
 				Label:   "Crew 1",

@@ -35,8 +35,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{R}: Creatures you control gain haste until end of turn.",
-				Cost:  ManaCost("{R}"),
+				Label:   "{R}: Creatures you control gain haste until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{R}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GrantKeywordUntilEOT{
 						Match:    And(Creature(), YouControl()),

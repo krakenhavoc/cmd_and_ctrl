@@ -24,7 +24,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "Pay {E}{E}{E}: Create a 1/1 colorless Thopter artifact creature token with flying.",
 			Cost:    PayEnergy(3),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 			Effect:  Do(CreateToken{Template: TokenCard("1/1 colorless Thopter artifact with flying"), N: 1}),
 		}},
 	})

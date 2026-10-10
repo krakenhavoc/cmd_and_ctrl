@@ -34,6 +34,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:         "Channel — {3}{R}, Discard this card: Create two 1/1 colorless Spirit creature tokens. They gain haste until end of turn",
+			Purpose:       game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost:          game.AbilityCost{Mana: "{3}{R}", DiscardSelf: true},
 			Zones:         []game.ZoneKind{game.ZoneHand},
 			CostModifiers: []game.CostModifier{ChannelDiscountPerLegendaryCreature()},

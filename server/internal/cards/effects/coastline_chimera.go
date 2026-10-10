@@ -18,9 +18,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{W}: This creature can block an additional creature this turn.",
-			Cost:   ManaCost("{1}{W}"),
-			Effect: selfBlocksAdditionalThisTurn("Coastline Chimera — can block an additional creature this turn"),
+			Label:   "{1}{W}: This creature can block an additional creature this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    ManaCost("{1}{W}"),
+			Effect:  selfBlocksAdditionalThisTurn("Coastline Chimera — can block an additional creature this turn"),
 		}},
 	})
 }

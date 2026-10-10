@@ -38,8 +38,9 @@ func init() {
 			}), "Quest for Pure Flame — put a quest counter on it?"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Remove four quest counters from this enchantment and sacrifice it: If any source you control would deal damage to a permanent or player this turn, it deals double that damage to that permanent or player instead.",
-			Cost:  Plus(RemoveCountersFromThis("quest", 4), SacrificeThis()),
+			Label:   "Remove four quest counters from this enchantment and sacrifice it: If any source you control would deal damage to a permanent or player this turn, it deals double that damage to that permanent or player instead.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(RemoveCountersFromThis("quest", 4), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return MultiplyDamage{Factor: 2, Sources: game.DamageSourcesYours,
 					Label: "Quest for Pure Flame — your sources deal double damage"}.Apply(NewContext(g, item))

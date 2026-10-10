@@ -22,8 +22,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"defender"},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Creatures you control gain haste until end of turn.",
-			Cost:  TapCost(),
+			Label:   "{T}: Creatures you control gain haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Match:    And(Creature(), YouControl()),

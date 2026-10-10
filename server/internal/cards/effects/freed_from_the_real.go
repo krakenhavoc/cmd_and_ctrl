@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Freed from the Real — Enchantment — Aura {2}{U}:
 //
 //	"Enchant creature
@@ -21,14 +23,16 @@ func init() {
 		Targets:      EnchantCreature(),
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{U}: Tap enchanted creature",
-				Cost:   ManaCost("{U}"),
-				Effect: tapAttachedHost,
+				Label:   "{U}: Tap enchanted creature",
+				Purpose: game.Purpose{Answers: game.AnswerRestrict},
+				Cost:    ManaCost("{U}"),
+				Effect:  tapAttachedHost,
 			},
 			{
-				Label:  "{U}: Untap enchanted creature",
-				Cost:   ManaCost("{U}"),
-				Effect: untapAttachedHost,
+				Label:   "{U}: Untap enchanted creature",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{U}"),
+				Effect:  untapAttachedHost,
 			},
 		},
 	})

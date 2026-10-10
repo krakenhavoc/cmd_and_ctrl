@@ -28,9 +28,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "{2}: This creature can block an additional creature this turn.",
-				Cost:   ManaCost("{2}"),
-				Effect: selfBlocksAdditionalThisTurn("Luminous Guardian — can block an additional creature this turn"),
+				Label:   "{2}: This creature can block an additional creature this turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{2}"),
+				Effect:  selfBlocksAdditionalThisTurn("Luminous Guardian — can block an additional creature this turn"),
 			},
 		},
 	})
