@@ -319,3 +319,30 @@ The board text describes the prompt per resource ("pay no life, or 1 to 30 life"
 **Cards.** Volcano Hellion, Phyrexian Processor and Necrodominance ship Full. Necrodominance's other clauses already existed: `SkipYourDrawStep`, `YourMaxHandSizeIs(5)` and `GraveyardBecomesExile{YoursOnly: true}`. The registry row is closed.
 
 **Out of scope.** Choosing a number as a spell is cast or an ability is activated is X (CR 107.3a) and unchanged. A number divided among several recipients (CR 608.2d's last sentence) is the existing division prompts' business.
+
+## Amendment (2026-10-09, #2727): paying {X} as an ability resolves
+
+**Context.** Tilonalli's Summoner: "Whenever this creature attacks, you may pay {X}{R}. If you do, create X 1/1 red Elemental creature tokens that are tapped and attacking. At the beginning of the next end step, exile those tokens unless you have the city's blessing." X is chosen as the trigger resolves (CR 608.2d) and {X}{R} is a cost paid then (CR 118.12), so neither can move to the trigger's announcement. `MayPay` takes a fixed cost, and the #1941 amendment above left mana to this issue with a proposed shape. The tokens and the end-step exile already had engine paths (`CreateTokensAttackingForEffect`, `ScheduleDelayedTrigger`).
+
+**Decision: the proposed shape, unchanged.** `Game.QueueMayPayXForEffect` (`game/pay_x_on_resolution.go`, card side `effects.MayPayX`) is two existing prompts in a row:
+
+1. **X**, on `pay_amount` with `PayResourceNone`, from 0 to the most the chooser can pay right now. The ceiling is `largestPayableXLocked`: it probes `canPayCostLocked`, the payment the next prompt makes, on a throwaway clone, galloping up from 0 and then halving, so it counts the pool and the auto-tapper exactly as the payment will, and costs a handful of clones rather than one per point. A chooser who can't pay even X = 0 (no {R}) is not asked (CR 118.3).
+2. **The payment**, the ordinary `pay_unless` "you may pay" for the cost with X settled ("{3}{R}"), optionally held in the current step (`InThisStep`, Hellkite Charger's anchor). The mana is paid through the one path that pays mana for an effect, so Always / Never (ADR 0127), the strict-mana gate, the bot's pay move and the client's dialog are all unchanged. A cost that is empty at X = 0 ("you may pay {X}" with X = 0) is paid by doing nothing (CR 118.5), so that prompt is skipped and the rider runs with 0.
+
+The number prompt blocks the table, so nothing happens between the two answers, and "Don't pay" on the second is the card's "you may". The cost string must hold exactly one {X}; anything else is a catalog mistake, reported as `EventEffectError`.
+
+Considered and rejected: **`PayResourceMana`**, the stepper charging the pool directly, which the #1941 amendment named as the alternative. It would have needed its own payment, its own auto-tap call, its own Always / Never row and its own client affordance for a question `pay_unless` already answers, and a bot would have needed a second way to price mana.
+
+**What the tokens attack: one addition to the plan.** "Tapped and attacking" with no player named is CR 508.4: the tokens' controller chooses what each attacks. The engine had only a single defender per creation, and that only a player, which is why Leonin Warleader and General Kreat carry the caveat "attacks the player X attacked rather than a player of your choice". Shipping the Summoner Full needs the choice:
+
+- `TokenGroup.Attacking` gives each group of one creation its own player, planeswalker or battle (uuid.Nil defers to `TokenCreation.Attacking`, so every existing caller is unchanged). Replacement effects keep it: a doubler multiplies each group's count, and Academy Manufactor's kind rewrite carries it. One creation rather than one per defender, so "whenever one or more tokens are created" fires once and the CR 701.7b window opens once. A target that can no longer be attacked creates its tokens not attacking (CR 508.4a).
+- `effects.CreateTokensAttackingYourChoice` asks the split. With one thing to attack nothing is asked. With more, the controller is asked how many of the tokens left attack each one in turn (the `pay_amount` number prompt, `PayResourceNone`), the creature's own defender first and the last taking the rest, so at most one question per attackable thing but the last, and none once every token is placed. The bot's goal sends them all where the Summoner went.
+- Doubled tokens attack what their share attacks. CR 508.4 would let the controller choose for each one; asking after the replacement window would mean pausing the creation for a prompt, and the shares already say where the controller wanted that many tokens to go.
+
+**The end-step exile.** `effects.ExileUnlessCitysBlessing` schedules a delayed trigger over exactly the tokens the creation made (doubled ones included), with a new registered body, `ascend/exile-listed-unless-citys-blessing`. It reads the blessing as it resolves, so a player who gets the blessing before that end step keeps the tokens.
+
+**The bot.** No policy change. `MayPayX.Goal` names the X a bot answers given the ceiling: every point for the Summoner (`XAsHighAsYouCan`), the target's lethal damage or every point at an opponent for Flameblast Dragon, and 0 (keep the mana) when nil. The heuristic answers the goal on an unpaid number, and pays a `pay_unless` it can afford, as before.
+
+**Cards.** Tilonalli's Summoner and Flameblast Dragon ("Whenever this creature attacks, you may pay {X}{R}. If you do, it deals X damage to any target.") ship Full. The registry row `pay-x-on-resolution` is closed. The other "you may pay {X}" cards in the format (Azor, the Lawbringer, Decree of Justice's cycling trigger, Vigil for the Lost, Rise of the Hobgoblins and the like) need only this seam and are left to the catalog batches.
+
+**Out of scope.** "Unless that player pays {X}" where the card fixes X (Esper Sentinel's "where X is this creature's power") is a fixed cost settled before the prompt, and already ships. A cost with two {X} ({X}{X}, Numa, Joraga Chieftain) is refused for now.

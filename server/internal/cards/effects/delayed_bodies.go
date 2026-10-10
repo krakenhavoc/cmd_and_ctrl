@@ -172,6 +172,13 @@ var (
 	// Horror).
 	returnTheObjectFromGraveyardUnderYourControlBody = game.DelayedBody("graveyard/return-the-object-under-your-control",
 		returnTheObjectFromGraveyardUnderYourControl)
+
+	// Exile the listed cards unless the delayed trigger's controller has
+	// the city's blessing as it resolves: "At the beginning of the next
+	// end step, exile those tokens unless you have the city's blessing"
+	// (Tilonalli's Summoner, #2727).
+	exileListedUnlessCitysBlessingBody = game.SimpleDelayedBody("ascend/exile-listed-unless-citys-blessing",
+		exileListedUnlessCitysBlessing)
 )
 
 // maxManaDrainRefund bounds the refund a restored Mana Drain may add. No

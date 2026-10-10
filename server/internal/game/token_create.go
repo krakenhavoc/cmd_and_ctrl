@@ -104,6 +104,19 @@ type TokenGroup struct {
 	// two cards can make the same printed Powerstone and only one of
 	// them says "tapped".
 	Entry TokenEntryOptions
+
+	// Attacking is what this group's tokens are created attacking — a
+	// player, a planeswalker or a battle — when it differs from group
+	// to group (#2727). CR 508.4 lets the controller choose what each
+	// token put onto the battlefield attacking attacks, so a card that
+	// asks for the split (effects.CreateTokensAttackingYourChoice)
+	// puts each share in its own group, and the instruction stays one
+	// creation for the CR 701.7b window: a doubler multiplies each
+	// share, and "whenever one or more tokens are created" fires once.
+	// uuid.Nil defers to TokenCreation.Attacking. A target that can no
+	// longer be attacked creates the group's tokens not attacking
+	// (CR 508.4a).
+	Attacking uuid.UUID
 }
 
 // TokenCreation is one "create N tokens" instruction — the whole
@@ -216,7 +229,7 @@ func (ev *ReplacementEvent) ReplaceTokenKindsWhere(pred func(Card) bool, templat
 			continue
 		}
 		for _, tmpl := range templates {
-			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry})
+			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking})
 		}
 	}
 	ev.TokenGroups = out
@@ -353,10 +366,19 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 	batch := make([]stagedToken, 0, ev.TokenCount())
 	attacking := ev.TokenAttacking != uuid.Nil && g.playerByIDLocked(ev.TokenAttacking) != nil
 	for _, grp := range ev.TokenGroups {
+		target := uuid.Nil
+		switch {
+		case grp.Attacking != uuid.Nil:
+			if g.classifyAttackTargetLocked(grp.Attacking) != AttackTargetNone {
+				target = grp.Attacking
+			}
+		case attacking:
+			target = ev.TokenAttacking
+		}
 		for i := 0; i < grp.Count; i++ {
 			tok := g.mintTokenLocked(grp, ev.TokenController)
-			if attacking {
-				tok.AttackingTarget = ev.TokenAttacking
+			if target != uuid.Nil {
+				tok.AttackingTarget = target
 			}
 			batch = append(batch, stagedToken{card: tok, entry: grp.Entry})
 		}
