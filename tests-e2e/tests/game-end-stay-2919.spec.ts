@@ -100,7 +100,9 @@ test.describe("an ended table", () => {
       await expect(gameOver(p.page)).toBeVisible({ timeout: 10_000 });
     }
 
-    // Leaving is the player's own choice, and it works.
+    // Leaving is the player's own choice, and it works, even while the
+    // game-end fanfare is showing over the table (#2934).
+    await expect(bob.page.getByTestId("game-end-fanfare")).toBeVisible();
     await gameOver(bob.page)
       .getByRole("button", { name: "Back to lobby" })
       .click();
