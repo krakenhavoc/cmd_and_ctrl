@@ -332,3 +332,21 @@ S4 landed as planned: `answers_fallback.txt` was empty and its ceiling 0 after S
 S4 applies Q3 as written and adds no rule for these. If the owner wants the second kind declared, a follow-up would widen `hasUntargetedAnnouncement` (the guard and the scope) to a target clause with `Min` 0, and declare the eleven rows.
 
 **What remains of the programme.** The bot PR (decision 6, `PriceAnswers`, delivery row 17) and the spell-side reader (Q5's follow-up).
+
+## Amendment: up-to-one target rows declare (2026-10-10)
+
+The follow-up S4 named is done (owner approved 2026-10-10). `hasUntargetedAnnouncement` (`cards/effects/answers.go`) now counts a target clause with `Min` 0 as no required target, so the registration guard accepts `Answers` on such a row and `TestEveryAnswersRowDeclares` requires it. A `CountFromX` clause still counts as a required target. The reader needed no change: `untargetedFlags` already read the declaration for the empty announcement, and a targeted move of the same row keeps `has_targets`.
+
+The eleven rows are declared from their effect:
+
+| Row | Answers | Why |
+|---|---|---|
+| Cryogen Relic | `value` | a stun counter does nothing this turn |
+| Perpetual Timepiece | `value` | shuffles your own graveyard (ruling 9) |
+| Famished Ghoul, Rag Dealer, Unlicensed Hearse, Carrion Beetles | `restrict` | graveyard exile, declared once in `ExileFromASingleGraveyardAbility` (ruling 9) |
+| Stonespeaker Crystal | `restrict` | exiles players' graveyards; the draw is incidental |
+| Cauldron of Souls | `protect` | grants persist |
+| Priest of Forgotten Gods | `sac_outlet`, `remove` | sacrifices two creatures as its cost; its targets sacrifice a creature (an edict) |
+| Yawgmoth, Thran Physician | `sac_outlet`, `remove` | sacrifices a creature as its cost; a -1/-1 counter shrinks a creature (ruling 1) |
+
+Famished Ghoul sacrifices only itself, so its cost needs no `sac_outlet`.

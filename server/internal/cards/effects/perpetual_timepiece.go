@@ -45,6 +45,7 @@ func init() {
 			},
 			{
 				Label:   "{2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{2}"), ExileThis()),
 				Targets: TargetCardInGraveyard("any number of target cards from your graveyard", YouOwn()).WithCount(0, 0),
 				Effect:  shuffleTargetGraveyardCardsIntoLibrary,

@@ -52,7 +52,8 @@ func TestAnswersGuardOnSlots(t *testing.T) {
 
 func TestAnswersGuardOnActivatedRows(t *testing.T) {
 	loyalty := 1
-	target := &game.TargetSpec{Label: "target creature"}
+	target := &game.TargetSpec{Label: "target creature", Min: 1, Max: 1}
+	upTo := &game.TargetSpec{Label: "up to one target creature", Min: 0, Max: 1}
 	for _, c := range []struct {
 		name string
 		ab   game.ActivatedAbilityShape
@@ -63,6 +64,9 @@ func TestAnswersGuardOnActivatedRows(t *testing.T) {
 		{"loyalty", game.ActivatedAbilityShape{Cost: game.AbilityCost{Loyalty: &loyalty}}, "sorcery-speed or loyalty"},
 		{"targeted", game.ActivatedAbilityShape{Targets: target}, "every announcement has a target"},
 		{"every mode targeted", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {Targets: target}}}}, "every announcement has a target"},
+		{"up to one target", game.ActivatedAbilityShape{Targets: upTo}, ""},
+		{"X targets", game.ActivatedAbilityShape{Targets: &game.TargetSpec{Label: "X target creatures", CountFromX: true}}, "every announcement has a target"},
+		{"one up-to mode", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {Targets: upTo}}}}, ""},
 		{"one untargeted mode", game.ActivatedAbilityShape{Modes: &game.ModeSpec{Options: []game.ModeOption{{Targets: target}, {}}}}, ""},
 	} {
 		t.Run(c.name, func(t *testing.T) {

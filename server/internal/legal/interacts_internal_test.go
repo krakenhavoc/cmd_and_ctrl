@@ -67,3 +67,30 @@ func TestUndeclaredRowInteracts(t *testing.T) {
 		}
 	}
 }
+
+// ADR 0142 amendment (2026-10-10): an "up to one target" row is announced
+// with no target beside its targeted moves. The empty announcement reads
+// the row's declaration, so a row declared value does not interact, and a
+// row declared protect does; a targeted announcement carries has_targets
+// and sets neither.
+func TestUpToOneTargetRowReadsItsDeclaration(t *testing.T) {
+	upTo := &game.TargetSpec{Min: 0, Max: 1}
+	value := game.ActivatedAbilityShape{
+		Label:   "{2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.",
+		Targets: upTo, Purpose: game.Purpose{Answers: game.AnswerValue},
+	}
+	protect := game.ActivatedAbilityShape{
+		Label:   "{T}: Choose any number of target creatures. Each gains persist until end of turn.",
+		Targets: upTo, Purpose: game.Purpose{Answers: game.AnswerProtect},
+	}
+	if interacts, combat := untargetedFlags(nil, nil, game.ZoneBattlefield, value, nil); interacts || combat.any {
+		t.Errorf("value, no target: interacts=%v combat=%v, want neither", interacts, combat.any)
+	}
+	if interacts, _ := untargetedFlags(nil, nil, game.ZoneBattlefield, protect, nil); !interacts {
+		t.Error("protect, no target: want interacts")
+	}
+	targeted := []game.TargetRef{{Kind: game.TargetCard}}
+	if interacts, combat := untargetedFlags(nil, nil, game.ZoneBattlefield, protect, targeted); interacts || combat.any {
+		t.Error("a targeted announcement sets no interacts (has_targets stops you)")
+	}
+}

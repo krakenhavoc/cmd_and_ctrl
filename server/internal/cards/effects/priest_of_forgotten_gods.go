@@ -41,7 +41,8 @@ func init() {
 		Name:         "Priest of Forgotten Gods",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature. You add {B}{B} and draw a card.",
+			Label:   "{T}, Sacrifice two other creatures: Any number of target players each lose 2 life and sacrifice a creature. You add {B}{B} and draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerRemove},
 			Cost: Plus(TapCost(), SacrificeAnotherN(2, "two other creatures",
 				Creature())),
 			Targets: TargetPlayer("any number of target players").WithCount(0, 0),

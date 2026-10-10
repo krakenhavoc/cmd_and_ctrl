@@ -20,8 +20,9 @@ import (
 //   - AnswerValue beside any other answer;
 //   - Answers on a spell, a mode, an alternative cost or a triggered row,
 //     which nothing reads it on yet (checkPurpose, ADR 0142 §2);
-//   - Answers on a row with a target clause and no untargeted mode: its
-//     move carries has_targets, which already stops smart autopass;
+//   - Answers on a row whose every announcement must name a target (a
+//     clause with Min 0, "up to one", still has the empty announcement):
+//     its move carries has_targets, which already stops smart autopass;
 //   - Answers on a sorcery-speed row, which is never offered while an
 //     item waits on the stack;
 //   - a crew row (AbilityCost.Crew) that does not declare AnswerAnimate;
@@ -88,21 +89,30 @@ func answersInScope(ab game.ActivatedAbilityShape) bool {
 }
 
 // hasUntargetedAnnouncement reports whether the row can be announced
-// with no target: it has no target clause and, if it is modal, at least
-// one mode with none.
+// with no target: it has no target clause (or one that allows zero
+// targets) and, if it is modal, at least one mode with none.
 func hasUntargetedAnnouncement(ab game.ActivatedAbilityShape) bool {
-	if ab.Targets != nil {
+	if targetsRequired(ab.Targets) {
 		return false
 	}
 	if ab.Modes == nil {
 		return true
 	}
 	for _, o := range ab.Modes.Options {
-		if o.Targets == nil {
+		if !targetsRequired(o.Targets) {
 			return true
 		}
 	}
 	return false
+}
+
+// targetsRequired reports whether a target clause forces an announcement
+// to name a target. A nil clause does not, and neither does one whose
+// Min is 0 ("up to one target", "any number of"): the enumerator offers
+// the empty announcement beside the targeted ones (ADR 0142, amendment
+// of 2026-10-10).
+func targetsRequired(t *game.TargetSpec) bool {
+	return t != nil && (t.Min > 0 || t.CountFromX)
 }
 
 // checkManaAnswers is the guard for a mana ability's declared answers.
