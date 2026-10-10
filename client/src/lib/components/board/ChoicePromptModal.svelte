@@ -39,6 +39,7 @@
     ReplacementOptionView,
   } from "../../protocol";
   import Card from "./Card.svelte";
+  import PickName from "./PickName.svelte";
   import ManaCost from "./ManaCost.svelte";
   import { findCardView } from "../../commanderReturn";
   import { answeredOnBoard, listFallback } from "../../boardAnsweredChoice";
@@ -1984,6 +1985,7 @@
         {#each optionCards as c (c.instance_id)}
           <div class="card-pick" class:bottomed={scryBottom.includes(c.instance_id)}>
             <Card card={c} />
+            <PickName card={c} />
           </div>
         {/each}
       </div>
@@ -2495,6 +2497,7 @@
             aria-label={`select ${c.name || "card"}`}
           >
             <Card card={c} />
+            <PickName card={c} />
             {#if isChooseSource}
               <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
             {:else if isChooseCards || isUntapChoice || isProliferate}
