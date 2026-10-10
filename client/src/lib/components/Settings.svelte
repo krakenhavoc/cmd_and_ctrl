@@ -66,15 +66,23 @@
   // sentinel (priority_holder = -1) makes them un-stoppable anyway.
   const STOPPABLE_STEPS: readonly StepID[] = STEP_IDS.filter((id) => hasOwnStop(id));
 
-  // toggleStepStop flips one entry in the stepStops map and flashes
-  // the saved indicator next to the row. Path uses the step ID as
-  // the leaf so each row's flash is independent.
-  function toggleStepStop(step: StepID, value: boolean): void {
-    updateSettings("gameplay", "stepStops", {
-      ...$settings.gameplay.stepStops,
+  // ADR 0143 §2.3: the two columns of the stops grid. stepStops is
+  // My turn, stepStopsOpponents is Opponents' turns.
+  type StopColumn = "stepStops" | "stepStopsOpponents";
+  const STOP_COLUMNS: readonly { key: StopColumn; label: string }[] = [
+    { key: "stepStops", label: "My turn" },
+    { key: "stepStopsOpponents", label: "Opponents' turns" },
+  ];
+
+  // toggleStepStop flips one entry in one column's map and flashes
+  // the saved indicator next to the box. Path uses the column and the
+  // step ID as the leaf so each box's flash is independent.
+  function toggleStepStop(column: StopColumn, step: StepID, value: boolean): void {
+    updateSettings("gameplay", column, {
+      ...$settings.gameplay[column],
       [step]: value,
     });
-    flashSaved(`gameplay.stepStops.${step}`);
+    flashSaved(`gameplay.${column}.${step}`);
   }
 
   // Active sidebar tab. Reset to "audio" every time the modal
@@ -881,7 +889,7 @@
             </fieldset>
 
             <fieldset class="step-stops">
-              <legend>Stop on these steps</legend>
+              <legend>Stop at these steps</legend>
               <p class="help">
                 {#if $settings.gameplay.passMode === "manual"}
                   In Manual every step stops, so these do nothing.
@@ -891,19 +899,35 @@
                   grant priority (turn-based actions auto-fire).
                 {/if}
               </p>
-              <div class="step-stops-grid">
-                {#each STOPPABLE_STEPS as step (step)}
-                  <label class="step-stop-row">
-                    <input
-                      type="checkbox"
-                      checked={$settings.gameplay.stepStops[step] === true}
-                      onchange={(e) => toggleStepStop(step, e.currentTarget.checked)}
-                    />
-                    <span>{STEP_LABELS[step]}</span>
-                    {#if isFresh(`gameplay.stepStops.${step}`)}<span class="saved">✓</span>{/if}
-                  </label>
-                {/each}
-              </div>
+              <table class="step-stops-table">
+                <thead>
+                  <tr>
+                    <th scope="col"><span class="visually-hidden">Step</span></th>
+                    {#each STOP_COLUMNS as col (col.key)}
+                      <th scope="col">{col.label}</th>
+                    {/each}
+                  </tr>
+                </thead>
+                <tbody>
+                  {#each STOPPABLE_STEPS as step (step)}
+                    <tr>
+                      <th scope="row">{STEP_LABELS[step]}</th>
+                      {#each STOP_COLUMNS as col (col.key)}
+                        <td>
+                          <input
+                            type="checkbox"
+                            aria-label={`${STEP_LABELS[step]}, ${col.label}`}
+                            checked={$settings.gameplay[col.key][step] === true}
+                            onchange={(e) => toggleStepStop(col.key, step, e.currentTarget.checked)}
+                          />
+                          {#if isFresh(`gameplay.${col.key}.${step}`)}<span class="saved">✓</span
+                            >{/if}
+                        </td>
+                      {/each}
+                    </tr>
+                  {/each}
+                </tbody>
+              </table>
               <label>
                 <input
                   type="checkbox"
@@ -1875,36 +1899,46 @@
   .step-stops {
     margin-top: 12px;
   }
-  .step-stops-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 2px 14px;
+  /* ADR 0143 §2.3: ten rows of two columns, My turn and Opponents'
+     turns. Fits a 768 px panel side by side. */
+  .step-stops-table {
+    border-collapse: collapse;
     margin-top: 4px;
-  }
-  .step-stop-row {
-    display: flex;
-    align-items: center;
-    gap: 8px;
     font-size: 12.5px;
-    font-weight: 500;
-    padding: 5px 0;
-    border-bottom: none;
   }
-  .step-stop-row > input[type="checkbox"] {
-    order: 0;
+  .step-stops-table th {
+    font-weight: 500;
+    text-align: left;
+    padding: 4px 14px 4px 0;
+  }
+  .step-stops-table thead th {
+    font-size: 11.5px;
+    opacity: 0.75;
+  }
+  .step-stops-table td {
+    padding: 4px 14px 4px 0;
+    white-space: nowrap;
+  }
+  .step-stops-table input[type="checkbox"] {
     margin-left: 0;
     width: 30px;
     height: 18px;
+    vertical-align: middle;
   }
-  .step-stop-row > input[type="checkbox"]::after {
+  .step-stops-table input[type="checkbox"]::after {
     width: 12px;
     height: 12px;
   }
-  .step-stop-row > input[type="checkbox"]:checked::after {
+  .step-stops-table input[type="checkbox"]:checked::after {
     left: 14px;
   }
-  .step-stop-row .saved {
-    margin-left: auto;
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   /* ---- Shortcuts tab ------------------------------------------- */

@@ -86,7 +86,7 @@
   } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
   import { attackersDefendedBy } from "../lib/attackTargets";
-  import { stopKeyFor, type StepID } from "../lib/turn";
+  import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import {
@@ -110,7 +110,12 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
-  import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
+  import {
+    autopassDecision,
+    isBluff,
+    stepStopFor,
+    type AutopassGates,
+  } from "../lib/autopassDecision";
   import {
     actionableCount,
     highlightsLive,
@@ -525,7 +530,8 @@
       // `stopKeyFor`): a stop on combat damage stops on the
       // first-strike step too, which is the window a player who asked
       // to see damage most wants.
-      stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
+      // ADR 0143 §2.3: the column for whoever is active.
+      stepStop: stepStopFor(gp, step, viewerIsActive),
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
