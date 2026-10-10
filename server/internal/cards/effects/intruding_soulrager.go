@@ -20,8 +20,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice a Room: This creature deals 2 damage to each opponent. Draw a card.",
-			Cost:  Plus(TapCost(), SacrificeN(1, "a Room", HasSubtype("Room"))),
+			Label:   "{T}, Sacrifice a Room: This creature deals 2 damage to each opponent. Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeN(1, "a Room", HasSubtype("Room"))),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := ctx.Game.DamageInstanceForEffect(func() error {

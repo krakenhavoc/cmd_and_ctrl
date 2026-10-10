@@ -34,6 +34,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: Put a plot counter on this enchantment. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost:      game.AbilityCost{Mana: "{2}"},
 			AnyPlayer: true,
 			Effect:    putACounterOnThis("plot"),

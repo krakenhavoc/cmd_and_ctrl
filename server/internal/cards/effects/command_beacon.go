@@ -44,9 +44,10 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Sacrifice this land: Put your commander into your hand from the command zone",
-			Cost:   game.AbilityCost{Tap: true, SacrificeSelf: true},
-			Effect: commandBeaconToHand,
+			Label:   "{T}, Sacrifice this land: Put your commander into your hand from the command zone",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    game.AbilityCost{Tap: true, SacrificeSelf: true},
+			Effect:  commandBeaconToHand,
 		}},
 	})
 }

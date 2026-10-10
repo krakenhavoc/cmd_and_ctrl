@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Promising Vein — Land — Cave (EDHREC rank 3191):
 //
 //	"{T}: Add {C}.
@@ -25,9 +27,10 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}, {T}, Sacrifice Promising Vein: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-			Cost:   Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
-			Effect: b30FetchBasicTapped,
+			Label:   "{1}, {T}, Sacrifice Promising Vein: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
+			Effect:  b30FetchBasicTapped,
 		}},
 	})
 }

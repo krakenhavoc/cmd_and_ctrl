@@ -284,3 +284,9 @@ Four more rulings (owner, 2026-10-10, S2 batch 2):
 8. **Ending the turn is `remove`.** Sundial of the Infinite and Obeka, Brute Chronologist exile the whole stack, so they answer any item on it.
 9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`.
 10. **Leftovers.** Fountainport's "Sacrifice a token: Draw a card" is `sac_outlet`. Aang, Swift Savior ("Waterbend {8}: Transform Aang") is `pump`. Elsewhere Flask, Terraformer and Roiling Vortex are `value`. Experimental Frenzy `restrict` and Master Transmuter `protect` (S2 batch 1) are confirmed.
+
+Three more rulings (owner, 2026-10-10, S2 batch 3):
+
+11. **"Your next spell can't be countered" at instant speed is `protect`.** Theorist's Proxy and Mistrise Village declare `protect`: activated in response, they keep the next spell off the counter.
+12. **Plague Boiler is `remove`; Deadly Designs is `sac_outlet`.**
+13. **The remaining value-looking rows are declared from their effect.** Each row the text read left as none (Emergence Zone, Armageddon Clock, Infinite Hourglass, Volrath's Dungeon, Codie, Magus of the Will, The Grim Captain's Locker, Multani, Captain Sisay, and any similar row) is declared from its effect using the table above, and defaults to `value`. A row whose effect truly fits two tiers is reported rather than guessed.

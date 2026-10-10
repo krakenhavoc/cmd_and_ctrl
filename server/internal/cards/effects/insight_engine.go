@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Insight Engine — Artifact {2}{U} (EDHREC rank 2478):
 //
 //	"{2}, {T}: Put a charge counter on this artifact, then draw a card
@@ -21,9 +23,10 @@ func init() {
 		Name:         "Insight Engine",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{2}, {T}: Put a charge counter on Insight Engine, then draw a card for each charge counter on it.",
-			Cost:   Plus(ManaCost("{2}"), TapCost()),
-			Effect: b23ChargeThenDrawPerCharge,
+			Label:   "{2}, {T}: Put a charge counter on Insight Engine, then draw a card for each charge counter on it.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
+			Effect:  b23ChargeThenDrawPerCharge,
 		}},
 	})
 }

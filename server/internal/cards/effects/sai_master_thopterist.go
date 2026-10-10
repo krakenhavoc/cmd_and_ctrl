@@ -37,9 +37,10 @@ func init() {
 			})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{U}, Sacrifice two artifacts: Draw a card.",
-			Cost:   Plus(ManaCost("{1}{U}"), SacrificeN(2, "two artifacts", Artifact())),
-			Effect: Do(DrawCards{N: 1}),
+			Label:   "{1}{U}, Sacrifice two artifacts: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{U}"), SacrificeN(2, "two artifacts", Artifact())),
+			Effect:  Do(DrawCards{N: 1}),
 		}},
 	})
 }

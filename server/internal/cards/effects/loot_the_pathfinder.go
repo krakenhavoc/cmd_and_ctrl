@@ -64,6 +64,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "Exhaust — {U}, {T}: Draw three cards.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Exhaust: true,
 				Cost:    Plus(ManaCost("{U}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {

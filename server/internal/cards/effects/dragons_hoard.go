@@ -41,9 +41,10 @@ func init() {
 			Label:    "Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Remove a gold counter from this artifact: Draw a card.",
-			Cost:   Plus(TapCost(), RemoveCountersFromThis("gold", 1)),
-			Effect: b27DrawOne,
+			Label:   "{T}, Remove a gold counter from this artifact: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), RemoveCountersFromThis("gold", 1)),
+			Effect:  b27DrawOne,
 		}},
 	})
 }

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Sea Gate Wreckage — Land (EDHREC rank 5148):
 //
 //	"{T}: Add {C}. ({C} represents colorless mana.)
@@ -26,6 +28,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{2}{C}, {T}: Draw a card. Activate only if you have no cards in hand.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{2}{C}"), TapCost()),
 			Condition: NoCardsInHand(),
 			Effect:    b36DrawOne,

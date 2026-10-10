@@ -71,7 +71,8 @@ func init() {
 				return eachOpponentLosesLife(g, item, power)
 			},
 		}, {
-			Label: "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand",
+			Label:   "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: SacrificeEach("a Swamp and a Forest",
 				SacrificeSubtype("a Swamp", "Swamp"),
 				SacrificeSubtype("a Forest", "Forest")),

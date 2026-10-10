@@ -29,8 +29,9 @@ func init() {
 			Label:    "Add {U}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{U}, {T}: The next spell you cast this turn can't be countered.",
-			Cost:  Plus(ManaCost("{U}"), TapCost()),
+			Label:   "{U}, {T}: The next spell you cast this turn can't be countered.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    Plus(ManaCost("{U}"), TapCost()),
 			Effect: Do(GrantCounterShield{From: "Mistrise Village", Grant: NextSpellYouCastCantBeCountered(
 				"The next spell you cast this turn can't be countered.", game.PermissionFilter{})}),
 		}},

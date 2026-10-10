@@ -32,8 +32,9 @@ func init() {
 				game.Purpose{Energy: 1}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Pay {E}{E}, Sacrifice this enchantment: Each opponent loses 3 life. You gain life equal to the life lost this way.",
-			Cost:  Plus(PayEnergy(2), SacrificeThis()),
+			Label:   "Pay {E}{E}, Sacrifice this enchantment: Each opponent loses 3 life. You gain life equal to the life lost this way.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(PayEnergy(2), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b21DrainEachOpponentAndGainTheTotal(g, item, 3)
 			},

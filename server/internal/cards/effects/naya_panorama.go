@@ -66,8 +66,9 @@ func b43PanoramaFetch(oracleID, name string, subtypes ...string) Spec {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: label,
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
+			Label:   label,
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:        item.Controller,

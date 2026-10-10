@@ -31,7 +31,8 @@ func init() {
 			UntilThisLeavesLegacyReturn("Solitary Cell — return the exiled card", solitaryCellExileLabel),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Discard a legendary card: Draw a card.",
+			Label:   "{1}, {T}, Discard a legendary card: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: Plus(ManaCost("{1}"), TapCost(),
 				DiscardCardsMatching(1, "a legendary card", func(c game.Card) bool { return c.IsLegendary() })),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -54,8 +54,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{1}, {T}: Each opponent mills cards equal to the amount of life you gained this turn.",
-				Cost:  Plus(ManaCost("{1}"), TapCost()),
+				Label:   "{1}, {T}: Each opponent mills cards equal to the amount of life you gained this turn.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{1}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					n := b15LifeGainedThisTurn(g, item.Controller)

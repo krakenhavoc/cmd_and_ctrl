@@ -25,8 +25,9 @@ func init() {
 		Completeness:  CompletenessFull,
 		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}, Discard a card: Look at the top X cards of your library, where X is the number of artifacts you control. Put one of those cards into your hand and the rest on the bottom of your library in a random order",
-			Cost:  Plus(ManaCost("{3}"), TapCost(), DiscardACard()),
+			Label:   "{3}, {T}, Discard a card: Look at the top X cards of your library, where X is the number of artifacts you control. Put one of those cards into your hand and the rest on the bottom of your library in a random order",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}"), TapCost(), DiscardACard()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				player := item.Controller
 				x := 0

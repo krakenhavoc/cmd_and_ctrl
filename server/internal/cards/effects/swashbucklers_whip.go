@@ -36,9 +36,10 @@ func init() {
 					},
 				},
 				{
-					Label:  "{8}, {T}: Discover 10",
-					Cost:   Plus(ManaCost("{8}"), TapCost()),
-					Effect: DiscoverN(10),
+					Label:   "{8}, {T}: Discover 10",
+					Purpose: game.Purpose{Answers: game.AnswerValue},
+					Cost:    Plus(ManaCost("{8}"), TapCost()),
+					Effect:  DiscoverN(10),
 				},
 			},
 			Text: "{2}, {T}: Tap target artifact or creature. {8}, {T}: Discover 10.",

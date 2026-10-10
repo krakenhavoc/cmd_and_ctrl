@@ -39,16 +39,18 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{3}{U}{U}: Shuffle your library.",
-				Cost:  ManaCost("{3}{U}{U}"),
+				Label:   "{3}{U}{U}: Shuffle your library.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{3}{U}{U}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					return ShuffleLibrary{Player: item.Controller}.Apply(ctx)
 				},
 			},
 			{
-				Label: "{X}: Look at the top X cards of your library, then put them back in any order.",
-				Cost:  ManaCost("{X}"),
+				Label:   "{X}: Look at the top X cards of your library, then put them back in any order.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{X}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					return LookAtTop{Player: item.Controller, N: ctx.X()}.Apply(ctx)

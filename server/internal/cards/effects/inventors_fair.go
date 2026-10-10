@@ -43,6 +43,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{4}, {T}, Sacrifice Inventors' Fair: Search your library for an artifact card, reveal it, put it into your hand, then shuffle. Activate only if you control three or more artifacts.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{4}"), TapCost(), SacrificeThis()),
 			Condition: threeArtifacts,
 			Effect: func(g *game.Game, item *game.StackItem) error {

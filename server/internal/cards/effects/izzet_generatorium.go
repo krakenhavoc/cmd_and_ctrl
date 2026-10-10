@@ -46,7 +46,7 @@ func init() {
 			Label:     "{T}: Draw a card. Activate only if you've paid or lost four or more {E} this turn.",
 			Cost:      TapCost(),
 			Condition: PaidOrLostEnergyThisTurn(4),
-			Purpose:   game.Purpose{Draws: 1},
+			Purpose:   game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Effect:    Do(DrawCards{N: 1}),
 		}},
 	})

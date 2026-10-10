@@ -27,7 +27,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Pay {E}{E}{E}: Draw a card.",
 			Cost:    Plus(TapCost(), PayEnergy(3)),
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Effect:  ebDrawACard,
 		}},
 	})

@@ -56,8 +56,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{1}, {T}, Sacrifice an artifact: Draw a card",
-				Cost:  Plus(postCost, b10SacrificeAnArtifact()),
+				Label:   "{1}, {T}, Sacrifice an artifact: Draw a card",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(postCost, b10SacrificeAnArtifact()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				},

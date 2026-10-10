@@ -37,8 +37,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{U}{B}{R}{G}, {T}: Each creature you control becomes prepared.",
-			Cost:  Plus(ManaCost("{W}{U}{B}{R}{G}"), TapCost()),
+			Label:   "{W}{U}{B}{R}{G}, {T}: Each creature you control becomes prepared.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{W}{U}{B}{R}{G}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, c := range g.BattlefieldCardsForEffect() {
