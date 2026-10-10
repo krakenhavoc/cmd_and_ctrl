@@ -60,9 +60,10 @@ func init() {
 		Name:         "Braided Quipu",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{U}, {T}: Draw a card for each artifact you control, then put this artifact into its owner's library third from the top.",
-			Cost:   Plus(ManaCost("{3}{U}"), TapCost()),
-			Effect: braidedQuipuDrawThenTuck,
+			Label:   "{3}{U}, {T}: Draw a card for each artifact you control, then put this artifact into its owner's library third from the top.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}{U}"), TapCost()),
+			Effect:  braidedQuipuDrawThenTuck,
 		}},
 	})
 }

@@ -54,6 +54,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{4}: Remove a doom counter from this artifact. Any player may activate this ability but only during any upkeep step.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      game.AbilityCost{Mana: "{4}"},
 			AnyPlayer: true,
 			Condition: DuringStep(game.StepUpkeep),

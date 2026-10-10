@@ -33,8 +33,9 @@ func init() {
 			Label:    "{T}, Remove a component counter from this artifact: Add two mana of different colors",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Roll a d20.",
-			Cost:  TapCost(),
+			Label:   "{T}: Roll a d20.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				rolls, err := rollDice(ctx, 20, 1)

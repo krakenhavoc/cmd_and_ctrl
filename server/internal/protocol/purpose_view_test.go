@@ -142,8 +142,10 @@ func TestPurposeRidesTheViewInEverySlot(t *testing.T) {
 				t.Errorf("Blood Artist's row = %+v, want a death payoff", c)
 			}
 			c = findCardView(t, fv.Battlefield, mary.InstanceID)
+			// The row also declares what it answers (ADR 0142); the amounts
+			// are what this test pins.
 			if c == nil || len(c.ActivatedAbilities) == 0 || c.ActivatedAbilities[0].Purpose == nil ||
-				*c.ActivatedAbilities[0].Purpose != (PurposeView{Draws: 1, Discards: 1}) {
+				withoutAnswers(*c.ActivatedAbilities[0].Purpose) != (PurposeView{Draws: 1, Discards: 1}) {
 				t.Errorf("Mary Read's loot row = %+v, want draws 1 and discards 1", c)
 			}
 			var payoff *DiscardPayoffView
@@ -174,7 +176,7 @@ func TestPurposeRidesTheViewInEverySlot(t *testing.T) {
 			`"purpose":{"draws":2}`,
 			`"purpose":{"sweep":{"matches":"creatures","how":"destroy"}}`,
 			`"purpose":{"death_payoff":true}`,
-			`"purpose":{"draws":1,"discards":1}`,
+			`"purpose":{"draws":1,"discards":1`, // a declared answer may follow (ADR 0142)
 			`"purpose":{"discard_payoff":{"types":["island","pirate","vehicle"],"tokens":1}}`,
 			`"purpose":{"discard_payoff":{"any":true,"counters":1}}`,
 		} {

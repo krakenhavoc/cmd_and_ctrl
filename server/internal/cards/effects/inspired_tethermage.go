@@ -26,8 +26,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{6}: Empower Jace 2.",
-			Cost:  ManaCost("{6}"),
+			Label:   "{6}: Empower Jace 2.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{6}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return EmpowerJace{N: 2}.Apply(NewContext(g, item))
 			},

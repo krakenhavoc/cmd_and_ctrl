@@ -32,8 +32,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card",
-			Cost:  Plus(ManaCost("{3}"), TapCost(), PayLifeCount(LifeEqualToCommanderColors)),
+			Label:   "{3}, {T}, Pay life equal to the number of colors in your commanders' color identity: Draw a card",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}"), TapCost(), PayLifeCount(LifeEqualToCommanderColors)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

@@ -43,8 +43,9 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}, Sacrifice a land: Search your library for a land card, put it onto the battlefield tapped, then shuffle.",
-			Cost:  Plus(ManaCost("{2}"), TapCost(), b08SacrificeALand()),
+			Label:   "{2}, {T}, Sacrifice a land: Search your library for a land card, put it onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), b08SacrificeALand()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:        item.Controller,

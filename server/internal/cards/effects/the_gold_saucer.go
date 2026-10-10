@@ -17,8 +17,9 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{2}, {T}: Flip a coin. If you win the flip, create a Treasure token.",
-				Cost:  Plus(ManaCost("{2}"), TapCost()),
+				Label:   "{2}, {T}: Flip a coin. If you win the flip, create a Treasure token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					controller := item.Controller
 					g.FlipCoinForEffect(game.CoinFlipSpec{
@@ -36,8 +37,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{3}, {T}, Sacrifice two artifacts: Draw a card.",
-				Cost:  Plus(ManaCost("{3}"), TapCost(), SacrificeN(2, "two artifacts", Artifact())),
+				Label:   "{3}, {T}, Sacrifice two artifacts: Draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{3}"), TapCost(), SacrificeN(2, "two artifacts", Artifact())),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				},

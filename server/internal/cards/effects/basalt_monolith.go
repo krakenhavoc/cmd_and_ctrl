@@ -17,6 +17,7 @@ func init() {
 			// #2500: the whole effect is untapping the source.
 			UntapSelf: true,
 			Label:     "{3}: Untap Basalt Monolith",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      ManaCost("{3}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return UntapTarget{Target: item.SourceCardID}.Apply(NewContext(g, item))

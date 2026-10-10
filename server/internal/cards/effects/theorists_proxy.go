@@ -25,8 +25,9 @@ func init() {
 			WhenThisEnters("Theorist's Proxy — empower Jace 3", Do(EmpowerJace{N: 3})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{U}, Sacrifice this creature: The next spell you cast this turn can't be countered.",
-			Cost:  Plus(ManaCost("{U}"), SacrificeThis()),
+			Label:   "{U}, Sacrifice this creature: The next spell you cast this turn can't be countered.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    Plus(ManaCost("{U}"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantCounterShield{
 					From: "Theorist's Proxy",

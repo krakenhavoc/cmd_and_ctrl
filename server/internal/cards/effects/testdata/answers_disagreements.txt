@@ -10,6 +10,7 @@
 # One row per line, tab-separated, sorted:
 # <oracle_id> <card name> <ref> <label> declared=<answers> (<tiers>) fallback=<answers> (<tiers>)
 
+0089acfe-da66-4dd7-b1e5-4d7407f58257	Theorist's Proxy	own:0	{U}, Sacrifice this creature: The next spell you cast this turn can't be countered.	declared=protect (stack)	fallback=- (none)
 045bf1fd-f375-47a0-9983-7e2ebfed7854	Kargan Intimidator	own:0	{1}: Choose one that hasn't been chosen this turn	declared=pump|combat_grant (stack+combat)	fallback=- (none)
 046e25ee-c96d-4cff-93be-f7e3379d713c	Moonblade Shinobi	own:0	Ninjutsu {2}{U} ({2}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)
 0c0845c3-f4b5-444e-8f42-da0c7dbf2841#1	Henrika, Infernal Seer	own:0	{1}{B}{B}: Each creature you control with flying, deathtouch, and/or lifelink gets +1/+0 until end of turn.	declared=pump (stack)	fallback=pump|combat_grant (stack+combat)
@@ -19,6 +20,8 @@
 1eaa37a3-8769-4213-bcd5-39bcf4771273	Casey Jones, Asphalt Hooligan	own:0	{4}: Double Casey Jones's power until end of turn. Any player may activate this ability.	declared=pump (stack)	fallback=- (none)
 1f3c2b00-0000-4ae1-9650-9553accac52e	Ninja of the Deep Hours	own:0	Ninjutsu {1}{U} ({1}{U}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)
 21b76a94-d9f3-4c34-ab24-7e89321b04f0	Obeka, Brute Chronologist	own:0	{T}: The player whose turn it is may end the turn.	declared=remove (stack)	fallback=- (none)
+293c6f8f-9e6b-4267-a15d-1d5ce95fb5b4	Deadly Designs	own:0	{2}: Put a plot counter on this enchantment. Any player may activate this ability.	declared=sac_outlet (stack)	fallback=- (none)
+339f5334-b65a-445a-a016-20e997e0b4bb	Mistrise Village	own:0	{U}, {T}: The next spell you cast this turn can't be countered.	declared=protect (stack)	fallback=- (none)
 354defd2-f63f-4a48-9fd4-2526b3878a84	Ingenious Infiltrator	own:0	Ninjutsu {U}{B} ({U}{B}, Return an unblocked attacker you control to hand: Put this card onto the battlefield from your hand tapped and attacking.)	declared=protect (stack)	fallback=sac_outlet|combat_grant (stack+combat)
 3715e8b8-31df-499b-8a91-1bcd1199d6eb	Experimental Frenzy	own:0	{3}{R}: Destroy this enchantment.	declared=restrict (stack)	fallback=- (none)
 43f2d81e-aa01-4fa9-9046-6a27a05dbd2d	Contagion Clasp	own:0	{4}, {T}: Proliferate	declared=pump (stack)	fallback=- (none)
@@ -43,3 +46,4 @@ cbf09050-39d0-463b-96db-9e22011ae0d8	Aang, Swift Savior	own:0	Waterbend {8}: Tra
 da46786e-28df-4638-ab3d-121011d2f150	Master Transmuter	own:0	{U}, {T}, Return an artifact you control to its owner's hand: You may put an artifact card from your hand onto the battlefield.	declared=protect (stack)	fallback=- (none)
 e1096a98-a631-43f5-97d8-325001d608b3	Quicksilver Amulet	own:0	{4}, {T}: You may put a creature card from your hand onto the battlefield.	declared=makes_blocker (combat)	fallback=- (none)
 e853e2fb-f90d-4934-aa70-c8d3cdf12e56	Grim Repriser	own:0	{B}{R}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if an opponent has been dealt noncombat damage this turn.	declared=makes_blocker (combat)	fallback=- (none)
+fef502af-6e79-4c55-a86a-b45adb3fc64a	Plague Boiler	own:0	{1}{B}{G}: Put a plague counter on this artifact or remove a plague counter from it.	declared=remove (stack)	fallback=- (none)

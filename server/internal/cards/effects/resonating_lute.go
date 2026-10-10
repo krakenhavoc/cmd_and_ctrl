@@ -66,6 +66,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{T}: Draw a card. Activate only if you have seven or more cards in your hand.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      TapCost(),
 			Condition: HandSizeAtLeast(7),
 			Effect:    Do(DrawCards{N: 1}),

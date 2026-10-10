@@ -34,8 +34,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}, Sacrifice this land: You may cast spells this turn as though they had flash.",
-			Cost:  Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
+			Label:   "{1}, {T}, Sacrifice this land: You may cast spells this turn as though they had flash.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantCastTiming{
 					Label: "You may cast spells this turn as though they had flash.",

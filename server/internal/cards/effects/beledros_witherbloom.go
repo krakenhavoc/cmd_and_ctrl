@@ -56,6 +56,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     beledrosUntapLabel,
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      PayLife(10),
 			Condition: OncePerTurnActivation(beledrosUntapLabel),
 			Effect: func(g *game.Game, item *game.StackItem) error {

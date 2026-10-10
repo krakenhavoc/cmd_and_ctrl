@@ -19,8 +19,9 @@ func init() {
 		Name:         "Attunement",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Return this enchantment to its owner's hand: Draw three cards, then discard four cards.",
-			Cost:  ReturnThis(),
+			Label:   "Return this enchantment to its owner's hand: Draw three cards, then discard four cards.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ReturnThis(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return drawThenDiscard(g, item.Controller, item.SourceCardID, 3, 4, "")
 			},

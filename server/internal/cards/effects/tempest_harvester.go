@@ -23,7 +23,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Pay {E}: Draw a card, then discard a card.",
 			Cost:    Plus(TapCost(), PayEnergy(1)),
-			Purpose: game.Purpose{Draws: 1, Discards: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1, Discards: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return lootOne(g, item, 1)
 			},

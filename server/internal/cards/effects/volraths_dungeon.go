@@ -39,6 +39,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:     "Pay 5 life: Destroy this enchantment. Any player may activate this ability but only during their turn.",
+				Purpose:   game.Purpose{Answers: game.AnswerValue},
 				Cost:      game.AbilityCost{Life: 5},
 				AnyPlayer: true,
 				Condition: DuringYourTurn(),

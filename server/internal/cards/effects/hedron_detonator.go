@@ -51,8 +51,9 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice two artifacts: Exile the top card of your library. You may play that card this turn.",
-			Cost:  Plus(TapCost(), SacrificeN(2, "two artifacts", Artifact())),
+			Label:   "{T}, Sacrifice two artifacts: Exile the top card of your library. You may play that card this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeN(2, "two artifacts", Artifact())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				_, err := b12ImpulseExileForTurn(g, item, 1)
 				return err

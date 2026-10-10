@@ -53,9 +53,10 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{5}, {T}: Mill two cards. Then you may sacrifice this land. When you do, return another target permanent card from your graveyard to your hand.",
-				Cost:   Plus(ManaCost("{5}"), TapCost()),
-				Effect: edenMillTwoThenMaySacrifice,
+				Label:   "{5}, {T}: Mill two cards. Then you may sacrifice this land. When you do, return another target permanent card from your graveyard to your hand.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{5}"), TapCost()),
+				Effect:  edenMillTwoThenMaySacrifice,
 			},
 		},
 	})
