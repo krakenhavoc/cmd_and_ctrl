@@ -1051,11 +1051,11 @@ var items = []Item{
 		Missing:     "A permanent can't yet gain all the activated abilities of another card.",
 		Issue:       1557,
 		Tracked:     "#1557 (moved off #754 by ADR 0093 Decision 10; needs its own ADR)",
-		Waiting:     []string{"Marvin, Murderous Mimic", "Rex, Cyber-Hound"},
+		Waiting:     []string{"Marvin, Murderous Mimic", "Rex, Cyber-Hound", "The Enigma Jewel"},
 		Phrases:     []string{"all activated abilities"},
 		ADR:         "0093-abilities-granted-to-other-permanents.md",
 		Unblocks:    1,
-		EngineNotes: "primitive: \"has all activated abilities of …\" (Marvin, Necrotic Ooze, Drana and Linvala, Hazel's Brewmaster) grants ANOTHER OBJECT'S text, computed each layer pass. ADR 0093's grant is a catalog bundle with a fixed key; this grant has no bundle key at all, so it is Decision 10's out-of-scope case and needs its own ADR. Re-checked 2026-09-24. Rex, Cyber-Hound has all activated abilities of the cards in exile with brain counters (ADR 0129 PR 1, #1995).",
+		EngineNotes: "primitive: \"has all activated abilities of …\" (Marvin, Necrotic Ooze, Drana and Linvala, Hazel's Brewmaster) grants ANOTHER OBJECT'S text, computed each layer pass. ADR 0093's grant is a catalog bundle with a fixed key; this grant has no bundle key at all, so it is Decision 10's out-of-scope case and needs its own ADR. Re-checked 2026-09-24. Rex, Cyber-Hound has all activated abilities of the cards in exile with brain counters (ADR 0129 PR 1, #1995). The Enigma Jewel moved here from the craft row when craft closed (#2709, ADR 0137's 2026-10-10 amendment): Locus of Enlightenment \"has each activated ability of the exiled cards used to craft it\", each once a turn, and copies every non-mana ability you activate; its craft clause, \"four or more nonlands with activated abilities\", also needs to know whether a card the catalog does not automate has an activated ability.",
 	},
 	{
 		Slug: "extra-combats", Name: "Extra combat and main phases", Kind: KindSeam, Status: StatusPartial,
@@ -2814,22 +2814,6 @@ var items = []Item{
 		Examples:    []string{"The Cruelty of Gix", "Love Song of Night and Day", "The Elder Dragon War"},
 		EngineNotes: "**Shipped** (#2123): `read ahead` is a canonical keyword. The entry look-ahead reports it and the Saga's final chapter number, and the gather adds one keyword entry replacement for it (`game/read_ahead.go`, riot's shape; CR 702.155c makes instances redundant). Its question is the new `entry_read_ahead` prompt, answered with `{option_index}` (option N is chapter N+1), asked before the Saga enters (CR 614.12a), so a cast, a reanimation and a token copy all ask; an entry that cannot pause takes chapter I. The answer seeds the entry's lore counters, which land through the ordinary counter window (Doubling Season doubles them). Chapters now fire from `applyCounterByLocked` for any lore counters put on a Saga (CR 714.2b), so a proliferate fires them too, and `fireSagaChaptersLocked` applies CR 702.155a: the turn the Saga entered, only the chapter whose number equals its lore count fires. See Closed seams.",
 	},
-	{
-		Slug: "craft", Name: "Craft", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Craft exiles an artifact together with materials from the battlefield or your graveyard and returns it transformed, such as Visage of Dread.",
-		Missing:  "Craft with \"one or more\" materials, with materials that must share or differ in type, or with materials from your graveyard only doesn't work yet.",
-		Rules:    []string{"702.167"},
-		Issue:    2709,
-		ADR:      "0137-craft.md",
-		Probe:    declaresCraft,
-		Examples: []string{"Visage of Dread", "Tithing Blade", "Jade Seedstones"},
-		Waiting: []string{
-			"Altar of the Wretched", "Sunbird Standard", "Saheeli's Lattice", "Paleontologist's Pick-Axe",
-			"Eye of Ojer Taq", "Throne of the Grim Captain", "The Enigma Jewel", "Ore-Rich Stalactite",
-			"Master's Guide-Mural", "Dire Flail", "Tetzin, Gnome Champion",
-		},
-		EngineNotes: "**Shipped for fixed-count materials of one card type or subtype** (#2124, [ADR 0137](decisions/0137-craft.md)): `game.ExilePermanentsCost` gained `FromGraveyard` (CR 702.167b's second zone: the activator's own graveyard, judged on the card's front face, CR 712.8a) and `Subtype` (\"Craft with Island / Cave\"); `game.ReturnCraftedFromExileForEffect` returns the exiled card on its back face as a new object under its owner's control; `Card.CraftedWith []ObjectRef` is CR 702.167c's link (delve's shape), resolved by `CraftMaterialsForEffect`, carried by clone, the snapshot and `PermanentInfo`. `effects.Craft` with `CraftWith` / `CraftWithN` / `CraftWithSubtype` is the keyword. **Still open** (#2709): \"one or more\" (an announced count: Altar of the Wretched, Sunbird Standard, Saheeli's Lattice, Paleontologist's Pick-Axe); a rule over the set (Eye of Ojer Taq's \"two that share a card type\", Throne of the Grim Captain's four subtypes, The Enigma Jewel's \"four or more nonlands with activated abilities\"); graveyard-only and variable (Ore-Rich Stalactite). Unstable Glyphbridge shipped with its back face's pieces (#2719). **Waiting on another face, not on craft:** Master's Guide-Mural (\"if an artifact entered the battlefield under your control this turn\" needs a card-type entry tally), Dire Flail (an Equipment granting a trigger with a reflexive \"when you do\"), Tetzin, Gnome Champion (its back face transforms another double-faced artifact). See Closed seams.",
-	},
 
 	{
 		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusImplemented,
@@ -3272,6 +3256,17 @@ var items = []Item{
 		ADR:      "0071-designations-that-switch-abilities-on.md",
 		Printed:  `(?i)\bcan't become suspected\b|\bsuspect one of the other creatures\b|\bgoad all suspected creatures\b|\bgoaded and/or suspected\b`,
 		Examples: []string{"Airtight Alibi", "Frantic Scapegoat", "Nelly Borca, Impulsive Accuser", "Hot Pursuit"},
+	},
+	{
+		// #2124 and #2709 (ADR 0137 and its 2026-10-10 amendment):
+		// materials from two zones, an open count, rules over the
+		// chosen set and graveyard-only materials.
+		Slug: "craft", Name: "Craft", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Craft exiles an artifact together with materials from the battlefield or your graveyard and returns it transformed, such as Visage of Dread, Saheeli's Lattice's \"one or more Dinosaurs\" and Throne of the Grim Captain's \"a Dinosaur, a Merfolk, a Pirate, and a Vampire\".",
+		Rules:    []string{"702.167"},
+		ADR:      "0137-craft.md",
+		Probe:    declaresCraft,
+		Examples: []string{"Visage of Dread", "Saheeli's Lattice", "Eye of Ojer Taq", "Throne of the Grim Captain", "Ore-Rich Stalactite"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

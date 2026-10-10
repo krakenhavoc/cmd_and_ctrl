@@ -87,3 +87,56 @@ On the craft row's Waiting list, each with its blocker:
 - **A rule over the set** — Eye of Ojer Taq ("two that share a card type"), Throne of the Grim Captain (four different subtypes, then puts an exiled creature card onto the battlefield attacking), The Enigma Jewel ("four or more", and the back face gains the materials' activated abilities). `TargetSpec.EachOf` (ADR 0020 Decision 55) is the likely shape for the Throne.
 - **Graveyard only, variable** — Ore-Rich Stalactite.
 - **A different blocker on another face** — Unstable Glyphbridge (its back face's "they can't attack you … this turn" and "each opponent who attacked you … can't cast spells"; `GrantCantAttackPlayerForEffect` covers only the attacker's next turn), Lodestone Needle (the explore keyword action is not implemented), Master's Guide-Mural ("activate only if an artifact entered the battlefield under your control this turn" needs a per-turn tally by card type), Dire Flail (an Equipment granting a triggered ability with a reflexive "when you do"), Tetzin, Gnome Champion (six artifacts is expressible; the back face transforms another double-faced artifact and the front reads "double-faced artifact" entries).
+
+---
+
+## Amendment, 2026-10-10: "one or more", rules over the set, and graveyard-only materials (#2709)
+
+**Status:** Accepted · S58 — Deck requests, October batch. Closes the craft row.
+
+The out-of-scope list above named three material shapes the component did not have, and five cards waiting on something on their back faces. This amendment ships all of them but one, The Enigma Jewel, whose back face is a different seam (below).
+
+### 4. The open count is a flag on the count, and the list is the announcement (extends Decision 1)
+
+`ExilePermanentsCost.OrMore` makes `Count` a floor with no ceiling: "Craft with one or more creatures" is `Count: 1, OrMore: true`, "four or more" is `Count: 4`. `ExilePermanentsCostBounds` answers `(Count, 0)` for it, the `(lo, hi)` shape `SacrificeCostBounds` gave the open sacrifice (#1213, ADR 0100 §3), and the validator's one count check reads it. No separate announcement: the length of `exile_permanent_ids` is the count (CR 602.2b), which is ADR 0100 §3's argument against a redundant number.
+
+### 5. Graveyard-only, any-of card types and a colour are more of the same data
+
+A material named *with* the word "card" ("four or more red instant and/or sorcery cards", Ore-Rich Stalactite) is a card in your graveyard and never a permanent (CR 702.167b). `GraveyardOnly` skips the battlefield half of the walk and refuses a permanent in the validator. `CardTypes` is an any-of list beside the single `CardType`; `Color` is a one-letter code read through `Card.HasColor`. `effects.Register` refuses `GraveyardOnly` without `FromGraveyard`, both `CardType` and `CardTypes`, a non-permanent card type unless the clause is graveyard-only, and a colour that is not W/U/B/R/G. Still data, so the ADR 0041 closure ratchet gains no route.
+
+### 6. Two rules over the chosen set
+
+The per-card check cannot say either of these, so each is judged once over the whole payment, after every pick is known to be a material:
+
+- **`ShareCardType`** — Eye of Ojer Taq's "two that share a card type": the materials' card types (CR 205.2a's list) have a common member. An artifact creature and an artifact land share artifact.
+- **`EachSubtype`** — Throne of the Grim Captain's "a Dinosaur, a Merfolk, a Pirate, and a Vampire": one material per subtype, one-to-one, by the sacrifice set rule's matching (`assignSacrificeSet`, #2526). A changeling fills any one part and never two, which is the ruling ("One creature with changeling is not enough"). `Count` is the list's length and `Register` refuses anything else.
+
+`ExilePermanentsPaymentForEffect` finds one legal payment (the fewest materials): the first Count of the earliest card type enough candidates share, or the matching with the least versatile candidates tried first, so a changeling is kept for the part nothing else fills. `ExilePermanentsPayable` asks it, so "can this be paid" and "pay it" agree.
+
+`TargetSpec.EachOf` (ADR 0020 Decision 55), which the Context above named as the likely shape for the Throne, was not used: the component is data on purpose (Decision 1), and a `TargetSpec` would bring predicate closures into `Game`'s reach.
+
+### 7. Wire, client and bot
+
+`exile_permanent_options` carries an open count as `min` N / `max` 0, `each_of` for the subtype rule (the sacrifice set rule's groups, so the picker's existing gate and "Choose for me" apply), and a new `shares: { label, keys }` for the shared-type rule: each candidate's card types, listing only the types enough candidates have to pay the count. A candidate may have several keys, which is why it is not `same` (#1807, one key per card). The picker greys a candidate that shares no key with the picks so far, holds Confirm until the picks share one, and skips itself only when there is nothing to choose (`exilePermanentAutoPick`); the menus grey a craft whose rule the board cannot meet.
+
+The enumerator offers, for an open count, the floor (one move per candidate at a floor of one), every graveyard material on offer, and everything on offer — two or three counts, never every subset, ADR 0100 §6's discipline; one payment per shared card type; and the matching for each-of. The heuristic already prices a permanent material as a permanent and a graveyard one as fuel (Decision 1).
+
+### 8. The back faces' pieces
+
+Each is the smallest addition its card needs, and each is general:
+
+- **`game.PowerAnywhereForEffect`** — a card's power where no layer pass runs, its own characteristic-defining ability applied (#2115's toughness reader, now both). Mastercraft Raptor's and Wretched Bonemass's rulings say a `*` material in exile counts what its CDA says.
+- **`TurnTally.EnteredCardTypes`** and `EnteredWithCardTypeThisTurn` — the entry tally by card type, beside the subtype one, recorded as each permanent enters (Master's Manufactory; the ruling: the artifact may since have left or changed). Additive in snapshot v7.
+- **`NextSpellPromise.WithoutPayingManaCost`** with **`PermissionFilter.CardType`** — Apex Observatory's "the next spell you cast this turn of the chosen type can be cast without paying its mana cost". A live promise adds one free granted alternative cost (CR 118.9), key `granted-next-spell-free`, read beside the permanents' granted offers in `grantedAlternativeCostsLocked`, so the view, the strip, the enumerator and `CastSpell` all see it. The next matching spell spends the promise whichever cost it is cast for: it is the next spell. Additive in v7.
+- **`Spec.AsAttached`** — "As this Equipment becomes attached to a creature, …" (Dinosaur Headdress), run by `AttachForEffect`, the one attach verb, and not for a re-attach to the same host (CR 701.3c). The Headdress's choice starts a duration copy (ADR 0043's amendment of 2026-09-28) whose new condition, **`WhileSourceAttachedToPinned`**, ends it when the Equipment moves or comes off.
+- **`StackItem.GrantedBy` for a granted triggered row** — Dire Blunderbuss grants "you may sacrifice an artifact other than Dire Blunderbuss", and that name is the Equipment that granted it. `buildTriggerItemLocked` now stamps the grantor from the row's grant occurrence (`triggerGrantor`), the numbering the composite key already gives repeated bundles, so two Blunderbusses give two triggers that may each sacrifice the other. It was stamped only on activated rows before (ADR 0109 §2).
+- **`game.IsDoubleFacedForEffect`** — CR 712.1's double-faced card: a transforming or modal double-faced card, a meld card or a melded permanent (Tetzin's trigger, The Golden-Gear Colossus's target). Whether it can then transform is still `CanTransform`'s question; the Colossus's ruling says a modal double-faced artifact is a legal target that won't.
+- **`PermanentInfo.ChosenOption`** — the CR 614.12 option as the permanent last existed, so Apex Observatory's tap ability names its type after the Observatory has gone (CR 608.2h). Additive in v7.
+
+### Cards
+
+Ten ship `full`: **Saheeli's Lattice**, **Altar of the Wretched**, **Sunbird Standard**, **Paleontologist's Pick-Axe**, **Eye of Ojer Taq**, **Throne of the Grim Captain**, **Ore-Rich Stalactite**, **Master's Guide-Mural**, **Dire Flail** and **Tetzin, Gnome Champion**. Unstable Glyphbridge shipped with #2719, and Lodestone Needle with explore.
+
+### Out of scope, stated
+
+**The Enigma Jewel** moves to the "Having another card's activated abilities" row (#1557). Its craft clause is expressible as data, but Locus of Enlightenment "has each activated ability of the exiled cards used to craft it", each once a turn, which is that row's seam and needs its own ADR; and "nonlands with activated abilities" must know whether a card the catalog does not automate has one, which the engine cannot read off a `Card`.

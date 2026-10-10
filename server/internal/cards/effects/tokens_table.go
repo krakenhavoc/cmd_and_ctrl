@@ -204,6 +204,7 @@ var tokenTable = map[string]game.Card{
 	"4/4 green Rhino with trample":                  {Name: "Rhino", TypeLine: "Token Creature — Rhino", Power: 4, Toughness: 4, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"3/3 green Frog Lizard":                         {Name: "Frog Lizard", TypeLine: "Token Creature — Frog Lizard", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"3/3 colorless Golem artifact":                  {Name: "Golem", TypeLine: "Token Enchantment Artifact Creature — Golem", Power: 3, Toughness: 3},
+	"4/4 white and blue Golem artifact":             {Name: "Golem", TypeLine: "Token Artifact Creature — Golem", Power: 4, Toughness: 4, Colors: []string{"W", "U"}},
 	"3/3 colorless Phyrexian Wurm artifact":         {Name: "Phyrexian Wurm", TypeLine: "Token Artifact Creature — Phyrexian Wurm", Power: 3, Toughness: 3},
 	"3/3 green Dinosaur with trample":               {Name: "Dinosaur", TypeLine: "Token Creature — Dinosaur", Power: 3, Toughness: 3, Colors: []string{"G"}, Keywords: []string{"trample"}},
 	"3/3 green Elephant":                            {Name: "Elephant", TypeLine: "Token Creature — Elephant", Power: 3, Toughness: 3, Colors: []string{"G"}},

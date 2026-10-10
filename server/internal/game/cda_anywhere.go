@@ -14,6 +14,41 @@ package game
 // ruling is exactly this — has to run the card's own layer-7a
 // abilities itself.
 
+// PowerAnywhereForEffect is ToughnessAnywhereForEffect for power:
+// Mastercraft Raptor's and Wretched Bonemass's "the total power of the
+// exiled cards used to craft it", whose rulings say a `*` card in exile
+// counts what its own characteristic-defining ability says (#2709).
+//
+// Caller must hold g.mu.
+func (g *Game) PowerAnywhereForEffect(c Card) int {
+	if c.effective != nil {
+		return c.PowerForComparison()
+	}
+	ch := g.cdaAnywhereLocked(c)
+	p, _ := ptWithCounters(ch, c.Counters)
+	return p
+}
+
+// cdaAnywhereLocked is a card's printed characteristics with its own
+// layer-7a abilities applied, for a card where no layer pass runs.
+//
+// Caller must hold g.mu.
+func (g *Game) cdaAnywhereLocked(c Card) Characteristic {
+	ch := effectiveOf(&c)
+	if CatalogStaticAbilities != nil {
+		for _, s := range CatalogStaticAbilities(catalogAbilityKeyOf(&c)) {
+			if s.Layer != Layer7PT || s.SubLayer != SubLayer7A_CDA || s.Apply == nil {
+				continue
+			}
+			if s.AppliesTo != nil && !s.AppliesTo(&c, g, &c) {
+				continue
+			}
+			s.Apply(&ch, &c, g, &c)
+		}
+	}
+	return ch
+}
+
 // ToughnessAnywhereForEffect is the card's toughness wherever it is:
 // on the battlefield its layered toughness, anywhere else its printed
 // toughness with its own characteristic-defining abilities applied
@@ -27,18 +62,7 @@ func (g *Game) ToughnessAnywhereForEffect(c Card) int {
 		// applying it again would overwrite what later sublayers did.
 		return c.CurrentToughness()
 	}
-	ch := effectiveOf(&c)
-	if CatalogStaticAbilities != nil {
-		for _, s := range CatalogStaticAbilities(catalogAbilityKeyOf(&c)) {
-			if s.Layer != Layer7PT || s.SubLayer != SubLayer7A_CDA || s.Apply == nil {
-				continue
-			}
-			if s.AppliesTo != nil && !s.AppliesTo(&c, g, &c) {
-				continue
-			}
-			s.Apply(&ch, &c, g, &c)
-		}
-	}
+	ch := g.cdaAnywhereLocked(c)
 	_, t := ptWithCounters(ch, c.Counters)
 	return t
 }

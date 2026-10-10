@@ -142,6 +142,7 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.emitAttachSkippedLocked(attachmentID, host, "a permanent cannot be attached to itself")
 		return nil
 	}
+	moved := c.AttachedTo != host
 	c.AttachedTo = host
 	c.AttachedAt = timeNowUnixNano()
 	g.EmitEvent(Event{
@@ -151,7 +152,40 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		CardID: c.InstanceID,
 		Target: host.ID,
 	})
+	// #2709: the attachment's "As this Equipment becomes attached to a
+	// creature, …" clause (Dinosaur Headdress). Not for a re-attach to
+	// the host it is already on: CR 701.3c, that attach does nothing,
+	// so nothing became attached.
+	if moved && host.Kind == TargetCard {
+		g.runAsAttachedLocked(attachmentID)
+	}
 	return nil
+}
+
+// runAsAttachedLocked runs the attachment's "As this <permanent>
+// becomes attached to …" clause (#2709, Dinosaur Headdress): a static
+// ability that applies as the attach happens, off the stack, the way
+// AsTransformsInto runs as a permanent turns over (runAsTransformsIntoLocked
+// is the model, error handling included). The clause reads the host off
+// the attachment's AttachedTo.
+//
+// Caller must hold g.mu.
+func (g *Game) runAsAttachedLocked(attachmentID uuid.UUID) {
+	card := findBattlefieldCard(g, attachmentID)
+	if card == nil {
+		return
+	}
+	d := catalogDef(catalogAbilityKeyOf(card))
+	if d == nil || d.AsAttached == nil {
+		return
+	}
+	if err := d.AsAttached(g, attachmentID); err != nil {
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			Source:   attachmentID,
+			ErrorMsg: err.Error(),
+		})
+	}
 }
 
 // AttachSourceForEffect is "attach this permanent to <host>" as one of

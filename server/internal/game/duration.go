@@ -261,6 +261,17 @@ const (
 	// a layer OUTPUT that nothing else re-sweeps (powerConditionsFailLocked).
 	WhilePinnedPowerAtMostSource
 
+	// WhileSourceAttachedToPinned — "equipped creature is …" for an
+	// effect an attachment creates as it becomes attached (#2709,
+	// Dinosaur Headdress's copy): the source must still be the object
+	// the duration names, on the battlefield, attached to the pinned
+	// permanent, which must still be the object pinned (CR 400.7). The
+	// layer listener bumps the version on EventAttach / EventUnattach,
+	// so the next sweep sees the Equipment move. Once it has moved the
+	// effect is over for good, even if it is attached to the same
+	// creature again later: that attach makes its own.
+	WhileSourceAttachedToPinned
+
 	// durationConditionEnd is a sentinel, not a condition. Keep it
 	// LAST, for the reason durationKindEnd gives: an unknown condition
 	// would otherwise fall through to a bare "source on battlefield".
@@ -273,7 +284,8 @@ func (c DurationCondition) Known() bool { return c >= 0 && c < durationCondition
 // readsPin reports whether c is about the pinned object, so a duration
 // using it must name one.
 func (c DurationCondition) readsPin() bool {
-	return c == WhilePinnedHasCounter || c == WhilePinnedRemainsTapped || c == WhilePinnedPowerAtMostSource
+	return c == WhilePinnedHasCounter || c == WhilePinnedRemainsTapped || c == WhilePinnedPowerAtMostSource ||
+		c == WhileSourceAttachedToPinned
 }
 
 // Known reports whether this binary can interpret the duration: its
@@ -761,6 +773,28 @@ func (g *Game) ForAsLongAsPinnedTappedDuration(object uuid.UUID) (Duration, bool
 	return g.PinnedTo(Duration{Kind: ForAsLongAs, Condition: WhilePinnedRemainsTapped}, object), true
 }
 
+// WhileAttachedToDuration is "for as long as <source> is attached to
+// <host>" (#2709): Dinosaur Headdress's copy of the equipped creature,
+// pinned to the host. False, so nothing is registered, when the source
+// is not on the battlefield attached to a host that is.
+//
+// Caller must hold g.mu.
+func (g *Game) WhileAttachedToDuration(source, host uuid.UUID) (Duration, bool) {
+	src, ok := g.battlefieldCardLocked(source)
+	if !ok || !src.IsAttachedTo(host) {
+		return Duration{}, false
+	}
+	if _, ok := g.battlefieldCardLocked(host); !ok {
+		return Duration{}, false
+	}
+	return g.PinnedTo(Duration{
+		Kind:            ForAsLongAs,
+		Condition:       WhileSourceAttachedToPinned,
+		Source:          source,
+		SourceEnteredAt: src.EnteredBattlefieldAt,
+	}, host), true
+}
+
 // ForAsLongAsSourceTappedAndPowerAtMostDuration is Old Man of the Sea's
 // "for as long as this creature remains tapped and that creature's
 // power remains less than or equal to this creature's power" (ADR 0109
@@ -950,6 +984,16 @@ func (g *Game) conditionHoldsLocked(d Duration, cond DurationCondition) bool {
 			return false
 		}
 		return c.CurrentPower() <= src.CurrentPower()
+	case WhileSourceAttachedToPinned:
+		c, ok := g.pinnedOnBattlefieldLocked(d)
+		if !ok {
+			return false
+		}
+		src, ok := g.battlefieldCardLocked(d.Source)
+		if !ok || src.EnteredBattlefieldAt != d.SourceEnteredAt {
+			return false
+		}
+		return src.IsAttachedTo(c.InstanceID)
 	case WhileSourceOnBattlefield, WhileYouControlSource, WhileYouControlSourceOnceItLands, WhileSourceRemainsTapped:
 		return g.sourceConditionHoldsLocked(d, cond)
 	}

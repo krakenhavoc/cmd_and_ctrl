@@ -692,8 +692,8 @@ func Register(spec Spec) {
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
 		// ability exiles graveyard cards through this component.
-		if ec := ma.Cost.ExilePermanents; ec != nil && ec.FromGraveyard {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials from the graveyard — only a CR 602 ability may (ADR 0137)", spec.Name, i))
+		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials (the graveyard, an open count or a set rule) — only a CR 602 ability may (ADR 0137)", spec.Name, i))
 		}
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
@@ -1182,6 +1182,35 @@ func checkExilePermanentsClause(card, where string, ec *game.ExilePermanentsCost
 	if ec.CardType != "" && !slices.Contains(game.PermanentCardTypes, strings.ToLower(ec.CardType)) {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles a %q you control — not a permanent card type (game.PermanentCardTypes)",
 			card, where, ec.CardType))
+	}
+	// ADR 0137's amendment: the craft variants. Each refusal is a
+	// declaration that would register and then match nothing, or match
+	// what the card does not print.
+	if ec.GraveyardOnly && !ec.FromGraveyard {
+		panic(fmt.Sprintf("effects.Register: %q %s is graveyard-only without FromGraveyard — it could never be paid", card, where))
+	}
+	if ec.CardType != "" && len(ec.CardTypes) > 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s names both CardType and CardTypes — use one", card, where))
+	}
+	for _, t := range ec.CardTypes {
+		lt := strings.ToLower(t)
+		ok := slices.Contains(game.PermanentCardTypes, lt)
+		if !ok && ec.GraveyardOnly {
+			ok = slices.ContainsFunc(game.ChoosableCardTypes, func(ct string) bool { return strings.EqualFold(ct, lt) })
+		}
+		if !ok {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles a %q — not a card type a material there can have", card, where, t))
+		}
+	}
+	if ec.Color != "" && !slices.Contains([]string{"W", "U", "B", "R", "G"}, ec.Color) {
+		panic(fmt.Sprintf("effects.Register: %q %s names colour %q — use a one-letter code (W, U, B, R, G)", card, where, ec.Color))
+	}
+	if len(ec.EachSubtype) > 0 && (ec.Count != len(ec.EachSubtype) || ec.OrMore || ec.ShareCardType) {
+		panic(fmt.Sprintf("effects.Register: %q %s fills %d subtypes one-to-one with a count of %d (OrMore %v, ShareCardType %v) — the count is the list's length, alone",
+			card, where, len(ec.EachSubtype), ec.Count, ec.OrMore, ec.ShareCardType))
+	}
+	if ec.ShareCardType && ec.Count < 2 {
+		panic(fmt.Sprintf("effects.Register: %q %s shares a card type among %d material — a set rule needs two", card, where, ec.Count))
 	}
 }
 

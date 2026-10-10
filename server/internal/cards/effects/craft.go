@@ -28,13 +28,23 @@ import (
 //     exiled to make it (CR 702.167c, Card.CraftedWith).
 //   - "Activate only as a sorcery" is SorcerySpeed.
 //
-// Material clauses with a fixed count and one quality are what this
-// covers: "Craft with artifact" (CraftWith), "Craft with two creatures"
-// (CraftWithN), "Craft with Island" (CraftWithSubtype). Still out of
-// scope (ADR 0137): "one or more" (an announced count), "two that share
-// a card type" and "a Dinosaur, a Merfolk, a Pirate, and a Vampire" (a
-// set rule over the picks), and "four or more red instant and/or
-// sorcery cards" (graveyard-only, a variable count).
+// The material clauses, one constructor per printed shape:
+//
+//	"Craft with artifact"                      CraftWith
+//	"Craft with two creatures"                 CraftWithN
+//	"Craft with Island"                        CraftWithSubtype
+//	"Craft with one or more creatures"         CraftWithOneOrMore
+//	"Craft with one or more Dinosaurs"         CraftWithOneOrMoreSubtype
+//	"Craft with one or more"                   CraftWithOneOrMore("")
+//	"Craft with two that share a card type"    CraftWithTwoSharingACardType
+//	"Craft with a Dinosaur, a Merfolk, …"      CraftWithEachOf
+//	"Craft with four or more red instant
+//	 and/or sorcery cards"                     CraftWithCardsOrMore
+//
+// The last four are ADR 0137's 2026-10-10 amendment (#2709): an open
+// count (ExilePermanentsCost.OrMore), a rule over the chosen set
+// (ShareCardType, EachSubtype) and a graveyard-only clause
+// (GraveyardOnly).
 
 // Craft is the craft keyword ability (CR 702.167a). `label` is the
 // printed keyword line without its reminder text — "Craft with
@@ -75,6 +85,83 @@ func CraftWithSubtype(subtype string) game.AbilityCost {
 	}
 	return craftMaterials(1, "", subtype,
 		article+" "+subtype+" you control or "+article+" "+subtype+" card from your graveyard")
+}
+
+// CraftWithOneOrMore is "Craft with one or more <card type>s" —
+// Altar of the Wretched's and Paleontologist's Pick-Axe's "one or more
+// creatures" — and, with an empty card type, Sunbird Standard's bare
+// "Craft with one or more": any other permanents you control and/or
+// any cards in your graveyard. The activator names how many (CR
+// 602.2b), at least one.
+func CraftWithOneOrMore(cardType string) game.AbilityCost {
+	label := "one or more other permanents you control and/or cards from your graveyard"
+	if cardType != "" {
+		label = "one or more " + cardType + "s you control and/or " + cardType + " cards from your graveyard"
+	}
+	cost := craftMaterials(1, cardType, "", label)
+	cost.ExilePermanents.OrMore = true
+	return cost
+}
+
+// CraftWithOneOrMoreSubtype is "Craft with one or more <subtype>s" —
+// Saheeli's Lattice's "one or more Dinosaurs".
+func CraftWithOneOrMoreSubtype(subtype string) game.AbilityCost {
+	cost := craftMaterials(1, "", subtype,
+		"one or more "+subtype+"s you control and/or "+subtype+" cards from your graveyard")
+	cost.ExilePermanents.OrMore = true
+	return cost
+}
+
+// CraftWithTwoSharingACardType is Eye of Ojer Taq's "Craft with two
+// that share a card type": any two from among other permanents you
+// control and/or cards in your graveyard, as long as some card type is
+// on both.
+func CraftWithTwoSharingACardType() game.AbilityCost {
+	cost := craftMaterials(2, "", "",
+		"two that share a card type, from among other permanents you control and/or cards from your graveyard")
+	cost.ExilePermanents.ShareCardType = true
+	return cost
+}
+
+// CraftWithEachOf is "Craft with a Dinosaur, a Merfolk, a Pirate, and
+// a Vampire" (Throne of the Grim Captain): one material for each
+// subtype, from among permanents you control and/or cards in your
+// graveyard, none of them filling two.
+func CraftWithEachOf(subtypes ...string) game.AbilityCost {
+	parts := make([]string, len(subtypes))
+	for i, st := range subtypes {
+		article := "a"
+		if strings.ContainsRune("AEIOU", rune(st[0])) {
+			article = "an"
+		}
+		parts[i] = article + " " + st
+	}
+	label := strings.Join(parts, ", ")
+	if len(parts) > 1 {
+		label = strings.Join(parts[:len(parts)-1], ", ") + ", and " + parts[len(parts)-1]
+	}
+	cost := craftMaterials(len(subtypes), "", "", label+", from among permanents you control and/or cards in your graveyard")
+	cost.ExilePermanents.EachSubtype = append([]string(nil), subtypes...)
+	return cost
+}
+
+// CraftWithCardsOrMore is a graveyard-only material clause with a
+// floor: Ore-Rich Stalactite's "four or more red instant and/or sorcery
+// cards" is CraftWithCardsOrMore(4, "R", "red", "instant", "sorcery").
+// `color` is the one-letter code ("" for none) and `colorWord` how the
+// label says it; the card types are "and/or".
+func CraftWithCardsOrMore(n int, color, colorWord string, cardTypes ...string) game.AbilityCost {
+	quality := strings.Join(cardTypes, " and/or ")
+	if colorWord != "" {
+		quality = colorWord + " " + quality
+	}
+	cost := craftMaterials(n, "", "", craftCountWord(n)+" or more "+quality+" cards from your graveyard")
+	ec := cost.ExilePermanents
+	ec.OrMore = true
+	ec.GraveyardOnly = true
+	ec.Color = color
+	ec.CardTypes = append([]string(nil), cardTypes...)
+	return cost
 }
 
 func craftMaterials(n int, cardType, subtype, label string) game.AbilityCost {
@@ -122,6 +209,48 @@ func craftCountWord(n int) string {
 func returnCraftedCard(g *game.Game, item *game.StackItem) error {
 	_, err := g.ReturnCraftedFromExileForEffect(item.SourceCardID, NewContext(g, item).Paid().Exiled)
 	return err
+}
+
+// craftMaterialsOf is CR 702.167c's link read off the permanent itself,
+// for a static ability whose source is the crafted permanent (a
+// characteristic-defining ability, a keyword grant, a mana ability):
+// the cards still in exile as its materials. Nil for a permanent no
+// craft ability made.
+//
+// Caller holds g.mu (a layer pass or a mana ability does).
+func craftMaterialsOf(g *game.Game, source *game.Card) []game.Card {
+	if source == nil || len(source.CraftedWith) == 0 {
+		return nil
+	}
+	return g.CraftMaterialsForEffect(source.CraftedWith)
+}
+
+// craftMaterialsTotalPower is "the total power of the exiled cards used
+// to craft it" (Mastercraft Raptor, Wretched Bonemass): each card's
+// power where it is, its own characteristic-defining ability applied
+// (the rulings' Souls of the Lost), a negative total read as it is.
+func craftMaterialsTotalPower(g *game.Game, source *game.Card) int {
+	total := 0
+	for _, c := range craftMaterialsOf(g, source) {
+		total += g.PowerAnywhereForEffect(c)
+	}
+	return total
+}
+
+// craftMaterialColors is "each color among the exiled cards used to
+// craft it" (Sunbird Effigy): the colours the materials have, in WUBRG
+// order, each once.
+func craftMaterialColors(materials []game.Card) []string {
+	var out []string
+	for _, col := range []string{"W", "U", "B", "R", "G"} {
+		for _, c := range materials {
+			if c.HasColor(col) {
+				out = append(out, col)
+				break
+			}
+		}
+	}
+	return out
 }
 
 // CraftMaterials is CR 702.167c's "the exiled cards used to craft it",

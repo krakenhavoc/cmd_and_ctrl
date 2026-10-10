@@ -102,6 +102,16 @@ type NextSpellPromise struct {
 	// one; the other riders describe a single spell.
 	EveryMatchingSpell bool `json:"everyMatchingSpell,omitempty"`
 
+	// WithoutPayingManaCost is "can be cast without paying its mana
+	// cost" (Apex Observatory, #2709): while the promise stands, a
+	// matching spell is offered one more alternative cost (CR 118.9),
+	// free, under GrantedAltCostNextFree — read beside the permanents'
+	// granted offers (grantedAlternativeCostsLocked), so the view, the
+	// strip, the enumerator and CastSpell all see it. The promise is
+	// spent by the next matching spell whichever cost it was cast for:
+	// that spell IS the next one.
+	WithoutPayingManaCost bool `json:"withoutPayingManaCost,omitempty"`
+
 	// Text is the clause as printed, for the log and the panel. Not a
 	// rules input.
 	Text string `json:"text,omitempty"`

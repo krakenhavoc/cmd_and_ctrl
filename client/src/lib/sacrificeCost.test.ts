@@ -10,8 +10,14 @@ import {
   fillsEachOf,
   chooseForMeState,
   chooseSacrificeForMe,
+  canFillShares,
+  chooseSharedForMe,
+  exilePermanentAutoPick,
   exilePermanentOptions,
+  fitsShares,
   keepAvailablePicks,
+  sharedKeys,
+  sharesAllows,
   orderSacrificeOptions,
   sacrificeCeiling,
   sacrificeCount,
@@ -317,5 +323,75 @@ describe("a sacrifice clause with a set rule (each_of)", () => {
     expect(fillsEachOf(["a"], undefined)).toBe(true);
     expect(canFillEachOf([])).toBe(true);
     expect(chooseSacrificeSetForMe(["a", "b"], undefined)).toEqual([]);
+  });
+});
+
+// ADR 0137's amendment (#2709): craft's "two that share a card type".
+// Each candidate may have several keys, and the picks must have one in
+// common.
+describe("a craft clause whose picks must share a card type", () => {
+  const shares = {
+    label: "share a card type",
+    keys: {
+      golem: ["artifact", "creature"],
+      rock: ["artifact"],
+      bear: ["creature"],
+    },
+  };
+
+  it("greys a candidate that shares nothing with the picks so far", () => {
+    expect(sharesAllows([], "bear", shares)).toBe(true);
+    expect(sharesAllows(["rock"], "bear", shares)).toBe(false);
+    expect(sharesAllows(["rock"], "golem", shares)).toBe(true);
+    expect(sharesAllows(["golem"], "bear", shares)).toBe(true);
+  });
+
+  it("confirms only picks with a key in common", () => {
+    expect(sharedKeys(["golem", "rock"], shares)).toEqual(["artifact"]);
+    expect(fitsShares(["golem", "bear"], shares)).toBe(true);
+    expect(fitsShares(["rock", "bear"], shares)).toBe(false);
+    expect(fitsShares([], shares)).toBe(false);
+  });
+
+  it("knows whether the board can pay it at all", () => {
+    expect(canFillShares(shares, 2)).toBe(true);
+    expect(canFillShares({ label: "x", keys: { rock: ["artifact"], bear: ["creature"] } }, 2)).toBe(
+      false,
+    );
+  });
+
+  it("Choose for me takes the earliest key enough candidates share", () => {
+    expect(chooseSharedForMe(["rock", "bear", "golem"], 2, shares)).toEqual(["rock", "golem"]);
+    expect(chooseSharedForMe(["rock", "bear"], 2, shares)).toEqual([]);
+  });
+
+  it("a clause without the rule reads exactly as before", () => {
+    expect(fitsShares(["a"], undefined)).toBe(true);
+    expect(sharesAllows(["a"], "b", undefined)).toBe(true);
+    expect(chooseSharedForMe(["a", "b"], 1, undefined)).toEqual(["a"]);
+  });
+});
+
+describe("the exile picker's skip", () => {
+  it("skips a fixed clause with exactly enough on offer", () => {
+    expect(exilePermanentAutoPick({ cards: ["a"], min: 1, max: 1 })).toEqual(["a"]);
+    expect(exilePermanentAutoPick({ cards: ["a", "b"], min: 1, max: 1 })).toBeNull();
+  });
+
+  it("asks for an open count whenever there is more than the floor", () => {
+    expect(exilePermanentAutoPick({ cards: ["a"], min: 1, max: 0 })).toEqual(["a"]);
+    expect(exilePermanentAutoPick({ cards: ["a", "b"], min: 1, max: 0 })).toBeNull();
+  });
+
+  it("asks for a set rule unless the options are exactly the floor", () => {
+    const each_of = [
+      { label: "a Dinosaur", cards: ["a", "b"] },
+      { label: "a Merfolk", cards: ["c"] },
+    ];
+    expect(exilePermanentAutoPick({ cards: ["a", "b", "c"], min: 2, max: 2, each_of })).toBeNull();
+    expect(exilePermanentAutoPick({ cards: ["a", "c"], min: 2, max: 2, each_of })).toEqual([
+      "a",
+      "c",
+    ]);
   });
 });

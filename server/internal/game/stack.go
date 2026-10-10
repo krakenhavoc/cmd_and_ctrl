@@ -205,8 +205,10 @@ type StackItem struct {
 	// GrantedBy is the object that GRANTED this ability, for an
 	// activated ability of a layer-6 grant (ADR 0093; ADR 0109 §2,
 	// owner decision 2): the Aura whose "Enchanted planeswalker has
-	// '…'" put the row on SourceCardID. uuid.Nil for an object's own
-	// ability, for every trigger and for every spell.
+	// '…'" put the row on SourceCardID — and, since #2709, for a
+	// triggered row of a grant too (triggerGrantor: Dire Blunderbuss's
+	// "an artifact other than Dire Blunderbuss"). uuid.Nil for an
+	// object's own ability and for every spell.
 	//
 	// The source is still the permanent that HAS the ability — it pays
 	// the loyalty, and "you" is its controller — but some of the text a

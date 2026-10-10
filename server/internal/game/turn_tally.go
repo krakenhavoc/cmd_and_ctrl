@@ -152,6 +152,15 @@ type TurnTally struct {
 	// as it entered: one that has since died, or since gained or lost
 	// a type, answers as it was then (#743, Lilypad Village).
 	EnteredSubtypes map[string]int `json:"enteredSubtypes,omitempty"`
+	// EnteredCardTypes is EnteredSubtypes one word over (#2709): the
+	// permanents that entered under each player this turn, per card
+	// type they had as they entered, keyed by subtypeTallyKey with the
+	// lowercase card type. Read through EnteredWithCardTypeThisTurn —
+	// Master's Manufactory's "if this artifact or another artifact
+	// entered the battlefield under your control this turn", whose
+	// ruling says the artifact may since have left, stopped being an
+	// artifact or changed controller.
+	EnteredCardTypes map[string]int `json:"enteredCardTypes,omitempty"`
 	// Entered counts the battlefield entries each permanent made this
 	// turn, keyed by the instance ID the entry produced. Read through
 	// Game.EnteredThisTurn.
@@ -968,6 +977,34 @@ func subtypeTallyCount(m map[string]int, playerID uuid.UUID, subtype string) int
 	return n
 }
 
+// EnteredWithCardTypeThisTurn reports how many permanents entered the
+// battlefield under playerID's control this turn having card type
+// `cardType` (any case) as they entered — EnteredWithSubtypeThisTurn's
+// reading, for a card type (#2709, Master's Manufactory).
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredWithCardTypeThisTurn(playerID uuid.UUID, cardType string) int {
+	if playerID == uuid.Nil || cardType == "" {
+		return 0
+	}
+	return g.TurnTally.EnteredCardTypes[subtypeTallyKey(playerID, cardType)]
+}
+
+// recordEnteredCardTypesLocked adds one entering permanent to
+// TurnTally.EnteredCardTypes under `controller`, once per card type it
+// has as it enters.
+func (g *Game) recordEnteredCardTypesLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil || c == nil {
+		return
+	}
+	for _, t := range cardTypesOf(c) {
+		if g.TurnTally.EnteredCardTypes == nil {
+			g.TurnTally.EnteredCardTypes = map[string]int{}
+		}
+		g.TurnTally.EnteredCardTypes[subtypeTallyKey(controller, t)]++
+	}
+}
+
 // recordEnteredSubtypesLocked adds one entering permanent to
 // TurnTally.EnteredSubtypes under `controller`.
 func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
@@ -1085,6 +1122,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
+	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
@@ -1284,6 +1322,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			controller = ev.Actor
 		}
 		g.recordEnteredSubtypesLocked(controller, c)
+		g.recordEnteredCardTypesLocked(controller, c)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

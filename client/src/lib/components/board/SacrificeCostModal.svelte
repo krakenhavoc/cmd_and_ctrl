@@ -21,17 +21,26 @@
   // ADR 0111 PR 6: a sheet in the action dock; Sacrifice and Cancel are
   // the dock's action bar (Enter / Escape through its one key handler).
 
-  import type { AltCostPriceView, CardView, SacrificeGroupView } from "../../protocol";
+  import type {
+    AltCostPriceView,
+    CardView,
+    SacrificeGroupView,
+    TargetSharesView,
+  } from "../../protocol";
   import {
     canConfirmSacrificeRange,
     canFillEachOf,
+    canFillShares,
     chooseForMeState,
     chooseSacrificeForMe,
     chooseSacrificeSetForMe,
+    chooseSharedForMe,
     fillsEachOf,
+    fitsShares,
     keepAvailablePicks,
     sacrificeAllWarning,
     sacrificeCeiling,
+    sharesAllows,
     toggleSacrificePickInRange,
   } from "../../sacrificeCost";
   import type { SacrificeRange } from "../../sacrificeCost";
@@ -65,6 +74,10 @@
     // must fill every part with a different permanent. Confirm stays
     // shut until they do, and "Choose for me" fills a set that does.
     eachOf?: SacrificeGroupView[];
+    // ADR 0137's amendment: craft's "two that share a card type" — the
+    // picks must share a key. A row that would break it is greyed, and
+    // Confirm stays shut until the picks share one.
+    shares?: TargetSharesView;
     // ADR 0135 §1: the spell this pays for, when the picker pays a
     // spell's alternative cost rather than an ability's cost. The hint
     // then reads "Tap an untapped creature you control to cast Orim's
@@ -92,6 +105,7 @@
     verb = "Sacrifice",
     countIsX = false,
     eachOf,
+    shares,
     castName,
     prices,
     all = false,
@@ -132,9 +146,15 @@
   });
 
   const ready = $derived(
-    all || (canConfirmSacrificeRange(chosen, range, options.length) && fillsEachOf(chosen, eachOf)),
+    all ||
+      (canConfirmSacrificeRange(chosen, range, options.length) &&
+        fillsEachOf(chosen, eachOf) &&
+        fitsShares(chosen, shares)),
   );
-  const short = $derived(!all && (options.length < range.min || !canFillEachOf(eachOf)));
+  const short = $derived(
+    !all &&
+      (options.length < range.min || !canFillEachOf(eachOf) || !canFillShares(shares, range.min)),
+  );
   const chooseForMeButton = $derived(
     all ? { shown: false, disabled: true } : chooseForMeState(range.min, options.length),
   );
@@ -149,7 +169,9 @@
     chosen =
       eachOf && eachOf.length > 0
         ? chooseSacrificeSetForMe(ids, eachOf)
-        : chooseSacrificeForMe(ids, range.min);
+        : shares
+          ? chooseSharedForMe(ids, range.min, shares)
+          : chooseSacrificeForMe(ids, range.min);
   }
 
   function confirm(): void {
@@ -196,6 +218,9 @@
         One permanent for each part: {eachOf.map((g) => g.label).join(", ")}.
       </p>
     {/if}
+    {#if shares}
+      <p class="prompt-hint">The ones you pick must {shares.label}.</p>
+    {/if}
     {#if countIsX}
       <p class="prompt-hint">The number you pick is X.</p>
     {:else if range.min === 0 && options.length > 0}
@@ -210,6 +235,8 @@
         <p class="prompt-hint error">
           {#if options.length < range.min}
             You control {options.length} of the {range.min} permanents this cost needs.
+          {:else if shares && !canFillShares(shares, range.min)}
+            You don't have {range.min} that {shares.label}.
           {:else}
             You don't control a different permanent for every part of this cost.
           {/if}
@@ -224,7 +251,9 @@
               class="prompt-opt"
               class:on
               aria-pressed={on}
-              disabled={all || (!on && ceiling > 1 && chosen.length >= ceiling)}
+              disabled={all ||
+                (!on && ceiling > 1 && chosen.length >= ceiling) ||
+                !sharesAllows(chosen, c.instance_id, shares)}
               onclick={() => pick(c.instance_id)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>

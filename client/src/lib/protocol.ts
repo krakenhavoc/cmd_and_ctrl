@@ -3067,6 +3067,10 @@ export interface LegalTargetsView {
   // #2526: a SACRIFICE clause's set rule — the picks must fill every
   // group with a different permanent. See sacrificeCost.ts.
   each_of?: SacrificeGroupView[];
+  // ADR 0137's amendment: a craft clause's "two that share a card
+  // type" — every pick must have a key every other pick also has. See
+  // sacrificeCost.ts (fitsShares).
+  shares?: TargetSharesView;
   // #2097: a SACRIFICE clause that takes every permanent in `cards`
   // ("sacrifice all creatures you control"); min and max are their
   // number. The client confirms rather than picks, and sends
@@ -3152,6 +3156,15 @@ export interface DivideView {
 export interface TargetDifferenceView {
   label: string;
   keys?: Record<string, string>;
+}
+
+// TargetSharesView is LegalTargetsView.shares (ADR 0137's amendment):
+// `label` is the rule's words ("share a card type"), and `keys` maps
+// each candidate to every key it has (an artifact creature has two).
+// A candidate missing from `keys` can be part of no payment.
+export interface TargetSharesView {
+  label: string;
+  keys?: Record<string, string[]>;
 }
 
 /**

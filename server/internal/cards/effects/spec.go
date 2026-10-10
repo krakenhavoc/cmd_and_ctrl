@@ -83,6 +83,16 @@ type Spec struct {
 	// 2026-09-24.
 	AsTransformsInto func(card *game.Card, ctx *Context) error
 
+	// AsAttached is the permanent's "As this <permanent> becomes
+	// attached to a creature, …" clause (Dinosaur Headdress, #2709): a
+	// static ability that applies as the attach happens, run by the
+	// engine's one attach verb (game.AttachForEffect) whatever made the
+	// attach — equip, an enters trigger, a moving effect — and not for
+	// a re-attach to the creature it is already on (CR 701.3c). Same
+	// contract as AsEnters: off the stack, Item is nil, the host is
+	// card.AttachedTo.
+	AsAttached func(card *game.Card, ctx *Context) error
+
 	// StartingLoyalty is the loyalty counter count a planeswalker
 	// enters the battlefield with. 0 means "not a planeswalker" or
 	// "planeswalker with 0 starting loyalty" (which the SBA would

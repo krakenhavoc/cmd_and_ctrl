@@ -16,7 +16,7 @@
 // definition of "how many" and "can this be paid" and vitest can pin
 // both without mounting a component.
 
-import type { CardView, SacrificeGroupView } from "./protocol";
+import type { CardView, SacrificeGroupView, TargetSharesView } from "./protocol";
 
 // SacrificeOptionsShape is the part of a LegalTargetsView the helpers
 // read. The menus' local cost shapes declare only cards / players, so
@@ -32,6 +32,9 @@ export interface SacrificeOptionsShape {
   // #2526: the clause's set rule ("Sacrifice a Swamp and a Forest"):
   // the picks must fill every group one-to-one. See fillsEachOf.
   each_of?: SacrificeGroupView[];
+  // ADR 0137's amendment: a craft clause's "two that share a card type".
+  // See fitsShares.
+  shares?: TargetSharesView;
   // #2097: the clause takes every permanent in `cards` ("sacrifice all
   // creatures you control"). See sacrificesAll.
   all?: boolean;
@@ -339,4 +342,94 @@ export function chooseSacrificeSetForMe(
     .sort((a, b) => a.n - b.n || a.i - b.i)
     .map((x) => x.id);
   return assignGroups(groups, order) ?? [];
+}
+
+// --- ADR 0137's amendment: "two that share a card type" -------------------
+//
+// A craft clause (Eye of Ojer Taq) ships `shares`: each candidate's keys
+// (its card types), and the picks must all have one key in common. A
+// candidate may have several (an artifact creature is both), so this is
+// not `same`, which keys each card once. The server lists only keys enough
+// candidates have to pay the count, so a candidate with no listed key can
+// be part of no payment.
+//
+// Absent `shares` means no rule, and every function here then answers
+// "yes" / passes its input through.
+
+// sharedKeys is the keys every pick has, in the first pick's order.
+export function sharedKeys(chosen: string[], shares: TargetSharesView | undefined): string[] {
+  if (!shares || chosen.length === 0) return [];
+  const keys = shares.keys ?? {};
+  let out = keys[chosen[0]] ?? [];
+  for (const id of chosen.slice(1)) {
+    const k = new Set(keys[id] ?? []);
+    out = out.filter((key) => k.has(key));
+  }
+  return out;
+}
+
+// fitsShares is the confirm gate: the picks share a key. No rule means
+// no gate.
+export function fitsShares(chosen: string[], shares: TargetSharesView | undefined): boolean {
+  if (!shares) return true;
+  return chosen.length > 0 && sharedKeys(chosen, shares).length > 0;
+}
+
+// sharesAllows is whether `id` may be added to `chosen`: it keeps a key
+// in common with every pick so far. The greying test.
+export function sharesAllows(
+  chosen: string[],
+  id: string,
+  shares: TargetSharesView | undefined,
+): boolean {
+  if (!shares || chosen.includes(id)) return true;
+  return sharedKeys([...chosen, id], shares).length > 0;
+}
+
+// canFillShares is whether `need` of the candidates share a key at all —
+// the "can this cost be paid" test for a greyed row.
+export function canFillShares(shares: TargetSharesView | undefined, need: number): boolean {
+  if (!shares) return true;
+  const counts = new Map<string, number>();
+  for (const ks of Object.values(shares.keys ?? {})) {
+    for (const k of ks) counts.set(k, (counts.get(k) ?? 0) + 1);
+  }
+  return [...counts.values()].some((n) => n >= need);
+}
+
+// chooseSharedForMe is "Choose for me" under the rule: the first `need`
+// options, in the server's payment order, that have the earliest key
+// enough of them share. Empty when none does.
+export function chooseSharedForMe(
+  options: string[],
+  need: number,
+  shares: TargetSharesView | undefined,
+): string[] {
+  if (!shares) return chooseSacrificeForMe(options, need);
+  const keys = shares.keys ?? {};
+  const order: string[] = [];
+  for (const id of options) {
+    for (const k of keys[id] ?? []) if (!order.includes(k)) order.push(k);
+  }
+  for (const k of order) {
+    const fit = options.filter((id) => (keys[id] ?? []).includes(k));
+    if (fit.length >= need) return fit.slice(0, need);
+  }
+  return [];
+}
+
+// exilePermanentAutoPick is the exile picker's skip (#1600): the ids to
+// send without asking when the board offers exactly what the clause
+// takes — a fixed count with no more on offer, or an open count's floor
+// with nothing beyond it. Null when the player has to choose. A set rule
+// is never skipped unless the options are exactly the floor, because a
+// wider pool has to be chosen from.
+export function exilePermanentAutoPick(opts: SacrificeOptionsShape | undefined): string[] | null {
+  if (!opts) return [];
+  const options = opts.cards ?? [];
+  const range = sacrificeRange(opts);
+  const hasRule = (opts.each_of?.length ?? 0) > 0 || !!opts.shares;
+  if (hasRule && options.length !== range.min) return null;
+  const ceiling = range.max === 0 ? range.min : range.max;
+  return options.length <= ceiling ? options : null;
 }
