@@ -53,8 +53,9 @@ func init() {
 			Label:            "Add four mana of the chosen color. Spend this mana only to cast monocolored spells of that color",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}: Draw two cards. Spend only mana of the chosen color to activate this ability.",
-			Cost:  Plus(ManaCost("{3}"), TapCost(), SpendOnlyManaOfTheChosenColor()),
+			Label:   "{3}, {T}: Draw two cards. Spend only mana of the chosen color to activate this ability.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}"), TapCost(), SpendOnlyManaOfTheChosenColor()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 			},

@@ -189,6 +189,19 @@
         <button class="mi" role="menuitem" onclick={via(props.onShuffle)}>
           <Icon name="shuffle" size={15} /> Shuffle library
         </button>
+        {#if props.sandboxPassTurn && props.onSandboxPassTurn}
+          <!-- ADR 0143 §4.2: the old Pass turn, a sandbox jump. The
+               dock's End turn is the rules-faithful way to end a turn. -->
+          <button
+            class="mi"
+            role="menuitem"
+            onclick={via(props.onSandboxPassTurn)}
+            title="jump straight to the next turn: no end step, no end-step triggers, no cleanup discard. The log shows the table you did it"
+          >
+            <Icon name="chevronRight" size={15} />
+            {L.sandboxPassTurn}
+          </button>
+        {/if}
         <div class="mi mi-row">
           <Icon name="hand" size={15} />
           <span>Mulligan to</span>
@@ -242,7 +255,7 @@
         role="menuitem"
         onclick={via(props.onTableSettings)}
         title={props.canManage
-          ? "the table's house rules — undos, life, commander damage, bot speed, spawning"
+          ? "the table's house rules — undos, life, commander damage, table pace, spawning"
           : "the table's house rules (only the host can change them)"}
       >
         <Icon name="gear" size={15} /> Table settings…

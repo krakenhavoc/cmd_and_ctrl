@@ -54,8 +54,9 @@ func init() {
 			}), game.Purpose{DeathPayoff: true}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}: Each player mills a card.",
-			Cost:  ManaCost("{1}{B}"),
+			Label:   "{1}{B}: Each player mills a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{1}{B}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b02EachPlayerMills(g, item, 1)
 			},

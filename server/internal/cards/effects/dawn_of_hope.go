@@ -35,8 +35,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{W}: Create a 1/1 white Soldier creature token with lifelink.",
-			Cost:  ManaCost("{3}{W}"),
+			Label:   "{3}{W}: Create a 1/1 white Soldier creature token with lifelink.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{3}{W}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Soldier with lifelink"), N: 1}.Apply(NewContext(g, item))
 			},

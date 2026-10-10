@@ -538,7 +538,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true,
 	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 	ModGrantAbilities: true, ModCantAttackUnlessDefenderControls: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
@@ -785,7 +785,7 @@ const (
 // the map counts as defFieldRules, and
 // TestEveryCardDefSlotHasAnIndependenceClass fails until it is added.
 var cardDefFieldClass = map[string]defFieldClass{
-	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsTransformsInto": defFieldInert,
+	"Resolve": defFieldInert, "AsEnters": defFieldInert, "AsTransformsInto": defFieldInert, "AsAttached": defFieldInert,
 	"StartingLoyalty": defFieldInert, "BattleDefense": defFieldInert,
 	"TargetMode": defFieldInert, "Targets": defFieldInert, "Modes": defFieldInert,
 	"Purpose": defFieldInert, "ManaAbilities": defFieldInert, "Activated": defFieldInert,
@@ -808,7 +808,10 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CantBeCountered": defFieldInert, "CantBeCounteredIf": defFieldInert,
 	"SpellDamageCantBePrevented": defFieldInert, "SpellsCantBeCountered": defFieldInert,
 	"HandSize": defFieldInert, "ManaPool": defFieldInert,
-	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert,
+	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert,
+	// ADR 0146: an extra vote changes how a vote resolves while its
+	// permanent is there.
+	"ExtraVote":   defFieldOwnRules,
 	"LifeForMana": defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert,

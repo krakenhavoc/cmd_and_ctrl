@@ -10,7 +10,7 @@ import { unreachableHandCards } from "./hand-reach";
 // fourteen steps by doing each step's gesture: Start, Roll (and "I go
 // first" when this page wins), Keep hand, rest on the hand, play a
 // Forest, rest on the lands, tap one, cast a lit creature, press next,
-// right-click, rest on the command zone, press next, autopass on, watch
+// right-click, rest on the command zone, press next, Skip to my turn on, watch
 // the bot's turn, attack, Finish. Each step's own title is asserted as
 // it comes up.
 //
@@ -493,12 +493,12 @@ class Walk {
 
       case "Let the bot play":
         await this.dock
-          .getByRole("button", { name: L.autopass, exact: true })
+          .getByRole("button", { name: L.skipToMyTurn, exact: true })
           .click();
         return this.moved(c);
-      case "First, autopass off":
+      case "First, turn off Skip to my turn":
         await this.dock
-          .getByRole("button", { name: L.autopass, exact: true })
+          .getByRole("button", { name: L.skipToMyTurn, exact: true })
           .click();
         return this.moved(c);
 

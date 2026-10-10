@@ -34,8 +34,9 @@ func init() {
 				"Azlask, the Swelling Scourge — you get an experience counter", youGetAnExperienceCounter),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{U}{B}{R}{G}: Creatures you control get +X/+X until end of turn, where X is the number of experience counters you have. Scions and Spawns you control gain indestructible and annihilator 1 until end of turn.",
-			Cost:  ManaCost("{W}{U}{B}{R}{G}"),
+			Label:   "{W}{U}{B}{R}{G}: Creatures you control get +X/+X until end of turn, where X is the number of experience counters you have. Scions and Spawns you control gain indestructible and annihilator 1 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerProtect},
+			Cost:    ManaCost("{W}{U}{B}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				x := experienceCounters(g, item.Controller)

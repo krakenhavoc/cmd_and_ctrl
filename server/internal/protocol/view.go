@@ -693,6 +693,45 @@ type PendingChoiceView struct {
 	// present only on trigger_prompt and pick_target choices.
 	DoubledBy     string `json:"doubled_by,omitempty"`
 	DoubledByName string `json:"doubled_by_name,omitempty"`
+	// CouncilVote marks an option_pick as one player's BALLOT in a
+	// vote (CR 701.38, ADR 0146) and carries the vote so far. Public:
+	// every seat sees each vote as it is cast. Absent on every other
+	// prompt.
+	CouncilVote *CouncilVoteView `json:"council_vote,omitempty"`
+}
+
+// CouncilVoteView is a vote in progress (game.CouncilVote), as the open
+// ballot carries it.
+type CouncilVoteView struct {
+	// Controller is the controller of the ability that called the vote
+	// ("you" on the card); Voter is the player voting now.
+	Controller string `json:"controller"`
+	Voter      string `json:"voter"`
+	// Options are the vote's choices in printed order, and Tally the
+	// votes each has so far.
+	Options []string `json:"options"`
+	Tally   []int    `json:"tally"`
+	// Ballots are the votes cast so far, in order.
+	Ballots []CouncilBallotView `json:"ballots,omitempty"`
+	// Offered maps each of the prompt's pick_options to its index in
+	// Options; -1 is the "don't vote again" option of an optional vote.
+	Offered []int `json:"offered"`
+	// Optional is true when this ballot is an extra vote the voter may
+	// decline (CR 701.38d). VotesLeft counts the votes the voter must
+	// still cast, this one included.
+	Optional  bool `json:"optional,omitempty"`
+	VotesLeft int  `json:"votes_left,omitempty"`
+	// ForController and ForOpponents are the card's hints to a bot:
+	// how much the vote's controller, and an opponent of theirs, wants
+	// each option to win. Absent when the card gives none.
+	ForController []int `json:"for_controller,omitempty"`
+	ForOpponents  []int `json:"for_opponents,omitempty"`
+}
+
+// CouncilBallotView is one vote cast.
+type CouncilBallotView struct {
+	Voter  string `json:"voter"`
+	Option int    `json:"option"`
 }
 
 // PickOptionView is one branch of an "option_pick" prompt (#568):
@@ -817,6 +856,17 @@ type LegalTargetsView struct {
 	// it with a set that does. Absent on every clause without one.
 	EachOf []SacrificeGroupView `json:"each_of,omitempty"`
 
+	// Shares is a craft clause's other set rule (ADR 0137's 2026-10-10
+	// amendment, Eye of Ojer Taq's "two that share a card type"): every
+	// pick must have at least one key that every other pick also has.
+	// A candidate may have several keys (an artifact creature is both),
+	// and only keys enough candidates share to pay the count are listed,
+	// so a candidate with none listed cannot be part of any payment. The
+	// picker greys a candidate that shares no key with the picks so far
+	// and holds its confirm button until the picks share one. Absent on
+	// every clause without the rule.
+	Shares *TargetSharesView `json:"shares,omitempty"`
+
 	// All marks a SACRIFICE clause that takes every permanent listed in
 	// `cards` and lets the caster choose none of them (#2097, Soulblast's
 	// "sacrifice all creatures you control"): min and max are both the
@@ -824,6 +874,13 @@ type LegalTargetsView struct {
 	// picks, and may send `sacrifice_ids` empty (the server fills it) or
 	// exactly these. Absent on every other clause.
 	All bool `json:"all,omitempty"`
+}
+
+// TargetSharesView is LegalTargetsView.Shares: the rule's printed words
+// and each candidate's keys, by wire id.
+type TargetSharesView struct {
+	Label string              `json:"label"`
+	Keys  map[string][]string `json:"keys,omitempty"`
 }
 
 // SacrificeGroupView is one entry of LegalTargetsView.EachOf: the
@@ -1505,6 +1562,30 @@ type DamageAssignmentView struct {
 	// controller divides its damage among them as they choose — no
 	// order to keep and no trample.
 	BlockerDivides bool `json:"blocker_divides,omitempty"`
+	// #2956 (ADR 0147): the canonical split, legal.CanonicalDamageSplit,
+	// which the bots answer with. The client pre-fills the prompt with
+	// it, and sends it unasked when covers_lethal is set and the
+	// player's "Auto-assign combat damage" setting is on. Lethal is
+	// what the split counts as lethal for each blocker, indexed like
+	// blocker_card_ids. All three are a suggestion:
+	// ResolveDamageAssignment still checks whatever the client sends.
+	Suggested    *DamageSplitView `json:"suggested,omitempty"`
+	Lethal       []int            `json:"lethal,omitempty"`
+	CoversLethal bool             `json:"covers_lethal,omitempty"`
+}
+
+// DamageSplitView is a damage-assignment answer as the resolve_choice
+// payload spells it: per-blocker amounts and the trample overflow
+// (#2956).
+type DamageSplitView struct {
+	Assignments     []DamageShareView `json:"assignments"`
+	TrampleToPlayer int               `json:"trample_to_player,omitempty"`
+}
+
+// DamageShareView is one blocker's share of a DamageSplitView.
+type DamageShareView struct {
+	BlockerID string `json:"blocker_id"`
+	Amount    int    `json:"amount"`
 }
 
 // DivideShieldView is the wire shape of a divide_shield prompt (ADR 0108
@@ -1964,6 +2045,16 @@ type PlayerView struct {
 	// own `cant_cast` carries those.
 	CantPlayLands string `json:"cant_play_lands,omitempty"`
 
+	// CantPlayFromHand is the clause that stops this player playing any
+	// card from their hand right now — casting a spell or playing a land
+	// out of it ("You can't play cards from your hand — Memory Vessel"),
+	// or empty (#2559, ADR 0066 amendment 2026-10-10). Public, for
+	// CantPlayLands' reasons. Each card in the hand carries the same
+	// clause on its own `cant_cast`; this is the seat's banner. While it
+	// is set, `cant_play_lands` carries the same clause too, because
+	// the ban refuses every land out of the hand.
+	CantPlayFromHand string `json:"cant_play_from_hand,omitempty"`
+
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
 	// "commander_damage", "effect") — all five under a Platinum Angel.
@@ -2418,7 +2509,10 @@ type CardView struct {
 	// Goaders is every player whose goad is on this creature, oldest
 	// goad first, each ending as that player's next turn begins
 	// (CR 701.15a). Omitted when not goaded; when present its last
-	// entry equals GoadedBy. #1598.
+	// entry equals GoadedBy. #1598. Since #2733 a goad from a continuous
+	// effect (an Aura's "enchanted creature is goaded", Hot Pursuit's)
+	// is listed too, ahead of the resolved goads, and lasts as long as
+	// that effect does.
 	Goaders []string `json:"goaders,omitempty"`
 	// MustAttack is true on a creature the active player owes an
 	// attack with right now (#1571, CR 508.1d): during
@@ -2600,6 +2694,10 @@ type CardView struct {
 	// only. Before S27 this lived only in the server's
 	// Game.LoyaltyActivatedThisTurn map, which is why the client's
 	// canActivateLoyalty had to guess. Added in S27 (#329, #334).
+	// Since ADR 0145 it means "no loyalty activation is LEFT this
+	// turn" (Game.LoyaltySpentLocked): a permanent that may activate
+	// them twice each turn (Urza, Planeswalker) is greyed after its
+	// second, not its first.
 	LoyaltyActivated bool `json:"loyalty_activated,omitempty"`
 	// ClassLevel is a Class permanent's CR 716.2 level designation —
 	// 1 for a Class nobody has levelled, up from there (ADR 0071).
@@ -2828,7 +2926,8 @@ type CardView struct {
 
 	// Restrictions is the S24 restriction set as stable snake_case
 	// tokens — "cant_attack", "cant_block", "cant_be_blocked",
-	// "cant_activate", "cant_activate_mana". Empty for the permanent
+	// "cant_activate", "cant_activate_mana", and (#2733)
+	// "cant_become_suspected". Empty for the permanent
 	// nothing is restricting, which is almost all of them.
 	//
 	// It is deliberately NOT folded into Abilities. A restriction is
@@ -2888,6 +2987,20 @@ type CardView struct {
 	// ActiveFace indexes Faces. Omitted when zero, which is the
 	// front face and every single-faced card.
 	ActiveFace int `json:"active_face,omitempty"`
+
+	// MeldedFrom is a MELDED permanent's two cards (CR 712.4a, ADR
+	// 0145), carrier first: their names, costs, type lines and art.
+	// Everything above already describes the combined back face, which
+	// is the permanent; this is what the hover panel shows beside it,
+	// and what the two cards will be when it leaves. Absent on every
+	// other card.
+	MeldedFrom []CardFaceView `json:"melded_from,omitempty"`
+
+	// MeldsInto is a meld card's combined back face (CR 712.4): the
+	// permanent this card and its partner become when they meld, for
+	// the hover panel's preview. Absent on every other card and on a
+	// melded permanent (whose own face it is).
+	MeldsInto *CardFaceView `json:"melds_into,omitempty"`
 }
 
 // NoUntapView is the public projection of a permanent's untap-step
@@ -3439,6 +3552,18 @@ type ExilePlayView struct {
 	// and the same rule an alternative-cost offer carries. Added for
 	// #831.
 	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
+
+	// Until is when the grant ENDS (#2559): "end_of_turn",
+	// "end_of_next_turn", "next_turn", "next_end_step", "while_exiled"
+	// or "until_another" (game.PermissionWindowLocked). UntilPlayer is
+	// the player the window is counted against — "until Ana's next
+	// turn" — and is absent for "end_of_turn", "while_exiled" and
+	// "until_another", which name no one. Public, like the rest of the
+	// grant: Memory Vessel's and Rocco's grants are held by every player
+	// over their own cards, and the table reads each other's as well as
+	// its own. A client that ignores it says "until end of turn".
+	Until       string `json:"until,omitempty"`
+	UntilPlayer string `json:"until_player,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -3594,6 +3719,11 @@ type ActivatedAbilityView struct {
 	// to stay different, since only the first leaves the ability
 	// activatable more than once a turn. Added in S27 (#329, #334).
 	LoyaltyCost *int `json:"loyalty_cost,omitempty"`
+	// LoyaltyCostX marks a loyalty cost of −X (#1944, ADR 0032's
+	// amendment of 2026-10-10): LoyaltyCost is 0, the announced X is
+	// removed on top of it, and DemandsX is set, so the client caps its
+	// X stepper at the permanent's loyalty (CR 606.6).
+	LoyaltyCostX bool `json:"loyalty_cost_x,omitempty"`
 	// SacrificeLabel / SacrificeOptions describe a "Sacrifice a
 	// creature"-style cost: the clause and the permanents the
 	// controller may pay with right now. Absent when the cost has
@@ -3652,6 +3782,11 @@ type ActivatedAbilityView struct {
 	// It is here so a client or a bot can tell that activating the row
 	// returns the permanent without parsing the label.
 	ReturnSelf bool `json:"return_self,omitempty"`
+	// BottomSelf is the "Put this creature on the bottom of its owner's
+	// library" cost component (#2726): Timestream Navigator. Advisory,
+	// like `return_self`: the source is the payment, so nothing is
+	// collected and nothing rides the payload.
+	BottomSelf bool `json:"bottom_self,omitempty"`
 	// Exert is the "Exert this creature" cost component (ADR 0130 §4,
 	// CR 701.43a): Steward of Solidarity, Angel of Condemnation. The
 	// source won't untap during the activator's next untap step.
@@ -6802,7 +6937,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// SpecialActionsOfferedByCard answers nothing for a face-up
 		// permanent, and the declared kinds are hand keywords.
 		c.SpecialActions = viewOfSpecialActions(g, card, controller, game.ZoneBattlefield)
-		c.LoyaltyActivated = g.LoyaltyActivatedThisTurn[instanceID]
+		c.LoyaltyActivated = g.LoyaltySpentLocked(instanceID)
 		c.EchoDue = g.EchoDueLocked(&card)
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
@@ -7829,6 +7964,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				v.PickOptions = append(v.PickOptions, out)
 			}
 		}
+		if c.CouncilVote != nil {
+			v.CouncilVote = viewOfCouncilVote(c.CouncilVote, c.PickOptions)
+		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
@@ -7988,6 +8126,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				AllowTrample:   frame.AllowTrample,
 				HasDeathtouch:  frame.HasDeathtouch,
 				BlockerDivides: frame.BlockerDivides,
+			}
+			if split, ok := legal.CanonicalDamageSplit(g, c); ok {
+				shares := make([]DamageShareView, len(split.Assignments))
+				for i, a := range split.Assignments {
+					shares[i] = DamageShareView{BlockerID: a.BlockerID.String(), Amount: a.Amount}
+				}
+				v.DamageAssignment.Suggested = &DamageSplitView{Assignments: shares, TrampleToPlayer: split.TrampleTo}
+				v.DamageAssignment.Lethal = split.Lethal
+				v.DamageAssignment.CoversLethal = split.CoversLethal
 			}
 		}
 		// ADR 0108 §7: divide_shield — the shield's charge and the
@@ -8276,6 +8423,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
+		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -8429,6 +8577,36 @@ func viewOfVote(v *game.Vote) *VoteView {
 		Initiator: v.Initiator.String(),
 		Ballots:   ballots,
 	}
+}
+
+// viewOfCouncilVote is the wire form of a ballot's vote so far (ADR
+// 0146). `offered` is the prompt's option list, mapped back to the
+// vote's own indices.
+func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *CouncilVoteView {
+	out := &CouncilVoteView{
+		Controller:    v.Controller.String(),
+		Voter:         v.Voter.String(),
+		Options:       make([]string, len(v.Options)),
+		Tally:         make([]int, len(v.Options)),
+		Offered:       make([]int, len(offered)),
+		Optional:      v.Optional(),
+		VotesLeft:     v.VotesLeft,
+		ForController: append([]int(nil), v.ForController...),
+		ForOpponents:  append([]int(nil), v.ForOpponents...),
+	}
+	for i, o := range v.Options {
+		out.Options[i] = o.Label
+	}
+	for _, b := range v.Ballots {
+		if b.Option >= 0 && b.Option < len(out.Tally) {
+			out.Tally[b.Option]++
+		}
+		out.Ballots = append(out.Ballots, CouncilBallotView{Voter: b.Voter.String(), Option: b.Option})
+	}
+	for i, o := range offered {
+		out.Offered[i] = v.OptionIndex(o)
+	}
+	return out
 }
 
 // uuidStringOrEmpty returns u.String() unless u is the zero UUID, in
@@ -9211,6 +9389,10 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.Fused = nil
 	out.Layout = ""
 	out.ActiveFace = 0
+	// ADR 0145: a melded permanent's cards and a meld card's back face
+	// name the card as loudly as its faces do.
+	out.MeldedFrom = nil
+	out.MeldsInto = nil
 	// #95: everything below is read off the card's own text or type
 	// line — the catalog entry, its abilities, its target prompt — and
 	// so names it as surely as the fields above. A face-down Forest
@@ -9579,6 +9761,8 @@ func viewOfCard(c game.Card) CardView {
 		knowers:      knowers,
 		Layout:       c.Layout,
 		Faces:        viewOfFaces(c),
+		MeldedFrom:   viewOfMeldedFrom(c),
+		MeldsInto:    viewOfMeldsInto(c),
 		ActiveFace:   c.ActiveFace,
 		// ADR 0083. A token has no printing behind it, so there is no
 		// oracle text for the client to fetch by scryfall_id and a
@@ -9655,9 +9839,12 @@ func viewOfCard(c game.Card) CardView {
 			view.BlockCapacity = n
 		}
 	}
-	if c.IsGoaded() {
-		view.GoadedBy = c.LatestGoader().String()
-		goaders := c.Goaders()
+	// #2733: a continuous goad (an Aura's, Hot Pursuit's) is shown as a
+	// goad too. AllGoaders lists those first, so the last entry, which
+	// the legacy single field repeats, is the latest marker goader
+	// whenever there is one.
+	if goaders := c.AllGoaders(); len(goaders) > 0 {
+		view.GoadedBy = goaders[len(goaders)-1].String()
 		view.Goaders = make([]string, len(goaders))
 		for i, id := range goaders {
 			view.Goaders[i] = id.String()
@@ -9741,7 +9928,7 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 			// without deriving a single seat's standing set.
 			continue
 		}
-		v.ExilePlay = exilePlayViewOf(card, perm)
+		v.ExilePlay = exilePlayViewOf(g, card, perm)
 		// Each holder's own answer, including their own grant: the
 		// public `exile_play` above names whichever live permission
 		// came first, and a client whose seat holds the second one
@@ -9754,7 +9941,7 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 				key:      game.CatalogKey(granted),
 				manaCost: granted.ManaCost,
 			}, kind, h.grant)
-			stamps.ExilePlay = exilePlayViewOf(card, h.grant)
+			stamps.ExilePlay = exilePlayViewOf(g, card, h.grant)
 			v.stampsFor(h.seat, stamps)
 			// #992: and per face, for the grant that leaves the
 			// choice open. An adventure card impulse-exiled by
@@ -9773,8 +9960,9 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 // `exile_play` wire shape. One constructor, because the field is
 // stamped twice now: publicly, for whichever live permission the
 // engine names first, and privately for each holder's own (#1037).
-func exilePlayViewOf(card game.Card, perm *game.CastPermission) *ExilePlayView {
-	return &ExilePlayView{
+func exilePlayViewOf(g *game.Game, card game.Card, perm *game.CastPermission) *ExilePlayView {
+	until, untilPlayer := g.PermissionWindowLocked(perm)
+	view := &ExilePlayView{
 		Player:       perm.Player.String(),
 		CastOnly:     perm.CastOnly,
 		AnyColor:     perm.AnyColor || perm.AnyType,
@@ -9790,7 +9978,12 @@ func exilePlayViewOf(card game.Card, perm *game.CastPermission) *ExilePlayView {
 		// permission opens, because that is the cost the cast path
 		// will read (ADR 0034).
 		XLockedAtZero: game.CastCostFor(grantedFace(card, perm), perm.AlternativeCostFor(card), perm).LocksXAtZero(),
+		Until:         until,
 	}
+	if untilPlayer != uuid.Nil {
+		view.UntilPlayer = untilPlayer.String()
+	}
+	return view
 }
 
 // liveCardForView resolves a CardView back to the engine's own Card,
@@ -10048,11 +10241,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			DiscardSelf:   a.Cost.DiscardSelf,
 			ExileSelf:     a.Cost.ExileSelf,
 			ReturnSelf:    a.Cost.ReturnSelf,
+			BottomSelf:    a.Cost.BottomSelf,
 			Exert:         a.Cost.Exert,
 			ManaCost:      a.Cost.Mana,
 			LifeCost:      a.Cost.Life,
 			SorcerySpeed:  a.SorcerySpeed,
 			LoyaltyCost:   a.Cost.Loyalty,
+			LoyaltyCostX:  a.Cost.LoyaltyX,
 			AnyPlayer:     a.AnyPlayer,
 			OpponentsOnly: a.OpponentsOnly,
 			OwnerOnly:     a.OwnerOnly,
@@ -10129,7 +10324,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		}
 		if a.Cost.SacrificeOther != nil {
 			v.SacrificeLabel = a.Cost.SacrificeOther.Label
-			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf)
+			v.SacrificeOptions = sacrificeCostOptions(g, caster, a.Cost.SacrificeOther, c.InstanceID, a.Cost.SacrificeSelf || a.Cost.ReturnSelf || a.Cost.BottomSelf)
 		}
 		if a.Cost.Crew > 0 {
 			v.CrewCost = a.Cost.Crew
@@ -10526,14 +10721,32 @@ func returnCostOptions(g *game.Game, controller, sourceID uuid.UUID, rc *game.Re
 // option offered here is one validateExilePermanentsCostLocked accepts.
 //
 // Caller must hold g.mu.
+//
+// ADR 0137's amendment (#2709) adds craft's variants, each in a shape
+// the picker already reads or one beside it: an open count ("one or
+// more") is min Count, max 0; "a Dinosaur, a Merfolk, a Pirate, and a
+// Vampire" is each_of, the sacrifice set rule's groups (#2526); "two
+// that share a card type" is `shares`, every candidate's card types.
 func exilePermanentCostOptions(g *game.Game, controller, sourceID uuid.UUID, ec *game.ExilePermanentsCost) *LegalTargetsView {
 	if ec.Empty() {
 		return nil
 	}
-	ids := g.ExilePermanentsOptionsForEffect(controller, sourceID, ec)
-	out := &LegalTargetsView{Min: ec.Count, Max: ec.Count}
-	for _, id := range g.SacrificePaymentOrderForEffect(ids, sourceID) {
+	ids := g.SacrificePaymentOrderForEffect(g.ExilePermanentsOptionsForEffect(controller, sourceID, ec), sourceID)
+	lo, hi := game.ExilePermanentsCostBounds(ec)
+	out := &LegalTargetsView{Min: lo, Max: hi}
+	for _, id := range ids {
 		out.Cards = append(out.Cards, id.String())
+	}
+	for _, grp := range g.ExileSubtypeGroupsForEffect(controller, ec, ids) {
+		out.EachOf = append(out.EachOf, SacrificeGroupView{Label: grp.Label, Cards: cardIDStrings(grp.Candidates)})
+	}
+	if ec.ShareCardType {
+		out.Shares = &TargetSharesView{Label: "share a card type", Keys: map[string][]string{}}
+		for _, grp := range g.ExileSharedTypeGroupsForEffect(controller, ec, ids) {
+			for _, id := range grp.Candidates {
+				out.Shares.Keys[id.String()] = append(out.Shares.Keys[id.String()], grp.CardType)
+			}
+		}
 	}
 	return out
 }
@@ -10614,6 +10827,49 @@ func withoutID(ids []string, drop string) []string {
 		}
 	}
 	return out
+}
+
+// viewOfMeldedFrom projects a melded permanent's two cards (ADR 0145).
+// nil for every other card.
+func viewOfMeldedFrom(c game.Card) []CardFaceView {
+	if !c.IsMelded() {
+		return nil
+	}
+	out := make([]CardFaceView, 0, len(c.MeldedFrom))
+	for _, part := range c.MeldedFrom {
+		v := CardFaceView{
+			Name:      part.Name,
+			TypeLine:  part.TypeLine,
+			ManaCost:  part.ManaCost,
+			Power:     part.Power,
+			Toughness: part.Toughness,
+		}
+		if part.ScryfallID != "" {
+			v.Image = fmt.Sprintf("/cards/%s/image", part.ScryfallID)
+		}
+		out = append(out, v)
+	}
+	return out
+}
+
+// viewOfMeldsInto projects a meld card's combined back face (ADR
+// 0145). nil for every other card, and for a melded permanent.
+func viewOfMeldsInto(c game.Card) *CardFaceView {
+	if !c.IsMeldCard() || c.IsMelded() {
+		return nil
+	}
+	r := c.Meld.Result
+	v := &CardFaceView{
+		Name:       r.Name,
+		TypeLine:   r.TypeLine,
+		OracleText: r.OracleText,
+		Power:      r.Power,
+		Toughness:  r.Toughness,
+	}
+	if c.Meld.ResultScryfallID != "" {
+		v.Image = fmt.Sprintf("/cards/%s/image", c.Meld.ResultScryfallID)
+	}
+	return v
 }
 
 // viewOfFaces projects a multi-face card's printed faces onto the

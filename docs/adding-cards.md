@@ -806,8 +806,22 @@ on the recipient takes an earlier grant and not a later one (CR
 (CR 613.8a). A layer-6 grant is not copied (CR 707.2). `Register`
 refuses a bundle ability with `ActiveWhen` (gate the grantor's static
 instead) or a non-battlefield zone, and `TestEveryGrantKeyResolves`
-refuses a grant naming an unregistered bundle or a bundle with a
-`Static` slot.
+refuses a grant naming an unregistered bundle or a bundle whose static
+is anything but a layer-7c "+N/+N".
+
+A bundle's `Static` may be a layer-7c power/toughness modify (#2562,
+ADR 0093 amendment 2026-10-10): "Equipped creature gets +3/+3" is
+`PumpAttached(3, 3)` in the bundle, gathered after layer 6 with the
+recipient as its source, so it follows whatever the recipient is
+attached to. Any other granted static is refused
+(`game.GrantedStaticProblem`). A granted equip is `EquipAbility(cost)`
+in a bundle's `Activated`: it is the recipient's own row and attaches
+the recipient. "<Permanents> are Equipment in addition to their other
+types" is `AreAlsoEquipment(label, applies)` (Gemcutter Buccaneer). A
+resolved "becomes a legendary Equipment artifact named …" is one
+`ScopedEffectFor` with `game.SetNameMod` (layer 3, CR 612.8) and
+`game.SetTypesMod` (layer 4, CR 205.1a's set) beside the removal and
+the grant; see `the_irencrag.go`.
 
 A TOKEN that grants an ability (a Role: "Enchanted creature has 'Whenever
 this creature attacks, scry 1.'") declares its bundles in
@@ -862,8 +876,8 @@ reader, ref, removal and copy rule is the static grant's. It is data, so
 the table stays a restore point. A zero `Duration` is "until end of
 turn"; the affected set is pinned at resolution (CR 611.2c), so a
 creature that dies and returns is a new object without the grant. Keys
-must name a registered bundle with no `Static` slot: `Apply` refuses
-one at resolution, `TestEveryDurationGrantKeyResolves` scans the
+must name a registered bundle whose statics are layer-7c only: `Apply`
+refuses one at resolution, `TestEveryDurationGrantKeyResolves` scans the
 catalog's source for literal and constant keys, and a restore point
 naming an unregistered bundle is refused with `ErrUnknownEffectKey`. A
 "return it to the battlefield tapped [with a counter]" dies trigger is
@@ -1002,6 +1016,93 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   `CMDCTRL_SCRYFALL_DUMP` set). It fails on a catalog card whose text
   reads as a wipe and that declares no `Sweep`, unless `reviewedNotAWipe`
   names why.
+
+### Declaring what an ability answers (ADR 0142)
+
+Smart autopass stops on an opponent's stack item only when you can
+respond, and for an activated ability with no target it asks what the
+row **answers**. Declare that on the row as `Purpose.Answers`, beside any
+amounts. The declaration is the only thing read: there is no
+printed-text fallback (ADR 0142 S4), and a row that declares nothing
+stops its controller on every opponent's spell. Every catalog row in
+scope must declare.
+
+**Which rows.** Every activated row (a card's own, a granted bundle's, a
+token template's) that is not sorcery speed or a loyalty ability, and
+that can be announced with no target: it has no `Targets`, or its target
+clause allows zero ("up to one", "any number of": `Min` 0), or it is
+modal with at least one such mode. Also every mana ability whose
+cost sacrifices another permanent, which declares `ManaAbility.Answers`.
+A row that must name a target declares nothing: its move already stops
+you. An "up to" row is announced both ways, so declare it too; its
+targeted moves still carry `has_targets`.
+
+**The vocabulary.** Use the smallest set that is true. The tier is fixed
+in code, not declared.
+
+| Constant | Tier | Declare it when the row… | Examples |
+|---|---|---|---|
+| `game.AnswerProtect` | stack | keeps a permanent of yours: regenerate, indestructible, hexproof, shroud, protection, phase out, a blink, returns itself to hand, grants persist or undying | Albino Troll, Selfless Spirit |
+| `game.AnswerPump` | stack | raises power or toughness: +N/+N, +1/+1 counters, monstrosity, adapt, a base power and toughness | Arbor Colossus |
+| `game.AnswerPrevent` | stack | prevents or redirects damage, or sets a damage shield | Spore Frog, Opal-Eye |
+| `game.AnswerRemove` | stack | removes, destroys, damages or shrinks other permanents with no target | Pestilence, Nevinyrral's Disk |
+| `game.AnswerSacOutlet` | stack | sacrifices a creature at will, in its cost or its effect | Viscera Seer, Ashnod's Altar |
+| `game.AnswerRestrict` | stack | stops what an opponent may do next: can't cast, can't activate | Ranger-Captain of Eos |
+| `game.AnswerCombatGrant` | combat | grants a combat keyword or permission, first strike, double strike and deathtouch included | Endling's deathtouch |
+| `game.AnswerAnimate` | combat | becomes a creature until end of turn: a manland, a Vehicle, every crew row | Smuggler's Copter |
+| `game.AnswerMakesBlocker` | combat | creates creature tokens at instant speed | Dawn of Hope |
+| `game.AnswerValue` | — | answers nothing: draw, mana, ramp, a fetch, scry, a non-creature token, a counter that only counts | Mind Stone, a Clue, cycling |
+
+```go
+Purpose: game.Purpose{Answers: game.AnswerProtect},                     // "{1}{G}: Regenerate this creature."
+Purpose: game.Purpose{Answers: game.AnswerPump, Pump: &game.Pump{...}}, // a self pump the bot also prices
+Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},            // Mind Stone's draw
+```
+
+`Answers` says what kind of answer and the amounts say how much. Declare
+both where both are true; neither is derived from the other.
+
+**Helpers declare for their rows.** A row built by a shared helper
+(cycling, monstrosity, crew, boast) is declared once, in the helper.
+
+**Sweep rulings (owner, 2026-10-09; ADR 0142).**
+
+- A shrink effect (-X/-X on a creature) is `AnswerRemove`.
+- A trade (+2/-2, +1/-1, "+1/-1 or -1/+1") is `AnswerPump`.
+- Turning off an opponent's protection (removing hexproof or
+  indestructible, "can't be regenerated") is `AnswerRestrict`.
+- A modal, conditional or mixed row declares the union of every answer
+  any mode or condition can give.
+
+**What `effects.Register` refuses:**
+
+- `AnswerValue` beside any other answer;
+- `Answers` on a spell, a mode, an alternative cost or a triggered row
+  (nothing reads it there yet);
+- `Answers` on a sorcery-speed or loyalty row, or on a row whose every
+  announcement has a target;
+- a crew row without `AnswerAnimate`;
+- a row whose cost sacrifices, exiles or returns a creature without
+  `AnswerSacOutlet` or `AnswerProtect`;
+- on a mana ability, anything but `AnswerSacOutlet` or `AnswerValue`, or
+  a creature-sacrifice cost declared without `AnswerSacOutlet`.
+
+**The guard test.** `TestEveryAnswersRowDeclares`
+(`internal/cards/effects`) fails on any catalog row in scope that
+declares nothing, naming the card, the row's ref and its label. A new
+card's undeclared row fails it. Declare what the card does.
+
+Only two inputs are read without a declaration. A mana ability that
+declares nothing is read from its sacrifice cost: a creature sacrifice
+is an outlet, a land or a token is not. An activated ability carried on
+a card instance (`Card.ActivatedAbilities`, built at run time) is not
+catalog data and cannot declare, so it counts as interacting (ADR 0142
+owner answer 3).
+
+A "Sacrifice this creature: …" row needs no special declaration for the
+moment its creature is threatened: the enumerator sets `interacts` while
+an opponent's stack item targets it, and `combat_interacts` while it
+attacks or blocks, from the game state (ADR 0142 owner answer 4).
 
 ### Paying energy (ADR 0129, #1995)
 
@@ -2507,6 +2608,25 @@ never offered (#544). It pays through the same
 `payAbilityManaCostLocked` an activated ability uses, so `ManaTrigger`
 fires for the taps and nothing about mana is duplicated.
 
+**A PLAYER who can't attack you** (every creature they control, including
+ones that arrive later) is a grant on that player, not a bit on their
+creatures ([ADR 0063](decisions/0063-durations-and-control.md)'s
+amendments of 2026-10-08 and 2026-10-10):
+
+```go
+g.GrantCantAttackPlayerForEffect(opp, you, label, source)                  // "during their next turn" (The Second Doctor)
+g.GrantCantAttackPlayerThisTurnForEffect(opp, you, game.CantAttackScope{   // "this turn"
+    PlaneswalkersOnly: true}, label, source)                               // "you or planeswalkers you control" (Sandswirl Wanderglyph)
+// PlayerOnly: "can't attack you" (Web of Inertia);
+// PlayerExempt + PlaneswalkersOnly + Subtype "Jace": "Jaces you control".
+```
+
+The zero scope is "you or permanents you control". "Each opponent who
+attacked you or a planeswalker you control this turn can't cast spells"
+is a printed static, `OpponentsWhoAttackedYouCantCast(label)` on
+`Spec.CastRestrictions` ([ADR 0066](decisions/0066-granted-cast-and-play-permissions.md),
+2026-10-10).
+
 ### "Players can't play lands" (ADR 0109 §4, #1895)
 
 A land play is a special action, not a cast (CR 305.1, CR 116.2a), so a
@@ -2553,6 +2673,25 @@ LandPlayRestrictions: []game.LandPlayRestriction{
   beside it.
 - "A land with a name originally printed in Arabian Nights" is
   `game.IsArabianNightsName` (CR 206.3a's list).
+
+### "Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)
+
+- **Every player over their own exiled cards** (Memory Vessel, Rocco,
+  Street Chef): `EachPlayerExilesTopAndMayPlay(g, n, d)`
+  (`effects/impulse_exile.go`). One stored permission per seated player,
+  held by that player, over the cards they exiled. Stamp `d` against the
+  card's controller: `g.UntilYourNextTurnDuration(controller)`,
+  `g.UntilYourNextEndStepDuration(controller)`. It is play, not cast, so a
+  land among them spends that player's land drop.
+- **"Can't play cards from their hand"** for a duration:
+  `g.CantPlayFromHandForEffect(source, player, d, label)`, `player` zero
+  for every player. It is one stored `cantPlayFromHand` record that both
+  the cast gate (a cast from the hand) and the land-play gate (a land from
+  the hand) read, so it needs nothing at any caller. Abilities of cards in
+  hand (cycling, channel) and plays out of other zones are not touched.
+- "Whenever a player plays a land from exile or casts a spell from exile"
+  is `aCardWasPlayedFromExile(ev, g)`; Prosper's "you" form is
+  `b20PlayedACardFromExile`.
 
 ### "Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)
 
@@ -3085,8 +3224,9 @@ anything is paid. The exiled permanents are on `ctx.Exiled()` (and on a
 mana ability's `paid.Exiled`); read "the exiled creature's mana value"
 with `g.LastKnownPermanentForEffect(id).ManaValue`, as it last existed
 on the battlefield. The auto-tapper never uses a mana ability with it.
-A variable count ("one or more other artifacts with total mana value
-X") and craft's two-zone clause have no shape yet.
+A count bounded by a total ("one or more other artifacts with total
+mana value X") has no shape yet; craft's two zones, open count and set
+rules are the Craft section's.
 
 **Library costs and random discards (ADR 0109 §7, #1902):**
 `ExileTopOfLibrary(n)` is "Exile the top N cards of your library"
@@ -5737,8 +5877,27 @@ point costs. Three builders:
 lethal damage, the cards that fill a hand). The bot answers it when the
 life it costs leaves it at 10 or more, and a person's stepper opens on
 it, so declare it whenever the card has one. `Marks` are other numbers
-worth offering a bot. A payment in mana ("you may pay {X}{R}") is not
-here yet (#2727).
+worth offering a bot.
+
+**A payment with {X} in it** (#2727, the same ADR's next amendment,
+[may_pay_x.go](../server/internal/cards/effects/may_pay_x.go)) is
+`MayPayX{Cost, Label, Buys, Goal, Unit, InThisStep, OnPay}`: "you may
+pay {X}{R}. If you do, …" (Tilonalli's Summoner, Flameblast Dragon).
+X is asked first, from 0 to the most the chooser can pay now, then the
+cost with X settled is an ordinary `MayPay`. `OnPay` gets X and runs
+only once the mana is paid. `Goal` gets that ceiling
+(`XAsHighAsYouCan` for "more is better"); nil keeps a bot's mana. Set
+`InThisStep` when what X buys belongs to the step in progress (tokens
+that enter attacking).
+
+**Tokens "that are tapped and attacking"** with no player named are
+`CreateTokensAttackingYourChoice{Template, N, Tapped, Prefer, Label,
+Then}`: CR 508.4 lets the controller choose what each attacks, so with
+more than one player, planeswalker or battle to attack they are asked
+how many go at each, `Prefer` (what the creature whose trigger it is
+attacks) first. Prefer it to `CreateTokensAttackingForEffect` with a
+fixed defender, which is a caveat ("attacks the player X attacked
+rather than a player of your choice").
 
 Branches take a `*Context` and are package-level functions capturing
 scalars — never a `*game.Game` or a pointer into a zone, for
@@ -6339,15 +6498,30 @@ sorcery", and the return. Never hand-write any of those halves:
   still finds them. A token material ceased to exist in exile and is not
   one of them. Jadeheart Attendant is the pattern.
 
-Not yet expressible (the craft row, #2709): "Craft with one or more …",
-a rule over the chosen set ("two that share a card type", "a Dinosaur,
-a Merfolk, a Pirate, and a Vampire"), and graveyard-only materials
-("four or more red instant and/or sorcery cards").
+The other printed material clauses (#2709, ADR 0137's 2026-10-10
+amendment) each have a constructor:
+
+```go
+CraftWithOneOrMore("creature")              // Altar of the Wretched; "" is Sunbird Standard's bare "one or more"
+CraftWithOneOrMoreSubtype("Dinosaur")       // Saheeli's Lattice
+CraftWithTwoSharingACardType()              // Eye of Ojer Taq
+CraftWithEachOf("Dinosaur", "Merfolk", "Pirate", "Vampire") // Throne of the Grim Captain
+CraftWithCardsOrMore(4, "R", "red", "instant", "sorcery")   // Ore-Rich Stalactite, graveyard only
+```
+
+A back face that reads its materials from a static ability (a
+characteristic-defining ability, a keyword grant, a mana ability) reads
+them off the permanent itself: `craftMaterialsOf(g, source)`, and
+`craftMaterialsTotalPower` / `craftMaterialColors` for the two printed
+sums (Mastercraft Raptor, Wretched Bonemass, Sunbird Effigy). An
+Equipment's "As this Equipment becomes attached to a creature, …" is
+`Spec.AsAttached` (Dinosaur Headdress).
 
 **Tests** build the card through the import road
 (`transformRow` + `deck.ToGameCard`), because a flat fixture has no back
-face; `craft_test.go` has `pushCraftCard` and `activateCraft`, and
-`craft_cards_test.go` has `craftInto`.
+face; `craft_test.go` has `pushCraftCard` and `activateCraft`,
+`craft_cards_test.go` has `craftInto`, and `craft_variants_test.go` has
+`pushGraveyardMaterial` and `pushMaterialPermanent`.
 
 ### Adding a creature-type card (S26+)
 
@@ -7190,6 +7364,32 @@ Three things to know:
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
 
+### A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)
+
+A "−X:" loyalty ability is `Cost: LoyaltyMinusX()`. The activator announces X with the activation
+(CR 107.3a), no more than the loyalty the planeswalker has (CR 606.6), and the effect reads it with
+`ctx.X()`. Everything else `LoyaltyCost` derives (sorcery timing, once per turn) comes with it.
+`effects.Register` refuses `LoyaltyX` set by hand on a non-zero loyalty cost, and beside any other
+component that claims the X.
+
+```go
+{
+    Label:   "−X: Chandra deals X damage to target creature or planeswalker. …",
+    Cost:    LoyaltyMinusX(),
+    Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+    Purpose: ForTargets(DamageXToTarget(0)),
+    Effect:  …ctx.X()…,
+}
+```
+
+- **`XMatters`.** The X guard (`x_matters_guard_test.go`) asks every card that reads X to declare it.
+  Declare `XMatters: true` when the −X at X = 0 does nothing (Chandra's damage), and the enumerator
+  stops offering X = 0. When X = 0 still does something (Chandra, Chill of Compliance still taps; Ugin
+  still exiles coloured permanents of mana value 0), leave it off and add an allowlist entry saying so.
+- **Purpose.** A damage row declares `DamageXToTarget(slot)` (`TargetPurpose.DamageIsX`), so the bot
+  picks the smallest lethal X. A sweep declares `Sweep.AmountIsX`.
+- No printed loyalty ability costs +X, so there is no constructor for one.
+
 ### Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)
 
 Reality Fracture prints five things about planeswalkers that no earlier card needed. Each is a declaration
@@ -7304,6 +7504,59 @@ Three things to know:
   `WheneverTheRingTemptsYou`, Call of the Ring's
   `WheneverYouChooseARingBearer`, Ringsight's search in `Then` (read the
   board there, after the tempt: the new Ring-bearer is legendary).
+
+### Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)
+
+"Starting with you, each player votes for <A> or <B>" is `effects.Vote`,
+and everything printed after the vote is a registered continuation that
+reads the tally ([vote.go](../server/internal/cards/effects/vote.go)):
+
+```go
+OnResolve: func(_ *game.StackItem, ctx *Context) error {
+    return Vote{
+        Question:      "Plea for Power — vote for time or knowledge",
+        Words:         []string{"time", "knowledge"},
+        ForController: []int{2, 1}, // the bot's hints, one per option
+        ForOpponents:  []int{0, 1},
+        Then:          pleaForPowerVoted,
+    }.Apply(ctx)
+},
+
+var pleaForPowerVoted = VoteResultThen("vote/plea-for-power", func(ctx *Context, r game.VoteResult) error {
+    if r.MoreVotes(0, 1) { … }   // "if time gets more votes"
+    …                            // "if knowledge gets more votes or the vote is tied"
+})
+```
+
+- **The result.** Will of the council is `r.MoreVotes(i, j)` (put the
+  tie in the branch the card prints it in). Council's dilemma is
+  `r.Votes(i)` ("for each time vote") and `r.VotersFor(i)` ("choose a
+  permanent owned by the voter", one entry per vote). An object vote is
+  `r.MostVotes()` ("each permanent with the most votes or tied") with
+  `VotedPermanent(r, i)`.
+- **An object vote** builds its options as it starts:
+  `Options: VoteForPermanents(ctx.Game, ids)` (Council's Judgment). It is
+  not a target. An option whose permanent has left is dropped from the
+  next ballot; a vote with nothing to vote for runs `Then` with no
+  ballots.
+- **`Then` gets a rebuilt Context**: the vote's controller and the card
+  that called it, never the stack item. Anything else it needs goes in
+  `Carry` (Coercive Portal carries itself only when the trigger's source
+  is still the same object, read with `sourceIsNewObject` as the trigger
+  resolves). The key is an on-disk identity; append it to the ledger
+  (`-update-effect-keys`) and never rename it.
+- **The hints** say how much the vote's controller, and an opponent of
+  theirs, wants each word to win. They steer the bot and nothing else.
+  Compute them from the board if the answer depends on it (Magister of
+  Worth).
+- **Extra votes** are a static: `ExtraVote: game.ExtraVoteYouGet` for
+  "While voting, you get an additional vote", `game.ExtraVoteYouMay` for
+  "you may vote an additional time" (CR 701.38d).
+
+The engine asks every player in turn order from the controller, logs
+each vote as it is cast, shows the tally on every seat's dock, and skips
+a player who has left. Secret council (#2926) and "whenever players
+finish voting" (#2927) are not this shape.
 
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 
@@ -7706,6 +7959,56 @@ Three things to get right:
   and the ability's source is that same card (Presumed Dead's granted
   trigger), call `g.SuspectForEffect(entered)` directly, or the guard will
   read it as the old object's ability reaching the new one and do nothing.
+
+Since #2733 (ADR 0071 amendment 2026-10-10):
+
+- "Can't become suspected" is `RestrictAttached(game.CantBecomeSuspected)`
+  (Airtight Alibi). `SuspectForEffect` reads it; a card that offers a choice
+  of creatures to suspect builds the offer with `g.CanBecomeSuspected(id)`.
+- "One of the other creatures" in a "whenever one or more … enter" ability
+  is `enteredInTriggeringBatch(ctx)`: the permanents of the triggering
+  batch still on the battlefield, each with the controller it entered under
+  (Frantic Scapegoat).
+- A goad that lasts as long as something else does is a continuous effect:
+  `GoadAttached()` for an Aura, and `ScopedEffectFor{Mods:
+  []game.Mod{game.GoadMod(ctx.Controller())}, Duration: …}` from a resolving
+  ability (Hot Pursuit). "Goaded creature" in a condition is `c.Goaded()`,
+  which sees those as well as the goad marker; `c.IsGoaded()` is the marker
+  only.
+
+### Meld (ADR 0145, #2699, CR 701.42)
+
+A meld pair is three catalog files: the two meld cards and the combined
+back face, which is its own Scryfall record with its own oracle ID
+(Urza, Planeswalker; Hanweir, the Writhing Township). The deck importer
+stamps the back face's printed characteristics on both halves
+(`game.Card.Meld`), and the melded permanent IS that record: its oracle
+ID, name, type line, image and catalog entry are the back face's, so
+the back face's `Spec` is written like any other card's and is never in
+a deck. A card file only writes the meld ability, on whichever half
+prints it:
+
+```go
+Effect: Do(MeldWith{Partner: "The Mightstone and Weakstone", PartnerType: "artifact"}),  // Urza, Lord Protector's {7}
+AppliesTo: ... && YouOwnAndControlThisAndANamed("Midnight Scavengers", "creature")(g, source)  // a trigger's intervening if
+```
+
+`MeldWith` checks "if you both own and control <this> and a <type> named
+<partner>" as it resolves and does nothing when it fails;
+`Game.MeldForEffect` exiles both together and returns them melded, or
+leaves them in exile when they are not a real pair (CR 701.42c). The
+other half's "(Melds with …)" line is reminder text and needs nothing.
+
+Three things to get right:
+
+- **Never reach into `Card.MeldedFrom` for "the cards on the
+  battlefield".** The melded permanent is one object. `MoveCard` alone
+  turns it back into two cards when it leaves (CR 712.21).
+- **The back face's keywords and loyalty come from the import.** Don't
+  declare them on its `Spec`; a planeswalker back face enters with its
+  printed loyalty like any planeswalker.
+- **Its mana value is its cards' total** (CR 712.8g). Hanweir, the
+  Writhing Township is 3, not 0.
 
 ### Partner with (CR 702.124j, #2142)
 

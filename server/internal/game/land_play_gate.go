@@ -37,6 +37,10 @@ import (
 //     EmblemSpec.LandPlayRestrictions is read with the emblem as the
 //     source. It leaves only with its owner (CR 800.4a).
 //
+// A fourth record reaches this gate from beside it: Memory Vessel's
+// "can't play cards from their hand" (#2559, hand_play_ban.go), which
+// the cast gate reads too, refuses a land played out of the hand.
+//
 // FOUR CALLERS, ONE FUNCTION, and that is the whole point (ADR 0033 §1):
 //
 //   - castSpellLocked's land branch, before the drop count;
@@ -199,6 +203,13 @@ func (g *Game) LandPlayGateLocked(player uuid.UUID, card Card, fromZone ZoneKind
 				reason += " — " + e.SourceName
 			}
 			return &CantPlayLandError{Reason: reason, Source: e.Source.ID}
+		}
+	}
+	// #2559: "can't play cards from your hand" (Memory Vessel) bans a
+	// land played out of the hand and no other.
+	if fromZone == ZoneHand {
+		if reason, banSource, ok := g.handPlayBanLocked(player); ok {
+			return &CantPlayLandError{Reason: reason, Source: banSource}
 		}
 	}
 	return nil

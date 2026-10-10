@@ -4052,7 +4052,7 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if g.playerByIDLocked(playerID) == nil {
 		return ErrPlayerNotFound
 	}
-	if g.LoyaltyActivatedThisTurn[planeswalkerID] {
+	if g.LoyaltySpentLocked(planeswalkerID) {
 		return ErrLoyaltyAlreadyActivated
 	}
 	// Find the planeswalker on the battlefield.
@@ -4125,10 +4125,7 @@ func (g *Game) ActivateLoyalty(playerID, planeswalkerID uuid.UUID, label string,
 	if _, err := g.payCostCounterLocked(playerID, planeswalkerID, CounterLoyalty, delta); err != nil {
 		return err
 	}
-	if g.LoyaltyActivatedThisTurn == nil {
-		g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
-	}
-	g.LoyaltyActivatedThisTurn[planeswalkerID] = true
+	g.recordLoyaltyActivationLocked(planeswalkerID)
 	if label != "" {
 		// Record a no-card stack item briefly so the wire surfaces
 		// the label for the duration of the activation, then drop it.
@@ -5598,7 +5595,8 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	// later (#816) — and the Game-side forget of what this object did
 	// this turn (#630, CR 400.7). See battlefield_exit.go.
 	lki := g.battlefieldExitLocked(cardID)
-	if _, err := MoveCard(g.Battlefield, destZone, cardID); err != nil {
+	moved, err := MoveCard(g.Battlefield, destZone, cardID)
+	if err != nil {
 		return err
 	}
 	g.markCardKnownInZoneLocked(destZone, cardID)
@@ -5623,6 +5621,18 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 	ltb := Event{Kind: EventLTB, CardID: cardID, Actor: actor, NewZone: dest}
 	lki.stamp(&ltb)
 	g.EmitEvent(ltb)
+	// CR 712.21, ADR 0145: the other card of a melded permanent. A
+	// destruction or sacrifice is bound for a graveyard, which is where
+	// a CR 903.9c command-zone redirect sends the card that is not the
+	// commander.
+	if moved.IsMelded() {
+		if dest == ZoneCommand {
+			g.sendMeldPassengersOnLocked(moved, destZone, ZoneGraveyard, actor)
+		} else {
+			g.landMeldPassengersLocked(moved, ZoneBattlefield, destZone, actor, false, 0,
+				!(shuffleAfter && dest == ZoneLibrary))
+		}
+	}
 	// A permanent leaving the battlefield is the one event that can
 	// invalidate a queued "sacrifice a creature of your choice" prompt
 	// (Grave Pact), so re-check them here rather than in
@@ -8214,6 +8224,16 @@ func seatOfPlayerLocked(g *Game, id uuid.UUID) int {
 func (g *Game) PassPriority() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()
+	return g.passPriorityAsHolderLocked()
+}
+
+// passPriorityAsHolderLocked is PassPriority under the caller's lock:
+// the holder's pass-closed windows, then the pass. A standing pass
+// turn (pass_turn.go, #2881) passes through it, so its passes are the
+// same passes a click on "next" makes.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) passPriorityAsHolderLocked() error {
 	// #1665: passing is the decline of a resolved miracle's cast
 	// (CR 702.94a) — see miracle.go. Before the pass, because this
 	// pass can resolve the next miracle trigger.
@@ -9603,8 +9623,9 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 // steps in between do not happen — no end step, so no "at the
 // beginning of the end step" triggers — and the cleanup discard to
 // hand size is skipped. This is a sandbox verb, not a rules action;
-// a player who wants the discard and the end step passes priority
-// through them instead.
+// the dock's Pass turn button sends end_turn (EndTurnByPassing,
+// pass_turn.go, #2881), which walks those steps and fires their
+// triggers.
 func (g *Game) PassTurn() error {
 	g.mu.Lock()
 	defer g.mu.Unlock()

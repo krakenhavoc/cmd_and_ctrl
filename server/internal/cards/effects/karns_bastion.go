@@ -31,8 +31,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{4}, {T}: Proliferate",
-			Cost:  Plus(ManaCost("{4}"), TapCost()),
+			Label:   "{4}, {T}: Proliferate",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{4}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Proliferate{}.Apply(NewContext(g, item))
 			},

@@ -20,6 +20,7 @@ import { tick } from "svelte";
 
 import GameMenu from "./components/board/GameMenu.svelte";
 import { clampMulligan, parseVote, type GameMenuOptions } from "./gameMenu";
+import { L } from "./labels";
 import { PROTOCOL_VERSION, type GameView, type PlayerView } from "./protocol";
 import { session, type Session } from "./session";
 import { _resetForTests as resetDock } from "./dock";
@@ -269,6 +270,30 @@ describe("GameMenu", () => {
     const go = [...m.container.querySelectorAll("button")].find((b) => b.textContent === "Go")!;
     click(go);
     expect(m.calls.mulligan).toEqual([[20]]);
+  });
+
+  // ADR 0143 §4.2: the sandbox Pass turn left the dock for the ⋯ menu,
+  // offered to the active seat only, the one the server lets send it.
+  it("offers Skip to next turn (sandbox) to the active seat, after Shuffle library", async () => {
+    let m = mountMenu();
+    await open(m.trigger);
+    expect(item(m.container, L.sandboxPassTurn)).toBeUndefined();
+    cleanup();
+
+    m = mountMenu({ sandboxPassTurn: true, onSandboxPassTurn: () => {} });
+    await open(m.trigger);
+    const names = itemNames(m.container);
+    expect(names.indexOf(L.sandboxPassTurn)).toBe(names.indexOf("Shuffle library") + 1);
+    expect(item(m.container, L.sandboxPassTurn)!.title).toMatch(/no end step/);
+  });
+
+  it("sends the sandbox jump from its entry, and closes", async () => {
+    const calls: unknown[] = [];
+    const m = mountMenu({ sandboxPassTurn: true, onSandboxPassTurn: () => calls.push(1) });
+    await open(m.trigger);
+    click(item(m.container, L.sandboxPassTurn)!);
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+    expect(calls).toHaveLength(1);
   });
 
   it("asks before it concedes, where the menu was, and Keep playing backs out", async () => {
@@ -573,7 +598,7 @@ describe("the ⋯ menu at the table", () => {
     );
     expect(chips.map(accessibleName)).toEqual([
       "hold",
-      "autopass",
+      "Skip to my turn",
       "bluff",
       "Undo (1 left)",
       "more actions",

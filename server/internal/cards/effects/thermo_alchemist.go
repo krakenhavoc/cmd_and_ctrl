@@ -27,8 +27,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"defender"},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: This creature deals 1 damage to each opponent.",
-			Cost:  TapCost(),
+			Label:   "{T}: This creature deals 1 damage to each opponent.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
 			},

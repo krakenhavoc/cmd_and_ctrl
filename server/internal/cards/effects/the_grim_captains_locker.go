@@ -35,14 +35,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}: Surveil 1.",
-				Cost:   TapCost(),
-				Effect: grimLockerSurveil,
+				Label:   "{T}: Surveil 1.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
+				Effect:  grimLockerSurveil,
 			},
 			{
-				Label:  "{T}: Until end of turn, each creature card in your graveyard gains \"Escape—{3}{B}, Exile four other cards from your graveyard.\"",
-				Cost:   TapCost(),
-				Effect: grimLockerGrantEscape,
+				Label:   "{T}: Until end of turn, each creature card in your graveyard gains \"Escape—{3}{B}, Exile four other cards from your graveyard.\"",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
+				Effect:  grimLockerGrantEscape,
 			},
 		},
 	})

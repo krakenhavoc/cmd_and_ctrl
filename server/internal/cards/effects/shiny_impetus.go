@@ -12,17 +12,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The goad is a static requirement pair (GoadAttached): it binds the
 // declaration exactly as a goad does (CR 701.15b, counted under
-// CR 508.1d) and ends the moment the Aura falls off. Declared
-// weaker than printed: the creature is not in Card.Goads, so a card
-// that asks "is this creature goaded?" does not see it.
+// CR 508.1d) and ends the moment the Aura falls off. A card that asks
+// whether a creature is goaded sees it (Card.Goaded, #2733).
 //
 // The Treasure is the Aura's trigger, so its controller gets it.
 func init() {
 	Register(Spec{
 		OracleID:     "aae76e5c-f5e0-4d18-b465-e6a829be908a",
 		Name:         "Shiny Impetus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Cards that check whether a creature is goaded don't count the enchanted creature as goaded."},
+		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Static: []game.StaticAbility{
 			PumpAttached(2, 2),

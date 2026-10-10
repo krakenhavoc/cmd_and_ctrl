@@ -37,7 +37,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:     "GOOOOAAAALLL! — {T}, Sacrifice this artifact: Draw two cards. Activate only if an opponent was dealt combat damage by a legendary creature this turn.",
 			Cost:      Plus(TapCost(), SacrificeThis()),
-			Purpose:   game.Purpose{Draws: 2},
+			Purpose:   game.Purpose{Answers: game.AnswerValue, Draws: 2},
 			Condition: opponentDealtCombatDamageByALegend,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))

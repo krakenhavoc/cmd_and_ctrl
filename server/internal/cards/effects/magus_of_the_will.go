@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Magus of the Will — Creature — Human Wizard {2}{B}, 2/2:
 //
 //	"{2}{B}, {T}, Exile this creature: Until end of turn, you may play
@@ -18,9 +20,10 @@ func init() {
 		Name:         "Magus of the Will",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{B}, {T}, Exile this creature: Until end of turn, you may play lands and cast spells from your graveyard. If a card would be put into your graveyard from anywhere this turn, exile that card instead.",
-			Cost:   Plus(ManaCost("{2}{B}"), TapCost(), ExileThis()),
-			Effect: Do(YawgmothsWillThisTurn()),
+			Label:   "{2}{B}, {T}, Exile this creature: Until end of turn, you may play lands and cast spells from your graveyard. If a card would be put into your graveyard from anywhere this turn, exile that card instead.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}{B}"), TapCost(), ExileThis()),
+			Effect:  Do(YawgmothsWillThisTurn()),
 		}},
 	})
 }

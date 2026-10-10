@@ -22,8 +22,9 @@ func init() {
 		Name:         "Terraformer",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}: Choose a basic land type. Each land you control becomes that type until end of turn.",
-			Cost:  ManaCost("{1}"),
+			Label:   "{1}: Choose a basic land type. Each land you control becomes that type until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{1}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return eachLandYouControlBecomesChosenTypeUntilEOT(NewContext(g, item), "Terraformer")
 			},

@@ -23,8 +23,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"daybound"},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{R}{G}: Create a 2/2 green Wolf creature token.",
-			Cost:  ManaCost("{2}{R}{G}"),
+			Label:   "{2}{R}{G}: Create a 2/2 green Wolf creature token.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{2}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Template: TokenCard("2/2 green Wolf"), N: 1}.Apply(NewContext(g, item))
 			},

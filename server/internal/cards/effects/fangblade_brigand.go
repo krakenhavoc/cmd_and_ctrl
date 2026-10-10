@@ -18,9 +18,10 @@ func init() {
 	const oracle = "dbd22a65-4ccb-4435-ae27-03a47a86d630"
 	firebreathing := func(name string) ActivatedAbility {
 		return ActivatedAbility{
-			Label:  "{1}{R}: This creature gets +1/+0 and gains first strike until end of turn.",
-			Cost:   ManaCost("{1}{R}"),
-			Effect: thisCreatureUntilEOT(name+" — +1/+0 and first strike", 1, 0, "first strike"),
+			Label:   "{1}{R}: This creature gets +1/+0 and gains first strike until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    ManaCost("{1}{R}"),
+			Effect:  thisCreatureUntilEOT(name+" — +1/+0 and first strike", 1, 0, "first strike"),
 		}
 	}
 	Register(Spec{
@@ -38,8 +39,9 @@ func init() {
 		Activated: []ActivatedAbility{
 			firebreathing("Fangblade Eviscerator"),
 			{
-				Label: "{4}{R}: Creatures you control get +2/+0 until end of turn.",
-				Cost:  ManaCost("{4}{R}"),
+				Label:   "{4}{R}: Creatures you control get +2/+0 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{4}{R}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return BoostUntilEOT{
 						Match: And(Creature(), YouControl()),

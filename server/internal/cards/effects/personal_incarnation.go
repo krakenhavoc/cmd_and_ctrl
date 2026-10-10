@@ -28,6 +28,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{0}: The next 1 damage that would be dealt to this creature this turn is dealt to its owner instead. Only this creature's owner may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerPrevent},
 			Cost:      ManaCost("{0}"),
 			OwnerOnly: true,
 			Effect: func(g *game.Game, item *game.StackItem) error {

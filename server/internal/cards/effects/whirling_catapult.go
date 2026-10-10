@@ -22,7 +22,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{2}, Exile the top two cards of your library: This artifact deals 1 damage to each creature with flying and each player.",
 			// ADR 0126 §6: only creatures with flying.
-			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
+			Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1, Partial: true}},
 			Cost:    Plus(ManaCost("{2}"), ExileTopOfLibrary(2)),
 			Effect:  thisDealsDamageToEachCreatureMatchingAndEachPlayer(HasKeyword("flying"), 1),
 		}},

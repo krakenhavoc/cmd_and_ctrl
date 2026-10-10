@@ -28,7 +28,7 @@ func init() {
 				ABoastAbilityCost(), ActivatedByTheModifiersController()),
 		},
 		Activated: []ActivatedAbility{
-			Boast("{4}{R}: Create a 5/5 red Dragon creature token with flying.",
+			BoastAnswering(game.AnswerMakesBlocker, "{4}{R}: Create a 5/5 red Dragon creature token with flying.",
 				ManaCost("{4}{R}"), createTheToken("5/5 red Dragon with flying")),
 		},
 	})

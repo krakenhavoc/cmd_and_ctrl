@@ -146,6 +146,15 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("attack requirements = %+v, want a plain one and one naming the player", c.AttackRequirements)
 			}
 		}},
+		// #2733: goad's CR 701.15b pair, with the goader on both, so the
+		// creature reads as goaded.
+		{"goad", []Mod{GoadMod(attackRequirementTestPlayer)}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			p := attackRequirementTestPlayer
+			if len(c.AttackRequirements) != 2 || c.AttackRequirements[0].GoadedBy != p || c.AttackRequirements[0].OtherThan != uuid.Nil ||
+				c.AttackRequirements[1].GoadedBy != p || c.AttackRequirements[1].OtherThan != p {
+				t.Errorf("attack requirements = %+v, want goad's pair for the goader", c.AttackRequirements)
+			}
+		}},
 		// #1651: "can't have" beats even a grant in the same record, and
 		// is recorded for the strip.
 		{"cantHaveKeywords", []Mod{CantHaveKeywordsMod("hexproof"), AddKeywordsMod("hexproof")}, func(t *testing.T, _, c Characteristic, _ *Game) {
@@ -185,6 +194,20 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("attack-target restrictions = %+v, want one asking for an Island", c.AttackTargetRestrictions)
 			}
 		}},
+		// #2562: CR 612.8, the bear has only the new name.
+		{"setName", []Mod{SetNameMod("Everflame, Heroes' Legacy")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if c.Name != "Everflame, Heroes' Legacy" {
+				t.Errorf("name = %q, want Everflame, Heroes' Legacy", c.Name)
+			}
+		}},
+		// #2562: CR 205.1a, a set: the Creature type goes, and with it
+		// the Bear (its creature type); the supertype is gained.
+		{"setTypes", []Mod{SetTypesMod([]string{"Artifact"}, []string{"Equipment"}, "Legendary")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Types, []string{"Artifact"}) || !reflect.DeepEqual(c.Subtypes, []string{"Equipment"}) ||
+				!typeListHas(c.Supertypes, "Legendary") {
+				t.Errorf("type line = %v %v — %v, want Legendary Artifact — Equipment", c.Supertypes, c.Types, c.Subtypes)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -219,7 +242,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModSetBasicLandTypes:                true,
@@ -275,9 +298,14 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0109 §4: the land-play gate. Its cases are in
 		// land_play_gate_test.go.
 		ModCantPlayLands: true,
+		// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
+		// both gates. Its cases are in hand_play_ban_test.go.
+		ModCantPlayFromHand: true,
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
+		// #2562: cases above.
+		ModSetName: true, ModSetTypes: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

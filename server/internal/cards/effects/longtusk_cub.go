@@ -20,9 +20,10 @@ func init() {
 			WheneverThisDealsCombatDamageToAPlayer("Longtusk Cub — you get {E}{E}", ebYouGetEnergy(2)),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Pay {E}{E}: Put a +1/+1 counter on this creature.",
-			Cost:   PayEnergy(2),
-			Effect: plusOneCountersOnThis(1),
+			Label:   "Pay {E}{E}: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    PayEnergy(2),
+			Effect:  plusOneCountersOnThis(1),
 		}},
 	})
 }

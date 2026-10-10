@@ -118,8 +118,9 @@ func untapThenToAndBy(ctx *Context) error {
 // is a new object, and is not shielded (CR 400.7).
 func toAndByThisRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
-		Label: label,
-		Cost:  cost,
+		Label:   label,
+		Cost:    cost,
+		Purpose: preventsDamageUnlessTargeted(nil),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shieldThis(g, item, toAndByShield(ShieldTarget{}, true))
 		},

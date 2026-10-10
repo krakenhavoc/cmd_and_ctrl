@@ -27,8 +27,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{U}, {T}, Exile a creature card from your graveyard: Create a 1/1 white Spirit creature token with flying.",
-			Cost:  Plus(ManaCost("{W}{U}"), TapCost(), ExileFromGraveyard(1, "a creature card", MatchCreature)),
+			Label:   "{W}{U}, {T}, Exile a creature card from your graveyard: Create a 1/1 white Spirit creature token with flying.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{W}{U}"), TapCost(), ExileFromGraveyard(1, "a creature card", MatchCreature)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: b28WhiteSpiritFlyingToken(), N: 1}.Apply(NewContext(g, item))
 			},

@@ -22,9 +22,10 @@ func init() {
 		Name:         "Evolution Witness",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{G}: Adapt 2",
-			Cost:   ManaCost("{1}{G}"),
-			Effect: adaptTwo,
+			Label:   "{1}{G}: Adapt 2",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{1}{G}"),
+			Effect:  adaptTwo,
 		}},
 		Triggered: []game.TriggeredAbility{
 			Targeting(On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

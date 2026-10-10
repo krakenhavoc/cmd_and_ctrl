@@ -36,7 +36,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}: Create an X/X black Phyrexian Minion creature token, where X is the life paid as this artifact entered.",
 			Cost:    game.AbilityCost{Mana: "{4}", Tap: true},
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return CreateToken{

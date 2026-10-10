@@ -19,8 +19,9 @@ func init() {
 		Name:         "Repeat Offender",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{2}{B}: If this creature is suspected, put a +1/+1 counter on it. Otherwise, suspect it.",
-			Cost:  ManaCost("{2}{B}"),
+			Label:   "{2}{B}: If this creature is suspected, put a +1/+1 counter on it. Otherwise, suspect it.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{2}{B}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if sourceIsNewObject(g, item) { // #1432
 					return nil

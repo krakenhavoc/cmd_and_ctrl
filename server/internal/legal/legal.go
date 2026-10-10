@@ -170,7 +170,10 @@ type Move struct {
 	// blink, damage prevention, a pump or counters (#2853, owner answer
 	// 2). Smart autopass stops for it as it does for a targeted ability.
 	// Pure value (draw, mana, a fetch, tokens, scry) never sets it. See
-	// abilityInteracts.
+	// untargetedFlags (ADR 0142: the row's declared Purpose.Answers; an
+	// undeclared row sets it). Owner answer 4: a "Sacrifice this creature"
+	// move also sets it while an opponent's stack item targets the
+	// creature.
 	Interacts bool `json:"interacts,omitempty"`
 
 	// CombatInteracts is true on an activation with no target that
@@ -179,14 +182,17 @@ type Move struct {
 	// keyword, "can block an additional creature", a creature token
 	// (#2871). Smart autopass counts it only in a combat window, so it
 	// is a bit of its own rather than part of Interacts. Never set
-	// alongside Interacts. See abilityCombatKind.
+	// alongside Interacts. Read from the row's combat-tier answers
+	// (untargetedFlags, ADR 0142), and set while a "Sacrifice this creature"
+	// move's creature attacks or blocks (owner answer 4).
 	CombatInteracts bool `json:"combat_interacts,omitempty"`
 
 	// CombatDefenderOnly narrows CombatInteracts: the ability makes a
 	// creature token (or populates, or amasses), which matters only as
 	// a blocker, so smart autopass counts it only while the viewer is
-	// a defending player in this combat (owner answer, #2871). Only
-	// ever set alongside CombatInteracts.
+	// a defending player in this combat (owner answer, #2871): its only
+	// combat answer is makes_blocker (ADR 0142). Only ever set alongside
+	// CombatInteracts.
 	CombatDefenderOnly bool `json:"combat_defender_only,omitempty"`
 
 	// IdleHint is set on a LEGAL cast that would do nothing if it

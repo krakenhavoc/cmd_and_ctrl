@@ -30,6 +30,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{T}, Sacrifice this artifact: You gain 3 life and draw a card. Activate only if you have the city's blessing.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(TapCost(), SacrificeThis()),
 			Condition: YouHaveTheCitysBlessingCondition(),
 			Effect:    Do(GainLife{Amount: 3}, DrawCards{N: 1}),

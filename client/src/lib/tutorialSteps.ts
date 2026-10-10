@@ -27,7 +27,7 @@
 //   step 8, the stack pile         { label: L.stackPile.any }
 //   step 10, the commander         { label: L.commandZone.any, within: L.yourBoard }
 //                                  (the command zone beside the hand, #2349)
-//   step 12, the autopass toggle   { label: L.autopass, within: L.actions }
+//   step 12, Skip to my turn       { label: L.skipToMyTurn, within: L.actions }
 //   step 13's detour, the bot      { label: L.seatBoard(name) }
 //   step 9, one card               { cardID }  (Card's data-instance-id)
 //   step 13, the bot's portrait    { seatID }  (PlayerIdentity's data-seat-id)
@@ -48,7 +48,8 @@
 //   - In Manual auto-pass, a spell the player casts waits on the
 //     stack until they press `next`: step 8 teaches the stack while it
 //     waits. The bot's turn waits on them at every step, so step 12
-//     teaches the dock's autopass toggle for that (the owner's choice),
+//     teaches the dock's Skip to my turn toggle (ADR 0143 §4.2; it was
+//     autopass) for that (the owner's choice),
 //     and step 13 watches the bot's turn while autopass runs it.
 //   - On turn one the player has one land, and a single land is not a
 //     pile. Step 5 completes on resting the pointer on the lands row
@@ -74,7 +75,7 @@ const HAND: Anchor = { label: L.yourHand };
 const LANDS: Anchor = { label: L.lands, within: L.yourBoard };
 const CREATURES: Anchor = { label: L.creatures, within: L.yourBoard };
 const DOCK: Anchor = { label: L.actions };
-const AUTOPASS: Anchor = { label: L.autopass, within: L.actions };
+const AUTOPASS: Anchor = { label: L.skipToMyTurn, within: L.actions };
 const ROLL_REQUEST: Anchor = { label: L.rollForFirstTurn };
 const ROLL_BANNER: Anchor = { label: L.openingRoll };
 const STACK_PILE: Anchor = { label: L.stackPile.any };
@@ -332,7 +333,7 @@ export const TAP_LAND: TutorialStep = {
     when: (c) => count(c.view, c.viewerID, "Land") > count(c.start, c.viewerID, "Land"),
     title: "Close — that played a land",
     body: "That put a land onto the table. To tap one for mana, click a Forest that is already there.",
-    hint: "Undo, in the dock beside autopass, takes the land back if you want it.",
+    hint: "Undo, in the dock beside Skip to my turn, takes the land back if you want it.",
   },
   cannot: (c) => {
     if (!c.view) return null;
@@ -426,7 +427,7 @@ export const RIGHT_CLICK: TutorialStep = {
       permanentsOf(c.start, c.viewerID).filter((p) => p.tapped).length,
     title: "That tapped it",
     body: "A left click taps a permanent for mana. A right-click opens the menu with every ability it has.",
-    hint: "Undo, in the dock beside autopass, untaps it.",
+    hint: "Undo, in the dock beside Skip to my turn, untaps it.",
   },
   teaches: ["table.right-click"],
 };
@@ -462,7 +463,7 @@ export const MOVE_ALONG: TutorialStep = {
   kind: "action",
   title: "Move the turn along",
   body: (k) =>
-    `The dock's next button moves the game on a step${k.nextKey ? `, and so does ${k.nextKey}` : ""}. Pass turn skips to the end of your turn.`,
+    `The dock's next button moves the game on a step${k.nextKey ? `, and so does ${k.nextKey}` : ""}. End turn plays out the rest of your turn for you.`,
   hint: "The icons across the dock's top are the steps still to come this turn.",
   anchor: DOCK,
   done: (c) =>
@@ -479,7 +480,7 @@ export const WATCH_TIMEOUT_MS = 90_000;
 const autopassOn = (c: StepContext): boolean => c.client?.autopass === true;
 
 /**
- * Step 12 teaches the autopass toggle (the owner's choice, 2026-10-02):
+ * Step 12 teaches the Skip to my turn toggle (formerly autopass; the owner's choice, 2026-10-02):
  * the practice table forces Manual auto-pass, so without it the
  * bot's turn waits on the player at every step. The toggle is session
  * state, separate from that setting, and its safety belt switches it off
@@ -491,10 +492,10 @@ export const WATCH_BOT: TutorialStep = {
   n: 12,
   kind: "action",
   title: "Let the bot play",
-  body: "Turn on autopass in the dock. It passes for you, so the bot plays its turn while you watch.",
-  hint: "Autopass switches itself off when your next main phase comes round, so it never skips your turn.",
+  body: "Turn on Skip to my turn in the dock. It passes for you, so the bot plays its turn while you watch.",
+  hint: "Skip to my turn switches itself off when your next main phase comes round, so it never skips your turn.",
   anchor: AUTOPASS,
-  status: (c) => (autopassOn(c) ? "Autopass is on" : undefined),
+  status: (c) => (autopassOn(c) ? "Skip to my turn is on" : undefined),
   done: (c) => {
     const me = seatOf(c.view, c.viewerID);
     // Autopass on, and the bot's turn running by itself.
@@ -508,7 +509,7 @@ export const WATCH_BOT: TutorialStep = {
         id: "leave-main",
         title: "First, leave your main phase",
         body: (k) =>
-          `Autopass switches itself off in your own main phase. ${PressNext(k)} once, then turn it on.`,
+          `Skip to my turn switches itself off in your own main phase. ${PressNext(k)} once, then turn it on.`,
         anchor: DOCK,
       };
     }
@@ -545,7 +546,7 @@ export const ATTACK: TutorialStep = {
       return {
         id: "watch-bot",
         title: "Watch the bot play",
-        body: "Autopass is passing for you while the bot takes its turn. It hands back at your main phase.",
+        body: "Skip to my turn is passing for you while the bot takes its turn. It hands back at your main phase.",
         anchor: opp ? { label: L.seatBoard(opp.name) } : DOCK,
       };
     }
@@ -558,13 +559,13 @@ export const ATTACK: TutorialStep = {
       };
     }
     const step = c.view.turn.step;
-    // Autopass outliving the main phase (the player's own
-    // autopassPersistThroughTurns) would pass the whole turn, combat too.
+    // Skip to my turn switched on after the main phase (in combat,
+    // say) would pass the rest of the turn, combat too.
     if (autopassOn(c) && !EARLY_STEPS.has(step)) {
       return {
         id: "autopass-off",
-        title: "First, autopass off",
-        body: "Autopass would pass your whole turn, combat included. Click it off in the dock.",
+        title: "First, turn off Skip to my turn",
+        body: "Skip to my turn would pass the rest of your turn, combat included. Click it off in the dock.",
         anchor: AUTOPASS,
       };
     }

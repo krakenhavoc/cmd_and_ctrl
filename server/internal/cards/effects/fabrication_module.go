@@ -21,7 +21,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}: You get {E}.",
 			Cost:    Plus(ManaCost("{4}"), TapCost()),
-			Purpose: game.Purpose{Energy: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 1},
 			Effect:  Do(GetEnergy{N: 1}),
 		}},
 		Triggered: []game.TriggeredAbility{

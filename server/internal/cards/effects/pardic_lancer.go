@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Pardic Lancer — Creature — Human Barbarian {4}{R}, 3/2:
 //
 //	"Discard a card at random: This creature gets +1/+0 and gains first
@@ -17,9 +19,10 @@ func init() {
 		Name:         "Pardic Lancer",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "Discard a card at random: This creature gets +1/+0 and gains first strike until end of turn.",
-			Cost:   DiscardAtRandom(1, "a card at random"),
-			Effect: thisCreatureUntilEOT("Pardic Lancer — +1/+0 and first strike", 1, 0, "first strike"),
+			Label:   "Discard a card at random: This creature gets +1/+0 and gains first strike until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    DiscardAtRandom(1, "a card at random"),
+			Effect:  thisCreatureUntilEOT("Pardic Lancer — +1/+0 and first strike", 1, 0, "first strike"),
 		}},
 	})
 }

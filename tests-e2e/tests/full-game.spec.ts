@@ -155,36 +155,60 @@ test.describe("full game", () => {
 
     // ---- 7. Play round 1: the starting seat passes its turn. ----
     // The winner of the opening roll handed the first turn to the
-    // other seat, so the loser starts. pass_turn jumps to the next
-    // seat's untap step. Only the active seat's button is enabled; the
-    // other browser sees it disabled.
-    // ADR 0111 PR 2: Pass turn is in the action dock's action bar, and
-    // is rendered disabled (not hidden) for the seat that is not active.
+    // other seat, so the loser starts. End turn sends end_turn
+    // (#2881): the server passes for the active seat through every
+    // step of the turn, and the other browser's auto-pass passes its
+    // windows.
+    // ADR 0111 PR 2: Pass turn is in the action dock's action bar. ADR
+    // 0143 §4.2 renamed it End turn and draws it for the active seat
+    // only, so the other browser has none at all.
+    const dockOf = (p: { page: Page }) =>
+      p.page.getByRole("region", { name: "actions", exact: true });
     const passOf = (p: { page: Page }) =>
-      p.page
-        .getByRole("region", { name: "actions", exact: true })
-        .getByRole("button", { name: "pass turn" });
+      dockOf(p).getByRole("button", { name: "end turn" });
+    const canEnd = async (p: { page: Page }): Promise<boolean> =>
+      (await passOf(p).count()) > 0 && (await passOf(p).isEnabled());
+    // A seat that drew on its turn ends it with eight cards, so the
+    // cleanup step asks it to discard to seven (CR 514.1) before the
+    // turn can end. The discard is a sheet in the action dock (ADR 0111
+    // PR 6), named "Discard N card(s)".
+    const passTurnTo = async (
+      p: { page: Page },
+      next: { page: Page },
+    ): Promise<void> => {
+      await passOf(p).click();
+      const discard = dockOf(p).getByRole("dialog", { name: /discard \d+ card/i });
+      await expect
+        .poll(
+          async () => {
+            if (await discard.isVisible().catch(() => false)) {
+              await discard.locator("button.card-pick:not([disabled])").first().click();
+              await discard.getByRole("button", { name: "Discard", exact: true }).click();
+            }
+            return await canEnd(next);
+          },
+          { timeout: 20_000 },
+        )
+        .toBe(true);
+    };
     const first = loser;
     const second = winner;
     const aliceStarts = first === alice;
     await expect(passOf(first)).toBeEnabled({ timeout: 10_000 });
-    await expect(passOf(second)).toBeDisabled();
+    await expect(passOf(second)).toHaveCount(0);
 
-    await passOf(first).click();
+    await passTurnTo(first, second);
 
     // Snapshot ordering: server bumps seq on every accepted action.
     // Both pages should now show the same new active seat.
-    await expect(passOf(second)).toBeEnabled({ timeout: 10_000 });
-    await expect(passOf(first)).toBeDisabled();
+    await expect(passOf(first)).toHaveCount(0);
 
     // ---- 8. Play round 2: the second seat passes its turn. ----
-    await passOf(second).click();
-    await expect(passOf(first)).toBeEnabled({ timeout: 10_000 });
+    await passTurnTo(second, first);
 
     // ---- 9. Round 3: the first seat passes again to prove the
     //         cursor really walks through turns, not just seats. ----
-    await passOf(first).click();
-    await expect(passOf(second)).toBeEnabled({ timeout: 10_000 });
+    await passTurnTo(first, second);
 
     // ---- 10. Final assertion on authoritative state via WS snapshot
     //          snooping. The server doesn't expose an HTTP "get turn"
@@ -224,7 +248,7 @@ test.describe("full game", () => {
       });
     });
 
-    // After 3 pass_turns in a 2-player game the cursor is on the seat
+    // After 3 passed turns in a 2-player game the cursor is on the seat
     // that did not start (Alice is seat 0, Bob seat 1), and the turn
     // number has wrapped at least once.
     expect(snapshotTurn.number).toBeGreaterThanOrEqual(2);

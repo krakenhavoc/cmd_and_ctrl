@@ -175,6 +175,7 @@ func printedFoodToken() tokenTemplate {
 				SacrificeSelf: true,
 				Mana:          "{2}",
 			},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
 			},
@@ -205,6 +206,7 @@ func printedClueToken() tokenTemplate {
 				SacrificeSelf: true,
 				Mana:          "{2}",
 			},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},
@@ -242,6 +244,7 @@ func printedBloodToken() tokenTemplate {
 				SacrificeSelf: true,
 				Mana:          "{1}",
 			},
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

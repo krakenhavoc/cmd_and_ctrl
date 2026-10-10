@@ -25,8 +25,9 @@ func init() {
 		Name:         "Nuka-Cola Vending Machine",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, {T}: Create a Food token.",
-			Cost:  Plus(ManaCost("{1}"), TapCost()),
+			Label:   "{1}, {T}: Create a Food token.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: FoodToken(), N: 1}.Apply(NewContext(g, item))
 			},

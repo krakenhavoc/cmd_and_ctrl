@@ -31,9 +31,10 @@ func init() {
 	caveat := "If two or more sources damage it at the same time, it reflects each source's damage separately instead of the total in one go."
 	pump := func(name string) ActivatedAbility {
 		return ActivatedAbility{
-			Label:  "{1}{R}: This creature gets +2/+0 until end of turn.",
-			Cost:   ManaCost("{1}{R}"),
-			Effect: thisCreatureUntilEOT(name+" — +2/+0", 2, 0),
+			Label:   "{1}{R}: This creature gets +2/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{1}{R}"),
+			Effect:  thisCreatureUntilEOT(name+" — +2/+0", 2, 0),
 		}
 	}
 	reflect := func(name string, when func(ev game.Event, source *game.Card, g *game.Game) bool) game.TriggeredAbility {

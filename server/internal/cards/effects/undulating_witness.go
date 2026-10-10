@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Undulating Witness — Creature — Serpent {4}{U}, 3/5:
 //
 //	"Flying
@@ -15,9 +17,10 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{2}: This creature gets +1/-1 until end of turn.",
-				Cost:   ManaCost("{2}"),
-				Effect: thisCreatureUntilEOT("Undulating Witness — +1/-1", 1, -1),
+				Label:   "{2}: This creature gets +1/-1 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{2}"),
+				Effect:  thisCreatureUntilEOT("Undulating Witness — +1/-1", 1, -1),
 			},
 			BasicLandcycling("{2}"),
 		},

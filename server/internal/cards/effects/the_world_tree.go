@@ -40,8 +40,9 @@ func init() {
 			return landsYouControl(target, g, source) && theWorldTreeLandCount(g, source) >= 6
 		}, theWorldTreeGrant)},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}, {T}, Sacrifice this land: Search for any number of God cards",
-			Cost:  Plus(ManaCost("{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}"), TapCost(), SacrificeThis()),
+			Label:   "{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}, {T}, Sacrifice this land: Search for any number of God cards",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{W}{W}{U}{U}{B}{B}{R}{R}{G}{G}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

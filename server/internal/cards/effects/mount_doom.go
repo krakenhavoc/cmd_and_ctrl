@@ -49,8 +49,9 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}{B}{R}, {T}: Mount Doom deals 1 damage to each opponent.",
-				Cost:  Plus(ManaCost("{1}{B}{R}"), TapCost()),
+				Label:   "{1}{B}{R}, {T}: Mount Doom deals 1 damage to each opponent.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{1}{B}{R}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return damageToEachOpponent(g, item, 1)
 				},

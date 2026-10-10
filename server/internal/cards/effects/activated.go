@@ -237,6 +237,16 @@ func PayXEnergy() game.AbilityCost { return game.AbilityCost{EnergyX: true} }
 // game.AbilityCost.Loyalty.
 func LoyaltyCost(n int) game.AbilityCost { return game.AbilityCost{Loyalty: &n} }
 
+// LoyaltyMinusX is the "−X" loyalty cost (#1944, CR 107.3a): the
+// activator announces X, and the activation removes X loyalty counters,
+// no more than the permanent has (CR 606.6). The effect reads the X
+// back through Context.X(). Everything LoyaltyCost derives, this does
+// too.
+func LoyaltyMinusX() game.AbilityCost {
+	zero := 0
+	return game.AbilityCost{Loyalty: &zero, LoyaltyX: true}
+}
+
 // Plus merges cost components: Plus(ManaCost("{2}"), TapCost()) is
 // "{2}, {T}". Later components win for scalar fields, which only
 // matters if a caller passes two mana strings (they shouldn't).
@@ -289,6 +299,9 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		}
 		if c.Loyalty != nil {
 			out.Loyalty = c.Loyalty
+		}
+		if c.LoyaltyX {
+			out.LoyaltyX = true
 		}
 		if c.Crew != 0 {
 			out.Crew = c.Crew
@@ -392,6 +405,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		// than printed, the #259 direction.
 		if c.ReturnSelf {
 			out.ReturnSelf = true
+		}
+		// #2726: and the put-this-on-the-bottom component; dropped, a
+		// composed cost would keep the creature and still take the turn.
+		if c.BottomSelf {
+			out.BottomSelf = true
 		}
 		// ADR 0130 §4: and the exert component. A composed "{T}, Exert
 		// this creature" that dropped it would untap next turn — stronger
@@ -566,6 +584,12 @@ func ExileThis() game.AbilityCost { return game.AbilityCost{ExileSelf: true} }
 // from any other zone, and beside a sacrifice-this or exile-this cost.
 // Compose it with Plus like any other component.
 func ReturnThis() game.AbilityCost { return game.AbilityCost{ReturnSelf: true} }
+
+// PutThisOnTheBottomOfItsOwnersLibrary is "Put this creature on the
+// bottom of its owner's library" as a cost (#2726).
+func PutThisOnTheBottomOfItsOwnersLibrary() game.AbilityCost {
+	return game.AbilityCost{BottomSelf: true}
+}
 
 // DiscardThis is cycling's "Discard this card" cost component
 // (CR 702.29a). It only means anything on an ability that functions

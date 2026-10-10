@@ -39,9 +39,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 3",
-			Cost:   CrewCost(3),
-			Effect: CrewEffect("Nautiloid Ship"),
+			Label:   "Crew 3",
+			Cost:    CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Nautiloid Ship"),
 		}},
 		Triggered: []game.TriggeredAbility{
 			Targeting(WhenThisEnters(nautiloidShipExileLabel, exileTargetPlayersGraveyard),

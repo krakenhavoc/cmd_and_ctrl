@@ -25,15 +25,17 @@ func init() {
 		HandSize:     []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{X}{X}, {T}: Each player draws X cards.",
-				Cost:  Plus(ManaCost("{X}{X}"), TapCost()),
+				Label:   "{X}{X}, {T}: Each player draws X cards.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{X}{X}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b05EachPlayerDraws(g, item, NewContext(g, item).X())
 				},
 			},
 			{
-				Label: "{2}{U}, {T}: Each opponent mills cards equal to the number of cards in their hand.",
-				Cost:  Plus(ManaCost("{2}{U}"), TapCost()),
+				Label:   "{2}{U}, {T}: Each opponent mills cards equal to the number of cards in their hand.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{2}{U}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					for _, p := range livePlayers(g) {

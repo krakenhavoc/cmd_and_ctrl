@@ -24,16 +24,18 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{T}: Draw three cards.",
-				Cost:  TapCost(),
+				Label:   "{T}: Draw three cards.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label:  "{2}{U}{U}: Return Arcanis to its owner's hand.",
-				Cost:   ManaCost("{2}{U}{U}"),
-				Effect: b28ReturnSelfToOwnersHand,
+				Label:   "{2}{U}{U}: Return Arcanis to its owner's hand.",
+				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Cost:    ManaCost("{2}{U}{U}"),
+				Effect:  b28ReturnSelfToOwnersHand,
 			},
 		},
 	})

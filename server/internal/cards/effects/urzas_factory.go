@@ -37,8 +37,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{7}, {T}: Create a 2/2 colorless Assembly-Worker artifact creature token.",
-			Cost:  Plus(ManaCost("{7}"), TapCost()),
+			Label:   "{7}, {T}: Create a 2/2 colorless Assembly-Worker artifact creature token.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{7}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return CreateToken{

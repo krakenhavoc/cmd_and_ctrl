@@ -85,8 +85,9 @@ func printedNestingDragonDragonToken() tokenTemplate {
 			Keywords:  []string{"flying"},
 		},
 		Activated: []game.ActivatedAbilityShape{{
-			Label: "{R}: This token gets +1/+0 until end of turn",
-			Cost:  game.AbilityCost{Mana: "{R}"},
+			Label:   "{R}: This token gets +1/+0 until end of turn",
+			Cost:    game.AbilityCost{Mana: "{R}"},
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return BoostUntilEOT{

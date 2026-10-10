@@ -22,8 +22,9 @@ func init() {
 		Name:         "Memorial Vault",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Sacrifice another artifact: Exile the top X cards of your library, where X is one plus the mana value of the sacrificed artifact. You may play those cards this turn.",
-			Cost:  Plus(TapCost(), SacrificeAnotherN(1, "another artifact", Artifact())),
+			Label:   "{T}, Sacrifice another artifact: Exile the top X cards of your library, where X is one plus the mana value of the sacrificed artifact. You may play those cards this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeAnotherN(1, "another artifact", Artifact())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				info, ok := ctx.SacrificedPermanent()

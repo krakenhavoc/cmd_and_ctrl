@@ -30,8 +30,9 @@ func init() {
 		Name:         "Atla Palani, Nest Tender",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Create a 0/1 green Egg creature token with defender.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Create a 0/1 green Egg creature token with defender.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: Do(CreateToken{
 				Template: TokenCard("0/1 green Egg with defender"),
 				N:        1,

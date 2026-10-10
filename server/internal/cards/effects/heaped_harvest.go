@@ -33,8 +33,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
-			Cost:  Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+			Label:   "{2}, {T}, Sacrifice this artifact: You gain 3 life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
 			},

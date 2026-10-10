@@ -27,6 +27,7 @@ import { _resetForTests as resetDock } from "./dock";
 import { _resetForTests as resetModals } from "./modalLayers";
 import { targeting, setConfirmHandler } from "./targeting";
 import { defaultSettings, settings } from "./settings";
+import { GAME_OVER_GRACE_MS } from "./choiceDock";
 import { render, click, cleanup, flushSync } from "./test/render.svelte";
 
 vi.mock("./components/board/Board.svelte", async () => ({
@@ -345,7 +346,7 @@ describe("the yes/no family, inline in the dock", () => {
       expect(yes[0].getAttribute("aria-keyshortcuts")).toBe("Y");
       expect(no[0].getAttribute("aria-keyshortcuts")).toBe("N");
       expect(buttons(c, "next")).toHaveLength(0);
-      expect(buttons(c, "Pass turn")).toHaveLength(0);
+      expect(buttons(c, "End turn")).toHaveLength(0);
 
       click(no[0]);
       click(yes[0]);
@@ -793,7 +794,7 @@ describe("the vote, in the dock", () => {
     expect(dlg.textContent).toContain("called by Opp");
     // A vote never stops the game: next and Pass turn stay.
     expect(buttons(c, "next")).toHaveLength(1);
-    expect(buttons(c, "Pass turn")).toHaveLength(1);
+    expect(buttons(c, "End turn")).toHaveLength(1);
     // No floating panel as well.
     expect(c.querySelector(".vote-modal")).toBeNull();
 
@@ -848,7 +849,46 @@ describe("game over, in the dock", () => {
     // Enter does not leave the table.
     keydown("Enter");
     expect(location.hash).not.toBe("#/lobby");
-    click(back[0]);
+    await armGameOver();
+    click(buttons(dlg, "Back to lobby")[0]);
+    expect(location.hash).toBe("#/lobby");
+  });
+
+  // #2919: Back to lobby takes the corner `next` sat in the moment the
+  // game ends. A click meant for `next` (the pass that resolved the
+  // lethal blow, a double click, a click already on its way) used to land
+  // on it and take the player off the table without their choosing.
+  it("a click meant for next, as the game ends, does not leave the table", async () => {
+    location.hash = "#/games/game-1";
+    const c = await mountGame(table());
+    const corner = () => dockOf(c).querySelector<HTMLButtonElement>(".dock-btn.primary")!;
+    expect(accessibleName(corner())).toMatch(/^next/);
+    expect(corner().disabled).toBe(false);
+
+    snapshot(
+      table({
+        state: "ended",
+        seats: [seat(ME, "Me", 0), { ...seat(OPP, "Opp", 1), eliminated: true } as PlayerView],
+      } as Partial<GameView>),
+    );
+    // The same corner now holds Back to lobby...
+    expect(accessibleName(corner())).toBe("Back to lobby");
+    expect(corner().disabled).toBe(true);
+    // ...and the click that was meant for next does nothing.
+    click(corner());
+    expect(location.hash).toBe("#/games/game-1");
+
+    // A moment later it is the player's own choice, and it works.
+    await armGameOver();
+    expect(corner().disabled).toBe(false);
+    click(corner());
     expect(location.hash).toBe("#/lobby");
   });
 });
+
+// armGameOver waits out the game-over grace (#2919), after which Back
+// to lobby is pressable.
+async function armGameOver(): Promise<void> {
+  await new Promise((r) => setTimeout(r, GAME_OVER_GRACE_MS + 20));
+  flushSync();
+}

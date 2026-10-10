@@ -23,9 +23,10 @@ func init() {
 		Name:         "Esika's Chariot",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 4",
-			Cost:   CrewCost(4),
-			Effect: CrewEffect("Esika's Chariot"),
+			Label:   "Crew 4",
+			Cost:    CrewCost(4),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Esika's Chariot"),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Esika's Chariot — create two 2/2 Cats", Do(CreateToken{

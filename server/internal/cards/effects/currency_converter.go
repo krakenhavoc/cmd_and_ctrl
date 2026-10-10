@@ -75,16 +75,18 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{2}, {T}: Draw a card, then discard a card.",
-				Cost:  Plus(ManaCost("{2}"), TapCost()),
+				Label:   "{2}, {T}: Draw a card, then discard a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return b16DrawThenDiscard(g, item, 1, 1)
 				},
 			},
 			{
-				Label:  "{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.",
-				Cost:   TapCost(),
-				Effect: currencyConverterPutAwayAnExiledCard,
+				Label:   "{T}: Put a card exiled with this artifact into its owner's graveyard. If it's a land card, create a Treasure token. If it's a nonland card, create a 2/2 black Rogue creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    TapCost(),
+				Effect:  currencyConverterPutAwayAnExiledCard,
 			},
 		},
 	})

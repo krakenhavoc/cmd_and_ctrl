@@ -108,7 +108,7 @@ cmd_and_ctrl/
     ├── engine-seams/closed/ # one fragment per closed seam; CI generates engine-seams.md's Closed list from them (#1461)
     ├── adding-cards.md  # the catalog card guide: recipes for cards, mechanics and engine seams (moved out of AGENTS.md §7, #1747)
     ├── sprints.md       # sprint plan
-    └── decisions/       # ADRs (0001 WS library … 0108 turn-scoped effects, object history and damage shields; 0109 rule gates, land types, mana and cost components; 0110 remember me: durable sign-in, account settings, admins and saved setups; 0111 the action dock; 0112 signed-in home, player mode and one decks page; 0113 small seams for the S58 deck requests; 0114 the Ring tempts you; 0115 commanders die (CR 903.9a); 0116 a card filter on the revealed-hand pick; 0117 click to act and a per-colour mana stepper; 0118 strict payment by default, Cast anyway, and alternative costs; 0119 a stack you can follow; 0120 expand a player's board; 0121 animated dice: an opening roll at the table, dice you can watch, and a Roll a die action; 0122 an agent at the table: a local MCP seat; 0123 monitoring: metrics, logs, dashboards and alerts; 0124 admin views: accounts, games and who is on now; 0125 a walkthrough that keeps up: first-use hints and a refreshed tutorial; 0126 bots that play their decks: the heuristic prices what a card does; 0127 answering repeated prompts for you; 0128 playmats: an image on your account that shows behind your battlefield; … 0136 planning the turn's mana: rock first, draw first, two spells over one; … 0141 bestow: a creature cast as an Aura; 0144 choose a Background and the partner pairings) — see §4 on numbering
+    └── decisions/       # ADRs (0001 WS library … 0108 turn-scoped effects, object history and damage shields; 0109 rule gates, land types, mana and cost components; 0110 remember me: durable sign-in, account settings, admins and saved setups; 0111 the action dock; 0112 signed-in home, player mode and one decks page; 0113 small seams for the S58 deck requests; 0114 the Ring tempts you; 0115 commanders die (CR 903.9a); 0116 a card filter on the revealed-hand pick; 0117 click to act and a per-colour mana stepper; 0118 strict payment by default, Cast anyway, and alternative costs; 0119 a stack you can follow; 0120 expand a player's board; 0121 animated dice: an opening roll at the table, dice you can watch, and a Roll a die action; 0122 an agent at the table: a local MCP seat; 0123 monitoring: metrics, logs, dashboards and alerts; 0124 admin views: accounts, games and who is on now; 0125 a walkthrough that keeps up: first-use hints and a refreshed tutorial; 0126 bots that play their decks: the heuristic prices what a card does; 0127 answering repeated prompts for you; 0128 playmats: an image on your account that shows behind your battlefield; … 0136 planning the turn's mana: rock first, draw first, two spells over one; … 0141 bestow: a creature cast as an Aura; 0144 choose a Background and the partner pairings; 0145 meld: one permanent, two cards; 0146 voting: will of the council and council's dilemma; 0147 auto-assign combat damage, and assigning it on the blockers) — see §4 on numbering
 ```
 
 When you create a new top-level directory, add it here.
@@ -504,12 +504,14 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Alternative costs for every spell you cast (ADR 0118, #2163)](docs/adding-cards.md#alternative-costs-for-every-spell-you-cast-adr-0118-2163)
   - [Abilities any player may activate (ADR 0106, #1793)](docs/adding-cards.md#abilities-any-player-may-activate-adr-0106-1793)
   - [Declaring what a card does: Purpose (ADR 0126 §6)](docs/adding-cards.md#declaring-what-a-card-does-purpose-adr-0126-6)
+  - [Declaring what an ability answers (ADR 0142)](docs/adding-cards.md#declaring-what-an-ability-answers-adr-0142)
   - [Paying energy (ADR 0129, #1995)](docs/adding-cards.md#paying-energy-adr-0129-1995)
   - [Adding a replacement effect (S17+)](docs/adding-cards.md#adding-a-replacement-effect-s17)
   - [Adding a copy effect (S16.5+)](docs/adding-cards.md#adding-a-copy-effect-s165)
   - [Adding a combat-keyword card (S18+)](docs/adding-cards.md#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](docs/adding-cards.md#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](docs/adding-cards.md#players-cant-play-lands-adr-0109-4-1895)
+  - ["Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)](docs/adding-cards.md#each-player-may-play-the-cards-they-exiled-and-cant-play-cards-from-your-hand-adr-0066-2559)
   - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](docs/adding-cards.md#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](docs/adding-cards.md#spells-you-control-cant-be-countered-adr-0106-1806)
   - [Attaching, and an ability whose source has gone (#812)](docs/adding-cards.md#attaching-and-an-ability-whose-source-has-gone-812)
@@ -535,11 +537,14 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [When NOT to add a catalog entry](docs/adding-cards.md#when-not-to-add-a-catalog-entry)
   - [Adding a trigger doubler (#752)](docs/adding-cards.md#adding-a-trigger-doubler-752)
   - [Emblems (#623)](docs/adding-cards.md#emblems-623)
+  - [A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)](docs/adding-cards.md#a-loyalty-cost-of-x-adr-0032-amendment-2026-10-10-1944)
   - [Planeswalker statics, eminence and loyalty timing (ADR 0140 and amendments, #2797)](docs/adding-cards.md#planeswalker-statics-eminence-and-loyalty-timing-adr-0140-and-amendments-2797)
   - [The Ring tempts you (ADR 0114, #2076)](docs/adding-cards.md#the-ring-tempts-you-adr-0114-2076)
+  - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](docs/adding-cards.md#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](docs/adding-cards.md#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Bestow (ADR 0141, #2862, CR 702.103)](docs/adding-cards.md#bestow-adr-0141-2862-cr-702103)
   - [Suspect (CR 701.60, #2698)](docs/adding-cards.md#suspect-cr-70160-2698)
+  - [Meld (ADR 0145, #2699, CR 701.42)](docs/adding-cards.md#meld-adr-0145-2699-cr-70142)
   - [Partner with (CR 702.124j, #2142)](docs/adding-cards.md#partner-with-cr-702124j-2142)
   - [Choose a Background, partner and Doctor's companion (ADR 0144, #2874)](docs/adding-cards.md#choose-a-background-partner-and-doctors-companion-adr-0144-2874)
   - [Renown (CR 702.112, #2049)](docs/adding-cards.md#renown-cr-702112-2049)

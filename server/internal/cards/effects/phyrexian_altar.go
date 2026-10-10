@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Phyrexian Altar — Artifact {3}:
 //
 //	"Sacrifice a creature: Add one mana of any color."
@@ -21,6 +23,7 @@ func init() {
 			},
 			Produced: "{W|U|B|R|G}",
 			Label:    "Sacrifice a creature: Add one mana of any color",
+			Answers:  game.AnswerSacOutlet,
 		}},
 	})
 }

@@ -85,6 +85,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			TapCost:                   a.Cost.Tap,
 			SacrificeCost:             a.Cost.Sacrifice,
 			SacrificeOther:            a.Cost.SacrificeOther,
+			Answers:                   a.Answers,
 			TapOthers:                 a.Cost.TapOthers,
 			LifeCost:                  a.Cost.Life,
 			EnergyCost:                a.Cost.Energy,
@@ -208,6 +209,8 @@ func buildDef(spec Spec) *game.CardDef {
 		PlayerKeywords:             spec.PlayerKeywords,
 		PlayerLifeTotalLocked:      spec.PlayerLifeTotalLocked,
 		DamageStaysThroughCleanup:  spec.DamageStaysThroughCleanup,
+		LoyaltyTwiceEachTurn:       spec.LoyaltyTwiceEachTurn,
+		ExtraVote:                  spec.ExtraVote,
 		DamageCantBePrevented:      spec.DamageCantBePrevented,
 		CantGainLife:               spec.CantGainLife,
 		DamageAsThough:             spec.DamageAsThough,
@@ -309,6 +312,9 @@ func buildDef(spec Spec) *game.CardDef {
 	}
 	if asTransforms := spec.AsTransformsInto; asTransforms != nil {
 		d.AsTransformsInto = liveCardHook(asTransforms)
+	}
+	if asAttached := spec.AsAttached; asAttached != nil {
+		d.AsAttached = liveCardHook(asAttached)
 	}
 	d.Activated = activatedShapes(spec.Activated)
 	d.ManaAbilities = manaShapes(spec.ManaAbilities)

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Jan Jansen, Chaos Crafter — Legendary Creature — Gnome Artificer
 // {R}{W}{B}, 3/3 (EDHREC rank 4111):
 //
@@ -47,16 +49,18 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{T}, Sacrifice an artifact creature: Create two Treasure tokens.",
-				Cost:  Plus(TapCost(), SacrificeN(1, "an artifact creature", Artifact(), Creature())),
+				Label:   "{T}, Sacrifice an artifact creature: Create two Treasure tokens.",
+				Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+				Cost:    Plus(TapCost(), SacrificeN(1, "an artifact creature", Artifact(), Creature())),
 				Effect: Do(CreateToken{
 					Template: TreasureToken(),
 					N:        2,
 				}),
 			},
 			{
-				Label: "{T}, Sacrifice a noncreature artifact: Create two 1/1 colorless Construct artifact creature tokens.",
-				Cost:  Plus(TapCost(), SacrificeN(1, "a noncreature artifact", Artifact(), Noncreature())),
+				Label:   "{T}, Sacrifice a noncreature artifact: Create two 1/1 colorless Construct artifact creature tokens.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(TapCost(), SacrificeN(1, "a noncreature artifact", Artifact(), Noncreature())),
 				Effect: Do(CreateToken{
 					Template: TokenCard("1/1 colorless Construct artifact"),
 					N:        2,

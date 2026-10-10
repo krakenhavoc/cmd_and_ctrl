@@ -746,6 +746,9 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// leaves null at the TOP level for exactly those layouts.
 		Layout: c.Layout,
 		Faces:  printedFaces(c),
+		// ADR 0145: a meld card carries its pair's combined back face,
+		// which the meld ability turns the two cards into.
+		Meld: printedMeld(c),
 	}
 	// Materialise face 0. For the ~33,000 single-faced oracle IDs
 	// this is a no-op and every field above stands as written; for a
@@ -761,6 +764,39 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 	// what it is everywhere but the stack and the battlefield.
 	out.SettleImported()
 	return out
+}
+
+// printedMeld is a meld card's game.MeldPrint (CR 712.4, ADR 0145):
+// the combined back face its pair forms, read off the back face's own
+// Scryfall record (cards.Card.MeldResult, attached by the index). nil
+// for every other card, for the back face's own record, and for a meld
+// card whose back face the index does not hold — that card plays as
+// itself and its meld ability, finding no pair, does nothing.
+func printedMeld(c cards.Card) *game.MeldPrint {
+	if c.MeldResult == nil || c.IsMeldBackFace() {
+		return nil
+	}
+	r := *c.MeldResult
+	power, _ := strconv.Atoi(strings.TrimSpace(r.Power))
+	toughness, _ := strconv.Atoi(strings.TrimSpace(r.Toughness))
+	return &game.MeldPrint{
+		ResultOracleID:   r.OracleID.String(),
+		ResultScryfallID: r.ID.String(),
+		Result: game.Face{
+			Name:              r.Name,
+			TypeLine:          r.TypeLine,
+			Colors:            append([]string(nil), r.Colors...),
+			Power:             power,
+			Toughness:         toughness,
+			VariableToughness: variableToughness(r.TypeLine, r.Toughness),
+			StartingLoyalty:   printedLoyalty(r),
+			StartingDefense:   printedDefense(r),
+			OracleText:        r.OracleText,
+			Keywords:          printedKeywords(r),
+		},
+		ResultNeedsEffect:  game.NeedsCatalogEffect(r.TypeLine, oracleTexts(r)...),
+		ResultProducedMana: append([]string(nil), r.ProducedMana...),
+	}
 }
 
 // printedFaces builds the engine's face list from Scryfall's

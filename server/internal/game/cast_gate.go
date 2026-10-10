@@ -57,6 +57,10 @@ import (
 // ADR 0109 §5 (#1899) added an EMBLEM as a second home for source 1: an
 // emblem's CastRestrictions are read exactly as a permanent's, with the
 // emblem as the source (CR 114.4).
+//
+// #2559 added a fourth, beside the third: Memory Vessel's "can't play
+// cards from their hand", a stored ScopedEffect (hand_play_ban.go) that
+// refuses a cast out of the hand and that the land-play gate reads too.
 
 // CastQuery is everything a cast restriction may look at. Passed by
 // value for the reason CostQuery is: a restriction is consulted
@@ -299,6 +303,13 @@ func (g *Game) CastGateLocked(caster uuid.UUID, card Card, zone ZoneKind, params
 	// than "this card refuses itself" when both apply.
 	if label, banSource, ok := g.castBanForbidsLocked(caster, card, zone); ok {
 		return &CantCastError{Reason: label, Source: banSource}
+	}
+	// #2559: "can't play cards from your hand" (Memory Vessel), the
+	// stored ban both this gate and the land-play gate read.
+	if zone == ZoneHand {
+		if reason, banSource, ok := g.handPlayBanLocked(caster); ok {
+			return &CantCastError{Reason: reason, Source: banSource}
+		}
 	}
 	// Then the spell's own condition (CR 205.4e). Last because a card
 	// that is legal to cast on its own terms is still stopped by the

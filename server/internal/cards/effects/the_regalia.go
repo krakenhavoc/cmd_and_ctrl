@@ -29,9 +29,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 1",
-			Cost:   CrewCost(1),
-			Effect: CrewEffect("The Regalia"),
+			Label:   "Crew 1",
+			Cost:    CrewCost(1),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("The Regalia"),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("The Regalia — reveal until a land card and put it onto the battlefield tapped",

@@ -29,8 +29,9 @@ func init() {
 		Name:         "Olivia's Dragoon",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Discard a card: This creature gains flying until end of turn.",
-			Cost:  DiscardACard(),
+			Label:   "Discard a card: This creature gains flying until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    DiscardACard(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Target:   item.SourceCardID,

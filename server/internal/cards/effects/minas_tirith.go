@@ -36,6 +36,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{1}{W}, {T}: Draw a card. Activate only if you attacked with two or more creatures this turn.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{1}{W}"), TapCost()),
 			Condition: minasTirithAttackedWithTwo,
 			Effect:    b36DrawOne,

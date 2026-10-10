@@ -27,9 +27,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "first strike", "vigilance"},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 4",
-			Cost:   CrewCost(4),
-			Effect: CrewEffect("Parhelion II"),
+			Label:   "Crew 4",
+			Cost:    CrewCost(4),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Parhelion II"),
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventAttack},

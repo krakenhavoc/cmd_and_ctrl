@@ -49,8 +49,9 @@ func init() {
 			OpponentsMillPlus(4, "The Water Crystal — mill that many plus four"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}{U}{U}, {T}: Each opponent mills cards equal to the number of cards in your hand.",
-			Cost:  Plus(ManaCost("{4}{U}{U}"), TapCost()),
+			Label:   "{4}{U}{U}, {T}: Each opponent mills cards equal to the number of cards in your hand.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{4}{U}{U}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				p := g.PlayerByIDForEffect(item.Controller)
 				if p == nil {

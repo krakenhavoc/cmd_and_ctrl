@@ -234,7 +234,7 @@
 
   <section class="tsp-field" data-field="bot_pace">
     <div class="tsp-row">
-      <span class="tsp-label" id="tsp-pace-label">Bot speed</span>
+      <span class="tsp-label" id="tsp-pace-label">Table pace</span>
       <span class="tsp-control" role="group" aria-labelledby="tsp-pace-label">
         {#each BOT_PACE_CHOICES as choice (choice.value)}
           <button

@@ -49,6 +49,7 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:   "Exhaust — {4}: This Vehicle becomes an artifact creature. Put a +1/+1 counter on it.",
+				Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerAnimate},
 				Exhaust: true,
 				Cost:    ManaCost("{4}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
@@ -66,9 +67,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "Crew 2",
-				Cost:   CrewCost(2),
-				Effect: CrewEffect("Rangers' Refueler"),
+				Label:   "Crew 2",
+				Cost:    CrewCost(2),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Rangers' Refueler"),
 			},
 		},
 	})

@@ -44,9 +44,10 @@ func init() {
 				"Magmatic Galleon — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1}))),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 2",
-			Cost:   CrewCost(2),
-			Effect: CrewEffect("Magmatic Galleon"),
+			Label:   "Crew 2",
+			Cost:    CrewCost(2),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Magmatic Galleon"),
 		}},
 	})
 }

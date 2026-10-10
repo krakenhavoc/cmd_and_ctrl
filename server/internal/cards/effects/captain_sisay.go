@@ -33,8 +33,9 @@ func init() {
 		Name:         "Captain Sisay",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Search your library for a legendary card, reveal that card, put it into your hand, then shuffle.",
-			Cost:  TapCost(),
+			Label:   "{T}: Search your library for a legendary card, reveal that card, put it into your hand, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

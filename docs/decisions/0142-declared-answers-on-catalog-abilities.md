@@ -153,7 +153,7 @@ A second, non-failing file is the **review record**: `testdata/answers_disagreem
 | S1 | **The 245 interacting rows**, by answer kind, so a reviewer checks one kind at a time: pump and counters (about 85), prevent and redirect (about 80), protect (regenerate, indestructible, hexproof, phasing, blink, self-bounce; about 45), sacrifice outlets (about 35), remove and restrict (about 15). Some rows have two kinds; each goes in the batch of its first. | 245 less S0's | ≤ 40 rows | 6–7 |
 | S2 | **The 461 value rows**, by card-file name, alphabetical, each declared `value` or, where the batch finds one, an answer the text read missed. | 461 less S0's | ≤ 80 rows | 6 |
 | S3 | **Combat rows** once #2871's reader is in: the audit's 26 "no" rows that grant a combat keyword, an extra block or a body, and any that S2 declared `value` but that #2871 would count. | ~30 | one PR | 1 |
-| S4 | **The fallback at zero** ([Q3](#questions-for-the-owner-answered-2026-10-09)): `answers_fallback.txt` is empty, the ceiling is 0, and the text read is retired as Q3 decides. | — | one PR | 1 |
+| S4 | **The fallback at zero** ([Q3](#questions-for-the-owner-answered-2026-10-09)): `answers_fallback.txt` is empty, the ceiling is 0, and the text read is retired as Q3 decides. Done 2026-10-10 ([amendment](#amendment-s4-the-text-read-deleted-2026-10-10)). | — | one PR | 1 |
 
 **Sonnet-sized batches.** Every S1 and S2 batch is `tier:1-mechanical`: one answer kind (or one alphabetical slice), a recipe in `docs/adding-cards.md`, a sibling to copy, and the ratchet and disagreement record as its acceptance test. A batch touches at most about 60 card files and changes no behaviour except the verdicts the disagreement diff shows. The signal PR is `tier:3-design`, S0 is `tier:2-standard`, and the bot PR (decision 6) is `tier:3-design`. The batches touch only `Purpose` declarations, so they change no oracle fixture and no `Completeness`. Each still runs the real-dump audits (`go test ./internal/decks/ -run RealDump` with `CMDCTRL_SCRYFALL_DUMP`), as every catalog PR does.
 
@@ -199,7 +199,7 @@ The bot reads `activated_abilities[].purpose.answers` on the wire, like every pu
 | 11–16 | **S2 batches**, ≤ 80 rows each. Can run in parallel with S1 batches on different files. | 2 | As 3. |
 | 17 | **The bot** (decision 6), behind `PriceAnswers`. | 2, and the S1 batches for the curated decks' cards | ADR 0052's report block, ADR 0126 §8's sub-PR bar, the three positions reviewed. |
 | 18 | **S3, combat rows.** | #2871's reader, 2 | As 3. |
-| 19 | **S4, the fallback at zero.** | all batches | `answers_fallback.txt` empty, ceiling 0; the text read retired per Q3. Branch E2E. |
+| 19 | **S4, the fallback at zero.** | all batches | `answers_fallback.txt` empty, ceiling 0; the text read retired per Q3. Branch E2E. **Done** 2026-10-10: see [Amendment: S4](#amendment-s4-the-text-read-deleted-2026-10-10). |
 
 The bot PR can land any time after PR 2. It is placed after S1 because what it prices are the rows S1 declares, and the curated decks' rows can be pulled into the first S1 batch to unblock it.
 
@@ -261,3 +261,92 @@ Each question lists the recommended option first. The owner chose (a), the recom
 5. **Spells later.** The field is refused on spells, modes and alternative costs. How a castable instant declared `value` is classed is a separate, later decision (Q5 (a)).
 6. **Merge on green.** Each sweep PR lists its flips under "Verdicts changed", taken from the disagreement diff, and merges on green under the standing develop rule. The owner reads the lists afterwards (Q6 (a)).
 7. **Sweep to zero.** The sweep covers the 245 interacting rows, then all 461 value rows, then the combat rows, until the ratchet reaches zero (Q7 (a)).
+
+### Sweep rulings (owner, 2026-10-09)
+
+Rulings from the first sweep batches, for the rows the vocabulary table does not settle. They bind the remaining batches and any new card.
+
+1. **Shrink effects are `remove`.** A row that gives a creature -X/-X or otherwise shrinks it (Flailing Manticore, Flailing Ogre, Flailing Soldier, Oona's Prowler) declares `remove`.
+2. **Trades are `pump`.** A row that raises one of power and toughness while lowering the other (+2/-2, +1/-1, "+1/-1 or -1/+1": Multiform Wonder, Shipwreck Moray, Unliving Psychopath, Undulating Witness, Endling) declares `pump`.
+3. **Turning off an opponent's protection is `restrict`.** A row that removes hexproof, indestructible or regeneration from what an opponent controls, or stops them regenerating (Arcane Lighthouse, Detection Tower, Shadowspear, Knight and Clergy of the Holy Nimbus), declares `restrict`.
+4. **Modal, conditional and mixed rows declare the union.** A row whose modes or conditions can give different answers declares every answer any of them can give (Lost Jitte, Storm Elemental, Repeat Offender, Aerid Konstrari, Peema Trailblazer, Thran Weaponry, Gallia, and the mixed `protect|pump` and `protect|sac_outlet` rows).
+
+Applied by analogy (owner, 2026-10-09): ruling 3 also covers a row that turns off its own controller's protection, so Glittering Lion and Glittering Lynx ("loses \"Prevent all damage that would be dealt to this creature\"", any player may activate) declare `restrict`.
+
+Two more rulings (owner, 2026-10-10):
+
+5. **A self-destroying lock lifter is `restrict`.** Aether Storm ("Pay 4 life: Destroy Aether Storm", any player may activate) declares `restrict`: destroying it changes what players can cast in response. Applied by analogy in S2 batch 1, Experimental Frenzy ("{3}{R}: Destroy this enchantment", which lifts its own "can't play cards from your hand") declares `restrict` too.
+6. **A delayed return answers nothing.** Sakashima the Impostor's granted "Return this creature to its owner's hand at the beginning of the next end step" is `value`, not `protect`: the return is delayed, so it saves nothing on the stack. This flips the verdict S1 batch 5 declared.
+
+Four more rulings (owner, 2026-10-10, S2 batch 2):
+
+7. **A creature put onto the battlefield at instant speed is `makes_blocker` if it enters untapped, `value` if it enters tapped.** Talon Gates of Madara, Quicksilver Amulet, PuPu UFO, Proctor of Potential, Grim Repriser and Cauldron Familiar declare `makes_blocker`. A tapped token (Automated Assembly Line, Necromancer's Stockpile) is `value`: it cannot block this turn.
+8. **Ending the turn is `remove`.** Sundial of the Infinite and Obeka, Brute Chronologist exile the whole stack, so they answer any item on it.
+9. **Opponent hate is `restrict`; a shuffle is `value`.** Soul-Guide Lantern's graveyard exile, Scavenger Grounds, Silent Gravestone and Kill Switch declare `restrict`. Feldon's Cane (shuffle your own graveyard into your library) is `value`.
+10. **Leftovers.** Fountainport's "Sacrifice a token: Draw a card" is `sac_outlet`. Aang, Swift Savior ("Waterbend {8}: Transform Aang") is `pump`. Elsewhere Flask, Terraformer and Roiling Vortex are `value`. Experimental Frenzy `restrict` and Master Transmuter `protect` (S2 batch 1) are confirmed.
+
+Three more rulings (owner, 2026-10-10, S2 batch 3):
+
+11. **"Your next spell can't be countered" at instant speed is `protect`.** Theorist's Proxy and Mistrise Village declare `protect`: activated in response, they keep the next spell off the counter.
+12. **Plague Boiler is `remove`; Deadly Designs is `sac_outlet`.**
+13. **The remaining value-looking rows are declared from their effect.** Each row the text read left as none (Emergence Zone, Armageddon Clock, Infinite Hourglass, Volrath's Dungeon, Codie, Magus of the Will, The Grim Captain's Locker, Multani, Captain Sisay, and any similar row) is declared from its effect using the table above, and defaults to `value`. A row whose effect truly fits two tiers is reported rather than guessed.
+
+Three more rulings (owner, 2026-10-10, S3 batch 1):
+
+14. **Freed from the Real, and damage doubling.** The tap row ("{U}: Tap enchanted creature") is `restrict`: tapping stops the creature attacking or blocking. The untap row ("{U}: Untap enchanted creature") is `combat_grant`, a vigilance-like effect. Doubling damage is `pump` (Goblin Goliath, Quest for Pure Flame).
+15. **Token rows of unclear shape take the union of what they can do.**
+    - Amass is `pump|makes_blocker` (Barad-dûr, Moria Scavenger).
+    - Populate is `makes_blocker` (Vitu-Ghazi Guildmage, Trostani, Selesnya's Voice).
+    - Currency Converter's "Treasure or 2/2" row is `makes_blocker`, since `value` cannot sit beside another answer.
+
+Two more rulings (owner, 2026-10-10, S3 batch 2):
+
+16. **"Loses a keyword", "must be blocked" and "must attack" rows are `combat_grant`.** Vintara Elephant, Zerapa Minotaur, Ribbon Snake, Anzrag and Bident of Thassa, and similar rows.
+17. **Combat edge rows.**
+    - Ingris Stingerquill is `makes_blocker|combat_grant`.
+    - Sokenzan's channel and Aether Refinery are `makes_blocker`.
+    - Goro-Goro's haste row is `combat_grant`.
+    - Dalkovan Encampment is `value`: its tokens enter tapped and attacking and can never block.
+
+---
+
+## Amendment: S4, the text read deleted (2026-10-10)
+
+S4 landed as planned: `answers_fallback.txt` was empty and its ceiling 0 after S3 batch 2 (#2933), so the text read is gone (Q3 (a)).
+
+**What was deleted.** From `server/internal/legal`: `fallbackAnswers`, the cost/purpose/effect-text reads behind it (`purposeAnswers`, `effectTextAnswers`, the phrase list and its regexes), all of `combat_interacts.go` (#2871's combat text read), `answersOf` and the test-only exports `AnswersOf`, `FallbackAnswers`, `ManaAnswersOf`, `AnswerFlags` and `CombatKindForTest`. From `internal/cards/effects`: `answers_fallback.txt`, `answersFallbackCeiling` and `-update-answers-fallback`; `answers_disagreements.txt`, `TestAnswersDisagreementsAreCurrent` and `-update-answers-disagreements` (the record compared declarations with a fallback that no longer exists); and delivery row 2's agreement tests, `TestAnswersOfKeepsEveryInteractsVerdict` with its frozen `answers_legacy_test.go`, and `TestCombatFlagsKeepEveryCatalogVerdict`, as row 2 said.
+
+**What stays.**
+
+- The ratchet is now `TestEveryAnswersRowDeclares`: every catalog row in decision 4's scope declares, or the test fails naming the row. It has no list.
+- A mana ability reads `ManaAbility.Answers`, else its sacrifice cost (`ManaCostAnswers`), the one cost read Q3 keeps.
+- `CostAnswers` and `sacrificeInteracts` stay for the registration guard's cost coupling (decision 3). The guard is not a reader.
+- Owner answer 4's self-sacrifice state read and `has_targets` are unchanged.
+- An activated row that declares nothing sets `interacts` and no combat flag (Q3 (a), ADR 0009 §3).
+
+**Where the plan's premise was not exact.** Q3 says only a row carried on a card instance can be undeclared. Two kinds of catalog row also reach the reader undeclared, because decision 1's guard refuses them a declaration and decision 4's scope leaves them out:
+
+- **A sorcery-speed or loyalty row.** It is offered only in its controller's own main phase with an empty stack, where the client classes every activation as a play whatever `interacts` says. No change a player can see.
+- **A row whose target clause allows no target** (`Min` 0, "up to N", "any number of"): the enumerator always offers the empty announcement beside the targeted ones. Eleven catalog rows have one: Cryogen Relic; Perpetual Timepiece; Famished Ghoul; Priest of Forgotten Gods; Rag Dealer; Cauldron of Souls; Martyr of Bones; Yawgmoth, Thran Physician; Stonespeaker Crystal; Unlicensed Hearse; Carrion Beetles. Their empty announcement now sets `interacts`. Whenever a legal target exists, the same source's targeted moves already stop you through `has_targets`, so this adds a stop only when the row has no legal target. The text read said `sac_outlet` or `protect` for three of them (Priest, Yawgmoth, Cauldron) and nothing for the rest.
+
+S4 applies Q3 as written and adds no rule for these. If the owner wants the second kind declared, a follow-up would widen `hasUntargetedAnnouncement` (the guard and the scope) to a target clause with `Min` 0, and declare the eleven rows.
+
+**What remains of the programme.** The bot PR (decision 6, `PriceAnswers`, delivery row 17) and the spell-side reader (Q5's follow-up).
+
+## Amendment: up-to-one target rows declare (2026-10-10)
+
+The follow-up S4 named is done (owner approved 2026-10-10). `hasUntargetedAnnouncement` (`cards/effects/answers.go`) now counts a target clause with `Min` 0 as no required target, so the registration guard accepts `Answers` on such a row and `TestEveryAnswersRowDeclares` requires it. A `CountFromX` clause still counts as a required target. The reader needed no change: `untargetedFlags` already read the declaration for the empty announcement, and a targeted move of the same row keeps `has_targets`.
+
+The eleven rows are declared from their effect:
+
+| Row | Answers | Why |
+|---|---|---|
+| Cryogen Relic | `value` | a stun counter does nothing this turn |
+| Perpetual Timepiece | `value` | shuffles your own graveyard (ruling 9) |
+| Famished Ghoul, Rag Dealer, Unlicensed Hearse, Carrion Beetles | `restrict` | graveyard exile, declared once in `ExileFromASingleGraveyardAbility` (ruling 9) |
+| Stonespeaker Crystal | `restrict` | exiles players' graveyards; the draw is incidental |
+| Cauldron of Souls | `protect` | grants persist |
+| Priest of Forgotten Gods | `sac_outlet`, `remove` | sacrifices two creatures as its cost; its targets sacrifice a creature (an edict) |
+| Yawgmoth, Thran Physician | `sac_outlet`, `remove` | sacrifices a creature as its cost; a -1/-1 counter shrinks a creature (ruling 1) |
+
+Famished Ghoul sacrifices only itself, so its cost needs no `sac_outlet`.

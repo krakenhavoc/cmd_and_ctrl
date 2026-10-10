@@ -26,8 +26,9 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.",
-			Cost:  Plus(ManaCost("{3}"), TapCost(), SacrificeACreature()),
+			Label:   "{3}, {T}, Sacrifice a creature: You gain life equal to the sacrificed creature's toughness.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{3}"), TapCost(), SacrificeACreature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				fed, ok := b17PermanentSacrificedToPay(g, item)
 				if !ok {

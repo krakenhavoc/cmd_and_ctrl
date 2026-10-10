@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:     "{W}, {T}: Search your library for a land card, reveal it, put it into your hand, then shuffle. Activate only if an opponent controls more lands than you.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{W}"), TapCost()),
 			Condition: OpponentControlsMore(MatchLand),
 			Effect: func(g *game.Game, item *game.StackItem) error {

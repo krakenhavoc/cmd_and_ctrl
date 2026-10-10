@@ -32,8 +32,9 @@ func init() {
 				Effect:  tapTheFirstLegalTarget,
 			},
 			{
-				Label: "{U}, Exile the top card of your library: If the exiled card is a snow land, this creature gets +1/+1 until end of turn.",
-				Cost:  Plus(ManaCost("{U}"), ExileTopOfLibrary(1)),
+				Label:   "{U}, Exile the top card of your library: If the exiled card is a snow land, this creature gets +1/+1 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    Plus(ManaCost("{U}"), ExileTopOfLibrary(1)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					for _, id := range NewContext(g, item).Exiled() {
 						if c, ok := g.LookupCardForEffect(id); ok && c.IsLand() && c.HasSupertype("snow") {

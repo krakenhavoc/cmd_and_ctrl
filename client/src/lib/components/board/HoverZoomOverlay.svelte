@@ -47,6 +47,25 @@
     return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx) };
   });
 
+  // ADR 0145 — meld. A melded permanent shows the two cards it is
+  // made of; a meld card shows the permanent it melds into. Both are
+  // small insets in the same corner the other face uses, because they
+  // answer the same question: what else is this card?
+  const meldInsets = $derived.by(() => {
+    const parts = card?.melded_from;
+    if (parts && parts.length > 0) {
+      return parts
+        .filter((p) => p.image)
+        .map((p) => ({ name: p.name, title: `Melded from ${p.name}`, src: p.image as string }));
+    }
+    const into = card?.melds_into;
+    if (into?.image) {
+      return [{ name: into.name, title: `Melds into ${into.name}`, src: into.image }];
+    }
+    return [];
+  });
+  const meldedFromNames = $derived(card?.melded_from?.map((p) => p.name).join(" + ") ?? "");
+
   // Subscribe to the card's metadata store. Re-subscribed per hovered
   // PRINTING, not per hovered card: two copies of one card share a
   // scryfall_id and so share a store, and re-subscribing to the store
@@ -177,6 +196,19 @@
            two playable objects, and the half you are NOT looking at
            is exactly the information the hover panel exists to
            supply. Absent for every single-faced card. -->
+      {#if meldInsets.length > 0}
+        <div class="meld-insets">
+          {#each meldInsets as inset (inset.src)}
+            <div class="other-face meld-inset" title={inset.title}>
+              <img
+                src={inset.src}
+                alt={inset.name}
+                use:cardArt={{ url: inset.src, interactive: false }}
+              />
+            </div>
+          {/each}
+        </div>
+      {/if}
       {#if otherFace?.src}
         <div class="other-face" title={otherFace.face.name}>
           {#key otherFace.src}
@@ -230,10 +262,15 @@
       {#if card.unimplemented}
         <div class="not-implemented">rules not implemented — resolve this card by hand</div>
       {/if}
-      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage}
+      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
         <footer class="info-foot">
           {#if card.is_commander}
             <span class="state state-cmd">commander</span>
+          {/if}
+          {#if meldedFromNames}
+            <span class="state" title="one permanent, two cards (CR 712.4a)"
+              >melded from {meldedFromNames}</span
+            >
           {/if}
           <!-- #781: first in the footer, ahead of tapped / attacking.
                The others describe what is happening to the permanent
@@ -384,6 +421,24 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+
+  /* ADR 0145: a melded permanent's two cards (or a meld card's combined
+     back face), stacked down the same top-right corner as the other
+     face — the column replaces the single inset's absolute placement. */
+  .meld-insets {
+    position: absolute;
+    right: 6px;
+    top: 6px;
+    width: 30%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .meld-inset {
+    position: static;
+    width: 100%;
   }
   img {
     width: 100%;

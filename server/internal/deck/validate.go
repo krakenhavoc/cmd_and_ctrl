@@ -37,6 +37,13 @@ const (
 	// imports as its front face and works as that half. The message
 	// says which half, and what is lost.
 	CodeUnsupportedLayout = "unsupported_layout"
+	// CodeMeldBackFace flags the combined back face of a meld pair
+	// (Urza, Planeswalker; Brisela, Voice of Nightmares) listed as a
+	// card. It is half of two oversized card backs, never a card of its
+	// own (CR 712.4b), so a deck can't hold it; the two meld cards that
+	// form it can. Fatal, and names the two cards to add instead.
+	// ADR 0145.
+	CodeMeldBackFace = "meld_back_face"
 	// CodeInvalidPartnerPair flags two commanders that no partner
 	// ability pairs, when at least one of them has one or is a
 	// Background: a "Partner with" card naming a different card, a
@@ -261,6 +268,9 @@ func Validate(list *List) error {
 	// the correct middle.
 	vs = append(vs, unsupportedLayoutViolations(list)...)
 
+	// ADR 0145: a meld pair's combined back face is not a card.
+	vs = append(vs, meldBackFaceViolations(list)...)
+
 	if len(vs) == 0 {
 		return nil
 	}
@@ -356,9 +366,13 @@ func identitySet(syms []string) map[string]struct{} {
 // and the roadmap marks transform implemented. A transform card with a
 // back face the engine cannot yet produce says so through its Caveats
 // or its `unimplemented` badge (ADR 0037), not through a layout banner.
+//
+// `meld` left it with ADR 0145 (#2699): a meld card imports with its
+// pair's combined back face (game.Card.Meld) and melds when its meld
+// ability resolves. The combined back face's OWN record is not a card a
+// deck can hold, and meldBackFaceViolations refuses it.
 var layoutSimplifications = map[string]string{
 	"flip": "imports as its front face only",
-	"meld": "imports as its front face only; melding isn't implemented yet",
 }
 
 // unsupportedLayoutViolations reports one non-fatal violation per
@@ -407,6 +421,35 @@ func unsupportedLayoutViolations(list *List) []Violation {
 				layoutSimplifications[layout],
 				layout),
 		})
+	}
+	return out
+}
+
+// meldBackFaceViolations reports one violation per distinct combined
+// back face of a meld pair listed as a card, commander or not (CR
+// 712.4b: the back faces "are used only to determine the
+// characteristics of the melded permanent"). The message names the
+// meld cards that form it, from the record's own meld parts.
+func meldBackFaceViolations(list *List) []Violation {
+	var out []Violation
+	seen := map[string]bool{}
+	for _, c := range allCards(list) {
+		if !c.IsMeldBackFace() || seen[c.Name] {
+			continue
+		}
+		seen[c.Name] = true
+		var halves []string
+		for _, p := range c.AllParts {
+			if p.Component == "meld_part" {
+				halves = append(halves, p.Name)
+			}
+		}
+		sort.Strings(halves)
+		msg := fmt.Sprintf("%q is the combined back face of a meld pair, not a card a deck can hold", c.Name)
+		if len(halves) == 2 {
+			msg = fmt.Sprintf("%q is the combined back face of %s and %s, not a card a deck can hold; add those two cards and meld them", c.Name, halves[0], halves[1])
+		}
+		out = append(out, Violation{Code: CodeMeldBackFace, Card: c.Name, Message: msg})
 	}
 	return out
 }

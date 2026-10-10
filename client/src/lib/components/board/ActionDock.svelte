@@ -83,8 +83,6 @@
     view: GameView;
     viewerHasPriority: boolean;
     viewerIsActive: boolean;
-    // The active player's name, for Pass turn's disabled tooltip.
-    activePlayerName?: string;
     autopassEnabled: boolean;
     // #628 (CR 732): the loop-breaker line, or "" when the table is
     // quiet. While it is non-empty NOTHING passes automatically — the
@@ -118,7 +116,6 @@
     view,
     viewerHasPriority,
     viewerIsActive,
-    activePlayerName = "another seat",
     autopassEnabled,
     loopNotice = "",
     readyActions = 0,
@@ -510,27 +507,33 @@
     >
       {$holdPriority ? "hold ✓" : "hold"}
     </button>
-    <!-- The label is fixed and the state is aria-pressed: "autopass" is
-         the tutorial's step-9 anchor (ADR 0076 §2.4), so it must not
-         change with the ✓ and ⏸ the visible text carries. -->
+    <!-- ADR 0143 §4.2: Skip to my turn, the old autopass toggle with its
+         safety belt built in. The label is fixed and the state is
+         aria-pressed: it is the tutorial's let-the-bot-play anchor (ADR
+         0076 §2.4), so it must not change with the ✓ and ⏸ the visible
+         text carries. -->
     <button
       type="button"
-      class="action autopass"
+      class="action skip-to-my-turn"
       class:on={autopassEnabled && !autopassPaused}
       class:paused={autopassPaused}
-      aria-label={L.autopass}
+      aria-label={L.skipToMyTurn}
       aria-pressed={autopassEnabled}
       aria-keyshortcuts={ariaKeys(keys.toggleAutopass)}
       disabled={preGame}
       onclick={onToggleAutopass}
       title={(autopassPaused
-        ? "autopass PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
+        ? "Skip to my turn PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
         : autopassEnabled
-          ? "autopass ON — every time priority lands on you, it passes; click to turn off, or pin a phase icon to stop at just that step"
-          : "autopass OFF — click to pass every priority window (bypasses stops and smart-skip; a pinned phase icon still stops you)") +
+          ? "Skip to my turn ON — passes for you until your next main phase, stopping only when you can answer an opponent's spell, an attack or an opponent's end step; click to turn off"
+          : "Skip to my turn — pass for you until your next main phase. It still stops when you can answer an opponent's spell, an attack or an opponent's end step, and a pinned phase icon still stops you") +
         keyHint(keys.toggleAutopass)}
     >
-      {autopassPaused ? "autopass ⏸" : autopassEnabled ? "autopass ✓" : "autopass"}
+      {autopassPaused
+        ? "skip to my turn ⏸"
+        : autopassEnabled
+          ? "skip to my turn ✓"
+          : "skip to my turn"}
     </button>
     <!-- ADR 0111 §5: always shown, set up or not. -->
     <BluffChip
@@ -755,21 +758,22 @@
        always the button that moves the game on. -->
   {#if !reqTakesBar}
     <div class="dock-bar">
-      <button
-        type="button"
-        class="dock-btn secondary pass-turn"
-        disabled={!canPassTurn}
-        aria-keyshortcuts={ariaKeys(keys.passTurn)}
-        onclick={onPassTurn}
-        onkeydown={(e) => enterPresses(e, canPassTurn, onPassTurn)}
-        title={preGame
-          ? "the first turn has not begun"
-          : viewerIsActive
-            ? `skip the rest of your turn${keyHint(keys.passTurn)}`
-            : `${activePlayerName} is the active player`}
-      >
-        {L.passTurn}
-      </button>
+      <!-- ADR 0143 §4.2: End turn is the active player's alone, so it is
+           drawn only on your own turn. next keeps the corner either way
+           (its margin-left: auto). -->
+      {#if viewerIsActive && !preGame}
+        <button
+          type="button"
+          class="dock-btn secondary end-turn"
+          disabled={!canPassTurn}
+          aria-keyshortcuts={ariaKeys(keys.passTurn)}
+          onclick={onPassTurn}
+          onkeydown={(e) => enterPresses(e, canPassTurn, onPassTurn)}
+          title={`pass for you through every step of the rest of your turn; triggers still happen, and it stops for anything you must decide${keyHint(keys.passTurn)}`}
+        >
+          {L.endTurn}
+        </button>
+      {/if}
       <button
         type="button"
         class="dock-btn primary next"
@@ -946,19 +950,19 @@
     background: color-mix(in srgb, var(--magenta) 28%, transparent);
     border-color: var(--magenta);
   }
-  .action.autopass.on {
+  .action.skip-to-my-turn.on {
     background: var(--accent-soft);
     color: var(--accent-strong);
     font-weight: 700;
     border-color: color-mix(in srgb, var(--accent) 55%, transparent);
   }
-  .action.autopass.on:hover:not(:disabled) {
+  .action.skip-to-my-turn.on:hover:not(:disabled) {
     background: color-mix(in srgb, var(--accent) 24%, transparent);
     border-color: var(--accent);
   }
   /* #628: suspended, not switched off — a distinct look from both
      `on` (gold) and `off` (flat). */
-  .action.autopass.paused {
+  .action.skip-to-my-turn.paused {
     background: color-mix(in srgb, var(--danger) 14%, transparent);
     border-color: color-mix(in srgb, var(--danger) 50%, transparent);
     color: var(--danger);

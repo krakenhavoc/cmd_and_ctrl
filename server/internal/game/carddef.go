@@ -46,6 +46,11 @@ type CardDef struct {
 	// transform. Nil for nearly every face. #1574, ADR 0079 amendment
 	// 2026-09-24.
 	AsTransformsInto func(g *Game, cardID uuid.UUID) error
+	// AsAttached runs the permanent's "As this <permanent> becomes
+	// attached to a creature, …" clause (Dinosaur Headdress, #2709),
+	// off the stack, as AttachForEffect attaches it to a new host. Nil
+	// for nearly every card.
+	AsAttached func(g *Game, cardID uuid.UUID) error
 
 	StartingLoyalty int
 	BattleDefense   int
@@ -274,6 +279,16 @@ type CardDef struct {
 	// Ancient Adamantoise). Read from the battlefield through
 	// CatalogAbilityKey; see cleanup_damage.go.
 	DamageStaysThroughCleanup bool
+	// LoyaltyTwiceEachTurn is this permanent's printed "You may activate
+	// the loyalty abilities of <this> twice each turn rather than only
+	// once" (CR 606.3, Urza, Planeswalker). Read from the battlefield
+	// through CatalogAbilityKey; see loyalty_limit.go.
+	LoyaltyTwiceEachTurn bool
+	// ExtraVote is this permanent's printed "While voting, you get an
+	// additional vote" or "you may vote an additional time" (CR
+	// 701.38d, ADR 0146). Read from the battlefield through
+	// CatalogExtraVote, keyed by CatalogAbilityKey; see council_vote.go.
+	ExtraVote ExtraVote
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -817,6 +832,16 @@ func init() {
 	CatalogDamageStaysThroughCleanup = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.DamageStaysThroughCleanup
+	}
+	CatalogLoyaltyTwiceEachTurn = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.LoyaltyTwiceEachTurn
+	}
+	CatalogExtraVote = func(key string) ExtraVote {
+		if d := catalogDef(key); d != nil {
+			return d.ExtraVote
+		}
+		return ExtraVoteNone
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {

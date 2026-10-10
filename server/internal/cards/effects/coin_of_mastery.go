@@ -35,8 +35,9 @@ func init() {
 				"Coin of Mastery: a +1/+1 counter for each mana from an artifact source", game.ManaSourceArtifact, false),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Create a Treasure token.",
-			Cost:  TapCost(),
+			Label:   "{T}: Create a Treasure token.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
 			},

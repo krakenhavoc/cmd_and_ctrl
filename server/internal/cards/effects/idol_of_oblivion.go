@@ -27,13 +27,15 @@ func init() {
 		Activated: []ActivatedAbility{
 			{
 				Label:     "{T}: Draw a card. Activate only if you created a token this turn.",
+				Purpose:   game.Purpose{Answers: game.AnswerValue},
 				Cost:      TapCost(),
 				Condition: idolOfOblivionCreatedATokenThisTurn,
 				Effect:    b36DrawOne,
 			},
 			{
-				Label: "{8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.",
-				Cost:  Plus(ManaCost("{8}"), TapCost(), SacrificeThis()),
+				Label:   "{8}, {T}, Sacrifice this artifact: Create a 10/10 colorless Eldrazi creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(ManaCost("{8}"), TapCost(), SacrificeThis()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TokenCard("10/10 colorless Eldrazi"), N: 1}.Apply(NewContext(g, item))
 				},

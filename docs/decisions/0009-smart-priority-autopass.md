@@ -1,6 +1,16 @@
 # ADR 0009 — Smart priority auto-pass (S13.6)
 
 **Status:** Accepted · 2026-04-23 · Sprint S13.6
+**Amended by:** S60, 2026-10-09 — [ADR 0143](0143-gameplay-settings-overhaul.md)
+replaces `autoPassPriority`, `smartAutoPass` and `alwaysStopOpponentStack` with
+one Auto-pass choice (Smart, Careful, Manual), keeps the key windows on in Smart
+and Careful, and splits the stops grid by whose turn it is. Its §2.5 is the
+current precedence list, and `client/src/lib/autopassDecision.ts` follows it.
+The settings that tune auto-pass live under Settings → Gameplay → Passing
+priority and its Advanced section (ADR 0143 §3). The autopass toggle is now
+**Skip to my turn** (ADR 0143 §4.2): decision 7's safety belt is always on,
+`autopassPersistThroughTurns` is gone, and the toggle keeps Smart's key windows
+when the viewer can respond.
 **Amended by:** S31 sub-PR 2 ([ADR 0033](0033-ai-bot-seat.md) §1, PR #429) — the
 mechanism under decisions 2–4 is gone, the policy above it is not.
 **Amended by:** S35 (#526) — **decision 6 is reversed on one point: the autopass
@@ -26,6 +36,18 @@ stack it held has emptied. See "Amendment: only real interaction stops you
 can do something" becomes its own setting, and crew, manlands and granted
 combat keywords count as a response in combat windows. See "Amendment: ticked
 steps and combat abilities (#2871)" below.
+**Amended by:** S59 (#2881), 2026-10-09 — the dock's Pass turn no longer jumps
+to the next turn. It sends `end_turn`, which passes priority for the active
+player until their turn ends, so every step still happens and its triggers
+fire. See "Amendment: pass turn walks the turn (#2881)" below.
+**Input changed by:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md),
+2026-10-09 — `interacts` reads what the ability row declares it answers
+(`Purpose.Answers`) before the printed-text read, and `combat_interacts`
+carries the combat tier. The response classes here are unchanged. Since
+ADR 0142 S4 (2026-10-10) the printed-text read is gone, including the combat
+read in the "Combat abilities count in combat" amendment below: every catalog
+row declares, and a row that declares nothing (one carried on a card
+instance in practice) sets `interacts`, a false-positive stop over a false-negative skip.
 
 `hasAnyLegalResponse` no longer walks the viewer's cards running per-action
 predicates. The server enumerates the seat's legal moves and ships them as
@@ -521,6 +543,46 @@ non-boolean falls back to the default (on).
 - A pump written without a `+N/+N` ("Double this creature's power") is still
   read as value by `interacts`; #2872's declared answers is the place to fix
   that, not this text reader.
+
+## Amendment: pass turn walks the turn (#2881)
+
+**Status:** Accepted · 2026-10-09 · Sprint S59
+
+Decision 6 calls `pass turn` an "active-player-only whole-turn skip". It was
+built as one: the server jumped the cursor to the next seat's untap step, so
+the steps left in the turn never began. "At the beginning of combat", "at the
+beginning of your end step" and every other step trigger was skipped with them,
+for every player, and so was the cleanup discard. CR 500.1 has every phase
+happen every turn, and CR 500.6 fires an "at the beginning of" trigger as its
+step begins.
+
+**Now:** the dock's Pass turn sends a new action, `end_turn`
+(`Game.EndTurnByPassing`, `server/internal/game/pass_turn.go`). It is a
+standing instruction to pass priority for the active player every time they
+would hold it, until their turn ends. The steps are walked by the ordinary
+priority engine, so each one begins, its triggers go on the stack the next
+time a player would receive priority (CR 117.5, 603.3), and they resolve.
+
+- **Only the active player is passed for.** The other players still get
+  priority in every step (CR 117.3d). Their own automatic passing (this ADR's
+  smart autopass, or a bot runner) decides whether they stop, so nobody misses
+  a window because someone else passed the turn.
+- **A decision stops it.** A "may", a target, a trigger ordering, the cleanup
+  discard or any other prompt the table waits for, any prompt owed by the
+  passing player, the CR 732 loop notice, or a pass the rules refuse (an attack
+  requirement, CR 508.1d). The player answers, and the passing resumes on its
+  own: `actions.Dispatch` settles it after every action, the room after every
+  automatic answer.
+- **It ends with the turn**, by any route, and an undo of the `end_turn` takes
+  it back. It is not part of a restore point; after a server restart the
+  active player presses Pass turn again.
+- **A turn passed at a table of bots is slower than the old jump**: each bot
+  passes each step at its table pace.
+
+The sandbox jump is unchanged and still reachable: `pass_turn`
+(`Game.PassTurn`). [ADR 0143](0143-gameplay-settings-overhaul.md) Q5 moves it to
+the ⋯ menu and relabels the dock's control "End turn"; that is its delivery PR
+5, not this change.
 
 ## Context
 

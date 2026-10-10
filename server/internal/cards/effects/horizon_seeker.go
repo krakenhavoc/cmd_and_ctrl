@@ -19,7 +19,7 @@ func init() {
 		Name:         "Horizon Seeker",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			Boast("{1}{G}: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
+			BoastAnswering(game.AnswerValue, "{1}{G}: Search your library for a basic land card, reveal it, put it into your hand, then shuffle.",
 				ManaCost("{1}{G}"),
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)

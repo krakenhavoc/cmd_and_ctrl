@@ -57,6 +57,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Exhaust — {1}{G}: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Exhaust: true,
 			Cost:    ManaCost("{1}{G}"),
 			Effect:  plusOneCountersOnThis(1),

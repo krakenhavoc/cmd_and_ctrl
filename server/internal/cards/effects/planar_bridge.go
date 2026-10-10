@@ -30,8 +30,9 @@ func init() {
 		Name:         "Planar Bridge",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{8}, {T}: Search your library for a permanent card, put it onto the battlefield, then shuffle.",
-			Cost:  Plus(ManaCost("{8}"), TapCost()),
+			Label:   "{8}, {T}: Search your library for a permanent card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{8}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

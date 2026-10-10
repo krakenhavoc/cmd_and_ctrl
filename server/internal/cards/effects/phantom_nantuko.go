@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Phantom Nantuko — Creature — Insect Spirit {2}{G}, 0/0:
 //
 //	"Trample
@@ -20,9 +22,10 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Replacements:    phantomReplacements("Phantom Nantuko", 2),
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Put a +1/+1 counter on this creature.",
-			Cost:   TapCost(),
-			Effect: putCounterOnSelf,
+			Label:   "{T}: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    TapCost(),
+			Effect:  putCounterOnSelf,
 		}},
 	})
 }

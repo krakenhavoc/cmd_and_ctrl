@@ -56,9 +56,10 @@ func init() {
 			},
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}, {T}: Put a storage counter on this land.",
-			Cost:   Plus(ManaCost("{1}"), TapCost()),
-			Effect: putStorageCounterOnThis,
+			Label:   "{1}, {T}: Put a storage counter on this land.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), TapCost()),
+			Effect:  putStorageCounterOnThis,
 		}},
 	})
 }

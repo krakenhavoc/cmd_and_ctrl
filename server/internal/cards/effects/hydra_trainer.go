@@ -31,9 +31,10 @@ func init() {
 		Completeness:  CompletenessFull,
 		ExertOnAttack: ExertAsItAttacks(),
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{G}: Adapt 2",
-			Cost:   ManaCost("{2}{G}"),
-			Effect: adaptTwo,
+			Label:   "{2}{G}: Adapt 2",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{2}{G}"),
+			Effect:  adaptTwo,
 		}},
 		Triggered: []game.TriggeredAbility{
 			Targeting(

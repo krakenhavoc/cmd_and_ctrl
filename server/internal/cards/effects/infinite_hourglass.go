@@ -51,6 +51,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{3}: Remove a time counter from this artifact. Any player may activate this ability but only during any upkeep step.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      game.AbilityCost{Mana: "{3}"},
 			AnyPlayer: true,
 			Condition: DuringStep(game.StepUpkeep),

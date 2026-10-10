@@ -366,6 +366,10 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		// speaks; an ANSWER can never be empty (CanonicalCreatureType
 		// refuses it), so it cannot be mistaken for one.
 		err = c.chooseValueResume.runWithNoChoice(g)
+	case c.Kind == PendingChoiceOptionPick && c.CouncilVote != nil:
+		// ADR 0146: a ballot whose voter left casts nothing, and the
+		// vote goes on to the next player (CR 800.4a).
+		err = g.castBallotLocked(c.CouncilVote, c.Chooser, nil)
 	case c.Kind == PendingChoiceOptionPick && c.PickThen != "":
 		// #2854: a keyed option pick, run with nobody's choice.
 		err = runOptionPickThen(g, c.PickThen, OptionPicked{
@@ -642,6 +646,13 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	chosen := choice.PickOptions[index]
 	if !g.payChosenOptionLocked(chooserID, source, chosen) {
 		return ErrInsufficientMana
+	}
+	if v := choice.CouncilVote; v != nil {
+		// ADR 0146: a ballot. Cast it, then ask the next one.
+		g.dequeueChoiceLocked(idx)
+		g.emitChoiceEffectErrorLocked(chooserID, source, g.castBallotLocked(v, chooserID, &chosen))
+		g.runStateChecksLocked()
+		return nil
 	}
 	if key := choice.PickThen; key != "" {
 		carry := copyUUIDs(choice.OptionCarry)

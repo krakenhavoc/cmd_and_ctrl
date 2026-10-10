@@ -321,19 +321,32 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// ADR 0126's amendment of 2026-10-08: a pick the row's purpose
 		// declares an entry for is priced by what the row does to it.
 		targetV, targetsPriced := p.pricedTargetsValue(st, cp.Targets, func(t targetRef) *protocol.TargetPurposeView {
-			return rowEntryFor(src, cp.AbilityIndex, t)
+			return entryAtX(rowEntryFor(src, cp.AbilityIndex, t), cp.XValue)
 		}, nil, src)
 		if !across {
 			var ps purposeSet
 			ps.add(rowPurpose(src, cp.AbilityIndex))
 			ps.targetsPriced = targetsPriced
+			row := rowAt(src, cp.AbilityIndex)
 			if p.purposePriced(ps) {
 				v, reason, purposed = p.purposeValue(st, ps, cp.XValue, nil, false), "activate (declared purpose)", true
 				// A row that taps a creature pays for it below, by when the
 				// tap happens (tapCreatureCost): a loot before combat
 				// costs the attack it replaces.
-				if row := rowAt(src, cp.AbilityIndex); row != nil && row.SacrificeSelf {
-					v -= st.permanentValue(src)
+				if row != nil && row.SacrificeSelf {
+					v -= p.selfSacrificeCost(st, src)
+				}
+			}
+			// ADR 0142 decision 6 (answers.go): a row declared `value`
+			// waits for the stack, and a protect, pump or prevent row on
+			// a creature the stack would remove is priced by what it
+			// saves.
+			if p.cfg.PriceAnswers {
+				if p.valueWaits(st, src, row, cp) {
+					return valueInResponse, "declared value: waits for the stack"
+				}
+				if saved, why, ok := p.answerSave(st, src, row, cp); ok && saved > v {
+					v, reason = saved, why
 				}
 			}
 		}
@@ -343,7 +356,7 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// one would bounce Gossamer Chains at any unblocked creature for
 		// the flat ActivateBase.
 		if !across {
-			if row := rowAt(src, cp.AbilityIndex); row != nil && row.ReturnSelf {
+			if row := rowAt(src, cp.AbilityIndex); row != nil && (row.ReturnSelf || row.BottomSelf) {
 				v -= st.selfReturnCost(src)
 			}
 		}
@@ -355,6 +368,12 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// surely as a sacrificed one, so it costs the same.
 		for _, id := range cp.ExilePermanentIDs {
 			if c := st.bf[id]; c != nil {
+				// ADR 0142 decision 6: a `sac_outlet` row's exiled
+				// creature is priced like a sacrificed one.
+				if ev, ok := p.exiledOutletCost(st, rowAt(src, cp.AbilityIndex), c); ok {
+					v -= ev
+					continue
+				}
 				v -= st.permanentValue(c)
 				continue
 			}
@@ -507,7 +526,7 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	// declares an entry for is priced by what the spell does to it, and
 	// the cast is then priced by its purpose rather than its mana value.
 	targetV, targetsPriced := p.pricedTargetsValue(st, targets, func(t targetRef) *protocol.TargetPurposeView {
-		return castEntryFor(card, cp, t)
+		return entryAtX(castEntryFor(card, cp, t), cp.XValue)
 	}, card, card)
 	// ADR 0141: a bestowed cast's target is the creature it pumps, not
 	// a creature it removes (bestow.go).
@@ -782,7 +801,7 @@ func (st *state) anyPlayerPurposeValue(src *protocol.CardView, index int) (float
 			break
 		}
 	}
-	if row == nil || !row.AnyPlayer || row.Purpose == nil {
+	if row == nil || !row.AnyPlayer || !row.Purpose.Priced() {
 		return 0, false
 	}
 	v := st.w.Hand * float64(row.Purpose.Draws)

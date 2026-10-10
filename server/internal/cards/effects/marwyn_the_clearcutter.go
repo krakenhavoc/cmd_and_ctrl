@@ -17,7 +17,8 @@ func init() {
 		Name:         "Marwyn, the Clearcutter",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}, Sacrifice an artifact or land: Draw a card",
+			Label:   "{2}, {T}, Sacrifice an artifact or land: Draw a card",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: Plus(ManaCost("{2}"), TapCost(),
 				game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact or land", Or(Artifact(), Land()))}),
 			Effect: Do(DrawCards{N: 1}),

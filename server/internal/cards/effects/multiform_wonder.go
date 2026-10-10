@@ -27,8 +27,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "Pay {E}: This creature gains your choice of flying, vigilance, or lifelink until end of turn.",
-				Cost:  PayEnergy(1),
+				Label:   "Pay {E}: This creature gains your choice of flying, vigilance, or lifelink until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    PayEnergy(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					keywords := []string{"flying", "vigilance", "lifelink"}
 					return PickOption{
@@ -46,8 +47,9 @@ func init() {
 				},
 			},
 			{
-				Label: "Pay {E}: This creature gets +2/-2 or -2/+2 until end of turn.",
-				Cost:  PayEnergy(1),
+				Label:   "Pay {E}: This creature gets +2/-2 or -2/+2 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    PayEnergy(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return MayChoice{
 						Question: "Multiform Wonder — +2/-2 or -2/+2 until end of turn?",

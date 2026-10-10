@@ -50,9 +50,10 @@ func init() {
 				"Jackdaw — discard your hand? (Draw a card for each artifact you control.)"),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 3",
-			Cost:   CrewCost(3),
-			Effect: CrewEffect("Jackdaw"),
+			Label:   "Crew 3",
+			Cost:    CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Jackdaw"),
 		}},
 	})
 }

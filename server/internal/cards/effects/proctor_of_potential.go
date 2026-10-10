@@ -39,9 +39,10 @@ func init() {
 				"Proctor of Potential — surveil 1", Do(Surveil{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}{U}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if you've scried or surveilled this turn.",
-			Cost:  ManaCost("{W}{U}"),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{W}{U}: Return this card from your graveyard to the battlefield with a finality counter on it. Activate only if you've scried or surveilled this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    ManaCost("{W}{U}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Condition: func(g *game.Game, controller, _ uuid.UUID) bool {
 				return rfCreatureBScriedOrSurveilledThisTurn(g, controller)
 			},

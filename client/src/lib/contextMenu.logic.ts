@@ -59,8 +59,10 @@ import type {
   CardView,
   GameView,
   ManaAbilityView,
+  SacrificeGroupView,
+  TargetSharesView,
 } from "./protocol";
-import { sacrificeRangeShortfall } from "./sacrificeCost";
+import { canFillEachOf, canFillShares, sacrificeRangeShortfall } from "./sacrificeCost";
 import { targetPriceRange } from "./targetPrices";
 import {
   canActivateLoyalty,
@@ -637,7 +639,15 @@ export interface AbilityCost {
   // #1600: an exile-a-permanent cost ("Exile a creature you control"),
   // greyed on the same terms as the return cost.
   exile_permanent_label?: string;
-  exile_permanent_options?: { players?: string[]; cards?: string[]; min?: number; max?: number };
+  exile_permanent_options?: {
+    players?: string[];
+    cards?: string[];
+    min?: number;
+    max?: number;
+    // ADR 0137's amendment: craft's set rules.
+    each_of?: SacrificeGroupView[];
+    shares?: TargetSharesView;
+  };
   // #759: a tap-another cost (station). Greyed on the same terms as
   // the return cost: fewer untapped creatures than the clause needs.
   tap_others_label?: string;
@@ -649,6 +659,8 @@ export interface AbilityCost {
   // Present, at any value including 0, on a planeswalker's loyalty
   // ability. Mana abilities never carry it.
   loyalty_cost?: number;
+  // #1944: a −X loyalty cost; the X picker holds X under the loyalty.
+  loyalty_cost_x?: boolean;
   // #1690: a "Pay N life" cost component — Greed's printed one, and
   // since #1688 a computed one (War Room, Murderous Betrayal, priced
   // through the controller's board state). Carried by both mana and
@@ -842,13 +854,20 @@ export function returnShortfall(opts: ReturnOptionsShape | undefined, label?: st
 // exilePermanentShortfall is returnShortfall one destination over
 // (#1600): "Exile a creature you control" with no creature of yours to
 // exile cannot be paid (CR 118.3).
+//
+// ADR 0137's amendment: a craft clause with a set rule is unpayable when
+// the candidates cannot fill it, however many there are — four Pirates
+// are not a Dinosaur, a Merfolk, a Pirate and a Vampire.
 export function exilePermanentShortfall(
-  opts: ReturnOptionsShape | undefined,
+  opts:
+    | (ReturnOptionsShape & { each_of?: SacrificeGroupView[]; shares?: TargetSharesView })
+    | undefined,
   label?: string,
 ): string {
   if (!opts) return "";
   const have = opts.cards?.length ?? 0;
-  if (have >= (opts.min ?? 1)) return "";
+  const need = opts.min ?? 1;
+  if (have >= need && canFillEachOf(opts.each_of) && canFillShares(opts.shares, need)) return "";
   return `nothing to exile (${label ?? "a creature you control"})`;
 }
 

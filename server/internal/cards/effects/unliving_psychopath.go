@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Unliving Psychopath — Creature — Zombie Assassin {2}{B}{B}, 0/4:
 //
 //	"{B}: This creature gets +1/-1 until end of turn.
@@ -22,9 +24,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{B}: This creature gets +1/-1 until end of turn.",
-				Cost:   ManaCost("{B}"),
-				Effect: thisGetsUntilEndOfTurn(1, -1, "Unliving Psychopath — +1/-1 until end of turn"),
+				Label:   "{B}: This creature gets +1/-1 until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{B}"),
+				Effect:  thisGetsUntilEndOfTurn(1, -1, "Unliving Psychopath — +1/-1 until end of turn"),
 			},
 			{
 				Label: "{B}, {T}: Destroy target creature with power less than this creature's power.",

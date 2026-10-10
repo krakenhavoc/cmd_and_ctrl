@@ -39,9 +39,10 @@ func init() {
 			"When you must choose which cards to exile, you choose after the spell or ability that dealt the damage has finished.",
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Exile two cards from your graveyard: Draw a card.",
-			Cost:   Plus(TapCost(), ExileFromGraveyard(2, "two cards", nil)),
-			Effect: Do(DrawCards{N: 1}),
+			Label:   "{T}, Exile two cards from your graveyard: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), ExileFromGraveyard(2, "two cards", nil)),
+			Effect:  Do(DrawCards{N: 1}),
 		}},
 		Replacements: []game.ReplacementEffect{
 			PreventDamageDealtTo(PreventionStatic{

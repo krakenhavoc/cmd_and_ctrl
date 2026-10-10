@@ -137,7 +137,7 @@ describe("the script", () => {
       { label: L.commandZone.any, within: "your board" },
     ]);
     expect(anchorsOf(MOVE_ALONG, ctx(v))).toEqual([{ label: "actions" }]);
-    expect(anchorsOf(WATCH_BOT, ctx(v))).toEqual([{ label: "autopass", within: "actions" }]);
+    expect(anchorsOf(WATCH_BOT, ctx(v))).toEqual([{ label: "Skip to my turn", within: "actions" }]);
     expect(anchorsOf(ATTACK, ctx(v))).toEqual([
       { label: "creatures", within: "your board" },
       { seatID: BOT },
@@ -146,12 +146,12 @@ describe("the script", () => {
 
   it("names the player's own next key, and copes with none", () => {
     expect(copyText(MOVE_ALONG.body, keys)).toBe(
-      "The dock's next button moves the game on a step, and so does Space. Pass turn skips to the end of your turn.",
+      "The dock's next button moves the game on a step, and so does Space. End turn plays out the rest of your turn for you.",
     );
     expect(copyText(MOVE_ALONG.body, noKeys)).not.toContain("so does");
     const leave = WATCH_BOT.first!(ctx(board()))!;
     expect(copyText(leave.body, keys)).toBe(
-      "Autopass switches itself off in your own main phase. Press next (Space) once, then turn it on.",
+      "Skip to my turn switches itself off in your own main phase. Press next (Space) once, then turn it on.",
     );
     expect(copyText(leave.body, noKeys)).toContain("Press next once");
   });
@@ -163,11 +163,13 @@ describe("the script", () => {
         .join(" ");
       // Every sentence that names Undo says where it is: the dock.
       for (const m of text.match(/[^.]*\bUndo\b[^.]*/g) ?? []) {
-        expect(m, s.id).toMatch(/in the dock beside autopass/);
+        expect(m, s.id).toMatch(/in the dock beside Skip to my turn/);
         expect(m, s.id).not.toContain("⋯");
       }
     }
-    expect(copyText(TAP_LAND.recover?.hint, keys)).toMatch(/Undo, in the dock beside autopass/);
+    expect(copyText(TAP_LAND.recover?.hint, keys)).toMatch(
+      /Undo, in the dock beside Skip to my turn/,
+    );
   });
 });
 
@@ -580,7 +582,7 @@ describe("step 12: let the bot play (autopass)", () => {
 
   it("times out so a stalled bot never wedges it, and says when autopass is on", () => {
     expect(WATCH_BOT.timeoutMs).toBe(WATCH_TIMEOUT_MS);
-    expect(statusText(WATCH_BOT, auto(board()))).toBe("Autopass is on");
+    expect(statusText(WATCH_BOT, auto(board()))).toBe("Skip to my turn is on");
     expect(statusText(WATCH_BOT, ctx(board()))).toBeUndefined();
   });
 });
@@ -629,10 +631,10 @@ describe("step 13: attack", () => {
     // The safety belt's own window: upkeep and draw pass, main clears it.
     expect(id({ step: "upkeep" })).toBe("to-combat");
     expect(id({ step: "precombat_main" })).toBe("to-combat");
-    // autopassPersistThroughTurns: it would pass the whole turn.
+    // Skip to my turn switched on after the main phase: it would pass the rest of the turn.
     const d = ATTACK.first!(auto(board({ step: "begin_combat", mine: [ready()] })))!;
     expect(d.id).toBe("autopass-off");
-    expect(d.anchor).toEqual({ label: "autopass", within: "actions" });
+    expect(d.anchor).toEqual({ label: "Skip to my turn", within: "actions" });
     expect(id({ step: "declare_attackers" })).toBe("autopass-off");
   });
 

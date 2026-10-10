@@ -47,7 +47,8 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "{2}, {T}: Draw a card, then you may put a land card from your hand onto the battlefield. " +
 				"This artifact's owner draws a card, then that player may put a land card from their hand onto the battlefield.",
-			Cost: Plus(ManaCost("{2}"), TapCost()),
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				owner := item.Controller

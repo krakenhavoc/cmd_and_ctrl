@@ -125,6 +125,11 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if gates := endGateNote(s); gates != "" {
 			fmt.Fprintf(&b, ", %s", gates)
 		}
+		// #2559: Memory Vessel's hand ban changes what this seat can do
+		// next, so a model seat is told on the seat line.
+		if s.CantPlayFromHand != "" {
+			b.WriteString(", CAN'T PLAY CARDS FROM HAND")
+		}
 		b.WriteByte('\n')
 		// ADR 0114 §7: one line per emblem, the Ring with its count.
 		for _, e := range s.Emblems {
@@ -135,6 +140,12 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		}
 		if gy := cardNames(s.Graveyard.Cards, max); gy != "" {
 			fmt.Fprintf(&b, "  graveyard: %s\n", gy)
+		}
+		// #2559: the exiled cards this seat may play (impulse exile,
+		// Memory Vessel's seven, Rocco's one), for every seat, since a
+		// grant is public.
+		if ex := cardNames(playableExileOf(v, s.ID), max); ex != "" {
+			fmt.Fprintf(&b, "  may play from exile: %s\n", ex)
 		}
 		if s.ID == me {
 			if hand := describeCards(s.Hand.Cards, max, opts.NoteUnimplemented); hand != "" {
@@ -519,6 +530,18 @@ func endGateNote(s *protocol.PlayerView) string {
 	out := strings.Join(parts, ", ")
 	if len(names) > 0 {
 		out += " because of " + strings.Join(names, ", ")
+	}
+	return out
+}
+
+// playableExileOf is every exiled card whose public grant names
+// `seat` (#2559).
+func playableExileOf(v *protocol.GameView, seat string) []protocol.CardView {
+	var out []protocol.CardView
+	for i := range v.Exile.Cards {
+		if c := &v.Exile.Cards[i]; c.ExilePlay != nil && c.ExilePlay.Player == seat {
+			out = append(out, *c)
+		}
 	}
 	return out
 }

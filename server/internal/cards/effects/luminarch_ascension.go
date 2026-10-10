@@ -42,6 +42,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{1}{W}: Create a 4/4 white Angel creature token with flying. Activate only if this enchantment has four or more quest counters on it.",
+			Purpose:   game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost:      ManaCost("{1}{W}"),
 			Condition: SourceHasCountersAtLeast("quest", 4),
 			Effect: func(g *game.Game, item *game.StackItem) error {

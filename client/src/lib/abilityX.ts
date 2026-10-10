@@ -53,12 +53,19 @@ export function abilityXSlots(ability: ActivatedAbilityView): number {
 // the seat can pay, and with no {X} in the mana (Sphinx of the
 // Revelation's "{W}{U}{U}, {T}, Pay X {E}") the energy alone is the
 // guess.
+//
+// #1944: for a −X loyalty cost the guess is the largest X that leaves
+// the planeswalker standing, one under its loyalty. The player can
+// still type the whole loyalty.
 export function suggestedAbilityX(
   ability: ActivatedAbilityView,
   availableMana: number,
   energy = 0,
+  loyalty = 0,
 ): number {
   const floor = abilityMinX(ability);
+  const loyaltyMax = abilityLoyaltyMaxX(ability, loyalty);
+  if (loyaltyMax !== undefined) return Math.max(floor, loyaltyMax - 1);
   const energyMax = abilityEnergyMaxX(ability, energy);
   if (energyMax !== undefined && ability.x_slots === undefined) {
     return Math.max(floor, energyMax);
@@ -66,6 +73,28 @@ export function suggestedAbilityX(
   let affordable = Math.floor(Math.max(0, availableMana) / abilityXSlots(ability));
   if (energyMax !== undefined) affordable = Math.min(affordable, energyMax);
   return Math.max(floor, affordable);
+}
+
+// abilityLoyaltyMaxX is the largest X a −X loyalty cost lets the
+// player announce: the loyalty on the permanent (CR 606.6, #1944).
+// Undefined for an ability with no loyalty X.
+export function abilityLoyaltyMaxX(
+  ability: ActivatedAbilityView,
+  loyalty: number,
+): number | undefined {
+  if (!ability.loyalty_cost_x) return undefined;
+  return Math.max(0, loyalty + (ability.loyalty_cost ?? 0));
+}
+
+// abilityMaxX is the ceiling the X picker holds an ability's X under:
+// the energy for "Pay X {E}", the loyalty for a −X loyalty cost, and
+// undefined (no ceiling) otherwise.
+export function abilityMaxX(
+  ability: ActivatedAbilityView,
+  energy: number,
+  loyalty: number,
+): number | undefined {
+  return abilityLoyaltyMaxX(ability, loyalty) ?? abilityEnergyMaxX(ability, energy);
 }
 
 // abilityEnergyMaxX is the largest X a "Pay X {E}" ability lets the

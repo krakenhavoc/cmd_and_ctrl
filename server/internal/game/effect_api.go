@@ -3386,6 +3386,15 @@ func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid
 //
 // Caller must hold g.mu.
 func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+	// CR 712.21c (ADR 0145): a return that finds the card a melded
+	// permanent left exile as finds both its cards, and returns each.
+	// The other card goes first and on its own; the card the effect
+	// named is the one whose new ID the caller is told.
+	if partner := g.meldSplitPartnerInExileLocked(cardID); partner != uuid.Nil {
+		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
+			return uuid.Nil, err
+		}
+	}
 	if g.Exile == nil || !g.Exile.Contains(cardID) {
 		if then != nil {
 			if err := then(g, uuid.Nil); err != nil {

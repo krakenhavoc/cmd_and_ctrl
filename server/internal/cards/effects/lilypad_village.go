@@ -54,6 +54,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{U}, {T}: Surveil 2. Activate only if a Bird, Frog, Otter, or Rat entered the battlefield under your control this turn.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{U}"), TapCost()),
 			Condition: lilypadVillageAnimalEntered,
 			Effect: func(g *game.Game, item *game.StackItem) error {

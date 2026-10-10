@@ -38,9 +38,10 @@ func init() {
 			}), "Boromir, Warden of the Tower — counter that spell", counterTheSpellIfNoManaWasSpent),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you",
-			Cost:   SacrificeThis(),
-			Effect: boromirLastStand,
+			Label:   "Sacrifice Boromir: Creatures you control gain indestructible until end of turn. The Ring tempts you",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    SacrificeThis(),
+			Effect:  boromirLastStand,
 		}},
 	})
 }

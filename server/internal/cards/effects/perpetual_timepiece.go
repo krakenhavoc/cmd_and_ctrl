@@ -36,14 +36,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{T}: Mill two cards.",
-				Cost:  TapCost(),
+				Label:   "{T}: Mill two cards.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return MillCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
 				},
 			},
 			{
 				Label:   "{2}, Exile this artifact: Shuffle any number of target cards from your graveyard into your library.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{2}"), ExileThis()),
 				Targets: TargetCardInGraveyard("any number of target cards from your graveyard", YouOwn()).WithCount(0, 0),
 				Effect:  shuffleTargetGraveyardCardsIntoLibrary,

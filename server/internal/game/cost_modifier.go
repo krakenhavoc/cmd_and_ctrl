@@ -1374,6 +1374,13 @@ func (c Card) ParsedManaValue() (mv int, ok bool) {
 // value 0 and reading its front face here would make a land cost seven.
 // Added in S46 (ADR 0079 decision 8, #343).
 func manaCostForValue(c Card) string {
+	// CR 712.8g, 202.3c (ADR 0145): a melded permanent's mana value is
+	// the sum of its cards' front-face mana values. A copy of one has
+	// no cards behind it, and its printed cost is the back face's
+	// none, so its mana value is 0 — which is what CR 712.8g says.
+	if c.IsMelded() {
+		return meldedManaCost(c)
+	}
 	if c.Layout == LayoutTransform && c.ActiveFace != 0 && len(c.Faces) > 0 {
 		return c.Faces[0].ManaCost
 	}

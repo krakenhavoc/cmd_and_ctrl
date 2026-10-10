@@ -20,7 +20,7 @@ func init() {
 		Name:     "Wayfarer's Bauble",
 		Activated: []ActivatedAbility{{
 			Label:   "{2}, {T}, Sacrifice Wayfarer's Bauble: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-			Purpose: game.Purpose{Lands: 1},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Lands: 1},
 			Cost: game.AbilityCost{
 				Tap:           true,
 				SacrificeSelf: true,

@@ -30,9 +30,10 @@ func init() {
 		OracleID: sacNAbilityOracle,
 		Name:     "Two-Creature Outlet",
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice two creatures: You gain 1 life.",
-			Cost:   SacrificeN(2, "two creatures", Creature()),
-			Effect: Do(GainLife{Amount: 1}),
+			Label:   "Sacrifice two creatures: You gain 1 life.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    SacrificeN(2, "two creatures", Creature()),
+			Effect:  Do(GainLife{Amount: 1}),
 		}},
 	})
 	// "{T}, Sacrifice this and two other creatures: You gain 1 life."
@@ -42,9 +43,10 @@ func init() {
 		OracleID: sacNSelfTooOracle,
 		Name:     "Self And Two Outlet",
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice this and two creatures: You gain 1 life.",
-			Cost:   Plus(SacrificeThis(), SacrificeN(2, "two creatures", Creature())),
-			Effect: Do(GainLife{Amount: 1}),
+			Label:   "Sacrifice this and two creatures: You gain 1 life.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(SacrificeThis(), SacrificeN(2, "two creatures", Creature())),
+			Effect:  Do(GainLife{Amount: 1}),
 		}},
 	})
 	// "Sacrifice two creatures: Add {C}{C}{C}."
@@ -55,6 +57,7 @@ func init() {
 			Cost:     ManaAbilityCost{SacrificeOther: SacrificeN(2, "two creatures", Creature()).SacrificeOther},
 			Produced: "{C}{C}{C}",
 			Label:    "Sacrifice two creatures: Add {C}{C}{C}",
+			Answers:  game.AnswerSacOutlet,
 		}},
 	})
 	// "As an additional cost to cast this spell, sacrifice two
@@ -94,9 +97,10 @@ func init() {
 			}, "Self And One Outlet — gain 1 life", Do(GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice this and a creature: no effect.",
-			Cost:   Plus(SacrificeThis(), SacrificeACreature()),
-			Effect: func(*game.Game, *game.StackItem) error { return nil },
+			Label:   "Sacrifice this and a creature: no effect.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(SacrificeThis(), SacrificeACreature()),
+			Effect:  func(*game.Game, *game.StackItem) error { return nil },
 		}},
 	})
 }

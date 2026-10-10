@@ -37,9 +37,10 @@ func init() {
 				"Hedge Shredder — put the land cards onto the battlefield tapped", hedgeShredderReturnLands)),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 1",
-			Cost:   CrewCost(1),
-			Effect: CrewEffect("Hedge Shredder"),
+			Label:   "Crew 1",
+			Cost:    CrewCost(1),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Hedge Shredder"),
 		}},
 	})
 }

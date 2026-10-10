@@ -24,14 +24,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}, Put a page counter on this artifact: Scry 1.",
-				Cost:   Plus(TapCost(), AddCounterToThis(page, 1)),
-				Effect: Do(Scry{N: 1}),
+				Label:   "{T}, Put a page counter on this artifact: Scry 1.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), AddCounterToThis(page, 1)),
+				Effect:  Do(Scry{N: 1}),
 			},
 			{
-				Label:  "{2}, {T}, Put a page counter on this artifact: Draw a card.",
-				Cost:   Plus(ManaCost("{2}"), TapCost(), AddCounterToThis(page, 1)),
-				Effect: Do(DrawCards{N: 1}),
+				Label:   "{2}, {T}, Put a page counter on this artifact: Draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{2}"), TapCost(), AddCounterToThis(page, 1)),
+				Effect:  Do(DrawCards{N: 1}),
 			},
 		},
 		Triggered: []game.TriggeredAbility{

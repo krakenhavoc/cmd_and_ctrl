@@ -32,7 +32,8 @@ func init() {
 			}, "Ravenous Squirrel — put a +1/+1 counter on it", putCounterOnSelf),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}{G}, Sacrifice an artifact or creature: You gain 1 life and draw a card.",
+			Label:   "{1}{B}{G}, Sacrifice an artifact or creature: You gain 1 life and draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: Plus(ManaCost("{1}{B}{G}"), game.AbilityCost{
 				SacrificeOther: sacrificeSpec("an artifact or creature", Or(Artifact(), Creature())),
 			}),

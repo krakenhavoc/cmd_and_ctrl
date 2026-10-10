@@ -36,8 +36,9 @@ func init() {
 		Caveats:      []string{"The \"{1}, {T}, Discard a card: You gain 4 life\" ability isn't implemented — the other three abilities work."},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{1}, {T}, Pay 1 life: Create a 0/1 white Goat",
-				Cost:  Plus(postCost, PayLife(1)),
+				Label:   "{1}, {T}, Pay 1 life: Create a 0/1 white Goat",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(postCost, PayLife(1)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TokenCard("0/1 white Goat"), N: 1}.Apply(NewContext(g, item))
 				},
@@ -56,8 +57,9 @@ func init() {
 				},
 			},
 			{
-				Label: "{1}, {T}, Sacrifice an artifact: Draw a card",
-				Cost:  Plus(postCost, b10SacrificeAnArtifact()),
+				Label:   "{1}, {T}, Sacrifice an artifact: Draw a card",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(postCost, b10SacrificeAnArtifact()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				},

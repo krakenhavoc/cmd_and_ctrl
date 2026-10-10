@@ -15,6 +15,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}, Sacrifice Cryogen Relic: Put a stun counter on up to one target tapped creature",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{1}{U}"), SacrificeThis()),
 			Targets: TargetCreature("up to one target tapped creature", b751Tapped()).WithCount(0, 1),
 			Effect: func(g *game.Game, item *game.StackItem) error {

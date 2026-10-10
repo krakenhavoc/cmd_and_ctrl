@@ -53,6 +53,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label: "Waterbend {X}: Creatures you control have base power and toughness X/X until end of turn. " +
 				"X can't be 0. Activate only during your turn.",
+			Purpose:   game.Purpose{Answers: game.AnswerPump},
 			Cost:      Plus(WaterbendCost("{X}"), MinX(1)),
 			Condition: DuringYourTurn(),
 			Effect:    kataraBasePTX,

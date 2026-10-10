@@ -20,8 +20,9 @@ func init() {
 		Name:         "Agency Coroner",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{2}{B}, Sacrifice another creature: Draw a card. If the sacrificed creature was suspected, draw two cards instead.",
-			Cost:  Plus(ManaCost("{2}{B}"), SacrificeAnotherN(1, "another creature", Creature())),
+			Label:   "{2}{B}, Sacrifice another creature: Draw a card. If the sacrificed creature was suspected, draw two cards instead.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{2}{B}"), SacrificeAnotherN(1, "another creature", Creature())),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				n := 1

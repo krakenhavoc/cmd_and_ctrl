@@ -15,10 +15,21 @@ func nextDamageShieldRow(label string, cost game.AbilityCost, targets *game.Targ
 		Label:   label,
 		Cost:    cost,
 		Targets: targets,
+		Purpose: preventsDamageUnlessTargeted(targets),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return shield.Apply(NewContext(g, item))
 		},
 	}
+}
+
+// preventsDamageUnlessTargeted is the shield rows' declaration (ADR 0142):
+// they prevent or redirect damage. A row with a target clause declares
+// nothing, because its move already stops smart autopass.
+func preventsDamageUnlessTargeted(targets *game.TargetSpec) game.Purpose {
+	if targets != nil {
+		return game.Purpose{}
+	}
+	return game.Purpose{Answers: game.AnswerPrevent}
 }
 
 // nextDamageShieldSpell is an instant's OnResolve whose whole effect is
@@ -59,8 +70,9 @@ func runeOfProtection(oracle, name, label, what string, q game.PermanentQuery) S
 // no source "of the chosen color", so nothing is shielded.
 func chosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
-		Label: label,
-		Cost:  cost,
+		Label:   label,
+		Cost:    cost,
+		Purpose: preventsDamageUnlessTargeted(nil),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			info, ok := ctx.SourcePermanent()
@@ -79,8 +91,9 @@ func chosenColorShieldRow(label string, cost game.AbilityCost) ActivatedAbility 
 // as it deals the damage. The type is read as for chosenColorShieldRow.
 func chosenTypeShieldRow(label string, cost game.AbilityCost) ActivatedAbility {
 	return ActivatedAbility{
-		Label: label,
-		Cost:  cost,
+		Label:   label,
+		Cost:    cost,
+		Purpose: preventsDamageUnlessTargeted(nil),
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			ctx := NewContext(g, item)
 			info, ok := ctx.SourcePermanent()

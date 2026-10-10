@@ -350,7 +350,14 @@ const maxAutoAnswersPerCommit = 64
 // a lobby step — is answered the same way, also when no socket is
 // connected, and a lockstep arena replays the same answers in the same
 // order. Caller MUST hold r.mu.
+//
+// #2881: an active player who passed the turn passes again once a
+// commit hands them priority. actions.Dispatch already does that for
+// every action; the settle here covers the commits that are not
+// actions (a lobby step) and every automatic answer, whose pass is
+// part of the answer's commit.
 func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) {
+	r.Game.SettlePassTurn()
 	for i := 0; i < maxAutoAnswersPerCommit; i++ {
 		choiceID, chooser, ok := r.Game.NextAutoAnswer()
 		if !ok {
@@ -370,6 +377,7 @@ func (r *Room) autoAnswerThenCaptureLocked() (protocol.GameView, uint64, error) 
 			r.Game.MarkAskedByHand(choiceID, game.AskedByHandUndone)
 			continue
 		}
+		r.Game.SettlePassTurn()
 		r.pushUndoLocked(undoEntry{pre: pre, caller: chooser, freeUndo: true, autoAnswered: choiceID, autoAnswerSeq: seq})
 	}
 	return r.captureLocked(true)
@@ -775,12 +783,18 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	// a restore point costs a rewind on the next deploy; refusing the
 	// player's action costs them the move they just made.
 	if r.dumpDir != "" && advanceSeq {
-		if r.Game.CurrentState() == game.StateEnded {
-			// Nothing left to resume. Drop the file so every future
-			// boot does not rebuild a finished table.
-			r.RemoveRestorePoint()
-		} else if _, err := r.writeRestorePointLocked(nextSeq); err != nil {
+		wrote, err := r.writeRestorePointLocked(nextSeq)
+		if err != nil {
 			r.log.Warn("restore point write failed", "err", err, "seq", nextSeq)
+		}
+		// An ended table keeps its final state as its restore point, so
+		// a deploy does not take it from the players still looking at it
+		// (#2919; RestoreRooms brings it back for EndedTableRetention).
+		// If that state could not be written, the older file on disk is
+		// a live game: drop it rather than let a boot resurrect the
+		// table as active.
+		if !wrote && r.Game.CurrentState() == game.StateEnded {
+			r.RemoveRestorePoint()
 		}
 	}
 	return view, nextSeq, nil

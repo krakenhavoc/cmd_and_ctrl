@@ -52,6 +52,9 @@ func (g *Game) cloneLocked() *Game {
 		// #2165: CR 724.1's deferred half — the turn an effect ended
 		// whose cleanup step has not begun.
 		TurnEndPending: g.TurnEndPending,
+		// #2881: the active player's standing end_turn. Its own
+		// pointer, so a clone never shares the live order.
+		passTurn: clonePassTurnOrder(g.passTurn),
 		// #628: both halves of the CR 732 breaker. The threshold is
 		// configuration and copies by value; the notice is a per-turn
 		// fact an undo must be able to rewind past, so it gets its own
@@ -114,6 +117,7 @@ func (g *Game) cloneLocked() *Game {
 			out.LoyaltyActivatedThisTurn[k] = v
 		}
 	}
+	out.LoyaltyActivatedTwiceThisTurn = copyBoolMap(g.LoyaltyActivatedTwiceThisTurn)
 	if len(g.SpellsCastThisTurn) > 0 {
 		out.SpellsCastThisTurn = make(map[uuid.UUID]CastTally, len(g.SpellsCastThisTurn))
 		for k, v := range g.SpellsCastThisTurn {
@@ -266,6 +270,8 @@ func (g *Game) cloneLocked() *Game {
 			// undo snapshot.
 			cloned.PickOptions = cloneChoiceOptions(c.PickOptions)
 			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
+			// ADR 0146: a ballot's vote is mutated as it is cast.
+			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox
@@ -603,6 +609,15 @@ func cloneCard(c Card) Card {
 	out.Provenance = c.Provenance.Clone()
 	// ADR 0137: the craft link is a slice, aliased by a value copy.
 	out.CraftedWith = cloneObjectRefs(c.CraftedWith)
+	// ADR 0145: the meld print is a pointer and a melded permanent's
+	// cards are a slice of whole cards, each with its own maps.
+	out.Meld = c.Meld.clone()
+	if len(c.MeldedFrom) > 0 {
+		out.MeldedFrom = make([]Card, len(c.MeldedFrom))
+		for i := range c.MeldedFrom {
+			out.MeldedFrom[i] = cloneCard(c.MeldedFrom[i])
+		}
+	}
 	// S13.5 knowledge set: a value copy would alias the live map, so
 	// reveals after the snapshot would leak into it and undo couldn't
 	// roll knowledge back.
@@ -1058,6 +1073,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.Outcome = src.Outcome
 	g.ActiveSeatLeftPending = src.ActiveSeatLeftPending
 	g.TurnEndPending = src.TurnEndPending
+	g.passTurn = clonePassTurnOrder(src.passTurn)
 	g.StackMeta = src.StackMeta
 	g.PendingTriggers = src.PendingTriggers
 	g.DelayedTriggers = src.DelayedTriggers
@@ -1067,6 +1083,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.NextPhaseID = src.NextPhaseID
 	g.planAt = src.planAt
 	g.LoyaltyActivatedThisTurn = src.LoyaltyActivatedThisTurn
+	g.LoyaltyActivatedTwiceThisTurn = src.LoyaltyActivatedTwiceThisTurn
 	g.SpellsCastThisTurn = src.SpellsCastThisTurn
 	g.ForetoldThisTurn = src.ForetoldThisTurn
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn

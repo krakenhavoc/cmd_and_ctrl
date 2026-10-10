@@ -132,6 +132,25 @@ describe("the table settings panel", () => {
     expect(onpatch).toHaveBeenCalledWith({ bot_pace: "slow" });
   });
 
+  // ADR 0143 §2.6: the host's "Bot speed" is the table's pace now. It
+  // sets how long everyone's auto-pass leaves another player's spell on
+  // the stack, so the label and the hints say so.
+  it("calls bot_pace Table pace, and its hints name the stack hold for everyone", () => {
+    for (const [pace, says] of [
+      ["fast", "Spells resolve as soon as everyone has passed"],
+      ["normal", "stay on the stack for 2 s"],
+      ["slow", "stay on the stack for 3 s"],
+    ] as const) {
+      const { container } = mount({ settings: { bot_pace: pace } });
+      const f = field(container, "bot_pace");
+      expect(f.querySelector(".tsp-label")?.textContent?.trim()).toBe("Table pace");
+      expect(f.textContent).not.toMatch(/bot speed/i);
+      expect(f.querySelector(".tsp-hint")?.textContent).toContain(says);
+      if (pace === "normal") expect(f.textContent).toContain("for people and bots alike");
+      cleanup();
+    }
+  });
+
   it("sends nothing when the control is set to what it already is", () => {
     const onpatch = vi.fn();
     const { container } = mount({ settings: { bot_pace: "fast" }, onpatch });

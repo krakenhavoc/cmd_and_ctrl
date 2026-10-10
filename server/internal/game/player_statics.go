@@ -250,7 +250,10 @@ type PlayerStatic struct {
 	// CantAttack is a granted "this player can't attack <Protected> or
 	// permanents they control during their next turn" (The Second
 	// Doctor's How Civil of You). ADR 0063's amendment of 2026-10-08
-	// (#2109), cant_attack_player.go. The TENTH payload, told apart by
+	// (#2109), cant_attack_player.go; the 2026-10-10 amendment (#2719)
+	// added a "this turn" window and a narrower CantAttackScope
+	// (Sandswirl Wanderglyph, Web of Inertia, Jace, Multiverse
+	// Architect). The TENTH payload, told apart by
 	// CantAttackGrant.Protected being non-nil; it carries no Keyword.
 	// It is stored on the RESTRICTED player. Its READER is
 	// playerCantAttackRefusalLocked, called from

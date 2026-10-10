@@ -43,7 +43,10 @@ func glitteringAbilities(name, cost string) ([]game.ReplacementEffect, []Activat
 		Label:     cost + `: Until end of turn, this creature loses "Prevent all damage that would be dealt to this creature." Any player may activate this ability.`,
 		Cost:      ManaCost(cost),
 		AnyPlayer: true,
-		Effect:    thisLosesOwnReplacementUntilEndOfTurn(glitteringPreventionRow, name+" — loses its damage prevention until end of turn"),
+		// ADR 0142 sweep rulings: turning off a protection is restrict
+		// (by analogy, here it is the controller's own).
+		Purpose: game.Purpose{Answers: game.AnswerRestrict},
+		Effect:  thisLosesOwnReplacementUntilEndOfTurn(glitteringPreventionRow, name+" — loses its damage prevention until end of turn"),
 	}}
 	return reps, acts
 }

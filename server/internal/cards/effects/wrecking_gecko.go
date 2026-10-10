@@ -18,9 +18,10 @@ func init() {
 			Ward(WardMana("{2}"), "Wrecking Gecko — ward {2}"),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{6}{G}{G}: This creature gets +4/+4 and gains trample until end of turn.",
-			Cost:   ManaCost("{6}{G}{G}"),
-			Effect: thisCreatureUntilEOT("Wrecking Gecko — +4/+4 and trample", 4, 4, "trample"),
+			Label:   "{6}{G}{G}: This creature gets +4/+4 and gains trample until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+			Cost:    ManaCost("{6}{G}{G}"),
+			Effect:  thisCreatureUntilEOT("Wrecking Gecko — +4/+4 and trample", 4, 4, "trample"),
 		}},
 	})
 }

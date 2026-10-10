@@ -55,8 +55,9 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label: "Remove a charge counter from Lost Jitte: Choose one — untap target land; or target creature can't block this turn; or put a +1/+1 counter on equipped creature.",
-				Cost:  RemoveCountersFromThis("charge", 1),
+				Label:   "Remove a charge counter from Lost Jitte: Choose one — untap target land; or target creature can't block this turn; or put a +1/+1 counter on equipped creature.",
+				Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerCombatGrant},
+				Cost:    RemoveCountersFromThis("charge", 1),
 				Modes: ChooseOne(
 					ModeDoing("Untap target land.",
 						TargetPermanent("target land", Land()),

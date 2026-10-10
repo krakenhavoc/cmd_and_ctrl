@@ -661,5 +661,34 @@ func (g *Game) buildTriggerItemLocked(t TriggeredAbility, ev Event, source Card,
 			item.Params.Ability = ref
 		}
 	}
+	if item.GrantedBy == uuid.Nil {
+		item.GrantedBy = triggerGrantor(t, &source)
+	}
 	return item
+}
+
+// triggerGrantor is the object that granted a triggered row, for a row
+// of a layer-6 grant bundle (#2709): the grant the row's occurrence
+// counts, among the source's grants of that bundle, in layer order —
+// the same numbering the composite key gives the rows
+// (numberTriggerRowOccurrences). Dire Blunderbuss's granted "sacrifice
+// an artifact other than Dire Blunderbuss" names the Equipment that
+// gave it, and two Blunderbusses give two triggers, each its own.
+// uuid.Nil for an own row, or when the source has no live grants (a
+// last-known snapshot).
+func triggerGrantor(t TriggeredAbility, source *Card) uuid.UUID {
+	if !strings.HasPrefix(t.row.key, GrantKeyPrefix) {
+		return uuid.Nil
+	}
+	n := 0
+	for _, gr := range layeredGrants(source) {
+		if gr.Key != t.row.key {
+			continue
+		}
+		if n == t.row.occurrence {
+			return gr.Source
+		}
+		n++
+	}
+	return uuid.Nil
 }

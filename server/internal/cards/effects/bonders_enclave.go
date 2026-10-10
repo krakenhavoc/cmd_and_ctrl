@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Bonders' Enclave — Land (EDHREC rank 544):
 //
 //	"{T}: Add {C}.
@@ -24,6 +26,7 @@ func init() {
 		}},
 		Activated: []ActivatedAbility{{
 			Label:     "{3}, {T}: Draw a card. Activate only if you control a creature with power 4 or greater.",
+			Purpose:   game.Purpose{Answers: game.AnswerValue},
 			Cost:      Plus(ManaCost("{3}"), TapCost()),
 			Condition: ControlsAtLeast(1, MatchCreatureWithPowerAtLeast(4)),
 			Effect:    b36DrawOne,

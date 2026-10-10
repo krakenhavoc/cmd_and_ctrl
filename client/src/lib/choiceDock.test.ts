@@ -6,7 +6,9 @@
 import { describe, it, expect, vi } from "vitest";
 
 import {
+  ballotNote,
   choiceRequest,
+  councilVoteRequest,
   gameOverRequest,
   INLINE_LABEL_MAX,
   INLINE_OPTION_MAX,
@@ -317,6 +319,38 @@ describe("voteRequest and gameOverRequest", () => {
     ]);
   });
 
+  it("a rules vote (ADR 0146) is read-only for the seats not voting, with the tally", () => {
+    const ballot = choice({
+      kind: "option_pick",
+      chooser: "b",
+      reason: "Plea for Power — vote for time or knowledge",
+      pick_options: [{ label: "time" }, { label: "knowledge" }, { label: "Don't vote again" }],
+      council_vote: {
+        controller: "a",
+        voter: "b",
+        options: ["time", "knowledge"],
+        tally: [2, 1],
+        offered: [0, 1, -1],
+      },
+    });
+    const seats = [
+      { id: "a", name: "Ann" },
+      { id: "b", name: "Bob" },
+    ];
+    const r = councilVoteRequest(ballot, "a", seats);
+    expect(r?.rank).toBe("step");
+    expect(r?.label).toBe("vote");
+    expect(r?.detail).toBe("Bob is voting");
+    expect(r?.row?.map((a) => [a.label, a.note, a.disabled])).toEqual([
+      ["time", "2", true],
+      ["knowledge", "1", true],
+    ]);
+    // The voter answers their own ballot; its buttons carry the tally.
+    expect(councilVoteRequest(ballot, "b", seats)).toBeNull();
+    expect([0, 1, 2].map((i) => ballotNote(ballot, i))).toEqual(["2", "1", undefined]);
+    expect(ballotNote(choice({ kind: "option_pick" }), 0)).toBeUndefined();
+  });
+
   it("game over is Back to lobby, with no Enter", () => {
     const back = vi.fn();
     const r = gameOverRequest(back);
@@ -325,5 +359,13 @@ describe("voteRequest and gameOverRequest", () => {
     expect(dockKeyAction(r, "Enter")).toBeNull();
     r.primary!.onPress();
     expect(back).toHaveBeenCalledOnce();
+  });
+
+  it("game over before its grace is disabled and refuses a press (#2919)", () => {
+    const back = vi.fn();
+    const r = gameOverRequest(back, false);
+    expect(r.primary?.disabled).toBe(true);
+    r.primary!.onPress();
+    expect(back).not.toHaveBeenCalled();
   });
 });

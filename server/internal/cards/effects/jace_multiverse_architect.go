@@ -16,21 +16,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	     and the rest on the bottom of your library in a random order.
 //	 Jace, Multiverse Architect can be your commander."
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the combat tax is not
-// built. "Creatures they control can't attack Jaces you control this
-// turn" needs a turn-long attack restriction on a player, scoped to one
-// subtype of planeswalker. The only player-scoped restriction
-// (GrantCantAttackPlayerForEffect) protects the whole player and every
-// permanent they control for a later turn, which would be stronger than
-// printed; a creature-scoped one is a static of that creature. Leaving
-// the tax out makes Jaces easier to attack, never harder. The +1, the −3
-// and commander eligibility are all as printed.
+// The combat tax (#2719, ADR 0063's 2026-10-10 amendment) is the
+// pay-or-else every begin-of-step "pay or else" uses (UpkeepPayUnless),
+// asked of the opponent whose turn it is, so the table does not reach
+// declare attackers with the question open. On a decline the opponent
+// gets a this-turn attack restriction scoped to "Jaces you control":
+// the Jace's controller and their other planeswalkers stay open. The
+// +1, the −3 and commander eligibility are as printed.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "3321c134-bf5b-4f63-8035-fca0bbdfa86b",
 		Name:         "Jace, Multiverse Architect",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The combat tax isn't implemented — opponents' creatures can attack your Jaces without anyone paying {2}."},
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			On(game.EventStepBegan, AllOf(StepBegan(game.StepBeginCombat, false), ByAnOpponent),
+				"Jace, Multiverse Architect — that player may pay {2}", jaceMultiverseArchitectCombatTax),
+		},
 		Activated: []ActivatedAbility{
 			{
 				Label: "+1: Draw two cards, then put a card from your hand on the bottom of your library.",
@@ -51,4 +54,26 @@ func init() {
 			},
 		},
 	})
+}
+
+// jaceMultiverseArchitectCombatTax is "they may pay {2}. If they don't,
+// creatures they control can't attack Jaces you control this turn."
+// "They" is the opponent whose beginning of combat it is; "you" is the
+// Jace's controller as the trigger resolves.
+func jaceMultiverseArchitectCombatTax(g *game.Game, item *game.StackItem) error {
+	if item.Trigger == nil {
+		return nil
+	}
+	opponent, controller := item.Trigger.Event.Actor, item.Controller
+	return UpkeepPayUnless{
+		Chooser:  opponent,
+		Cost:     "{2}",
+		Question: "Jace, Multiverse Architect — pay {2}, or your creatures can't attack its controller's Jaces this turn?",
+		OnDecline: func(ctx *Context) error {
+			ctx.Game.GrantCantAttackPlayerThisTurnForEffect(opponent, controller,
+				game.CantAttackScope{PlayerExempt: true, PlaneswalkersOnly: true, Subtype: "Jace"},
+				"Jace, Multiverse Architect", ctx.Source())
+			return nil
+		},
+	}.Apply(NewContext(g, item))
 }

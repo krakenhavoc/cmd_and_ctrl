@@ -549,6 +549,7 @@ func Register(spec Spec) {
 		// components (checkLibraryCosts).
 		checkLibraryCosts(spec.Name, i, ab.Cost)
 		checkEnergyCost(spec.Name, i, ab.Cost)
+		checkLoyaltyX(spec.Name, i, ab.Cost)
 		// #1297: the exile-N-cards component, held to the rules its
 		// mana owner is held to (checkExileCardsClause).
 		checkExileCardsClause(spec.Name, fmt.Sprintf("ability %d", i), ab.Cost.ExileCards)
@@ -578,9 +579,14 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d returns its source to hand AND sacrifices or exiles it — one permanent pays one cost component",
 				spec.Name, i))
 		}
+		// #2726: the same one-component rule for the bottom-of-library cost.
+		if ab.Cost.BottomSelf && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf) {
+			panic(fmt.Sprintf("effects.Register: %q ability %d puts its source on the bottom of the library AND sacrifices, exiles or returns it — one permanent pays one cost component",
+				spec.Name, i))
+		}
 		// ADR 0130 §4: no printed card exerts a source its own cost also
 		// moves, and the exert would expire with the object (CR 400.7).
-		if ab.Cost.Exert && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf) {
+		if ab.Cost.Exert && (ab.Cost.SacrificeSelf || ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf) {
 			panic(fmt.Sprintf("effects.Register: %q ability %d exerts its source AND moves it — not modelled (ADR 0130 §4)",
 				spec.Name, i))
 		}
@@ -687,8 +693,8 @@ func Register(spec Spec) {
 		checkExilePermanentsClause(spec.Name, fmt.Sprintf("mana ability %d", i), ma.Cost.ExilePermanents)
 		// ADR 0137: craft materials are a CR 602 ability's cost; no mana
 		// ability exiles graveyard cards through this component.
-		if ec := ma.Cost.ExilePermanents; ec != nil && ec.FromGraveyard {
-			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials from the graveyard — only a CR 602 ability may (ADR 0137)", spec.Name, i))
+		if ec := ma.Cost.ExilePermanents; ec != nil && (ec.FromGraveyard || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0) {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d exiles craft materials (the graveyard, an open count or a set rule) — only a CR 602 ability may (ADR 0137)", spec.Name, i))
 		}
 		if ma.Cost.Mana != "" {
 			if _, err := game.ParseCost(ma.Cost.Mana); err != nil {
@@ -1177,6 +1183,35 @@ func checkExilePermanentsClause(card, where string, ec *game.ExilePermanentsCost
 	if ec.CardType != "" && !slices.Contains(game.PermanentCardTypes, strings.ToLower(ec.CardType)) {
 		panic(fmt.Sprintf("effects.Register: %q %s exiles a %q you control — not a permanent card type (game.PermanentCardTypes)",
 			card, where, ec.CardType))
+	}
+	// ADR 0137's amendment: the craft variants. Each refusal is a
+	// declaration that would register and then match nothing, or match
+	// what the card does not print.
+	if ec.GraveyardOnly && !ec.FromGraveyard {
+		panic(fmt.Sprintf("effects.Register: %q %s is graveyard-only without FromGraveyard — it could never be paid", card, where))
+	}
+	if ec.CardType != "" && len(ec.CardTypes) > 0 {
+		panic(fmt.Sprintf("effects.Register: %q %s names both CardType and CardTypes — use one", card, where))
+	}
+	for _, t := range ec.CardTypes {
+		lt := strings.ToLower(t)
+		ok := slices.Contains(game.PermanentCardTypes, lt)
+		if !ok && ec.GraveyardOnly {
+			ok = slices.ContainsFunc(game.ChoosableCardTypes, func(ct string) bool { return strings.EqualFold(ct, lt) })
+		}
+		if !ok {
+			panic(fmt.Sprintf("effects.Register: %q %s exiles a %q — not a card type a material there can have", card, where, t))
+		}
+	}
+	if ec.Color != "" && !slices.Contains([]string{"W", "U", "B", "R", "G"}, ec.Color) {
+		panic(fmt.Sprintf("effects.Register: %q %s names colour %q — use a one-letter code (W, U, B, R, G)", card, where, ec.Color))
+	}
+	if len(ec.EachSubtype) > 0 && (ec.Count != len(ec.EachSubtype) || ec.OrMore || ec.ShareCardType) {
+		panic(fmt.Sprintf("effects.Register: %q %s fills %d subtypes one-to-one with a count of %d (OrMore %v, ShareCardType %v) — the count is the list's length, alone",
+			card, where, len(ec.EachSubtype), ec.Count, ec.OrMore, ec.ShareCardType))
+	}
+	if ec.ShareCardType && ec.Count < 2 {
+		panic(fmt.Sprintf("effects.Register: %q %s shares a card type among %d material — a set rule needs two", card, where, ec.Count))
 	}
 }
 
@@ -1737,6 +1772,28 @@ func checkEnergyCost(name string, i int, cost game.AbilityCost) {
 	if cost.EnergyX && (game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers)) {
 		panic(fmt.Sprintf("effects.Register: %q ability %d pays X energy AND counts permanents from X — one announced X cannot pay both",
 			name, i))
+	}
+}
+
+// checkLoyaltyX is the boot-time refusal for a −X loyalty cost (#1944):
+//
+//   - LoyaltyX with no loyalty component, or beside a printed loyalty
+//     other than 0, is a card-file mistake: every printed −X is the
+//     whole cost, and LoyaltyMinusX builds it;
+//   - beside any other component that claims the announced X ({X} in
+//     the mana, "Pay X {E}", a count of sacrificed, tapped, discarded or
+//     revealed cards) it is refused: one announced X cannot pay both,
+//     and no printed card asks it to.
+func checkLoyaltyX(name string, i int, cost game.AbilityCost) {
+	if !cost.LoyaltyX {
+		return
+	}
+	if cost.Loyalty == nil || *cost.Loyalty != 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability %d sets LoyaltyX without a zero loyalty cost — build it with LoyaltyMinusX", name, i))
+	}
+	if cost.XSlots() > 0 || cost.EnergyX || game.SacrificeCountFromX(cost.SacrificeOther) || game.TapOthersCountFromX(cost.TapOthers) ||
+		game.DiscardCountFromX(cost.DiscardCards) || game.DiscardManaValueX(cost.DiscardCards) || game.RevealCardsCountFromX(cost.RevealCards) {
+		panic(fmt.Sprintf("effects.Register: %q ability %d removes X loyalty AND pays X another way — one announced X cannot pay both", name, i))
 	}
 }
 

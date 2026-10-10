@@ -35,8 +35,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "{R}: Creatures you control gain haste until end of turn.",
-				Cost:  ManaCost("{R}"),
+				Label:   "{R}: Creatures you control gain haste until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+				Cost:    ManaCost("{R}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GrantKeywordUntilEOT{
 						Match:    And(Creature(), YouControl()),
@@ -47,6 +48,7 @@ func init() {
 			},
 			{
 				Label:     "{3}{R}{R}: Create a 5/5 red Dragon Spirit creature token with flying. Activate only if you control an attacking modified creature.",
+				Purpose:   game.Purpose{Answers: game.AnswerMakesBlocker},
 				Cost:      ManaCost("{3}{R}{R}"),
 				Condition: goroGoroAttackingModifiedCreature,
 				Effect: func(g *game.Game, item *game.StackItem) error {

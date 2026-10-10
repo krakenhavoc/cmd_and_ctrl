@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Scalding Tarn — Land (EDHREC rank 49):
 //
 //	"{T}, Pay 1 life, Sacrifice this land: Search your library for
@@ -20,9 +22,10 @@ func init() {
 		Name:         "Scalding Tarn",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
-			Cost:   fetchlandCost(),
-			Effect: fetchDual("island", "mountain"),
+			Label:   "{T}, Pay 1 life, Sacrifice this land: Search your library for an Island or Mountain card, put it onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    fetchlandCost(),
+			Effect:  fetchDual("island", "mountain"),
 		}},
 	})
 }

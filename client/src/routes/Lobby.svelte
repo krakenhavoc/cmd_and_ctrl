@@ -903,7 +903,7 @@
                     class="ghost"
                     class:on={settingsFor === g.id}
                     aria-expanded={settingsFor === g.id}
-                    title="undos, starting life, commander damage, bot speed, spawning"
+                    title="undos, starting life, commander damage, table pace, spawning"
                     onclick={() =>
                       settingsFor === g.id ? (settingsFor = null) : openTableSettings(g.id)}
                   >

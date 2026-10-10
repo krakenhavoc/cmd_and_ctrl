@@ -34,9 +34,10 @@ func init() {
 			Label:    "Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}: Put a charge counter on Coalition Relic",
-			Cost:   TapCost(),
-			Effect: b33PutChargeCounterOnSelf,
+			Label:   "{T}: Put a charge counter on Coalition Relic",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
+			Effect:  b33PutChargeCounterOnSelf,
 		}},
 		Triggered: []game.TriggeredAbility{
 			AtYourPrecombatMain(b33CoalitionRelicLabel, b33RemoveChargeCountersForMana),

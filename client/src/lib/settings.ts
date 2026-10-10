@@ -190,7 +190,15 @@ export interface Settings {
     // "auto-pass through it". Untap and Cleanup are not stoppable
     // (they don't grant priority) and are absent from this map.
     // Defaults seeded by defaultStepStops().
+    // ADR 0143 §2.3 (schema v25): this is the My-turn column, read
+    // while the viewer is the active player.
     stepStops: Record<string, boolean>;
+    // ADR 0143 §2.3 (schema v25): the Opponents'-turns column, read on
+    // every other player's turn. Same keys as stepStops; starts empty
+    // (defaultOpponentStepStops), because the key windows already stop
+    // the viewer whenever they can answer something on an opponent's
+    // turn.
+    stepStopsOpponents: Record<string, boolean>;
     // S15: mana-cost enforcement. When true, the client tags every
     // cast_spell action with `strict: true, auto_tap: true` (ADR
     // 0118 §1; and, since #1296, every catalog activate_ability the
@@ -262,12 +270,6 @@ export interface Settings {
     bluffMode: "timed" | "manual";
     bluffDelayMinMs: number;
     bluffDelayMaxMs: number;
-    // ADR 0119 §2: an automatic pass on a stack whose top item someone
-    // else controls waits until that item has been on screen this long,
-    // so a spell nobody can answer is still readable. 0 is off; the
-    // Settings choices are 0–3 s, and stackHold.ts clamps a stored
-    // value to that range where it reads it. Never holds `next`.
-    stackHoldMs: number;
     // #323: when every item on the stack is one the viewer put
     // there, auto-pass instead of asking "Counter or Pass?" about
     // your own spell. Defaults on — casting is already the
@@ -278,15 +280,6 @@ export interface Settings {
     // to respond to your own spell or trigger. Flip off to restore
     // the pre-#323 "every stack stops" behaviour permanently.
     autoPassOwnStack: boolean;
-    // S13.6 autopass-mode safety. When OFF (default), the autopass
-    // toggle auto-clears the first time the cursor reaches the
-    // viewer's own precombat_main — a safety belt so you don't
-    // skip your own turn because you forgot to turn off autopass
-    // before it cycled back to you. When ON, autopass stays
-    // engaged until manually toggled off. Labelled DANGER in the
-    // UI; anyone opting in has decided they'd rather eat the risk
-    // of a skipped turn than re-toggle every cycle.
-    autopassPersistThroughTurns: boolean;
     // #170: right-click any card for a per-card override menu —
     // move between zones, add / remove counters, mark damage,
     // declare combat by hand. Off by default, so right-click keeps
@@ -311,6 +304,11 @@ export interface Settings {
     // you owe a decision. Off removes only that positive treatment;
     // the dimming of a card you cannot play is a gate and stays.
     highlightLegalActions: boolean;
+    // #2956 (ADR 0147): when an attacker's damage covers lethal for
+    // every creature blocking it, assign it for me: lethal to each
+    // blocker, the rest to the player with trample or to the last
+    // blocker without. Short of that, the prompt still asks, pre-filled.
+    autoAssignCombatDamage: boolean;
   };
 
   shortcuts: {
@@ -362,7 +360,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 24;
+export const SETTINGS_VERSION = 27;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -376,18 +374,60 @@ const LEGACY_MUTED_KEY = "cmdctrl.muted";
 // damage step is excluded too, for a different reason: it shares the
 // combat_damage stop (turn.ts `stopKeyFor`), so the map keeps the same
 // keys it always had and no stored blob needs migrating.
+//
+// ADR 0143 §2.3 (schema v25): stepStops is the My-turn column, and its
+// default no longer ticks the end step, because you rarely act in your
+// own. The Opponents'-turns column (stepStopsOpponents) starts empty:
+// the key windows already stop you whenever an opponent's turn gives
+// you something to answer.
 export function defaultStepStops(): Record<string, boolean> {
-  const out: Record<string, boolean> = {};
-  const opted: ReadonlySet<StepID> = new Set([
+  return stepStopsWith([
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+  ]);
+}
+
+/** The Opponents'-turns column's default: nothing ticked (ADR 0143 §2.3). */
+export function defaultOpponentStepStops(): Record<string, boolean> {
+  return stepStopsWith([]);
+}
+
+// legacyDefaultStepStops is the one grid every player had by default
+// from v2 to v24, end step included, before it applied to every turn.
+// The v2 → v3 and v24 → v25 migrations compare a stored grid with it
+// to tell an untouched grid from a tuned one.
+function legacyDefaultStepStops(): Record<string, boolean> {
+  return stepStopsWith([
     "precombat_main",
     "declare_attackers",
     "declare_blockers",
     "postcombat_main",
     "end",
   ]);
+}
+
+function stepStopsWith(ticked: readonly StepID[]): Record<string, boolean> {
+  const out: Record<string, boolean> = {};
+  const opted: ReadonlySet<StepID> = new Set(ticked);
   for (const id of STEP_IDS) {
     if (!hasOwnStop(id)) continue;
     out[id] = opted.has(id);
+  }
+  return out;
+}
+
+// normalizeStepStops keeps a stored grid's boolean entries for steps
+// that grant priority, and drops everything else. Anything that is not
+// a plain object is null.
+function normalizeStepStops(v: unknown): Record<string, boolean> | null {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return null;
+  const out: Record<string, boolean> = {};
+  for (const id of STEP_IDS) {
+    if (!hasOwnStop(id)) continue;
+    const val = (v as Record<string, unknown>)[id];
+    if (typeof val === "boolean") out[id] = val;
   }
   return out;
 }
@@ -467,6 +507,7 @@ export function defaultSettings(): Settings {
       // ADR 0143 §2.1 default: Smart.
       passMode: DEFAULT_PASS_MODE,
       stepStops: defaultStepStops(),
+      stepStopsOpponents: defaultOpponentStepStops(),
       // ADR 0118 §1 default: on. A spell costs what it says, and a
       // click taps the lands for it. Off (the S15 default) is the
       // sandbox / paper-tracking posture, still a supported choice.
@@ -494,17 +535,11 @@ export function defaultSettings(): Settings {
       bluffMode: "timed",
       bluffDelayMinMs: 1500,
       bluffDelayMaxMs: 4000,
-      // ADR 0119 §2 default: about 2 s (owner answer 2a).
-      stackHoldMs: 2000,
       // #323 default: ON. "I cast it" is already the decision; the
       // client shouldn't ask you to confirm it. Opponent items on
       // the stack still stop, and the in-game "hold" toggle is the
       // per-window opt-out.
       autoPassOwnStack: true,
-      // S13.6 default: OFF — the autopass toggle clears on the
-      // viewer's next precombat_main so a forgotten autopass
-      // doesn't skip their turn. Opt-in is a DANGER setting.
-      autopassPersistThroughTurns: false,
       // #170 default: OFF. Right-click keeps meaning "show this
       // permanent's abilities" until the player opts in to the
       // override menu.
@@ -515,6 +550,9 @@ export function defaultSettings(): Settings {
       showBotReasoning: false,
       // ADR 0105 default: ON, for everyone (owner decision 4).
       highlightLegalActions: true,
+      // #2956 default: ON. When the damage kills every blocker, the
+      // split has nothing left to choose.
+      autoAssignCombatDamage: true,
     },
     shortcuts: {
       // v10 default: ON. The defaults are chosen not to collide with
@@ -614,6 +652,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     confirmExit: "synced",
     passMode: "synced",
     stepStops: "synced",
+    stepStopsOpponents: "synced",
     strictMana: "synced",
     triggerOrder: "synced",
     // ADR 0127 §3: the cards are in a person's decks, so the answers
@@ -630,12 +669,11 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     bluffMode: "synced",
     bluffDelayMinMs: "synced",
     bluffDelayMaxMs: "synced",
-    stackHoldMs: "synced",
     autoPassOwnStack: "synced",
-    autopassPersistThroughTurns: "synced",
     adminOverrides: "synced",
     showBotReasoning: "synced",
     highlightLegalActions: "synced",
+    autoAssignCombatDamage: "synced",
   },
   shortcuts: {
     enabled: "synced",
@@ -769,7 +807,8 @@ function migrate(raw: unknown): Settings {
   // this view until the v24 block below turns them into passMode.
   const legacyGameplay = merged.gameplay as unknown as Record<string, unknown>;
   if (Object.keys(merged.gameplay.stepStops).length === 0) {
-    merged.gameplay.stepStops = defaultStepStops();
+    // The v2-v24 default: the v24 → v25 block below moves it on.
+    merged.gameplay.stepStops = legacyDefaultStepStops();
     if (fromV1) {
       legacyGameplay.autoPassPriority = true;
     }
@@ -946,7 +985,8 @@ function migrate(raw: unknown): Settings {
   // player gets the hold on upgrade, as the owner asked: an
   // opponent's spell stays up for about 2 s before auto-pass lets it
   // resolve. Nothing is stored to rescue. The value is clamped where
-  // it is read (stackHold.ts), as the bluff bounds are.
+  // it is read (stackHold.ts), as the bluff bounds are. (v26 removed
+  // it again: the table's pace sets the hold, ADR 0143 §2.6.)
   //
   // v18 → v19 (ADR 0118 §1, #2188): strict payment becomes the
   // default, and everyone is moved to it ONCE (owner decision 5). A
@@ -1084,6 +1124,55 @@ function migrate(raw: unknown): Settings {
   delete legacyGameplay.autoPassPriority;
   delete legacyGameplay.smartAutoPass;
   delete legacyGameplay.alwaysStopOpponentStack;
+  // v24 → v25 (ADR 0143 §2.3 and §5): the stops grid splits by whose
+  // turn it is. stepStops keeps its key and becomes the My-turn column;
+  // stepStopsOpponents is new.
+  //   - A grid still on the v2-v24 default (or none stored at all)
+  //     moves to the new defaults: My turn without the end step, and
+  //     nothing ticked for opponents' turns. These players stop
+  //     stopping at every opponent's main phases and end step; the key
+  //     windows still stop them whenever they can respond (owner
+  //     answer Q2 (a)).
+  //   - A grid the player tuned is kept as their My-turn column and
+  //     copied into the Opponents' column, so they stop exactly where
+  //     they did before, on every turn.
+  // A stored grid is materialised, so "untouched" can only be told by
+  // comparing it with the old default, as the v2 → v3 block does. An
+  // account copy from an older client goes through here too
+  // (applySyncedCopy). From v25 on, both stored columns stand.
+  const storedStops = normalizeStepStops(
+    (s.gameplay as Record<string, unknown> | undefined)?.stepStops,
+  );
+  if (storedVersion < 25) {
+    if (storedStops === null || stepStopsMatchDefault(gp.stepStops)) {
+      gp.stepStops = defaultStepStops();
+      gp.stepStopsOpponents = defaultOpponentStepStops();
+    } else {
+      gp.stepStopsOpponents = { ...gp.stepStops };
+    }
+  } else {
+    gp.stepStopsOpponents =
+      normalizeStepStops((s.gameplay as Record<string, unknown> | undefined)?.stepStopsOpponents) ??
+      defaultOpponentStepStops();
+  }
+  gp.stepStops = normalizeStepStops(gp.stepStops) ?? defaultStepStops();
+  // v25 → v26 (ADR 0143 §2.6, owner answer Q4 (a)): gameplay.stackHoldMs
+  // is gone. The table's pace (settings.bot_pace, the host's "Table
+  // pace") sets the stack hold for people and bots alike, so one
+  // player's 3 s can no longer slow the whole table, nor a 0 speed it
+  // up. Nothing is mapped: a stored value, chosen or not, is dropped,
+  // because the hold is no longer a personal choice. The key is deleted
+  // because the shallow merge keeps unknown keys, and an account copy
+  // from an older client loses it the same way (applySyncedCopy).
+  delete legacyGameplay.stackHoldMs;
+  // v26 → v27 (ADR 0143 §4.2, owner answer Q5 (a)): the autopass toggle
+  // is Skip to my turn, and it always clears at the viewer's own
+  // precombat main. gameplay.autopassPersistThroughTurns, the danger
+  // setting that kept it on, is gone. Nothing is mapped: a player who had
+  // it on now gets the safety belt back, which is the point. The key is
+  // deleted because the shallow merge keeps unknown keys, and an account
+  // copy from an older client loses it the same way (applySyncedCopy).
+  delete legacyGameplay.autopassPersistThroughTurns;
   // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
   // gameplay.triggerOrder. No version bump: the old key itself says
   // which blob this is. A stored or synced blob that has a valid
@@ -1108,6 +1197,12 @@ function migrate(raw: unknown): Settings {
   // list is checked, not trusted: only well-formed rules survive, one
   // per key, at most MAX_AUTO_ANSWERS.
   merged.gameplay.autoAnswers = normalizeAutoAnswers(merged.gameplay.autoAnswers);
+  // #2956: gameplay.autoAssignCombatDamage fills from the default (on)
+  // through the shallow merge, so SETTINGS_VERSION stands. Anything but
+  // a boolean is the default.
+  if (typeof merged.gameplay.autoAssignCombatDamage !== "boolean") {
+    merged.gameplay.autoAssignCombatDamage = true;
+  }
   return absorbLegacy(merged);
 }
 
@@ -1197,12 +1292,13 @@ export function trimAutoAnswerText(s: string | undefined): string {
 }
 
 // stepStopsMatchDefault reports whether the supplied stepStops map
-// is structurally identical to defaultStepStops(). Used by the v2→v3
-// migration to detect "user hasn't customised stops" so we can
-// safely re-seed autoPassPriority without overwriting an explicit
-// off-toggle.
+// is structurally identical to the v2-v24 default grid
+// (legacyDefaultStepStops). Used by the v2→v3 migration to detect
+// "user hasn't customised stops" so we can safely re-seed
+// autoPassPriority without overwriting an explicit off-toggle, and by
+// the v24→v25 split (ADR 0143 §5).
 function stepStopsMatchDefault(actual: Record<string, boolean>): boolean {
-  const expected = defaultStepStops();
+  const expected = legacyDefaultStepStops();
   const actualKeys = Object.keys(actual);
   const expectedKeys = Object.keys(expected);
   if (actualKeys.length !== expectedKeys.length) return false;

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Fearless Pup — Creature — Wolf {R}, 1/1:
 //
 //	"First strike
@@ -19,7 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike"},
 		Activated: []ActivatedAbility{
-			Boast("{2}{R}: This creature gets +2/+0 until end of turn.",
+			BoastAnswering(game.AnswerPump, "{2}{R}: This creature gets +2/+0 until end of turn.",
 				ManaCost("{2}{R}"), thisGetsUntilEndOfTurn(2, 0, "Fearless Pup — +2/+0")),
 		},
 	})

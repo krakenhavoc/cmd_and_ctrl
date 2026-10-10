@@ -76,6 +76,12 @@ type Game struct {
 	// Plain data, carried by Clone and the snapshot.
 	TurnEndPending bool
 
+	// passTurn is the active player's standing end_turn (#2881,
+	// pass_turn.go): priority is passed for them whenever they hold it
+	// until their turn ends. Carried by Clone and RestoreFrom so an undo
+	// takes it back; not part of a restore point.
+	passTurn *passTurnOrder
+
 	// harvestDepth counts the trigger-harvest passes in progress
 	// (triggerHarvester.OnEvent). While it is non-zero the battlefield
 	// is being walked, so nothing reached from a harvest may move a
@@ -250,6 +256,14 @@ type Game struct {
 	// Turn.advance to a new turn (i.e. when ActiveSeat changes).
 	// Added in S13.1.
 	LoyaltyActivatedThisTurn map[uuid.UUID]bool
+
+	// LoyaltyActivatedTwiceThisTurn flags the permanents in
+	// LoyaltyActivatedThisTurn whose SECOND loyalty activation this turn
+	// has been made — only a permanent whose own static lets it activate
+	// them twice (Urza, Planeswalker; loyalty_limit.go) ever gets one.
+	// Keyed, cleared and forgotten exactly as LoyaltyActivatedThisTurn
+	// is. ADR 0145.
+	LoyaltyActivatedTwiceThisTurn map[uuid.UUID]bool
 
 	// SpellsCastThisTurn tallies, per player, the spells that player
 	// has cast this turn (CR 700.7-style "first spell each turn"

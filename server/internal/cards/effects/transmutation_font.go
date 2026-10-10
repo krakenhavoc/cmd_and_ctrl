@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Transmutation Font — Artifact {5} (EDHREC rank 3414):
 //
 //	"{T}: Create your choice of a Blood token, a Clue token, or a
@@ -37,19 +39,22 @@ func init() {
 		Caveats:      []string{"The tutor isn't implemented — sacrificing three differently named artifact tokens to search for an artifact isn't offered; the Font only makes Blood, Clue and Food tokens."},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}: Create a Blood token.",
-				Cost:   TapCost(),
-				Effect: b32CreateTokenBody(BloodToken),
+				Label:   "{T}: Create a Blood token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
+				Effect:  b32CreateTokenBody(BloodToken),
 			},
 			{
-				Label:  "{T}: Create a Clue token.",
-				Cost:   TapCost(),
-				Effect: b32CreateTokenBody(ClueToken),
+				Label:   "{T}: Create a Clue token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
+				Effect:  b32CreateTokenBody(ClueToken),
 			},
 			{
-				Label:  "{T}: Create a Food token.",
-				Cost:   TapCost(),
-				Effect: b32CreateTokenBody(FoodToken),
+				Label:   "{T}: Create a Food token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
+				Effect:  b32CreateTokenBody(FoodToken),
 			},
 		},
 	})

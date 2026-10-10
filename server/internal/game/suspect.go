@@ -55,28 +55,53 @@ import "github.com/google/uuid"
 //   - Not copiable (CR 707.2): CopiableValuesOf never reads it, so a
 //     Clone of a suspected creature is a plain creature.
 //   - Carried by clone and the snapshot (snapshot.go).
+//
+// # Can't become suspected
+//
+// Airtight Alibi's "can't become suspected" is the CantBecomeSuspected
+// restriction (restrictions.go, #2733). CanBecomeSuspected is the one
+// place it is read, and SuspectForEffect asks it, so no suspect
+// instruction can miss it.
 
 // SuspectForEffect is CR 701.60a: the named battlefield creature
 // becomes suspected. It reports whether it did.
 //
 // It does nothing, and says false, for a permanent that is not on the
 // battlefield (the target left in response, CR 608.2b), one that is not
-// a creature (CR 701.60a — only creatures can be suspected), and one
-// that is already suspected (CR 701.60d: it "can't become suspected
-// again", which is also what keeps its timestamp from being
-// rewritten). None of those is an error: each is ordinary play.
+// a creature (CR 701.60a — only creatures can be suspected), one that
+// is already suspected (CR 701.60d: it "can't become suspected again",
+// which is also what keeps its timestamp from being rewritten), and one
+// an effect says can't become suspected (Airtight Alibi, #2733). None
+// of those is an error: each is ordinary play.
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) SuspectForEffect(cardID uuid.UUID) bool {
-	c := findBattlefieldCard(g, cardID)
-	if c == nil || c.Suspected || !c.IsCreature() {
+	if !g.CanBecomeSuspected(cardID) {
 		return false
 	}
+	c := findBattlefieldCard(g, cardID)
 	c.Suspected = true
 	c.SuspectedAt = timeNowUnixNano()
 	// The menace and can't-block grants both come out of the layer pass, so the cached characteristics are stale now.
 	g.layerVersion.Add(1)
 	return true
+}
+
+// CanBecomeSuspected reports whether suspecting the named permanent
+// would do anything: it is a creature on the battlefield, it is not
+// suspected already (CR 701.60d), and no effect says it can't become
+// suspected (the CantBecomeSuspected restriction, Airtight Alibi's
+// "Enchanted creature … can't become suspected", #2733). The
+// restriction is read from the finished layer pass, so the layers are
+// brought up to date first. A card that offers a choice of what to
+// suspect (Frantic Scapegoat) asks this to build the offer, so the
+// offer and the action cannot disagree.
+//
+// Caller must hold g.mu in write mode.
+func (g *Game) CanBecomeSuspected(cardID uuid.UUID) bool {
+	g.RecomputeLayersIfStaleLocked()
+	c := findBattlefieldCard(g, cardID)
+	return c != nil && !c.Suspected && c.IsCreature() && !Restricted(c, CantBecomeSuspected)
 }
 
 // UnsuspectForEffect is "it's no longer suspected" (CR 701.60a's

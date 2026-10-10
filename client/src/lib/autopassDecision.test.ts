@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 
-import { autopassDecision, isBluff, type AutopassGates } from "./autopassDecision";
+import { autopassDecision, isBluff, stepStopFor, type AutopassGates } from "./autopassDecision";
+import { defaultSettings } from "./settings";
 import { ownsEveryStackItem } from "./holdPriority";
 import type { CardView, GameView, LegalMoveView, PlayerView, StackItemView } from "./protocol";
 import { DEFAULT_RESPONSES, hasPlay, hasResponse, keyWindow } from "./responseWindow";
@@ -23,7 +24,6 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     step: "upkeep",
     autopassToggle: false,
     viewerIsActive: false,
-    autopassPersistThroughTurns: false,
     manualStop: false,
     passMode: "smart",
     stackEmpty: true,
@@ -219,8 +219,15 @@ describe("autopassDecision — the autopass safety belt", () => {
     expect(autopassDecision(ownMain({ manualStop: true }))).toBe("clear-toggle");
   });
 
-  it("does not fire with the danger setting on", () => {
-    expect(autopassDecision(ownMain({ autopassPersistThroughTurns: true }))).toBe("pass");
+  // ADR 0143 §4.2: there is no setting that keeps Skip to my turn on
+  // through the viewer's own main phase any more. It clears whatever
+  // else is going on.
+  it("always fires: no setting, pass mode or stop keeps it on", () => {
+    for (const passMode of ["smart", "careful", "manual"] as const) {
+      expect(autopassDecision(ownMain({ passMode })), passMode).toBe("clear-toggle");
+    }
+    expect(autopassDecision(ownMain({ stepStop: false, hasPlay: false }))).toBe("clear-toggle");
+    expect(autopassDecision(ownMain({ hasResponse: true }))).toBe("clear-toggle");
   });
 
   it("does not fire on someone else's precombat_main", () => {
@@ -267,13 +274,11 @@ describe("autopassDecision — stop if the engine may be wrong", () => {
     expect(autopassDecision(ownMain({ engineMayMissMana: true, autopassToggle: true }))).toBe(
       "clear-toggle",
     );
+    // Past the safety belt (the viewer's own postcombat main), the
+    // toggle still passes over it.
     expect(
       autopassDecision(
-        ownMain({
-          engineMayMissMana: true,
-          autopassToggle: true,
-          autopassPersistThroughTurns: true,
-        }),
+        ownMain({ step: "postcombat_main", engineMayMissMana: true, autopassToggle: true }),
       ),
     ).toBe("pass");
   });
@@ -459,17 +464,62 @@ describe("autopassDecision — #1307: the autopass toggle", () => {
     expect(isBluff(autopassDecision(oppStack({ bluffCounter: true })))).toBe(true);
   });
 
-  it("still passes key windows and ticked steps with an empty stack", () => {
+  // ADR 0143 §4.1/§4.2: Skip to my turn is Smart's passing until you
+  // are next active, so it keeps Smart's key windows. With a response
+  // in hand it stops; with none, it passes, ticked step or not.
+  it("stops at a key window when the viewer can respond", () => {
+    const end = gates({ autopassToggle: true, step: "end", oppEndWindow: true });
+    expect(autopassDecision({ ...end, hasResponse: true })).toBe("hold");
+    expect(autopassDecision({ ...end, hasResponse: false })).toBe("pass");
+    for (const step of ["declare_attackers", "declare_blockers"]) {
+      const combat = gates({ autopassToggle: true, step, combatWindow: true });
+      expect(autopassDecision({ ...combat, hasResponse: true }), step).toBe("hold");
+      expect(autopassDecision({ ...combat, hasResponse: false }), step).toBe("pass");
+    }
+  });
+
+  it("passes ticked steps and quiet windows, and never bluffs a key window", () => {
     const g = gates({
       autopassToggle: true,
       step: "end",
       oppEndWindow: true,
-      hasResponse: true,
+      hasResponse: false,
       stepStop: true,
       hasPlay: true,
       bluffInstant: true,
     });
     expect(autopassDecision(g)).toBe("pass");
+    expect(
+      autopassDecision(
+        gates({ autopassToggle: true, step: "upkeep", stepStop: true, hasPlay: true }),
+      ),
+    ).toBe("pass");
+    // A response outside the key windows (an opponent's main phase with
+    // an instant in hand) is not a reason to stop.
+    expect(
+      autopassDecision(gates({ autopassToggle: true, step: "precombat_main", hasResponse: true })),
+    ).toBe("pass");
+  });
+
+  it("still stops for a choice the table waits on", () => {
+    const base = { autopassToggle: true, step: "declare_blockers" };
+    expect(autopassDecision(gates({ ...base, hasPendingChoice: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...base, owesBlockDecision: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...base, owesAttackRequirement: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...base, loopSuspended: true }))).toBe("hold");
+  });
+
+  it("clears at the viewer's own main 1, and only there", () => {
+    const own = { autopassToggle: true, viewerIsActive: true };
+    expect(autopassDecision(gates({ ...own, step: "precombat_main" }))).toBe("clear-toggle");
+    for (const step of ["upkeep", "draw", "declare_attackers", "postcombat_main", "end"]) {
+      expect(autopassDecision(gates({ ...own, step })), step).not.toBe("clear-toggle");
+    }
+    expect(
+      autopassDecision(
+        gates({ autopassToggle: true, viewerIsActive: false, step: "precombat_main" }),
+      ),
+    ).toBe("pass");
   });
 
   it("ignores Careful and Manual", () => {
@@ -959,5 +1009,114 @@ describe("autopassDecision — #2871: stop at a ticked step only when you can ac
       stack: [trigger],
     });
     expect(decide(view, false)).toBe("hold");
+  });
+});
+
+// ADR 0143 §2.3: rule 8 reads the column for whoever is active. With
+// the defaults a player holding an instant no longer stops at every
+// opponent's main phases and end step; the key windows still stop
+// them whenever they can respond.
+describe("autopassDecision — ADR 0143: stops by whose turn it is", () => {
+  type Columns = Parameters<typeof stepStopFor>[0];
+  const defaults = (): Columns => {
+    const gp = defaultSettings().gameplay;
+    return { stepStops: gp.stepStops, stepStopsOpponents: gp.stepStopsOpponents };
+  };
+  // An instant in hand: something to play outside the viewer's own
+  // sorcery window (hasPlay). Whether it is also a response is up to
+  // each test.
+  const holdingInstant = (
+    columns: Columns,
+    step: string,
+    viewerIsActive: boolean,
+    extra: Partial<AutopassGates> = {},
+  ) =>
+    gates({
+      step,
+      viewerIsActive,
+      stepStop: stepStopFor(columns, step, viewerIsActive),
+      hasPlay: true,
+      ...extra,
+    });
+
+  it("stepStopFor reads My turn on your turn and Opponents' turns otherwise", () => {
+    const columns = { stepStops: { upkeep: true }, stepStopsOpponents: { upkeep: false } };
+    expect(stepStopFor(columns, "upkeep", true)).toBe(true);
+    expect(stepStopFor(columns, "upkeep", false)).toBe(false);
+    expect(stepStopFor(columns, "draw", true)).toBeUndefined();
+    expect(stepStopFor(columns, null, true)).toBeUndefined();
+    // The two combat damage steps share one stop, in both columns.
+    const dmg = { stepStops: { combat_damage: true }, stepStopsOpponents: { combat_damage: true } };
+    expect(stepStopFor(dmg, "first_strike_damage", true)).toBe(true);
+    expect(stepStopFor(dmg, "first_strike_damage", false)).toBe(true);
+  });
+
+  it("defaults: an opponent's main 1, main 2 and end step pass with an instant in hand", () => {
+    for (const step of ["precombat_main", "postcombat_main", "end"]) {
+      expect(autopassDecision(holdingInstant(defaults(), step, false)), step).toBe("pass");
+    }
+  });
+
+  it("defaults: your own main phases and combat declarations still stop", () => {
+    for (const step of [
+      "precombat_main",
+      "declare_attackers",
+      "declare_blockers",
+      "postcombat_main",
+    ]) {
+      expect(autopassDecision(holdingInstant(defaults(), step, true)), step).toBe("hold");
+    }
+    // Your own end step is no longer ticked.
+    expect(autopassDecision(holdingInstant(defaults(), "end", true))).toBe("pass");
+  });
+
+  it("defaults: an opponent's attack still stops you when you can respond", () => {
+    for (const step of ["declare_attackers", "declare_blockers"]) {
+      const g = holdingInstant(defaults(), step, false, { combatWindow: true, hasResponse: true });
+      expect(autopassDecision(g), step).toBe("hold");
+    }
+  });
+
+  it("defaults: an opponent's end step still stops you when you can respond", () => {
+    // PR 1's key window, untouched by the columns.
+    const g = holdingInstant(defaults(), "end", false, { oppEndWindow: true, hasResponse: true });
+    expect(autopassDecision(g)).toBe("hold");
+    expect(autopassDecision({ ...g, hasResponse: false })).toBe("pass");
+  });
+
+  it("defaults: an opponent's main phase passes even with a response, outside the key windows", () => {
+    const g = holdingInstant(defaults(), "precombat_main", false, { hasResponse: true });
+    expect(autopassDecision(g)).toBe("pass");
+  });
+
+  it("a step ticked for opponents stops on their turns, and not on yours", () => {
+    const columns = { stepStops: defaults().stepStops, stepStopsOpponents: { upkeep: true } };
+    expect(autopassDecision(holdingInstant(columns, "upkeep", false))).toBe("hold");
+    expect(autopassDecision(holdingInstant(columns, "upkeep", true))).toBe("pass");
+  });
+
+  it("a player who tuned their grid stops where they did, on every turn", () => {
+    // The v25 migration copies a tuned grid into both columns.
+    const tuned = { upkeep: true, precombat_main: true, end: true };
+    const columns = { stepStops: { ...tuned }, stepStopsOpponents: { ...tuned } };
+    for (const step of ["upkeep", "precombat_main", "end"]) {
+      for (const active of [true, false]) {
+        expect(autopassDecision(holdingInstant(columns, step, active)), `${step} ${active}`).toBe(
+          "hold",
+        );
+      }
+    }
+    expect(autopassDecision(holdingInstant(columns, "postcombat_main", false))).toBe("pass");
+  });
+
+  it("only-when-I-can-act applies to both columns", () => {
+    const columns = { stepStops: { upkeep: true }, stepStopsOpponents: { upkeep: true } };
+    for (const active of [true, false]) {
+      const g = holdingInstant(columns, "upkeep", active, { hasPlay: false });
+      expect(autopassDecision(g), String(active)).toBe("pass");
+      expect(autopassDecision({ ...g, stepStopsOnlyWhenCanAct: false }), String(active)).toBe(
+        "hold",
+      );
+    }
   });
 });

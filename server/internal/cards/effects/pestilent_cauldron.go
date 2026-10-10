@@ -47,15 +47,17 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: `{T}, Discard a card: Create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."`,
-				Cost:  Plus(TapCost(), DiscardACard()),
+				Label:   `{T}, Discard a card: Create a 1/1 black and green Pest creature token with "When this token dies, you gain 1 life."`,
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(TapCost(), DiscardACard()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: PestToken(), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label: "{1}, {T}: Each opponent mills cards equal to the amount of life you gained this turn.",
-				Cost:  Plus(ManaCost("{1}"), TapCost()),
+				Label:   "{1}, {T}: Each opponent mills cards equal to the amount of life you gained this turn.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{1}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					n := b15LifeGainedThisTurn(g, item.Controller)

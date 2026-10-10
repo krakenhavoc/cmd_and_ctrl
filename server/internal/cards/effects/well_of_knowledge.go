@@ -30,7 +30,7 @@ func init() {
 			Cost:      ManaCost("{2}"),
 			Condition: AllConditions(DuringStep(game.StepDraw), DuringYourTurn()),
 			AnyPlayer: true,
-			Purpose:   game.Purpose{Draws: 1},
+			Purpose:   game.Purpose{Answers: game.AnswerValue, Draws: 1},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

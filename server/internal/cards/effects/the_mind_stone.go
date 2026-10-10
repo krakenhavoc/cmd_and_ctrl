@@ -43,6 +43,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // No simplification.
 func init() {
+	harness := Harness("{5}{W}, {T}: Harness The Mind Stone.", Plus(ManaCost("{5}{W}"), TapCost()))
+	harness.Purpose = game.Purpose{Answers: game.AnswerValue}
 	Register(Spec{
 		OracleID:        "b175e826-09e8-4fae-9f2e-b902f95b282d",
 		Name:            "The Mind Stone",
@@ -54,7 +56,7 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{
-			Harness("{5}{W}, {T}: Harness The Mind Stone.", Plus(ManaCost("{5}{W}"), TapCost())),
+			harness,
 		},
 		Triggered: []game.TriggeredAbility{theMindStoneEndStepFlicker()},
 	})

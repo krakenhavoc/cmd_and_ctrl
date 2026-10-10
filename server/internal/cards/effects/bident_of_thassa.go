@@ -36,8 +36,9 @@ func init() {
 			}, "Bident of Thassa — draw a card", Do(DrawCards{N: 1})), "Bident of Thassa — draw a card?"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{U}, {T}: Creatures your opponents control attack this turn if able.",
-			Cost:  Plus(ManaCost("{1}{U}"), TapCost()),
+			Label:   "{1}{U}, {T}: Creatures your opponents control attack this turn if able.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    Plus(ManaCost("{1}{U}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return OpponentsCreaturesAttackIfAble{

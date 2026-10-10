@@ -166,6 +166,107 @@ type Card struct {
 	// exclude the 106 non-black-bordered token records without a
 	// second field lookup elsewhere. Added in ADR 0078.
 	BorderColor string `json:"border_color"`
+	// AllParts is Scryfall's all_parts list, KEPT ONLY for its meld
+	// entries (component "meld_part" / "meld_result"): Load drops every
+	// other related card (tokens, combo pieces) as it decodes, so the
+	// index pays nothing for the thousands of cards that list a token.
+	// ADR 0145.
+	AllParts []RelatedCard `json:"all_parts,omitempty"`
+	// MeldResult is the combined back face's own record for a meld card
+	// (CR 712.4): the printing its meld_result part names, attached by
+	// Load (and Put) once both are indexed. nil for every other card,
+	// and for the back face's own record. Not part of the dump — the
+	// deck importer reads it to stamp game.Card.Meld. ADR 0145.
+	MeldResult *Card `json:"-"`
+}
+
+// RelatedCard is one entry of Scryfall's all_parts list.
+type RelatedCard struct {
+	ID        uuid.UUID `json:"id"`
+	Component string    `json:"component"`
+	Name      string    `json:"name"`
+}
+
+// LayoutMeld is Scryfall's layout for a meld card and for the combined
+// back face's own record.
+const LayoutMeld = "meld"
+
+// meldParts keeps the meld entries of an all_parts list, nil for none.
+func meldParts(parts []RelatedCard) []RelatedCard {
+	var out []RelatedCard
+	for _, p := range parts {
+		if p.Component == "meld_part" || p.Component == "meld_result" {
+			out = append(out, p)
+		}
+	}
+	return out
+}
+
+// MeldResultPart returns the meld_result entry of a meld card's parts,
+// and whether c is a FRONT (a meld card a deck can hold) rather than the
+// combined back face's own record.
+func (c Card) MeldResultPart() (RelatedCard, bool) {
+	if c.Layout != LayoutMeld {
+		return RelatedCard{}, false
+	}
+	for _, p := range c.AllParts {
+		if p.Component == "meld_result" {
+			return p, true
+		}
+	}
+	return RelatedCard{}, false
+}
+
+// IsMeldBackFace reports whether c is the combined back face of a meld
+// pair (Urza, Planeswalker; Brisela, Voice of Nightmares) — a record
+// Scryfall ships as a card, but which is only ever the two halves of a
+// melded permanent and never a card in a deck (CR 712.4b).
+func (c Card) IsMeldBackFace() bool {
+	p, ok := c.MeldResultPart()
+	return ok && (p.ID == c.ID || normalizeName(p.Name) == normalizeName(c.Name))
+}
+
+// attachMeldResult points a meld FRONT at its back face's record when
+// lookup finds it. A back face's own record, and any card that is not a
+// meld card, is returned unchanged.
+func attachMeldResult(c Card, lookup func(RelatedCard) (Card, bool)) Card {
+	p, ok := c.MeldResultPart()
+	if !ok || c.IsMeldBackFace() {
+		return c
+	}
+	if r, found := lookup(p); found {
+		r.MeldResult = nil
+		c.MeldResult = &r
+	}
+	return c
+}
+
+// attachMeldResults runs attachMeldResult over every meld front in the
+// three maps a Load builds, looking the back face up by printing ID and
+// falling back to its name.
+func attachMeldResults(byID map[uuid.UUID]Card, byName map[string]Card, byOracle map[uuid.UUID]Card) {
+	lookup := func(p RelatedCard) (Card, bool) {
+		if r, ok := byID[p.ID]; ok {
+			return r, true
+		}
+		r, ok := byName[normalizeName(p.Name)]
+		return r, ok && r.IsMeldBackFace()
+	}
+	for id, c := range byID {
+		if c.Layout == LayoutMeld {
+			byID[id] = attachMeldResult(c, lookup)
+		}
+	}
+	for k, c := range byName {
+		if c.Layout == LayoutMeld {
+			byName[k] = attachMeldResult(c, lookup)
+		}
+	}
+	for k, c := range byOracle {
+		if c.Layout == LayoutMeld {
+			byOracle[k] = attachMeldResult(c, lookup)
+		}
+	}
 }
 
 // CardFace is one printed side of a double-faced / split / flip
@@ -327,6 +428,7 @@ func (i *Index) Load(path string) (int, error) {
 		if c.ID == uuid.Nil {
 			continue // a record without an ID is useless; skip rather than reject
 		}
+		c.AllParts = meldParts(c.AllParts)
 		loaded[c.ID] = c
 		if isTokenArtPoolCandidate(c) {
 			tokenPool = append(tokenPool, c)
@@ -377,6 +479,8 @@ func (i *Index) Load(path string) (int, error) {
 	if _, err := dec.Token(); err != nil && !errors.Is(err, io.EOF) {
 		return 0, fmt.Errorf("read closing token: %w", err)
 	}
+
+	attachMeldResults(loaded, byName, byOracle)
 
 	i.mu.Lock()
 	i.byID = loaded
@@ -637,6 +741,12 @@ func (i *Index) LoadedAt() time.Time {
 func (i *Index) Put(c Card) {
 	i.mu.Lock()
 	defer i.mu.Unlock()
+	c.AllParts = meldParts(c.AllParts)
+	if c.Layout == LayoutMeld {
+		// Either half of the join may arrive first; the sweep is
+		// small and runs only for a meld record.
+		defer attachMeldResults(i.byID, i.byName, i.byOracle)
+	}
 	i.byID[c.ID] = c
 	if c.OracleID != uuid.Nil {
 		if existing, ok := i.byOracle[c.OracleID]; !ok || preferIncoming(existing, c) {

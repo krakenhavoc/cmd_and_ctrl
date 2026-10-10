@@ -47,9 +47,10 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{5}{B}: Return this card from your graveyard to the battlefield tapped.",
-			Cost:  ManaCost("{5}{B}"),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{5}{B}: Return this card from your graveyard to the battlefield tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{5}{B}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return returnThisFromGraveyardTapped(g, item)
 			},

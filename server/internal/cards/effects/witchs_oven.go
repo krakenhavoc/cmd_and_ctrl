@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Witch's Oven — Artifact {1} (EDHREC rank 3105):
 //
 //	"{T}, Sacrifice a creature: Create a Food token. If the
@@ -27,9 +29,10 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The sacrificed creature's toughness is read from its printed value and its counters only — a bonus from another permanent isn't counted toward the two-Food threshold."},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Sacrifice a creature: Create a Food token. If the sacrificed creature's toughness was 4 or greater, create two Food tokens instead.",
-			Cost:   Plus(TapCost(), SacrificeACreature()),
-			Effect: b29FoodForSacrificedCreature,
+			Label:   "{T}, Sacrifice a creature: Create a Food token. If the sacrificed creature's toughness was 4 or greater, create two Food tokens instead.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(TapCost(), SacrificeACreature()),
+			Effect:  b29FoodForSacrificedCreature,
 		}},
 	})
 }

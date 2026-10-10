@@ -948,6 +948,12 @@ type PendingChoice struct {
 	// closure. Empty on every other prompt.
 	OptionCarry []uuid.UUID
 
+	// CouncilVote makes an option pick a BALLOT (CR 701.38, ADR 0146,
+	// council_vote.go): the vote so far, which the answer is cast into
+	// before the next voter is asked. Plain data, written to a restore
+	// point and shown to every seat; nil on every other prompt.
+	CouncilVote *CouncilVote
+
 	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is

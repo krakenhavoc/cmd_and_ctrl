@@ -29,8 +29,9 @@ func init() {
 			})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{W}, {T}, Tap X untapped Foods you control: Create X 1/1 white Human creature tokens.",
-			Cost:  Plus(ManaCost("{W}"), TapCost(), TapXUntapped("X untapped Foods you control", OfSubtype("Food"))),
+			Label:   "{W}, {T}, Tap X untapped Foods you control: Create X 1/1 white Human creature tokens.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{W}"), TapCost(), TapXUntapped("X untapped Foods you control", OfSubtype("Food"))),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Human"), N: ctx.X()}.Apply(ctx)

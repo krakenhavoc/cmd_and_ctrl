@@ -67,8 +67,8 @@ var activatedRowScopes = map[string]rowScope{
 	// ADR 0129 §8: the printed energy component; a player's energy is
 	// public, so the shortfall it greys the row with is too.
 	"EnergyCost": rowPublic, "EnergyCostX": rowPublic,
-	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "DiscardSelf": rowPublic,
-	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
+	"SorcerySpeed": rowPublic, "LoyaltyCost": rowPublic, "LoyaltyCostX": rowPublic, "DiscardSelf": rowPublic,
+	"ExileSelf": rowPublic, "ReturnSelf": rowPublic, "BottomSelf": rowPublic, "Exert": rowPublic, "CrewCost": rowPublic, "Saddle": rowPublic, "DemandsX": rowPublic,
 	"MinX": rowPublic, "XSlots": rowPublic, "PhyrexianSymbols": rowPublic, "PhyrexianGranted": rowPublic,
 	"TargetMode": rowPublic, "Modes": rowPublic,
 	// ADR 0106 §1: the printed "Any player may activate this ability"

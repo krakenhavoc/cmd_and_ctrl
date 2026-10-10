@@ -28,7 +28,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "trample"},
 		Activated: []ActivatedAbility{{
-			Label: "Pay 2 life, Sacrifice another creature: Search your library for a card and put it into your hand",
+			Label:   "Pay 2 life, Sacrifice another creature: Search your library for a card and put it into your hand",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: Plus(PayLife(2), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),

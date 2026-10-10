@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Terramorphic Expanse — Land (EDHREC rank 28):
 //
 //	"{T}, Sacrifice this land: Search your library for a basic land
@@ -14,9 +16,10 @@ func init() {
 		Name:         "Terramorphic Expanse",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
-			Cost:   Plus(TapCost(), SacrificeThis()),
-			Effect: fetchBasicTapped,
+			Label:   "{T}, Sacrifice this land: Search your library for a basic land card, put it onto the battlefield tapped, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), SacrificeThis()),
+			Effect:  fetchBasicTapped,
 		}},
 	})
 }

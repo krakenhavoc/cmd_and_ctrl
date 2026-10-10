@@ -27,8 +27,9 @@ func init() {
 		Name:         "Inferno Titan",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{R}: This creature gets +1/+0 until end of turn.",
-			Cost:  ManaCost("{R}"),
+			Label:   "{R}: This creature gets +1/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return BoostUntilEOT{Target: ctx.Source(), Power: 1, Label: "Inferno Titan — +1/+0"}.Apply(ctx)

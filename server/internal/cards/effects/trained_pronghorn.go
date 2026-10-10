@@ -18,8 +18,9 @@ func init() {
 		Name:         "Trained Pronghorn",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Discard a card: Prevent all damage that would be dealt to this creature this turn.",
-			Cost:  DiscardACard(),
+			Label:   "Discard a card: Prevent all damage that would be dealt to this creature this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
+			Cost:    DiscardACard(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return shieldThis(g, item, PreventDamageFromSource{})
 			},

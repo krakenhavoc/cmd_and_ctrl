@@ -28,8 +28,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label: "Sacrifice this creature: Creatures you control with counters on them gain hexproof and indestructible until end of turn.",
-				Cost:  SacrificeThis(),
+				Label:   "Sacrifice this creature: Creatures you control with counters on them gain hexproof and indestructible until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Cost:    SacrificeThis(),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GrantKeywordUntilEOT{
 						Match:    And(Creature(), YouControl(), b64HasAnyCounter()),

@@ -24,7 +24,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{W}: Create a 1/1 white Warrior creature token.",
 			Cost:    ManaCost("{2}{W}"),
-			Purpose: game.Purpose{Tokens: 1},
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker, Tokens: 1},
 			Effect:  Do(CreateToken{Template: TokenCard("1/1 white Warrior"), N: 1}),
 		}},
 	})

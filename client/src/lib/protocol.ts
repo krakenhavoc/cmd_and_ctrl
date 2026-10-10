@@ -210,6 +210,7 @@ export type ActionType =
   | "mulligan"
   | "pass_priority"
   | "pass_turn"
+  | "end_turn"
   | "resolve_choice"
   // ADR 0121 §5: "Roll a die" — `{die: "d6" | "d20" | "coin"}`, a roll
   // at the table for fun. Never a game roll, never undoable, and the
@@ -915,6 +916,10 @@ export type LogKind =
   // (absent when they controlled none); `cause` is "forced" when it was
   // their only creature and was chosen for them.
   | "ring_tempted"
+  // ADR 0146: `seat` cast a vote (CR 701.38). `choice` is the option as
+  // the card prints it (a word, or the name of the permanent or player
+  // voted for) and `card_id` the card that called the vote.
+  | "vote"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -987,6 +992,10 @@ export type LogKind =
   // a player announces out loud, and a reader scrolling back wants
   // to know when it happened.
   | "transform"
+  // ADR 0145: two cards were melded into one permanent (CR 701.42a).
+  // `card_id` is the melded permanent and `label` names the two cards
+  // it was melded from.
+  | "meld"
   // #1199, ADR 0084: a permanent phased out or in (CR 702.26).
   // Narrated for `transform`'s reason and one more that is stronger
   // here — phasing out is not a zone change (CR 702.26d), so no
@@ -1593,6 +1602,12 @@ export interface PendingChoiceView {
    * not see arrives with the label and no cards at all.
    */
   pick_options?: PickOptionView[];
+  /**
+   * ADR 0146: present when this option_pick is one player's BALLOT in a
+   * vote (CR 701.38), carrying the vote so far. Public: every seat sees
+   * each vote as it is cast.
+   */
+  council_vote?: CouncilVoteView;
 
   accept_label?: string;
   decline_label?: string;
@@ -1765,6 +1780,21 @@ export interface DamageAssignmentView {
   // blocks every creature in blocker_card_ids, and its controller
   // divides its damage among them freely — no order, no trample.
   blocker_divides?: boolean;
+  // #2956 (ADR 0147): the server's canonical split
+  // (legal.CanonicalDamageSplit), the one the bots answer with. The
+  // prompt pre-fills it, and with "Auto-assign combat damage" on the
+  // client sends it unasked when covers_lethal is set. `lethal` is the
+  // lethal damage of each blocker, indexed like blocker_card_ids.
+  suggested?: DamageSplitView;
+  lethal?: number[];
+  covers_lethal?: boolean;
+}
+
+// DamageSplitView is a damage-assignment answer in the resolve_choice
+// payload's own shape (#2956).
+export interface DamageSplitView {
+  assignments: { blocker_id: string; amount: number }[];
+  trample_to_player?: number;
 }
 
 // DelayedTriggerView mirrors `protocol.DelayedTriggerView`
@@ -1862,6 +1892,29 @@ export interface TargetRefView {
   // announcement.
   slot?: number;
   mode?: number;
+}
+
+// CouncilVoteView is a rules vote in progress (ADR 0146, CR 701.38), as
+// the open ballot carries it. Not the sandbox VoteView below: nobody can
+// re-cast or end it, and the ability that called it reads the tally.
+export interface CouncilVoteView {
+  // The controller of the ability that called the vote, and the player
+  // voting now.
+  controller: string;
+  voter: string;
+  // The vote's choices in printed order, and the votes each has so far.
+  options: string[];
+  tally: number[];
+  ballots?: { voter: string; option: number }[];
+  // Each of the prompt's pick_options as an index into `options`; -1 is
+  // the "Don't vote again" option of an extra vote the voter may decline.
+  offered: number[];
+  optional?: boolean;
+  votes_left?: number;
+  // Bot hints: how much the controller, and an opponent, wants each
+  // option to win.
+  for_controller?: number[];
+  for_opponents?: number[];
 }
 
 export interface VoteView {
@@ -2066,6 +2119,11 @@ export interface PlayerView {
   // nothing does. A ban that names particular lands (City in a Bottle)
   // rides on the land's own `cant_cast` instead.
   cant_play_lands?: string;
+  // #2559 (CR 101.2): the clause that stops this seat playing ANY card
+  // from its hand right now, a spell or a land ("You can't play cards
+  // from your hand — Memory Vessel"). While it is set `cant_play_lands`
+  // carries the same clause; the badge row shows one NO HAND badge.
+  cant_play_from_hand?: string;
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",
@@ -2551,7 +2609,22 @@ export interface ExilePlayView {
   // Absent for a grant that charges the printed cost, which still
   // asks.
   x_locked_at_zero?: boolean;
+  // #2559: when the grant ends, and the player the window is counted
+  // against for the three windows that name one ("until Bo's next
+  // turn"). Read by exileGrants.ts for the tooltip and a bystander's
+  // label. Absent: say "until end of turn", as before the field.
+  until?: ExilePlayUntil;
+  until_player?: string;
 }
+
+// #2559: the windows `exile_play.until` names.
+export type ExilePlayUntil =
+  | "end_of_turn"
+  | "end_of_next_turn"
+  | "next_turn"
+  | "next_end_step"
+  | "while_exiled"
+  | "until_another";
 
 // #1297: the pile an "Exile N cards from your …" cost reads — always
 // the activator's own. The server stamps it with `exile_cost_n`.
@@ -2652,6 +2725,10 @@ export interface ActivatedAbilityView {
   // so test for `!== undefined`, never for truthiness. Added with
   // #329 / #334.
   loyalty_cost?: number;
+  // #1944: a loyalty cost of −X. loyalty_cost is 0, demands_x is set,
+  // and the announced X is removed, at most the permanent's loyalty
+  // (CR 606.6).
+  loyalty_cost_x?: boolean;
   // A "Sacrifice a creature"-style cost: the clause, and the
   // permanents the controller can pay it with right now. #747: min /
   // max are the clause's count ("Sacrifice two artifacts" is 2 / 2;
@@ -2724,6 +2801,9 @@ export interface ActivatedAbilityView {
   // Chains, Shigeki). Advisory like `exile_self`: the source is the
   // payment, so nothing is picked and nothing is sent.
   return_self?: boolean;
+  // #2726: "Put this creature on the bottom of its owner's library"
+  // (Timestream Navigator). Advisory like `return_self`.
+  bottom_self?: boolean;
   // ADR 0130 §4: "Exert this creature" — the source won't untap during
   // the activator's next untap step. Always payable, so it never greys
   // the row, and nothing is sent.
@@ -2966,6 +3046,8 @@ export interface TargetPurposeView {
   life_gain?: number;
   life_loss?: number;
   damage?: number;
+  // #1944: the damage is the announced X; `damage` is then absent.
+  damage_is_x?: boolean;
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
 }
@@ -3039,6 +3121,10 @@ export interface LegalTargetsView {
   // #2526: a SACRIFICE clause's set rule — the picks must fill every
   // group with a different permanent. See sacrificeCost.ts.
   each_of?: SacrificeGroupView[];
+  // ADR 0137's amendment: a craft clause's "two that share a card
+  // type" — every pick must have a key every other pick also has. See
+  // sacrificeCost.ts (fitsShares).
+  shares?: TargetSharesView;
   // #2097: a SACRIFICE clause that takes every permanent in `cards`
   // ("sacrifice all creatures you control"); min and max are their
   // number. The client confirms rather than picks, and sends
@@ -3124,6 +3210,15 @@ export interface DivideView {
 export interface TargetDifferenceView {
   label: string;
   keys?: Record<string, string>;
+}
+
+// TargetSharesView is LegalTargetsView.shares (ADR 0137's amendment):
+// `label` is the rule's words ("share a card type"), and `keys` maps
+// each candidate to every key it has (an artifact creature has two).
+// A candidate missing from `keys` can be part of no payment.
+export interface TargetSharesView {
+  label: string;
+  keys?: Record<string, string[]>;
 }
 
 /**
@@ -3813,7 +3908,8 @@ export interface CardView extends CastSurfaceView {
   protection?: ProtectionView[];
   // S24 — the restriction set the server computed for this
   // permanent: "cant_attack", "cant_block", "cant_be_blocked",
-  // "cant_activate", "cant_activate_mana". Absent for the permanent
+  // "cant_activate", "cant_activate_mana", and (#2733)
+  // "cant_become_suspected". Absent for the permanent
   // nothing is restricting, which is nearly all of them.
   //
   // Deliberately separate from `abilities`. A restriction is not a
@@ -3853,6 +3949,15 @@ export interface CardView extends CastSurfaceView {
   // right half's). The face picker offers it as a third choice and the
   // cast sends `fuse: true`.
   fused?: CardFaceView;
+  // ADR 0145 (CR 712.4a): a MELDED permanent's two cards, carrier
+  // first. Everything above describes the combined back face, which
+  // is the permanent; this is what it is made of, and what its owner
+  // gets back when it leaves. Absent on every other card.
+  melded_from?: CardFaceView[];
+  // ADR 0145 (CR 712.4): a meld card's combined back face — the
+  // permanent it and its partner become when they meld. Absent on
+  // every other card and on a melded permanent.
+  melds_into?: CardFaceView;
 }
 
 // ManaAbilityView mirrors `protocol.ManaAbilityView` server-side —
@@ -4227,7 +4332,8 @@ export interface TableSettingsView {
   starting_life: number;
   // Damage from one commander that loses the game.
   commander_damage: number;
-  // AI seat pacing preset.
+  // The table pace (ADR 0143 §2.6): bot think time, and the stack hold
+  // every seat waits before auto-passing another player's spell.
   bot_pace: "fast" | "normal" | "slow";
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).

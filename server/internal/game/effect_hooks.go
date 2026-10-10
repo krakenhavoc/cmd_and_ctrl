@@ -269,6 +269,14 @@ type ManaAbilityShape struct {
 	// Added in the S21 mana-cost pass.
 	SacrificeOther *TargetSpec
 
+	// Answers is what this mana ability can do in response (ADR 0142
+	// §2): AnswerSacOutlet for a creature sacrifice outlet (Ashnod's
+	// Altar), AnswerValue for a mana ability that answers nothing.
+	// Declared by hand (effects.ManaAbility.Answers); zero is "not
+	// declared", and internal/legal then reads the sacrifice cost's
+	// printed object. Not on the wire. The engine never reads it.
+	Answers Answers
+
 	// TapOthers taps OTHER untapped permanents the activator
 	// controls as part of the cost — Springleaf Drum's "{T}, Tap an
 	// untapped creature you control", Jaspera Sentinel's "{T}, Tap

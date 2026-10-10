@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Vintara Elephant — Creature — Elephant {4}{G}, 4/3:
 //
 //	"Trample
@@ -25,6 +27,7 @@ func init() {
 		PrintedKeywords: []string{"trample"},
 		Activated: []ActivatedAbility{{
 			Label:     "{3}: This creature loses trample until end of turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerCombatGrant},
 			Cost:      ManaCost("{3}"),
 			AnyPlayer: true,
 			Effect:    thisLosesKeywordUntilEndOfTurn("trample", "Vintara Elephant — loses trample until end of turn"),

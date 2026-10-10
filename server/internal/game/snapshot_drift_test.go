@@ -121,6 +121,7 @@ var gameFields = plan(
 	"planAt", rebuilt, "derived from the restored cursor: a restored plan describes the cursor it was captured with",
 	"SplitSecondActive", carried, "",
 	"LoyaltyActivatedThisTurn", carried, "",
+	"LoyaltyActivatedTwiceThisTurn", carried, "",
 	"SpellsCastThisTurn", carried, "",
 	"ForetoldThisTurn", carried, "",
 	"LandsPlayedThisTurn", carried, "",
@@ -158,6 +159,7 @@ var gameFields = plan(
 	// validates against. A restored game is a NEW *Game — zero
 	// generation, empty slot — and its first view refolds the carried
 	// Events from scratch, so there is nothing to serialise.
+	"passTurn", dropped, "restores empty: the active player's standing end_turn (#2881, pass_turn.go); after a restore they hold priority as if they had not pressed it, and press it again. Nothing is passed that they did not pass",
 	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
@@ -476,6 +478,12 @@ var cardFields = plan(
 	// reason — the craft ability that wrote it is gone, so nothing could
 	// rebuild it, and a restored Jadeheart Attendant would gain no life.
 	"CraftedWith", carried, "",
+	// ADR 0145: a meld card's printed meld data, stamped at import and
+	// rebuildable from nothing, and a melded permanent's two cards,
+	// which are what its owner gets back when it leaves.
+	"Meld", carried, "",
+	"MeldedFrom", carried, "",
+	"MeldSplitFrom", carried, "",
 	// ADR 0071 (#757): the CR 716.2 level and CR 719.3 solved
 	// designations. Carried, and the reason is sharper than for the
 	// two above — both zero values are LEGAL states ("level 1",
@@ -960,6 +968,10 @@ var pendingChoiceFields = plan(
 	// continuation: a restored prompt that forgot them would answer
 	// about nothing.
 	"OptionCarry", carried, "",
+	// ADR 0146: a ballot's vote so far. Carried because it is the
+	// vote: a restored ballot that forgot it would be an option pick
+	// whose answer counts for nothing.
+	"CouncilVote", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a

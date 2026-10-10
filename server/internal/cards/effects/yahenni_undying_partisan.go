@@ -40,8 +40,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice another creature: Yahenni gains indestructible until end of turn.",
-			Cost:  SacrificeAnotherN(1, "another creature", Creature()),
+			Label:   "Sacrifice another creature: Yahenni gains indestructible until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSacOutlet},
+			Cost:    SacrificeAnotherN(1, "another creature", Creature()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Target:   item.SourceCardID,

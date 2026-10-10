@@ -475,6 +475,34 @@ type Card struct {
 	// game and checks exactly this.
 	ActiveFace int
 
+	// Meld is the printed meld data of a meld card (CR 712.4, ADR 0145):
+	// the combined back face its meld pair forms. Stamped at deck import
+	// from the Scryfall record's meld_result part and never written
+	// after, so it is the CARD's, not the object's: a copy effect does
+	// not copy it (PrintedValues has no slot for it) and a Clone copying
+	// Urza, Lord Protector is not a meld card (CR 701.42b). nil on every
+	// other card. See meld.go.
+	Meld *MeldPrint
+
+	// MeldedFrom is the two cards a MELDED permanent is (CR 712.4a): the
+	// object on the battlefield is one permanent with the combined back
+	// face's characteristics, and these are the cards that represent
+	// it, as they sat in exile when they were melded. Empty on every
+	// other object. MoveCard splits it back into these two cards when
+	// it leaves the battlefield (CR 712.21). See meld.go.
+	MeldedFrom []Card
+
+	// MeldSplitFrom is, on the card that carried a melded permanent's
+	// identity as it left the battlefield, the OTHER card that permanent
+	// became (CR 712.21c): "if an effect can find the new object that a
+	// melded permanent becomes as it leaves the battlefield, it finds
+	// both cards". An effect that tracked the permanent by ID finds the
+	// carrier; this is how it finds the second card. Written by MoveCard
+	// as it splits the permanent and cleared by the carrier's next move,
+	// so it names the partner only while both are where the split left
+	// them. Zero on every other card. See meld.go.
+	MeldSplitFrom ObjectRef
+
 	// BaseController is the controller this permanent reverts to when
 	// every control-changing continuous effect on it ends (CR 613.1b)
 	// — the player who controlled it when it entered the

@@ -32,10 +32,11 @@ func init() {
 			WhenThisEnters("Seasoned Cryomancer — draw two cards, then discard two cards", seasonedCryomancerETB),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{U}{U}, Exile this card from your graveyard: Draw two cards.",
-			Cost:   Plus(ManaCost("{3}{U}{U}"), ExileThis()),
-			Zones:  []game.ZoneKind{game.ZoneGraveyard},
-			Effect: Do(DrawCards{N: 2}),
+			Label:   "{3}{U}{U}, Exile this card from your graveyard: Draw two cards.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}{U}{U}"), ExileThis()),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
+			Effect:  Do(DrawCards{N: 2}),
 		}},
 	})
 }

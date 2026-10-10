@@ -389,8 +389,9 @@ func init() {
 		OracleID: d1657LandCannonOracle,
 		Name:     "Test Land Cannon",
 		Activated: []ActivatedAbility{{
-			Label: "{T}: This deals damage equal to the number of lands you control divided as you choose among any number of targets.",
-			Cost:  TapCost(),
+			Label:   "{T}: This deals damage equal to the number of lands you control divided as you choose among any number of targets.",
+			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Cost:    TapCost(),
 			Targets: TargetAny().WithCount(0, 0).
 				Dividing(DivideBy(DivideLandsYouControl)),
 			Effect: func(g *game.Game, item *game.StackItem) error {

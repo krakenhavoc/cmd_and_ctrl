@@ -1051,11 +1051,11 @@ var items = []Item{
 		Missing:     "A permanent can't yet gain all the activated abilities of another card.",
 		Issue:       1557,
 		Tracked:     "#1557 (moved off #754 by ADR 0093 Decision 10; needs its own ADR)",
-		Waiting:     []string{"Marvin, Murderous Mimic", "Rex, Cyber-Hound"},
+		Waiting:     []string{"Marvin, Murderous Mimic", "Rex, Cyber-Hound", "The Enigma Jewel"},
 		Phrases:     []string{"all activated abilities"},
 		ADR:         "0093-abilities-granted-to-other-permanents.md",
 		Unblocks:    1,
-		EngineNotes: "primitive: \"has all activated abilities of …\" (Marvin, Necrotic Ooze, Drana and Linvala, Hazel's Brewmaster) grants ANOTHER OBJECT'S text, computed each layer pass. ADR 0093's grant is a catalog bundle with a fixed key; this grant has no bundle key at all, so it is Decision 10's out-of-scope case and needs its own ADR. Re-checked 2026-09-24. Rex, Cyber-Hound has all activated abilities of the cards in exile with brain counters (ADR 0129 PR 1, #1995).",
+		EngineNotes: "primitive: \"has all activated abilities of …\" (Marvin, Necrotic Ooze, Drana and Linvala, Hazel's Brewmaster) grants ANOTHER OBJECT'S text, computed each layer pass. ADR 0093's grant is a catalog bundle with a fixed key; this grant has no bundle key at all, so it is Decision 10's out-of-scope case and needs its own ADR. Re-checked 2026-09-24. Rex, Cyber-Hound has all activated abilities of the cards in exile with brain counters (ADR 0129 PR 1, #1995). The Enigma Jewel moved here from the craft row when craft closed (#2709, ADR 0137's 2026-10-10 amendment): Locus of Enlightenment \"has each activated ability of the exiled cards used to craft it\", each once a turn, and copies every non-mana ability you activate; its craft clause, \"four or more nonlands with activated abilities\", also needs to know whether a card the catalog does not automate has an activated ability.",
 	},
 	{
 		Slug: "extra-combats", Name: "Extra combat and main phases", Kind: KindSeam, Status: StatusPartial,
@@ -1563,19 +1563,6 @@ var items = []Item{
 		EngineNotes: "target clause: `game.TargetSpec.CardOK` sees `(g, caster, card, zone)` and never the other clauses' picks, and the set rules in `target_set.go` compare picks within one clause. ADR 0065 refuses a pair of picks that fits the wrong slots at announce (CR 601.2c), so a resolution-only check would be stronger than printed. Fiery Annihilation's damage and \"if that creature would die this turn, exile it instead\" shipped with ADR 0108 PR 1. Goblin Welder (S58 deck requests, #2077) targets \"artifact a player controls and target artifact card in that player's graveyard\", the second clause bound to the first's controller, and then swaps the two at once if both are still legal.",
 	},
 	{
-		// Jeska, Thrice Reborn moved here from turn-scoped-damage-multiplier
-		// (ADR 0108 PR 2, #1890): her 0 is that seam's multiplier, and her
-		// −X is this one.
-		Slug: "loyalty-cost-x", Name: "A loyalty cost of X", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Planeswalker abilities whose loyalty cost is −X, such as Chandra, Awakened Inferno's.",
-		Missing:     "A planeswalker ability can't yet cost −X loyalty, so those abilities aren't offered.",
-		Rules:       []string{"606.4", "107.3"},
-		Issue:       1944,
-		Tracked:     "#1944 (found landing ADR 0108 PR 1, #1886)",
-		Waiting:     []string{"Chandra, Awakened Inferno", "Jeska, Thrice Reborn", "Chandra, Chill of Compliance"},
-		EngineNotes: "cost: `game.AbilityCost.Loyalty` is a fixed `*int`, so no X is announced for a loyalty ability (Ugin, the Spirit Dragon omits its −X for the same reason). Chandra's −X rider (\"if a permanent dealt damage this way would die this turn, exile it instead\") is ADR 0108 PR 1's `ExileIfDealtDamageWouldDie`; her +2 emblem for each opponent and her −3 look expressible. Jeska, Thrice Reborn's 0 (\"until your next turn, if that creature would deal combat damage to one of your opponents, it deals triple that damage\") is ADR 0108 §3's `multiplyDamage` pinned to the creature, and her entry count is the sum of `Player.CommanderCasts`; her −X (\"X damage to each of up to three targets\") is this seam, and Partner is not supported either.",
-	},
-	{
 		// #1989 (found landing ADR 0108 PR 2, #1890).
 		Slug: "splice", Name: "Splice onto Arcane", Kind: KindSeam, Status: StatusMissing,
 		Summary:     "Cards you may reveal from your hand as you cast an Arcane spell, paying their splice cost to add their text to that spell, such as Overblaze.",
@@ -1703,7 +1690,7 @@ var items = []Item{
 		Tracked:     "#1890 (S50 tracker #1784; found landing ADR 0107 PR 6, #1853)",
 		Examples:    []string{"Insult", "Isengard Unleashed", "Desperate Gambit", "Lightning, Army of One"},
 		Phrases:     []string{"it deals double that damage instead"},
-		EngineNotes: "**Shipped** (ADR 0108 §3, PR 2): a `ScopedEffect` replacement kind, `multiplyDamage` (`game.ModMultiplyDamage`, `game/multiply_damage.go`), written by `Game.MultiplyDamageForEffect` until end of turn or until a player's next turn. It multiplies the event's amount by `Mod.Amount` (2 or 3). Which damage: one source (`Objects` + `SourceZone`, read by `damageFromChosenSourceLocked` as every source-keyed kind reads it), or `Mod.Sources` — `yours` or `creatures`, read off the source's last-known information as the damage would be dealt (CR 611.2c, 608.2h) — or any source. To what: `Mod.Recipients` — `opponents`, `opponentsAndTheirPermanents`, `playerAndTheirPermanents` with `Player`, or `creatures`; empty is anything. `CombatOnly`, and `Mod.Next` for \"the next time\" (CR 615.8's instance: spent through `SpentInstance` / `SpentBatch`, the next-damage shield's own rule, so it covers every event of the instance and nothing after). A 0-damage event has nothing to multiply (CR 120.8) and spends nothing. It is not a prevention effect, so \"damage can't be prevented\" leaves it alone. Two multipliers commute, so no CR 616 order is asked between them (two Insults are ×4); beside a prevention shield or a static doubler it is. `choose_source` gained a controller filter (`ChooseSourcePrompt.Controller`: a permanent's or spell's controller, a departed permanent's as it last existed, and a command-zone, graveyard or exile card's owner, CR 108.4a), and the next-damage shield a combat-only form, its own kind `preventNextCombatFromSource` so that an older binary refuses a restore point holding one (Impulsive Maneuvers' losing flip). The table sees a banner line per record (`GameView.damage_multipliers`). Card helpers: `effects.MultiplyDamage` and `effects.NextTimeFlip` (Desperate Gambit, Impulsive Maneuvers). Jeska, Thrice Reborn waits on loyalty-cost-x (her −X) and Overblaze on splice. See Closed seams.",
+		EngineNotes: "**Shipped** (ADR 0108 §3, PR 2): a `ScopedEffect` replacement kind, `multiplyDamage` (`game.ModMultiplyDamage`, `game/multiply_damage.go`), written by `Game.MultiplyDamageForEffect` until end of turn or until a player's next turn. It multiplies the event's amount by `Mod.Amount` (2 or 3). Which damage: one source (`Objects` + `SourceZone`, read by `damageFromChosenSourceLocked` as every source-keyed kind reads it), or `Mod.Sources` — `yours` or `creatures`, read off the source's last-known information as the damage would be dealt (CR 611.2c, 608.2h) — or any source. To what: `Mod.Recipients` — `opponents`, `opponentsAndTheirPermanents`, `playerAndTheirPermanents` with `Player`, or `creatures`; empty is anything. `CombatOnly`, and `Mod.Next` for \"the next time\" (CR 615.8's instance: spent through `SpentInstance` / `SpentBatch`, the next-damage shield's own rule, so it covers every event of the instance and nothing after). A 0-damage event has nothing to multiply (CR 120.8) and spends nothing. It is not a prevention effect, so \"damage can't be prevented\" leaves it alone. Two multipliers commute, so no CR 616 order is asked between them (two Insults are ×4); beside a prevention shield or a static doubler it is. `choose_source` gained a controller filter (`ChooseSourcePrompt.Controller`: a permanent's or spell's controller, a departed permanent's as it last existed, and a command-zone, graveyard or exile card's owner, CR 108.4a), and the next-damage shield a combat-only form, its own kind `preventNextCombatFromSource` so that an older binary refuses a restore point holding one (Impulsive Maneuvers' losing flip). The table sees a banner line per record (`GameView.damage_multipliers`). Card helpers: `effects.MultiplyDamage` and `effects.NextTimeFlip` (Desperate Gambit, Impulsive Maneuvers). Jeska, Thrice Reborn shipped with loyalty-cost-x (#1944); Overblaze waits on splice. See Closed seams.",
 	},
 	{
 		// #1854 (ADR 0107 §3, PR 3): a canonical keyword token read off
@@ -1720,24 +1707,6 @@ var items = []Item{
 		Mechanic: "rebound",
 		Printed:  printedKeyword("rebound"),
 		Examples: []string{"Staggershock", "Ephemerate", "Distortion Strike"},
-	},
-	{
-		// #2696 (ADR 0096 amendment 2026-10-08): ascend is a canonical
-		// keyword read by two engine paths (game/citys_blessing.go), and
-		// the city's blessing it grants is a per-player designation.
-		Slug: "ascend", Name: "Ascend and the city's blessing", Kind: KindKeyword, Status: StatusPartial,
-		Summary:     "Ascend gives you the city's blessing for the rest of the game once you control ten or more permanents: a permanent with ascend does it as soon as you do, and an instant or sorcery with ascend as it resolves. You keep the blessing even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
-		Missing:     "Two cards that read the city's blessing aren't built yet: Timestream Navigator's cost has no component for putting itself on the bottom of its owner's library, and Tilonalli's Summoner can't pay a chosen X as its trigger resolves.",
-		Rules:       []string{"702.131"},
-		Issue:       2706,
-		ADR:         "0096-the-monarch-from-a-card-effect.md",
-		Tracked:     "#2706 (the cards; the rules shipped with #2696)",
-		Keywords:    []string{game.KeywordAscend},
-		Probe:       hasKeyword(game.KeywordAscend),
-		Printed:     printedKeyword("ascend"),
-		Examples:    []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Secrets of the Golden City"},
-		Waiting:     []string{"Tilonalli's Summoner", "Timestream Navigator"},
-		EngineNotes: "rules shipped (#2696, ADR 0096's 2026-10-08 amendment); what is left is cards. `Player.CitysBlessing` (`game/citys_blessing.go`) is the designation (CR 702.131c): written only by `grantCitysBlessingLocked`, which emits `EventCitysBlessing` (the layer pass is invalidated on it, and the log narrates it), never cleared, carried by `Clone`, undo and the snapshot (`seats[].citysBlessing`, additive in schema 7) and on the wire as `PlayerView.citys_blessing`. `ascend` is a canonical keyword the deck importer stamps, with two consumers: `citysBlessingSweepLocked`, CR 702.131b's static ability on a permanent, run from `stateBasedActionsLocked` after the layer recompute (not a state-based action, and it does not count toward `sbaFired`; it gives the blessing to any player who controls an ascend permanent and ten permanents, and walks nothing once every living player has it), and `ascendSpellLocked`, CR 702.131a's spell ability on an instant or sorcery, run as the spell resolves before its other instructions. Card side (`effects/citys_blessing.go`): `YouHaveTheCitysBlessing`, `YouHaveTheCitysBlessingCondition` (an activation condition), `YouHaveTheCitysBlessingNow` (an intervening \"if\" trigger condition), `WhileCitysBlessing`, `SelfPumpWhileCitysBlessing`, `SelfKeywordWhileCitysBlessing`, and `CantAttackUnlessYouHaveTheCitysBlessing` (the new `AttackTargetRestriction.ControllerMustHaveCitysBlessing` clause) with `CantBlockUnlessYouHaveTheCitysBlessing`. **The Waiting cards are not blocked on this row**: they are the ascend cards nobody has built yet (#2706); Timestream Navigator also needs a put-this-on-the-bottom-of-its-owner's-library cost and Tilonalli's Summoner a \"may pay {X}{R}\" as its trigger resolves, and each says so in its slice.",
 	},
 	{
 		// #1552 (ADR 0109 §11 decision 2): sunburst is a keyword read off
@@ -2132,16 +2101,6 @@ var items = []Item{
 		Tracked:     "#2567 (found building #2046)",
 		Waiting:     []string{"Gideon Jura", "Kytheon, Hero of Akros // Gideon, Battle-Forged"},
 		EngineNotes: "three missing pieces, none of which is a planeswalker rule. (1) `game.AttackRequirement` (attack_requirements.go) is \"attacks each combat\" or \"attacks a player other than X\"; it needs a target field obeyed only by attacking exactly that permanent, counted by the CR 508.1d maximisation and named in the refusal sentence. (2) `DurationUntilYourNextTurn` ends as the named player's next turn BEGINS; \"during target opponent's next turn\" has to end at the end of THAT player's next turn. (3) `ScopeOpponentsCreatures` is every opponent's creatures; Gideon Jura names one opponent's, and in a four-player game another opponent's turn before the target's would wrongly be required to attack him, stronger than printed. It needs a scope or a player parameter for \"creatures that player controls\", read live (CR 611.2c). Kytheon's back face is the same requirement pinned to one creature \"during its controller's next turn\"; his front face also needs \"at end of combat, if Kytheon and at least two other creatures attacked this combat, exile him, then return him transformed\".",
-	},
-	{
-		Slug: "base-pt-from-a-count", Name: "Power and toughness set to a count", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Abilities that set a permanent's power and toughness to a number counted on the board, such as Gideon, Champion of Justice's \"power and toughness each equal to the number of loyalty counters on him\".",
-		Missing:     "An until-end-of-turn effect can set power and toughness to a fixed number, but not to a number counted on the board.",
-		Rules:       []string{"611.2c", "613.4b"},
-		Issue:       2569,
-		Tracked:     "#2569 (found building #2046)",
-		Waiting:     []string{"Gideon, Champion of Justice"},
-		EngineNotes: "`ModSetBasePower` / `ModSetBaseToughness` carry a fixed integer; a `StaticAbility` can compute one but belongs to a permanent, not to a one-shot until-end-of-turn record. It needs a Mod kind that reads a counter kind off the affected object at every layer pass. Owner question first (#2569): is the count live (the size follows his loyalty as damage and costs change it) or locked when the ability resolves? The two readings give different cards and the Oracle ruling is not in the repository.",
 	},
 	{
 		Slug: "damage-prevented-triggers", Name: "\"Whenever damage is prevented\"", Kind: KindSeam, Status: StatusMissing,
@@ -2842,22 +2801,6 @@ var items = []Item{
 		Examples:    []string{"The Cruelty of Gix", "Love Song of Night and Day", "The Elder Dragon War"},
 		EngineNotes: "**Shipped** (#2123): `read ahead` is a canonical keyword. The entry look-ahead reports it and the Saga's final chapter number, and the gather adds one keyword entry replacement for it (`game/read_ahead.go`, riot's shape; CR 702.155c makes instances redundant). Its question is the new `entry_read_ahead` prompt, answered with `{option_index}` (option N is chapter N+1), asked before the Saga enters (CR 614.12a), so a cast, a reanimation and a token copy all ask; an entry that cannot pause takes chapter I. The answer seeds the entry's lore counters, which land through the ordinary counter window (Doubling Season doubles them). Chapters now fire from `applyCounterByLocked` for any lore counters put on a Saga (CR 714.2b), so a proliferate fires them too, and `fireSagaChaptersLocked` applies CR 702.155a: the turn the Saga entered, only the chapter whose number equals its lore count fires. See Closed seams.",
 	},
-	{
-		Slug: "craft", Name: "Craft", Kind: KindSeam, Status: StatusPartial,
-		Summary:  "Craft exiles an artifact together with materials from the battlefield or your graveyard and returns it transformed, such as Visage of Dread.",
-		Missing:  "Craft with \"one or more\" materials, with materials that must share or differ in type, or with materials from your graveyard only doesn't work yet.",
-		Rules:    []string{"702.167"},
-		Issue:    2709,
-		ADR:      "0137-craft.md",
-		Probe:    declaresCraft,
-		Examples: []string{"Visage of Dread", "Tithing Blade", "Jade Seedstones"},
-		Waiting: []string{
-			"Altar of the Wretched", "Sunbird Standard", "Saheeli's Lattice", "Paleontologist's Pick-Axe",
-			"Eye of Ojer Taq", "Throne of the Grim Captain", "The Enigma Jewel", "Ore-Rich Stalactite",
-			"Unstable Glyphbridge", "Master's Guide-Mural", "Dire Flail", "Tetzin, Gnome Champion",
-		},
-		EngineNotes: "**Shipped for fixed-count materials of one card type or subtype** (#2124, [ADR 0137](decisions/0137-craft.md)): `game.ExilePermanentsCost` gained `FromGraveyard` (CR 702.167b's second zone: the activator's own graveyard, judged on the card's front face, CR 712.8a) and `Subtype` (\"Craft with Island / Cave\"); `game.ReturnCraftedFromExileForEffect` returns the exiled card on its back face as a new object under its owner's control; `Card.CraftedWith []ObjectRef` is CR 702.167c's link (delve's shape), resolved by `CraftMaterialsForEffect`, carried by clone, the snapshot and `PermanentInfo`. `effects.Craft` with `CraftWith` / `CraftWithN` / `CraftWithSubtype` is the keyword. **Still open** (#2709): \"one or more\" (an announced count: Altar of the Wretched, Sunbird Standard, Saheeli's Lattice, Paleontologist's Pick-Axe); a rule over the set (Eye of Ojer Taq's \"two that share a card type\", Throne of the Grim Captain's four subtypes, The Enigma Jewel's \"four or more nonlands with activated abilities\"); graveyard-only and variable (Ore-Rich Stalactite). **Waiting on another face, not on craft:** Unstable Glyphbridge (\"they can't attack you … this turn\" and a cast ban on opponents who attacked you this turn; `GrantCantAttackPlayerForEffect` covers only the next turn), Master's Guide-Mural (\"if an artifact entered the battlefield under your control this turn\" needs a card-type entry tally), Dire Flail (an Equipment granting a trigger with a reflexive \"when you do\"), Tetzin, Gnome Champion (its back face transforms another double-faced artifact). See Closed seams.",
-	},
 
 	{
 		Slug: "partner-with", Name: "Partner with", Kind: KindSeam, Status: StatusImplemented,
@@ -2867,14 +2810,23 @@ var items = []Item{
 		Examples: []string{"Frodo, Adventurous Hobbit", "Sam, Loyal Attendant", "Pir, Imaginative Rascal"},
 	},
 	{
-		Slug: "voting", Name: "Voting and will of the council", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "Cards on which every player votes for one of several options, starting with a named player, and the result decides what happens.",
-		Missing:     "Voting isn't supported, so cards with will of the council or council's dilemma can't be added yet.",
+		Slug: "secret-council", Name: "Secret council", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Cards on which every player votes in secret, and the votes are revealed together once everyone has voted.",
+		Missing:     "Secret votes aren't supported, so cards with secret council can't be added yet.",
+		Issue:       2926,
+		Waiting:     []string{"Mob Verdict", "Círdan the Shipwright", "Trap the Trespassers", "Truth or Consequences", "Vault 11: Voter's Dilemma"},
+		Phrases:     []string{"secret council", "secretly votes"},
+		EngineNotes: "prompt: ADR 0146's vote is open — each ballot is logged and shown to every seat as it is cast — so a secret vote needs ballots hidden from the wire, the log and the bot's view until the last one is in. Elrond of the White Council waits on the attack-restriction row and on this one. Found landing ADR 0146 (#2143).",
+	},
+	{
+		Slug: "players-finish-voting", Name: "\"Whenever players finish voting\"", Kind: KindSeam, Status: StatusMissing,
+		Summary:     "Triggered abilities that read who voted for what once a vote has ended.",
+		Missing:     "Abilities that trigger when players finish voting aren't supported yet.",
 		Rules:       []string{"701.38"},
-		Issue:       2143,
-		Waiting:     []string{"Galadriel, Elven-Queen", "Expropriate", "Selvala's Stampede"},
-		Phrases:     []string{"will of the council", "council's dilemma"},
-		EngineNotes: "prompt: no vote action and no prompt that collects one answer from every player in turn order and tallies them (CR 701.38a). Elrond of the White Council's secret vote waits on the attack-restriction row for the same primitive. Found landing ADR 0114 PR 5. Expropriate and Selvala's Stampede are council's dilemma, where each vote does its own thing (S58 deck requests, #2077); Expropriate's extra turns and control changes and Selvala's reveal-until and put-from-hand are expressible.",
+		Issue:       2927,
+		Waiting:     []string{"Grudge Keeper", "Model of Unity", "Erestor of the Council"},
+		Phrases:     []string{"finish voting"},
+		EngineNotes: "trigger: ADR 0146 logs each ballot (`EventVoteCast`) but emits no event when the vote ends and keeps no record of the finished vote's ballots for a trigger to read as it resolves. Found landing ADR 0146 (#2143).",
 	},
 	{
 		Slug: "set-creature-types", Name: "Effects that set a creature's types", Kind: KindSeam, Status: StatusMissing,
@@ -3212,6 +3164,126 @@ var items = []Item{
 		ADR:      "0144-choose-a-background-and-the-partner-pairings.md",
 		Printed:  `(?i)\bchoose a background\b|\bcommander creatures you own\b`,
 		Examples: []string{"Karlach, Fury of Avernus", "Agent of the Iron Throne", "Jaheira, Friend of the Forest"},
+	},
+	{
+		Slug: "bottom-of-library-cost", Name: "Putting the permanent itself on the bottom of its owner's library as a cost", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "Activated abilities whose cost puts the permanent itself on the bottom of its owner's library, such as Timestream Navigator's \"Put this creature on the bottom of its owner's library\".",
+		Rules:       []string{"602.2b", "601.2h", "118.3", "400.7", "608.2h", "903.9b"},
+		Issue:       2726,
+		Tracked:     "#2726 (found building the ascend cards, #2706)",
+		Examples:    []string{"Timestream Navigator"},
+		EngineNotes: "`game.AbilityCost.BottomSelf` (`effects.PutThisOnTheBottomOfItsOwnersLibrary`) is `ReturnSelf`'s sibling one zone over (`game/bottom_self_cost.go`). It is paid at announce, before the stack item is built, through the one zone-route exit with cause cost to the bottom of the OWNER's library, so the leaves-the-battlefield triggers see it go and sit above the ability, and the item's `SourceObject` (stamped before the payment) gives the effect the permanent's last-known information (CR 400.7, 608.2h). A commander that puts itself there is asked CR 903.9b first, with the library as its destination (ADR 0115). Battlefield only (`AbilityNeedsPermanentSource`), never beside a sacrifice-this, exile-this, return-this or exert cost, and never a sacrifice, return or exile pick of the same activation (CR 118.3). The wire carries it as `bottom_self`; the legal enumerator keeps the source out of the other components' picks and the auto-tapper's plan; the heuristic charges `selfReturnCost`. **Cards:** Timestream Navigator.",
+	},
+	{
+		Slug: "base-pt-from-a-count", Name: "Power and toughness set to a count", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that set a permanent's power and toughness to a number counted on the board as they resolve, such as Gideon, Champion of Justice's \"power and toughness each equal to the number of loyalty counters on him\".",
+		Rules:    []string{"608.2h", "613.4b"},
+		ADR:      "0032-planeswalkers.md",
+		Examples: []string{"Gideon, Champion of Justice"},
+	},
+	{
+		Slug: "pay-x-on-resolution", Name: "Paying {X} as an ability resolves", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Abilities that let you pay a cost with {X} in it as they resolve, choosing X then, such as Tilonalli's Summoner's \"you may pay {X}{R}\" for X Elementals that enter tapped and attacking, each attacking the opponent, planeswalker or battle you choose.",
+		Rules:    []string{"608.2d", "118.12", "508.4"},
+		ADR:      "0129-energy-getting-and-paying-it.md",
+		Examples: []string{"Tilonalli's Summoner", "Flameblast Dragon"},
+	},
+	{
+		// #2696 (ADR 0096 amendment 2026-10-08): ascend is a canonical
+		// keyword read by two engine paths (game/citys_blessing.go), and
+		// the city's blessing it grants is a per-player designation.
+		// Closed with the last ascend cards (#2706, #2726, #2727).
+		Slug: "ascend", Name: "Ascend and the city's blessing", Kind: KindKeyword, Status: StatusImplemented,
+		Summary:  "Ascend gives you the city's blessing for the rest of the game once you control ten or more permanents: a permanent with ascend does it as soon as you do, and an instant or sorcery with ascend as it resolves. You keep the blessing even if your board shrinks, and cards that ask whether you have it read it. It shows beside your name.",
+		Rules:    []string{"702.131"},
+		ADR:      "0096-the-monarch-from-a-card-effect.md",
+		Keywords: []string{game.KeywordAscend},
+		Probe:    hasKeyword(game.KeywordAscend),
+		Printed:  printedKeyword("ascend"),
+		Examples: []string{"Wayward Swordtooth", "Twilight Prophet", "Arch of Orazca", "Tilonalli's Summoner"},
+	},
+	{
+		Slug: "permanent-becomes-equipment", Name: "A permanent that becomes an Equipment, with a granted equip and \"equipped creature gets\"", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that turn a permanent into an Equipment, rename it, or give it equip and an \"Equipped creature gets +N/+N\" ability, such as The Irencrag becoming Everflame, Heroes' Legacy and Gemcutter Buccaneer's Treasures.",
+		Rules:    []string{"612.8", "205.1a", "205.4b", "613.4c", "702.6a", "702.6d"},
+		ADR:      "0093-abilities-granted-to-other-permanents.md",
+		Examples: []string{"The Irencrag", "Gemcutter Buccaneer", "Puresteel Paladin"},
+	},
+	{
+		// #2699 (ADR 0145): meld. Two cards become one permanent with the
+		// combined back face's characteristics, and leave as two cards.
+		Slug: "meld", Name: "Meld", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Two specific cards that exile themselves and come back as one permanent, the oversized card printed across their backs, such as Urza, Lord Protector and The Mightstone and Weakstone becoming Urza, Planeswalker. It has only the combined card's characteristics, and when it leaves the battlefield both cards go to the new zone, in the order their owner picks.",
+		Rules:    []string{"701.42", "712.4", "712.8g", "712.16", "712.21", "903.9c"},
+		ADR:      "0145-meld.md",
+		Printed:  `(?i)\bmeld them into\b`,
+		Examples: []string{"Urza, Lord Protector", "Hanweir Battlements"},
+	},
+	{
+		// #2719 (ADR 0063 and ADR 0066 amendments of 2026-10-10): a
+		// this-turn attack restriction on a player with a narrower
+		// scope, and a cast ban on players who attacked you this turn.
+		Slug: "cant-attack-you-this-turn", Name: "\"Can't attack you this turn\", and a cast ban on players who attacked you", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that stop a player attacking you, your planeswalkers or only your Jaces for the rest of the turn, and a static that stops each opponent who attacked you or a planeswalker you control this turn from casting spells, such as Sandswirl Wanderglyph's, Web of Inertia's and Jace, Multiverse Architect's.",
+		Rules:    []string{"508.1c", "611.2a", "514.2", "101.2", "604.2"},
+		ADR:      "0063-durations-and-control.md",
+		Examples: []string{"Unstable Glyphbridge", "Web of Inertia", "Jace, Multiverse Architect"},
+	},
+	{
+		// #2559 (ADR 0066 amendment 2026-10-10): every player's own
+		// exiled cards, and a stored "can't play cards from your hand"
+		// read by both the cast gate and the land-play gate.
+		Slug: "each-player-plays-their-exile", Name: "Each player plays the cards they exiled, and can't play from their hand", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that have every player exile cards from their own library and play them for a while, such as Memory Vessel's \"until your next turn, players may play cards they exiled this way, and they can't play cards from their hand\" and Rocco, Street Chef's one card each until your next end step. Each player plays only their own, a land among them uses their land drop, and a hand ban stops both spells and lands from the hand.",
+		Rules:    []string{"101.2", "305.2", "611.2b"},
+		ADR:      "0066-granted-cast-and-play-permissions.md",
+		Printed:  `(?i)\bcan't play cards from their hand\b|\bmay play (?:the )?cards? they exiled this way\b`,
+		Examples: []string{"Memory Vessel", "Rocco, Street Chef"},
+	},
+	{
+		// #2733 (ADR 0071 amendment 2026-10-10): the four suspect cards
+		// #2698 left out. "Can't become suspected" is a restriction the
+		// suspect action reads, a "one or more ... enter" ability reads
+		// its batch back out of the event log, and a goad can be a
+		// continuous effect that "goaded" reads.
+		Slug: "suspect-leftovers", Name: "Can't become suspected, passing the suspicion on, and goads that last", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that stop a creature becoming suspected, that move the suspicion onto one of the creatures that just entered, and that goad a creature for as long as an enchantment stays, such as Airtight Alibi, Frantic Scapegoat and Hot Pursuit. A creature goaded by an Aura or an enchantment counts as goaded for every card that asks.",
+		Rules:    []string{"701.60", "701.15", "603.2c", "603.4"},
+		ADR:      "0071-designations-that-switch-abilities-on.md",
+		Printed:  `(?i)\bcan't become suspected\b|\bsuspect one of the other creatures\b|\bgoad all suspected creatures\b|\bgoaded and/or suspected\b`,
+		Examples: []string{"Airtight Alibi", "Frantic Scapegoat", "Nelly Borca, Impulsive Accuser", "Hot Pursuit"},
+	},
+	{
+		// #2124 and #2709 (ADR 0137 and its 2026-10-10 amendment):
+		// materials from two zones, an open count, rules over the
+		// chosen set and graveyard-only materials.
+		Slug: "craft", Name: "Craft", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Craft exiles an artifact together with materials from the battlefield or your graveyard and returns it transformed, such as Visage of Dread, Saheeli's Lattice's \"one or more Dinosaurs\" and Throne of the Grim Captain's \"a Dinosaur, a Merfolk, a Pirate, and a Vampire\".",
+		Rules:    []string{"702.167"},
+		ADR:      "0137-craft.md",
+		Probe:    declaresCraft,
+		Examples: []string{"Visage of Dread", "Saheeli's Lattice", "Eye of Ojer Taq", "Throne of the Grim Captain", "Ore-Rich Stalactite"},
+	},
+	{
+		// #1944 (ADR 0032 amendment 2026-10-10): a loyalty cost of −X,
+		// announced with the activation and held to the loyalty there.
+		Slug: "loyalty-cost-x", Name: "A loyalty cost of X", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Planeswalker abilities whose loyalty cost is −X, such as Chandra, Awakened Inferno's: you choose X as you activate it, no more than the loyalty she has, and that many loyalty counters come off.",
+		Rules:    []string{"606.4", "606.6", "107.3a", "107.3k"},
+		ADR:      "0032-planeswalkers.md",
+		Printed:  `(?m)^−X:`,
+		Examples: []string{"Chandra, Awakened Inferno", "Chandra, Chill of Compliance", "Jeska, Thrice Reborn"},
+	},
+	{
+		// #2143 (ADR 0146): voting. Each player in turn order from a
+		// named player votes for one option, with any extra votes, and
+		// the effect reads the tally.
+		Slug: "voting", Name: "Voting and will of the council", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Cards on which every player votes for one of several options, starting with a named player and going in turn order, and the result decides what happens: will of the council's \"if this gets more votes\", council's dilemma's \"for each vote\", and votes for a permanent. Each vote is shown to the table as it is cast, and \"while voting, you get an additional vote\" works.",
+		Rules:    []string{"701.38"},
+		ADR:      "0146-voting.md",
+		Printed:  `(?i)\beach player votes for\b|\bwhile voting\b`,
+		Examples: []string{"Galadriel, Elven-Queen", "Council's Judgment", "Expropriate"},
 	},
 	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,

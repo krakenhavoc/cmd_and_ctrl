@@ -154,10 +154,11 @@
     type TargetingState,
     type TargetRef,
   } from "../../targeting";
-  import { abilityEnergyMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
+  import { abilityMaxX, suggestedAbilityX as suggestedAbilityXFor } from "../../abilityX";
   import { castPreviewParams } from "../../castPreview";
   import {
     castSacrificeRange,
+    exilePermanentAutoPick,
     exilePermanentOptions,
     orderSacrificeOptions,
     sacrificeRange,
@@ -382,8 +383,19 @@
   // the X the same mana buys a one-slot cost — and never below the
   // printed floor, which the modal also enforces.
   const suggestedAbilityX = $derived.by(() =>
-    xAbilityPrompt ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX, viewerEnergy) : 0,
+    xAbilityPrompt
+      ? suggestedAbilityXFor(xAbilityPrompt.ability, suggestedX, viewerEnergy, xAbilityLoyalty)
+      : 0,
   );
+
+  // #1944: the loyalty on the permanent whose −X the prompt is for, the
+  // ceiling on that X (CR 606.6). Read off the live battlefield so a
+  // counter that moves while the prompt is open moves the ceiling.
+  const xAbilityLoyalty = $derived.by(() => {
+    const id = xAbilityPrompt?.card.instance_id;
+    const live = id ? view.battlefield.cards.find((c) => c.instance_id === id) : undefined;
+    return live?.counters?.loyalty ?? xAbilityPrompt?.card.counters?.loyalty ?? 0;
+  });
 
   // ADR 0129 §8: the viewer's energy, the ceiling on a "Pay X {E}"
   // ability's X (CR 118.3).
@@ -2087,18 +2099,15 @@
   // #1600: the exile-a-permanent pick, after the return pick and for
   // the same reason, skipped the same way when the board offers exactly
   // the permanents the clause demands.
+  // ADR 0137's amendment: craft's "one or more" and set rules ask
+  // whenever there is a choice to make (exilePermanentAutoPick).
   function askAbilityExilePermanentCost(card: CardView, ability: ActivatedAbilityView): void {
-    if (ability.exile_permanent_options) {
-      const options = ability.exile_permanent_options.cards ?? [];
-      const need = ability.exile_permanent_options.max ?? ability.exile_permanent_options.min ?? 1;
-      if (options.length > need) {
-        abilityExilePermanentPrompt = { card, ability };
-        return;
-      }
-      abilityExilePermanentIDs = options;
-    } else {
-      abilityExilePermanentIDs = [];
+    const auto = exilePermanentAutoPick(ability.exile_permanent_options);
+    if (auto === null) {
+      abilityExilePermanentPrompt = { card, ability };
+      return;
     }
+    abilityExilePermanentIDs = auto;
     askAbilityTapCost(card, ability);
   }
 
@@ -3724,6 +3733,9 @@
     label={abilityExilePermanentPrompt?.ability.exile_permanent_label ?? "a creature you control"}
     options={abilityExilePermanentOptions}
     count={abilityExilePermanentPrompt?.ability.exile_permanent_options?.max ?? 1}
+    min={abilityExilePermanentPrompt?.ability.exile_permanent_options?.min}
+    eachOf={abilityExilePermanentPrompt?.ability.exile_permanent_options?.each_of}
+    shares={abilityExilePermanentPrompt?.ability.exile_permanent_options?.shares}
     verb="Exile"
     onConfirm={confirmAbilityExilePermanentCost}
     onCancel={() => {
@@ -3825,9 +3837,13 @@
     card={xAbilityPrompt?.card ?? null}
     suggestedMax={suggestedAbilityX}
     abilityIndex={xAbilityPrompt?.ability.index}
-    costLabel={xAbilityPrompt?.ability.mana_cost}
+    costLabel={xAbilityPrompt?.ability.mana_cost ??
+      (xAbilityPrompt?.ability.loyalty_cost_x ? "{X}" : undefined)}
     minX={xAbilityPrompt?.ability.min_x ?? 0}
-    maxX={xAbilityPrompt ? abilityEnergyMaxX(xAbilityPrompt.ability, viewerEnergy) : undefined}
+    maxX={xAbilityPrompt
+      ? abilityMaxX(xAbilityPrompt.ability, viewerEnergy, xAbilityLoyalty)
+      : undefined}
+    maxXUnit={xAbilityPrompt?.ability.loyalty_cost_x ? "loyalty" : "energy"}
     confirmVerb="Activate"
     onConfirm={confirmAbilityX}
     onCancel={() => (xAbilityPrompt = null)}

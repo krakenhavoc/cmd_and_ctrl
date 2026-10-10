@@ -45,8 +45,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Then creatures you control gain haste until end of turn.",
-			Cost:  ManaCost("{4}"),
+			Label:   "{4}: Create a 2/2 colorless Wizard Soldier creature token named Cadet. Then creatures you control gain haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker | game.AnswerCombatGrant},
+			Cost:    ManaCost("{4}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (CreateToken{Template: TokenCard("2/2 colorless Wizard Soldier named Cadet"), N: 1}).Apply(ctx); err != nil {

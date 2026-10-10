@@ -38,10 +38,11 @@ registered, or when this file is stale.
 | `abilityChip` | `<N> <kind> ability, or <N> <kind> abilities (kind: triggered, static or activated)` (contains ` abilit`) | button | aria | `lib/components/board/AbilityKindChips.svelte` | an art tile's ability chip (#2219): one per kind the card has, its hover or focus lists the server's labels; the e2e suite reads Mulldrifter's |
 | `actions` | `actions` | region | aria | `lib/components/board/ActionDock.svelte` | the action dock; the tutorial's move-along step and its detours anchor here |
 | `waitToRespond` | `wait, let me respond` | button | aria | `lib/components/board/ActionDock.svelte` | the stack hold countdown's one-click hold (#2853): keeps priority on the stack auto-pass was about to pass |
-| `priorityControls` | `priority controls` | group | aria | `lib/components/board/ActionDock.svelte` | the dock's toggles: autopass, undo, the ⋯ menu |
-| `autopass` | `autopass` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's autopass toggle (state in aria-pressed); the tutorial's let-the-bot-play step anchors here, within actions |
+| `priorityControls` | `priority controls` | group | aria | `lib/components/board/ActionDock.svelte` | the dock's toggles: Skip to my turn, undo, the ⋯ menu |
+| `skipToMyTurn` | `Skip to my turn` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's Skip to my turn toggle (ADR 0143 §4.2, formerly autopass; state in aria-pressed): passes for you until your next main phase; the tutorial's let-the-bot-play step anchors here, within actions |
 | `next` | `next` | button | text | `lib/components/board/ActionDock.svelte` | the dock's primary: pass priority |
-| `passTurn` | `Pass turn` | button | text | `lib/components/board/ActionDock.svelte` | the dock's secondary: skip the rest of the turn |
+| `endTurn` | `End turn` | button | text | `lib/components/board/ActionDock.svelte` | the dock's secondary, shown to the active player only (ADR 0143 §4.2, formerly Pass turn): passes for you through every step of the rest of your turn |
+| `sandboxPassTurn` | `Skip to next turn (sandbox)` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's sandbox jump to the next turn (pass_turn): skips the end step, its triggers and the cleanup discard, and the log says so |
 | `declareAttackers` | `declare attackers` | dialog, group | aria | `lib/combatDock.ts` | the attack request's dialog and its row group |
 | `attackPlain` | `Attack` | button | text | `lib/combatDock.ts` | ADR 0130 §7: the dock's choice for a creature that may be exerted, attacking without exerting it |
 | `attackAndExert` | `Attack and exert` | button | text | `lib/combatDock.ts` | ADR 0130 §7: the dock's choice for a creature that may be exerted, attacking and exerting it |
@@ -115,3 +116,7 @@ registered, or when this file is stale.
 | `askMeNextTime` | `Ask me next time` | button | text | `lib/autoAnswerPref.ts` | the automatic-answer notice's button that removes the rule (sets Ask); the answer just given stands |
 | `automaticAnswers` | `automatic answers` | region | aria | `lib/components/AutoAnswersSettings.svelte` | Settings → Gameplay's list of standing answers; the settings.auto-answers hint points at it |
 | `forgetAutoAnswer` | `Forget` | button | text | `lib/components/AutoAnswersSettings.svelte` | removes one standing answer in Settings → Gameplay, so its prompt is asked again |
+| `damageAutoAssigned` | `combat damage assigned` | dialog | aria | `lib/damageAssignment.ts` | the dock's notice after Auto-assign combat damage assigned an attacker's damage for you (lethal to each blocker, the rest over), for about six seconds |
+| `alwaysAskCombatDamage` | `Always ask` | button | text | `lib/damageAssignment.ts` | the combat-damage notice's button that turns Auto-assign combat damage off; the assignment just made stands |
+| `addDamage` | `Add 1 damage to <name>` (starts with `Add 1 damage to `) | button | aria | `lib/components/board/DamageStepper.svelte`<br>`lib/components/board/ChoicePromptModal.svelte` | the + on a blocker (on the board and in the damage sheet) while you assign combat damage; the defending player's trample line uses it too |
+| `removeDamage` | `Remove 1 damage from <name>` (starts with `Remove 1 damage from `) | button | aria | `lib/components/board/DamageStepper.svelte`<br>`lib/components/board/ChoicePromptModal.svelte` | the − beside addDamage |

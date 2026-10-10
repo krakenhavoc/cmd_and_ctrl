@@ -3,6 +3,8 @@
   import { onDestroy, onMount } from "svelte";
   import { GameClient } from "../lib/ws";
   import { endCueFor, gameOverText } from "../lib/gameOutcome";
+  import GameEndFanfare from "../lib/components/GameEndFanfare.svelte";
+  import { fanfareFor } from "../lib/gameEndFanfare";
   import { beatsPrimeKey as beatsPrimeKeyOf, replayJumpEpoch } from "../lib/combatBeats";
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
@@ -40,6 +42,7 @@
     hasUndoBudget,
     isUnlimitedUndo,
     spawningVisible,
+    setCurrentTablePace,
     tableSettingsOf,
     type TableSettingsPatch,
   } from "../lib/tableSettings";
@@ -52,6 +55,7 @@
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
+  import DamageAutoAssign from "../lib/components/board/DamageAutoAssign.svelte";
   import AutoAnswerNotice from "../lib/components/board/AutoAnswerNotice.svelte";
   import AutoTapPreviewModal from "../lib/components/board/AutoTapPreviewModal.svelte";
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
@@ -64,7 +68,13 @@
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
-  import { gameOverRequest, inlineRefusal, voteRequest } from "../lib/choiceDock";
+  import {
+    GAME_OVER_GRACE_MS,
+    councilVoteRequest,
+    gameOverRequest,
+    inlineRefusal,
+    voteRequest,
+  } from "../lib/choiceDock";
   import { insufficientManaRequest, targetingRequest } from "../lib/targetingDock";
   import { showChoiceAsList } from "../lib/boardAnsweredChoice";
   import { SHEET_HAND_WIDTH, confirmAction, dockRequests } from "../lib/dock";
@@ -86,7 +96,7 @@
   } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
   import { attackersDefendedBy } from "../lib/attackTargets";
-  import { stopKeyFor, type StepID } from "../lib/turn";
+  import type { StepID } from "../lib/turn";
   import { armAudioOnFirstGesture, isMuted, play, toggleMuted } from "../lib/sounds";
   import { openSettings, settings } from "../lib/settings";
   import {
@@ -110,7 +120,12 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
-  import { autopassDecision, isBluff, type AutopassGates } from "../lib/autopassDecision";
+  import {
+    autopassDecision,
+    isBluff,
+    stepStopFor,
+    type AutopassGates,
+  } from "../lib/autopassDecision";
   import {
     actionableCount,
     highlightsLive,
@@ -128,6 +143,7 @@
     combinedPassDelayMs,
     noteStackSeen,
     setStackHoldStatus,
+    stackHoldMsForPace,
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import {
@@ -356,11 +372,12 @@
   // hasn't pinned." Active-turn stops default-on for the main phases
   // and combat declarations, so the active player still gets stopped
   // for their plays even in Smart mode.
-  // S13.6: autopass mode is a session-scoped toggle ("get me
-  // through this turn" / "I'm tapped out, don't ask me"). Stays on
-  // until the viewer clicks the button again — not a one-shot.
-  // When on, it overrides settings.passMode, the stepStops
-  // grid and the response predicate. It does NOT override a
+  // S13.6: autopass mode is a session-scoped toggle, called Skip to
+  // my turn since ADR 0143 §4.2 ("pass for me until my turn"). It
+  // stays on until the viewer clicks it again or their own precombat
+  // main comes round, whichever is first. When on, it overrides
+  // settings.passMode and the stepStops grid, but still holds where
+  // the viewer can respond (rule 4). It does NOT override a
   // manual one-time pin (#526) — see autopassDecision.ts for the
   // full precedence and why. The effect still requires the viewer to
   // actually hold priority (so we don't spam the server with "you do
@@ -403,7 +420,8 @@
       view,
       viewerID,
       firstSeen: stackSeen,
-      holdMs: $settings.gameplay.stackHoldMs,
+      // ADR 0143 §2.6: the table's pace sets the hold for everyone.
+      holdMs: stackHoldMsForPace(tableSettingsOf(view).bot_pace),
       now,
     });
   }
@@ -510,7 +528,6 @@
       step,
       autopassToggle: autopassEnabled,
       viewerIsActive,
-      autopassPersistThroughTurns: $settings.gameplay.autopassPersistThroughTurns,
       // Read via the $manualStops subscription (not the non-reactive
       // hasManualStop helper) so unpinning while holding priority
       // re-runs this effect and resumes auto-pass immediately rather
@@ -525,7 +542,8 @@
       // `stopKeyFor`): a stop on combat damage stops on the
       // first-strike step too, which is the window a player who asked
       // to see damage most wants.
-      stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
+      // ADR 0143 §2.3: the column for whoever is active.
+      stepStop: stepStopFor(gp, step, viewerIsActive),
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
@@ -588,12 +606,12 @@
 
     if (verdict === "hold") return;
     if (verdict === "clear-toggle") {
-      // S13.6 safety belt (gameplay.autopassPersistThroughTurns):
-      // when the flag is off (default), autopass auto-clears the
+      // S13.6 safety belt, built in since ADR 0143 §4.2: Skip to my
+      // turn clears itself the
       // first time the cursor enters the viewer's own precombat_main
-      // — so a forgotten toggle doesn't silently skip your turn.
-      // Users who know they want autopass to outlive their own main
-      // phase flip the danger setting on and accept the trade. The
+      // — so a forgotten toggle never skips your turn. There is no
+      // setting that keeps it on (autopassPersistThroughTurns went at
+      // settings v27). The
       // clear happens INSTEAD of a pass, so the toggle going off
       // means the cursor holds for the viewer's turn.
       autopassEnabled = false;
@@ -907,6 +925,9 @@
   const loopNotice = $derived(loopNoticeText(view));
   const gameOver = $derived(gameOverText(view));
   const winner = $derived(gameOver.winner);
+  // #2920: the game-end overlay, until the viewer keeps looking at the board.
+  let fanfareDismissed = $state(false);
+  const fanfare = $derived(fanfareFor(view, viewerID));
 
   // Mulligan window: open between Start and the moment everyone has
   // KeptHand. The dialog blocks the viewer's normal toolbar until
@@ -1012,8 +1033,13 @@
     client.sendAction("pass_priority");
   }
 
+  // #2881, ADR 0143 §4.2: the dock's End turn walks the rest of the turn. The server
+  // passes for the active seat in every step, so step triggers fire and
+  // the cleanup discard happens. `pass_turn` is the sandbox jump that
+  // skips them; it lives in the ⋯ menu as the sandbox fallback
+  // (sandboxPassTurn below).
   function passTurn(): void {
-    client.sendAction("pass_turn");
+    client.sendAction("end_turn");
   }
 
   function draw(): void {
@@ -1133,6 +1159,12 @@
   // without any permission check. `canManage` decides who may TURN a
   // knob, never who may see one.
   const tableSettings = $derived(tableSettingsOf(view));
+  // ADR 0143 §2.6: Settings → Gameplay → Reading time names this
+  // table's pace while a game is on screen.
+  $effect(() => {
+    setCurrentTablePace(tableSettings.bot_pace);
+  });
+  onDestroy(() => setCurrentTablePace(null));
   // Both gates the spawn route checks. Offering the entry on only one
   // of them produces a button whose 403 explains a rule we could have
   // shown instead.
@@ -1766,7 +1798,27 @@
         })
       : null,
   );
-  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back) : null);
+  // ADR 0146: a rules vote (Council's Judgment), read-only for every
+  // seat but the one voting now, whose own ballot is an option_pick.
+  const councilVoteDockRequest = $derived(
+    view && viewerID
+      ? councilVoteRequest(
+          view.pending_choices?.find((c) => c.council_vote) ?? null,
+          viewerID,
+          view.seats,
+        )
+      : null,
+  );
+  // #2919: Back to lobby is held for a moment after the game ends, so a
+  // click meant for `next`, whose corner it takes, cannot leave the table.
+  let gameOverArmed = $state(false);
+  $effect(() => {
+    gameOverArmed = false;
+    if (!gameEnded) return;
+    const t = setTimeout(() => (gameOverArmed = true), GAME_OVER_GRACE_MS);
+    return () => clearTimeout(t);
+  });
+  const gameOverDockRequest = $derived(gameEnded ? gameOverRequest(back, gameOverArmed) : null);
 
   // ---- The ⋯ menu (ADR 0111 PR 7, owner decision 3) ----
   // The sandbox tools, life history, the table, spawn, the vote
@@ -1825,6 +1877,9 @@
     onTableTips: () => replayTips("table", HINTS),
     onShortcuts: openShortcutsHelp,
     onReplayTutorial: () => navigate("#/practice"),
+    // ADR 0143 §4.2: the sandbox jump, for the active seat only.
+    sandboxPassTurn: viewerIsActive && view?.state === "active" && !mulligansOpen,
+    onSandboxPassTurn: () => client.sendAction("pass_turn"),
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,
@@ -2306,6 +2361,18 @@
         {#if voteDockRequest}
           <DockRequest request={voteDockRequest} />
         {/if}
+        {#if councilVoteDockRequest}
+          <DockRequest request={councilVoteDockRequest} />
+        {/if}
+        {#if fanfare && !fanfareDismissed}
+          <GameEndFanfare
+            {fanfare}
+            motion={$settings.animations.enabled && !$settings.accessibility.reduceMotion}
+            armed={gameOverArmed}
+            onback={back}
+            ondismiss={() => (fanfareDismissed = true)}
+          />
+        {/if}
         {#if gameOverDockRequest}
           <DockRequest request={gameOverDockRequest} />
         {/if}
@@ -2313,7 +2380,6 @@
           {view}
           {viewerHasPriority}
           {viewerIsActive}
-          activePlayerName={activePlayer?.name}
           {autopassEnabled}
           {loopNotice}
           {readyActions}
@@ -2425,6 +2491,14 @@
         docked={dockShown}
       />
       <AutoAnswerNotice view={$snapshot} {viewerID} live={!replaying} onUndo={undo} />
+      <DamageAutoAssign
+        view={$snapshot}
+        {viewerID}
+        live={!replaying}
+        {sendAction}
+        canUndo={canSpendUndo}
+        onUndo={undo}
+      />
       <AutoTapPreviewModal
         {gameID}
         snap={view}

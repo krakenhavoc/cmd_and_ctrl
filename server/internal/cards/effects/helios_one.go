@@ -32,7 +32,7 @@ func init() {
 			{
 				Label:   "{1}, {T}: You get {E} (an energy counter).",
 				Cost:    Plus(ManaCost("{1}"), TapCost()),
-				Purpose: game.Purpose{Energy: 1},
+				Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 1},
 				Effect:  Do(GetEnergy{N: 1}),
 			},
 			{

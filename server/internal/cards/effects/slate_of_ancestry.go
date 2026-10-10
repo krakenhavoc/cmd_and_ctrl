@@ -21,8 +21,9 @@ func init() {
 		Name:         "Slate of Ancestry",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{4}, {T}, Discard your hand: Draw a card for each creature you control.",
-			Cost:  Plus(ManaCost("{4}"), TapCost(), DiscardYourHand()),
+			Label:   "{4}, {T}, Discard your hand: Draw a card for each creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{4}"), TapCost(), DiscardYourHand()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				n := 0

@@ -109,14 +109,15 @@ func cardPurpose(c *protocol.CardView) purposeSet {
 // overloaded Cyclonic Rift carries its purpose on the alternative cost,
 // and a modal wipe (Farewell, Austere Command) carries one per mode, so
 // the move is priced by the cost or modes it names. A slot that
-// declares nothing falls back to the card's own purpose.
+// declares nothing it prices (nil, or only what it answers: ADR 0142
+// §7, PurposeView.Priced) falls back to the card's own purpose.
 func castPurpose(c *protocol.CardView, cp castParams) purposeSet {
 	if c == nil {
 		return purposeSet{}
 	}
 	if cp.AlternativeCost != "" {
 		for i := range c.AlternativeCosts {
-			if ac := &c.AlternativeCosts[i]; ac.Key == cp.AlternativeCost && ac.Purpose != nil {
+			if ac := &c.AlternativeCosts[i]; ac.Key == cp.AlternativeCost && ac.Purpose.Priced() {
 				var ps purposeSet
 				ps.add(ac.Purpose)
 				// ADR 0135 §3: awaken ADDS to what the spell does and
@@ -133,7 +134,7 @@ func castPurpose(c *protocol.CardView, cp castParams) purposeSet {
 		var ps purposeSet
 		found := false
 		for _, m := range cp.Modes {
-			if m >= 0 && m < len(c.Modes.Options) && c.Modes.Options[m].Purpose != nil {
+			if m >= 0 && m < len(c.Modes.Options) && c.Modes.Options[m].Purpose.Priced() {
 				ps.add(c.Modes.Options[m].Purpose)
 				found = true
 			}

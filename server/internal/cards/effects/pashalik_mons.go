@@ -48,8 +48,9 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{R}, Sacrifice a Goblin: Create two 1/1 red Goblin creature tokens",
-			Cost:  Plus(ManaCost("{3}{R}"), b25SacrificeAGoblin()),
+			Label:   "{3}{R}, Sacrifice a Goblin: Create two 1/1 red Goblin creature tokens",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet | game.AnswerMakesBlocker},
+			Cost:    Plus(ManaCost("{3}{R}"), b25SacrificeAGoblin()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: RedGoblinToken(), N: 2}.Apply(NewContext(g, item))
 			},

@@ -102,6 +102,11 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := loseOwnAbilityModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #2562: a name or type line with nothing in it, or
+			// supertypes on another kind, is a newer binary's shape.
+			if problem := becomeNamedModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A
@@ -174,6 +179,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			}
 		case !KnownRevealedPickThen(c.PickThen):
 			unknown = append(unknown, "revealed-hand pick continuation "+c.PickThen)
+		}
+		// ADR 0146: a ballot's vote continuation is a key too.
+		if c.CouncilVote != nil && !KnownVoteThen(c.CouncilVote.Then) {
+			unknown = append(unknown, "vote continuation "+c.CouncilVote.Then)
 		}
 		if !knownPickDestination(c.PickDestination) {
 			unknown = append(unknown, "revealed-hand pick destination "+string(c.PickDestination))

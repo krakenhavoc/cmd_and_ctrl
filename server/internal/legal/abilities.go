@@ -283,12 +283,19 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// CR 606 asks about the permanent and its cost symbol, not
 		// about the card type.
 		if ab.Cost.Loyalty != nil {
-			if g.LoyaltyActivatedThisTurn[source.InstanceID] {
+			if g.LoyaltySpentLocked(source.InstanceID) {
 				continue
 			}
 			if n := *ab.Cost.Loyalty; n < 0 && source.Counters[game.CounterLoyalty] < -n {
 				continue
 			}
+		}
+		// #1944: a −X loyalty cost bounds X by the loyalty there
+		// (CR 606.6). -1 for every other ability.
+		loyaltyCeiling := loyaltyXCeiling(ab.Cost, source.Counters[game.CounterLoyalty], e.opts.MaxX)
+		loyaltyFloor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
+		if ab.Cost.LoyaltyX && loyaltyCeiling < loyaltyFloor {
+			continue
 		}
 		if ab.Cost.Tap {
 			if source.Tapped {
@@ -410,7 +417,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		if ab.Cost.SacrificeOther != nil {
 			// #2028: a return-this cost spends the source as surely as a
 			// sacrifice-this one, so it is no sacrifice pick either.
-			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf || ab.Cost.ReturnSelf, ab.Cost.SacrificeOther)
+			pool := e.sacrificePool(source.InstanceID, ab.Cost.SacrificeSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, ab.Cost.SacrificeOther)
 			// #1213: a VARIABLE count is an announcement, so the
 			// enumerator offers a bounded ladder of counts rather
 			// than one payment — see variableSacrificePayments.
@@ -589,6 +596,12 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 			continue
 		}
 		budget := e.opts.MaxExpansionPerSource
+		// #1944: each X a −X loyalty cost may announce is its own move
+		// (loyaltyXRungs), so the budget is per rung: every X reaches
+		// as many targets as one fixed cost would.
+		if ab.Cost.LoyaltyX {
+			budget *= loyaltyCeiling - loyaltyFloor + 1
+		}
 		// #764: a modal activated ability announces its modes with
 		// its targets (CR 602.2b), so the enumerator expands the
 		// same product a modal cast does.
@@ -657,9 +670,15 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 				// (HELIOS One's "destroy target nonland permanent with
 				// mana value X") tries every X the seat's energy pays
 				// for, floor up, as the mana ladder below does.
-				if ab.Cost.EnergyX && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
+				// #1944: and a −X loyalty cost (Liliana, Defiant
+				// Necromancer's "mana value X") every X the loyalty pays.
+				if (ab.Cost.EnergyX || ab.Cost.LoyaltyX) && ab.Cost.XSlots() == 0 && !game.StepsBoundByCountersRemoved(steps) {
 					floor := enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX())
-					for x := floor; x <= energyCeiling; x++ {
+					ceiling := energyCeiling
+					if ab.Cost.LoyaltyX {
+						ceiling = loyaltyCeiling
+					}
+					for x := floor; x <= ceiling; x++ {
 						xs := game.AnnouncedClauses(ab.Targets, ab.Modes, modes)
 						g.BindDivideAmountsForEffect(xs, game.DivideAmountArgs{Controller: e.seat, Source: source.InstanceID})
 						game.BindStepsXForEffect(xs, x)
@@ -750,10 +769,6 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// reads them off the ability. Without this a policy
 		// cannot tell "Pay 7 life: Draw seven cards" from a
 		// free ability and activates itself to death.
-		loyalty := 0
-		if ab.Cost.Loyalty != nil {
-			loyalty = *ab.Cost.Loyalty
-		}
 		for _, ann := range announcements {
 			targets := ann.targets
 			pay := basePay
@@ -829,10 +844,16 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					}
 					for _, moved := range permanentCostPairs(returnSets, permanentSets, sacs, source.InstanceID, ab.Cost) {
 						rets, perms := moved.returned, moved.exiled
-						for _, taps := range tapSets {
+						for _, tr := range tapsAtRungs(tapSets, loyaltyXRungs(ab.Cost, ann.xValue, loyaltyFloor, loyaltyCeiling)) {
+							taps := tr.taps
 							tapXValue := xValue
 							if game.TapOthersCountFromX(ab.Cost.TapOthers) {
 								tapXValue = len(taps)
+							}
+							// #1944: a −X loyalty cost's X, one move per
+							// value the loyalty pays.
+							if tr.rung >= 0 {
+								tapXValue = tr.rung
 							}
 							// #759: the same #1242 rule for the tapped
 							// permanents — the auto-tapper will not spend a
@@ -895,7 +916,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// four-life activation as free. #1594: and
 								// the computed component is `life`, the
 								// amount the engine will charge.
-								cost := withPhyrexianLife(moveCost(life, loyalty), phyrexianLife)
+								cost := withPhyrexianLife(moveCost(life, ab.Cost.LoyaltyDelta(tapXValue)), phyrexianLife)
 								// ADR 0129 §7: the energy this move removes.
 								cost = withEnergy(cost, game.AbilityEnergyCost(ab.Cost, tapXValue))
 								// ADR 0130 §4: and whether it exerts its source.
@@ -918,10 +939,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									!game.TapOthersCountFromX(ab.Cost.TapOthers) && !game.DiscardCountFromX(ab.Cost.DiscardCards) {
 									xv = openX(enumeratedXFloor(game.CatalogAbilityKey(*source), ab.Cost.FloorX()), tapXValue)
 								}
-								combat := combatNone
-								if !hasTargets(targets) && !abilityInteracts(ab) {
-									combat = abilityCombatKind(ab)
-								}
+								// ADR 0142: the row's declared answers, by tier
+								// (an undeclared row interacts).
+								interacts, combat := untargetedFlags(g, source, zone, ab, targets)
 								e.add(Move{
 									Type:   TypeActivateAbility,
 									Player: e.seat,
@@ -935,10 +955,10 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 									// is flagged on its own.
 									TargetsStack: targetsStackObject(g, targets),
 									HasTargets:   hasTargets(targets),
-									Interacts:    !hasTargets(targets) && abilityInteracts(ab),
+									Interacts:    interacts,
 									// #2871: a combat ability, counted only in combat.
-									CombatInteracts:    combat != combatNone,
-									CombatDefenderOnly: combat == combatDefender,
+									CombatInteracts:    combat.any,
+									CombatDefenderOnly: combat.defenderOnly,
 									Params: mustJSON(activateParams{
 										SourceCardID:      source.InstanceID.String(),
 										AbilityIndex:      idx,
@@ -1296,15 +1316,79 @@ func (e *enumerator) returnPayments(pool []uuid.UUID, rc *game.ReturnToHandCost,
 // printed card has ("Exile a creature you control"), cheapest to keep
 // first, and the first Count of that order for a larger one. Nil when
 // the pool cannot reach the count, so the ability is not offered (#544).
+//
+// ADR 0137's amendment (#2709), craft's variants:
+//
+//   - "Two that share a card type": one payment per card type enough
+//     candidates share, the cheapest Count of each, because the type
+//     the pair shares is what Apex Observatory may later name.
+//   - "A Dinosaur, a Merfolk, a Pirate, and a Vampire": the one
+//     matching game.ExilePermanentsPaymentForEffect finds, a changeling
+//     kept for the entry nothing else fills.
+//   - "One or more" / "four or more": the floor (one move per candidate
+//     at a floor of one, as above), then every graveyard material on
+//     offer when that is more than the floor — cheap fuel that grows a
+//     Wretched Bonemass or a Sunbird Effigy — then everything on offer.
+//     Two or three counts, never every subset: ADR 0100 §6's
+//     discipline for a variable sacrifice.
 func (e *enumerator) exilePermanentPayments(pool []uuid.UUID, ec *game.ExilePermanentsCost, sourceID uuid.UUID) [][]uuid.UUID {
 	if ec.Empty() || len(pool) < ec.Count {
 		return nil
 	}
 	ordered := e.g.SacrificePaymentOrderForEffect(e.cheapestFuelFirst(pool), sourceID)
-	if ec.Count > 1 {
-		return [][]uuid.UUID{ordered[:ec.Count]}
+	switch {
+	case ec.ShareCardType:
+		var out [][]uuid.UUID
+		seen := map[string]bool{}
+		for _, grp := range e.g.ExileSharedTypeGroupsForEffect(e.seat, ec, ordered) {
+			pick := grp.Candidates[:ec.Count]
+			key := fmt.Sprint(pick)
+			if seen[key] {
+				continue
+			}
+			seen[key] = true
+			out = append(out, pick)
+		}
+		return out
+	case len(ec.EachSubtype) > 0:
+		if pick := e.g.ExilePermanentsPaymentForEffect(e.seat, ec, ordered); pick != nil {
+			return [][]uuid.UUID{pick}
+		}
+		return nil
 	}
-	return e.combos(ordered, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
+	var out [][]uuid.UUID
+	if ec.Count > 1 {
+		out = [][]uuid.UUID{ordered[:ec.Count]}
+	} else {
+		out = e.combos(ordered, 1, 1, e.opts.MaxExpansionPerSource, CapPerSource)
+	}
+	if !ec.OrMore {
+		return out
+	}
+	var graveyard []uuid.UUID
+	for _, id := range ordered {
+		if !e.onBattlefield(id) {
+			graveyard = append(graveyard, id)
+		}
+	}
+	if len(graveyard) > ec.Count {
+		out = append(out, graveyard)
+	}
+	if len(ordered) > ec.Count && len(ordered) > len(graveyard) {
+		out = append(out, ordered)
+	}
+	return out
+}
+
+// onBattlefield reports whether `id` names a permanent on the
+// battlefield.
+func (e *enumerator) onBattlefield(id uuid.UUID) bool {
+	for i := range e.g.Battlefield.Cards {
+		if e.g.Battlefield.Cards[i].InstanceID == id {
+			return true
+		}
+	}
+	return false
 }
 
 // permanentCostPair is one payment of an ability's permanent-MOVING
@@ -1329,7 +1413,7 @@ func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, s
 	for _, id := range sacs {
 		spent[id] = true
 	}
-	if cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf {
+	if cost.SacrificeSelf || cost.ExileSelf || cost.ReturnSelf || cost.BottomSelf {
 		spent[sourceID] = true
 	}
 	var out []permanentCostPair
@@ -1337,7 +1421,7 @@ func permanentCostPairs(returnSets, exileSets [][]uuid.UUID, sacs []uuid.UUID, s
 		// #2028: a return-this cost already returns the source, so a
 		// "return a permanent you control" pick may not name it again
 		// (validateReturnSelfCostLocked).
-		if cost.ReturnSelf && overlapsAny(rets, nil, map[uuid.UUID]bool{sourceID: true}) {
+		if (cost.ReturnSelf || cost.BottomSelf) && overlapsAny(rets, nil, map[uuid.UUID]bool{sourceID: true}) {
 			continue
 		}
 		for _, exs := range exileSets {
@@ -2282,8 +2366,9 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 							Source: source.InstanceID,
 							Cost:   cost,
 							// #2853: a sacrifice outlet that makes mana
-							// still answers removal.
-							Interacts: manaAbilityInteracts(ab.SacrificeOther),
+							// still answers removal (ADR 0142: declared,
+							// or read from the cost).
+							Interacts: manaMoveInteracts(g, source, zone, ab),
 							Params: mustJSON(manaParams{
 								CardID:            source.InstanceID.String(),
 								AbilityIndex:      idx,

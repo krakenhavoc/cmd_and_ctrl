@@ -20,8 +20,9 @@ func init() {
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{
-			Label: "Remove a +1/+1 counter from this creature: This creature gains your choice of flying, first strike, or haste until end of turn.",
-			Cost:  RemoveCountersFromThis(game.CounterPlusOne, 1),
+			Label:   "Remove a +1/+1 counter from this creature: This creature gains your choice of flying, first strike, or haste until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    RemoveCountersFromThis(game.CounterPlusOne, 1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				keywords := []string{"flying", "first strike", "haste"}
 				return PickOption{

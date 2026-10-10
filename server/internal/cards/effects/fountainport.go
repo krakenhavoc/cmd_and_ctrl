@@ -28,22 +28,25 @@ func init() {
 		ManaAbilities: []ManaAbility{painlessColorless()},
 		Activated: []ActivatedAbility{
 			{
-				Label: "{2}, {T}, Sacrifice a token: Draw a card.",
-				Cost:  Plus(ManaCost("{2}"), TapCost(), b08SacrificeAToken()),
+				Label:   "{2}, {T}, Sacrifice a token: Draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+				Cost:    Plus(ManaCost("{2}"), TapCost(), b08SacrificeAToken()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label: "{3}, {T}, Pay 1 life: Create a 1/1 blue Fish creature token.",
-				Cost:  Plus(ManaCost("{3}"), TapCost(), PayLife(1)),
+				Label:   "{3}, {T}, Pay 1 life: Create a 1/1 blue Fish creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(ManaCost("{3}"), TapCost(), PayLife(1)),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 blue Fish"), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label: "{4}, {T}: Create a Treasure token.",
-				Cost:  Plus(ManaCost("{4}"), TapCost()),
+				Label:   "{4}, {T}: Create a Treasure token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{4}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
 				},

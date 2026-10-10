@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Vitu-Ghazi Guildmage — Creature {G}{W} 2/2, Dryad Shaman:
 //
 //	"{4}{G}{W}: Create a 3/3 green Centaur creature token.
@@ -19,14 +21,16 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{4}{G}{W}: Create a 3/3 green Centaur creature token.",
-				Cost:   ManaCost("{4}{G}{W}"),
-				Effect: Do(CreateToken{Template: TokenCard("3/3 green Centaur"), N: 1}),
+				Label:   "{4}{G}{W}: Create a 3/3 green Centaur creature token.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    ManaCost("{4}{G}{W}"),
+				Effect:  Do(CreateToken{Template: TokenCard("3/3 green Centaur"), N: 1}),
 			},
 			{
-				Label:  "{2}{G}{W}: Populate.",
-				Cost:   ManaCost("{2}{G}{W}"),
-				Effect: Do(Populate{}),
+				Label:   "{2}{G}{W}: Populate.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    ManaCost("{2}{G}{W}"),
+				Effect:  Do(Populate{}),
 			},
 		},
 	})

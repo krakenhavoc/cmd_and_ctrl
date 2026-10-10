@@ -152,7 +152,12 @@ The **stack hold** ([ADR 0119](decisions/0119-a-stack-you-can-follow.md)
 §2) is how long another seat's spell or ability must have been on top
 of the stack before the bot passes on it, so the people at the table
 can read it. It is measured from the commit at which the bot first saw
-the item, and it overlaps `MinThink` rather than adding to it. A bot
+the item, and it overlaps `MinThink` rather than adding to it. Since
+[ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6 the
+people at the table hold for the same time: the host's control is
+called **Table pace** in the client, and each person's auto-pass reads
+its hold from this same setting (`client/src/lib/stackHold.ts`
+`STACK_HOLD_BY_PACE`, which a client test pins to `botPacePresets`). A bot
 passes on its own item at once (CR 117.3c), and if the top of the stack
 changes while it waits it decides again. Every seat measures from about
 the same moment, so a table of bots holds once, not once per seat. A
@@ -1163,6 +1168,59 @@ The Altars' mana abilities sacrifice a creature, so the bot does not
 activate them for floating mana. The auto-tapper uses them when a cast
 needs the mana, as it always did.
 
+### Declared answers (ADR 0142)
+
+Every catalog activated row in scope declares what it can do in
+response (`activated_abilities[].purpose.answers`,
+[ADR 0142](decisions/0142-declared-answers-on-catalog-abilities.md)).
+With `PriceAnswers` on (`answers.go`), the bot reads it while anything
+is on the stack:
+
+- **Saving a creature.** When an opponent's item on the stack targets
+  one of the bot's creatures, or a declared sweep would remove it, an
+  untargeted row on that creature is priced by what it saves: the
+  creature's value times the chance the bot loses it
+  (`RemovalConfidence` for a target, the sweep's share for a sweep).
+  - `protect` (regenerate, indestructible, hexproof, a blink, …) saves
+    it from anything.
+  - `prevent` saves it only when every threat is declared damage that
+    can be prevented: a target entry's `damage`, or a damage sweep.
+  - `pump` saves it only when one activation's declared `pump` keeps it
+    alive against the declared damage and −N/−N.
+
+  A row already activated from that creature, above the threats on the
+  stack, has answered them, so the bot does not stack a second shield.
+  A pump that needs several activations to cover the damage is not
+  priced.
+- **A `value` row waits.** A row declared `value` is priced below a pass
+  while anything is on the stack: what it buys is the same once the
+  stack resolves. The exception is a row whose cost spends a permanent
+  the bot is about to lose (above).
+- **Outlets the cost does not name.** A purpose-priced row that
+  sacrifices its own source (Sakura-Tribe Elder) pays for the source at
+  the dying-anyway price, and so does the creature a `sac_outlet` row
+  exiles (The Soul Stone). A self-sacrifice row with no priced purpose
+  (Mind Stone's draw, declared only `value`) still pays nothing for its
+  source, as before. Each clears `LeftoverThreshold` when that is
+  all it costs besides mana and taps. So a targeted Elder is sacrificed
+  for its land in response, and an untargeted one is not.
+
+Layer A has a matching rule, `value-only`: a window with something on
+the stack whose only alternatives to passing are rows declared `value`
+(and floating mana) is a pass, with no model call. It escalates whenever
+the heuristic might spend a permanent there: a move's source or cost is
+a target on the stack or is in combat, a spell on the stack declares a
+sweep, or the move is marked `interacts`. The heuristic tier turns the
+rule off when its Config has `PriceAnswers` off, so
+`heuristic-baseline` plays as before.
+
+The model tiers' prompt and the MCP seat's move list show a row's
+answers after its label, "(answers: protect)".
+
+Not covered: a combat grant (the combat planner's business), a row on
+another permanent that saves this one (Selfless Spirit), and spells,
+which declare no answers yet.
+
 ### The old prices, kept runnable
 
 Every term above is a `Config` or `Weights` field whose zero value is
@@ -1649,7 +1707,7 @@ the line, undo it, free.
 
 ## Show bot reasoning
 
-**Settings → Gameplay → Show bot reasoning** (`settings.gameplay.showBotReasoning`,
+**Settings → Gameplay → Advanced → Show bot reasoning** (`settings.gameplay.showBotReasoning`,
 off by default) surfaces the policy's own one-line justification for
 each move it makes, in the bot feed on the board.
 
@@ -3205,6 +3263,21 @@ empty hand costs nothing. Lion's Eye Diamond and Diamond Lion are only
 offered while the seat could cast an instant: holding priority, owing
 no prompt, with no prompt stopping the table. The auto-tapper never
 cracks one to pay for a cast.
+
+**A −X loyalty cost is a choice of X** (#1944, [ADR
+0032](decisions/0032-planeswalkers.md)'s amendment of 2026-10-10). A mana
+{X} is offered once, at the largest X the seat can pay, because more X
+only buys more. A −X loyalty cost is the other way round: each point is
+a loyalty counter lost, and the last one loses the planeswalker. So the
+enumerator offers every X from the floor to the loyalty there (CR 606.6),
+one move per X, with `Move.Cost.Loyalty` −X. The heuristic already
+charges `Weights.Loyalty` per counter and the whole permanent for the
+last one. A damage row declared `damage_is_x` (Chandra, Awakened
+Inferno's −X, Jeska's) is priced at the X the move names, by whether it
+kills: so the bot takes the smallest X that kills its target, and a
+bigger X is loyalty spent for nothing. A row with no declared purpose
+keeps the mana-value proxy per point of X, which outweighs the loyalty
+price, so it takes the largest X that keeps the planeswalker alive.
 
 **Energy is priced at a flat amount per counter** ([ADR
 0129](decisions/0129-energy-getting-and-paying-it.md) §7, owner decision

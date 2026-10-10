@@ -63,14 +63,17 @@ func b20LandPlayed(ev game.Event, g *game.Game) bool {
 // OldZone, the Appa shape) or played a land from exile
 // (b20LandPlayed with an exile origin).
 func b20PlayedACardFromExile(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Actor != source.Controller || ev.OldZone != game.ZoneExile {
+	return ev.Actor == source.Controller && aCardWasPlayedFromExile(ev, g)
+}
+
+// aCardWasPlayedFromExile is the same read for ANY player — Rocco,
+// Street Chef's "whenever a player plays a land from exile or casts a
+// spell from exile" (#2559).
+func aCardWasPlayedFromExile(ev game.Event, g *game.Game) bool {
+	if ev.OldZone != game.ZoneExile {
 		return false
 	}
-	if ev.Kind == game.EventCast {
-		return true
-	}
-	ok := b20LandPlayed(ev, g)
-	return ok
+	return ev.Kind == game.EventCast || b20LandPlayed(ev, g)
 }
 
 // b20ArtifactEntered is Grinding Station's "whenever an artifact

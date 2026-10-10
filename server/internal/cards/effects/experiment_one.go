@@ -23,8 +23,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordEvolve},
 		Activated: []ActivatedAbility{{
-			Label: "Remove two +1/+1 counters from this creature: Regenerate it.",
-			Cost:  RemoveCountersFromThis(game.CounterPlusOne, 2),
+			Label:   "Remove two +1/+1 counters from this creature: Regenerate it.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    RemoveCountersFromThis(game.CounterPlusOne, 2),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
 			},

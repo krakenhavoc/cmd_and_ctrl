@@ -263,6 +263,17 @@ func b39DamageToFirstTargetPlayer(g *game.Game, item *game.StackItem) error {
 // answer between 1 and N-1: "you may discard TWO cards" is a yes-or-no
 // on the pair, not a licence to pitch one. Without it the clause is a
 // genuine "up to".
+// mayDiscardACardToDrawTwo is the commonest shape: "you may discard a
+// card. If you do, draw two cards." (Witch's Mark, Saheeli's Lattice).
+func mayDiscardACardToDrawTwo(question string) func(*Context) error {
+	return b39MayDiscardThenDraw(1, false, question, func(discarded int) int {
+		if discarded > 0 {
+			return 2
+		}
+		return 0
+	})
+}
+
 func b39MayDiscardThenDraw(n int, exact bool, question string, draw func(discarded int) int) func(*Context) error {
 	return func(ctx *Context) error {
 		player := ctx.Controller()

@@ -40,6 +40,16 @@ of a file. Rows for games that did not come back are **kept**, not
 pruned: a finished game has no restore point by design, and its row is
 the history "my games" reads. The engine artifacts (`restore/`,
 `replays/`, `games/`) are unchanged.
+**Amended by:** [#2919](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2919)
+(2026-10-10, S69) — an ended table keeps a restore point. The room
+writes its final state as one (or, if that state cannot be written,
+removes the older live one), and a boot brings it back, still ended,
+for `ws.EndedTableRetention` (7 days) after it ended; past that the file
+is removed as before. Players stay on an ended table until they leave
+it, and a deploy in the meantime used to take it from everyone still
+looking at it: their redial found "game not found". Bots are not
+relaunched for an ended table, and `cmdctrl_boot_restore_games{outcome="ended"}`
+now counts only the tables past their retention.
 **Amended by:** the phase 3 amendment of 2026-09-24
 ([#1497](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1497)) at
 the end of this file. It replaces the priority order in "Phase 3 (not
@@ -1438,6 +1448,10 @@ estimate.
 
 > **Amended by [ADR 0096](0096-the-monarch-from-a-card-effect.md)** (2026-10-08): `cantBecomeMonarch`,
 > a rules gate (#2039), is one more additive kind under schema v7.
+
+> **Amended by [ADR 0066](0066-granted-cast-and-play-permissions.md)** (2026-10-10): `cantPlayFromHand`,
+> a rules gate read by both the cast gate and the land-play gate (#2559, Memory Vessel), is one more
+> additive kind under schema v7, with one fixture (`v7/memory_vessel.json`).
 
 P5 proposed two new record types, `ScopedReplacement` and
 `ScopedBlockRule`. This amendment proposes new kinds on the existing

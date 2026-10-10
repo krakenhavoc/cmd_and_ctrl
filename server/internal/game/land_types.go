@@ -239,6 +239,8 @@ func conditionPhrase(c DurationCondition, counterKind, sourceName string) string
 		return sourceName + " remains tapped"
 	case WhilePinnedPowerAtMostSource:
 		return "its power remains at most " + sourceName + "'s"
+	case WhileSourceAttachedToPinned:
+		return sourceName + " remains attached to it"
 	}
 	return ""
 }

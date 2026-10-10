@@ -36,10 +36,10 @@ func queueSacrificePrompt(t *testing.T, g *game.Game) *game.PendingChoice {
 }
 
 // TestDispatchRefusesStepVerbsWhileAChoiceIsPending — advance_step,
-// pass_priority and pass_turn all come back as ErrChoicePending, with
+// pass_priority, pass_turn and end_turn all come back as ErrChoicePending, with
 // the message naming what is owed.
 func TestDispatchRefusesStepVerbsWhileAChoiceIsPending(t *testing.T) {
-	for _, verb := range []Type{TypeAdvanceStep, TypePassPriority, TypePassTurn} {
+	for _, verb := range []Type{TypeAdvanceStep, TypePassPriority, TypePassTurn, TypeEndTurn} {
 		g := newGame(t)
 		prompt := queueSacrificePrompt(t, g)
 		before := g.Snapshot().Turn

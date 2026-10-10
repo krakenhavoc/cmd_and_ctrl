@@ -405,26 +405,87 @@ describe("settings", () => {
     expect(s.gameplay.bluffDelayMaxMs).toBe(6000);
   });
 
-  // ADR 0119 §2: the stack hold arrives on, at 2 s, for everyone.
-  it("v17 → v18 seeds the stack hold at 2 s, and keeps a stored choice", async () => {
-    localStorage.setItem(
-      "cmdctrl.settings.v1",
-      JSON.stringify({ __version: 17, gameplay: { bluffInstant: true } }),
-    );
-    let mod = await freshModule();
-    let s = get(mod.settings);
-    expect(s.__version).toBe(mod.SETTINGS_VERSION);
-    expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(18);
-    expect(s.gameplay.stackHoldMs).toBe(2000);
-    expect(s.gameplay.bluffInstant).toBe(true);
+  // ADR 0143 §2.6: the personal stack hold (ADR 0119 §2, v18) is gone
+  // at v26. The table's pace sets the hold, so a stored value, whatever
+  // it was, is dropped, and nothing else moves with it.
+  it("v25 → v26 drops gameplay.stackHoldMs", async () => {
+    for (const [version, stored] of [
+      [18, 0],
+      [22, 3000],
+      [25, 2000],
+      [25, "x"],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({
+          __version: version,
+          gameplay: { stackHoldMs: stored, bluffInstant: true },
+        }),
+      );
+      const mod = await freshModule();
+      const s = get(mod.settings);
+      expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(26);
+      expect(s.__version).toBe(mod.SETTINGS_VERSION);
+      expect("stackHoldMs" in s.gameplay, `v${version} ${String(stored)}`).toBe(false);
+      expect(s.gameplay.bluffInstant).toBe(true);
+      // And it is gone from disk once the settings are saved again.
+      mod.updateSettings("gameplay", "confirmExit", false);
+      const disk = JSON.parse(localStorage.getItem("cmdctrl.settings.v1") ?? "{}");
+      expect("stackHoldMs" in disk.gameplay).toBe(false);
+    }
+  });
 
-    localStorage.setItem(
-      "cmdctrl.settings.v1",
-      JSON.stringify({ __version: 18, gameplay: { stackHoldMs: 0 } }),
+  it("a new player has no personal stack hold", async () => {
+    const { defaultSettings } = await freshModule();
+    expect("stackHoldMs" in defaultSettings().gameplay).toBe(false);
+  });
+
+  it("an account copy from a v25 client loses stackHoldMs too", async () => {
+    const { applySyncedCopy, defaultSettings } = await freshModule();
+    const next = applySyncedCopy(defaultSettings(), { gameplay: { stackHoldMs: 3000 } }, 25);
+    expect("stackHoldMs" in next.gameplay).toBe(false);
+  });
+
+  // ADR 0143 §4.2: Skip to my turn always clears at the viewer's own
+  // main 1, so the danger setting that kept the old autopass on is gone
+  // at v27, whatever it held.
+  it("v26 → v27 drops gameplay.autopassPersistThroughTurns", async () => {
+    for (const [version, stored] of [
+      [6, true],
+      [20, false],
+      [26, true],
+      [26, "yes"],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({
+          __version: version,
+          gameplay: { autopassPersistThroughTurns: stored, autoPassOwnStack: false },
+        }),
+      );
+      const mod = await freshModule();
+      const s = get(mod.settings);
+      expect(mod.SETTINGS_VERSION).toBeGreaterThanOrEqual(27);
+      expect(s.__version).toBe(mod.SETTINGS_VERSION);
+      const label = `v${version} ${String(stored)}`;
+      expect("autopassPersistThroughTurns" in s.gameplay, label).toBe(false);
+      expect(s.gameplay.autoPassOwnStack, label).toBe(false);
+      mod.updateSettings("gameplay", "confirmExit", false);
+      const disk = JSON.parse(localStorage.getItem("cmdctrl.settings.v1") ?? "{}");
+      expect("autopassPersistThroughTurns" in disk.gameplay, label).toBe(false);
+    }
+  });
+
+  it("has no autopassPersistThroughTurns for a new player, a synced field or a v26 copy", async () => {
+    const { applySyncedCopy, defaultSettings, SYNCED_FIELDS } = await freshModule();
+    expect("autopassPersistThroughTurns" in defaultSettings().gameplay).toBe(false);
+    expect("autopassPersistThroughTurns" in SYNCED_FIELDS.gameplay).toBe(false);
+    const next = applySyncedCopy(
+      defaultSettings(),
+      { gameplay: { autopassPersistThroughTurns: true } },
+      26,
     );
-    mod = await freshModule();
-    s = get(mod.settings);
-    expect(s.gameplay.stackHoldMs).toBe(0);
+    expect("autopassPersistThroughTurns" in next.gameplay).toBe(false);
   });
 
   // ADR 0118 §1, owner decision 5: strict payment is the default, and
@@ -605,6 +666,30 @@ describe("settings", () => {
   it("defaults highlightLegalActions on for a new player", async () => {
     const { settings } = await freshModule();
     expect(get(settings).gameplay.highlightLegalActions).toBe(true);
+  });
+
+  // #2956: Auto-assign combat damage is on by default, for a new player
+  // and for a stored blob from before the field, and a player's own
+  // choice to turn it off is kept.
+  it("defaults autoAssignCombatDamage on, and keeps a stored off", async () => {
+    let mod = await freshModule();
+    expect(get(mod.settings).gameplay.autoAssignCombatDamage).toBe(true);
+    expect(mod.SYNCED_FIELDS.gameplay.autoAssignCombatDamage).toBe("synced");
+    for (const [stored, want] of [
+      [undefined, true],
+      ["no", true],
+      [true, true],
+      [false, false],
+    ] as const) {
+      localStorage.setItem(
+        "cmdctrl.settings.v1",
+        JSON.stringify({ __version: 27, gameplay: { autoAssignCombatDamage: stored } }),
+      );
+      mod = await freshModule();
+      expect(get(mod.settings).gameplay.autoAssignCombatDamage, `stored ${String(stored)}`).toBe(
+        want,
+      );
+    }
   });
 
   it("keeps a chosen fan, spotlight or ribbon across the v17 upgrade", async () => {
@@ -1120,11 +1205,12 @@ describe("passMode (v23 → v24)", () => {
       await modeOf({ __version: 1, gameplay: { autoPassPriority: false, stepStops: {} } }),
     ).toBe("smart");
     // v2 on the seeded grid: the v2 → v3 hotfix turned it on too.
+    // (The v2-v24 default grid ticked the end step; ADR 0143 dropped it.)
     const { defaultStepStops } = await freshModule();
     expect(
       await modeOf({
         __version: 2,
-        gameplay: { autoPassPriority: false, stepStops: defaultStepStops() },
+        gameplay: { autoPassPriority: false, stepStops: { ...defaultStepStops(), end: true } },
       }),
     ).toBe("smart");
   });
@@ -1175,5 +1261,149 @@ describe("passMode (v23 → v24)", () => {
     for (const k of RETIRED) expect(k in next.gameplay, k).toBe(false);
     const manual = applySyncedCopy(base, { gameplay: { autoPassPriority: false } }, 23);
     expect(manual.gameplay.passMode).toBe("manual");
+  });
+});
+
+// ---- ADR 0143 §2.3 and §5: stops by whose turn it is ----
+
+describe("stepStops and stepStopsOpponents (v24 → v25)", () => {
+  beforeEach(() => localStorage.clear());
+
+  const load = async (blob: unknown) => {
+    localStorage.setItem("cmdctrl.settings.v1", JSON.stringify(blob));
+    const mod = await freshModule();
+    return { mod, s: get(mod.settings) };
+  };
+  // Every stoppable step, all off; then the ticks named.
+  const grid = (...ticked: string[]) => {
+    const out: Record<string, boolean> = {};
+    for (const id of [
+      "upkeep",
+      "draw",
+      "precombat_main",
+      "begin_combat",
+      "declare_attackers",
+      "declare_blockers",
+      "combat_damage",
+      "end_combat",
+      "postcombat_main",
+      "end",
+    ]) {
+      out[id] = ticked.includes(id);
+    }
+    return out;
+  };
+  const OLD_DEFAULT = grid(
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+    "end",
+  );
+  const NEW_MINE = grid(
+    "precombat_main",
+    "declare_attackers",
+    "declare_blockers",
+    "postcombat_main",
+  );
+  const NONE = grid();
+
+  it("a new player: My turn without the end step, and nothing on opponents' turns", async () => {
+    const { defaultSettings, SETTINGS_VERSION } = await freshModule();
+    expect(SETTINGS_VERSION).toBeGreaterThanOrEqual(25);
+    const gp = defaultSettings().gameplay;
+    expect(gp.stepStops).toEqual(NEW_MINE);
+    expect(gp.stepStopsOpponents).toEqual(NONE);
+  });
+
+  it("moves a player on the untouched old default to the new defaults", async () => {
+    const { mod, s } = await load({ __version: 24, gameplay: { stepStops: OLD_DEFAULT } });
+    expect(s.__version).toBe(mod.SETTINGS_VERSION);
+    expect(s.gameplay.stepStops).toEqual(NEW_MINE);
+    expect(s.gameplay.stepStopsOpponents).toEqual(NONE);
+  });
+
+  it("keeps a tuned grid in both columns", async () => {
+    for (const tuned of [
+      grid("upkeep", "precombat_main", "end"),
+      grid("precombat_main", "declare_attackers", "declare_blockers", "postcombat_main"),
+      NONE,
+      { ...OLD_DEFAULT, end_combat: true },
+    ]) {
+      const { s } = await load({ __version: 24, gameplay: { stepStops: tuned } });
+      expect(s.gameplay.stepStops, JSON.stringify(tuned)).toEqual(tuned);
+      expect(s.gameplay.stepStopsOpponents, JSON.stringify(tuned)).toEqual(tuned);
+      // A copy, not the same object.
+      expect(s.gameplay.stepStopsOpponents).not.toBe(s.gameplay.stepStops);
+    }
+  });
+
+  it("gives the new defaults to a blob that never stored a grid", async () => {
+    for (const blob of [
+      { __version: 12, gameplay: {} },
+      { gameplay: { passMode: "careful" } },
+      { __version: 1, gameplay: { stepStops: {} } },
+    ]) {
+      const { s } = await load(blob);
+      expect(s.gameplay.stepStops, JSON.stringify(blob)).toEqual(NEW_MINE);
+      expect(s.gameplay.stepStopsOpponents, JSON.stringify(blob)).toEqual(NONE);
+    }
+  });
+
+  it("drops untap and cleanup from an old grid before comparing it", async () => {
+    const { s } = await load({
+      __version: 10,
+      gameplay: { stepStops: { ...OLD_DEFAULT, untap: true, cleanup: false } },
+    });
+    expect(s.gameplay.stepStops).toEqual(NEW_MINE);
+    expect(s.gameplay.stepStopsOpponents).toEqual(NONE);
+  });
+
+  it("from v25 on, both stored columns stand and survive a save", async () => {
+    const mine = grid("upkeep", "end");
+    const theirs = grid("begin_combat");
+    const { mod } = await load({
+      __version: 25,
+      gameplay: { stepStops: mine, stepStopsOpponents: theirs },
+    });
+    expect(get(mod.settings).gameplay.stepStops).toEqual(mine);
+    expect(get(mod.settings).gameplay.stepStopsOpponents).toEqual(theirs);
+    mod.updateSettings("gameplay", "confirmExit", false);
+    const again = await freshModule();
+    expect(get(again.settings).gameplay.stepStops).toEqual(mine);
+    expect(get(again.settings).gameplay.stepStopsOpponents).toEqual(theirs);
+  });
+
+  it("a v25 blob keeps an old-default-looking My turn column as it is", async () => {
+    // From v25 the old default is a choice like any other.
+    const { s } = await load({
+      __version: 25,
+      gameplay: { stepStops: OLD_DEFAULT, stepStopsOpponents: NONE },
+    });
+    expect(s.gameplay.stepStops).toEqual(OLD_DEFAULT);
+  });
+
+  it("a malformed Opponents' column falls back to empty", async () => {
+    for (const bad of ["x", [true], null, 3]) {
+      const { s } = await load({ __version: 25, gameplay: { stepStopsOpponents: bad } });
+      expect(s.gameplay.stepStopsOpponents, String(bad)).toEqual(NONE);
+    }
+    const { s } = await load({
+      __version: 25,
+      gameplay: { stepStopsOpponents: { upkeep: true, end: "yes", untap: true } },
+    });
+    expect(s.gameplay.stepStopsOpponents).toEqual({ upkeep: true });
+  });
+
+  it("an account copy from a v24 client splits the same way", async () => {
+    const { applySyncedCopy, defaultSettings } = await freshModule();
+    const base = defaultSettings();
+    const tuned = grid("upkeep", "end");
+    const next = applySyncedCopy(base, { gameplay: { stepStops: tuned } }, 24);
+    expect(next.gameplay.stepStops).toEqual(tuned);
+    expect(next.gameplay.stepStopsOpponents).toEqual(tuned);
+    const untouched = applySyncedCopy(base, { gameplay: { stepStops: OLD_DEFAULT } }, 24);
+    expect(untouched.gameplay.stepStops).toEqual(NEW_MINE);
+    expect(untouched.gameplay.stepStopsOpponents).toEqual(NONE);
   });
 });

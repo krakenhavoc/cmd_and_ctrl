@@ -2,6 +2,7 @@ package game
 
 import (
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 )
@@ -173,11 +174,21 @@ type PermissionFilter struct {
 	// sorcery card in your graveyard".
 	InstantOrSorceryOnly bool `json:"instantOrSorceryOnly,omitempty"`
 
+	// ArtifactInstantOrSorceryOnly is Urza's "artifact, instant, and
+	// sorcery spells" (ADR 0145).
+	ArtifactInstantOrSorceryOnly bool `json:"artifactInstantOrSorceryOnly,omitempty"`
+
 	// NoncreatureOnly is the half of "noncreature spells" nothing in
 	// ADR 0066 needed and a timing statement does (#1195) — Borne
 	// Upon a Wind's sibling clause, and the shape a "you may cast
 	// noncreature spells as though they had flash" card wants.
 	NoncreatureOnly bool `json:"noncreatureOnly,omitempty"`
+
+	// CardType is a card type a qualifying card must have, lowercase
+	// ("artifact", "instant") — Apex Observatory's "the next spell you
+	// cast this turn of the chosen type" (#2709). Empty constrains
+	// nothing.
+	CardType string `json:"cardType,omitempty"`
 
 	// SorceryOnly is Teferi, Time Raveler's +1: "you may cast SORCERY
 	// spells as though they had flash" (#1195). Narrower than
@@ -281,7 +292,13 @@ func (f PermissionFilter) Matches(c Card) bool {
 	if f.InstantOrSorceryOnly && !c.IsInstant() && !c.IsSorcery() {
 		return false
 	}
+	if f.ArtifactInstantOrSorceryOnly && !c.IsArtifact() && !c.IsInstant() && !c.IsSorcery() {
+		return false
+	}
 	if f.NoncreatureOnly && c.IsCreature() {
+		return false
+	}
+	if f.CardType != "" && !c.HasCardType(strings.ToLower(f.CardType)) {
 		return false
 	}
 	if f.SorceryOnly && !c.IsSorcery() {

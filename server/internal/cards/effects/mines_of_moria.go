@@ -36,8 +36,9 @@ func init() {
 			Label:    "Add {R}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{R}, {T}, Exile three cards from your graveyard: Create two Treasure tokens.",
-			Cost:  Plus(ManaCost("{3}{R}"), TapCost(), ExileFromGraveyard(3, "three cards", nil)),
+			Label:   "{3}{R}, {T}, Exile three cards from your graveyard: Create two Treasure tokens.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{3}{R}"), TapCost(), ExileFromGraveyard(3, "three cards", nil)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 2}.Apply(NewContext(g, item))
 			},

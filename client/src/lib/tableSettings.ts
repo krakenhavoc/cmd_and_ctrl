@@ -10,6 +10,8 @@
 // The full settings panel is ADR 0075 sub-PR 5. This file carries only
 // what the in-game menu needs today.
 
+import type { Readable } from "svelte/store";
+import { guardedWritable } from "./guardedStore";
 import type { GameView, PlayerView, TableSettingsView } from "./protocol";
 
 // The roles a session can carry (session.ts `Session.principal.role`).
@@ -115,6 +117,17 @@ export const DEFAULT_TABLE_SETTINGS: TableSettingsView = {
   allow_spawn: false,
 };
 
+// ADR 0143 §2.6: the pace of the table on screen, for Settings →
+// Gameplay → Reading time. Game.svelte sets it from every frame and
+// clears it on the way out, so it is null outside a game.
+const tablePace = guardedWritable<TableSettingsView["bot_pace"] | null>(null, "currentTablePace");
+export const currentTablePace: Readable<TableSettingsView["bot_pace"] | null> = {
+  subscribe: tablePace.subscribe,
+};
+export function setCurrentTablePace(p: TableSettingsView["bot_pace"] | null): void {
+  tablePace.set(p);
+}
+
 /** The table's settings, or the defaults when the frame has none. */
 export function tableSettingsOf(view: GameView | null | undefined): TableSettingsView {
   return view?.settings ?? DEFAULT_TABLE_SETTINGS;
@@ -144,23 +157,25 @@ export const UNDO_SCOPE_CHOICES: SettingChoice<TableSettingsView["undo_scope"]>[
 ];
 
 export const BOT_PACE_CHOICES: SettingChoice<TableSettingsView["bot_pace"]>[] = [
-  // ADR 0119 §2: the speed also sets how long a bot leaves another
-  // player's spell on the stack before passing (aiseat's
-  // botPacePresets: fast 0, normal 2 s, slow 3 s).
+  // ADR 0143 §2.6: the table pace (the wire still calls it bot_pace)
+  // sets how long another player's spell stays on the stack before
+  // auto-pass lets it resolve, for people and bots alike
+  // (stackHold.ts STACK_HOLD_BY_PACE, aiseat's botPacePresets: fast 0,
+  // normal 2 s, slow 3 s), and how long bots think.
   {
     value: "fast",
     label: "Fast",
-    hint: "Bots answer almost immediately and pass others' spells at once. Good for testing.",
+    hint: "Spells resolve as soon as everyone has passed, and bots answer almost immediately. Good for testing.",
   },
   {
     value: "normal",
     label: "Normal",
-    hint: "Bots think for about a second and leave others' spells on the stack for 2 s.",
+    hint: "Other players' spells stay on the stack for 2 s before auto-pass lets them resolve, for people and bots alike. Bots think for about a second.",
   },
   {
     value: "slow",
     label: "Slow",
-    hint: "Bots take their time and leave others' spells on the stack for 3 s, so the table can follow along.",
+    hint: "Other players' spells stay on the stack for 3 s, and bots take their time, so the table can follow along.",
   },
 ];
 

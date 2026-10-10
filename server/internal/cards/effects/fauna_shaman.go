@@ -37,8 +37,9 @@ func init() {
 		Name:         "Fauna Shaman",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{G}, {T}, Discard a creature card: Search your library for a creature card, reveal it, put it into your hand, then shuffle.",
-			Cost:  Plus(ManaCost("{G}"), TapCost(), DiscardCardsMatching(1, "a creature card", MatchCreature)),
+			Label:   "{G}, {T}, Discard a creature card: Search your library for a creature card, reveal it, put it into your hand, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{G}"), TapCost(), DiscardCardsMatching(1, "a creature card", MatchCreature)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player:    item.Controller,

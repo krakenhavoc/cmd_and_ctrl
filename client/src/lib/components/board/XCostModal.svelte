@@ -49,6 +49,10 @@
     // energy. The server refuses more (CR 118.3), so the input does
     // too. Undefined is no ceiling.
     maxX?: number;
+    // #1944: what maxX counts. "loyalty" for a −X loyalty cost (Chandra,
+    // Awakened Inferno), whose ceiling is the planeswalker's loyalty
+    // (CR 606.6); "energy" otherwise.
+    maxXUnit?: "energy" | "loyalty";
     // #2581: a spell's printed "X can't be greater than <count>" —
     // the card's `x_max`, read for the viewer. The server refuses more
     // (CR 601.2b), so the input does too. The live preview reports the
@@ -75,6 +79,7 @@
     costLabel = undefined,
     minX = 0,
     maxX = undefined,
+    maxXUnit = "energy",
     xCeiling = undefined,
     castParams = {},
     confirmVerb = "Cast",
@@ -193,6 +198,10 @@
         Pick a value for X — this ability's X can't be less than {floor}. The check below reads your
         untapped sources and says whether auto-tap can pay for it.
       </p>
+    {:else if maxXUnit === "loyalty"}
+      <!-- #1944: a −X loyalty cost spends no mana, so there is no
+           auto-tap check to describe. -->
+      <p class="prompt-hint">Pick a value for X.</p>
     {:else if card.additional_cost?.demands_x}
       <!-- S23: Toxic Deluge's X is paid in LIFE, not mana, so the
            auto-tap line below is about the flat printed cost and
@@ -208,7 +217,16 @@
         can pay for it.
       </p>
     {/if}
-    {#if maxX !== undefined}
+    {#if maxX !== undefined && maxXUnit === "loyalty"}
+      <!-- #1944: a −X loyalty cost — X loyalty counters, at most what
+           the planeswalker has (CR 606.6). All of them is legal, and it
+           dies to the state-based action. -->
+      <p class="prompt-hint">
+        You'll remove {x} loyalty (it has {maxX}){x === maxX && maxX > 0
+          ? " — that's all of it, and the planeswalker will die"
+          : ""}.
+      </p>
+    {:else if maxX !== undefined}
       <!-- ADR 0129 §8: "Pay X {E}" — X energy, at most what the seat has. -->
       <p class="prompt-hint">You'll pay {x} energy (you can pay up to {maxX}).</p>
     {/if}

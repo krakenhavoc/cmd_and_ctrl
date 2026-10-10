@@ -31,9 +31,10 @@ func init() {
 		Name:         "Lurking Evil",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "Pay half your life, rounded up: This enchantment becomes a 4/4 Phyrexian Horror creature with flying",
-			Cost:   PayLifeCount(LifeHalfYoursRoundedUp),
-			Effect: lurkingEvilBecomesAHorror,
+			Label:   "Pay half your life, rounded up: This enchantment becomes a 4/4 Phyrexian Horror creature with flying",
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Cost:    PayLifeCount(LifeHalfYoursRoundedUp),
+			Effect:  lurkingEvilBecomesAHorror,
 		}},
 	})
 }

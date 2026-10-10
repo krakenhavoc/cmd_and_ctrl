@@ -190,9 +190,15 @@ func frLoyaltyAbilityRemovedAtLeast(ev game.Event, g *game.Game, n int) bool {
 	if !ok {
 		return false
 	}
+	// #1944: a −X cost removed the X its activation announced, which
+	// the ability's stack item carries.
+	x := 0
+	if it := g.StackItemForEffect(ev.StackItemID); it != nil && it.XValue > 0 {
+		x = it.XValue
+	}
 	abs, _ := game.ActivatedAbilitiesWithOrigins(c)
 	for _, ab := range abs {
-		if ab.Label == ev.Label && ab.Cost.Loyalty != nil && *ab.Cost.Loyalty <= -n {
+		if ab.Label == ev.Label && ab.Cost.Loyalty != nil && ab.Cost.LoyaltyDelta(x) <= -n {
 			return true
 		}
 	}

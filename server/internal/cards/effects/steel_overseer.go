@@ -19,8 +19,9 @@ func init() {
 		Name:         "Steel Overseer",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Put a +1/+1 counter on each artifact creature you control.",
-			Cost:  TapCost(),
+			Label:   "{T}: Put a +1/+1 counter on each artifact creature you control.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, c := range g.BattlefieldCardsForEffect() {

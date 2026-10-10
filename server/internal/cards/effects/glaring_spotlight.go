@@ -41,8 +41,9 @@ func init() {
 			AsThoughNoHexproof(BySpellsAndAbilitiesYouControl, Creature(), OpponentControls()),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}, Sacrifice this artifact: Creatures you control gain hexproof until end of turn and can't be blocked this turn.",
-			Cost:  Plus(ManaCost("{3}"), SacrificeThis()),
+			Label:   "{3}, Sacrifice this artifact: Creatures you control gain hexproof until end of turn and can't be blocked this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerCombatGrant},
+			Cost:    Plus(ManaCost("{3}"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (GrantKeywordUntilEOT{

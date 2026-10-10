@@ -30,8 +30,9 @@ func init() {
 		Name:         "Thrasios, Triton Hero",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{4}: Scry 1, then reveal the top card of your library. If it's a land card, put it onto the battlefield tapped. Otherwise, draw a card.",
-			Cost:  ManaCost("{4}"),
+			Label:   "{4}: Scry 1, then reveal the top card of your library. If it's a land card, put it onto the battlefield tapped. Otherwise, draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{4}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				controller, source := item.Controller, item.SourceCardID
 				g.ScryThenForEffect(controller, source, 1, func(g *game.Game) error {

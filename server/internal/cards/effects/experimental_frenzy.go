@@ -45,9 +45,10 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{3}{R}: Destroy this enchantment.",
-			Cost:   game.AbilityCost{Mana: "{3}{R}"},
-			Effect: destroyThisPermanent(false),
+			Label:   "{3}{R}: Destroy this enchantment.",
+			Purpose: game.Purpose{Answers: game.AnswerRestrict},
+			Cost:    game.AbilityCost{Mana: "{3}{R}"},
+			Effect:  destroyThisPermanent(false),
 		}},
 	})
 }

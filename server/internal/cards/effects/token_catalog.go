@@ -298,6 +298,12 @@ func init() {
 		if _, taken := defs[key]; taken {
 			panic(fmt.Sprintf("effects: two token templates claim %q", key))
 		}
+		for i, ab := range t.Activated {
+			checkActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab)
+		}
+		for i, m := range t.Mana {
+			checkManaAnswers(t.Slug+" token", fmt.Sprintf("mana ability %d", i), m)
+		}
 		fileDef(key, buildTokenDef(t))
 		checkGrants(t.Slug, t.Grants)
 		for _, gr := range t.Grants {

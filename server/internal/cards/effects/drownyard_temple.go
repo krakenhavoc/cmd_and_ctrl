@@ -31,9 +31,10 @@ func init() {
 			Label:    "Add {C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{3}: Return this card from your graveyard to the battlefield tapped.",
-			Cost:  ManaCost("{3}"),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{3}: Return this card from your graveyard to the battlefield tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{3}"),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return returnThisFromGraveyardTapped(g, item)
 			},

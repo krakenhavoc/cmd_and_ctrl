@@ -35,7 +35,7 @@
 </script>
 
 <section class="auto-answers" aria-label={L.automaticAnswers}>
-  <h4>Automatic answers</h4>
+  <h4>Saved answers</h4>
   {#if rules.length === 0}
     <p class="help">
       None yet. Tick {L.rememberThisAnswer} on a prompt, and the next button you press becomes the standing

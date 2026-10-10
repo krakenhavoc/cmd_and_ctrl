@@ -18,9 +18,10 @@ func init() {
 		Name:         "Campus Crier",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Exile this card from your graveyard: Empower Jace 2.",
-			Cost:  Plus(ManaCost("{1}"), ExileThis()),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{1}, Exile this card from your graveyard: Empower Jace 2.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}"), ExileThis()),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return EmpowerJace{N: 2}.Apply(NewContext(g, item))
 			},

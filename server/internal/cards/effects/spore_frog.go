@@ -22,8 +22,9 @@ func init() {
 		Name:         "Spore Frog",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice this creature: Prevent all combat damage that would be dealt this turn.",
-			Cost:  SacrificeThis(),
+			Label:   "Sacrifice this creature: Prevent all combat damage that would be dealt this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
+			Cost:    SacrificeThis(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return PreventAllCombatDamageThisTurn{
 					Label: "Spore Frog: prevent combat damage",

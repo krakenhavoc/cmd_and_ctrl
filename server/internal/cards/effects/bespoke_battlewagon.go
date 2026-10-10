@@ -27,7 +27,7 @@ func init() {
 			{
 				Label:   "{T}: You get {E}{E}.",
 				Cost:    TapCost(),
-				Purpose: game.Purpose{Energy: 2},
+				Purpose: game.Purpose{Answers: game.AnswerValue, Energy: 2},
 				Effect:  ebYouGetEnergy(2),
 			},
 			{
@@ -39,20 +39,22 @@ func init() {
 			{
 				Label:   "{T}, Pay {E}{E}{E}: Draw a card.",
 				Cost:    Plus(TapCost(), PayEnergy(3)),
-				Purpose: game.Purpose{Draws: 1},
+				Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 				Effect:  ebDrawACard,
 			},
 			{
-				Label: "Pay {E}{E}{E}{E}: This Vehicle becomes an artifact creature until end of turn.",
-				Cost:  PayEnergy(4),
+				Label:   "Pay {E}{E}{E}{E}: This Vehicle becomes an artifact creature until end of turn.",
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Cost:    PayEnergy(4),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return BecomeCreatureUntilEOT{Label: "Bespoke Battlewagon — becomes an artifact creature"}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label:  "Crew 4",
-				Cost:   CrewCost(4),
-				Effect: CrewEffect("Bespoke Battlewagon"),
+				Label:   "Crew 4",
+				Cost:    CrewCost(4),
+				Purpose: game.Purpose{Answers: game.AnswerAnimate},
+				Effect:  CrewEffect("Bespoke Battlewagon"),
 			},
 		},
 	})

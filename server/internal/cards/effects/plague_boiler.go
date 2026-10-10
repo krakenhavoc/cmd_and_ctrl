@@ -37,8 +37,9 @@ func init() {
 				})), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}{G}: Put a plague counter on this artifact or remove a plague counter from it.",
-			Cost:  ManaCost("{1}{B}{G}"),
+			Label:   "{1}{B}{G}: Put a plague counter on this artifact or remove a plague counter from it.",
+			Purpose: game.Purpose{Answers: game.AnswerRemove},
+			Cost:    ManaCost("{1}{B}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				c, ok := g.LookupCardForEffect(item.SourceCardID)
 				if !ok || !onBattlefield(g, item.SourceCardID) {

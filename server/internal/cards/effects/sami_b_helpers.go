@@ -27,9 +27,10 @@ func samiDrawOnETB(name string) game.TriggeredAbility {
 // artifact: "{2}, {T}, Sacrifice this artifact: You gain 3 life."
 func samiFoodLifeAbility() ActivatedAbility {
 	return ActivatedAbility{
-		Label:  "{2}, {T}, Sacrifice this artifact: You gain 3 life",
-		Cost:   Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
-		Effect: b36GainLife(3),
+		Label:   "{2}, {T}, Sacrifice this artifact: You gain 3 life",
+		Cost:    Plus(ManaCost("{2}"), TapCost(), SacrificeThis()),
+		Purpose: game.Purpose{Answers: game.AnswerValue}, // ADR 0142
+		Effect:  b36GainLife(3),
 	}
 }
 

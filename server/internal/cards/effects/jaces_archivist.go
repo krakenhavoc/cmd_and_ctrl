@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Jace's Archivist — Creature — Vedalken Wizard {1}{U}{U}, 2/2
 // (EDHREC rank 1902):
 //
@@ -21,9 +23,10 @@ func init() {
 		Name:         "Jace's Archivist",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{U}, {T}: Each player discards their hand, then draws cards equal to the greatest number discarded",
-			Cost:   Plus(ManaCost("{U}"), TapCost()),
-			Effect: b17WheelToGreatestDiscard,
+			Label:   "{U}, {T}: Each player discards their hand, then draws cards equal to the greatest number discarded",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{U}"), TapCost()),
+			Effect:  b17WheelToGreatestDiscard,
 		}},
 	})
 }

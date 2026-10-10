@@ -33,9 +33,10 @@ func init() {
 			}, "Gonti's Aether Heart — you get {E}{E}", Do(GetEnergy{N: 2})), game.Purpose{Energy: 2}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Pay eight {E}, Exile Gonti's Aether Heart: Take an extra turn after this one.",
-			Cost:   Plus(PayEnergy(8), ExileThis()),
-			Effect: youTakeAnExtraTurnEffect,
+			Label:   "Pay eight {E}, Exile Gonti's Aether Heart: Take an extra turn after this one.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(PayEnergy(8), ExileThis()),
+			Effect:  youTakeAnExtraTurnEffect,
 		}},
 	})
 }

@@ -35,9 +35,10 @@ func init() {
 			Label:    "Add {C}{C}{C}{C}{C}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{5}, {T}: Draw a card for each color among permanents you control",
-			Cost:   Plus(ManaCost("{5}"), TapCost()),
-			Effect: chromaticOrreryDraw,
+			Label:   "{5}, {T}: Draw a card for each color among permanents you control",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{5}"), TapCost()),
+			Effect:  chromaticOrreryDraw,
 		}},
 	})
 }

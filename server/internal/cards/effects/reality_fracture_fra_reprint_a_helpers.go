@@ -42,8 +42,9 @@ func rfReprintALandscape(oracleID, name, cyclingCost string, subtypes ...string)
 		}},
 		Activated: []ActivatedAbility{
 			{
-				Label: label,
-				Cost:  Plus(TapCost(), SacrificeThis()),
+				Label:   label,
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), SacrificeThis()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return SearchLibrary{
 						Player:        item.Controller,

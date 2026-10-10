@@ -244,14 +244,14 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "group",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's toggles: autopass, undo, the ⋯ menu",
+    doc: "the dock's toggles: Skip to my turn, undo, the ⋯ menu",
   }),
-  autopass: label({
-    name: "autopass",
+  skipToMyTurn: label({
+    name: "Skip to my turn",
     kind: "aria",
     role: "button",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's autopass toggle (state in aria-pressed); the tutorial's let-the-bot-play step anchors here, within actions",
+    doc: "the dock's Skip to my turn toggle (ADR 0143 §4.2, formerly autopass; state in aria-pressed): passes for you until your next main phase; the tutorial's let-the-bot-play step anchors here, within actions",
   }),
   next: label({
     name: "next",
@@ -260,12 +260,19 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's primary: pass priority",
   }),
-  passTurn: label({
-    name: "Pass turn",
+  endTurn: label({
+    name: "End turn",
     kind: "text",
     role: "button",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's secondary: skip the rest of the turn",
+    doc: "the dock's secondary, shown to the active player only (ADR 0143 §4.2, formerly Pass turn): passes for you through every step of the rest of your turn",
+  }),
+  sandboxPassTurn: label({
+    name: "Skip to next turn (sandbox)",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's sandbox jump to the next turn (pass_turn): skips the end step, its triggers and the cleanup discard, and the log says so",
   }),
   declareAttackers: label({
     name: "declare attackers",
@@ -834,6 +841,44 @@ export const LABEL_SPECS = {
     role: "button",
     owners: ["lib/components/AutoAnswersSettings.svelte"],
     doc: "removes one standing answer in Settings → Gameplay, so its prompt is asked again",
+  }),
+
+  // -- Combat damage assignment (#2956, ADR 0147) --
+  damageAutoAssigned: label({
+    name: "combat damage assigned",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/damageAssignment.ts"],
+    doc: "the dock's notice after Auto-assign combat damage assigned an attacker's damage for you (lethal to each blocker, the rest over), for about six seconds",
+  }),
+  alwaysAskCombatDamage: label({
+    name: "Always ask",
+    kind: "text",
+    role: "button",
+    owners: ["lib/damageAssignment.ts"],
+    doc: "the combat-damage notice's button that turns Auto-assign combat damage off; the assignment just made stands",
+  }),
+  addDamage: dynamicLabel({
+    stem: "Add 1 damage to ",
+    match: "prefix",
+    shape: "Add 1 damage to <name>",
+    make: (name: string) => `Add 1 damage to ${name}`,
+    example: ["Corsair Captain"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}DamageStepper.svelte`, `${BOARD}ChoicePromptModal.svelte`],
+    doc: "the + on a blocker (on the board and in the damage sheet) while you assign combat damage; the defending player's trample line uses it too",
+  }),
+  removeDamage: dynamicLabel({
+    stem: "Remove 1 damage from ",
+    match: "prefix",
+    shape: "Remove 1 damage from <name>",
+    make: (name: string) => `Remove 1 damage from ${name}`,
+    example: ["Corsair Captain"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}DamageStepper.svelte`, `${BOARD}ChoicePromptModal.svelte`],
+    doc: "the − beside addDamage",
   }),
 } satisfies Record<string, LabelSpec>;
 

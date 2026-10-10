@@ -26,8 +26,9 @@ func init() {
 		Name:         "Heroism",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice a white creature: For each attacking red creature, prevent all combat damage that would be dealt by that creature this turn unless its controller pays {2}{R}.",
-			Cost:  SacrificeN(1, "a white creature", Creature(), OfColor("W")),
+			Label:   "Sacrifice a white creature: For each attacking red creature, prevent all combat damage that would be dealt by that creature this turn unless its controller pays {2}{R}.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent | game.AnswerSacOutlet},
+			Cost:    SacrificeN(1, "a white creature", Creature(), OfColor("W")),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				g.RecomputeLayersIfStaleLocked()

@@ -58,8 +58,9 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: b33DalkovanEncampmentLabel,
-			Cost:  Plus(ManaCost("{2}{W}"), TapCost()),
+			Label:   b33DalkovanEncampmentLabel,
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}{W}"), TapCost()),
 			// The ability's whole effect is the delayed trigger the
 			// land's own attack trigger stands in for; resolving it
 			// only records the resolution the trigger counts.

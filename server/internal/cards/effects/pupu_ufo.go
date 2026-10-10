@@ -41,14 +41,16 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}: You may put a land card from your hand onto the battlefield.",
-				Cost:   TapCost(),
-				Effect: Do(MayPutALandFromHand("PuPu UFO")),
+				Label:   "{T}: You may put a land card from your hand onto the battlefield.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    TapCost(),
+				Effect:  Do(MayPutALandFromHand("PuPu UFO")),
 			},
 			{
-				Label:  "{3}: Until end of turn, this creature's base power becomes equal to the number of Towns you control.",
-				Cost:   ManaCost("{3}"),
-				Effect: pupuUFOBasePowerFromTowns,
+				Label:   "{3}: Until end of turn, this creature's base power becomes equal to the number of Towns you control.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{3}"),
+				Effect:  pupuUFOBasePowerFromTowns,
 			},
 		},
 	})

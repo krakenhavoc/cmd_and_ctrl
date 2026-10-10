@@ -19,8 +19,9 @@ func init() {
 		Name:         "Steelshaper Apprentice",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{W}, {T}, Return this creature to its owner's hand: Search your library for an Equipment card, reveal that card, put it into your hand, then shuffle.",
-			Cost:  Plus(ManaCost("{W}"), TapCost(), ReturnThis()),
+			Label:   "{W}, {T}, Return this creature to its owner's hand: Search your library for an Equipment card, reveal that card, put it into your hand, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    Plus(ManaCost("{W}"), TapCost(), ReturnThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b06TutorToHand("Steelshaper Apprentice — an Equipment card, revealed, to hand", b09IsEquipmentCard)(item, NewContext(g, item))
 			},

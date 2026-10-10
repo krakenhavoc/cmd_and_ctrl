@@ -46,11 +46,12 @@ func init() {
 }
 
 // vengefulAncestorGoadedAttacker reports whether the attacking
-// creature this EventAttack is about carries a goad marker right now
-// — any goader's, not only this card's.
+// creature this EventAttack is about is goaded right now — any
+// goader's goad, by a spell or by an Aura (Card.Goaded, #2733), not
+// only this card's.
 func vengefulAncestorGoadedAttacker(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsGoaded()
+	return ok && c.Goaded()
 }
 
 // vengefulAncestorDamageGoadedAttacker reads the attacking creature

@@ -56,9 +56,10 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{G}, Return two lands you control to their owner's hand: Return this card from your graveyard to your hand.",
-			Cost:  Plus(ManaCost("{1}{G}"), ReturnNToHand(2, "two lands you control", Land())),
-			Zones: []game.ZoneKind{game.ZoneGraveyard},
+			Label:   "{1}{G}, Return two lands you control to their owner's hand: Return this card from your graveyard to your hand.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{G}"), ReturnNToHand(2, "two lands you control", Land())),
+			Zones:   []game.ZoneKind{game.ZoneGraveyard},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				id := item.SourceCardID
 				// CR 602.5 / 608.2a: the card may have left the

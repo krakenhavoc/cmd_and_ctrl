@@ -92,9 +92,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash", "flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "Waterbend {8}: Transform Aang.",
-			Cost:   WaterbendCost("{8}"),
-			Effect: Do(TransformThis{}),
+			Label:   "Waterbend {8}: Transform Aang.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    WaterbendCost("{8}"),
+			Effect:  Do(TransformThis{}),
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},

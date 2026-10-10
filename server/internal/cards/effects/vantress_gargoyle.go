@@ -27,8 +27,9 @@ func init() {
 		BlockRules: []game.BlockRule{CantBlockUnless(YouHaveCardsInHandAtLeast(4),
 			"it can't block unless its controller has four or more cards in hand")},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Each player mills a card.",
-			Cost:  game.AbilityCost{Tap: true},
+			Label:   "{T}: Each player mills a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    game.AbilityCost{Tap: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b02EachPlayerMills(g, item, 1)
 			},

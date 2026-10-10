@@ -32,8 +32,9 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{R}, {T}: If a source you control would deal damage to an opponent this turn, it deals double that damage to that player instead.",
-			Cost:  Plus(ManaCost("{3}{R}"), TapCost()),
+			Label:   "{3}{R}, {T}: If a source you control would deal damage to an opponent this turn, it deals double that damage to that player instead.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{3}{R}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return MultiplyDamage{Factor: 2, Sources: game.DamageSourcesYours,
 					Recipients: game.DamageRecipientsOpponents,

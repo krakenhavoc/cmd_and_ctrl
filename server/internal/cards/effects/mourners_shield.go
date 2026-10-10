@@ -39,8 +39,9 @@ func init() {
 			Effect:         b27ExileChosenTarget,
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: Prevent all damage that would be dealt this turn by a source of your choice that shares a color with the exiled card.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: Prevent all damage that would be dealt this turn by a source of your choice that shares a color with the exiled card.",
+			Purpose: game.Purpose{Answers: game.AnswerPrevent},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				colors := mournersShieldColors(g, item)
 				if len(colors) == 0 {

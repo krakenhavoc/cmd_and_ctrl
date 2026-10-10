@@ -52,9 +52,10 @@ func init() {
 		},
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn",
-				Cost:   ManaCost("{1}"),
-				Effect: shadowspearStrip,
+				Label:   "{1}: Permanents your opponents control lose hexproof and indestructible until end of turn",
+				Purpose: game.Purpose{Answers: game.AnswerRestrict},
+				Cost:    ManaCost("{1}"),
+				Effect:  shadowspearStrip,
 			},
 			EquipAbility("{2}"),
 		},

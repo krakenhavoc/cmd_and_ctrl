@@ -41,8 +41,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{4}{G}: Put a +1/+1 counter on each creature you control with a +1/+1 counter on it.",
-			Cost:  ManaCost("{4}{G}"),
+			Label:   "{4}{G}: Put a +1/+1 counter on each creature you control with a +1/+1 counter on it.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{4}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				var ids []uuid.UUID

@@ -145,6 +145,17 @@ type Purpose struct {
 	// Nil is "no target entries"; effects.Register refuses an empty
 	// list. A pointer so Purpose stays comparable.
 	Targets *TargetPurposes
+
+	// Answers is what this ability can do in response: the reasons a
+	// player would hold priority for it (ADR 0142). Declared by hand,
+	// like every Purpose field. The zero value is "not declared", which
+	// the reader (internal/legal's untargetedFlags) counts as
+	// interacting (ADR 0142 owner answer 3), and every catalog row it
+	// reads declares. AnswerValue declares "answers nothing".
+	// Declared on an activated row only, for now: effects.Register
+	// refuses it on a spell, a mode, an alternative cost and a
+	// triggered row, which nothing reads it on yet (ADR 0142 §2).
+	Answers Answers
 }
 
 // TargetPurposes is a statement's target entries (Purpose.Targets), at
@@ -175,6 +186,11 @@ type TargetPurpose struct {
 	LifeLoss int
 	// Damage is the damage dealt to the target: Lightning Bolt 3.
 	Damage int
+	// DamageIsX is set when the damage dealt to the target is the
+	// spell's or ability's X (#1944: Chandra, Awakened Inferno's −X).
+	// Damage is then zero, and a reader takes the X the move names, as
+	// Sweep.AmountIsX does.
+	DamageIsX bool
 	// Returns is what the target's CONTROLLER is given when the spell
 	// or ability removes the target (#2679): Rapid Hybridization's 3/3
 	// Frog Lizard, Swords to Plowshares' life, Path to Exile's basic
@@ -216,7 +232,7 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0 && t.Returns.IsZero()
+	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero()
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a
@@ -411,6 +427,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
+		Answers:                   p.Answers | o.Answers,
 	}
 	if out.Pump == nil {
 		out.Pump = o.Pump

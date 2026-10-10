@@ -60,6 +60,11 @@ export interface GameMenuOptions {
   onTableTips?: () => void;
   onShortcuts?: () => void;
   onReplayTutorial?: () => void;
+  // ADR 0143 §4.2: the sandbox jump to the next turn (`pass_turn`),
+  // moved here from the dock, whose End turn walks every step instead.
+  // Offered to the active seat only, the one the server lets send it.
+  sandboxPassTurn?: boolean;
+  onSandboxPassTurn?: () => void;
   onDraw: () => void;
   onUntapAll: () => void;
   onShuffle: () => void;

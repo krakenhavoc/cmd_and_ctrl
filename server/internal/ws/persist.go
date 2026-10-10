@@ -117,9 +117,17 @@ func (r *Room) writeRestorePointLocked(seq uint64) (bool, error) {
 	return true, nil
 }
 
+// EndedTableRetention is how long an ended table's restore point brings
+// it back at boot (#2919). The players stay on an ended table, looking
+// at the final board, the banner and the log, until they leave it, and
+// a deploy in the meantime must not take it from them. Past this age
+// the file is removed instead, so boots do not rebuild finished tables
+// forever.
+const EndedTableRetention = 7 * 24 * time.Hour
+
 // RemoveRestorePoint deletes this room's restore point. Called when a
-// game ends — a finished game has nothing to resume, and leaving the
-// file would have every subsequent boot rebuild a dead table.
+// game ends on a state that cannot be written as one, so the older file
+// cannot bring the table back as a live game.
 func (r *Room) RemoveRestorePoint() {
 	if r.dumpDir == "" {
 		return
@@ -279,9 +287,11 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 	}
 	res.GameID = file.Snapshot.ID
 
-	// A finished game is not worth resurrecting; drop the file so the
-	// next boot does not reconsider it.
-	if file.Snapshot.State == game.StateEnded {
+	// An ended table comes back for EndedTableRetention, so the seats
+	// still on it keep it across a deploy (#2919). An older one is not
+	// worth rebuilding; drop the file so the next boot does not
+	// reconsider it.
+	if file.Snapshot.State == game.StateEnded && time.Since(file.Snapshot.TakenAt) > EndedTableRetention {
 		res.Skipped = "game already ended"
 		_ = os.Remove(path)
 		return res

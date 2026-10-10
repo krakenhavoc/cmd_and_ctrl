@@ -54,8 +54,9 @@ func init() {
 		Name:         "Harnfel, Horn of Bounty",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Discard a card: Exile the top two cards of your library. You may play those cards this turn.",
-			Cost:  DiscardACard(),
+			Label:   "Discard a card: Exile the top two cards of your library. You may play those cards this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    DiscardACard(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return ExileTopWithPermission{From: item.Controller, GrantTo: item.Controller, N: 2}.Apply(ctx)

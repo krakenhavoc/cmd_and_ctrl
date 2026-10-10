@@ -57,7 +57,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{B}: Pestilence deals 1 damage to each creature and each player.",
-			Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}},
+			Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDamage, Amount: 1}},
 			Cost:    ManaCost("{B}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b23DamageEachCreatureAndEachPlayer(NewContext(g, item), 1)

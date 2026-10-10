@@ -19,8 +19,9 @@ func init() {
 		Name:         "Temple Bell",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Each player draws a card",
-			Cost:  TapCost(),
+			Label:   "{T}: Each player draws a card",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return b05EachPlayerDraws(g, item, 1)
 			},

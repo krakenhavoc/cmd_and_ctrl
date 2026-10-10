@@ -19,8 +19,9 @@ func init() {
 			Label:    "Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}, Discard a card: Draw a card.",
-			Cost:  Plus(ManaCost("{2}"), TapCost(), DiscardACard()),
+			Label:   "{2}, {T}, Discard a card: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), TapCost(), DiscardACard()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return g.DrawNForEffect(item.Controller, 1)
 			},

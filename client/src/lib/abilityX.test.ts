@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   abilityDemandsX,
   abilityEnergyMaxX,
+  abilityLoyaltyMaxX,
+  abilityMaxX,
   abilityMinX,
   abilityXSlots,
   suggestedAbilityX,
@@ -152,6 +154,28 @@ describe("beginForAbility carries the announced X into targeting", () => {
     expect(state?.ability).toBeTruthy();
     expect(state?.ability?.xValue).toBeUndefined();
     targeting.set(null);
+  });
+});
+
+// #1944: a −X loyalty cost. The ceiling is the loyalty on the
+// permanent (CR 606.6), and the opening guess leaves it standing.
+describe("a −X loyalty cost", () => {
+  const minusX = ability({ loyalty_cost: 0, loyalty_cost_x: true, demands_x: true });
+
+  it("caps X at the planeswalker's loyalty", () => {
+    expect(abilityLoyaltyMaxX(minusX, 6)).toBe(6);
+    expect(abilityMaxX(minusX, 9, 6)).toBe(6);
+    expect(abilityLoyaltyMaxX(ability({ loyalty_cost: -3 }), 6)).toBeUndefined();
+  });
+
+  it("suggests the largest X that keeps the planeswalker alive", () => {
+    expect(suggestedAbilityX(minusX, 10, 0, 6)).toBe(5);
+    expect(suggestedAbilityX(minusX, 10, 0, 0)).toBe(0);
+  });
+
+  it("leaves energy abilities to the energy ceiling", () => {
+    expect(abilityMaxX(ability({ energy_cost_x: true }), 4, 6)).toBe(4);
+    expect(abilityMaxX(ability({ mana_cost: "{X}" }), 4, 6)).toBeUndefined();
   });
 });
 

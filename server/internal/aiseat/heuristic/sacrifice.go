@@ -41,7 +41,10 @@ import (
 // still sacrifices to them when a cast needs it, as before. A row that
 // sacrifices its own source (Sakura-Tribe Elder) is not read here: PR 7
 // charges the source's full value when the row declares a purpose
-// (moves.go), and nothing at all when it does not.
+// (moves.go), and nothing at all when it does not. Config.PriceAnswers
+// (ADR 0142 decision 6, answers.go) changes that: such a row, purposed
+// or not, pays the dying-anyway price for its source, and so does a
+// `sac_outlet` row's exiled creature.
 
 // sacrificeCost prices sacrificing the permanents `ids` to pay a cost,
 // as a positive number. Under BaselineConfig it is the sum of their
@@ -171,7 +174,7 @@ func (st *state) stackSweepShare(c *protocol.CardView) float64 {
 func stackItemPurposes(card *protocol.CardView, it *protocol.StackItemView) []*protocol.PurposeView {
 	if it.AltCost != "" {
 		for i := range card.AlternativeCosts {
-			if ac := &card.AlternativeCosts[i]; ac.Key == it.AltCost && ac.Purpose != nil {
+			if ac := &card.AlternativeCosts[i]; ac.Key == it.AltCost && ac.Purpose.Priced() {
 				return []*protocol.PurposeView{ac.Purpose}
 			}
 		}
@@ -179,7 +182,7 @@ func stackItemPurposes(card *protocol.CardView, it *protocol.StackItemView) []*p
 	if card.Modes != nil && len(it.Modes) > 0 {
 		var out []*protocol.PurposeView
 		for _, m := range it.Modes {
-			if m >= 0 && m < len(card.Modes.Options) && card.Modes.Options[m].Purpose != nil {
+			if m >= 0 && m < len(card.Modes.Options) && card.Modes.Options[m].Purpose.Priced() {
 				out = append(out, card.Modes.Options[m].Purpose)
 			}
 		}
@@ -187,7 +190,7 @@ func stackItemPurposes(card *protocol.CardView, it *protocol.StackItemView) []*p
 			return out
 		}
 	}
-	if card.Purpose != nil {
+	if card.Purpose.Priced() {
 		return []*protocol.PurposeView{card.Purpose}
 	}
 	return nil
@@ -337,19 +340,35 @@ func (p *Policy) dyingAnywayEligible(st *state, m legal.Move) bool {
 		}
 		ids = decode[castParams](m.Params).SacrificeIDs
 	case legal.KindActivate:
-		if paramsSet(m.Params, without(nonManaActivateKeys, "sacrifice_ids")) {
-			return false
-		}
 		ap := decode[activateParams](m.Params)
 		src := st.bf[ap.SourceCardID]
 		if src == nil {
 			return false
 		}
 		row := activatedRow(src, ap.AbilityIndex)
-		if row == nil || !rowCostsOnlyManaTapsAndSacrifice(row) {
+		if row == nil {
 			return false
 		}
-		ids = ap.SacrificeIDs
+		keys := without(nonManaActivateKeys, "sacrifice_ids")
+		cp := *row
+		ids = append(ids, ap.SacrificeIDs...)
+		// ADR 0142 decision 6: the outlets the cost does not name in
+		// sacrifice_ids — the row's own source, and a `sac_outlet`
+		// row's exiled creature — are spent the same way.
+		if p.cfg.PriceAnswers {
+			if cp.SacrificeSelf {
+				cp.SacrificeSelf = false
+				ids = append(ids, src.InstanceID)
+			}
+			if cp.Purpose.Declares("sac_outlet") && cp.ExilePermanentLabel != "" {
+				cp.ExilePermanentLabel = ""
+				keys = without(keys, "exile_permanent_ids")
+				ids = append(ids, ap.ExilePermanentIDs...)
+			}
+		}
+		if paramsSet(m.Params, keys) || !rowCostsOnlyManaTapsAndSacrifice(&cp) {
+			return false
+		}
 	default:
 		return false
 	}

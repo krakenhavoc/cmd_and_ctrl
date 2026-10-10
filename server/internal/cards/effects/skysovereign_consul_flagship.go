@@ -26,9 +26,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 3",
-			Cost:   CrewCost(3),
-			Effect: CrewEffect("Skysovereign, Consul Flagship"),
+			Label:   "Crew 3",
+			Cost:    CrewCost(3),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Skysovereign, Consul Flagship"),
 		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB, game.EventAttack},

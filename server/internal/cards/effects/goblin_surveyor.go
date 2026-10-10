@@ -23,9 +23,10 @@ func init() {
 		PrintedKeywords: []string{"trample", StartYourEngines},
 		Activated: []ActivatedAbility{
 			MaxSpeedActivated(ActivatedAbility{
-				Label: "Max speed — {3}, Exile this card from your graveyard: Draw a card.",
-				Cost:  Plus(ManaCost("{3}"), ExileThis()),
-				Zones: []game.ZoneKind{game.ZoneGraveyard},
+				Label:   "Max speed — {3}, Exile this card from your graveyard: Draw a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{3}"), ExileThis()),
+				Zones:   []game.ZoneKind{game.ZoneGraveyard},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return DrawCards{N: 1}.Apply(NewContext(g, item))
 				},

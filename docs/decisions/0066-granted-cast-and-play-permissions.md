@@ -3263,3 +3263,144 @@ offer's spell the same way, and the view counts a face as a cast surface if any 
 ### Out of scope, stated
 
 - **`budgeted-free-casts`** (#2017), the mana-value sibling, is a different budget and is not built here.
+
+## Amendment — 2026-10-10 (#2719): a cast ban on players who attacked you this turn
+
+Sandswirl Wanderglyph (Unstable Glyphbridge's back face): "Each opponent who attacked you or a planeswalker you control this turn can't cast spells." Its rulings: if the Wanderglyph leaves the battlefield on that turn, the opponent can cast spells; an attack on a battle you protect does not count. The attack half of the card is ADR 0063's amendment of the same date.
+
+### Decision 1 — a battlefield `CastRestriction`, not a granted `CastBanRule`
+
+The #1316 cast-ban twin is for a ban that outlives its source. This one is printed on a permanent and ends when the permanent leaves (CR 604.2), which is exactly what `Spec.CastRestrictions` already gives: `CastGateLocked` walks the battlefield, so the casting verb, the enumerator and the view's `cant_cast` stamp all follow. Writing a `CastBanRule` onto each opponent as they attack would need a sweep when the Wanderglyph leaves. ADR 0109 §5 rejected that shape for an emblem's ban for the same reason. The constructor is `effects.OpponentsWhoAttackedYouCantCast(label)`, beside `OpponentsCantCast`; "you" is the source's controller (`q.Source.Controller`), so a stolen Wanderglyph protects its new controller.
+
+### Decision 2 — the attack record remembers whose planeswalker it was
+
+`Game.AttackedYouOrYourPlaneswalkerThisTurn(player, you)` reads `TurnTally.Attacks` (ADR 0059 Decision 8). Only the active player declares attackers (CR 506.2, 508.1), so `player` must be the active player and every record is theirs. A record whose `Defender` is `you` counts. So does one on a planeswalker `you` controlled, but the question is asked later in the turn, when that planeswalker may have died or changed hands. So `AttackRecord` gains `PlaneswalkerController`, stamped by the tally listener from the attacked permanent at the `EventAttack`, and left nil for a player or a battle. `Player.LastTurnAttacks` copies the record and carries it too, unread.
+
+Rejected: reading the planeswalker's controller at cast time. A planeswalker killed in combat has no controller to read, and that is the common case.
+
+### Snapshot
+
+Additive: `turnTally.attacks[].planeswalkerController` and `seats[].lastTurnAttacks[].planeswalkerController`, recorded in `snapshot_shape/v7.txt`. A tally restored from an older file has no stamp, so an attack declared before the upgrade on a planeswalker does not count for the rest of that turn (weaker than printed). An attack on you is read from `Defender` and is unaffected.
+
+### Tests
+
+`game/cant_attack_player_test.go` (`TestAttackedYouOrYourPlaneswalkerThisTurnReadsTheDeclaration`: another player and a battle you control don't count, a planeswalker that has since left does, a non-active player attacked nobody) and `cards/effects/unstable_glyphbridge_test.go` (the gate after attacking you, your planeswalker, your battle and another player, and the ban lifted when the Wanderglyph is destroyed).
+
+## Amendment — 2026-10-10 (#2559): every player plays the cards they exiled, and "can't play cards from your hand"
+
+**Memory Vessel**: "{T}, Exile this artifact: Each player exiles the top seven cards of their library. Until
+your next turn, players may play cards they exiled this way, and they can't play cards from their hand.
+Activate only as a sorcery." The issue named two pieces the engine did not have:
+
+1. a play permission over exiled cards held by EVERY player at once, each over their own cards, lasting
+   "until your next turn";
+2. a player-scoped "can't play cards from your hand" with a duration. The cast bans (#1316, above) are
+   per card and per zone EXCEPT one (`CastBanRule.ExceptFromZone`); none bans exactly one zone, and none
+   reaches a land play.
+
+Shipping the exile half alone would have let every player keep casting from hand as well, which is
+stronger than printed (#259), so the card waited for both.
+
+### Decision 1 — the permission needs no new field: one stored permission per player
+
+The model already had everything the first piece asks for. A stored `ScopeCards` permission names card
+OBJECTS and is held by one `Player`; `Duration` already accepts `UntilYourNextTurn` (the field's comment
+said "nothing prints it on a cast permission yet; it costs nothing to accept"); and impulse exile already
+exiles a library's top N and grants the exiled objects to a holder
+(`Game.ExileTopWithPermissionForEffect(from, grantTo, n, perm)`). "Each player … they exiled" is that call
+once per seated player with `from == grantTo`:
+
+```go
+// effects/impulse_exile.go
+func EachPlayerExilesTopAndMayPlay(g *game.Game, n int, d game.Duration) error
+```
+
+The window is stamped by the CARD against its own controller (`g.UntilYourNextTurnDuration(controller)`
+for the Vessel), so every player's permission ends at the same moment, as the activator's next turn
+begins, and CR 800.4m's "until that player's turn would have begun" for a departed activator is the
+duration's existing rule. Nothing about the permission is new, so the cast path, the enumerator and the
+view read it as they read any impulse grant: a player sees, and may play, only their own; a land among
+them is played and spends that player's land drop (§6, CR 305.2); normal timing applies.
+
+Etali, Primal Storm already called the same primitive once per seat with a SINGLE holder; this is the
+same loop with the owner as holder. A second card needs exactly this and nothing else:
+**Rocco, Street Chef** ("At the beginning of your end step, each player exiles the top card of their
+library. Until your next end step, each player may play the card they exiled this way."), stamped with
+`UntilYourNextEndStepDuration` (#2373). Its second ability, "whenever a player plays a land from exile or
+casts a spell from exile", is Prosper's Pact Boon read for any player (`aCardWasPlayedFromExile`).
+
+### Decision 2 — the hand ban is ONE stored record read by BOTH gates
+
+"Play" is two acts with two gates: a spell is cast (CR 601, `CastGateLocked`, cast_gate.go) and a land
+is played as a special action (CR 305.1, CR 116.2a, `LandPlayGateLocked`, ADR 0109 §4). "Can't play
+cards from your hand" is one statement about both, so it is stored once and asked by both, never built
+as a third gate:
+
+- `CastGateLocked` refuses a cast whose source zone is `ZoneHand` (after the granted cast bans, before
+  the spell's own condition);
+- `LandPlayGateLocked` refuses a land play whose source zone is `ZoneHand` (after the stored land bans).
+
+Each gate already has every caller it needs — the cast path, `CanPlayLandDuringResolutionForEffect`
+(CR 305.2a), `legal`'s cast and land enumeration, and the view's `cant_cast` stamps — so all of them see
+the ban without a line changed at any of them. A cast or a land play out of any other zone is untouched,
+and so is everything out of a hand that is not a play: cycling and channel (activated abilities),
+foretell (a special action, CR 702.143a), ninjutsu (an ability), and "put a land card from your hand onto
+the battlefield" (not a land play, CR 305.4).
+
+**Where it is stored.** A `ScopedEffect` of a new rules kind, `cantPlayFromHand` (reader `rule`, scope
+game, reads `Player`; zero is every player), registered by `Game.CantPlayFromHandForEffect(source,
+player, d, label)` (`game/hand_play_ban.go`). The alternatives were rejected for the reasons ADR 0109
+§4 gave `cantPlayLands`:
+
+- a `CastBanRule` kind (`ExceptFromZone`'s inverse) reaches only casts, so the land half would still
+  need a second record; and an older binary does not check `CastBanKind` on restore, so a rollback would
+  silently ban nothing, which is stronger than printed for the rest of the window;
+- an unknown mod kind is refused on restore with `ErrUnknownEffectKey`, the file kept — the rollback
+  case the vocabulary is built for.
+
+The one reader, `handPlayBanLocked`, asks `durationExpiredLocked` itself rather than trusting the sweep,
+as `castBanForbidsLocked` does: "until your next turn" ends as that turn begins, and the read has to be
+right in the moments between sweeps. The refusal is a `*CantCastError` or a `*CantPlayLandError` with the
+clause "You can't play cards from your hand — Memory Vessel".
+
+### Decision 3 — the wire says who holds a grant and until when
+
+The client already drew the viewer's OWN exile grants (the exile strip, the zone browser's button).
+Under Memory Vessel every opponent's pile holds seven cards its owner may play, and nothing on the board
+said so; the button's tooltip also said "playable until end of turn" for every grant.
+
+- `exile_play.until` / `until_player` (`game.PermissionWindowLocked`): `end_of_turn`,
+  `end_of_next_turn`, `next_turn`, `next_end_step`, `while_exiled` or `until_another`, and the player the
+  window counts against for the three that name one. Public, like the rest of `exile_play`.
+- `PlayerView.cant_play_from_hand`: the seat's clause, public, for `cant_play_lands`' reasons. While it
+  is set `cant_play_lands` carries the same clause (the ban refuses every land from the hand), and the
+  client shows one NO HAND badge for both.
+
+The client reads them in `exileGrants.ts`: the zone browser labels a card another seat may play ("Ana
+may play it until Bo's next turn") where the viewer's own gets a button, the button's tooltip names its
+real window, and a seat's exile chip (`PileBar`, `SeatSummary`) counts the cards that seat may play
+("7 theirs to play"). Each card in a banned hand is already greyed with the clause through its own
+`cant_cast`.
+
+### Decision 4 — bots
+
+The enumerator asks both gates, so a bot is never offered a play from a banned hand, and is offered its
+own exiled cards through the permission walk it already had. The heuristic needs no change: an exiled
+cast already costs no card in hand (#673) and a land from exile is a land drop like any other
+(`TestHeuristicSeatPlaysFromExileUnderMemoryVessel`). The model seats' board text (`boardtext`) gains
+the two facts the view does: "may play from exile: …" per seat, and "CAN'T PLAY CARDS FROM HAND" on a
+banned seat's line.
+
+### Snapshot
+
+Additive within v7. The new kind is one more on-disk identity (ADR 0041 phase 3), fixture
+`v7/memory_vessel.json`; the permissions are ordinary stored `CastPermission`s. No version bump.
+
+### Out of scope, stated
+
+- **Uba Mask** ("each player may play lands and cast spells from among cards they exiled with this
+  artifact this turn") needs a draw replaced by an exile and a "this turn" mark on the exiled card, not
+  only this permission.
+- **Knowledge Pool** and **Etali, Primal Conqueror** cast another player's exiled card or a card
+  exiled by a different trigger; **Shaman's Trance** bans a graveyard rather than a hand and opens other
+  players' graveyards (`play-from-other-players-graveyards`).

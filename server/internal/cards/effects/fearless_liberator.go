@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Fearless Liberator — Creature — Dwarf Berserker {1}{R}, 2/1:
 //
 //	"Boast — {2}{R}: Create a 2/1 red Dwarf Berserker creature token. (Activate only if
@@ -17,7 +19,7 @@ func init() {
 		Name:         "Fearless Liberator",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
-			Boast("{2}{R}: Create a 2/1 red Dwarf Berserker creature token.",
+			BoastAnswering(game.AnswerMakesBlocker, "{2}{R}: Create a 2/1 red Dwarf Berserker creature token.",
 				ManaCost("{2}{R}"), createTheToken("2/1 red Dwarf Berserker")),
 		},
 	})

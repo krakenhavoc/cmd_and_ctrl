@@ -37,8 +37,9 @@ func init() {
 				untapAllYouControlThenExtraCombat),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{3}{R}{R}{G}{G}: Anzrag must be blocked each combat this turn if able.",
-			Cost:  ManaCost("{3}{R}{R}{G}{G}"),
+			Label:   "{3}{R}{R}{G}{G}: Anzrag must be blocked each combat this turn if able.",
+			Purpose: game.Purpose{Answers: game.AnswerCombatGrant},
+			Cost:    ManaCost("{3}{R}{R}{G}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if !sourceIsStillThisPermanent(g, item) {
 					return nil

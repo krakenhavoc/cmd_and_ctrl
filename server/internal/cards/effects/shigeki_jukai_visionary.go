@@ -31,9 +31,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{1}{G}, {T}, Return Shigeki to its owner's hand: Reveal the top four cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest into your graveyard.",
-				Cost:   Plus(ManaCost("{1}{G}"), TapCost(), ReturnThis()),
-				Effect: shigekiDig,
+				Label:   "{1}{G}, {T}, Return Shigeki to its owner's hand: Reveal the top four cards of your library. You may put a land card from among them onto the battlefield tapped. Put the rest into your graveyard.",
+				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Cost:    Plus(ManaCost("{1}{G}"), TapCost(), ReturnThis()),
+				Effect:  shigekiDig,
 			},
 			{
 				Label: "Channel — {X}{X}{G}{G}, Discard this card: Return X target nonlegendary cards from your graveyard to your hand.",

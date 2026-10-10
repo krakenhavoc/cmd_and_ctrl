@@ -75,6 +75,15 @@ const (
 	// ModAddRestrictions is: not a characteristic, written where the
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
+	// ModGoad is goad as a continuous effect from a resolved ability
+	// (#2733): "as long as this enchantment remains on the battlefield,
+	// that creature is also goaded" (Hot Pursuit). Player is the
+	// goading player. It writes goad's two CR 701.15b requirements with
+	// GoadedBy set, as GoadAttached's static does, so the creature
+	// attacks as a goaded one must and reads as goaded (Card.Goaded).
+	// Its own kind rather than ModAddAttackRequirement with a flag, so
+	// an older binary refuses a file that names it.
+	ModGoad ModKind = "goad" // layer 6
 	// ModAddBlockRequirement is a CR 509.1c block requirement (#1597):
 	// Text names which one (BlockRequirementKind — "blocks", "lure",
 	// "mustBeBlocked", "exactlyOne", "blocksAttacker"). Layer 6 for
@@ -266,6 +275,18 @@ const (
 	// view ask. A ScopedEffect and not a CastBanRule kind so that an older
 	// binary refuses the file instead of banning nothing. Reads Player.
 	ModCantPlayLands ModKind = "cantPlayLands"
+	// ModCantPlayFromHand is "<players> can't play cards from their
+	// hand" for a duration (ADR 0066 amendment 2026-10-10, #2559; CR
+	// 101.2): Memory Vessel's "until your next turn, … they can't play
+	// cards from their hand". Neither a spell cast nor a land played
+	// out of the hand, and nothing out of any other zone. Scope
+	// ScopeGame with Player set is that one player, and with Player
+	// zero every player. Read by handPlayBanLocked, which both
+	// CastGateLocked and LandPlayGateLocked ask, so every caller of
+	// either gate sees it. A ScopedEffect for ModCantPlayLands' reason:
+	// an older binary refuses the file instead of banning nothing.
+	// Reads Player.
+	ModCantPlayFromHand ModKind = "cantPlayFromHand"
 	// ModCantBecomeMonarch is "<player> can't become the monarch this
 	// turn" (ADR 0096 amendment 2026-10-08, #2039; CR 725): Jared
 	// Carthalion's "You can't become the monarch this turn". Scope
@@ -435,6 +456,10 @@ type Mod struct {
 	Subtypes []string `json:"subtypes,omitempty"`
 	Colors   []string `json:"colors,omitempty"`
 	Keywords []string `json:"keywords,omitempty"`
+	// Supertypes is ModSetTypes' "becomes a legendary …" (#2562):
+	// supertypes the object gains (CR 205.4b). Refused on every other
+	// kind (becomeNamedModProblem).
+	Supertypes []string `json:"supertypes,omitempty"`
 	// Slot and Row are ModLoseOwnAbility's: the definition slot
 	// ("replacement", "triggered", "activated") and the row's index in
 	// its full declared list. Refused on every other kind.
@@ -463,7 +488,8 @@ type Mod struct {
 	Then string `json:"then,omitempty"`
 	// Text is ModCantBeBlockedExceptBy's printed parameter — "creatures
 	// with haste", "Spirits" — read by the refusal sentence
-	// (BlockRule.Label).
+	// (BlockRule.Label). On ModSetName (#2562) it is the name the object
+	// has (CR 612.8).
 	Text string `json:"text,omitempty"`
 	// Objects are the objects a mod names — the one attacking object a
 	// "blocksAttacker" block requirement names (#1684;
@@ -781,6 +807,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #2733
+	ModGoad: {layer: Layer6Ability},
 	// #1597
 	ModAddBlockRequirement: {layer: Layer6Ability},
 	// #1715
@@ -822,6 +850,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantGainLife:           {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
+	// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
+	// both the cast gate and the land-play gate.
+	ModCantPlayFromHand: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
@@ -837,6 +868,10 @@ var modKinds = map[ModKind]modKindSpec{
 	ModWaiveHexproof:    {reader: readerTargeting},
 	// #1593: layer 1, applied to the printed baseline before the pass.
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
+	// #2562: The Irencrag's "become a legendary Equipment artifact named
+	// Everflame, Heroes' Legacy" (become_named.go).
+	ModSetName:  {layer: Layer3Text},
+	ModSetTypes: {layer: Layer4Type},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -975,6 +1010,10 @@ func SetBaseToughnessMod(n int) Mod { return Mod{Kind: ModSetBaseToughness, Toug
 func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
 }
+
+// GoadMod is goad from a resolved ability for as long as its duration
+// lasts (#2733, ModGoad): `by` is the goading player.
+func GoadMod(by uuid.UUID) Mod { return Mod{Kind: ModGoad, Player: by} }
 
 // AddBlockRequirementMod is a CR 509.1c block requirement (#1597) of
 // the given kind. The requirement is attributed to the record's source,
@@ -1220,6 +1259,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := loseOwnAbilityModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := becomeNamedModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
 			named = true
 		}
@@ -1271,6 +1313,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.Subtypes = copyStrings(m.Subtypes)
 		m.Colors = copyStrings(m.Colors)
 		m.Keywords = copyStrings(m.Keywords)
+		m.Supertypes = copyStrings(m.Supertypes)
 		m.Grants = copyStrings(m.Grants)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
@@ -1658,6 +1701,16 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.AllCreatureTypes = true
 		}
+	case ModSetTypes:
+		types, subtypes, supertypes := m.Types, m.Subtypes, m.Supertypes
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.setTypes(types, subtypes, supertypes)
+		}
+	case ModSetName:
+		name := m.Text
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			ch.Name = name
+		}
 	case ModSetBasicLandTypes:
 		// The engine has already emptied the abilities (removes: true,
 		// ADR 0046); this is the subtype half of CR 305.7.
@@ -1725,6 +1778,11 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}
 			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModGoad:
+		by := m.Player
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			ch.AttackRequirements = append(ch.AttackRequirements, GoadRequirements(src, by)...)
 		}
 	case ModCantAttackUnlessDefenderControls:
 		qs := clonePermanentQueries(m.Queries)

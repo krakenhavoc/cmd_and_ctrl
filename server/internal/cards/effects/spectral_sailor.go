@@ -24,7 +24,7 @@ func init() {
 		Activated: []ActivatedAbility{{
 			Label:   "{3}{U}: Draw a card.",
 			Cost:    ManaCost("{3}{U}"),
-			Purpose: game.Purpose{Draws: 1},
+			Purpose: game.Purpose{Draws: 1, Answers: game.AnswerValue},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

@@ -137,10 +137,16 @@ var CatalogGrantedAlternativeCosts func(abilityKey string) []GrantedAlternativeC
 //
 // Caller must hold g.mu.
 func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone ZoneKind) []*AlternativeCost {
-	if CatalogGrantedAlternativeCosts == nil || g.Battlefield == nil || playerID == uuid.Nil || card.IsLand() {
+	if playerID == uuid.Nil || card.IsLand() {
 		return nil
 	}
-	var out []*AlternativeCost
+	// #2709: a standing "the next <kind> spell you cast this turn can be
+	// cast without paying its mana cost" promise (Apex Observatory) is
+	// the same offer, held on the player rather than on a permanent.
+	out := g.nextSpellFreeOffersLocked(playerID, card)
+	if CatalogGrantedAlternativeCosts == nil || g.Battlefield == nil {
+		return out
+	}
 	var seen map[string]bool
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
@@ -180,6 +186,36 @@ func (g *Game) grantedAlternativeCostsLocked(playerID uuid.UUID, card Card, zone
 		}
 	}
 	return out
+}
+
+// GrantedAltCostNextFree is the key of the free offer a live
+// NextSpellPromise.WithoutPayingManaCost makes (#2709). An on-disk
+// identity, like every granted key: never renamed, never reused.
+const GrantedAltCostNextFree = "granted-next-spell-free"
+
+// nextSpellFreeOffersLocked is the one offer `playerID`'s live
+// "without paying its mana cost" promises make to a cast of `card`: at
+// most one, however many such promises match, since they are the same
+// offer. Its label is the first matching promise's text.
+//
+// Caller must hold g.mu.
+func (g *Game) nextSpellFreeOffersLocked(playerID uuid.UUID, card Card) []*AlternativeCost {
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return nil
+	}
+	for _, s := range p.Statics {
+		np := s.NextSpell
+		if !np.WithoutPayingManaCost || !g.livePromise(s) || !np.Filter.Matches(card) {
+			continue
+		}
+		label := "Cast it without paying its mana cost"
+		if s.Label != "" {
+			label += " (" + s.Label + ")"
+		}
+		return []*AlternativeCost{{Key: GrantedAltCostNextFree, Label: label, Granted: true}}
+	}
+	return nil
 }
 
 // pricedAtManaCostOK reports whether `card` has a mana cost a

@@ -188,6 +188,24 @@ type AbilityCost struct {
 	// SorcerySpeed therefore does not need to be set alongside it.
 	Loyalty *int
 
+	// LoyaltyX is a loyalty cost of −X (CR 107.3a, CR 606.4; ADR 0032's
+	// amendment of 2026-10-10, #1944): Chandra, Awakened Inferno's
+	// "−X: Chandra deals X damage to target creature or planeswalker".
+	// The activator announces X with the activation, and the cost
+	// removes that many loyalty counters on top of Loyalty, which is
+	// the printed fixed part and is always 0 on a printed card
+	// (effects.LoyaltyMinusX). DemandsX counts it, so the view, the
+	// enumerator and the client ask for X as for an {X} in Mana.
+	//
+	// CR 606.6 holds the whole cost to the counters: X may not exceed
+	// the loyalty the permanent has (LoyaltyDelta, read by
+	// ActivateCatalogAbility, internal/legal and the client). There is
+	// no +X: no printed loyalty ability costs one, so the field is a
+	// bool for the one sign that exists. effects.Register refuses it
+	// without Loyalty, beside a non-zero Loyalty, and beside any other
+	// component that claims the announced X.
+	LoyaltyX bool
+
 	// Crew is the crew number of a Vehicle's crew ability (CR
 	// 702.122a): "Tap any number of untapped creatures you control
 	// with total power N or more". Zero means "not a crew cost",
@@ -458,6 +476,20 @@ type AbilityCost struct {
 	// which is stamped before the payment.
 	ReturnSelf bool
 
+	// BottomSelf puts the SOURCE PERMANENT on the bottom of its
+	// owner's library as part of the cost (#2726) — Timestream
+	// Navigator's "{2}{U}{U}, {T}, Put this creature on the bottom of
+	// its owner's library:". ReturnSelf's sibling one zone over, with
+	// the same shape: paid at announce (CR 602.2b, CR 601.2h), so the
+	// permanent is gone before anyone can respond; the leaves-the-
+	// battlefield triggers see it leave; the effect reads "this
+	// permanent" through the item's SourceObject, stamped before the
+	// payment (last-known information, CR 608.2h; the library card is
+	// a new object, CR 400.7). Battlefield only
+	// (AbilityNeedsPermanentSource), one component per permanent
+	// (CR 118.3), and a commander is asked CR 903.9b first (ADR 0115).
+	BottomSelf bool
+
 	// Exert is "Exert this creature" as a cost (ADR 0130 §4, owner
 	// decision 3; CR 701.43a): Steward of Solidarity's "{T}, Exert this
 	// creature:", Angel of Condemnation's "{2}{W}, {T}, Exert this
@@ -554,8 +586,25 @@ type AbilityCost struct {
 // ADR 0129 §2: "Pay X {E}" (EnergyX) is a third such owner — Sphinx of
 // the Revelation's "{W}{U}{U}, {T}, Pay X {E}: Draw X cards".
 func (c AbilityCost) DemandsX() bool {
-	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX ||
+	return c.XSlots() > 0 || SacrificeCountFromX(c.SacrificeOther) || TapOthersCountFromX(c.TapOthers) || c.EnergyX || c.LoyaltyX ||
 		DiscardCountFromX(c.DiscardCards) || DiscardManaValueX(c.DiscardCards) || RevealCardsCountFromX(c.RevealCards)
+}
+
+// LoyaltyDelta is the loyalty counters an activation of this cost puts
+// on (positive) or removes from (negative) its source when X is
+// announced as x (CR 606.4): the printed amount, less x for a −X cost
+// (LoyaltyX, CR 107.3a). Zero for an ability with no loyalty
+// component, which is also the [0] cost — the caller asks Loyalty !=
+// nil for "is this a loyalty ability".
+func (c AbilityCost) LoyaltyDelta(x int) int {
+	if c.Loyalty == nil {
+		return 0
+	}
+	n := *c.Loyalty
+	if c.LoyaltyX && x > 0 {
+		n -= x
+	}
+	return n
 }
 
 // XSlots is how many {X} tokens the mana component carries. Usually
@@ -1404,14 +1453,16 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// CR 606.3: once per turn per permanent. The flag was S13.1's
 		// and only the sandbox action consulted it; this is the path
 		// that matters now.
-		if g.LoyaltyActivatedThisTurn[cardID] {
+		if g.LoyaltySpentLocked(cardID) {
 			return ErrLoyaltyAlreadyActivated
 		}
-		// CR 606.5: you can't activate a −N ability with fewer than
+		// CR 606.6: you can't activate a −N ability with fewer than
 		// N loyalty counters. Paying down to exactly 0 is legal and
 		// the 704.5i SBA sweeps the permanent afterwards — when it is
 		// a planeswalker, which is the one place that rule does ask.
-		if n := *ab.Cost.Loyalty; n < 0 && source.Counters[CounterLoyalty] < -n {
+		// A −X cost is the same rule at the announced X (#1944): X may
+		// not exceed the loyalty there.
+		if n := ab.Cost.LoyaltyDelta(params.XValue); n < 0 && source.Counters[CounterLoyalty] < -n {
 			return ErrInsufficientLoyalty
 		}
 	}
@@ -1470,7 +1521,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// cost exiles it — because one permanent pays one component
 	// (CR 118.3).
 	if err := g.validateExilePermanentsCostLocked(playerID, cardID, ab.Cost.ExilePermanents, params.ExilePermanentIDs,
-		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf, sacrifices, params.ReturnIDs)); err != nil {
+		movedSourceAlso(cardID, ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf, sacrifices, params.ReturnIDs)); err != nil {
 		return err
 	}
 	// #2028: "Return this enchantment to its owner's hand". Nothing to
@@ -1479,6 +1530,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// components that move permanents, made here with the rest so a
 	// refusal costs nothing.
 	if err := validateReturnSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
+		return err
+	}
+	// #2726: and the put-this-on-the-bottom twin of the same checks.
+	if err := validateBottomSelfCostLocked(cardID, srcZone, ab.Cost, sacrifices, params.ReturnIDs, params.ExilePermanentIDs); err != nil {
 		return err
 	}
 	// ADR 0130 §4, CR 701.43c: only a permanent can be exerted. Nothing
@@ -1668,7 +1723,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// hand card put on top (CR 903.9b), the top cards exiled and the
 	// cards discarded at random (CR 903.9a).
 	moving = append(append(append(moving, tops...), libraryExiles...), randoms...)
-	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf {
+	if ab.Cost.ExileSelf || ab.Cost.ReturnSelf || ab.Cost.BottomSelf {
 		moving = append(moving, cardID)
 	}
 	// #1427: every permanent the payment TAPS — the {T}, the crew,
@@ -1702,6 +1757,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// before anything is paid, like any other returned commander.
 	if ab.Cost.ReturnSelf {
 		asking = append(asking, costCommanderMovesTo(ZoneHand, cardID)...)
+	}
+	// #2726: and the source a put-on-the-bottom cost sends to its owner's
+	// library, asked the same way.
+	if ab.Cost.BottomSelf {
+		asking = append(asking, costCommanderMovesTo(ZoneLibrary, cardID)...)
 	}
 	asked, answers := g.askCostCommanderLocked(playerID, asking, params.commanderAnswers, source.Name,
 		func(g *Game, answers map[uuid.UUID]bool) error {
@@ -1835,13 +1895,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// (Vorinclex, Monstrous Raider) does apply, which is why this
 		// goes through the CR 614 window at all rather than writing the
 		// map directly. ADR 0073's 2026-09-28 amendment, #1710.
-		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, *ab.Cost.Loyalty); err != nil {
+		if _, err := g.payCostCounterLocked(playerID, cardID, CounterLoyalty, ab.Cost.LoyaltyDelta(params.XValue)); err != nil {
 			return err
 		}
-		if g.LoyaltyActivatedThisTurn == nil {
-			g.LoyaltyActivatedThisTurn = make(map[uuid.UUID]bool)
-		}
-		g.LoyaltyActivatedThisTurn[cardID] = true
+		g.recordLoyaltyActivationLocked(cardID)
 	}
 	// #625: a "remove N counters" component. After life and loyalty,
 	// before sacrifices — a self-form removal on a source that is
@@ -1904,6 +1961,11 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// the effect still names the permanent that paid (CR 400.7) and reads
 	// it through its last-known information (CR 608.2h).
 	if err := g.payReturnSelfCostLocked(playerID, cardID, ab.Cost, params.commanderAnswers); err != nil {
+		return err
+	}
+	// #2726: the put-this-on-the-bottom half, the same exit one zone
+	// over and for the same reasons.
+	if err := g.payBottomSelfCostLocked(playerID, cardID, ab.Cost, params.commanderAnswers); err != nil {
 		return err
 	}
 	// #1600: the exile-a-permanent component, beside the returns and for

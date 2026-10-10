@@ -49,8 +49,9 @@ func init() {
 			}, "Magda, Brazen Outlaw — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice five Treasures: Search your library for an artifact or Dragon card, put that card onto the battlefield, then shuffle.",
-			Cost:  SacrificeN(5, "five Treasures", isTreasure),
+			Label:   "Sacrifice five Treasures: Search your library for an artifact or Dragon card, put that card onto the battlefield, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    SacrificeN(5, "five Treasures", isTreasure),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
 					Player: item.Controller,

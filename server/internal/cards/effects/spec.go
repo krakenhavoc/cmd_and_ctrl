@@ -83,6 +83,16 @@ type Spec struct {
 	// 2026-09-24.
 	AsTransformsInto func(card *game.Card, ctx *Context) error
 
+	// AsAttached is the permanent's "As this <permanent> becomes
+	// attached to a creature, …" clause (Dinosaur Headdress, #2709): a
+	// static ability that applies as the attach happens, run by the
+	// engine's one attach verb (game.AttachForEffect) whatever made the
+	// attach — equip, an enters trigger, a moving effect — and not for
+	// a re-attach to the creature it is already on (CR 701.3c). Same
+	// contract as AsEnters: off the stack, Item is nil, the host is
+	// card.AttachedTo.
+	AsAttached func(card *game.Card, ctx *Context) error
+
 	// StartingLoyalty is the loyalty counter count a planeswalker
 	// enters the battlefield with. 0 means "not a planeswalker" or
 	// "planeswalker with 0 starting loyalty" (which the SBA would
@@ -1016,6 +1026,21 @@ type Spec struct {
 	// Issue #2058.
 	DamageStaysThroughCleanup bool
 
+	// LoyaltyTwiceEachTurn declares the printed static "You may activate
+	// the loyalty abilities of <this> twice each turn rather than only
+	// once" (Urza, Planeswalker): CR 606.3's one-per-turn limit is two
+	// for this permanent. Judged through CatalogAbilityKey, so a
+	// permanent that lost its abilities is held to one. ADR 0145.
+	LoyaltyTwiceEachTurn bool
+
+	// ExtraVote declares the printed static "While voting, you get an
+	// additional vote" (game.ExtraVoteYouGet, Brago's Representative)
+	// or "While voting, you may vote an additional time"
+	// (game.ExtraVoteYouMay, Ballot Broker): CR 701.38d, ADR 0146.
+	// Judged through CatalogAbilityKey, so a permanent that lost its
+	// abilities gives no extra vote.
+	ExtraVote game.ExtraVote
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//
@@ -1644,6 +1669,16 @@ type ManaAbility struct {
 	Cost     ManaAbilityCost
 	Produced string
 	Label    string
+
+	// Answers is what the ability can do in response (ADR 0142 §2):
+	// game.AnswerSacOutlet for a creature sacrifice outlet (Ashnod's
+	// Altar's "Sacrifice a creature: Add {C}{C}"), game.AnswerValue for
+	// one that answers nothing. Nothing else is allowed here. Zero is
+	// "not declared", and smart autopass then reads the sacrifice cost.
+	// Register refuses a creature-sacrifice cost declared without
+	// AnswerSacOutlet. See docs/adding-cards.md, "Declaring what an
+	// ability answers".
+	Answers game.Answers
 
 	// Zones is the CR 113.6 dimension: the zones this mana ability
 	// functions from (#1228). Nil means the battlefield and nowhere

@@ -16,7 +16,8 @@
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
   import { BLUFF_MAX_MS, BLUFF_MIN_MS } from "../bluff";
-  import { STACK_HOLD_CHOICES_MS, clampStackHoldMs } from "../stackHold";
+  import { stackHoldMsForPace, type TablePace } from "../stackHold";
+  import { currentTablePace } from "../tableSettings";
   import type { StackStyle } from "../stackLane";
   import type { TableLayout } from "../tableLayout";
   import { PICKER_SKINS, SKINS, normalizeAccent, type Skin } from "../skins";
@@ -47,6 +48,13 @@
   import { navigate } from "../router";
   import { session } from "../session";
 
+  // ADR 0143 §3.2: the table pace's names, for the Reading time line.
+  const PACE_NAMES: Record<TablePace, string> = {
+    fast: "Fast",
+    normal: "Normal",
+    slow: "Slow",
+  };
+
   // ADR 0143 §2.1 and §3.2: the one Auto-pass choice, and its copy.
   const PASS_MODE_CHOICES: readonly { mode: PassMode; label: string }[] = [
     { mode: "smart", label: "Smart" },
@@ -66,15 +74,46 @@
   // sentinel (priority_holder = -1) makes them un-stoppable anyway.
   const STOPPABLE_STEPS: readonly StepID[] = STEP_IDS.filter((id) => hasOwnStop(id));
 
-  // toggleStepStop flips one entry in the stepStops map and flashes
-  // the saved indicator next to the row. Path uses the step ID as
-  // the leaf so each row's flash is independent.
-  function toggleStepStop(step: StepID, value: boolean): void {
-    updateSettings("gameplay", "stepStops", {
-      ...$settings.gameplay.stepStops,
+  // ADR 0143 §2.3: the two columns of the stops grid. stepStops is
+  // My turn, stepStopsOpponents is Opponents' turns.
+  type StopColumn = "stepStops" | "stepStopsOpponents";
+  const STOP_COLUMNS: readonly { key: StopColumn; label: string }[] = [
+    { key: "stepStops", label: "My turn" },
+    { key: "stepStopsOpponents", label: "Opponents' turns" },
+  ];
+
+  // toggleStepStop flips one entry in one column's map and flashes
+  // the saved indicator next to the box. Path uses the column and the
+  // step ID as the leaf so each box's flash is independent.
+  function toggleStepStop(column: StopColumn, step: StepID, value: boolean): void {
+    updateSettings("gameplay", column, {
+      ...$settings.gameplay[column],
       [step]: value,
     });
-    flashSaved(`gameplay.stepStops.${step}`);
+    flashSaved(`gameplay.${column}.${step}`);
+  }
+
+  // ADR 0143 §3.1: the Gameplay tab's Advanced section is a <details>,
+  // closed by default. Whether it is open is remembered per device in
+  // localStorage: a convenience, not a setting, so it is not synced and
+  // a browser that refuses storage just starts closed.
+  const ADVANCED_OPEN_KEY = "cmdctrl.settings.gameplayAdvancedOpen";
+  function readAdvancedOpen(): boolean {
+    try {
+      return localStorage.getItem(ADVANCED_OPEN_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+  let advancedOpen = $state(readAdvancedOpen());
+  function onAdvancedToggle(e: Event): void {
+    advancedOpen = (e.currentTarget as HTMLDetailsElement).open;
+    try {
+      if (advancedOpen) localStorage.setItem(ADVANCED_OPEN_KEY, "1");
+      else localStorage.removeItem(ADVANCED_OPEN_KEY);
+    } catch {
+      // Storage unavailable: the section just starts closed next time.
+    }
   }
 
   // Active sidebar tab. Reset to "audio" every time the modal
@@ -801,109 +840,185 @@
             <PlaymatSettings />
           {:else if activeTab === "gameplay"}
             <h3>Gameplay</h3>
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.confirmExit}
-                onchange={(e) => change("gameplay", "confirmExit", e.currentTarget.checked)}
-              />
-              Confirm before leaving an active game
-              {#if isFresh("gameplay.confirmExit")}<span class="saved">✓ saved</span>{/if}
-            </label>
 
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.highlightLegalActions}
-                onchange={(e) =>
-                  change("gameplay", "highlightLegalActions", e.currentTarget.checked)}
-              />
-              Highlight what you can do right now
-              {#if isFresh("gameplay.highlightLegalActions")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <p class="help">
-              While you owe a decision, a card you can cast or a land you can play gets a cyan ring,
-              and a pile shows how many of its cards are ready. A permanent with an ability you can
-              use gets a small pip (a bolt for an ability, a drop for a mana ability, a star for a
-              special action; tap one to open its menu), and a creature that can attack or block
-              gets a sword or shield. Screen readers hear what each card is ready for, and "N
-              actions available" once when the decision arrives. Nothing lights on a window
-              auto-pass is about to skip. Turning this off removes the rings, pips and counts only:
-              a card you cannot play is still greyed out.
-            </p>
+            <!-- ADR 0143 §3: five short sections, then a collapsed Advanced. -->
+            <section class="gp-section" aria-labelledby="gp-passing">
+              <h4 id="gp-passing" class="gp-heading">Passing priority</h4>
+              <fieldset class="pass-mode">
+                <legend>
+                  Auto-pass
+                  {#if isFresh("gameplay.passMode")}<span class="saved">✓ saved</span>{/if}
+                </legend>
+                <div class="pass-mode-choices">
+                  {#each PASS_MODE_CHOICES as choice (choice.mode)}
+                    <label>
+                      <input
+                        type="radio"
+                        name="pass-mode"
+                        value={choice.mode}
+                        checked={$settings.gameplay.passMode === choice.mode}
+                        onchange={() => change("gameplay", "passMode", choice.mode)}
+                      />
+                      {choice.label}
+                    </label>
+                  {/each}
+                </div>
+                <p class="help">{PASS_MODE_HELP[$settings.gameplay.passMode]}</p>
+              </fieldset>
 
-            <label class="slider-row">
-              <span>Order my triggers</span>
-              <select
-                value={$settings.gameplay.triggerOrder}
-                onchange={(e) =>
-                  change("gameplay", "triggerOrder", e.currentTarget.value as TriggerOrderMode)}
-              >
-                <option value="when_it_matters">Ask only when the order matters (default)</option>
-                <option value="always">Always ask</option>
-                <option value="never">Never ask: order them for me</option>
-              </select>
-              {#if isFresh("gameplay.triggerOrder")}<span class="saved">✓</span>{/if}
-            </label>
-            <p class="help">
-              When several of your triggers go on the stack together, you choose which resolves
-              first. By default the game orders them for you when every order gives the same result:
-              a board of prowess creatures, or copies of the same ability with no targets, like two
-              Soul Wardens. Always ask lets you choose every time, so you pick which resolves first
-              while your opponents can still respond between them. Never ask puts them on the stack
-              in the order they triggered, even when the order could matter.
-            </p>
+              <fieldset class="step-stops">
+                <legend>Stop at these steps</legend>
+                <table class="step-stops-table">
+                  <thead>
+                    <tr>
+                      <th scope="col"><span class="visually-hidden">Step</span></th>
+                      {#each STOP_COLUMNS as col (col.key)}
+                        <th scope="col">{col.label}</th>
+                      {/each}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {#each STOPPABLE_STEPS as step (step)}
+                      <tr>
+                        <th scope="row">{STEP_LABELS[step]}</th>
+                        {#each STOP_COLUMNS as col (col.key)}
+                          <td>
+                            <input
+                              type="checkbox"
+                              aria-label={`${STEP_LABELS[step]}, ${col.label}`}
+                              checked={$settings.gameplay[col.key][step] === true}
+                              onchange={(e) =>
+                                toggleStepStop(col.key, step, e.currentTarget.checked)}
+                            />
+                            {#if isFresh(`gameplay.${col.key}.${step}`)}<span class="saved">✓</span
+                              >{/if}
+                          </td>
+                        {/each}
+                      </tr>
+                    {/each}
+                  </tbody>
+                </table>
+                <p class="help">
+                  {#if $settings.gameplay.passMode === "manual"}
+                    In Manual every step stops, so these do nothing.
+                  {:else}
+                    A ticked step is skipped when you have nothing to do there. You always get a
+                    chance to respond to an opponent's spell, an attack, and an opponent's end step,
+                    ticked or not.
+                  {/if}
+                </p>
+              </fieldset>
+            </section>
 
-            <AutoAnswersSettings />
-
-            <fieldset class="pass-mode">
-              <legend>
-                Auto-pass
-                {#if isFresh("gameplay.passMode")}<span class="saved">✓ saved</span>{/if}
-              </legend>
-              {#each PASS_MODE_CHOICES as choice (choice.mode)}
-                <label>
-                  <input
-                    type="radio"
-                    name="pass-mode"
-                    value={choice.mode}
-                    checked={$settings.gameplay.passMode === choice.mode}
-                    onchange={() => change("gameplay", "passMode", choice.mode)}
-                  />
-                  {choice.label}
-                </label>
-              {/each}
-              <p class="help">{PASS_MODE_HELP[$settings.gameplay.passMode]}</p>
-              <p class="help">
-                Click <strong>next</strong> in the action dock (bottom right) to pass by hand, or click
-                a step icon to stop there once.
-              </p>
-            </fieldset>
-
-            <fieldset class="step-stops">
-              <legend>Stop on these steps</legend>
-              <p class="help">
-                {#if $settings.gameplay.passMode === "manual"}
-                  In Manual every step stops, so these do nothing.
+            <section class="gp-section" aria-labelledby="gp-reading">
+              <h4 id="gp-reading" class="gp-heading">Reading time</h4>
+              <!-- ADR 0143 §2.6 and §3.2: the hold is the table's pace,
+                   which the host sets. Outside a game there is no table
+                   to name, so the line gives all three. -->
+              <p class="help reading-time">
+                {#if $currentTablePace}
+                  This table's pace is {PACE_NAMES[$currentTablePace]}: other players' spells stay
+                  on the stack for {stackHoldMsForPace($currentTablePace) / 1000} s before they resolve.
                 {:else}
-                  You always get a chance to respond to an opponent's spell, an attack, and an
-                  opponent's end step, ticked or not. Untap and Cleanup are excluded — they don't
-                  grant priority (turn-based actions auto-fire).
+                  Each table's pace sets this: other players' spells stay on the stack for 0 s
+                  (Fast), 2 s (Normal) or 3 s (Slow) before they resolve.
                 {/if}
+                The host sets it in Table settings. Click <strong>wait</strong> on the countdown to keep
+                priority and respond.
               </p>
-              <div class="step-stops-grid">
-                {#each STOPPABLE_STEPS as step (step)}
-                  <label class="step-stop-row">
-                    <input
-                      type="checkbox"
-                      checked={$settings.gameplay.stepStops[step] === true}
-                      onchange={(e) => toggleStepStop(step, e.currentTarget.checked)}
-                    />
-                    <span>{STEP_LABELS[step]}</span>
-                    {#if isFresh(`gameplay.stepStops.${step}`)}<span class="saved">✓</span>{/if}
-                  </label>
-                {/each}
-              </div>
+            </section>
+
+            <section class="gp-section" aria-labelledby="gp-prompts">
+              <h4 id="gp-prompts" class="gp-heading">Prompts</h4>
+              <label class="slider-row">
+                <span>Order my triggers</span>
+                <select
+                  value={$settings.gameplay.triggerOrder}
+                  onchange={(e) =>
+                    change("gameplay", "triggerOrder", e.currentTarget.value as TriggerOrderMode)}
+                >
+                  <option value="when_it_matters">Ask only when the order matters (default)</option>
+                  <option value="always">Always ask</option>
+                  <option value="never">Never ask: order them for me</option>
+                </select>
+                {#if isFresh("gameplay.triggerOrder")}<span class="saved">✓</span>{/if}
+              </label>
+              <p class="help">
+                When several of your triggers go on the stack together, you choose which resolves
+                first. By default you are asked only when the order can change what happens.
+              </p>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.autoAssignCombatDamage}
+                  onchange={(e) =>
+                    change("gameplay", "autoAssignCombatDamage", e.currentTarget.checked)}
+                />
+                Auto-assign combat damage
+                {#if isFresh("gameplay.autoAssignCombatDamage")}<span class="saved">✓ saved</span
+                  >{/if}
+              </label>
+              <p class="help">
+                When your attacker has enough damage to kill every creature blocking it, assign it
+                for you: lethal damage to each blocker, and the rest to the player with trample, or
+                to the last blocker without. Otherwise you are asked, with that split filled in.
+              </p>
+
+              <AutoAnswersSettings />
+            </section>
+
+            <section class="gp-section" aria-labelledby="gp-mana">
+              <h4 id="gp-mana" class="gp-heading">Mana</h4>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.strictMana}
+                  onchange={(e) => change("gameplay", "strictMana", e.currentTarget.checked)}
+                />
+                Charge mana costs
+                {#if isFresh("gameplay.strictMana")}<span class="saved">✓ saved</span>{/if}
+              </label>
+              <p class="help">
+                On: a spell or ability costs what it says, and clicking a card taps your lands for
+                it. A card you can't pay for is dimmed; right-click it for &lsquo;Cast anyway (don't
+                pay)&rsquo;, which the log shows to the table. Off: the sandbox, where mana is
+                tracked on paper.
+              </p>
+            </section>
+
+            <section class="gp-section" aria-labelledby="gp-table">
+              <h4 id="gp-table" class="gp-heading">Table</h4>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.highlightLegalActions}
+                  onchange={(e) =>
+                    change("gameplay", "highlightLegalActions", e.currentTarget.checked)}
+                />
+                Highlight what you can do right now
+                {#if isFresh("gameplay.highlightLegalActions")}<span class="saved">✓ saved</span
+                  >{/if}
+              </label>
+              <p class="help">
+                While you owe a decision, cards you can play get a ring and permanents with
+                abilities get a small pip. A card you can't play is still greyed out with this off.
+              </p>
+
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.confirmExit}
+                  onchange={(e) => change("gameplay", "confirmExit", e.currentTarget.checked)}
+                />
+                Ask before leaving a game in progress
+                {#if isFresh("gameplay.confirmExit")}<span class="saved">✓ saved</span>{/if}
+              </label>
+            </section>
+
+            <details class="gp-advanced" open={advancedOpen} ontoggle={onAdvancedToggle}>
+              <summary class="gp-heading">Advanced</summary>
+
               <label>
                 <input
                   type="checkbox"
@@ -911,276 +1026,190 @@
                   onchange={(e) =>
                     change("gameplay", "stepStopsOnlyWhenCanAct", e.currentTarget.checked)}
                 />
-                Only stop at my ticked steps when I can do something
+                Skip a ticked step when I have nothing to do there
                 {#if isFresh("gameplay.stepStopsOnlyWhenCanAct")}<span class="saved">✓</span>{/if}
               </label>
               <p class="help">
-                A ticked step passes when you have nothing to do there, so &ldquo;stop on
-                upkeep&rdquo; means &ldquo;stop if I have something to do,&rdquo; not &ldquo;stop
-                every time.&rdquo; On your own main phase anything you can play counts, a land
-                included. Anywhere else it takes a move from the &ldquo;What counts as a
-                response&rdquo; list below. Turn this off to stop at every ticked step.
+                On your own main phase anything you can play counts, a land included. Anywhere else
+                it takes a response from the list below. Off: every ticked step stops.
               </p>
-            </fieldset>
 
-            <fieldset class="step-stops">
-              <legend>What counts as a response</legend>
-              <p class="help">
-                Auto-pass stops for an opponent's spell, an attack or an opponent's end step only
-                when you have one of these. Mana abilities and land drops never count. In combat,
-                crewing, animating a land or granting a keyword counts as a targeted ability.
-              </p>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.respondCounterspells}
-                  onchange={(e) =>
-                    change("gameplay", "respondCounterspells", e.currentTarget.checked)}
-                />
-                Counterspells (anything that targets a spell or ability on the stack)
-                {#if isFresh("gameplay.respondCounterspells")}<span class="saved">✓</span>{/if}
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.respondInstants}
-                  onchange={(e) => change("gameplay", "respondInstants", e.currentTarget.checked)}
-                />
-                Instants and flash spells
-                {#if isFresh("gameplay.respondInstants")}<span class="saved">✓</span>{/if}
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.respondAbilities}
-                  onchange={(e) => change("gameplay", "respondAbilities", e.currentTarget.checked)}
-                />
-                Abilities that target or protect something (pumps, sacrifice outlets, regeneration)
-                {#if isFresh("gameplay.respondAbilities")}<span class="saved">✓</span>{/if}
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.respondUntargetedAbilities}
-                  onchange={(e) =>
-                    change("gameplay", "respondUntargetedAbilities", e.currentTarget.checked)}
-                />
-                Value abilities (Mind Stone, fetch lands, Clues, cycling)
-                {#if isFresh("gameplay.respondUntargetedAbilities")}<span class="saved">✓</span
-                  >{/if}
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.respondSpecialActions}
-                  onchange={(e) =>
-                    change("gameplay", "respondSpecialActions", e.currentTarget.checked)}
-                />
-                Special actions (foretell, suspend, turning a card face up)
-                {#if isFresh("gameplay.respondSpecialActions")}<span class="saved">✓</span>{/if}
-              </label>
-              <p class="help">
-                By default an opponent's spell or ability stops you only for real interaction: an
-                instant you can cast, a counterspell, or an ability that targets or protects
-                something (a sacrifice outlet, regeneration, a pump, protection, a blink). A value
-                ability such as drawing off Mind Stone, cracking a fetch land or cycling a card is
-                something you can do at any time, so it does not stop you unless you tick it. Mana
-                abilities never count, except a sacrifice outlet that makes mana.
-              </p>
-              <p class="help">
-                While an opponent's spell waits on the stack the action dock counts down to the
-                automatic pass. Click <strong>wait</strong> there (or press the hold key) to keep priority
-                on that stack and respond.
-              </p>
-            </fieldset>
+              <fieldset class="step-stops">
+                <legend>What counts as a response</legend>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondCounterspells}
+                    onchange={(e) =>
+                      change("gameplay", "respondCounterspells", e.currentTarget.checked)}
+                  />
+                  Counterspells
+                  {#if isFresh("gameplay.respondCounterspells")}<span class="saved">✓</span>{/if}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondInstants}
+                    onchange={(e) => change("gameplay", "respondInstants", e.currentTarget.checked)}
+                  />
+                  Instants and flash
+                  {#if isFresh("gameplay.respondInstants")}<span class="saved">✓</span>{/if}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondAbilities}
+                    onchange={(e) =>
+                      change("gameplay", "respondAbilities", e.currentTarget.checked)}
+                  />
+                  Targeted and protective abilities
+                  {#if isFresh("gameplay.respondAbilities")}<span class="saved">✓</span>{/if}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondUntargetedAbilities}
+                    onchange={(e) =>
+                      change("gameplay", "respondUntargetedAbilities", e.currentTarget.checked)}
+                  />
+                  Value abilities (Mind Stone, fetch lands, cycling)
+                  {#if isFresh("gameplay.respondUntargetedAbilities")}<span class="saved">✓</span
+                    >{/if}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.respondSpecialActions}
+                    onchange={(e) =>
+                      change("gameplay", "respondSpecialActions", e.currentTarget.checked)}
+                  />
+                  Special actions (foretell, suspend, face-up)
+                  {#if isFresh("gameplay.respondSpecialActions")}<span class="saved">✓</span>{/if}
+                </label>
+                <p class="help">
+                  Auto-pass stops for an opponent's spell, an attack or an opponent's end step only
+                  when you have one of these. Mana abilities and land drops never count. In combat,
+                  crewing, animating a land or granting a keyword counts as a targeted ability.
+                </p>
+              </fieldset>
 
-            <label class="slider-row">
-              <span
-                >Let other players' spells sit on the stack for at least … before auto-pass lets
-                them resolve</span
-              >
-              <select
-                value={clampStackHoldMs($settings.gameplay.stackHoldMs)}
-                onchange={(e) => change("gameplay", "stackHoldMs", Number(e.currentTarget.value))}
-              >
-                {#each STACK_HOLD_CHOICES_MS as ms (ms)}
-                  <option value={ms}>{ms === 0 ? "Off" : `${ms / 1000} s`}</option>
-                {/each}
-              </select>
-              {#if isFresh("gameplay.stackHoldMs")}<span class="saved">✓</span>{/if}
-            </label>
-            <p class="help">
-              So you can read what was cast before it resolves. Only an automatic pass waits, and
-              only for a spell or ability someone else controls; <strong>next</strong> still passes at
-              once, and the action dock counts the wait down.
-            </p>
-
-            <fieldset class="step-stops" disabled={$settings.gameplay.passMode !== "smart"}>
-              <legend>Bluff</legend>
-              <p class="help">
-                Smart auto-pass passes the moment you have no answer, so a pause tells the table you
-                do. Bluffing works only in Smart: in Careful and Manual you stop anyway. A bluff
-                pauses anyway when you have nothing, and the other players see the same pause either
-                way. Turn bluffing on or off mid-game with the
-                <strong>bluff</strong> button in the action dock (always shown, and the
-                <kbd>B</kbd> key does the same). Its <strong>▾</strong> sets the same options as below.
-              </p>
               <label>
                 <input
                   type="checkbox"
-                  checked={$settings.gameplay.bluffCounterspell}
-                  onchange={(e) => change("gameplay", "bluffCounterspell", e.currentTarget.checked)}
+                  checked={$settings.gameplay.autoPassOwnStack}
+                  onchange={(e) => change("gameplay", "autoPassOwnStack", e.currentTarget.checked)}
                 />
-                Represent a counterspell (pause on opponents' spells and abilities)
-                {#if isFresh("gameplay.bluffCounterspell")}<span class="saved">✓</span>{/if}
-              </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.bluffInstant}
-                  onchange={(e) => change("gameplay", "bluffInstant", e.currentTarget.checked)}
-                />
-                Represent an instant (also pause in combat and on opponents' end steps)
-                {#if isFresh("gameplay.bluffInstant")}<span class="saved">✓</span>{/if}
-              </label>
-              <label class="slider-row">
-                <span>Bluff style</span>
-                <select
-                  value={$settings.gameplay.bluffMode}
-                  onchange={(e) =>
-                    change("gameplay", "bluffMode", e.currentTarget.value as "timed" | "manual")}
-                >
-                  <option value="timed">Timed — pass after a random pause</option>
-                  <option value="manual">Manual — wait for me to click next</option>
-                </select>
-                {#if isFresh("gameplay.bluffMode")}<span class="saved">✓</span>{/if}
-              </label>
-              <label class="slider-row">
-                <span>Shortest pause (ms)</span>
-                <input
-                  type="range"
-                  min={BLUFF_MIN_MS}
-                  max={BLUFF_MAX_MS}
-                  step="250"
-                  value={$settings.gameplay.bluffDelayMinMs}
-                  oninput={(e) =>
-                    change("gameplay", "bluffDelayMinMs", Number(e.currentTarget.value))}
-                />
-                <span class="value">{$settings.gameplay.bluffDelayMinMs}</span>
-                {#if isFresh("gameplay.bluffDelayMinMs")}<span class="saved">✓</span>{/if}
-              </label>
-              <label class="slider-row">
-                <span>Longest pause (ms)</span>
-                <input
-                  type="range"
-                  min={BLUFF_MIN_MS}
-                  max={BLUFF_MAX_MS}
-                  step="250"
-                  value={$settings.gameplay.bluffDelayMaxMs}
-                  oninput={(e) =>
-                    change("gameplay", "bluffDelayMaxMs", Number(e.currentTarget.value))}
-                />
-                <span class="value">{$settings.gameplay.bluffDelayMaxMs}</span>
-                {#if isFresh("gameplay.bluffDelayMaxMs")}<span class="saved">✓</span>{/if}
+                Pass my own spells and triggers straight away
+                {#if isFresh("gameplay.autoPassOwnStack")}<span class="saved">✓ saved</span>{/if}
               </label>
               <p class="help">
-                Every bluff slows the table down, and a timed bluff always ends inside its range, so
-                a long pause still means a real answer. Manual bluffs have no ceiling: they wait for
-                you, the same as a real hold.
+                Casting is already the decision. To respond to your own spell, click
+                <strong>hold</strong> before you cast.
               </p>
-            </fieldset>
 
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.autoPassOwnStack}
-                onchange={(e) => change("gameplay", "autoPassOwnStack", e.currentTarget.checked)}
-              />
-              Auto-pass your own spells and triggers on the stack
-              {#if isFresh("gameplay.autoPassOwnStack")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <p class="help">
-              Casting is already the decision, so the client doesn't ask &ldquo;Counter or
-              Pass?&rdquo; about a stack holding only your own items — it passes and lets them
-              resolve. A stack with <em>anything</em> an opponent put on it still stops for you.
-              When you do want to respond to your own spell or trigger (stacking two effects,
-              holding up a counter, responding to your own ETB), click <strong>hold</strong> in the
-              action dock <em>before</em> you cast — the pass fires the instant the spell is announced.
-              Hold keeps priority on every stack item, an opponent's too, and turns itself off once the
-              stack is empty. Turn this setting off to stop on every stack, always.
-            </p>
+              <fieldset class="step-stops" disabled={$settings.gameplay.passMode !== "smart"}>
+                <legend>Bluffing</legend>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.bluffCounterspell}
+                    onchange={(e) =>
+                      change("gameplay", "bluffCounterspell", e.currentTarget.checked)}
+                  />
+                  Represent a counterspell
+                  {#if isFresh("gameplay.bluffCounterspell")}<span class="saved">✓</span>{/if}
+                </label>
+                <label>
+                  <input
+                    type="checkbox"
+                    checked={$settings.gameplay.bluffInstant}
+                    onchange={(e) => change("gameplay", "bluffInstant", e.currentTarget.checked)}
+                  />
+                  Represent an instant
+                  {#if isFresh("gameplay.bluffInstant")}<span class="saved">✓</span>{/if}
+                </label>
+                <label class="slider-row">
+                  <span>Style</span>
+                  <select
+                    value={$settings.gameplay.bluffMode}
+                    onchange={(e) =>
+                      change("gameplay", "bluffMode", e.currentTarget.value as "timed" | "manual")}
+                  >
+                    <option value="timed">Timed</option>
+                    <option value="manual">Manual</option>
+                  </select>
+                  {#if isFresh("gameplay.bluffMode")}<span class="saved">✓</span>{/if}
+                </label>
+                <label class="slider-row">
+                  <span>Shortest pause (ms)</span>
+                  <input
+                    type="range"
+                    min={BLUFF_MIN_MS}
+                    max={BLUFF_MAX_MS}
+                    step="250"
+                    value={$settings.gameplay.bluffDelayMinMs}
+                    oninput={(e) =>
+                      change("gameplay", "bluffDelayMinMs", Number(e.currentTarget.value))}
+                  />
+                  <span class="value">{$settings.gameplay.bluffDelayMinMs}</span>
+                  {#if isFresh("gameplay.bluffDelayMinMs")}<span class="saved">✓</span>{/if}
+                </label>
+                <label class="slider-row">
+                  <span>Longest pause (ms)</span>
+                  <input
+                    type="range"
+                    min={BLUFF_MIN_MS}
+                    max={BLUFF_MAX_MS}
+                    step="250"
+                    value={$settings.gameplay.bluffDelayMaxMs}
+                    oninput={(e) =>
+                      change("gameplay", "bluffDelayMaxMs", Number(e.currentTarget.value))}
+                  />
+                  <span class="value">{$settings.gameplay.bluffDelayMaxMs}</span>
+                  {#if isFresh("gameplay.bluffDelayMaxMs")}<span class="saved">✓</span>{/if}
+                </label>
+                <p class="help">
+                  Auto-pass passes the moment you have no answer, so a pause tells the table you
+                  have one. A bluff pauses anyway. Arm it during a game with the bluff button (<kbd
+                    >B</kbd
+                  >).
+                  {#if $settings.gameplay.passMode !== "smart"}
+                    Bluffing needs Smart auto-pass: in {$settings.gameplay.passMode === "manual"
+                      ? "Manual"
+                      : "Careful"} you stop anyway.
+                  {/if}
+                </p>
+              </fieldset>
 
-            <label class="danger">
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.autopassPersistThroughTurns}
-                onchange={(e) =>
-                  change("gameplay", "autopassPersistThroughTurns", e.currentTarget.checked)}
-              />
-              Autopass persists through your own turns
-              {#if isFresh("gameplay.autopassPersistThroughTurns")}
-                <span class="saved">✓ saved</span>
-              {/if}
-            </label>
-            <p class="help danger-help">
-              <strong>WARNING: ENABLING THIS SETTING MAY CAUSE YOU TO SKIP YOUR OWN TURN.</strong>
-              By default, the autopass toggle in the phase display auto-clears when the cursor reaches
-              your own first main phase — a safety belt so a forgotten autopass doesn't cost you a turn.
-              Flip this on to keep autopass engaged indefinitely (until you click it off).
-            </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.adminOverrides}
+                  onchange={(e) => change("gameplay", "adminOverrides", e.currentTarget.checked)}
+                />
+                Manual card controls on right-click
+                {#if isFresh("gameplay.adminOverrides")}<span class="saved">✓ saved</span>{/if}
+              </label>
+              <p class="help">
+                Right-click a card you control to move it, change its counters or damage, or declare
+                it in combat by hand: the fallback when the engine gets a card wrong. Off:
+                right-click shows the card's abilities.
+              </p>
 
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.strictMana}
-                onchange={(e) => change("gameplay", "strictMana", e.currentTarget.checked)}
-              />
-              Strict mana enforcement
-              {#if isFresh("gameplay.strictMana")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <!-- ADR 0118 §1: the help text is the ADR's, word for word. -->
-            <p class="help">
-              On (the default): a spell or ability costs what it says. Clicking or dragging a card
-              taps your lands for it, spending mana already in your pool first. A card your board
-              can't pay for is dimmed; right-click it for &ldquo;Cast anyway (don't pay)&rdquo;,
-              which the game log shows to the table. Off: the sandbox — mana is tracked on paper and
-              nothing is charged.
-            </p>
-
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.adminOverrides}
-                onchange={(e) => change("gameplay", "adminOverrides", e.currentTarget.checked)}
-              />
-              Enable admin overrides (right-click menu)
-              {#if isFresh("gameplay.adminOverrides")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <p class="help">
-              Right-click any card for a menu of manual overrides: move it to another zone, add or
-              remove counters, mark or clear damage, declare it as an attacker or blocker, sacrifice
-              it. Every option maps to an action the server already supports, so a card the engine
-              gets wrong can still be played by hand. You only get overrides on cards you control;
-              admins get every card. Default is off, which leaves right-click showing a permanent's
-              abilities — with it on, those abilities are the menu's first section.
-            </p>
-
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.showBotReasoning}
-                onchange={(e) => change("gameplay", "showBotReasoning", e.currentTarget.checked)}
-              />
-              Show bot reasoning
-              {#if isFresh("gameplay.showBotReasoning")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <p class="help">
-              Bot seats explain each move they make in the table feed. Off by default — it's a lot
-              of lines, and it's debug output rather than table talk. Note it can mention cards in
-              the bot's own hand, which makes the game easier. This does <strong>not</strong> control
-              improvisation announcements: when a bot plays a card the rules engine can't run, it says
-              so every time, and no setting hides that.
-            </p>
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.showBotReasoning}
+                  onchange={(e) => change("gameplay", "showBotReasoning", e.currentTarget.checked)}
+                />
+                Show bot reasoning
+                {#if isFresh("gameplay.showBotReasoning")}<span class="saved">✓ saved</span>{/if}
+              </label>
+              <p class="help">
+                Bots explain each move in the table feed. It can mention cards in the bot's hand.
+                Improvised plays are always announced, whatever this says.
+              </p>
+            </details>
           {:else if activeTab === "shortcuts"}
             <h3>Keyboard shortcuts</h3>
             <label>
@@ -1758,23 +1787,6 @@
     line-height: 1.45;
     margin: 4px 0 8px;
   }
-  /* Danger-flagged settings get gold framing so an opt-in that might
-     cost the player a turn can't be mistaken for a routine
-     preference. */
-  label.danger {
-    color: var(--accent-strong);
-  }
-  .danger-help {
-    color: var(--fg-muted);
-    border-left: 2px solid var(--accent);
-    padding: 6px 10px;
-    background: var(--accent-soft);
-    border-radius: 0 8px 8px 0;
-  }
-  .danger-help strong {
-    color: var(--accent-strong);
-    letter-spacing: 0.03em;
-  }
   /* An option that exists only to be compared against another one.
      Flagged in the UI as well as in the code, because a setting that
      is going to disappear should not look permanent. */
@@ -1875,36 +1887,79 @@
   .step-stops {
     margin-top: 12px;
   }
-  .step-stops-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-    gap: 2px 14px;
-    margin-top: 4px;
+  /* ADR 0143 §3.1: the Gameplay tab's sections and its Advanced
+     <details>. */
+  .gp-section {
+    margin-top: 18px;
   }
-  .step-stop-row {
+  .gp-heading {
+    margin: 0 0 6px;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.8;
+  }
+  .pass-mode-choices {
     display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-    font-weight: 500;
-    padding: 5px 0;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+  }
+  .pass-mode-choices label {
     border-bottom: none;
   }
-  .step-stop-row > input[type="checkbox"] {
-    order: 0;
+  .gp-advanced {
+    margin-top: 22px;
+    border-top: 1px solid var(--border);
+    padding-top: 10px;
+  }
+  .gp-advanced > summary {
+    cursor: pointer;
+    margin-bottom: 0;
+  }
+  .gp-advanced[open] > summary {
+    margin-bottom: 8px;
+  }
+  /* ADR 0143 §2.3: ten rows of two columns, My turn and Opponents'
+     turns. Fits a 768 px panel side by side. */
+  .step-stops-table {
+    border-collapse: collapse;
+    margin-top: 4px;
+    font-size: 12.5px;
+  }
+  .step-stops-table th {
+    font-weight: 500;
+    text-align: left;
+    padding: 4px 14px 4px 0;
+  }
+  .step-stops-table thead th {
+    font-size: 11.5px;
+    opacity: 0.75;
+  }
+  .step-stops-table td {
+    padding: 4px 14px 4px 0;
+    white-space: nowrap;
+  }
+  .step-stops-table input[type="checkbox"] {
     margin-left: 0;
     width: 30px;
     height: 18px;
+    vertical-align: middle;
   }
-  .step-stop-row > input[type="checkbox"]::after {
+  .step-stops-table input[type="checkbox"]::after {
     width: 12px;
     height: 12px;
   }
-  .step-stop-row > input[type="checkbox"]:checked::after {
+  .step-stops-table input[type="checkbox"]:checked::after {
     left: 14px;
   }
-  .step-stop-row .saved {
-    margin-left: auto;
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
   }
 
   /* ---- Shortcuts tab ------------------------------------------- */

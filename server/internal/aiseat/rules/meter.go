@@ -125,6 +125,9 @@ type Filter struct {
 	// Tier overrides the reported policy name. Empty reports
 	// "rules+<inner>".
 	Tier string
+	// Options turns rules off for this filter; the zero value runs
+	// them all.
+	Options Options
 }
 
 // NewFilter wraps inner with the Layer A filter and the given meter.
@@ -142,7 +145,7 @@ func (f *Filter) Name() string {
 
 // Decide runs Layer A and delegates on escalation.
 func (f *Filter) Decide(ctx context.Context, in aiseat.Input) (aiseat.Decision, error) {
-	v := Resolve(in)
+	v := ResolveWith(in, f.Options)
 	f.Meter.Observe(v)
 	if v.Absorbed() {
 		aiseat.NoteLayer(ctx, "A")
@@ -188,7 +191,7 @@ var _ aiseat.Tracer = (*Filter)(nil)
 // computed from, and that rate is ADR 0033 §5's acceptance number.
 // The runner calls one or the other, never both.
 func (f *Filter) DecideTraced(ctx context.Context, in aiseat.Input) (aiseat.Decision, aiseat.Trace, error) {
-	v := Resolve(in)
+	v := ResolveWith(in, f.Options)
 	f.Meter.Observe(v)
 	if v.Absorbed() {
 		// HeuristicIndex stays Decline: nobody asked Layer B, and

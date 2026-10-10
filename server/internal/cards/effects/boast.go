@@ -98,3 +98,13 @@ func createTheToken(key string) Effect {
 		return CreateToken{Controller: item.Controller, Template: TokenCard(key), N: 1}.Apply(NewContext(g, item))
 	}
 }
+
+// BoastAnswering is Boast with its ADR 0142 declaration: what the row
+// can do in response, read by smart autopass and the bot. A boast row
+// is declared by what its effect does, so it is not declared once in
+// Boast.
+func BoastAnswering(answers game.Answers, text string, cost game.AbilityCost, effect Effect) ActivatedAbility {
+	ab := Boast(text, cost, effect)
+	ab.Purpose.Answers = answers
+	return ab
+}

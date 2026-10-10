@@ -48,7 +48,8 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, Sacrifice another artifact: Put a +1/+1 counter on Threefold Thunderhulk",
+			Label:   "{2}, Sacrifice another artifact: Put a +1/+1 counter on Threefold Thunderhulk",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Cost: Plus(ManaCost("{2}"), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another artifact", Artifact())),
 			}),

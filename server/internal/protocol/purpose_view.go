@@ -87,6 +87,50 @@ type PurposeView struct {
 	// are the controller's; an entry's are its target's. Absent when
 	// empty. A pointer so PurposeView stays comparable.
 	Targets *[]TargetPurposeView `json:"targets,omitempty"`
+	// Answers is what the row can do in response (ADR 0142): the wire
+	// names of game.Answers, in the vocabulary's order ("protect",
+	// "pump", "prevent", "remove", "sac_outlet", "restrict",
+	// "combat_grant", "animate", "makes_blocker", "value"). Absent when
+	// the row declares none; ["value"] is a declared "answers nothing".
+	// On an activated row only. It is not an amount: a purpose that
+	// declares only answers is not Priced. A pointer so PurposeView
+	// stays comparable.
+	Answers *[]string `json:"answers,omitempty"`
+}
+
+// Priced reports whether the purpose declares anything the bot prices:
+// an amount, a sweep, a payoff, a pump or a target entry. Answers alone
+// is not one (ADR 0142 §7). A reader that drops its proxy price for a
+// declared purpose asks this, not "is purpose non-nil", so a row that
+// declares only what it answers keeps the price it had. Nil-safe.
+func (p *PurposeView) Priced() bool {
+	if p == nil {
+		return false
+	}
+	q := *p
+	q.Answers = nil
+	return q != PurposeView{}
+}
+
+// Declares reports whether the purpose declares answer a, a wire name
+// from Answers ("protect", "pump", …). Nil-safe.
+func (p *PurposeView) Declares(a string) bool {
+	if p == nil || p.Answers == nil {
+		return false
+	}
+	for _, x := range *p.Answers {
+		if x == a {
+			return true
+		}
+	}
+	return false
+}
+
+// AnswersNothing reports whether the purpose is declared "value" (ADR
+// 0142 decision 1): the row answers nothing on the stack or in combat.
+// False for a row that declares no answers at all. Nil-safe.
+func (p *PurposeView) AnswersNothing() bool {
+	return p != nil && p.Answers != nil && len(*p.Answers) == 1 && (*p.Answers)[0] == "value"
 }
 
 // TargetPurposeView is game.TargetPurpose on the wire: what the spell
@@ -100,6 +144,9 @@ type TargetPurposeView struct {
 	LifeGain int `json:"life_gain,omitempty"`
 	LifeLoss int `json:"life_loss,omitempty"`
 	Damage   int `json:"damage,omitempty"`
+	// DamageIsX: the damage is the spell's or ability's X (#1944);
+	// Damage is then absent.
+	DamageIsX bool `json:"damage_is_x,omitempty"`
 	// Returns is what the target's controller is given when the target
 	// is removed (#2679). Absent when nothing comes back.
 	Returns *TargetReturnView `json:"returns,omitempty"`
@@ -206,7 +253,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		for i, t := range ts {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
-				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage,
+				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX,
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{
@@ -216,6 +263,9 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			}
 		}
 		v.Targets = &out
+	}
+	if w := p.Answers.Wire(); len(w) > 0 {
+		v.Answers = &w
 	}
 	if s := p.Sweep; !s.IsZero() {
 		v.Sweep = &SweepView{

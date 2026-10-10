@@ -44,9 +44,10 @@ func init() {
 			Label:    "Add {U}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{2}{U}: Put an hour counter on this artifact",
-			Cost:   ManaCost("{2}{U}"),
-			Effect: midnightClockPutHourCounter,
+			Label:   "{2}{U}: Put an hour counter on this artifact",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{2}{U}"),
+			Effect:  midnightClockPutHourCounter,
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(_ game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {

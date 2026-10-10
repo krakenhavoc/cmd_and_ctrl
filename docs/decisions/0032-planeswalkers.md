@@ -464,7 +464,8 @@ scope and none is made harder by this change.
   path taken, with one correction: `ActivateLoyalty` was hardened
   rather than retired, because it is still the only way to drive the
   planeswalkers the catalog has never heard of.
-- **A VARIABLE loyalty cost** — Ugin, the Spirit Dragon's "−X: Exile
+- ~~**A VARIABLE loyalty cost**~~ **Shipped** in the amendment of
+  2026-10-10 (#1944), below. Ugin, the Spirit Dragon's "−X: Exile
   each permanent with mana value X or less that's one or more
   colors". `AbilityCost.Loyalty` is a single `*int`, paid down at
   announce and checked against the card's counters by CR 606.6, and
@@ -631,7 +632,8 @@ printed* the moment it was dealt damage that wasn't prevented.
 - **Gideon, Champion of Justice's size.** "Power and toughness each equal to the number of loyalty
   counters on him" needs a Mod that reads a count at every layer pass, and an owner answer to whether the
   count is live or locked when the ability resolves
-  ([#2569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2569)).
+  ([#2569](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2569)). Answered and shipped by the
+  2026-10-09 amendment below: locked, with no new Mod.
 - **Attacking and being attacked.** An animated Gideon attacks like any creature (summoning sickness is
   CR 302.6 and applies to him, which is why "He can't attack if he was cast this turn" on the Oathsworn
   is reminder text), and is a legal attack target while he is a planeswalker (CR 506.4); nothing about
@@ -657,3 +659,98 @@ opponent's still die (`TestZeroLoyaltyExemptionKeepsYourPlaneswalkersOnTheBattle
 A walker left at 0 loyalty is still a walker. CR 606.6 still asks for N counters, so it can use a plus
 ability and no minus (`TestZeroLoyaltyWalkerCanOnlyUsePlusAbilities`). The card side is
 `Spec.ZeroLoyaltyExemptions: PlaneswalkersSurviveZeroLoyalty()`.
+
+
+## Amendment (2026-10-09, #2569): a size counted once, as the ability resolves (Gideon, Champion of Justice)
+
+"0: Until end of turn, Gideon becomes a Human Soldier creature with power and toughness each equal to the
+number of loyalty counters on him and gains indestructible." The 2026-10-07 amendment left this Gideon out
+because there were two readings, and they give different cards. **Live:** the count is read at every layer
+pass, so damage that can't be prevented shrinks him as it takes loyalty, and a proliferate grows him.
+**Locked:** the count is read once, as the ability resolves, and he stays that size for the turn.
+
+**Decision (owner, 2026-10-09).** Locked. CR 608.2h: when an effect needs information from the game, such as
+a number of counters, the answer is determined once, when the effect is applied. A resolved ability's
+"until end of turn" is such an effect. CR 611.2c, which the live reading leaned on, only fixes *which objects*
+a characteristic-changing effect from a resolving ability affects; it does not make a number in it live. A
+characteristic-defining ability or a static ability ("is equal to", printed on the permanent) is what reads a
+count continuously (CR 604.3, 613.4a), and this is neither.
+
+**What changed.** Nothing in the layer system. A locked count is a fixed number by the time the layered
+record is made, and `ModSetBasePower` / `ModSetBaseToughness` already carry one. `gideonAnimation` gained
+`SizeFromLoyalty`: `animateGideon` reads the loyalty counters on the source as it resolves (after the CR 606.4
+cost, so the 0 costs nothing and the number is what he has) and writes that into the layer 7b mods in place of
+the printed power and toughness. The record, the shield and the CR 704.5i/704.5g interplay are the
+2026-10-07 amendment's, unchanged. A Gideon that left in response is a new object and nothing happens, so no
+count is read off a card in another zone.
+
+**The card.** Gideon, Champion of Justice is Full:
+
+- **+1** counts the creatures the target opponent controls as it resolves (CR 608.2h again) and puts that many
+  loyalty counters on him; zero creatures is zero counters on top of the cost.
+- **0** is the becoming above. Tests pin the locked size: a 7/7 dealt 3 damage that can't be prevented has 4
+  loyalty and is still 7/7, and 5 loyalty added later leaves him 7/7 (`TestGideonChampionZeroSizeIsLockedAtResolution`).
+  He is still a planeswalker, so taking his last loyalty counter puts him into the graveyard however
+  indestructible he is.
+- **−15** exiles every other permanent, everyone's, lands and tokens included.
+
+**What this deliberately does not do.** It adds no live-count Mod. No card in the catalog waits on one: a
+"power and toughness each equal to X" on a permanent is a characteristic-defining or static ability and is
+already a `StaticAbility` computing its number at each layer pass. A resolved effect whose count follows the
+board would be a new seam with its own row.
+
+## Amendment (2026-10-10, #1944): a loyalty cost of −X
+
+"What this deliberately does not do" left Ugin's −X out because `DemandsX` read the mana cost and
+nothing else, and a second answer to "what is X" would have split the engine. That reason has since gone:
+#1213, #1421 and ADR 0129 §2 made `DemandsX` a question asked of the COST, and it had seven
+claimants (an {X} in the mana, "Pay X {E}", a count of sacrificed, tapped, discarded or revealed cards). A
+−X loyalty cost is one more claimant of the same one X, not a second mechanism.
+
+**Rules.** CR 107.3a: an X in an activation cost, "[−X]" by name, is chosen and announced as the ability is
+activated; CR 107.3k: it is independent of every other X on the object. CR 606.4: the cost is to remove
+that many loyalty counters. CR 606.6: a negative loyalty cost, "taking into account any additional costs",
+can't be activated unless the permanent has at least that many loyalty counters. (The old comment in
+`ActivateCatalogAbility` cited 606.5 for this; 606.5 is the rule that combines several loyalty costs into
+one, and the citation is corrected.)
+
+**Decisions.**
+
+1. **`AbilityCost.LoyaltyX bool`, beside a zero `Loyalty`.** `Loyalty` stays the marker of a loyalty ability
+   (a pointer, so [0] is real) and the fixed part of the cost; `LoyaltyX` adds "less the announced X".
+   `effects.LoyaltyMinusX()` builds it, and `effects.Register` refuses it without a zero `Loyalty` or beside
+   another X claimant. A bool rather than a sign because no printed loyalty ability costs +X: the
+   catalog's Scryfall dump has 22 planeswalkers with a −X and none with a +X.
+2. **One reading of the cost: `AbilityCost.LoyaltyDelta(x)`.** The counters an activation puts on or takes
+   off at X. `ActivateCatalogAbility` checks CR 606.6 with it (an X above the loyalty is
+   `ErrInsufficientLoyalty`, before anything is paid) and pays it through `payCostCounterLocked`, the
+   cost path the fixed loyalty already used (CR 614.16: no counter doubler applies). `internal/legal`
+   bounds X with the same number, and Way of the Mind Sculptor's "removed two or more loyalty counters"
+   reads it with the X on the ability's stack item.
+3. **`DemandsX` counts it**, so the view (`demands_x`), the enumerator and the client ask for X exactly as
+   for an {X} in a mana cost. The wire adds `loyalty_cost_x` so the client can cap its X picker at the
+   permanent's loyalty, read live, and say "you'll remove X loyalty".
+4. **The enumerator offers every X, not the largest.** A mana {X} is offered once at the largest affordable
+   value because more X only buys more. Here every point of X is a loyalty counter, and the last is the
+   planeswalker, so X is a real choice: one move per X from the floor (`enumeratedXFloor`, so a card whose
+   −X does nothing at 0 declares `XMatters`) to the loyalty, each with its own `MoveCost.Loyalty`. The
+   per-source expansion budget is multiplied by the number of rungs, so every X reaches as many targets as
+   a fixed cost would. A target clause bound by X (Liliana, Defiant Necromancer's "mana value X") is
+   enumerated per X the way ADR 0129 §7 does it for "Pay X {E}".
+5. **The bot's policy is the heuristic's ordinary pricing.** It already charges `Weights.Loyalty` per counter
+   and the whole permanent for the last one. `TargetPurpose.DamageIsX` (`effects.DamageXToTarget`, wire
+   `damage_is_x`) lets a damage row say its damage is the X, and the heuristic reads the move's X into it
+   before pricing the kill, so the smallest lethal X wins. A row with no purpose keeps the mana-value proxy
+   per point of X (0.60 against 0.40 a counter), so it takes the largest X that keeps the planeswalker.
+6. **Not `pay_amount`.** ADR 0129's `pay_amount` / choose-a-number prompt (and its amendment, PR #2869) asks
+   for a number while a spell RESOLVES. A −X is announced before the ability is on the stack, so it rides
+   the activation's existing `x_value` and the existing X picker; nothing is paused.
+
+**Cards.** Chandra, Awakened Inferno, Chandra Nalaar and Jeska, Thrice Reborn ship Full; Chandra, Chill of
+Compliance gains her −X and is Full; Ugin, the Spirit Dragon gains his −X and keeps only the −10's caveat.
+`TestUginHasNoVariableLoyaltyAbility` is retired as this section said it would be. Tests:
+`loyalty_x_cards_test.go` (effects), `loyalty_x_test.go` (legal and heuristic), `abilityX.test.ts`.
+
+**Not done.** The other −X planeswalkers in the dump wait on seams of their own (a spellbook, a static that
+shares loyalty abilities, "mana value X" from a graveyard, a chosen planeswalker name), or are simply not
+yet catalogued.

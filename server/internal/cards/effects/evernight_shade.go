@@ -18,9 +18,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordUndying},
 		Activated: []ActivatedAbility{{
-			Label:  "{B}: This creature gets +1/+1 until end of turn.",
-			Cost:   ManaCost("{B}"),
-			Effect: thisGetsUntilEndOfTurn(1, 1, "Evernight Shade — +1/+1 until end of turn"),
+			Label:   "{B}: This creature gets +1/+1 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{B}"),
+			Effect:  thisGetsUntilEndOfTurn(1, 1, "Evernight Shade — +1/+1 until end of turn"),
 		}},
 	})
 }

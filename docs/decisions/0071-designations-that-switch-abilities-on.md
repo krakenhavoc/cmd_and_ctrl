@@ -1502,6 +1502,8 @@ Incriminating Impetus carries Shiny Impetus's goad caveat.
 
 ### Still not covered
 
+All four are covered since the amendment of 2026-10-10 (#2733).
+
 - **Frantic Scapegoat** chooses one of the creatures that entered together.
 - **Nelly Borca** needs a batched "one or more creatures an opponent controls
   deal combat damage to one or more of your opponents".
@@ -1613,3 +1615,129 @@ Maulers, Stalwart Aven, Topan Freeblade and War Oracle.
   Inferno** ("whenever this creature becomes blocked by a creature, it deals 2
   damage to that creature") and **Honored Hierarch** (a mana ability behind
   the gate) are card work on other seams.
+
+## Amendment (2026-10-10): the four suspect cards left out, and goads that cards can see (#2733)
+
+**Status:** Accepted · 2026-10-10 · tracked on
+[#2733](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2733). No new ADR
+number: it finishes the Suspected amendment of 2026-10-08, whose "Still not
+covered" list is the whole of the scope. The rule numbers below (701.60,
+701.15, 603.2c, 603.4) are the ones the repository already cites for the same
+rules; the CR text file is not in the repository, so they were not re-checked
+against the September 2026 edition.
+
+### Context
+
+The 2026-10-08 amendment left four cards out, each for a different reason:
+
+- **Airtight Alibi**: "Enchanted creature gets +2/+2 and can't become
+  suspected." `SuspectForEffect` refused a non-creature and a suspected
+  creature and read no rule that forbids the action itself.
+- **Frantic Scapegoat**: "Whenever one or more other creatures you control
+  enter, if this creature is suspected, you may suspect one of the other
+  creatures." The trigger fires once per batch, on the first `EventETB`, so
+  the item names one creature and the choice is among all of them.
+- **Nelly Borca, Impulsive Accuser**: "Whenever one or more creatures an
+  opponent controls deal combat damage to one or more of your opponents, you
+  and the controller of those creatures each draw a card."
+- **Hot Pursuit**: "As long as this enchantment remains on the battlefield,
+  that creature is also goaded", then "gain control of all goaded and/or
+  suspected creatures". A goad that lasts as long as a permanent is not the
+  goad marker (which ends at the goader's next turn, CR 701.15a), and the
+  only continuous goad there was, `GoadAttached`, was invisible to every card
+  that asks whether a creature is goaded: Shiny Impetus and Incriminating
+  Impetus carried that as a caveat.
+
+Checking develop: none of the four had been filled by another seam. Nelly's
+damage trigger turned out to need nothing new.
+
+### Decision 1: "can't become suspected" is a restriction bit the suspect action reads
+
+`game.CantBecomeSuspected` is a sixth `Restriction` bit (wire token
+`cant_become_suspected`), written by the ordinary `RestrictAttached` static.
+A restriction is the right home for the reason `restrictions.go` gives for
+Pacifism: it is the Aura's effect, not an ability of the creature, so it has
+no layer and a "loses all abilities" on the creature does not end it. The one
+reader is `Game.CanBecomeSuspected(id)`: a creature on the battlefield, not
+suspected (CR 701.60d), not restricted. It brings stale layers up to date
+first, since the bit comes out of the layer pass. `SuspectForEffect` asks it,
+so every suspect instruction honours the restriction without a card file
+knowing. It stops the action only; a creature already suspected stays so,
+which is why Airtight Alibi's enters trigger un-suspects explicitly.
+
+### Decision 2: "one of the other creatures" reads the batch back out of the event log
+
+A "one or more" trigger keeps the batch it fired for (`Event.Batch`, #829) on
+its item's carried trigger event. `effects.enteredInTriggeringBatch` lists
+every `EventETB` with that batch in `Game.EventsThisTurn()`, which the
+snapshot already carries, so a restored table offers the same creatures.
+Each is kept only if it is still on the battlefield and has not entered again
+since (CR 400.7). Its controller as it entered is the player who lost it in
+its first later `EventControlChanged`, or its controller now when there is
+none. That is what "creatures you control enter" counted: a creature stolen
+in response is still one of yours that entered, and one taken after it
+entered is not.
+
+No new engine state was considered worth adding. A list of batch members on
+the stack item would have to be filled in after the batch ends, which no
+harvest point does (the trigger is built on the batch's first event), and
+the log already holds the answer.
+
+Frantic Scapegoat offers only creatures that `CanBecomeSuspected`, through
+`ChoosePermanents` with bounds 0..1. Choosing one that would not be suspected
+could never satisfy "if you do", so leaving it out changes nothing the player
+could achieve, and it keeps the offer and the action from disagreeing.
+
+### Decision 3: a goad can be a continuous effect, and "goaded" sees it
+
+- **`game.GoadRequirements(source, by)`** is goad's CR 701.15b pair as a
+  continuous effect writes it: "attacks each combat if able" and "attacks a
+  player other than `by` if able", both with `GoadedBy` set. `GoadAttached`
+  now writes it, and so does the new scoped mod kind **`ModGoad`**
+  (`game.GoadMod(by)`, layer 6, an on-disk identity: an older binary refuses
+  a file that names it rather than restoring an effect it cannot read). It is
+  in `characteristicModKinds`, since all it changes is the combat rules of
+  the object it locked in.
+- **Hot Pursuit** registers a `ScopedEffectFor` pinned to the creature it
+  targeted, with `ModGoad` for its controller and a "while the source remains
+  on the battlefield" duration. It ends with the enchantment or with the
+  creature (CR 400.7), and it holds whether or not the suspect took.
+- **`Card.Goaded()`** is "goaded in any way": the marker (`IsGoaded`) or a
+  `GoadedBy` among the effective attack requirements (`StaticGoaders`).
+  `AllGoaders` lists both, continuous goaders first so the marker's latest
+  goader stays last. The marker accessors (`IsGoaded`, `Goaders`,
+  `LatestGoader`) stay marker-only, because the snapshot carries the marker
+  and the layer pass rebuilds the rest; folding the continuous goaders in
+  would have written them into the restore point as marker goads that end at
+  the goader's next turn.
+- **Readers.** Vengeful Ancestor and Puppet Master ask `Goaded()`, and so does
+  Hot Pursuit's take-control trigger. The wire's `goaders` (and `goaded_by`,
+  its last entry) come from `AllGoaders`, so an Aura's goad shows as a goad.
+  Shiny Impetus and Incriminating Impetus lose their caveat and ship `full`.
+
+### Nelly Borca needs no new shape
+
+The damage trigger is `OncePerBatch` with a `BatchKey` of the damage event's
+`Actor`, which the engine stamps with the dealing creature's controller
+(Edric already reads it). One opponent's creatures connecting with any of
+your opponents in one combat damage step is one trigger; two opponents'
+creatures are two, one per controller. The draw reads that controller off the
+carried event, so it is still known if the creature died to the same damage.
+Her attack trigger is `SuspectEachLegalTarget` then `GoadAllMatching` over
+suspected creatures; a creature you goad yourself must attack a player other
+than you, which it would anyway.
+
+### Cards
+
+Airtight Alibi, Frantic Scapegoat, Nelly Borca, Impulsive Accuser and Hot
+Pursuit ship `full`. Shiny Impetus and Incriminating Impetus move from
+`caveats` to `full`.
+
+### Consequences
+
+- Another restriction bit, or another continuous goad, needs no new reader:
+  the restriction is one more case in `Names`, and a goad is one more writer
+  of `GoadRequirements`.
+- Any later "one of them" over an entry batch reuses
+  `enteredInTriggeringBatch`; a batch over another event kind is a sibling
+  function over the same log.

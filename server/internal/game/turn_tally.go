@@ -152,6 +152,15 @@ type TurnTally struct {
 	// as it entered: one that has since died, or since gained or lost
 	// a type, answers as it was then (#743, Lilypad Village).
 	EnteredSubtypes map[string]int `json:"enteredSubtypes,omitempty"`
+	// EnteredCardTypes is EnteredSubtypes one word over (#2709): the
+	// permanents that entered under each player this turn, per card
+	// type they had as they entered, keyed by subtypeTallyKey with the
+	// lowercase card type. Read through EnteredWithCardTypeThisTurn —
+	// Master's Manufactory's "if this artifact or another artifact
+	// entered the battlefield under your control this turn", whose
+	// ruling says the artifact may since have left, stopped being an
+	// artifact or changed controller.
+	EnteredCardTypes map[string]int `json:"enteredCardTypes,omitempty"`
 	// Entered counts the battlefield entries each permanent made this
 	// turn, keyed by the instance ID the entry produced. Read through
 	// Game.EnteredThisTurn.
@@ -373,11 +382,42 @@ type TurnTally struct {
 // creature that left the battlefield and came back is a new object
 // with no attacks of its own (CR 400.7). PhaseID is the combat phase
 // it attacked in.
+//
+// PlaneswalkerController is, when Defender is a planeswalker, the
+// player who controlled it as the attack was declared (#2719): "each
+// opponent who attacked you or a planeswalker you control this turn"
+// (Sandswirl Wanderglyph) is asked later in the turn, when that
+// planeswalker may have died or changed hands. uuid.Nil for an attack
+// on a player or a battle (a battle you protect is not a planeswalker
+// you control, the card's ruling).
 type AttackRecord struct {
-	Attacker uuid.UUID `json:"attacker"`
-	Epoch    int       `json:"epoch,omitempty"`
-	Defender uuid.UUID `json:"defender,omitempty"`
-	PhaseID  int       `json:"phaseId,omitempty"`
+	Attacker               uuid.UUID `json:"attacker"`
+	Epoch                  int       `json:"epoch,omitempty"`
+	Defender               uuid.UUID `json:"defender,omitempty"`
+	PhaseID                int       `json:"phaseId,omitempty"`
+	PlaneswalkerController uuid.UUID `json:"planeswalkerController,omitempty"`
+}
+
+// AttackedYouOrYourPlaneswalkerThisTurn reports whether `player`
+// attacked `you`, or a planeswalker `you` controlled as the attack was
+// declared, this turn: Sandswirl Wanderglyph's "each opponent who
+// attacked you or a planeswalker you control this turn" (#2719).
+//
+// Only the active player declares attackers (CR 508.1), so every
+// record in this turn's tally is theirs and `player` must be the
+// active player to have any. An attack on a battle is neither.
+//
+// Caller must hold g.mu.
+func (g *Game) AttackedYouOrYourPlaneswalkerThisTurn(player, you uuid.UUID) bool {
+	if player == uuid.Nil || you == uuid.Nil || player == you || g.activePlayerIDLocked() != player {
+		return false
+	}
+	for _, a := range g.TurnTally.Attacks {
+		if a.Defender == you || a.PlaneswalkerController == you {
+			return true
+		}
+	}
+	return false
 }
 
 // TimesAttackedThisTurn is how many times the OBJECT `cardID` names
@@ -937,6 +977,34 @@ func subtypeTallyCount(m map[string]int, playerID uuid.UUID, subtype string) int
 	return n
 }
 
+// EnteredWithCardTypeThisTurn reports how many permanents entered the
+// battlefield under playerID's control this turn having card type
+// `cardType` (any case) as they entered — EnteredWithSubtypeThisTurn's
+// reading, for a card type (#2709, Master's Manufactory).
+//
+// Caller must hold g.mu.
+func (g *Game) EnteredWithCardTypeThisTurn(playerID uuid.UUID, cardType string) int {
+	if playerID == uuid.Nil || cardType == "" {
+		return 0
+	}
+	return g.TurnTally.EnteredCardTypes[subtypeTallyKey(playerID, cardType)]
+}
+
+// recordEnteredCardTypesLocked adds one entering permanent to
+// TurnTally.EnteredCardTypes under `controller`, once per card type it
+// has as it enters.
+func (g *Game) recordEnteredCardTypesLocked(controller uuid.UUID, c *Card) {
+	if controller == uuid.Nil || c == nil {
+		return
+	}
+	for _, t := range cardTypesOf(c) {
+		if g.TurnTally.EnteredCardTypes == nil {
+			g.TurnTally.EnteredCardTypes = map[string]int{}
+		}
+		g.TurnTally.EnteredCardTypes[subtypeTallyKey(controller, t)]++
+	}
+}
+
 // recordEnteredSubtypesLocked adds one entering permanent to
 // TurnTally.EnteredSubtypes under `controller`.
 func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
@@ -1054,6 +1122,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
+	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
@@ -1190,6 +1259,11 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 				Defender: ev.Target,
 				PhaseID:  g.Turn.PhaseID,
 			}
+			// #2719: who controlled an attacked planeswalker, frozen
+			// now, for a question asked later in the turn.
+			if pw := findBattlefieldCard(g, ev.Target); pw != nil && pw.IsPlaneswalker() {
+				rec.PlaneswalkerController = pw.Controller
+			}
 			attacks := make([]AttackRecord, len(g.TurnTally.Attacks), len(g.TurnTally.Attacks)+1)
 			copy(attacks, g.TurnTally.Attacks)
 			g.TurnTally.Attacks = append(attacks, rec)
@@ -1248,6 +1322,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			controller = ev.Actor
 		}
 		g.recordEnteredSubtypesLocked(controller, c)
+		g.recordEnteredCardTypesLocked(controller, c)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

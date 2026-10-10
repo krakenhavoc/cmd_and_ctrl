@@ -28,7 +28,7 @@ func init() {
 			Activated: []ActivatedAbility{{
 				Label:   "{2}, Sacrifice an artifact: Put a +1/+1 counter on this creature and draw a card.",
 				Cost:    Plus(ManaCost("{2}"), game.AbilityCost{SacrificeOther: sacrificeSpec("an artifact", Artifact())}),
-				Purpose: game.Purpose{Draws: 1},
+				Purpose: game.Purpose{Draws: 1, Answers: game.AnswerPump},
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
 					if err := (AddCounter{Target: ctx.Source(), Kind: game.CounterPlusOne, N: 1}).Apply(ctx); err != nil {

@@ -39,9 +39,10 @@ func init() {
 			}),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Pay {E}{E}: Exile the top card of your library. You may play it until you exile another card with this artifact.",
-			Cost:   Plus(TapCost(), PayEnergy(2)),
-			Effect: exileTopUntilYouExileAnother,
+			Label:   "{T}, Pay {E}{E}: Exile the top card of your library. You may play it until you exile another card with this artifact.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(TapCost(), PayEnergy(2)),
+			Effect:  exileTopUntilYouExileAnother,
 		}},
 	})
 }

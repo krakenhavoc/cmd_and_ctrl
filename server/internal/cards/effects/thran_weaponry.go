@@ -23,8 +23,9 @@ func init() {
 			mayChooseNotToUntapSelf("Thran Weaponry — you may choose not to untap this artifact"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, {T}: All creatures get +2/+2 for as long as this artifact remains tapped.",
-			Cost:  Plus(ManaCost("{2}"), TapCost()),
+			Label:   "{2}, {T}: All creatures get +2/+2 for as long as this artifact remains tapped.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(ManaCost("{2}"), TapCost()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				d, ok := DurationWhileThisRemainsTapped(ctx)

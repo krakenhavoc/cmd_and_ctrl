@@ -35,8 +35,9 @@ func init() {
 				Effect:  untapFirstLegalTarget,
 			},
 			{
-				Label: "{2}, {T}: Scry 1.",
-				Cost:  Plus(ManaCost("{2}"), TapCost()),
+				Label:   "{2}, {T}: Scry 1.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 				},

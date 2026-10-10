@@ -35,9 +35,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
 			{
-				Label:  "{T}: Mill a card.",
-				Cost:   TapCost(),
-				Effect: Do(MillCards{N: 1}),
+				Label:   "{T}: Mill a card.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    TapCost(),
+				Effect:  Do(MillCards{N: 1}),
 			},
 			Craft("Craft with Island {3}{U}", "{3}{U}", CraftWithSubtype("Island")),
 		},
@@ -50,9 +51,10 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		BlockRules:      []game.BlockRule{CantBeBlockedWhile(OnSelf(), descendEight)},
 		Activated: []ActivatedAbility{{
-			Label:  "Crew 1",
-			Cost:   CrewCost(1),
-			Effect: CrewEffect("Watertight Gondola"),
+			Label:   "Crew 1",
+			Cost:    CrewCost(1),
+			Purpose: game.Purpose{Answers: game.AnswerAnimate},
+			Effect:  CrewEffect("Watertight Gondola"),
 		}},
 	})
 }

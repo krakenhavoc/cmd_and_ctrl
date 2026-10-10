@@ -35,9 +35,10 @@ func init() {
 			}, "Savvy Hunter — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Sacrifice two Foods: Draw a card.",
-			Cost:   SacrificeN(2, "two Foods", HasSubtype("Food")),
-			Effect: Do(DrawCards{N: 1}),
+			Label:   "Sacrifice two Foods: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    SacrificeN(2, "two Foods", HasSubtype("Food")),
+			Effect:  Do(DrawCards{N: 1}),
 		}},
 	})
 }

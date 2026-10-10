@@ -705,15 +705,16 @@ export interface JoinedPlayer {
 // These tests assert on the trigger while it waits and resolve it
 // through resolveStack's own "next" clicks.
 //
-// stackHoldMs: 0 turns off ADR 0119 §2's stack hold. These seats hold
-// by hand anyway and resolve with `next`, which is never delayed; the
+// ADR 0119 §2's stack hold is the table's pace since ADR 0143 §2.6, not
+// a personal setting, so there is nothing to seed for it. It delays only
+// an automatic pass on someone else's item; these seats hold those by
+// hand (Careful) and resolve with `next`, which is never delayed. The
 // hold has its own spec (stack-hold-2204.spec.ts).
 //
 // Everything else stays on the defaults (auto-pass through upkeep/draw
 // is what setup waits for).
 export const S19_GAMEPLAY: Record<string, unknown> = {
   passMode: "careful",
-  stackHoldMs: 0,
 };
 
 async function joinAsPlayer(

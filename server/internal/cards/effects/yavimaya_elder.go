@@ -28,8 +28,9 @@ func init() {
 			Optional(WhenThisDies("Yavimaya Elder — search for up to two basic lands", b34SearchUpToTwoBasicsToHand), "Yavimaya Elder — search your library for up to two basic land cards?"),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}, Sacrifice this creature: Draw a card.",
-			Cost:  Plus(ManaCost("{2}"), SacrificeThis()),
+			Label:   "{2}, Sacrifice this creature: Draw a card.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{2}"), SacrificeThis()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 			},

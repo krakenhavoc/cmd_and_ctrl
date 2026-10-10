@@ -60,8 +60,9 @@ func init() {
 				Effect:  destroyFirstLegalTarget,
 			},
 			{
-				Label: "{2}{W}: You gain 3 life.",
-				Cost:  ManaCost("{2}{W}"),
+				Label:   "{2}{W}: You gain 3 life.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{2}{W}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return GainLife{Player: item.Controller, Amount: 3}.Apply(NewContext(g, item))
 				},

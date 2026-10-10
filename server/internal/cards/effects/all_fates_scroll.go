@@ -24,8 +24,9 @@ func init() {
 			Label:    "Add one mana of any color",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{7}, {T}, Sacrifice this artifact: Draw X cards, where X is the number of differently named lands you control.",
-			Cost:  game.AbilityCost{Tap: true, SacrificeSelf: true, Mana: "{7}"},
+			Label:   "{7}, {T}, Sacrifice this artifact: Draw X cards, where X is the number of differently named lands you control.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    game.AbilityCost{Tap: true, SacrificeSelf: true, Mana: "{7}"},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				names := map[string]bool{}
 				for _, c := range g.BattlefieldCardsForEffect() {

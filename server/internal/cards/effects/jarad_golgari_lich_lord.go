@@ -54,7 +54,8 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}{G}, Sacrifice another creature: Each opponent loses life equal to the sacrificed creature's power",
+			Label:   "{1}{B}{G}, Sacrifice another creature: Each opponent loses life equal to the sacrificed creature's power",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: Plus(ManaCost("{1}{B}{G}"), game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature", Creature())),
 			}),
@@ -70,7 +71,8 @@ func init() {
 				return eachOpponentLosesLife(g, item, power)
 			},
 		}, {
-			Label: "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand",
+			Label:   "Sacrifice a Swamp and a Forest: Return this card from your graveyard to your hand",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost: SacrificeEach("a Swamp and a Forest",
 				SacrificeSubtype("a Swamp", "Swamp"),
 				SacrificeSubtype("a Forest", "Forest")),

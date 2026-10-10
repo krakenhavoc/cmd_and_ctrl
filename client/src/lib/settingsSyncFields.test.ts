@@ -89,8 +89,8 @@ describe("SYNCED_FIELDS", () => {
     expect(SYNCED_FIELDS.display.stackStyle).toBe("synced");
   });
 
-  it("syncs the stack hold (ADR 0119 §2) with the other auto-pass choices", () => {
-    expect(SYNCED_FIELDS.gameplay.stackHoldMs).toBe("synced");
+  it("has no personal stack hold to sync: the table's pace sets it (ADR 0143 §2.6)", () => {
+    expect("stackHoldMs" in SYNCED_FIELDS.gameplay).toBe(false);
     expect(SYNCED_FIELDS.gameplay.bluffDelayMinMs).toBe("synced");
   });
 
@@ -103,6 +103,9 @@ describe("SYNCED_FIELDS", () => {
 
   it("syncs passMode and none of the three keys it replaced (ADR 0143 §5)", () => {
     expect(SYNCED_FIELDS.gameplay.passMode).toBe("synced");
+    // ADR 0143 §2.3: both columns of the stops grid travel with the person.
+    expect(SYNCED_FIELDS.gameplay.stepStops).toBe("synced");
+    expect(SYNCED_FIELDS.gameplay.stepStopsOpponents).toBe("synced");
     for (const k of ["autoPassPriority", "smartAutoPass", "alwaysStopOpponentStack"]) {
       expect(k in SYNCED_FIELDS.gameplay, k).toBe(false);
     }

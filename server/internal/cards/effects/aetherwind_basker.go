@@ -25,9 +25,10 @@ func init() {
 				ebYouGetEnergyPerCreatureYouControl),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Pay {E}: This creature gets +1/+1 until end of turn.",
-			Cost:   PayEnergy(1),
-			Effect: thisGetsUntilEndOfTurn(1, 1, "Aetherwind Basker — +1/+1 until end of turn"),
+			Label:   "Pay {E}: This creature gets +1/+1 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    PayEnergy(1),
+			Effect:  thisGetsUntilEndOfTurn(1, 1, "Aetherwind Basker — +1/+1 until end of turn"),
 		}},
 	})
 }

@@ -29,8 +29,9 @@ func init() {
 			RestrictSelf(game.CantBlock),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice a creature: put a +1/+1 counter on this creature",
-			Cost:  SacrificeACreature(),
+			Label:   "Sacrifice a creature: put a +1/+1 counter on this creature",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerSacOutlet},
+			Cost:    SacrificeACreature(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				// The source may have been the sacrifice, or died in

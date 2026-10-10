@@ -32,9 +32,10 @@ func init() {
 			Label:    "Add {W}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{R}{R}{W}, {T}, Sacrifice this land: Search your library for an Aura card and/or an Equipment card, reveal them, put them into your hand, then shuffle.",
-			Cost:   Plus(ManaCost("{1}{R}{R}{W}"), TapCost(), SacrificeThis()),
-			Effect: b32SearchAuraThenEquipmentToHand,
+			Label:   "{1}{R}{R}{W}, {T}, Sacrifice this land: Search your library for an Aura card and/or an Equipment card, reveal them, put them into your hand, then shuffle.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{R}{R}{W}"), TapCost(), SacrificeThis()),
+			Effect:  b32SearchAuraThenEquipmentToHand,
 		}},
 	})
 }

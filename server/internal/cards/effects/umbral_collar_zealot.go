@@ -19,7 +19,8 @@ func init() {
 		Name:         "Umbral Collar Zealot",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice another creature or artifact: Surveil 1.",
+			Label:   "Sacrifice another creature or artifact: Surveil 1.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
 			Cost: game.AbilityCost{
 				SacrificeOther: Another(sacrificeSpec("another creature or artifact",
 					Or(Creature(), Artifact()))),

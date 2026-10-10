@@ -408,7 +408,8 @@ func TestUrzasSagaGrantsSurviveARestore(t *testing.T) {
 }
 
 // GrantAbilitiesFor refuses a bundle nobody registered, and one with a
-// Static slot (ADR 0093 Decision 10).
+// static a layer-6 grant cannot give (ADR 0093 Decision 10, amended
+// 2026-10-10: only a layer-7c one).
 func TestGrantAbilitiesForRefusesAnUnknownOrStaticBundle(t *testing.T) {
 	if err := checkGrantMods([]game.Mod{game.GrantAbilitiesMod("nobody/registered-this")}); err == nil {
 		t.Error("an unregistered bundle was accepted")
@@ -420,9 +421,10 @@ func TestGrantAbilitiesForRefusesAnUnknownOrStaticBundle(t *testing.T) {
 		t.Error("a grant naming nothing was accepted")
 	}
 	// Phantasmal Image's copy grant has a Triggered slot only; find any
-	// registered bundle with a Static slot to prove the second refusal.
+	// registered bundle with a static no layer-6 grant can give to prove
+	// the second refusal.
 	for key, def := range defs {
-		if strings.HasPrefix(key, game.GrantKeyPrefix) && len(def.Static) > 0 {
+		if strings.HasPrefix(key, game.GrantKeyPrefix) && layerGrantStaticProblem(def) != "" {
 			if err := checkGrantMods([]game.Mod{game.GrantAbilitiesMod(key)}); err == nil {
 				t.Errorf("the static bundle %s was accepted", key)
 			}
@@ -438,7 +440,7 @@ func TestGrantAbilitiesForRefusesAnUnknownOrStaticBundle(t *testing.T) {
 // source for every GrantAbilitiesFor{Keys: …} literal and every
 // game.GrantAbilitiesMod(…) call, resolves each key — a string literal
 // or a package-level constant — and holds it to a registered bundle
-// without a Static slot. A key built at runtime is its caller's risk,
+// whose statics a layer-6 grant can give. A key built at runtime is its caller's risk,
 // and Apply refuses it at resolution.
 func TestEveryDurationGrantKeyResolves(t *testing.T) {
 	files, err := filepath.Glob("*.go")

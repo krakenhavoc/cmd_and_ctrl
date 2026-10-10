@@ -42,6 +42,8 @@
   // the same card.
   import { exileCostBadge, exileEntryFor, exileEntryLegality } from "../../exileStrip";
   import ManaSymbol from "./ManaSymbol.svelte";
+  import { grantHolderLine, grantWindowText } from "../../exileGrants";
+  import { seatLabel } from "../../attackAll";
   import { canCastFromHand, type Legality } from "../../timing";
   import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
@@ -204,6 +206,19 @@
   // common case: an ordinary impulse-exiled card costs what it
   // prints).
   const exileBadgeFor = (card: CardView) => exileCostBadge(card);
+
+  // #2559: Memory Vessel and Rocco, Street Chef give every player a
+  // grant over their own exiled cards, so a pile can hold cards SOMEONE
+  // ELSE may play. They get a plain line ("Ana may play it until Bo's
+  // next turn") where the viewer's own grant gets a button, and the
+  // button's tooltip names its real window instead of "end of turn".
+  const nameOf = (id: string) => {
+    const s = view.seats.find((p) => p.id === id);
+    return s ? seatLabel(s) : undefined;
+  };
+  const holderLineFor = (card: CardView) =>
+    zoneKind === "exile" ? grantHolderLine(card, nameOf, viewerID) : null;
+  const windowFor = (card: CardView) => grantWindowText(grantFor(card), nameOf, viewerID);
 
   // S29: "cast from here" for the zones whose permission is printed
   // on the card rather than granted to an instance. Only the
@@ -429,7 +444,7 @@
                       ? "spend mana as though it were mana of any type"
                       : grantFor(card)?.any_color
                         ? "spend mana as though it were any colour"
-                        : "playable until end of turn"
+                        : `playable ${windowFor(card)}`
                     : (leg.reason ?? "Not castable from exile right now")}
                   aria-label={withAvailable(
                     `${labelFor(card)} ${grantedName(card)} from exile`,
@@ -448,6 +463,9 @@
                   {/if}
                 </button>
               </div>
+            {/if}
+            {#if holderLineFor(card)}
+              <p class="grant-holder">{holderLineFor(card)}</p>
             {/if}
             {#if castableFor(card)}
               <!-- S29: same always-visible treatment as the impulse
@@ -626,6 +644,15 @@
     align-items: center;
     gap: 6px;
     position: relative;
+  }
+  /* #2559: another player's grant over this card — a label, not a
+     control. */
+  .grant-holder {
+    margin: 4px 0 0;
+    font-size: 0.72rem;
+    line-height: 1.25;
+    color: var(--fg-muted);
+    text-align: center;
   }
   .act.impulse {
     border-color: color-mix(in srgb, var(--accent) 60%, transparent);

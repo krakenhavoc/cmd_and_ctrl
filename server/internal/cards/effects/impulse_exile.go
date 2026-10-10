@@ -108,6 +108,27 @@ func ExileTopNUntilYourNextEndStep(ctx *Context, n int) error {
 	return err
 }
 
+// EachPlayerExilesTopAndMayPlay is "each player exiles the top N cards
+// of their library. <For a while>, each player may play the cards they
+// exiled this way" (#2559): Memory Vessel's seven until your next turn,
+// Rocco, Street Chef's one until your next end step. Every seated
+// player gets one permission, over the cards THEY exiled and held by
+// them — the owner, unlike Etali's single holder — for the window `d`
+// the caller stamps against its own controller ("your next turn").
+// Play, not cast: a land among them is played and spends a land drop
+// (ADR 0066 §6).
+func EachPlayerExilesTopAndMayPlay(g *game.Game, n int, d game.Duration) error {
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		if _, err := g.ExileTopWithPermissionForEffect(p.ID, p.ID, n, game.CastPermission{Duration: d}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // damagedOpponent returns the opponent a combat-damage event hit,
 // or uuid.Nil — the trigger condition shared by Ragavan ("deals
 // combat damage to a player") and the Pirate batch triggers

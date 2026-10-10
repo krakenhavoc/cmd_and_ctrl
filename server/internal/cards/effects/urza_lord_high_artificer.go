@@ -50,8 +50,9 @@ func init() {
 			Label:    "Add {U}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{5}: Shuffle your library, then exile the top card. Until end of turn, you may play that card without paying its mana cost.",
-			Cost:  ManaCost("{5}"),
+			Label:   "{5}: Shuffle your library, then exile the top card. Until end of turn, you may play that card without paying its mana cost.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{5}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (ShuffleLibrary{Player: item.Controller}).Apply(ctx); err != nil {

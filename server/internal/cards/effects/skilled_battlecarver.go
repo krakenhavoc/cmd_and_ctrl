@@ -27,8 +27,9 @@ func init() {
 			},
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{R}: This creature gets +1/+0 until end of turn.",
-			Cost:  ManaCost("{1}{R}"),
+			Label:   "{1}{R}: This creature gets +1/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{1}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				return BoostUntilEOT{Target: ctx.Source(), Power: 1, Label: "Skilled Battlecarver — +1/+0"}.Apply(ctx)

@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Meloku the Clouded Mirror — Legendary Creature — Moonfolk Wizard
 // {4}{U}, 2/4:
 //
@@ -38,7 +40,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Return a land you control to its owner's hand: Create a 1/1 blue Illusion creature token with flying.",
+			Label:   "{1}, Return a land you control to its owner's hand: Create a 1/1 blue Illusion creature token with flying.",
+			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
 			Cost: Plus(
 				ManaCost("{1}"),
 				ReturnAPermanentToHand("a land you control", Land()),

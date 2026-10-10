@@ -21,8 +21,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch", "haste"},
 		Activated: []ActivatedAbility{{
-			Label: "{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1.",
-			Cost:  Plus(TapCost(), DiscardACard()),
+			Label:   "{T}, Discard a card: Draw a card. If the discarded card was a creature card, amass Orcs 1.",
+			Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerMakesBlocker},
+			Cost:    Plus(TapCost(), DiscardACard()),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {

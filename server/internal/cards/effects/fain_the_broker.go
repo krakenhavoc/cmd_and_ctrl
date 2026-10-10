@@ -52,21 +52,24 @@ func init() {
 				Effect:  b31CountersOnChosenCreature,
 			},
 			{
-				Label:  "{T}, Remove a counter from a creature you control: Create a Treasure token.",
-				Cost:   Plus(TapCost(), RemoveCountersFrom("", 1, "a creature you control", Creature())),
-				Effect: Do(CreateToken{Template: TreasureToken(), N: 1}),
+				Label:   "{T}, Remove a counter from a creature you control: Create a Treasure token.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    Plus(TapCost(), RemoveCountersFrom("", 1, "a creature you control", Creature())),
+				Effect:  Do(CreateToken{Template: TreasureToken(), N: 1}),
 			},
 			{
-				Label: "{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.",
-				Cost:  Plus(TapCost(), b10SacrificeAnArtifact()),
+				Label:   "{T}, Sacrifice an artifact: Create a 2/1 white and black Inkling creature token with flying.",
+				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
+				Cost:    Plus(TapCost(), b10SacrificeAnArtifact()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return CreateToken{Controller: item.Controller, Template: TokenCard("2/1 white and black Inkling with flying"), N: 1}.Apply(NewContext(g, item))
 				},
 			},
 			{
-				Label:  "{3}{B}: Untap Fain.",
-				Cost:   ManaCost("{3}{B}"),
-				Effect: b31UntapSelf,
+				Label:   "{3}{B}: Untap Fain.",
+				Purpose: game.Purpose{Answers: game.AnswerValue},
+				Cost:    ManaCost("{3}{B}"),
+				Effect:  b31UntapSelf,
 			},
 		},
 	})

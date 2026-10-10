@@ -33,9 +33,10 @@ func init() {
 			Label:        "Add {C} for each storage counter on this land",
 		}},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Exile a creature you control: Put a storage counter on this land.",
-			Cost:   Plus(TapCost(), ExileACreatureYouControl()),
-			Effect: putStorageCounterOnThis,
+			Label:   "{T}, Exile a creature you control: Put a storage counter on this land.",
+			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},
+			Cost:    Plus(TapCost(), ExileACreatureYouControl()),
+			Effect:  putStorageCounterOnThis,
 		}},
 	})
 }
