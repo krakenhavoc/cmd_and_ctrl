@@ -126,4 +126,11 @@ describe("GameEndFanfare", () => {
     expect(ondismiss).toHaveBeenCalledTimes(2);
     expect(q("[role=dialog]")).not.toBeNull();
   });
+
+  // #2934: the scrim sat over the dock and swallowed the click on its
+  // Back to lobby button. It is a tint now, so it must not be a modal.
+  it("is not a modal, so the dock under it stays reachable", () => {
+    const { q } = mount(fanfareFor(ended(WIN), "b")!, false);
+    expect(q("[role=dialog]")?.getAttribute("aria-modal")).toBe("false");
+  });
 });
