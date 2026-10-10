@@ -1,15 +1,17 @@
+import { readFileSync } from "node:fs";
 import { describe, it, expect, beforeEach } from "vitest";
 import { get } from "svelte/store";
 
 import {
   DEFAULT_STACK_HOLD_MS,
-  STACK_HOLD_CHOICES_MS,
+  STACK_HOLD_BY_PACE,
   STACK_HOLD_MAX_MS,
   _resetForTests,
   clampStackHoldMs,
   combinedPassDelayMs,
   noteStackSeen,
   setStackHoldStatus,
+  stackHoldMsForPace,
   stackHoldRemainingMs,
   stackHoldStatus,
   stackHoldStatusText,
@@ -40,12 +42,55 @@ function remaining(
   return stackHoldRemainingMs({ view: v, viewerID, firstSeen, holdMs, now });
 }
 
-describe("clampStackHoldMs", () => {
-  it("keeps the offered choices", () => {
-    for (const ms of STACK_HOLD_CHOICES_MS) expect(clampStackHoldMs(ms)).toBe(ms);
-    expect(STACK_HOLD_CHOICES_MS).toEqual([0, 1000, 2000, 3000]);
+// ADR 0143 §2.6: the table's pace sets the hold, for people and bots
+// alike. The numbers are aiseat's botPacePresets StackHold values; the
+// test reads the Go file so the two tables cannot drift apart (§6).
+describe("the hold follows the table pace", () => {
+  it("is 0 s Fast, 2 s Normal, 3 s Slow", () => {
+    expect(STACK_HOLD_BY_PACE).toEqual({ fast: 0, normal: 2000, slow: 3000 });
+    expect(stackHoldMsForPace("fast")).toBe(0);
+    expect(stackHoldMsForPace("normal")).toBe(2000);
+    expect(stackHoldMsForPace("slow")).toBe(3000);
   });
 
+  it("is Normal's for a pace it does not know", () => {
+    for (const p of [undefined, null, "", "turbo", 3]) {
+      expect(stackHoldMsForPace(p), String(p)).toBe(DEFAULT_STACK_HOLD_MS);
+    }
+  });
+
+  it("holds an opponent's item for exactly the pace's time", () => {
+    const v = view([item("a", "opp")]);
+    const seen = new Map([["a", 1_000]]);
+    for (const [pace, ms] of [
+      ["fast", 0],
+      ["normal", 2000],
+      ["slow", 3000],
+    ] as const) {
+      const hold = stackHoldMsForPace(pace);
+      expect(remaining(v, seen, 1_000, hold), pace).toBe(ms);
+      expect(remaining(v, seen, 1_000 + ms, hold), pace).toBe(0);
+    }
+    // Never the viewer's own item, whatever the pace.
+    expect(remaining(view([item("b", "me")]), new Map(), 0, stackHoldMsForPace("slow"))).toBe(0);
+  });
+
+  it("matches aiseat's botPacePresets", () => {
+    const go = readFileSync("../server/internal/aiseat/runner.go", "utf8");
+    const presets = go.slice(go.indexOf("var botPacePresets"));
+    const block = presets.slice(0, presets.indexOf("\n}\n"));
+    const goHold: Record<string, number> = {};
+    for (const m of block.matchAll(/game\.BotPace(\w+):\s*\{[^}]*StackHold:\s*([^,}]+)/g)) {
+      const raw = m[2].trim();
+      const secs = raw === "0" ? 0 : Number(/^(\d+)\s*\*\s*time\.Second$/.exec(raw)?.[1]);
+      goHold[m[1].toLowerCase()] = secs * 1000;
+    }
+    expect(goHold).toEqual(STACK_HOLD_BY_PACE);
+    expect(Math.max(...Object.values(STACK_HOLD_BY_PACE))).toBe(STACK_HOLD_MAX_MS);
+  });
+});
+
+describe("clampStackHoldMs", () => {
   it("clamps a stored value to 0–3000", () => {
     expect(clampStackHoldMs(-50)).toBe(0);
     expect(clampStackHoldMs(60_000)).toBe(STACK_HOLD_MAX_MS);

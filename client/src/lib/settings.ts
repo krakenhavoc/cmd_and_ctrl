@@ -270,12 +270,6 @@ export interface Settings {
     bluffMode: "timed" | "manual";
     bluffDelayMinMs: number;
     bluffDelayMaxMs: number;
-    // ADR 0119 §2: an automatic pass on a stack whose top item someone
-    // else controls waits until that item has been on screen this long,
-    // so a spell nobody can answer is still readable. 0 is off; the
-    // Settings choices are 0–3 s, and stackHold.ts clamps a stored
-    // value to that range where it reads it. Never holds `next`.
-    stackHoldMs: number;
     // #323: when every item on the stack is one the viewer put
     // there, auto-pass instead of asking "Counter or Pass?" about
     // your own spell. Defaults on — casting is already the
@@ -370,7 +364,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 25;
+export const SETTINGS_VERSION = 26;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -545,8 +539,6 @@ export function defaultSettings(): Settings {
       bluffMode: "timed",
       bluffDelayMinMs: 1500,
       bluffDelayMaxMs: 4000,
-      // ADR 0119 §2 default: about 2 s (owner answer 2a).
-      stackHoldMs: 2000,
       // #323 default: ON. "I cast it" is already the decision; the
       // client shouldn't ask you to confirm it. Opponent items on
       // the stack still stop, and the in-game "hold" toggle is the
@@ -682,7 +674,6 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     bluffMode: "synced",
     bluffDelayMinMs: "synced",
     bluffDelayMaxMs: "synced",
-    stackHoldMs: "synced",
     autoPassOwnStack: "synced",
     autopassPersistThroughTurns: "synced",
     adminOverrides: "synced",
@@ -999,7 +990,8 @@ function migrate(raw: unknown): Settings {
   // player gets the hold on upgrade, as the owner asked: an
   // opponent's spell stays up for about 2 s before auto-pass lets it
   // resolve. Nothing is stored to rescue. The value is clamped where
-  // it is read (stackHold.ts), as the bluff bounds are.
+  // it is read (stackHold.ts), as the bluff bounds are. (v26 removed
+  // it again: the table's pace sets the hold, ADR 0143 §2.6.)
   //
   // v18 → v19 (ADR 0118 §1, #2188): strict payment becomes the
   // default, and everyone is moved to it ONCE (owner decision 5). A
@@ -1169,6 +1161,15 @@ function migrate(raw: unknown): Settings {
       defaultOpponentStepStops();
   }
   gp.stepStops = normalizeStepStops(gp.stepStops) ?? defaultStepStops();
+  // v25 → v26 (ADR 0143 §2.6, owner answer Q4 (a)): gameplay.stackHoldMs
+  // is gone. The table's pace (settings.bot_pace, the host's "Table
+  // pace") sets the stack hold for people and bots alike, so one
+  // player's 3 s can no longer slow the whole table, nor a 0 speed it
+  // up. Nothing is mapped: a stored value, chosen or not, is dropped,
+  // because the hold is no longer a personal choice. The key is deleted
+  // because the shallow merge keeps unknown keys, and an account copy
+  // from an older client loses it the same way (applySyncedCopy).
+  delete legacyGameplay.stackHoldMs;
   // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
   // gameplay.triggerOrder. No version bump: the old key itself says
   // which blob this is. A stored or synced blob that has a valid

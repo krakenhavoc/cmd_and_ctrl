@@ -152,7 +152,12 @@ The **stack hold** ([ADR 0119](decisions/0119-a-stack-you-can-follow.md)
 §2) is how long another seat's spell or ability must have been on top
 of the stack before the bot passes on it, so the people at the table
 can read it. It is measured from the commit at which the bot first saw
-the item, and it overlaps `MinThink` rather than adding to it. A bot
+the item, and it overlaps `MinThink` rather than adding to it. Since
+[ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6 the
+people at the table hold for the same time: the host's control is
+called **Table pace** in the client, and each person's auto-pass reads
+its hold from this same setting (`client/src/lib/stackHold.ts`
+`STACK_HOLD_BY_PACE`, which a client test pins to `botPacePresets`). A bot
 passes on its own item at once (CR 117.3c), and if the top of the stack
 changes while it waits it decides again. Every seat measures from about
 the same moment, so a table of bots holds once, not once per seat. A

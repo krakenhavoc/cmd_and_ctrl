@@ -13,6 +13,7 @@ import { L } from "./labels";
 import { defaultSettings, openSettings, settings } from "./settings";
 import { _resetForTests as resetModals } from "./modalLayers";
 import { cleanup, flushSync, render } from "./test/render.svelte";
+import { setCurrentTablePace } from "./tableSettings";
 
 const ADVANCED_OPEN_KEY = "cmdctrl.settings.gameplayAdvancedOpen";
 
@@ -70,7 +71,8 @@ describe("Settings → Gameplay: the sections (ADR 0143 §3.1)", () => {
     );
     expect(passing.querySelector("table.step-stops-table")).not.toBeNull();
 
-    expect(section("gp-reading").querySelector("select")).not.toBeNull();
+    // ADR 0143 §2.6: no personal control; the table's pace sets it.
+    expect(section("gp-reading").querySelector("select, input")).toBeNull();
 
     const prompts = section("gp-prompts");
     expect(labelsIn(prompts).some((l) => l?.startsWith("Order my triggers"))).toBe(true);
@@ -93,6 +95,40 @@ describe("Settings → Gameplay: the sections (ADR 0143 §3.1)", () => {
     expect(text).toContain(
       "You always get a chance to respond to an opponent's spell, an attack, and an opponent's end step, ticked or not.",
     );
+  });
+});
+
+describe("Settings → Gameplay: Reading time (ADR 0143 §2.6, §3.2)", () => {
+  afterEach(() => setCurrentTablePace(null));
+
+  const readingText = (root: HTMLElement) =>
+    root
+      .querySelector('section[aria-labelledby="gp-reading"]')
+      ?.textContent?.replace(/\s+/g, " ")
+      .trim() ?? "";
+
+  it("names this table's pace and its hold during a game", () => {
+    for (const [pace, name, secs] of [
+      ["fast", "Fast", "0"],
+      ["normal", "Normal", "2"],
+      ["slow", "Slow", "3"],
+    ] as const) {
+      setCurrentTablePace(pace);
+      const text = readingText(openGameplay());
+      expect(text).toContain(
+        `This table's pace is ${name}: other players' spells stay on the stack for ${secs} s before they resolve.`,
+      );
+      expect(text).toContain("The host sets it in Table settings.");
+      expect(text).toContain("Click wait on the countdown to keep priority and respond.");
+      cleanup();
+      resetModals();
+    }
+  });
+
+  it("gives all three paces outside a game", () => {
+    const text = readingText(openGameplay());
+    expect(text).toContain("0 s (Fast), 2 s (Normal) or 3 s (Slow)");
+    expect(text).not.toContain("This table's pace");
   });
 });
 

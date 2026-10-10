@@ -40,6 +40,7 @@
     hasUndoBudget,
     isUnlimitedUndo,
     spawningVisible,
+    setCurrentTablePace,
     tableSettingsOf,
     type TableSettingsPatch,
   } from "../lib/tableSettings";
@@ -133,6 +134,7 @@
     combinedPassDelayMs,
     noteStackSeen,
     setStackHoldStatus,
+    stackHoldMsForPace,
     stackHoldRemainingMs,
   } from "../lib/stackHold";
   import {
@@ -408,7 +410,8 @@
       view,
       viewerID,
       firstSeen: stackSeen,
-      holdMs: $settings.gameplay.stackHoldMs,
+      // ADR 0143 §2.6: the table's pace sets the hold for everyone.
+      holdMs: stackHoldMsForPace(tableSettingsOf(view).bot_pace),
       now,
     });
   }
@@ -1143,6 +1146,12 @@
   // without any permission check. `canManage` decides who may TURN a
   // knob, never who may see one.
   const tableSettings = $derived(tableSettingsOf(view));
+  // ADR 0143 §2.6: Settings → Gameplay → Reading time names this
+  // table's pace while a game is on screen.
+  $effect(() => {
+    setCurrentTablePace(tableSettings.bot_pace);
+  });
+  onDestroy(() => setCurrentTablePace(null));
   // Both gates the spawn route checks. Offering the entry on only one
   // of them produces a button whose 403 explains a rule we could have
   // shown instead.

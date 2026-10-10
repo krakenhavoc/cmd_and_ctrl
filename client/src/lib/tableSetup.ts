@@ -111,7 +111,7 @@ export function setupSummary(
     parts.push(`commander damage ${s.commander_damage}`);
   }
   if (s.bot_pace !== undefined && s.bot_pace !== DEFAULTS.bot_pace) {
-    parts.push(`${s.bot_pace} bots`);
+    parts.push(`${s.bot_pace} table pace`);
   }
   if (s.allow_spawn === true) parts.push("spawning on");
   return parts.join(" · ");

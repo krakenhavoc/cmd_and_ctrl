@@ -794,7 +794,7 @@ out is untouched, which is why this is a `PATCH` and not a `PUT`.
 | `undo_scope` | `"own"` \| `"host_any"` | Whose entries a seat may take back. |
 | `starting_life` | 1..999 | Each seat's life at `start`. In the lobby it also rewrites the already-seated players' totals. **Rejected once the game is active.** |
 | `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
-| `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | AI seat pacing preset. |
+| `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | The table pace (shown as **Table pace**, formerly "Bot speed"): bot think time, and the stack hold every seat, person or bot, waits before auto-passing another player's spell: fast 0 s, normal 2 s, slow 3 s ([ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6). |
 | `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
 
 The **whole patch is validated first**, so a patch with one bad field changes

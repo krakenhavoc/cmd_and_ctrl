@@ -88,7 +88,7 @@ describe("setupSummary", () => {
   it("names the bots, their decks, and the settings that differ from a new table", () => {
     const names: Record<string, string> = { raid: "Raid and Ransack" };
     expect(setupSummary(SETUP, (id) => names[id] ?? id)).toBe(
-      "2 bots: Robo (random, Raid and Ransack), Pasted (heuristic) · starting life 30 · fast bots · spawning on",
+      "2 bots: Robo (random, Raid and Ransack), Pasted (heuristic) · starting life 30 · fast table pace · spawning on",
     );
   });
 
