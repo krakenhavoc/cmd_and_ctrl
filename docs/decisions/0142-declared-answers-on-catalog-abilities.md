@@ -153,7 +153,7 @@ A second, non-failing file is the **review record**: `testdata/answers_disagreem
 | S1 | **The 245 interacting rows**, by answer kind, so a reviewer checks one kind at a time: pump and counters (about 85), prevent and redirect (about 80), protect (regenerate, indestructible, hexproof, phasing, blink, self-bounce; about 45), sacrifice outlets (about 35), remove and restrict (about 15). Some rows have two kinds; each goes in the batch of its first. | 245 less S0's | ≤ 40 rows | 6–7 |
 | S2 | **The 461 value rows**, by card-file name, alphabetical, each declared `value` or, where the batch finds one, an answer the text read missed. | 461 less S0's | ≤ 80 rows | 6 |
 | S3 | **Combat rows** once #2871's reader is in: the audit's 26 "no" rows that grant a combat keyword, an extra block or a body, and any that S2 declared `value` but that #2871 would count. | ~30 | one PR | 1 |
-| S4 | **The fallback at zero** ([Q3](#questions-for-the-owner-answered-2026-10-09)): `answers_fallback.txt` is empty, the ceiling is 0, and the text read is retired as Q3 decides. | — | one PR | 1 |
+| S4 | **The fallback at zero** ([Q3](#questions-for-the-owner-answered-2026-10-09)): `answers_fallback.txt` is empty, the ceiling is 0, and the text read is retired as Q3 decides. Done 2026-10-10 ([amendment](#amendment-s4-the-text-read-deleted-2026-10-10)). | — | one PR | 1 |
 
 **Sonnet-sized batches.** Every S1 and S2 batch is `tier:1-mechanical`: one answer kind (or one alphabetical slice), a recipe in `docs/adding-cards.md`, a sibling to copy, and the ratchet and disagreement record as its acceptance test. A batch touches at most about 60 card files and changes no behaviour except the verdicts the disagreement diff shows. The signal PR is `tier:3-design`, S0 is `tier:2-standard`, and the bot PR (decision 6) is `tier:3-design`. The batches touch only `Purpose` declarations, so they change no oracle fixture and no `Completeness`. Each still runs the real-dump audits (`go test ./internal/decks/ -run RealDump` with `CMDCTRL_SCRYFALL_DUMP`), as every catalog PR does.
 
@@ -199,7 +199,7 @@ The bot reads `activated_abilities[].purpose.answers` on the wire, like every pu
 | 11–16 | **S2 batches**, ≤ 80 rows each. Can run in parallel with S1 batches on different files. | 2 | As 3. |
 | 17 | **The bot** (decision 6), behind `PriceAnswers`. | 2, and the S1 batches for the curated decks' cards | ADR 0052's report block, ADR 0126 §8's sub-PR bar, the three positions reviewed. |
 | 18 | **S3, combat rows.** | #2871's reader, 2 | As 3. |
-| 19 | **S4, the fallback at zero.** | all batches | `answers_fallback.txt` empty, ceiling 0; the text read retired per Q3. Branch E2E. |
+| 19 | **S4, the fallback at zero.** | all batches | `answers_fallback.txt` empty, ceiling 0; the text read retired per Q3. Branch E2E. **Done** 2026-10-10: see [Amendment: S4](#amendment-s4-the-text-read-deleted-2026-10-10). |
 
 The bot PR can land any time after PR 2. It is placed after S1 because what it prices are the rows S1 declares, and the curated decks' rows can be pulled into the first S1 batch to unblock it.
 
@@ -307,3 +307,28 @@ Two more rulings (owner, 2026-10-10, S3 batch 2):
     - Sokenzan's channel and Aether Refinery are `makes_blocker`.
     - Goro-Goro's haste row is `combat_grant`.
     - Dalkovan Encampment is `value`: its tokens enter tapped and attacking and can never block.
+
+---
+
+## Amendment: S4, the text read deleted (2026-10-10)
+
+S4 landed as planned: `answers_fallback.txt` was empty and its ceiling 0 after S3 batch 2 (#2933), so the text read is gone (Q3 (a)).
+
+**What was deleted.** From `server/internal/legal`: `fallbackAnswers`, the cost/purpose/effect-text reads behind it (`purposeAnswers`, `effectTextAnswers`, the phrase list and its regexes), all of `combat_interacts.go` (#2871's combat text read), `answersOf` and the test-only exports `AnswersOf`, `FallbackAnswers`, `ManaAnswersOf`, `AnswerFlags` and `CombatKindForTest`. From `internal/cards/effects`: `answers_fallback.txt`, `answersFallbackCeiling` and `-update-answers-fallback`; `answers_disagreements.txt`, `TestAnswersDisagreementsAreCurrent` and `-update-answers-disagreements` (the record compared declarations with a fallback that no longer exists); and delivery row 2's agreement tests, `TestAnswersOfKeepsEveryInteractsVerdict` with its frozen `answers_legacy_test.go`, and `TestCombatFlagsKeepEveryCatalogVerdict`, as row 2 said.
+
+**What stays.**
+
+- The ratchet is now `TestEveryAnswersRowDeclares`: every catalog row in decision 4's scope declares, or the test fails naming the row. It has no list.
+- A mana ability reads `ManaAbility.Answers`, else its sacrifice cost (`ManaCostAnswers`), the one cost read Q3 keeps.
+- `CostAnswers` and `sacrificeInteracts` stay for the registration guard's cost coupling (decision 3). The guard is not a reader.
+- Owner answer 4's self-sacrifice state read and `has_targets` are unchanged.
+- An activated row that declares nothing sets `interacts` and no combat flag (Q3 (a), ADR 0009 §3).
+
+**Where the plan's premise was not exact.** Q3 says only a row carried on a card instance can be undeclared. Two kinds of catalog row also reach the reader undeclared, because decision 1's guard refuses them a declaration and decision 4's scope leaves them out:
+
+- **A sorcery-speed or loyalty row.** It is offered only in its controller's own main phase with an empty stack, where the client classes every activation as a play whatever `interacts` says. No change a player can see.
+- **A row whose target clause allows no target** (`Min` 0, "up to N", "any number of"): the enumerator always offers the empty announcement beside the targeted ones. Eleven catalog rows have one: Cryogen Relic; Perpetual Timepiece; Famished Ghoul; Priest of Forgotten Gods; Rag Dealer; Cauldron of Souls; Martyr of Bones; Yawgmoth, Thran Physician; Stonespeaker Crystal; Unlicensed Hearse; Carrion Beetles. Their empty announcement now sets `interacts`. Whenever a legal target exists, the same source's targeted moves already stop you through `has_targets`, so this adds a stop only when the row has no legal target. The text read said `sac_outlet` or `protect` for three of them (Priest, Yawgmoth, Cauldron) and nothing for the rest.
+
+S4 applies Q3 as written and adds no rule for these. If the owner wants the second kind declared, a follow-up would widen `hasUntargetedAnnouncement` (the guard and the scope) to a target clause with `Min` 0, and declare the eleven rows.
+
+**What remains of the programme.** The bot PR (decision 6, `PriceAnswers`, delivery row 17) and the spell-side reader (Q5's follow-up).

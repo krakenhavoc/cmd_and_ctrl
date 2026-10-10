@@ -14,8 +14,9 @@ import "strings"
 //
 // Like every Purpose field it is declared by hand on the card file and
 // never derived. The engine never reads it. internal/legal reads it to
-// set a move's interacts and combat_interacts flags (answersOf), and
-// falls back to the printed-text read for a row that declares none.
+// set a move's interacts and combat_interacts flags (untargetedFlags),
+// and counts a row that declares none as interacting (ADR 0142 owner
+// answer 3).
 
 // Answers is a set of declared answers. The zero value is "not
 // declared".
