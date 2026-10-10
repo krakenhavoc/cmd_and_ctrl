@@ -5,7 +5,6 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
 // concede asks a Conceder policy whether the seat is done, and scoops
@@ -40,7 +39,7 @@ func (r *Runner) enumerationOrder() (legal.Options, Input) {
 	if !wantsOrder && !wantsFuel && !wantsBearer {
 		return legal.Options{}, Input{}
 	}
-	in := Input{View: protocol.ViewOfGameFor(r.room.Game, r.seat.String()), Seat: r.seat}
+	in := Input{View: r.room.ViewFor(r.seat.String()), Seat: r.seat}
 	var opts legal.Options
 	if wantsOrder {
 		opts.OrderTargets = orderer.TargetOrder(in)

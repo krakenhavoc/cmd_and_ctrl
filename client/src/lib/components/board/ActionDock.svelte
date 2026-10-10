@@ -98,6 +98,9 @@
     // server's budget rule as Game.svelte reads it (hasUndoBudget).
     undosLeft?: number;
     canUndo?: boolean;
+    // Why Undo is unavailable, shown as its title and standing in for
+    // the count (#2963). Null/absent when it is allowed.
+    undoBlockedReason?: string | null;
     onUndo?: () => void;
     // The dock's live size, for --dock-w / --dock-h (ADR 0111 §4).
     onSize?: (width: number, height: number) => void;
@@ -124,6 +127,7 @@
     onToggleAutopass,
     undosLeft = 0,
     canUndo = false,
+    undoBlockedReason = null,
     onUndo = () => {},
     onSize,
     onSheet,
@@ -366,11 +370,13 @@
   const undoUnlimited = $derived(isUnlimitedUndo(undosLeft));
   const undoCount = $derived(formatUndoCount(undosLeft));
   const undoTitle = $derived(
-    (undoUnlimited
-      ? "undo your most recent action — this table has no undo limit"
-      : !canUndo
-        ? "no undos remaining this turn (refreshes on your next untap)"
-        : `undo your most recent action — ${undoCount} left this turn`) + keyHint(keys.undo),
+    (undoBlockedReason
+      ? `can't undo: ${undoBlockedReason}`
+      : undoUnlimited
+        ? "undo your most recent action — this table has no undo limit"
+        : !canUndo
+          ? "no undos remaining this turn (refreshes on your next untap)"
+          : `undo your most recent action — ${undoCount} left this turn`) + keyHint(keys.undo),
   );
 
   // ---- status line ---------------------------------------------------
@@ -548,14 +554,18 @@
       type="button"
       class="action undo"
       disabled={!canUndo || preGame}
-      aria-label={undoUnlimited ? "Undo (no limit)" : `Undo (${undoCount} left)`}
+      aria-label={undoBlockedReason
+        ? `Undo (unavailable: ${undoBlockedReason})`
+        : undoUnlimited
+          ? "Undo (no limit)"
+          : `Undo (${undoCount} left)`}
       aria-keyshortcuts={ariaKeys(keys.undo)}
       onclick={onUndo}
       title={undoTitle}
     >
-      <Icon name="undo" size={13} /><span class="undo-word">Undo</span><span class="undo-count"
-        >{undoCount}</span
-      >
+      <Icon name="undo" size={13} /><span class="undo-word">Undo</span>{#if !undoBlockedReason}<span
+          class="undo-count">{undoCount}</span
+        >{/if}
     </button>
     <!-- ADR 0111 PR 7 (owner decision 3): the ⋯ menu, out of the command
          bar. Last on the row, opening upward. -->
