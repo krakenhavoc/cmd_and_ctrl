@@ -205,9 +205,11 @@ describe("a card grid is a sheet", () => {
     const sheet = expectSheet("Solemn Simulacrum — a basic land");
     expect(sheet.querySelectorAll("button.card-pick")).toHaveLength(2);
 
-    const primary = barPrimary()!;
-    expect(nameOf(primary)).toBe("Fail to find");
-    expect(primary.hasAttribute("aria-keyshortcuts")).toBe(false);
+    // #2964: nothing picked means no primary; Fail to find is a plain secondary.
+    expect(barPrimary()).toBeNull();
+    const fail = barButton("Fail to find")!;
+    expect(barSecondaries()).toContain(fail);
+    expect(fail.hasAttribute("aria-keyshortcuts")).toBe(false);
     keyFromBody("Enter");
     expect(sent).toEqual([]);
 
@@ -216,6 +218,7 @@ describe("a card grid is a sheet", () => {
     expect(clear.hasAttribute("aria-keyshortcuts")).toBe(false);
 
     click(inSheet("button.card-pick").find((b) => nameOf(b) === "select Island")!);
+    expect(barButton("Fail to find")).toBeNull();
     expect(nameOf(barPrimary()!)).toBe("Take");
     expect(barPrimary()!.getAttribute("aria-keyshortcuts")).toBe("Enter");
     expect(sheet.querySelector(".prompt-count")?.textContent).toContain("1 / 1 selected");
@@ -225,6 +228,38 @@ describe("a card grid is a sheet", () => {
     expect(sent).toEqual([
       { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["i"] } },
     ]);
+  });
+
+  it("search: identical copies are one tile; a pick takes one copy", () => {
+    const mountains = [1, 2, 3].map((n) => card(`m${n}`, "Mountain"));
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Fetchland — choose a land",
+        search_max: 2,
+        options: [...mountains, card("i", "Island")],
+      }),
+    );
+    expectSheet("Fetchland — choose a land");
+    const tiles = inSheet("button.card-pick");
+    expect(tiles.map(nameOf)).toEqual(["select Mountain", "select Island"]);
+    expect(tiles[0].textContent).toContain("×3");
+    expect(tiles[0].querySelector(".pick-name")?.textContent).toBe("Mountain");
+
+    click(tiles[0]);
+    click(tiles[0]);
+    expect(inSheet("button.card-pick")[0].getAttribute("aria-pressed")).toBe("true");
+    const sheet = sheetPanel()!;
+    expect(sheet.querySelector(".prompt-count")?.textContent).toContain("2 / 2 selected");
+
+    // Full: a further click on the group releases one of its copies.
+    click(inSheet("button.card-pick")[0]);
+    expect(sheet.querySelector(".prompt-count")?.textContent).toContain("1 / 2 selected");
+    click(inSheet("button.card-pick")[0]);
+    keyFromBody("Enter");
+    expect(sent).toHaveLength(1);
+    expect(sent[0].type).toBe("resolve_choice");
+    expect([...(sent[0].params?.card_ids as string[])].sort()).toEqual(["m1", "m2"]);
   });
 
   it("sacrifice: the verb waits for the pick, then Enter sends it", () => {

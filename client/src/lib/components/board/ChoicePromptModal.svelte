@@ -486,6 +486,39 @@
   // should always be a knower of the revealed cards.
   const optionCards = $derived<CardView[]>(active?.options ?? []);
 
+  // #2964: a search's identical copies (Mountain ×23) are one tile. A
+  // pick on the tile takes one copy; the selection still holds each
+  // copy's instance_id, so the answer and the count are unchanged.
+  // A card with no name stays on its own tile.
+  const searchGroups = $derived.by<CardView[][]>(() => {
+    if (!isSearch) return [];
+    const groups = new Map<string, CardView[]>();
+    for (const c of optionCards) {
+      const key = c.name || c.instance_id;
+      const g = groups.get(key);
+      if (g) g.push(c);
+      else groups.set(key, [c]);
+    }
+    return [...groups.values()];
+  });
+  function groupPicked(group: CardView[]): number {
+    return group.filter((c) => selected.has(c.instance_id)).length;
+  }
+  // Take one more copy of the group while there is room; when full,
+  // release one copy of the group instead.
+  function toggleGroup(group: CardView[]): void {
+    if (!active) return;
+    const next = new Set(selected);
+    const free = group.find((c) => !next.has(c.instance_id));
+    if (free && next.size < pickMax) {
+      next.add(free.instance_id);
+    } else {
+      const taken = group.find((c) => next.has(c.instance_id));
+      if (taken) next.delete(taken.instance_id);
+    }
+    selected = next;
+  }
+
   // S15 mana_pick branch — a color-pick choice from Arcane Signet /
   // Birds of Paradise. `active.color_options` is the server's legal
   // button list, already ordered commander identity first; it renders
@@ -1686,9 +1719,7 @@
     const verb = isSacrifice
       ? L.sacrifice
       : isSearch
-        ? none
-          ? "Fail to find"
-          : "Take"
+        ? "Take"
         : isCopyTarget
           ? none
             ? "Enter as itself"
@@ -1725,21 +1756,29 @@
       // #2880: with the permanents pickable on the board, a narrower
       // sheet leaves more of the board in view.
       width: boardEligible ? 520 : 720,
-      // An empty pick where empty is legal is a decline: no Enter.
-      primary: confirmAction(verb, submit, {
-        disabled: !canSubmit,
-        enter: !(none && pickMin === 0),
-      }),
-      secondary: clearable
-        ? [
-            {
-              id: "clear",
-              label: "Clear",
-              disabled: none,
-              onPress: () => (selected = new Set()),
-            },
-          ]
-        : [],
+      // An empty pick where empty is legal is a decline: no Enter. #2964:
+      // a search with nothing picked has no primary at all; Fail to find
+      // is a secondary, so Enter can never fail a search by habit.
+      primary:
+        isSearch && none
+          ? null
+          : confirmAction(verb, submit, {
+              disabled: !canSubmit,
+              enter: !(none && pickMin === 0),
+            }),
+      secondary: [
+        ...(isSearch && none ? [{ id: "fail", label: "Fail to find", onPress: submit }] : []),
+        ...(clearable
+          ? [
+              {
+                id: "clear",
+                label: "Clear",
+                disabled: none,
+                onPress: () => (selected = new Set()),
+              },
+            ]
+          : []),
+      ],
     };
   });
 </script>
@@ -2485,28 +2524,51 @@
         {/if}
       </p>
       <div class="card-grid">
-        {#each optionCards as c (c.instance_id)}
-          <button
-            type="button"
-            class="card-pick"
-            class:selected={selected.has(c.instance_id)}
-            disabled={!isEligible(c.instance_id) ||
-              (!selected.has(c.instance_id) && selected.size >= pickMax)}
-            onclick={() => toggle(c.instance_id)}
-            aria-pressed={selected.has(c.instance_id)}
-            aria-label={`select ${c.name || "card"}`}
-          >
-            <Card card={c} />
-            <PickName card={c} />
-            {#if isChooseSource}
-              <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
-            {:else if isChooseCards || isUntapChoice || isProliferate}
-              <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
-            {:else if graveyardIDs.has(c.instance_id)}
-              <span class="source-caption">in graveyard</span>
-            {/if}
-          </button>
-        {/each}
+        {#if isSearch}
+          {#each searchGroups as group (group[0].name || group[0].instance_id)}
+            {@const picked = groupPicked(group)}
+            <button
+              type="button"
+              class="card-pick"
+              class:selected={picked > 0}
+              disabled={picked === 0 && selected.size >= pickMax}
+              onclick={() => toggleGroup(group)}
+              aria-pressed={picked > 0}
+              aria-label={`select ${group[0].name || "card"}`}
+            >
+              <Card card={group[0]} />
+              <PickName card={group[0]} />
+              <span class="source-caption">
+                {group.length > 1 ? `×${group.length}` : ""}{picked > 0
+                  ? `${group.length > 1 ? " · " : ""}${picked} taken`
+                  : ""}
+              </span>
+            </button>
+          {/each}
+        {:else}
+          {#each optionCards as c (c.instance_id)}
+            <button
+              type="button"
+              class="card-pick"
+              class:selected={selected.has(c.instance_id)}
+              disabled={!isEligible(c.instance_id) ||
+                (!selected.has(c.instance_id) && selected.size >= pickMax)}
+              onclick={() => toggle(c.instance_id)}
+              aria-pressed={selected.has(c.instance_id)}
+              aria-label={`select ${c.name || "card"}`}
+            >
+              <Card card={c} />
+              <PickName card={c} />
+              {#if isChooseSource}
+                <span class="source-caption">{damageSourceCaption(snap, c, viewerID)}</span>
+              {:else if isChooseCards || isUntapChoice || isProliferate}
+                <span class="source-caption">{permanentWhoseCaption(snap, c, viewerID)}</span>
+              {:else if graveyardIDs.has(c.instance_id)}
+                <span class="source-caption">in graveyard</span>
+              {/if}
+            </button>
+          {/each}
+        {/if}
       </div>
       {#if proliferateSeats.length > 0}
         <div class="seat-picks" role="group" aria-label="Players with counters">
