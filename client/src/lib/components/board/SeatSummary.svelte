@@ -37,6 +37,7 @@
   import { COLOR_META } from "../../manaPick";
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openZoneBrowser } from "../../zoneBrowser";
+  import { heldPlayableCount } from "../../exileGrants";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import CommandStrip from "./CommandStrip.svelte";
   import { seatColor } from "../../colors";
@@ -119,6 +120,16 @@
   // than passed in so Board needs no new prop — the same reason
   // commanderScryfallID is derived from `view` above.
   const exileCount = $derived((view.exile?.cards ?? []).filter((c) => c.owner === seat.id).length);
+  // #2559: how many of those this seat may play itself (Memory Vessel,
+  // Rocco) — shown for another seat; the viewer's own are a button.
+  const exileHeld = $derived(
+    seat.id === viewerID
+      ? 0
+      : heldPlayableCount(
+          (view.exile?.cards ?? []).filter((c) => c.owner === seat.id),
+          seat.id,
+        ),
+  );
 
   // ADR 0105 sub-PR 5: as PlayerPanel's, read off the server's list.
   const attackTargetable = $derived(
@@ -307,11 +318,15 @@
       <button
         class="pile"
         type="button"
-        aria-label={pileLabel("exile", exileCount)}
-        title={`exile · ${exileCount}`}
+        aria-label={exileHeld > 0
+          ? `${pileLabel("exile", exileCount)}, ${exileHeld} theirs to play`
+          : pileLabel("exile", exileCount)}
+        title={exileHeld > 0
+          ? `exile · ${exileCount} · ${exileHeld} theirs to play`
+          : `exile · ${exileCount}`}
         onclick={openExile}
       >
-        ex {exileCount}
+        ex {exileCount}{#if exileHeld > 0}<span class="held"> · {exileHeld} theirs</span>{/if}
       </button>
     </div>
 
@@ -493,6 +508,10 @@
      with the creature pips for the eye — but it is a real button with
      PileButton's aria-label, so screen readers and the e2e suite see
      the same affordance the full panel offers. */
+  /* #2559: the seat's own playable exile, beside the count. */
+  .held {
+    color: var(--fg-muted);
+  }
   .pile {
     background: none;
     border: none;

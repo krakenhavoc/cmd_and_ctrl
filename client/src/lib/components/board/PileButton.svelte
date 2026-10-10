@@ -33,6 +33,10 @@
     // `data-pile-owner`, so a card leaving the stack can fly to it.
     pile?: string;
     owner?: string;
+    // #2559: a short line under the count for what the pile holds that
+    // is not the viewer's to act on — "7 theirs to play" on a seat whose
+    // own exiled cards it may play (Memory Vessel). Also read out.
+    note?: string;
   }
 
   const {
@@ -44,6 +48,7 @@
     readyCount = 0,
     pile,
     owner,
+    note,
   }: Props = $props();
 
   const topCard = $derived(zone.cards.length > 0 ? zone.cards[zone.cards.length - 1] : null);
@@ -71,10 +76,8 @@
   data-pile={pile}
   data-pile-owner={owner}
   onclick={onClick}
-  aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}`}
-  title={readyCount > 0
-    ? `${label} · ${zone.count} · ${readyCount} ready`
-    : `${label} · ${zone.count}`}
+  aria-label={`${label}: ${zone.count} card${zone.count === 1 ? "" : "s"}${readyCount > 0 ? `, ${readyCount} ready` : ""}${note ? `, ${note}` : ""}`}
+  title={`${label} · ${zone.count}${readyCount > 0 ? ` · ${readyCount} ready` : ""}${note ? ` · ${note}` : ""}`}
 >
   <span class="thumb">
     {#if faceDown && zone.count > 0}
@@ -90,6 +93,9 @@
     <span class="count">{zone.count}</span>
     {#if readyCount > 0}
       <span class="ready-count" aria-hidden="true">{readyCount} ready</span>
+    {/if}
+    {#if note}
+      <span class="note" aria-hidden="true">{note}</span>
     {/if}
   </span>
 </button>
@@ -180,6 +186,21 @@
     border-radius: 999px;
     color: var(--ready-ink);
     background: var(--ready);
+    white-space: nowrap;
+  }
+  /* #2559: what the pile holds for its own seat, not the viewer — a
+     quiet outline rather than the ready pill. */
+  .note {
+    font-family: var(--font-mono);
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1;
+    padding: 1px 4px;
+    border-radius: 999px;
+    color: var(--fg-muted);
+    border: 1px solid var(--border-strong);
     white-space: nowrap;
   }
   .count {

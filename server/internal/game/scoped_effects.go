@@ -266,6 +266,18 @@ const (
 	// view ask. A ScopedEffect and not a CastBanRule kind so that an older
 	// binary refuses the file instead of banning nothing. Reads Player.
 	ModCantPlayLands ModKind = "cantPlayLands"
+	// ModCantPlayFromHand is "<players> can't play cards from their
+	// hand" for a duration (ADR 0066 amendment 2026-10-10, #2559; CR
+	// 101.2): Memory Vessel's "until your next turn, … they can't play
+	// cards from their hand". Neither a spell cast nor a land played
+	// out of the hand, and nothing out of any other zone. Scope
+	// ScopeGame with Player set is that one player, and with Player
+	// zero every player. Read by handPlayBanLocked, which both
+	// CastGateLocked and LandPlayGateLocked ask, so every caller of
+	// either gate sees it. A ScopedEffect for ModCantPlayLands' reason:
+	// an older binary refuses the file instead of banning nothing.
+	// Reads Player.
+	ModCantPlayFromHand ModKind = "cantPlayFromHand"
 	// ModCantBecomeMonarch is "<player> can't become the monarch this
 	// turn" (ADR 0096 amendment 2026-10-08, #2039; CR 725): Jared
 	// Carthalion's "You can't become the monarch this turn". Scope
@@ -827,6 +839,9 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantGainLife:           {reader: readerRule},
 	// ADR 0109 §4 (#1895): the land-play gate.
 	ModCantPlayLands: {reader: readerRule},
+	// ADR 0066 amendment 2026-10-10 (#2559): the hand ban, read by
+	// both the cast gate and the land-play gate.
+	ModCantPlayFromHand: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.

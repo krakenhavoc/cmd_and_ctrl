@@ -2670,6 +2670,25 @@ LandPlayRestrictions: []game.LandPlayRestriction{
 - "A land with a name originally printed in Arabian Nights" is
   `game.IsArabianNightsName` (CR 206.3a's list).
 
+### "Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)
+
+- **Every player over their own exiled cards** (Memory Vessel, Rocco,
+  Street Chef): `EachPlayerExilesTopAndMayPlay(g, n, d)`
+  (`effects/impulse_exile.go`). One stored permission per seated player,
+  held by that player, over the cards they exiled. Stamp `d` against the
+  card's controller: `g.UntilYourNextTurnDuration(controller)`,
+  `g.UntilYourNextEndStepDuration(controller)`. It is play, not cast, so a
+  land among them spends that player's land drop.
+- **"Can't play cards from their hand"** for a duration:
+  `g.CantPlayFromHandForEffect(source, player, d, label)`, `player` zero
+  for every player. It is one stored `cantPlayFromHand` record that both
+  the cast gate (a cast from the hand) and the land-play gate (a land from
+  the hand) read, so it needs nothing at any caller. Abilities of cards in
+  hand (cycling, channel) and plays out of other zones are not touched.
+- "Whenever a player plays a land from exile or casts a spell from exile"
+  is `aCardWasPlayedFromExile(ev, g)`; Prosper's "you" form is
+  `b20PlayedACardFromExile`.
+
 ### "Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)
 
 A rule that stops spells and abilities targeting the cards in a whole

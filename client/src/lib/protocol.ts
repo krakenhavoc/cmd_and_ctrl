@@ -2071,6 +2071,11 @@ export interface PlayerView {
   // nothing does. A ban that names particular lands (City in a Bottle)
   // rides on the land's own `cant_cast` instead.
   cant_play_lands?: string;
+  // #2559 (CR 101.2): the clause that stops this seat playing ANY card
+  // from its hand right now, a spell or a land ("You can't play cards
+  // from your hand — Memory Vessel"). While it is set `cant_play_lands`
+  // carries the same clause; the badge row shows one NO HAND badge.
+  cant_play_from_hand?: string;
   // ADR 0057 (#749, CR 104.3): the "can't lose the game" / "can't win
   // the game" gates on this seat. `cant_lose` lists the causes that
   // can't make this player lose right now ("life", "empty_draw",
@@ -2556,7 +2561,22 @@ export interface ExilePlayView {
   // Absent for a grant that charges the printed cost, which still
   // asks.
   x_locked_at_zero?: boolean;
+  // #2559: when the grant ends, and the player the window is counted
+  // against for the three windows that name one ("until Bo's next
+  // turn"). Read by exileGrants.ts for the tooltip and a bystander's
+  // label. Absent: say "until end of turn", as before the field.
+  until?: ExilePlayUntil;
+  until_player?: string;
 }
+
+// #2559: the windows `exile_play.until` names.
+export type ExilePlayUntil =
+  | "end_of_turn"
+  | "end_of_next_turn"
+  | "next_turn"
+  | "next_end_step"
+  | "while_exiled"
+  | "until_another";
 
 // #1297: the pile an "Exile N cards from your …" cost reads — always
 // the activator's own. The server stamps it with `exile_cost_n`.

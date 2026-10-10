@@ -3250,6 +3250,17 @@ var items = []Item{
 		Examples: []string{"Unstable Glyphbridge", "Web of Inertia", "Jace, Multiverse Architect"},
 	},
 	{
+		// #2559 (ADR 0066 amendment 2026-10-10): every player's own
+		// exiled cards, and a stored "can't play cards from your hand"
+		// read by both the cast gate and the land-play gate.
+		Slug: "each-player-plays-their-exile", Name: "Each player plays the cards they exiled, and can't play from their hand", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Effects that have every player exile cards from their own library and play them for a while, such as Memory Vessel's \"until your next turn, players may play cards they exiled this way, and they can't play cards from their hand\" and Rocco, Street Chef's one card each until your next end step. Each player plays only their own, a land among them uses their land drop, and a hand ban stops both spells and lands from the hand.",
+		Rules:    []string{"101.2", "305.2", "611.2b"},
+		ADR:      "0066-granted-cast-and-play-permissions.md",
+		Printed:  `(?i)\bcan't play cards from their hand\b|\bmay play (?:the )?cards? they exiled this way\b`,
+		Examples: []string{"Memory Vessel", "Rocco, Street Chef"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

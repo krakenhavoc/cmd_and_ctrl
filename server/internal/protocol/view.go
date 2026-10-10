@@ -1964,6 +1964,16 @@ type PlayerView struct {
 	// own `cant_cast` carries those.
 	CantPlayLands string `json:"cant_play_lands,omitempty"`
 
+	// CantPlayFromHand is the clause that stops this player playing any
+	// card from their hand right now — casting a spell or playing a land
+	// out of it ("You can't play cards from your hand — Memory Vessel"),
+	// or empty (#2559, ADR 0066 amendment 2026-10-10). Public, for
+	// CantPlayLands' reasons. Each card in the hand carries the same
+	// clause on its own `cant_cast`; this is the seat's banner. While it
+	// is set, `cant_play_lands` carries the same clause too, because
+	// the ban refuses every land out of the hand.
+	CantPlayFromHand string `json:"cant_play_from_hand,omitempty"`
+
 	// CantLose lists the causes that can't make this player lose the
 	// game right now ("life", "empty_draw", "poison",
 	// "commander_damage", "effect") — all five under a Platinum Angel.
@@ -3457,6 +3467,18 @@ type ExilePlayView struct {
 	// and the same rule an alternative-cost offer carries. Added for
 	// #831.
 	XLockedAtZero bool `json:"x_locked_at_zero,omitempty"`
+
+	// Until is when the grant ENDS (#2559): "end_of_turn",
+	// "end_of_next_turn", "next_turn", "next_end_step", "while_exiled"
+	// or "until_another" (game.PermissionWindowLocked). UntilPlayer is
+	// the player the window is counted against — "until Ana's next
+	// turn" — and is absent for "end_of_turn", "while_exiled" and
+	// "until_another", which name no one. Public, like the rest of the
+	// grant: Memory Vessel's and Rocco's grants are held by every player
+	// over their own cards, and the table reads each other's as well as
+	// its own. A client that ignores it says "until end of turn".
+	Until       string `json:"until,omitempty"`
+	UntilPlayer string `json:"until_player,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -8299,6 +8321,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
 		CantPlayLands:       g.LandPlayBanFor(p.ID),
+		CantPlayFromHand:    g.HandPlayBanFor(p.ID),
 		CantLose:            lossCauseStrings(g.CantLoseCausesForEffect(p)),
 		CantWin:             g.CantWinForEffect(p),
 		EndGates:            viewOfGameEndGates(g.GameEndGatesForEffect(p)),
@@ -9770,7 +9793,7 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 			// without deriving a single seat's standing set.
 			continue
 		}
-		v.ExilePlay = exilePlayViewOf(card, perm)
+		v.ExilePlay = exilePlayViewOf(g, card, perm)
 		// Each holder's own answer, including their own grant: the
 		// public `exile_play` above names whichever live permission
 		// came first, and a client whose seat holds the second one
@@ -9783,7 +9806,7 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 				key:      game.CatalogKey(granted),
 				manaCost: granted.ManaCost,
 			}, kind, h.grant)
-			stamps.ExilePlay = exilePlayViewOf(card, h.grant)
+			stamps.ExilePlay = exilePlayViewOf(g, card, h.grant)
 			v.stampsFor(h.seat, stamps)
 			// #992: and per face, for the grant that leaves the
 			// choice open. An adventure card impulse-exiled by
@@ -9802,8 +9825,9 @@ func stampGrantedPermissions(g *game.Game, seats []PlayerView, zone *ZoneView, l
 // `exile_play` wire shape. One constructor, because the field is
 // stamped twice now: publicly, for whichever live permission the
 // engine names first, and privately for each holder's own (#1037).
-func exilePlayViewOf(card game.Card, perm *game.CastPermission) *ExilePlayView {
-	return &ExilePlayView{
+func exilePlayViewOf(g *game.Game, card game.Card, perm *game.CastPermission) *ExilePlayView {
+	until, untilPlayer := g.PermissionWindowLocked(perm)
+	view := &ExilePlayView{
 		Player:       perm.Player.String(),
 		CastOnly:     perm.CastOnly,
 		AnyColor:     perm.AnyColor || perm.AnyType,
@@ -9819,7 +9843,12 @@ func exilePlayViewOf(card game.Card, perm *game.CastPermission) *ExilePlayView {
 		// permission opens, because that is the cost the cast path
 		// will read (ADR 0034).
 		XLockedAtZero: game.CastCostFor(grantedFace(card, perm), perm.AlternativeCostFor(card), perm).LocksXAtZero(),
+		Until:         until,
 	}
+	if untilPlayer != uuid.Nil {
+		view.UntilPlayer = untilPlayer.String()
+	}
+	return view
 }
 
 // liveCardForView resolves a CardView back to the engine's own Card,

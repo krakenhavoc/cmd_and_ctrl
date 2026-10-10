@@ -21,6 +21,7 @@
     visibleLibraryTop,
   } from "../../libraryTop";
   import type { CastSourceZone } from "../../targeting";
+  import { heldPlayableCount } from "../../exileGrants";
   import { NO_LEGAL_ACTIONS, withAvailable, type LegalActions } from "../../legalActions";
 
   type ActionSender = (type: ActionType, params?: ActionPayload["params"], player?: string) => void;
@@ -62,6 +63,9 @@
   const graveReady = $derived(legal.readyCount("graveyard", seat.id));
   const exileReady = $derived(legal.readyCount("exile", seat.id));
   const libraryReady = $derived(legal.readyCount("library", seat.id));
+  // #2559: on another seat's pile, the exiled cards THAT seat may play
+  // (Memory Vessel, Rocco). The viewer's own are the "ready" count.
+  const exileHeld = $derived(isSelf ? 0 : heldPlayableCount(exile.cards, seat.id));
 
   // S42 / CR 401.5: "you may look at the top card of your library any
   // time" and "play with the top card of your library revealed" both
@@ -178,6 +182,7 @@
     zone={exile}
     onClick={openExile}
     readyCount={exileReady}
+    note={exileHeld > 0 ? `${exileHeld} theirs to play` : undefined}
   />
 </div>
 
