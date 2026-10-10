@@ -330,6 +330,12 @@ func corpusBoards() []corpusBoard {
 		// Carthalion's cantBecomeMonarch record naming his controller,
 		// beside the opponent he crowned.
 		{"cant_become_monarch", corpusCantBecomeMonarch},
+		// v7, added by #2559 (ADR 0066 amendment 2026-10-10) as a new
+		// file: a resolved Memory Vessel — the cantPlayFromHand record
+		// (a game-scope rule kind naming every player) and each player's
+		// stored permission over the cards they exiled, both "until your
+		// next turn" against the activator.
+		{"memory_vessel", corpusMemoryVessel},
 		// v7, added by ADR 0109 PR 1 (#1881) as a new file: CR 305.7
 		// from a resolved effect as data — setBasicLandTypes records
 		// until end of turn (Tidal Warrior), until the land's controller's
@@ -1357,6 +1363,28 @@ func corpusCantBecomeMonarch(t *testing.T) *game.Game {
 			t.Fatal(err)
 		}
 	})
+	return g
+}
+
+// corpusMemoryVessel is #2559's stored shapes: the hand ban and one
+// permission per player.
+func corpusMemoryVessel(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	toMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	vessel := pushCatalogPermanent(g, me.ID, "Memory Vessel", "Artifact", memoryVesselOracle, false)
+	if err := g.ActivateCatalogAbility(me.ID, vessel, 0, game.ActivateAbilityParams{}); err != nil {
+		t.Fatalf("setup: activate Memory Vessel: %v", err)
+	}
+	passPriorityAroundTable(t, g)
+	if n := len(g.ScopedEffects); n != 1 || g.ScopedEffects[0].Mods[0].Kind != game.ModCantPlayFromHand {
+		t.Fatalf("setup: scoped records = %+v, want one cantPlayFromHand", g.ScopedEffects)
+	}
+	for _, p := range g.Seats {
+		if len(p.CastPermissions) != 1 {
+			t.Fatalf("setup: seat %s holds %d permissions, want 1", p.Name, len(p.CastPermissions))
+		}
+	}
 	return g
 }
 

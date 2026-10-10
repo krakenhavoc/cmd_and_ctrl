@@ -1439,6 +1439,10 @@ estimate.
 > **Amended by [ADR 0096](0096-the-monarch-from-a-card-effect.md)** (2026-10-08): `cantBecomeMonarch`,
 > a rules gate (#2039), is one more additive kind under schema v7.
 
+> **Amended by [ADR 0066](0066-granted-cast-and-play-permissions.md)** (2026-10-10): `cantPlayFromHand`,
+> a rules gate read by both the cast gate and the land-play gate (#2559, Memory Vessel), is one more
+> additive kind under schema v7, with one fixture (`v7/memory_vessel.json`).
+
 P5 proposed two new record types, `ScopedReplacement` and
 `ScopedBlockRule`. This amendment proposes new kinds on the existing
 `ScopedEffect` instead. There are three reasons:

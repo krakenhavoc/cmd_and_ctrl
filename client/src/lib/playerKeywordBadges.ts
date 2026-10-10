@@ -177,6 +177,14 @@ export interface SeatCantPlayLands {
   cant_play_lands?: string;
 }
 
+// #2559 (CR 101.2): "can't play cards from your hand" on a seat (Memory
+// Vessel). One NO HAND badge, with the clause as its tooltip; it stands
+// in for NO LANDS when both carry the same clause, since a hand ban
+// refuses every land out of the hand as well.
+export interface SeatCantPlayFromHand {
+  cant_play_from_hand?: string;
+}
+
 // ADR 0113 §3, owner decision 1 (#2074, CR 402.2): a seat whose maximum
 // hand size is not seven gets a badge, read from the existing
 // PlayerView.max_hand_size (the EFFECTIVE maximum: -1 for none, else 0
@@ -235,6 +243,7 @@ export function playerKeywordBadges(
     SeatCounterShields &
     SeatCantGainLife &
     SeatCantPlayLands &
+    SeatCantPlayFromHand &
     SeatMaxHandSize,
 ): PlayerKeywordBadge[] {
   const seen = new Set<string>();
@@ -279,7 +288,16 @@ export function playerKeywordBadges(
   // A locked total already says "no gain"; a second badge would only
   // repeat it.
   else if (endGates?.cant_gain_life) badges.push(CANT_GAIN_LIFE_BADGE);
-  if (endGates?.cant_play_lands) {
+  const handBan = endGates?.cant_play_from_hand;
+  if (handBan) {
+    badges.push({
+      key: "cant-play-from-hand",
+      short: "NO HAND",
+      title: handBan,
+      kind: "protection",
+    });
+  }
+  if (endGates?.cant_play_lands && endGates.cant_play_lands !== handBan) {
     badges.push({
       key: "cant-play-lands",
       short: "NO LANDS",

@@ -511,6 +511,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a combat-keyword card (S18+)](docs/adding-cards.md#adding-a-combat-keyword-card-s18)
   - [Adding a "can't" card (S24+)](docs/adding-cards.md#adding-a-cant-card-s24)
   - ["Players can't play lands" (ADR 0109 §4, #1895)](docs/adding-cards.md#players-cant-play-lands-adr-0109-4-1895)
+  - ["Each player may play the cards they exiled" and "can't play cards from your hand" (ADR 0066, #2559)](docs/adding-cards.md#each-player-may-play-the-cards-they-exiled-and-cant-play-cards-from-your-hand-adr-0066-2559)
   - ["Cards in graveyards can't be targeted" (ADR 0109 §6, #1885)](docs/adding-cards.md#cards-in-graveyards-cant-be-targeted-adr-0109-6-1885)
   - ["Spells you control can't be countered" (ADR 0106, #1806)](docs/adding-cards.md#spells-you-control-cant-be-countered-adr-0106-1806)
   - [Attaching, and an ability whose source has gone (#812)](docs/adding-cards.md#attaching-and-an-ability-whose-source-has-gone-812)

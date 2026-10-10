@@ -181,3 +181,28 @@ func TestRenderSaysWhereABouncedCommanderGoes(t *testing.T) {
 		}
 	}
 }
+
+// #2559: a seat under Memory Vessel's hand ban says so, and each seat
+// lists the exiled cards it may play — the table's grants are public.
+func TestRenderSaysWhoMayPlayFromExileAndAHandBan(t *testing.T) {
+	v := view()
+	v.Seats[0].CantPlayFromHand = "You can't play cards from your hand — Memory Vessel"
+	v.Exile.Cards = []protocol.CardView{
+		{Name: "Forest", Owner: "a", ExilePlay: &protocol.ExilePlayView{Player: "a"}},
+		{Name: "Shock", Owner: "b", ExilePlay: &protocol.ExilePlayView{Player: "b"}},
+		{Name: "Gone", Owner: "b"},
+	}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	for _, want := range []string{
+		"Ann (YOU) — 40 life, 1 cards in hand, 0 in library, CAN'T PLAY CARDS FROM HAND\n",
+		"  may play from exile: Forest\n",
+		"  may play from exile: Shock\n",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "Gone") {
+		t.Errorf("an exiled card nobody may play was listed:\n%s", got)
+	}
+}

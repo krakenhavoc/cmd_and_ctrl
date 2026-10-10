@@ -176,4 +176,22 @@ describe("endGateBadges", () => {
     expect(badges[0].title).toBe("Players can't play lands. — Territorial Dispute");
     expect(playerKeywordBadges([], false, { cant_play_lands: "" })).toEqual([]);
   });
+
+  // #2559: a hand ban is one NO HAND badge, standing in for the NO LANDS
+  // badge that carries the same clause; a different land ban still shows.
+  it("shows can't-play-from-hand once, in place of the same land ban", () => {
+    const clause = "You can't play cards from your hand — Memory Vessel";
+    const badges = playerKeywordBadges([], false, {
+      cant_play_from_hand: clause,
+      cant_play_lands: clause,
+    });
+    expect(badges.map((b) => b.key)).toEqual(["cant-play-from-hand"]);
+    expect(badges[0].short).toBe("NO HAND");
+    expect(badges[0].title).toBe(clause);
+    const both = playerKeywordBadges([], false, {
+      cant_play_from_hand: clause,
+      cant_play_lands: "Players can't play lands. — Territorial Dispute",
+    });
+    expect(both.map((b) => b.key)).toEqual(["cant-play-from-hand", "cant-play-lands"]);
+  });
 });
