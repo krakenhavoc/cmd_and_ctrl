@@ -1056,7 +1056,7 @@ There are two kinds and they are not interchangeable:
   refusal, because nothing was committed.
 - `"bot_reasoning"` — the bot narrating why it took an ordinary move.
   Debug output; the reference client hides it unless the viewer turns
-  on **Settings → Gameplay → Show bot reasoning**, and the server
+  on **Settings → Gameplay → Advanced → Show bot reasoning**, and the server
   only emits it when the runner's `Narrate` config is on. It can name
   cards in the bot's *own* hand, which is a disadvantage the bot
   accepts rather than a leak — a policy is handed the same filtered

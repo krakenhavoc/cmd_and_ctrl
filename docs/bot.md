@@ -1649,7 +1649,7 @@ the line, undo it, free.
 
 ## Show bot reasoning
 
-**Settings → Gameplay → Show bot reasoning** (`settings.gameplay.showBotReasoning`,
+**Settings → Gameplay → Advanced → Show bot reasoning** (`settings.gameplay.showBotReasoning`,
 off by default) surfaces the policy's own one-line justification for
 each move it makes, in the bot feed on the board.
 
