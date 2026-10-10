@@ -31,9 +31,10 @@ func init() {
 				},
 			},
 			{
-				Label:  "{2}{U}{U}: Return Arcanis to its owner's hand.",
-				Cost:   ManaCost("{2}{U}{U}"),
-				Effect: b28ReturnSelfToOwnersHand,
+				Label:   "{2}{U}{U}: Return Arcanis to its owner's hand.",
+				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Cost:    ManaCost("{2}{U}{U}"),
+				Effect:  b28ReturnSelfToOwnersHand,
 			},
 		},
 	})

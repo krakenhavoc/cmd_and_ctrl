@@ -16,8 +16,9 @@ func init() {
 		Name:         "Albino Troll",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}{G}: Regenerate this creature.",
-			Cost:  ManaCost("{1}{G}"),
+			Label:   "{1}{G}: Regenerate this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    ManaCost("{1}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
 			},

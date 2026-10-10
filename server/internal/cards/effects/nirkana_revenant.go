@@ -22,9 +22,10 @@ func init() {
 				"Nirkana Revenant — add an additional {B}", "Swamp", AddsFixedMana("{B}")),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "{B}: This creature gets +1/+1 until end of turn",
-			Cost:   ManaCost("{B}"),
-			Effect: thisGetsUntilEndOfTurn(1, 1, "Nirkana Revenant — +1/+1 until end of turn"),
+			Label:   "{B}: This creature gets +1/+1 until end of turn",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{B}"),
+			Effect:  thisGetsUntilEndOfTurn(1, 1, "Nirkana Revenant — +1/+1 until end of turn"),
 		}},
 	})
 }

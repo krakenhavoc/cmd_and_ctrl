@@ -33,8 +33,9 @@ func init() {
 				}),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{R}: Creatures you control get +1/+0 until end of turn.",
-			Cost:  ManaCost("{2}{R}"),
+			Label:   "{2}{R}: Creatures you control get +1/+0 until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{2}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return BoostUntilEOT{
 					Match: And(Creature(), YouControl()),

@@ -24,8 +24,9 @@ func init() {
 				YourSpell(), nightscapeBlueOrRedSpell()),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}: Regenerate this creature.",
-			Cost:  ManaCost("{1}{B}"),
+			Label:   "{1}{B}: Regenerate this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    ManaCost("{1}{B}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
 			},

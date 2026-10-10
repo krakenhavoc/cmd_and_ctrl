@@ -46,9 +46,10 @@ func init() {
 				Effect: Do(MayPutALandFromHand("PuPu UFO")),
 			},
 			{
-				Label:  "{3}: Until end of turn, this creature's base power becomes equal to the number of Towns you control.",
-				Cost:   ManaCost("{3}"),
-				Effect: pupuUFOBasePowerFromTowns,
+				Label:   "{3}: Until end of turn, this creature's base power becomes equal to the number of Towns you control.",
+				Purpose: game.Purpose{Answers: game.AnswerPump},
+				Cost:    ManaCost("{3}"),
+				Effect:  pupuUFOBasePowerFromTowns,
 			},
 		},
 	})

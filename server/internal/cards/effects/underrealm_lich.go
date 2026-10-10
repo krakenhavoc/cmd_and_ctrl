@@ -50,8 +50,9 @@ func init() {
 			Label: "Underrealm Lich: look at the top three, put one into your hand and the rest into your graveyard",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "Pay 4 life: This creature gains indestructible until end of turn. Tap it.",
-			Cost:  PayLife(4),
+			Label:   "Pay 4 life: This creature gains indestructible until end of turn. Tap it.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    PayLife(4),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				if err := (GrantKeywordUntilEOT{

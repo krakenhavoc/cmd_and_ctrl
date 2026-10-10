@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Tome Shredder — Creature — Wolf {2}{R}, 2/2 (EDHREC rank 25532):
 //
 //	"Haste
@@ -19,9 +21,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{{
-			Label:  "{T}, Exile an instant or sorcery card from your graveyard: Put a +1/+1 counter on this creature.",
-			Cost:   Plus(TapCost(), ExileFromGraveyard(1, "an instant or sorcery card", MatchInstantOrSorcery)),
-			Effect: b35PutCounterOnSelf,
+			Label:   "{T}, Exile an instant or sorcery card from your graveyard: Put a +1/+1 counter on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    Plus(TapCost(), ExileFromGraveyard(1, "an instant or sorcery card", MatchInstantOrSorcery)),
+			Effect:  b35PutCounterOnSelf,
 		}},
 	})
 }

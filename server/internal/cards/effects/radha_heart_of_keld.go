@@ -32,8 +32,9 @@ func init() {
 		},
 		Static: []game.StaticAbility{firstStrikeDuringYourTurn()},
 		Activated: []ActivatedAbility{{
-			Label: "{4}{R}{G}: Radha gets +X/+X until end of turn, where X is the number of lands you control",
-			Cost:  ManaCost("{4}{R}{G}"),
+			Label:   "{4}{R}{G}: Radha gets +X/+X until end of turn, where X is the number of lands you control",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ManaCost("{4}{R}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				x := b10LandsControlled(g, item.Controller)
 				return BoostUntilEOT{

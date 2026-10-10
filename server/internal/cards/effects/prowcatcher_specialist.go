@@ -31,6 +31,7 @@ func init() {
 		PrintedKeywords: []string{"haste"},
 		Activated: []ActivatedAbility{{
 			Label:   "Exhaust — {3}{R}: Put two +1/+1 counters on this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
 			Exhaust: true,
 			Cost:    ManaCost("{3}{R}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {

@@ -21,8 +21,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"renown 1"},
 		Activated: []ActivatedAbility{{
-			Label: "{2}{G}: Regenerate this creature.",
-			Cost:  ManaCost("{2}{G}"),
+			Label:   "{2}{G}: Regenerate this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    ManaCost("{2}{G}"),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
 			},

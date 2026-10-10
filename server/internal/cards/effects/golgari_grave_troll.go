@@ -31,8 +31,9 @@ func init() {
 			Dredge(6),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Remove a +1/+1 counter from this creature: Regenerate this creature.",
-			Cost:  Plus(ManaCost("{1}"), RemoveCountersFromThis("+1/+1", 1)),
+			Label:   "{1}, Remove a +1/+1 counter from this creature: Regenerate this creature.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    Plus(ManaCost("{1}"), RemoveCountersFromThis("+1/+1", 1)),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return Regenerate{Target: item.SourceCardID}.Apply(NewContext(g, item))
 			},

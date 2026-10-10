@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Fan Favorite — Creature — Human Rogue {3}{B}, 2/2:
 //
 //	"Assist (Another player can pay up to {3} of this spell's cost.)
@@ -25,6 +27,7 @@ func init() {
 		Caveats:      []string{"Assist isn't implemented, so no other player can help pay for it."},
 		Activated: []ActivatedAbility{{
 			Label:     "{2}: This creature gets +1/+1 until end of turn. Any player may activate this ability.",
+			Purpose:   game.Purpose{Answers: game.AnswerPump},
 			Cost:      ManaCost("{2}"),
 			AnyPlayer: true,
 			Effect:    thisGetsUntilEndOfTurn(1, 1, "Fan Favorite — +1/+1 until end of turn"),

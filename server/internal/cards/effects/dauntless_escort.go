@@ -22,8 +22,9 @@ func init() {
 		Name:         "Dauntless Escort",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "Sacrifice this creature: Creatures you control gain indestructible until end of turn.",
-			Cost:  game.AbilityCost{SacrificeSelf: true},
+			Label:   "Sacrifice this creature: Creatures you control gain indestructible until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    game.AbilityCost{SacrificeSelf: true},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return GrantKeywordUntilEOT{
 					Match:    And(Creature(), YouControl()),

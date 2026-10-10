@@ -34,8 +34,9 @@ func init() {
 			Label:    "Add {G}",
 		}},
 		Activated: []ActivatedAbility{{
-			Label: "{T}: Put a +1/+1 counter on each green creature that entered this turn.",
-			Cost:  TapCost(),
+			Label:   "{T}: Put a +1/+1 counter on each green creature that entered this turn.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    TapCost(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				for _, c := range g.BattlefieldCardsForEffect() {

@@ -34,8 +34,9 @@ func init() {
 			}, SacrificeThisIfStillOnBattlefield),
 		},
 		Activated: []ActivatedAbility{{
-			Label: "Exile the top card of your library: Put X +1/+1 counters on this creature, where X is the exiled card's mana value.",
-			Cost:  ExileTopOfLibrary(1),
+			Label:   "Exile the top card of your library: Put X +1/+1 counters on this creature, where X is the exiled card's mana value.",
+			Purpose: game.Purpose{Answers: game.AnswerPump},
+			Cost:    ExileTopOfLibrary(1),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				ctx := NewContext(g, item)
 				x := 0
