@@ -162,15 +162,17 @@ describe("Report a bug or idea on the game toolbar", () => {
   });
 });
 
-// ADR 0111 PR 2: Pass turn left the command bar for the action dock,
+// ADR 0111 PR 2: Pass turn (End turn since ADR 0143) left the command bar for the action dock,
 // which Game mounts beside the board, in the play area.
 describe("the command bar and the action dock", () => {
-  it("has no Pass turn on the toolbar; the dock in the play area has it, disabled", async () => {
+  it("has no End turn on the toolbar, and the dock draws none for a viewer who is not active", async () => {
     stubConfig(false);
     const c = await mountGame();
     const bar = c.querySelector("header.bar")!;
     expect(
-      [...bar.querySelectorAll("button")].some((b) => /pass turn/i.test(b.textContent ?? "")),
+      [...bar.querySelectorAll("button")].some((b) =>
+        /pass turn|end turn/i.test(b.textContent ?? ""),
+      ),
     ).toBe(false);
     // The icons keep their order: mute, log, settings. ADR 0111 PR 7:
     // the ⋯ menu left the bar for the dock's toggles row (owner
@@ -184,10 +186,11 @@ describe("the command bar and the action dock", () => {
 
     const dock = c.querySelector<HTMLElement>('.play-area > section[aria-label="actions"]');
     expect(dock, "the dock should be a child of the play area").toBeTruthy();
-    const passTurn = [...dock!.querySelectorAll("button")].find(
-      (b) => b.textContent?.trim() === "Pass turn",
-    );
-    expect(passTurn?.disabled).toBe(true);
+    // ADR 0143 §4.2: End turn (formerly Pass turn) is drawn only for
+    // the active player, which this viewer is not.
+    const named = (name: string) =>
+      [...dock!.querySelectorAll("button")].filter((b) => b.textContent?.trim() === name);
+    expect(named("End turn")).toHaveLength(0);
 
     // It publishes its size where the board, the zoom and the log drawer
     // can all read it.

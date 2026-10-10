@@ -103,7 +103,6 @@ function mountDock(props: Record<string, unknown> = {}) {
       view: gameView(),
       viewerHasPriority: true,
       viewerIsActive: true,
-      activePlayerName: "Me",
       autopassEnabled: false,
       onPassPriority: () => calls.pass++,
       onPassTurn: () => calls.passTurn++,
@@ -145,47 +144,64 @@ describe("ActionDock", () => {
     const names = [...toggles.querySelectorAll("button")].map(
       (b) => b.getAttribute("aria-label") ?? accessibleName(b),
     );
-    expect(names).toEqual(["hold", "autopass", "bluff", "bluff options", "Undo (0 left)"]);
-    const autopass = toggles.querySelector<HTMLButtonElement>("button.action.autopass")!;
+    expect(names).toEqual(["hold", "Skip to my turn", "bluff", "bluff options", "Undo (0 left)"]);
+    const autopass = toggles.querySelector<HTMLButtonElement>("button.action.skip-to-my-turn")!;
     expect(autopass.getAttribute("aria-pressed")).toBe("false");
 
     // The action bar: Pass turn on the left, next — the primary — on the right.
     const bar = dock.querySelector(".dock-bar")!;
     const bar_ = [...bar.querySelectorAll("button")];
-    expect(bar_.map(accessibleName)).toEqual(["Pass turn", "next"]);
+    expect(bar_.map(accessibleName)).toEqual(["End turn", "next"]);
     expect(bar_[1].classList.contains("primary")).toBe(true);
     // `next` and the toggles are not inside each other's group.
     expect(toggles.contains(bar_[1])).toBe(false);
   });
 
-  it("draws exactly one next and one Pass turn", () => {
+  it("draws exactly one next and one End turn on your turn", () => {
     const d = mountDock();
     expect(buttonsNamed(d.container, "next")).toHaveLength(1);
-    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
   });
 
-  it("keeps next and Pass turn rendered but disabled when they can't be pressed", () => {
+  // ADR 0143 §4.2: End turn is the active player's alone. On anyone
+  // else's turn it is not drawn at all; next stays, disabled without
+  // priority.
+  it("shows End turn only on your turn, and keeps next rendered but disabled", () => {
     const d = mountDock({ viewerHasPriority: false, viewerIsActive: false });
     const next = buttonsNamed(d.container, "next")[0]!;
-    const passTurn = buttonsNamed(d.container, "Pass turn")[0]!;
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
     expect(next.disabled).toBe(true);
     expect(next.title).toBe("you don't hold priority");
-    expect(passTurn.disabled).toBe(true);
-    expect(passTurn.title).toBe("Me is the active player");
     // Not gold without priority.
     expect(next.classList.contains("viewer-priority")).toBe(false);
 
     d.setProps({ viewerHasPriority: true, viewerIsActive: true } as never);
     expect(next.disabled).toBe(false);
-    expect(passTurn.disabled).toBe(false);
+    const endTurn = buttonsNamed(d.container, "End turn")[0]!;
+    expect(endTurn.disabled).toBe(false);
+    expect(endTurn.title).toMatch(/every step of the rest of your turn/);
     expect(next.classList.contains("viewer-priority")).toBe(true);
+
+    d.setProps({ viewerIsActive: false } as never);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
+  });
+
+  it("names the old autopass toggle Skip to my turn, and says when it ends", () => {
+    const d = mountDock({ viewerIsActive: false });
+    const skip = d.q("button.action.skip-to-my-turn")!;
+    expect(skip.getAttribute("aria-label")).toBe("Skip to my turn");
+    expect(skip.textContent?.trim()).toBe("skip to my turn");
+    expect(skip.title).toMatch(/until your next main phase/);
+    d.setProps({ autopassEnabled: true } as never);
+    expect(skip.textContent?.trim()).toBe("skip to my turn ✓");
+    expect(skip.getAttribute("aria-pressed")).toBe("true");
   });
 
   it("wires next, Pass turn and autopass to their handlers", () => {
     const d = mountDock();
     click(buttonsNamed(d.container, "next")[0]!);
-    click(buttonsNamed(d.container, "Pass turn")[0]!);
-    click(d.q("button.action.autopass")!);
+    click(buttonsNamed(d.container, "End turn")[0]!);
+    click(d.q("button.action.skip-to-my-turn")!);
     expect(d.calls).toMatchObject({ pass: 1, passTurn: 1, autopass: 1 });
   });
 
@@ -230,9 +246,9 @@ describe("ActionDock", () => {
     expect(next.querySelector("kbd.cap")?.getAttribute("aria-hidden")).toBe("true");
     expect(next.getAttribute("aria-keyshortcuts")).toBe("Space");
     expect(next.title).toContain("(Space)");
-    expect(buttonsNamed(d.container, "Pass turn")[0]!.getAttribute("aria-keyshortcuts")).toBe("T");
+    expect(buttonsNamed(d.container, "End turn")[0]!.getAttribute("aria-keyshortcuts")).toBe("T");
     expect(d.q("button.action.hold")!.getAttribute("aria-keyshortcuts")).toBe("H");
-    expect(d.q("button.action.autopass")!.getAttribute("aria-keyshortcuts")).toBe("Shift+P");
+    expect(d.q("button.action.skip-to-my-turn")!.getAttribute("aria-keyshortcuts")).toBe("Shift+P");
     expect(d.q("button.bluff-main")!.getAttribute("aria-keyshortcuts")).toBe("B");
 
     // Shortcuts off: no cap, no advertised keys.
@@ -257,9 +273,9 @@ describe("ActionDock", () => {
     const notice = d.q(".dock-status .loop-notice")!;
     expect(notice.getAttribute("role")).toBe("status");
     expect(notice.textContent).toContain("Mirror Engine — loop. Autopass paused.");
-    const autopass = d.q("button.action.autopass")!;
+    const autopass = d.q("button.action.skip-to-my-turn")!;
     expect(autopass.classList.contains("paused")).toBe(true);
-    expect(autopass.textContent?.trim()).toBe("autopass ⏸");
+    expect(autopass.textContent?.trim()).toBe("skip to my turn ⏸");
   });
 
   it("reports its size for --dock-w / --dock-h", () => {
@@ -405,7 +421,7 @@ describe("the dock's requests", () => {
     // A step row does not take the bar: next and Pass turn are still
     // there, once each, and not inside the request.
     expect(buttonsNamed(d.container, "next")).toHaveLength(1);
-    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
     expect(dlg.contains(buttonsNamed(d.container, "next")[0]!)).toBe(false);
   });
 
@@ -517,7 +533,7 @@ describe("the dock's requests", () => {
     expect(dlg.querySelector(".dock-bar")?.lastElementChild).toBe(primary);
     // A stronger request takes the bar: next and Pass turn give way.
     expect(buttonsNamed(d.container, "next")).toHaveLength(0);
-    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(0);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
     click(primary);
     expect(finished).toBe(1);
 
@@ -531,7 +547,7 @@ describe("the dock's requests", () => {
     flushSync();
     expect(dialog(d.container, "declare blockers")).toBeNull();
     expect(buttonsNamed(d.container, "next")).toHaveLength(1);
-    expect(buttonsNamed(d.container, "Pass turn")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
   });
 
   it("focuses the blockers primary when it opens and focus is on the body", () => {

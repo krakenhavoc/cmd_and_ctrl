@@ -363,11 +363,12 @@
   // hasn't pinned." Active-turn stops default-on for the main phases
   // and combat declarations, so the active player still gets stopped
   // for their plays even in Smart mode.
-  // S13.6: autopass mode is a session-scoped toggle ("get me
-  // through this turn" / "I'm tapped out, don't ask me"). Stays on
-  // until the viewer clicks the button again — not a one-shot.
-  // When on, it overrides settings.passMode, the stepStops
-  // grid and the response predicate. It does NOT override a
+  // S13.6: autopass mode is a session-scoped toggle, called Skip to
+  // my turn since ADR 0143 §4.2 ("pass for me until my turn"). It
+  // stays on until the viewer clicks it again or their own precombat
+  // main comes round, whichever is first. When on, it overrides
+  // settings.passMode and the stepStops grid, but still holds where
+  // the viewer can respond (rule 4). It does NOT override a
   // manual one-time pin (#526) — see autopassDecision.ts for the
   // full precedence and why. The effect still requires the viewer to
   // actually hold priority (so we don't spam the server with "you do
@@ -518,7 +519,6 @@
       step,
       autopassToggle: autopassEnabled,
       viewerIsActive,
-      autopassPersistThroughTurns: $settings.gameplay.autopassPersistThroughTurns,
       // Read via the $manualStops subscription (not the non-reactive
       // hasManualStop helper) so unpinning while holding priority
       // re-runs this effect and resumes auto-pass immediately rather
@@ -597,12 +597,12 @@
 
     if (verdict === "hold") return;
     if (verdict === "clear-toggle") {
-      // S13.6 safety belt (gameplay.autopassPersistThroughTurns):
-      // when the flag is off (default), autopass auto-clears the
+      // S13.6 safety belt, built in since ADR 0143 §4.2: Skip to my
+      // turn clears itself the
       // first time the cursor enters the viewer's own precombat_main
-      // — so a forgotten toggle doesn't silently skip your turn.
-      // Users who know they want autopass to outlive their own main
-      // phase flip the danger setting on and accept the trade. The
+      // — so a forgotten toggle never skips your turn. There is no
+      // setting that keeps it on (autopassPersistThroughTurns went at
+      // settings v27). The
       // clear happens INSTEAD of a pass, so the toggle going off
       // means the cursor holds for the viewer's turn.
       autopassEnabled = false;
@@ -1021,10 +1021,11 @@
     client.sendAction("pass_priority");
   }
 
-  // #2881: the dock's Pass turn walks the rest of the turn. The server
+  // #2881, ADR 0143 §4.2: the dock's End turn walks the rest of the turn. The server
   // passes for the active seat in every step, so step triggers fire and
   // the cleanup discard happens. `pass_turn` is the sandbox jump that
-  // skips them (ADR 0143 Q5 moves it to the ⋯ menu).
+  // skips them; it lives in the ⋯ menu as the sandbox fallback
+  // (sandboxPassTurn below).
   function passTurn(): void {
     client.sendAction("end_turn");
   }
@@ -1844,6 +1845,9 @@
     onTableTips: () => replayTips("table", HINTS),
     onShortcuts: openShortcutsHelp,
     onReplayTutorial: () => navigate("#/practice"),
+    // ADR 0143 §4.2: the sandbox jump, for the active seat only.
+    sandboxPassTurn: viewerIsActive && view?.state === "active" && !mulligansOpen,
+    onSandboxPassTurn: () => client.sendAction("pass_turn"),
     onDraw: draw,
     onUntapAll: untapAll,
     onShuffle: shuffle,
@@ -2332,7 +2336,6 @@
           {view}
           {viewerHasPriority}
           {viewerIsActive}
-          activePlayerName={activePlayer?.name}
           {autopassEnabled}
           {loopNotice}
           {readyActions}

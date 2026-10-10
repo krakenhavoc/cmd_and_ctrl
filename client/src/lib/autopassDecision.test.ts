@@ -24,7 +24,6 @@ function gates(overrides: Partial<AutopassGates> = {}): AutopassGates {
     step: "upkeep",
     autopassToggle: false,
     viewerIsActive: false,
-    autopassPersistThroughTurns: false,
     manualStop: false,
     passMode: "smart",
     stackEmpty: true,
@@ -220,8 +219,15 @@ describe("autopassDecision — the autopass safety belt", () => {
     expect(autopassDecision(ownMain({ manualStop: true }))).toBe("clear-toggle");
   });
 
-  it("does not fire with the danger setting on", () => {
-    expect(autopassDecision(ownMain({ autopassPersistThroughTurns: true }))).toBe("pass");
+  // ADR 0143 §4.2: there is no setting that keeps Skip to my turn on
+  // through the viewer's own main phase any more. It clears whatever
+  // else is going on.
+  it("always fires: no setting, pass mode or stop keeps it on", () => {
+    for (const passMode of ["smart", "careful", "manual"] as const) {
+      expect(autopassDecision(ownMain({ passMode })), passMode).toBe("clear-toggle");
+    }
+    expect(autopassDecision(ownMain({ stepStop: false, hasPlay: false }))).toBe("clear-toggle");
+    expect(autopassDecision(ownMain({ hasResponse: true }))).toBe("clear-toggle");
   });
 
   it("does not fire on someone else's precombat_main", () => {
@@ -268,13 +274,11 @@ describe("autopassDecision — stop if the engine may be wrong", () => {
     expect(autopassDecision(ownMain({ engineMayMissMana: true, autopassToggle: true }))).toBe(
       "clear-toggle",
     );
+    // Past the safety belt (the viewer's own postcombat main), the
+    // toggle still passes over it.
     expect(
       autopassDecision(
-        ownMain({
-          engineMayMissMana: true,
-          autopassToggle: true,
-          autopassPersistThroughTurns: true,
-        }),
+        ownMain({ step: "postcombat_main", engineMayMissMana: true, autopassToggle: true }),
       ),
     ).toBe("pass");
   });
@@ -460,17 +464,62 @@ describe("autopassDecision — #1307: the autopass toggle", () => {
     expect(isBluff(autopassDecision(oppStack({ bluffCounter: true })))).toBe(true);
   });
 
-  it("still passes key windows and ticked steps with an empty stack", () => {
+  // ADR 0143 §4.1/§4.2: Skip to my turn is Smart's passing until you
+  // are next active, so it keeps Smart's key windows. With a response
+  // in hand it stops; with none, it passes, ticked step or not.
+  it("stops at a key window when the viewer can respond", () => {
+    const end = gates({ autopassToggle: true, step: "end", oppEndWindow: true });
+    expect(autopassDecision({ ...end, hasResponse: true })).toBe("hold");
+    expect(autopassDecision({ ...end, hasResponse: false })).toBe("pass");
+    for (const step of ["declare_attackers", "declare_blockers"]) {
+      const combat = gates({ autopassToggle: true, step, combatWindow: true });
+      expect(autopassDecision({ ...combat, hasResponse: true }), step).toBe("hold");
+      expect(autopassDecision({ ...combat, hasResponse: false }), step).toBe("pass");
+    }
+  });
+
+  it("passes ticked steps and quiet windows, and never bluffs a key window", () => {
     const g = gates({
       autopassToggle: true,
       step: "end",
       oppEndWindow: true,
-      hasResponse: true,
+      hasResponse: false,
       stepStop: true,
       hasPlay: true,
       bluffInstant: true,
     });
     expect(autopassDecision(g)).toBe("pass");
+    expect(
+      autopassDecision(
+        gates({ autopassToggle: true, step: "upkeep", stepStop: true, hasPlay: true }),
+      ),
+    ).toBe("pass");
+    // A response outside the key windows (an opponent's main phase with
+    // an instant in hand) is not a reason to stop.
+    expect(
+      autopassDecision(gates({ autopassToggle: true, step: "precombat_main", hasResponse: true })),
+    ).toBe("pass");
+  });
+
+  it("still stops for a choice the table waits on", () => {
+    const base = { autopassToggle: true, step: "declare_blockers" };
+    expect(autopassDecision(gates({ ...base, hasPendingChoice: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...base, owesBlockDecision: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...base, owesAttackRequirement: true }))).toBe("hold");
+    expect(autopassDecision(gates({ ...base, loopSuspended: true }))).toBe("hold");
+  });
+
+  it("clears at the viewer's own main 1, and only there", () => {
+    const own = { autopassToggle: true, viewerIsActive: true };
+    expect(autopassDecision(gates({ ...own, step: "precombat_main" }))).toBe("clear-toggle");
+    for (const step of ["upkeep", "draw", "declare_attackers", "postcombat_main", "end"]) {
+      expect(autopassDecision(gates({ ...own, step })), step).not.toBe("clear-toggle");
+    }
+    expect(
+      autopassDecision(
+        gates({ autopassToggle: true, viewerIsActive: false, step: "precombat_main" }),
+      ),
+    ).toBe("pass");
   });
 
   it("ignores Careful and Manual", () => {

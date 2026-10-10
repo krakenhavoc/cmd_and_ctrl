@@ -137,9 +137,11 @@ func DefaultConfig() Config {
 //
 // StackHold is ADR 0119 §2's hold: how long another seat's item has to
 // have been on top of the stack before this seat passes on it, so the
-// people at the table can read it. A bot cannot read a person's own
-// stack-hold setting, so the bot side is part of the bot speed the host
-// already sets. The hold overlaps MinThink rather than adding to it.
+// people at the table can read it. Since ADR 0143 §2.6 it is the whole
+// table's hold: the client reads the same pace (the host's "Table
+// pace") and holds every person's automatic pass for the same time,
+// and client/src/lib/stackHold.test.ts fails if its numbers drift from
+// these. The hold overlaps MinThink rather than adding to it.
 var botPacePresets = map[game.BotPace]struct{ Min, Max, StackHold time.Duration }{
 	game.BotPaceFast:   {Min: 0, Max: 2 * time.Second, StackHold: 0},
 	game.BotPaceNormal: {Min: defaultMinThink, Max: defaultMaxThink, StackHold: 2 * time.Second},

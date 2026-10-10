@@ -136,15 +136,17 @@ test.describe("opening hand", () => {
     await expect(bob.page.getByLabel("opening hand decisions")).toHaveCount(0);
 
     // The table is live: the active seat can act. The game rolls for
-    // the starting player (#1486), so it is either seat's button.
+    // the starting player (#1486), so it is either seat's button. ADR
+    // 0143 §4.2: End turn (formerly Pass turn) is drawn for the active
+    // seat only.
     const passButtons = [alice, bob].map((p) =>
-      p.page.getByRole("button", { name: "pass turn" }),
+      p.page.getByRole("button", { name: "end turn" }),
     );
+    const live = async (i: number): Promise<boolean> =>
+      (await passButtons[i].count()) > 0 && (await passButtons[i].isEnabled());
     await expect
       .poll(
-        async () =>
-          (await passButtons[0].isEnabled()) ||
-          (await passButtons[1].isEnabled()),
+        async () => (await live(0)) || (await live(1)),
         {
           timeout: 10_000,
         },

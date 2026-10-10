@@ -280,15 +280,6 @@ export interface Settings {
     // to respond to your own spell or trigger. Flip off to restore
     // the pre-#323 "every stack stops" behaviour permanently.
     autoPassOwnStack: boolean;
-    // S13.6 autopass-mode safety. When OFF (default), the autopass
-    // toggle auto-clears the first time the cursor reaches the
-    // viewer's own precombat_main — a safety belt so you don't
-    // skip your own turn because you forgot to turn off autopass
-    // before it cycled back to you. When ON, autopass stays
-    // engaged until manually toggled off. Labelled DANGER in the
-    // UI; anyone opting in has decided they'd rather eat the risk
-    // of a skipped turn than re-toggle every cycle.
-    autopassPersistThroughTurns: boolean;
     // #170: right-click any card for a per-card override menu —
     // move between zones, add / remove counters, mark damage,
     // declare combat by hand. Off by default, so right-click keeps
@@ -364,7 +355,7 @@ export interface Settings {
   };
 }
 
-export const SETTINGS_VERSION = 26;
+export const SETTINGS_VERSION = 27;
 const STORAGE_KEY = "cmdctrl.settings.v1";
 const LEGACY_MUTED_KEY = "cmdctrl.muted";
 
@@ -544,10 +535,6 @@ export function defaultSettings(): Settings {
       // the stack still stop, and the in-game "hold" toggle is the
       // per-window opt-out.
       autoPassOwnStack: true,
-      // S13.6 default: OFF — the autopass toggle clears on the
-      // viewer's next precombat_main so a forgotten autopass
-      // doesn't skip their turn. Opt-in is a DANGER setting.
-      autopassPersistThroughTurns: false,
       // #170 default: OFF. Right-click keeps meaning "show this
       // permanent's abilities" until the player opts in to the
       // override menu.
@@ -675,7 +662,6 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     bluffDelayMinMs: "synced",
     bluffDelayMaxMs: "synced",
     autoPassOwnStack: "synced",
-    autopassPersistThroughTurns: "synced",
     adminOverrides: "synced",
     showBotReasoning: "synced",
     highlightLegalActions: "synced",
@@ -1170,6 +1156,14 @@ function migrate(raw: unknown): Settings {
   // because the shallow merge keeps unknown keys, and an account copy
   // from an older client loses it the same way (applySyncedCopy).
   delete legacyGameplay.stackHoldMs;
+  // v26 → v27 (ADR 0143 §4.2, owner answer Q5 (a)): the autopass toggle
+  // is Skip to my turn, and it always clears at the viewer's own
+  // precombat main. gameplay.autopassPersistThroughTurns, the danger
+  // setting that kept it on, is gone. Nothing is mapped: a player who had
+  // it on now gets the safety belt back, which is the point. The key is
+  // deleted because the shallow merge keeps unknown keys, and an account
+  // copy from an older client loses it the same way (applySyncedCopy).
+  delete legacyGameplay.autopassPersistThroughTurns;
   // #1968: gameplay.alwaysAskTriggerOrder (#1530's checkbox) becomes
   // gameplay.triggerOrder. No version bump: the old key itself says
   // which blob this is. A stored or synced blob that has a valid

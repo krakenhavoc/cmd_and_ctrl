@@ -23,12 +23,14 @@
 //     over, eliminated, an open pending choice, an owed
 //     declare-blockers decision (#328), an owed attack requirement
 //     (#1571), the CR 732 loop breaker (#628). None of these can be out-voted by any toggle.
-//  2. The autopass safety belt (ADR 0009 §7): entering the viewer's
-//     own precombat_main clears the toggle instead of passing.
+//  2. The safety belt (ADR 0009 §7, always on since ADR 0143 §4.2): entering the viewer's
+//     own precombat_main clears Skip to my turn instead of passing.
 //  3. A manual one-time stop on this step → hold (#526). Beats the
 //     autopass toggle, the stops grid, and the pass mode.
-//  4. The autopass toggle: an opponent's stack item the viewer can
-//     answer → hold; one they could bluff at → bluff; else pass.
+//  4. Skip to my turn (the session toggle): an opponent's stack item, or an
+//     empty-stack combat or opponent's-end-step key window, the viewer can
+//     answer → hold; an opponent's item they could bluff at → bluff;
+//     else pass.
 //  5. passMode "manual" → hold (ADR 0143 §2.1).
 //  6. A non-empty stack: hold-priority armed → hold; entirely the
 //     viewer's own → the #323 carve-out; passMode "careful" → hold;
@@ -107,8 +109,6 @@ export interface AutopassGates {
   autopassToggle: boolean;
   // The viewer is the active player.
   viewerIsActive: boolean;
-  // gameplay.autopassPersistThroughTurns — the safety-belt opt-out.
-  autopassPersistThroughTurns: boolean;
   // A manual one-time stop is pinned on `step`.
   manualStop: boolean;
   // gameplay.passMode (ADR 0143 §2.1): Smart, Careful or Manual.
@@ -180,13 +180,10 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   if (g.loopSuspended) return "hold";
   if (!g.step) return "hold";
 
-  // 2. The safety belt (ADR 0009 §7).
-  if (
-    g.autopassToggle &&
-    g.step === "precombat_main" &&
-    g.viewerIsActive &&
-    !g.autopassPersistThroughTurns
-  ) {
+  // 2. The safety belt (ADR 0009 §7), built in since ADR 0143 §4.2:
+  // Skip to my turn ends at the viewer's own precombat main, always.
+  // There is no setting that keeps it on.
+  if (g.autopassToggle && g.step === "precombat_main" && g.viewerIsActive) {
     return "clear-toggle";
   }
 
@@ -205,12 +202,18 @@ export function autopassDecision(g: AutopassGates): AutopassVerdict {
   // from an earlier game must not slip through it.
   const smart = g.passMode === "smart";
 
-  // 4. The session toggle: "I'm out, stop asking" — except for an
-  // opponent's spell the viewer can actually answer (#1307). The
-  // toggle is standing intent from a player who thought they were
-  // tapped out; a live counterspell says otherwise.
+  // 4. Skip to my turn (ADR 0143 §4.2; the session toggle that was
+  // "autopass"): "pass for me until my turn" — except where the viewer
+  // can actually answer something (#1307). It is Smart's passing until
+  // the viewer is next active (ADR 0143 §4.1), so it keeps Smart's key
+  // windows: an opponent's spell or ability, combat once attackers are
+  // declared, and an opponent's end step, each only with a response in
+  // hand. Ticked steps pass: the toggle is the player saying they have
+  // nothing planned there. A choice the table waits on is rule 1 and
+  // never reaches here.
   if (g.autopassToggle) {
     if (stackOpp && g.hasResponse) return "hold";
+    if (g.stackEmpty && (g.combatWindow || g.oppEndWindow) && g.hasResponse) return "hold";
     if (stackOpp && smart && (g.bluffCounter || g.bluffInstant)) return bluff;
     return "pass";
   }

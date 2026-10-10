@@ -97,14 +97,15 @@ test.describe("#328 autopass skips the blocking window", () => {
         20_000,
       );
 
-      // The reproduction condition: the DEFENDER turns autopass on.
+      // The reproduction condition: the DEFENDER turns autopass (Skip to
+      // my turn, ADR 0143 §4.2) on.
       // Done now, on the opponent's turn — the S13.6 safety belt
       // clears the toggle on the viewer's own precombat_main, so
       // enabling it during their own turn would just switch off.
       // ADR 0111 PR 2: autopass is in the action dock's toggles row.
       const autopassBtn = defender.page
         .getByRole("region", { name: "actions", exact: true })
-        .locator("button.action.autopass");
+        .locator("button.action.skip-to-my-turn");
       await expect(autopassBtn).toBeVisible({ timeout: 10_000 });
       await autopassBtn.click();
       await expect(autopassBtn).toHaveAttribute("aria-pressed", "true");
@@ -203,7 +204,7 @@ test.describe("#328 autopass skips the blocking window", () => {
 
       // Declining is still legal, and it is the player's own click:
       // ADR 0111 PR 3 puts "No blocks" in the action dock as the
-      // primary, in place of next and Pass turn, for as long as the
+      // primary, in place of next and End turn, for as long as the
       // defender owes the declaration. That click is what separates
       // "the player chose not to block" from "the client chose for
       // them".

@@ -312,7 +312,7 @@ describe("roll for the first turn", () => {
     expect(sent[0].payload?.player).toBeUndefined();
   });
 
-  it("leaves a seat that has rolled a status line, with next, Pass turn and the toggles disabled", async () => {
+  it("leaves a seat that has rolled a status line, with next and the toggles disabled and no End turn", async () => {
     const c = await mountGame(
       rollTable({ rounds: [{ seats: [0, 1, 2], rolls: [{ seat: 0, result: 12 }] }] }),
     );
@@ -322,9 +322,10 @@ describe("roll for the first turn", () => {
       "Waiting for Opp and Third to roll",
     );
     expect(dock.querySelector<HTMLButtonElement>(".dock-btn.next")!.disabled).toBe(true);
-    expect(dock.querySelector<HTMLButtonElement>(".dock-btn.pass-turn")!.disabled).toBe(true);
+    // ADR 0143 §4.2: End turn is not drawn before the first turn.
+    expect(dock.querySelector(".dock-btn.end-turn")).toBeNull();
     const toggles = dock.querySelector('[role="group"][aria-label="priority controls"]')!;
-    for (const name of ["hold", "autopass", "Undo (1 left)", "bluff"]) {
+    for (const name of ["hold", "Skip to my turn", "Undo (1 left)", "bluff"]) {
       expect(buttonNamed(toggles, name)?.disabled, name).toBe(true);
     }
   });

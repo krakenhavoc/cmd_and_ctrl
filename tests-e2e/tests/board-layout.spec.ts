@@ -85,7 +85,7 @@ test.describe("board layout", () => {
     // ADR 0111 §1 (PR 2): the action dock, bottom right. Its label is
     // the tutorial's step-8 anchor (ADR 0076 §2.4) and an e2e contract.
     // It holds the turn header, the priority toggles and the action bar
-    // with next and Pass turn, each drawn once on the page.
+    // with next and End turn, each drawn at most once on the page.
     const dock = page.getByRole("region", { name: "actions", exact: true });
     await expect(dock).toBeVisible();
     await expect(dock.getByLabel("turn and phase indicator")).toBeVisible();
@@ -96,9 +96,17 @@ test.describe("board layout", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /^Undo/ })).toHaveCount(1);
     await expect(dock.getByRole("button", { name: "next", exact: true })).toBeVisible();
-    await expect(dock.getByRole("button", { name: "Pass turn" })).toBeVisible();
     await expect(page.getByRole("button", { name: "next", exact: true })).toHaveCount(1);
-    await expect(page.getByRole("button", { name: "pass turn" })).toHaveCount(1);
+    // ADR 0143 §4.2: End turn (formerly Pass turn) is drawn for the
+    // active seat only, so exactly one of the two pages has it, once.
+    await expect
+      .poll(async () => {
+        const counts = await Promise.all(
+          [alice, bob].map((p) => p.page.getByRole("button", { name: "End turn" }).count()),
+        );
+        return counts.sort().join(",");
+      })
+      .toBe("0,1");
     // Owner decision 1: the dock is in the screen's bottom-right corner,
     // and the self panel's rail (its piles) ends above it.
     const box = (await dock.boundingBox())!;

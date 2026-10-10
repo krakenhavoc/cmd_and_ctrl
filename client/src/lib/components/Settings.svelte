@@ -1192,26 +1192,6 @@
                 Bots explain each move in the table feed. It can mention cards in the bot's hand.
                 Improvised plays are always announced, whatever this says.
               </p>
-
-              <!-- ADR 0143 §4.2 removes this with the autopass toggle (delivery PR 5). -->
-              <label class="danger">
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.autopassPersistThroughTurns}
-                  onchange={(e) =>
-                    change("gameplay", "autopassPersistThroughTurns", e.currentTarget.checked)}
-                />
-                Autopass persists through your own turns
-                {#if isFresh("gameplay.autopassPersistThroughTurns")}
-                  <span class="saved">✓ saved</span>
-                {/if}
-              </label>
-              <p class="help danger-help">
-                <strong>WARNING: ENABLING THIS SETTING MAY CAUSE YOU TO SKIP YOUR OWN TURN.</strong>
-                By default, the autopass toggle in the phase display auto-clears when the cursor reaches
-                your own first main phase — a safety belt so a forgotten autopass doesn't cost you a turn.
-                Flip this on to keep autopass engaged indefinitely (until you click it off).
-              </p>
             </details>
           {:else if activeTab === "shortcuts"}
             <h3>Keyboard shortcuts</h3>
@@ -1789,23 +1769,6 @@
     font-size: 11.5px;
     line-height: 1.45;
     margin: 4px 0 8px;
-  }
-  /* Danger-flagged settings get gold framing so an opt-in that might
-     cost the player a turn can't be mistaken for a routine
-     preference. */
-  label.danger {
-    color: var(--accent-strong);
-  }
-  .danger-help {
-    color: var(--fg-muted);
-    border-left: 2px solid var(--accent);
-    padding: 6px 10px;
-    background: var(--accent-soft);
-    border-radius: 0 8px 8px 0;
-  }
-  .danger-help strong {
-    color: var(--accent-strong);
-    letter-spacing: 0.03em;
   }
   /* An option that exists only to be compared against another one.
      Flagged in the UI as well as in the code, because a setting that
