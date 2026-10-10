@@ -16,9 +16,10 @@ import (
 
 // grantKeyProblems walks an engine-facing def map and reports every
 // layer-6 grant that names a bundle nobody registered, or a bundle
-// with a Static slot (ADR 0093 Decision 10: a static that only exists
-// after layer 6 is never gathered). Separate from the test so the test
-// can prove it reports both on a fixture.
+// with a static the layer pass cannot apply (ADR 0093 Decision 10, as
+// amended 2026-10-10: only a layer-7c static, gathered after layer 6).
+// Separate from the test so the test can prove it reports both on a
+// fixture.
 func grantKeyProblems(all map[string]*game.CardDef) (problems []string, grants int) {
 	for owner, d := range all {
 		for _, s := range d.Static {
@@ -28,8 +29,8 @@ func grantKeyProblems(all map[string]*game.CardDef) (problems []string, grants i
 				switch {
 				case bundle == nil:
 					problems = append(problems, owner+" grants "+k+", which no card registers in Spec.Grants")
-				case len(bundle.Static) > 0:
-					problems = append(problems, owner+" grants "+k+", a bundle with a Static slot — a layer-6 grant of a static is not modelled")
+				case layerGrantStaticProblem(bundle) != "":
+					problems = append(problems, owner+" grants "+k+", a bundle with a static a layer-6 grant cannot give: "+layerGrantStaticProblem(bundle))
 				}
 			}
 		}
@@ -40,7 +41,8 @@ func grantKeyProblems(all map[string]*game.CardDef) (problems []string, grants i
 
 // TestEveryGrantKeyResolves is the TestEveryTokenKeyResolves twin
 // (ADR 0093 Decision 9): every key a layer-6 grant names resolves to a
-// registered bundle, and none of those bundles has a Static slot.
+// registered bundle, and every static in those bundles is a layer-7c
+// one the second gather applies (#2562).
 // Walked over `defs`, so an emblem's statics are covered too.
 func TestEveryGrantKeyResolves(t *testing.T) {
 	problems, _ := grantKeyProblems(defs)
@@ -52,11 +54,13 @@ func TestEveryGrantKeyResolves(t *testing.T) {
 		"card-a":                    {Static: []game.StaticAbility{GrantAbilities(nil, "nobody/registered")}},
 		"card-b":                    {Static: []game.StaticAbility{GrantAbilities(nil, "has/static")}},
 		"card-c":                    {Static: []game.StaticAbility{GrantAbilities(nil, "fine/mana")}},
-		game.GrantKey("has/static"): {Static: []game.StaticAbility{{Layer: game.Layer7PT}}},
+		"card-d":                    {Static: []game.StaticAbility{GrantAbilities(nil, "fine/pump")}},
+		game.GrantKey("has/static"): {Static: []game.StaticAbility{{Layer: game.Layer6Ability}}},
 		game.GrantKey("fine/mana"):  {ManaAbilities: []game.ManaAbilityShape{{TapCost: true, Produced: "{G}"}}},
+		game.GrantKey("fine/pump"):  {Static: []game.StaticAbility{PumpAttached(3, 3)}},
 	}
 	got, grants := grantKeyProblems(fixture)
-	if grants != 3 || len(got) != 2 ||
+	if grants != 4 || len(got) != 2 ||
 		!strings.Contains(got[0], "nobody/registered") || !strings.Contains(got[1], "has/static") {
 		t.Errorf("fixture problems = %v (grants %d), want the unregistered key and the static bundle", got, grants)
 	}

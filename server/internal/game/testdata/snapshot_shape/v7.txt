@@ -2722,6 +2722,8 @@ scopedEffects[].mods[].spentBatch	number:uint64
 scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array
 scopedEffects[].mods[].subtypes[]	string
+scopedEffects[].mods[].supertypes	array
+scopedEffects[].mods[].supertypes[]	string
 scopedEffects[].mods[].text	string
 scopedEffects[].mods[].then	string
 scopedEffects[].mods[].thenPer	string

@@ -185,6 +185,20 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("attack-target restrictions = %+v, want one asking for an Island", c.AttackTargetRestrictions)
 			}
 		}},
+		// #2562: CR 612.8, the bear has only the new name.
+		{"setName", []Mod{SetNameMod("Everflame, Heroes' Legacy")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if c.Name != "Everflame, Heroes' Legacy" {
+				t.Errorf("name = %q, want Everflame, Heroes' Legacy", c.Name)
+			}
+		}},
+		// #2562: CR 205.1a, a set: the Creature type goes, and with it
+		// the Bear (its creature type); the supertype is gained.
+		{"setTypes", []Mod{SetTypesMod([]string{"Artifact"}, []string{"Equipment"}, "Legendary")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Types, []string{"Artifact"}) || !reflect.DeepEqual(c.Subtypes, []string{"Equipment"}) ||
+				!typeListHas(c.Supertypes, "Legendary") {
+				t.Errorf("type line = %v %v — %v, want Legendary Artifact — Equipment", c.Supertypes, c.Types, c.Subtypes)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -278,6 +292,8 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
+		// #2562: cases above.
+		ModSetName: true, ModSetTypes: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

@@ -988,6 +988,12 @@ func (g *Game) layerPassWithLocked(extra []ContinuousEffect) {
 			// #1651: "can't have" beats every grant in the bucket,
 			// whatever its timestamp (CR 101.2). See cant_have.go.
 			g.enforceCantHaveLocked()
+			// #2562 (ADR 0093 Decision 10, amended): the layer-7c
+			// statics layer 6 just granted, which the gather above could
+			// not see. See granted_statics.go.
+			if granted := g.grantedStaticEffectsLocked(); len(granted) > 0 {
+				effects = append(effects[:len(effects):len(effects)], granted...)
+			}
 		}
 	}
 	// #1650: a restriction over a live rule reads the finished
