@@ -7,8 +7,8 @@
 //
 //   - Four settings are FORCED: strictMana on (ADR 0118 owner decision
 //     7: the tutorial teaches the table the player will meet, where a
-//     click taps the lands), autoPassPriority off (so priority visibly
-//     reaches the player), tableLayout quadrant, cardSize medium. The
+//     click taps the lands), passMode Manual (so priority visibly
+//     reaches the player; ADR 0143 §3.2), tableLayout quadrant, cardSize medium. The
 //     player's own four values are captured first.
 //   - The SESSION becomes the practice seat's, exactly as joining any
 //     table swaps it. The session it replaces — a seat at a real
@@ -54,13 +54,13 @@ import { createPracticeTable, leavePracticeTable } from "./api";
 import { guardedWritable } from "./guardedStore";
 import { navigate, route, type Route } from "./router";
 import { currentSession, savedIdentity, setSession, type Session } from "./session";
-import { settings, type Settings } from "./settings";
+import { isPassMode, settings, type PassMode, type Settings } from "./settings";
 import { isTableLayout } from "./tableLayout";
 
 /** The four settings the tutorial forces, as the player had them. */
 export interface SavedSettings {
   strictMana: boolean;
-  autoPassPriority: boolean;
+  passMode: PassMode;
   tableLayout: Settings["display"]["tableLayout"];
   cardSize: Settings["display"]["cardSize"];
 }
@@ -68,7 +68,7 @@ export interface SavedSettings {
 /** The values the tutorial forces (ADR 0076 §2.2; strictMana on since ADR 0118 §1). */
 export const FORCED_SETTINGS: Readonly<SavedSettings> = Object.freeze({
   strictMana: true,
-  autoPassPriority: false,
+  passMode: "manual",
   tableLayout: "quadrant",
   cardSize: "medium",
 });
@@ -100,7 +100,7 @@ export const STALE_MS = 20_000;
 export function captureSettings(s: Settings): SavedSettings {
   return {
     strictMana: s.gameplay.strictMana,
-    autoPassPriority: s.gameplay.autoPassPriority,
+    passMode: s.gameplay.passMode,
     tableLayout: s.display.tableLayout,
     cardSize: s.display.cardSize,
   };
@@ -114,7 +114,7 @@ export function captureSettings(s: Settings): SavedSettings {
 export function withSettings(s: Settings, v: SavedSettings): Settings {
   return {
     ...s,
-    gameplay: { ...s.gameplay, strictMana: v.strictMana, autoPassPriority: v.autoPassPriority },
+    gameplay: { ...s.gameplay, strictMana: v.strictMana, passMode: v.passMode },
     display: { ...s.display, tableLayout: v.tableLayout, cardSize: v.cardSize },
   };
 }
@@ -129,7 +129,19 @@ export function parseRecord(raw: string | null): PracticeRecord | null {
   if (!raw) return null;
   try {
     const r = JSON.parse(raw) as Partial<PracticeRecord>;
-    const s = r.saved as Partial<SavedSettings> | undefined;
+    const s = r.saved as (Partial<SavedSettings> & { autoPassPriority?: unknown }) | undefined;
+    // A record written before ADR 0143 saved autoPassPriority instead
+    // of passMode: off was Manual, and on is taken as Smart (the old
+    // record cannot say whether the player was on Careful).
+    const savedMode: unknown = s?.passMode;
+    const legacy: unknown = s?.autoPassPriority;
+    const passMode: PassMode | null = isPassMode(savedMode)
+      ? savedMode
+      : typeof legacy === "boolean"
+        ? legacy
+          ? "smart"
+          : "manual"
+        : null;
     if (
       r.v !== 1 ||
       typeof r.gameID !== "string" ||
@@ -138,7 +150,7 @@ export function parseRecord(raw: string | null): PracticeRecord | null {
       typeof r.aliveAt !== "number" ||
       !s ||
       typeof s.strictMana !== "boolean" ||
-      typeof s.autoPassPriority !== "boolean" ||
+      passMode === null ||
       !isTableLayout(s.tableLayout) ||
       (s.cardSize !== "small" && s.cardSize !== "medium" && s.cardSize !== "large")
     ) {
@@ -150,7 +162,7 @@ export function parseRecord(raw: string | null): PracticeRecord | null {
       practiceToken: r.practiceToken,
       saved: {
         strictMana: s.strictMana,
-        autoPassPriority: s.autoPassPriority,
+        passMode,
         tableLayout: s.tableLayout,
         cardSize: s.cardSize,
       },

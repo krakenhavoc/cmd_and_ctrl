@@ -348,19 +348,19 @@
     return () => window.removeEventListener("beforeunload", handler);
   });
 
-  // settings.gameplay.autoPassPriority + settings.gameplay.stepStops
+  // settings.gameplay.passMode + settings.gameplay.stepStops
   // (S13): when the viewer holds priority on an empty stack, auto-
   // pass unless the current step is one they opted to stop on. The
   // pre-S13 behaviour was "auto-pass through opponents' turns only";
   // S13 generalises that to "auto-pass through every step the user
   // hasn't pinned." Active-turn stops default-on for the main phases
   // and combat declarations, so the active player still gets stopped
-  // for their plays even with autoPassPriority enabled.
+  // for their plays even in Smart mode.
   // S13.6: autopass mode is a session-scoped toggle ("get me
   // through this turn" / "I'm tapped out, don't ask me"). Stays on
   // until the viewer clicks the button again — not a one-shot.
-  // When on, it overrides settings.autoPassPriority, the stepStops
-  // grid and the smartAutoPass predicate. It does NOT override a
+  // When on, it overrides settings.passMode, the stepStops
+  // grid and the response predicate. It does NOT override a
   // manual one-time pin (#526) — see autopassDecision.ts for the
   // full precedence and why. The effect still requires the viewer to
   // actually hold priority (so we don't spam the server with "you do
@@ -516,7 +516,7 @@
       // re-runs this effect and resumes auto-pass immediately rather
       // than on the next snapshot.
       manualStop: !!step && $manualStops.has(step as StepID),
-      autoPassPriority: $settings.gameplay.autoPassPriority,
+      passMode: gp.passMode,
       stackEmpty: stackEmpty(view),
       holdPriority: $holdPriority,
       autoPassOwnStack: $settings.gameplay.autoPassOwnStack,
@@ -526,9 +526,7 @@
       // first-strike step too, which is the window a player who asked
       // to see damage most wants.
       stepStop: step ? $settings.gameplay.stepStops[stopKeyFor(step as StepID)] : undefined,
-      smartAutoPass: gp.smartAutoPass,
       stepStopsOnlyWhenCanAct: gp.stepStopsOnlyWhenCanAct,
-      alwaysStopOpponentStack: gp.alwaysStopOpponentStack,
       hasResponse: hasResponse(view, viewerID, cats),
       hasPlay: hasPlay(view, viewerID, cats),
       // ADR 0118 owner decision 8: stop if the engine may be wrong.

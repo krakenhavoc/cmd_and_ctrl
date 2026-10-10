@@ -11,6 +11,7 @@
     exportSettings,
     importSettings,
     fingerprintSettings,
+    type PassMode,
     type TriggerOrderMode,
   } from "../settings";
   import { STEP_IDS, STEP_LABELS, hasOwnStop, type StepID } from "../turn";
@@ -45,6 +46,20 @@
   import { L } from "../labels";
   import { navigate } from "../router";
   import { session } from "../session";
+
+  // ADR 0143 §2.1 and §3.2: the one Auto-pass choice, and its copy.
+  const PASS_MODE_CHOICES: readonly { mode: PassMode; label: string }[] = [
+    { mode: "smart", label: "Smart" },
+    { mode: "careful", label: "Careful" },
+    { mode: "manual", label: "Manual" },
+  ];
+  const PASS_MODE_HELP: Record<PassMode, string> = {
+    smart:
+      "Stops where you can do something, and whenever you can respond to an opponent. Passes everything else.",
+    careful:
+      "Smart, and also stops at every opponent spell and ability, even when you can't respond. Slower, but you see everything, and a pause never gives anything away.",
+    manual: "Never passes for you. Click next every time you get priority.",
+  };
 
   // Steps that grant priority — the only ones the per-step stops UI
   // surfaces. Untap and Cleanup are filtered out since the server
@@ -841,28 +856,40 @@
 
             <AutoAnswersSettings />
 
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.autoPassPriority}
-                onchange={(e) => change("gameplay", "autoPassPriority", e.currentTarget.checked)}
-              />
-              Auto-pass priority through unstopped steps
-              {#if isFresh("gameplay.autoPassPriority")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <p class="help">
-              Priority passes for you everywhere except the steps you tick below and, with smart
-              auto-pass on, the moments you can actually respond: an opponent's spell or ability on
-              the stack, combat once attackers are declared, and an opponent's end step. Click
-              <strong>next</strong> in the action dock (bottom right) to pass by hand, or click a step
-              icon to stop there once.
-            </p>
+            <fieldset class="pass-mode">
+              <legend>
+                Auto-pass
+                {#if isFresh("gameplay.passMode")}<span class="saved">✓ saved</span>{/if}
+              </legend>
+              {#each PASS_MODE_CHOICES as choice (choice.mode)}
+                <label>
+                  <input
+                    type="radio"
+                    name="pass-mode"
+                    value={choice.mode}
+                    checked={$settings.gameplay.passMode === choice.mode}
+                    onchange={() => change("gameplay", "passMode", choice.mode)}
+                  />
+                  {choice.label}
+                </label>
+              {/each}
+              <p class="help">{PASS_MODE_HELP[$settings.gameplay.passMode]}</p>
+              <p class="help">
+                Click <strong>next</strong> in the action dock (bottom right) to pass by hand, or click
+                a step icon to stop there once.
+              </p>
+            </fieldset>
 
             <fieldset class="step-stops">
               <legend>Stop on these steps</legend>
               <p class="help">
-                When auto-pass is on, priority stops here for your input. Untap and Cleanup are
-                excluded — they don't grant priority (turn-based actions auto-fire).
+                {#if $settings.gameplay.passMode === "manual"}
+                  In Manual every step stops, so these do nothing.
+                {:else}
+                  You always get a chance to respond to an opponent's spell, an attack, and an
+                  opponent's end step, ticked or not. Untap and Cleanup are excluded — they don't
+                  grant priority (turn-based actions auto-fire).
+                {/if}
               </p>
               <div class="step-stops-grid">
                 {#each STOPPABLE_STEPS as step (step)}
@@ -891,36 +918,18 @@
                 A ticked step passes when you have nothing to do there, so &ldquo;stop on
                 upkeep&rdquo; means &ldquo;stop if I have something to do,&rdquo; not &ldquo;stop
                 every time.&rdquo; On your own main phase anything you can play counts, a land
-                included. Anywhere else it takes a move from the &ldquo;Stop for&rdquo; list below.
-                Turn this off to stop at every ticked step.
+                included. Anywhere else it takes a move from the &ldquo;What counts as a
+                response&rdquo; list below. Turn this off to stop at every ticked step.
               </p>
             </fieldset>
 
-            <label>
-              <input
-                type="checkbox"
-                checked={$settings.gameplay.smartAutoPass}
-                onchange={(e) => change("gameplay", "smartAutoPass", e.currentTarget.checked)}
-              />
-              Smart auto-pass (stop only when you can do something)
-              {#if isFresh("gameplay.smartAutoPass")}<span class="saved">✓ saved</span>{/if}
-            </label>
-            <p class="help">
-              Outside the ticked steps, it stops you in the key windows &mdash; an opponent's spell
-              or ability on the stack, declared attackers or blockers, an opponent's end step
-              &mdash; only when you hold a response from the list below. Mana abilities and land
-              drops never count as a response. In combat (beginning of combat, attackers and
-              blockers) crewing a Vehicle, turning a land into a creature, or giving a creature
-              flying, menace or an extra block counts too. Turn this off to stop on every opponent
-              stack item.
-            </p>
-
-            <fieldset
-              class="step-stops"
-              disabled={!$settings.gameplay.smartAutoPass &&
-                !$settings.gameplay.stepStopsOnlyWhenCanAct}
-            >
-              <legend>Stop for</legend>
+            <fieldset class="step-stops">
+              <legend>What counts as a response</legend>
+              <p class="help">
+                Auto-pass stops for an opponent's spell, an attack or an opponent's end step only
+                when you have one of these. Mana abilities and land drops never count. In combat,
+                crewing, animating a land or granting a keyword counts as a targeted ability.
+              </p>
               <label>
                 <input
                   type="checkbox"
@@ -970,16 +979,6 @@
                 Special actions (foretell, suspend, turning a card face up)
                 {#if isFresh("gameplay.respondSpecialActions")}<span class="saved">✓</span>{/if}
               </label>
-              <label>
-                <input
-                  type="checkbox"
-                  checked={$settings.gameplay.alwaysStopOpponentStack}
-                  onchange={(e) =>
-                    change("gameplay", "alwaysStopOpponentStack", e.currentTarget.checked)}
-                />
-                Always stop for opponents' spells and abilities
-                {#if isFresh("gameplay.alwaysStopOpponentStack")}<span class="saved">✓</span>{/if}
-              </label>
               <p class="help">
                 By default an opponent's spell or ability stops you only for real interaction: an
                 instant you can cast, a counterspell, or an ability that targets or protects
@@ -992,11 +991,6 @@
                 While an opponent's spell waits on the stack the action dock counts down to the
                 automatic pass. Click <strong>wait</strong> there (or press the hold key) to keep priority
                 on that stack and respond.
-              </p>
-              <p class="help">
-                The last one stops on every opponent item on the stack even when you can't answer
-                it, which is how auto-pass worked before. Stopping every time also means a pause
-                never tells the table you have an answer.
               </p>
             </fieldset>
 
@@ -1021,12 +1015,13 @@
               once, and the action dock counts the wait down.
             </p>
 
-            <fieldset class="step-stops" disabled={!$settings.gameplay.smartAutoPass}>
+            <fieldset class="step-stops" disabled={$settings.gameplay.passMode !== "smart"}>
               <legend>Bluff</legend>
               <p class="help">
                 Smart auto-pass passes the moment you have no answer, so a pause tells the table you
-                do. A bluff pauses anyway when you have nothing, and the other players see the same
-                pause either way. Turn bluffing on or off mid-game with the
+                do. Bluffing works only in Smart: in Careful and Manual you stop anyway. A bluff
+                pauses anyway when you have nothing, and the other players see the same pause either
+                way. Turn bluffing on or off mid-game with the
                 <strong>bluff</strong> button in the action dock (always shown, and the
                 <kbd>B</kbd> key does the same). Its <strong>▾</strong> sets the same options as below.
               </p>

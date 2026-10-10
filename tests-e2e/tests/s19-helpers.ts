@@ -696,7 +696,8 @@ export interface JoinedPlayer {
 
 // S19_GAMEPLAY is what every S19 seat's settings start from.
 //
-// alwaysStopOpponentStack makes the client hold on an opponent's stack
+// passMode "careful" (ADR 0143 §2.1; until v24 this was
+// alwaysStopOpponentStack) makes the client hold on an opponent's stack
 // item. Smart autopass (#1308) passes for a seat with nothing to
 // respond with, so on an idle table the opponent passes the caster's
 // trigger the moment it lands and it resolves before any assertion can
@@ -711,7 +712,7 @@ export interface JoinedPlayer {
 // Everything else stays on the defaults (auto-pass through upkeep/draw
 // is what setup waits for).
 export const S19_GAMEPLAY: Record<string, unknown> = {
-  alwaysStopOpponentStack: true,
+  passMode: "careful",
   stackHoldMs: 0,
 };
 
