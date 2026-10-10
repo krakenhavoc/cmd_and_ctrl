@@ -40,8 +40,9 @@ func init() {
 			Key:  sakashimaReturnGrant,
 			Text: "{2}{U}{U}: Return this creature to its owner's hand at the beginning of the next end step.",
 			Activated: []ActivatedAbility{{
-				Label: "{2}{U}{U}: Return this creature to its owner's hand at the beginning of the next end step.",
-				Cost:  ManaCost("{2}{U}{U}"),
+				Label:   "{2}{U}{U}: Return this creature to its owner's hand at the beginning of the next end step.",
+				Purpose: game.Purpose{Answers: game.AnswerProtect},
+				Cost:    ManaCost("{2}{U}{U}"),
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return ScheduleDelayedTrigger{
 						Label: "Sakashima the Impostor — return it to its owner's hand",

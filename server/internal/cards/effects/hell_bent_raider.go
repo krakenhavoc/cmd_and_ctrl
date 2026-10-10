@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Hell-Bent Raider — Creature — Human Barbarian {1}{R}{R}, 2/2:
 //
 //	"First strike, haste
@@ -19,9 +21,10 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"first strike", "haste"},
 		Activated: []ActivatedAbility{{
-			Label:  "Discard a card at random: This creature gains protection from white until end of turn.",
-			Cost:   DiscardAtRandom(1, "a card at random"),
-			Effect: thisCreatureUntilEOT("Hell-Bent Raider — protection from white", 0, 0, "protection from white"),
+			Label:   "Discard a card at random: This creature gains protection from white until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    DiscardAtRandom(1, "a card at random"),
+			Effect:  thisCreatureUntilEOT("Hell-Bent Raider — protection from white", 0, 0, "protection from white"),
 		}},
 	})
 }

@@ -22,8 +22,9 @@ func init() {
 		Name:         "Cankerbloom",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label: "{1}, Sacrifice this creature: Choose one — destroy target artifact; destroy target enchantment; or proliferate.",
-			Cost:  Plus(ManaCost("{1}"), SacrificeThis()),
+			Label:   "{1}, Sacrifice this creature: Choose one — destroy target artifact; destroy target enchantment; or proliferate.",
+			Purpose: game.Purpose{Answers: game.AnswerRemove | game.AnswerPump},
+			Cost:    Plus(ManaCost("{1}"), SacrificeThis()),
 			Modes: ChooseOne(
 				ModeDoing("Destroy target artifact.",
 					TargetPermanent("target artifact", Artifact()),

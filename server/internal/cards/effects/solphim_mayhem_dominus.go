@@ -39,9 +39,10 @@ func init() {
 		Name:         "Solphim, Mayhem Dominus",
 		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:  "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
-			Cost:   Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
-			Effect: putIndestructibleCounterOnSource(),
+			Label:   "{1}{R/P}{R/P}, Discard two cards: Put an indestructible counter on Solphim, Mayhem Dominus.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    Plus(ManaCost("{1}{R/P}{R/P}"), DiscardN(2, "two cards")),
+			Effect:  putIndestructibleCounterOnSource(),
 		}},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDealDamage},

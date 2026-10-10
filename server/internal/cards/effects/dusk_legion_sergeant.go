@@ -20,8 +20,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Activated: []ActivatedAbility{{
-			Label: "{1}{B}, Sacrifice this creature: Each nontoken Vampire creature you control gains persist until end of turn.",
-			Cost:  Plus(ManaCost("{1}{B}"), SacrificeThis()),
+			Label:   "{1}{B}, Sacrifice this creature: Each nontoken Vampire creature you control gains persist until end of turn.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    Plus(ManaCost("{1}{B}"), SacrificeThis()),
 			Effect: Do(GrantKeywordUntilEOT{
 				Match:    And(Creature(), YouControl(), OfCreatureType("Vampire"), Not(IsTokenPredicate())),
 				Keywords: []string{game.KeywordPersist},

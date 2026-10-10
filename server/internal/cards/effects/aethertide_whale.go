@@ -25,9 +25,10 @@ func init() {
 			WhenThisEntersYouGetEnergy("Aethertide Whale", 6),
 		},
 		Activated: []ActivatedAbility{{
-			Label:  "Pay {E}{E}{E}{E}: Return this creature to its owner's hand.",
-			Cost:   PayEnergy(4),
-			Effect: returnThisPermanentToOwnersHand,
+			Label:   "Pay {E}{E}{E}{E}: Return this creature to its owner's hand.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect},
+			Cost:    PayEnergy(4),
+			Effect:  returnThisPermanentToOwnersHand,
 		}},
 	})
 }

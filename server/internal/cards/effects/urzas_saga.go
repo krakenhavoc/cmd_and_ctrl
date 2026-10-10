@@ -48,8 +48,9 @@ func init() {
 			{
 				Key: urzasSagaConstruct,
 				Activated: []ActivatedAbility{{
-					Label: "{2}, {T}: Create a 0/0 Construct with +1/+1 for each artifact you control",
-					Cost:  Plus(ManaCost("{2}"), TapCost()),
+					Label:   "{2}, {T}: Create a 0/0 Construct with +1/+1 for each artifact you control",
+					Purpose: game.Purpose{Answers: game.AnswerPump | game.AnswerMakesBlocker},
+					Cost:    Plus(ManaCost("{2}"), TapCost()),
 					Effect: func(g *game.Game, item *game.StackItem) error {
 						return CreateToken{Template: UrzaConstructToken(), N: 1}.Apply(NewContext(g, item))
 					},
