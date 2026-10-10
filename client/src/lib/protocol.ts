@@ -1780,6 +1780,21 @@ export interface DamageAssignmentView {
   // blocks every creature in blocker_card_ids, and its controller
   // divides its damage among them freely — no order, no trample.
   blocker_divides?: boolean;
+  // #2956 (ADR 0147): the server's canonical split
+  // (legal.CanonicalDamageSplit), the one the bots answer with. The
+  // prompt pre-fills it, and with "Auto-assign combat damage" on the
+  // client sends it unasked when covers_lethal is set. `lethal` is the
+  // lethal damage of each blocker, indexed like blocker_card_ids.
+  suggested?: DamageSplitView;
+  lethal?: number[];
+  covers_lethal?: boolean;
+}
+
+// DamageSplitView is a damage-assignment answer in the resolve_choice
+// payload's own shape (#2956).
+export interface DamageSplitView {
+  assignments: { blocker_id: string; amount: number }[];
+  trample_to_player?: number;
 }
 
 // DelayedTriggerView mirrors `protocol.DelayedTriggerView`

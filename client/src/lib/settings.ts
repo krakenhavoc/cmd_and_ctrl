@@ -304,6 +304,11 @@ export interface Settings {
     // you owe a decision. Off removes only that positive treatment;
     // the dimming of a card you cannot play is a gate and stays.
     highlightLegalActions: boolean;
+    // #2956 (ADR 0147): when an attacker's damage covers lethal for
+    // every creature blocking it, assign it for me: lethal to each
+    // blocker, the rest to the player with trample or to the last
+    // blocker without. Short of that, the prompt still asks, pre-filled.
+    autoAssignCombatDamage: boolean;
   };
 
   shortcuts: {
@@ -545,6 +550,9 @@ export function defaultSettings(): Settings {
       showBotReasoning: false,
       // ADR 0105 default: ON, for everyone (owner decision 4).
       highlightLegalActions: true,
+      // #2956 default: ON. When the damage kills every blocker, the
+      // split has nothing left to choose.
+      autoAssignCombatDamage: true,
     },
     shortcuts: {
       // v10 default: ON. The defaults are chosen not to collide with
@@ -665,6 +673,7 @@ export const SYNCED_FIELDS: Readonly<SettingsFieldScopes> = Object.freeze({
     adminOverrides: "synced",
     showBotReasoning: "synced",
     highlightLegalActions: "synced",
+    autoAssignCombatDamage: "synced",
   },
   shortcuts: {
     enabled: "synced",
@@ -1188,6 +1197,12 @@ function migrate(raw: unknown): Settings {
   // list is checked, not trusted: only well-formed rules survive, one
   // per key, at most MAX_AUTO_ANSWERS.
   merged.gameplay.autoAnswers = normalizeAutoAnswers(merged.gameplay.autoAnswers);
+  // #2956: gameplay.autoAssignCombatDamage fills from the default (on)
+  // through the shallow merge, so SETTINGS_VERSION stands. Anything but
+  // a boolean is the default.
+  if (typeof merged.gameplay.autoAssignCombatDamage !== "boolean") {
+    merged.gameplay.autoAssignCombatDamage = true;
+  }
   return absorbLegacy(merged);
 }
 

@@ -842,6 +842,44 @@ export const LABEL_SPECS = {
     owners: ["lib/components/AutoAnswersSettings.svelte"],
     doc: "removes one standing answer in Settings → Gameplay, so its prompt is asked again",
   }),
+
+  // -- Combat damage assignment (#2956, ADR 0147) --
+  damageAutoAssigned: label({
+    name: "combat damage assigned",
+    kind: "aria",
+    role: "dialog",
+    owners: ["lib/damageAssignment.ts"],
+    doc: "the dock's notice after Auto-assign combat damage assigned an attacker's damage for you (lethal to each blocker, the rest over), for about six seconds",
+  }),
+  alwaysAskCombatDamage: label({
+    name: "Always ask",
+    kind: "text",
+    role: "button",
+    owners: ["lib/damageAssignment.ts"],
+    doc: "the combat-damage notice's button that turns Auto-assign combat damage off; the assignment just made stands",
+  }),
+  addDamage: dynamicLabel({
+    stem: "Add 1 damage to ",
+    match: "prefix",
+    shape: "Add 1 damage to <name>",
+    make: (name: string) => `Add 1 damage to ${name}`,
+    example: ["Corsair Captain"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}DamageStepper.svelte`, `${BOARD}ChoicePromptModal.svelte`],
+    doc: "the + on a blocker (on the board and in the damage sheet) while you assign combat damage; the defending player's trample line uses it too",
+  }),
+  removeDamage: dynamicLabel({
+    stem: "Remove 1 damage from ",
+    match: "prefix",
+    shape: "Remove 1 damage from <name>",
+    make: (name: string) => `Remove 1 damage from ${name}`,
+    example: ["Corsair Captain"],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}DamageStepper.svelte`, `${BOARD}ChoicePromptModal.svelte`],
+    doc: "the − beside addDamage",
+  }),
 } satisfies Record<string, LabelSpec>;
 
 export type LabelKey = keyof typeof LABEL_SPECS;

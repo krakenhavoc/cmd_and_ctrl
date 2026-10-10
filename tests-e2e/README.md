@@ -17,6 +17,7 @@ tests-e2e/
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
     ├── board-pick-2880.spec.ts # #2880: a sacrifice picked by clicking the creature on the board, confirmed in the dock
     ├── cast-anyway-2188.spec.ts # ADR 0118 §2: Cast anyway (don't pay) asks first, casts unpaid, logs it
+    ├── combat-damage-2956.spec.ts # ADR 0147: a double-blocked trampler's sheet opens on lethal-each-and-the-rest-over, the blockers tick on the board; with Auto-assign on, nothing is asked
     ├── combat-strike-2614.spec.ts # ADR 0134: an attacker's copy lunges and is gone in 2 s, none with combat motion off; first strike before regular, a double block lunged at once, trample's streak, blockers crumbling
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link

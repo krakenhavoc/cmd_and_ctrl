@@ -64,6 +64,8 @@
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
+  import DamageStepper from "./DamageStepper.svelte";
+  import { boardDamageAssign } from "../../damageAssignment";
   import { displayName } from "../../faces";
   import { ICONS } from "../../icons";
   import { ringBearerTitle } from "../../ringEmblem";
@@ -1273,6 +1275,11 @@
     <!-- ADR 0103: a Room's doors; the unlock buttons are its
          controller's (CR 709.5e). -->
     <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
+  {/if}
+  {#if $boardDamageAssign && !!onClick && readyZone === "battlefield" && !memberIDs}
+    <!-- #2956: combat damage ticked up and down on the blockers
+         themselves, and the running total on the attacker. -->
+    <DamageStepper cardID={card.instance_id} name={displayName(card)} />
   {/if}
   {#if manaMenuOpen && hasMenu}
     <div class="mana-menu-anchor">

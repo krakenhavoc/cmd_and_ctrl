@@ -948,6 +948,23 @@
                 first. By default you are asked only when the order can change what happens.
               </p>
 
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.gameplay.autoAssignCombatDamage}
+                  onchange={(e) =>
+                    change("gameplay", "autoAssignCombatDamage", e.currentTarget.checked)}
+                />
+                Auto-assign combat damage
+                {#if isFresh("gameplay.autoAssignCombatDamage")}<span class="saved">✓ saved</span
+                  >{/if}
+              </label>
+              <p class="help">
+                When your attacker has enough damage to kill every creature blocking it, assign it
+                for you: lethal damage to each blocker, and the rest to the player with trample, or
+                to the last blocker without. Otherwise you are asked, with that split filled in.
+              </p>
+
               <AutoAnswersSettings />
             </section>
 
