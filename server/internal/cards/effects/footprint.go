@@ -66,7 +66,18 @@ func (s CreateToken) footprint() (game.FootprintStep, bool) {
 }
 
 func (s GainLifeEqualToSubject) footprint() (game.FootprintStep, bool) {
-	return game.FootprintStep{Kind: game.FootprintGainLife, AmountFromSubject: true}, s.Stat == SubjectToughness
+	return game.FootprintStep{Kind: game.FootprintGainLife, AmountFromSubject: true}, s.Stat == SubjectToughness || s.Stat == SubjectPower
+}
+
+// A tapped token is the same step: entering tapped changes only the new
+// token's own state and emits no event of its own. Counters or granted
+// keywords on the token are not described, so such a spec has no
+// footprint.
+func (s CreateTokenAdvanced) footprint() (game.FootprintStep, bool) {
+	key, manual, keywords := game.FootprintTokenOf(s.Spec.Template)
+	return game.FootprintStep{
+		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
+	}, s.Controller == uuid.Nil && s.N > 0 && len(s.Spec.Counters) == 0 && len(s.Spec.Keywords) == 0
 }
 
 func (s BecomeTheMonarch) footprint() (game.FootprintStep, bool) {
@@ -158,6 +169,10 @@ type SubjectStat string
 // effects included.
 const SubjectToughness SubjectStat = "toughness"
 
+// SubjectPower is the subject's power, read the same way (Conclave Mentor:
+// "gain life equal to its power").
+const SubjectPower SubjectStat = "power"
+
 // GainLifeEqualToSubject is "you gain life equal to its toughness" in a
 // triggered ability's effect, where "it" is the object the triggering
 // event names: the creature that entered, for Wolverine Riders. The
@@ -178,10 +193,14 @@ type GainLifeEqualToSubject struct {
 func (s GainLifeEqualToSubject) Apply(ctx *Context) error {
 	n := 0
 	if info, ok := ctx.TriggeringPermanent(); ok {
-		if s.Stat != SubjectToughness {
+		switch s.Stat {
+		case SubjectToughness:
+			n = info.Toughness
+		case SubjectPower:
+			n = info.Power
+		default:
 			return fmt.Errorf("GainLifeEqualToSubject: unknown stat %q", s.Stat)
 		}
-		n = info.Toughness
 	} else if ctx.Item != nil {
 		n = ctx.Item.Params.Amount
 	}

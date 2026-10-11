@@ -39,7 +39,7 @@ func init() {
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b33OpponentsNontokenCreatureDied(ev, source, g)
-			}, "Overseer of the Damned — create a tapped 2/2 black Zombie", createTappedZombie),
+			}, "Overseer of the Damned — create a tapped 2/2 black Zombie", Do(CreateTokenAdvanced{Spec: Token(BlackZombieToken()).EntersTapped(), N: 1})),
 		},
 	})
 }

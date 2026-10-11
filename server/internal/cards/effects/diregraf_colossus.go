@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b19ZombieSpellCastByYou(ev, source, g)
-			}, "Diregraf Colossus — create a tapped 2/2 Zombie", createTappedZombie),
+			}, "Diregraf Colossus — create a tapped 2/2 Zombie", Do(CreateTokenAdvanced{Spec: Token(BlackZombieToken()).EntersTapped(), N: 1})),
 		},
 	})
 }

@@ -25,10 +25,10 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21AngelYouControlEntered(ev, source, g)
-			}, "Bishop of Wings — you gain 4 life", b36GainLife(4)),
+			}, "Bishop of Wings — you gain 4 life", Do(GainLife{Amount: 4})),
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b36AngelYouControlDied(ev, source, g)
-			}, "Bishop of Wings — create a 1/1 white Spirit with flying", b34CreateTokens(b28WhiteSpiritFlyingToken, 1)),
+			}, "Bishop of Wings — create a 1/1 white Spirit with flying", Do(CreateToken{Template: b28WhiteSpiritFlyingToken(), N: 1})),
 		},
 	})
 }

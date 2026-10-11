@@ -58,6 +58,13 @@ var footprintConformanceCases = map[string]conformanceCase{
 	"GainLifeEqualToSubject": {
 		step: GainLifeEqualToSubject{Stat: SubjectToughness}, subject: true,
 	},
+	// A variant of a type is keyed "<Type>:<variant>".
+	"GainLifeEqualToSubject:power": {
+		step: GainLifeEqualToSubject{Stat: SubjectPower}, subject: true,
+	},
+	"CreateTokenAdvanced:tapped": {
+		step: CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: 2},
+	},
 }
 
 // footprinterTypes lists the receiver types of every footprint() method
@@ -106,18 +113,29 @@ func TestEveryFootprinterHasAConformanceCase(t *testing.T) {
 		t.Fatal("found no footprint() methods: the scan is broken")
 	}
 	for _, name := range types {
-		if _, ok := footprintConformanceCases[name]; !ok {
+		if _, ok := footprintConformanceCases[name]; !ok && !hasVariantCase(name) {
 			t.Errorf("%s declares a footprint and has no case in footprintConformanceCases", name)
 		}
 	}
-	for name, c := range footprintConformanceCases {
+	for key, c := range footprintConformanceCases {
+		name, _, _ := strings.Cut(key, ":")
 		if !slices.Contains(types, name) {
-			t.Errorf("footprintConformanceCases has %s, which declares no footprint", name)
+			t.Errorf("footprintConformanceCases has %s, which declares no footprint", key)
 		}
 		if got := fmt.Sprintf("%T", c.step); got != "effects."+name {
-			t.Errorf("the case keyed %s holds a %s", name, got)
+			t.Errorf("the case keyed %s holds a %s", key, got)
 		}
 	}
+}
+
+// hasVariantCase reports a case keyed "<name>:<variant>".
+func hasVariantCase(name string) bool {
+	for key := range footprintConformanceCases {
+		if base, _, ok := strings.Cut(key, ":"); ok && base == name {
+			return true
+		}
+	}
+	return false
 }
 
 // confPlayer is what a footprint can say about a player.

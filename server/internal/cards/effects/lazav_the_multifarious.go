@@ -84,9 +84,7 @@ func init() {
 					return ev.CardID == source.InstanceID
 				},
 				"Lazav, the Multifarious — surveil 1",
-				func(g *game.Game, item *game.StackItem) error {
-					return Surveil{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(Surveil{N: 1})),
 		},
 		Grants: []AbilityGrant{{
 			Key:       lazavTheMultifariousGrant,
