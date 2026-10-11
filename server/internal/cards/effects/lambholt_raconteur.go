@@ -21,7 +21,7 @@ func init() {
 	const oracle = "f3c104e2-470b-429f-a047-a21edc2adb3b"
 	ping := func(name string, n int) game.TriggeredAbility {
 		return WheneverYouCast(Noncreature(), name+" — deal damage to each opponent",
-			func(g *game.Game, item *game.StackItem) error { return damageToEachOpponent(g, item, n) })
+			Do(DamageEachOpponent{N: n}))
 	}
 	Register(Spec{
 		OracleID:        oracle,

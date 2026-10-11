@@ -56,9 +56,7 @@ func init() {
 					return g.CreateTokensAttackingForEffect(item.Controller, b21TappedAttackingGoblin(), 1, item.Trigger.Event.Target)
 				},
 			},
-			WheneverAnotherCreatureEntersUnderYourControl("General Kreat — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}),
+			WheneverAnotherCreatureEntersUnderYourControl("General Kreat — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 	})
 }

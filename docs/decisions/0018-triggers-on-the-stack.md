@@ -4208,3 +4208,17 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
     Mausoleum Harpy (re-checks the city's blessing) and Runaway Steam-Kin (re-checks fewer than three counters)
     all have an intervening "if" that no step expresses. Rapacious Guest, Surly Badgersaur and Titanbones,
     Towering Heart have a second shape on the same card and are in a later batch.
+- **Batch 3, damage to each opponent.** 23 cards move onto `Do(DamageEachOpponent{N})`, which already had a
+  footprint, so no new step: Agate Instigator; Black Waltz No. 3; Brimstone Vandal; Coruscation Mage;
+  Electrostatic Field; Erebor Flamesmith; Fiery Inscription; Firespitter Whelp; General Kreat, the Boltbringer;
+  Glint-Horn Buccaneer; Impact Tremors; Kessig Flamebreather; Lambholt Raconteur and Lambholt Ravager;
+  Molten Gatekeeper; Purphoros, God of the Forge; Reckless Fireweaver; Refraction Elemental; Syr Konrad, the Grim;
+  Tinybones, Pocket Nuisance; Unstable Amulet; Warleader's Call; Weftstalker Ardent. Labels and conditions are
+  unchanged.
+  - **A test changed meaning.** `TestTwoImpactTremorsStillAsk` pinned that two Impact Tremors ask, because their
+    row was a closure and is not source-blind. With a footprint each reads only its own source and lowers the
+    opponents' life, which commutes, so the batch now goes on with no prompt
+    (`TestTwoImpactTremorsSkipThePromptByTheirFootprint`). The registry test's Impact Tremors case now expects the
+    damage footprint.
+  - **Left on the list.** Lux Artillery: its 10 damage re-checks "30 or more counters" as it resolves
+    (an intervening "if").

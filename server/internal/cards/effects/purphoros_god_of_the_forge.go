@@ -28,9 +28,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverAnotherCreatureEntersUnderYourControl(
 				"Purphoros, God of the Forge — 2 damage to each opponent",
-				func(g *game.Game, item *game.StackItem) error {
-					return damageToEachOpponent(g, item, 2)
-				}),
+				Do(DamageEachOpponent{N: 2})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}: Creatures you control get +1/+0 until end of turn.",

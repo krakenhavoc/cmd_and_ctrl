@@ -26,9 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OffspringToken("Agate Instigator"),
 			WheneverAnotherCreatureEntersUnderYourControl("Agate Instigator — 1 damage to each opponent",
-				func(g *game.Game, item *game.StackItem) error {
-					return damageToEachOpponent(g, item, 1)
-				}),
+				Do(DamageEachOpponent{N: 1})),
 		},
 	})
 }
