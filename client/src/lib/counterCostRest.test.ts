@@ -100,8 +100,21 @@ describe("a variable counter cost", () => {
     expect(counterPaymentParams(mageRing, pick)).toEqual({ counter_counts: [2] });
   });
 
-  it("refuses a payment of nothing", () => {
-    expect(counterPaymentReady(mageRing, [])).toBe(false);
+  it("accepts a payment of nothing when the floor is zero", () => {
+    // "Any number" includes none: Black Mana Battery adds its {B} for it.
+    expect(counterPaymentReady(mageRing, [])).toBe(true);
+    expect(counterPaymentParams(mageRing, [])).toEqual({});
+  });
+
+  it("refuses a payment of nothing under a printed floor", () => {
+    expect(counterPaymentReady({ ...mageRing, counter_cost_n: 1 }, [])).toBe(false);
+  });
+
+  it("is not greyed with no counters to remove when the floor is zero", () => {
+    const empty = { ...mageRing, counter_cost_options: [] };
+    expect(counterCostBlocked(empty)).toBe("");
+    expect(counterCostNeedsPrompt(empty)).toBe(false);
+    expect(counterCostBlocked({ ...empty, counter_cost_n: 2 })).not.toBe("");
   });
 
   it("honours a printed floor", () => {

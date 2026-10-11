@@ -383,6 +383,23 @@ func (p CounterCostPayment) empty() bool {
 	return len(p.SourceIDs) == 0 && len(p.Counts) == 0 && p.Kind == "" && len(p.Kinds) == 0
 }
 
+// announcesNoCounters reports a payment of zero against a variable
+// self cost whose printed floor is zero: no payment fields at all, or
+// the source's own ID and a single count of 0, with no kind that
+// disagrees with the cost's.
+func announcesNoCounters(rc *CounterRemovalCost, sourceID uuid.UUID, pay CounterCostPayment) bool {
+	if !rc.Variable || rc.N != 0 || rc.From != nil || rc.Among {
+		return false
+	}
+	if len(pay.Kinds) > 0 || (pay.Kind != "" && pay.Kind != rc.Counter) {
+		return false
+	}
+	if len(pay.SourceIDs) > 1 || (len(pay.SourceIDs) == 1 && pay.SourceIDs[0] != sourceID) {
+		return false
+	}
+	return len(pay.Counts) == 0 || (len(pay.Counts) == 1 && pay.Counts[0] == 0)
+}
+
 // validateCounterRemovalLocked resolves a RemoveCounters component
 // into the concrete removal to perform, without removing anything —
 // the validate half of ADR 0020 §3's "validate everything, then pay
@@ -426,6 +443,16 @@ func (g *Game) validateCounterRemovalLocked(playerID, sourceID uuid.UUID, rc *Co
 		// Register refuses this at boot; an intrinsic ability built in
 		// a test or a token template could still carry one.
 		return counterPayment{}, ErrInvalidParam
+	}
+
+	// "Remove any number of counters from this permanent" prints a
+	// floor of zero, and zero is a real announcement: Black Mana
+	// Battery adds {B} for it. Nothing is removed and nothing is
+	// owed, so the payment is the empty one. Only the self form with
+	// a zero floor reads it this way; an among part that removes
+	// nothing is still refused below.
+	if announcesNoCounters(rc, sourceID, pay) {
+		return counterPayment{}, nil
 	}
 
 	// --- the permanents ------------------------------------------
