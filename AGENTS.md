@@ -19,6 +19,14 @@ whole point — Commander-specific affordances nothing else has), and —
 long horizon — **incremental rules enforcement** (B→C track, starting
 in S13+ after the sandbox is shipped).
 
+**Naming.** The project is *cmd & ctrl* (the repository is `cmd_and_ctrl`,
+the site's title is *CMD & CTRL*). Its one abbreviation is **C2**: use it
+wherever a short name is wanted (prose, issues, PRs, chat, the Discord
+bot's `/c2-…` commands, the installed app's `short_name`). Don't coin
+others (CC, C&C, CMD&CTRL). Machine identifiers keep their existing
+`cmdctrl` / `CMDCTRL_` spelling (env vars, Docker volumes, metric and
+service names); don't rename those to match.
+
 ---
 
 ## 2. Ground rules
