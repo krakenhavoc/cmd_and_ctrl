@@ -171,6 +171,10 @@ function visibleBox(
   if (box.width <= 0 || box.height <= 0) return null;
   for (let p = el.parentElement; p; p = p.parentElement) {
     const cs = getComputedStyle(p);
+    // A display: contents ancestor (the seat's rail) has no box of its own
+    // and a 0 x 0 rect: it clips nothing, and reading it as a clip would
+    // hide everything inside it.
+    if (cs.display === "contents") continue;
     // The longhands, or the shorthand where an engine leaves them empty.
     const [ox, oy = ox] = (cs.overflow || "").split(/\s+/);
     const cx = CLIPS.has(cs.overflowX || ox);

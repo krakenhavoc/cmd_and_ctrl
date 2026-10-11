@@ -280,6 +280,15 @@ describe("anchorRects: one hole per anchor", () => {
     ]);
   });
 
+  it("is not clipped by a display: contents ancestor, which has no box", () => {
+    document.body.innerHTML = `
+      <div style="display: contents; overflow: hidden"><div data-seat-id="bot" id="bot"></div></div>`;
+    place(document.getElementById("bot")!, 46, 262, 60, 60);
+    expect(anchorRects([{ seatID: "bot" }])).toEqual([
+      { left: 46, top: 262, width: 60, height: 60 },
+    ]);
+  });
+
   it("joins anchors that touch, and leaves a missing one out", () => {
     board();
     place(document.getElementById("next")!, 700, 800, 90, 40);
