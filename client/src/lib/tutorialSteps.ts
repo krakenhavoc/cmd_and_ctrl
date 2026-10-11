@@ -167,6 +167,12 @@ export function abilityCardID(v: GameView | null, viewerID: string | null): stri
   return pick?.instance_id ?? null;
 }
 
+/** abilityCardName is the name of step 9's card, for its copy; undefined when no card has a menu. */
+export function abilityCardName(v: GameView | null, viewerID: string | null): string | undefined {
+  const id = abilityCardID(v, viewerID);
+  return id ? permanentsOf(v, viewerID).find((c) => c.instance_id === id)?.name : undefined;
+}
+
 /** castableCreature: a creature in hand the server lists a cast for; undefined with no list. */
 function castableCreature(v: GameView | null, viewerID: string | null): boolean | undefined {
   const moves = v?.legal_moves;
@@ -187,6 +193,28 @@ const pressNext = (k: CopyContext): string =>
 const PressNext = (k: CopyContext): string => {
   const s = pressNext(k);
   return s[0].toUpperCase() + s.slice(1);
+};
+
+/** Punctuation keys, named in words: a bare "," reads as a stray comma in a sentence. */
+const PUNCTUATION_NAMES: Record<string, string> = {
+  ",": "comma",
+  ".": "period",
+  "?": "question mark",
+  ";": "semicolon",
+  "/": "slash",
+  "\\": "backslash",
+  "-": "minus",
+  "=": "equals",
+  "'": "apostrophe",
+  "[": "left bracket",
+  "]": "right bracket",
+  "`": "backtick",
+};
+
+/** keyName says a bound key in a sentence: "the comma key" for ",", the chord itself otherwise. */
+const keyName = (key: string): string => {
+  const name = PUNCTUATION_NAMES[key];
+  return name ? `the ${name} key` : key;
 };
 
 /**
@@ -411,7 +439,10 @@ export const RIGHT_CLICK: TutorialStep = {
   n: 9,
   kind: "action",
   title: "Abilities live on right-click",
-  body: "Right-click a permanent to open its abilities; that is where you activate them. Try this one.",
+  body: (k) =>
+    `Right-click a permanent to open its abilities; that is where you activate them. ${
+      k.cardName ? `Try it on ${k.cardName}.` : "Try it on one of your permanents that has a menu."
+    }`,
   // ADR 0117 §6: a left click no longer taps this card. The usual
   // anchor is the mana creature cast in step 7, which is summoning
   // sick, so its left click does nothing at all.
@@ -573,7 +604,12 @@ export const ATTACK: TutorialStep = {
       return {
         id: "to-combat",
         title: "First, go to combat",
-        body: (k) => `${PressNext(k)} in the dock until it reads Declare Attackers.`,
+        // In the main phase the player may still play a land or cast,
+        // so invite it before the detour moves them on (turn 2, #2994).
+        body: (k) =>
+          step === "precombat_main"
+            ? `Play a land and cast what you like, then ${pressNext(k)} until it reads Declare Attackers.`
+            : `${PressNext(k)} in the dock until it reads Main, then play a land and cast what you like.`,
         anchor: DOCK,
       };
     }
@@ -601,8 +637,8 @@ export const HANDOFF: TutorialStep = {
   kind: "done",
   title: "That is the whole interface",
   body: ({ helpKey, settingsKey }) => {
-    const help = helpKey ? `Press ${helpKey} for the keymap` : "The keymap is in Settings";
-    const set = settingsKey ? ` and ${settingsKey} for settings` : "";
+    const help = helpKey ? `Press ${keyName(helpKey)} for the keymap` : "The keymap is in Settings";
+    const set = settingsKey ? ` and ${keyName(settingsKey)} for settings` : "";
     return `${help}${set}. Your zone piles are on the rail: library opens a draw menu, graveyard and exile open a browser. Help, in the ⋯ menu here and in the header elsewhere, replays any of this.`;
   },
   teaches: ["table.more", "table.shortcuts"],

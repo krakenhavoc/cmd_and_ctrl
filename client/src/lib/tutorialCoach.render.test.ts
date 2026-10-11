@@ -271,7 +271,9 @@ describe("TutorialCoach", () => {
     expect(document.querySelector(".tutorial-scrim")).toBeNull();
     click(button(c, "Start")!);
     expect(c.textContent).toContain("That is the whole interface");
-    expect(c.textContent).toContain("Press ? for the keymap and , for settings.");
+    expect(c.textContent).toContain(
+      "Press the question mark key for the keymap and the comma key for settings.",
+    );
     expect(document.querySelector(".tutorial-scrim")).toBeNull();
     click(button(c, "Finish")!);
     expect(c.querySelector('[aria-label="tutorial coach"]')).toBeNull();
