@@ -179,6 +179,31 @@ describe("HintLayer on a site page", () => {
     expect(link?.textContent).toBe("Start practice");
   });
 
+  it("keeps every label of a three-action tip on one line at 1280 wide", () => {
+    anchor();
+    render(
+      HintLayer as never,
+      {
+        hints: [
+          hint("lobby.practice", { action: { label: "Start practice", href: "#/practice" } }),
+        ],
+      } as never,
+    );
+    poll();
+    expect(window.innerWidth).toBe(1280);
+    // jsdom lays nothing out, so the no-wrap rule is what is checked:
+    // every button and the action link are nowrap, and the card is the
+    // wider one that fits the three of them.
+    const labels = [buttonNamed("Hide tips")!, tip()!.querySelector("a")!, buttonNamed("Not now")!];
+    for (const el of labels) {
+      expect(getComputedStyle(el).whiteSpace).toBe("nowrap");
+    }
+    expect(tip()!.classList.contains("with-action")).toBe(true);
+    // The action is the primary (orange) button; dismissing is the quiet one.
+    expect(tip()!.querySelector("a")!.classList.contains("hint-primary")).toBe(true);
+    expect(buttonNamed("Not now")!.classList.contains("hint-action")).toBe(true);
+  });
+
   it("offers nothing with tips off, until the Help menu replays the page's tips", () => {
     anchor();
     settings.update((s) => ({ ...s, help: { seen: { "lobby.controls": 1 }, tipsOff: true } }));
