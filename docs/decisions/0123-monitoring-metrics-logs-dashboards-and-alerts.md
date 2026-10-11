@@ -125,6 +125,7 @@ This is how the privacy rules in ADR 0017 §9 and AGENTS.md §5 carry over to me
 | `cmdctrl_actions_total` | counter | `type` (the `actions` enum), `seat_kind` = `human\|bot\|agent\|admin`, `result` = `applied\|rejected` | Every `Room.Apply` / `ApplyBundle` / `ApplyExternal`. |
 | `cmdctrl_action_apply_seconds` | histogram | `result` | Time under the room lock. |
 | `cmdctrl_effect_errors_total` | counter | — | `EventEffectError`s emitted: a card's effect threw mid-resolution. The engine survives it, so nothing else counts it. |
+| `cmdctrl_trigger_order_prompts_total` | counter | `reason` | CR 603.3b trigger-order prompts queued, by the first reason the engine found that the order could matter (`game.TriggerOrderReason`; ADR 0018's #3013 amendment). The owner reads it to decide the watcher and opacity rules. |
 | `cmdctrl_restore_point_age_seconds` | gauge *(collector)* | — | The oldest restore point among active rooms: how much a deploy now would rewind (ADR 0044). |
 | `cmdctrl_rooms_behind_restore_point` | gauge *(collector)* | — | Active rooms whose last applied action is not yet captured. |
 | `cmdctrl_boot_restore_games` | gauge | `outcome` = `restored\|ended\|abandoned` | The last boot's restore pass, set once at boot. |

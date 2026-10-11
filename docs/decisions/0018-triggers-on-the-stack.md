@@ -3692,7 +3692,7 @@ Objects are cards and permanents by instance ID; "you" is the item's controller.
 | `CounterOnThis` | the source | the source, if on the battlefield | counter placed |
 | `ExileChosenTarget` | the targets | each card target | zone move, leaves the battlefield, unattach |
 | `DrawCards` | | your library and hand (and a loss on an empty library) | draw |
-| `MillCards`, `Surveil` (no `Then`) | | your library and graveyard | mill or surveil, zone move |
+| `MillCards`, `Surveil` (no `Then`) | | your library and graveyard | mill or surveil, zone move (a surveil also emits mill for the cards it puts in the graveyard: #3013 sub-PR 1) |
 | `Scry` (no `Then`) | | your library | scry |
 | `GetEnergy` | | nothing another step reads (energy only adds up) | player counter placed |
 | `CreateToken` | | nothing another step reads (a token whose template has no text) | token created, enters, zone move |
@@ -4060,3 +4060,24 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
 5. **Say why the prompt appeared.** Should the `trigger_order` prompt show the reason, for example "Ajani's
    Pridemate reacts to life gain"? That's additive on the wire, plus a client line. Recommended: yes, after
    sub-PR 1, since it uses the same reason value.
+
+### Note (2026-10-11): sub-PR 1, guards and measurement
+
+- **Reasons.** `triggerOrderAskLocked` returns why a seat is asked (`game.TriggerOrderReason`): `always`,
+  `undescribed`, `board_opaque`, `reactor`, `ripple`, `elimination`, `object_tie`, `rules`, `library` or
+  `monarch`. The reason is the first conflict the check finds, and it never changes whether the seat is
+  asked. The drain counts each prompt once, as it is queued, in `cmdctrl_trigger_order_prompts_total{reason}`
+  (ADR 0123). A held drain passes the boundary again until the prompt is answered, and those passes don't
+  count again.
+- **Conformance.** `cards/effects/footprint_conformance_test.go` resolves every primitive that declares a step,
+  on a real board. It fails on any player, object or event kind the step touches outside its declaration
+  (`game.FootprintDeclarationForTest`, the check's own reading). A new primitive without a case fails. The
+  test found one gap on its first run. A surveil's graveyard leg emits `EventMill` per card, as an ordinary
+  mill does, and the step did not declare it. So a watcher of milling alone (Colossal Grave-Reaver) did not
+  keep a surveil batch asking. The step now declares it, which only adds prompts.
+- **Coverage.** `cards/coverage/trigger_footprint_audit_test.go` reads the oracle fixtures. It lists a
+  catalogued card when it prints more one-sentence trigger lines of a shape the vocabulary has, or is one
+  primitive away from, than it has rows with a footprint. Its shapes are wider than the census above
+  (energy, the monarch, damage to each opponent, and any count written as a digit), so it lists 157 cards
+  where the census found 94. The list is `cards/coverage/testdata/unfootprinted_trigger_lines.txt` and only
+  shrinks. Sub-PRs 2 and 4 work through it.

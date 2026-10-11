@@ -26,6 +26,9 @@ func TestEngineAndBotLabelsAreClosedSets(t *testing.T) {
 		}
 	}
 	EffectError()
+	for _, r := range append(TriggerOrderReasonLabels(), "", "something-new") {
+		TriggerOrderPrompt(r)
+	}
 	SetBootRestore(2, 1, 1, 3)
 
 	for _, tier := range []string{BotTierRandom, BotTierHeuristic, BotTierAssisted, BotTierStrong, "scripted", "rules+heuristic"} {

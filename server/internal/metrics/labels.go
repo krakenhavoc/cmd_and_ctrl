@@ -85,6 +85,9 @@ var familyLabelSets = map[string]map[string]labelSet{
 	"cmdctrl_boot_restore_games": {
 		"outcome": oneOf(restoreOutcomeLabels...),
 	},
+	"cmdctrl_trigger_order_prompts_total": {
+		"reason": oneOf(triggerOrderReasonLabels...),
+	},
 	"cmdctrl_bot_model_calls_total": {
 		"result": oneOf(modelResultLabels...),
 	},
