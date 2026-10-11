@@ -569,23 +569,6 @@ func b33PutCounterOnEnteredCreature(entered uuid.UUID) func(g *game.Game, item *
 	}
 }
 
-// createTappedZombie is Overseer of the Damned's dies body: one
-// tapped 2/2 black Zombie.
-func createTappedZombie(g *game.Game, item *game.StackItem) error {
-	return CreateTokenAdvanced{
-		Controller: item.Controller,
-		Spec:       Token(BlackZombieToken()).EntersTapped(),
-		N:          1,
-	}.Apply(NewContext(g, item))
-}
-
-// b33ScryN is "scry N" as a trigger body (Hermes' Bird attack).
-func b33ScryN(n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		return Scry{Player: item.Controller, N: n}.Apply(NewContext(g, item))
-	}
-}
-
 // b33CreateTokenBody is a trigger body that makes one token from
 // `template` for the controller.
 func b33CreateTokenBody(template func() game.Card) func(g *game.Game, item *game.StackItem) error {

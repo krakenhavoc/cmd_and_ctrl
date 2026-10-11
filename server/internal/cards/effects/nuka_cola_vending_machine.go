@@ -35,13 +35,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b11SacrificedAFood(ev, source, g)
-			}, "Nuka-Cola Vending Machine — create a tapped Treasure", func(g *game.Game, item *game.StackItem) error {
-				return CreateTokenAdvanced{
-					Controller: item.Controller,
-					Spec:       Token(TreasureToken()).EntersTapped(),
-					N:          1,
-				}.Apply(NewContext(g, item))
-			}),
+			}, "Nuka-Cola Vending Machine — create a tapped Treasure", Do(CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: 1})),
 		},
 	})
 }

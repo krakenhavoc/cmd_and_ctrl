@@ -4256,3 +4256,82 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
     or greater), Bugenhagen, Wise Elder (power 7), Deadeye Brawler (the city's blessing), Padeem, Consul of
     Innovation (the greatest artifact), Satoru, the Infiltrator (nothing cast with mana in the batch), The Gaffer
     (3 life gained this turn).
+- **Batch 6, the rest that can be expressed.** 20 cards, and three steps' reach widened. Each change has a
+  conformance case (`footprint_conformance_test.go` now keys a variant as `<Type>:<variant>`) and a skip and an
+  ask test (`trigger_independence_final_test.go`).
+  - **Gain life** (`Do(GainLife)`): Bishop of Wings (both rows, its Spirit too); Distinguished Conjurer; Glowing One;
+    Interplanar Beacon; Lifecreed Duo; Merchant Ship (the row's `Effect` is replaced after its constructor builds it,
+    as for Eternal of Harsh Truths); Nyx-Fleece Ram.
+  - **Mill, scry, surveil:** Cephalid Illusionist; Hermes, Overseer of Elpis (scry and Bird); Lazav, the
+    Multifarious; Restless Spire; Thassa, God of the Sea.
+  - **Energy:** Decoction Module (`Do(GetEnergy)`). The old body passed no placer to the counter replacement window;
+    `GetEnergy` names the controller, as CR 122.1 says the player getting energy does. Only a replacement that reads
+    the placer can tell, and any such replacement on the board already makes the batch ask.
+  - **Power variant.** `GainLifeEqualToSubject{Stat: SubjectPower}` is the same step as the toughness one (the
+    footprint doesn't name the stat), for Conclave Mentor's death trigger. The subject is the Mentor itself, read as it
+    last existed.
+  - **Tapped tokens.** `CreateTokenAdvanced` declares the `FootprintCreateToken` step when its spec only sets
+    `EntersTapped` (no counters, no granted keywords, the controller's own). Entering tapped changes only the new
+    token's own state and emits no event, which the conformance case confirms. Alchemist's Talent, Diregraf Colossus,
+    Don Andres (already a `Do`), Nuka-Cola Vending Machine, Overseer of the Damned and Tormod, the Desecrator use it.
+    Boards with a permanent that watches an entering object, a zone move or a token still ask: Tormod beside On Wings
+    of Gold asks (both watch zone moves), as do Overseer, Talent and Colossus (their own entry rows or replacement).
+
+### Closing note (2026-10-11): what stays on the ratchet, and why
+
+The audit's list holds 24 cards. Each is an exception, grouped here by the reason no footprint is declared. The
+list is the testable record of this table, and `TestOneSentenceTriggersDeclareFootprints` keeps it from growing.
+Every one of these keeps the CR 603.3b prompt when its trigger is in a batch, which is the safe direction.
+
+**Intervening "if" re-checked as the ability resolves (CR 603.4).** The row's effect first reads game state and does
+nothing if the condition is false, so its footprint would have to say that it reads that state. The check has no way
+to say so today, and the effect can't be a bare `Do` without losing the re-check.
+
+| Card | The condition re-checked at resolution |
+| --- | --- |
+| Agent of Treachery | Three or more permanents you control but don't own (end step draw) |
+| Beastbond Outcaster | You control a creature with power 4 or greater |
+| Colossal Majesty | You control a creature with power 4 or greater |
+| Garruk's Uprising | You control a creature with power 4 or greater (its entry row; the other row is a `Do`) |
+| Bugenhagen, Wise Elder | You control a creature with power 7 or greater |
+| Crested Sunmare | You gained life this turn |
+| The Gaffer | You gained 3 or more life this turn |
+| Indulging Patrician | You gained 3 or more life this turn |
+| Lunar Convocation | You gained life this turn (the loss row: and lost life) |
+| Deadeye Brawler | You have the city's blessing |
+| Mausoleum Harpy | You have the city's blessing |
+| Edgar, Moonlit Sovereign | You cast no spells this turn |
+| Field of the Dead | You control seven or more lands with different names |
+| Keeper of the Accord | An opponent controls more creatures than you |
+| Ginger, Queen of Sweets | You are the monarch |
+| Inventors' Fair | You control three or more artifacts |
+| Lux Artillery | Thirty or more counters among artifacts and creatures you control |
+| Padeem, Consul of Innovation | You control the artifact with the greatest mana value |
+| Runaway Steam-Kin | This creature has fewer than three +1/+1 counters |
+| Satoru, the Infiltrator | Nothing entering this batch was cast with mana |
+| Faramir, Field Commander | A creature died under your control this turn (the draw is wrapped in that check) |
+
+What a step for these would need: a `Do` step that carries a condition, `If{Cond, Then...}`, where each `Cond` is a
+named value that declares the state it reads (life gained this turn, a creature's power, the monarch, a cast tally,
+a counter total). The footprint of the step would be the `Then` footprint plus a read of that state, and the check
+would conflict it with any item that writes the state. The unit of work is one condition at a time.
+
+**An amount that is counted or chosen.**
+
+| Card | The amount |
+| --- | --- |
+| Arboreal Alliance | X, taken from the cast (a `Build` fills `Params.Amount`) |
+| Cadira, Caller of the Small | One Rabbit for each token you control, counted as it resolves |
+
+What a step would need: for X, a footprint that allows `Params.Amount` set by the engine's own cast record, which
+`builtItemIsPlain` refuses today; for a count of the board, a step that declares the set it counts (tokens you
+control) as a read, so a token maker beside it conflicts.
+
+**The subject is not the event's object.**
+
+| Card | The subject |
+| --- | --- |
+| Ikra Shidiqi, the Usurper | The creature that dealt combat damage. `EventDealDamage` names it in `Event.Source`, and `TriggerContext.Object` only snapshots `Event.CardID`, so `GainLifeEqualToSubject` can't find it and last-known toughness would be lost once it has left. |
+
+What a step would need: the trigger context to snapshot the damage source as its object (a `TriggerContext` change,
+so a snapshot field and a closure-fields entry), after which `GainLifeEqualToSubject{SubjectToughness}` fits.

@@ -38,9 +38,7 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Thassa, God of the Sea — scry 1", func(g *game.Game, item *game.StackItem) error {
-				return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			}),
+			AtYourUpkeep("Thassa, God of the Sea — scry 1", Do(Scry{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{U}: Target creature you control can't be blocked this turn.",

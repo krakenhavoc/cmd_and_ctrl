@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Merchant Ship — Creature — Human {U}, 0/2:
 //
@@ -27,6 +23,11 @@ import (
 // No simplification.
 func init() {
 	q := QuerySubtype("Island")
+	// The gain is a footprinted Do (#3013): the row's Effect is replaced
+	// after the constructor builds the trigger, whose callback for the
+	// defending player this payoff does not use.
+	gain := WhenAttacksAndIsNotBlockedEffect("Merchant Ship — you gain 2 life", nil)
+	gain.Effect = Do(GainLife{Amount: 2})
 	Register(Spec{
 		OracleID:     "69556f6c-c05b-4902-bac7-012f0ed81b75",
 		Name:         "Merchant Ship",
@@ -35,10 +36,7 @@ func init() {
 			CantAttackUnlessDefendingPlayerControls(q),
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenAttacksAndIsNotBlockedEffect("Merchant Ship — you gain 2 life",
-				func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
-					return GainLife{Amount: 2}.Apply(NewContext(g, item))
-				}),
+			gain,
 			WhenYouControlNo(q, "Merchant Ship — sacrifice it", SacrificeThisIfStillOnBattlefield),
 		},
 	})
