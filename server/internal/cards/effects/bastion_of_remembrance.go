@@ -29,15 +29,7 @@ func init() {
 				Template: TokenCard("1/1 white Human Soldier"),
 				N:        1,
 			})),
-			TriggerWithPurpose(WheneverACreatureYouControlDies("Bastion of Remembrance — each opponent loses 1", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, opp := range ctx.Opponents() {
-					if err := g.ChangePlayerLifeForEffect(ctx.Source(), opp, -1); err != nil {
-						return err
-					}
-				}
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(ctx)
-			}), game.Purpose{DeathPayoff: true}),
+			TriggerWithPurpose(WheneverACreatureYouControlDies("Bastion of Remembrance — each opponent loses 1", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

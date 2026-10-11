@@ -20,9 +20,7 @@ func init() {
 		Name:         "Corpse Knight",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl("Corpse Knight — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-				return eachOpponentLosesLife(g, item, 1)
-			}),
+			WheneverAnotherCreatureEntersUnderYourControl("Corpse Knight — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }

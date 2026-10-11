@@ -24,9 +24,7 @@ func init() {
 			Fabricate("Marionette Apprentice", 1),
 			On(game.EventLTB, AnotherCreatureOrArtifactYouControlWasPutIntoAGraveyard,
 				"Marionette Apprentice — each opponent loses 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					return eachOpponentLosesLife(g, item, 1)
-				}),
+				Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }

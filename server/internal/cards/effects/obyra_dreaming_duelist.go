@@ -26,9 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b32AnotherFaerieYouControlEntered(ev, source, g)
-			}, "Obyra, Dreaming Duelist — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-				return eachOpponentLosesLife(g, item, 1)
-			}),
+			}, "Obyra, Dreaming Duelist — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }

@@ -39,7 +39,7 @@ func init() {
 			},
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return anotherZombieYouControlDied(ev, source, g)
-			}, "Plague Belcher — each opponent loses 1 life", b35EachOpponentLosesOne),
+			}, "Plague Belcher — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }

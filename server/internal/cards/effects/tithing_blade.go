@@ -42,7 +42,7 @@ func init() {
 		Name:         "Consuming Sepulcher",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Consuming Sepulcher — each opponent loses 1 life and you gain 1 life", drainEachOpponent),
+			AtYourUpkeep("Consuming Sepulcher — each opponent loses 1 life and you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 	})
 }

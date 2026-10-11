@@ -26,9 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b15AnotherCreatureDied(ev, source, g)
-			}, "Poison-Tip Archer — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-				return eachOpponentLosesLife(g, item, 1)
-			}),
+			}, "Poison-Tip Archer — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }

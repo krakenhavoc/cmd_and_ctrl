@@ -33,6 +33,11 @@ const (
 	// FootprintDamageEachOpponent: the item's source deals N damage to
 	// each opponent of the item's controller.
 	FootprintDamageEachOpponent FootprintKind = "damage_each_opponent"
+	// FootprintLoseLifeEachOpponent: each opponent of the item's
+	// controller still in the game loses N life. Life loss, not damage,
+	// and it names no damage source, so it has no lifelink, infect,
+	// wither or toxic question (#3013).
+	FootprintLoseLifeEachOpponent FootprintKind = "lose_life_each_opponent"
 	// FootprintCounterOnSource: N counters of kind Counter on the item's
 	// source, if it is still on the battlefield.
 	FootprintCounterOnSource FootprintKind = "counter_on_source"
@@ -711,6 +716,17 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		}
 		a.traitReads = true
 		a.emit(EventDealDamage, EventChangeLife)
+	case FootprintLoseLifeEachOpponent:
+		// The source is passed on as the loss's attribution and nothing
+		// else reads it, so the step reads no object.
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.ID == you {
+				continue
+			}
+			a.life[p.ID] |= lifeDown
+			a.lifeLoss[p.ID] += s.N
+		}
+		a.emit(EventChangeLife)
 	case FootprintCounterOnSource:
 		a.reads[t.SourceCardID] = true
 		if z := g.findCardZoneLocked(t.SourceCardID); z != nil && z.Kind == ZoneBattlefield {

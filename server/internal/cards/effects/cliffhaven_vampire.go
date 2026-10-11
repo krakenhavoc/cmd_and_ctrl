@@ -22,7 +22,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventChangeLife, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Target == source.Controller && ev.Amount > 0
-			}, "Cliffhaven Vampire — each opponent loses 1 life", b35EachOpponentLosesOne),
+			}, "Cliffhaven Vampire — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }
