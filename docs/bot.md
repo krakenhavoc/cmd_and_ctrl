@@ -132,7 +132,8 @@ first release so the wire shape never changes as policies land.
 | `strong` | A model on every window that survives the rules filter, over a wider candidate list. | **5s** | a model endpoint |
 
 `MinThink` is 700ms for every tier: a fast decision is held so the
-table does not feel precognitive. `MaxThink` is a hard deadline, not a
+table does not feel precognitive. A seat whose only legal move is to pass has no decision to hide, so it
+passes without the hold (#2898); the stack hold below still applies. `MaxThink` is a hard deadline, not a
 target — on expiry the runner takes the fallback answer and logs the
 miss. **The table never waits on a model.**
 
@@ -1938,6 +1939,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
 | `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
 | `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
+| `--min-think` | holds every bot decision to at least this long, as a live table's bot speed does (700ms at normal). `0`, the default, is no pacing. A seat whose only legal move is a pass is never held (#2898), so the report's game `elapsed` shows what pass pacing costs. Ignored by `--lockstep`. |
 | `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender is still declaring blockers with a legal block to make. Defaults to production's value. `0` turns it off — see below. |
 | `--md`, `--json` | what to print. Markdown by default. |
 

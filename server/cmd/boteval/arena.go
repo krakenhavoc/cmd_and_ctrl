@@ -85,6 +85,8 @@ type arenaFlags struct {
 	// blockGrace is the declare-blockers hold. 0 or less is OFF; see
 	// config, where it has to be spelled negative for the arena.
 	blockGrace time.Duration
+	// minThink is the runner's MinThink; 0, the default, is no pacing.
+	minThink time.Duration
 	modelID    string
 	frontier   string
 	endpoint   string
@@ -131,6 +133,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 	decMode := fs.String("decision-log-mode", "", "escalated (default) | all | model")
 	replays := fs.Bool("replays", false, "write per-game replays under <out>: replays/<id>.jsonl (~320 MiB per four-seat game) plus games/<id>.json, a full authoritative-state marshal rewritten on every committed move, and restore/<id>.json while a game is live")
 	blockGrace := fs.Duration("block-grace", aiseat.DefaultConfig().BlockGrace, "how long an attacking bot holds its pass in declare-blockers while a defender is still declaring blockers; 0 or less turns it off, which is faster and (since #1279) loses no blocks")
+	minThink := fs.Duration("min-think", 0, "hold every bot decision to at least this long, as a live table's bot speed does (700ms at normal); 0 is no pacing. A seat whose only legal move is to pass is never held (#2898). Needs goroutine seats: --lockstep ignores it")
 	dump := fs.String("dump", "", "Scryfall bulk dump, needed by curated decks (default: $CMDCTRL_SCRYFALL_DUMP)")
 	note := fs.String("note", "", "free-form note recorded in the report (model quantisation, what is being tested)")
 	printMD := fs.Bool("md", false, "print the Markdown report to stdout (the default when neither --md nor --json is given)")
@@ -141,7 +144,7 @@ func parseArenaFlags(args []string, out io.Writer) (*arenaFlags, error) {
 
 	a := &arenaFlags{
 		games: *games, seed: *seed, rotate: *rotate, lockstep: *lockstep, turns: *turns, wall: *wall,
-		stall: *stall, maxThink: *maxThink, think: *think, maxTokens: *maxTokens, blockGrace: *blockGrace, out: *out2,
+		stall: *stall, maxThink: *maxThink, think: *think, maxTokens: *maxTokens, blockGrace: *blockGrace, minThink: *minThink, out: *out2,
 		decLog: *decLog, decMode: *decMode,
 		replays: *replays, note: *note, printMD: *printMD, printJSON: *printJSON,
 	}
@@ -319,6 +322,7 @@ func (a *arenaFlags) config(idx *cards.Index, client model.Client, dl *decisionl
 	// negative duration — otherwise `--block-grace 0` would turn
 	// itself back on.
 	cfg.Runner.BlockGrace = a.blockGrace
+	cfg.Runner.MinThink = a.minThink
 	if a.blockGrace <= 0 {
 		cfg.Runner.BlockGrace = -1
 	}
