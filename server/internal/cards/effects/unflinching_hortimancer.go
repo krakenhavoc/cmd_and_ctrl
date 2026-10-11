@@ -18,7 +18,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{1}"), "Unflinching Hortimancer — ward {1}"),
-			WheneverYouGainLife("Unflinching Hortimancer — put a +1/+1 counter on it", putCounterOnSelf),
+			WheneverYouGainLife("Unflinching Hortimancer — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

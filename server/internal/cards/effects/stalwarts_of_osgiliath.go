@@ -21,7 +21,7 @@ func init() {
 			WhenThisEnters("Stalwarts of Osgiliath — the Ring tempts you", Do(TheRingTemptsYou{})),
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b41DrewYourSecondCardThisTurn(ev, source, g)
-			}, "Stalwarts of Osgiliath — put a +1/+1 counter on this creature", putCounterOnSelf),
+			}, "Stalwarts of Osgiliath — put a +1/+1 counter on this creature", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

@@ -24,7 +24,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && (c.HasSubtype("Frog") || c.HasSubtype("Rabbit") || c.HasSubtype("Raccoon") || c.HasSubtype("Squirrel"))
-			}, "Valley Mightcaller — put a +1/+1 counter on it", plusOneCountersOnThis(1)),
+			}, "Valley Mightcaller — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

@@ -19,7 +19,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventActivateAbility, AllOf(ByYou, ABoastAbility),
-				"Frenzied Raider — put a +1/+1 counter on this creature", plusOneCountersOnThis(1)),
+				"Frenzied Raider — put a +1/+1 counter on this creature", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

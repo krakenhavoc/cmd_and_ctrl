@@ -60,7 +60,7 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(nil,
-				"Vincent, Vengeful Atoner — put a +1/+1 counter on Vincent", putCounterOnSelf),
+				"Vincent, Vengeful Atoner — put a +1/+1 counter on Vincent", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 			{
 				Watches: []game.EventKind{game.EventDealDamage},
 				Key:     "Vincent, Vengeful Atoner — Chaos: that much damage to each other opponent",

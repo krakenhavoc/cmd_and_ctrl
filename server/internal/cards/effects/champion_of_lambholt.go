@@ -34,7 +34,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AnotherCreatureEnteredUnderYourControl,
-				"Champion of Lambholt — put a +1/+1 counter on it", putCounterOnSelf),
+				"Champion of Lambholt — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

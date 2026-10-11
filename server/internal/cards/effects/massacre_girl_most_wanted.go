@@ -52,7 +52,7 @@ func init() {
 			),
 			On(game.EventDealDamage, anOpponentWasDealtNoncombatDamage,
 				"Massacre Girl, Most Wanted — put a +1/+1 counter on Massacre Girl",
-				plusOneCountersOnThis(1)),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

@@ -29,7 +29,7 @@ func init() {
 				YourSpell(), InstantOrSorcerySpell()),
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverDayBecomesNightOrNightBecomesDay("Vadrik — put a +1/+1 counter on Vadrik", thisStillHere(plusOneCountersOnThis(1))),
+			WheneverDayBecomesNightOrNightBecomesDay("Vadrik — put a +1/+1 counter on Vadrik", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

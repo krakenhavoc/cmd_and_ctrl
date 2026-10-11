@@ -40,13 +40,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b41AnotherLegendaryPermanentYouControlEntered(ev, source, g)
 			}, "Yoshimaru, Ever Faithful — put a +1/+1 counter on Yoshimaru",
-				func(g *game.Game, item *game.StackItem) error {
-					return AddCounter{
-						Target: item.SourceCardID,
-						Kind:   game.CounterPlusOne,
-						N:      1,
-					}.Apply(NewContext(g, item))
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

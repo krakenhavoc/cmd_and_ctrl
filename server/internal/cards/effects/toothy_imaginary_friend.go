@@ -30,9 +30,7 @@ func init() {
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller
 			}, "Toothy, Imaginary Friend — put a +1/+1 counter on Toothy",
-				func(g *game.Game, item *game.StackItem) error {
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 			WhenThisLeaves("Toothy, Imaginary Friend — draw a card for each +1/+1 counter on it",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)

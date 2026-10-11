@@ -43,7 +43,7 @@ func init() {
 		LifeForMana:     YouMayPayLifeForMana("B"),
 		PrintedKeywords: []string{"lifelink"},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(OfColor("B"), "K'rrik, Son of Yawgmoth — put a +1/+1 counter on it", putCounterOnSelf),
+			WheneverYouCast(OfColor("B"), "K'rrik, Son of Yawgmoth — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

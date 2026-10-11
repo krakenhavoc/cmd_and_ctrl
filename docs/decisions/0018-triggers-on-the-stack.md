@@ -4190,3 +4190,21 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
   Zulaport Cutthroat.
 - **Left on the list.** Indulging Patrician and Lunar Convocation check "you gained life this turn" as they resolve
   (an intervening "if"), which no step expresses yet.
+- **Batch 2, counters on the source.** 33 cards move onto `Do(CounterOnThis{Kind: "+1/+1", N: 1})` with their
+  labels and conditions unchanged: Ajani's Pridemate; Animar, Soul of Elements; Brineborn Cutthroat; Champion of
+  Lambholt; Champion of the Perished; Chandra's Emberling; Chasm Skulker; Danitha, Spear of Agony; Feral Ghoul;
+  Frenzied Raider; Honored Dreyleader (its second row); Idol of False Gods; Inspired Tethermage; Juri, Master of
+  the Revue; K'rrik, Son of Yawgmoth; Laelia, the Blade Reforged; Managorger Hydra; Massacre Girl, Most Wanted;
+  Murktide Regent; Nesting Dovehawk; Orca, Siege Demon; Ravenous Squirrel; Stalwarts of Osgiliath; Toothy,
+  Imaginary Friend; Unflinching Hortimancer; Vadrik, Astral Archmage; Valley Mightcaller; Vengeful Warchief;
+  Vincent, Vengeful Atoner; Wildwood Scourge; Yahenni, Undying Partisan; Yoshimaru, Ever Faithful; Youthful
+  Valkyrie.
+  - **One difference.** Some of the old closures (Animar, Brineborn Cutthroat, Chandra's Emberling, Chasm Skulker,
+    Danitha, Frenzied Raider, Inspired Tethermage, Massacre Girl, Nesting Dovehawk, Toothy, Valley Mightcaller,
+    Yahenni, Yoshimaru) had no "still on the battlefield" check, so a source that had gone to the graveyard in
+    response still received the counter. `CounterOnThis` puts nothing on a source that has left, as the printed
+    "this creature" does (CR 400.7), so this is a fix, not a loss.
+  - **Left on the list.** Edgar, Moonlit Sovereign (re-checks "you cast no spells this turn" as it resolves),
+    Mausoleum Harpy (re-checks the city's blessing) and Runaway Steam-Kin (re-checks fewer than three counters)
+    all have an intervening "if" that no step expresses. Rapacious Guest, Surly Badgersaur and Titanbones,
+    Towering Heart have a second shape on the same card and are in a later batch.
