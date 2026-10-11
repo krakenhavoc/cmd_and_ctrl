@@ -640,8 +640,9 @@ func TestB42HighSocietyHunterEatsACreatureAndDrawsOffNontokenDeaths(t *testing.T
 
 	hand := len(me.Hand.Cards)
 	declareAttack(t, g, opp.ID, hunter)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	pickCard(t, g, me.ID, snack)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	answerChooseCards(t, g, me.ID, snack)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(snack) {
 		t.Error("the chosen creature is sacrificed")
