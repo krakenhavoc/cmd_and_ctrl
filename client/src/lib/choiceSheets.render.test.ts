@@ -366,6 +366,17 @@ describe("the order kinds are sheets", () => {
     expect(sent[0].params).toEqual({ choice_id: "choice-1", order: ["t2", "t1"] });
   });
 
+  it("trigger_order: Auto-order answers in the order a skipped batch stacks", () => {
+    const { sent } = mount(snap({ kind: "trigger_order", trigger_options: opts }));
+    click(barButton("Auto-order")!);
+    expect(sent[0].params).toEqual({ choice_id: "choice-1", order: ["t2", "t1"] });
+  });
+
+  it("replacement_order has no Auto-order", () => {
+    mount(snap({ kind: "replacement_order", replacement_options: opts }));
+    expect(barButton("Auto-order")).toBeFalsy();
+  });
+
   it("replacement_order: Apply in this order", () => {
     const { sent } = mount(snap({ kind: "replacement_order", replacement_options: opts }));
     expectSheet("Order replacement effects");
