@@ -4,14 +4,23 @@
 // 14 are buttons (sub-PR 3, #1079); steps 2–13 are the middle steps, each
 // a TutorialStep (tutorial.ts) with its anchor, its predicate and its
 // copy. Sub-PR 4 (#1081) wrote nine of them; ADR 0125 §5.1 added the
-// opening roll (2), the stack (8) and the commander (10). The copy
+// opening roll (2), the stack (8) and the commander (9). The copy
 // assumes the player knows Magic: it explains the client, never a rule.
 // "Tap this Forest for mana", never "lands make mana".
 //
+// Turn one runs steps 2 to 10, the bot's turn step 11, and the player's
+// turn two steps 12 and 13 (ADR 0076 §2.1 as amended 2026-10-11,
+// #3012). Right-click (12) waits for turn two because the mana creature
+// it points at was cast on turn one and could not tap for mana then: on
+// turn two the player taps it through its menu, and the step completes
+// on that activation. Memnite, free in the scripted hand, is cast on
+// turn one (step 10 asks for it) so that it can attack on turn two (13)
+// while the mana creature is tapped.
+//
 // A step that completes marks the first-use hints it `teaches` as seen
 // (ADR 0125 §5.3), so the player's first real table does not tell them
-// again: the roll (2), the stack (8), right-click (9), the commander
-// (10), the dock (11), and the ⋯ menu and the keymap (14).
+// again: the roll (2), the stack (8), the commander (9), the dock (10),
+// right-click (12), and the ⋯ menu and the keymap (14).
 //
 // Anchors come from the contract-label registry (labels.ts, ADR 0125
 // §2.2), so a renamed label moves them too:
@@ -25,11 +34,11 @@
 //                                  chooser's detour, L.chooseFirstTurn
 //                                  and its confirm, L.giveFirstTurn.any
 //   step 8, the stack pile         { label: L.stackPile.any }
-//   step 10, the commander         { label: L.commandZone.any, within: L.yourBoard }
+//   step 9, the commander          { label: L.commandZone.any, within: L.yourBoard }
 //                                  (the command zone beside the hand, #2349)
-//   step 12, Skip to my turn       { label: L.skipToMyTurn, within: L.actions }
-//   step 13's detour, the bot      { label: L.seatBoard(name) }
-//   step 9, one card               { cardID }  (Card's data-instance-id)
+//   step 11, Skip to my turn       { label: L.skipToMyTurn, within: L.actions }
+//   steps 12/13's detour, the bot  { label: L.seatBoard(name) }
+//   step 12, one card              { cardID }  (Card's data-instance-id)
 //   step 13, the bot's portrait    { seatID }  (PlayerIdentity's data-seat-id)
 //
 // What the practice table does that ADR 0076's table did not foresee,
@@ -47,10 +56,10 @@
 //     is still to be kept: it is a stage over the whole table (#2346).
 //   - In Manual auto-pass, a spell the player casts waits on the
 //     stack until they press `next`: step 8 teaches the stack while it
-//     waits. The bot's turn waits on them at every step, so step 12
+//     waits. The bot's turn waits on them at every step, so step 11
 //     teaches the dock's Skip to my turn toggle (ADR 0143 §4.2; it was
 //     autopass) for that (the owner's choice),
-//     and step 13 watches the bot's turn while autopass runs it.
+//     and step 12 watches the bot's turn while autopass runs it.
 //   - On turn one the player has one land, and a single land is not a
 //     pile. Step 5 completes on resting the pointer on the lands row
 //     whether or not a pile has formed yet, and its copy says the next
@@ -61,17 +70,19 @@
 //     card taps the lands for it, spending mana already in the pool
 //     first. Step 7 points at the lit cards.
 //   - The table deals the player a scripted opening seven (ADR 0076
-//     §2.2 as amended 2026-10-11, #2992), so steps 7, 8 and 13 have a
-//     one-drop to cast and attack with on the first try. A mulligan
+//     §2.2 as amended 2026-10-11, #2992, #3012), so steps 7, 8, 12 and
+//     13 have a one-drop to cast and tap for mana and Memnite to attack
+//     with on the first try. A mulligan
 //     deals a random seven, so they still wait rather than give up:
 //     with nothing castable, step 7 says so and waits for the next
 //     main phase; a spell that left the stack before step 8 could show
-//     it waits for the next creature; and step 13 waits for a creature
-//     that can attack. Each gives up only when the lesson cannot happen
-//     this game at all (lessonGone): the game is over, or no creature is
-//     left in hand, in the command zone or in the library.
-//   - The commander costs more than two turns of lands can pay, so step
-//     10 teaches where it is and how it is cast, not the cast.
+//     it waits for the next creature; step 12 waits for a turn in which
+//     a mana ability is ready; and step 13 waits for a creature that can
+//     attack. Each gives up only when the lesson cannot happen this game
+//     at all (lessonGone): the game is over, or no creature is left in
+//     hand, in the command zone or in the library.
+//   - The commander costs more than one turn of lands can pay, so step
+//     9 teaches where it is and how it is cast, not the cast.
 
 import type { Anchor, CopyContext, Detour, StepContext, TutorialStep } from "./tutorial";
 import { L } from "./labels";
@@ -159,29 +170,72 @@ function rollFor(c: StepContext): { owes: boolean; chooses: boolean } | null {
   };
 }
 
+const hasMana = (c: CardView): boolean => (c.mana_abilities?.length ?? 0) > 0;
+const hasMenu = (c: CardView): boolean => hasMana(c) || (c.activated_abilities?.length ?? 0) > 0;
+
 /**
- * abilityCardID picks step 9's card: the viewer's newest creature with
- * something behind right-click (the deck's mana creatures are there for
- * this step), else an untapped permanent with a menu, else anything
- * with one: a tapped Forest still opens its menu. Null when nothing has
- * a menu, which makes the step's anchor missing and the step advance
- * itself.
+ * manaReady: the permanent's mana ability can be used now. It is
+ * untapped and, if it is a creature, no longer summoning sick: a
+ * creature cast this turn cannot pay {T} (CR 302.6), which is why step
+ * 12 waits for turn two.
+ */
+export function manaReady(c: CardView): boolean {
+  return hasMana(c) && !c.tapped && !(isA(c, "Creature") && !!c.summoning_sick);
+}
+
+/**
+ * manaLessonCards are the viewer's permanents step 12 can be done with:
+ * those with a mana ability that are not lands (the deck's mana
+ * creatures are there for this step), or the lands when there are none,
+ * since a Forest's menu has the same row.
+ */
+function manaLessonCards(v: GameView | null, viewerID: string | null): CardView[] {
+  const mana = permanentsOf(v, viewerID).filter(hasMana);
+  const others = mana.filter((c) => !isA(c, "Land"));
+  return others.length > 0 ? others : mana;
+}
+
+/**
+ * abilityCardID picks step 12's card: the viewer's newest permanent
+ * whose mana ability is ready (a mana creature, else a land, by
+ * manaLessonCards), else the newest that has one but is not ready yet,
+ * else anything with a menu. Null when nothing has a menu, which makes
+ * the step's anchor missing and the step advance itself.
  */
 export function abilityCardID(v: GameView | null, viewerID: string | null): string | null {
-  const withMenu = permanentsOf(v, viewerID).filter(
-    (c) => (c.mana_abilities?.length ?? 0) > 0 || (c.activated_abilities?.length ?? 0) > 0,
-  );
+  const lesson = manaLessonCards(v, viewerID);
+  const newest = (cs: CardView[]): CardView | undefined => cs[cs.length - 1];
   const pick =
-    [...withMenu].reverse().find((c) => isA(c, "Creature")) ??
-    withMenu.find((c) => !c.tapped) ??
-    withMenu[0];
+    newest(lesson.filter(manaReady)) ??
+    newest(lesson) ??
+    newest(permanentsOf(v, viewerID).filter(hasMenu));
   return pick?.instance_id ?? null;
 }
 
-/** abilityCardName is the name of step 9's card, for its copy; undefined when no card has a menu. */
-export function abilityCardName(v: GameView | null, viewerID: string | null): string | undefined {
+function abilityCard(v: GameView | null, viewerID: string | null): CardView | undefined {
   const id = abilityCardID(v, viewerID);
-  return id ? permanentsOf(v, viewerID).find((c) => c.instance_id === id)?.name : undefined;
+  return id ? permanentsOf(v, viewerID).find((c) => c.instance_id === id) : undefined;
+}
+
+/** abilityCardName is the name of step 12's card, for its copy; undefined when no card has a menu. */
+export function abilityCardName(v: GameView | null, viewerID: string | null): string | undefined {
+  return abilityCard(v, viewerID)?.name;
+}
+
+/**
+ * abilityCardLabel is the menu row step 12 asks for: the label of that
+ * card's first mana ability ("Add {G}"); undefined when it has none.
+ */
+export function abilityCardLabel(v: GameView | null, viewerID: string | null): string | undefined {
+  return abilityCard(v, viewerID)?.mana_abilities?.[0]?.label || undefined;
+}
+
+/** castableCreatureInHand: the first creature in hand the server lists a cast for. */
+function castableCreatureInHand(v: GameView | null, viewerID: string | null): CardView | undefined {
+  const casts = new Set(
+    (v?.legal_moves ?? []).filter((m) => m.kind === "cast").map((m) => m.source ?? ""),
+  );
+  return handOf(v, viewerID).find((h) => isA(h, "Creature") && casts.has(h.instance_id));
 }
 
 /** castableCreature: a creature in hand the server lists a cast for; undefined with no list. */
@@ -507,37 +561,8 @@ export const ON_THE_STACK: TutorialStep = {
   teaches: ["table.stack"],
 };
 
-export const RIGHT_CLICK: TutorialStep = {
-  id: "right-click",
-  n: 9,
-  kind: "action",
-  title: "Abilities live on right-click",
-  body: (k) =>
-    `Right-click a permanent to open its abilities; that is where you activate them. ${
-      k.cardName ? `Try it on ${k.cardName}.` : "Try it on one of your permanents that has a menu."
-    }`,
-  // ADR 0117 §6: a left click no longer taps this card. The usual
-  // anchor is the mana creature cast in step 7, which is summoning
-  // sick, so its left click does nothing at all.
-  hint: "Right-click it, or tap its pip. A left click only acts when an ability is ready to use.",
-  anchor: (c) => {
-    const id = abilityCardID(c.view, c.viewerID);
-    return id ? { cardID: id } : null;
-  },
-  done: (c) => c.event === "ability-menu-opened",
-  recover: {
-    when: (c) =>
-      permanentsOf(c.view, c.viewerID).filter((p) => p.tapped).length >
-      permanentsOf(c.start, c.viewerID).filter((p) => p.tapped).length,
-    title: "That tapped it",
-    body: "A left click taps a permanent for mana. A right-click opens the menu with every ability it has.",
-    hint: "Undo, in the dock beside Skip to my turn, untaps it.",
-  },
-  teaches: ["table.right-click"],
-};
-
 /**
- * Step 10 shows the commander (ADR 0125 §5.1): the viewer's command
+ * Step 9 shows the commander (ADR 0125 §5.1): the viewer's command
  * zone, which sits beside the hand (#2349), the element the
  * table.commander hint points at too. A hover step with no bus event:
  * on a device with no hover it moves on after a read, because a tap on
@@ -547,7 +572,7 @@ export const RIGHT_CLICK: TutorialStep = {
  */
 export const COMMANDER: TutorialStep = {
   id: "commander",
-  n: 10,
+  n: 9,
   kind: "action",
   title: "Your commander",
   body: "Your commander waits here, in the command zone beside your hand. Once your lands can pay for it, click it to cast it.",
@@ -561,9 +586,40 @@ export const COMMANDER: TutorialStep = {
   teaches: ["table.commander"],
 };
 
+/**
+ * castToo is step 10's detour on turn one (#3012): before the player
+ * moves the turn on, a creature they can still cast this turn, which
+ * with the scripted hand is Memnite, free beside the one-drop step 7
+ * cast. Cast now, it can attack on turn two while the one-drop taps for
+ * mana in step 12. The detour does not block: `next` moves on without
+ * it, and step 13 waits for an attacker. While the creature waits on
+ * the stack, the detour says to let it resolve, as step 8 taught.
+ */
+function castToo(c: StepContext): Detour | null {
+  if (!c.view || !myTurn(c)) return null;
+  if (creatureOnStack(c)) {
+    return {
+      id: "resolve-too",
+      title: "Let it resolve",
+      body: (k) => `${PressNext(k)} in the dock and your creature resolves, as before.`,
+      anchor: [STACK_PILE, NEXT],
+    };
+  }
+  if (!sorcerySpeed(c)) return null;
+  const more = castableCreatureInHand(c.view, c.viewerID);
+  if (!more) return null;
+  return {
+    // The card's id too: the copy names it, so another card is another detour.
+    id: `cast-too:${more.instance_id}`,
+    title: "One more creature",
+    body: `You can still cast ${more.name} this turn. Cast it too: next turn one creature taps for mana while the other attacks.`,
+    anchor: HAND,
+  };
+}
+
 export const MOVE_ALONG: TutorialStep = {
   id: "move-along",
-  n: 11,
+  n: 10,
   kind: "action",
   title: "Move the turn along",
   body: (k) =>
@@ -574,26 +630,28 @@ export const MOVE_ALONG: TutorialStep = {
     !!c.view &&
     !!c.start &&
     (c.view.turn.step !== c.start.turn.step || c.view.turn.seq !== c.start.turn.seq),
+  first: castToo,
   teaches: ["table.dock"],
 };
 
-/** How long step 12 waits for autopass and the bot's turn before moving on regardless (§3). */
+/** How long step 11 waits for autopass and the bot's turn before moving on regardless (§3). */
 export const WATCH_TIMEOUT_MS = 90_000;
 
 /** Is the dock's autopass toggle on? */
 const autopassOn = (c: StepContext): boolean => c.client?.autopass === true;
 
 /**
- * Step 12 teaches the Skip to my turn toggle (formerly autopass; the owner's choice, 2026-10-02):
+ * Step 11 teaches the Skip to my turn toggle (formerly autopass; the owner's choice, 2026-10-02):
  * the practice table forces Manual auto-pass, so without it the
  * bot's turn waits on the player at every step. The toggle is session
  * state, separate from that setting, and its safety belt switches it off
  * when the player's own main phase comes round (autopassDecision.ts
- * rule 2), so step 13 finds it off and the forced setting untouched.
+ * rule 2), so it is off again in the main phase steps 12 and 13 work
+ * in, and the forced setting is untouched.
  */
 export const WATCH_BOT: TutorialStep = {
   id: "watch-bot",
-  n: 12,
+  n: 11,
   kind: "action",
   title: "Let the bot play",
   body: "Turn on Skip to my turn in the dock. It passes for you, so the bot plays its turn while you watch.",
@@ -630,6 +688,132 @@ export const WATCH_BOT: TutorialStep = {
   timeoutMs: WATCH_TIMEOUT_MS,
 };
 
+/**
+ * botTurn is the detour steps 12 and 13 share while it is not the
+ * viewer's turn: watch the bot while Skip to my turn plays it out (step
+ * 11 hands over here as soon as the bot's turn is running), else press
+ * next until the turn comes round. `waits` is the latter's title.
+ */
+function botTurn(c: StepContext, waits: string): Detour | null {
+  if (!c.view || myTurn(c)) return null;
+  if (autopassOn(c)) {
+    const opp = opponentOf(c.view, c.viewerID);
+    return {
+      id: "watch-bot",
+      title: "Watch the bot play",
+      body: "Skip to my turn is passing for you while the bot takes its turn. It hands back at your main phase.",
+      anchor: opp ? { label: L.seatBoard(opp.name) } : DOCK,
+    };
+  }
+  return {
+    id: "await-turn",
+    title: waits,
+    body: (k) => `${PressNext(k)} in the dock until your turn comes round.`,
+    anchor: DOCK,
+  };
+}
+
+/**
+ * autopassOff is the detour steps 12 and 13 share in the viewer's own
+ * turn: Skip to my turn switched on after the main phase (in combat,
+ * say) would pass the rest of the turn, combat too.
+ */
+function autopassOff(c: StepContext): Detour | null {
+  if (!c.view || !myTurn(c) || !autopassOn(c) || EARLY_STEPS.has(c.view.turn.step)) return null;
+  return {
+    id: "autopass-off",
+    title: "First, turn off Skip to my turn",
+    body: "Skip to my turn would pass the rest of your turn, combat included. Click it off in the dock.",
+    anchor: AUTOPASS,
+  };
+}
+
+/**
+ * Step 12 teaches right-click (ADR 0076 §2.1, as amended 2026-10-11 for
+ * #3012) on the player's turn two. Its card is the mana creature step 7
+ * cast, no longer summoning sick, so its menu's mana row is live: the
+ * player right-clicks it, chooses the row, and the mana goes into the
+ * pool. The step completes on that activation, read off the snapshot
+ * (the card tapped, with the mana in the pool), not on the menu opening:
+ * opening a menu is not using it. A left click on a ready mana ability
+ * uses it too (ADR 0117 §6), and counts. Step 13's first detour then asks
+ * for the mana to be spent.
+ *
+ * Until the card is ready the step waits: through the bot's turn, to
+ * the player's main phase, or a whole turn when nothing of theirs can
+ * tap for mana yet. It gives up only when the game is over; with no
+ * permanent that has a menu at all, its anchor is missing and it moves
+ * on with a note.
+ */
+export const RIGHT_CLICK: TutorialStep = {
+  id: "right-click",
+  n: 12,
+  kind: "action",
+  title: "Abilities live on right-click",
+  body: (k) =>
+    `Right-click a permanent to open its abilities; that is where you activate them. ${
+      k.cardName
+        ? `Try it on ${k.cardName}: choose ${k.abilityLabel ?? "its mana ability"}, and the mana goes into your pool to spend.`
+        : "Try it on one of your permanents that has a menu."
+    }`,
+  // ADR 0117 §6: a left click acts only when an ability is ready, as
+  // this one is on turn two.
+  hint: "Right-click it, or tap its pip, then choose the row. Now that it is ready, a left click uses it too.",
+  anchor: (c) => {
+    const id = abilityCardID(c.view, c.viewerID);
+    return id ? { cardID: id } : null;
+  },
+  done: (c) => {
+    if (!c.view) return false;
+    const pool = (seatOf(c.view, c.viewerID)?.mana_pool?.length ?? 0) > 0;
+    const before = new Map(permanentsOf(c.start, c.viewerID).map((p) => [p.instance_id, p]));
+    // Tapped since the step began, or tapped with its mana still in the
+    // pool: a card that was tapped as the step began (a Forest from
+    // turn one) untaps and is used again.
+    return manaLessonCards(c.view, c.viewerID).some(
+      (p) => p.tapped && !p.attacking_target && (pool || !before.get(p.instance_id)?.tapped),
+    );
+  },
+  first: (c) => {
+    if (!c.view) return null;
+    const wait = botTurn(c, "Wait for your turn") ?? autopassOff(c);
+    if (wait) return wait;
+    const lesson = manaLessonCards(c.view, c.viewerID);
+    if (lesson.length > 0 && !lesson.some(manaReady)) {
+      return {
+        id: "ready-next-turn",
+        title: "Ready next turn",
+        body: (k) =>
+          `Nothing of yours can tap for mana right now: a creature can from the turn after it arrives, and a tapped one untaps on your turn. ${PressNext(k)} in the dock until your next turn.`,
+        anchor: DOCK,
+      };
+    }
+    if (EARLY_STEPS.has(c.view.turn.step) && c.view.turn.step !== "precombat_main") {
+      // Step 11's Skip to my turn is still on and carries the player to
+      // Main by itself; a press of next as it gets there would pass the
+      // main phase away, so this one asks for none.
+      if (autopassOn(c)) {
+        return {
+          id: "main-next",
+          title: "Your main phase is next",
+          body: "Skip to my turn passes your upkeep and draw for you, and stops at your main phase.",
+          anchor: DOCK,
+        };
+      }
+      return {
+        id: "to-main",
+        title: "First, your main phase",
+        body: (k) =>
+          `${PressNext(k)} in the dock until it reads Main, where the mana can be spent.`,
+        anchor: DOCK,
+      };
+    }
+    return null;
+  },
+  cannot: (c) => (c.view && gameOver(c) ? "the game is over" : null),
+  teaches: ["table.right-click"],
+};
+
 export const ATTACK: TutorialStep = {
   id: "attack",
   n: 13,
@@ -644,35 +828,9 @@ export const ATTACK: TutorialStep = {
   done: (c) => permanentsOf(c.view, c.viewerID).some((p) => !!p.attacking_target),
   first: (c) => {
     if (!c.view) return null;
-    if (!myTurn(c) && autopassOn(c)) {
-      // Step 12 hands over here as soon as the bot's turn is running.
-      const opp = opponentOf(c.view, c.viewerID);
-      return {
-        id: "watch-bot",
-        title: "Watch the bot play",
-        body: "Skip to my turn is passing for you while the bot takes its turn. It hands back at your main phase.",
-        anchor: opp ? { label: L.seatBoard(opp.name) } : DOCK,
-      };
-    }
-    if (!myTurn(c)) {
-      return {
-        id: "await-turn",
-        title: "Attacks wait for your turn",
-        body: (k) => `${PressNext(k)} in the dock until your turn comes round.`,
-        anchor: DOCK,
-      };
-    }
+    const wait = botTurn(c, "Attacks wait for your turn") ?? autopassOff(c);
+    if (wait) return wait;
     const step = c.view.turn.step;
-    // Skip to my turn switched on after the main phase (in combat,
-    // say) would pass the rest of the turn, combat too.
-    if (autopassOn(c) && !EARLY_STEPS.has(step)) {
-      return {
-        id: "autopass-off",
-        title: "First, turn off Skip to my turn",
-        body: "Skip to my turn would pass the rest of your turn, combat included. Click it off in the dock.",
-        anchor: AUTOPASS,
-      };
-    }
     // No creature at all: the step waits for one (#2992).
     if (count(c.view, c.viewerID, "Creature") === 0) {
       return {
@@ -686,6 +844,21 @@ export const ATTACK: TutorialStep = {
     // a detour only when its id changes (tutorial.ts check), so one id
     // whose copy depended on the phase went stale when the phase moved
     // on (#3006).
+    // Mana from step 12 still in the pool, and a creature it can help
+    // cast: spend it first (#3012). A click on a lit card spends the
+    // pool before it taps anything.
+    if (
+      step === "precombat_main" &&
+      (seatOf(c.view, c.viewerID)?.mana_pool?.length ?? 0) > 0 &&
+      castableCreatureInHand(c.view, c.viewerID)
+    ) {
+      return {
+        id: "spend-mana",
+        title: "First, spend your mana",
+        body: "Your mana waits in your pool, by your portrait, until this step ends. Click a lit creature in your hand to spend it.",
+        anchor: HAND,
+      };
+    }
     if (step === "precombat_main") {
       return {
         id: "to-combat",
@@ -762,10 +935,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   TAP_LAND,
   CAST_CREATURE,
   ON_THE_STACK,
-  RIGHT_CLICK,
   COMMANDER,
   MOVE_ALONG,
   WATCH_BOT,
+  RIGHT_CLICK,
   ATTACK,
   HANDOFF,
 ];

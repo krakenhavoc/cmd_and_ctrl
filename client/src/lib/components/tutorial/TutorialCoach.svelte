@@ -13,8 +13,8 @@
   //      missing for ANCHOR_GRACE_MS (it gets a moment to render) makes
   //      the step advance itself and log. A tutorial never waits on an
   //      element that is not there. The same poll times a hover step's
-  //      rest (steps 3, 5 and 10, "hover ≥ 600ms"), and reads an anchor
-  //      that comes off the board (step 2's roll, step 9's card) afresh
+  //      rest (steps 3, 5 and 9, "hover ≥ 600ms"), and reads an anchor
+  //      that comes off the board (step 2's roll, step 12's card) afresh
   //      each tick.
   //   3. Placement. The card docks bottom-left (§2.3, amended
   //      2026-10-02). It publishes its live size through `onSize`, and
@@ -52,7 +52,7 @@
     type TutorialStep,
   } from "../../tutorial";
   import { anchorRects, resolveAnchor, sameRects, type AnchorRect } from "../../tutorialAnchor";
-  import { TUTORIAL_STEPS, abilityCardName } from "../../tutorialSteps";
+  import { TUTORIAL_STEPS, abilityCardLabel, abilityCardName } from "../../tutorialSteps";
   import { HINTS } from "../../hints";
   import type { HintID } from "../../hints/hint";
   import { markHintsTaught } from "../../hints/runtime";
@@ -84,7 +84,7 @@
     isHovering?: (el: Element) => boolean;
     /** A hover step on a device that cannot hover gives up after this. */
     touchHoverStepMs?: number;
-    /** The dock's autopass toggle (Game.svelte's session state), for step 12. */
+    /** The dock's autopass toggle (Game.svelte's session state), for step 11. */
     autopass?: boolean;
     /**
      * A completed step's `teaches`. Defaults to marking those hints seen
@@ -127,7 +127,7 @@
   $effect(() => {
     run.observe(view);
   });
-  // The autopass toggle never reaches the wire; step 12 reads it here.
+  // The autopass toggle never reaches the wire; step 11 reads it here.
   $effect(() => {
     run.observeClient({ autopass });
   });
@@ -282,6 +282,7 @@
     settingsKey: keys.openSettings ? formatChord(keys.openSettings, isMacLike()) : "",
     nextKey: keys.passPriority ? formatChord(keys.passPriority, isMacLike()) : "",
     cardName: abilityCardName(view, viewerID),
+    abilityLabel: abilityCardLabel(view, viewerID),
   });
   // What the card says, strongest first: a detour (what to do before
   // the step can happen), then the recovered copy, then the step's own.

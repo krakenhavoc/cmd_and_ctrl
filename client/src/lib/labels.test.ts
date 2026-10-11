@@ -101,6 +101,10 @@ function contexts(): StepContext[] {
   for (const roll of rolls) out.push(ctx(board({ hand: [], step: "untap", roll })));
   // The opening hand still to keep, and kept (steps 4 and 7).
   for (const kept of [false, true]) out.push(ctx(board({ step: "upkeep", mulligan: { kept } })));
+  // A creature the server lists a cast for, with mana in the pool
+  // (step 10's "one more creature", step 13's "spend your mana").
+  const castable = elves();
+  out.push(ctx(board({ hand: [castable], casts: [castable.instance_id], pool: ["G"] })));
   return out;
 }
 

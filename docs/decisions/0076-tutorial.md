@@ -87,6 +87,41 @@ eleven steps with anchors and completion predicates.
 > `teaches` marks the hints it covers as seen when it completes. The table below
 > is the original eleven; `client/src/lib/tutorialSteps.ts` is the current list.
 
+> **Amended 2026-10-11 (S65, [#3012](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3012); owner
+> decision: a real activation on turn two):** right-click moves to the player's
+> turn two. On turn one it pointed at the mana creature step 7 had just cast,
+> whose only row, `Add {G}`, is disabled by summoning sickness, and it completed
+> the moment the menu opened, so the coach moved on while the player was still
+> trying to tap the elf. The order is now 1–8 as before, **9 Your commander,
+> 10 Move the turn along, 11 Let the bot play, 12 Abilities live on
+> right-click, 13 Attack**, 14 the hand-off:
+>
+> - **Step 12 completes on the activation**, read off the snapshot: a mana
+>   creature of the player's (a land when they have none) has tapped since the
+>   step began, or is tapped with its mana in the pool, and is not attacking. The
+>   menu opening is not enough. Its card is the newest permanent whose mana
+>   ability is ready (untapped, not summoning sick), and the copy names it and its
+>   row: "Try it on Elvish Mystic: choose Add {G}, and the mana goes into your pool
+>   to spend." A left click on a ready ability counts too (ADR 0117 §6). Until a
+>   card is ready the step waits, with a detour: the bot's turn ("Watch the bot
+>   play" or "Wait for your turn"), the player's upkeep and draw ("Your main phase
+>   is next" while Skip to my turn carries them, else "First, your main phase"),
+>   or a whole turn when nothing can tap yet ("Ready next turn"). It gives up only
+>   when the game is over.
+> - **Step 13 asks for the mana to be spent first**: in the main phase, with mana
+>   in the pool and a creature the server lists a cast for, its first detour is
+>   "First, spend your mana", pointing at the hand. Then it goes to combat as
+>   before, and the attacker is Memnite (§2.2), since the elf is tapped.
+> - **Step 10 asks for Memnite on turn one**: before the turn moves on, a
+>   creature the server still lists a cast for gets a detour, "One more
+>   creature" ("You can still cast Memnite this turn. Cast it too: next turn one
+>   creature taps for mana while the other attacks."), and "Let it resolve" while
+>   it waits on the stack. It does not block: `next` moves on without it, and
+>   step 13 waits for an attacker.
+>
+> The step numbers in §2.5, §7 and ADR 0125 §5.1 are the order as it was before
+> this amendment.
+
 Each step teaches exactly one thing the UI does not advertise. The ordering is
 the turn itself, so every lesson arrives at the moment it is needed rather than
 as a list up front.
@@ -155,6 +190,35 @@ that makes a tutorial worse.
 >   asking anything when they resolve. **The ability menu leaves out its Sandbox
 >   rows while the coach is up** (`tutorialRunning`): they were the only live rows
 >   on a card with no ability of its own.
+
+> **Amended again 2026-10-11 (S65, [#3012](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3012); owner
+> decisions):** two changes to the player's deck, for §2.1's moved right-click step.
+>
+> - **The scripted hand trades Elvish Visionary and Llanowar Visionary for
+>   Memnite and Priest of Titania**: three Forests, Llanowar Elves, Elvish Mystic,
+>   Memnite and Priest of Titania. Memnite costs nothing, so it is cast on turn
+>   one beside the one-drop and can attack on turn two while the one-drop taps for
+>   mana in the right-click step. Turn two then has three mana (two Forests and the
+>   elf) for the other one-drop and Priest of Titania. Memnite is back in the deck
+>   as a zero-drop, so "every one-drop is a mana creature" still holds.
+> - **No two of the player's triggers can trigger on one event.** Two of them on
+>   one event raise the CR 603.3b "Order your triggers" prompt, which the tutorial
+>   never explains; the owner met it with Marwyn (the commander, "another Elf
+>   enters") and Wolverine Riders. Marwyn stays, so nothing else in the deck
+>   triggers on a creature entering. Out: Wolverine Riders, Prosperous Innkeeper
+>   and Gyre Sage (evolve) watched creatures entering; Elvish Visionary, Llanowar
+>   Visionary, Armorcraft Judge, Servant of the Conduit, Wall of Blossoms and
+>   Circuit Mender had "when this creature enters"; Managorger Hydra shared Beast
+>   Whisperer's cast, and Sporemound Rampaging Baloths' landfall. In, all
+>   `CompletenessFull`, none with a trigger: Memnite, Copper Myr, Great Divide
+>   Guide, Gaea's Herald, Frenzied Baloth, Phantom Tiger, Prowling Serpopard,
+>   Gaea's Protector, Karametra's Acolyte, Ironscale Hydra and Thunderfoot Baloth.
+>   `TestTutorialPlayerTriggersNeverShareAnEvent` (`decks/tutorial_test.go`)
+>   reads every trigger condition off the checked-in oracle fixtures, reminder text
+>   included, so it runs in CI with no dump. The fixture has no type line, so it
+>   reads "another Elf" as any nonland permanent: that is why the non-Elf "when
+>   this creature enters" cards went too. The bot's deck is unchanged: its
+>   ordering prompts are the bot's.
 
 A private game with one human seat and one `random`-tier bot, both on a fixed
 prebuilt deck, created by a dedicated route rather than the ordinary lobby flow
@@ -298,6 +362,12 @@ spotlighting empty space or waiting on a predicate that can never fire. Losing
 one step is recoverable; a wedged tutorial on a first session is not.
 
 ### 2.5 Step completion needs a small client event bus
+
+> **Amended 2026-10-11 (S65, [#3012](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3012)):** the right-click
+> step no longer completes on `ability-menu-opened`: it completes on the
+> activation, which the snapshot shows (§2.1's amendment). The event is still
+> emitted and still re-checks the current step, and the bus keeps its three
+> names; no step completes on it today.
 
 **Only six of the eleven steps can read their own completion out of the game
 snapshot.** Steps 2 and 4 are hover. Step 7 is a card-local menu opening —

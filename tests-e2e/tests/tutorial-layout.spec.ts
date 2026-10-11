@@ -149,9 +149,10 @@ for (const size of [
 //
 // The card is taller than the hand row, so it also rises over the left
 // end of the lands row, where the first Forest lands and the corner
-// piles sit. Steps 5 and 6 (the lands), 9 (a permanent, else a land) and
-// 10 (the command zone) point at those; the card must not intersect any
-// of them, nor the piles, with the coach up.
+// piles sit. Steps 5 and 6 (the lands), 9 (the command zone) and 12 (a
+// permanent, else a land; #3012 moved it after the bot's turn) point at
+// those; the card must not intersect any of them, nor the piles, with
+// the coach up.
 
 type Rect = { left: number; top: number; right: number; bottom: number };
 
@@ -174,7 +175,7 @@ for (const size of [
   { width: 1366, height: 768 },
   { width: 1600, height: 900 },
 ]) {
-  test(`the coach card covers no anchor of steps 5, 6, 9 and 10 at ${size.width}×${size.height}`, async ({
+  test(`the coach card covers no anchor of steps 5, 6, 9 and 12 at ${size.width}×${size.height}`, async ({
     browser,
   }) => {
     test.slow();
@@ -293,11 +294,11 @@ for (const size of [
           ((await count.textContent()) ?? "").trim(),
         );
         const n = m ? Number(m[1]) : 0;
-        if ([5, 6, 9, 10].includes(n)) {
+        if ([5, 6, 9, 12].includes(n)) {
           await check(`step ${n}`);
           checked++;
         }
-        if (n >= 10) break;
+        if (n >= 12) break;
         const skip = coach.getByRole("button", { name: "Skip step" });
         if (!(await skip.isVisible())) break;
         await skip.click();
