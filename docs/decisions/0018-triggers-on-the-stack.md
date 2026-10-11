@@ -5,7 +5,7 @@
 **Amendment:** 2026-09-24 · **Accepted** · [Resolution-time LKI for a permanent that has left (CR 608.2h)](#amendment-2026-09-24--resolution-time-lki-for-a-permanent-that-has-left-cr-6082h--accepted--s38) · [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379)
 **Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
 **Amendment:** 2026-09-24 · **Accepted** · [A trigger still announcing holds its batch (CR 603.3b / 603.3d)](#amendment-2026-09-24--a-trigger-still-announcing-holds-its-batch-cr-6033b--6033d--accepted--s39) · [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529)
-**Amendment:** 2026-10-11 · **Proposed** · [The independence check, on the boards people play](#amendment-2026-10-11--the-independence-check-on-the-boards-people-play-3013--proposed) · [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013)
+**Amendment:** 2026-10-11 · **Accepted** · [The independence check, on the boards people play](#amendment-2026-10-11--the-independence-check-on-the-boards-people-play-3013--accepted) · [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013)
 
 ## Context
 
@@ -3772,11 +3772,21 @@ Any other field set, such as `Params`, a payload, X, a division or modes, keeps 
 `Do(ExileChosenTarget{})`, so casting Ugin with Vivi out no longer asks unless Ugin targets Vivi. Tests:
 `cards/effects/trigger_independence_built_test.go`.
 
-## Amendment 2026-10-11 — the independence check, on the boards people play (#3013) · Proposed
+## Amendment 2026-10-11 — the independence check, on the boards people play (#3013) · Accepted
 
 Issue [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013). Builds on the #1511, #1968 and #2884
-amendments above. **Proposed, for the owner's review. Nothing here is implemented**; the sub-PRs at the end
-wait for the answers to the questions before them.
+amendments above. **Accepted on 2026-10-11** with the owner's answers below. The sub-PRs at the end implement
+it, and #3013 stays open until they land.
+
+### Owner decisions (2026-10-11)
+
+1. **The direction:** approved. Widen #2884 with the changes under *Recommendation*. Option (b), engine-owned
+   commuting classes, is rejected.
+2. **Migration:** all of the one-sentence backlog (about 94 cards), in batches of about 25.
+3. **Watchers and opaque boards:** no change for now. The rule is revisited once sub-PR 1's counter shows how
+   often each reason fires.
+4. **"Use this order again"** (c2): yes, as its own issue, which the owner files.
+5. **The prompt says why it asked:** yes, as its own issue, which the owner files.
 
 ### The report
 
@@ -4036,6 +4046,8 @@ and "which object did it, and when". For this amendment's new cases:
 c1 and c2 are not on this list. Each is decided on sub-PR 1's data, or filed as its own issue.
 
 ### Questions for the owner
+
+Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
 
 1. **The direction.** Recommended: (a), widening #2884 with the four changes above, and (b) rejected.
 2. **How much to migrate.** (a) The whole one-sentence backlog (94 cards). (b) Only cards in the decks the table
