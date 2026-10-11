@@ -111,6 +111,7 @@ var reviewedNotAWipe = map[string]string{
 	"Bazaar of Wonders":                        "exiles graveyards",
 	"Beyeen Veil // Beyeen Coast":              "-2/-0 kills nothing",
 	"Call Forth the Tempest":                   "damage equal to spells cast this turn: no fixed amount or X for a sweep to declare",
+	"Council's Judgment":                       "exiles the permanents with the most votes, one per voter: removal, not a wipe",
 	"Crypt Incursion":                          "exiles a graveyard",
 	"Eliminate the Impossible":                 "-2/-0 kills nothing",
 	"Eye of Singularity":                       "destroys only permanents sharing a name, which no class says",

@@ -39,7 +39,9 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Magister of Worth — each player votes for grace or condemnation", magisterOfWorthVote),
+			// ADR 0126 §6: the sweep runs only when condemnation wins or the vote ties; the Magister survives it.
+			TriggerWithPurpose(WhenThisEnters("Magister of Worth — each player votes for grace or condemnation", magisterOfWorthVote),
+				game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
 		},
 	})
 }
