@@ -658,8 +658,8 @@ describe("step 13: attack", () => {
   it("detours to your turn, to combat, or to next turn's combat", () => {
     const id = (b: Board) => ATTACK.first!(ctx(board({ mine: [ready()], ...b })))?.id ?? null;
     expect(id({ active: 1, seq: 2 })).toBe("await-turn");
-    expect(id({ step: "upkeep" })).toBe("to-combat");
-    expect(id({ step: "begin_combat" })).toBe("to-combat");
+    expect(id({ step: "upkeep" })).toBe("to-main");
+    expect(id({ step: "begin_combat" })).toBe("to-attackers");
     expect(id({ step: "declare_attackers" })).toBeNull();
     expect(id({ step: "postcombat_main" })).toBe("next-combat");
     // Only a creature that has just arrived: it attacks next turn.
@@ -676,6 +676,19 @@ describe("step 13: attack", () => {
     expect(copyText(d.body, keys)).toBe(
       "Press next (Space) in the dock until it reads Main, then play a land and cast what you like.",
     );
+    // Combat has begun: Main 1 is behind the player, so no Main copy.
+    const c = ATTACK.first!(ctx(board({ step: "begin_combat", mine: [ready()] })))!;
+    expect(copyText(c.body, keys)).toBe(
+      "Press next (Space) in the dock until it reads Declare Attackers.",
+    );
+  });
+
+  it("gives each phrasing its own id, so the phase moving on republishes it (#3006)", () => {
+    const at = (step: string) => ATTACK.first!(ctx(board({ step, mine: [ready()] })))!;
+    const pre = at("upkeep");
+    const main = at("precombat_main");
+    expect(main.id).not.toBe(pre.id);
+    expect(copyText(main.body, keys)).not.toMatch(/until it reads Main,/);
   });
 
   it("watches the bot's turn while autopass runs it", () => {
@@ -688,7 +701,7 @@ describe("step 13: attack", () => {
   it("asks for autopass off when it outlives your main phase", () => {
     const id = (b: Board) => ATTACK.first!(auto(board({ mine: [ready()], ...b })))?.id ?? null;
     // The safety belt's own window: upkeep and draw pass, main clears it.
-    expect(id({ step: "upkeep" })).toBe("to-combat");
+    expect(id({ step: "upkeep" })).toBe("to-main");
     expect(id({ step: "precombat_main" })).toBe("to-combat");
     // Skip to my turn switched on after the main phase: it would pass the rest of the turn.
     const d = ATTACK.first!(auto(board({ step: "begin_combat", mine: [ready()] })))!;
@@ -823,10 +836,11 @@ describe("a whole tutorial", () => {
     expect(at()).toBe("attack");
     expect(run.current().detour?.id).toBe("watch-bot");
     move({ seq: 3, active: 0, step: "upkeep", mine: [f, e], hand: [hand[1], hand[3]] });
-    expect(run.current().detour?.id).toBe("to-combat");
+    expect(run.current().detour?.id).toBe("to-main");
     // The safety belt clears the toggle at the player's main phase.
     move({ seq: 3, active: 0, step: "precombat_main", mine: [f, e], hand: [hand[1], hand[3]] });
     run.observeClient({ autopass: false });
+    // The phase moved on: the detour is republished under its own id (#3006).
     expect(run.current().detour?.id).toBe("to-combat");
     move({ seq: 3, step: "declare_attackers", mine: [f, e], hand: [hand[1], hand[3]] });
     expect(run.current().detour).toBeNull();

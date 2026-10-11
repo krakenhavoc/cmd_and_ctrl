@@ -682,16 +682,36 @@ export const ATTACK: TutorialStep = {
         anchor: HAND,
       };
     }
-    if (BEFORE_ATTACKS.has(step)) {
+    // Each phrasing has its own id and fixed copy. The coach republishes
+    // a detour only when its id changes (tutorial.ts check), so one id
+    // whose copy depended on the phase went stale when the phase moved
+    // on (#3006).
+    if (step === "precombat_main") {
       return {
         id: "to-combat",
         title: "First, go to combat",
         // In the main phase the player may still play a land or cast,
         // so invite it before the detour moves them on (turn 2, #2994).
         body: (k) =>
-          step === "precombat_main"
-            ? `Play a land and cast what you like, then ${pressNext(k)} until it reads Declare Attackers.`
-            : `${PressNext(k)} in the dock until it reads Main, then play a land and cast what you like.`,
+          `Play a land and cast what you like, then ${pressNext(k)} until it reads Declare Attackers.`,
+        anchor: DOCK,
+      };
+    }
+    if (step === "begin_combat") {
+      // Combat has begun: Main 1 is behind the player, so only the way on.
+      return {
+        id: "to-attackers",
+        title: "First, go to combat",
+        body: (k) => `${PressNext(k)} in the dock until it reads Declare Attackers.`,
+        anchor: DOCK,
+      };
+    }
+    if (BEFORE_ATTACKS.has(step)) {
+      return {
+        id: "to-main",
+        title: "First, go to combat",
+        body: (k) =>
+          `${PressNext(k)} in the dock until it reads Main, then play a land and cast what you like.`,
         anchor: DOCK,
       };
     }
