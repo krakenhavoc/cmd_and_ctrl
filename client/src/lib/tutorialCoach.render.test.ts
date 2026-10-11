@@ -22,7 +22,7 @@ import {
   TUTORIAL_STEPS,
   WELCOME,
 } from "./tutorialSteps";
-import { anchorRect, resolveAnchor } from "./tutorialAnchor";
+import { anchorRect, anchorRects, resolveAnchor } from "./tutorialAnchor";
 import { L } from "./labels";
 import { emit } from "./tutorialBus";
 import { defaultSettings, settings } from "./settings";
@@ -215,6 +215,7 @@ describe("the anchor resolver", () => {
       <div data-seat-id="bot" id="bot"></div>
       <div role="list" aria-label="creatures" id="row" style="overflow: auto">
         <div data-instance-id="c-2" id="tall"></div></div>`;
+    place(document.getElementById("bot")!, 600, 20, 120, 120);
     expect(resolveAnchor({ seatID: "bot" })?.id).toBe("bot");
     // A creature card taller than the creature row: the row scrolls,
     // and the hole goes round the part a player can see and click.
@@ -229,6 +230,76 @@ describe("the anchor resolver", () => {
     // Scrolled out of sight entirely: missing.
     place(document.getElementById("tall")!, 500, 420, 120, 168);
     expect(anchorRect([{ cardID: "c-2" }])).toBeNull();
+  });
+});
+
+describe("anchorRects: one hole per anchor", () => {
+  const board = () => {
+    document.body.innerHTML = `
+      <div data-seat-id="bot" id="summary"></div>
+      <div data-seat-id="bot" id="portrait"></div>
+      <section aria-label="${L.yourBoard}">
+        <div role="list" aria-label="${L.creatures}" id="row"></div></section>
+      <section aria-label="${L.actions}">
+        <button aria-label="${L.next}" id="next">next</button>
+        <button aria-label="${L.attackAll("Practice Bot", 2)}" id="all">all</button></section>`;
+    place(document.getElementById("portrait")!, 700, 20, 100, 100);
+    place(document.getElementById("row")!, 300, 560, 500, 130);
+    place(document.getElementById("next")!, 900, 800, 90, 40);
+    place(document.getElementById("all")!, 400, 800, 300, 40);
+  };
+
+  it("cuts a hole for each anchor of step 13, and skips a seat copy with no area", () => {
+    board();
+    // The collapsed summary's avatar comes first and has no area: the
+    // portrait with room is the anchor, not nothing.
+    expect(resolveAnchor({ seatID: "bot" })?.id).toBe("portrait");
+    const rects = anchorRects([
+      { label: L.creatures, within: L.yourBoard },
+      { seatID: "bot" },
+      { label: L.attackAll.any, within: L.actions },
+    ]);
+    expect(rects).toEqual([
+      { left: 300, top: 560, width: 500, height: 130 },
+      { left: 700, top: 20, width: 100, height: 100 },
+      { left: 400, top: 800, width: 300, height: 40 },
+    ]);
+  });
+
+  it("lights the stack and the dock's next for step 8", () => {
+    board();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div aria-label="stack: 1 on the stack" id="stack"></div>',
+    );
+    place(document.getElementById("stack")!, 10, 300, 200, 160);
+    const rects = anchorRects([{ label: L.stackPile.any }, { label: L.next, within: L.actions }]);
+    expect(rects).toEqual([
+      { left: 10, top: 300, width: 200, height: 160 },
+      { left: 900, top: 800, width: 90, height: 40 },
+    ]);
+  });
+
+  it("is not clipped by a display: contents ancestor, which has no box", () => {
+    document.body.innerHTML = `
+      <div style="display: contents; overflow: hidden"><div data-seat-id="bot" id="bot"></div></div>`;
+    place(document.getElementById("bot")!, 46, 262, 60, 60);
+    expect(anchorRects([{ seatID: "bot" }])).toEqual([
+      { left: 46, top: 262, width: 60, height: 60 },
+    ]);
+  });
+
+  it("joins anchors that touch, and leaves a missing one out", () => {
+    board();
+    place(document.getElementById("next")!, 700, 800, 90, 40);
+    expect(
+      anchorRects([
+        { label: L.attackAll.any, within: L.actions },
+        { label: L.next, within: L.actions },
+        { label: L.attention },
+      ]),
+    ).toEqual([{ left: 400, top: 800, width: 390, height: 40 }]);
+    expect(anchorRects([{ label: L.attention }])).toEqual([]);
   });
 });
 
@@ -321,6 +392,39 @@ describe("TutorialCoach", () => {
     flushSync();
     expect(m.container.textContent).toContain("That is the whole interface");
     expect(document.querySelector(".tutorial-scrim")).toBeNull();
+  });
+
+  it("masks one hole per anchor out of a single dimming layer", () => {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div aria-label="your hand" id="hand"></div><div data-seat-id="bot" id="bot"></div>',
+    );
+    place(document.getElementById("hand")!, 340, 670, 570, 112);
+    place(document.getElementById("bot")!, 700, 20, 100, 100);
+    const two: TutorialStep = { ...spot, anchor: [{ label: L.yourHand }, { seatID: "bot" }] };
+    const m = mount([WELCOME, two, HANDOFF]);
+    click(button(m.container, "Start")!);
+    const holes = [...document.querySelectorAll<HTMLElement>(".tutorial-scrim")];
+    expect(holes.map((h) => h.style.left)).toEqual(["334px", "694px"]);
+    expect(holes.map((h) => h.style.top)).toEqual(["664px", "14px"]);
+    // Both are holes in the one layer, so neither dims the other.
+    expect(holes.every((h) => h.classList.contains("part"))).toBe(true);
+    const dim = document.querySelector(".tutorial-dim");
+    expect(dim?.getAttribute("data-holes")).toBe("2");
+    expect(dim?.querySelectorAll("mask rect[fill=black]")).toHaveLength(2);
+    expect(dim?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("moves the hover preview left while a step that points at the portraits shows", () => {
+    document.body.insertAdjacentHTML("beforeend", '<div aria-label="your hand" id="hand"></div>');
+    place(document.getElementById("hand")!, 340, 670, 570, 112);
+    const m = mount([WELCOME, { ...spot, previewLeft: true }, HANDOFF]);
+    expect(document.documentElement.dataset.tutorialPreview).toBeUndefined();
+    click(button(m.container, "Start")!);
+    expect(document.documentElement.dataset.tutorialPreview).toBe("left");
+    emit("hand-hovered");
+    flushSync();
+    expect(document.documentElement.dataset.tutorialPreview).toBeUndefined();
   });
 
   it("advances a step whose anchor never appears, and logs it, after the grace period", () => {

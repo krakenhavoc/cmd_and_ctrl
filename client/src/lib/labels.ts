@@ -255,10 +255,21 @@ export const LABEL_SPECS = {
   }),
   next: label({
     name: "next",
-    kind: "text",
+    kind: "aria",
     role: "button",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's primary: pass priority",
+    doc: "the dock's primary: pass priority (its visible text and its aria-label); the tutorial's stack step anchors here, within actions",
+  }),
+  attackAll: dynamicLabel({
+    stem: " with all ",
+    match: "contains",
+    shape: "Attack <name> with all <N> creature(s)",
+    make: (name: string, n: number) => `Attack ${name} with all ${plural(n, "creature")}`,
+    example: ["Practice Bot", 2],
+    kind: "aria",
+    role: "button",
+    owners: ["lib/attackAll.ts"],
+    doc: "the dock's attack-with-all button in a duel (its aria-label equals its visible text); the tutorial's attack step anchors here, within actions",
   }),
   endTurn: label({
     name: "End turn",

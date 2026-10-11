@@ -38,6 +38,7 @@
 // silently skips whatever it disagrees with, so the worst a stale frame
 // can do is a count that is off by one, never a failed action.
 
+import { L } from "./labels";
 import { isCreature } from "./cardTypes";
 import { NO_LEGAL_ACTIONS, type LegalActions } from "./legalActions";
 import { ErrorCode } from "./protocol";
@@ -350,7 +351,7 @@ export function seatLabel(seat: PlayerView): string {
 // table — the control the player presses has to say who gets hit.
 export function attackAllLabel(plan: AttackAllPlan, seat: PlayerView): string {
   const n = eligibleAt(plan, seat.id).length;
-  return `Attack ${seatLabel(seat)} with all ${n} creature${n === 1 ? "" : "s"}`;
+  return L.attackAll(seatLabel(seat), n);
 }
 
 // ---- #1533: attack-with-all under a CR 508.1c count limit ----------

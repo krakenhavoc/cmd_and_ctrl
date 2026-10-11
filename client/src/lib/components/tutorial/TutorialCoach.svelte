@@ -49,7 +49,7 @@
     type CopyContext,
     type TutorialStep,
   } from "../../tutorial";
-  import { anchorRect, resolveAnchor, sameRect, type AnchorRect } from "../../tutorialAnchor";
+  import { anchorRects, resolveAnchor, sameRects, type AnchorRect } from "../../tutorialAnchor";
   import { TUTORIAL_STEPS, abilityCardName } from "../../tutorialSteps";
   import { HINTS } from "../../hints";
   import type { HintID } from "../../hints/hint";
@@ -169,11 +169,24 @@
     run.destroy();
   });
 
+  // ---- The card preview ----
+  // A step that points at the portraits moves the hover preview to the
+  // left (HoverZoomOverlay reads the attribute), so it does not cover them.
+  $effect(() => {
+    if (typeof document === "undefined") return;
+    if (!(snap.visible && snap.step.previewLeft && !snap.detour)) return;
+    const root = document.documentElement;
+    root.dataset.tutorialPreview = "left";
+    return () => {
+      delete root.dataset.tutorialPreview;
+    };
+  });
+
   // ---- The spotlight ----
   // Hover steps whose anchor the pointer has been off since they showed.
   // Outside the effect so a republish of the same step does not forget it.
   const pointerEntered = new Set<string>();
-  let rect: AnchorRect | null = $state(null);
+  let rects: AnchorRect[] = $state([]);
   $effect(() => {
     const step = snap.step;
     const detour = snap.detour;
@@ -182,7 +195,7 @@
     // nothing. One whose anchor is read off the board is measured every
     // tick, and naming nothing then is a missing anchor.
     if (!lit || (step.anchor === undefined && !detour?.anchor)) {
-      rect = null;
+      rects = [];
       return;
     }
     // A hover step completes once the pointer has rested on its anchor
@@ -195,9 +208,9 @@
     let missingSince: number | null = null;
     const measure = (): void => {
       const anchors = spotAnchors(step, detour, run.context());
-      const r = anchors.length > 0 ? anchorRect(anchors) : null;
-      if (r === null) {
-        rect = null;
+      const r = anchors.length > 0 ? anchorRects(anchors) : [];
+      if (r.length === 0) {
+        rects = [];
         const now = Date.now();
         if (missingSince === null) missingSince = now;
         if (now - missingSince >= anchorGraceMs) run.anchorMissing(step.id);
@@ -221,12 +234,12 @@
         else if (now - hoverSince >= dwell.ms) run.hovered(step.id);
       }
       if (
-        !sameRect(
+        !sameRects(
           r,
-          untrack(() => rect),
+          untrack(() => rects),
         )
       )
-        rect = r;
+        rects = r;
     };
     measure();
     const t = setInterval(measure, pollMs);
@@ -297,8 +310,8 @@
 </script>
 
 {#if snap.visible}
-  {#if rect}
-    <TutorialScrim {rect} />
+  {#if rects.length > 0}
+    <TutorialScrim {rects} />
   {/if}
   <!-- data-bottom-left-fixture: the stack pile stays above it (ADR 0119 §1). -->
   <div class="coach-slot" data-bottom-left-fixture bind:this={root}>
