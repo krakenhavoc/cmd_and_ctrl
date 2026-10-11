@@ -4222,3 +4222,21 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
     damage footprint.
   - **Left on the list.** Lux Artillery: its 10 damage re-checks "30 or more counters" as it resolves
     (an intervening "if").
+- **Batch 4, token makers.** 17 cards move onto `Do(CreateToken{...})`, `Do(CounterOnThis{...})` or `Do(MillCards{...})`
+  with labels and conditions unchanged: Arahbo, the First Fang; Autarch Mammoth; Beetleback Chief; Bridled Bighorn;
+  Cosmium Kiln; Desolation Twin; Elanor Gardner; Gilded Ghoda; Lossarnach Captain; On Wings of Gold; Open the
+  Graves; Rapacious Dragon; Restless Anchorage; Sidisi, Brood Tyrant; and the counter rows of Rapacious Guest, Surly
+  Badgersaur and Titanbones, Towering Heart, which finish those cards.
+  - **No new footprint.** `CreateToken` already declares what a token entering does: it emits token created, enters
+    and zone move, so any permanent on the battlefield that watches entering (an ETB watcher, a replacement that
+    watches the event) keeps the batch asking with the reason `reactor`. A token whose template has a trigger,
+    static, replacement or rules-bearing slot is refused, and an evolve-style keyword trigger on it is read too.
+    `trigger_independence_tokens_test.go` pins a Zombie beside a drain skipping, and the same pair asking beside
+    Impact Tremors.
+  - **Copies of one maker.** Two sources with the same label (two Open the Graves) were already auto-ordered by the
+    source-blind rule (#1968), which `CreateToken` is on the list for. That rule never read the board, so a migrated
+    token maker joins it. It needs no order because the copies make the same token.
+  - **Left on the list.** Tapped tokens (`CreateTokenAdvanced` has no footprint step): Alchemist's Talent, Diregraf
+    Colossus, Don Andres, Nuka-Cola Vending Machine, Overseer of the Damned, Tormod, the Desecrator. Resolution-time
+    re-checks (intervening "if"): Crested Sunmare, Field of the Dead, Keeper of the Accord, Ginger, Queen of Sweets,
+    Faramir, Field Commander (wraps its draw). Counted or X amounts: Arboreal Alliance, Cadira, Caller of the Small.

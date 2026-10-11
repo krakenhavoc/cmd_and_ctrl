@@ -14,9 +14,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // No simplification.
 func init() {
 	const label = "Autarch Mammoth — create a 3/3 green Elephant"
-	makeElephant := func(g *game.Game, item *game.StackItem) error {
-		return CreateToken{Controller: item.Controller, Template: TokenCard("3/3 green Elephant"), N: 1}.Apply(NewContext(g, item))
-	}
+	makeElephant := Do(CreateToken{Template: TokenCard("3/3 green Elephant"), N: 1})
 	Register(Spec{
 		OracleID:     "eb50b5f2-4840-4f90-9c85-40fc581be9c7",
 		Name:         "Autarch Mammoth",

@@ -14,34 +14,26 @@
 
 Agent of Treachery | 4cd82c7a-86df-4d29-b578-c009208c0d4b
 Alchemist's Talent | 5a2dfff5-9dba-42f5-bcca-918c16f23807
-Arahbo, the First Fang | dfec65a0-6fb6-463d-aa62-e84a427db217
 Arboreal Alliance | 2f497352-c812-48c4-a922-cc311bcdcdc6
-Autarch Mammoth | eb50b5f2-4840-4f90-9c85-40fc581be9c7
 Beastbond Outcaster | 19a32e29-45ec-433e-9cb4-b2c32cac8f80
-Beetleback Chief | f5c5f64c-6911-430c-a825-b32b96d39c7d
 Bishop of Wings | af4684cf-f109-44be-adfb-7c551a36635e
-Bridled Bighorn | 6a1ad848-6fda-46dd-aad8-2f6a5c71a696
 Bugenhagen, Wise Elder | 4228dd75-1fdd-48dc-9259-b841b2e46c64
 Cadira, Caller of the Small | fcf22321-2f55-41ca-b8e1-4792540ba3ee
 Cephalid Illusionist | 3c3067c4-0ae0-4c6a-9174-e3c981a20235
 Colossal Majesty | cac95494-0db0-4bec-8665-998431a6f76b
 Conclave Mentor | a2fe5937-212c-4e71-8d6e-f408b38100aa
-Cosmium Kiln | 90e1bcef-53af-4c08-b713-bf10dfcbd577#1
 Crested Sunmare | 054fedbb-062e-491e-9a94-594fda33094f
 Deadeye Brawler | a7c36b66-4f58-41af-b1c5-704ff0d9eac8
 Decoction Module | 1daba4f6-2a7d-426a-97d1-0298a7100c45
-Desolation Twin | c0cb1f37-1679-42c7-a794-81e088157eeb
 Diregraf Colossus | fd62ad01-601f-4250-bc2a-8ef3982e45c4
 Distinguished Conjurer | 6df57d67-2fd9-4e7a-b67b-f361fc30e496
 Don Andres, the Renegade | 060ef981-db05-436b-b1c1-f55071375344
 Edgar, Moonlit Sovereign | 1917bda6-c0e1-4c80-8009-74c28cf6b8e9
-Elanor Gardner | ad4c39d6-a8b3-4dd9-816d-09761fc9651d
 Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b
 Faramir, Field Commander | adeed5e8-9019-4740-83ea-67dcd754e194
 Field of the Dead | aa959340-c869-4caa-92c7-572bd8d23eef
 Frostbite Pyromental | 9a104f73-597b-49e3-8088-13db31f61900
 Garruk's Uprising | 3127ae9b-a7a7-43ec-89d7-688f8445b33d
-Gilded Ghoda | 5f4939dc-6e87-47fa-8287-9da60d4b5db2
 Ginger, Queen of Sweets | 5ea93956-085d-409b-bd95-dd669fa69eeb
 Glowing One | b30eae2a-bc1c-45a3-93ae-e1c30d26797c
 Guidelight Matrix | 98005890-d566-4a27-906f-625513171e85
@@ -57,29 +49,20 @@ Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91
 Lazav, the Multifarious | c14bcef2-6d49-4430-86d0-e5a87ba442d9
 Lifecreed Duo | 63686c6b-9051-4002-aa8e-da8a3021330f
 Llanowar Visionary | f75ed312-3a23-4624-80c5-03980aa22d0b
-Lossarnach Captain | 1251691e-3c4c-4e45-9f59-f156852f2268
 Lunar Convocation | cb68d1e4-36aa-4a00-b671-8959e7d526d4
 Lux Artillery | cbd76b22-d04e-48e7-bcab-c7f5466d67d8
 Mausoleum Harpy | ba682da8-50f5-478f-99cc-60a57d229a04
 Merchant Ship | 69556f6c-c05b-4902-bac7-012f0ed81b75
 Nuka-Cola Vending Machine | 6cfb03e5-aca6-4fe2-a3f1-93e1f0cbf9e1
 Nyx-Fleece Ram | 5a20113c-7ea8-4edf-af9f-148ccd326a88
-On Wings of Gold | 3b6f608d-f27d-44cd-b0a1-0e1e1aa1c98a
-Open the Graves | 28778958-a1f9-4fea-b551-c193d1257f18
 Overseer of the Damned | c1f085ce-5b52-45b3-aef0-f77f36b3da36
 Padeem, Consul of Innovation | 0c7ba712-6a99-4d2f-9242-a2163a11f69c
-Rapacious Dragon | 0944ec2e-1dd9-459f-8f1d-667242cf52fe
-Rapacious Guest | 54accd4a-b471-4ae5-b3b2-a5cec44023b7
-Restless Anchorage | 91320daf-f69c-4350-b0fc-4bb37a6904b1
 Restless Spire | 0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9
 Runaway Steam-Kin | eb414a8f-566f-4635-80a1-77b2e18ac8dc
 Satoru, the Infiltrator | 7555c429-5f2d-4171-b6b0-8e3c8da7f314
 Seafloor Oracle | f9f719cb-7778-4109-bbd3-4504ee1b5f49
-Sidisi, Brood Tyrant | 3fad7072-21e3-446e-a28f-615038c8bfea
-Surly Badgersaur | 0209dc74-ac49-4deb-907a-e9fa49d27a0f
 Thassa, God of the Sea | 69e5df2f-be1f-4608-a90f-3e2f51e2fea4
 The Gaffer | a177295e-3b58-4e46-a1cb-fc003a7a0848
-Titanbones, Towering Heart | 510bccb1-61cd-49f1-a54a-80352653d1e3
 Tormod, the Desecrator | 6dc0150d-7145-41e2-bd3d-2564d9d32301
 Vanquisher's Banner | 8cf38025-5821-45a0-9483-266353b7e82d
 Vedalken Archmage | 568cf486-0261-4634-ac36-a6507101b2d0

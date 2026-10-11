@@ -31,9 +31,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Restless Anchorage — create a Map token",
-				func(g *game.Game, item *game.StackItem) error {
-					return CreateToken{Controller: item.Controller, Template: MapToken(), N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CreateToken{Template: MapToken(), N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{U}: Until end of turn, this land becomes a 2/3 white and blue Bird creature with flying. It's still a land.",

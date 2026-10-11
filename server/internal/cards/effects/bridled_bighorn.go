@@ -18,9 +18,7 @@ func init() {
 		PrintedKeywords: []string{"vigilance"},
 		Activated:       []ActivatedAbility{Saddle(2)},
 		Triggered: []game.TriggeredAbility{
-			AttacksWhileSaddled("Bridled Bighorn — create a 1/1 white Sheep", func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 white Sheep"), N: 1}.Apply(NewContext(g, item))
-			}),
+			AttacksWhileSaddled("Bridled Bighorn — create a 1/1 white Sheep", Do(CreateToken{Template: TokenCard("1/1 white Sheep"), N: 1})),
 		},
 	})
 }
