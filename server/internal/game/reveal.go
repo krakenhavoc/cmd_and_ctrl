@@ -64,17 +64,26 @@ type RevealSpec struct {
 	// skipped rather than erroring: a reveal is a look, and a look
 	// at something that has left is nothing.
 	Cards []uuid.UUID
+
+	// To is the zone a library search is sending the found cards to,
+	// set only by a search reveal (the fetch's battlefield, a tutor's
+	// hand). It names no move: the cards stay where they are and the
+	// table is told only where they are headed, so the log can say
+	// "fetched" for a land that went onto the battlefield. Empty for
+	// every other reveal.
+	To ZoneKind
 }
 
 // RevealForEffect performs a reveal: it marks every seated player a
 // knower of each named card and announces the whole thing as one
 // grouped run of EventRevealCards.
 //
-// Nothing moves. A reveal is not a zone change (CR 701.20b) and this
-// function deliberately has no destination parameter — "reveal the
-// top card of your library and put it into your hand" is a reveal
-// followed by an ordinary move, in that order, so that the table
-// sees the card in the zone it was revealed FROM.
+// Nothing moves. A reveal is not a zone change (CR 701.20b). The
+// spec's To field is a description for the announcement only (see
+// RevealSpec.To): "reveal the top card of your library and put it
+// into your hand" is a reveal followed by an ordinary move, in that
+// order, so that the table sees the card in the zone it was revealed
+// FROM.
 //
 // Returns the RevealSeq the run was stamped with, or 0 when nothing
 // was revealed (an empty Cards list, or every card already gone).
@@ -122,6 +131,7 @@ func (g *Game) RevealForEffect(spec RevealSpec) uint64 {
 			Label:     spec.Reason,
 			OldZone:   zone.Kind,
 			RevealSeq: revealSeq,
+			RevealTo:  spec.To,
 		})
 	}
 	return revealSeq

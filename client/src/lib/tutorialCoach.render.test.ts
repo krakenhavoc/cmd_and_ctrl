@@ -13,8 +13,16 @@ import Board from "./components/board/Board.svelte";
 import CoachCard from "./components/tutorial/CoachCard.svelte";
 import TutorialCoach from "./components/tutorial/TutorialCoach.svelte";
 import { get } from "svelte/store";
-import { ANCHOR_GRACE_MS, POLL_MS, type CoachState, type TutorialStep } from "./tutorial";
 import {
+  ANCHOR_GRACE_MS,
+  NO_ANCHOR_NOTE,
+  POLL_MS,
+  tutorialRunning,
+  type CoachState,
+  type TutorialStep,
+} from "./tutorial";
+import {
+  ATTACK,
   COMMANDER,
   HANDOFF,
   ON_THE_STACK,
@@ -22,7 +30,8 @@ import {
   TUTORIAL_STEPS,
   WELCOME,
 } from "./tutorialSteps";
-import { anchorRect, resolveAnchor } from "./tutorialAnchor";
+import { board, elves } from "./test/tutorialBoards";
+import { anchorRect, anchorRects, resolveAnchor } from "./tutorialAnchor";
 import { L } from "./labels";
 import { emit } from "./tutorialBus";
 import { defaultSettings, settings } from "./settings";
@@ -215,6 +224,7 @@ describe("the anchor resolver", () => {
       <div data-seat-id="bot" id="bot"></div>
       <div role="list" aria-label="creatures" id="row" style="overflow: auto">
         <div data-instance-id="c-2" id="tall"></div></div>`;
+    place(document.getElementById("bot")!, 600, 20, 120, 120);
     expect(resolveAnchor({ seatID: "bot" })?.id).toBe("bot");
     // A creature card taller than the creature row: the row scrolls,
     // and the hole goes round the part a player can see and click.
@@ -229,6 +239,76 @@ describe("the anchor resolver", () => {
     // Scrolled out of sight entirely: missing.
     place(document.getElementById("tall")!, 500, 420, 120, 168);
     expect(anchorRect([{ cardID: "c-2" }])).toBeNull();
+  });
+});
+
+describe("anchorRects: one hole per anchor", () => {
+  const board = () => {
+    document.body.innerHTML = `
+      <div data-seat-id="bot" id="summary"></div>
+      <div data-seat-id="bot" id="portrait"></div>
+      <section aria-label="${L.yourBoard}">
+        <div role="list" aria-label="${L.creatures}" id="row"></div></section>
+      <section aria-label="${L.actions}">
+        <button aria-label="${L.next}" id="next">next</button>
+        <button aria-label="${L.attackAll("Practice Bot", 2)}" id="all">all</button></section>`;
+    place(document.getElementById("portrait")!, 700, 20, 100, 100);
+    place(document.getElementById("row")!, 300, 560, 500, 130);
+    place(document.getElementById("next")!, 900, 800, 90, 40);
+    place(document.getElementById("all")!, 400, 800, 300, 40);
+  };
+
+  it("cuts a hole for each anchor of step 13, and skips a seat copy with no area", () => {
+    board();
+    // The collapsed summary's avatar comes first and has no area: the
+    // portrait with room is the anchor, not nothing.
+    expect(resolveAnchor({ seatID: "bot" })?.id).toBe("portrait");
+    const rects = anchorRects([
+      { label: L.creatures, within: L.yourBoard },
+      { seatID: "bot" },
+      { label: L.attackAll.any, within: L.actions },
+    ]);
+    expect(rects).toEqual([
+      { left: 300, top: 560, width: 500, height: 130 },
+      { left: 700, top: 20, width: 100, height: 100 },
+      { left: 400, top: 800, width: 300, height: 40 },
+    ]);
+  });
+
+  it("lights the stack and the dock's next for step 8", () => {
+    board();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div aria-label="stack: 1 on the stack" id="stack"></div>',
+    );
+    place(document.getElementById("stack")!, 10, 300, 200, 160);
+    const rects = anchorRects([{ label: L.stackPile.any }, { label: L.next, within: L.actions }]);
+    expect(rects).toEqual([
+      { left: 10, top: 300, width: 200, height: 160 },
+      { left: 900, top: 800, width: 90, height: 40 },
+    ]);
+  });
+
+  it("is not clipped by a display: contents ancestor, which has no box", () => {
+    document.body.innerHTML = `
+      <div style="display: contents; overflow: hidden"><div data-seat-id="bot" id="bot"></div></div>`;
+    place(document.getElementById("bot")!, 46, 262, 60, 60);
+    expect(anchorRects([{ seatID: "bot" }])).toEqual([
+      { left: 46, top: 262, width: 60, height: 60 },
+    ]);
+  });
+
+  it("joins anchors that touch, and leaves a missing one out", () => {
+    board();
+    place(document.getElementById("next")!, 700, 800, 90, 40);
+    expect(
+      anchorRects([
+        { label: L.attackAll.any, within: L.actions },
+        { label: L.next, within: L.actions },
+        { label: L.attention },
+      ]),
+    ).toEqual([{ left: 400, top: 800, width: 390, height: 40 }]);
+    expect(anchorRects([{ label: L.attention }])).toEqual([]);
   });
 });
 
@@ -271,7 +351,9 @@ describe("TutorialCoach", () => {
     expect(document.querySelector(".tutorial-scrim")).toBeNull();
     click(button(c, "Start")!);
     expect(c.textContent).toContain("That is the whole interface");
-    expect(c.textContent).toContain("Press ? for the keymap and , for settings.");
+    expect(c.textContent).toContain(
+      "Press the question mark key for the keymap and the comma key for settings.",
+    );
     expect(document.querySelector(".tutorial-scrim")).toBeNull();
     click(button(c, "Finish")!);
     expect(c.querySelector('[aria-label="tutorial coach"]')).toBeNull();
@@ -321,6 +403,39 @@ describe("TutorialCoach", () => {
     expect(document.querySelector(".tutorial-scrim")).toBeNull();
   });
 
+  it("masks one hole per anchor out of a single dimming layer", () => {
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<div aria-label="your hand" id="hand"></div><div data-seat-id="bot" id="bot"></div>',
+    );
+    place(document.getElementById("hand")!, 340, 670, 570, 112);
+    place(document.getElementById("bot")!, 700, 20, 100, 100);
+    const two: TutorialStep = { ...spot, anchor: [{ label: L.yourHand }, { seatID: "bot" }] };
+    const m = mount([WELCOME, two, HANDOFF]);
+    click(button(m.container, "Start")!);
+    const holes = [...document.querySelectorAll<HTMLElement>(".tutorial-scrim")];
+    expect(holes.map((h) => h.style.left)).toEqual(["334px", "694px"]);
+    expect(holes.map((h) => h.style.top)).toEqual(["664px", "14px"]);
+    // Both are holes in the one layer, so neither dims the other.
+    expect(holes.every((h) => h.classList.contains("part"))).toBe(true);
+    const dim = document.querySelector(".tutorial-dim");
+    expect(dim?.getAttribute("data-holes")).toBe("2");
+    expect(dim?.querySelectorAll("mask rect[fill=black]")).toHaveLength(2);
+    expect(dim?.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("moves the hover preview left while a step that points at the portraits shows", () => {
+    document.body.insertAdjacentHTML("beforeend", '<div aria-label="your hand" id="hand"></div>');
+    place(document.getElementById("hand")!, 340, 670, 570, 112);
+    const m = mount([WELCOME, { ...spot, previewLeft: true }, HANDOFF]);
+    expect(document.documentElement.dataset.tutorialPreview).toBeUndefined();
+    click(button(m.container, "Start")!);
+    expect(document.documentElement.dataset.tutorialPreview).toBe("left");
+    emit("hand-hovered");
+    flushSync();
+    expect(document.documentElement.dataset.tutorialPreview).toBeUndefined();
+  });
+
   it("advances a step whose anchor never appears, and logs it, after the grace period", () => {
     vi.useFakeTimers();
     const m = mount([WELCOME, spot, HANDOFF]);
@@ -334,6 +449,24 @@ describe("TutorialCoach", () => {
     flushSync();
     expect(m.container.textContent).toContain("That is the whole interface");
     expect(m.log).toHaveBeenCalledWith(expect.stringMatching(/read-hand has no anchor/));
+  });
+
+  // #2992: a skipped step says so on the next card, in one line, and
+  // the coach's flag hides the ability menu's Sandbox rows while it is up.
+  it("says on the next card that a step was skipped, and why", () => {
+    vi.useFakeTimers();
+    const m = mount([WELCOME, spot, HANDOFF]);
+    expect(get(tutorialRunning)).toBe(true);
+    click(button(m.container, "Start")!);
+    expect(m.container.querySelector(".coach-note")).toBeNull();
+    vi.advanceTimersByTime(ANCHOR_GRACE_MS + POLL_MS * 2);
+    flushSync();
+    expect(m.container.textContent).toContain("That is the whole interface");
+    expect(m.container.querySelector(".coach-note")?.textContent).toBe(
+      `Skipped step ${spot.n}: ${NO_ANCHOR_NOTE}.`,
+    );
+    click(button(m.container, "Finish")!);
+    expect(get(tutorialRunning)).toBe(false);
   });
 
   it("waits out an anchor that renders a moment late", () => {
@@ -373,6 +506,9 @@ describe("TutorialCoach", () => {
   });
 });
 
+const movePointer = (x: number, y: number) =>
+  window.dispatchEvent(new MouseEvent("pointermove", { clientX: x, clientY: y }));
+
 // Sub-PR 4 (#1081): what the coach does for the middle steps.
 describe("TutorialCoach: the middle steps", () => {
   const rest: TutorialStep = {
@@ -386,12 +522,16 @@ describe("TutorialCoach: the middle steps", () => {
   };
   const view = { id: "g", seats: [], turn: { seq: 1 } } as unknown as GameView;
 
-  function mount(steps: TutorialStep[], extra: Record<string, unknown> = {}) {
+  // `before` runs once the coach is listening but before Start: the pointer
+  // is already somewhere when the step's copy shows.
+  function mount(steps: TutorialStep[], extra: Record<string, unknown> = {}, before?: () => void) {
     const log = vi.fn();
     const r = render(
       TutorialCoach as never,
       { view, viewerID: "me", steps, log, onSize: () => {}, ...extra } as never,
     ) as unknown as Rendered<Record<string, unknown>>;
+    flushSync();
+    before?.();
     click(button(r.container, "Start")!);
     return { ...r, log };
   }
@@ -412,6 +552,7 @@ describe("TutorialCoach: the middle steps", () => {
     emit("hand-hovered");
     flushSync();
     expect(on(m, "Read your hand")).toBe(true);
+    movePointer(400, 700);
     over = true;
     vi.advanceTimersByTime(400);
     over = false;
@@ -426,6 +567,87 @@ describe("TutorialCoach: the middle steps", () => {
     vi.advanceTimersByTime(300);
     flushSync();
     expect(on(m, "That is the whole interface")).toBe(true);
+    expect(m.log).not.toHaveBeenCalled();
+  });
+
+  it("does not count a pointer already on the anchor when the step showed, until it moves", () => {
+    vi.useFakeTimers();
+    handEl();
+    let here = true;
+    const m = mount([WELCOME, rest, HANDOFF], { canHover: true, isHovering: () => here }, () =>
+      movePointer(100, 100),
+    );
+    vi.advanceTimersByTime(3_000);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    // Off and back on without the pointer moving is still not a read.
+    here = false;
+    vi.advanceTimersByTime(200);
+    here = true;
+    vi.advanceTimersByTime(3_000);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    // A jitter inside 8px is not a move either.
+    movePointer(104, 103);
+    vi.advanceTimersByTime(3_000);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    movePointer(400, 700);
+    vi.advanceTimersByTime(800);
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+  });
+
+  it("does not complete when the anchor appears under a stationary pointer after a detour clears (#3005)", () => {
+    vi.useFakeTimers();
+    let kept = false;
+    let over = false;
+    const detoured: TutorialStep = {
+      ...rest,
+      first: () =>
+        kept
+          ? null
+          : {
+              id: "keep",
+              title: "First, keep your hand",
+              body: "Keep it.",
+              anchor: { label: L.yourHand },
+            },
+    };
+    handEl();
+    const m = mount([WELCOME, detoured, HANDOFF], { canHover: true, isHovering: () => over }, () =>
+      movePointer(300, 300),
+    );
+    expect(on(m, "First, keep your hand")).toBe(true);
+    // The click on Keep hand: the detour clears, the hand is not under
+    // the pointer yet, then slides in beneath it.
+    kept = true;
+    emit("hand-hovered");
+    vi.advanceTimersByTime(300);
+    over = true;
+    vi.advanceTimersByTime(5_000);
+    flushSync();
+    expect(m.log).not.toHaveBeenCalled();
+    expect(on(m, "Read your hand") || on(m, "First, keep your hand")).toBe(true);
+    expect(on(m, "That is the whole interface")).toBe(false);
+  });
+
+  it("does not arm a touch screen's read while the step's detour is showing", () => {
+    vi.useFakeTimers();
+    handEl();
+    const detoured: TutorialStep = {
+      ...rest,
+      first: () => ({
+        id: "keep",
+        title: "First, keep your hand",
+        body: "Keep it.",
+        anchor: { label: L.yourHand },
+      }),
+    };
+    const m = mount([WELCOME, detoured, HANDOFF], { canHover: false, touchHoverStepMs: 5_000 });
+    vi.advanceTimersByTime(60_000);
+    flushSync();
+    expect(on(m, "First, keep your hand")).toBe(true);
     expect(m.log).not.toHaveBeenCalled();
   });
 
@@ -666,6 +888,33 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     expect(m.log).not.toHaveBeenCalled();
   });
 
+  it("republishes the Main 1 wording when the phase moves from upkeep to precombat_main (#3006)", () => {
+    vi.useFakeTimers();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<section aria-label="actions" id="dock"></section>',
+    );
+    place(document.getElementById("dock")!, 920, 620, 330, 150);
+    const m = mount([WELCOME, ATTACK, HANDOFF], {
+      view: board({ step: "upkeep", mine: [elves()] }) as unknown as GameView,
+    });
+    click(button(m.container, "Start")!);
+    flushSync();
+    // Skip to my turn handed back in upkeep: the detour says to reach Main.
+    expect(m.container.textContent).toContain("First, go to combat");
+    expect(m.container.textContent).toContain(
+      "Press next (Space) in the dock until it reads Main, then play a land and cast what you like.",
+    );
+    // The dock reads Main 1 now: the coach must publish the Main 1 copy.
+    m.setProps({ view: board({ step: "precombat_main", mine: [elves()] }) as unknown as GameView });
+    vi.advanceTimersByTime(POLL_MS);
+    flushSync();
+    expect(m.container.textContent).toContain(
+      "Play a land and cast what you like, then press next (Space) until it reads Declare Attackers.",
+    );
+    expect(m.container.textContent).not.toContain("until it reads Main, then");
+  });
+
   it("completes the commander's hover with a mouse, and marks its hint seen", () => {
     vi.useFakeTimers();
     document.body.insertAdjacentHTML(
@@ -681,6 +930,7 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     });
     click(button(m.container, "Start")!);
     expect(m.container.textContent).toContain("Your commander");
+    movePointer(300, 300);
     over = true;
     vi.advanceTimersByTime(800);
     flushSync();

@@ -17,7 +17,8 @@ import { get } from "svelte/store";
 vi.mock("./sounds", () => ({ play: () => {} }));
 
 import PlayerPanel from "./components/board/PlayerPanel.svelte";
-import { abilityPopover } from "./abilityPopover";
+import { abilityPopover, closeAbilityPopover } from "./abilityPopover";
+import { tutorialRunning } from "./tutorial";
 import { closeManaSourcePicker, manaSourcePicker } from "./manaSourcePicker";
 import { battlefieldClickIntent } from "./contextMenu.logic";
 import type { ActionType, CardView, GameView, ManaAbilityView, PlayerView } from "./protocol";
@@ -503,6 +504,28 @@ describe("the left-click popover", () => {
       expect(seen).toEqual(["ability-menu-opened"]);
     } finally {
       off();
+    }
+  });
+
+  // #2992: the tutorial's right-click lesson shows the card's own
+  // abilities, so its Sandbox row is left out while the coach is up.
+  it("leaves the Sandbox row out while the tutorial runs", () => {
+    const raw = (p: ReturnType<typeof mountPanel>) =>
+      p.tile().querySelectorAll(".mana-menu [data-raw-tap]").length;
+    const before = mountPanel(relic());
+    before.rightClick();
+    expect(before.rows().length).toBeGreaterThan(0);
+    expect(raw(before)).toBe(1);
+    cleanup();
+    closeAbilityPopover();
+    tutorialRunning.set(true);
+    try {
+      const during = mountPanel(relic());
+      during.rightClick();
+      expect(during.rows().map((b) => b.dataset.kind)).toEqual(["mana", "activated"]);
+      expect(raw(during)).toBe(0);
+    } finally {
+      tutorialRunning.set(false);
     }
   });
 

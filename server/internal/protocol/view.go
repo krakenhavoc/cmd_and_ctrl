@@ -1778,6 +1778,13 @@ type VoteView struct {
 	Ballots   map[string]int `json:"ballots"`
 }
 
+// The reasons PlayerView.UndoBlocked carries.
+const (
+	UndoBlockedNothing  = "nothing"
+	UndoBlockedNotYours = "not_yours"
+	UndoBlockedGameOver = "game_over"
+)
+
 // PlayerView is the wire representation of a Player. Full-fidelity
 // views come out of ViewOfGame; FilterViewFor then zeroes out any
 // zones that should be hidden from a specific viewer (opponent hand
@@ -1911,6 +1918,19 @@ type PlayerView struct {
 	// IsHost. Private to its seat: FilterViewFor clears it for every
 	// other viewer.
 	UndoAutoAnswer uint64 `json:"undo_auto_answer,omitempty"`
+
+	// UndoBlocked says why an `undo` from this seat would be refused
+	// by the undo stack right now, or is empty when the stack would
+	// allow it: UndoBlockedNothing (nothing on the stack),
+	// UndoBlockedNotYours (the most recent action is another seat's)
+	// or UndoBlockedGameOver (the game has ended). It does not cover
+	// the per-turn budget, which the client reads from
+	// UndosRemaining. The client disables its Undo from this and shows
+	// the reason, so the badge never offers an undo the server
+	// refuses (#2963). Not read from the engine: the room stamps it on
+	// each capture, like UndoAutoAnswer. Private to its seat:
+	// FilterViewFor clears it for every other viewer.
+	UndoBlocked string `json:"undo_blocked,omitempty"`
 
 	// CommanderCasts is the per-commander cast count from the
 	// command zone (S13.1, CR 903.8). Keyed by commander instance
@@ -8745,6 +8765,7 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			// ADR 0127 §8: and so are its standing answers.
 			out.AutoAnswers = nil
 			out.UndoAutoAnswer = 0
+			out.UndoBlocked = ""
 		}
 		// S13.5: redact every visible card based on KnownBy.
 		// Hand + library still get their wholesale-hide (S04

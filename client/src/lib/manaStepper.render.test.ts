@@ -189,8 +189,12 @@ function mountBoard(cards: CardView[]) {
     tile(id).dispatchEvent(new MouseEvent("contextmenu", { bubbles: true, cancelable: true }));
     flushSync();
   };
-  const popoverManaRow = (id: string) =>
-    tile(id).querySelector<HTMLButtonElement>(".mana-menu .menu-item[data-kind='mana']")!;
+  // #2960: the popover is drawn in the board's popover host, not in the
+  // card, and only one is ever open. `id` is kept for the reader.
+  const popoverManaRow = (_id: string) =>
+    document.querySelector<HTMLButtonElement>(
+      "[data-popover-host] .mana-menu .menu-item[data-kind='mana']",
+    )!;
   const setView = (cards: CardView[]) => r.setProps({ view: gameView(cards) } as never);
   return {
     ...r,

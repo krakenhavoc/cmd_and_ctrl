@@ -330,6 +330,19 @@ describe("the dock's one Undo", () => {
     expect(undo.title).toContain("no undos remaining this turn");
   });
 
+  it("is disabled with the reason and no count when the server would refuse (#2963)", () => {
+    const d = mountDock({
+      undosLeft: 1,
+      canUndo: false,
+      undoBlockedReason: "the last action was not yours",
+    });
+    const undo = d.q<HTMLButtonElement>("button.action.undo")!;
+    expect(undo.disabled).toBe(true);
+    expect(undo.querySelector(".undo-count")).toBeNull();
+    expect(undo.getAttribute("aria-label")).toContain("unavailable");
+    expect(undo.title).toContain("can't undo: the last action was not yours");
+  });
+
   it("reads ∞ on a table with no undo limit", () => {
     const d = mountDock({ undosLeft: -1, canUndo: true });
     const undo = d.q<HTMLButtonElement>("button.action.undo")!;

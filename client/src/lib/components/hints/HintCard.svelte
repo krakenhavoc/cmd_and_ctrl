@@ -1,7 +1,8 @@
 <script lang="ts">
   // HintCard — a first-use hint on screen (ADR 0125 §3.6).
   //
-  // A card and a ring, no scrim. The card is about 280px wide and sits
+  // A card and a ring, no scrim. The card is 280px wide (320px with an
+  // action) and sits
   // beside its anchor where lib/hints/place.ts put it; the anchor gets a
   // 2px ring that takes no clicks. Nothing dims, and nothing under the
   // card loses its clicks except what the card itself covers.
@@ -97,6 +98,7 @@
   class="hint-card"
   class:strip
   class:open
+  class:with-action={!!action}
   class:animate={!reduceMotion}
   aria-label={L.tip}
   tabindex="-1"
@@ -125,11 +127,12 @@
       <button type="button" class="hint-quiet" onclick={() => onHideTips?.()}>Hide tips</button>
       <span class="hint-grow"></span>
       {#if action}
-        <a class="hint-action" href={action.href} onclick={() => onAction?.()}>{action.label}</a>
+        <!-- With an action, the action is the primary and dismissing is quiet. -->
+        <a class="hint-primary" href={action.href} onclick={() => onAction?.()}>{action.label}</a>
+        <button type="button" class="hint-action" onclick={() => onGotIt?.()}>Not now</button>
+      {:else}
+        <button type="button" class="hint-primary" onclick={() => onGotIt?.()}>Got it</button>
       {/if}
-      <button type="button" class="hint-primary" onclick={() => onGotIt?.()}
-        >{action ? "Not now" : "Got it"}</button
-      >
     </div>
   {/if}
 </aside>
@@ -205,8 +208,15 @@
     line-height: 1.45;
     color: var(--fg-muted);
   }
+  /* Three buttons (Hide tips, an action, Not now) need about 290px of
+     bar; 280px wrapped every label. Wider only when there is an action,
+     so the one-button tips keep their size. */
+  .hint-card.with-action:not(.strip) {
+    width: 320px;
+  }
   .hint-bar {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 8px;
     margin-top: 2px;
@@ -219,6 +229,7 @@
     border: 0;
     padding: 6px 2px;
     font: 500 12px var(--font-ui);
+    white-space: nowrap;
     color: var(--fg-muted);
     cursor: pointer;
   }
@@ -233,6 +244,7 @@
     padding: 0 14px;
     border-radius: var(--radius);
     font: 600 12.5px var(--font-ui);
+    white-space: nowrap;
     cursor: pointer;
     text-decoration: none;
   }

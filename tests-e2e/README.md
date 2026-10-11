@@ -25,10 +25,12 @@ tests-e2e/
     ├── full-game.spec.ts      # 2-player game: join → upload → start → mulligan → turns
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow
+    ├── land-menu-2960.spec.ts # #2960: a land's ability menu is visible and clickable at 1280x720 and 1998x716; seven lands each keep a clickable tile
     ├── legal-highlights-1789.spec.ts # ADR 0105 ready rings: lit on your main phase, dark on theirs
     ├── lobby-api.ts           # thin HTTP wrapper for test setup shortcuts
     ├── lobby.spec.ts          # admin lobby create / list / refresh / table cards
     ├── mulligan.spec.ts       # keep / mulligan dialog + the opening-hand roll call
+    ├── opp-clip-2961.spec.ts  # #2961: an opponent's creatures keep their P/T badge inside their panel at 1280x720 and 1600x900
     ├── players.ts             # shared joinAsPlayer (invite flow → seated on the game route)
     ├── s19-deck-fixture.ts    # two 100-card decks built around the S19 trigger cards
     ├── s19-helpers.ts         # S19 game setup via admin WS (join, decks, keep_hand)

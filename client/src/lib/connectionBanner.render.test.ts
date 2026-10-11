@@ -145,6 +145,21 @@ describe("the live region", () => {
     expect(liveRegion(container)?.textContent).toContain("Reconnected");
   });
 
+  // #2995: a fresh table connects for the first time; nothing dropped,
+  // so nothing is "reconnected".
+  it("stays silent on the first connect", () => {
+    const { container, setProps } = mount({ status: "connecting" });
+    setProps({ status: "connected", attempt: 0 });
+    expect(liveRegion(container)?.textContent?.trim()).toBe("");
+  });
+
+  it("says reconnected after a drop, however it arrived", () => {
+    const { container, setProps } = mount({ status: "connected" });
+    setProps({ status: "reconnecting", attempt: 1 });
+    setProps({ status: "connected", attempt: 0 });
+    expect(liveRegion(container)?.textContent).toContain("Reconnected");
+  });
+
   // Exactly one live region. The banner itself carries no live role,
   // so a state change is never read twice.
   it("is the only live region the component renders", () => {

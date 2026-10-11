@@ -713,7 +713,10 @@ type LogEvent struct {
 	revealSeq   uint64
 	revealIDs   []string
 	revealNames []string
-	batchSeq    uint64
+	// revealTo is the zone a library search is sending the cards to
+	// (game.Event.RevealTo), "" for a reveal that is not a search.
+	revealTo string
+	batchSeq uint64
 	// ability marks a LogResolve / LogFizzle entry about a triggered
 	// or activated ABILITY rather than a spell (#1257), and every
 	// LogTrigger / LogActivate entry (ADR 0119 §5). Its CardID is
@@ -1827,6 +1830,7 @@ func revealEntry(base LogEvent, ev game.Event, seatOf func(uuid.UUID) int) LogEv
 	base.Amount = 1
 	base.OldZone = string(ev.OldZone)
 	base.revealSeq = ev.RevealSeq
+	base.revealTo = string(ev.RevealTo)
 	if ev.Target != uuid.Nil {
 		if seat := seatOf(ev.Target); seat != NoSeat {
 			base.TargetSeat = &seat
@@ -2707,7 +2711,10 @@ func renderZoneText(e LogEvent, card string) string {
 // renderRevealText words a LogReveal entry: "P1 revealed Island from
 // their library", "P1 revealed 5 cards from their library: A, B, C,
 // D, E", or, for a reveal to one player, "P1 revealed a card from
-// their hand to P2" with no names for anyone.
+// their hand to P2" with no names for anyone. A library search that
+// puts the card onto the battlefield (a fetchland) is "P1 fetched
+// Steam Vents from their library onto the battlefield": nothing was
+// revealed to anyone but the search's own announcement.
 func renderRevealText(e LogEvent, actor string) string {
 	from := ""
 	switch game.ZoneKind(e.OldZone) {
@@ -2721,24 +2728,28 @@ func renderRevealText(e LogEvent, actor string) string {
 	if e.Amount > 1 {
 		what = fmt.Sprintf("%d cards", e.Amount)
 	}
+	verb, onto := "revealed", ""
+	if e.revealTo == string(game.ZoneBattlefield) && e.TargetSeat == nil {
+		verb, onto = "fetched", " onto the battlefield"
+	}
 	if e.TargetSeat != nil {
 		return fmt.Sprintf("%s revealed %s%s to %s", actor, what, from, nameOr(e.targetSeatName, "a player"))
 	}
 	if len(e.revealNames) == 0 {
-		return fmt.Sprintf("%s revealed %s%s", actor, what, from)
+		return fmt.Sprintf("%s %s %s%s%s", actor, verb, what, from, onto)
 	}
 	names := make([]string, len(e.revealNames))
 	for i, n := range e.revealNames {
 		names[i] = nameOr(n, "a card")
 	}
 	if e.Amount <= 1 {
-		return fmt.Sprintf("%s revealed %s%s", actor, names[0], from)
+		return fmt.Sprintf("%s %s %s%s%s", actor, verb, names[0], from, onto)
 	}
 	list := strings.Join(names, ", ")
 	if more := e.Amount - len(names); more > 0 {
 		list += fmt.Sprintf(" and %d more", more)
 	}
-	return fmt.Sprintf("%s revealed %s%s: %s", actor, what, from, list)
+	return fmt.Sprintf("%s %s %s%s%s: %s", actor, verb, what, from, onto, list)
 }
 
 func nameOr(s, fallback string) string {

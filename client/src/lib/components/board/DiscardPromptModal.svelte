@@ -20,6 +20,7 @@
 
   import type { ActionType, GameView } from "../../protocol";
   import Card from "./Card.svelte";
+  import PickName from "./PickName.svelte";
   import { confirmAction } from "../../dock";
   import { L } from "../../labels";
   import DockSheet from "./DockSheet.svelte";
@@ -117,6 +118,7 @@
           aria-label={`select ${c.name}`}
         >
           <Card card={c} />
+          <PickName card={c} />
         </button>
       {/each}
     </div>

@@ -59,8 +59,17 @@
 //     and the cast agree: the server's move list leaves out what the
 //     player cannot pay for and the hand dims it, and a click on a lit
 //     card taps the lands for it, spending mana already in the pool
-//     first. Step 7 points at the lit cards, and gives up when no
-//     creature in hand is castable.
+//     first. Step 7 points at the lit cards.
+//   - The table deals the player a scripted opening seven (ADR 0076
+//     §2.2 as amended 2026-10-11, #2992), so steps 7, 8 and 13 have a
+//     one-drop to cast and attack with on the first try. A mulligan
+//     deals a random seven, so they still wait rather than give up:
+//     with nothing castable, step 7 says so and waits for the next
+//     main phase; a spell that left the stack before step 8 could show
+//     it waits for the next creature; and step 13 waits for a creature
+//     that can attack. Each gives up only when the lesson cannot happen
+//     this game at all (lessonGone): the game is over, or no creature is
+//     left in hand, in the command zone or in the library.
 //   - The commander costs more than two turns of lands can pay, so step
 //     10 teaches where it is and how it is cast, not the cast.
 
@@ -75,6 +84,8 @@ const HAND: Anchor = { label: L.yourHand };
 const LANDS: Anchor = { label: L.lands, within: L.yourBoard };
 const CREATURES: Anchor = { label: L.creatures, within: L.yourBoard };
 const DOCK: Anchor = { label: L.actions };
+const NEXT: Anchor = { label: L.next, within: L.actions };
+const ATTACK_ALL: Anchor = { label: L.attackAll.any, within: L.actions };
 const AUTOPASS: Anchor = { label: L.skipToMyTurn, within: L.actions };
 const ROLL_REQUEST: Anchor = { label: L.rollForFirstTurn };
 const ROLL_BANNER: Anchor = { label: L.openingRoll };
@@ -167,6 +178,12 @@ export function abilityCardID(v: GameView | null, viewerID: string | null): stri
   return pick?.instance_id ?? null;
 }
 
+/** abilityCardName is the name of step 9's card, for its copy; undefined when no card has a menu. */
+export function abilityCardName(v: GameView | null, viewerID: string | null): string | undefined {
+  const id = abilityCardID(v, viewerID);
+  return id ? permanentsOf(v, viewerID).find((c) => c.instance_id === id)?.name : undefined;
+}
+
 /** castableCreature: a creature in hand the server lists a cast for; undefined with no list. */
 function castableCreature(v: GameView | null, viewerID: string | null): boolean | undefined {
   const moves = v?.legal_moves;
@@ -179,6 +196,37 @@ function castableCreature(v: GameView | null, viewerID: string | null): boolean 
   return moves.some((m) => m.kind === "cast" && ids.has(m.source ?? ""));
 }
 
+/** gameOver: the game has ended, or the viewer is out of it. */
+function gameOver(c: StepContext): boolean {
+  return c.view?.state === "ended" || !!seatOf(c.view, c.viewerID)?.eliminated;
+}
+
+/**
+ * creatureToCome: a creature the viewer could still cast this game: one
+ * in hand, a commander in the command zone, or a library left to draw
+ * one from. True when there is no seat to judge.
+ */
+function creatureToCome(c: StepContext): boolean {
+  const me = seatOf(c.view, c.viewerID);
+  if (!me) return true;
+  return (
+    handOf(c.view, c.viewerID).some((h) => isA(h, "Creature")) ||
+    (me.command?.cards ?? []).some((h) => isA(h, "Creature")) ||
+    (me.library?.count ?? 0) > 0
+  );
+}
+
+/**
+ * lessonGone is why a lesson that needs a creature of the viewer's
+ * (steps 7, 8 and 13) cannot happen this game, or null while it can.
+ * The reason is shown to the player on the next card.
+ */
+function lessonGone(c: StepContext, what: string): string | null {
+  if (gameOver(c)) return "the game is over";
+  if (!creatureToCome(c)) return `no creature left to ${what} this game`;
+  return null;
+}
+
 // ---- Copy that names the player's own `next` chord ----
 
 /** "press next (Space)", or plain "press next" when it is unbound. */
@@ -187,6 +235,28 @@ const pressNext = (k: CopyContext): string =>
 const PressNext = (k: CopyContext): string => {
   const s = pressNext(k);
   return s[0].toUpperCase() + s.slice(1);
+};
+
+/** Punctuation keys, named in words: a bare "," reads as a stray comma in a sentence. */
+const PUNCTUATION_NAMES: Record<string, string> = {
+  ",": "comma",
+  ".": "period",
+  "?": "question mark",
+  ";": "semicolon",
+  "/": "slash",
+  "\\": "backslash",
+  "-": "minus",
+  "=": "equals",
+  "'": "apostrophe",
+  "[": "left bracket",
+  "]": "right bracket",
+  "`": "backtick",
+};
+
+/** keyName says a bound key in a sentence: "the comma key" for ",", the chord itself otherwise. */
+const keyName = (key: string): string => {
+  const name = PUNCTUATION_NAMES[key];
+  return name ? `the ${name} key` : key;
 };
 
 /**
@@ -221,6 +291,23 @@ function toMainPhase(c: StepContext, what: string): Detour | null {
       myTurn(c)
         ? `${what} goes down in your main phase. ${PressNext(k)} in the dock until it reads Main.`
         : `${what} goes down on your own turn. ${PressNext(k)} in the dock until it comes round.`,
+    anchor: DOCK,
+  };
+}
+
+/**
+ * nothingToCast is the detour steps 7 and 8 share in the viewer's own
+ * main phase when the server lists no cast for any creature in hand: the
+ * step waits for a turn in which one can be cast, rather than giving up
+ * (ADR 0076 §2.2 as amended 2026-10-11).
+ */
+function nothingToCast(c: StepContext): Detour | null {
+  if (!sorcerySpeed(c) || castableCreature(c.view, c.viewerID) !== false) return null;
+  return {
+    id: "cast-next-turn",
+    title: "Nothing to cast yet",
+    body: (k) =>
+      `No creature in your hand can be cast yet. Play a land if you have one, or ${pressNext(k)} in the dock until your next turn. This step waits for it.`,
     anchor: DOCK,
   };
 }
@@ -282,7 +369,7 @@ export const READ_HAND: TutorialStep = {
   n: 3,
   kind: "action",
   title: "Read your hand",
-  body: "Your hand shows only the top of each card. Rest the pointer on one and it lifts, so you can read all of it.",
+  body: "Your hand shows only the top of each card. Rest the pointer on one and the full card shows in the preview at the top right.",
   hint: "Hold the pointer still over any card in your hand for a moment.",
   anchor: HAND,
   hover: { ms: 600, event: "hand-hovered" },
@@ -326,6 +413,9 @@ export const TAP_LAND: TutorialStep = {
   body: "Click a Forest on the table to tap it. Its mana goes into your pool, by your portrait.",
   hint: "Click the Forest that is already on the table, not one in your hand.",
   anchor: LANDS,
+  // The Forest just clicked is still under the pointer, and its preview
+  // would cover the portrait and the pool this copy points at.
+  previewLeft: true,
   done: (c) => (seatOf(c.view, c.viewerID)?.mana_pool?.length ?? 0) > 0,
   recover: {
     // The issue's common wrong action: playing a land when a tap was
@@ -358,30 +448,28 @@ export const CAST_CREATURE: TutorialStep = {
     // Already cast one this turn: a creature that has just arrived.
     return permanentsOf(c.view, c.viewerID).some((p) => isA(p, "Creature") && p.summoning_sick);
   },
-  first: (c) => toMainPhase(c, "A creature"),
+  // A hand with nothing castable this turn waits for the next main
+  // phase (nothingToCast), and gives up only when no creature is left
+  // to cast this game (#2992).
+  first: (c) => toMainPhase(c, "A creature") ?? nothingToCast(c),
   cannot: (c) => {
     if (!c.view) return null;
+    if (gameOver(c)) return "the game is over";
     const onStack = (c.view.stack?.cards ?? []).some((s) => s.controller === c.viewerID);
     if (onStack) return null;
-    if (!handOf(c.view, c.viewerID).some((h) => isA(h, "Creature"))) return "no creature in hand";
-    // The table enforces costs through the server's move list, so a
-    // hand of creatures that all cost more than the mana on the table
-    // cannot cast one this turn. Only judged in a main phase, where a
-    // cast would be listed, and only when there is a list to read.
-    if (sorcerySpeed(c) && castableCreature(c.view, c.viewerID) === false) {
-      return "no creature in hand is castable yet";
-    }
-    return null;
+    return lessonGone(c, "cast");
   },
 };
 
 /**
  * Step 8 teaches the stack pile (ADR 0119, ADR 0125 §5.1). It replaces
  * step 7's old "Now let it resolve" detour. It begins with the creature
- * on the stack and completes when the stack has emptied with the
- * creature on the battlefield. It gives up if the stack was already
- * empty when it began (the creature resolved before step 7 saw it on
- * the stack), and if the spell left the stack without arriving.
+ * on the stack and completes when the stack has emptied with a new
+ * creature on the battlefield. If the stack is empty (the creature
+ * resolved before step 7 saw it on the stack, or the spell left it
+ * without arriving), it waits for the next creature the player casts,
+ * with a detour that asks for one (#2992), and gives up only when no
+ * creature is left to cast this game.
  */
 export const ON_THE_STACK: TutorialStep = {
   id: "on-the-stack",
@@ -391,17 +479,30 @@ export const ON_THE_STACK: TutorialStep = {
   body: (k) =>
     `Your creature waits on the stack, on the left, until both players pass. ${PressNext(k)} in the dock and it resolves.`,
   hint: "The bot passes too, and then your creature enters the battlefield.",
-  anchor: STACK_PILE,
+  anchor: [STACK_PILE, NEXT],
   done: (c) =>
     !!c.start &&
-    !stackEmpty(c.start) &&
     stackEmpty(c.view) &&
     count(c.view, c.viewerID, "Creature") > count(c.start, c.viewerID, "Creature"),
+  first: (c) => {
+    if (!c.view || creatureOnStack(c)) return null;
+    // Nothing of the viewer's on the stack to show: the next creature
+    // they cast waits there.
+    return (
+      toMainPhase(c, "A creature") ??
+      nothingToCast(c) ?? {
+        id: "cast-another",
+        title: "Cast another creature",
+        body: "The stack is empty now. Cast another creature and it waits there, where this step can show it: click a lit creature in your hand.",
+        anchor: HAND,
+      }
+    );
+  },
   cannot: (c) => {
-    if (!c.view || !c.start) return null;
-    if (stackEmpty(c.start)) return "the stack was already empty";
-    if (stackEmpty(c.view)) return "the spell left the stack without resolving";
-    return null;
+    if (!c.view) return null;
+    if (gameOver(c)) return "the game is over";
+    if (creatureOnStack(c)) return null;
+    return lessonGone(c, "cast");
   },
   teaches: ["table.stack"],
 };
@@ -411,7 +512,10 @@ export const RIGHT_CLICK: TutorialStep = {
   n: 9,
   kind: "action",
   title: "Abilities live on right-click",
-  body: "Right-click a permanent to open its abilities; that is where you activate them. Try this one.",
+  body: (k) =>
+    `Right-click a permanent to open its abilities; that is where you activate them. ${
+      k.cardName ? `Try it on ${k.cardName}.` : "Try it on one of your permanents that has a menu."
+    }`,
   // ADR 0117 §6: a left click no longer taps this card. The usual
   // anchor is the mana creature cast in step 7, which is summoning
   // sick, so its left click does nothing at all.
@@ -535,7 +639,7 @@ export const ATTACK: TutorialStep = {
   hint: "The dock has an attack-with-all button too, which sends every creature that can attack.",
   anchor: (c) => {
     const opp = opponentOf(c.view, c.viewerID);
-    return opp ? [CREATURES, { seatID: opp.id }] : CREATURES;
+    return opp ? [CREATURES, { seatID: opp.id }, ATTACK_ALL] : [CREATURES, ATTACK_ALL];
   },
   done: (c) => permanentsOf(c.view, c.viewerID).some((p) => !!p.attacking_target),
   first: (c) => {
@@ -569,11 +673,45 @@ export const ATTACK: TutorialStep = {
         anchor: AUTOPASS,
       };
     }
-    if (BEFORE_ATTACKS.has(step)) {
+    // No creature at all: the step waits for one (#2992).
+    if (count(c.view, c.viewerID, "Creature") === 0) {
+      return {
+        id: "no-attacker",
+        title: "First, a creature to attack with",
+        body: "You have no creature on the battlefield. Cast one when you can; it can attack from your next turn.",
+        anchor: HAND,
+      };
+    }
+    // Each phrasing has its own id and fixed copy. The coach republishes
+    // a detour only when its id changes (tutorial.ts check), so one id
+    // whose copy depended on the phase went stale when the phase moved
+    // on (#3006).
+    if (step === "precombat_main") {
       return {
         id: "to-combat",
         title: "First, go to combat",
+        // In the main phase the player may still play a land or cast,
+        // so invite it before the detour moves them on (turn 2, #2994).
+        body: (k) =>
+          `Play a land and cast what you like, then ${pressNext(k)} until it reads Declare Attackers.`,
+        anchor: DOCK,
+      };
+    }
+    if (step === "begin_combat") {
+      // Combat has begun: Main 1 is behind the player, so only the way on.
+      return {
+        id: "to-attackers",
+        title: "First, go to combat",
         body: (k) => `${PressNext(k)} in the dock until it reads Declare Attackers.`,
+        anchor: DOCK,
+      };
+    }
+    if (BEFORE_ATTACKS.has(step)) {
+      return {
+        id: "to-main",
+        title: "First, go to combat",
+        body: (k) =>
+          `${PressNext(k)} in the dock until it reads Main, then play a land and cast what you like.`,
         anchor: DOCK,
       };
     }
@@ -591,8 +729,14 @@ export const ATTACK: TutorialStep = {
     }
     return null;
   },
-  cannot: (c) =>
-    c.view && count(c.view, c.viewerID, "Creature") === 0 ? "no creature to attack with" : null,
+  // Waits, through the detours above, while a creature can still
+  // attack this game; gives up only when none can (#2992).
+  cannot: (c) => {
+    if (!c.view) return null;
+    if (gameOver(c)) return "the game is over";
+    if (count(c.view, c.viewerID, "Creature") > 0) return null;
+    return lessonGone(c, "attack with");
+  },
 };
 
 export const HANDOFF: TutorialStep = {
@@ -601,9 +745,9 @@ export const HANDOFF: TutorialStep = {
   kind: "done",
   title: "That is the whole interface",
   body: ({ helpKey, settingsKey }) => {
-    const help = helpKey ? `Press ${helpKey} for the keymap` : "The keymap is in Settings";
-    const set = settingsKey ? ` and ${settingsKey} for settings` : "";
-    return `${help}${set}. Your zone piles are on the rail: library draws, graveyard and exile open a browser. Help, in the ⋯ menu here and in the header elsewhere, replays any of this.`;
+    const help = helpKey ? `Press ${keyName(helpKey)} for the keymap` : "The keymap is in Settings";
+    const set = settingsKey ? ` and ${keyName(settingsKey)} for settings` : "";
+    return `${help}${set}. Your zone piles are on the rail: library opens a draw menu, graveyard and exile open a browser. Help, in the ⋯ menu here and in the header elsewhere, replays any of this.`;
   },
   teaches: ["table.more", "table.shortcuts"],
 };

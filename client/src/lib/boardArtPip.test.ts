@@ -51,6 +51,8 @@ function decl(body: string, prop: string): string {
 function px(value: string, w: number, h: number, percentOf = 0): number {
   const expr = value
     .replace(/([\d.]+)%/g, (_, n: string) => `(${n} / 100 * ${percentOf})`)
+    // The strip's overlap at its fullest, the worst case for a pip.
+    .replace(/var\(--strip-k[^)]*\)/g, "1")
     .replace(/var\(--card-w[^)]*\)/g, String(w))
     .replace(/var\(--card-h[^)]*\)/g, String(h))
     .replace(/calc/g, "")

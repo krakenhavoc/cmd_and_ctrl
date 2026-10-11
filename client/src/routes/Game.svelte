@@ -39,7 +39,7 @@
   import {
     canManageTable,
     canSpawn,
-    hasUndoBudget,
+    undoBlockedReason,
     isUnlimitedUndo,
     spawningVisible,
     setCurrentTablePace,
@@ -1153,7 +1153,11 @@
   // Whether THIS viewer may press undo now. Not the same question as
   // the limit: an admin bypasses the budget, and an unlimited table
   // reports -1 remaining on every seat.
-  const canSpendUndo = $derived(hasUndoBudget(viewerSeat, adminUnseated));
+  // Why Undo is unavailable (null when it is allowed): the budget
+  // above plus the undo stack's own gates, which the server stamps on
+  // the seat (#2963). The dock and the shortcut read it, so neither
+  // offers an undo the server would refuse.
+  const undoBlocked = $derived(undoBlockedReason(viewerSeat, adminUnseated));
   // The table's house rules (ADR 0075 §2.2). Public — every viewer,
   // spectators included, gets the same object — so this is read
   // without any permission check. `canManage` decides who may TURN a
@@ -1671,7 +1675,12 @@
       // null means "no budget gate": an admin bypasses it, and so
       // does an unlimited table, whose seats report -1 remaining —
       // a number the shortcut's `<= 0` test would read as exhausted.
-      undosRemaining: adminUnseated || undoUnlimited ? null : (viewerSeat?.undos_remaining ?? 0),
+      undosRemaining:
+        undoBlocked !== null
+          ? 0
+          : adminUnseated || undoUnlimited
+            ? null
+            : (viewerSeat?.undos_remaining ?? 0),
       attackAllEligible: canDeclareAttackers ? attackPlan.eligible.length : 0,
       attackAllDefenders: canDeclareAttackers ? attackPlan.defenders.length : 0,
     });
@@ -2387,7 +2396,8 @@
           onPassTurn={passTurn}
           onToggleAutopass={toggleAutopass}
           undosLeft={viewerSeat?.undos_remaining ?? 0}
-          canUndo={canSpendUndo}
+          canUndo={undoBlocked === null}
+          undoBlockedReason={undoBlocked}
           onUndo={undo}
           onSize={onDockSize}
           onSheet={onDockSheet}
@@ -2496,7 +2506,7 @@
         {viewerID}
         live={!replaying}
         {sendAction}
-        canUndo={canSpendUndo}
+        canUndo={undoBlocked === null}
         onUndo={undo}
       />
       <AutoTapPreviewModal

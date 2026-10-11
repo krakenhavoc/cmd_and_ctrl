@@ -116,6 +116,11 @@ type RevealView struct {
 	// From is the zone the cards were revealed out of ("library",
 	// "hand"). The cards did not move: a reveal is not a zone change.
 	From string `json:"from,omitempty"`
+	// To is the zone a library search is sending the cards to
+	// ("battlefield" for a fetch). Empty for a reveal that is not part
+	// of a search. The client words a fetch as "fetched", not
+	// "revealed", off this field.
+	To string `json:"to,omitempty"`
 	// Cards are the revealed cards in the order the table saw them,
 	// truncated to RevealCardsMax. Compare against Count.
 	Cards []RevealedCardView `json:"cards"`
@@ -197,6 +202,7 @@ func publicRevealsOf(g *game.Game, v *GameView) []RevealView {
 				Seat:     seatOf(ev.Actor),
 				Reason:   ev.Label,
 				From:     string(ev.OldZone),
+				To:       string(ev.RevealTo),
 				sourceID: uuidStringOrEmpty(ev.Source),
 			})
 			at = len(groups) - 1

@@ -35,6 +35,7 @@
     primeRandomEvents,
     primeRevealState,
     revealHeadline,
+    revealVerb,
     trackRandomEvents,
     trackReveals,
     type RandomState,
@@ -143,7 +144,7 @@
   <div class="reveal-line" role="status" aria-live="polite">
     <span class="label gold">
       <Icon name="spark" size={12} />
-      revealed
+      {revealVerb(r)}
     </span>
     <span class="text">
       {#if r.seat >= 0}

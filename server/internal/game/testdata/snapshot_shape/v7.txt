@@ -499,6 +499,7 @@ events[].old_zone	string
 events[].played	bool
 events[].resolved_stack_item_id	custom(uuid.UUID)
 events[].reveal_seq	number:uint64
+events[].reveal_to	string
 events[].roll_id	number:uint64
 events[].round	number:int
 events[].seats	array
@@ -1557,6 +1558,7 @@ lastKnownStack[].item.trigger.Event.old_zone	string
 lastKnownStack[].item.trigger.Event.played	bool
 lastKnownStack[].item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.reveal_seq	number:uint64
+lastKnownStack[].item.trigger.Event.reveal_to	string
 lastKnownStack[].item.trigger.Event.roll_id	number:uint64
 lastKnownStack[].item.trigger.Event.round	number:int
 lastKnownStack[].item.trigger.Event.seats	array
@@ -1815,6 +1817,7 @@ pausedModeWalk.item.trigger.Event.old_zone	string
 pausedModeWalk.item.trigger.Event.played	bool
 pausedModeWalk.item.trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.reveal_seq	number:uint64
+pausedModeWalk.item.trigger.Event.reveal_to	string
 pausedModeWalk.item.trigger.Event.roll_id	number:uint64
 pausedModeWalk.item.trigger.Event.round	number:int
 pausedModeWalk.item.trigger.Event.seats	array
@@ -2298,6 +2301,7 @@ pendingTriggers[].trigger.Event.old_zone	string
 pendingTriggers[].trigger.Event.played	bool
 pendingTriggers[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.reveal_seq	number:uint64
+pendingTriggers[].trigger.Event.reveal_to	string
 pendingTriggers[].trigger.Event.roll_id	number:uint64
 pendingTriggers[].trigger.Event.round	number:int
 pendingTriggers[].trigger.Event.seats	array
@@ -5315,6 +5319,7 @@ stackMeta[].trigger.Event.old_zone	string
 stackMeta[].trigger.Event.played	bool
 stackMeta[].trigger.Event.resolved_stack_item_id	custom(uuid.UUID)
 stackMeta[].trigger.Event.reveal_seq	number:uint64
+stackMeta[].trigger.Event.reveal_to	string
 stackMeta[].trigger.Event.roll_id	number:uint64
 stackMeta[].trigger.Event.round	number:int
 stackMeta[].trigger.Event.seats	array

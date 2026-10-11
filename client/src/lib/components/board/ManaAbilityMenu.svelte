@@ -7,10 +7,11 @@
   // button when the card is already tapped. Dismisses on Escape or
   // outside click (handled by the parent that mounts it).
   //
-  // The menu is position-neutral — the parent wraps it in an
-  // absolutely-positioned container anchored near the card. Keeping
-  // layout concerns out of this component lets the battlefield
-  // figure out overflow / flip-to-top-if-near-edge itself.
+  // The menu is position-neutral — the parent wraps it in a fixed box
+  // that menuPlacement.ts places against the card (above it, flipped
+  // below when there is no room, kept inside the viewport; #2960).
+  // Keeping layout concerns out of this component lets the parent
+  // figure out overflow and flipping itself.
 
   import type { ActivatedAbilityView, CardView, GameView, ManaAbilityView } from "../../protocol";
   import {

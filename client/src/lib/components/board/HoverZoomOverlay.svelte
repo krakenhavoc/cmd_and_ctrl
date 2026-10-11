@@ -353,6 +353,12 @@
 {/if}
 
 <style>
+  /* A tutorial step pointing at the portraits and the mana pool moves the
+     preview to the left, off them (TutorialCoach sets the attribute). */
+  :global(:root[data-tutorial-preview="left"]) .overlay {
+    right: auto;
+    left: 10px;
+  }
   .overlay {
     position: absolute;
     /* Pin to the top-right corner of the board with a small inset so

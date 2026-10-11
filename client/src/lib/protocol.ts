@@ -590,6 +590,10 @@ export interface RevealView {
   // Zone the cards were revealed out of ("library", "hand"). The cards
   // did not move; a reveal is not a zone change.
   from?: string;
+  // Zone a library search is sending the cards to ("battlefield" for a
+  // fetch). Absent for a reveal that is not part of a search: the
+  // banner says "fetched" off this, never "revealed".
+  to?: string;
   // The revealed cards, in the order the table saw them. Truncated to
   // 8 — compare against `count`.
   cards: RevealedCardView[];
@@ -1975,6 +1979,12 @@ export interface PlayerView {
   // automatic answer while it is the top undo entry, so `undo` takes it
   // back. Own view only; absent once anything else sits on top.
   undo_auto_answer?: number;
+  // Why an `undo` from this seat would be refused by the undo stack
+  // right now (#2963): "nothing" (nothing on the stack), "not_yours"
+  // (the most recent action is another seat's) or "game_over". Absent
+  // means the stack allows it; the per-turn budget is separate
+  // (undos_remaining). Own view only.
+  undo_blocked?: "nothing" | "not_yours" | "game_over";
   // Number of mulligans this player has taken in the current
   // opening-hand window. Omitempty on the wire — absent means 0.
   // Added in S08.
@@ -4256,7 +4266,7 @@ export interface TurnView {
   phase: string;
   step: string;
   // ADR 0059 Decision 11 (#753): this turn was created by an effect
-  // (CR 500.7). `number` is still the round, so the board keeps "T3"
+  // (CR 500.7). `number` is still the round, so the board keeps "R3"
   // and adds an "Extra turn" mark. Absent on a normal turn.
   extra?: boolean;
   // Seat indices of queued extra turns, in the order they will be

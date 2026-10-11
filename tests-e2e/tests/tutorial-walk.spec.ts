@@ -20,13 +20,14 @@ import { unreachableHandCards } from "./hand-reach";
 // any such line. The labels it selects on come from the contract-label
 // registry (client/src/lib/labels.ts), so a rename follows on its own.
 //
-// It tolerates `cannot happen` lines: the decks are shuffled, so a hand
-// may have no castable creature (step 7 gives up, and step 8 with it),
-// and a creature that cannot attack makes step 13 give up. The walk
-// mulligans a few times for a hand with a Forest and a one-drop, as a
-// player might, so most nights every step runs. A step that gives up
-// must say so on the console; one that moves on any other way (a
-// timeout, a hover it could not see) fails the walk.
+// The practice table deals a scripted opening seven (ADR 0076 §2.2 as
+// amended 2026-10-11, #2992): three Forests, Llanowar Elves, Elvish
+// Mystic, a two-drop and a three-drop. The walk checks it was dealt and
+// keeps it, so every step runs: none may give up (`cannot happen`), and
+// none may move on any other way (a timeout, a hover it could not see).
+// Steps 7, 8 and 13 wait rather than give up when a hand cannot do them
+// yet, and the walk answers their detours too, so a regression in the
+// deal shows as a step that never ran rather than a hang.
 //
 // The bot's pace is not ours: every wait is on what the page shows (the
 // coach's step counter and title, the dock's buttons), never a sleep. A
@@ -57,26 +58,16 @@ const TOTAL = STEPS.length;
 const PLAYABLE_FOREST = /^Forest, .*playable land/;
 const CASTABLE = /, castable/;
 /**
- * The practice deck's creatures that one Forest pays for, and that can
- * attack (tutorial.go). A hand with one of them and a Forest can do
- * steps 4 to 13.
+ * The scripted opening seven's fixed part (decks.TutorialOpeningHand,
+ * tutorial.go): what every lesson of the first two turns needs.
  */
-const ONE_DROPS = new Set([
+const SCRIPTED = [
+  "Forest",
+  "Forest",
+  "Forest",
   "Llanowar Elves",
   "Elvish Mystic",
-  "Fyndhorn Elves",
-  "Boreal Druid",
-  "Birds of Paradise",
-  "Essence Warden",
-  "Experiment One",
-  "Sazh's Chocobo",
-  "Virulent Emissary",
-  "Dragon Sniper",
-  "Gladecover Scout",
-  "Memnite",
-  "Ornithopter",
-  "Phyrexian Walker",
-]);
+];
 /** Defenders cannot attack, so step 13 would have nothing to send. */
 const DEFENDER = /^(Wall of |Crashing Drawbridge)/;
 
@@ -130,18 +121,14 @@ test("the practice tutorial walks all fourteen steps", async ({ browser }) => {
       [],
     );
     expect(otherwise, "a step moved on without its gesture").toEqual([]);
-    // Every step either showed its own title or said why it could not
-    // happen; none advanced itself for any other reason.
+    // The scripted hand makes every step happen: none gives up, and
+    // every one shows its own title.
+    expect(gaveUp, "a step gave up on the scripted hand").toEqual([]);
     for (const s of STEPS) {
-      if (walk.shown.has(s.n)) continue;
-      expect(
-        gaveUp,
-        `step ${s.n} (${s.id}) neither showed nor gave up`,
-      ).toContain(s.id);
+      expect(walk.shown.has(s.n), `step ${s.n} (${s.id}) never showed`).toBe(
+        true,
+      );
     }
-    expect(walk.shown.has(1)).toBe(true);
-    expect(walk.shown.has(2)).toBe(true);
-    expect(walk.shown.has(TOTAL)).toBe(true);
   } finally {
     await context.close();
   }
@@ -157,7 +144,9 @@ function budgetFor(c: Coach): number {
 /** Where visiblePoint looks first, as fractions of what shows: the middle, then outwards. */
 const MIDDLE_FIRST = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
 /** Where restOn looks first: the bottom of what shows, then upwards. */
-const BOTTOM_FIRST = [0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1];
+const BOTTOM_FIRST = [
+  0.95, 0.9, 0.85, 0.8, 0.75, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1,
+];
 
 /**
  * visiblePoint finds a point of `el`, relative to its box, where the
@@ -207,7 +196,6 @@ interface Coach {
 
 class Walk {
   readonly shown = new Set<number>();
-  private mulligans = 0;
   private readonly coach: Locator;
   private readonly dock: Locator;
   private readonly me: Locator;
@@ -447,7 +435,7 @@ class Walk {
         return this.moved(c);
 
       case "First, keep your hand":
-        return this.keepOrMulligan(c);
+        return this.keep(c);
 
       case "Read your hand":
         // Rest on a card in the middle of the hand (only the cards take
@@ -473,6 +461,10 @@ class Walk {
         return this.moved(c);
 
       case "Cast a creature":
+      // Step 8's and 13's waits (#2992): a creature to show on the
+      // stack, or one to attack with.
+      case "Cast another creature":
+      case "First, a creature to attack with":
         return this.cast(c);
 
       case "Your spell is on the stack":
@@ -481,6 +473,8 @@ class Walk {
       case "First, your turn":
       case "First, leave your main phase":
       case "First, go to combat":
+      // Step 7's and 8's wait for a turn that can cast one (#2992).
+      case "Nothing to cast yet":
         return this.pressNext(c);
 
       case "Abilities live on right-click":
@@ -539,13 +533,11 @@ class Walk {
   }
 
   /**
-   * The opening hand. The walk wants a hand that can do every step: a
-   * Forest and a creature it can cast off one Forest, so it mulligans
-   * (a free redraw at this table) a few times for one, as a player
-   * might, then keeps whatever it has. The steps that still cannot
-   * happen say so, and the walk tolerates that.
+   * The opening hand: the practice table's scripted seven (#2992). The
+   * walk checks the fixed part was dealt, then keeps it; no mulligan is
+   * needed for a hand that can do every step.
    */
-  private async keepOrMulligan(c: Coach): Promise<void> {
+  private async keep(c: Coach): Promise<void> {
     const dialog = this.page.getByRole("dialog", {
       name: L.mulligan,
       exact: true,
@@ -557,25 +549,15 @@ class Walk {
     const names = await cards.evaluateAll((els) =>
       els.map((e) => e.getAttribute("title") ?? ""),
     );
-    const good =
-      names.some((n) => n.startsWith("Forest")) &&
-      names.some((n) => ONE_DROPS.has(n));
-    if (!good && this.mulligans < 4) {
-      this.mulligans++;
-      const before = names.join("|");
-      await dialog
-        .getByRole("button", { name: "Mulligan", exact: true })
-        .click();
-      await expect
-        .poll(async () =>
-          (
-            await cards.evaluateAll((els) =>
-              els.map((e) => e.getAttribute("title") ?? ""),
-            )
-          ).join("|"),
-        )
-        .not.toBe(before);
-      return;
+    expect(names, "the opening hand is seven cards").toHaveLength(7);
+    const left = [...names];
+    for (const want of SCRIPTED) {
+      const at = left.findIndex((n) => n.startsWith(want));
+      expect(
+        at,
+        `the scripted hand has ${want}: ${names.join(", ")}`,
+      ).toBeGreaterThanOrEqual(0);
+      left.splice(at, 1);
     }
     await dialog.getByRole("button", { name: L.keepHand, exact: true }).click();
     return this.moved(c);

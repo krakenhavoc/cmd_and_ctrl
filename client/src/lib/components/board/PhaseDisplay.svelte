@@ -106,7 +106,7 @@
   const activePlayer = $derived(seats[activeSeat]);
   const stepLabel = $derived(STEP_LABELS[turn.step as keyof typeof STEP_LABELS] ?? turn.step);
   // ADR 0059 Decision 11 (#753): the next queued extra turn, if any.
-  // "T{n}" stays the round (owner decision 1); an extra turn is marked
+  // "R{n}" is the round (owner decision 1, ADR 0059); an extra turn is marked
   // instead, and the queue shows who takes the next one.
   const nextExtra = $derived.by(() => {
     const seat = turn.extra_turns?.[0];
@@ -201,7 +201,7 @@
   style:--active-player-color={activeColor}
 >
   <div class="row summary">
-    <span class="turn-no">T{turn.number}</span>
+    <span class="turn-no" title="Round {turn.number}">R{turn.number}</span>
     <span class="active">
       <span class="seat-dot" style="background:{activeColor}"></span>
       <span class="active-name">{activePlayer?.name ?? `seat ${activeSeat}`}</span>
@@ -519,7 +519,7 @@
   }
 
   /* ADR 0111 §8: at phone width the header folds to one line
-     (T7 · Alice · DECLARE BLOCKERS) and the dock's ▴ opens the track. */
+     (R7 · Alice · DECLARE BLOCKERS) and the dock's ▴ opens the track. */
   @media (max-width: 599px) {
     .phase-display:not(.track-open) .track {
       display: none;

@@ -22,7 +22,8 @@
   //      the viewer's own panel keeps an empty cell that size at the left
   //      of its bottom row (PlayerPanel's .coach-spacer, the twin of the
   //      dock's .dock-spacer), so the hand centres in what is left and
-  //      nothing sits under the card. On a phone the card is a strip
+  //      nothing sits under the card. The card is taller than that row,
+  //      so the piles and the back row start right of it too (#2990). On a phone the card is a strip
   //      stacked on the dock bar, and the play area's bottom padding
   //      grows by its height.
   //
@@ -42,14 +43,16 @@
     TUTORIAL_STEP_COUNT,
     copyText,
     createTutorialRun,
+    skipNoteText,
     spotAnchors,
     spotlit,
     statusText,
+    tutorialRunning,
     type CopyContext,
     type TutorialStep,
   } from "../../tutorial";
-  import { anchorRect, resolveAnchor, sameRect, type AnchorRect } from "../../tutorialAnchor";
-  import { TUTORIAL_STEPS } from "../../tutorialSteps";
+  import { anchorRects, resolveAnchor, sameRects, type AnchorRect } from "../../tutorialAnchor";
+  import { TUTORIAL_STEPS, abilityCardName } from "../../tutorialSteps";
   import { HINTS } from "../../hints";
   import type { HintID } from "../../hints/hint";
   import { markHintsTaught } from "../../hints/runtime";
@@ -149,9 +152,12 @@
   // While the opening roll is open nothing is dealt, so the read starts
   // once the hand is (ADR 0125 §5.2, heldByOpeningRoll).
   const held = $derived(snap.held);
+  const detouring = $derived(snap.detour != null);
   $effect(() => {
     const step = currentStep;
-    if (canHover || !step.hover || !shown || held) return;
+    // Not while a detour is up either: the step is current behind
+    // "First, keep your hand", and its read starts once that is done.
+    if (canHover || !step.hover || !shown || held || detouring) return;
     const t = setTimeout(
       () => run.advance(step.id, "cannot be hovered on this device"),
       touchHoverStepMs,
@@ -159,14 +165,54 @@
     return () => clearTimeout(t);
   });
 
+  // While the card is up, the ability menu leaves out its Sandbox rows
+  // (Card.svelte), so a right-click shows only the card's own abilities
+  // (ADR 0076 §2.2 as amended 2026-10-11, #2992).
+  $effect(() => {
+    tutorialRunning.set(snap.visible);
+  });
+
   onDestroy(() => {
     unsubBus();
     unsubRun();
     run.destroy();
+    tutorialRunning.set(false);
+  });
+
+  // ---- The card preview ----
+  // A step that points at the portraits moves the hover preview to the
+  // left (HoverZoomOverlay reads the attribute), so it does not cover them.
+  $effect(() => {
+    if (typeof document === "undefined") return;
+    if (!(snap.visible && snap.step.previewLeft && !snap.detour)) return;
+    const root = document.documentElement;
+    root.dataset.tutorialPreview = "left";
+    return () => {
+      delete root.dataset.tutorialPreview;
+    };
   });
 
   // ---- The spotlight ----
-  let rect: AnchorRect | null = $state(null);
+  // Where the pointer last moved, from the window's pointermove. :hover
+  // alone cannot say a pointer moved: a hand that slides in under a
+  // resting pointer is :hover too (#3005).
+  let lastPointer: { x: number; y: number } | null = null;
+  $effect(() => {
+    const onMove = (e: PointerEvent | MouseEvent): void => {
+      lastPointer = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  });
+  // A pointer must travel this far from where it was when the step's own
+  // copy appeared before a rest on the anchor counts.
+  const MOVE_PX = 8;
+  // Hover steps whose pointer has really moved since their copy showed.
+  // Outside the effect so a republish of the same step does not forget
+  // it. The origin is taken when the copy first shows (no detour).
+  const pointerMoved = new Set<string>();
+  const pointerOrigin = new Map<string, { x: number; y: number } | null>();
+  let rects: AnchorRect[] = $state([]);
   $effect(() => {
     const step = snap.step;
     const detour = snap.detour;
@@ -175,7 +221,7 @@
     // nothing. One whose anchor is read off the board is measured every
     // tick, and naming nothing then is a missing anchor.
     if (!lit || (step.anchor === undefined && !detour?.anchor)) {
-      rect = null;
+      rects = [];
       return;
     }
     // A hover step completes once the pointer has rested on its anchor
@@ -184,13 +230,14 @@
     // that it stayed, and a pointer crossing the hand on its way to the
     // dock is not reading it. Not while a detour points elsewhere.
     const dwell = canHover && !detour ? step.hover : undefined;
+    if (dwell && !pointerOrigin.has(step.id)) pointerOrigin.set(step.id, lastPointer);
     let hoverSince: number | null = null;
     let missingSince: number | null = null;
     const measure = (): void => {
       const anchors = spotAnchors(step, detour, run.context());
-      const r = anchors.length > 0 ? anchorRect(anchors) : null;
-      if (r === null) {
-        rect = null;
+      const r = anchors.length > 0 ? anchorRects(anchors) : [];
+      if (r.length === 0) {
+        rects = [];
         const now = Date.now();
         if (missingSince === null) missingSince = now;
         if (now - missingSince >= anchorGraceMs) run.anchorMissing(step.id);
@@ -203,17 +250,25 @@
           return !!el && isHovering(el);
         });
         const now = Date.now();
-        if (!over) hoverSince = null;
+        // A rest counts only once the pointer has really moved since this
+        // step's copy appeared: Keep hand leaves it resting where the
+        // hand lands, and that is not the gesture the step teaches.
+        if (!pointerMoved.has(step.id) && lastPointer) {
+          const o = pointerOrigin.get(step.id);
+          if (!o || Math.hypot(lastPointer.x - o.x, lastPointer.y - o.y) > MOVE_PX)
+            pointerMoved.add(step.id);
+        }
+        if (!over || !pointerMoved.has(step.id)) hoverSince = null;
         else if (hoverSince === null) hoverSince = now;
         else if (now - hoverSince >= dwell.ms) run.hovered(step.id);
       }
       if (
-        !sameRect(
+        !sameRects(
           r,
-          untrack(() => rect),
+          untrack(() => rects),
         )
       )
-        rect = r;
+        rects = r;
     };
     measure();
     const t = setInterval(measure, pollMs);
@@ -226,6 +281,7 @@
     helpKey: keys.toggleHelp ? formatChord(keys.toggleHelp, isMacLike()) : "",
     settingsKey: keys.openSettings ? formatChord(keys.openSettings, isMacLike()) : "",
     nextKey: keys.passPriority ? formatChord(keys.passPriority, isMacLike()) : "",
+    cardName: abilityCardName(view, viewerID),
   });
   // What the card says, strongest first: a detour (what to do before
   // the step can happen), then the recovered copy, then the step's own.
@@ -238,6 +294,9 @@
     snap.detour ? "" : copyText(recovering ? snap.step.recover?.hint : snap.step.hint, copyCtx),
   );
   const status = $derived(statusText(snap.step, { ...run.context(), view, client: { autopass } }));
+  // The steps the tutorial moved past by itself on the way here, in one
+  // line (#2992): "Skipped step 7: the game is over."
+  const note = $derived(skipNoteText(snap.skipped));
 
   // ---- Placement ----
   // The phone strip can fold to one line; a desktop card cannot, so a
@@ -283,8 +342,8 @@
 </script>
 
 {#if snap.visible}
-  {#if rect}
-    <TutorialScrim {rect} />
+  {#if rects.length > 0}
+    <TutorialScrim {rects} />
   {/if}
   <!-- data-bottom-left-fixture: the stack pile stays above it (ADR 0119 §1). -->
   <div class="coach-slot" data-bottom-left-fixture bind:this={root}>
@@ -296,6 +355,7 @@
       {body}
       {hint}
       {status}
+      {note}
       {minimised}
       onStart={() => run.start()}
       onSkipTutorial={() => run.close()}

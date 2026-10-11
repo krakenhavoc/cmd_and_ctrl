@@ -159,6 +159,8 @@
     // viewer's own panel while the card shows: the bottom row then keeps
     // an empty cell the card's size (--coach-w × --coach-h) at its left,
     // so the hand centres in what is left and nothing sits under the card.
+    // The piles (and so the back row) start right of the card too, since it
+    // is taller than the hand row (#2990).
     // Unset — every game that is not the tutorial — the panel is unchanged.
     coached?: boolean;
     // flipped — top-row opponents. The panel keeps its zones in the
@@ -721,6 +723,7 @@
   class:flipped
   class:spectator
   class:docked
+  class:coached
   class:expanded
   class:seat-turn={isActive}
   style:--seat-color={seatColor(seat.seat)}
@@ -1114,11 +1117,27 @@
     /* Across-table seats: one more size down (the top row is the
        short one), rows reversed so the hand hugs the top edge and
        creatures face the centre of the table. #2491: the top row is
-       the tucked commander, half a card, so H = 2h + ~72px and
-       h ≈ 50cqh - 36px. */
+       the tucked commander, half a card.
+       #2961: the creature row must fit its card WITH the P/T badge at
+       the card's foot, or the row's own overflow cuts it off at the
+       panel's bottom edge. The rows measured at 1600x900: the top row
+       is the taller of the pile tiles (~74px) and the hand (0.55h);
+       the back row is a small card (0.5h) plus ~32px of padding and
+       label; the creature row is a card plus 24px of padding; and the
+       panel adds 12px of gaps and 16px of padding. So
+         piles tall:  H = 1.5h + 158px   (short panels)
+         hand tall:   H = 2.05h + 84px   (tall panels)
+       and the card is the smaller of the two heights, so neither row
+       takes more than it was given. The floors sit below any card the
+       formula can ask for at 720px, so a floor never pushes the rows
+       past the panel. */
     --card-h-max: 168px;
-    --card-h: clamp(70px, calc((50cqh - 36px) * var(--card-scale-opponent, 1)), var(--card-h-max));
-    --card-h-sm: clamp(48px, calc(var(--card-h) * 0.5), 90px);
+    --card-h: clamp(
+      44px,
+      calc(min((100cqh - 158px) / 1.5, (100cqh - 84px) / 2.05) * var(--card-scale-opponent, 1)),
+      var(--card-h-max)
+    );
+    --card-h-sm: clamp(24px, calc(var(--card-h) * 0.5), 90px);
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
     --avatar-size-base: 60px;
@@ -1187,6 +1206,13 @@
     flex: 0 1 auto;
     min-width: 160px;
     max-width: 100%;
+  }
+  /* #2960: the land strip takes the room the other back-row zone leaves
+     instead of shrink-wrapping its overlapped cards. fitRow then opens
+     the strip (--strip-k) until the lands sit edge to edge, and
+     overlaps them only when they no longer fit. */
+  .grid-middle > :global(.row.strip) {
+    flex: 1 1 0;
   }
   .grid-bottom {
     grid-area: bottom;
@@ -1299,6 +1325,16 @@
     .panel.self.docked .rail :global(.pile .label) {
       display: none;
     }
+    /* #2990, #2409: the coach card is taller than the hand row, so it
+       rises over the middle row's left end too, where the piles sit and
+       the first lands land. While it shows, the piles start right of the
+       card's width: the piles column is the first column of that row, so
+       its margin pushes the back row clear of the card as well. The
+       creature row above is centred, with an empty left margin the card
+       may rise into. */
+    .panel.self.docked.coached .rail > :global(.pile-bar) {
+      margin-left: calc(var(--coach-w, 0px) + 6px);
+    }
   }
   /* #2438, #2483: an across-table opponent sits across from you. Their
      board is yours turned 180° about the table's centre, with the cards
@@ -1321,24 +1357,22 @@
         "rail   middle    middle"
         "rail   creatures creatures";
     }
-    /* #2491: their commander is tucked behind the top edge as yours is
-       behind the bottom one: a hand-size card in a box half its height,
-       aligned to the box's foot, so the panel's edge cuts off the half
-       away from the table and the half that faces you shows. The tax
-       goes to the edge you can see. */
+    /* #2995: their commander is a card you can recognise, not a speck
+       or a sliver: at least 84px tall. The hand row is only a peek
+       tall, so the card hangs down out of it into the empty corner
+       above the identity rather than growing the row; the strip keeps
+       the hand's height and lets its card overflow. */
     .panel.opponent.flipped :global(.command-strip) {
-      --strip-h: var(--card-h);
-      height: calc(var(--card-h) * 0.5);
+      --strip-h: max(84px, calc(var(--card-h) * 0.9));
+      height: calc(var(--card-h) * var(--hand-peek, 0.55));
       align-self: flex-start;
-      align-items: flex-end;
+      align-items: flex-start;
+      position: relative;
+      z-index: 6;
       padding: 0;
     }
     .panel.opponent.flipped :global(.command-strip .slot) {
       flex: none;
-    }
-    .panel.opponent.flipped :global(.command-strip .tax-badge) {
-      top: auto;
-      bottom: 3px;
     }
     .panel.opponent.flipped .grid-bottom,
     .panel.opponent.flipped .grid-middle {
@@ -1352,6 +1386,10 @@
     .panel.opponent.flipped .hand-zone > :global(.hand),
     .panel.opponent.flipped .rail :global(.pile .thumb),
     .panel.opponent.flipped :global(.command-strip .slot .card) {
+      transform: rotate(180deg);
+    }
+    /* #2995: but the empty-hand label is text, and reads upright. */
+    .panel.opponent.flipped .hand-zone > :global(.hand > .empty) {
       transform: rotate(180deg);
     }
     .panel.opponent.flipped .rail {

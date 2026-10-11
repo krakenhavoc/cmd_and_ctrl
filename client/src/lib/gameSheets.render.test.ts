@@ -461,6 +461,26 @@ describe("a pending-choice sheet closing on a new frame (through the Game route)
       window.removeEventListener("error", onError);
     }
   });
+
+  it("names each scry tile under its art, the same as the card grids", async () => {
+    const c = await mountGame(
+      table({
+        pending_choices: [
+          {
+            id: "scry-2",
+            kind: "scry",
+            chooser: ME,
+            from_player: ME,
+            count: 1,
+            reason: "Scry 1",
+            options: [card("top", "Reliquary Tower")],
+          },
+        ],
+      } as never),
+    );
+    const dlg = expectSheet(c, "Scry 1");
+    expect(dlg.querySelector(".pick-name")?.textContent).toBe("Reliquary Tower");
+  });
 });
 
 describe("the discard to hand size, as a dock sheet", () => {
@@ -470,6 +490,17 @@ describe("the discard to hand size, as a dock sheet", () => {
     expect(dlg.querySelectorAll(".dock-sheet button.card-pick")).toHaveLength(8);
     // The e2e suite reads the owed count off `.prompt-count`.
     expect(dlg.querySelector(".prompt-count")?.textContent?.trim()).toBe("0 / 1 selected");
+  });
+
+  it("names each tile under its art, with the full name in the title", async () => {
+    const c = await mountGame(discardTable());
+    const dlg = expectSheet(c, "Discard 1 card");
+    const names = [...dlg.querySelectorAll(".dock-sheet button.card-pick .pick-name")].map(
+      (n) => n.textContent,
+    );
+    expect(names).toEqual([...HAND.map((h) => h.name), "Opt"]);
+    const bolt = dlg.querySelector<HTMLElement>(".pick-name[title='Lightning Bolt']");
+    expect(bolt?.textContent).toBe("Lightning Bolt");
   });
 
   it("holds Discard until the picks add up, then sends discard_selection", async () => {

@@ -3968,6 +3968,10 @@
       {legalGate}
     />
   {/if}
+  <!-- #2960: where a card's ability menu is moved to (menuPlacement.ts):
+       out of the card's transform and the lands row's scroll, so it is
+       placed against the viewport like the picker below. -->
+  <div data-popover-host style="display: contents"></div>
   {#if $manaSourcePicker}
     <!-- #1438: the anchored "which mana?" picker a left-click on a
          source with several mana abilities opens. Its pick routes
@@ -4181,8 +4185,10 @@
   .strip {
     position: absolute;
     top: 10px;
-    left: 12px;
-    width: min(512px, calc(50% - 132px));
+    /* #2995: clear of the opponent's commander, which sits at the top
+       left of their panel (CommandStrip, 42% of a card tall). */
+    left: 196px;
+    width: min(512px, calc(50% - 252px));
     max-height: calc(100% - 20px);
     display: flex;
     flex-direction: column;
@@ -4197,8 +4203,8 @@
   }
   :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip,
   :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
-    left: calc(33.333% + 6px);
-    width: min(512px, calc(33.333% - 132px));
+    left: calc(33.333% + 190px);
+    width: min(512px, calc(33.333% - 252px));
   }
 
   /* Quadrant templates per opponent count. The bottom row (next +

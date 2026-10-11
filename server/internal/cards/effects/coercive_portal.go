@@ -34,7 +34,9 @@ func init() {
 		Name:         "Coercive Portal",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Coercive Portal — each player votes for carnage or homage", coercivePortalVote),
+			// ADR 0126 §6: the sweep runs only when carnage wins the vote.
+			TriggerWithPurpose(AtYourUpkeep("Coercive Portal — each player votes for carnage or homage", coercivePortalVote),
+				game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy}}),
 		},
 	})
 }

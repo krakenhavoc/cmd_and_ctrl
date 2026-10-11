@@ -45,7 +45,18 @@
   let { status, attempt = 0, onRetry, signedIn = false }: Props = $props();
 
   const banner = $derived(connectionBanner(status, attempt, signedIn));
-  const announcement = $derived(connectionAnnouncement(status, attempt));
+  // #2995: "Reconnected" is only true after a drop. A fresh table goes
+  // connecting to connected and has nothing to be reconnected from, so
+  // the connected line stays silent until the status has been stale.
+  let dropped = $state(false);
+  $effect.pre(() => {
+    if (status === "reconnecting" || status === "disconnected" || status === "session_ended") {
+      dropped = true;
+    }
+  });
+  const announcement = $derived(
+    status === "connected" && !dropped ? "" : connectionAnnouncement(status, attempt),
+  );
 
   // S11.5 animations toggle, same gate the rest of the board uses: the
   // master switch AND the accessibility preference. When either is off

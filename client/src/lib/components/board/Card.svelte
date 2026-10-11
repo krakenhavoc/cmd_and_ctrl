@@ -40,6 +40,7 @@
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openCardMenu } from "../../contextMenu";
   import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
+  import { tutorialRunning } from "../../tutorial";
   import {
     acrossFor,
     castAnywayItem,
@@ -63,6 +64,7 @@
   import ManaCost from "./ManaCost.svelte";
   import KeywordBadgeRow from "./KeywordBadgeRow.svelte";
   import ManaAbilityMenu from "./ManaAbilityMenu.svelte";
+  import { anchoredMenu } from "../../menuPlacement";
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import DamageStepper from "./DamageStepper.svelte";
   import { boardDamageAssign } from "../../damageAssignment";
@@ -399,13 +401,21 @@
     onMenuAction && onActivateAbility ? manualLoyaltyRows(card, view, viewerID ?? null) : [],
   );
   // ADR 0117 §3: the Sandbox row, on every permanent the viewer
-  // controls. A Card with no viewer in scope trusts its parent.
+  // controls. A Card with no viewer in scope trusts its parent. Not while
+  // the tutorial runs (ADR 0076 §2.2 as amended 2026-10-11, #2992): its
+  // right-click lesson shows the card's own abilities, and a Sandbox row
+  // was the only live one on a card that has none.
   const sandbox = $derived(
-    !!onRawTap && (viewerID == null || (card.controller || card.owner) === viewerID),
+    !!onRawTap &&
+      !$tutorialRunning &&
+      (viewerID == null || (card.controller || card.owner) === viewerID),
   );
   // ADR 0118 §2: the Sandbox section's Cast anyway row, one builder with
-  // the admin menu's (contextMenu.logic.ts castAnywayItem).
-  const castAnywayRow = $derived(onCastAnyway ? castAnywayItem(castAnywayBlocked) : undefined);
+  // the admin menu's (contextMenu.logic.ts castAnywayItem). Hidden during
+  // the tutorial with the rest of the Sandbox section.
+  const castAnywayRow = $derived(
+    onCastAnyway && !$tutorialRunning ? castAnywayItem(castAnywayBlocked) : undefined,
+  );
   // ADR 0131 §4: the Payment group's row, a label contract.
   const payLifeRow = $derived<MenuItem | undefined>(
     onPayLife ? { id: "pay-life", label: PAY_LIFE_LABEL, hint: PAY_LIFE_TITLE } : undefined,
@@ -1282,7 +1292,7 @@
     <DamageStepper cardID={card.instance_id} name={displayName(card)} />
   {/if}
   {#if manaMenuOpen && hasMenu}
-    <div class="mana-menu-anchor">
+    <div class="mana-menu-anchor" use:anchoredMenu>
       <ManaAbilityMenu
         special={specialRows}
         onSpecialAction={(action) => onSpecialAction?.(action)}
@@ -1542,6 +1552,12 @@
     border: 1px solid rgba(255, 208, 122, 0.45);
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
+  }
+  /* #2995: the corner is the title bar's, and the badge hid the first
+     letters of a commander's name. Drop it onto the art, just under the
+     bar, where it is still inside a hand-peek's 62%. */
+  .badge.cmd {
+    top: calc(14% + var(--face-top, 0px));
   }
   .badge.face-down {
     /* ADR 0069. Top-right like GOAD, and the two never co-occur: a
@@ -1825,15 +1841,19 @@
     overflow: visible;
   }
   .mana-menu-anchor {
-    /* Float the menu below the card. Anchored via the .card's
-       position: relative; .card.menu-open disables overflow:hidden
-       so the pop-over extends past the card frame without
-       needing a portal. */
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
-    z-index: 60;
+    /* #2960: a fixed box placed from the card's on-screen rect, above
+       the card or flipped below, inside the viewport (menuPlacement.ts).
+       The action moves it into the board's popover host, out of the
+       card's transform and out of the lands row's scroll. The first
+       paint is off-screen until it is placed. */
+    position: fixed;
+    top: -9999px;
+    left: -9999px;
+    z-index: 70;
+    box-sizing: border-box;
+    max-width: calc(100vw - 16px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
   }
   .badge.cost {
     /* Top-right to mirror the printed-card convention. Only shown in

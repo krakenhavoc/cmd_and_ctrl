@@ -1,8 +1,9 @@
 <script lang="ts">
   // PileBar renders the three pile controls in the player rail:
-  // LIBRARY / GRAVEYARD on top, EXILE below. LIBRARY shows a card back
-  // and is the only one wired to an action at v1 (draw_card on the
-  // viewer's own seat).
+  // LIBRARY / GRAVEYARD on top, EXILE below. LIBRARY shows a card back.
+  // #2962: clicking your own library opens a small menu (Draw a card,
+  // Shuffle library) rather than drawing at once, because a stray click
+  // while reaching for the pile drew a card nobody meant to draw.
   //
   // #2349: the command zone tile that was the fourth is gone. Every
   // seat's commander sits beside its hand instead: yours in the
@@ -12,6 +13,7 @@
   // (GameView.exile), so callers pass a pre-filtered ZoneView containing
   // just this player's owned exiled cards.
 
+  import { tick } from "svelte";
   import type { ActionPayload, ActionType, CardView, PlayerView, ZoneView } from "../../protocol";
   import PileButton from "./PileButton.svelte";
   import { openZoneBrowser } from "../../zoneBrowser";
@@ -106,6 +108,51 @@
   // top card under a permission — which is not owner-gated, because
   // the permission's holder and the pile's owner can be different
   // seats (Xanathar, Guild Kingpin).
+  // #2962: the library's own click opens this menu; nothing is sent
+  // until a row is chosen. The draw shortcut and the game menu still
+  // draw in one step. Position is fixed from the pile's rect so no
+  // ancestor's overflow clips it.
+  let slotEl: HTMLDivElement | undefined = $state();
+  let menuEl: HTMLDivElement | undefined = $state();
+  let menuOpen = $state(false);
+  let menuPos = $state({ left: 0, top: 0 });
+
+  async function openLibraryMenu(): Promise<void> {
+    if (menuOpen) {
+      menuOpen = false;
+      return;
+    }
+    const r = slotEl?.getBoundingClientRect();
+    if (r) menuPos = { left: r.left, top: r.bottom + 4 };
+    menuOpen = true;
+    await tick();
+    menuEl?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+  }
+  function closeLibraryMenu(): void {
+    menuOpen = false;
+  }
+  function chooseDraw(): void {
+    menuOpen = false;
+    onDrawCard?.();
+  }
+  function chooseShuffle(): void {
+    menuOpen = false;
+    sendAction("shuffle_library", undefined, seat.id);
+  }
+  function onWindowPointer(e: Event): void {
+    if (!menuOpen) return;
+    const t = e.target as Node | null;
+    if (t && (menuEl?.contains(t) || slotEl?.contains(t))) return;
+    menuOpen = false;
+  }
+  function onMenuKey(e: KeyboardEvent): void {
+    if (e.key === "Escape") {
+      e.stopPropagation();
+      menuOpen = false;
+      slotEl?.querySelector<HTMLElement>("button.pile")?.focus();
+    }
+  }
+
   function openGraveyard(): void {
     openZoneBrowser({ zoneKind: "graveyard", ownerID: seat.id, ownerName: seat.name });
   }
@@ -114,8 +161,10 @@
   }
 </script>
 
+<svelte:window onpointerdown={onWindowPointer} onresize={closeLibraryMenu} />
+
 <div class="pile-bar" aria-label={`${seat.name} piles`}>
-  <div class="pile-slot">
+  <div class="pile-slot" bind:this={slotEl}>
     <PileButton
       label="library"
       pile="library"
@@ -123,9 +172,28 @@
       zone={seat.library}
       faceDown={libraryTop === null}
       disabled={!isSelf || !onDrawCard}
-      onClick={isSelf ? onDrawCard : undefined}
+      onClick={isSelf ? openLibraryMenu : undefined}
+      haspopup={isSelf && !!onDrawCard}
+      expanded={menuOpen}
       readyCount={libraryReady}
     />
+    {#if menuOpen}
+      <div
+        class="lib-menu"
+        role="menu"
+        aria-label="library actions"
+        tabindex="-1"
+        bind:this={menuEl}
+        style:left="{menuPos.left}px"
+        style:top="{menuPos.top}px"
+        onkeydown={onMenuKey}
+      >
+        <button type="button" class="mi" role="menuitem" onclick={chooseDraw}>Draw a card</button>
+        <button type="button" class="mi" role="menuitem" onclick={chooseShuffle}>
+          Shuffle library
+        </button>
+      </div>
+    {/if}
     {#if libraryTopAction || libraryTopSpecial.length > 0}
       <div class="pile-actions">
         {#if libraryTopAction}
@@ -213,6 +281,33 @@
     transform: translate(-50%, 50%);
     display: flex;
     gap: 3px;
+  }
+  .lib-menu {
+    position: fixed;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+    padding: 4px;
+    background: var(--surface-raised);
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent);
+    border-radius: var(--radius);
+    box-shadow: 0 6px 18px rgb(0 0 0 / 0.4);
+  }
+  .lib-menu .mi {
+    padding: 7px 10px;
+    text-align: left;
+    background: none;
+    border: 0;
+    border-radius: 4px;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  .lib-menu .mi:hover,
+  .lib-menu .mi:focus-visible {
+    background: var(--surface-hover);
+    outline: none;
   }
   .pile-action {
     height: 15px;

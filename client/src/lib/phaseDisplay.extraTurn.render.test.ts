@@ -43,14 +43,14 @@ const base: TurnView = {
 describe("PhaseDisplay extra turns", () => {
   it("shows no mark on a normal turn", () => {
     const c = mount(base);
-    expect(c.querySelector(".turn-no")?.textContent).toBe("T3");
+    expect(c.querySelector(".turn-no")?.textContent).toBe("R3");
     expect(c.querySelector(".extra-turn")).toBeNull();
     expect(c.querySelector(".next-extra")).toBeNull();
   });
 
   it("marks an extra turn and keeps the round number", () => {
     const c = mount({ ...base, seq: 6, extra: true });
-    expect(c.querySelector(".turn-no")?.textContent).toBe("T3");
+    expect(c.querySelector(".turn-no")?.textContent).toBe("R3");
     expect(c.querySelector(".extra-turn")?.textContent).toBe("Extra turn");
   });
 
