@@ -647,6 +647,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"beacon_of_tomorrows.go": true, "rise_of_the_eldrazi.go": true,
 		// "Exile Expropriate." (ADR 0146, #2143)
 		"expropriate.go": true,
+		// "Exile Yawgmoth's Vile Offering." (#2953)
+		"yawgmoths_vile_offering.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)
