@@ -144,7 +144,13 @@ export function counterCostTotal(a: CounterCostShape, chosen: CounterChoice[]): 
 export function counterPaymentReady(a: CounterCostShape, chosen: CounterChoice[]): boolean {
   if (!hasCounterCost(a)) return true;
   const paid = chosen.reduce((sum, c) => sum + (c.n ?? 0), 0);
-  if (a.counter_cost_variable) return paid >= (a.counter_cost_n ?? 0) && paid > 0;
+  // "Any number" includes none: with a floor of zero an empty
+  // payment is a payment (Black Mana Battery's plain {B}); a printed
+  // floor of one or more still needs counters.
+  if (a.counter_cost_variable) {
+    const floor = a.counter_cost_n ?? 0;
+    return paid >= floor && (paid > 0 || floor === 0);
+  }
   if (a.counter_cost_among) return paid === (a.counter_cost_n ?? 0);
   return chosen.length === 1;
 }
@@ -161,6 +167,8 @@ export function counterCostBlocked(a: CounterCostShape): string {
   const n = a.counter_cost_n ?? 1;
   const kind = a.counter_cost_kind ? `${a.counter_cost_kind} ` : "";
   if (opts.length === 0) {
+    // A variable cost with a zero floor can be paid by removing none.
+    if (a.counter_cost_variable && n === 0) return "";
     if (a.counter_cost_variable || a.counter_cost_self) {
       return n <= 1 ? `no ${kind}counter to remove` : `fewer than ${n} ${kind}counters`;
     }
