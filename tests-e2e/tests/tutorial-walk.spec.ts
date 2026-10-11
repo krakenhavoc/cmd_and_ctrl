@@ -9,10 +9,11 @@ import { unreachableHandCards } from "./hand-reach";
 // Signs in with the admin token, opens #/practice, and walks all
 // fourteen steps by doing each step's gesture: Start, Roll (and "I go
 // first" when this page wins), Keep hand, rest on the hand, play a
-// Forest, rest on the lands, tap one, cast a lit creature, press next,
-// right-click, rest on the command zone, press next, Skip to my turn on, watch
-// the bot's turn, attack, Finish. Each step's own title is asserted as
-// it comes up.
+// Forest, rest on the lands, tap one, cast a lit one-drop, press next,
+// rest on the command zone, cast Memnite and press next, Skip to my turn
+// on, watch the bot's turn, then on turn two right-click the one-drop
+// and choose its Add row, spend the mana, attack with Memnite, Finish.
+// Each step's own title is asserted as it comes up.
 //
 // It is the regression test for the tutorial's anchors: the coach logs
 // `tutorial: step <id> has no anchor on the page; advancing` when a step
@@ -21,13 +22,18 @@ import { unreachableHandCards } from "./hand-reach";
 // registry (client/src/lib/labels.ts), so a rename follows on its own.
 //
 // The practice table deals a scripted opening seven (ADR 0076 §2.2 as
-// amended 2026-10-11, #2992): three Forests, Llanowar Elves, Elvish
-// Mystic, a two-drop and a three-drop. The walk checks it was dealt and
+// amended 2026-10-11, #2992, #3012): three Forests, Llanowar Elves,
+// Elvish Mystic, Memnite and a two-drop. The walk checks it was dealt and
 // keeps it, so every step runs: none may give up (`cannot happen`), and
 // none may move on any other way (a timeout, a hover it could not see).
-// Steps 7, 8 and 13 wait rather than give up when a hand cannot do them
-// yet, and the walk answers their detours too, so a regression in the
-// deal shows as a step that never ran rather than a hang.
+// Steps 7, 8, 12 and 13 wait rather than give up when a hand cannot do
+// them yet, and the walk answers their detours too, so a regression in
+// the deal shows as a step that never ran rather than a hang.
+//
+// #3012 pins three more things: the one-drop's Add row is live when
+// step 12 asks for it (a disabled row fails the click), step 13's attack
+// sends Memnite, and the player is never asked to order their triggers,
+// which the practice deck no longer raises.
 //
 // The bot's pace is not ours: every wait is on what the page shows (the
 // coach's step counter and title, the dock's buttons), never a sleep. A
@@ -45,10 +51,10 @@ const STEPS: { n: number; id: string; title: string }[] = [
   { n: 6, id: "tap-land", title: "Tap a land for mana" },
   { n: 7, id: "cast-creature", title: "Cast a creature" },
   { n: 8, id: "on-the-stack", title: "Your spell is on the stack" },
-  { n: 9, id: "right-click", title: "Abilities live on right-click" },
-  { n: 10, id: "commander", title: "Your commander" },
-  { n: 11, id: "move-along", title: "Move the turn along" },
-  { n: 12, id: "watch-bot", title: "Let the bot play" },
+  { n: 9, id: "commander", title: "Your commander" },
+  { n: 10, id: "move-along", title: "Move the turn along" },
+  { n: 11, id: "watch-bot", title: "Let the bot play" },
+  { n: 12, id: "right-click", title: "Abilities live on right-click" },
   { n: 13, id: "attack", title: "Attack" },
   { n: 14, id: "handoff", title: "That is the whole interface" },
 ];
@@ -67,7 +73,12 @@ const SCRIPTED = [
   "Forest",
   "Llanowar Elves",
   "Elvish Mystic",
+  "Memnite",
 ];
+/** The scripted one-drops: cast first, so step 12 has a mana creature to tap. */
+const MANA_ONE_DROP = /^(Llanowar Elves|Elvish Mystic)\b/;
+/** The CR 603.3b prompt's confirm (ChoicePromptModal), which the walk must never meet. */
+const TRIGGER_ORDER = "Resolve in this order";
 /** Defenders cannot attack, so step 13 would have nothing to send. */
 const DEFENDER = /^(Wall of |Crashing Drawbridge)/;
 
@@ -83,6 +94,7 @@ test("the practice tutorial walks all fourteen steps", async ({ browser }) => {
   const page = await context.newPage();
 
   const noAnchor: string[] = [];
+  const triggerOrder: string[] = [];
   const gaveUp: string[] = [];
   const otherwise: string[] = [];
   page.on("console", (msg) => {
@@ -114,13 +126,20 @@ test("the practice tutorial walks all fourteen steps", async ({ browser }) => {
     await page.goto("/#/practice");
     await expect(page).toHaveURL(/#\/games\//, { timeout: 20_000 });
 
-    const walk = new Walk(page);
+    const walk = new Walk(page, triggerOrder);
     await walk.run();
 
     expect(noAnchor, "a tutorial step or a hint pointed at nothing").toEqual(
       [],
     );
     expect(otherwise, "a step moved on without its gesture").toEqual([]);
+    expect(
+      triggerOrder,
+      "the practice deck asked the player to order triggers (#3012)",
+    ).toEqual([]);
+    expect(walk.attackedWith, "step 13 attacks with Memnite").toContain(
+      "Memnite",
+    );
     // The scripted hand makes every step happen: none gives up, and
     // every one shows its own title.
     expect(gaveUp, "a step gave up on the scripted hand").toEqual([]);
@@ -196,12 +215,17 @@ interface Coach {
 
 class Walk {
   readonly shown = new Set<number>();
+  /** The names of the creatures attacking once step 13 completed. */
+  attackedWith: string[] = [];
   private readonly coach: Locator;
   private readonly dock: Locator;
   private readonly me: Locator;
   private readonly hand: Locator;
 
-  constructor(private readonly page: Page) {
+  constructor(
+    private readonly page: Page,
+    private readonly triggerOrder: string[],
+  ) {
     this.coach = page.getByRole("complementary", { name: "tutorial coach" });
     this.dock = page.getByRole("region", { name: L.actions, exact: true });
     this.me = page.getByRole("region", { name: L.yourBoard, exact: true });
@@ -355,6 +379,12 @@ class Walk {
     let lastError = "";
     for (;;) {
       const c = await this.read();
+      // The trigger-order prompt, wherever the walk is (#3012).
+      const prompt = this.page.getByRole("button", { name: TRIGGER_ORDER });
+      if ((await prompt.count()) > 0) {
+        this.triggerOrder.push(`${c.n} / ${TOTAL}: ${c.title}`);
+        throw new Error(`asked to order triggers at ${c.n} / ${TOTAL}`);
+      }
       const step = STEPS.find((s) => s.n === c.n);
       if (step && c.title === step.title && !this.shown.has(c.n)) {
         this.shown.add(c.n);
@@ -461,15 +491,36 @@ class Walk {
         return this.moved(c);
 
       case "Cast a creature":
+        // A mana one-drop first: step 12 taps it on turn two.
+        return this.cast(c, [MANA_ONE_DROP]);
       // Step 8's and 13's waits (#2992): a creature to show on the
-      // stack, or one to attack with.
+      // stack, or one to attack with. Step 10's Memnite, and step 13's
+      // spend of step 12's mana (#3012).
       case "Cast another creature":
       case "First, a creature to attack with":
+      case "One more creature":
+      case "First, spend your mana":
         return this.cast(c);
 
-      case "Your spell is on the stack":
-      case "Move the turn along":
+      // Step 12 on turn two: Skip to my turn, still on, passes the upkeep
+      // and draw and stops at Main by itself (#3012).
+      case "Your main phase is next":
+        return this.moved(c, 30_000);
       case "First, your main phase":
+        // Skip to my turn still on (step 13's detour, say): it stops at
+        // Main by itself, and a press of next as it gets there would
+        // pass the main phase away.
+        if (
+          (await this.dock
+            .getByRole("button", { name: L.skipToMyTurn, exact: true })
+            .getAttribute("aria-pressed")) === "true"
+        ) {
+          return this.moved(c, 30_000);
+        }
+        return this.pressNext(c);
+      case "Your spell is on the stack":
+      case "Let it resolve":
+      case "Move the turn along":
       case "First, your turn":
       case "First, leave your main phase":
       case "First, go to combat":
@@ -500,6 +551,9 @@ class Walk {
       case "Watch the bot play":
       case "Attacks wait for your turn":
       case "Attack next turn":
+      // Step 12's waits for a ready mana ability (#3012).
+      case "Wait for your turn":
+      case "Ready next turn":
         return this.waitOut(c);
 
       case "Attack":
@@ -563,8 +617,12 @@ class Walk {
     return this.moved(c);
   }
 
-  /** Step 7: click a lit creature in the hand, one that can attack later if there is one. */
-  private async cast(c: Coach): Promise<void> {
+  /**
+   * Step 7, and the detours that ask for a creature: click a lit
+   * creature in the hand, the first matching `prefer` if one does, else
+   * one that can attack later if there is one.
+   */
+  private async cast(c: Coach, prefer: RegExp[] = []): Promise<void> {
     const lit = this.hand.getByRole("button", { name: CASTABLE });
     await expect
       .poll(async () => {
@@ -579,6 +637,7 @@ class Walk {
     if (names.length === 0) return this.moved(c);
     // One that can attack first, so step 13 has an attacker.
     const order = [
+      ...names.filter((n) => prefer.some((p) => p.test(n))),
       ...names.filter((n) => !DEFENDER.test(n)),
       ...names.filter((n) => DEFENDER.test(n)),
     ];
@@ -588,19 +647,35 @@ class Walk {
     return this.moved(c);
   }
 
-  /** Step 9: right-click the newest creature, else a Forest. */
+  /**
+   * Step 12, on turn two (#3012): right-click the untapped one-drop cast
+   * on turn one and choose its Add row. The row must be live: a
+   * summoning-sick creature's is disabled, which fails the walk here.
+   * With no such creature (after a mulligan), a Forest has the same row.
+   */
   private async rightClick(c: Coach): Promise<void> {
     await this.park();
-    const creatures = this.me
+    const elves = this.me
       .getByRole("list", { name: L.creatures, exact: true })
-      .locator("[data-instance-id]");
+      .locator(
+        '[data-instance-id][data-tapped="false"][aria-label^="Llanowar Elves"], ' +
+          '[data-instance-id][data-tapped="false"][aria-label^="Elvish Mystic"]',
+      );
     const target =
-      (await creatures.count()) > 0
-        ? creatures.last()
-        : this.lands().locator("[data-instance-id]").first();
+      (await elves.count()) > 0
+        ? elves.first()
+        : this.lands()
+            .locator('[data-instance-id][data-tapped="false"]')
+            .first();
     await target.click({ button: "right" });
+    const row = this.page
+      .getByRole("menu", { name: "abilities" })
+      .getByRole("menuitem", { name: /^Add/ })
+      .first();
+    await expect(row, "the Add row is live on turn two").toBeEnabled();
+    await row.click();
     await this.moved(c);
-    // Close the menu it opened, so the next step starts with nothing up.
+    // Close the menu if it is still up, so the next step starts with nothing up.
     await this.page.keyboard.press("Escape");
   }
 
@@ -638,6 +713,14 @@ class Walk {
       .getByRole("group", { name: L.declareAttackers, exact: true })
       .getByRole("button", { name: /^Attack .* with all/ });
     await all.click();
-    return this.moved(c);
+    await this.moved(c);
+    // Who went in: Memnite, while the one-drop that made step 12's mana
+    // stays tapped (#3012).
+    this.attackedWith = await this.me
+      .getByRole("list", { name: L.creatures, exact: true })
+      .locator("[data-instance-id].attacking")
+      .evaluateAll((els) =>
+        els.map((e) => (e.getAttribute("aria-label") ?? "").split(",")[0]),
+      );
   }
 }

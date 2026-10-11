@@ -1,9 +1,14 @@
 package decks
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
+	oraclefix "github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/coverage"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
@@ -171,10 +176,12 @@ func TestTutorialPlayerDeckTeachesTheLessons(t *testing.T) {
 }
 
 // TestTutorialOpeningHandIsInTheDeck pins the practice table's scripted
-// opening seven (ADR 0076 §2.2, amended 2026-10-11, #2992) to the deck
-// it is dealt from: seven names, each one the deck holds enough copies
-// of, three Forests for the land lessons, and Llanowar Elves, the
-// one-drop whose mana ability step 9 right-clicks.
+// opening seven (ADR 0076 §2.2, amended 2026-10-11, #2992, #3012) to the
+// deck it is dealt from: seven names, each one the deck holds enough
+// copies of, three Forests for the land lessons, Llanowar Elves, a
+// one-drop whose mana ability the right-click step uses on turn two, and
+// Memnite, the free creature cast beside it on turn one that attacks on
+// turn two.
 func TestTutorialOpeningHandIsInTheDeck(t *testing.T) {
 	hand := TutorialOpeningHand()
 	if len(hand) != 7 {
@@ -200,6 +207,195 @@ func TestTutorialOpeningHandIsInTheDeck(t *testing.T) {
 	}
 	spec, ok := effects.Lookup(oracle["Llanowar Elves"])
 	if want["Llanowar Elves"] != 1 || !ok || len(spec.ManaAbilities) == 0 {
-		t.Error("the scripted hand needs Llanowar Elves, a one-drop with a mana ability for step 9")
+		t.Error("the scripted hand needs Llanowar Elves, a one-drop with a mana ability for the right-click step")
 	}
+	if want["Memnite"] != 1 {
+		t.Error("the scripted hand needs Memnite, the free creature that attacks on turn two while the one-drop taps for mana")
+	}
+}
+
+// TestTutorialPlayerTriggersNeverShareAnEvent is #3012's invariant: no
+// two triggered abilities of the player's practice deck, commander
+// included, can trigger on one event. Two triggers of one player's on
+// one event raise the CR 603.3b ordering prompt ("Order your
+// triggers"), which the tutorial never explains. Marwyn and Wolverine
+// Riders raised it on every Elf the player cast.
+//
+// It reads each card's printed text from the oracle fixture the catalog
+// keeps in the repo (internal/cards/coverage, testdata/oracle), so it
+// runs without a Scryfall dump. Reminder text is kept, because a keyword
+// trigger such as evolve is only spelled out there. The fixture carries
+// no type line, so the test is strict where it cannot see: a trigger on
+// "another Elf" entering counts as a trigger on any nonland permanent
+// entering. That is why the deck has no "when this creature enters" at
+// all beside its commander's trigger.
+func TestTutorialPlayerTriggersNeverShareAnEvent(t *testing.T) {
+	d := TutorialPlayer()
+	var all []tutorialTrigger
+	for _, c := range d.Cards() {
+		if c.Basic {
+			continue
+		}
+		b, err := os.ReadFile(filepath.Join("..", "cards", "coverage", oraclefix.OracleFixtureFile(c.OracleID)))
+		if err != nil {
+			t.Errorf("%s: no oracle fixture to read its triggers from: %v", c.Name, err)
+			continue
+		}
+		var oc oraclefix.OracleCard
+		if err := json.Unmarshal(b, &oc); err != nil {
+			t.Fatalf("%s: %v", c.Name, err)
+		}
+		for _, f := range oc.AllFaces() {
+			all = append(all, triggersIn(c.Name, f.Text)...)
+		}
+	}
+	// The classifier has to see the trigger that started this, or a
+	// change to the text it reads would pass by finding nothing.
+	commander := 0
+	for _, tr := range all {
+		if tr.card == d.Commander.Name && tr.event == "enters" && !tr.self {
+			commander++
+		}
+	}
+	if commander != 1 {
+		t.Fatalf("found %d enters triggers on %s, want 1; the trigger classifier no longer reads the fixture",
+			commander, d.Commander.Name)
+	}
+	for i, a := range all {
+		for _, b := range all[i+1:] {
+			if a.collides(b) {
+				t.Errorf("%s (%q) and %s (%q) can trigger on one event; the player would be asked to order them "+
+					"(CR 603.3b), which the tutorial never explains", a.card, a.cond, b.card, b.cond)
+			}
+		}
+	}
+}
+
+// TestTutorialTriggerClassifier pins the reading the deck test relies
+// on, against the cards #3012 took out of the deck.
+func TestTutorialTriggerClassifier(t *testing.T) {
+	marwyn := triggersIn("Marwyn, the Nurturer", "Whenever another Elf you control enters, put a +1/+1 counter on Marwyn.\n{T}: Add an amount of {G} equal to Marwyn's power.")
+	cases := []struct {
+		card, text string
+		collides   bool
+	}{
+		{"Wolverine Riders", "At the beginning of each upkeep, create a 1/1 green Elf Warrior creature token.\nWhenever another Elf you control enters, you gain life equal to its toughness.", true},
+		{"Elvish Visionary", "When this creature enters, draw a card.", true},
+		{"Gyre Sage", "Evolve (Whenever a creature you control enters, if that creature has greater power or toughness than this creature, put a +1/+1 counter on this creature.)\n{T}: Add {G} for each +1/+1 counter on this creature.", true},
+		{"Sporemound", "Landfall — Whenever a land you control enters, create a 1/1 green Saproling creature token.", false},
+		{"Beast Whisperer", "Whenever you cast a creature spell, draw a card.", false},
+		{"Llanowar Elves", "{T}: Add {G}.", false},
+	}
+	for _, tc := range cases {
+		got := false
+		for _, a := range marwyn {
+			for _, b := range triggersIn(tc.card, tc.text) {
+				got = got || a.collides(b)
+			}
+		}
+		if got != tc.collides {
+			t.Errorf("%s beside Marwyn: collides = %v, want %v", tc.card, got, tc.collides)
+		}
+	}
+	// Two landfall triggers fire on the same land; two "this creature
+	// enters" triggers on different cards do not.
+	sporemound := triggersIn("Sporemound", "Landfall — Whenever a land you control enters, create a 1/1 green Saproling creature token.")
+	baloths := triggersIn("Rampaging Baloths", "Trample\nLandfall — Whenever a land you control enters, create a 4/4 green Beast creature token.")
+	if !sporemound[0].collides(baloths[0]) {
+		t.Error("two landfall triggers should collide")
+	}
+	wall := triggersIn("Wall of Blossoms", "Defender\nWhen this creature enters, draw a card.")
+	visionary := triggersIn("Elvish Visionary", "When this creature enters, draw a card.")
+	if wall[0].collides(visionary[0]) {
+		t.Error("two cards' own enters triggers fire on different events")
+	}
+	upkeep := triggersIn("Bugenhagen, Wise Elder", "At the beginning of your upkeep, if you control a creature with power 7 or greater, draw a card.")
+	if len(upkeep) != 1 || upkeep[0].event != "beginning:upkeep" || !upkeep[0].collides(triggersIn("Wolverine Riders", "At the beginning of each upkeep, create a token.")[0]) {
+		t.Errorf("two upkeep triggers should collide: %+v", upkeep)
+	}
+}
+
+// tutorialTrigger is one trigger condition read off a card's text: the
+// event it waits for, and what has to be involved in it.
+type tutorialTrigger struct {
+	card string
+	// cond is the condition as printed, up to its first comma.
+	cond string
+	// event is the family of events it fires on: "enters", "leaves",
+	// "cast", "beginning:<step>", "attacks", or the condition itself.
+	event string
+	// subject is, for "enters", what enters: "land", "nonland" or "any".
+	subject string
+	// self: only the card's own event fires it ("When this creature
+	// enters"). Two cards' self triggers fire on one event only when both
+	// cards take part in it at once, which nothing in the deck does.
+	self bool
+}
+
+// triggerCondition finds every "When …", "Whenever …" and "At the
+// beginning of …" condition, reminder text included.
+var triggerCondition = regexp.MustCompile(`\b(When(?:ever)?|At the beginning of)\b[^,.]*`)
+
+// beginningSteps names the steps an "At the beginning of …" trigger can
+// wait for. "end of combat" is before "combat", which it contains.
+var beginningSteps = []string{
+	"precombat main phase", "postcombat main phase", "end step", "draw step", "upkeep", "end of combat", "combat",
+}
+
+// triggersIn reads every trigger condition out of one face's text.
+func triggersIn(card, text string) []tutorialTrigger {
+	var out []tutorialTrigger
+	short, _, _ := strings.Cut(card, ",")
+	for _, cond := range triggerCondition.FindAllString(text, -1) {
+		cond = strings.TrimSpace(cond)
+		lower := strings.ToLower(cond)
+		tr := tutorialTrigger{card: card, cond: cond}
+		tr.self = strings.Contains(lower, "this creature") || strings.Contains(lower, "this card") ||
+			strings.Contains(lower, "this permanent") || strings.Contains(cond, short)
+		switch {
+		case strings.HasPrefix(cond, "At the beginning of"):
+			tr.event = "beginning:" + lower
+			for _, s := range beginningSteps {
+				if strings.Contains(lower, s) {
+					tr.event = "beginning:" + s
+					break
+				}
+			}
+		case strings.Contains(lower, " enters"):
+			tr.event = "enters"
+			switch {
+			case strings.Contains(lower, "permanent"):
+				tr.subject = "any"
+			case strings.Contains(lower, " land") && !strings.Contains(lower, "nonland"):
+				tr.subject = "land"
+			default:
+				tr.subject = "nonland"
+			}
+		case strings.Contains(lower, "leaves the battlefield") || strings.Contains(lower, " dies") ||
+			strings.Contains(lower, "put into a graveyard"):
+			tr.event = "leaves"
+		case strings.Contains(lower, "cast"):
+			tr.event = "cast"
+		case strings.Contains(lower, "attacks"):
+			tr.event = "attacks"
+		default:
+			tr.event = lower
+		}
+		out = append(out, tr)
+	}
+	return out
+}
+
+// collides reports whether a and b can trigger on one event.
+func (a tutorialTrigger) collides(b tutorialTrigger) bool {
+	if a.event != b.event {
+		return false
+	}
+	if a.self && b.self && a.card != b.card {
+		return false
+	}
+	if a.subject == "" || b.subject == "" || a.subject == "any" || b.subject == "any" {
+		return true
+	}
+	return a.subject == b.subject
 }
