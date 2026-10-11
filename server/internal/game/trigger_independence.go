@@ -26,7 +26,9 @@ import (
 type FootprintKind string
 
 const (
-	// FootprintGainLife: the item's controller gains N life.
+	// FootprintGainLife: the item's controller gains N life, or, with
+	// AmountFromSubject, life equal to a characteristic of the trigger's
+	// subject.
 	FootprintGainLife FootprintKind = "gain_life"
 	// FootprintDamageEachOpponent: the item's source deals N damage to
 	// each opponent of the item's controller.
@@ -66,6 +68,13 @@ type FootprintStep struct {
 	// key, not the template, so the step is plain data.
 	TokenKey    string
 	TokenManual bool
+	// AmountFromSubject marks a FootprintGainLife step whose amount is
+	// read at resolution off the trigger's subject, the object its
+	// event names (CR 608.2h: "gain life equal to its toughness"). The
+	// check counts that object as read while it is on the battlefield;
+	// once it has left, the amount is its frozen last-known value and
+	// nothing another item does can change it (#3013).
+	AmountFromSubject bool
 }
 
 // FootprintTokenOf describes a token template for a FootprintStep.
@@ -100,7 +109,74 @@ type triggerAccess struct {
 	// ability, a replacement effect, an attachment, a record that
 	// names it). Everything reads the rules, so it conflicts with all.
 	rules bool
-	emits map[EventKind]bool
+	// charReads is set when the item reads a characteristic of an
+	// object on the battlefield through the layers (an amount read off
+	// the trigger's subject, #3013): a static on the board can change
+	// it when another item changes what that static reads.
+	charReads bool
+	emits     map[EventKind]bool
+}
+
+// writesAnything reports whether the item changes any game state a
+// static ability's output could depend on.
+func (a *triggerAccess) writesAnything() bool {
+	return len(a.writes) > 0 || len(a.life) > 0 || len(a.cards) > 0 || a.monarch ||
+		a.emits[EventTokenCreated] || a.emits[EventPlayerCounterPlaced] || a.emits[EventZoneMove]
+}
+
+// writesOnlyLife reports whether the only state the item changes is
+// life totals (a gain, a loss, damage to players).
+func (a *triggerAccess) writesOnlyLife() bool {
+	return len(a.life) > 0 && len(a.writes) == 0 && len(a.cards) == 0 && !a.monarch &&
+		!a.emits[EventTokenCreated] && !a.emits[EventPlayerCounterPlaced] && !a.emits[EventZoneMove]
+}
+
+// layerStatics is what the board's static abilities can do to a
+// characteristic an item reads: whether any static can change power or
+// toughness at all, and whether any of those reads a life total.
+type layerStatics struct {
+	pt, life bool
+}
+
+// layerStaticsLocked reads the battlefield and the emblems for static
+// abilities that can change a creature's power or toughness: layer 7,
+// a copy effect (layer 1), or an ability removal that could take away
+// a characteristic-defining ability. The layer engine's contract
+// (layerVersionBump) is that such a static's output depends on the
+// battlefield, counters, taps and the turn, plus a life total or a
+// hand only when it declares so; the check leans on the first half to
+// stay conservative and on DependsOnLifeTotal to let a batch that only
+// moves life totals through.
+//
+// Caller must hold g.mu.
+func (g *Game) layerStaticsLocked() layerStatics {
+	var out layerStatics
+	zones := []*Zone{g.Battlefield}
+	for _, p := range g.Seats {
+		if p != nil {
+			zones = append(zones, p.Emblems)
+		}
+	}
+	for _, z := range zones {
+		if z == nil {
+			continue
+		}
+		for i := range z.Cards {
+			d := catalogDef(catalogAbilityKeyOf(&z.Cards[i]))
+			if d == nil {
+				continue
+			}
+			for _, st := range d.Static {
+				if st.Layer == Layer7PT || st.Layer == Layer1Copy || st.RemovesAbilities {
+					out.pt = true
+					if st.DependsOnLifeTotal {
+						out.life = true
+					}
+				}
+			}
+		}
+	}
+	return out
 }
 
 func newTriggerAccess(controller uuid.UUID) triggerAccess {
@@ -167,6 +243,11 @@ const (
 	// TriggerOrderReasonMonarch: two items both make their controller
 	// the monarch.
 	TriggerOrderReasonMonarch TriggerOrderReason = "monarch"
+	// TriggerOrderReasonCharacteristic: an item reads a characteristic
+	// through the layers (an amount equal to the trigger subject's
+	// toughness), and another item changes something a static on the
+	// board could read to compute it (#3013).
+	TriggerOrderReasonCharacteristic TriggerOrderReason = "characteristic"
 )
 
 // TriggerOrderReasons is every TriggerOrderReason, in a fixed order.
@@ -175,7 +256,7 @@ func TriggerOrderReasons() []TriggerOrderReason {
 		TriggerOrderReasonAlways, TriggerOrderReasonUndescribed, TriggerOrderReasonBoardOpaque,
 		TriggerOrderReasonReactor, TriggerOrderReasonRipple, TriggerOrderReasonElimination,
 		TriggerOrderReasonObjectTie, TriggerOrderReasonRules, TriggerOrderReasonLibrary,
-		TriggerOrderReasonMonarch,
+		TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic,
 	}
 }
 
@@ -278,12 +359,22 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 			return TriggerOrderReasonElimination
 		}
 	}
+	// The board's layer statics, read once and only for a batch with a
+	// characteristic read in it.
+	var st *layerStatics
+	statics := func() layerStatics {
+		if st == nil {
+			v := g.layerStaticsLocked()
+			st = &v
+		}
+		return *st
+	}
 	for i := range accs {
 		for j := i + 1; j < len(accs); j++ {
-			if r := g.accessesConflictLocked(&accs[i], &accs[j], eliminable); r != "" {
+			if r := g.accessesConflictLocked(&accs[i], &accs[j], eliminable, statics); r != "" {
 				return r
 			}
-			if r := g.accessesConflictLocked(&accs[j], &accs[i], eliminable); r != "" {
+			if r := g.accessesConflictLocked(&accs[j], &accs[i], eliminable, statics); r != "" {
 				return r
 			}
 		}
@@ -294,9 +385,19 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 // accessesConflictLocked reports whether a's writes can change what b
 // reads or writes, as the reason they conflict, or "" when they don't.
 // Called both ways round for each pair.
-func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool) TriggerOrderReason {
+func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool, statics func() layerStatics) TriggerOrderReason {
 	if a.rules {
 		return TriggerOrderReasonRules
+	}
+	// b reads a characteristic through the layers, and a changes
+	// something a static on the board could read to compute it: a life
+	// total for a static that declares it reads one, anything else for
+	// any static that can change power or toughness (#3013).
+	if b.charReads && a.writesAnything() {
+		st := statics()
+		if st.life || (st.pt && !a.writesOnlyLife()) {
+			return TriggerOrderReasonCharacteristic
+		}
 	}
 	if a.monarch && b.monarch {
 		return TriggerOrderReasonMonarch
@@ -445,6 +546,16 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 	you := t.Controller
 	switch s.Kind {
 	case FootprintGainLife:
+		if s.AmountFromSubject {
+			if t.Trigger == nil || t.Trigger.Object == nil {
+				return false
+			}
+			subject := t.Trigger.Object.ID
+			if z := g.findCardZoneLocked(subject); z != nil && z.Kind == ZoneBattlefield {
+				a.reads[subject] = true
+				a.charReads = true
+			}
+		}
 		a.life[you] |= lifeUp
 		a.emit(EventChangeLife)
 	case FootprintDamageEachOpponent:

@@ -106,7 +106,6 @@ Lux Artillery | cbd76b22-d04e-48e7-bcab-c7f5466d67d8
 Managorger Hydra | b3f2265b-dd65-4b74-8b74-35ee0b147617
 Marauding Blight-Priest | 814b87fe-2a75-4ff2-8637-7e69e3fb285b
 Marionette Apprentice | 726d9d2c-736a-4852-9938-a0f50d8fd89f
-Marwyn, the Nurturer | ee35de1c-aef1-4bd4-85fd-fe77bc927790
 Massacre Girl, Most Wanted | 81f35914-73bf-429f-ba20-32e23ac30159
 Mausoleum Harpy | ba682da8-50f5-478f-99cc-60a57d229a04
 Merchant Ship | 69556f6c-c05b-4902-bac7-012f0ed81b75
@@ -134,7 +133,6 @@ Reckless Fireweaver | 180e1a7e-890d-477c-80a5-da8a5f2857b3
 Refraction Elemental | 2d125ef5-074c-44eb-a1d0-c308d48bfbc2#1
 Restless Anchorage | 91320daf-f69c-4350-b0fc-4bb37a6904b1
 Restless Spire | 0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9
-Righteous Valkyrie | 891d2690-7144-4f87-b6ef-96f2469780a9
 Runaway Steam-Kin | eb414a8f-566f-4635-80a1-77b2e18ac8dc
 Sanctum Seeker | afb71560-0fc9-4ea5-9d52-d93c17d72519
 Satoru, the Infiltrator | 7555c429-5f2d-4171-b6b0-8e3c8da7f314
@@ -149,7 +147,6 @@ Tinybones, Pocket Nuisance | 97dcf9fb-3f2f-4aa6-959a-e3c4889c1673
 Titanbones, Towering Heart | 510bccb1-61cd-49f1-a54a-80352653d1e3
 Toothy, Imaginary Friend | 41d6cce0-b852-4d0e-aee2-081df13dd9b8
 Tormod, the Desecrator | 6dc0150d-7145-41e2-bd3d-2564d9d32301
-Trostani, Selesnya's Voice | e94ef397-f5c5-4b8d-ae27-528352fa1d1e
 Unflinching Hortimancer | 7cd0bd74-2463-4e9d-9802-69ac4ef6d543
 Unstable Amulet | f3d4f5ab-0ff4-48e1-8cf0-163b290804a5
 Vadrik, Astral Archmage | a9ab17ce-ba07-4ce8-99f9-9c4c633957f7
@@ -157,14 +154,12 @@ Valley Mightcaller | 16e9c452-6288-4da8-813d-2eb6b7a538c3
 Vanquisher's Banner | 8cf38025-5821-45a0-9483-266353b7e82d
 Vedalken Archmage | 568cf486-0261-4634-ac36-a6507101b2d0
 Vengeful Warchief | be3dd4f6-794d-4bce-b71e-4b3477d5d388
-Verdant Sun's Avatar | 6ee71432-a44d-495e-86ea-d495d891c331
 Vincent, Vengeful Atoner | b8961205-87fa-4cce-aba9-84fa2f91a67f
 Warleader's Call | a751c07b-fc21-4854-96e7-f71abf4e86c9
 Way of the Mind Sculptor | 94be2e86-ba0e-4b8d-9b9c-114adacb26db
 Wayward Servant | 2916f041-f080-450f-ae79-dc09076d971a
 Weftstalker Ardent | 926d52a5-4db1-46ce-9567-17c28bf56ae7
 Wildwood Scourge | b9dec104-c636-4770-a7fc-7a3331face15
-Wolverine Riders | 09070db6-01f6-4a8a-b167-a7825e6959f4
 Yahenni, Undying Partisan | fdba89eb-1cf5-46e6-9d09-1adb9bc40fcd
 Yoshimaru, Ever Faithful | 963834c8-42df-4ee6-9b45-b9de88ce2eac
 Youthful Valkyrie | 6d37ba4b-ff56-4eec-9dc2-2d7f357dc9c9

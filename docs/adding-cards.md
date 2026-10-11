@@ -3098,7 +3098,9 @@ footprint, and the registry derives one only from an `effects.Do` of
 primitives that declare a step (`cards/effects/footprint.go`):
 `CounterOnThis`, `GainLife`, `DrawCards`, `MillCards`, `Scry`,
 `Surveil`, `GetEnergy`, `CreateToken`, `BecomeTheMonarch`,
-`DamageEachOpponent` and `ExileChosenTarget`. A hand-written closure
+`DamageEachOpponent`, `ExileChosenTarget` and `GainLifeEqualToSubject`
+("you gain life equal to its toughness", read off the trigger's
+subject as it resolves). A hand-written closure
 doing the same thing keeps its batches asking. The coverage audit
 `TestOneSentenceTriggersDeclareFootprints` reads the oracle fixtures
 and fails on a new card whose one-sentence trigger ("…, put a +1/+1

@@ -16,8 +16,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // watches EventBeginUpkeep with no owner gate; the lifegain is
 // Verdant Sun's Avatar's shape narrowed to Elves (effective
 // subtypes, so a changeling counts), reading the entering creature's
-// toughness as the trigger resolves and falling back to what it had
-// when it entered if it has since left (CR 608.2h).
+// toughness as the trigger resolves, and as it last existed on the
+// battlefield if it has since left (CR 608.2h; GainLifeEqualToSubject).
+// Both rows declare a footprint, so a batch with Marwyn, the
+// Nurturer's counter needs no CR 603.3b order (ADR 0018, #3013).
 //
 // No simplification.
 func init() {
@@ -36,8 +38,7 @@ func init() {
 					_, ok := b27AnotherElfYouControlEntered(ev, source, g)
 					return ok
 				},
-				Build:  b20GainLifeEqualToToughnessBuild("Wolverine Riders — gain life equal to the Elf's toughness"),
-				Effect: b20GainLifeEqualToToughnessEffect,
+				Effect: Do(GainLifeEqualToSubject{Stat: SubjectToughness}),
 			},
 		},
 	})
