@@ -241,7 +241,7 @@
   class:thinking={(botThinking || agentThinking || considering) && animateThinking}
   style:--seat-color={seatColor(seat.seat)}
 >
-  <span class="name" title={displayLabel}>{displayLabel}</span>
+  <span class="name" data-dice-avoid title={displayLabel}>{displayLabel}</span>
   <!-- ADR 0075 §2.1: the table's host, visible to everyone. It is a
        seat ROLE — who may change the house rules and spawn — and is
        unrelated to the monarch, whose crown sits in the marker column
@@ -258,7 +258,9 @@
     </span>
   {/if}
   {#if isBot}
-    <span class="tag bot" title={botTitle}>{botThinking ? "thinking…" : botLabel}</span>
+    <span class="tag bot" data-dice-avoid title={botTitle}
+      >{botThinking ? "thinking…" : botLabel}</span
+    >
   {:else if isAgent}
     <!-- ADR 0122 §7: an outside AI agent plays this seat. Same slot as
          the bot chip, so a seat is a bot, an agent or neither, never

@@ -1544,6 +1544,12 @@
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(4px);
   }
+  /* #2995: the corner is the title bar's, and the badge hid the first
+     letters of a commander's name. Drop it onto the art, just under the
+     bar, where it is still inside a hand-peek's 62%. */
+  .badge.cmd {
+    top: calc(14% + var(--face-top, 0px));
+  }
   .badge.face-down {
     /* ADR 0069. Top-right like GOAD, and the two never co-occur: a
        face-down permanent has no text, so nothing can goad it. Cool
