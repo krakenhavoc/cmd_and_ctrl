@@ -557,7 +557,12 @@ move list it was shown with the answer marked, and the wall time. It
 ends with a verdict line for each of the three failures that make a
 model seat look like a heuristic seat: **truncation** (the server
 counted far fewer prompt tokens than were sent, so it silently dropped
-the front of the prompt — the primer and the instructions), **thinking
+the front of the prompt — the primer and the instructions; when the
+server's context size is known, from `--context N` or read from
+Ollama's `/api/ps` after the call, a count under 90% of it is `ruled
+out` and one that fills it is `likely`, and a reply that ignores the
+format with a plausible count and no known context is only
+`possible`), **thinking
 not suppressed** (a `reasoning` field came back, or `finish_reason` was
 `length` with nothing usable in `content`), and the **answer** — which
 move the reply comes to, read exactly as a seat reads it, or `INDEX:
