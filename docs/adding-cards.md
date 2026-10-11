@@ -3108,7 +3108,10 @@ counter on ~", "…, you gain 2 life") has no footprint.
 `cards/coverage/testdata/unfootprinted_trigger_lines.txt` lists the
 older ones and only shrinks. A new primitive that declares a step
 needs a case in `footprint_conformance_test.go`, which resolves it and
-fails on anything it changes or emits beyond its declaration.
+fails on anything it changes or emits beyond its declaration. An engine
+keyword trigger has no catalog row: prowess's footprint is declared in
+`game.keyedBodyFootprints`, keyed by its stack body, and each body there
+needs a case in `game/trigger_footprint_keyed_test.go`.
 
 **Combat declarations (#830, #859):** BOTH combat declarations
 announce once, at their **lock-in** — the first priority boundary of

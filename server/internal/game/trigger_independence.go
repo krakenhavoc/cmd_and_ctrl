@@ -52,7 +52,46 @@ const (
 	FootprintCreateToken FootprintKind = "create_token"
 	// FootprintMonarch: the controller becomes the monarch.
 	FootprintMonarch FootprintKind = "monarch"
+	// FootprintPumpSource: the item's source gets +N/+N until end of
+	// turn, a layer-7c record pinned to that object, if it is still the
+	// object that triggered and still on the battlefield. Declared for
+	// an engine keyword trigger's body (keyedBodyFootprints), not by a
+	// catalog primitive: prowess (#3013).
+	FootprintPumpSource FootprintKind = "pump_source"
 )
+
+// keyedBodyFootprints is the footprint of each engine keyword trigger
+// whose item is keyed by its stack body rather than stamped with a
+// catalog row (ADR 0018's #3013 amendment, sub-PR 3). The check looks
+// an item up here by its Body the way it looks a stamped item's row up
+// in the catalog. A body joins only with the argument the amendment
+// makes for prowess, and with a case in
+// TestKeyedBodyFootprintsDoOnlyWhatTheyDeclare, which resolves the real
+// body and fails on anything it changes or emits outside the
+// declaration.
+var keyedBodyFootprints = map[string][]FootprintStep{
+	// CR 702.108a: "this creature gets +1/+1 until end of turn"
+	// (resolveProwess). It reads only whether its source is still the
+	// object that triggered, writes only a +1/+1 pinned to it, and
+	// registering the record emits no event.
+	prowessPumpBody.key: {{Kind: FootprintPumpSource, N: 1}},
+}
+
+// KeyedBodyFootprint is the declared footprint of an engine keyword
+// trigger's stack body, for tests.
+func KeyedBodyFootprint(body string) []FootprintStep {
+	return keyedBodyFootprints[body]
+}
+
+// KeyedFootprintBodies lists the bodies keyedBodyFootprints declares,
+// for the conformance test.
+func KeyedFootprintBodies() []string {
+	out := make([]string, 0, len(keyedBodyFootprints))
+	for k := range keyedBodyFootprints {
+		out = append(out, k)
+	}
+	return out
+}
 
 // FootprintStep is one declared step: a kind and its constants. Every
 // object and player it touches is relative to the resolving item (its
@@ -68,6 +107,11 @@ type FootprintStep struct {
 	// key, not the template, so the step is plain data.
 	TokenKey    string
 	TokenManual bool
+	// TokenKeywords are the template's own keywords. A keyword the
+	// engine turns into a trigger (evolve, exalted, prowess…) gives the
+	// token an ability no catalog row declares, so the check reads them
+	// for what such a trigger watches (#3013).
+	TokenKeywords []string
 	// AmountFromSubject marks a FootprintGainLife step whose amount is
 	// read at resolution off the trigger's subject, the object its
 	// event names (CR 608.2h: "gain life equal to its toughness"). The
@@ -78,8 +122,8 @@ type FootprintStep struct {
 }
 
 // FootprintTokenOf describes a token template for a FootprintStep.
-func FootprintTokenOf(tmpl Card) (key string, manual bool) {
-	return catalogKeyOf(&tmpl), Unimplemented(tmpl)
+func FootprintTokenOf(tmpl Card) (key string, manual bool, keywords []string) {
+	return catalogKeyOf(&tmpl), Unimplemented(tmpl), append([]string(nil), tmpl.Keywords...)
 }
 
 // lifeDirection records which ways a batch item moves one player's life.
@@ -96,6 +140,11 @@ type triggerAccess struct {
 	controller uuid.UUID
 	// Objects (cards and permanents), by instance ID.
 	reads, writes map[uuid.UUID]bool
+	// pumped are the objects the item pumps (FootprintPumpSource): a
+	// layer-7c power and toughness record. markRulesLocked folds them
+	// into writes; one the item changes in no other way sets pumpRules
+	// rather than rules when it bears rules (#3013).
+	pumped map[uuid.UUID]bool
 	// Players.
 	life        map[uuid.UUID]lifeDirection
 	lifeLoss    map[uuid.UUID]int
@@ -109,6 +158,23 @@ type triggerAccess struct {
 	// ability, a replacement effect, an attachment, a record that
 	// names it). Everything reads the rules, so it conflicts with all.
 	rules bool
+	// pumpRules is set when the item pumps an object that bears rules.
+	// A pump changes nothing about the object but its power and
+	// toughness, so the only way it reaches past the object is a static
+	// of the object's that reads them. That can change what another
+	// item reads through the layers (charReads, traitReads), and
+	// nothing else (#3013).
+	pumpRules bool
+	// traitReads is set when the item reads what the layers make of an
+	// object other than its toughness: a damage source's lifelink,
+	// infect, wither or toxic, or a chosen target's legality (CR
+	// 608.2b reads its characteristics).
+	traitReads bool
+	// tokenWatches are the event kinds the keyword triggers of a token
+	// the item creates watch. Such a token enters partway through the
+	// batch, so it sees the events of the items after it and not of
+	// those before (#3013).
+	tokenWatches map[EventKind]bool
 	// charReads is set when the item reads a characteristic of an
 	// object on the battlefield through the layers (an amount read off
 	// the trigger's subject, #3013): a static on the board can change
@@ -181,15 +247,17 @@ func (g *Game) layerStaticsLocked() layerStatics {
 
 func newTriggerAccess(controller uuid.UUID) triggerAccess {
 	return triggerAccess{
-		controller:  controller,
-		reads:       map[uuid.UUID]bool{},
-		writes:      map[uuid.UUID]bool{},
-		life:        map[uuid.UUID]lifeDirection{},
-		lifeLoss:    map[uuid.UUID]int{},
-		cards:       map[uuid.UUID]bool{},
-		draws:       map[uuid.UUID]int{},
-		playerReads: map[uuid.UUID]bool{},
-		emits:       map[EventKind]bool{},
+		controller:   controller,
+		reads:        map[uuid.UUID]bool{},
+		writes:       map[uuid.UUID]bool{},
+		pumped:       map[uuid.UUID]bool{},
+		tokenWatches: map[EventKind]bool{},
+		life:         map[uuid.UUID]lifeDirection{},
+		lifeLoss:     map[uuid.UUID]int{},
+		cards:        map[uuid.UUID]bool{},
+		draws:        map[uuid.UUID]int{},
+		playerReads:  map[uuid.UUID]bool{},
+		emits:        map[EventKind]bool{},
 	}
 }
 
@@ -333,6 +401,16 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 	if g.somethingReactsLocked(emits) {
 		return TriggerOrderReasonReactor
 	}
+	// A token the batch creates with a keyword trigger that watches an
+	// event the batch causes (evolve watches entering) reacts to the
+	// items after its maker and not to those before it.
+	for _, a := range accs {
+		for k := range a.tokenWatches {
+			if emits[k] {
+				return TriggerOrderReasonReactor
+			}
+		}
+	}
 	if g.writtenObjectsRippleLocked(written) {
 		return TriggerOrderReasonRipple
 	}
@@ -387,6 +465,9 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 // Called both ways round for each pair.
 func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool, statics func() layerStatics) TriggerOrderReason {
 	if a.rules {
+		return TriggerOrderReasonRules
+	}
+	if a.pumpRules && (b.charReads || b.traitReads) {
 		return TriggerOrderReasonRules
 	}
 	// b reads a characteristic through the layers, and a changes
@@ -456,7 +537,13 @@ func (g *Game) touchesObjectsOfLocked(a *triggerAccess, p uuid.UUID) bool {
 // triggerAccessLocked resolves one item's footprint, or reports that
 // the item is one the check cannot describe.
 func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
-	if t == nil || t.Kind != StackItemTriggered || t.Body != CatalogTriggeredBodyKey || t.Params.Ability == nil {
+	if t == nil || t.Kind != StackItemTriggered {
+		return triggerAccess{}, false
+	}
+	if steps, ok := keyedBodyFootprints[t.Body]; ok && t.Body != CatalogTriggeredBodyKey {
+		return g.keyedTriggerAccessLocked(t, steps)
+	}
+	if t.Body != CatalogTriggeredBodyKey || t.Params.Ability == nil {
 		return triggerAccess{}, false
 	}
 	row, _, outcome := resolveTriggeredAbilityRef(*t.Params.Ability)
@@ -496,17 +583,58 @@ func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
 			return triggerAccess{}, false
 		}
 	}
+	if len(targetCards) > 0 || len(a.playerReads) > 0 {
+		// CR 608.2b: a target's legality is read through the layers.
+		a.traitReads = true
+	}
 	for _, s := range row.Footprint {
 		if !g.addFootprintStepLocked(&a, t, s, targetCards) {
 			return triggerAccess{}, false
 		}
 	}
+	g.markRulesLocked(&a)
+	return a, true
+}
+
+// keyedTriggerAccessLocked resolves an engine keyword trigger's item
+// (prowess) against its body's declared footprint. The item must be
+// exactly what the keyword's Build makes: no targets, modes, Params,
+// payload, X or division, and no field beyond the ones a plain built
+// item may set.
+func (g *Game) keyedTriggerAccessLocked(t *StackItem, steps []FootprintStep) (triggerAccess, bool) {
+	if len(t.Targets) > 0 || len(t.Modes) > 0 || !reflect.ValueOf(t.Params).IsZero() ||
+		len(t.Payload) > 0 || t.XValue != 0 || len(t.Distribution) > 0 ||
+		!builtItemIsPlain(t, TriggeredAbility{}) {
+		return triggerAccess{}, false
+	}
+	a := newTriggerAccess(t.Controller)
+	for _, s := range steps {
+		if !g.addFootprintStepLocked(&a, t, s, nil) {
+			return triggerAccess{}, false
+		}
+	}
+	g.markRulesLocked(&a)
+	return a, true
+}
+
+// markRulesLocked sets rules for an item that writes an object whose
+// abilities shape the rules the other items resolve under, and
+// pumpRules for one whose only change to such an object is a pump. It
+// then counts every pumped object as written.
+func (g *Game) markRulesLocked(a *triggerAccess) {
 	for id := range a.writes {
 		if !g.objectInertLocked(id) {
 			a.rules = true
 		}
 	}
-	return a, true
+	for id := range a.pumped {
+		if !a.writes[id] && !g.objectInertLocked(id) {
+			a.pumpRules = true
+		}
+	}
+	for id := range a.pumped {
+		a.writes[id] = true
+	}
 }
 
 // builtItemPlainFields are the StackItem fields a built item may set and
@@ -522,6 +650,9 @@ var builtItemPlainFields = map[string]bool{
 	"DoubledBy": true, "DoubledByName": true, "Targets": true, "Trigger": true,
 	"Seq": true, "Effect": true, "Body": true, "Params": true, "Ordered": true,
 	"TargetsAnnouncePending": true, "targetSpec": true,
+	// #1511's ordering mark: it says how a batch may be ordered and
+	// changes nothing the item does (#3013, prowess).
+	"Commutes": true,
 }
 
 // builtItemIsPlain reports whether an item a row's Build made sets only
@@ -578,6 +709,7 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 			a.life[p.ID] |= lifeDown
 			a.lifeLoss[p.ID] += s.N
 		}
+		a.traitReads = true
 		a.emit(EventDealDamage, EventChangeLife)
 	case FootprintCounterOnSource:
 		a.reads[t.SourceCardID] = true
@@ -613,10 +745,21 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		if !tokenTemplateInert(s.TokenKey, s.TokenManual) {
 			return false
 		}
+		for _, k := range tokenKeywordWatches(s.TokenKey, s.TokenKeywords) {
+			a.tokenWatches[k] = true
+		}
 		a.emit(EventTokenCreated, EventETB, EventZoneMove)
 	case FootprintMonarch:
 		a.monarch = true
 		a.emit(EventMonarchChanged)
+	case FootprintPumpSource:
+		// resolveProwess: nothing for a source that left, or left and
+		// came back as a new object (CR 400.7); otherwise a layer-7c
+		// record pinned to it. Registering a record emits no event.
+		a.reads[t.SourceCardID] = true
+		if z := g.findCardZoneLocked(t.SourceCardID); z != nil && z.Kind == ZoneBattlefield {
+			a.pumped[t.SourceCardID] = true
+		}
 	default:
 		return false
 	}
@@ -657,6 +800,9 @@ func (g *Game) FootprintDeclarationForTest(item *StackItem, s FootprintStep) (Fo
 	if !g.addFootprintStepLocked(&a, item, s, targets) {
 		return FootprintDeclaration{}, false
 	}
+	for id := range a.pumped {
+		a.writes[id] = true
+	}
 	d := FootprintDeclaration{
 		Reads: a.reads, Writes: a.writes, Cards: a.cards, Monarch: a.monarch, Emits: a.emits,
 		LifeUp: map[uuid.UUID]bool{}, LifeDown: map[uuid.UUID]bool{},
@@ -670,6 +816,19 @@ func (g *Game) FootprintDeclarationForTest(item *StackItem, s FootprintStep) (Fo
 		}
 	}
 	return d, true
+}
+
+// tokenKeywordWatches is every event kind the keyword triggers a token
+// made from the template would have watch: its own keywords and its
+// catalog entry's printed ones, through the walk the harvester uses
+// (keywordTriggersFor).
+func tokenKeywordWatches(key string, keywords []string) []EventKind {
+	probe := Card{TokenKey: key, Keywords: keywords}
+	var out []EventKind
+	for _, t := range keywordTriggersFor(&probe) {
+		out = append(out, t.Watches...)
+	}
+	return out
 }
 
 // tokenTemplateInert reports whether a token made from tmpl brings
@@ -1088,6 +1247,11 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		if !f.IsExported() || v.Field(i).IsZero() {
 			continue
 		}
+		// The row the registry makes from the printed keywords applies
+		// them to the object itself and reads nothing (#3013).
+		if f.Name == "Static" && onlyPrintedKeywordRows(d.Static) {
+			continue
+		}
 		switch class, ok := cardDefFieldClass[f.Name]; {
 		case !ok || class == defFieldRules:
 			global = true
@@ -1096,4 +1260,15 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		}
 	}
 	return global, own
+}
+
+// onlyPrintedKeywordRows reports whether every static is the row the
+// registry makes from a card's printed keywords.
+func onlyPrintedKeywordRows(statics []StaticAbility) bool {
+	for i := range statics {
+		if !statics[i].PrintedKeywordRow {
+			return false
+		}
+	}
+	return true
 }
