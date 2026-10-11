@@ -110,6 +110,7 @@ planned just-in-time from the S12 pain-point triage.
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
 | S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
 | S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | **done**    |
+| S70     | Public beta: a table strangers can find                              | 7     | [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985) | —          | planned     |
 
 ### How to read the status column
 
@@ -3624,6 +3625,41 @@ What comes next:
 - [#2458](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2458): draw before deploying, a turn-mana lookahead. It is also the real fix for A2.
 - [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457): cycling cards as cheap discards, and the draw step as a spend window.
 - [#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469): Harrow's land sacrifice as net mana in the leftover windows.
+
+---
+
+## S70 — Public beta: a table strangers can find
+
+**Phase:** 7 · **Goal:** make the public deployment safe to post about. That means capacity limits backed by a load test, throttled bug reports, capped model bots, a what-works page, legal and privacy notices, and basic moderation. Tracking issue [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985).
+
+Opened 2026-10-10, when the owner asked about expanding access with a Reddit post. The decision was a launch-readiness sprint first, then a soft launch to 20–50 players (the r/EDH weekly or self-promo thread, one Commander Discord), and only then a wider post. The tracking issue records the terms check against the Wizards Fan Content Policy and Scryfall's API guidelines.
+
+- [ ] [#2977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2977): capacity limits (tables, connections, table creation)
+- [ ] [#2978](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2978): load test a prod-shaped host and set the defaults
+- [ ] [#2979](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2979): throttle and dedupe in-game bug reports
+- [ ] [#2980](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2980): model bot tiers off or budget-capped on prod
+- [ ] [#2981](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2981): an About / what-works page
+- [ ] [#2982](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2982): legal notices, with the Fan Content Policy wording and artist credit on art crops
+- [ ] [#2983](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2983): a privacy notice and self-serve account deletion
+- [ ] [#2984](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2984): basic moderation of names, chat and kicking
+
+### Exit criteria
+
+From the tracker, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985):
+
+1. Every member has merged into `develop` and reached `main` with a promotion.
+2. A load test on a prod-shaped build shows the caps hold. A hit cap shows the friendly message, and the Grafana Overview shows usage against the caps.
+3. From a fresh browser (signed out, no Discord), a stranger can:
+   - read the About and privacy pages;
+   - play the tutorial;
+   - start a bot game;
+   - join a friend's table through an invite link.
+4. Bug-report spam is capped, which a scripted burst verifies, and the model bots can't exceed their budget.
+5. The owner signs off on the soft-launch post.
+
+### Status
+
+**Planned** (2026-10-10).
 
 ---
 
