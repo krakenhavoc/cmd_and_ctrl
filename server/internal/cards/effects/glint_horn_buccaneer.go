@@ -27,9 +27,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
-			}, "Glint-Horn Buccaneer — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}), game.Purpose{DiscardPayoff: &game.DiscardPayoff{Any: true, DamageEachOpponent: 1}}),
+			}, "Glint-Horn Buccaneer — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})), game.Purpose{DiscardPayoff: &game.DiscardPayoff{Any: true, DamageEachOpponent: 1}}),
 		},
 		Activated: []ActivatedAbility{{
 			Label:     "{1}{R}, Discard a card: Draw a card. Activate only if this creature is attacking.",

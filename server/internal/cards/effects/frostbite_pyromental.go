@@ -24,9 +24,7 @@ func init() {
 		PrintedKeywords: []string{"trample", "haste"},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Frostbite Pyromental — draw two cards",
-				func(g *game.Game, item *game.StackItem) error {
-					return DrawCards{Player: item.Controller, N: 2}.Apply(NewContext(g, item))
-				}),
+				Do(DrawCards{N: 2})),
 			AtEachStep(game.StepEnd, "Frostbite Pyromental — sacrifice it",
 				func(g *game.Game, item *game.StackItem) error {
 					return SacrificePermanent{Target: item.SourceCardID}.Apply(NewContext(g, item))

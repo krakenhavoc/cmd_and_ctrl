@@ -2981,7 +2981,9 @@ to give it back.
   an ability that resolves between the pumps and reads them. **So
   Mentor and Sokka, Tenacious Tactician boards still prompt**, since
   each is prowess plus a token trigger. #1530 records the narrowest
-  way to go further.
+  way to go further. *(Closed 2026-10-11 by the #3013 amendment's
+  sub-PR 3 below, through declared footprints rather than this
+  class: the `Commutes` skip itself is unchanged.)*
 - **"Identical-effect triggers from copies of the same card with no
   targets."** A shared oracle ID and label say the closures are the
   same code, not that they commute. An untargeted trigger that reads
@@ -3011,7 +3013,8 @@ pins it: no `resolve_choice` move, and a pass is available.
   IDs); and Clone + RestoreFrom keeping the flag.
 - `cards/effects/prowess_order_test.go`: two and then three prowess
   creatures cast through with no prompt and pump once each. A Mentor
-  board still prompts. Undo, restored from before the cast and from
+  board still prompted (until #3013 sub-PR 3; its tests are now in
+  `trigger_independence_prowess_test.go`). Undo, restored from before the cast and from
   mid-batch, settles without a prompt and pumps exactly once.
 
 The targeted case is pinned at the drain rather than end to end,
@@ -3692,7 +3695,7 @@ Objects are cards and permanents by instance ID; "you" is the item's controller.
 | `CounterOnThis` | the source | the source, if on the battlefield | counter placed |
 | `ExileChosenTarget` | the targets | each card target | zone move, leaves the battlefield, unattach |
 | `DrawCards` | | your library and hand (and a loss on an empty library) | draw |
-| `MillCards`, `Surveil` (no `Then`) | | your library and graveyard | mill or surveil, zone move |
+| `MillCards`, `Surveil` (no `Then`) | | your library and graveyard | mill or surveil, zone move (a surveil also emits mill for the cards it puts in the graveyard: #3013 sub-PR 1) |
 | `Scry` (no `Then`) | | your library | scry |
 | `GetEnergy` | | nothing another step reads (energy only adds up) | player counter placed |
 | `CreateToken` | | nothing another step reads (a token whose template has no text) | token created, enters, zone move |
@@ -4060,3 +4063,275 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
 5. **Say why the prompt appeared.** Should the `trigger_order` prompt show the reason, for example "Ajani's
    Pridemate reacts to life gain"? That's additive on the wire, plus a client line. Recommended: yes, after
    sub-PR 1, since it uses the same reason value.
+
+### Note (2026-10-11): sub-PR 1, guards and measurement
+
+- **Reasons.** `triggerOrderAskLocked` returns why a seat is asked (`game.TriggerOrderReason`): `always`,
+  `undescribed`, `board_opaque`, `reactor`, `ripple`, `elimination`, `object_tie`, `rules`, `library` or
+  `monarch`. The reason is the first conflict the check finds, and it never changes whether the seat is
+  asked. The drain counts each prompt once, as it is queued, in `cmdctrl_trigger_order_prompts_total{reason}`
+  (ADR 0123). A held drain passes the boundary again until the prompt is answered, and those passes don't
+  count again.
+- **Conformance.** `cards/effects/footprint_conformance_test.go` resolves every primitive that declares a step,
+  on a real board. It fails on any player, object or event kind the step touches outside its declaration
+  (`game.FootprintDeclarationForTest`, the check's own reading). A new primitive without a case fails. The
+  test found one gap on its first run. A surveil's graveyard leg emits `EventMill` per card, as an ordinary
+  mill does, and the step did not declare it. So a watcher of milling alone (Colossal Grave-Reaver) did not
+  keep a surveil batch asking. The step now declares it, which only adds prompts.
+- **Coverage.** `cards/coverage/trigger_footprint_audit_test.go` reads the oracle fixtures. It lists a
+  catalogued card when it prints more one-sentence trigger lines of a shape the vocabulary has, or is one
+  primitive away from, than it has rows with a footprint. Its shapes are wider than the census above
+  (energy, the monarch, damage to each opponent, and any count written as a digit), so it lists 157 cards
+  where the census found 94. The list is `cards/coverage/testdata/unfootprinted_trigger_lines.txt` and only
+  shrinks. Sub-PRs 2 and 4 work through it.
+
+### Note (2026-10-11): sub-PR 2, the owner's example
+
+- **The step.** `GainLifeEqualToSubject{Stat: SubjectToughness}` reads the trigger's subject through
+  `ctx.TriggeringPermanent` (Decision 13). That is the permanent as it is now while the object is on the
+  battlefield, and as it last existed there once it has left. An item that a binary from before this change
+  queued carries `Params.Amount`, which is used only when the subject has no record. Such an item is never
+  plain, so its batch asks.
+  - Its footprint is `FootprintGainLife` with `AmountFromSubject`. The check counts the subject as read while
+    it is on the battlefield.
+  - A zero or negative toughness gains nothing. The old body passed a negative toughness to the life change,
+    which made it a loss.
+- **The cards.**
+  - Wolverine Riders, Trostani, Selesnya's Voice, Verdant Sun's Avatar and Righteous Valkyrie use the step.
+    The `b20` body and Valkyrie's copy of it are gone.
+  - Marwyn, the Nurturer is `Do(CounterOnThis{"+1/+1", 1})`.
+  - Every row keeps its label, so a queued item restores onto the same row.
+  - Five lines leave the audit list.
+- **A rule the proposal did not have: a read through the layers.** An amount equal to a creature's toughness is
+  the output of every static that applies to that creature. Another item in the batch can change what such a
+  static reads: a counter, a creature entering, a life total for Righteous Valkyrie's "+2/+2 while you have 7
+  more life". So the order can show although no object is shared. Example: Valkyrie and Trostani both gain
+  for one Angel, and the first gain switches on the anthem that the second gain reads. So a subject read
+  (`triggerAccess.charReads`) conflicts with any other item that changes game state when the board has a
+  static that can change power or toughness: layer 7, a copy, or an ability removal (`layerStaticsLocked`).
+  - The one exception: an item that only moves life totals passes unless one of those statics declares
+    `DependsOnLifeTotal`. That is the layer engine's own contract for what such a static reads.
+  - The reason is `characteristic`.
+  - The cost: an Elf lord such as Elvish Archdruid keeps the Marwyn and Riders batch asking, although its
+    output cannot change there. The check can't see what a static reads. If sub-PR 1's counter shows
+    `characteristic` is common, a static that declares it reads nothing the batch writes is the next step.
+- **Still not covered (unchanged).** Two triggers from one source with one label are skipped by sub-PR 8's
+  identical rule, which has never read the trigger context. So two Righteous Valkyrie gains for two creatures
+  entering together are auto-ordered, even across her +7 line.
+
+### Note (2026-10-11): sub-PR 3, prowess
+
+- **The footprint.** `keyedBodyFootprints` (`game/trigger_independence.go`) declares the footprint of an engine
+  keyword trigger by its stack body. Prowess (`"prowess/pump"`) is its only entry: one `FootprintPumpSource`
+  step. It reads its source, writes it while it is on the battlefield, and emits nothing.
+  - `triggerAccessLocked` looks a keyed item up there, as it looks a stamped item's row up in the catalog. It
+    accepts the item only when it is exactly what the prowess `Build` makes: no targets, modes, `Params`,
+    payload, X or division, and no field outside `builtItemPlainFields`. `Commutes` joined that list, since it
+    says how a batch may be ordered and changes nothing the item does.
+  - The `Commutes` skip is unchanged and runs first, so an all-prowess batch still skips on an opaque board.
+  - `game/trigger_footprint_keyed_test.go` is the table's conformance test. It resolves each body's real item
+    and fails on any event, any player or object change, or any continuing effect outside the declaration. A
+    body without a case fails.
+- **The boards.** A Monastery Mentor board and a Sokka, Tenacious Tactician board cast a noncreature spell
+  with no prompt, and so does the next spell, with the new token's prowess in the batch. #1530 item 1 is
+  closed.
+- **Two rules the proposal did not have.**
+  1. **The printed-keyword static is not a rule the object shapes.** The registry turns `PrintedKeywords` into
+     one self-only layer-6 static, so every catalog creature with a printed keyword had a `Static` slot, and
+     `objectInertLocked` called it rules-bearing. Writing Monastery Mentor (printed prowess) therefore set
+     `rules`. Such a row applies the object's own printed keywords to the object and reads nothing, so
+     changing the object can't change what it does to anything else. The registry now marks that row
+     (`StaticAbility.PrintedKeywordRow`, engine-owned: a card file's mark is cleared), and `defBearsRules`
+     ignores it. This also applies to `CounterOnThis` and `ExileChosenTarget` writes on such creatures, which
+     now pass where they used to ask under `rules`.
+  2. **A pump reaches past its object only through what the layers compute.** A pump changes only its
+     object's power and toughness, never its zone, counters or attachments. So a static on the pumped object
+     can change only what the layers compute for other objects. Sokka's grants are such statics. A pump on an
+     object that bears rules therefore sets `pumpRules`, not `rules`. `pumpRules` conflicts only with an item
+     that reads through the layers: an amount off the subject (`charReads`), a damage source's lifelink,
+     infect, wither or toxic, or a chosen target's legality (`traitReads`). The reason is `rules`. So Sokka's
+     pump beside Firebrand Archer asks, and Mentor's doesn't.
+     - Given up: a static on the pumped object that reads its power and *grants a triggered ability* to
+       something, which would then watch the rest of the batch. This is the #2884 "static whose condition reads
+       what an item writes" case, extended from other permanents' statics to the pumped object's own.
+- **Hardening: a token's keyword triggers.** `tokenTemplateInert` read only a template's catalog `Triggered`.
+  A token step now carries the template's keywords (`FootprintStep.TokenKeywords`), and the check reads the
+  keyword triggers they make (`tokenKeywordWatches`, through `keywordTriggersFor`). If one of them watches an
+  event kind the batch causes, the batch asks with the reason `reactor`. An evolve token beside another token
+  maker asks. A Monk with prowess doesn't, because prowess watches a cast and no step casts. No catalogued
+  token has evolve today. A keyword a static would *grant* the token once it enters is not read, which is the
+  same given-up case as above.
+- **Unchanged, by the owner's decisions.** Watchers still force the prompt. Ty Lee, Chi Blocker's own "when
+  this enters" keeps Sokka's batch asking (`reactor`), as an ETB watcher such as Soul Warden keeps Mentor's.
+  **Always ask** and **Never ask** behave as before. Caldera Pyremaw beside prowess still asks
+  (`undescribed`).
+- **Tests.** `cards/effects/trigger_independence_prowess_test.go` covers the keyed footprint, the Mentor and
+  Sokka boards over two spells, the ETB watcher, Ty Lee, Pyremaw, Sokka's pump beside damage and Mentor's,
+  always ask, the evolve and Monk tokens, and the registry's printed-keyword mark. In `game`:
+  `trigger_footprint_keyed_test.go` (keyed conformance, `tokenKeywordWatches`, `defBearsRules` on the
+  printed-keyword row). `prowess_order_test.go`'s "Mentor still prompts" test is gone.
+
+### Note (2026-10-11): sub-PR 4, the drain and the first migrations
+
+- **The step.** `EachOpponentLosesLife{N}` is "each opponent loses N life": the item's source is passed to the life
+  change as its attribution (as `GainLife` does) and nothing else reads it.
+  - Its footprint, `FootprintLoseLifeEachOpponent`, reads no object. It writes every opponent still in the game
+    down, adds N to their `lifeLoss` for the elimination check, and emits a life change. It is not damage, so it
+    has no lifelink, infect, wither or toxic question.
+  - A drain is `Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})`. The two steps run in that order, as the
+    hand-written bodies did. The step is not on the source-blind list, since a replacement of life changes could
+    read the attribution.
+  - `footprint_conformance_test.go` has its case.
+- **Batch 1, the drains.** 24 cards move onto it with their labels and trigger conditions unchanged: Ayara, First of
+  Locthwain; Bastion of Remembrance; Bontu's Monument; Cauldron Familiar; Cauldron of Essence; Cliffhaven Vampire;
+  Consuming Sepulcher; Corpse Knight; Cruel Celebrant; Elas il-Kor, Sadistic Pilgrim; Funeral Room; Gixian
+  Puppeteer; Kardur, Doomscourge; Marauding Blight-Priest; Marionette Apprentice; Mirkwood Bats; Nadier's Nightblade;
+  Obyra, Dreaming Duelist; Plague Belcher; Poison-Tip Archer; Psychosis Crawler; Sanctum Seeker; Wayward Servant;
+  Zulaport Cutthroat.
+- **Left on the list.** Indulging Patrician and Lunar Convocation check "you gained life this turn" as they resolve
+  (an intervening "if"), which no step expresses yet.
+- **Batch 2, counters on the source.** 33 cards move onto `Do(CounterOnThis{Kind: "+1/+1", N: 1})` with their
+  labels and conditions unchanged: Ajani's Pridemate; Animar, Soul of Elements; Brineborn Cutthroat; Champion of
+  Lambholt; Champion of the Perished; Chandra's Emberling; Chasm Skulker; Danitha, Spear of Agony; Feral Ghoul;
+  Frenzied Raider; Honored Dreyleader (its second row); Idol of False Gods; Inspired Tethermage; Juri, Master of
+  the Revue; K'rrik, Son of Yawgmoth; Laelia, the Blade Reforged; Managorger Hydra; Massacre Girl, Most Wanted;
+  Murktide Regent; Nesting Dovehawk; Orca, Siege Demon; Ravenous Squirrel; Stalwarts of Osgiliath; Toothy,
+  Imaginary Friend; Unflinching Hortimancer; Vadrik, Astral Archmage; Valley Mightcaller; Vengeful Warchief;
+  Vincent, Vengeful Atoner; Wildwood Scourge; Yahenni, Undying Partisan; Yoshimaru, Ever Faithful; Youthful
+  Valkyrie.
+  - **One difference.** Some of the old closures (Animar, Brineborn Cutthroat, Chandra's Emberling, Chasm Skulker,
+    Danitha, Frenzied Raider, Inspired Tethermage, Massacre Girl, Nesting Dovehawk, Toothy, Valley Mightcaller,
+    Yahenni, Yoshimaru) had no "still on the battlefield" check, so a source that had gone to the graveyard in
+    response still received the counter. `CounterOnThis` puts nothing on a source that has left, as the printed
+    "this creature" does (CR 400.7), so this is a fix, not a loss.
+  - **Left on the list.** Edgar, Moonlit Sovereign (re-checks "you cast no spells this turn" as it resolves),
+    Mausoleum Harpy (re-checks the city's blessing) and Runaway Steam-Kin (re-checks fewer than three counters)
+    all have an intervening "if" that no step expresses. Rapacious Guest, Surly Badgersaur and Titanbones,
+    Towering Heart have a second shape on the same card and are in a later batch.
+- **Batch 3, damage to each opponent.** 23 cards move onto `Do(DamageEachOpponent{N})`, which already had a
+  footprint, so no new step: Agate Instigator; Black Waltz No. 3; Brimstone Vandal; Coruscation Mage;
+  Electrostatic Field; Erebor Flamesmith; Fiery Inscription; Firespitter Whelp; General Kreat, the Boltbringer;
+  Glint-Horn Buccaneer; Impact Tremors; Kessig Flamebreather; Lambholt Raconteur and Lambholt Ravager;
+  Molten Gatekeeper; Purphoros, God of the Forge; Reckless Fireweaver; Refraction Elemental; Syr Konrad, the Grim;
+  Tinybones, Pocket Nuisance; Unstable Amulet; Warleader's Call; Weftstalker Ardent. Labels and conditions are
+  unchanged.
+  - **A test changed meaning.** `TestTwoImpactTremorsStillAsk` pinned that two Impact Tremors ask, because their
+    row was a closure and is not source-blind. With a footprint each reads only its own source and lowers the
+    opponents' life, which commutes, so the batch now goes on with no prompt
+    (`TestTwoImpactTremorsSkipThePromptByTheirFootprint`). The registry test's Impact Tremors case now expects the
+    damage footprint.
+  - **Left on the list.** Lux Artillery: its 10 damage re-checks "30 or more counters" as it resolves
+    (an intervening "if").
+- **Batch 4, token makers.** 17 cards move onto `Do(CreateToken{...})`, `Do(CounterOnThis{...})` or `Do(MillCards{...})`
+  with labels and conditions unchanged: Arahbo, the First Fang; Autarch Mammoth; Beetleback Chief; Bridled Bighorn;
+  Cosmium Kiln; Desolation Twin; Elanor Gardner; Gilded Ghoda; Lossarnach Captain; On Wings of Gold; Open the
+  Graves; Rapacious Dragon; Restless Anchorage; Sidisi, Brood Tyrant; and the counter rows of Rapacious Guest, Surly
+  Badgersaur and Titanbones, Towering Heart, which finish those cards.
+  - **No new footprint.** `CreateToken` already declares what a token entering does: it emits token created, enters
+    and zone move, so any permanent on the battlefield that watches entering (an ETB watcher, a replacement that
+    watches the event) keeps the batch asking with the reason `reactor`. A token whose template has a trigger,
+    static, replacement or rules-bearing slot is refused, and an evolve-style keyword trigger on it is read too.
+    `trigger_independence_tokens_test.go` pins a Zombie beside a drain skipping, and the same pair asking beside
+    Impact Tremors.
+  - **Copies of one maker.** Two sources with the same label (two Open the Graves) were already auto-ordered by the
+    source-blind rule (#1968), which `CreateToken` is on the list for. That rule never read the board, so a migrated
+    token maker joins it. It needs no order because the copies make the same token.
+  - **Left on the list.** Tapped tokens (`CreateTokenAdvanced` has no footprint step): Alchemist's Talent, Diregraf
+    Colossus, Don Andres, Nuka-Cola Vending Machine, Overseer of the Damned, Tormod, the Desecrator. Resolution-time
+    re-checks (intervening "if"): Crested Sunmare, Field of the Dead, Keeper of the Accord, Ginger, Queen of Sweets,
+    Faramir, Field Commander (wraps its draw). Counted or X amounts: Arboreal Alliance, Cadira, Caller of the Small.
+- **Batch 5, draws.** 11 cards move onto `Do(DrawCards{N})`, with labels and conditions unchanged: Eternal of Harsh
+  Truths; Frostbite Pyromental; Guidelight Matrix; High-Society Hunter; Ichor Wellspring; Ingenious Infiltrator;
+  Llanowar Visionary; Seafloor Oracle; Vanquisher's Banner; Vedalken Archmage; Way of the Mind Sculptor.
+  - **No new footprint.** `FootprintDraw` already marks the controller's library as touched (so a draw conflicts with
+    a scry, a surveil, a mill or another draw of the same player, reason `library`), counts the draws for the empty
+    library check, and emits a draw. A "whenever you draw" watcher on the board keeps the batch asking (`reactor`).
+    `trigger_independence_draws_test.go` pins a draw beside a drain skipping, a draw beside a scry asking
+    (`library`), and a draw beside Chasm Skulker asking (`reactor`).
+  - **Eternal of Harsh Truths** builds its row with `WhenAttacksAndIsNotBlockedEffect`, whose callback gets the
+    defending player. This payoff does not use it, so the row's `Effect` is replaced with the `Do` after the
+    constructor builds it.
+  - **Left on the list (intervening "if", re-checked as the ability resolves):** Agent of Treachery (three
+    permanents you don't own), Beastbond Outcaster, Colossal Majesty and Garruk's Uprising (a creature with power 4
+    or greater), Bugenhagen, Wise Elder (power 7), Deadeye Brawler (the city's blessing), Padeem, Consul of
+    Innovation (the greatest artifact), Satoru, the Infiltrator (nothing cast with mana in the batch), The Gaffer
+    (3 life gained this turn).
+- **Batch 6, the rest that can be expressed.** 20 cards, and three steps' reach widened. Each change has a
+  conformance case (`footprint_conformance_test.go` now keys a variant as `<Type>:<variant>`) and a skip and an
+  ask test (`trigger_independence_final_test.go`).
+  - **Gain life** (`Do(GainLife)`): Bishop of Wings (both rows, its Spirit too); Distinguished Conjurer; Glowing One;
+    Interplanar Beacon; Lifecreed Duo; Merchant Ship (the row's `Effect` is replaced after its constructor builds it,
+    as for Eternal of Harsh Truths); Nyx-Fleece Ram.
+  - **Mill, scry, surveil:** Cephalid Illusionist; Hermes, Overseer of Elpis (scry and Bird); Lazav, the
+    Multifarious; Restless Spire; Thassa, God of the Sea.
+  - **Energy:** Decoction Module (`Do(GetEnergy)`). The old body passed no placer to the counter replacement window;
+    `GetEnergy` names the controller, as CR 122.1 says the player getting energy does. Only a replacement that reads
+    the placer can tell, and any such replacement on the board already makes the batch ask.
+  - **Power variant.** `GainLifeEqualToSubject{Stat: SubjectPower}` is the same step as the toughness one (the
+    footprint doesn't name the stat), for Conclave Mentor's death trigger. The subject is the Mentor itself, read as it
+    last existed.
+  - **Tapped tokens.** `CreateTokenAdvanced` declares the `FootprintCreateToken` step when its spec only sets
+    `EntersTapped` (no counters, no granted keywords, the controller's own). Entering tapped changes only the new
+    token's own state and emits no event, which the conformance case confirms. Alchemist's Talent, Diregraf Colossus,
+    Don Andres (already a `Do`), Nuka-Cola Vending Machine, Overseer of the Damned and Tormod, the Desecrator use it.
+    Boards with a permanent that watches an entering object, a zone move or a token still ask: Tormod beside On Wings
+    of Gold asks (both watch zone moves), as do Overseer, Talent and Colossus (their own entry rows or replacement).
+
+### Closing note (2026-10-11): what stays on the ratchet, and why
+
+The audit's list holds 24 cards. Each is an exception, grouped here by the reason no footprint is declared. The
+list is the testable record of this table, and `TestOneSentenceTriggersDeclareFootprints` keeps it from growing.
+Every one of these keeps the CR 603.3b prompt when its trigger is in a batch, which is the safe direction.
+
+**Intervening "if" re-checked as the ability resolves (CR 603.4).** The row's effect first reads game state and does
+nothing if the condition is false, so its footprint would have to say that it reads that state. The check has no way
+to say so today, and the effect can't be a bare `Do` without losing the re-check.
+
+| Card | The condition re-checked at resolution |
+| --- | --- |
+| Agent of Treachery | Three or more permanents you control but don't own (end step draw) |
+| Beastbond Outcaster | You control a creature with power 4 or greater |
+| Colossal Majesty | You control a creature with power 4 or greater |
+| Garruk's Uprising | You control a creature with power 4 or greater (its entry row; the other row is a `Do`) |
+| Bugenhagen, Wise Elder | You control a creature with power 7 or greater |
+| Crested Sunmare | You gained life this turn |
+| The Gaffer | You gained 3 or more life this turn |
+| Indulging Patrician | You gained 3 or more life this turn |
+| Lunar Convocation | You gained life this turn (the loss row: and lost life) |
+| Deadeye Brawler | You have the city's blessing |
+| Mausoleum Harpy | You have the city's blessing |
+| Edgar, Moonlit Sovereign | You cast no spells this turn |
+| Field of the Dead | You control seven or more lands with different names |
+| Keeper of the Accord | An opponent controls more creatures than you |
+| Ginger, Queen of Sweets | You are the monarch |
+| Inventors' Fair | You control three or more artifacts |
+| Lux Artillery | Thirty or more counters among artifacts and creatures you control |
+| Padeem, Consul of Innovation | You control the artifact with the greatest mana value |
+| Runaway Steam-Kin | This creature has fewer than three +1/+1 counters |
+| Satoru, the Infiltrator | Nothing entering this batch was cast with mana |
+| Faramir, Field Commander | A creature died under your control this turn (the draw is wrapped in that check) |
+
+What a step for these would need: a `Do` step that carries a condition, `If{Cond, Then...}`, where each `Cond` is a
+named value that declares the state it reads (life gained this turn, a creature's power, the monarch, a cast tally,
+a counter total). The footprint of the step would be the `Then` footprint plus a read of that state, and the check
+would conflict it with any item that writes the state. The unit of work is one condition at a time.
+
+**An amount that is counted or chosen.**
+
+| Card | The amount |
+| --- | --- |
+| Arboreal Alliance | X, taken from the cast (a `Build` fills `Params.Amount`) |
+| Cadira, Caller of the Small | One Rabbit for each token you control, counted as it resolves |
+
+What a step would need: for X, a footprint that allows `Params.Amount` set by the engine's own cast record, which
+`builtItemIsPlain` refuses today; for a count of the board, a step that declares the set it counts (tokens you
+control) as a read, so a token maker beside it conflicts.
+
+**The subject is not the event's object.**
+
+| Card | The subject |
+| --- | --- |
+| Ikra Shidiqi, the Usurper | The creature that dealt combat damage. `EventDealDamage` names it in `Event.Source`, and `TriggerContext.Object` only snapshots `Event.CardID`, so `GainLifeEqualToSubject` can't find it and last-known toughness would be lost once it has left. |
+
+What a step would need: the trigger context to snapshot the damage source as its object (a `TriggerContext` change,
+so a snapshot field and a closure-fields entry), after which `GainLifeEqualToSubject{SubjectToughness}` fits.

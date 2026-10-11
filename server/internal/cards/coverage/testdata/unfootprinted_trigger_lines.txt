@@ -1,0 +1,38 @@
+# unfootprinted_trigger_lines.txt — ADR 0018's #3013 amendment, sub-PR 1.
+#
+# Every catalogued card that prints more one-sentence trigger lines of a
+# shape the footprint vocabulary has (or is one primitive away from) than
+# it has triggered rows with a footprint. Their batches keep the CR 603.3b
+# prompt under "Ask only when the order matters" (#2884).
+#
+# One card per line, sorted: <card name> | <catalog key>.
+# The list ONLY SHRINKS. Move a card's trigger onto effects.Do primitives
+# that declare a step (cards/effects/footprint.go) and delete its line, or run
+#   go test ./internal/cards/coverage -run TestOneSentenceTriggersDeclareFootprints -args -update-unfootprinted
+# which deletes stale lines and never adds one. A new one-sentence trigger
+# written as a closure fails the test instead of being added here.
+
+Agent of Treachery | 4cd82c7a-86df-4d29-b578-c009208c0d4b
+Arboreal Alliance | 2f497352-c812-48c4-a922-cc311bcdcdc6
+Beastbond Outcaster | 19a32e29-45ec-433e-9cb4-b2c32cac8f80
+Bugenhagen, Wise Elder | 4228dd75-1fdd-48dc-9259-b841b2e46c64
+Cadira, Caller of the Small | fcf22321-2f55-41ca-b8e1-4792540ba3ee
+Colossal Majesty | cac95494-0db0-4bec-8665-998431a6f76b
+Crested Sunmare | 054fedbb-062e-491e-9a94-594fda33094f
+Deadeye Brawler | a7c36b66-4f58-41af-b1c5-704ff0d9eac8
+Edgar, Moonlit Sovereign | 1917bda6-c0e1-4c80-8009-74c28cf6b8e9
+Faramir, Field Commander | adeed5e8-9019-4740-83ea-67dcd754e194
+Field of the Dead | aa959340-c869-4caa-92c7-572bd8d23eef
+Garruk's Uprising | 3127ae9b-a7a7-43ec-89d7-688f8445b33d
+Ginger, Queen of Sweets | 5ea93956-085d-409b-bd95-dd669fa69eeb
+Ikra Shidiqi, the Usurper | a1a1761c-88e5-40b4-ba4c-60735c054b09
+Indulging Patrician | 189131b7-ed59-4750-a4ed-453e4497a5c8
+Inventors' Fair | 91d4a5fe-fd6d-4b14-a63f-61b4d0ecd9c4
+Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91
+Lunar Convocation | cb68d1e4-36aa-4a00-b671-8959e7d526d4
+Lux Artillery | cbd76b22-d04e-48e7-bcab-c7f5466d67d8
+Mausoleum Harpy | ba682da8-50f5-478f-99cc-60a57d229a04
+Padeem, Consul of Innovation | 0c7ba712-6a99-4d2f-9242-a2163a11f69c
+Runaway Steam-Kin | eb414a8f-566f-4635-80a1-77b2e18ac8dc
+Satoru, the Infiltrator | 7555c429-5f2d-4171-b6b0-8e3c8da7f314
+The Gaffer | a177295e-3b58-4e46-a1cb-fc003a7a0848

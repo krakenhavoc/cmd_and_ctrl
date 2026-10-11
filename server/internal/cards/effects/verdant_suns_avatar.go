@@ -13,9 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // entering under the controller's control, the Avatar included, so
 // it gains 5 for itself. "That creature's toughness" is read as the
 // trigger resolves — current toughness, counters and anthems
-// included — falling back to the toughness it had when it entered if
-// it has since left (CR 608.2h's last-known value), the Righteous
-// Valkyrie body.
+// included — and as it last existed on the battlefield if it has
+// since left (CR 608.2h's last-known value): GainLifeEqualToSubject,
+// shared with Righteous Valkyrie, Trostani and Wolverine Riders, whose
+// row declares a footprint (#3013).
 //
 // No simplification.
 func init() {
@@ -30,8 +31,7 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature()
 			},
-			Build:  b20GainLifeEqualToToughnessBuild("Verdant Sun's Avatar — gain life equal to its toughness"),
-			Effect: b20GainLifeEqualToToughnessEffect,
+			Effect: Do(GainLifeEqualToSubject{Stat: SubjectToughness}),
 		}},
 	})
 }

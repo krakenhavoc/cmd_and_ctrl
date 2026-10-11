@@ -48,7 +48,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCounterPlaced, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b35PlusCountersPutOnAnotherNonHydraCreatureYouControl(ev, source, g)
-			}, "Wildwood Scourge — put a +1/+1 counter on this creature", b35PutCounterOnSelf),
+			}, "Wildwood Scourge — put a +1/+1 counter on this creature", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

@@ -20,7 +20,7 @@ func init() {
 		Name:         "Funeral Room // Awakening Hall",
 		Completeness: CompletenessFull,
 		Left: Door{Triggered: []game.TriggeredAbility{
-			WheneverACreatureYouControlDies("Funeral Room — each opponent loses 1 life and you gain 1 life", drainEachOpponent),
+			WheneverACreatureYouControlDies("Funeral Room — each opponent loses 1 life and you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		}},
 		Right: Door{Triggered: []game.TriggeredAbility{
 			WhenYouUnlockThisDoor(game.DoorRight, "Awakening Hall — return all creature cards from your graveyard to the battlefield",

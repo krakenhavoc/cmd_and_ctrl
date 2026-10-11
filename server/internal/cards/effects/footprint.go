@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -57,12 +59,33 @@ func (s GetEnergy) footprint() (game.FootprintStep, bool) {
 }
 
 func (s CreateToken) footprint() (game.FootprintStep, bool) {
-	key, manual := game.FootprintTokenOf(s.Template)
-	return game.FootprintStep{Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual}, s.Controller == uuid.Nil && s.N > 0
+	key, manual, keywords := game.FootprintTokenOf(s.Template)
+	return game.FootprintStep{
+		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
+	}, s.Controller == uuid.Nil && s.N > 0
+}
+
+func (s GainLifeEqualToSubject) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintGainLife, AmountFromSubject: true}, s.Stat == SubjectToughness || s.Stat == SubjectPower
+}
+
+// A tapped token is the same step: entering tapped changes only the new
+// token's own state and emits no event of its own. Counters or granted
+// keywords on the token are not described, so such a spec has no
+// footprint.
+func (s CreateTokenAdvanced) footprint() (game.FootprintStep, bool) {
+	key, manual, keywords := game.FootprintTokenOf(s.Spec.Template)
+	return game.FootprintStep{
+		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
+	}, s.Controller == uuid.Nil && s.N > 0 && len(s.Spec.Counters) == 0 && len(s.Spec.Keywords) == 0
 }
 
 func (s BecomeTheMonarch) footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintMonarch}, s.Player == uuid.Nil
+}
+
+func (s EachOpponentLosesLife) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintLoseLifeEachOpponent, N: s.N}, s.N > 0
 }
 
 func (s CounterOnThis) footprint() (game.FootprintStep, bool) {
@@ -136,6 +159,68 @@ func (s CounterOnThis) Apply(ctx *Context) error {
 		return nil
 	}
 	return AddCounter{Target: src, Kind: s.Kind, N: s.N}.Apply(ctx)
+}
+
+// SubjectStat names the characteristic of a trigger's subject an amount
+// is read from.
+type SubjectStat string
+
+// SubjectToughness is the subject's toughness, counters and continuous
+// effects included.
+const SubjectToughness SubjectStat = "toughness"
+
+// SubjectPower is the subject's power, read the same way (Conclave Mentor:
+// "gain life equal to its power").
+const SubjectPower SubjectStat = "power"
+
+// GainLifeEqualToSubject is "you gain life equal to its toughness" in a
+// triggered ability's effect, where "it" is the object the triggering
+// event names: the creature that entered, for Wolverine Riders. The
+// amount is read as the ability resolves (CR 608.2h), through
+// ctx.TriggeringPermanent: the permanent as it is now while that object
+// is on the battlefield, so a pump in response counts, and as it last
+// existed there once it has left. A zero or negative amount gains
+// nothing.
+//
+// An item a binary from before #3013 queued for one of these rows
+// carries the toughness at trigger time in Params.Amount (the old
+// Build's fallback); it is used only when the subject has no record at
+// all. Such an item is never plain, so its batch keeps the prompt.
+type GainLifeEqualToSubject struct {
+	Stat SubjectStat
+}
+
+func (s GainLifeEqualToSubject) Apply(ctx *Context) error {
+	n := 0
+	if info, ok := ctx.TriggeringPermanent(); ok {
+		switch s.Stat {
+		case SubjectToughness:
+			n = info.Toughness
+		case SubjectPower:
+			n = info.Power
+		default:
+			return fmt.Errorf("GainLifeEqualToSubject: unknown stat %q", s.Stat)
+		}
+	} else if ctx.Item != nil {
+		n = ctx.Item.Params.Amount
+	}
+	if n <= 0 {
+		return nil
+	}
+	return GainLife{Amount: n}.Apply(ctx)
+}
+
+// EachOpponentLosesLife is "each opponent loses N life": the drain's
+// first half (follow it with GainLife for "and you gain N life").
+// Every opponent still in the game loses the life in seat order, as a
+// life change that names the item's source and no damage, so no
+// prevention or damage replacement sees it.
+type EachOpponentLosesLife struct {
+	N int
+}
+
+func (s EachOpponentLosesLife) Apply(ctx *Context) error {
+	return eachOpponentLosesLife(ctx.Game, ctx.Item, s.N)
 }
 
 // DamageEachOpponent is "<this> deals N damage to each opponent": one

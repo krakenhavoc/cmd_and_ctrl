@@ -49,9 +49,7 @@ func init() {
 				}
 				return b02CreatureCardEnteredGraveyardNotFromBattlefield(ev, g) ||
 					b02CreatureCardLeftYourGraveyard(ev, source, g)
-			}, "Syr Konrad, the Grim — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}), game.Purpose{DeathPayoff: true}),
+			}, "Syr Konrad, the Grim — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})), game.Purpose{DeathPayoff: true}),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}: Each player mills a card.",

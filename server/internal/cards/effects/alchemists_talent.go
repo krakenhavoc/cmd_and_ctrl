@@ -59,9 +59,7 @@ func init() {
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Alchemist's Talent — create two tapped Treasure tokens",
-				func(g *game.Game, item *game.StackItem) error {
-					return b13CreateTappedTreasures(NewContext(g, item), item.Controller, 2)
-				}),
+				Do(CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: 2})),
 		},
 	})
 }

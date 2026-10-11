@@ -37,9 +37,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && (c.IsCreature() || c.IsArtifact())
-			}, "Weftstalker Ardent — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}),
+			}, "Weftstalker Ardent — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 	})
 }

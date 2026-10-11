@@ -23,9 +23,7 @@ func init() {
 		AsEnters:        BecomesDayAsEnters(),
 		Triggered: []game.TriggeredAbility{
 			WheneverDayBecomesNightOrNightBecomesDay("Brimstone Vandal — 1 damage to each opponent",
-				func(g *game.Game, item *game.StackItem) error {
-					return damageToEachOpponent(g, item, 1)
-				}),
+				Do(DamageEachOpponent{N: 1})),
 		},
 	})
 }

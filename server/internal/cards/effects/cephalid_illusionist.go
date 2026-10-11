@@ -23,9 +23,7 @@ func init() {
 		Name:         "Cephalid Illusionist",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventBecomesTarget, Self, "Cephalid Illusionist — mill three cards", func(g *game.Game, item *game.StackItem) error {
-				return MillCards{Player: item.Controller, N: 3}.Apply(NewContext(g, item))
-			}),
+			On(game.EventBecomesTarget, Self, "Cephalid Illusionist — mill three cards", Do(MillCards{N: 3})),
 		},
 		Activated: []ActivatedAbility{
 			sourceShieldRow("{2}{U}, {T}: Prevent all combat damage that would be dealt to and dealt by target creature you control this turn.",

@@ -35,9 +35,7 @@ func init() {
 				dead, ok := diedCreature(ev, g)
 				return ok && leftUnderControlOf(ev, dead) != source.Controller
 			}, "Yahenni, Undying Partisan — put a +1/+1 counter on Yahenni",
-				func(g *game.Game, item *game.StackItem) error {
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice another creature: Yahenni gains indestructible until end of turn.",

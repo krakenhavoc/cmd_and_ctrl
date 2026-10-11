@@ -3091,6 +3091,30 @@ board — a seat is permanent once the game starts — and "opponent" is
 relative to the controller the trigger context recorded, so Molten
 Primordial's one clause per opponent needs no flag.
 
+**Write a one-sentence trigger with `Do`, so it gets a footprint
+(ADR 0018, #2884 and #3013).** "Ask only when the order matters"
+skips the CR 603.3b ordering prompt only for triggers whose row has a
+footprint, and the registry derives one only from an `effects.Do` of
+primitives that declare a step (`cards/effects/footprint.go`):
+`CounterOnThis`, `GainLife`, `DrawCards`, `MillCards`, `Scry`,
+`Surveil`, `GetEnergy`, `CreateToken`, `BecomeTheMonarch`,
+`DamageEachOpponent`, `EachOpponentLosesLife` (a drain is
+`Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})`),
+`ExileChosenTarget` and `GainLifeEqualToSubject`
+("you gain life equal to its toughness", read off the trigger's
+subject as it resolves). A hand-written closure
+doing the same thing keeps its batches asking. The coverage audit
+`TestOneSentenceTriggersDeclareFootprints` reads the oracle fixtures
+and fails on a new card whose one-sentence trigger ("…, put a +1/+1
+counter on ~", "…, you gain 2 life") has no footprint.
+`cards/coverage/testdata/unfootprinted_trigger_lines.txt` lists the
+older ones and only shrinks. A new primitive that declares a step
+needs a case in `footprint_conformance_test.go`, which resolves it and
+fails on anything it changes or emits beyond its declaration. An engine
+keyword trigger has no catalog row: prowess's footprint is declared in
+`game.keyedBodyFootprints`, keyed by its stack body, and each body there
+needs a case in `game/trigger_footprint_keyed_test.go`.
+
 **Combat declarations (#830, #859):** BOTH combat declarations
 announce once, at their **lock-in** — the first priority boundary of
 the step that staged them — so attack and block triggers are

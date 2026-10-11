@@ -26,9 +26,7 @@ func init() {
 		Name:         "Nyx-Fleece Ram",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			AtYourUpkeep("Nyx-Fleece Ram — you gain 1 life", func(g *game.Game, item *game.StackItem) error {
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-			}),
+			AtYourUpkeep("Nyx-Fleece Ram — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 	})
 }

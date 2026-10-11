@@ -32,9 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b22CreatureYouControlDied(ev, source, g)
-			}, "Cauldron of Essence — each opponent loses 1 life and you gain 1 life", func(g *game.Game, item *game.StackItem) error {
-				return drainEachOpponent(g, item)
-			}),
+			}, "Cauldron of Essence — each opponent loses 1 life and you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:        "{1}{B}{G}, {T}, Sacrifice a creature: Return target creature card from your graveyard to the battlefield.",

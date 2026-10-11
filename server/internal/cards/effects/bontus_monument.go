@@ -10,9 +10,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // The drain trigger fires on EVERY creature spell you cast, not just
 // black ones — the cost clause and the trigger name different sets on
-// purpose, exactly as printed. drainEachOpponent is the shared "each
-// opponent loses 1, you gain 1" body (batch07_helpers.go), already
-// used by Cauldron of Essence's dies trigger.
+// purpose, exactly as printed. The drain is
+// Do(EachOpponentLosesLife, GainLife), a footprinted pair (#3013).
 //
 // No simplification.
 func init() {
@@ -27,7 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Creature(),
 				"Bontu's Monument — each opponent loses 1 life and you gain 1 life",
-				drainEachOpponent),
+				Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 	})
 }

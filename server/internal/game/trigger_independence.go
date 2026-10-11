@@ -26,11 +26,18 @@ import (
 type FootprintKind string
 
 const (
-	// FootprintGainLife: the item's controller gains N life.
+	// FootprintGainLife: the item's controller gains N life, or, with
+	// AmountFromSubject, life equal to a characteristic of the trigger's
+	// subject.
 	FootprintGainLife FootprintKind = "gain_life"
 	// FootprintDamageEachOpponent: the item's source deals N damage to
 	// each opponent of the item's controller.
 	FootprintDamageEachOpponent FootprintKind = "damage_each_opponent"
+	// FootprintLoseLifeEachOpponent: each opponent of the item's
+	// controller still in the game loses N life. Life loss, not damage,
+	// and it names no damage source, so it has no lifelink, infect,
+	// wither or toxic question (#3013).
+	FootprintLoseLifeEachOpponent FootprintKind = "lose_life_each_opponent"
 	// FootprintCounterOnSource: N counters of kind Counter on the item's
 	// source, if it is still on the battlefield.
 	FootprintCounterOnSource FootprintKind = "counter_on_source"
@@ -50,7 +57,46 @@ const (
 	FootprintCreateToken FootprintKind = "create_token"
 	// FootprintMonarch: the controller becomes the monarch.
 	FootprintMonarch FootprintKind = "monarch"
+	// FootprintPumpSource: the item's source gets +N/+N until end of
+	// turn, a layer-7c record pinned to that object, if it is still the
+	// object that triggered and still on the battlefield. Declared for
+	// an engine keyword trigger's body (keyedBodyFootprints), not by a
+	// catalog primitive: prowess (#3013).
+	FootprintPumpSource FootprintKind = "pump_source"
 )
+
+// keyedBodyFootprints is the footprint of each engine keyword trigger
+// whose item is keyed by its stack body rather than stamped with a
+// catalog row (ADR 0018's #3013 amendment, sub-PR 3). The check looks
+// an item up here by its Body the way it looks a stamped item's row up
+// in the catalog. A body joins only with the argument the amendment
+// makes for prowess, and with a case in
+// TestKeyedBodyFootprintsDoOnlyWhatTheyDeclare, which resolves the real
+// body and fails on anything it changes or emits outside the
+// declaration.
+var keyedBodyFootprints = map[string][]FootprintStep{
+	// CR 702.108a: "this creature gets +1/+1 until end of turn"
+	// (resolveProwess). It reads only whether its source is still the
+	// object that triggered, writes only a +1/+1 pinned to it, and
+	// registering the record emits no event.
+	prowessPumpBody.key: {{Kind: FootprintPumpSource, N: 1}},
+}
+
+// KeyedBodyFootprint is the declared footprint of an engine keyword
+// trigger's stack body, for tests.
+func KeyedBodyFootprint(body string) []FootprintStep {
+	return keyedBodyFootprints[body]
+}
+
+// KeyedFootprintBodies lists the bodies keyedBodyFootprints declares,
+// for the conformance test.
+func KeyedFootprintBodies() []string {
+	out := make([]string, 0, len(keyedBodyFootprints))
+	for k := range keyedBodyFootprints {
+		out = append(out, k)
+	}
+	return out
+}
 
 // FootprintStep is one declared step: a kind and its constants. Every
 // object and player it touches is relative to the resolving item (its
@@ -66,11 +112,23 @@ type FootprintStep struct {
 	// key, not the template, so the step is plain data.
 	TokenKey    string
 	TokenManual bool
+	// TokenKeywords are the template's own keywords. A keyword the
+	// engine turns into a trigger (evolve, exalted, prowess…) gives the
+	// token an ability no catalog row declares, so the check reads them
+	// for what such a trigger watches (#3013).
+	TokenKeywords []string
+	// AmountFromSubject marks a FootprintGainLife step whose amount is
+	// read at resolution off the trigger's subject, the object its
+	// event names (CR 608.2h: "gain life equal to its toughness"). The
+	// check counts that object as read while it is on the battlefield;
+	// once it has left, the amount is its frozen last-known value and
+	// nothing another item does can change it (#3013).
+	AmountFromSubject bool
 }
 
 // FootprintTokenOf describes a token template for a FootprintStep.
-func FootprintTokenOf(tmpl Card) (key string, manual bool) {
-	return catalogKeyOf(&tmpl), Unimplemented(tmpl)
+func FootprintTokenOf(tmpl Card) (key string, manual bool, keywords []string) {
+	return catalogKeyOf(&tmpl), Unimplemented(tmpl), append([]string(nil), tmpl.Keywords...)
 }
 
 // lifeDirection records which ways a batch item moves one player's life.
@@ -87,6 +145,11 @@ type triggerAccess struct {
 	controller uuid.UUID
 	// Objects (cards and permanents), by instance ID.
 	reads, writes map[uuid.UUID]bool
+	// pumped are the objects the item pumps (FootprintPumpSource): a
+	// layer-7c power and toughness record. markRulesLocked folds them
+	// into writes; one the item changes in no other way sets pumpRules
+	// rather than rules when it bears rules (#3013).
+	pumped map[uuid.UUID]bool
 	// Players.
 	life        map[uuid.UUID]lifeDirection
 	lifeLoss    map[uuid.UUID]int
@@ -100,26 +163,173 @@ type triggerAccess struct {
 	// ability, a replacement effect, an attachment, a record that
 	// names it). Everything reads the rules, so it conflicts with all.
 	rules bool
-	emits map[EventKind]bool
+	// pumpRules is set when the item pumps an object that bears rules.
+	// A pump changes nothing about the object but its power and
+	// toughness, so the only way it reaches past the object is a static
+	// of the object's that reads them. That can change what another
+	// item reads through the layers (charReads, traitReads), and
+	// nothing else (#3013).
+	pumpRules bool
+	// traitReads is set when the item reads what the layers make of an
+	// object other than its toughness: a damage source's lifelink,
+	// infect, wither or toxic, or a chosen target's legality (CR
+	// 608.2b reads its characteristics).
+	traitReads bool
+	// tokenWatches are the event kinds the keyword triggers of a token
+	// the item creates watch. Such a token enters partway through the
+	// batch, so it sees the events of the items after it and not of
+	// those before (#3013).
+	tokenWatches map[EventKind]bool
+	// charReads is set when the item reads a characteristic of an
+	// object on the battlefield through the layers (an amount read off
+	// the trigger's subject, #3013): a static on the board can change
+	// it when another item changes what that static reads.
+	charReads bool
+	emits     map[EventKind]bool
+}
+
+// writesAnything reports whether the item changes any game state a
+// static ability's output could depend on.
+func (a *triggerAccess) writesAnything() bool {
+	return len(a.writes) > 0 || len(a.life) > 0 || len(a.cards) > 0 || a.monarch ||
+		a.emits[EventTokenCreated] || a.emits[EventPlayerCounterPlaced] || a.emits[EventZoneMove]
+}
+
+// writesOnlyLife reports whether the only state the item changes is
+// life totals (a gain, a loss, damage to players).
+func (a *triggerAccess) writesOnlyLife() bool {
+	return len(a.life) > 0 && len(a.writes) == 0 && len(a.cards) == 0 && !a.monarch &&
+		!a.emits[EventTokenCreated] && !a.emits[EventPlayerCounterPlaced] && !a.emits[EventZoneMove]
+}
+
+// layerStatics is what the board's static abilities can do to a
+// characteristic an item reads: whether any static can change power or
+// toughness at all, and whether any of those reads a life total.
+type layerStatics struct {
+	pt, life bool
+}
+
+// layerStaticsLocked reads the battlefield and the emblems for static
+// abilities that can change a creature's power or toughness: layer 7,
+// a copy effect (layer 1), or an ability removal that could take away
+// a characteristic-defining ability. The layer engine's contract
+// (layerVersionBump) is that such a static's output depends on the
+// battlefield, counters, taps and the turn, plus a life total or a
+// hand only when it declares so; the check leans on the first half to
+// stay conservative and on DependsOnLifeTotal to let a batch that only
+// moves life totals through.
+//
+// Caller must hold g.mu.
+func (g *Game) layerStaticsLocked() layerStatics {
+	var out layerStatics
+	zones := []*Zone{g.Battlefield}
+	for _, p := range g.Seats {
+		if p != nil {
+			zones = append(zones, p.Emblems)
+		}
+	}
+	for _, z := range zones {
+		if z == nil {
+			continue
+		}
+		for i := range z.Cards {
+			d := catalogDef(catalogAbilityKeyOf(&z.Cards[i]))
+			if d == nil {
+				continue
+			}
+			for _, st := range d.Static {
+				if st.Layer == Layer7PT || st.Layer == Layer1Copy || st.RemovesAbilities {
+					out.pt = true
+					if st.DependsOnLifeTotal {
+						out.life = true
+					}
+				}
+			}
+		}
+	}
+	return out
 }
 
 func newTriggerAccess(controller uuid.UUID) triggerAccess {
 	return triggerAccess{
-		controller:  controller,
-		reads:       map[uuid.UUID]bool{},
-		writes:      map[uuid.UUID]bool{},
-		life:        map[uuid.UUID]lifeDirection{},
-		lifeLoss:    map[uuid.UUID]int{},
-		cards:       map[uuid.UUID]bool{},
-		draws:       map[uuid.UUID]int{},
-		playerReads: map[uuid.UUID]bool{},
-		emits:       map[EventKind]bool{},
+		controller:   controller,
+		reads:        map[uuid.UUID]bool{},
+		writes:       map[uuid.UUID]bool{},
+		pumped:       map[uuid.UUID]bool{},
+		tokenWatches: map[EventKind]bool{},
+		life:         map[uuid.UUID]lifeDirection{},
+		lifeLoss:     map[uuid.UUID]int{},
+		cards:        map[uuid.UUID]bool{},
+		draws:        map[uuid.UUID]int{},
+		playerReads:  map[uuid.UUID]bool{},
+		emits:        map[EventKind]bool{},
 	}
 }
 
 func (a *triggerAccess) emit(kinds ...EventKind) {
 	for _, k := range kinds {
 		a.emits[k] = true
+	}
+}
+
+// TriggerOrderReason says why a seat was asked to order its triggers
+// (ADR 0018's #3013 amendment, sub-PR 1). It is the first thing the
+// skips found that could make the order show, and it is what
+// cmdctrl_trigger_order_prompts_total counts by. Every value is in
+// TriggerOrderReasons, and metrics' closed label set for the counter
+// holds each one (TestTriggerOrderReasonsAreMetricLabels).
+type TriggerOrderReason string
+
+const (
+	// TriggerOrderReasonAlways: the seat chose Always ask (#1530, #1968).
+	TriggerOrderReasonAlways TriggerOrderReason = "always"
+	// TriggerOrderReasonUndescribed: an item the check cannot describe:
+	// a row with no footprint (a hand-written closure, a "you may", a
+	// mode clause, a clause built from the trigger), a Build whose item
+	// is not plain, an item with Params, a payload, X or a division of
+	// its own, or an item that is not a stamped catalog trigger.
+	TriggerOrderReasonUndescribed TriggerOrderReason = "undescribed"
+	// TriggerOrderReasonBoardOpaque: triggerOrderBoardOpaqueLocked gave
+	// up on the board (a permanent whose text the engine leaves to the
+	// table, a rules-bearing slot, a state trigger, a player static, a
+	// continuing effect that is more than a characteristic change).
+	TriggerOrderReasonBoardOpaque TriggerOrderReason = "board_opaque"
+	// TriggerOrderReasonReactor: something in the game watches an event
+	// kind the batch causes (somethingReactsLocked).
+	TriggerOrderReasonReactor TriggerOrderReason = "reactor"
+	// TriggerOrderReasonRipple: an object the batch writes is named by a
+	// delayed trigger, a duration or another card's record
+	// (writtenObjectsRippleLocked).
+	TriggerOrderReasonRipple TriggerOrderReason = "ripple"
+	// TriggerOrderReasonElimination: a player the batch could take out
+	// of the game is its controller, or is touched by another item.
+	TriggerOrderReasonElimination TriggerOrderReason = "elimination"
+	// TriggerOrderReasonObjectTie: two items touch one object and at
+	// least one of them writes it.
+	TriggerOrderReasonObjectTie TriggerOrderReason = "object_tie"
+	// TriggerOrderReasonRules: an item writes an object whose abilities
+	// shape the rules the other items resolve under.
+	TriggerOrderReasonRules TriggerOrderReason = "rules"
+	// TriggerOrderReasonLibrary: two items both touch one player's
+	// library or graveyard.
+	TriggerOrderReasonLibrary TriggerOrderReason = "library"
+	// TriggerOrderReasonMonarch: two items both make their controller
+	// the monarch.
+	TriggerOrderReasonMonarch TriggerOrderReason = "monarch"
+	// TriggerOrderReasonCharacteristic: an item reads a characteristic
+	// through the layers (an amount equal to the trigger subject's
+	// toughness), and another item changes something a static on the
+	// board could read to compute it (#3013).
+	TriggerOrderReasonCharacteristic TriggerOrderReason = "characteristic"
+)
+
+// TriggerOrderReasons is every TriggerOrderReason, in a fixed order.
+func TriggerOrderReasons() []TriggerOrderReason {
+	return []TriggerOrderReason{
+		TriggerOrderReasonAlways, TriggerOrderReasonUndescribed, TriggerOrderReasonBoardOpaque,
+		TriggerOrderReasonReactor, TriggerOrderReasonRipple, TriggerOrderReasonElimination,
+		TriggerOrderReasonObjectTie, TriggerOrderReasonRules, TriggerOrderReasonLibrary,
+		TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic,
 	}
 }
 
@@ -130,30 +340,48 @@ func (a *triggerAccess) emit(kinds ...EventKind) {
 //
 // Caller must hold g.mu.
 func (g *Game) seatNeedsTriggerOrderLocked(items []*StackItem, mode TriggerOrderMode) bool {
-	if !seatNeedsTriggerOrder(items, mode) {
-		return false
-	}
-	if mode == TriggerOrderAlways || mode == TriggerOrderNever {
-		return true
-	}
-	return !g.triggersIndependentLocked(items)
+	ask, _ := g.triggerOrderAskLocked(items, mode)
+	return ask
 }
 
-// triggersIndependentLocked reports whether every order of items gives
-// the same game: each item is described by its row's footprint, nothing
-// on the board reacts to what any of them does, and no two of them
-// touch the same thing in a way whose order shows.
+// triggerOrderAskLocked is seatNeedsTriggerOrderLocked with the reason
+// it asked. The reason is empty when it does not ask, and it never
+// changes whether it asks.
 //
 // Caller must hold g.mu.
-func (g *Game) triggersIndependentLocked(items []*StackItem) bool {
-	if len(items) < 2 || g.triggerOrderBoardOpaqueLocked() {
-		return false
+func (g *Game) triggerOrderAskLocked(items []*StackItem, mode TriggerOrderMode) (bool, TriggerOrderReason) {
+	if !seatNeedsTriggerOrder(items, mode) {
+		return false, ""
+	}
+	if mode == TriggerOrderAlways || mode == TriggerOrderNever {
+		return true, TriggerOrderReasonAlways
+	}
+	if reason := g.triggerOrderConflictLocked(items); reason != "" {
+		return true, reason
+	}
+	return false, ""
+}
+
+// triggerOrderConflictLocked reports "" when every order of items gives
+// the same game: each item is described by its row's footprint, nothing
+// on the board reacts to what any of them does, and no two of them
+// touch the same thing in a way whose order shows. Otherwise it returns
+// the first reason it found that the order could show. (Before #3013
+// this was triggersIndependentLocked, a bool.)
+//
+// Caller must hold g.mu.
+func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason {
+	if len(items) < 2 {
+		return TriggerOrderReasonUndescribed
+	}
+	if g.triggerOrderBoardOpaqueLocked() {
+		return TriggerOrderReasonBoardOpaque
 	}
 	accs := make([]triggerAccess, len(items))
 	for i, t := range items {
 		a, ok := g.triggerAccessLocked(t)
 		if !ok {
-			return false
+			return TriggerOrderReasonUndescribed
 		}
 		accs[i] = a
 	}
@@ -175,8 +403,21 @@ func (g *Game) triggersIndependentLocked(items []*StackItem) bool {
 			draws[p] += n
 		}
 	}
-	if g.somethingReactsLocked(emits) || g.writtenObjectsRippleLocked(written) {
-		return false
+	if g.somethingReactsLocked(emits) {
+		return TriggerOrderReasonReactor
+	}
+	// A token the batch creates with a keyword trigger that watches an
+	// event the batch causes (evolve watches entering) reacts to the
+	// items after its maker and not to those before it.
+	for _, a := range accs {
+		for k := range a.tokenWatches {
+			if emits[k] {
+				return TriggerOrderReasonReactor
+			}
+		}
+	}
+	if g.writtenObjectsRippleLocked(written) {
+		return TriggerOrderReasonRipple
 	}
 	// Who might leave the game while the batch resolves (CR 104.3b and
 	// 104.3c, state-based losses checked between the resolutions): a player
@@ -198,33 +439,59 @@ func (g *Game) triggersIndependentLocked(items []*StackItem) bool {
 	// with them (CR 800.4a), so where they leave in it shows.
 	for _, a := range accs {
 		if eliminable[a.controller] {
-			return false
+			return TriggerOrderReasonElimination
 		}
+	}
+	// The board's layer statics, read once and only for a batch with a
+	// characteristic read in it.
+	var st *layerStatics
+	statics := func() layerStatics {
+		if st == nil {
+			v := g.layerStaticsLocked()
+			st = &v
+		}
+		return *st
 	}
 	for i := range accs {
 		for j := i + 1; j < len(accs); j++ {
-			if g.accessesConflictLocked(&accs[i], &accs[j], eliminable) ||
-				g.accessesConflictLocked(&accs[j], &accs[i], eliminable) {
-				return false
+			if r := g.accessesConflictLocked(&accs[i], &accs[j], eliminable, statics); r != "" {
+				return r
+			}
+			if r := g.accessesConflictLocked(&accs[j], &accs[i], eliminable, statics); r != "" {
+				return r
 			}
 		}
 	}
-	return true
+	return ""
 }
 
 // accessesConflictLocked reports whether a's writes can change what b
-// reads or writes. Called both ways round for each pair.
-func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool) bool {
+// reads or writes, as the reason they conflict, or "" when they don't.
+// Called both ways round for each pair.
+func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool, statics func() layerStatics) TriggerOrderReason {
 	if a.rules {
-		return true
+		return TriggerOrderReasonRules
+	}
+	if a.pumpRules && (b.charReads || b.traitReads) {
+		return TriggerOrderReasonRules
+	}
+	// b reads a characteristic through the layers, and a changes
+	// something a static on the board could read to compute it: a life
+	// total for a static that declares it reads one, anything else for
+	// any static that can change power or toughness (#3013).
+	if b.charReads && a.writesAnything() {
+		st := statics()
+		if st.life || (st.pt && !a.writesOnlyLife()) {
+			return TriggerOrderReasonCharacteristic
+		}
 	}
 	if a.monarch && b.monarch {
-		return true
+		return TriggerOrderReasonMonarch
 	}
 	// A tie on one object asks, whatever the two do to it.
 	for id := range a.writes {
 		if b.writes[id] || b.reads[id] {
-			return true
+			return TriggerOrderReasonObjectTie
 		}
 	}
 	for p, dir := range a.life {
@@ -233,12 +500,12 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// and a loss commute too, unless the player could reach 0 in
 		// between and lose (CR 704.5a).
 		if other != 0 && other != dir && eliminable[p] {
-			return true
+			return TriggerOrderReasonElimination
 		}
 	}
 	for p := range a.cards {
 		if b.cards[p] {
-			return true
+			return TriggerOrderReasonLibrary
 		}
 	}
 	for p := range eliminable {
@@ -249,13 +516,13 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// to anything p owns or controls, depends on whether b comes
 		// first. Another loss of life is the same either way.
 		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] {
-			return true
+			return TriggerOrderReasonElimination
 		}
 		if g.touchesObjectsOfLocked(b, p) {
-			return true
+			return TriggerOrderReasonElimination
 		}
 	}
-	return false
+	return ""
 }
 
 // touchesObjectsOfLocked reports whether the access reads or writes an
@@ -275,7 +542,13 @@ func (g *Game) touchesObjectsOfLocked(a *triggerAccess, p uuid.UUID) bool {
 // triggerAccessLocked resolves one item's footprint, or reports that
 // the item is one the check cannot describe.
 func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
-	if t == nil || t.Kind != StackItemTriggered || t.Body != CatalogTriggeredBodyKey || t.Params.Ability == nil {
+	if t == nil || t.Kind != StackItemTriggered {
+		return triggerAccess{}, false
+	}
+	if steps, ok := keyedBodyFootprints[t.Body]; ok && t.Body != CatalogTriggeredBodyKey {
+		return g.keyedTriggerAccessLocked(t, steps)
+	}
+	if t.Body != CatalogTriggeredBodyKey || t.Params.Ability == nil {
 		return triggerAccess{}, false
 	}
 	row, _, outcome := resolveTriggeredAbilityRef(*t.Params.Ability)
@@ -315,17 +588,58 @@ func (g *Game) triggerAccessLocked(t *StackItem) (triggerAccess, bool) {
 			return triggerAccess{}, false
 		}
 	}
+	if len(targetCards) > 0 || len(a.playerReads) > 0 {
+		// CR 608.2b: a target's legality is read through the layers.
+		a.traitReads = true
+	}
 	for _, s := range row.Footprint {
 		if !g.addFootprintStepLocked(&a, t, s, targetCards) {
 			return triggerAccess{}, false
 		}
 	}
+	g.markRulesLocked(&a)
+	return a, true
+}
+
+// keyedTriggerAccessLocked resolves an engine keyword trigger's item
+// (prowess) against its body's declared footprint. The item must be
+// exactly what the keyword's Build makes: no targets, modes, Params,
+// payload, X or division, and no field beyond the ones a plain built
+// item may set.
+func (g *Game) keyedTriggerAccessLocked(t *StackItem, steps []FootprintStep) (triggerAccess, bool) {
+	if len(t.Targets) > 0 || len(t.Modes) > 0 || !reflect.ValueOf(t.Params).IsZero() ||
+		len(t.Payload) > 0 || t.XValue != 0 || len(t.Distribution) > 0 ||
+		!builtItemIsPlain(t, TriggeredAbility{}) {
+		return triggerAccess{}, false
+	}
+	a := newTriggerAccess(t.Controller)
+	for _, s := range steps {
+		if !g.addFootprintStepLocked(&a, t, s, nil) {
+			return triggerAccess{}, false
+		}
+	}
+	g.markRulesLocked(&a)
+	return a, true
+}
+
+// markRulesLocked sets rules for an item that writes an object whose
+// abilities shape the rules the other items resolve under, and
+// pumpRules for one whose only change to such an object is a pump. It
+// then counts every pumped object as written.
+func (g *Game) markRulesLocked(a *triggerAccess) {
 	for id := range a.writes {
 		if !g.objectInertLocked(id) {
 			a.rules = true
 		}
 	}
-	return a, true
+	for id := range a.pumped {
+		if !a.writes[id] && !g.objectInertLocked(id) {
+			a.pumpRules = true
+		}
+	}
+	for id := range a.pumped {
+		a.writes[id] = true
+	}
 }
 
 // builtItemPlainFields are the StackItem fields a built item may set and
@@ -341,6 +655,9 @@ var builtItemPlainFields = map[string]bool{
 	"DoubledBy": true, "DoubledByName": true, "Targets": true, "Trigger": true,
 	"Seq": true, "Effect": true, "Body": true, "Params": true, "Ordered": true,
 	"TargetsAnnouncePending": true, "targetSpec": true,
+	// #1511's ordering mark: it says how a batch may be ordered and
+	// changes nothing the item does (#3013, prowess).
+	"Commutes": true,
 }
 
 // builtItemIsPlain reports whether an item a row's Build made sets only
@@ -365,6 +682,16 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 	you := t.Controller
 	switch s.Kind {
 	case FootprintGainLife:
+		if s.AmountFromSubject {
+			if t.Trigger == nil || t.Trigger.Object == nil {
+				return false
+			}
+			subject := t.Trigger.Object.ID
+			if z := g.findCardZoneLocked(subject); z != nil && z.Kind == ZoneBattlefield {
+				a.reads[subject] = true
+				a.charReads = true
+			}
+		}
 		a.life[you] |= lifeUp
 		a.emit(EventChangeLife)
 	case FootprintDamageEachOpponent:
@@ -387,7 +714,19 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 			a.life[p.ID] |= lifeDown
 			a.lifeLoss[p.ID] += s.N
 		}
+		a.traitReads = true
 		a.emit(EventDealDamage, EventChangeLife)
+	case FootprintLoseLifeEachOpponent:
+		// The source is passed on as the loss's attribution and nothing
+		// else reads it, so the step reads no object.
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.ID == you {
+				continue
+			}
+			a.life[p.ID] |= lifeDown
+			a.lifeLoss[p.ID] += s.N
+		}
+		a.emit(EventChangeLife)
 	case FootprintCounterOnSource:
 		a.reads[t.SourceCardID] = true
 		if z := g.findCardZoneLocked(t.SourceCardID); z != nil && z.Kind == ZoneBattlefield {
@@ -411,21 +750,101 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		a.emit(EventScry)
 	case FootprintSurveil:
 		a.cards[you] = true
-		a.emit(EventSurveil, EventZoneMove)
+		// The graveyard leg emits EventMill per card, as an ordinary
+		// mill does (ResolveSurveil): a "card put into your graveyard
+		// from your library" watcher sees it. Found by the footprint
+		// conformance test (#3013).
+		a.emit(EventSurveil, EventMill, EventZoneMove)
 	case FootprintEnergy:
 		a.emit(EventPlayerCounterPlaced)
 	case FootprintCreateToken:
 		if !tokenTemplateInert(s.TokenKey, s.TokenManual) {
 			return false
 		}
+		for _, k := range tokenKeywordWatches(s.TokenKey, s.TokenKeywords) {
+			a.tokenWatches[k] = true
+		}
 		a.emit(EventTokenCreated, EventETB, EventZoneMove)
 	case FootprintMonarch:
 		a.monarch = true
 		a.emit(EventMonarchChanged)
+	case FootprintPumpSource:
+		// resolveProwess: nothing for a source that left, or left and
+		// came back as a new object (CR 400.7); otherwise a layer-7c
+		// record pinned to it. Registering a record emits no event.
+		a.reads[t.SourceCardID] = true
+		if z := g.findCardZoneLocked(t.SourceCardID); z != nil && z.Kind == ZoneBattlefield {
+			a.pumped[t.SourceCardID] = true
+		}
 	default:
 		return false
 	}
 	return true
+}
+
+// FootprintDeclaration is what the independence check makes of one
+// FootprintStep resolved against an item and the board: the objects it
+// reads and writes, the players whose life it moves up or down, whose
+// library, hand or graveyard it touches, whether it makes its controller
+// the monarch, and the event kinds it causes. It exists for the
+// conformance test (cards/effects/footprint_conformance_test.go), which
+// resolves each primitive and checks that it changes and emits nothing
+// outside this.
+type FootprintDeclaration struct {
+	Reads, Writes    map[uuid.UUID]bool
+	LifeUp, LifeDown map[uuid.UUID]bool
+	Cards            map[uuid.UUID]bool
+	Monarch          bool
+	Emits            map[EventKind]bool
+}
+
+// FootprintDeclarationForTest describes one step the way
+// addFootprintStepLocked does for the check, with the item's card
+// targets as its targets. False when the check refuses the step on this
+// board.
+//
+// Caller must hold g.mu.
+func (g *Game) FootprintDeclarationForTest(item *StackItem, s FootprintStep) (FootprintDeclaration, bool) {
+	a := newTriggerAccess(item.Controller)
+	var targets []uuid.UUID
+	for _, ref := range item.Targets {
+		if ref.Kind == TargetCard {
+			a.reads[ref.ID] = true
+			targets = append(targets, ref.ID)
+		}
+	}
+	if !g.addFootprintStepLocked(&a, item, s, targets) {
+		return FootprintDeclaration{}, false
+	}
+	for id := range a.pumped {
+		a.writes[id] = true
+	}
+	d := FootprintDeclaration{
+		Reads: a.reads, Writes: a.writes, Cards: a.cards, Monarch: a.monarch, Emits: a.emits,
+		LifeUp: map[uuid.UUID]bool{}, LifeDown: map[uuid.UUID]bool{},
+	}
+	for p, dir := range a.life {
+		if dir&lifeUp != 0 {
+			d.LifeUp[p] = true
+		}
+		if dir&lifeDown != 0 {
+			d.LifeDown[p] = true
+		}
+	}
+	return d, true
+}
+
+// tokenKeywordWatches is every event kind the keyword triggers a token
+// made from the template would have watch: its own keywords and its
+// catalog entry's printed ones, through the walk the harvester uses
+// (keywordTriggersFor).
+func tokenKeywordWatches(key string, keywords []string) []EventKind {
+	probe := Card{TokenKey: key, Keywords: keywords}
+	var out []EventKind
+	for _, t := range keywordTriggersFor(&probe) {
+		out = append(out, t.Watches...)
+	}
+	return out
 }
 
 // tokenTemplateInert reports whether a token made from tmpl brings
@@ -844,6 +1263,11 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		if !f.IsExported() || v.Field(i).IsZero() {
 			continue
 		}
+		// The row the registry makes from the printed keywords applies
+		// them to the object itself and reads nothing (#3013).
+		if f.Name == "Static" && onlyPrintedKeywordRows(d.Static) {
+			continue
+		}
 		switch class, ok := cardDefFieldClass[f.Name]; {
 		case !ok || class == defFieldRules:
 			global = true
@@ -852,4 +1276,15 @@ func defBearsRules(d *CardDef) (global, own bool) {
 		}
 	}
 	return global, own
+}
+
+// onlyPrintedKeywordRows reports whether every static is the row the
+// registry makes from a card's printed keywords.
+func onlyPrintedKeywordRows(statics []StaticAbility) bool {
+	for i := range statics {
+		if !statics[i].PrintedKeywordRow {
+			return false
+		}
+	}
+	return true
 }

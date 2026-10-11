@@ -242,11 +242,6 @@ func b35PutMinusCountersOnChosen(n int) func(g *game.Game, item *game.StackItem)
 	}
 }
 
-// b35EachOpponentLosesOne is Plague Belcher's dies body.
-func b35EachOpponentLosesOne(g *game.Game, item *game.StackItem) error {
-	return eachOpponentLosesLife(g, item, 1)
-}
-
 // b35TutelageLabel is the stack label of Sphinx's Tutelage's draw
 // trigger.
 const b35TutelageLabel = "Sphinx's Tutelage — target opponent mills two cards, repeating while two nonland cards share a color"

@@ -21,9 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouPutLoyaltyCountersOnAPlaneswalker("Inspired Tethermage — a +1/+1 counter on it",
-				func(g *game.Game, item *game.StackItem) error {
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{6}: Empower Jace 2.",

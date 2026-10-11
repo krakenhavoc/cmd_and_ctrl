@@ -29,7 +29,7 @@ func init() {
 		Name:         "Cauldron Familiar",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Cauldron Familiar — each opponent loses 1 life and you gain 1 life", drainEachOpponent),
+			WhenThisEnters("Cauldron Familiar — each opponent loses 1 life and you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice a Food: Return this card from your graveyard to the battlefield.",

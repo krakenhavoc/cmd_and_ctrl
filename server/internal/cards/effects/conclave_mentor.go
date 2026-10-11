@@ -51,19 +51,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return cardDied(ev, source)
 			},
-			Key: "Conclave Mentor — gain life equal to its power",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				mentor, ok := ctx.TriggeringPermanent()
-				if !ok {
-					return nil
-				}
-				power := mentor.Power
-				if power < 0 {
-					power = 0
-				}
-				return GainLife{Player: item.Controller, Amount: power}.Apply(ctx)
-			},
+			Key:    "Conclave Mentor — gain life equal to its power",
+			Effect: Do(GainLifeEqualToSubject{Stat: SubjectPower}),
 		}},
 	})
 }

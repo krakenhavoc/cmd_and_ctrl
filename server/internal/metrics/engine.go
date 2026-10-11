@@ -78,6 +78,11 @@ var (
 		Help: "EventEffectErrors emitted: a card's effect failed mid-resolution and the engine carried on.",
 	})
 
+	triggerOrderPrompts = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "cmdctrl_trigger_order_prompts_total",
+		Help: "CR 603.3b trigger-order prompts queued, by the first reason the engine found that the order could matter (ADR 0018, #3013).",
+	}, []string{"reason"})
+
 	bootRestoreGames = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 		Name: "cmdctrl_boot_restore_games",
 		Help: "The last boot's restore pass: restore points that came back, that were for ended games past their retention and dropped, and that were abandoned.",
@@ -179,6 +184,51 @@ func RecordAction(typ, seatKind string, applied bool, held time.Duration) {
 
 // EffectError counts one EventEffectError.
 func EffectError() { effectErrors.Inc() }
+
+// Values of the reason label on cmdctrl_trigger_order_prompts_total:
+// game.TriggerOrderReasons, spelled here because this package imports
+// nothing from the module. game's TestTriggerOrderReasonsAreMetricLabels
+// keeps the two lists equal.
+const (
+	TriggerOrderReasonAlways      = "always"
+	TriggerOrderReasonUndescribed = "undescribed"
+	TriggerOrderReasonBoardOpaque = "board_opaque"
+	TriggerOrderReasonReactor     = "reactor"
+	TriggerOrderReasonRipple      = "ripple"
+	TriggerOrderReasonElimination = "elimination"
+	TriggerOrderReasonObjectTie   = "object_tie"
+	TriggerOrderReasonRules       = "rules"
+	TriggerOrderReasonLibrary     = "library"
+	TriggerOrderReasonMonarch     = "monarch"
+	// TriggerOrderReasonCharacteristic: a characteristic read a static
+	// on the board could change (#3013 sub-PR 2).
+	TriggerOrderReasonCharacteristic = "characteristic"
+	// TriggerOrderReasonOther is a reason this list does not hold: a
+	// value the engine added without adding it here.
+	TriggerOrderReasonOther = "other"
+)
+
+var triggerOrderReasonLabels = []string{
+	TriggerOrderReasonAlways, TriggerOrderReasonUndescribed, TriggerOrderReasonBoardOpaque,
+	TriggerOrderReasonReactor, TriggerOrderReasonRipple, TriggerOrderReasonElimination,
+	TriggerOrderReasonObjectTie, TriggerOrderReasonRules, TriggerOrderReasonLibrary,
+	TriggerOrderReasonMonarch, TriggerOrderReasonCharacteristic, TriggerOrderReasonOther,
+}
+
+// TriggerOrderReasonLabels is the reason label's closed set, other
+// included.
+func TriggerOrderReasonLabels() []string {
+	return slices.Clone(triggerOrderReasonLabels)
+}
+
+// TriggerOrderPrompt counts one trigger-order prompt the engine queued,
+// by why it asked. A reason outside the closed set counts as "other".
+func TriggerOrderPrompt(reason string) {
+	if !slices.Contains(triggerOrderReasonLabels, reason) {
+		reason = TriggerOrderReasonOther
+	}
+	triggerOrderPrompts.WithLabelValues(reason).Inc()
+}
 
 // SetBootRestore sets the boot restore gauges from the restore pass.
 // Called once at boot, after the pass, with zeros when there was

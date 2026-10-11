@@ -11,9 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creature token you control.)"
 //
 // The lifegain is Verdant Sun's Avatar's body without the Avatar's own
-// entry ("another"): toughness is read as the trigger resolves, with
-// the toughness it had on entering as the fallback if it has left
-// (CR 608.2h). The populate is a CR 602 ability with a tap in its
+// entry ("another"): toughness is read as the trigger resolves, and
+// as the creature last existed on the battlefield if it has left
+// (CR 608.2h; GainLifeEqualToSubject, #3013). The populate is a CR 602 ability with a tap in its
 // cost, so Trostani's summoning sickness applies (the engine enforces
 // it). It can copy a token the trigger above just gained life for.
 //
@@ -30,8 +30,7 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.IsCreature()
 			},
-			Build:  b20GainLifeEqualToToughnessBuild("Trostani — gain life equal to its toughness"),
-			Effect: b20GainLifeEqualToToughnessEffect,
+			Effect: Do(GainLifeEqualToSubject{Stat: SubjectToughness}),
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{G}{W}, {T}: Populate.",

@@ -21,7 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverAnotherCreatureEntersUnderYourControl("Lifecreed Duo — you gain 1 life", b36GainLife(1)),
+			WheneverAnotherCreatureEntersUnderYourControl("Lifecreed Duo — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 	})
 }

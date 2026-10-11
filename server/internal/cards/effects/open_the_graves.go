@@ -30,14 +30,7 @@ func init() {
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				dead, ok := diedCreature(ev, g)
 				return ok && leftUnderControlOf(ev, dead) == source.Controller && !IsToken(dead)
-			}, "Open the Graves — create a 2/2 black Zombie", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("2/2 black Zombie"),
-					N:          1,
-				}.Apply(ctx)
-			}),
+			}, "Open the Graves — create a 2/2 black Zombie", Do(CreateToken{Template: TokenCard("2/2 black Zombie"), N: 1})),
 		},
 	})
 }

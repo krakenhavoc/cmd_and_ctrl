@@ -48,9 +48,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, false)
 				return ok && c.IsCreature()
-			}, "Decoction Module — you get {E}", func(g *game.Game, item *game.StackItem) error {
-				return g.AddPlayerCounterForEffect(item.Controller, game.CounterEnergy, 1)
-			}),
+			}, "Decoction Module — you get {E}", Do(GetEnergy{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}, {T}: Return target creature you control to its owner's hand.",

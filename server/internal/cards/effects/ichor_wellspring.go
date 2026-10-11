@@ -19,10 +19,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	drawOne := func(label string) game.TriggeredAbility {
 		return game.TriggeredAbility{
-			Key: label,
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			},
+			Key:    label,
+			Effect: Do(DrawCards{N: 1}),
 		}
 	}
 	etb := drawOne("Ichor Wellspring — draw a card (entered)")

@@ -76,9 +76,7 @@ func init() {
 					return ok && !IsToken(dead)
 				},
 				"High-Society Hunter — draw a card",
-				func(g *game.Game, item *game.StackItem) error {
-					return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(DrawCards{N: 1})),
 		},
 	})
 }

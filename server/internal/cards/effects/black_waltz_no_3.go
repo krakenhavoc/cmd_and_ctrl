@@ -23,9 +23,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch"},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouCast(Noncreature(), "Black Waltz No. 3 — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 2)
-			}),
+			WheneverYouCast(Noncreature(), "Black Waltz No. 3 — 2 damage to each opponent", Do(DamageEachOpponent{N: 2})),
 		},
 	})
 }

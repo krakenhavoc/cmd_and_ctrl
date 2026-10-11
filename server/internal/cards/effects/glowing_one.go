@@ -26,9 +26,7 @@ func init() {
 			WheneverThisDealsCombatDamageToAPlayer("Glowing One — they get four rad counters",
 				damagedPlayerGetsRadCounters(4)),
 			On(game.EventMill, ANonlandCardWasMilled, "Glowing One — you gain 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Controller, 1)
-				}),
+				Do(GainLife{Amount: 1})),
 		},
 	})
 }

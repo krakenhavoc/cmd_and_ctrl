@@ -109,7 +109,7 @@ func TestTheRegistryDeclaresFootprints(t *testing.T) {
 		{"Guttersnipe", b03GuttersnipeOracle, 0, []game.FootprintKind{game.FootprintDamageEachOpponent}},
 		{"Firebrand Archer", firebrandArcherOracle, 0, []game.FootprintKind{game.FootprintDamageEachOpponent}},
 		{"Soul Warden", b04SoulWardenOracle, 0, []game.FootprintKind{game.FootprintGainLife}},
-		{"Impact Tremors is a hand-written closure", impactTremorsOracle, 0, nil},
+		{"Impact Tremors (batch 3 of #3013)", impactTremorsOracle, 0, []game.FootprintKind{game.FootprintDamageEachOpponent}},
 		{"a counting closure", independenceCountingProbe, 0, nil},
 		{"a token maker", independenceTokenProbe, 0, []game.FootprintKind{game.FootprintCreateToken}},
 	}

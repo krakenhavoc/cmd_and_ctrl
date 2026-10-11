@@ -26,12 +26,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Angel")
-			}, "Youthful Valkyrie — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				if !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Youthful Valkyrie — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

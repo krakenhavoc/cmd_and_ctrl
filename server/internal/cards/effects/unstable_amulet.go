@@ -34,9 +34,7 @@ func init() {
 			WhenThisEntersYouGetEnergy("Unstable Amulet", 2),
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b25CastFromNotHand(ev, source.Controller)
-			}, "Unstable Amulet — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}),
+			}, "Unstable Amulet — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Pay {E}{E}: Exile the top card of your library. You may play it until you exile another card with this artifact.",

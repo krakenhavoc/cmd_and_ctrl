@@ -41,9 +41,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AnotherCreatureEnteredUnderYourControl,
 				"Distinguished Conjurer — you gain 1 life",
-				func(g *game.Game, item *game.StackItem) error {
-					return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-				}),
+				Do(GainLife{Amount: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{4}{W}, {T}: Exile another target creature you control, then return it to the battlefield under its owner's control.",

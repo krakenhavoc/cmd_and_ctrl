@@ -25,7 +25,7 @@ func init() {
 			WhenThisEnters("Tinybones, Pocket Nuisance — each opponent discards a card", eachOpponentDiscardsOne),
 			rfCreatureEOncePerDiscarder(On(game.EventDiscardCard, AnyPlayer,
 				"Tinybones, Pocket Nuisance — 1 damage to each opponent",
-				func(g *game.Game, item *game.StackItem) error { return damageToEachOpponent(g, item, 1) })),
+				Do(DamageEachOpponent{N: 1}))),
 		},
 	})
 }

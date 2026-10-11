@@ -49,7 +49,7 @@ func init() {
 			OnAny([]game.EventKind{game.EventZoneMove, game.EventCast},
 				murktideInstantOrSorceryLeftYourGraveyard,
 				"Murktide Regent — put a +1/+1 counter on this creature",
-				putCounterOnSelf),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

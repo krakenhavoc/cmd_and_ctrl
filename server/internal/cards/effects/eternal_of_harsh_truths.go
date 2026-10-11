@@ -1,10 +1,6 @@
 package effects
 
-import (
-	"github.com/google/uuid"
-
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
-)
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 
 // Eternal of Harsh Truths — Creature — Zombie Cleric {2}{U}, 1/3
 // (EDHREC rank 17907):
@@ -26,6 +22,11 @@ import (
 //
 // No simplifications.
 func init() {
+	// The draw is a footprinted Do (#3013): the row's Effect is replaced
+	// after the constructor builds the trigger, whose callback for the
+	// defending player this payoff does not use.
+	eternalDrawRow := WhenAttacksAndIsNotBlockedEffect("Eternal of Harsh Truths — draw a card", nil)
+	eternalDrawRow.Effect = Do(DrawCards{N: 1})
 	Register(Spec{
 		OracleID:     "5c09d646-afea-4fd0-9752-04820b81cc5b",
 		Name:         "Eternal of Harsh Truths",
@@ -45,9 +46,7 @@ func init() {
 					return g.ChangePlayerLifeForEffect(item.SourceCardID, defender, -2)
 				},
 			},
-			WhenAttacksAndIsNotBlockedEffect("Eternal of Harsh Truths — draw a card", func(g *game.Game, item *game.StackItem, _ uuid.UUID) error {
-				return g.DrawNForEffect(item.Controller, 1)
-			}),
+			eternalDrawRow,
 		},
 	})
 }

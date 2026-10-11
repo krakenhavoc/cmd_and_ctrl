@@ -37,9 +37,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Ward(WardLife(2), "Refraction Elemental — ward, pay 2 life"),
-			On(game.EventCast, ByYou, "Refraction Elemental — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 2)
-			}),
+			On(game.EventCast, ByYou, "Refraction Elemental — 2 damage to each opponent", Do(DamageEachOpponent{N: 2})),
 		},
 	})
 }

@@ -7,6 +7,8 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 // mutations.go holds the higher-level game-state mutation methods that
@@ -5801,13 +5803,19 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		if !g.seatNeedsTriggerOrderLocked(items, p.TriggerOrder) {
+		ask, reason := g.triggerOrderAskLocked(items, p.TriggerOrder)
+		if !ask {
 			continue
 		}
 		held = true
 		if g.hasTriggerOrderPromptLocked(p.ID) {
 			continue
 		}
+		// ADR 0018's #3013 amendment, sub-PR 1: count each prompt once,
+		// as it is queued, by why it was asked. A held drain runs again
+		// at every boundary until it is answered; those passes find the
+		// prompt already open and stop above.
+		metrics.TriggerOrderPrompt(string(reason))
 		ids := make([]uuid.UUID, len(items))
 		for i, t := range items {
 			ids[i] = t.ID

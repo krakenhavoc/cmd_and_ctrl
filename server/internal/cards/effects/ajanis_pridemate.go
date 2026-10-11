@@ -21,7 +21,7 @@ func init() {
 		Name:         "Ajani's Pridemate",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", putCounterOnSelf),
+			WheneverYouGainLife("Ajani's Pridemate — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

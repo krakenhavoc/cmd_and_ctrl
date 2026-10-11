@@ -24,11 +24,7 @@ func init() {
 		OptionalCosts: []game.AdditionalCost{Offspring("{2}")},
 		Triggered: []game.TriggeredAbility{
 			OffspringToken("Coruscation Mage"),
-			WheneverYouCast(Noncreature(), "Coruscation Mage — 1 damage to each opponent", coruscationMagePing),
+			WheneverYouCast(Noncreature(), "Coruscation Mage — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 	})
-}
-
-func coruscationMagePing(g *game.Game, item *game.StackItem) error {
-	return damageToEachOpponent(g, item, 1)
 }

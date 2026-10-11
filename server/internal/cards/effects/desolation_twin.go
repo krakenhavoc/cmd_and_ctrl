@@ -61,13 +61,7 @@ func init() {
 				item.Controller, item.Owner = ev.Actor, ev.Actor
 				return item
 			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{
-					Controller: item.Controller,
-					Template:   TokenCard("10/10 colorless Eldrazi"),
-					N:          1,
-				}.Apply(NewContext(g, item))
-			},
+			Effect: Do(CreateToken{Template: TokenCard("10/10 colorless Eldrazi"), N: 1}),
 		}},
 	})
 }

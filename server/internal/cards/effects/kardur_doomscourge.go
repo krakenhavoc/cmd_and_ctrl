@@ -40,7 +40,7 @@ func init() {
 			On(game.EventLTB, func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, ok := diedWhileAttacking(ev, g)
 				return ok
-			}, "Kardur, Doomscourge — each opponent loses 1 life, you gain 1 life", drainEachOpponent),
+			}, "Kardur, Doomscourge — each opponent loses 1 life, you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 	})
 }

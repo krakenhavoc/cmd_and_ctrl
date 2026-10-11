@@ -28,9 +28,7 @@ func init() {
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.IsCreature() && IsToken(c)
-			}, "Nesting Dovehawk — +1/+1 counter", func(g *game.Game, item *game.StackItem) error {
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Nesting Dovehawk — +1/+1 counter", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

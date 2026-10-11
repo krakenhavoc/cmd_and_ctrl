@@ -88,21 +88,22 @@ func TestTwoSoulWardensDoNotAskForAnOrder(t *testing.T) {
 	}
 }
 
-// The same entry under two Impact Tremors still asks: its damage comes
-// from the source, so the row is not source-blind.
-func TestTwoImpactTremorsStillAsk(t *testing.T) {
+// The same entry under two Impact Tremors is not auto-ordered as copies
+// of one source-blind ability (its damage comes from the source), but
+// since #3013 its row declares a footprint: each reads its own source
+// and lowers the opponents' life, which commutes, so the batch goes on
+// with no prompt.
+func TestTwoImpactTremorsSkipThePromptByTheirFootprint(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
 	pushCatalogPermanent(g, me.ID, "Impact Tremors", "Enchantment", impactTremorsOracle, false)
 	pushCatalogPermanent(g, me.ID, "Impact Tremors", "Enchantment", impactTremorsOracle, false)
+	before := opp.Life
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, RedGoblinToken(), 1) })
-	for i := 0; i < 8 && triggerOrderPrompt(g) == nil && !stackFullyEmpty(g); i++ {
-		if err := g.PassPriority(); err != nil && !errors.Is(err, game.ErrChoicePending) {
-			t.Fatal(err)
-		}
-	}
-	if ch := triggerOrderPrompt(g); ch == nil || len(ch.TriggerOrderIDs) != 2 {
-		t.Fatalf("want a 2-item trigger_order prompt, got %+v", ch)
+	settleWithoutPrompts(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("opponent life %d → %d, want -2", before, opp.Life)
 	}
 }
 

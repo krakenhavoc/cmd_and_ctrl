@@ -24,7 +24,7 @@ func init() {
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, AllOf(AnotherCreatureDied, ACreatureYouControlDied),
-				"Feral Ghoul — put a +1/+1 counter on it", putACounterOnThis(game.CounterPlusOne)),
+				"Feral Ghoul — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 			eerieDiesWithPower("Feral Ghoul — each opponent gets rad counters equal to its power", nil,
 				func(g *game.Game, item *game.StackItem) error {
 					return eachOpponentGetsRadCounters(g, item.Controller, item.Params.Amount)

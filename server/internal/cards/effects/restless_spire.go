@@ -32,9 +32,7 @@ func init() {
 		Static: []game.StaticAbility{rfReprintBFirstStrikeWhileCreatureOnYourTurn()},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Restless Spire — scry 1",
-				func(g *game.Game, item *game.StackItem) error {
-					return Scry{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(Scry{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{U}{R}: Until end of turn, this land becomes a 2/1 blue and red Elemental creature with \"During your turn, this creature has first strike.\" It's still a land.",

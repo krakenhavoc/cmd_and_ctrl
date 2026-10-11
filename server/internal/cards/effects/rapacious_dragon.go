@@ -21,7 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Rapacious Dragon — create two Treasures", b34CreateTokens(TreasureToken, 2)),
+			WhenThisEnters("Rapacious Dragon — create two Treasures", Do(CreateToken{Template: TreasureToken(), N: 2})),
 		},
 	})
 }
