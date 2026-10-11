@@ -1,7 +1,7 @@
 {
   "id": "/",
   "name": "CMD & CTRL",
-  "short_name": "CMD&CTRL",
+  "short_name": "C2",
   "description": "The Commander table, over the wire.",
   "start_url": "/",
   "scope": "/",
