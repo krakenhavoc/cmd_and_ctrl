@@ -719,6 +719,22 @@
     flex-direction: row;
     align-items: flex-start;
   }
+  /* #2995: your commanders are drawn whole, not peeking like the hand.
+     The strip is the hand's 62% tall, so a whole card in it is that
+     less the price tag's room above and a hairline below; the card
+     size is handed down one element (a custom property that names
+     itself is invalid). Nothing is hidden, so nothing rises. Only
+     inline: the collapsed popover has the room for full cards. */
+  @container (min-width: 641px) {
+    .cmd-group {
+      --cmd-h: calc(var(--card-h, 168px) * var(--hand-peek, 0.62) - 9px);
+      --strip-rise: 0px;
+    }
+    .cmd-group > .strip-slot {
+      --card-h: var(--cmd-h);
+      --card-w: calc(var(--cmd-h) * 5 / 7);
+    }
+  }
   .strip-slot {
     position: relative;
     margin-left: calc(var(--card-w, 80px) * -1 * var(--strip-overlap, 0.42));

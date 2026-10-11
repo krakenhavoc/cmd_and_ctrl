@@ -1344,24 +1344,13 @@
         "rail   middle    middle"
         "rail   creatures creatures";
     }
-    /* #2491: their commander is tucked behind the top edge as yours is
-       behind the bottom one: a hand-size card in a box half its height,
-       aligned to the box's foot, so the panel's edge cuts off the half
-       away from the table and the half that faces you shows. The tax
-       goes to the edge you can see. */
+    /* #2995: their commander sits whole at the hand row's top-left, at
+       CommandStrip's own 42% size. #2491 tucked a hand-size card behind
+       the top edge so half of it showed, and at the top row's card size
+       that left a sliver of ~30px. */
     .panel.opponent.flipped :global(.command-strip) {
-      --strip-h: var(--card-h);
-      height: calc(var(--card-h) * 0.5);
       align-self: flex-start;
-      align-items: flex-end;
       padding: 0;
-    }
-    .panel.opponent.flipped :global(.command-strip .slot) {
-      flex: none;
-    }
-    .panel.opponent.flipped :global(.command-strip .tax-badge) {
-      top: auto;
-      bottom: 3px;
     }
     .panel.opponent.flipped .grid-bottom,
     .panel.opponent.flipped .grid-middle {
@@ -1375,6 +1364,10 @@
     .panel.opponent.flipped .hand-zone > :global(.hand),
     .panel.opponent.flipped .rail :global(.pile .thumb),
     .panel.opponent.flipped :global(.command-strip .slot .card) {
+      transform: rotate(180deg);
+    }
+    /* #2995: but the empty-hand label is text, and reads upright. */
+    .panel.opponent.flipped .hand-zone > :global(.hand > .empty) {
       transform: rotate(180deg);
     }
     .panel.opponent.flipped .rail {

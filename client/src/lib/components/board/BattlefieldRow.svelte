@@ -272,7 +272,8 @@
 </script>
 
 <div class="row" class:compact class:strip data-zone={label}>
-  <span class="row-label" aria-hidden="true">
+  <!-- #2995: the dice stay off the label (DiceLayer, data-dice-avoid). -->
+  <span class="row-label" aria-hidden="true" data-dice-avoid>
     <span class="row-name">{label}</span>
     {#if cards.length > 0}<span class="row-count">{cards.length}</span>{/if}
   </span>
