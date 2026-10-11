@@ -4216,9 +4216,11 @@
     grid-template-rows: 1fr;
     grid-template-areas: "self";
   }
+  /* #3028: one opponent sits across the table, and the table is split
+     evenly: their board is yours turned 180° and the same size. */
   .board[data-opp-count="1"] {
     grid-template-columns: 1fr;
-    grid-template-rows: minmax(0, 0.7fr) minmax(0, 1.3fr);
+    grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
     grid-template-areas:
       "across"
       "self";

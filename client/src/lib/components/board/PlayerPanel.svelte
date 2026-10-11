@@ -1133,35 +1133,33 @@
     --card-h-max: 100cqh;
   }
   .panel.opponent.flipped {
-    /* Across-table seats: one more size down (the top row is the
-       short one), rows reversed so the hand hugs the top edge and
-       creatures face the centre of the table. #2491: the top row is
-       the tucked commander, half a card.
-       #2961: the creature row must fit its card WITH the P/T badge at
-       the card's foot, or the row's own overflow cuts it off at the
-       panel's bottom edge. The rows measured at 1600x900: the top row
-       is the taller of the pile tiles (~74px) and the hand (0.55h);
-       the back row is a small card (0.5h) plus ~32px of padding and
-       label; the creature row is a card plus 24px of padding; and the
-       panel adds 12px of gaps and 16px of padding. So
-         piles tall:  H = 1.5h + 158px   (short panels)
-         hand tall:   H = 2.05h + 84px   (tall panels)
-       and the card is the smaller of the two heights, so neither row
-       takes more than it was given. The floors sit below any card the
-       formula can ask for at 720px, so a floor never pushes the rows
-       past the panel. #3028: the ceiling is 168px on a 1080px-tall
-       screen and grows with it past that (15.5vh), scaled by the
-       card-size setting, like the upright opponent's. */
-    --card-h-max: calc(max(168px, 15.5vh) * var(--card-scale-opponent, 1));
+    /* Across-table seats: your board turned 180° about the table's
+       centre (#2438, #3028). Rows reversed so the hand hugs the top
+       edge and creatures face the centre of the table; #2491: the top
+       row is the tucked commander, half a card.
+       #3028: the same size as yours, by the same budget as
+       .panel.self.docked below: creatures at 52cqh - 40px with no
+       fixed ceiling, the back row half a card, the hand peeking 40%,
+       and pile tiles no taller than the peek. In a two-player game
+       the two halves of the table are equal (Board.svelte), so the
+       two boards are the same size. The floor stays low (44px), as
+       before, so a short top-row panel with three or four players
+       shrinks its cards rather than scrolling them. */
+    --card-h-max: 100cqh;
     --card-h: clamp(
       44px,
-      calc(min((100cqh - 158px) / 1.5, (100cqh - 84px) / 2.05) * var(--card-scale-opponent, 1)),
+      calc(min(52cqh - 40px, (100cqh - 151px) / 1.5) * var(--card-scale-opponent, 1)),
       var(--card-h-max)
     );
     --card-h-sm: max(24px, calc(var(--card-h) * 0.5));
-    --thumb-w: calc(32px * var(--card-scale-opponent, 1));
-    --thumb-h: calc(45px * var(--card-scale-opponent, 1));
-    --avatar-size-base: 60px;
+    --hand-peek: 0.4;
+    --thumb-h: min(
+      calc(56px * var(--card-scale-opponent, 1)),
+      max(36px, calc(var(--card-h) * var(--hand-peek) - 30px))
+    );
+    --thumb-w: calc(var(--thumb-h) * 5 / 7);
+    --avatar-size-base: 84px;
+    --rail-w: 112px;
     grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       "bottom    rail"
@@ -1313,7 +1311,17 @@
      phone keeps the docked layout above. */
   @media (min-width: 600px) {
     .panel.self.docked {
-      --card-h: clamp(120px, calc((52cqh - 40px) * var(--card-scale, 1)), var(--card-h-max));
+      /* #3028: on a short panel (two players at 720px, each half
+         ~320px) the rows' fixed parts dominate: the back row is half a
+         card plus ~32px, the hand row is at least a pile tile (~65px)
+         and the creature row adds ~24px, so H = 1.5h + ~151px and the
+         card is the smaller of the two. The floor is as low as an
+         across-table seat's, so the cards shrink rather than clip. */
+      --card-h: clamp(
+        44px,
+        calc(min(52cqh - 40px, (100cqh - 151px) / 1.5) * var(--card-scale, 1)),
+        var(--card-h-max)
+      );
       --card-h-sm: max(64px, calc(var(--card-h) * 0.5));
       --hand-peek: 0.4;
       /* #3028: a pile tile is its thumbnail plus ~30px of padding and
@@ -1332,14 +1340,6 @@
         "creatures creatures rail"
         "middle    middle    rail"
         "piles     bottom    bottom";
-    }
-    /* While the tutorial's coach card shows, the piles go back to the
-       back row's left end, where #2990 moves them clear of the card. */
-    .panel.self.docked.coached {
-      grid-template-areas:
-        "creatures creatures rail"
-        "piles     middle    rail"
-        "bottom    bottom    bottom";
     }
     .panel.self.docked .rail {
       display: contents;
@@ -1371,15 +1371,22 @@
     .panel.self.docked .rail :global(.pile .label) {
       display: none;
     }
-    /* #2990, #2409: the coach card is taller than the hand row, so it
-       rises over the middle row's left end too, where the piles sit and
-       the first lands land. While it shows, the piles start right of the
-       card's width: the piles column is the first column of that row, so
-       its margin pushes the back row clear of the card as well. The
-       creature row above is centred, with an empty left margin the card
-       may rise into. */
+    /* #2990, #2409, #3028: the coach card sits in the bottom-left
+       corner, where the piles are, and is taller than the hand row, so
+       it rises over the back row's left end, where the first lands
+       land. While it shows, the piles start right of the card's width,
+       and the hand after them, so the bottom row needs no empty cell of
+       its own; the back row starts right of the card too. Neither takes
+       any height, so the rows keep theirs. The creature row above is
+       centred, with an empty left margin the card may rise into. */
+    .panel.self.docked .coach-spacer {
+      flex-basis: 0;
+    }
     .panel.self.docked.coached .rail > :global(.pile-bar) {
       margin-left: calc(var(--coach-w, 0px) + 6px);
+    }
+    .panel.self.docked.coached .grid-middle {
+      padding-left: calc(var(--coach-w, 0px) + 6px);
     }
   }
   /* #2438, #2483: an across-table opponent sits across from you. Their
@@ -1438,10 +1445,20 @@
        table. Their hand, their piles' top cards and their commander are
        turned 180°, so the fan arcs down toward you and each card's top
        points at the table's centre. What you read stays upright: the
-       pile counts, the commander's tax, and their battlefield. */
+       pile counts, the commander's tax, the row labels and their
+       identity. */
     .panel.opponent.flipped .hand-zone > :global(.hand),
     .panel.opponent.flipped .rail :global(.pile .thumb),
     .panel.opponent.flipped :global(.command-strip .slot .card) {
+      transform: rotate(180deg);
+    }
+    /* #3028: their permanents face them too, your board turned 180°.
+       Each row's card list turns about its own centre, so every card
+       is upside down to you and the row runs from your right to your
+       left, as theirs would across a real table. Layout is untouched
+       (rowFit measures offsets, not the turned box), and the expanded
+       overlay, which is never flipped, reads upright. */
+    .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row-cards) {
       transform: rotate(180deg);
     }
     /* #2995: but the empty-hand label is text, and reads upright. */
@@ -1460,7 +1477,7 @@
     }
     .panel.opponent.flipped .rail > :global(.pile-bar) {
       grid-area: piles;
-      grid-template-columns: repeat(3, 44px);
+      grid-template-columns: repeat(3, 52px);
       width: auto;
       align-self: start;
     }

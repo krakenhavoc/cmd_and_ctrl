@@ -816,18 +816,20 @@
     --hand-rise: calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1) + 6px);
   }
   /* #3028: the peek is a cut along the bottom only. The fan arcs and its
-     cards tilt, so their tops reach above the strip, and overflow:
-     hidden sliced them off flat along the back row's foot. The hand is
-     held over the table: the cards' tops show whole, painted above the
-     rows (z-index 1), and only what is below the strip is hidden. */
+     cards tilt, so their tops reach above the strip, and the strip's
+     overflow: hidden sliced them off flat along the back row's foot.
+     The strip reaches up by --hand-headroom (padding, taken back by a
+     negative margin), so the cards stay where they were and their tops
+     show whole, held over the table (z-index 1). Only the slots take
+     the pointer, so the headroom never covers the back row's clicks. */
   .hand:not(.opponent):not(.scroll) {
-    overflow: visible;
-    clip-path: inset(-100vh -100vw 0 -100vw);
+    --hand-headroom: calc(var(--card-h, 168px) * 0.3);
+    padding-top: calc(4px + var(--hand-headroom));
+    margin-top: calc(-1 * var(--hand-headroom));
   }
   .hand:not(.opponent):hover {
     max-height: none;
     overflow: visible;
-    clip-path: none;
     z-index: 20;
   }
   .rise {

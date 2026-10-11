@@ -134,10 +134,11 @@ describe("the .panel --card-h-max ceiling", () => {
     expect(ceilingPx(max, 500, 1440)).toBeCloseTo(266.4, 1);
   });
 
-  it("is 168px for an ordinary flipped opponent panel on a 1080px screen, and grows past it", () => {
-    const max = resolve(["panel", "opponent", "flipped"], "--card-h-max");
-    expect(ceilingPx(max, 500, 1080)).toBeCloseTo(168, 0);
-    expect(ceilingPx(max, 500, 1440)).toBeCloseTo(223.2, 1);
+  it("matches self's for an across-table (flipped) opponent, whose board is yours turned", () => {
+    expect(resolve(["panel", "opponent", "flipped"], "--card-h-max")).toBe("100cqh");
+    // The same slope as your own board's, so equal halves of the table
+    // draw equal cards.
+    expect(resolve(["panel", "opponent", "flipped"], "--card-h")).toContain("52cqh - 40px");
   });
 
   it("is scaled by the card-size setting, so large is larger even at the ceiling", () => {
