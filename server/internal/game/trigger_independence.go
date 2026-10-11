@@ -123,6 +123,62 @@ func (a *triggerAccess) emit(kinds ...EventKind) {
 	}
 }
 
+// TriggerOrderReason says why a seat was asked to order its triggers
+// (ADR 0018's #3013 amendment, sub-PR 1). It is the first thing the
+// skips found that could make the order show, and it is what
+// cmdctrl_trigger_order_prompts_total counts by. Every value is in
+// TriggerOrderReasons, and metrics' closed label set for the counter
+// holds each one (TestTriggerOrderReasonsAreMetricLabels).
+type TriggerOrderReason string
+
+const (
+	// TriggerOrderReasonAlways: the seat chose Always ask (#1530, #1968).
+	TriggerOrderReasonAlways TriggerOrderReason = "always"
+	// TriggerOrderReasonUndescribed: an item the check cannot describe:
+	// a row with no footprint (a hand-written closure, a "you may", a
+	// mode clause, a clause built from the trigger), a Build whose item
+	// is not plain, an item with Params, a payload, X or a division of
+	// its own, or an item that is not a stamped catalog trigger.
+	TriggerOrderReasonUndescribed TriggerOrderReason = "undescribed"
+	// TriggerOrderReasonBoardOpaque: triggerOrderBoardOpaqueLocked gave
+	// up on the board (a permanent whose text the engine leaves to the
+	// table, a rules-bearing slot, a state trigger, a player static, a
+	// continuing effect that is more than a characteristic change).
+	TriggerOrderReasonBoardOpaque TriggerOrderReason = "board_opaque"
+	// TriggerOrderReasonReactor: something in the game watches an event
+	// kind the batch causes (somethingReactsLocked).
+	TriggerOrderReasonReactor TriggerOrderReason = "reactor"
+	// TriggerOrderReasonRipple: an object the batch writes is named by a
+	// delayed trigger, a duration or another card's record
+	// (writtenObjectsRippleLocked).
+	TriggerOrderReasonRipple TriggerOrderReason = "ripple"
+	// TriggerOrderReasonElimination: a player the batch could take out
+	// of the game is its controller, or is touched by another item.
+	TriggerOrderReasonElimination TriggerOrderReason = "elimination"
+	// TriggerOrderReasonObjectTie: two items touch one object and at
+	// least one of them writes it.
+	TriggerOrderReasonObjectTie TriggerOrderReason = "object_tie"
+	// TriggerOrderReasonRules: an item writes an object whose abilities
+	// shape the rules the other items resolve under.
+	TriggerOrderReasonRules TriggerOrderReason = "rules"
+	// TriggerOrderReasonLibrary: two items both touch one player's
+	// library or graveyard.
+	TriggerOrderReasonLibrary TriggerOrderReason = "library"
+	// TriggerOrderReasonMonarch: two items both make their controller
+	// the monarch.
+	TriggerOrderReasonMonarch TriggerOrderReason = "monarch"
+)
+
+// TriggerOrderReasons is every TriggerOrderReason, in a fixed order.
+func TriggerOrderReasons() []TriggerOrderReason {
+	return []TriggerOrderReason{
+		TriggerOrderReasonAlways, TriggerOrderReasonUndescribed, TriggerOrderReasonBoardOpaque,
+		TriggerOrderReasonReactor, TriggerOrderReasonRipple, TriggerOrderReasonElimination,
+		TriggerOrderReasonObjectTie, TriggerOrderReasonRules, TriggerOrderReasonLibrary,
+		TriggerOrderReasonMonarch,
+	}
+}
+
 // seatNeedsTriggerOrderLocked is seatNeedsTriggerOrder with the board
 // in hand: in "when it matters" mode (and for a mode this binary does
 // not know, which behaves as the default) a batch the pure skips would
@@ -130,30 +186,48 @@ func (a *triggerAccess) emit(kinds ...EventKind) {
 //
 // Caller must hold g.mu.
 func (g *Game) seatNeedsTriggerOrderLocked(items []*StackItem, mode TriggerOrderMode) bool {
-	if !seatNeedsTriggerOrder(items, mode) {
-		return false
-	}
-	if mode == TriggerOrderAlways || mode == TriggerOrderNever {
-		return true
-	}
-	return !g.triggersIndependentLocked(items)
+	ask, _ := g.triggerOrderAskLocked(items, mode)
+	return ask
 }
 
-// triggersIndependentLocked reports whether every order of items gives
-// the same game: each item is described by its row's footprint, nothing
-// on the board reacts to what any of them does, and no two of them
-// touch the same thing in a way whose order shows.
+// triggerOrderAskLocked is seatNeedsTriggerOrderLocked with the reason
+// it asked. The reason is empty when it does not ask, and it never
+// changes whether it asks.
 //
 // Caller must hold g.mu.
-func (g *Game) triggersIndependentLocked(items []*StackItem) bool {
-	if len(items) < 2 || g.triggerOrderBoardOpaqueLocked() {
-		return false
+func (g *Game) triggerOrderAskLocked(items []*StackItem, mode TriggerOrderMode) (bool, TriggerOrderReason) {
+	if !seatNeedsTriggerOrder(items, mode) {
+		return false, ""
+	}
+	if mode == TriggerOrderAlways || mode == TriggerOrderNever {
+		return true, TriggerOrderReasonAlways
+	}
+	if reason := g.triggerOrderConflictLocked(items); reason != "" {
+		return true, reason
+	}
+	return false, ""
+}
+
+// triggerOrderConflictLocked reports "" when every order of items gives
+// the same game: each item is described by its row's footprint, nothing
+// on the board reacts to what any of them does, and no two of them
+// touch the same thing in a way whose order shows. Otherwise it returns
+// the first reason it found that the order could show. (Before #3013
+// this was triggersIndependentLocked, a bool.)
+//
+// Caller must hold g.mu.
+func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason {
+	if len(items) < 2 {
+		return TriggerOrderReasonUndescribed
+	}
+	if g.triggerOrderBoardOpaqueLocked() {
+		return TriggerOrderReasonBoardOpaque
 	}
 	accs := make([]triggerAccess, len(items))
 	for i, t := range items {
 		a, ok := g.triggerAccessLocked(t)
 		if !ok {
-			return false
+			return TriggerOrderReasonUndescribed
 		}
 		accs[i] = a
 	}
@@ -175,8 +249,11 @@ func (g *Game) triggersIndependentLocked(items []*StackItem) bool {
 			draws[p] += n
 		}
 	}
-	if g.somethingReactsLocked(emits) || g.writtenObjectsRippleLocked(written) {
-		return false
+	if g.somethingReactsLocked(emits) {
+		return TriggerOrderReasonReactor
+	}
+	if g.writtenObjectsRippleLocked(written) {
+		return TriggerOrderReasonRipple
 	}
 	// Who might leave the game while the batch resolves (CR 104.3b and
 	// 104.3c, state-based losses checked between the resolutions): a player
@@ -198,33 +275,36 @@ func (g *Game) triggersIndependentLocked(items []*StackItem) bool {
 	// with them (CR 800.4a), so where they leave in it shows.
 	for _, a := range accs {
 		if eliminable[a.controller] {
-			return false
+			return TriggerOrderReasonElimination
 		}
 	}
 	for i := range accs {
 		for j := i + 1; j < len(accs); j++ {
-			if g.accessesConflictLocked(&accs[i], &accs[j], eliminable) ||
-				g.accessesConflictLocked(&accs[j], &accs[i], eliminable) {
-				return false
+			if r := g.accessesConflictLocked(&accs[i], &accs[j], eliminable); r != "" {
+				return r
+			}
+			if r := g.accessesConflictLocked(&accs[j], &accs[i], eliminable); r != "" {
+				return r
 			}
 		}
 	}
-	return true
+	return ""
 }
 
 // accessesConflictLocked reports whether a's writes can change what b
-// reads or writes. Called both ways round for each pair.
-func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool) bool {
+// reads or writes, as the reason they conflict, or "" when they don't.
+// Called both ways round for each pair.
+func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool) TriggerOrderReason {
 	if a.rules {
-		return true
+		return TriggerOrderReasonRules
 	}
 	if a.monarch && b.monarch {
-		return true
+		return TriggerOrderReasonMonarch
 	}
 	// A tie on one object asks, whatever the two do to it.
 	for id := range a.writes {
 		if b.writes[id] || b.reads[id] {
-			return true
+			return TriggerOrderReasonObjectTie
 		}
 	}
 	for p, dir := range a.life {
@@ -233,12 +313,12 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// and a loss commute too, unless the player could reach 0 in
 		// between and lose (CR 704.5a).
 		if other != 0 && other != dir && eliminable[p] {
-			return true
+			return TriggerOrderReasonElimination
 		}
 	}
 	for p := range a.cards {
 		if b.cards[p] {
-			return true
+			return TriggerOrderReasonLibrary
 		}
 	}
 	for p := range eliminable {
@@ -249,13 +329,13 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// to anything p owns or controls, depends on whether b comes
 		// first. Another loss of life is the same either way.
 		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] {
-			return true
+			return TriggerOrderReasonElimination
 		}
 		if g.touchesObjectsOfLocked(b, p) {
-			return true
+			return TriggerOrderReasonElimination
 		}
 	}
-	return false
+	return ""
 }
 
 // touchesObjectsOfLocked reports whether the access reads or writes an
@@ -411,7 +491,11 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		a.emit(EventScry)
 	case FootprintSurveil:
 		a.cards[you] = true
-		a.emit(EventSurveil, EventZoneMove)
+		// The graveyard leg emits EventMill per card, as an ordinary
+		// mill does (ResolveSurveil): a "card put into your graveyard
+		// from your library" watcher sees it. Found by the footprint
+		// conformance test (#3013).
+		a.emit(EventSurveil, EventMill, EventZoneMove)
 	case FootprintEnergy:
 		a.emit(EventPlayerCounterPlaced)
 	case FootprintCreateToken:
@@ -426,6 +510,55 @@ func (g *Game) addFootprintStepLocked(a *triggerAccess, t *StackItem, s Footprin
 		return false
 	}
 	return true
+}
+
+// FootprintDeclaration is what the independence check makes of one
+// FootprintStep resolved against an item and the board: the objects it
+// reads and writes, the players whose life it moves up or down, whose
+// library, hand or graveyard it touches, whether it makes its controller
+// the monarch, and the event kinds it causes. It exists for the
+// conformance test (cards/effects/footprint_conformance_test.go), which
+// resolves each primitive and checks that it changes and emits nothing
+// outside this.
+type FootprintDeclaration struct {
+	Reads, Writes    map[uuid.UUID]bool
+	LifeUp, LifeDown map[uuid.UUID]bool
+	Cards            map[uuid.UUID]bool
+	Monarch          bool
+	Emits            map[EventKind]bool
+}
+
+// FootprintDeclarationForTest describes one step the way
+// addFootprintStepLocked does for the check, with the item's card
+// targets as its targets. False when the check refuses the step on this
+// board.
+//
+// Caller must hold g.mu.
+func (g *Game) FootprintDeclarationForTest(item *StackItem, s FootprintStep) (FootprintDeclaration, bool) {
+	a := newTriggerAccess(item.Controller)
+	var targets []uuid.UUID
+	for _, ref := range item.Targets {
+		if ref.Kind == TargetCard {
+			a.reads[ref.ID] = true
+			targets = append(targets, ref.ID)
+		}
+	}
+	if !g.addFootprintStepLocked(&a, item, s, targets) {
+		return FootprintDeclaration{}, false
+	}
+	d := FootprintDeclaration{
+		Reads: a.reads, Writes: a.writes, Cards: a.cards, Monarch: a.monarch, Emits: a.emits,
+		LifeUp: map[uuid.UUID]bool{}, LifeDown: map[uuid.UUID]bool{},
+	}
+	for p, dir := range a.life {
+		if dir&lifeUp != 0 {
+			d.LifeUp[p] = true
+		}
+		if dir&lifeDown != 0 {
+			d.LifeDown[p] = true
+		}
+	}
+	return d, true
 }
 
 // tokenTemplateInert reports whether a token made from tmpl brings
