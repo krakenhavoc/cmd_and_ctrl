@@ -58,6 +58,14 @@ afterEach(() => {
 });
 
 const keys: CopyContext = { helpKey: "?", settingsKey: ",", nextKey: "Space" };
+
+/** A board whose viewer has `n` cards left in the library. */
+const withLibrary = (v: GameView, n: number): GameView => {
+  const seats = v.seats.map((s) =>
+    s.id === ME ? { ...s, library: { ...s.library, count: n } } : s,
+  );
+  return { ...v, seats } as GameView;
+};
 const noKeys: CopyContext = { helpKey: "", settingsKey: "", nextKey: "" };
 
 describe("the script", () => {
@@ -416,13 +424,22 @@ describe("step 7: cast a creature", () => {
     }
   });
 
-  it("cannot happen with no creature in hand or on the stack", () => {
-    expect(CAST_CREATURE.cannot!(ctx(board({ hand: [forest()] })))).toBe("no creature in hand");
+  // #2992: it waits while a creature can still be cast this game.
+  it("gives up only when no creature is left to cast this game", () => {
+    const empty = board({ hand: [forest()] });
+    expect(CAST_CREATURE.cannot!(ctx(empty))).toBe("no creature left to cast this game");
+    // A library to draw from, or a commander to cast, keeps it waiting.
+    expect(CAST_CREATURE.cannot!(ctx(withLibrary(empty, 40)))).toBeNull();
+    expect(CAST_CREATURE.cannot!(ctx(board({ hand: [forest()], command: [marwyn()] })))).toBeNull();
     expect(CAST_CREATURE.cannot!(ctx(board({ hand: [forest()], stack: [elves()] })))).toBeNull();
     expect(CAST_CREATURE.cannot!(ctx(board()))).toBeNull();
+    // The game is over: nothing more can happen.
+    expect(CAST_CREATURE.cannot!(ctx({ ...board(), state: "ended" } as GameView))).toBe(
+      "the game is over",
+    );
   });
 
-  it("cannot happen when the server lists no cast for any creature in hand", () => {
+  it("waits for the next main phase when the server lists no cast for any creature in hand", () => {
     const dreadmaw = card("Colossal Dreadmaw", "Creature — Dinosaur");
     const e = elves();
     const withMoves = (b: Board, casts: string[]) =>
@@ -433,18 +450,21 @@ describe("step 7: cast a creature", () => {
           ...casts.map((source) => ({ kind: "cast", source })),
         ],
       }) as unknown as GameView;
-    expect(CAST_CREATURE.cannot!(ctx(withMoves({ hand: [dreadmaw] }, [])))).toBe(
-      "no creature in hand is castable yet",
-    );
-    expect(CAST_CREATURE.cannot!(ctx(withMoves({ hand: [dreadmaw, e] }, [e.instance_id])))).toBe(
-      null,
-    );
-    // Outside a main phase nothing is castable at sorcery speed: no verdict.
-    expect(CAST_CREATURE.cannot!(ctx(withMoves({ hand: [dreadmaw], step: "upkeep" }, [])))).toBe(
-      null,
+    const stuck = ctx(withMoves({ hand: [dreadmaw] }, []));
+    expect(CAST_CREATURE.cannot!(stuck)).toBeNull();
+    const d = CAST_CREATURE.first!(stuck)!;
+    expect(d.id).toBe("cast-next-turn");
+    expect(d.anchor).toEqual({ label: "actions" });
+    expect(copyText(d.body, keys)).toMatch(/press next \(Space\) in the dock until your next turn/);
+    expect(
+      CAST_CREATURE.first!(ctx(withMoves({ hand: [dreadmaw, e] }, [e.instance_id]))),
+    ).toBeNull();
+    // Outside a main phase it is the main-phase detour, not this one.
+    expect(CAST_CREATURE.first!(ctx(withMoves({ hand: [dreadmaw], step: "upkeep" }, [])))?.id).toBe(
+      "to-main",
     );
     // No move list at all (the server owes no decision): no verdict.
-    expect(CAST_CREATURE.cannot!(ctx(board({ hand: [dreadmaw] })))).toBeNull();
+    expect(CAST_CREATURE.first!(ctx(board({ hand: [dreadmaw] })))).toBeNull();
   });
 });
 
@@ -469,10 +489,31 @@ describe("step 8: your spell is on the stack", () => {
     expect(ON_THE_STACK.cannot!(ctx(waiting, waiting))).toBeNull();
   });
 
-  it("gives up when the stack was already empty as it began", () => {
+  // #2992: an empty stack waits for the next creature, not gives up.
+  it("waits for the next creature when the stack was already empty as it began", () => {
     const resolved = board({ mine: [f(), elves({ summoning_sick: true })] });
     expect(ON_THE_STACK.done!(ctx(resolved, resolved))).toBe(false);
-    expect(ON_THE_STACK.cannot!(ctx(resolved, resolved))).toBe("the stack was already empty");
+    expect(ON_THE_STACK.cannot!(ctx(resolved, resolved))).toBeNull();
+    const d = ON_THE_STACK.first!(ctx(resolved, resolved))!;
+    expect(d.id).toBe("cast-another");
+    expect(d.anchor).toEqual({ label: "your hand" });
+    // The next one goes on the stack: the step's own card again.
+    const next = elves();
+    const waiting = board({ mine: [f(), elves({ summoning_sick: true })], stack: [next] });
+    expect(ON_THE_STACK.first!(ctx(waiting, resolved))).toBeNull();
+    // It resolves: done.
+    const arrived = board({
+      mine: [f(), elves({ summoning_sick: true }), { ...next, summoning_sick: true }],
+    });
+    expect(ON_THE_STACK.done!(ctx(arrived, resolved))).toBe(true);
+    // In the bot's turn it waits for the player's own.
+    expect(ON_THE_STACK.first!(ctx(board({ active: 1, seq: 2 }), resolved))?.id).toBe("await-turn");
+  });
+
+  it("gives up only when no creature is left to cast this game", () => {
+    const none = board({ hand: [forest()], mine: [f()] });
+    expect(ON_THE_STACK.cannot!(ctx(none, none))).toBe("no creature left to cast this game");
+    expect(ON_THE_STACK.cannot!(ctx(withLibrary(none, 10), none))).toBeNull();
   });
 
   it("gives up when the spell leaves the stack without arriving", () => {
@@ -480,9 +521,8 @@ describe("step 8: your spell is on the stack", () => {
     const waiting = board({ mine: [land], stack: [elves()] });
     const countered = board({ mine: [land] });
     expect(ON_THE_STACK.done!(ctx(countered, waiting))).toBe(false);
-    expect(ON_THE_STACK.cannot!(ctx(countered, waiting))).toBe(
-      "the spell left the stack without resolving",
-    );
+    expect(ON_THE_STACK.cannot!(ctx(countered, waiting))).toBeNull();
+    expect(ON_THE_STACK.first!(ctx(countered, waiting))?.id).toBe("cast-another");
   });
 });
 
@@ -657,9 +697,28 @@ describe("step 13: attack", () => {
     expect(id({ step: "declare_attackers" })).toBe("autopass-off");
   });
 
-  it("cannot happen with no creature on your board", () => {
-    expect(ATTACK.cannot!(ctx(board({ mine: [forest()] })))).toBe("no creature to attack with");
+  // #2992: no creature yet is a wait, not a give-up.
+  it("waits for a creature while one can still come", () => {
+    const none = board({ mine: [forest()] });
+    expect(ATTACK.cannot!(ctx(none))).toBeNull();
+    const d = ATTACK.first!(ctx(none))!;
+    expect(d.id).toBe("no-attacker");
+    expect(d.anchor).toEqual({ label: "your hand" });
+    // In the bot's turn, the turn detours come first.
+    expect(ATTACK.first!(ctx(board({ mine: [forest()], active: 1, seq: 2 })))?.id).toBe(
+      "await-turn",
+    );
     expect(ATTACK.cannot!(ctx(board({ mine: [ready()] })))).toBeNull();
+  });
+
+  it("gives up only when no creature can attack this game", () => {
+    expect(ATTACK.cannot!(ctx(board({ mine: [forest()], hand: [forest()] })))).toBe(
+      "no creature left to attack with this game",
+    );
+    expect(ATTACK.cannot!(ctx(withLibrary(board({ mine: [forest()], hand: [] }), 5)))).toBeNull();
+    expect(ATTACK.cannot!(ctx({ ...board({ mine: [ready()] }), state: "ended" } as GameView))).toBe(
+      "the game is over",
+    );
   });
 });
 
@@ -853,8 +912,10 @@ describe("a whole tutorial", () => {
     expect(run.current().step).toBe(HANDOFF);
     expect(log.mock.calls.map((c) => c[0])).toEqual([
       "tutorial: step play-land cannot happen (no land in hand); advancing",
-      "tutorial: step cast-creature cannot happen (no creature in hand); advancing",
+      "tutorial: step cast-creature cannot happen (no creature left to cast this game); advancing",
     ]);
+    // The card says so (#2992): both skipped, with the first reason.
+    expect(run.current().skipped).toEqual({ steps: [4, 7], why: "no land in hand" });
   });
 });
 

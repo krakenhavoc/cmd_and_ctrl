@@ -267,6 +267,7 @@ var gameFields = plan(
 	// roll; RestoreFrom deliberately does not rewind it.
 	"tableRollNext", carried, "GameSnapshot.TableRollNext",
 	"tableRolls", dropped, "restores empty: the ring an undo re-emits table rolls from (ADR 0121 §5); after a restore there is no undo stack to cross, so an empty ring changes nothing",
+	"openingHands", dropped, "restores empty: the practice table's scripted opening hand (ADR 0076 §2.2), read once by the deal; a practice table writes no restore point, and a restore after the deal has nothing left to deal",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
 

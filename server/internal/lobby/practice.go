@@ -120,6 +120,12 @@ type PracticeHuman struct {
 	Owner    string
 	DeckName string
 	Cards    []game.Card
+	// OpeningHand is the scripted opening seven, by card name
+	// (game.Game.ScriptOpeningHand, ADR 0076 §2.2 as amended
+	// 2026-10-11): the deal takes these out of the shuffled library
+	// and fills the rest from the top. Empty deals a random seven. A
+	// mulligan always deals a random seven.
+	OpeningHand []string
 }
 
 // PracticeBot is the practice table's bot seat.
@@ -194,6 +200,9 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 		// AddPlayer installs the deck; ReplaceDeck marks it as a real
 		// one (DeckImported), as every other seated deck is.
 		if err = g.ReplaceDeck(humanP.ID, human.Cards); err != nil {
+			return err
+		}
+		if err = g.ScriptOpeningHand(humanP.ID, human.OpeningHand); err != nil {
 			return err
 		}
 		if human.Identity.Populated() {

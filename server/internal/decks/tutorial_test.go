@@ -166,6 +166,40 @@ func TestTutorialPlayerDeckTeachesTheLessons(t *testing.T) {
 		t.Errorf("the player's tutorial deck has %d lands; step 3 needs one in the opening hand", lands)
 	}
 	if rightClick < 12 {
-		t.Errorf("only %d cards in the player's tutorial deck have a right-click ability; step 7 needs one in play", rightClick)
+		t.Errorf("only %d cards in the player's tutorial deck have a right-click ability; step 9 needs one in play", rightClick)
+	}
+}
+
+// TestTutorialOpeningHandIsInTheDeck pins the practice table's scripted
+// opening seven (ADR 0076 §2.2, amended 2026-10-11, #2992) to the deck
+// it is dealt from: seven names, each one the deck holds enough copies
+// of, three Forests for the land lessons, and Llanowar Elves, the
+// one-drop whose mana ability step 9 right-clicks.
+func TestTutorialOpeningHandIsInTheDeck(t *testing.T) {
+	hand := TutorialOpeningHand()
+	if len(hand) != 7 {
+		t.Fatalf("the scripted opening hand has %d cards, want 7", len(hand))
+	}
+	want := map[string]int{}
+	for _, n := range hand {
+		want[n]++
+	}
+	have := map[string]int{}
+	oracle := map[string]string{}
+	for _, c := range TutorialPlayer().Cards() {
+		have[c.Name] += c.Copies()
+		oracle[c.Name] = c.OracleID
+	}
+	for n, k := range want {
+		if have[n] < k {
+			t.Errorf("the scripted hand deals %d %s; the deck holds %d", k, n, have[n])
+		}
+	}
+	if want["Forest"] != 3 {
+		t.Errorf("the scripted hand has %d Forests, want 3", want["Forest"])
+	}
+	spec, ok := effects.Lookup(oracle["Llanowar Elves"])
+	if want["Llanowar Elves"] != 1 || !ok || len(spec.ManaAbilities) == 0 {
+		t.Error("the scripted hand needs Llanowar Elves, a one-drop with a mana ability for step 9")
 	}
 }

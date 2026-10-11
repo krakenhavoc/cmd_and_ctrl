@@ -4,10 +4,12 @@
 import { describe, it, expect, afterEach, beforeEach, vi } from "vitest";
 import {
   HINT_AFTER_MS,
+  NO_ANCHOR_NOTE,
   TUTORIAL_STEP_COUNT,
   anchorsOf,
   copyText,
   createTutorialRun,
+  skipNoteText,
   spotAnchors,
   spotlit,
   statusText,
@@ -251,6 +253,48 @@ describe("detours, cannot, hover and advance", () => {
     expect(log).toHaveBeenCalledWith(
       "tutorial: step act cannot happen (no land in hand); advancing",
     );
+  });
+
+  // #2992: a step that gives up says so on the next card, in one line.
+  it("notes a step that gave up on the next card, until a step ends another way", () => {
+    const gives = (id: string, n: number, why: string) =>
+      action({ id, n, cannot: (c) => (turnOf(c.view) === 4 ? why : null) });
+    const run = createTutorialRun(
+      script(
+        gives("a", 7, "the game is over"),
+        gives("b", 8, "something else"),
+        action({ id: "c", n: 9, done: (c) => turnOf(c.view) === 5 }),
+        action({ id: "d", n: 10 }),
+      ),
+      { viewerID: "me", log: vi.fn() },
+    );
+    run.start();
+    expect(run.current().skipped).toBeNull();
+    run.observe(v(4));
+    // Both gave up, one after the other: one note, the first reason.
+    expect(run.current().step.id).toBe("c");
+    expect(run.current().skipped).toEqual({ steps: [7, 8], why: "the game is over" });
+    expect(skipNoteText(run.current().skipped)).toBe("Skipped steps 7 and 8: the game is over.");
+    run.observe(v(5));
+    expect(run.current().step.id).toBe("d");
+    expect(run.current().skipped).toBeNull();
+  });
+
+  it("notes a step with no anchor, and not one the player skipped", () => {
+    const run = createTutorialRun(
+      script(action({ id: "a", n: 7 }), action({ id: "b", n: 8 }), action({ id: "c", n: 9 })),
+      {
+        viewerID: "me",
+        log: vi.fn(),
+      },
+    );
+    run.start();
+    run.anchorMissing("a");
+    expect(skipNoteText(run.current().skipped)).toBe(`Skipped step 7: ${NO_ANCHOR_NOTE}.`);
+    run.skipStep();
+    expect(run.current().step.id).toBe("c");
+    expect(run.current().skipped).toBeNull();
+    expect(skipNoteText(null)).toBe("");
   });
 
   it("checks done before cannot: a step that just completed is not 'cannot'", () => {

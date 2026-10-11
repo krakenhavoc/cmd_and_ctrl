@@ -43,9 +43,11 @@
     TUTORIAL_STEP_COUNT,
     copyText,
     createTutorialRun,
+    skipNoteText,
     spotAnchors,
     spotlit,
     statusText,
+    tutorialRunning,
     type CopyContext,
     type TutorialStep,
   } from "../../tutorial";
@@ -163,10 +165,18 @@
     return () => clearTimeout(t);
   });
 
+  // While the card is up, the ability menu leaves out its Sandbox rows
+  // (Card.svelte), so a right-click shows only the card's own abilities
+  // (ADR 0076 §2.2 as amended 2026-10-11, #2992).
+  $effect(() => {
+    tutorialRunning.set(snap.visible);
+  });
+
   onDestroy(() => {
     unsubBus();
     unsubRun();
     run.destroy();
+    tutorialRunning.set(false);
   });
 
   // ---- The card preview ----
@@ -265,6 +275,9 @@
     snap.detour ? "" : copyText(recovering ? snap.step.recover?.hint : snap.step.hint, copyCtx),
   );
   const status = $derived(statusText(snap.step, { ...run.context(), view, client: { autopass } }));
+  // The steps the tutorial moved past by itself on the way here, in one
+  // line (#2992): "Skipped step 7: the game is over."
+  const note = $derived(skipNoteText(snap.skipped));
 
   // ---- Placement ----
   // The phone strip can fold to one line; a desktop card cannot, so a
@@ -323,6 +336,7 @@
       {body}
       {hint}
       {status}
+      {note}
       {minimised}
       onStart={() => run.start()}
       onSkipTutorial={() => run.close()}

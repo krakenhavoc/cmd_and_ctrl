@@ -121,6 +121,41 @@ that makes a tutorial worse.
 > that wins it hands the first turn to the player (`aiseat.SeatSpec.FirstTurnTo`),
 > so seat 0 still takes turn one. The bot stays on the `random` tier.
 
+> **Amended 2026-10-11 (S65, [#2992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2992); owner
+> decision, option 3: a scripted hand plus waiting):** a shuffled opening seven left
+> about one hand in three with no one-drop, and then steps 7, 8 and 13 gave up in
+> round one, so the player never cast a spell, saw the stack or attacked. Five
+> changes:
+>
+> - **The player's opening seven is scripted.** The practice table deals the
+>   player three Forests, Llanowar Elves, Elvish Mystic, Elvish Visionary and
+>   Llanowar Visionary (`decks.TutorialOpeningHand`, dealt by
+>   `game.Game.ScriptOpeningHand`). The deal still shuffles first and takes these
+>   seven out of the shuffled library by name, so the rest of the library stays
+>   shuffled. The bot's hand is not scripted. This replaces "both decks are
+>   shuffled" for the player's opening hand only.
+> - **A mulligan deals a normal random seven.** A player who sends the scripted
+>   hand back has asked for a different one, and the steps below wait for a turn
+>   in which they can still happen. The script is not persisted: a practice table
+>   writes no restore point.
+> - **Steps 7, 8 and 13 wait instead of giving up.** While the lesson can still
+>   happen this game, each waits for the player's next main phase or combat, with
+>   a detour that says why: "Nothing to cast yet" (7 and 8, when the server lists
+>   no creature cast in the player's main phase), "Cast another creature" (8, when
+>   the spell has already left the stack), and "First, a creature to attack with"
+>   (13). Each gives up only when the lesson cannot happen this game: the game is
+>   over, or no creature is left in hand, in the command zone or in the library.
+> - **A skipped step says so.** A step that gives up, or has no anchor, puts one
+>   line on the next card ("Skipped step 7: the game is over."). Steps that give
+>   up one after another share the line, with the first reason. The console line
+>   stays. Skip step, a completion or a timeout clears it.
+> - **Every one-drop in the player's deck is a mana creature,** so step 9's
+>   right-click always opens a real ability. The nine non-mana one-drops are
+>   replaced by two-mana mana creatures, all graded `CompletenessFull` and none
+>   asking anything when they resolve. **The ability menu leaves out its Sandbox
+>   rows while the coach is up** (`tutorialRunning`): they were the only live rows
+>   on a card with no ability of its own.
+
 A private game with one human seat and one `random`-tier bot, both on a fixed
 prebuilt deck, created by a dedicated route rather than the ordinary lobby flow
 and **not listed in the lobby**.
@@ -502,7 +537,8 @@ and the build, so §2.2 and §3 map onto it as follows:
   - `strictMana` off does not mean every spell can be cast. The server's
     move list still leaves out a spell the player cannot pay for, and the
     hand dims it. Step 6's copy points at the lit cards. When no creature
-    in hand is castable, the step gives up and logs.
+    in hand is castable, the step gives up and logs. (Since §2.2's
+    amendment of 2026-10-11 it waits for the next main phase instead.)
   - The coach's cell squeezed the viewer's creature row. §2.3's second
     amendment fixed the layout, so step 7 points at the newest creature
     with a menu again, then at a permanent with one.
