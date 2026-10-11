@@ -3656,6 +3656,7 @@ From the tracker, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/298
    - join a friend's table through an invite link.
 4. Bug-report spam is capped, which a scripted burst verifies, and the model bots can't exceed their budget.
 5. The owner signs off on the soft-launch post.
+6. Launch week: before a wide post, the owner decides from the soft launch's real concurrency whether to bump the prod VM for the spike. Re-run `scripts/loadtest.mjs` after any host change. The measured ceiling is about 30 tables ([Capacity](environments.md#capacity)), and a solo stranger playing bots takes a whole table.
 
 ### Status
 
