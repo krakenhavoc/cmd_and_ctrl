@@ -149,9 +149,12 @@
   // While the opening roll is open nothing is dealt, so the read starts
   // once the hand is (ADR 0125 §5.2, heldByOpeningRoll).
   const held = $derived(snap.held);
+  const detouring = $derived(snap.detour != null);
   $effect(() => {
     const step = currentStep;
-    if (canHover || !step.hover || !shown || held) return;
+    // Not while a detour is up either: the step is current behind
+    // "First, keep your hand", and its read starts once that is done.
+    if (canHover || !step.hover || !shown || held || detouring) return;
     const t = setTimeout(
       () => run.advance(step.id, "cannot be hovered on this device"),
       touchHoverStepMs,
@@ -166,6 +169,9 @@
   });
 
   // ---- The spotlight ----
+  // Hover steps whose anchor the pointer has been off since they showed.
+  // Outside the effect so a republish of the same step does not forget it.
+  const pointerEntered = new Set<string>();
   let rect: AnchorRect | null = $state(null);
   $effect(() => {
     const step = snap.step;
@@ -203,7 +209,13 @@
           return !!el && isHovering(el);
         });
         const now = Date.now();
-        if (!over) hoverSince = null;
+        // A rest counts only once the pointer has been off the anchor
+        // since this step appeared: Keep hand leaves it resting where
+        // the hand lands, and that is not the gesture the step teaches.
+        if (!over) {
+          hoverSince = null;
+          pointerEntered.add(step.id);
+        } else if (!pointerEntered.has(step.id)) hoverSince = null;
         else if (hoverSince === null) hoverSince = now;
         else if (now - hoverSince >= dwell.ms) run.hovered(step.id);
       }

@@ -429,6 +429,42 @@ describe("TutorialCoach: the middle steps", () => {
     expect(m.log).not.toHaveBeenCalled();
   });
 
+  it("does not count a pointer already on the anchor when the step showed, until it leaves and returns", () => {
+    vi.useFakeTimers();
+    handEl();
+    const over = true;
+    let here = over;
+    const m = mount([WELCOME, rest, HANDOFF], { canHover: true, isHovering: () => here });
+    vi.advanceTimersByTime(3_000);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    here = false;
+    vi.advanceTimersByTime(200);
+    here = true;
+    vi.advanceTimersByTime(800);
+    flushSync();
+    expect(on(m, "That is the whole interface")).toBe(true);
+  });
+
+  it("does not arm a touch screen's read while the step's detour is showing", () => {
+    vi.useFakeTimers();
+    handEl();
+    const detoured: TutorialStep = {
+      ...rest,
+      first: () => ({
+        id: "keep",
+        title: "First, keep your hand",
+        body: "Keep it.",
+        anchor: { label: L.yourHand },
+      }),
+    };
+    const m = mount([WELCOME, detoured, HANDOFF], { canHover: false, touchHoverStepMs: 5_000 });
+    vi.advanceTimersByTime(60_000);
+    flushSync();
+    expect(on(m, "First, keep your hand")).toBe(true);
+    expect(m.log).not.toHaveBeenCalled();
+  });
+
   it("takes the step's own event as the whole gesture on a device with no hover", () => {
     vi.useFakeTimers();
     handEl();
