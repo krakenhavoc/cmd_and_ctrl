@@ -40,6 +40,7 @@
   import { KEYWORD_ICONS } from "../../keywordIcons";
   import { openCardMenu } from "../../contextMenu";
   import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
+  import { tutorialRunning } from "../../tutorial";
   import {
     acrossFor,
     castAnywayItem,
@@ -400,13 +401,21 @@
     onMenuAction && onActivateAbility ? manualLoyaltyRows(card, view, viewerID ?? null) : [],
   );
   // ADR 0117 §3: the Sandbox row, on every permanent the viewer
-  // controls. A Card with no viewer in scope trusts its parent.
+  // controls. A Card with no viewer in scope trusts its parent. Not while
+  // the tutorial runs (ADR 0076 §2.2 as amended 2026-10-11, #2992): its
+  // right-click lesson shows the card's own abilities, and a Sandbox row
+  // was the only live one on a card that has none.
   const sandbox = $derived(
-    !!onRawTap && (viewerID == null || (card.controller || card.owner) === viewerID),
+    !!onRawTap &&
+      !$tutorialRunning &&
+      (viewerID == null || (card.controller || card.owner) === viewerID),
   );
   // ADR 0118 §2: the Sandbox section's Cast anyway row, one builder with
-  // the admin menu's (contextMenu.logic.ts castAnywayItem).
-  const castAnywayRow = $derived(onCastAnyway ? castAnywayItem(castAnywayBlocked) : undefined);
+  // the admin menu's (contextMenu.logic.ts castAnywayItem). Hidden during
+  // the tutorial with the rest of the Sandbox section.
+  const castAnywayRow = $derived(
+    onCastAnyway && !$tutorialRunning ? castAnywayItem(castAnywayBlocked) : undefined,
+  );
   // ADR 0131 §4: the Payment group's row, a label contract.
   const payLifeRow = $derived<MenuItem | undefined>(
     onPayLife ? { id: "pay-life", label: PAY_LIFE_LABEL, hint: PAY_LIFE_TITLE } : undefined,

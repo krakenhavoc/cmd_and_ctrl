@@ -162,6 +162,76 @@ func TestPracticeTableOpensTheOpeningRoll(t *testing.T) {
 	}
 }
 
+// ADR 0076 §2.2 as amended 2026-10-11 (#2992): the practice table deals
+// the human its scripted opening hand once the roll is decided, and the
+// bot a random one.
+func TestPracticeTableDealsTheScriptedHand(t *testing.T) {
+	l, _, _ := newPracticeLobby(t)
+	human, bot := practiceSeats("user:a")
+	human.OpeningHand = []string{"Mountain 17", "Mountain 3", "Mountain 11"}
+	meta, playerID, err := l.CreatePractice(human, bot)
+	if err != nil {
+		t.Fatalf("CreatePractice: %v", err)
+	}
+	g := l.RoomOf(meta.ID).Game
+	for i := 0; g.OpeningRollOpen(); i++ {
+		if i > 64 {
+			t.Fatal("the opening roll did not settle")
+		}
+		var chooser uuid.UUID
+		var owe []uuid.UUID
+		g.ReadSnapshot(func() {
+			if c := g.OpeningRoll.Chooser; c >= 0 {
+				chooser = g.Seats[c].ID
+				return
+			}
+			round := g.OpeningRoll.Rounds[len(g.OpeningRoll.Rounds)-1]
+			rolled := map[int]bool{}
+			for _, d := range round.Rolls {
+				rolled[d.Seat] = true
+			}
+			for _, s := range round.Seats {
+				if !rolled[s] {
+					owe = append(owe, g.Seats[s].ID)
+				}
+			}
+		})
+		if chooser != uuid.Nil {
+			if err := g.ChooseStartingPlayer(chooser, 0); err != nil {
+				t.Fatalf("ChooseStartingPlayer: %v", err)
+			}
+			break
+		}
+		for _, id := range owe {
+			if err := g.RollOpening(id); err != nil {
+				t.Fatalf("RollOpening: %v", err)
+			}
+		}
+	}
+	var hand []string
+	g.ReadSnapshot(func() {
+		for _, p := range g.Seats {
+			if p.ID == playerID {
+				for _, c := range p.Hand.Cards {
+					hand = append(hand, c.Name)
+				}
+			}
+		}
+	})
+	if len(hand) != 7 {
+		t.Fatalf("the player was dealt %d cards, want 7", len(hand))
+	}
+	for _, want := range human.OpeningHand {
+		found := false
+		for _, n := range hand {
+			found = found || n == want
+		}
+		if !found {
+			t.Errorf("the player's hand %v has no %s; the script dealt it", hand, want)
+		}
+	}
+}
+
 func TestPracticeTableIsUnlistedAndUnpersisted(t *testing.T) {
 	l, _, _ := newPracticeLobby(t)
 	real, err := l.Create("A real table")

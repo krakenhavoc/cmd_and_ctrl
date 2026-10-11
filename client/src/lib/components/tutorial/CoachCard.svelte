@@ -33,6 +33,11 @@
     hint?: string;
     /** The status line; defaults by state. */
     status?: string;
+    /**
+     * One line about the steps the tutorial moved past by itself on the
+     * way here ("Skipped step 7: …"), or "" (#2992).
+     */
+    note?: string;
     /** Phone strip folded to one line. */
     minimised?: boolean;
     onStart?: () => void;
@@ -51,6 +56,7 @@
     body,
     hint = "",
     status,
+    note = "",
     minimised = false,
     onStart,
     onSkipTutorial,
@@ -86,6 +92,9 @@
   </div>
   {#if !minimised}
     <div class="coach-copy" aria-live="polite">
+      {#if note}
+        <p class="coach-note">{note}</p>
+      {/if}
       <h2 class="coach-title">{title}</h2>
       <p class="coach-body">{body}</p>
       {#if showHint}
@@ -190,6 +199,12 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+  }
+  .coach-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: var(--fg-dim);
   }
   .coach-title {
     margin: 0;

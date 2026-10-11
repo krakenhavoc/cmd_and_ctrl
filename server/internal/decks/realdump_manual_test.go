@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards/effects"
 )
 
 // realdump_manual_test.go — the half of the deck checks that needs real
@@ -162,6 +163,45 @@ func TestRealDumpTutorialBotDeckIsSlow(t *testing.T) {
 				t.Errorf("%s says %q: %q", c.Name, word, c.OracleText)
 			}
 		}
+	}
+}
+
+// TestRealDumpTutorialPlayerOneDropsTapForMana is the amendment of
+// 2026-10-11 to ADR 0076 §2.2 (#2992): every one-drop in the player's
+// deck is a mana creature, so whichever one a hand casts, step 9's
+// right-click opens a real ability. Mana value needs the dump; the
+// mana ability is the catalog's.
+func TestRealDumpTutorialPlayerOneDropsTapForMana(t *testing.T) {
+	path := os.Getenv("CMDCTRL_SCRYFALL_DUMP")
+	if path == "" {
+		t.Skip("set CMDCTRL_SCRYFALL_DUMP to run against the real dump")
+	}
+	idx := cards.NewIndex()
+	if _, err := idx.Load(path); err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	list, err := TutorialPlayer().Load(idx)
+	if err != nil {
+		t.Fatalf("Load: %v", err)
+	}
+	oneDrops := 0
+	for _, c := range list.Mainboard {
+		if !strings.Contains(c.TypeLine, "Creature") {
+			continue
+		}
+		switch c.ManaCost {
+		case "{G}", "{1}", "{C}":
+		default:
+			continue
+		}
+		oneDrops++
+		spec, ok := effects.Lookup(c.OracleID.String())
+		if !ok || len(spec.ManaAbilities) == 0 {
+			t.Errorf("%s is a one-drop with no mana ability; step 9 would right-click a menu with nothing in it", c.Name)
+		}
+	}
+	if oneDrops < 2 {
+		t.Errorf("the player's deck has %d one-drops; the scripted hand deals two", oneDrops)
 	}
 }
 

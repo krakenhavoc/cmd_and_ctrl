@@ -453,10 +453,12 @@ func (g *Game) dealAndBeginLocked(startingSeat int) {
 			continue
 		}
 		p.Library.Shuffle(g.randForLocked(rngStream{kind: rngStreamShuffle, player: p.ID}))
-		// Deal an opening hand of 7. If the library is too short to
-		// satisfy 7 (a malformed deck), stop early — the partial hand
-		// is still valid and tests can use small decks.
-		for i := 0; i < OpeningHandSize; i++ {
+		// Deal an opening hand of 7: the practice table's scripted
+		// cards first (scripted_hand.go, ADR 0076 §2.2), then the rest
+		// from the top. If the library is too short to satisfy 7 (a
+		// malformed deck), stop early — the partial hand is still
+		// valid and tests can use small decks.
+		for i := g.dealScriptedLocked(p); i < OpeningHandSize; i++ {
 			c, err := p.Library.PopTop()
 			if err != nil {
 				break

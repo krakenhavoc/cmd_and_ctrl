@@ -13,7 +13,14 @@ import Board from "./components/board/Board.svelte";
 import CoachCard from "./components/tutorial/CoachCard.svelte";
 import TutorialCoach from "./components/tutorial/TutorialCoach.svelte";
 import { get } from "svelte/store";
-import { ANCHOR_GRACE_MS, POLL_MS, type CoachState, type TutorialStep } from "./tutorial";
+import {
+  ANCHOR_GRACE_MS,
+  NO_ANCHOR_NOTE,
+  POLL_MS,
+  tutorialRunning,
+  type CoachState,
+  type TutorialStep,
+} from "./tutorial";
 import {
   COMMANDER,
   HANDOFF,
@@ -336,6 +343,24 @@ describe("TutorialCoach", () => {
     flushSync();
     expect(m.container.textContent).toContain("That is the whole interface");
     expect(m.log).toHaveBeenCalledWith(expect.stringMatching(/read-hand has no anchor/));
+  });
+
+  // #2992: a skipped step says so on the next card, in one line, and
+  // the coach's flag hides the ability menu's Sandbox rows while it is up.
+  it("says on the next card that a step was skipped, and why", () => {
+    vi.useFakeTimers();
+    const m = mount([WELCOME, spot, HANDOFF]);
+    expect(get(tutorialRunning)).toBe(true);
+    click(button(m.container, "Start")!);
+    expect(m.container.querySelector(".coach-note")).toBeNull();
+    vi.advanceTimersByTime(ANCHOR_GRACE_MS + POLL_MS * 2);
+    flushSync();
+    expect(m.container.textContent).toContain("That is the whole interface");
+    expect(m.container.querySelector(".coach-note")?.textContent).toBe(
+      `Skipped step ${spot.n}: ${NO_ANCHOR_NOTE}.`,
+    );
+    click(button(m.container, "Finish")!);
+    expect(get(tutorialRunning)).toBe(false);
   });
 
   it("waits out an anchor that renders a moment late", () => {

@@ -20,9 +20,12 @@ package decks
 // The player's deck has to put the tutorial's lessons in the player's
 // hand on the first three turns: a land to play, a cheap creature to
 // cast, a permanent with an ability behind right-click, and a body to
-// attack with. So it is half Forests, and the other half is creatures
-// at one to three mana, most of which tap for mana — every mana
-// creature is a right-click ability (ADR 0076 §2.1 step 7). Nothing in
+// attack with. The opening seven is scripted for that
+// (TutorialOpeningHand). The deck behind it is half Forests, and the
+// other half is creatures at one to three mana, most of which tap for
+// mana — every mana creature is a right-click ability (ADR 0125 §5.1
+// step 9). Every one-drop is one, so a hand after a mulligan that casts
+// a one-drop still has a real ability to right-click. Nothing in
 // it asks the player a question when it resolves: no targets, no
 // searches, no "you may". The tutorial teaches the client, not the
 // rules, and a prompt it has not explained is a lesson it did not
@@ -53,6 +56,29 @@ const (
 // TutorialPlayer is the deck the practice table seats the player with.
 func TutorialPlayer() Deck { return tutorialPlayer }
 
+// TutorialOpeningHand is the opening seven the practice table deals the
+// player (ADR 0076 §2.2, amended 2026-10-11, #2992), by card name, for
+// game.Game.ScriptOpeningHand. Every lesson of the tutorial's first two
+// turns has its card in it: a Forest to play and tap on turn one, a
+// one-drop to cast off it (the stack, then right-click on its mana
+// ability), and on turn two a body that can attack. A second one-drop
+// and a two-drop give turn two something to cast as well, and the
+// seventh card is a three-drop for turn three. The library stays
+// shuffled; only these seven are chosen.
+//
+// A mulligan deals a normal random seven. A player who sends this hand
+// back has asked for another, and the steps that need a creature wait
+// for a turn in which one can still be cast.
+func TutorialOpeningHand() []string {
+	return []string{
+		"Forest", "Forest", "Forest",
+		"Llanowar Elves",
+		"Elvish Mystic",
+		"Elvish Visionary",
+		"Llanowar Visionary",
+	}
+}
+
 // TutorialBot is the deck the practice table seats its bot with.
 func TutorialBot() Deck { return tutorialBot }
 
@@ -67,21 +93,18 @@ var tutorialPlayer = Deck{
 	Summary:   "The tutorial's deck: Forests and cheap green creatures, most of which tap for mana.",
 	Commander: Card{Name: "Marwyn, the Nurturer", OracleID: "ee35de1c-aef1-4bd4-85fd-fe77bc927790", Identity: "G"},
 	Mainboard: []Card{
-		// One-drops. The mana creatures are the right-click lesson.
+		// One-drops, every one a mana creature (ADR 0076 §2.2, amended
+		// 2026-10-11): whichever one the player casts, step 9's
+		// right-click opens a real ability. These five are every
+		// catalog-Full mono-green one-mana creature that taps for mana
+		// by itself (Gilded Goose needs a Food); Llanowar Elves and
+		// Elvish Mystic are the
+		// scripted opening hand's two (TutorialOpeningHand).
 		{Name: "Llanowar Elves", OracleID: "68954295-54e3-4303-a6bc-fc4547a4e3a3", Identity: "G"},
 		{Name: "Elvish Mystic", OracleID: "3f3b2c10-21f8-4e13-be83-4ef3fa36e123", Identity: "G"},
 		{Name: "Fyndhorn Elves", OracleID: "df317532-7d36-40fd-938f-e972749c8792", Identity: "G"},
 		{Name: "Boreal Druid", OracleID: "2fcc69ff-8ab5-4e14-afe3-db892049a872", Identity: "G"},
 		{Name: "Birds of Paradise", OracleID: "d3a0b660-358c-41bd-9cd2-41fbf3491b1a", Identity: "G"},
-		{Name: "Essence Warden", OracleID: "6ca2a89e-7032-4864-b4e9-66f3178f90ab", Identity: "G"},
-		{Name: "Experiment One", OracleID: "8520ee67-439b-4f15-838b-420bacbb8b13", Identity: "G"},
-		{Name: "Sazh's Chocobo", OracleID: "c2b082b4-5d9c-4125-b353-d1cf4f334720", Identity: "G"},
-		{Name: "Virulent Emissary", OracleID: "3d4bec90-7bbc-4385-a2b8-303c7a8d0a0f", Identity: "G"},
-		{Name: "Dragon Sniper", OracleID: "913dbce2-6805-453f-a9c3-64f1cc658627", Identity: "G"},
-		{Name: "Gladecover Scout", OracleID: "385c1208-bfea-44e2-b236-4f38bc90db9f", Identity: "G"},
-		{Name: "Memnite", OracleID: "7663ac7c-1de3-4250-b96a-fae9dbd66a27"},
-		{Name: "Ornithopter", OracleID: "a3a98bc9-caa0-49b7-951c-fe4e4f54e4ba"},
-		{Name: "Phyrexian Walker", OracleID: "7af75024-6c9b-4844-aeb6-81de25464822"},
 
 		// Two-drops.
 		{Name: "Ambush Viper", OracleID: "8957f7c2-040c-4048-9f21-efa7c97682b7", Identity: "G"},
@@ -99,6 +122,17 @@ var tutorialPlayer = Deck{
 		{Name: "Wall of Blossoms", OracleID: "ef4d5fb3-70a3-433d-a9d3-18b2beb8d79f", Identity: "G"},
 		{Name: "Wall of Roots", OracleID: "3a21a6ae-b2f2-4f0c-acfd-5f3e8d63fd2f", Identity: "G"},
 		{Name: "Crashing Drawbridge", OracleID: "328d5ef0-b25e-4f2a-80fe-35c6ae419e8a"},
+		// The nine non-mana one-drops' slots (#2992): two-mana mana
+		// creatures, none of which asks anything when it resolves.
+		{Name: "Beastcaller Savant", OracleID: "e28227eb-b3b5-42fa-b597-1fefd2a70186", Identity: "G"},
+		{Name: "Bloom Tender", OracleID: "0c23fefe-9891-4dd8-9bb1-eebdb3274e31", Identity: "G"},
+		{Name: "Bugenhagen, Wise Elder", OracleID: "4228dd75-1fdd-48dc-9259-b841b2e46c64", Identity: "G"},
+		{Name: "Devoted Druid", OracleID: "cb814e16-acf7-41d5-a357-1323dcc369f3", Identity: "G"},
+		{Name: "Fanatic of Rhonas", OracleID: "7973820b-fdaf-46ec-9e3e-d4c0e77b5067", Identity: "G"},
+		{Name: "Ilysian Caryatid", OracleID: "5f2be3c2-060a-43e1-b63b-9cd3c78ffcb0", Identity: "G"},
+		{Name: "Incubation Druid", OracleID: "34428f42-03ac-4795-8286-6cbea796df2b", Identity: "G"},
+		{Name: "Servant of the Conduit", OracleID: "df1a8846-b4da-4e9b-8cf3-ee687e4c606b", Identity: "G"},
+		{Name: "Twitching Doll", OracleID: "fd6e1967-237a-41f6-bbf4-2c869f9447c8", Identity: "G"},
 
 		// Three and four.
 		{Name: "Alloy Myr", OracleID: "efb0394c-2a45-4dd8-bca3-08704056fa31"},

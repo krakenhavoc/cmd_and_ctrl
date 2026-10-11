@@ -1588,7 +1588,13 @@ turn to the player**: it sends the ordinary `choose_starting_player`
 naming the player's seat, which CR 103.1 allows (the winner chooses any
 player). A player who wins chooses for themselves, and may hand it to
 the bot. A bot at any other table chooses as
-[ADR 0121](decisions/0121-animated-dice.md) §4 has it. The response is a join's: a
+[ADR 0121](decisions/0121-animated-dice.md) §4 has it. When the deal
+comes, the player's opening seven is **scripted**
+([ADR 0076](decisions/0076-tutorial.md) §2.2, amended 2026-10-11): three
+Forests, Llanowar Elves, Elvish Mystic, Elvish Visionary and Llanowar
+Visionary, taken out of the shuffled library, which stays shuffled. A
+mulligan deals a random seven, and the bot's hand is never scripted.
+The response is a join's: a
 fresh player session for the seat (`token`, `expires_at`,
 `principal`), the `game` with `practice: true`, and `player_id`. The
 session cookie is set to it. The seat carries the caller's Discord

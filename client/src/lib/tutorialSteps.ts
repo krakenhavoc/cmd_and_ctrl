@@ -59,8 +59,17 @@
 //     and the cast agree: the server's move list leaves out what the
 //     player cannot pay for and the hand dims it, and a click on a lit
 //     card taps the lands for it, spending mana already in the pool
-//     first. Step 7 points at the lit cards, and gives up when no
-//     creature in hand is castable.
+//     first. Step 7 points at the lit cards.
+//   - The table deals the player a scripted opening seven (ADR 0076
+//     §2.2 as amended 2026-10-11, #2992), so steps 7, 8 and 13 have a
+//     one-drop to cast and attack with on the first try. A mulligan
+//     deals a random seven, so they still wait rather than give up:
+//     with nothing castable, step 7 says so and waits for the next
+//     main phase; a spell that left the stack before step 8 could show
+//     it waits for the next creature; and step 13 waits for a creature
+//     that can attack. Each gives up only when the lesson cannot happen
+//     this game at all (lessonGone): the game is over, or no creature is
+//     left in hand, in the command zone or in the library.
 //   - The commander costs more than two turns of lands can pay, so step
 //     10 teaches where it is and how it is cast, not the cast.
 
@@ -185,6 +194,37 @@ function castableCreature(v: GameView | null, viewerID: string | null): boolean 
   return moves.some((m) => m.kind === "cast" && ids.has(m.source ?? ""));
 }
 
+/** gameOver: the game has ended, or the viewer is out of it. */
+function gameOver(c: StepContext): boolean {
+  return c.view?.state === "ended" || !!seatOf(c.view, c.viewerID)?.eliminated;
+}
+
+/**
+ * creatureToCome: a creature the viewer could still cast this game: one
+ * in hand, a commander in the command zone, or a library left to draw
+ * one from. True when there is no seat to judge.
+ */
+function creatureToCome(c: StepContext): boolean {
+  const me = seatOf(c.view, c.viewerID);
+  if (!me) return true;
+  return (
+    handOf(c.view, c.viewerID).some((h) => isA(h, "Creature")) ||
+    (me.command?.cards ?? []).some((h) => isA(h, "Creature")) ||
+    (me.library?.count ?? 0) > 0
+  );
+}
+
+/**
+ * lessonGone is why a lesson that needs a creature of the viewer's
+ * (steps 7, 8 and 13) cannot happen this game, or null while it can.
+ * The reason is shown to the player on the next card.
+ */
+function lessonGone(c: StepContext, what: string): string | null {
+  if (gameOver(c)) return "the game is over";
+  if (!creatureToCome(c)) return `no creature left to ${what} this game`;
+  return null;
+}
+
 // ---- Copy that names the player's own `next` chord ----
 
 /** "press next (Space)", or plain "press next" when it is unbound. */
@@ -249,6 +289,23 @@ function toMainPhase(c: StepContext, what: string): Detour | null {
       myTurn(c)
         ? `${what} goes down in your main phase. ${PressNext(k)} in the dock until it reads Main.`
         : `${what} goes down on your own turn. ${PressNext(k)} in the dock until it comes round.`,
+    anchor: DOCK,
+  };
+}
+
+/**
+ * nothingToCast is the detour steps 7 and 8 share in the viewer's own
+ * main phase when the server lists no cast for any creature in hand: the
+ * step waits for a turn in which one can be cast, rather than giving up
+ * (ADR 0076 §2.2 as amended 2026-10-11).
+ */
+function nothingToCast(c: StepContext): Detour | null {
+  if (!sorcerySpeed(c) || castableCreature(c.view, c.viewerID) !== false) return null;
+  return {
+    id: "cast-next-turn",
+    title: "Nothing to cast yet",
+    body: (k) =>
+      `No creature in your hand can be cast yet. Play a land if you have one, or ${pressNext(k)} in the dock until your next turn. This step waits for it.`,
     anchor: DOCK,
   };
 }
@@ -386,30 +443,28 @@ export const CAST_CREATURE: TutorialStep = {
     // Already cast one this turn: a creature that has just arrived.
     return permanentsOf(c.view, c.viewerID).some((p) => isA(p, "Creature") && p.summoning_sick);
   },
-  first: (c) => toMainPhase(c, "A creature"),
+  // A hand with nothing castable this turn waits for the next main
+  // phase (nothingToCast), and gives up only when no creature is left
+  // to cast this game (#2992).
+  first: (c) => toMainPhase(c, "A creature") ?? nothingToCast(c),
   cannot: (c) => {
     if (!c.view) return null;
+    if (gameOver(c)) return "the game is over";
     const onStack = (c.view.stack?.cards ?? []).some((s) => s.controller === c.viewerID);
     if (onStack) return null;
-    if (!handOf(c.view, c.viewerID).some((h) => isA(h, "Creature"))) return "no creature in hand";
-    // The table enforces costs through the server's move list, so a
-    // hand of creatures that all cost more than the mana on the table
-    // cannot cast one this turn. Only judged in a main phase, where a
-    // cast would be listed, and only when there is a list to read.
-    if (sorcerySpeed(c) && castableCreature(c.view, c.viewerID) === false) {
-      return "no creature in hand is castable yet";
-    }
-    return null;
+    return lessonGone(c, "cast");
   },
 };
 
 /**
  * Step 8 teaches the stack pile (ADR 0119, ADR 0125 §5.1). It replaces
  * step 7's old "Now let it resolve" detour. It begins with the creature
- * on the stack and completes when the stack has emptied with the
- * creature on the battlefield. It gives up if the stack was already
- * empty when it began (the creature resolved before step 7 saw it on
- * the stack), and if the spell left the stack without arriving.
+ * on the stack and completes when the stack has emptied with a new
+ * creature on the battlefield. If the stack is empty (the creature
+ * resolved before step 7 saw it on the stack, or the spell left it
+ * without arriving), it waits for the next creature the player casts,
+ * with a detour that asks for one (#2992), and gives up only when no
+ * creature is left to cast this game.
  */
 export const ON_THE_STACK: TutorialStep = {
   id: "on-the-stack",
@@ -422,14 +477,27 @@ export const ON_THE_STACK: TutorialStep = {
   anchor: STACK_PILE,
   done: (c) =>
     !!c.start &&
-    !stackEmpty(c.start) &&
     stackEmpty(c.view) &&
     count(c.view, c.viewerID, "Creature") > count(c.start, c.viewerID, "Creature"),
+  first: (c) => {
+    if (!c.view || creatureOnStack(c)) return null;
+    // Nothing of the viewer's on the stack to show: the next creature
+    // they cast waits there.
+    return (
+      toMainPhase(c, "A creature") ??
+      nothingToCast(c) ?? {
+        id: "cast-another",
+        title: "Cast another creature",
+        body: "The stack is empty now. Cast another creature and it waits there, where this step can show it: click a lit creature in your hand.",
+        anchor: HAND,
+      }
+    );
+  },
   cannot: (c) => {
-    if (!c.view || !c.start) return null;
-    if (stackEmpty(c.start)) return "the stack was already empty";
-    if (stackEmpty(c.view)) return "the spell left the stack without resolving";
-    return null;
+    if (!c.view) return null;
+    if (gameOver(c)) return "the game is over";
+    if (creatureOnStack(c)) return null;
+    return lessonGone(c, "cast");
   },
   teaches: ["table.stack"],
 };
@@ -600,6 +668,15 @@ export const ATTACK: TutorialStep = {
         anchor: AUTOPASS,
       };
     }
+    // No creature at all: the step waits for one (#2992).
+    if (count(c.view, c.viewerID, "Creature") === 0) {
+      return {
+        id: "no-attacker",
+        title: "First, a creature to attack with",
+        body: "You have no creature on the battlefield. Cast one when you can; it can attack from your next turn.",
+        anchor: HAND,
+      };
+    }
     if (BEFORE_ATTACKS.has(step)) {
       return {
         id: "to-combat",
@@ -627,8 +704,14 @@ export const ATTACK: TutorialStep = {
     }
     return null;
   },
-  cannot: (c) =>
-    c.view && count(c.view, c.viewerID, "Creature") === 0 ? "no creature to attack with" : null,
+  // Waits, through the detours above, while a creature can still
+  // attack this game; gives up only when none can (#2992).
+  cannot: (c) => {
+    if (!c.view) return null;
+    if (gameOver(c)) return "the game is over";
+    if (count(c.view, c.viewerID, "Creature") > 0) return null;
+    return lessonGone(c, "attack with");
+  },
 };
 
 export const HANDOFF: TutorialStep = {

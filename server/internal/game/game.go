@@ -867,6 +867,12 @@ type Game struct {
 	// roll the whole table watched. Not persisted: after a restore
 	// there is no undo stack to cross.
 	tableRolls []Event
+	// openingHands is the practice table's scripted opening hand per
+	// seat, by card name (scripted_hand.go, ADR 0076 §2.2 as amended
+	// 2026-10-11). Read once, by the deal. Not persisted: only a
+	// practice table sets it, and a practice table writes no restore
+	// point.
+	openingHands map[uuid.UUID][]string
 
 	// layerVersion is the S16 continuous-effect-engine invalidation
 	// counter. Bumped by listeners on every event that could change

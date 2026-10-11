@@ -83,6 +83,11 @@ func TestTutorialTablePlaysSafely(t *testing.T) {
 			if _, err := g.AddPlayer("Practice Bot", botList.ToGameCards()); err != nil {
 				t.Fatalf("AddPlayer bot: %v", err)
 			}
+			// The scripted opening seven, as lobby.CreatePractice deals
+			// it (ADR 0076 §2.2 as amended 2026-10-11).
+			if err := g.ScriptOpeningHand(human.ID, decks.TutorialOpeningHand()); err != nil {
+				t.Fatalf("ScriptOpeningHand: %v", err)
+			}
 			// Start, not StartWithFirstPlayerRoll: the lobby seats the
 			// player first (lobby.CreatePractice).
 			if err := g.Start(rand.New(rand.NewPCG(seed, seed+1))); err != nil {

@@ -110,6 +110,9 @@ func createPractice(c Config, w http.ResponseWriter, r *http.Request) error {
 		Owner:    practiceOwner(c, p),
 		DeckName: playerDeck.Name,
 		Cards:    humanList.ToGameCards(),
+		// ADR 0076 §2.2 as amended 2026-10-11 (#2992): a fixed opening
+		// seven, so every lesson of the first two turns has its card.
+		OpeningHand: decks.TutorialOpeningHand(),
 	}, PracticeBot{
 		Name:     practiceBotName,
 		Tier:     practiceBotTier,

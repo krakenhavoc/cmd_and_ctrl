@@ -38,14 +38,21 @@
 //     says that instead and points at what it names. It never blocks.
 //   - `cannot`: the board can no longer produce the step's action, for
 //     instance no land left in hand to play. The step advances itself
-//     and logs, like a missing anchor (§2.4).
+//     and logs, like a missing anchor (§2.4). Steps 7, 8 and 13 say so
+//     only when the lesson cannot happen at all this game; until then
+//     they wait, with a detour, for a turn in which it can (ADR 0076
+//     §2.2 as amended 2026-10-11, #2992).
+//   - A step that gives up or has no anchor says so on the next card, in
+//     one line (`skipped`), rather than jumping the counter in silence.
+//     The log line stays too. A Skip step, a completion or a timeout
+//     clears it.
 //   - `hover`: steps 3, 5 and 10 complete once the pointer has rested on
 //     the anchor for `ms` (§2.1, "hover ≥ 600ms"). The coach measures the
 //     rest and reports it through `hovered()`.
 //   - An anchor can be read off the board (step 2's dialog or banner,
 //     step 9's card, step 13's opponent), and so can a status line.
 
-import type { Readable } from "svelte/store";
+import type { Readable, Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
 import type { HintID } from "./hints/hint";
 import type { LabelRef } from "./labels";
@@ -195,7 +202,9 @@ export interface TutorialStep {
   first?: (c: StepContext) => Detour | null;
   /**
    * Why the board can no longer produce this step's action, or null
-   * while it can. A reason advances the step and is logged.
+   * while it can. A reason advances the step and is logged, and the
+   * next card shows it to the player ("Skipped step 7: …"), so write it
+   * for them: a short phrase, no engine words.
    */
   cannot?: (c: StepContext) => string | null;
   /**
@@ -235,7 +244,48 @@ export interface TutorialSnapshot {
    * not move and its timers have not started (heldFor).
    */
   held: boolean;
+  /**
+   * The steps that advanced themselves on the way here (gave up, or had
+   * no anchor), for the card's one-line note; null when the step before
+   * this one ended any other way.
+   */
+  skipped: SkipNote | null;
 }
+
+/**
+ * SkipNote is what the coach card says about steps the tutorial moved
+ * past by itself (ADR 0076 §2.2 as amended 2026-10-11, #2992): their
+ * numbers, in order, and why the first of them could not happen. Steps
+ * that give up one after another share one note, since the first
+ * reason is usually the cause of the rest (no creature to cast, so no
+ * spell on the stack).
+ */
+export interface SkipNote {
+  steps: number[];
+  why: string;
+}
+
+/** skipNoteText is the note as the card shows it: "Skipped step 7: the game is over." */
+export function skipNoteText(note: SkipNote | null): string {
+  if (!note || note.steps.length === 0) return "";
+  const ns = note.steps;
+  const which =
+    ns.length === 1
+      ? `step ${ns[0]}`
+      : `steps ${ns.slice(0, -1).join(", ")} and ${ns[ns.length - 1]}`;
+  return `Skipped ${which}: ${note.why}.`;
+}
+
+/** Why a step with no anchor on the page was skipped, as the player reads it. */
+export const NO_ANCHOR_NOTE = "nothing on the table to point at";
+
+/**
+ * tutorialRunning is true while this tab's coach card is up (ADR 0076
+ * §2.2 as amended 2026-10-11, #2992). TutorialCoach sets it; Card reads
+ * it to leave the Sandbox rows out of the ability menu, so a right-click
+ * during the tutorial shows only the card's own abilities.
+ */
+export const tutorialRunning: Writable<boolean> = guardedWritable(false, "tutorialRunning");
 
 /**
  * heldByOpeningRoll reports whether the opening roll is open (ADR 0121
@@ -277,8 +327,11 @@ export interface TutorialRun extends Readable<TutorialSnapshot> {
   anchorMissing(stepID: string): void;
   /** The pointer rested on a hover step's anchor long enough. */
   hovered(stepID: string): void;
-  /** Advance past `stepID`, if it is still the current step, and log why. */
-  advance(stepID: string, why: string): void;
+  /**
+   * Advance past `stepID`, if it is still the current step, and log why.
+   * With a `note`, the next card says the step was skipped and why.
+   */
+  advance(stepID: string, why: string, note?: string): void;
   /** What the predicates see right now, for anchors and status lines. */
   context(): StepContext;
   /** Stop every timer. */
@@ -365,6 +418,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   let hintTimer: ReturnType<typeof setTimeout> | null = null;
   let stepTimer: ReturnType<typeof setTimeout> | null = null;
   let detour: Detour | null = null;
+  let skipped: SkipNote | null = null;
 
   /** Is the current step waiting for the deal? */
   const held = (): boolean => heldFor(steps[index], latest);
@@ -376,6 +430,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     visible,
     detour,
     held: held(),
+    skipped,
   });
   const store = guardedWritable<TutorialSnapshot>(snap(), "tutorial");
   const publish = () => store.set(snap());
@@ -419,6 +474,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       stepTimer = null;
       if (visible && steps[index].id === id && !held()) {
         log(`tutorial: step ${id} timed out waiting; advancing`);
+        skipped = null;
         enter(index + 1);
       }
     }, step.timeoutMs);
@@ -440,7 +496,17 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
   /** The current step completed: report it, then move on. */
   function complete(): void {
     report(steps[index]);
+    skipped = null;
     enter(index + 1);
+  }
+
+  /**
+   * The current step moved on by itself: the next card says so. A run
+   * of such steps shares one note, with the first one's reason.
+   */
+  function noteSkip(why: string): void {
+    const n = steps[index].n;
+    skipped = skipped ? { steps: [...skipped.steps, n], why: skipped.why } : { steps: [n], why };
   }
 
   function report(step: TutorialStep): void {
@@ -478,6 +544,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     const why = step.cannot?.(ctx) ?? null;
     if (why !== null) {
       log(`tutorial: step ${step.id} cannot happen (${why}); advancing`);
+      noteSkip(why);
       enter(index + 1);
       return;
     }
@@ -496,11 +563,13 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     }
   }
 
-  function advance(stepID: string, why: string): void {
+  function advance(stepID: string, why: string, note?: string): void {
     if (!visible || steps[index].id !== stepID) return;
     if (index >= steps.length - 1) return;
     if (held()) return;
     log(`tutorial: step ${stepID} ${why}; advancing`);
+    if (note) noteSkip(note);
+    else skipped = null;
     enter(index + 1);
   }
 
@@ -514,6 +583,8 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
     skipStep() {
       if (!visible) return;
       if (index >= steps.length - 1) return;
+      // The player pressed it: no note, they know.
+      skipped = null;
       enter(index + 1);
     },
     close() {
@@ -544,7 +615,7 @@ export function createTutorialRun(steps: TutorialStep[], opts: RunOptions): Tuto
       check(event);
     },
     anchorMissing(stepID) {
-      advance(stepID, "has no anchor on the page");
+      advance(stepID, "has no anchor on the page", NO_ANCHOR_NOTE);
     },
     hovered(stepID) {
       if (!visible || steps[index].id !== stepID || !steps[index].hover) return;
