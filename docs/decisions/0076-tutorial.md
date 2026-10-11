@@ -221,6 +221,21 @@ and **not listed in the lobby**.
   > past a 12% sliver per card. A row with room keeps the resting fan.
   > `tutorial-layout.spec.ts` checks every hand card is reachable at
   > 1280×800, 1440×900 and 1920×1080, with the coach up and with it gone.
+
+  > **Amended 2026-10-11 (#2990, #2409 item 1):** "over the battlefield's left
+  > margin, which is empty" was only true of the creature row. The card is
+  > about 235px tall and the hand row about 100px, so it also rose over the
+  > middle row's left end, where your corner piles sit (#2339) and the first
+  > lands land. At 1600×900 the first Forest showed only its name strip, and
+  > at 1366×768 it was hidden outright, so steps 5, 6 and 9 pointed at a card
+  > the player could not see. The rule is now: while the card shows, nothing
+  > the tutorial anchors to sits under it. On a desktop the piles' column
+  > starts one card width in (`.panel.self.docked.coached .pile-bar` takes a
+  > left margin of `--coach-w`), and the back row, which starts after the
+  > piles, goes with it. The cell still takes no height from any row.
+  > `tutorial-layout.spec.ts` checks at 1280×720, 1366×768 and 1600×900 that
+  > the card meets no land, permanent, pile or command zone on steps 5, 6, 9
+  > and 10.
 - The scrim is **one element**: a transparent rect with a 9999px spread shadow,
   so the hole is the rect and everything else darkens.
 - The scrim is **`pointer-events: none`**. Dimming is a suggestion, never a
