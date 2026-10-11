@@ -80,24 +80,24 @@ planned just-in-time from the S12 pain-point triage.
 | S34      | Persistent user database: people, their games, and their decks       | 6     | [#607](https://github.com/krakenhavoc/cmd_and_ctrl/issues/607) | —          | **done**    |
 | S35      | Playtest stabilisation, round 2                                      | 6     | [#734](https://github.com/krakenhavoc/cmd_and_ctrl/issues/734)  | —          | **done**    |
 | S36     | Tables that wedge: the engine's dead ends                            | 7     | [#879](https://github.com/krakenhavoc/cmd_and_ctrl/issues/879) | —          | **done**    |
-| S37     | Combat correctness: damage steps, removal from combat, block legality| 7     | [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880) | —          | in progress |
+| S37     | Combat correctness: damage steps, removal from combat, block legality| 7     | [#880](https://github.com/krakenhavoc/cmd_and_ctrl/issues/880) | —          | **done**    |
 | S38     | Layers: dependency ordering, ability grants, ability removal         | 7     | [#881](https://github.com/krakenhavoc/cmd_and_ctrl/issues/881) | —          | **done**    |
 | S39     | The CR 614 replacement surface and its paused continuations          | 7     | [#882](https://github.com/krakenhavoc/cmd_and_ctrl/issues/882) | —          | **done**    |
 | S40     | S30's tail: protection, regeneration, emblems, winning by effect     | 7     | [#883](https://github.com/krakenhavoc/cmd_and_ctrl/issues/883) | —          | **done**    |
-| S41     | Turn machinery and per-turn accounting                               | 7     | [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884) | —          | in progress |
+| S41     | Turn machinery and per-turn accounting                               | 7     | [#884](https://github.com/krakenhavoc/cmd_and_ctrl/issues/884) | —          | **done**    |
 | S42     | Casting from non-hand zones: granted permissions and alternative costs| 7     | [#885](https://github.com/krakenhavoc/cmd_and_ctrl/issues/885) | —          | **done**    |
 | S43     | Hand special actions and face-down objects                           | 7     | [#886](https://github.com/krakenhavoc/cmd_and_ctrl/issues/886) | —          | **done**    |
 | S44     | Mana and cost components                                             | 7     | [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887) | —          | **done**    |
 | S45     | Modal spells, multi-target clauses and copy effects                  | 7     | [#888](https://github.com/krakenhavoc/cmd_and_ctrl/issues/888) | —          | **done**    |
 | S46     | Permanents that change what they are                                 | 7     | [#889](https://github.com/krakenhavoc/cmd_and_ctrl/issues/889) | —          | **done**    |
-| S47     | Bot seat, round 2: wire it, measure it, sharpen it                   | 7     | [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890) | —          | in progress |
-| S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | in progress |
-| S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | in progress |
+| S47     | Bot seat, round 2: wire it, measure it, sharpen it                   | 7     | [#890](https://github.com/krakenhavoc/cmd_and_ctrl/issues/890) | —          | **done**    |
+| S48     | Client robustness and the surfaces that lie                          | 7     | [#891](https://github.com/krakenhavoc/cmd_and_ctrl/issues/891) | —          | **done**    |
+| S49     | Operability, CI currency, and the hygiene tail                       | 7     | [#892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/892) | —          | **done**    |
 | S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | **done**    |
 | S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | **done**    |
 | S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | **done**    |
 | S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
-| S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | in progress |
+| S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | **done**    |
 | S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | **done**    |
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
 | S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | **done**    |
@@ -106,11 +106,18 @@ planned just-in-time from the S12 pain-point triage.
 | S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | **done**    |
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
-| S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | in progress |
-| S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | in progress |
+| S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | **done**    |
+| S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | **done**    |
 | S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
 | S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | **done**    |
+| S67     | Bots round 3: no stalls, sharper sequencing                          | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/76) | —          | in progress |
+| S68     | Cost components and alternative costs                                | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/77) | —          | **done**    |
+| S69     | Combat you can watch: table animations                               | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/78) | —          | **done**    |
 | S70     | Public beta: a table strangers can find                              | 7     | [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985) | —          | planned     |
+
+On 2026-10-11 the milestones for S37, S41, S47–S49, S51, S52, S54–S57, S60–S64, S68 and S69 were
+closed. Their open stragglers (18 issues) moved to the **Backlog** milestone, to be picked up at the
+next sprint planning. New work opens a new sprint rather than reviving a closed one.
 
 ### How to read the status column
 
@@ -3498,7 +3505,7 @@ From the tracker, [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/228
 
 ### Status
 
-**In progress** (2026-10-05). ADR 0123 is accepted (#2282). PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #2283); PR 6 (rules and dashboards) is in progress; HomeLab#119–#122 await the owner. The ADR's 2026-10-05 amendment records what changed in delivery.
+**Done** (2026-10-05). ADR 0123 is accepted (#2282). PRs 2–7 merged into `develop` (#2284, #2286, #2287, #2285, #2289, #2283) and were promoted in #2294; HomeLab#119–#122 are tracked in that repo. The ADR's 2026-10-05 amendment records what changed in delivery.
 
 ---
 
@@ -3533,7 +3540,7 @@ From the tracker, [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/229
 
 ### Status
 
-**Planned** (2026-10-05). ADR 0124 is proposed and awaits the owner's review.
+**Done** (2026-10-05). ADR 0124 is accepted (#2297). Its delivery PRs merged into `develop` (#2299, #2306, #2305, #2307, #2308, #2298) and were promoted in #2309.
 
 ---
 
@@ -3572,7 +3579,7 @@ From the tracker, [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/231
 
 ### Status
 
-**Planned** (2026-10-05). ADR 0125 is proposed and awaits the owner's review.
+**In progress** (2026-10-11). ADR 0125 is accepted (#2317). PRs 2–10 merged into `develop` on 2026-10-05 and 2026-10-06 (#2320, #2321, #2332, #2345, #2341, #2344, #2351, #2393, #2398); the tutorial is still being tuned from playtests (#3004, #3008, #3017).
 
 ---
 
