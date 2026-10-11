@@ -657,6 +657,17 @@
     answer({ order: ordered });
   }
 
+  // Auto-order: the order the server uses for a batch it does not ask
+  // about. A skipped batch goes on the stack in the order it was
+  // collected, which is the order trigger_options lists, so the first
+  // resolves last; the answer is resolution order, so send it reversed.
+  // For a batch the engine could not tell was order-independent, the
+  // player gets out without placing every row.
+  function autoOrderTriggers(): void {
+    if (!active || !viewerID) return;
+    answer({ order: replacementOptions.map((o) => o.id).reverse() });
+  }
+
   function positionFor(id: string): number {
     return ordered.indexOf(id) + 1; // 1-indexed; 0 = unselected
   }
@@ -1681,7 +1692,9 @@
           submitReplacementOrder,
           { disabled: ordered.length !== replacementOptions.length },
         ),
-        secondary: [],
+        secondary: isTriggerOrder
+          ? [{ id: "auto-order", label: "Auto-order", onPress: autoOrderTriggers }]
+          : [],
       };
     }
     // The card grid.
