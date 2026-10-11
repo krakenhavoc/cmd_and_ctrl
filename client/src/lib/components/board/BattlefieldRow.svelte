@@ -112,6 +112,9 @@
     // (TokenGroupModal). Undefined turns grouping off, so a row with
     // nowhere to open the list never hides a token behind a count.
     onGroupClick?: (groupKey: string) => void;
+    // #3028: how many piles the row draws, read back by PlayerPanel to
+    // share the back row's width between the lands and the rest.
+    pileCount?: number;
     // ADR 0105 (#1789): the frame's legal-action lookups. `legal` is
     // what may be highlighted ("nothing" while highlights are off or
     // autopass is passing; on an opponent's panel only that panel's
@@ -137,7 +140,7 @@
     combat?: CombatRings;
   }
 
-  const {
+  let {
     label,
     cards,
     viewerID,
@@ -162,6 +165,7 @@
     legalGate = NO_LEGAL_ACTIONS,
     onSpecialAction,
     combat = NO_COMBAT_RINGS,
+    pileCount = $bindable(0),
   }: Props = $props();
 
   // ADR 0120 §3: the surface this row is drawn on, table or expanded.
@@ -260,6 +264,9 @@
       out.push(p);
     }
     return out;
+  });
+  $effect(() => {
+    pileCount = piles.length;
   });
 
   // The attachments drawn behind a pile's card: its own, or for a

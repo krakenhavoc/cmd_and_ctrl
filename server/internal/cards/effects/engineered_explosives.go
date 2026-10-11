@@ -32,14 +32,7 @@ func init() {
 			// ADR 0126 §6: only mana value equal to its charge counters.
 			Purpose: game.Purpose{Answers: game.AnswerRemove, Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}},
 			Cost:    Plus(ManaCost("{2}"), SacrificeThis()),
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				info, ok := ctx.SourcePermanent()
-				if !ok {
-					return nil
-				}
-				return DestroyAllMatching{Match: And(Nonland(), b03ManaValueIs(info.Counters[game.CounterCharge]))}.Apply(ctx)
-			},
+			Effect:  destroyNonlandsWithManaValueOfChargeCounters,
 		}},
 	})
 }

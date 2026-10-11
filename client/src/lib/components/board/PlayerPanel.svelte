@@ -433,6 +433,17 @@
       : (canActivateSorcerySpeedAbility(view, viewerID).reason ?? ""),
   );
 
+  // #3028: the back row's two zones share its width by how many piles
+  // each draws. The land strip takes what the other zone leaves
+  // (#2960), and at full card size a long artifact row left it a
+  // sliver, so the other zone is capped at its share. With no land
+  // piles it may take the whole row.
+  let landPiles = $state(0);
+  let otherPiles = $state(0);
+  const otherShare = $derived(
+    landPiles > 0 && otherPiles > 0 ? otherPiles / (otherPiles + landPiles) : 1,
+  );
+
   // #1724: the token group whose member list is open, by group key.
   // The members are re-derived from every snapshot, so the list
   // follows the board while it is open; a group that has broken up
@@ -777,8 +788,9 @@
   <!-- The back row: land piles first, then the other permanents,
        both shrink-wrapped and centred as one group so the row grows
        out from the middle like the creature row above it. -->
-  <div class="grid-middle">
+  <div class="grid-middle" style:--other-share={otherShare}>
     <BattlefieldRow
+      bind:pileCount={landPiles}
       label={L.lands}
       {attachmentsByHost}
       {curseTargets}
@@ -805,6 +817,7 @@
       onGroupClick={(k) => (openGroupKey = k)}
     />
     <BattlefieldRow
+      bind:pileCount={otherPiles}
       label="enchant / artifact"
       {attachmentsByHost}
       {curseTargets}
@@ -946,7 +959,9 @@
        (board ratios, Sept 2026): the panel is a size container and
        every card height is a share of it, clamped so a short panel
        never drops below the fixed sizes the redesign shipped with
-       (120×168 / 88×123 / 64×90) and a tall one stops at 240px. The
+       (120×168 / 88×123 / 64×90). Your own board has no fixed
+       ceiling (#3028): a fixed 240px left a third of a 1440p panel as
+       empty mat, and made the "large" card size a no-op there. The
        share is the panel's budget solved for the creature card: the
        creature row (1×), the back row (0.74×) and the hand's peek
        (0.62× self, 0.55× opponents) plus ~72px of row padding and
@@ -963,11 +978,13 @@
     /* --card-h-max is the clamp's ceiling, pulled into its own token
        (#1071) so a variant below can raise it without restating the
        floor and slope — which would drift the two out of step the
-       next time either changes. */
-    --card-h-max: 240px;
+       next time either changes. On your own board it is the panel's
+       own height (#3028), which no card reaches: the slope is the
+       limit. Opponents' ceilings below grow with the screen instead. */
+    --card-h-max: 100cqh;
     --card-h: clamp(168px, calc((42cqh - 30px) * var(--card-scale, 1)), var(--card-h-max));
     --card-w: calc(var(--card-h) * 5 / 7);
-    --card-h-sm: clamp(123px, calc(var(--card-h) * 0.74), 178px);
+    --card-h-sm: max(123px, calc(var(--card-h) * 0.74));
     --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
     --thumb-w: calc(40px * var(--card-scale, 1));
     --thumb-h: calc(56px * var(--card-scale, 1));
@@ -1080,10 +1097,12 @@
   .panel.opponent {
     /* Upright opponent (the "next" seat) gets the medium scale — it
        has the tall row to itself. Scales by --card-scale-opponent
-       (settings) with a gentler curve than self. The 200px ceiling
-       (vs. self's 240px) is deliberate: an opponent panel shares the
-       screen with the viewer's own and shouldn't rival it. */
-    --card-h-max: 200px;
+       (settings) with a gentler curve than self. The ceiling is
+       deliberate: an opponent panel shares the screen with the
+       viewer's own and shouldn't rival it. #3028: it is 200px on a
+       1080px-tall screen and grows with the screen past that (18.5vh),
+       and the card-size setting scales it, so "large" is larger. */
+    --card-h-max: calc(max(200px, 18.5vh) * var(--card-scale-opponent, 1));
     /* #2336: sized by relevance, like your own board. The face-down
        hand shows only a count, so it peeks 30%; lands and other
        permanents are half a creature. The creature card is what is
@@ -1091,56 +1110,56 @@
        a short panel shrinks its cards rather than scrolling them. */
     --hand-peek: 0.3;
     --card-h: clamp(90px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
-    --card-h-sm: clamp(56px, calc(var(--card-h) * 0.5), 110px);
+    --card-h-sm: max(56px, calc(var(--card-h) * 0.5));
     --thumb-w: calc(36px * var(--card-scale-opponent, 1));
     --thumb-h: calc(50px * var(--card-scale-opponent, 1));
     --avatar-size-base: 72px;
     --rail-w: 104px;
   }
   /* #1071: a spectator has no panel of their own for an opponent
-     panel to defer to, so the reason for the 200px ceiling above
-     doesn't apply — every seat is equal, and the ceiling can match
-     self's. This rule and .panel.opponent live in the same
+     panel to defer to, so the reason for the ceiling above doesn't
+     apply — every seat is equal, and the ceiling matches self's: none
+     but the panel's own height (#3028). This rule and .panel.opponent live in the same
      stylesheet (same Svelte scope hash on both), so there is no
      cross-component cascade tie to reason about — one extra class
      over .panel.opponent is ordinary CSS specificity. The floor and
-     slope are untouched, so nothing changes below ~1340px of panel
-     height. Board never sets `flipped` on a spectator panel today
+     slope are untouched, so nothing changes until the opponent
+     ceiling binds. Board never sets `flipped` on a spectator panel today
      (every spectator seat mounts isSelf=false with no `flipped`), so
      .panel.opponent.flipped below never competes with this rule in
      practice — the dedicated four-class rule after it is what keeps
      that true even if a spectator panel ever does gain `flipped`. */
   .panel.opponent.spectator {
-    --card-h-max: 240px;
+    --card-h-max: 100cqh;
   }
   .panel.opponent.flipped {
-    /* Across-table seats: one more size down (the top row is the
-       short one), rows reversed so the hand hugs the top edge and
-       creatures face the centre of the table. #2491: the top row is
-       the tucked commander, half a card.
-       #2961: the creature row must fit its card WITH the P/T badge at
-       the card's foot, or the row's own overflow cuts it off at the
-       panel's bottom edge. The rows measured at 1600x900: the top row
-       is the taller of the pile tiles (~74px) and the hand (0.55h);
-       the back row is a small card (0.5h) plus ~32px of padding and
-       label; the creature row is a card plus 24px of padding; and the
-       panel adds 12px of gaps and 16px of padding. So
-         piles tall:  H = 1.5h + 158px   (short panels)
-         hand tall:   H = 2.05h + 84px   (tall panels)
-       and the card is the smaller of the two heights, so neither row
-       takes more than it was given. The floors sit below any card the
-       formula can ask for at 720px, so a floor never pushes the rows
-       past the panel. */
-    --card-h-max: 168px;
+    /* Across-table seats: your board turned 180° about the table's
+       centre (#2438, #3028). Rows reversed so the hand hugs the top
+       edge and creatures face the centre of the table; #2491: the top
+       row is the tucked commander, half a card.
+       #3028: the same size as yours, by the same budget as
+       .panel.self.docked below: creatures at 52cqh - 40px with no
+       fixed ceiling, the back row half a card, the hand peeking 40%,
+       and pile tiles no taller than the peek. In a two-player game
+       the two halves of the table are equal (Board.svelte), so the
+       two boards are the same size. The floor stays low (44px), as
+       before, so a short top-row panel with three or four players
+       shrinks its cards rather than scrolling them. */
+    --card-h-max: 100cqh;
     --card-h: clamp(
       44px,
-      calc(min((100cqh - 158px) / 1.5, (100cqh - 84px) / 2.05) * var(--card-scale-opponent, 1)),
+      calc(min(52cqh - 40px, (100cqh - 151px) / 1.5) * var(--card-scale-opponent, 1)),
       var(--card-h-max)
     );
-    --card-h-sm: clamp(24px, calc(var(--card-h) * 0.5), 90px);
-    --thumb-w: calc(32px * var(--card-scale-opponent, 1));
-    --thumb-h: calc(45px * var(--card-scale-opponent, 1));
-    --avatar-size-base: 60px;
+    --card-h-sm: max(24px, calc(var(--card-h) * 0.5));
+    --hand-peek: 0.4;
+    --thumb-h: min(
+      calc(56px * var(--card-scale-opponent, 1)),
+      max(36px, calc(var(--card-h) * var(--hand-peek) - 30px))
+    );
+    --thumb-w: calc(var(--thumb-h) * 5 / 7);
+    --avatar-size-base: 84px;
+    --rail-w: 112px;
     grid-template-rows: auto auto minmax(0, 1fr);
     grid-template-areas:
       "bottom    rail"
@@ -1149,20 +1168,20 @@
   }
   /* Defensive only — unreachable today (see above), kept so a future
      spectator panel that gains `flipped` still gets the raised
-     ceiling instead of silently falling back to 168px. Four classes
+     ceiling instead of silently falling back to the flipped one. Four classes
      beats both .panel.opponent.flipped (three) and
      .panel.opponent.spectator (three) outright, so this can never
      lose to either regardless of source order. */
   .panel.opponent.flipped.spectator {
-    --card-h-max: 240px;
+    --card-h-max: 100cqh;
   }
   /* ADR 0120 §3: the expanded overlay's copy of a board caps its cards
-     at 240px for every seat, as on a spectator's panel. Self is 240px
-     already, and an expanded panel is never flipped, so only
-     .panel.opponent's 200px has to be beaten. The floor and slope are
+     as your own board's are, for every seat, as on a spectator's
+     panel: no fixed ceiling (#3028). An expanded panel is never
+     flipped, so only .panel.opponent's ceiling has to be beaten. The floor and slope are
      the seat's own; the overlay's height does the rest. */
   .panel.opponent.expanded {
-    --card-h-max: 240px;
+    --card-h-max: 100cqh;
   }
   /* The creature area is the grid's minmax(0, 1fr) row, so on a short
      panel it is shorter than one card (whose height floors at 168px).
@@ -1213,6 +1232,12 @@
      overlaps them only when they no longer fit. */
   .grid-middle > :global(.row.strip) {
     flex: 1 1 0;
+  }
+  /* #3028: the other zone takes no more than its share of the row by
+     pile count (--other-share, set by the panel), so a long artifact
+     row shrinks its own cards instead of crushing the lands. */
+  .grid-middle > :global(.row:not(.strip)) {
+    max-width: calc(var(--other-share, 1) * 100%);
   }
   .grid-bottom {
     grid-area: bottom;
@@ -1286,14 +1311,35 @@
      phone keeps the docked layout above. */
   @media (min-width: 600px) {
     .panel.self.docked {
-      --card-h: clamp(120px, calc((52cqh - 40px) * var(--card-scale, 1)), var(--card-h-max));
-      --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+      /* #3028: on a short panel (two players at 720px, each half
+         ~320px) the rows' fixed parts dominate: the back row is half a
+         card plus ~32px, the hand row is at least a pile tile (~65px)
+         and the creature row adds ~24px, so H = 1.5h + ~151px and the
+         card is the smaller of the two. The floor is as low as an
+         across-table seat's, so the cards shrink rather than clip. */
+      --card-h: clamp(
+        44px,
+        calc(min(52cqh - 40px, (100cqh - 151px) / 1.5) * var(--card-scale, 1)),
+        var(--card-h-max)
+      );
+      --card-h-sm: max(64px, calc(var(--card-h) * 0.5));
       --hand-peek: 0.4;
+      /* #3028: a pile tile is its thumbnail plus ~30px of padding and
+         count, and in the hand's row it must not stand taller than the
+         hand's peek, or the row grows and the creatures lose height. */
+      --thumb-h: min(
+        calc(56px * var(--card-scale, 1)),
+        max(36px, calc(var(--card-h) * var(--hand-peek) - 30px))
+      );
+      --thumb-w: calc(var(--thumb-h) * 5 / 7);
       grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      /* #3028: the piles sit in the hand's row, against the bottom
+         edge like the hand, as an across-table opponent's sit in theirs
+         against the top edge (#2491), so the two boards mirror. */
       grid-template-areas:
         "creatures creatures rail"
-        "piles     middle    rail"
-        "bottom    bottom    bottom";
+        "middle    middle    rail"
+        "piles     bottom    bottom";
     }
     .panel.self.docked .rail {
       display: contents;
@@ -1325,15 +1371,22 @@
     .panel.self.docked .rail :global(.pile .label) {
       display: none;
     }
-    /* #2990, #2409: the coach card is taller than the hand row, so it
-       rises over the middle row's left end too, where the piles sit and
-       the first lands land. While it shows, the piles start right of the
-       card's width: the piles column is the first column of that row, so
-       its margin pushes the back row clear of the card as well. The
-       creature row above is centred, with an empty left margin the card
-       may rise into. */
+    /* #2990, #2409, #3028: the coach card sits in the bottom-left
+       corner, where the piles are, and is taller than the hand row, so
+       it rises over the back row's left end, where the first lands
+       land. While it shows, the piles start right of the card's width,
+       and the hand after them, so the bottom row needs no empty cell of
+       its own; the back row starts right of the card too. Neither takes
+       any height, so the rows keep theirs. The creature row above is
+       centred, with an empty left margin the card may rise into. */
+    .panel.self.docked .coach-spacer {
+      flex-basis: 0;
+    }
     .panel.self.docked.coached .rail > :global(.pile-bar) {
       margin-left: calc(var(--coach-w, 0px) + 6px);
+    }
+    .panel.self.docked.coached .grid-middle {
+      padding-left: calc(var(--coach-w, 0px) + 6px);
     }
   }
   /* #2438, #2483: an across-table opponent sits across from you. Their
@@ -1357,13 +1410,18 @@
         "rail   middle    middle"
         "rail   creatures creatures";
     }
-    /* #2995: their commander is a card you can recognise, not a speck
-       or a sliver: at least 84px tall. The hand row is only a peek
-       tall, so the card hangs down out of it into the empty corner
-       above the identity rather than growing the row; the strip keeps
-       the hand's height and lets its card overflow. */
+    /* #2491, #3028: their commander is tucked half behind the top edge,
+       as yours is behind the bottom one, so their board mirrors yours:
+       a hand-size card whose middle sits on the panel's clipping edge
+       (the strip's top, less the panel's 8px padding). #2995: what
+       shows is a card you can recognise, not a sliver, so the card is
+       at least 168px and its visible half at least 84px. The hand row
+       is only a peek tall, so the half that shows hangs down out of it
+       into the empty corner above the identity rather than growing the
+       row; the strip keeps the hand's height and lets its card
+       overflow. The tax goes to the edge you can see. */
     .panel.opponent.flipped :global(.command-strip) {
-      --strip-h: max(84px, calc(var(--card-h) * 0.9));
+      --strip-h: max(168px, var(--card-h));
       height: calc(var(--card-h) * var(--hand-peek, 0.55));
       align-self: flex-start;
       align-items: flex-start;
@@ -1373,6 +1431,11 @@
     }
     .panel.opponent.flipped :global(.command-strip .slot) {
       flex: none;
+      margin-top: calc(var(--strip-h) * -0.5 - 8px);
+    }
+    .panel.opponent.flipped :global(.command-strip .tax-badge) {
+      top: auto;
+      bottom: 3px;
     }
     .panel.opponent.flipped .grid-bottom,
     .panel.opponent.flipped .grid-middle {
@@ -1382,10 +1445,20 @@
        table. Their hand, their piles' top cards and their commander are
        turned 180°, so the fan arcs down toward you and each card's top
        points at the table's centre. What you read stays upright: the
-       pile counts, the commander's tax, and their battlefield. */
+       pile counts, the commander's tax, the row labels and their
+       identity. */
     .panel.opponent.flipped .hand-zone > :global(.hand),
     .panel.opponent.flipped .rail :global(.pile .thumb),
     .panel.opponent.flipped :global(.command-strip .slot .card) {
+      transform: rotate(180deg);
+    }
+    /* #3028: their permanents face them too, your board turned 180°.
+       Each row's card list turns about its own centre, so every card
+       is upside down to you and the row runs from your right to your
+       left, as theirs would across a real table. Layout is untouched
+       (rowFit measures offsets, not the turned box), and the expanded
+       overlay, which is never flipped, reads upright. */
+    .panel.opponent.flipped :is(.grid-creatures, .grid-middle) :global(.row-cards) {
       transform: rotate(180deg);
     }
     /* #2995: but the empty-hand label is text, and reads upright. */
@@ -1404,7 +1477,7 @@
     }
     .panel.opponent.flipped .rail > :global(.pile-bar) {
       grid-area: piles;
-      grid-template-columns: repeat(3, 44px);
+      grid-template-columns: repeat(3, 52px);
       width: auto;
       align-self: start;
     }
@@ -1443,7 +1516,7 @@
           var(--card-h-max)
         );
         --card-w: calc(var(--card-h) * 5 / 7);
-        --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+        --card-h-sm: max(64px, calc(var(--card-h) * 0.5));
         --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
       }
     }

@@ -175,3 +175,4 @@ vote vote/galadriel-elven-queen
 vote vote/magister-of-worth
 vote vote/plea-for-power
 vote vote/tivit-seller-of-secrets
+option option-pick/liliana-of-the-dark-realms-pump

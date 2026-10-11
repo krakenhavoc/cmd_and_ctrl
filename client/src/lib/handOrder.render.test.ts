@@ -29,7 +29,7 @@ vi.mock("./sounds", () => ({ play: () => {} }));
 
 import Hand from "./components/board/Hand.svelte";
 import type { CardView, GameView, LegalMoveView } from "./protocol";
-import { handOrderKey } from "./handOrder";
+import { HAND_SORTS, handOrderKey, requestHandSort, requestNextHandSort } from "./handOrder";
 import { render, cleanup, flushSync } from "./test/render.svelte";
 
 const ME = "me";
@@ -299,29 +299,19 @@ describe("rearranging your hand (#1524)", () => {
     expect(order(container)).toEqual(["Lightning Bolt", "Grizzly Bears", "Forest"]);
   });
 
-  it("the sort menu is a real menu and sorts the hand once", () => {
-    const { container } = mount([bolt, bear, forest]);
-    const button = document.body.querySelector<HTMLButtonElement>(
-      "button[aria-label='Sort hand']",
-    )!;
-    expect(button).not.toBeNull();
-    expect(button.getAttribute("aria-haspopup")).toBe("menu");
-    expect(button.getAttribute("aria-expanded")).toBe("false");
-    button.click();
-    flushSync();
-    expect(button.getAttribute("aria-expanded")).toBe("true");
-    const items = [...document.body.querySelectorAll<HTMLButtonElement>("[role='menuitem']")];
-    expect(items.map((b) => b.textContent)).toEqual([
-      "By mana value",
-      "By type (lands first)",
-      "By colour",
-    ]);
+  // #3028: the sorts are asked for from the ⋯ menu and the sortHand
+  // shortcut (handOrder.ts handSortRequest); the hand has no button.
+  it("has no sort button of its own", () => {
+    mount([bolt, bear, forest]);
+    expect(document.body.querySelector("button[aria-label='Sort hand']")).toBeNull();
+  });
 
-    items[1].click();
+  it("a sort asked for from the menu sorts the hand once", () => {
+    const { container } = mount([bolt, bear, forest]);
+    requestHandSort("type");
     flushSync();
     expect(order(container)).toEqual(["Forest", "Grizzly Bears", "Lightning Bolt"]);
     expect(saved()).toEqual(["forest", "bear", "bolt"]);
-    expect(document.body.querySelector("[role='menu']"), "the menu closes").toBeNull();
 
     // One-time: it can be adjusted by hand afterwards.
     pointer("pointerdown", slotOf(container, "Lightning Bolt"), 250, 600);
@@ -330,24 +320,26 @@ describe("rearranging your hand (#1524)", () => {
     expect(order(container)).toEqual(["Lightning Bolt", "Forest", "Grizzly Bears"]);
   });
 
-  it("Escape closes the sort menu", () => {
-    mount([bolt, bear]);
-    const button = document.body.querySelector<HTMLButtonElement>(
-      "button[aria-label='Sort hand']",
-    )!;
-    button.click();
+  it("a sort asked for before the hand was drawn is not replayed", () => {
+    requestHandSort("type");
+    const { container } = mount([bolt, bear, forest]);
     flushSync();
-    const menu = document.body.querySelector<HTMLElement>("[role='menu']")!;
-    menu.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-    flushSync();
-    expect(document.body.querySelector("[role='menu']")).toBeNull();
+    expect(order(container)).toEqual(["Lightning Bolt", "Grizzly Bears", "Forest"]);
   });
 
-  it("an opponent's hand has no sort menu and ignores a saved order", () => {
+  it("the shortcut cycles the sorts, one per press", () => {
+    mount([bolt, bear, forest]);
+    const seen = [requestNextHandSort(), requestNextHandSort(), requestNextHandSort()];
+    const keys = seen.map((s) => s.key);
+    expect(new Set(keys)).toEqual(new Set(HAND_SORTS.map((s) => s.key)));
+  });
+
+  it("an opponent's hand ignores a sort and a saved order", () => {
     localStorage.setItem(KEY, JSON.stringify(["forest", "bear", "bolt"]));
     const revealed = [bolt, bear, forest].map((c) => ({ ...c, known_by_you: true }));
     const { container } = mount(revealed, false);
-    expect(document.body.querySelector("button[aria-label='Sort hand']")).toBeNull();
+    requestHandSort("type");
+    flushSync();
     expect(order(container)).toEqual(["Lightning Bolt", "Grizzly Bears", "Forest"]);
   });
 });

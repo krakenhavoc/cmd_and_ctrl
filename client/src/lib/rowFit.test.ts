@@ -1,6 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
-import { MAX_OVERLAP, MIN_CARD_H, fitOverlap, fitScale, stripOpen, tappedRoom } from "./rowFit";
+import {
+  MAX_OVERLAP,
+  MIN_CARD_H,
+  fitOverlap,
+  fitScale,
+  overrideStale,
+  stripOpen,
+  tappedRoom,
+} from "./rowFit";
 
 // #2960: the land strip uses its room before it overlaps.
 describe("stripOpen", () => {
@@ -103,5 +111,27 @@ describe("fitScale", () => {
     expect(fitScale(2000, 0, 300, min)).toBeCloseTo(min, 6);
     // A card already at or under the minimum never grows to it.
     expect(fitScale(2000, 0, 300, MIN_CARD_H / 48)).toBe(1);
+  });
+});
+
+// #3028: a shrunk row's override is in px, so a resize that moves the
+// row's own size leaves its cards at the old size until it is redone.
+describe("overrideStale", () => {
+  it("is false when the row is not shrunk", () => {
+    expect(overrideStale(1, 0, 144)).toBe(false);
+  });
+
+  it("is false while the row's size has not moved", () => {
+    expect(overrideStale(0.985, 194, 194)).toBe(false);
+    expect(overrideStale(0.985, 194, 194.3)).toBe(false);
+  });
+
+  it("is true when the row's size moves under the override, either way", () => {
+    expect(overrideStale(0.985, 194, 144)).toBe(true);
+    expect(overrideStale(0.99, 83, 194)).toBe(true);
+  });
+
+  it("is false for an unmeasured row", () => {
+    expect(overrideStale(0.5, 194, 0)).toBe(false);
   });
 });

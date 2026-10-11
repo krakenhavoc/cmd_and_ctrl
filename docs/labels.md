@@ -82,6 +82,7 @@ registered, or when this file is stale.
 | `moreActions` | `more actions` | button | aria | `lib/components/board/GameMenu.svelte` | the ⋯ button that opens the game menu |
 | `gameActions` | `game actions` | menu | aria | `lib/components/board/GameMenu.svelte` | the ⋯ menu itself |
 | `dice` | `Dice` | none | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's heading over the table rolls; plain text, not a group, with no name of its own |
+| `sortHand` | `Sort hand` | none | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's heading over the one-time hand sorts (#3028), and the sortHand shortcut's row in the keymap |
 | `rollD6` | `Roll a d6` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5); disabled for 2 s after the viewer's own roll |
 | `rollD20` | `Roll a d20` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |
 | `flipCoin` | `Flip a coin` | menuitem | text | `lib/gameMenu.ts` | a table roll (ADR 0121 §5) |

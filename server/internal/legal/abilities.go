@@ -1778,6 +1778,12 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 			})
 		}
 	}
+	if len(out) == 0 && rc.Variable && rc.N <= 0 && rc.From == nil {
+		// "Any number" includes none: a floor-zero cost with nothing
+		// to remove is still payable, by announcing zero (the empty
+		// payment). Black Mana Battery taps for its {B} this way.
+		return []counterChoice{{}}
+	}
 	sort.SliceStable(out, func(i, j int) bool { return out[i].count > out[j].count })
 	return out
 }

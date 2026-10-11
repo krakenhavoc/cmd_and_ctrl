@@ -20,6 +20,7 @@
 // the saved order and the player may adjust it by hand afterwards.
 // Nothing keeps the hand sorted.
 
+import { guardedWritable } from "./guardedStore";
 import type { CardView } from "./protocol";
 import {
   isArtifact,
@@ -140,6 +141,34 @@ export function sortHand(cards: readonly CardView[], by: HandSort): string[] {
     .map((c, i) => ({ c, i }))
     .sort((a, b) => cmp(a.c, b.c) || a.i - b.i)
     .map((x) => x.c.instance_id);
+}
+
+// ---- asking for a sort ---------------------------------------------
+
+// #3028: the sorts are asked for from outside the hand, by the ⋯ menu's
+// Sort hand group and the sortHand shortcut, and applied by the
+// viewer's own Hand, which owns the saved order. `seq` makes the same
+// sort asked for twice a new request.
+export const handSortRequest = guardedWritable<{ key: HandSort; seq: number } | null>(
+  null,
+  "handSortRequest",
+);
+let sortSeq = 0;
+
+export function requestHandSort(key: HandSort): void {
+  sortSeq += 1;
+  handSortRequest.set({ key, seq: sortSeq });
+}
+
+// The shortcut cycles the sorts: each press asks for the next one, and
+// returns it so the caller can say which it was.
+let cycleAt = -1;
+
+export function requestNextHandSort(): (typeof HAND_SORTS)[number] {
+  cycleAt = (cycleAt + 1) % HAND_SORTS.length;
+  const next = HAND_SORTS[cycleAt];
+  requestHandSort(next.key);
+  return next;
 }
 
 // ---- persistence ---------------------------------------------------
