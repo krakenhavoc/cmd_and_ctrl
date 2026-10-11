@@ -15,8 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // do.
 func init() {
 	Register(Spec{
-		OracleID: "8d02b297-97c4-4379-9862-0a462400f66f",
-		Name:     "Phyrexian Altar",
+		OracleID:     "8d02b297-97c4-4379-9862-0a462400f66f",
+		Name:         "Phyrexian Altar",
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost: ManaAbilityCost{
 				SacrificeOther: SacrificeACreature().SacrificeOther,

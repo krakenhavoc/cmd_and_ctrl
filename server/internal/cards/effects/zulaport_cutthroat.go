@@ -13,8 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // isn't per-opponent.
 func init() {
 	Register(Spec{
-		OracleID: "76b003e0-15af-4f22-bdf2-1ade5430964a",
-		Name:     "Zulaport Cutthroat",
+		OracleID:     "76b003e0-15af-4f22-bdf2-1ade5430964a",
+		Name:         "Zulaport Cutthroat",
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(WheneverACreatureYouControlDies("Zulaport Cutthroat — each opponent loses 1", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})), game.Purpose{DeathPayoff: true}),
 		},
