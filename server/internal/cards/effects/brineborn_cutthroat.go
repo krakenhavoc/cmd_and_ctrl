@@ -20,13 +20,7 @@ func init() {
 					return false
 				}
 				return !isActivePlayer(g, source.Controller)
-			}, "Brineborn Cutthroat — +1/+1 counter", func(g *game.Game, item *game.StackItem) error {
-				return AddCounter{
-					Target: item.SourceCardID,
-					Kind:   "+1/+1",
-					N:      1,
-				}.Apply(NewContext(g, item))
-			}),
+			}, "Brineborn Cutthroat — +1/+1 counter", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

@@ -41,12 +41,7 @@ func init() {
 			}),
 			OncePerBatch(On(game.EventZoneMove, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b12CardExiledFromYourLibraryOrGraveyard(ev, source, g)
-			}, grow, func(g *game.Game, item *game.StackItem) error {
-				if z := g.FindCardZoneForEffect(item.SourceCardID); z == nil || z.Kind != game.ZoneBattlefield {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			})),
+			}, grow, Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}))),
 		},
 	})
 }

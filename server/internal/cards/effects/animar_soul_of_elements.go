@@ -53,13 +53,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return creatureSpellCastByYou(ev, source, g)
-			}, "Animar, Soul of Elements — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				return AddCounter{
-					Target: item.SourceCardID,
-					Kind:   game.CounterPlusOne,
-					N:      1,
-				}.Apply(NewContext(g, item))
-			}),
+			}, "Animar, Soul of Elements — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

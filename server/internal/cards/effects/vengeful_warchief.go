@@ -20,7 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WheneverYouLoseLifeForTheFirstTimeEachTurn("Vengeful Warchief — put a +1/+1 counter on it",
-				thisStillHere(plusOneCountersOnThis(1))),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }

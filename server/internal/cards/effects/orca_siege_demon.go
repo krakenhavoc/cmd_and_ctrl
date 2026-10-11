@@ -38,7 +38,7 @@ func init() {
 					return b15AnotherCreatureDied(ev, source, g)
 				},
 				Key:    "Orca, Siege Demon — put a +1/+1 counter on Orca",
-				Effect: putCounterOnSelf,
+				Effect: Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1}),
 			},
 			{
 				Watches: []game.EventKind{game.EventLTB},

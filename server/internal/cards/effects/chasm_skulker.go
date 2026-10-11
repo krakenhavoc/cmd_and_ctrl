@@ -25,9 +25,7 @@ func init() {
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller
 			}, "Chasm Skulker — put a +1/+1 counter on this creature",
-				func(g *game.Game, item *game.StackItem) error {
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 			WhenThisDies("Chasm Skulker — create a 1/1 Squid with islandwalk for each +1/+1 counter it had",
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)

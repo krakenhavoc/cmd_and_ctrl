@@ -46,7 +46,7 @@ func init() {
 		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventLTB, anotherEldraziYouControlDied,
-				"Idol of False Gods — put a +1/+1 counter on this artifact", b35PutCounterOnSelf),
+				"Idol of False Gods — put a +1/+1 counter on this artifact", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		Static: idolOfFalseGodsStatics(),
 	})

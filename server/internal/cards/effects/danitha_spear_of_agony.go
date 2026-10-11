@@ -33,9 +33,7 @@ func init() {
 					return ok && c.Controller != source.Controller
 				})
 			}, "Danitha, Spear of Agony — put a +1/+1 counter on Danitha",
-				func(g *game.Game, item *game.StackItem) error {
-					return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-				}),
+				Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 	})
 }
