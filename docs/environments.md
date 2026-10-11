@@ -322,6 +322,49 @@ PR whose head is the marked commit. The develop → main promotion PR's head
 is develop's tip, so every promotion opened just after a census publish got
 no checks and could not merge (#1810).
 
+## Capacity
+
+Measured on production on 2026-10-11, with the owner's go-ahead and nobody
+playing. The raw numbers, the timeline and the run's log summary are on
+[#2978](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2978).
+
+**The host:** prod is 2 vCPU and 4 GB RAM (HomeLab
+`env/prd/terraform.tfvars`). The server idles at about 1.25 GB, most of it
+the Scryfall card index, and each table adds about 40 MB (measured locally).
+
+**The load:** tables of four heuristic bots on the curated decks, each with
+three spectator sockets standing in for connected players, ramped through
+the public URL behind Cloudflare.
+
+| Tables | healthz p50 | healthz p95 (max) | Frames/s per table |
+|---|---|---|---|
+| 0 | 31 ms | 56 ms | — |
+| 10 | 37 ms | 69 ms | 4.20 |
+| 20 | 42 ms | 155 ms | 3.97 |
+| 30 | 94 ms | 332 ms | 3.63 |
+
+**The ceiling is about 30 four-bot tables.**
+- CPU saturates first: by 30 tables the bots were slowing down and latency had tripled.
+- Memory then tipped it over. Between 31 and 36 tables new tables timed out and the server stopped answering for about 2.5 minutes, then the process died.
+- It took about 7 minutes to come back, between the card index load and the restore pass.
+- On boot it restored 29 of the 36 tables that had killed it. With no cap that is a crash loop, which [#2977](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2977) fixes.
+- Six tables were left as `active` rows the lobby no longer knew ([#2987](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2987)).
+
+**The owner's decision (2026-10-11):** don't grow the VM yet. A soft cap of
+about 30 games, or about 120 players, is enough for a hobby project. Human
+tables have no bots, so they cost less CPU than the bot tables measured
+here.
+
+**Re-running it.** The harness is `scripts/loadtest.mjs` (Node 22, no
+dependencies).
+- Point it at the dev preview first. Run it against production only with the owner's say-so and nobody playing.
+- Pass the admin token as `env:VAR` or as a file you delete afterwards. It is never printed.
+- Example: `node scripts/loadtest.mjs https://cmd-dev.labxp.io env:CMDCTRL_ADMIN_TOKEN --steps 10,20,30 --step-secs 120`
+- Stop early by creating `loadtest.STOP`, or press Ctrl-C.
+- It stops by itself at the first sign of a ceiling: healthz p95 over 2 s, more than 5% errors, three failed creates in a row, or stalled tables.
+- Its cleanup deletes every `loadtest-*` table, waiting for a crashed server to come back first.
+- Watch Grafana's Server and Hosts dashboards while it runs. The harness only sees the client side.
+
 ## Dev-only features
 
 Enabled only when `CMDCTRL_ENV=dev`. Each may be individually turned
