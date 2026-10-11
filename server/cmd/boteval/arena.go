@@ -86,18 +86,18 @@ type arenaFlags struct {
 	// config, where it has to be spelled negative for the arena.
 	blockGrace time.Duration
 	// minThink is the runner's MinThink; 0, the default, is no pacing.
-	minThink time.Duration
-	modelID    string
-	frontier   string
-	endpoint   string
-	out        string
-	decLog     bool
-	decMode    string
-	replays    bool
-	dump       string
-	note       string
-	printMD    bool
-	printJSON  bool
+	minThink  time.Duration
+	modelID   string
+	frontier  string
+	endpoint  string
+	out       string
+	decLog    bool
+	decMode   string
+	replays   bool
+	dump      string
+	note      string
+	printMD   bool
+	printJSON bool
 
 	// needsModel and needsIndex are conclusions parse drew, kept so
 	// the caller does not re-derive them.
