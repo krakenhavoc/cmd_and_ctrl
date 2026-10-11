@@ -504,6 +504,9 @@ describe("TutorialCoach", () => {
   });
 });
 
+const movePointer = (x: number, y: number) =>
+  window.dispatchEvent(new MouseEvent("pointermove", { clientX: x, clientY: y }));
+
 // Sub-PR 4 (#1081): what the coach does for the middle steps.
 describe("TutorialCoach: the middle steps", () => {
   const rest: TutorialStep = {
@@ -517,12 +520,16 @@ describe("TutorialCoach: the middle steps", () => {
   };
   const view = { id: "g", seats: [], turn: { seq: 1 } } as unknown as GameView;
 
-  function mount(steps: TutorialStep[], extra: Record<string, unknown> = {}) {
+  // `before` runs once the coach is listening but before Start: the pointer
+  // is already somewhere when the step's copy shows.
+  function mount(steps: TutorialStep[], extra: Record<string, unknown> = {}, before?: () => void) {
     const log = vi.fn();
     const r = render(
       TutorialCoach as never,
       { view, viewerID: "me", steps, log, onSize: () => {}, ...extra } as never,
     ) as unknown as Rendered<Record<string, unknown>>;
+    flushSync();
+    before?.();
     click(button(r.container, "Start")!);
     return { ...r, log };
   }
@@ -543,6 +550,7 @@ describe("TutorialCoach: the middle steps", () => {
     emit("hand-hovered");
     flushSync();
     expect(on(m, "Read your hand")).toBe(true);
+    movePointer(400, 700);
     over = true;
     vi.advanceTimersByTime(400);
     over = false;
@@ -560,21 +568,66 @@ describe("TutorialCoach: the middle steps", () => {
     expect(m.log).not.toHaveBeenCalled();
   });
 
-  it("does not count a pointer already on the anchor when the step showed, until it leaves and returns", () => {
+  it("does not count a pointer already on the anchor when the step showed, until it moves", () => {
     vi.useFakeTimers();
     handEl();
-    const over = true;
-    let here = over;
-    const m = mount([WELCOME, rest, HANDOFF], { canHover: true, isHovering: () => here });
+    let here = true;
+    const m = mount([WELCOME, rest, HANDOFF], { canHover: true, isHovering: () => here }, () =>
+      movePointer(100, 100),
+    );
     vi.advanceTimersByTime(3_000);
     flushSync();
     expect(on(m, "Read your hand")).toBe(true);
+    // Off and back on without the pointer moving is still not a read.
     here = false;
     vi.advanceTimersByTime(200);
     here = true;
+    vi.advanceTimersByTime(3_000);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    // A jitter inside 8px is not a move either.
+    movePointer(104, 103);
+    vi.advanceTimersByTime(3_000);
+    flushSync();
+    expect(on(m, "Read your hand")).toBe(true);
+    movePointer(400, 700);
     vi.advanceTimersByTime(800);
     flushSync();
     expect(on(m, "That is the whole interface")).toBe(true);
+  });
+
+  it("does not complete when the anchor appears under a stationary pointer after a detour clears (#3005)", () => {
+    vi.useFakeTimers();
+    let kept = false;
+    let over = false;
+    const detoured: TutorialStep = {
+      ...rest,
+      first: () =>
+        kept
+          ? null
+          : {
+              id: "keep",
+              title: "First, keep your hand",
+              body: "Keep it.",
+              anchor: { label: L.yourHand },
+            },
+    };
+    handEl();
+    const m = mount([WELCOME, detoured, HANDOFF], { canHover: true, isHovering: () => over }, () =>
+      movePointer(300, 300),
+    );
+    expect(on(m, "First, keep your hand")).toBe(true);
+    // The click on Keep hand: the detour clears, the hand is not under
+    // the pointer yet, then slides in beneath it.
+    kept = true;
+    emit("hand-hovered");
+    vi.advanceTimersByTime(300);
+    over = true;
+    vi.advanceTimersByTime(5_000);
+    flushSync();
+    expect(m.log).not.toHaveBeenCalled();
+    expect(on(m, "Read your hand") || on(m, "First, keep your hand")).toBe(true);
+    expect(on(m, "That is the whole interface")).toBe(false);
   });
 
   it("does not arm a touch screen's read while the step's detour is showing", () => {
@@ -848,6 +901,7 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     });
     click(button(m.container, "Start")!);
     expect(m.container.textContent).toContain("Your commander");
+    movePointer(300, 300);
     over = true;
     vi.advanceTimersByTime(800);
     flushSync();

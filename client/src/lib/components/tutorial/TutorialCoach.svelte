@@ -193,9 +193,25 @@
   });
 
   // ---- The spotlight ----
-  // Hover steps whose anchor the pointer has been off since they showed.
-  // Outside the effect so a republish of the same step does not forget it.
-  const pointerEntered = new Set<string>();
+  // Where the pointer last moved, from the window's pointermove. :hover
+  // alone cannot say a pointer moved: a hand that slides in under a
+  // resting pointer is :hover too (#3005).
+  let lastPointer: { x: number; y: number } | null = null;
+  $effect(() => {
+    const onMove = (e: PointerEvent | MouseEvent): void => {
+      lastPointer = { x: e.clientX, y: e.clientY };
+    };
+    window.addEventListener("pointermove", onMove, { passive: true });
+    return () => window.removeEventListener("pointermove", onMove);
+  });
+  // A pointer must travel this far from where it was when the step's own
+  // copy appeared before a rest on the anchor counts.
+  const MOVE_PX = 8;
+  // Hover steps whose pointer has really moved since their copy showed.
+  // Outside the effect so a republish of the same step does not forget
+  // it. The origin is taken when the copy first shows (no detour).
+  const pointerMoved = new Set<string>();
+  const pointerOrigin = new Map<string, { x: number; y: number } | null>();
   let rects: AnchorRect[] = $state([]);
   $effect(() => {
     const step = snap.step;
@@ -214,6 +230,7 @@
     // that it stayed, and a pointer crossing the hand on its way to the
     // dock is not reading it. Not while a detour points elsewhere.
     const dwell = canHover && !detour ? step.hover : undefined;
+    if (dwell && !pointerOrigin.has(step.id)) pointerOrigin.set(step.id, lastPointer);
     let hoverSince: number | null = null;
     let missingSince: number | null = null;
     const measure = (): void => {
@@ -233,13 +250,15 @@
           return !!el && isHovering(el);
         });
         const now = Date.now();
-        // A rest counts only once the pointer has been off the anchor
-        // since this step appeared: Keep hand leaves it resting where
-        // the hand lands, and that is not the gesture the step teaches.
-        if (!over) {
-          hoverSince = null;
-          pointerEntered.add(step.id);
-        } else if (!pointerEntered.has(step.id)) hoverSince = null;
+        // A rest counts only once the pointer has really moved since this
+        // step's copy appeared: Keep hand leaves it resting where the
+        // hand lands, and that is not the gesture the step teaches.
+        if (!pointerMoved.has(step.id) && lastPointer) {
+          const o = pointerOrigin.get(step.id);
+          if (!o || Math.hypot(lastPointer.x - o.x, lastPointer.y - o.y) > MOVE_PX)
+            pointerMoved.add(step.id);
+        }
+        if (!over || !pointerMoved.has(step.id)) hoverSince = null;
         else if (hoverSince === null) hoverSince = now;
         else if (now - hoverSince >= dwell.ms) run.hovered(step.id);
       }
