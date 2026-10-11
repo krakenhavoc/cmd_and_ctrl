@@ -77,16 +77,35 @@ function resolve(target: string[], prop: string): string {
   return best!.props[prop];
 }
 
-function px(value: string): number {
-  const m = /^(-?[\d.]+)px$/.exec(value);
-  expect(m, `expected a px length, got ${value}`).not.toBeNull();
-  return Number(m![1]);
+// ceilingPx evaluates a --card-h-max value. #3028 took the fixed px
+// ceilings away: your own board's (and a spectator's or an expanded
+// panel's) is the panel's own height, `100cqh`, and an opponent's is
+// `calc(max(Apx, Bvh) * var(--card-scale-opponent, 1))`, a px floor
+// at a 1080px-tall screen that grows with the screen past it.
+function ceilingPx(
+  value: string,
+  containerHeightPx: number,
+  viewportHeightPx: number,
+  scale = 1,
+): number {
+  const cqh = /^([\d.]+)cqh$/.exec(value);
+  if (cqh) return (Number(cqh[1]) / 100) * containerHeightPx;
+  const grow =
+    /^calc\(max\(([\d.]+)px,\s*([\d.]+)vh\)\s*\*\s*var\(--card-scale-opponent, 1\)\)$/.exec(value);
+  expect(grow, `could not parse --card-h-max ${value}`).not.toBeNull();
+  return Math.max(Number(grow![1]), (Number(grow![2]) / 100) * viewportHeightPx) * scale;
 }
 
 // clampCardH evaluates .panel*'s `--card-h: clamp(floor, calc((C cqh
 // - O) * scale), var(--card-h-max))` for a target class set, a
-// container height in px (1cqh = 1% of it) and a scale factor.
-function clampCardH(target: string[], containerHeightPx: number, scale = 1): number {
+// container height in px (1cqh = 1% of it), a scale factor and the
+// screen's height.
+function clampCardH(
+  target: string[],
+  containerHeightPx: number,
+  scale = 1,
+  viewportHeightPx = 1080,
+): number {
   const formula = resolve(target, "--card-h");
   const m = /^clamp\((-?[\d.]+)px,\s*calc\(\((-?[\d.]+)cqh\s*-\s*(-?[\d.]+)px\)/.exec(formula);
   expect(m, `could not parse --card-h clamp from ${formula}`).not.toBeNull();
@@ -94,41 +113,56 @@ function clampCardH(target: string[], containerHeightPx: number, scale = 1): num
   const floor = Number(floorStr);
   const coeff = Number(coeffStr);
   const offset = Number(offsetStr);
-  const ceiling = px(resolve(target, "--card-h-max"));
+  const ceiling = ceilingPx(
+    resolve(target, "--card-h-max"),
+    containerHeightPx,
+    viewportHeightPx,
+    scale,
+  );
   const raw = coeff * (containerHeightPx / 100) * scale - offset * scale;
   return Math.min(ceiling, Math.max(floor, raw));
 }
 
 describe("the .panel --card-h-max ceiling", () => {
-  it("is 240px for the self panel, unchanged", () => {
-    expect(px(resolve(["panel"], "--card-h-max"))).toBe(240);
+  it("is only the panel's own height for the self panel (#3028)", () => {
+    expect(resolve(["panel"], "--card-h-max")).toBe("100cqh");
   });
 
-  it("is still 200px for an ordinary (non-spectator) opponent panel", () => {
-    expect(px(resolve(["panel", "opponent"], "--card-h-max"))).toBe(200);
+  it("is 200px for an ordinary opponent panel on a 1080px screen, and grows past it", () => {
+    const max = resolve(["panel", "opponent"], "--card-h-max");
+    expect(ceilingPx(max, 500, 1080)).toBeCloseTo(200, 0);
+    expect(ceilingPx(max, 500, 1440)).toBeCloseTo(266.4, 1);
   });
 
-  it("is still 168px for an ordinary (non-spectator) flipped opponent panel", () => {
-    expect(px(resolve(["panel", "opponent", "flipped"], "--card-h-max"))).toBe(168);
+  it("matches self's for an across-table (flipped) opponent, whose board is yours turned", () => {
+    expect(resolve(["panel", "opponent", "flipped"], "--card-h-max")).toBe("100cqh");
+    // The same slope as your own board's, so equal halves of the table
+    // draw equal cards.
+    expect(resolve(["panel", "opponent", "flipped"], "--card-h")).toContain("52cqh - 40px");
   });
 
-  it("is raised to 240px — the self ceiling — for a spectator's opponent panel", () => {
-    expect(px(resolve(["panel", "opponent", "spectator"], "--card-h-max"))).toBe(240);
+  it("is scaled by the card-size setting, so large is larger even at the ceiling", () => {
+    const max = resolve(["panel", "opponent"], "--card-h-max");
+    expect(ceilingPx(max, 500, 1080, 1.1)).toBeCloseTo(220, 0);
+  });
+
+  it("matches self's for a spectator's opponent panel", () => {
+    expect(resolve(["panel", "opponent", "spectator"], "--card-h-max")).toBe("100cqh");
   });
 
   it("stays raised even if a spectator panel is ever also flipped", () => {
-    expect(px(resolve(["panel", "opponent", "flipped", "spectator"], "--card-h-max"))).toBe(240);
+    expect(resolve(["panel", "opponent", "flipped", "spectator"], "--card-h-max")).toBe("100cqh");
   });
 
   // ADR 0120 §3: the expanded overlay's copy of a board. PlayerPanel
   // never sets `flipped` alongside `expanded`, so these are the two
   // class sets it can carry.
-  it("is 240px for an expanded opponent panel, as on a spectator's", () => {
-    expect(px(resolve(["panel", "opponent", "expanded"], "--card-h-max"))).toBe(240);
+  it("matches self's for an expanded opponent panel, as on a spectator's", () => {
+    expect(resolve(["panel", "opponent", "expanded"], "--card-h-max")).toBe("100cqh");
   });
 
-  it("is 240px for the viewer's own expanded panel", () => {
-    expect(px(resolve(["panel", "self", "expanded"], "--card-h-max"))).toBe(240);
+  it("is the panel's height for the viewer's own expanded panel", () => {
+    expect(resolve(["panel", "self", "expanded"], "--card-h-max")).toBe("100cqh");
   });
 
   it("leaves the opponent formula's floor and slope untouched", () => {
@@ -146,8 +180,8 @@ describe("the .panel --card-h-max ceiling", () => {
 describe("the spectator card height at representative panel heights", () => {
   // #1071's story, on #2336's slope (52cqh - 33px): the two panels
   // agree until the raw slope value passes the opponent's 200px
-  // ceiling, at ~448px of content height, and a spectator's keeps
-  // growing to 240px after it.
+  // ceiling (on a 1080px screen), at ~448px of content height, and a
+  // spectator's keeps growing after it, with no fixed ceiling (#3028).
   it("is unaffected below the opponent's 200px ceiling (400px content height)", () => {
     const before = clampCardH(["panel", "opponent"], 400);
     const after = clampCardH(["panel", "opponent", "spectator"], 400);
@@ -158,16 +192,16 @@ describe("the spectator card height at representative panel heights", () => {
   it("diverges once the raw slope value passes 200px (483px content height)", () => {
     const before = clampCardH(["panel", "opponent"], 483);
     const after = clampCardH(["panel", "opponent", "spectator"], 483);
-    expect(before).toBe(200); // clamped at the opponent ceiling
+    expect(before).toBeCloseTo(200, 0); // clamped at the opponent ceiling
     expect(after).toBeCloseTo(218.16, 1); // the raw slope value, under the spectator ceiling
     expect(after).toBeGreaterThan(before);
   });
 
-  it("reaches the full 240px ceiling on a tall display (663px content height)", () => {
+  it("keeps growing past 240px on a tall display (663px content height, #3028)", () => {
     const before = clampCardH(["panel", "opponent"], 663);
     const after = clampCardH(["panel", "opponent", "spectator"], 663);
-    expect(before).toBe(200);
-    expect(after).toBe(240);
+    expect(before).toBeCloseTo(200, 0);
+    expect(after).toBeCloseTo(311.76, 1); // the raw slope value: no fixed ceiling
   });
 
   it("the two ramps cross at ~448px content height, not before", () => {

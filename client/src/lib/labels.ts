@@ -597,6 +597,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}GameMenu.svelte`],
     doc: "the ⋯ menu's heading over the table rolls; plain text, not a group, with no name of its own",
   }),
+  sortHand: label({
+    name: "Sort hand",
+    kind: "text",
+    role: "none",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's heading over the one-time hand sorts (#3028), and the sortHand shortcut's row in the keymap",
+  }),
   rollD6: label({
     name: "Roll a d6",
     kind: "text",

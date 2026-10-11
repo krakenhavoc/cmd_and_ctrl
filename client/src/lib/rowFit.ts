@@ -87,6 +87,16 @@ export function tappedRoom(cardW: number, cardH: number): number {
 }
 
 /**
+ * overrideStale is whether a shrunk row's px card size was worked out
+ * for a different row size than `baseH`, the one it has now (#3028): a
+ * resize moved it. `appliedH` is the size the override was applied to,
+ * 0 with no override.
+ */
+export function overrideStale(scale: number, appliedH: number, baseH: number): boolean {
+  return scale < 1 && appliedH > 0 && baseH > 0 && Math.abs(appliedH - baseH) > 0.5;
+}
+
+/**
  * fitRow is the action on a row's card list. Whenever the row, a pile,
  * the set of piles or the row's own card size changes, it shrinks the
  * cards to fit (publishing `--card-w` / `--card-h` on the list) and then
@@ -107,6 +117,10 @@ export function fitRow(
   if (typeof ResizeObserver === "undefined") return { update() {}, destroy() {} };
   let frame = 0;
   let scale = 1;
+  // The row's own card height `scale` was applied to, while it is
+  // below 1. The override is in px, so it does not follow that size
+  // when the panel resizes (#3028).
+  let appliedH = 0;
   const probe =
     node.parentElement?.querySelector<HTMLElement>(":scope > .fit-probe > .fit-probe-card") ?? null;
   const measure = (): void => {
@@ -132,6 +146,19 @@ export function fitRow(
     }
     const baseW = probe?.offsetWidth ?? 0;
     const baseH = probe?.offsetHeight ?? 0;
+    // #3028: the row's own size moved under a px override (the window
+    // was resized). The cards still have the old size, and a row that
+    // is only as wide as its cards cannot tell from them how much room
+    // it has now. Drop the override and measure again next frame, from
+    // the full size, as a freshly drawn row does.
+    if (overrideStale(scale, appliedH, baseH)) {
+      scale = 1;
+      appliedH = 0;
+      node.style.removeProperty("--card-w");
+      node.style.removeProperty("--card-h");
+      schedule();
+      return;
+    }
     // What the row's cards measure now, at `scale`, and at full size.
     const widths = piles.map((p) => p.offsetWidth);
     const fixed = strip ? 0 : gap * Math.max(0, piles.length - 1);
@@ -145,9 +172,11 @@ export function fitRow(
       if (scale < 1) {
         node.style.setProperty("--card-w", `${baseW * scale}px`);
         node.style.setProperty("--card-h", `${baseH * scale}px`);
+        appliedH = baseH;
       } else {
         node.style.removeProperty("--card-w");
         node.style.removeProperty("--card-h");
+        appliedH = 0;
       }
     }
     // The piles were measured at `was`; the overlap is for the new size.

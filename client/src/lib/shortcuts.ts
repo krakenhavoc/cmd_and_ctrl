@@ -59,6 +59,7 @@ export type ShortcutID =
   | "toggleBluff"
   | "toggleGameLog"
   | "drawCard"
+  | "sortHand"
   | "toggleMute"
   | "openSettings"
   | "focusTip"
@@ -177,6 +178,18 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
     group: "table",
     defaultBinding: "d",
     kind: "action",
+    scope: "game",
+  },
+  {
+    // #3028: the hand has no sort button; this and the ⋯ menu's Sort
+    // hand group are the way in. Each press sorts once by the next
+    // order, so pressing again tries another.
+    id: "sortHand",
+    label: L.sortHand,
+    hint: "Sort your hand once: each press tries the next order (mana value, type, colour).",
+    group: "table",
+    defaultBinding: "s",
+    kind: "view",
     scope: "game",
   },
   {
@@ -638,6 +651,11 @@ export function shortcutAvailability(id: ShortcutID, ctx: ShortcutContext): Avai
       return AVAILABLE;
     case "passTurn":
       if (!ctx.activePlayer) return unavailable("not your turn");
+      return AVAILABLE;
+    case "sortHand":
+      // A view, so not the action gates above, but a spectator holds
+      // no hand of their own to sort.
+      if (ctx.spectator) return unavailable("spectating — no hand of your own");
       return AVAILABLE;
     case "undo":
       if (ctx.undosRemaining !== null && ctx.undosRemaining <= 0) {

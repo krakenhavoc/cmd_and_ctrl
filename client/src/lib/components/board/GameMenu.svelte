@@ -37,6 +37,7 @@
     type GameMenuOptions,
   } from "../../gameMenu";
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
+  import { HAND_SORTS } from "../../handOrder";
   import { L } from "../../labels";
 
   type Props = GameMenuOptions & {
@@ -219,6 +220,22 @@
         <button class="mi" role="menuitem" onclick={via(props.onLifeHistory)}>
           <Icon name="drop" size={15} /> Life history
         </button>
+        <div class="sep"></div>
+      {/if}
+      {#if props.seated && props.sortHand && props.onSortHand}
+        <!-- #3028: the one-time hand sorts, moved here from a button on
+             the hand. The result becomes the saved order. -->
+        {@const onSort = props.onSortHand}
+        <div class="menu-h">
+          {L.sortHand}
+          {#if props.sortKey}<span class="mi-r">{props.sortKey}</span>{/if}
+        </div>
+        {#each HAND_SORTS as s (s.key)}
+          <button class="mi" role="menuitem" onclick={via(() => onSort(s.key))}>
+            <Icon name="hand" size={15} />
+            {s.label}
+          </button>
+        {/each}
         <div class="sep"></div>
       {/if}
       {#if props.tableRoll}

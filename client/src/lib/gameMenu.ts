@@ -12,6 +12,7 @@
 // GameMenu.svelte draws it; this file is what Game.svelte hands it and
 // the two small rules it applies.
 
+import type { HandSort } from "./handOrder";
 import { L } from "./labels";
 
 export interface GameMenuOptions {
@@ -52,6 +53,13 @@ export interface GameMenuOptions {
   // matching the server's rate, and the items are disabled until then.
   tableRoll?: { ready: boolean } | null;
   onTableRoll?: (die: TableDie) => void;
+  // #3028: the Sort hand group, the one-time sorts (handOrder.ts), for
+  // a seat of the viewer's own holding more than one card. The hand
+  // has no button of its own. `sortKey` is the sortHand shortcut's
+  // key cap, or "".
+  sortHand?: boolean;
+  sortKey?: string;
+  onSortHand?: (key: HandSort) => void;
   // ADR 0125 §6: the Help group, after Table. "Tips for the table" and
   // "Keyboard shortcuts" for everyone; "Replay the tutorial" only on
   // this tab's practice table (`practice`). A real table offers no
