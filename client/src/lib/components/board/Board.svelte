@@ -4187,8 +4187,8 @@
     top: 10px;
     /* #2995: clear of the opponent's commander, which sits at the top
        left of their panel (CommandStrip, 42% of a card tall). */
-    left: 76px;
-    width: min(512px, calc(50% - 196px));
+    left: 196px;
+    width: min(512px, calc(50% - 252px));
     max-height: calc(100% - 20px);
     display: flex;
     flex-direction: column;
@@ -4203,8 +4203,8 @@
   }
   :global(:root[data-table-layout="row"]) .board[data-opp-count="3"] .strip,
   :global(:root[data-table-layout="focus"]) .board[data-opp-count="3"] .strip {
-    left: calc(33.333% + 70px);
-    width: min(512px, calc(33.333% - 196px));
+    left: calc(33.333% + 190px);
+    width: min(512px, calc(33.333% - 252px));
   }
 
   /* Quadrant templates per opponent count. The bottom row (next +

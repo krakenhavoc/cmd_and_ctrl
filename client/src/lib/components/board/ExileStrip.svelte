@@ -487,7 +487,7 @@
 </script>
 
 {#if entries.length > 0}
-  <div class="exile-strip" class:open aria-label={stripLabel}>
+  <div class="exile-strip" class:open class:has-cmd={commanderCount > 0} aria-label={stripLabel}>
     <button
       type="button"
       class="strip-toggle"
@@ -719,20 +719,17 @@
     flex-direction: row;
     align-items: flex-start;
   }
-  /* #2995: your commanders are drawn whole, not peeking like the hand.
-     The strip is the hand's 62% tall, so a whole card in it is that
-     less the price tag's room above and a hairline below; the card
-     size is handed down one element (a custom property that names
-     itself is invalid). Nothing is hidden, so nothing rises. Only
-     inline: the collapsed popover has the room for full cards. */
+  /* #2995: your commander is drawn whole, at the hand's card size. The
+     strip stood the hand's 62% tall, so the panel's foot cut the card
+     off; with a commander in it the strip stands a whole card tall (and
+     the row grows by the 38% the hand hides). Nothing is hidden, so
+     nothing rises. Only inline: the collapsed popover has the room. */
   @container (min-width: 641px) {
-    .cmd-group {
-      --cmd-h: calc(var(--card-h, 168px) * var(--hand-peek, 0.62) - 9px);
-      --strip-rise: 0px;
+    .exile-strip.has-cmd {
+      height: calc(var(--card-h, 168px) + 9px);
     }
-    .cmd-group > .strip-slot {
-      --card-h: var(--cmd-h);
-      --card-w: calc(var(--cmd-h) * 5 / 7);
+    .exile-strip.has-cmd .strip-cards {
+      --strip-rise: 0px;
     }
   }
   .strip-slot {

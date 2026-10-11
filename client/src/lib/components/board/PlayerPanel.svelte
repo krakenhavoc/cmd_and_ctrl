@@ -1344,13 +1344,22 @@
         "rail   middle    middle"
         "rail   creatures creatures";
     }
-    /* #2995: their commander sits whole at the hand row's top-left, at
-       CommandStrip's own 42% size. #2491 tucked a hand-size card behind
-       the top edge so half of it showed, and at the top row's card size
-       that left a sliver of ~30px. */
+    /* #2995: their commander is a card you can recognise, not a speck
+       or a sliver: at least 84px tall. The hand row is only a peek
+       tall, so the card hangs down out of it into the empty corner
+       above the identity rather than growing the row; the strip keeps
+       the hand's height and lets its card overflow. */
     .panel.opponent.flipped :global(.command-strip) {
+      --strip-h: max(84px, calc(var(--card-h) * 0.9));
+      height: calc(var(--card-h) * var(--hand-peek, 0.55));
       align-self: flex-start;
+      align-items: flex-start;
+      position: relative;
+      z-index: 6;
       padding: 0;
+    }
+    .panel.opponent.flipped :global(.command-strip .slot) {
+      flex: none;
     }
     .panel.opponent.flipped .grid-bottom,
     .panel.opponent.flipped .grid-middle {
