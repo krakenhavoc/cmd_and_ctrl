@@ -383,6 +383,16 @@ type StaticAbility struct {
 	// leaves such a row out rather than counting it twice (#2219).
 	// Catalog data; not persisted and never read by the layer pass.
 	Keywords []string
+
+	// PrintedKeywordRow marks that synthesised row and no other. It is
+	// engine-owned: effects.buildDef sets it on the row it makes from
+	// Spec.PrintedKeywords and clears it on every row a card file
+	// wrote. The row applies the object's own printed keywords to the
+	// object itself and reads nothing else, so changing the object
+	// cannot change what it does to any other; the trigger-order
+	// independence check does not count it as a rule the object
+	// shapes (defBearsRules, #3013). Catalog data; not persisted.
+	PrintedKeywordRow bool
 }
 
 // staticContinuousEffect is the internal `ContinuousEffect` adapter

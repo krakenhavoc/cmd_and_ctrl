@@ -59,8 +59,10 @@ func (s GetEnergy) footprint() (game.FootprintStep, bool) {
 }
 
 func (s CreateToken) footprint() (game.FootprintStep, bool) {
-	key, manual := game.FootprintTokenOf(s.Template)
-	return game.FootprintStep{Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual}, s.Controller == uuid.Nil && s.N > 0
+	key, manual, keywords := game.FootprintTokenOf(s.Template)
+	return game.FootprintStep{
+		Kind: game.FootprintCreateToken, N: s.N, TokenKey: key, TokenManual: manual, TokenKeywords: keywords,
+	}, s.Controller == uuid.Nil && s.N > 0
 }
 
 func (s GainLifeEqualToSubject) footprint() (game.FootprintStep, bool) {

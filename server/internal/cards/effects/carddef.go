@@ -322,6 +322,16 @@ func buildDef(spec Spec) *game.CardDef {
 	// static, appended after the hand-written ones. Built here, once,
 	// rather than on every layer recompute.
 	d.Static = spec.Static
+	for i := range d.Static {
+		if d.Static[i].PrintedKeywordRow {
+			// Engine-owned (#3013): only the row below may carry it.
+			d.Static = append([]game.StaticAbility(nil), spec.Static...)
+			for j := range d.Static {
+				d.Static[j].PrintedKeywordRow = false
+			}
+			break
+		}
+	}
 	if len(spec.PrintedKeywords) > 0 {
 		kws := append([]string(nil), spec.PrintedKeywords...)
 		synth := game.StaticAbility{
@@ -329,14 +339,15 @@ func buildDef(spec Spec) *game.CardDef {
 			AppliesTo: selfOnly,
 			// #2219: this row IS the printed keywords, which the
 			// tile already shows as keyword chips.
-			Keywords: kws,
+			Keywords:          kws,
+			PrintedKeywordRow: true,
 			Apply: func(c *game.Characteristic, target *game.Card, _ *game.Game, _ *game.Card) {
 				// CR 707.9d (#2322): a copy whose colour exception
 				// dropped devoid does not get it back from the entry.
 				appendKeywordsTo(c, target.PrintedKeywordsHonouringCopy(kws))
 			},
 		}
-		d.Static = append(append([]game.StaticAbility(nil), spec.Static...), synth)
+		d.Static = append(append([]game.StaticAbility(nil), d.Static...), synth)
 	}
 	if len(d.Static) == 0 {
 		d.Static = nil

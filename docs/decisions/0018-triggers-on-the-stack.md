@@ -2981,7 +2981,9 @@ to give it back.
   an ability that resolves between the pumps and reads them. **So
   Mentor and Sokka, Tenacious Tactician boards still prompt**, since
   each is prowess plus a token trigger. #1530 records the narrowest
-  way to go further.
+  way to go further. *(Closed 2026-10-11 by the #3013 amendment's
+  sub-PR 3 below, through declared footprints rather than this
+  class: the `Commutes` skip itself is unchanged.)*
 - **"Identical-effect triggers from copies of the same card with no
   targets."** A shared oracle ID and label say the closures are the
   same code, not that they commute. An untargeted trigger that reads
@@ -3011,7 +3013,8 @@ pins it: no `resolve_choice` move, and a pass is available.
   IDs); and Clone + RestoreFrom keeping the flag.
 - `cards/effects/prowess_order_test.go`: two and then three prowess
   creatures cast through with no prompt and pump once each. A Mentor
-  board still prompts. Undo, restored from before the cast and from
+  board still prompted (until #3013 sub-PR 3; its tests are now in
+  `trigger_independence_prowess_test.go`). Undo, restored from before the cast and from
   mid-batch, settles without a prompt and pumps exactly once.
 
 The targeted case is pinned at the drain rather than end to end,
@@ -4115,3 +4118,55 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
 - **Still not covered (unchanged).** Two triggers from one source with one label are skipped by sub-PR 8's
   identical rule, which has never read the trigger context. So two Righteous Valkyrie gains for two creatures
   entering together are auto-ordered, even across her +7 line.
+
+### Note (2026-10-11): sub-PR 3, prowess
+
+- **The footprint.** `keyedBodyFootprints` (`game/trigger_independence.go`) declares the footprint of an engine
+  keyword trigger by its stack body. Prowess (`"prowess/pump"`) is its only entry: one `FootprintPumpSource`
+  step. It reads its source, writes it while it is on the battlefield, and emits nothing.
+  - `triggerAccessLocked` looks a keyed item up there, as it looks a stamped item's row up in the catalog. It
+    accepts the item only when it is exactly what the prowess `Build` makes: no targets, modes, `Params`,
+    payload, X or division, and no field outside `builtItemPlainFields`. `Commutes` joined that list, since it
+    says how a batch may be ordered and changes nothing the item does.
+  - The `Commutes` skip is unchanged and runs first, so an all-prowess batch still skips on an opaque board.
+  - `game/trigger_footprint_keyed_test.go` is the table's conformance test. It resolves each body's real item
+    and fails on any event, any player or object change, or any continuing effect outside the declaration. A
+    body without a case fails.
+- **The boards.** A Monastery Mentor board and a Sokka, Tenacious Tactician board cast a noncreature spell
+  with no prompt, and so does the next spell, with the new token's prowess in the batch. #1530 item 1 is
+  closed.
+- **Two rules the proposal did not have.**
+  1. **The printed-keyword static is not a rule the object shapes.** The registry turns `PrintedKeywords` into
+     one self-only layer-6 static, so every catalog creature with a printed keyword had a `Static` slot, and
+     `objectInertLocked` called it rules-bearing. Writing Monastery Mentor (printed prowess) therefore set
+     `rules`. Such a row applies the object's own printed keywords to the object and reads nothing, so
+     changing the object can't change what it does to anything else. The registry now marks that row
+     (`StaticAbility.PrintedKeywordRow`, engine-owned: a card file's mark is cleared), and `defBearsRules`
+     ignores it. This also applies to `CounterOnThis` and `ExileChosenTarget` writes on such creatures, which
+     now pass where they used to ask under `rules`.
+  2. **A pump reaches past its object only through what the layers compute.** A pump changes only its
+     object's power and toughness, never its zone, counters or attachments. So a static on the pumped object
+     can change only what the layers compute for other objects. Sokka's grants are such statics. A pump on an
+     object that bears rules therefore sets `pumpRules`, not `rules`. `pumpRules` conflicts only with an item
+     that reads through the layers: an amount off the subject (`charReads`), a damage source's lifelink,
+     infect, wither or toxic, or a chosen target's legality (`traitReads`). The reason is `rules`. So Sokka's
+     pump beside Firebrand Archer asks, and Mentor's doesn't.
+     - Given up: a static on the pumped object that reads its power and *grants a triggered ability* to
+       something, which would then watch the rest of the batch. This is the #2884 "static whose condition reads
+       what an item writes" case, extended from other permanents' statics to the pumped object's own.
+- **Hardening: a token's keyword triggers.** `tokenTemplateInert` read only a template's catalog `Triggered`.
+  A token step now carries the template's keywords (`FootprintStep.TokenKeywords`), and the check reads the
+  keyword triggers they make (`tokenKeywordWatches`, through `keywordTriggersFor`). If one of them watches an
+  event kind the batch causes, the batch asks with the reason `reactor`. An evolve token beside another token
+  maker asks. A Monk with prowess doesn't, because prowess watches a cast and no step casts. No catalogued
+  token has evolve today. A keyword a static would *grant* the token once it enters is not read, which is the
+  same given-up case as above.
+- **Unchanged, by the owner's decisions.** Watchers still force the prompt. Ty Lee, Chi Blocker's own "when
+  this enters" keeps Sokka's batch asking (`reactor`), as an ETB watcher such as Soul Warden keeps Mentor's.
+  **Always ask** and **Never ask** behave as before. Caldera Pyremaw beside prowess still asks
+  (`undescribed`).
+- **Tests.** `cards/effects/trigger_independence_prowess_test.go` covers the keyed footprint, the Mentor and
+  Sokka boards over two spells, the ETB watcher, Ty Lee, Pyremaw, Sokka's pump beside damage and Mentor's,
+  always ask, the evolve and Monk tokens, and the registry's printed-keyword mark. In `game`:
+  `trigger_footprint_keyed_test.go` (keyed conformance, `tokenKeywordWatches`, `defBearsRules` on the
+  printed-keyword row). `prowess_order_test.go`'s "Mentor still prompts" test is gone.

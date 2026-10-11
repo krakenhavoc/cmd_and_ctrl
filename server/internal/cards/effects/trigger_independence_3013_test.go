@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"reflect"
 	"testing"
 
 	"github.com/google/uuid"
@@ -63,10 +64,8 @@ func TestTheRegistryDeclaresTheOwnersPairsFootprints(t *testing.T) {
 			t.Errorf("%s: footprint %+v, want %+v", c.name, got, c.want)
 			continue
 		}
-		for i := range got {
-			if got[i] != c.want[i] {
-				t.Errorf("%s: footprint %+v, want %+v", c.name, got, c.want)
-			}
+		if !reflect.DeepEqual(got, c.want) {
+			t.Errorf("%s: footprint %+v, want %+v", c.name, got, c.want)
 		}
 	}
 }

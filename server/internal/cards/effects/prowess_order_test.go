@@ -11,12 +11,14 @@ import (
 
 // prowess_order_test.go — #1511. A batch of prowess triggers from
 // different creatures commutes, so the CR 603.3b ordering prompt is
-// skipped for it (ADR 0018's #1511 amendment). Anything else in the
-// batch — even one untargeted trigger of another kind — keeps the
-// prompt. The targeted case is pinned at the drain in
-// game/trigger_order_commutes_test.go and, since #1529 held the drain
-// for a trigger that is still choosing its target, end to end from a
-// cast in trigger_batch_order_test.go (prowess plus Caldera Pyremaw).
+// skipped for it (ADR 0018's #1511 amendment). This skip reads no
+// board; a batch with anything else in it — even one untargeted
+// trigger of another kind — is left to the #2884 independence check,
+// which reads prowess's declared footprint since #3013. The targeted
+// case is pinned at the drain in game/trigger_order_commutes_test.go
+// and, since #1529 held the drain for a trigger that is still choosing
+// its target, end to end from a cast in trigger_batch_order_test.go
+// (prowess plus Caldera Pyremaw).
 
 // settleWithoutPrompts passes priority until the stack settles and
 // fails on ANY pending choice — the whole point of the auto-ordered
@@ -91,31 +93,10 @@ func TestProwessBoardSkipsTheOrderPrompt(t *testing.T) {
 	}
 }
 
-// TestProwessWithOneUntargetedOtherTriggerStillPrompts — the rule is
-// "every item commutes", not "all but one". Monastery Mentor's token
-// trigger is untargeted and reads nothing, but a token entering can
-// trigger something that reads what the pumps change, so where it sits
-// among them is left to its controller.
-func TestProwessWithOneUntargetedOtherTriggerStillPrompts(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[g.Turn.ActiveSeat]
-	pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Monastery Mentor", OracleID: oracleMonasteryMentor,
-		TypeLine: "Creature — Human Monk", Power: 2, Toughness: 2,
-		Owner: me.ID, Controller: me.ID,
-	})
-
-	castNoncreature(t, g)
-	if triggerOrderPrompt(g) == nil {
-		if err := g.PassPriority(); err != nil && !errors.Is(err, game.ErrChoicePending) {
-			t.Fatalf("PassPriority: %v", err)
-		}
-	}
-	if triggerOrderPrompt(g) == nil {
-		t.Fatal("Mentor's prowess plus its token trigger reached the stack with no ordering prompt")
-	}
-	settleProwess(t, g)
-}
+// A batch with one trigger outside the Commutes class (Monastery
+// Mentor's token trigger) is no longer this skip's: the #3013
+// independence check orders it, from prowess's declared footprint
+// (trigger_independence_prowess_test.go).
 
 // TestProwessAutoOrderRoundTripsUndo — undo restores a clone. Taken
 // before the cast, the restore rewinds the pumps; taken with the
