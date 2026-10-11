@@ -22,6 +22,7 @@ import {
   type TutorialStep,
 } from "./tutorial";
 import {
+  ATTACK,
   COMMANDER,
   HANDOFF,
   ON_THE_STACK,
@@ -29,6 +30,7 @@ import {
   TUTORIAL_STEPS,
   WELCOME,
 } from "./tutorialSteps";
+import { board, elves } from "./test/tutorialBoards";
 import { anchorRect, anchorRects, resolveAnchor } from "./tutorialAnchor";
 import { L } from "./labels";
 import { emit } from "./tutorialBus";
@@ -831,6 +833,33 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     expect(m.container.textContent).toContain("That is the whole interface");
     expect(seen()["table.opening-roll"]).toBe(1);
     expect(m.log).not.toHaveBeenCalled();
+  });
+
+  it("republishes the Main 1 wording when the phase moves from upkeep to precombat_main (#3006)", () => {
+    vi.useFakeTimers();
+    document.body.insertAdjacentHTML(
+      "beforeend",
+      '<section aria-label="actions" id="dock"></section>',
+    );
+    place(document.getElementById("dock")!, 920, 620, 330, 150);
+    const m = mount([WELCOME, ATTACK, HANDOFF], {
+      view: board({ step: "upkeep", mine: [elves()] }) as unknown as GameView,
+    });
+    click(button(m.container, "Start")!);
+    flushSync();
+    // Skip to my turn handed back in upkeep: the detour says to reach Main.
+    expect(m.container.textContent).toContain("First, go to combat");
+    expect(m.container.textContent).toContain(
+      "Press next (Space) in the dock until it reads Main, then play a land and cast what you like.",
+    );
+    // The dock reads Main 1 now: the coach must publish the Main 1 copy.
+    m.setProps({ view: board({ step: "precombat_main", mine: [elves()] }) as unknown as GameView });
+    vi.advanceTimersByTime(POLL_MS);
+    flushSync();
+    expect(m.container.textContent).toContain(
+      "Play a land and cast what you like, then press next (Space) until it reads Declare Attackers.",
+    );
+    expect(m.container.textContent).not.toContain("until it reads Main, then");
   });
 
   it("completes the commander's hover with a mouse, and marks its hint seen", () => {
