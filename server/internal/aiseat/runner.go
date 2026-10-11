@@ -618,7 +618,14 @@ func (r *Runner) step(ctx context.Context) bool {
 				return true
 			}
 		}
-		r.pace(ctx, started, minThink)
+		// #2898: a seat whose only legal move is to pass has nothing to
+		// think about, so MinThink (which exists so a choice does not
+		// look precognitive) is skipped. The stack hold below is a
+		// different wait, for the people reading another seat's item
+		// (ADR 0119 §2), and still applies.
+		if !onlyPass(moves) {
+			r.pace(ctx, started, minThink)
+		}
 		if mv.Kind == legal.KindPass && stackHold > 0 && !r.holdForStack(ctx, stackHold) {
 			// The top of the stack changed while this seat waited, so
 			// the pass was decided on a frame that is gone. Report the
@@ -1040,6 +1047,12 @@ func (r *Runner) holdForStack(ctx context.Context, hold time.Duration) bool {
 		}
 	}
 	return true
+}
+
+// onlyPass reports whether pass is the seat's one legal move: nothing
+// to decide, so no reason to look like it is deciding (#2898).
+func onlyPass(moves []legal.Move) bool {
+	return len(moves) == 1 && moves[0].Kind == legal.KindPass
 }
 
 // pace holds the runner so the decision takes at least minThink of
