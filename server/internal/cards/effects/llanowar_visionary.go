@@ -20,7 +20,7 @@ func init() {
 		Name:         "Llanowar Visionary",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Llanowar Visionary — draw a card", b36DrawOne),
+			WhenThisEnters("Llanowar Visionary — draw a card", Do(DrawCards{N: 1})),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

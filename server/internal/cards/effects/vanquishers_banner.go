@@ -28,9 +28,7 @@ func init() {
 				}
 				spell, ok := g.LookupCardForEffect(ev.CardID)
 				return ok && spell.IsCreature() && spell.HasSubtype(source.NamedTribe)
-			}, "Vanquisher's Banner — draw a card", func(g *game.Game, item *game.StackItem) error {
-				return g.DrawNForEffect(item.Controller, 1)
-			}),
+			}, "Vanquisher's Banner — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

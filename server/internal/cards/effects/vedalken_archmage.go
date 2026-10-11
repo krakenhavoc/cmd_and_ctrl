@@ -20,7 +20,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b29ArtifactSpellCastByYou(ev, source, g)
-			}, "Vedalken Archmage — draw a card", b27DrawOne),
+			}, "Vedalken Archmage — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

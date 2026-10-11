@@ -29,26 +29,19 @@ Diregraf Colossus | fd62ad01-601f-4250-bc2a-8ef3982e45c4
 Distinguished Conjurer | 6df57d67-2fd9-4e7a-b67b-f361fc30e496
 Don Andres, the Renegade | 060ef981-db05-436b-b1c1-f55071375344
 Edgar, Moonlit Sovereign | 1917bda6-c0e1-4c80-8009-74c28cf6b8e9
-Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b
 Faramir, Field Commander | adeed5e8-9019-4740-83ea-67dcd754e194
 Field of the Dead | aa959340-c869-4caa-92c7-572bd8d23eef
-Frostbite Pyromental | 9a104f73-597b-49e3-8088-13db31f61900
 Garruk's Uprising | 3127ae9b-a7a7-43ec-89d7-688f8445b33d
 Ginger, Queen of Sweets | 5ea93956-085d-409b-bd95-dd669fa69eeb
 Glowing One | b30eae2a-bc1c-45a3-93ae-e1c30d26797c
-Guidelight Matrix | 98005890-d566-4a27-906f-625513171e85
 Hermes, Overseer of Elpis | 63e2cba7-ec1a-44bf-b915-d2ae75851430
-High-Society Hunter | 0dc158ba-7ec8-4558-91f5-0a87ef8380d4
-Ichor Wellspring | 5b5ef43b-13fd-4461-8d2d-18be65e9a790
 Ikra Shidiqi, the Usurper | a1a1761c-88e5-40b4-ba4c-60735c054b09
 Indulging Patrician | 189131b7-ed59-4750-a4ed-453e4497a5c8
-Ingenious Infiltrator | 354defd2-f63f-4a48-9fd4-2526b3878a84
 Interplanar Beacon | 073169f2-da3a-4a93-8c01-b3fd8558d225
 Inventors' Fair | 91d4a5fe-fd6d-4b14-a63f-61b4d0ecd9c4
 Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91
 Lazav, the Multifarious | c14bcef2-6d49-4430-86d0-e5a87ba442d9
 Lifecreed Duo | 63686c6b-9051-4002-aa8e-da8a3021330f
-Llanowar Visionary | f75ed312-3a23-4624-80c5-03980aa22d0b
 Lunar Convocation | cb68d1e4-36aa-4a00-b671-8959e7d526d4
 Lux Artillery | cbd76b22-d04e-48e7-bcab-c7f5466d67d8
 Mausoleum Harpy | ba682da8-50f5-478f-99cc-60a57d229a04
@@ -60,10 +53,6 @@ Padeem, Consul of Innovation | 0c7ba712-6a99-4d2f-9242-a2163a11f69c
 Restless Spire | 0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9
 Runaway Steam-Kin | eb414a8f-566f-4635-80a1-77b2e18ac8dc
 Satoru, the Infiltrator | 7555c429-5f2d-4171-b6b0-8e3c8da7f314
-Seafloor Oracle | f9f719cb-7778-4109-bbd3-4504ee1b5f49
 Thassa, God of the Sea | 69e5df2f-be1f-4608-a90f-3e2f51e2fea4
 The Gaffer | a177295e-3b58-4e46-a1cb-fc003a7a0848
 Tormod, the Desecrator | 6dc0150d-7145-41e2-bd3d-2564d9d32301
-Vanquisher's Banner | 8cf38025-5821-45a0-9483-266353b7e82d
-Vedalken Archmage | 568cf486-0261-4634-ac36-a6507101b2d0
-Way of the Mind Sculptor | 94be2e86-ba0e-4b8d-9b9c-114adacb26db

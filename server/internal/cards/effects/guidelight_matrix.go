@@ -26,9 +26,7 @@ func init() {
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
 			Key:       "Guidelight Matrix — draw a card",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			},
+			Effect:    Do(DrawCards{N: 1}),
 		}},
 		Activated: []ActivatedAbility{{
 			Label:        "{2}, {T}: Target Mount you control becomes saddled until end of turn. Activate only as a sorcery.",
