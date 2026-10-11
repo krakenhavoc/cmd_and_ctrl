@@ -21,9 +21,7 @@ func init() {
 			WhenThisEnters("Fiery Inscription — the Ring tempts you", Do(TheRingTemptsYou{})),
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return instantOrSorceryCastByYou(ev, source, g)
-			}, "Fiery Inscription — 2 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 2)
-			}),
+			}, "Fiery Inscription — 2 damage to each opponent", Do(DamageEachOpponent{N: 2})),
 		},
 	})
 }

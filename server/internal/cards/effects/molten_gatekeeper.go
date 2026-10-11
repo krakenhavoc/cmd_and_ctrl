@@ -25,9 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AnotherCreatureEnteredUnderYourControl,
-				"Molten Gatekeeper — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-					return damageToEachOpponent(g, item, 1)
-				}),
+				"Molten Gatekeeper — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 		Activated: []ActivatedAbility{Unearth("{R}")},
 	})

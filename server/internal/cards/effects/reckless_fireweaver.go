@@ -23,9 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return artifactEnteredUnderYourControl(ev, source, g)
-			}, "Reckless Fireweaver — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}),
+			}, "Reckless Fireweaver — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),
 		},
 	})
 }
