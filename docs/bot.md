@@ -557,7 +557,12 @@ move list it was shown with the answer marked, and the wall time. It
 ends with a verdict line for each of the three failures that make a
 model seat look like a heuristic seat: **truncation** (the server
 counted far fewer prompt tokens than were sent, so it silently dropped
-the front of the prompt — the primer and the instructions), **thinking
+the front of the prompt — the primer and the instructions; when the
+server's context size is known, from `--context N` or read from
+Ollama's `/api/ps` after the call, a count under 90% of it is `ruled
+out` and one that fills it is `likely`, and a reply that ignores the
+format with a plausible count and no known context is only
+`possible`), **thinking
 not suppressed** (a `reasoning` field came back, or `finish_reason` was
 `length` with nothing usable in `content`), and the **answer** — which
 move the reply comes to, read exactly as a seat reads it, or `INDEX:
@@ -585,6 +590,20 @@ How each used reply resolved is counted in `Stats.ByPick` and the
 arena's `picks` column (`index`, `index-unlabelled`, `label-rescued`,
 `label-corrected`, `label-mismatch`), next to `out-of-range` under
 `fallbacks`.
+
+**The picks land, and they are still worse than the heuristic's.**
+Measured 2026-10-11 (#2196), `qwen3.6:35b-a3b` Q4_K_M on Ollama
+0.35.1, 16k context, thinking off: on the probe's window the pre-fix
+build named an unlisted move 4 times in 10 and the fixed build 0 in 10.
+A 60-game two-seat arena (assisted against the heuristic, mirror
+izzet-aggro, rotation on, seed 2026100401) made 3,199 model calls with
+0 out-of-range replies and 0 timeouts (10 picks label-corrected, 6
+replies malformed by a `why` cut off at the 128-token cap), and the
+heuristic won 58 of 60: the model seat's win rate was 3.3%, 95% CI
+0.9–11.4%. The model chose the heuristic's move on 35% of the windows
+it decided. A third of the rest were a mana ability or an activation
+where the heuristic passed or cast a spell, and the model seat missed
+twice as many land drops in its turns 2–4 (19% against 10%).
 
 The probe sends what the seat sends — the same `OpenAIClient`, so both
 thinking-off fields go with it — which means **`THINKING: suppressed`

@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"io"
 	"math/rand/v2"
+	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -71,6 +74,14 @@ const estimateDivisor = 3
 // by a lot less than 40%.
 const truncationRatio = 0.6
 
+// contextFullRatio is how much of the server's context prompt_tokens
+// has to fill before the prompt may not have fitted. A server
+// truncates only a prompt longer than its context, and what it keeps
+// then fills that context, so a count well below it means nothing was
+// dropped (#2196). The margin leaves room for the reply's tokens and a
+// template the server adds.
+const contextFullRatio = 0.9
+
 // probeResult is everything one call produced, and the only input to
 // the verdicts. It is a plain struct so the verdict logic can be
 // tested without an endpoint.
@@ -110,6 +121,12 @@ type probeResult struct {
 	// MaxTokens is the reply budget that was sent.
 	Think     bool
 	MaxTokens int
+	// ContextLength is the server's context size in tokens, 0 when
+	// unknown, and ContextSource where it came from: --context, or
+	// Ollama's /api/ps. Knowing it turns the truncation verdict from
+	// an inference into a check (#2196).
+	ContextLength int
+	ContextSource string
 }
 
 // Estimate is the client-side guess at how many tokens were sent.
@@ -152,12 +169,15 @@ func thinkingEvidence(r probeResult) bool {
 
 // truncationVerdict answers hypothesis 1.
 //
-// Two independent signatures: the server counted far fewer prompt
-// tokens than were sent (the front of the prompt was dropped), or the
-// model answered in a shape the instructions forbid — which is what a
-// model that never saw the instructions does. The second is only
-// reported when thinking does not already explain it; see
-// thinkingEvidence.
+// When the server's context size is known the answer is a check, not
+// an inference: a prompt counted well inside the context was not
+// truncated, and one that fills it may have been. Otherwise there are
+// two signatures: the server counted far fewer prompt tokens than were
+// sent (the front of the prompt was dropped), or the model answered in
+// a shape the instructions forbid — which a model that never saw the
+// instructions does, and so does one that just ignores them, so that
+// alone is only "possible". The second is only reported when thinking
+// does not already explain it; see thinkingEvidence.
 func truncationVerdict(r probeResult) string {
 	if r.CallErr != nil {
 		return "TRUNCATION: unknown — the call did not return"
@@ -166,6 +186,12 @@ func truncationVerdict(r probeResult) string {
 	switch {
 	case r.PromptTokens == 0:
 		return "TRUNCATION: unknown — the endpoint reported no prompt_tokens"
+	case r.ContextLength > 0 && float64(r.PromptTokens) <= float64(r.ContextLength)*contextFullRatio:
+		return fmt.Sprintf("TRUNCATION: ruled out — %d prompt tokens (~%d estimated) in a %d-token context (%s); a server truncates only a prompt that does not fit",
+			r.PromptTokens, est, r.ContextLength, r.ContextSource)
+	case r.ContextLength > 0:
+		return fmt.Sprintf("TRUNCATION: likely — %d prompt tokens (~%d estimated) fill the %d-token context (%s); raise the server's context (OLLAMA_CONTEXT_LENGTH) or shrink the prompt",
+			r.PromptTokens, est, r.ContextLength, r.ContextSource)
 	case float64(r.PromptTokens) < float64(est)*truncationRatio:
 		return fmt.Sprintf("TRUNCATION: likely — the endpoint counted %d prompt tokens for ~%d sent (<%.0f%%); raise the server's context (OLLAMA_CONTEXT_LENGTH) or shrink the prompt",
 			r.PromptTokens, est, truncationRatio*100)
@@ -176,7 +202,8 @@ func truncationVerdict(r probeResult) string {
 		return fmt.Sprintf("TRUNCATION: not detected — %d prompt tokens for ~%d sent, and the reply is in the requested shape. Its number is not on the list; see the INDEX line.",
 			r.PromptTokens, est)
 	case !r.ReplyParsed():
-		return "TRUNCATION: likely — the prompt token count is plausible, but the reply ignores the answer format, which is what a model that never saw the instructions does"
+		return fmt.Sprintf("TRUNCATION: possible — %d prompt tokens for ~%d sent is plausible, but the reply ignores the answer format, which a model that never saw the instructions does. Pass --context with the server's context size to rule it in or out.",
+			r.PromptTokens, est)
 	default:
 		return fmt.Sprintf("TRUNCATION: not detected — %d prompt tokens for ~%d sent, and the reply is in the requested shape", r.PromptTokens, est)
 	}
@@ -295,12 +322,13 @@ func runProbe(args []string) int {
 	deckID := fs.String("deck", "izzet-aggro", "curated deck whose list becomes the static prompt block")
 	dump := fs.String("dump", "", "Scryfall bulk dump for oracle text (default: $CMDCTRL_SCRYFALL_DUMP)")
 	timeout := fs.Duration("timeout", 5*time.Minute, "wall clock for the one call")
+	contextLen := fs.Int("context", 0, "the server's context size in tokens, for the truncation verdict (default: read from Ollama's /api/ps, else unknown)")
 	if err := fs.Parse(args); err != nil {
 		return 0
 	}
 	out := os.Stdout
 
-	client, url := buildClient(*endpoint)
+	client, endpointURL := buildClient(*endpoint)
 	if client == nil {
 		say(out, "%s\n", "no endpoint configured: pass --endpoint or set CMDCTRL_OPENAI_ENDPOINT")
 		return 0
@@ -343,7 +371,7 @@ func runProbe(args []string) int {
 	req, _, _ := pol.BuildRequest(ctx, in)
 
 	res := probeResult{
-		Endpoint:    url,
+		Endpoint:    endpointURL,
 		Model:       id,
 		SystemBytes: systemBytes(req),
 		UserBytes:   len(req.User),
@@ -366,8 +394,61 @@ func runProbe(args []string) int {
 		res.Reasoning = resp.Reasoning
 		readAnswer(&res, resp.Text)
 	}
+	switch {
+	case *contextLen > 0:
+		res.ContextLength, res.ContextSource = *contextLen, "--context"
+	case cerr == nil:
+		// After the call, so the model is loaded and /api/ps lists it.
+		if n := ollamaContextLength(ctx, http.DefaultClient, endpointURL, id); n > 0 {
+			res.ContextLength, res.ContextSource = n, "Ollama /api/ps"
+		}
+	}
 
 	printProbe(out, res, profileSource, in)
+	return 0
+}
+
+// ollamaContextLength asks an Ollama server what context the loaded
+// model runs with: GET /api/ps on the chat endpoint's host, which
+// lists each loaded model's context_length (Ollama 0.35.1 does). It
+// returns 0 for anything else — a server that is not Ollama, an older
+// Ollama without the field, a model not loaded — and the truncation
+// verdict then falls back to inferring from the token counts.
+func ollamaContextLength(ctx context.Context, hc *http.Client, chatURL, modelID string) int {
+	u, err := url.Parse(chatURL)
+	if err != nil || u.Host == "" {
+		return 0
+	}
+	ps := url.URL{Scheme: u.Scheme, Host: u.Host, Path: "/api/ps"}
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, ps.String(), nil)
+	if err != nil {
+		return 0
+	}
+	resp, err := hc.Do(req)
+	if err != nil {
+		return 0
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return 0
+	}
+	var body struct {
+		Models []struct {
+			Name          string `json:"name"`
+			Model         string `json:"model"`
+			ContextLength int    `json:"context_length"`
+		} `json:"models"`
+	}
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&body); err != nil {
+		return 0
+	}
+	for _, m := range body.Models {
+		if m.Name == modelID || m.Model == modelID {
+			return m.ContextLength
+		}
+	}
 	return 0
 }
 
@@ -598,6 +679,11 @@ func printProbe(out io.Writer, r probeResult, profileSource string, in aiseat.In
 		return
 	}
 	say(out, "prompt_tokens      %d\n", r.PromptTokens)
+	if r.ContextLength > 0 {
+		say(out, "context            %d tokens (%s)\n", r.ContextLength, r.ContextSource)
+	} else {
+		say(out, "%s\n", "context            unknown (pass --context)")
+	}
 	say(out, "completion_tokens  %d\n", r.CompletionTokens)
 	say(out, "cached_tokens      %d (server-side prefix cache)\n", r.CachedPromptTokens)
 	say(out, "finish_reason      %q\n", r.FinishReason)
