@@ -33,9 +33,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b43CreatureOfSubtypeYouControlDealtCombatDamageToPlayer(ev, source, g, "Merfolk")
-			}, "Seafloor Oracle — draw a card", func(g *game.Game, item *game.StackItem) error {
-				return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Seafloor Oracle — draw a card", Do(DrawCards{N: 1})),
 		},
 	})
 }

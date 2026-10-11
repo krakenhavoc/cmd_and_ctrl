@@ -4240,3 +4240,19 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
     Colossus, Don Andres, Nuka-Cola Vending Machine, Overseer of the Damned, Tormod, the Desecrator. Resolution-time
     re-checks (intervening "if"): Crested Sunmare, Field of the Dead, Keeper of the Accord, Ginger, Queen of Sweets,
     Faramir, Field Commander (wraps its draw). Counted or X amounts: Arboreal Alliance, Cadira, Caller of the Small.
+- **Batch 5, draws.** 11 cards move onto `Do(DrawCards{N})`, with labels and conditions unchanged: Eternal of Harsh
+  Truths; Frostbite Pyromental; Guidelight Matrix; High-Society Hunter; Ichor Wellspring; Ingenious Infiltrator;
+  Llanowar Visionary; Seafloor Oracle; Vanquisher's Banner; Vedalken Archmage; Way of the Mind Sculptor.
+  - **No new footprint.** `FootprintDraw` already marks the controller's library as touched (so a draw conflicts with
+    a scry, a surveil, a mill or another draw of the same player, reason `library`), counts the draws for the empty
+    library check, and emits a draw. A "whenever you draw" watcher on the board keeps the batch asking (`reactor`).
+    `trigger_independence_draws_test.go` pins a draw beside a drain skipping, a draw beside a scry asking
+    (`library`), and a draw beside Chasm Skulker asking (`reactor`).
+  - **Eternal of Harsh Truths** builds its row with `WhenAttacksAndIsNotBlockedEffect`, whose callback gets the
+    defending player. This payoff does not use it, so the row's `Effect` is replaced with the `Do` after the
+    constructor builds it.
+  - **Left on the list (intervening "if", re-checked as the ability resolves):** Agent of Treachery (three
+    permanents you don't own), Beastbond Outcaster, Colossal Majesty and Garruk's Uprising (a creature with power 4
+    or greater), Bugenhagen, Wise Elder (power 7), Deadeye Brawler (the city's blessing), Padeem, Consul of
+    Innovation (the greatest artifact), Satoru, the Infiltrator (nothing cast with mana in the batch), The Gaffer
+    (3 life gained this turn).
