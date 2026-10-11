@@ -65,6 +65,7 @@
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
   import { TABLE_ROLL_COOLDOWN_MS, type GameMenuOptions, type TableDie } from "../lib/gameMenu";
+  import { requestHandSort, requestNextHandSort } from "../lib/handOrder";
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
@@ -1648,6 +1649,9 @@
       },
       toggleGameLog: () => (showGameLog = !showGameLog),
       drawCard: draw,
+      sortHand: () => {
+        requestNextHandSort();
+      },
       // Registered so the command bar's speaker icon re-renders; the
       // shell's fallback toggles the same underlying mute.
       toggleMute: onToggleMute,
@@ -1880,6 +1884,11 @@
         ? { ready: !tableRollCooling }
         : null,
     onTableRoll: rollAtTable,
+    // #3028: the one-time hand sorts, for a seat holding more than one
+    // card. The hand itself has no sort button.
+    sortHand: dockShown && (viewerSeat?.hand.cards.length ?? 0) > 1,
+    sortKey: keyHint(keys.sortHand) ? formatChord(keys.sortHand, mac) : "",
+    onSortHand: requestHandSort,
     // ADR 0125 §6: the Help group. The tutorial is replayed on this
     // tab's practice table only, as the coach's Replay does.
     practice: $practiceTable?.gameID === gameID,

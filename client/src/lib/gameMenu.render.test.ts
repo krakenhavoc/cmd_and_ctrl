@@ -469,6 +469,36 @@ describe("GameMenu", () => {
     expect(m.container.querySelector('[role="menu"]')).toBeNull();
   });
 
+  // #3028: the one-time hand sorts moved here from a button on the hand.
+  it("has a Sort hand group after the sandbox for a seat holding cards, and sorts once", async () => {
+    const onSortHand = vi.fn();
+    const m = mountMenu({ sortHand: true, sortKey: "S", onSortHand });
+    await open(m.trigger);
+    const names = itemNames(m.container);
+    const at = names.indexOf("By mana value");
+    expect(names.slice(at, at + 3)).toEqual([
+      "By mana value",
+      "By type (lands first)",
+      "By colour",
+    ]);
+    expect(at).toBeGreaterThan(names.indexOf("Life history"));
+    expect(m.container.textContent).toContain("Sort hand");
+    click(item(m.container, "By type (lands first)")!);
+    flushSync();
+    expect(onSortHand).toHaveBeenCalledWith("type");
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+  });
+
+  it("has no Sort hand group without one to sort, or for a viewer with no seat", async () => {
+    const empty = mountMenu({ sortHand: false, onSortHand: vi.fn() });
+    await open(empty.trigger);
+    expect(itemNames(empty.container)).not.toContain("By mana value");
+    cleanup();
+    const watching = mountMenu({ seated: false, sortHand: true, onSortHand: vi.fn() });
+    await open(watching.trigger);
+    expect(itemNames(watching.container)).not.toContain("By mana value");
+  });
+
   it("disables the dice while the last roll lands, and has none without a table roll", async () => {
     const m = mountMenu({ tableRoll: { ready: false }, onTableRoll: vi.fn() });
     await open(m.trigger);

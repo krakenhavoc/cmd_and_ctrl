@@ -433,6 +433,17 @@
       : (canActivateSorcerySpeedAbility(view, viewerID).reason ?? ""),
   );
 
+  // #3028: the back row's two zones share its width by how many piles
+  // each draws. The land strip takes what the other zone leaves
+  // (#2960), and at full card size a long artifact row left it a
+  // sliver, so the other zone is capped at its share. With no land
+  // piles it may take the whole row.
+  let landPiles = $state(0);
+  let otherPiles = $state(0);
+  const otherShare = $derived(
+    landPiles > 0 && otherPiles > 0 ? otherPiles / (otherPiles + landPiles) : 1,
+  );
+
   // #1724: the token group whose member list is open, by group key.
   // The members are re-derived from every snapshot, so the list
   // follows the board while it is open; a group that has broken up
@@ -777,8 +788,9 @@
   <!-- The back row: land piles first, then the other permanents,
        both shrink-wrapped and centred as one group so the row grows
        out from the middle like the creature row above it. -->
-  <div class="grid-middle">
+  <div class="grid-middle" style:--other-share={otherShare}>
     <BattlefieldRow
+      bind:pileCount={landPiles}
       label={L.lands}
       {attachmentsByHost}
       {curseTargets}
@@ -805,6 +817,7 @@
       onGroupClick={(k) => (openGroupKey = k)}
     />
     <BattlefieldRow
+      bind:pileCount={otherPiles}
       label="enchant / artifact"
       {attachmentsByHost}
       {curseTargets}
@@ -1222,6 +1235,12 @@
   .grid-middle > :global(.row.strip) {
     flex: 1 1 0;
   }
+  /* #3028: the other zone takes no more than its share of the row by
+     pile count (--other-share, set by the panel), so a long artifact
+     row shrinks its own cards instead of crushing the lands. */
+  .grid-middle > :global(.row:not(.strip)) {
+    max-width: calc(var(--other-share, 1) * 100%);
+  }
   .grid-bottom {
     grid-area: bottom;
     min-height: 0;
@@ -1297,7 +1316,26 @@
       --card-h: clamp(120px, calc((52cqh - 40px) * var(--card-scale, 1)), var(--card-h-max));
       --card-h-sm: max(64px, calc(var(--card-h) * 0.5));
       --hand-peek: 0.4;
+      /* #3028: a pile tile is its thumbnail plus ~30px of padding and
+         count, and in the hand's row it must not stand taller than the
+         hand's peek, or the row grows and the creatures lose height. */
+      --thumb-h: min(
+        calc(56px * var(--card-scale, 1)),
+        max(36px, calc(var(--card-h) * var(--hand-peek) - 30px))
+      );
+      --thumb-w: calc(var(--thumb-h) * 5 / 7);
       grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
+      /* #3028: the piles sit in the hand's row, against the bottom
+         edge like the hand, as an across-table opponent's sit in theirs
+         against the top edge (#2491), so the two boards mirror. */
+      grid-template-areas:
+        "creatures creatures rail"
+        "middle    middle    rail"
+        "piles     bottom    bottom";
+    }
+    /* While the tutorial's coach card shows, the piles go back to the
+       back row's left end, where #2990 moves them clear of the card. */
+    .panel.self.docked.coached {
       grid-template-areas:
         "creatures creatures rail"
         "piles     middle    rail"
@@ -1365,13 +1403,18 @@
         "rail   middle    middle"
         "rail   creatures creatures";
     }
-    /* #2995: their commander is a card you can recognise, not a speck
-       or a sliver: at least 84px tall. The hand row is only a peek
-       tall, so the card hangs down out of it into the empty corner
-       above the identity rather than growing the row; the strip keeps
-       the hand's height and lets its card overflow. */
+    /* #2491, #3028: their commander is tucked half behind the top edge,
+       as yours is behind the bottom one, so their board mirrors yours:
+       a hand-size card whose middle sits on the panel's clipping edge
+       (the strip's top, less the panel's 8px padding). #2995: what
+       shows is a card you can recognise, not a sliver, so the card is
+       at least 168px and its visible half at least 84px. The hand row
+       is only a peek tall, so the half that shows hangs down out of it
+       into the empty corner above the identity rather than growing the
+       row; the strip keeps the hand's height and lets its card
+       overflow. The tax goes to the edge you can see. */
     .panel.opponent.flipped :global(.command-strip) {
-      --strip-h: max(84px, calc(var(--card-h) * 0.9));
+      --strip-h: max(168px, var(--card-h));
       height: calc(var(--card-h) * var(--hand-peek, 0.55));
       align-self: flex-start;
       align-items: flex-start;
@@ -1381,6 +1424,11 @@
     }
     .panel.opponent.flipped :global(.command-strip .slot) {
       flex: none;
+      margin-top: calc(var(--strip-h) * -0.5 - 8px);
+    }
+    .panel.opponent.flipped :global(.command-strip .tax-badge) {
+      top: auto;
+      bottom: 3px;
     }
     .panel.opponent.flipped .grid-bottom,
     .panel.opponent.flipped .grid-middle {

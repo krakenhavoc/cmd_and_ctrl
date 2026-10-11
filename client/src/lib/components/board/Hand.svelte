@@ -42,17 +42,18 @@
   import { fetchAutoTapPreview, type AutoTapPreview } from "../../api";
   import { cardImageURL } from "../../cardImage";
   import { L } from "../../labels";
+  import { untrack } from "svelte";
+  import { get } from "svelte/store";
   import {
-    HAND_SORTS,
     applyHandOrder,
     handOrderKey,
+    handSortRequest,
     idsOf,
     loadHandOrder,
     moveCard,
     saveHandOrder,
     sameOrder,
     sortHand,
-    type HandSort,
   } from "../../handOrder";
   import {
     CAST_ZONE_MARGIN_PX,
@@ -257,54 +258,18 @@
     if (!sameOrder(ids, savedOrder)) setOrder(ids);
   });
 
-  // The hand menu's one-time sorts (owner decision 3).
-  let sortMenuOpen = $state(false);
-  let sortButton = $state<HTMLButtonElement | null>(null);
-  let sortMenu = $state<HTMLElement | null>(null);
-  const canSort = $derived(isSelf && hand.cards.length > 1);
-
-  function sortBy(key: HandSort): void {
-    setOrder(sortHand(cards, key));
-    closeSortMenu(true);
-  }
-
-  function openSortMenu(): void {
-    sortMenuOpen = true;
-    queueMicrotask(() => sortMenu?.querySelector<HTMLElement>('[role="menuitem"]')?.focus());
-  }
-
-  function closeSortMenu(refocus: boolean): void {
-    if (!sortMenuOpen) return;
-    sortMenuOpen = false;
-    if (refocus) sortButton?.focus();
-  }
-
-  function onSortMenuKey(ev: KeyboardEvent): void {
-    const items = [...(sortMenu?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])];
-    const at = items.indexOf(document.activeElement as HTMLElement);
-    if (ev.key === "Escape") {
-      ev.preventDefault();
-      ev.stopPropagation();
-      closeSortMenu(true);
-    } else if (ev.key === "ArrowDown" || ev.key === "ArrowUp") {
-      ev.preventDefault();
-      const d = ev.key === "ArrowDown" ? 1 : -1;
-      items[(at + d + items.length) % items.length]?.focus();
-    } else if (ev.key === "Tab") {
-      closeSortMenu(false);
-    }
-  }
-
-  // A press anywhere outside the button and the menu closes it.
+  // The one-time sorts (owner decision 3). #3028: they are asked for
+  // from the ⋯ menu and the sortHand shortcut (handOrder.ts
+  // handSortRequest), not from a button on the hand. A request made
+  // before this hand was drawn is not replayed.
+  let sortSeqSeen = get(handSortRequest)?.seq ?? 0;
   $effect(() => {
-    if (!sortMenuOpen) return;
-    const onDown = (ev: PointerEvent) => {
-      const t = ev.target as Node | null;
-      if (t && (sortMenu?.contains(t) || sortButton?.contains(t))) return;
-      closeSortMenu(false);
-    };
-    window.addEventListener("pointerdown", onDown, true);
-    return () => window.removeEventListener("pointerdown", onDown, true);
+    const req = $handSortRequest;
+    if (!req || req.seq <= sortSeqSeen) return;
+    sortSeqSeen = req.seq;
+    untrack(() => {
+      if (isSelf && hand.cards.length > 1) setOrder(sortHand(cards, req.key));
+    });
   });
 
   function handleCardClick(card: CardView): void {
@@ -659,46 +624,6 @@
   });
 </script>
 
-{#if canSort}
-  <!-- #1524: the hand menu — one-time sorts. The result becomes the
-       saved order; nothing keeps the hand sorted afterwards. -->
-  <div class="hand-sort">
-    <button
-      bind:this={sortButton}
-      type="button"
-      class="hand-sort-button"
-      aria-label="Sort hand"
-      title="Sort hand"
-      aria-haspopup="menu"
-      aria-expanded={sortMenuOpen}
-      onclick={() => (sortMenuOpen ? closeSortMenu(false) : openSortMenu())}
-    >
-      <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true">
-        <path
-          d="M2 3.5h12M2 8h8M2 12.5h4"
-          stroke="currentColor"
-          stroke-width="1.6"
-          stroke-linecap="round"
-          fill="none"
-        />
-      </svg>
-    </button>
-    {#if sortMenuOpen}
-      <div
-        bind:this={sortMenu}
-        class="hand-sort-menu"
-        role="menu"
-        aria-label="Sort hand by"
-        tabindex="-1"
-        onkeydown={onSortMenuKey}
-      >
-        {#each HAND_SORTS as s (s.key)}
-          <button type="button" role="menuitem" onclick={() => sortBy(s.key)}>{s.label}</button>
-        {/each}
-      </div>
-    {/if}
-  </div>
-{/if}
 <!-- ADR 0076 §2.5: a pointer-only hover signal for the tutorial; not a control. -->
 <!-- svelte-ignore a11y_no_static_element_interactions -->
 <div
@@ -890,9 +815,19 @@
   .hand {
     --hand-rise: calc(var(--card-h, 168px) * (var(--hand-peek, 0.62) - 1) + 6px);
   }
+  /* #3028: the peek is a cut along the bottom only. The fan arcs and its
+     cards tilt, so their tops reach above the strip, and overflow:
+     hidden sliced them off flat along the back row's foot. The hand is
+     held over the table: the cards' tops show whole, painted above the
+     rows (z-index 1), and only what is below the strip is hidden. */
+  .hand:not(.opponent):not(.scroll) {
+    overflow: visible;
+    clip-path: inset(-100vh -100vw 0 -100vw);
+  }
   .hand:not(.opponent):hover {
     max-height: none;
     overflow: visible;
+    clip-path: none;
     z-index: 20;
   }
   .rise {
@@ -1009,63 +944,6 @@
      longer ease than the resting 80ms so the gap reads as opening. */
   .hand.reordering .hand-slot {
     transition: transform 140ms var(--ease, ease);
-  }
-  /* The sort menu sits in the hand zone's top-left corner, faint until
-     it is wanted. PlayerPanel's .hand-zone is position: relative. */
-  .hand-sort {
-    position: absolute;
-    top: 2px;
-    left: 2px;
-    z-index: 21;
-  }
-  .hand-sort-button {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 24px;
-    height: 24px;
-    padding: 0;
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
-    border-radius: 6px;
-    background: var(--surface-2, #222);
-    color: var(--fg, #eee);
-    opacity: 0.55;
-    cursor: pointer;
-  }
-  .hand-sort-button:hover,
-  .hand-sort-button:focus-visible,
-  .hand-sort-button[aria-expanded="true"] {
-    opacity: 1;
-  }
-  .hand-sort-menu {
-    position: absolute;
-    bottom: calc(100% + 4px);
-    left: 0;
-    z-index: 30;
-    display: flex;
-    flex-direction: column;
-    min-width: 170px;
-    padding: 4px;
-    border: 1px solid var(--border, rgba(255, 255, 255, 0.2));
-    border-radius: 8px;
-    background: var(--surface-2, #222);
-    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.5);
-  }
-  .hand-sort-menu button {
-    padding: 6px 10px;
-    border: 0;
-    border-radius: 5px;
-    background: transparent;
-    color: var(--fg, #eee);
-    font-size: 12px;
-    text-align: left;
-    white-space: nowrap;
-    cursor: pointer;
-  }
-  .hand-sort-menu button:hover,
-  .hand-sort-menu button:focus-visible {
-    background: var(--accent-soft, rgba(255, 212, 0, 0.18));
-    outline: none;
   }
   /* A reordering ghost is neither gold nor red: nothing is being cast. */
   .drag-ghost.reordering {
