@@ -73,6 +73,10 @@ func (s BecomeTheMonarch) footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintMonarch}, s.Player == uuid.Nil
 }
 
+func (s EachOpponentLosesLife) footprint() (game.FootprintStep, bool) {
+	return game.FootprintStep{Kind: game.FootprintLoseLifeEachOpponent, N: s.N}, s.N > 0
+}
+
 func (s CounterOnThis) footprint() (game.FootprintStep, bool) {
 	return game.FootprintStep{Kind: game.FootprintCounterOnSource, N: s.N, Counter: s.Kind}, s.N > 0 && s.Kind != ""
 }
@@ -185,6 +189,19 @@ func (s GainLifeEqualToSubject) Apply(ctx *Context) error {
 		return nil
 	}
 	return GainLife{Amount: n}.Apply(ctx)
+}
+
+// EachOpponentLosesLife is "each opponent loses N life": the drain's
+// first half (follow it with GainLife for "and you gain N life").
+// Every opponent still in the game loses the life in seat order, as a
+// life change that names the item's source and no damage, so no
+// prevention or damage replacement sees it.
+type EachOpponentLosesLife struct {
+	N int
+}
+
+func (s EachOpponentLosesLife) Apply(ctx *Context) error {
+	return eachOpponentLosesLife(ctx.Game, ctx.Item, s.N)
 }
 
 // DamageEachOpponent is "<this> deals N damage to each opponent": one

@@ -21,7 +21,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Zombie")
-			}, "Wayward Servant — each opponent loses 1 life and you gain 1 life", drainEachOpponent),
+			}, "Wayward Servant — each opponent loses 1 life and you gain 1 life", Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})),
 		},
 	})
 }

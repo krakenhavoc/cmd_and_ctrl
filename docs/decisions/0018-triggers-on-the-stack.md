@@ -4170,3 +4170,23 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
   always ask, the evolve and Monk tokens, and the registry's printed-keyword mark. In `game`:
   `trigger_footprint_keyed_test.go` (keyed conformance, `tokenKeywordWatches`, `defBearsRules` on the
   printed-keyword row). `prowess_order_test.go`'s "Mentor still prompts" test is gone.
+
+### Note (2026-10-11): sub-PR 4, the drain and the first migrations
+
+- **The step.** `EachOpponentLosesLife{N}` is "each opponent loses N life": the item's source is passed to the life
+  change as its attribution (as `GainLife` does) and nothing else reads it.
+  - Its footprint, `FootprintLoseLifeEachOpponent`, reads no object. It writes every opponent still in the game
+    down, adds N to their `lifeLoss` for the elimination check, and emits a life change. It is not damage, so it
+    has no lifelink, infect, wither or toxic question.
+  - A drain is `Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})`. The two steps run in that order, as the
+    hand-written bodies did. The step is not on the source-blind list, since a replacement of life changes could
+    read the attribution.
+  - `footprint_conformance_test.go` has its case.
+- **Batch 1, the drains.** 24 cards move onto it with their labels and trigger conditions unchanged: Ayara, First of
+  Locthwain; Bastion of Remembrance; Bontu's Monument; Cauldron Familiar; Cauldron of Essence; Cliffhaven Vampire;
+  Consuming Sepulcher; Corpse Knight; Cruel Celebrant; Elas il-Kor, Sadistic Pilgrim; Funeral Room; Gixian
+  Puppeteer; Kardur, Doomscourge; Marauding Blight-Priest; Marionette Apprentice; Mirkwood Bats; Nadier's Nightblade;
+  Obyra, Dreaming Duelist; Plague Belcher; Poison-Tip Archer; Psychosis Crawler; Sanctum Seeker; Wayward Servant;
+  Zulaport Cutthroat.
+- **Left on the list.** Indulging Patrician and Lunar Convocation check "you gained life this turn" as they resolve
+  (an intervening "if"), which no step expresses yet.

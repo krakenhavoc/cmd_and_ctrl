@@ -53,7 +53,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDrawCard, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b40IsYourSecondDrawThisTurn(ev, source, g)
-			}, "Gixian Puppeteer — each opponent loses 2, you gain 2", b40DrainEachOpponent(2)),
+			}, "Gixian Puppeteer — each opponent loses 2, you gain 2", Do(EachOpponentLosesLife{N: 2}, GainLife{Amount: 2})),
 			gixianPuppeteerDiesTrigger(),
 		},
 	})

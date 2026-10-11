@@ -44,9 +44,7 @@ func init() {
 					return ok && IsToken(c)
 				}
 				return false
-			}, "Mirkwood Bats — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-				return eachOpponentLosesLife(g, item, 1)
-			}), game.Purpose{DeathPayoff: true}),
+			}, "Mirkwood Bats — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})), game.Purpose{DeathPayoff: true}),
 		},
 	})
 }

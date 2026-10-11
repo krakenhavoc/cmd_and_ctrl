@@ -20,34 +20,25 @@ Animar, Soul of Elements | 725880b2-1675-414f-b61b-cf6533797dbf
 Arahbo, the First Fang | dfec65a0-6fb6-463d-aa62-e84a427db217
 Arboreal Alliance | 2f497352-c812-48c4-a922-cc311bcdcdc6
 Autarch Mammoth | eb50b5f2-4840-4f90-9c85-40fc581be9c7
-Ayara, First of Locthwain | 388168b3-ec68-4af2-b88c-6a5ec88c15f6
-Bastion of Remembrance | c7f33cea-2ec8-4081-9208-a5b1d86721b3
 Beastbond Outcaster | 19a32e29-45ec-433e-9cb4-b2c32cac8f80
 Beetleback Chief | f5c5f64c-6911-430c-a825-b32b96d39c7d
 Bishop of Wings | af4684cf-f109-44be-adfb-7c551a36635e
 Black Waltz No. 3 | 9c84c681-40c1-4ff3-86e6-48b4ab7491e5
-Bontu's Monument | 940ba435-7abc-40f8-a5af-c1c653b3284e
 Bridled Bighorn | 6a1ad848-6fda-46dd-aad8-2f6a5c71a696
 Brimstone Vandal | 7af23925-6d32-407d-9a99-a57b2ebb63ac
 Brineborn Cutthroat | 916cb70f-3b06-48ed-972d-75f805aa0892
 Bugenhagen, Wise Elder | 4228dd75-1fdd-48dc-9259-b841b2e46c64
 Cadira, Caller of the Small | fcf22321-2f55-41ca-b8e1-4792540ba3ee
-Cauldron Familiar | a7dc2e62-1c50-4ed7-b71f-2d782a447a5e
-Cauldron of Essence | a2f8cde8-bf7b-4234-89f0-a95f9dc937e3
 Cephalid Illusionist | 3c3067c4-0ae0-4c6a-9174-e3c981a20235
 Champion of Lambholt | c549b0fd-1e08-4873-952e-a14dc45a0fd2
 Champion of the Perished | f3654fbd-16a5-4953-84ac-534e8421032f
 Chandra's Emberling | d3576617-7867-4c3d-aa31-d6742483465b
 Chasm Skulker | 69facbc7-3859-4716-b627-5199571fb3cf
-Cliffhaven Vampire | 1915a311-209b-4628-8122-af3055a78fed
 Colossal Majesty | cac95494-0db0-4bec-8665-998431a6f76b
 Conclave Mentor | a2fe5937-212c-4e71-8d6e-f408b38100aa
-Consuming Sepulcher | 883a4180-9ede-4249-a4b8-3a29c998fb63#1
-Corpse Knight | 0c77b805-728d-4ae4-88a9-223f4b7b52e0
 Coruscation Mage | 88bb91b5-2ccd-4ce9-8cd4-e54d63c12abf
 Cosmium Kiln | 90e1bcef-53af-4c08-b713-bf10dfcbd577#1
 Crested Sunmare | 054fedbb-062e-491e-9a94-594fda33094f
-Cruel Celebrant | 3ee78cfc-0e9e-4737-a7e2-b42f94228040
 Danitha, Spear of Agony | 4b5c7f11-75f2-4bad-86cd-f0232861f569
 Deadeye Brawler | a7c36b66-4f58-41af-b1c5-704ff0d9eac8
 Decoction Module | 1daba4f6-2a7d-426a-97d1-0298a7100c45
@@ -57,7 +48,6 @@ Distinguished Conjurer | 6df57d67-2fd9-4e7a-b67b-f361fc30e496
 Don Andres, the Renegade | 060ef981-db05-436b-b1c1-f55071375344
 Edgar, Moonlit Sovereign | 1917bda6-c0e1-4c80-8009-74c28cf6b8e9
 Elanor Gardner | ad4c39d6-a8b3-4dd9-816d-09761fc9651d
-Elas il-Kor, Sadistic Pilgrim | a4d33e21-d3fe-4d5b-903c-b75e859d6f7f
 Electrostatic Field | 2fa94a07-c932-4f85-b6e0-a97d2b29eb52
 Erebor Flamesmith | 6eb93545-a1a6-4447-82c5-421d8e9f023d
 Eternal of Harsh Truths | 5c09d646-afea-4fd0-9752-04820b81cc5b
@@ -68,12 +58,10 @@ Fiery Inscription | 111889d4-bcca-4b1f-ad48-3077e2f5136f
 Firespitter Whelp | 1cad92ce-55c8-4b78-8d8c-56645ef8e6ee
 Frenzied Raider | 1207881c-4c03-48e1-9ca7-a2330e8053d1
 Frostbite Pyromental | 9a104f73-597b-49e3-8088-13db31f61900
-Funeral Room // Awakening Hall | a39d541e-86c1-4595-a2e9-f107def5bbc6
 Garruk's Uprising | 3127ae9b-a7a7-43ec-89d7-688f8445b33d
 General Kreat, the Boltbringer | da1c1c70-c2fa-4ba7-89fe-d9af3fb353b9
 Gilded Ghoda | 5f4939dc-6e87-47fa-8287-9da60d4b5db2
 Ginger, Queen of Sweets | 5ea93956-085d-409b-bd95-dd669fa69eeb
-Gixian Puppeteer | 9d6a9a37-a245-4503-baeb-9488553798ab
 Glint-Horn Buccaneer | 64ad5657-78e9-4f34-8877-18c4f51fff9a
 Glowing One | b30eae2a-bc1c-45a3-93ae-e1c30d26797c
 Guidelight Matrix | 98005890-d566-4a27-906f-625513171e85
@@ -91,7 +79,6 @@ Interplanar Beacon | 073169f2-da3a-4a93-8c01-b3fd8558d225
 Inventors' Fair | 91d4a5fe-fd6d-4b14-a63f-61b4d0ecd9c4
 Juri, Master of the Revue | 3364bad6-6d0a-4141-b410-86e3d9e1916e
 K'rrik, Son of Yawgmoth | cbe3a4e7-5dbe-4f58-8ee6-a1762b65acfd
-Kardur, Doomscourge | bc14356c-3a1a-47af-9a6e-2b449de0331f
 Keeper of the Accord | 49b9a3ac-d245-431a-bf40-64d1b8dc2b91
 Kessig Flamebreather | eadd9559-6dcb-4b96-8c95-58abddd0e120
 Laelia, the Blade Reforged | a0be9bb2-3234-4c6c-b8ce-0879b1f43003
@@ -104,27 +91,19 @@ Lossarnach Captain | 1251691e-3c4c-4e45-9f59-f156852f2268
 Lunar Convocation | cb68d1e4-36aa-4a00-b671-8959e7d526d4
 Lux Artillery | cbd76b22-d04e-48e7-bcab-c7f5466d67d8
 Managorger Hydra | b3f2265b-dd65-4b74-8b74-35ee0b147617
-Marauding Blight-Priest | 814b87fe-2a75-4ff2-8637-7e69e3fb285b
-Marionette Apprentice | 726d9d2c-736a-4852-9938-a0f50d8fd89f
 Massacre Girl, Most Wanted | 81f35914-73bf-429f-ba20-32e23ac30159
 Mausoleum Harpy | ba682da8-50f5-478f-99cc-60a57d229a04
 Merchant Ship | 69556f6c-c05b-4902-bac7-012f0ed81b75
-Mirkwood Bats | 0636b6c3-0662-420a-b30d-f0a14e7c512d
 Molten Gatekeeper | 90fdfba8-f29e-44f9-91d2-7bf3c458a9c1
 Murktide Regent | 7f993ac7-c2cd-413c-a106-2c051a77ebf6
-Nadier's Nightblade | 391978f6-0bbc-41e8-9246-f7d0e21c7900
 Nesting Dovehawk | fe8fc442-ed17-40b2-8624-69f2eed3f9be
 Nuka-Cola Vending Machine | 6cfb03e5-aca6-4fe2-a3f1-93e1f0cbf9e1
 Nyx-Fleece Ram | 5a20113c-7ea8-4edf-af9f-148ccd326a88
-Obyra, Dreaming Duelist | 4162e60f-9d70-4b8c-a838-df57b83c208d
 On Wings of Gold | 3b6f608d-f27d-44cd-b0a1-0e1e1aa1c98a
 Open the Graves | 28778958-a1f9-4fea-b551-c193d1257f18
 Orca, Siege Demon | b8600894-3229-420e-9464-d92cf0a7d0fc
 Overseer of the Damned | c1f085ce-5b52-45b3-aef0-f77f36b3da36
 Padeem, Consul of Innovation | 0c7ba712-6a99-4d2f-9242-a2163a11f69c
-Plague Belcher | f086a82d-8dbe-4d02-a076-03789704e9d4
-Poison-Tip Archer | d0e810bb-5f38-4045-a718-30d423c05659
-Psychosis Crawler | 2876e74f-a242-4995-9702-0b737a1ab67a
 Purphoros, God of the Forge | 4fdbbec2-e921-4b63-958d-f9ba1e417197
 Rapacious Dragon | 0944ec2e-1dd9-459f-8f1d-667242cf52fe
 Rapacious Guest | 54accd4a-b471-4ae5-b3b2-a5cec44023b7
@@ -134,7 +113,6 @@ Refraction Elemental | 2d125ef5-074c-44eb-a1d0-c308d48bfbc2#1
 Restless Anchorage | 91320daf-f69c-4350-b0fc-4bb37a6904b1
 Restless Spire | 0ca4e80e-c19c-4b74-b531-c5a4dc5a8ba9
 Runaway Steam-Kin | eb414a8f-566f-4635-80a1-77b2e18ac8dc
-Sanctum Seeker | afb71560-0fc9-4ea5-9d52-d93c17d72519
 Satoru, the Infiltrator | 7555c429-5f2d-4171-b6b0-8e3c8da7f314
 Seafloor Oracle | f9f719cb-7778-4109-bbd3-4504ee1b5f49
 Sidisi, Brood Tyrant | 3fad7072-21e3-446e-a28f-615038c8bfea
@@ -157,10 +135,8 @@ Vengeful Warchief | be3dd4f6-794d-4bce-b71e-4b3477d5d388
 Vincent, Vengeful Atoner | b8961205-87fa-4cce-aba9-84fa2f91a67f
 Warleader's Call | a751c07b-fc21-4854-96e7-f71abf4e86c9
 Way of the Mind Sculptor | 94be2e86-ba0e-4b8d-9b9c-114adacb26db
-Wayward Servant | 2916f041-f080-450f-ae79-dc09076d971a
 Weftstalker Ardent | 926d52a5-4db1-46ce-9567-17c28bf56ae7
 Wildwood Scourge | b9dec104-c636-4770-a7fc-7a3331face15
 Yahenni, Undying Partisan | fdba89eb-1cf5-46e6-9d09-1adb9bc40fcd
 Yoshimaru, Ever Faithful | 963834c8-42df-4ee6-9b45-b9de88ce2eac
 Youthful Valkyrie | 6d37ba4b-ff56-4eec-9dc2-2d7f357dc9c9
-Zulaport Cutthroat | 76b003e0-15af-4f22-bdf2-1ade5430964a

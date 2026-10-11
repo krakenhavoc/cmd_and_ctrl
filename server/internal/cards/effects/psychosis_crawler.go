@@ -73,15 +73,7 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			WheneverYouDraw("Psychosis Crawler — each opponent loses 1 life", func(g *game.Game, item *game.StackItem) error {
-				ctx := NewContext(g, item)
-				for _, opp := range ctx.Opponents() {
-					if err := g.ChangePlayerLifeForEffect(item.SourceCardID, opp, -1); err != nil {
-						return err
-					}
-				}
-				return nil
-			}),
+			WheneverYouDraw("Psychosis Crawler — each opponent loses 1 life", Do(EachOpponentLosesLife{N: 1})),
 		},
 	})
 }
