@@ -4081,3 +4081,37 @@ Answered on 2026-10-11: see *Owner decisions* at the top of this amendment.
   (energy, the monarch, damage to each opponent, and any count written as a digit), so it lists 157 cards
   where the census found 94. The list is `cards/coverage/testdata/unfootprinted_trigger_lines.txt` and only
   shrinks. Sub-PRs 2 and 4 work through it.
+
+### Note (2026-10-11): sub-PR 2, the owner's example
+
+- **The step.** `GainLifeEqualToSubject{Stat: SubjectToughness}` reads the trigger's subject through
+  `ctx.TriggeringPermanent` (Decision 13). That is the permanent as it is now while the object is on the
+  battlefield, and as it last existed there once it has left. An item that a binary from before this change
+  queued carries `Params.Amount`, which is used only when the subject has no record. Such an item is never
+  plain, so its batch asks.
+  - Its footprint is `FootprintGainLife` with `AmountFromSubject`. The check counts the subject as read while
+    it is on the battlefield.
+  - A zero or negative toughness gains nothing. The old body passed a negative toughness to the life change,
+    which made it a loss.
+- **The cards.**
+  - Wolverine Riders, Trostani, Selesnya's Voice, Verdant Sun's Avatar and Righteous Valkyrie use the step.
+    The `b20` body and Valkyrie's copy of it are gone.
+  - Marwyn, the Nurturer is `Do(CounterOnThis{"+1/+1", 1})`.
+  - Every row keeps its label, so a queued item restores onto the same row.
+  - Five lines leave the audit list.
+- **A rule the proposal did not have: a read through the layers.** An amount equal to a creature's toughness is
+  the output of every static that applies to that creature. Another item in the batch can change what such a
+  static reads: a counter, a creature entering, a life total for Righteous Valkyrie's "+2/+2 while you have 7
+  more life". So the order can show although no object is shared. Example: Valkyrie and Trostani both gain
+  for one Angel, and the first gain switches on the anthem that the second gain reads. So a subject read
+  (`triggerAccess.charReads`) conflicts with any other item that changes game state when the board has a
+  static that can change power or toughness: layer 7, a copy, or an ability removal (`layerStaticsLocked`).
+  - The one exception: an item that only moves life totals passes unless one of those statics declares
+    `DependsOnLifeTotal`. That is the layer engine's own contract for what such a static reads.
+  - The reason is `characteristic`.
+  - The cost: an Elf lord such as Elvish Archdruid keeps the Marwyn and Riders batch asking, although its
+    output cannot change there. The check can't see what a static reads. If sub-PR 1's counter shows
+    `characteristic` is common, a static that declares it reads nothing the batch writes is the next step.
+- **Still not covered (unchanged).** Two triggers from one source with one label are skipped by sub-PR 8's
+  identical rule, which has never read the trigger context. So two Righteous Valkyrie gains for two creatures
+  entering together are auto-ordered, even across her +7 line.

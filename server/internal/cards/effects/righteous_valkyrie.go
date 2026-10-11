@@ -14,8 +14,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Angel deck's lifegain engine. The trigger reads effective
 // subtypes, so a changeling counts, and "that creature's toughness"
 // is read as the trigger resolves — current toughness, counters and
-// anthems included — falling back to the toughness it had when it
-// entered if it has since left (CR 608.2h's last-known value).
+// anthems included — and as it last existed on the battlefield if it
+// has since left (CR 608.2h's last-known value; GainLifeEqualToSubject,
+// #3013).
 //
 // The +2/+2 anthem was a declared simplification until #1117: it is
 // a static whose AppliesTo reads the controller's LIFE TOTAL, and a
@@ -43,25 +44,8 @@ func init() {
 				_, ok := b18AnotherAngelOrClericYouControlEntered(ev, source, g)
 				return ok
 			},
-			Key: "Righteous Valkyrie — gain life equal to its toughness",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Righteous Valkyrie — gain life equal to its toughness")
-				item.Params.Object.ID = ev.CardID
-				if c, ok := g.LookupCardForEffect(ev.CardID); ok {
-					item.Params.Amount = c.CurrentToughness()
-				}
-				return item
-			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				entered := item.Params.Object.ID
-				toughness := item.Params.Amount
-				if z := g.FindCardZoneForEffect(entered); z != nil && z.Kind == game.ZoneBattlefield {
-					if c, ok := g.LookupCardForEffect(entered); ok {
-						toughness = c.CurrentToughness()
-					}
-				}
-				return GainLife{Player: item.Controller, Amount: toughness}.Apply(NewContext(g, item))
-			},
+			Key:    "Righteous Valkyrie — gain life equal to its toughness",
+			Effect: Do(GainLifeEqualToSubject{Stat: SubjectToughness}),
 		}},
 	})
 }

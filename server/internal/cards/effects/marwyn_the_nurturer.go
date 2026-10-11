@@ -18,7 +18,9 @@ import (
 // The Elf deck's scaling mana dork. The trigger is the "another
 // <type> you control enters" shape, reading the Elf's effective
 // subtypes so a changeling counts; the counter goes on through
-// AddCounter, so Hardened Scales applies. The mana ability is the
+// CounterOnThis (AddCounter underneath), so Hardened Scales applies,
+// and the row declares a footprint, so a batch with Wolverine Riders'
+// lifegain needs no CR 603.3b order (ADR 0018, #3013). The mana ability is the
 // Gaea's Cradle shape with the count read off Marwyn's own CURRENT
 // power at activation — counters and anthems both count, a -1/-1
 // counter subtracts — and a power of zero adds nothing and still
@@ -34,9 +36,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b10AnotherPermanentWithSubtypeEnteredUnderYourControl(ev, source, g, "Elf")
-			}, "Marwyn — put a +1/+1 counter on Marwyn", func(g *game.Game, item *game.StackItem) error {
-				return AddCounter{Target: item.SourceCardID, Kind: "+1/+1", N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Marwyn — put a +1/+1 counter on Marwyn", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost:  ManaAbilityCost{Tap: true},

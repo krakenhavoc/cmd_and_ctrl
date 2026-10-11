@@ -34,6 +34,9 @@ type conformanceCase struct {
 	// target puts an opponent's vanilla creature on the item as its
 	// one card target (ExileChosenTarget).
 	target bool
+	// subject gives the item a triggering event about a 2/3 creature of
+	// its controller's that just entered (GainLifeEqualToSubject).
+	subject bool
 }
 
 // footprintConformanceCases has one case per type that implements
@@ -51,6 +54,9 @@ var footprintConformanceCases = map[string]conformanceCase{
 	"CounterOnThis":      {step: CounterOnThis{Kind: game.CounterPlusOne, N: 2}},
 	"DamageEachOpponent": {step: DamageEachOpponent{N: 2}},
 	"ExileChosenTarget":  {step: ExileChosenTarget{}, target: true},
+	"GainLifeEqualToSubject": {
+		step: GainLifeEqualToSubject{Stat: SubjectToughness}, subject: true,
+	},
 }
 
 // footprinterTypes lists the receiver types of every footprint() method
@@ -245,6 +251,19 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 			if c.target {
 				victim := pushBattlefieldCreature(g, opp.ID)
 				item.Targets = []game.TargetRef{{Kind: game.TargetCard, ID: victim}}
+			}
+			if c.subject {
+				subject := b21Push(g, me.ID, "Conformance Subject", "Creature — Elf", "", 2, 3)
+				var epoch int
+				for _, card := range g.Battlefield.Cards {
+					if card.InstanceID == subject {
+						epoch = card.ObjectEpoch
+					}
+				}
+				item.Trigger = &game.TriggerContext{
+					Event:  game.Event{Kind: game.EventETB, CardID: subject, Actor: me.ID},
+					Object: &game.ObjectSnapshot{ID: subject, Epoch: epoch},
+				}
 			}
 			f, ok := c.step.(footprinter)
 			if !ok {
