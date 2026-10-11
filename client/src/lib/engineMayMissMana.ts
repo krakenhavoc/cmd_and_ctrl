@@ -23,12 +23,11 @@
 //     (`mana_abilities`) or is PRESUMED to have one because it is a
 //     land.
 //
-// What the wire cannot tell: whether an unimplemented NON-land
-// permanent with no `mana_abilities` row (an uncatalogued mana creature
-// or mana rock) makes mana. `unimplemented` says the card prints rules
-// the engine will not run, not which rules, and CardView carries no
-// oracle text. Those permanents do not trigger the stop; telling them
-// apart needs a server field.
+//     or carries `may_make_mana_unautomated` (#2258): the server read
+//     the card's printed text at import and found a mana ability the
+//     catalog does not run. That covers an uncatalogued mana creature
+//     or rock with no `mana_abilities` row. A card without the flag
+//     (an older server) falls back to the first two tests.
 //
 // Pure functions over the snapshot. The gate is assembled in
 // Game.svelte and read by autopassDecision.ts's stops-grid rule.
@@ -62,8 +61,10 @@ export function unpayableSpellInHand(
 
 // isManualManaSource is condition 2 for one permanent: the engine does
 // not run all of its printed rules, and it has, or as a land is
-// presumed to have, a mana ability.
+// presumed to have, a mana ability, or the server flagged it as
+// printing one the catalog does not automate.
 export function isManualManaSource(c: CardView): boolean {
+  if (c.may_make_mana_unautomated) return true;
   if (!c.unimplemented) return false;
   return (c.mana_abilities?.length ?? 0) > 0 || isLand(c);
 }

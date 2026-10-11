@@ -1103,6 +1103,13 @@ type Card struct {
 	// signal its credibility.
 	NeedsEffect bool
 
+	// PrintsManaAbility records that a non-spell card's printed
+	// oracle text has a mana ability (an "Add {X}" clause), per
+	// PrintsManaText. Stamped by the deck importer beside NeedsEffect
+	// because game.Card carries no oracle text. Joined with
+	// Unimplemented by MayMakeManaUnautomated (ADR 0118 decision 8).
+	PrintsManaAbility bool
+
 	// ColorCDADropped records that a CR 707.9d copy exception gave
 	// this object a colour, so the copy did not take the copied
 	// object's colour-defining ability (devoid) at all. A copiable

@@ -3710,6 +3710,11 @@ export interface CardView extends CastSurfaceView {
   // Most of a real battlefield would carry one, and a badge on
   // everything is a badge nobody reads.
   unimplemented?: boolean;
+  // #2258 (ADR 0118 decision 8): the card prints a mana ability the
+  // catalog does not run (unimplemented AND the printed text has an
+  // "Add {X}" clause). Smart autopass reads it to hold the main phase
+  // for "Cast anyway". Absent when false.
+  may_make_mana_unautomated?: boolean;
   // #992: the announce surface of the face that is UP. Inherited
   // from CastSurfaceView, so every existing `card.legal_targets`
   // read is unchanged and `cardAsFace` has an identically shaped

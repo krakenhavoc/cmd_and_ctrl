@@ -766,15 +766,18 @@ type cardSnapshot struct {
 	// DurationCopyBase is Card.DurationCopyBase (#1593): the layer-1
 	// baseline under a duration copy. Additive; absent means no
 	// duration copy applies, which is what every older file says.
-	DurationCopyBase *PrintedValues      `json:"durationCopyBase,omitempty"`
-	NeedsEffect      bool                `json:"needsEffect"`
-	Owner            uuid.UUID           `json:"owner"`
-	Controller       uuid.UUID           `json:"controller"`
-	Tapped           bool                `json:"tapped"`
-	NextUntapSkips   []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
-	BattleX          float64             `json:"battleX"`
-	BattleY          float64             `json:"battleY"`
-	Counters         map[string]int      `json:"counters,omitempty"`
+	DurationCopyBase *PrintedValues `json:"durationCopyBase,omitempty"`
+	NeedsEffect      bool           `json:"needsEffect"`
+	// PrintsManaAbility is Card.PrintsManaAbility (#2258). Additive;
+	// absent means false, which is what every older file says.
+	PrintsManaAbility bool                `json:"printsManaAbility,omitempty"`
+	Owner             uuid.UUID           `json:"owner"`
+	Controller        uuid.UUID           `json:"controller"`
+	Tapped            bool                `json:"tapped"`
+	NextUntapSkips    []untapSkipSnapshot `json:"nextUntapSkips,omitempty"`
+	BattleX           float64             `json:"battleX"`
+	BattleY           float64             `json:"battleY"`
+	Counters          map[string]int      `json:"counters,omitempty"`
 	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
 	// 613.7c timestamp of each keyword counter kind. Additive within v7;
 	// an older file has none, and an unstamped keyword counter is
@@ -2063,6 +2066,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
+		PrintsManaAbility:        c.PrintsManaAbility,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
@@ -2931,6 +2935,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintedSelf:              copyPrintedValues(c.PrintedSelf),
 		DurationCopyBase:         copyPrintedValues(c.DurationCopyBase),
 		NeedsEffect:              c.NeedsEffect,
+		PrintsManaAbility:        c.PrintsManaAbility,
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,

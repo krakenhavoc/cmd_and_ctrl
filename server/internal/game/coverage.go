@@ -35,7 +35,10 @@ package game
 //	                    StartingLoyalty, on the road #274 built.
 //	IsAutoCard          is there a Spec? Already the `auto` bit.
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+)
 
 // NeedsCatalogEffect reports whether a card's printed characteristics
 // describe rules that only a hand-written catalog Spec can carry out.
@@ -216,4 +219,38 @@ func stripReminderText(text string) string {
 		}
 	}
 	return b.String()
+}
+
+// manaAddRE finds a mana-adding clause in lower-cased oracle text:
+// "Add {G}", "Add one mana of any color", "Add X mana", "add that
+// much mana". Activated and triggered mana abilities (CR 605.1) both
+// print one.
+var manaAddRE = regexp.MustCompile(`\badd (\{|one |two |three |an amount|x mana|that much|mana|[a-z]+ mana)`)
+
+// PrintsManaText reports whether a permanent card's printed text has a
+// mana ability: some line, reminder text removed, with an "Add" mana
+// clause. Instants and sorceries are false, since a spell's "Add {R}"
+// is not an ability of a permanent (Dark Ritual). The deck importer
+// stamps it once per card (Card.PrintsManaAbility), so no text is
+// parsed at view time. texts are as for NeedsCatalogEffect.
+func PrintsManaText(typeLine string, texts ...string) bool {
+	if typeLineHas(typeLine, "instant") || typeLineHas(typeLine, "sorcery") {
+		return false
+	}
+	for _, text := range texts {
+		if manaAddRE.MatchString(strings.ToLower(stripReminderText(text))) {
+			return true
+		}
+	}
+	return false
+}
+
+// MayMakeManaUnautomated reports whether the card prints a mana
+// ability the engine will not run: it prints one and is Unimplemented.
+// A catalogued card is false, so a client can trust a card it does not
+// flag. Over-approximates by design: a card with one automated mana
+// ability and one unautomated rule still reads true while it lacks a
+// Spec. #2258, ADR 0118 decision 8.
+func MayMakeManaUnautomated(c Card) bool {
+	return c.PrintsManaAbility && Unimplemented(c)
 }

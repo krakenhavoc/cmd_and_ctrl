@@ -258,31 +258,32 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// 6), and this table is the guard for every card that is NOT
 		// one. TestFaceDownPermanentShipsItsPublicBody covers that
 		// cell.
-		FaceDownKind:        "exiled",
-		PhasedOut:           true,
-		FaceVisible:         true,
-		KnownByYou:          true,
-		knowers:             knowers,
-		oracleID:            "oracle",
-		BattleX:             &x,
-		BattleY:             &y,
-		AttackingTarget:     "defender",
-		AttackingTargetKind: "player",
-		DefendingPlayer:     "defender",
-		ProtectorPlayer:     "protector",
-		Defense:             4,
-		BlockingTarget:      "attacker",
-		BlockingTargets:     []string{"attacker", "attacker-2"},
-		BlockCapacity:       2,
-		BlocksAnyNumber:     true,
-		GoadedBy:            "goader",
-		Goaders:             []string{"goader"},
-		MustAttack:          true,
-		MustBlock:           true,
-		AttachedTo:          &TargetRefView{Kind: "card", ID: "host"},
-		NoUntap:             &NoUntapView{Static: true, Next: []string{"next-player"}},
-		Auto:                true,
-		Unimplemented:       true,
+		FaceDownKind:           "exiled",
+		PhasedOut:              true,
+		FaceVisible:            true,
+		KnownByYou:             true,
+		knowers:                knowers,
+		oracleID:               "oracle",
+		BattleX:                &x,
+		BattleY:                &y,
+		AttackingTarget:        "defender",
+		AttackingTargetKind:    "player",
+		DefendingPlayer:        "defender",
+		ProtectorPlayer:        "protector",
+		Defense:                4,
+		BlockingTarget:         "attacker",
+		BlockingTargets:        []string{"attacker", "attacker-2"},
+		BlockCapacity:          2,
+		BlocksAnyNumber:        true,
+		GoadedBy:               "goader",
+		Goaders:                []string{"goader"},
+		MustAttack:             true,
+		MustBlock:              true,
+		AttachedTo:             &TargetRefView{Kind: "card", ID: "host"},
+		NoUntap:                &NoUntapView{Static: true, Next: []string{"next-player"}},
+		Auto:                   true,
+		Unimplemented:          true,
+		MayMakeManaUnautomated: true,
 		// #992: the announce surface is one embedded block now, on
 		// CardView and on every castable CardFaceView alike. The
 		// reflection guard below recurses into it, so a field added
@@ -686,7 +687,7 @@ func TestFaceDownPermanentShipsItsPublicBody(t *testing.T) {
 	// Identity: still gone, and mostly never stamped, because
 	// CatalogKey answers "" for a face-down permanent.
 	if theirs.ScryfallID != "" || theirs.ManaCost != "" || len(theirs.Faces) != 0 ||
-		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented ||
+		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented || theirs.MayMakeManaUnautomated ||
 		len(theirs.ManaAbilities) != 0 || len(theirs.ActivatedAbilities) != 0 {
 		t.Errorf("opponent: the card under the back leaked: %+v", theirs)
 	}
