@@ -49,6 +49,9 @@ class FakeSocket {
   static opened: FakeSocket[] = [];
 
   readyState = FakeSocket.OPEN;
+  sent: string[] = [];
+  closeCode: number | null = null;
+  closeReason = "";
   private listeners: Record<string, ((ev: unknown) => void)[]> = {};
 
   constructor(readonly url: string) {
@@ -58,9 +61,13 @@ class FakeSocket {
     (this.listeners[type] ??= []).push(fn);
   }
   removeEventListener(): void {}
-  send(): void {}
-  close(): void {
+  send(data: string): void {
+    this.sent.push(data);
+  }
+  close(code = CLOSE_NORMAL, reason = ""): void {
     this.readyState = FakeSocket.CLOSED;
+    this.closeCode = code;
+    this.closeReason = reason;
   }
   emit(type: string, ev: unknown): void {
     for (const fn of this.listeners[type] ?? []) fn(ev);
@@ -171,6 +178,19 @@ async function flushMicrotasks(): Promise<void> {
   }
 }
 
+function stubDocument(initiallyHidden = false): { setHidden(hidden: boolean): void } {
+  const target = new EventTarget();
+  let hidden = initiallyHidden;
+  Object.defineProperty(target, "hidden", { get: () => hidden });
+  vi.stubGlobal("document", target as unknown as Document);
+  return {
+    setHidden(next: boolean) {
+      hidden = next;
+      target.dispatchEvent(new Event("visibilitychange"));
+    },
+  };
+}
+
 // failDialsUpTo closes the live socket, then redials-and-closes again
 // until `count` consecutive failures have been recorded — the shape
 // "climbs the ladder while the server is still down" above already
@@ -197,6 +217,59 @@ describe("isTerminalClose", () => {
     for (const code of [CLOSE_ABNORMAL, 1005, 1011, 1012, 1013, 4000]) {
       expect(isTerminalClose(code)).toBe(false);
     }
+  });
+});
+
+describe("#3047 — dead server heartbeat", () => {
+  it("pings an idle socket and redials when no frame arrives", () => {
+    const { client, socket } = connected();
+
+    vi.advanceTimersByTime(5_000);
+    expect(socket.sent.map((wire) => JSON.parse(wire).kind)).toEqual(["ping"]);
+
+    vi.advanceTimersByTime(5_000);
+    expect(socket.closeCode).toBe(4002);
+    expect(socket.closeReason).toBe("heartbeat timeout");
+    expect(get(client.status)).toBe("reconnecting");
+
+    vi.advanceTimersByTime(500);
+    expect(FakeSocket.opened).toHaveLength(2);
+  });
+
+  it("counts any inbound frame as liveness and avoids pings on a busy socket", () => {
+    const { socket } = connected();
+
+    // Keep activity just ahead of each five-second check. The socket
+    // should stay open without spending bandwidth on heartbeat frames.
+    for (let i = 0; i < 3; i++) {
+      vi.advanceTimersByTime(4_999);
+      socket.emit("message", { data: JSON.stringify({ kind: "activity" }) });
+      vi.advanceTimersByTime(1);
+    }
+
+    expect(socket.sent).toHaveLength(0);
+    expect(socket.closeCode).toBeNull();
+    expect(socket.readyState).toBe(FakeSocket.OPEN);
+
+    // Once activity stops, the last inbound frame's timestamp governs
+    // the timeout: one idle ping, then the same reconnect path.
+    vi.advanceTimersByTime(10_000);
+    expect(socket.sent.map((wire) => JSON.parse(wire).kind)).toEqual(["ping"]);
+    expect(socket.closeCode).toBe(4002);
+  });
+
+  it("pauses while hidden and checks a stale socket immediately when shown", () => {
+    const doc = stubDocument();
+    const { client, socket } = connected();
+
+    doc.setHidden(true);
+    vi.advanceTimersByTime(30_000);
+    expect(socket.sent).toHaveLength(0);
+    expect(socket.closeCode).toBeNull();
+
+    doc.setHidden(false);
+    expect(socket.closeCode).toBe(4002);
+    expect(get(client.status)).toBe("reconnecting");
   });
 });
 

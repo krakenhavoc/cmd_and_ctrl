@@ -176,6 +176,13 @@ export function isTerminalClose(code: number): boolean {
 // admin-only.
 export const CLOSE_ADMIN_MODE_CHANGED = 4001;
 
+// Application heartbeats detect a half-open TCP connection faster than
+// the operating system's retransmission timeout (#3047). The custom close
+// code keeps a local timeout on the ordinary retry path; 1000 is terminal.
+const HEARTBEAT_INTERVAL_MS = 5_000;
+const HEARTBEAT_TIMEOUT_MS = HEARTBEAT_INTERVAL_MS * 2;
+const CLOSE_HEARTBEAT_TIMEOUT = 4002;
+
 // AdminModeHandler is that handler: "reconnect" dials now, "leave"
 // stops for good, and "retry" (GET /me did not answer) waits a rung of
 // the backoff ladder and asks again, never dialling in between.
@@ -287,6 +294,9 @@ export class GameClient {
   private rewindNoticeClearTimer: ReturnType<typeof setTimeout> | null = null;
 
   private socket: WebSocket | null = null;
+  private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
+  private visibilityChangeHandler: (() => void) | null = null;
+  private lastInboundAt = 0;
   // highestSeq tracks the largest `seq` seen so far, WITHIN the
   // current restore generation (#523, ADR 0044 decision 5). The
   // protocol guarantees seq is monotonically non-decreasing only
@@ -450,6 +460,7 @@ export class GameClient {
       if (!isCurrent()) return;
       this.status.set("connected");
       this.resetReconnectAttempts();
+      this.startHeartbeat(socket);
       // #523: this used to unconditionally zero highestSeq here, on
       // every open including automatic reconnects to the same URL —
       // because a server restart restarts seq from an earlier value,
@@ -475,11 +486,15 @@ export class GameClient {
 
     socket.addEventListener("message", (ev: MessageEvent<unknown>) => {
       if (!isCurrent()) return;
+      // Any inbound frame proves the connection is alive, even if its
+      // contents are malformed or not a frame this client understands.
+      this.lastInboundAt = Date.now();
       this.handleMessage(ev.data);
     });
 
     socket.addEventListener("close", (ev: CloseEvent) => {
       if (!isCurrent()) return;
+      this.stopHeartbeat();
       // Deliberate teardown (disconnect()) nulls this.socket before
       // closing, so a close event that reaches this point was not
       // requested by this client. Of the server's own deliberate
@@ -509,6 +524,79 @@ export class GameClient {
       if (!isCurrent()) return;
       this.append("error", "socket error");
     });
+  }
+
+  private startHeartbeat(socket: WebSocket): void {
+    this.stopHeartbeat();
+    this.lastInboundAt = Date.now();
+
+    if (typeof document !== "undefined") {
+      this.visibilityChangeHandler = () => {
+        if (this.socket !== socket) return;
+        if (document.hidden) {
+          this.clearHeartbeatTimer();
+          return;
+        }
+        // Check immediately on return: a hidden tab may have missed the
+        // whole timeout window while its timer was paused.
+        this.checkHeartbeat(socket);
+        this.scheduleHeartbeat(socket);
+      };
+      document.addEventListener("visibilitychange", this.visibilityChangeHandler);
+    }
+
+    this.scheduleHeartbeat(socket);
+  }
+
+  private clearHeartbeatTimer(): void {
+    if (this.heartbeatTimer === null) return;
+    clearInterval(this.heartbeatTimer);
+    this.heartbeatTimer = null;
+  }
+
+  private stopHeartbeat(): void {
+    this.clearHeartbeatTimer();
+    if (this.visibilityChangeHandler !== null && typeof document !== "undefined") {
+      document.removeEventListener("visibilitychange", this.visibilityChangeHandler);
+    }
+    this.visibilityChangeHandler = null;
+  }
+
+  private scheduleHeartbeat(socket: WebSocket): void {
+    this.clearHeartbeatTimer();
+    if (
+      this.socket !== socket ||
+      socket.readyState !== WebSocket.OPEN ||
+      (typeof document !== "undefined" && document.hidden)
+    ) {
+      return;
+    }
+    this.heartbeatTimer = setInterval(() => this.checkHeartbeat(socket), HEARTBEAT_INTERVAL_MS);
+  }
+
+  private checkHeartbeat(socket: WebSocket): void {
+    if (this.socket !== socket) return;
+    if (socket.readyState !== WebSocket.OPEN) {
+      this.clearHeartbeatTimer();
+      return;
+    }
+    if (typeof document !== "undefined" && document.hidden) {
+      this.clearHeartbeatTimer();
+      return;
+    }
+
+    const silenceMs = Date.now() - this.lastInboundAt;
+    if (silenceMs >= HEARTBEAT_TIMEOUT_MS) {
+      this.stopHeartbeat();
+      this.socket = null;
+      socket.close(CLOSE_HEARTBEAT_TIMEOUT, "heartbeat timeout");
+      this.append("info", "socket heartbeat timed out");
+      this.scheduleReconnect();
+      return;
+    }
+    if (silenceMs >= HEARTBEAT_INTERVAL_MS) {
+      this.sendPing("heartbeat");
+    }
   }
 
   private scheduleReconnect(): void {
@@ -604,6 +692,7 @@ export class GameClient {
   // scheduling one more reconnect on top of this.
   private enterSessionEnded(): void {
     this.cancelReconnect();
+    this.stopHeartbeat();
     const socket = this.socket;
     this.socket = null;
     this.status.set("session_ended");
@@ -683,6 +772,7 @@ export class GameClient {
 
   disconnect(): void {
     this.cancelReconnect();
+    this.stopHeartbeat();
     this.resetReconnectAttempts();
     const socket = this.socket;
     this.socket = null;
