@@ -591,6 +591,20 @@ arena's `picks` column (`index`, `index-unlabelled`, `label-rescued`,
 `label-corrected`, `label-mismatch`), next to `out-of-range` under
 `fallbacks`.
 
+**The picks land, and they are still worse than the heuristic's.**
+Measured 2026-10-11 (#2196), `qwen3.6:35b-a3b` Q4_K_M on Ollama
+0.35.1, 16k context, thinking off: on the probe's window the pre-fix
+build named an unlisted move 4 times in 10 and the fixed build 0 in 10.
+A 60-game two-seat arena (assisted against the heuristic, mirror
+izzet-aggro, rotation on, seed 2026100401) made 3,199 model calls with
+0 out-of-range replies and 0 timeouts (10 picks label-corrected, 6
+replies malformed by a `why` cut off at the 128-token cap), and the
+heuristic won 58 of 60: the model seat's win rate was 3.3%, 95% CI
+0.9–11.4%. The model chose the heuristic's move on 35% of the windows
+it decided. A third of the rest were a mana ability or an activation
+where the heuristic passed or cast a spell, and the model seat missed
+twice as many land drops in its turns 2–4 (19% against 10%).
+
 The probe sends what the seat sends — the same `OpenAIClient`, so both
 thinking-off fields go with it — which means **`THINKING: suppressed`
 is the expected verdict now that `reasoning_effort` ships**. A probe
