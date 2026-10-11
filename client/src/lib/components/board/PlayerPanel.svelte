@@ -946,7 +946,9 @@
        (board ratios, Sept 2026): the panel is a size container and
        every card height is a share of it, clamped so a short panel
        never drops below the fixed sizes the redesign shipped with
-       (120×168 / 88×123 / 64×90) and a tall one stops at 240px. The
+       (120×168 / 88×123 / 64×90). Your own board has no fixed
+       ceiling (#3028): a fixed 240px left a third of a 1440p panel as
+       empty mat, and made the "large" card size a no-op there. The
        share is the panel's budget solved for the creature card: the
        creature row (1×), the back row (0.74×) and the hand's peek
        (0.62× self, 0.55× opponents) plus ~72px of row padding and
@@ -963,11 +965,13 @@
     /* --card-h-max is the clamp's ceiling, pulled into its own token
        (#1071) so a variant below can raise it without restating the
        floor and slope — which would drift the two out of step the
-       next time either changes. */
-    --card-h-max: 240px;
+       next time either changes. On your own board it is the panel's
+       own height (#3028), which no card reaches: the slope is the
+       limit. Opponents' ceilings below grow with the screen instead. */
+    --card-h-max: 100cqh;
     --card-h: clamp(168px, calc((42cqh - 30px) * var(--card-scale, 1)), var(--card-h-max));
     --card-w: calc(var(--card-h) * 5 / 7);
-    --card-h-sm: clamp(123px, calc(var(--card-h) * 0.74), 178px);
+    --card-h-sm: max(123px, calc(var(--card-h) * 0.74));
     --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
     --thumb-w: calc(40px * var(--card-scale, 1));
     --thumb-h: calc(56px * var(--card-scale, 1));
@@ -1080,10 +1084,12 @@
   .panel.opponent {
     /* Upright opponent (the "next" seat) gets the medium scale — it
        has the tall row to itself. Scales by --card-scale-opponent
-       (settings) with a gentler curve than self. The 200px ceiling
-       (vs. self's 240px) is deliberate: an opponent panel shares the
-       screen with the viewer's own and shouldn't rival it. */
-    --card-h-max: 200px;
+       (settings) with a gentler curve than self. The ceiling is
+       deliberate: an opponent panel shares the screen with the
+       viewer's own and shouldn't rival it. #3028: it is 200px on a
+       1080px-tall screen and grows with the screen past that (18.5vh),
+       and the card-size setting scales it, so "large" is larger. */
+    --card-h-max: calc(max(200px, 18.5vh) * var(--card-scale-opponent, 1));
     /* #2336: sized by relevance, like your own board. The face-down
        hand shows only a count, so it peeks 30%; lands and other
        permanents are half a creature. The creature card is what is
@@ -1091,27 +1097,27 @@
        a short panel shrinks its cards rather than scrolling them. */
     --hand-peek: 0.3;
     --card-h: clamp(90px, calc((52cqh - 33px) * var(--card-scale-opponent, 1)), var(--card-h-max));
-    --card-h-sm: clamp(56px, calc(var(--card-h) * 0.5), 110px);
+    --card-h-sm: max(56px, calc(var(--card-h) * 0.5));
     --thumb-w: calc(36px * var(--card-scale-opponent, 1));
     --thumb-h: calc(50px * var(--card-scale-opponent, 1));
     --avatar-size-base: 72px;
     --rail-w: 104px;
   }
   /* #1071: a spectator has no panel of their own for an opponent
-     panel to defer to, so the reason for the 200px ceiling above
-     doesn't apply — every seat is equal, and the ceiling can match
-     self's. This rule and .panel.opponent live in the same
+     panel to defer to, so the reason for the ceiling above doesn't
+     apply — every seat is equal, and the ceiling matches self's: none
+     but the panel's own height (#3028). This rule and .panel.opponent live in the same
      stylesheet (same Svelte scope hash on both), so there is no
      cross-component cascade tie to reason about — one extra class
      over .panel.opponent is ordinary CSS specificity. The floor and
-     slope are untouched, so nothing changes below ~1340px of panel
-     height. Board never sets `flipped` on a spectator panel today
+     slope are untouched, so nothing changes until the opponent
+     ceiling binds. Board never sets `flipped` on a spectator panel today
      (every spectator seat mounts isSelf=false with no `flipped`), so
      .panel.opponent.flipped below never competes with this rule in
      practice — the dedicated four-class rule after it is what keeps
      that true even if a spectator panel ever does gain `flipped`. */
   .panel.opponent.spectator {
-    --card-h-max: 240px;
+    --card-h-max: 100cqh;
   }
   .panel.opponent.flipped {
     /* Across-table seats: one more size down (the top row is the
@@ -1130,14 +1136,16 @@
        and the card is the smaller of the two heights, so neither row
        takes more than it was given. The floors sit below any card the
        formula can ask for at 720px, so a floor never pushes the rows
-       past the panel. */
-    --card-h-max: 168px;
+       past the panel. #3028: the ceiling is 168px on a 1080px-tall
+       screen and grows with it past that (15.5vh), scaled by the
+       card-size setting, like the upright opponent's. */
+    --card-h-max: calc(max(168px, 15.5vh) * var(--card-scale-opponent, 1));
     --card-h: clamp(
       44px,
       calc(min((100cqh - 158px) / 1.5, (100cqh - 84px) / 2.05) * var(--card-scale-opponent, 1)),
       var(--card-h-max)
     );
-    --card-h-sm: clamp(24px, calc(var(--card-h) * 0.5), 90px);
+    --card-h-sm: max(24px, calc(var(--card-h) * 0.5));
     --thumb-w: calc(32px * var(--card-scale-opponent, 1));
     --thumb-h: calc(45px * var(--card-scale-opponent, 1));
     --avatar-size-base: 60px;
@@ -1149,20 +1157,20 @@
   }
   /* Defensive only — unreachable today (see above), kept so a future
      spectator panel that gains `flipped` still gets the raised
-     ceiling instead of silently falling back to 168px. Four classes
+     ceiling instead of silently falling back to the flipped one. Four classes
      beats both .panel.opponent.flipped (three) and
      .panel.opponent.spectator (three) outright, so this can never
      lose to either regardless of source order. */
   .panel.opponent.flipped.spectator {
-    --card-h-max: 240px;
+    --card-h-max: 100cqh;
   }
   /* ADR 0120 §3: the expanded overlay's copy of a board caps its cards
-     at 240px for every seat, as on a spectator's panel. Self is 240px
-     already, and an expanded panel is never flipped, so only
-     .panel.opponent's 200px has to be beaten. The floor and slope are
+     as your own board's are, for every seat, as on a spectator's
+     panel: no fixed ceiling (#3028). An expanded panel is never
+     flipped, so only .panel.opponent's ceiling has to be beaten. The floor and slope are
      the seat's own; the overlay's height does the rest. */
   .panel.opponent.expanded {
-    --card-h-max: 240px;
+    --card-h-max: 100cqh;
   }
   /* The creature area is the grid's minmax(0, 1fr) row, so on a short
      panel it is shorter than one card (whose height floors at 168px).
@@ -1287,7 +1295,7 @@
   @media (min-width: 600px) {
     .panel.self.docked {
       --card-h: clamp(120px, calc((52cqh - 40px) * var(--card-scale, 1)), var(--card-h-max));
-      --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+      --card-h-sm: max(64px, calc(var(--card-h) * 0.5));
       --hand-peek: 0.4;
       grid-template-columns: auto minmax(0, 1fr) var(--rail-w);
       grid-template-areas:
@@ -1443,7 +1451,7 @@
           var(--card-h-max)
         );
         --card-w: calc(var(--card-h) * 5 / 7);
-        --card-h-sm: clamp(64px, calc(var(--card-h) * 0.5), 110px);
+        --card-h-sm: max(64px, calc(var(--card-h) * 0.5));
         --card-w-sm: calc(var(--card-h-sm) * 5 / 7);
       }
     }
