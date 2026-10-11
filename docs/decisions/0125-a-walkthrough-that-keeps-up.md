@@ -272,6 +272,12 @@ help: {
 
 #### 5.1 Fourteen steps
 
+> **Amended by [ADR 0076](0076-tutorial.md) §2.1 and §2.2, amendments of 2026-10-11 (S65,
+> [#3012](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3012)):** right-click moves to the player's
+> turn two and completes on the activation, not on `ability-menu-opened`. The
+> order is now 9 the commander, 10 move the turn along, 11 let the bot play,
+> 12 right-click, 13 attack. The table below is the order before that.
+
 | # | Step | Anchor | Advances when | Teaches (§5.3) |
 |---|---|---|---|---|
 | 1 | A five-minute practice game | — | button | — |

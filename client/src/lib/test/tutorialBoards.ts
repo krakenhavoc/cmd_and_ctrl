@@ -33,6 +33,8 @@ export const elves = (extra: Partial<CardView> = {}) =>
   });
 export const walker = (extra: Partial<CardView> = {}) =>
   card("Phyrexian Walker", "Artifact Creature — Phyrexian Construct", extra);
+export const memnite = (extra: Partial<CardView> = {}) =>
+  card("Memnite", "Artifact Creature — Construct", extra);
 export const marwyn = (extra: Partial<CardView> = {}) =>
   card("Marwyn, the Nurturer", "Legendary Creature — Elf Druid", extra);
 
@@ -63,6 +65,11 @@ export interface Board {
   roll?: Roll;
   /** The opening hands are open; `kept` is the viewer's. */
   mulligan?: { kept: boolean };
+  /**
+   * The server's move list, as the instance ids of the cards it lists a
+   * cast for (plus a pass). Absent: no move list at all.
+   */
+  casts?: string[];
 }
 
 export function board(b: Board = {}): GameView {
@@ -100,6 +107,14 @@ export function board(b: Board = {}): GameView {
       step: b.step ?? "precombat_main",
     },
     mulligans_open: !!b.mulligan,
+    ...(b.casts
+      ? {
+          legal_moves: [
+            { kind: "pass", source: "00000000-0000-0000-0000-000000000000" },
+            ...b.casts.map((source) => ({ kind: "cast", source })),
+          ],
+        }
+      : {}),
     ...(b.roll
       ? {
           opening_roll: {

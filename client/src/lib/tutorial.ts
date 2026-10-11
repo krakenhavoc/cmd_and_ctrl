@@ -15,7 +15,7 @@
 //     (§2.4). It never waits on a predicate that cannot fire.
 //   - The hint is the second thing a player gets, never the first: it
 //     appears after HINT_AFTER_MS on a step that asks for an action.
-//   - A step that waits on the bot rather than the player (step 12) can
+//   - A step that waits on the bot rather than the player (step 11) can
 //     carry a timeout, and advances on its own when it runs out. An
 //     action step may carry one too.
 //   - While the opening roll is open nothing is dealt, so no step
@@ -46,11 +46,11 @@
 //     one line (`skipped`), rather than jumping the counter in silence.
 //     The log line stays too. A Skip step, a completion or a timeout
 //     clears it.
-//   - `hover`: steps 3, 5 and 10 complete once the pointer has rested on
+//   - `hover`: steps 3, 5 and 9 complete once the pointer has rested on
 //     the anchor for `ms` (§2.1, "hover ≥ 600ms"). The coach measures the
 //     rest and reports it through `hovered()`.
 //   - An anchor can be read off the board (step 2's dialog or banner,
-//     step 9's card, step 13's opponent), and so can a status line.
+//     step 12's card, step 13's opponent), and so can a status line.
 
 import type { Readable, Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
@@ -131,7 +131,7 @@ export interface StepContext {
 /**
  * Client-side state a step can read, because it never reaches the wire.
  * Only the dock's autopass toggle (Game.svelte's session state), which
- * step 12 teaches. Like the bus (§2.5), it is not a place for more.
+ * step 11 teaches. Like the bus (§2.5), it is not a place for more.
  */
 export interface ClientState {
   autopass: boolean;
@@ -150,9 +150,14 @@ export interface CopyContext {
   nextKey?: string;
   /**
    * The name of the card the step points at, when it points at one
-   * (step 9's ability card). Absent when there is none to name.
+   * (step 12's ability card). Absent when there is none to name.
    */
   cardName?: string;
+  /**
+   * The menu row step 12 asks for on that card: its first mana
+   * ability's label ("Add {G}"). Absent when it has none to name.
+   */
+  abilityLabel?: string;
 }
 
 export type Copy = string | ((c: CopyContext) => string);

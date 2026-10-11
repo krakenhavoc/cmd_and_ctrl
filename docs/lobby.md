@@ -1591,8 +1591,8 @@ the bot. A bot at any other table chooses as
 [ADR 0121](decisions/0121-animated-dice.md) §4 has it. When the deal
 comes, the player's opening seven is **scripted**
 ([ADR 0076](decisions/0076-tutorial.md) §2.2, amended 2026-10-11): three
-Forests, Llanowar Elves, Elvish Mystic, Elvish Visionary and Llanowar
-Visionary, taken out of the shuffled library, which stays shuffled. A
+Forests, Llanowar Elves, Elvish Mystic, Memnite and Priest of Titania,
+taken out of the shuffled library, which stays shuffled. A
 mulligan deals a random seven, and the bot's hand is never scripted.
 The response is a join's: a
 fresh player session for the seat (`token`, `expires_at`,
