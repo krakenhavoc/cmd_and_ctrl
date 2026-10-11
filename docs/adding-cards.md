@@ -443,7 +443,7 @@ Mana abilities can carry cost components beyond `{T}`:
 | Pay N life | `ManaAbilityCost{Life: 1}` | Mana Confluence |
 | A mana cost | `ManaAbilityCost{Mana: "{1}"}` | the Signet cycle |
 | Remove N counters | `ManaAbilityCost{RemoveCounters: RemoveCountersFromThis("charge", 1).RemoveCounters}` | Vivid Creek, Ramos |
-| Remove any number of counters | `ManaAbilityCost{RemoveCounters: RemoveCountersXFromThis("storage", 0).RemoveCounters}` | Mage-Ring Network |
+| Remove any number of counters | `ManaAbilityCost{RemoveCounters: RemoveCountersXFromThis("storage", 0).RemoveCounters}` | Mage-Ring Network, Black Mana Battery, Bottomless Vault |
 | Discard a card | `ManaAbilityCost{DiscardCards: DiscardACard().DiscardCards}` | Skirge Familiar |
 | Exile a card from your hand | `ManaAbilityCost{ExileCards: ExileACardFromHand()}` | Cadaverous Bloom (#1283) |
 | Exile this card from your hand | `ExileFromHandForMana("{R}")` (zone + cost together) | the Spirit Guides (#1228) |
@@ -539,6 +539,12 @@ fields `ActivateAbilityParams` uses (`CounterSourceIDs`,
 `CounterCounts`, `CounterKind`), the view ships the same
 `counter_cost_*` fields, and the client opens the same
 `CounterCostModal`.
+
+A zero floor means zero is an announcement (#2951): a payment with no
+counter fields, or `CounterCounts: []int{0}`, removes nothing and still
+taps, and the enumerator offers it when the source holds no counters
+(Black Mana Battery's plain {B}). A printed floor of one or more, and
+the among form, still refuse it.
 
 An ability whose OUTPUT depends on what the cost paid declares
 `ProducedForPaid` instead of `Produced` — "Add {C} for each storage
