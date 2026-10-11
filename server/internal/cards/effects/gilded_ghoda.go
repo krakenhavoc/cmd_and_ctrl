@@ -21,9 +21,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Activated:    []ActivatedAbility{Saddle(1)},
 		Triggered: []game.TriggeredAbility{
-			AttacksWhileSaddled("Gilded Ghoda — create a Treasure", func(g *game.Game, item *game.StackItem) error {
-				return CreateToken{Controller: item.Controller, Template: TreasureToken(), N: 1}.Apply(NewContext(g, item))
-			}),
+			AttacksWhileSaddled("Gilded Ghoda — create a Treasure", Do(CreateToken{Template: TreasureToken(), N: 1})),
 		},
 	})
 }

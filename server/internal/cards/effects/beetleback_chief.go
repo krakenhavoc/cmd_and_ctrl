@@ -17,7 +17,7 @@ func init() {
 		Name:         "Beetleback Chief",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Beetleback Chief — create two 1/1 red Goblins", b34CreateTokens(RedGoblinToken, 2)),
+			WhenThisEnters("Beetleback Chief — create two 1/1 red Goblins", Do(CreateToken{Template: RedGoblinToken(), N: 2})),
 		},
 	})
 }

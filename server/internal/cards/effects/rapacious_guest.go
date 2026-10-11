@@ -50,12 +50,7 @@ func init() {
 				b31RapaciousGuestFoodLabel, Do(CreateToken{Template: FoodToken(), N: 1})),
 			On(game.EventSacrifice, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b31YouSacrificedAFood(ev, source, g)
-			}, "Rapacious Guest — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
-				if !onBattlefield(g, item.SourceCardID) {
-					return nil
-				}
-				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
-			}),
+			}, "Rapacious Guest — put a +1/+1 counter on it", Do(CounterOnThis{Kind: game.CounterPlusOne, N: 1})),
 			{
 				Watches: []game.EventKind{game.EventLTB},
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

@@ -36,7 +36,7 @@ func init() {
 				Key:     "Lossarnach Captain — tap target creature an opponent controls",
 				Effect:  b36TapChosenCreature,
 			},
-			AtYourUpkeep("Lossarnach Captain — create a 1/1 white Human Soldier", b34CreateTokens(b36WhiteHumanSoldierToken, 1)),
+			AtYourUpkeep("Lossarnach Captain — create a 1/1 white Human Soldier", Do(CreateToken{Template: b36WhiteHumanSoldierToken(), N: 1})),
 		},
 	})
 }

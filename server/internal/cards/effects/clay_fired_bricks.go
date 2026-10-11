@@ -47,7 +47,7 @@ func init() {
 		Name:         "Cosmium Kiln",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WhenThisEnters("Cosmium Kiln — create two 1/1 Gnome artifact creature tokens", cosmiumKilnGnomes),
+			WhenThisEnters("Cosmium Kiln — create two 1/1 Gnome artifact creature tokens", Do(CreateToken{Template: TokenCard("1/1 colorless Gnome artifact"), N: 2})),
 		},
 		Static: []game.StaticAbility{b16Anthem(b41CreatureYouControlStatic, 1, 1)},
 	})
@@ -70,8 +70,4 @@ func clayFiredBricksEnters(g *game.Game, item *game.StackItem) error {
 			return g.ChangePlayerLifeForEffect(source, controller, 2)
 		},
 	}.Apply(NewContext(g, item))
-}
-
-func cosmiumKilnGnomes(g *game.Game, item *game.StackItem) error {
-	return CreateToken{Controller: item.Controller, Template: TokenCard("1/1 colorless Gnome artifact"), N: 2}.Apply(NewContext(g, item))
 }

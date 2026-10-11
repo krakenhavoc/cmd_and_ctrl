@@ -586,13 +586,6 @@ func b33ScryN(n int) func(g *game.Game, item *game.StackItem) error {
 	}
 }
 
-// b33MillN is "mill N" as a trigger body (Sidisi's enters-or-attacks).
-func b33MillN(n int) func(g *game.Game, item *game.StackItem) error {
-	return func(g *game.Game, item *game.StackItem) error {
-		return MillCards{Player: item.Controller, N: n}.Apply(NewContext(g, item))
-	}
-}
-
 // b33CreateTokenBody is a trigger body that makes one token from
 // `template` for the controller.
 func b33CreateTokenBody(template func() game.Card) func(g *game.Game, item *game.StackItem) error {

@@ -32,7 +32,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16CardLeftYourGraveyard(ev, source, g)
-			}, b34OnWingsOfGoldLabel, b34CreateTokens(b34WhiteZombieToken, 1))),
+			}, b34OnWingsOfGoldLabel, Do(CreateToken{Template: b34WhiteZombieToken(), N: 1}))),
 		},
 	})
 }
