@@ -57,7 +57,7 @@ describe("the script's two button steps", () => {
 
   it("names the player's own keys in the handoff, and copes with none", () => {
     expect(copyText(HANDOFF.body, { helpKey: "?", settingsKey: "," })).toMatch(
-      /^Press \? for the keymap and , for settings\. Your zone piles are on the rail/,
+      /^Press the question mark key for the keymap and the comma key for settings\. Your zone piles are on the rail/,
     );
     expect(copyText(HANDOFF.body, { helpKey: "", settingsKey: "" })).toMatch(
       /^The keymap is in Settings\. /,

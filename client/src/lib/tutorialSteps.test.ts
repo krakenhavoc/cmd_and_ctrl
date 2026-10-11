@@ -31,6 +31,7 @@ import {
   WATCH_TIMEOUT_MS,
   WELCOME,
   abilityCardID,
+  abilityCardName,
 } from "./tutorialSteps";
 import { L } from "./labels";
 import { HINTS } from "./hints";
@@ -518,6 +519,16 @@ describe("step 9: abilities live on right-click", () => {
     expect(anchorsOf(RIGHT_CLICK, ctx(board({ mine: [w] })))).toEqual([]);
   });
 
+  it("names the card it points at, and says so when it names none", () => {
+    const v = board({ mine: [elves({ name: "Llanowar Elves" })] });
+    expect(abilityCardName(v, ME)).toBe("Llanowar Elves");
+    expect(copyText(RIGHT_CLICK.body, { ...keys, cardName: "Llanowar Elves" })).toMatch(
+      /Try it on Llanowar Elves\.$/,
+    );
+    expect(copyText(RIGHT_CLICK.body, keys)).not.toMatch(/this one/);
+    expect(abilityCardName(board({ mine: [walker()] }), ME)).toBeUndefined();
+  });
+
   it("completes when the ability menu opens, and only then", () => {
     const v = board({ mine: [elves()] });
     expect(RIGHT_CLICK.done!(ctx(v))).toBe(false);
@@ -613,9 +624,13 @@ describe("step 13: attack", () => {
         ctx(board({ step: "declare_attackers", mine: [elves({ summoning_sick: true })] })),
       )?.id,
     ).toBe("next-combat");
+    const main = ATTACK.first!(ctx(board({ step: "precombat_main", mine: [ready()] })))!;
+    expect(copyText(main.body, keys)).toBe(
+      "Play a land and cast what you like, then press next (Space) until it reads Declare Attackers.",
+    );
     const d = ATTACK.first!(ctx(board({ step: "upkeep", mine: [ready()] })))!;
     expect(copyText(d.body, keys)).toBe(
-      "Press next (Space) in the dock until it reads Declare Attackers.",
+      "Press next (Space) in the dock until it reads Main, then play a land and cast what you like.",
     );
   });
 

@@ -141,6 +141,11 @@ export interface CopyContext {
   settingsKey: string;
   /** The chord that presses the dock's `next`, formatted; "" if unbound. */
   nextKey?: string;
+  /**
+   * The name of the card the step points at, when it points at one
+   * (step 9's ability card). Absent when there is none to name.
+   */
+  cardName?: string;
 }
 
 export type Copy = string | ((c: CopyContext) => string);

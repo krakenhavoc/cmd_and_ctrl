@@ -50,7 +50,7 @@
     type TutorialStep,
   } from "../../tutorial";
   import { anchorRect, resolveAnchor, sameRect, type AnchorRect } from "../../tutorialAnchor";
-  import { TUTORIAL_STEPS } from "../../tutorialSteps";
+  import { TUTORIAL_STEPS, abilityCardName } from "../../tutorialSteps";
   import { HINTS } from "../../hints";
   import type { HintID } from "../../hints/hint";
   import { markHintsTaught } from "../../hints/runtime";
@@ -239,6 +239,7 @@
     helpKey: keys.toggleHelp ? formatChord(keys.toggleHelp, isMacLike()) : "",
     settingsKey: keys.openSettings ? formatChord(keys.openSettings, isMacLike()) : "",
     nextKey: keys.passPriority ? formatChord(keys.passPriority, isMacLike()) : "",
+    cardName: abilityCardName(view, viewerID),
   });
   // What the card says, strongest first: a detour (what to do before
   // the step can happen), then the recovered copy, then the step's own.
