@@ -40,7 +40,8 @@ registered, or when this file is stale.
 | `waitToRespond` | `wait, let me respond` | button | aria | `lib/components/board/ActionDock.svelte` | the stack hold countdown's one-click hold (#2853): keeps priority on the stack auto-pass was about to pass |
 | `priorityControls` | `priority controls` | group | aria | `lib/components/board/ActionDock.svelte` | the dock's toggles: Skip to my turn, undo, the ⋯ menu |
 | `skipToMyTurn` | `Skip to my turn` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's Skip to my turn toggle (ADR 0143 §4.2, formerly autopass; state in aria-pressed): passes for you until your next main phase; the tutorial's let-the-bot-play step anchors here, within actions |
-| `next` | `next` | button | text | `lib/components/board/ActionDock.svelte` | the dock's primary: pass priority |
+| `next` | `next` | button | aria | `lib/components/board/ActionDock.svelte` | the dock's primary: pass priority (its visible text and its aria-label); the tutorial's stack step anchors here, within actions |
+| `attackAll` | `Attack <name> with all <N> creature(s)` (contains ` with all `) | button | aria | `lib/attackAll.ts` | the dock's attack-with-all button in a duel (its aria-label equals its visible text); the tutorial's attack step anchors here, within actions |
 | `endTurn` | `End turn` | button | text | `lib/components/board/ActionDock.svelte` | the dock's secondary, shown to the active player only (ADR 0143 §4.2, formerly Pass turn): passes for you through every step of the rest of your turn |
 | `sandboxPassTurn` | `Skip to next turn (sandbox)` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's sandbox jump to the next turn (pass_turn): skips the end step, its triggers and the cleanup discard, and the log says so |
 | `declareAttackers` | `declare attackers` | dialog, group | aria | `lib/combatDock.ts` | the attack request's dialog and its row group |

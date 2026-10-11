@@ -788,6 +788,7 @@
         type="button"
         class="dock-btn primary next"
         class:viewer-priority={canPass}
+        aria-label={L.next}
         disabled={!canPass}
         aria-keyshortcuts={ariaKeys(keys.passPriority)}
         onclick={onPassPriority}

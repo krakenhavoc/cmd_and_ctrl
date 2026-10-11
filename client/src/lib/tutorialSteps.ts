@@ -75,6 +75,8 @@ const HAND: Anchor = { label: L.yourHand };
 const LANDS: Anchor = { label: L.lands, within: L.yourBoard };
 const CREATURES: Anchor = { label: L.creatures, within: L.yourBoard };
 const DOCK: Anchor = { label: L.actions };
+const NEXT: Anchor = { label: L.next, within: L.actions };
+const ATTACK_ALL: Anchor = { label: L.attackAll.any, within: L.actions };
 const AUTOPASS: Anchor = { label: L.skipToMyTurn, within: L.actions };
 const ROLL_REQUEST: Anchor = { label: L.rollForFirstTurn };
 const ROLL_BANNER: Anchor = { label: L.openingRoll };
@@ -354,6 +356,9 @@ export const TAP_LAND: TutorialStep = {
   body: "Click a Forest on the table to tap it. Its mana goes into your pool, by your portrait.",
   hint: "Click the Forest that is already on the table, not one in your hand.",
   anchor: LANDS,
+  // The Forest just clicked is still under the pointer, and its preview
+  // would cover the portrait and the pool this copy points at.
+  previewLeft: true,
   done: (c) => (seatOf(c.view, c.viewerID)?.mana_pool?.length ?? 0) > 0,
   recover: {
     // The issue's common wrong action: playing a land when a tap was
@@ -419,7 +424,7 @@ export const ON_THE_STACK: TutorialStep = {
   body: (k) =>
     `Your creature waits on the stack, on the left, until both players pass. ${PressNext(k)} in the dock and it resolves.`,
   hint: "The bot passes too, and then your creature enters the battlefield.",
-  anchor: STACK_PILE,
+  anchor: [STACK_PILE, NEXT],
   done: (c) =>
     !!c.start &&
     !stackEmpty(c.start) &&
@@ -566,7 +571,7 @@ export const ATTACK: TutorialStep = {
   hint: "The dock has an attack-with-all button too, which sends every creature that can attack.",
   anchor: (c) => {
     const opp = opponentOf(c.view, c.viewerID);
-    return opp ? [CREATURES, { seatID: opp.id }] : CREATURES;
+    return opp ? [CREATURES, { seatID: opp.id }, ATTACK_ALL] : [CREATURES, ATTACK_ALL];
   },
   done: (c) => permanentsOf(c.view, c.viewerID).some((p) => !!p.attacking_target),
   first: (c) => {

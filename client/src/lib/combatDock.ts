@@ -99,6 +99,9 @@ function attackRow(input: AttackRowInput): { lead?: string; row: DockAction[] } 
       {
         id: `attack-all:${opp.id}`,
         label: attackAllLabel(plan, opp),
+        // The registered name (L.attackAll), without the tax note beside
+        // it, so the tutorial can find the button.
+        ariaLabel: attackAllLabel(plan, opp),
         note: attackAllTaxLabel(view, plan, opp.id) || undefined,
         title: attackAllTitle(view, plan, opp),
         chord: input.attackAllChord,

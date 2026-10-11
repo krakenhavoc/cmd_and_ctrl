@@ -208,6 +208,12 @@ export interface TutorialStep {
    */
   hover?: { ms: number; event?: TutorialEvent };
   /**
+   * The card hover preview (HoverZoomOverlay) opens at the top right,
+   * over the seat portraits and their mana pools. A step that points
+   * there sets this and, while it shows, the preview opens on the left.
+   */
+  previewLeft?: boolean;
+  /**
    * The first-use hints this step teaches (ADR 0125 §5.3). When the
    * step completes they are marked seen at their current version, so
    * the player is not told again at their first real table.

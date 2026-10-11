@@ -133,7 +133,10 @@ describe("the script", () => {
     expect(anchorsOf(LAND_PILES, ctx(v))).toEqual([{ label: "lands", within: "your board" }]);
     expect(anchorsOf(TAP_LAND, ctx(v))).toEqual([{ label: "lands", within: "your board" }]);
     expect(anchorsOf(CAST_CREATURE, ctx(v))).toEqual([{ label: "your hand" }]);
-    expect(anchorsOf(ON_THE_STACK, ctx(v))).toEqual([{ label: L.stackPile.any }]);
+    expect(anchorsOf(ON_THE_STACK, ctx(v))).toEqual([
+      { label: L.stackPile.any },
+      { label: L.next, within: L.actions },
+    ]);
     expect(anchorsOf(COMMANDER, ctx(v))).toEqual([
       { label: L.commandZone.any, within: "your board" },
     ]);
@@ -142,6 +145,7 @@ describe("the script", () => {
     expect(anchorsOf(ATTACK, ctx(v))).toEqual([
       { label: "creatures", within: "your board" },
       { seatID: BOT },
+      { label: L.attackAll.any, within: L.actions },
     ]);
   });
 
@@ -728,7 +732,10 @@ describe("a whole tutorial", () => {
     });
     // On the stack: step 8 shows the pile while it waits.
     expect(at()).toBe("on-the-stack");
-    expect(anchorsOf(run.current().step, run.context())).toEqual([{ label: L.stackPile.any }]);
+    expect(anchorsOf(run.current().step, run.context())).toEqual([
+      { label: L.stackPile.any },
+      { label: L.next, within: L.actions },
+    ]);
     const resolved = {
       mine: [
         { ...f, tapped: true },

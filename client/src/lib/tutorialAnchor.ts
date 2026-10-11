@@ -19,7 +19,7 @@
 // "spotlighting empty space" §2.4 rules out. The caller advances the step.
 
 import type { Anchor } from "./tutorial";
-import { findCardAnchor, findSeatAnchor } from "./boardAnchor";
+import { findCardAnchor, findSeatAnchor, hasSize } from "./boardAnchor";
 import { isStem, type LabelRef, type StemMatch } from "./labels";
 
 export interface AnchorRect {
@@ -46,10 +46,13 @@ export function labelSelector(ref: LabelRef): string {
 /** resolveAnchor finds the element an anchor names, or null. */
 export function resolveAnchor(a: Anchor, root: ParentNode = document): Element | null {
   if ("cardID" in a) {
-    return findCardAnchor(root, a.cardID);
+    return findCardAnchor(root, a.cardID, { accept: hasSize }) ?? findCardAnchor(root, a.cardID);
   }
   if ("seatID" in a) {
-    return findSeatAnchor(root, a.seatID);
+    // A seat's avatar is drawn in the board panel and again in the
+    // collapsed seat summary, which can sit first in the DOM with no
+    // area; the first copy with room is the one the hole goes round.
+    return findSeatAnchor(root, a.seatID, { accept: hasSize }) ?? findSeatAnchor(root, a.seatID);
   }
   let scope: ParentNode = root;
   if (a.within !== undefined) {
@@ -83,6 +86,72 @@ export function anchorRect(anchors: Anchor[], root: ParentNode = document): Anch
   }
   if (l === Infinity) return null;
   return { left: l, top: t, width: r - l, height: b - t };
+}
+
+/** Anchors closer than this (px) share one hole rather than cutting two. */
+const MERGE_GAP = 24;
+
+function near(a: AnchorRect, b: AnchorRect): boolean {
+  return (
+    a.left - MERGE_GAP <= b.left + b.width &&
+    b.left - MERGE_GAP <= a.left + a.width &&
+    a.top - MERGE_GAP <= b.top + b.height &&
+    b.top - MERGE_GAP <= a.top + a.height
+  );
+}
+
+function join(a: AnchorRect, b: AnchorRect): AnchorRect {
+  const left = Math.min(a.left, b.left);
+  const top = Math.min(a.top, b.top);
+  return {
+    left,
+    top,
+    width: Math.max(a.left + a.width, b.left + b.width) - left,
+    height: Math.max(a.top + a.height, b.top + b.height) - top,
+  };
+}
+
+/**
+ * anchorRects is one hole per cluster of anchors: each anchor's own rect,
+ * with rects that touch or sit within MERGE_GAP of each other joined.
+ * Step 13 asks for the creature row, the bot's portrait across the table
+ * and the dock's attack-all button, and one union box round all three
+ * would light the whole table; separate holes light only the three. A
+ * missing anchor is left out, so an empty list means none is on the page.
+ */
+export function anchorRects(anchors: Anchor[], root: ParentNode = document): AnchorRect[] {
+  const out: AnchorRect[] = [];
+  for (const a of anchors) {
+    const el = resolveAnchor(a, root);
+    if (!el) continue;
+    const box = visibleBox(el);
+    if (!box) continue;
+    out.push({
+      left: box.left,
+      top: box.top,
+      width: box.right - box.left,
+      height: box.bottom - box.top,
+    });
+  }
+  for (let merged = true; merged; ) {
+    merged = false;
+    for (let i = 0; i < out.length && !merged; i++) {
+      for (let j = i + 1; j < out.length; j++) {
+        if (near(out[i], out[j])) {
+          out[i] = join(out[i], out[j]);
+          out.splice(j, 1);
+          merged = true;
+          break;
+        }
+      }
+    }
+  }
+  return out;
+}
+
+/** sameRects compares two hole lists, to skip no-op updates. */
+export function sameRects(a: AnchorRect[], b: AnchorRect[]): boolean {
+  return a.length === b.length && a.every((r, i) => sameRect(r, b[i]));
 }
 
 const CLIPS = new Set(["hidden", "clip", "auto", "scroll"]);
