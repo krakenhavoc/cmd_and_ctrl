@@ -22,7 +22,8 @@
   //      the viewer's own panel keeps an empty cell that size at the left
   //      of its bottom row (PlayerPanel's .coach-spacer, the twin of the
   //      dock's .dock-spacer), so the hand centres in what is left and
-  //      nothing sits under the card. On a phone the card is a strip
+  //      nothing sits under the card. The card is taller than that row,
+  //      so the piles and the back row start right of it too (#2990). On a phone the card is a strip
   //      stacked on the dock bar, and the play area's bottom padding
   //      grows by its height.
   //

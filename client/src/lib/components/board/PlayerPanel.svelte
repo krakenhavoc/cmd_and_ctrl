@@ -159,6 +159,8 @@
     // viewer's own panel while the card shows: the bottom row then keeps
     // an empty cell the card's size (--coach-w × --coach-h) at its left,
     // so the hand centres in what is left and nothing sits under the card.
+    // The piles (and so the back row) start right of the card too, since it
+    // is taller than the hand row (#2990).
     // Unset — every game that is not the tutorial — the panel is unchanged.
     coached?: boolean;
     // flipped — top-row opponents. The panel keeps its zones in the
@@ -721,6 +723,7 @@
   class:flipped
   class:spectator
   class:docked
+  class:coached
   class:expanded
   class:seat-turn={isActive}
   style:--seat-color={seatColor(seat.seat)}
@@ -1321,6 +1324,16 @@
        carry the pile's name, so the piles stay one short row. */
     .panel.self.docked .rail :global(.pile .label) {
       display: none;
+    }
+    /* #2990, #2409: the coach card is taller than the hand row, so it
+       rises over the middle row's left end too, where the piles sit and
+       the first lands land. While it shows, the piles start right of the
+       card's width: the piles column is the first column of that row, so
+       its margin pushes the back row clear of the card as well. The
+       creature row above is centred, with an empty left margin the card
+       may rise into. */
+    .panel.self.docked.coached .rail > :global(.pile-bar) {
+      margin-left: calc(var(--coach-w, 0px) + 6px);
     }
   }
   /* #2438, #2483: an across-table opponent sits across from you. Their
