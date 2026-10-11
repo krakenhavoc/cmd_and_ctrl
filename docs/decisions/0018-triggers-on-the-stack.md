@@ -5,6 +5,7 @@
 **Amendment:** 2026-09-24 · **Accepted** · [Resolution-time LKI for a permanent that has left (CR 608.2h)](#amendment-2026-09-24--resolution-time-lki-for-a-permanent-that-has-left-cr-6082h--accepted--s38) · [#1379](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1379)
 **Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
 **Amendment:** 2026-09-24 · **Accepted** · [A trigger still announcing holds its batch (CR 603.3b / 603.3d)](#amendment-2026-09-24--a-trigger-still-announcing-holds-its-batch-cr-6033b--6033d--accepted--s39) · [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529)
+**Amendment:** 2026-10-11 · **Proposed** · [The independence check, on the boards people play](#amendment-2026-10-11--the-independence-check-on-the-boards-people-play-3013--proposed) · [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013)
 
 ## Context
 
@@ -3770,3 +3771,280 @@ Any other field set, such as `Params`, a payload, X, a division or modes, keeps 
 `StackItem` field until it is added to that list. Ugin, Eye of the Storms' cast trigger moved onto
 `Do(ExileChosenTarget{})`, so casting Ugin with Vivi out no longer asks unless Ugin targets Vivi. Tests:
 `cards/effects/trigger_independence_built_test.go`.
+
+## Amendment 2026-10-11 — the independence check, on the boards people play (#3013) · Proposed
+
+Issue [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013). Builds on the #1511, #1968 and #2884
+amendments above. **Proposed, for the owner's review. Nothing here is implemented**; the sub-PRs at the end
+wait for the answers to the questions before them.
+
+### The report
+
+The owner was asked to order two triggers whose order cannot change anything. Both fire when another Elf enters
+under their controller:
+
+- **Marwyn, the Nurturer:** "Whenever another Elf you control enters, put a +1/+1 counter on Marwyn."
+- **Wolverine Riders:** "Whenever another Elf you control enters, you gain life equal to its toughness."
+
+The counter goes on Marwyn and the life is read off the entering Elf. Every order ends with the same board and
+the same life total.
+
+### Why it still asks
+
+The issue says the skip covers only prowess (`StackItem.Commutes`). That was true after #1511. Since then
+#1968 added copies of one source-blind row and #2884 added pairwise independence from declared footprints,
+which is the "declared effect footprints" direction the issue asks for. It runs in **Ask only when the order
+matters**, the default. It still asks here because neither row has a footprint:
+
+- **Marwyn's row is a hand-written closure** (`AddCounter{Target: item.SourceCardID, …}.Apply`). The registry
+  can read only an `effects.Do` of primitives that declare a step, so the row has no footprint. Its effect is
+  exactly `Do(CounterOnThis{Kind: "+1/+1", N: 1})`, which does have one.
+- **Wolverine Riders' row is a closure too** (`b20GainLifeEqualToToughnessEffect`), behind a `Build` that stamps
+  `Params.Amount` (the toughness at trigger time, kept as a fallback in case the Elf leaves). No step in the
+  vocabulary can say "an amount read off the trigger's subject". Also, an item with `Params` set is never plain
+  (`builtItemIsPlain`).
+
+So the theory is not missing anything. The gap is coverage: the check can describe only a few of the rows a
+real board puts in a batch.
+
+### How common these batches are
+
+Counted on `develop` at `ab916eef6` (2026-10-11). A throwaway test walked `effects.All()`, ran each triggered
+row through `footprintOfRow`, and matched the card's oracle text from the Scryfall dump. The test was not
+committed, and the figures are approximate where they rely on regexes.
+
+| Measured | Count |
+|---|---:|
+| Triggered rows in the catalog | 2,792 |
+| — with a footprint | 502 (18%) |
+| — a hand-written closure | 1,866 (67%) |
+| — "you may" / modes / a `TargetsFrom` clause / a state trigger | 175 / 40 / 30 / 50 |
+| — an `effects.Do` with a step outside the vocabulary | 129 |
+| Rows that watch `EventETB` | 976 (35% of all rows) |
+| — with a footprint | 275 (28%) |
+| Cards that print "Whenever another … enters" or "one or more other … enter" | 63 |
+| — their rows: footprint / closure / may / modes | 23 / 46 / 6 / 3 |
+| Cards whose every trigger line is a one-sentence shape the vocabulary has or is one step from | 230 |
+| — with no hand-written closure / with at least one | 136 / 94 |
+
+The one-sentence lines on cards that are not yet footprinted include 39 that put a +1/+1 counter on the source
+(none footprinted), 26 drains ("each opponent loses N life", none: no step loses life), 43 draws, 43 tokens, 14
+fixed gains and 7 "gain life equal to".
+
+What that means at a Commander table:
+
+- **The owner's board makes this batch all the time.** Wolverine Riders makes an Elf at the beginning of *each*
+  upkeep, so at a four-seat table the prompt comes four times a round before the owner casts a single Elf, and
+  once more for each Elf they cast.
+- **"Another creature enters" payoffs are a staple.** A deck with two of them makes a batch of two each time a
+  creature or token enters. If a batch pairs two ETB rows at random from the catalog, both have footprints
+  about 8% of the time (0.28²). That's a rough figure, but it explains why the #2884 skip rarely fires.
+- **Not measured: the other reasons the check asks.** Even with every row described, the check asks when
+  anything at the table watches an event kind the batch causes (36 catalog rows watch a life change and 21 a
+  counter placement, any player's included). It also gives up on an opaque board: a permanent whose text the
+  engine leaves to the table, or a rules-bearing slot. How often each reason fires in real games is unknown,
+  so sub-PR 1 counts it.
+
+### Options
+
+#### (a) Declared effect footprints
+
+This is #2884's mechanism, already Accepted. Its vocabulary matches the one the issue sketches:
+`CounterOnThis` is "counters on its own source", `GainLife` is the controller's life, and `CreateToken` is a
+token creation. Two items conflict when one writes what the other reads or writes
+(`accessesConflictLocked`). The issue's sub-questions, answered for it:
+
+- **How the declarations stay honest.** A footprint is not declared by hand. The registry derives it from the
+  effect the engine runs (`classifyFootprint`), and it overwrites anything a card file sets. So a footprint
+  can't drift from its card's code. It can be wrong in two ways only:
+  1. A primitive's `footprint()` misdescribes its own `Apply`. Today nothing checks this. Sub-PR 1 adds a
+     conformance test.
+  2. The card's code misreads the printed text. That is a card bug, and every reader of the card inherits it,
+     not just this one. `TestAbilitiesMatchOracleText` and the card's own tests are the existing guards.
+
+  Coverage is a separate question from honesty. A row left without a footprint only costs a click. Sub-PR 1
+  adds a shrink-only audit over the oracle fixtures, so the uncovered list can only get shorter.
+- **Events the effects emit.** Each step declares the event kinds it causes (`addFootprintStepLocked`). If
+  anything at the table watches one of them, the batch asks (`somethingReactsLocked`): a triggered ability on a
+  permanent or emblem, one in another zone, a delayed trigger, a replacement, or speed's inherent trigger. An
+  Ajani's Pridemate on any side keeps a life-gain batch asking. A "whenever one or more +1/+1 counters are put"
+  watcher, or a counter replacement such as Hardened Scales, keeps a counter batch asking. #2884's tests pin
+  the Pridemate case.
+- **What the skip gives up when opponents respond.** Opponents get priority between the resolutions
+  (CR 117.3b). The order decides what they see when they respond:
+  - **Marwyn and Riders:** whether Marwyn is already bigger, or the life already gained.
+  - **Prowess and Monastery Mentor's token trigger:** with the token first, a one-damage sweep cast between
+    the two kills the new Monk. With the pump first, the Monk isn't there yet.
+
+  A skipped batch goes on in collected order. **Always ask** gives the choice back.
+- **#1530's "always ask me".** It shipped (#2334), and #1968 turned it into three modes. The widening proposed
+  here applies only under **Ask only when the order matters**. **Always ask** and **Never ask** don't change.
+  Nothing new needs to ship alongside it.
+
+#### (b) Narrower engine-owned classes
+
+Each class is argued pairwise, the way #1511 argued prowess. The classes:
+
+- **P:** prowess.
+- **C:** a +1/+1 counter on its own source.
+- **G:** gain N life, with N fixed when the ability triggers.
+- **G′:** gain life equal to a characteristic of the trigger's subject. This is what Wolverine Riders actually
+  is.
+
+| Pair | Commute? |
+|---|---|
+| P × P | Yes (#1511). |
+| P × C | Yes. On different objects they don't touch. On the same object, the pump and the counter both add to its power and toughness, so the result is the same. |
+| P × G, C × G | Yes, provided nothing watches the counter or the life change. |
+| C × C | Yes on different sources, again provided nothing watches counter placement. |
+| G × G | Yes. Gains add, and a gain can't eliminate anyone. "Can't gain life" stops both in either order. |
+| G′ × G′ | Yes. Each reads its own subject. |
+| G′ × C | **No, when the subject is C's source.** Ghostly Flicker on Marwyn and another Elf with Riders out: Riders triggers for both Elves and Marwyn for the other one. Riders' trigger for Marwyn gains 1 if it resolves before Marwyn's counter and 2 after. |
+| G′ × P | Same rule as G′ × C. In practice it's rare, because a cast and an entry are seldom one batch. |
+
+Why it is rejected:
+
+1. **The owner's example isn't in class G.** Riders reads the Elf's toughness when its ability resolves (CR
+   608.2h). Fixing it at trigger time would change the card: an opponent's −2/−2 on the Elf in response would be
+   ignored.
+2. **G′ needs a check per instance, not per class.** It commutes with C except when the subject is C's source.
+   Telling those cases apart means comparing object IDs, and that is (a).
+3. **Every pair says "provided nothing watches".** So each class would still need the reactor, opacity and
+   elimination checks that #2884 already runs. The classes would rebuild (a), cover less, and need a new
+   recorded argument for every member.
+
+#### (c) Other directions found
+
+- **c1. Reaction-aware.** Two ways a watcher could stop forcing the prompt:
+  - It would not fire on the events this batch makes (an opponent's Pridemate watches *its controller's*
+    gains).
+  - Its own trigger has a footprint, and that footprint is independent of the rest of the batch.
+
+  The first needs `AppliesTo` asked about events that have not happened yet, against a board the batch is
+  changing. The second needs the check to recurse. Both are worth doing only if sub-PR 1 shows reactors are a
+  common reason. **Deferred.**
+- **c2. "Use this order again."** A per-seat standing answer, keyed by the batch's multiset of `AbilityRef`s
+  and applied to the next batch with the same rows. This doesn't rely on the triggers commuting: the order is
+  the player's own choice, which CR 603.3b leaves to them. It also covers batches where order *does* matter
+  (Caldera Pyremaw with prowess). It's orthogonal to this amendment, and gets an issue if the owner wants it.
+- **c3. Simulate both orders on a clone.** Rejected by #1968 (token IDs, prompts, hidden zones, randomness, and
+  a clone per batch). Nothing has changed since.
+
+### Recommendation
+
+**(a): no new mechanism. Widen #2884's reach** with three vocabulary additions, one hardening fix and a
+migration. The rules the check applies don't change.
+
+1. **An amount read off the trigger's subject.** A step `GainLifeEqualToSubject{Stat}` (toughness first; the
+   power variant comes when a card needs it).
+   - It reads the subject through `PermanentForEffect` (Decision 13): the live permanent while it's on the
+     battlefield, its last-known information once it has left. So it needs no `Build` and no `Params.Amount`.
+   - Its footprint is `FootprintGainLife` plus a new `AmountFromSubject` flag. The check turns the flag into a
+     read of `Trigger.Event.CardID` while that object is on the battlefield. Last-known information is frozen,
+     so a subject that has left is not a read.
+2. **Life loss for each opponent.** A step `EachOpponentLosesLife{N}`, the drain. It writes each opponent's life
+   down, adds N to `lifeLoss` for the elimination check, and emits a life change. It doesn't name a source as
+   the cause of the loss, so it has no lifelink question.
+3. **A footprint for the engine's keyword triggers, starting with prowess.** The prowess trigger reads and writes
+   its source (a +1/+1 until end of turn) and emits nothing.
+   - The footprint comes from a table in `game` keyed by stack body (`"prowess/pump"`). `triggerAccessLocked`
+     looks there for a keyed item, as it looks up the catalog row for a stamped one.
+   - The `Commutes` skip stays as it is: it reads no board, so an all-prowess batch keeps skipping on an opaque
+     board.
+   - Monastery Mentor's and Sokka, Tenacious Tactician's token rows already have footprints. This closes
+     #1530 item 1.
+4. **Hardening.** `tokenTemplateInert` reads only a template's `Triggered`. A template whose keywords make
+   keyword triggers that watch an event the batch causes would slip through (evolve watches entering). No
+   catalogued token has evolve today. The check should refuse such a template anyway, with a test.
+5. **Migration.** Move one-sentence closures onto `Do` primitives that already declare a step, starting with
+   Marwyn (`Do(CounterOnThis{"+1/+1", 1})`) and the three cards on the `b20` body (Trostani, Selesnya's Voice;
+   Verdant Sun's Avatar; Wolverine Riders). The 94 cards in the census are the backlog.
+
+**The owner's pair under the existing rules, once 1 and 5 land:**
+
+- **Marwyn** reads and writes Marwyn, and emits a counter placement.
+- **Riders** reads the entering Elf, writes its controller's life upward, and emits a life change.
+
+They conflict only when the Elf *is* Marwyn, which is the Ghostly Flicker case above, and the check correctly
+asks then. Otherwise the batch goes on with no prompt, unless something at the table watches counters or life
+or the board is opaque.
+
+### What is still given up
+
+The #2884 list is unchanged: statics whose condition reads what an item writes, priority between resolutions,
+and "which object did it, and when". For this amendment's new cases:
+
+- **Opponents respond between resolutions** (see the Mentor example above).
+- **A life gain can flip a threshold static during the window.** For example, "as long as you have 30 or more
+  life" can turn on between the two resolutions. The final state is the same.
+
+**Always ask** gives the choice back.
+
+### Snapshot, undo, wire and bot
+
+- **Footprints are catalog data.** The registry derives them at registration, and game state never holds one.
+  Prowess's footprint is an engine table. So there's no snapshot field, no `Clone` change, no shape bump and no
+  new route in `closure_fields.txt`.
+- **A migrated row keeps its label and its slot**, so a queued or stacked item still restores onto the same row
+  (ADR 0041 P9). A Riders item that an older binary queued carries `Params.Amount`:
+  - The new effect still accepts it, using it as the fallback.
+  - `builtItemIsPlain` refuses it, so that batch asks. That's the safe direction.
+- **Undo** restores the state from before the drain, and the drain decides again from the same inputs.
+- **Wire and bot are unchanged.** A skipped prompt is never queued, as #1511 pinned for the bot. The optional
+  "why it asked" line below would be an additive wire field.
+
+### Sub-PRs
+
+1. **Guards and measurement. No behaviour change.**
+   - `cards/effects/footprint_conformance_test.go` covers every type that implements `footprinter`; a new type
+     without a case fails. Each one resolves on a fixture board with an event recorder and a before-and-after
+     diff of players and objects. The test fails if a step changes anything, or emits an event kind, outside
+     what `addFootprintStepLocked` declares for it.
+   - `cards/coverage/trigger_footprint_audit_test.go` reads `testdata/oracle/`, the Scryfall projection that CI
+     already holds and `TestOracleFixtureIsCurrent` refreshes nightly against the dump.
+     - It lists the catalogued cards that have a one-sentence trigger line in the vocabulary's shapes and a row
+       with no footprint.
+     - It compares that list with `testdata/unfootprinted_trigger_lines.txt`, which may only shrink, like
+       `TestLegacyTriggerBuildsOnlyShrink`. The update flag never adds a line.
+   - **Measuring the reasons.** `triggersIndependentLocked` returns why it asked: an undescribed row, a
+     reactor, an opaque board, an object tie, a library, an elimination or the monarch. A closed-label counter
+     records it (`cmdctrl_trigger_order_prompts_total{reason}`, ADR 0123).
+2. **The owner's example.**
+   - The changes: `GainLifeEqualToSubject` and `AmountFromSubject`; Marwyn moves onto `CounterOnThis`; the three
+     `b20` cards move onto the new step.
+   - New tests:
+     - Riders' upkeep Elf and a cast Elf go on with no prompt.
+     - A Pridemate at the table asks.
+     - Marwyn and another Elf entering together under Riders asks.
+     - An Elf that left before resolution gives its last-known toughness.
+     - An older item carrying `Params.Amount` resolves as before and asks.
+     - Always ask and never ask behave as before.
+   - The audit list shrinks.
+3. **Prowess.**
+   - The changes: the keyed-body footprint table, and the `tokenTemplateInert` keyword fix.
+   - New tests:
+     - A Mentor board and a Sokka board cast a noncreature spell with no prompt.
+     - A Mentor board with an ETB watcher asks.
+     - Prowess plus Caldera Pyremaw still asks (Pyremaw is a closure, and described, it would tie on the
+       source).
+     - An evolve token template is refused.
+   - This closes #1530, since its item 2 shipped already.
+4. **Then: the drain step and the migrations.** `EachOpponentLosesLife`, then the census backlog by shape in
+   batches of about 25 cards (counters on the source, drains, draws, tokens, fixed gains). Card tests stay
+   unchanged and each PR shrinks the audit list. These are `tier:2` card work.
+
+c1 and c2 are not on this list. Each is decided on sub-PR 1's data, or filed as its own issue.
+
+### Questions for the owner
+
+1. **The direction.** Recommended: (a), widening #2884 with the four changes above, and (b) rejected.
+2. **How much to migrate.** (a) The whole one-sentence backlog (94 cards). (b) Only cards in the decks the table
+   plays (the curated decks and saved libraries), with the rest as they're touched. Recommended: **(a)**, since
+   each batch is mechanical and the audit pins the list.
+3. **Reactors and opaque boards.** An opponent's Pridemate, or one permanent the engine leaves to the table,
+   keeps a batch asking. (a) Keep that until sub-PR 1's counter shows how often each reason fires, then decide
+   on c1 and on narrowing the opacity rule. (b) Start c1 now. Recommended: **(a)**.
+4. **"Use this order again"** (c2): file it as its own issue? Recommended: yes, as a `tier:3-design`.
+5. **Say why the prompt appeared.** Should the `trigger_order` prompt show the reason, for example "Ajani's
+   Pridemate reacts to life gain"? That's additive on the wire, plus a client line. Recommended: yes, after
+   sub-PR 1, since it uses the same reason value.
