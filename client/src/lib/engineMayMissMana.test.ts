@@ -170,7 +170,20 @@ describe("what counts as a manual mana source (the wire's `unimplemented`)", () 
     expect(isManualManaSource(rock)).toBe(true);
   });
 
-  it("not an unimplemented non-land with no mana ability on the wire: the wire can't tell", () => {
+  it("an uncatalogued non-land the server flagged as printing a mana ability (#2258)", () => {
+    const rock = card("Odd Rock", "Artifact", {
+      unimplemented: true,
+      may_make_mana_unautomated: true,
+    });
+    expect(isManualManaSource(rock)).toBe(true);
+    expect(
+      isManualManaSource(
+        card("Odd Elf", "Creature — Elf", { unimplemented: true, may_make_mana_unautomated: true }),
+      ),
+    ).toBe(true);
+  });
+
+  it("not an unimplemented non-land with no mana ability and no flag", () => {
     expect(isManualManaSource(card("Odd Elf", "Creature — Elf", { unimplemented: true }))).toBe(
       false,
     );
@@ -179,6 +192,22 @@ describe("what counts as a manual mana source (the wire's `unimplemented`)", () 
   it("not a land the engine runs", () => {
     expect(isManualManaSource(forest())).toBe(false);
     expect(controlsManualManaSource(view({ battlefield: [forest()] }), ME)).toBe(false);
+  });
+});
+
+describe("an uncatalogued mana rock plus an unpayable spell (#2258)", () => {
+  const rock = () =>
+    card("Odd Rock", "Artifact", { unimplemented: true, may_make_mana_unautomated: true });
+
+  it("fires on the main phase", () => {
+    expect(engineMayMissMana(view({ battlefield: [rock()] }), ME)).toBe(true);
+  });
+
+  it("does not fire when the rock is the opponent's, or with nothing unpayable in hand", () => {
+    expect(engineMayMissMana(view({ battlefield: [{ ...rock(), controller: THEM }] }), ME)).toBe(
+      false,
+    );
+    expect(engineMayMissMana(view({ battlefield: [rock()], hand: [] }), ME)).toBe(false);
   });
 });
 
@@ -215,6 +244,14 @@ describe("the verdict it produces", () => {
 
   it("holds the main phase when the stop fires", () => {
     expect(autopassDecision(gatesFor(view()))).toBe("hold");
+  });
+
+  it("holds the main phase for an uncatalogued mana rock", () => {
+    const rock = card("Odd Rock", "Artifact", {
+      unimplemented: true,
+      may_make_mana_unautomated: true,
+    });
+    expect(autopassDecision(gatesFor(view({ battlefield: [rock] })))).toBe("hold");
   });
 
   it("passes it, as before, with no manual mana source", () => {

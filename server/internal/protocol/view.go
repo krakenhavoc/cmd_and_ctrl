@@ -2594,6 +2594,13 @@ type CardView struct {
 	// panel and the stack, not as a permanent board badge, which on
 	// a real battlefield would be most of the cards on the table.
 	Unimplemented bool `json:"unimplemented,omitempty"`
+	// MayMakeManaUnautomated (#2258, ADR 0118 decision 8) marks a
+	// card whose printed text has a mana ability the catalog does not
+	// run: Unimplemented and a printed "Add {X}" clause. Smart
+	// autopass reads it on the battlefield to hold the main phase
+	// for "Cast anyway". Omitted when false; cleared with
+	// Unimplemented on a face-down card. See game.MayMakeManaUnautomated.
+	MayMakeManaUnautomated bool `json:"may_make_mana_unautomated,omitempty"`
 	// CastSurfaceView is the announce surface of the card AS THE FACE
 	// IT IS SHOWING. Embedded rather than listed, so `target_mode`,
 	// `legal_targets` and the rest keep the names and the JSON keys
@@ -9402,6 +9409,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// same reason as the cost fields above rather than because
 	// anyone could read much from it.
 	out.Unimplemented = false
+	out.MayMakeManaUnautomated = false
 	// ADR 0034: the face list names the card twice over — both
 	// halves, their costs and their type lines. A face-down Sea Gate
 	// Restoration that still shipped "Sea Gate, Reborn // Land" in
@@ -9749,8 +9757,9 @@ func viewOfCard(c game.Card) CardView {
 		FaceDownKind:        string(c.FaceDownKind),
 		// #522: a card a restore stripped of abilities is not
 		// presented as automated for the rest of the game.
-		Auto:          game.IsAutoCard(game.CatalogKey(c)) && !c.AbilitiesLostOnRestore,
-		Unimplemented: game.Unimplemented(c),
+		Auto:                   game.IsAutoCard(game.CatalogKey(c)) && !c.AbilitiesLostOnRestore,
+		Unimplemented:          game.Unimplemented(c),
+		MayMakeManaUnautomated: game.MayMakeManaUnautomated(c),
 		// #992: `target_mode` is the one announce field this
 		// function stamps, because it is a pure catalog read and
 		// every zone wants it — a spell on the stack renders its

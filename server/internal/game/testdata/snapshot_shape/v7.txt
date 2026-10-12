@@ -276,6 +276,7 @@ battlefield.cards[].printedSelf.TokenKey	string
 battlefield.cards[].printedSelf.Toughness	number:int
 battlefield.cards[].printedSelf.TypeLine	string
 battlefield.cards[].printedSelf.VariableToughness	bool
+battlefield.cards[].printsManaAbility	bool
 battlefield.cards[].producedMana	array
 battlefield.cards[].producedMana[]	string
 battlefield.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -767,6 +768,7 @@ exile.cards[].printedSelf.TokenKey	string
 exile.cards[].printedSelf.Toughness	number:int
 exile.cards[].printedSelf.TypeLine	string
 exile.cards[].printedSelf.VariableToughness	bool
+exile.cards[].printsManaAbility	bool
 exile.cards[].producedMana	array
 exile.cards[].producedMana[]	string
 exile.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -1318,6 +1320,7 @@ lastKnownStack[].card.printedSelf.TokenKey	string
 lastKnownStack[].card.printedSelf.Toughness	number:int
 lastKnownStack[].card.printedSelf.TypeLine	string
 lastKnownStack[].card.printedSelf.VariableToughness	bool
+lastKnownStack[].card.printsManaAbility	bool
 lastKnownStack[].card.producedMana	array
 lastKnownStack[].card.producedMana[]	string
 lastKnownStack[].card.protectorPlayerId	custom(uuid.UUID)
@@ -2593,6 +2596,7 @@ phasedOut.cards[].printedSelf.TokenKey	string
 phasedOut.cards[].printedSelf.Toughness	number:int
 phasedOut.cards[].printedSelf.TypeLine	string
 phasedOut.cards[].printedSelf.VariableToughness	bool
+phasedOut.cards[].printsManaAbility	bool
 phasedOut.cards[].producedMana	array
 phasedOut.cards[].producedMana[]	string
 phasedOut.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -3224,6 +3228,7 @@ seats[].command.cards[].printedSelf.TokenKey	string
 seats[].command.cards[].printedSelf.Toughness	number:int
 seats[].command.cards[].printedSelf.TypeLine	string
 seats[].command.cards[].printedSelf.VariableToughness	bool
+seats[].command.cards[].printsManaAbility	bool
 seats[].command.cards[].producedMana	array
 seats[].command.cards[].producedMana[]	string
 seats[].command.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -3555,6 +3560,7 @@ seats[].emblems.cards[].printedSelf.TokenKey	string
 seats[].emblems.cards[].printedSelf.Toughness	number:int
 seats[].emblems.cards[].printedSelf.TypeLine	string
 seats[].emblems.cards[].printedSelf.VariableToughness	bool
+seats[].emblems.cards[].printsManaAbility	bool
 seats[].emblems.cards[].producedMana	array
 seats[].emblems.cards[].producedMana[]	string
 seats[].emblems.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -3877,6 +3883,7 @@ seats[].graveyard.cards[].printedSelf.TokenKey	string
 seats[].graveyard.cards[].printedSelf.Toughness	number:int
 seats[].graveyard.cards[].printedSelf.TypeLine	string
 seats[].graveyard.cards[].printedSelf.VariableToughness	bool
+seats[].graveyard.cards[].printsManaAbility	bool
 seats[].graveyard.cards[].producedMana	array
 seats[].graveyard.cards[].producedMana[]	string
 seats[].graveyard.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -4197,6 +4204,7 @@ seats[].hand.cards[].printedSelf.TokenKey	string
 seats[].hand.cards[].printedSelf.Toughness	number:int
 seats[].hand.cards[].printedSelf.TypeLine	string
 seats[].hand.cards[].printedSelf.VariableToughness	bool
+seats[].hand.cards[].printsManaAbility	bool
 seats[].hand.cards[].producedMana	array
 seats[].hand.cards[].producedMana[]	string
 seats[].hand.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -4529,6 +4537,7 @@ seats[].library.cards[].printedSelf.TokenKey	string
 seats[].library.cards[].printedSelf.Toughness	number:int
 seats[].library.cards[].printedSelf.TypeLine	string
 seats[].library.cards[].printedSelf.VariableToughness	bool
+seats[].library.cards[].printsManaAbility	bool
 seats[].library.cards[].producedMana	array
 seats[].library.cards[].producedMana[]	string
 seats[].library.cards[].protectorPlayerId	custom(uuid.UUID)
@@ -5076,6 +5085,7 @@ stack.cards[].printedSelf.TokenKey	string
 stack.cards[].printedSelf.Toughness	number:int
 stack.cards[].printedSelf.TypeLine	string
 stack.cards[].printedSelf.VariableToughness	bool
+stack.cards[].printsManaAbility	bool
 stack.cards[].producedMana	array
 stack.cards[].producedMana[]	string
 stack.cards[].protectorPlayerId	custom(uuid.UUID)

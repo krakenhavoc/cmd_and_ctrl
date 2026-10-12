@@ -727,10 +727,13 @@ func toGameCard(c cards.Card, isCommander bool) game.Card {
 		// scope — game.Card carries no oracle text. See
 		// game.NeedsCatalogEffect; the catalog half of the join
 		// happens in game.Unimplemented.
-		NeedsEffect:  game.NeedsCatalogEffect(c.TypeLine, oracleTexts(c)...),
-		ManaCost:     c.ManaCost,
-		ProducedMana: append([]string(nil), c.ProducedMana...),
-		Colors:       append([]string(nil), c.Colors...),
+		NeedsEffect: game.NeedsCatalogEffect(c.TypeLine, oracleTexts(c)...),
+		// #2258: whether the printed text has a mana ability, so the
+		// view can say a permanent the engine does not run may make mana.
+		PrintsManaAbility: game.PrintsManaText(c.TypeLine, oracleTexts(c)...),
+		ManaCost:          c.ManaCost,
+		ProducedMana:      append([]string(nil), c.ProducedMana...),
+		Colors:            append([]string(nil), c.Colors...),
 		// CR 903.4 Commander colour identity. Already parsed off
 		// the Scryfall record and already trusted by
 		// deck/validate.go; issue #276 was that it had no path onto

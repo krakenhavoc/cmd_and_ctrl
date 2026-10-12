@@ -100,7 +100,7 @@ func TestTruncationVerdict(t *testing.T) {
 				SystemBytes: 8000, UserBytes: 1000, PromptTokens: 2900,
 				Moves: 8, Reply: "I would cast Lightning Bolt.", ParseErr: errors.New("no index"),
 			},
-			want: "TRUNCATION: likely",
+			want: "TRUNCATION: possible",
 		},
 		{
 			name: "token count fine, in-range answer",
@@ -270,15 +270,17 @@ func TestThinkingEvidencePreemptsTheTruncationVerdict(t *testing.T) {
 		t.Errorf("an empty reply cut off at the token cap: %q", v)
 	}
 
-	// An unparseable reply with no thinking evidence is still the
-	// truncation signal it always was: the model answered, in a shape
-	// the instructions forbid, which is what a model that never saw
-	// the instructions does.
+	// An unparseable reply with no thinking evidence is still a
+	// truncation signal: the model answered, in a shape the
+	// instructions forbid, which is what a model that never saw the
+	// instructions does. With a plausible token count and no known
+	// context it is only "possible" (#2196): a model that ignores the
+	// format does the same.
 	prose := base
 	prose.FinishReason = "stop"
 	prose.Reply = "I would cast Lightning Bolt."
 	prose.ParseErr = errors.New("no index")
-	if v := truncationVerdict(prose); !strings.HasPrefix(v, "TRUNCATION: likely") {
+	if v := truncationVerdict(prose); !strings.HasPrefix(v, "TRUNCATION: possible") {
 		t.Errorf("prose instead of an index, with no thinking to blame: %q", v)
 	}
 
@@ -373,5 +375,90 @@ func TestAnswerVerdict(t *testing.T) {
 	}
 	if got := answerVerdict(probeResult{CallErr: errors.New("refused")}); !strings.HasPrefix(got, "ANSWER: unknown") {
 		t.Errorf("a failed call: %q", got)
+	}
+}
+
+// With the server's context size known, the truncation verdict is a
+// check rather than an inference (#2196). The probe's own window
+// counted 4,750 prompt tokens against an 8,192 context while half its
+// replies named a move that is not listed, and an unparseable reply
+// used to read "TRUNCATION: likely" there: an operator was sent to
+// raise a context the prompt already fitted in.
+func TestTruncationVerdictWithAKnownContext(t *testing.T) {
+	base := probeResult{
+		SystemBytes: 16611, UserBytes: 1373, PromptTokens: 4750, Moves: 5,
+		ContextLength: 8192, ContextSource: "Ollama /api/ps",
+	}
+
+	prose := base
+	prose.Reply = "Cast Big Score."
+	prose.ParseErr = errors.New("no index")
+	if v := truncationVerdict(prose); !strings.HasPrefix(v, "TRUNCATION: ruled out") {
+		t.Errorf("4750 tokens in an 8192 context, unparseable reply: %q", v)
+	}
+
+	outOfRange := base
+	outOfRange.Reply, outOfRange.ParsedIndex = `{"index": 5}`, 5
+	if v := truncationVerdict(outOfRange); !strings.HasPrefix(v, "TRUNCATION: ruled out") {
+		t.Errorf("4750 tokens in an 8192 context, out-of-range reply: %q", v)
+	}
+
+	// A count far below the bytes/3 estimate is not truncation when it
+	// sits well inside the context: the estimate is the rough number.
+	short := base
+	short.PromptTokens = 2000
+	short.Reply, short.ParsedIndex = `{"index": 1}`, 1
+	if v := truncationVerdict(short); !strings.HasPrefix(v, "TRUNCATION: ruled out") {
+		t.Errorf("2000 tokens in an 8192 context: %q", v)
+	}
+
+	// A prompt that fills the context is the shape a truncated one has,
+	// whatever the reply looks like.
+	full := base
+	full.PromptTokens = 8100
+	full.Reply, full.ParsedIndex = `{"index": 1}`, 1
+	if v := truncationVerdict(full); !strings.HasPrefix(v, "TRUNCATION: likely") {
+		t.Errorf("8100 tokens in an 8192 context: %q", v)
+	}
+	if v := truncationVerdict(full); !strings.Contains(v, "Ollama /api/ps") {
+		t.Errorf("the verdict does not say where the context size came from: %q", v)
+	}
+}
+
+func TestOllamaContextLength(t *testing.T) {
+	// The shape Ollama 0.35.1 returns from /api/ps, trimmed.
+	const ps = `{"models":[
+		{"name":"qwen3:14b","model":"qwen3:14b","context_length":4096},
+		{"name":"qwen3.6:35b-a3b","model":"qwen3.6:35b-a3b","size":22534252114,"context_length":16384}
+	]}`
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/ps" {
+			http.NotFound(w, r)
+			return
+		}
+		_, _ = w.Write([]byte(ps))
+	}))
+	defer srv.Close()
+	ctx := context.Background()
+	chat := srv.URL + "/v1/chat/completions"
+
+	if n := ollamaContextLength(ctx, srv.Client(), chat, "qwen3.6:35b-a3b"); n != 16384 {
+		t.Errorf("loaded model: context %d, want 16384", n)
+	}
+	if n := ollamaContextLength(ctx, srv.Client(), chat, "qwen3:14b"); n != 4096 {
+		t.Errorf("the other loaded model: context %d, want 4096", n)
+	}
+	if n := ollamaContextLength(ctx, srv.Client(), chat, "llama3:8b"); n != 0 {
+		t.Errorf("a model that is not loaded: context %d, want 0 (unknown)", n)
+	}
+
+	// Not Ollama: no /api/ps, so unknown, and the verdict infers.
+	other := httptest.NewServer(http.NotFoundHandler())
+	defer other.Close()
+	if n := ollamaContextLength(ctx, other.Client(), other.URL+"/v1/chat/completions", "qwen3.6:35b-a3b"); n != 0 {
+		t.Errorf("a server with no /api/ps: context %d, want 0", n)
+	}
+	if n := ollamaContextLength(ctx, srv.Client(), "not a url", "qwen3.6:35b-a3b"); n != 0 {
+		t.Errorf("an unparseable endpoint: context %d, want 0", n)
 	}
 }

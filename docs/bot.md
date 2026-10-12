@@ -132,7 +132,8 @@ first release so the wire shape never changes as policies land.
 | `strong` | A model on every window that survives the rules filter, over a wider candidate list. | **5s** | a model endpoint |
 
 `MinThink` is 700ms for every tier: a fast decision is held so the
-table does not feel precognitive. `MaxThink` is a hard deadline, not a
+table does not feel precognitive. A seat whose only legal move is to pass has no decision to hide, so it
+passes without the hold (#2898); the stack hold below still applies. `MaxThink` is a hard deadline, not a
 target — on expiry the runner takes the fallback answer and logs the
 miss. **The table never waits on a model.**
 
@@ -556,7 +557,12 @@ move list it was shown with the answer marked, and the wall time. It
 ends with a verdict line for each of the three failures that make a
 model seat look like a heuristic seat: **truncation** (the server
 counted far fewer prompt tokens than were sent, so it silently dropped
-the front of the prompt — the primer and the instructions), **thinking
+the front of the prompt — the primer and the instructions; when the
+server's context size is known, from `--context N` or read from
+Ollama's `/api/ps` after the call, a count under 90% of it is `ruled
+out` and one that fills it is `likely`, and a reply that ignores the
+format with a plausible count and no known context is only
+`possible`), **thinking
 not suppressed** (a `reasoning` field came back, or `finish_reason` was
 `length` with nothing usable in `content`), and the **answer** — which
 move the reply comes to, read exactly as a seat reads it, or `INDEX:
@@ -584,6 +590,20 @@ How each used reply resolved is counted in `Stats.ByPick` and the
 arena's `picks` column (`index`, `index-unlabelled`, `label-rescued`,
 `label-corrected`, `label-mismatch`), next to `out-of-range` under
 `fallbacks`.
+
+**The picks land, and they are still worse than the heuristic's.**
+Measured 2026-10-11 (#2196), `qwen3.6:35b-a3b` Q4_K_M on Ollama
+0.35.1, 16k context, thinking off: on the probe's window the pre-fix
+build named an unlisted move 4 times in 10 and the fixed build 0 in 10.
+A 60-game two-seat arena (assisted against the heuristic, mirror
+izzet-aggro, rotation on, seed 2026100401) made 3,199 model calls with
+0 out-of-range replies and 0 timeouts (10 picks label-corrected, 6
+replies malformed by a `why` cut off at the 128-token cap), and the
+heuristic won 58 of 60: the model seat's win rate was 3.3%, 95% CI
+0.9–11.4%. The model chose the heuristic's move on 35% of the windows
+it decided. A third of the rest were a mana ability or an activation
+where the heuristic passed or cast a spell, and the model seat missed
+twice as many land drops in its turns 2–4 (19% against 10%).
 
 The probe sends what the seat sends — the same `OpenAIClient`, so both
 thinking-off fields go with it — which means **`THINKING: suppressed`
@@ -1938,6 +1958,7 @@ sees exactly the filtered `aiseat.Input` it would see at a real table.
 | `--out` | artifacts directory. Each run gets its own `<out>/<RFC3339 start>/`. |
 | `--decision-log`, `--decision-log-mode` | per-game decision logs under `<out>/decisions`. **Operator-only** — see the section above. |
 | `--replays` | per-game replay JSONL under `<out>/replays`. Off by default: a four-seat replay is ~320 MiB — and this flag hands the directory to `ws.Room`, which also writes `games/<id>.json` (the full authoritative state, rewritten on **every committed move**) and `restore/<id>.json` while a game is live. Budget for all three. |
+| `--min-think` | holds every bot decision to at least this long, as a live table's bot speed does (700ms at normal). `0`, the default, is no pacing. A seat whose only legal move is a pass is never held (#2898), so the report's game `elapsed` shows what pass pacing costs. Ignored by `--lockstep`. |
 | `--block-grace` | how long an attacking bot holds its pass in declare-blockers while a defender is still declaring blockers with a legal block to make. Defaults to production's value. `0` turns it off — see below. |
 | `--md`, `--json` | what to print. Markdown by default. |
 
