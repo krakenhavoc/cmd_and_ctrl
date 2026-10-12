@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): proposed.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12).
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -771,7 +771,7 @@ The owner accepted the amendment on 2026-10-12 and took the recommendation on al
 
 ## Amendment 2026-10-12: cycling cards as cheaper discards, and the bot's own draw step
 
-**Status:** Proposed. It waits on the owner's answers to [the three questions](#questions-for-the-owner-2026-10-12) below. The code is in the PR that adds this section, behind two switches that are on in `DefaultConfig()` and off in `BaselineConfig()`, so either can be turned off without a revert.
+**Status:** Accepted (owner answers 2026-10-12). The owner chose the recommended option, (a), on all three questions; see [Owner answers (2026-10-12)](#owner-answers-2026-10-12) at the end of this amendment. The code is in the PR that adds this section, behind two switches that are on in `DefaultConfig()` and off in `BaselineConfig()`, so either can be turned off without a revert.
 **Issue:** [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457), from the S66 label review of `do-not-windfall-away-the-last-land`, and the owner's comment on it of 2026-10-08 about the draw step.
 **Amends:** §5 (which windows the bot spends in) and §7's discard half, with the [discard-payoff amendment](#amendment-2026-10-06-discard-payoffs)'s reach: wherever the policy prices a discard of its own card.
 
@@ -785,7 +785,7 @@ On `develop` at `de452ebd6` the heuristic passes. Its prices: Unexpected Windfal
 
 **Why the draw step is not a window.** The owner on #2457 (2026-10-08): §5 assumes the spend "costs nothing the bot would otherwise keep", and that is false in the bot's own upkeep and draw step. A land tapped there stays tapped through both of its main phases. Review game 2 (`06e98afa`, seq 248) is the cost: Prismari Command cast in the draw step with all three lands, and nothing left for Mary Read and Anne Bonny in the main phase. The owner's gate, if the draw step is ever made a window: "an instant cast before the bot's first main phase, with an empty stack, has to beat the best main-phase use of the same mana. Otherwise it waits for main."
 
-### Decision (proposed)
+### Decision
 
 **1. The signal.** The cycling helpers declare what the row turns the card into: `Cycling` declares `draws: 1`, and `Typecycling` (with `BasicLandcycling`) and `Transmute` declare `tutors: 1`. Every catalog card that uses them gets it, with no card file touched. It rides `zone_abilities[].purpose`, which only the card's owner is sent. Additive on the wire, no snapshot change. It does not change how cycling itself is priced: the heuristic reads a row's purpose for the battlefield only, so cycling stays `ActivateBase`.
 
@@ -801,17 +801,17 @@ discard     = min(price, max(replacement, price − spared))
 
 In the position the Mako's discard falls from 2.05 to 1.20, so Unexpected Windfall discarding it is +1.50, above discarding Arcane Denial (+1.00). A 6/6 with cycling {2}{G} keeps its price less 1.80.
 
-This is a valuation, not a consequence of the bot's other prices. By those, casting the Mako in a main phase (+0.65) beats cycling it (+0.50), so the bot would not cycle it, and a card that can also be cycled is, strictly, worth at least as much as the same card without. The rule takes the owner's reading of a cheap body with cycling: it is the deck's fodder. [Q1](#questions-for-the-owner-2026-10-12) asks whether that is the reading wanted.
+This is a valuation, not a consequence of the bot's other prices. By those, casting the Mako in a main phase (+0.65) beats cycling it (+0.50), so the bot would not cycle it, and a card that can also be cycled is, strictly, worth at least as much as the same card without. The rule takes the owner's reading of a cheap body with cycling: it is the deck's fodder. The owner confirmed that reading ([Q1](#questions-for-the-owner-answered-2026-10-12)).
 
 **3. The draw step is not a spend window** (`WaitForMain`, `aiseat/heuristic/waitmain.go`). §5 keeps its two windows. Before its first main phase the premise is the other way round, so the bot does not spend there more readily; it spends there less. The owner's gate is applied as written. In the bot's own upkeep or draw step, with an empty stack, an instant-speed cast waits for the main phase. The same cast is still on offer there, beside every sorcery-speed use of the same mana, so the best main-phase use of that mana is never worth less than the cast is now. The reason reads `wait for the main phase: …`. A cast with something on the stack to answer is not held, and neither is an activated ability: the gate is for casts.
 
 Without the gate the change in 2 would decide this position on a rounding error. +1.50 is `InstantThreshold` exactly, the sum came out at 1.5000000000000002, and the bot cast Unexpected Windfall in its draw step. With the gate it passes. Re-decided as a main phase on the same view, it casts Unexpected Windfall discarding the Mako.
 
-**4. The label stays.** The issue asked for the Mako discard to become the only accepted move once both halves land: a cheap cycling discard and a draw step that is a spend window. Under this proposal the draw step is not a spend window, and the gate's answer in the draw step is pass, so the label keeps both answers ([Q3](#questions-for-the-owner-2026-10-12)). `boteval suite run --policy heuristic` is 41 of 41 before and after. The only change in any position is this one's reason, from `nothing worth doing` to `wait for the main phase: cast spell (declared purpose) Cast Unexpected Windfall (+1.50)`.
+**4. The label stays.** The issue asked for the Mako discard to become the only accepted move once both halves land: a cheap cycling discard and a draw step that is a spend window. Under this amendment the draw step is not a spend window, and the gate's answer in the draw step is pass, so the label keeps both answers ([Q3](#questions-for-the-owner-answered-2026-10-12)). `boteval suite run --policy heuristic` is 41 of 41 before and after. The only change in any position is this one's reason, from `nothing worth doing` to `wait for the main phase: cast spell (declared purpose) Cast Unexpected Windfall (+1.50)`.
 
 The measurements are under [Measurements, #2457](#2457-self-replacing-discards-and-waiting-for-the-main-phase-2026-10-12).
 
-### Questions for the owner (2026-10-12)
+### Questions for the owner (answered 2026-10-12)
 
 Each lists the recommended option first.
 
@@ -827,6 +827,14 @@ Each lists the recommended option first.
    - **(a) Recommended:** keep pass and the Mako discard, both accepted. The Mako discard is the right card; pass is the right timing.
    - **(b)** Pass only, which pins the gate, with a main-phase position for the Mako discard harvested from a later arena run.
    - **(c)** The Mako discard only, as the issue first asked. It contradicts the gate, so it needs Q2 (b).
+
+#### Owner answers (2026-10-12)
+
+The owner chose option (a), the recommended one, on every question. No section above changed. These answers are binding.
+
+1. **The price as built.** A nonland card that can cycle into a card costs the cycling mana less as a discard, never less than one card (decision 2, `SelfReplacingDiscards`).
+2. **The draw step is not a spend window.** §5 keeps its two windows, and the owner's gate stays on: an instant cast in the bot's own upkeep or draw step, with an empty stack, waits for the main phase (decision 3, `WaitForMain`).
+3. **The label stays.** `do-not-windfall-away-the-last-land` keeps pass and the Mako discard, both accepted (decision 4).
 
 ## Consequences
 
@@ -1888,7 +1896,7 @@ Bold marks a change from the column to its left.
 
 ### #2457: self-replacing discards and waiting for the main phase (2026-10-12)
 
-The [amendment of 2026-10-12](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step), proposed. `DefaultConfig()` against `BaselineConfig()`: `SelfReplacingDiscards` true (baseline false) and `WaitForMain` true (false). No weight is new: the price reads `Weights.Hand`, `TutorWeight` and `SpellPerMana`.
+The [amendment of 2026-10-12](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step), accepted. `DefaultConfig()` against `BaselineConfig()`: `SelfReplacingDiscards` true (baseline false) and `WaitForMain` true (false). No weight is new: the price reads `Weights.Hand`, `TutorWeight` and `SpellPerMana`.
 
 Before is `develop` at `de452ebd6`, which has #2904's deterministic lockstep. After is this branch with both switches. "Discard price only" is a scratch build of this branch with `WaitForMain` off, to show each lever alone. Every run is `--rotate --lockstep` with the real dump. **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** Wall-clock times are not comparable: another agent's arena runs shared the machine.
 
