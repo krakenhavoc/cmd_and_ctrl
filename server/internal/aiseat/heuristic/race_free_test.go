@@ -63,7 +63,7 @@ func TestFreeAnswer(t *testing.T) {
 			0, []string{"mine"}, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ans := st.freeAnswer("def", tc.swing, tc.blockers)
+			ans := st.freeAnswer("def", tc.swing, tc.blockers, freeRules{})
 			if ans.through != tc.through {
 				t.Errorf("through = %d, want %d", ans.through, tc.through)
 			}

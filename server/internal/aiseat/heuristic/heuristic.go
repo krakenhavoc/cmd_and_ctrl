@@ -497,6 +497,33 @@ type Config struct {
 	// rather than Weights.Power per point. Off (the zero value) checks
 	// single blocks only and prices a given-up attack by power.
 	GangAwareAttacks bool
+	// RaceEndsSoonest changes which swing the two-turn race and the
+	// attrition horizon send among the ones that qualify (#2400). Off
+	// (the zero value) sends the smallest: the shortest prefix of the
+	// race's attack order that qualifies. On tries every prefix and
+	// sends the one that ends the game soonest — the fewest turns to
+	// the kill the model sees, then the most damage the defender
+	// cannot avoid (the least of what it takes blocking to survive and
+	// what gets past its free blocks), then the smallest.
+	RaceEndsSoonest bool
+	// FreeTrampleOverflow lets a trampler's overflow past a free block
+	// through in the race's free answer (#2400, CR 702.19b): a
+	// commander chumping a Wurm still lets the Wurm's power less the
+	// commander's toughness through. Off (the zero value) holds a
+	// trampler a free block stops in full.
+	FreeTrampleOverflow bool
+	// FreeCommanderNeedsTax counts the defender's commander as a free
+	// blocker only while its controller's mana sources can pay to cast
+	// it again: its mana value plus {2} for each earlier cast from the
+	// command zone (#2400, CR 903.8). Off (the zero value) counts a
+	// commander as free whatever the tax.
+	FreeCommanderNeedsTax bool
+	// RecastChumpForNext counts a commander that dies blocking under
+	// the race's blockToSurvive answer as back to block next turn and
+	// out of the crack-back unless it has haste, as the free answer
+	// already does (#2400, CR 903.9a). Off (the zero value) counts it
+	// dead for both.
+	RecastChumpForNext bool
 	// LethalBonus is the value of a line that would finish a seat
 	// outright — an alpha strike the defender cannot absorb, or a
 	// spell pointed at a player already inside FinishLife.
@@ -660,8 +687,12 @@ func DefaultConfig() Config {
 		FocusBonus:       1.00,
 		FocusNeedsValue:  true,
 		GangAwareAttacks: true,
-		LethalBonus:      25.00,
-		FinishLife:       3,
+		RaceEndsSoonest:  true,
+		// #2400: trample overflow and the recast chump measured no
+		// better under RaceEndsSoonest, so they stay off.
+		FreeCommanderNeedsTax: true,
+		LethalBonus:           25.00,
+		FinishLife:            3,
 
 		LandsWanted:  5,
 		KeepMinLands: 2,
@@ -753,6 +784,12 @@ func BaselineConfig() Config {
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false
 	c.Weights.BlockOnlyBody = 0
+	// #2400: the race and the attrition horizon sent the smallest swing
+	// that qualifies, and counted the free answer the #2310 way.
+	c.RaceEndsSoonest = false
+	c.FreeTrampleOverflow = false
+	c.FreeCommanderNeedsTax = false
+	c.RecastChumpForNext = false
 	// #2677 and #2691: land searches by colour, discards by distance.
 	c.LandColorNeed = 0
 	c.DiscardByDistance = false

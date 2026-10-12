@@ -73,6 +73,7 @@ func declared(v protocol.GameView, moves []legal.Move, id string) (protocol.Game
 // the bot sends a Bear after it instead of stopping.
 func TestRaceWillNotBankDamageACommanderStopsForFree(t *testing.T) {
 	v, moves := loopBoard(t, true)
+	v = withRecastMana(v)
 	in := input(0, v, moves...)
 	d := decide(t, heuristic.New(), in)
 	if !strings.Contains(d.Reason, raceLabel) || !strings.Contains(d.Reason, "4 now + 2 next turn") {
@@ -91,17 +92,21 @@ func TestRaceWillNotBankDamageACommanderStopsForFree(t *testing.T) {
 // same board with their 3/3 an ordinary creature. Blocking my commander
 // with it now loses it for good, so the lone commander's 3 are damage
 // the defender can stop only at a price, and the original race stands.
+//
+// It is the smallest swing that races, so this runs the race's old
+// objective (Config.RaceEndsSoonest off). With it on, the bot sends a
+// bigger swing than this one (TestRaceSendsTheSwingThatEndsSoonest).
 func TestRaceStillBanksDamageOnlyALostCreatureStops(t *testing.T) {
 	v, moves := loopBoard(t, false)
 	in := input(0, v, moves...)
-	d := decide(t, heuristic.New(), in)
+	d := decideWith(t, in, smallestFirst)
 	if !strings.Contains(d.Reason, "3 now + 4 next turn") {
 		t.Fatalf("decided %q (%s); want the lone commander's race, 3 now + 4 next turn", chose(t, in, d), d.Reason)
 	}
 
 	v, moves = declared(v, moves, cardID(1))
 	in = input(0, v, moves...)
-	d = decide(t, heuristic.New(), in)
+	d = decideWith(t, in, smallestFirst)
 	if got := chose(t, in, d); !strings.Contains(got, "Pass") {
 		t.Fatalf("with my commander declared, decided %q (%s); the race on it alone is complete", got, d.Reason)
 	}
@@ -120,6 +125,7 @@ func TestRaceCountsWhatTheFreeBlockKills(t *testing.T) {
 		creature(cardID(2), 0, "Giant", 5, 5, sick()),
 		creature(cardID(999), 1, "Chief", 3, 3, commander()),
 	)
+	v = withRecastMana(v)
 	// The Giant is summoning sick: no attack for it.
 	moves = moves[:2]
 	in := input(0, v, moves...)
@@ -151,6 +157,7 @@ func TestRaceFreeAnswersCommanderCannotSwingBack(t *testing.T) {
 				creature(cardID(3), 0, "Drake", 3, 3, keywords("flying"), tapped()),
 				creature(cardID(999), 1, "Chief", 3, 3, tc.opts...),
 			)
+			v = withRecastMana(v)
 			// The Drakes are tapped: no attacks for them.
 			moves = moves[:2]
 			in := input(0, v, moves...)
@@ -178,6 +185,7 @@ func TestRaceCountsTheFreeAnswersCrackBack(t *testing.T) {
 		creature(cardID(999), 1, "Chief", 1, 3, commander()),
 		creature(cardID(20), 1, "Ogre", 4, 4),
 	)
+	v = withRecastMana(v)
 	// The Drakes are tapped: no attacks for them.
 	moves = moves[:2]
 	in := input(0, v, moves...)

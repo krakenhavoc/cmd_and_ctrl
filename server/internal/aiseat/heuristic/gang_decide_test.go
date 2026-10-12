@@ -215,6 +215,7 @@ func TestAttritionIgnoresDamageTheDefenderStopsForFree(t *testing.T) {
 		creature(cardID(4), 1, "Chief", 3, 3, commander()),
 		creature(cardID(5), 1, "Knight", 2, 2, keywords("first strike")),
 	)
+	v = withRecastMana(v)
 	in := input(0, v, moves...)
 	if d := decide(t, heuristic.New(), in); strings.Contains(d.Reason, attritionLabel) {
 		t.Fatalf("decided %q (%s); their commander blocks the Ogre for free", chose(t, in, d), d.Reason)

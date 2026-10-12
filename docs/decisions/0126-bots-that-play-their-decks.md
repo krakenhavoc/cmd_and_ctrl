@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): proposed.
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -697,6 +697,77 @@ The run tables are under [Measurements, #2679](#2679-removal-priced-net-of-what-
 
 - **Sweeps and edicts** still price a commander at its full body. A wipe's `ScoreEval` and an untargeted sacrifice do not read `is_commander`.
 - **A non-removal targeted effect on an opposing commander** also gets the net price on the default path, because without an entry the heuristic cannot tell a destroy from a Pacifism-style aura or a tap. Such an effect keeps the commander on the battlefield, so the net price undervalues it. A target entry that says "this does not remove" is the fix, if a curated card needs it.
+
+## Amendment 2026-10-12: the race sends the swing that ends the game soonest
+
+**Status:** Proposed (2026-10-12). It changes the attack planner's objective, which is the owner's call. The [decision asked](#decision-asked-of-the-owner-2026-10-12) is at the end.
+**Issue:** [#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400), filed by #2310 (PR #2399). Sprint S67. Tracker #890.
+**Amends:** the combat planner, which [Out of scope](#out-of-scope) left alone. The [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) set the precedent. The two planners it changes are the two-turn race (`raceWith`, `heuristic/race.go`) and the attrition horizon (`attritionLine`, `heuristic/attrition.go`). Neither has an ADR of its own: `docs/bot.md` documents them. Each change is a `Config` switch, and `BaselineConfig()` turns all of them off (§9).
+
+### The problem
+
+Several swings can qualify as a two-turn race, or as the first exchange of an attrition line. Both planners sent the **smallest**: the shortest prefix of the evasive-first attack order that qualified. Because of that, a more accurate count of the defender's free blocks made games longer, not shorter. A count that let a smaller swing qualify sent that smaller swing, and it was the bigger one that ended the game.
+
+#2310 measured three refinements to the race's model of the defender and left all three out for this reason. All three are true to the rules:
+
+1. A trampler's overflow past a free chump gets through (CR 702.19b).
+2. The defender's commander is a free blocker only while its controller can pay the tax to cast it again (CR 903.8).
+3. A commander that chumps under blockToSurvive's answer is back to block next turn (CR 903.9a). This one stalled both Wurm lockstep boards at the time, the failure #1548 hit.
+
+### Decision
+
+**1. The objective** (`RaceEndsSoonest`; on in `DefaultConfig`, off in `BaselineConfig`). Both planners try every prefix that qualifies and send the one that ends the game soonest. They rank on three keys (`swingKey`, `race.go`):
+
+1. **The fewest turns to the kill the model sees.** For a race this is two, or one when the swing is lethal now. For an attrition line it is the number of exchanges before the race that ends it.
+2. **The most damage the defender cannot avoid this turn.** This is the least of blockToSurvive's damage and the free answer's (`raceEval.sure`), the attrition horizon's `sure` damage.
+3. **The smallest swing.** A tie keeps the swing tried first, so the reserve the crack-back check counted on is spent only when it buys something.
+
+Inside the attrition search, the deeper levels only ask whether some line exists, so they keep the first one they find. The budget of 100 swings per decision is unchanged. When the budget runs out at the top level, the planner sends the best line found so far.
+
+The objective is checked again at each declaration. A partly declared swing is a prefix of the same order, and a tie keeps the smaller swing, so the bot declares the plan one creature at a time and passes when it is complete (`TestRaceSendsTheSwingThatEndsSoonest`).
+
+**2. The commander tax** (`FreeCommanderNeedsTax`; on in `DefaultConfig`, off in `BaselineConfig`). The defender's commander is a free blocker only while its mana sources, tapped or not, make the commander's mana value plus {2} for each earlier cast from the command zone (`canRecast`). The commander's own mana ability is not counted, since it is the card that died. The cast count is the public `commander_casts`, which the engine re-keys when the commander changes zones.
+
+**3. Trample overflow past a free block** (`FreeTrampleOverflow`; off in both). The free answer's damage is the larger of the matching over the free blocks and `trampleBound` over the free blocks (`trampleBoundBy`). Both are lower bounds, as for `unblockedPower`.
+
+**4. The recast chump** (`RecastChumpForNext`; off in both). Under blockToSurvive's answer, a defender's commander that dies blocking is back to block next turn. It is also out of the crack-back unless it has haste, the same split the free answer already makes (`recastCommanders`).
+
+Switches 3 and 4 are built, tested and measured, and left off because they measured no better (below).
+
+### Measured
+
+The tables, and every seed that changes, are under [Measurements, #2400](#2400-the-race-sends-the-swing-that-ends-the-game-soonest-2026-10-12). In short, at `develop` `de452ebd6`, from non-race lockstep runs:
+
+| | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|
+| `develop` (smallest qualifying swing) | 16.08 | 15.08 | 5 / 6 | stalls (#2474) |
+| the objective alone | 15.42 | 14.17 | 5 / 6 | stalls (#2474) |
+| **the objective and the commander tax (proposed default)** | **15.25** | **13.75** | 5 / 6 | stalls (#2474) |
+
+- **The objective alone shortens both gates**: −0.67 turns on the 4-seat gate and −0.92 on the 2-seat one. The objective fixes what #2310 found. With the old objective, every refinement left the gate as long or longer, as #2310 measured. With the new one, no refinement makes both gates longer.
+- **The commander tax** is the one refinement that shortens both gates on top of the objective.
+- **Trample overflow** shortens the 2-seat gate (13.67) and lengthens the 4-seat one (15.92).
+- **The recast chump** changes nothing alone. With the tax it makes both gates longer (15.92 and 14.25).
+- **Neither Wurm board stalls on the recast chump.** The Wurm-and-Ogre board ends on turns 5 and 8 under the old objective and on 5 and 6 under the new one. The full mirror stops at lives `[6 3]` with or without it. That is #2474's board, and it stops there on `develop` and on every variant.
+
+### Options considered and rejected
+
+- **Fewest turns alone.** Every race the model sees kills in two turns, unless the swing is lethal now, and the all-in check (`lethalPush`) usually takes those first. So "fewest turns" does not separate the swings that race. The damage the defender cannot avoid is what separates them.
+- **Creatures traded as a third key**, preferring the exchange that kills more. It moved no gate seed. In the full Wurm mirror it sent both Wurms into their Wurm and an Ogre, a "2 for 2". The edge left was an Ogre, and the defender's commander traded it away for free, so the board stopped on `[6 6]` instead of `[6 3]`.
+- **Turning all three refinements on**, as #2400 suggested once the objective changed. With all three the means are 15.92 and 13.75, behind the tax alone on the 4-seat gate.
+
+### Open (#2400)
+
+- **The objective ranks swings against one defender.** Both planners still try the opponents in focus order, focus first, and take the first one with a qualifying swing. At a 4-seat table the bot can send a three-exchange line at the focus seat while a one-exchange line waits against another seat (gate seeds 106 and 109). Ranking across defenders would override the focus order, the threat ranking the rest of the attack decision uses, so it is not part of this amendment.
+- **#2474 is unchanged.** The full Wurm mirror stops on Bear and commander against a lone commander on 3 under every variant. That kill takes a commander trade and then two more turns, and no ranking of the swings that qualify can send a swing that does not qualify.
+
+### Decision asked of the owner (2026-10-12)
+
+1. **Accept the objective** (`RaceEndsSoonest` on), which replaces "the smallest swing that qualifies" for the race and for the attrition horizon.
+2. **Accept the commander tax** (`FreeCommanderNeedsTax` on).
+3. **Trample overflow and the recast chump: keep them as off switches, or delete them.** The recommendation is to keep them. They are about forty lines, and #2474's board, a commander trade three turns deep, is where the recast question comes back.
+
+If the owner declines 1, `RaceEndsSoonest` goes off and so does `FreeCommanderNeedsTax`. Under the old objective the tax made the gate longer (16.92 and 15.33).
 
 ## Consequences
 
@@ -1667,3 +1738,91 @@ Left undeclared (10), which with the 13 from batches 1 to 3 is every undeclared 
 The audit's burn list goes from 56 cards to 23: 33 declared. The 23 left are the 12 from batches 1 and 2, Razorgrass Ambush (batch 3) and the 10 above.
 
 **Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with binaries built from `develop` at `800eff6cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 23 / 24, izzet-aggro 4 / 4, mono-black-aristocrats 27 / 26, simic-ramp 10 / 10. One game of 64 differs (the 48th, 16 turns against 13). A second run of the branch binary differs from its own first run in that same game and matches `develop` game for game, while two runs of the `develop` binary were identical, so the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. `TestLegalActionsAgreement` did not go stale. `TestRealDumpPurposeAudit` still fails on `develop` for Call Forth the Tempest (#2771), the only failure; the burn list above is read from its output.
+
+### #2400: the race sends the swing that ends the game soonest (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest), proposed. `develop` is `de452ebd6`, after #2904 made lockstep deterministic. Every variant is that tree with the `Config` switches set as named, so `develop` is the row with all four off. The runs are the ones #2400's table used: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212), with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, and the seed-1409 mirrors in `lockstep_game_test.go`. The full Wurm mirror is skipped on `develop` (#2474), so it was run with the skip lifted. A board is the turns with the edge on seat 0 / seat 1.
+
+**Every variant.** The objective is `RaceEndsSoonest`. The refinements are T (`FreeTrampleOverflow`), X (`FreeCommanderNeedsTax`) and R (`RecastChumpForNext`).
+
+| Objective | Refinements | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---|---:|---:|---|---|
+| smallest (`develop`) | — | 16.08 | 15.08 | 5 / 6 | 26 / 26, `[6 3]` |
+| smallest | T | 17.08 | 15.25 | 9 / 9 | 26 / 26, `[6 3]` |
+| smallest | X | 16.92 | 15.33 | 5 / 6 | 26 / 26, `[6 3]` |
+| smallest | R | 16.08 | 15.08 | 5 / 8 | 26 / 26, `[6 3]` |
+| smallest | T, X | 16.92 | 15.08 | 9 / 9 | 26 / 26, `[6 3]` |
+| soonest | — | 15.42 | 14.17 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | T | 15.92 | 13.67 | 5 / 6 | 26 / 26, `[6 3]` |
+| **soonest** | **X (proposed default)** | **15.25** | **13.75** | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | R | 15.42 | 14.17 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | T, X | 16.00 | 13.25 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | X, R | 15.92 | 14.25 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | T, X, R | 15.92 | 13.75 | 5 / 6 | 26 / 26, `[6 3]` |
+
+In every row, no gate game stalls, and heuristic beats random 12–0. The Drake mirror ends on 8 / 8 and Wurm + Bear on 1 / 2.
+
+- **The old objective reproduces #2400's finding on today's `develop`.** Trample overflow adds a turn to the 4-seat gate, and the tax adds 0.84. Trample also takes Wurm + Ogre from 5 / 6 to 9 / 9.
+- **The recast chump no longer stalls a Wurm board.** In #2310's measurement, at `a5285c5ee`, it stalled both at 26 turns. On `de452ebd6`, Wurm + Ogre ends on 5 / 8 with it under the old objective and on 5 / 6 under the new one. The full mirror stops at `[6 3]` with or without it. That is #2474's position: Bear and commander against a lone commander on 3, a kill three turns deep that neither planner sees. In the full mirror, R sends 8 attrition swings where the others send 1, and none of them connects.
+- **The full mirror with creatures traded as a key**, the rejected third key, stops at `[6 6]`. The first exchange sent both Wurms, "2 of mine for 2 of theirs". The edge became an Ogre, and the defender's commander traded it away.
+
+**Per seed** (turns / winner seat):
+
+| Seed | `develop` | soonest | soonest + X |
+|---|---|---|---|
+| 101 | 12 / 1 | 12 / 1 | 12 / 1 |
+| 102 | 11 / 3 | 11 / 3 | 11 / 3 |
+| 103 | 18 / 1 | **12** / 1 | 12 / 1 |
+| 104 | 15 / 0 | **13** / 0 | 13 / **2** |
+| 105 | 22 / 3 | **17** / 3 | 17 / 3 |
+| 106 | 11 / 2 | **13 / 1** | **16 / 0** |
+| 107 | 24 / 3 | 24 / 3 | 24 / 3 |
+| 108 | 17 / 2 | **16** / 2 | 16 / 2 |
+| 109 | 17 / 1 | **18 / 3** | **13 / 2** |
+| 110 | 16 / 3 | **15** / 3 | **14 / 0** |
+| 111 | 14 / 2 | 14 / 2 | 14 / 2 |
+| 112 | 16 / 0 | **20** / 0 | **21** / 0 |
+| **4-seat mean** | **16.08** | **15.42** | **15.25** |
+| 201 | 13 / 0 | **12** / 0 | 12 / 0 |
+| 202 | 21 / 0 | **13** / 0 | 13 / 0 |
+| 203 | 21 / 0 | **16** / 0 | 16 / 0 |
+| 204 | 10 / 0 | **17** / 0 | 17 / 0 |
+| 205 | 10 / 0 | 10 / 0 | 10 / 0 |
+| 206 | 20 / 0 | 20 / 0 | **14 / 1** |
+| 207 | 14 / 1 | **13** / 1 | 13 / 1 |
+| 208 | 14 / 1 | 14 / 1 | 14 / 1 |
+| 209 | 12 / 1 | 12 / 1 | 12 / 1 |
+| 210 | 11 / 0 | **10** / 0 | 10 / 0 |
+| 211 | 18 / 1 | 18 / **0** | **19 / 1** |
+| 212 | 17 / 1 | **15** / 1 | 15 / 1 |
+| **2-seat mean** | **15.08** | **14.17** | **13.75** |
+
+Bold marks a change from the column to its left.
+
+**Why the seeds change.** Each game was replayed with its move log, and the first move that differs was read. Past that move, the deals and draws meet a different board, so a later turn count is a different game, not the same decision repeated.
+
+- **`develop` → soonest: 23 of 24 games reach a different move.** Only seed 102 plays the same game. In 22 of the 23, the first different move is the same swing grown bigger:
+  - **20 are attrition swings** that add attackers for more sure damage, often in a shorter line. Seed 202: two Ogres (4 sure, a race within 3 exchanges) become two Ogres and the commander (7 sure, within 2), and the game ends on turn 13 instead of 21. Seed 203: a lone Drake (3 sure, within 3) becomes a Drake, a Wurm and two Ogres (11 sure, within 1), and it ends on 16 instead of 21. Seed 103: one Ogre (4 sure) becomes two (8 sure), and it ends on 12 instead of 18.
+  - **2 are two-turn races.** Seed 111 goes from `8 now + 13 next` to `11 now + 13 next`. Seed 212 goes from `3 now + 6 next` to `5 now + 2 next`.
+  - **The 23rd, seed 101, is a line found where `develop` found none.** Seat 2 attacks with a Bear for 5 sure where it had passed. The search used to give up when its budget ran out. Now it sends the best line found so far.
+
+  Seeds 101, 107, 111, 205, 206, 208 and 209 end on the same turn. Seed 211 ends on the same turn with a different winner.
+- **The three games that get longer.**
+  - **Seed 204 (10 → 17).** The first swing is a Wurm and an Ogre for 11 sure, instead of the Wurm alone for 7. Two turns later the defender gang-blocks the Wurm with an Ogre and a Drake and kills it. The old line never offered that block, and the game grinds on.
+  - **Seed 112 (16 → 20)** sends two Ogres for 8 sure instead of one for 4.
+  - **Seed 106 (11 → 13)** sends the commander and a Bear for 5 sure instead of the commander alone for 3, and the winner changes.
+- **soonest → soonest + X: 12 games reach a different move.** The tax acts only on a defender's commander, so every first difference is a commander the tax prices out. Its block stops being free, and a swing qualifies, or qualifies differently, that did not before.
+  - **Seeds 206, 211 and 111:** an attrition swing where the bot had passed. Seed 206 ends on turn 14 instead of 20, and the other seat wins.
+  - **Seeds 105 and 204:** an attrition swing becomes a two-turn race. In seed 204 it is the same three attackers, now `14 now + 4 next turn`.
+  - **Seeds 112, 208 and 209:** the race's numbers grow.
+  - **Seeds 104 and 110:** a per-creature attack becomes an attrition swing or a race.
+  - **Seeds 106 and 109 (4 seats):** under soonest the bot had a line within 1 exchange against one opponent. With the tax, an opponent earlier in its order has a line too, within 3 exchanges, and the bot swings at that one instead. Both planners try defenders in focus order and take the first defender with a line. The objective ranks swings against one defender, not across defenders ([Open](#open-2400)).
+
+**Other gates on the proposed default** (soonest + X):
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag 100%.
+- `go test ./internal/aiseat/heuristic/ ./internal/aiseat/suite/...`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns all four switches off.
+- `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12` over `./internal/aiseat/...` and `./internal/botarena/` with `-race`: green. The gate seeds under `-race` match the non-race runs above game for game. Heuristic vs random is 12–0. Decision latency over 2534 decisions is p50 105µs, p99 4.44ms, max 21.4ms (`-race`, a loaded box), under the 50ms p99 bar. #2310 measured 105µs, 5.25ms and 17.3ms on `develop` on its own box.
+- Back-outs: with `RaceEndsSoonest` off, `TestRaceSendsTheSwingThatEndsSoonest` and two cases of `TestRaceCountsACommanderItsControllerCannotRecast` fail. With `FreeCommanderNeedsTax` off, the same two cases fail.
+
+**#2310's tests.** Five of #2310's decision tests put the defender's commander on a board with no lands. With the tax counted, it could not be cast again, so it was not free, and the tests no longer measured what they were written for. Each board now gives the defender the two lands a {1}{R} commander needs (`withRecastMana`). `TestRaceStillBanksDamageOnlyALostCreatureStops` pins the lone commander's race, the smallest swing, so it runs with `RaceEndsSoonest` off.

@@ -43,8 +43,11 @@ import (
 // which is the pessimistic way round — and asked again: a lethal all-in
 // or a two-turn race ends the line, and otherwise one more acceptable
 // exchange, up to attritionHorizon of them. The swing the bot sends is
-// the first exchange of the first line that ends in a race, tried in
-// the race's own order, so it too is the smallest that works.
+// the first exchange of a line that ends in a race, tried in the race's
+// own order and chosen the race's way (#2400): with
+// Config.RaceEndsSoonest the line with the fewest exchanges, then the
+// most sure damage, then the smallest swing; without it the first line
+// found, which is the smallest swing that works.
 //
 // It inherits the race's pessimism and its model of the defender:
 // block to survive losing as little as possible, gang-block to kill.
@@ -90,7 +93,7 @@ func (p *Policy) planAttrition(st *state, moves []legal.Move, focus string) *rac
 		if len(joinable) == 0 {
 			continue
 		}
-		step := p.attritionLine(st, def, committed, joinable, attritionHorizon, &budget)
+		step := p.attritionLine(st, def, committed, joinable, attritionHorizon, &budget, p.cfg.RaceEndsSoonest)
 		if step == nil {
 			continue
 		}
@@ -108,7 +111,14 @@ func (p *Policy) planAttrition(st *state, moves []legal.Move, focus string) *rac
 // attritionLine tries the prefixes of the attack order, as raceWith
 // does, and returns the first whose exchange is acceptable and leaves a
 // board that races within depth more exchanges.
-func (p *Policy) attritionLine(st *state, def *SeatEval, committed, joinable []*protocol.CardView, depth int, budget *int) *attritionStep {
+//
+// With soonest (Config.RaceEndsSoonest at the top of the search,
+// #2400) it tries every prefix and returns the line that ends the game
+// soonest (swingKey): the fewest exchanges before the race, then the
+// most sure damage, then the smallest swing. The deeper levels only ask
+// whether some line exists, so they keep the first. Running out of
+// budget returns the best found so far.
+func (p *Policy) attritionLine(st *state, def *SeatEval, committed, joinable []*protocol.CardView, depth int, budget *int, soonest bool) *attritionStep {
 	if depth <= 0 || !hasEdge(st, def) {
 		return nil
 	}
@@ -117,9 +127,10 @@ func (p *Policy) attritionLine(st *state, def *SeatEval, committed, joinable []*
 	if len(committed) > 0 {
 		first = 0
 	}
+	var best *attritionStep
 	for k := first; k <= len(joinable); k++ {
 		if *budget <= 0 {
-			return nil
+			return best
 		}
 		*budget--
 		swing := make([]*protocol.CardView, 0, len(committed)+k)
@@ -134,11 +145,24 @@ func (p *Policy) attritionLine(st *state, def *SeatEval, committed, joinable []*
 		if !hasEdge(next, nextDef) {
 			continue
 		}
-		if turns, ok := p.racesFrom(next, nextDef, depth-1, budget); ok {
-			return &attritionStep{swing: swing, e: e, x: x, turns: turns + 1}
+		turns, ok := p.racesFrom(next, nextDef, depth-1, budget)
+		if !ok {
+			continue
+		}
+		step := &attritionStep{swing: swing, e: e, x: x, turns: turns + 1}
+		if !soonest {
+			return step
+		}
+		if best == nil || step.key().beats(best.key()) {
+			best = step
 		}
 	}
-	return nil
+	return best
+}
+
+// key ranks the step's line for Config.RaceEndsSoonest (swingKey).
+func (s *attritionStep) key() swingKey {
+	return swingKey{turns: s.turns, sure: s.x.sure}
 }
 
 // exchange is what one swing of an attrition line is counted as. It is
@@ -165,7 +189,7 @@ type exchange struct {
 
 // exchangeOf counts e as an exchange.
 func (st *state) exchangeOf(def *SeatEval, e raceEval) exchange {
-	x := exchange{sure: min(e.d.through, e.free), mine: len(e.mineDead), crack: e.crack}
+	x := exchange{sure: e.sure(), mine: len(e.mineDead), crack: e.crack}
 	for i := range st.view.Battlefield.Cards {
 		c := &st.view.Battlefield.Cards[i]
 		if c.Controller == def.ID && e.d.deadDef[c.InstanceID] && !c.IsCommander {
@@ -210,7 +234,7 @@ func (p *Policy) racesFrom(st *state, def *SeatEval, depth int, budget *int) (in
 	if p.raceWith(st, def, nil, joinable, budget) != nil {
 		return 0, true
 	}
-	if step := p.attritionLine(st, def, nil, joinable, depth, budget); step != nil {
+	if step := p.attritionLine(st, def, nil, joinable, depth, budget, false); step != nil {
 		return step.turns, true
 	}
 	return 0, false
