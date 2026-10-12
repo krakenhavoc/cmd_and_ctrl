@@ -3084,8 +3084,9 @@ defender's side, inside the race.
 | `HorizonPlaysFreeAnswer` | on | Where blockToSurvive's model only guessed, the line plays the free answer forward. |
 
 `BaselineConfig()` turns both off. The decision and its numbers are in
-[ADR 0126's proposed amendment on a commander
-trade](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-proposed-the-attrition-horizon-trades-commanders).
+[ADR 0126's amendment on a commander
+trade](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-the-attrition-horizon-trades-commanders),
+accepted on 2026-10-12.
 
 ### Trample overflow on the attacking side (#1504)
 
