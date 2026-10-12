@@ -301,8 +301,10 @@ type raceEval struct {
 	d        defence
 	mineDead map[string]bool
 	// free is what the swing connects for past the defender's free
-	// blocks (freeAnswer).
-	free int
+	// blocks (freeAnswer), and freeAns that whole answer, which the
+	// attrition search can play forward instead of d (#2474).
+	free    int
+	freeAns answer
 }
 
 // answer is one way the defender can meet a swing, as the race counts
@@ -360,7 +362,7 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 	e.next, e.crack = st.raceAfter(def, swing, took)
 
 	free := st.freeAnswer(def.ID, swing, blockers, p.freeRules())
-	e.free = free.through
+	e.free, e.freeAns = free.through, free
 	if free.through < def.Life {
 		next, crack := st.raceAfter(def, swing, free)
 		if free.through+next < e.now+e.next {
