@@ -12,7 +12,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // X is the payment record's Total (game.ManaSpent): four from hand,
 // seven from the graveyard, and more when a tax or a cost increase was
 // paid on top. A copy spent nothing (CR 707.10) and looks at no cards.
-// A payment the engine waived (strict mana off) also reads as nothing,
+// A payment the engine waived (an insufficient permissive pool or Cast anyway) also reads as nothing,
 // which is the weaker-than-printed direction; the caveat says so, the
 // way Pentad Prism's does.
 //
@@ -24,7 +24,7 @@ func init() {
 		Name:         "Memory Deluge",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"With strict mana off, the game doesn't track the mana you spent, so it looks at no cards.",
+			"When mana payment is skipped, the game doesn't track the mana you spent, so it looks at no cards.",
 		},
 		Purpose:          game.Purpose{Tutors: 2},
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},

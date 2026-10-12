@@ -1292,3 +1292,54 @@ only makes the walk honour it across a prompt.
 Tests: `titanias_command_test.go` (the counters and the Bears wait for
 the search; a creature land found gets the counters) and
 `TestInsatiableAvariceDrawsTheTutoredCard`.
+
+
+## Amendment — 2026-10-11: related target clauses (#1943, #2033)
+
+Sprint S58, tracker #2077. A later target can now depend on a required,
+single target in an earlier clause of the same mode occurrence. The
+catalog declares `TargetSpec.Relation` as data: an earlier clause slot and
+either `controllers_graveyard` or `attached_to`. The card-facing builders
+are `InGraveyardOfTargetsController` and `AttachedToTarget`. Registration
+rejects a forward reference, a non-single anchor, an unknown relationship,
+or a dependent clause with more than one pick.
+
+Announcement and resolution check the relationship against the current
+objects (CR 601.2c, 608.2b). A missing anchor supplies no relationship.
+Required dependent clauses also narrow the earlier clause's legal set:
+a first pick with no possible second pick is never offered. The bot
+walk and trigger prompts apply the same gate to their chosen prefix.
+The wire clause includes `relation: {slot, pairs}`, where `pairs` maps
+public anchor IDs to compatible target IDs; the client narrows its next
+picker and skips an optional clause with no compatible candidates.
+
+Copy and retarget prompts judge the completed target set (CR 115.7).
+They can change both halves of a related pair. A related retarget walk
+holds `PendingChoice.RetargetNext` as data and commits it only when all
+slots have been answered. Clone deep-copies that prefix; schema v8
+carries it across restore. A v7 binary would lose the uncommitted prefix,
+so the schema bump makes that reader refuse the newer restore point. An unchanged illegal target
+may remain, but changing the anchor rechecks a previously legal dependent relationship;
+an unchanged target that was already illegal may still remain (CR 115.7c).
+
+Goblin Welder is the first graveyard caller. Both targets must remain
+legal before the exchange begins. Its entry batch settles the incoming
+artifact's replacement window against the original board, then a routed
+sacrifice settles the outgoing artifact's window. Neither card moves
+while either window waits for a choice. The settled incoming entry travels
+on the exit route; both land before either move is announced. The new
+arrival is excluded from look-back leaves/dies harvesting, while ordinary
+observers see the completed board. Existing replacement resume cloning
+copies the paired entry data for undo. The settled entry carries only
+landing data, with no new closure route through the replacement event. Sacrifice protection or a replacement
+of either move does not cancel the other instruction.
+
+Fiery Annihilation uses the attachment relationship. If its creature
+target is illegal, it does nothing, including leaving the Equipment alone,
+as the Foundations release notes specify. Legal damage is followed by
+Equipment exile and the existing exile-instead-of-dying rider.
+
+This is a partial seam: Breaking of the Fellowship remains waiting for a
+same-controller relationship that can read the first target's last-known
+controller after that target becomes illegal. No resolution-only workaround
+or incomplete catalog entry is added for it.

@@ -145,10 +145,7 @@ func TestOrcishBowmastersGrowsTheSameArmyOnEveryDraw(t *testing.T) {
 	}
 }
 
-// TestOrcishBowmastersIgnoresTheDrawStepDraw is the declared
-// simplification, pinned so it cannot quietly become something else:
-// a draw during the drawing player's OWN draw step does not fire the
-// Bowmasters. Printed, only the first such draw is exempt.
+// Only the first completed draw in the opponent's draw step is exempt.
 func TestOrcishBowmastersIgnoresTheDrawStepDraw(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]

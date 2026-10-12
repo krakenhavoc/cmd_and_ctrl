@@ -27,14 +27,14 @@ import (
 //
 // The grant arrives after the costs are paid, so the payment is not
 // spread across colours for it. One declared simplification, the
-// paid-cost record's: with strict mana off the engine never saw what
+// paid-cost record's: with an unrecorded payment the engine never saw what
 // paid, so the spell counts no colours (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:     "e8e2f273-5e74-4f16-8d49-2e86e9c9f2dc",
 		Name:         "Solar Array",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't track which mana you spent, so the artifact you cast next gets no counters from it."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't track which mana you spent, so the artifact you cast next gets no counters from it."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

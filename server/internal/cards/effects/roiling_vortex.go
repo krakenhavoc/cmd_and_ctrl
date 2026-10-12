@@ -24,15 +24,15 @@ import (
 // cleanup.
 //
 // One caveat, Vexing Bauble's: a cast the engine did not charge
-// (strict mana off) records an UNKNOWN payment, and unknown is never
-// "no mana", so the punisher only sees free casts at a strict-mana
-// table. Weaker than printed.
+// (an insufficient permissive pool or Cast anyway) records an UNKNOWN
+// payment, and unknown is never "no mana". A known free cast in either
+// payment mode is punished. Weaker than printed for unrecorded casts.
 func init() {
 	Register(Spec{
 		OracleID:     "34f83b7a-45a7-40a8-abcb-31d7aae4cea1",
 		Name:         "Roiling Vortex",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't track what was spent, so a spell cast for no mana isn't punished — turn strict mana on for that ability to work."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't track what was spent, so a spell cast for no mana isn't punished — turn strict mana on for that ability to work."},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBeginUpkeep, func(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor != uuid.Nil

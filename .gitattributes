@@ -1,0 +1,3 @@
+# Generated schema fixtures remain reviewable when explicitly expanded.
+server/internal/game/testdata/snapshots/** linguist-generated=true
+server/internal/game/testdata/snapshot_shape/*.txt linguist-generated=true

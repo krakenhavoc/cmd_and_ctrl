@@ -694,6 +694,9 @@ func (g *Game) harvestFromZone(pass *harvestPass, z *Zone) {
 			return
 		}
 		card := &z.Cards[i]
+		if z == g.Battlefield && card.InstanceID == g.mixedEntry && isBattlefieldExitEvent(ev) {
+			continue
+		}
 		// During a simultaneous exit the live card may already have lost a
 		// continuous effect because another batch member moved. Triggers see
 		// the shared pre-exit snapshot instead (the card can still be in the

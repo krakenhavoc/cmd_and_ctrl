@@ -20,18 +20,10 @@ import (
 // (Notion Thief) can still take one card of three rather than all or
 // nothing.
 //
-// What a doubled draw does NOT do is re-open the window. The two cards
-// are performed one at a time, so every per-card payoff — Nekusar,
-// Sheoldred, Consecrated Sphinx, Fate Unraveler — still fires per
-// card, but they are ONE event and CR 614.5's once-per-event tracking
-// covers both. That is what makes two Thought Reflections draw four
-// rather than three: the second multiplies what the first left,
-// through the ordinary CR 616.1 apply-loop.
-//
-// The redirect family (Notion Thief's "you draw that card instead")
-// lives on the same event and needs nothing from this file: it
-// rewrites DrawPlayer, this rewrites DrawCount, and the two compose
-// through the apply-loop in the order the drawing player picks.
+// Expanded draws each open a replacement window and inherit the
+// effects already applied to their parent. Two doublers therefore
+// produce four cards, while each descendant independently consults
+// first-draw exceptions, draw redirects, and dredge.
 
 // DrawBecomes is "if <Scope> would draw a card, they draw <Count(n)>
 // cards instead" — the whole family, with the arithmetic as a
@@ -51,11 +43,8 @@ type DrawBecomes struct {
 	Scope DrawScope
 
 	// ExceptInOwnDrawStep is Alhammarret's Archive's "except the first
-	// one you draw in each of your draw steps". See
-	// drawnInOwnDrawStep: the engine keeps no per-draw-step tally, so
-	// this reads as "except ANY draw during that player's own draw
-	// step", which is the same declared simplification Notion Thief
-	// ships with.
+	// one you draw in each of your draw steps". The shared step tally
+	// exempts only the first completed draw.
 	ExceptInOwnDrawStep bool
 
 	Label string
@@ -93,7 +82,7 @@ func (d DrawBecomes) Build() game.ReplacementEffect {
 			if g.PlayerByIDForEffect(ev.DrawPlayer) == nil {
 				return false
 			}
-			if d.ExceptInOwnDrawStep && drawnInOwnDrawStep(g, ev.DrawPlayer) {
+			if d.ExceptInOwnDrawStep && g.FirstDrawInOwnDrawStepForEffect(ev.DrawPlayer) {
 				return false
 			}
 			return d.scopeMatches(ev.DrawPlayer, src)
@@ -126,34 +115,6 @@ func (d DrawBecomes) scopeMatches(drawer uuid.UUID, src *game.Card) bool {
 	return true
 }
 
-// drawnInOwnDrawStep reads "except the first one you draw in each of
-// your draw steps" as "during that player's own draw step at all".
-//
-// THE DECLARED SIMPLIFICATION, and it is Notion Thief's, word for
-// word: the engine keeps no per-draw-step draw tally, so a SECOND draw
-// in somebody's draw step — an instant cast there, a draw-step trigger
-// — is left alone rather than caught. For a card that takes something
-// away from the drawer (Notion Thief) that is weaker than printed; for
-// a card that gives them something (Alhammarret's Archive) it is
-// weaker too, because the extra card the Archive would have given on
-// that second draw does not arrive. Both directions cost the
-// replacement's controller, never their opponents, which is the
-// posture every declared simplification in the catalog takes.
-//
-// Closing it is a per-draw-step tally on the player — the second half
-// of the "Draw-replacement count" seam row, and the one Teferi's
-// Ageless Insight also waits on.
-func drawnInOwnDrawStep(g *game.Game, drawer uuid.UUID) bool {
-	if g.Turn.Step != game.StepDraw {
-		return false
-	}
-	if g.Turn.ActiveSeat < 0 || g.Turn.ActiveSeat >= len(g.Seats) {
-		return false
-	}
-	seat := g.Seats[g.Turn.ActiveSeat]
-	return seat != nil && seat.ID == drawer
-}
-
 // YouDrawTwiceInstead is "if you would draw a card, draw two cards
 // instead" — Thought Reflection.
 func YouDrawTwiceInstead(label string) game.ReplacementEffect {
@@ -162,8 +123,7 @@ func YouDrawTwiceInstead(label string) game.ReplacementEffect {
 
 // YouDrawTwiceInsteadExceptTheFirst is the same sentence with
 // Alhammarret's Archive's "except the first one you draw in each of
-// your draw steps" — read as "except any draw in your own draw step".
-// See drawnInOwnDrawStep.
+// your draw steps".
 func YouDrawTwiceInsteadExceptTheFirst(label string) game.ReplacementEffect {
 	return DrawBecomes{
 		Count:               timesTwo,

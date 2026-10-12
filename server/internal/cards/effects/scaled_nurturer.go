@@ -20,15 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // plans the Nurturer like any Forest — a Dragon it pays for still gains
 // the 2 life.
 //
-// One declared simplification, weaker than printed: with strict mana
-// off the pool is never spent (ADR 0068 §3), so no token pays and the
+// One declared simplification, weaker than printed: with an unrecorded
+// payment the pool is never spent (ADR 0068 §3), so no token pays and the
 // life is never gained.
 func init() {
 	Register(Spec{
 		OracleID:     "13b96709-0e88-476b-9485-956e682bb818",
 		Name:         "Scaled Nurturer",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the 2 life is never gained."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the 2 life is never gained."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{G}",

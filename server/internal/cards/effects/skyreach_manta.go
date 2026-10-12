@@ -15,7 +15,7 @@ func init() {
 		OracleID:            "58eab745-9afa-4db7-9d8a-f5eb0b9dca6c",
 		Name:                "Skyreach Manta",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst, "flying"},
 	})

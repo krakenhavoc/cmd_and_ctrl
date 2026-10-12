@@ -37,14 +37,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "And that spell can't be countered" is a spend rider (#1547) —
 // Cavern of Souls' shape exactly: the legendary spell the coloured mana
 // pays for is marked uncounterable on the stack. One declared
-// simplification, weaker than printed: with strict mana off the pool is
+// simplification, weaker than printed: with an unrecorded payment the pool is
 // never spent (ADR 0068 §3), so the spell can still be countered.
 func init() {
 	Register(Spec{
 		OracleID:     "f9d3b046-0b95-4103-a630-4b3fb88bb60b",
 		Name:         "Delighted Halfling",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so a spell cast with the Halfling's colored mana can still be countered."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so a spell cast with the Halfling's colored mana can still be countered."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

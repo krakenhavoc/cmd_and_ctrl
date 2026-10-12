@@ -288,7 +288,7 @@ func (g *Game) retargetCheckLocked(src TargetSource, steps []AnnouncedClause, ol
 	// cause any unchanged targets to become illegal".
 	return g.validateAnnouncedTargetsWithLocked(src, steps, next, func(i int, _ TargetRef) bool {
 		return unchanged[i]
-	})
+	}, old)
 }
 
 // retargetPair is one slot of the announcement seen twice: where it
@@ -446,6 +446,13 @@ func (g *Game) OfferRetargetForEffect(offer RetargetOffer) error {
 		// See RetargetChangeOne's doc comment: no printed card gets
 		// here, and the prompt for it is undesigned.
 		return ErrInvalidParam
+	}
+	if offer.Policy == RetargetChooseNew {
+		for _, step := range g.itemAnnouncedClauses(item) {
+			if step.Clause.Relation != nil {
+				return g.queueRelatedRetargetLocked(offer, 0, append([]TargetRef(nil), item.Targets...))
+			}
+		}
 	}
 	g.queueRetargetStepLocked(offer, 0)
 	return nil
@@ -817,6 +824,37 @@ func (g *Game) ResolveRetarget(choiceID, chooserID uuid.UUID, targets []TargetRe
 	slot := choice.RetargetSlot
 	if slot < 0 || slot >= len(item.Targets) {
 		return ErrInvalidParam
+	}
+	if choice.RetargetNext != nil {
+		next := append([]TargetRef(nil), choice.RetargetNext...)
+		if len(targets) > 1 || (len(targets) == 0 && choice.PickTargetMin > 0) {
+			return ErrInvalidParam
+		}
+		if len(targets) == 1 {
+			t := targets[0]
+			if t.Kind != TargetCard && t.Kind != TargetPlayer {
+				return ErrInvalidParam
+			}
+			t.Mode, t.Slot = next[slot].Mode, next[slot].Slot
+			next[slot] = t
+		}
+		steps := g.itemAnnouncedClauses(item)
+		after := len(steps)
+		for j, step := range steps {
+			if step.Mode == next[slot].Mode && step.Slot == next[slot].Slot {
+				after = j + 1
+				break
+			}
+		}
+		if !g.copyTargetsCanFinishLocked(g.retargetSourceLocked(item), steps, item.Targets, next, after) {
+			return ErrIllegalTarget
+		}
+		g.dequeueChoiceLocked(idx)
+		if err := g.queueRelatedRetargetLocked(offer, slot+1, next); err != nil {
+			return err
+		}
+		g.runStateChecksLocked()
+		return nil
 	}
 	switch len(targets) {
 	case 0:

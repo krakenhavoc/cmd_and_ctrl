@@ -284,6 +284,9 @@ func (g *Game) scanTriggerModifiersLocked(p *harvestPass) {
 	}
 	if g.Battlefield != nil {
 		for _, c := range g.Battlefield.Cards {
+			if c.InstanceID == g.mixedEntry && isBattlefieldExitEvent(p.ev) {
+				continue
+			}
 			add(c, nil, false)
 		}
 	}

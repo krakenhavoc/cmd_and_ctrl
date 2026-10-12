@@ -188,7 +188,7 @@ func TestDredgeStyleReplacementComposesWithADoubler(t *testing.T) {
 	if c.Chooser != p.ID {
 		t.Errorf("CR 616.1 asks the AFFECTED player (the drawer): got %v, want %v", c.Chooser, p.ID)
 	}
-	// Doubler first: the dredge then sees a draw of two and takes it.
+	// Doubler first: each descendant is independently replaced by milling.
 	order := c.ReplacementEffectIDs
 	if err := g.ResolveReplacementOrder(c.ID, c.Chooser, order); err != nil {
 		t.Fatalf("ResolveReplacementOrder: %v", err)
@@ -196,8 +196,8 @@ func TestDredgeStyleReplacementComposesWithADoubler(t *testing.T) {
 	if handSize(p) != before {
 		t.Errorf("a dredged draw draws nothing: hand %d, want %d", handSize(p), before)
 	}
-	if dredged == 0 {
-		t.Errorf("the dredge-style replacement never fired")
+	if dredged != 2 {
+		t.Errorf("the dredge-style replacement handled %d draws, want 2", dredged)
 	}
 }
 

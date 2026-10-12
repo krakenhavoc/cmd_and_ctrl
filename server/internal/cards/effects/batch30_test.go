@@ -837,8 +837,9 @@ func TestB30VorelDoublesEveryKindOfCounter(t *testing.T) {
 func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
+	advanceToMain(t, g)
 	hand := me.Hand.Size()
-	satoru := castCatalogSpell(t, g, "Satoru, the Infiltrator", "Legendary Creature — Human Ninja Rogue", b30SatoruOracle, nil)
+	satoru := castFromHandForTest(t, g, me, "Satoru, the Infiltrator", "Legendary Creature — Human Ninja Rogue", "{U}{B}", b30SatoruOracle, game.CastSpellParams{})
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand {
 		t.Fatalf("a cast Satoru draws nothing: %d → %d", hand, me.Hand.Size())
@@ -867,10 +868,10 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("an opponent's reanimation draws nothing: %d", me.Hand.Size())
 	}
-	// A creature cast with its payment unrecorded (strict mana off) is
+	// A creature cast with its payment unrecorded (an insufficient pool) is
 	// not known to have cost nothing, and draws nothing.
 	batch01AdvanceToStepOf(t, g, 0, game.StepPostcombatMain)
-	castCatalogSpell(t, g, "Cast Bear", "Creature — Bear", "", nil)
+	castFromHandForTest(t, g, me, "Cast Bear", "Creature — Bear", "{1}{G}", "", game.CastSpellParams{})
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 {
 		t.Errorf("a cast creature draws nothing: %d", me.Hand.Size())
@@ -889,7 +890,7 @@ func TestB30SatoruDrawsWhenCreaturesArriveUncast(t *testing.T) {
 		t.Errorf("a reanimated Satoru draws for itself: %d → %d", hand, me.Hand.Size())
 	}
 	if spec, _ := Lookup(b30SatoruOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the strict-mana half is a declared gap")
+		t.Error("the unrecorded-payment half is a declared gap")
 	}
 }
 

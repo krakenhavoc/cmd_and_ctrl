@@ -369,8 +369,9 @@ func TestCybermenSquadronGivesMyriadToNonlegendaryArtifactCreatures(t *testing.T
 	bot := pushTribalCreature(g, me.ID, "Test Bot", "Artifact Creature — Construct", 3, 3, "vigilance")
 
 	declareAttack(t, g, opp1.ID, bot)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	answerMayChoice(t, g, me.ID, true)
 	attacking := map[uuid.UUID]int{}
 	for _, c := range s58Named(g, me.ID, "Test Bot") {
 		if c.InstanceID == bot {

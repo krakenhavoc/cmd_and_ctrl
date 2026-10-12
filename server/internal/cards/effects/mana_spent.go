@@ -24,7 +24,7 @@ import (
 // GIVEN sunburst (ThatSpellGains, Lux Artillery) the same way.
 //
 // The one rule they all inherit, from ADR 0068 §3: a payment the
-// engine WAIVED (permissive mode, a strict-mode override) answers
+// engine WAIVED (an insufficient permissive pool or Cast anyway) answers
 // "unknown", and every reader here takes unknown as the weaker
 // answer. Converge counts no colours, adamant does not turn on, and
 // "if no mana was spent" is false. None of these helpers has to say
@@ -52,9 +52,8 @@ func AdamantSpent(ctx *Context, color string, n int) bool {
 // {0} alternative cost, or a copy of a spell (CR 707.10 — mana is not
 // an object, so nothing was spent to cast the copy).
 //
-// A permissive or forced cast answers FALSE. The player paid something
-// the engine did not see, and a punisher that fired on it would
-// counter half the spells cast at a table running the human default.
+// An unrecorded cast answers FALSE. The player paid something the
+// engine did not see; a punisher cannot treat that as a known zero.
 //
 // Read-only, and it runs under g.mu: a trigger's AppliesTo already
 // does.

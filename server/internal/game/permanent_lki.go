@@ -110,6 +110,11 @@ type PermanentInfo struct {
 	// (Effective()), the same value the CR 603.10 snapshot holds.
 	Characteristic Characteristic `json:"characteristic"`
 
+	// Copiable is the object's copiable characteristics before its departure
+	// resets a copy effect (CR 707.2). A token-copy effect naming this
+	// battlefield object reads these rather than the card in its new zone.
+	Copiable *PrintedValues `json:"copiable,omitempty"`
+
 	// Power and Toughness include +1/+1 and -1/-1 counters and are NOT
 	// clamped (Card.PowerForComparison, Card.CurrentToughness). A
 	// reader that deals damage clamps at zero itself.
@@ -235,7 +240,9 @@ func permanentManaValue(c *Card) int {
 // permanentInfoOf reads a battlefield card into a PermanentInfo. The
 // caller decides whether the layer cache is fresh enough.
 func permanentInfoOf(c *Card) PermanentInfo {
+	copiable := CopiableValuesOf(*c).Clone()
 	return PermanentInfo{
+		Copiable:       &copiable,
 		Epoch:          c.ObjectEpoch,
 		Controller:     c.Controller,
 		Characteristic: c.Effective(),
@@ -396,9 +403,9 @@ func (g *Game) forgetLastKnownPermanentLocked(cardID uuid.UUID) {
 // the persisted snapshot. Each card's list gets its own backing array,
 // because rememberDepartingPermanentLocked appends to it and may
 // overwrite an entry in place. Nothing reaches INTO an entry after it is
-// stored (its Counters map and Characteristic slices are only read), so
-// copying the entries by value suffices — the argument
-// lastKnownBattlefield's clone makes.
+// stored (its Counters map and Characteristic slices are only read).
+// Copiable values receive an independent pointer and backing slices,
+// like every other copy of PrintedValues.
 func cloneLastKnownPermanents(src map[uuid.UUID][]PermanentInfo) map[uuid.UUID][]PermanentInfo {
 	if len(src) == 0 {
 		return nil
@@ -406,6 +413,12 @@ func cloneLastKnownPermanents(src map[uuid.UUID][]PermanentInfo) map[uuid.UUID][
 	out := make(map[uuid.UUID][]PermanentInfo, len(src))
 	for k, v := range src {
 		out[k] = append([]PermanentInfo(nil), v...)
+		for i := range out[k] {
+			if v[i].Copiable != nil {
+				values := v[i].Copiable.Clone()
+				out[k][i].Copiable = &values
+			}
+		}
 	}
 	return out
 }

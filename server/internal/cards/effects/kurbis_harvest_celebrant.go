@@ -18,7 +18,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolves (CR 608.2b); the shield then lasts the turn.
 //
 // Declared caveat, the one every mana-spent reader carries (Mockingbird,
-// Abby): with strict mana off the engine does not know what was spent,
+// Abby): with an unrecorded payment the engine does not know what was spent,
 // and answers zero, the weaker direction (ADR 0068 §3).
 func init() {
 	Register(Spec{
@@ -26,7 +26,7 @@ func init() {
 		Name:         "Kurbis, Harvest Celebrant",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"With strict mana off, the game doesn't track how much mana you spent, so Kurbis enters with no counters — turn strict mana on for it to count.",
+			"When mana payment is skipped, the game doesn't track how much mana you spent, so Kurbis enters with no counters — turn strict mana on for it to count.",
 		},
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{{
 			Kind:  game.CounterPlusOne,

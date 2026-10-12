@@ -149,6 +149,16 @@ surface tiny.
    set it directly only for a card you deliberately leave on the
    free-form picker. Empty means no prompt.
 
+   **A later target tied to an earlier target (#1943).** Wrap the later
+   clause in `InGraveyardOfTargetsController(spec, earlierSlot)` for
+   Goblin Welder's graveyard relationship, or `AttachedToTarget(spec,
+   earlierSlot)` for Fiery Annihilation's Equipment. The anchor must be
+   a required single pick, and the dependent clause may pick at most
+   one object. Announcement, resolution and all pickers share the gate;
+   no custom resolution-only target check is needed. Other relationships,
+   including last-known controller information for an illegal anchor,
+   still belong on the seam's waiting list.
+
    **Modal cards ("Choose one —", S20 sub-PR 4)** declare
    `Spec.Modes` instead of `Spec.Targets`, with the target clause on
    the option that has one:
@@ -593,9 +603,13 @@ it has not spent yet. Without it the payment is colourless-first and the
 card converges for less than the board allowed. Adamant deliberately
 does not set it.
 
+A fully funded floating pool is spent and recorded in either payment
+mode. Permissive mode waives only a pool that cannot cover the whole
+cost; Cast anyway always waives it, even when funded.
+
 One rule covers every reader, and no card has to restate it: a payment
-the engine WAIVED — permissive mode (the human default) or a
-strict-mode override — answers "unknown", and unknown is always the
+the engine WAIVED — an insufficient pool in permissive mode or a
+Cast anyway override — answers "unknown", and unknown is always the
 weaker-than-printed answer. Converge counts no colours, adamant does not
 turn on, and "if no mana was spent" is false. Say so in a caveat, as
 Painful Truths and Vexing Bauble do.
@@ -1701,12 +1715,12 @@ three cards" three individual card draws. The family is
 ExceptInOwnDrawStep, Label}`, with `YouDrawTwiceInstead(label)` and
 `YouDrawTwiceInsteadExceptTheFirst(label)`.
 
-The N cards a settled count asks for are drawn one at a time, so every
-per-card payoff still fires per card — but they are ONE event, and the
-window is not re-opened for them. That is what makes two Thought
-Reflections draw FOUR rather than three, and it is why a cancel-style
-draw replacement sharing the window takes the whole doubled draw rather
-than one card of it (the declared simplification).
+An amount replacement introduces individual descendant draws (CR 121.2).
+Each descendant gets its own replacement window, inheriting the effects
+already applied to its parent (CR 614.5). Two Thought Reflections still
+produce four cards; a redirect, dredge or cancellation can apply separately
+to each resulting card. Descendants complete before the original draw
+instruction's tail, and a paused substitute holds the whole remainder.
 
 **A draw replaced by an effect that asks something (#2168, #2127):**
 dredge (`Dredge(n)` in `cards/effects/dredge.go`, on `Spec.Replacements`
@@ -1719,12 +1733,14 @@ three") waits behind it (CR 121.6b). `FromGraveyard: true` makes a
 replacement apply from the drawing player's graveyard instead of the
 battlefield. See `game/draw_instead.go`.
 
-**"Except the first one you draw in each of your draw steps"** has no
-per-draw-step tally behind it. Both cards that print it — Notion Thief
-and Alhammarret's Archive — read it as "except ANY draw in that player's
-own draw step" and carry the same `caveats` line. `drawnInOwnDrawStep`
-is the one copy of the predicate; use it rather than writing the check
-again.
+**"Except the first one you draw in each of your draw steps"** reads the
+completed-draw tally `Game.DrawnThisStep`, reset at every step boundary.
+`FirstDrawInOwnDrawStepForEffect` is the replacement-side reader; a draw
+that was replaced by an effect has not consumed the exception.
+`FirstCompletedDrawInOwnDrawStepForEffect` is the trigger-side reader,
+after the actual draw increments the tally. The tally is cloned and
+snapshotted; pre-v8 restores reconstruct it from the current step's events.
+Use these shared readers rather than writing a draw-step check in a card.
 
 **Two copies of your card will not prompt.** When every replacement
 applicable to one event is the *same* declared effect — same catalog

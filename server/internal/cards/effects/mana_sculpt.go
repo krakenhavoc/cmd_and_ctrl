@@ -41,7 +41,7 @@ import (
 // exactly that record; #1735 found the stale caveat.
 //
 // Declared caveat, the one every mana-spent reader in the catalog
-// carries: a spell its caster cast with strict mana off was not
+// carries: a spell its caster cast with an unrecorded payment was not
 // charged by the engine (PaidCost.OnPaper), so the amount is unknown
 // and reads as zero — no refund, the weaker-than-printed answer
 // ADR 0068 §3 requires.
@@ -51,7 +51,7 @@ func init() {
 		Name:         "Mana Sculpt",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"If the countered spell was cast with strict mana off, the game doesn't know how much mana was spent on it, so Mana Sculpt adds no mana for it.",
+			"If the countered spell was cast with an unrecorded payment, the game doesn't know how much mana was spent on it, so Mana Sculpt adds no mana for it.",
 		},
 		Targets: TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
