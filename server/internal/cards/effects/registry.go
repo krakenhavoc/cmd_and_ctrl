@@ -1388,6 +1388,19 @@ func checkFlatClauses(name string, spec *game.TargetSpec) {
 		}
 	}
 	for i := 0; i < spec.ClauseCount(); i++ {
+		if r := spec.Clause(i).Relation; r != nil {
+			if r.Slot < 0 || r.Slot >= i || spec.Clause(r.Slot).Min != 1 || spec.Clause(r.Slot).Max != 1 {
+				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate to one required earlier target", name, i))
+			}
+			if spec.Clause(i).Max != 1 || spec.Clause(i).Min > 1 {
+				panic(fmt.Sprintf("effects.Register: %q target clause %d must relate at most one pick", name, i))
+			}
+			switch r.Kind {
+			case game.TargetInControllersGraveyard, game.TargetAttachedTo:
+			default:
+				panic(fmt.Sprintf("effects.Register: %q target clause %d has an unknown target relation", name, i))
+			}
+		}
 		checkDivide(name, i, spec.Clause(i))
 		if d := spec.Clause(i).Different; d != nil && (d.Key == nil || d.Label == "") {
 			panic(fmt.Sprintf("effects.Register: %q target clause %d has a set rule with no Key or no Label — build it with EachDifferentManaValue / EachDifferentController / EachDifferentName", name, i))

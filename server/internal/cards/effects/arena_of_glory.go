@@ -24,7 +24,7 @@ func init() {
 		OracleID:     "63dfe794-5f56-41ec-9883-5523b41cc3e0",
 		Name:         "Arena of Glory",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the creature never gains haste."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature never gains haste."},
 		Replacements: []game.ReplacementEffect{b06EntersTappedUnlessLandType("mountain")},
 		ManaAbilities: []ManaAbility{
 			{

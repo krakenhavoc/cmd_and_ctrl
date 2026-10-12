@@ -116,18 +116,6 @@ func b27SelfEnteredUntapped(ev game.Event, source *game.Card) bool {
 	return ev.Kind == game.EventETB && ev.CardID == source.InstanceID && !source.Tapped
 }
 
-// b27AttackedAndAnotherOpponentRemains is Legion Loyalty's
-// condition: a creature the source's controller controls attacked,
-// and at least one opponent other than the defending player is
-// still in the game — myriad has nothing to do at a two-player
-// table, and a trigger that would create nothing is not queued.
-func b27AttackedAndAnotherOpponentRemains(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
-		return false
-	}
-	return len(b27OtherOpponents(g, source.Controller, b17DefendingPlayer(g, ev))) > 0
-}
-
 // --- state reads ---------------------------------------------------
 
 // b27OtherOpponents is "each opponent other than defending player":
@@ -390,30 +378,6 @@ func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold in
 		To:     game.ZoneExile,
 		Until:  UntilTotalManaValue(threshold),
 	}.Apply(ctx)
-}
-
-// b27LegionLoyaltyLabel is the stack label of the myriad trigger
-// Legion Loyalty grants.
-const b27LegionLoyaltyLabel = "Legion Loyalty — myriad: token copies attacking each other opponent"
-
-// b27MyriadCopies is Legion Loyalty's myriad body, myriadTokenCopies
-// (myriad.go) named for the Loyalty. For one attacking
-// creature: for each opponent other than the defending player, a
-// token copy of the attacker enters tapped and attacking that
-// player, and the copies are exiled at the beginning of the end of
-// combat step through a delayed trigger. The attacker is copied
-// wherever it now sits — a creature that died in response is copied
-// from the graveyard, its last-known printed values (CR 702.116a
-// makes the copies regardless).
-//
-// The attacker and the defending player are computed once, at trigger
-// (Build) time, and carried on the item's Params (Object, Player)
-// rather than baked into a per-instance closure (ADR 0041 P9): the
-// defending player is the player the attacker is attacking (CR 508.5) and a live
-// re-derivation at resolution could answer differently if the
-// attacked planeswalker or battle changed hands in response.
-func b27MyriadCopies(g *game.Game, item *game.StackItem) error {
-	return myriadTokenCopies(g, item, "Legion Loyalty")
 }
 
 // b27GooseMotherAttackLabel is the stack label of The Goose Mother's

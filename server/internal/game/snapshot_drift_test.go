@@ -131,6 +131,7 @@ var gameFields = plan(
 	// tallies are: a restore mid-turn that forgot it would offer the
 	// wrong candidate set, and the cards it names are still in hand.
 	"DrawnThisTurn", carried, "",
+	"DrawnThisStep", carried, "",
 	"TurnTally", carried, "",
 	// #1181: what has been ACTIVATED, per (object, printed ability),
 	// in both scopes. Carried for a stronger reason than the per-turn
@@ -161,6 +162,7 @@ var gameFields = plan(
 	// Events from scratch, so there is nothing to serialise.
 	"passTurn", dropped, "restores empty: the active player's standing end_turn (#2881, pass_turn.go); after a restore they hold priority as if they had not pressed it, and press it again. Nothing is passed that they did not pass",
 	"harvestDepth", rebuilt, "a pass-local counter: zero between trigger-harvest passes, which is the only time a snapshot is taken; a restored game starts at zero",
+	"mixedEntry", rebuilt, "zero outside the synchronous announcement of a simultaneous sacrifice and entry; no snapshot can be taken inside that announcement",
 	"eventLogGen", rebuilt, "names this *Game's log history; a restored game is a new receiver and starts a new one",
 	"logProjection", rebuilt, "derived cache of the public log; the first view of a restored game refolds Events",
 	// #1479: the card-location hint table. Every answer it gives is
@@ -880,6 +882,7 @@ var pendingChoiceFields = plan(
 	"RetargetOptional", carried, "",
 	"RetargetSlot", carried, "",
 	"RetargetReason", carried, "",
+	"RetargetNext", carried, "clone copies the uncommitted target prefix",
 	// #1743: a pinned retarget's destination, which is what makes the
 	// answer "which slot" rather than "where to".
 	"RetargetTo", carried, "",

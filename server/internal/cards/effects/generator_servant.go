@@ -17,14 +17,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is one grant. A {T} mana ability of a creature, so the Servant can't
 // use it the turn it arrives (CR 302.6).
 //
-// One declared simplification, the rider's: with strict mana off the
+// One declared simplification, the rider's: with an unrecorded payment the
 // engine never spends the pool, so no rider fires (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:     "68ac061a-e4a3-46df-9169-62f6a8481584",
 		Name:         "Generator Servant",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the creature never gains haste."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature never gains haste."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Sacrifice: true},
 			Produced: "{C}{C}",

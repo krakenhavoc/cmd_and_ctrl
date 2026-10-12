@@ -16,14 +16,14 @@ import (
 // read), and the damage is dealt by the spell, not the creature (its
 // ruling), equal to the creature's power as the spell resolves.
 //
-// Caveat: with strict mana off the engine does not see the mana paid, so
+// Caveat: with an unrecorded payment the engine does not see the mana paid, so
 // the rider never happens. That is the weaker direction.
 func init() {
 	Register(Spec{
 		OracleID:     "20eff2ce-f26d-48a2-8a1f-435a7e2968c8",
 		Name:         "Boros Fury-Shield",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so Boros Fury-Shield never deals the damage."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Boros Fury-Shield never deals the damage."},
 		Targets:      TargetCreature("target attacking or blocking creature", AttackingOrBlocking()),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return shieldAgainstTheTargetThen(ctx, true, func(ctx *Context, target uuid.UUID) error {

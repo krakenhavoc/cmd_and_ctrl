@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -32,18 +30,12 @@ import (
 // that permanent stays on the battlefield (CR 613.1d, CR 400.7), pinned
 // to it the way the Enduring cycle's "It's an enchantment" is.
 //
-// One simplification, weaker than printed: a creature whose entry stops
-// to ask its controller something (a Clone's copy choice, an "as this
-// enters, choose" card) enters without becoming a Phyrexian, because the
-// type is added only once the creature is on the battlefield.
+// The entry continuation adds the subtype after any copy or entry choice.
 func init() {
 	Register(Spec{
 		OracleID:     "301d1d8e-d3fc-4010-8b29-4724fa0b31cd",
 		Name:         "Portal to Phyrexia",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A creature that asks a question as it enters, such as a Clone, doesn't become a Phyrexian when the Portal returns it.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Portal to Phyrexia — each opponent sacrifices three creatures", portalToPhyrexiaEdict),
 			Targeting(
@@ -86,17 +78,15 @@ func portalToPhyrexiaReanimate(g *game.Game, item *game.StackItem) error {
 	if target == uuid.Nil {
 		return nil
 	}
-	entered, err := g.ReturnFromGraveyardWithCountersForEffect(target, item.Controller, false, nil)
-	if errors.Is(err, game.ErrCardNotFound) {
-		return nil // CR 608.2b: it left the graveyard in response
-	}
-	if err != nil || entered == uuid.Nil {
-		return err
-	}
-	return ScopedEffectFor{
-		Target:   entered,
-		Mods:     []game.Mod{game.AddSubtypesMod("Phyrexian")},
-		Duration: g.PinnedTo(game.IndefiniteDuration(), entered),
-		Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types",
-	}.Apply(ctx)
+	return g.PutOntoBattlefieldTogetherThenForEffect(
+		[]game.BatchEntry{{CardID: target, From: game.ZoneGraveyard}},
+		game.ZoneEntryOptions{Controller: item.Controller},
+		func(g *game.Game, entered []uuid.UUID) error {
+			if len(entered) == 0 {
+				return nil
+			}
+			return (ScopedEffectFor{Target: entered[0], Mods: []game.Mod{game.AddSubtypesMod("Phyrexian")},
+				Duration: g.PinnedTo(game.IndefiniteDuration(), entered[0]),
+				Label:    "Portal to Phyrexia — it's a Phyrexian in addition to its other types"}).Apply(NewContext(g, item))
+		})
 }

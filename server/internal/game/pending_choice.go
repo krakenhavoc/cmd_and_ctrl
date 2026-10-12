@@ -539,6 +539,9 @@ type PendingChoice struct {
 	// retarget.
 	RetargetTo TargetRef
 
+	// RetargetNext carries the uncommitted prefix of a related-target walk.
+	RetargetNext []TargetRef
+
 	// pickTargetResume is the server-only continuation for a
 	// PendingChoicePickTarget: the captured event / source / LKI,
 	// the Build closure, and the spec the pick is validated against
@@ -2294,6 +2297,9 @@ func (g *Game) resolveReplacementOrderLocked(choiceID, chooserID uuid.UUID, orde
 		g.replacementsAppliedThisEvent[ev.ID] = make(map[ReplacementEffectID]bool)
 	}
 	for _, id := range ordered {
+		// Expanded draws are individual replacement descendants. Settle
+		// the first before another ordered effect examines its siblings.
+		g.splitExpandedDrawLocked(ev)
 		chosen, ok := applicableByID[id]
 		if !ok {
 			continue
@@ -3280,7 +3286,7 @@ func (g *Game) queuePickTargetStepLocked(f *pickTargetFrame) {
 		// was harvested, which is exactly the source CR 702.16b wants:
 		// the permanent may have left between the trigger and the
 		// prompt, and its qualities then are what count.
-		lt := g.legalTargetsLocked(SourceObject(f.source.Controller, &f.source), clause)
+		lt := g.LegalTargetsForAnnouncedClauseForEffect(SourceObject(f.source.Controller, &f.source), f.steps, f.step, append([]TargetRef{}, f.picked...))
 		lt = withoutPicked(lt, f.picked, clause.Distinct)
 		// #1559: a clause with a set rule can have candidates and
 		// still no legal SET of Min picks ("two target creatures
@@ -3478,7 +3484,8 @@ func (g *Game) ResolvePickTargetsDivided(choiceID, chooserID uuid.UUID, targets 
 		t.Mode, t.Slot = cur.Mode, cur.Slot
 		stamped = append(stamped, t)
 	}
-	if err := g.validateAnnouncedTargetsLocked(SourceObject(chooserID, &frame.source), frame.steps[frame.step:frame.step+1], stamped); err != nil {
+	all := append(append([]TargetRef(nil), frame.picked...), stamped...)
+	if err := g.validateAnnouncedTargetsWithLocked(SourceObject(chooserID, &frame.source), frame.steps[:frame.step+1], all, func(i int, _ TargetRef) bool { return i < len(frame.picked) }); err != nil {
 		return err
 	}
 	if step.Distinct {

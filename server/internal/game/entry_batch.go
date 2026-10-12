@@ -83,7 +83,11 @@ type BatchEntry struct {
 // entryBatch is a simultaneous entry in progress. Unexported engine
 // plumbing, carried on entryTail across a paused window.
 type entryBatch struct {
-	members []entryBatchMember
+	// exchangeSource / exchangeSacrifice name the exit paired with this
+	// one-card entry (Goblin Welder). Both windows settle before either moves.
+	exchangeSource, exchangeSacrifice uuid.UUID
+	source                            uuid.UUID
+	members                           []entryBatchMember
 	// next is the first member whose CR 614 window has not run.
 	next int
 	// firstErr is the first error a member's window or move reported.
@@ -100,6 +104,10 @@ type entryBatch struct {
 type entryBatchMember struct {
 	cardID uuid.UUID
 	from   ZoneKind
+	// Tokens carry their own entry clause and come from no zone.
+	token      bool
+	tokenEntry TokenEntryOptions
+	attacking  uuid.UUID
 	// controller is who it enters under, stamped on the card in its
 	// source zone before the first window opens.
 	controller uuid.UUID
@@ -183,7 +191,11 @@ func (g *Game) PutOntoBattlefieldTogetherThenForEffect(cards []BatchEntry, opts 
 //
 // Caller must hold g.mu.
 func (g *Game) startEntryBatchLocked(cards []BatchEntry, opts ZoneEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
-	b := &entryBatch{then: then, opts: opts}
+	return g.startPreparedEntryBatchLocked(cards, &entryBatch{then: then, opts: opts})
+}
+
+func (g *Game) startPreparedEntryBatchLocked(cards []BatchEntry, b *entryBatch) error {
+	opts := b.opts
 	refuse := func(err error) error {
 		if tailErr := g.finishEntryBatchThenLocked(b, nil); tailErr != nil {
 			return errors.Join(err, tailErr)
@@ -293,6 +305,7 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 		m := b.members[i]
 		ev := &ReplacementEvent{
 			Kind:         RepEventMove,
+			Source:       b.source,
 			Actor:        m.controller,
 			CardID:       m.cardID,
 			OldZone:      m.from,
@@ -320,6 +333,13 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 				batch:      b,
 				batchIndex: i,
 			},
+		}
+		if m.token {
+			ev.EntersTapped = m.tokenEntry.Tapped
+			ev.EntersAttacking = m.attacking
+			for name, n := range m.tokenEntry.Counters {
+				ev.AddCounterAtETB(name, n)
+			}
 		}
 		out, err := g.applyReplacementsLocked(ev)
 		if errors.Is(err, errReplacementPending) {
@@ -398,6 +418,24 @@ func (ev *ReplacementEvent) takeEntryBatch() (*entryBatch, int, bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) landEntryBatchLocked(b *entryBatch) error {
+	if b.exchangeSacrifice != uuid.Nil {
+		if len(g.unprotectedFromSacrificeLocked([]uuid.UUID{b.exchangeSacrifice})) == 0 {
+			b.exchangeSacrifice = uuid.Nil
+			return g.landEntryBatchLocked(b)
+		}
+		r := sacrificeRoute(b.exchangeSource)
+		// A sacrifice is a routed zone move, not destruction. This path
+		// needs the exit's landing/announcement split for the paired entry.
+		r.ViaBattlefieldLeave = false
+		r.Dst = ZoneGraveyard
+		if err := g.announceSacrificeLocked(b.exchangeSacrifice, b.exchangeSource); err != nil {
+			return err
+		}
+		if len(b.members) == 1 && b.members[0].out != nil {
+			r.simultaneousEntry = settledExchangeEntryOf(b.members[0].out)
+		}
+		return g.routeLegLocked(r, b.exchangeSacrifice, nil, nil)
+	}
 	landings := make([]entryLanding, 0, len(b.members))
 	landed := make([]bool, len(b.members))
 	// ADR 0098 Decision 4: a member whose window was REDIRECTED never

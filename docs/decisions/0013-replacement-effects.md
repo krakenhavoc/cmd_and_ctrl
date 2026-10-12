@@ -4693,3 +4693,31 @@ return a creature or land card") picks its card at cast, before the
 mill, in the posture Rise of the Witch-king had. It can move to the same
 helper inside its mill's continuation; it is not a sacrifice and is left
 to its own change.
+
+
+## Amendment — 2026-10-12: individual expanded draws and first-draw exceptions (S58, #2033, #2077)
+
+This supersedes §5ab Decisions 4 and 5. An amount replacement such as
+Thought Reflection expands one draw into individual descendant draws
+(CR 121.2). Before the next replacement is gathered or applied, the
+pipeline keeps one draw and carries the remaining descendants as data.
+Every descendant inherits its parent's already-applied replacement IDs
+(CR 614.5), so two doublers still produce four cards. A replacement that
+has not yet applied can affect each descendant independently: Notion
+Thief may redirect later cards, and dredge or Underrealm Lich can replace
+one card without replacing all of them.
+
+Descendants complete before the original instruction's remaining draws
+and registered `DrawThen` continuation (CR 121.6b). Optional and ordering
+prompts can pause any descendant; replacement resume cloning deep-copies
+the pending draws and their applied-effect lists. The continuation runs
+once after the full sequence. Empty-library draws retain the existing
+attempted-draw loss marker and manual `DrawCard` error contract.
+
+`Game.DrawnThisStep` counts completed draws, reset when a step begins.
+A replaced draw does not consume the first-draw exception. Replacement
+and trigger readers are separate because the draw has already happened
+when a draw trigger is harvested. Notion Thief, Alhammarret's Archive and
+Orcish Bowmasters use these readers; their old all-draw-step caveats are
+removed. The tally is copied into undo and schema-v8 snapshots; an older
+snapshot reconstructs the current step's count from its event history.

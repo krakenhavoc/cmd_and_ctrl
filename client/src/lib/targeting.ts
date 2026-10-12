@@ -399,6 +399,8 @@ export interface SetRule {
 // and clause slot it answers, its legal set, its printed wording and
 // its count.
 export interface TargetStep {
+  // #1943: the second clause is narrowed once its anchor is picked.
+  relation?: LegalTargetsView["relation"];
   mode: TargetingMode;
   legal?: { players: Set<string>; cards: Set<string> };
   label?: string;
@@ -492,6 +494,7 @@ export function stepsFor(
     distinct: c.distinct === true,
     different: c.different ? { label: c.different.label, keys: c.different.keys ?? {} } : undefined,
     same: c.same ? { label: c.same.label, keys: c.same.keys ?? {} } : undefined,
+    relation: c.relation,
     divide: c.divide ? divideTotal(c.divide, choices?.xValue) : undefined,
     divideFromXUnresolved: c.divide?.from_x === true && choices?.xValue === undefined,
     divideUpTo: c.divide?.up_to === true ? true : undefined,
@@ -661,7 +664,8 @@ export function advance(t: TargetingState): TargetingState | null {
   let next = t.step + 1;
   while (next < t.steps.length) {
     const s = t.steps[next];
-    const n = (s.legal?.players.size ?? 0) + (s.legal?.cards.size ?? 0);
+    const legal = pruneRelation(s, done);
+    const n = (legal?.players.size ?? 0) + (legal?.cards.size ?? 0);
     if (n === 0 && s.min === 0) {
       next++;
       continue;
@@ -673,7 +677,7 @@ export function advance(t: TargetingState): TargetingState | null {
   return {
     ...t,
     mode: s.mode,
-    legal: pruneDistinct(s, done),
+    legal: pruneRelation(s, done),
     label: s.label,
     min: s.min,
     max: s.max,
@@ -685,6 +689,19 @@ export function advance(t: TargetingState): TargetingState | null {
     divide: s.divide,
     divideUpTo: s.divideUpTo,
     divideFromXUnresolved: s.divideFromXUnresolved,
+  };
+}
+
+function pruneRelation(s: TargetStep, done: TargetRef[]): TargetStep["legal"] {
+  const legal = pruneDistinct(s, done);
+  if (!s.relation || !legal) return legal;
+  const anchors = done.filter(
+    (p) => (p.mode ?? 0) === s.modeIndex && (p.slot ?? 0) === s.relation?.slot,
+  );
+  const allowed = new Set(anchors.length === 1 ? (s.relation.pairs[anchors[0].id] ?? []) : []);
+  return {
+    players: new Set([...legal.players].filter((id) => allowed.has(id))),
+    cards: new Set([...legal.cards].filter((id) => allowed.has(id))),
   };
 }
 

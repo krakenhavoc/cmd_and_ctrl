@@ -30,14 +30,14 @@ import (
 // anywhere else, the commander still gets the counters for its earlier
 // command-zone casts, as printed.
 //
-// One declared simplification, the rider's: with strict mana off the
+// One declared simplification, the rider's: with an unrecorded payment the
 // engine never spends the pool, so no rider fires (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:     "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
 		Name:         "Opal Palace",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so your commander gets no extra +1/+1 counters."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so your commander gets no extra +1/+1 counters."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

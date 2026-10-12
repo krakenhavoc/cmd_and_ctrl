@@ -3128,6 +3128,8 @@ export interface SacrificeGroupView {
 }
 
 export interface LegalTargetsView {
+  // #1943: compatible candidates keyed by the earlier clause's pick.
+  relation?: { slot: number; pairs: Record<string, string[]> };
   // #2526: a SACRIFICE clause's set rule — the picks must fill every
   // group with a different permanent. See sacrificeCost.ts.
   each_of?: SacrificeGroupView[];

@@ -130,17 +130,16 @@ func TestCavernOfSoulsOtherwisePaidSpellsCanBeCountered(t *testing.T) {
 	}
 }
 
-// The declared caveat, pinned: with strict mana off the engine spends
-// nothing (the payment is OnPaper), so no token rides onto the spell and
-// the Elf can be countered — the weaker-than-printed direction.
-func TestCavernOfSoulsWithStrictManaOffIsCounterable(t *testing.T) {
+// An insufficient permissive pool is paid on paper; the floating Cavern
+// token alone cannot make the spell uncounterable.
+func TestCavernOfSoulsWithUnrecordedPaymentIsCounterable(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
 	cavern := pushNamedTribePermanent(t, g, me.ID, "Cavern of Souls", "Land", cavernOfSoulsOracle, "Elf")
 	tapCavernFor(t, g, me.ID, cavern, "G")
 
-	elf := castFromHandForTest(t, g, me, "Llanowar Elves", "Creature — Elf Druid", "{G}", "", game.CastSpellParams{})
+	elf := castFromHandForTest(t, g, me, "Test Elf", "Creature — Elf Druid", "{1}{G}", "", game.CastSpellParams{})
 	if !g.StackMeta[elf].Paid.OnPaper {
 		t.Fatal("setup: a permissive cast recorded a payment")
 	}
@@ -589,21 +588,16 @@ func settleKeepingCopyTargets(t *testing.T, g *game.Game, caster, victim uuid.UU
 	}
 }
 
-// #2876: the Halfling's caveat, pinned. With strict mana off the cast is
-// OnPaper (ADR 0068 §3): the engine never takes a token out of the pool,
-// so it cannot know the Halfling's mana paid for the spell, and "unknown
-// is never the stronger answer". Marking the spell uncounterable from the
-// mere presence of the Halfling's mana in the pool would be a guess that
-// can protect a spell the Halfling never paid for, so the spell stays
-// counterable and the card keeps its caveat.
-func TestDelightedHalflingWithStrictManaOffIsCounterable(t *testing.T) {
+// #2876: an insufficient permissive pool records OnPaper (ADR 0068 §3).
+// Merely floating Halfling mana cannot protect an unpaid spell.
+func TestDelightedHalflingWithUnrecordedPaymentIsCounterable(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	advanceToMain(t, g)
 	halfling := seedPermanentWithOracle(g, me.ID, "Delighted Halfling", "Creature — Halfling Citizen", delightedHalflingOracl)
 	activateManaFor(t, g, me.ID, halfling, 1, game.ManaAbilityParams{Colors: []string{"G"}})
 
-	id := castFromHandForTest(t, g, me, "Yeva, Nature's Herald", "Legendary Creature — Elf Shaman", "{G}", "", game.CastSpellParams{})
+	id := castFromHandForTest(t, g, me, "Yeva, Nature's Herald", "Legendary Creature — Elf Shaman", "{1}{G}", "", game.CastSpellParams{})
 	if !g.StackMeta[id].Paid.OnPaper {
 		t.Fatal("setup: a permissive cast recorded a payment")
 	}

@@ -291,30 +291,16 @@ type ReplacementEvent struct {
 	// or Cancel (skip the draw entirely).
 	DrawPlayer uuid.UUID
 
-	// DrawCount is HOW MANY cards this draw instruction draws, and the
-	// one field a draw-amount replacement rewrites: Thought Reflection
-	// and Alhammarret's Archive are `ev.DrawCount *= 2`.
-	//
-	// The base is always ONE. CR 121.2 makes "draw three cards" three
-	// individual card draws, so DrawNForEffect loops and each
-	// repetition opens its own window — which is what makes a doubler
-	// double EACH of them (a Thought Reflection on "draw three" draws
-	// six) and what makes a redirect (Notion Thief) able to take one
-	// card of three rather than all or nothing.
-	//
-	// What the settled count does NOT do is re-open the window. The N
-	// cards of a replaced draw are performed one at a time
-	// (actuallyDrawCardsLocked, so every per-card payoff — Nekusar,
-	// Sheoldred, Consecrated Sphinx — still fires per card) but they
-	// are ONE event, CR 614.5's once-per-event tracking covering all
-	// of them. Two Thought Reflections therefore draw FOUR, not three:
-	// the second one multiplies the count the first left, through the
-	// ordinary CR 616.1 apply-loop, exactly as two mill doublers do.
-	//
-	// A hand-built event that leaves it zero draws one card, because
-	// the honest spelling of "no draw" is ev.Cancel() and a silent
-	// zero would be a draw that vanished. See ADR 0013 §5ab.
+	// DrawCount is the number of draws introduced by the current
+	// replacement. The base is one; each expansion is split before the
+	// next replacement sees it. Descendants inherit effects already
+	// applied to their parent, so two doublers still produce four cards
+	// while dredge and first-draw exceptions are evaluated per card.
 	DrawCount int
+	// drawPending holds the individual draws introduced by an amount
+	// replacement. Each inherits the effects already applied to its parent,
+	// but opens its own window before it happens (CR 121.2, 614.5).
+	drawPending []pendingDraw
 
 	// drawInstead is the body of a draw replaced by an EFFECT rather
 	// than by a number: dredge's "mill N cards and return this card",
@@ -811,7 +797,9 @@ type ReplacementEvent struct {
 	// (CR 506.3c — put onto the battlefield attacking, never
 	// declared, so nothing sees an attack declaration). uuid.Nil for
 	// the ordinary creation.
-	TokenAttacking uuid.UUID
+	TokenAttacking          uuid.UUID
+	TokenTogether           bool
+	TokenAttackChoicesLabel string
 
 	// tokenTail is the token half's answer to lifeTail and damageTail:
 	// the rest of the effect that asked for the creation, run with the
@@ -1680,6 +1668,7 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 	}
 
 	for iter := 0; iter < maxReplacementIters; iter++ {
+		g.splitExpandedDrawLocked(ev)
 		if ev.Canceled {
 			return nil, nil
 		}
