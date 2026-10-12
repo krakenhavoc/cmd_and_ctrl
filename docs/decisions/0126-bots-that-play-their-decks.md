@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): **proposed**.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12).
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -918,7 +918,7 @@ The owner accepted the amendment on 2026-10-12 and took the recommendation on bo
 
 ## Amendment 2026-10-12: Izzet and Simic after the rebalance
 
-**Status:** Proposed. Deck strength and balance are the owner's call, so nothing here is accepted until the owner answers the [questions](#questions-for-the-owner-2480) below. The code is in the PR that adds this section, as two commits: the price change behind two switches (on in `DefaultConfig()`, off in `BaselineConfig()`), and the Izzet swap. Either can be reverted alone.
+**Status:** Accepted (owner decisions 2026-10-12). The owner took the impulse price and the Fable and Monument swap, kept Simic and Esper as they are, and had Izzet's rebuild filed as [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071) and the landfall payoff as [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072); see [Owner decisions (#2480, 2026-10-12)](#owner-decisions-2480-2026-10-12) at the end of this amendment. The code is in the PR that adds this section, as two commits: the price change behind two switches (on in `DefaultConfig()`, off in `BaselineConfig()`), and the Izzet swap.
 **Issue:** [#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480), the follow-up the owner left open when #2436 (PR #2475) merged. Sprint S67.
 **Amends:** §6 (a new purpose field, `impulse`), §7 (what a Treasure given up to pay a cost costs), and the izzet-aggro list #2436 set. No other price and no other deck changes.
 
@@ -953,7 +953,7 @@ The issue's option 1, worked from run 1's decision logs. Each activation's price
 
 **What is not the cause.** No list change explains an unused activation. And none of these cards explains Izzet's record: Face-Breaker was on the battlefield with a Treasure in 13 of Izzet's 64 seat-games.
 
-### Decision (proposed)
+### Decision
 
 **1. An impulse is a card the bot can use this turn** (`PriceImpulse`, `aiseat/heuristic/impulse.go`). `game.Purpose` and `PurposeView` gain `impulse`: the cards it exiles from the top of its controller's library that its controller may play this turn. It is additive on the wire with no snapshot change, and it is declared by hand like every purpose: Professional Face-Breaker's row declares `impulse: 1`, the only one in the curated decks. It is priced `Weights.Hand` per card in the bot's own main phase with an empty stack, when it has a land drop left or two mana from its lands and rocks, and at nothing anywhere else, where the card is lost at the end of the turn.
 
@@ -987,7 +987,7 @@ The tables are under [Measurements, #2480](#2480-izzet-and-simic-after-the-rebal
 - **A landfall payoff purpose** (a `landfall_payoff` on a triggered row, like `discard_payoff`, so a land the bot puts onto the battlefield is worth Tatyova's card, a Cobra's mana or a Baloths token). It is the real cause of the Hart's price, and it would reprice every land Simic plays or fetches. It needs a new wire field and declarations on nine Simic cards. It is not small, and Simic is no longer behind. See question 4.
 - **Pricing a crew by the attack it enables.** That is the Vehicles item in [Out of scope](#out-of-scope), and it is the reason The Indomitable was not proposed.
 
-### Questions for the owner (#2480)
+### Questions for the owner (#2480, answered 2026-10-12)
 
 Each lists the recommended option first.
 
@@ -1008,6 +1008,16 @@ Each lists the recommended option first.
 5. **Esper.**
    - **(a) Recommended:** no trim (decision 4).
    - **(b)** Trim Esper now (Consecrated Sphinx, Sheoldred, the two free counterspells, as #2475 listed).
+
+### Owner decisions (#2480, 2026-10-12)
+
+The owner accepted the amendment on 2026-10-12. They took the recommendation on questions 1, 2, 4 and 5, and chose a rebuild on question 3. No section above changed.
+
+1. **The impulse price is accepted.** `PriceImpulse` and `OneShotManaAsToken` are both on in `DefaultConfig()`, and both off in `BaselineConfig()`.
+2. **The Izzet swap is accepted:** Fable of the Mirror-Breaker and Monument to Endurance for Wash Away and Negate.
+3. **Izzet is rebuilt:** [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071), in S67. The rebuild may swap the commander if that makes sense, and may start from scratch.
+4. **Simic does not change now.** The landfall payoff purpose is [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072), in S67.
+5. **Esper is not trimmed.**
 
 ## Consequences
 
@@ -2165,7 +2175,7 @@ Every gate game ends on the same turn with the same winner. Heuristic vs random 
 
 ### #2480: Izzet and Simic after the rebalance (2026-10-12)
 
-The [amendment of 2026-10-12](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance), proposed. `develop` is `0e81b3af4`, with #3062's deterministic lockstep and #3063, #3064 and #3065's heuristic. Step 1 is the impulse price: `PriceImpulse` and `OneShotManaAsToken`, both true in `DefaultConfig()` and false in `BaselineConfig()`; no weight is new. Step 2 adds the Izzet swap. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
+The [amendment of 2026-10-12](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance), accepted (owner decisions 2026-10-12). `develop` is `0e81b3af4`, with #3062's deterministic lockstep and #3063, #3064 and #3065's heuristic. Step 1 is the impulse price: `PriceImpulse` and `OneShotManaAsToken`, both true in `DefaultConfig()` and false in `BaselineConfig()`; no weight is new. Step 2 adds the Izzet swap. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
 
 **Run 1, seed 1** (wins of 64, Wilson 95%):
 

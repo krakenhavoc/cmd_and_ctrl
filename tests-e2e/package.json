@@ -2,6 +2,7 @@
   "name": "cmd_and_ctrl-tests-e2e",
   "version": "0.0.0",
   "private": true,
+  "license": "AGPL-3.0-or-later",
   "type": "module",
   "description": "Playwright end-to-end tests for the cmd_and_ctrl sandbox client.",
   "engines": {
