@@ -25,18 +25,13 @@ import (
 // cards do, and CR 614.5's once-per-event tracking stops the chain
 // from looping.
 //
-// Sandbox simplification, declared: "except the FIRST one they draw
-// in each of their draw steps" is read as "except any draw during
-// their own draw step". The engine keeps no per-step draw tally, so
-// a second draw in the draw step — an instant cast there, a
-// draw-step trigger — is left alone rather than stolen. Weaker than
-// printed for the Thief's controller, never stronger.
+// The shared first-draw tally counts completed draws in each step.
+// A draw expanded by another replacement keeps its first card exempt.
 func init() {
 	Register(Spec{
 		OracleID:        "f8dab16e-1d50-443e-9431-8b6f1cf61c9c",
 		Name:            "Notion Thief",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Every card an opponent draws during their own draw step is left alone, not just the first one."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventDrawCard},
@@ -47,8 +42,7 @@ func init() {
 				if g.PlayerByIDForEffect(ev.DrawPlayer) == nil {
 					return false
 				}
-				if g.Turn.Step == game.StepDraw && g.Turn.ActiveSeat >= 0 && g.Turn.ActiveSeat < len(g.Seats) &&
-					g.Seats[g.Turn.ActiveSeat] != nil && g.Seats[g.Turn.ActiveSeat].ID == ev.DrawPlayer {
+				if g.FirstDrawInOwnDrawStepForEffect(ev.DrawPlayer) {
 					return false
 				}
 				return true

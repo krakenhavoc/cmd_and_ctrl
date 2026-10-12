@@ -20,7 +20,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     and a Forest, this draws three; cast off a Swamp and two Sol
 //     Ring mana, it draws one, which is also correct.
 //   - ctx.ColorsSpentCount() answers 0 for a payment the engine
-//     waived (permissive mode, a strict-mode override). That is the
+//     waived (an unfunded permissive cast or Cast anyway). That is the
 //     weaker-than-printed direction: the spell resolves and does
 //     nothing rather than guessing five.
 //
@@ -30,14 +30,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // to the CR 704.5a state-based check, as printed.
 //
 // One caveat for the player, because it is visible at a normal table:
-// with strict mana off, the engine never sees the payment and the
+// with an unrecorded payment, the engine never sees the payment and the
 // spell draws nothing.
 func init() {
 	Register(Spec{
 		OracleID:            "58a2d15f-1b4b-4303-b524-8cc0d1b3e7d2",
 		Name:                "Painful Truths",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so Painful Truths draws nothing — turn strict mana on for it to count colours."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so Painful Truths draws nothing — turn strict mana on for it to count colours."},
 		WantsDistinctColors: true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.ColorsSpentCount()

@@ -28,7 +28,7 @@ func init() {
 		Name:         "Coin of Mastery",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"With strict mana off, the game doesn't track which mana you spent, so your creatures get no extra +1/+1 counters.",
+			"When mana payment is skipped, the game doesn't track which mana you spent, so your creatures get no extra +1/+1 counters.",
 		},
 		Replacements: []game.ReplacementEffect{
 			CreaturesYouControlEnterWithCountersPerManaFrom(

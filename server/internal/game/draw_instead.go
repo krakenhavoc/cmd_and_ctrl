@@ -64,9 +64,9 @@ import (
 //
 // # Declared simplification, weaker than printed
 //
-// Dredge is offered on each individual draw as it begins, not on the
-// extra draws a doubler (Thought Reflection) adds to it: those are
-// drawn ordinarily once the dredge has replaced the first.
+// Every draw introduced by an amount replacement gets the same
+// treatment: one replacement window, one substitute, then the next
+// descendant, followed by the original instruction's remaining draws.
 
 // DrawInsteadFunc is the body of a draw replaced by an effect. It runs
 // with g.mu held once the replacement window has settled, may queue
@@ -169,9 +169,6 @@ func (g *Game) DrawNThenForEffect(playerID uuid.UUID, n int, then DrawThen) erro
 type drawInsteadRun struct {
 	ref    DrawInsteadRef
 	source uuid.UUID
-	// each: the substitute is mandatory, so it replaces every draw of a
-	// doubled event rather than one of them.
-	each bool
 }
 
 // body looks the registered body up. Nil when nothing was recorded.
@@ -188,7 +185,7 @@ func (r drawInsteadRun) body() DrawInsteadFunc {
 // does: cancel the draw and remember which body to run.
 func (g *Game) recordDrawInsteadLocked(ev *ReplacementEvent, a activeReplacement) {
 	ev.Canceled = true
-	run := drawInsteadRun{ref: a.effect.DrawInstead, each: !a.effect.Optional}
+	run := drawInsteadRun{ref: a.effect.DrawInstead}
 	if a.source != nil {
 		run.source = a.source.InstanceID
 	}
@@ -203,46 +200,49 @@ func (g *Game) recordDrawInsteadLocked(ev *ReplacementEvent, a activeReplacement
 //
 // Caller must hold g.mu.
 func (g *Game) drawRunLocked(playerID uuid.UUID, n int, then DrawThen) error {
-	for i := 0; i < n; i++ {
-		paused, err := g.drawOneLocked(playerID, n-i-1, then)
-		if paused {
-			return err
-		}
-		if err != nil {
-			if errors.Is(err, ErrZoneEmpty) {
-				// The sentence after "then" still happens.
-				if terr := g.runDrawThenLocked(then); terr != nil {
-					return terr
-				}
-			}
-			return err
-		}
+	if n <= 0 {
+		return g.runDrawThenLocked(then)
 	}
-	return g.runDrawThenLocked(then)
+	_, err := g.drawOneLocked(playerID, n-1, then)
+	return err
 }
 
-// drawOneLocked opens the window on one draw. `tail` is how many draws
-// of the same instruction follow it. paused is true when something
-// else now owns those: a queued prompt, or a body that will call done.
-//
-// Caller must hold g.mu.
+// pendingDraw is a descendant of an amount replacement. Applied is the
+// inherited once-per-event history, copied to its new event ID when it
+// begins. Remaining siblings wait until this draw and its substitute finish.
+type pendingDraw struct {
+	player  uuid.UUID
+	count   int
+	applied []ReplacementEffectID
+}
+
+func (g *Game) splitExpandedDrawLocked(ev *ReplacementEvent) {
+	if ev.Kind != RepEventDraw || ev.Canceled || ev.DrawCount <= 1 {
+		return
+	}
+	p := pendingDraw{player: ev.DrawPlayer, count: ev.DrawCount - 1}
+	for id, applied := range g.replacementsAppliedThisEvent[ev.ID] {
+		if applied {
+			p.applied = append(p.applied, id)
+		}
+	}
+	ev.DrawCount = 1
+	ev.drawPending = append([]pendingDraw{p}, ev.drawPending...)
+}
+
+// drawOneLocked opens the window on one draw. Once that draw settles it
+// performs its amount-replacement descendants, then the original tail.
 func (g *Game) drawOneLocked(playerID uuid.UUID, tail int, then DrawThen) (paused bool, err error) {
 	ev := &ReplacementEvent{
-		Kind:       RepEventDraw,
-		Actor:      playerID,
-		DrawPlayer: playerID,
-		// #1222: the amount. Always ONE here — CR 121.2 makes "draw
-		// three cards" three individual card draws — so a draw-amount
-		// replacement (Thought Reflection, Alhammarret's Archive)
-		// doubles EACH of them rather than the instruction.
-		DrawCount: 1,
-		drawTail:  tail,
-		drawThen:  then,
+		Kind: RepEventDraw, Actor: playerID, DrawPlayer: playerID,
+		DrawCount: 1, drawTail: tail, drawThen: then,
 	}
+	return g.drawEventLocked(ev)
+}
+
+func (g *Game) drawEventLocked(ev *ReplacementEvent) (paused bool, err error) {
 	out, aerr := g.applyReplacementsLocked(ev)
 	if errors.Is(aerr, errReplacementPending) {
-		// CR 616 / "may" prompt queued; its resume re-enters the
-		// pipeline, runs the draw, and pays the tail.
 		return true, nil
 	}
 	if aerr != nil && !errors.Is(aerr, ErrReplacementIterationExceeded) {
@@ -250,64 +250,28 @@ func (g *Game) drawOneLocked(playerID uuid.UUID, tail int, then DrawThen) (pause
 		return false, aerr
 	}
 	defer g.clearReplacementEventLocked(ev.ID)
-	if out == nil || out.Canceled {
-		if ev.drawInstead.body() != nil {
-			return true, g.runDrawInsteadLocked(ev)
-		}
-		// Cancelled by a replacement that substitutes nothing.
-		return false, nil
-	}
-	return false, g.actuallyDrawCardsLocked(out.DrawPlayer, out.DrawCount)
+	return false, g.settleResumedDrawLocked(ev, out == nil || out.Canceled)
 }
 
 // runDrawInsteadLocked runs a cancelled draw's body, with a `done` that
 // pays the tail of the instruction.
 //
-// A draw a doubler made into N is N draws of one event. A MANDATORY
-// substitute (Underrealm Lich, Forbidden Crypt) replaces every one of
-// them, so its body runs N times, one after the other. An optional one
-// (dredge) replaces a single draw, and the other N-1 are ordinary
-// draws that follow it.
+// Each expanded draw has already been split into an individual event.
+// Its substitute runs once, and its continuation carries plain event
+// data so a prompt can finish the siblings and original tail later.
 //
 // Caller must hold g.mu.
 func (g *Game) runDrawInsteadLocked(ev *ReplacementEvent) error {
-	drawer, player, tail, then := ev.Actor, ev.DrawPlayer, ev.drawTail, ev.drawThen
-	total := max(ev.DrawCount, 1)
 	run := ev.drawInstead
 	ev.drawInstead = drawInsteadRun{}
-	body := run.body()
-
-	finish := func(g *Game) error {
-		err := g.drawRunLocked(drawer, tail, then)
-		if errors.Is(err, ErrZoneEmpty) {
-			// Flag set; the SBA pass handles the loss, as it does for
-			// DrawNForEffect.
-			return nil
-		}
-		return err
+	// Capture the frame by value: a substitute may pause, and its
+	// continuation must not mutate a frame shared with an undo clone.
+	tail := *ev
+	finish := func(g *Game) error { return g.finishDrawTailLocked(&tail) }
+	if body := run.body(); body != nil {
+		return body(g, ev.DrawPlayer, run.source, finish)
 	}
-	if body == nil {
-		return finish(g)
-	}
-	rounds := 1
-	if run.each {
-		rounds = total
-	}
-	// step captures scalars and a registered, stateless body — nothing
-	// that lives in the game — so it may sit in a prompt's continuation.
-	var step func(g *Game, left int) error
-	step = func(g *Game, left int) error {
-		if left == 0 {
-			if extra := total - rounds; extra > 0 {
-				if err := g.actuallyDrawCardsLocked(player, extra); err != nil && !errors.Is(err, ErrZoneEmpty) {
-					return err
-				}
-			}
-			return finish(g)
-		}
-		return body(g, player, run.source, func(g *Game) error { return step(g, left-1) })
-	}
-	return step(g, rounds)
+	return finish(g)
 }
 
 // finishDrawTailLocked is what a RESUMED draw owes once its own card
@@ -316,6 +280,24 @@ func (g *Game) runDrawInsteadLocked(ev *ReplacementEvent) error {
 //
 // Caller must hold g.mu.
 func (g *Game) finishDrawTailLocked(ev *ReplacementEvent) error {
+	if len(ev.drawPending) > 0 {
+		p := ev.drawPending[0]
+		next := &ReplacementEvent{
+			ID:   ReplacementEventID(g.nextReplacementEventID.Add(1)),
+			Kind: RepEventDraw, Actor: ev.Actor, DrawPlayer: p.player, DrawCount: p.count,
+			drawPending: ev.drawPending[1:], drawTail: ev.drawTail, drawThen: ev.drawThen,
+		}
+		if g.replacementsAppliedThisEvent == nil {
+			g.replacementsAppliedThisEvent = make(map[ReplacementEventID]map[ReplacementEffectID]bool)
+		}
+		inherited := make(map[ReplacementEffectID]bool, len(p.applied))
+		for _, id := range p.applied {
+			inherited[id] = true
+		}
+		g.replacementsAppliedThisEvent[next.ID] = inherited
+		_, err := g.drawEventLocked(next)
+		return err
+	}
 	err := g.drawRunLocked(ev.Actor, ev.drawTail, ev.drawThen)
 	if errors.Is(err, ErrZoneEmpty) {
 		return nil
@@ -338,7 +320,12 @@ func (g *Game) settleResumedDrawLocked(ev *ReplacementEvent, cancelled bool) err
 	}
 	if err := g.actuallyDrawCardsLocked(ev.DrawPlayer, ev.DrawCount); err != nil {
 		if errors.Is(err, ErrZoneEmpty) {
-			return nil
+			// A failed draw still finishes its instruction. A later
+			// descendant may be replaced by another player drawing or
+			// by returning a graveyard card instead.
+			if tailErr := g.finishDrawTailLocked(ev); tailErr != nil {
+				return tailErr
+			}
 		}
 		return err
 	}

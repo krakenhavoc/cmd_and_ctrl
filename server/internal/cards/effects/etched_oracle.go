@@ -24,7 +24,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (CR 702.44d).
 //
 // One declared simplification is left, and it is the paid-cost
-// record's rather than the entry's: with strict mana off the engine
+// record's rather than the entry's: with an unrecorded payment the engine
 // never saw what paid, so the record claims no colours (ADR 0068 §3,
 // unknown answers weaker than printed) and the Oracle enters as a 0/0
 // that dies at once.
@@ -41,7 +41,7 @@ func init() {
 		OracleID:            "7ecfa47e-1165-46a6-884c-290b1c14d020",
 		Name:                "Etched Oracle",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

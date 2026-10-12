@@ -47,7 +47,7 @@ import (
 //   - Declining leaves the printed 1/1 Bird Bard flier.
 //
 // Declared caveat, the one every mana-spent reader in the catalog
-// carries: with strict mana off the engine does not charge the cast
+// carries: with an unrecorded payment the engine does not charge the cast
 // (PaidCost.OnPaper), so it does not know what was spent and answers
 // zero — the weaker-than-printed direction ADR 0068 §3 requires. The
 // copy is then limited to mana value 0.
@@ -58,7 +58,7 @@ func init() {
 		Completeness:    CompletenessCaveats,
 		PrintedKeywords: []string{"flying"},
 		Caveats: []string{
-			"With strict mana off, the game doesn't track how much mana you spent, so Mockingbird can only copy a creature with mana value 0 — turn strict mana on for it to count.",
+			"When mana payment is skipped, the game doesn't track how much mana you spent, so Mockingbird can only copy a creature with mana value 0 — turn strict mana on for it to count.",
 		},
 		Replacements: []game.ReplacementEffect{
 			EntersAsCopyOfFromCast(

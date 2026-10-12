@@ -24,7 +24,7 @@ func init() {
 		OracleID:       "09117016-5fd1-4590-9867-aad65d3097e3",
 		Name:           "Freestrider Commando",
 		Completeness:   CompletenessCaveats,
-		Caveats:        []string{"With strict mana off, the game doesn't track which mana you spent, so a Commando you cast never gets the two counters — one put onto the battlefield still does."},
+		Caveats:        []string{"When mana payment is skipped, the game doesn't track which mana you spent, so a Commando you cast never gets the two counters — one put onto the battlefield still does."},
 		SpecialActions: []game.SpecialAction{Plot("{3}{G}")},
 		Replacements: []game.ReplacementEffect{
 			SelfEntersWithCountersIfNoManaSpent(game.CounterPlusOne, 2),

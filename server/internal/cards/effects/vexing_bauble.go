@@ -23,8 +23,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     alternative cost, and a copy of a spell (CR 707.10 — mana is
 //     not an object) record a KNOWN nothing. The Bauble counters
 //     them, which is what it is for.
-//   - A cast the engine did not charge — permissive mode, the human
-//     default, or a strict-mode override — records "unknown"
+//   - A cast the engine did not charge — an insufficient pool in
+//     permissive mode, or Cast anyway — records "unknown"
 //     (PaidCost.OnPaper). The Bauble does NOT fire. It is the weaker
 //     answer, and it is the only sane one: a Bauble that countered
 //     every spell at a permissive table would end the game.
@@ -35,14 +35,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // changed in between does not get countered on a stale reading.
 //
 // One caveat for the player, because the difference is invisible from
-// the table: with strict mana off, the Bauble never counters
+// the table: with an unrecorded payment, the Bauble never counters
 // anything.
 func init() {
 	Register(Spec{
 		OracleID:     "4514777d-0589-4631-978b-ff244167c176",
 		Name:         "Vexing Bauble",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't track what you spent, so the Bauble never counters a spell — turn strict mana on for it to work."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't track what you spent, so the Bauble never counters a spell — turn strict mana on for it to work."},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventCast},
 			Key:     "Vexing Bauble — counter a spell cast for no mana",

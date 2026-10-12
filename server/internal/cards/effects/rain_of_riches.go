@@ -22,15 +22,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cast, which spends no mana, never does.
 //
 // Declared weaker than printed: the payment record exists only when
-// mana is paid through the strict-mana path. A cast whose payment the
-// engine waived (the permissive human default) is "unknown", and
+// mana is actually charged. A cast whose payment the engine waived
+// (an insufficient permissive pool or Cast anyway) is "unknown", and
 // unknown is the weaker answer.
 func init() {
 	Register(Spec{
 		OracleID:     "ef1e2d3d-e977-4729-9430-eba6242e5dfe",
 		Name:         "Rain of Riches",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so Rain of Riches never gives a spell its bonus."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Rain of Riches never gives a spell its bonus."},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Rain of Riches — create two Treasure tokens",
 				Do(CreateToken{Template: TreasureToken(), N: 2})),

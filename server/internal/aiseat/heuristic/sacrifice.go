@@ -39,11 +39,11 @@ import (
 // The Altars (Ashnod's, Phyrexian) are mana abilities, and the bot does
 // not activate a mana ability for floating mana (§7). The auto-tapper
 // still sacrifices to them when a cast needs it, as before. A row that
-// sacrifices its own source (Sakura-Tribe Elder) is not read here: PR 7
-// charges the source's full value when the row declares a purpose
-// (moves.go), and nothing at all when it does not. Config.PriceAnswers
-// (ADR 0142 decision 6, answers.go) changes that: such a row, purposed
-// or not, pays the dying-anyway price for its source, and so does a
+// sacrifices its own source (Sakura-Tribe Elder) is not read here:
+// moves.go charges the source's full value when the row declares a
+// purpose or has targets, and nothing at all when it does not.
+// Config.PriceAnswers (ADR 0142 decision 6, answers.go) makes that cost
+// the dying-anyway price for its source, and also charges that price for a
 // `sac_outlet` row's exiled creature.
 
 // sacrificeCost prices sacrificing the permanents `ids` to pay a cost,
@@ -61,7 +61,7 @@ func (p *Policy) sacrificeCost(st *state, ids []string) float64 {
 		if p.cfg.SacrificeDyingAnyway {
 			keep -= p.dyingAnyway(st, c)
 		}
-		v += keep * st.permanentValue(c)
+		v += keep * p.sacrificedValue(st, c)
 		if p.cfg.DeathPayoff != 0 && isCreature(c) {
 			if payoffs < 0 {
 				payoffs = st.deathPayoffRows(ids)

@@ -99,6 +99,14 @@ type Config struct {
 	// station already prices it; and the flat blocker price elsewhere.
 	// Off (the zero value) is the pre-S66 flat price everywhere.
 	TapByTiming bool
+	// WaitForMain holds an instant-speed cast in the bot's own upkeep and
+	// draw step, with an empty stack, for its first main phase (ADR 0126's
+	// amendment of 2026-10-12, the owner's gate on #2457, waitmain.go).
+	// Mana tapped there is the mana the main phases would have had, and
+	// the same cast is still on offer in the main phase, beside every
+	// sorcery-speed use of that mana. Off (the zero value) casts it there
+	// whenever it clears InstantThreshold.
+	WaitForMain bool
 
 	// LandValue prices the once-a-turn land drop. Above every
 	// ordinary cast on purpose — land first, then spend.
@@ -247,6 +255,25 @@ type Config struct {
 	// payoff pays less (discard_payoff.go). Off (the zero value) prices
 	// a discard by the card alone.
 	PriceDiscardPayoffs bool
+	// SelfReplacingDiscards turns on ADR 0126's amendment of 2026-10-12
+	// (#2457, self_replacing.go): discarding a nonland card whose hand row
+	// turns it into a card (cycling's declared draw, typecycling's or
+	// transmute's tutor) costs SpellPerMana per mana of that row less, the
+	// mana a discard spares cycling it, and never less than the card
+	// cycling would find. Off (the zero value) prices it by the card alone.
+	SelfReplacingDiscards bool
+	// PriceImpulse prices a declared `impulse` (#2480, impulse.go): a
+	// card exiled that the bot may play this turn is worth Weights.Hand
+	// in its own main phase with an empty stack, when it has a land drop
+	// or two mana left to play it, and nothing elsewhere. Off (the zero
+	// value) leaves such a row at ActivateBase, as before.
+	PriceImpulse bool
+	// OneShotManaAsToken prices a token that makes mana only by
+	// sacrificing itself (a Treasure), given up to pay a cost, at
+	// TokenWeight, what making one is worth, rather than at a repeatable
+	// mana source's board value (#2480, impulse.go). Off (the zero
+	// value) charges its board value.
+	OneShotManaAsToken bool
 	// PriceExert turns on ADR 0130 §9 (owner decision 4): the twin
 	// attack move that exerts its attacker is priced by what the
 	// exert's rows declare against what the creature gives up by
@@ -497,6 +524,49 @@ type Config struct {
 	// rather than Weights.Power per point. Off (the zero value) checks
 	// single blocks only and prices a given-up attack by power.
 	GangAwareAttacks bool
+	// RaceEndsSoonest changes which swing the two-turn race and the
+	// attrition horizon send among the ones that qualify (#2400). Off
+	// (the zero value) sends the smallest: the shortest prefix of the
+	// race's attack order that qualifies. On tries every prefix and
+	// sends the one that ends the game soonest — the fewest turns to
+	// the kill the model sees, then the most damage the defender
+	// cannot avoid (the least of what it takes blocking to survive and
+	// what gets past its free blocks), then the smallest.
+	RaceEndsSoonest bool
+	// FreeTrampleOverflow lets a trampler's overflow past a free block
+	// through in the race's free answer (#2400, CR 702.19b): a
+	// commander chumping a Wurm still lets the Wurm's power less the
+	// commander's toughness through. Off (the zero value) holds a
+	// trampler a free block stops in full.
+	FreeTrampleOverflow bool
+	// FreeCommanderNeedsTax counts the defender's commander as a free
+	// blocker only while its controller's mana sources can pay to cast
+	// it again: its mana value plus {2} for each earlier cast from the
+	// command zone (#2400, CR 903.8). Off (the zero value) counts a
+	// commander as free whatever the tax.
+	FreeCommanderNeedsTax bool
+	// RecastChumpForNext counts a commander that dies blocking under
+	// the race's blockToSurvive answer as back to block next turn and
+	// out of the crack-back unless it has haste, as the free answer
+	// already does (#2400, CR 903.9a). Off (the zero value) counts it
+	// dead for both.
+	RecastChumpForNext bool
+	// HorizonRecastsCommander lets the attrition horizon trade my
+	// commander (#2474, CR 903.9a, 903.8) when it finds no line
+	// without: a second pass, with a budget of its own, in which one
+	// of mine that dies in an exchange is not counted lost while my
+	// mana sources pay its tax, and is back on the next board,
+	// summoning sick. The line may then spend a turn waiting for it,
+	// when the crack-back on that turn is less than my life. Off (the
+	// zero value) has no second pass, so it counts dead for good.
+	HorizonRecastsCommander bool
+	// HorizonPlaysFreeAnswer is which answer the attrition horizon
+	// plays forward where blockToSurvive's model only guessed at the
+	// defender's blocks (#2474): the free answer, when the defender
+	// survives it. Off (the zero value) plays the guess, which counts
+	// every attacker of mine dead and nothing of theirs, so no such
+	// exchange is ever acceptable.
+	HorizonPlaysFreeAnswer bool
 	// LethalBonus is the value of a line that would finish a seat
 	// outright — an alpha strike the defender cannot absorb, or a
 	// spell pointed at a player already inside FinishLife.
@@ -577,6 +647,7 @@ func DefaultConfig() Config {
 		LeftoverThreshold: 0.00,
 		SpellFloor:        1.30,
 		TapByTiming:       true,
+		WaitForMain:       true,
 
 		LandValue:      8.00,
 		SpellPerMana:   0.60,
@@ -601,7 +672,12 @@ func DefaultConfig() Config {
 		DiscardCostByCard:   true,
 		LastLandDiscard:     1.00,
 
-		PriceDiscardPayoffs: true,
+		PriceDiscardPayoffs:   true,
+		SelfReplacingDiscards: true,
+
+		// #2480: Professional Face-Breaker's impulse for a Treasure.
+		PriceImpulse:       true,
+		OneShotManaAsToken: true,
 
 		PriceExert:      true,
 		ExertCostWeight: 1.00,
@@ -660,8 +736,15 @@ func DefaultConfig() Config {
 		FocusBonus:       1.00,
 		FocusNeedsValue:  true,
 		GangAwareAttacks: true,
-		LethalBonus:      25.00,
-		FinishLife:       3,
+		RaceEndsSoonest:  true,
+		// #2400: trample overflow and the recast chump measured no
+		// better under RaceEndsSoonest, so they stay off.
+		FreeCommanderNeedsTax: true,
+		// #2474: the attrition horizon trades commanders.
+		HorizonRecastsCommander: true,
+		HorizonPlaysFreeAnswer:  true,
+		LethalBonus:             25.00,
+		FinishLife:              3,
 
 		LandsWanted:  5,
 		KeepMinLands: 2,
@@ -715,6 +798,8 @@ func BaselineConfig() Config {
 	c.LeftoverThreshold = 0
 	c.SpellFloor = 0
 	c.TapByTiming = false
+	// ADR 0126's amendment of 2026-10-12 (#2457): wait for the main phase.
+	c.WaitForMain = false
 	// §4, §6's prices and §7's discard half (PR 7).
 	c.PricePurposes = false
 	// #2469: a land swap priced by what it nets.
@@ -746,6 +831,11 @@ func BaselineConfig() Config {
 	c.PriceAnswers = false
 	// ADR 0126's amendment of 2026-10-06: discard payoffs.
 	c.PriceDiscardPayoffs = false
+	// ADR 0126's amendment of 2026-10-12 (#2457): self-replacing discards.
+	c.SelfReplacingDiscards = false
+	// #2480: an impulse priced, and a Treasure given up priced as a token.
+	c.PriceImpulse = false
+	c.OneShotManaAsToken = false
 	// ADR 0130 §9: exert, never taken before it.
 	c.PriceExert = false
 	c.ExertCostWeight = 0
@@ -753,6 +843,15 @@ func BaselineConfig() Config {
 	c.FocusNeedsValue = false
 	c.GangAwareAttacks = false
 	c.Weights.BlockOnlyBody = 0
+	// #2400: the race and the attrition horizon sent the smallest swing
+	// that qualifies, and counted the free answer the #2310 way.
+	c.RaceEndsSoonest = false
+	c.FreeTrampleOverflow = false
+	c.FreeCommanderNeedsTax = false
+	c.RecastChumpForNext = false
+	// #2474: the attrition horizon never traded my commander.
+	c.HorizonRecastsCommander = false
+	c.HorizonPlaysFreeAnswer = false
 	// #2677 and #2691: land searches by colour, discards by distance.
 	c.LandColorNeed = 0
 	c.DiscardByDistance = false
@@ -893,6 +992,10 @@ type state struct {
 	// or beforeMyUntap, with an empty stack. Computed whatever the
 	// Config says; Config.LeftoverWindows decides whether it is read.
 	leftover bool
+	// beforeMyMain is the bot's own upkeep or draw step with an empty
+	// stack: a window before its first main phase, where the mana it
+	// spends is the mana its main phases would have (#2457, waitmain.go).
+	beforeMyMain bool
 	// dying caches dyingAnyway per permanent for this decision (ADR
 	// 0126 §7, sacrifice.go).
 	dying map[string]float64
@@ -974,6 +1077,7 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	st.beforeMyUntap = st.step == "end" && nextTurnSeat(v) >= 0 && v.Seats[nextTurnSeat(v)].ID == st.me
 	st.leftover = stackEmpty &&
 		(st.beforeMyUntap || (st.myTurn && st.step == "postcombat_main" && !mainPhaseUpcoming(v)))
+	st.beforeMyMain = stackEmpty && st.myTurn && (st.step == "upkeep" || st.step == "draw")
 	return st
 }
 
@@ -1099,6 +1203,8 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	// whenever take exists, which is the pre-S66 rule exactly.
 	best, bestVal, bestReason := -1, 0.0, ""
 	take, takeVal, takeReason := -1, 0.0, ""
+	// waited is the best cast held for the main phase (waitmain.go).
+	waited, waitedVal, waitedReason := -1, 0.0, ""
 	vals := make([]float64, len(moves))
 	for i := range moves {
 		if i%16 == 0 && ctx.Err() != nil {
@@ -1111,6 +1217,12 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		vals[i] = v
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
+		}
+		if p.waitsForMain(st, moves[i]) {
+			if v > threshold && (waited < 0 || v > waitedVal) {
+				waited, waitedVal, waitedReason = i, v, reason
+			}
+			continue
 		}
 		bar := threshold
 		if leftover && v <= threshold && p.leftoverEligible(st, moves[i]) {
@@ -1171,6 +1283,9 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	}
 	if take >= 0 {
 		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}, nil
+	}
+	if passIdx >= 0 && waited >= 0 {
+		return aiseat.Decision{Index: passIdx, Reason: fmt.Sprintf("wait for the main phase: %s %s (+%.2f)", waitedReason, moves[waited].Label, waitedVal)}, nil
 	}
 	if passIdx >= 0 {
 		return aiseat.Decision{Index: passIdx, Reason: "nothing worth doing"}, nil

@@ -87,6 +87,20 @@ import (
 // changed before #2689, is now held, so its digest is #2689's. Every
 // move, turn and winner is the same as #2689's pin.
 //
+// A seventh deliberate exception, re-pinned by hand (#2457, 2026-10-12):
+// the bot waits for its main phase (ADR 0126's amendment of 2026-10-12,
+// `WaitForMain`). In its own upkeep or draw step, with an empty stack,
+// an instant waits. Seed 31's first difference is move 126: seat 1 held
+// "Lightning Bolt targeting Drake" (+5.12) through its upkeep and draw
+// step and cast it in its main phase, at move 131. Seed 107's is move
+// 366: seat 0 held a Bolt at a Bear (+1.93), then in its main phase
+// played a Mountain and cast its commander (+3.71) with that mana. Seed
+// 31 still ends at turn 9 after 399 moves; seed 107's first declared
+// attack now comes after 479 moves instead of 576. Seed 1503 is
+// unchanged. Checked by diffing the move logs with WaitForMain off,
+// which still gives the digests above it (SelfReplacingDiscards, on,
+// changes no move in these seeds): every line before those is identical.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -128,7 +142,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 399, turns: 9, winner: -1, digest: "b5c43024d7deab239bdb0a7a26483e2e2bdf68a075d3dcf18ffbef7b16e1695c",
+			moves: 399, turns: 9, winner: -1, digest: "031029803d1a756948485aece4ec1d4fefc0b6bdd8e0f73d9de5bd3d7a80a8e8",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -141,7 +155,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 576, digest: "9c1082665a302894a239c9358931e4226d83418bc4d1fc7d5324e004bae96312",
+			opening: true, moves: 479, digest: "c77bed159c0d4a0d8643583d33c34737d4163afc665fddf4804f701144850298",
 		},
 	}
 	for _, c := range cases {

@@ -1,6 +1,11 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // myriad.go — myriad (CR 702.116) granted by a permanent to the
 // creatures it names: Legion Loyalty's "creatures you control have
@@ -13,39 +18,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // they control. If one or more tokens are created this way, exile the
 // tokens at end of combat."
 //
-// The granted keyword is written as the trigger itself, hung on the
-// granting permanent and fired once per creature its controller
-// declares as an attacker that has myriad from it. Two granting
-// permanents give a creature two instances, and each triggers
-// (CR 702.116b), which is what one trigger per granting permanent does.
+// The keyword is a layer-6 grant on each recipient. Its trigger belongs to
+// that attacking creature, so removing the creature's abilities removes
+// myriad and each grant contributes a separate instance.
 //
 // The tokens enter attacking without being declared, so they fire no
 // attack trigger and no myriad of their own (CR 508.4).
 //
-// Two simplifications every granted-myriad card shares, both weaker
-// than printed: one yes/no covers every other opponent rather than one
-// per opponent, and the copies always attack the player, never a
-// planeswalker that player controls.
+// Each opponent has its own optional decision. After count replacements,
+// each resulting token may attack that player or one of their planeswalkers.
 
-// GrantedMyriad is the myriad trigger a permanent named `name` grants to
-// the attacking creatures `has` accepts. `has` reads the attacker as it
-// is when the attack is declared.
-func GrantedMyriad(name string, has func(attacker game.Card) bool) game.TriggeredAbility {
+// GrantedMyriad declares the recipient's triggered ability. The granting
+// card registers it in an AbilityGrant and grants that bundle in layer 6.
+func GrantedMyriad(name string) game.TriggeredAbility {
 	label := name + " — myriad: token copies attacking each other opponent"
 	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventAttack},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			if !b27AttackedAndAnotherOpponentRemains(ev, source, g) {
-				return false
-			}
-			attacker, ok := g.LookupCardForEffect(ev.CardID)
-			return ok && has(attacker)
-		},
-		OptionalPrompt: &game.TriggerOptionalPrompt{Question: name + " — myriad: create token copies of the attacker tapped and attacking each other opponent?"},
-		Key:            label,
+		Watches:   []game.EventKind{game.EventAttack},
+		AppliesTo: ThisAttacked,
+		Key:       label,
 		Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 			item := game.NewTriggeredItem(source, label)
-			item.Params.Object = game.ObjectRef{ID: ev.CardID}
+			item.Params.Object, _ = g.PermanentRefForEffect(ev.CardID)
 			item.Params.Player = b17DefendingPlayer(g, ev)
 			return item
 		},
@@ -60,35 +53,50 @@ func GrantedMyriad(name string, has func(attacker game.Card) bool) game.Triggere
 // attacker enters tapped and attacking that player, and the copies are
 // exiled at the beginning of the end of combat step through a delayed
 // trigger named for the granting card `name`. The attacker is copied
-// wherever it now sits: a creature that died in response is copied
-// from the graveyard, its last printed values (CR 702.116a makes the
-// copies regardless).
+// from its copiable values on the battlefield, or their last-known
+// information if it left in response (CR 608.2h, 707.2).
 //
 // The attacker and the defending player come off the item's Params
 // (Object, Player), computed once at trigger time (ADR 0041 P9): the
 // defending player is the player the attacker is attacking (CR 508.5).
 func myriadTokenCopies(g *game.Game, item *game.StackItem, name string) error {
 	attacker, defender := item.Params.Object.ID, item.Params.Player
-	ctx := NewContext(g, item)
-	tmpl, ok := TokenCopyTemplate(g, attacker)
+	if info, ok := g.PermanentForEffect(item.Params.Object); ok && !info.Left {
+		if current := g.DefendingPlayerForAttackerForEffect(attacker); current != uuid.Nil {
+			defender = current
+		}
+	}
+	tmpl, ok := g.TokenCopyTemplateForObjectForEffect(item.Params.Object)
 	if !ok {
 		return nil
 	}
-	tmpl.Tapped = true
-	cursor := b25LastEventSeq(g)
-	for _, opp := range b27OtherOpponents(g, item.Controller, defender) {
-		if err := g.CreateTokensAttackingForEffect(item.Controller, tmpl, 1, opp); err != nil {
-			return err
-		}
+	return myriadChooseOpponents(NewContext(g, item), name, tmpl, b27OtherOpponents(g, item.Controller, defender), nil)
+}
+
+func myriadChooseOpponents(ctx *Context, name string, tmpl game.Card, opponents []uuid.UUID, groups []game.TokenGroup) error {
+	if len(opponents) == 0 {
+		item := ctx.Item
+		return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
+			Controller: ctx.Controller(), Source: ctx.Source(), Groups: groups, Together: true, AttackChoicesLabel: name + " — myriad",
+		}, func(g *game.Game, tokens []uuid.UUID) error {
+			if len(tokens) == 0 {
+				return nil
+			}
+			return (ScheduleDelayedTrigger{At: game.StepEndCombat, Controller: item.Controller,
+				Label: name + " — exile the myriad tokens", Cards: tokens, Body: exileListedCardsBody}).Apply(NewContext(g, item))
+		})
 	}
-	tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
-	if len(tokens) == 0 {
-		return nil
+	opponent := opponents[0]
+	p := ctx.Game.PlayerByIDForEffect(opponent)
+	if p == nil || p.Eliminated {
+		return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], groups)
 	}
-	return ScheduleDelayedTrigger{
-		At:    game.StepEndCombat,
-		Label: name + " — exile the myriad tokens",
-		Cards: tokens,
-		Body:  exileListedCardsBody,
-	}.Apply(ctx)
+	return (MayChoice{Question: name + " — myriad: create a copy attacking " + p.Name + " or a planeswalker they control?",
+		YesLabel: "Create copy", NoLabel: "Skip opponent",
+		OnYes: func(ctx *Context) error {
+			chosen := append(slices.Clone(groups), game.TokenGroup{Template: tmpl, Count: 1, Entry: game.TokenEntryOptions{Tapped: true}, AttackOpponent: opponent})
+			return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], chosen)
+		},
+		OnNo: func(ctx *Context) error { return myriadChooseOpponents(ctx, name, tmpl, opponents[1:], groups) },
+	}).Apply(ctx)
 }

@@ -770,8 +770,10 @@ type PickOptionView struct {
 // UUID strings and card instance-ID strings the spell's target slot
 // accepts right now. Added in S20 sub-PR 1.
 type LegalTargetsView struct {
-	Players []string `json:"players,omitempty"`
-	Cards   []string `json:"cards,omitempty"`
+	// Relation carries the compatible second picks for each earlier pick.
+	Relation *TargetRelationView `json:"relation,omitempty"`
+	Players  []string            `json:"players,omitempty"`
+	Cards    []string            `json:"cards,omitempty"`
 	// Min / Max are the clause's target count (S20 sub-PR 5): the
 	// client's picker completes on the first click at 1 / 1, and
 	// otherwise accumulates picks until the player confirms with at
@@ -874,6 +876,11 @@ type LegalTargetsView struct {
 	// picks, and may send `sacrifice_ids` empty (the server fills it) or
 	// exactly these. Absent on every other clause.
 	All bool `json:"all,omitempty"`
+}
+
+type TargetRelationView struct {
+	Slot  int                 `json:"slot"`
+	Pairs map[string][]string `json:"pairs"`
 }
 
 // TargetSharesView is LegalTargetsView.Shares: the rule's printed words
@@ -6884,10 +6891,22 @@ func viewOfClauses(g *game.Game, src game.TargetSource, spec *game.TargetSpec) [
 		return nil
 	}
 	out := make([]LegalTargetsView, 0, spec.ClauseCount())
+	steps := game.AnnouncedClauses(spec, nil, nil)
 	for i := 0; i < spec.ClauseCount(); i++ {
 		c := spec.Clause(i)
-		v := viewOfTargetClause(g, src, "", g.LegalTargetsForEffect(src, c), c)
+		v := viewOfTargetClause(g, src, "", g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil), c)
 		v.Label = c.Label
+		if c.Relation != nil {
+			pairs := g.TargetRelationPairsForEffect(src, spec, i)
+			v.Relation = &TargetRelationView{Slot: c.Relation.Slot, Pairs: make(map[string][]string, len(pairs))}
+			for anchor, ids := range pairs {
+				wire := make([]string, 0, len(ids))
+				for _, id := range ids {
+					wire = append(wire, id.String())
+				}
+				v.Relation.Pairs[anchor.String()] = wire
+			}
+		}
 		out = append(out, *v)
 	}
 	return out

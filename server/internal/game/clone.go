@@ -144,6 +144,12 @@ func (g *Game) cloneLocked() *Game {
 	}
 	out.TurnTally = cloneTurnTally(g.TurnTally)
 	out.Activations = cloneActivationTally(g.Activations)
+	if g.DrawnThisStep != nil {
+		out.DrawnThisStep = make(map[uuid.UUID]int, len(g.DrawnThisStep))
+		for player, n := range g.DrawnThisStep {
+			out.DrawnThisStep[player] = n
+		}
+	}
 	if len(g.DrawnThisTurn) > 0 {
 		out.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID, len(g.DrawnThisTurn))
 		for k, v := range g.DrawnThisTurn {
@@ -299,6 +305,9 @@ func (g *Game) cloneLocked() *Game {
 			// trigger. The snapshot gets its own cursor and picks;
 			// the steps, spec and source it only reads stay shared.
 			cloned.pickTargetResume = clonePickTargetFrame(c.pickTargetResume)
+			if c.RetargetNext != nil {
+				cloned.RetargetNext = append([]TargetRef(nil), c.RetargetNext...)
+			}
 			// #2622: the CR 707.10c copy walk, for the same reason —
 			// answering a step advances its cursor and rewrites its
 			// target list.
@@ -935,6 +944,12 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			// the snapshot's copy of the event.
 			ev.TokenGroups = append([]TokenGroup(nil), f.ev.TokenGroups...)
 		}
+		if len(f.ev.drawPending) > 0 {
+			ev.drawPending = append([]pendingDraw(nil), f.ev.drawPending...)
+			for i := range ev.drawPending {
+				ev.drawPending[i].applied = append([]ReplacementEffectID(nil), f.ev.drawPending[i].applied...)
+			}
+		}
 		if f.ev.keywordAction != nil {
 			// #976, the same reason as the token tail above: the
 			// keyword action's continuation is cleared THROUGH the
@@ -968,6 +983,10 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		}
 		if f.ev.zoneRoute != nil {
 			r := *f.ev.zoneRoute
+			if r.simultaneousEntry != nil {
+				entry := *r.simultaneousEntry
+				r.simultaneousEntry = &entry
+			}
 			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
 				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
 			}
@@ -1089,6 +1108,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.LandsPlayedThisTurn = src.LandsPlayedThisTurn
 	g.ExtraLandDropsThisTurn = src.ExtraLandDropsThisTurn
 	g.DrawnThisTurn = src.DrawnThisTurn
+	g.DrawnThisStep = src.DrawnThisStep
 	g.TurnTally = src.TurnTally
 	// #1181: the activation record rewinds with the rest of the
 	// per-turn state. An undo that kept an exhaust spent would take

@@ -504,3 +504,34 @@ flipped to assert no draw and renamed
   simultaneously, and holding a whole simultaneous creation open across a prompt
   needs the continuation frame [#478](https://github.com/krakenhavoc/cmd_and_ctrl/issues/478)
   is about — the same call `zone_route.go` makes for a simultaneous exit.
+
+
+## Amendment — 2026-10-12: myriad choices and simultaneous token entries (S58, #2033, #2077)
+
+Myriad is a layer-6 ability grant on the attacking creature. Cybermen
+Squadron and Legion Loyalty declare the shared recipient trigger in an
+`AbilityGrant`; removing that creature's abilities removes myriad, and
+separate grantors supply separate instances. Each non-defending opponent
+gets an independent optional decision at resolution.
+
+A creation group may name `AttackOpponent`. After token-count replacements
+settle, each resulting copy can attack that player or a planeswalker they
+control, never a battle (CR 702.116a). The existing number-choice prompt
+allocates the settled count among eligible destinations. Splitting the
+count after doubling lets two copies choose different defenders. No token
+is minted until these choices finish, and undo replays against the live
+game without changing the captured creation.
+
+`TokenCreation.Together` uses the simultaneous entry batch: all token
+entry windows settle against the original board, then every token lands
+before any arrival is announced (CR 603.6a). This path serves myriad and
+Saheeli's artifact copies. Entry prompts and their batches retain the
+existing clone and continuation guards. Delayed exile is scheduled by the
+creation continuation after every copy finishes entering.
+
+A myriad trigger records the attacking object's epoch. Its copy template
+comes from the matching live permanent or `PermanentInfo.Copiable`, the
+copiable values recorded before departure (CR 608.2h, 707.2). A departing
+Clone therefore still produces copies of the creature it copied; a new
+object with the same card ID is not substituted for the old attacker.
+This LKI data is cloned and included in the schema-v8 shape.

@@ -133,6 +133,14 @@ type Purpose struct {
 	// one that does not.
 	ExtraLandDrops int
 
+	// Impulse is how many cards it exiles from the top of its
+	// controller's library that its controller may play this turn
+	// (#2480): Professional Face-Breaker's "Exile the top card of your
+	// library. You may play that card this turn." 1. Not a draw (CR
+	// 121.1): the card is lost unless it is played before the turn
+	// ends, so a reader prices it by whether it can be.
+	Impulse int
+
 	// Targets is what happens TO each target the statement names, one
 	// entry per target clause (ADR 0126's amendment of 2026-10-08, owner
 	// answer 1). Every amount above is its controller's; an entry's are
@@ -427,6 +435,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		LifeGain:                  p.LifeGain + o.LifeGain,
 		AwakenLand:                p.AwakenLand + o.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops + o.ExtraLandDrops,
+		Impulse:                   p.Impulse + o.Impulse,
 		Answers:                   p.Answers | o.Answers,
 	}
 	if out.Pump == nil {

@@ -44,7 +44,10 @@ func Cycling(cost string) ActivatedAbility {
 		Zones:   []game.ZoneKind{game.ZoneHand},
 		Cycling: true,
 		// ADR 0142: a draw (or, for typecycling, a tutor) answers nothing.
-		Purpose: game.Purpose{Answers: game.AnswerValue},
+		// #2457: the draw is declared too, so the bot can see the card
+		// turns itself into a card from the hand (ADR 0126's amendment
+		// of 2026-10-12, self-replacing discards).
+		Purpose: game.Purpose{Answers: game.AnswerValue, Draws: 1},
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
 		},
@@ -69,6 +72,8 @@ func Typecycling(keyword, cost, what string, pred func(game.Card) bool) Activate
 	ab := Cycling(cost)
 	ab.Label = keyword + " " + cost + " (" + cost + ", Discard this card: Search your library for " +
 		what + ", reveal it, put it into your hand, then shuffle.)"
+	// It searches out a card rather than drawing one (#2457).
+	ab.Purpose = game.Purpose{Answers: game.AnswerValue, Tutors: 1}
 	reason := keyword + " — " + what + ", to your hand"
 	ab.Effect = func(g *game.Game, item *game.StackItem) error {
 		return SearchLibrary{

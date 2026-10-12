@@ -59,10 +59,10 @@ func TestRealDumpDecksAreLegalCommanderDecks(t *testing.T) {
 			// checks the declarations themselves.
 			byName := make(map[string][]string, len(list.Mainboard)+1)
 			for _, c := range list.Commanders {
-				byName[c.Name] = c.ColorIdentity
+				byName[frontFace(c.Name)] = c.ColorIdentity
 			}
 			for _, c := range list.Mainboard {
-				byName[c.Name] = c.ColorIdentity
+				byName[frontFace(c.Name)] = c.ColorIdentity
 			}
 			var drift []string
 			for _, c := range d.Cards() {

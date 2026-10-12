@@ -207,7 +207,7 @@ type CastProvenance struct {
 	X int `json:"x,omitempty"`
 
 	// ManaOnPaper is PaidCost.OnPaper carried across the entry: the
-	// engine WAIVED the charge (permissive mode, a strict-mode
+	// engine WAIVED the charge (an insufficient permissive pool or
 	// ForceCast) and has no record of what was paid.
 	//
 	// It has to come too, or the entry-side readers lose the one

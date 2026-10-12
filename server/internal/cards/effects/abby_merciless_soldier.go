@@ -27,7 +27,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // internal/deck reads off the oracle text: Abby and another Survivors
 // card are a legal pair of commanders (#2874).
 //
-// Declared simplification (weaker than printed): with strict mana off
+// Declared simplification (weaker than printed): with an unrecorded payment
 // the engine does not know what was spent, and "unknown" is always the
 // weaker answer (docs/adding-cards.md), so no tokens are made.
 func init() {
@@ -36,7 +36,7 @@ func init() {
 		Name:         "Abby, Merciless Soldier",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"With strict mana off, the game doesn't track what you spent, so Abby makes no Cordyceps Infected tokens — turn strict mana on for it to count.",
+			"When mana payment is skipped, the game doesn't track what you spent, so Abby makes no Cordyceps Infected tokens — turn strict mana on for it to count.",
 		},
 		Replacements: []game.ReplacementEffect{
 			EntersUnderTheControlOfAnOpponentOfYourChoice("Abby, Merciless Soldier", game.ControlForHarm),

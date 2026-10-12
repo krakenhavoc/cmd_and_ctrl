@@ -4,6 +4,7 @@ import { get } from "svelte/store";
 import { afterAdminModeChanged, resetAdminChecksForTest } from "./admin";
 import { CLOSE_ADMIN_MODE_CHANGED, GameClient } from "./ws";
 import { session, type Session } from "./session";
+import { PROTOCOL_VERSION } from "./protocol";
 
 // ADR 0112 §2 item 5 on the client: a 4001 "admin mode changed" close.
 //
@@ -61,7 +62,20 @@ class FakeSocket {
     (this.listeners[type] ??= []).push(fn);
   }
   removeEventListener(): void {}
-  send(): void {}
+  send(data: string): void {
+    const frame = JSON.parse(data) as { kind?: string; id?: string; payload?: { msg?: string } };
+    if (frame.kind !== "ping") return;
+    queueMicrotask(() => {
+      this.emit("message", {
+        data: JSON.stringify({
+          v: PROTOCOL_VERSION,
+          kind: "pong",
+          id: frame.id,
+          payload: { msg: frame.payload?.msg, server_time: new Date().toISOString() },
+        }),
+      });
+    });
+  }
   close(): void {
     this.readyState = FakeSocket.CLOSED;
   }

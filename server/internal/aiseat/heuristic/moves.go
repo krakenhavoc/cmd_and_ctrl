@@ -333,9 +333,13 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 				// A row that taps a creature pays for it below, by when the
 				// tap happens (tapCreatureCost): a loot before combat
 				// costs the attack it replaces.
-				if row != nil && row.SacrificeSelf {
-					v -= p.selfSacrificeCost(st, src)
-				}
+			}
+			// #3027: a targeted row also pays for sacrificing its source.
+			// Its target value cannot justify treating the source as free:
+			// Strip Mine targeting itself would otherwise beat passing.
+			// Untargeted rows without a priced purpose retain their proxy.
+			if row != nil && row.SacrificeSelf && (purposed || len(cp.Targets) > 0) {
+				v -= p.selfSacrificeCost(st, src)
 			}
 			// ADR 0142 decision 6 (answers.go): a row declared `value`
 			// waits for the stack, and a protect, pump or prevent row on

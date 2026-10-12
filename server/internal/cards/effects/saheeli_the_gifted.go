@@ -23,24 +23,15 @@ import (
 //	    artifact its caster controls when it is cast (CR 601.2f), and it
 //	    is spent by that spell. A second activation the same turn is a
 //	    second promise, and both apply to the one spell.
-//	  - The −7 copies every artifact the controller has as the ability
-//	    resolves, so the tokens are not copied in turn. The copies are
-//	    made one at a time, each with haste (it rides the token's printed
-//	    Keywords), and a single delayed trigger exiles all of them at the
-//	    beginning of the next end step; one that has already left is
-//	    skipped.
-//
-// Sandbox simplification, inherited from CreateTokenCopy: a token copy
-// of a card whose entry lives in an on-enter hook rather than a trigger
-// skips that effect.
+//	  - The −7 snapshots the artifacts before creating their copies. The
+//	    creation continuation grants haste and schedules exile after all
+//	    entry choices finish; haste is a continuous grant, not a copiable
+//	    exception to the tokens' printed characteristics.
 func init() {
 	Register(Spec{
-		OracleID:     "0e084342-31ff-47a5-9fd8-5b385add7a1a",
-		Name:         "Saheeli, the Gifted",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A token copy of an artifact whose entry effect is an on-enter hook rather than a trigger skips that effect.",
-		},
+		OracleID:        "0e084342-31ff-47a5-9fd8-5b385add7a1a",
+		Name:            "Saheeli, the Gifted",
+		Completeness:    CompletenessFull,
 		StartingLoyalty: 4,
 		Activated: []ActivatedAbility{
 			{
@@ -74,35 +65,28 @@ func saheeliGiftedAffinity(g *game.Game, item *game.StackItem) error {
 }
 
 func saheeliGiftedCopyArtifacts(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	var artifacts []game.Card
-	for i := range g.Battlefield.Cards {
-		c := g.Battlefield.Cards[i]
+	var groups []game.TokenGroup
+	for _, c := range g.BattlefieldCardsForEffect() {
 		if c.Controller == item.Controller && c.IsArtifact() {
-			artifacts = append(artifacts, c)
+			if tmpl, ok := TokenCopyTemplate(g, c.InstanceID); ok {
+				groups = append(groups, game.TokenGroup{Template: tmpl, Count: 1})
+			}
 		}
 	}
-	var made []uuid.UUID
-	for _, c := range artifacts {
-		cursor := b25LastEventSeq(g)
-		if err := (CreateTokenCopy{
-			Controller: item.Controller,
-			Copy:       c.InstanceID,
-			N:          1,
-			Except:     TokenCopyGainsHaste,
-		}).Apply(ctx); err != nil {
-			return err
+	return g.CreateTokensThenForEffect(game.TokenCreation{
+		Controller: item.Controller, Source: item.SourceCardID, Groups: groups, Together: true,
+	}, func(g *game.Game, made []uuid.UUID) error {
+		ctx := NewContext(g, item)
+		for _, id := range made {
+			if err := (ScopedEffectFor{Target: id, Mods: []game.Mod{game.AddKeywordsMod("haste")},
+				Duration: game.IndefiniteDuration(), Label: "Saheeli, the Gifted — haste"}).Apply(ctx); err != nil {
+				return err
+			}
 		}
-		made = append(made, b27TokensCreatedByAfter(g, item.Controller, cursor)...)
-	}
-	if len(made) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		At:         game.StepEnd,
-		Controller: item.Controller,
-		Label:      "Saheeli, the Gifted — exile the copies",
-		Cards:      made,
-		Body:       exileListedCardsBody,
-	}.Apply(ctx)
+		if len(made) == 0 {
+			return nil
+		}
+		return (ScheduleDelayedTrigger{At: game.StepEnd, Controller: item.Controller,
+			Label: "Saheeli, the Gifted — exile the copies", Cards: made, Body: exileListedCardsBody}).Apply(ctx)
+	})
 }

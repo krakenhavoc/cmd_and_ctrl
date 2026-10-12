@@ -16,24 +16,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // as the attack is declared, after every layer: a creature that is an
 // artifact only through an effect counts, and a legendary one never
 // does. At a two-player table, or once every other opponent has left,
-// the trigger is not queued (the ruling: no defending player but your
-// only opponent means no tokens).
+// the resolving trigger creates no tokens.
 //
-// Granted myriad's two shared simplifications (myriad.go) are this
-// card's caveats. Both are weaker than printed.
+// The shared myriad body asks separately for each opponent, settles token
+// count replacements, then lets each copy attack that player or a walker.
 func init() {
 	Register(Spec{
 		OracleID:     "8d035688-089f-4d5c-bcad-9140a6c1681b",
 		Name:         "Cybermen Squadron",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Myriad asks once per attacker whether to make the copies for every other opponent, rather than letting you choose per opponent.",
-			"The copies always attack the player, not a planeswalker they control.",
-		},
-		Triggered: []game.TriggeredAbility{
-			GrantedMyriad("Cybermen Squadron", func(attacker game.Card) bool {
-				return attacker.IsArtifact() && attacker.IsCreature() && !attacker.IsLegendary()
-			}),
-		},
+		Completeness: CompletenessFull,
+		Grants:       []AbilityGrant{{Key: "cybermen-squadron/myriad", Triggered: []game.TriggeredAbility{GrantedMyriad("Cybermen Squadron")}, Text: "Myriad"}},
+		Static: []game.StaticAbility{GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			return target.Controller == source.Controller && target.IsArtifact() && target.IsCreature() && !target.IsLegendary()
+		}, "cybermen-squadron/myriad")},
 	})
 }

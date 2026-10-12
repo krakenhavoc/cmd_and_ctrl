@@ -59,7 +59,11 @@ type purposeSet struct {
 	// own Config switch, beside the purpose rather than in place of a
 	// spell's proxy.
 	extraLands int
-	sweeps     []protocol.SweepView
+	// impulse is the cards it exiles that the bot may play this turn
+	// (#2480, impulse.go). Not one of hasAmounts' amounts either: it is
+	// priced under Config.PriceImpulse.
+	impulse int
+	sweeps  []protocol.SweepView
 	// targetsPriced is set by a cast or an activation whose targets a
 	// declared entry prices (PriceTargetPurposes, target_purpose.go):
 	// what it does is then declared, so the proxy goes. Never set on a
@@ -82,6 +86,7 @@ func (ps *purposeSet) add(p *protocol.PurposeView) {
 	ps.energy += p.Energy
 	ps.awaken += p.AwakenLand
 	ps.extraLands += p.ExtraLandDrops
+	ps.impulse += p.Impulse
 	if p.Sweep != nil {
 		ps.sweeps = append(ps.sweeps, *p.Sweep)
 	}
@@ -169,7 +174,7 @@ func rowAt(src *protocol.CardView, index int) *protocol.ActivatedAbilityView {
 // does not, the caller keeps the price it had before ADR 0126.
 func (p *Policy) purposePriced(ps purposeSet) bool {
 	return (p.cfg.PricePurposes && ps.hasAmounts()) || (p.cfg.PriceSweeps && len(ps.sweeps) > 0) ||
-		(p.cfg.PriceTargetPurposes && ps.targetsPriced)
+		(p.cfg.PriceTargetPurposes && ps.targetsPriced) || (p.cfg.PriceImpulse && ps.impulse > 0)
 }
 
 // purposeValue prices a declared purpose for the bot: the §6 amounts
@@ -196,6 +201,9 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 			v += p.rampFor(st, self, ps.lands)
 		}
 		v += p.awakenValue(st, ps.awaken)
+	}
+	if p.cfg.PriceImpulse && ps.impulse > 0 {
+		v += st.impulseValue(ps.impulse)
 	}
 	if p.cfg.PriceSweeps && len(ps.sweeps) > 0 {
 		s := p.sweepValue(st, ps.sweeps, x)
@@ -411,7 +419,9 @@ func (p *Policy) discardCost(st *state, id string, castID string, discards []str
 	if c == nil {
 		return st.w.Hand
 	}
-	v := st.cardValue(p.cfg, c)
+	// #2457: a card that can turn itself into a card (cycling) is a
+	// cheaper discard (self_replacing.go).
+	v := st.selfReplacingDiscard(p.cfg, c, st.cardValue(p.cfg, c))
 	if isLand(c) && p.cfg.LastLandDiscard != 0 && st.myMana < p.cfg.LandsWanted && st.seat != nil {
 		kept := 0
 		for i := range st.seat.Hand.Cards {

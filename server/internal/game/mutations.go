@@ -128,13 +128,10 @@ func (g *Game) drawCardLocked(playerID uuid.UUID) error {
 // only under a draw-amount replacement — Thought Reflection,
 // Alhammarret's Archive (#1222).
 //
-// One at a time is not decoration. Every per-card payoff in the
-// catalog reads EventDrawCard (Nekusar, Sheoldred, Consecrated Sphinx,
-// Fate Unraveler), so a doubled draw has to emit one per card or they
-// all fire once for two cards. The CR 614 window is NOT re-opened for
-// the extra cards: they are the same event, and its once-per-event
-// tracking (CR 614.5) covers all of them — which is also what stops a
-// doubler from doubling its own output forever.
+// Each descendant has already opened its own replacement window before
+// reaching this body. It inherits the effects applied to its parent,
+// keeping a doubler from applying again to its own output. The ordinary
+// settled count is therefore one; each payoff sees one EventDrawCard.
 //
 // Stops on the first empty library, returning ErrZoneEmpty with
 // AttemptedEmptyDraw already set, exactly as one draw does: DrawCard's
@@ -192,6 +189,10 @@ func (g *Game) actuallyDrawCardLocked(playerID uuid.UUID) error {
 		g.DrawnThisTurn = make(map[uuid.UUID][]uuid.UUID)
 	}
 	g.DrawnThisTurn[playerID] = append(g.DrawnThisTurn[playerID], c.InstanceID)
+	if g.DrawnThisStep == nil {
+		g.DrawnThisStep = make(map[uuid.UUID]int)
+	}
+	g.DrawnThisStep[playerID]++
 	g.EmitEvent(Event{
 		Kind:    EventDrawCard,
 		Actor:   playerID,
@@ -1542,9 +1543,9 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// lands have no mana cost, and the land-cast branch above has
 	// already returned. Strict + payable deducts the cost from the
 	// pool; strict + not payable + not forced rejects with a
-	// structured InsufficientManaError; permissive or forced emits
-	// an EventCostWarning and proceeds without touching the pool
-	// (sandbox posture — paper tracking remains valid). A cost the
+	// structured InsufficientManaError. A funded permissive cast also
+	// spends the pool; an insufficient permissive pool or a forced cast
+	// warns and keeps paper tracking without touching the pool. A cost the
 	// parser can't read rejects in every mode (#289).
 	paid, err := g.applyCastCostLocked(p, card, params, cardID)
 	if err != nil {
@@ -1922,13 +1923,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 // Caller must hold g.mu and have already validated the card lives
 // in the source zone. The function decides one of three outcomes:
 //
-//  1. **Strict, payable** — deduct the effective cost from the
+//  1. **Payable, not ForceCast** — deduct the effective cost from the
 //     caster's ManaPool and emit no warning. The cast proceeds
 //     normally with the deducted pool.
 //  2. **Strict, not payable, not ForceCast** — return an
 //     *InsufficientManaError carrying the missing-symbols slice.
 //     Pool is unchanged; the cast is rejected.
-//  3. **Permissive OR ForceCast** — emit EventCostWarning and
+//  3. **Permissive, not payable OR ForceCast** — emit EventCostWarning and
 //     leave the pool alone. Lets the player track mana on paper
 //     and lets the strict-mode override toast bypass the gate
 //     for one cast without consuming mana the caller may not
@@ -1980,10 +1981,16 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	if err != nil {
 		return paid, err
 	}
-	if !params.Strict || params.ForceCast {
-		// Permissive default OR strict-mode override. Don't touch
-		// the pool; just emit a warning so the client can render
-		// the toast / event-log breadcrumb.
+	// Match activated abilities: a permissive cast spends a pool that
+	// can cover its whole cost. Only an unfunded cast is paid on paper;
+	// ForceCast always bypasses payment, even when the pool could pay.
+	// The same spend context gates both modes, so restricted mana never
+	// pays for an object outside its restriction.
+	spendCtx := ManaSpendForCastParams(card, params)
+	canPay := p.ManaPool.CanPayFor(cost, params.XValue, spendCtx)
+	if params.ForceCast || (!params.Strict && !canPay) {
+		// Waived charge. Don't touch the pool, including a partial
+		// payment; emit a warning for the event log instead.
 		//
 		// The LIFE half is still paid: a life total is engine state
 		// in every mode, and permissive mode's bargain is only about
@@ -2006,8 +2013,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	// — and what stops it paying for the wrong thing. Ancient
 	// Ziggurat's {G} funds a creature spell here and is invisible to
 	// a Lightning Bolt.
-	spendCtx := ManaSpendForCastParams(card, params)
-	if !p.ManaPool.CanPayFor(cost, params.XValue, spendCtx) {
+	if !canPay {
 		return paid, &InsufficientManaError{Missing: p.ManaPool.MissingFor(cost, params.XValue, spendCtx)}
 	}
 	// CR 601.2h pays every component together, so the order here is
@@ -2022,7 +2028,7 @@ func (g *Game) applyCastCostLocked(p *Player, card Card, params CastSpellParams,
 	if err := g.payPhyrexianLifeLocked(cardID, p.ID, phyrexianLife); err != nil {
 		return paid, err
 	}
-	// Payable under strict mode — commit the spend.
+	// Payable in either mode — commit the spend.
 	//
 	// #761: which tokens pay is the spell's business when it reads
 	// them back. A converge or sunburst card declares

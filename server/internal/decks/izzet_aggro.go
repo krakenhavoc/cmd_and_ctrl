@@ -10,7 +10,9 @@ package decks
 // card disadvantage.
 //
 // An upgraded precon (#2436): no fast mana beyond Sol Ring, and the
-// Krenko goblins that did not play to the commander are gone.
+// Krenko goblins that did not play to the commander are gone. #2480
+// swapped Wash Away and Negate for Fable of the Mirror-Breaker and
+// Monument to Endurance.
 //
 // Every non-basic card below is in the effect catalog and graded full,
 // apart from the minor caveats full_test.go names; decks_test.go and
@@ -60,6 +62,11 @@ var izzetAggro = Deck{
 		{Name: "Goldspan Dragon", OracleID: "716b3ea2-45b7-4a8f-af72-de7f4e510eff", Identity: "R"},
 		{Name: "Ancient Copper Dragon", OracleID: "48daee9d-ddaf-410f-8c3a-12fa1064ab56", Identity: "R"},
 		{Name: "Smuggler's Copter", OracleID: "49136bdc-bc50-49a2-999a-1ef9c16ea130"},
+		// #2480: two proactive cards for two counterspells. Fable's Goblin
+		// makes a Treasure on each attack and its second chapter rummages;
+		// Monument to Endurance pays on every discard.
+		{Name: "Fable of the Mirror-Breaker", OracleID: "c0957e5e-c71b-439c-931c-9f55d2f76ace", Identity: "R"},
+		{Name: "Monument to Endurance", OracleID: "e69e8de4-b521-4888-8074-17f1efe2f345"},
 
 		// Burn and spot removal.
 		{Name: "Lightning Bolt", OracleID: "4457ed35-7c10-48c8-9776-456485fdf070", Identity: "R"},
@@ -78,11 +85,9 @@ var izzetAggro = Deck{
 
 		// Counterspells. Cheap enough to hold up behind a board.
 		{Name: "Counterspell", OracleID: "cc187110-1148-4090-bbb8-e205694a39f5", Identity: "U"},
-		{Name: "Negate", OracleID: "3407fe41-fdd3-4119-8f70-4bc4590a379f", Identity: "U"},
 		{Name: "Swan Song", OracleID: "8ddfc283-c9b4-41a5-af88-cf0068e986cc", Identity: "U"},
 		{Name: "An Offer You Can't Refuse", OracleID: "234a734b-ba28-4f1b-9d01-3c3e7d516590", Identity: "U"},
 		{Name: "Pyroblast", OracleID: "ecc435e2-deb1-420a-a79f-01dd08747314", Identity: "R"},
-		{Name: "Wash Away", OracleID: "a4630da0-fe9b-4ead-9621-eac4b7825c35", Identity: "U"},
 
 		// Card flow. Every loot and rummage here is also a Magmakin
 		// Artillerist / Marauding Mako / Scrounging Skyray trigger, and an

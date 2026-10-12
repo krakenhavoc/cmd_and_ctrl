@@ -2077,13 +2077,19 @@ func (e *enumerator) legalStepSets(src game.TargetSource, steps []game.Announced
 	out := [][]game.TargetRef{nil}
 	for i := range steps {
 		clause := steps[i].Clause
-		picks := e.legalTargetSets(src, &clause, budget)
+		lt := e.g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil)
+		picks := e.legalTargetSetsFrom(&clause, budget, lt)
 		if len(picks) == 0 {
 			return nil
 		}
 		queues := make([][][]game.TargetRef, len(out))
 		for qi, prefix := range out {
-			for _, pick := range picks {
+			prefixPicks := picks
+			if clause.Relation != nil {
+				lt := e.g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, append([]game.TargetRef{}, prefix...))
+				prefixPicks = e.legalTargetSetsFrom(&clause, budget, lt)
+			}
+			for _, pick := range prefixPicks {
 				combined := append([]game.TargetRef(nil), prefix...)
 				skip := false
 				for _, p := range pick {
@@ -2197,8 +2203,7 @@ func announcedXCount(steps []game.AnnouncedClause, xSteps []int, targets []game.
 // enumerator that passed only a seat would offer the bot a pro-red
 // creature as a target for its red spell and the server would then
 // refuse the move — the #347 / #544 failure mode.
-func (e *enumerator) legalTargetSets(src game.TargetSource, spec *game.TargetSpec, budget int) (out [][]game.TargetRef) {
-	lt := e.g.LegalTargetsForEffect(src, spec)
+func (e *enumerator) legalTargetSetsFrom(spec *game.TargetSpec, budget int, lt game.LegalTargets) (out [][]game.TargetRef) {
 	cands := make([]game.TargetRef, 0, len(lt.Players)+len(lt.Cards))
 	for _, id := range lt.Players {
 		cands = append(cands, game.TargetRef{Kind: game.TargetPlayer, ID: id})

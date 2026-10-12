@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): **proposed**.
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -697,6 +697,317 @@ The run tables are under [Measurements, #2679](#2679-removal-priced-net-of-what-
 
 - **Sweeps and edicts** still price a commander at its full body. A wipe's `ScoreEval` and an untargeted sacrifice do not read `is_commander`.
 - **A non-removal targeted effect on an opposing commander** also gets the net price on the default path, because without an entry the heuristic cannot tell a destroy from a Pacifism-style aura or a tap. Such an effect keeps the commander on the battlefield, so the net price undervalues it. A target entry that says "this does not remove" is the fix, if a curated card needs it.
+
+## Amendment 2026-10-12: the race sends the swing that ends the game soonest
+
+**Status:** Accepted (owner decisions 2026-10-12). The owner accepted the objective and the commander tax, and kept the other two refinements as off switches; see [Owner decisions (2026-10-12)](#owner-decisions-2026-10-12) at the end of this amendment.
+**Issue:** [#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400), filed by #2310 (PR #2399). PR: #3063. Sprint S67. Tracker #890.
+**Amends:** the combat planner, which [Out of scope](#out-of-scope) left alone. The [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) set the precedent. The two planners it changes are the two-turn race (`raceWith`, `heuristic/race.go`) and the attrition horizon (`attritionLine`, `heuristic/attrition.go`). Neither has an ADR of its own: `docs/bot.md` documents them. Each change is a `Config` switch, and `BaselineConfig()` turns all of them off (§9).
+
+### The problem
+
+Several swings can qualify as a two-turn race, or as the first exchange of an attrition line. Both planners sent the **smallest**: the shortest prefix of the evasive-first attack order that qualified. Because of that, a more accurate count of the defender's free blocks made games longer, not shorter. A count that let a smaller swing qualify sent that smaller swing, and it was the bigger one that ended the game.
+
+#2310 measured three refinements to the race's model of the defender and left all three out for this reason. All three are true to the rules:
+
+1. A trampler's overflow past a free chump gets through (CR 702.19b).
+2. The defender's commander is a free blocker only while its controller can pay the tax to cast it again (CR 903.8).
+3. A commander that chumps under blockToSurvive's answer is back to block next turn (CR 903.9a). This one stalled both Wurm lockstep boards at the time, the failure #1548 hit.
+
+### Decision
+
+**1. The objective** (`RaceEndsSoonest`; on in `DefaultConfig`, off in `BaselineConfig`). Both planners try every prefix that qualifies and send the one that ends the game soonest. They rank on three keys (`swingKey`, `race.go`):
+
+1. **The fewest turns to the kill the model sees.** For a race this is two, or one when the swing is lethal now. For an attrition line it is the number of exchanges before the race that ends it.
+2. **The most damage the defender cannot avoid this turn.** This is the least of blockToSurvive's damage and the free answer's (`raceEval.sure`), the attrition horizon's `sure` damage.
+3. **The smallest swing.** A tie keeps the swing tried first, so the reserve the crack-back check counted on is spent only when it buys something.
+
+Inside the attrition search, the deeper levels only ask whether some line exists, so they keep the first one they find. The budget of 100 swings per decision is unchanged. When the budget runs out at the top level, the planner sends the best line found so far.
+
+The objective is checked again at each declaration. A partly declared swing is a prefix of the same order, and a tie keeps the smaller swing, so the bot declares the plan one creature at a time and passes when it is complete (`TestRaceSendsTheSwingThatEndsSoonest`).
+
+**2. The commander tax** (`FreeCommanderNeedsTax`; on in `DefaultConfig`, off in `BaselineConfig`). The defender's commander is a free blocker only while its mana sources, tapped or not, make the commander's mana value plus {2} for each earlier cast from the command zone (`canRecast`). The commander's own mana ability is not counted, since it is the card that died. The cast count is the public `commander_casts`, which the engine re-keys when the commander changes zones.
+
+**3. Trample overflow past a free block** (`FreeTrampleOverflow`; off in both). The free answer's damage is the larger of the matching over the free blocks and `trampleBound` over the free blocks (`trampleBoundBy`). Both are lower bounds, as for `unblockedPower`.
+
+**4. The recast chump** (`RecastChumpForNext`; off in both). Under blockToSurvive's answer, a defender's commander that dies blocking is back to block next turn. It is also out of the crack-back unless it has haste, the same split the free answer already makes (`recastCommanders`).
+
+Switches 3 and 4 are built, tested and measured, and left off because they measured no better (below).
+
+### Measured
+
+The tables, and every seed that changes, are under [Measurements, #2400](#2400-the-race-sends-the-swing-that-ends-the-game-soonest-2026-10-12). In short, at `develop` `de452ebd6`, from non-race lockstep runs:
+
+| | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|
+| `develop` (smallest qualifying swing) | 16.08 | 15.08 | 5 / 6 | stalls (#2474) |
+| the objective alone | 15.42 | 14.17 | 5 / 6 | stalls (#2474) |
+| **the objective and the commander tax (the default)** | **15.25** | **13.75** | 5 / 6 | stalls (#2474) |
+
+- **The objective alone shortens both gates**: −0.67 turns on the 4-seat gate and −0.92 on the 2-seat one. The objective fixes what #2310 found. With the old objective, every refinement left the gate as long or longer, as #2310 measured. With the new one, no refinement makes both gates longer.
+- **The commander tax** is the one refinement that shortens both gates on top of the objective.
+- **Trample overflow** shortens the 2-seat gate (13.67) and lengthens the 4-seat one (15.92).
+- **The recast chump** changes nothing alone. With the tax it makes both gates longer (15.92 and 14.25).
+- **Neither Wurm board stalls on the recast chump.** The Wurm-and-Ogre board ends on turns 5 and 8 under the old objective and on 5 and 6 under the new one. The full mirror stops at lives `[6 3]` with or without it. That is #2474's board, and it stops there on `develop` and on every variant.
+
+### Options considered and rejected
+
+- **Fewest turns alone.** Every race the model sees kills in two turns, unless the swing is lethal now, and the all-in check (`lethalPush`) usually takes those first. So "fewest turns" does not separate the swings that race. The damage the defender cannot avoid is what separates them.
+- **Creatures traded as a third key**, preferring the exchange that kills more. It moved no gate seed. In the full Wurm mirror it sent both Wurms into their Wurm and an Ogre, a "2 for 2". The edge left was an Ogre, and the defender's commander traded it away for free, so the board stopped on `[6 6]` instead of `[6 3]`.
+- **Turning all three refinements on**, as #2400 suggested once the objective changed. With all three the means are 15.92 and 13.75, behind the tax alone on the 4-seat gate.
+
+### Open (#2400)
+
+- **The objective ranks swings against one defender.** Both planners still try the opponents in focus order, focus first, and take the first one with a qualifying swing. At a 4-seat table the bot can send a three-exchange line at the focus seat while a one-exchange line waits against another seat (gate seeds 106 and 109). Ranking across defenders would override the focus order, the threat ranking the rest of the attack decision uses, so it is not part of this amendment.
+- **#2474 is unchanged.** The full Wurm mirror stops on Bear and commander against a lone commander on 3 under every variant. That kill takes a commander trade and then two more turns, and no ranking of the swings that qualify can send a swing that does not qualify.
+
+### Owner decisions (2026-10-12)
+
+The owner accepted the amendment on 2026-10-12 and took the recommendation on all three questions. No section above changed.
+
+1. **The objective is accepted.** `RaceEndsSoonest` is on in `DefaultConfig()`. It replaces "the smallest swing that qualifies" in the race and in the attrition horizon.
+2. **The commander tax is accepted.** `FreeCommanderNeedsTax` is on in `DefaultConfig()`.
+3. **Trample overflow and the recast chump stay as off switches.** `FreeTrampleOverflow` and `RecastChumpForNext` are kept, off in both `DefaultConfig()` and `BaselineConfig()`. #2474's board, a commander trade three turns deep, is where the recast question comes back.
+
+## Amendment 2026-10-12: cycling cards as cheaper discards, and the bot's own draw step
+
+**Status:** Accepted (owner answers 2026-10-12). The owner chose the recommended option, (a), on all three questions; see [Owner answers (2026-10-12)](#owner-answers-2026-10-12) at the end of this amendment. The code is in the PR that adds this section, behind two switches that are on in `DefaultConfig()` and off in `BaselineConfig()`, so either can be turned off without a revert.
+**Issue:** [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457), from the S66 label review of `do-not-windfall-away-the-last-land`, and the owner's comment on it of 2026-10-08 about the draw step.
+**Amends:** §5 (which windows the bot spends in) and §7's discard half, with the [discard-payoff amendment](#amendment-2026-10-06-discard-payoffs)'s reach: wherever the policy prices a discard of its own card.
+
+### The problem
+
+**The position.** `do-not-windfall-away-the-last-land`: the bot's own draw step, round five, four lands, Mary Read and Anne Bonny on the battlefield. In hand: Unexpected Windfall, Windfall, Marauding Mako, Arcane Denial, Impulsive Pilferer and Myriad Landscape, the only land. The owner accepted two answers: pass, and Unexpected Windfall discarding the Mako ("if going to pay 2 to cycle mako might as well unexpected windfall the mako instead"). Discarding the Landscape is rejected.
+
+On `develop` at `de452ebd6` the heuristic passes. Its prices: Unexpected Windfall discarding Arcane Denial +1.00, discarding the Mako or the Pilferer +0.65, Windfall +0.40, the Landscape −0.30; Mary Read's loot +0.80; cycling the Mako +0.50. Everything is under `InstantThreshold` (1.50), because the draw step is not one of §5's windows.
+
+**Why the Mako is not the cheapest discard.** §7 charges `cardValue`. The Mako is a 1/1 with a triggered row, 2.05; Arcane Denial is an instant of mana value 2, 1.20. Mary Read pays a Treasure for the Mako, a Pirate (+0.50), and the Mako is still the dearer discard. Nothing on the wire said the Mako can turn itself into a card: its cycling row declared only `answers: ["value"]` ([ADR 0142](0142-declared-answers-on-catalog-abilities.md) S0), which has no amount.
+
+**Why the draw step is not a window.** The owner on #2457 (2026-10-08): §5 assumes the spend "costs nothing the bot would otherwise keep", and that is false in the bot's own upkeep and draw step. A land tapped there stays tapped through both of its main phases. Review game 2 (`06e98afa`, seq 248) is the cost: Prismari Command cast in the draw step with all three lands, and nothing left for Mary Read and Anne Bonny in the main phase. The owner's gate, if the draw step is ever made a window: "an instant cast before the bot's first main phase, with an empty stack, has to beat the best main-phase use of the same mana. Otherwise it waits for main."
+
+### Decision
+
+**1. The signal.** The cycling helpers declare what the row turns the card into: `Cycling` declares `draws: 1`, and `Typecycling` (with `BasicLandcycling`) and `Transmute` declare `tutors: 1`. Every catalog card that uses them gets it, with no card file touched. It rides `zone_abilities[].purpose`, which only the card's owner is sent. Additive on the wire, no snapshot change. It does not change how cycling itself is priced: the heuristic reads a row's purpose for the battlefield only, so cycling stays `ActivateBase`.
+
+**2. The price** (`SelfReplacingDiscards`, `aiseat/heuristic/self_replacing.go`). A nonland card whose hand row discards the card itself (`discard_self`), costs nothing else but mana, and declares a draw or a tutor is a cheaper discard:
+
+```
+replacement = Weights.Hand × (draws + TutorWeight × tutors)
+spared      = SpellPerMana × the row's mana value
+discard     = min(price, max(replacement, price − spared))
+```
+
+`price` is what the discard would cost without it: `cardValue` for a cost (§7), `handKeepValue` for a discard the bot chooses (#2691: cleanup, discard prompts, a loot's named cards, the discard-payoff estimate, a put from hand). The discard spares the mana cycling the card would cost, which is the owner's "you would pay {2} to cycle it anyway", on the policy's own value-per-mana proxy. It is never cheaper than the card cycling would find, which the bot gives up with it. A land is left alone: it is a land drop first, and `LastLandDiscard` and `DiscardLandFloor` already price that. A row whose cost asks for anything else (life, a sacrifice, other cards) is a different trade and is left alone.
+
+In the position the Mako's discard falls from 2.05 to 1.20, so Unexpected Windfall discarding it is +1.50, above discarding Arcane Denial (+1.00). A 6/6 with cycling {2}{G} keeps its price less 1.80.
+
+This is a valuation, not a consequence of the bot's other prices. By those, casting the Mako in a main phase (+0.65) beats cycling it (+0.50), so the bot would not cycle it, and a card that can also be cycled is, strictly, worth at least as much as the same card without. The rule takes the owner's reading of a cheap body with cycling: it is the deck's fodder. The owner confirmed that reading ([Q1](#questions-for-the-owner-answered-2026-10-12)).
+
+**3. The draw step is not a spend window** (`WaitForMain`, `aiseat/heuristic/waitmain.go`). §5 keeps its two windows. Before its first main phase the premise is the other way round, so the bot does not spend there more readily; it spends there less. The owner's gate is applied as written. In the bot's own upkeep or draw step, with an empty stack, an instant-speed cast waits for the main phase. The same cast is still on offer there, beside every sorcery-speed use of the same mana, so the best main-phase use of that mana is never worth less than the cast is now. The reason reads `wait for the main phase: …`. A cast with something on the stack to answer is not held, and neither is an activated ability: the gate is for casts.
+
+Without the gate the change in 2 would decide this position on a rounding error. +1.50 is `InstantThreshold` exactly, the sum came out at 1.5000000000000002, and the bot cast Unexpected Windfall in its draw step. With the gate it passes. Re-decided as a main phase on the same view, it casts Unexpected Windfall discarding the Mako.
+
+**4. The label stays.** The issue asked for the Mako discard to become the only accepted move once both halves land: a cheap cycling discard and a draw step that is a spend window. Under this amendment the draw step is not a spend window, and the gate's answer in the draw step is pass, so the label keeps both answers ([Q3](#questions-for-the-owner-answered-2026-10-12)). `boteval suite run --policy heuristic` is 41 of 41 before and after. The only change in any position is this one's reason, from `nothing worth doing` to `wait for the main phase: cast spell (declared purpose) Cast Unexpected Windfall (+1.50)`.
+
+The measurements are under [Measurements, #2457](#2457-self-replacing-discards-and-waiting-for-the-main-phase-2026-10-12).
+
+### Questions for the owner (answered 2026-10-12)
+
+Each lists the recommended option first.
+
+1. **Q1. The price of a card that cycles.**
+   - **(a) Recommended:** decision 2's rule: the cycling mana comes off, never below one card. A 1/1 with cycling costs one card; a big body keeps its price less the cycling mana.
+   - **(b)** A flat cap at one card, `min(price, Hand × cards)`. Simpler, and it prices a castable bomb with cycling as one card, so a Windfall would pitch it.
+   - **(c)** The signal only, no price. The Mako stays the dearer discard, and the label keeps its two answers for good.
+2. **Q2. The bot's own upkeep and draw step.**
+   - **(a) Recommended:** not a spend window, with the owner's gate on (`WaitForMain`). Run 1 had 530 such casts on `develop`, mostly removal and card draw; they move to the main phase.
+   - **(b)** Not a spend window, and no gate. The bot keeps casting any instant priced over `InstantThreshold` there (the seq 248 shape), and this position's pick rests on the rounding in decision 3.
+   - **(c)** A spend window (`LeftoverThreshold`) with the gate. The gate holds every cast such a window would let through, so this changes nothing over (a) for casts and lowers the bar for activations, the one kind the gate does not hold.
+3. **Q3. The position's label.**
+   - **(a) Recommended:** keep pass and the Mako discard, both accepted. The Mako discard is the right card; pass is the right timing.
+   - **(b)** Pass only, which pins the gate, with a main-phase position for the Mako discard harvested from a later arena run.
+   - **(c)** The Mako discard only, as the issue first asked. It contradicts the gate, so it needs Q2 (b).
+
+#### Owner answers (2026-10-12)
+
+The owner chose option (a), the recommended one, on every question. No section above changed. These answers are binding.
+
+1. **The price as built.** A nonland card that can cycle into a card costs the cycling mana less as a discard, never less than one card (decision 2, `SelfReplacingDiscards`).
+2. **The draw step is not a spend window.** §5 keeps its two windows, and the owner's gate stays on: an instant cast in the bot's own upkeep or draw step, with an empty stack, waits for the main phase (decision 3, `WaitForMain`).
+3. **The label stays.** `do-not-windfall-away-the-last-land` keeps pass and the Mako discard, both accepted (decision 4).
+
+## Amendment 2026-10-12: the attrition horizon trades commanders
+
+**Status:** Accepted (owner decisions 2026-10-12). The owner accepted the amendment with both switches on, and had the defender's misblock filed as [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066); see [Owner decisions (#2474, 2026-10-12)](#owner-decisions-2474-2026-10-12) at the end of this amendment.
+**Issue:** [#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474), filed by #2472 (the #2462 fix). PR: #3065. Sprint S67. Tracker #890.
+**Amends:** the attrition horizon (`planAttrition`, `attritionLine` and `racesFrom`, `heuristic/attrition.go`), which the [amendment of 2026-10-12](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) also changed. The two-turn race does not change. Each change is a `Config` switch, on in `DefaultConfig()` and off in `BaselineConfig()` (§9).
+
+### The problem
+
+The full seed-1409 Wurm mirror stops on this board, under `develop` and every variant #2400 measured:
+
+- **The edge seat:** a Bear 2/2 and its 3/3 commander, on 6 life.
+- **The other seat:** its 3/3 commander, on 3 life.
+- **Both seats:** 37 lands.
+
+A player sees the kill. Swing both. The defender has to block the commander with its own, or take 5. Both commanders die and the Bear puts the defender on 1. Both are cast again, and the edge seat's is summoning sick (CR 302.6), so the edge seat waits a turn. Then the Bear and the commander swing into one blocker, and one of them gets through. On `develop` nobody attacks for the last 20 turns, and the game stops at the turn budget with lives `[6 3]`. #2472 skipped the board in `TestHeuristicWurmEdgeResolvesInsideTheTurnBudget` until this was fixed.
+
+No two-turn race sees the kill, and the attrition horizon refused the first swing for two reasons:
+
+1. **The defender's model only guessed.** `blockToSurvive` first takes every block the defender survives. Their commander on the Bear lives, so it takes that one. Then nothing is left for the bot's commander, 3 still connect, and the defender is dead on 3. The model cannot find a way to live from there, so it falls back to a guess (`defence.guessed`): every attacker blocked and dead, nothing of the defender's lost. An exchange counted that way is never acceptable.
+2. **The bot's own commander counted as lost.** The horizon already counted the defender's commander as cast again (CR 903.9a): it is not a creature the defender loses, and it is back on the next board. The bot's commander was a creature lost for good, "because the search may not rely on recasting it". So commander for commander was one of mine for none of theirs.
+
+### Decision
+
+**1. The free answer where the model guessed** (`HorizonPlaysFreeAnswer`; on in `DefaultConfig`, off in `BaselineConfig`). Where `blockToSurvive` only guessed and the defender survives its free answer (#2310), the attrition line plays the free answer forward instead of the guess (`outcomeOf`). The free answer blocks with everything whose block costs the defender nothing, so on this board it is commander for commander and the Bear unblocked. The guess stood in for a way to live the greedy missed. The free answer is a way to live the model can name, and it loses the defender nothing for good. The sure damage does not change: it is still the least of the two answers' damage.
+
+**2. The bot's commander cast again** (`HorizonRecastsCommander`; on in `DefaultConfig`, off in `BaselineConfig`). In a second pass of the search, a commander of the bot's that dies in an exchange is cast again (CR 903.9a) when the bot's mana sources, tapped or not, make its mana value plus {2} for each earlier cast (CR 903.8, `canRecast`, the same test the defender's commander gets under `FreeCommanderNeedsTax`).
+
+- **It is not counted lost.** An exchange that kills it counts it as cast again, not as one of mine, and the reason says so: `attack: attrition — 0 of mine (1 cast again) for 0 of theirs and 2 sure now, a race within 2 exchange(s); crack-back 3 < my 6`.
+- **It is back on the next board, summoning sick** (`afterExchange`). It can block, and it counts toward a race's next turn, but it is not an attacker on that board (`simAttackers`). One with haste can attack (CR 702.10). Its cast count goes up by one, so a second trade in the same line pays {2} more.
+- **The line may wait a turn for it** (`racesFrom`, `afterWait`). When a board with a summoning-sick commander of mine has no lethal all-in, no race and no exchange, the line may pass that turn. The crack-back on it is every opponent swinging everything into every creature the bot has, the race's pessimistic count, and it must be less than the bot's life. After it, nothing is summoning sick. The waiting turn counts as an exchange, both for the horizon of three and for the turns key of `RaceEndsSoonest`.
+- **It is a second pass, with a budget of its own**, and it runs only when the first pass finds no line (`planAttrition`). The first pass is the search as it was. So the switch changes no decision the horizon made before, and only adds a line where there was none. The worst case is two passes of 100 swings each.
+
+On the issue's board, swinging both is then acceptable: 0 of mine (1 cast again) for 0 of theirs, 2 sure, crack-back 3 < 6. The next board has the defender on 1 and the bot's commander summoning sick. The Bear alone has nothing, so the line waits a turn, with a crack-back of 0, and then the Bear and the commander are lethal into one blocker. That is a line within 2 exchanges.
+
+The two switches need each other here. With the free answer alone the bot's commander is still one of mine for none of theirs. With the recast alone the guess still counts the Bear dead as well.
+
+### Compared with the recast chump
+
+`RecastChumpForNext` (#2400, off) is the same question from the defender's side, inside the two-turn race: a defender's commander that dies chump-blocking under `blockToSurvive`'s answer is back to block next turn. The attrition horizon already counted the defender's commander that way. This amendment is the bot's side, and only inside the horizon. The race does not need it: a commander the bot casts again is summoning sick on the race's next turn, so the race is right to count it out of next. That is why the horizon has to be able to wait a turn.
+
+The two are measured together below. The recast chump makes the same two gate seeds longer with this amendment as without it (106 and 211), and the full Wurm mirror ends on the same turns either way. It stays off.
+
+### Measured
+
+The tables, and every seed that changes, are under [Measurements, #2474](#2474-the-attrition-horizon-trades-commanders-2026-10-12). In short, at `develop` `2594c7de8`, from non-race lockstep runs:
+
+| | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|
+| `develop` | 15.25 | 13.75 | 5 / 6 | 26 / 26, stalls at `[6 3]` |
+| both switches, the trade in the one pass | 15.92 | 13.75 | 5 / 6 | 7 / 6 |
+| **both switches, the trade in a second pass (the default)** | **15.25** | **13.75** | 5 / 6 | **7 / 6** |
+
+- **The default cashes the full Wurm mirror** on turn 7 with the edge on seat 0 and turn 6 with it on seat 1, and the board is no longer skipped.
+- **It changes no gate result.** At `2594c7de8` all 24 gate games play move for move as on `develop`: wherever the second pass ran, it found no line. Rebased onto `032e1f138` (#3064), every gate game ends on the same turn with the same winner as on that `develop`, and one decision in one game (seed 105) takes a commander-trade line where `develop` passed.
+- **With the trade in the one pass, the 4-seat gate is 0.67 turns longer.** Seeds 101, 103 and 111 lose a line the search used to find: more exchanges were acceptable at every depth, and the budget of 100 swings ran out before the search reached the old line. With the budget at 1000, seeds 101 and 103 end as on `develop`. In seed 109 the objective sends a commander-trade line, 6 sure within 2 exchanges, instead of 4 sure within 3, and the game ends a turn later with another winner.
+
+### Options considered and rejected
+
+- **The trade in the one pass.** It is the simpler search, and it lets the objective rank a commander-trade line against the others. It made the 4-seat gate 0.67 turns longer, mostly by spending the budget (above).
+- **A bigger budget.** It would change every decision whose search runs out today, with or without this amendment. That is a separate measurement, not part of cashing one board.
+- **Fixing the greedy in `blockToSurvive`** so that it retries from no blocks before it guesses. It would change the two-turn race's numbers on every board where the model guesses, not only the horizon's, so it was not built.
+- **The bot's commander back and able to attack on the next board.** That is a turn early, and the line skips the crack-back on the turn the bot really waits.
+
+### Open (#2474)
+
+- **The full mirror ends on a misblock.** In both games the defender, on 3, blocks the Bear with its commander instead of the bot's commander, takes 3 and dies. So the games end on the first swing of the line. The block planner (`decideBlock`) scores each block on its own, and the Bear block scores higher (+6.90). Nothing checks that the blocks together leave the defender alive. With the right block the line takes two more turns. `TestAttritionWaitsForTheCommanderItCastAgain` pins those two turns at the decision, but no whole game in the tree plays them. The misblock is [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066).
+- **The second pass runs only when the first finds nothing.** A commander-trade line that ends sooner than the line the first pass finds is never sent.
+
+### Questions for the owner (#2474, answered 2026-10-12)
+
+1. **Accept the amendment, with both switches on in `DefaultConfig()`?** Recommended: yes. It cashes the full Wurm mirror and changes no gate result. The alternative is to keep the board skipped.
+2. **Is the misblock its own issue?** Recommended: yes, filed separately, since it is the defender's block planner and not the attack planner. Fixing it changes every game where a defender facing lethal has to choose which attacker to block.
+
+### Owner decisions (#2474, 2026-10-12)
+
+The owner accepted the amendment on 2026-10-12 and took the recommendation on both questions. No section above changed.
+
+1. **The commander-trade horizon is accepted.** `HorizonPlaysFreeAnswer` and `HorizonRecastsCommander` are both on in `DefaultConfig()`, and both off in `BaselineConfig()`. The full Wurm mirror's board is no longer skipped.
+2. **The misblock is its own issue:** [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066), in S67. It is the defender's block planner (`decideBlock`), not the attack planner, so it is not part of this amendment.
+
+## Amendment 2026-10-12: Izzet and Simic after the rebalance
+
+**Status:** Proposed. Deck strength and balance are the owner's call, so nothing here is accepted until the owner answers the [questions](#questions-for-the-owner-2480) below. The code is in the PR that adds this section, as two commits: the price change behind two switches (on in `DefaultConfig()`, off in `BaselineConfig()`), and the Izzet swap. Either can be reverted alone.
+**Issue:** [#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480), the follow-up the owner left open when #2436 (PR #2475) merged. Sprint S67.
+**Amends:** §6 (a new purpose field, `impulse`), §7 (what a Treasure given up to pay a cost costs), and the izzet-aggro list #2436 set. No other price and no other deck changes.
+
+### The problem
+
+The issue's win table is from 2026-10-07. Since then #3062 made lockstep deterministic, #3063 changed the race objective, #3064 added cheap cycling discards and the wait for the main phase, and #3065 added the commander-trade horizon. Re-measured on `develop` at `0e81b3af4`, with §8's run 1 (64 games, seed 1, `--rotate --lockstep`) and run 2:
+
+| Deck | Run 1 wins of 64 | Win rate | Wilson 95% | Issue (2026-10-07) | `never` |
+|---|---:|---:|---|---:|---|
+| esper-control | 17 | 26.6% | 17.3%–38.5% | 29 | — |
+| izzet-aggro | 1 | 1.6% | 0.3%–8.3% | 6 | Glint-Horn Buccaneer's, Marauding Mako's, Professional Face-Breaker's and Scrounging Skyray's activations |
+| mono-black-aristocrats | 26 | 40.6% | 29.5%–52.9% | 21 | Ashnod's Altar, Blood Artist, Burnished Hart's activation |
+| simic-ramp | 20 | 31.2% | 21.2%–43.4% | 8 | — |
+
+Run 2: `heuristic` 66 of 192 seat-games, 34.4% (28.0%–41.3%); `heuristic-baseline` 30 of 192. Izzet won 1 of 48 with `heuristic` and 2 of 48 with `heuristic-baseline`.
+
+**Simic is no longer behind** (31% in run 1, 13 of 48 in run 2), and Burnished Hart and Mind Stone have left its `never` list. **Izzet is further behind than the issue says.** It is out first or second in 48 of the 64 games, against 31 for esper-control, 23 for simic-ramp and 17 for mono-black-aristocrats.
+
+### Why the cards go unused
+
+The issue's option 1, worked from run 1's decision logs. Each activation's price in every window it was offered, against what the bot did instead:
+
+| Card (deck) | Offered / taken | Price | Cause |
+|---|---|---|---|
+| Professional Face-Breaker, "Sacrifice a Treasure: exile the top card, you may play it this turn" (izzet) | 1,070 / 0 | −0.80 in every window, −0.50 with the Face-Breaker tapped | **The heuristic.** The row declared only `answers: ["value"]`, so it was the flat `ActivateBase` (0.50), and the Treasure it sacrifices cost its board value as a mana source (1.00), twice what §6 prices making one at (`TokenWeight`, 0.50). The 0.30 every untapped creature's activation pays did the rest. |
+| Scrounging Skyray and Marauding Mako, cycling (izzet) | 121 / 0 and 70 / 0 | +0.50 (`ActivateBase`) | **Neither: the right play.** In the main phase, casting the creature, a discard payoff that grows, beats cycling it. In the upkeep and draw step +0.50 is under `InstantThreshold`. |
+| Solphim, Mayhem Dominus, indestructible counter (izzet) | 385 / 2 | −1.1 to −7.7, and refused by the life floor in 81 windows | **Neither: the right play.** It is a `protect` answer (ADR 0142). It was taken in both windows where removal targeted Solphim. Everywhere else it is two cards and four life, or {R}{R}, for a counter nothing threatens. |
+| Burnished Hart (simic) | 346 / 1 | −1.60 to −0.50; +1.04 the one time it was taken | **The heuristic, and not a small fix.** Two lands are priced at `ManaSource` each plus the ramp premium while the deficit is open, against the Hart's own body. By the time Simic has the Hart and {3} to spare, its deficit has closed. In 141 of the 150 windows in its own main phase with an empty stack it controlled a landfall payoff (127 of them Tatyova), so those two lands were two cards. No landfall payoff is priced at all. |
+| Burnished Hart (mono-black) | 173 / 0 | −1.60 to −0.50 | **Neither.** Its body is sacrifice fodder for the death payoffs, and mono-black has no landfall payoff. |
+| Mind Stone, draw (simic, izzet) | 161 / 3, 50 / 7 | +0.50 | **Neither.** It is no longer `never`. Its row declares only `answers: ["value"]`, so it is +0.50, under any cast in the main phase and under `InstantThreshold` in the upkeep and draw step. By the opponents' turns it is tapped for mana. A rock used as a rock is right. |
+| Glint-Horn Buccaneer's rummage (izzet) | 7 / 0 | +1.50 | **Borderline.** It is priced exactly `InstantThreshold` in the combat steps, and the tie goes to passing. Two games. |
+
+**What is not the cause.** No list change explains an unused activation. And none of these cards explains Izzet's record: Face-Breaker was on the battlefield with a Treasure in 13 of Izzet's 64 seat-games.
+
+### Decision (proposed)
+
+**1. An impulse is a card the bot can use this turn** (`PriceImpulse`, `aiseat/heuristic/impulse.go`). `game.Purpose` and `PurposeView` gain `impulse`: the cards it exiles from the top of its controller's library that its controller may play this turn. It is additive on the wire with no snapshot change, and it is declared by hand like every purpose: Professional Face-Breaker's row declares `impulse: 1`, the only one in the curated decks. It is priced `Weights.Hand` per card in the bot's own main phase with an empty stack, when it has a land drop left or two mana from its lands and rocks, and at nothing anywhere else, where the card is lost at the end of the turn.
+
+**2. A Treasure given up costs a token** (`OneShotManaAsToken`, the same file). A token whose every mana ability sacrifices it costs `TokenWeight` (0.50) when it is sacrificed to pay a cost, rather than its board value (1.00). The board value is unchanged, and so is everything else that reads it.
+
+Together, Face-Breaker's row is 1.20 − 0.50 − 0.30 = **+0.40** in the bot's own main phase, over `PassThreshold`, and below zero everywhere else. Either switch alone leaves it below zero (`TestImpulseNeedsBothSwitches`).
+
+**3. Izzet: Fable of the Mirror-Breaker and Monument to Endurance for Wash Away and Negate.** Both cards are graded full and legal. Monument declares a discard payoff (any card, one Treasure: the least of its three bullets, and the one the purpose can say). The issue's other card, The Indomitable, was measured and is not proposed. The bot casts it in 6 of the 12 games it is offered in and crews it in 2, as it crews Smuggler's Copter in 4 of 10, because a crew activation is priced at the flat `ActivateBase` less the tapped creature, +0.20, under `PassThreshold` ([Out of scope](#out-of-scope): Vehicles). Fable's Goblin makes a Treasure on every attack, its second chapter rummages, and the bot casts it in 9 of the 12 games it is offered in. Wash Away and Negate are the two narrowest counterspells.
+
+**4. Simic: no change.** It is no longer behind (28.9% over two seed blocks at step 1), so neither its list nor a landfall price is proposed here. It falls to 21.1% (14.9%–29.0%) at step 2, in games the Izzet swap re-dealt, and that interval still holds 25%. If the owner takes the swap, Simic is the deck to re-measure first. **Esper: no trim.** Over two seed blocks (128 games) Esper and mono-black share the lead (36.7% and 32.8% before the swap, 35.9% and 39.1% after), neither interval lies above 50%, and Izzet's gap is not one a trim to Esper would close.
+
+### Measured
+
+The tables are under [Measurements, #2480](#2480-izzet-and-simic-after-the-rebalance-2026-10-12). In short, run 1 at seed 1 and run 2:
+
+| Step | esper | izzet | mono-black | simic | Run 2 `heuristic` | Face-Breaker's row |
+|---|---:|---:|---:|---:|---|---|
+| `develop` `0e81b3af4` | 17 | 1 | 26 | 20 | 66 / 192, 34.4% (28.0%–41.3%) | 0 of 1,070 windows |
+| 1, the impulse price | 17 | 1 | 24 | 22 | 64 / 192, 33.3% (27.0%–40.3%) | 20 of 935, in 7 of 13 games |
+| 2, the Izzet swap | 20 | 3 | 25 | 16 | 56 / 192, 29.2% (23.2%–36.0%) | 18 of 335, in 6 of 11 games |
+
+- **The impulse price works and moves little.** It changes 5 of run 1's 64 games and 4 of run 2's first half, and none of the second half, where no `heuristic` seat plays Izzet.
+- **No swap moves Izzet beyond noise.** Pooled over every Izzet seat-game in run 1 at seeds 1 and 1001 and run 2, Izzet won 4 of 224 (1.8%, 0.7%–4.5%) before the swap and 10 of 224 (4.5%, 2.4%–8.0%) after. The issue's pair (The Indomitable and Monument) and a four-card set (Fable, Monument, Glorybringer and Third Path Iconoclast for Wash Away, Negate, Swan Song and Shock) are no different in run 1: 4 and 2 of 64, against the proposed pair's 3.
+- **A deck change re-deals every game.** 55 of run 1's 64 games end differently after the swap, so a swap's numbers are a new sample, and the other decks move as much as Izzet does.
+- **Health:** 0 stalls and 0 rejected moves in every run. Turns p50 is 13 in run 1 at every step. The suite is 41 of 41, every tag at 100%. No pinned arena digest moved.
+
+### Options considered and rejected
+
+- **The issue's pair, The Indomitable and Monument to Endurance.** See decision 3.
+- **Four swaps.** No better than two in run 1 (2 of 64), and it cuts the deck further from its precon.
+- **A landfall payoff purpose** (a `landfall_payoff` on a triggered row, like `discard_payoff`, so a land the bot puts onto the battlefield is worth Tatyova's card, a Cobra's mana or a Baloths token). It is the real cause of the Hart's price, and it would reprice every land Simic plays or fetches. It needs a new wire field and declarations on nine Simic cards. It is not small, and Simic is no longer behind. See question 4.
+- **Pricing a crew by the attack it enables.** That is the Vehicles item in [Out of scope](#out-of-scope), and it is the reason The Indomitable was not proposed.
+
+### Questions for the owner (#2480)
+
+Each lists the recommended option first.
+
+1. **The impulse price** (decisions 1 and 2).
+   - **(a) Recommended:** accept, with both switches on in `DefaultConfig()`. It turns a dead activation into a used one and changes no strength number beyond noise.
+   - **(b)** Reject. Revert the first commit. Face-Breaker stays `never`.
+2. **The Izzet swap** (decision 3).
+   - **(a) Recommended, weakly:** Fable of the Mirror-Breaker and Monument to Endurance for Wash Away and Negate. Both new cards are used, and the direction is up, but the change is within noise.
+   - **(b)** The issue's pair: The Indomitable and Monument to Endurance. The bot rarely crews The Indomitable.
+   - **(c)** No swap. Revert the second commit.
+3. **Izzet's gap.** At 2% to 5% no swap of two to four cards closes it. In run 1 at seed 1, Izzet is out first or second in 48 of 64 games. Of the damage the game logs attribute to a deck's own cards, Izzet's is the least: its best source is Mary Read and Anne Bonny with 446, against Syr Konrad's 2,448 and Y'shtola's 1,324, which hit each opponent.
+   - **(a) Recommended:** a new issue to rebuild izzet-aggro around what the heuristic plays well (cheap threats that make value when they enter or attack, and damage to each opponent, which is what Konrad and Y'shtola win with), measured over at least three seed blocks.
+   - **(b)** Heuristic work first: the crew price above, and why Izzet's small attackers trade so badly.
+   - **(c)** Accept Izzet as the weak deck for now.
+4. **Simic and landfall.**
+   - **(a) Recommended:** no change now. A follow-up issue for a landfall payoff purpose, to be measured against Simic's balance when it is built.
+   - **(b)** Build the landfall price now, in its own amendment.
+5. **Esper.**
+   - **(a) Recommended:** no trim (decision 4).
+   - **(b)** Trim Esper now (Consecrated Sphinx, Sheoldred, the two free counterspells, as #2475 listed).
 
 ## Consequences
 
@@ -1667,3 +1978,248 @@ Left undeclared (10), which with the 13 from batches 1 to 3 is every undeclared 
 The audit's burn list goes from 56 cards to 23: 33 declared. The 23 left are the 12 from batches 1 and 2, Razorgrass Ambush (batch 3) and the 10 above.
 
 **Curated decks.** None of the four curated decks plays a card in this batch, so none gained an entry. `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1 --lockstep`, with binaries built from `develop` at `800eff6cb` and from this branch: 0 stalls in both, turns p50 14 in both, and wins esper-control 23 / 24, izzet-aggro 4 / 4, mono-black-aristocrats 27 / 26, simic-ramp 10 / 10. One game of 64 differs (the 48th, 16 turns against 13). A second run of the branch binary differs from its own first run in that same game and matches `develop` game for game, while two runs of the `develop` binary were identical, so the difference is #2730's run-to-run tie-break nondeterminism, not this change. The suite is 41 of 41 before and after. `TestLegalActionsAgreement` did not go stale. `TestRealDumpPurposeAudit` still fails on `develop` for Call Forth the Tempest (#2771), the only failure; the burn list above is read from its output.
+
+### #2400: the race sends the swing that ends the game soonest (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest), accepted. `develop` is `de452ebd6`, after #2904 made lockstep deterministic. Every variant is that tree with the `Config` switches set as named, so `develop` is the row with all four off. The runs are the ones #2400's table used: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212), with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, and the seed-1409 mirrors in `lockstep_game_test.go`. The full Wurm mirror is skipped on `develop` (#2474), so it was run with the skip lifted. A board is the turns with the edge on seat 0 / seat 1.
+
+**Every variant.** The objective is `RaceEndsSoonest`. The refinements are T (`FreeTrampleOverflow`), X (`FreeCommanderNeedsTax`) and R (`RecastChumpForNext`).
+
+| Objective | Refinements | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---|---:|---:|---|---|
+| smallest (`develop`) | — | 16.08 | 15.08 | 5 / 6 | 26 / 26, `[6 3]` |
+| smallest | T | 17.08 | 15.25 | 9 / 9 | 26 / 26, `[6 3]` |
+| smallest | X | 16.92 | 15.33 | 5 / 6 | 26 / 26, `[6 3]` |
+| smallest | R | 16.08 | 15.08 | 5 / 8 | 26 / 26, `[6 3]` |
+| smallest | T, X | 16.92 | 15.08 | 9 / 9 | 26 / 26, `[6 3]` |
+| soonest | — | 15.42 | 14.17 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | T | 15.92 | 13.67 | 5 / 6 | 26 / 26, `[6 3]` |
+| **soonest** | **X (the default)** | **15.25** | **13.75** | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | R | 15.42 | 14.17 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | T, X | 16.00 | 13.25 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | X, R | 15.92 | 14.25 | 5 / 6 | 26 / 26, `[6 3]` |
+| soonest | T, X, R | 15.92 | 13.75 | 5 / 6 | 26 / 26, `[6 3]` |
+
+In every row, no gate game stalls, and heuristic beats random 12–0. The Drake mirror ends on 8 / 8 and Wurm + Bear on 1 / 2.
+
+- **The old objective reproduces #2400's finding on today's `develop`.** Trample overflow adds a turn to the 4-seat gate, and the tax adds 0.84. Trample also takes Wurm + Ogre from 5 / 6 to 9 / 9.
+- **The recast chump no longer stalls a Wurm board.** In #2310's measurement, at `a5285c5ee`, it stalled both at 26 turns. On `de452ebd6`, Wurm + Ogre ends on 5 / 8 with it under the old objective and on 5 / 6 under the new one. The full mirror stops at `[6 3]` with or without it. That is #2474's position: Bear and commander against a lone commander on 3, a kill three turns deep that neither planner sees. In the full mirror, R sends 8 attrition swings where the others send 1, and none of them connects.
+- **The full mirror with creatures traded as a key**, the rejected third key, stops at `[6 6]`. The first exchange sent both Wurms, "2 of mine for 2 of theirs". The edge became an Ogre, and the defender's commander traded it away.
+
+**Per seed** (turns / winner seat):
+
+| Seed | `develop` | soonest | soonest + X |
+|---|---|---|---|
+| 101 | 12 / 1 | 12 / 1 | 12 / 1 |
+| 102 | 11 / 3 | 11 / 3 | 11 / 3 |
+| 103 | 18 / 1 | **12** / 1 | 12 / 1 |
+| 104 | 15 / 0 | **13** / 0 | 13 / **2** |
+| 105 | 22 / 3 | **17** / 3 | 17 / 3 |
+| 106 | 11 / 2 | **13 / 1** | **16 / 0** |
+| 107 | 24 / 3 | 24 / 3 | 24 / 3 |
+| 108 | 17 / 2 | **16** / 2 | 16 / 2 |
+| 109 | 17 / 1 | **18 / 3** | **13 / 2** |
+| 110 | 16 / 3 | **15** / 3 | **14 / 0** |
+| 111 | 14 / 2 | 14 / 2 | 14 / 2 |
+| 112 | 16 / 0 | **20** / 0 | **21** / 0 |
+| **4-seat mean** | **16.08** | **15.42** | **15.25** |
+| 201 | 13 / 0 | **12** / 0 | 12 / 0 |
+| 202 | 21 / 0 | **13** / 0 | 13 / 0 |
+| 203 | 21 / 0 | **16** / 0 | 16 / 0 |
+| 204 | 10 / 0 | **17** / 0 | 17 / 0 |
+| 205 | 10 / 0 | 10 / 0 | 10 / 0 |
+| 206 | 20 / 0 | 20 / 0 | **14 / 1** |
+| 207 | 14 / 1 | **13** / 1 | 13 / 1 |
+| 208 | 14 / 1 | 14 / 1 | 14 / 1 |
+| 209 | 12 / 1 | 12 / 1 | 12 / 1 |
+| 210 | 11 / 0 | **10** / 0 | 10 / 0 |
+| 211 | 18 / 1 | 18 / **0** | **19 / 1** |
+| 212 | 17 / 1 | **15** / 1 | 15 / 1 |
+| **2-seat mean** | **15.08** | **14.17** | **13.75** |
+
+Bold marks a change from the column to its left.
+
+**Why the seeds change.** Each game was replayed with its move log, and the first move that differs was read. Past that move, the deals and draws meet a different board, so a later turn count is a different game, not the same decision repeated.
+
+- **`develop` → soonest: 23 of 24 games reach a different move.** Only seed 102 plays the same game. In 22 of the 23, the first different move is the same swing grown bigger:
+  - **20 are attrition swings** that add attackers for more sure damage, often in a shorter line. Seed 202: two Ogres (4 sure, a race within 3 exchanges) become two Ogres and the commander (7 sure, within 2), and the game ends on turn 13 instead of 21. Seed 203: a lone Drake (3 sure, within 3) becomes a Drake, a Wurm and two Ogres (11 sure, within 1), and it ends on 16 instead of 21. Seed 103: one Ogre (4 sure) becomes two (8 sure), and it ends on 12 instead of 18.
+  - **2 are two-turn races.** Seed 111 goes from `8 now + 13 next` to `11 now + 13 next`. Seed 212 goes from `3 now + 6 next` to `5 now + 2 next`.
+  - **The 23rd, seed 101, is a line found where `develop` found none.** Seat 2 attacks with a Bear for 5 sure where it had passed. The search used to give up when its budget ran out. Now it sends the best line found so far.
+
+  Seeds 101, 107, 111, 205, 206, 208 and 209 end on the same turn. Seed 211 ends on the same turn with a different winner.
+- **The three games that get longer.**
+  - **Seed 204 (10 → 17).** The first swing is a Wurm and an Ogre for 11 sure, instead of the Wurm alone for 7. Two turns later the defender gang-blocks the Wurm with an Ogre and a Drake and kills it. The old line never offered that block, and the game grinds on.
+  - **Seed 112 (16 → 20)** sends two Ogres for 8 sure instead of one for 4.
+  - **Seed 106 (11 → 13)** sends the commander and a Bear for 5 sure instead of the commander alone for 3, and the winner changes.
+- **soonest → soonest + X: 12 games reach a different move.** The tax acts only on a defender's commander, so every first difference is a commander the tax prices out. Its block stops being free, and a swing qualifies, or qualifies differently, that did not before.
+  - **Seeds 206, 211 and 111:** an attrition swing where the bot had passed. Seed 206 ends on turn 14 instead of 20, and the other seat wins.
+  - **Seeds 105 and 204:** an attrition swing becomes a two-turn race. In seed 204 it is the same three attackers, now `14 now + 4 next turn`.
+  - **Seeds 112, 208 and 209:** the race's numbers grow.
+  - **Seeds 104 and 110:** a per-creature attack becomes an attrition swing or a race.
+  - **Seeds 106 and 109 (4 seats):** under soonest the bot had a line within 1 exchange against one opponent. With the tax, an opponent earlier in its order has a line too, within 3 exchanges, and the bot swings at that one instead. Both planners try defenders in focus order and take the first defender with a line. The objective ranks swings against one defender, not across defenders ([Open](#open-2400)).
+
+**Other gates on the default** (soonest + X):
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag 100%.
+- `go test ./internal/aiseat/heuristic/ ./internal/aiseat/suite/...`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns all four switches off.
+- `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12` over `./internal/aiseat/...` and `./internal/botarena/` with `-race`: green. The gate seeds under `-race` match the non-race runs above game for game. Heuristic vs random is 12–0. Decision latency over 2534 decisions is p50 105µs, p99 4.44ms, max 21.4ms (`-race`, a loaded box), under the 50ms p99 bar. #2310 measured 105µs, 5.25ms and 17.3ms on `develop` on its own box.
+- Back-outs: with `RaceEndsSoonest` off, `TestRaceSendsTheSwingThatEndsSoonest` and two cases of `TestRaceCountsACommanderItsControllerCannotRecast` fail. With `FreeCommanderNeedsTax` off, the same two cases fail.
+
+**#2310's tests.** Five of #2310's decision tests put the defender's commander on a board with no lands. With the tax counted, it could not be cast again, so it was not free, and the tests no longer measured what they were written for. Each board now gives the defender the two lands a {1}{R} commander needs (`withRecastMana`). `TestRaceStillBanksDamageOnlyALostCreatureStops` pins the lone commander's race, the smallest swing, so it runs with `RaceEndsSoonest` off.
+
+### #2457: self-replacing discards and waiting for the main phase (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step), accepted. `DefaultConfig()` against `BaselineConfig()`: `SelfReplacingDiscards` true (baseline false) and `WaitForMain` true (false). No weight is new: the price reads `Weights.Hand`, `TutorWeight` and `SpellPerMana`.
+
+Before is `develop` at `de452ebd6`, which has #2904's deterministic lockstep. After is this branch with both switches. "Discard price only" is a scratch build of this branch with `WaitForMain` off, to show each lever alone. Every run is `--rotate --lockstep` with the real dump. **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** Wall-clock times are not comparable: another agent's arena runs shared the machine.
+
+**Run 1** (§8, 64 games, seed 1, with the decision log). The counters come from a scratch pass over the decision logs. A "cycler" is a card in the bot's hand with a `discard_self` hand row.
+
+| Measure | Before | Discard price only | After |
+|---|---:|---:|---:|
+| games that differ from before (winner or turns) | — | 4 / 64 | 58 / 64 |
+| wins: esper / izzet / mono-black / simic | 20 / 2 / 26 / 16 | 19 / 2 / 27 / 16 | 19 / 3 / 27 / 15 |
+| turns p50 | 12 | 12 | 13 |
+| casts in the bot's own upkeep or draw step, stack empty | 530 | 532 | **0** |
+| discard choices (cleanup, loot, prompt) offering a cycler among two or more of the bot's cards: a nonland cycler named | 3 of 35 | 8 of 36 | **12 of 34** |
+| cost discards offered with a cycler among the payments: a cycler paid | 0 of 20 | 0 of 14 | 1 of 15 |
+| stranded turns (ADR 0136 P2) | 93 / 2,898, 3.2% | 97 / 2,923, 3.3% | 93 / 3,020, 3.1% |
+| plan misses (ADR 0136 P6) | 45 / 1,049, 4.3% | 46 / 1,061, 4.3% | 62 / 1,303, 4.8% |
+| decision p99 | 406 µs | 393 µs | 425 µs |
+
+The 530 draw-step casts were mostly removal and card draw: Pull from Tomorrow 30, Withering Torment 29, Cyclonic Rift 26, Infernal Grasp 25, Go for the Throat 20, Utter End 20, Return of the Wildspeaker 18, Mortify 17, Murder 16 and Sphinx's Revelation 16 lead the list. They are now cast in the main phase, where the turn plan sees them, so planned windows rose from 1,049 to 1,303 and plan misses from 4.3% to 4.8%, under P6's 5%. Izzet-aggro's misses rose most (6.7% to 10.0%, 19 of 190). The discard price alone moves only 4 games of 64: cyclers are few (Marauding Mako, Scrounging Skyray and Magmakin Artillerist in izzet-aggro, and Raffine's Tower, a land, in esper-control).
+
+Unexpected Windfall, the position's card, is cast less: 13 casts in 13 of 13 games offered before, 6 casts in 6 of 9 after. Before, 11 of the 13 were in the bot's own upkeep or draw step, and 10 of the 13 cards they discarded were lands, one of them a Myriad Landscape, the position's rejected answer. After, the bot reaches its main phase, plays that land as its land drop, and has no spare land left to pitch, so Windfall falls under the bar. None of the 6 casts after is in an upkeep or draw step with an empty stack.
+
+`never` counts are unchanged except izzet-aggro, 3 to 4: Marauding Mako's cycling, taken once in 47 windows before, is taken in none of 66 after. Every A3 canary that met its bar still does, and Rhystic Study on simic-ramp reaches its bar (8 of 22, 36%, to 11 of 22, 50%). A2 rows meeting 80% of games offered: 7 before, 10 after.
+
+**Run 2** (§8: two `heuristic` and two `heuristic-baseline`, `--games 48` with `heuristic` on esper-control and izzet-aggro, then 48 with the seats swapped). Seed 1 is the ADR's; seed 1001 was added to read the first seed's direction.
+
+| Seed | Half | `heuristic` before | after | `heuristic-baseline` before | after |
+|---|---|---:|---:|---:|---:|
+| 1 | esper and izzet | 27 / 96 | 30 / 96 | 21 / 96 | 18 / 96 |
+| 1 | black and simic | 41 / 96 | 36 / 96 | 7 / 96 | 12 / 96 |
+| 1001 | esper and izzet | 27 / 96 | 29 / 96 | 21 / 96 | 19 / 96 |
+| 1001 | black and simic | 38 / 96 | 36 / 96 | 10 / 96 | 12 / 96 |
+| **1, pooled** | | 68 / 192, 35.4% (29.0%–42.4%) | **66 / 192, 34.4% (28.0%–41.3%)** | 28 / 192 | 30 / 192 |
+| **both, pooled** | | 133 / 384, 34.6% (30.0%–39.5%) | **131 / 384, 34.1% (29.6%–39.0%)** | 59 / 384 | 61 / 384 |
+
+Not detectably worse: the upper bound is far above 25%, and the lower bound still clears it, as before. By deck, over both seeds (96 seat-games each), `heuristic` won esper-control 52 to 56, izzet-aggro 2 to 3, mono-black-aristocrats 47 to 39 and simic-ramp 32 to 33. Mono-black's drop is about one standard error, mostly seed 1's half B (25 to 18); in run 1, a mirror, it is 26 to 27. Turns p50 move by at most one.
+
+**Suite:** `boteval suite run --policy heuristic`, 41 of 41 before and after, every tag at 100%. The move, layer and reason are the same at every position but `do-not-windfall-away-the-last-land`, which passes for `wait for the main phase: cast spell (declared purpose) Cast Unexpected Windfall (+1.50)` where it passed for `nothing worth doing`. Its frozen view had the `purpose` the server now projects on the Mako's cycling row stamped on (`draws: 1`, `answers: ["value"]`), as the discard-payoff amendment did for its rows; nothing else changed. `BaselineConfig()` ranks every position as recorded in `baseline_rankings.json`.
+
+**Pins.** `TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow` was re-pinned by hand (its seventh exception). In seeds 31 and 107 the first difference is a Lightning Bolt the heuristic held through its upkeep and draw step: seed 31 casts it at the same Drake in its main phase, and seed 107 spends that mana on its commander. With `WaitForMain` off the old digests still match, whatever `SelfReplacingDiscards` is.
+
+### #2474: the attrition horizon trades commanders (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-the-attrition-horizon-trades-commanders), accepted. `develop` is `2594c7de8`, with #2400's default (`RaceEndsSoonest` and `FreeCommanderNeedsTax` on). Every variant is the branch with the switches set as named, so `develop` is the row with both off. The runs are #2400's: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212) with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, `TestHeuristicBeatsRandomHeadToHead`, and the seed-1409 mirrors in `lockstep_game_test.go`, the full Wurm mirror included now that its skip is gone. A board is the turns with the edge on seat 0 / seat 1.
+
+F is `HorizonPlaysFreeAnswer`, H is `HorizonRecastsCommander`, and R is #2400's `RecastChumpForNext`. "One pass" is H with the trade allowed in the search's only pass, as first built; "second pass" is H as accepted.
+
+| Switches | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|
+| none (`develop`) | 15.25 | 13.75 | 5 / 6 | 26 / 26, `[6 3]` |
+| F | 15.25 | 13.75 | 5 / 6 | 26 / 26, `[6 3]` |
+| H, one pass | 15.92 | 13.75 | 5 / 6 | 26 / 26, `[6 3]` |
+| F, H, one pass | 15.92 | 13.75 | 5 / 6 | 7 / 6 |
+| H, second pass | 15.25 | 13.75 | 5 / 6 | 26 / 26, `[6 3]` |
+| **F, H, second pass (the default)** | **15.25** | **13.75** | 5 / 6 | **7 / 6** |
+| F, H, second pass, R | 15.92 | 14.25 | 5 / 6 | 7 / 6 |
+
+In every row, no gate game stalls, and heuristic beats random 12–0. The Drake mirror ends on 8 / 8 and Wurm + Bear on 1 / 2.
+
+- **F alone and H alone (second pass) change nothing.** Each needs the other on the Wurm board, and neither changes a gate game.
+- **The default plays all 24 gate games move for move as `develop` does.** Compared with `AISEAT_DEBUG=1` move logs: 1710 to 2451 moves a game at 4 seats and 487 to 965 at 2 seats, all identical. Wherever the second pass ran, it found no line.
+- **The full Wurm mirror** ends on turns 7 and 6 with lives `[6 0]` and `[0 6]`. On the stop board the edge seat sends its commander and the Bear: `attack: attrition — 0 of mine (1 cast again) for 0 of theirs and 2 sure now, a race within 2 exchange(s); crack-back 3 < my 6`. The defender blocks the Bear with its commander, takes 3 and dies ([Open](#open-2474)).
+- **R** makes seeds 106 (16 → 24) and 211 (19 → 25) longer, as it does without this amendment (#2400's "soonest, X, R" row is 15.92 and 14.25). It stays off.
+
+**Per seed, the trade in one pass** (turns / winner seat; every other seed matches `develop`):
+
+| Seed | `develop` | F, H, one pass |
+|---|---|---|
+| 101 | 12 / 1 | **16 / 3** |
+| 103 | 12 / 1 | **14** / 1 |
+| 109 | 13 / 2 | **14 / 3** |
+| 111 | 14 / 2 | **15** / 2 |
+
+H alone in one pass changes the same four seeds the same way. The first move that differs, read off the move logs:
+
+- **Seeds 101, 103 and 111 lose a line.** On `develop` the bot sends an attrition swing there: the commander and two Bears (101), an Ogre (103), a Bear (111). With the trade in the one pass it finds no line and falls back to a per-creature attack or a pass. Counting the bot's commander as cast again makes more exchanges acceptable at every depth, so the search spends its budget of 100 swings on them before it reaches the line it used to send. With the budget raised to 1000 as a check, seeds 101 and 103 end as on `develop` (12 / 1).
+- **Seed 109** sends a commander-trade line, the Ogre, the commander and a Bear for 6 sure within 2 exchanges, where `develop` sent the Ogre for 4 sure within 3. The game ends a turn later with another winner.
+
+**Rebased onto `032e1f138`.** #3064, the cycling-discard amendment above, merged while this was measured, and it moves `develop`'s gates. The default against that `develop`, with the same runs:
+
+| | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|
+| `develop` `032e1f138` | 16.17 | 13.25 | 5 / 6 | 26 / 26, `[6 3]` |
+| **the default** | **16.17** | **13.25** | 5 / 6 | **7 / 6** |
+
+Every gate game ends on the same turn with the same winner. Heuristic vs random is 12–0, the Drake mirror ends on 8 / 8 and Wurm + Bear on 1 / 2. One gate game plays differently. In seed 105, at move 1796, seat 3 sends its commander and a Bear at seat 1 (`0 of mine (1 cast again) for 0 of theirs and 2 sure now, a race within 2 exchange(s)`) where `develop` passed. Seat 1 chumps the commander with an Ogre instead of trading commanders. The game still ends on turn 15, and seat 3 still wins.
+
+**Other gates on the default:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag 100%, before and after the rebase.
+- `go test ./internal/aiseat/heuristic/`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns both switches off.
+- `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/...` and `./internal/botarena/` with `-race`: green. The gate seeds under `-race` match the non-race runs game for game, and heuristic vs random is 12–0. Decision latency over 2534 decisions is p50 96µs, p99 6.00ms and max 35.2ms (`-race`, on a box shared with another agent's test runs), under the 50ms p99 bar. Rebased onto `032e1f138` the run is green again, its gate seeds match too, and latency over 2389 decisions is p50 96µs, p99 7.74ms and max 33.7ms. #2400 measured 105µs, 4.44ms and 21.4ms. The second pass runs only in a decision whose first pass found no line, and wall-clock numbers on a shared box are not a reliable comparison.
+- Back-outs: `TestAttritionTradesCommandersForTheKill` turns each switch off in turn and the bot sends nothing, and the full Wurm board stalls at `[6 3]` with either off (the F and H rows). `TestOutcomeOfTheCommanderTrade` reads the outcome under each of the four combinations.
+
+### #2480: Izzet and Simic after the rebalance (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance), proposed. `develop` is `0e81b3af4`, with #3062's deterministic lockstep and #3063, #3064 and #3065's heuristic. Step 1 is the impulse price: `PriceImpulse` and `OneShotManaAsToken`, both true in `DefaultConfig()` and false in `BaselineConfig()`; no weight is new. Step 2 adds the Izzet swap. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
+
+**Run 1, seed 1** (wins of 64, Wilson 95%):
+
+| Deck | `develop` | Step 1 | Step 2 |
+|---|---|---|---|
+| esper-control | 17, 26.6% (17.3%–38.5%) | 17, 26.6% (17.3%–38.5%) | 20, 31.2% (21.2%–43.4%) |
+| izzet-aggro | 1, 1.6% (0.3%–8.3%) | 1, 1.6% (0.3%–8.3%) | 3, 4.7% (1.6%–12.9%) |
+| mono-black-aristocrats | 26, 40.6% (29.5%–52.9%) | 24, 37.5% (26.7%–49.7%) | 25, 39.1% (28.1%–51.3%) |
+| simic-ramp | 20, 31.2% (21.2%–43.4%) | 22, 34.4% (23.9%–46.6%) | 16, 25.0% (16.0%–36.8%) |
+| games that differ from the column to the left | — | 5 (2 winners) | 55 (36 winners) |
+| turns p50 | 13 | 13 | 13 |
+
+`never` lists. `develop`: izzet-aggro, Glint-Horn Buccaneer's, Marauding Mako's, Professional Face-Breaker's and Scrounging Skyray's activations; mono-black-aristocrats, Ashnod's Altar, Blood Artist and Burnished Hart's activation; esper-control and simic-ramp, none. Step 1: Face-Breaker's activation leaves the list (20 of 935 windows, 7 of 13 games). Step 2: the same as step 1, plus Burnished Hart's activation on simic-ramp (0 of 309 windows; it was 1 of 346 on `develop`). The A3 canaries that met their bar on `develop` meet it at both steps; Rhystic Study, below its bar on both decks on `develop` (11 of 23 and 10 of 24), meets it at step 2 (15 of 23 and 9 of 16).
+
+**Run 1, seed 1001** (a second block, steps 1 and 2 only):
+
+| Deck | Step 1 | Step 2 | Pooled with seed 1, step 1 | Pooled with seed 1, step 2 |
+|---|---|---|---|---|
+| esper-control | 30, 46.9% (35.2%–58.9%) | 26, 40.6% (29.5%–52.9%) | 47 / 128, 36.7% (28.9%–45.3%) | 46 / 128, 35.9% (28.1%–44.5%) |
+| izzet-aggro | 1, 1.6% (0.3%–8.3%) | 2, 3.1% (0.9%–10.7%) | 2 / 128, 1.6% (0.4%–5.5%) | 5 / 128, 3.9% (1.7%–8.8%) |
+| mono-black-aristocrats | 18, 28.1% (18.6%–40.1%) | 25, 39.1% (28.1%–51.3%) | 42 / 128, 32.8% (25.3%–41.3%) | 50 / 128, 39.1% (31.0%–47.7%) |
+| simic-ramp | 15, 23.4% (14.7%–35.1%) | 11, 17.2% (9.9%–28.2%) | 37 / 128, 28.9% (21.8%–37.3%) | 27 / 128, 21.1% (14.9%–29.0%) |
+
+`never` lists at seed 1001. Step 1: izzet-aggro, Glint-Horn Buccaneer's, Scrounging Skyray's and Solphim's activations (Face-Breaker's is not on it); mono-black-aristocrats, Ashnod's Altar and Blood Artist. Step 2: izzet-aggro, Glint-Horn Buccaneer's, Marauding Mako's, Scrounging Skyray's and Reflection of Kiki-Jiki's activations; mono-black-aristocrats, Ashnod's Altar, Blood Artist and Burnished Hart's activation. Simic's fall at step 2 (37 to 27 of 128) is in games the Izzet swap re-dealt, and its interval still holds 25%.
+
+**Run 2, seed 1** (wins of 48 per deck):
+
+| | `develop` | Step 1 | Step 2 |
+|---|---|---|---|
+| half A, `heuristic` esper / izzet | 29 / 1 | 28 / 0 | 17 / 4 |
+| half A, `heuristic-baseline` black / simic | 14 / 4 | 13 / 7 | 15 / 12 |
+| half B, `heuristic` black / simic | 23 / 13 | 23 / 13 | 20 / 15 |
+| half B, `heuristic-baseline` esper / izzet | 10 / 2 | 10 / 2 | 12 / 1 |
+| **`heuristic`, pooled** | **66 / 192, 34.4% (28.0%–41.3%)** | **64 / 192, 33.3% (27.0%–40.3%)** | **56 / 192, 29.2% (23.2%–36.0%)** |
+| `heuristic-baseline`, pooled | 30 / 192 | 32 / 192 | 40 / 192 |
+| games that differ, halves A / B | — | 4 / 0 | 43 / 36 |
+| turns p50, halves A / B | 15 / 12 | 15 / 12 | 14 / 12 |
+
+Not detectably worse at either step: the lower bound clears 25% at `develop` and step 1 and is 23.2% at step 2, with the upper bound far above 25%. Step 2's fall is mostly half A's Esper (28 to 17 wins), in games the swap re-dealt: it changes the Izzet library, so 43 of half A's 48 games are different games. Half B of step 1 plays every game as `develop` does, because no `heuristic` seat holds Face-Breaker there.
+
+**Izzet, every seat-game** (run 1 at seeds 1 and 1001, and both halves of run 2): 4 of 224 at step 1 (1.8%, 0.7%–4.5%) and 10 of 224 at step 2 (4.5%, 2.4%–8.0%).
+
+**Swap sets scouted with run 1, seed 1** (on step 1; wins of 64):
+
+| Izzet in, out | esper | izzet | mono-black | simic | The new cards |
+|---|---:|---:|---:|---:|---|
+| The Indomitable and Monument to Endurance, for Wash Away and Negate (the issue's pair) | 20 | 4 | 23 | 17 | The Indomitable cast in 6 of 12 games offered, crewed in 2; Monument cast in 6 of 11 |
+| **Fable of the Mirror-Breaker and Monument, for the same (step 2)** | 20 | 3 | 25 | 16 | Fable cast in 9 of 12, its Reflection's copy used in 2; Monument cast in 6 of 11 |
+| Fable, Monument, Glorybringer and Third Path Iconoclast, for Wash Away, Negate, Swan Song and Shock | 16 | 2 | 31 | 15 | Glorybringer cast in 21 of 21, exerted in 4; Iconoclast cast in 12 of 13 |
+
+**Why the cards went unused** (the counts in the [amendment](#why-the-cards-go-unused)) come from run 1's decision log on `develop`, read by a scratch pass: each window in which a card's activation was offered, the price the heuristic put on it, and the move it made instead. The landfall count reads the bot's own battlefield in the windows of its own main phase with an empty stack. "Out first or second" counts a seat whose last decision came on an earlier turn than at least two other seats' last decisions. The damage by source is read from the game-log tails the logged views carry, deduplicated, which cover about half of each game's log, so only the shares mean anything.
+
+**Other gates:**
+
+- `boteval suite run --policy heuristic`: 41 of 41 at step 2, every tag at 100%.
+- `go test ./...`: green, including `TestImpulseIsTakenInTheOwnMainPhase`, `TestImpulseIsNotTakenWhenTheCardWouldBeLost`, `TestImpulseNeedsBothSwitches` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`), so none was re-pinned.
+- With the dump, `go test ./internal/decks/`: green. `TestRealDumpDecksAreLegalCommanderDecks` now matches a double-faced card by its front face, as `Load`'s oracle-ID check does.

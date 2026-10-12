@@ -21,15 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed behaviour, and the reason the ADR left the concentrating
 // strategy out rather than inventing one nobody asked for.
 //
-// A payment the engine waived (permissive mode, a strict-mode
-// override) counts zero red mana, so the spell deals its printed 3 —
+// A payment the engine waived (an insufficient permissive pool or
+// Cast anyway) counts zero red mana, so the spell deals its printed 3 —
 // weaker than printed, never stronger.
 func init() {
 	Register(Spec{
 		OracleID:     "1e94e647-9150-4b22-aa9f-d195f64fb20a",
 		Name:         "Slaying Fire",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so Slaying Fire always deals 3 rather than 4."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Slaying Fire always deals 3 rather than 4."},
 		Targets:      TargetAny(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			damage := 3

@@ -68,12 +68,6 @@ var adoptableGaps = map[string]string{
 		pick among the cards THIS wipe moved; offering the promise
 		without it would give the opponent a card for nothing, so the
 		card stays unpromisable until that pick is written.`,
-	"Deadly Rollick / free cast": `#428 landed the conditional free cast and used it on
-		Fierce Guardianship only. Deadly Rollick and the rest of the
-		Commander Legends cycle are two lines each
-		(FreeIfYouControlCommander), but each needs its own free-cast
-		test, so they are their own piece of work rather than a
-		rider on the drift guard.`,
 	"Lier, Disciple of the Drowned / flashback": `A phrase collision, pinned
 		rather than dodged (ADR 0106 PR 2, #1806). Lier's granted
 		flashback works (a standing CastPermission, Underworld Breach's

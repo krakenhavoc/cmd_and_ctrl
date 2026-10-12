@@ -2925,12 +2925,19 @@ Every field is omitted when zero.
 | `life_gain` | life its controller gains | Resolute Survivors 1 |
 | `awaken_land` | on an alternative cost only: the N of "Awaken N—[cost]", the +1/+1 counters it puts on a land its controller controls as that land becomes a 0/0 Elemental creature with haste ([ADR 0135](decisions/0135-alternative-costs-that-tap-discard-awaken-and-emerge.md) §3). The spell's own `purpose` still applies | Ruinous Path 4 |
 | `extra_land_drops` | on the card only: the additional lands its controller may play, on each of their turns for a permanent and this turn for an instant or sorcery ([#2678](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2678)). On a permanent it is the same number as the static the engine runs | Oracle of Mul Daya 1 |
+| `impulse` | cards it exiles from the top of its controller's library that its controller may play this turn ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)). Not a draw: the card is lost unless it is played that turn | Professional Face-Breaker 1 |
 | `targets` | what happens to each target, one entry per target clause; see [Target entries](#target-entries-adr-0126-amendment-of-2026-10-08) | Sign in Blood |
 | `answers` | on an activated row only: what it can do in response, as a list of the names below ([ADR 0142](decisions/0142-declared-answers-on-catalog-abilities.md)). `["value"]` is a declared "answers nothing", so a reader can tell it from a row that declares none. Not an amount: a purpose with only `answers` prices nothing | Albino Troll `["protect"]` |
 
 An amount is the printed number. A card whose amount is X, or is
 counted at resolution ("draw a card for each creature you control"),
 does not declare it.
+
+A row in `zone_abilities` carries its `purpose` too. Cycling declares
+`draws: 1`, and typecycling and transmute `tutors: 1`
+([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), so
+a `discard_self` row with one of them is a card that can turn itself
+into another card from its owner's hand.
 
 `sweep` describes the permanents a wipe removes:
 
