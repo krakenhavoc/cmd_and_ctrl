@@ -61,7 +61,7 @@ func (p *Policy) sacrificeCost(st *state, ids []string) float64 {
 		if p.cfg.SacrificeDyingAnyway {
 			keep -= p.dyingAnyway(st, c)
 		}
-		v += keep * st.permanentValue(c)
+		v += keep * p.sacrificedValue(st, c)
 		if p.cfg.DeathPayoff != 0 && isCreature(c) {
 			if payoffs < 0 {
 				payoffs = st.deathPayoffRows(ids)

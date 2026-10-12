@@ -32,7 +32,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     "play" grant (lands included — it says play, not cast), paid
 //     for by sacrificing any permanent with the Treasure subtype,
 //     the same SacrificeOther cost shape Goblin Bombardment's
-//     creature clause uses.
+//     creature clause uses. It declares Impulse 1 (#2480), so the bot
+//     prices the card it exiles rather than the flat ActivateBase.
 //
 // No simplification.
 func init() {
@@ -50,7 +51,7 @@ func init() {
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Sacrifice a Treasure: Exile the top card of your library. You may play that card this turn.",
-			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Purpose: game.Purpose{Answers: game.AnswerValue, Impulse: 1},
 			Cost:    game.AbilityCost{SacrificeOther: sacrificeSpec("a Treasure", isTreasure)},
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return ExileTopWithPermission{

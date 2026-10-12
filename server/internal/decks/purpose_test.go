@@ -223,6 +223,8 @@ var curatedPermanentPurposes = map[string]string{
 	"Burnished Hart":           "activated",
 	"Spectral Sailor":          "activated",
 	"Teferi, Master of Time":   "activated",
+	// #2480: its Treasure-for-a-card row declares `impulse: 1`.
+	"Professional Face-Breaker": "activated",
 	// death payoffs, on the triggered row
 	"Blood Artist":         "death payoff",
 	"Midnight Reaper":      "death payoff",

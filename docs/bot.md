@@ -883,6 +883,22 @@ row, it replaces `ActivateBase`, so a loot is priced by the card it
 draws and a land sacrifice by the land it fetches. A row with no
 purpose keeps the flat `ActivateBase` (0.50).
 
+**An impulse is a card the bot can use this turn**
+([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480),
+`PriceImpulse`, `impulse.go`). A purpose's `impulse` is the cards it
+exiles that the bot may play this turn: Professional Face-Breaker's
+"Sacrifice a Treasure: Exile the top card of your library. You may play
+that card this turn." It is priced at `Weights.Hand` per card in the
+bot's own main phase with an empty stack, when it still has a land drop
+or two mana from its lands and rocks to play what it finds, and at
+nothing anywhere else, where the card would be lost. With
+`OneShotManaAsToken`, the Treasure the row sacrifices costs
+`TokenWeight` (0.50), what making one is worth, rather than a mana
+source's board value (1.00). So Face-Breaker's row is +0.40 in the bot's
+own main phase (1.20 for the card, less 0.50 for the Treasure and 0.30
+for tapping a creature that could block) and below zero everywhere
+else. Before #2480 it was −0.80 everywhere, and the bot never took it.
+
 **A land swap is priced by what it nets**
 ([#2469](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2469),
 `NetLandSwaps`, `land_swap.go`). A cast that sacrifices lands of the
@@ -1215,6 +1231,11 @@ Zulaport Cutthroat, Bastion of Remembrance) takes `DeathPayoff` (0.60)
 off the cost of every creature it sacrifices. A payoff's own row does
 not count towards its own sacrifice. Sacrificing a commander or a big
 creature for the payoffs is still not worth it.
+
+With `OneShotManaAsToken` on (#2480), a token whose every mana ability
+sacrifices it (a Treasure) costs `TokenWeight` (0.50) when it is given
+up to pay a cost, rather than its board value as a mana source (1.00).
+It makes its mana once, and 0.50 is what the bot prices making one at.
 
 The Altars' mana abilities sacrifice a creature, so the bot does not
 activate them for floating mana. The auto-tapper uses them when a cast
