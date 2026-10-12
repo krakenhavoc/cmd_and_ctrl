@@ -18,7 +18,7 @@ func init() {
 		OracleID:            "4e81ead0-df8b-4d9d-b1cb-d1d9dc503d4c",
 		Name:                "Suncrusher",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{

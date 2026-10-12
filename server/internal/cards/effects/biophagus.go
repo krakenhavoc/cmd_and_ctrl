@@ -21,15 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "This mana" is one activation's mana: a doubler that makes the pick
 // two tokens is still one additional counter.
 //
-// One declared simplification, weaker than printed: with strict mana
-// off the pool is never spent (ADR 0068 §3), so no token pays and the
+// One declared simplification, weaker than printed: with an unrecorded
+// payment the pool is never spent (ADR 0068 §3), so no token pays and the
 // creature enters without the counter.
 func init() {
 	Register(Spec{
 		OracleID:     "7c06a368-3306-48e0-825e-a8fdc81fa343",
 		Name:         "Biophagus",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the creature enters without the extra +1/+1 counter."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature enters without the extra +1/+1 counter."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",

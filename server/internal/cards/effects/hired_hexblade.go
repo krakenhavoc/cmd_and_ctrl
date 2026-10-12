@@ -52,7 +52,7 @@ func init() {
 		OracleID:      "f3a0f155-05d8-465c-b0ef-35aa12e93013",
 		Name:          "Hired Hexblade",
 		Completeness:  CompletenessCaveats,
-		Caveats:       []string{"With strict mana off, the game doesn't see which mana you spent, so Hired Hexblade never draws the card."},
+		Caveats:       []string{"When mana payment is skipped, the game doesn't see which mana you spent, so Hired Hexblade never draws the card."},
 		WantsManaFrom: game.ManaSourceTreasure,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, AllOf(Self, func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {

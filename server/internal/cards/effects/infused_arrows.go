@@ -17,7 +17,7 @@ func init() {
 		OracleID:            "942216f7-6803-4ab3-9239-463002590f6f",
 		Name:                "Infused Arrows",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

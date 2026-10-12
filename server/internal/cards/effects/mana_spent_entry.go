@@ -18,8 +18,9 @@ import (
 // mana was spent" are one question each, answered in game/mana_spent.go.
 //
 // Every reader here inherits ADR 0068 §3: a payment the engine waived
-// (strict mana off) is UNKNOWN, so it counts no mana from any source and
-// is never "no mana was spent". The cards say so in their caveats.
+// (an insufficient permissive pool or Cast anyway) is UNKNOWN, so it
+// counts no mana from any source and is never "no mana was spent".
+// The cards say so in their caveats.
 
 // CreaturesYouControlEnterWithCountersPerManaFrom is "each creature you
 // control enters with an additional +1/+1 counter on it for each mana
@@ -64,7 +65,8 @@ func CreaturesYouControlEnterWithCountersPerManaFrom(label string, kinds game.Ma
 // it" (Freestrider Commando). One question, because an entry that was
 // not a cast spent nothing that is known: EntrySpentForEffect's zero
 // answers None. A plotted Commando cast for free gets them; a waived
-// payment (strict mana off) is unknown and does not.
+// payment (an insufficient permissive pool or Cast anyway) is unknown
+// and does not.
 func SelfEntersWithCountersIfNoManaSpent(kind string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
 		Watches: []game.EventKind{game.EventZoneMove},

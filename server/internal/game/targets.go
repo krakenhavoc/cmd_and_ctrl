@@ -277,6 +277,10 @@ type TargetClause = TargetSpec
 // positional clause ("2 damage to any target and 1 damage to any
 // other target") reads Targets[0] / Targets[1].
 type TargetSpec struct {
+	// Relation requires a candidate to be related to the single target
+	// of an earlier clause in the same mode occurrence (#1943).
+	Relation *TargetRelation
+
 	// Mode is the client-facing hint derived from the spec: "any",
 	// "player", "creature", "permanent", "stack_spell",
 	// "stack_ability", "stack_item", "card_in_graveyard". Drives
@@ -972,6 +976,9 @@ func (g *Game) TargetStillLegalForEffect(item *StackItem, ref TargetRef) bool {
 		// re-checked against its OWN predicate here.
 		if clause := g.clauseForRefLocked(item, ref); clause != nil {
 			if !g.targetLegalLocked(g.stackItemSourceLocked(item), clause, ref) {
+				return false
+			}
+			if !g.TargetRelationMatchesForEffect(clause, ref, item.Targets) {
 				return false
 			}
 			// #1559: a clause with a set rule is re-judged over the

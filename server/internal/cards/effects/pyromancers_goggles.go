@@ -26,15 +26,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "When THAT mana is spent" is one activation's mana: a Mana Reflection
 // that doubles the {R} is still one copy (ManaSpendRider.Production).
 //
-// One declared simplification, weaker than printed: with strict mana
-// off the pool is never spent (ADR 0068 §3), so no token pays and the
+// One declared simplification, weaker than printed: with an unrecorded
+// payment the pool is never spent (ADR 0068 §3), so no token pays and the
 // spell is never copied.
 func init() {
 	Register(Spec{
 		OracleID:     "f76bcbfe-483f-4e63-8425-76feca1abf3e",
 		Name:         "Pyromancer's Goggles",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the spell is never copied."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the spell is never copied."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{R}",

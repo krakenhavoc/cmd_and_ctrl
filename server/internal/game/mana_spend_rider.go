@@ -48,8 +48,8 @@ import (
 // applyManaSpendRidersLocked right after the item is registered, with the
 // SAME spend context the payment itself was solved under. Manual payment
 // and the auto-tapper arrive here identically, because the auto-tapper
-// only ever puts mana in the pool: the spend is the ordinary strict-mode
-// spend either way, and the tokens it mints carry the ability's riders
+// only ever puts mana in the pool: a funded pool is spent in either
+// payment mode, and the tokens it mints carry the ability's riders
 // through the same produceManaLocked body.
 //
 // Firing stamps Applied on the rider's copy in item.Paid.Mana. That copy
@@ -70,8 +70,8 @@ import (
 //
 // # What does NOT fire a rider, deliberately
 //
-//   - An OnPaper payment (permissive mode, ForceCast). The engine spent
-//     nothing, so no token left the pool and there is nothing to ride.
+//   - An OnPaper payment (an insufficient permissive pool, ForceCast).
+//     The engine spent nothing, so no token left the pool and there is nothing to ride.
 //     Weaker than printed — ADR 0068 §3's posture for every reader of the
 //     spend record — and the cards say so in their caveats.
 //   - A mana ability's own mana cost (a Signet's {1}). There is no stack

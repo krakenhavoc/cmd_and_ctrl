@@ -16,7 +16,7 @@ func init() {
 		OracleID:            "ab42fb8b-c463-45db-b71d-ed847c9abf1f",
 		Name:                "Lunar Avenger",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

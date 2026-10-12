@@ -25,7 +25,7 @@ func init() {
 		OracleID:     "4fca09ac-8134-43d9-a84b-686db5e2bf69",
 		Name:         "Kalain, Reclusive Painter",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't track which mana you spent, so your other creatures get no extra +1/+1 counters."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't track which mana you spent, so your other creatures get no extra +1/+1 counters."},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Kalain, Reclusive Painter — create a Treasure token",
 				Do(CreateToken{Template: TreasureToken(), N: 1})),

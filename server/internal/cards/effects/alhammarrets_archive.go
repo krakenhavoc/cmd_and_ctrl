@@ -22,27 +22,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // halves with no prompt at all (#792's identical-window skip), which
 // is what the printed card does.
 //
-// DECLARED SIMPLIFICATION — "except the first one you draw in each of
-// your draw steps" is read as "except ANY draw during your own draw
-// step". It is Notion Thief's simplification, word for word and for
-// the same reason: the engine keeps no per-draw-step draw tally. A
-// second draw in the controller's own draw step — an instant cast
-// there, a draw-step trigger — is left alone rather than doubled, so
-// the Archive gives its controller one card FEWER than printed on that
-// board and never one more. Closing it is the per-draw-step tally the
-// seam row names, which Teferi's Ageless Insight also waits on.
-//
-// The life half has no simplification, and damage is not it: a
-// Lightning Helix's three damage is untouched, only its three life of
-// gain is doubled (CR 120.3).
+// Only the first completed draw in each own draw step is exempt.
 func init() {
 	Register(Spec{
 		OracleID:     "d5c4d36c-54b3-4149-906b-a57a670260fc",
 		Name:         "Alhammarret's Archive",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Every card drawn during your own draw step is left alone, not just the first one.",
-		},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			YouGainTwiceThatMuchLife("Alhammarret's Archive: gain twice that much life"),
 			YouDrawTwiceInsteadExceptTheFirst("Alhammarret's Archive: draw two cards instead"),

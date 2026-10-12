@@ -16,15 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The enters-tapped clause is a CR 614 self-replacement; the life is a
 // cost, so the auto-tapper never plans it (ADR 0040 §7).
 //
-// One declared simplification, weaker than printed: with strict mana
-// off the pool is never spent (ADR 0068 §3), so the spell can still be
+// One declared simplification, weaker than printed: with an unrecorded
+// payment the pool is never spent (ADR 0068 §3), so the spell can still be
 // countered.
 func init() {
 	Register(Spec{
 		OracleID:     "36937483-30cb-449a-8028-75017a124922",
 		Name:         "Boseiju, Who Shelters All",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so an instant or sorcery cast with Boseiju's mana can still be countered."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so an instant or sorcery cast with Boseiju's mana can still be countered."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Life: 2},

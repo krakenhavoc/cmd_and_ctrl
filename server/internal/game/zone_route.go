@@ -103,6 +103,10 @@ import (
 // owner declines still goes to the BOTTOM of the library if that is
 // what the tucking effect said.
 type zoneRoute struct {
+	// simultaneousEntry is the already-settled entry paired with this
+	// sacrifice. It lands before the exit is announced, then announces after
+	// it, so each event sees the finished board (Goblin Welder, #1943).
+	simultaneousEntry *settledExchangeEntry
 	// CardID is the card to move. Its current zone is found by scan,
 	// so a caller never has to name the source.
 	CardID uuid.UUID
@@ -346,6 +350,17 @@ type zoneRoute struct {
 //
 // Caller must hold g.mu.
 func (g *Game) runRouteTailLocked(r *zoneRoute) error {
+	if r != nil && r.simultaneousEntry != nil {
+		l, ok, err := g.landSimultaneousEntryLocked(r)
+		if err != nil {
+			return err
+		}
+		if ok {
+			g.announceEntryLocked(l)
+			g.runEntryHooksLocked(l)
+			g.pruneChoicesAfterArrivalLocked()
+		}
+	}
 	if r == nil || r.then == nil {
 		return nil
 	}
@@ -801,6 +816,19 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		}
 	}
 
+	// Complete the entry paired with this exit before announcing either.
+	// Its triggers see the new board, but its own leaves/dies abilities did
+	// not exist before this simultaneous event and cannot see the exit.
+	landing, entryLanded, entryErr := g.landSimultaneousEntryLocked(ev.zoneRoute)
+	if entryErr != nil {
+		return entryErr
+	}
+	previousMixed := g.mixedEntry
+	if entryLanded {
+		g.mixedEntry = landing.entered
+	}
+	defer func() { g.mixedEntry = previousMixed }()
+
 	// Events. A counterspell keeps its historic single-event shape;
 	// so does a discard; everything else emits a zone move, promoted
 	// to EventMill when the card really did land in a graveyard off a
@@ -870,6 +898,12 @@ func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 		// Same reason executeBattlefieldLeaveLocked re-checks here:
 		// the state-check loop does not run while a choice is queued.
 		g.pruneSacrificeChoicesLocked()
+	}
+	if entryLanded {
+		g.mixedEntry = previousMixed
+		g.announceEntryLocked(landing)
+		g.runEntryHooksLocked(landing)
+		g.pruneChoicesAfterArrivalLocked()
 	}
 	// CR 712.21, ADR 0145: a melded permanent landed as two cards. The
 	// carrier is ev.CardID and has had everything above; the other card

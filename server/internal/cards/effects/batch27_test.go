@@ -1099,8 +1099,9 @@ func TestB27LegionLoyaltyMyriadCopiesAttackTheOtherOpponents(t *testing.T) {
 	b21Push(g, me.ID, "Legion Loyalty", "Enchantment", b27LegionLoyaltyOracle, 0, 0)
 	knight := pushTribalCreature(g, me.ID, "Knight", "Creature — Human Knight", 3, 3, "vigilance")
 	declareAttack(t, g, opp1.ID, knight)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, true)
+	answerMayChoice(t, g, me.ID, true)
 	copies := 0
 	attacking := map[uuid.UUID]int{}
 	for _, c := range g.Battlefield.Cards {

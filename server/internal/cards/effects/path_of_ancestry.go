@@ -23,15 +23,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (sharesCreatureTypeWithYourCommander) — and SharesCreatureType is the
 // one place that question is answered, changelings and all.
 //
-// One declared simplification, weaker than printed: with strict mana
-// off the pool is never spent (ADR 0068 §3), so no token pays and the
-// scry never happens.
+// A funded pool is spent in either payment mode. The remaining sandbox
+// simplification is an unrecorded payment: when permissive mode waives
+// an insufficient pool, or a player chooses Cast anyway, no token pays
+// and the scry cannot fire (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:     "b473e293-59e3-4e04-acf2-622604aeb25f",
 		Name:         "Path of Ancestry",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so the scry 1 never happens."},
+		Caveats:      []string{"Scry 1 requires a recorded mana payment — it doesn't happen when an insufficient mana pool is paid on paper or you choose Cast anyway."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},

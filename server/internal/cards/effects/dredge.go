@@ -30,9 +30,8 @@ import (
 //
 // Declined, a dredge changes nothing: the card is drawn as usual.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: dredge is offered on
-// each individual draw as it begins, not on the extra draws a doubler
-// such as Thought Reflection adds to it.
+// Draws added by a doubler such as Thought Reflection each open their
+// own window too, so each can independently be replaced by dredge.
 
 // Dredge is "Dredge N" for a card in a graveyard.
 func Dredge(n int) game.ReplacementEffect {

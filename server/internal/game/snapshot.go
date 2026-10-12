@@ -205,7 +205,12 @@ import (
 // Restore REFUSES anything it does not recognise rather than guessing.
 // See ErrSchemaTooNew / ErrSchemaUnsupported and ADR 0041 for the
 // version-skew policy this implements.
-const SnapshotSchemaVersion = 7
+// v8 carries a related retarget walk's uncommitted prefix. A v7 binary
+// would drop it and answer the next prompt against the original pair,
+// silently restoring different targets. It also carries the completed-draw
+// step tally and copiable permanent LKI; older draw tallies are reconstructed
+// from the recorded step boundary. A v7 reader cannot interpret these rules.
+const SnapshotSchemaVersion = 8
 
 // settingsSchemaVersion is the first schema that carries
 // GameSnapshot.Settings. Older files are migrated from UndoLimit.
@@ -373,6 +378,7 @@ type GameSnapshot struct {
 	ForetoldThisTurn         map[uuid.UUID]int         `json:"foretoldThisTurn,omitempty"`
 	LandsPlayedThisTurn      map[uuid.UUID]int         `json:"landsPlayedThisTurn,omitempty"`
 	ExtraLandDropsThisTurn   map[uuid.UUID]int         `json:"extraLandDropsThisTurn,omitempty"`
+	DrawnThisStep            map[uuid.UUID]int         `json:"drawnThisStep,omitempty"`
 	DrawnThisTurn            map[uuid.UUID][]uuid.UUID `json:"drawnThisTurn,omitempty"`
 	TurnTally                TurnTally                 `json:"turnTally"`
 
@@ -1423,6 +1429,7 @@ type pendingChoiceSnapshot struct {
 	RetargetPolicy   RetargetPolicy `json:"retargetPolicy,omitempty"`
 	RetargetOptional bool           `json:"retargetOptional,omitempty"`
 	RetargetSlot     int            `json:"retargetSlot,omitempty"`
+	RetargetNext     []TargetRef    `json:"retargetNext,omitempty"`
 	RetargetReason   string         `json:"retargetReason,omitempty"`
 	RetargetTo       TargetRef      `json:"retargetTo,omitempty"`
 	ModeOptionIndex  []int          `json:"modeOptionIndex,omitempty"`
@@ -1856,6 +1863,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.LandsPlayedThisTurn = copyIntMap(g.LandsPlayedThisTurn)
 	s.ExtraLandDropsThisTurn = copyIntMap(g.ExtraLandDropsThisTurn)
 	s.DrawnThisTurn = copyUUIDListMap(g.DrawnThisTurn)
+	s.DrawnThisStep = copyIntMap(g.DrawnThisStep)
 	s.TurnTally = cloneTurnTally(g.TurnTally)
 	s.Activations = cloneActivationTally(g.Activations)
 	s.LoopNotice = cloneLoopNotice(g.LoopNotice)
@@ -2443,6 +2451,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		RetargetOptional:     c.RetargetOptional,
 		RetargetSlot:         c.RetargetSlot,
 		RetargetReason:       c.RetargetReason,
+		RetargetNext:         append([]TargetRef(nil), c.RetargetNext...),
 		RetargetTo:           c.RetargetTo,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),
@@ -2800,6 +2809,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.LandsPlayedThisTurn = copyIntMap(s.LandsPlayedThisTurn)
 	g.ExtraLandDropsThisTurn = copyIntMap(s.ExtraLandDropsThisTurn)
 	g.DrawnThisTurn = copyUUIDListMap(s.DrawnThisTurn)
+	g.DrawnThisStep = copyIntMap(s.DrawnThisStep)
 	g.DiscardPending = copyIntMap(s.DiscardPending)
 
 	if len(s.Promises) > 0 {
@@ -2824,6 +2834,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 		g.Events = make([]Event, len(s.Events))
 		copy(g.Events, s.Events)
 	}
+	g.restoreDrawStepCountLocked()
 
 	if len(s.LastKnownBattlefield) > 0 {
 		g.lastKnownBattlefield = make(map[uuid.UUID]Characteristic, len(s.LastKnownBattlefield))
@@ -3294,6 +3305,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		RetargetOptional:     c.RetargetOptional,
 		RetargetSlot:         c.RetargetSlot,
 		RetargetReason:       c.RetargetReason,
+		RetargetNext:         append([]TargetRef(nil), c.RetargetNext...),
 		RetargetTo:           c.RetargetTo,
 		ModeOptionIndex:      copyInts(c.ModeOptionIndex),
 		ModeOptionLabel:      copyStrings(c.ModeOptionLabel),

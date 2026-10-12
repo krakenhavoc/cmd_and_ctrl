@@ -297,7 +297,7 @@ func (g *Game) validateAnnouncedTargetsLocked(src TargetSource, steps []Announce
 // nil waives nothing, which is every announce caller.
 //
 // Caller must hold g.mu.
-func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []AnnouncedClause, targets []TargetRef, waive func(i int, t TargetRef) bool) error {
+func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []AnnouncedClause, targets []TargetRef, waive func(i int, t TargetRef) bool, prior ...[]TargetRef) error {
 	if len(steps) == 0 {
 		// No structured clause list: the S13.1 free-form path, which
 		// accepts whatever the client sent.
@@ -362,6 +362,25 @@ func (g *Game) validateAnnouncedTargetsWithLocked(src TargetSource, steps []Anno
 		if !waived && !g.targetLegalLocked(src, clause, t) {
 			return ErrIllegalTarget
 		}
+		if clause.Relation != nil {
+			anchorChanged := false
+			for j, a := range targets {
+				if a.Mode == t.Mode && a.Slot == clause.Relation.Slot && (waive == nil || !waive(j, a)) {
+					anchorChanged = true
+				}
+			}
+			checkRelation := !waived || anchorChanged
+			// CR 115.7c permits an unchanged target that was already
+			// illegal before this retarget. A new anchor must not make
+			// a previously legal dependent illegal.
+			if waived && anchorChanged && len(prior) > 0 &&
+				(!g.targetLegalLocked(src, clause, t) || !g.TargetRelationMatchesForEffect(clause, t, prior[0])) {
+				checkRelation = false
+			}
+			if checkRelation && !g.TargetRelationMatchesForEffect(clause, t, targets) {
+				return ErrIllegalTarget
+			}
+		}
 		// #1559, CR 601.2c: the clause's rule about the SET. Checked
 		// over the whole list — a retarget may not move a slot onto a
 		// key an unchanged slot holds (CR 115.7c's "must not cause
@@ -418,7 +437,7 @@ func (g *Game) anyClauseUnfillableLocked(src TargetSource, steps []AnnouncedClau
 		if c.Min <= 0 {
 			continue
 		}
-		lt := g.legalTargetsLocked(src, c)
+		lt := g.LegalTargetsForAnnouncedClauseForEffect(src, steps, i, nil)
 		if g.fillableCountLocked(c, lt) < c.Min {
 			return true
 		}

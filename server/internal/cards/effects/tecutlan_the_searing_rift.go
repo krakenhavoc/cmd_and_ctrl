@@ -22,7 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Discover is ADR 0099's (game/discover.go).
 //
 // One declared simplification, weaker than printed and shared with
-// every spend rider: with strict mana off the pool is never spent
+// every spend rider: with an unrecorded payment the pool is never spent
 // (ADR 0068 §3), so the trigger never fires.
 func init() {
 	Register(Spec{
@@ -30,7 +30,7 @@ func init() {
 		Name:         "Tecutlan, the Searing Rift",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"With strict mana off, the game doesn't see which mana you spent, so casting a permanent spell with Tecutlan's mana does nothing extra.",
+			"When mana payment is skipped, the game doesn't see which mana you spent, so casting a permanent spell with Tecutlan's mana does nothing extra.",
 		},
 		Discovers: true,
 		ManaAbilities: []ManaAbility{{

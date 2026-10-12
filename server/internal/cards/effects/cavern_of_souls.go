@@ -35,15 +35,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // spell paid for with the COLOURLESS half, or with other mana, is
 // counterable as normal.
 //
-// One declared simplification, weaker than printed and the table's
-// default: with strict mana off the engine does not spend the pool at
+// One declared simplification, weaker than printed: with an
+// unrecorded payment the engine does not spend the pool at
 // all (ADR 0068 §3), so no token pays and the spell can be countered.
 func init() {
 	Register(Spec{
 		OracleID:     "89ca686a-7c72-4d8f-9290-e89635624a83",
 		Name:         "Cavern of Souls",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"With strict mana off, the game doesn't see which mana you spent, so a spell cast with Cavern's colored mana can still be countered."},
+		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so a spell cast with Cavern's colored mana can still be countered."},
 		AsEnters:     ChooseCreatureTypeAsEnters("Cavern of Souls"),
 		ManaAbilities: []ManaAbility{
 			{

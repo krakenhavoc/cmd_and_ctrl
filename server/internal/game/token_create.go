@@ -117,6 +117,8 @@ type TokenGroup struct {
 	// longer be attacked creates the group's tokens not attacking
 	// (CR 508.4a).
 	Attacking uuid.UUID
+	// AttackOpponent limits creation-time attack choices to this player or their planeswalkers.
+	AttackOpponent uuid.UUID
 }
 
 // TokenCreation is one "create N tokens" instruction — the whole
@@ -139,6 +141,11 @@ type TokenCreation struct {
 	// erroring — the ability has already resolved, and the tokens are
 	// the part of it that can still be delivered.
 	Attacking uuid.UUID
+
+	// Together settles all entries before landing any token.
+	Together bool
+	// AttackChoicesLabel names the per-token choices made after count replacements.
+	AttackChoicesLabel string
 
 	// Source is the card whose effect is creating the tokens, stamped
 	// on the emitted EventTokenCreated. uuid.Nil for a creation with
@@ -229,7 +236,7 @@ func (ev *ReplacementEvent) ReplaceTokenKindsWhere(pred func(Card) bool, templat
 			continue
 		}
 		for _, tmpl := range templates {
-			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking})
+			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking, AttackOpponent: grp.AttackOpponent})
 		}
 	}
 	ev.TokenGroups = out
@@ -312,12 +319,14 @@ func (g *Game) CreateTokensThenForEffect(spec TokenCreation, then func(g *Game, 
 		}
 	}
 	ev := &ReplacementEvent{
-		Kind:            RepEventCreateTokens,
-		Actor:           spec.Controller,
-		Source:          spec.Source,
-		TokenController: spec.Controller,
-		TokenGroups:     groups,
-		TokenAttacking:  spec.Attacking,
+		Kind:                    RepEventCreateTokens,
+		Actor:                   spec.Controller,
+		Source:                  spec.Source,
+		TokenController:         spec.Controller,
+		TokenGroups:             groups,
+		TokenAttacking:          spec.Attacking,
+		TokenTogether:           spec.Together,
+		TokenAttackChoicesLabel: spec.AttackChoicesLabel,
 	}
 	if then != nil {
 		ev.tokenTail = &tokenTail{then: then}
@@ -363,6 +372,11 @@ func (g *Game) createTokensLocked(ev *ReplacementEvent) error {
 //
 // Caller must hold g.mu.
 func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
+	for _, grp := range ev.TokenGroups {
+		if grp.AttackOpponent != uuid.Nil {
+			return g.chooseTokenAttackGroupsLocked(ev, 0, nil)
+		}
+	}
 	batch := make([]stagedToken, 0, ev.TokenCount())
 	attacking := ev.TokenAttacking != uuid.Nil && g.playerByIDLocked(ev.TokenAttacking) != nil
 	for _, grp := range ev.TokenGroups {
@@ -397,6 +411,9 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 	var then func(g *Game, created []uuid.UUID) error
 	if ev.tokenTail != nil {
 		then = ev.tokenTail.then
+	}
+	if ev.TokenTogether {
+		return g.enterCreatedTokensTogetherLocked(batch, ev.Source, then)
 	}
 	return g.enterCreatedTokensLocked(batch, nil, ev.Source, then)
 }

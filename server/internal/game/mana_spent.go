@@ -25,7 +25,7 @@ package game
 // The zero value is "nothing was spent, and that is known" — a free
 // cast, a copy of a spell (CR 707.10), a permanent that was never
 // cast at all. `unknown` is the other absence: a payment the engine
-// WAIVED (permissive mode, a strict-mode ForceCast), where every
+// WAIVED (an insufficient permissive pool or ForceCast), where every
 // question below answers in the weaker-than-printed direction because
 // the engine genuinely does not know (ADR 0068 §3).
 type ManaSpent struct {

@@ -18,7 +18,7 @@ func init() {
 		OracleID:            "72e8d67a-41e6-4074-bcbd-b54ead995237",
 		Name:                "Pentad Prism",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"With strict mana off, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		ManaAbilities: []ManaAbility{{

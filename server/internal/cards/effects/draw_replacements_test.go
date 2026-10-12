@@ -12,9 +12,8 @@ import (
 //
 // Two printed cards again: Thought Reflection's bare clause and
 // Alhammarret's Archive's same clause with "except the first one you
-// draw in each of your draw steps" (read as "except any draw in your
-// own draw step" — Notion Thief's declared simplification) plus a life
-// half on a different event.
+// draw in each of your draw steps", plus a life half on a different
+// event.
 
 const (
 	thoughtReflectionOracle   = "692a6833-3014-42f6-b1ad-333bb3292c65"
@@ -107,8 +106,7 @@ func TestAlhammarretsArchiveDoublesYourDraw(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Alhammarret's Archive", "Legendary Artifact", alhammarretsArchiveOracle, false)
 	// Off the controller's own draw step — the fixture parks the cursor
 	// there, and the Archive's "except the first one you draw in each of
-	// your draw steps" declines the whole step (the simplification, and
-	// its own test below).
+	// your draw steps" exempts only the first actual draw.
 	g.WithWriteLock(func() { g.Turn.Step = game.StepPrecombatMain })
 
 	if got := drawFor(t, g, me, 1); got != 2 {
@@ -151,21 +149,28 @@ func TestAlhammarretsArchiveLeavesALifeLossAlone(t *testing.T) {
 	}
 }
 
-// THE DECLARED SIMPLIFICATION: "except the first one you draw in each
-// of your draw steps" is read as "except any draw in your own draw
-// step". newCatalogGame parks the cursor on seat 0's draw step, so a
-// draw for seat 0 there is left alone and the same draw for seat 1 is
-// doubled.
-func TestAlhammarretsArchiveSkipsYourOwnDrawStep(t *testing.T) {
+// The fixture has already completed the turn-based draw. Later draws
+// in this same draw step are doubled.
+func TestAlhammarretsArchiveDoublesLaterDrawsInYourOwnDrawStep(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	pushCatalogPermanent(g, me.ID, "Alhammarret's Archive", "Legendary Artifact", alhammarretsArchiveOracle, false)
-	if g.Turn.Step != game.StepDraw || g.Seats[g.Turn.ActiveSeat].ID != me.ID {
-		t.Fatalf("fixture: expected the cursor on seat 0's draw step, got %v seat %d", g.Turn.Step, g.Turn.ActiveSeat)
+	if got := drawFor(t, g, me, 2); got != 4 {
+		t.Errorf("later draws in the controller's draw step: got %d cards, want 4", got)
 	}
+}
 
-	if got := drawFor(t, g, me, 1); got != 1 {
-		t.Errorf("a draw in the controller's own draw step: got %d cards, want 1 (the simplification)", got)
+func TestAlhammarretsArchiveExemptsOnlyTheFirstCompletedDraw(t *testing.T) {
+	g := newCatalogGame(t)
+	p := g.Seats[1]
+	pushCatalogPermanent(g, p.ID, "Alhammarret's Archive", "Legendary Artifact", alhammarretsArchiveOracle, false)
+	before := p.Hand.Size()
+	advanceToDrawStepOfSeat(t, g, 1)
+	if p.Hand.Size() != before+1 {
+		t.Fatal("the turn-based first draw was doubled")
+	}
+	if got := drawFor(t, g, p, 1); got != 2 {
+		t.Errorf("the next draw drew %d cards, want 2", got)
 	}
 }
 

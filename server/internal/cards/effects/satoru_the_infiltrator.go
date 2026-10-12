@@ -24,15 +24,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // cast-with-mana creature entering alongside one that was not stops the
 // draw.
 //
-// One declared simplification, weaker than printed: with strict mana
-// off the engine never saw the payment, so a creature cast that way
+// One declared simplification, weaker than printed: with an unrecorded
+// payment the engine never saw the payment, so a creature cast that way
 // counts as one cast with mana spent (ADR 0068 §3).
 func init() {
 	Register(Spec{
 		OracleID:        "7555c429-5f2d-4171-b6b0-8e3c8da7f314",
 		Name:            "Satoru, the Infiltrator",
 		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"With strict mana off, the game doesn't track which mana you spent, so a creature you cast for free that way doesn't draw the card."},
+		Caveats:         []string{"When mana payment is skipped, the game doesn't track which mana you spent, so a creature you cast for free that way doesn't draw the card."},
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventETB, satoruEntered, "Satoru, the Infiltrator — draw a card", satoruDraw)),

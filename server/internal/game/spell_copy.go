@@ -295,7 +295,7 @@ func (g *Game) copyStepCandidatesLocked(f *copyFrame, pos []int) (lt LegalTarget
 		trial := append([]TargetRef(nil), f.next...)
 		for _, p := range pos {
 			trial[p] = ref
-			if g.retargetCheckLocked(src, f.steps, f.orig, trial, RetargetChooseNew) == nil {
+			if g.copyTargetsCanFinishLocked(src, f.steps, f.orig, trial, f.step+1) {
 				return true
 			}
 			trial[p] = f.next[p]
@@ -676,8 +676,11 @@ func (g *Game) resolveCopyTargetsLocked(idx int, cf *copyFrame, targets []Target
 	// cf.src is the value copy the frame kept for exactly this — or,
 	// for an ability whose source has left, the source's last-known
 	// record (#1449).
-	if err := g.retargetCheckLocked(g.copyTargetSourceLocked(cf), cf.steps, cf.orig, trial, RetargetChooseNew); err != nil {
-		return err
+	if !g.copyTargetsCanFinishLocked(g.copyTargetSourceLocked(cf), cf.steps, cf.orig, trial, cf.step+1) {
+		if err := g.retargetCheckLocked(g.copyTargetSourceLocked(cf), cf.steps, cf.orig, trial, RetargetChooseNew); err != nil {
+			return err
+		}
+		return ErrIllegalTarget
 	}
 	g.dequeueChoiceLocked(idx)
 	cf.next = trial

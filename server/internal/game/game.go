@@ -89,6 +89,9 @@ type Game struct {
 	// removed a whole departed player's cards under it (#2608). Not
 	// part of a snapshot: a clone is only ever taken between passes.
 	harvestDepth int
+	// mixedEntry is the arriving permanent excluded from the simultaneous
+	// exit's look-back harvest. Zero outside that synchronous announcement.
+	mixedEntry uuid.UUID
 
 	// Seats is the ordered list of players. Index matches Turn.ActiveSeat.
 	Seats []*Player
@@ -323,6 +326,8 @@ type Game struct {
 	// intersects with the zone it cares about anyway, so pruning here
 	// would cost a hook on every zone move to buy nothing.
 	DrawnThisTurn map[uuid.UUID][]uuid.UUID
+	// DrawnThisStep counts completed draws in the current step (first-draw exceptions).
+	DrawnThisStep map[uuid.UUID]int
 
 	// TurnTally counts what has happened this turn — life gained and
 	// lost, cards drawn, creatures died, tokens, sacrifices, landfall,
@@ -1896,6 +1901,7 @@ func (g *Game) finishStepEntryLocked(canceled bool) {
 	// ADR 0059 Decision 8: the step has really begun, so it counts —
 	// Turn.StepOrdinal, and Turn.PhaseOrdinal when it opens a phase.
 	g.noteStepBegunLocked()
+	g.DrawnThisStep = nil
 	// S31 sub-PR 0: announce the step for the public game log, and
 	// since #588 for the trigger harvester too. Placed after the
 	// skip-step replacement window so a cancelled step never

@@ -608,3 +608,24 @@ candidates at, under and over the ceiling, the flying Bird it becomes (and a
 Clone of it), decline, reanimated, flickered and permissive (mana value 0
 only); Mana Sculpt's refund (two mana spent on a mana-value-3 spell), no
 Wizard, and a waived payment.
+
+
+## Amendment — funded permissive casts (2026-10-12, S58, #2033)
+
+A permissive cast now follows the same payment contract as a permissive
+activated ability: if the floating pool can cover the entire effective
+cost, the engine spends those tokens and records them on `PaidCost.Mana`.
+The usual source restrictions, colour strategy, spend riders, and
+Phyrexian life payment still apply. This does not auto-tap any sources.
+
+If the pool cannot cover the whole cost, permissive mode leaves it intact
+and records `OnPaper`; no partial payment is invented. `ForceCast` always
+leaves the pool intact and records `OnPaper`, including when it could have
+paid. The known zero of a real zero-cost cast is recorded in either mode.
+These rules supersede the earlier description of every permissive cast
+as an unknown payment. The unknown-is-never-stronger rule is unchanged.
+
+Path of Ancestry now scries when its token actually pays for a matching
+creature in either mode. Its remaining caveat describes an unrecorded
+payment, and the other mana-spent readers use that same narrower wording.
+None is marked complete merely because default strict payment works.

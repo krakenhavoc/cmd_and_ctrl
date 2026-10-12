@@ -19,8 +19,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // countered (2023-06-16 rulings). The creatures that gain
 // indestructible are fixed as the ability resolves (CR 611.2c).
 //
-// Caveat: the engine knows what was spent only with strict mana on.
-// With it off, NoManaWasSpentToCast answers "unknown", and Boromir
+// Caveat: an unrecorded payment makes NoManaWasSpentToCast answer
+// "unknown", and Boromir
 // never counters anything — the weaker direction, as Vexing Bauble
 // declares.
 func init() {
@@ -29,7 +29,7 @@ func init() {
 		Name:         "Boromir, Warden of the Tower",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"With strict mana off, the game doesn't track what was spent, so Boromir never counters a spell — turn strict mana on for it to work.",
+			"When mana payment is skipped, the game doesn't track what was spent, so Boromir never counters a spell — turn strict mana on for it to work.",
 		},
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{

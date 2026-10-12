@@ -25,21 +25,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // wheel's instant-speed punish: it enters in response to the draw
 // spell and its ETB half fires before the wheel resolves.
 //
-// Sandbox simplification, declared — it is Notion Thief's, word for
-// word. "Except the first one they draw in each of their draw steps"
-// is read as "except any draw during their own draw step", because the
-// engine keeps no per-draw-step tally (`drawnInOwnDrawStep`,
-// draw_replacements.go). A second draw in an opponent's draw step —
-// an instant they cast there, a draw-step trigger — does not fire the
-// Bowmasters. Weaker than printed for the Bowmasters' controller,
-// never stronger, and closing it is the per-draw-step tally on the
-// "Draw-replacement count" seam row.
+// Only the first completed draw of an opponent's own draw step is
+// exempt; replaced draws leave that exemption available.
 func init() {
 	Register(Spec{
 		OracleID:        "ea5103f5-27e0-4eb1-902c-7f34652d6bf3",
 		Name:            "Orcish Bowmasters",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Every card an opponent draws during their own draw step is left alone, not just the first one."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{
 			TriggerWithPurpose(Targeting(
@@ -53,14 +45,14 @@ func init() {
 }
 
 // orcishBowmastersFires is the printed condition, both halves: the
-// Bowmasters entering, or an opponent drawing outside their own draw
-// step.
+// Bowmasters entering, or an opponent drawing a card other than the
+// first one in their own draw step.
 func orcishBowmastersFires(ev game.Event, source *game.Card, ch game.Characteristic, g *game.Game) bool {
 	switch ev.Kind {
 	case game.EventETB:
 		return Self(ev, source, ch, g)
 	case game.EventDrawCard:
-		return ByAnOpponent(ev, source, ch, g) && !drawnInOwnDrawStep(g, ev.Actor)
+		return ByAnOpponent(ev, source, ch, g) && !g.FirstCompletedDrawInOwnDrawStepForEffect(ev.Actor)
 	}
 	return false
 }
