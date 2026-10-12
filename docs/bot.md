@@ -2818,9 +2818,12 @@ with the same blocker matching `lethalPush` uses:
   home.
 
 The bot commits when now + next is at least the defender's life and
-the crack-back is less than its own. The swing is the smallest one that
-does it, tried evasive-first, and every creature outside it stays home,
-because that reserve is what the crack-back check counted on. The
+the crack-back is less than its own. The swings it tries are prefixes
+of the bot's creatures in evasive-first order, and the one it sends is
+the one that ends the game soonest ([Which swing the race
+sends](#which-swing-the-race-sends-2400)). Every creature outside it
+stays home, because that reserve is what the crack-back check counted
+on. The
 decision's reason says so in those numbers: `attack: two-turn race — 3
 now + 3 next turn ≥ their 6 life; crack-back 0 < my 6`.
 
@@ -2907,8 +2910,10 @@ creatures are still worth more than the defender's afterwards. After
 an acceptable exchange the board is rebuilt, with both sides untapped
 and the defender's creatures home to block, and asked again: a lethal
 all-in or a two-turn race ends the line, otherwise one more exchange,
-up to three. The bot sends the first exchange of the first line that
-ends in a race, and keeps everything else home, exactly as a race does:
+up to three. The bot sends the first exchange of the line that ends in
+a race soonest ([Which swing the race
+sends](#which-swing-the-race-sends-2400)), and keeps everything else
+home, exactly as a race does:
 `attack: attrition — 1 of mine for 1 of theirs and 0 sure now, a race
 within 1 exchange(s); crack-back 0 < my 6`. In the Wurm mirror that is
 one Wurm into theirs. Nothing is remembered between decisions, and the
@@ -2942,12 +2947,63 @@ Against the free answer that swing is 0 now and 2 next, so it is not a
 race. The bot sends the smallest swing that is: its commander and two
 Bears, `4 now + 2 next turn`.
 
-Two refinements were measured and left out, because both made the
-heuristic gate's games longer. One counted a commander as free only
-while the defender could pay the tax to cast it again (CR 903.8). The
-other let a trampler's overflow past a free chump through. Each makes
-some smaller swing qualify, and the race and the attrition horizon
-send the smallest swing that qualifies.
+#2310 measured two refinements and left them out, because both made
+the heuristic gate's games longer while the race sent the smallest
+swing that qualified. One counts a commander as free only while the
+defender can pay the tax to cast it again (CR 903.8). The other lets a
+trampler's overflow past a free chump through. #2400 changed which
+swing is sent and measured them again: the tax is now on, and the
+overflow is not (next section).
+
+### Which swing the race sends (#2400)
+
+Several swings can race. The bot used to send the smallest: the
+shortest prefix of the evasive-first order that qualified. That made
+every more accurate count of the defender's free blocks slow the games
+down. A count that let a smaller swing qualify sent that smaller swing,
+and it was the bigger one that ended the game. In #2310's measurement,
+counting the commander tax made gate seed 211 send a lone Ogre where it
+had sent three attackers, and the game ended on turn 14 instead of 11.
+
+Now the race tries every prefix and sends the one that ends the game
+soonest (`Config.RaceEndsSoonest`):
+
+1. **The fewest turns to the kill the model sees.** A race kills in two
+   turns, or in one when the swing is lethal now. An attrition line
+   counts its exchanges before the race that ends it.
+2. **The most damage the defender cannot avoid.** This is the least of
+   what it takes blocking to survive and what gets past its free
+   blocks. It is the attrition horizon's `sure` damage.
+3. **The smallest swing.** A tie keeps the swing tried first, so the
+   reserve is spent only when it buys something.
+
+On the board #2310 fixed, with the defender's 3/3 an ordinary
+creature, three swings race. The lone commander is `3 now + 4 next
+turn`, and it used to be sent. The commander and two Bears are `5 now +
+2 next turn`. Everything is `4 now + 4 next turn`, because the defender
+chumps. The bot now sends the commander and two Bears. Creatures traded
+are not a tie-break. In the full seed-1409 Wurm mirror, preferring the
+exchange that killed more sent both Wurms into their Wurm and an Ogre.
+That left an Ogre edge, which the defender's commander traded away for
+free.
+
+Inside the attrition search, a deeper level only asks whether some line
+exists, so it still takes the first one it finds. That keeps the search
+inside its budget of 100 swings per decision.
+
+With the objective changed, the three refinements #2310 left out were
+measured again. Each is a `Config` switch:
+
+| Switch | Default | What it counts |
+|---|---|---|
+| `RaceEndsSoonest` | on | The objective above. |
+| `FreeCommanderNeedsTax` | on | The defender's commander is a free blocker only while its mana sources, tapped or not, make its mana value plus {2} for each earlier cast (CR 903.8). |
+| `FreeTrampleOverflow` | off | A trampler's overflow past a free block gets through in the free answer (CR 702.19b). |
+| `RecastChumpForNext` | off | A commander that dies chumping under blockToSurvive's answer is back to block next turn, and out of the crack-back unless it has haste (CR 903.9a). |
+
+`BaselineConfig()` turns all four off. The numbers, and the owner's
+decisions of 2026-10-12, are in [ADR 0126's amendment of
+2026-10-12](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest).
 
 ### Trample overflow on the attacking side (#1504)
 

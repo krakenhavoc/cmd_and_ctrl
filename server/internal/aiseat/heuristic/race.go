@@ -80,11 +80,15 @@ import (
 // turns: both were cast again every turn, and the same race came round
 // each time (raceNumbers).
 //
-// The swing it sends is the SMALLEST that wins: attackers are tried
-// evasive-first (fewest possible blockers, then biggest), and the plan
-// is the shortest prefix of that order that races. Everything outside
-// it stays home, because the reserve is what the crack-back check
-// counted on.
+// Attackers are tried evasive-first (fewest possible blockers, then
+// biggest), and the plan is a prefix of that order that races. Which
+// one is Config.RaceEndsSoonest's (#2400): on, the one whose kill
+// comes soonest, then the one with the most damage the defender cannot
+// avoid, then the shortest (swingKey); off, the shortest. Sending the
+// shortest made every more accurate count of the defender's free
+// blocks slow the games down, since a count that let a smaller swing
+// qualify sent that smaller swing. Everything outside the plan stays
+// home, because the reserve is what the crack-back check counted on.
 //
 // A perfect mirror has no race — equal boards trade evenly and nothing
 // is left over for NEXT — and that is correct: the race converts an
@@ -194,11 +198,17 @@ func evasiveFirst(st *state, def *SeatEval, joinable []*protocol.CardView) {
 }
 
 // raceWith tries the prefixes of the evasion-sorted attack order
-// against one defender and returns the first that races. budget, when
-// not nil, is the attrition search's (attrition.go): every swing tried
-// spends one, and an empty budget finds nothing.
+// against one defender and returns the one it sends. budget, when not
+// nil, is the attrition search's (attrition.go): every swing tried
+// spends one, an empty budget finds nothing, and the search only asks
+// whether some swing races, so the first that does is the answer.
+//
+// Otherwise it is the first prefix that races, unless
+// Config.RaceEndsSoonest is on (#2400): then every prefix is tried and
+// the one sent is the one whose kill comes soonest (swingKey).
 func (p *Policy) raceWith(st *state, def *SeatEval, committed, joinable []*protocol.CardView, budget *int) *racePlan {
 	blockers := defenderBlockers(st, def.ID)
+	soonest := p.cfg.RaceEndsSoonest && budget == nil
 	// The empty prefix is tried when something is already declared: a
 	// swing that already races needs nobody else, and adding to it only
 	// spends the reserve.
@@ -206,6 +216,8 @@ func (p *Policy) raceWith(st *state, def *SeatEval, committed, joinable []*proto
 	if len(committed) > 0 {
 		first = 0
 	}
+	var best *racePlan
+	var bestKey swingKey
 	for k := first; k <= len(joinable); k++ {
 		if budget != nil {
 			if *budget <= 0 {
@@ -217,16 +229,63 @@ func (p *Policy) raceWith(st *state, def *SeatEval, committed, joinable []*proto
 		swing = append(swing, committed...)
 		swing = append(swing, joinable[:k]...)
 		e := p.raceNumbers(st, def, swing, blockers)
-		if e.now+e.next >= def.Life && e.crack < st.myEval.Life {
-			return &racePlan{
-				target: def.ID, swing: swing,
-				now: e.now, next: e.next, crack: e.crack,
-				life: def.Life, myLife: st.myEval.Life,
-			}
+		if e.now+e.next < def.Life || e.crack >= st.myEval.Life {
+			continue
+		}
+		plan := &racePlan{
+			target: def.ID, swing: swing,
+			now: e.now, next: e.next, crack: e.crack,
+			life: def.Life, myLife: st.myEval.Life,
+		}
+		if !soonest {
+			return plan
+		}
+		turns := 2
+		if e.now >= def.Life {
+			turns = 1
+		}
+		if key := (swingKey{turns: turns, sure: e.sure()}); best == nil || key.beats(bestKey) {
+			best, bestKey = plan, key
 		}
 	}
-	return nil
+	return best
 }
+
+// swingKey is how Config.RaceEndsSoonest ranks the swings that qualify
+// (#2400). Sending the smallest swing that qualifies made a more
+// accurate count of the defender's free blocks slow the games down: a
+// count that let a smaller swing qualify sent the smaller swing, and
+// it was the bigger one that ended the game. So the race and the
+// attrition horizon rank what qualifies by how soon it ends the game:
+//
+//  1. turns: the fewest turns to the kill the model sees — the
+//     attrition line's exchanges before its race, or for a race, one
+//     when the swing kills now and two otherwise;
+//  2. sure: the most damage the defender cannot avoid this turn, the
+//     least of what it takes blocking to survive and what gets past
+//     its free blocks.
+//
+// A tie keeps the earlier, smaller swing, so the reserve the
+// crack-back check counted on is spent only when it buys something.
+// Creatures traded are not a tie-break: in the full seed-1409 Wurm
+// mirror, preferring the exchange that killed more sent both Wurms
+// into theirs and an Ogre, and the edge left was an Ogre the defender's
+// commander could trade away for free.
+type swingKey struct {
+	turns, sure int
+}
+
+// beats reports whether k ranks strictly ahead of o.
+func (k swingKey) beats(o swingKey) bool {
+	if k.turns != o.turns {
+		return k.turns < o.turns
+	}
+	return k.sure > o.sure
+}
+
+// sure is the damage the swing connects for however the defender
+// answers it: the least of blockToSurvive's and the free answer's.
+func (e raceEval) sure() int { return min(e.d.through, e.free) }
 
 // raceEval is the race's estimate for one swing at one defender: its
 // three numbers, the defender's blocks, and which of my attackers those
@@ -286,6 +345,9 @@ type answer struct {
 func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protocol.CardView) raceEval {
 	d := p.blockToSurvive(st, def, swing, blockers)
 	took := answer{through: d.through, blocked: d.blockedMine, mineDead: map[string]bool{}, dead: d.deadDef}
+	if p.cfg.RecastChumpForNext {
+		took.dead, took.recast = recastCommanders(st, d.deadDef)
+	}
 	for _, a := range swing {
 		// Counted dead unless no block the defender could make
 		// kills it (#1527): a Wurm chumped by the last Bear
@@ -297,7 +359,7 @@ func (p *Policy) raceNumbers(st *state, def *SeatEval, swing, blockers []*protoc
 	e := raceEval{now: took.through, d: d, mineDead: took.mineDead}
 	e.next, e.crack = st.raceAfter(def, swing, took)
 
-	free := st.freeAnswer(def.ID, swing, blockers)
+	free := st.freeAnswer(def.ID, swing, blockers, p.freeRules())
 	e.free = free.through
 	if free.through < def.Life {
 		next, crack := st.raceAfter(def, swing, free)
@@ -391,14 +453,72 @@ func (st *state) raceAfter(def *SeatEval, swing []*protocol.CardView, ans answer
 // block my next attack. It is the attrition horizon's definition of a
 // free block (#1548), now the race's too.
 //
-// It does not ask whether the defender can pay the commander tax (CR
-// 903.8) to cast it again. Measured on the heuristic gate, asking made
-// the games longer, not shorter: a commander the tax had priced out
-// let a smaller swing qualify, and the race and the attrition horizon
-// send the smallest swing that does. Assuming the commander always
-// comes back errs toward not racing, the race's usual direction.
-func freeBlock(st *state, defender string, a, b *protocol.CardView) bool {
-	return couldBlock(st, defender, a, b) && (b.IsCommander || !blockerDies(a, b))
+// With freeRules.tax (Config.FreeCommanderNeedsTax, #2400) a commander
+// is free only while the defender can pay the tax (CR 903.8) to cast it
+// again (canRecast). Without it the commander always comes back, which
+// errs toward not racing, the race's usual direction. Under #2310's
+// objective, asking made the heuristic gate's games longer: a
+// commander the tax had priced out let a smaller swing qualify, and
+// the race and the attrition horizon sent the smallest swing that did.
+func freeBlock(st *state, defender string, a, b *protocol.CardView, rules freeRules) bool {
+	if !couldBlock(st, defender, a, b) {
+		return false
+	}
+	if b.IsCommander && (!rules.tax || st.canRecast(defender, b)) {
+		return true
+	}
+	return !blockerDies(a, b)
+}
+
+// freeRules is how the free answer counts (#2400): tax is
+// Config.FreeCommanderNeedsTax, trample Config.FreeTrampleOverflow.
+type freeRules struct {
+	tax, trample bool
+}
+
+func (p *Policy) freeRules() freeRules {
+	return freeRules{tax: p.cfg.FreeCommanderNeedsTax, trample: p.cfg.FreeTrampleOverflow}
+}
+
+// canRecast reports whether seat's mana sources, tapped or not, make
+// enough mana to cast its commander c again from the command zone: c's
+// mana value plus {2} for each earlier cast from there (CR 903.8). The
+// commander's own mana ability is not counted, since it is the card
+// that died.
+func (st *state) canRecast(seat string, c *protocol.CardView) bool {
+	casts := 0
+	for i := range st.view.Seats {
+		if st.view.Seats[i].ID == seat {
+			casts = st.view.Seats[i].CommanderCasts[c.InstanceID]
+		}
+	}
+	mana := 0
+	for i := range st.view.Battlefield.Cards {
+		s := &st.view.Battlefield.Cards[i]
+		if s.Controller == seat && s.InstanceID != c.InstanceID {
+			mana += repeatableMana(s)
+		}
+	}
+	return mana >= manaValue(c.ManaCost, 0)+2*casts
+}
+
+// recastCommanders splits the defender's creatures that die blocking
+// into those that stay dead and its commanders, which CR 903.9a sends
+// to the command zone to be cast again before my next attack
+// (Config.RecastChumpForNext, #2400). A commander with haste is in
+// neither: it is back, and can attack on the turn in between.
+func recastCommanders(st *state, deadDef map[string]bool) (dead, recast map[string]bool) {
+	dead, recast = map[string]bool{}, map[string]bool{}
+	for id := range deadDef {
+		c := st.bf[id]
+		switch {
+		case c == nil || !c.IsCommander:
+			dead[id] = true
+		case !hasKeyword(c, "haste"):
+			recast[id] = true
+		}
+	}
+	return dead, recast
 }
 
 // freeAnswer is the defender's free answer to a swing (#2310): block
@@ -406,14 +526,26 @@ func freeBlock(st *state, defender string, a, b *protocol.CardView) bool {
 // rest. Its damage is unblockedPower's matching over the free blocks
 // alone, and a blocked attacker counts as held in full, trample or
 // not, which only ever lowers it — so it too errs toward not racing.
+// With rules.trample (Config.FreeTrampleOverflow, #2400) a trampler
+// the free blocks stop puts over what they do not absorb, counted as
+// unblockedPower counts it: the larger of the matching and
+// trampleBound over the free blocks, both lower bounds.
 // An attacker of mine it blocks dies when the blocker, joined by every
 // free blocker the matching left spare, kills it — the gang
 // blockToSurvive's answer assumes too (defence.survives). Nothing of
 // the defender's dies for good: a blocker that lives lives, and a
 // commander that dies is cast again.
-func (st *state) freeAnswer(defender string, swing, blockers []*protocol.CardView) answer {
-	free := func(a, b *protocol.CardView) bool { return freeBlock(st, defender, a, b) }
+func (st *state) freeAnswer(defender string, swing, blockers []*protocol.CardView, rules freeRules) answer {
+	free := func(a, b *protocol.CardView) bool { return freeBlock(st, defender, a, b, rules) }
 	through, stoppedBy := matchBlocks(swing, blockers, free)
+	if rules.trample {
+		for _, a := range swing {
+			if hasKeyword(a, "trample") && a.Power > 0 {
+				through = max(through, trampleBoundBy(swing, blockers, free))
+				break
+			}
+		}
+	}
 	ans := answer{through: through, blocked: map[string]bool{}, mineDead: map[string]bool{}, recast: map[string]bool{}}
 	used := make([]bool, len(blockers))
 	for _, bi := range stoppedBy {
