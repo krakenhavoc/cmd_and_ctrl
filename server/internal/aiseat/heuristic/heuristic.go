@@ -99,6 +99,14 @@ type Config struct {
 	// station already prices it; and the flat blocker price elsewhere.
 	// Off (the zero value) is the pre-S66 flat price everywhere.
 	TapByTiming bool
+	// WaitForMain holds an instant-speed cast in the bot's own upkeep and
+	// draw step, with an empty stack, for its first main phase (ADR 0126's
+	// amendment of 2026-10-12, the owner's gate on #2457, waitmain.go).
+	// Mana tapped there is the mana the main phases would have had, and
+	// the same cast is still on offer in the main phase, beside every
+	// sorcery-speed use of that mana. Off (the zero value) casts it there
+	// whenever it clears InstantThreshold.
+	WaitForMain bool
 
 	// LandValue prices the once-a-turn land drop. Above every
 	// ordinary cast on purpose — land first, then spend.
@@ -247,6 +255,13 @@ type Config struct {
 	// payoff pays less (discard_payoff.go). Off (the zero value) prices
 	// a discard by the card alone.
 	PriceDiscardPayoffs bool
+	// SelfReplacingDiscards turns on ADR 0126's amendment of 2026-10-12
+	// (#2457, self_replacing.go): discarding a nonland card whose hand row
+	// turns it into a card (cycling's declared draw, typecycling's or
+	// transmute's tutor) costs SpellPerMana per mana of that row less, the
+	// mana a discard spares cycling it, and never less than the card
+	// cycling would find. Off (the zero value) prices it by the card alone.
+	SelfReplacingDiscards bool
 	// PriceExert turns on ADR 0130 §9 (owner decision 4): the twin
 	// attack move that exerts its attacker is priced by what the
 	// exert's rows declare against what the creature gives up by
@@ -604,6 +619,7 @@ func DefaultConfig() Config {
 		LeftoverThreshold: 0.00,
 		SpellFloor:        1.30,
 		TapByTiming:       true,
+		WaitForMain:       true,
 
 		LandValue:      8.00,
 		SpellPerMana:   0.60,
@@ -628,7 +644,8 @@ func DefaultConfig() Config {
 		DiscardCostByCard:   true,
 		LastLandDiscard:     1.00,
 
-		PriceDiscardPayoffs: true,
+		PriceDiscardPayoffs:   true,
+		SelfReplacingDiscards: true,
 
 		PriceExert:      true,
 		ExertCostWeight: 1.00,
@@ -746,6 +763,8 @@ func BaselineConfig() Config {
 	c.LeftoverThreshold = 0
 	c.SpellFloor = 0
 	c.TapByTiming = false
+	// ADR 0126's amendment of 2026-10-12 (#2457): wait for the main phase.
+	c.WaitForMain = false
 	// §4, §6's prices and §7's discard half (PR 7).
 	c.PricePurposes = false
 	// #2469: a land swap priced by what it nets.
@@ -777,6 +796,8 @@ func BaselineConfig() Config {
 	c.PriceAnswers = false
 	// ADR 0126's amendment of 2026-10-06: discard payoffs.
 	c.PriceDiscardPayoffs = false
+	// ADR 0126's amendment of 2026-10-12 (#2457): self-replacing discards.
+	c.SelfReplacingDiscards = false
 	// ADR 0130 §9: exert, never taken before it.
 	c.PriceExert = false
 	c.ExertCostWeight = 0
@@ -930,6 +951,10 @@ type state struct {
 	// or beforeMyUntap, with an empty stack. Computed whatever the
 	// Config says; Config.LeftoverWindows decides whether it is read.
 	leftover bool
+	// beforeMyMain is the bot's own upkeep or draw step with an empty
+	// stack: a window before its first main phase, where the mana it
+	// spends is the mana its main phases would have (#2457, waitmain.go).
+	beforeMyMain bool
 	// dying caches dyingAnyway per permanent for this decision (ADR
 	// 0126 §7, sacrifice.go).
 	dying map[string]float64
@@ -1011,6 +1036,7 @@ func (p *Policy) newState(in aiseat.Input) *state {
 	st.beforeMyUntap = st.step == "end" && nextTurnSeat(v) >= 0 && v.Seats[nextTurnSeat(v)].ID == st.me
 	st.leftover = stackEmpty &&
 		(st.beforeMyUntap || (st.myTurn && st.step == "postcombat_main" && !mainPhaseUpcoming(v)))
+	st.beforeMyMain = stackEmpty && st.myTurn && (st.step == "upkeep" || st.step == "draw")
 	return st
 }
 
@@ -1136,6 +1162,8 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	// whenever take exists, which is the pre-S66 rule exactly.
 	best, bestVal, bestReason := -1, 0.0, ""
 	take, takeVal, takeReason := -1, 0.0, ""
+	// waited is the best cast held for the main phase (waitmain.go).
+	waited, waitedVal, waitedReason := -1, 0.0, ""
 	vals := make([]float64, len(moves))
 	for i := range moves {
 		if i%16 == 0 && ctx.Err() != nil {
@@ -1148,6 +1176,12 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 		vals[i] = v
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
+		}
+		if p.waitsForMain(st, moves[i]) {
+			if v > threshold && (waited < 0 || v > waitedVal) {
+				waited, waitedVal, waitedReason = i, v, reason
+			}
+			continue
 		}
 		bar := threshold
 		if leftover && v <= threshold && p.leftoverEligible(st, moves[i]) {
@@ -1208,6 +1242,9 @@ func (p *Policy) decideGeneral(ctx context.Context, st *state, moves []legal.Mov
 	}
 	if take >= 0 {
 		return aiseat.Decision{Index: take, Reason: fmt.Sprintf("%s (+%.2f)", takeReason, takeVal)}, nil
+	}
+	if passIdx >= 0 && waited >= 0 {
+		return aiseat.Decision{Index: passIdx, Reason: fmt.Sprintf("wait for the main phase: %s %s (+%.2f)", waitedReason, moves[waited].Label, waitedVal)}, nil
 	}
 	if passIdx >= 0 {
 		return aiseat.Decision{Index: passIdx, Reason: "nothing worth doing"}, nil
