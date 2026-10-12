@@ -2916,6 +2916,44 @@ a trampler's overflow as they go. A blocked attacker of the bot's lives
 into next turn only when its blockers plus every spare blocker that
 could join them cannot kill it.
 
+### Blocks that survive as a set (#3066)
+
+Blocks are declared one at a time, and each is scored on its own, so a
+defender could pick a set of good blocks that lets lethal damage
+through. In the full seed-1409 Wurm mirror the defender, on 3 with its
+3/3 commander, faced a Bear and a 3/3 commander. The Bear block scored
+best (+6.90: it kills the Bear and loses nothing), and the commander's
+3 killed it. Commander on commander takes 2 and lives.
+
+With `BlockSetSurvives`, the block planner first asks whether finishing
+the declaration now kills the bot: its life, ten poison counters from
+infect and toxic, or the table's commander damage (21) from one
+commander. A trampler's overflow, a double striker's second hit and a
+menace attacker with one blocker count as getting through. If finishing
+now survives, nothing changes, since blocking more never lets more
+through. If it kills, each block on offer is asked whether some way of
+spending the creatures still free after it survives. Which creature may
+block which attacker is read off the block moves on offer. The search
+stops at the first set that survives, prunes a branch whose free
+creatures could not stop enough damage even one attacker each, and gives
+up after 2000 boards (`blockSearchBudget`), when the block counts as
+unknown.
+
+- **Some block leaves a way to live:** the bot declares the best-scored
+  such block, even at a score of zero or less. When this changed the
+  pick, the reason says so:
+  `block: chump to survive, a set that survives (+6.00)`.
+- **None does:** the old decision, unchanged.
+
+| Switch | Default | What it counts |
+|---|---|---|
+| `BlockSetSurvives` | on | When finishing the declaration kills the bot, only blocks after which some set of blocks survives, whenever one exists. |
+
+`BaselineConfig()` turns it off. The decision and its numbers are in
+[ADR 0126's amendment on blocks that survive as a
+set](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-blocks-that-survive-as-a-set),
+proposed on 2026-10-12.
+
 ### Combat priced by what combat does (#2675, #2690, #2676)
 
 Three fixes from the 2026-10-08 review games, each a knob that

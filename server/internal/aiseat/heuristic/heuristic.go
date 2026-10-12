@@ -567,6 +567,14 @@ type Config struct {
 	// every attacker of mine dead and nothing of theirs, so no such
 	// exchange is ever acceptable.
 	HorizonPlaysFreeAnswer bool
+	// BlockSetSurvives checks the defender's blocks as a whole set
+	// against lethal damage (#3066, blockset.go): life, poison and 21
+	// from one commander. When finishing the declaration now would
+	// kill the bot, a block is chosen only among those after which some
+	// way of spending its free creatures survives, by the usual score,
+	// whenever one exists. Off (the zero value) scores each block on
+	// its own, so a set of good blocks can let lethal damage through.
+	BlockSetSurvives bool
 	// LethalBonus is the value of a line that would finish a seat
 	// outright — an alpha strike the defender cannot absorb, or a
 	// spell pointed at a player already inside FinishLife.
@@ -743,8 +751,10 @@ func DefaultConfig() Config {
 		// #2474: the attrition horizon trades commanders.
 		HorizonRecastsCommander: true,
 		HorizonPlaysFreeAnswer:  true,
-		LethalBonus:             25.00,
-		FinishLife:              3,
+		// #3066: the defender's blocks survive as a set.
+		BlockSetSurvives: true,
+		LethalBonus:      25.00,
+		FinishLife:       3,
 
 		LandsWanted:  5,
 		KeepMinLands: 2,
@@ -852,6 +862,8 @@ func BaselineConfig() Config {
 	// #2474: the attrition horizon never traded my commander.
 	c.HorizonRecastsCommander = false
 	c.HorizonPlaysFreeAnswer = false
+	// #3066: each block was scored on its own.
+	c.BlockSetSurvives = false
 	// #2677 and #2691: land searches by colour, discards by distance.
 	c.LandColorNeed = 0
 	c.DiscardByDistance = false
