@@ -2937,7 +2937,9 @@ crack-back on the turn in between is less than the bot's life, it makes
 progress the defender cannot trade away (damage that connects however
 it blocks, or a creature of theirs that stays dead; a commander goes
 back to the command zone, so trading into one is not progress), no
-more of the bot's creatures die than the defender's, and the bot's
+more of the bot's creatures die than the defender's (a commander of the
+bot's that it casts again does not count: [A commander trade on the
+horizon](#a-commander-trade-on-the-horizon-2474)), and the bot's
 creatures are still worth more than the defender's afterwards. After
 an acceptable exchange the board is rebuilt, with both sides untapped
 and the defender's creatures home to block, and asked again: a lethal
@@ -3036,6 +3038,55 @@ measured again. Each is a `Config` switch:
 `BaselineConfig()` turns all four off. The numbers, and the owner's
 decisions of 2026-10-12, are in [ADR 0126's amendment of
 2026-10-12](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest).
+
+### A commander trade on the horizon (#2474)
+
+The full seed-1409 Wurm mirror used to stop on its last board: the
+bot's Bear and 3/3 commander, on 6, against the defender's 3/3
+commander, on 3. A player sees the kill. Swing both. The defender has
+to block the commander with its own, both die, and the Bear puts it on
+1. Both commanders are cast again, and the bot's is summoning sick, so
+it waits a turn. Then the Bear and the commander swing into one blocker
+and one of them gets through. No two-turn race sees that, and the
+attrition horizon refused it for two reasons:
+
+- **A commander of the bot's that died counted as lost.** The horizon
+  already counted the defender's commander as cast again (CR 903.9a).
+  With `HorizonRecastsCommander`, the bot's own commander that dies in
+  an exchange is not lost while the bot's mana sources pay its mana
+  value plus its tax (CR 903.8). It is back on the next board,
+  summoning sick: it can block and counts toward a race's next turn,
+  but cannot attack. When nothing else works, the line may wait a turn
+  for it. That turn counts as an exchange, and it needs the crack-back
+  on it, every opponent swinging everything into everything the bot
+  has, to be less than the bot's life. Its cast count goes up, so a
+  second trade in the same line pays the higher tax. This is a second
+  pass of the search, with its own budget, and it runs only when the
+  first finds no line. Allowed in the one pass, the trade made more
+  exchanges acceptable everywhere, and the search spent its budget on
+  them before it reached lines it used to send.
+- **The defender's model only guessed.** Blocking to survive, the
+  model first takes every block the defender survives: their commander
+  on the Bear. Then nothing is left for the bot's commander, and the
+  model falls back to a guess that counts every attacker blocked and
+  dead. With `HorizonPlaysFreeAnswer`, where the model only guessed and
+  the defender survives its free answer, the line plays the free answer
+  forward instead: commander for commander, the Bear unblocked.
+
+The race itself does not change. A commander the bot casts again is
+summoning sick on the race's next turn (CR 302.6), so the race is right
+to count it out. `RecastChumpForNext` is the same question from the
+defender's side, inside the race.
+
+| Switch | Default | What it counts |
+|---|---|---|
+| `HorizonRecastsCommander` | on | When the search finds no line, a second pass in which the bot's commander that dies in an exchange is cast again, summoning sick, and the line may wait a turn for it. |
+| `HorizonPlaysFreeAnswer` | on | Where blockToSurvive's model only guessed, the line plays the free answer forward. |
+
+`BaselineConfig()` turns both off. The decision and its numbers are in
+[ADR 0126's amendment on a commander
+trade](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-the-attrition-horizon-trades-commanders),
+accepted on 2026-10-12.
 
 ### Trample overflow on the attacking side (#1504)
 

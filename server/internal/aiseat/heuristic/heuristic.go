@@ -539,6 +539,22 @@ type Config struct {
 	// already does (#2400, CR 903.9a). Off (the zero value) counts it
 	// dead for both.
 	RecastChumpForNext bool
+	// HorizonRecastsCommander lets the attrition horizon trade my
+	// commander (#2474, CR 903.9a, 903.8) when it finds no line
+	// without: a second pass, with a budget of its own, in which one
+	// of mine that dies in an exchange is not counted lost while my
+	// mana sources pay its tax, and is back on the next board,
+	// summoning sick. The line may then spend a turn waiting for it,
+	// when the crack-back on that turn is less than my life. Off (the
+	// zero value) has no second pass, so it counts dead for good.
+	HorizonRecastsCommander bool
+	// HorizonPlaysFreeAnswer is which answer the attrition horizon
+	// plays forward where blockToSurvive's model only guessed at the
+	// defender's blocks (#2474): the free answer, when the defender
+	// survives it. Off (the zero value) plays the guess, which counts
+	// every attacker of mine dead and nothing of theirs, so no such
+	// exchange is ever acceptable.
+	HorizonPlaysFreeAnswer bool
 	// LethalBonus is the value of a line that would finish a seat
 	// outright — an alpha strike the defender cannot absorb, or a
 	// spell pointed at a player already inside FinishLife.
@@ -708,8 +724,11 @@ func DefaultConfig() Config {
 		// #2400: trample overflow and the recast chump measured no
 		// better under RaceEndsSoonest, so they stay off.
 		FreeCommanderNeedsTax: true,
-		LethalBonus:           25.00,
-		FinishLife:            3,
+		// #2474: the attrition horizon trades commanders.
+		HorizonRecastsCommander: true,
+		HorizonPlaysFreeAnswer:  true,
+		LethalBonus:             25.00,
+		FinishLife:              3,
 
 		LandsWanted:  5,
 		KeepMinLands: 2,
@@ -811,6 +830,9 @@ func BaselineConfig() Config {
 	c.FreeTrampleOverflow = false
 	c.FreeCommanderNeedsTax = false
 	c.RecastChumpForNext = false
+	// #2474: the attrition horizon never traded my commander.
+	c.HorizonRecastsCommander = false
+	c.HorizonPlaysFreeAnswer = false
 	// #2677 and #2691: land searches by colour, discards by distance.
 	c.LandColorNeed = 0
 	c.DiscardByDistance = false
