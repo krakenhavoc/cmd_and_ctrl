@@ -3196,6 +3196,23 @@ The reasons are in the pricing:
   replaces gets the leftover bar (see "The two leftover windows"), and
   is priced by the land it nets (see "Purposes").
 
+Re-measured for [#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)
+(2026-10-12, ADR 0126's amendment of that date, proposed). Professional
+Face-Breaker's activation is now taken (see "Purposes"). The rest is
+held on purpose or priced short:
+
+- Scrounging Skyray's and Marauding Mako's cycling lose to casting the
+  creature, which is the better use of the card.
+- Solphim's indestructible counter is a `protect` answer. It is taken
+  when removal targets Solphim, and is a pure cost otherwise.
+- Burnished Hart's land search is priced as two lands against its own
+  body. In simic-ramp those lands are worth more than that, because
+  Tatyova draws a card for each and Lotus Cobra adds mana, but no
+  landfall payoff is priced.
+- A Vehicle's crew is priced at `ActivateBase` less the tapped creature,
+  under `PassThreshold`, so Smuggler's Copter is crewed in fewer than
+  half the games it is cast in.
+
 **A non-tap activated ability with no declared purpose is a flat
 +0.50.** That is `ActivateBase`, and S66 left it alone (ADR 0126 owner
 decision 6). Syr Konrad's `{1}{B}` mill is the visible case.

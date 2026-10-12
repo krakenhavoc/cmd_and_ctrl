@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): **proposed**.
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -915,6 +915,99 @@ The owner accepted the amendment on 2026-10-12 and took the recommendation on bo
 
 1. **The commander-trade horizon is accepted.** `HorizonPlaysFreeAnswer` and `HorizonRecastsCommander` are both on in `DefaultConfig()`, and both off in `BaselineConfig()`. The full Wurm mirror's board is no longer skipped.
 2. **The misblock is its own issue:** [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066), in S67. It is the defender's block planner (`decideBlock`), not the attack planner, so it is not part of this amendment.
+
+## Amendment 2026-10-12: Izzet and Simic after the rebalance
+
+**Status:** Proposed. Deck strength and balance are the owner's call, so nothing here is accepted until the owner answers the [questions](#questions-for-the-owner-2480) below. The code is in the PR that adds this section, as two commits: the price change behind two switches (on in `DefaultConfig()`, off in `BaselineConfig()`), and the Izzet swap. Either can be reverted alone.
+**Issue:** [#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480), the follow-up the owner left open when #2436 (PR #2475) merged. Sprint S67.
+**Amends:** §6 (a new purpose field, `impulse`), §7 (what a Treasure given up to pay a cost costs), and the izzet-aggro list #2436 set. No other price and no other deck changes.
+
+### The problem
+
+The issue's win table is from 2026-10-07. Since then #3062 made lockstep deterministic, #3063 changed the race objective, #3064 added cheap cycling discards and the wait for the main phase, and #3065 added the commander-trade horizon. Re-measured on `develop` at `0e81b3af4`, with §8's run 1 (64 games, seed 1, `--rotate --lockstep`) and run 2:
+
+| Deck | Run 1 wins of 64 | Win rate | Wilson 95% | Issue (2026-10-07) | `never` |
+|---|---:|---:|---|---:|---|
+| esper-control | 17 | 26.6% | 17.3%–38.5% | 29 | — |
+| izzet-aggro | 1 | 1.6% | 0.3%–8.3% | 6 | Glint-Horn Buccaneer's, Marauding Mako's, Professional Face-Breaker's and Scrounging Skyray's activations |
+| mono-black-aristocrats | 26 | 40.6% | 29.5%–52.9% | 21 | Ashnod's Altar, Blood Artist, Burnished Hart's activation |
+| simic-ramp | 20 | 31.2% | 21.2%–43.4% | 8 | — |
+
+Run 2: `heuristic` 66 of 192 seat-games, 34.4% (28.0%–41.3%); `heuristic-baseline` 30 of 192. Izzet won 1 of 48 with `heuristic` and 2 of 48 with `heuristic-baseline`.
+
+**Simic is no longer behind** (31% in run 1, 13 of 48 in run 2), and Burnished Hart and Mind Stone have left its `never` list. **Izzet is further behind than the issue says.** It is out first or second in 48 of the 64 games, against 31 for esper-control, 23 for simic-ramp and 17 for mono-black-aristocrats.
+
+### Why the cards go unused
+
+The issue's option 1, worked from run 1's decision logs. Each activation's price in every window it was offered, against what the bot did instead:
+
+| Card (deck) | Offered / taken | Price | Cause |
+|---|---|---|---|
+| Professional Face-Breaker, "Sacrifice a Treasure: exile the top card, you may play it this turn" (izzet) | 1,070 / 0 | −0.80 in every window, −0.50 with the Face-Breaker tapped | **The heuristic.** The row declared only `answers: ["value"]`, so it was the flat `ActivateBase` (0.50), and the Treasure it sacrifices cost its board value as a mana source (1.00), twice what §6 prices making one at (`TokenWeight`, 0.50). The 0.30 every untapped creature's activation pays did the rest. |
+| Scrounging Skyray and Marauding Mako, cycling (izzet) | 121 / 0 and 70 / 0 | +0.50 (`ActivateBase`) | **Neither: the right play.** In the main phase, casting the creature, a discard payoff that grows, beats cycling it. In the upkeep and draw step +0.50 is under `InstantThreshold`. |
+| Solphim, Mayhem Dominus, indestructible counter (izzet) | 385 / 2 | −1.1 to −7.7, and refused by the life floor in 81 windows | **Neither: the right play.** It is a `protect` answer (ADR 0142). It was taken in both windows where removal targeted Solphim. Everywhere else it is two cards and four life, or {R}{R}, for a counter nothing threatens. |
+| Burnished Hart (simic) | 346 / 1 | −1.60 to −0.50; +1.04 the one time it was taken | **The heuristic, and not a small fix.** Two lands are priced at `ManaSource` each plus the ramp premium while the deficit is open, against the Hart's own body. By the time Simic has the Hart and {3} to spare, its deficit has closed. In 141 of the 150 windows in its own main phase with an empty stack it controlled a landfall payoff (127 of them Tatyova), so those two lands were two cards. No landfall payoff is priced at all. |
+| Burnished Hart (mono-black) | 173 / 0 | −1.60 to −0.50 | **Neither.** Its body is sacrifice fodder for the death payoffs, and mono-black has no landfall payoff. |
+| Mind Stone, draw (simic, izzet) | 161 / 3, 50 / 7 | +0.50 | **Neither.** It is no longer `never`. Its row declares only `answers: ["value"]`, so it is +0.50, under any cast in the main phase and under `InstantThreshold` in the upkeep and draw step. By the opponents' turns it is tapped for mana. A rock used as a rock is right. |
+| Glint-Horn Buccaneer's rummage (izzet) | 7 / 0 | +1.50 | **Borderline.** It is priced exactly `InstantThreshold` in the combat steps, and the tie goes to passing. Two games. |
+
+**What is not the cause.** No list change explains an unused activation. And none of these cards explains Izzet's record: Face-Breaker was on the battlefield with a Treasure in 13 of Izzet's 64 seat-games.
+
+### Decision (proposed)
+
+**1. An impulse is a card the bot can use this turn** (`PriceImpulse`, `aiseat/heuristic/impulse.go`). `game.Purpose` and `PurposeView` gain `impulse`: the cards it exiles from the top of its controller's library that its controller may play this turn. It is additive on the wire with no snapshot change, and it is declared by hand like every purpose: Professional Face-Breaker's row declares `impulse: 1`, the only one in the curated decks. It is priced `Weights.Hand` per card in the bot's own main phase with an empty stack, when it has a land drop left or two mana from its lands and rocks, and at nothing anywhere else, where the card is lost at the end of the turn.
+
+**2. A Treasure given up costs a token** (`OneShotManaAsToken`, the same file). A token whose every mana ability sacrifices it costs `TokenWeight` (0.50) when it is sacrificed to pay a cost, rather than its board value (1.00). The board value is unchanged, and so is everything else that reads it.
+
+Together, Face-Breaker's row is 1.20 − 0.50 − 0.30 = **+0.40** in the bot's own main phase, over `PassThreshold`, and below zero everywhere else. Either switch alone leaves it below zero (`TestImpulseNeedsBothSwitches`).
+
+**3. Izzet: Fable of the Mirror-Breaker and Monument to Endurance for Wash Away and Negate.** Both cards are graded full and legal. Monument declares a discard payoff (any card, one Treasure: the least of its three bullets, and the one the purpose can say). The issue's other card, The Indomitable, was measured and is not proposed. The bot casts it in 6 of the 12 games it is offered in and crews it in 2, as it crews Smuggler's Copter in 4 of 10, because a crew activation is priced at the flat `ActivateBase` less the tapped creature, +0.20, under `PassThreshold` ([Out of scope](#out-of-scope): Vehicles). Fable's Goblin makes a Treasure on every attack, its second chapter rummages, and the bot casts it in 9 of the 12 games it is offered in. Wash Away and Negate are the two narrowest counterspells.
+
+**4. Simic: no change.** It is no longer behind (28.9% over two seed blocks at step 1), so neither its list nor a landfall price is proposed here. It falls to 21.1% (14.9%–29.0%) at step 2, in games the Izzet swap re-dealt, and that interval still holds 25%. If the owner takes the swap, Simic is the deck to re-measure first. **Esper: no trim.** Over two seed blocks (128 games) Esper and mono-black share the lead (36.7% and 32.8% before the swap, 35.9% and 39.1% after), neither interval lies above 50%, and Izzet's gap is not one a trim to Esper would close.
+
+### Measured
+
+The tables are under [Measurements, #2480](#2480-izzet-and-simic-after-the-rebalance-2026-10-12). In short, run 1 at seed 1 and run 2:
+
+| Step | esper | izzet | mono-black | simic | Run 2 `heuristic` | Face-Breaker's row |
+|---|---:|---:|---:|---:|---|---|
+| `develop` `0e81b3af4` | 17 | 1 | 26 | 20 | 66 / 192, 34.4% (28.0%–41.3%) | 0 of 1,070 windows |
+| 1, the impulse price | 17 | 1 | 24 | 22 | 64 / 192, 33.3% (27.0%–40.3%) | 20 of 935, in 7 of 13 games |
+| 2, the Izzet swap | 20 | 3 | 25 | 16 | 56 / 192, 29.2% (23.2%–36.0%) | 18 of 335, in 6 of 11 games |
+
+- **The impulse price works and moves little.** It changes 5 of run 1's 64 games and 4 of run 2's first half, and none of the second half, where no `heuristic` seat plays Izzet.
+- **No swap moves Izzet beyond noise.** Pooled over every Izzet seat-game in run 1 at seeds 1 and 1001 and run 2, Izzet won 4 of 224 (1.8%, 0.7%–4.5%) before the swap and 10 of 224 (4.5%, 2.4%–8.0%) after. The issue's pair (The Indomitable and Monument) and a four-card set (Fable, Monument, Glorybringer and Third Path Iconoclast for Wash Away, Negate, Swan Song and Shock) are no different in run 1: 4 and 2 of 64, against the proposed pair's 3.
+- **A deck change re-deals every game.** 55 of run 1's 64 games end differently after the swap, so a swap's numbers are a new sample, and the other decks move as much as Izzet does.
+- **Health:** 0 stalls and 0 rejected moves in every run. Turns p50 is 13 in run 1 at every step. The suite is 41 of 41, every tag at 100%. No pinned arena digest moved.
+
+### Options considered and rejected
+
+- **The issue's pair, The Indomitable and Monument to Endurance.** See decision 3.
+- **Four swaps.** No better than two in run 1 (2 of 64), and it cuts the deck further from its precon.
+- **A landfall payoff purpose** (a `landfall_payoff` on a triggered row, like `discard_payoff`, so a land the bot puts onto the battlefield is worth Tatyova's card, a Cobra's mana or a Baloths token). It is the real cause of the Hart's price, and it would reprice every land Simic plays or fetches. It needs a new wire field and declarations on nine Simic cards. It is not small, and Simic is no longer behind. See question 4.
+- **Pricing a crew by the attack it enables.** That is the Vehicles item in [Out of scope](#out-of-scope), and it is the reason The Indomitable was not proposed.
+
+### Questions for the owner (#2480)
+
+Each lists the recommended option first.
+
+1. **The impulse price** (decisions 1 and 2).
+   - **(a) Recommended:** accept, with both switches on in `DefaultConfig()`. It turns a dead activation into a used one and changes no strength number beyond noise.
+   - **(b)** Reject. Revert the first commit. Face-Breaker stays `never`.
+2. **The Izzet swap** (decision 3).
+   - **(a) Recommended, weakly:** Fable of the Mirror-Breaker and Monument to Endurance for Wash Away and Negate. Both new cards are used, and the direction is up, but the change is within noise.
+   - **(b)** The issue's pair: The Indomitable and Monument to Endurance. The bot rarely crews The Indomitable.
+   - **(c)** No swap. Revert the second commit.
+3. **Izzet's gap.** At 2% to 5% no swap of two to four cards closes it. In run 1 at seed 1, Izzet is out first or second in 48 of 64 games. Of the damage the game logs attribute to a deck's own cards, Izzet's is the least: its best source is Mary Read and Anne Bonny with 446, against Syr Konrad's 2,448 and Y'shtola's 1,324, which hit each opponent.
+   - **(a) Recommended:** a new issue to rebuild izzet-aggro around what the heuristic plays well (cheap threats that make value when they enter or attack, and damage to each opponent, which is what Konrad and Y'shtola win with), measured over at least three seed blocks.
+   - **(b)** Heuristic work first: the crew price above, and why Izzet's small attackers trade so badly.
+   - **(c)** Accept Izzet as the weak deck for now.
+4. **Simic and landfall.**
+   - **(a) Recommended:** no change now. A follow-up issue for a landfall payoff purpose, to be measured against Simic's balance when it is built.
+   - **(b)** Build the landfall price now, in its own amendment.
+5. **Esper.**
+   - **(a) Recommended:** no trim (decision 4).
+   - **(b)** Trim Esper now (Consecrated Sphinx, Sheoldred, the two free counterspells, as #2475 listed).
 
 ## Consequences
 
@@ -2069,3 +2162,64 @@ Every gate game ends on the same turn with the same winner. Heuristic vs random 
 - `go test ./internal/aiseat/heuristic/`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns both switches off.
 - `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/...` and `./internal/botarena/` with `-race`: green. The gate seeds under `-race` match the non-race runs game for game, and heuristic vs random is 12–0. Decision latency over 2534 decisions is p50 96µs, p99 6.00ms and max 35.2ms (`-race`, on a box shared with another agent's test runs), under the 50ms p99 bar. Rebased onto `032e1f138` the run is green again, its gate seeds match too, and latency over 2389 decisions is p50 96µs, p99 7.74ms and max 33.7ms. #2400 measured 105µs, 4.44ms and 21.4ms. The second pass runs only in a decision whose first pass found no line, and wall-clock numbers on a shared box are not a reliable comparison.
 - Back-outs: `TestAttritionTradesCommandersForTheKill` turns each switch off in turn and the bot sends nothing, and the full Wurm board stalls at `[6 3]` with either off (the F and H rows). `TestOutcomeOfTheCommanderTrade` reads the outcome under each of the four combinations.
+
+### #2480: Izzet and Simic after the rebalance (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance), proposed. `develop` is `0e81b3af4`, with #3062's deterministic lockstep and #3063, #3064 and #3065's heuristic. Step 1 is the impulse price: `PriceImpulse` and `OneShotManaAsToken`, both true in `DefaultConfig()` and false in `BaselineConfig()`; no weight is new. Step 2 adds the Izzet swap. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
+
+**Run 1, seed 1** (wins of 64, Wilson 95%):
+
+| Deck | `develop` | Step 1 | Step 2 |
+|---|---|---|---|
+| esper-control | 17, 26.6% (17.3%–38.5%) | 17, 26.6% (17.3%–38.5%) | 20, 31.2% (21.2%–43.4%) |
+| izzet-aggro | 1, 1.6% (0.3%–8.3%) | 1, 1.6% (0.3%–8.3%) | 3, 4.7% (1.6%–12.9%) |
+| mono-black-aristocrats | 26, 40.6% (29.5%–52.9%) | 24, 37.5% (26.7%–49.7%) | 25, 39.1% (28.1%–51.3%) |
+| simic-ramp | 20, 31.2% (21.2%–43.4%) | 22, 34.4% (23.9%–46.6%) | 16, 25.0% (16.0%–36.8%) |
+| games that differ from the column to the left | — | 5 (2 winners) | 55 (36 winners) |
+| turns p50 | 13 | 13 | 13 |
+
+`never` lists. `develop`: izzet-aggro, Glint-Horn Buccaneer's, Marauding Mako's, Professional Face-Breaker's and Scrounging Skyray's activations; mono-black-aristocrats, Ashnod's Altar, Blood Artist and Burnished Hart's activation; esper-control and simic-ramp, none. Step 1: Face-Breaker's activation leaves the list (20 of 935 windows, 7 of 13 games). Step 2: the same as step 1, plus Burnished Hart's activation on simic-ramp (0 of 309 windows; it was 1 of 346 on `develop`). The A3 canaries that met their bar on `develop` meet it at both steps; Rhystic Study, below its bar on both decks on `develop` (11 of 23 and 10 of 24), meets it at step 2 (15 of 23 and 9 of 16).
+
+**Run 1, seed 1001** (a second block, steps 1 and 2 only):
+
+| Deck | Step 1 | Step 2 | Pooled with seed 1, step 1 | Pooled with seed 1, step 2 |
+|---|---|---|---|---|
+| esper-control | 30, 46.9% (35.2%–58.9%) | 26, 40.6% (29.5%–52.9%) | 47 / 128, 36.7% (28.9%–45.3%) | 46 / 128, 35.9% (28.1%–44.5%) |
+| izzet-aggro | 1, 1.6% (0.3%–8.3%) | 2, 3.1% (0.9%–10.7%) | 2 / 128, 1.6% (0.4%–5.5%) | 5 / 128, 3.9% (1.7%–8.8%) |
+| mono-black-aristocrats | 18, 28.1% (18.6%–40.1%) | 25, 39.1% (28.1%–51.3%) | 42 / 128, 32.8% (25.3%–41.3%) | 50 / 128, 39.1% (31.0%–47.7%) |
+| simic-ramp | 15, 23.4% (14.7%–35.1%) | 11, 17.2% (9.9%–28.2%) | 37 / 128, 28.9% (21.8%–37.3%) | 27 / 128, 21.1% (14.9%–29.0%) |
+
+`never` lists at seed 1001. Step 1: izzet-aggro, Glint-Horn Buccaneer's, Scrounging Skyray's and Solphim's activations (Face-Breaker's is not on it); mono-black-aristocrats, Ashnod's Altar and Blood Artist. Step 2: izzet-aggro, Glint-Horn Buccaneer's, Marauding Mako's, Scrounging Skyray's and Reflection of Kiki-Jiki's activations; mono-black-aristocrats, Ashnod's Altar, Blood Artist and Burnished Hart's activation. Simic's fall at step 2 (37 to 27 of 128) is in games the Izzet swap re-dealt, and its interval still holds 25%.
+
+**Run 2, seed 1** (wins of 48 per deck):
+
+| | `develop` | Step 1 | Step 2 |
+|---|---|---|---|
+| half A, `heuristic` esper / izzet | 29 / 1 | 28 / 0 | 17 / 4 |
+| half A, `heuristic-baseline` black / simic | 14 / 4 | 13 / 7 | 15 / 12 |
+| half B, `heuristic` black / simic | 23 / 13 | 23 / 13 | 20 / 15 |
+| half B, `heuristic-baseline` esper / izzet | 10 / 2 | 10 / 2 | 12 / 1 |
+| **`heuristic`, pooled** | **66 / 192, 34.4% (28.0%–41.3%)** | **64 / 192, 33.3% (27.0%–40.3%)** | **56 / 192, 29.2% (23.2%–36.0%)** |
+| `heuristic-baseline`, pooled | 30 / 192 | 32 / 192 | 40 / 192 |
+| games that differ, halves A / B | — | 4 / 0 | 43 / 36 |
+| turns p50, halves A / B | 15 / 12 | 15 / 12 | 14 / 12 |
+
+Not detectably worse at either step: the lower bound clears 25% at `develop` and step 1 and is 23.2% at step 2, with the upper bound far above 25%. Step 2's fall is mostly half A's Esper (28 to 17 wins), in games the swap re-dealt: it changes the Izzet library, so 43 of half A's 48 games are different games. Half B of step 1 plays every game as `develop` does, because no `heuristic` seat holds Face-Breaker there.
+
+**Izzet, every seat-game** (run 1 at seeds 1 and 1001, and both halves of run 2): 4 of 224 at step 1 (1.8%, 0.7%–4.5%) and 10 of 224 at step 2 (4.5%, 2.4%–8.0%).
+
+**Swap sets scouted with run 1, seed 1** (on step 1; wins of 64):
+
+| Izzet in, out | esper | izzet | mono-black | simic | The new cards |
+|---|---:|---:|---:|---:|---|
+| The Indomitable and Monument to Endurance, for Wash Away and Negate (the issue's pair) | 20 | 4 | 23 | 17 | The Indomitable cast in 6 of 12 games offered, crewed in 2; Monument cast in 6 of 11 |
+| **Fable of the Mirror-Breaker and Monument, for the same (step 2)** | 20 | 3 | 25 | 16 | Fable cast in 9 of 12, its Reflection's copy used in 2; Monument cast in 6 of 11 |
+| Fable, Monument, Glorybringer and Third Path Iconoclast, for Wash Away, Negate, Swan Song and Shock | 16 | 2 | 31 | 15 | Glorybringer cast in 21 of 21, exerted in 4; Iconoclast cast in 12 of 13 |
+
+**Why the cards went unused** (the counts in the [amendment](#why-the-cards-go-unused)) come from run 1's decision log on `develop`, read by a scratch pass: each window in which a card's activation was offered, the price the heuristic put on it, and the move it made instead. The landfall count reads the bot's own battlefield in the windows of its own main phase with an empty stack. "Out first or second" counts a seat whose last decision came on an earlier turn than at least two other seats' last decisions. The damage by source is read from the game-log tails the logged views carry, deduplicated, which cover about half of each game's log, so only the shares mean anything.
+
+**Other gates:**
+
+- `boteval suite run --policy heuristic`: 41 of 41 at step 2, every tag at 100%.
+- `go test ./...`: green, including `TestImpulseIsTakenInTheOwnMainPhase`, `TestImpulseIsNotTakenWhenTheCardWouldBeLost`, `TestImpulseNeedsBothSwitches` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`), so none was re-pinned.
+- With the dump, `go test ./internal/decks/`: green. `TestRealDumpDecksAreLegalCommanderDecks` now matches a double-faced card by its front face, as `Load`'s oracle-ID check does.
