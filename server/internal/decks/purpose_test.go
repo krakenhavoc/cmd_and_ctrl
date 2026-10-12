@@ -37,7 +37,7 @@ var curatedInstantsAndSorceries = []string{
 	"Sphinx's Revelation", "Treasure Cruise", "Dig Through Time", "Diabolic Tutor",
 	// izzet-aggro
 	"Lightning Bolt", "Shock", "Abrade", "Arc Trail", "Blaze", "Izzet Charm", "Fiery Temper",
-	"Prismari Command", "Chaos Warp", "Pyroblast", "Swan Song", "Wash Away", "Preordain",
+	"Prismari Command", "Chaos Warp", "Pyroblast", "Swan Song", "Preordain",
 	"Frantic Search", "Faithless Looting", "Big Score", "Unexpected Windfall", "Windfall",
 	"Wheel of Fortune", "Vandalblast", "Rapid Hybridization", "Pongify",
 	// mono-black-aristocrats
@@ -63,7 +63,6 @@ var valueIsTheirTarget = map[string]string{
 	"Swan Song":                 "counterspell",
 	"An Offer You Can't Refuse": "counterspell",
 	"Mana Drain":                "counterspell",
-	"Wash Away":                 "counterspell",
 	"Force of Negation":         "counterspell",
 	"Fierce Guardianship":       "counterspell",
 	"Absorb":                    "counterspell",
@@ -223,6 +222,8 @@ var curatedPermanentPurposes = map[string]string{
 	"Burnished Hart":           "activated",
 	"Spectral Sailor":          "activated",
 	"Teferi, Master of Time":   "activated",
+	// #2480: its Treasure-for-a-card row declares `impulse: 1`.
+	"Professional Face-Breaker": "activated",
 	// death payoffs, on the triggered row
 	"Blood Artist":         "death payoff",
 	"Midnight Reaper":      "death payoff",
@@ -239,6 +240,8 @@ var curatedPermanentPurposes = map[string]string{
 	"Marauding Mako":       "discard payoff",
 	"Scrounging Skyray":    "discard payoff",
 	"Magmakin Artillerist": "discard payoff",
+	// #2480.
+	"Monument to Endurance": "discard payoff",
 	// an opponent's tax, on the triggered row: what a decline gives
 	// (ADR 0136's amendment of 2026-10-09)
 	"Rhystic Study":    "tax gift",

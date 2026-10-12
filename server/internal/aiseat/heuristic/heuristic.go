@@ -262,6 +262,18 @@ type Config struct {
 	// mana a discard spares cycling it, and never less than the card
 	// cycling would find. Off (the zero value) prices it by the card alone.
 	SelfReplacingDiscards bool
+	// PriceImpulse prices a declared `impulse` (#2480, impulse.go): a
+	// card exiled that the bot may play this turn is worth Weights.Hand
+	// in its own main phase with an empty stack, when it has a land drop
+	// or two mana left to play it, and nothing elsewhere. Off (the zero
+	// value) leaves such a row at ActivateBase, as before.
+	PriceImpulse bool
+	// OneShotManaAsToken prices a token that makes mana only by
+	// sacrificing itself (a Treasure), given up to pay a cost, at
+	// TokenWeight, what making one is worth, rather than at a repeatable
+	// mana source's board value (#2480, impulse.go). Off (the zero
+	// value) charges its board value.
+	OneShotManaAsToken bool
 	// PriceExert turns on ADR 0130 §9 (owner decision 4): the twin
 	// attack move that exerts its attacker is priced by what the
 	// exert's rows declare against what the creature gives up by
@@ -663,6 +675,10 @@ func DefaultConfig() Config {
 		PriceDiscardPayoffs:   true,
 		SelfReplacingDiscards: true,
 
+		// #2480: Professional Face-Breaker's impulse for a Treasure.
+		PriceImpulse:       true,
+		OneShotManaAsToken: true,
+
 		PriceExert:      true,
 		ExertCostWeight: 1.00,
 
@@ -817,6 +833,9 @@ func BaselineConfig() Config {
 	c.PriceDiscardPayoffs = false
 	// ADR 0126's amendment of 2026-10-12 (#2457): self-replacing discards.
 	c.SelfReplacingDiscards = false
+	// #2480: an impulse priced, and a Treasure given up priced as a token.
+	c.PriceImpulse = false
+	c.OneShotManaAsToken = false
 	// ADR 0130 §9: exert, never taken before it.
 	c.PriceExert = false
 	c.ExertCostWeight = 0

@@ -80,6 +80,9 @@ type PurposeView struct {
 	// each turn on a permanent ("you may play an additional land on
 	// each of your turns"), this turn on an instant or sorcery (#2678).
 	ExtraLandDrops int `json:"extra_land_drops,omitempty"`
+	// Impulse is the cards it exiles from the top of its controller's
+	// library that its controller may play this turn (#2480).
+	Impulse int `json:"impulse,omitempty"`
 	// Targets is what happens to each target the statement names, one
 	// entry per target clause, keyed by the clause's slot: the slot a
 	// move's `targets[].slot` names, within the statement this purpose
@@ -235,6 +238,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		LifeGain:                  p.LifeGain,
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
+		Impulse:                   p.Impulse,
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}

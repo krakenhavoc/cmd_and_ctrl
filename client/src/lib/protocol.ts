@@ -3038,6 +3038,8 @@ export interface PurposeView {
   life_gain?: number;
   // ADR 0135 §3: the N of an awaken offer.
   awaken_land?: number;
+  // #2480: cards it exiles that its controller may play this turn.
+  impulse?: number;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.

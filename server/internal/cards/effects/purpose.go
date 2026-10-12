@@ -73,7 +73,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.Draws < 0 || p.ControllerLosesLife < 0 || p.Discards < 0 || p.Lands < 0 ||
 		p.Tutors < 0 || p.SelfMillTutor < 0 || p.Tokens < 0 || p.Energy < 0 || p.Sweep.Amount < 0 ||
 		p.ExtraCombat < 0 || p.DamageToCreature < 0 || p.DamageEachOpponent < 0 || p.LifeGain < 0 ||
-		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 {
+		p.AwakenLand < 0 || p.ExtraLandDrops < 0 || p.LandsUntapped < 0 || p.Impulse < 0 {
 		fail("has a negative amount")
 	}
 	if p.LandsUntapped > p.Lands {
