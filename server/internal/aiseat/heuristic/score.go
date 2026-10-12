@@ -994,33 +994,35 @@ func (w Weights) ScoreEval(evals map[string]*SeatEval, perspective string) float
 	if me == nil {
 		return 0
 	}
-	// #2730: the opponents are summed in seat-ID order, never in map
-	// order. Float addition is not associative, so a map-ordered sum
-	// differs in its last bits from one call to the next, and two
-	// moves priced the same (Damnation and Austere Command's two
-	// creature modes) came out a few ulps apart in an order the
-	// runtime picked: --lockstep stopped replaying a seed. The sum is
-	// the same number either way; only its rounding is now fixed. The
+	// #2730, #2904: the opponents' strengths are summed in VALUE order,
+	// never in map order and never in seat-ID order. Float addition is
+	// not associative, so a map-ordered sum differs in its last bits
+	// from one call to the next, and two moves priced the same
+	// (Damnation and Austere Command's two creature modes) came out a
+	// few ulps apart. #2730 sorted by seat ID, which fixed one run but
+	// not the next: seat IDs are fresh UUIDs for every game, so the
+	// sorted order was a different permutation each time and a seed
+	// still forked (#2904). Value order depends on nothing but the
+	// numbers, so the same table sums the same way in every run. The
 	// buffer holds a Commander table without allocating.
-	var buf [8]string
-	ids := buf[:0]
-	for id := range evals {
-		ids = append(ids, id)
-	}
-	slices.Sort(ids)
-	var sum, max float64
-	n := 0
-	for _, id := range ids {
-		e := evals[id]
+	var buf [8]float64
+	vals := buf[:0]
+	var max float64
+	for id, e := range evals {
 		if id == perspective || e.Eliminated {
 			continue
 		}
-		sum += e.Strength
-		if n == 0 || e.Strength > max {
+		vals = append(vals, e.Strength)
+		if len(vals) == 1 || e.Strength > max {
 			max = e.Strength
 		}
-		n++
 	}
+	slices.Sort(vals)
+	var sum float64
+	for _, v := range vals {
+		sum += v
+	}
+	n := len(vals)
 	if n == 0 {
 		return me.Strength
 	}

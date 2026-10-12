@@ -2042,6 +2042,12 @@ while a seat holds":
   committed anything is a table nothing will move again, so the game is
   marked stalled then and there; `--stall` is ignored. The dump says
   `no move in a full lockstep round`.
+- **Nothing the policy computes may depend on an ID's value.** Seat and
+  card IDs are fresh UUIDs in every game, so a sort, a tie-break or a
+  float sum keyed by ID is a different order in every run. `ScoreEval`
+  sums the opposition in value order for this reason (#2730 sorted by
+  seat ID and still forked seeds 13 and 52 of a rotated four-deck run,
+  #2904).
 - **Model seats are only as reproducible as their endpoint.** Lockstep
   removes the scheduler, not the model's own sampling, and a decision
   that overruns `--max-think` falls back — the one place wall clock
