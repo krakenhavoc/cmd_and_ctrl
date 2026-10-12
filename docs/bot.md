@@ -3197,7 +3197,7 @@ The reasons are in the pricing:
   is priced by the land it nets (see "Purposes").
 
 Re-measured for [#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)
-(2026-10-12, ADR 0126's amendment of that date, proposed). Professional
+(2026-10-12, ADR 0126's amendment of that date, accepted). Professional
 Face-Breaker's activation is now taken (see "Purposes"). The rest is
 held on purpose or priced short:
 
