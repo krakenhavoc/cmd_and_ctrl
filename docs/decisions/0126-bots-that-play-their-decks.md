@@ -701,7 +701,7 @@ The run tables are under [Measurements, #2679](#2679-removal-priced-net-of-what-
 ## Amendment 2026-10-12: the race sends the swing that ends the game soonest
 
 **Status:** Proposed (2026-10-12). It changes the attack planner's objective, which is the owner's call. The [decision asked](#decision-asked-of-the-owner-2026-10-12) is at the end.
-**Issue:** [#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400), filed by #2310 (PR #2399). Sprint S67. Tracker #890.
+**Issue:** [#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400), filed by #2310 (PR #2399). PR: #3063. Sprint S67. Tracker #890.
 **Amends:** the combat planner, which [Out of scope](#out-of-scope) left alone. The [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) set the precedent. The two planners it changes are the two-turn race (`raceWith`, `heuristic/race.go`) and the attrition horizon (`attritionLine`, `heuristic/attrition.go`). Neither has an ADR of its own: `docs/bot.md` documents them. Each change is a `Config` switch, and `BaselineConfig()` turns all of them off (§9).
 
 ### The problem
