@@ -37,6 +37,13 @@ make test         # server tests and client typecheck
 conventions. [PLAN.md](PLAN.md) covers the vision and roadmap, and
 [docs/decisions/](docs/decisions/) holds the architecture decision records.
 
+## Contributing
+
+Contributions are welcome. [CONTRIBUTING.md](CONTRIBUTING.md) explains how to find an issue, set
+up, and open a pull request. Look for
+[`good first issue`](https://github.com/krakenhavoc/cmd_and_ctrl/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+to start.
+
 ## Bugs and deck requests
 
 Use the in-app "Report a bug" button, or open a
