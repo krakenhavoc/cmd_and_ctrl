@@ -537,8 +537,10 @@ export class GameClient {
           this.clearHeartbeatTimer();
           return;
         }
-        // Check immediately on return: a hidden tab may have missed the
-        // whole timeout window while its timer was paused.
+        // Hidden tabs may miss the whole timer window while idle. Treat
+        // visibility as a fresh liveness window and send a ping if needed;
+        // the ordinary timeout still detects a dead socket after it returns.
+        this.lastInboundAt = Math.max(this.lastInboundAt, Date.now() - HEARTBEAT_INTERVAL_MS);
         this.checkHeartbeat(socket);
         this.scheduleHeartbeat(socket);
       };
@@ -852,7 +854,9 @@ export class GameClient {
     const wire = JSON.stringify(frame);
     this.socket.send(wire);
     this.recordFrame("out", frame, wire);
-    this.append("sent", `ping id=${frame.id.slice(0, 8)} msg=${JSON.stringify(msg)}`);
+    if (msg !== "heartbeat") {
+      this.append("sent", `ping id=${frame.id.slice(0, 8)} msg=${JSON.stringify(msg)}`);
+    }
   }
 
   // sendChat submits a chat frame to the server. The server stamps
@@ -949,10 +953,12 @@ export class GameClient {
     switch (frame.kind) {
       case "pong": {
         const p = frame.payload as PongPayload | undefined;
-        this.append(
-          "received",
-          `pong id=${frame.id.slice(0, 8)} msg=${JSON.stringify(p?.msg ?? "")} at=${p?.server_time ?? "?"}`,
-        );
+        if (p?.msg !== "heartbeat") {
+          this.append(
+            "received",
+            `pong id=${frame.id.slice(0, 8)} msg=${JSON.stringify(p?.msg ?? "")} at=${p?.server_time ?? "?"}`,
+          );
+        }
         break;
       }
       case "snapshot": {

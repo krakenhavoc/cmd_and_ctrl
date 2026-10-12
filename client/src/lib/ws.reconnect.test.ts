@@ -258,7 +258,7 @@ describe("#3047 — dead server heartbeat", () => {
     expect(socket.closeCode).toBe(4002);
   });
 
-  it("pauses while hidden and checks a stale socket immediately when shown", () => {
+  it("pings when shown after being hidden and waits for the pong before timing out", () => {
     const doc = stubDocument();
     const { client, socket } = connected();
 
@@ -268,8 +268,50 @@ describe("#3047 — dead server heartbeat", () => {
     expect(socket.closeCode).toBeNull();
 
     doc.setHidden(false);
-    expect(socket.closeCode).toBe(4002);
-    expect(get(client.status)).toBe("reconnecting");
+    expect(socket.sent.map((wire) => JSON.parse(wire).kind)).toEqual(["ping"]);
+    expect(socket.closeCode).toBeNull();
+
+    const replyToHeartbeat = () => {
+      socket.emit("message", {
+        data: JSON.stringify({
+          v: PROTOCOL_VERSION,
+          kind: "pong",
+          id: "heartbeat-pong",
+          payload: { msg: "heartbeat", server_time: new Date().toISOString() },
+        }),
+      });
+    };
+    replyToHeartbeat();
+    vi.advanceTimersByTime(5_000);
+    expect(socket.sent).toHaveLength(2);
+    replyToHeartbeat();
+    vi.advanceTimersByTime(5_000);
+    expect(socket.sent).toHaveLength(3);
+    replyToHeartbeat();
+    vi.advanceTimersByTime(5_000);
+    replyToHeartbeat();
+
+    expect(socket.closeCode).toBeNull();
+    expect(socket.readyState).toBe(FakeSocket.OPEN);
+    expect(get(client.status)).toBe("connected");
+  });
+
+  it("keeps heartbeat ping and pong traffic out of the protocol log", () => {
+    const { client, socket } = connected();
+
+    vi.advanceTimersByTime(5_000);
+    socket.emit("message", {
+      data: JSON.stringify({
+        v: PROTOCOL_VERSION,
+        kind: "pong",
+        id: "heartbeat-pong",
+        payload: { msg: "heartbeat", server_time: new Date().toISOString() },
+      }),
+    });
+
+    const texts = get(client.log).map((entry) => entry.text);
+    expect(texts.some((text) => text.includes('msg="heartbeat"'))).toBe(false);
+    expect(texts.some((text) => text.startsWith("pong "))).toBe(false);
   });
 });
 
