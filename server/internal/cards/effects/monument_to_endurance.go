@@ -30,6 +30,12 @@ const monumentToEnduranceLabel = "Monument to Endurance — you discarded a card
 // "Each opponent loses 3 life" is life loss, not damage
 // (eachOpponentLosesLife), so nothing that prevents damage sees it.
 //
+// The trigger declares a discard payoff (ADR 0126's amendment of
+// 2026-10-06) for the curated Izzet deck (#2480): any card, one token.
+// The Treasure is the bullet the purpose can say, and the least the
+// bot is paid: the draw and the 3 life are worth more, and a fourth
+// discard in a turn pays nothing, which the declaration does not see.
+//
 // No simplification.
 func init() {
 	Register(Spec{
@@ -37,7 +43,8 @@ func init() {
 		Name:         "Monument to Endurance",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			monumentToEnduranceTrigger(),
+			TriggerWithPurpose(monumentToEnduranceTrigger(),
+				game.Purpose{DiscardPayoff: &game.DiscardPayoff{Any: true, Tokens: 1}}),
 		},
 	})
 }

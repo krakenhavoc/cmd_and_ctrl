@@ -318,6 +318,15 @@ func (d Deck) Load(idx *cards.Index) (*deck.List, error) {
 	return list, nil
 }
 
+// frontFace is a resolved card's name as a deck file lists it: a
+// double-faced card resolves to "Front // Back" (Fable of the
+// Mirror-Breaker // Reflection of Kiki-Jiki), and the list names its
+// front face.
+func frontFace(name string) string {
+	front, _, _ := strings.Cut(name, " // ")
+	return front
+}
+
 // checkOracleIDs asserts that each declared non-basic card resolved to
 // the printing this package meant. Compares by name because Resolve
 // keeps decklist order per section but the caller should not have to
@@ -336,7 +345,7 @@ func (d Deck) checkOracleIDs(list *deck.List) error {
 
 	var mismatches []string
 	for _, c := range resolved {
-		id, ok := want[c.Name]
+		id, ok := want[frontFace(c.Name)]
 		if !ok {
 			continue // basic land, or a name the index normalised
 		}
