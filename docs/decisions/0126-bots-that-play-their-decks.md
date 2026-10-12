@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): proposed.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12).
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -700,7 +700,7 @@ The run tables are under [Measurements, #2679](#2679-removal-priced-net-of-what-
 
 ## Amendment 2026-10-12: the race sends the swing that ends the game soonest
 
-**Status:** Proposed (2026-10-12). It changes the attack planner's objective, which is the owner's call. The [decision asked](#decision-asked-of-the-owner-2026-10-12) is at the end.
+**Status:** Accepted (owner decisions 2026-10-12). The owner accepted the objective and the commander tax, and kept the other two refinements as off switches; see [Owner decisions (2026-10-12)](#owner-decisions-2026-10-12) at the end of this amendment.
 **Issue:** [#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400), filed by #2310 (PR #2399). PR: #3063. Sprint S67. Tracker #890.
 **Amends:** the combat planner, which [Out of scope](#out-of-scope) left alone. The [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) set the precedent. The two planners it changes are the two-turn race (`raceWith`, `heuristic/race.go`) and the attrition horizon (`attritionLine`, `heuristic/attrition.go`). Neither has an ADR of its own: `docs/bot.md` documents them. Each change is a `Config` switch, and `BaselineConfig()` turns all of them off (§9).
 
@@ -742,7 +742,7 @@ The tables, and every seed that changes, are under [Measurements, #2400](#2400-t
 |---|---:|---:|---|---|
 | `develop` (smallest qualifying swing) | 16.08 | 15.08 | 5 / 6 | stalls (#2474) |
 | the objective alone | 15.42 | 14.17 | 5 / 6 | stalls (#2474) |
-| **the objective and the commander tax (proposed default)** | **15.25** | **13.75** | 5 / 6 | stalls (#2474) |
+| **the objective and the commander tax (the default)** | **15.25** | **13.75** | 5 / 6 | stalls (#2474) |
 
 - **The objective alone shortens both gates**: −0.67 turns on the 4-seat gate and −0.92 on the 2-seat one. The objective fixes what #2310 found. With the old objective, every refinement left the gate as long or longer, as #2310 measured. With the new one, no refinement makes both gates longer.
 - **The commander tax** is the one refinement that shortens both gates on top of the objective.
@@ -761,13 +761,13 @@ The tables, and every seed that changes, are under [Measurements, #2400](#2400-t
 - **The objective ranks swings against one defender.** Both planners still try the opponents in focus order, focus first, and take the first one with a qualifying swing. At a 4-seat table the bot can send a three-exchange line at the focus seat while a one-exchange line waits against another seat (gate seeds 106 and 109). Ranking across defenders would override the focus order, the threat ranking the rest of the attack decision uses, so it is not part of this amendment.
 - **#2474 is unchanged.** The full Wurm mirror stops on Bear and commander against a lone commander on 3 under every variant. That kill takes a commander trade and then two more turns, and no ranking of the swings that qualify can send a swing that does not qualify.
 
-### Decision asked of the owner (2026-10-12)
+### Owner decisions (2026-10-12)
 
-1. **Accept the objective** (`RaceEndsSoonest` on), which replaces "the smallest swing that qualifies" for the race and for the attrition horizon.
-2. **Accept the commander tax** (`FreeCommanderNeedsTax` on).
-3. **Trample overflow and the recast chump: keep them as off switches, or delete them.** The recommendation is to keep them. They are about forty lines, and #2474's board, a commander trade three turns deep, is where the recast question comes back.
+The owner accepted the amendment on 2026-10-12 and took the recommendation on all three questions. No section above changed.
 
-If the owner declines 1, `RaceEndsSoonest` goes off and so does `FreeCommanderNeedsTax`. Under the old objective the tax made the gate longer (16.92 and 15.33).
+1. **The objective is accepted.** `RaceEndsSoonest` is on in `DefaultConfig()`. It replaces "the smallest swing that qualifies" in the race and in the attrition horizon.
+2. **The commander tax is accepted.** `FreeCommanderNeedsTax` is on in `DefaultConfig()`.
+3. **Trample overflow and the recast chump stay as off switches.** `FreeTrampleOverflow` and `RecastChumpForNext` are kept, off in both `DefaultConfig()` and `BaselineConfig()`. #2474's board, a commander trade three turns deep, is where the recast question comes back.
 
 ## Consequences
 
@@ -1741,7 +1741,7 @@ The audit's burn list goes from 56 cards to 23: 33 declared. The 23 left are the
 
 ### #2400: the race sends the swing that ends the game soonest (2026-10-12)
 
-The [amendment of 2026-10-12](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest), proposed. `develop` is `de452ebd6`, after #2904 made lockstep deterministic. Every variant is that tree with the `Config` switches set as named, so `develop` is the row with all four off. The runs are the ones #2400's table used: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212), with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, and the seed-1409 mirrors in `lockstep_game_test.go`. The full Wurm mirror is skipped on `develop` (#2474), so it was run with the skip lifted. A board is the turns with the edge on seat 0 / seat 1.
+The [amendment of 2026-10-12](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest), accepted. `develop` is `de452ebd6`, after #2904 made lockstep deterministic. Every variant is that tree with the `Config` switches set as named, so `develop` is the row with all four off. The runs are the ones #2400's table used: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212), with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, and the seed-1409 mirrors in `lockstep_game_test.go`. The full Wurm mirror is skipped on `develop` (#2474), so it was run with the skip lifted. A board is the turns with the edge on seat 0 / seat 1.
 
 **Every variant.** The objective is `RaceEndsSoonest`. The refinements are T (`FreeTrampleOverflow`), X (`FreeCommanderNeedsTax`) and R (`RecastChumpForNext`).
 
@@ -1754,7 +1754,7 @@ The [amendment of 2026-10-12](#amendment-2026-10-12-the-race-sends-the-swing-tha
 | smallest | T, X | 16.92 | 15.08 | 9 / 9 | 26 / 26, `[6 3]` |
 | soonest | — | 15.42 | 14.17 | 5 / 6 | 26 / 26, `[6 3]` |
 | soonest | T | 15.92 | 13.67 | 5 / 6 | 26 / 26, `[6 3]` |
-| **soonest** | **X (proposed default)** | **15.25** | **13.75** | 5 / 6 | 26 / 26, `[6 3]` |
+| **soonest** | **X (the default)** | **15.25** | **13.75** | 5 / 6 | 26 / 26, `[6 3]` |
 | soonest | R | 15.42 | 14.17 | 5 / 6 | 26 / 26, `[6 3]` |
 | soonest | T, X | 16.00 | 13.25 | 5 / 6 | 26 / 26, `[6 3]` |
 | soonest | X, R | 15.92 | 14.25 | 5 / 6 | 26 / 26, `[6 3]` |
@@ -1818,7 +1818,7 @@ Bold marks a change from the column to its left.
   - **Seeds 104 and 110:** a per-creature attack becomes an attrition swing or a race.
   - **Seeds 106 and 109 (4 seats):** under soonest the bot had a line within 1 exchange against one opponent. With the tax, an opponent earlier in its order has a line too, within 3 exchanges, and the bot swings at that one instead. Both planners try defenders in focus order and take the first defender with a line. The objective ranks swings against one defender, not across defenders ([Open](#open-2400)).
 
-**Other gates on the proposed default** (soonest + X):
+**Other gates on the default** (soonest + X):
 
 - `boteval suite run --policy heuristic`: 41 of 41, every tag 100%.
 - `go test ./internal/aiseat/heuristic/ ./internal/aiseat/suite/...`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns all four switches off.

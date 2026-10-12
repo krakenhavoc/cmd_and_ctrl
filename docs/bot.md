@@ -3001,8 +3001,8 @@ measured again. Each is a `Config` switch:
 | `FreeTrampleOverflow` | off | A trampler's overflow past a free block gets through in the free answer (CR 702.19b). |
 | `RecastChumpForNext` | off | A commander that dies chumping under blockToSurvive's answer is back to block next turn, and out of the crack-back unless it has haste (CR 903.9a). |
 
-`BaselineConfig()` turns all four off. The numbers, and the decision
-asked of the owner, are in [ADR 0126's amendment of
+`BaselineConfig()` turns all four off. The numbers, and the owner's
+decisions of 2026-10-12, are in [ADR 0126's amendment of
 2026-10-12](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest).
 
 ### Trample overflow on the attacking side (#1504)
