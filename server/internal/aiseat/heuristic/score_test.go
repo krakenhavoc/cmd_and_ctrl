@@ -191,3 +191,30 @@ func TestScoreEvalDoesNotDependOnMapOrder(t *testing.T) {
 		}
 	}
 }
+
+// #2904: the order is also independent of the seat IDs. #2730 summed in
+// seat-ID order, but a seat ID is a fresh UUID for every game, so two
+// runs of one seed sorted the same table into different orders and
+// rounded the sum differently: a tie between two moves priced the same
+// broke one way in one run and the other in the next. The same
+// strengths must score the same bits whichever seat holds which ID.
+func TestScoreEvalDoesNotDependOnSeatIDs(t *testing.T) {
+	strengths := []float64{0.1, 0.2, 0.3}
+	w := heuristic.DefaultWeights()
+	var want float64
+	for n, ids := range [][]string{
+		{"a", "b", "c"}, {"a", "c", "b"}, {"b", "a", "c"},
+		{"b", "c", "a"}, {"c", "a", "b"}, {"c", "b", "a"},
+	} {
+		evals := map[string]*heuristic.SeatEval{"me": {ID: "me"}}
+		for i, id := range ids {
+			evals[id] = &heuristic.SeatEval{ID: id, Strength: strengths[i]}
+		}
+		got := w.ScoreEval(evals, "me")
+		if n == 0 {
+			want = got
+		} else if got != want {
+			t.Fatalf("ids %v scored %v, the first assignment %v: the sum follows seat-ID order", ids, got, want)
+		}
+	}
+}

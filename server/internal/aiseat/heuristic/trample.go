@@ -101,7 +101,12 @@ func overflowPast(a, b *protocol.CardView, left int) int {
 // only asks when a trampler is in the swing; without one there are no
 // slots and the answer is the matching's.
 func trampleBound(st *state, defender string, attackers, blockers []*protocol.CardView) int {
-	blockable := func(a, b *protocol.CardView) bool { return couldBlock(st, defender, a, b) }
+	return trampleBoundBy(attackers, blockers, func(a, b *protocol.CardView) bool { return couldBlock(st, defender, a, b) })
+}
+
+// trampleBoundBy is trampleBound over the blocks blockable allows: the
+// race's free answer asks it about the free blocks alone (#2400).
+func trampleBoundBy(attackers, blockers []*protocol.CardView, blockable func(a, b *protocol.CardView) bool) int {
 	// profit[bi] is what blocker bi saves in each target: first the
 	// non-tramplers, then every trampler's slots. Zero is no edge.
 	profit := make([][]int, len(blockers))

@@ -8208,7 +8208,10 @@ Activated: []ActivatedAbility{Typecycling("Plainscycling", "{2}",
 ```
 
 They stamp the zone, the `DiscardSelf` cost and the `Cycling` bit that
-makes `EventCycle` fire (CR 702.29b). A battlefield watcher of that
+makes `EventCycle` fire (CR 702.29b). They also declare the row's
+`Purpose`: `Draws: 1` for cycling, `Tutors: 1` for typecycling (and
+`Transmute` declares `Tutors: 1`), which the bot reads to price the card
+as a cheaper discard (#2457). A battlefield watcher of that
 event is `WheneverYouCycle(label, effect)` — Astral Slide, Drake Haven.
 **"When you cycle THIS card" does not work yet**: the card is in the
 graveyard by then (CR 702.29c) and the harvester has no scan that finds
