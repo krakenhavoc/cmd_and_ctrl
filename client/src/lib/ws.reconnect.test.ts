@@ -296,6 +296,29 @@ describe("#3047 — dead server heartbeat", () => {
     expect(get(client.status)).toBe("connected");
   });
 
+  it("a pong answering a heartbeat ping keeps the socket open past the timeout", () => {
+    const { client, socket } = connected();
+
+    vi.advanceTimersByTime(5_000);
+    expect(socket.sent.map((wire) => JSON.parse(wire).kind)).toEqual(["ping"]);
+    const pingId = JSON.parse(socket.sent[0]).id;
+    socket.emit("message", {
+      data: JSON.stringify({
+        v: PROTOCOL_VERSION,
+        kind: "pong",
+        id: pingId,
+        payload: { msg: "heartbeat", server_time: new Date().toISOString() },
+      }),
+    });
+
+    // Well past the 10s timeout measured from the ping: the pong counts as
+    // inbound liveness, so the socket must stay open.
+    vi.advanceTimersByTime(9_000);
+    expect(socket.closeCode).toBeNull();
+    expect(socket.readyState).toBe(FakeSocket.OPEN);
+    expect(get(client.status)).toBe("connected");
+  });
+
   it("keeps heartbeat ping and pong traffic out of the protocol log", () => {
     const { client, socket } = connected();
 
