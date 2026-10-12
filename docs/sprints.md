@@ -102,7 +102,7 @@ planned just-in-time from the S12 pain-point triage.
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
 | S57     | Signed-in home, player mode, and one decks page                      | 7     | [#1992](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1992) | —          | **done**    |
 | S58     | Deck requests, October batch                                         | 7     | [#2077](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2077) | —          | in progress |
-| S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | in progress |
+| S59     | Automated table: clicks that act, payment that counts                | 7     | [#2189](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2189) | —          | **done**    |
 | S60     | Table clarity: a stack you can follow                                | 7     | [#2204](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2204) | —          | **done**    |
 | S61     | Dice you can watch                                                   | 7     | [#2229](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2229) | —          | **done**    |
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
