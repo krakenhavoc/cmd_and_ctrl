@@ -252,10 +252,10 @@ func (p *Policy) valueWaits(st *state, src *protocol.CardView, row *protocol.Act
 	return true
 }
 
-// selfSacrificeCost is what a purpose-priced row that sacrifices its
-// own source pays for it: the whole source, and under PriceAnswers its
-// value times the chance the bot would have kept it. A row with no
-// priced purpose still pays nothing for it, as before ADR 0142: its
+// selfSacrificeCost is what a targeted or purpose-priced row pays for
+// sacrificing its own source: the whole source, and under PriceAnswers
+// its value times the chance the bot would have kept it. An untargeted
+// row with no priced purpose still pays nothing, as before ADR 0142: its
 // payoff is the flat ActivateBase, and charging a Mind Stone's whole
 // value against that would never crack it.
 func (p *Policy) selfSacrificeCost(st *state, src *protocol.CardView) float64 {
