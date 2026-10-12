@@ -57,6 +57,13 @@ If you enjoy the project, you can support it through
 [GitHub Sponsors](https://github.com/sponsors/krakenhavoc). It's a plain tip jar: sponsoring
 unlocks nothing, because everything here stays free to use under the Fan Content Policy below.
 
+## License
+
+C2's code is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE).
+Anyone who runs a modified version as a service must offer its users the modified source. GSAP
+has an additional permission, and Wizards of the Coast and Scryfall material is not covered.
+Both are explained in [NOTICE](NOTICE).
+
 ## Legal
 
 cmd_and_ctrl is unofficial fan content. It is not approved or endorsed by Wizards of the Coast.

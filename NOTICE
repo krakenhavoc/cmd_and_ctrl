@@ -1,0 +1,46 @@
+cmd_and_ctrl (C2)
+Copyright (C) 2026 Luke Wilkinson and the C2 contributors
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU Affero General Public License as published by
+the Free Software Foundation, either version 3 of the License, or (at your
+option) any later version. See LICENSE for the full text.
+
+This program is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
+or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public
+License for more details.
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+
+
+Additional permission under GNU AGPL version 3 section 7
+--------------------------------------------------------
+
+If you modify this Program, or any covered work, by linking or combining
+it with GSAP, the GreenSock Animation Platform (or a modified version of
+that library), containing parts covered by the terms of the GSAP Standard
+"No Charge" License (https://gsap.com/standard-license), the licensors of
+this Program grant you additional permission to convey the resulting work.
+Corresponding Source for a non-source form of such a combination shall
+include the source code for the parts of GSAP used as well as that of the
+covered work.
+
+
+What this license does not cover
+--------------------------------
+
+C2 is unofficial fan content permitted under the Wizards of the Coast Fan
+Content Policy (https://company.wizards.com/en/legal/fancontentpolicy). It
+is not approved or endorsed by Wizards of the Coast.
+
+- Magic: The Gathering, its card names, rules text, mana symbols, artwork
+  and other materials are property of Wizards of the Coast LLC. They are
+  not licensed under the AGPL, and nothing in this repository grants any
+  right to them.
+- Card data and card images are provided by Scryfall (https://scryfall.com),
+  which is not affiliated with this project. They are fetched at runtime
+  under Scryfall's terms, and are not part of this repository.
+- Third-party dependencies (Go modules and npm packages) remain under their
+  own licenses. GSAP is under the GSAP Standard "No Charge" License, which
+  is not an open-source license; see the additional permission above.

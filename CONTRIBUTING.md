@@ -93,6 +93,18 @@ aren't built. That isn't your fault, and you don't need to do anything about it.
 Use the in-app **Report a bug** button, which attaches the client log and a replay, or open a
 [GitHub issue](https://github.com/krakenhavoc/cmd_and_ctrl/issues).
 
+## License
+
+C2 is licensed under the [GNU AGPL v3.0 or later](LICENSE), with the GSAP permission described
+in [NOTICE](NOTICE).
+
+- **Your contributions:** by opening a pull request, you agree that your contribution is licensed
+  under those same terms.
+- **Your right to submit it:** you confirm that you have the right to contribute the code. If you
+  write it at or for work, check that your employer allows it.
+- **Dependencies:** a new dependency must be under a license compatible with the AGPL, such as
+  MIT, BSD, Apache-2.0, ISC or MPL-2.0. Say in the PR if you're unsure.
+
 ## Legal
 
 C2 is unofficial fan content under the
