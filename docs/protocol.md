@@ -2932,6 +2932,12 @@ An amount is the printed number. A card whose amount is X, or is
 counted at resolution ("draw a card for each creature you control"),
 does not declare it.
 
+A row in `zone_abilities` carries its `purpose` too. Cycling declares
+`draws: 1`, and typecycling and transmute `tutors: 1`
+([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), so
+a `discard_self` row with one of them is a card that can turn itself
+into another card from its owner's hand.
+
 `sweep` describes the permanents a wipe removes:
 
 - `matches`: `creatures`, `nonland_permanents`, `artifacts`,

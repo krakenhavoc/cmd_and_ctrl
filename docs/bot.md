@@ -828,6 +828,17 @@ behind it, one that does not replace what it sacrifices, and a sacrifice
 of anything but the bot's own land keep the normal bar. Its price is
 the land it nets (see "Purposes" below).
 
+**The bot's own upkeep and draw step are not a spend window.** A land
+tapped there stays tapped through both of its main phases, so the mana
+is exactly what the turn's main-phase plays would use. With
+`WaitForMain` on (`waitmain.go`, ADR 0126's amendment of 2026-10-12, the
+owner's gate on [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)),
+an instant cast there with an empty stack waits for the main phase,
+where the same cast is still on offer beside every sorcery-speed use of
+that mana. Its reason reads `wait for the main phase: …`. A cast in
+answer to something on the stack, and an activated ability, are not
+held.
+
 Two prices go with the windows:
 
 - `SpellFloor` (1.30): an untargeted instant or sorcery the engine
@@ -1021,6 +1032,27 @@ TokenWeight × tokens
 
 So with Mary Read out, the bot loots away the Island rather than the
 Mountain.
+
+A card that can turn itself into a card is a cheaper discard
+(`SelfReplacingDiscards`, `self_replacing.go`, ADR 0126's amendment of
+2026-10-12, [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)).
+The bot reads it from the hand card's `zone_abilities`: a `discard_self`
+row whose cost is otherwise mana and whose declared purpose draws
+(cycling) or tutors (typecycling, transmute). Discarding it spares the
+mana cycling it would cost, so it costs `SpellPerMana` per mana of that
+row less, and never less than the card cycling would find
+(`Weights.Hand` per card):
+
+```
+min(price, max(Hand × cards, price − SpellPerMana × the row's mana value))
+```
+
+`price` is what the discard costs otherwise (`cardValue` for a cost,
+`handKeepValue` for a discard the bot chooses). A 1/1 with cycling {2}
+costs one card; a 6/6 with cycling {2}{G} keeps its price less 1.80. A
+land is left alone: it is a land drop first. In the S66 review position
+`do-not-windfall-away-the-last-land` Unexpected Windfall now prefers to
+pitch Marauding Mako (+1.50) over Arcane Denial (+1.00).
 
 ### Which card a discard gives up (#2691)
 
@@ -3109,10 +3141,11 @@ what order: mana first, then draws, then the rest
 `aiseat/heuristic/plan.go`). Everywhere else it prices one move at a
 time ([How the heuristic plans a turn](#how-the-heuristic-plans-a-turn)).
 It does not plan activated abilities or casts with a non-mana cost
-(Harrow's land swap aside), it does not treat a cycling card as a cheap
-discard or its own draw step as a spend window
-([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)), and
-it does not cast a ritual or crack a Treasure for a specific spell.
+(Harrow's land swap aside), and it does not cast a ritual or crack a
+Treasure for a specific spell. It prices cycling itself at the flat
+`ActivateBase`: a hand row's declared draw makes the card a cheaper
+discard ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)),
+but the activation is not priced by it.
 
 **Purposes are declared for the curated decks and for board wipes
 only.** Any other instant or sorcery is priced by its mana value, with

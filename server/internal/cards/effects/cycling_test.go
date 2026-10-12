@@ -63,14 +63,17 @@ func cycleFromHand(t *testing.T, g *game.Game, name, typeLine, oracle, mana stri
 func TestCyclingCardsDeclareAHandAbility(t *testing.T) {
 	for _, tc := range []struct {
 		name, oracle, mana string
+		// tutors is a typecycling row, which searches out its card
+		// rather than drawing one.
+		tutors bool
 	}{
-		{"Raffine's Tower", raffinesTowerOracle, "{3}"},
-		{"Ketria Triome", ketriaTriomeOracle, "{3}"},
-		{"Indatha Triome", indathaTriomeOracle, "{3}"},
-		{"Marauding Mako", maraudingMakoOracle, "{2}"},
-		{"Scrounging Skyray", scroungingSkyrayOracle, "{2}"},
-		{"Magmakin Artillerist", magmakinArtilleristOracl, "{1}{R}"},
-		{"Sylvan Reclamation", sylvanReclamationOracle, "{2}"},
+		{"Raffine's Tower", raffinesTowerOracle, "{3}", false},
+		{"Ketria Triome", ketriaTriomeOracle, "{3}", false},
+		{"Indatha Triome", indathaTriomeOracle, "{3}", false},
+		{"Marauding Mako", maraudingMakoOracle, "{2}", false},
+		{"Scrounging Skyray", scroungingSkyrayOracle, "{2}", false},
+		{"Magmakin Artillerist", magmakinArtilleristOracl, "{1}{R}", false},
+		{"Sylvan Reclamation", sylvanReclamationOracle, "{2}", true},
 	} {
 		abilities := game.ActivatedAbilitiesForCard(game.Card{OracleID: tc.oracle})
 		if len(abilities) != 1 {
@@ -95,6 +98,15 @@ func TestCyclingCardsDeclareAHandAbility(t *testing.T) {
 		}
 		if why := game.AbilityNeedsPermanentSource(ab.Cost); why != "" {
 			t.Errorf("%s: cycling declares %s, which needs a permanent", tc.name, why)
+		}
+		// #2457: the row declares the card it turns this one into, so
+		// the bot can price the card as a cheaper discard.
+		want := game.Purpose{Answers: game.AnswerValue, Draws: 1}
+		if tc.tutors {
+			want = game.Purpose{Answers: game.AnswerValue, Tutors: 1}
+		}
+		if ab.Purpose != want {
+			t.Errorf("%s: purpose %+v, want %+v", tc.name, ab.Purpose, want)
 		}
 	}
 }
@@ -295,5 +307,14 @@ func TestWheneverYouCycleWatchesTheCyclingPlayer(t *testing.T) {
 	}
 	if trig.AppliesTo(game.Event{Kind: game.EventCycle, Actor: them}, source, game.Characteristic{}, nil) {
 		t.Error("fired for an opponent's cycling")
+	}
+}
+
+// #2457: transmute turns its card into another card from the library,
+// and says so, like typecycling. It is sorcery speed, so it declares no
+// Answers (ADR 0142 decision 1).
+func TestTransmuteDeclaresATutor(t *testing.T) {
+	if got, want := Transmute("{1}{U}{U}").Purpose, (game.Purpose{Tutors: 1}); got != want {
+		t.Errorf("transmute purpose %+v, want %+v", got, want)
 	}
 }

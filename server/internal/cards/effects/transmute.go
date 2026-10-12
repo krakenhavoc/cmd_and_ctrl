@@ -34,6 +34,9 @@ func Transmute(cost string) ActivatedAbility {
 		Cost:         Plus(ManaCost(cost), DiscardThis()),
 		Zones:        []game.ZoneKind{game.ZoneHand},
 		SorcerySpeed: true,
+		// #2457: it turns the card into another card from the library. A
+		// sorcery-speed row declares no Answers (ADR 0142 decision 1).
+		Purpose: game.Purpose{Tutors: 1},
 		Effect: func(g *game.Game, item *game.StackItem) error {
 			discarded, found := g.LookupCardForEffect(item.SourceCardID)
 			mv, known := discarded.ParsedManaValue()

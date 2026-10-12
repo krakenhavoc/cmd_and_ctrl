@@ -161,21 +161,38 @@ func (st *state) searchValue(cfg Config, c *protocol.CardView) float64 {
 //     DiscardLandFloor. The land is on the same scale as the spells it
 //     is weighed against, so raising the spells does not tip the
 //     discard onto the lands.
+//
+// With SelfReplacingDiscards on, a nonland card that can turn itself
+// into a card (cycling) is worth less to keep, by the mana a discard
+// spares cycling it (self_replacing.go, #2457).
 func (st *state) handKeepValue(cfg Config, c *protocol.CardView) float64 {
-	if !cfg.DiscardByDistance || c == nil {
+	if c == nil {
+		return st.cardValue(cfg, c)
+	}
+	if !isLand(c) {
+		return st.selfReplacingDiscard(cfg, c, st.nonlandKeepValue(cfg, c))
+	}
+	if !cfg.DiscardByDistance {
 		return st.cardValue(cfg, c)
 	}
 	sources := st.manaSources()
-	if isLand(c) {
-		v := max(st.cardValue(cfg, c), st.landKeepValue(cfg, c, sources))
-		if sources < cfg.RampWantCap {
-			// A Commander deck wants its seventh mana: below it, a land
-			// is a future land drop whatever the hand holds now.
-			v = max(v, cfg.DiscardLandFloor)
-		}
-		return v
+	v := max(st.cardValue(cfg, c), st.landKeepValue(cfg, c, sources))
+	if sources < cfg.RampWantCap {
+		// A Commander deck wants its seventh mana: below it, a land is a
+		// future land drop whatever the hand holds now.
+		v = max(v, cfg.DiscardLandFloor)
 	}
-	return st.spellKeepValue(cfg, c, sources, "")
+	return v
+}
+
+// nonlandKeepValue is handKeepValue for a nonland card before
+// SelfReplacingDiscards: cardValue with DiscardByDistance off, and its
+// distance-discounted keep value with it on.
+func (st *state) nonlandKeepValue(cfg Config, c *protocol.CardView) float64 {
+	if !cfg.DiscardByDistance {
+		return st.cardValue(cfg, c)
+	}
+	return st.spellKeepValue(cfg, c, st.manaSources(), "")
 }
 
 // spellKeepValue is a nonland card's keep value, with the land

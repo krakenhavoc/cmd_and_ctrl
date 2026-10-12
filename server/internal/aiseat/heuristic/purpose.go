@@ -411,7 +411,9 @@ func (p *Policy) discardCost(st *state, id string, castID string, discards []str
 	if c == nil {
 		return st.w.Hand
 	}
-	v := st.cardValue(p.cfg, c)
+	// #2457: a card that can turn itself into a card (cycling) is a
+	// cheaper discard (self_replacing.go).
+	v := st.selfReplacingDiscard(p.cfg, c, st.cardValue(p.cfg, c))
 	if isLand(c) && p.cfg.LastLandDiscard != 0 && st.myMana < p.cfg.LandsWanted && st.seat != nil {
 		kept := 0
 		for i := range st.seat.Hand.Cards {
