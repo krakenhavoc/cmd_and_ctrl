@@ -844,7 +844,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// the same one, and xCeilingFromCost is what a "pay X life" cost
 	// can pay for (CR 119.4, less one so the seat survives its own
 	// sweep). Both live in x.go.
-	xFloor := enumeratedXFloor(game.CatalogKey(card), 0)
+	xFloor := enumeratedXFloor(game.CatalogKey(card), game.OptionalCostsXFloor(optional, chosen))
 	xLifeCeiling := xCeilingFromCost(addCost, p.Life)
 	if bx := e.blightXCeiling(addCost); bx != noXCeiling {
 		// #2174: "blight X" is the other non-mana price on X.

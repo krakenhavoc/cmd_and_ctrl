@@ -3839,6 +3839,17 @@ entry per kicker (`CastCounts.KickedWith`, #2360). The matching "and with
 keyword, a trigger whose `AppliesTo` checks it, an `Activated` entry whose
 `Condition` checks it. See `volvers.go`.
 
+**"Kicker {X}"** (#3232, Verdeloth the Ancient, Thieving Skydiver,
+Kangee, Aerie Keeper) is `KickerX(mana, minX)`: the kicker's mana
+contains an {X}, so the caster's one announced X is what it charges and
+what the enters trigger reads back with `source.CastX()`. `minX` is
+the printed "X can't be 0" (pass 1), enforced only while the kicker is
+paid; an unkicked cast announces no X (a non-zero one is refused). A
+targeted "mana value X or less" clause is a `TargetsFrom` built from
+`source.CastX()` (Thieving Skydiver); a count is stamped into
+`item.Params.Amount` by a fill-in `Build` (Verdeloth, Kangee). See
+ADR 0073's 2026-10-13 amendment.
+
 Use the keyword constructor, never a hand-rolled
 `game.AdditionalCost{Optional: true}` — for the reason `Flashback` has
 one. The constructor carries the `Key` the ENGINE reads, and a
