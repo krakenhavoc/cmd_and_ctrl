@@ -1961,6 +1961,7 @@ pendingChoices[].councilVote.options	array
 pendingChoices[].councilVote.options[]	object
 pendingChoices[].councilVote.options[].Cards	array
 pendingChoices[].councilVote.options[].Cards[]	custom(uuid.UUID)
+pendingChoices[].councilVote.options[].Harm	number:int
 pendingChoices[].councilVote.options[].Label	string
 pendingChoices[].councilVote.options[].LifeCost	number:int
 pendingChoices[].councilVote.options[].ManaCost	string
@@ -2148,6 +2149,7 @@ pendingChoices[].pickOptions	array
 pendingChoices[].pickOptions[]	object
 pendingChoices[].pickOptions[].Cards	array
 pendingChoices[].pickOptions[].Cards[]	custom(uuid.UUID)
+pendingChoices[].pickOptions[].Harm	number:int
 pendingChoices[].pickOptions[].Label	string
 pendingChoices[].pickOptions[].LifeCost	number:int
 pendingChoices[].pickOptions[].ManaCost	string

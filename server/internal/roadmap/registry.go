@@ -3281,6 +3281,17 @@ var items = []Item{
 		Examples: []string{"Galadriel, Elven-Queen", "Council's Judgment", "Expropriate"},
 	},
 	{
+		// #3140 (ADR 0018 amendment 2026-10-13): a villainous choice is
+		// an option pick of two bad options, faced by the player the
+		// effect names.
+		Slug: "villainous-choice", Name: "Villainous choices", Kind: KindSeam, Status: StatusImplemented,
+		Summary:  "Cards that make a player face a villainous choice: they pick one of two bad options. They can pick an option they cannot fully carry out and do as much of it as they can, several players are asked one at a time from the active player, and The Valeyard makes an opponent face the choice an additional time.",
+		Rules:    []string{"701.55"},
+		ADR:      "0018-triggers-on-the-stack.md",
+		Printed:  `(?i)\bfaces? a villainous choice\b`,
+		Examples: []string{"Damocles Base, Sword of Kang", "Sycorax Commander", "The Dalek Emperor"},
+	},
+	{
 		Slug: "dice-and-coins", Name: "Dice rolls and coin flips", Kind: KindSeam, Status: StatusImplemented,
 		Summary: "Cards that roll dice, flip coins or choose at random, with results that undo correctly.",
 		Rules:   []string{"705", "706"},

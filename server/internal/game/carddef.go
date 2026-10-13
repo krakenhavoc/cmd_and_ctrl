@@ -294,6 +294,12 @@ type CardDef struct {
 	// 701.38d, ADR 0146). Read from the battlefield through
 	// CatalogExtraVote, keyed by CatalogAbilityKey; see council_vote.go.
 	ExtraVote ExtraVote
+	// OpponentsFaceVillainousChoicesAgain is this permanent's printed
+	// "If an opponent would face a villainous choice, they face that
+	// choice an additional time" (CR 701.55c, #3140). Read from the
+	// battlefield through CatalogExtraVillainousChoice, keyed by
+	// CatalogAbilityKey; see villainous_choice.go.
+	OpponentsFaceVillainousChoicesAgain bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -853,6 +859,10 @@ func init() {
 			return d.ExtraVote
 		}
 		return ExtraVoteNone
+	}
+	CatalogExtraVillainousChoice = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.OpponentsFaceVillainousChoicesAgain
 	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {

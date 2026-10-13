@@ -476,13 +476,13 @@ func TestTheValeyardOffersAnExtraVote(t *testing.T) {
 	}
 }
 
-func TestTheValeyardIsDeclaredWeakerThanPrinted(t *testing.T) {
+func TestTheValeyardIsFullNow(t *testing.T) {
 	spec, ok := Lookup(theValeyardOracle)
 	if !ok {
 		t.Fatal("The Valeyard is not registered")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Errorf("the villainous-choice ability is not implemented, so the card must say so: %v %v", spec.Completeness, spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 || !spec.OpponentsFaceVillainousChoicesAgain {
+		t.Errorf("both abilities are implemented (#3140): %v %v %v", spec.Completeness, spec.Caveats, spec.OpponentsFaceVillainousChoicesAgain)
 	}
 }
 
