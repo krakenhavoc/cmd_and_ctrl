@@ -272,6 +272,37 @@ func TestGateExemptsAnAllowlistedAdmin(t *testing.T) {
 	}
 }
 
+// An account on CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS signs in without
+// the role and costs no member check, like an allowlisted admin.
+func TestGateExemptsAListedAccount(t *testing.T) {
+	s := newSignupStack(t, true, func(c *Config) {
+		c.Discord.Gate = c.Discord.Gate.WithExempt("discord-99")
+	})
+	s.stub.setMember(http.StatusOK, memberWithoutRole)
+	p := mustValidate(t, s.auth, identityTokenFromCallback(t, s.srv, s.state))
+	if p.UserID == uuid.Nil {
+		t.Fatal("an exempt account without the role was refused")
+	}
+	if m, _ := s.stub.calls(); m != 0 {
+		t.Errorf("an exempt account cost %d member checks, want 0", m)
+	}
+}
+
+func TestRenewalExemptsAListedAccount(t *testing.T) {
+	s := newSignupStack(t, true, func(c *Config) {
+		c.Discord.Gate = c.Discord.Gate.WithExempt("discord-99")
+	})
+	tok := identityTokenFromCallback(t, s.srv, s.state)
+	s.stub.setMember(http.StatusNotFound, `{}`)
+	got := minted(t, s.halfSpentRenew(t, tok), http.StatusOK)
+	if got.Token == tok {
+		t.Error("an exempt account was not renewed")
+	}
+	if m, r := s.stub.calls(); m != 0 || r != 0 {
+		t.Errorf("an exempt account's renewal made %d member checks, %d refresh grants", m, r)
+	}
+}
+
 // TestGateRefusesTheLoginFlow: not a member, or a member without the
 // role, is sent to the gate page, gets no session, and leaves no row.
 func TestGateRefusesTheLoginFlow(t *testing.T) {

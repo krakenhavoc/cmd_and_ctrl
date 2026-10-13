@@ -30,6 +30,10 @@ const (
 	// InviteURLEnv is the server's public invite link, shown by the
 	// client through GET /community. Independent of the gate.
 	InviteURLEnv = "CMDCTRL_DISCORD_INVITE_URL"
+	// GateExemptEnv lists Discord user ids that sign in without the
+	// role: the accounts that predate the gate, kept in by hand (owner,
+	// 2026-10-13). Comma-separated; empty exempts no one.
+	GateExemptEnv = "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS"
 )
 
 // memberEndpointBase is where GET /users/@me/guilds/{guild}/member
@@ -48,10 +52,28 @@ var maxRetryAfter = 2 * time.Second
 type Gate struct {
 	GuildID string
 	RoleID  string
+	// exempt are the Discord ids on GateExemptEnv.
+	exempt map[string]bool
 }
 
 // Enabled reports whether the gate is on.
 func (g Gate) Enabled() bool { return g.GuildID != "" && g.RoleID != "" }
+
+// Exempts reports whether discordID is on GateExemptEnv.
+func (g Gate) Exempts(discordID string) bool { return discordID != "" && g.exempt[discordID] }
+
+// WithExempt returns the gate with ids added to its exemption list.
+func (g Gate) WithExempt(ids ...string) Gate {
+	out := make(map[string]bool, len(g.exempt)+len(ids))
+	for id := range g.exempt {
+		out[id] = true
+	}
+	for _, id := range ids {
+		out[id] = true
+	}
+	g.exempt = out
+	return g
+}
 
 // GateFromEnv reads the guild and the role. Both unset (or blank) is the
 // gate off, a supported state and every dev loop's. One without the
@@ -59,15 +81,26 @@ func (g Gate) Enabled() bool { return g.GuildID != "" && g.RoleID != "" }
 // a Discord snowflake (digits only, at most 20) is an error naming its
 // variable: either would otherwise leave a server that admits everyone,
 // or no one, without saying so. The values are not secret, but the error
-// does not echo them.
+// does not echo them. GateExemptEnv is read the same way: a malformed
+// entry fails the boot rather than silently locking that person out.
 func GateFromEnv(getenv func(string) string) (Gate, error) {
+	var exempt []string
+	for _, s := range strings.Split(getenv(GateExemptEnv), ",") {
+		if s = strings.TrimSpace(s); s == "" {
+			continue
+		}
+		if !isSnowflake(s) {
+			return Gate{}, fmt.Errorf("%s has an entry that is not a Discord id (digits only, at most 20)", GateExemptEnv)
+		}
+		exempt = append(exempt, s)
+	}
 	g := Gate{
 		GuildID: strings.TrimSpace(getenv(CommunityGuildEnv)),
 		RoleID:  strings.TrimSpace(getenv(PlayerRoleEnv)),
-	}
+	}.WithExempt(exempt...)
 	switch {
 	case g.GuildID == "" && g.RoleID == "":
-		return Gate{}, nil
+		return Gate{}.WithExempt(exempt...), nil
 	case g.RoleID == "":
 		return Gate{}, fmt.Errorf("%s is set but %s is not: set both to turn the sign-up gate on, or neither to leave it off", CommunityGuildEnv, PlayerRoleEnv)
 	case g.GuildID == "":

@@ -4019,6 +4019,10 @@ exactly as described above.
   5xx, a timeout, a 429 after one retry) is an outage.
 - **Admins are exempt:** a Discord id on `CMDCTRL_DISCORD_ADMIN_USER_IDS`
   is admitted without the call.
+- **Listed accounts are exempt:** so is a Discord id on
+  `CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS` (comma-separated). These are the
+  accounts from before the gate, kept in by hand. They are exempt at
+  renewal too.
 - **Admitted:** unchanged, and the answer is stored on the account
   (`users.access_checked_at`, `users.access_result`).
 - **Refused, login page** (and linking Discord to a guest seat): **302**
