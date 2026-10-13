@@ -463,6 +463,10 @@ events[].actor	custom(uuid.UUID)
 events[].amount	number:int
 events[].answer_key	string
 events[].attacking_target	custom(uuid.UUID)
+events[].ballots	array
+events[].ballots[]	object
+events[].ballots[].option	number:int
+events[].ballots[].voter	custom(uuid.UUID)
 events[].batch	number:uint64
 events[].batch_seq	number:uint64
 events[].blocked	bool
@@ -1564,6 +1568,10 @@ lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.amount	number:int
 lastKnownStack[].item.trigger.Event.answer_key	string
 lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.ballots	array
+lastKnownStack[].item.trigger.Event.ballots[]	object
+lastKnownStack[].item.trigger.Event.ballots[].option	number:int
+lastKnownStack[].item.trigger.Event.ballots[].voter	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
 lastKnownStack[].item.trigger.Event.blocked	bool
@@ -1823,6 +1831,10 @@ pausedModeWalk.item.trigger.Event.actor	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.amount	number:int
 pausedModeWalk.item.trigger.Event.answer_key	string
 pausedModeWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.ballots	array
+pausedModeWalk.item.trigger.Event.ballots[]	object
+pausedModeWalk.item.trigger.Event.ballots[].option	number:int
+pausedModeWalk.item.trigger.Event.ballots[].voter	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.batch	number:uint64
 pausedModeWalk.item.trigger.Event.batch_seq	number:uint64
 pausedModeWalk.item.trigger.Event.blocked	bool
@@ -2314,6 +2326,10 @@ pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.amount	number:int
 pendingTriggers[].trigger.Event.answer_key	string
 pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.ballots	array
+pendingTriggers[].trigger.Event.ballots[]	object
+pendingTriggers[].trigger.Event.ballots[].option	number:int
+pendingTriggers[].trigger.Event.ballots[].voter	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
 pendingTriggers[].trigger.Event.blocked	bool
@@ -5340,6 +5356,10 @@ stackMeta[].trigger.Event.actor	custom(uuid.UUID)
 stackMeta[].trigger.Event.amount	number:int
 stackMeta[].trigger.Event.answer_key	string
 stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)
+stackMeta[].trigger.Event.ballots	array
+stackMeta[].trigger.Event.ballots[]	object
+stackMeta[].trigger.Event.ballots[].option	number:int
+stackMeta[].trigger.Event.ballots[].voter	custom(uuid.UUID)
 stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
 stackMeta[].trigger.Event.blocked	bool
