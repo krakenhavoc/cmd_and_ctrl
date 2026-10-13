@@ -88,7 +88,7 @@ All nine ship Full.
 ## Out of scope
 
 1. **Secret council** (#2926): Mob Verdict, Círdan the Shipwright, Trap the Trespassers, Truth or Consequences, Vault 11: Voter's Dilemma, and Elrond of the White Council. Their ballots must stay hidden until everyone has voted, which is the opposite of decision 5.
-2. **"Whenever players finish voting"** (#2927): Grudge Keeper, Model of Unity, Erestor of the Council. No event marks the end of a vote and the finished ballots are not kept for a trigger to read.
+2. **"Whenever players finish voting"** (#2927): Grudge Keeper, Model of Unity, Erestor of the Council. No event marked the end of a vote and the finished ballots were not kept for a trigger to read. **Shipped by the amendment of 2026-10-13 below.**
 3. **The other voting cards** (#2928). Most are card work on this seam. Selvala's Stampede needs "reveal until you reveal N creature cards" and a put from hand of up to N cards at once; Custodi Squire votes for cards in a graveyard, and an option whose card is not on the battlefield is dropped from the offer today; Illusion of Choice makes one player choose every vote for a turn.
 
 ## Consequences
@@ -98,3 +98,46 @@ All nine ship Full.
 **Cost.** One `PendingChoice` field (`CouncilVote`, an additive v7 snapshot field `pendingChoices[].councilVote`), one effect-key registry, one event and log kind, one `CardDef`/`Spec` slot, one wire field, and the read-only form of the dock's vote request. No new prompt kind.
 
 **The thing most likely to be got wrong later.** Reading a ballot's index as an index into the vote's options. A ballot offers the options still there, plus "Don't vote again" on an optional vote; the vote's own index is `CouncilVote.OptionIndex(option)`, and on the wire `council_vote.offered[i]`.
+
+---
+
+## Amendment 2026-10-13 ([#2927](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2927)): "Whenever players finish voting"
+
+Grudge Keeper, Model of Unity and Erestor of the Council trigger when a vote ends and read who voted for what in the vote that just ended. Decision 5's `EventVoteCast` is the ballot as it is cast; nothing marked the end, and the vote itself is gone from the game once its continuation runs (`PendingChoice.CouncilVote` lives on the open ballot only).
+
+### 9. One event, carrying the ballots
+
+`finishVoteLocked` emits `EventVotesFinished` (`votes_finished`) when the last ballot is cast: `Actor` is the vote's controller, `Source` the card that called it, `Amount` how many ballots were cast, and the new `Event.Ballots` lists every ballot in the order cast. It is emitted **before** the vote's continuation runs, so the log reads the last ballot, the end of the vote, then what the ability did with it. A "finish voting" trigger goes on the stack once the ability that called the vote has finished resolving either way (CR 603.2); it is not a trigger of the vote's own resolution.
+
+The ballots ride the event rather than a record on the game, for three reasons:
+
+- A trigger's stack item keeps its event (`ctx.Trigger().Event`), so the ability reads the ballots **as it resolves**, not as they stand then. A second vote started in response, or another vote later in the turn, cannot change what this one read.
+- The event is plain data and so is copied when emitted; nothing aliases the vote it came from. The effect never captures a pointer, which is the rule for every triggered ability's `Effect`.
+- The event log and every queued trigger's event are already in the snapshot. The change is one additive key, `ballots`, on the `Event` paths of the v8 shape file (`events[]`, `pendingTriggers[].trigger.Event`, `stackMeta[].trigger.Event`, the last-known stack and the paused mode walk), absent from older files and from every other event, so no schema bump: a file without it reads as a vote with no ballots, and a binary before it that drops the key restores a game whose waiting trigger sees an empty vote, which is the worst case of the unchanged behaviour (nothing happens) and not a corruption.
+
+A vote that never began does not emit it: `RunVoteThenForEffect`, the path for a card with nothing to vote for (no permanent qualified), runs the continuation without announcing a finish, because nobody voted and nobody "finished voting". A vote that began and in which every ballot was dropped (each voter left, CR 800.4a) is a finished vote with no ballots, and does emit it.
+
+The public log does not narrate the event (`silentEventKinds`): every ballot is a `vote` line and the trigger is a `trigger` line when it is queued.
+
+### 10. Reading "a choice you voted for"
+
+`game.VotedFor(ballots, voter)` is the distinct options a player voted for. The two predicates the cards need are read against the same ballots:
+
+- `VotedForAChoiceVotedForBy(ballots, voter, you)`: some option the voter voted for is also one you voted for.
+- `VotedForAChoiceNotVotedForBy(ballots, voter, you)`: some option the voter voted for is not one you voted for.
+
+Three cases decide them, and the tests pin each:
+
+- **A player with an extra vote (CR 701.38d)** names every option either of their votes went to. A controller who voted for two options has both in "a choice you voted for"; an opponent who split two votes across one option the controller took and one it did not is in **both** groups, and Erestor gives them a Treasure *and* counts them in X. They did vote for each.
+- **A voter who cast no ballot** voted for nothing, so they are in neither group. Erestor's X does not count them.
+- **A controller who cast no ballot** has voted for no choice, so no opponent shares one (Model of Unity: only you scry; Erestor: no Treasures), and every choice an opponent voted for is "a choice you didn't vote for" (Grudge Keeper drains each opponent who voted at all).
+
+"Each opponent" is each opponent still in the game when the ability resolves (`Context.Opponents`), whoever called the vote: the abilities trigger on every vote at the table.
+
+### 11. The card side
+
+`effects.WheneverPlayersFinishVoting(label, effect)` is the trigger (always applies; one per vote, so extra ballots do not multiply it), `FinishedVoteBallots(ctx)` reads the event off the resolving item, and `OpponentsWhoVotedForAChoiceYouVotedFor` / `OpponentsWhoVotedForAChoiceYouDidntVoteFor` return the opponents in seat order. Model of Unity's "you and each opponent ... may scry 2" is a confirm and a scry per player in turn, you first, the next player asked once the previous scry is answered; each prompt is an ordinary confirm or scry addressed to its player, so the enumerator and the bot already answer it. Erestor puts its draw in the scry's `Then`, as Preordain does, so the draw sees the order the player chose.
+
+### Consequences
+
+Grudge Keeper, Model of Unity and Erestor of the Council ship Full. The `players-finish-voting` seam row is closed. A vote's continuation cannot see the event (it runs with the `VoteResult`, which already holds the ballots), and a future ability that wants "whenever you vote" wants `EventVoteCast`, not this.

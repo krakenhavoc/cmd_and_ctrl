@@ -1452,6 +1452,16 @@ type Event struct {
 	// that tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
 
+	// Ballots are every vote of a finished vote, in the order cast, on
+	// EventVotesFinished (ADR 0146, amendment 2026-10-13): the record
+	// a "whenever players finish voting" trigger reads as it resolves,
+	// who voted for which option. Each ballot's Option indexes the
+	// vote's own option list, so two ballots with the same Option are
+	// votes for the same choice. Copied when the event is emitted, so
+	// nothing aliases the vote it came from. Empty on every other kind,
+	// and on a vote nobody cast a ballot in.
+	Ballots []VoteBallot `json:"ballots,omitempty"`
+
 	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
 	// game's tableRollNext after the roll, so 1 for the first table
 	// roll of a game. It survives the re-emission an undo makes, where
