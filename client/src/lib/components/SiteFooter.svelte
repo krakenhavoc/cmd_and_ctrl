@@ -9,6 +9,7 @@
   import LegalNotice from "./LegalNotice.svelte";
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
   import { PRIVACY_HASH } from "../privacy";
+  import { ABOUT_HASH } from "../about";
 </script>
 
 <footer class="site-footer">
@@ -20,7 +21,10 @@
   </p>
   <!-- #2983: the privacy notice is one click from every page outside the
        table; the table's own copy is in the ⋯ menu's Legal notice. -->
-  <p class="line"><a href={PRIVACY_HASH}>Privacy and your data</a></p>
+  <p class="line">
+    <a href={ABOUT_HASH}>About this project</a> ·
+    <a href={PRIVACY_HASH}>Privacy and your data</a>
+  </p>
   <details class="legal">
     <summary aria-label="Legal notice">Legal</summary>
     <LegalNotice />
