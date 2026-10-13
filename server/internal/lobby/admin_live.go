@@ -113,6 +113,9 @@ type liveNowSeat struct {
 	AgentClient    string          `json:"agent_client,omitempty"`
 	DeckName       string          `json:"deck_name,omitempty"`
 	Host           bool            `json:"host"`
+	// Removed is a seat an admin removed from a game under way (#3093):
+	// the page says "removed", not "not connected".
+	Removed bool `json:"removed,omitempty"`
 	// Connected is the number of live sockets bound to the seat, an
 	// admin's included; Since is the earliest of their connection
 	// times, absent when there is none.
@@ -238,7 +241,7 @@ func buildLiveNow(tables []LiveTable, sockets []ws.LiveSocket) (liveNowResponse,
 		seatOf := map[uuid.UUID]int{}
 		for _, s := range t.Seats {
 			seat := liveNowSeat{
-				Seat: s.Seat, Kind: s.Kind, DiscordPending: s.DiscordPending,
+				Seat: s.Seat, Kind: s.Kind, DiscordPending: s.DiscordPending, Removed: s.Removed,
 				BotTier: s.BotTier, AgentClient: s.AgentClient, DeckName: s.DeckName, Host: s.Host,
 			}
 			if id, err := uuid.Parse(s.UserID); err == nil && id != uuid.Nil {

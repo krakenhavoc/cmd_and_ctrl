@@ -598,19 +598,86 @@ export async function removeSeat(
   return (await res.json()) as GameMeta;
 }
 
-// reportPlayer files a report against another seat at the table (#2984).
-// A seat at that table only; one report per five minutes, burst of
-// three (429 past it). Nobody is told who reported. Returns the report id.
+// reportPlayer files a report against another seat at the table (#2984),
+// or, with kind "spectator", against a spectator watching it (#3113: the
+// id is the one GET /games/{id}/spectators gave). A seat at that table
+// only; one report per five minutes, burst of three (429 past it).
+// Nobody is told who reported. Returns the report id.
 export async function reportPlayer(
   gameID: string,
-  playerID: string,
+  targetID: string,
   reason: string,
+  kind: "seat" | "spectator" = "seat",
 ): Promise<{ id: string }> {
+  const target = kind === "spectator" ? { spectator_id: targetID } : { player_id: targetID };
   const res = await authFetch(`/games/${gameID}/reports`, {
     method: "POST",
-    body: JSON.stringify({ player_id: playerID, reason }),
+    body: JSON.stringify({ ...target, reason }),
   });
   return (await res.json()) as { id: string };
+}
+
+// One line of a table's block list (#3113). The label is an account's
+// display name or a guest's folded name; the server never sends a
+// Discord id.
+export interface BlockEntry {
+  id: string;
+  label: string;
+  /** "account" holds against the account; "guest" holds against the name only. */
+  kind: "account" | "guest";
+  /** Unix milliseconds */
+  created_at: number;
+}
+
+// fetchBlocks lists who a table has blocked: the host, the creator and an
+// admin on a table that has not started, an admin alone on any other
+// (403 otherwise, 409 for the host on a started table).
+export async function fetchBlocks(gameID: string): Promise<BlockEntry[]> {
+  const res = await authFetch(`/games/${gameID}/blocks`, { method: "GET" });
+  return ((await res.json()) as { blocks: BlockEntry[] }).blocks;
+}
+
+// unblock lifts one block, with the same authority as the list. Returns
+// the list as it now stands.
+export async function unblock(gameID: string, blockID: string): Promise<BlockEntry[]> {
+  const res = await authFetch(`/games/${gameID}/blocks/${encodeURIComponent(blockID)}`, {
+    method: "DELETE",
+  });
+  return ((await res.json()) as { blocks: BlockEntry[] }).blocks;
+}
+
+// A spectator with a socket open at the table (#3113). The id is the
+// session's, random, and good only for the report and remove routes.
+export interface SpectatorLine {
+  id: string;
+  name: string;
+  signed_in?: boolean;
+  /** Unix milliseconds */
+  since: number;
+}
+
+// fetchSpectators lists who is watching the table, for a seat there or
+// anyone who manages it.
+export async function fetchSpectators(gameID: string): Promise<SpectatorLine[]> {
+  const res = await authFetch(`/games/${gameID}/spectators`, { method: "GET" });
+  return ((await res.json()) as { spectators: SpectatorLine[] }).spectators;
+}
+
+// removeSpectator takes a spectator off the table: their session stops
+// working and their socket closes. The host, the creator or an admin, in
+// ANY game state (a spectator is not in the game). With `block: true` it
+// also blocks them from the table; `blocked` in the answer is false for a
+// guest who gave no name, who has nothing a block can hold.
+export async function removeSpectator(
+  gameID: string,
+  spectatorID: string,
+  opts: { block?: boolean } = {},
+): Promise<{ blocked: boolean; spectators: SpectatorLine[] }> {
+  const q = opts.block ? "?block=true" : "";
+  const res = await authFetch(`/games/${gameID}/spectators/${spectatorID}${q}`, {
+    method: "DELETE",
+  });
+  return (await res.json()) as { blocked: boolean; spectators: SpectatorLine[] };
 }
 
 // fetchAdminReports lists the player reports, newest first. Admin only.

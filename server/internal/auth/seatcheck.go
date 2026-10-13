@@ -26,6 +26,15 @@ type SeatChecker interface {
 	SeatRemoved(gameID, playerID uuid.UUID) bool
 }
 
+// SpectatorChecker is the optional second question: has the table taken
+// away the spectator session (gameID, spectatorID)? A SeatChecker that
+// also implements it has WithSeatCheck refuse a removed spectator the
+// way it refuses a removed seat (#3113). Same rules: answer from memory,
+// and say false for a game it does not know.
+type SpectatorChecker interface {
+	SpectatorRemoved(gameID, spectatorID uuid.UUID) bool
+}
+
 // WithSeatCheck wraps inner so that Validate also refuses a RolePlayer
 // session whose seat has been removed from its table, with
 // ErrSeatRemoved (#2785).
@@ -42,8 +51,10 @@ type SeatChecker interface {
 // (#3093) stays in the list, so the engine's Player.Removed flag, carried
 // by the snapshot, is what answers instead.
 //
-// Everything other than a player session passes straight through:
-// admin, spectator and identified sessions name no seat.
+// A spectator session (Principal.SpectatorID) is refused the same way
+// when seats also implements SpectatorChecker: it names no seat, but the
+// table can still have removed it. Everything else passes straight
+// through: admin and identified sessions name no seat.
 func WithSeatCheck(inner Authenticator, seats SeatChecker) Authenticator {
 	if seats == nil {
 		return inner
@@ -72,6 +83,11 @@ func (a *seatCheckAuthenticator) Validate(ctx context.Context, credential string
 	if p.Role == RolePlayer && p.GameID != uuid.Nil && p.PlayerID != uuid.Nil &&
 		a.seats.SeatRemoved(p.GameID, p.PlayerID) {
 		return Principal{}, ErrSeatRemoved
+	}
+	if p.Role == RoleSpectator && p.GameID != uuid.Nil && p.SpectatorID != uuid.Nil {
+		if sc, ok := a.seats.(SpectatorChecker); ok && sc.SpectatorRemoved(p.GameID, p.SpectatorID) {
+			return Principal{}, ErrSeatRemoved
+		}
 	}
 	return p, nil
 }

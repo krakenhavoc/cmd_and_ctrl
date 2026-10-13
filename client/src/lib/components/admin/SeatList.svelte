@@ -21,7 +21,7 @@
 {:else}
   <ul class="seats" aria-label={label}>
     {#each seats as s (s.seat)}
-      <li class="seat" class:off={s.connected === 0 && s.kind !== "bot"}>
+      <li class="seat" class:off={s.removed || (s.connected === 0 && s.kind !== "bot")}>
         <span class="no">{seatNumber(s.seat)}</span>
         <span class="who">
           {#if s.account}
@@ -33,11 +33,16 @@
             >{seatKind(s)}</span
           >
           {#if s.host}<span class="tag">host</span>{/if}
+          {#if s.removed}<span class="tag removed">removed</span>{/if}
           {#if winnerSeat === s.seat}<span class="tag won">winner</span>{/if}
         </span>
         <span class="extra">
           {#if s.deck_name}<span class="deck" title="deck">{s.deck_name}</span>{/if}
-          {#if s.connected !== undefined && s.kind !== "bot"}
+          {#if s.removed}
+            <span class="conn removed" title="An admin took this player out of the game"
+              >removed</span
+            >
+          {:else if s.connected !== undefined && s.kind !== "bot"}
             {#if s.connected > 0}
               <span class="conn on">
                 connected{s.connected > 1 ? ` ×${s.connected}` : ""}
@@ -116,6 +121,15 @@
   .tag.won {
     color: var(--accent-strong);
     border-color: var(--accent);
+  }
+  .tag.removed,
+  .conn.removed {
+    color: var(--block);
+    border-color: var(--block);
+  }
+  .conn.removed {
+    border: none;
+    font-weight: 600;
   }
   .extra {
     display: inline-flex;

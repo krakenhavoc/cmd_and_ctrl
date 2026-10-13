@@ -96,6 +96,7 @@ func adminLiveTables(in []LiveTable) []adminview.LiveTable {
 				Host:        s.Host,
 				// The bit only: LiveSeat never carries the snowflake.
 				DiscordPending: s.DiscordPending,
+				Removed:        s.Removed,
 			})
 		}
 		out = append(out, lt)

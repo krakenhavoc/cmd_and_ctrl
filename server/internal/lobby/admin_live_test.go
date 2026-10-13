@@ -149,6 +149,64 @@ func startWithDecks(t *testing.T, l *Lobby, meta GameMeta, players ...uuid.UUID)
 	}
 }
 
+// A seat an admin removed from a started game (#3093) is "removed" on
+// Live now, not a player who left (#3113): the flag rides the seat, and
+// only a table whose engine says so carries it.
+func TestAdminLiveMarksARemovedSeat(t *testing.T) {
+	t.Setenv("CMDCTRL_DEV_RELAX_RATE_LIMITS", "1")
+	s := newLiveNowStack(t, nil)
+	l := s.lobby
+
+	meta, err := l.Create("Removal")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, alice, _ := l.Join(meta.ID, meta.InviteToken, "Alice")
+	_, bob, _ := l.Join(meta.ID, meta.InviteToken, "Bob")
+	_, carol, _ := l.Join(meta.ID, meta.InviteToken, "Carol")
+	lobbyOnly, err := l.Create("Waiting")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, _, _ = l.Join(lobbyOnly.ID, lobbyOnly.InviteToken, "Dee")
+	startWithDecks(t, l, meta, alice, bob, carol)
+
+	admin := adminToken(t, s.srv)
+	before := liveNowTableNamed(t, decodeLive(t, s.live(t, admin)), "Removal")
+	for _, seat := range before.Seats {
+		if seat.Removed {
+			t.Fatalf("seat %d reads removed before anyone was", seat.Seat)
+		}
+	}
+
+	if _, err := l.RemoveStartedSeat(meta.ID, bob); err != nil {
+		t.Fatal(err)
+	}
+	raw := s.live(t, admin)
+	after := liveNowTableNamed(t, decodeLive(t, raw), "Removal")
+	removed := 0
+	for _, seat := range after.Seats {
+		if seat.Removed {
+			removed++
+			if seat.Seat != 1 {
+				t.Errorf("seat %d reads removed, want Bob's seat 1", seat.Seat)
+			}
+		}
+	}
+	if removed != 1 {
+		t.Errorf("%d seats read removed, want 1\n%s", removed, raw)
+	}
+
+	// And the lobby's own copy, which the Games view merges.
+	for _, tb := range l.LiveTables() {
+		for _, seat := range tb.Seats {
+			if want := tb.ID == meta.ID && seat.PlayerID == bob; seat.Removed != want {
+				t.Errorf("LiveTables seat %s Removed = %v, want %v", seat.Name, seat.Removed, want)
+			}
+		}
+	}
+}
+
 // ADR 0124 §8: a table with two human seats (a connected guest and a
 // signed-in person with no socket), a bot and a connected agent, a
 // spectator, an admin, a practice table and a waiting table. The

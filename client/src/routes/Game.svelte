@@ -28,6 +28,8 @@
     discordLinkHref,
     fetchBugReportConfig,
     reportPlayer,
+    fetchSpectators,
+    removeSpectator,
   } from "../lib/api";
   import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
@@ -1887,9 +1889,15 @@
     // #2984: report another human seat to the server's admins. The
     // practice table's only other seat is a bot, so it offers none.
     reportTargets: dockShown ? reportTargets(seats, viewerID) : [],
-    onReport: async (playerID, reason) => {
-      await reportPlayer(gameID, playerID, reason);
+    onReport: async (targetID, reason, kind) => {
+      await reportPlayer(gameID, targetID, reason, kind === "spectator" ? "spectator" : "seat");
     },
+    // #3113: who is watching, to report one, and (host or admin) to
+    // remove or block one in any game state. A practice table has none.
+    loadSpectators:
+      dockShown && $practiceTable?.gameID !== gameID ? () => fetchSpectators(gameID) : undefined,
+    canRemoveSpectators: canManage && $practiceTable?.gameID !== gameID,
+    onRemoveSpectator: (spectatorID, block) => removeSpectator(gameID, spectatorID, { block }),
     adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,

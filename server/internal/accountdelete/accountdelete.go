@@ -282,7 +282,9 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.Blocks,
-		`DELETE FROM table_blocks WHERE (kind = 'user' AND subject = ?) OR (kind = 'discord' AND ? <> '' AND subject = ?)`,
+		`DELETE FROM table_blocks WHERE entry_id IN
+		   (SELECT entry_id FROM table_blocks
+		     WHERE (kind = 'user' AND subject = ?) OR (kind = 'discord' AND ? <> '' AND subject = ?))`,
 		uid, res.DiscordSubject, res.DiscordSubject); err != nil {
 		return Result{}, err
 	}

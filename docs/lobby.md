@@ -1688,7 +1688,9 @@ are answered `409` on a started game.
 - **A removed player does not keep spectating.** Their own session is
   refused, in a started game too (a player who merely *conceded* keeps
   theirs). Anyone holding the table's spectator invite can still open
-  the table as a spectator; the invite cannot tell who is holding it.
+  the table as a spectator; the invite cannot tell who is holding it,
+  unless the removal also blocked them (a block reaches the spectator
+  link too, #3113).
   Reclaim links and the "my games" rejoin link refuse the seat as well.
 - In a started game the refusal is the engine's `Player.Removed` flag
   (snapshot field `seats[].removed`), so it survives a server restart.
@@ -3232,22 +3234,67 @@ Discord are two people. **Rotating the invite is the wall**
 ([`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate-creator-or-admin)),
 and the Remove control says so.
 
-A block is **per table**, stored with it (`table_blocks`, migration
-0016) so a restart does not lift it, and it is deleted with the table. It
-is never shown to anyone and there is no unblock: a mistake costs a new
-invite or a new table, never a ban from the site. A spectator invite is a
-separate credential and a block does not reach it. Deleting an account
-removes the blocks keyed on that account and its Discord id.
+A block is **per table**, stored with it (`table_blocks`, migrations
+0016 and 0017) so a restart does not lift it, and it is deleted with the
+table. It is **listed and can be lifted** (below, #3113). A block made
+against a spectator also stops that person taking a seat, and a block made
+against a seat also stops them watching: the keys are the table's, whatever
+the person was doing when they were made. Deleting an account removes
+every block *entry* that names that account or its Discord id, with the
+display name kept in it.
+
+### `GET /games/{id}/blocks` and `DELETE /games/{id}/blocks/{block_id}`
+
+Who this table has blocked, and lifting one (#3113).
+
+**Who may call them: the same split as removing a seat.** The table host,
+the game's creator or an admin on a table that has **not started**; an
+admin alone on a started or ended one. The host and the creator are
+answered **409** there (as `DELETE /games/{id}/seats/{player}` answers
+them), another seat or a spectator or a signed-in stranger **403**,
+anonymous **401**, an unknown table **404**.
+
+```json
+{ "blocks": [
+  { "id": "<opaque>", "label": "Dave", "kind": "account", "created_at": 1791868000000 },
+  { "id": "<opaque>", "label": "bob",   "kind": "guest",   "created_at": 1791868100000 }
+] }
+```
+
+One line per **removal**, not per identity: a signed-in person's account
+and Discord id are two rows and one line. `label` is the account's display
+name as the table knew it, or a guest's **folded** name (`Bob`, `b0b` and
+`B O B` list as `bob`); it is never a Discord id and never a user id.
+`kind` is `account` or `guest`, so the list can say what the block holds
+against (an account; or only a name). A spectator removed *without* "also
+block", and a guest spectator who gave no name, are not lines: there is
+nothing to lift.
+
+`DELETE` removes every row of the entry and answers **200** with the list
+as it now stands; **404** when the table has no such entry. The person can
+take a seat or watch again, if they still hold an invite. Lifting an entry
+also lifts the spectator-session marker written with it, so a spectator
+session the table killed with "remove and block" works again.
+
+Both are in the client: the host and the creator see the list on their
+waiting table's card, and an admin on any table's card in the lobby and on
+the Games view's table page.
 
 ### `POST /games/{id}/reports`
 
-A seated player reports another human seat at the same table. The
-session must be the seat's own (an admin token, a spectator and a seat at
-another table get **403**).
+A seated player reports another human seat at the same table, or a
+**spectator** watching it (#3113). The session must be the seat's own (an
+admin token, a spectator and a seat at another table get **403**).
 
 ```json
 { "player_id": "<the reported seat's player id>", "reason": "slurs in chat" }
+{ "spectator_id": "<a spectator's id from GET /games/{id}/spectators>", "reason": "slurs in chat" }
 ```
+
+Name exactly one (**400** for both). A spectator must have a socket open at
+the table when the report is filed (**404** otherwise); the report is the
+same record in the same list, with the reported line reading `<name>
+(spectator)`.
 
 **Response 201** `{"id": "<report id>"}`. The report keeps both seats'
 names and account ids, the table's name, the reason (at most 300
@@ -3261,16 +3308,66 @@ spends a token. Over it: **429**.
 
 | Status | Reason |
 |---|---|
-| 400 | no reason, or a malformed `player_id` |
+| 400 | no reason, a malformed `player_id` / `spectator_id`, or both named |
 | 401 | no session |
 | 403 | not a seat at this table (an admin token, a spectator, another table's player, or a removed seat) |
-| 404 | no such table |
+| 404 | no such table, or the spectator is not watching it |
 | 422 | your own seat, a bot, or a player who is not at this table |
 | 429 | too many reports |
 
 Chat is not stored anywhere else. The last 20 lines of each table are
 held in memory (`ws.RecentChatLimit`) only so a report can attach them,
 and are gone when the server restarts.
+
+### Spectators: `GET /games/{id}/spectators`, `DELETE /games/{id}/spectators/{spectator_id}`
+
+A spectator holds no seat, so until #3113 nothing could be done about one
+short of rotating the spectator invite. Each spectator session now carries
+a random **spectator id** (`Principal.SpectatorID`, minted at
+`POST /games/{id}/spectate`, signed into the token), and the hub knows
+which sessions have a socket open at a table. Both routes work from that:
+"who is watching" is a session with a live socket, one line however many
+tabs it has open. A session minted before this existed has no id and
+cannot be listed, reported or removed until it expires.
+
+`GET` lists them, for a **seat of that table** or its host, creator or an
+admin (**403** otherwise):
+
+```json
+{ "spectators": [{ "id": "<session id>", "name": "Eve", "signed_in": true, "since": 1791868000000 }] }
+```
+
+`name` is what the spectator typed, or their Discord display name when
+signed in, put through the name filter; `"Spectator"` when there is none
+or it is refused. No user id and no Discord id is served. An admin's own
+socket is never listed.
+
+`DELETE ...?block=true` removes one (**404** when they are not watching):
+the **host, the creator or an admin**, in **any game state**. The owner's
+rule that a started game's *seats* are the admin's alone (#3093) protects
+the game: removing a seat concedes a player out of it. A spectator is not
+in the game, so removing one changes nothing a player can see or lose, and
+making the host wait for an admin to silence a chat-spammer mid-game would
+defeat the point.
+
+It ends that session at this table (`auth.WithSeatCheck` refuses it on
+every request and upgrade, with the same `removed from table` 401 a
+removed seat gets) and closes its sockets with code 1000 and reason
+`removed from table`, which the client shows as "You were removed from
+this table." The session marker is a `table_blocks` row (kind
+`spectator`, migration 0017), so a restart does not bring it back. With
+`?block=true` the spectator's identities are blocked too, exactly as a
+seat's: account and Discord id for a signed-in spectator, the folded name
+for a guest who gave one. The answer is **200**
+`{"blocked": bool, "spectators": [...]}`; `blocked` is **false** when a
+block was asked of a guest who gave no name, who has no identity a block
+can hold: they can come back with a new session while the spectator link
+works, so rotate it
+([`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate-creator-or-admin)).
+
+A blocked person who tries to watch is refused **403**
+`{"error": "you were removed from this table and can't watch it again",
+"code": "blocked_from_table"}`.
 
 ### `GET /admin/reports` *(admin only)*
 
@@ -3600,7 +3697,12 @@ seats carry.
   `bot` or `agent`; `account` when a signed-in person holds it, else
   `guest_name`; `discord_pending` for a Discord seat whose person has not
   signed in again (the snowflake is never served); `bot_tier`,
-  `agent_client` and `deck_name` when set; `host`. `connected` is the
+  `agent_client` and `deck_name` when set; `host`; `removed: true` for a
+  seat an admin took out of a game under way (#3093; `game.Player.Removed`),
+  which the pages read as "removed" and not as a player who left or
+  dropped off (#3113). `removed` is absent on a table that is not in
+  memory, since the flag lives in the engine's snapshot, and on every
+  seat of a table that has not started. `connected` is the
   number of live sockets bound to the seat, an admin's included, and
   `since` the earliest of their connection times, absent when there is
   none. A seat's account takes its name from the seat and its avatar from

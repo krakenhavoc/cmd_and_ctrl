@@ -16,15 +16,15 @@ func TestMigration0016AddsBlocksAndReports(t *testing.T) {
 		t.Fatalf("migrate v15 -> latest: %v", err)
 	}
 
-	mustExec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES ('g1', 'name', 'bob', 1)`)
-	mustExec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES ('g1', 'user', 'bob', 1)`)
-	if _, err := d.Exec(`INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES ('g1', 'name', 'bob', 2)`); err == nil {
+	mustExec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at, entry_id) VALUES ('g1', 'name', 'bob', 1, 'e1')`)
+	mustExec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at, entry_id) VALUES ('g1', 'user', 'bob', 1, 'e1')`)
+	if _, err := d.Exec(`INSERT INTO table_blocks (game_id, kind, subject, created_at, entry_id) VALUES ('g1', 'name', 'bob', 2, 'e2')`); err == nil {
 		t.Error("the same block twice was accepted")
 	}
-	if _, err := d.Exec(`INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES ('g1', 'ip', '1.2.3.4', 1)`); err == nil {
-		t.Error("a block kind outside user / discord / name was accepted")
+	if _, err := d.Exec(`INSERT INTO table_blocks (game_id, kind, subject, created_at, entry_id) VALUES ('g1', 'ip', '1.2.3.4', 1, 'e3')`); err == nil {
+		t.Error("a block kind outside user / discord / name / spectator was accepted")
 	}
-	if _, err := d.Exec(`INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES ('nope', 'name', 'x', 1)`); err == nil {
+	if _, err := d.Exec(`INSERT INTO table_blocks (game_id, kind, subject, created_at, entry_id) VALUES ('nope', 'name', 'x', 1, 'e4')`); err == nil {
 		t.Error("a block on a table that does not exist was accepted")
 	}
 

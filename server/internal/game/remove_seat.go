@@ -48,6 +48,18 @@ func (g *Game) RemoveSeatFromGame(playerID uuid.UUID) error {
 	return nil
 }
 
+// SeatMarkedRemoved reports whether playerID is a seat an admin removed
+// from a started game (Player.Removed). Unlike SeatRemoved it says false
+// for a player the game does not have, so a caller labelling seats it
+// already knows exist (the admin views) never reads a mismatch as a
+// removal.
+func (g *Game) SeatMarkedRemoved(playerID uuid.UUID) bool {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	p := g.playerByIDLocked(playerID)
+	return p != nil && p.Removed
+}
+
 // SeatRemoved reports whether an admin removed playerID's seat from a
 // started game (Player.Removed), or whether the game has no such seat.
 // It reads under the game's lock, which a bare PlayerByID does not.

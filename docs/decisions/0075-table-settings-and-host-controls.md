@@ -393,5 +393,84 @@ for a follow-up. The smallest honest version is now in: a counter and an alert.
   was the other option in #3113; the alert path already reaches the same
   channel and needs no new secret.
 
-Items 2 to 4 of #3113 (unblock and a block list, spectators, `/admin/live`'s
-"left" wording) are still open.
+Items 2 to 4 of #3113 are in the next amendment.
+
+### Amendment (2026-10-13): the block list, unblock, spectators and "removed" (#3113 items 2 to 4)
+
+This lifts three limits §2.6 recorded as out of scope ("unblocking", "blocking a
+spectator", "a host-visible list of who is blocked", "reporting a spectator"),
+and corrects one wording. The "no unblock" consequence above no longer holds.
+
+- **A visible block list, and the unblock.** `GET /games/{id}/blocks` and
+  `DELETE /games/{id}/blocks/{block_id}`. **Who** is exactly the split for
+  removing a seat (#2785, #3093): the host, the creator or an admin on an
+  unstarted table, an admin alone on any other, and the host and creator are
+  answered 409 on a started one. A list is not a removal, and an unblock cannot
+  hurt a game in progress, but a block on a started table was an admin's act and
+  a split that depended on the verb would be one more thing to remember. The
+  client shows it on the waiting table's card, and an admin sees it on any card
+  and on the Games view's table page.
+  - **One line per removal, not per identity.** A signed-in person's account id
+    and Discord id are two `table_blocks` rows; migration 0017 gives rows an
+    `entry_id` so the list shows, and unblocking removes, one entry. A legacy
+    row from 0016 gets its own entry, joined to its sibling when the account's
+    Discord identity says they belong together.
+  - **The label** is the account's display name as the table knew it, or a
+    guest's folded name (`moderation.Key`), stored in a new `label` column. It
+    never shows a Discord id or a user id. It does not follow a rename: it is the
+    name the host saw when they chose to block, which is the name they will
+    recognise. Storing a display name is new data about a person, so the privacy
+    page and `accountdelete.Inventory` say so, and account deletion removes the
+    whole *entry* (every row sharing the entry id), not just the rows keyed on the
+    account, so the label goes with it.
+- **Spectators can be reported, removed and blocked.** A spectator session
+  carries a random `SpectatorID` (`Principal.SpectatorID`, signed into the token,
+  `hmacClaims` `sp`), because a spectator has neither a seat nor, if a guest, an
+  identity. The hub reports which sessions have a socket open at a table
+  (`Hub.Spectators`); "who is watching" is exactly that, one line per session.
+  - **Report:** `POST /games/{id}/reports` takes `spectator_id` in place of
+    `player_id`. Same limit, same list; the admin reads `<name> (spectator)`. The
+    spectator must be connected when reported.
+  - **Remove:** `DELETE /games/{id}/spectators/{spectator_id}[?block=true]`,
+    for the host, the creator or an admin, **in any game state**. **Decision: the
+    host may remove a spectator from a started game.** The owner's admin-only rule
+    (#3093) is about *seats*: removing one concedes a player out of a game under
+    way. A spectator is not in the game, so removing one changes nothing a player
+    can see or lose, and making a table wait for an admin to silence a spammer
+    mid-game would defeat the point.
+  - **What it does:** the session is refused from then on (`auth.WithSeatCheck`
+    learns the optional `SpectatorChecker`, so the same 401 `removed from table`
+    reaches a spectator as a seat) and its sockets are closed with 1000 and the
+    seat reason. The marker is a `table_blocks` row of the new kind `spectator`
+    (migration 0017 widens the CHECK by rebuilding the table), so a restart does
+    not bring the session back. It names no one, carries no label, is not listed,
+    and goes with the entry when the entry is unblocked.
+  - **Block:** with `?block=true` the spectator's identities are blocked as a
+    seat's are: account and Discord id, or the folded name of a guest who gave one.
+    A guest who gave **no name** has nothing a block can hold; the answer says
+    `blocked:false` and the control says to rotate the spectator link. A block
+    made against a seat also stops that person watching, and the reverse: the
+    keys are the table's.
+  - Spectator names are put through the name filter before they are listed;
+    a refused name reads "Spectator". The list is visible to the seats of the
+    table (to pick someone to report) and to its managers; no user id or Discord
+    id is served.
+- **`/admin/live` and the Games view say "removed".** A seat an admin removed
+  from a started game (`Player.Removed`, #3093) stays in the seat list by design
+  and has no sockets, so the pages showed it as a disconnected player. The
+  engine flag now rides the admin views (`seats[].removed`, read after the
+  lobby's lock is let go) and the seat list prints "removed". A table not in
+  memory has no flag to read and shows none.
+- **Privacy.** The "Tables that removed you" entry now says the list exists, who
+  can see it, that a display name is kept, and that a spectator session id is
+  kept; `PRIVACY_SCHEMA_VERSION` is 17. The spectator list is added to what the
+  other people at a table can see.
+- **Alternatives considered.** *Resolve the label from the users table at read
+  time*: no new column, but a Discord-only block has no users row, a rename would
+  change what the host sees, and a deleted account would show "Deleted player".
+  *A spectator roster in the lobby*: it would be state to keep and expire for
+  people who come and go; the hub already knows who is connected. *Key a guest
+  spectator block on the typed name only*: it is what is stored, but without the
+  session marker a removed guest keeps their working session until it expires.
+- **Out of scope, still:** reporting a chat line directly from the chat panel;
+  muting; a site-wide ban list; blocking a guest by anything but a name.

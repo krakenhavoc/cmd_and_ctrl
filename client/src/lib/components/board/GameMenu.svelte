@@ -41,14 +41,28 @@
   import { HAND_SORTS } from "../../handOrder";
   import { L } from "../../labels";
   import {
+    BLOCK_SPECTATOR_LABEL,
+    REMOVE_SPECTATOR_LABEL,
     REPORT_INTRO,
     REPORT_MENU_LABEL,
     REPORT_REASON_MAX,
+    REPORT_SEATS_GROUP,
     REPORT_SENT,
+    REPORT_SPECTATORS_GROUP,
     REPORT_TITLE,
+    SPECTATORS_EMPTY,
+    SPECTATORS_HINT,
+    SPECTATORS_MENU_LABEL,
+    SPECTATORS_TITLE,
+    SPECTATOR_BLOCKED_NOTE,
+    SPECTATOR_NO_NAME_NOTE,
+    SPECTATOR_REMOVED_NOTE,
     canSendReport,
     reportErrorMessage,
+    spectatorErrorMessage,
+    spectatorTargets,
   } from "../../moderation";
+  import type { SpectatorLine } from "../../api";
 
   type Props = GameMenuOptions & {
     // "up": the dock's chip. "down": the command bar's icon.
@@ -57,7 +71,7 @@
   const props: Props = $props();
   const placement = $derived(props.placement ?? "up");
 
-  type Mode = "closed" | "menu" | "vote" | "concede" | "legal" | "report";
+  type Mode = "closed" | "menu" | "vote" | "concede" | "legal" | "report" | "spectators";
   let mode = $state<Mode>("closed");
   let root: HTMLElement | undefined = $state();
   let trigger: HTMLButtonElement | undefined = $state();
@@ -75,6 +89,17 @@
   let reportBusy = $state(false);
   let reportError = $state("");
   let reportSent = $state(false);
+  // Who is watching (#3113): read when the report form or the Spectators
+  // panel opens, so it is as fresh as the click, and not polled.
+  let watchers = $state<SpectatorLine[]>([]);
+  let watchError = $state("");
+  let watchNote = $state("");
+  let watchBusy = $state<string | null>(null);
+  const reportTargetsAll = $derived([
+    ...(props.reportTargets ?? []),
+    ...spectatorTargets(watchers),
+  ]);
+  const spectatorReportable = $derived(watchers.length > 0);
   let topic = $state("");
   let optionsText = $state("yes, no");
 
@@ -94,6 +119,7 @@
     if (next === "menu") items()[0]?.focus();
     else if (next === "vote") pop()?.querySelector<HTMLInputElement>("input")?.focus();
     else if (next === "report") pop()?.querySelector<HTMLSelectElement>("select")?.focus();
+    else if (next === "spectators") pop()?.querySelector<HTMLButtonElement>("button")?.focus();
     else if (next === "concede" || next === "legal")
       pop()?.querySelector<HTMLButtonElement>("button.keep")?.focus();
   }
@@ -152,12 +178,59 @@
     if (cannotConcede) return;
     props.onConcede();
   }
+  async function loadWatchers(): Promise<void> {
+    if (!props.loadSpectators) return;
+    try {
+      watchers = await props.loadSpectators();
+      watchError = "";
+    } catch (err) {
+      // The list is a convenience for the report form: a failed read
+      // leaves the seats reportable and says nothing there. The panel
+      // shows it.
+      watchers = [];
+      watchError = spectatorErrorMessage(err);
+    }
+  }
   function openReport(): void {
     reportError = "";
     reportSent = false;
     const targets = props.reportTargets ?? [];
     if (!targets.some((t) => t.id === reportTarget)) reportTarget = targets[0]?.id ?? "";
     void show("report");
+    void loadWatchers().then(() => {
+      if (!reportTargetsAll.some((t) => t.id === reportTarget)) {
+        reportTarget = reportTargetsAll[0]?.id ?? "";
+      }
+    });
+  }
+  async function openSpectators(): Promise<void> {
+    watchNote = "";
+    watchError = "";
+    void show("spectators");
+    await loadWatchers();
+  }
+  async function removeWatcher(w: SpectatorLine, block: boolean): Promise<void> {
+    if (!props.onRemoveSpectator || watchBusy !== null) return;
+    watchBusy = w.id;
+    watchError = "";
+    watchNote = "";
+    try {
+      const out = await props.onRemoveSpectator(w.id, block);
+      watchers = out.spectators;
+      watchNote = !block
+        ? SPECTATOR_REMOVED_NOTE
+        : out.blocked
+          ? SPECTATOR_BLOCKED_NOTE
+          : SPECTATOR_NO_NAME_NOTE;
+    } catch (err) {
+      // Read the list again (the spectator may simply be gone), then
+      // put the refusal back: a successful read clears the error line.
+      const refusal = spectatorErrorMessage(err);
+      await loadWatchers();
+      watchError = refusal;
+    } finally {
+      watchBusy = null;
+    }
   }
   async function sendReport(e: SubmitEvent): Promise<void> {
     e.preventDefault();
@@ -165,7 +238,12 @@
     reportBusy = true;
     reportError = "";
     try {
-      await props.onReport(reportTarget, reportReason.trim());
+      const picked = reportTargetsAll.find((t) => t.id === reportTarget);
+      if (picked?.kind === "spectator") {
+        await props.onReport(reportTarget, reportReason.trim(), "spectator");
+      } else {
+        await props.onReport(reportTarget, reportReason.trim());
+      }
       reportSent = true;
       reportReason = "";
     } catch (err) {
@@ -345,7 +423,7 @@
           <Icon name="check" size={15} /> Call a vote…
         </button>
       {/if}
-      {#if props.seated && props.onReport && (props.reportTargets?.length ?? 0) > 0}
+      {#if props.seated && props.onReport && ((props.reportTargets?.length ?? 0) > 0 || props.loadSpectators)}
         <!-- #2984: tell the people who run the server about a player. -->
         <button
           class="mi"
@@ -355,6 +433,19 @@
         >
           <Icon name="flag" size={15} />
           {REPORT_MENU_LABEL}
+        </button>
+      {/if}
+      {#if props.canRemoveSpectators && props.loadSpectators && props.onRemoveSpectator}
+        <!-- #3113: see who is watching and remove (or block) one. The
+             host's and the admin's; the server decides. Any game state. -->
+        <button
+          class="mi"
+          role="menuitem"
+          onclick={openSpectators}
+          title="see who is watching, and remove or block a spectator"
+        >
+          <Icon name="scroll" size={15} />
+          {SPECTATORS_MENU_LABEL}
         </button>
       {/if}
       {#if props.discordLink}
@@ -472,9 +563,22 @@
       {:else}
         <p class="report-note">{REPORT_INTRO}</p>
         <select bind:value={reportTarget} aria-label="player to report" disabled={reportBusy}>
-          {#each props.reportTargets ?? [] as t (t.id)}
-            <option value={t.id}>{t.name}</option>
-          {/each}
+          {#if spectatorReportable}
+            <optgroup label={REPORT_SEATS_GROUP}>
+              {#each props.reportTargets ?? [] as t (t.id)}
+                <option value={t.id}>{t.name}</option>
+              {/each}
+            </optgroup>
+            <optgroup label={REPORT_SPECTATORS_GROUP}>
+              {#each spectatorTargets(watchers) as t (t.id)}
+                <option value={t.id}>{t.name}</option>
+              {/each}
+            </optgroup>
+          {:else}
+            {#each props.reportTargets ?? [] as t (t.id)}
+              <option value={t.id}>{t.name}</option>
+            {/each}
+          {/if}
         </select>
         <textarea
           bind:value={reportReason}
@@ -498,6 +602,45 @@
         </div>
       {/if}
     </form>
+  {:else if mode === "spectators"}
+    <div class="pop spectators" role="dialog" aria-label="spectators">
+      <div class="menu-h">{SPECTATORS_TITLE}</div>
+      {#if watchers.length === 0}
+        <p class="report-note">{SPECTATORS_EMPTY}</p>
+      {:else}
+        <ul class="watchers" aria-label="spectators watching">
+          {#each watchers as w (w.id)}
+            <li>
+              <span class="wname">{w.name}{w.signed_in ? " · signed in" : ""}</span>
+              <span class="wbtns">
+                <button
+                  type="button"
+                  disabled={watchBusy !== null}
+                  aria-label={`${REMOVE_SPECTATOR_LABEL} ${w.name}`}
+                  onclick={() => removeWatcher(w, false)}>{REMOVE_SPECTATOR_LABEL}</button
+                >
+                <button
+                  type="button"
+                  disabled={watchBusy !== null}
+                  aria-label={`${BLOCK_SPECTATOR_LABEL} ${w.name}`}
+                  onclick={() => removeWatcher(w, true)}>{BLOCK_SPECTATOR_LABEL}</button
+                >
+              </span>
+            </li>
+          {/each}
+        </ul>
+      {/if}
+      {#if watchNote}
+        <p class="report-note" role="status">{watchNote}</p>
+      {/if}
+      {#if watchError}
+        <p class="report-note report-err" role="alert">{watchError}</p>
+      {/if}
+      <p class="report-note">{SPECTATORS_HINT}</p>
+      <div class="pop-actions">
+        <button type="button" class="keep" onclick={() => close(true)}>Close</button>
+      </div>
+    </div>
   {:else if mode === "concede"}
     <div class="pop confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
       <div class="confirm-title">Concede the game?</div>
@@ -739,6 +882,35 @@
   }
   .report-err {
     color: var(--danger);
+  }
+  .spectators {
+    gap: 8px;
+    padding: 12px 14px;
+    width: 320px;
+  }
+  .watchers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .watchers li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    font-size: 12.5px;
+  }
+  .wname {
+    color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+  .wbtns {
+    display: inline-flex;
+    gap: 6px;
   }
   .confirm {
     gap: 8px;

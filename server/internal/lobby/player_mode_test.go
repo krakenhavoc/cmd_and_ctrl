@@ -1112,6 +1112,16 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /games/{id}/seats/{player}", []string{"removeSeat"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", fx.tablePath("/seats/"+fx.bob.String()), nil)
 		}},
+		// #3113: the block list and the unblock take the removal's authority;
+		// the spectator list is a seat's, and removing one the manager's.
+		{"GET /games/{id}/blocks", []string{"authorizeBlockManager"}, true, httpProbe("GET", "/games/{id}/blocks", nil)},
+		{"DELETE /games/{id}/blocks/{block_id}", []string{"authorizeBlockManager"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", fx.tablePath("/blocks/no-such-entry"), nil)
+		}},
+		{"GET /games/{id}/spectators", []string{"listSpectators"}, true, httpProbe("GET", "/games/{id}/spectators", nil)},
+		{"DELETE /games/{id}/spectators/{spectator}", []string{"removeSpectator"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", fx.tablePath("/spectators/"+uuid.NewString()), nil)
+		}},
 		{"POST /games/{id}/seats/bot", []string{"botSeatAuthorised"}, true, httpProbe("POST", "/games/{id}/seats/bot", func(*probeFixture) any {
 			return addBotRequest{Tier: "random", Deck: "test-mono-white"}
 		})},

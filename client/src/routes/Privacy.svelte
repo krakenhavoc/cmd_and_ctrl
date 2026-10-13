@@ -85,7 +85,7 @@
     },
     {
       what: "Player reports",
-      details: `When a player at your table reports another, the server keeps both seats’ names and account ids, the reporter’s one-line reason, the table’s name, and up to ${F.reportChatLines} recent chat lines (everyone’s, with the seat names they were written under). Only server admins can read it. Nobody is told who reported, and nothing happens to the reported player unless an admin decides it should. One person can file ${F.reportsPerWindow} reports in a burst, then one every ${F.reportEveryMinutes} minutes.`,
+      details: `When a player at your table reports another, the server keeps both parties’ names and account ids (a spectator can be reported too), the reporter’s one-line reason, the table’s name, and up to ${F.reportChatLines} recent chat lines (everyone’s, with the seat names they were written under). Only server admins can read it. Nobody is told who reported, and nothing happens to the reported player unless an admin decides it should. One person can file ${F.reportsPerWindow} reports in a burst, then one every ${F.reportEveryMinutes} minutes.`,
       why: "So the operator can see abuse at a public table and act on it.",
       howLong: `${F.reportDays} days after it is filed, or sooner if more than ${F.reportMax} are waiting (the oldest go first), or when an admin dismisses it. Deleting your account removes every report you filed or are the subject of; a report that only quotes one of your chat lines keeps the line until it expires.`,
       source: "migration 0016 player_reports; lobby/reports.go ReportRetention, ReportMaxRows",
@@ -93,11 +93,11 @@
     {
       what: "Tables that removed you",
       details:
-        "When a table’s host (or an admin) removes someone and chooses to block them, that table keeps what it needs to refuse them again: for a signed-in person, their account id and Discord id; for a guest, their name folded to lower case without spacing or accents. It is per table and is never shown to anyone.",
-      why: "So a removed person cannot sit straight back down with the same invite link.",
+        "When a table’s host (or an admin) removes someone, seated or watching, and chooses to block them, that table keeps what it needs to refuse them again: for a signed-in person, their account id, Discord id and the display name they had at the table; for a guest, their name folded to lower case without spacing or accents. Removing a spectator also keeps a random id for that one viewing session, which names no one. It is per table. The host and the creator of an unstarted table, and server admins, can see the list by that name (never a Discord id) and lift a block.",
+      why: "So a removed person cannot sit straight back down with the same invite link, and so the host can undo a mistake.",
       howLong:
-        "Until the table is deleted, or you delete your account (a guest’s folded name names no account and goes with the table).",
-      source: "migration 0016 table_blocks; lobby/blocks.go",
+        "Until the table is deleted, until the host or an admin lifts the block, or until you delete your account, which removes every block entry that names your account along with the display name kept in it (a guest’s folded name names no account and goes with the table).",
+      source: "migrations 0016 and 0017 table_blocks; lobby/blocks.go, lobby/spectators.go",
     },
     {
       what: "Deck requests",
@@ -140,7 +140,7 @@
   const sharedWith: Party[] = [
     {
       who: "The other people at your table",
-      what: "Your seat name and avatar, your playmat, the deck name, and everything that happens in the game. A spectator link shows the same.",
+      what: "Your seat name and avatar, your playmat, the deck name, and everything that happens in the game. A spectator link shows the same. The players at a table can see the names of the spectators watching it (a signed-in spectator’s is their Discord display name), so they can report or ask the host to remove one.",
     },
     {
       who: "Discord",

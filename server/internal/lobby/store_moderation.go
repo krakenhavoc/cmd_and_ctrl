@@ -31,12 +31,22 @@ const (
 	// case, spacing or leetspeak. It does NOT hold against a different
 	// name; a guest has nothing else the server can recognise.
 	BlockName BlockKind = "name"
+	// BlockSpectator: subject is the random id minted into one spectator
+	// session (auth.Principal.SpectatorID). It kills THAT session at this
+	// table. It names no one and is never listed (migration 0017).
+	BlockSpectator BlockKind = "spectator"
 )
 
 // BlockRecord is one table_blocks row, minus its game.
 type BlockRecord struct {
-	Kind      BlockKind
-	Subject   string
+	Kind    BlockKind
+	Subject string
+	// EntryID groups the rows one removal wrote; the list shows, and
+	// unblocking removes, an entry (migration 0017).
+	EntryID string
+	// Label is what the list shows for the entry: an account's display
+	// name or a guest's folded name. Empty on a spectator marker.
+	Label     string
 	CreatedAt time.Time
 }
 
@@ -68,14 +78,14 @@ type ReportRecord struct {
 
 func (s *SQLStore) AddBlock(ctx context.Context, gameID uuid.UUID, b BlockRecord) error {
 	_, err := s.db.ExecContext(ctx,
-		`INSERT OR IGNORE INTO table_blocks (game_id, kind, subject, created_at) VALUES (?, ?, ?, ?)`,
-		gameID.String(), string(b.Kind), b.Subject, toMillis(b.CreatedAt))
+		`INSERT OR IGNORE INTO table_blocks (game_id, kind, subject, created_at, entry_id, label) VALUES (?, ?, ?, ?, ?, ?)`,
+		gameID.String(), string(b.Kind), b.Subject, toMillis(b.CreatedAt), b.EntryID, b.Label)
 	return err
 }
 
 func (s *SQLStore) Blocks(ctx context.Context, gameID uuid.UUID) ([]BlockRecord, error) {
 	rows, err := s.db.QueryContext(ctx,
-		`SELECT kind, subject, created_at FROM table_blocks WHERE game_id = ? ORDER BY created_at, kind, subject`,
+		`SELECT kind, subject, created_at, entry_id, label FROM table_blocks WHERE game_id = ? ORDER BY created_at, kind, subject`,
 		gameID.String())
 	if err != nil {
 		return nil, err
@@ -84,15 +94,25 @@ func (s *SQLStore) Blocks(ctx context.Context, gameID uuid.UUID) ([]BlockRecord,
 	var out []BlockRecord
 	for rows.Next() {
 		var (
-			kind, subject string
-			at            int64
+			kind, subject, entry, label string
+			at                          int64
 		)
-		if err := rows.Scan(&kind, &subject, &at); err != nil {
+		if err := rows.Scan(&kind, &subject, &at, &entry, &label); err != nil {
 			return nil, err
 		}
-		out = append(out, BlockRecord{Kind: BlockKind(kind), Subject: subject, CreatedAt: fromMillis(at)})
+		out = append(out, BlockRecord{Kind: BlockKind(kind), Subject: subject, EntryID: entry, Label: label, CreatedAt: fromMillis(at)})
 	}
 	return out, rows.Err()
+}
+
+func (s *SQLStore) DeleteBlockEntry(ctx context.Context, gameID uuid.UUID, entryID string) (int, error) {
+	res, err := s.db.ExecContext(ctx,
+		`DELETE FROM table_blocks WHERE game_id = ? AND entry_id = ?`, gameID.String(), entryID)
+	if err != nil {
+		return 0, err
+	}
+	n, _ := res.RowsAffected()
+	return int(n), nil
 }
 
 func (s *SQLStore) AddReport(ctx context.Context, r ReportRecord) error {
@@ -189,6 +209,20 @@ func (s *memoryStore) Blocks(_ context.Context, gameID uuid.UUID) ([]BlockRecord
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]BlockRecord(nil), s.blocks[gameID]...), nil
+}
+
+func (s *memoryStore) DeleteBlockEntry(_ context.Context, gameID uuid.UUID, entryID string) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	kept := s.blocks[gameID][:0:0]
+	for _, b := range s.blocks[gameID] {
+		if b.EntryID != entryID {
+			kept = append(kept, b)
+		}
+	}
+	n := len(s.blocks[gameID]) - len(kept)
+	s.blocks[gameID] = kept
+	return n, nil
 }
 
 func (s *memoryStore) AddReport(_ context.Context, r ReportRecord) error {

@@ -267,6 +267,8 @@ export interface AdminSeat {
   agent_client?: string;
   deck_name?: string;
   host: boolean;
+  /** an admin removed this seat from a game under way: say "removed", not "left" (#3113) */
+  removed?: boolean;
   /** live sockets bound to the seat; a loaded table only, absent never means zero */
   connected?: number;
   /** the earliest of those sockets' connection times (Live now) */

@@ -193,6 +193,32 @@ func TestLiveSeatKeepsThePendingBit(t *testing.T) {
 	}
 }
 
+// A seat an admin removed from a started game (#3093) reads "removed",
+// on both the row-and-memory merge and the memory-only path (#3113).
+func TestRemovedSeatIsMarkedFromMemory(t *testing.T) {
+	id := uuid.New()
+	alice, bob := uuid.New(), uuid.New()
+	row := GameRow{ID: id, Name: "T", State: "active", CreatedAt: t0, Seats: []SeatRow{
+		{Seat: 0, PlayerID: alice.String(), GuestName: "Alice"},
+		{Seat: 1, PlayerID: bob.String(), GuestName: "Bob"},
+	}}
+	live := LiveTable{ID: id, State: "active", Seats: []LiveSeat{
+		{Seat: 0, PlayerID: alice, Kind: KindHuman, Name: "Alice"},
+		{Seat: 1, PlayerID: bob, Kind: KindHuman, Name: "Bob", Removed: true},
+	}}
+	got := MergeGame(row, Overlay{Tables: []LiveTable{live}})
+	if got.Seats[0].Removed || !got.Seats[1].Removed {
+		t.Errorf("merged seats = %+v / %+v, want only Bob removed", got.Seats[0], got.Seats[1])
+	}
+	if MergeGame(row, Overlay{}).Seats[1].Removed {
+		t.Error("a table not in memory claimed a removal it cannot know")
+	}
+	mem := LiveGame(live, Overlay{})
+	if mem.Seats[0].Removed || !mem.Seats[1].Removed {
+		t.Errorf("memory-only seats = %+v / %+v", mem.Seats[0], mem.Seats[1])
+	}
+}
+
 func TestLiveGameNamesItsAccounts(t *testing.T) {
 	id, p := uuid.New(), uuid.New()
 	live := LiveTable{ID: id, Name: "Practice", State: "active", Practice: true, CreatedAt: t0, Seats: []LiveSeat{

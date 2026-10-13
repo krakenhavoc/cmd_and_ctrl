@@ -38,6 +38,8 @@ type LiveSeat struct {
 	// DiscordPending is a Discord seat whose person has no users row
 	// yet; the snowflake is not carried.
 	DiscordPending bool
+	// Removed is a seat an admin removed from a started game.
+	Removed bool
 }
 
 // Socket is one live WebSocket, as far as the table rows need it.
@@ -220,6 +222,10 @@ type Seat struct {
 	AgentClient    string      `json:"agent_client,omitempty"`
 	DeckName       string      `json:"deck_name,omitempty"`
 	Host           bool        `json:"host"`
+	// Removed marks a seat an admin removed from a game under way
+	// (#3093), so the views read "removed" and not "left". Loaded
+	// tables only: it lives in the engine's snapshot.
+	Removed bool `json:"removed,omitempty"`
 	// Connected is the live sockets bound to this seat: loaded tables
 	// only, and only when the server knows its sockets.
 	Connected *int `json:"connected,omitempty"`
@@ -584,6 +590,7 @@ func rowSeat(s SeatRow, hostPlayerID string) Seat {
 func overlaySeat(seat *Seat, ls LiveSeat) {
 	seat.Kind = ls.Kind
 	seat.Host = ls.Host
+	seat.Removed = ls.Removed
 	switch ls.Kind {
 	case KindBot:
 		if ls.BotTier != "" {
@@ -601,7 +608,7 @@ func overlaySeat(seat *Seat, ls LiveSeat) {
 
 // liveSeat is a seat from memory alone.
 func liveSeat(ls LiveSeat, accounts map[string]AccountRef) Seat {
-	seat := Seat{Seat: ls.Seat, Kind: ls.Kind, DeckName: ls.DeckName, Host: ls.Host}
+	seat := Seat{Seat: ls.Seat, Kind: ls.Kind, DeckName: ls.DeckName, Host: ls.Host, Removed: ls.Removed}
 	if seat.Kind == "" {
 		seat.Kind = KindHuman
 	}
