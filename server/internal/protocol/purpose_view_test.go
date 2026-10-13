@@ -197,3 +197,21 @@ func TestPurposeIsRedactedForANonKnower(t *testing.T) {
 		t.Error("a knower lost the purpose")
 	}
 }
+
+// #3072: a landfall row's payoff rides the wire under landfall_payoff.
+func TestLandfallPayoffOnTheWire(t *testing.T) {
+	v := viewOfPurpose(game.Purpose{LandfallPayoff: &game.LandfallPayoff{Draws: 1, LifeGain: 1}})
+	if v == nil || v.LandfallPayoff == nil || *v.LandfallPayoff != (LandfallPayoffView{Draws: 1, LifeGain: 1}) {
+		t.Fatalf("projected %+v, want a landfall payoff of a card and a life", v)
+	}
+	if !v.Priced() {
+		t.Error("a landfall payoff is not Priced")
+	}
+	raw, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"landfall_payoff":{"draws":1,"life_gain":1}}`; string(raw) != want {
+		t.Errorf("wire = %s, want %s", raw, want)
+	}
+}

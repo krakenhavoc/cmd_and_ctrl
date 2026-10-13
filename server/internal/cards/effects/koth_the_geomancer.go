@@ -22,16 +22,15 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Koth, the Geomancer — 1 damage to each opponent; if that land is a Mountain, add {R}",
-				func(g *game.Game, item *game.StackItem) error {
-					if err := damageToEachOpponent(g, item, 1); err != nil {
-						return err
-					}
-					if !rfCreatureCEnteredLandHasSubtype(g, item, "Mountain") {
-						return nil
-					}
-					return AddMana{Produced: "{R}"}.Apply(NewContext(g, item))
-				}),
+			LandfallPaying("Koth, the Geomancer — 1 damage to each opponent; if that land is a Mountain, add {R}", game.LandfallPayoff{DamageEachOpponent: 1}, func(g *game.Game, item *game.StackItem) error {
+				if err := damageToEachOpponent(g, item, 1); err != nil {
+					return err
+				}
+				if !rfCreatureCEnteredLandHasSubtype(g, item, "Mountain") {
+					return nil
+				}
+				return AddMana{Produced: "{R}"}.Apply(NewContext(g, item))
+			}),
 		},
 	})
 }

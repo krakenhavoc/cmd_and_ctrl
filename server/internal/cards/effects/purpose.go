@@ -34,6 +34,8 @@ import (
 //   - a DiscardPayoff anywhere but a triggered row, or one that names
 //     no cards, names them two ways, or pays nothing (ADR 0126's
 //     amendment of 2026-10-06);
+//   - a LandfallPayoff anywhere but a triggered row, or one that pays
+//     nothing or a negative amount (#3072);
 //   - a Pump or PreventCombatDamageToSelf anywhere but a triggered or
 //     activated row, or a Pump that gives nothing (ADR 0130's
 //     amendment of 2026-10-07);
@@ -91,6 +93,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.DiscardPayoff != nil && slot != purposeOnTriggered {
 		fail("sets DiscardPayoff off a triggered row")
 	}
+	if p.LandfallPayoff != nil && slot != purposeOnTriggered {
+		fail("sets LandfallPayoff off a triggered row — a landfall payoff is a \"whenever a land you control enters\" trigger (#3072)")
+	}
 	onSource := slot == purposeOnTriggered || slot == purposeOnActivated || slot == purposeOnAnyPlayerActivated
 	if p.Pump != nil && !onSource {
 		fail("sets Pump off a triggered or activated row — a pump is what an ability gives its own source")
@@ -107,6 +112,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	checkPump(p.Pump, fail)
 	checkDiscardPayoff(p.DiscardPayoff, fail)
+	checkLandfallPayoff(p.LandfallPayoff, fail)
 	checkSweep(p.Sweep, fail)
 }
 
@@ -156,6 +162,20 @@ func checkDiscardPayoff(d *game.DiscardPayoff, fail func(string)) {
 	}
 	if d.Tokens == 0 && d.Counters == 0 && d.DamageEachOpponent == 0 {
 		fail("is a discard payoff that pays nothing — set Tokens, Counters or DamageEachOpponent")
+	}
+}
+
+// checkLandfallPayoff is checkPurpose's half for a declared
+// LandfallPayoff (#3072): no negative amount, and it pays something.
+func checkLandfallPayoff(l *game.LandfallPayoff, fail func(string)) {
+	if l == nil {
+		return
+	}
+	if l.Draws < 0 || l.LifeGain < 0 || l.Tokens < 0 || l.Mana < 0 || l.Counters < 0 || l.Energy < 0 || l.DamageEachOpponent < 0 {
+		fail("has a negative landfall amount")
+	}
+	if *l == (game.LandfallPayoff{}) {
+		fail("is a landfall payoff that pays nothing — leave it nil, or set what each land pays")
 	}
 }
 
@@ -400,4 +420,18 @@ func CostWithPurpose(ac game.AlternativeCost, p game.Purpose) game.AlternativeCo
 func TriggerWithPurpose(t game.TriggeredAbility, p game.Purpose) game.TriggeredAbility {
 	t.Purpose = p
 	return t
+}
+
+// LandfallPaying is Landfall with what the row pays for each land
+// declared (#3072): the purpose the heuristic reads when it prices a
+// land the bot puts onto the battlefield. Tatyova is
+//
+//	LandfallPaying("Tatyova — gain 1 life and draw a card (landfall)",
+//		game.LandfallPayoff{Draws: 1, LifeGain: 1}, effect)
+//
+// A row whose payoff is counted at resolution or depends on the board
+// (Avenger of Zendikar's counters, Field of the Dead's Zombie) is a
+// plain Landfall: no printed amount would be true.
+func LandfallPaying(label string, pays game.LandfallPayoff, effect Effect) game.TriggeredAbility {
+	return TriggerWithPurpose(Landfall(label, effect), game.Purpose{LandfallPayoff: &pays})
 }

@@ -2924,7 +2924,9 @@ row that declares nothing has no `purpose` key at all.
             "amount_is_x": true, "opponents_only": true, "partial": true},
   "death_payoff": true,
   "discard_payoff": {"types": ["island", "pirate", "vehicle"],
-                     "tokens": 1, "counters": 1, "damage_each_opponent": 1}
+                     "tokens": 1, "counters": 1, "damage_each_opponent": 1},
+  "landfall_payoff": {"draws": 1, "life_gain": 1, "tokens": 1, "mana": 1,
+                      "counters": 1, "energy": 1, "damage_each_opponent": 1}
 }
 ```
 
@@ -2944,6 +2946,7 @@ Every field is omitted when zero.
 | `sweep` | present on a board wipe; see below | Wrath of God |
 | `death_payoff` | on a triggered row: it pays out whenever a creature its controller controls dies | Blood Artist |
 | `discard_payoff` | on a triggered row: it pays out whenever its controller discards a card it matches; see below | Mary Read and Anne Bonny |
+| `landfall_payoff` | on a triggered row: it pays out whenever a land enters under its controller's control; see below ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)) | Tatyova, Benthic Druid |
 | `pump` | on a triggered or activated row: `{power, toughness, keywords}` it gives its own source until end of turn ([ADR 0130](decisions/0130-exert.md), amendment of 2026-10-07) | an exert self-pump |
 | `extra_combat` | additional combat phases it adds | Combat Celebrant 1 |
 | `prevent_combat_damage_to_self` | on a triggered or activated row: it prevents all combat damage that would be dealt to its source this turn | Oketra's Avenger |
@@ -3018,6 +3021,28 @@ discarded cards a triggered row pays on, and what it pays for each one:
 
 It rides on `ability_rows[i].purpose` with the rest of the row, so a
 hidden hand card and a face-down permanent never carry one.
+
+`landfall_payoff` ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072))
+says what a "Landfall — Whenever a land you control enters" row pays its
+controller for each land, as printed amounts:
+
+- `draws`: cards its controller draws (Tatyova 1).
+- `life_gain`: life its controller gains (Tatyova and Courser of
+  Kruphix 1).
+- `tokens`: tokens it creates for its controller (Tireless Tracker's
+  Clue, Rampaging Baloths' Beast).
+- `mana`: mana it adds, which empties at the end of the step (Lotus
+  Cobra 1).
+- `counters`: +1/+1 counters it puts on its source (Undergrowth
+  Champion).
+- `energy`: energy counters its controller gets (Architect of the
+  Untamed 1).
+- `damage_each_opponent`: damage its source deals to each opponent
+  (Sabotender 1).
+
+A payoff counted at resolution (Avenger of Zendikar's counter on each
+Plant) or conditioned on the lands (Field of the Dead) declares none. It
+rides on `ability_rows[i].purpose` like `discard_payoff`.
 
 Where it rides:
 

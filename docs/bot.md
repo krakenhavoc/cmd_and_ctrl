@@ -1222,6 +1222,34 @@ lands in hand beyond the drops left), at `ManaSource` plus the ramp
 premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
 while the bot has fewer than `RampWantCap` sources.
 
+### Landfall payoffs (#3072)
+
+A landfall row declares a `landfall_payoff`: what it pays for each land
+that enters under its controller's control (Tatyova's card and life,
+Lotus Cobra's mana, Tireless Tracker's Clue, Rampaging Baloths' Beast).
+With `PriceLandfallPayoffs` on (`landfall.go`), every land the bot
+prices putting onto the battlefield is also worth what its own
+battlefield's payoffs pay for it, per land:
+
+```
+Weights.Hand × draws
++ MarginalLife(own life) × life_gain
++ TokenWeight × tokens
++ 0.5 × TokenWeight × mana
++ (Weights.Power + Weights.Toughness) × counters
++ Weights.Energy × energy
++ DamageToOpponent × damage_each_opponent × live opponents
+```
+
+That is added to a declared purpose's `lands` (Burnished Hart's and
+Sakura-Tribe Elder's activations, Harrow, Cultivate, Solemn Simulacrum),
+to the lands an extra land drop lets the bot play this turn, and to a
+land put from hand. The ordinary land drop is not repriced: it is
+already taken before any cast. So with Tatyova out, Burnished Hart's
+activation on turn 8 with seven lands is +1.44 rather than −1.20, and
+the bot cracks it; with only Courser of Kruphix's life, or with an
+opponent's Tatyova, it keeps the Hart.
+
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
 An opponent's Rhystic Study asks "pay {1}?" when the bot casts a spell,

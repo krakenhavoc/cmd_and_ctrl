@@ -32,8 +32,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Nesting Dragon — create a 0/2 red Dragon Egg",
-				Do(CreateToken{Template: dragonEggToken(), N: 1})),
+			LandfallPaying("Nesting Dragon — create a 0/2 red Dragon Egg", game.LandfallPayoff{Tokens: 1}, Do(CreateToken{Template: dragonEggToken(), N: 1})),
 		},
 	})
 }

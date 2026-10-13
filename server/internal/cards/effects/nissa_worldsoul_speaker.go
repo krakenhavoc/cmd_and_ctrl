@@ -24,7 +24,7 @@ func init() {
 		Name:         "Nissa, Worldsoul Speaker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Nissa, Worldsoul Speaker — you get {E}{E}", Do(GetEnergy{N: 2})),
+			LandfallPaying("Nissa, Worldsoul Speaker — you get {E}{E}", game.LandfallPayoff{Energy: 2}, Do(GetEnergy{N: 2})),
 		},
 		GrantedAlternativeCosts: []game.GrantedAlternativeCost{PayEightEnergyForPermanentSpellsYouCast()},
 	})

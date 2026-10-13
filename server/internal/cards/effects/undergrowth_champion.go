@@ -27,7 +27,7 @@ func init() {
 			}),
 		},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Undergrowth Champion — put a +1/+1 counter on it", putCounterOnSelf),
+			LandfallPaying("Undergrowth Champion — put a +1/+1 counter on it", game.LandfallPayoff{Counters: 1}, putCounterOnSelf),
 		},
 	})
 }

@@ -341,6 +341,12 @@ type Config struct {
 	// ExtraLandDropRecurring is what one extra land drop on each later
 	// turn adds to a permanent's cast price.
 	ExtraLandDropRecurring float64
+	// PriceLandfallPayoffs adds, to every land the bot prices putting
+	// onto the battlefield, what its own declared landfall payoffs pay
+	// for it (#3072, landfall.go): a declared purpose's Lands (Burnished
+	// Hart, Harrow), an extra land drop's lands this turn, and a land put
+	// from hand. Off (the zero value) prices those lands as mana alone.
+	PriceLandfallPayoffs bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -711,6 +717,7 @@ func DefaultConfig() Config {
 		PriceOwnPermanentPicks: true,
 		PriceExtraLandDrops:    true,
 		ExtraLandDropRecurring: 0.50,
+		PriceLandfallPayoffs:   true,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -887,6 +894,8 @@ func BaselineConfig() Config {
 	c.PriceOwnPermanentPicks = false
 	c.PriceExtraLandDrops = false
 	c.ExtraLandDropRecurring = 0
+	// #3072: landfall payoffs.
+	c.PriceLandfallPayoffs = false
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

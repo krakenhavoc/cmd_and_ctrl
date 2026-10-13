@@ -32,7 +32,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"Landfall always makes a Treasure — the Food token option is never offered."},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Tireless Provisioner — create a Treasure (landfall)", Do(CreateToken{
+			LandfallPaying("Tireless Provisioner — create a Treasure (landfall)", game.LandfallPayoff{Tokens: 1}, Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,
 			})),
