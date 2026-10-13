@@ -56,9 +56,19 @@ func (t Transform) Apply(ctx *Context) error {
 // Reads the source off the Context rather than capturing a *game.Card,
 // for the reason every trigger Effect does: undo restores a cloned
 // game and a captured pointer resolves against the wrong one.
+//
+// CR 701.27f: an ability of a permanent that tries to transform it does
+// so only if the permanent hasn't transformed or converted since the
+// ability was put onto the stack (for a delayed trigger, since it was
+// created). That is an engine rule now (ADR 0152 §3): the item records
+// the source's turn-over count, and a count that has moved means the
+// instruction is ignored.
 type TransformThis struct{}
 
 func (TransformThis) Apply(ctx *Context) error {
+	if sourceTurnedOverSince(ctx) {
+		return nil
+	}
 	return Transform{Target: ctx.Source()}.Apply(ctx)
 }
 
@@ -98,6 +108,10 @@ func (e ExileAndReturnTransformed) Apply(ctx *Context) error {
 // battlefield and the stack on its front face anyway, so a card that
 // reads non-zero off the battlefield is a bug rather than a
 // transformed permanent.
+//
+// A FLIPPED flip card is not one (ADR 0151): its ActiveFace is 1 too,
+// but a flip card is single-faced (CR 710.1) and flipping is not
+// transforming.
 func TransformedPermanent(c game.Card) bool {
-	return c.ActiveFace != 0 && len(c.Faces) > 1
+	return c.ActiveFace != 0 && len(c.Faces) > 1 && c.Layout != game.LayoutFlip
 }

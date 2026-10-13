@@ -255,6 +255,13 @@ const (
 	// card that called the vote. One line per vote, as it is cast, so
 	// the table sees the tally move.
 	LogVote LogKind = "vote"
+	// LogAnyPlayerPaid / LogAnyPlayerDeclined — one player's answer to
+	// an "unless any player pays" offer (ADR 0150 §5). `Seat` answered,
+	// `CardID` is the card whose effect it was and `Label` the payment
+	// ("{2}"). One line per answer, in the order asked, so a table
+	// reading back sees who paid and who let it happen.
+	LogAnyPlayerPaid     LogKind = "any_player_paid"
+	LogAnyPlayerDeclined LogKind = "any_player_declined"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -386,6 +393,12 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogFlipPermanent — a flip card on the battlefield was flipped (CR
+	// 710, ADR 0151 decision 5). `Label` is the name it flipped FROM.
+	// Narrated for LogTransform's reason and CR 710.3's: whether a
+	// permanent is flipped must be clear at all times. Not "flip", which
+	// is LogFlip, a coin flip.
+	LogFlipPermanent LogKind = "flip_permanent"
 	// LogMeld — two cards were melded into one permanent (CR 701.42a).
 	// `CardID` is the melded permanent and `Label` names the two cards
 	// it was melded from, which no other line says: the exile and the
@@ -619,6 +632,10 @@ type LogEvent struct {
 	NewZone string `json:"new_zone,omitempty"`
 	// Combat marks a LogDamage entry as combat damage (CR 510).
 	Combat bool `json:"combat,omitempty"`
+	// Converted marks a LogTransform entry whose turn-over was a
+	// convert (CR 701.28a, ADR 0152 §2): the line says "converted"
+	// rather than "transformed". Copied from game.Event.Converted.
+	Converted bool `json:"converted,omitempty"`
 	// CombatStep says which combat damage step dealt a combat LogDamage
 	// entry: "first_strike" or "regular" (CR 510.4). Copied from
 	// game.Event.CombatStep, and set only when that combat had a
@@ -1395,6 +1412,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventAnyPlayerPaid, game.EventAnyPlayerDeclined:
+		// ADR 0150 §5. Actor answered, Source is the card whose effect
+		// was offered, Label the payment's printed words.
+		base.Kind = LogAnyPlayerDeclined
+		if ev.Kind == game.EventAnyPlayerPaid {
+			base.Kind = LogAnyPlayerPaid
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventVoteCast:
 		// ADR 0146. Actor voted, Source called the vote, Label is the
 		// option. The option's label is public: a word printed on the
@@ -1709,6 +1737,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// says it — this is the only line the table gets, and without
 		// it a permanent silently becomes a different card.
 		base.Kind = LogTransform
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		base.Converted = ev.Converted
+		return base, true
+
+	case game.EventFlipPermanent:
+		// CR 710, ADR 0151. Not a zone move and not a transform, so this
+		// is the only line that says the permanent is now its other half.
+		base.Kind = LogFlipPermanent
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
 		return base, true
@@ -2341,6 +2378,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
+	case LogAnyPlayerPaid:
+		return fmt.Sprintf("%s paid %s for %s", actor, nameOr(e.Label, "the cost"), card)
+	case LogAnyPlayerDeclined:
+		return fmt.Sprintf("%s didn't pay %s for %s", actor, nameOr(e.Label, "the cost"), card)
 	case LogRingTempted:
 		// ADR 0114 §9 and owner decision 2: "The Ring tempts Alice (2)
 		// — Alice chooses Nazgûl as their Ring-bearer". The engine
@@ -2496,15 +2537,28 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s was melded", card)
 		}
 		return fmt.Sprintf("%s melded into %s", e.Label, card)
+	case LogFlipPermanent:
+		// The card name is the half it flipped INTO; Label is the one
+		// it flipped from, cleared on a redacted entry.
+		if e.Label == "" {
+			return fmt.Sprintf("%s flipped", card)
+		}
+		return fmt.Sprintf("%s flipped into %s", e.Label, card)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label
 		// is cleared with the name on a redacted entry, so the fallback
 		// is the line a viewer who may not identify the card reads.
-		if e.Label == "" {
-			return fmt.Sprintf("%s transformed", card)
+		// A convert (CR 701.28a, ADR 0152 §2) says so: the cards print
+		// "convert", and the action is not called transforming.
+		verb := "transformed"
+		if e.Converted {
+			verb = "converted"
 		}
-		return fmt.Sprintf("%s transformed into %s", e.Label, card)
+		if e.Label == "" {
+			return fmt.Sprintf("%s %s", card, verb)
+		}
+		return fmt.Sprintf("%s %s into %s", e.Label, verb, card)
 	default:
 		return card
 	}

@@ -45,6 +45,7 @@
   import { takenFromByCard } from "../../takenFrom";
   import { ringBearerNames } from "../../ringEmblem";
   import { cantAttackByCard } from "../../cantAttack";
+  import { graveyardHostLabels } from "../../seatSummary";
   import { bucketForBattlefield, isCreature, isLand } from "../../cardTypes";
   import {
     battlefieldClickPlan,
@@ -370,9 +371,14 @@
   // Drawing it in the ENCHANTED player's panel would read better
   // still, but it makes "where a card is drawn" diverge from
   // card.controller, and that is a new concept for this UI.
+  //
+  // ADR 0154 (#1780): an Aura enchanting a card in a graveyard (Animate
+  // Dead while its enters trigger waits) has no host on the battlefield
+  // either, and gets the same badge naming the card and whose graveyard
+  // it is in.
   const curseTargets = $derived.by(() => {
     const names = new Map((view.seats ?? []).map((s) => [s.id, s.name]));
-    const out: Record<string, string> = {};
+    const out: Record<string, string> = graveyardHostLabels(view.battlefield?.cards, view.seats);
     for (const c of view.battlefield?.cards ?? []) {
       if (c.attached_to?.kind !== "player" || !c.attached_to.id) continue;
       out[c.instance_id] = names.get(c.attached_to.id) ?? "a player";

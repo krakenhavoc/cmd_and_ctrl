@@ -55,6 +55,10 @@ const (
 	ToAnOpponent
 	// ToACreature is "to a creature", any creature (Weeping Angel).
 	ToACreature
+	// ToCreaturesYouControl is "to creatures you control": a creature
+	// on the battlefield the static's controller controls (Rune-Tail's
+	// Essence, ADR 0151).
+	ToCreaturesYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -222,6 +226,9 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 	case ToACreature:
 		c, ok := g.LookupCardForEffect(target)
 		return ok && c.IsCreature() && g.Battlefield.Contains(target)
+	case ToCreaturesYouControl:
+		c, ok := g.LookupCardForEffect(target)
+		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	}
 	return false
 }

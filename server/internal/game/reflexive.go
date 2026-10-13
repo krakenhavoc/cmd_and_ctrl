@@ -159,6 +159,9 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 	// followedSourceObjectLocked): "return this to the battlefield.
 	// When you do, …" is about the permanent it returned.
 	sourceObject := g.followedSourceObjectLocked(parent)
+	// ADR 0152 §3: a reflexive trigger is created now (CR 603.12), so
+	// its CR 701.27f reference point is the count now.
+	sourceTurnOvers := g.TurnOversForEffect(parent.SourceCardID)
 	// ADR 0041 P9 (#1497): the target clause, when this body has one,
 	// is re-derived from the registration rather than carried as a
 	// captured *TargetSpec — the same reason the item itself is data.
@@ -174,6 +177,7 @@ func (g *Game) QueueReflexiveTriggerForEffect(parent *StackItem, rt ReflexiveTri
 		Build: func(_ Event, source *Card, _ Characteristic, _ *Game) *StackItem {
 			item := NewKeyedTriggeredItem(source, label, rt.Body, params)
 			item.SourceObject = sourceObject
+			item.SourceTurnOvers = sourceTurnOvers
 			item.Payload = append([]TargetRef(nil), payload...)
 			return item
 		},

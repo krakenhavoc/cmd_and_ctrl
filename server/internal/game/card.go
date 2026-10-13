@@ -425,6 +425,27 @@ type Card struct {
 	// of it are equal.
 	ObjectEpoch int
 
+	// TurnOvers counts how many times this card has turned over in
+	// place on the battlefield — transformed or converted (CR 701.27a,
+	// 701.28a; ADR 0152 §3). turnOverInPlaceLocked is its one writer.
+	//
+	// It is CR 701.27f / 701.28e's memory: an ability of a permanent
+	// that tries to transform or convert it does so only if the
+	// permanent "hasn't transformed or converted since the ability was
+	// put onto the stack" (for a delayed trigger, since it was
+	// created). StackItem.SourceTurnOvers and
+	// DelayedTrigger.SourceTurnOvers record this count at that moment,
+	// and effects.TransformThis / ConvertThis do nothing once it has
+	// moved. A face check cannot answer the question when the permanent
+	// has turned over twice since.
+	//
+	// Never reset, like ObjectEpoch: a zone move is a new object
+	// (CR 400.7), which the SourceObject check already answers, and only
+	// whether two readings are equal matters. Zero in a restore point
+	// written before the field existed, and so on every item stamped
+	// then: the two still agree.
+	TurnOvers int
+
 	// ControlledSinceUpkeep is the value of the controller's
 	// Player.UpkeepsBegun when this permanent last came under that
 	// player's control: as it entered the battlefield, and at each
@@ -564,6 +585,26 @@ type Card struct {
 	// 7b "set" that meets a 7c "modify" is right by construction.
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
+
+	// AttachedEpoch is the host's Card.ObjectEpoch at the moment of the
+	// attach, for a host that is NOT on the battlefield: the creature card
+	// in a graveyard an Animate Dead enchants (ADR 0154 decision 3,
+	// CR 400.7). attachmentLegalLocked reads it only for an off-battlefield
+	// host, where a card that left the graveyard and came back with the
+	// same instance ID is a new object the Aura never enchanted
+	// (CR 303.4c). Zero for every battlefield host: the epoch pin on
+	// battlefield attachments is #3159, not this field.
+	//
+	// Set by AttachForEffect and cleared wherever AttachedTo is.
+	AttachedEpoch int
+
+	// EnchantReturned is the creature the resolution of Animate Dead's
+	// enters trigger put onto the battlefield (instance and epoch): the
+	// "creature put onto the battlefield with this Aura" the swapped
+	// clause names (EnchantSwapped, in the bool block below; ADR 0154
+	// decision 4). Zero when nothing came back. Cleared with
+	// EnchantSwapped at both CR 400.7 sites.
+	EnchantReturned ObjectRef
 
 	// FaceTurnedAt is the CR 613.7f timestamp: "a permanent receives
 	// a new timestamp each time it turns face up or face down". The
@@ -1126,6 +1167,21 @@ type Card struct {
 	// the battlefield; ignored in other zones.
 	Tapped bool
 
+	// Flipped is CR 110.5's flipped/unflipped status (ADR 0151). Only
+	// a permanent has it (CR 110.5d); a card enters the battlefield
+	// unflipped unless the effect putting it there says otherwise (CR
+	// 110.5b, ReturnFromGraveyardFlippedForEffect), and it is cleared
+	// by every move to a zone other than the battlefield (CR 710.4).
+	// It is not a characteristic (CR 110.5a) and is never copied (CR
+	// 707.2): the copy rules read the COPIER's status to pick the
+	// half of a copied flip card (CR 707.3, setPrintedValues).
+	//
+	// For a flip card (IsFlipCard) ActiveFace is 1 exactly when this
+	// is true; every other card's ActiveFace ignores it. A permanent
+	// that is not a flip card keeps it once set, irrelevant (CR
+	// 110.5c). Written only by flip.go and MoveCard.
+	Flipped bool
+
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
 	IsCommander bool
@@ -1490,6 +1546,22 @@ type Card struct {
 	// spell copy gets by copying the card. Carried by clone and the
 	// snapshot. Here for alignment, beside the other bools.
 	Bestowed bool
+
+	// EnchantSwapped is ADR 0154 decision 4: this Aura has lost its
+	// printed enchant clause and gained "enchant creature put onto the
+	// battlefield with this Aura" (Animate Dead's and Dance of the
+	// Dead's enters trigger). attachmentLegalLocked reads it before the
+	// catalog clause, as it reads Bestowed: the Aura is legal only on the
+	// permanent EnchantReturned names, and AttachForEffect refuses to move
+	// it anywhere else (CR 701.3b).
+	//
+	// A continuous effect from a resolved ability (CR 611.2c) whose
+	// affected object is this Aura, so it ends when the Aura changes
+	// zones: cleared at both CR 400.7 sites, beside Bestowed. Not a
+	// copiable value. Carried by clone and the snapshot.
+	// EnchantReturned (the creature it names) sits beside AttachedEpoch,
+	// for alignment.
+	EnchantSwapped bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for

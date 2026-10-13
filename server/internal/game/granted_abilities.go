@@ -163,6 +163,9 @@ func AbilityKeyFromLKI(identity Card, lki Characteristic) string {
 //	land:<colour>             a CR 305.6 intrinsic land ability
 //	grant:<bundle>:<i>:<n>    ability i of the nth instance of that
 //	                          granted bundle on this object
+//	borrow:<key>:<i>:<n>      the nth lent instance of row i of a catalog
+//	                          list (ADR 0155, borrowed_abilities.go)
+//	borrow:land:<colour>:<n>  the nth lent intrinsic land ability
 const (
 	abilityRefOwn   = "own:"
 	abilityRefLand  = "land:"
@@ -195,8 +198,18 @@ type AbilityOrigin struct {
 	GrantedBy uuid.UUID
 	// Activator is the player the grant's "you" was when it was
 	// written (GrantedAbility.Activator); uuid.Nil for an own or
-	// intrinsic row.
+	// intrinsic row. For a borrowed row, the borrowing static's "you".
 	Activator uuid.UUID
+	// Borrowed marks a row another object lent this one (ADR 0155):
+	// LentBy is the lender, and Lent the whole entry — the catalog row
+	// it names, the borrow it came from — pointing into the borrower's
+	// layered characteristic, which a pass never writes again (the next
+	// pass builds a new one). Nil for every other row. GrantedBy is the
+	// borrowing static's source. Grant stays empty, so Granted() is
+	// false.
+	Borrowed bool
+	LentBy   uuid.UUID
+	Lent     *BorrowedAbility
 }
 
 // Granted reports whether the row is a layer-6 grant.
@@ -302,10 +315,11 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 	}
 	grants := layeredGrants(c)
 	if len(grants) == 0 || CatalogActivatedAbilities == nil {
-		if !wantOrigins || ownIdx == nil {
-			return own, nil
+		out, origins := own, AbilityOrigins(nil)
+		if wantOrigins && ownIdx != nil {
+			origins = ownOrigins(len(own), ownIdx)
 		}
-		return own, ownOrigins(len(own), ownIdx)
+		return withBorrowedActivated(c, out, origins, wantOrigins)
 	}
 	var out []ActivatedAbilityShape
 	var origins AbilityOrigins
@@ -337,12 +351,41 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 	if out == nil {
 		// Every grant on this object is a bundle with no activated
 		// ability (a granted trigger, a granted mana ability).
-		if !wantOrigins || ownIdx == nil {
-			return own, nil
+		out = own
+		if wantOrigins && ownIdx != nil {
+			origins = ownOrigins(len(own), ownIdx)
 		}
-		return own, ownOrigins(len(own), ownIdx)
 	}
-	return out, origins
+	return withBorrowedActivated(c, out, origins, wantOrigins)
+}
+
+// withBorrowedActivated appends the fourth half, the rows a borrow lent
+// the object (ADR 0155), after own and granted. `rows` and `origins` are
+// the first halves; a nil `origins` means every row is own at its index.
+// An object with no borrow gets its inputs back, after one nil test.
+func withBorrowedActivated(c *Card, rows []ActivatedAbilityShape, origins AbilityOrigins, wantOrigins bool) ([]ActivatedAbilityShape, AbilityOrigins) {
+	if len(layeredBorrows(c)) == 0 {
+		return rows, origins
+	}
+	lent, lentOrigins := borrowedActivatedRows(c, wantOrigins)
+	if len(lent) == 0 {
+		return rows, origins
+	}
+	if len(rows) == 0 {
+		return lent, lentOrigins
+	}
+	out := make([]ActivatedAbilityShape, 0, len(rows)+len(lent))
+	out = append(out, rows...)
+	out = append(out, lent...)
+	if !wantOrigins {
+		return out, nil
+	}
+	if origins == nil {
+		origins = ownOrigins(len(rows), nil)
+	} else {
+		origins = append(AbilityOrigins(nil), origins...)
+	}
+	return out, append(origins, lentOrigins...)
 }
 
 // ManaAbilityOrigins is ManaAbilitiesWithOrigins' origin list alone.
@@ -427,14 +470,16 @@ func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrig
 			}
 		}
 	}
+	// ADR 0155: the fourth half, the rows a borrow lent the object.
+	borrowed, borrowedOrigins := borrowedManaRows(c, wantOrigins)
 	// The fast path, and the pre-ADR-0093 answer exactly: no intrinsic
-	// half and no granted half.
-	if len(intrinsic) == 0 && len(granted) == 0 {
+	// half, no granted half and no borrowed half.
+	if len(intrinsic) == 0 && len(granted) == 0 && len(borrowed) == 0 {
 		return declared, nil
 	}
 	// Still no grant and no origins wanted: hand back the half that is
 	// there without allocating, as the accessor always has.
-	if len(declared) == 0 && len(granted) == 0 {
+	if len(declared) == 0 && len(granted) == 0 && len(borrowed) == 0 {
 		if !wantOrigins {
 			return intrinsic, nil
 		}
@@ -453,7 +498,7 @@ func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrig
 	// ability is a different ability, and a Forest under Chromatic
 	// Lantern has both (ADR 0093 Decision 5).
 	covered := producibleColors(declared)
-	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic)+len(granted))
+	out := make([]ManaAbilityShape, 0, len(declared)+len(intrinsic)+len(granted)+len(borrowed))
 	var origins AbilityOrigins
 	if wantOrigins {
 		origins = make(AbilityOrigins, 0, cap(out))
@@ -475,8 +520,10 @@ func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrig
 		}
 	}
 	out = append(out, granted...)
+	out = append(out, borrowed...)
 	if wantOrigins {
 		origins = append(origins, grantedOrigins...)
+		origins = append(origins, borrowedOrigins...)
 	}
 	return out, origins
 }
@@ -567,7 +614,7 @@ func GrantedAbilitiesOf(c Card) []GrantedAbilityInfo {
 	if c.HasLostAllAbilities() || c.FaceDownIsPermanent() {
 		copyGrants = nil
 	}
-	if len(grants) == 0 && len(copyGrants) == 0 {
+	if len(grants) == 0 && len(copyGrants) == 0 && len(layeredBorrows(&c)) == 0 {
 		return nil
 	}
 	var out []GrantedAbilityInfo
@@ -581,6 +628,11 @@ func GrantedAbilitiesOf(c Card) []GrantedAbilityInfo {
 		if text := GrantTextFor(gr.Key); text != "" {
 			out = append(out, GrantedAbilityInfo{Key: gr.Key, Text: text, Source: gr.Source})
 		}
+	}
+	// ADR 0155 Decision 10: one line per borrowing static, its printed
+	// clause. The lent rows themselves are in the ability menu.
+	for _, b := range BorrowsOf(c) {
+		out = append(out, GrantedAbilityInfo{Text: b.Label, Source: b.Source})
 	}
 	return out
 }

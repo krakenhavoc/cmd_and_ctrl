@@ -79,8 +79,10 @@
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
+  import { findCardView } from "../lib/commanderReturn";
   import {
     GAME_OVER_GRACE_MS,
+    anyPlayerOfferRequest,
     councilVoteRequest,
     gameOverRequest,
     inlineRefusal,
@@ -1836,6 +1838,15 @@
         )
       : null,
   );
+  // ADR 0150 §5: an "unless any player pays" offer, read-only for every
+  // seat but the one asked now, whose own prompt is a pay_unless.
+  const anyPlayerOfferDockRequest = $derived.by(() => {
+    if (!view || !viewerID) return null;
+    const link = view.pending_choices?.find((c) => c.any_player_offer) ?? null;
+    if (!link) return null;
+    const name = findCardView(view, link.source)?.name || "a card";
+    return anyPlayerOfferRequest(link, viewerID, view.seats, name);
+  });
   // #2919: Back to lobby is held for a moment after the game ends, so a
   // click meant for `next`, whose corner it takes, cannot leave the table.
   let gameOverArmed = $state(false);
@@ -2415,6 +2426,9 @@
         {/if}
         {#if councilVoteDockRequest}
           <DockRequest request={councilVoteDockRequest} />
+        {/if}
+        {#if anyPlayerOfferDockRequest}
+          <DockRequest request={anyPlayerOfferDockRequest} />
         {/if}
         {#if fanfare && !fanfareDismissed}
           <GameEndFanfare

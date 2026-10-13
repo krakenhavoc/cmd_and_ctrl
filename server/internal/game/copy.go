@@ -190,6 +190,16 @@ func CopiableValuesOf(src Card) PrintedValues {
 		whole.materialiseSplitWhole()
 		return printedValuesOf(whole)
 	}
+	// CR 707.2 / 707.3 (ADR 0151 decision 4): flipped is a status, and
+	// status is not copied. A flip card's copiable values are always its
+	// top half, with both halves in Faces; which half the COPY shows is
+	// the copier's own status (setPrintedValues). A Clone of Tok-Tok is
+	// an unflipped Akki Lavarunner that can flip itself later.
+	if IsFlipCard(src) && src.ActiveFace != 0 {
+		whole := src
+		whole.SetFace(0)
+		return printedValuesOf(whole)
+	}
 	return printedValuesOf(src)
 }
 
@@ -580,6 +590,7 @@ func (c *Card) setPrintedValues(v PrintedValues) {
 	c.Layout = v.Layout
 	c.Faces = v.Faces
 	c.ActiveFace = v.ActiveFace
+	c.settleFlipFace()
 	// The printed baseline just changed underneath the layer
 	// engine's cache. Callers are on a battlefield-entry path that
 	// bumps layerVersion via the zone-move listener, but clearing
@@ -629,10 +640,47 @@ func (c *Card) restorePrintedSelf() {
 	c.Layout = v.Layout
 	c.Faces = v.Faces
 	c.ActiveFace = v.ActiveFace
+	c.settleFlipFace()
 	c.ManaAbilities = nil
 	c.ActivatedAbilities = nil
 	c.PrintedSelf = nil
 	c.effective = nil
+}
+
+// settleFlipFace holds ADR 0151's one invariant after printed values
+// were written wholesale: a flip card shows its flipped half exactly
+// when the object is Flipped. Status is not copied (CR 707.2), so the
+// copied values arrive on the top half and the copier's own status
+// picks the half (CR 707.3, 110.5c): a flipped permanent that becomes a
+// copy of Nezumi Shortfang is Stabwhisker the Odious, and a flipped
+// Tok-Tok whose copy effect ends is Tok-Tok again. A no-op for every
+// card that is not a flip card.
+func (c *Card) settleFlipFace() {
+	if !IsFlipCard(*c) {
+		return
+	}
+	want := 0
+	if c.Flipped {
+		want = 1
+	}
+	if c.ActiveFace != want {
+		c.SetFace(want)
+	}
+}
+
+// withFlipStatus is v as an object with the given flipped status would
+// show it once settleFlipFace has run: the values a setPrintedValues of
+// v would leave on the card. The duration-copy pass compares against
+// this, so a flipped copier is not rewritten on every recompute.
+func (v PrintedValues) withFlipStatus(flipped bool) PrintedValues {
+	if v.Layout != LayoutFlip || len(v.Faces) != 2 {
+		return v
+	}
+	c := Card{}
+	c.setPrintedValues(v)
+	c.Flipped = flipped
+	c.settleFlipFace()
+	return printedValuesOf(c)
 }
 
 // copyStringSlice deep-copies a string slice, preserving nil.

@@ -112,6 +112,10 @@ const LOG_TONE: Record<LogKind, string> = {
   ring_tempted: "tone-cast",
   // ADR 0146: a vote is a play the table watches as it is cast.
   vote: "tone-cast",
+  // ADR 0150 §5: who stopped an "unless any player pays" effect is a
+  // play the table watches; each decline is quieter.
+  any_player_paid: "tone-cast",
+  any_player_declined: "tone-quiet",
   // #1021. A control change is a swing in the game and reads like a
   // removal spell; the rest are beats of a turn a player narrates
   // without raising their voice.
@@ -173,6 +177,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // whisper (#1256) — louder than the quiet choose_* / scry-family
   // tones, toned like the other permanent motions (token, cycle).
   transform: "tone-zone",
+  // ADR 0151: a flip card turning upside down, toned like a turn-over.
+  flip_permanent: "tone-zone",
   // ADR 0145: two cards becoming one permanent, toned like a turn-over.
   meld: "tone-zone",
   phase_out: "tone-zone",

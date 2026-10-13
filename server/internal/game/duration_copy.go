@@ -278,7 +278,9 @@ func (g *Game) materialiseDurationCopiesLocked() {
 				c.PrintedSelf = &own
 			}
 		}
-		if reflect.DeepEqual(printedValuesOf(*c), want) {
+		// ADR 0151: a flipped copier shows a copied flip card's
+		// flipped half, so compare against what the write would leave.
+		if reflect.DeepEqual(printedValuesOf(*c), want.withFlipStatus(c.Flipped)) {
 			continue
 		}
 		c.setPrintedValues(want)

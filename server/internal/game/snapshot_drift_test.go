@@ -340,6 +340,11 @@ var cardFields = plan(
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
+	// ADR 0151: CR 110.5's flipped status. Carried: a restore that
+	// dropped it would leave a flipped flip card unable to say so, and
+	// a copy effect reading the copier's status would pick the wrong
+	// half (CR 707.3).
+	"Flipped", carried, "",
 	"NextUntapSkips", carried, "",
 	"BattleX", carried, "",
 	"BattleY", carried, "",
@@ -397,6 +402,11 @@ var cardFields = plan(
 	// the one direction this field must not fail in. Listed once: the
 	// row was written twice, and a map keeps the last one.
 	"ObjectEpoch", carried, "",
+	// ADR 0152 §3: how many times the permanent has transformed or
+	// converted in place, CR 701.27f / 701.28e's memory. Carried: a
+	// restore that zeroed it would let a "convert it" trigger already on
+	// the stack fire after the permanent had turned over.
+	"TurnOvers", carried, "",
 	// ADR 0108 §5: echo's "came under your control since the beginning
 	// of your last upkeep". Carried: a restore that dropped it would
 	// charge every echo permanent again, or never.
@@ -422,6 +432,9 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// ADR 0154 decision 3: the epoch of an off-battlefield host (Animate
+	// Dead's graveyard card), carried for AttachedTo's reason.
+	"AttachedEpoch", carried, "",
 	// The layer-2 control baseline. Carried rather than rebuilt: a
 	// restore that dropped it would re-capture the CURRENT (stolen)
 	// controller as the base, and the creature would never go home.
@@ -516,6 +529,10 @@ var cardFields = plan(
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",
+	// ADR 0154 decision 4: Animate Dead's gained enchant clause and the
+	// creature it names, carried for Bestowed's reason.
+	"EnchantSwapped", carried, "",
+	"EnchantReturned", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for
 	// Monstrous's reason.
@@ -711,6 +728,9 @@ var stackItemFields = plan(
 	// included — the object "this" names. Carried for SourceEpoch's
 	// reason: it is a reading of a card that has since moved.
 	"SourceObject", carried, "",
+	// ADR 0152 §3: the source's Card.TurnOvers when the ability went on
+	// the stack (CR 701.27f / 701.28e). Plain data.
+	"SourceTurnOvers", carried, "",
 	// ADR 0109 §2: the object that granted an activated ability, so a
 	// restored Teferi's Talent −12 still makes the Talent's emblem.
 	// Carried: the grant may be gone from the restored board.
@@ -805,6 +825,9 @@ var delayedTriggerFields = plan(
 	"Controller", carried, "",
 	"SourceCardID", carried, "",
 	"SourceObject", carried, "", // #1418, CR 603.7d
+	// ADR 0152 §3: CR 701.28e's reference point for a delayed trigger
+	// is its creation. Plain data.
+	"SourceTurnOvers", carried, "",
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",
@@ -993,6 +1016,7 @@ var pendingChoiceFields = plan(
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.
 	"CouncilVote", carried, "",
+	"AnyPlayerOffer", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a
@@ -1156,6 +1180,11 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 	samples := []any{
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
+		// ADR 0155: Characteristic.BorrowedAbilities, carried with the
+		// rest of the last-known characteristic beside GrantedAbilities.
+		// Each entry names a catalog row; a closure (the borrow's
+		// Lenders) or an unexported field here would vanish on restore.
+		GrantedAbility{}, BorrowedAbility{},
 		// Event.CombatStep and DamageAssignmentFrame.CombatStep (#187)
 		// are carried through these two with no plan entry; their zero
 		// value "" is right for a file written before them, so no

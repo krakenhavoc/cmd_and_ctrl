@@ -205,6 +205,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// of a bestowed spell seeds it afresh (bestow.go), and a countered
 	// or bounced one is an ordinary creature card in its new zone.
 	c.Bestowed = false
+	// ADR 0154 / CR 400.7, CR 611.2c: Animate Dead's gained enchant
+	// clause belongs to the Aura object that resolved the trigger. The
+	// card in its new zone never had it.
+	c.EnchantSwapped = false
+	c.EnchantReturned = ObjectRef{}
 	// ADR 0097 / CR 400.7: the "hasn't been chosen" memory belongs to
 	// the object that is ending, for every source and destination —
 	// the same unconditional forgetting as the epoch above.
@@ -252,6 +257,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// place that can see the whole battlefield.
 		c.AttachedTo = TargetRef{}
 		c.AttachedAt = 0
+		c.AttachedEpoch = 0
 		// The layer-2 control baseline is battlefield-only, and
 		// clearing it here is what makes the lazy capture correct:
 		// the next entry re-captures whoever the card enters under.
@@ -466,6 +472,16 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// moment before CR 704.5e removes it — never a Skycoach Conductor.
 	if c.ActiveFace != 0 && !c.PrepareCopy && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
 		c.SetFace(0)
+	}
+	// CR 710.4 / 110.5d (ADR 0151 decision 1): a flipped permanent that
+	// leaves the battlefield "retains no memory of its status". Only a
+	// permanent has one, and a battlefield-to-battlefield move does not
+	// exist, so every card arrives on the battlefield unflipped (CR
+	// 110.5b) unless an entry set the status in its source zone on
+	// purpose (ReturnFromGraveyardFlippedForEffect). The face reset
+	// above has already put a flip card back on its top half.
+	if dst.Kind != ZoneBattlefield {
+		c.Flipped = false
 	}
 	// ADR 0103, CR 709.4 / 709.5: a SPLIT card is its two halves
 	// combined in every zone but the stack and the battlefield, a Room

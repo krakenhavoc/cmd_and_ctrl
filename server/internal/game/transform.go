@@ -148,6 +148,39 @@ func faceIsInstantOrSorcery(f Face) bool {
 //
 // Caller must hold g.mu. Added in S46 (ADR 0079, #343).
 func (g *Game) TransformPermanentForEffect(cardID uuid.UUID) error {
+	return g.turnOverForEffectLocked(cardID, false)
+}
+
+// ConvertPermanentForEffect converts the named battlefield permanent:
+// turns it so that its other face is up (CR 701.28a, ADR 0152 §2).
+//
+// CR 701.28a makes the rules for transforming the rules for converting
+// ("Those rules apply to converting a permanent just as they apply to
+// transforming a permanent"), so this is TransformPermanentForEffect
+// with the same guards and the same body, and one difference: the
+// EventTransform it emits says Converted, which is what the log reads
+// to say "converted" and what a plain "whenever this transforms" reader
+// checks to stay quiet (owner decision 1).
+//
+//   - CanTransform refusing is CR 701.28c (not a double-faced
+//     permanent) and 701.28d (an instant or sorcery other face):
+//     nothing happens, and that is not an error.
+//   - A daybound or nightbound permanent "can't transform except due
+//     to" that ability (CR 702.145b), and CR 701.28f says a permanent
+//     that can't transform can't convert either.
+//
+// The same object stays (CR 712.18): no zone move, no ETB, no new
+// timestamp, counters, damage and attachments kept. A "return it
+// converted" is a NEW object and is not this verb; it is
+// ReturnFromGraveyardTransformedForEffect (CR 712.14a).
+//
+// Caller must hold g.mu.
+func (g *Game) ConvertPermanentForEffect(cardID uuid.UUID) error {
+	return g.turnOverForEffectLocked(cardID, true)
+}
+
+// turnOverForEffectLocked is the guarded entry the two verbs share.
+func (g *Game) turnOverForEffectLocked(cardID uuid.UUID, converted bool) error {
 	card := findBattlefieldCard(g, cardID)
 	if card == nil {
 		return ErrCardNotFound
@@ -160,37 +193,98 @@ func (g *Game) TransformPermanentForEffect(cardID uuid.UUID) error {
 	// instruction to transform it does nothing, exactly as CR 701.27c
 	// treats an object that can't. The day/night rules themselves turn
 	// it over through transformInPlaceLocked, which has no such guard.
+	// CR 701.28f carries the refusal to a convert.
 	if hasDayNightKeyword(card) {
 		return nil
 	}
-	g.transformInPlaceLocked(card)
+	g.turnOverInPlaceLocked(card, converted)
 	return nil
 }
 
 // transformInPlaceLocked is the body of the verb with every guard
-// already answered: the face goes over, the printed-value cache is
-// dropped, EventTransform announces it and the new face's "as this
-// transforms into" clause runs. TransformPermanentForEffect is the
-// guarded entry for an instruction; the day/night rules (CR 702.145c,
-// 702.145f) call this directly, because they are the one thing a
-// daybound or nightbound permanent can transform for.
+// already answered, for the day/night rules (CR 702.145c, 702.145f),
+// the one thing a daybound or nightbound permanent can transform for.
 //
 // Caller must hold g.mu, and must have checked CanTransform.
 func (g *Game) transformInPlaceLocked(card *Card) {
+	g.turnOverInPlaceLocked(card, false)
+}
+
+// turnOverInPlaceLocked is the body both verbs share (ADR 0152 §2): the
+// face goes over, the turn-over count moves, the printed-value cache is
+// dropped, EventTransform announces it (Converted for a convert) and
+// the new face's "as this transforms into" clause runs — CR 712.20
+// applies that clause to a convert too.
+//
+// Card.TurnOvers is incremented here and nowhere else, so every way a
+// permanent turns over in place — an instruction, a convert, the
+// day/night rules — is a turn-over CR 701.27f / 701.28e counts.
+//
+// Caller must hold g.mu, and must have checked CanTransform.
+func (g *Game) turnOverInPlaceLocked(card *Card, converted bool) {
 	cardID := card.InstanceID
 	from := card.Name
 	to := 1 - card.ActiveFace
 	controller := card.Controller
 	card.SetFace(to)
+	card.TurnOvers++
 	card.effective = nil
 	g.EmitEvent(Event{
-		Kind:   EventTransform,
-		CardID: cardID,
-		Actor:  controller,
-		Amount: to,
-		Label:  from,
+		Kind:      EventTransform,
+		CardID:    cardID,
+		Actor:     controller,
+		Amount:    to,
+		Label:     from,
+		Converted: converted,
 	})
 	g.runAsTransformsIntoLocked(cardID)
+}
+
+// TurnOversForEffect is Card.TurnOvers of the card `cardID` wherever it
+// is, or 0 when it is nowhere (ADR 0152 §3). It is what an ability
+// records as it goes on the stack, and what effects.TransformThis and
+// ConvertThis compare against at resolution.
+//
+// Caller must hold g.mu.
+func (g *Game) TurnOversForEffect(cardID uuid.UUID) int {
+	if cardID == uuid.Nil {
+		return 0
+	}
+	if c := findBattlefieldCard(g, cardID); c != nil {
+		return c.TurnOvers
+	}
+	z := g.findCardZoneLocked(cardID)
+	if z == nil {
+		return 0
+	}
+	for i := range z.Cards {
+		if z.Cards[i].InstanceID == cardID {
+			return z.Cards[i].TurnOvers
+		}
+	}
+	return 0
+}
+
+// SourceTurnedOverSinceForEffect reports CR 701.27f / 701.28e's
+// condition for an ability that tries to transform or convert its own
+// source (ADR 0152 §3): the source permanent has transformed or
+// converted since the ability was put onto the stack (for a delayed
+// trigger, since it was created), so "an instruction to do either is
+// ignored".
+//
+// False for a spell (its "this" is the spell, not a permanent), for an
+// item with no source, and for a source that is not on the battlefield.
+//
+// Caller must hold g.mu.
+func (g *Game) SourceTurnedOverSinceForEffect(item *StackItem) bool {
+	if item == nil || item.Kind == StackItemSpell || item.SourceCardID == uuid.Nil {
+		return false
+	}
+	c := findBattlefieldCard(g, item.SourceCardID)
+	if c == nil {
+		return false
+	}
+	return c.TurnOvers != item.SourceTurnOvers
 }
 
 // runAsTransformsIntoLocked runs the "As this permanent transforms into
@@ -453,6 +547,34 @@ func (g *Game) CraftMaterialsForEffect(refs []ObjectRef) []Card {
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
+	// The card is on its front face (CR 712.8a); ask the transform
+	// question of that shape, whatever a stray ActiveFace says.
+	return g.returnFromGraveyardOnFaceLocked(cardID, 1, false, CanTransform, controller, tapped, counters)
+}
+
+// returnFromGraveyardOnFaceLocked is the body "return it from a
+// graveyard to the battlefield <on another face>" shares between its
+// two forms: the transform form above (CR 712.14a) and the flip form,
+// "return it to the battlefield flipped" (Homura, Human Ascendant, CR
+// 110.5b, ADR 0151 decision 6).
+//
+// `guard` is asked of the card as it sits in the graveyard, on its
+// front face (CR 712.8a, 710.2); a card it refuses is left where it is
+// and nothing is returned, with no error. Otherwise `face` is set on
+// the card IN THE GRAVEYARD — with the flipped status too when
+// `flipped` — so the CR 614 pipeline finds that face's catalog key on
+// the way in, and the ordinary graveyard entry runs. The move to the
+// battlefield keeps both, because MoveCard resets them only for a
+// destination that is not the battlefield.
+//
+// If the entry is cancelled or redirected both are put back, so no card
+// is left in a graveyard on its other face or flipped. A PAUSED entry
+// (a CR 616 ordering prompt or an entry choice is open) keeps them: the
+// resume needs them, and a card still in a graveyard with a prompt open
+// is mid-move.
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromGraveyardOnFaceLocked(cardID uuid.UUID, face int, flipped bool, guard func(Card) bool, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -467,17 +589,24 @@ func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.U
 	if card == nil {
 		return uuid.Nil, ErrCardNotFound
 	}
-	// The card is on its front face (CR 712.8a); ask the transform
-	// question of that shape, whatever a stray ActiveFace says.
 	front := *card
 	front.ActiveFace = 0
-	if !CanTransform(front) {
+	front.Flipped = false
+	if !guard(front) {
 		return uuid.Nil, nil
 	}
-	setFaceInZoneLocked(src, cardID, 1)
+	setFaceInZoneLocked(src, cardID, face)
+	if flipped {
+		card.Flipped = true
+	}
 	id, err := g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters)
 	if id == uuid.Nil && len(g.PendingChoices) == 0 {
 		if z := g.findCardZoneLocked(cardID); z != nil && z.Kind == ZoneGraveyard {
+			for i := range z.Cards {
+				if z.Cards[i].InstanceID == cardID {
+					z.Cards[i].Flipped = false
+				}
+			}
 			setFaceInZoneLocked(z, cardID, 0)
 		}
 	}

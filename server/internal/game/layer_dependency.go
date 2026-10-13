@@ -77,6 +77,12 @@ type layerPassState struct {
 	// bucket in which a CR 613.1f removal applied to it. Layer 6 for
 	// "loses all abilities"; layer 4 for CR 305.7's "is a Forest".
 	removedAt map[uuid.UUID]int
+	// removedTS maps a permanent to the latest timestamp of a LAYER-6
+	// removal that applied to it in this pass (ADR 0155 Decision 4.4).
+	// The borrow step runs after every other layer-6 effect, so it reads
+	// this to keep CR 613.6's timestamp order against a removal on a
+	// recipient: a removal later than the borrow takes the lent rows.
+	removedTS map[uuid.UUID]int64
 	// started records that a live source's continuous effect has
 	// already applied to an object — CR 613.6's "starts to apply".
 	started map[sourceTarget]bool
@@ -91,6 +97,7 @@ func newLayerPassState(effects []ContinuousEffect) *layerPassState {
 		if eff.RemovesAbilities() {
 			st.track = true
 			st.removedAt = make(map[uuid.UUID]int, 2)
+			st.removedTS = make(map[uuid.UUID]int64, 2)
 			st.started = make(map[sourceTarget]bool, 8)
 			break
 		}
@@ -107,6 +114,28 @@ func (st *layerPassState) recordRemoval(target *Card, bucketIndex int) {
 	if _, seen := st.removedAt[target.InstanceID]; !seen {
 		st.removedAt[target.InstanceID] = bucketIndex
 	}
+}
+
+// recordRemovalTimestamp keeps the latest timestamp of a layer-6
+// removal that applied to this object.
+func (st *layerPassState) recordRemovalTimestamp(target *Card, ts int64) {
+	if st == nil || !st.track {
+		return
+	}
+	if prev, seen := st.removedTS[target.InstanceID]; !seen || ts > prev {
+		st.removedTS[target.InstanceID] = ts
+	}
+}
+
+// removedAfter reports whether a layer-6 removal with a timestamp later
+// than `ts` applied to this object in this pass. Free on a board with no
+// removal.
+func (st *layerPassState) removedAfter(target *Card, ts int64) bool {
+	if st == nil || !st.track {
+		return false
+	}
+	at, ok := st.removedTS[target.InstanceID]
+	return ok && at > ts
 }
 
 // recordApplied notes that `src`'s effect has applied to `target`.
@@ -161,6 +190,13 @@ func (st *layerPassState) stillApplies(src *Card, target *Card, bucketIndex int,
 // run. On a board with no dependency at all that is one relation
 // computation per bucket and nothing else.
 func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex int, st *layerPassState) {
+	// ADR 0155 Decision 4: a borrow ("has all activated abilities of …")
+	// applies after every other layer-6 effect, as one step at the end of
+	// the bucket. Taken out here; a bucket with none comes back as it was.
+	var borrows []ContinuousEffect
+	if l == Layer6Ability {
+		bucket, borrows = splitBorrows(bucket)
+	}
 	// ADR 0093 Decision 3: in the layer-6 bucket a removal goes before
 	// every effect whose SOURCE it silences, whatever the timestamps.
 	// Only on a board where something removes abilities at all — which
@@ -187,6 +223,9 @@ func (g *Game) applyBucketLocked(bucket []ContinuousEffect, l Layer, bucketIndex
 	}
 	for _, eff := range bucket {
 		g.applyOneEffectLocked(eff, bucketIndex, st)
+	}
+	if len(borrows) > 0 && g.Battlefield != nil {
+		g.applyBorrowsLocked(borrows, st)
 	}
 }
 
@@ -435,6 +474,7 @@ func applyRaw(eff ContinuousEffect, c *Characteristic, target *Card, g *Game) {
 	if eff.RemovesAbilities() {
 		c.Abilities = nil
 		c.GrantedAbilities = nil
+		c.BorrowedAbilities = nil
 		c.AbilitiesRemoved = true
 	}
 	eff.Apply(c, target, g)
@@ -494,6 +534,7 @@ func sameCharacteristic(a, b Characteristic) bool {
 		sameStringSlice(a.Colors, b.Colors) &&
 		sameStringSlice(a.Abilities, b.Abilities) &&
 		sameGrants(a.GrantedAbilities, b.GrantedAbilities) &&
+		slices.Equal(a.BorrowedAbilities, b.BorrowedAbilities) &&
 		slices.Equal(a.AttackRequirements, b.AttackRequirements) &&
 		slices.EqualFunc(a.AttackTargetRestrictions, b.AttackTargetRestrictions, AttackTargetRestriction.Equal) &&
 		slices.Equal(a.BlockRequirements, b.BlockRequirements) &&

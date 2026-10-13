@@ -63,6 +63,10 @@ var activatedRowScopes = map[string]rowScope{
 	// ADR 0093: the row's stable ref and its grantor, who is on the
 	// battlefield for every viewer to see.
 	"Ref": rowPublic, "GrantedBy": rowPublic,
+	// ADR 0155: a borrowed row's lender. Lenders sit in public zones
+	// (battlefield, graveyard, exile); one in a hand or library is
+	// cleared for every viewer (lenderHidden), so it reads nothing private.
+	"BorrowedFrom":  rowPublic,
 	"SacrificeSelf": rowPublic, "ManaCost": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §8: the printed energy component; a player's energy is
 	// public, so the shortfall it greys the row with is too.
@@ -125,7 +129,7 @@ var activatedRowScopes = map[string]rowScope{
 // manaRowScopes is activatedRowScopes for ManaAbilityView.
 var manaRowScopes = map[string]rowScope{
 	"Index": rowPublic, "Label": rowPublic, "TapCost": rowPublic,
-	"Ref": rowPublic, "GrantedBy": rowPublic,
+	"Ref": rowPublic, "GrantedBy": rowPublic, "BorrowedFrom": rowPublic,
 	"SacrificeCost": rowPublic, "ExileSelf": rowPublic, "LifeCost": rowPublic,
 	// ADR 0129 §5: the printed energy component (a player's energy is
 	// public).

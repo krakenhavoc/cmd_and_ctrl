@@ -6,6 +6,8 @@
 import { describe, it, expect, vi } from "vitest";
 
 import {
+  anyPlayerOfferLine,
+  anyPlayerOfferRequest,
   ballotNote,
   choiceRequest,
   councilVoteRequest,
@@ -394,5 +396,60 @@ describe("voteRequest and gameOverRequest", () => {
     expect(r.primary?.disabled).toBe(true);
     r.primary!.onPress();
     expect(back).not.toHaveBeenCalled();
+  });
+});
+
+describe("an unless-any-player-pays offer (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice" },
+    { id: "b", name: "Bob" },
+    { id: "c", name: "Carol" },
+    { id: "d", name: "Dan" },
+  ];
+  // Bob's Rhystic Tutor; Alice has declined, Carol is asked now.
+  const link = (over: Partial<PendingChoiceView> = {}) =>
+    choice({
+      kind: "pay_unless",
+      chooser: "c",
+      reason: "Rhystic Tutor — pay {2} to stop the search?",
+      pay_cost: "{2}",
+      any_player_offer: { controller: "b", order: ["a", "b", "c", "d"], declined: ["a", "b"] },
+      ...over,
+    });
+
+  it("tells the player asked whose effect it is and who else is asked", () => {
+    const r = choiceRequest(link(), { sourceName: "Rhystic Tutor", seats }, handlers());
+    expect(r.label).toBe("Rhystic Tutor — pay {2} to stop the search?");
+    expect(r.tag).toBe("any player pays");
+    expect(r.hint).toContain("Bob's Rhystic Tutor.");
+    expect(r.hint).toContain("Any player may pay {2}: Alice and Bob declined; then Dan.");
+    expect(r.primary?.label).toBe("Pay {2}");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Don't pay"]);
+  });
+
+  it("words the last link and an opponents-only offer", () => {
+    expect(
+      anyPlayerOfferLine(
+        link({ chooser: "d", any_player_offer: { controller: "b", order: ["a", "b", "c", "d"] } }),
+        seats,
+      ),
+    ).toBe("Any player may pay {2}: nobody after.");
+    expect(
+      anyPlayerOfferLine(
+        link({ any_player_offer: { controller: "b", order: ["c", "d", "a"], opponents: true } }),
+        seats,
+      ),
+    ).toBe("Any opponent may pay {2}: then Dan and Alice.");
+  });
+
+  it("is read-only for every other seat, and absent for the one asked", () => {
+    const r = anyPlayerOfferRequest(link(), "a", seats, "Rhystic Tutor");
+    expect(r?.rank).toBe("step");
+    expect(r?.row).toBeUndefined();
+    expect(r?.primary).toBeUndefined();
+    expect(r?.detail).toBe("Carol is deciding whether to pay {2} (Bob's Rhystic Tutor)");
+    expect(r?.hint).toBe("Any player may pay {2}: Alice and Bob declined; then Dan.");
+    expect(anyPlayerOfferRequest(link(), "c", seats, "Rhystic Tutor")).toBeNull();
+    expect(anyPlayerOfferRequest(choice({ kind: "pay_unless" }), "a", seats, "x")).toBeNull();
   });
 });

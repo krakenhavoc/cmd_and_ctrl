@@ -365,8 +365,25 @@ func (e *enumerator) choiceMoves() bool {
 				p := base()
 				p.Apply = &a
 				verb := "decline"
+				offer := c.AnyPlayerOffer
+				whose := ""
+				if offer != nil {
+					// ADR 0150 §6: the label says whose effect the
+					// payment is about, so a model can price it.
+					whose = playerName(g, offer.Controller) + "'s " + cardNameFor(g, c.Source, e.seat)
+					verb = "decline (let " + whose + " happen)"
+					if offer.HelpsController {
+						verb = "decline (" + whose + " goes)"
+					}
+				}
 				if apply {
 					verb = "pay " + c.PayCost
+					switch {
+					case offer != nil && offer.HelpsController:
+						verb += " to keep " + whose
+					case offer != nil:
+						verb += " to stop " + whose
+					}
 					if len(taps) > 0 {
 						verb += fmt.Sprintf(" (waterbending with %d)", len(taps))
 						p.TapIDs = idStrings(taps)

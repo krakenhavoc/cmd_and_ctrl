@@ -930,6 +930,11 @@ export type LogKind =
   // the card prints it (a word, or the name of the permanent or player
   // voted for) and `card_id` the card that called the vote.
   | "vote"
+  // ADR 0150 §5: `seat` paid, or didn't pay, an "unless any player pays"
+  // offer. `label` is the payment ("{2}") and `card_id` the card whose
+  // effect it was.
+  | "any_player_paid"
+  | "any_player_declined"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -1007,6 +1012,10 @@ export type LogKind =
   // a player announces out loud, and a reader scrolling back wants
   // to know when it happened.
   | "transform"
+  // ADR 0151 (#1892): a flip card on the battlefield was flipped
+  // (CR 710). `label` is the name it flipped FROM. Its own kind,
+  // never `flip`, which is a coin flip.
+  | "flip_permanent"
   // ADR 0145: two cards were melded into one permanent (CR 701.42a).
   // `card_id` is the melded permanent and `label` names the two cards
   // it was melded from.
@@ -1113,6 +1122,9 @@ export interface LogEvent {
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).
   combat?: boolean;
+  // ADR 0152 §2 (#1856): a `transform` entry whose turn-over was a
+  // convert (CR 701.28a). The rendered `text` already says "converted".
+  converted?: boolean;
   // Which combat damage step dealt a combat `damage` entry (CR 510.4).
   // Set only when that combat had a first-strike step; combat with no
   // first strike or double strike anywhere is untagged, so its
@@ -1633,6 +1645,12 @@ export interface PendingChoiceView {
    * each vote as it is cast.
    */
   council_vote?: CouncilVoteView;
+  /**
+   * ADR 0150: present when this pay_unless is one link of an "unless any
+   * player pays" offer: whose effect it is, everyone it may reach in the
+   * order asked, and who has declined. Public on every seat's view.
+   */
+  any_player_offer?: AnyPlayerOfferView;
 
   accept_label?: string;
   decline_label?: string;
@@ -1949,6 +1967,23 @@ export interface CouncilVoteView {
   // option to win.
   for_controller?: number[];
   for_opponents?: number[];
+}
+
+// AnyPlayerOfferView is an "unless any player pays" offer in progress
+// (ADR 0150 §5), as its open link carries it. The link's chooser is the
+// player asked now.
+export interface AnyPlayerOfferView {
+  // The controller of the effect being paid against ("you" on the card).
+  controller: string;
+  // Everyone the offer may reach, in the order asked (APNAP from the
+  // active player), and those who have declined so far.
+  order: string[];
+  declined?: string[];
+  // "Any opponent may": the controller is not asked.
+  opponents?: boolean;
+  // Paying is what the controller wants (Icy Prison: it keeps the
+  // permanent), so the words say "keep", not "stop".
+  helps_controller?: boolean;
 }
 
 export interface VoteView {

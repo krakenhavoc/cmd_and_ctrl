@@ -1306,6 +1306,7 @@
             payAmount: payAmountValue,
             payAmountAnswerable: payAmountOK,
             life: snap.seats?.find((s) => s.id === viewerID)?.life,
+            seats: snap.seats,
             body: isManaPick
               ? manaBody
               : isColorChoice

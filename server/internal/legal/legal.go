@@ -808,6 +808,18 @@ type enumerator struct {
 	// expansion it rides is four calls deep and every one of them would
 	// pass it on untouched.
 	permType string
+	// rowOrigin is the origin of the activated ability row being
+	// expanded (ADR 0155 Decision 7), set by abilityMovesForSource for
+	// each row and read by the spend context its payment probes build, so
+	// a rider that covers only one borrow's lent rows is asked exactly as
+	// the activation asks it. A field for permType's reason.
+	rowOrigin game.AbilityOrigin
+}
+
+// abilitySpend is the spend context of the activated ability row being
+// expanded: game.ManaSpendForAbilityRow with the row's origin.
+func (e *enumerator) abilitySpend(source *game.Card) game.ManaSpendContext {
+	return game.ManaSpendForAbilityRow(*source, e.rowOrigin)
 }
 
 // add keeps a move, unless a Source or Choice filter does not want the

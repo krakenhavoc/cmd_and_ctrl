@@ -267,6 +267,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// otherwise read the stale characteristic off the card it was
 		// just told about.
 		g.layerVersion.Add(1)
+	case EventFlipPermanent:
+		// ADR 0151 decision 5, EventTransform's reason exactly: a flip
+		// changes the printed name, type line, base P/T, keywords and
+		// catalog entry at once with the permanent sitting still, so an
+		// anthem for legendary creatures must see Tok-Tok the moment
+		// Akki Lavarunner flips (CR 710.2's own example). The card's
+		// cache is nilled at the mutation site (FlipPermanentForEffect).
+		g.layerVersion.Add(1)
 	case EventPhaseOut, EventPhaseIn:
 		// ADR 0084 / CR 702.26: what is on the battlefield has just
 		// changed, which is the same invalidation input a zone move

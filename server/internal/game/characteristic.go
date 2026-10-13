@@ -155,6 +155,16 @@ type Characteristic struct {
 	// field on a different struct (#665).
 	GrantedAbilities []GrantedAbility
 
+	// BorrowedAbilities are the rows a "has all activated abilities of
+	// …" borrow lent this object in layer 6 (ADR 0155 Decision 2): one
+	// entry per lent ROW, naming the catalog row it came from. Written
+	// only by the borrow step, the last step of the layer-6 bucket, and
+	// read only by the activated and mana ability accessors, as their
+	// fourth half. NOT composed into CatalogAbilityKey, so a lender's
+	// triggers, statics and cost modifiers are never lent. Not copiable
+	// (CR 707.2), for GrantedAbilities' reason.
+	BorrowedAbilities []BorrowedAbility
+
 	// Controller is the post-layer-2 controller (CR 613.1b). It is
 	// the one field here that is NOT a characteristic in the CR 109.3
 	// sense — control is a property of the object, not of its
@@ -405,6 +415,7 @@ func (c Characteristic) clone() Characteristic {
 	out.Colors = append([]string(nil), c.Colors...)
 	out.Abilities = append([]string(nil), c.Abilities...)
 	out.GrantedAbilities = append([]GrantedAbility(nil), c.GrantedAbilities...)
+	out.BorrowedAbilities = append([]BorrowedAbility(nil), c.BorrowedAbilities...)
 	out.AttackRequirements = append([]AttackRequirement(nil), c.AttackRequirements...)
 	out.AttackTargetRestrictions = append([]AttackTargetRestriction(nil), c.AttackTargetRestrictions...)
 	out.BlockRequirements = append([]BlockRequirement(nil), c.BlockRequirements...)

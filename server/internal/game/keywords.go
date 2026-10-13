@@ -168,6 +168,16 @@ var canonicalKeywords = map[string]bool{
 	// table in this file, so the token's job is the badge and the ADR
 	// 0037 coverage signal.
 	"disturb": true,
+	// more than meets the eye (CR 702.162) and living metal (CR
+	// 702.161) join with #1856 (ADR 0152 §1, §4), in the same change
+	// that teaches the engine to honour them: the first is disturb's
+	// back-face offer with no zone binding (effects.MoreThanMeetsTheEye),
+	// the second a layer-4 static the card file declares on the back
+	// face (effects.LivingMetal, owner decision 3). Same reasoning as
+	// disturb above — the consumer is the card file, so the token's job
+	// is the badge and the ADR 0037 coverage signal.
+	"more than meets the eye": true,
+	"living metal":            true,
 	// plot (CR 702.170) joins with #1342, in the same change that
 	// teaches the engine to honour it: the CR 116.2 special action
 	// from hand (SpecialActionPlot, plot.go) and the free later cast

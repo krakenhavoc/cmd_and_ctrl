@@ -1129,7 +1129,28 @@ const (
 	// "whenever this transforms" (CR 701.27e) writable — no new
 	// constructor was needed, because the harvester already watches
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
+	//
+	// A CONVERT (CR 701.28a) is this kind too, with Event.Converted set
+	// (ADR 0152 §2, owner decision 1).
 	EventTransform EventKind = "transform"
+
+	// EventFlipPermanent — CardID, a flip card on the battlefield, was
+	// flipped (CR 710, ADR 0151). Actor is its controller and Label is
+	// the name it flipped FROM, the only place that name survives.
+	//
+	// NOT "flip": rngStreamFlip and EventFlipCoin already mean a coin
+	// flip, and a log reader or trigger author must not confuse the
+	// two. Not a zone change and not a transform (CR 701.27 is about
+	// double-faced cards; a flip card is single-faced), so "whenever
+	// this transforms" never sees it.
+	//
+	// Two consumers. layerVersionBump invalidates the layer engine, for
+	// EventTransform's reason: the printed name, type line, P/T and
+	// catalog entry changed wholesale with the permanent sitting still.
+	// And the log narrates it (CR 710.3: whether a permanent is flipped
+	// must be clear at all times). No printed card triggers on a
+	// permanent flipping, so no trigger constructor ships.
+	EventFlipPermanent EventKind = "flip_permanent"
 
 	// EventMeld — two cards were melded (CR 701.42a) and CardID is the
 	// melded permanent that has just entered the battlefield. Actor is
@@ -1658,6 +1679,17 @@ type Event struct {
 	// binary that drops the key from a restored trigger's event loses
 	// nothing it acts on.
 	Loyalty bool `json:"loyalty,omitempty"`
+
+	// Converted marks an EventTransform whose turn-over was a CONVERT
+	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a
+	// transform. A convert follows the rules for transforming, so every
+	// reader EventTransform already has — the layer bump, a "transforms
+	// into" trigger (CR 701.27e names both actions), the "as this
+	// transforms" clause (CR 712.20) — sees it with no second case. A
+	// plain "whenever this transforms" reader checks !Converted, and
+	// the log says "converted" instead of "transformed". False on every
+	// other event.
+	Converted bool `json:"converted,omitempty"`
 
 	// CombatStep names which combat damage step dealt a combat
 	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular

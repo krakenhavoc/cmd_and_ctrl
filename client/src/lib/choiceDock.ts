@@ -40,6 +40,7 @@ import { doubledTriggerLabel } from "./triggerDoubling";
 import { askedByHandText, canRemember } from "./autoAnswerPref";
 import { L } from "./labels";
 import { energyShortBy, energyShortReason, payAmountHint, payAmountResource } from "./payEnergy";
+import { nameList } from "./openingRoll";
 
 // "Short" for an option_pick / entry_controller (ADR 0111 §2: "Inline
 // when every option is a short label; a sheet when an option embeds
@@ -134,6 +135,9 @@ export interface ChoiceDockContext {
   // appears); the button pressed next also sets the rule. Undefined
   // draws no toggle.
   remember?: { on: boolean; onToggle: () => void };
+  // ADR 0150 §5: the seats, so an "unless any player pays" link can say
+  // whose effect it is and who has been asked.
+  seats?: Pick<PlayerView, "id" | "name">[];
 }
 
 export interface ChoiceDockHandlers {
@@ -259,6 +263,16 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
             ? `${energyShortReason(have, c.pay_energy)}: you can't pay, so ${ctx.sourceName} goes on as if you don't.`
             : `Pay ${c.pay_cost ?? "the energy"} from your ${have} energy, or don't.`,
           hintWarn: short,
+        };
+      }
+      if (c.any_player_offer) {
+        // ADR 0150 §5: the payer is usually not the controller, so the
+        // header says whose effect it is and who else is asked.
+        const seats = ctx.seats ?? [];
+        return {
+          title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
+          tag: "any player pays",
+          hint: `${anyPlayerWhose(c, seats, ctx.sourceName)}. ${anyPlayerOfferLine(c, seats)} Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't.`,
         };
       }
       return {
@@ -659,6 +673,73 @@ export function councilVoteRequest(
     label: "vote",
     detail,
   });
+}
+
+// ---- "unless any player pays" (ADR 0150 §5) -------------------------------
+//
+// One offer to the whole table, asked one player at a time in APNAP order
+// from the active player. The player asked answers an ordinary pay_unless
+// (its header names whose effect it is and who else is asked); every other
+// seat sees the offer read-only (anyPlayerOfferRequest), as a vote's
+// non-voters do.
+
+type Seats = readonly Pick<PlayerView, "id" | "name">[];
+
+function anyPlayerSeatName(seats: Seats, id: string): string {
+  return seats.find((s) => s.id === id)?.name ?? "A player";
+}
+
+// anyPlayerWhose is "Bob's Rhystic Tutor": the effect the link is about.
+export function anyPlayerWhose(c: PendingChoiceView, seats: Seats, sourceName: string): string {
+  const o = c.any_player_offer;
+  if (!o) return sourceName;
+  return `${anyPlayerSeatName(seats, o.controller)}'s ${sourceName}`;
+}
+
+// anyPlayerOfferLine is "Any player may pay {2}: Alice declined; then
+// Carol." — the offer, who has said no so far, and who is still to be
+// asked after the player asked now.
+export function anyPlayerOfferLine(c: PendingChoiceView, seats: Seats): string {
+  const o = c.any_player_offer;
+  if (!o) return "";
+  const who = o.opponents ? "Any opponent" : "Any player";
+  const parts: string[] = [];
+  const declined = (o.declined ?? []).map((id) => anyPlayerSeatName(seats, id));
+  if (declined.length > 0) parts.push(`${nameList(declined)} declined`);
+  const at = o.order.indexOf(c.chooser);
+  const later = at < 0 ? [] : o.order.slice(at + 1).map((id) => anyPlayerSeatName(seats, id));
+  parts.push(later.length > 0 ? `then ${nameList(later)}` : "nobody after");
+  return `${who} may pay ${c.pay_cost ?? "the cost"}: ${parts.join("; ")}.`;
+}
+
+// anyPlayerOfferRequest is the offer as every seat but the one asked sees
+// it: read-only, no buttons. Null when `c` is not a link or the viewer is
+// its chooser (their own prompt answers it).
+export function anyPlayerOfferRequest(
+  c: PendingChoiceView | null | undefined,
+  viewerID: string | null,
+  seats: Seats,
+  sourceName: string,
+): DockRequest | null {
+  if (!c || !c.any_player_offer || c.chooser === viewerID) return null;
+  // The detail is who is deciding; the hint is the offer with the
+  // declines so far and who is still to be asked.
+  return {
+    rank: "step",
+    label: "any player pays",
+    tag: "any player pays",
+    tone: "plain",
+    question: c.reason || `${sourceName} — pay ${c.pay_cost ?? ""}?`,
+    detail: anyPlayerWaiting(c, seats, sourceName),
+    hint: anyPlayerOfferLine(c, seats),
+  };
+}
+
+// anyPlayerWaiting is "Carol is deciding whether to pay {2} (Bob's Rhystic
+// Tutor)", the line a seat with nothing to answer reads while a link is
+// open.
+export function anyPlayerWaiting(c: PendingChoiceView, seats: Seats, sourceName: string): string {
+  return `${anyPlayerSeatName(seats, c.chooser)} is deciding whether to pay ${c.pay_cost ?? "the cost"} (${anyPlayerWhose(c, seats, sourceName)})`;
 }
 
 // ---- the game's end ---------------------------------------------------------
