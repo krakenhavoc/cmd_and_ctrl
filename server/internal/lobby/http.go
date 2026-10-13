@@ -3334,7 +3334,10 @@ type myDeckCommander struct {
 	Name string `json:"name"`
 	// ScryfallID is a printing with an image, for /cards/{id}/image.
 	// Empty when the name did not resolve or no printing has one.
-	ScryfallID    string   `json:"scryfall_id,omitempty"`
+	ScryfallID string `json:"scryfall_id,omitempty"`
+	// ColorIdentity is the commander's WUBRG letters: [] for a
+	// colourless one, null when the name did not resolve, so the page
+	// can tell colourless (steel) from unknown (neutral).
 	ColorIdentity []string `json:"color_identity"`
 }
 
@@ -3558,7 +3561,7 @@ func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []s
 		if strings.TrimSpace(name) == "" {
 			continue
 		}
-		cmd := myDeckCommander{Name: name, ColorIdentity: []string{}}
+		cmd := myDeckCommander{Name: name}
 		if card, ok := idx.FindByName(name); ok {
 			cmd.ColorIdentity = nonNil(card.ColorIdentity)
 			for _, l := range card.ColorIdentity {

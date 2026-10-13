@@ -413,8 +413,14 @@ func TestMyDecksCarriesCommanderCards(t *testing.T) {
 	if c := o.CommanderCards[0]; c.Name != "Test Commander" || c.ScryfallID != "" || fmt.Sprint(c.ColorIdentity) != "[W]" {
 		t.Errorf("imageless commander = %+v, want no id and identity [W]", c)
 	}
-	if c := o.CommanderCards[1]; c.Name != "Nobody At All" || c.ScryfallID != "" || len(c.ColorIdentity) != 0 {
-		t.Errorf("unknown commander = %+v, want no id and no colours", c)
+	if c := o.CommanderCards[1]; c.Name != "Nobody At All" || c.ScryfallID != "" || c.ColorIdentity != nil {
+		t.Errorf("unknown commander = %+v, want no id and a null identity", c)
+	}
+	raw := doGet(t, st.srv, "/me/decks", tok)
+	body, _ := io.ReadAll(raw.Body)
+	raw.Body.Close()
+	if !bytes.Contains(body, []byte(`{"name":"Nobody At All","color_identity":null}`)) {
+		t.Errorf("an unresolved commander must say null, not []: %s", body)
 	}
 	if fmt.Sprint(o.ColorIdentity) != "[W]" {
 		t.Errorf("odd identity = %v, want [W]", o.ColorIdentity)

@@ -2599,7 +2599,8 @@ are what the Decks page's grid draws: one entry per name in
 name. `scryfall_id` is a printing with an image, for
 `/cards/{id}/image?size=art_crop`; it is absent when the name did not
 resolve or no printing has an image, and the page then draws a plain
-band. `color_identity` on the deck is the union of its commanders'
+band. A commander's `color_identity` is `[]` when it is colourless and
+`null` when its name did not resolve. `color_identity` on the deck is the union of its commanders'
 identities in WUBRG order, absent when that is empty (colourless, or
 nothing resolved). Both are absent with no card index. `PATCH`'s answer
 does not carry them.
