@@ -930,6 +930,17 @@ func (st *state) cardTargetValue(cfg Config, id string) float64 {
 		}
 		return cfg.OwnPermanentTarget
 	}
+	// #3259: a card in exile. The commonest reason to point at one is to
+	// TAKE it (The Darkness Crystal puts an exiled creature onto the
+	// battlefield under the activator's control, whoever owned it), so a
+	// card is worth what it is worth to the bot regardless of owner; a
+	// hate effect over exile (Pull from Eternity) scores the same, and the
+	// worst that costs is one cheap card spent on a good target. A card
+	// the view does not show (face down, unseen) is not in this map and
+	// is the 0 it always was.
+	if c := st.exile[id]; c != nil {
+		return st.cardValue(cfg, c)
+	}
 	return 0
 }
 

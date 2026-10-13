@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -82,41 +83,38 @@ func TestDarknessCrystalLeavesYourCreaturesAndTokensAlone(t *testing.T) {
 	}
 }
 
-// The ability brings an exiled creature back tapped, under the
-// Crystal's controller, with two extra +1/+1 counters; a creature
-// exiled some other way is not offered.
-func TestDarknessCrystalReturnsAnExiledCreatureTappedWithCounters(t *testing.T) {
+// exileViaCrystal kills a creature under the Crystal so the replacement
+// exiles it with the link, and returns the exiled card's id.
+func exileViaCrystal(t *testing.T, g *game.Game, owner uuid.UUID, name string) uuid.UUID {
+	t.Helper()
+	id := pushVanillaCreature(g, owner, name, 2, 2)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(id) })
+	passPriorityAroundTable(t, g)
+	if !g.Exile.Contains(id) {
+		t.Fatalf("%s was not exiled", name)
+	}
+	return id
+}
+
+// The ability TARGETS a creature card exiled with the Crystal (#3259),
+// brings it back tapped, under the Crystal's controller, with two extra
+// +1/+1 counters; a creature exiled some other way is not a legal target.
+func TestDarknessCrystalReturnsATargetedExiledCreatureTappedWithCounters(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	crystal := kbCrystal(g, me.ID)
-	bear := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
-	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(bear) })
-	passPriorityAroundTable(t, g)
-	// An unrelated exiled creature card: no link, so never offered.
+	bear := exileViaCrystal(t, g, opp.ID, "Their Bear")
+	// An unrelated exiled creature card: no link, so never a target.
 	stranger := uuid.New()
-	g.Exile.PushTop(game.Card{InstanceID: stranger, Name: "Stranger", TypeLine: "Creature — Test",
+	g.Exile.PushTop(game.Card{InstanceID: stranger, Name: "Stranger", TypeLine: "Creature -- Test",
 		Power: 3, Toughness: 3, Owner: opp.ID, Controller: opp.ID})
 
 	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{4}{B}{B}") })
-	if err := g.ActivateCatalogAbility(me.ID, crystal, 0, game.ActivateAbilityParams{}); err != nil {
+	if err := g.ActivateCatalogAbility(me.ID, crystal, 0, game.ActivateAbilityParams{Targets: cardRefs(stranger)}); !errors.Is(err, game.ErrIllegalTarget) {
+		t.Fatalf("targeting an unlinked exiled creature: err = %v, want ErrIllegalTarget", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, crystal, 0, game.ActivateAbilityParams{Targets: cardRefs(bear)}); err != nil {
 		t.Fatalf("ActivateCatalogAbility: %v", err)
-	}
-	passPriorityAroundTable(t, g)
-
-	var prompt *game.PendingChoice
-	for _, c := range g.PendingChoices {
-		if c != nil && c.Kind == game.PendingChoiceChooseCards && c.Chooser == me.ID {
-			prompt = c
-		}
-	}
-	if prompt == nil {
-		t.Fatal("no choice for the exiled creature")
-	}
-	if len(prompt.ChooseCards) != 1 || prompt.ChooseCards[0] != bear {
-		t.Fatalf("offered %v, want only the Crystal's own exile", prompt.ChooseCards)
-	}
-	if err := g.ResolveChooseCards(prompt.ID, me.ID, []uuid.UUID{bear}); err != nil {
-		t.Fatalf("ResolveChooseCards: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 
@@ -137,6 +135,57 @@ func TestDarknessCrystalReturnsAnExiledCreatureTappedWithCounters(t *testing.T) 
 	}
 	if !g.Exile.Contains(stranger) {
 		t.Error("the unlinked creature should still be in exile")
+	}
+}
+
+// The target is re-checked as the ability resolves (CR 608.2b): a card
+// that left exile in response is gone and the ability does nothing.
+func TestDarknessCrystalDoesNothingWhenItsTargetLeftExile(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	crystal := kbCrystal(g, me.ID)
+	bear := exileViaCrystal(t, g, opp.ID, "Their Bear")
+
+	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{4}{B}{B}") })
+	if err := g.ActivateCatalogAbility(me.ID, crystal, 0, game.ActivateAbilityParams{Targets: cardRefs(bear)}); err != nil {
+		t.Fatalf("ActivateCatalogAbility: %v", err)
+	}
+	// In response the card leaves exile (to its owner's hand).
+	g.WithWriteLock(func() {
+		c, err := g.Exile.Remove(bear)
+		if err != nil {
+			t.Fatalf("Remove: %v", err)
+		}
+		opp.Hand.PushTop(c)
+	})
+	passPriorityAroundTable(t, g)
+
+	for _, c := range g.Battlefield.Cards {
+		if c.Name == "Their Bear" {
+			t.Fatal("the creature returned although it had left exile")
+		}
+	}
+	if !opp.Hand.Contains(bear) {
+		t.Error("the card should still be where the response put it")
+	}
+}
+
+// Another Crystal's exile is not offered: "exiled with" names the OBJECT.
+func TestDarknessCrystalIgnoresACreatureExiledWithAnotherCrystal(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	first := kbCrystal(g, me.ID)
+	bear := exileViaCrystal(t, g, opp.ID, "Their Bear")
+	second := kbCrystal(g, me.ID)
+	if first == second {
+		t.Fatal("setup: two distinct Crystals")
+	}
+	g.WithWriteLock(func() { _ = g.AddManaForEffect(me.ID, uuid.Nil, "{4}{B}{B}") })
+	if err := g.ActivateCatalogAbility(me.ID, second, 0, game.ActivateAbilityParams{Targets: cardRefs(bear)}); !errors.Is(err, game.ErrIllegalTarget) {
+		t.Fatalf("second Crystal targeting the first's exile: err = %v, want ErrIllegalTarget", err)
+	}
+	if err := g.ActivateCatalogAbility(me.ID, first, 0, game.ActivateAbilityParams{Targets: cardRefs(bear)}); err != nil {
+		t.Fatalf("the first Crystal should reach its own exile: %v", err)
 	}
 }
 
