@@ -1,6 +1,12 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"errors"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Persist — Sorcery {1}{B} (EDHREC rank 1347):
 //
@@ -14,21 +20,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // its owner's control, which for a card from your own graveyard is
 // you (Zombify's shape, not Reanimate's).
 //
-// Sandbox simplification, declared (Victimize's old posture): the
-// engine's graveyard-return path has no "enters with counters" hook
-// for the RETURNING effect, so the creature enters without the
-// counter and receives it a beat later inside the same resolution.
-// The state check that follows resolution then does what the
-// printed card does — a 1-toughness creature dies at once. What
-// differs is the beat in between: an enters-the-battlefield trigger
-// on the creature sees it at printed size. Weaker, never stronger:
-// nothing can act in that window.
+// The -1/-1 counter is an "enters with" clause (CR 614.1c): it rides the
+// entry event, so a Hardened Scales or Doubling Season sees it, the
+// creature's own enters-the-battlefield abilities already see it
+// shrunk, and it still lands when the creature first asks a question
+// as it enters (a Clone's copy pick, a shockland's payment).
 func init() {
 	Register(Spec{
 		OracleID:     "367d4cf2-270f-4236-af10-7d5e8ea8c9fe",
 		Name:         "Persist",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The returned creature enters without the -1/-1 counter and receives it a moment later, so its own enters-the-battlefield abilities see it at printed size."},
+		Completeness: CompletenessFull,
 		Targets: TargetCardInGraveyard("target nonlegendary creature card from your graveyard",
 			YouOwn(), Creature(), Not(b05Legendary())),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
@@ -36,14 +37,12 @@ func init() {
 			if len(targets) == 0 || targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			id := targets[0].ID
-			if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield}).Apply(ctx); err != nil {
-				return err
+			_, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(targets[0].ID, uuid.Nil, false,
+				map[string]int{"-1/-1": 1})
+			if errors.Is(err, game.ErrCardNotFound) {
+				return nil // left the graveyard in response (CR 608.2b)
 			}
-			if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
-				return nil
-			}
-			return AddCounter{Target: id, Kind: "-1/-1", N: 1}.Apply(ctx)
+			return err
 		},
 	})
 }

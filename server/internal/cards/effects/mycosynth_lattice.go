@@ -19,23 +19,33 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reads it at every payment any player makes (game/spend_any_color.go,
 // CR 609.4b).
 //
-// Out of scope: the second line. Layer 5 can make every PERMANENT
-// colorless, but the layer engine does not recompute a spell on the
-// stack or a card in a hidden zone, so "all cards that aren't on the
-// battlefield, spells, and permanents are colorless" would be half
-// true — permanents colorless, the spell that becomes one coloured on
-// the stack — which is the kind of partial rule a "protection from
-// red" or a "spend this mana only on colorless spells" reads wrongly
-// in both directions. It waits for a colour pass that reaches the
+// The second line is half built (#3172, cav-h1): a layer 5 static clears
+// the colors of every PERMANENT. The layer engine does not recompute a
+// spell on the stack or a card in a hidden zone, so "all cards that
+// aren't on the battlefield, spells" stays coloured, which is why the
+// card keeps its caveat. The half is the safe one to ship: a permanent
+// that loses its colors is the Lattice's own text, and a spell still
+// being coloured only matters to a "protection from red" or "colorless
+// spell" reader. The rest waits for a colour pass that reaches the
 // stack and the other zones.
 func init() {
 	Register(Spec{
 		OracleID:      "ae1f2ab5-c6a5-4d49-a746-3cb4668bf805",
 		Name:          "Mycosynth Lattice",
 		Completeness:  CompletenessCaveats,
-		Caveats:       []string{"Nothing is made colorless — cards, spells and permanents keep their colors. The other two lines work."},
+		Caveats:       []string{"Permanents are colorless, but spells on the stack and cards in hand, graveyard or exile keep their colors."},
 		AnyColorSpend: PlayersMaySpendManaAsAnyColor(),
 		Static: []game.StaticAbility{
+			{
+				Layer: game.Layer5Color,
+				Label: "All permanents are colorless.",
+				AppliesTo: func(_ *game.Card, _ *game.Game, _ *game.Card) bool {
+					return true // all permanents
+				},
+				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+					c.Colors = nil
+				},
+			},
 			{
 				Layer: game.Layer4Type,
 				Label: "All permanents are artifacts in addition to their other types.",

@@ -22,8 +22,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "168d5711-4459-440f-8de4-aabffd47c44d",
 		Name:         "Rosie Cotton of South Lane",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A token copy of Rosie Cotton can't be chosen for the +1/+1 counter either."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Rosie Cotton of South Lane — create a Food", Do(CreateToken{Template: FoodToken(), N: 1})),
 			{
