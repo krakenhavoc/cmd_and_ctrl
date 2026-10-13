@@ -145,6 +145,13 @@ const (
 	// player other than the one the protection belongs to
 	// (ProtectionQuality.Holder, filled in by the reader). #2745.
 	ProtectionQualityOpponents
+	// ProtectionQualityMonocolored matches a source with exactly one
+	// colour. Hexproof-only (hexproof_from.go): protection's grammar
+	// never produces it, ADR 0072 §10.
+	ProtectionQualityMonocolored
+	// ProtectionQualityAnyColor matches a source with at least one
+	// colour: "hexproof from each color". Hexproof-only, as above.
+	ProtectionQualityAnyColor
 )
 
 // String is the stable wire token for a quality kind, for the
@@ -170,6 +177,10 @@ func (k ProtectionQualityKind) String() string {
 		return "ring_bearer"
 	case ProtectionQualityOpponents:
 		return "opponents"
+	case ProtectionQualityMonocolored:
+		return "monocolored"
+	case ProtectionQualityAnyColor:
+		return "any_color"
 	}
 	return ""
 }
@@ -611,6 +622,10 @@ func (q ProtectionQuality) Matches(src *Characteristic) bool {
 		return err == nil && src.SourceManaValueKnown && src.SourceManaValue <= n
 	case ProtectionQualityRingBearer:
 		return src.SourceRingBearer
+	case ProtectionQualityMonocolored:
+		return len(src.Colors) == 1
+	case ProtectionQualityAnyColor:
+		return len(src.Colors) > 0
 	case ProtectionQualityColor:
 		return typeListHas(src.Colors, q.Value)
 	case ProtectionQualityCardType:

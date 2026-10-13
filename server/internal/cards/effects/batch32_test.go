@@ -658,13 +658,15 @@ func TestB32ErtaiCountersASpellAndItsControllerDraws(t *testing.T) {
 	if !g.Battlefield.Contains(ertai) {
 		t.Fatal("Ertai flashes in above the Bolt")
 	}
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil || c.ModeMin != 0 {
+		t.Fatalf("a real 'choose up to one' prompt, declinable: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 0)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, bolt) || !hasID(p.PickTargetCards, theirs) || p.PickTargetMin != 0 {
-		t.Error("the spell on the stack and the creature are both offered, and declining is allowed")
-	}
-	if hasID(p.PickTargetCards, ertai) {
-		t.Error("\"another\": Ertai is not offered to himself")
+	if !hasID(p.PickTargetCards, bolt) || hasID(p.PickTargetCards, theirs) {
+		t.Error("the counter mode offers the spell and not the creature")
 	}
 	pickCard(t, g, me.ID, bolt)
 	passPriorityAroundTable(t, g)
@@ -682,14 +684,52 @@ func TestB32ErtaiCountersASpellAndItsControllerDraws(t *testing.T) {
 	}
 }
 
+// The ability half of the old caveat: an opponent's triggered ability
+// is a legal pick, goes away, and its controller draws.
+func TestB32ErtaiCountersAnAbilityAndItsControllerDraws(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me, opp := g.Seats[0], g.Seats[1]
+	src := pushCatalogPermanent(g, opp.ID, "Their Rock", "Artifact", "", false)
+	fired := false
+	ability := taAnnounce(t, g, opp.ID, src, "Their Rock — do a thing", nil, &fired)
+	hand := opp.Hand.Size()
+
+	ertai := castCatalogSpell(t, g, "Ertai Resurrected", "Legendary Creature — Phyrexian Human Wizard", b32ErtaiResurrectedOracle, nil)
+	b32PassUntilResolved(t, g, ertai)
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 0)
+	b04WaitForPick(t, g, me.ID)
+	if p := latestPickTarget(g, me.ID); !hasID(p.PickTargetCards, ability) {
+		t.Fatal("the opponent's ability is offered")
+	}
+	pickCard(t, g, me.ID, ability)
+	passPriorityAroundTable(t, g)
+	if fired {
+		t.Error("the countered ability resolved")
+	}
+	if opp.Hand.Size() != hand+1 {
+		t.Errorf("its controller drew %d, want 1", opp.Hand.Size()-hand)
+	}
+	if !g.Battlefield.Contains(src) {
+		t.Error("CR 701.6a: the source stays")
+	}
+	if spec, _ := Lookup(b32ErtaiResurrectedOracle); spec.Completeness != CompletenessFull {
+		t.Error("both caveats are gone")
+	}
+}
+
 func TestB32ErtaiDestroysACreatureAndItsControllerDraws(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	theirs := b12Creature(g, opp.ID, "Their Bear", "Creature — Bear", 2, 2)
 	hand := opp.Hand.Size()
-	castCatalogSpell(t, g, "Ertai Resurrected", "Legendary Creature — Phyrexian Human Wizard", b32ErtaiResurrectedOracle, nil)
+	ertai := castCatalogSpell(t, g, "Ertai Resurrected", "Legendary Creature — Phyrexian Human Wizard", b32ErtaiResurrectedOracle, nil)
 	passPriorityAroundTable(t, g)
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 1)
 	b04WaitForPick(t, g, me.ID)
+	if p := latestPickTarget(g, me.ID); hasID(p.PickTargetCards, ertai) {
+		t.Error("\"another\": Ertai is not offered to himself")
+	}
 	pickCard(t, g, me.ID, theirs)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(theirs) {
@@ -707,10 +747,12 @@ func TestB32ErtaiDeclinedDoesNothing(t *testing.T) {
 	hand := opp.Hand.Size()
 	castCatalogSpell(t, g, "Ertai Resurrected", "Legendary Creature — Phyrexian Human Wizard", b32ErtaiResurrectedOracle, nil)
 	passPriorityAroundTable(t, g)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if err := g.ResolvePickTargets(p.ID, me.ID, nil); err != nil {
-		t.Fatalf("picking no target: %v", err)
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no mode prompt")
+	}
+	if err := g.ResolveModePick(c.ID, me.ID, nil); err != nil {
+		t.Fatalf("choosing no mode: %v", err)
 	}
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(theirs) || opp.Hand.Size() != hand {
@@ -791,58 +833,76 @@ func TestB32NeyaliGivesAttackingTokensDoubleStrikeAndExilesTheTopCard(t *testing
 	}
 }
 
-func TestB32NeyaliRegrantsEarlierExiledCardsOnALaterTokenAttack(t *testing.T) {
+// "During any turn you attacked with a token, you may play that card"
+// (#3192): the exiled card is playable only during a turn its holder
+// attacked with a token, on a LATER such turn too, and it does not need
+// Neyali, or her trigger, to still be there.
+func TestB32NeyaliCardIsPlayableOnlyDuringTurnsATokenAttacked(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	b12Push(g, me.ID, "Neyali, Suns' Vanguard", "Legendary Creature — Human Rebel", b32NeyaliOracle, 3, 3)
+	neyali := b12Push(g, me.ID, "Neyali, Suns' Vanguard", "Legendary Creature — Human Rebel", b32NeyaliOracle, 3, 3)
 	token := b32Token(g, me.ID, "Soldier", 1, 1)
-	// seedSearchLibrary lists top-first; the draw between the two
-	// attacks comes off the filler below the first card.
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	ids := seedSearchLibrary(me,
 		game.Card{Name: "First", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 1", TypeLine: "Sorcery"},
-		game.Card{Name: "Second", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 2", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 3", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 4", TypeLine: "Sorcery"},
+		game.Card{Name: "Filler 5", TypeLine: "Sorcery"},
 	)
-	first, second := ids[0], ids[2]
-	// Something else exiled with a grant of its own — never Neyali's
-	// to re-grant.
+	first := ids[0]
+	// Something else exiled with a grant of its own is never Neyali's.
 	other := uuid.New()
 	opp.Library.PushTop(game.Card{InstanceID: other, Name: "Their Card", TypeLine: "Sorcery", Owner: opp.ID, Controller: opp.ID})
 	g.WithWriteLock(func() {
 		_, _ = g.ExileTopWithPermissionForEffect(opp.ID, me.ID, 1, game.CastPermission{})
 	})
-	if !g.Exile.Contains(other) {
-		t.Fatal("fixture: the other card is in exile")
-	}
 
+	// Turn 1: a token attacks a player; the top card is exiled and is
+	// playable now.
 	declareAttack(t, g, opp.ID, token)
 	passPriorityAroundTable(t, g)
 	if !g.Exile.Contains(first) {
 		t.Fatal("the first attack exiles the top card")
 	}
-	// The grant lapses with the turn.
-	advanceToMainOf(t, g, 1)
-	if permissionLive(g, exiledPermission(g, first), me.ID) {
-		t.Fatal("the grant ends with the controller's turn")
+	if !permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Fatal("playable the turn a token attacked")
 	}
-	// The next token attack exiles another card AND re-grants the
-	// first one for this turn; the other card is left alone.
+
+	// Turn 2 (mine again): nothing has attacked yet, so the card is
+	// DORMANT: still exiled, still granted, not playable.
+	advanceToMainOf(t, g, 1)
 	advanceToMainOf(t, g, 0)
+	perm := exiledPermission(g, first)
+	if perm.Player != me.ID || perm.Condition == nil {
+		t.Fatalf("the grant did not persist across the turn: %+v", perm)
+	}
+	if permissionLive(g, perm, me.ID) {
+		t.Fatal("playable on a turn before any token attacked")
+	}
+	// A nontoken attacker does not wake it.
+	declareAttack(t, g, opp.ID, bear)
+	passPriorityAroundTable(t, g)
+	if permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Fatal("playable on a turn only a nontoken attacked")
+	}
+
+	// Turn 3: Neyali is gone, so no trigger resolves, but a token
+	// attacking is enough: the card is playable on this LATER turn.
+	advanceToMainOf(t, g, 1)
+	advanceToMainOf(t, g, 0)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(neyali) })
+	if permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Fatal("playable before the token attacked")
+	}
 	declareAttack(t, g, opp.ID, token)
 	passPriorityAroundTable(t, g)
-	if !g.Exile.Contains(second) {
-		t.Fatal("the second attack exiles the next card")
-	}
-	for _, id := range []uuid.UUID{first, second} {
-		if !permissionLive(g, exiledPermission(g, id), me.ID) {
-			t.Errorf("a card Neyali exiled may be played on a turn a token attacked")
-		}
+	if !permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Error("a token attacked on a later turn and the card is still shut")
 	}
 	if permissionLive(g, exiledPermission(g, other), me.ID) {
-		t.Error("a card something else exiled is not re-granted")
+		t.Error("a card something else exiled became playable")
 	}
 }
 

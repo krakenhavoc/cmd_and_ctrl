@@ -917,20 +917,32 @@ func TestB07TemptWithDiscoveryOffersEachOpponentInTurnAndPaysTheCasterBack(t *te
 			answerSearchFailToFind(t, g, who.ID)
 		}
 	}
+	// An opponent is first asked whether to search at all.
+	ask := func(who *game.Player, yes bool) {
+		t.Helper()
+		answerMayChoice(t, g, who.ID, yes)
+	}
 	step(me, true, "the caster's opening search")
+	ask(opp1, true)
 	step(opp1, true, "opponent 1 is offered a land")
 	step(me, true, "opponent 1 accepted, so the caster searches again")
-	step(opp2, false, "opponent 2 is offered a land")
-	step(opp3, true, "opponent 2 declined, so opponent 3 is next with no caster search between")
-	step(me, true, "opponent 3 accepted, so the caster searches again")
+	ask(opp2, false)
+	// Opponent 3 searches and takes nothing: still "searched a library
+	// this way", so the caster still searches (the old caveat).
+	ask(opp3, true)
+	step(opp3, false, "opponent 3 searches")
+	step(me, true, "opponent 3 searched, so the caster searches again")
 	if b07OpenSearchPrompts(g) != 0 {
 		t.Fatalf("after the last opponent nothing should be open, got %d", b07OpenSearchPrompts(g))
+	}
+	if spec, _ := Lookup(b07TemptWithDiscoveryOracle); spec.Completeness != CompletenessFull {
+		t.Error("searching and finding nothing counts: nothing is declared")
 	}
 
 	for _, tc := range []struct {
 		p    *game.Player
 		want int
-	}{{me, 3}, {opp1, 1}, {opp2, 0}, {opp3, 1}} {
+	}{{me, 3}, {opp1, 1}, {opp2, 0}, {opp3, 0}} {
 		if got := b07LandsOnBattlefield(g, tc.p.ID); got != tc.want {
 			t.Errorf("%s controls %d lands, want %d", tc.p.Name, got, tc.want)
 		}

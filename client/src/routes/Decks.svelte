@@ -455,7 +455,7 @@
 {/snippet}
 
 <Page
-  eyebrow="Check, request, keep"
+  eyebrow="Cards"
   title="Decks"
   lede="Paste an Archidekt link or a plain decklist to see how much of it plays as printed. Request what's missing, and save the decks you play. On Moxfield, open the deck → Export → Copy plain text, and paste that."
   width="wide"
@@ -979,9 +979,9 @@
   .sec-title {
     margin: 0;
     font-family: var(--font-display);
-    font-size: 16px;
+    font-size: 19px;
     font-weight: 800;
-    letter-spacing: -0.01em;
+    letter-spacing: -0.005em;
     color: var(--fg);
   }
 

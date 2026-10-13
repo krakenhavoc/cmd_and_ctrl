@@ -12,7 +12,8 @@ import App from "../App.svelte";
 import SiteFooter from "./components/SiteFooter.svelte";
 import FrontPage from "../routes/FrontPage.svelte";
 import About from "../routes/About.svelte";
-import { ABOUT_HASH, DISCORD_INVITE_URL } from "./about";
+import { ABOUT_HASH } from "./about";
+import { _resetCommunityForTests, _setCommunityForTests } from "./community";
 import { navigate, route } from "./router";
 import { session } from "./session";
 import { cleanup, flushSync, render } from "./test/render.svelte";
@@ -62,6 +63,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  _resetCommunityForTests();
   globalThis.fetch = realFetch;
   session.set(null);
   navigate("#/");
@@ -83,9 +85,25 @@ describe("the about page", () => {
     // The Fan Content wording is LegalNotice's own, not a second copy here.
     expect(text).toContain("Magic: The Gathering is a trademark of Wizards of the Coast LLC");
     expect(text).toContain("Scryfall");
-    // The community Discord invite is linked.
-    expect(DISCORD_INVITE_URL).toBe("https://discord.gg/z7x9Ehpnjw");
-    expect(hrefs).toContain(DISCORD_INVITE_URL);
+  });
+
+  it("puts the Discord invite on its own line, from the community store, and hides it with none", async () => {
+    _setCommunityForTests({ invite_url: "https://discord.gg/example", gate: false });
+    const shown = render(About as never, {} as never);
+    await settle();
+    const block = shown.container.querySelector('[data-testid="about-discord"]')!;
+    const a = block.querySelector("a.btn.discord")!;
+    expect(a.getAttribute("href")).toBe("https://discord.gg/example");
+    expect(a.textContent).toContain("Join the C2 Discord");
+    // Not in the Feedback list any more.
+    expect(shown.container.querySelector("ul a[href='https://discord.gg/example']")).toBeNull();
+    cleanup();
+
+    _resetCommunityForTests();
+    const hidden = render(About as never, {} as never);
+    await settle();
+    expect(hidden.container.querySelector('[data-testid="about-discord"]')).toBeNull();
+    expect(hidden.container.textContent).not.toContain("Discord");
   });
 
   it("shows a card count only when the server supplied it", async () => {

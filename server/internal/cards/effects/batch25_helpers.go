@@ -124,19 +124,6 @@ func b25LifeAboveStarting(g *game.Game, player uuid.UUID) bool {
 	return p != nil && p.Life > game.StartingLife
 }
 
-// b25OpponentControlsACreature reports whether any creature on the
-// battlefield is controlled by someone other than `controller` —
-// "creature you don't control", the question Voracious Hydra's
-// targeted entry asks before it is declared.
-func b25OpponentControlsACreature(g *game.Game, controller uuid.UUID) bool {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != controller && c.IsCreature() {
-			return true
-		}
-	}
-	return false
-}
-
 // b25LastEventSeq is the sequence number of the newest event in the
 // log, or zero on an empty log — a cursor for "what happened after
 // this point".
@@ -259,20 +246,3 @@ func b25MillThreeThenReturnLandTappedAlways(g *game.Game, item *game.StackItem) 
 // b25VoraciousHydraLabel is the stack label both declarations of
 // Voracious Hydra's entry trigger share.
 const b25VoraciousHydraLabel = "Voracious Hydra — double its +1/+1 counters, or fight a creature you don't control"
-
-// b25DoubleCountersOrFightChosen is Voracious Hydra's entry trigger:
-// with a creature chosen (and still legal), the Hydra fights it;
-// with none chosen, its +1/+1 counters are doubled. A chosen
-// creature that became illegal never reaches here — the engine
-// counters the trigger first (CR 608.2b) — so the doubling can only
-// ever be the "no target" answer.
-func b25DoubleCountersOrFightChosen(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return b10Fight(ctx, item.SourceCardID, t.ID)
-	}
-	return b23DoublePlusOneCountersOn(ctx, item.SourceCardID)
-}

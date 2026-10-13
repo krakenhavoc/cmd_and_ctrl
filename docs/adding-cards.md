@@ -2546,6 +2546,33 @@ owner (`server/internal/game/protection.go`):
    against. A hand-typed near-miss mints no token and the card ships
    looking finished and doing nothing.
 
+**Hexproof from a quality (CR 702.11e, #3172, ADR 0038's amendment of
+2026-10-13).** The same shape one rule over: the token is
+`"hexproof from <quality>"`, it goes in `PrintedKeywords`,
+`GrantToAttached` or `GrantKeywordUntilEOT` like any keyword, and its one
+reader is `server/internal/game/hexproof_from.go`. Use the constants
+(`game.HexproofFromPlaneswalkers`, `HexproofFromMonocolored`,
+`HexproofFromEachColor`) or `game.HexproofFromColor("U")` for a colour
+pick, never a hand-typed string. The quality is tested against the
+SOURCE of the spell or ability exactly as protection's is, but only an
+OPPONENT's source is refused (CR 702.11b), so the permanent's own
+controller can still target it. The grammar is protection's colours, card
+types and creature types plus `monocolored` and `each color`
+(`all colors`); anything else parses as no token. A player can have it
+too: `GainPlayerKeyword{Keyword: game.HexproofFromColor("U"), …}` or
+`Spec.PlayerKeywords`. A hexproof waiver ("as though it didn't have
+hexproof") waives the variant, and "can't have hexproof" strips it. The
+deck importer stamps the token for a card whose oracle line prints the
+variant (Knight of Grace), and never the broad `hexproof` beside it.
+
+**Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
+`WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
+and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
+component; a composite such as Captain Howler's "{2}, Pay 2 life" is not
+built. A discard ward asks the caster to confirm, then to pick the card
+from their own hand; a caster with fewer cards than the cost is
+countered with no prompt.
+
 The four checks are engine-side and a card opts into none of them:
 targeting (`CanBeTargetedBy`, CR 702.16b), attachment
 (`attachmentLegalLocked`, CR 702.16c-d), damage (the
@@ -3705,6 +3732,34 @@ item's `SourceObject`; the card file only says when the exile happens.
 Never build this window by hand with another `Duration`: the helper is
 the only thing that closes it, and it closes only windows the same
 holder got from the same source object.
+
+**"During any turn you attacked with …, you may play that card" and
+"you may play it if you control a …" (#3192, ADR 0066 second
+amendment of 2026-10-13):** an exiled card whose permission is live
+only while a condition holds, dormant (granted, still exiled) on the
+turns it does not. Name the condition on the primitive:
+
+```go
+ExileTopWithPermission{From: c, GrantTo: c, N: 1, WhileExiled: true,
+    Condition: &game.PermissionCondition{Key: game.CondAttackedWithToken}}  // Neyali
+```
+
+The keys are `CondAttackedWithToken`, `CondAttackedWithCommander`,
+`CondAttackedWithSubtype` (`Subtype`), `CondAttackedWithAtLeast` (`N`,
+different creatures), `CondAttackedWithObject` (`attackedWithObject(item)`
+for "this creature"), `CondAttackedThisTurn`, `CondControlSubtype` and
+`CondLoreCounterOnObject`; a new one is a `game.RegisterPermissionCondition`
+in `game/cast_permission_condition.go` (a pure predicate over the game and
+the holder, plus the printed clause for the client). Two things are NOT
+conditions: a spell-type gate ("if it's a creature spell", "an instant or
+sorcery spell") is `Filter: game.PermissionFilter{CreatureOnly: true}` on the
+primitive, and "for as long as you control <source>" is a source-bound window,
+`Window: &d` with `d := forAsLongAsYouControlWindow(g, item.SourceCardID,
+item.Controller)` (or `forAsLongAsOnBattlefieldWindow` for "as long as this
+remains", Pick Up the Pace). Use `WhileExiled` for "for as long as it remains
+exiled" and the default for "this turn". The attack conditions read tallies
+written as each attacker is declared, so a token that died in combat still
+counts, and every tally resets at the turn boundary.
 
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
@@ -6167,6 +6222,38 @@ Research's shape).
 one `ChooseCardsPrompt` with no `FromPlayer` and no `Zone`: the candidates
 are public, the view looks them up by id, and the effect that acts on the
 answer already tolerates a card that has gone.
+
+**"You may draw / search / discard", asked of someone** (#3172, cav-f) is a
+question first: `MayChoice` for a draw (Mystic Remora, Kwain: one
+`MayChoice` per player in `apnapPlayers` order, chained), a
+`ChooseNumber` for "up to two" (Arcane Denial's victim, from a delayed
+trigger's body), `DiscardPrompt{UpTo: true}` with `Then` gated on
+`done.Discarded(player)` for "you may discard a card. If you do"
+(Abandon Attachments), and a `QueueConfirmForEffect` ahead of a
+non-optional search when "who searches" matters (Tempt with Discovery:
+a searcher may still fail to find, and still counts as having searched).
+
+**"Choose one" on a trigger is `Modes`, not a target prompt.** Voracious
+Hydra, Tiller Engine and Ertai Resurrected declare
+`TriggeredAbility.Modes` with `ModeDoing` bullets; a bullet whose target
+has no legal pick is simply not offered. Do not smuggle the mode into a
+"up to one target" clause. "Choose up to one" is `ChooseN(…, 0, 1, …)`.
+`TapTheModesTarget` and `DestroyTheModesTarget` are the shared bullet
+bodies.
+
+**"Target X and target Y" with different predicates** is `Clauses`, in a
+mode as on a spell (Hull Breach, Ulvenwald Tracker). A clause that exists
+only sometimes (Return to Dust's second target in your own main phase)
+is an "up to one" clause whose predicate is false the rest of the time.
+
+**"For each opponent, up to one target … that player controls"** on a
+spell or reflexive trigger is `perOpponentClauses` in
+[opponent_clauses.go](../server/internal/cards/effects/opponent_clauses.go):
+one clause per opponent in turn order, each bound to its opponent
+(Windgrace's Judgment, Lich's Relic). A permanent that changes hands in
+response is an illegal target for the clause it was chosen under.
+Molten Primordial's `TargetsFrom` is the same idea for a trigger that can
+name seats directly.
 
 **An intervening "if"** (Thopter Spy Network, Emeria) is read where the
 trigger is declared and again at the top of the `Effect`; the second read

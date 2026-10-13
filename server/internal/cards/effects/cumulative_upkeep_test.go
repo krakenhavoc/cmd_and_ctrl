@@ -199,8 +199,37 @@ func TestMysticRemoraTaxesOpponentNoncreatureSpells(t *testing.T) {
 		t.Errorf("the Rhystic half anchored itself to %v and blocks the table — "+
 			"ADR 0018 §6 says it must not", prompt.OwedInStep)
 	}
+	// "You may draw": a question, asked after the decline.
+	if got := owner.Hand.Size() - handBefore; got != 0 {
+		t.Errorf("drew %d before being asked", got)
+	}
+	answerMayChoice(t, g, owner.ID, true)
 	if got := owner.Hand.Size() - handBefore; got != 1 {
 		t.Errorf("owner hand delta %d, want 1", got)
+	}
+}
+
+// The draw is optional (the old caveat): declining it, with a library
+// that would kill, keeps the controller alive and the hand unchanged.
+func TestMysticRemoraDrawIsOptional(t *testing.T) {
+	g := newCatalogGame(t)
+	caster := g.Seats[0]
+	owner := g.Seats[1]
+	pushPermanentForTest(g, owner.ID, "Mystic Remora", oracleMysticRemora, "Enchantment")
+	owner.Library.Cards = nil
+	handBefore := owner.Hand.Size()
+
+	castCatalogSpell(t, g, "Lightning Bolt", "Instant", lightningBoltOracle,
+		[]game.TargetRef{{Kind: game.TargetPlayer, ID: owner.ID}})
+	passPriorityAroundTable(t, g)
+	answerPayUnless(t, g, caster.ID, false)
+	answerMayChoice(t, g, owner.ID, false)
+	if owner.Hand.Size() != handBefore || owner.AttemptedEmptyDraw {
+		t.Errorf("declined draw: hand %d -> %d, attempted empty draw %v", handBefore, owner.Hand.Size(), owner.AttemptedEmptyDraw)
+	}
+	// And a paid tax asks nothing.
+	if latestConfirmFor(g, owner.ID) != nil {
+		t.Error("a second question is open")
 	}
 }
 

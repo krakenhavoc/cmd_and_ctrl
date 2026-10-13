@@ -20,11 +20,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // information, approximated by the value captured in Build. The
 // Dragon itself is the damage source, so a damage doubler applies.
 //
-// Sandbox simplification, WEAKER than printed: the life tax on
-// spells that target it is not implemented. That is a
-// cost-modification effect (#93, the roadmap's largest missing
-// mechanic) with no seam in the cast path; the card is played for
-// the trigger, which is complete.
+// Declared simplification, WEAKER than printed: the life tax on
+// spells that target it is not implemented. The cost-modifier engine
+// (game.CostModifier, S28) prices GENERIC MANA only — its kinds are
+// CostIncrease, CostReduction and CostFloor — and "costs an additional
+// 3 life" is a non-mana component an opponent's static would add to a
+// cast it does not own. That needs a new modifier kind that survives
+// the cast gate, the legal-move enumerator's per-target-set pricing
+// (ReadsTargets), the CR 119.4 life check and the payment itself (#3172
+// slice cav-e judged it past the small-helper line and left it). The
+// card is played for the trigger, which is complete.
 func init() {
 	Register(Spec{
 		OracleID:        "f8e17f4f-080d-4bba-bd05-ca27e94ccecc",

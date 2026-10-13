@@ -56,7 +56,7 @@
   }
 </script>
 
-<Page eyebrow="Returning you to your seat" title="Welcome back" width="prose">
+<Page eyebrow="Play" title="Welcome back" lede="Returning you to your seat." width="prose">
   <div class="stack">
     <div class="card">
       {#if error}

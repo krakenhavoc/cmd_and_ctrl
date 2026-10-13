@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -414,10 +415,16 @@ func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	engine := b31Push(g, me.ID, "Tiller Engine", "Artifact Creature — Construct", b31TillerEngineOracle, "{2}", 1, 3)
-	// No opponent nonland permanent: the trigger is the untap alone.
+	// No opponent nonland permanent: only the untap is offered.
 	mire := playLandFromHand(t, g, "Haunted Mire", b11HauntedMireOracle)
 	if !b31Tapped(t, g, mire) {
 		t.Fatal("Haunted Mire enters tapped")
+	}
+	if c := modePickChoiceFor(g, me.ID); c != nil {
+		if slices.Contains(c.ModeOptionIndex, 1) {
+			t.Fatalf("nothing to tap: the tap mode is not offered: %v", c.ModeOptionIndex)
+		}
+		answerMode(t, g, c, me.ID, 0)
 	}
 	if triggerOnStack(g, engine) == nil {
 		t.Fatal("the choice is a trigger with a response window")
@@ -426,11 +433,16 @@ func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	if b31Tapped(t, g, mire) {
 		t.Error("no nonland permanent to tap: the land is untapped")
 	}
-	// An opponent's nonland permanent: pick it to tap it instead.
+	// An opponent's nonland permanent: choose the tap mode and pick it.
 	theirs := b31Push(g, opp.ID, "Their Bear", "Creature — Bear", "", "{1}{G}", 2, 2, "G")
 	theirLand := b31Push(g, opp.ID, "Their Forest", "Basic Land — Forest", "", "", 0, 0)
 	b12ToMyNextUpkeep(t, g)
 	mire2 := playLandFromHand(t, g, "Haunted Mire", b11HauntedMireOracle)
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil || !slices.Equal(c.ModeOptionIndex, []int{0, 1}) {
+		t.Fatalf("both modes are offered: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 1)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if !hasID(p.PickTargetCards, theirs) || hasID(p.PickTargetCards, theirLand) || hasID(p.PickTargetCards, engine) {
@@ -444,19 +456,21 @@ func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	if !b31Tapped(t, g, mire2) {
 		t.Error("the tap mode was chosen: the land stays tapped")
 	}
-	// Decline the pick: the untap mode.
+	// The untap mode, with a target available: asks for none.
 	b12ToMyNextUpkeep(t, g)
 	mire3 := playLandFromHand(t, g, "Haunted Mire", b11HauntedMireOracle)
-	b04WaitForPick(t, g, me.ID)
-	b26DeclinePickTarget(t, g, me.ID)
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 0)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Error("the untap mode targets nothing")
+	}
 	passPriorityAroundTable(t, g)
 	if b31Tapped(t, g, mire3) {
-		t.Error("no target chosen: the land is untapped")
+		t.Error("untap mode: the land is untapped")
 	}
 	// A land that enters untapped is not a trigger.
 	b12ToMyNextUpkeep(t, g)
 	playLandFromHand(t, g, "Forest", "")
-	if triggerOnStack(g, engine) != nil || len(g.PendingTriggers) != 0 || latestPickTarget(g, me.ID) != nil {
+	if triggerOnStack(g, engine) != nil || len(g.PendingTriggers) != 0 || latestPickTarget(g, me.ID) != nil || modePickChoiceFor(g, me.ID) != nil {
 		t.Error("an untapped entry: no trigger")
 	}
 }

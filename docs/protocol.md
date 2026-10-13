@@ -1868,6 +1868,15 @@ playable exile on its pile chip. A label only; whether the viewer may
 play the card now is still `castable_here`. Absent when the window is
 none of these, and a client that ignores it says "until end of turn".
 
+**`exile_play.condition` and `exile_play.condition_unmet` (#3192).** A
+CONDITIONAL grant ("during any turn you attacked with a token, you may
+play that card", "if you control a Kavu") carries the printed clause as
+`condition` and `condition_unmet: true` while it is false. The grant is
+still public and the card is still exiled; the client withholds the play
+button while `condition_unmet` is set (the cast would be refused), and
+the per-holder `castable_here` is absent for the same reason. Both absent
+for an unconditional grant.
+
 **`exile_play.any_type` (#1573).** "Mana of any TYPE can be spent to
 cast it" (Hostage Taker, Gonti, Night Minister, Outrageous Robbery) is
 wider than `any_color`: colorless is a type and not a color (CR

@@ -74,7 +74,7 @@
   const backHref = $derived($session ? "#/lobby" : "#/login");
 </script>
 
-<Page eyebrow="Every table you've sat at" title="My games" width="prose">
+<Page eyebrow="Play" title="My games" lede="Every table you've sat at." width="prose">
   <div class="stack">
     <div class="card">
       {#if !userID}
