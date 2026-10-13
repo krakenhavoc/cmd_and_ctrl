@@ -95,7 +95,10 @@ The client:
 ### 7. Configuration
 
 - **New:** `CMDCTRL_DISCORD_VOICE_CATEGORY_ID`, the category in the community server that rooms are created in.
-- **On** when it, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` are all set. The category set without the other two fails the boot naming what is missing; a value that is not a snowflake fails the boot, as in `GateFromEnv`. Unset, the feature is off: no checkbox, no `voice` object, every route unchanged, and `PUT /games/{id}/voice` answers 503 naming the variable.
+- **On** when it, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` are all set.
+  - The category set without the community guild, or a value that is not a snowflake, **fails the boot** naming the variable, as in `GateFromEnv`: rooms in a guild nobody named are a misconfiguration.
+  - The category set without the bot token leaves the feature **off**, said once at boot. The token is provisioned on production only, so a box that inherits a repo-level category variable must still boot.
+  - Off: no checkbox, no `voice` object, every route unchanged, and `PUT /games/{id}/voice` answers 503 naming what is missing.
 - `GET /community` gains `"voice": true|false`, so the client knows whether to show the checkbox.
 - **CD** writes the category from an Actions variable of the same name. The bot token is provisioned on **production only**, so voice rooms are production-only, for the same reason DM invites are: one Discord application, one set of rooms.
 
