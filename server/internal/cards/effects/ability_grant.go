@@ -240,6 +240,11 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		if len(s.GrantAbilities) > 0 {
 			panic(where("static", i) + " grants abilities itself — a granted ability that grants another is not modelled")
 		}
+		// ADR 0155 Decision 1: a bundle that lends abilities would put a
+		// borrow inside a borrow.
+		if s.Borrows != nil {
+			panic(where("static", i) + " borrows abilities — a granted ability that lends others is not modelled")
+		}
 	}
 	for i, a := range gr.Activated {
 		if a.ActiveWhen.IsGate() {
@@ -264,6 +269,9 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 // layer 6; declared anywhere else it would sort against the wrong
 // effects and a removal in layer 6 could never reach it.
 func checkStaticGrants(card, what string, statics []game.StaticAbility) {
+	// ADR 0155: the borrow, the other layer-6 ability-adding declaration,
+	// is held to its layer at every place a grant is.
+	checkStaticBorrows(card, what, statics)
 	for i, s := range statics {
 		if len(s.GrantAbilities) == 0 {
 			continue

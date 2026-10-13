@@ -3697,6 +3697,11 @@ type ActivatedAbilityView struct {
 	// with any granted row, and never picks a silent default between
 	// two mana abilities.
 	GrantedBy *GrantedByView `json:"granted_by,omitempty"`
+	// BorrowedFrom names the object a borrowed row was lent by (ADR 0155
+	// Decision 10 — Necrotic Ooze's "from Llanowar Elves"). Absent for
+	// every row that is not lent, and for a lender the viewer may not
+	// see. Its GrantedBy names the borrowing effect's source.
+	BorrowedFrom *GrantedByView `json:"borrowed_from,omitempty"`
 	// Cost components. TapCost greys the entry when the source is
 	// tapped or summoning-sick; ManaCost / LifeCost are advisory
 	// (the server does the real check).
@@ -4280,6 +4285,9 @@ type ManaAbilityView struct {
 	// 0093 Decision 8). Absent for the permanent's own and intrinsic
 	// abilities. See ActivatedAbilityView.GrantedBy.
 	GrantedBy *GrantedByView `json:"granted_by,omitempty"`
+	// BorrowedFrom names the lender of a borrowed mana row (ADR 0155
+	// Decision 10). See ActivatedAbilityView.BorrowedFrom.
+	BorrowedFrom *GrantedByView `json:"borrowed_from,omitempty"`
 	// Label is the human-readable menu entry ("Add {C}{C}",
 	// "Add one mana of any color"). Empty falls back to the raw
 	// Produced string on the client side.
@@ -7370,8 +7378,21 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		return
 	}
 	raw := game.ManaAbilitiesOf(card)
+	// ADR 0155: a borrower's rows are read by their published index —
+	// a lent row that does not function on the battlefield is left out
+	// of the views, so views[i] need not be raw[r] — and its once-each-
+	// turn lent rows by their origin.
+	var origins game.AbilityOrigins
+	borrower := game.HasBorrowedAbilities(card)
+	if borrower {
+		_, origins = game.ManaAbilitiesWithOriginsOf(card)
+	}
 	for i := range views {
-		if i >= len(raw) {
+		r := i
+		if borrower {
+			r = views[i].Index
+		}
+		if r < 0 || r >= len(raw) {
 			continue
 		}
 		// #1210, CR 602.5: the board-wide gate's reason, from the
@@ -7381,13 +7402,13 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// Pithing Needle never does.
 		if restricted {
 			views[i].CantActivate = g.CantActivateReasonLocked(controller, *card, game.ZoneBattlefield,
-				game.ActivationAbility{Label: raw[i].Label, Mana: true})
+				game.ActivationAbility{Label: raw[r].Label, Mana: true})
 		}
 		// ADR 0129 §8: a controller short of the energy the row costs
 		// gets the engine's own refusal, so the row greys and the click
 		// and the engine agree.
-		if views[i].CantActivate == "" && raw[i].EnergyCost > 0 {
-			if short := game.EnergyShortfall(g.PlayerByIDForEffect(controller), raw[i].EnergyCost); short != nil {
+		if views[i].CantActivate == "" && raw[r].EnergyCost > 0 {
+			if short := game.EnergyShortfall(g.PlayerByIDForEffect(controller), raw[r].EnergyCost); short != nil {
 				views[i].CantActivate = short.Error()
 			}
 		}
@@ -7398,11 +7419,14 @@ func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, vi
 		// turn; an exhaust only if the permanent becomes a new
 		// object). The one reader the engine, the enumerator and the
 		// auto-tapper all use.
-		views[i].Exhausted = g.ManaAbilityExhausted(controller, card.InstanceID, raw[i])
-		if raw[i].Condition == nil {
+		views[i].Exhausted = g.ManaAbilityExhausted(controller, card.InstanceID, raw[r])
+		if borrower && g.BorrowedRowSpentLocked(card.InstanceID, origins.At(r)) {
+			views[i].Exhausted = true
+		}
+		if raw[r].Condition == nil {
 			continue
 		}
-		views[i].ConditionUnmet = !raw[i].Condition(g, controller, card.InstanceID)
+		views[i].ConditionUnmet = !raw[r].Condition(g, controller, card.InstanceID)
 	}
 }
 
@@ -10430,9 +10454,13 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			Index: i,
 			// ADR 0093 Decision 5 / 8: the row's stable ref, and who
 			// granted it when another effect did.
-			Ref:           origins.Ref(i),
-			GrantedBy:     grantedByView(g, origins.At(i)),
-			Label:         a.Label,
+			Ref:       origins.Ref(i),
+			GrantedBy: grantedByView(g, origins.At(i)),
+			// ADR 0155 Decision 10: the lender of a borrowed row, and
+			// its label with the lender's name read as this card's
+			// (CR 201.5b).
+			BorrowedFrom:  borrowedFromView(g, origins.At(i)),
+			Label:         game.BorrowedLabel(a.Label, origins.At(i), c.Name),
 			TapCost:       a.Cost.Tap,
 			SacrificeSelf: a.Cost.SacrificeSelf,
 			DiscardSelf:   a.Cost.DiscardSelf,
@@ -10494,6 +10522,10 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 		// #1181: the same reader ActivateCatalogAbility refuses on and
 		// internal/legal drops the move for.
 		if g.AbilityExhausted(caster, c.InstanceID, a) {
+			v.Exhausted = true
+		}
+		// ADR 0155 Decision 7: a once-each-turn lent row already used.
+		if g.BorrowedRowSpentLocked(c.InstanceID, origins.At(i)) {
 			v.Exhausted = true
 		}
 		// CR 702.142a (#2697): which half of a boast ability's
@@ -11153,7 +11185,8 @@ func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbility
 			// battlefield pass (stampGrantedAbilities) names it.
 			Ref:           origins.Ref(i),
 			GrantedBy:     grantedByView(nil, origins.At(i)),
-			Label:         a.Label,
+			BorrowedFrom:  borrowedFromView(nil, origins.At(i)),
+			Label:         game.BorrowedLabel(a.Label, origins.At(i), c.Name),
 			TapCost:       a.TapCost,
 			SacrificeCost: a.SacrificeCost,
 			ExileSelf:     a.ExileSelf,

@@ -2823,11 +2823,16 @@ the recipient's summoning sickness. Three things reach the wire.
     declared list (a designation gate opening does not renumber it);
   - `land:<colour>` — a CR 305.6 intrinsic land ability (`land:G`);
   - `grant:<bundle>:<i>:<n>` — ability `i` of the `n`th instance of a
-    granted bundle.
+    granted bundle;
+  - `borrow:<key>:<i>:<n>` — the `n`th lent instance of row `i` of a
+    catalog list, on a permanent that "has all activated abilities of"
+    another object (ADR 0155); `borrow:land:<colour>:<n>` for a lent
+    CR 305.6 land ability. Two identical lenders lend two instances.
 
   Granted rows always come AFTER the permanent's own and intrinsic rows,
-  so a grant appearing never renumbers an existing row; a grant
-  vanishing can renumber later ones. `activate_ability` and
+  and borrowed rows after the granted ones, so a grant or a borrow
+  appearing never renumbers an existing row; one vanishing can renumber
+  later ones. `activate_ability` and
   `activate_mana_ability` accept `ref` beside `ability_index` and check
   it against the row at that index BEFORE anything is validated or
   paid. A mismatch is refused with `that ability is no longer at that
@@ -2844,10 +2849,20 @@ the recipient's summoning sickness. Three things reach the wire.
   the click never picks a silent default between two mana abilities
   (ADR 0093 Decision 8, as ADR 0117 §1 and its 2026-10-04 amendment
   amend it).
+- **`borrowed_from: {id, name}` on a borrowed row** (ADR 0155 Decision
+  10). The lender: the object the row was read off, by id and printed
+  name. Absent on every row that is not lent, and when the lender sits
+  in a hand or a library. A borrowed row's `granted_by` names the
+  borrowing permanent, and its `label` reads the lender's name as the
+  borrower's (CR 201.5b): Necrotic Ooze's lent "{T}: Mana Elf gains you 1
+  life." is "{T}: Necrotic Ooze gains you 1 life." A row from a borrow
+  that allows each ability once each turn is `exhausted` once used.
 - **`granted_abilities: [{text, source_id?, source_name?}]` on the
   CardView.** The printed text of every ability another effect gave the
   permanent — layer-6 grants, and a copy's CR 707.9a grant (Phantasmal
-  Image's sacrifice trigger), which has no `source_id`. This is the only
+  Image's sacrifice trigger), which has no `source_id`, and one line per
+  borrowing effect, its printed clause ("Has all activated abilities of
+  all creature cards in all graveyards."). This is the only
   place a granted TRIGGER, which has no row, is visible. Public, and
   cleared with the ability rows for a viewer who cannot see the card
   (a face-down permanent's non-controllers).

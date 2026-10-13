@@ -210,6 +210,21 @@ type StaticAbility struct {
 	// appends to it.
 	GrantAbilities []string
 
+	// Borrows declares this static a "has all activated abilities of …"
+	// borrow (CR 113.10, ADR 0155): every object it applies to has every
+	// activated ability — mana abilities included (CR 605.1a) — that
+	// the borrow's lenders have right now. The engine reads the lenders'
+	// rows and writes the lent rows in the borrow step, the last step of
+	// the layer-6 bucket (borrowed_abilities.go), with this static's
+	// source as the lending effect's source.
+	//
+	// Only meaningful on a Layer6Ability static, and alone: effects.
+	// Register refuses it in any other layer, beside RemovesAbilities,
+	// GrantAbilities or an Apply, and inside a granted bundle (a bundle
+	// that lends abilities would put a borrow inside a borrow). Build one
+	// with effects.HasActivatedAbilitiesOf.
+	Borrows *AbilityBorrow
+
 	// DependsOnHandSize declares that this ability's OUTPUT changes
 	// when somebody's hand does — Psychosis Crawler's "power and
 	// toughness are each equal to the number of cards in your hand".
@@ -732,12 +747,20 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// this removal appends to the emptied slice and survives
 			// (CR 613.6), exactly as a granted keyword does.
 			target.effective.GrantedAbilities = nil
+			// ADR 0155: and every row another object lent it. The
+			// borrow step runs after the whole bucket, so this is
+			// empty here; the removal's timestamp, recorded below, is
+			// what keeps CR 613.6's order against a borrow.
+			target.effective.BorrowedAbilities = nil
 			// #1879: and every attack-target restriction it imposes
 			// on itself, which is one of its own abilities (Veiled
 			// Serpent's granted "can't attack unless …").
 			dropSelfAttackTargetRestrictions(target.effective, target)
 			target.effective.AbilitiesRemoved = true
 			st.recordRemoval(target, bucketIndex)
+			if l, _ := eff.Layer(); l == Layer6Ability {
+				st.recordRemovalTimestamp(target, eff.Timestamp())
+			}
 		}
 		eff.Apply(target.effective, target, g)
 		if definesPT {

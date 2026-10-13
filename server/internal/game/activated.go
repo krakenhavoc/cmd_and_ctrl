@@ -1322,6 +1322,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// may move it. The item carries the name so a restore point taken
 	// while it waits on the stack can rebuild it (ability_ref.go).
 	abilityRef := activatedAbilityRefFor(*source, index, origins, ab)
+	// CR 201.5b (ADR 0155 Decision 6): a lent row's label names the
+	// borrower where it named the lender. Read here, while `source` still
+	// points at the object — a cost below may move it.
+	itemLabel := BorrowedLabel(ab.Label, origins.At(index), source.Name)
 	// CR 113.6: an ability functions only from the zone it says it
 	// functions from. Checked after the index lookup (so the index
 	// is the one the view and the enumerator published) and before
@@ -1376,6 +1380,13 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	activationKey := g.activationTallyKeyLocked(cardID, ab.Label)
 	if g.AbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
+	}
+	// ADR 0155 Decision 7: "You may activate each of those abilities only
+	// once each turn" (Mairsil). Keyed, like exhaust, before anything is
+	// paid.
+	borrowedKey := g.borrowedTallyKeyLocked(cardID, origins.At(index))
+	if g.BorrowedRowSpentLocked(cardID, origins.At(index)) {
+		return ErrBorrowedAbilityUsed
 	}
 	// CR 702.142a (#2697): a boast ability's two instructions, through
 	// the one gate the enumerator and the view also read. After the
@@ -1798,6 +1809,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	var riderSource Card
 	if ab.Cost.Mana != "" {
 		riderCtx, riderSource = ManaSpendForAbility(*source), *source
+		// ADR 0155 Decision 7: which row the mana pays for, so a
+		// "spend mana as though any color to activate those abilities"
+		// rider can cover the rows one borrow lent and nothing else.
+		riderCtx.AbilityOrigin = origins.At(index)
 		// S32 (#352): "activate abilities of colorless Eldrazi" is a
 		// restriction on the SOURCE permanent, so the spend context
 		// is built from it.
@@ -2082,7 +2097,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// ADR 0109 §2, owner decision 2: the object that granted this
 		// row, uuid.Nil for the source's own. See StackItem.GrantedBy.
 		GrantedBy:    origins.At(index).GrantedBy,
-		Label:        ab.Label,
+		Label:        itemLabel,
 		Targets:      append([]TargetRef(nil), params.Targets...),
 		Modes:        append([]int(nil), params.Modes...),
 		Distribution: cloneDistributionLocked(params.Distribution),
@@ -2132,6 +2147,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// taken above, before the costs ran, so a sacrifice-this cost has
 	// not moved the object out from under it.
 	g.noteAbilityActivationLocked(activationKey)
+	g.noteBorrowedActivationLocked(borrowedKey)
 	// ADR 0097 Decision 4: the modes are used as the activation puts
 	// the ability on the stack — here, after every refusal is behind
 	// us, so a failed activation records nothing.

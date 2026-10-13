@@ -3493,6 +3493,9 @@ func copyCharacteristic(in *Characteristic) *Characteristic {
 	if len(in.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]GrantedAbility(nil), in.GrantedAbilities...)
 	}
+	if len(in.BorrowedAbilities) > 0 {
+		out.BorrowedAbilities = append([]BorrowedAbility(nil), in.BorrowedAbilities...)
+	}
 	return &out
 }
 

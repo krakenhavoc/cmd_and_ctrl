@@ -1168,6 +1168,11 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 	samples := []any{
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
+		// ADR 0155: Characteristic.BorrowedAbilities, carried with the
+		// rest of the last-known characteristic beside GrantedAbilities.
+		// Each entry names a catalog row; a closure (the borrow's
+		// Lenders) or an unexported field here would vanish on restore.
+		GrantedAbility{}, BorrowedAbility{},
 		// Event.CombatStep and DamageAssignmentFrame.CombatStep (#187)
 		// are carried through these two with no plan entry; their zero
 		// value "" is right for a file written before them, so no
