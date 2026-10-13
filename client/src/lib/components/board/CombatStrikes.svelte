@@ -33,7 +33,6 @@
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
-  import { gsap } from "gsap";
   import type { CardView, GameView } from "../../protocol";
   import { settings } from "../../settings";
   import { cardAnchors, findCardAnchor, findSeatAnchor, hasSize } from "../../boardAnchor";
@@ -41,6 +40,7 @@
   import { cardImageURL } from "../../cardImage";
   import { showsCardBack } from "../../cardBack";
   import { crumble, impactShake, lunge, streak } from "../../animations";
+  import { cancelAnimations } from "../../motion";
   import { play } from "../../sounds";
   import { keepArrowCache, type ScheduledCue } from "../../combatBeats";
   import type { CombatCues } from "../../combatCues.svelte";
@@ -437,10 +437,10 @@
     return {
       destroy() {
         gone = true;
-        gsap.killTweensOf(node);
+        cancelAnimations(node);
         if (face) {
-          gsap.killTweensOf(face);
-          for (const s of face.querySelectorAll(".shard")) gsap.killTweensOf(s);
+          cancelAnimations(face);
+          for (const s of face.querySelectorAll(".shard")) cancelAnimations(s);
         }
       },
     };
@@ -452,7 +452,7 @@
     void streak(node);
     return {
       destroy() {
-        gsap.killTweensOf(node);
+        cancelAnimations(node);
       },
     };
   }
@@ -502,7 +502,7 @@
     z-index: 37;
     overflow: hidden;
   }
-  /* A zero-size anchor at the tile's centre: GSAP moves it, so the
+  /* A zero-size anchor at the tile's centre: the flight moves it, so the
      face's own transform (the shake and the tap rotation) is never
      overwritten by the flight. */
   .copy {

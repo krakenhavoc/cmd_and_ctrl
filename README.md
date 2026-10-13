@@ -60,9 +60,8 @@ unlocks nothing, because everything here stays free to use under the Fan Content
 ## License
 
 C2's code is licensed under the [GNU Affero General Public License v3.0 or later](LICENSE).
-Anyone who runs a modified version as a service must offer its users the modified source. GSAP
-has an additional permission, and Wizards of the Coast and Scryfall material is not covered.
-Both are explained in [NOTICE](NOTICE).
+Anyone who runs a modified version as a service must offer its users the modified source.
+Wizards of the Coast and Scryfall material is not covered; that is explained in [NOTICE](NOTICE).
 
 ## Legal
 

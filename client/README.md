@@ -209,7 +209,7 @@ renders.
 - The motion gate is `beatMode`, fed `animations.enabled`,
   `animations.damagePopups` and `accessibility.reduceMotion` from the
   settings store. `animations.ts` never sees `reduceMotion`, so
-  `gatedDuration` is not enough for a timer or a GSAP tween. With
+  `gatedDuration` is not enough for a timer or an animation. With
   motion off, the text cue still plays on the same schedule.
 - Anything that should not replay old beats when it changes (today, a
   reconnect and the replay toggle) belongs in `Game.svelte`'s

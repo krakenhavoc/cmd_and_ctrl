@@ -768,7 +768,7 @@
     onClick?.(card, ev as unknown as MouseEvent);
   }
 
-  // Drive the tap rotation with GSAP so it eases instead of snapping
+  // Drive the tap rotation with a Web Animation so it eases instead of snapping
   // and so future combat / damage effects can sequence against it.
   // The rotation lives in --tap-rot (animated) while the hover lift
   // lives in --hover-scale (CSS-only); composing via custom properties
@@ -1366,7 +1366,7 @@
     transform-origin: center center;
     user-select: none;
     -webkit-user-select: none;
-    /* Compose tap rotation (animated by GSAP via --tap-rot) with the
+    /* Compose tap rotation (animated via --tap-rot) with the
        CSS-only hover lift (--hover-scale). The lift grows the card
        from its own bottom edge (the translateY pair moves the scale's
        origin from the centre, where the tap turns, to the bottom

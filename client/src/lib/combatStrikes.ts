@@ -514,7 +514,7 @@ export function combatMotion(s: {
 }
 
 // strikesScheduled: a frame that arrives while the page is hidden
-// schedules no strikes. GSAP runs on requestAnimationFrame, which a
+// schedules no strikes. Web Animations are driven by the frame clock, which a
 // hidden tab does not run, so they would all play on return against a
 // board that has moved on (ADR 0134 §4).
 export function strikesScheduled(motion: boolean, visibility: string | undefined): boolean {
