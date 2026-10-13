@@ -452,6 +452,28 @@ the route and its proxy entry belong in the same pull request. That is
 the whole reason it moved — while it lived in cloud-init, nobody
 editing routes ever opened it.
 
+## Client addresses behind the tunnel
+
+A request reaches the server as Cloudflare edge → cloudflared on the VM
+(ingress `http://localhost:80`) → Caddy `:80` → `127.0.0.1:8080`, so its
+socket address is always loopback. With `CMDCTRL_TRUST_FORWARDED=1`,
+which CD sets on both hosts, `server/internal/util/clientip` names the
+client from `CF-Connecting-IP` (Cloudflare overwrites it at the edge),
+then from the rightmost non-loopback `X-Forwarded-For` entry. Every
+per-IP rate limiter keys on that, and the WebSocket logs record it as
+`remote`. `deploy/Caddyfile` trusts loopback (`trusted_proxies`) so Caddy
+appends to Cloudflare's `X-Forwarded-For` instead of replacing it with
+`127.0.0.1` (#3334).
+
+This is only sound while the origin is reachable through the tunnel
+alone: anything that can reach Caddy or `:8080` directly can send those
+headers with any value and pick its own rate-limit bucket.
+
+To check it on a host, two visitors on different networks hitting the
+same limited route must not share a 429, and the `remote` on a
+WebSocket log line (`journalctl -u cmd-and-ctrl | grep remote`) must be
+a public address, not `127.0.0.1`.
+
 ## Discord
 
 Add `https://cmd-dev.labxp.io/auth/discord/callback` to the existing
