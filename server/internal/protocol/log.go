@@ -619,6 +619,10 @@ type LogEvent struct {
 	NewZone string `json:"new_zone,omitempty"`
 	// Combat marks a LogDamage entry as combat damage (CR 510).
 	Combat bool `json:"combat,omitempty"`
+	// Converted marks a LogTransform entry whose turn-over was a
+	// convert (CR 701.28a, ADR 0152 §2): the line says "converted"
+	// rather than "transformed". Copied from game.Event.Converted.
+	Converted bool `json:"converted,omitempty"`
 	// CombatStep says which combat damage step dealt a combat LogDamage
 	// entry: "first_strike" or "regular" (CR 510.4). Copied from
 	// game.Event.CombatStep, and set only when that combat had a
@@ -1711,6 +1715,7 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Kind = LogTransform
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
+		base.Converted = ev.Converted
 		return base, true
 
 	case game.EventMeld:
@@ -2501,10 +2506,16 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		// the active face — and Label is the one it turned from. Label
 		// is cleared with the name on a redacted entry, so the fallback
 		// is the line a viewer who may not identify the card reads.
-		if e.Label == "" {
-			return fmt.Sprintf("%s transformed", card)
+		// A convert (CR 701.28a, ADR 0152 §2) says so: the cards print
+		// "convert", and the action is not called transforming.
+		verb := "transformed"
+		if e.Converted {
+			verb = "converted"
 		}
-		return fmt.Sprintf("%s transformed into %s", e.Label, card)
+		if e.Label == "" {
+			return fmt.Sprintf("%s %s", card, verb)
+		}
+		return fmt.Sprintf("%s %s into %s", e.Label, verb, card)
 	default:
 		return card
 	}

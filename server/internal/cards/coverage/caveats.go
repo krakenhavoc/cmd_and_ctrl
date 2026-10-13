@@ -129,6 +129,19 @@ func altCost(key string) func(effects.Spec) bool {
 	}
 }
 
+// livingMetalDeclared reports whether a Spec declares effects.LivingMetal(),
+// read off its label (a StaticAbility is closures and a label, and the
+// label is the constructor's own).
+func livingMetalDeclared(s effects.Spec) bool {
+	label := effects.LivingMetal().Label
+	for _, st := range s.Static {
+		if st.Label == label {
+			return true
+		}
+	}
+	return false
+}
+
 // mechanics is the table. Order is the order failures are reported
 // in.
 var mechanics = []Mechanic{
@@ -292,6 +305,32 @@ var mechanics = []Mechanic{
 		Evidence:   `game.AlternativeCostByKey(oracleID, "disturb") resolves`,
 		Confidence: Exact,
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Disturb("{cost}") on the front face, and DisturbedExile(name) on the back face's "<oracle_id>#1" entry`,
+	},
+	{
+		// ADR 0152 §1 (#1856): CR 702.162, disturb's back-face offer with
+		// no zone binding.
+		Name:       "more than meets the eye",
+		Phrases:    []string{"more than meets the eye", "cast converted", "cast it converted"},
+		Implements: altCost("more_than_meets_the_eye"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "more_than_meets_the_eye") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{MoreThanMeetsTheEye("{cost}")} on the front face`,
+	},
+	{
+		// ADR 0152 §4 (#1856): CR 702.161, a layer-4 static the card
+		// file declares on the back face's "<oracle_id>#1" entry.
+		Name:    "living metal",
+		Phrases: []string{"living metal"},
+		Implements: func(s effects.Spec) bool {
+			if livingMetalDeclared(s) {
+				return true
+			}
+			back, ok := effects.Lookup(s.OracleID + "#1")
+			return ok && livingMetalDeclared(back)
+		},
+		Evidence:   "the Spec or its back face's entry declares effects.LivingMetal()",
+		Confidence: Exact,
+		Adopt:      `Static: []game.StaticAbility{LivingMetal()} on the back face's "<oracle_id>#1" entry`,
 	},
 	{
 		Name:       "miracle",

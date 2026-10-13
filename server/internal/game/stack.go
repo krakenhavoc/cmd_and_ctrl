@@ -202,6 +202,20 @@ type StackItem struct {
 	// ID is the "stamped" bit, since epoch zero is a real epoch.
 	SourceObject ObjectRef
 
+	// SourceTurnOvers is the source's Card.TurnOvers when this ability
+	// was put on the stack (ADR 0152 §3): CR 701.27f / 701.28e's
+	// reference point. An ability that transforms or converts its own
+	// source does nothing once the count has moved
+	// (SourceTurnedOverSinceForEffect), so two "convert it" triggers
+	// from one double-strike hit turn the permanent over once.
+	//
+	// Stamped beside SourceObject, from the same object, by the same
+	// paths; a delayed trigger carries the count from when it was
+	// created (DelayedTrigger.SourceTurnOvers). Zero on a spell, and on
+	// an item restored from a file written before the field existed,
+	// where every card's count is zero too.
+	SourceTurnOvers int
+
 	// GrantedBy is the object that GRANTED this ability, for an
 	// activated ability of a layer-6 grant (ADR 0093; ADR 0109 §2,
 	// owner decision 2): the Aura whose "Enchanted planeswalker has
