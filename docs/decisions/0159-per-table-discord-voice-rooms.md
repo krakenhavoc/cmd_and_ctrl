@@ -122,7 +122,7 @@ The notice (ADR 0149) gains one short paragraph: when a host turns on a voice ro
 
 1. Invite the C2 Discord application's bot to the CMD & CTRL server (Developer Portal → OAuth2 → URL Generator, scope `bot`).
 2. Give the bot's role, **server-wide** (Server Settings → Roles): View Channels, Manage Channels, Manage Roles, Move Members, Connect, Speak, Video, Use Voice Activity, Send Messages and Read Message History. Discord lets a bot grant only permissions it holds, and a channel overwrite cannot give it Manage Permissions (§3). Keep the bot's role below the moderators' roles.
-3. Create a category, for example **Table voice**, at the bottom of the channel list, and keep nothing else in it.
+3. Create a category, for example **Table voice**, at the bottom of the channel list, and keep nothing else in it. **Also add the bot's role to the category's own permissions**, allowing View Channel, Manage Channels, Manage Permissions, Connect, Speak, Video, Use Voice Activity, Send Messages, Read Message History and Move Members. Discord checks the bot's permissions in the category's context, so a private category that leaves the bot out refuses the create with a 403 even when the server-wide role is right. This happened on the first production deploy on 2026-10-13, and the log read `voice room unavailable … step=create … the bot lacks a permission`.
 4. Set the Actions variable `CMDCTRL_DISCORD_VOICE_CATEGORY_ID` to the category's id, and `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` if slice 2 of ADR 0156 has not already.
 
 ## Slices
