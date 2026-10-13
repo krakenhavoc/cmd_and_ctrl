@@ -38,7 +38,7 @@ Owner answers, 2026-10-13.
 - **Deleted:**
   - **10 minutes after the game ends** (owner answer), for the post-game chat.
   - **At once** when the host switches voice off, or the table is archived or deleted, or `closeUnresidentRows` closes its row at boot.
-  - **When idle:** no game action and no seat change for **2 hours**, and **no seated player connected to the room** (owner answer). The voice manager stamps activity from `Room.Subscribe` wakes and seat changes; connection is checked per seated Discord id with `GET /guilds/{guild}/voice-states/{user}`. The table keeps voice on, so the host's toggle (or any seat change) creates a fresh room.
+  - **When idle:** no game action and no seat change for **2 hours**, and **no seated player connected to the room** (owner answer). Activity is the room's sequence number (`Room.Seq`) moving for any reason other than the voice manager's own pushes, or a seat change; a periodic sweep compares it. Connection is checked per seated Discord id with `GET /guilds/{guild}/voice-states/{user}`. The table keeps voice on and shows `idle`; `voice/refresh` from any seated player, the host's toggle or a seat change creates a fresh room.
 - **No archive.** Discord cannot archive a voice channel; its text chat goes with it. The game log and replay remain the record of the game.
 
 ### 3. Who gets in
@@ -55,7 +55,7 @@ Managing the room (Manage Channels, Manage Permissions, Move Members) comes from
 
 - **Membership first.** An overwrite does not invite anyone to the server. Before granting, the manager checks `GET /guilds/{guild}/members/{user}` (a REST call; no privileged gateway intent). A 404 is "not in the server": no overwrite, and the table tells that player to join (§6).
 - **Seat changes.** A Discord seat filled → check and grant. A seat left, removed or reclaimed by someone else → delete that user's overwrite, and if `voice-states` shows them connected **to this room**, disconnect them (`PATCH /guilds/{guild}/members/{user}` with `channel_id: null`). The room id is compared first, so a player is never pulled out of a different channel.
-- **Joined the server later.** `POST /games/{id}/voice/refresh` (seated players only, rate-limited per caller) re-runs the member check for the caller. The table's "I've joined — check again" button calls it.
+- **Joined the server later.** `POST /games/{id}/voice/refresh` (seated players only, rate-limited per caller) re-runs the member check for the caller, and reopens an `idle` room. The table's "I've joined — check again" and "Reopen voice room" buttons call it.
 - **Server staff.** Discord lets the server's owner and administrators see every channel, private or not. The privacy notice says so (§8).
 
 ### 4. How the server talks to Discord
@@ -77,13 +77,15 @@ Managing the room (Manage Channels, Manage Permissions, Move Members) comes from
 
 ### 6. What the table shows
 
-The game meta gains a `voice` object, built per viewer in `redactMetaFor`:
+At the table the client reads the WebSocket game view, not the lobby meta, so the voice state rides the view the way the host and the playmats do (`ws/host.go`, `ws/playmat.go`): the lobby sets it on the room (`Room.SetVoice`), every capture stamps it, and nothing enters the engine or its snapshot. When the voice manager changes it, the lobby pushes a fresh view (`ApplyExternal` and `BroadcastState`), as account deletion does. `protocol.FilterViewFor` reduces it to what one viewer may see:
 
 ```json
 {"enabled": true, "status": "ready", "you": "granted", "url": "https://discord.com/channels/<guild>/<channel>"}
 ```
 
-- `status`: `off`, `pending` (voice on, no room yet), `ready`, `full`, `unavailable`.
+The lobby meta carries only `voice_room: true|false`, so a table list can show which tables have voice.
+
+- `status`: `off`, `pending` (voice on, no room yet), `ready`, `idle` (removed for idleness; any seated player can reopen it with `voice/refresh`), `full`, `unavailable`.
 - `you`, for this viewer: `granted`, `not_in_server`, `no_discord` (a guest), `spectator`.
 - `url` only when `you` is `granted`. The channel id is not a secret, since Discord enforces access, but the link is only useful to the people it lets in.
 
