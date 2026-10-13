@@ -2291,6 +2291,8 @@ pendingChoices[].scryCards	array
 pendingChoices[].scryCards[]	custom(uuid.UUID)
 pendingChoices[].searchCards	array
 pendingChoices[].searchCards[]	custom(uuid.UUID)
+pendingChoices[].searchGraveyardCards	array
+pendingChoices[].searchGraveyardCards[]	custom(uuid.UUID)
 pendingChoices[].searchMax	number:int
 pendingChoices[].searchMin	number:int
 pendingChoices[].source	custom(uuid.UUID)

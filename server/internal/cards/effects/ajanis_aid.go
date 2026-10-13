@@ -17,22 +17,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The enters trigger asks "you may" first, so declining neither searches
 // nor shuffles.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): the search looks at your
-// library only, the gap Tower Winder and Finale of Devastation declare:
-// the engine has no combined library-and-graveyard search.
+// The search reads the library AND the graveyard (#3217,
+// SearchLibrary.AlsoGraveyard). An Ajani in the graveyard is a public
+// match, so a player who says yes must find it; taking it skips the
+// shuffle, and taking one from the library (or finding nothing there)
+// shuffles.
 func init() {
 	Register(Spec{
 		OracleID:     "b3779fbe-7701-433b-afad-bebd6096a3c8",
 		Name:         "Ajani's Aid",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The search looks in your library only. An Ajani, Valiant Protector already in your graveyard can't be found.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, b06SelfETB, "Ajani's Aid — search for Ajani, Valiant Protector",
 				func(g *game.Game, item *game.StackItem) error {
 					return MayChoice{
-						Question: "Ajani's Aid — search your library for a card named Ajani, Valiant Protector?",
+						Question: "Ajani's Aid — search your library and/or graveyard for a card named Ajani, Valiant Protector?",
 						OnYes: func(ctx *Context) error {
 							return SearchLibrary{
 								Player:    ctx.Controller(),
@@ -41,7 +40,9 @@ func init() {
 								Limit:     1,
 								Reveal:    true,
 								Shuffle:   true,
-								Reason:    "Choose a card named Ajani, Valiant Protector to put into your hand",
+								// #3217: "library and/or graveyard".
+								AlsoGraveyard: true,
+								Reason:        "Choose a card named Ajani, Valiant Protector to put into your hand",
 							}.Apply(ctx)
 						},
 					}.Apply(NewContext(g, item))

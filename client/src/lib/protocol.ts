@@ -1628,6 +1628,10 @@ export interface PendingChoiceView {
   // an unconditional "a card" / "three cards" search (CR 701.23d), where
   // an empty answer is refused and the client offers no such button.
   search_min?: number;
+  // #3217: on a "search your library and/or graveyard" prompt, the
+  // instance IDs among `options` that are in the searcher's graveyard.
+  // Everything else is a library card. Absent for a library-only search.
+  search_graveyard?: string[];
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.

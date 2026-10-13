@@ -294,6 +294,31 @@ describe("a card grid is a sheet", () => {
     ]);
   });
 
+  it("search: library and graveyard copies of one name are two tiles, the graveyard one marked (#3217)", () => {
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Tower Winder — a card named Command Tower",
+        search_max: 1,
+        search_min: 1,
+        options: [card("lib", "Command Tower"), card("gy", "Command Tower")],
+        search_graveyard: ["gy"],
+      }),
+    );
+    expectSheet("Tower Winder — a card named Command Tower");
+    const tiles = inSheet("button.card-pick");
+    expect(tiles).toHaveLength(2);
+    expect(tiles[0].textContent).not.toContain("Graveyard");
+    expect(tiles[1].textContent).toContain("Graveyard");
+    // The public card must be found: no Find nothing.
+    expect(barButton("Find nothing")).toBeNull();
+    click(tiles[1]);
+    keyFromBody("Enter");
+    expect(sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["gy"] } },
+    ]);
+  });
+
   it("search: identical copies are one tile; a pick takes one copy", () => {
     const mountains = [1, 2, 3].map((n) => card(`m${n}`, "Mountain"));
     const { sent } = mount(

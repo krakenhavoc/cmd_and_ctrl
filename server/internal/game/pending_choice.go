@@ -768,6 +768,19 @@ type PendingChoice struct {
 	// itself hidden information about a hidden zone.
 	SearchCards []uuid.UUID
 
+	// SearchGraveyardCards is the subset of SearchCards that sits in
+	// the searcher's GRAVEYARD, for the "search your library and/or
+	// graveyard" cards (#3217, ADR 0015's 2026-10-13 amendment). Empty
+	// for a library-only search, which is every search but those.
+	//
+	// It is what makes the floor and the shuffle zone-aware: a card in
+	// the graveyard is public, so CR 701.23b's "may fail to find" does
+	// not reach it, and a card taken from it means the library was
+	// never searched. Wire-serialised as PendingChoiceView.
+	// SearchGraveyard, and withheld from non-choosers with the rest of
+	// the search prompt.
+	SearchGraveyardCards []uuid.UUID
+
 	// SearchMax is how many of SearchCards the chooser may take.
 	SearchMax int
 

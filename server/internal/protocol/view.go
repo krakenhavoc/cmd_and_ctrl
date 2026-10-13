@@ -667,6 +667,11 @@ type PendingChoiceView struct {
 	// offer an empty answer and the server would refuse it.
 	SearchMax int `json:"search_max,omitempty"`
 	SearchMin int `json:"search_min,omitempty"`
+	// SearchGraveyard (#3217) lists the instance IDs among Options that
+	// are in the searcher's graveyard, on a "search your library and/or
+	// graveyard" prompt. Everything else in Options is a library card.
+	// Absent for a library-only search. Chooser-only, like Options.
+	SearchGraveyard []string `json:"search_graveyard,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -8131,6 +8136,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceSearchLibrary && len(c.SearchCards) > 0 {
 			v.SearchMax = c.SearchMax
 			v.SearchMin = c.SearchMin
+			for _, id := range c.SearchGraveyardCards {
+				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
+			}
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -9303,6 +9311,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].Options = nil
 			out[i].SearchMax = 0
 			out[i].SearchMin = 0
+			out[i].SearchGraveyard = nil
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the
