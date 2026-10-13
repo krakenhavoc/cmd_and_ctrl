@@ -25,6 +25,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "8629fdef-dbbe-4a97-a7e1-6b1646f4ca0b",
 		Name:         "Elemental Eruption",
+		Purpose:      game.Purpose{Tokens: 1},
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{Storm()},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

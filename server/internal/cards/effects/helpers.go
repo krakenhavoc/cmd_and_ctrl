@@ -1531,3 +1531,19 @@ func damageEachCreatureAndEachOpponent(ctx *Context, n int) error {
 		return nil
 	})
 }
+
+// PlusOneCounterOnChosenTarget is the effect body of "put a +1/+1
+// counter on target creature you control": it puts one counter on the
+// first target that is still legal at resolution (CR 608.2b) and does
+// nothing when none is. The target clause itself is declared on the
+// ability (Idyllic Grange, Luminarch Aspirant).
+func PlusOneCounterOnChosenTarget(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
+	}
+	return nil
+}

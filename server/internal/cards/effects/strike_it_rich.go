@@ -18,6 +18,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "c34c17c7-3827-49a2-be25-67f44fdfe150",
 		Name:             "Strike It Rich",
+		Purpose:          game.Purpose{Tokens: 1},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}")},

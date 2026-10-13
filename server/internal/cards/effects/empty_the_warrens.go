@@ -31,6 +31,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "3a59c882-8bb8-49ba-862f-125020dd5bec",
 		Name:         "Empty the Warrens",
+		Purpose:      game.Purpose{Tokens: 2},
 		Completeness: CompletenessFull,
 		Triggered:    []game.TriggeredAbility{Storm()},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
