@@ -167,3 +167,106 @@ func checkStaticBorrows(card, what string, statics []game.StaticAbility) {
 		}
 	}
 }
+
+// --- exile lenders (ADR 0155 PR 3, #3201) ---------------------------------
+
+// ExiledWithLenders is "… the activated abilities of all [cards matching
+// P] exiled with this [permanent]": the cards in exile whose
+// Card.ExiledWith names the borrowing source OBJECT (CR 607.2a), in exile
+// order. The link is stamped by a linked exile (ExileTarget.Linked,
+// Game.ExileLinkedForEffect), so a card another effect exiled is not a
+// lender, and a source that left and came back is a new object with no
+// claim on what its earlier self exiled (CR 400.7). A card that leaves
+// exile loses the link with the move.
+//
+// The static that uses it declares DependsOnExile, so the borrow is
+// re-read when a linked card leaves exile for a hand, a library or the
+// stack; a counter change on an exiled card always re-reads it.
+func ExiledWithLenders(p LenderPredicate) func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		if g == nil || source == nil {
+			return nil
+		}
+		var out []*game.Card
+		for _, c := range g.ExiledWithForEffect(game.PermissionCardRef{ID: source.InstanceID, Epoch: source.ObjectEpoch}) {
+			if c.InstanceID != source.InstanceID && p(g, source, *c) {
+				out = append(out, c)
+			}
+		}
+		return out
+	}
+}
+
+// ExileLenders is "… the activated abilities of all cards in exile
+// [matching P]", with no link to the source: Rex, Cyber-Hound's "all
+// cards in exile with brain counters on them", Mairsil's "all cards you
+// own in exile with cage counters on them". Every card in exile that
+// matches lends, whoever exiled it.
+func ExileLenders(p LenderPredicate) func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		if g == nil || g.Exile == nil || source == nil {
+			return nil
+		}
+		var out []*game.Card
+		for i := range g.Exile.Cards {
+			c := &g.Exile.Cards[i]
+			if c.InstanceID != source.InstanceID && p(g, source, *c) {
+				out = append(out, c)
+			}
+		}
+		return out
+	}
+}
+
+// CraftedWithLenders is "… each activated ability of the exiled cards
+// used to craft it" (Locus of Enlightenment): CR 702.167c's craft link
+// (Card.CraftedWith), the materials still in exile as the objects the
+// craft cost put there. A material that left exile is gone from the link
+// (CR 400.7).
+func CraftedWithLenders() func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		mats := craftMaterialsOf(g, source)
+		if len(mats) == 0 {
+			return nil
+		}
+		out := make([]*game.Card, 0, len(mats))
+		for i := range mats {
+			out = append(out, &mats[i])
+		}
+		return out
+	}
+}
+
+// LenderWithCounter is a LenderPredicate for a card with at least one `kind`
+// counter on it: Rex's brain counters, Mairsil's cage counters.
+func LenderWithCounter(kind string) LenderPredicate {
+	return func(_ *game.Game, _ *game.Card, c game.Card) bool {
+		return c.Counters[kind] > 0
+	}
+}
+
+// AnyLender is a LenderPredicate that admits every card: Myr Welder's
+// "all cards exiled with it", Territory Forge's "the exiled card".
+func AnyLender(*game.Game, *game.Card, game.Card) bool { return true }
+
+// exileLinkedTargetsEffect is exileLinkedTargets as an ability's Effect:
+// Duplicant's imprint, Myr Welder's, Territory Forge's.
+func exileLinkedTargetsEffect(g *game.Game, item *game.StackItem) error {
+	return exileLinkedTargets(NewContext(g, item))
+}
+
+// exileLinkedTargets exiles every legal card target of the resolving item
+// linked to its source object (ExileTarget.Linked): "exile target
+// creature", "exile up to three target land cards". A target that left in
+// response is skipped (CR 608.2b).
+func exileLinkedTargets(ctx *Context) error {
+	for _, t := range ctx.LegalTargets() {
+		if t.Kind != game.TargetCard {
+			continue
+		}
+		if err := (ExileTarget{Target: t.ID, Linked: true}).Apply(ctx); err != nil {
+			return err
+		}
+	}
+	return nil
+}

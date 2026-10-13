@@ -301,6 +301,15 @@ type ManaSpendContext struct {
 	// ("spend mana as though it were mana of any color to activate those
 	// abilities").
 	AbilityOrigin AbilityOrigin
+
+	// Controller is the controller of the object whose ability is being
+	// paid for (ManaSpendForAbility), and Payer the player paying, which
+	// the any-colour reader fills in before it asks a Covers. Together
+	// they answer Agatha's Soul Cauldron's "to activate abilities of
+	// creatures YOU control" (#3201): an ability any player may activate
+	// on someone else's creature is not covered. Zero for a cast.
+	Controller uuid.UUID
+	Payer      uuid.UUID
 }
 
 // ManaSpendForAbilityRow is ManaSpendForAbility for one row of the
@@ -368,6 +377,7 @@ func ManaSpendForAbility(c Card) ManaSpendContext {
 		Supertypes:       ch.Supertypes,
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
+		Controller:       c.Controller,
 	}
 }
 
