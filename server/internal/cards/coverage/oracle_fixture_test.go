@@ -285,6 +285,41 @@ the Scryfall dump; never write one by hand):
 %s`, len(missing), OracleFixtureDir, strings.Join(missing, "\n  "), oracleRegenCommand(ids))
 }
 
+// TestOracleFixtureBytesAreCanonical is the dump-free half of the
+// formatting check (#3096). TestOracleFixtureIsCurrent also reports
+// "not what EncodeOracleCard writes", but it skips without the
+// Scryfall dump, so a hand-edited file (a missing trailing newline,
+// reordered keys) passed PR CI and surfaced nightly. Re-encoding each
+// file's own decoded content needs no dump.
+func TestOracleFixtureBytesAreCanonical(t *testing.T) {
+	have, raw, err := LoadOracleFixtureFS(os.DirFS(OracleFixtureDir), ".")
+	if err != nil {
+		t.Fatalf("%v\n\nregenerate the fixture (needs the dump):\n\n%s", err, oracleRegenCommand(nil))
+	}
+	var bad, ids []string
+	for id, c := range have {
+		enc, err := EncodeOracleCard(c)
+		if err != nil {
+			t.Fatalf("encode %s (%s): %v", c.Name, id, err)
+		}
+		if !bytes.Equal(enc, raw[id]) {
+			bad = append(bad, fmt.Sprintf("%s (%s)", c.Name, OracleFixtureFile(id)))
+			ids = append(ids, id)
+		}
+	}
+	if len(bad) == 0 {
+		return
+	}
+	sort.Strings(bad)
+	sort.Strings(ids)
+	t.Errorf(`%d fixture files are not what EncodeOracleCard writes (hand-edited?):
+  %s
+
+Regenerate — never edit a file by hand (needs the Scryfall dump):
+
+%s`, len(bad), strings.Join(bad, "\n  "), oracleRegenCommand(ids))
+}
+
 // missingOracleFiles lists the catalogued base oracle IDs with no
 // fixture entry, as "<name> (<file>)" lines and as bare IDs, both
 // sorted.

@@ -31,7 +31,7 @@
 
 import type { GameView, LegalMoveView } from "./protocol";
 import { attackersDefendedBy } from "./attackTargets";
-import { hasDeclaredAttackers, owesBlockDecision } from "./priority";
+import { combatWindowHeld, hasDeclaredAttackers, owesBlockDecision } from "./priority";
 import { ownsEveryStackItem } from "./holdPriority";
 import { hasPriority, isActivePlayer, isMainPhase, stackEmpty } from "./timing";
 
@@ -288,6 +288,8 @@ export function hasPlay(
   if (owesBlockDecision(view, me)) return true;
   if (!hasPriority(view, me)) return false;
   if (hasDeclaredAttackers(view, me)) return true;
+  // #672: a creature just taken out of combat in this window.
+  if (combatWindowHeld(view)) return true;
   const moves = view.legal_moves;
   if (!moves) return true;
   const sw = inSorceryWindow(view, me);

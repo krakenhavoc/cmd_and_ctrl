@@ -73,6 +73,7 @@ var silentEventKinds = map[string]string{
 	"EventDiscardCard":     silentAlreadyToldAsAZoneMove,
 	"EventBecomesTarget":   "the cast or activation line already named the spell; targeting is announce-time bookkeeping the stack view carries",
 	"EventBecomesBlocked":  "the LogBlock entry for the blocker is the same fact from the other side",
+	"EventVotesFinished":   "every ballot is already a LogVote line as it is cast (ADR 0146), and a \"whenever players finish voting\" ability is a LogTrigger line when it is queued; the event exists for those triggers' ballots",
 	// EventTrigger left this list with ADR 0119 §5: a trigger is a
 	// LogTrigger line when it is queued, and EventActivateAbility (#1184)
 	// a LogActivate line, or LogActivateAcross when a player reaches

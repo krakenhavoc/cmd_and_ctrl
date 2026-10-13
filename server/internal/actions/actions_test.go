@@ -961,6 +961,14 @@ func TestCardActionRejectsWrongController(t *testing.T) {
 				})
 			},
 		},
+		{
+			name:    "remove_from_combat",
+			buildAt: game.StepDeclareAttackers,
+			ty:      TypeRemoveFromCombat,
+			params: func(cardID string, _, _ *game.Player) json.RawMessage {
+				return mustJSON(map[string]string{"instance_id": cardID})
+			},
+		},
 	}
 
 	for _, tc := range cases {
@@ -1265,6 +1273,15 @@ func TestCardActionDispatchErrorPaths(t *testing.T) {
 				return mustJSON(map[string]any{"instance_id": card, "x": 0.5, "y": 0.5})
 			},
 			cardField: "set_battlefield_position instance_id",
+			wrongZone: game.ErrCardNotFound,
+		},
+		{
+			name: "remove_from_combat",
+			ty:   TypeRemoveFromCombat,
+			params: func(card, _ string) json.RawMessage {
+				return mustJSON(map[string]string{"instance_id": card})
+			},
+			cardField: "remove_from_combat instance_id",
 			wrongZone: game.ErrCardNotFound,
 		},
 	}

@@ -52,6 +52,20 @@ import (
 // asked.
 const EventVoteCast EventKind = "vote_cast"
 
+// EventVotesFinished marks the end of a vote (CR 701.38), "whenever
+// players finish voting" (ADR 0146, amendment 2026-10-13). Actor is the
+// controller of the ability that called the vote, Source the card it
+// came from, Amount how many ballots were cast, and Ballots every one
+// of them in the order cast. Emitted once per vote, after the last
+// ballot and before the vote's own result is applied, and not at all
+// for a vote that never began because nothing could be voted for.
+//
+// The ballots ride the event, not the vote: a trigger's stack item
+// keeps its event (ctx.Trigger().Event), the event is plain data, and
+// the event log and the stack are both in the snapshot, so a trigger
+// still waiting on the stack reads the right ballots after a restore.
+const EventVotesFinished EventKind = "votes_finished"
+
 // VoteDeclineLabel is the extra option on the prompt for a vote a
 // player MAY cast ("While voting, you may vote an additional time",
 // Ballot Broker): choosing it casts nothing.
@@ -486,20 +500,93 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 
 // RunVoteThenForEffect runs a vote's continuation directly, for a card
 // whose vote had nothing to vote for (no permanent qualified): nobody
-// voted, and the rest of the card still runs. Caller must hold g.mu.
+// voted, and the rest of the card still runs. No vote began, so nobody
+// "finishes voting" and EventVotesFinished is not emitted. Caller must
+// hold g.mu.
 func (g *Game) RunVoteThenForEffect(then VoteThen, r VoteResult) error {
 	if then.key == "" {
 		return nil
 	}
-	return g.finishVoteLocked(&CouncilVote{
+	return g.runVoteThenLocked(&CouncilVote{
 		Controller: r.Controller, Source: r.Source, Options: r.Options,
 		Ballots: r.Ballots, Then: then.key, Carry: r.Carry,
 	})
 }
 
-// finishVoteLocked runs the vote's continuation with its result.
+// finishVoteLocked ends a vote that began: it announces that the
+// players finished voting, then runs the vote's continuation with its
+// result. The announcement comes first so the log reads in the order it
+// happened (the last ballot, the end of the vote, what the ability does
+// with it); a "finish voting" trigger goes on the stack after the
+// ability that called the vote has finished resolving either way.
 // Caller must hold g.mu.
 func (g *Game) finishVoteLocked(v *CouncilVote) error {
+	g.EmitEvent(Event{
+		Kind:    EventVotesFinished,
+		Actor:   v.Controller,
+		Source:  v.Source,
+		Amount:  len(v.Ballots),
+		Ballots: append([]VoteBallot(nil), v.Ballots...),
+	})
+	return g.runVoteThenLocked(v)
+}
+
+// VotedFor lists the distinct options voter voted for in ballots, in
+// the order they first voted for each. A player who voted twice (CR
+// 701.38d) names every option either vote went to, and a player who
+// cast no ballot names none.
+func VotedFor(ballots []VoteBallot, voter uuid.UUID) []int {
+	var out []int
+	seen := map[int]bool{}
+	for _, b := range ballots {
+		if b.Voter == voter && !seen[b.Option] {
+			seen[b.Option] = true
+			out = append(out, b.Option)
+		}
+	}
+	return out
+}
+
+// VotedForAChoiceVotedForBy reports whether voter voted for at least
+// one option that other also voted for — "an opponent who voted for a
+// choice you voted for". Both are read against the same ballots, so a
+// player with several votes shares a choice when any of theirs match
+// any of the other's, and a player who cast nothing shares nothing.
+func VotedForAChoiceVotedForBy(ballots []VoteBallot, voter, other uuid.UUID) bool {
+	theirs := VotedFor(ballots, other)
+	for _, o := range VotedFor(ballots, voter) {
+		for _, t := range theirs {
+			if o == t {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// VotedForAChoiceNotVotedForBy reports whether voter voted for at least
+// one option that other did not vote for — "an opponent who voted for a
+// choice you didn't vote for". A voter with a choice outside all of
+// other's counts even if they also shared one, and when other cast no
+// ballot at all every choice voter voted for qualifies. A voter who
+// cast nothing never does.
+func VotedForAChoiceNotVotedForBy(ballots []VoteBallot, voter, other uuid.UUID) bool {
+	theirs := VotedFor(ballots, other)
+outer:
+	for _, o := range VotedFor(ballots, voter) {
+		for _, t := range theirs {
+			if o == t {
+				continue outer
+			}
+		}
+		return true
+	}
+	return false
+}
+
+// runVoteThenLocked runs the vote's continuation with its result.
+// Caller must hold g.mu.
+func (g *Game) runVoteThenLocked(v *CouncilVote) error {
 	fn, ok := lookupVoteThen(v.Then)
 	if !ok {
 		return fmt.Errorf("%w: vote continuation %q", ErrUnknownEffectKey, v.Then)

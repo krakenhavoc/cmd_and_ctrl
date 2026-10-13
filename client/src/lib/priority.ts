@@ -119,6 +119,36 @@ export function hasDeclaredAttackers(
   );
 }
 
+// The combat window a "Remove from combat" was made in (#672).
+//
+// Taking the LAST attacker back out leaves the seat with nothing
+// declared, so hasDeclaredAttackers goes false, the removed creature is
+// still tapped, and smart auto-pass reads "nothing to do" and yields —
+// closing the very step the player was fixing. The same hole as #599
+// from the other side, and just as unreadable from the snapshot: no
+// field says "a creature was pulled out of combat here". So the client
+// remembers the one thing it knows, the turn and step it sent the verb
+// in, and treats that window as held until the cursor leaves it.
+let combatEditWindow: string | null = null;
+
+function combatWindowKey(snap: GameView | null | undefined): string | null {
+  if (!snap?.turn) return null;
+  return `${snap.turn.number}:${snap.turn.step}`;
+}
+
+// holdCombatWindow records the window a combat edit was sent in.
+export function holdCombatWindow(snap: GameView | null | undefined): void {
+  combatEditWindow = combatWindowKey(snap);
+}
+
+// combatWindowHeld reports whether the viewer is in the window a combat
+// edit was made in. It only ever asks for MORE time: it neither
+// declares anything nor overrides a server refusal.
+export function combatWindowHeld(snap: GameView | null | undefined): boolean {
+  const key = combatWindowKey(snap);
+  return key !== null && key === combatEditWindow;
+}
+
 // owesAttackRequirement reports whether the viewer is the active player
 // in their declare-attackers step with a creature the server marks
 // `must_attack` (#1571, CR 508.1d). The server refuses their pass then,
@@ -170,4 +200,6 @@ export function loopNoticeText(snap: GameView | null | undefined): string {
 // Testing hook: retained as a no-op. The memo cache it used to clear
 // went away with the card walk, but vitest teardowns still call it
 // and a missing export is a worse failure than a no-op.
-export function _resetCacheForTests(): void {}
+export function _resetCacheForTests(): void {
+  combatEditWindow = null;
+}
