@@ -43,8 +43,9 @@
 //
 // Seven decks in seven archetypes:
 //
-//   - aggro (Izzet), ramp-stompy (Simic), control (Esper) — the three
-//     the sprint planned for.
+//   - aggro, ramp-stompy (Simic), control (Esper) — the three the
+//     sprint planned for. The aggro deck was Izzet until #3071 rebuilt
+//     it as mono-red under Purphoros; its ID is still izzet-aggro.
 //   - aristocrats (mono-black) — added because S21's sacrifice outlets
 //     and death payoffs and S23's board wipes both landed. The sprint
 //     doc deferred this on the grounds that they had not.
@@ -103,11 +104,6 @@
 //   - Cultivate — the hand-or-battlefield choice is lost only with one
 //     basic left in the library.
 //   - Tireless Provisioner — landfall always makes the Treasure.
-//   - Breeches, Brazen Plunderer and Malcolm, Keen-Eyed Navigator —
-//     partner is not modelled; both are mainboard Pirates here.
-//   - Ragavan, Nimble Pilferer — no dash.
-//   - Magmakin Artillerist and Ingenious Artillerist — several
-//     simultaneous triggers deal separate hits.
 //
 // Before #2436 the decks also carried cards nobody had graded, and
 // cards like Victimize whose simplification made them STRONGER than

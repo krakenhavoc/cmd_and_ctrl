@@ -1416,11 +1416,11 @@ deck, not an empty picker implying there are none.
   "decks": [
     {
       "id": "izzet-aggro",
-      "name": "Raid and Ransack",
+      "name": "Forge and Fury",
       "archetype": "aggro",
       "summary": "...",
-      "commander": "Mary Read and Anne Bonny",
-      "colors": ["U", "R"],
+      "commander": "Purphoros, God of the Forge",
+      "colors": ["R"],
       "card_count": 100,
       "coverage": {
         "cards": 88,
@@ -1484,7 +1484,7 @@ answer for every table — so the client fetches it once.
     { "tier": "strong", "label": "Strong", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
-    { "id": "izzet-aggro", "name": "Raid and Ransack", "description": "aggro — …", "colors": ["U", "R"], "commander": "Mary Read and Anne Bonny" },
+    { "id": "izzet-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
     { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
     { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Y'shtola, Night's Blessed" },
     { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }

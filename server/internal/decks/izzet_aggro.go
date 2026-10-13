@@ -1,138 +1,136 @@
 package decks
 
-// Raid and Ransack — aggro. Pirates and Islands: the deck teaches
-// discarding for value. Mary Read and Anne Bonny makes a Treasure for
-// every Island, Pirate or Vehicle card discarded, and the loots,
-// rummages and wheels below are how the deck discards them. The other
-// discard payoffs (Magmakin Artillerist, Marauding Mako, Scrounging
-// Skyray, Glint-Horn Buccaneer) mean a loot is never a dead draw,
-// which matters for a policy that will otherwise treat rummaging as
-// card disadvantage.
+// Forge and Fury — aggro, rebuilt by #3071. Purphoros, God of the
+// Forge deals 2 damage to each opponent whenever another creature
+// enters under its controller's control, and the deck is built to make
+// that happen as often as possible: Goblins that come with Goblins,
+// token spells, creatures that make a token every combat, and a second
+// rank of the same trigger (Impact Tremors, Witty Roastmaster, Molten
+// Gatekeeper, Agate Instigator, Weftstalker Ardent) and of its spell
+// and artifact cousins (Guttersnipe, Firebrand Archer, Kessig
+// Flamebreather, Reckless Fireweaver). Damage to each opponent is the
+// one thing a four-seat table pays three times for, and it is what the
+// two strongest curated decks win with (Syr Konrad and Y'shtola).
 //
-// An upgraded precon (#2436): no fast mana beyond Sol Ring, and the
-// Krenko goblins that did not play to the commander are gone. #2480
-// swapped Wash Away and Negate for Fable of the Mirror-Breaker and
-// Monument to Endurance.
+// Why the commander changed. The deck was Raid and Ransack, Mary Read
+// and Anne Bonny's Izzet Pirates, and won 2–5% of four-seat heuristic
+// games against 25–40% for the other three (#2480). Two to four card
+// swaps did not move it, and neither did keeping blue: the same engine
+// under Vivi Ornitier or Gandalf the Grey won 8–10%. What moved it is
+// the engine in the command zone. Purphoros is indestructible and is
+// cast in nearly every game, so the trigger the other cards feed is on
+// the table by turn four or five whatever the deck draws. A mono-red
+// commander keeps the deck inside the colours the owner allowed (#3071).
+//
+// The ID stays izzet-aggro so saved table setups, a player's last deck
+// and every measurement script keep naming it; the name, the summary
+// and the cards are what changed.
 //
 // Every non-basic card below is in the effect catalog and graded full,
-// apart from the minor caveats full_test.go names; decks_test.go and
-// full_test.go fail the build if that stops being true.
+// apart from Path of Ancestry on full_test.go's minor-caveats list;
+// decks_test.go and full_test.go fail the build if that stops being
+// true.
 
 var izzetAggro = Deck{
 	ID:        "izzet-aggro",
-	Name:      "Raid and Ransack",
+	Name:      "Forge and Fury",
 	Archetype: "aggro",
-	Identity:  "UR",
-	Summary:   "Pirates and Islands: loot and rummage away the cards you don't need, and every Island, Pirate or Vehicle you discard becomes a Treasure for Mary Read and Anne Bonny.",
-	Commander: Card{Name: "Mary Read and Anne Bonny", OracleID: "5182de2d-aceb-450e-bd20-8bc7db124334", Identity: "UR"},
+	Identity:  "R",
+	Summary:   "Goblins and tokens: every creature that enters under your control is 2 damage to each opponent from Purphoros, and more from the pingers that back it up.",
+	Commander: Card{Name: "Purphoros, God of the Forge", OracleID: "4fdbbec2-e921-4b63-958d-f9ba1e417197", Identity: "R"},
 	Mainboard: []Card{
-		// Pirates. Every one is a card Mary Read and Anne Bonny turns into a
-		// Treasure when it is discarded, and most of them make Treasure or
-		// loot on their own.
-		{Name: "Ragavan, Nimble Pilferer", OracleID: "37108cd4-bbab-4ce3-9ed6-f60e8422e703", Identity: "R"},
-		{Name: "Breeches, Brazen Plunderer", OracleID: "eb77f7dc-e9e4-44ef-8616-9f4e737e8ca5", Identity: "R"},
-		{Name: "Breeches, Eager Pillager", OracleID: "15361770-c6dc-4db7-b745-aa03e4b866ea", Identity: "R"},
-		{Name: "Captain Lannery Storm", OracleID: "235bf0ba-658c-463f-b112-7478ba27bd7b", Identity: "R"},
-		{Name: "Corsair Captain", OracleID: "a7ec13c6-7ade-433a-b5a2-047854eef486", Identity: "U"},
-		{Name: "Brineborn Cutthroat", OracleID: "916cb70f-3b06-48ed-972d-75f805aa0892", Identity: "U"},
-		{Name: "Captain Storm, Cosmium Raider", OracleID: "431e85e3-15e6-471b-ba71-6058394c9a96", Identity: "UR"},
-		{Name: "Malcolm, Keen-Eyed Navigator", OracleID: "a66f8b44-0163-4456-b152-4acefab896a4", Identity: "U"},
-		{Name: "Malcolm, Alluring Scoundrel", OracleID: "3bba3b36-f8d7-4fd6-892a-797226210b6e", Identity: "U"},
-		{Name: "Spectral Sailor", OracleID: "a8fdbcdf-479d-4582-9ad5-9fbd4c740c29", Identity: "U"},
-		{Name: "Zara, Renegade Recruiter", OracleID: "cd2720c2-522c-4fdc-9cef-9c5ce250fe7b", Identity: "UR"},
-		{Name: "Corsairs of Umbar", OracleID: "edc74fb9-a368-4f73-8147-f318a32a3d06", Identity: "U"},
-		{Name: "Coercive Recruiter", OracleID: "ad33530c-a8df-4c1c-a863-501e583290b6", Identity: "R"},
-		{Name: "Angrath's Marauders", OracleID: "2d4976d4-649c-4d42-ac5a-ada4b46a480c", Identity: "R"},
-		{Name: "Glint-Horn Buccaneer", OracleID: "64ad5657-78e9-4f34-8877-18c4f51fff9a", Identity: "R"},
-		{Name: "Marauding Mako", OracleID: "e349be42-5f14-44a9-9608-281985c10e2d", Identity: "R"},
-		{Name: "Scrounging Skyray", OracleID: "3a46d85b-ce1a-4842-a342-92a5bddb1053", Identity: "U"},
-		{Name: "Magmakin Artillerist", OracleID: "900b9409-9c16-414d-8674-2ea42c2415a1", Identity: "R"},
-
-		// Other discard and artifact payoffs, Treasure makers and threats.
-		// Smuggler's Copter is a Vehicle, which Mary Read pays on too.
-		{Name: "Ingenious Artillerist", OracleID: "752c7723-90f8-4e3a-8266-f251ee0dadd8", Identity: "R"},
+		// Damage to each opponent when a creature or an artifact enters.
+		// Purphoros's own trigger, five more copies of it, and the two
+		// that also count Treasures and Thopters.
+		{Name: "Impact Tremors", OracleID: "9242cd3e-1a71-4700-8182-9c1005616033", Identity: "R"},
+		{Name: "Witty Roastmaster", OracleID: "34edbf1b-0826-49f1-a04d-15cc8c543b22", Identity: "R"},
+		{Name: "Molten Gatekeeper", OracleID: "90fdfba8-f29e-44f9-91d2-7bf3c458a9c1", Identity: "R"},
+		{Name: "Agate Instigator", OracleID: "e1a2bd31-b800-47cd-8866-1b849a601b09", Identity: "R"},
 		{Name: "Weftstalker Ardent", OracleID: "926d52a5-4db1-46ce-9567-17c28bf56ae7", Identity: "R"},
-		{Name: "Generous Plunderer", OracleID: "91c835d1-22ca-4c90-9ba6-c8e01bbc0347", Identity: "R"},
-		{Name: "Professional Face-Breaker", OracleID: "04152e7a-969c-4858-841b-0a569a9fc1bf", Identity: "R"},
 		{Name: "Reckless Fireweaver", OracleID: "180e1a7e-890d-477c-80a5-da8a5f2857b3", Identity: "R"},
+		{Name: "Fanatic of Mogis", OracleID: "f19d06af-6caf-41d8-8d0a-d5d50bd67900", Identity: "R"},
+
+		// Damage to each opponent when a spell is cast.
 		{Name: "Guttersnipe", OracleID: "c6bdaf76-6a03-4695-9c4b-f040e73435af", Identity: "R"},
-		{Name: "Ledger Shredder", OracleID: "e9117015-1050-44dd-a46b-e7ffe2085fae", Identity: "U"},
-		{Name: "Mulldrifter", OracleID: "24d0f5e7-0d9e-4b76-900e-a7274e80312d", Identity: "U"},
-		{Name: "Solphim, Mayhem Dominus", OracleID: "895f23a2-55b7-4cc0-8939-2efaaf097e6f", Identity: "R"},
-		{Name: "Goldspan Dragon", OracleID: "716b3ea2-45b7-4a8f-af72-de7f4e510eff", Identity: "R"},
-		{Name: "Ancient Copper Dragon", OracleID: "48daee9d-ddaf-410f-8c3a-12fa1064ab56", Identity: "R"},
-		{Name: "Smuggler's Copter", OracleID: "49136bdc-bc50-49a2-999a-1ef9c16ea130"},
-		// #2480: two proactive cards for two counterspells. Fable's Goblin
-		// makes a Treasure on each attack and its second chapter rummages;
-		// Monument to Endurance pays on every discard.
+		{Name: "Firebrand Archer", OracleID: "2e9289d6-dbc6-456d-88cf-d1f534e731d6", Identity: "R"},
+		{Name: "Kessig Flamebreather", OracleID: "eadd9559-6dcb-4b96-8c95-58abddd0e120", Identity: "R"},
+		{Name: "Erebor Flamesmith", OracleID: "6eb93545-a1a6-4447-82c5-421d8e9f023d", Identity: "R"},
+		{Name: "Coruscation Mage", OracleID: "88bb91b5-2ccd-4ce9-8cd4-e54d63c12abf", Identity: "R"},
+		{Name: "Firespitter Whelp", OracleID: "1cad92ce-55c8-4b78-8d8c-56645ef8e6ee", Identity: "R"},
+		{Name: "Fiery Inscription", OracleID: "111889d4-bcca-4b1f-ad48-3077e2f5136f", Identity: "R"},
+		{Name: "Brimstone Vandal", OracleID: "7af23925-6d32-407d-9a99-a57b2ebb63ac", Identity: "R"},
+
+		// More damage per hit.
+		{Name: "Torbran, Thane of Red Fell", OracleID: "8c3495bf-02e7-4ad9-949d-92eb3d2b662a", Identity: "R"},
+		{Name: "Hellrider", OracleID: "f02557b0-f422-48cb-875e-2c814c39967d", Identity: "R"},
+
+		// Creatures that bring more creatures: each one is two or more
+		// Purphoros triggers.
+		{Name: "Goblin Instigator", OracleID: "8b022754-6d16-470e-b754-4df6e4f4709e", Identity: "R"},
+		{Name: "Beetleback Chief", OracleID: "f5c5f64c-6911-430c-a825-b32b96d39c7d", Identity: "R"},
+		{Name: "Siege-Gang Commander", OracleID: "ddc7f59a-bbb1-4ba1-82c8-6813fd191940", Identity: "R"},
+		{Name: "Legion Warboss", OracleID: "0ccb9af3-6902-4130-a59c-4c882dc3a2fd", Identity: "R"},
+		{Name: "Goblin Rabblemaster", OracleID: "24661b81-6bee-4ad8-b3ab-53cb65005c51", Identity: "R"},
+		{Name: "Krenko, Mob Boss", OracleID: "68418069-f615-40ef-ae0d-764192acae00", Identity: "R"},
+		{Name: "Krenko, Tin Street Kingpin", OracleID: "e8065e1d-e937-4b56-8011-78f0d07328a0", Identity: "R"},
+		{Name: "Hanweir Garrison", OracleID: "7cb29569-48e1-4782-9906-fad155ebfafe", Identity: "R"},
+		{Name: "Loyal Apprentice", OracleID: "7f268b15-ac92-4e98-821b-78d15d9285d9", Identity: "R"},
+		{Name: "Young Pyromancer", OracleID: "5fac139a-07d3-4e6c-98e3-d98b199f7a6f", Identity: "R"},
+		{Name: "Person of Interest", OracleID: "3d18cd9b-6013-48d7-9269-4787e7585a51", Identity: "R"},
+		{Name: "Pashalik Mons", OracleID: "bdb94ccd-1bb5-4bb7-9539-e1b1c97c19c5", Identity: "R"},
+		{Name: "Fearless Liberator", OracleID: "b0b93253-6432-401e-9a01-94c41fb72c10", Identity: "R"},
+		{Name: "Goblin Matron", OracleID: "145737a7-c597-4dec-b752-207c2d0501e3", Identity: "R"},
+		{Name: "Hordeling Outburst", OracleID: "a6450b8e-eb18-431c-9eb7-7daf107978b2", Identity: "R"},
+		{Name: "Krenko's Command", OracleID: "9cfe86ae-eebe-44aa-a956-4b3e9e621105", Identity: "R"},
+		{Name: "Dragon Fodder", OracleID: "d0d2c45b-b6e3-4999-bdab-976e8f0d6617", Identity: "R"},
+
+		// Treasure makers and card flow. A Treasure is an artifact entering
+		// for Reckless Fireweaver and Weftstalker Ardent, and mana for the
+		// next creature.
+		{Name: "Charming Scoundrel", OracleID: "9eec304d-ffcb-4287-b877-280ac1e4f496", Identity: "R"},
+		{Name: "Generous Plunderer", OracleID: "91c835d1-22ca-4c90-9ba6-c8e01bbc0347", Identity: "R"},
+		{Name: "Captain Lannery Storm", OracleID: "235bf0ba-658c-463f-b112-7478ba27bd7b", Identity: "R"},
+		{Name: "Patron of the Arts", OracleID: "47f8df80-abc9-4d46-8078-8fbc23430259", Identity: "R"},
+		{Name: "Professional Face-Breaker", OracleID: "04152e7a-969c-4858-841b-0a569a9fc1bf", Identity: "R"},
 		{Name: "Fable of the Mirror-Breaker", OracleID: "c0957e5e-c71b-439c-931c-9f55d2f76ace", Identity: "R"},
-		{Name: "Monument to Endurance", OracleID: "e69e8de4-b521-4888-8074-17f1efe2f345"},
+		{Name: "Rapacious Dragon", OracleID: "0944ec2e-1dd9-459f-8f1d-667242cf52fe", Identity: "R"},
+		{Name: "Goldspan Dragon", OracleID: "716b3ea2-45b7-4a8f-af72-de7f4e510eff", Identity: "R"},
+		{Name: "Strike It Rich", OracleID: "c34c17c7-3827-49a2-be25-67f44fdfe150", Identity: "R"},
+		{Name: "Big Score", OracleID: "a5cbd257-c836-493e-bb1a-76242619dea2", Identity: "R"},
+		{Name: "Unexpected Windfall", OracleID: "498c10c9-253d-4b15-b48c-1509381b17e8", Identity: "R"},
+		{Name: "Seize the Spoils", OracleID: "58f83528-9110-4895-b5ea-51b90af30a8d", Identity: "R"},
+		{Name: "Faithless Looting", OracleID: "3d6fa57a-aa53-4b5c-b8af-a7612c823117", Identity: "R"},
 
 		// Burn and spot removal.
 		{Name: "Lightning Bolt", OracleID: "4457ed35-7c10-48c8-9776-456485fdf070", Identity: "R"},
 		{Name: "Shock", OracleID: "a9d288b8-cdc1-4e55-a0c9-d6edfc95e65d", Identity: "R"},
-		{Name: "Abrade", OracleID: "f9db72dc-9a5b-48a4-a86e-7464d9a2166a", Identity: "R"},
+		{Name: "Wild Slash", OracleID: "f76a0e5b-74c1-4ee8-b502-e8b988086de4", Identity: "R"},
 		{Name: "Arc Trail", OracleID: "f1c26b25-371e-4fbf-a43d-7fd59a364d3a", Identity: "R"},
-		{Name: "Blaze", OracleID: "0596920f-9946-42f4-a03b-24aab67f9f1b", Identity: "R"},
-		{Name: "Fiery Temper", OracleID: "f07bd49d-8e71-4d56-be2a-638514011318", Identity: "R"},
-		{Name: "Izzet Charm", OracleID: "a07698f6-5ad5-49a3-9da2-f82d407f5cd7", Identity: "UR"},
-		{Name: "Prismari Command", OracleID: "fa3e28b1-131c-4223-81e0-18dfbab22c26", Identity: "UR"},
+		{Name: "Abrade", OracleID: "f9db72dc-9a5b-48a4-a86e-7464d9a2166a", Identity: "R"},
+		{Name: "Incinerate", OracleID: "d8fd7a34-8418-4e98-b79b-119c4348c667", Identity: "R"},
+		{Name: "Lightning Strike", OracleID: "f34b9bc4-7bfe-47fd-ba23-4eeeb46026eb", Identity: "R"},
 		{Name: "Chaos Warp", OracleID: "07a0cba9-8768-4fd9-a3d5-b0f83b4bf8e8", Identity: "R"},
 		{Name: "Vandalblast", OracleID: "3567c3c8-b3c7-45b7-935b-b1fdbc973720", Identity: "R"},
-		{Name: "Cyclonic Rift", OracleID: "d75b9c82-1b49-4c3e-a1b5-aeef57d6644b", Identity: "U"},
-		{Name: "Rapid Hybridization", OracleID: "06692cd9-ac2f-4a32-8fd1-043ba3c0fe71", Identity: "U"},
-		{Name: "Pongify", OracleID: "05849bd6-8f38-4031-be2b-e2aa03beb8cc", Identity: "U"},
 
-		// Counterspells. Cheap enough to hold up behind a board.
-		{Name: "Counterspell", OracleID: "cc187110-1148-4090-bbb8-e205694a39f5", Identity: "U"},
-		{Name: "Swan Song", OracleID: "8ddfc283-c9b4-41a5-af88-cf0068e986cc", Identity: "U"},
-		{Name: "An Offer You Can't Refuse", OracleID: "234a734b-ba28-4f1b-9d01-3c3e7d516590", Identity: "U"},
-		{Name: "Pyroblast", OracleID: "ecc435e2-deb1-420a-a79f-01dd08747314", Identity: "R"},
-
-		// Card flow. Every loot and rummage here is also a Magmakin
-		// Artillerist / Marauding Mako / Scrounging Skyray trigger, and an
-		// Island or a Pirate discarded to it is a Mary Read Treasure.
-		{Name: "Preordain", OracleID: "ac641490-ca14-48d7-8cc4-b69ce984befa", Identity: "U"},
-		{Name: "Frantic Search", OracleID: "16e015b2-f8a3-4b1a-80be-58a8f5fb5e8c", Identity: "U"},
-		{Name: "Faithless Looting", OracleID: "3d6fa57a-aa53-4b5c-b8af-a7612c823117", Identity: "R"},
-		{Name: "Big Score", OracleID: "a5cbd257-c836-493e-bb1a-76242619dea2", Identity: "R"},
-		{Name: "Unexpected Windfall", OracleID: "498c10c9-253d-4b15-b48c-1509381b17e8", Identity: "R"},
-		{Name: "Windfall", OracleID: "08becc07-28bc-4a2f-a6b0-28a2998d2f50", Identity: "U"},
-		{Name: "Wheel of Fortune", OracleID: "a8abd966-de7b-46a3-8ac7-8747ab35653a", Identity: "R"},
-
-		// Mana rocks.
+		// Mana rocks. Each is also an artifact entering.
 		{Name: "Sol Ring", OracleID: "6ad8011d-3471-4369-9d68-b264cc027487"},
 		{Name: "Arcane Signet", OracleID: "0bc7f093-bef0-4f1a-852c-4b75ebf54838"},
-		{Name: "Izzet Signet", OracleID: "2fda4fe7-8b0c-489c-a000-6d358e614e34", Identity: "UR"},
-		{Name: "Talisman of Creativity", OracleID: "14d2979d-5728-42d7-a027-0eb1f754655d", Identity: "UR"},
+		{Name: "Fire Diamond", OracleID: "97b477d8-2e05-475e-8ed6-7d680cb21cd9", Identity: "R"},
 		{Name: "Mind Stone", OracleID: "c97361b5-af16-4a7b-af85-a429dbaf4ad2"},
 		{Name: "Thought Vessel", OracleID: "9965d9c5-2ebf-4a6c-930e-55c5890979be"},
-		{Name: "Commander's Sphere", OracleID: "0b67c4e2-f88b-4e01-85a1-9d5f5b8db13b"},
+		{Name: "Ruby Medallion", OracleID: "0c367958-729e-416d-988b-098e90e7a1fd"},
 
 		// Lands.
-		{Name: "Steam Vents", OracleID: "17039058-822d-409f-938c-b727a366ba63", Identity: "UR"},
-		{Name: "Volcanic Island", OracleID: "c718911c-c955-4eb9-9e16-be4bd49a4e4e", Identity: "UR"},
-		{Name: "Sulfur Falls", OracleID: "6a6c5e17-6465-4a1f-9d63-8a3ce2edc522", Identity: "UR"},
-		{Name: "Shivan Reef", OracleID: "0fe16212-66c3-4e45-a641-7391e9b2e304", Identity: "UR"},
-		{Name: "Stormcarved Coast", OracleID: "4722105b-0085-4bb8-bca1-9de0d3eb5600", Identity: "UR"},
-		{Name: "Training Center", OracleID: "e3570ac7-c593-40e3-bbd6-ec3da6d8158d", Identity: "UR"},
-		{Name: "Izzet Boilerworks", OracleID: "1cb9d94a-3039-4f2e-8fcc-6996f9a45f74", Identity: "UR"},
-		{Name: "Temple of Epiphany", OracleID: "79f94050-d850-41ca-b1db-5ae0cf743f0a", Identity: "UR"},
 		{Name: "Command Tower", OracleID: "0895c9b7-ae7d-4bb3-af17-3b75deb50a25"},
-		{Name: "Exotic Orchard", OracleID: "27b047e3-0d41-45e2-98e9-9391d7923a1e"},
-		{Name: "Reflecting Pool", OracleID: "67f43ac6-2a58-4b53-b5d7-0330e2a252e2"},
-		{Name: "Mana Confluence", OracleID: "d0ee5bdc-2b69-4b73-9a20-ffcc18783b29"},
 		{Name: "Path of Ancestry", OracleID: "b473e293-59e3-4e04-acf2-622604aeb25f"},
-		{Name: "Scalding Tarn", OracleID: "cb027150-848c-4a66-88ad-e20222304dd8"},
-		{Name: "Polluted Delta", OracleID: "ef86989d-ce80-4e55-aece-7d11710eeffa"},
-		{Name: "Prismatic Vista", OracleID: "032b8a0d-491a-4a12-ab9f-689010054d5b"},
+		{Name: "Mana Confluence", OracleID: "d0ee5bdc-2b69-4b73-9a20-ffcc18783b29"},
 		{Name: "Evolving Wilds", OracleID: "a75445d3-1303-4bb5-89ad-26ea93fecd48"},
 		{Name: "Terramorphic Expanse", OracleID: "1bd3e453-aa21-4ee6-95c2-d6d920ee8e7a"},
 		{Name: "Fabled Passage", OracleID: "0c85b8f7-0bd0-4680-9ec5-d4b110460a54"},
-		{Name: "Strip Mine", OracleID: "d21a89eb-7c5b-459a-acc7-12b20b13bf79"},
+		{Name: "Prismatic Vista", OracleID: "032b8a0d-491a-4a12-ab9f-689010054d5b"},
 		{Name: "Myriad Landscape", OracleID: "2549bc57-9ffb-4053-9f10-f2a5f792b845"},
+		{Name: "Strip Mine", OracleID: "d21a89eb-7c5b-459a-acc7-12b20b13bf79"},
 		{Name: "Geier Reach Sanitarium", OracleID: "7b9fafe7-d26a-4ed5-b4c4-ce13763770b5"},
-		{Name: "Mountain", Count: 7, Basic: true},
-		{Name: "Island", Count: 7, Basic: true},
+		{Name: "Mountain", Count: 27, Basic: true},
 	},
 }

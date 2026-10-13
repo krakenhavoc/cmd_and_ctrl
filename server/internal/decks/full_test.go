@@ -23,13 +23,6 @@ var minorCaveats = map[string]string{
 	// Landfall always makes the Treasure, which is what a ramp deck
 	// would pick.
 	"Tireless Provisioner": "the Food option is never offered",
-	// Dash is unavailable; the one-drop's combat trigger is what the
-	// Izzet deck plays it for.
-	"Ragavan, Nimble Pilferer": "dash is not available",
-	// Simultaneous triggers deal their damage as separate hits, which
-	// matters only beside a per-hit damage booster the deck lacks.
-	"Magmakin Artillerist":  "several discards deal separate 1s",
-	"Ingenious Artillerist": "several artifacts entering deal separate hits",
 }
 
 // TestEveryCuratedCardIsFull is the owner's card-quality bar for the
