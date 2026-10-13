@@ -121,6 +121,7 @@ var tokenTable = map[string]game.Card{
 	"3/3 green Forest Tentacle":                     {Name: "Forest Tentacle", TypeLine: "Token Land Creature — Forest Tentacle", Power: 3, Toughness: 3, Colors: []string{"G"}},
 	"1/1 green Forest Dryad":                        {Name: "Forest Dryad", TypeLine: "Token Land Creature — Forest Dryad", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Elf Warrior":                         {Name: "Elf Warrior", TypeLine: "Token Creature — Elf Warrior", Power: 1, Toughness: 1, Colors: []string{"G"}},
+	"1/1 green Snake":                               {Name: "Snake", TypeLine: "Token Creature — Snake", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Insect":                              {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}},
 	"1/1 green Insect with flying and deathtouch":   {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 1, Toughness: 1, Colors: []string{"G"}, Keywords: []string{"flying", "deathtouch"}},
 	"2/1 white Insect with flying":                  {Name: "Insect", TypeLine: "Token Creature — Insect", Power: 2, Toughness: 1, Colors: []string{"W"}, Keywords: []string{"flying"}},
