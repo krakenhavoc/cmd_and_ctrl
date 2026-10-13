@@ -128,6 +128,16 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	// a player static's, an untap hold's — is one this binary can read,
 	// or the file is refused (snapshot_durations.go).
 	unknown = append(unknown, s.unknownDurations()...)
+	// #3192: a cast permission's condition is a key too. One this binary
+	// never registered would restore as an unconditional grant, which is
+	// stronger than the file's writer meant, so the file is refused.
+	for _, seat := range s.Seats {
+		for _, perm := range seat.CastPermissions {
+			if perm.Condition != nil && !perm.Condition.Key.Known() {
+				unknown = append(unknown, "cast-permission condition "+string(perm.Condition.Key))
+			}
+		}
+	}
 	// ADR 0109 §11: a mana spend rider's kind, and a counted rider's
 	// count key, are keys too — wherever a token is carried
 	// (snapshot_mana_riders.go).

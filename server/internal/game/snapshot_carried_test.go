@@ -596,8 +596,9 @@ else validates against.`, key, err, key)
 }
 
 var (
-	uuidType = reflect.TypeOf(uuid.UUID{})
-	timeType = reflect.TypeOf(time.Time{})
+	uuidType                = reflect.TypeOf(uuid.UUID{})
+	permissionConditionType = reflect.TypeOf(PermissionCondition{})
+	timeType                = reflect.TypeOf(time.Time{})
 )
 
 // planFor is the drift plan for a domain type, or nil for a type that
@@ -645,6 +646,16 @@ func generateNonZero(rt reflect.Type, seed string, depth int) (reflect.Value, er
 			Keywords: []string{"drift-" + seed}, UntilEndOfTurn: true,
 			Trigger:    "drift-" + seed,
 			Production: uuid.NewSHA1(uuid.Nil, []byte(seed+"/production")), Applied: true,
+		}), nil
+	case permissionConditionType:
+		// #3192: restore refuses a cast-permission condition whose key
+		// this binary never registered, so an invented key would fail the
+		// restore rather than test the carry. A registered key with every
+		// parameter non-zero instead.
+		return reflect.ValueOf(PermissionCondition{
+			Key: CondAttackedWithSubtype, Subtype: "drift-" + seed, N: 4242,
+			ObjectID:    uuid.NewSHA1(uuid.Nil, []byte(seed+"/object")),
+			ObjectEpoch: 7,
 		}), nil
 	case durationType:
 		// ADR 0109 Shared machinery 2: restore refuses a duration it

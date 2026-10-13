@@ -121,6 +121,15 @@ type PlayerTurnTally struct {
 	// each turn": set as this player's inherent speed trigger is
 	// queued (speedTriggerLocked). ADR 0138. Additive within schema v7.
 	SpeedTriggered bool `json:"speedTriggered,omitempty"`
+	// TokensAttacked and CommandersAttacked count the creatures this
+	// player declared as attackers this turn that were a token / a
+	// commander AS THEY ATTACKED (#3192): the answer to "during any turn
+	// you attacked with a token" outlives the attacker, which a token
+	// that traded in combat does not (CR 704.5d). Read by the conditional
+	// cast permissions (cast_permission_condition.go). Additive within
+	// schema v8.
+	TokensAttacked     int `json:"tokensAttacked,omitempty"`
+	CommandersAttacked int `json:"commandersAttacked,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -184,6 +193,18 @@ type TurnTally struct {
 	// because every other cell of the tally is, and because "how many
 	// times" is the question the next card asks.
 	Entered map[uuid.UUID]int `json:"entered,omitempty"`
+	// AttackedSubtypes is the subtype tally of the creatures each player
+	// declared as attackers this turn, per subtype they had as they
+	// attacked (#3192): Robber of the Rich's "during any turn you attacked
+	// with a Rogue". Same keys and changeling rule as EnteredSubtypes;
+	// read through Game.AttackedWithSubtypeThisTurn. Additive.
+	AttackedSubtypes map[string]int `json:"attackedSubtypes,omitempty"`
+	// LoreCounterPut lists the Saga objects a lore counter was put on this
+	// turn (#3192, CR 714.2b): Summon: Brynhildr's "during any turn you put
+	// a lore counter on this Saga". One entry per placement, carrying the
+	// epoch so a Saga that left and returned is a new object. Read through
+	// Game.LoreCounterPutOnThisTurn. Additive.
+	LoreCounterPut []PermissionCardRef `json:"loreCounterPut,omitempty"`
 	// SacrificedSubtypes is the same tally for the other end of a
 	// permanent's life: the permanents each player SACRIFICED this
 	// turn, per subtype they had as they were sacrificed. Read
@@ -1263,6 +1284,10 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
+	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
+	if len(t.LoreCounterPut) > 0 {
+		out.LoreCounterPut = append([]PermissionCardRef(nil), t.LoreCounterPut...)
+	}
 	out.DiedPowerBySubtype = copyStringIntMap(t.DiedPowerBySubtype)
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
 	if len(t.DamageDealers) > 0 {
@@ -1388,6 +1413,22 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		// #3192: what the attacker was as it was declared, for the
+		// conditional cast permissions ("during any turn you attacked with
+		// a token / a commander / a Rogue"). The creature is on the
+		// battlefield now and may not be by the time anyone asks.
+		if c := g.findCardByIDLocked(ev.CardID); c != nil && ev.Actor != uuid.Nil {
+			token, commander := IsTokenPtr(c), c.IsCommander
+			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) {
+				if token {
+					p.TokensAttacked++
+				}
+				if commander {
+					p.CommandersAttacked++
+				}
+			})
+			recordSubtypeTally(&g.TurnTally.AttackedSubtypes, ev.Actor, c)
+		}
 		// ADR 0059 Decision 8: the per-object attack history. A fresh
 		// slice every time, never an append into shared capacity: the
 		// undo clone holds this backing array too (#1238's reason).

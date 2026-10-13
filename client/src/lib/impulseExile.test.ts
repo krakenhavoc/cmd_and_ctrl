@@ -104,6 +104,25 @@ describe("impulse exile — warp's not-before-turn floor", () => {
 // the button's verb, its label, the aria-label — has to be about the
 // half the click will actually produce, not the half in the pile.
 
+describe("impulse exile — a conditional grant (#3192)", () => {
+  const dormant = {
+    player: "thief",
+    condition: "during a turn you attacked with a token",
+    condition_unmet: true,
+  };
+
+  it("withholds the button while the condition is false", () => {
+    const card = exiled({ exile_play: dormant });
+    expect(impulseGrantFor(card, "exile", "thief")).toBeNull();
+    expect(impulseActionLabel(card, "exile", "thief")).toBeNull();
+  });
+
+  it("offers it once the condition holds", () => {
+    const live = { player: "thief", condition: dormant.condition };
+    expect(impulseActionLabel(exiled({ exile_play: live }), "exile", "thief")).toBe("cast");
+  });
+});
+
 describe("impulse exile — a grant that names a face", () => {
   const siege = (): CardView => ({
     instance_id: "siege",

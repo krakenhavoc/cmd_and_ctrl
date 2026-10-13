@@ -833,58 +833,76 @@ func TestB32NeyaliGivesAttackingTokensDoubleStrikeAndExilesTheTopCard(t *testing
 	}
 }
 
-func TestB32NeyaliRegrantsEarlierExiledCardsOnALaterTokenAttack(t *testing.T) {
+// "During any turn you attacked with a token, you may play that card"
+// (#3192): the exiled card is playable only during a turn its holder
+// attacked with a token, on a LATER such turn too, and it does not need
+// Neyali, or her trigger, to still be there.
+func TestB32NeyaliCardIsPlayableOnlyDuringTurnsATokenAttacked(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
-	b12Push(g, me.ID, "Neyali, Suns' Vanguard", "Legendary Creature — Human Rebel", b32NeyaliOracle, 3, 3)
+	neyali := b12Push(g, me.ID, "Neyali, Suns' Vanguard", "Legendary Creature — Human Rebel", b32NeyaliOracle, 3, 3)
 	token := b32Token(g, me.ID, "Soldier", 1, 1)
-	// seedSearchLibrary lists top-first; the draw between the two
-	// attacks comes off the filler below the first card.
+	bear := b12Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	ids := seedSearchLibrary(me,
 		game.Card{Name: "First", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 1", TypeLine: "Sorcery"},
-		game.Card{Name: "Second", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 2", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 3", TypeLine: "Sorcery"},
 		game.Card{Name: "Filler 4", TypeLine: "Sorcery"},
+		game.Card{Name: "Filler 5", TypeLine: "Sorcery"},
 	)
-	first, second := ids[0], ids[2]
-	// Something else exiled with a grant of its own — never Neyali's
-	// to re-grant.
+	first := ids[0]
+	// Something else exiled with a grant of its own is never Neyali's.
 	other := uuid.New()
 	opp.Library.PushTop(game.Card{InstanceID: other, Name: "Their Card", TypeLine: "Sorcery", Owner: opp.ID, Controller: opp.ID})
 	g.WithWriteLock(func() {
 		_, _ = g.ExileTopWithPermissionForEffect(opp.ID, me.ID, 1, game.CastPermission{})
 	})
-	if !g.Exile.Contains(other) {
-		t.Fatal("fixture: the other card is in exile")
-	}
 
+	// Turn 1: a token attacks a player; the top card is exiled and is
+	// playable now.
 	declareAttack(t, g, opp.ID, token)
 	passPriorityAroundTable(t, g)
 	if !g.Exile.Contains(first) {
 		t.Fatal("the first attack exiles the top card")
 	}
-	// The grant lapses with the turn.
-	advanceToMainOf(t, g, 1)
-	if permissionLive(g, exiledPermission(g, first), me.ID) {
-		t.Fatal("the grant ends with the controller's turn")
+	if !permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Fatal("playable the turn a token attacked")
 	}
-	// The next token attack exiles another card AND re-grants the
-	// first one for this turn; the other card is left alone.
+
+	// Turn 2 (mine again): nothing has attacked yet, so the card is
+	// DORMANT: still exiled, still granted, not playable.
+	advanceToMainOf(t, g, 1)
 	advanceToMainOf(t, g, 0)
+	perm := exiledPermission(g, first)
+	if perm.Player != me.ID || perm.Condition == nil {
+		t.Fatalf("the grant did not persist across the turn: %+v", perm)
+	}
+	if permissionLive(g, perm, me.ID) {
+		t.Fatal("playable on a turn before any token attacked")
+	}
+	// A nontoken attacker does not wake it.
+	declareAttack(t, g, opp.ID, bear)
+	passPriorityAroundTable(t, g)
+	if permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Fatal("playable on a turn only a nontoken attacked")
+	}
+
+	// Turn 3: Neyali is gone, so no trigger resolves, but a token
+	// attacking is enough: the card is playable on this LATER turn.
+	advanceToMainOf(t, g, 1)
+	advanceToMainOf(t, g, 0)
+	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(neyali) })
+	if permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Fatal("playable before the token attacked")
+	}
 	declareAttack(t, g, opp.ID, token)
 	passPriorityAroundTable(t, g)
-	if !g.Exile.Contains(second) {
-		t.Fatal("the second attack exiles the next card")
-	}
-	for _, id := range []uuid.UUID{first, second} {
-		if !permissionLive(g, exiledPermission(g, id), me.ID) {
-			t.Errorf("a card Neyali exiled may be played on a turn a token attacked")
-		}
+	if !permissionLive(g, exiledPermission(g, first), me.ID) {
+		t.Error("a token attacked on a later turn and the card is still shut")
 	}
 	if permissionLive(g, exiledPermission(g, other), me.ID) {
-		t.Error("a card something else exiled is not re-granted")
+		t.Error("a card something else exiled became playable")
 	}
 }
 

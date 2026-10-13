@@ -120,54 +120,6 @@ func b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator(g *game.Game, caste
 	return b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g, caster, "Trygon Predator")[c.Controller]
 }
 
-// b32CardsInExileLastExiledDuring is the set of cards currently in
-// exile whose most recent arrival there happened while an ability
-// labelled `label` controlled by `controller` was resolving — the
-// cards Neyali, Suns' Vanguard has exiled, however many turns ago.
-//
-// Walked off the event log newest-first: the first exile-entry seen
-// for a card is its latest, and it counts only when the nearest
-// earlier resolution is the labelled ability's (nothing else
-// resolves between an ability's EventResolve and the moves its
-// body makes). A card Neyali exiled that was later played and then
-// exiled again by something else has that something else's
-// resolution nearest its latest arrival, so it is not claimed —
-// which is what keeps a stale grant off a card that is no longer
-// Neyali's.
-func b32CardsInExileLastExiledDuring(g *game.Game, controller uuid.UUID, label string) []uuid.UUID {
-	seen := map[uuid.UUID]bool{}
-	var out []uuid.UUID
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneExile || ev.CardID == uuid.Nil || seen[ev.CardID] {
-			continue
-		}
-		seen[ev.CardID] = true
-		if !b32NearestResolutionIs(g, i, controller, label) {
-			continue
-		}
-		if z := g.FindCardZoneForEffect(ev.CardID); z == nil || z.Kind != game.ZoneExile {
-			continue
-		}
-		out = append(out, ev.CardID)
-	}
-	return out
-}
-
-// b32NearestResolutionIs reports whether the nearest EventResolve
-// before index `at` in the log is the resolution of an ability
-// labelled `label` controlled by `controller`.
-func b32NearestResolutionIs(g *game.Game, at int, controller uuid.UUID, label string) bool {
-	for j := at - 1; j >= 0; j-- {
-		prev := g.Events[j]
-		if prev.Kind != game.EventResolve {
-			continue
-		}
-		return prev.Actor == controller && prev.Label == label
-	}
-	return false
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b32CreatureYouControlBecameTapped is Quest for Renewal's
@@ -336,31 +288,26 @@ func b32DestroyChosenIfControlledByTriggerVictim(g *game.Game, item *game.StackI
 }
 
 // b32NeyaliLabel is the stack label of Neyali's attack trigger —
-// the "one or more" dedup keys on it, and so does the exile-permission
-// walk that finds the cards earlier resolutions of it exiled.
+// the "one or more" dedup keys on it.
 const b32NeyaliLabel = "Neyali, Suns' Vanguard — exile the top card"
 
 // b32NeyaliAttack is Neyali, Suns' Vanguard's attack body, the trigger
 // sentence (the "attacking tokens have double strike" sentence is a
 // layer 6 static on the card): if a token is attacking a PLAYER, the
-// top card of the controller's library is exiled with permission to
-// play it this turn, and every card an earlier resolution of this
-// trigger exiled that is still in exile is re-granted for this turn —
-// which is "during any turn you attacked with a token", read as "any
-// turn this trigger resolved".
+// top card of the controller's library is exiled with a permission to
+// play it during any turn they attacked with a token. The permission
+// is the conditional exile play (game.CondAttackedWithToken, #3192): it
+// lasts as long as the card stays exiled, is dormant on a turn no token
+// attacked, and does not need Neyali, or her trigger, to still be there.
 func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
 	if !b32TokenYouControlAttacksAPlayer(g, item.Controller) {
 		return nil
 	}
-	if _, err := g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, 1, game.CastPermission{}); err != nil {
-		return err
-	}
-	for _, id := range b32CardsInExileLastExiledDuring(g, item.Controller, b32NeyaliLabel) {
-		if err := g.ExileCardWithPermissionForEffect(id, game.CastPermission{Player: item.Controller, Duration: g.UntilEndOfTurnDuration()}); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, 1, game.CastPermission{
+		Duration:  game.WhileInZoneDuration(),
+		Condition: &game.PermissionCondition{Key: game.CondAttackedWithToken},
+	})
+	return err
 }
 
 // b32CreateTokenBody is the body of one of Transmutation Font's
