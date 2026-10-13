@@ -43,11 +43,14 @@ import (
 // exiles the Saga and returns it to the battlefield front face up as a new
 // object under its owner's control, which is Jin-Gitaxias with no counters.
 //
-// The no-maximum-hand-size clause is a static on the Saga face rather than a
-// continuous effect created by chapter I (the engine has no hand-size effect
-// with a "for as long as you control this" duration), so it applies from the
-// moment the Saga is on the battlefield and does not depend on chapter I
-// resolving.
+// Chapter I's second sentence is a continuous effect the resolving ability
+// CREATES, not a static of the Saga (ADR 0113's amendment of 2026-10-13,
+// #3247): game.GrantHandSizeForEffect with the source-bound duration "for as
+// long as you control this Saga" (CR 611.2b, DurationWhileYouControlSource).
+// So a chapter I that is countered or stifled leaves nothing behind, a Saga
+// that left before the chapter resolved starts no effect at all, and the
+// effect ends the moment the Saga leaves or changes controller. Chapter III's
+// flicker returns the Saga as a new object (CR 400.7), which also ends it.
 func init() {
 	Register(Spec{
 		OracleID:     jinGitaxiasOracleID,
@@ -77,11 +80,7 @@ func init() {
 	Register(Spec{
 		OracleID:     jinGitaxiasOracleID + "#1",
 		Name:         "The Great Synthesis",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Saga's no-maximum-hand-size clause applies as soon as it is on the battlefield, so countering chapter I doesn't stop it.",
-		},
-		NoMaxHandSize: true,
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			ChapterTrigger(1, SagaChapterLabel("The Great Synthesis", 1, "draw cards equal to the number of cards in your hand"),
 				func(g *game.Game, item *game.StackItem) error {
@@ -90,7 +89,18 @@ func init() {
 					if p := g.PlayerByIDForEffect(item.Controller); p != nil && p.Hand != nil {
 						n = p.Hand.Size()
 					}
-					return DrawCards{Player: item.Controller, N: n}.Apply(ctx)
+					if err := (DrawCards{Player: item.Controller, N: n}).Apply(ctx); err != nil {
+						return err
+					}
+					// "for as long as you control this Saga": with no
+					// duration (the Saga gone, or a new object) the effect
+					// never begins (CR 611.2b).
+					d, ok := DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)
+					if !ok {
+						return nil
+					}
+					return g.GrantHandSizeForEffect(item.Controller, game.HandSizeNoMaximum, 0,
+						"The Great Synthesis — no maximum hand size", item.SourceCardID, d)
 				}),
 			TriggerWithPurpose(ChapterTrigger(2, SagaChapterLabel("The Great Synthesis", 2, "return all non-Phyrexian creatures to their owners' hands"),
 				func(g *game.Game, item *game.StackItem) error {
