@@ -235,6 +235,10 @@ func (l *Lobby) dropEntryLocked(id uuid.UUID) {
 	if e, ok := l.games[id]; ok {
 		close(e.stop)
 		delete(l.games, id)
+		// ADR 0159 §2: a deleted table's room goes with it.
+		if l.voice != nil && !e.practice {
+			l.voice.notify(id)
+		}
 	}
 }
 

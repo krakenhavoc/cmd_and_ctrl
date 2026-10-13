@@ -300,6 +300,9 @@ type Lobby struct {
 	// rooms. Set once at boot by SetVoiceRoomsEnabled, before
 	// RestoreFromDisk, so a restored table gets its stamp back.
 	voiceOn bool
+	// voice is the voice manager (ADR 0159 §4), nil when voice rooms
+	// are off. Set once at boot by SetVoiceManager.
+	voice *VoiceManager
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.
@@ -429,6 +432,13 @@ type gameEntry struct {
 	// (games.voice_channel_id, ADR 0159 §5), "" for none. Written by the
 	// voice manager; the lobby only persists it.
 	voiceChannelID string
+	// voiceReport is the voice manager's last word on the room: its
+	// status, link and each Discord member's access. nil until it
+	// reports. voicePushSeq is the room's sequence number after the
+	// push that report caused, so the idle check does not count it as
+	// activity.
+	voiceReport  *voiceReport
+	voicePushSeq uint64
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory

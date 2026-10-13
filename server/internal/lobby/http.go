@@ -357,6 +357,7 @@ type GameEvictor interface {
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
 //	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
+//	POST /games/{id}/voice/refresh — a seat: check my server membership again, or reopen an idle room
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -570,6 +571,12 @@ func Handler(c Config) http.Handler {
 	// ADR 0159 §1: the table's Discord voice room, on or off. Host or
 	// admin, authorised inside the handler with CanManageTable.
 	mux.Handle("PUT /games/{id}/voice", auth.Middleware(c.Auth)(handlerFunc(c, putVoiceRoom)))
+	// ADR 0159 §3: a seat that just joined the Discord server, or wants
+	// an idle room back. Each one asks Discord about the caller, so it
+	// is limited per caller: one every ten seconds, burst of three.
+	voiceRefreshLimit := newLimiter(1.0/10, 3)
+	mux.Handle("POST /games/{id}/voice/refresh",
+		auth.Middleware(c.Auth)(perCallerLimit(voiceRefreshLimit, handlerFunc(c, refreshVoiceRoom))))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it

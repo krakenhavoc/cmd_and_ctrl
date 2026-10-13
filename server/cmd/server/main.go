@@ -388,9 +388,15 @@ func main() {
 	// table's seats get their owners' mats back.
 	playmats := newPlaymatService(log, cfg.DataDir, database)
 	l.SetPlaymats(playmats)
-	// Table voice rooms (ADR 0159 §7): also before RestoreFromDisk, so
-	// a resumed table's game view carries its voice state again.
-	l.SetVoiceRoomsEnabled(cfg.Voice.Enabled())
+	// Table voice rooms (ADR 0159): the manager is attached before
+	// RestoreFromDisk, so a resumed table's game view carries its voice
+	// state again, and started after it, so its boot reconcile sees
+	// every restored table.
+	var voiceRooms *lobby.VoiceManager
+	if cfg.Voice.Enabled() {
+		voiceRooms = lobby.NewVoiceManager(cfg.Voice, log)
+		l.SetVoiceManager(voiceRooms)
+	}
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
 	// database at scrape time.
@@ -492,6 +498,9 @@ func main() {
 	restoreStart := time.Now()
 	n := l.RestoreFromDisk(log)
 	log.Info("restore from disk complete", "duration", time.Since(restoreStart).Round(time.Millisecond).String(), "resumed", n)
+	if voiceRooms != nil {
+		voiceRooms.Start(ctx)
+	}
 
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
