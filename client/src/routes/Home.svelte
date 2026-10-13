@@ -113,6 +113,12 @@
         external: true,
       },
       {
+        title: "About",
+        href: "#/about",
+        description:
+          "What this project is, what the engine does for you, and how to send feedback.",
+      },
+      {
         title: "Source",
         href: "https://github.com/krakenhavoc/cmd_and_ctrl",
         description: "The whole project — server, client, and every design decision.",

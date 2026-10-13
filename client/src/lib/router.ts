@@ -35,6 +35,10 @@ export type Route =
   // their account. Public: a stranger deciding whether to sign in has
   // to be able to read it first, and the page holds no account data.
   | { name: "privacy" }
+  // The About page (#2981): what this project is, what the engine does and
+  // does not do for you, where to send feedback, and the credits. Public:
+  // it is what a stranger reads before deciding to sign in.
+  | { name: "about" }
   // The one decks page (ADR 0112 §3): check a deck by link or paste,
   // its coverage report, "Request missing cards", "Save to my decks",
   // the saved library and the pre-built decks. Public like the roadmap:
@@ -128,6 +132,8 @@ export function parseHash(hash: string): Route {
       return { name: "roadmap" };
     case "privacy":
       return { name: "privacy" };
+    case "about":
+      return { name: "about" };
     // #/deck-check is a permanent alias of #/decks (see the Route type).
     case "decks":
     case "deck-check": {

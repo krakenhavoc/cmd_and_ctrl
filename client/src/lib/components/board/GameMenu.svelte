@@ -515,6 +515,18 @@
         <Icon name="help" size={15} />
         {L.legalNotice}
       </button>
+      <!-- #2981: the About page, in a new tab so a game is never left. -->
+      <a
+        class="mi"
+        role="menuitem"
+        href="#/about"
+        target="_blank"
+        rel="noopener noreferrer"
+        onclick={() => close(false)}
+      >
+        <Icon name="help" size={15} />
+        About this project
+      </a>
       {#if props.seated}
         <div class="sep"></div>
         <!-- Last, and confirmed: Concede is irreversible. Disabled, not

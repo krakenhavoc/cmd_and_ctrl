@@ -230,6 +230,13 @@
         </a>
       </p>
 
+      <!-- #2981: what this is, before signing in. -->
+      <p class="foot">
+        <a class="ghost-link" href="#/about">
+          <Icon name="link" size={12} /> About this project
+        </a>
+      </p>
+
       <!-- #2983: the privacy notice, reachable even where Discord sign-in
            is off (the link inside the Discord card is the one in context). -->
       <p class="foot">
