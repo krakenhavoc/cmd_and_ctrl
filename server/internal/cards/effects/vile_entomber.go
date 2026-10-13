@@ -26,12 +26,11 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Vile Entomber — search for a card, put it into your graveyard", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(game.Card) bool { return true },
-					Dest:      game.ZoneGraveyard,
-					Limit:     1,
-					Shuffle:   true,
-					Reason:    "Vile Entomber — a card, into your graveyard",
+					Player:  item.Controller,
+					Dest:    game.ZoneGraveyard,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Vile Entomber — a card, into your graveyard",
 				}.Apply(NewContext(g, item))
 			}),
 		},

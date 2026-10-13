@@ -98,6 +98,7 @@ func TestMigratedEntersTriggersUseTheStack(t *testing.T) {
 			}
 
 			passPriorityAroundTable(t, g)
+			takeSearchPrompts(t, g)
 
 			if !tc.fired(g, me, seeded) {
 				t.Errorf("%s: the trigger resolved but the effect did not happen", tc.name)

@@ -50,6 +50,7 @@ func TestThreeVisitsFetchesForestUntapped(t *testing.T) {
 
 	castCatalogSpell(t, g, "Three Visits", "Sorcery", threeVisitsOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	got, ok := battlefieldCard(g, forestID)
 	if !ok {
@@ -68,6 +69,7 @@ func TestSkyshroudClaimFetchesTwoUntapped(t *testing.T) {
 
 	castCatalogSpell(t, g, "Skyshroud Claim", "Sorcery", skyshroudClaimOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	for _, id := range ids {
 		got, ok := battlefieldCard(g, id)
@@ -86,6 +88,7 @@ func TestExplosiveVegetationFetchesTwoTapped(t *testing.T) {
 
 	castCatalogSpell(t, g, "Explosive Vegetation", "Sorcery", explosiveVegetationOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	for _, id := range ids {
 		got, ok := battlefieldCard(g, id)

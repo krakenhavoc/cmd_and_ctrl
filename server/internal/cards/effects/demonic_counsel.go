@@ -27,12 +27,11 @@ func init() {
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if b16CardTypesInGraveyard(ctx.Game, item.Controller) >= 4 {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(game.Card) bool { return true },
-					Dest:      game.ZoneHand,
-					Limit:     1,
-					Shuffle:   true,
-					Reason:    "Demonic Counsel (delirium) — any card, to hand",
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Demonic Counsel (delirium) — any card, to hand",
 				}.Apply(ctx)
 			}
 			return b06TutorToHand("Demonic Counsel — a Demon card, revealed, to hand",

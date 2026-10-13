@@ -42,12 +42,11 @@ func init() {
 			ActiveWhen:   Solved(),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(game.Card) bool { return true },
-					Dest:      game.ZoneHand,
-					Limit:     1,
-					Shuffle:   true,
-					Reason:    "Case of the Stashed Skeleton — search for a card",
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Case of the Stashed Skeleton — search for a card",
 				}.Apply(NewContext(g, item))
 			},
 		}},

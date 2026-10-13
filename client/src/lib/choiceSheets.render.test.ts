@@ -11,7 +11,7 @@
 //     the right resolve_choice params;
 //   - no backdrop, no centred modal, no aria-modal anywhere;
 //   - Enter presses a confirm that commits what was picked, and never a
-//     decline ("Fail to find") or a payment ("Pay {4}", Y / N only);
+//     decline ("Find nothing") or a payment ("Pay {4}", Y / N only);
 //   - Escape does nothing: a pending choice has no way out.
 
 import { describe, it, expect, afterEach, beforeEach } from "vitest";
@@ -192,7 +192,7 @@ describe("the scry family is a sheet", () => {
 });
 
 describe("a card grid is a sheet", () => {
-  it("search: Fail to find takes no Enter; Take does; Clear is a plain secondary", () => {
+  it("search: Find nothing takes no Enter; Take does; Clear is a plain secondary", () => {
     const opts = [card("f", "Forest"), card("i", "Island")];
     const { sent } = mount(
       snap({
@@ -205,9 +205,9 @@ describe("a card grid is a sheet", () => {
     const sheet = expectSheet("Solemn Simulacrum — a basic land");
     expect(sheet.querySelectorAll("button.card-pick")).toHaveLength(2);
 
-    // #2964: nothing picked means no primary; Fail to find is a plain secondary.
+    // #2964: nothing picked means no primary; Find nothing is a plain secondary.
     expect(barPrimary()).toBeNull();
-    const fail = barButton("Fail to find")!;
+    const fail = barButton("Find nothing")!;
     expect(barSecondaries()).toContain(fail);
     expect(fail.hasAttribute("aria-keyshortcuts")).toBe(false);
     keyFromBody("Enter");
@@ -218,7 +218,8 @@ describe("a card grid is a sheet", () => {
     expect(clear.hasAttribute("aria-keyshortcuts")).toBe(false);
 
     click(inSheet("button.card-pick").find((b) => nameOf(b) === "select Island")!);
-    expect(barButton("Fail to find")).toBeNull();
+    // #3053: declining stays one click away while a card is picked.
+    expect(barButton("Find nothing")).not.toBeNull();
     expect(nameOf(barPrimary()!)).toBe("Take");
     expect(barPrimary()!.getAttribute("aria-keyshortcuts")).toBe("Enter");
     expect(sheet.querySelector(".prompt-count")?.textContent).toContain("1 / 1 selected");
@@ -227,6 +228,69 @@ describe("a card grid is a sheet", () => {
     keyFromBody("Enter");
     expect(sent).toEqual([
       { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["i"] } },
+    ]);
+  });
+
+  it("search: a lone match opens taken; Enter takes it, Find nothing declines (#3053)", () => {
+    // The search the engine used to resolve without asking. It asks now
+    // (CR 701.23b), and the default is the answer nearly everyone gives.
+    const lone = [card("f", "Forest")];
+    const a = mount(
+      snap({
+        kind: "search_library",
+        reason: "Rampant Growth — a basic land",
+        search_max: 1,
+        options: lone,
+      }),
+    );
+    expectSheet("Rampant Growth — a basic land");
+    expect(nameOf(barPrimary()!)).toBe("Take");
+    expect(barPrimary()!.disabled).toBe(false);
+    expect(barPrimary()!.getAttribute("aria-keyshortcuts")).toBe("Enter");
+    expect(sheetPanel()!.querySelector(".prompt-count")?.textContent).toContain("1 / 1 selected");
+    keyFromBody("Enter");
+    expect(a.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["f"] } },
+    ]);
+    cleanup();
+
+    const b = mount(
+      snap({
+        kind: "search_library",
+        reason: "Rampant Growth — a basic land",
+        search_max: 1,
+        options: lone,
+      }),
+    );
+    const none = barButton("Find nothing")!;
+    expect(barSecondaries()).toContain(none);
+    expect(none.hasAttribute("aria-keyshortcuts")).toBe(false);
+    click(none);
+    expect(b.sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: [] } },
+    ]);
+  });
+
+  it("search: a search that must find offers no Find nothing and waits for the pick (#3053)", () => {
+    const opts = [card("a", "Bear"), card("b", "Elf")];
+    const { sent } = mount(
+      snap({
+        kind: "search_library",
+        reason: "Demonic Tutor — a card",
+        search_max: 1,
+        search_min: 1,
+        options: opts,
+      }),
+    );
+    expectSheet("Demonic Tutor — a card");
+    expect(barButton("Find nothing")).toBeNull();
+    expect(nameOf(barPrimary()!)).toBe("Take");
+    expect(barPrimary()!.disabled).toBe(true);
+    click(inSheet("button.card-pick")[1]);
+    expect(barPrimary()!.disabled).toBe(false);
+    keyFromBody("Enter");
+    expect(sent).toEqual([
+      { type: "resolve_choice", params: { choice_id: "choice-1", card_ids: ["b"] } },
     ]);
   });
 

@@ -113,6 +113,7 @@ func TestGloryheathLynxFetchesABasicPlainsToHand(t *testing.T) {
 
 	saddleThenAttack(t, g, me.ID, opp.ID, mount, saddler)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if me.Hand.Size() != hand+1 {
 		t.Fatalf("hand = %d, want %d", me.Hand.Size(), hand+1)

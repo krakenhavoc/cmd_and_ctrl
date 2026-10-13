@@ -250,6 +250,7 @@ func TestB30PromisingVeinTapsForColorlessAndFetchesABasicTapped(t *testing.T) {
 		t.Fatal("the Vein is sacrificed as the cost")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if searchChoiceFor(g, me.ID) != nil {
 		t.Fatal("one basic in the library is no choice — it is taken outright")
 	}
@@ -411,6 +412,7 @@ func TestB30HourOfPromiseFetchesTwoLandsTappedAndMakesZombiesWithThreeDeserts(t 
 	)
 	castCatalogSpell(t, g, "Hour of Promise", "Sorcery", b30HourOfPromiseOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !g.Battlefield.Contains(lib[0]) || !g.Battlefield.Contains(lib[1]) {
 		t.Fatal("both land cards are fetched")
 	}

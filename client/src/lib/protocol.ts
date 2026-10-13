@@ -1247,8 +1247,9 @@ export interface PendingChoiceView {
     // the matching cards, sent ONLY to the chooser — a library is a
     // hidden zone and even the number of matches is private. Answered
     // with the generic {choice_id, card_ids} payload; an empty list
-    // is a legal "fail to find" (CR 701.23b), so search_max is the
-    // ceiling and the floor is zero.
+    // is a legal "fail to find" (CR 701.23b) unless search_min says the
+    // search must find, so search_max is the ceiling and search_min
+    // (default zero) the floor.
     | "search_library"
     // S28 cascade (CR 702.85): "you may cast it without paying its
     // mana cost". Answered with the shared yes/no {choice_id, apply}
@@ -1591,11 +1592,15 @@ export interface PendingChoiceView {
   // {E}". Answered with { amount }: 0, or min..max.
   pay_amount?: PayAmountView;
   // S22: populated for kind "search_library" — how many of `options`
-  // the searcher may take. The minimum is always zero, so the submit
-  // button is live from the first render. Absent for every other
-  // kind, and absent for non-chooser viewers, who are not told what
-  // the search is for.
+  // the searcher may take. Absent for every other kind, and absent for
+  // non-chooser viewers, who are not told what the search is for.
   search_max?: number;
+  // #3053: the fewest the searcher may take. Absent (zero) for a search
+  // for a card with a stated quality (CR 701.23b — "Find nothing" is a
+  // legal answer even against exactly one match). At least one only for
+  // an unconditional "a card" / "three cards" search (CR 701.23d), where
+  // an empty answer is refused and the client offers no such button.
+  search_min?: number;
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.

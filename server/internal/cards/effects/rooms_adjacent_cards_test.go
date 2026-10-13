@@ -140,6 +140,7 @@ func TestKeysToTheHouseFetchesABasicLandAndIsSacrificed(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	eerieSettle(t, g, eerieAnswers{})
+	takeSearchPrompts(t, g)
 	if !inZone(me.Hand, ids[1]) {
 		t.Fatal("the Forest should be in hand")
 	}

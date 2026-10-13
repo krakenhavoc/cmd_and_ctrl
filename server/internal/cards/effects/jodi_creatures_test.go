@@ -251,6 +251,7 @@ func TestConfluxOneGoldCardCannotBeTwoColours(t *testing.T) {
 		ManaCost: "{U}", Owner: me.ID, Controller: me.ID})
 	castCatalogSpell(t, g, "Conflux", "Sorcery", confluxOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	// Each search has exactly one candidate, so it is taken without a
 	// prompt. White takes the gold card (the first library card in
 	// order is the blue one, which is not white), then blue must take
@@ -273,6 +274,7 @@ func TestConfluxTakesALoneGoldCardOnce(t *testing.T) {
 	castCatalogSpell(t, g, "Conflux", "Sorcery", confluxOracle, nil)
 	hand := me.Hand.Size()
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if got := me.Hand.Size(); got != hand+1 || !me.Hand.Contains(gold) {
 		t.Errorf("hand grew by %d (gold in hand %v), want exactly the one gold card", got-hand, me.Hand.Contains(gold))
 	}

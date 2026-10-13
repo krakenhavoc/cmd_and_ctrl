@@ -37,6 +37,7 @@ func TestCommanderSearchedToExileOffersCommandZone(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
+	takeSearchPrompts(t, g)
 	if !g.Exile.Contains(cmdID) {
 		t.Fatalf("searched-to-exile commander did not reach exile")
 	}
@@ -62,12 +63,14 @@ func TestCommanderSearchedToExileDeclineGoesToExile(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
+	takeSearchPrompts(t, g)
 	answerCommanderReturn(t, g, owner, cmdID, false)
 	assertOnlyIn(t, cmdID, g.Exile, owner.Command, owner.Library)
 }
 
 // TestSearchToExileNonCommanderIsUnchanged: an ordinary card searched
-// to exile just goes there, no prompt.
+// to exile just goes there: the search prompt is answered (#3053) and no
+// commander prompt follows.
 func TestSearchToExileNonCommanderIsUnchanged(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -85,6 +88,7 @@ func TestSearchToExileNonCommanderIsUnchanged(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
+	takeSearchPrompts(t, g)
 	if len(g.PendingChoices) != 0 {
 		t.Fatalf("no commander involved: want no pending choices, got %d", len(g.PendingChoices))
 	}

@@ -37,7 +37,6 @@ func init() {
 					Predicate:     IsBasicLand,
 					Dest:          game.ZoneBattlefield,
 					Limit:         x,
-					Optional:      true,
 					Shuffle:       true,
 					TappedOnEntry: true,
 					Reason:        "Point the Way — basic lands onto the battlefield tapped",

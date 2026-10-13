@@ -591,6 +591,7 @@ func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
 		t.Error("the land is sacrificed on cast")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	for _, name := range []string{"Forest", "Plains"} {
 		l := findBattlefieldByName(g, name)
 		if l == uuid.Nil {
@@ -731,8 +732,9 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own creatures are untouched")
 	}
-	// The opponent who lost two creatures runs one two-card search;
-	// the one who lost one has exactly one basic and needs no prompt.
+	// The opponent who lost two creatures runs one two-card search; the
+	// one who lost one has exactly one basic and is asked too: a search
+	// for a basic land may find nothing (CR 701.23b, #3053).
 	pc := searchChoiceFor(g, opp.ID)
 	if pc == nil || pc.Count != 2 {
 		t.Fatalf("opp's search = %+v, want a two-card prompt", pc)
@@ -741,9 +743,13 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 	if findBattlefieldByName(g, "Forest") == uuid.Nil || findBattlefieldByName(g, "Plains") == uuid.Nil {
 		t.Error("opp's two basics arrive")
 	}
+	if findBattlefieldByName(g, "Swamp") != uuid.Nil {
+		t.Error("the other player's single basic waits for their answer")
+	}
+	answerSearchNamed(t, g, other.ID, "Swamp")
 	swamp := findBattlefieldByName(g, "Swamp")
 	if swamp == uuid.Nil || !b16Tapped(t, g, swamp) {
-		t.Error("the other player's single basic arrives tapped without a prompt")
+		t.Error("the other player's single basic arrives tapped once they take it")
 	}
 }
 

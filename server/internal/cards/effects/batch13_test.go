@@ -699,6 +699,7 @@ func TestB13VibrantCityscapeFetchesABasicTapped(t *testing.T) {
 		t.Fatal("the Cityscape is sacrificed at announce")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !g.Battlefield.Contains(forest) {
 		t.Fatal("the basic Forest should be fetched")
 	}
@@ -917,6 +918,7 @@ func TestB13FarhavenElfMayFetchABasicTapped(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !g.Battlefield.Contains(forest) {
 		t.Fatal("the Forest should be fetched")
 	}

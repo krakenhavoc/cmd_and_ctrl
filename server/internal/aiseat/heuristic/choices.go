@@ -21,6 +21,12 @@ import (
 // take the best of them for another, and the sign is the whole
 // decision.
 
+// searchTakeBonus is what any non-empty answer to a library search is
+// worth on top of its cards, so that taking something beats finding
+// nothing (the empty answer scores zero). Small against cardValue's
+// scale: it breaks the tie with "find nothing" and nothing else.
+const searchTakeBonus = 0.01
+
 // pending choice kinds, as they appear on the wire
 // (game.PendingChoiceKind).
 const (
@@ -223,6 +229,17 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		var v float64
 		for _, id := range cp.CardIDs {
 			v += st.searchValue(p.cfg, lookup(id))
+		}
+		// #3053: a search for a stated quality may find nothing even
+		// against one match, so "find nothing" is on the menu for every
+		// tutor. It scores zero; a take must therefore never score at or
+		// below it, or a card the bot values at nothing would be declined
+		// for no reason. Taking is the default, and the best card is the
+		// best take: a value below zero is lifted to zero first, then the
+		// bonus is added, and two takes with positive values keep their
+		// order.
+		if len(cp.CardIDs) > 0 {
+			v = max(v, 0) + searchTakeBonus
 		}
 		return v, "search: take the best"
 

@@ -347,6 +347,7 @@ func TestB25RecklessHandlingTutorsThenDiscardsAtRandom(t *testing.T) {
 	me.Hand.Cards = nil
 	castCatalogSpell(t, g, "Reckless Handling", "Sorcery", b25RecklessHandlingOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if me.Hand.Contains(ring) || !me.Graveyard.Contains(ring) {
 		t.Error("the artifact was tutored to hand and then discarded at random")
 	}

@@ -167,6 +167,7 @@ func TestMagdaBrazenOutlawSacrificesFiveTreasuresToTutorOntoTheBattlefield(t *te
 		t.Fatalf("four Treasures: got %v, want ErrInvalidParam", err)
 	}
 	b16Activate(t, g, me.ID, magda, 0, game.ActivateAbilityParams{SacrificeIDs: treasures})
+	takeSearchPrompts(t, g)
 	if findBattlefieldByName(g, "Wurmcoil") == uuid.Nil {
 		t.Error("the artifact is put onto the battlefield")
 	}
@@ -245,6 +246,7 @@ func TestKuldothaForgemasterMayBeOneOfItsOwnThreeArtifacts(t *testing.T) {
 		}
 	})
 	b16Activate(t, g, me.ID, forge, 0, game.ActivateAbilityParams{SacrificeIDs: pay})
+	takeSearchPrompts(t, g)
 	if g.Battlefield.Contains(forge) {
 		t.Error("the Forgemaster paid for itself")
 	}

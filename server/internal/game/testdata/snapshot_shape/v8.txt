@@ -2189,6 +2189,7 @@ pendingChoices[].scryCards[]	custom(uuid.UUID)
 pendingChoices[].searchCards	array
 pendingChoices[].searchCards[]	custom(uuid.UUID)
 pendingChoices[].searchMax	number:int
+pendingChoices[].searchMin	number:int
 pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)

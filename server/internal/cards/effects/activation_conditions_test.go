@@ -287,6 +287,7 @@ func TestWeatheredWayfarerNeedsAnOpponentAhead(t *testing.T) {
 		t.Fatalf("activate with an opponent ahead on lands: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if me.Hand.Size() != handBefore+1 {
 		t.Errorf("hand %d → %d, want the land card", handBefore, me.Hand.Size())
 	}
@@ -584,6 +585,7 @@ func TestInventorsFairMetalcraft(t *testing.T) {
 	acPermanent(g, me.ID, "Ornament C", "Artifact", 0, 0)
 	handBefore := me.Hand.Size()
 	b16Activate(t, g, me.ID, fair, 0, game.ActivateAbilityParams{})
+	takeSearchPrompts(t, g)
 	if me.Hand.Size() != handBefore+1 {
 		t.Errorf("hand %d → %d, want the artifact card", handBefore, me.Hand.Size())
 	}

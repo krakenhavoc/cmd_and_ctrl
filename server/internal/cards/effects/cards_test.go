@@ -1231,6 +1231,7 @@ func TestSolemnSimulacrumETBFetchesBasic(t *testing.T) {
 		t.Fatalf("Forest fetched before the trigger resolved")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !g.Battlefield.Contains(forestID) {
 		t.Errorf("fetched Forest not on battlefield")

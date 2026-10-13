@@ -14,6 +14,7 @@ func searchWithCounters(t *testing.T, g *Game, spec SearchLibrarySpec) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
+	takeSearchPrompts(t, g)
 }
 
 // The counter is on the permanent, it was placed BEFORE EventETB (so an
