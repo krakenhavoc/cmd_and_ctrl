@@ -32,7 +32,7 @@ func TestFraReprintBCardsAreRegistered(t *testing.T) {
 		rfrbProteusStaff:      {"Proteus Staff", CompletenessFull},
 		rfrbRestlessAnchorage: {"Restless Anchorage", CompletenessFull},
 		rfrbRestlessSpire:     {"Restless Spire", CompletenessFull},
-		rfrbSharkTyphoon:      {"Shark Typhoon", CompletenessCaveats},
+		rfrbSharkTyphoon:      {"Shark Typhoon", CompletenessFull},
 		rfrbSkrelvsHive:       {"Skrelv's Hive", CompletenessFull},
 		rfrbStaffStoryteller:  {"Staff of the Storyteller", CompletenessFull},
 		rfrbSyntheticDestiny:  {"Synthetic Destiny", CompletenessFull},

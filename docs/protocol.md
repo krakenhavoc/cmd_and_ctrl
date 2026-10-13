@@ -528,6 +528,24 @@ condition — check its text and choose again"`. (`search_library` still
 answers with the generic `"invalid parameter"`.) Every set listed in
 `legal_moves` for such a prompt already passes the rule.
 
+### Where a `choose_cards` pick goes: `choose_destination` (#2680, #3270)
+
+A `choose_cards` prompt may say what happens to the cards it names, in
+`choose_destination` (sent to the chooser only, like the bounds):
+`"battlefield"` and `"battlefield_tapped"` put the picked hand card onto
+the battlefield ("you may put a land card from your hand onto the
+battlefield"), and `"cast_free"` is "you may cast a spell from your hand
+without paying its mana cost" (Buster Sword, Kari Zev's and Rishkar's
+Expertise, Surtland Elementalist, Great Intelligence's Plan, CR 608.2g).
+The last one changes what the client does with the answer: the pick opens
+a pass-closed, any-timing `{0}` cast permission over the card in hand
+(the snapshot after the answer shows it as an `alternative_costs` offer
+keyed `granted-cost` with `mana_cost: "{0}"` and `timing_closed` unset),
+and the client starts the card's cast chain (targets, modes, X) at once,
+with that offer chosen. The holder's next `pass_priority` ends the
+permission and the card stays in the hand. An empty `card_ids` answer
+casts nothing.
+
 ### `untap_choice` — the untap step's own determination (#826, CR 502.3)
 
 `pending_choices` may carry `kind: "untap_choice"`. It is CR 502.3's

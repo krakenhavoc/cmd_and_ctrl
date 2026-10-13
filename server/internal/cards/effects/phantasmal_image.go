@@ -32,12 +32,11 @@ func init() {
 	Register(Spec{
 		OracleID:     "bde94af8-faea-41ff-8eed-ba642eac9968",
 		Name:         "Phantasmal Image",
-		Completeness: CompletenessCaveats,
-		// The same engine-wide deviation Clone declares: the CR 704.5f
-		// state-based action deliberately skips a creature with
-		// printed toughness 0 and no counters, because that shape is
-		// the placeholder convention for unparseable stats.
-		Caveats: []string{"If you decline the copy, the 0/0 Phantasmal Image stays on the battlefield instead of dying."},
+		Completeness: CompletenessFull,
+		// Declining the copy leaves a real 0/0: the CR 704.5f placeholder
+		// skip (Card.ToughnessIsKnown) applies only to an object with no
+		// printing behind it, and a deck-imported card has one, so it dies
+		// (TestPhantasmalImageThatDeclinesTheCopyDies).
 		Grants: []AbilityGrant{{
 			Key:  phantasmalImageIllusionGrant,
 			Text: "When this creature becomes the target of a spell or ability, sacrifice it.",

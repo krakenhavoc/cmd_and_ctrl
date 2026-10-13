@@ -9075,7 +9075,10 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   creatures alike and outlive the planeswalker that made them.
 - **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when
   `known` is false (the weaker direction). A player with no commander has a colourless identity.
-- **A free cast from hand with a ceiling** (Buster Sword) is the Rishkar's Expertise pick plus a `{0}` `CastPermission`.
+- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, "Buster Sword",
+  "a spell with mana value N or less", ManaValueLE(N))`: one prompt, then the pass-closed any-timing `{0}` cast (#3270).
+  Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
+  castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
   Emrakul, the Exigent Doom (a hand ability whose granted mana ability lasts "until this card is cast from exile"; durations
   have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
@@ -9115,6 +9118,27 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   Gods' 7b base 0/0); one in the removal's own layer does not, because ADR 0093 decision 3 orders every layer 6 removal
   first.
 
+### A reanimation's counters and tail, "when you cycle" with an X, and a token's own sizing (#3172, cav-h1)
+
+```go
+ctx.Game.ReturnFromGraveyardWithCountersForEffect(id, uuid.Nil, false, map[string]int{"-1/-1": 1})    // Persist
+ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(id, ctrl, false, counters, func(g *game.Game, entered uuid.UUID) error { … }) // Makeshift Mannequin
+InGraveyard(On(game.EventCycle, Self, "…", func(g, item) error { x := item.Trigger.Event.Amount; … })) // Shark Typhoon
+ctx.SourcePermanent()                                                                                  // Ratatwotwo's X, last-known once it has left
+```
+
+- **"Return … with a counter on it"** is an "enters with" clause: pass the counters to the return, never add them on
+  the next line (an entry trigger would see the creature at printed size, and a Clone's question would swallow the
+  second step). A "then" that needs the new permanent (a grant, a suspect) is the `…ThenForEffect` tail.
+- **`EventCycle.Amount` is the cycling cost's X**, so "when you cycle this card, create an X/X" is its own
+  graveyard trigger (ADR 0062 amendment 2026-10-13) and the cycling ability only draws.
+- **A creature token that counts something** (Simulacrum Synthesizer's Construct) uses the token's own static
+  (`UrzaConstructToken`), not a static on the card that made it.
+- **A trigger's resolution-time "if"** reads the event off `item.Trigger.Event` (the Forest that entered), so
+  the check is the card's own condition and not a stricter stand-in.
+- **A Mycosynth Lattice-style "permanents are colorless"** is a layer 5 static that clears `Colors`; cards in hand,
+  graveyard and exile and spells on the stack are still not reached.
+
 ### Three small pieces from the Raffine deck (#3212)
 
 - **Connive X** is `ConniveX{Controller, Creature, X}` (`connive.go`): draw X, then
@@ -9133,13 +9157,16 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   `ReturnFromGraveyardTogether.Then`.
 - **A madness cost with life** is `Madness: "{2}{B}", MadnessLife: 8` (ADR 0066
   amendment 2026-10-13).
-- **A free cast of cards in your hand during a resolution** (The Great Synthesis)
-  cannot be a plain hand `CastPermission`: a hand permission applies only to a cast
-  that claims the alternative cost it carries (`CastPermission.ForClaim`). Give it an
-  `AltCostKey` (an on-disk identity) and a `Cost: "{0}"`, `CastOnly`, `TimingFlash` and
-  `LapseOnPass: game.LapseStaysInExile`; the offer shows in the cost picker and the
-  caster claims it. Kari Zev's and Rishkar's Expertise grant one without a key (#3234,
-  open).
+- **A free cast of cards in your hand during a resolution** is cast "as part of" the resolution (CR 608.2g), so it
+  ignores timing and is now or never. A hand permission applies only to a cast that claims the alternative cost it
+  carries (`CastPermission.ForClaim`), and the grant that does all of it is `Game.FreeCastFromHandPermission`: `{0}`,
+  claimed under `AltCostKeyGrantedCost`, `CastOnly`, `TimingFlash` and `LapseOnPass: game.LapseStaysInHand`, so the
+  holder's next pass ends it and the card stays in hand. "You may cast a spell from your hand" with a pick (Buster
+  Sword, Kari Zev's and Rishkar's Expertise, Surtland Elementalist, Great Intelligence's Plan) is
+  `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
+  The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
+  enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
+  its own `AltCostKey` and no pick (#3270).
 
 ### Adding a `Spec` slot (#622)
 

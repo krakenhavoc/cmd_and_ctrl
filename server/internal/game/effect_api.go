@@ -2204,6 +2204,28 @@ func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller 
 	return err
 }
 
+// ReturnFromGraveyardWithCountersThenForEffect is
+// ReturnFromGraveyardToBattlefieldThenForEffect with counters the
+// creature enters with: "return target creature card from your graveyard
+// to the battlefield with a mannequin counter on it. For as long as it
+// has a mannequin counter, it has ..." (Makeshift Mannequin). The
+// counters ride the entry event (CR 614.1c), and `then` runs once the
+// entry is complete, even when the creature first asked a question (a
+// Clone's copy pick), with the entering permanent's ID or uuid.Nil.
+//
+// `controller` uuid.Nil is "under its owner's control". Caller must
+// hold g.mu. Added for #3172 (cav-h1).
+func (g *Game) ReturnFromGraveyardWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
+	if z := g.findCardZoneLocked(cardID); z == nil || z.Kind != ZoneGraveyard {
+		if then != nil {
+			return then(g, uuid.Nil)
+		}
+		return nil
+	}
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, then)
+	return err
+}
+
 // returnFromGraveyardEntryLocked is the body of every graveyard return,
 // with the caller's continuation for a battlefield entry (nil for none).
 func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {

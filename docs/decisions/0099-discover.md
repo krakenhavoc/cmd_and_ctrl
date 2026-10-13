@@ -311,3 +311,19 @@ Make the walk ignore the caller's test (`hit` replaced by a constant false): `Te
 ### Snapshot impact
 
 None. The grant, the prompt and the keyword string are existing persisted shapes.
+
+## Amendment 2026-10-13: the same window over a card in hand (#3270)
+
+An owner report from live play: "Buster Sword: it gives me the option but does not cast it from my hand." Buster Sword, Kari Zev's Expertise, Rishkar's Expertise, Surtland Elementalist and Great Intelligence's Plan all say "you may cast a spell from your hand without paying its mana cost". Each queued a `choose_cards` pick and then stamped a one-shot `{0}` permission over the card (§4's grant model, without §4's window), so picking did nothing visible: the player had to find the card and cast it themselves, at the card's own timing, any time that turn. CR 608.2g puts the cast inside the resolution, ignoring timing, and if the player does not cast it then, the chance is gone.
+
+**Decision.**
+
+1. **The window is §4's, for a hand.** The pick's grant is `Game.FreeCastFromHandPermission`: `Cost: "{0}"`, claimed under `AltCostKeyGrantedCost` (#3234), `TimingFlash`, `CastOnly` and `LapseOnPass: LapseStaysInHand`. The holder's next priority pass ends it and the card stays in hand, the way `LapseStaysInExile` leaves a rebound card in exile. Nothing moves when it fires. An uncastable pick (no legal target) therefore costs nothing, and a free spell cannot be held across the turn.
+2. **One helper for the five cards.** `effects.offerFreeHandCast` (`effects/free_hand_cast.go`) filters the hand by a `CardPredicate`, queues the pick and grants the permission on the answer. The prompt carries `choose_destination: "cast_free"` (`game.ChooseCastFree`), the same vocabulary #2680 gave the put-from-hand prompts.
+3. **The client opens the cast.** Answering a `cast_free` pick with a card sets `handFreeCastRequest`; once the snapshot shows the `granted-cost` offer on the hand card, Board starts the cast chain with that offer already chosen (a card with a question of its own before the cost, such as a face or kicker, goes through the ordinary chain with the offer preselected in `AlternativeCostModal`). The same `freeCastRequest` shape as §7's, for a hand card instead of an exiled one.
+4. **The bot.** `heuristic` prices a `cast_free` pick as a cast (`puts.go`: what the card resolves into, over what keeping it is worth) rather than as a discard, and the enumerator already offers the claimed cast, so a bot picks a card and casts it before it passes.
+5. **The Great Synthesis** (a grant over every card in hand, no pick) moves from `LapseStaysInExile`, a no-op for a hand card, to `LapseStaysInHand`. Behaviour is unchanged.
+
+The SANDBOX SIMPLIFICATION of §Decision 4 stands: the cast is an ordinary `cast_spell` taken right after the pick, not a frame inside the resolution. The rest of the resolution has already run when the pick is asked.
+
+**Back-out.** Removing the `Timing`/`LapseOnPass` lines from the grant, the `ChooseCastFree` destination, or the client's `handFreeCastRequest.set` each fails a named test; the pull request lists them.

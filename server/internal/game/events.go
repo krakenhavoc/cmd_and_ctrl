@@ -79,7 +79,8 @@ const (
 
 	// EventCycle — Actor cycled CardID (CR 702.29b): they activated
 	// its cycling ability and paid the cost, which discarded it.
-	// Source and CardID are both the cycled card.
+	// Source and CardID are both the cycled card, and Amount is the
+	// X the cycling cost was announced with (0 when it has none).
 	//
 	// Emitted AFTER the cost's EventDiscardCard, with the card
 	// already in the graveyard, because that is where CR 702.29c

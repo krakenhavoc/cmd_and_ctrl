@@ -372,10 +372,13 @@ func (g *Game) findHandCardLocked(p *Player, id uuid.UUID) *Card {
 // EventCycle carries the cycled card on both Source and CardID —
 // Source because the cycling ability is what emitted it, CardID
 // because "that card" is what a watcher asks about — matching the
-// convention EventDiscardCard and EventCast already use.
+// convention EventDiscardCard and EventCast already use. Amount is the
+// X the cycling cost was announced with (0 for a cycling cost with no
+// {X}): Shark Typhoon's "when you cycle this card, create an X/X"
+// reads it, as a separate trigger and not as part of the ability.
 //
 // Caller must hold g.mu.
-func (g *Game) payAbilityDiscardsLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, cards []uuid.UUID, answers map[uuid.UUID]bool) error {
+func (g *Game) payAbilityDiscardsLocked(playerID, sourceID uuid.UUID, ab ActivatedAbilityShape, cards []uuid.UUID, answers map[uuid.UUID]bool, xValue int) error {
 	if len(cards) > 0 {
 		if err := g.discardCardsLocked(playerID, cards, discardOptions{
 			cause:            DiscardCauseCost,
@@ -388,11 +391,15 @@ func (g *Game) payAbilityDiscardsLocked(playerID, sourceID uuid.UUID, ab Activat
 	if !ab.Cycling {
 		return nil
 	}
+	if xValue < 0 {
+		xValue = 0
+	}
 	g.EmitEvent(Event{
 		Kind:   EventCycle,
 		Actor:  playerID,
 		Source: sourceID,
 		CardID: sourceID,
+		Amount: xValue,
 	})
 	return nil
 }

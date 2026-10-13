@@ -230,3 +230,23 @@ Each lists the recommended option first. The owner chose (a), the recommended op
    - **(a) Recommended:** two `Card` fields (`EnchantSwapped`, `EnchantReturned`) read first by `attachmentLegalLocked`, as ADR 0141 did for bestow.
    - **(b)** A general layer-6 "enchant" ability that effects can grant and remove. It is more faithful to CR 613.1f, but no card in the catalog needs it, and it touches every Aura's legality.
    - **Decision:** (a). Two `Card` fields, `EnchantSwapped` and `EnchantReturned`, read first by `attachmentLegalLocked`.
+
+## Amendment — 2026-10-13: a reanimation with counters and a tail (#3172, cav-h1)
+
+Decision 5 gave the graveyard return a continuation, `ReturnFromGraveyardToBattlefieldThenForEffect`, so
+that a "then" that must see the NEW permanent lands even when the creature first asks a question (a
+Clone's copy pick, a shockland's payment). Three more cards were waiting on the same shape, one of them
+with counters:
+
+- **`ReturnFromGraveyardWithCountersThenForEffect(card, controller, tapped, counters, then)`** is that
+  continuation beside the "enters with counters" clause. The counters ride the entry event (CR 614.1c),
+  so a Doubling Season sees them; `then` runs once, with the entering permanent's ID or `uuid.Nil`.
+  Makeshift Mannequin grants its sacrifice ability from the tail, so a returned Clone has it.
+- **Persist** ("with a -1/-1 counter on it") uses `ReturnFromGraveyardWithCountersForEffect`, the form
+  without a tail: the counter is part of the entry, not a second step after it.
+- **Presumed Dead** suspects the returned creature from the tail, so a returned Clone is suspected.
+
+Back-out: stop passing the counter map (Persist), skip the grant (Mannequin) or the suspect (Presumed
+Dead) in the tail; each named test fails (`TestPersistCounterRidesTheEntry`,
+`TestMakeshiftMannequinGrantLandsAfterACloneAnswersItsEntryQuestion`,
+`TestPresumedDeadSuspectsACloneThatAsksAsItReturns`).
