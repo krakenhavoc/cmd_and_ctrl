@@ -356,6 +356,22 @@ func (g *Game) PutCardsFromLibraryOntoBattlefieldThenForEffect(ids []uuid.UUID, 
 	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), opts, then)
 }
 
+// PutCardsFromHandOntoBattlefieldThenForEffect puts every card in `ids`
+// from its owner's hand onto the battlefield as ONE simultaneous entry
+// ("put up to N permanent cards from your hand onto the battlefield",
+// Selvala's Stampede; ADR 0146 amendment 2026-10-13), and tells `then`
+// which permanents entered once the entry is complete. The hand twin of
+// PutCardsFromLibraryOntoBattlefieldThenForEffect, on the same batch
+// (entry_batch.go): every CR 614 window is evaluated against the board
+// as it stood before any card entered, every ETB fires after all have
+// landed, and a card whose window stops to ask a question waits for the
+// answer. `then` runs exactly once, including when the batch is refused.
+//
+// Caller must hold g.mu.
+func (g *Game) PutCardsFromHandOntoBattlefieldThenForEffect(ids []uuid.UUID, opts HandEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
+	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneHand), opts, then)
+}
+
 // PutFromHandOntoBattlefieldThenForEffect is the hand door with a
 // continuation, told the entering permanent's ID (uuid.Nil when nothing
 // entered) once the entry is complete. See

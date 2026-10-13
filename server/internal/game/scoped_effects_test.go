@@ -304,6 +304,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
+		// ADR 0146 amendment (#2928): who casts each player's ballot.
+		// Its cases are in council_vote_zone_chooser_test.go and
+		// illusion_of_choice_test.go.
+		ModVoteChooser: true,
 		// #2562: cases above.
 		ModSetName: true, ModSetTypes: true,
 	}

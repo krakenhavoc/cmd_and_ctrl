@@ -294,6 +294,13 @@ const (
 	// playerCantBecomeMonarchLocked, which becomeMonarchLocked and the
 	// CR 725.4 hand-on ask. Reads Player.
 	ModCantBecomeMonarch ModKind = "cantBecomeMonarch"
+	// ModVoteChooser is "you choose how each player votes this turn"
+	// (ADR 0146 amendment 2026-10-13, #2928; CR 701.38): Illusion of
+	// Choice. Scope ScopeGame with Player set to the player who chooses.
+	// Read by voteChooserLocked at every ballot of a vote, so the
+	// ballot is put to that player instead of the voter; where several
+	// records stand the newest one (CR 613.7) wins. Reads Player.
+	ModVoteChooser ModKind = "voteChooser"
 	// ModCantBeRegenerated is "<that permanent> can't be regenerated
 	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
 	// are not applied to it, and are not used up, and neither is a
@@ -855,6 +862,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantPlayFromHand: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
+	// ADR 0146 amendment (#2928): who casts each player's ballot.
+	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.

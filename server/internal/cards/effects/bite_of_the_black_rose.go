@@ -23,6 +23,9 @@ func init() {
 		OracleID:     "4db04e23-e1da-4c41-9dba-5502dfff73fb",
 		Name:         "Bite of the Black Rose",
 		Completeness: CompletenessFull,
+		// The sickness branch is a one-sided -2/-2 sweep (ADR 0126 §6);
+		// the vote may go the other way, which the declaration cannot say.
+		Purpose: game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepMinus, Amount: 2, OpponentsOnly: true}},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Vote{
 				Question:      "Bite of the Black Rose — vote for sickness or psychosis",

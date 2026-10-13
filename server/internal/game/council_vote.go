@@ -121,6 +121,13 @@ type CouncilVote struct {
 	// empty is no hint. Nothing else reads them.
 	ForController []int `json:"forController,omitempty"`
 	ForOpponents  []int `json:"forOpponents,omitempty"`
+	// Zone is where the cards the options name are, for an object vote
+	// over cards that are not permanents (Custodi Squire's "an
+	// artifact, creature, or enchantment card in your graveyard",
+	// ADR 0146 amendment 2026-10-13). Empty is the battlefield, which
+	// every earlier object vote means. An option whose card has left
+	// that zone is not offered (CR 400.7: it is a new object).
+	Zone ZoneKind `json:"zone,omitempty"`
 	// Ballots are the votes cast so far, in the order they were cast.
 	Ballots []VoteBallot `json:"ballots,omitempty"`
 	// Voters are the players still to vote after the current one, in
@@ -293,6 +300,10 @@ type VotePrompt struct {
 	// ForController and ForOpponents are the bot hints (see
 	// CouncilVote). Optional.
 	ForController, ForOpponents []int
+	// OptionZone is where the cards the options name are. Empty means
+	// the battlefield (permanents voted for); set it to ZoneGraveyard
+	// for "votes for a creature card in your graveyard".
+	OptionZone ZoneKind
 	// Then runs with the result once everyone has voted. Required.
 	Then VoteThen
 	// Carry is plain data handed to Then.
@@ -322,6 +333,7 @@ func (g *Game) StartVoteForEffect(p VotePrompt) error {
 		ForController: append([]int(nil), p.ForController...),
 		ForOpponents:  append([]int(nil), p.ForOpponents...),
 		Voters:        g.votersFromLocked(p.Starting),
+		Zone:          p.OptionZone,
 		Then:          p.Then.key,
 		Carry:         copyUUIDs(p.Carry),
 	}
@@ -409,10 +421,22 @@ func (g *Game) askNextBallotLocked(v *CouncilVote) error {
 			options = append(options, ChoiceOption{Label: VoteDeclineLabel})
 			question += " (you may vote an additional time)"
 		}
+		// "You choose how each player votes this turn" (Illusion of
+		// Choice): the ballot is the voter's, the prompt is the
+		// chooser's. FromPlayer follows the chooser so a departed
+		// chooser's prompt is dropped like any ballot's (never
+		// reassigned to a stranger), and the header says whose vote it
+		// is.
+		chooser := g.voteChooserLocked(v.Voter)
+		if chooser != v.Voter {
+			if p := g.playerByIDLocked(v.Voter); p != nil {
+				question += " — you choose " + p.Name + "'s vote"
+			}
+		}
 		queued := g.QueueChoiceForEffect(PendingChoice{
 			Kind:        PendingChoiceOptionPick,
-			Chooser:     v.Voter,
-			FromPlayer:  v.Voter,
+			Chooser:     chooser,
+			FromPlayer:  chooser,
 			Count:       1,
 			Source:      v.Source,
 			Reason:      question,
@@ -426,25 +450,77 @@ func (g *Game) askNextBallotLocked(v *CouncilVote) error {
 	}
 }
 
-// openVoteOptionsLocked is the vote's option list as the next ballot
-// offers it: every option, less a permanent that has left the
-// battlefield or a player who has left the game. The labels and
-// subjects are the vote's own, so an answer maps back by subject.
+// voteChooserLocked is who answers `voter`'s ballot: the voter, unless
+// a ModVoteChooser record stands (Illusion of Choice), in which case
+// the player it names — the newest record naming a player still in the
+// game. A chooser who has left no longer chooses (their effect has
+// nothing to apply it), so the ballot goes back to the voter.
 // Caller must hold g.mu.
+func (g *Game) voteChooserLocked(voter uuid.UUID) uuid.UUID {
+	best, bestAt := uuid.Nil, int64(0)
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		for _, m := range e.Mods {
+			if m.Kind != ModVoteChooser || m.Player == uuid.Nil || !g.playerInGameLocked(m.Player) {
+				continue
+			}
+			if best == uuid.Nil || e.Timestamp >= bestAt {
+				best, bestAt = m.Player, e.Timestamp
+			}
+		}
+	}
+	if best == uuid.Nil {
+		return voter
+	}
+	return best
+}
+
+// ChooseHowEachPlayerVotesThisTurnForEffect is "you choose how each
+// player votes this turn" (Illusion of Choice, ADR 0146 amendment
+// 2026-10-13): every ballot of every vote until the end of the turn is
+// put to `player` instead of the voter, in turn order and with each
+// voter's extra votes (CR 701.38d) as ever. A stored ModVoteChooser
+// record, swept at cleanup (CR 514.2). Reports whether one was
+// written; nothing for a player who is not seated. Caller must hold
+// g.mu (write).
+func (g *Game) ChooseHowEachPlayerVotesThisTurnForEffect(sourceID, player uuid.UUID, label string) bool {
+	if player == uuid.Nil || g.playerByIDLocked(player) == nil {
+		return false
+	}
+	return g.RegisterScopedRuleEffectForEffect(sourceID, ScopeGame, uuid.Nil,
+		[]Mod{{Kind: ModVoteChooser, Player: player}}, g.UntilEndOfTurnDuration(), label)
+}
+
+// openVoteOptionsLocked is the vote's option list as the next ballot
+// offers it: every option, less a card that has left the zone the vote
+// is over (the battlefield unless CouncilVote.Zone says otherwise) or a
+// player who has left the game. The labels and subjects are the vote's
+// own, so an answer maps back by subject. Caller must hold g.mu.
 func (g *Game) openVoteOptionsLocked(v *CouncilVote) []ChoiceOption {
 	out := make([]ChoiceOption, 0, len(v.Options))
 	for _, o := range v.Options {
 		if o.Player != uuid.Nil && !g.playerInGameLocked(o.Player) {
 			continue
 		}
-		if len(o.Cards) > 0 {
-			if _, ok := g.battlefieldCardLocked(o.Cards[0]); !ok {
-				continue
-			}
+		if len(o.Cards) > 0 && !g.voteOptionCardPresentLocked(v, o.Cards[0]) {
+			continue
 		}
 		out = append(out, o)
 	}
 	return cloneChoiceOptions(out)
+}
+
+// voteOptionCardPresentLocked reports whether the card an option names
+// is still where the vote is over: on the battlefield for an ordinary
+// object vote, or in a zone of the vote's Zone kind (a graveyard, for
+// Custodi Squire). Caller must hold g.mu.
+func (g *Game) voteOptionCardPresentLocked(v *CouncilVote, id uuid.UUID) bool {
+	if v.Zone == "" || v.Zone == ZoneBattlefield {
+		_, ok := g.battlefieldCardLocked(id)
+		return ok
+	}
+	z := g.findCardZoneLocked(id)
+	return z != nil && z.Kind == v.Zone
 }
 
 // OptionIndex maps an answered option back to its index in the
@@ -469,6 +545,11 @@ func (g *Game) castBallotLocked(v *CouncilVote, voter uuid.UUID, chosen *ChoiceO
 		return nil
 	}
 	required := v.VotesLeft > 0
+	if chosen != nil && !g.playerInGameLocked(voter) {
+		// The voter left while someone else was choosing for them
+		// (Illusion of Choice): CR 800.4a, they cast nothing.
+		chosen = nil
+	}
 	switch {
 	case chosen == nil:
 		// CR 800.4a: a player who has left casts nothing more.

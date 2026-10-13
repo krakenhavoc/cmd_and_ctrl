@@ -724,6 +724,10 @@ type CouncilVoteView struct {
 	// Offered maps each of the prompt's pick_options to its index in
 	// Options; -1 is the "don't vote again" option of an optional vote.
 	Offered []int `json:"offered"`
+	// Zone is where the cards the options name are, when it is not the
+	// battlefield ("graveyard", Custodi Squire's vote). Absent for a
+	// vote over permanents, words or players.
+	Zone string `json:"zone,omitempty"`
 	// Optional is true when this ballot is an extra vote the voter may
 	// decline (CR 701.38d). VotesLeft counts the votes the voter must
 	// still cast, this one included.
@@ -8667,6 +8671,7 @@ func viewOfCouncilVote(v *game.CouncilVote, offered []game.ChoiceOption) *Counci
 	out := &CouncilVoteView{
 		Controller:    v.Controller.String(),
 		Voter:         v.Voter.String(),
+		Zone:          string(v.Zone),
 		Options:       make([]string, len(v.Options)),
 		Tally:         make([]int, len(v.Options)),
 		Offered:       make([]int, len(offered)),

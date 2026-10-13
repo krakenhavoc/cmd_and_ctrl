@@ -330,6 +330,12 @@ func corpusBoards() []corpusBoard {
 		// Carthalion's cantBecomeMonarch record naming his controller,
 		// beside the opponent he crowned.
 		{"cant_become_monarch", corpusCantBecomeMonarch},
+		// v8, added by #2928 (ADR 0146 amendment 2026-10-13) as a new
+		// file: a vote over cards in a graveyard (Custodi Squire's
+		// councilVote.zone) waiting on a ballot that Illusion of Choice
+		// puts to its caster (a voteChooser record, and a prompt owed by
+		// the chooser for another voter).
+		{"vote_zone_chooser", corpusVoteZoneChooser},
 		// v7, added by #2559 (ADR 0066 amendment 2026-10-10) as a new
 		// file: a resolved Memory Vessel — the cantPlayFromHand record
 		// (a game-scope rule kind naming every player) and each player's
@@ -1360,6 +1366,37 @@ func corpusCantBecomeMonarch(t *testing.T) *game.Game {
 	g.WithWriteLock(func() {
 		g.CantBecomeMonarchThisTurnForEffect(uuid.Nil, me.ID, "Jared Carthalion — can't become the monarch this turn")
 		if err := g.SetMonarchForEffect(opp.ID); err != nil {
+			t.Fatal(err)
+		}
+	})
+	return g
+}
+
+// corpusVoteZoneChooser is #2928's two stored shapes at once: a
+// councilVote over graveyard cards, and the voteChooser record that
+// makes its open ballot the caster's.
+func corpusVoteZoneChooser(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	source := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Custodi Squire", TypeLine: "Creature — Spirit Cleric",
+		OracleID: custodiSquireOracle, Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID,
+	})
+	bear := pushGraveyardTyped(me, "Grizzly Bears", "Creature — Bear")
+	rock := pushGraveyardTyped(me, "Sol Ring", "Artifact")
+	g.WithWriteLock(func() {
+		g.ChooseHowEachPlayerVotesThisTurnForEffect(uuid.Nil, opp.ID, "Illusion of Choice — you choose how each player votes this turn")
+		err := g.StartVoteForEffect(game.VotePrompt{
+			Starting:   me.ID,
+			Controller: me.ID,
+			Source:     source,
+			Question:   "Custodi Squire — vote for an artifact, creature, or enchantment card in its controller's graveyard",
+			Options:    VoteForPermanents(g, []uuid.UUID{bear, rock}),
+			OptionZone: game.ZoneGraveyard,
+			Then:       custodiSquireVoted,
+		})
+		if err != nil {
 			t.Fatal(err)
 		}
 	})

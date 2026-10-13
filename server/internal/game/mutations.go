@@ -5147,8 +5147,17 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 	}
 	var dropped []*replacementResumeFrame
 	var settle []*PendingChoice
+	// Ballots someone else was casting FOR the departed player
+	// (Illusion of Choice, ADR 0146 amendment 2026-10-13): the voter
+	// has left, so the ballot is withdrawn from its chooser and the
+	// vote moves on with nothing cast (CR 800.4a).
+	var chosenFor []*CouncilVote
 	kept := g.PendingChoices[:0]
 	for _, c := range g.PendingChoices {
+		if c != nil && c.Chooser != playerID && c.CouncilVote != nil && c.CouncilVote.Voter == playerID {
+			chosenFor = append(chosenFor, c.CouncilVote)
+			continue
+		}
 		if c == nil || c.Chooser != playerID {
 			kept = append(kept, c)
 			continue
@@ -5186,6 +5195,9 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 			continue
 		}
 		g.runChoiceDropActionLocked(c)
+	}
+	for _, v := range chosenFor {
+		g.emitChoiceEffectErrorLocked(v.Controller, v.Source, g.castBallotLocked(v, playerID, nil))
 	}
 	return dropped
 }
