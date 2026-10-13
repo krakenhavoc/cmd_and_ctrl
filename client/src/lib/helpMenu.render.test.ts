@@ -2,8 +2,8 @@
 //
 // helpMenu.render.test.ts — Help and the way in (ADR 0125 §6, Delivery
 // PR 5): the site header's `button "help"` and its `menu "help"`, for
-// everyone; Settings → Advanced's "Tips and the tutorial"; Home's
-// Practice game tile; and the tutorial offer (`lobby.practice`), which
+// everyone; Settings → Advanced's "Tips and the tutorial"; and the
+// tutorial offer (`lobby.practice`), which
 // goes to a guest or a signed-in person with no finished game, and never
 // to the admin token.
 
@@ -27,7 +27,6 @@ vi.mock("./router", async (importOriginal) => {
 import SiteHeader from "./components/SiteHeader.svelte";
 import HelpMenu from "./components/HelpMenu.svelte";
 import Settings from "./components/Settings.svelte";
-import Home from "../routes/Home.svelte";
 import Lobby from "../routes/Lobby.svelte";
 import { L } from "./labels";
 import { HINTS } from "./hints";
@@ -119,8 +118,7 @@ describe('the site header\'s Help: button "help" and its menu', () => {
       const nav = r.container.querySelector("nav.site-nav")!;
       // After the nav in document order, and before the account control.
       expect(nav.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      const acct =
-        r.container.querySelector(".acct-btn") ?? r.container.querySelector('a[href="#/login"]');
+      const acct = r.container.querySelector(".acct-btn") ?? r.container.querySelector("a.sign-in");
       expect(btn.compareDocumentPosition(acct!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       r.destroy();
     }
@@ -143,7 +141,7 @@ describe('the site header\'s Help: button "help" and its menu', () => {
     expect(document.activeElement).toBe(menuItems()[0]);
   });
 
-  it("Practice game opens a practice table, and signed out goes to sign in first", async () => {
+  it("Practice game opens a practice table, a guest one when signed out", async () => {
     session.set(sess("player", USER));
     const r = render(HelpMenu as never, {} as never);
     await openHelp();
@@ -154,13 +152,15 @@ describe('the site header\'s Help: button "help" and its menu', () => {
     expect(helpMenu()).toBeNull();
     r.destroy();
 
+    // ADR 0156 §2: #/practice is public, and opens a guest practice game
+    // for a visitor with no session (routes/Practice.svelte).
     session.set(null);
     render(HelpMenu as never, {} as never);
     await openHelp();
-    const signedOut = itemNamed("Practice game (sign in first)")!;
-    expect(signedOut.getAttribute("href")).toBe("#/login");
+    const signedOut = itemNamed("Practice game")!;
+    expect(signedOut.getAttribute("href")).toBe("#/practice");
     click(signedOut);
-    expect(routeStore.navigate).toHaveBeenLastCalledWith("#/login");
+    expect(routeStore.navigate).toHaveBeenLastCalledWith("#/practice");
   });
 
   it("Tips for this page forgets this page's tips and the site's, and replays them with tips off", async () => {
@@ -205,17 +205,20 @@ describe('the site header\'s Help: button "help" and its menu', () => {
     expect(hintEngine().tick({ ...env, now: 3 })?.id).toBe("site.help");
   });
 
-  it("has no tips for a page that offers none (sign in), and says so", async () => {
-    routeStore.value!.set({ name: "login" });
-    render(HelpMenu as never, {} as never);
-    await openHelp();
-    const item = itemNamed("Tips for this page") as HTMLButtonElement;
-    expect(item.disabled).toBe(true);
-    expect(item.title).toBe("this page has no tips");
-    // Home has none of its own, but the site's tip is replayed there.
-    cleanup();
-    document.body.innerHTML = "";
-    routeStore.value!.set({ name: "home" });
+  // ADR 0125 §3.8: the sign-in page, which is the front page since ADR
+  // 0156 §4, and the gate page offer no tips; a site page does.
+  it("has no tips for a page that offers none (the front page, the gate page), and says so", async () => {
+    for (const name of ["login", "requestAccess"] as const) {
+      routeStore.value!.set({ name });
+      render(HelpMenu as never, {} as never);
+      await openHelp();
+      const item = itemNamed("Tips for this page") as HTMLButtonElement;
+      expect(item.disabled, name).toBe(true);
+      expect(item.title).toBe("this page has no tips");
+      cleanup();
+      document.body.innerHTML = "";
+    }
+    routeStore.value!.set({ name: "roadmap" });
     render(HelpMenu as never, {} as never);
     await openHelp();
     expect((itemNamed("Tips for this page") as HTMLButtonElement).disabled).toBe(false);
@@ -322,36 +325,13 @@ describe("Settings → Advanced: Tips and the tutorial", () => {
     expect(routeStore.navigate).toHaveBeenLastCalledWith("#/practice");
   });
 
-  it("signed out, Replay the tutorial goes to sign in first", () => {
+  // ADR 0156 §2: #/practice opens a guest practice game when signed out.
+  it("signed out, Replay the tutorial opens a practice table too", () => {
     const section = openAdvanced();
-    click(button(section, "Replay the tutorial (sign in first)")!);
-    expect(routeStore.navigate).toHaveBeenLastCalledWith("#/login");
-  });
-});
-
-describe("Home's Help group", () => {
-  const tile = (name: string) =>
-    [...document.querySelectorAll<HTMLAnchorElement>("a.tile")].find(
-      (a) => a.querySelector(".tile-title")?.textContent === name,
-    );
-
-  it("has a Practice game tile, first, beside the bot guide", () => {
-    session.set(sess("identified", USER));
-    render(Home as never, {} as never);
-    const help = [...document.querySelectorAll("section.group")].find(
-      (s) => s.querySelector("h2")?.textContent === "Help",
-    )!;
-    const titles = [...help.querySelectorAll(".tile-title")].map((t) => t.textContent);
-    expect(titles.slice(0, 2)).toEqual(["Practice game", "Bot guide"]);
-    expect(tile("Practice game")!.getAttribute("href")).toBe("#/practice");
-    expect(tile("Practice game")!.querySelector(".pill")).toBeNull();
-  });
-
-  it("signed out, it goes to sign in and says so", () => {
-    render(Home as never, {} as never);
-    const t = tile("Practice game")!;
-    expect(t.getAttribute("href")).toBe("#/login");
-    expect(t.querySelector(".pill")?.textContent).toBe("Sign in first");
+    expect(button(section, "Replay the tutorial (sign in first)")).toBeUndefined();
+    click(button(section, "Replay the tutorial")!);
+    expect(get(settingsOpen)).toBe(false);
+    expect(routeStore.navigate).toHaveBeenLastCalledWith("#/practice");
   });
 });
 

@@ -2,6 +2,7 @@
   import { onMount } from "svelte";
   import { startPractice } from "../lib/practiceTable";
   import { navigate } from "../lib/router";
+  import { session } from "../lib/session";
   import { lobbyErrorMessage } from "../lib/serverFull";
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
@@ -17,6 +18,11 @@
   // session) is recorded and swapped by lib/practiceTable.ts, which
   // also owns every way back out. This page only shows progress and a
   // failure.
+  //
+  // It is public (ADR 0156 §2): a visitor with no session gets a guest
+  // practice game, which startPractice opens through POST
+  // /games/practice/guest. The front page, the gate page and Help link
+  // here for everyone.
   let error = $state("");
 
   let ran = false;
@@ -48,7 +54,11 @@
           <span>{error}</span>
         </p>
         <div class="frow">
-          <a class="btn-link" href="#/lobby">Back to the lobby</a>
+          {#if $session}
+            <a class="btn-link" href="#/lobby">Back to the lobby</a>
+          {:else}
+            <a class="btn-link" href="#/">Back to the front page</a>
+          {/if}
         </div>
       {:else}
         <p class="help" aria-live="polite">Shuffling two decks and seating a practice bot…</p>

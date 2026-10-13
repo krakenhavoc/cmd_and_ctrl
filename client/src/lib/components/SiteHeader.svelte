@@ -56,11 +56,13 @@
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
   const invite = $derived($community.invite_url);
 
-  // "Sign in with a different Discord account" needs Discord sign-in on
-  // this server. Probed once, and only for a session that could use it.
+  // Whether this server has Discord sign-in. Probed once, for a session
+  // that could use "Sign in with a different Discord account", and for a
+  // signed-out visitor, whose Sign in starts Discord sign-in directly
+  // (the hero's OAuth start) and otherwise goes to the front page.
   let discordEnabled = $state(false);
   onMount(() => {
-    if (!hasLinkedUser) return;
+    if (isSignedIn && !hasLinkedUser) return;
     void discordAuthEnabled().then((on) => {
       discordEnabled = on;
     });
@@ -93,9 +95,9 @@
   const adminOn = $derived(isAdmin($session));
   const acctLabel = $derived(`account menu: ${whoAmI}${adminOn ? " (admin mode on)" : ""}`);
 
-  // The wordmark is the way home: the Lobby for a session, the public
-  // site map without one (ADR 0112 §1 item 5).
-  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/home");
+  // The wordmark is the way home: the Lobby for a session, the
+  // front page without one (ADR 0112 §1 item 5, ADR 0156 §4).
+  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/");
 
   function closeAccount(): void {
     accountOpen = false;
@@ -285,7 +287,9 @@
             </div>
           {/if}
         {:else}
-          <a class="btn sm ghost sign-in" href="#/login">Sign in</a>
+          <a class="btn sm ghost sign-in" href={discordEnabled ? discordLoginHref() : "#/"}
+            >Sign in</a
+          >
         {/if}
       </div>
     </div>

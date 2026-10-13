@@ -34,6 +34,7 @@
   import { lobbyErrorMessage } from "../lib/serverFull";
   import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
   import { signedInUserID } from "../lib/myGames";
+  import { community } from "../lib/community";
   import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
   import { seatColor } from "../lib/colors";
   import { avatarURL } from "../lib/api";
@@ -840,15 +841,32 @@
             You're not at a table yet. Paste an invite code above, or create a table and invite your
             pod.
           </p>
-          <div class="empty-links">
-            <a class="btn-link" href="#/practice"
-              ><Icon name="robot" size={13} /> Practice against bots</a
-            >
-            <a class="btn-link" href="#/decks"><Icon name="library" size={13} /> Check a deck</a>
-            {#if signedInUserID($session)}
-              <a class="btn-link" href="#/my-games"><Icon name="scroll" size={13} /> My games</a>
-            {/if}
+        </div>
+        <!-- ADR 0156 §6: three ways to start. The third is the C2 Discord,
+             and only when the server names an invite (GET /community). -->
+        <div class="empty-cards">
+          <div class="card">
+            <h3>{L.practiceGame}</h3>
+            <p>Five minutes against a bot that shows you where everything is.</p>
+            <a class="btn ghost sm" href="#/practice">{L.startPractice}</a>
           </div>
+          <div class="card">
+            <h3>Bring a deck</h3>
+            <p>Check how much of your list plays as printed, and save it.</p>
+            <a class="btn ghost sm" href="#/decks">Decks</a>
+          </div>
+          {#if $community.invite_url}
+            <div class="card pod">
+              <h3>No pod yet?</h3>
+              <p>Players post open seats on our Discord.</p>
+              <a
+                class="btn discord sm"
+                href={$community.invite_url}
+                target="_blank"
+                rel="noopener noreferrer"><Icon name="discord" size={15} /> {L.findAPod}</a
+              >
+            </div>
+          {/if}
         </div>
       {:else}
         <p class="muted empty">
@@ -1622,10 +1640,39 @@
     font-size: 13.5px;
     color: var(--fg);
   }
-  .empty-links {
+  .empty-cards {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 16px;
+    margin-top: 16px;
+  }
+  .empty-cards .card {
     display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .empty-cards .card.pod {
+    border-color: color-mix(in srgb, #5865f2 45%, var(--border));
+    background: color-mix(in srgb, #5865f2 7%, var(--surface));
+  }
+  .empty-cards h3 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .empty-cards p {
+    flex: 1;
+    margin: 6px 0 16px;
+    font-size: 13.5px;
+    line-height: 1.5;
+    color: var(--fg-muted);
+  }
+  @media (max-width: 819px) {
+    .empty-cards {
+      grid-template-columns: minmax(0, 1fr);
+    }
   }
 
   .games {

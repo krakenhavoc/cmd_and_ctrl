@@ -300,7 +300,10 @@ export async function startPractice(): Promise<string> {
   endPractice();
 
   const previous = currentSession();
-  const practice = await createPracticeTable();
+  // A visitor with no session opens a guest practice game (ADR 0156
+  // §2): the server mints the guest seat and the table together. Its
+  // exit puts back "no session", and the leave call clears the cookie.
+  const practice = await createPracticeTable({ guest: previous === null });
   if (!practice.gameID) throw new Error("the server opened no practice table");
 
   const rec: PracticeRecord = {

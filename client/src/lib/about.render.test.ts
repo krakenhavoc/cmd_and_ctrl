@@ -10,7 +10,7 @@ import { get } from "svelte/store";
 
 import App from "../App.svelte";
 import SiteFooter from "./components/SiteFooter.svelte";
-import Login from "../routes/Login.svelte";
+import FrontPage from "../routes/FrontPage.svelte";
 import About from "../routes/About.svelte";
 import { ABOUT_HASH } from "./about";
 import { _resetCommunityForTests, _setCommunityForTests } from "./community";
@@ -66,7 +66,7 @@ afterEach(() => {
   _resetCommunityForTests();
   globalThis.fetch = realFetch;
   session.set(null);
-  navigate("#/home");
+  navigate("#/");
   vi.restoreAllMocks();
 });
 
@@ -131,11 +131,11 @@ describe("the about page", () => {
     expect(container.textContent).toContain("Free and unofficial");
   });
 
-  it("is linked from the footer and the sign-in screen", () => {
+  it("is linked from the footer and the front page", () => {
     const footer = render(SiteFooter as never, {} as never);
     expect(footer.container.querySelector(`a[href="${ABOUT_HASH}"]`)).not.toBeNull();
     cleanup();
-    const login = render(Login as never, {} as never);
+    const login = render(FrontPage as never, {} as never);
     expect(login.container.querySelector(`a[href="${ABOUT_HASH}"]`)).not.toBeNull();
   });
 });

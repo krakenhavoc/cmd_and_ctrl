@@ -15,7 +15,7 @@ import DeleteAccount from "./components/DeleteAccount.svelte";
 import LegalNotice from "./components/LegalNotice.svelte";
 import SiteFooter from "./components/SiteFooter.svelte";
 import SiteHeader from "./components/SiteHeader.svelte";
-import Login from "../routes/Login.svelte";
+import FrontPage from "../routes/FrontPage.svelte";
 import Privacy from "../routes/Privacy.svelte";
 import { CONTACT_URL, DELETE_PHRASE, PRIVACY_FACTS, PRIVACY_HASH } from "./privacy";
 import { navigate, route } from "./router";
@@ -65,7 +65,7 @@ afterEach(() => {
   cleanup();
   globalThis.fetch = realFetch;
   session.set(null);
-  navigate("#/home");
+  navigate("#/");
   vi.restoreAllMocks();
 });
 
@@ -161,8 +161,8 @@ describe("links to the notice", () => {
     expect(link!.textContent).toContain("Privacy");
   });
 
-  it("the sign-in screen links it", async () => {
-    const { container } = render(Login as never, {} as never);
+  it("the front page links it", async () => {
+    const { container } = render(FrontPage as never, {} as never);
     await settle();
     const links = [...container.querySelectorAll("a")].filter(
       (a) => a.getAttribute("href") === PRIVACY_HASH,

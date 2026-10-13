@@ -20,7 +20,6 @@ export const HINT_PLACES = [
   "site",
   "settings",
   "table",
-  "home",
   "lobby",
   "decks",
   "catalog",
@@ -121,13 +120,14 @@ export function emptyContext(place: HintPlace, route: string = place): HintConte
 
 /**
  * placeOfRoute is the hint place a route offers, or null for a route
- * that offers none: sign-in, the invite and reclaim doors, the practice
- * door and the OAuth hand-off each do one thing and say so (§3.8), and
- * the game route is the table.
+ * that offers none: the sign-in page (the front page since ADR 0156
+ * §4), the admin token's form, the gate page, the invite and reclaim
+ * doors, the practice door and the OAuth hand-off each do one thing and
+ * say so (§3.8), and the game route is the table. The "home" place went
+ * with #/home (ADR 0156 §4).
  */
 export function placeOfRoute(name: string): HintPlace | null {
   switch (name) {
-    case "home":
     case "lobby":
     case "decks":
     case "catalog":

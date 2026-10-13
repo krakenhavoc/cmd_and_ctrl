@@ -344,8 +344,13 @@ export async function joinGame(
 // /games/practice, ADR 0076 §2.2) and returns its seat's session.
 // Unlike joinGame it does NOT install the session: lib/practiceTable.ts
 // does, after it has recorded the session and settings to put back.
-export async function createPracticeTable(): Promise<Session> {
-  const res = await authFetch("/games/practice", { method: "POST" });
+//
+// `guest` is a visitor with no session (ADR 0156 §2): POST
+// /games/practice/guest mints a guest seat and opens the same table in
+// one step, and answers exactly as POST /games/practice does.
+export async function createPracticeTable(opts: { guest?: boolean } = {}): Promise<Session> {
+  const path = opts.guest ? "/games/practice/guest" : "/games/practice";
+  const res = await authFetch(path, { method: "POST" });
   const body = (await res.json()) as SessionResponse;
   return {
     token: body.token,
