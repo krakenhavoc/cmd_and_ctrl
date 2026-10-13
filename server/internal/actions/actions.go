@@ -77,6 +77,11 @@ const (
 	// the declarations, unlike its table-wide sibling clear_combat.
 	TypeRemoveFromCombat Type = "remove_from_combat"
 	TypeAdvanceStep      Type = "advance_step"
+	// TypeRevealCard reveals a HAND card to the table, or shows it to
+	// one player (#671, ADR 0028's 2026-10-13 amendment). Params carry
+	// `{card_id, to?}`; omit `to` for the whole table. Controller-gated;
+	// a sandbox verb, so it is not enumerated for bots.
+	TypeRevealCard Type = "reveal_card"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -1233,6 +1238,29 @@ func dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		return g.RemoveFromCombat(instanceID)
+
+	case TypeRevealCard:
+		var p struct {
+			CardID string `json:"card_id"`
+			To     string `json:"to"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		cardID, err := uuid.Parse(p.CardID)
+		if err != nil {
+			return fmt.Errorf("reveal_card card_id: %w", err)
+		}
+		to := uuid.Nil
+		if p.To != "" {
+			if to, err = uuid.Parse(p.To); err != nil {
+				return fmt.Errorf("reveal_card to: %w", err)
+			}
+		}
+		if err := requireCardController(g, a.Caller, cardID); err != nil {
+			return err
+		}
+		return g.RevealHandCard(cardID, to)
 
 	case TypeAdvanceStep:
 		// Sandbox affordance: advance the step cursor by one without
