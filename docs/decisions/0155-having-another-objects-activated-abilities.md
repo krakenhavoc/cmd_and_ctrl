@@ -1,6 +1,6 @@
 # ADR 0155 — Having another object's activated abilities: a layer-6 borrow that names the lent row
 
-**Status:** Proposed · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first)
+**Status:** Accepted (owner decisions 2026-10-13) · proposed 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first)
 **Issue:** [#1557](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1557) (seam: "has all activated abilities of …").
 Registry row: `all-activated-abilities-of` in `server/internal/roadmap/registry.go`, already pointed at #1557.
 **Numbering:** assigned by the S53 orchestrator. `origin/develop` (`d66aec82`) has no `0155`, and no remote
@@ -204,7 +204,7 @@ intrinsic, granted, borrowed. So a borrow appearing never renumbers an existing 
   `CatalogKey(card)`, which is face-aware, so a modal double-faced card in a graveyard lends its front face.
   It is also read through the card's designation gate, and through its printed land types for intrinsic
   mana rows. That is how Mirran Safehouse with a Forest card in a graveyard gets "{T}: Add {G}".
-- **An uncatalogued lender lends nothing.** The engine does not know its abilities. See owner question 2.
+- **An uncatalogued lender lends nothing.** The engine does not know its abilities. The borrower's menu shows a disabled "<lender>: not automated" line (owner decision 2).
 - **A face-down lender** lends nothing, for CR 708.2a's reason.
 
 ### 4. Layer 6 ordering (CR 613.8): borrows run last in the bucket, ordered among themselves
@@ -234,7 +234,7 @@ This answers the issue's question about how a borrow interacts with the #1551 re
 Two Experiment Krajs each with a counter (or a Kraj and a Marvin) form a loop. The earlier one takes the
 other's rows. The later one takes the earlier one's rows, and those include its own rows lent back. Under
 CR 113.2c that is two instances of the same ability, which is harmless. The engine keeps both rows (owner
-question 4).
+decision 4).
 
 ### 5. Refs, the stack and restore
 
@@ -325,7 +325,7 @@ Restore checks each `Key` against the catalog and refuses with `ErrUnknownEffect
   the rows themselves are in the ability menu.
 - **Client:** ADR 0093 Decision 8's left-click rule already covers it. A permanent with a granted or
   borrowed row opens its menu or picker. The menu groups borrowed rows under "From <lender>" and collapses
-  identical rows (owner question 3). `abilityRef.ts` learns the `borrow:` prefix.
+  identical rows (owner decision 3). `abilityRef.ts` learns the `borrow:` prefix.
 
 ### 11. The bot
 
@@ -343,7 +343,7 @@ and Manascape Refractor's is an ordinary source. No combo planning (Necrotic Ooz
    `borrowed_from` and the label rewrite, the drift-test row, and `Register`'s refusals. Tested with fixture
    lenders. Includes the benchmark ADR 0067 asks for: a 40-permanent board, with and without a battlefield
    borrower.
-2. **Battlefield and graveyard lenders, the first slice players see** (owner question 1). Marvin, Experiment
+2. **Battlefield and graveyard lenders, the first slice players see** (owner decision 1). Marvin, Experiment
    Kraj, Robaran Mercenaries, Drana and Linvala, Manascape Refractor, Sharkey, Necrotic Ooze, Mirran
    Safehouse, Thranduil, Trazyn the Infinite. Ten cards, plus the client grouping.
 3. **Exiled-with lenders.** `ExileLinkedForEffect` and the stamp. Dark Impostor, Patchwork Crawler, Myr Welder,
@@ -406,7 +406,7 @@ closes with PR 4.
 - Vazal, the Compleat (not commander-legal).
 - Infinite-loop shortcuts for Necrotic Ooze combos (CR 732). The engine plays them one activation at a time,
   as it does for any other loop.
-- Lending from an uncatalogued card, unless the owner picks question 2's option (b).
+- Lending from an uncatalogued card (owner decision 2: a disabled "not automated" line only).
 
 ## Consequences
 
@@ -420,7 +420,9 @@ closes with PR 4.
   activate abilities of …" can read it too.
 - Twenty-five cards and one caveat, across three card PRs.
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-13)
+
+The owner accepted every recommendation on 2026-10-13. Each answer is recorded under its question.
 
 1. **Which slice ships first?**
    - (a) Battlefield and graveyard lenders: Marvin, Necrotic Ooze, Experiment Kraj, Drana and Linvala and six
@@ -431,6 +433,9 @@ closes with PR 4.
 
    **Recommendation: (a).** It is the issue's named cards and ten cards on the seam alone. (b) follows
    directly.
+
+   **Decision:** (a). Battlefield and graveyard lenders ship first, as PR 2. Exiled-with lenders follow
+   in PR 3.
 2. **What does a borrower get from a lender the catalog does not automate** (an imported card with no entry)?
    - (a) Nothing. The borrower's menu shows a disabled line, "<lender>: not automated", so the player knows to
      resolve it by hand.
@@ -440,6 +445,9 @@ closes with PR 4.
 
    **Recommendation: (a).** It is honest and cheap. (b) invents a manual verb no other uncatalogued ability
    has.
+
+   **Decision:** (a). An uncatalogued lender lends nothing, and the borrower's menu shows a disabled
+   "<lender>: not automated" line.
 3. **How are borrowed rows presented?**
    - (a) One row per lent ability, grouped under "From <lender>". Identical rows from different lenders
      (two Llanowar Elves in graveyards) collapse to one row in the client.
@@ -449,6 +457,9 @@ closes with PR 4.
    **Recommendation: (a).** Necrotic Ooze in a creature-heavy graveyard can have twenty rows, and grouping
    is what makes that readable. Collapsing is display only: the engine keeps both rows, and the first ref is
    sent.
+
+   **Decision:** (a). Rows are grouped under "From <lender>", and identical rows are collapsed in the client
+   only.
 4. **Mutual borrowers lend a creature its own abilities back** (two Experiment Krajs, a Kraj and a Marvin).
    - (a) Keep the duplicate rows, as CR 113.2c's two instances. The client's collapse from question 3 hides
      them.
@@ -456,7 +467,12 @@ closes with PR 4.
 
    **Recommendation: (a).** It is the rules answer. (b) is visible only to Mairsil's once-a-turn count, where
    it would be wrong.
+
+   **Decision:** (a). The duplicate rows are kept as CR 113.2c instances, and the client's collapse hides
+   them.
 5. **The "can't be activated" half of Drana and Linvala, Sharkey and Scheming Fence:** ship it with its card
    (a), or leave it as a caveat at first (b)?
 
    **Recommendation: (a).** The gate exists (Pithing Needle's shape), and the cards are unfair without it.
+
+   **Decision:** (a). The activation gate ships with each of the three cards, with no caveat.
