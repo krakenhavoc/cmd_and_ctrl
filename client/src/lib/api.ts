@@ -79,6 +79,11 @@ export interface GameMeta {
   is_creator?: boolean;
   // ADR 0159 §1: the host asked for a Discord voice room.
   voice_room?: boolean;
+  // ADR 0161 §1: the host posted the table to the CMD & CTRL Discord's
+  // #lfg board, and what the post is doing (lib/lfgPost.ts). Both
+  // absent when the table is not posted.
+  lfg?: boolean;
+  lfg_status?: "pending" | "posted" | "unavailable";
   // The tutorial's practice table (ADR 0076 §2.2): one seat, one
   // `random` bot, never listed and never persisted. Mirrors
   // lobby.GameMeta.Practice.
@@ -276,15 +281,17 @@ export interface CreateGameResponse extends GameMeta {
 // createGame creates a table (POST /games). Any signed-in person may
 // (ADR 0110 §5 item 4, owner answer 2): a 409 names their open tables
 // when they already have three, and a 429 says they are creating too
-// quickly. `setup: "last"` applies their remembered setup to it, and
-// `voiceRoom` asks for a Discord voice room (ADR 0159 §1).
+// quickly. `setup: "last"` applies their remembered setup to it,
+// `voiceRoom` asks for a Discord voice room (ADR 0159 §1), and `lfg`
+// posts it to the Discord's #lfg board (ADR 0161 §1).
 export async function createGame(
   name: string,
-  opts: { setup?: "last"; voiceRoom?: boolean } = {},
+  opts: { setup?: "last"; voiceRoom?: boolean; lfg?: boolean } = {},
 ): Promise<CreateGameResponse> {
-  const body: { name: string; setup?: string; voice_room?: boolean } = { name };
+  const body: { name: string; setup?: string; voice_room?: boolean; lfg?: boolean } = { name };
   if (opts.setup) body.setup = opts.setup;
   if (opts.voiceRoom) body.voice_room = true;
+  if (opts.lfg) body.lfg = true;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),
