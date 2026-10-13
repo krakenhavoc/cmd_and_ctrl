@@ -57,7 +57,8 @@ The roadmap stays clear of that reason by construction:
 
 The catalogue does not change and stays signed-in. For a signed-in viewer an example card's name may
 link into the catalogue, and the catalogue then shows the art as it does today. A signed-out viewer
-sees plain text.
+sees plain text. *(Amended 2026-10-13, S70 #2985: the catalogue is public again, and every viewer's card names
+link into it. See [ADR 0042](0042-card-catalog-page.md)'s amendment.)*
 
 The comments that still called the catalogue public are corrected in this ADR's first PR:
 `Catalog.svelte`, `Login.svelte`, `catalog/http.go`, `catalog/catalog.go`, and the endpoint list in

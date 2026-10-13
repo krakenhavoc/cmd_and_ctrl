@@ -35,6 +35,10 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   "oauthComplete",
   // The public roadmap (#1386): no card art, nothing session-gated.
   "roadmap",
+  // The card catalogue (ADR 0042), public like its server route: with
+  // sign-up gated on a Discord role (ADR 0156), a gate here would put
+  // Scryfall data behind a chat server (S70, #2985).
+  "catalog",
   // The privacy notice (#2983): readable before signing in, linked from
   // the sign-in screen.
   "privacy",

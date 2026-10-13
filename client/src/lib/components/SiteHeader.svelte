@@ -201,6 +201,7 @@
       {:else}
         <div class="grp">
           {@render navLink("#/decks", "decks", "Decks")}
+          {@render navLink("#/catalog", "catalog", "Catalog")}
           {@render navLink("#/roadmap", "roadmap", "Roadmap")}
           {@render navLink(GUIDE_HASH, "guide", "Guide")}
           {@render navLink(ABOUT_HASH, "about", "About")}

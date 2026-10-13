@@ -68,10 +68,10 @@ afterEach(() => {
 });
 
 describe("the site header's links", () => {
-  it("signed out: Decks, Roadmap, Guide and About, then Sign in; no Home and no Tables", async () => {
+  it("signed out: Decks, Catalog, Roadmap, Guide and About, then Sign in; no Home and no Tables", async () => {
     const { container } = render(SiteHeader as never, {} as never);
     await settle();
-    expect(navGroups(container)).toEqual([["Decks", "Roadmap", "Guide", "About"]]);
+    expect(navGroups(container)).toEqual([["Decks", "Catalog", "Roadmap", "Guide", "About"]]);
     const signIn = container.querySelector("a.sign-in");
     expect(signIn?.textContent?.trim()).toBe("Sign in");
     // No Discord sign-in on this stub server: Sign in goes to the front page.

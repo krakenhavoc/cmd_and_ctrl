@@ -486,7 +486,7 @@ once. `Cache-Control: public, max-age=300`, the same as `/catalog`.
 
 - `counts.implemented` / `partial` / `missing` count registry items.
   `counts.cards` is the card catalogue's own tally by declared
-  completeness: the numbers the signed-in `#/catalog` page shows,
+  completeness: the numbers the public `#/catalog` page shows,
   published as bare numbers.
 - `next` is the "up next" list, as slugs in order: pinned items first,
   then unfinished items ranked by `unblocks` plus the number of

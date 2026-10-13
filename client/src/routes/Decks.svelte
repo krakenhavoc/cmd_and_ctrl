@@ -412,15 +412,9 @@
   });
 </script>
 
-<!-- A card name: a catalogue link for a signed-in viewer, plain text
-     otherwise — same rule and same reason as Roadmap.svelte's
-     `cardName` snippet (the catalogue needs a session). -->
+<!-- A card name: a link into the public catalogue, as on the roadmap. -->
 {#snippet cardName(name: string)}
-  {#if isSignedIn}
-    <a class="cname" href={catalogSearchHash(name)}>{name}</a>
-  {:else}
-    <span class="cname">{name}</span>
-  {/if}
+  <a class="cname" href={catalogSearchHash(name)}>{name}</a>
 {/snippet}
 
 <!-- What a visitor who may not do something sees in its place (§3 item
