@@ -14,7 +14,7 @@
   import { session } from "../lib/session";
   import { signedInUserID } from "../lib/myGames";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import { L } from "../lib/labels";
 
   const isSignedIn = $derived($session !== null);
@@ -137,137 +137,109 @@
   });
 </script>
 
-<SiteHeader />
+<Page
+  eyebrow="Everywhere else on the site"
+  title="Home"
+  lede="A map of every page. Sign in for the ones that need a seat."
+>
+  <section class="home">
+    <div class="groups">
+      <section class="group">
+        <h2>Play</h2>
+        <ul class="cards">
+          {#each playCards as c (c.title)}
+            <li>
+              <a class="tile" href={c.href}>
+                <div class="tile-head">
+                  <span class="tile-title">{c.title}</span>
+                  {#if c.needsSession}
+                    <span class="pill">{c.needsSession}</span>
+                  {/if}
+                </div>
+                <p class="tile-desc">{c.description}</p>
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </section>
 
-<section class="home">
-  <div class="head">
-    <p class="eyebrow">Everywhere else on the site</p>
-    <h1>home</h1>
-    <p class="lede">A map of every page. Sign in for the ones that need a seat.</p>
-  </div>
+      <section class="group">
+        <h2>Cards</h2>
+        <ul class="cards">
+          {#each cardCards as c (c.title)}
+            <li>
+              <a class="tile" href={c.href}>
+                <div class="tile-head">
+                  <span class="tile-title">{c.title}</span>
+                  {#if c.needsSession}
+                    <span class="pill">{c.needsSession}</span>
+                  {/if}
+                </div>
+                <p class="tile-desc">{c.description}</p>
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </section>
 
-  <div class="groups">
-    <section class="group">
-      <h2>Play</h2>
-      <ul class="cards">
-        {#each playCards as c (c.title)}
-          <li>
-            <a class="tile" href={c.href}>
-              <div class="tile-head">
-                <span class="tile-title">{c.title}</span>
-                {#if c.needsSession}
-                  <span class="pill">{c.needsSession}</span>
-                {/if}
-              </div>
-              <p class="tile-desc">{c.description}</p>
-            </a>
-          </li>
-        {/each}
-      </ul>
-    </section>
+      <section class="group">
+        <h2>Help</h2>
+        <ul class="cards">
+          {#each helpCards as c (c.title)}
+            <li>
+              <a
+                class="tile"
+                href={c.href}
+                target={c.external ? "_blank" : undefined}
+                rel={c.external ? "noreferrer noopener" : undefined}
+              >
+                <div class="tile-head">
+                  <span class="tile-title">{c.title}</span>
+                  {#if c.external}<Icon name="link" size={12} />{/if}
+                  {#if c.needsSession}
+                    <span class="pill">{c.needsSession}</span>
+                  {/if}
+                </div>
+                <p class="tile-desc">{c.description}</p>
+              </a>
+            </li>
+          {/each}
+        </ul>
+      </section>
 
-    <section class="group">
-      <h2>Cards</h2>
-      <ul class="cards">
-        {#each cardCards as c (c.title)}
-          <li>
-            <a class="tile" href={c.href}>
-              <div class="tile-head">
-                <span class="tile-title">{c.title}</span>
-                {#if c.needsSession}
-                  <span class="pill">{c.needsSession}</span>
-                {/if}
-              </div>
-              <p class="tile-desc">{c.description}</p>
-            </a>
-          </li>
-        {/each}
-      </ul>
-    </section>
-
-    <section class="group">
-      <h2>Help</h2>
-      <ul class="cards">
-        {#each helpCards as c (c.title)}
-          <li>
-            <a
-              class="tile"
-              href={c.href}
-              target={c.external ? "_blank" : undefined}
-              rel={c.external ? "noreferrer noopener" : undefined}
-            >
-              <div class="tile-head">
-                <span class="tile-title">{c.title}</span>
-                {#if c.external}<Icon name="link" size={12} />{/if}
-                {#if c.needsSession}
-                  <span class="pill">{c.needsSession}</span>
-                {/if}
-              </div>
-              <p class="tile-desc">{c.description}</p>
-            </a>
-          </li>
-        {/each}
-      </ul>
-    </section>
-
-    <section class="group">
-      <h2>Account</h2>
-      <ul class="cards">
-        {#if isSignedIn}
-          <li>
-            <button type="button" class="tile as-button" onclick={signOut}>
-              <div class="tile-head">
-                <span class="tile-title">Sign out</span>
-              </div>
-              <p class="tile-desc">End this session on this browser.</p>
-            </button>
-          </li>
-        {:else}
-          <li>
-            <a class="tile" href="#/login">
-              <div class="tile-head">
-                <span class="tile-title">Sign in</span>
-              </div>
-              <p class="tile-desc">With Discord, or a shared invite code.</p>
-            </a>
-          </li>
-        {/if}
-      </ul>
-    </section>
-  </div>
-</section>
+      <section class="group">
+        <h2>Account</h2>
+        <ul class="cards">
+          {#if isSignedIn}
+            <li>
+              <button type="button" class="tile as-button" onclick={signOut}>
+                <div class="tile-head">
+                  <span class="tile-title">Sign out</span>
+                </div>
+                <p class="tile-desc">End this session on this browser.</p>
+              </button>
+            </li>
+          {:else}
+            <li>
+              <a class="tile" href="#/login">
+                <div class="tile-head">
+                  <span class="tile-title">Sign in</span>
+                </div>
+                <p class="tile-desc">With Discord, or a shared invite code.</p>
+              </a>
+            </li>
+          {/if}
+        </ul>
+      </section>
+    </div>
+  </section>
+</Page>
 
 <style>
   .home {
-    width: min(1080px, 100%);
-    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 28px;
-  }
-  .head {
-    padding-top: 6px;
-  }
-  .eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
-  }
-  .lede {
-    margin: 10px 0 0;
-    max-width: 60ch;
-    color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.55;
   }
 
   .groups {

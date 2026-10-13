@@ -59,6 +59,9 @@
   }: Props = $props();
 
   const strip = $derived(placement.kind === "strip");
+  // A site page's tip, drawn in the page frame under the lede (ADR 0156
+  // §3 item 5): one line in the page's flow, not a card over it.
+  const inline = $derived(placement.kind === "inline");
   // The phone strip opens on a tap; a desktop card is always open.
   let opened = $state(false);
   const open = $derived(!strip || opened);
@@ -97,6 +100,7 @@
   bind:this={root}
   class="hint-card"
   class:strip
+  class:inline
   class:open
   class:with-action={!!action}
   class:animate={!reduceMotion}
@@ -260,6 +264,31 @@
     border: 1px solid var(--border-strong);
     background: transparent;
     color: var(--fg);
+  }
+  /* ADR 0156 §3 item 5: on a site page, a line in the frame under the
+     lede. In the page's flow, so it pushes the page down instead of
+     covering it; it wraps below 820px like the rest of the frame. */
+  .hint-card.inline {
+    position: relative;
+    z-index: auto;
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 12px;
+    padding: 10px 12px 10px 16px;
+    border-radius: var(--radius-lg);
+    border-color: var(--accent-line);
+    background: color-mix(in srgb, var(--accent) 7%, var(--surface));
+    box-shadow: none;
+  }
+  .hint-card.inline .hint-body {
+    flex: 1 1 320px;
+  }
+  .hint-card.inline .hint-bar {
+    margin: 0 0 0 auto;
+    flex-wrap: nowrap;
+    align-self: center;
   }
   .hint-sr {
     position: absolute;

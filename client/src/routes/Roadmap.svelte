@@ -15,7 +15,7 @@
 
   import { onMount } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import { session } from "../lib/session";
   import { L } from "../lib/labels";
   import { toggle } from "../lib/catalog";
@@ -118,23 +118,16 @@
   {/if}
 {/snippet}
 
-<SiteHeader />
-
-<section class="entry">
+<Page eyebrow="Engine roadmap" title="What the engine plays, and what's next" width="wide">
+  {#snippet lede()}
+    Every keyword, mechanic and engine gap the rules engine knows about.
+    <strong class="t-implemented">Implemented</strong> means it resolves on its own.
+    <strong class="t-partial">Partial</strong> means most of it works, and the entry says which part
+    you still do by hand.
+    <strong class="t-missing">Missing</strong> means it isn't built yet: cards that need it still play,
+    and you resolve that part yourself.
+  {/snippet}
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">Engine roadmap</p>
-      <h1>What the engine plays, and what's next</h1>
-      <p class="lede">
-        Every keyword, mechanic and engine gap the rules engine knows about.
-        <strong class="t-implemented">Implemented</strong> means it resolves on its own.
-        <strong class="t-partial">Partial</strong> means most of it works, and the entry says which
-        part you still do by hand.
-        <strong class="t-missing">Missing</strong> means it isn't built yet: cards that need it still
-        play, and you resolve that part yourself.
-      </p>
-    </div>
-
     {#if loading}
       <p class="help" aria-live="polite">Loading the roadmap…</p>
     {:else if error}
@@ -345,48 +338,16 @@
       {/each}
     {/if}
   </div>
-</section>
+</Page>
 
 <style>
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(1180px, 100%);
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin: clamp(8px, 2vh, 24px) 0 48px;
   }
 
-  .eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
-  }
-  .lede {
-    margin: 10px 0 0;
-    max-width: 68ch;
-    color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.6;
-  }
-  .lede strong {
-    font-weight: 700;
-  }
   .t-implemented {
     color: var(--mint);
   }

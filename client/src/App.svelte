@@ -38,12 +38,18 @@
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
   import { loadAppConfig } from "./lib/env";
+  import { loadCommunity } from "./lib/community";
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
   // (no dev features, no badge), so a slow or missing /config delays
   // nothing and degrades to the safe answer. See lib/env.ts.
   loadAppConfig();
+
+  // The C2 Discord's invite and whether sign-up is gated (ADR 0156 §6),
+  // once, the same way: until it answers, and on any failure, every
+  // Discord placement stays hidden.
+  void loadCommunity();
 
   // Ambient music spans the entire app shell (login → lobby →
   // game), so arm it here rather than in Game.svelte where SFX
@@ -136,10 +142,13 @@
   });
 </script>
 
+<!-- Every route but the sign-in page and the table draws its own frame
+     (Page.svelte, ADR 0156 §3); the sign-in page keeps its centred
+     column until the front page replaces it. -->
 {#if $route.name === "login"}
-  <Login />
+  <div class="app-column"><Login /></div>
 {:else if $route.name === "adminLogin"}
-  <Login admin />
+  <div class="app-column"><Login admin /></div>
 {:else if $route.name === "adminViews"}
   <Admin view={$route.view} />
 {:else if $route.name === "home"}

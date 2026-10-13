@@ -14,7 +14,8 @@ import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
 // hints: the first-use hints on the real pages (ADR 0125 §8, #1085).
 //
 // Site pages, in one fresh browser context per kind of session: each
-// page's hint appears beside its anchor, "Got it" dismisses it, a
+// page's hint appears in the page frame under the lede (ADR 0156 §3
+// item 5) without covering its anchor, "Got it" dismisses it, a
 // reload does not bring it back, and Help → Tips for this page shows it
 // again. The Settings dialog has no Help button over it, so its hint
 // comes back through Settings → Advanced → Show all tips again.
@@ -72,6 +73,10 @@ async function expectTipBeside(
   await expect(tip).toBeVisible();
   await expect(tip).toContainText(title);
   await expect(anchor).toHaveAttribute("aria-describedby", /hint-tip-body/);
+  // On a site page the tip is a line in the page frame, under the lede
+  // (ADR 0156 §3 item 5), not a card beside the anchor: it must still not
+  // cover it, but it may be anywhere above it.
+  const inline = await tip.evaluate((el) => el.classList.contains("inline"));
   // The card follows its anchor on the layer's poll, so an anchor that
   // is still settling (a sheet folding away) is measured again.
   await expect(async () => {
@@ -90,6 +95,7 @@ async function expectTipBeside(
       a!.y < t!.y + t!.height &&
       t!.y < a!.y + a!.height;
     expect(overlaps, `the "${title}" tip covers its anchor`).toBe(false);
+    if (inline) return;
     expect(
       Math.hypot(dx, dy),
       `the "${title}" tip is beside its anchor`,

@@ -16,7 +16,7 @@
   //
   // The server is the gate. A view that hears 403 (a stale admin: true)
   // shows the same message and asks /me again (refreshAdminStatus).
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import AdminChip from "../lib/components/AdminChip.svelte";
   import LiveNow from "../lib/components/admin/LiveNow.svelte";
   import GamesList from "../lib/components/admin/GamesList.svelte";
@@ -60,16 +60,16 @@
   const tab = $derived(tabOf(view));
   const title = $derived(
     view.view === "live"
-      ? "live now"
+      ? "Live now"
       : view.view === "games"
-        ? "games"
+        ? "Games"
         : view.view === "game"
-          ? "one table"
+          ? "One table"
           : view.view === "accounts"
-            ? "accounts"
+            ? "Accounts"
             : view.view === "reports"
-              ? "reports"
-              : "one account",
+              ? "Reports"
+              : "One account",
   );
 
   const TABS = [
@@ -80,87 +80,59 @@
   ] as const;
 </script>
 
-<SiteHeader />
+<Page eyebrow="Admin" {title}>
+  <section class="admin-page">
+    {#if $session}
+      {#if showData}
+        <nav class="tabs" aria-label={L.adminViews}>
+          {#each TABS as t (t.id)}
+            <a
+              href={t.href}
+              class:current={tab === t.id}
+              aria-current={tab === t.id ? "page" : undefined}>{t.label}</a
+            >
+          {/each}
+        </nav>
 
-<section class="admin-page">
-  <div class="head">
-    <p class="eyebrow">Admin</p>
-    <h1>{title}</h1>
-  </div>
-
-  {#if $session}
-    {#if showData}
-      <nav class="tabs" aria-label={L.adminViews}>
-        {#each TABS as t (t.id)}
-          <a
-            href={t.href}
-            class:current={tab === t.id}
-            aria-current={tab === t.id ? "page" : undefined}>{t.label}</a
-          >
-        {/each}
-      </nav>
-
-      <!-- Keyed on the view's hash: a new filter, page or id is a new
+        <!-- Keyed on the view's hash: a new filter, page or id is a new
            load, never a stale list under a new heading. -->
-      {#key adminViewHash(view)}
-        {#if view.view === "live"}
-          <LiveNow {onforbidden} />
-        {:else if view.view === "games"}
-          <GamesList filter={view.filter} {onforbidden} />
-        {:else if view.view === "game"}
-          <GameDetail id={view.id} {onforbidden} />
-        {:else if view.view === "accounts"}
-          <AccountsList filter={view.filter} {onforbidden} />
-        {:else if view.view === "reports"}
-          <ReportsList {onforbidden} />
-        {:else}
-          <AccountDetail id={view.id} {onforbidden} />
-        {/if}
-      {/key}
-    {:else}
-      <div class="card gate" role="status">
-        {#if allowed && !admin}
-          <p>Admin mode is off. Switch it on to see this page.</p>
-          <div class="switch"><AdminChip /></div>
-        {:else}
-          <p>This page is for admins.</p>
-        {/if}
-        <p class="back"><a href="#/lobby">Back to the Lobby</a></p>
-      </div>
+        {#key adminViewHash(view)}
+          {#if view.view === "live"}
+            <LiveNow {onforbidden} />
+          {:else if view.view === "games"}
+            <GamesList filter={view.filter} {onforbidden} />
+          {:else if view.view === "game"}
+            <GameDetail id={view.id} {onforbidden} />
+          {:else if view.view === "accounts"}
+            <AccountsList filter={view.filter} {onforbidden} />
+          {:else if view.view === "reports"}
+            <ReportsList {onforbidden} />
+          {:else}
+            <AccountDetail id={view.id} {onforbidden} />
+          {/if}
+        {/key}
+      {:else}
+        <div class="card gate" role="status">
+          {#if allowed && !admin}
+            <p>Admin mode is off. Switch it on to see this page.</p>
+            <div class="switch"><AdminChip /></div>
+          {:else}
+            <p>This page is for admins.</p>
+          {/if}
+          <p class="back"><a href="#/lobby">Back to the Lobby</a></p>
+        </div>
+      {/if}
     {/if}
-  {/if}
-</section>
+  </section>
+</Page>
 
 <style>
   .admin-page {
-    width: min(1080px, 100%);
-    margin: 0 auto;
     display: flex;
     flex-direction: column;
     gap: 16px;
     box-sizing: border-box;
     min-width: 0;
-  }
-  .head {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-  }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 26px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--fg);
   }
   .tabs {
     display: flex;

@@ -102,6 +102,7 @@ registered, or when this file is stale.
 | `searchCatalogue` | `search the catalogue` | textbox | aria | `routes/Catalog.svelte` | the Catalogue's search field; the catalog.search hint points at it |
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
+| `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
 | `help` | `help` | button | aria | `lib/components/HelpMenu.svelte` | the site header's Help button; the menu it opens is named by it (aria-labelledby), and the site.help hint anchors here |
 | `tipsForThisPage` | `Tips for this page` | menuitem | text | `lib/components/HelpMenu.svelte` | Help: shows this page's tips again, one after another, even with tips off |
 | `tipsForTheTable` | `Tips for the table` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: shows the table's tips again at the next quiet moments |

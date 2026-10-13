@@ -4,7 +4,7 @@
   import { navigate } from "../lib/router";
   import { LobbyApiError } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
 
   // Reclaim is the landing page for an admin-minted seat-reclaim
   // link (#/games/:id/reclaim?t=<ticket>). The host generates one
@@ -56,15 +56,8 @@
   }
 </script>
 
-<SiteHeader />
-
-<section class="entry">
+<Page eyebrow="Returning you to your seat" title="Welcome back" width="prose">
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">Returning you to your seat</p>
-      <h1>welcome back</h1>
-    </div>
-
     <div class="card">
       {#if error}
         <p class="notice err" role="alert">
@@ -85,44 +78,16 @@
       {/if}
     </div>
   </div>
-</section>
+</Page>
 
 <style>
   /* Same shell as Join.svelte — this is the other page a player can
      land on without a session, and the two should not look like
      different products. */
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(860px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(24px, 6vh, 60px);
-    align-items: center;
-  }
-  .head {
-    text-align: center;
-  }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-  }
-  h1 {
-    margin: 6px 0 0;
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--fg);
   }
   .card {
     width: min(600px, 100%);
