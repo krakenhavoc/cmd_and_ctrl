@@ -1,6 +1,10 @@
 package game
 
-import "github.com/google/uuid"
+import (
+	"strconv"
+
+	"github.com/google/uuid"
+)
 
 // pay_unless_action.go — ADR 0108 §5 decision 4 (owner decision 3,
 // #1888): the two payments a pay-unless prompt may ask for besides mana.
@@ -42,7 +46,90 @@ const (
 	// that match Of (CR 701.21).
 	PayActionSacrifice PayActionKind = "sacrifice"
 	// PayActionEnergy is in energy_payment.go (ADR 0129 §3).
+
+	// PayActionLife pays Count life (ADR 0150 §3): "unless any player
+	// pays 5 life" (Aether Rift, Dash Hopes), Temporal Extortion's half
+	// a life total. Payable only from a life total of at least Count
+	// (CR 119.4) and never while the payer's life can't change (CR
+	// 119.8), through CanPayLifeLocked, the gate a life cost uses.
+	PayActionLife PayActionKind = "life"
+	// PayActionDamage is Count damage dealt by the prompt's source to
+	// the payer (ADR 0150 §3): "any player may have Browbeat deal 5
+	// damage to them". Being dealt damage isn't a resource a player
+	// can lack, so "Pay" is always a payment, even when the damage is
+	// then prevented or replaced: it goes through the ordinary damage
+	// path, and the "yes" branch runs once it has been dealt.
+	PayActionDamage PayActionKind = "damage"
+	// PayActionNothing is a "yes" that costs nothing (ADR 0150 §3):
+	// Distant Memories' "any opponent may have you put that card into
+	// your hand". Always payable.
+	PayActionNothing PayActionKind = "nothing"
 )
+
+// NamesNothing reports whether a "Pay" of this payment names no cards
+// (energy, life, damage, nothing): the answer is yes or no, and
+// whether it is a payment is the payer's state, not a pick (CR 118.3).
+func (a *PayAction) NamesNothing() bool {
+	if a == nil {
+		return false
+	}
+	switch a.Kind {
+	case PayActionEnergy, PayActionLife, PayActionDamage, PayActionNothing:
+		return true
+	}
+	return false
+}
+
+// HalfLifeRoundedUp is "half their life, rounded up" (CR 107.1a), for
+// a payment worked out per payer (Temporal Extortion). A total of 0 or
+// less is 0.
+func HalfLifeRoundedUp(life int) int {
+	if life <= 0 {
+		return 0
+	}
+	return (life + 1) / 2
+}
+
+// PayActionWords are the words a payment shows on the prompt and in
+// the log when the card gives none of its own: "5 life", "6 damage".
+// Empty for a card pick or for nothing.
+func PayActionWords(a PayAction) string {
+	switch a.Kind {
+	case PayActionLife:
+		return strconv.Itoa(a.Count) + " life"
+	case PayActionDamage:
+		return strconv.Itoa(a.Count) + " damage"
+	case PayActionEnergy:
+		return EnergyPaymentWords(a.Count)
+	}
+	return ""
+}
+
+// payActionPayableLocked reports whether `chooser` can make a payment
+// that names nothing right now (CR 118.3). Caller must hold g.mu.
+func (g *Game) payActionPayableLocked(chooser uuid.UUID, a *PayAction) bool {
+	p := g.playerByIDLocked(chooser)
+	if p == nil || p.Eliminated || a == nil {
+		return false
+	}
+	switch a.Kind {
+	case PayActionEnergy:
+		return g.energyPaymentPayableLocked(chooser, a)
+	case PayActionLife:
+		// CR 119.4 and CR 119.8, through the gate every life cost uses.
+		return g.CanPayLifeLocked(p, a.Count)
+	case PayActionDamage, PayActionNothing:
+		return true
+	}
+	return false
+}
+
+// PayActionPayableForEffect is payActionPayableLocked for callers
+// already under g.mu: the legal-move enumerator offers "Pay" only when
+// the engine would take it as a payment.
+func (g *Game) PayActionPayableForEffect(chooser uuid.UUID, a *PayAction) bool {
+	return g.payActionPayableLocked(chooser, a)
+}
 
 // PayAction is a non-mana pay-unless payment: "discard N cards" or
 // "sacrifice N permanents of a type".
@@ -152,6 +239,23 @@ func (g *Game) payActionLocked(chooser, source uuid.UUID, a *PayAction, picked [
 		if err := g.payEnergyLocked(chooser, a.Count, source); err != nil {
 			return err
 		}
+	case PayActionLife:
+		// ADR 0150 §3: the life comes off through the one path that
+		// pays life as a cost (CR 119.4, with 119.8 as its backstop).
+		if err := g.payLifeAsCostLocked(source, chooser, a.Count); err != nil {
+			return err
+		}
+	case PayActionDamage:
+		// ADR 0150 §3: the source deals the damage through the ordinary
+		// path, so prevention and replacement apply. The payment has
+		// been made once the damage event has settled, however much
+		// of it landed.
+		return g.dealDamageToPlayerLocked(source, nil, chooser, a.Count, DamageMarks{}, 0, func(g *Game, _ int) error {
+			if then == nil {
+				return nil
+			}
+			return then(g)
+		})
 	}
 	if then == nil {
 		return nil

@@ -3644,6 +3644,11 @@ type payUnlessExtras struct {
 	// offer makes the prompt one link of an any-player offer (ADR
 	// 0150, any_player_pays.go): PendingChoice.AnyPlayerOffer.
 	offer *AnyPlayerOffer
+	// acceptLabel / declineLabel name the two answers when the card's
+	// words are not "Pay" and "Don't pay" (ADR 0150 §5: "Take 5
+	// damage", "Let them have it"): PendingChoice.AcceptLabel and
+	// DeclineLabel.
+	acceptLabel, declineLabel string
 }
 
 // queuePayUnlessLocked is the one body behind every pay-unless.
@@ -3702,6 +3707,8 @@ func (g *Game) queuePayUnlessLocked(
 		OwedInStep:      owed,
 		GuardsStackItem: guards,
 		AnyPlayerOffer:  extra.offer,
+		AcceptLabel:     extra.acceptLabel,
+		DeclineLabel:    extra.declineLabel,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,
@@ -4055,7 +4062,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if frame != nil {
 		action = frame.action
 	}
-	if len(cardIDs) > 0 && (!apply || action == nil || action.Kind == PayActionEnergy) {
+	if len(cardIDs) > 0 && (!apply || action == nil || action.NamesNothing()) {
 		return ErrInvalidParam
 	}
 	// ADR 0131 §2: the life half of a mana payment, announced beside the
@@ -4074,10 +4081,11 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		}
 	}
 	payable := false
-	if apply && action != nil && action.Kind == PayActionEnergy {
+	if apply && action.NamesNothing() {
 		// ADR 0129 §3: an energy payment names nothing. "Pay" is a
-		// payment exactly when the energy is there (CR 118.3).
-		payable = g.energyPaymentPayableLocked(chooserID, action)
+		// payment exactly when the energy is there (CR 118.3). ADR
+		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
+		payable = g.payActionPayableLocked(chooserID, action)
 	} else if apply && action != nil {
 		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, action)) >= action.Count {
 			if err := g.validatePayActionLocked(chooserID, action, cardIDs); err != nil {

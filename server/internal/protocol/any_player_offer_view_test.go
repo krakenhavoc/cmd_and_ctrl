@@ -93,3 +93,72 @@ func TestAnyPlayerAnswersAreLogLines(t *testing.T) {
 		t.Errorf("log lines: declined %v, paid %v", declined, paid)
 	}
 }
+
+// ADR 0150 §3 and §5: a life, damage or no-payment link names its
+// payment on the wire (pay_life, pay_damage, pay_nothing) beside the
+// card's words for the two answers, and round-trips.
+func TestAnyPlayerPaymentKindsAreOnTheWire(t *testing.T) {
+	for _, tc := range []struct {
+		kind game.PayActionKind
+		key  string
+	}{
+		{game.PayActionLife, `"pay_life":5`},
+		{game.PayActionDamage, `"pay_damage":5`},
+		{game.PayActionNothing, `"pay_nothing":true`},
+	} {
+		g := buildActiveGame(t)
+		controller := g.Seats[1].ID
+		source := uuid.New()
+		g.Battlefield.PushTop(game.Card{InstanceID: source, Name: "Thing", TypeLine: "Enchantment", Owner: controller, Controller: controller})
+		g.WithWriteLock(func() {
+			if err := g.QueueAnyPlayerPaysForEffect(game.AnyPlayerPays{
+				Source: source, Controller: controller, Cost: "5", Question: "Thing?",
+				Action:      &game.PayAction{Kind: tc.kind, Count: 5},
+				AcceptLabel: "Take it", DeclineLabel: "Don't",
+			}); err != nil {
+				t.Fatalf("queue: %v", err)
+			}
+		})
+		v := ViewOfGameFor(g, g.Seats[0].ID.String()).PendingChoices[0]
+		raw, err := json.Marshal(v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(raw), tc.key) || v.AcceptLabel != "Take it" || v.DeclineLabel != "Don't" {
+			t.Errorf("%s: wire form %s", tc.kind, raw)
+		}
+		if v.PayCards != nil || v.PayEnergy != nil {
+			t.Errorf("%s: also sent a card or energy payment", tc.kind)
+		}
+		var back PendingChoiceView
+		if err := json.Unmarshal(raw, &back); err != nil {
+			t.Fatal(err)
+		}
+		if (back.PayLife != nil) != (tc.kind == game.PayActionLife) ||
+			(back.PayDamage != nil) != (tc.kind == game.PayActionDamage) ||
+			back.PayNothing != (tc.kind == game.PayActionNothing) {
+			t.Errorf("%s: round trip %+v", tc.kind, back)
+		}
+	}
+}
+
+// Each payment reads as itself in the log.
+func TestAnyPlayerAnswerTextNamesThePayment(t *testing.T) {
+	for _, tc := range []struct {
+		paid        bool
+		label, want string
+	}{
+		{true, "{2}", "Alice paid {2} for X"},
+		{false, "5 life", "Alice didn't pay 5 life for X"},
+		{true, "6 damage", "Alice took 6 damage from X"},
+		{false, "6 damage", "Alice didn't take 6 damage from X"},
+		{true, "sacrifice a land", "Alice chose to sacrifice a land for X"},
+		{false, "discard three cards", "Alice chose not to discard three cards for X"},
+		{true, "", "Alice said yes to X"},
+		{false, "", "Alice said no to X"},
+	} {
+		if got := anyPlayerAnswerText(tc.paid, "Alice", tc.label, "X"); got != tc.want {
+			t.Errorf("(%v, %q) = %q, want %q", tc.paid, tc.label, got, tc.want)
+		}
+	}
+}

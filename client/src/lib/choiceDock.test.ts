@@ -8,6 +8,7 @@ import { describe, it, expect, vi } from "vitest";
 import {
   anyPlayerOfferLine,
   anyPlayerOfferRequest,
+  anyPlayerWaiting,
   ballotNote,
   choiceRequest,
   councilVoteRequest,
@@ -451,5 +452,64 @@ describe("an unless-any-player-pays offer (ADR 0150 §5)", () => {
     expect(r?.hint).toBe("Any player may pay {2}: Alice and Bob declined; then Dan.");
     expect(anyPlayerOfferRequest(link(), "c", seats, "Rhystic Tutor")).toBeNull();
     expect(anyPlayerOfferRequest(choice({ kind: "pay_unless" }), "a", seats, "x")).toBeNull();
+  });
+
+  // ADR 0150 §3: life, damage, a sacrifice and an offer that costs nothing.
+  it("words a life payment and greys it for a seat without the life", () => {
+    const life = link({ pay_cost: "5 life", pay_life: 5, reason: "" });
+    const ok = choiceRequest(life, { sourceName: "Dash Hopes", seats, life: 20 }, handlers());
+    expect(ok.label).toBe("Dash Hopes — pay 5 life?");
+    expect(ok.hint).toContain("Any player may pay 5 life:");
+    expect(ok.hint).toContain("Pay 5 life, or don't.");
+    expect(ok.primary?.label).toBe("Pay 5 life");
+    expect(ok.primary?.disabled).toBeFalsy();
+    const short = choiceRequest(life, { sourceName: "Dash Hopes", seats, life: 4 }, handlers());
+    expect(short.primary?.disabled).toBe(true);
+    expect(short.hint).toContain("You have 4 life, so you can't pay 5.");
+  });
+
+  it("words damage with the card's own answers", () => {
+    const dmg = link({
+      pay_cost: "5 damage",
+      pay_damage: 5,
+      reason: "",
+      accept_label: "Take 5 damage",
+      decline_label: "Don't",
+    });
+    const r = choiceRequest(dmg, { sourceName: "Browbeat", seats }, handlers());
+    expect(r.label).toBe("Browbeat — take 5 damage?");
+    expect(r.hint).toContain("Any player may take 5 damage:");
+    expect(r.hint).toContain("Browbeat deals 5 damage to you if you take it.");
+    expect(r.primary?.label).toBe("Take 5 damage");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Don't"]);
+    expect(anyPlayerWaiting(dmg, seats, "Browbeat")).toBe(
+      "Carol is deciding whether to take 5 damage (Bob's Browbeat)",
+    );
+  });
+
+  it("words a sacrifice and an offer that costs nothing", () => {
+    expect(
+      anyPlayerOfferLine(
+        link({
+          pay_cost: "sacrifice a land",
+          pay_cards: { action: "sacrifice", count: 1, options: [] },
+        }),
+        seats,
+      ),
+    ).toBe("Any player may sacrifice a land: Alice and Bob declined; then Dan.");
+    const free = link({
+      pay_cost: "",
+      pay_nothing: true,
+      accept_label: "Let them have the card",
+      decline_label: "Let them draw three",
+      any_player_offer: { controller: "b", order: ["c", "d", "a"], opponents: true },
+    });
+    expect(anyPlayerOfferLine(free, seats)).toBe(
+      "Any opponent may let them have the card: then Dan and Alice.",
+    );
+    const r = choiceRequest(free, { sourceName: "Distant Memories", seats }, handlers());
+    expect(r.primary?.label).toBe("Let them have the card");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Let them draw three"]);
+    expect(r.hint).toContain("It costs you nothing.");
   });
 });
