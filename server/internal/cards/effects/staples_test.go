@@ -263,6 +263,7 @@ func TestRampantGrowthFetchesBasicTapped(t *testing.T) {
 
 	castCatalogSpell(t, g, "Rampant Growth", "Sorcery", rampantGrowthOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	fetched, ok := battlefieldCard(g, forestID)
 	if !ok {
@@ -284,6 +285,7 @@ func TestNaturesLoreFetchesForestUntapped(t *testing.T) {
 
 	castCatalogSpell(t, g, "Nature's Lore", "Sorcery", naturesLoreOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	fetched, ok := battlefieldCard(g, forestID)
 	if !ok {
@@ -305,6 +307,7 @@ func TestNaturesLoreAcceptsNonBasicForest(t *testing.T) {
 
 	castCatalogSpell(t, g, "Nature's Lore", "Sorcery", naturesLoreOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !g.Battlefield.Contains(bayouID) {
 		t.Error("Nature's Lore should fetch a nonbasic Forest")
@@ -328,6 +331,7 @@ func TestFarseekSkipsForest(t *testing.T) {
 
 	castCatalogSpell(t, g, "Farseek", "Sorcery", farseekOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !g.Battlefield.Contains(islandID) {
 		t.Error("Farseek did not fetch the Island")
@@ -352,6 +356,7 @@ func TestFarseekFetchesShockland(t *testing.T) {
 
 	castCatalogSpell(t, g, "Farseek", "Sorcery", farseekOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !g.Battlefield.Contains(shrineID) {
 		t.Fatal("Farseek did not fetch Godless Shrine, a Plains Swamp")
@@ -373,6 +378,7 @@ func TestFarseekFetchesTriome(t *testing.T) {
 
 	castCatalogSpell(t, g, "Farseek", "Sorcery", farseekOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !g.Battlefield.Contains(triomeID) {
 		t.Fatal("Farseek did not fetch Indatha Triome")
@@ -450,6 +456,7 @@ func TestWoodElvesFetchesForestOnETB(t *testing.T) {
 
 	castCatalogSpell(t, g, "Wood Elves", "Creature — Elf Scout", woodElvesOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	fetched, ok := battlefieldCard(g, forestID)
 	if !ok {

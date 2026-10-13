@@ -948,6 +948,7 @@ var pendingChoiceFields = plan(
 	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
+	"SearchMin", carried, "",
 	// S28 cascade: which card the "you may cast it without paying
 	// its mana cost" prompt is offering. Carried for the same reason
 	// SacrificeOptions is — the prompt is meaningless without it, and

@@ -55,12 +55,11 @@ func init() {
 			Condition: lagomosFiveCreaturesDied,
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(game.Card) bool { return true },
-					Dest:      game.ZoneHand,
-					Limit:     1,
-					Shuffle:   true,
-					Reason:    "Lagomos, Hand of Hatred — search for a card",
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Lagomos, Hand of Hatred — search for a card",
 				}.Apply(NewContext(g, item))
 			},
 		}},

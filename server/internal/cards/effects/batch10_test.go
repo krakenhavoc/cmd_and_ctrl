@@ -1280,6 +1280,7 @@ func TestB10CityOfTraitorsGoesWhenYouPlayALandButNotWhenYouFetchOne(t *testing.T
 	pushLibraryCardForTest(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
 	castCatalogSpell(t, g, "Rampant Growth", "Sorcery", b10RampantGrowthOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if findBattlefieldByName(g, "Forest") == uuid.Nil {
 		t.Fatal("Rampant Growth should have fetched the Forest")
 	}

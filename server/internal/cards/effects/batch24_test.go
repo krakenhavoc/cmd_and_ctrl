@@ -332,6 +332,7 @@ func TestB24MerchantScrollFindsABlueInstant(t *testing.T) {
 	)
 	castCatalogSpell(t, g, "Merchant Scroll", "Sorcery", b24MerchantScrollOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(ids[0]) {
 		t.Error("the one blue instant is found without a prompt")
 	}
@@ -388,6 +389,7 @@ func TestB24ScourForScrapTutorsAndReturnsAnArtifact(t *testing.T) {
 	}
 	castModal(t, g, "Scour for Scrap", "Instant", b24ScourForScrapOracle, []int{0, 1}, b16TargetCard(dead))
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(lib[0]) {
 		t.Error("the one artifact in the library is found")
 	}

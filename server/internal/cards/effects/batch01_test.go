@@ -1230,6 +1230,7 @@ func TestCropRotationSacrificesALandAndFetchesOne(t *testing.T) {
 		t.Error("the additional cost must sacrifice the land at announce (CR 601.2f)")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !g.Battlefield.Contains(want) {
 		t.Error("the fetched land did not reach the battlefield")
 	}
@@ -1249,13 +1250,15 @@ func TestAshBarrensBasicLandcyclesFromHand(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	// One basic in the library is fewer matches than the limit, so the
-	// search chooser takes it without asking; a prompt appears only
-	// when there is a real choice to make.
-	if c := searchChoiceFor(g, me.ID); c != nil {
-		if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{basic}); err != nil {
-			t.Fatalf("ResolveSearchLibrary: %v", err)
-		}
+	// Basic landcycling searches for a basic land card, a stated
+	// quality, so even one basic in the library asks: the cycler may
+	// find nothing (CR 701.23b, #3053).
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("landcycling against one basic did not ask")
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{basic}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
 	}
 	if !me.Hand.Contains(basic) {
 		t.Error("basic landcycling did not put the basic into hand")

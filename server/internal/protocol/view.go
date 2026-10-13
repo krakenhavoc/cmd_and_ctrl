@@ -638,10 +638,16 @@ type PendingChoiceView struct {
 	ChooseSuggested []string `json:"choose_suggested,omitempty"`
 
 	// SearchMax populates the S22 "search_library" kind: how many of
-	// Options the searcher may take. The minimum is always zero —
-	// CR 701.23b permits failing to find — so the client's submit
-	// button is live from the first render. Absent for other kinds.
+	// Options the searcher may take. Absent for other kinds.
+	//
+	// SearchMin is the floor (#3053, CR 701.23b/d). Absent, zero, is the
+	// common case: a search for a card with a stated quality may find
+	// nothing, so the client offers "find nothing" beside "take". Present
+	// (>= 1) only for a search the rules make the searcher complete — an
+	// unconditional "a card" / "three cards" — where the client must not
+	// offer an empty answer and the server would refuse it.
 	SearchMax int `json:"search_max,omitempty"`
+	SearchMin int `json:"search_min,omitempty"`
 	// Placement populates the ADR 0088 "put_in_library" kind: which
 	// lanes the answer may use — "top" ({top_order} alone), "bottom"
 	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
@@ -7920,6 +7926,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// that nobody else is entitled to.
 		if c.Kind == game.PendingChoiceSearchLibrary && len(c.SearchCards) > 0 {
 			v.SearchMax = c.SearchMax
+			v.SearchMin = c.SearchMin
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -9067,6 +9074,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 		if c.Kind == string(game.PendingChoiceSearchLibrary) && c.Chooser != viewerID {
 			out[i].Options = nil
 			out[i].SearchMax = 0
+			out[i].SearchMin = 0
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the

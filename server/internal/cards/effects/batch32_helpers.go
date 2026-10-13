@@ -465,19 +465,17 @@ func b32SearchAuraThenEquipmentToHand(g *game.Game, item *game.StackItem) error 
 		Dest:      game.ZoneHand,
 		Limit:     1,
 		Reveal:    true,
-		Optional:  true,
 		Reason:    "Axgard Armory — choose up to one Aura card to put into your hand",
 		Then: func(g *game.Game, _ []uuid.UUID) error {
 			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:   controller,
-				Source:   source,
-				Pred:     func(c game.Card) bool { return c.HasSubtype("Equipment") },
-				Dest:     game.ZoneHand,
-				Limit:    1,
-				Reveal:   true,
-				Shuffle:  true,
-				Optional: true,
-				Reason:   "Axgard Armory — choose up to one Equipment card to put into your hand",
+				Player:  controller,
+				Source:  source,
+				Pred:    func(c game.Card) bool { return c.HasSubtype("Equipment") },
+				Dest:    game.ZoneHand,
+				Limit:   1,
+				Reveal:  true,
+				Shuffle: true,
+				Reason:  "Axgard Armory — choose up to one Equipment card to put into your hand",
 			})
 		},
 	}.Apply(NewContext(g, item))

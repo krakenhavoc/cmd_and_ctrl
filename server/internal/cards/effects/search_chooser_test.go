@@ -136,6 +136,7 @@ func TestSearchToBattlefieldRunsEntersTappedReplacement(t *testing.T) {
 			func(c game.Card) bool { return c.Name == "Darkslick Shores" },
 			game.ZoneBattlefield, 1, false, false, false)
 	})
+	takeSearchPrompts(t, g)
 
 	card, ok := searchFetchedCard(g, "Darkslick Shores")
 	if !ok {
@@ -167,6 +168,7 @@ func TestSearchToBattlefieldRespectsTheUntappedCondition(t *testing.T) {
 			func(c game.Card) bool { return c.Name == "Darkslick Shores" },
 			game.ZoneBattlefield, 1, false, false, false)
 	})
+	takeSearchPrompts(t, g)
 
 	card, ok := searchFetchedCard(g, "Darkslick Shores")
 	if !ok {
@@ -189,6 +191,7 @@ func TestSearchTappedOnEntryStillForcesTapped(t *testing.T) {
 		_ = g.SearchLibraryForEffectWithOptions(me.ID, IsBasicLand,
 			game.ZoneBattlefield, 1, false, false, true)
 	})
+	takeSearchPrompts(t, g)
 
 	card, ok := searchFetchedCard(g, "Forest")
 	if !ok {
@@ -219,6 +222,7 @@ func TestSearchToBattlefieldHitsAuthorityOfTheConsuls(t *testing.T) {
 			func(c game.Card) bool { return c.Name == "Grizzly Bears" },
 			game.ZoneBattlefield, 1, false, false)
 	})
+	takeSearchPrompts(t, g)
 
 	card, ok := searchFetchedCard(g, "Grizzly Bears")
 	if !ok {
@@ -311,15 +315,18 @@ func TestSearchPromptsWhenThereIsAChoiceAndHonoursIt(t *testing.T) {
 	}
 }
 
-// One match and a limit of one is not a choice, so no prompt — a
-// modal with a single button is worse than no modal.
-func TestSearchDoesNotPromptWhenThereIsNothingToDecide(t *testing.T) {
+// A search the rules force — an unconditional "a card" (CR 701.23d)
+// against a library of exactly one — is not a choice, so no prompt: a
+// modal with a single button is worse than no modal. (A search for a
+// stated quality is different since #3053: it may find nothing, so it
+// always asks. fail_to_find_cards_test.go pins that side.)
+func TestSearchDoesNotPromptWhenTheRulesForceThePick(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	seedSearchLibrary(me, searchTestLand("Forest", "Basic Land — Forest"))
 
 	g.WithWriteLock(func() {
-		_ = g.SearchLibraryForEffect(me.ID, IsBasicLand,
+		_ = g.SearchLibraryForEffect(me.ID, nil,
 			game.ZoneBattlefield, 1, false, true)
 	})
 
@@ -327,7 +334,7 @@ func TestSearchDoesNotPromptWhenThereIsNothingToDecide(t *testing.T) {
 		t.Error("a forced pick still queued a prompt")
 	}
 	if _, ok := searchFetchedCard(g, "Forest"); !ok {
-		t.Error("the only match was not fetched")
+		t.Error("the only card was not found")
 	}
 }
 
@@ -594,6 +601,7 @@ func TestFetchedShocklandOffersItsPaymentAndTheSearchWaits(t *testing.T) {
 					func(c game.Card) bool { return c.Name == "Blood Crypt" },
 					game.ZoneBattlefield, 1, false, true)
 			})
+			takeSearchPrompts(t, g)
 
 			if _, ok := searchFetchedCard(g, "Blood Crypt"); ok {
 				t.Fatal("nothing moves while the pay-life question is open")

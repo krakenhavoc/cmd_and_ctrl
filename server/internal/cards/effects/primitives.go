@@ -966,10 +966,12 @@ func (r ReturnFromGraveyard) Apply(ctx *Context) error {
 // shuffles the library afterwards.
 //
 // S22: the SEARCHER chooses. When the library holds more matches
-// than Limit — or the clause is a "you may search", or a Validate
-// constraint is in play — the engine queues a search prompt and this
+// than Limit, the search names a quality (so it may find nothing, CR
+// 701.23b, #3053), the clause is a "you may search", or a Validate
+// constraint is in play, the engine queues a search prompt and this
 // primitive returns immediately; the cards move when the searcher
-// answers. When there is nothing to decide it stays synchronous.
+// answers. It stays synchronous only where the rules force the take —
+// an unconditional "a card" against a library of that many.
 //
 // That asynchrony is why `Then` exists: anything the card does AFTER
 // the search ("then shuffle" aside) has to run in the continuation,
@@ -999,10 +1001,20 @@ type SearchLibrary struct {
 	// enters and go through the CR 614 counter pipeline. Only
 	// meaningful when Dest == ZoneBattlefield.
 	EntersWithCounters map[string]int
-	// Optional is "you MAY search" (CR 701.23b) — Assassin's Trophy,
-	// Path to Exile, Solemn Simulacrum. Forces the prompt so the
-	// searcher can decline the card AND the shuffle.
+	// Optional is "you MAY search" — Assassin's Trophy, Path to Exile,
+	// Solemn Simulacrum. Forces the prompt so the searcher can decline
+	// the card AND the shuffle. It is NOT how a card gets "fail to
+	// find": any search with a Predicate (a stated quality, CR
+	// 701.23b) already offers "find nothing", even against exactly one
+	// match, and an "up to N" one lets the count come out short. Set
+	// Optional only when the printed text says "you may search", or the
+	// search is unconditional and optional (#3053).
 	Optional bool
+	// UpTo is "search your library for UP TO N cards" with NO stated
+	// quality (#3053) — the one place "up to" has to be said, because
+	// an unconditional search must otherwise find N (CR 701.23d). A
+	// search with a Predicate already allows fewer and needs no flag.
+	UpTo bool
 	// Reason is the prompt banner. Name the card.
 	Reason string
 	// Validate is a legality check on the picked SET, for clauses no
@@ -1059,6 +1071,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		TappedOnEntry:      s.TappedOnEntry,
 		EntersWithCounters: s.EntersWithCounters,
 		Optional:           s.Optional,
+		UpTo:               s.UpTo,
 		Reason:             s.Reason,
 		Validate:           s.Validate,
 		Then:               s.Then,

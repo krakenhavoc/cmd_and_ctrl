@@ -763,9 +763,16 @@ type PendingChoice struct {
 	SearchCards []uuid.UUID
 
 	// SearchMax is how many of SearchCards the chooser may take.
-	// The minimum is always zero: CR 701.23b lets a player fail to
-	// find however hard they looked.
 	SearchMax int
+
+	// SearchMin is how many of SearchCards the chooser MUST take
+	// (#3053). Zero — the common case — is CR 701.23b: a search of a
+	// hidden zone for a card with a stated quality may find nothing
+	// however many matches there are. It is above zero only for an
+	// unconditional search (CR 701.23d: "a card", "three cards"), where
+	// the searcher has to find that many, or as many as the library
+	// holds. See SearchLibrarySpec.floorFor.
+	SearchMin int
 
 	// searchResume is the server-only continuation for a
 	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec, which

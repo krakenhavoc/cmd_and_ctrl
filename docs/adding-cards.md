@@ -3927,6 +3927,45 @@ with the ordinary `{choice_id, card_ids}` payload; the dispatcher routes
 that shape by the choice's kind, as it already does for `{apply}` and
 `{order}`.
 
+**A library search: finding, and failing to find (#3053, CR 701.23):**
+`SearchLibrary` decides on its own whether the searcher may come up
+empty, from what the card says it searches FOR. You do not declare it.
+
+| The card says | `Predicate` | The searcher |
+| --- | --- | --- |
+| "a basic land card", "a creature card", "a card named X", "up to two Forest cards" — any stated quality | set | may find nothing, **even against exactly one match** (CR 701.23b); an "up to N" search may take any number from 0 to N |
+| "a card", "three cards" — no quality (Demonic Tutor, Entomb, Intuition) | **omitted** | must find that many, or as many as the library holds (CR 701.23d) |
+| "up to three cards" — no quality | omitted, plus `UpTo: true` | may take 0 to N |
+
+Two rules follow from that. **Omit `Predicate` for an unconditional
+search; never pass `func(game.Card) bool { return true }`.** A predicate
+of any kind is how the engine knows the search names a quality, so an
+always-true one turns Demonic Tutor into a tutor that is allowed to
+find nothing. (Seven catalog cards did exactly that until #3053.) And a
+**one-match search for a stated quality now asks**: the prompt opens
+with the match already taken, Enter takes it, and a separate "Find
+nothing" button declines. That is one prompt per tutor, and it is the
+price of CR 701.23b. The search is still a search when it finds nothing:
+the library is shuffled, `EventSearchLibrary` fires, and `Then` runs with
+an empty `found`.
+
+`Optional: true` is a different thing and is NOT how a card gets "fail
+to find" any more. It means the printed text says **"you may search"**
+(Assassin's Trophy, Path to Exile, Solemn Simulacrum, every "when this
+enters, you may search" creature): the whole search is optional. Set it
+exactly when the oracle text has "may search"; a card that just says
+"Search your library for up to two basic land cards" (Cultivate, Reshape
+the Earth) sets nothing. Today the two behave the same at the prompt,
+and a card that says "may" keeps the flag so that stays true if "you
+may search" ever stops shuffling on a decline.
+
+The engine's only search reads a LIBRARY, a hidden zone. A search of a
+public zone ("search your graveyard") has no fail to find: the searcher
+sees everything, so they must find a valid card when one is present.
+There is no such primitive yet — those cards are choose-from-zone
+prompts with their own minimums — and `searchFloor` in
+`game/effect_api.go` is the rule written down for the day one lands.
+
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `Then`, not on the next line:
 

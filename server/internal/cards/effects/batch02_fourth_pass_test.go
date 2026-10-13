@@ -269,6 +269,7 @@ func TestB02dFinaleOfDevastationFindsACreatureAndPumpsAtXTen(t *testing.T) {
 
 	castXSpell(t, g, "Finale of Devastation", "Sorcery", b02dFinaleOfDevastationOracle, "{X}{G}{G}", 10, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !g.Battlefield.Contains(within) {
 		t.Error("the creature card with mana value <= X should have been put onto the battlefield")

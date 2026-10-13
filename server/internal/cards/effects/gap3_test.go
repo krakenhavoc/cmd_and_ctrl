@@ -644,6 +644,7 @@ func TestGap3EscapeTunnelFetchesOrMakesASmallCreatureUnblockable(t *testing.T) {
 		me.Library.Cards = nil
 		pushLibraryCardForTest(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest", Owner: me.ID, Controller: me.ID})
 		b16Activate(t, g, me.ID, tunnel, 0, game.ActivateAbilityParams{})
+		takeSearchPrompts(t, g)
 		if g.Battlefield.Contains(tunnel) {
 			t.Error("the Tunnel was not sacrificed")
 		}

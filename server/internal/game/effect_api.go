@@ -2370,11 +2370,26 @@ type SearchLibrarySpec struct {
 	// "additional" means. CR 614.1c, 122.6.
 	EntersWithCounters map[string]int
 
-	// Optional marks a "you MAY search" (CR 701.23b). It forces the
-	// prompt even when the pick is otherwise forced, so the searcher
-	// can decline — Assassin's Trophy's victim keeps the right to
-	// refuse the land and the shuffle.
+	// Optional marks a "you MAY search" — the whole search is optional,
+	// which is a different thing from failing to find (#3053).
+	//
+	// Failing to find is the engine's default for any search that
+	// names a quality (Pred or Validate set; CR 701.23b): the prompt
+	// always carries a "find nothing" answer, even with exactly one
+	// match, with no flag needed. So Optional is NOT how a card gets
+	// "fail to find" any more. Set it only when the printed text says
+	// "you may search" — Assassin's Trophy's victim, Path to Exile,
+	// Solemn Simulacrum — or when an UNCONDITIONAL search ("a card")
+	// is itself optional, since that is the one case the quality rule
+	// does not already cover.
 	Optional bool
+
+	// UpTo is "search your library for UP TO N cards" with no stated
+	// quality (#3053). A quality-bearing search already allows fewer
+	// than N (CR 701.23b); this is for the unconditional ones, where
+	// CR 701.23d would otherwise make the searcher find all N. "Up to"
+	// is what lets the count come out short.
+	UpTo bool
 
 	// Reason is the prompt's banner copy. Defaults to a generic
 	// "Search your library".
@@ -2418,6 +2433,49 @@ type SearchLibrarySpec struct {
 	// 0 and 1 are the top and a library shorter than Depth takes the
 	// card on the bottom. Meaningful only with ToTop.
 	Depth int
+}
+
+// statedQuality reports whether the search names something the card
+// has to match — a card type, a name, a mana value, a land type, a
+// "share a type" clause. CR 701.23b is about exactly these: a search
+// for cards with a stated quality, as opposed to CR 701.23d's search
+// "simply for a quantity of cards". The engine reads it off the spec:
+// a nil Pred with no Validate is the unconditional search (Demonic
+// Tutor, Gamble, Entomb, Intuition).
+func (spec SearchLibrarySpec) statedQuality() bool {
+	return spec.Pred != nil || spec.Validate != nil
+}
+
+// floor is the fewest cards the searcher may take when `matches` cards
+// are on offer (#3053). It is the one place the find / fail-to-find
+// rule is decided; the prompt, the resolver and the enumerator all
+// read it from the choice, not from their own opinion of the card.
+func (spec SearchLibrarySpec) floor(matches int) int {
+	return searchFloor(true, spec.statedQuality(), spec.Optional || spec.UpTo || spec.Unbounded,
+		spec.Limit, matches)
+}
+
+// searchFloor is CR 701.23b and 701.23d as a pure function, so the rule
+// can be pinned (and the public-zone half exercised) without a game.
+//
+//   - hiddenZone: the zone searched is hidden (a library). A public
+//     zone (a graveyard, the battlefield) has no fail to find: the
+//     searcher can see everything, so they must find a valid card
+//     when one is present. The engine's only search primitive reads a
+//     library today, so every real caller passes true; the parameter
+//     is the rule written down for the day a public-zone search lands.
+//   - statedQuality: the search names a quality (CR 701.23b).
+//   - mayFindFewer: the clause itself permits a short count — "up to
+//     N", "any number", "you may search".
+//
+// A short count is always allowed when the clause says so. Beyond that,
+// only a hidden-zone search for a stated quality may come up empty;
+// everything else must find min(limit, matches).
+func searchFloor(hiddenZone, statedQuality, mayFindFewer bool, limit, matches int) int {
+	if mayFindFewer || (hiddenZone && statedQuality) {
+		return 0
+	}
+	return min(limit, matches)
 }
 
 // libraryOwnerID is the seat whose library this search actually reads
@@ -2496,12 +2554,16 @@ func (g *Game) SearchLibraryForEffectWithOptions(
 // basic happened to be. That simplification is gone: when the library
 // offers a real choice, the searcher gets a prompt.
 //
-// "A real choice" means: more matches than the effect may take, or
-// an Optional ("you may search") clause, or a Validate constraint the
-// whole match set does not already satisfy. With nothing to decide —
-// a Rampant Growth into a library holding exactly one Forest — the
-// engine takes the match and moves on, because a modal offering one
-// button is worse than no modal.
+// "A real choice" means: more matches than the effect may take, or a
+// search the searcher is allowed to come up short on, or a Validate
+// constraint the whole match set does not already satisfy. The second
+// is every search for a card with a stated quality (CR 701.23b): the
+// searcher may find nothing even when exactly one match is there, so a
+// Rampant Growth into a library holding exactly one Forest asks, with
+// "find nothing" beside the Forest (#3053; this used to take the Forest
+// without asking). The engine takes the match unasked only where the
+// rules force it — an unconditional search (CR 701.23d), or a public
+// zone with a card present — and there is nothing to choose.
 //
 // Hidden information (CR 400.2): a library is a hidden zone, and the
 // prompt does not change that for anybody but the searcher. The
@@ -2546,9 +2608,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// whole match set rather than a forced take-all.
 		spec.Limit = len(matches)
 	}
-	if !spec.Optional && !spec.Unbounded && len(matches) <= spec.Limit &&
+	if spec.floor(len(matches)) == len(matches) && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
-		// No decision to make — take them all. The take finishes the
+		// No decision to make — the rules force the searcher to take
+		// every match (CR 701.23d: an unconditional "a card" against a
+		// library of exactly that many). A search for a stated quality
+		// never lands here, however few matches there are: it may
+		// always find nothing (CR 701.23b, #3053), so it always asks.
+		// Take them all. The take finishes the
 		// search itself (#478): a battlefield destination is an entry
 		// and an entry can pause, so "then shuffle" is the last link of
 		// a chain rather than the line after the loop.
@@ -2621,6 +2688,7 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		Reason:       reason,
 		SearchCards:  append([]uuid.UUID(nil), matches...),
 		SearchMax:    spec.Limit,
+		SearchMin:    spec.floor(len(matches)),
 		searchResume: &searchResumeFrame{spec: spec},
 	})
 }

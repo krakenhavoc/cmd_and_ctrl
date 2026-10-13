@@ -132,6 +132,7 @@ func TestFetchlandTakesNonbasicDualUntapped(t *testing.T) {
 	}
 
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	got, ok := aangCardOnBF(g, grave)
 	if !ok {
@@ -155,6 +156,7 @@ func TestFetchlandLogsFetchNotReveal(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	var reveals []string
 	for _, e := range protocol.ViewOfGame(g).Log {
@@ -213,6 +215,7 @@ func TestEvolvingWildsFetchesBasicTapped(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	got, ok := aangCardOnBF(g, forest)
 	if !ok {

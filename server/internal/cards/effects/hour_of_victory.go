@@ -33,13 +33,12 @@ func init() {
 				SorcerySpeed: true,
 				Effect: func(g *game.Game, item *game.StackItem) error {
 					return SearchLibrary{
-						Player:    item.Controller,
-						Source:    item.SourceCardID,
-						Predicate: func(game.Card) bool { return true },
-						Dest:      game.ZoneHand,
-						Limit:     1,
-						Shuffle:   true,
-						Reason:    "Hour of Victory — search for a card",
+						Player:  item.Controller,
+						Source:  item.SourceCardID,
+						Dest:    game.ZoneHand,
+						Limit:   1,
+						Shuffle: true,
+						Reason:  "Hour of Victory — search for a card",
 					}.Apply(NewContext(g, item))
 				},
 			}),

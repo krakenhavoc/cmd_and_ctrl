@@ -31,6 +31,7 @@ func TestCentralElevatorFetchesARoomWithANewName(t *testing.T) {
 	me.Library.PushTop(decoy)
 
 	roomsDCast(t, g, me, centralElevatorCard(me.ID), 0)
+	takeSearchPrompts(t, g)
 
 	if !me.Hand.Contains(fresh.InstanceID) {
 		t.Fatal("the Room with a new name did not reach the hand")

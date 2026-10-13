@@ -19,15 +19,18 @@ import (
 // prompt is still open, and a second prompt opened at that moment
 // would offer a card the player is in the middle of taking.
 //
-// "Up to two" (#2942): BOTH halves are Optional, which forces the
-// prompt even when only one match is left, so the searcher can take
-// two, one (to the battlefield or to the hand, their choice of half)
-// or none. Before, the second half took the last basic without
-// asking, and a declined first half still forced a pick on the
-// second. With exactly one basic in the library this subsumes the old
-// lone-basic confirm (#2883): the first prompt offers it for the
-// battlefield and, if declined, the second offers it for the hand. An
-// empty library no-ops both halves but still shuffles.
+// "Up to two" (#2942, #3053): a search for a basic land has a stated
+// quality, so the searcher may find fewer than printed whatever is in
+// the library (CR 701.23b) and neither half sets Optional — Optional
+// is for "you MAY search", which Cultivate does not say. Each half
+// therefore prompts even when only one match is left, so the searcher
+// can take two, one (to the battlefield or to the hand, their choice
+// of half) or none. Before #2942 the second half took the last basic
+// without asking, and a declined first half still forced a pick on
+// the second. With exactly one basic in the library the first prompt
+// offers it for the battlefield and, if declined, the second offers it
+// for the hand. An empty library no-ops both halves but still
+// shuffles.
 //
 // The land enters the battlefield TAPPED because Cultivate says so
 // (SearchLibrary.TappedOnEntry). Since #263 the fetched land's own
@@ -57,22 +60,20 @@ func cultivateSearch(ctx *Context, name string) error {
 		Predicate:     IsBasicLand,
 		Dest:          game.ZoneBattlefield,
 		Limit:         1,
-		Optional:      true,
 		Reveal:        true,
 		Shuffle:       false,
 		TappedOnEntry: true,
 		Reason:        name + " — basic land onto the battlefield tapped",
 		Then: func(g *game.Game, _ []uuid.UUID) error {
 			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:   controller,
-				Source:   source,
-				Pred:     IsBasicLand,
-				Dest:     game.ZoneHand,
-				Limit:    1,
-				Optional: true,
-				Reveal:   true,
-				Shuffle:  true,
-				Reason:   name + " — basic land into your hand",
+				Player:  controller,
+				Source:  source,
+				Pred:    IsBasicLand,
+				Dest:    game.ZoneHand,
+				Limit:   1,
+				Reveal:  true,
+				Shuffle: true,
+				Reason:  name + " — basic land into your hand",
 			})
 		},
 	}.Apply(ctx)

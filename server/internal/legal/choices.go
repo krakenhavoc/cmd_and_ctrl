@@ -575,12 +575,19 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceSearchLibrary:
-			// CR 701.23: take up to SearchMax of the matching cards;
-			// failing to find (an empty list) is always legal, which
-			// is what makes it this choice's AlwaysLegal answer.
-			p := base()
-			p.CardIDs = []string{}
-			e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+			// CR 701.23: take up to SearchMax of the matching cards.
+			// Failing to find (an empty list) is legal for a search
+			// for a stated quality (CR 701.23b, #3053) — which is what
+			// makes it this choice's AlwaysLegal answer — and NOT for
+			// an unconditional one (CR 701.23d), whose floor the
+			// resolver enforces. The floor is read from the engine,
+			// not re-derived here.
+			floor := g.SearchFloorLocked(c)
+			if floor == 0 {
+				p := base()
+				p.CardIDs = []string{}
+				e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+			}
 			// Every offered pick is run past the engine's own
 			// acceptance check first. A search may carry a Validate
 			// hook for a clause no per-card predicate can express —
@@ -588,7 +595,7 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := e.filteredCombos(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource,
+			picks := e.filteredCombos(c.SearchCards, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
 			for _, set := range picks {
 				p := base()

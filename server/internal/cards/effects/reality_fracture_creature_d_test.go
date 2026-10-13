@@ -384,6 +384,7 @@ func TestRFDPiaAetherAsceticDiscardsToTutorAnEnchantment(t *testing.T) {
 	}
 	answerDiscard(t, g, me.ID, me.Hand.Cards[0].InstanceID)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(ench) {
 		t.Error("the enchantment should have been searched into hand")
 	}

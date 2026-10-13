@@ -27,7 +27,6 @@ func init() {
 				Reveal:        true,
 				Shuffle:       true,
 				TappedOnEntry: true,
-				Optional:      true,
 				Reason:        "Reshape the Earth — choose up to ten land cards to put onto the battlefield tapped",
 			}.Apply(ctx)
 		},

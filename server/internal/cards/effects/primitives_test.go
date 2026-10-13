@@ -368,6 +368,9 @@ func TestSearchLibraryFindsAndMoves(t *testing.T) {
 			t.Fatalf("Apply: %v", err)
 		}
 	})
+	// A search for a stated quality asks even against one match (CR
+	// 701.23b, #3053).
+	takeSearchPrompts(t, g)
 
 	if !p.Hand.Contains(needleID) {
 		t.Errorf("Needle not in hand after search")

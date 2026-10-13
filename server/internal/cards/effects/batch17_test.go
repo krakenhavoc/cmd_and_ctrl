@@ -509,8 +509,13 @@ func TestB17VileEntomberSearchesAnyCardIntoTheGraveyard(t *testing.T) {
 	)
 	castCatalogSpell(t, g, "Vile Entomber", "Creature — Zombie Warlock", b17VileEntomberOracle, nil)
 	passPriorityAroundTable(t, g)
-	if searchChoiceFor(g, me.ID) == nil {
+	pc := searchChoiceFor(g, me.ID)
+	if pc == nil {
 		t.Fatal("three candidates for one slot: the searcher chooses")
+	}
+	// "A card" names no quality (CR 701.23d, #3053): Vile Entomber must find one.
+	if pc.SearchMin != 1 {
+		t.Errorf("SearchMin = %d, want 1: an unconditional search cannot fail to find", pc.SearchMin)
 	}
 	answerSearchNamed(t, g, me.ID, "Griselbrand")
 	if findBattlefieldByName(g, "Griselbrand") != uuid.Nil || !b02bGraveyardHasNamed(me, "Griselbrand") {

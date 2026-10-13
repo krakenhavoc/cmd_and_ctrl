@@ -747,6 +747,7 @@ func TestFabledPassageFetchesTappedBelowFourLands(t *testing.T) {
 		t.Error("the Passage is sacrificed as a cost, at announce")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	got, ok := battlefieldCard(g, basic)
 	if !ok {
@@ -772,6 +773,7 @@ func TestFabledPassageUntapsAtFourLands(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	got, ok := battlefieldCard(g, basic)
 	if !ok {

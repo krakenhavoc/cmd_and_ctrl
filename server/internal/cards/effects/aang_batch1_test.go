@@ -275,6 +275,7 @@ func TestLoyalWarhoundFetchesOnlyWhenBehindOnLands(t *testing.T) {
 
 	castCatalogSpell(t, g, "Loyal Warhound", "Creature — Dog", loyalWarhoundOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	found := false
 	for _, c := range g.Battlefield.Cards {

@@ -65,6 +65,7 @@ func TestImperialRecruiterFetchesASmallCreature(t *testing.T) {
 
 	castCatalogSpell(t, g, "Imperial Recruiter", "Creature — Human Advisor", imperialRecruiterOrc, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if !me.Hand.Contains(small) {
 		t.Errorf("the power-2 creature should be in hand")

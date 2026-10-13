@@ -50,6 +50,7 @@ func TestMolderingGymFetchesABasicLandTapped(t *testing.T) {
 	advanceToMain(t, g)
 	roomsBCast(t, g, me, roomsBCard(me.ID, moldGymOracle, "Moldering Gym", "{2}{G}", "Weight Room", "{5}{G}"), 0)
 	roomsBSettle(t, g, me, forest)
+	takeSearchPrompts(t, g)
 	c := findBattlefieldCardForTest(g, forest)
 	if c == nil || !c.Tapped {
 		t.Fatalf("the basic land did not enter tapped: %+v", c)

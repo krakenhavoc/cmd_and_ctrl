@@ -56,6 +56,7 @@ func TestCancelledEntryStillFinishesTheSearch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("SearchLibraryThenForEffect: %v", err)
 	}
+	takeSearchPrompts(t, g)
 
 	if thenRan != 1 {
 		t.Fatalf("the continuation ran %d times, want exactly 1", thenRan)

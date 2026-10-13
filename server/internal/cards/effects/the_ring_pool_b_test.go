@@ -350,6 +350,7 @@ func TestWarOfTheLastAllianceFindsALegend(t *testing.T) {
 	legend := ringLibraryTop(me, "Some Legend", "Legendary Creature — Elf")
 	castCatalogSpell(t, g, "War of the Last Alliance", "Enchantment — Saga", warOfTheLastAllianceOracle, nil)
 	ringSettle(t, g)
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(legend) {
 		t.Fatal("chapter I did not find the legendary creature card")
 	}
