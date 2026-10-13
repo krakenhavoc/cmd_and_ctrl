@@ -20,6 +20,7 @@
   import { hoveredCard } from "../../cardTypes";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { isToken } from "../../tokenGroups";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
   import type { GameView, PlayerView } from "../../protocol";
   import { playerColor } from "../../avatarColor";
@@ -262,8 +263,15 @@
       {#if card.unimplemented}
         <div class="not-implemented">rules not implemented — resolve this card by hand</div>
       {/if}
-      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
+      {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
         <footer class="info-foot">
+          {#if isToken(card)}
+            <!-- #3043: a token copy shows the original's art and oracle
+                 text, so the panel has to say it is not the card. -->
+            <span class="state state-token" title="token (CR 111)"
+              >{card.token_copy ? "token copy" : "token"}</span
+            >
+          {/if}
           {#if card.is_commander}
             <span class="state state-cmd">commander</span>
           {/if}
@@ -583,6 +591,11 @@
   .state-damage {
     color: var(--danger);
     border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  }
+  /* #3043: matches the teal TOKEN badge on the board tile. */
+  .state-token {
+    color: #bff3ea;
+    border-color: rgba(110, 220, 200, 0.6);
   }
   .state-cmd {
     color: var(--accent-strong);

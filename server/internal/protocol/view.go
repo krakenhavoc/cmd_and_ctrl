@@ -2251,6 +2251,13 @@ type CardView struct {
 	// face-down-permanent's public-body carve-out untouched — see
 	// face_down_view_test.go's redactedCardKeys.
 	IsToken bool `json:"is_token,omitempty"`
+	// TokenCopy (#3043) is true for a token that is a COPY of a real
+	// card (CR 707.2, Vaultborn Tyrant's token): a token that carries an
+	// oracle ID. A hand-written token (Treasure, a Soldier) has none by
+	// construction. Such a token shows the copied card's art and frame,
+	// so without this the board cannot tell it from the original. Public
+	// with is_token; never sent without it.
+	TokenCopy bool `json:"token_copy,omitempty"`
 	// TypeLine is Scryfall's printed type line ("Legendary Creature
 	// — Human Wizard"). Carried so the client can filter "creatures
 	// only" UIs (the combat panel) without a Scryfall round-trip.
@@ -9834,6 +9841,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
 		IsToken:    game.IsTokenPtr(c),
+		TokenCopy:  game.IsTokenPtr(c) && c.OracleID != "",
 		TypeLine:   effectiveTypeLine(c, eff),
 		Colors:     append([]string(nil), eff.Colors...),
 		Protection: viewOfProtection(c),

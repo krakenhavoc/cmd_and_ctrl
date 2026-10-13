@@ -24,6 +24,7 @@
   import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { isToken } from "../../tokenGroups";
   import { creditText, useArtist } from "../../artistCredit.svelte";
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
@@ -509,6 +510,16 @@
   // to it, so the click affordance is withheld here rather than by
   // every parent remembering to withhold it.
   const phasedOut = $derived(card.phased_out === true);
+  // #3043: a token copy wears the original's art and frame, so the art
+  // alone cannot say which one is the token. Every token carries a mark;
+  // a copy of a real card says so.
+  const tokenMark = $derived(
+    isToken(card)
+      ? card.token_copy
+        ? { label: "TOKEN COPY", title: "a token that is a copy of a card" }
+        : { label: "TOKEN", title: "a token" }
+      : null,
+  );
   // ADR 0108: "exiled if it dies this turn" / "can't be regenerated
   // this turn" — what killing this permanent does is already decided.
   const deathMark = $derived(deathMarkBadge(card));
@@ -893,6 +904,17 @@
         PHASED
       </span>
     {/if}
+    {#if tokenMark}
+      <span
+        class="badge token-mark"
+        class:copy={card.token_copy}
+        class:with-phased={phasedOut}
+        title={tokenMark.title}
+        aria-label={tokenMark.title}
+      >
+        {tokenMark.label}
+      </span>
+    {/if}
     {#if card.is_commander}
       <span class="badge cmd" aria-hidden="true">CMD</span>
     {/if}
@@ -1056,6 +1078,17 @@
         aria-label={`face down: ${faceDownLabel}`}
       >
         {faceDownLabel}
+      </span>
+    {/if}
+    {#if tokenMark}
+      <span
+        class="badge token-mark"
+        class:copy={card.token_copy}
+        class:with-phased={phasedOut}
+        title={tokenMark.title}
+        aria-label={tokenMark.title}
+      >
+        {tokenMark.label}
       </span>
     {/if}
     {#if card.goaded_by}
@@ -1625,6 +1658,31 @@
     background: rgba(12, 22, 44, 0.9);
     border-color: rgba(145, 195, 255, 0.55);
     font-size: 7px;
+  }
+  .badge.token-mark {
+    /* #3043. Bottom-left, with PHASED (which it lifts above when both
+       apply). Teal, a colour no other badge uses, so "this is a token"
+       is not confused with a state. A copy is solid, because that is
+       the case the art gets wrong. */
+    top: auto;
+    bottom: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #bff3ea;
+    background: rgba(8, 40, 38, 0.92);
+    border-color: rgba(110, 220, 200, 0.6);
+    font-size: 7px;
+    padding: 1px 4px;
+  }
+  .badge.token-mark.copy {
+    color: #06231f;
+    background: rgba(120, 228, 208, 0.95);
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+  .badge.token-mark.with-phased {
+    bottom: 16px;
   }
   .badge.phased {
     /* #1199. Bottom-left, clear of FACE DOWN / GOAD / CMD at the top
