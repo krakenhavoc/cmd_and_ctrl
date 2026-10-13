@@ -147,7 +147,7 @@ func TestRenderCapsZones(t *testing.T) {
 		v.Seats[0].Graveyard.Cards = append(v.Seats[0].Graveyard.Cards, protocol.CardView{Name: "G"})
 	}
 	got := boardtext.Render(v, "a", boardtext.Options{MaxZoneCards: 2})
-	if !strings.Contains(got, "  graveyard: G, G, …\n") {
+	if !strings.Contains(got, "  graveyard: G, G, … and 3 more\n") {
 		t.Errorf("cap not applied:\n%s", got)
 	}
 }
@@ -204,5 +204,88 @@ func TestRenderSaysWhoMayPlayFromExileAndAHandBan(t *testing.T) {
 	}
 	if strings.Contains(got, "Gone") {
 		t.Errorf("an exiled card nobody may play was listed:\n%s", got)
+	}
+}
+
+// #2792: the issue's board. Avenger, 23 identical Plants (one tapped),
+// Zombies and lands. Nothing may vanish, and the Plants collapse.
+func issueBoard() *protocol.GameView {
+	v := view()
+	var cs []protocol.CardView
+	add := func(c protocol.CardView, n int) {
+		c.Controller = "a"
+		for i := 0; i < n; i++ {
+			cs = append(cs, c)
+		}
+	}
+	add(protocol.CardView{Name: "Field of the Dead", TypeLine: "Land", Tapped: true}, 1)
+	add(protocol.CardView{Name: "Forest", TypeLine: "Basic Land — Forest", Tapped: true}, 6)
+	add(protocol.CardView{Name: "Path of Ancestry", TypeLine: "Land", Tapped: true}, 1)
+	add(protocol.CardView{Name: "Plant", TypeLine: "Token Creature — Plant", IsToken: true, Power: 4, Toughness: 5, Counters: map[string]int{"+1/+1": 4}}, 22)
+	add(protocol.CardView{Name: "Plant", TypeLine: "Token Creature — Plant", IsToken: true, Power: 4, Toughness: 5, Tapped: true, Counters: map[string]int{"+1/+1": 4}}, 1)
+	add(protocol.CardView{Name: "Avenger of Zendikar", TypeLine: "Creature — Elemental", Power: 5, Toughness: 5}, 1)
+	add(protocol.CardView{Name: "Zombie", TypeLine: "Token Creature — Zombie", IsToken: true, Power: 2, Toughness: 2}, 5)
+	add(protocol.CardView{Name: "Myriad Landscape", TypeLine: "Land"}, 1)
+	v.Battlefield.Cards = cs
+	return v
+}
+
+func TestBattlefieldGroupsIdenticalPermanents(t *testing.T) {
+	got := boardtext.Render(issueBoard(), "a", boardtext.Options{})
+	for _, want := range []string{
+		"Plant 4/5 (4 +1/+1) x22",
+		"Plant 4/5 (tapped, 4 +1/+1)", // tapped splits from the untapped group
+		"Avenger of Zendikar 5/5",
+		"Zombie 2/2 x5",
+		"Forest (tapped) x6",
+		"Myriad Landscape",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in:\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "more") || strings.Contains(got, "…") {
+		t.Errorf("nothing should be cut at the default cap:\n%s", got)
+	}
+	t.Logf("%d bytes:\n%s", len(got), got)
+}
+
+func TestBattlefieldCountersSplitGroups(t *testing.T) {
+	v := view()
+	v.Battlefield.Cards = []protocol.CardView{
+		{Name: "Bear", Controller: "a", TypeLine: "Creature", Power: 3, Toughness: 3, Counters: map[string]int{"+1/+1": 1}},
+		{Name: "Bear", Controller: "a", TypeLine: "Creature", Power: 4, Toughness: 4, Counters: map[string]int{"+1/+1": 2}},
+		{Name: "Bear", Controller: "a", TypeLine: "Creature", Power: 3, Toughness: 3, Counters: map[string]int{"+1/+1": 1}},
+	}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if !strings.Contains(got, "battlefield: Bear 3/3 (1 +1/+1) x2, Bear 4/4 (2 +1/+1)\n") {
+		t.Errorf("counters did not split groups:\n%s", got)
+	}
+}
+
+func TestBattlefieldCutKeepsDecisionsAndCountsTheRest(t *testing.T) {
+	// 9 groups at cap 4: the creature and the three non-basic lands stay;
+	// Forests, both Plant groups and the Zombies go, and are counted.
+	got := boardtext.Render(issueBoard(), "a", boardtext.Options{MaxZoneCards: 4, MoreHint: " (see full)"})
+	for _, want := range []string{"Avenger of Zendikar", "Field of the Dead", "Path of Ancestry", "Myriad Landscape"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s was cut:\n%s", want, got)
+		}
+	}
+	// 6 Forests + 22 + 1 Plants + 5 Zombies.
+	if !strings.Contains(got, "… and 34 more (see full)\n") {
+		t.Errorf("tail is not the exact count:\n%s", got)
+	}
+}
+
+func TestBattlefieldCutPrefersNewestWithinAClass(t *testing.T) {
+	v := view()
+	v.Battlefield.Cards = []protocol.CardView{
+		{Name: "Old Token", Controller: "a", TypeLine: "Token Creature", IsToken: true},
+		{Name: "New Token", Controller: "a", TypeLine: "Token Creature", IsToken: true},
+	}
+	got := boardtext.Render(v, "a", boardtext.Options{MaxZoneCards: 1})
+	if !strings.Contains(got, "battlefield: New Token 0/0, … and 1 more\n") {
+		t.Errorf("newest arrival should survive:\n%s", got)
 	}
 }

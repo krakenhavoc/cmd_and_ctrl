@@ -236,7 +236,8 @@ func trimOpponentBattlefields(v *protocol.GameView, me string, keep int) {
 // cap, the unimplemented note spelled out (§5), and each owed choice's id
 // for legal_moves(choice) (#2794).
 func boardOptions(maxZone int) boardtext.Options {
-	return boardtext.Options{MaxZoneCards: maxZone, NoteUnimplemented: true, ChoiceIDs: true}
+	return boardtext.Options{MaxZoneCards: maxZone, NoteUnimplemented: true, ChoiceIDs: true,
+		MoreHint: " (call get_state(detail: \"full\"))"}
 }
 
 // sinceLog is the public log since the last decision as the window shows
