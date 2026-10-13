@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "e8a9350a-07c1-47ed-8c4f-88e4b3b17545",
 		Name:         "Hop to It",
+		Purpose:      game.Purpose{Tokens: 3},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{

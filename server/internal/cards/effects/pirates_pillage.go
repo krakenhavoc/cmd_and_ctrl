@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:       "7a2e866b-9642-495e-b47f-5b13a24373cc",
 		Name:           "Pirate's Pillage",
+		Purpose:        game.Purpose{Draws: 2, Tokens: 2},
 		Completeness:   CompletenessFull,
 		AdditionalCost: DiscardCost(1),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

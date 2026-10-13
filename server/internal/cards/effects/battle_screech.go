@@ -20,6 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:      "e73131cd-b454-405b-9539-9d777e232b9e",
 		Name:          "Battle Screech",
+		Purpose:       game.Purpose{Tokens: 2},
 		Completeness:  CompletenessFull,
 		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{

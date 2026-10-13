@@ -53,7 +53,7 @@ var curatedInstantsAndSorceries = []string{
 	// mono-green-stompy
 	"Naturalize", "Bite Down",
 	// mono-white-weenie
-	"Call the Coppercoats", "Secure the Wastes",
+	"Call the Coppercoats", "Secure the Wastes", "Raise the Alarm", "Increasing Devotion",
 	"Council's Judgment", "Fateful Absence", "Flawless Maneuver",
 	// boros-voltron
 	"Akroma's Will", "Boros Charm", "Lightning Helix", "Wild Slash", "Teferi's Protection",

@@ -20,9 +20,10 @@ func init() {
 	Register(Spec{
 		OracleID:         "7a5ff4d4-27b7-47d4-ba88-970c63c4e3fb",
 		Name:             "Increasing Devotion",
+		Purpose:          game.Purpose{Tokens: 5},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
-		AlternativeCosts: []game.AlternativeCost{Flashback("{7}{W}{W}")},
+		AlternativeCosts: []game.AlternativeCost{CostWithPurpose(Flashback("{7}{W}{W}"), game.Purpose{Tokens: 10})},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			n := 5
 			if ctx.PaidAltCost("flashback") {

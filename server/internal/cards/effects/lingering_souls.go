@@ -21,6 +21,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "0b8c3337-04dd-4798-8203-6d8b8cfb936b",
 		Name:             "Lingering Souls",
+		Purpose:          game.Purpose{Tokens: 2},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{1}{B}")},

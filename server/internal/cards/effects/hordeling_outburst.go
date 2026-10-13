@@ -13,6 +13,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "a6450b8e-eb18-431c-9eb7-7daf107978b2",
 		Name:         "Hordeling Outburst",
+		Purpose:      game.Purpose{Tokens: 3},
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return CreateToken{

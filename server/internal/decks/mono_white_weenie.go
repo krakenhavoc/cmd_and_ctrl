@@ -17,11 +17,9 @@ package decks
 //
 // There are no sweepers: Wrath of God, Settle the Wreckage and
 // Armageddon were cut because this deck is the board. Raise the Alarm
-// and Increasing Devotion were cut too, for a different reason:
-// TestCuratedDeckPurposes (ADR 0126 §6) wants a declared Purpose on
-// every curated instant and sorcery that prints an amount, neither card
-// declares one, and declaring it is a catalog change for another PR.
-// Hanged Executioner and Guardian of the Gateless play in their place.
+// and Increasing Devotion are the instant- and sorcery-speed token
+// makers; #3138 gave both a declared Purpose (ADR 0126 §6), which is
+// what let them back in.
 //
 // Every non-basic card below is in the effect catalog and graded full,
 // and none is on full_test.go's minor-caveats list. Brimaz, King of
@@ -85,7 +83,7 @@ var monoWhiteWeenie = Deck{
 		{Name: "Elesh Norn, Grand Cenobite", OracleID: "958d71ff-c9f7-46f0-96ca-79e7f4d65a16", Identity: "W"},
 
 		// Tokens and anthems.
-		{Name: "Hanged Executioner", OracleID: "6ff4ff67-ad08-447f-a112-1a071c1474a4", Identity: "W"},
+		{Name: "Raise the Alarm", OracleID: "5b2364d7-a811-4595-a1b4-224c70555ffa", Identity: "W"},
 		{Name: "Call the Coppercoats", OracleID: "73d8c33d-916a-4220-96ae-9622aad36210", Identity: "W"},
 		{Name: "Secure the Wastes", OracleID: "b2347910-d6c6-4681-8316-7ef27056485c", Identity: "W"},
 		{Name: "Elspeth, Sun's Champion", OracleID: "05e6b243-48a6-4a42-bc5f-413441de9c33", Identity: "W"},
@@ -94,7 +92,7 @@ var monoWhiteWeenie = Deck{
 		{Name: "Glorious Anthem", OracleID: "e3886fe8-9b76-4613-8891-4ec74657c087", Identity: "W"},
 		{Name: "Spear of Heliod", OracleID: "fd66aa66-75a2-41b6-8d57-dc4b9c221ccb", Identity: "W"},
 		{Name: "Cathars' Crusade", OracleID: "cc65ac73-5bef-4ecb-ad8e-39199084c027", Identity: "W"},
-		{Name: "Guardian of the Gateless", OracleID: "e133605f-9227-42c4-afe9-6613ab095433", Identity: "W"},
+		{Name: "Increasing Devotion", OracleID: "7a5ff4d4-27b7-47d4-ba88-970c63c4e3fb", Identity: "W"},
 		{Name: "Smothering Tithe", OracleID: "153376c9-dffd-458c-8ce3-a4c8269bc4e9", Identity: "W"},
 
 		// Removal and protection.

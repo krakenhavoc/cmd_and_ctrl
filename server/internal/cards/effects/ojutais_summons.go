@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "def45f3a-dba0-4d08-b086-5236d6e0edb1",
 		Name:            "Ojutai's Summons",
+		Purpose:         game.Purpose{Tokens: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

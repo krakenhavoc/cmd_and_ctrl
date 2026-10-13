@@ -560,7 +560,7 @@ func TestB09SteelshapersGiftOffersOnlyEquipment(t *testing.T) {
 	}
 }
 
-func TestB09StoneforgeMysticTutorsAnEquipmentAndHasNoActivatedAbility(t *testing.T) {
+func TestB09StoneforgeMysticTutorsAnEquipment(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	seedSearchLibrary(me,
@@ -580,9 +580,10 @@ func TestB09StoneforgeMysticTutorsAnEquipmentAndHasNoActivatedAbility(t *testing
 	if !b02bHandHasNamed(me, "Sword") {
 		t.Error("the Equipment did not reach the hand")
 	}
+	// The {1}{W},{T} ability landed with #3138 (token_purposes_and_gaps_3138_test.go).
 	spec, _ := Lookup(b09StoneforgeMysticOracle)
-	if len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the put-onto-the-battlefield ability is a declared omission, not a half-built ability")
+	if len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("Stoneforge Mystic should carry its activated ability and grade full")
 	}
 }
 

@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "a7213bef-0e9c-44e1-97cb-d1da0ef370bf",
 		Name:             "Call the Skybreaker",
+		Purpose:          game.Purpose{Tokens: 1},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Retrace("{5}{U/R}{U/R}")},

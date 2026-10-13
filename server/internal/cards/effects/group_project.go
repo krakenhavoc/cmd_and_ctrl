@@ -19,6 +19,7 @@ func init() {
 	Register(Spec{
 		OracleID:      "e1ce210e-2d1d-4ab4-bfb7-8e36884797fc",
 		Name:          "Group Project",
+		Purpose:       game.Purpose{Tokens: 1},
 		Completeness:  CompletenessFull,
 		CastableZones: []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{
