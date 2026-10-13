@@ -245,6 +245,9 @@ type communityResponse struct {
 	// Gate is whether sign-up needs the admitting role (Elder Dragon
 	// Highlander on the C2 server).
 	Gate bool `json:"gate"`
+	// Voice is whether a host may give a table a voice room in the
+	// community server (ADR 0159 §7).
+	Voice bool `json:"voice"`
 }
 
 // community is GET /community: public, no session, cacheable for five
@@ -254,5 +257,6 @@ func community(c Config, w http.ResponseWriter, _ *http.Request) error {
 	return writeJSON(w, http.StatusOK, communityResponse{
 		InviteURL: c.CommunityInviteURL,
 		Gate:      c.Discord.Gate.Enabled(),
+		Voice:     c.DiscordVoice.Enabled(),
 	})
 }

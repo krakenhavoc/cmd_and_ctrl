@@ -50,6 +50,11 @@
 //	CMDCTRL_DISCORD_INVITE_URL — the community server's invite, served by
 //	                        GET /community. Unset hides it; not an https
 //	                        URL: boot fails.
+//	CMDCTRL_DISCORD_VOICE_CATEGORY_ID — the category in the community
+//	                        server that table voice rooms go in (ADR
+//	                        0159). Needs CMDCTRL_DISCORD_COMMUNITY_GUILD_ID
+//	                        (boot fails without it, or on a malformed id)
+//	                        and the bot token (off without it).
 //	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
@@ -517,6 +522,17 @@ func main() {
 	if cfg.CommunityInviteURL == "" {
 		log.Info("community invite unset: the client hides its Discord links", "var", discord.InviteURLEnv)
 	}
+	// ADR 0159 §7: said once, either way.
+	switch {
+	case cfg.Voice.Enabled():
+		log.Info("table voice rooms on: hosts may give a table a private room in the community server",
+			"var", discord.VoiceCategoryEnv)
+	case cfg.Voice.MissingToken():
+		log.Info("table voice rooms off: "+discord.VoiceCategoryEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("table voice rooms off; set "+discord.VoiceCategoryEnv+" to enable", "var", discord.VoiceCategoryEnv)
+	}
 
 	// The bot token the server itself uses for direct-message invites
 	// (ADR 0051 decision 5, S34 sub-PR 6). Separate from the gateway
@@ -627,6 +643,8 @@ func main() {
 		DiscordBot:  discordBot,
 		// GET /community (ADR 0156 §6).
 		CommunityInviteURL: cfg.CommunityInviteURL,
+		// Table voice rooms (ADR 0159).
+		DiscordVoice: cfg.Voice,
 		// The DM invite's link is built against the same public origin
 		// bug-report attachments use, and for the same reason there is
 		// no default: a wrong origin produces a DM full of dead links.
@@ -833,6 +851,11 @@ type config struct {
 	// /community. Empty hides the client's Discord placements; a value
 	// that is not an https URL fails the boot.
 	CommunityInviteURL string
+	// Voice is ADR 0159 §7's table voice rooms:
+	// CMDCTRL_DISCORD_VOICE_CATEGORY_ID in the community guild, with the
+	// bot token. A malformed id, or a category without the guild, fails
+	// the boot; no bot token leaves it off.
+	Voice discord.Voice
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1089,6 +1112,12 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.CommunityInviteURL = invite
+	voice, verr := discord.VoiceFromEnv(os.Getenv)
+	if verr != nil {
+		log.Error("voice room config invalid", "err", verr)
+		os.Exit(1)
+	}
+	c.Voice = voice
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")
