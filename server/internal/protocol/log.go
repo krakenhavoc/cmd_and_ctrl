@@ -255,6 +255,13 @@ const (
 	// card that called the vote. One line per vote, as it is cast, so
 	// the table sees the tally move.
 	LogVote LogKind = "vote"
+	// LogAnyPlayerPaid / LogAnyPlayerDeclined — one player's answer to
+	// an "unless any player pays" offer (ADR 0150 §5). `Seat` answered,
+	// `CardID` is the card whose effect it was and `Label` the payment
+	// ("{2}"). One line per answer, in the order asked, so a table
+	// reading back sees who paid and who let it happen.
+	LogAnyPlayerPaid     LogKind = "any_player_paid"
+	LogAnyPlayerDeclined LogKind = "any_player_declined"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -1395,6 +1402,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventAnyPlayerPaid, game.EventAnyPlayerDeclined:
+		// ADR 0150 §5. Actor answered, Source is the card whose effect
+		// was offered, Label the payment's printed words.
+		base.Kind = LogAnyPlayerDeclined
+		if ev.Kind == game.EventAnyPlayerPaid {
+			base.Kind = LogAnyPlayerPaid
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventVoteCast:
 		// ADR 0146. Actor voted, Source called the vote, Label is the
 		// option. The option's label is public: a word printed on the
@@ -2341,6 +2359,10 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
+	case LogAnyPlayerPaid:
+		return fmt.Sprintf("%s paid %s for %s", actor, nameOr(e.Label, "the cost"), card)
+	case LogAnyPlayerDeclined:
+		return fmt.Sprintf("%s didn't pay %s for %s", actor, nameOr(e.Label, "the cost"), card)
 	case LogRingTempted:
 		// ADR 0114 §9 and owner decision 2: "The Ring tempts Alice (2)
 		// — Alice chooses Nazgûl as their Ring-bearer". The engine

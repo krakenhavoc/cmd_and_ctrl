@@ -712,6 +712,30 @@ type PendingChoiceView struct {
 	// every seat sees each vote as it is cast. Absent on every other
 	// prompt.
 	CouncilVote *CouncilVoteView `json:"council_vote,omitempty"`
+	// AnyPlayerOffer marks a pay_unless as one link of an "unless any
+	// player pays" offer (ADR 0150 §5) and says whose effect it is and
+	// who has been asked. Public: every seat sees who is deciding.
+	// Absent on every other prompt.
+	AnyPlayerOffer *AnyPlayerOfferView `json:"any_player_offer,omitempty"`
+}
+
+// AnyPlayerOfferView is an any-player offer in progress
+// (game.AnyPlayerOffer), as its open link carries it.
+type AnyPlayerOfferView struct {
+	// Controller is the controller of the effect being paid against
+	// ("you" on the card). The prompt's chooser is the player asked now.
+	Controller string `json:"controller"`
+	// Order is everyone the offer may reach, in the order asked
+	// (APNAP from the active player, CR 101.4); Declined those who
+	// have said no so far, in order.
+	Order    []string `json:"order"`
+	Declined []string `json:"declined,omitempty"`
+	// Opponents is true for "any opponent may", which skips the
+	// controller.
+	Opponents bool `json:"opponents,omitempty"`
+	// HelpsController is true when paying is what the controller wants
+	// (Icy Prison: paying keeps it), so "pay to stop it" reads wrong.
+	HelpsController bool `json:"helps_controller,omitempty"`
 }
 
 // CouncilVoteView is a vote in progress (game.CouncilVote), as the open
@@ -8066,6 +8090,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.CouncilVote != nil {
 			v.CouncilVote = viewOfCouncilVote(c.CouncilVote, c.PickOptions)
+		}
+		if o := c.AnyPlayerOffer; o != nil {
+			v.AnyPlayerOffer = &AnyPlayerOfferView{
+				Controller: o.Controller.String(),
+				Order:      cardIDStrings(o.Order),
+				Declined:   cardIDStrings(o.Declined),
+				Opponents:  o.Opponents,
+
+				HelpsController: o.HelpsController,
+			}
 		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)

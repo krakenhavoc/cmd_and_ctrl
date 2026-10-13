@@ -138,3 +138,15 @@ func (c *Context) withoutNewSourceObject(ids []uuid.UUID) []uuid.UUID {
 func sourceIsStillThisPermanent(g *game.Game, item *game.StackItem) bool {
 	return item != nil && onBattlefield(g, item.SourceCardID) && !sourceIsNewObject(g, item)
 }
+
+// sacrificeThisIfStillHere sacrifices the item's source while it is
+// still the permanent the ability came from — the "or else" of
+// "sacrifice this unless …" (Static Prison's energy, Icy Prison's any
+// player). A source that has left, or come back as a new object, is
+// not sacrificed (CR 400.7).
+func sacrificeThisIfStillHere(ctx *Context) error {
+	if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
+		return nil
+	}
+	return SacrificePermanent{Target: ctx.Item.SourceCardID}.Apply(ctx)
+}

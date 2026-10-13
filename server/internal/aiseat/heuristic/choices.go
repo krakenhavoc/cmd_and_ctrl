@@ -532,6 +532,30 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// ADR 0136's amendment of 2026-10-09: an opponent's tax that
 		// would leave the turn plan's next member unpayable is weighed
 		// against that member (tax.go).
+		// ADR 0150 §6: an "unless any player pays" offer against the
+		// bot's own effect is never paid; an opponent's is paid like
+		// any tax, whoever is still to be asked (owner decision 7: no
+		// free-riding).
+		// Icy Prison's upkeep turns it round (HelpsController): paying
+		// keeps the controller's permanent, so the controller pays and
+		// an opponent never does.
+		if kind == choicePayUnless && ch != nil && ch.AnyPlayerOffer != nil {
+			o := ch.AnyPlayerOffer
+			yes := cp.Apply != nil && *cp.Apply
+			mine := o.Controller == st.me
+			switch {
+			case mine && !o.HelpsController:
+				if yes {
+					return 0.25, "any player: never pay against my own effect"
+				}
+				return 1, "any player: let my own effect happen"
+			case !mine && o.HelpsController:
+				if yes {
+					return 0.25, "any player: never pay for an opponent"
+				}
+				return 1, "any player: let an opponent's permanent go"
+			}
+		}
 		if kind == choicePayUnless {
 			if decline, why, ok := p.taxAgainstPlan(st, ch); ok {
 				yes := cp.Apply != nil && *cp.Apply

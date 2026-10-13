@@ -1929,6 +1929,14 @@ pausedModeWalk.rest[]	number:int
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
+pendingChoices[].anyPlayerOffer	object
+pendingChoices[].anyPlayerOffer.controller	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.declined	array
+pendingChoices[].anyPlayerOffer.declined[]	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.helpsController	bool
+pendingChoices[].anyPlayerOffer.opponents	bool
+pendingChoices[].anyPlayerOffer.order	array
+pendingChoices[].anyPlayerOffer.order[]	custom(uuid.UUID)
 pendingChoices[].askedByHand	string
 pendingChoices[].autoAnswerCard	string
 pendingChoices[].autoAnswerKey	string
