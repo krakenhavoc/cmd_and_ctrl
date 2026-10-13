@@ -19,7 +19,14 @@ describe("parseCommunity", () => {
     expect(parseCommunity({ invite_url: INVITE, gate: true })).toEqual({
       invite_url: INVITE,
       gate: true,
+      voice: false,
     });
+  });
+
+  it("reads whether voice rooms are offered, and only a literal true (ADR 0159 §7)", () => {
+    expect(parseCommunity({ invite_url: INVITE, gate: false, voice: true }).voice).toBe(true);
+    expect(parseCommunity({ invite_url: INVITE, gate: false, voice: "yes" }).voice).toBe(false);
+    expect(parseCommunity({ invite_url: INVITE, gate: false }).voice).toBe(false);
   });
 
   it("takes only an absolute https URL as the invite", () => {
@@ -51,7 +58,7 @@ describe("loadCommunity", () => {
     vi.stubGlobal("fetch", f);
     await Promise.all([loadCommunity(), loadCommunity()]);
     await loadCommunity();
-    expect(get(community)).toEqual({ invite_url: INVITE, gate: true });
+    expect(get(community)).toEqual({ invite_url: INVITE, gate: true, voice: false });
     expect(f).toHaveBeenCalledTimes(1);
     expect(f.mock.calls[0][0]).toBe("/community");
   });

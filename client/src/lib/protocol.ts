@@ -406,6 +406,9 @@ export interface GameView {
   // The table's settings (ADR 0075 §2.2). Public: every viewer,
   // spectators included, gets the same object. Added in S35 (#1032).
   settings?: TableSettingsView;
+  // The table's Discord voice room (ADR 0159 §6), reduced by the server
+  // to this viewer's own access. Absent when the server offers none.
+  voice?: VoiceView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -2791,6 +2794,12 @@ export interface ActivatedAbilityView {
   // this one (Necrotic Sliver's "{3}, Sacrifice this permanent: …" on
   // every Sliver). Absent on the permanent's own abilities.
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
@@ -4067,6 +4076,10 @@ export interface CardView extends CastSurfaceView {
   // CR 707.9a grant (no source). The one place a granted TRIGGER is
   // visible at all — it has no menu row. One entry per grantor.
   granted_abilities?: GrantedAbilityView[];
+  // ADR 0155 owner decision 2: the objects this permanent "has all activated
+  // abilities of" that the catalog does not automate. They lend nothing; the
+  // menu names each in a disabled "<lender>: not automated" line.
+  unautomated_lenders?: GrantedByView[];
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).
@@ -4243,6 +4256,12 @@ export interface ManaAbilityView {
   // granted this one (Cryptolith Rite's "{T}: Add one mana of any
   // color." on every creature you control).
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana
@@ -4502,6 +4521,20 @@ export function uuid(): string {
 // TableSettingsView is a table's configuration (ADR 0075 §2.2). The
 // keys match the settings patch the server accepts, so a client can
 // send back exactly the fields it read.
+// VoiceView is the table's Discord voice room on the game view (ADR 0159
+// §6). `url` reaches only a viewer who was let in, while the room is
+// ready.
+export interface VoiceView {
+  enabled: boolean;
+  status: VoiceStatus;
+  you?: VoiceAccess;
+  url?: string;
+}
+
+export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
+
+export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;
