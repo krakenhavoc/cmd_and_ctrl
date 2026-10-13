@@ -1389,11 +1389,18 @@ func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card) []autoTapCandid
 	abilities, origins := ManaAbilitiesWithOrigins(source)
 	var out []autoTapCandidate
 	for i := range abilities {
+		o := origins.At(i)
+		// ADR 0155 Decision 7: a lent row of a once-each-turn borrow is
+		// never planned. The executor writes no per-row tally, so it is
+		// left to the click, which does.
+		if o.Borrowed && o.Lent != nil && o.Lent.EachOncePerTurn {
+			continue
+		}
 		if !g.autoTapAbilityAccepts(asker, source, abilities[i]) {
 			continue
 		}
-		o := origins.At(i)
-		out = append(out, autoTapCandidate{ab: abilities[i], ref: o.Ref, granted: o.Granted()})
+		// ADR 0155 §11: a borrowed row is planned like a granted one.
+		out = append(out, autoTapCandidate{ab: abilities[i], ref: o.Ref, granted: o.Granted() || o.Borrowed})
 	}
 	return out
 }
@@ -1407,8 +1414,17 @@ func (g *Game) autoTapAbilitiesFor(asker uuid.UUID, source Card) []autoTapCandid
 //
 // Caller must hold g.mu.
 func (g *Game) autoTapAbilityForRef(asker uuid.UUID, source Card, ref string) *ManaAbilityShape {
-	if ref == "" {
+	if ref == "" && len(layeredBorrows(&source)) == 0 {
 		return g.autoTapAbilityFor(asker, source, ManaAbilitiesForCard(source))
+	}
+	if ref == "" {
+		// A borrower: the first candidate the planner would offer, so a
+		// row it never plans (a once-each-turn lent row) is not fired.
+		if cands := g.autoTapAbilitiesFor(asker, source); len(cands) > 0 {
+			ab := cands[0].ab
+			return &ab
+		}
+		return nil
 	}
 	for _, cand := range g.autoTapAbilitiesFor(asker, source) {
 		if cand.ref == ref {
