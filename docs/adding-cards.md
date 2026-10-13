@@ -3761,6 +3761,16 @@ exiled" and the default for "this turn". The attack conditions read tallies
 written as each attacker is declared, so a token that died in combat still
 counts, and every tally resets at the turn boundary.
 
+**"Exile that card with a <counter> counter on it instead of putting it into
+your graveyard as it resolves" (#3213, ADR 0107 amendment of 2026-10-13):**
+Goliath Daydreamer. A cast trigger marks the spell on the stack with
+`g.MarkSpellExilesWithCounterForEffect(ev.CardID, game.CounterDream)`; the
+mark is one more resolution exit (rebound, buyback, the Adventure exile), so
+it fires only when the spell resolves and competes with the others under
+CR 616.1. The cards it leaves behind are found by their counter
+(`c.Counters[game.CounterDream] > 0` on `g.Exile.Cards`) and cast through a
+`GrantCastPermissionToCardsForEffect` grant, as Crabomination's are.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse
