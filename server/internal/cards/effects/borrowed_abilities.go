@@ -19,9 +19,12 @@ import (
 // HasActivatedAbilitiesOf is "~ has all activated abilities of …": a
 // layer-6 borrow whose one recipient is its own source.
 func HasActivatedAbilitiesOf(b game.AbilityBorrow) game.StaticAbility {
-	return GrantActivatedAbilitiesOf(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+	s := GrantActivatedAbilitiesOf(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return source != nil && target.InstanceID == source.InstanceID
 	}, b)
+	// The printed clause is the row's player-facing wording.
+	s.Label = b.Label
+	return s
 }
 
 // GrantActivatedAbilitiesOf is "[recipients] have all activated abilities
