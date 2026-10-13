@@ -24,6 +24,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -98,6 +99,10 @@ type Hub struct {
 	// clock is what the legal_moves_request limit reads the time from
 	// (ADR 0122 §6.1). Nil is time.Now; a test sets it before serving.
 	clock func() time.Time
+
+	// maxConns is the live-connection ceiling (ADR 0148, #2977). 0 is
+	// no cap. Read on every upgrade, so it is an atomic.
+	maxConns atomic.Int64
 }
 
 // Binding is what the upgrade authorizer hands to the hub: the
@@ -375,6 +380,46 @@ func rejectReasonFor(status int) string {
 	return metrics.RejectRejected
 }
 
+// SetMaxConnections installs the live-connection ceiling. 0 (the
+// default) is no cap. The ceiling gates sockets from someone with no
+// seat; a seated player and an admin always connect. It is a soft cap:
+// the check and the admit are not one atomic step, so a burst of
+// simultaneous newcomers can overshoot it by the burst.
+func (h *Hub) SetMaxConnections(n int) { h.maxConns.Store(int64(n)) }
+
+// connectionsFull reports whether the live count has reached the cap.
+func (h *Hub) connectionsFull() bool {
+	max := h.maxConns.Load()
+	return max > 0 && int64(h.Count()) >= max
+}
+
+// refuseFull turns a newcomer away at the connection cap. A browser
+// cannot read the body of a refused handshake, so the upgrade is
+// ACCEPTED, one error frame carrying capacity.CodeServerFull is
+// written, and the socket closes with 1013 (try again later). The
+// client shows the frame's message and retries on its own ladder.
+func (h *Hub) refuseFull(w http.ResponseWriter, r *http.Request) {
+	metrics.WSUpgradeRejected(metrics.RejectCapacity)
+	metrics.CapacityRefused(metrics.RefuseWSConnections)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		h.log.Warn("ws upgrade failed while refusing at the connection cap", "err", err, "remote", r.RemoteAddr)
+		return
+	}
+	defer func() { _ = conn.Close() }()
+	body, _ := json.Marshal(protocol.ErrorPayload{Code: capacity.CodeServerFull, Message: capacity.Message})
+	frame, err := json.Marshal(protocol.Frame{V: protocol.Version, Kind: protocol.KindError, Payload: body})
+	if err == nil {
+		_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
+		_ = conn.WriteMessage(websocket.TextMessage, frame)
+	}
+	_ = conn.WriteControl(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseTryAgainLater, capacity.Message),
+		time.Now().Add(writeWait),
+	)
+}
+
 // Count returns the current number of connected clients.
 func (h *Hub) Count() int {
 	h.mu.RLock()
@@ -448,6 +493,17 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "player not in game", http.StatusForbidden)
 			return
 		}
+	}
+
+	// The connection cap (ADR 0148). Checked before the snapshot is
+	// built, which is the expensive part of an admit, so a flood of
+	// refused sockets costs a handshake and a frame each. A seated
+	// player and an admin are never asked: the first is mid-game or
+	// reconnecting to a table that is already counted, the second is
+	// the operator looking at a full server.
+	if binding.PlayerID == uuid.Nil && !binding.Admin && h.connectionsFull() {
+		h.refuseFull(w, r)
+		return
 	}
 
 	conn, err := h.upgrader.Upgrade(w, r, nil)

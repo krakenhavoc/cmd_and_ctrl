@@ -364,11 +364,25 @@ export interface LiveTotals {
   admin_views: number;
 }
 
+/** LiveCapacity is the load and the sockets against their caps (ADR 0148). A limit of 0 is "no cap". */
+export interface LiveCapacity {
+  load: number;
+  load_limit: number;
+  connections: number;
+  connection_limit: number;
+}
+
 export interface LiveNowResponse {
   generated_at: number;
   tables: LiveTable[];
   unbound_sockets: number;
   totals: LiveTotals;
+  capacity: LiveCapacity;
+}
+
+/** capacityText is "used / limit", or "used (no cap)" when the cap is off. */
+export function capacityText(used: number, limit: number): string {
+  return limit > 0 ? `${used} / ${limit}` : `${used} (no cap)`;
 }
 
 // --- labels -----------------------------------------------------------

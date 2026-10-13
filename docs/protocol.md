@@ -173,7 +173,7 @@ Any server-side failure in processing a client frame.
 
 | Field | Type | Required | Notes |
 |---|---|---|---|
-| `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana`, #705 adds `illegal_block`, #1063 adds `attack_tax_unpaid`, and #1507 adds `illegal_attack` (#1571 gives it a second reason) — see below. [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) §6.1 adds `no_decision` and `rate_limited`, answers to a [`legal_moves_request`](#legal_moves_request-client--server--adr-0122-61). |
+| `payload.code` | string | yes | Short machine-readable code. v0 codes: `bad_version`, `bad_json`, `bad_request`, `internal`. S15 adds `insufficient_mana`, #705 adds `illegal_block`, #1063 adds `attack_tax_unpaid`, and #1507 adds `illegal_attack` (#1571 gives it a second reason) — see below. [ADR 0122](decisions/0122-an-agent-at-the-table-a-local-mcp-seat.md) §6.1 adds `no_decision` and `rate_limited`, answers to a [`legal_moves_request`](#legal_moves_request-client--server--adr-0122-61). [ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md) adds `server_full`, the one error frame a [refused newcomer](#server-full) gets before the socket closes with 1013. |
 | `payload.message` | string | yes | Human-readable message safe to display to the user. |
 | `payload.missing` | string[] | no | Present only when `code == "insufficient_mana"` (S15). List of mana symbols the caller's pool could not cover, in the order they appear in the printed cost (e.g. `["{R}", "{1}"]`). Client renders these verbatim into the override toast. |
 | `payload.card_id` | string (UUID) | no | Present when `code == "insufficient_mana"` (S15): instance ID of the card whose cast was rejected. Lets the client's "Cast anyway" / "Auto-tap & cast" buttons re-fire the same cast without needing to round-trip through the user's last click. Also present when `code == "illegal_block"` (#705): instance ID of the refused blocker; and when `code == "illegal_attack"` (#1507): a creature from the refused declaration. |
@@ -1396,6 +1396,7 @@ the rewind case above real behaviour to describe.
 | 1000 (normal closure) | `hub.EvictGame` ("game deleted"), a session revocation ("session revoked" — [ADR 0051](decisions/0051-user-database.md) decision 6), or `hub.EvictSeat` ("removed from table" — the host, creator or admin removed this seat from an unstarted table, #2785; the client shows "You were removed from this table" and the redial would be refused) | The game is gone, or this credential no longer works. Nothing on the other end of a redial. | **Terminal.** `isTerminalClose` (`client/src/lib/ws.ts`) is true only for 1000. The client stops and renders an ended state; the backoff ladder never starts. |
 | 1001 (going away) | `hub.Shutdown`, on every `systemctl restart` | The process is restarting. [ADR 0041](decisions/0041-game-persistence.md) persists and restores the room across it — the game is emphatically not gone. | **Reconnect.** Joins the same ladder as 1006. |
 | 1006 (abnormal closure) | the browser, for any closure with no close frame — a network blip, a crash, or (from the browser's point of view) a rejected upgrade | Unknown cause; may or may not resolve itself. | **Reconnect.** |
+| 1013 (try again later) | `Hub.ServeWS`, for a newcomer with no seat when the server is at its `CMDCTRL_MAX_WS_CONNECTIONS` cap ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md)), after one `error` frame with `code: "server_full"` | The server is full right now. A seated player and an admin are never refused, so a table mid-game is not affected. | **Reconnect** on the ordinary ladder; the connection banner says "The server is full right now" (`lib/serverFull.ts`) until a snapshot arrives. |
 | 4001 | `hub.RebindUserSessions` ("admin mode changed" — [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2 item 5), when an allowlisted person switches admin mode or it lapses | This socket's admin bit is now wrong. The server never flips it on a live connection; it closes the socket so the upgrade decides the binding again. | **Ask `GET /me` first**, then reconnect at once, or stop. A reconnect in player mode binds only the person's own seat or spectator session; anything else is refused at the upgrade, which the browser sees only as a 1006, so a blind redial would loop forever. After `/me` answers, the client reconnects when it is an admin or holds its own seat or spectator session for this game, and otherwise stops and goes to the Lobby ("Player mode is on; this table isn't yours"). If `/me` does not answer, it waits a rung of the backoff ladder and asks again, never dialling in between (`lib/ws.ts`, `CLOSE_ADMIN_MODE_CHANGED`). |
 
 1001 and 1006 used to be indistinguishable in practice: `hub.Shutdown`
@@ -1407,6 +1408,16 @@ shutdown binary could produce either code from one deploy to the next.
 `closeGracePeriod` (250ms) for the write to actually leave, or for the
 peer's own close response to land, before tearing the connection down
 — so a deploy is reliably 1001.
+
+### Server full
+
+A browser cannot read the body of a refused handshake, so a socket refused at the connection cap is **accepted**, sent a single frame, and closed with 1013:
+
+```json
+{ "v": 0, "kind": "error", "payload": { "code": "server_full", "message": "The server is full right now. Please try again in a few minutes." } }
+```
+
+The client matches `code`. The same code and sentence come back as an HTTP 503 from the lobby routes that would add load ([lobby.md](lobby.md#when-the-server-is-full-adr-0148)).
 
 ### The reconnect ladder
 

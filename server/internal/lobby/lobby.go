@@ -21,7 +21,9 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -294,6 +296,13 @@ type Lobby struct {
 	// creates by one person cannot both pass the open-table cap. It is
 	// taken before l.mu and never while holding it.
 	createMu sync.Mutex
+	// limits, connCount and reserved are the capacity caps (capacity.go,
+	// ADR 0148): the installed limits, the hub's connection count, and
+	// the load that in-flight creates hold before their entry is
+	// registered. The zero limits are every cap off.
+	limits    capacity.Limits
+	connCount func() int
+	reserved  int
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the
@@ -466,6 +475,14 @@ func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID strin
 		// display name fills it in first, for the personal templates.
 		name = SuggestTableName("")
 	}
+	// The cap comes first: a refused create must cost nothing, and a
+	// reservation closes the gap between this check and the entry
+	// appearing in l.games (capacity.go).
+	release, err := l.reserveLoad(l.Capacity().TableCost(0, 0), metrics.RefuseTableLoad)
+	if err != nil {
+		return GameMeta{}, err
+	}
+	defer release()
 	invite, err := token.Random(16)
 	if err != nil {
 		return GameMeta{}, err
@@ -1234,6 +1251,11 @@ func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	}
 	if len(entry.meta.Players) >= game.MaxPlayers {
 		return GameMeta{}, uuid.Nil, ErrGameFull
+	}
+	// A bot is the expensive seat (capacity.go): refuse it when the
+	// load has no room, before the engine is touched.
+	if err := l.botSeatFitsLocked(); err != nil {
+		return GameMeta{}, uuid.Nil, err
 	}
 	var p *game.Player
 	var err error

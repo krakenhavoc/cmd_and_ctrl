@@ -31,6 +31,7 @@
   import { L } from "../lib/labels";
   import NewTableRow from "../lib/components/NewTableRow.svelte";
   import { session, LobbyApiError } from "../lib/session";
+  import { lobbyErrorMessage } from "../lib/serverFull";
   import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
   import { signedInUserID } from "../lib/myGames";
   import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
@@ -114,7 +115,7 @@
       joinInput = "";
       await refresh();
     } catch (err) {
-      joinError = err instanceof LobbyApiError ? err.message : "could not join with that code";
+      joinError = lobbyErrorMessage(err, "could not join with that code");
     } finally {
       joining = false;
     }
@@ -300,7 +301,7 @@
       botPickerFor = null;
       await refresh();
     } catch (err) {
-      botError = err instanceof LobbyApiError ? err.message : "could not add the bot";
+      botError = lobbyErrorMessage(err, "could not add the bot");
     } finally {
       botBusy = false;
     }
@@ -501,7 +502,7 @@
       newName = "";
       await refresh();
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "create failed";
+      error = lobbyErrorMessage(err, "create failed");
     } finally {
       busy = false;
     }
@@ -625,7 +626,7 @@
       await joinGame(g.id, invite, "");
       await refresh();
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "could not take a seat";
+      error = lobbyErrorMessage(err, "could not take a seat");
     } finally {
       seatBusy = null;
     }

@@ -2,7 +2,7 @@
   import { onMount } from "svelte";
   import { startPractice } from "../lib/practiceTable";
   import { navigate } from "../lib/router";
-  import { LobbyApiError } from "../lib/session";
+  import { lobbyErrorMessage } from "../lib/serverFull";
   import Icon from "../lib/components/Icon.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { markHintSeen } from "../lib/hints/runtime";
@@ -34,8 +34,7 @@
       const id = await startPractice();
       navigate(`#/games/${id}`);
     } catch (err) {
-      error =
-        err instanceof LobbyApiError ? err.message : "could not open a practice game — try again";
+      error = lobbyErrorMessage(err, "could not open a practice game — try again");
     }
   }
 </script>

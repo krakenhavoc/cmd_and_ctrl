@@ -264,8 +264,12 @@ type legacyImporter interface {
 //  1. Import any ADR 0041 lobby/*.json into the store (import.go), so
 //     the first boot of this binary finds metadata for games the old
 //     one was running.
-//  2. RoomManager.RestoreRooms decides WHICH games come back,
-//     applying the version-skew policy (see ws/persist.go).
+//  2. RoomManager.RestoreRoomsAdmitting decides WHICH games come back,
+//     applying the version-skew policy (see ws/persist.go) and the
+//     table-load cap (restore_capacity.go, ADR 0148): a table there is
+//     no room for is DEFERRED, its restore point and rows left exactly
+//     as they were, so a boot after a crash cannot rebuild the load that
+//     caused it.
 //  3. Each restored room is paired with its games and seats rows. A
 //     room with no row is dropped and unregistered — a game nobody
 //     can produce an invite for is not a game.
@@ -316,7 +320,7 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 		}
 	}
 
-	outcomes := l.mgr.RestoreRooms()
+	outcomes := l.mgr.RestoreRoomsAdmitting(l.restoreAdmission(log))
 	ws.LogRestoreSummary(log, outcomes)
 
 	restored := 0
@@ -326,7 +330,10 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 	keep := map[uuid.UUID]bool{}
 	unattributable := false
 	for _, o := range outcomes {
-		if keepsRestorePointForRollForward(o) {
+		if keepsRestorePointForRollForward(o) || o.Deferred {
+			// A deferred table (the load cap, ADR 0148) is the same
+			// promise as a roll-forward one: its file stays on disk and
+			// its row stays as it is, for a boot that has room.
 			keep[o.GameID] = true
 		}
 		if o.Reason == ws.ReasonReadError {

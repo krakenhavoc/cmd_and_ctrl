@@ -10,6 +10,7 @@
   } from "../lib/api";
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
+  import { lobbyErrorMessage } from "../lib/serverFull";
   import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
@@ -120,7 +121,7 @@
         navigate("#/lobby");
       }
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "join failed";
+      error = lobbyErrorMessage(err, "join failed");
     } finally {
       busy = false;
     }
@@ -146,7 +147,7 @@
         navigate("#/lobby");
       }
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "join failed";
+      error = lobbyErrorMessage(err, "join failed");
     } finally {
       busy = false;
     }

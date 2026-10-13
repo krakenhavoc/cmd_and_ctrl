@@ -36,6 +36,9 @@ func eventMetrics() []prometheus.Collector {
 		triggerOrderPrompts,
 		bootRestoreGames,
 		bootRestoreDegradedCards,
+		// capacity.go
+		capacityRefusals,
+		bootRestoreDeferred,
 		// bots.go
 		botDecisions,
 		botDecisionSeconds,

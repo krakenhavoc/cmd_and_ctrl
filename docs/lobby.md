@@ -92,6 +92,52 @@ Every request an admin-only route lets through is logged at Info as
 `admin action`, with the method and path and either `admin_user_id` (an
 allowlisted person) or `admin_id` (the token). No token is ever logged.
 
+## When the server is full (ADR 0148)
+
+The server holds itself to caps on its load, its WebSocket connections
+and the rate tables are created at ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md),
+#2977). A request the server will not take because of one is answered
+with a **stable code and a friendly sentence**, never a raw error:
+
+```json
+HTTP/1.1 503 Service Unavailable
+Retry-After: 30
+
+{ "error": "The server is full right now. Please try again in a few minutes.", "code": "server_full" }
+```
+
+Clients match `code`, not the sentence. It is returned by `POST /games`,
+`POST /games/practice`, `POST /games/{id}/seats/bot` (the table-load cap),
+and `POST /games/{id}/join`, `POST /join` and `POST /games/{id}/spectate`
+(the connection cap). Everything else about a table that already exists
+is outside the caps: a human taking a seat at it, starting it, playing
+it, and a seated player reconnecting are never refused. A socket turned
+away at the connection cap is told the same thing over the WebSocket
+([protocol](protocol.md#server-full)).
+
+| Variable | Default | |
+|---|---|---|
+| `CMDCTRL_MAX_TABLE_LOAD` | `180` | Weighted load ceiling over unended, unarchived tables; `0` is no cap. |
+| `CMDCTRL_LOAD_WEIGHT_TABLE` / `_HUMAN_SEAT` / `_BOT_SEAT` | `2` / `1` / `2` | A table costs the first plus the second per human seat and the third per bot seat: a four-human table is 6 (30 of them, the owner's 120-player target, fill the default cap), a four-bot table 10 (18 fit, under the ~31 prod collapsed at). |
+| `CMDCTRL_MAX_WS_CONNECTIONS` | `400` | Live sockets; a seated player and an admin are never refused. `0` is no cap. |
+| `CMDCTRL_CREATE_ACCOUNT_BURST` / `_INTERVAL` | `3` / `30s` | Per-account table creation (429 over). |
+| `CMDCTRL_CREATE_IP_BURST` / `_INTERVAL` | `6` / `20s` | Per client IP, for `POST /games` and `POST /games/practice` (429 over); the admin token is exempt. |
+
+A malformed value fails the boot naming the variable. The load, the
+connections, the caps and the number of refusals are Prometheus metrics
+(`cmdctrl_capacity_*`) and are shown on
+[`GET /admin/live`](#get-adminlive-admin-only) as `capacity`.
+
+**The boot restore pass respects the load cap.** When a restart would
+bring back more tables than the cap allows (the crash-loop #2978
+measured), the tables with people at them come back first, then the most
+recently active, first-fit by cost. The rest are **deferred**: their
+restore points stay on disk untouched and their rows are left as they
+were (not ended), so the next boot, or a raised cap, restores them; until
+then they read as "game not found". The boot log names each one and
+`cmdctrl_boot_restore_deferred_games` counts them. `DELETE
+/games/{id}` still removes a deferred table.
+
 ## Public routes (no credential required)
 
 ### `POST /admin/login`
@@ -244,6 +290,7 @@ agent seat:
 | 401 | invite token did not match |
 | 404 | game not found |
 | 409 | game already started, game full, or the signed-in person already holds a seat at this table |
+| 503 | the connection cap is full: `code: "server_full"`, nothing was seated (see [When the server is full](#when-the-server-is-full-adr-0148)) |
 
 ---
 
@@ -669,7 +716,8 @@ again (see `GET /games/{id}`).
 | 403 | the caller is not a signed-in person and not the admin token |
 | 400 | an unknown `setup` (a blank name is not an error: the server names the table) |
 | 409 | the caller already has 3 open tables; the message names them. Start one, or end one with `/c2-end` |
-| 429 | the caller created tables too quickly (1 per 30 s, burst 3); `Retry-After: 30` |
+| 429 | the caller created tables too quickly (1 per 30 s, burst 3 by default), or this address did (`CMDCTRL_CREATE_IP_*`); `Retry-After: 30` |
+| 503 | the server is full: `code: "server_full"` (see [When the server is full](#when-the-server-is-full-adr-0148)) |
 
 ### `GET /games/name-suggestion` *(signed in, or the admin token)*
 
@@ -3322,10 +3370,20 @@ seats carry.
     "bot_seats": 1,
     "practice_tables": 0,
     "admin_views": 1
+  },
+  "capacity": {
+    "load": 14,
+    "load_limit": 180,
+    "connections": 9,
+    "connection_limit": 400
   }
 }
 ```
 
+- **`capacity`** is the weighted table load and the live sockets against
+  their caps ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md)),
+  the numbers `cmdctrl_capacity_used` and `cmdctrl_capacity_limit` report.
+  A limit of `0` means that cap is off.
 - **`tables`** lists every table with a live socket, and every running
   table that is not archived (a bots-only table has none). Running tables
   come first, then waiting ones, then ended ones, each by name. Practice

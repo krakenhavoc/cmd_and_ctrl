@@ -149,6 +149,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 
 	// effects/wire.go's init() populates the S14 EffectResolver /
@@ -325,6 +326,17 @@ func main() {
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
+	// The capacity caps (ADR 0148): installed on the lobby and the hub
+	// BEFORE RestoreFromDisk, which sizes the boot restore against the
+	// load cap.
+	l.SetCapacity(cfg.Capacity, hub.Count)
+	hub.SetMaxConnections(cfg.Capacity.MaxConns)
+	log.Info("capacity caps",
+		"max_table_load", cfg.Capacity.MaxLoad,
+		"weight_table", cfg.Capacity.TableWeight,
+		"weight_human_seat", cfg.Capacity.HumanSeatWeight,
+		"weight_bot_seat", cfg.Capacity.BotSeatWeight,
+		"max_ws_connections", cfg.Capacity.MaxConns)
 	// The admin allowlist (ADR 0110 §3) and admin modes (ADR 0112 §2).
 	// The same *Admins goes to the WebSocket authorizer and the lobby
 	// routes, so the two can never disagree about who is an admin. It
@@ -579,6 +591,7 @@ func main() {
 		Cards:       cardIdx,
 		Tokens:      effects.Tokens(),
 		Evictor:     hub,
+		Capacity:    cfg.Capacity,
 		Discord:     discordCfg,
 		DiscordBot:  discordBot,
 		// The DM invite's link is built against the same public origin
@@ -836,6 +849,11 @@ type config struct {
 	// Features are the dev-only capabilities this deployment exposes,
 	// derived entirely from Env. Always zero in production.
 	Features appenv.Features
+	// Capacity is the caps and table-creation rates (ADR 0148, #2977):
+	// CMDCTRL_MAX_TABLE_LOAD, the three CMDCTRL_LOAD_WEIGHT_* weights,
+	// CMDCTRL_MAX_WS_CONNECTIONS and the CMDCTRL_CREATE_* rates. Every
+	// one defaults, and a malformed value fails the boot.
+	Capacity capacity.Limits
 	// MetricsAddr is where /metrics is served (CMDCTRL_METRICS_ADDR,
 	// ADR 0123 §2): its own listener, loopback only. Empty is off.
 	MetricsAddr string
@@ -985,6 +1003,15 @@ func loadConfig(log *slog.Logger) config {
 	} else {
 		c.DataDir = "./data"
 	}
+
+	// A typo in a cap must stop the boot, not leave the server quietly
+	// uncapped (ADR 0148).
+	capLim, cerr := capacity.FromEnv(os.Getenv)
+	if cerr != nil {
+		log.Error("capacity config invalid", "err", cerr)
+		os.Exit(1)
+	}
+	c.Capacity = capLim
 
 	if raw := os.Getenv("CMDCTRL_ALLOWED_ORIGINS"); raw != "" {
 		for _, s := range strings.Split(raw, ",") {

@@ -14,6 +14,7 @@
   import { fetchAdminLive } from "../../api";
   import { L } from "../../labels";
   import {
+    capacityText,
     gameHash,
     LivePoller,
     seatNumber,
@@ -118,6 +119,16 @@
         <dt>Admin views</dt>
         <dd>{totals.admin_views}</dd>
       </div>
+      {#if data?.capacity}
+        <div>
+          <dt>Table load</dt>
+          <dd>{capacityText(data.capacity.load, data.capacity.load_limit)}</dd>
+        </div>
+        <div>
+          <dt>Connections</dt>
+          <dd>{capacityText(data.capacity.connections, data.capacity.connection_limit)}</dd>
+        </div>
+      {/if}
     </dl>
     <p class="help">
       Players connected counts running tables only, as the Overview's tile does; people waiting at a

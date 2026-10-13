@@ -59,6 +59,8 @@ var labelSets = map[string]labelSet{
 	"tier":      oneOf(botTierLabels...),
 	"layer":     oneOf(botLayerLabels...),
 	"cause":     oneOf(botFallbackCauseLabels()...),
+	// Capacity (capacity.go).
+	"resource": oneOf(capacityResources...),
 }
 
 // familyLabelSets are rows for one metric family only, consulted
@@ -84,6 +86,9 @@ var familyLabelSets = map[string]map[string]labelSet{
 	},
 	"cmdctrl_boot_restore_games": {
 		"outcome": oneOf(restoreOutcomeLabels...),
+	},
+	"cmdctrl_capacity_refusals_total": {
+		"reason": oneOf(refusalReasons...),
 	},
 	"cmdctrl_trigger_order_prompts_total": {
 		"reason": oneOf(triggerOrderReasonLabels...),

@@ -83,6 +83,7 @@ const LIVE: LiveNowResponse = {
   ],
   unbound_sockets: 0,
   totals: { players_connected: 2, spectators: 2, bot_seats: 1, practice_tables: 0, admin_views: 1 },
+  capacity: { load: 14, load_limit: 180, connections: 9, connection_limit: 0 },
 };
 
 const ROW = {
@@ -332,6 +333,9 @@ describe("Live now", () => {
     const t = text(region);
     expect(t).toContain("Players connected 2");
     expect(t).toContain("Bot seats 1");
+    // ADR 0148: the load and the sockets against their caps; a limit of 0 is "no cap".
+    expect(t).toContain("Table load 14 / 180");
+    expect(t).toContain("Connections 9 (no cap)");
     expect(t).toContain("Friday night");
     expect(t).toContain("Alice");
     expect(t).toContain("connected · since 4 min ago");

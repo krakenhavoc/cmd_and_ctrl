@@ -21,6 +21,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
@@ -124,6 +125,13 @@ type Config struct {
 	// from the lobby + room manager but existing sockets linger
 	// until their next action hits "game no longer available".
 	Evictor GameEvictor
+	// Capacity carries the table-creation rates (capacity.Limits'
+	// Account and IP fields, ADR 0148). The load and connection caps
+	// are installed on the Lobby itself (Lobby.SetCapacity) because the
+	// lobby enforces them; the rates are the handler's. A zero field
+	// takes its default, so a Config that never set it creates at the
+	// shipped rate.
+	Capacity capacity.Limits
 	// DeckHTTPClient is the outbound client used by the S06.5 URL-
 	// based deck import (`format: "url"`). Nil falls back to a
 	// sensible default with a 10 s timeout and the project's User-Agent.
@@ -445,8 +453,18 @@ func Handler(c Config) http.Handler {
 	// check); the shared token is a server credential, not a person,
 	// and is held to neither. It rides the deck bucket as well,
 	// because applying a setup seats decks.
-	createLimit := newLimiter(1.0/30, 3)
-	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit)))))
+	//
+	// The rate and the burst are the operator's (ADR 0148:
+	// CMDCTRL_CREATE_ACCOUNT_BURST / _INTERVAL), defaulting to the
+	// 1 per 30 s with a burst of 3 this line has always had. A second
+	// bucket, per client IP (CMDCTRL_CREATE_IP_BURST / _INTERVAL), is
+	// what bounds a guest, who cannot create a table but does open
+	// practice tables, and one machine minting accounts to get round
+	// the per-account one. The shared token is exempt from both.
+	rates := c.Capacity.WithCreateDefaults()
+	createLimit := newLimiter(1/rates.AccountEvery.Seconds(), float64(rates.AccountBurst))
+	createIPLimit := newLimiter(1/rates.IPEvery.Seconds(), float64(rates.IPBurst))
+	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit, createIPLimit)))))
 	// A suggested table name for the create form's dice button (#2630).
 	// The same gate as POST /games; a light route, so it rides its own
 	// generous per-caller bucket.
@@ -569,7 +587,7 @@ func Handler(c Config) http.Handler {
 	// rides the join bucket, like every other unauthenticated route.
 	practiceLimit := newLimiter(1.0/5, 3)
 	mux.Handle("POST /games/practice",
-		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, handlerFunc(c, createPractice)))))
+		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, createIPGate(createIPLimit, handlerFunc(c, createPractice))))))
 	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own
@@ -789,6 +807,22 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))
 
 	return mux
+}
+
+// createIPGate throttles table-creating routes by client IP with the
+// operator's per-IP creation bucket (ADR 0148). POST /games spends the
+// same bucket inside its handler, where it can exempt the shared
+// token; the practice route has no such caller and takes it here.
+func createIPGate(l *ratelimit.Limiter, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !l.AllowRequest(r) {
+			metrics.CapacityRefused(metrics.RefuseCreateIP)
+			w.Header().Set("Retry-After", "30")
+			writeLobbyError(w, ErrCreateIPRateLimited)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // handlerFunc adapts a (Config, w, r) → error closure into an
@@ -1019,7 +1053,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 //     429).
 //
 // Everyone else, a guest seat or spectator with no user, is a 403.
-func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
+func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 	return func(c Config, w http.ResponseWriter, r *http.Request) error {
 		p, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -1028,6 +1062,11 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 		server := isServerCredential(p)
 		if !server && !isSignedInPerson(p) {
 			return httpError(http.StatusForbidden, "sign in with Discord to create a table")
+		}
+		if !server && !ipLimit.AllowRequest(r) {
+			metrics.CapacityRefused(metrics.RefuseCreateIP)
+			w.Header().Set("Retry-After", "30")
+			return ErrCreateIPRateLimited
 		}
 		var body createGameRequest
 		if err := decodeJSON(w, r, &body); err != nil {
@@ -1056,6 +1095,7 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 			meta, err = c.Lobby.CreateCapped(body.Name, p.UserID, p.DiscordID, MaxOpenTablesPerCreator,
 				func() bool { return limit.Allow(key) })
 			if errors.Is(err, ErrCreateRateLimited) {
+				metrics.CapacityRefused(metrics.RefuseCreateAccount)
 				w.Header().Set("Retry-After", "30")
 			}
 		}
@@ -1208,6 +1248,13 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
+	// A newcomer is turned away with the friendly message at the
+	// connection cap, before a seat is claimed that the socket it
+	// needs would then be refused (ADR 0148). A seated player coming
+	// back does not pass through here.
+	if c.Lobby.ConnectionsFull() {
+		return capacity.ErrServerFull
+	}
 
 	// An agent's MCP client (ADR 0122 §7) joins as a guest, never as a
 	// signed-in person: a session that would give the seat a user or a
@@ -1307,6 +1354,9 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	gameID, err := c.Lobby.FindByInvite(body.InviteToken)
 	if err != nil {
 		return err
+	}
+	if c.Lobby.ConnectionsFull() {
+		return capacity.ErrServerFull
 	}
 
 	// ADR 0122 §7, as on POST /games/{id}/join. Checked before the 409
@@ -1428,6 +1478,9 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	var body spectateRequest
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
+	}
+	if c.Lobby.ConnectionsFull() {
+		return capacity.ErrServerFull
 	}
 
 	meta, err := c.Lobby.Spectate(id, body.InviteToken)
@@ -3938,8 +3991,16 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
 		status = http.StatusConflict
-	case errors.Is(err, ErrCreateRateLimited):
+	case errors.Is(err, ErrCreateRateLimited), errors.Is(err, ErrCreateIPRateLimited):
 		status = http.StatusTooManyRequests
+	case errors.Is(err, capacity.ErrServerFull):
+		// ADR 0148: a stable code the client matches, and a Retry-After
+		// so a polite client does not make a full server fuller.
+		w.Header().Set("Retry-After", strconv.Itoa(capacity.RetryAfterSeconds))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": capacity.Message, "code": capacity.CodeServerFull})
+		return
 	case errors.Is(err, ErrTooManyReclaims):
 		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrEmptyName), errors.Is(err, ErrInvalidInviteKind):
