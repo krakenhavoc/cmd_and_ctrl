@@ -25,6 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Madness:      "{1}{B}{B}",
 		Static: []game.StaticAbility{{
+			Label:     "Power is equal to the number of creature cards in all graveyards.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
 			AppliesTo: selfOnly,

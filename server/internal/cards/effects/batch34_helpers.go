@@ -264,6 +264,7 @@ func b34ZombieOrTokenYouControl(target *game.Card, _ *game.Game, source *game.Ca
 // Wings of Gold — layer 7c.
 func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Creatures you control that are Zombies and/or tokens get +1/+1.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: b34ZombieOrTokenYouControl,
@@ -277,7 +278,7 @@ func b34ZombiesAndTokensYouControlGetPlusOne() game.StaticAbility {
 // b34ZombiesAndTokensYouControlHaveFlying is the flying half of On
 // Wings of Gold — layer 6, deduped.
 func b34ZombiesAndTokensYouControlHaveFlying() game.StaticAbility {
-	return KeywordGrant(b34ZombieOrTokenYouControl, "flying")
+	return Labelled(KeywordGrant(b34ZombieOrTokenYouControl, "flying"), "Creatures you control that are Zombies and/or tokens have flying.")
 }
 
 // --- replacements --------------------------------------------------

@@ -38,6 +38,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Equipped permanent isn't a planeswalker and is a creature in addition to its other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: AttachedToSource,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -59,6 +60,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Equipped creature gets +1/+1 for each counter on it.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
 				AppliesTo: AttachedToSource,

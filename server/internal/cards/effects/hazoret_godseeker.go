@@ -24,6 +24,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible", "haste", StartYourEngines},
 		Static: []game.StaticAbility{{
+			Label: "Can't attack or block unless you have max speed.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return selfOnly(target, g, source) && !YouHaveMaxSpeed(g, speedPlayerOf(source))

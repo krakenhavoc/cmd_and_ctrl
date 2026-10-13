@@ -22,6 +22,7 @@ func init() {
 		Name:         "Pride Sovereign",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:     "This creature gets +1/+1 for each other Cat you control.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: selfOnly,

@@ -547,6 +547,7 @@ func b27OtherArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source
 func b27DuplicantStatics() []game.StaticAbility {
 	return []game.StaticAbility{
 		{
+			Label:     "This creature has the creature types of the last creature card exiled with it, and is still a Shapeshifter.",
 			Layer:     game.Layer4Type,
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
@@ -556,6 +557,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			},
 		},
 		{
+			Label:     "This creature has the power and toughness of the last creature card exiled with it.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: selfOnly,

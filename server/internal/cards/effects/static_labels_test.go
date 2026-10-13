@@ -188,6 +188,21 @@ func TestMostPlayedCardsReadInPlainWords(t *testing.T) {
 		"Overlord of the Hauntwoods":  "Isn't a creature while it has a time counter on it.",
 		"Thassa, God of the Sea":      "Isn't a creature unless your devotion to blue is five or more.",
 		"Tarmogoyf":                   "Power is the number of card types among cards in all graveyards; toughness is that plus 1.",
+		// #3133: worded from their structured slots.
+		"Omniscience":                   "You may cast spells from your hand without paying their mana costs.",
+		"The Reality Chip":              "Play a land or cast a spell from the top of your library",
+		"Chromatic Orrery":              "You may spend mana as though it were mana of any color.",
+		"Mycosynth Lattice":             "Players may spend mana as though it were mana of any color.",
+		"Sakashima of a Thousand Faces": "The legend rule doesn't apply to permanents you control.",
+		"Mirror Gallery":                "The legend rule doesn't apply.",
+		"Leyline Tyrant":                "You don't lose unspent red mana as steps and phases end.",
+		"Frenzied Baloth":               "Combat damage can't be prevented.",
+		"Questing Beast":                "Combat damage dealt by creatures you control can't be prevented.",
+		"Sunspine Lynx":                 "Damage can't be prevented.",
+		"Jodah, Archmage Eternal":       "You may pay {W}{U}{B}{R}{G} rather than pay the mana cost for spells you cast.",
+		"Ulvenwald Hydra":               "Power and toughness are each equal to the number of lands you control.",
+		"Spear of Heliod":               "Creatures you control get +1/+1.",
+		"Toxrill, the Corrosive":        "Creatures you don't control get -1/-1 for each slime counter on them.",
 	} {
 		spec := specByName(t, name)
 		found := false

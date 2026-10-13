@@ -20,6 +20,7 @@ func init() {
 		Name:         "Favorable Winds",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:     "Creatures you control with flying get +1/+1.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: b30CreaturesYouControlWithFlying,

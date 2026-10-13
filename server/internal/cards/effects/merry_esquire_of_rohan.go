@@ -47,6 +47,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Static: []game.StaticAbility{{
+			Label:     "Has first strike as long as it's equipped.",
 			Layer:     game.Layer6Ability,
 			AppliesTo: selfOnly,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
