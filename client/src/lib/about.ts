@@ -4,15 +4,8 @@
 /** The hash route of the About page. */
 export const ABOUT_HASH = "#/about";
 
-/**
- * The project's Discord invite.
- *
- * TODO(owner): no public invite URL is configured anywhere in this
- * repository, so the page links GitHub instead and says nothing about a
- * Discord server. Put the invite here (and the page shows it) once the
- * owner chooses one. Nobody invented one on the owner's behalf.
- */
-export const DISCORD_INVITE_URL: string | null = null;
+/** The C2 community Discord server's permanent invite (never expires, no use limit). */
+export const DISCORD_INVITE_URL = "https://discord.gg/z7x9Ehpnjw";
 
 export const REPO_URL = "https://github.com/krakenhavoc/cmd_and_ctrl";
 export const ISSUES_URL = `${REPO_URL}/issues`;
