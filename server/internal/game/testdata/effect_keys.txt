@@ -176,3 +176,15 @@ vote vote/magister-of-worth
 vote vote/plea-for-power
 vote vote/tivit-seller-of-secrets
 option option-pick/liliana-of-the-dark-realms-pump
+vote vote/bite-of-the-black-rose
+vote vote/capital-punishment
+vote vote/council-guardian
+vote vote/emissary-green
+vote vote/fateful-tempest
+vote vote/lieutenants-of-the-guard
+vote vote/messenger-jays
+vote vote/orchard-elemental
+vote vote/sail-into-the-west
+vote vote/split-decision
+vote vote/travel-through-caradhras
+vote vote/tyrants-choice
