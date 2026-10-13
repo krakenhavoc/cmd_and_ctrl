@@ -253,6 +253,11 @@ type Config struct {
 	// its file picker. See ADR 0017 §6.
 	BugStore *bugstore.Store
 
+	// BugLimits tunes the throttle in front of POST /bugreport (ADR
+	// 0017 §10): per-account window, daily cap, dedupe window. The zero
+	// value means the defaults; production sets nothing.
+	BugLimits BugLimits
+
 	// DeckRequestFiler files and joins ADR 0095's deck-request issues.
 	// Nil turns POST /deck-requests off (503 naming
 	// CMDCTRL_GITHUB_TOKEN). Production wires the same *github.Client
@@ -287,6 +292,12 @@ type Config struct {
 	// Nil means the picker lists no decks and `deck` is refused; the
 	// raw-decklist path still works.
 	BotDecks aiseat.DeckSource
+
+	// BotBudget is the hosted-model spend guard (#2980): the admin
+	// kill switch and readout (GET and PUT /admin/bot/model) and the
+	// note GET /bot/options carries while the model tiers are off. Nil
+	// leaves both out.
+	BotBudget BotModelBudget
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -566,6 +577,9 @@ func Handler(c Config) http.Handler {
 	// this is the one line that mounts it, matching every other admin
 	// route above.
 	mux.Handle(BotStatsRoute, BotStatsHandler(c))
+	// #2980: the hosted-model spend guard's readout and kill switch.
+	mux.Handle("GET /admin/bot/model", requireAdmin(c, handlerFunc(c, botModelStatus)))
+	mux.Handle("PUT /admin/bot/model", requireAdmin(c, handlerFunc(c, botModelSwitch)))
 	// What the picker needs before it can offer anything: the tier
 	// list (including the ones that are declared but not built, so
 	// the UI can grey them out) and the curated deck catalog.
@@ -729,7 +743,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.saveDeck))))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
-	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
+	bugs := newBugGate(c)
+	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugs.report))))
+	// The kill switch and the queue of reports kept instead of filed (ADR 0017 §10).
+	mux.Handle("GET /admin/bugreport", requireAdmin(c, handlerFunc(c, bugs.adminBugReport)))
+	mux.Handle("PUT /admin/bugreport/paused", requireAdmin(c, handlerFunc(c, bugs.adminSetBugPaused)))
 	// Unauthenticated by necessity — Camo presents no session. The
 	// report ID in the path is the capability, and it only ever
 	// appears inside a private-repo issue. bugstore enforces the
@@ -3526,6 +3544,12 @@ type botOptionsResponse struct {
 	// which case the client hides the Add-bot control rather than
 	// offering a button that 503s.
 	Enabled bool `json:"enabled"`
+	// ModelNote is set while the model tiers are off because a spend
+	// cap is used up or an admin switched model calls off (#2980):
+	// one sentence saying so and, for a cap, when it resets. Each
+	// model tier's own reason carries the same text. Omitted
+	// otherwise.
+	ModelNote string `json:"model_note,omitempty"`
 }
 
 // botOptions handles GET /bot/options. Added in S31 sub-PR 4.
@@ -3560,6 +3584,9 @@ func botOptions(c Config, w http.ResponseWriter, _ *http.Request) error {
 		if decks := c.BotDecks.List(); len(decks) > 0 {
 			out.Decks = decks
 		}
+	}
+	if c.BotBudget != nil {
+		out.ModelNote = c.BotBudget.Status().Note
 	}
 	return writeJSON(w, http.StatusOK, out)
 }

@@ -1042,6 +1042,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"GET /games/{id}/creator", []string{"route:GET /games/{id}/creator"}, true, httpProbe("GET", "/games/{id}/creator?discord_id="+listedDiscordID, nil)},
 		{"GET /bugreport/{id}/replay", []string{"route:GET /bugreport/{id}/replay"}, true, httpProbe("GET", "/bugreport/abc/replay", nil)},
 		{"GET /bugreport/{id}/gamelog", []string{"route:GET /bugreport/{id}/gamelog"}, true, httpProbe("GET", "/bugreport/abc/gamelog", nil)},
+		// The bug-report kill switch and queue (ADR 0017 §10).
+		{"GET /admin/bugreport", []string{"route:GET /admin/bugreport"}, true, httpProbe("GET", "/admin/bugreport", nil)},
+		{"PUT /admin/bugreport/paused", []string{"route:PUT /admin/bugreport/paused"}, true, httpProbe("PUT", "/admin/bugreport/paused", func(*probeFixture) any { return map[string]bool{"paused": false} })},
 		{"POST /admin/users/{id}/revoke-sessions", []string{"route:POST /admin/users/{id}/revoke-sessions"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},
@@ -1053,6 +1056,11 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /admin/users/{id}/playmats/{slot}", []string{"route:DELETE /admin/users/{id}/playmats/{slot}"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmats/2", nil)
 		}},
+		// The hosted-model spend guard (#2980).
+		{"GET /admin/bot/model", []string{"route:GET /admin/bot/model"}, true, httpProbe("GET", "/admin/bot/model", nil)},
+		{"PUT /admin/bot/model", []string{"route:PUT /admin/bot/model"}, true, httpProbe("PUT", "/admin/bot/model", func(*probeFixture) any {
+			return map[string]any{"enabled": true}
+		})},
 		{"GET /games/{id}/bot/stats", []string{"BotStatsHandler"}, true, httpProbe("GET", "/games/{id}/bot/stats", nil)},
 		// The admin views (ADR 0124 §8).
 		{"GET /admin/users", []string{"route:GET /admin/users"}, true, httpProbe("GET", "/admin/users?played=7d", nil)},

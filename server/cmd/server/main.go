@@ -81,6 +81,14 @@
 //	CMDCTRL_ANTHROPIC_API_KEY  — hosted alternative (falls back to
 //	                             ANTHROPIC_API_KEY). CMDCTRL_ANTHROPIC_ENDPOINT
 //	                             overrides the API URL.
+//	CMDCTRL_BOT_MODEL_DAILY_TOKENS / CMDCTRL_BOT_MODEL_MONTHLY_TOKENS
+//	                           — caps on HOSTED model spend, in tokens counted
+//	                             from the API's usage fields, per UTC day and
+//	                             month (#2980). Default 1000000 / 10000000; 0
+//	                             turns a cap off. Over a cap the model tiers
+//	                             play the heuristic and leave the picker.
+//	                             Persisted in the database. Not applied to a
+//	                             local endpoint.
 //	CMDCTRL_BOT_MODEL          — model id for routine windows. REQUIRED for a
 //	                             local endpoint (the served model's name);
 //	                             optional for Anthropic, which has defaults.
@@ -134,6 +142,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/budget"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/deckprofile"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
@@ -387,7 +396,8 @@ func main() {
 	// carries its own decklist with oracle text, and before
 	// RestoreFromDisk because a restored bot seat relaunches its
 	// runner and must get the policy its tier names.
-	bots.SetPolicyFactory(botFactory(log, cfg, cardIdx))
+	botPolicies, botBudget := botFactory(log, cfg, cardIdx, database)
+	bots.SetPolicyFactory(botPolicies)
 	// The decision log, when an operator asked for one. Off by
 	// default; a failure to open the directory is logged and the
 	// server boots without it, because a diagnostic is never worth a
@@ -594,6 +604,7 @@ func main() {
 		AdminViews:        newAdminViewStore(database),
 		Log:               log,
 		Bots:              bots,
+		BotBudget:         botBudget,
 		// The four curated archetype decks from S31 sub-PR 5. This
 		// replaced aiseat.PlaceholderDecks() — the ninety-nine
 		// Mountains stand-in sub-PR 4 shipped while the real decks
@@ -804,6 +815,11 @@ type config struct {
 	// Both zero is the shipped behaviour.
 	BotThink     bool
 	BotMaxTokens int
+	// BotModelLimits are the daily and monthly caps on hosted model
+	// spend, in tokens (CMDCTRL_BOT_MODEL_DAILY_TOKENS /
+	// CMDCTRL_BOT_MODEL_MONTHLY_TOKENS, #2980). On by default; 0
+	// turns a window's cap off. Not applied to a self-hosted model.
+	BotModelLimits budget.Limits
 	// BotDecisionLog is the directory the per-game bot decision log
 	// is written to (CMDCTRL_BOT_DECISION_LOG). Empty is off, which
 	// is the default: the file holds every bot seat's view of one
@@ -888,6 +904,13 @@ func loadConfig(log *slog.Logger) config {
 	// Same posture again for the thinking experiment: a run that
 	// asked for thinking and silently got the default would report the
 	// baseline under the experiment's name.
+	lim, lerr := budget.LimitsFromEnv()
+	if lerr != nil {
+		log.Error("bot model spend caps invalid", "err", lerr)
+		os.Exit(1)
+	}
+	c.BotModelLimits = lim
+
 	think, maxTokens, terr := model.ThinkingFromEnv()
 	if terr != nil {
 		log.Error("bot thinking config invalid", "err", terr)
@@ -1200,7 +1223,7 @@ const (
 //     path.
 //   - neither — `random` and `heuristic` only. Not a broken server:
 //     a smaller one, which says so in the picker.
-func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
+func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB) (*tiers.Factory, lobby.BotModelBudget) {
 	var client model.Client
 	local := false
 	switch oc, ac := model.NewOpenAIClient(), model.NewAnthropicClient(); {
@@ -1250,6 +1273,35 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 			"max_think", maxThink)
 	}
 
+	// The spend guard (#2980). Only when there is a transport to
+	// guard. A self-hosted model has no bill, so it gets no caps, but
+	// it keeps the kill switch and the readout.
+	var guard *budget.Budget
+	if client != nil {
+		lim := cfg.BotModelLimits
+		if local {
+			lim = budget.Limits{}
+		}
+		var store budget.Store
+		if database != nil {
+			store = budget.NewSQLStore(database)
+		}
+		guard = budget.New(lim, store, budget.WithLogger(log))
+		client = guard.Wrap(client)
+		st := guard.Status()
+		switch {
+		case local:
+			log.Info("bot model spend caps: none (self-hosted model); the admin kill switch is available", "state", string(st.State))
+		case store == nil:
+			log.Warn("bot model spend caps are on but not persisted (no CMDCTRL_DATA_DIR): a restart resets today's count",
+				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens)
+		default:
+			log.Info("bot model spend caps on",
+				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens,
+				"day_tokens", st.DailyTokens, "month_tokens", st.MonthlyTokens, "state", string(st.State))
+		}
+	}
+
 	models := tiers.Models{Routine: cfg.BotModel, Frontier: cfg.BotFrontierModel}
 	if local && models.Routine == "" {
 		log.Warn("no bot model id configured; set CMDCTRL_BOT_MODEL to the id your endpoint serves (e.g. the name you `ollama pull`ed). Until then the Anthropic defaults are sent and the endpoint will answer 404.")
@@ -1272,8 +1324,13 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 		log.Info("bot improvisation is on for the model tiers: an uncatalogued spell a bot casts is applied by hand, announced in chat, and undoable by any player for free. Set CMDCTRL_BOT_IMPROVISE=0 to turn it off.")
 	}
 
+	var gate tiers.ModelGate
+	if guard != nil {
+		gate = guard
+	}
 	f := tiers.NewFactory(tiers.FactoryOptions{
 		Client:      client,
+		Gate:        gate,
 		Models:      models,
 		MaxThink:    maxThink,
 		NoImprovise: cfg.BotNoImprovise,
@@ -1291,7 +1348,10 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 		}
 	}
 	log.Info("bot tiers available", "tiers", available, "decks", len(decks.IDs()))
-	return f
+	if guard == nil {
+		return f, nil
+	}
+	return f, guard
 }
 
 // loadCardAssets boots the card index and image cache from the data
