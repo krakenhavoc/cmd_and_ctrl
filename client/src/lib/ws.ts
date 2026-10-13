@@ -3,7 +3,13 @@ import { recordClientError } from "./clientErrors";
 import { OFFLINE_ERROR_CODE, offlineSendMessage, REWIND_NOTICE } from "./connectionBanner";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
-import { checkSessionAlive, currentSession } from "./session";
+import {
+  checkSessionAlive,
+  currentSession,
+  REMOVED_NOTICE,
+  removedNotice,
+  SEAT_REMOVED_MESSAGE,
+} from "./session";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -503,6 +509,9 @@ export class GameClient {
       // one, so it takes the retry ladder like any other drop.
       this.socket = null;
       if (isTerminalClose(ev.code)) {
+        // #2785: the host removed this seat. Say so, rather than leave a
+        // "disconnected" banner offering a reconnect that would be refused.
+        if (ev.reason === SEAT_REMOVED_MESSAGE) removedNotice.set(REMOVED_NOTICE);
         this.append(
           "info",
           `socket closed by server (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`,

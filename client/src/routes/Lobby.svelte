@@ -16,6 +16,7 @@
     mintSeatReclaim,
     rejoinMyGame,
     removeBotSeat,
+    removeSeat,
     replayURL,
     patchTableSettings,
     rotateInvite,
@@ -48,6 +49,8 @@
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import RemovedNotice from "../lib/components/RemovedNotice.svelte";
+  import { canRemoveSeat, REMOVE_SEAT_CONSEQUENCE, removeSeatQuestion } from "../lib/seatRemoval";
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
@@ -313,6 +316,36 @@
       botError = err instanceof LobbyApiError ? err.message : "could not remove the bot";
     } finally {
       botBusy = false;
+    }
+  }
+
+  // --- removing someone's seat (#2785) -----------------------------
+  //
+  // Offered to the host, the creator and an admin, on a person's seat at
+  // a table that has not started (lib/seatRemoval.ts decides; the server
+  // is the gate). It asks first, because it disconnects someone.
+  let confirmRemove = $state<{ gameID: string; seat: SeatInfo } | null>(null);
+  let removeBusy = $state(false);
+  let removeError = $state<{ gameID: string; message: string } | null>(null);
+
+  function canRemove(g: GameMeta, p: SeatInfo): boolean {
+    return canRemoveSeat(g, p, { isAdmin, mySeat: mySeat(g) });
+  }
+
+  async function onRemoveSeat(gameID: string, playerID: string): Promise<void> {
+    removeBusy = true;
+    removeError = null;
+    try {
+      await removeSeat(gameID, playerID);
+      confirmRemove = null;
+      await refresh();
+    } catch (err) {
+      removeError = {
+        gameID,
+        message: err instanceof LobbyApiError ? err.message : "could not remove the seat",
+      };
+    } finally {
+      removeBusy = false;
     }
   }
 
@@ -734,6 +767,8 @@
     </div>
   </div>
 
+  <RemovedNotice />
+
   {#if modeNotice}
     <div class="mode-notice" role="status">
       <span>{modeNotice}</span>
@@ -1048,6 +1083,17 @@
                       {reclaimBusy === p.player_id ? "…" : "seat link"}
                     </button>
                   {/if}
+                  {#if !p.is_bot && canRemove(g, p)}
+                    <button
+                      class="seat-link seat-remove"
+                      title={`remove ${seatName(p)} from this table`}
+                      aria-label={`remove ${seatName(p)}`}
+                      disabled={removeBusy}
+                      onclick={() => (confirmRemove = { gameID: g.id, seat: p })}
+                    >
+                      remove
+                    </button>
+                  {/if}
                   {#if p.is_bot && canManageBots(g)}
                     <button
                       class="seat-x"
@@ -1239,6 +1285,30 @@
           {/if}
           {#if reclaimError?.gameID === g.id}
             <div class="bot-error">{reclaimError.message}</div>
+          {/if}
+
+          {#if confirmRemove?.gameID === g.id}
+            <div class="confirm danger" role="alert">
+              <p>
+                <strong>{removeSeatQuestion(seatName(confirmRemove.seat))}</strong>
+                {REMOVE_SEAT_CONSEQUENCE}
+              </p>
+              <div class="confirm-actions">
+                <button
+                  class="primary"
+                  disabled={removeBusy}
+                  onclick={() => onRemoveSeat(g.id, confirmRemove!.seat.player_id)}
+                >
+                  {removeBusy ? "removing…" : "remove from table"}
+                </button>
+                <button class="ghost" disabled={removeBusy} onclick={() => (confirmRemove = null)}>
+                  cancel
+                </button>
+              </div>
+            </div>
+          {/if}
+          {#if removeError?.gameID === g.id}
+            <div class="bot-error">{removeError.message}</div>
           {/if}
 
           {#if botPickerFor === g.id}
@@ -1830,6 +1900,11 @@
     font-size: 11px;
     padding: 4px 9px;
     white-space: nowrap;
+  }
+  /* Two per-seat text buttons side by side (an admin's seat link and the
+     remove control): only the first takes the auto margin. */
+  .seat-link + .seat-link {
+    margin-left: 6px;
   }
   .seat-x:hover:not(:disabled),
   .seat-add:hover:not(:disabled),
