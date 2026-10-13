@@ -42,6 +42,9 @@ import { isBoardPickedCardSetKind } from "./boardAnsweredChoice";
 //                   Bolt Bend, Tale's End) — #1211
 //   "card_in_graveyard" — a card in any graveyard (Regrowth, Eternal
 //                         Witness)
+//   "card_in_exile" — a card in exile (The Darkness Crystal's "target
+//                     creature card exiled with ~"), picked in the zone
+//                     browser's exile tab like a graveyard card — #3259
 //
 // The three stack modes differ only in the sentence the banner
 // writes. They light the same surface (the stack overlay, which draws
@@ -57,7 +60,8 @@ export type TargetingMode =
   | "stack_spell"
   | "stack_ability"
   | "stack_item"
-  | "card_in_graveyard";
+  | "card_in_graveyard"
+  | "card_in_exile";
 
 // CastChoices bundles every announce-time decision collected before
 // targeting opens, so a cast rides one object instead of a growing
@@ -1485,7 +1489,12 @@ export function abilityModeSteps(
 // routing.
 export function isLegalCardTarget(t: TargetingState, instanceID: string): boolean {
   if (t.legal) return t.legal.cards.has(instanceID) && !breaksSetRule(t, instanceID);
-  return isTargetingCreature(t.mode) || isTargetingStack(t.mode) || isTargetingGraveyard(t.mode);
+  return (
+    isTargetingCreature(t.mode) ||
+    isTargetingStack(t.mode) ||
+    isTargetingGraveyard(t.mode) ||
+    isTargetingExile(t.mode)
+  );
 }
 
 export function isLegalPlayerTarget(t: TargetingState, playerID: string): boolean {
@@ -1648,6 +1657,7 @@ export function opensTargetPicker(mode: string | undefined | null): mode is Targ
     case "stack_ability":
     case "stack_item":
     case "card_in_graveyard":
+    case "card_in_exile":
       return true;
     default:
       return false;
@@ -1664,4 +1674,12 @@ export function isTargetingStack(mode: TargetingMode): boolean {
 
 export function isTargetingGraveyard(mode: TargetingMode): boolean {
   return mode === "card_in_graveyard";
+}
+
+// #3259: a card in exile is picked in the zone browser's exile tab, the
+// way a graveyard card is picked in its graveyard tab. Like the others
+// this is the free-form fallback; a structured clause's legal set, which
+// already leaves out a face-down card the viewer has not seen, decides.
+export function isTargetingExile(mode: TargetingMode): boolean {
+  return mode === "card_in_exile";
 }

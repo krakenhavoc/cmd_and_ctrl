@@ -83,6 +83,23 @@ surface tiny.
    resolution; a creature removed from combat in response is illegal,
    and a source that has left is read from its last-known blocks
    (#1863, ADR 0019 amendment 2026-10-07).
+   "Target card in exile" is `TargetCardInExile(label, preds…)`, picked
+   in the zone browser's exile tab like a graveyard card; "target face-up
+   exiled card" adds `FaceUp()` (Pull from Eternity). "Target creature
+   card exiled with this" wraps the clause in `ExiledWithThis(spec)`:
+   `Targets: ExiledWithThis(TargetCardInExile("target creature card
+   exiled with The Darkness Crystal", Creature()))`. It is data on
+   `game.TargetSpec.ExiledWithSource`, judged at announce and at
+   resolution against `Card.ExiledWith` naming the source OBJECT (a
+   second Crystal's exiles, a stale epoch and an unlinked card are out;
+   a source that has left is read from its last-known record; no source
+   admits nothing). Only a card whose exile stamped `Card.ExiledWith`
+   carries the link, which today is a replacement exile
+   (`ReplacementEvent.ExiledWith`); an ability-resolution exile does not
+   stamp it until ADR 0155's stamp lands, so a card that exiles from an
+   ability still uses the event-log record and a choice. A face-down
+   exiled card its chooser has not seen is never offered (#3259, ADR 0019
+   amendment 2026-10-13).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -6872,6 +6889,27 @@ file says only WHEN the permanent becomes prepared —
 `SelfEntersPrepared()` for "enters prepared", `BecomePrepared{Target}`
 from a trigger or an ability — and what the prepare spell does. Read
 `g.IsPreparedForEffect(id)` for "if this creature isn't prepared".
+
+
+### Copying a card and casting the copy (#3258)
+
+"Copy that card, and you may cast the copy" (Mizzix's Mastery, Arcane
+Bombardment) is `CopyAndCast`, not `CopySpellForEffect` (a spell already on
+the stack) and not `CreateTokenCopy` (a permanent):
+
+```go
+CopyAndCast{Cards: exiled, Free: true}.Apply(ctx)       // "without paying its mana cost"
+CopyAndCast{Cards: exiled, FollowUp: key}.Apply(ctx)    // "you may cast the copy. If you do, ..."
+```
+
+Hand it the cards that REALLY reached exile (the continuation of
+`ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
+gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
+free-cast offer, all at once with no cap; the player casts them in the order
+they like. A copy not cast by the player's next priority pass ceases to
+exist, and a cast one ceases on resolution (a permanent becomes a token). It
+is an exact copy, so the catalog resolves it as the original. See ADR 0066's
+2026-10-13 amendment.
 
 ### Adding a hideaway card (S43+, ADR 0091)
 

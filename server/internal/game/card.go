@@ -1432,6 +1432,18 @@ type Card struct {
 	// Carried by the snapshot.
 	PrepareCopy bool
 
+	// CardCopy marks a COPY OF A CARD made to be cast (CR 707.12; ADR 0066's
+	// 2026-10-13 card-copy amendment, #3258): Mizzix's Mastery's "copy it, and
+	// you may cast the copy", Arcane Bombardment, Kaervek, Spellweaver Volute.
+	// It is NOT A CARD (CR 707.12, 704.5e), so cardCopySweepSBALocked removes
+	// it from any zone it sits in unless a stored cast permission still names
+	// it; once cast, its spell is a StackItem with IsCopy set and ceases to
+	// exist as it leaves the stack (a permanent spell becomes a token as it
+	// resolves, CR 707.10b). Unlike PrepareCopy it keeps ALL the copied
+	// card's copiable values, so its oracle ID — and with it every catalog
+	// hook — is the original's. Carried by the snapshot.
+	CardCopy bool
+
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own
 	// (CR 702.26g, "phasing out indirectly"), and so "won't phase in
