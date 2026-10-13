@@ -4,6 +4,9 @@
 /** The hash route of the About page. */
 export const ABOUT_HASH = "#/about";
 
+/** The hash route of the getting-started guide (routes/Guide.svelte). */
+export const GUIDE_HASH = "#/guide";
+
 export const REPO_URL = "https://github.com/krakenhavoc/cmd_and_ctrl";
 export const ISSUES_URL = `${REPO_URL}/issues`;
 /** ADR 0033's 2026-10-12 amendment: hosted model spend is capped, switchable, never sold. */

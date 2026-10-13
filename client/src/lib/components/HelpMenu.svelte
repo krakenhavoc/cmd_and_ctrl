@@ -24,6 +24,7 @@
   import { placeOfRoute, type Hint } from "../hints/hint";
   import { replayableTips, replayTips, showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
+  import { GUIDE_HASH } from "../about";
   import Icon from "./Icon.svelte";
 
   interface Props {
@@ -74,6 +75,12 @@
     e.preventDefault();
     close(false);
     navigate("#/practice");
+  }
+
+  function guide(e: MouseEvent): void {
+    e.preventDefault();
+    close(false);
+    navigate(GUIDE_HASH);
   }
 
   function shortcuts(): void {
@@ -157,6 +164,9 @@
       </button>
       <a class="mi" role="menuitem" href="#/practice" onclick={practice}>
         {L.practiceGame}
+      </a>
+      <a class="mi" role="menuitem" href={GUIDE_HASH} onclick={guide}>
+        {L.gettingStarted}
       </a>
       <button type="button" class="mi" role="menuitem" onclick={shortcuts}>
         {L.keyboardShortcutsItem}

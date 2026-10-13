@@ -116,6 +116,7 @@ registered, or when this file is stale.
 | `tipsForTheTable` | `Tips for the table` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: shows the table's tips again at the next quiet moments |
 | `showAllTipsAgain` | `Show all tips again` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`lib/components/Settings.svelte` | Help, and Settings → Advanced: forgets every dismissed tip and turns tips back on |
 | `practiceGame` | `Practice game` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`routes/Lobby.svelte` | Help, and the Lobby's empty-state card: opens a practice table, a guest one when signed out (ADR 0156 §2) |
+| `gettingStarted` | `Getting started` | menuitem | text | `lib/components/HelpMenu.svelte` | Help: opens the getting-started guide (#/guide) |
 | `keyboardShortcutsItem` | `Keyboard shortcuts` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`lib/components/board/GameMenu.svelte` | Help, and the ⋯ menu's Help group: opens the keymap overlay |
 | `replayTutorial` | `Replay the tutorial` | menuitem | text | `lib/components/board/GameMenu.svelte`<br>`lib/components/Settings.svelte` | Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table |
 | `legalNotice` | `Legal notice` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982) |

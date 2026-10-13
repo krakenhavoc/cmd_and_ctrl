@@ -850,6 +850,13 @@ export const LABEL_SPECS = {
     owners: ["lib/components/HelpMenu.svelte", "routes/Lobby.svelte"],
     doc: "Help, and the Lobby's empty-state card: opens a practice table, a guest one when signed out (ADR 0156 §2)",
   }),
+  gettingStarted: label({
+    name: "Getting started",
+    kind: "text",
+    role: "menuitem",
+    owners: ["lib/components/HelpMenu.svelte"],
+    doc: "Help: opens the getting-started guide (#/guide)",
+  }),
   keyboardShortcutsItem: label({
     name: "Keyboard shortcuts",
     kind: "text",

@@ -40,7 +40,7 @@
   import HelpMenu from "./HelpMenu.svelte";
   import DeleteAccountDialog from "./DeleteAccountDialog.svelte";
   import { PRIVACY_HASH } from "../privacy";
-  import { ABOUT_HASH } from "../about";
+  import { ABOUT_HASH, GUIDE_HASH } from "../about";
   import { isAdmin } from "../admin";
   import { community } from "../community";
   import { L } from "../labels";
@@ -202,6 +202,7 @@
         <div class="grp">
           {@render navLink("#/decks", "decks", "Decks")}
           {@render navLink("#/roadmap", "roadmap", "Roadmap")}
+          {@render navLink(GUIDE_HASH, "guide", "Guide")}
           {@render navLink(ABOUT_HASH, "about", "About")}
         </div>
       {/if}
