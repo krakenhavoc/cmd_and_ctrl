@@ -3547,3 +3547,12 @@ Additive within v8, omitted when empty: `seats[].castPermissions[].condition`, `
   payment, a transforming face, a reveal-and-choose, a graveyard/hand/library search by name, waterbend on a
   granted cast, a legendary-card dig, a loyalty ability's pick-from-three) and were left for later slices.
 - **A dormant grant's client caption** (why the card is not playable now) is the printed `condition` text only.
+
+## Amendment (2026-10-13, #3172, cav-g2): a Siege's transformed cast is a window, not a main-phase cast
+
+`SiegeDefeated` now grants the back-face cast with `Timing: TimingFlash` and `LapseOnPass: LapseStaysInExile`, the grant rebound
+and cascade use. The cast ignores the card's timing, as the printed "cast it transformed" does, and the window closes the next time
+its holder passes priority, leaving the card exiled. A Siege defeated on someone else's turn is no longer lost, and the
+end-of-turn duration remains as a backstop. The four Sieges lose `SiegeTransformedCastCaveat`.
+
+Back-out: drop `Timing` and `LapseOnPass` from the grant; `TestSiegeDefeatedOnAnotherPlayersTurnCanStillBeCast` fails.

@@ -808,6 +808,9 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// though its source had infect (Phyrexian Unlife), read as it lands
 	// (damage_as_though.go).
 	poison, lifeLoss := g.damageResultAsThoughLocked(ev, t).DamageToPlayer(ev.DamageAmount, t.combat)
+	// Angel's Grace (#3172): the damage stays whole and only the life it
+	// costs is capped at the floor of 1.
+	lifeLoss = g.capLifeLossByFloorLocked(p, lifeLoss)
 	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
 	lost := 0
 	if loseLife {

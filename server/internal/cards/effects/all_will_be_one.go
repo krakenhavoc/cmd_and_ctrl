@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // All Will Be One — Enchantment {3}{R}{R} (EDHREC rank 1401):
 //
@@ -22,11 +26,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed one: an opponent, or a creature or planeswalker one
 // controls.
 //
-// Sandbox simplifications, declared:
+// "Or player" (#3172): counters put on a player (poison, energy, rad)
+// emit EventPlayerCounterPlaced, whose Amount is the delta that landed
+// and whose Actor is the placer when the placement named one. When it
+// did not, the player resolving the item is credited, exactly as for a
+// permanent. A removal (negative delta) is not a placement.
 //
-//   - "or player": poison and energy counters on players emit no
-//     event the trigger can watch, so counters put on a PLAYER never
-//     fire it. Weaker than printed.
+// Sandbox simplification, declared:
+//
 //   - Counters whose placer the log cannot attribute — a loyalty
 //     cost or a Saga's lore counter on your own permanent while an
 //     opponent's spell was the last thing to resolve — do not fire
@@ -35,20 +42,17 @@ func init() {
 	Register(Spec{
 		OracleID:     "477374dc-042c-48f7-9ebe-99c15d8ae04f",
 		Name:         "All Will Be One",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Counters put on a player (poison, energy) don't trigger it — only counters put on permanents do.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventCounterPlaced},
+			Watches: []game.EventKind{game.EventCounterPlaced, game.EventPlayerCounterPlaced},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				_, ok := b12CountersPlacedByYou(ev, source, g)
+				_, ok := awboCountersPlacedByYou(ev, source, g)
 				return ok
 			},
 			Targets: b12TargetOpponentOrTheirCreatureOrPlaneswalker(),
 			Key:     "All Will Be One — that much damage",
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				amount, _ := b12CountersPlacedByYou(ev, source, g)
+				amount, _ := awboCountersPlacedByYou(ev, source, g)
 				item := game.NewTriggeredItem(source, "All Will Be One — that much damage")
 				item.Params.Amount = amount
 				return item
@@ -56,4 +60,26 @@ func init() {
 			Effect: DealAmountFromParamsToFirstTarget,
 		}},
 	})
+}
+
+// awboCountersPlacedByYou is All Will Be One's condition: counters put
+// on a permanent (b12CountersPlacedByYou) or on a player. The player
+// half takes the placer off the event and falls back to the resolving
+// controller when the placement named nobody — weaker, never stronger,
+// where the log cannot say.
+func awboCountersPlacedByYou(ev game.Event, source *game.Card, g *game.Game) (int, bool) {
+	if ev.Kind != game.EventPlayerCounterPlaced {
+		return b12CountersPlacedByYou(ev, source, g)
+	}
+	if ev.Amount <= 0 {
+		return 0, false
+	}
+	placer := ev.Actor
+	if placer == uuid.Nil {
+		placer = b12ResolvingController(ev, g)
+	}
+	if placer != source.Controller {
+		return 0, false
+	}
+	return ev.Amount, true
 }

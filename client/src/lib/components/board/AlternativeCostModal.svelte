@@ -63,6 +63,7 @@
   // (discard, sacrifice, blight) opens next in the chain.
   import {
     castableAlternativeCostsOf,
+    castsFaceName,
     costBranchesOf,
     firstPayableBranch,
     optionalCostMaxTimes,
@@ -268,7 +269,10 @@
               onclick={() => (chosen = offer.key)}
             >
               <span class="prompt-radio" aria-hidden="true"></span>
-              <span class="name">{offer.label ?? offer.key}</span>
+              <span class="name"
+                >{offer.label ?? offer.key}{#if castsFaceName(card, offer)}
+                  <span class="casts-face">casts {castsFaceName(card, offer)}</span>{/if}</span
+              >
               {#if offer.mana_cost}
                 <span class="note cost"><ManaCost cost={offer.mana_cost} size={14} /></span>
               {/if}
@@ -399,6 +403,11 @@
   }
   .cost {
     font-family: var(--font-mono);
+  }
+  .casts-face {
+    display: block;
+    font-size: 0.85em;
+    opacity: 0.75;
   }
   .add-on-hint {
     margin-top: 12px;

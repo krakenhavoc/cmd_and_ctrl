@@ -569,10 +569,15 @@ func SpecialActionKindBuilt(kind SpecialActionKind) bool {
 // is spent ON. The zero context — matching no restricted mana — for
 // every kind but unlock, whose cost is "an unlock cost" (CR 709.5e):
 // mana restricted to "unlock doors" pays it (Smoky Lounge, Creeping
-// Peeper), and mana restricted to casting does not (ADR 0103).
+// Peeper), and mana restricted to casting does not (ADR 0103); and turn
+// face up, which mana restricted to "turn a permanent face up" pays
+// (Creeping Peeper, #3172).
 func specialActionSpendContext(kind SpecialActionKind) ManaSpendContext {
-	if kind == SpecialActionUnlock {
+	switch kind {
+	case SpecialActionUnlock:
 		return ManaSpendContext{Purpose: SpendPurposeUnlock}
+	case SpecialActionTurnFaceUp:
+		return ManaSpendContext{Purpose: SpendPurposeTurnFaceUp}
 	}
 	return ManaSpendContext{}
 }

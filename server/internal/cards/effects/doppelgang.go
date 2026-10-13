@@ -21,17 +21,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // snapshotted before any token lands, so a copy is never itself
 // copied.
 //
-// One declared simplification, weaker than printed — CreateTokenCopy's
-// standing gap (Cackling Counterpart's): a token copy of a card whose
-// enters-the-battlefield effect is an on-enter hook rather than a
-// trigger skips that effect.
+// A token copy runs the copied card's entry too (#3172): since the token
+// goes through the ordinary battlefield-entry pipeline (#762) its triggers
+// fire and its "as enters" clause is asked, so there is no gap left here.
 func init() {
 	Register(Spec{
 		OracleID:     "d04c6375-25dd-4882-b8b3-a3b0d3081f32",
 		Name:         "Doppelgang",
 		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Token copies skip the enters-the-battlefield effect on some cards."},
+		Completeness: CompletenessFull,
 		Targets:      b28DoppelgangTargets(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b28CopyEachLegalTargetXTimes(ctx)

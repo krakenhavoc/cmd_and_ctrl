@@ -384,7 +384,7 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		}}},
 		AdditionalCost: &AdditionalCostView{DiscardCards: 1},
 		AlternativeCosts: []AlternativeCostView{{
-			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, Energy: 1, PayLabel: "a blue card",
+			Key: "overload", Label: "Overload {6}{U}", ManaCost: "{6}{U}", Life: 1, Energy: 1, PayLabel: "a blue card", CastsFace: 1,
 			TargetMode: "creature", LegalTargets: lt, PayOptions: lt,
 			// ADR 0135 §3: an awaken offer's two clauses.
 			Clauses: []LegalTargetsView{*lt, *lt},
@@ -925,6 +925,8 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	"Life":     surfacePublicPile,
 	"Energy":   surfacePublicPile,
 	"PayLabel": surfacePublicPile,
+	// ADR 0152 §5: which printed face the offer casts is printed.
+	"CastsFace": surfacePublicPile,
 	// ADR 0135 §2: whether the price discards its cards is printed.
 	"Discards":         surfacePublicPile,
 	"TargetMode":       surfacePublicPile,

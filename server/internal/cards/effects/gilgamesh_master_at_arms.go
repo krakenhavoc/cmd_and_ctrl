@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Gilgamesh, Master-at-Arms — Legendary Creature — Human Samurai
 // {4}{R}{R}, 6/6:
@@ -12,30 +16,122 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 the battlefield this way, you may attach one of them to a Samurai
 //	 you control."
 //
-// The shared LookAtTopThenMayPutOntoBattlefield sentence (#745) with
-// "any number of Equipment cards": the six cards are looked at, only
-// Gilgamesh's controller sees them, the chosen Equipment enter as one
-// simultaneous batch without being cast, and the rest go to the bottom
-// in an order drawn from the game's seeded RNG.
+// The shared "look at the top N, put some onto the battlefield" sentence
+// (#745) with "any number of Equipment cards": the six cards are looked
+// at, only Gilgamesh's controller sees them, the chosen Equipment enter
+// as one simultaneous batch without being cast, and the rest go to the
+// bottom in an order drawn from the game's seeded RNG.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the reflexive "when you
-// put one or more Equipment onto the battlefield this way, you may
-// attach one of them to a Samurai you control" is not implemented. It
-// is a reflexive triggered ability (CR 603.12) — it goes on the stack
-// and can be responded to — and the engine has no way for a resolving
-// ability to put a new trigger on the stack (#636). Attaching inline
-// instead would deny the table the response window it prints, so the
-// Equipment arrives unattached and can be equipped the ordinary way.
+// The reflexive sentence (CR 603.12) is a real ReflexiveTrigger: once at
+// least one Equipment entered, it goes on the stack above Gilgamesh's
+// ability so the table can respond, carries the Equipment that entered
+// as its payload, and on resolution asks which one (or none) goes onto
+// which Samurai. Nothing in it targets, so both picks happen as it
+// resolves, and an Equipment or Samurai that has left by then is skipped.
 func init() {
 	Register(Spec{
 		OracleID:     "c9432e87-38f6-4889-8f07-ae7cd045e532",
 		Name:         "Gilgamesh, Master-at-Arms",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Equipment put onto the battlefield aren't offered to be attached to a Samurai — equip them normally."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEntersOrAttacks("Gilgamesh, Master-at-Arms — look at the top six cards; you may put any number of Equipment onto the battlefield",
-				LookAtTopThenMayPutOntoBattlefield(6, OfSubtype("Equipment"), 0,
-					"Gilgamesh — put any number of Equipment cards from among them onto the battlefield")),
+				gilgameshLookAndPut),
 		},
 	})
+}
+
+// gilgameshLookAndPut looks at the top six, puts any number of Equipment
+// onto the battlefield and the rest on the bottom in a random order, and
+// then, if any Equipment entered, creates the reflexive attach trigger.
+func gilgameshLookAndPut(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	player := ctx.Controller()
+	looked := g.LookAtTopOfLibraryForEffect(player, 6)
+	return PutFromLibraryOntoBattlefield{
+		Player:   player,
+		Cards:    looked,
+		Match:    OfSubtype("Equipment"),
+		Max:      0,
+		Optional: true,
+		Label:    "Gilgamesh — put any number of Equipment cards from among them onto the battlefield",
+		Then: func(g *game.Game, res PutFromLibraryResult) error {
+			if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
+				return err
+			}
+			if len(res.Entered) == 0 {
+				return nil
+			}
+			return ReflexiveTrigger{
+				Label: "Gilgamesh, Master-at-Arms — you may attach one of the Equipment to a Samurai you control",
+				Cards: res.Entered,
+				Body:  gilgameshAttachBody,
+			}.Apply(NewContext(g, item))
+		},
+	}.Apply(ctx)
+}
+
+// gilgameshAttach is the reflexive half: pick one of the Equipment that
+// entered (a floor of zero is the "may"), then the Samurai it goes on.
+func gilgameshAttach(g *game.Game, item *game.StackItem) error {
+	controller := item.Controller
+	var equipment []uuid.UUID
+	for _, id := range NewContext(g, item).PayloadCards() {
+		if c, ok := g.LookupCardForEffect(id); ok && c.HasSubtype("Equipment") && g.Battlefield.Contains(id) {
+			equipment = append(equipment, id)
+		}
+	}
+	if len(equipment) == 0 || len(gilgameshSamurai(g, controller)) == 0 {
+		return nil
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:  controller,
+		Source:   item.SourceCardID,
+		Question: "Gilgamesh — attach one of the Equipment to a Samurai you control?",
+		Cards:    equipment,
+		Min:      0,
+		Max:      1,
+		Zone:     game.ZoneBattlefield,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			if len(picked) == 0 {
+				return nil
+			}
+			attachment := picked[0]
+			samurai := gilgameshSamurai(g, controller)
+			if len(samurai) == 0 {
+				return nil
+			}
+			g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+				Chooser:  controller,
+				Source:   item.SourceCardID,
+				Question: "Gilgamesh — attach it to which Samurai you control?",
+				Cards:    samurai,
+				Min:      1,
+				Max:      1,
+				Zone:     game.ZoneBattlefield,
+				Then: func(g *game.Game, hosts []uuid.UUID) error {
+					if len(hosts) == 0 || !g.Battlefield.Contains(attachment) {
+						return nil
+					}
+					host, ok := g.LookupCardForEffect(hosts[0])
+					if !ok || host.Controller != controller || !host.HasSubtype("Samurai") {
+						return nil
+					}
+					return g.AttachForEffect(attachment, game.TargetRef{Kind: game.TargetCard, ID: hosts[0]})
+				},
+			})
+			return nil
+		},
+	})
+	return nil
+}
+
+// gilgameshSamurai lists the Samurai creatures a player controls.
+func gilgameshSamurai(g *game.Game, controller uuid.UUID) []uuid.UUID {
+	var out []uuid.UUID
+	for _, c := range g.Battlefield.Cards {
+		if c.Controller == controller && c.IsCreature() && c.HasSubtype("Samurai") {
+			out = append(out, c.InstanceID)
+		}
+	}
+	return out
 }

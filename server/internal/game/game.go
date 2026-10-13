@@ -1101,6 +1101,9 @@ func NewGame() *Game {
 		// in applyResolvedDamageToPlayerLocked, because damage does
 		// not fire this window (CR 120.3).
 		lifeTotalCantChangeReplacement,
+		// #3172 (Arlinn, the Pack's Hope): a duration grant of "each
+		// creature you control enters with an additional counter".
+		playerEntryCountersReplacement,
 	)
 	return g
 }

@@ -18,25 +18,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // can't be blocked except by two or more), so the "+1/+0 and gets
 // through" really is what happens.
 //
-// ONE SIMPLIFICATION, strictly weaker: the trigger fires on damage to
-// a PLAYER only, not to a battle. The engine has battles (S27) but
-// EventDealDamage's combat branch reaches players; damage to a battle
-// does not route through the condition every other equipped-creature
-// trigger in the catalog shares. Attacking a battle with the Beatstick
-// makes no Treasure, which is a card that does less than printed.
+// The trigger fires on combat damage to a player OR a battle (#3172):
+// damage to a battle is the same EventDealDamage with a battle card as its
+// target, so the condition accepts either.
 func init() {
 	Register(Spec{
 		OracleID:     "035e33ab-adfe-4831-bdbc-52f4ddc7ffe8",
 		Name:         "Beamtown Beatstick",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Combat damage to a battle makes no Treasure; only damage to a player does."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			PumpAttached(1, 0),
 			GrantToAttached("menace"),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
+				return attachedCreatureDealtCombatDamageToPlayerOrBattle(ev, source, g)
 			}, "Beamtown Beatstick — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,

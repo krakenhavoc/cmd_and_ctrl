@@ -16,16 +16,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // names each creature ("a creature ... is dealt"). The activated
 // ability is a plain targeted 7 damage.
 //
-// Sandbox simplification, declared: damage from a source with
-// deathtouch is not treated as excess beyond one point (CR 120.4a), so
-// the X read for it can be lower than printed, never higher.
+// Deathtouch is read off the damaging source (excess_damage.go): one
+// point is lethal from it, so everything past the first is excess.
 func init() {
 	const label = "Fall of Cair Andros — amass Orcs X, where X is that excess damage"
 	Register(Spec{
 		OracleID:     "33c0a8c0-d1d9-4b03-869d-65dab8ace3df",
 		Name:         "Fall of Cair Andros",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Noncombat damage from a source with deathtouch only counts as excess past the creature's own lethal damage, so you may amass fewer Orcs than printed."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

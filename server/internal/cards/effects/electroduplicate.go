@@ -19,19 +19,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // returns nothing. "The end step" rather than "the next end step" is
 // the same StepEnd default ScheduleDelayedTrigger already uses.
 //
-// Sandbox simplification, inherited from CreateTokenCopy and declared
-// here because it is invisible otherwise (Cackling Counterpart carries
-// the same one): the token's ETB *triggered* abilities fire, but a
-// copied card whose ETB lives in Spec.AsEnters rather than
-// Spec.Triggered does not get that clause.
+// The copy runs the copied card's entry too (#3172): the token goes through
+// the ordinary battlefield-entry pipeline (#762), so its triggers fire and
+// its "as enters" clause is asked.
 func init() {
 	Register(Spec{
-		OracleID:     "112f2b3f-32e7-40b1-b80e-0b99184a840c",
-		Name:         "Electroduplicate",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The token copy skips the enters-the-battlefield effect of a card whose entry is an on-enter hook rather than a trigger.",
-		},
+		OracleID:         "112f2b3f-32e7-40b1-b80e-0b99184a840c",
+		Name:             "Electroduplicate",
+		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{2}{R}{R}")},
 		Targets:          TargetCreature("target creature you control", YouControl()),

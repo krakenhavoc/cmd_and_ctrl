@@ -52,19 +52,6 @@ import (
 // regression, and a template on this list that starts matching is a
 // stale exemption to delete.
 var knownUnmatchedTokens = map[string]string{
-	// Hallowed Haunting's token prints as */* — "this token's power
-	// and toughness are each equal to the number of Spirits you
-	// control". The engine models that as a 0/0 the Haunting sizes
-	// with a layer 7a set (b29SpiritClericSizing), and the 0/0 is
-	// deliberately NOT PrintedPTKnown, which is what keeps a shrunken
-	// Cleric out of the CR 704.5f state-based action. Decision
-	// (#1127): keep the 0/0. ADR 0078's rule refuses to equate `*`
-	// with a number on purpose — a characteristic-defining token is
-	// not the same object as a printed 0/0 — and bending it here
-	// would either claim a printed 0/0 or need a `*` the template
-	// table has no slot for.
-	"0/0 white Spirit Cleric": "printed as */*; the engine's 0/0 is the stand-in the Haunting sizes",
-
 	// Spawning Pit is a 2004 artifact and its token — "create a 2/2
 	// colorless Spawn artifact creature token" — was never printed as
 	// a token card; token cards start in 2007. The template is right

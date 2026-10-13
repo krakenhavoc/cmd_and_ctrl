@@ -79,14 +79,6 @@ func DefeatedTrigger(label string, effect func(g *game.Game, item *game.StackIte
 // to agree on.
 const SiegeBackFace = 1
 
-// SiegeTransformedCastCaveat is the one player-facing sentence every
-// Siege in the catalog owes its reader, because the timing of the
-// transformed cast is the single way the engine's Sieges differ from
-// the printed ones. Shared rather than retyped per card: it is one
-// mechanism (see SiegeDefeated), and three copies of a sentence drift
-// the moment the mechanism changes.
-const SiegeTransformedCastCaveat = "When the Siege is defeated you get to cast its back face for free, but only during your own main phase and only before the turn ends — so a Siege defeated on someone else's turn is lost."
-
 // SiegeDefeated is the reminder-text half every printed Siege shares:
 // "exile it, then cast it transformed" (CR 310.12b).
 //
@@ -111,28 +103,23 @@ const SiegeTransformedCastCaveat = "When the Siege is defeated you get to cast i
 // parser never sees the blank cost at all. Same reasoning, same
 // idiom, as cascade's grantFreeCastLocked.
 //
-// # SANDBOX SIMPLIFICATION, weaker than printed: a grant, not an
-// inline cast
+// # The cast window
 //
 // Printed, the cast happens as the defeated trigger resolves and
-// ignores timing. Here the trigger stamps a permission and the
-// controller casts it with an ordinary cast_spell action, so the back
-// face obeys sorcery speed and the grant lapses at this turn's
-// cleanup. The common line still works — you attack your own Siege,
-// it is defeated in the combat damage step, and you cast the back
-// face in your postcombat main phase — but a Siege defeated on
-// someone else's turn is lost, because its controller has no sorcery
-// window left before the grant expires.
+// ignores timing (CR 608.2g). Here the trigger stamps a permission and
+// the controller casts it with an ordinary cast_spell action, the way
+// rebound, cascade and discover do: flash timing (the card's own timing
+// is ignored), so a Siege defeated on anyone's turn can be cast in any
+// step, and LapseOnPass closes the window the next time the holder
+// passes priority, leaving the back face in exile (a Siege whose cast
+// is declined stays exiled). An end-of-turn duration backs it up so the
+// grant cannot outlive the turn.
 //
-// That is exactly the trade cascade already made and for the same
-// reason (see cascade.go): an inline cast would have to collect
-// targets, modes and X from inside a resolution, and the announce
-// path has no frame for a half-validated cast. It is the weaker
-// direction in every case — a cast that may not happen, never one
-// that happens twice or later than printed allows. The grant is
-// bounded to THIS turn precisely so that it cannot become the
-// stronger thing: a window the player may keep open until a better
-// moment is not what the card grants.
+// An inline cast would have to collect targets, modes and X from inside
+// a resolution, and the announce path has no frame for a half-validated
+// cast, so the window is the engine's stand-in for it. The only
+// difference a player can see is that the cast is a separate action
+// before the holder passes, not part of the trigger's resolution.
 //
 // A back face left uncast stays in exile, which is where printed
 // leaves a Siege whose transformed cast is countered, so nothing has
@@ -167,11 +154,13 @@ func SiegeDefeated() func(g *game.Game, item *game.StackItem) error {
 		// different players and the card is unambiguous about which
 		// one gets the back face.
 		return g.ExileCardWithPermissionForEffect(battleID, game.CastPermission{
-			Player:   item.Controller,
-			Cost:     "{0}",
-			CastOnly: true,
-			Faces:    []int{SiegeBackFace},
-			Label:    "Cast it transformed, without paying its mana cost",
+			Player:      item.Controller,
+			Cost:        "{0}",
+			CastOnly:    true,
+			Timing:      game.TimingFlash,
+			LapseOnPass: game.LapseStaysInExile,
+			Faces:       []int{SiegeBackFace},
+			Label:       "Cast it transformed, without paying its mana cost",
 		})
 	}
 }

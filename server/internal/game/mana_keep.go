@@ -172,9 +172,26 @@ func (t ManaToken) hasKeepMark() bool {
 // withoutKeepMark returns the token with the mark stripped (fresh rider
 // slice), for the moment it expires.
 func (t ManaToken) withoutKeepMark() ManaToken {
+	return t.withoutRider(ManaRiderKeepUntilEndOfTurn)
+}
+
+// hasKeepUntilEndOfCombatMark reports whether the token carries the
+// "lasts until end of combat" mark (firebending).
+func (t ManaToken) hasKeepUntilEndOfCombatMark() bool {
+	for _, r := range t.Riders {
+		if r.Kind == ManaRiderKeepUntilEndOfCombat {
+			return true
+		}
+	}
+	return false
+}
+
+// withoutRider returns the token with every rider of `kind` stripped
+// (fresh rider slice).
+func (t ManaToken) withoutRider(kind ManaRiderKind) ManaToken {
 	var riders []ManaSpendRider
 	for _, r := range t.Riders {
-		if r.Kind != ManaRiderKeepUntilEndOfTurn {
+		if r.Kind != kind {
 			riders = append(riders, r)
 		}
 	}
@@ -193,7 +210,17 @@ func (g *Game) sweepManaPoolLocked(p *Player) int {
 	rules := g.manaPoolRulesLocked(p, endOfTurn)
 	var kept ManaPool
 	lost := 0
+	inCombat := stepPhase[g.Turn.Step] == PhaseCombat
 	for _, t := range p.ManaPool {
+		if t.hasKeepUntilEndOfCombatMark() {
+			// "Until end of combat": kept while the new step is still in
+			// the combat phase, an ordinary token the moment it is not.
+			if inCombat {
+				kept = append(kept, t)
+				continue
+			}
+			t = t.withoutRider(ManaRiderKeepUntilEndOfCombat)
+		}
 		if t.hasKeepMark() {
 			if !endOfTurn {
 				kept = append(kept, t)

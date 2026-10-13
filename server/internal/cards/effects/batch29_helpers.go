@@ -79,32 +79,6 @@ func b29CreaturesYouControlWithSevenEnchantments(target *game.Card, g *game.Game
 	return b16CreaturesYouControl(target, g, source) && b29EnchantmentsControlled(g, source.Controller) >= 7
 }
 
-// b29SpiritClericSizing is the Spirit Cleric token's printed
-// "this token's power and toughness are each equal to the number of
-// Spirits you control", carried by Hallowed Haunting on the tokens'
-// behalf: a layer 7a set over the 0/0 Spirit Cleric tokens its
-// controller controls, applied by the FIRST Haunting the controller
-// controls only, so two Hauntings size a token once. Layer 7a so
-// counters and anthems still stack on top, the way they do on a
-// printed characteristic-defining ability.
-func b29SpiritClericSizing() game.StaticAbility {
-	return game.StaticAbility{
-		Label:    "Spirit Cleric tokens you control have power and toughness each equal to the number of Spirits you control.",
-		Layer:    game.Layer7PT,
-		SubLayer: game.SubLayer7A_CDA,
-		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.Controller == source.Controller && IsToken(*target) && target.Name == "Spirit Cleric" &&
-				target.IsCreature() && target.Power == 0 && target.Toughness == 0 &&
-				b15IsFirstOfItsNameControlledBy(g, source)
-		},
-		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := b29SpiritsControlled(g, source.Controller)
-			c.Power = n
-			c.Toughness = n
-		},
-	}
-}
-
 // --- state reads ---------------------------------------------------
 
 // b29EnchantmentsControlled counts the enchantments `controller`

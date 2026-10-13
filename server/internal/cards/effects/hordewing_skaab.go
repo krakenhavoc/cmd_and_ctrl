@@ -22,40 +22,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Zombies stay on the ground.
 //
 // The loot is ONE trigger per combat damage step, which is what the
-// "one or more … one or more" wording asks for. The engine emits one
-// damage event per creature, so OncePerBatch declines every later
-// event of the same batch; without it a five-Zombie alpha strike would
-// loot five times, which is the #259 direction.
-//
-// Declared simplification, weaker than printed (#259): the Skaab draws
-// and discards ONE card, not one per opponent dealt damage. "The
-// number of opponents dealt damage this way" is a count over the whole
-// damage batch, and the per-batch dedup that makes this one trigger
-// keeps only the first event — the count of DISTINCT damaged opponents
-// is not reconstructible from it. One is the floor and never more than
-// printed: a strike that got through to three players loots once
-// instead of three times.
+// "one or more … one or more" wording asks for, and it counts the
+// opponents dealt damage. The engine emits one damage event per
+// creature, so the trigger waits for the step to settle (AtBatchEnd,
+// ThatManyEvents) and the filter accepts only the FIRST Zombie event
+// against each opponent (b41FirstZombieHitOnThatOpponent): the settled
+// total is then the number of distinct opponents dealt damage this way,
+// and a five-Zombie alpha strike into one opponent still loots once.
+// "You may draw cards equal to that number. If you do, discard that
+// many" is one optional draw-then-discard of that size.
 func init() {
 	Register(Spec{
-		OracleID:     "485dea0d-2123-4e5c-91a1-25ba73f4f3cf",
-		Name:         "Hordewing Skaab",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"It always loots exactly one card, even when your Zombies connected with several opponents at once — the printed card draws and discards one per opponent damaged.",
-		},
+		OracleID:        "485dea0d-2123-4e5c-91a1-25ba73f4f3cf",
+		Name:            "Hordewing Skaab",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Static: []game.StaticAbility{
 			TribalKeywordGrant(TribeFilter{Tribes: []string{"Zombie"}, Others: true, YoursOnly: true}, "flying"),
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(Optional(
+			Optional(withAtBatchEnd(
 				On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return b41ZombieYouControlDealtCombatDamageToAnOpponent(ev, source, g)
-				}, "Hordewing Skaab — draw a card, then discard a card",
+					return b41ZombieYouControlDealtCombatDamageToAnOpponent(ev, source, g) &&
+						b41FirstZombieHitOnThatOpponent(ev, source, g)
+				}, "Hordewing Skaab — draw cards equal to the opponents dealt damage, then discard that many",
 					func(g *game.Game, item *game.StackItem) error {
-						return lootOne(g, item, 1)
-					}),
-				"Hordewing Skaab — draw a card, then discard a card?")),
+						return lootOne(g, item, settledEventAmount(item))
+					}), ThatManyEvents()),
+				"Hordewing Skaab — draw cards equal to the number of opponents dealt damage, then discard that many?"),
 		},
 	})
 }

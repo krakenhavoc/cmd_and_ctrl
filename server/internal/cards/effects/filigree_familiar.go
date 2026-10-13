@@ -18,19 +18,21 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // exiled Familiar does not draw. The draw happens when the trigger
 // resolves.
 //
-// Declared simplification, still real: "{2}, Sacrifice Filigree
-// Familiar: Add one mana of any color" is NOT implemented. A mana
-// ability's cost has no mana component — ManaAbilityCost is
-// tap / sacrifice / sacrifice-another / life — so the {2} cannot be
-// expressed. (Lotus Petal works only because its cost is tap+sac
-// with no mana in it.) Routing this through the CR 602 activated
-// path instead would be wrong: mana abilities don't use the stack.
+// The "{2}, Sacrifice Filigree Familiar: Add one mana of any color"
+// ability is a mana ability with a mana component in its cost
+// (ManaAbilityCost.Mana, as the Signets use) plus the sacrifice, so it
+// skips the stack (CR 605.3a). The sacrifice still lands the dies
+// trigger, which draws a card after the mana is already in the pool.
 func init() {
 	Register(Spec{
 		OracleID:     "b544f690-e4bf-4a5b-984d-9256518fd574",
 		Name:         "Filigree Familiar",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"{2}, Sacrifice: Add one mana of any color\" ability is missing — the Fox can't be cracked for mana."},
+		Completeness: CompletenessFull,
+		ManaAbilities: []ManaAbility{{
+			Cost:     ManaAbilityCost{Mana: "{2}", Sacrifice: true},
+			Produced: "{W|U|B|R|G}",
+			Label:    "{2}, Sacrifice this creature: Add one mana of any color",
+		}},
 		Triggered: []game.TriggeredAbility{
 			// "When this enters the battlefield, you gain 2 life."
 			WhenThisEnters("Filigree Familiar — gain 2 life", Do(GainLife{Amount: 2})),

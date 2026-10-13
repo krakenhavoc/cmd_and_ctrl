@@ -27,17 +27,23 @@ import (
 // in layer 6 — the keyword the engine turns into an attack trigger
 // (ADR 0113 §2).
 //
-// Sandbox simplification, declared: an Idol that loses its abilities
-// loses all three statics, where the rules keep the type change (layer
-// 4 applies before the removal in layer 6, the 2024-06-07 ruling). The
-// engine has no dependency ordering between one permanent's own
-// statics and a removal.
+// The three statics are ONE printed effect that starts in layer 4. An
+// Idol that loses its abilities stays a creature (layer 4 comes before a
+// layer 6 removal, CR 613.6, ADR 0067 section 2), and its layer 7b half
+// declares ContinuesAfterRemoval so the 0/0 base keeps applying after the
+// removal, ahead of an older effect's base power and toughness.
+//
+// Declared simplification, weaker than printed: a removal OLDER than the
+// Idol also takes the layer 6 annihilator, because the engine orders every
+// layer 6 removal before the effects of the source it silences whatever
+// the timestamps (ADR 0093 decision 3), and a layer 6 effect cannot
+// continue within the removal's own layer.
 func init() {
 	Register(Spec{
 		OracleID:     "b30d583b-e770-47e8-9f26-fca7ef43285c",
 		Name:         "Idol of False Gods",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An effect that takes away Idol of False Gods's abilities also stops it being a creature."},
+		Caveats:      []string{"If another effect that was on the battlefield before Idol of False Gods takes away its abilities, it can wrongly lose the attack ability it gets at eight counters."},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{C}, {T}: Create a 0/1 colorless Eldrazi Spawn creature token with \"Sacrifice this token: Add {C}.\"",
 			Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
@@ -87,6 +93,9 @@ func idolOfFalseGodsStatics() []game.StaticAbility {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: idolHasEightCounters,
+			// One printed effect that starts in layer 4: CR 613.6 keeps
+			// its later layers applying past an older ability removal.
+			ContinuesAfterRemoval: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
 				c.Power, c.Toughness = 0, 0
 			},

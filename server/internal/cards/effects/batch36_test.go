@@ -780,20 +780,23 @@ func TestB36AngelOfSerenityExilesUpToThreeCreaturesAndHandsThemBackWhenSheLeaves
 	if !hasID(p.PickTargetCards, a) || !hasID(p.PickTargetCards, c) || !hasID(p.PickTargetCards, mine) {
 		t.Error("every other creature on the battlefield is offered, your own included")
 	}
-	if hasID(p.PickTargetCards, angel) || hasID(p.PickTargetCards, dead) {
-		t.Error("the Angel herself and a graveyard card (the declared gap) are not")
+	if hasID(p.PickTargetCards, angel) {
+		t.Error("the Angel herself is not offered")
+	}
+	if !hasID(p.PickTargetCards, dead) {
+		t.Error("a creature card in a graveyard is offered (#3172)")
 	}
 	if p.PickTargetMin != 0 || p.PickTargetMax != 3 {
 		t.Errorf("\"up to three\": min %d max %d", p.PickTargetMin, p.PickTargetMax)
 	}
-	b17PickCards(t, g, me.ID, a, b, c)
+	b17PickCards(t, g, me.ID, a, dead, c)
 	passPriorityAroundTable(t, g)
-	for _, id := range []uuid.UUID{a, b, c} {
+	for _, id := range []uuid.UUID{a, dead, c} {
 		if !inExile(g, id) {
 			t.Errorf("%s is exiled", id)
 		}
 	}
-	if !g.Battlefield.Contains(mine) {
+	if !g.Battlefield.Contains(b) || !g.Battlefield.Contains(mine) {
 		t.Error("the unchosen creature stays")
 	}
 	// One exiled card moves on before she leaves: it is not returned.
@@ -802,10 +805,10 @@ func TestB36AngelOfSerenityExilesUpToThreeCreaturesAndHandsThemBackWhenSheLeaves
 	// She dies: the rest come back to their owners' HANDS.
 	b27Kill(g, angel)
 	passPriorityAroundTable(t, g)
-	if !opp.Hand.Contains(a) || !opp.Hand.Contains(b) {
-		t.Error("the exiled cards return to their owner's hand")
+	if !opp.Hand.Contains(a) || !opp.Hand.Contains(dead) {
+		t.Error("the exiled cards, a graveyard card among them, return to their owner's hand")
 	}
-	if g.Battlefield.Contains(a) || g.Battlefield.Contains(b) {
+	if g.Battlefield.Contains(a) || g.Battlefield.Contains(dead) {
 		t.Error("to hand, not the battlefield")
 	}
 	if other.Hand.Size() != handC {
