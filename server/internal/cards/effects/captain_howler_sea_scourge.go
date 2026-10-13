@@ -31,21 +31,15 @@ import (
 //     double striker draws twice) and a second discard this turn
 //     schedules a second, independent watch, as the card reads.
 //
-// One gap is declared, weaker than printed and never stronger: WARD IS A
-// COMPOSITE COST. `effects.Ward` charges exactly one of mana, life, a
-// sacrifice or a discard (ward.go's WardCost.validate); "{2}, pay 2 life"
-// is a composite this card is the first to need, and a hand-rolled mix
-// is refused rather than half-charged. Left off entirely, the creature is
-// a perfectly legal target with no cost offered.
+// Ward uses the single mana-and-life payment shared with Gisa (#2945,
+// ADR 0161). All printed behavior is implemented.
 func init() {
 	Register(Spec{
 		OracleID:     "46c99d67-8307-4af0-afd0-377714806614",
 		Name:         "Captain Howler, Sea Scourge",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Ward isn't implemented on this creature — it can be targeted for free.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
+			Ward(WardManaAndLife("{2}", 2), "Captain Howler, Sea Scourge — ward {2}, pay 2 life"),
 			withAtBatchEnd(Targeting(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
 			}, "Captain Howler, Sea Scourge — target creature gets +2/+0 until end of turn for each card discarded this way",

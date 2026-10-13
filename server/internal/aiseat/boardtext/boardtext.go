@@ -210,12 +210,17 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.PayEnergy != nil {
 			fmt.Fprintf(&b, " (pay %d energy)", *ch.PayEnergy)
 		}
-		// ADR 0150 §3: a life or damage payment, priced in life.
 		if ch.PayLife != nil {
 			fmt.Fprintf(&b, " (pay %d life)", *ch.PayLife)
 		}
 		if ch.PayDamage != nil {
 			fmt.Fprintf(&b, " (take %d damage)", *ch.PayDamage)
+		}
+		if ch.Kind == "pay_unless" && ch.LifeCost > 0 {
+			fmt.Fprintf(&b, " (also pay %d life)", ch.LifeCost)
+			if ch.LifeCostUnpayable {
+				b.WriteString(" (life payment unavailable)")
+			}
 		}
 		if pa := ch.PayAmount; pa != nil {
 			writePayAmount(&b, pa)

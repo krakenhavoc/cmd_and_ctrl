@@ -356,7 +356,7 @@ func (e *enumerator) choiceMoves() bool {
 						lifeCost := g.LifeGrantedCostForEffect(e.seat, cost)
 						for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
 							reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, game.ManaSpendContext{}, n)
-							if !g.CanPayLifeLocked(e.p, life) {
+							if !g.CanPayLifeLocked(e.p, life+c.LifeCost) {
 								break
 							}
 							if e.canPay(reduced, 0, game.ManaSpendContext{}) {
@@ -373,6 +373,7 @@ func (e *enumerator) choiceMoves() bool {
 					taps, canPay = e.waterbendPayUnlessPayment(c, cost)
 				}
 			}
+			canPay = canPay && g.CanPayLifeLocked(e.p, c.LifeCost+payLife*game.PhyrexianLifePerSymbol)
 			for _, apply := range []bool{true, false} {
 				if apply && !canPay {
 					continue
@@ -380,7 +381,11 @@ func (e *enumerator) choiceMoves() bool {
 				a := apply
 				p := base()
 				p.Apply = &a
-				payVerb, verb := anyPlayerVerbs(g, c, "pay "+c.PayCost, e.seat)
+				payment := "pay " + c.PayCost
+				if c.LifeCost > 0 {
+					payment += fmt.Sprintf(" and %d life", c.LifeCost)
+				}
+				payVerb, verb := anyPlayerVerbs(g, c, payment, e.seat)
 				if apply {
 					verb = payVerb
 					if len(taps) > 0 {
@@ -394,7 +399,7 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				var price *MoveCost
 				if apply {
-					price = withPhyrexianLife(nil, payLife)
+					price = withPhyrexianLife(moveCost(c.LifeCost, 0), payLife)
 				}
 				e.addChoiceCost(c, reason+": "+verb, p, price)
 			}

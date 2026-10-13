@@ -1,4 +1,4 @@
-# ADR 0158 — One mana and life ward payment
+# ADR 0161 — One mana and life ward payment
 
 Date: 2026-10-13
 Status: Accepted
@@ -33,7 +33,9 @@ life payment. It is the existing shared payment boundary, not a new prompt.
 4. The legal enumerator uses the same complete life amount and prices it on
    the offered move. Humans and MCP seats receive the mandatory life amount
    beside the mana cost; the human prompt renders both and retains the
-   existing optional Phyrexian-symbol picker separately.
+   existing optional Phyrexian-symbol picker separately. The computed wire flag
+   `life_cost_unpayable` disables acceptance when a life lock or insufficient
+   life prevents the fixed payment; it is not persisted state.
 5. Gisa uses the corrected crime annotation from ADR 0157, the existing
    once-per-turn tally, tribal static layers, and one creation instruction
    for two tapped blue and black Zombie Rogue tokens. Skeleton/Zombie type
@@ -58,5 +60,7 @@ tests. Close #2945 only after the implementation PR merges.
 
 ## Number reservation
 
-Checked all 13 remote refs after `git fetch --all --prune` on 2026-10-13.
-0158 was the first unused number after the reserved 0157.
+Initially reserved 0158 after checking all 13 remote refs on 2026-10-13.
+A signed-in-pages ADR merged with that number before this PR. Renumbered this
+ADR and its inbound links to 0161 after fetching and checking all 12 remaining
+remote refs; 0158–0160 were occupied, so 0161 was the first unused number.

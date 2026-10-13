@@ -171,7 +171,8 @@ interface Copy {
 // for every other prompt, and when the life total is unknown.
 function payLifeMax(c: PendingChoiceView, ctx: ChoiceDockContext): number {
   if (c.kind !== "pay_unless" || ctx.life === undefined) return 0;
-  return maxPhyrexianLife(c.phyrexian_symbols ?? 0, ctx.life);
+  if (c.life_cost_unpayable) return 0;
+  return maxPhyrexianLife(c.phyrexian_symbols ?? 0, Math.max(0, ctx.life - (c.life_cost ?? 0)));
 }
 
 // payLifeWords names what the life pays for in the hint: a granted {B}
@@ -281,7 +282,7 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
         tag: "pay unless",
         hint:
-          `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't and let ${ctx.sourceName} do its thing.` +
+          `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short)${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}, or don't and let ${ctx.sourceName} do its thing.` +
           (payLifeMax(c, ctx) > 0
             ? ` ${payLifeWords(c)} can instead be paid with ${PhyrexianLifePerSymbol} life each.`
             : ""),
@@ -401,12 +402,15 @@ function answersFor(
         secondary: [no(c.decline_label || "No")],
       };
     case "pay_unless": {
+      const fixedLife = c.life_cost ?? 0;
       const pay = yes(c.accept_label || payButtonLabel(c));
-      // ADR 0150 §3: a life payment the seat can't make (CR 119.4) is
-      // greyed with the reason, as a short energy payment is.
       if (lifeShortBy(c, ctx) > 0) {
         pay.disabled = true;
         pay.title = `You have ${ctx.life ?? 0} life; this costs ${c.pay_life ?? 0}`;
+      }
+      if (c.life_cost_unpayable || (ctx.life !== undefined && ctx.life < fixedLife)) {
+        pay.disabled = true;
+        pay.title = "You can't pay the required life.";
       }
       // ADR 0129 §8: greyed with the reason when the seat is short, so
       // the button, the key and the server agree (a short "Pay" would
@@ -423,7 +427,7 @@ function answersFor(
       for (let k = 1; k <= payLifeMax(c, ctx); k++) {
         lifeAnswers.push({
           id: `pay-life-${k}`,
-          label: `Pay with ${phyrexianLifeCost(k)} life`,
+          label: `Pay with ${phyrexianLifeCost(k) + fixedLife} life`,
           onPress: () => h.onAnswer(true, k),
         });
       }
@@ -762,7 +766,7 @@ export function payPhrase(
   }
   if (c.pay_nothing) return c.accept_label ? lowerFirst(c.accept_label) : "say yes";
   if (c.pay_cards) return lowerFirst(cost) || "pay the cost";
-  return `pay ${cost || "the cost"}`;
+  return `pay ${cost || "the cost"}${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}`;
 }
 
 // payButtonLabel is a pay_unless's "Pay" button when the card names no
