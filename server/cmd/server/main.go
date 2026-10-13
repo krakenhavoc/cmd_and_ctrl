@@ -807,29 +807,28 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 	// The card catalog: a browsable list of every card the engine
 	// actually automates, with each entry's declared completeness.
 	//
-	// Behind auth.Middleware, like /cards/. It was built unauthenticated
-	// as a public showcase, and it is gated because AGENTS.md §1 and §8
-	// describe this project as private and personal-use: serving card
-	// art to anonymous visitors is a different posture from the one the
-	// repo states, and the page is no less useful to a signed-in
-	// player. Not behind requireDev — it ships in production, it is
-	// simply not public.
+	// Public, as ADR 0042 built it: NOT behind auth.Middleware, unlike
+	// /cards/. It was gated for a while because the repo described
+	// itself as private, and that gate became a Discord-membership gate
+	// on Scryfall data once sign-up needed a role on the C2 server (ADR
+	// 0156). Scryfall's guidelines rule that out, so the catalogue is
+	// open again (S70, #2985).
 	//
 	// catalog.Handler's own doc explains why its image route is scoped
 	// to registered cards rather than proxying all ~35k Scryfall UUIDs;
-	// that scoping still matters, since a session is cheap to obtain.
-	// Both patterns are more specific than "/", so the lobby catch-all
-	// below does not shadow them.
-	mux.Handle("GET /catalog", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
-	mux.Handle("/catalog/", auth.Middleware(authenticator)(catalog.Handler(cardIdx, imgCache)))
+	// that scope is what makes the route safe to leave open. /cards/
+	// is the general proxy and keeps its session. Both patterns are
+	// more specific than "/", so the lobby catch-all below does not
+	// shadow them.
+	mux.Handle("GET /catalog", catalog.Handler(cardIdx, imgCache))
+	mux.Handle("/catalog/", catalog.Handler(cardIdx, imgCache))
 	// The engine roadmap: what the engine supports, keyword by keyword
 	// and seam by seam (ADR 0092).
 	//
-	// Deliberately NOT behind auth.Middleware, unlike /catalog above.
+	// Deliberately NOT behind auth.Middleware, like /catalog above.
 	// ADR 0092 Decision 1: the roadmap carries card NAMES and caveat
 	// sentences this repo wrote, and never card art, an image URL, a
-	// Scryfall printing ID or oracle text, so it does not reopen the
-	// question the catalog's gate answers. roadmap's handler tests fail
+	// Scryfall printing ID or oracle text. roadmap's handler tests fail
 	// if any of those keys reaches the body. If you want to add one,
 	// it belongs on the catalog, not here.
 	//

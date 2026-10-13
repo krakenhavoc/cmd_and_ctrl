@@ -82,7 +82,7 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
   }
 
   it("sends a signed-out visitor on a gated route to #/login", () => {
-    for (const hash of ["#/lobby", "#/games/g1", "#/catalog", "#/my-games"]) {
+    for (const hash of ["#/lobby", "#/games/g1", "#/my-games"]) {
       expect(routeRedirect(parseHash(hash), null)).toBe("#/login");
     }
   });
@@ -92,6 +92,16 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
   // a visitor to the front page and a session to the Lobby.
   it("keeps a signed-out visitor on the front page, the gate page and the practice door", () => {
     for (const hash of ["", "#/", "#/request-access", "#/request-access?retry=1", "#/practice"]) {
+      const r = parseHash(hash);
+      expect(isPublicRoute(r)).toBe(true);
+      expect(routeRedirect(r, null)).toBeNull();
+    }
+  });
+
+  // S70 (#2985): the catalogue is public, search query and all, so card
+  // data never sits behind the Discord gate.
+  it("keeps a signed-out visitor on the catalogue", () => {
+    for (const hash of ["#/catalog", "#/catalog?q=Sol%20Ring"]) {
       const r = parseHash(hash);
       expect(isPublicRoute(r)).toBe(true);
       expect(routeRedirect(r, null)).toBeNull();
@@ -291,7 +301,7 @@ describe("the admin views' gate (ADR 0124 §7)", () => {
   });
 
   it("stores nothing for any other gated route", () => {
-    for (const hash of ["#/lobby", "#/catalog", "#/my-games", "#/games/g1"]) {
+    for (const hash of ["#/lobby", "#/my-games", "#/games/g1"]) {
       expect(returnRouteFor(parseHash(hash), null, hash)).toBeNull();
     }
   });

@@ -246,7 +246,7 @@ test.describe("first-use hints", () => {
         dismissWith: "Not now",
       });
 
-      // The catalogue needs a session; the guest's will do.
+      // The catalogue is public (S70); the guest session is incidental.
       await pageCycle(page, {
         url: "/#/catalog",
         title: "Every card the game plays",

@@ -58,6 +58,8 @@ Owner answers 1–3 and 7.
 
 6. **What the gate covers.** Only accounts: signing in, and therefore creating tables, My games, the deck library, synced settings and the catalog. Guests seated by a host's invite, spectator links, seat reclaim and the public pages are unchanged.
 
+   **Amendment (2026-10-13, S70 [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)): the catalog is not gated.** Scryfall's guidelines forbid putting its data behind a chat-server membership, so `GET /catalog`, its image route and `#/catalog` are public ([ADR 0042](0042-card-catalog-page.md)'s amendment). The header shows Catalog signed out too.
+
 7. **Admin view.** Accounts (ADR 0124) shows, per person, when the role was last confirmed and the result of the last check ("admitted", "refused: not a member", "refused: no role", "unchecked"). A new nullable `users.access_checked_at` and `users.access_result` hold it (one additive migration). A refused sign-in writes nothing, per item 4, so the view only ever shows people who once had an account.
 
 #### The C2 server's roles

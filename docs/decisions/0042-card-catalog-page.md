@@ -4,6 +4,7 @@
 **Date:** 2026-09-11
 **Sprint:** Post-S30 — Rolling deck-driven catalog growth
 **Issue:** [#410](https://github.com/krakenhavoc/cmd_and_ctrl/issues/410); follow-up to [#338](https://github.com/krakenhavoc/cmd_and_ctrl/issues/338) / [#350](https://github.com/krakenhavoc/cmd_and_ctrl/issues/350)
+**Amended (2026-10-13, S70 [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)):** the catalogue was later put behind a session, and once sign-up needed a role on the C2 Discord ([ADR 0156](0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)) that became a chat-server gate on Scryfall data, which Scryfall's guidelines forbid. Both routes and `#/catalog` are public again, as this ADR first decided.
 
 ## Context
 

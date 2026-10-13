@@ -20,16 +20,13 @@ import (
 //	GET /catalog              — every automated card + its completeness
 //	GET /catalog/image/{id}   — card art, for catalog cards only
 //
-// # These routes need a session
+// # These routes are public
 //
-// main.go mounts both behind auth.Middleware, like /cards/. They were
-// built unauthenticated as a public showcase, and are gated because
-// AGENTS.md §1 and §8 describe the project as private and personal-use:
-// serving card art to anonymous visitors is a different posture from
-// the one the repository states. main.go's comment at the mount is the
-// record; check there before assuming otherwise. The public roadmap
-// (internal/roadmap, ADR 0092) is the page that answers "what does the
-// engine do?" without a session, and it publishes card names only.
+// main.go mounts both without auth.Middleware, unlike /cards/ (ADR
+// 0042). Sign-up needs a role on the C2 Discord server (ADR 0156), and
+// Scryfall's guidelines forbid gating its data behind a chat server, so
+// a signed-out visitor must be able to browse the catalogue. main.go's
+// comment at the mount is the record; check there before gating it.
 //
 // The handler itself stays free of session state. Everything served
 // here is derived from the Scryfall bulk dump and this repository's own
@@ -46,8 +43,8 @@ import (
 // This route accepts only the representative printing of a card the
 // catalog registers — a few hundred UUIDs, fixed at build time and
 // already published by GET /catalog. That is exactly the set the page
-// renders and nothing beyond it, which still matters behind the session
-// gate, since a session is cheap to obtain. It reuses the same
+// renders and nothing beyond it, which is what lets the route stay open
+// to anyone. It reuses the same
 // ImageCache, so the two routes share one disk cache and one
 // SSRF-guarded fetch path rather than growing a second.
 //

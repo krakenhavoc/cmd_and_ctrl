@@ -31,8 +31,7 @@ export type Route =
   | { name: "requestAccess"; retry?: true }
   // The public roadmap (PR 2 of the same plan): what the rules engine
   // automates today, what's partial, what's missing, and what's next.
-  // Public like /catalog was meant to be closed — see ADR 0092 for why
-  // this one is the opposite call.
+  // Public, like the catalogue (ADR 0092).
   | { name: "roadmap" }
   // The privacy notice (#2983, ADR 0149): what is stored, why, for how
   // long, who it is shared with, and how a signed-in person deletes
@@ -82,11 +81,9 @@ export type Route =
   | { name: "reclaim"; gameID: string; ticket: string }
   | { name: "game"; gameID: string }
   // The card catalogue: every card the engine automates, and how
-  // completely. Session-gated, like the server's /catalog route —
-  // it was built as an anonymous showcase and deliberately closed,
-  // because AGENTS.md §1/§8 describe this project as private and
-  // personal-use and serving card art to signed-out visitors is a
-  // different posture from the one the repo states.
+  // completely. Public, like the server's /catalog route (ADR 0042):
+  // with sign-up gated on a Discord role (ADR 0156), a session here
+  // would put Scryfall data behind a chat server (S70, #2985).
   //
   // `query` is #/catalog?q=<text>, which pre-fills the search box. The
   // roadmap links a signed-in viewer's example card names here.

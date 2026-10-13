@@ -1,13 +1,10 @@
 <script lang="ts">
   // Catalog — the list of every card this engine automates.
   //
-  // Signed-in only. The server mounts GET /catalog behind
-  // auth.Middleware (main.go says why: the repository describes itself
-  // as private and personal-use, and this page serves card art), and
-  // App.svelte's auth effect does not list "catalog" as a public route,
-  // so a signed-out visitor is sent to /login. It is not behind the dev
-  // gate: it ships in production. The public page about what the engine
-  // supports is the roadmap (ADR 0092), which carries card names only.
+  // Public (ADR 0042). The server mounts GET /catalog without a session
+  // and signedInHome.ts lists "catalog" as a public route: sign-up needs
+  // a role on the C2 Discord (ADR 0156), and Scryfall's guidelines rule
+  // out putting card data behind a chat server (S70, #2985).
   //
   // The page's one job is to be honest. A card is shown as Complete
   // only where a human declared it so in the card file; anything
