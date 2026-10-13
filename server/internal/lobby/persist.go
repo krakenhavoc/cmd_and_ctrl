@@ -269,12 +269,17 @@ type legacyImporter interface {
 //  3. Each restored room is paired with its games and seats rows. A
 //     room with no row is dropped and unregistered — a game nobody
 //     can produce an invite for is not a game.
+//  4. Any unfinished row still without a room is marked ended.
 //
-// Rows whose game did not come back are kept. A finished game has no
-// restore point by design (ws.Room drops it at the end), and its row
-// is the history "my games" reads (ADR 0051 decision 4). ADR 0041
-// pruned the equivalent files; that is the one behaviour this does not
-// carry over.
+// Rows whose game did not come back are kept, and so is a finished
+// game's: it has no restore point by design (ws.Room drops it at the
+// end) and its row is the history "my games" reads (ADR 0051 decision
+// 4). But a row still saying lobby or active with no room behind it is
+// a table nobody can reach, so step 4 marks it ended (#2987): the
+// process died before the table's first restore point was written, or
+// the file was unusable, or it would not pair with its row. The one
+// exception is a restore point left on disk for a roll-forward
+// (schema_too_new, unknown_effect_key), whose row is left alone.
 //
 // A store that is not durable has no metadata to pair with, so the
 // restore is skipped and the restore points are left untouched on
@@ -315,7 +320,18 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 	ws.LogRestoreSummary(log, outcomes)
 
 	restored := 0
+	// Games whose restore point stays on disk for a roll-forward keep
+	// their rows as they are; so does every row if a file could not be
+	// read at all (it names no game, so no row can be ruled out).
+	keep := map[uuid.UUID]bool{}
+	unattributable := false
 	for _, o := range outcomes {
+		if keepsRestorePointForRollForward(o) {
+			keep[o.GameID] = true
+		}
+		if o.Reason == ws.ReasonReadError {
+			unattributable = true
+		}
 		if !o.Restored() {
 			continue
 		}
@@ -362,6 +378,14 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 			log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
 		}
 		restored++
+	}
+
+	// Whatever the database calls unfinished and the lobby does not
+	// hold now is unreachable: retire the row (#2987).
+	if unattributable {
+		log.Warn("a restore point could not be read; leaving unrestored game rows as they are this boot")
+	} else if n := l.closeUnresidentRows(log, keep); n > 0 {
+		log.Warn("closed game rows the restore pass did not bring back", "games", n)
 	}
 
 	if restored > 0 {
