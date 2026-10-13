@@ -277,7 +277,7 @@ func TestB31LeoninWarleaderAttacksWithTwoLifelinkCats(t *testing.T) {
 	if n := triggersOnStackFrom(g, warleader); n != 1 {
 		t.Fatalf("one attack trigger, got %d", n)
 	}
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	cats := battlefieldIDsNamed(g, "Cat")
 	if len(cats) != 2 {
 		t.Fatalf("%d Cats, want 2", len(cats))

@@ -317,6 +317,16 @@ type Characteristic struct {
 	// not, because the effect is High Ground's.
 	AdditionalBlocks int  `json:",omitempty"`
 	BlocksAnyNumber  bool `json:",omitempty"`
+
+	// DamageByToughness is "assigns combat damage equal to its toughness
+	// rather than its power" (CR 510.1c, Ghalta the Immovable, Doran the
+	// Siege Tower): when it is set and the creature's toughness is
+	// greater than its power, combatDamagePower answers with the
+	// toughness. A fact about HOW damage is assigned, not a number a
+	// layer computes, so it is only ever set, by a static that says so.
+	// The combat damage pass reads it through combatDamagePower, once,
+	// when it snapshots every combatant's amount.
+	DamageByToughness bool `json:",omitempty"`
 }
 
 // printedCharacteristic builds a Characteristic from the card's

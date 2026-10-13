@@ -53,7 +53,7 @@ func TestFraCreatureBCardsAreRegistered(t *testing.T) {
 		rfcbGalliaTragicHost:      {"Gallia, Tragic Host", CompletenessFull},
 		rfcbGalliaMerrymaker:      {"Gallia, the Merrymaker", CompletenessFull},
 		rfcbGeistOfSaintThalia:    {"Geist of Saint Thalia", CompletenessFull},
-		rfcbGhaltaImmovable:       {"Ghalta the Immovable", CompletenessCaveats},
+		rfcbGhaltaImmovable:       {"Ghalta the Immovable", CompletenessFull},
 		rfcbGhaltaUnstoppable:     {"Ghalta the Unstoppable", CompletenessFull},
 		rfcbGinger:                {"Ginger, Queen of Sweets", CompletenessFull},
 		rfcbGraftSurgeon:          {"Graft Surgeon", CompletenessFull},

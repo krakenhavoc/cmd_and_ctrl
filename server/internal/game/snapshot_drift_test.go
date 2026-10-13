@@ -829,6 +829,7 @@ var delayedTriggerFields = plan(
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
 	"Repeats", carried, "", // #2169, CR 603.7b
+	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
 )

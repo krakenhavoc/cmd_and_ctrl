@@ -1050,7 +1050,7 @@ func TestB21GeneralKreatMakesAnAttackingGoblinAndPingsPerCreature(t *testing.T) 
 	if n := triggersOnStackFrom(g, kreat); n != 1 {
 		t.Fatalf("one or more Goblins attack: 1 trigger, got %d", n)
 	}
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	tokens := battlefieldIDsNamed(g, "Goblin")
 	var token uuid.UUID
 	for _, id := range tokens {
@@ -1094,8 +1094,8 @@ func TestB21GeneralKreatMakesAnAttackingGoblinAndPingsPerCreature(t *testing.T) 
 	if triggersOnStackFrom(g, kreat) != 0 {
 		t.Error("a Bear attacking is not a Goblin attacking")
 	}
-	if spec, _ := Lookup(b21GeneralKreatOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the defender-choice gap must be declared")
+	if spec, _ := Lookup(b21GeneralKreatOracle); spec.Completeness != CompletenessFull {
+		t.Error("the controller chooses what the token attacks: nothing is left to declare")
 	}
 }
 

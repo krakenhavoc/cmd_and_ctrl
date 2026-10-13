@@ -45,7 +45,7 @@ func TestB28BrimazAttackTokenFollowsARepointedAttacker(t *testing.T) {
 	brimaz := b12Push(g, me.ID, "Brimaz, King of Oreskos", "Legendary Creature — Cat Soldier", b28BrimazOracle, 3, 4)
 
 	repointAttack(t, g, brimaz, first.ID, second.ID)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 
 	if got := b28TokensNamed(g, me.ID, "Cat Soldier"); got != 1 {
 		t.Fatalf("a re-point is one attack, so one Cat Soldier: %d", got)

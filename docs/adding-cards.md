@@ -8620,6 +8620,36 @@ the offer replaces the mana cost; casting for the printed cost stays sorcery-spe
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
+### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
+
+Five shapes that used to be caveats; the engine pieces are in the 2026-10-13 amendments of
+[ADR 0026](decisions/0026-delayed-triggers.md), [ADR 0043](decisions/0043-copy-effects.md) and
+[ADR 0045](decisions/0045-combat-restrictions.md).
+
+```go
+Static: []game.StaticAbility{AttackingCreaturesHave("Attacking creatures you control have double strike.", nil, "double strike")}
+CreateTokensAttackingYourChoice{Template: tmpl, N: 2, Tapped: true, Prefer: triggerAttackTarget(item), Label: "Hero of Bladehold"}
+g.CreateTokensBlockingForEffect(item.Controller, tmpl, 1, item.Trigger.Event.Target)              // Brimaz's blocking Cat
+DelayedOnEvent{On: []game.EventKind{game.EventAttack}, Condition: youAttackCondition, Body: body, Repeats: true, OncePerBatch: true}
+OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+    return instantOrSorceryCastOrCopiedByYou(ev, source, g)
+}, "label", effect)                                                                               // cast OR copy
+c.DamageByToughness = true                                                                        // in a layer 6 Apply: Ghalta
+```
+
+- **"Attacking creatures you control have X" is a static**, not an attack trigger: `AttackingCreaturesHave` gates on
+  `Card.AttackingTarget` and declares `DependsOnAttackingStatus`, so the layer cache is rebuilt as attackers are declared,
+  put onto the battlefield attacking, pulled out of combat, or combat ends. A trigger granting the keyword until end of turn
+  misses a token that enters attacking and keeps the keyword after combat. `match` narrows the creatures (Vampires, tokens).
+- **"Tapped and attacking" with no player named** is `CreateTokensAttackingYourChoice`, never `CreateTokensAttackingForEffect`
+  with a fixed defender. `triggerAttackTarget(item)` is what the attacker that fired the trigger attacked, for `Prefer`. A test
+  that makes such tokens uses `passAndSettleAttackSplit`, which answers each "how many attack whom" prompt with its goal.
+- **"Whenever you attack this turn"** is a repeating delayed trigger with `OncePerBatch`, not a trigger on the land or
+  creature that set it up: it outlives its source.
+- **Magecraft is cast or copy.** A cast-only trigger (Guttersnipe) keeps `instantOrSorceryCastByYou`.
+- **A caveat can be wrong.** Drana, Liberator of Malakir said her counters landed after regular damage; the first-strike step
+  has been a real step with a priority window since #717, and the existing test already proved the printed behaviour.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`
@@ -8637,3 +8667,4 @@ reading the `CardDef` and are not set by the catalog any more.
 [ADR 0010](decisions/0010-card-effect-catalog.md) captures every
 architectural decision and sandbox simplification the catalog was built
 around. Start there.
+

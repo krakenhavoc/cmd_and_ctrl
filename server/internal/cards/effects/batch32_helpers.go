@@ -403,30 +403,17 @@ func b32DestroyChosenIfControlledByTriggerVictim(g *game.Game, item *game.StackI
 // b32NeyaliLabel is the stack label of Neyali's attack trigger —
 // the "one or more" dedup keys on it, and so does the exile-permission
 // walk that finds the cards earlier resolutions of it exiled.
-const b32NeyaliLabel = "Neyali, Suns' Vanguard — attacking tokens have double strike; exile the top card"
+const b32NeyaliLabel = "Neyali, Suns' Vanguard — exile the top card"
 
-// b32NeyaliAttack is Neyali, Suns' Vanguard's attack body, both
-// printed sentences on one stack item:
-//
-//   - every attacking creature token the controller controls gains
-//     double strike until end of turn (the static's stand-in — an
-//     attack declaration does not rebuild the layer cache, so a
-//     static that read "attacking" would not see it);
-//   - if a token is attacking a PLAYER, the top card of the
-//     controller's library is exiled with permission to play it this
-//     turn, and every card an earlier resolution of this trigger
-//     exiled that is still in exile is re-granted for this turn —
-//     which is "during any turn you attacked with a token", read as
-//     "any turn this trigger resolved".
+// b32NeyaliAttack is Neyali, Suns' Vanguard's attack body, the trigger
+// sentence (the "attacking tokens have double strike" sentence is a
+// layer 6 static on the card): if a token is attacking a PLAYER, the
+// top card of the controller's library is exiled with permission to
+// play it this turn, and every card an earlier resolution of this
+// trigger exiled that is still in exile is re-granted for this turn —
+// which is "during any turn you attacked with a token", read as "any
+// turn this trigger resolved".
 func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (GrantKeywordUntilEOT{
-		Match:    b32AttackingTokenYouControl,
-		Keywords: []string{"double strike"},
-		Label:    "Neyali, Suns' Vanguard — attacking tokens have double strike",
-	}).Apply(ctx); err != nil {
-		return err
-	}
 	if !b32TokenYouControlAttacksAPlayer(g, item.Controller) {
 		return nil
 	}

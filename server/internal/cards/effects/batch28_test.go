@@ -846,7 +846,7 @@ func TestB28BrimazMakesAnAttackingCatAndABlockingOne(t *testing.T) {
 	assertKeywords(t, g, brimaz, "vigilance")
 	before := opp.Life
 	declareAttack(t, g, opp.ID, brimaz)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	if got := b28TokensNamed(g, me.ID, "Cat Soldier"); got != 1 {
 		t.Fatalf("one Cat Soldier: %d", got)
 	}
@@ -880,8 +880,32 @@ func TestB28BrimazMakesAnAttackingCatAndABlockingOne(t *testing.T) {
 	if got := b28TokensNamed(g, me.ID, "Cat Soldier"); got != 2 {
 		t.Errorf("a second Cat Soldier for the block: %d", got)
 	}
-	if spec, _ := Lookup(b28BrimazOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the not-blocking token is a declared gap")
+	// The second Cat Soldier is put onto the battlefield BLOCKING the
+	// raider (CR 506.3d), not an untapped bystander.
+	var blocker *game.Card
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Name == "Cat Soldier" && IsToken(*c) && c.BlockingTarget != uuid.Nil {
+			blocker = c
+		}
+	}
+	if blocker == nil || blocker.BlockingTarget != raider {
+		t.Fatalf("the Cat Soldier Brimaz makes when it blocks should be blocking the raider: %+v", blocker)
+	}
+	if n := triggersOnStackFrom(g, brimaz); n != 0 || len(g.PendingTriggers) != 0 {
+		t.Error("a token put onto the battlefield blocking was never declared a blocker")
+	}
+	life := me.Life
+	advanceTo(t, g, game.StepCombatDamage)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(raider) {
+		t.Error("Brimaz (3) and the blocking Cat Soldier (1) kill the 2/2 raider")
+	}
+	if me.Life != life {
+		t.Errorf("the raider was blocked: the defender took %d", life-me.Life)
+	}
+	if spec, _ := Lookup(b28BrimazOracle); spec.Completeness != CompletenessFull {
+		t.Error("Brimaz works as printed")
 	}
 }
 

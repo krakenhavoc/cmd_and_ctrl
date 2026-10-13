@@ -64,21 +64,23 @@ func sacrificeThisAtEndOfCombat(label string) Effect {
 // player the enchanted creature was declared against (carried on
 // item.Params.Player), sacrificed at end of combat.
 func dorotheasRetributionSpirit(g *game.Game, item *game.StackItem) error {
-	tmpl := TokenCard("4/4 white Spirit with flying")
-	tmpl.Tapped = true
-	cursor := b25LastEventSeq(g)
-	if err := g.CreateTokensAttackingForEffect(item.Controller, tmpl, 1, item.Params.Player); err != nil {
-		return err
-	}
-	tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
-	if len(tokens) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		At:    game.StepEndCombat,
-		Label: "Dorothea's Retribution — sacrifice the Spirit",
-		Cards: tokens,
-		Body:  sacrificeListedCardsBody,
+	return CreateTokensAttackingYourChoice{
+		Template: TokenCard("4/4 white Spirit with flying"),
+		N:        1,
+		Tapped:   true,
+		Prefer:   triggerAttackTarget(item),
+		Label:    "Dorothea's Retribution",
+		Then: func(ctx *Context, created []uuid.UUID) error {
+			if len(created) == 0 {
+				return nil
+			}
+			return ScheduleDelayedTrigger{
+				At:    game.StepEndCombat,
+				Label: "Dorothea's Retribution — sacrifice the Spirit",
+				Cards: created,
+				Body:  sacrificeListedCardsBody,
+			}.Apply(ctx)
+		},
 	}.Apply(NewContext(g, item))
 }
 

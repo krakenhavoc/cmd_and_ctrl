@@ -205,3 +205,5 @@ option option-pick/villainous-midnight-crusader-shuttle
 option option-pick/villainous-missy
 option option-pick/villainous-the-master-gallifreys-end
 body dash/return
+body dalkovan-encampment/warriors
+condition attack/you-attack

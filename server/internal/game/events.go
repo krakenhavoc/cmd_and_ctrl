@@ -293,6 +293,18 @@ const (
 	// happened. Added in S16.5 (#159).
 	EventCopyApplied EventKind = "copy_applied"
 
+	// EventSpellCopied — a spell was COPIED (CR 707.10): the copy is a
+	// new spell on the stack that was created, not cast, so it fires no
+	// EventCast. Actor is the copy's controller, CardID is the copy and
+	// Source the spell it copies. It exists for "whenever you cast OR
+	// COPY an instant or sorcery spell" (magecraft: Archmage Emeritus,
+	// Storm-Kiln Artist, Sedgemoor Witch), which watches this beside
+	// EventCast. A copy of an ABILITY (CR 707.10) is not a spell and
+	// emits nothing here. Emitted by createSpellCopyLocked, after the
+	// copy is on the stack. The log says nothing: the copy is on the
+	// stack the table is looking at.
+	EventSpellCopied EventKind = "spell_copied"
+
 	// EventStorm — a storm trigger resolved and settled on its count
 	// (CR 702.40a). Actor is the player who cast the storm spell,
 	// Source and CardID are that spell, and Amount is how many other

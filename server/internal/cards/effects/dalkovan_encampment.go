@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Dalkovan Encampment — Land (EDHREC rank 3484):
 //
@@ -17,38 +21,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // controlled by the land's controller); the mana ability is a plain
 // {W}.
 //
-// The activated ability creates a delayed triggered ability — "this
-// turn" — and the engine has no registry for one, so the land
-// carries the trigger itself and gates it on the activation: the
-// attack trigger watches EventAttack for an attack by the
-// controller's creatures, once per combat ("whenever you attack" is
-// one trigger however many creatures were declared — the per-label
-// "one or more" dedup), and fires only when the ability has resolved
-// this turn, read off the per-turn tally's resolution count.
-// Two activations are two delayed triggers and four Warriors, which
-// is what the count buys. The Warriors enter tapped and attacking
-// the player the first declared attacker was declared against
-// (captured from the event); the tokens' IDs are read back off the
-// token-created events and handed to a delayed trigger that
-// sacrifices them at the beginning of the next end step.
-//
-// Two shape notes, weaker than printed and never stronger:
-//
-//   - The trigger lives on the land, so an Encampment that leaves
-//     the battlefield after being activated makes no Warriors; the
-//     printed delayed trigger would still fire.
-//   - The Warriors attack the player the first attacker was declared
-//     against rather than a player of the controller's choice (CR
-//     508.4). No prompt exists for that choice; the tokens' target is
-//     the attack the controller just made.
+// The activated ability creates a delayed triggered ability (CR 603.7):
+// "whenever you attack this turn" is DelayedOnEvent{Repeats,
+// OncePerBatch} watching EventAttack for the controller's creatures. It
+// is not tied to the land, so a land that leaves the battlefield after
+// being activated still makes its Warriors; it fires once per attack
+// declaration however many creatures were declared (CR 603.2c), and two
+// activations are two delayed triggers and four Warriors. The Warriors
+// enter tapped and attacking, and the controller chooses what each
+// attacks (CR 508.4, CreateTokensAttackingYourChoice, the first
+// declared attacker's target asked first); the tokens' IDs go to a
+// delayed trigger that sacrifices them at the beginning of the next end
+// step. No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "33a90122-7280-4481-9b97-5879194cae40",
 		Name:         "Dalkovan Encampment",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Warrior tokens attack the same player as your first declared attacker rather than a player of your choice, and the ability does nothing if the land has left the battlefield by the time you attack.",
-		},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			SelfEntersTappedUnless(youControlLandTyped("Swamp", "Mountain")),
 		},
@@ -61,20 +50,49 @@ func init() {
 			Label:   b33DalkovanEncampmentLabel,
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    Plus(ManaCost("{2}{W}"), TapCost()),
-			// The ability's whole effect is the delayed trigger the
-			// land's own attack trigger stands in for; resolving it
-			// only records the resolution the trigger counts.
-			Effect: func(_ *game.Game, _ *game.StackItem) error { return nil },
-		}},
-		Triggered: []game.TriggeredAbility{{
-			OncePerBatch: true,
-			Watches:      []game.EventKind{game.EventAttack},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclaredByYou(ev, source.Controller) &&
-					b33ResolutionsThisTurn(g, source.InstanceID, b33DalkovanEncampmentLabel) > 0
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DelayedOnEvent{
+					Label:        b33DalkovanAttackLabel,
+					On:           []game.EventKind{game.EventAttack},
+					Condition:    youAttackCondition,
+					Body:         dalkovanWarriorsBody,
+					Repeats:      true,
+					OncePerBatch: true,
+				}.Apply(NewContext(g, item))
 			},
-			Key:    b33DalkovanAttackLabel,
-			Effect: b33DalkovanWarriors,
 		}},
 	})
+}
+
+var (
+	// youAttackCondition is "whenever you attack": an EventAttack for a
+	// creature the trigger's controller controls.
+	youAttackCondition = game.DelayedCondition("attack/you-attack",
+		func(ev game.Event, dt *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
+			return ev.Kind == game.EventAttack && ev.Actor == dt.Controller
+		})
+
+	dalkovanWarriorsBody = game.SimpleDelayedBody("dalkovan-encampment/warriors", dalkovanWarriors)
+)
+
+// dalkovanWarriors is the delayed trigger's body: two tapped and
+// attacking 1/1 red Warriors, sacrificed at the next end step.
+func dalkovanWarriors(g *game.Game, item *game.StackItem) error {
+	return CreateTokensAttackingYourChoice{
+		Template: b33TappedAttackingRedWarrior(),
+		N:        2,
+		Tapped:   true,
+		Prefer:   triggerAttackTarget(item),
+		Label:    "Dalkovan Encampment",
+		Then: func(ctx *Context, created []uuid.UUID) error {
+			if len(created) == 0 {
+				return nil
+			}
+			return ScheduleDelayedTrigger{
+				Label: "Dalkovan Encampment — sacrifice the Warriors",
+				Cards: created,
+				Body:  sacrificeListedCardsBody,
+			}.Apply(ctx)
+		},
+	}.Apply(NewContext(g, item))
 }
