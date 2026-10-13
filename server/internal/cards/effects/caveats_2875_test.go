@@ -74,12 +74,13 @@ func TestCultivateWithOneBasicLetsYouChooseHandOrBattlefield(t *testing.T) {
 
 			castCatalogSpell(t, g, tc.card, "Sorcery", tc.oracle, nil)
 			passPriorityAroundTable(t, g)
-			ask := latestChoiceOfKind(g, game.PendingChoiceConfirm)
-			if ask == nil {
-				t.Fatal("no battlefield-or-hand question for a lone basic land")
-			}
-			if err := g.ResolveConfirm(ask.ID, me.ID, tc.toBattlefield); err != nil {
-				t.Fatalf("ResolveConfirm: %v", err)
+			// #2942: the lone basic is offered for the battlefield
+			// first and, if declined, for the hand.
+			if tc.toBattlefield {
+				answerSearchByID(t, g, me.ID, forest)
+			} else {
+				answerSearchFailToFind(t, g, me.ID)
+				answerSearchByID(t, g, me.ID, forest)
 			}
 			if got := g.Battlefield.Contains(forest); got != tc.toBattlefield {
 				t.Errorf("on the battlefield: got %v, want %v", got, tc.toBattlefield)

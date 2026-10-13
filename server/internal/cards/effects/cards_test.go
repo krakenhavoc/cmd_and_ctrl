@@ -1122,6 +1122,8 @@ func TestCultivateFetchesOneToFieldOneToHand(t *testing.T) {
 	// is answered — by which point one Forest is left, so there is
 	// nothing to decide and it takes it without a second prompt.
 	answerSearchByID(t, g, caster.ID, forest1)
+	// #2942: the hand half is optional too, so it asks.
+	answerSearchByID(t, g, caster.ID, forest2)
 
 	// Two basics moved out of the library.
 	onField := g.Battlefield.Contains(forest1) || g.Battlefield.Contains(forest2)
@@ -1162,6 +1164,8 @@ func TestCultivateFindsSnowCoveredBasic(t *testing.T) {
 	)
 	passPriorityAroundTable(t, g)
 	answerSearchByID(t, g, caster.ID, forest1)
+	// #2942: the hand half is optional too, so it asks.
+	answerSearchByID(t, g, caster.ID, forest2)
 
 	onField := g.Battlefield.Contains(forest1) || g.Battlefield.Contains(forest2)
 	inHand := caster.Hand.Contains(forest1) || caster.Hand.Contains(forest2)

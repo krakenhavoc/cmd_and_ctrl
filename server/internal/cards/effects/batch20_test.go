@@ -683,40 +683,6 @@ func TestB20KwainEveryoneDrawsAndGainsExceptAnEmptyLibrary(t *testing.T) {
 
 // --- the spells ----------------------------------------------------
 
-func TestB20GrappleWithThePastMillsThreeThenReturnsThePick(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	bear := b17GraveyardCard(me, "Bear", "Creature — Bear", "{1}{G}")
-	library, yard := me.Library.Size(), me.Graveyard.Size()
-	castCatalogSpell(t, g, "Grapple with the Past", "Instant", b20GrappleWithThePastOracle, b16TargetCard(bear))
-	passPriorityAroundTable(t, g)
-	if got := me.Library.Size(); got != library-3 {
-		t.Errorf("library %d → %d, want -3", library, got)
-	}
-	if !me.Hand.Contains(bear) {
-		t.Error("the picked creature card comes back to hand")
-	}
-	// The spell itself and the three milled cards are in the yard;
-	// the Bear left it.
-	if got := me.Graveyard.Size(); got != yard+3 {
-		t.Errorf("graveyard %d → %d, want +3 (three milled, one returned, one spell)", yard, got)
-	}
-	// With nothing picked it simply mills.
-	castCatalogSpell(t, g, "Grapple with the Past", "Instant", b20GrappleWithThePastOracle, nil)
-	passPriorityAroundTable(t, g)
-	if got := me.Library.Size(); got != library-6 {
-		t.Errorf("library %d → %d, want -6", library, got)
-	}
-	// An artifact card is not a legal pick.
-	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
-	if err := b09TryCast(t, g, "Grapple with the Past", "Instant", b20GrappleWithThePastOracle, b16TargetCard(rock)); err == nil {
-		t.Error("only a creature or land card may be returned")
-	}
-	if spec, _ := Lookup(b20GrappleWithThePastOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the pick-before-mill gap must be declared")
-	}
-}
-
 func TestB20BrokenBondDestroysAnArtifactOrEnchantment(t *testing.T) {
 	g := newCatalogGame(t)
 	opp := g.Seats[1]

@@ -408,7 +408,7 @@ func TestKodamasReachSplitsFieldAndHand(t *testing.T) {
 	caster := g.Seats[0]
 	handBefore := caster.Hand.Size()
 	f1 := pushLibraryCardForTest(caster, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
-	pushLibraryCardForTest(caster, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
+	f2 := pushLibraryCardForTest(caster, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
 
 	castCatalogSpell(t, g, "Kodama's Reach", "Sorcery — Arcane", kodamasReachOracle, nil)
 	passPriorityAroundTable(t, g)
@@ -416,6 +416,8 @@ func TestKodamasReachSplitsFieldAndHand(t *testing.T) {
 	// hand half is chained off it and finds one remaining Forest —
 	// no decision, so no second prompt.
 	answerSearchByID(t, g, caster.ID, f1)
+	// #2942: the hand half is optional too, so it asks.
+	answerSearchByID(t, g, caster.ID, f2)
 
 	// One basic onto the battlefield tapped, one into hand. Hand is
 	// +1 net: the Kodama's Reach card itself left for the graveyard.
