@@ -251,12 +251,15 @@
     flex-direction: column;
     gap: 26px;
   }
+  /* The shared section head (the display face), as About's and the roadmap's. */
   h2 {
     margin: 0 0 10px;
-    font-size: 18px;
-    letter-spacing: -0.01em;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.005em;
     text-transform: none;
-    color: var(--accent);
+    color: var(--fg);
   }
   h3 {
     margin: 0 0 6px;

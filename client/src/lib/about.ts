@@ -4,9 +4,6 @@
 /** The hash route of the About page. */
 export const ABOUT_HASH = "#/about";
 
-/** The C2 community Discord server's permanent invite (never expires, no use limit). */
-export const DISCORD_INVITE_URL = "https://discord.gg/z7x9Ehpnjw";
-
 export const REPO_URL = "https://github.com/krakenhavoc/cmd_and_ctrl";
 export const ISSUES_URL = `${REPO_URL}/issues`;
 /** ADR 0033's 2026-10-12 amendment: hosted model spend is capped, switchable, never sold. */
