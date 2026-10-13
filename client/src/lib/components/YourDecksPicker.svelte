@@ -2,15 +2,17 @@
   import { onMount } from "svelte";
   import { fetchMyDecks, seatLibraryDeck, type UploadDeckResponse } from "../api";
   import { LobbyApiError, session, type ApiViolation } from "../session";
-  import { coverageLine, deckSubtitle, isSignedIn, type MyDeckInfo } from "../myDecks";
+  import { coverageDetail, coverageLine, isSignedIn, type MyDeckInfo } from "../myDecks";
   import { preselectFor, type LastDeck } from "../lastDeck";
+  import { libraryRow } from "../deckPicker";
+  import DeckRadioList from "./DeckRadioList.svelte";
   import Icon from "./Icon.svelte";
 
   // YourDecksPicker is the deck-library half of the deck panel (ADR
   // 0051 decision 7, S34 sub-PR 5): pick a deck you've pasted before
   // and seat it again without re-pasting. Sits inside DeckUploadForm,
   // above the paste box, next to PrebuiltDeckPicker — same shape
-  // (radio list + one button), on purpose, so a player who has used
+  // (DeckRadioList + one button), on purpose, so a player who has used
   // one already knows how to use the other.
   //
   // Renders nothing for anyone without a user_id (see myDecks.
@@ -40,6 +42,10 @@
   let seated = $state("");
 
   const current = $derived(decks.find((d) => d.id === selected));
+  const rows = $derived(decks.map(libraryRow));
+  const detail = $derived(
+    current ? [coverageLine(current), coverageDetail(current)].filter(Boolean).join(" · ") : "",
+  );
 
   // Preselect the last deck once both the list and the last deck are
   // in, unless the player has already picked one themselves.
@@ -107,35 +113,24 @@
   <div class="your-decks">
     <p class="lede">Your decks — seat one without pasting it again.</p>
 
-    <ul class="decks">
-      {#each decks as deck (deck.id)}
-        <li>
-          <label class="deck" class:sel={selected === deck.id}>
-            <input
-              type="radio"
-              name="your-deck"
-              value={deck.id}
-              bind:group={selected}
-              onchange={() => (touched = true)}
-            />
-            <span class="body">
-              <span class="name">{deck.name}</span>
-              <span class="sub">{deckSubtitle(deck)}</span>
-              {#if coverageLine(deck)}
-                <span class="cov">{coverageLine(deck)}</span>
-              {/if}
-            </span>
-          </label>
-        </li>
-      {/each}
-    </ul>
+    <DeckRadioList
+      {rows}
+      name="your-deck"
+      bind:selected
+      filterLabel="filter your decks"
+      onpick={() => (touched = true)}
+    />
+
+    {#if current && detail}
+      <p class="detail"><b>{current.name}</b>: {detail}.</p>
+    {/if}
 
     <div class="row-actions">
       {#if seated}
         <p class="success"><Icon name="check" size={13} /> playing {seated}</p>
       {/if}
       <button class="primary" onclick={seat} disabled={busy || !selected}>
-        {busy ? "seating…" : "play this deck"}
+        {busy ? "seating…" : current ? `play ${current.name}` : "play this deck"}
       </button>
     </div>
 
@@ -153,9 +148,9 @@
 {/if}
 
 <style>
-  /* Deliberately smaller than PrebuiltDeckPicker's styling (no colour
-     pips, no coverage detail, no caveats disclosure) — this is a list
-     of the player's own decks, not a catalogue to be sold on. */
+  /* Deliberately smaller than PrebuiltDeckPicker (no summary, no
+     caveats disclosure) — this is a list of the player's own decks,
+     not a catalogue to be sold on. */
   .your-decks {
     margin-top: 10px;
     padding-bottom: 14px;
@@ -167,49 +162,15 @@
     line-height: 1.5;
     color: var(--fg-muted);
   }
-  .decks {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 8px;
-  }
-  .deck {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface-sunken);
-    cursor: pointer;
-  }
-  .deck.sel {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .deck input {
-    margin-top: 3px;
-    flex: 0 0 auto;
-  }
-  .body {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-  .name {
-    font-weight: 600;
-    font-size: 13.5px;
-    color: var(--fg);
-  }
-  .sub {
+  .detail {
+    margin: 8px 0 0;
     font-size: 11.5px;
+    line-height: 1.45;
     color: var(--fg-dim);
   }
-  .cov {
-    font-size: 11.5px;
-    color: var(--mint);
+  .detail b {
+    color: var(--fg-muted);
+    font-weight: 600;
   }
   .row-actions {
     display: flex;
@@ -217,6 +178,14 @@
     align-items: center;
     justify-content: flex-end;
     margin-top: 10px;
+  }
+  /* "play <deck name>": a long name ellipsises rather than widening
+     the button past the panel. */
+  .row-actions button {
+    max-width: min(100%, 22rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .success {
     margin: 0;

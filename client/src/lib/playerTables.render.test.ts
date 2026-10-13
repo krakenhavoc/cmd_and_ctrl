@@ -326,6 +326,59 @@ describe("the deck pickers preselect the last deck", () => {
   });
 });
 
+describe("the deck pickers stay one screen with many decks", () => {
+  const deck = (i: number) => ({
+    id: `lib-${i}`,
+    name: i === 7 ? "Inverse Nissa" : `Deck ${i}`,
+    commanders: [i === 7 ? "Nissa, Leyline Tamer" : `Commander ${i}`],
+    card_count: 100,
+    updated_at: new Date().toISOString(),
+  });
+
+  function setup(n: number) {
+    setSession(sess("player", USER));
+    routes = {
+      "GET /me/decks": () => ({ decks: Array.from({ length: n }, (_, i) => deck(i)) }),
+    };
+    stubServer();
+    return render(YourDecksPicker as never, { gameID: GAME, playerID: "p1" } as never);
+  }
+
+  const radios = (c: HTMLElement) =>
+    [...c.querySelectorAll<HTMLInputElement>('input[name="your-deck"]')].map((r) => r.value);
+  const playButton = (c: HTMLElement) =>
+    [...c.querySelectorAll("button")].find((b) => /^play /.test(b.textContent ?? ""));
+
+  it("offers no filter for a short list", async () => {
+    const { container } = setup(3);
+    await settle();
+    expect(container.querySelector('input[type="search"]')).toBeNull();
+    expect(radios(container)).toHaveLength(3);
+  });
+
+  it("filters a long list by name or commander, and names the deck on the button", async () => {
+    const { container } = setup(30);
+    await settle();
+    const filter = container.querySelector<HTMLInputElement>('input[type="search"]')!;
+    expect(filter.getAttribute("aria-label")).toBe("filter your decks");
+    expect(radios(container)).toHaveLength(30);
+    expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
+
+    filter.value = "leyline";
+    filter.dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync();
+    expect(radios(container)).toEqual(["lib-7"]);
+
+    filter.value = "nothing like this";
+    filter.dispatchEvent(new Event("input", { bubbles: true }));
+    flushSync();
+    expect(radios(container)).toEqual([]);
+    expect(container.textContent).toContain("No deck matches");
+    // The pick survives a filter that hides it.
+    expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
+  });
+});
+
 describe("the Join page remembers a guest's name", () => {
   const preview = {
     game: { ...createdMeta, players: [], is_creator: false },

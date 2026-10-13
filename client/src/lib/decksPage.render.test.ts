@@ -633,14 +633,16 @@ describe("#/decks: pre-built decks (owner answer 4)", () => {
 });
 
 describe("the lobby's deck picker", () => {
-  it("shows the playable count beside each saved deck", async () => {
+  it("shows the playable count on each saved deck's row", async () => {
     const { container } = render(
       YourDecksPicker as never,
       { gameID: "g1", playerID: "p1" } as never,
     );
     await settle();
     const text = container.textContent ?? "";
+    // Every row carries the short figure; the selected deck says it in full.
+    expect(text).toContain("95/98 as printed");
+    expect(text).toContain("30/40 as printed");
     expect(text).toContain("95 of 98 cards play as printed");
-    expect(text).toContain("30 of 40 cards play as printed");
   });
 });
