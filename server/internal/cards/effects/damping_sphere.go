@@ -24,8 +24,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // SANDBOX SIMPLIFICATION — the Ancient Tomb / Cabal Coffers half
 // ("if a land is tapped for two or more mana, it produces {C}
 // instead") is NOT implemented. It is a replacement effect on mana
-// production, and the mana pipeline (#352) has no seam for
-// replacing an ability's output between ProducedFunc and the pool.
+// production. The CR 614 window on production (RepEventProduceMana,
+// #1222) opens once per mana SLOT, and "{C}{C}" is two slots, so a
+// replacement never sees the activation's total, which is what "two or
+// more mana" asks about (#3172 tried it: Ancient Tomb still made {C}{C}).
+// Closing it means carrying the activation's slot count on the event,
+// and the auto-tapper's preview (producedManaPreviewLocked) has to agree.
 // Strictly weaker than printed: the Sphere taxes storm here and
 // leaves the big-mana lands alone.
 func init() {

@@ -22,22 +22,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // ManaAbilityCost.Sacrifice, the Treasure sacrificing ITSELF, not the
 // Class.
 //
-// Level 3 is the gap: nothing in the engine tracks which MANA SOURCE
-// paid for a spell (a mana pool token records its colour and spend
-// restrictions, never its origin), so "if mana from a Treasure was
-// spent to cast it" has no signal to read. Shipping the trigger
-// unconditionally (fire on every cast) would be stronger than
-// printed; shipping it never (skip the trigger) is the declared,
-// weaker-than-printed gap instead.
+// Level 3 (#3172) reads the cast spell's payment record: every mana
+// token carries a snapshot of its source's kinds (#1212), so "if mana
+// from a Treasure was spent to cast it" is
+// StackItemPaidForEffect(spell).Spent().FromTreasure(), checked as an
+// intervening if. The damage is the spell's mana value, read when the
+// trigger resolves.
 func init() {
 	const grant = "alchemists-talent/treasure-mana"
 	Register(Spec{
 		OracleID:     "5a2dfff5-9dba-42f5-bcca-918c16f23807",
 		Name:         "Alchemist's Talent",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Level 3's damage trigger never fires — the engine doesn't track whether a spell's mana came from a Treasure.",
-		},
+		Completeness: CompletenessFull,
 		Grants: []AbilityGrant{{
 			Key:  grant,
 			Text: "{T}, Sacrifice this artifact: Add two mana of any one color.",
@@ -58,10 +54,36 @@ func init() {
 			LevelUp(3, ManaCost("{4}{R}")),
 		},
 		Triggered: []game.TriggeredAbility{
+			AtLevel(3, On(game.EventCast, spellPaidWithTreasureMana,
+				"Alchemist's Talent — damage equal to that spell's mana value to each opponent",
+				func(g *game.Game, item *game.StackItem) error {
+					ctx := NewContext(g, item)
+					n := triggeringSpellManaValue(g, item)
+					return g.DamageInstanceForEffect(func() error {
+						for _, opp := range ctx.Opponents() {
+							if err := (DealDamage{Source: item.SourceCardID, Target: opp, Amount: n}).Apply(ctx); err != nil {
+								return err
+							}
+						}
+						return nil
+					})
+				})),
 			WhenThisEnters("Alchemist's Talent — create two tapped Treasure tokens",
 				Do(CreateTokenAdvanced{Spec: Token(TreasureToken()).EntersTapped(), N: 2})),
 		},
 	})
+}
+
+// spellPaidWithTreasureMana is the level-3 condition (an intervening if,
+// CR 603.4): you cast a spell and mana from a Treasure was spent on it.
+// The cast announcement's payment record keeps the mana's source kinds as
+// a snapshot, so a Treasure that sacrificed itself to pay still counts
+// (mana_source.go). A payment the engine did not see reads as "no".
+func spellPaidWithTreasureMana(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+	if ev.Kind != game.EventCast || ev.Actor != source.Controller {
+		return false
+	}
+	return g.StackItemPaidForEffect(ev.CardID).Spent().FromTreasure()
 }
 
 // treasuresYouControl is "Treasures you control" — Alchemist's

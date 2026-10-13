@@ -544,6 +544,9 @@ func b27DuplicantStatics() []game.StaticAbility {
 			Label:     "This creature has the creature types of the last creature card exiled with it, and is still a Shapeshifter.",
 			Layer:     game.Layer4Type,
 			AppliesTo: selfOnly,
+			// A card leaving exile ends "exiled with this creature"; the
+			// layers are re-read when one does (#3172).
+			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
 					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled))
@@ -555,6 +558,8 @@ func b27DuplicantStatics() []game.StaticAbility {
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: selfOnly,
+			// As above.
+			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
 					c.Power = exiled.Power

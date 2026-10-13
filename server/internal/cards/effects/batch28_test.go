@@ -552,8 +552,8 @@ func TestB28BenevolentHydraEntersWithXAndGivesOthersAnExtraCounter(t *testing.T)
 	}
 	// #625: the counter-moving tap ability ships; counter_cost_cards_test.go
 	// drives it. The X-counter timing is still a declared caveat.
-	if spec, _ := Lookup(b28BenevolentHydraOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the tap ability ships, and the X-counter caveat is still declared")
+	if spec, _ := Lookup(b28BenevolentHydraOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the tap ability ships and the card is complete")
 	}
 }
 

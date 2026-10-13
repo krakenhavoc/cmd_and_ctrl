@@ -4810,6 +4810,9 @@ seats[].statics[].castBan.filter.sorceryOnly	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
 seats[].statics[].castBan.maxPerTurn	number:int
+seats[].statics[].creaturesEnterWithCounters	object
+seats[].statics[].creaturesEnterWithCounters.count	number:int
+seats[].statics[].creaturesEnterWithCounters.kind	string
 seats[].statics[].duration	object
 seats[].statics[].duration.Also	array
 seats[].statics[].duration.Also[]	number:int
@@ -4845,6 +4848,7 @@ seats[].statics[].keepManaColors	array
 seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
 seats[].statics[].label	string
+seats[].statics[].lifeFloorOne	bool
 seats[].statics[].lifeTotalLocked	bool
 seats[].statics[].nextSpell	object
 seats[].statics[].nextSpell.active	bool
@@ -5558,6 +5562,7 @@ turnTally.noncombatDamage[].colors	array
 turnTally.noncombatDamage[].colors[]	string
 turnTally.noncombatDamage[].controller	custom(uuid.UUID)
 turnTally.noncombatDamage[].source	custom(uuid.UUID)
+turnTally.noncombatDamage[].victim	custom(uuid.UUID)
 turnTally.permissionTypes	map:string
 turnTally.permissionTypes{}	number:int
 turnTally.phaseStarted	number:int
@@ -5585,6 +5590,8 @@ turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.speedTriggered	bool
 turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int
+turnTally.prevNoncombatVictims	array
+turnTally.prevNoncombatVictims[]	custom(uuid.UUID)
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int
 turnTally.sacrificedSubtypes	map:string

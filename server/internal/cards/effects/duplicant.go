@@ -30,18 +30,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // leaves and returns is a new object with an empty record, as
 // printed.
 //
-// Sandbox simplification, declared: the statics re-read the record
-// on every layer recompute, and a recompute follows every
-// battlefield change — but not a card leaving EXILE by itself, so a
-// Duplicant whose imprint is pulled back out of exile keeps the
-// borrowed body until the next thing enters or leaves the
-// battlefield. A beat late, never stronger.
+// Both statics declare DependsOnExile (#3172), so the layers are re-read
+// when the imprinted card leaves exile for the hand, a library or the
+// stack, and Duplicant gives the borrowed body back at once. A move to the
+// battlefield or a graveyard already re-reads them.
 func init() {
 	Register(Spec{
 		OracleID:     "ea86abfa-6cab-4ef0-8463-34136fc25b59",
 		Name:         "Duplicant",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If the exiled card leaves exile, Duplicant keeps the copied power, toughness and types until the next permanent enters or leaves the battlefield."},
+		Completeness: CompletenessFull,
 		Static:       b27DuplicantStatics(),
 		Triggered: []game.TriggeredAbility{{
 			Watches:        []game.EventKind{game.EventETB},

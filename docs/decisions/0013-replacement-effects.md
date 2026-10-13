@@ -4721,3 +4721,19 @@ when a draw trigger is harvested. Notion Thief, Alhammarret's Archive and
 Orcish Bowmasters use these readers; their old all-draw-step caveats are
 removed. The tally is copied into undo and schema-v8 snapshots; an older
 snapshot reconstructs the current step's count from its event history.
+
+## Amendment 2026-10-13 — a duration grant of "enters with additional counters" (#3172)
+
+An entry replacement that a resolving ability creates for a duration
+("until your next turn, each creature you control enters with an additional
++1/+1 counter", Arlinn, the Pack's Hope's +1) cannot live on a permanent, which
+may leave, and has no source object to ask. It is a `PlayerStatic` payload
+(`CreaturesEnterWithCounters`, kind and count) with an ordinary duration, read
+by the built-in `playerEntryCountersReplacement`
+(`game/player_entry_counters.go`) on the entry event. The entering card is
+found through `LookupCardForEffect`, which also finds a token whose entry
+window is open, and the counters go through `ev.AddCounterAtETB`, so they ride
+the counter pipeline and a Doubling Season doubles them. The built-in is set
+aside by the trigger-independence check (`knownBuiltinReplacementLabels`): it
+exists only while a player static does, and any player static already makes the
+board opaque to that check.

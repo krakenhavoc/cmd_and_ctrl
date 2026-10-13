@@ -19,19 +19,18 @@ import (
 // instance ID) gets a counter, through AddCounter so a counter
 // replacement applies.
 //
-// The graveyard-recursion trigger is the deferral. It needs a record of
-// the previous turn's noncombat damage to opponents, and a triggered
-// ability that works from the graveyard; the engine keeps neither (the
-// turn tally resets as each turn begins). The card is weaker than
-// printed, never stronger.
+// The graveyard-recursion trigger (#3172) is a trigger that works from the
+// graveyard (TriggeredAbility.Zones) on each upkeep. Its intervening if
+// reads the previous turn's record of who was dealt noncombat damage
+// (Game.WasDealtNoncombatDamageLastTurn, stamped as the turn rolled over),
+// for any opponent of the card's owner, and the return re-checks that the
+// card is still in the graveyard.
 func init() {
 	Register(Spec{
 		OracleID:     "13bfc51f-d079-40ef-a4ba-47d06d3150a3",
 		Name:         "Command the Stage",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The ability that returns this card from your graveyard to your hand isn't implemented — it stays in the graveyard once cast.",
-		},
+		Completeness: CompletenessFull,
+		Triggered:    []game.TriggeredAbility{commandTheStageReturn()},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			me := ctx.Controller()
 			made, err := ctx.Game.CreateTokensForEffect(me, TokenCard("2/2 colorless Wizard Soldier named Cadet"), 1, game.TokenEntryOptions{})
@@ -49,4 +48,23 @@ func init() {
 			return nil
 		},
 	})
+}
+
+// commandTheStageReturn is "At the beginning of each upkeep, if an
+// opponent was dealt noncombat damage last turn, return this card from
+// your graveyard to your hand."
+func commandTheStageReturn() game.TriggeredAbility {
+	t := On(game.EventBeginUpkeep, func(_ game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+		for _, p := range g.Seats {
+			if p == nil || p.Eliminated || p.ID == source.Owner {
+				continue
+			}
+			if g.WasDealtNoncombatDamageLastTurn(p.ID) {
+				return true
+			}
+		}
+		return false
+	}, "Command the Stage — return this card from your graveyard to your hand", returnThisCardFromYourGraveyardToYourHand)
+	t.Zones = []game.ZoneKind{game.ZoneGraveyard}
+	return t
 }

@@ -370,6 +370,13 @@ type TurnTally struct {
 	// log, so it clones, snapshots and undoes with the rest of the
 	// turn's record. uuid.Nil when nobody was.
 	MonarchAtStart uuid.UUID `json:"monarchAtStart,omitempty"`
+	// PrevNoncombatVictims are the players who were dealt noncombat
+	// damage during the PREVIOUS turn (#3172, Command the Stage's "if an
+	// opponent was dealt noncombat damage last turn"). A stamp taken in
+	// resetTurnTallyLocked from the turn that is ending, so it clones,
+	// snapshots and undoes with the rest of the tally. Read through
+	// Game.WasDealtNoncombatDamageLastTurn.
+	PrevNoncombatVictims []uuid.UUID `json:"prevNoncombatVictims,omitempty"`
 	// ModesChosen is "choose one that hasn't been chosen this turn"
 	// (ADR 0097, #1749): the option indexes each modal ability has
 	// chosen this turn, ascending, keyed by ObjectTallyKey(source,
@@ -816,6 +823,9 @@ type NoncombatDamageRecord struct {
 	Controller uuid.UUID `json:"controller"`
 	Colors     []string  `json:"colors,omitempty"`
 	Amount     int       `json:"amount"`
+	// Victim is the player the damage was dealt to, or uuid.Nil when it
+	// was dealt to a permanent (#3172).
+	Victim uuid.UUID `json:"victim,omitempty"`
 }
 
 // recordNoncombatDamageLocked notes `amount` of noncombat damage dealt
@@ -833,12 +843,25 @@ func (g *Game) recordNoncombatDamageLocked(ev *ReplacementEvent, amount int) {
 	if src == nil {
 		return
 	}
+	var victim uuid.UUID
+	if g.playerByIDLocked(ev.DamageTarget) != nil {
+		victim = ev.DamageTarget
+	}
 	g.TurnTally.NoncombatDamage = append(g.TurnTally.NoncombatDamage, NoncombatDamageRecord{
 		Source:     ev.DamageSource,
 		Controller: src.Controller,
 		Colors:     append([]string(nil), src.Colors...),
 		Amount:     amount,
+		Victim:     victim,
 	})
+}
+
+// WasDealtNoncombatDamageLastTurn reports whether `player` was dealt
+// noncombat damage during the previous turn (#3172): the whole previous
+// turn, whoever's it was. False on the first turn of the game. Caller
+// must hold g.mu.
+func (g *Game) WasDealtNoncombatDamageLastTurn(player uuid.UUID) bool {
+	return slices.Contains(g.TurnTally.PrevNoncombatVictims, player)
 }
 
 // NoncombatDamageThisTurnForEffect is how much noncombat damage sources
@@ -1262,7 +1285,13 @@ func (g *Game) SpellsCastBeforeThisTurn(spellID uuid.UUID) int {
 // resetTurnTallyLocked starts a fresh tally at the current end of the
 // event log. Caller must hold g.mu.
 func (g *Game) resetTurnTallyLocked() {
-	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch}
+	var prevVictims []uuid.UUID
+	for _, r := range g.TurnTally.NoncombatDamage {
+		if r.Victim != uuid.Nil && !slices.Contains(prevVictims, r.Victim) {
+			prevVictims = append(prevVictims, r.Victim)
+		}
+	}
+	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch, PrevNoncombatVictims: prevVictims}
 	// #628: the loop notice is a claim about THIS turn's resolutions,
 	// so it dies with the counts it was derived from. A table that
 	// stepped its way past a loop by hand starts the next turn with
@@ -1280,6 +1309,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
+	out.PrevNoncombatVictims = append([]uuid.UUID(nil), t.PrevNoncombatVictims...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)

@@ -119,6 +119,19 @@ func (g *Game) AbilityLifeCostLocked(activator, source uuid.UUID, cost AbilityCo
 	return life, true
 }
 
+// CommanderIdentityColorsForEffect is the combined colour identity of
+// `player`'s commanders (CR 903.4) as colour letters, and whether the
+// answer is authoritative. A player with no commander has a colourless
+// identity (known, no colours); `known` is false only when a commander's
+// identity data is missing altogether, and a caller that would grant
+// something for each colour OUTSIDE the identity (Commander's Plate) must
+// grant nothing then, the weaker direction. Safe to call from a layer
+// pass: it reads printed data first. Caller must hold g.mu.
+func (g *Game) CommanderIdentityColorsForEffect(player uuid.UUID) (colors []string, known bool) {
+	id := commanderIdentityFor(g, g.playerByIDLocked(player))
+	return append([]string(nil), id.Colors...), id.State != identityUnknown
+}
+
 // CommanderIdentityColorCountForEffect is the number of colours in
 // `player`'s commanders' combined colour identity (CR 903.4) — War
 // Room's count. Every commander the player OWNS contributes, wherever
