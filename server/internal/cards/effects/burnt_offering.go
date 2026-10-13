@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -29,7 +27,7 @@ func init() {
 			if x <= 0 {
 				return nil
 			}
-			return AddMana{Produced: strings.Repeat("{B|R}", x)}.Apply(ctx)
+			return AddMana{Produced: game.RepeatMana("{B|R}", x)}.Apply(ctx)
 		},
 	})
 }

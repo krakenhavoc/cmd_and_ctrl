@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -42,5 +40,5 @@ func gyreSageProduced(g *game.Game, _, source uuid.UUID) string {
 	if !ok {
 		return ""
 	}
-	return strings.Repeat("{G}", c.Counters[game.CounterPlusOne])
+	return game.RepeatMana("{G}", c.Counters[game.CounterPlusOne])
 }

@@ -244,7 +244,7 @@ func ProducedPerPermanent(symbol string, match func(game.Card) bool) func(*game.
 				n++
 			}
 		}
-		return strings.Repeat(slot, n)
+		return game.RepeatMana(slot, n)
 	}
 }
 
@@ -330,7 +330,7 @@ func ProducedPerCounterOnThis(kind, symbol string) func(*game.Game, uuid.UUID, u
 		if !ok {
 			return ""
 		}
-		return strings.Repeat(slot, c.Counters[kind])
+		return game.RepeatMana(slot, c.Counters[kind])
 	}
 }
 

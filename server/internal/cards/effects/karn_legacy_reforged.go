@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -51,7 +49,7 @@ func init() {
 					return nil
 				}
 				return AddMana{
-					Produced:     strings.Repeat("{C}", n),
+					Produced:     game.RepeatMana("{C}", n),
 					Restrictions: []string{ManaRestrictNotNonartifactSpell},
 					Riders:       []game.ManaSpendRider{KeepManaUntilEndOfTurn()},
 				}.Apply(NewContext(g, item))

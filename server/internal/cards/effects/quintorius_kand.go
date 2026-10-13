@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -72,7 +70,7 @@ func quintoriusMinusSix(g *game.Game, item *game.StackItem) error {
 		if len(exiled) == 0 {
 			return nil
 		}
-		if err := g.AddManaForEffect(controller, source, strings.Repeat("{R}", len(exiled))); err != nil {
+		if err := g.AddManaForEffect(controller, source, game.RepeatMana("{R}", len(exiled))); err != nil {
 			return err
 		}
 		var cards []game.Card

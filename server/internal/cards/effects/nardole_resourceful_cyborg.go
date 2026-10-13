@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -54,5 +52,5 @@ func nardoleProduced(g *game.Game, _, source uuid.UUID) string {
 	for _, v := range c.Counters {
 		n += v
 	}
-	return strings.Repeat("{U}", n)
+	return game.RepeatMana("{U}", n)
 }

@@ -310,6 +310,14 @@ const (
 	// different number. Not every kind gets one — see
 	// counterKindIsNarrated.
 	LogCounters LogKind = "counters"
+	// LogCountCapped — a count hit the table's ceiling and was pinned to
+	// it (#3040): +1/+1 counters, power, or the mana one production
+	// adds. `Label` is the quantity ("+1/+1 counters", "mana"),
+	// `Amount` the ceiling it was pinned to, and `CardID` the object
+	// whose count was capped or the mana's source. Narrated so a capped
+	// table is told it is capped rather than left to wonder why a
+	// number stopped growing.
+	LogCountCapped LogKind = "count_capped"
 	// LogScry / LogSurveil — a player finished a scry (CR 701.22)
 	// or a surveil (CR 701.25). NEVER a card, for anyone: the cards
 	// are hidden at both ends and the entry carries no card
@@ -1564,6 +1572,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventCountCapped:
+		base.Kind = LogCountCapped
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventScry, game.EventSurveil:
 		// CR 701.22 / CR 701.25, and the one arm in this switch that
 		// deliberately names NO card, for anyone — not the cards that
@@ -2348,6 +2363,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s activated %s", actor, abilityName(e.Label, cardName))
 	case LogCounters:
 		return renderCountersText(e, card)
+	case LogCountCapped:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s capped at %d", e.Label, e.Amount)
+		}
+		return fmt.Sprintf("%s: %s capped at %d", card, e.Label, e.Amount)
 	case LogScry, LogSurveil:
 		return renderLookText(e, actor)
 	case LogDiscover:

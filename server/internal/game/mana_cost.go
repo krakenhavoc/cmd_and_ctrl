@@ -1,6 +1,7 @@
 package game
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -564,26 +565,40 @@ func (e ProducedManaEntry) OneColorAmounts() bool {
 // "produces nothing" ability, which isn't expected in live catalog
 // but is useful for tests.
 func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
-	var out []ProducedManaEntry
+	out, _, err := parseProducedMana(s)
+	return out, err
+}
+
+// parseProducedMana is ParseProducedMana plus whether the declaration
+// had to be cut to MaxProducedMana (#3040) — a single slot's "{G9999}"
+// amount, or the sum across slots. The two callers that put mana in a
+// pool use `capped` to announce the cut; every other reader (planning,
+// "could produce") just takes the bounded result.
+func parseProducedMana(s string) (out []ProducedManaEntry, capped bool, err error) {
 	i := 0
 	for i < len(s) {
+		if len(out) >= MaxProducedMana {
+			// Anything still to read is past the ceiling.
+			capped = true
+			break
+		}
 		if s[i] == ' ' || s[i] == '\t' {
 			i++
 			continue
 		}
 		if s[i] != '{' {
-			return nil, fmt.Errorf("produced mana: expected '{' at position %d in %q", i, s)
+			return nil, false, fmt.Errorf("produced mana: expected '{' at position %d in %q", i, s)
 		}
 		end := i + 1
 		for end < len(s) && s[end] != '}' {
 			end++
 		}
 		if end >= len(s) {
-			return nil, fmt.Errorf("produced mana: unterminated '{' at position %d in %q", i, s)
+			return nil, false, fmt.Errorf("produced mana: unterminated '{' at position %d in %q", i, s)
 		}
 		token := s[i+1 : end]
 		if token == "" {
-			return nil, fmt.Errorf("produced mana: empty token in %q", s)
+			return nil, false, fmt.Errorf("produced mana: empty token in %q", s)
 		}
 		// Uppercase + pipe-split.
 		buf := make([]byte, len(token))
@@ -599,11 +614,11 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 		distinct := 0
 		if k := strings.LastIndexByte(u, ':'); k >= 0 {
 			if k+1 == len(u) || !allDigits(u[k+1:]) {
-				return nil, fmt.Errorf("produced mana: bad different-colors count in %q", s)
+				return nil, false, fmt.Errorf("produced mana: bad different-colors count in %q", s)
 			}
 			v, err := strconv.Atoi(u[k+1:])
 			if err != nil || v < 2 {
-				return nil, fmt.Errorf("produced mana: a different-colors count must be at least 2 in %q", s)
+				return nil, false, fmt.Errorf("produced mana: a different-colors count must be at least 2 in %q", s)
 			}
 			distinct = v
 			u = u[:k]
@@ -617,16 +632,22 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 				seg := u[start:j]
 				start = j + 1
 				if len(seg) == 0 || !isColor(seg[0]) {
-					return nil, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
+					return nil, false, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
 				}
 				n := 1
 				if len(seg) > 1 {
 					if !allDigits(seg[1:]) {
-						return nil, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
+						return nil, false, fmt.Errorf("produced mana: unknown token %q in %q", seg, s)
 					}
-					v, err := strconv.Atoi(seg[1:])
-					if err != nil {
-						return nil, fmt.Errorf("produced mana: bad amount in %q: %w", s, err)
+					v, perr := strconv.Atoi(seg[1:])
+					if errors.Is(perr, strconv.ErrRange) {
+						v, perr = MaxProducedMana+1, nil
+					}
+					if perr != nil {
+						return nil, false, fmt.Errorf("produced mana: bad amount in %q: %w", s, perr)
+					}
+					if v > MaxProducedMana {
+						v, capped = MaxProducedMana, true
 					}
 					n, counted = v, true
 				}
@@ -646,14 +667,14 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 		i = end + 1
 		if distinct > 0 {
 			if counted {
-				return nil, fmt.Errorf("produced mana: a different-colors slot takes no amounts in %q", s)
+				return nil, false, fmt.Errorf("produced mana: a different-colors slot takes no amounts in %q", s)
 			}
 			if containsColor(options, "C") {
-				return nil, fmt.Errorf("produced mana: colorless is not a color in %q", s)
+				return nil, false, fmt.Errorf("produced mana: colorless is not a color in %q", s)
 			}
 			switch {
 			case len(options) < distinct:
-				return nil, fmt.Errorf("produced mana: %d different colors from %d options in %q", distinct, len(options), s)
+				return nil, false, fmt.Errorf("produced mana: %d different colors from %d options in %q", distinct, len(options), s)
 			case len(options) == distinct:
 				// Every option is taken: no choice, one fixed slot each.
 				for _, c := range options {
@@ -685,5 +706,6 @@ func ParseProducedMana(s string) ([]ProducedManaEntry, error) {
 			out = append(out, entry)
 		}
 	}
-	return out, nil
+	out, over := capProducedMana(out)
+	return out, capped || over, nil
 }
