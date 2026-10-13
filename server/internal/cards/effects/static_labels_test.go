@@ -250,6 +250,7 @@ var familyLabelExemptions = map[string]string{
 	"TribalAbilityGrant":                                 "delegates to GrantAbilities, whose row reads the granted bundle's printed text",
 	"GrantAbilities":                                     "the row reads the granted bundle's own printed text (game.grantedTextOf)",
 	"GrantAbilitiesToAttached":                           "delegates to GrantAbilities",
+	"GrantAbilitiesInZone":                               "delegates to GrantAbilities",
 	"GrantAbilitiesToYourPlaneswalkers":                  "delegates to GrantAbilities",
 	"AttacksEachCombat":                                  "sets the label on the value AttacksEachCombatWhere returns",
 	"NontokenCreaturesYouControlHave":                    "sets the label on the value KeywordGrant returns",

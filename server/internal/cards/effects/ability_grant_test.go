@@ -31,6 +31,23 @@ func grantKeyProblems(all map[string]*game.CardDef) (problems []string, grants i
 					problems = append(problems, owner+" grants "+k+", which no card registers in Spec.Grants")
 				case layerGrantStaticProblem(bundle) != "":
 					problems = append(problems, owner+" grants "+k+", a bundle with a static a layer-6 grant cannot give: "+layerGrantStaticProblem(bundle))
+				default:
+					// ADR 0093 amendment 2026-10-13: a grant to cards in a
+					// zone gives only activated abilities that function
+					// from it; a grant to permanents, none that need
+					// another zone.
+					zone := s.GrantZone
+					if zone == "" {
+						zone = game.ZoneBattlefield
+					}
+					for _, a := range bundle.Activated {
+						if !game.AbilityFunctionsFromZone(a, zone) {
+							problems = append(problems, owner+" grants "+k+" to cards in "+string(zone)+", but the bundle's ability "+a.Label+" does not function from there")
+						}
+					}
+					if zone != game.ZoneBattlefield && (len(bundle.Triggered) > 0 || len(bundle.Static) > 0 || len(bundle.ManaAbilities) > 0) {
+						problems = append(problems, owner+" grants "+k+" to cards in "+string(zone)+", a bundle with more than activated abilities")
+					}
 				}
 			}
 		}

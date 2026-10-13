@@ -383,6 +383,25 @@ type StaticAbility struct {
 	// battlefield: the stack step applies keywords and nothing else.
 	AffectsSpells bool
 
+	// GrantZone declares a static whose recipients are CARDS in a zone
+	// other than the battlefield (CR 113.10, 613.1f, ADR 0093's
+	// amendment 2026-10-13, #3233): Satoru Umezawa's "Each creature
+	// card in your hand has ninjutsu {2}{U}{B}." It is a GrantAbilities
+	// static, with GrantAbilities naming the bundles and AppliesTo
+	// asked of each CARD in that zone; the difference is only where the
+	// recipients are. Empty is the battlefield, as for every earlier
+	// grant.
+	//
+	// The battlefield pass never gathers it, so a predicate written for
+	// a hand card cannot reach a permanent by accident. The zone grant
+	// step (zone_grants.go) runs after layer 2 has settled control, and
+	// stamps the result on Card.zoneGranted, which the one ability-row
+	// accessor reads (activatedAbilityRows), so the activation path, the
+	// wire's zone_abilities and the legal-move enumerator all see the
+	// row. Only ZoneHand, ZoneGraveyard and ZoneExile are walked;
+	// effects.Register refuses another at boot.
+	GrantZone ZoneKind
+
 	// Label is this static's player-facing wording, as a stack label
 	// is for a triggered or activated row: "Attacks each combat if
 	// able." Shown in the art tile's static-ability chip (#2219,
@@ -598,6 +617,12 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			// ADR 0107 §3: a static over SPELLS is the stack step's
 			// (spell_keywords.go), never the battlefield's.
 			if ab.AffectsSpells {
+				continue
+			}
+			// ADR 0093 amendment 2026-10-13: a static over CARDS in a
+			// hand, graveyard or exile is the zone grant step's
+			// (zone_grants.go), never the battlefield's.
+			if ab.GrantZone != "" {
 				continue
 			}
 			out = append(out, staticContinuousEffect{
@@ -933,6 +958,11 @@ func (g *Game) recomputeLayersLocked() {
 	// After layer 2, because "spells you control" reads the controller
 	// it settled (CR 613.1).
 	g.stackKeywordPassLocked()
+	// ADR 0093 amendment 2026-10-13: and layer 6 for the CARDS in a hand,
+	// a graveyard or exile — "each creature card in your hand has
+	// ninjutsu" (Satoru Umezawa). After layer 2 for the same reason: the
+	// "you" of a static reads the controller the pass just settled.
+	g.zoneGrantPassLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the
 	// board those durations read — who controls the source, whether it
 	// is still here — is settled only now, after layer 2 has been
