@@ -7,7 +7,7 @@
 // It was, until the lobby grew a human-facing deck picker. The decks
 // were never bot-specific; what was bot-specific was that only bots
 // could reach them. A player who just wants to play a working game now
-// picks from the same four, through the same Load, so a package path
+// picks from the same catalog, through the same Load, so a package path
 // saying `aiseat` would have been a lie about what depends on what.
 // The bot picker still reads this catalog, via cmd/server's
 // botDeckCatalog adapter, and the model tiers' prompt projection lives
@@ -41,24 +41,49 @@
 //
 // # What the catalog can and cannot support
 //
-// Four archetypes, which is one more than docs/sprints.md originally
-// scoped and two fewer than issue #89 hoped for:
+// Seven decks in seven archetypes:
 //
 //   - aggro (Izzet), ramp-stompy (Simic), control (Esper) — the three
 //     the sprint planned for.
 //   - aristocrats (mono-black) — added because S21's sacrifice outlets
 //     and death payoffs and S23's board wipes both landed. The sprint
 //     doc deferred this on the grounds that they had not.
+//   - stompy (mono-green), weenie (mono-white) and voltron (Boros) —
+//     added by #554 when the picker opened to human players and four
+//     decks stopped being enough of a shop window. Two are mono-coloured
+//     on purpose (easier to read, and what a new player reaches for),
+//     and all three are built to a stricter bar than the first four:
+//     every non-basic card is graded full, and none is on
+//     full_test.go's minor-caveats list. Per distinct non-basic card
+//     they measure 65 of 65 (Stampede), 68 of 68 (Strength in Numbers)
+//     and 72 of 72 (Armed and Dangerous).
 //
-// Voltron and Equipment/Aura decks stay out, but the reason has moved
-// and is worth stating precisely. The attachment relation shipped
-// (#374, game/attach.go), and so did the first attachments (#379, #380)
-// — Bonesplitter, Lightning Greaves, Skullclamp, Swiftfoot Boots, two
-// Swords and Rancor. Seven. A Voltron deck is fifteen to twenty-five
-// attachments; seven of them plus ninety-three other cards is a
-// creature deck that happens to own a Bonesplitter. So this is now a
-// COUNT problem rather than a missing-machinery problem, and it clears
-// on its own as the catalog grows — no engine work is blocking it.
+// Voltron was held back for a count problem rather than a missing
+// mechanic: the attachment relation shipped (#374, game/attach.go), and
+// the first attachments were Bonesplitter, Lightning Greaves,
+// Skullclamp, Swiftfoot Boots, two Swords and Rancor, which is a
+// creature deck that happens to own a Bonesplitter. The catalog has
+// since grown to over two hundred Equipment and Auras graded full,
+// which is what let Armed and Dangerous in.
+//
+// Cards considered and rejected while building the three, each for a
+// caveat on the clause its deck would play it for:
+//
+//   - Stoneforge Mystic — no put-onto-the-battlefield ability, which is
+//     the whole reason to play it in Armed and Dangerous.
+//   - Brimaz, King of Oreskos — the Cat Soldier it makes on a block is
+//     not blocking. Land Tax — the land-count check is made as the
+//     trigger goes on the stack. Both are minor against a weenie deck,
+//     but the bar here is no caveats at all.
+//   - Cultivate and Tireless Provisioner — on the minor-caveats list
+//     for Deep Roots, so not repeated for Stampede.
+//   - Raise the Alarm and Increasing Devotion — full, but they price a
+//     printed token count and declare no Purpose (ADR 0126 §6,
+//     purpose_test.go), so the bot would price them as blanks.
+//   - Thraben Inspector, Skyshroud Claim, Wood Elves, Wayfarer's
+//     Bauble — registered but never graded.
+//
+// The three added here carry no accepted simplifications.
 //
 // Combo stays out on ADR 0033's judgement that it is a bad idea for a
 // bot regardless of coverage.
@@ -202,6 +227,9 @@ var all = []Deck{
 	simicRamp,
 	esperControl,
 	monoBlackAristocrats,
+	monoGreenStompy,
+	monoWhiteWeenie,
+	borosVoltron,
 }
 
 // All returns every curated deck, in a stable picker order. The

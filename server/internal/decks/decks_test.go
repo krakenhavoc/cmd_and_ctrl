@@ -191,6 +191,7 @@ func TestColourIdentity(t *testing.T) {
 func TestRegistryIsWellFormed(t *testing.T) {
 	knownArchetypes := map[string]bool{
 		"aggro": true, "ramp-stompy": true, "control": true, "aristocrats": true,
+		"stompy": true, "weenie": true, "voltron": true,
 	}
 	seen := map[string]bool{}
 	for _, d := range All() {

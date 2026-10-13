@@ -1462,7 +1462,7 @@ because the engine synthesises their mana ability from the type line.
 works fully" are different claims, and the client is expected to make
 only the one that is true — see `client/src/lib/prebuiltDecks.ts`.
 
-The same four decks back this route and `GET /bot/options`; they come
+The same pre-built decks back this route and `GET /bot/options`; they come
 from one registry (`server/internal/decks`), which is the part that
 must not fork.
 
@@ -1523,10 +1523,10 @@ client hides the Add-bot control rather than offering a button that
 only the raw-decklist form of the add request works.
 
 A deck's `description` leads with its archetype — `aggro`,
-`ramp-stompy`, `control`, `aristocrats` — because the names are
+`ramp-stompy`, `control`, `aristocrats`, `stompy`, `weenie`, `voltron` — because the names are
 flavour and the archetype is what the player is actually choosing
-between. The catalog is the four pre-built decks in
-`server/internal/decks` — the same four `GET /decks` offers a human,
+between. The catalog is the pre-built decks in
+`server/internal/decks` — the same ones `GET /decks` offers a human,
 from one registry — every non-basic card of which is build-tested to
 resolve to a registered effect spec. `GET /decks` adds the coverage
 profile on top; `aiseat.DeckInfo` has no room for one and a bot does
