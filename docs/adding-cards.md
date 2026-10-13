@@ -2350,6 +2350,29 @@ Assert the OBSERVABLE result — name, P/T, types, counters, and for
 anything with a catalog entry, its behaviour — because a copy that
 rewrote only the display fields looks identical on the wire.
 
+### Exchanging text boxes (ADR 0160)
+
+A text box here is the catalog KEY plus the importer's keywords, so
+"exchange the text boxes of two creatures" (CR 612.5) swaps exactly
+those and leaves name, types, P/T, mana cost and colour alone. Two
+shapes:
+
+```go
+// "As this enters, you may exchange its text box and another creature's"
+Replacements: []game.ReplacementEffect{
+    EntersExchangingTextBoxes("Deadpool, Trading Card", anotherCreatureOnBattlefield),
+},
+// "…choose two target creatures. For as long as this remains, exchange their text boxes"
+Targeting(WhenThisEnters(label, ExchangeTargetTextBoxesWhileSourceRemains),
+    TargetCreature("two target creatures").WithCount(2, 2)),
+```
+
+Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
+d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
+read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
+`CatalogAbilityKey` are what follow the exchange. Changing single
+words (Glamerdye, Magical Hack) has no shape yet; ADR 0160 §9 plans it.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,

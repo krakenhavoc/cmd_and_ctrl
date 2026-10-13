@@ -588,6 +588,7 @@ var cardFields = plan(
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
+	"TextBox", rebuilt, "ADR 0160: derived from the textBox records in ScopedEffects by materialiseTextBoxesLocked; restore forces a recompute",
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
 	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
@@ -956,6 +957,9 @@ var pendingChoiceFields = plan(
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
 	"CopyOptions", carried, "",
+	// ADR 0160: a copy_target prompt that exchanges text boxes. Carried
+	// with CopyOptions; only the wording reads it.
+	"ExchangesText", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",
 	"LibraryTopCount", carried, "",

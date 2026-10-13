@@ -274,6 +274,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
 		ModBecomeCopy: true,
+		// ADR 0160: textBox is layer 3, materialised onto the key before
+		// the pass. Its cases are in text_box_test.go here and in
+		// cards/effects.
+		ModExchangeText: true,
 		// ADR 0107 §5: rules gates and Flames of the Blood Hand's life
 		// replacement, read by no layer. Their cases are in
 		// unpreventable_damage_test.go and cant_gain_life_test.go.

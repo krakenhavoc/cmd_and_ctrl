@@ -292,7 +292,10 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 		// their activated ability. Not designation-gated: a token
 		// carries its own abilities and has no catalog entry to print a
 		// designation on.
-		case len(c.ActivatedAbilities) > 0:
+		//
+		// ADR 0160: not under an exchanged text box, whose key answers
+		// below — the carried list is the token's own text.
+		case len(c.ActivatedAbilities) > 0 && c.TextBox == nil:
 			own = c.ActivatedAbilities
 		case CatalogActivatedAbilities != nil:
 			// #521: an object with no entry has the empty key, whether
@@ -437,11 +440,16 @@ func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrig
 	// Treasure turned face down by Cyber Conversion is not a Treasure).
 	// A listed Forest still taps for {G}: that is the intrinsic half
 	// below, read off the listed subtype (#1270).
-	case c.faceDownPermanent():
+	//
+	// ADR 0160: unless an exchange gave it a text box (layer 3 follows
+	// layer 1b); then the exchanged key below answers.
+	case c.faceDownPermanent() && c.TextBox == nil:
 		declared = nil
 	// S21 sub-PR 1: instance abilities win — a token has no oracle ID
-	// for the catalog to key on.
-	case len(c.ManaAbilities) > 0:
+	// for the catalog to key on. Not under an exchanged text box (ADR
+	// 0160): the carried list is the token's OWN text, which it no
+	// longer has.
+	case len(c.ManaAbilities) > 0 && c.TextBox == nil:
 		declared = c.ManaAbilities
 	// The OWN key, not CatalogAbilityKey: that one composes the
 	// layered grants in too, and they are the third half below. And

@@ -686,6 +686,12 @@ type PendingChoice struct {
 	// Added in S16.5 (#159).
 	CopyOptions []uuid.UUID
 
+	// ExchangesText marks a PendingChoiceCopyTarget whose pick is the
+	// creature to exchange text boxes with rather than the object to
+	// copy (CopySelector.ExchangeText, ADR 0160 Decision 6). The answer
+	// is the same; only the wording differs. Wire `exchanges_text`.
+	ExchangesText bool
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).

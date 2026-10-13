@@ -86,7 +86,7 @@ func (c *Card) printsDevoid() bool {
 	if c.ColorCDADropped {
 		return false
 	}
-	if containsKeyword(c.Keywords, KeywordDevoid) {
+	if containsKeyword(c.textKeywords(), KeywordDevoid) {
 		return true
 	}
 	if CatalogPrintedKeywords == nil {

@@ -198,6 +198,15 @@ type Card struct {
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
 
+	// TextBox is the text box this permanent has when it is not its own
+	// (CR 612.5, ADR 0160): the result of the textBox records, written
+	// by materialiseTextBoxesLocked and read by catalogKeyOf and the
+	// layer-0 keyword merge. Derived, never persisted — a restore
+	// rebuilds it from ScopedEffects — and cleared on every battlefield
+	// exit (CR 400.7). IMMUTABLE once set: replaced, never written
+	// through, so Clone shares the pointer.
+	TextBox *TextBoxValues
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.

@@ -1508,6 +1508,7 @@ type pendingChoiceSnapshot struct {
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
 	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
+	ExchangesText     bool            `json:"exchangesText,omitempty"`
 	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
@@ -2542,6 +2543,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,
@@ -3411,6 +3413,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,

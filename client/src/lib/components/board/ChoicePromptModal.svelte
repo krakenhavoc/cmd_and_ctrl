@@ -1736,7 +1736,9 @@
       : isSearch
         ? [c.reason || "Search your library", "search · CR 701.23"]
         : isCopyTarget
-          ? [c.reason || "Enter as a copy of…", "copy · CR 707"]
+          ? c.exchanges_text
+            ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
+            : [c.reason || "Enter as a copy of…", "copy · CR 707"]
           : isUntapChoice
             ? [c.reason || "Untap step — choose which permanents untap", "untap · CR 502.3"]
             : isEntryReveal
@@ -1767,8 +1769,12 @@
         ? "Take"
         : isCopyTarget
           ? none
-            ? "Enter as itself"
-            : "Enter as a copy"
+            ? c.exchanges_text
+              ? "Keep its own text"
+              : "Enter as itself"
+            : c.exchanges_text
+              ? "Exchange text boxes"
+              : "Enter as a copy"
           : isUntapChoice
             ? "Untap"
             : isEntryReveal
@@ -2485,6 +2491,9 @@
             Take up to {pickMax} of these, or find nothing — you may always come up short.
           {/if}
           Only you can see them, and your library is shuffled either way.
+        {:else if isCopyTarget && active?.exchanges_text}
+          Pick a creature to exchange text boxes with — each takes the other's rules text and keeps
+          its own name, types and power and toughness. Or pick nothing and keep its own text.
         {:else if isCopyTarget}
           Pick what it enters as a copy of — it copies the printed card, so counters, damage and
           other effects don't come across. Or copy nothing and let it enter as itself.
