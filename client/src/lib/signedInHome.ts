@@ -5,6 +5,7 @@ import { isReturnRoute } from "./decksPage";
 import { canJoinByCode } from "./myGames";
 import type { Route } from "./router";
 import type { Session } from "./session";
+import { HISTORY_HASH } from "./tablesPage";
 
 // signedInHome.ts is the pure half of ADR 0112 §1, "the signed-in
 // home": which routes a signed-out visitor may open, where a session
@@ -91,6 +92,8 @@ export function routeRedirect(r: Route, s: Session | null): string | null {
   if (r.name === "home") return s ? "#/lobby" : "#/";
   if (!s) return isPublicRoute(r) ? null : "#/login";
   if (r.name === "login") return "#/lobby";
+  // My games is Tables' History now (ADR 0158 §1 item 5).
+  if (r.name === "myGames") return HISTORY_HASH;
   if (r.name === "adminLogin") {
     if (isAdmin(s)) return LIVE_HASH;
     if (isAdminAllowed(s)) return "#/lobby";

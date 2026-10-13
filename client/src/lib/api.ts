@@ -81,6 +81,10 @@ export interface GameMeta {
   // `random` bot, never listed and never persisted. Mirrors
   // lobby.GameMeta.Practice.
   practice?: boolean;
+  // The turn number of a game in play (ADR 0158 §1 item 4): the game
+  // view's turn.number. GET /games only, only while active, and absent
+  // during the opening roll.
+  turn?: number;
 }
 
 export interface SeatInfo {
@@ -107,6 +111,9 @@ export interface SeatInfo {
   agent_client?: string;
   // True on the table host's seat (ADR 0075 §2.1). Never on a bot.
   is_host?: boolean;
+  // The seat's life total while the game is in play (ADR 0158 §1 item
+  // 4). GET /games only; absent in the lobby and once the game ends.
+  life?: number;
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,

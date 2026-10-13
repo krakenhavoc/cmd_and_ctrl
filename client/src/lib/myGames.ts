@@ -91,16 +91,16 @@ export type MyGameTone = "lobby" | "live" | "won" | "ended" | "archived";
 // myGameStatus is the chip on one row. Archived wins over the state:
 // the table is retired whatever it was doing.
 export function myGameStatus(g: MyGame): { label: string; tone: MyGameTone } {
-  if (g.archived_at !== null) return { label: "archived", tone: "archived" };
+  if (g.archived_at != null) return { label: "archived", tone: "archived" };
   switch (g.state) {
     case "lobby":
       return { label: "in the lobby", tone: "lobby" };
     case "active":
       return { label: "in progress", tone: "live" };
     default: {
-      if (g.winner_seat === null) return { label: "ended", tone: "ended" };
+      if (g.winner_seat == null) return { label: "ended", tone: "ended" };
       if (g.winner_seat === g.seat) return { label: "you won", tone: "won" };
-      const winner = g.others.find((o) => o.seat === g.winner_seat);
+      const winner = (g.others ?? []).find((o) => o.seat === g.winner_seat);
       return { label: winner ? `${winner.name} won` : "ended", tone: "ended" };
     }
   }
@@ -124,7 +124,12 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // the table (ended, else started, else created), relative while it is
 // recent and a plain date after a week.
 export function playedWhen(g: MyGame, now: number = Date.now()): string {
-  const at = g.ended_at ?? g.started_at ?? g.created_at;
+  return relativeDay(g.ended_at ?? g.started_at ?? g.created_at, now);
+}
+
+// relativeDay is a date in Unix milliseconds as a list shows it:
+// "today", "yesterday", "3 days ago", then a plain date after a week.
+export function relativeDay(at: number, now: number = Date.now()): string {
   const startOfToday = new Date(now);
   startOfToday.setHours(0, 0, 0, 0);
   const today = startOfToday.getTime();

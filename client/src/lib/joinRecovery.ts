@@ -25,12 +25,13 @@ export const GUEST_RETURN_ADVICE =
 
 // SIGNED_IN_RETURN_LINK is where a signed-in identity (or a player
 // session minted from one — myGames.ts's signedInUserID) is sent
-// instead: My games, where POST /me/games/{id}/session rejoins in one
-// click. #/my-games is the route router.ts parses to { name: "myGames" }.
+// instead: Tables, whose Now lists every open table they hold a seat
+// at, where Open and Resume rejoin in one click (POST
+// /me/games/{id}/session). It was My games before ADR 0158 §1.
 // Shared with connectionBanner.ts's "session_ended" state (#1475, the
 // owner's 2026-09-24 decision 5 on #515) — same destination, same
 // reason, one constant.
 export const SIGNED_IN_RETURN_LINK: { readonly href: string; readonly label: string } = {
-  href: "#/my-games",
-  label: "My games",
+  href: "#/lobby",
+  label: "Tables",
 };
