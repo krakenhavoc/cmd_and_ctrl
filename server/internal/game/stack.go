@@ -454,6 +454,15 @@ type StackItem struct {
 	// Added in S30 (#95).
 	IsCopy bool
 
+	// ExileWithCounter, when set, is the kind of counter this spell's
+	// card is exiled WITH instead of going to its owner's graveyard as
+	// it resolves (Goliath Daydreamer: "exile that card with a dream
+	// counter on it instead of putting it into your graveyard as it
+	// resolves"). Resolution only, like buyback and the Adventure
+	// exile: a countered or fizzled spell goes to the graveyard. Set by
+	// MarkSpellExilesWithCounterForEffect; never on a copy.
+	ExileWithCounter string `json:"exileWithCounter,omitempty"`
+
 	// Uncopyable is "This ability can't be copied" as a fact about
 	// this stack object (#1574, ADR 0043 Decision 20). Set at
 	// activation from ActivatedAbilityShape.Uncopyable; a triggered

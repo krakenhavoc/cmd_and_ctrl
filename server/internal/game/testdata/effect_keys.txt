@@ -213,3 +213,4 @@ body attach/sacrifice-the-returned-creature
 condition attach/this-aura-left
 body gilgamesh/attach-equipment
 body leyline-tyrant/damage
+body copy/the-spell-you-just-cast-twice
