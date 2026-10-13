@@ -757,7 +757,7 @@ function lowerFirst(s: string): string {
 export function payPhrase(
   c: Pick<
     PendingChoiceView,
-    "pay_cost" | "pay_damage" | "pay_nothing" | "pay_cards" | "accept_label"
+    "pay_cost" | "pay_damage" | "pay_nothing" | "pay_cards" | "accept_label" | "life_cost"
   >,
 ): string {
   const cost = c.pay_cost ?? "";
