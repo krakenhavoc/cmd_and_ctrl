@@ -11,6 +11,10 @@
 // (board_imports_test.go holds that). The one engine-adjacent import is
 // aiseat/heuristic, for WontUntap, a function of a CardView.
 //
+// Battlefield lines group identical permanents and, over the zone cap,
+// cut tokens and basic lands before anything else and count what they
+// cut (battlefieldOf, #2792). Other capped zones end "… and N more".
+//
 // The text is byte-for-byte what the bot's prompt carried before the
 // move, and the model package's prompt tests hold it there.
 package boardtext
@@ -45,6 +49,10 @@ type Options struct {
 	// the MCP seat's legal_moves(choice) takes (#2794). The bot has no
 	// such tool and leaves it off, so its prompt does not grow.
 	ChoiceIDs bool
+	// MoreHint follows the count in a capped zone's tail ("… and 12
+	// more" + MoreHint), naming the tool that shows the rest. The MCP
+	// seat sets it; the bot has no such tool and leaves it empty.
+	MoreHint string
 }
 
 func (o Options) maxZoneCards() int {
@@ -138,20 +146,20 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if bf := battlefieldOf(v, s.ID, opts); bf != "" {
 			fmt.Fprintf(&b, "  battlefield: %s\n", bf)
 		}
-		if gy := cardNames(s.Graveyard.Cards, max); gy != "" {
+		if gy := cardNames(s.Graveyard.Cards, max, opts); gy != "" {
 			fmt.Fprintf(&b, "  graveyard: %s\n", gy)
 		}
 		// #2559: the exiled cards this seat may play (impulse exile,
 		// Memory Vessel's seven, Rocco's one), for every seat, since a
 		// grant is public.
-		if ex := cardNames(playableExileOf(v, s.ID), max); ex != "" {
+		if ex := cardNames(playableExileOf(v, s.ID), max, opts); ex != "" {
 			fmt.Fprintf(&b, "  may play from exile: %s\n", ex)
 		}
 		if s.ID == me {
-			if hand := describeCards(s.Hand.Cards, max, opts.NoteUnimplemented); hand != "" {
+			if hand := describeCards(s.Hand.Cards, max, opts); hand != "" {
 				fmt.Fprintf(&b, "  your hand: %s\n", hand)
 			}
-			if cmd := describeCards(s.Command.Cards, max, opts.NoteUnimplemented); cmd != "" {
+			if cmd := describeCards(s.Command.Cards, max, opts); cmd != "" {
 				fmt.Fprintf(&b, "  your command zone: %s\n", cmd)
 			}
 		}
@@ -244,20 +252,102 @@ func writePayAmount(b *strings.Builder, pa *protocol.PayAmountView) {
 	}
 }
 
+// battlefieldOf lists one seat's permanents, identical ones grouped.
+//
+// Two permanents are identical when PermanentLabel renders them the same:
+// name, P/T, tapped, sick, damage, counters, attacking, blocking and the
+// rest of the flags. So 23 untapped Plants with four +1/+1 counters are
+// one "Plant 4/5 (4 +1/+1) x23", and a tapped one among them is a second
+// entry (#2792). Groups keep the order their first member entered.
+//
+// Over MaxZoneCards groups, entries are cut and the line says exactly how
+// many permanents went: "… and 12 more (hint)". Nothing is dropped
+// silently. The cut order protects what a decision turns on. Kept first:
+// anything that is neither a token nor a land (creatures, planeswalkers,
+// artifacts, enchantments); then non-basic lands; then tokens and basic
+// lands, the bulk. Within a class the group that arrived most recently
+// stays, since the newest permanents are the ones a player just made. The
+// kept groups print in their original battlefield order.
 func battlefieldOf(v *protocol.GameView, seat string, opts Options) string {
-	var parts []string
+	type group struct {
+		label string
+		n     int
+		class int // 0 token or basic land, 1 non-basic land, 2 the rest
+		last  int // battlefield index of the newest member
+	}
+	var groups []*group
+	byLabel := map[string]*group{}
 	for i := range v.Battlefield.Cards {
 		c := &v.Battlefield.Cards[i]
 		if c.Controller != seat {
 			continue
 		}
-		if len(parts) >= opts.maxZoneCards() {
-			parts = append(parts, "…")
-			break
+		label := PermanentLabel(c, opts)
+		g := byLabel[label]
+		if g == nil {
+			g = &group{label: label, class: permanentClass(c)}
+			byLabel[label] = g
+			groups = append(groups, g)
 		}
-		parts = append(parts, PermanentLabel(c, opts))
+		g.n++
+		g.last = i
+	}
+	keep := make([]bool, len(groups))
+	if max := opts.maxZoneCards(); len(groups) > max {
+		rank := make([]int, len(groups))
+		for i := range rank {
+			rank[i] = i
+		}
+		sort.SliceStable(rank, func(x, y int) bool {
+			gx, gy := groups[rank[x]], groups[rank[y]]
+			if gx.class != gy.class {
+				return gx.class > gy.class
+			}
+			return gx.last > gy.last
+		})
+		for _, i := range rank[:max] {
+			keep[i] = true
+		}
+	} else {
+		for i := range keep {
+			keep[i] = true
+		}
+	}
+	var parts []string
+	cut := 0
+	for i, g := range groups {
+		if !keep[i] {
+			cut += g.n
+			continue
+		}
+		if g.n > 1 {
+			parts = append(parts, fmt.Sprintf("%s x%d", g.label, g.n))
+		} else {
+			parts = append(parts, g.label)
+		}
+	}
+	if cut > 0 {
+		parts = append(parts, moreTail(cut, opts))
 	}
 	return strings.Join(parts, ", ")
+}
+
+// moreTail is the exact-count tail every capped zone ends with.
+func moreTail(n int, opts Options) string {
+	return fmt.Sprintf("… and %d more%s", n, opts.MoreHint)
+}
+
+// permanentClass ranks a permanent for the battlefield cut: 2 survives
+// longest, 0 goes first.
+func permanentClass(c *protocol.CardView) int {
+	land := strings.Contains(c.TypeLine, "Land")
+	switch {
+	case c.IsToken, land && strings.Contains(c.TypeLine, "Basic"):
+		return 0
+	case land:
+		return 1
+	}
+	return 2
 }
 
 func PermanentLabel(c *protocol.CardView, opts Options) string {
@@ -352,11 +442,12 @@ func sortedCounters(m map[string]int) []string {
 	return out
 }
 
-func describeCards(cards []protocol.CardView, max int, noteUnimplemented bool) string {
+func describeCards(cards []protocol.CardView, max int, opts Options) string {
+	noteUnimplemented := opts.NoteUnimplemented
 	var parts []string
 	for i := range cards {
 		if len(parts) >= max {
-			parts = append(parts, "…")
+			parts = append(parts, moreTail(len(cards)-i, opts))
 			break
 		}
 		c := &cards[i]
@@ -379,11 +470,11 @@ func describeCards(cards []protocol.CardView, max int, noteUnimplemented bool) s
 	return strings.Join(parts, "; ")
 }
 
-func cardNames(cards []protocol.CardView, max int) string {
+func cardNames(cards []protocol.CardView, max int, opts Options) string {
 	var parts []string
 	for i := range cards {
 		if len(parts) >= max {
-			parts = append(parts, "…")
+			parts = append(parts, moreTail(len(cards)-i, opts))
 			break
 		}
 		parts = append(parts, CardName(&cards[i]))
