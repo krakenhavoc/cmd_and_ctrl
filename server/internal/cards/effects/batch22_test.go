@@ -1091,21 +1091,29 @@ func TestB22HullBreachThreeModes(t *testing.T) {
 	// Mode 3: an artifact AND an enchantment.
 	rock3 := b12Permanent(g, opp.ID, "Rock 3", "Artifact")
 	castModal(t, g, "Hull Breach", "Sorcery", b22HullBreachOracle, []int{2},
-		[]game.TargetRef{{Kind: game.TargetCard, ID: aura2}, {Kind: game.TargetCard, ID: rock2}})
+		[]game.TargetRef{{Kind: game.TargetCard, ID: rock2}, {Kind: game.TargetCard, ID: aura2}})
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(rock2) || g.Battlefield.Contains(aura2) {
 		t.Error("mode 3 destroys both")
 	}
-	// Two artifacts in mode 3: the declared gap — only the first dies.
+	// Two artifacts in mode 3 are refused: each slot has its own
+	// predicate now.
 	rock4 := b12Permanent(g, opp.ID, "Rock 4", "Artifact")
-	castModal(t, g, "Hull Breach", "Sorcery", b22HullBreachOracle, []int{2},
-		[]game.TargetRef{{Kind: game.TargetCard, ID: rock3}, {Kind: game.TargetCard, ID: rock4}})
-	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(rock3) {
-		t.Error("the first artifact picked is destroyed")
+	if err := b22TryModal(g, b22HullBreachOracle, []int{2},
+		[]game.TargetRef{{Kind: game.TargetCard, ID: rock3}, {Kind: game.TargetCard, ID: rock4}}); err == nil {
+		t.Error("two artifacts cannot fill 'target artifact and target enchantment'")
 	}
-	if !g.Battlefield.Contains(rock4) {
-		t.Error("a second artifact fills no slot — weaker than printed, never two artifacts")
+	aura3 := b12Permanent(g, opp.ID, "Aura 3", "Enchantment")
+	aura4 := b12Permanent(g, opp.ID, "Aura 4", "Enchantment")
+	if err := b22TryModal(g, b22HullBreachOracle, []int{2},
+		[]game.TargetRef{{Kind: game.TargetCard, ID: aura3}, {Kind: game.TargetCard, ID: aura4}}); err == nil {
+		t.Error("two enchantments cannot fill it either")
+	}
+	if !g.Battlefield.Contains(rock3) || !g.Battlefield.Contains(rock4) {
+		t.Error("a refused cast destroys nothing")
+	}
+	if spec, _ := Lookup(b22HullBreachOracle); spec.Completeness != CompletenessFull {
+		t.Error("the per-slot predicate landed: nothing is deferred")
 	}
 }
 

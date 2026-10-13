@@ -23,20 +23,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // §6; the upkeep half goes through effects.UpkeepPayUnless and the
 // Rhystic half through PayUnless).
 //
-// Sandbox simplification, inherited from Rhystic Study: the
-// controller's "you may draw" is treated as "draw". DrawCards no-ops
-// on an empty library and the player loses at the next SBA per
-// CR 704.5b, which is what drawing from an empty library does in
-// paper — but a Remora controller who would rather not draw cannot
-// say so.
+// The controller's "you may draw" is a real question (MayChoice, as on
+// Rhystic Study), asked only after the caster declines to pay, so a
+// Remora controller with an empty library can decline and stay alive.
 func init() {
 	Register(Spec{
 		OracleID:     "8a52f3c0-2552-4425-b2e3-5496eb2232a7",
 		Name:         "Mystic Remora",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The draw is mandatory when the opponent declines to pay — you can't choose to skip it, which matters on an empty library.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			CumulativeUpkeep("Mystic Remora — cumulative upkeep {1}", "{1}"),
 			{
@@ -59,7 +53,12 @@ func init() {
 						Cost:     "{4}",
 						Question: "Mystic Remora — pay {4}?",
 						OnDecline: func(ctx *Context) error {
-							return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+							return MayChoice{
+								Question: "Mystic Remora — draw a card?",
+								OnYes: func(ctx *Context) error {
+									return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+								},
+							}.Apply(ctx)
 						},
 					}.Apply(NewContext(g, item))
 				},

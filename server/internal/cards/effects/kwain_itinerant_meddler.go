@@ -14,24 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // every "whenever a player draws" watcher fires before any life
 // changes.
 //
-// Sandbox simplification, declared (the Arcane Denial posture): the
-// per-player "may" is not offered. The engine's only resolution-time
-// yes/no prompts are the trigger prompt (a card's own controller
-// only) and the pay / don't-pay dialog, whose copy is about mana and
-// which the engine itself declines to reuse as a bare yes/no. So
-// every player draws — except a player whose library is empty, who is
-// treated as declining (the one case the printed choice is ever
-// used the other way) and gains nothing. A player who would have
-// declined a full-library draw to dodge an Underworld Dreams cannot;
-// declared on the card.
+// Each player is asked in APNAP order whether to draw (MayChoice), and
+// the life is gained after the last answer by exactly the players who
+// drew.
 func init() {
 	Register(Spec{
 		OracleID:     "ce6a85b5-e249-4582-a6be-ce200da5fd53",
 		Name:         "Kwain, Itinerant Meddler",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Every player draws and gains the life — nobody is asked whether they want to, though a player with no library left is skipped."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:   "{T}: Each player draws a card, then each player who drew gains 1 life",
+			Label:   "{T}: Each player may draw a card, then each player who drew a card this way gains 1 life",
 			Purpose: game.Purpose{Answers: game.AnswerValue},
 			Cost:    TapCost(),
 			Effect:  b20EachPlayerDrawsAndGainsOne,

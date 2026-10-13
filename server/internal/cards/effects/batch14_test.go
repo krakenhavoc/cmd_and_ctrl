@@ -664,18 +664,27 @@ func TestB14ReturnToDustExilesTwoOnlyInYourMainPhase(t *testing.T) {
 		t.Error("cast in your main phase, both targets are exiled")
 	}
 
-	// In combat, only the first goes.
+	// In combat the second pick is refused at announce, and one target
+	// is exiled as usual.
 	c := b12Permanent(g, opp.ID, "Rock C", "Artifact")
 	d := b12Permanent(g, opp.ID, "Shrine D", "Enchantment")
 	advanceTo(t, g, game.StepDeclareAttackers)
+	id := handCardFull(me, "Return to Dust", "Instant", "", b14ReturnToDustOracle, []string{"W"})
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{
+		Targets: []game.TargetRef{{Kind: game.TargetCard, ID: c}, {Kind: game.TargetCard, ID: d}}}); err == nil {
+		t.Fatal("outside your main phase a second target is refused")
+	}
 	b14CastAt(t, g, me, "Return to Dust", "Instant", b14ReturnToDustOracle, nil,
-		game.CastSpellParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: c}, {Kind: game.TargetCard, ID: d}}})
+		game.CastSpellParams{Targets: []game.TargetRef{{Kind: game.TargetCard, ID: c}}})
 	passPriorityAroundTable(t, g)
 	if b12ZoneOf(g, c) != game.ZoneExile {
 		t.Error("the first target is always exiled")
 	}
 	if !g.Battlefield.Contains(d) {
-		t.Error("outside your main phase the second target is not exiled")
+		t.Error("the unpicked permanent stays")
+	}
+	if spec, _ := Lookup(b14ReturnToDustOracle); spec.Completeness != CompletenessFull {
+		t.Error("the second slot is gated by the step now")
 	}
 }
 
