@@ -379,6 +379,18 @@ type AbilityCost struct {
 	// CountFromX the count IS the announced X, and DemandsX counts it.
 	RevealCards *RevealCardsCost
 
+	// RevealHand is "Reveal your hand" as a cost (#3250, CR 602.2b /
+	// 701.20a) — Sasaya, Orochi Ascendant's "Reveal your hand: If you
+	// have seven or more land cards in your hand, flip Sasaya." The
+	// whole hand is the clause, so there is no count to announce and no
+	// card to name; the activator picks nothing. It is paid at
+	// activation (CR 601.2h), so every opponent sees the hand before
+	// they may respond and a countered ability has still shown it.
+	// Revealing moves nothing (CR 701.20b), and an empty hand pays it
+	// (CR 118.3) with nothing to show. See payRevealHandCostLocked in
+	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
+	RevealHand bool
+
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
 	// "Return a Forest you control to its owner's hand", Master
@@ -1946,6 +1958,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// revealed card is shown while the source is still on the
 	// battlefield, and nothing it shows moves.
 	g.payRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs)
+	// #3250: and "Reveal your hand", the whole of it, at the same point.
+	if ab.Cost.RevealHand {
+		g.payRevealHandCostLocked(playerID, cardID)
+	}
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}

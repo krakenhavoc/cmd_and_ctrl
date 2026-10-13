@@ -2087,13 +2087,13 @@ var items = []Item{
 		Examples: []string{"Kitsune Mystic"},
 	},
 	{
-		Slug: "reveal-your-hand-cost", Name: "Revealing your hand as a cost", Kind: KindSeam, Status: StatusMissing,
+		Slug: "reveal-your-hand-cost", Name: "Revealing your hand as a cost", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "An ability whose cost is revealing your whole hand, such as Sasaya, Orochi Ascendant's \"Reveal your hand: If you have seven or more land cards in your hand, flip Sasaya\".",
-		Missing:     "An ability can have you reveal a number of cards you choose from your hand as its cost, but not your whole hand.",
 		Rules:       []string{"701.20a", "602.2b"},
 		Issue:       3250,
-		Waiting:     []string{"Sasaya, Orochi Ascendant"},
-		EngineNotes: "`game.AbilityCost.RevealCards` (`RevealCardsCost{RevealCost, N, CountFromX, Label}`) reveals a count of cards the activator names on `reveal_ids`; \"your hand\" has no count to announce. A reveal moved into the resolution would show the hand after opponents have responded, and a countered ability would not have revealed it. Needs a reveal-the-whole-hand flag on `AbilityCost` paid at activation, a wire chip and a bot that does not loop an otherwise free ability. Sasaya's other half is expected to need nothing new: the seven-lands check is a count of land cards in hand as it resolves, and Sasaya's Essence is a `Spec.ManaTriggers` row (`WheneverYouTapALandForMana`) whose `Produced` repeats `ProducedColorPipe()` once for each other land with the same name. Found auditing the ADR 0151 flip-card batch (#3216).",
+		Probe:       declaresRevealHand,
+		Examples:    []string{"Sasaya, Orochi Ascendant"},
+		EngineNotes: "**Shipped** (#3250): `game.AbilityCost.RevealHand`, built by `effects.RevealYourHand()`. The whole hand is the clause, so there is no count to announce and no `reveal_ids`; `payRevealHandCostLocked` (`game/reveal_hand_cost.go`) shows every card in the hand through `RevealForEffect` as the cost is paid at activation (CR 601.2h), before anyone may respond, so a countered ability has still shown it. The cards stay in the hand (CR 701.20b) and stay known to every seat while they sit there. An empty hand pays the cost and shows nothing. the effects cost composer carries the flag, and the wire carries `reveal_hand_cost` on the ability view, which asks the client for nothing. The enumerator names it on `MoveCost.RevealHand` and in the move label, and the heuristic prices it at one card of hand so it does not repeat an otherwise free ability. Sasaya's \"flip if seven or more land cards\" is checked as the ability resolves; Sasaya's Essence is a `Spec.ManaTriggers` row (`WheneverYouTapALandForMana`) repeating the tapped land's `ProducedColorPipe()` once for each other land with the same name. The only catalogued card with this cost; no other Scryfall card prints \"Reveal your hand:\" as a cost.",
 	},
 	{
 		Slug: "as-enters-counter-on-another-permanent", Name: "Putting a counter on another permanent as this enters", Kind: KindSeam, Status: StatusMissing,
