@@ -1072,9 +1072,12 @@ type Card struct {
 	//
 	// Cleared by MoveCard on every move, so a card that leaves exile
 	// and comes back by another route was not exiled with anything.
-	// Carried by the snapshot. An ability-resolution exile (Duplicant,
-	// Angel of Serenity) keeps the effects package's event-log record
-	// (b27ExiledWith) and does not write this.
+	// Carried by the snapshot. A RESOLVING ABILITY's exile writes it too
+	// when it goes through Game.ExileLinkedForEffect (ADR 0155 §8,
+	// #3201): Duplicant, Angel of Serenity, and every "has all activated
+	// abilities of all cards exiled with it" borrower, whose lenders are
+	// read on every layer pass. Other ability exiles still keep the
+	// effects package's event-log record (b27ExiledWith).
 	ExiledWith PermissionCardRef
 
 	// Solved, Prepared and PrepareCopy live in the bool block at the

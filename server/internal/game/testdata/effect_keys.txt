@@ -224,3 +224,4 @@ body ratchet-field-medic/return
 body transformers/convert-this
 body caveat-h2/vizkopa-guildmage-drain
 condition caveat-h2/vizkopa-guildmage-you-gain-life
+body agathas-soul-cauldron/counter

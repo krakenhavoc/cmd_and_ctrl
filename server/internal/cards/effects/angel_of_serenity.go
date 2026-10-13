@@ -17,10 +17,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // she ever leaves. Flying rides PrintedKeywords. The entry trigger is
 // optional and targeted at up to three creatures; the leave trigger
 // fires on ANY exit (dying, exile, bounce, a flicker) and returns
-// every card her entry trigger exiled that is still in exile, read
-// back off the event log (b27ExiledWith — the same record Duplicant
-// keeps), so a card something else has since moved on is not pulled
-// out of wherever it went.
+// every card her entry trigger exiled that is still in exile. The entry
+// exile is LINKED (ExileTarget.Linked, ADR 0155 §8), so each card lands
+// with Card.ExiledWith naming this Angel object, and the leave trigger
+// reads the link through its own source object (her last-known record).
+// A card something else has since moved on has lost the link and is not
+// pulled out of wherever it went.
 //
 // The target clause spans two zones (#3172): "creatures from the
 // battlefield and/or creature cards from graveyards", so its Zones are the

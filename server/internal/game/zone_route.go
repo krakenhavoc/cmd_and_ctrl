@@ -157,6 +157,18 @@ type zoneRoute struct {
 	// a commander that took the command zone was never hidden.
 	HiddenBy PermissionCardRef
 
+	// ExiledWith is the CR 607.2a link a RESOLVING ABILITY's exile lands
+	// with (ADR 0155 §8, amending ADR 0066's 2026-10-07 amendment): the
+	// source object whose linked ability is exiling the card ("exile
+	// target creature … all creature cards exiled with it"). It seeds
+	// ReplacementEvent.ExiledWith, the field a replacement exile
+	// (Valgavoth) already fills, so both are stamped onto the card by the
+	// same two landing functions, and only when the card really lands in
+	// exile: a commander its owner moves to the command zone, or a card a
+	// replacement sends to a graveyard, is linked to nothing. Set by
+	// Game.ExileLinkedForEffect; the zero ref everywhere else.
+	ExiledWith PermissionCardRef
+
 	// Mill flags a mill (CR 701.17) so the completed move emits
 	// EventMill rather than EventZoneMove. Only honoured when the
 	// move actually lands in a graveyard: a commander redirected to
@@ -595,6 +607,7 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		asCommanderMove: r.AsCommander,
 		mustSettleNow:   r.MustSettleNow,
 		commanderAnswer: r.commanderAnswer,
+		ExiledWith:      r.ExiledWith,
 	}
 	if r.Discard {
 		// #650: a discard is its own event kind, because what a discard

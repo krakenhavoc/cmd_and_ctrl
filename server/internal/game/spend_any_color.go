@@ -120,7 +120,7 @@ func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) (found, a
 			default:
 				continue
 			}
-			if s.Covers != nil && !s.Covers(ctx) {
+			if s.Covers != nil && !s.Covers(withPayer(ctx, payer)) {
 				continue
 			}
 			found = true
@@ -130,6 +130,13 @@ func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) (found, a
 		}
 	}
 	return found, false
+}
+
+// withPayer is ctx with its Payer filled in, for a Covers that compares
+// the object's controller with the player paying.
+func withPayer(ctx ManaSpendContext, payer uuid.UUID) ManaSpendContext {
+	ctx.Payer = payer
+	return ctx
 }
 
 // SpendsManaAsAnyColorForEffect is the *ForEffect surface over the

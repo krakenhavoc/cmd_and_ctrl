@@ -149,6 +149,20 @@ type ExilePermanentsCost struct {
 	// rule's matching, assignSacrificeSet, #2526).
 	EachSubtype []string
 
+	// Nonland is "nonlands": a material is not a land (permanent or
+	// card). The Enigma Jewel's "four or more nonlands with activated
+	// abilities" (#3201).
+	Nonland bool
+
+	// WithActivatedAbilities is "with activated abilities": a material
+	// has at least one activated ability, mana abilities included (CR
+	// 605.1a makes a mana ability an activated one). A permanent is read
+	// through its layered rows, so a granted or borrowed ability counts
+	// and a removed one does not; a card in a graveyard through its
+	// catalog entry, the same read a graveyard lender's rows take (ADR
+	// 0155 Decision 3). An uncatalogued card has none the engine knows.
+	WithActivatedAbilities bool
+
 	// Label is the clause as printed, without the verb — "a creature
 	// you control" — shown above the client's picker.
 	Label string
@@ -198,7 +212,24 @@ func (c *ExilePermanentsCost) matches(card *Card) bool {
 	if len(c.EachSubtype) > 0 && !slices.ContainsFunc(c.EachSubtype, card.HasSubtype) {
 		return false
 	}
+	if c.Nonland && card.HasCardType("land") {
+		return false
+	}
+	if c.WithActivatedAbilities && !hasActivatedAbility(card) {
+		return false
+	}
 	return c.Subtype == "" || card.HasSubtype(c.Subtype)
+}
+
+// hasActivatedAbility reports whether `card` has an activated ability
+// right now, a mana ability included (CR 605.1a): its own, intrinsic,
+// granted and borrowed rows, through the two row accessors.
+func hasActivatedAbility(card *Card) bool {
+	if acts, _ := activatedAbilityRows(card, false); len(acts) > 0 {
+		return true
+	}
+	manas, _ := manaAbilityRows(card, false)
+	return len(manas) > 0
 }
 
 // cardTypesOf is the card types `card` has, lowercased, in CR 205.2a's
