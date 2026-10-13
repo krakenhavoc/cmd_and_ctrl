@@ -113,6 +113,8 @@
     exile: ZoneView;
     combatMode: "idle" | "attack" | "block";
     selectedCombatCardID: string | null;
+    // #3266: the attackers the viewer has staged, drawn as attacking.
+    stagedAttackers?: ReadonlySet<string>;
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
@@ -222,6 +224,7 @@
     exile,
     combatMode,
     selectedCombatCardID,
+    stagedAttackers,
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
@@ -776,6 +779,7 @@
       cards={buckets.creature}
       {viewerID}
       {selectedCombatCardID}
+      {stagedAttackers}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
@@ -808,6 +812,7 @@
       strip
       {viewerID}
       {selectedCombatCardID}
+      {stagedAttackers}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}
@@ -834,6 +839,7 @@
       compact
       {viewerID}
       {selectedCombatCardID}
+      {stagedAttackers}
       onCardClick={handleCardClick}
       onActivateManaAbility={activateManaAbility}
       onRawTap={activateManaAbility ? onTapToggle : undefined}

@@ -93,6 +93,8 @@
     // How many of the viewer's creatures could attack right now: 0
     // unless the viewer is declaring attackers (#3267's "No attacks").
     attackersReady?: number;
+    // How many attackers the viewer has staged (#3266's "Attack with N").
+    attackersStaged?: number;
     onPassPriority: () => void;
     onPassTurn: () => void;
     onToggleAutopass: () => void;
@@ -126,6 +128,7 @@
     loopNotice = "",
     readyActions = 0,
     attackersReady = 0,
+    attackersStaged = 0,
     onPassPriority,
     onPassTurn,
     onToggleAutopass,
@@ -149,13 +152,16 @@
   // #3267: the primary says what pressing it does — Pass with something
   // on the stack, No attacks when creatures could attack and none has,
   // Next otherwise. Its accessible name is its visible text.
-  const PRIMARY_LABELS: Record<PrimaryKind, string> = {
+  // #3266: Attack with N while creatures are staged.
+  const PRIMARY_LABELS: Record<Exclude<PrimaryKind, "attack">, string> = {
     pass: L.pass,
     next: L.next,
     noAttacks: L.noAttacks,
   };
-  const primary = $derived(primaryKind(view, attackersReady));
-  const primaryLabel = $derived(PRIMARY_LABELS[primary]);
+  const primary = $derived(primaryKind(view, attackersReady, attackersStaged));
+  const primaryLabel = $derived(
+    primary === "attack" ? L.attackWith(attackersStaged) : PRIMARY_LABELS[primary],
+  );
 
   // ---- keys --------------------------------------------------------
   // Read from the same binding map the dispatcher uses, so a rebound

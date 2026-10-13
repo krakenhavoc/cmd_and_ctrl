@@ -92,18 +92,23 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
  *   - "noAttacks": declare attackers, creatures could attack and none
  *     has, so a pass declares no attackers and skips the rest of combat
  *     (CR 508.8);
- *   - "next": the stack is empty and an all-pass moves the game on.
+ *   - "next": the stack is empty and an all-pass moves the game on;
+ *   - "attack": declare attackers with creatures staged (#3266), so the
+ *     primary sends them as one declaration and then passes.
  *
  * `attackersReady` is how many of the viewer's creatures could attack
- * right now: 0 unless the viewer is the one declaring.
+ * right now, and `attackersStaged` how many they have staged: both 0
+ * unless the viewer is the one declaring.
  */
-export type PrimaryKind = "pass" | "next" | "noAttacks";
+export type PrimaryKind = "pass" | "next" | "noAttacks" | "attack";
 
 export function primaryKind(
   view: GameView | null | undefined,
   attackersReady: number,
+  attackersStaged = 0,
 ): PrimaryKind {
   if (!view) return "next";
+  if (view.turn?.step === "declare_attackers" && attackersStaged > 0) return "attack";
   if (stackHolds(view)) return "pass";
   if (
     view.turn?.step === "declare_attackers" &&
@@ -120,6 +125,7 @@ export const primaryTitles: Record<PrimaryKind, string> = {
   pass: "pass priority — once everyone passes, the top of the stack resolves",
   next: "pass priority — once everyone passes, the game moves to the next step",
   noAttacks: "attack with nothing and skip the rest of combat",
+  attack: "declare the creatures you picked as attackers, then pass priority",
 };
 
 function stackHolds(view: GameView): boolean {
