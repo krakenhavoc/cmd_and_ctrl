@@ -41,7 +41,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{necrobloomDredge()},
 		Triggered: []game.TriggeredAbility{
-			Landfall("The Necrobloom — create a 0/1 green Plant, or a 2/2 black Zombie with seven differently-named lands", b35NecrobloomLandfall),
+			LandfallPaying("The Necrobloom — create a 0/1 green Plant, or a 2/2 black Zombie with seven differently-named lands", game.LandfallPayoff{Tokens: 1}, b35NecrobloomLandfall),
 		},
 	})
 }

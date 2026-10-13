@@ -22,7 +22,7 @@ func init() {
 		Name:         "Tireless Tracker",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Tireless Tracker — investigate (landfall)", Do(CreateToken{Template: ClueToken(), N: 1})),
+			LandfallPaying("Tireless Tracker — investigate (landfall)", game.LandfallPayoff{Tokens: 1}, Do(CreateToken{Template: ClueToken(), N: 1})),
 			On(game.EventSacrifice, lonisYouSacrificedAClue,
 				"Tireless Tracker — put a +1/+1 counter on this creature",
 				func(g *game.Game, item *game.StackItem) error {

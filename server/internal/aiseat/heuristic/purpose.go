@@ -199,6 +199,9 @@ func (p *Policy) purposeValue(st *state, ps purposeSet, x int, self *protocol.Ca
 		if ps.lands > 0 {
 			v += st.w.ManaSource * float64(ps.lands)
 			v += p.rampFor(st, self, ps.lands)
+			// #3072: each land is also what the bot's landfall payoffs
+			// pay for it (landfall.go): Tatyova's card and life.
+			v += p.landfallValue(st, ps.lands)
 		}
 		v += p.awakenValue(st, ps.awaken)
 	}

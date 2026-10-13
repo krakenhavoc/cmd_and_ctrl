@@ -43,7 +43,7 @@ func init() {
 					return AddCounter{Target: id, Kind: "+1/+1", N: 3}.Apply(ctx)
 				},
 			},
-			Landfall("Primeval Bounty — gain 3 life", Do(GainLife{Amount: 3})),
+			LandfallPaying("Primeval Bounty — gain 3 life", game.LandfallPayoff{LifeGain: 3}, Do(GainLife{Amount: 3})),
 		},
 	})
 }

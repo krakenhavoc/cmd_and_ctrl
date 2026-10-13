@@ -22,7 +22,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Rampaging Baloths — create a 4/4 Beast (landfall)", Do(CreateToken{
+			LandfallPaying("Rampaging Baloths — create a 4/4 Beast (landfall)", game.LandfallPayoff{Tokens: 1}, Do(CreateToken{
 				Template: TokenCard("4/4 green Beast"),
 				N:        1,
 			})),

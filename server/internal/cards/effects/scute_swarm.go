@@ -39,7 +39,7 @@ func init() {
 		Name:         "Scute Swarm",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Scute Swarm — create an Insect, or a copy at six lands", scuteSwarmLandfall),
+			LandfallPaying("Scute Swarm — create an Insect, or a copy at six lands", game.LandfallPayoff{Tokens: 1}, scuteSwarmLandfall),
 		},
 	})
 }

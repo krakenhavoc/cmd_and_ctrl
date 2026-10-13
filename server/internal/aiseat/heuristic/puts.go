@@ -100,7 +100,8 @@ func (p *Policy) putGain(st *state, c *protocol.CardView, tapped bool) float64 {
 	if st.manaSources() < p.cfg.RampWantCap {
 		g = mana + p.rampFor(st, c, 1)
 	}
-	return g + st.landColorFit(p.cfg, c)
+	// #3072: the land triggers the bot's landfall payoffs (landfall.go).
+	return g + st.landColorFit(p.cfg, c) + p.landfallValue(st, 1)
 }
 
 // ownPermanentsValue scores one answer to an own_permanents pick: a
@@ -165,6 +166,8 @@ func (p *Policy) extraLandDropValue(st *state, n int, self *protocol.CardView) f
 		}
 		if extra := min(n, lands-left); extra > 0 {
 			v += st.w.ManaSource*float64(extra) + p.rampFor(st, self, extra)
+			// #3072: and what the bot's landfall payoffs pay for each.
+			v += p.landfallValue(st, extra)
 		}
 	}
 	if (isCreature(self) || isPermanentSpell(self)) && st.manaSources() < p.cfg.RampWantCap {

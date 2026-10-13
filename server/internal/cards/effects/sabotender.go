@@ -21,7 +21,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach"},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Sabotender — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+			LandfallPaying("Sabotender — 1 damage to each opponent", game.LandfallPayoff{DamageEachOpponent: 1}, func(g *game.Game, item *game.StackItem) error {
 				return damageToEachOpponent(g, item, 1)
 			}),
 		},

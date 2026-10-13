@@ -20,7 +20,7 @@ func init() {
 		Name:         "Sazh's Chocobo",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Sazh's Chocobo — landfall: put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+			LandfallPaying("Sazh's Chocobo — landfall: put a +1/+1 counter on it", game.LandfallPayoff{Counters: 1}, func(g *game.Game, item *game.StackItem) error {
 				if !onBattlefield(g, item.SourceCardID) {
 					return nil
 				}

@@ -20,7 +20,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Optional(Landfall("Emeria Angel — create a Bird", Do(CreateToken{
+			Optional(LandfallPaying("Emeria Angel — create a Bird", game.LandfallPayoff{Tokens: 1}, Do(CreateToken{
 				Template: TokenCard("1/1 white Bird with flying"),
 				N:        1,
 			})), "Emeria Angel — create a 1/1 Bird with flying?"),

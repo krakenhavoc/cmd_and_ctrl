@@ -219,8 +219,8 @@ func landsUntappedIn(s effects.Spec) int {
 
 // curatedPermanentPurposes is every curated permanent in a class ADR
 // 0126 prices (ramp, draw, loot, tutor, wipe, death payoff, discard
-// payoff) that
-// declares a purpose, with the slot it declares it in. Mana rocks and
+// payoff, landfall payoff) that declares a purpose, with the slot it
+// declares it in. Mana rocks and
 // dorks are not here: their mana abilities already say what they make.
 var curatedPermanentPurposes = map[string]string{
 	// enters effects, on the card
@@ -261,6 +261,18 @@ var curatedPermanentPurposes = map[string]string{
 	"Magmakin Artillerist": "discard payoff",
 	// #2480.
 	"Monument to Endurance": "discard payoff",
+	// landfall payoffs, on the triggered row (#3072). Avenger of
+	// Zendikar's counters are counted at resolution and Field of the
+	// Dead's Zombie needs seven differently named lands, so neither
+	// declares one; Ancient Greenwarden doubles the others' triggers
+	// and pays nothing itself.
+	"Tatyova, Benthic Druid": "landfall payoff",
+	"Lotus Cobra":            "landfall payoff",
+	"Tireless Tracker":       "landfall payoff",
+	"Tireless Provisioner":   "landfall payoff",
+	"Sporemound":             "landfall payoff",
+	"Rampaging Baloths":      "landfall payoff",
+	"Courser of Kruphix":     "landfall payoff",
 	// an opponent's tax, on the triggered row: what a decline gives
 	// (ADR 0136's amendment of 2026-10-09)
 	"Rhystic Study":    "tax gift",
@@ -317,6 +329,12 @@ func declaresIn(s effects.Spec, slot string) bool {
 	case "discard payoff":
 		for _, t := range s.Triggered {
 			if t.Purpose.DiscardPayoff != nil {
+				return true
+			}
+		}
+	case "landfall payoff":
+		for _, t := range s.Triggered {
+			if t.Purpose.LandfallPayoff != nil {
 				return true
 			}
 		}

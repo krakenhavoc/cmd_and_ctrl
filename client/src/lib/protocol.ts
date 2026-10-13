@@ -3065,6 +3065,9 @@ export interface PurposeView {
   awaken_land?: number;
   // #2480: cards it exiles that its controller may play this turn.
   impulse?: number;
+  // #3072: on a landfall row, what it pays for each land that enters
+  // under its controller's control.
+  landfall_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
@@ -3099,6 +3102,19 @@ export interface TargetReturnView {
   life_equal_to_power?: boolean;
   lands?: number;
   lands_untapped?: number;
+}
+
+// LandfallPayoffView is what a landfall row pays its controller for each
+// land that enters under their control (#3072). Bot data; every field is
+// absent when zero.
+export interface LandfallPayoffView {
+  draws?: number;
+  life_gain?: number;
+  tokens?: number;
+  mana?: number;
+  counters?: number;
+  energy?: number;
+  damage_each_opponent?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.

@@ -20,7 +20,7 @@ func init() {
 		Name:         "Koth of the Homestead",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Koth of the Homestead — you gain 1 life", Do(GainLife{Amount: 1})),
+			LandfallPaying("Koth of the Homestead — you gain 1 life", game.LandfallPayoff{LifeGain: 1}, Do(GainLife{Amount: 1})),
 			Targeting(
 				On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 					c, ok := enteredUnderYourControl(ev, source, g, false)

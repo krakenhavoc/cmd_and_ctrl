@@ -1090,9 +1090,29 @@ and on an activated row as `Purpose:` beside its `Label` (a loot is
   is X or counted at resolution is not declared.
 - **`DeathPayoff`** goes on the triggered row that pays out when a
   creature its controller controls dies (Blood Artist, Grave Pact).
+- **`LandfallPayoff`** goes on a landfall row: what it pays its
+  controller for each land that enters under their control
+  ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)).
+  Build the row with `LandfallPaying` in place of `Landfall`:
+
+  ```go
+  LandfallPaying("Tatyova — gain 1 life and draw a card (landfall)",
+  	game.LandfallPayoff{Draws: 1, LifeGain: 1}, effect)
+  Optional(LandfallPaying("Emeria Angel — create a Bird",
+  	game.LandfallPayoff{Tokens: 1}, effect), "…")
+  ```
+
+  The amounts are `Draws`, `LifeGain`, `Tokens`, `Mana` (Lotus Cobra),
+  `Counters` (on its source), `Energy` and `DamageEachOpponent`. A
+  payoff counted at resolution (Avenger of Zendikar's counter on each
+  Plant) or conditioned on the lands (Field of the Dead, a Mountain's
+  extra mana on Koth, the Geomancer) leaves that part out; a row with
+  nothing else stays a plain `Landfall`. The bot prices every land it
+  puts onto the battlefield (Burnished Hart, Harrow, an extra land drop)
+  by what these rows pay.
 - `effects.Register` refuses a negative amount, `ControllerLosesLife` off
-  an any-player row, `DeathPayoff` off a triggered row, and a malformed
-  `Sweep`.
+  an any-player row, `DeathPayoff` or `LandfallPayoff` off a triggered
+  row, a `LandfallPayoff` that pays nothing, and a malformed `Sweep`.
 - After declaring a wipe, run the manual dump audit
   (`go test ./internal/decks/ -run RealDumpPurpose -v` with
   `CMDCTRL_SCRYFALL_DUMP` set). It fails on a catalog card whose text

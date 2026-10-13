@@ -18,7 +18,7 @@ func init() {
 		Name:         "Roil Cartographer",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Roil Cartographer — you get {E}", Do(GetEnergy{N: 1})),
+			LandfallPaying("Roil Cartographer — you get {E}", game.LandfallPayoff{Energy: 1}, Do(GetEnergy{N: 1})),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Pay six {E}: Draw three cards.",
