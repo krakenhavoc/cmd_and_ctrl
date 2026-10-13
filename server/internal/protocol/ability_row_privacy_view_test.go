@@ -122,7 +122,7 @@ var activatedRowScopes = map[string]rowScope{
 	"TopCostOptions": rowHiddenZone,
 	// #2598: the reveal component — its printed count, its words and
 	// the X flag are public; the matching HAND cards are not.
-	"RevealCostN": rowPublic, "RevealCostLabel": rowPublic, "RevealCostCountFromX": rowPublic,
+	"RevealCostN": rowPublic, "RevealCostLabel": rowPublic, "RevealCostCountFromX": rowPublic, "RevealHandCost": rowPublic,
 	"RevealCostOptions": rowHiddenZone,
 }
 

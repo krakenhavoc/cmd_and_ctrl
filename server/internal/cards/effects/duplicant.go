@@ -15,12 +15,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Colourless exile removal that wears what it ate. The imprint is an
 // optional targeted ETB (Springbloom Druid's prompt-then-pick
 // shape): the target is chosen when the trigger goes on the stack,
-// re-checked at resolution (CR 608.2b), and exiled by ExileTarget.
-// "Exiled with this creature" is not a field on any card, so it is
-// read back off the event log: b27ExiledWith finds every card whose
-// latest move into exile happened while Duplicant's imprint trigger
-// was resolving, and only while that card is still in exile. Two
-// statics then read the LAST such card that is a creature card —
+// re-checked at resolution (CR 608.2b), and exiled by a LINKED exile
+// (ExileTarget.Linked, ADR 0155 §8): the card lands with
+// Card.ExiledWith naming this Duplicant object, and the link goes with
+// the card the moment it leaves exile. Two statics then read the LAST such card that is a creature card —
 // layer 4 replaces Duplicant's creature types with that card's plus
 // Shapeshifter, layer 7b sets its power and toughness to that
 // card's printed values (not a CDA: the ability is conditional, CR
@@ -46,7 +44,7 @@ func init() {
 			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Duplicant — exile target nontoken creature?"},
 			Targets:        TargetCreature("target nontoken creature", Not(IsTokenPredicate())),
 			Key:            b27DuplicantLabel,
-			Effect:         b27ExileChosenTarget,
+			Effect:         exileLinkedTargetsEffect,
 		}},
 	})
 }

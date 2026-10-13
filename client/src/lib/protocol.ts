@@ -3011,6 +3011,9 @@ export interface ActivatedAbilityView {
   reveal_cost_label?: string;
   reveal_cost_options?: string[];
   reveal_cost_count_from_x?: boolean;
+  // #3250: "Reveal your hand" as a cost (Sasaya). Names no card and no
+  // count: the whole hand is shown when the ability is activated.
+  reveal_hand_cost?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride

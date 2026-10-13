@@ -166,6 +166,11 @@ var (
 	// division is announced with the targets (CR 601.2d).
 	blasterHulkDamageBody = game.ReflexiveBody("blaster-hulk/divided-damage", simpleBody(blasterHulkDamage),
 		constTargets(func() *game.TargetSpec { return TargetAny().WithCount(0, 8).Dividing(Divide(8)) }))
+
+	// Agatha's Soul Cauldron (#3201): "When a creature card is exiled this
+	// way, put a +1/+1 counter on target creature you control."
+	agathasSoulCauldronCounterBody = game.ReflexiveBody("agathas-soul-cauldron/counter", simpleBody(PlusOneCounterOnChosenTarget),
+		constTargets(func() *game.TargetSpec { return TargetCreature("target creature you control", YouControl()) }))
 )
 
 // simpleBody adapts a no-params reflexive body — every one of them

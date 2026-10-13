@@ -316,6 +316,11 @@ type StaticAbility struct {
 	// nothing else: an exiled card cast, put into a hand, or shuffled
 	// into a library.
 	//
+	// It also covers a card ARRIVING in exile from a hand, a library or
+	// the stack (ADR 0155 PR 3, #3201): a borrower that lends from the
+	// cards exiled with it (Mairsil's cage from a hand) gains the rows
+	// the moment the card lands.
+	//
 	// Same contract as the flags above, and opt-in for their reason:
 	// impulse draw, foretell and adventures move cards out of exile at
 	// most tables, and gating the bump is what keeps those free for the

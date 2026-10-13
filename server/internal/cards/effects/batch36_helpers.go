@@ -192,19 +192,20 @@ func b36EndStepAndAnOpponentLostThree(ev game.Event, source *game.Card, g *game.
 // --- effect bodies -------------------------------------------------
 
 // b36AngelOfSerenityExileLabel is the stack label of Angel of
-// Serenity's entry trigger — the "exiled with" record keys on it.
+// Serenity's entry trigger.
 const b36AngelOfSerenityExileLabel = "Angel of Serenity — exile up to three other creatures"
 
 // b36ExileChosenCreatures is Angel of Serenity's entry body: every
-// announced creature still legal at resolution is exiled, the Angel
-// herself excepted. The "may" was answered when the trigger fired.
+// announced creature still legal at resolution is exiled, linked to her
+// (ExileTarget.Linked), the Angel herself excepted. The "may" was
+// answered when the trigger fired.
 func b36ExileChosenCreatures(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
 	for _, t := range ctx.LegalTargets() {
 		if t.Kind != game.TargetCard || t.ID == item.SourceCardID {
 			continue
 		}
-		if err := (ExileTarget{Target: t.ID}).Apply(ctx); err != nil {
+		if err := (ExileTarget{Target: t.ID, Linked: true}).Apply(ctx); err != nil {
 			return err
 		}
 	}
@@ -212,13 +213,21 @@ func b36ExileChosenCreatures(g *game.Game, item *game.StackItem) error {
 }
 
 // b36ReturnCardsExiledWithToOwnersHands is Angel of Serenity's leave
-// body: every card still in exile that her entry trigger exiled
-// returns to its owner's hand. A card that has since left exile is
-// not counted (b27ExiledWith closes the record), so nothing is
-// pulled out of a graveyard or a hand.
+// body: every card still in exile linked to the Angel object that left
+// (her last-known record, the leave trigger's own source object) returns
+// to its owner's hand. A card that has since left exile has lost the
+// link, so nothing is pulled out of a graveyard or a hand.
 func b36ReturnCardsExiledWithToOwnersHands(g *game.Game, item *game.StackItem) error {
 	ctx := NewContext(g, item)
-	for _, id := range b27ExiledWith(g, item.SourceCardID, b36AngelOfSerenityExileLabel) {
+	ref, ok := ctx.SourceRef()
+	if !ok {
+		return nil
+	}
+	var ids []uuid.UUID
+	for _, c := range g.ExiledWithForEffect(game.PermissionCardRef(ref)) {
+		ids = append(ids, c.InstanceID)
+	}
+	for _, id := range ids {
 		if err := (BounceToHand{Target: id}).Apply(ctx); err != nil {
 			return err
 		}

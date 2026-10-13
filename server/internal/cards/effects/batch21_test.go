@@ -1204,8 +1204,10 @@ func TestB21HazelsBrewmasterExilesAGraveyardCardAndMakesFood(t *testing.T) {
 	if b16CountNamed(g, "Food") != 3 {
 		t.Error("with every graveyard empty the trigger still makes a Food")
 	}
-	if spec, _ := Lookup(b21HazelsBrewmasterOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the Food-abilities gap must be declared")
+	// The Foods' borrowed abilities are tested with the exile lenders
+	// (exile_lender_cards_test.go); the card has no caveat left.
+	if spec, _ := Lookup(b21HazelsBrewmasterOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Hazel's Brewmaster is fully automated since ADR 0155 PR 3")
 	}
 }
 

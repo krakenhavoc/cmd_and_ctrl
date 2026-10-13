@@ -367,6 +367,27 @@ type MoveCost struct {
 	// activation as a plain {T}. An exert cost is always payable, so the
 	// enumerator gates nothing on it.
 	Exert bool `json:"exert,omitempty"`
+
+	// RevealHand is true when the move reveals the seat's whole hand to
+	// the table as its cost (#3250, CR 602.2b) — Sasaya, Orochi
+	// Ascendant. The params name no card, so without it a policy would
+	// read the activation as free and could repeat it every priority.
+	// A reveal is always payable (an empty hand pays it).
+	RevealHand bool `json:"reveal_hand,omitempty"`
+}
+
+// withRevealHand marks a (possibly nil) MoveCost as revealing the
+// seat's hand (#3250). Nil stays nil when the cost does not.
+func withRevealHand(c *MoveCost, reveal bool) *MoveCost {
+	if !reveal {
+		return c
+	}
+	out := MoveCost{}
+	if c != nil {
+		out = *c
+	}
+	out.RevealHand = true
+	return &out
 }
 
 // withExert marks a (possibly nil) MoveCost as exerting the move's

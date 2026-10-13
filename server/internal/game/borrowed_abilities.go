@@ -666,33 +666,65 @@ func BorrowsOf(c Card) []BorrowInfo {
 
 // --- the lender the engine does not know (ADR 0155 owner decision 2) ------
 
-// UnautomatedLendersOf lists the lenders of the borrows `c` makes for
-// itself whose abilities the engine cannot lend: an object with no catalog
-// entry and no CR 305.6 land type, so it lends nothing and the borrower's
-// menu names it in a disabled "<lender>: not automated" line instead.
+// UnautomatedLendersOf lists the lenders of the borrows that lend to `c`
+// whose abilities the engine cannot lend: an object with no catalog entry
+// and no CR 305.6 land type, so it lends nothing and the borrower's menu
+// names it in a disabled "<lender>: not automated" line instead.
 //
 // A face-down object is left out (CR 708.2a: it has no abilities to lend),
 // and so is a token with no entry, which would be one line per Soldier. A
 // borrower that has lost its abilities, or whose designation gate is
-// closed, borrows nothing and names nothing. Self-borrowers only: the
-// recipient is the static's own source, which is every card of the
-// battlefield and graveyard family. The statics are the catalog's, so this
-// is read-only and safe under the view's read lock.
+// closed, borrows nothing and names nothing.
+//
+// Two kinds of borrow reach `c`: its own ("~ has all activated abilities
+// of …", the whole battlefield and graveyard family), and, for a permanent,
+// one another permanent makes for it (Hazel's Brewmaster's Foods,
+// Agatha's Soul Cauldron's and Steward of the Harvest's creatures, ADR
+// 0155 PR 3). The second walk reads each other permanent's statics and
+// skips every one with no borrow, so a board with no such source pays one
+// catalog read per permanent. The statics are the catalog's, so this is
+// read-only and safe under the view's read lock.
 func (g *Game) UnautomatedLendersOf(c *Card) []*Card {
 	if c == nil || c.faceDownPermanent() || c.HasLostAllAbilities() {
 		return nil
 	}
 	var out []*Card
+	add := func(ab StaticAbility, src *Card) {
+		for _, l := range ab.Borrows.Lenders(g, src) {
+			if l == nil || l.InstanceID == c.InstanceID || !lenderUnautomated(l) {
+				continue
+			}
+			out = append(out, l)
+		}
+	}
 	for _, ab := range staticAbilitiesOf(c) {
 		if ab.Borrows == nil || ab.Borrows.Lenders == nil || ab.AppliesTo == nil ||
 			!StaticFunctionsFromZone(ab, ZoneBattlefield) || !ab.AppliesTo(c, g, c) {
 			continue
 		}
-		for _, l := range ab.Borrows.Lenders(g, c) {
-			if l == nil || l.InstanceID == c.InstanceID || !lenderUnautomated(l) {
-				continue
+		add(ab, c)
+	}
+	if g.Battlefield == nil || findBattlefieldCard(g, c.InstanceID) == nil {
+		return out
+	}
+	for i := range g.Battlefield.Cards {
+		src := &g.Battlefield.Cards[i]
+		if src.InstanceID == c.InstanceID || src.faceDownPermanent() {
+			continue
+		}
+		var statics []StaticAbility
+		for _, ab := range staticAbilitiesOf(src) {
+			if ab.Borrows != nil && ab.Borrows.Lenders != nil && ab.AppliesTo != nil {
+				statics = append(statics, ab)
 			}
-			out = append(out, l)
+		}
+		if len(statics) == 0 || src.HasLostAllAbilities() {
+			continue
+		}
+		for _, ab := range statics {
+			if ab.AppliesTo(c, g, src) {
+				add(ab, src)
+			}
 		}
 	}
 	return out

@@ -297,6 +297,14 @@ type ExileTarget struct {
 	// something that acts on what it is told, not as the next line of
 	// the card.
 	Then func(ctx *Context, exiled bool) error
+
+	// Linked stamps CR 607.2a's "exiled with this" link on the card as
+	// it lands in exile (Card.ExiledWith, ADR 0155 §8): the resolving
+	// item's source OBJECT. For an exile whose card another ability of
+	// the same source reads back ("all creature cards exiled with it",
+	// Duplicant's "the last creature card exiled with it"). A source with
+	// no object to name exiles with no link.
+	Linked bool
 }
 
 func (e ExileTarget) Apply(ctx *Context) error {
@@ -309,7 +317,14 @@ func (e ExileTarget) Apply(ctx *Context) error {
 		}
 		return nil
 	}
+	var link game.ObjectRef
+	if e.Linked {
+		link, _ = ctx.SourceRef()
+	}
 	if e.Then == nil {
+		if e.Linked {
+			return nothingIfGone(ctx.Game.ExileLinkedForEffect(link, e.Target))
+		}
 		return nothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
 	}
 	// The context is rebuilt inside the continuation from the live
@@ -317,6 +332,11 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	// this game's fields in place, so a captured *Game would be the
 	// wrong one.
 	item := ctx.Item
+	if e.Linked {
+		return ctx.Game.ExileLinkedThenForEffect(link, []uuid.UUID{e.Target}, func(g *game.Game, exiled []uuid.UUID) error {
+			return e.Then(NewContext(g, item), len(exiled) == 1)
+		})
+	}
 	return ctx.Game.ExileCardThenForEffect(e.Target, func(g *game.Game, exiled bool) error {
 		return e.Then(NewContext(g, item), exiled)
 	})

@@ -94,10 +94,12 @@ surface tiny.
    second Crystal's exiles, a stale epoch and an unlinked card are out;
    a source that has left is read from its last-known record; no source
    admits nothing). Only a card whose exile stamped `Card.ExiledWith`
-   carries the link, which today is a replacement exile
-   (`ReplacementEvent.ExiledWith`); an ability-resolution exile does not
-   stamp it until ADR 0155's stamp lands, so a card that exiles from an
-   ability still uses the event-log record and a choice. A face-down
+   carries the link: a replacement exile (`ReplacementEvent.ExiledWith`),
+   or an ability's exile written as `ExileTarget{Target: id, Linked:
+   true}` (`Game.ExileLinkedForEffect`, ADR 0155 §8). Write the exile of
+   any card whose other ability reads "exiled with this" as a linked one;
+   older cards that exile from an ability without it still use the
+   event-log record (`b27ExiledWith`) and a choice. A face-down
    exiled card its chooser has not seen is never offered (#3259, ADR 0019
    amendment 2026-10-13).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
@@ -1032,6 +1034,27 @@ Lenders: GraveyardLenders(AllGraveyards, ByController(Creature())),
 // Thranduil: "… of all Elf cards in your graveyard."
 Lenders: GraveyardLenders(YourGraveyard, ByController(HasSubtype("Elf"))),
 ```
+
+Lenders in exile (ADR 0155 PR 3, #3201) have three constructors:
+
+```go
+// Dark Impostor: "… of all creature cards exiled with it."
+Lenders: ExiledWithLenders(ByController(Creature())),
+// Rex, Cyber-Hound: "… of all cards in exile with brain counters on them."
+Lenders: ExileLenders(LenderWithCounter("brain")),
+// Locus of Enlightenment: "… of the exiled cards used to craft it."
+Lenders: CraftedWithLenders(),
+```
+
+`ExiledWithLenders` reads `Card.ExiledWith`, so the card's own exile must
+be linked: `ExileTarget{Target: id, Linked: true}` (or
+`exileLinkedTargetsEffect` for "exile target …" alone), which stamps the
+resolving item's source object. Declare `DependsOnExile: true` on the
+static so a lender leaving exile, or arriving from a hand, re-reads the
+layers; a counter change on an exiled card always does. A borrow whose
+recipients are other permanents (Hazel's Brewmaster's Foods, Steward of
+the Harvest's creatures) is `GrantActivatedAbilitiesOf(appliesTo,
+borrow)`, and its not-automated lenders show on each recipient.
 
 `ByController` lifts an ordinary `CardPredicate` (the caster is the
 borrower's controller); a `LenderPredicate` also sees the borrowing source.

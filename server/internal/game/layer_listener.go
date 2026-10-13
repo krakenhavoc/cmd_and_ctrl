@@ -179,8 +179,18 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 	// 607.2q). Only departures: a card arriving in exile is a new
 	// object too, so it can never join a delve link. A move to the
 	// battlefield or a graveyard has bumped above already.
-	if ev.OldZone == ZoneExile && ev.NewZone != ZoneExile &&
+	//
+	// ADR 0155 PR 3 (#3201) adds ARRIVALS under the same flag. A card
+	// exiled with a borrower ("has all activated abilities of all cards
+	// exiled with it") lends from the moment it lands, and one exiled
+	// from a hand or a library (Mairsil's cage) is a move nothing above
+	// bumps for. A move from the battlefield or a graveyard has bumped
+	// already. A counter put on or taken off an exiled card (Rex's brain
+	// counter, Mairsil's cage counter) is EventCounterPlaced, which bumps
+	// below for every zone.
+	if (ev.OldZone == ZoneExile) != (ev.NewZone == ZoneExile) &&
 		ev.NewZone != ZoneBattlefield && ev.NewZone != ZoneGraveyard &&
+		ev.OldZone != ZoneBattlefield && ev.OldZone != ZoneGraveyard &&
 		exileStaticIsLiveLocked(g) {
 		g.layerVersion.Add(1)
 	}
