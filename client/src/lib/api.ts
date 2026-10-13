@@ -1106,6 +1106,36 @@ export async function rejoinMyGame(path: string): Promise<Session> {
   return s;
 }
 
+// Rematch (#3285, ADR 0164). The caller is a seat at the finished table.
+// Offering (the host) and accepting (anyone else) answer with a session
+// for the caller's seat at the NEW table, installed here as a join's is;
+// the caller then goes to `gameID`. Leaving answers 204.
+async function rematchSession(path: string): Promise<Session> {
+  const res = await authFetch(path, { method: "POST" });
+  const body = (await res.json()) as SessionResponse;
+  const s: Session = {
+    token: body.token,
+    expiresAt: body.expires_at,
+    principal: body.principal,
+    playerID: body.player_id,
+    gameID: body.game?.id,
+  };
+  setSession(s);
+  return s;
+}
+
+export function offerRematch(gameID: string): Promise<Session> {
+  return rematchSession(`/games/${encodeURIComponent(gameID)}/rematch`);
+}
+
+export function acceptRematch(gameID: string): Promise<Session> {
+  return rematchSession(`/games/${encodeURIComponent(gameID)}/rematch/accept`);
+}
+
+export async function leaveRematch(gameID: string): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/rematch/leave`, { method: "POST" });
+}
+
 // fetchTablemates reads the people the signed-in caller has shared a
 // table with (ADR 0051 decision 8, S34 sub-PR 6, GET /me/tablemates),
 // most recently shared table first. 401s for anyone without a user_id,

@@ -338,6 +338,12 @@ type Lobby struct {
 	limits    capacity.Limits
 	connCount func() int
 	reserved  int
+	// presence answers "who is on this game's results screen" for the
+	// rematch watcher (rematch.go). Set once at boot via SetSeatPresence.
+	presence SeatPresence
+	// rematchPoll and rematchGrace are the watcher's clocks; zero is the
+	// default. Tests shrink them.
+	rematchPoll, rematchGrace time.Duration
 	// restoreMu serialises RestoreDeferred (restore_deferred.go), so two
 	// admin clicks cannot both rebuild the same deferred table. It is
 	// taken before l.mu and never while holding it.
@@ -456,6 +462,14 @@ type gameEntry struct {
 	// (games.lfg_message_id, ADR 0161 §6), "" for none. Written by the
 	// LFG manager; the lobby only persists it.
 	lfgMessageID string
+
+	// rematchDecks is a deep copy of every seat's deck, kept from Start so
+	// a rematch (rematch.go) can seat them again; nil once released, and
+	// for a table restored from disk. rematch is the host's offer, and
+	// rematchTimer drops the decks if none is made.
+	rematchDecks map[uuid.UUID][]game.Card
+	rematch      *rematchOffer
+	rematchTimer *time.Timer
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -1251,6 +1265,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 		}
 	}
 	var err error
+	l.keepRematchDecksLocked(entry)
 	// ADR 0121 §1: the table rolls for the first turn itself. Each seat
 	// presses Roll (a bot rolls on its own clock), the high roll chooses
 	// who goes first, and only then are libraries shuffled and hands

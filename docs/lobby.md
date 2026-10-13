@@ -1272,6 +1272,63 @@ and never fails the start. See [`GET /me/setup`](#get-mesetup-adr-0110-5).
 | 404 | game not found |
 | 409 | not enough players (min 2), or one or more seats haven't uploaded a deck |
 
+### Rematch: `POST /games/{id}/rematch`, `/rematch/accept`, `/rematch/leave` (ADR 0164, #3285)
+
+The host of a finished table offers the same game again. Each route is called
+with a **seat session at the finished table** (`Authorization: Bearer`, or the
+cookie); the admin token and a spectator are refused (403).
+
+| Route | Who | Answers |
+|---|---|---|
+| `POST /games/{id}/rematch` | the table's host | 201, a seat session at the **new** table |
+| `POST /games/{id}/rematch/accept` | another human seat, while the offer is open | 200, a seat session at the new table |
+| `POST /games/{id}/rematch/leave` | another human seat | 204 |
+
+"The host" is the table's host. When every human has lost and the bots won, the
+engine has nobody left to host, and the **first human seat** is the host for this
+purpose (the client mirrors the rule, `client/src/lib/rematch.ts`).
+
+**Offering** makes a new game: a new id, the old name with ` (rematch)`, created
+for the host's account, in the `lobby` state, with the old table's settings, the
+host's seat with the deck the host played, and a bot seat for every bot of the
+old table with the same name, tier, curated deck and decklist (a bot that cannot
+be seated again is skipped). The new table is **private**: both of its invites
+are revoked as it is made, so no link to it exists. It is started, given a bot
+or left short with the routes every table has (`POST /games/{id}/start`,
+`POST /games/{id}/seats/bot`); starting opens the opening roll, so the turn order
+is random. The old game stays ended, with its replay, in History.
+
+The response is the `sessionResponse` a join returns (`token`, `expires_at`,
+`principal`, `game`, `player_id`), bound to the **new** game and seat, and the
+session cookie is set to it. A signed-in person's session expires with the one it
+came from.
+
+**Accepting** seats the caller at the new table with their own deck, and answers
+the same way. **Leaving** records a no; the caller may still accept while the
+offer is open, but not after accepting.
+
+The offer is `GameView.rematch` on the old table ([protocol.md](protocol.md)): the
+new table's id, the host, whether the offer is `open`, and the viewer's own part.
+It is **open** while at least one human seat other than the host has neither
+answered nor left the results screen. The server asks the hub which seats still
+have a socket on the old table once a second, and a seat missing for 15 seconds
+has left. When none is left to ask, the offer closes for good: the new table and
+whoever it holds stay, and nobody else is carried over. An MCP agent seat is not
+carried over and does not hold the offer open.
+
+The old decks are kept in memory from `Start` (not persisted): until the offer
+closes, and for four hours after the game ended if nobody offers.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session |
+| 403 | not a seat at this table; or not the host (offer); or the host/an agent/a bot (accept, leave) |
+| 404 | game not found; or no offer to answer |
+| 409 | the game is not over; a rematch was already offered; the table cannot be rematched any more (a practice or archived table, a restart, or too long ago); the offer is closed or already answered; the new table is full or has started; leaving after accepting |
+| 503 | the server is at its capacity |
+
 ### `POST /games/{id}/setup` (ADR 0110 §5)
 
 Apply the caller's last setup to an unstarted table: its settings through the

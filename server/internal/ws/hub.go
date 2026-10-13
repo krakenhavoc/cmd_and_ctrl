@@ -379,6 +379,26 @@ func (h *Hub) LiveSockets() []LiveSocket {
 	return out
 }
 
+// ConnectedSeats is the set of seats at gameID that hold a live, non-
+// spectator socket: who is still on the table's page. The lobby's rematch
+// watcher reads it to tell when every human has left the results screen
+// (#3285). Like LiveSockets it copies under the hub's read lock and takes
+// no other lock.
+func (h *Hub) ConnectedSeats(gameID uuid.UUID) map[uuid.UUID]bool {
+	out := map[uuid.UUID]bool{}
+	if gameID == uuid.Nil {
+		return out
+	}
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	for c := range h.clients {
+		if c.gameID == gameID && c.playerID != uuid.Nil && !c.readOnly {
+			out[c.playerID] = true
+		}
+	}
+	return out
+}
+
 // rejectReasonFor maps the status an authorizer refused an upgrade
 // with onto cmdctrl_ws_upgrade_rejections_total's reason.
 func rejectReasonFor(status int) string {

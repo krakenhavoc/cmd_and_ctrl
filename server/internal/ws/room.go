@@ -116,6 +116,13 @@ type Room struct {
 	voiceMu sync.Mutex
 	voice   *protocol.VoiceView
 
+	// rematch is the host's rematch offer on an ended table (#3285, ADR
+	// 0164), set by the lobby through SetRematch and stamped on every
+	// capture. Guarded by rematchMu, never by mu, for the same reason as
+	// host. See rematch.go.
+	rematchMu sync.Mutex
+	rematch   *protocol.RematchView
+
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
 	// census (#524) can report how far a live table has drifted from
@@ -721,6 +728,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
+	r.stampRematchLocked(&view)
 	r.mu.Unlock()
 	return protocol.FilterViewFor(view, viewerID)
 }
@@ -767,6 +775,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
 	r.stampVoiceLocked(&view)
+	r.stampRematchLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot
