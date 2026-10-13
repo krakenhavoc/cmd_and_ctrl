@@ -983,7 +983,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// more times than it may be paid. The card and permanent halves
 	// of the payment are validated with the mandatory additional
 	// cost below, against one plan, by one validator.
-	optionalCosts := OptionalCostsFor(CatalogKey(card))
+	optionalCosts := g.OptionalCostsForCastLocked(playerID, card)
 	if err := validateOptionalCostChoice(optionalCosts, params.OptionalCosts); err != nil {
 		slog.Warn("cast_spell rejected: bad optional additional cost choice",
 			"card_name", card.Name,
@@ -3202,7 +3202,7 @@ func (g *Game) printedCostLocked(p *Player, card Card, params CastSpellParams) (
 	if berr != nil {
 		mandatory = nil
 	}
-	cost, err = AdditionalCostMana(cost, mandatory, OptionalCostsFor(CatalogKey(card)), params.OptionalCosts)
+	cost, err = AdditionalCostMana(cost, mandatory, g.OptionalCostsForCastLocked(p.ID, card), params.OptionalCosts)
 	if err != nil {
 		return ParsedCost{}, chosen, err
 	}
