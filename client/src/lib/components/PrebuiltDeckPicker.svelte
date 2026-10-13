@@ -29,9 +29,17 @@
     /** The deck to preselect when it is a pre-built deck still offered. */
     lastDeck?: LastDeck | null;
     onSuccess?: (res: UploadDeckResponse) => void;
+    /**
+     * Start as a one-line toggle (the player has saved decks of their
+     * own). null holds the section back until the caller knows.
+     */
+    collapsed?: boolean | null;
   }
 
-  const { gameID, playerID, lastDeck = null, onSuccess }: Props = $props();
+  const { gameID, playerID, lastDeck = null, onSuccess, collapsed = false }: Props = $props();
+
+  let expanded = $state(false);
+  const open = $derived(collapsed === false || expanded);
 
   let decks = $state<PrebuiltDeck[]>([]);
   // null until the probe settles. A server without the route (or a
@@ -112,72 +120,86 @@
   }
 </script>
 
-{#if loaded && decks.length > 0}
+{#if loaded && decks.length > 0 && collapsed !== null}
   <div class="prebuilt">
-    <p class="lede">
-      Pick one and press play. Every card in these decks is implemented by this engine — each deck
-      says exactly how completely.
-    </p>
-
-    <DeckRadioList
-      {rows}
-      name="prebuilt-deck"
-      bind:selected
-      filterLabel="filter the pre-built decks"
-      onpick={() => (touched = true)}
-    />
-
-    {#if current && coverage}
-      <div class="chosen">
-        {#if current.summary}<p class="summary">{current.summary}</p>{/if}
-        <p class="cov cov-{coverage.tone}">
-          <i class="dot" class:ok={coverage.tone === "full"}></i>{coverage.headline}
-        </p>
-        {#if coverage.detail}
-          <p class="detail"><b>{current.name}</b>: {coverage.detail}.</p>
-        {/if}
-      </div>
+    {#if collapsed}
+      <button
+        type="button"
+        class="toggle"
+        class:open
+        aria-expanded={open}
+        onclick={() => (expanded = !expanded)}
+      >
+        <Icon name="chevronRight" size={12} />
+        or play a pre-built deck ({decks.length})
+      </button>
     {/if}
+    {#if open}
+      <p class="lede">
+        Pick one and press play. Every card in these decks is implemented by this engine — each deck
+        says exactly how completely.
+      </p>
 
-    {#if imperfect.length > 0}
-      <!-- Same register as DeckUploadForm's `unimplemented` block, and
+      <DeckRadioList
+        {rows}
+        name="prebuilt-deck"
+        bind:selected
+        filterLabel="filter the pre-built decks"
+        onpick={() => (touched = true)}
+      />
+
+      {#if current && coverage}
+        <div class="chosen">
+          {#if current.summary}<p class="summary">{current.summary}</p>{/if}
+          <p class="cov cov-{coverage.tone}">
+            <i class="dot" class:ok={coverage.tone === "full"}></i>{coverage.headline}
+          </p>
+          {#if coverage.detail}
+            <p class="detail"><b>{current.name}</b>: {coverage.detail}.</p>
+          {/if}
+        </div>
+      {/if}
+
+      {#if imperfect.length > 0}
+        <!-- Same register as DeckUploadForm's `unimplemented` block, and
            for the same reason: this deck is fine and installed-able.
            Collapsed because the count is what sets the expectation and
            the names are for whoever wants to check a specific card. -->
-      <details class="caveats">
-        <summary>
-          which {imperfect.length}
-          {imperfect.length === 1 ? "card" : "cards"}, and what changes?
-        </summary>
-        <ul>
-          {#each imperfect as card (card.name)}
-            <li>
-              <b>{card.name}</b>
-              <span>{imperfectCardLine(card)}</span>
-            </li>
+        <details class="caveats">
+          <summary>
+            which {imperfect.length}
+            {imperfect.length === 1 ? "card" : "cards"}, and what changes?
+          </summary>
+          <ul>
+            {#each imperfect as card (card.name)}
+              <li>
+                <b>{card.name}</b>
+                <span>{imperfectCardLine(card)}</span>
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
+
+      <div class="row-actions">
+        {#if installed}
+          <p class="success"><Icon name="check" size={13} /> playing {installed}</p>
+        {/if}
+        <button class="primary" onclick={install} disabled={busy || !selected}>
+          {busy ? "installing…" : current ? `play ${current.name}` : "play this deck"}
+        </button>
+      </div>
+
+      {#if errorMessage}
+        <pre class="deck-error">{errorMessage}</pre>
+      {/if}
+      {#if violations.length}
+        <ul class="viol">
+          {#each violations as v (v.code + (v.card ?? "") + v.message)}
+            <li class="vi"><span class="code">{v.code}</span>{violationLabel(v)}</li>
           {/each}
         </ul>
-      </details>
-    {/if}
-
-    <div class="row-actions">
-      {#if installed}
-        <p class="success"><Icon name="check" size={13} /> playing {installed}</p>
       {/if}
-      <button class="primary" onclick={install} disabled={busy || !selected}>
-        {busy ? "installing…" : current ? `play ${current.name}` : "play this deck"}
-      </button>
-    </div>
-
-    {#if errorMessage}
-      <pre class="deck-error">{errorMessage}</pre>
-    {/if}
-    {#if violations.length}
-      <ul class="viol">
-        {#each violations as v (v.code + (v.card ?? "") + v.message)}
-          <li class="vi"><span class="code">{v.code}</span>{violationLabel(v)}</li>
-        {/each}
-      </ul>
     {/if}
   </div>
 {/if}
@@ -187,6 +209,32 @@
     margin-top: 10px;
     padding-bottom: 14px;
     border-bottom: 1px solid var(--border);
+  }
+  /* The collapsed section: a quiet text button, not a second primary. */
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--fg-muted);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .toggle:hover {
+    color: var(--fg);
+  }
+  .toggle :global(svg) {
+    transition: transform 120ms var(--ease);
+  }
+  .toggle.open {
+    margin-bottom: 8px;
+  }
+  .toggle.open :global(svg) {
+    transform: rotate(90deg);
   }
   .lede {
     margin: 0 0 10px;

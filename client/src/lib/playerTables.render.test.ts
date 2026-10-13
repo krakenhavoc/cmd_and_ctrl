@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import Lobby from "../routes/Lobby.svelte";
 import Join from "../routes/Join.svelte";
+import DeckUploadForm from "./components/DeckUploadForm.svelte";
 import PrebuiltDeckPicker from "./components/PrebuiltDeckPicker.svelte";
 import YourDecksPicker from "./components/YourDecksPicker.svelte";
 import { GUEST_NAME_KEY } from "./guestName";
@@ -376,6 +377,71 @@ describe("the deck pickers stay one screen with many decks", () => {
     expect(container.textContent).toContain("No deck matches");
     // The pick survives a filter that hides it.
     expect(playButton(container)?.textContent?.trim()).toBe("play Deck 0");
+  });
+});
+
+describe("the pre-built decks fold away behind your own", () => {
+  const pb = (id: string) => ({
+    id,
+    name: id,
+    card_count: 100,
+    coverage: { cards: 10, full: 10, caveats: 0, unreviewed: 0, basics: 1, unregistered: 0 },
+  });
+  const saved = {
+    id: "lib-a",
+    name: "Mine",
+    commanders: [],
+    card_count: 100,
+    updated_at: new Date().toISOString(),
+  };
+
+  function setup(userID: string, library: unknown[], lastDeck: unknown = null) {
+    setSession(sess("player", userID));
+    routes = {
+      "GET /decks": () => ({ decks: [pb("raid"), pb("deep")] }),
+      "GET /me/decks": () => ({ decks: library }),
+      "GET /me/last-deck": () => ({ last_deck: lastDeck }),
+    };
+    stubServer();
+    return render(DeckUploadForm as never, { gameID: GAME, playerID: "p1" } as never);
+  }
+
+  const prebuiltRadios = (c: HTMLElement) => c.querySelectorAll('input[name="prebuilt-deck"]');
+  const toggle = (c: HTMLElement) =>
+    [...c.querySelectorAll<HTMLButtonElement>("button")].find((b) =>
+      /pre-built deck \(2\)/.test(b.textContent ?? ""),
+    );
+
+  it("starts as one line for a player with saved decks, and opens on a click", async () => {
+    const { container } = setup(USER, [saved]);
+    await settle();
+    expect(prebuiltRadios(container)).toHaveLength(0);
+    const t = toggle(container)!;
+    expect(t.getAttribute("aria-expanded")).toBe("false");
+    click(t);
+    flushSync();
+    expect(t.getAttribute("aria-expanded")).toBe("true");
+    expect(prebuiltRadios(container)).toHaveLength(2);
+  });
+
+  it("stays open when the last deck seated was a pre-built one", async () => {
+    const { container } = setup(USER, [saved], { kind: "prebuilt", id: "deep" });
+    await settle();
+    expect(toggle(container)).toBeUndefined();
+    expect(prebuiltRadios(container)).toHaveLength(2);
+  });
+
+  it("stays open with an empty library, and for a guest", async () => {
+    const r = setup(USER, []);
+    await settle();
+    expect(toggle(r.container)).toBeUndefined();
+    expect(prebuiltRadios(r.container)).toHaveLength(2);
+    cleanup();
+
+    const guest = setup(NIL, []);
+    await settle();
+    expect(toggle(guest.container)).toBeUndefined();
+    expect(prebuiltRadios(guest.container)).toHaveLength(2);
   });
 });
 

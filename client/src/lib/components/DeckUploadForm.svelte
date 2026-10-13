@@ -51,6 +51,16 @@
   // a guest. Each picker PRESELECTS it when it is still in its list;
   // nothing is seated until the player presses the button.
   let lastDeck = $state<LastDeck | null>(null);
+
+  // How many saved decks YourDecksPicker found; null until it knows.
+  // With any, the pre-built list starts collapsed to one line — unless
+  // the last deck this player seated was a pre-built one, which makes
+  // it the likely pick again. The pre-built picker waits for this so it
+  // never draws open and then snaps shut.
+  let libraryCount = $state<number | null>(null);
+  const prebuiltCollapsed = $derived(
+    libraryCount === null ? null : libraryCount > 0 && lastDeck?.kind !== "prebuilt",
+  );
   onMount(() => {
     void loadLastDeck(currentSession()).then((d) => (lastDeck = d));
   });
@@ -128,8 +138,14 @@
 </script>
 
 <div class="deck-upload-form">
-  <YourDecksPicker {gameID} {playerID} {lastDeck} {onSuccess} />
-  <PrebuiltDeckPicker {gameID} {playerID} {lastDeck} {onSuccess} />
+  <YourDecksPicker
+    {gameID}
+    {playerID}
+    {lastDeck}
+    {onSuccess}
+    onLibrary={(n) => (libraryCount = n)}
+  />
+  <PrebuiltDeckPicker {gameID} {playerID} {lastDeck} {onSuccess} collapsed={prebuiltCollapsed} />
   <p class="own-list">
     Or bring your own list — a Moxfield or Archidekt deck URL, a Moxfield JSON export, or a
     plain-text decklist.
