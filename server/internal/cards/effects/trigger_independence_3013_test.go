@@ -171,8 +171,9 @@ func TestMarwynAndRidersStillAskWhenTheOrderCanShow(t *testing.T) {
 // cross Valkyrie's +7 line between them, and her anthem changes the
 // Angel's toughness for the second: the static reads a life total, so
 // even a batch that only gains life asks. (Two Valkyrie gains for two
-// creatures are one source and one label, the sub-PR 8 skip that has
-// never read the trigger context; that shape is unchanged.)
+// creatures are one source and one label; the sub-PR 8 skip used to
+// pass them unread and asks the same question since #3021, see
+// trigger_independence_3021_test.go.)
 func TestTwoSubjectGainsAskBesideALifeKeyedAnthem(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]

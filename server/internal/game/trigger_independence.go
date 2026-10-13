@@ -351,6 +351,11 @@ func (g *Game) seatNeedsTriggerOrderLocked(items []*StackItem, mode TriggerOrder
 // Caller must hold g.mu.
 func (g *Game) triggerOrderAskLocked(items []*StackItem, mode TriggerOrderMode) (bool, TriggerOrderReason) {
 	if !seatNeedsTriggerOrder(items, mode) {
+		// The one skip the board is asked about again: an identical
+		// batch whose items read their triggering subjects (#3021).
+		if g.identicalBatchOrderShowsLocked(items, mode) {
+			return true, TriggerOrderReasonCharacteristic
+		}
 		return false, ""
 	}
 	if mode == TriggerOrderAlways || mode == TriggerOrderNever {
@@ -479,11 +484,8 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 	// something a static on the board could read to compute it: a life
 	// total for a static that declares it reads one, anything else for
 	// any static that can change power or toughness (#3013).
-	if b.charReads && a.writesAnything() {
-		st := statics()
-		if st.life || (st.pt && !a.writesOnlyLife()) {
-			return TriggerOrderReasonCharacteristic
-		}
+	if characteristicReadConflict(a, b, statics) {
+		return TriggerOrderReasonCharacteristic
 	}
 	if a.monarch && b.monarch {
 		return TriggerOrderReasonMonarch
@@ -523,6 +525,82 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		}
 	}
 	return ""
+}
+
+// characteristicReadConflict reports whether b reads a characteristic
+// through the layers and a changes something a static on the board
+// could read to compute it: a life total for a static that declares it
+// reads one, anything else for any static that can change power or
+// toughness (#3013). It is the whole test for TriggerOrderReasonCharacteristic.
+func characteristicReadConflict(a, b *triggerAccess, statics func() layerStatics) bool {
+	if !b.charReads || !a.writesAnything() {
+		return false
+	}
+	st := statics()
+	return st.life || (st.pt && !a.writesOnlyLife())
+}
+
+// identicalBatchOrderShowsLocked is #3021: the sub-PR 8 skip (every
+// item has one source and one label) argues the items are
+// interchangeable, and that holds only while they read nothing that
+// differs between them. An item that reads its triggering subject
+// (GainLifeEqualToSubject: Righteous Valkyrie, Trostani) reads a
+// DIFFERENT subject in each copy, through the layers, so one copy's
+// gain can change what the next reads (Valkyrie's +7 line gives +2/+2).
+//
+// This reports true only for that case: the mode is "when it matters",
+// the batch still has an unanswered item, every item is identical by
+// the sub-PR 8 test and is one the footprint check can describe, and
+// one copy's writes could change what another reads through a static
+// on the board (characteristicReadConflict). Everything else the old
+// skip let through (two Bident draws, two counters on one permanent,
+// an item the check cannot describe) stays skipped: this adds no
+// prompt that the footprint check was not already asked for, and asks
+// for no reason but the one that is true.
+//
+// Caller must hold g.mu.
+func (g *Game) identicalBatchOrderShowsLocked(items []*StackItem, mode TriggerOrderMode) bool {
+	if len(items) < 2 || mode == TriggerOrderAlways || mode == TriggerOrderNever {
+		return false
+	}
+	anyOpen := false
+	for _, t := range items {
+		if !t.Ordered {
+			anyOpen = true
+		}
+	}
+	if !anyOpen || !identicalItems(items) {
+		return false
+	}
+	accs := make([]triggerAccess, len(items))
+	reads := false
+	for i, t := range items {
+		a, ok := g.triggerAccessLocked(t)
+		if !ok {
+			return false
+		}
+		accs[i] = a
+		reads = reads || a.charReads
+	}
+	if !reads {
+		return false
+	}
+	var st *layerStatics
+	statics := func() layerStatics {
+		if st == nil {
+			v := g.layerStaticsLocked()
+			st = &v
+		}
+		return *st
+	}
+	for i := range accs {
+		for j := range accs {
+			if i != j && characteristicReadConflict(&accs[i], &accs[j], statics) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // touchesObjectsOfLocked reports whether the access reads or writes an
