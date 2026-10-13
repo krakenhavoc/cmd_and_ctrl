@@ -1507,6 +1507,7 @@ lastKnownStack[].item.distribution	map:array
 lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
+lastKnownStack[].item.exileWithCounter	string
 lastKnownStack[].item.faceDown	string
 lastKnownStack[].item.foretold	bool
 lastKnownStack[].item.grantedBy	custom(uuid.UUID)
@@ -1776,6 +1777,7 @@ pausedModeWalk.item.distribution	map:array
 pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
+pausedModeWalk.item.exileWithCounter	string
 pausedModeWalk.item.faceDown	string
 pausedModeWalk.item.foretold	bool
 pausedModeWalk.item.grantedBy	custom(uuid.UUID)
@@ -2304,6 +2306,7 @@ pendingTriggers[].distribution	map:array
 pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
+pendingTriggers[].exileWithCounter	string
 pendingTriggers[].faceDown	string
 pendingTriggers[].foretold	bool
 pendingTriggers[].grantedBy	custom(uuid.UUID)
@@ -5408,6 +5411,7 @@ stackMeta[].distribution	map:array
 stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
+stackMeta[].exileWithCounter	string
 stackMeta[].faceDown	string
 stackMeta[].foretold	bool
 stackMeta[].grantedBy	custom(uuid.UUID)

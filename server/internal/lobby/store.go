@@ -91,6 +91,12 @@ type GameRecord struct {
 	// HostDiscordID is a named host still waiting to claim a seat;
 	// "" (NULL) once bound, transferred, or never named. Mutable.
 	HostDiscordID string
+	// VoiceRoom is whether the host asked for a Discord voice room
+	// (ADR 0159 §1, migration 0020). Mutable.
+	VoiceRoom bool
+	// VoiceChannelID is the table's live voice room, "" (NULL) for none
+	// (ADR 0159 §5). Mutable.
+	VoiceChannelID string
 }
 
 // SeatRecord is one seats row.

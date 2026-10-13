@@ -2423,6 +2423,11 @@ export interface OptionalCostView {
   // and buyback, the multikicker cap above that. 1 renders a
   // checkbox, more renders a stepper.
   max_times?: number;
+  // #3232: the floor on the announced X while this cost is paid —
+  // Thieving Skydiver's "Kicker {X}. X can't be 0" is 1. Absent when the
+  // cost has no floor; meaningful only beside a `mana_cost` containing
+  // {X}. Read by optionalCostXFloor (targeting.ts).
+  x_min?: number;
   // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
   // replicate, 3). `max_times` is then capped at what the viewer's energy
   // pays for, and `energy_short` says it pays for none.

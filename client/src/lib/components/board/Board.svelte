@@ -126,6 +126,7 @@
     castSacrificeClause,
     castSacrificeLabel,
     optionalCostsOf,
+    optionalCostXFloor,
     castTeamworkOffer,
     castBlightOffer,
     castRevealCost,
@@ -983,7 +984,10 @@
     // and it is 0, so the picker is skipped and nothing is sent. The
     // server refuses a non-zero X on such a cast, which is what makes
     // this a prompt decision rather than a rule the client enforces.
-    if (hasXCost(card, choices.altCost) && !castLocksXAtZero(card, choices.altCost)) {
+    if (
+      hasXCost(card, choices.altCost, choices.optionalCosts) &&
+      !castLocksXAtZero(card, choices.altCost)
+    ) {
       xPromptChoices = choices;
       xPromptCard = card;
       return;
@@ -3835,6 +3839,7 @@
       ? Math.min(suggestedX, xPromptCard.additional_cost.blight_x_max ?? 0)
       : suggestedX}
     xCeiling={xPromptCard ? xCeilingFor(xPromptCard, xPromptChoices.altCost) : undefined}
+    minX={xPromptCard ? optionalCostXFloor(xPromptCard, xPromptChoices.optionalCosts) : 0}
     costLabel={xPromptCard
       ? alternativeCostByKey(xPromptCard, xPromptChoices.altCost)?.mana_cost
       : undefined}

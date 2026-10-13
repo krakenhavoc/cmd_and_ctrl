@@ -3772,6 +3772,16 @@ exiled" and the default for "this turn". The attack conditions read tallies
 written as each attacker is declared, so a token that died in combat still
 counts, and every tally resets at the turn boundary.
 
+**"Exile that card with a <counter> counter on it instead of putting it into
+your graveyard as it resolves" (#3213, ADR 0107 amendment of 2026-10-13):**
+Goliath Daydreamer. A cast trigger marks the spell on the stack with
+`g.MarkSpellExilesWithCounterForEffect(ev.CardID, game.CounterDream)`; the
+mark is one more resolution exit (rebound, buyback, the Adventure exile), so
+it fires only when the spell resolves and competes with the others under
+CR 616.1. The cards it leaves behind are found by their counter
+(`c.Counters[game.CounterDream] > 0` on `g.Exile.Cards`) and cast through a
+`GrantCastPermissionToCardsForEffect` grant, as Crabomination's are.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse
@@ -3839,6 +3849,17 @@ entry per kicker (`CastCounts.KickedWith`, #2360). The matching "and with
 <ability>" is a grant keyed on `game.CardKickedWith` — `KeywordGrant` for a
 keyword, a trigger whose `AppliesTo` checks it, an `Activated` entry whose
 `Condition` checks it. See `volvers.go`.
+
+**"Kicker {X}"** (#3232, Verdeloth the Ancient, Thieving Skydiver,
+Kangee, Aerie Keeper) is `KickerX(mana, minX)`: the kicker's mana
+contains an {X}, so the caster's one announced X is what it charges and
+what the enters trigger reads back with `source.CastX()`. `minX` is
+the printed "X can't be 0" (pass 1), enforced only while the kicker is
+paid; an unkicked cast announces no X (a non-zero one is refused). A
+targeted "mana value X or less" clause is a `TargetsFrom` built from
+`source.CastX()` (Thieving Skydiver); a count is stamped into
+`item.Params.Amount` by a fill-in `Build` (Verdeloth, Kangee). See
+ADR 0073's 2026-10-13 amendment.
 
 Use the keyword constructor, never a hand-rolled
 `game.AdditionalCost{Optional: true}` — for the reason `Flashback` has

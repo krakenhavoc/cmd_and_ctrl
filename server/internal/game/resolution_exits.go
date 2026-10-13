@@ -82,6 +82,23 @@ func resolutionExitsLocked(c Card, item *StackItem) []resolutionExit {
 			apply: func(r *zoneRoute) { r.Dst = ZoneHand },
 		})
 	}
+	if item != nil && !item.IsCopy && item.ExileWithCounter != "" {
+		// Goliath Daydreamer: exile it with a counter on it. The counter
+		// goes on once the card is really in exile (exile_with_counter.go).
+		cardID, controller, kind := c.InstanceID, item.Controller, item.ExileWithCounter
+		out = append(out, resolutionExit{
+			label: "Exile it with a " + kind + " counter on it",
+			apply: func(r *zoneRoute) {
+				r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, controller
+				r.then = func(g *Game) error {
+					if exiledCardByIDLocked(g, cardID) == nil {
+						return nil
+					}
+					return g.AddCounterForEffect(cardID, kind, 1)
+				}
+			},
+		})
+	}
 	if castAsAdventure(c) {
 		// CR 715.3d, and CR 715.4's permission rides the route's
 		// continuation rather than the next line: a route that paused

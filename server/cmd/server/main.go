@@ -388,6 +388,9 @@ func main() {
 	// table's seats get their owners' mats back.
 	playmats := newPlaymatService(log, cfg.DataDir, database)
 	l.SetPlaymats(playmats)
+	// Table voice rooms (ADR 0159 §7): also before RestoreFromDisk, so
+	// a resumed table's game view carries its voice state again.
+	l.SetVoiceRoomsEnabled(cfg.Voice.Enabled())
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
 	// database at scrape time.

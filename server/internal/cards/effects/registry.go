@@ -330,6 +330,19 @@ func Register(spec Spec) {
 		if oc.MaxPayments() > 1 && oc.CardsDemanded() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q repeats and demands cards or permanents — only a mana-only cost may repeat", spec.Name, oc.Key))
 		}
+		// #3232: an {X} in an optional cost is the caster's one announced
+		// X (CR 107.3a), so it is paid at most once — "X, paid three
+		// times" is not a card — and a floor on X is meaningful only on
+		// a cost that charges one. A negative floor is a typo.
+		if oc.MinX < 0 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has a negative MinX", spec.Name, oc.Key))
+		}
+		if oc.MinX > 0 && !game.OptionalCostHasX(oc) {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q declares MinX but its mana cost %q has no {X}", spec.Name, oc.Key, oc.ManaCost))
+		}
+		if game.OptionalCostHasX(oc) && oc.MaxPayments() > 1 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has an {X} and repeats — X is one announced number, so it may be paid at most once", spec.Name, oc.Key))
+		}
 		// PayLifeX rides the shared XValue slot (ADR 0021 §3), and two
 		// claimants on one number is a bug waiting to be written.
 		if oc.PayLifeX {

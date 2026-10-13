@@ -92,7 +92,9 @@ func everyFieldGameView(ownerID, oppID string) GameView {
 		Vote:          &VoteView{ID: "vote-1", Topic: "raise a toast", Options: []string{"yes"}, Initiator: ownerID, Ballots: map[string]int{ownerID: 0}},
 		UndoLimit:     3,
 		Settings:      &TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
-		StartingSeat:  1,
+		Voice: &VoiceView{Enabled: true, Status: VoiceStatusReady, URL: "https://discord.com/channels/1/2",
+			Access: map[string]string{ownerID: VoiceAccessGranted, oppID: VoiceAccessNotInServer}},
+		StartingSeat: 1,
 		OpeningRoll: &OpeningRollView{Rounds: []OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []OpeningRollDieView{{Seat: 1, Result: 17}}},
 		}},

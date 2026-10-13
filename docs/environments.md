@@ -862,6 +862,25 @@ the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0020 (ADR 0159, table voice rooms) adds `games.voice_room`
+(0 or 1, default 0) and `games.voice_channel_id` (nullable). An older
+binary refuses the v20 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN voice_room; ALTER TABLE games DROP COLUMN voice_channel_id; DELETE FROM schema_migrations WHERE version = 20;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+An older binary knows nothing of voice rooms, so any live ones stay in
+the Discord category until they are deleted there by hand. Rolling
+forward again recreates both columns with voice off on every table, and
+its boot reconcile deletes every channel in the category, since no table
+claims one. `TestMigration0020RollbackByHand` runs exactly this sequence
+and then rolls forward.
+
 Migration 0019 (ADR 0156, the sign-up gate) adds two nullable columns,
 `users.access_checked_at` and `users.access_result`, the gate's last
 answer for each person. An older binary refuses the v19 schema. Drop

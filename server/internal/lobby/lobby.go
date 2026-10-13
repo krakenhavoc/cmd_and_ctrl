@@ -145,6 +145,10 @@ type GameMeta struct {
 	// otherwise, and during the opening roll, before turn 1 begins. Never persisted: the engine is the authority, and the
 	// list reads it fresh each time.
 	Turn int `json:"turn,omitempty"`
+	// VoiceRoom is whether the host asked for a Discord voice room
+	// (ADR 0159 §1). Public: a table list may show which tables have
+	// voice. The room's own state rides the game view (§6).
+	VoiceRoom bool `json:"voice_room,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -292,6 +296,10 @@ type Lobby struct {
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
 	reclaims map[[sha256.Size]byte]reclaimEntry
+	// voiceOn is ADR 0159 §7: whether this server offers table voice
+	// rooms. Set once at boot by SetVoiceRoomsEnabled, before
+	// RestoreFromDisk, so a restored table gets its stamp back.
+	voiceOn bool
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.
@@ -357,7 +365,15 @@ func (l *Lobby) SetStateBroadcaster(b StateBroadcaster) {
 // which callers surface as-is: rare, and the mutation has already
 // happened).
 func (l *Lobby) applyLocked(id uuid.UUID, entry *gameEntry, fn func() error) (func(), error) {
-	view, seq, err := entry.room.ApplyExternal(fn)
+	view, seq, err := entry.room.ApplyExternal(func() error {
+		if err := fn(); err != nil {
+			return err
+		}
+		// ADR 0159 §6: a seat that just joined or left changes who may
+		// use the voice room, and this commit's capture should say so.
+		l.restampVoice(entry)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -408,6 +424,11 @@ type gameEntry struct {
 	// blocks are the identities this table will not seat again (blocks.go,
 	// table_blocks). Guarded by l.mu like meta.
 	blocks map[blockKey]blockInfo
+
+	// voiceChannelID is the table's live Discord voice room
+	// (games.voice_channel_id, ADR 0159 §5), "" for none. Written by the
+	// voice manager; the lobby only persists it.
+	voiceChannelID string
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
