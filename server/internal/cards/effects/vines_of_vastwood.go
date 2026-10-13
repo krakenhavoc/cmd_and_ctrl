@@ -42,36 +42,40 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // control", where hexproof IS the printed effect exactly. That is
 // strictly fewer legal targets than printed and never more.
 //
-// # Declared simplification 2 (weaker): no kicker
+// # Kicker
 //
-// Kicker is an additional cost paid as the spell is cast (CR 702.33),
-// and the engine's additional-cost slot carries only the discard,
-// sacrifice and pay-life shapes — there is no way to offer an extra
-// mana payment at announce or to read back whether it was made
-// (#664). So the spell is never kicked and the +4/+4 never happens.
+// Kicker {G} is the ordinary optional additional cost (CR 702.33):
+// OptionalCosts: Kicker("{G}"), read back at resolution with
+// ctx.WasKicked(). A kicked Vines gives the same creature +4/+4 until
+// end of turn after the protection.
 //
-// Vines therefore ships as the protection half only, for {G}. Both
-// simplifications take something away and neither adds anything, which
-// is the direction #259 allows.
+// The remaining simplification (1) is the only one left, and it only
+// takes targets away.
 func init() {
 	Register(Spec{
 		OracleID:     "8998d211-5ca6-41d2-bc64-f51f70bd41e5",
 		Name:         "Vines of Vastwood",
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
-			"Kicker isn't available, so the +4/+4 half never happens — Vines only grants the protection.",
 			"It can only be cast on a creature you control.",
 		},
-		Targets: TargetCreature("target creature you control", YouControl()),
+		Targets:       TargetCreature("target creature you control", YouControl()),
+		OptionalCosts: []game.AdditionalCost{Kicker("{G}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 				return nil
 			}
-			return GrantKeywordUntilEOT{
+			if err := (GrantKeywordUntilEOT{
 				Target:   item.Targets[0].ID,
 				Keywords: []string{"hexproof"},
 				Label:    "Vines of Vastwood — hexproof",
-			}.Apply(ctx)
+			}).Apply(ctx); err != nil {
+				return err
+			}
+			if !ctx.WasKicked() {
+				return nil
+			}
+			return BoostUntilEOT{Target: item.Targets[0].ID, Power: 4, Toughness: 4, Label: "Vines of Vastwood — kicked: +4/+4"}.Apply(ctx)
 		},
 	})
 }

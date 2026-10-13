@@ -318,7 +318,7 @@ func duplicatesListedPrice(card Card, listed []*AlternativeCost, granted *Altern
 func (a *AlternativeCost) onlyMana() bool {
 	return a != nil && a.Condition == nil && a.Life == 0 && a.Energy == 0 && !a.AsThoughFlash && !a.PaysCards() &&
 		a.Targets == nil && !a.ClearsTargets && !a.SacrificeOnEntry &&
-		!a.ExileOnLeavingStack && !a.WarpExile && a.EntersWithCounterName == "" &&
+		!a.ExileOnLeavingStack && !a.WarpExile && !a.Dash && a.EntersWithCounterName == "" &&
 		a.FaceDown == nil && !a.RequiresGrant && a.CastsFace == 0
 }
 

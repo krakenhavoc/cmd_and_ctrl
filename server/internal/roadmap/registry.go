@@ -443,6 +443,18 @@ var items = []Item{
 		Mechanic: "warp",
 	},
 	{
+		Slug: "dash", Name: "Dash", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a creature for its dash cost; it has haste and returns to its owner's hand at the beginning of the next end step.",
+		Rules:    []string{"702.109"},
+		Mechanic: "dash",
+	},
+	{
+		Slug: "freerunning", Name: "Freerunning", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:  "Cast a spell for its freerunning cost if an Assassin or a commander you controlled dealt combat damage to a player this turn.",
+		Rules:    []string{"702.173"},
+		Mechanic: "freerunning",
+	},
+	{
 		Slug: "free-cast", Name: "Free casts", Kind: KindMechanic, Status: StatusImplemented,
 		Summary:  "Spells you may cast without paying their mana cost when a condition holds, such as controlling your commander.",
 		Mechanic: "free cast",
