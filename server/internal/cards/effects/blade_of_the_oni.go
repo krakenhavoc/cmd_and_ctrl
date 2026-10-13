@@ -27,17 +27,17 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Static: []game.StaticAbility{
-			equippedCreatureIs(game.Layer4Type, func(c *game.Characteristic) {
+			equippedCreatureIs(game.Layer4Type, "Equipped creature is a Demon in addition to its other types.", func(c *game.Characteristic) {
 				if !hasFold(c.Subtypes, "Demon") {
 					c.Subtypes = append(c.Subtypes, "Demon")
 				}
 			}),
-			equippedCreatureIs(game.Layer5Color, func(c *game.Characteristic) {
+			equippedCreatureIs(game.Layer5Color, "Equipped creature is black in addition to its other colors.", func(c *game.Characteristic) {
 				if !hasFold(c.Colors, "B") {
 					c.Colors = append(c.Colors, "B")
 				}
 			}),
-			equippedCreatureIs(game.Layer6Ability, func(c *game.Characteristic) {
+			equippedCreatureIs(game.Layer6Ability, "Equipped creature has menace.", func(c *game.Characteristic) {
 				c.Abilities = game.AppendKeywordAbility(c.Abilities, "menace")
 			}),
 			SetAttachedBasePT(5, 5),

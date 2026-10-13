@@ -44,6 +44,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "trample"},
 		Static: []game.StaticAbility{{
+			Label:    "Gets +1/+1 for each land you control and each land card in your graveyard.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

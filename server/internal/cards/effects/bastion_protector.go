@@ -53,6 +53,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Commander creatures you control get +2/+2.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
 				AppliesTo: commanderCreatureYouControl,
@@ -62,6 +63,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Commander creatures you control have indestructible.",
 				Layer:     game.Layer6Ability,
 				AppliesTo: commanderCreatureYouControl,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

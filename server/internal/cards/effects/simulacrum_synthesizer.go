@@ -42,6 +42,7 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats:      []string{"The Constructs get their +1/+1 per artifact from the Synthesizer rather than on their own, so if it leaves the battlefield they shrink to 0/0, and a Construct that had counters and lost them all dies."},
 		Static: []game.StaticAbility{{
+			Label:    "Construct tokens get +1/+1 for each artifact you control.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

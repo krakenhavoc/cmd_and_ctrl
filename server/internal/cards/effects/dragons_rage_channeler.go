@@ -37,6 +37,7 @@ func init() {
 		},
 		Static: []game.StaticAbility{
 			{
+				Label:    "Gets +2/+2 while there are four or more card types among cards in your graveyard.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
@@ -48,6 +49,7 @@ func init() {
 				},
 			},
 			{
+				Label: "Has flying while there are four or more card types among cards in your graveyard.",
 				Layer: game.Layer6Ability,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return target.InstanceID == source.InstanceID && drcDeliriumMet(g, source.Controller)

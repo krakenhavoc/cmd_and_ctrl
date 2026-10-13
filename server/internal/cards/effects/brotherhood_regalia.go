@@ -37,6 +37,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Equipped creature is an Assassin in addition to its other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: AttachedToSource,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

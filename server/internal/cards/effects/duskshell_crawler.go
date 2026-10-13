@@ -27,6 +27,7 @@ func init() {
 		Name:         "Duskshell Crawler",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label: "Each creature you control with a +1/+1 counter on it has trample.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller && target.Counters["+1/+1"] > 0

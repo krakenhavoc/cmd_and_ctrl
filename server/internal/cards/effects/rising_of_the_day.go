@@ -20,6 +20,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label: "Creatures you control have haste.",
 				Layer: game.Layer6Ability,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 					return target.IsCreature() && target.Controller == source.Controller
@@ -31,6 +32,7 @@ func init() {
 				},
 			},
 			{
+				Label:    "Legendary creatures you control get +1/+0.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

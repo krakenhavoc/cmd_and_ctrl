@@ -29,6 +29,7 @@ func init() {
 		Purpose:             game.Purpose{ExtraLandDrops: 1}, // #2678: the bot reads the extra drop
 		Static: []game.StaticAbility{
 			{
+				Label: "Lands you control are every basic land type in addition to their other types.",
 				Layer: game.Layer4Type,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return target.IsLand() && target.Controller == source.Controller

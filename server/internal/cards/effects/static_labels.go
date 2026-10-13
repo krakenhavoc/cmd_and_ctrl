@@ -100,13 +100,18 @@ func restrictionClause(r game.Restriction) string {
 			rest &^= p.bit
 		}
 	}
-	if rest == game.CantBeBlocked && len(parts) == 0 {
-		return "can't be blocked"
+	var clauses []string
+	if len(parts) > 0 {
+		clauses = append(clauses, "can't "+strings.Join(parts, " or "))
 	}
-	if rest != 0 || len(parts) == 0 {
+	if rest&game.CantBeBlocked != 0 {
+		clauses = append(clauses, "can't be blocked")
+		rest &^= game.CantBeBlocked
+	}
+	if rest != 0 || len(clauses) == 0 {
 		return ""
 	}
-	return "can't " + strings.Join(parts, " or ")
+	return strings.Join(clauses, " and ")
 }
 
 // queryNoun renders a PermanentQuery as the thing a player sees on the
@@ -153,6 +158,8 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 			return "Can't attack unless you control more " + n + "s than defending player."
 		}
 		return "Can't attack unless you control more of a certain permanent than defending player."
+	case r.ControllerMustHaveCitysBlessing:
+		return "Can't attack unless you have the city's blessing."
 	case r.NotAlreadyAttackedThisTurn:
 		return "Can't attack a player it already attacked this turn."
 	}
@@ -166,6 +173,26 @@ func counterCountPhrase(n int, kind string) string {
 		return "a " + kind + " counter"
 	}
 	return fmt.Sprintf("%d %s counters", n, kind)
+}
+
+// rowLabelFromHeader turns a card's CR 616 prompt header ("Pariah —
+// damage to you is dealt to enchanted creature instead") into the
+// chip's sentence by dropping the card's name: "Damage to you is dealt
+// to enchanted creature instead." Used by the families whose cards each
+// already carry a header that reads as the printed ability.
+func rowLabelFromHeader(header string) string {
+	if _, after, ok := strings.Cut(header, " — "); ok {
+		header = after
+	}
+	header = strings.TrimSpace(header)
+	if header == "" {
+		return ""
+	}
+	header = strings.ToUpper(header[:1]) + header[1:]
+	if !strings.HasSuffix(header, ".") {
+		header += "."
+	}
+	return header
 }
 
 // Labelled is s with the wording its ◆ chip shows (#2410), for a card

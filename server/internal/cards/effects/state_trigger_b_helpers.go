@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // state_trigger_b_helpers.go — shared bodies for the second batch of
 // ADR 0107 §1's state-trigger cards (#1858): the tide-counter pair
@@ -33,6 +37,7 @@ func removeAllCountersFromThis(kind string) Effect {
 // change, so the count is read as it stands.
 func whileExactlyTideCounters(n int, who func(target, source *game.Card) bool, dp, dt int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:    fmt.Sprintf("While it has exactly %s on it, affected creatures get %s.", tideCounters(n), signedPT(dp, dt)),
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -43,6 +48,14 @@ func whileExactlyTideCounters(n int, who func(target, source *game.Card) bool, d
 			c.Toughness += dt
 		},
 	}
+}
+
+// tideCounters is "1 tide counter" / "3 tide counters".
+func tideCounters(n int) string {
+	if n == 1 {
+		return "1 tide counter"
+	}
+	return fmt.Sprintf("%d tide counters", n)
 }
 
 // thisCreatureOnly is the `who` of a self-only whileExactlyTideCounters.

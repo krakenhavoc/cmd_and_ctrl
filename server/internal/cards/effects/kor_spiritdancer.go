@@ -22,6 +22,7 @@ func init() {
 		Name:         "Kor Spiritdancer",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Gets +2/+2 for each Aura attached to it.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

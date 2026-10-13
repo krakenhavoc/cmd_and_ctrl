@@ -46,6 +46,7 @@ func devourOver(name string, n int, plural string, matches func(game.Card) bool)
 		})
 	// Declining is not a graveyard trip: the creature enters either way.
 	r.Replace = nil
+	r.RowLabel = fmt.Sprintf("Devour %d: you may sacrifice any number of %s as it enters; it enters with %s on it for each.", n, plural, counterCountPhrase(n, "+1/+1"))
 	return r
 }
 

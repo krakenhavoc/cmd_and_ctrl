@@ -34,6 +34,7 @@ func init() {
 		Name:         "Consuming Aberration",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Power and toughness are each equal to the number of cards in your opponents' graveyards.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

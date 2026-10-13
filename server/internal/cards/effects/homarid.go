@@ -33,8 +33,8 @@ func init() {
 			b10EntersWithCounters(tide, 1, "Homarid: enters with a tide counter"),
 		},
 		Static: []game.StaticAbility{
-			whileExactlyTideCounters(1, thisCreatureOnly, -1, -1),
-			whileExactlyTideCounters(3, thisCreatureOnly, 1, 1),
+			Labelled(whileExactlyTideCounters(1, thisCreatureOnly, -1, -1), "Gets -1/-1 while it has exactly 1 tide counter on it."),
+			Labelled(whileExactlyTideCounters(3, thisCreatureOnly, 1, 1), "Gets +1/+1 while it has exactly 3 tide counters on it."),
 		},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Homarid — put a tide counter", putACounterOnThis(tide)),

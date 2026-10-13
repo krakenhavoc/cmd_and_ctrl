@@ -26,6 +26,7 @@ func init() {
 		Name:         "Daxos, Blessed by the Sun",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Toughness is equal to your devotion to white.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

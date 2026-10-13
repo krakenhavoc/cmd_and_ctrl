@@ -58,6 +58,12 @@ func TestFamilyConstructorLabels(t *testing.T) {
 		{"CreaturesYouControlWithCountersHave", CreaturesYouControlWithCountersHave("+1/+1", true, "trample").Label, "Other creatures you control with a +1/+1 counter on them have trample."},
 		{"ThisHasWhileItHasCounter", ThisHasWhileItHasCounter("", "trample").Label, "Has trample while it has a counter on it."},
 		{"CantAttackItsOwner", CantAttackItsOwner().Label, "Can't attack its owner."},
+		{"RestrictSelf cannot block and unblockable", RestrictSelf(game.CantBlock | game.CantBeBlocked).Label, "Can't block and can't be blocked."},
+		{"CantAttackUnlessYouHaveTheCitysBlessing", CantAttackUnlessYouHaveTheCitysBlessing().Label, "Can't attack unless you have the city's blessing."},
+		{"impendingNotACreature", impendingNotACreature().Label, "Isn't a creature while it has a time counter on it."},
+		{"firstStrikeDuringYourTurn", firstStrikeDuringYourTurn().Label, "Has first strike during your turn."},
+		{"GoadAttached", GoadAttached().Label, "Attached creature is goaded."},
+		{"b07TripleDamageFromYourSources", b07TripleDamageFromYourSources().RowLabel, "If a source you control would deal damage to a permanent or player, it deals triple that damage instead."},
 		{"CantAttackUnlessDefendingPlayerControls", CantAttackUnlessDefendingPlayerControls(QuerySubtype("Island")).Label, "Can't attack unless defending player controls an Island."},
 		{"CantAttackUnlessDefendingPlayerIsPoisoned", CantAttackUnlessDefendingPlayerIsPoisoned().Label, "Can't attack unless defending player is poisoned."},
 		{"CantAttackUnlessDefendingPlayerHasCardsInGraveyard", CantAttackUnlessDefendingPlayerHasCardsInGraveyard(7).Label, "Can't attack unless defending player has 7 or more cards in their graveyard."},
@@ -68,6 +74,21 @@ func TestFamilyConstructorLabels(t *testing.T) {
 		{"LoseAllAbilities", LoseAllAbilities().Label, "Attached permanent loses all abilities."},
 		{"b16Anthem", b16Anthem(nil, 1, 1).Label, "Gives +1/+1."},
 		{"b16GrantKeywords", b16GrantKeywords(nil, "vigilance").Label, "Gives vigilance."},
+		{"b31NotACreatureWhileGraveyardBelow", b31NotACreatureWhileGraveyardBelow(8).Label, "Isn't a creature unless you have 8 or more cards in your graveyard."},
+		{"BlockRequirementWhere blocks", BlockRequirementWhere(game.BlockRequirementBlocks, selfOnly).Label, "Creatures it affects block each combat if able."},
+		{"BlockRequirementWhere lure", BlockRequirementWhere(game.BlockRequirementLure, selfOnly).Label, "All creatures able to block creatures it affects do so."},
+		{"BlockRequirementWhere exactly one", BlockRequirementWhere(game.BlockRequirementExactlyOne, selfOnly).Label, "Creatures it affects must be blocked by exactly one creature if able."},
+		{"FilteredLure wall", FilteredLure(game.BlockerFilterWall).Label, "All Walls able to block it do so."},
+		{"FilteredLure flying", FilteredLure(game.BlockerFilterFlying).Label, "All creatures with flying able to block it do so."},
+		{"LosesAllLandTypes", LosesAllLandTypes(nil).Label, "Affected lands lose all land types."},
+		{"LosesAllAbilitiesAndHas", LosesAllAbilitiesAndHas(nil, "x").Label, "Affected permanents lose all abilities and have what the card says they have."},
+		{"fraThresholdSelfPT", fraThresholdSelfPT(1, 0).Label, "Gets +1/+0 while there are seven or more cards in your graveyard."},
+		{"fraThresholdSelfKeywords", fraThresholdSelfKeywords("flying", "vigilance").Label, "Has flying and vigilance while there are seven or more cards in your graveyard."},
+		{"equippedCreatureIs", equippedCreatureIs(game.Layer6Ability, "Equipped creature has menace.", nil).Label, "Equipped creature has menace."},
+		{"whileExactlyTideCounters", whileExactlyTideCounters(3, thisCreatureOnly, 1, 1).Label, "While it has exactly 3 tide counters on it, affected creatures get +1/+1."},
+		{"whileExactlyTideCounters one", whileExactlyTideCounters(1, thisCreatureOnly, -1, -1).Label, "While it has exactly 1 tide counter on it, affected creatures get -1/-1."},
+		{"SpellsYouControlHave", SpellsYouControlHave(nil, "rebound").Label, "Spells you control have rebound."},
+		{"SpellsYouControlHave narrowed", SpellsYouControlHave(Instant(), "flash").Label, "Certain spells you control have flash."},
 		{"incarnationAnthem", incarnationAnthem("haste", "Mountain").Label, "While this is in your graveyard and you control a Mountain, creatures you control have haste."},
 		{"incarnationAnthem article", incarnationAnthem("flying", "Island").Label, "While this is in your graveyard and you control an Island, creatures you control have flying."},
 		// Replacements: the chip's wording is RowLabel, never the CR 616 prompt header.
@@ -81,6 +102,16 @@ func TestFamilyConstructorLabels(t *testing.T) {
 		{"SelfEntersWithCountersIfNoManaSpent", SelfEntersWithCountersIfNoManaSpent("+1/+1", 3).RowLabel, "Enters with 3 +1/+1 counters on it if no mana was spent to cast it."},
 		{"DoublesEntering", DoublesEntering(nil).RowLabel, "Abilities that trigger when a permanent enters trigger an additional time."},
 		{"SuppressesEntering", SuppressesEntering(nil).RowLabel, "Some permanents entering don't cause abilities to trigger."},
+		{"Devour", Devour("X", 2).RowLabel, "Devour 2: you may sacrifice any number of creatures as it enters; it enters with 2 +1/+1 counters on it for each."},
+		{"Devour one", Devour("X", 1).RowLabel, "Devour 1: you may sacrifice any number of creatures as it enters; it enters with a +1/+1 counter on it for each."},
+		{"DevourPaying", DevourPaying("X", 1, 1, 0).RowLabel, "Devour 1: you may sacrifice any number of creatures as it enters; it enters with a +1/+1 counter on it for each."},
+		{"frEntersTappedUnlessYouBeholdAJace", frEntersTappedUnlessYouBeholdAJace("X").RowLabel, "Enters tapped unless you control a Jace or reveal one from your hand."},
+		{"EntersAsCopyOfUntilEndOfTurn", EntersAsCopyOfUntilEndOfTurn("X", nil, nil).RowLabel, "May enter as a copy of another permanent until end of turn."},
+		{"PreventDamageDealtTo", PreventDamageDealtTo(PreventionStatic{To: ToThisCreature, Then: removeACounterFromThisBody, Label: "Phantom — prevent damage to it and remove a +1/+1 counter"}).RowLabel, "Prevent damage to it and remove a +1/+1 counter."},
+		{"PreventDamageDealtTo while", PreventDamageDealtTo(PreventionStatic{To: ToThisCreature, While: WhileItHasAPlusOneCounter, Then: removeACounterFromThisBody, Label: "Knight — prevent damage to it"}).RowLabel, "Prevent damage to it. Only while its condition on the card holds."},
+		{"PreventDamageASourceWouldDeal", PreventDamageASourceWouldDeal(PreventionStatic{To: ToYou, Then: nineLivesCounterBody, Label: "Nine Lives — prevent the damage and put an incarnation counter on it"}).RowLabel, "Prevent the damage and put an incarnation counter on it."},
+		{"redirectYourDamageToAttached", redirectYourDamageToAttached("Pariah — damage to you is dealt to enchanted creature instead").RowLabel, "Damage to you is dealt to enchanted creature instead."},
+		{"redirectYourDamageToThis", redirectYourDamageToThis("Archangel — damage to you is dealt to it instead").RowLabel, "Damage to you is dealt to it instead."},
 		{"CreaturesEnteringDontTrigger", CreaturesEnteringDontTrigger("Torpor Orb").RowLabel, "Creatures entering don't cause abilities to trigger."},
 	}
 	for _, c := range table {
@@ -134,14 +165,29 @@ func TestRegisteredTaplandChipIsHiddenOnTheBattlefield(t *testing.T) {
 // Card-specific wording on a handful of the most-played cards.
 func TestMostPlayedCardsReadInPlainWords(t *testing.T) {
 	for name, want := range map[string]string{
-		"Glorious Anthem":          "Creatures you control get +1/+1.",
-		"Chromatic Lantern":        "Lands you control have \"{T}: Add one mana of any color.\"",
-		"Blood Moon":               "Nonbasic lands are Mountains.",
-		"Urborg, Tomb of Yawgmoth": "Each land is a Swamp in addition to its other land types.",
-		"Anger":                    "While this is in your graveyard and you control a Mountain, creatures you control have haste.",
-		"Panharmonicon":            "Abilities that trigger when an artifact or creature enters trigger an additional time.",
-		"Reliquary Tower":          "You have no maximum hand size.",
-		"Tarmogoyf":                "Power is the number of card types among cards in all graveyards; toughness is that plus 1.",
+		"Glorious Anthem":             "Creatures you control get +1/+1.",
+		"Chromatic Lantern":           "Lands you control have \"{T}: Add one mana of any color.\"",
+		"Blood Moon":                  "Nonbasic lands are Mountains.",
+		"Urborg, Tomb of Yawgmoth":    "Each land is a Swamp in addition to its other land types.",
+		"Anger":                       "While this is in your graveyard and you control a Mountain, creatures you control have haste.",
+		"Panharmonicon":               "Abilities that trigger when an artifact or creature enters trigger an additional time.",
+		"Reliquary Tower":             "You have no maximum hand size.",
+		"Lure":                        "All creatures able to block enchanted creature do so.",
+		"Alpine Moon":                 "Lands your opponents control with the chosen name lose all land types and abilities and have \"{T}: Add one mana of any color.\"",
+		"Homarid":                     "Gets -1/-1 while it has exactly 1 tide counter on it.",
+		"Cast Through Time":           "Instant and sorcery spells you control have rebound.",
+		"Psychosis Crawler":           "Power and toughness are each equal to the number of cards in your hand.",
+		"Stridehangar Automaton":      "Thopters you control get +1/+1.",
+		"Uthros Research Craft":       "Gets +1/+0 for each artifact you control.",
+		"Cybermen Squadron":           "Nonlegendary artifact creatures you control have myriad.",
+		"Gemcutter Buccaneer":         "Treasures you control have \"Equipped creature gets +2/+0\", \"Equip Pirate {1}\" and \"Equip {3}\".",
+		"Changeling Outcast":          "Can't block and can't be blocked.",
+		"Wayward Swordtooth":          "Can't attack unless you have the city's blessing.",
+		"Adeline, Resplendent Cathar": "Power is equal to the number of creatures you control.",
+		"Mirror Box":                  "Each legendary creature you control gets +1/+1.",
+		"Overlord of the Hauntwoods":  "Isn't a creature while it has a time counter on it.",
+		"Thassa, God of the Sea":      "Isn't a creature unless your devotion to blue is five or more.",
+		"Tarmogoyf":                   "Power is the number of card types among cards in all graveyards; toughness is that plus 1.",
 	} {
 		spec := specByName(t, name)
 		found := false
@@ -224,37 +270,26 @@ var familyLabelExemptions = map[string]string{
 	"RestrictUntilEOT":                 "not a battlefield static",
 	"GrantAbility":                     "a one-shot primitive, not a static row",
 	"impendingNotACreature":            "keyword plumbing the chip hides",
+	// #3129: delegating wrappers over a constructor that carries the wording.
+	"BlockRequirementWhere":           "delegates to blockRequirementStatic, which words the row from the requirement kind",
+	"Devour":                          "delegates to devourOver, which words the row from the count",
+	"DevourPaying":                    "delegates to Devour",
+	"grantToCommanderCreaturesYouOwn": "delegates to GrantAbilities, whose row reads the granted bundle's printed text",
+	"phialGated":                      "narrows a replacement that already carries its own label",
+	"PreventDamageDealtTo":            "delegates to PreventionStatic.replacement, which words the row from the card's header",
+	"PreventDamageASourceWouldDeal":   "delegates to PreventionStatic.replacement, which words the row from the card's header",
+	"redirectYourDamageToAttached":    "delegates to staticRedirection, which words the row from the card's header",
+	"redirectYourDamageToThis":        "delegates to staticRedirection, which words the row from the card's header",
 }
 
 // familyLabelPending are constructors that should carry wording and do
 // not yet: the remaining work of #2410, written down so it cannot be
 // forgotten and so the guard stays green. The list only shrinks. An
 // entry that gains a Label fails TestFamilyConstructorsCarryALabel
-// until it is deleted from here.
-var familyLabelPending = map[string]bool{
-	"b31NotACreatureWhileGraveyardBelow": true,
-	"BlockRequirementWhere":              true,
-	"FilteredLure":                       true,
-	"blockRequirementStatic":             true,
-	"grantToCommanderCreaturesYouOwn":    true,
-	"EntersAsCopyOfUntilEndOfTurn":       true,
-	"Devour":                             true,
-	"DevourPaying":                       true,
-	"devourOver":                         true,
-	"LosesAllAbilitiesAndHas":            true,
-	"LosesAllLandTypes":                  true,
-	"phialGated":                         true,
-	"PreventDamageASourceWouldDeal":      true,
-	"PreventDamageDealtTo":               true,
-	"frEntersTappedUnlessYouBeholdAJace": true,
-	"fraThresholdSelfKeywords":           true,
-	"fraThresholdSelfPT":                 true,
-	"equippedCreatureIs":                 true,
-	"redirectYourDamageToAttached":       true,
-	"redirectYourDamageToThis":           true,
-	"SpellsYouControlHave":               true,
-	"whileExactlyTideCounters":           true,
-}
+// until it is deleted from here. #3129 worded the last of them; a
+// constructor whose meaning depends on the card goes here again only
+// with a reason, and its cards carry Labelled(...) wording.
+var familyLabelPending = map[string]bool{}
 
 // Every function in this package that returns a StaticAbility or a
 // ReplacementEffect (or a slice of them) names a Label or RowLabel, or

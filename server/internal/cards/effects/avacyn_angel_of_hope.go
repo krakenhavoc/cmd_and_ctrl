@@ -54,6 +54,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "vigilance", "indestructible"},
 		Static: []game.StaticAbility{{
+			Label: "Other permanents you control have indestructible.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID != source.InstanceID &&

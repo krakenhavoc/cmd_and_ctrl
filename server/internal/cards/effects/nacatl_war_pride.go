@@ -29,7 +29,7 @@ func init() {
 		OracleID:     "692fdca7-0eff-4d2d-b744-213b6f6e18fb",
 		Name:         "Nacatl War-Pride",
 		Completeness: CompletenessFull,
-		Static:       []game.StaticAbility{BlockRequirementWhere(game.BlockRequirementExactlyOne, selfOnly)},
+		Static:       []game.StaticAbility{Labelled(BlockRequirementWhere(game.BlockRequirementExactlyOne, selfOnly), "Must be blocked by exactly one creature if able.")},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventAttack, ThisAttacked,
 				"Nacatl War-Pride — X tapped and attacking token copies, where X is the number of creatures defending player controls",

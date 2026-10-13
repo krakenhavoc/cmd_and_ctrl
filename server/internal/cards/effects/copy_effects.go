@@ -133,6 +133,7 @@ func EntersAsCopyOfUntilEndOfTurn(
 	except func(ev *game.ReplacementEvent, v *game.PrintedValues, g *game.Game, source *game.Card),
 ) game.ReplacementEffect {
 	r := EntersAsCopyOf(name, candidates, except)
+	r.RowLabel = "May enter as a copy of another permanent until end of turn."
 	r.CopySelector.UntilEndOfTurn = true
 	return r
 }

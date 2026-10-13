@@ -26,6 +26,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "lifelink"},
 		Static: []game.StaticAbility{{
+			Label: "Pegasus creatures you control have lifelink.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.Controller == source.Controller && target.IsCreature() && target.HasSubtype("Pegasus")

@@ -9,6 +9,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // change, so the keyword blinks off on an opponent's turn.
 func firstStrikeDuringYourTurn() game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Has first strike during your turn.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID && isActivePlayer(g, source.Controller)
