@@ -1,8 +1,9 @@
 # ADR 0154 — Auras that enchant a card in a graveyard (Animate Dead)
 
-**Status:** Proposed · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
+**Status:** Accepted (owner decisions 2026-10-13) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
 **Issues:** [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780) (seam: an Aura that enchants a card in a graveyard). Registry row: `aura-on-a-graveyard-card` (status `missing`; it changes with the implementation, not with this ADR).
-**Owner decisions:** six open questions, under [Questions for the owner](#questions-for-the-owner). Nothing below is built until they are answered.
+**Owner decisions:** 2026-10-13. The owner accepted the ADR and chose the recommended option, (a), on all six questions. The answers are recorded under [Questions for the owner](#questions-for-the-owner-answered-2026-10-13), and no section above them changed.
+**Follow-ups:** [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156) (Necromancy), [#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157) (Spellweaver Volute), [#3158](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3158) (the CR 303.4f prompt for every Aura), [#3159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3159) (a flickered host keeps its attachments: bug, starts with a failing test), [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160) (CR 701.3b for every Aura), [#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161) (reanimation-family bot pricing).
 **Numbering:** assigned **0154** by the S53 orchestrator, which gave 0150–0155 to six parallel ADRs. After `git fetch --all --prune` I listed `docs/decisions/` on every remote branch: `origin/develop` and `origin/main` stop at 0149, `origin/docs/1892-flip-cards` adds 0151 and `origin/docs/1861-opponent-caused-discard` adds 0153. No branch has 0154.
 **Builds on:** [ADR 0036](0036-attachments.md) (the attachment relation `Card.AttachedTo`, the Aura attach on resolution, CR 704.5m/n; its "Out of scope" list names "Auras entering attached from anywhere but the stack (Animate Dead…)"), [ADR 0141](0141-bestow.md) (an Aura whose enchant clause is not its card's own: a flag on `Card`, read first by `attachmentLegalLocked`), [ADR 0115](0115-commanders-die.md) (CR 903.9a, a commander leaving a graveyard as a state-based action), #936 (`Card.ObjectEpoch`, the CR 400.7 identity of an object), #663 and #2169 (delayed triggers keyed on an event).
 
@@ -110,7 +111,7 @@ With `EnchantSwapped` set, `attachmentLegalLocked` answers legal only for a host
 
 Both fields are cleared by `MoveCard` on every zone change, beside `Bestowed` (CR 400.7: the new object never had the effect, CR 611.2c). They live on the Aura, so Necromancy's own "becomes an Aura with 'enchant creature put onto the battlefield with Necromancy'" can set them later from its own trigger.
 
-`AttachForEffect` honours CR 701.3b for a swapped Aura: an attach to anything but `EnchantReturned` is skipped and the Aura stays where it is, as the ruling says ("Attempting to move Animate Dead to another creature won't work"). For other Auras, see Question 3.
+`AttachForEffect` honours CR 701.3b for a swapped Aura: an attach to anything but `EnchantReturned` is skipped and the Aura stays where it is, as the ruling says ("Attempting to move Animate Dead to another creature won't work"). For other Auras, the general check is [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160).
 
 ### 5. The enters trigger: one catalog effect
 
@@ -152,7 +153,7 @@ What is missing is a way to **see** what an Animate Dead on the battlefield is a
 ### 9. The bot
 
 - **The enumerator** offers one cast per creature card in any graveyard, as it does for Reanimate. No change (`legal/` test only).
-- **The heuristic** prices the target with `cardTargetValue` (aiseat/heuristic/moves.go). A card in the bot's own graveyard is worth its `cardValue`, and a card in an opponent's graveyard is worth `OwnPermanentTarget`. Animate Dead is priced exactly like Reanimate, which is the honest baseline. The pricing undervalues stealing an opponent's creature, and `cardValue`'s 0.6 "can't cast it for a while" discount on an expensive creature is backwards for reanimation. Both apply to Reanimate today. Question 5 asks whether to fix that here or in its own issue.
+- **The heuristic** prices the target with `cardTargetValue` (aiseat/heuristic/moves.go). A card in the bot's own graveyard is worth its `cardValue`, and a card in an opponent's graveyard is worth `OwnPermanentTarget`. Animate Dead is priced exactly like Reanimate, which is the honest baseline. The pricing undervalues stealing an opponent's creature, and `cardValue`'s 0.6 "can't cast it for a while" discount on an expensive creature is backwards for reanimation. Both apply to Reanimate today. The owner chose to fix it for the whole family in [#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161).
 - **Dance of the Dead's upkeep payment** is asked of the enchanted creature's controller, through the existing optional-cost prompt, which the heuristic already answers.
 
 ### 10. What this does not change
@@ -167,8 +168,8 @@ What is missing is a way to **see** what an Animate Dead on the battlefield is a
 |---|---|---|
 | Animate Dead | yes, **Caveats** (Question 1) | the whole seam: the graveyard host, the swapped clause, the return under your control, the -1/-0, the delayed sacrifice |
 | Dance of the Dead | yes (Question 1) | the tapped return, `enchantedDoesntUntap`, the upkeep pay-to-untap asked of the enchanted creature's controller |
-| Necromancy | follow-up issue (Question 1) | the same gained clause, set by a different trigger. It needs "becomes an Aura" as a layer-4 effect from a resolved trigger, and the flash-with-cleanup-sacrifice cast that only applies if you used its own permission (ruling 2022-12-08) |
-| Spellweaver Volute | follow-up issue | a long-lived graveyard host. It needs "copy the enchanted card; you may cast the copy" and a CR 303.4f choose-a-new-host attach |
+| Necromancy | follow-up, [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156) (Question 1) | the same gained clause, set by a different trigger. It needs "becomes an Aura" as a layer-4 effect from a resolved trigger, and the flash-with-cleanup-sacrifice cast that only applies if you used its own permission (ruling 2022-12-08) |
+| Spellweaver Volute | follow-up, [#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157) | a long-lived graveyard host. It needs "copy the enchanted card; you may cast the copy" and a CR 303.4f choose-a-new-host attach |
 
 Animate Dead's caveat (Question 1): "Put onto the battlefield any other way than by casting it (Sun Titan, Replenish), it enchants nothing and goes to the graveyard." The engine has no CR 303.4f "choose what it enchants as it enters" for any Aura: Replenish and Brilliant Restoration already carry caveats for it. For most Auras that costs a card. For Animate Dead it also means Sun Titan's recursion, Worldgorger Dragon's loop and Replenish lines do not work, and players will try them.
 
@@ -192,32 +193,40 @@ Animate Dead's caveat (Question 1): "Put onto the battlefield any other way than
 
 ## Out of scope
 
-- **CR 303.4f for Auras entering other than by resolving**, for every Aura (Sun Titan, Replenish, Brilliant Restoration, Worldgorger Dragon's loop). It deserves its own issue. Until then Animate Dead carries the caveat above.
-- **An epoch pin on every attachment.** Reading `attach.go`, a host flickered within one resolution (Cloudshift, Ephemerate) appears to come back with its Auras still attached, because nothing compares the object. No test pins it either way. Question 2 asks whether to extend the pin now or to file it as a bug with a failing test first.
+- **CR 303.4f for Auras entering other than by resolving**, for every Aura (Sun Titan, Replenish, Brilliant Restoration, Worldgorger Dragon's loop). It is [#3158](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3158). Until then Animate Dead carries the caveat above.
+- **An epoch pin on every attachment.** Reading `attach.go`, a host flickered within one resolution (Cloudshift, Ephemerate) appears to come back with its Auras still attached, because nothing compares the object. No test pins it either way. The owner chose to file it as a bug that starts with a failing test: [#3159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3159).
 - **An epoch on spell targets** (`TargetRef`), above.
-- **Necromancy and Spellweaver Volute**, as follow-up issues (Cards above).
+- **Necromancy and Spellweaver Volute**: [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156) and [#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157).
+- **CR 701.3b for every Aura**: [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160).
+- **Reanimation-family bot pricing**: [#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161).
 - **CR 303.4d for an Aura that becomes a creature.** Unchanged from ADR 0141.
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-13)
 
-Each lists the recommended option first.
+Each lists the recommended option first. The owner chose (a), the recommended option, on every question. Each answer is recorded under its question and is binding.
 
 1. **Q1. Which cards ship with the seam, and at what completeness?**
    - **(a) Recommended:** Animate Dead with the CR 303.4f caveat, and Dance of the Dead, in the seam PR. Necromancy, Spellweaver Volute and an engine-wide CR 303.4f prompt each get a follow-up issue.
    - **(b)** Animate Dead marked Full, with no caveat, the way other catalogued Auras are marked. It is consistent, but players will reach for Sun Titan and Worldgorger first.
    - **(c)** Animate Dead only. Dance of the Dead waits for an "upkeep of enchanted creature's controller" helper of its own.
+   - **Decision:** (a). Animate Dead ships with the CR 303.4f caveat, and Dance of the Dead ships with the seam. Necromancy is [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156), Spellweaver Volute is [#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157), and the CR 303.4f prompt is [#3158](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3158).
 2. **Q2. How far does the epoch pin reach?**
    - **(a) Recommended:** off-battlefield hosts only, in this seam. File the battlefield case (a flickered host keeping its Auras) as a bug, starting with a failing test, so the fix is measured on its own.
    - **(b)** Every attachment, now. It closes the flicker gap at once, but it changes the legality of every Aura and Equipment in one PR whose subject is a graveyard host.
+   - **Decision:** (a). The epoch check reads only hosts off the battlefield. The flicker case is [#3159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3159), which starts with a failing test.
 3. **Q3. CR 701.3b for every Aura?** Decision 4 makes a swapped Animate Dead refuse to move. Today any other Aura that an effect attaches to something it can't enchant (Illusory Gains onto a creature with protection) moves and is then put into the graveyard, where the rules say it "doesn't move".
    - **(a) Recommended:** only the swapped clause, in this seam, and a separate issue for the general check in `AttachForEffect`. The general check changes existing cards' outcomes.
    - **(b)** The general check now: `AttachForEffect` refuses any Aura onto a host its enchant clause rejects.
+   - **Decision:** (a). CR 701.3b is enforced only for the rewritten clause in this seam. The general check is [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160).
 4. **Q4. Show the graveyard host?**
    - **(a) Recommended:** a client-derived badge on the Aura, "Enchanting {card} in {owner}'s graveyard", so an opponent can see what is coming back while the trigger waits. No wire change.
    - **(b)** No client change. The Aura sits in its own row and the board does not say what it enchants.
+   - **Decision:** (a). A badge derived on the client, "Enchanting {card} in {owner}'s graveyard", with no wire change.
 5. **Q5. The bot's price for the target.**
    - **(a) Recommended:** unchanged. Animate Dead is priced like Reanimate. Open an issue for reanimation pricing (an opponent's creature undervalued, the expensive creature discounted) that fixes the whole family with an arena measurement, as ADR 0126 asks of any weight change.
    - **(b)** Price a graveyard creature target of an Aura with a graveyard clause by `CreatureValue` whoever owns it, in this seam. It fixes Animate Dead and leaves Reanimate as it is.
+   - **Decision:** (a). The price is unchanged: Animate Dead is priced like Reanimate. The family-wide fix, measured with an arena run, is [#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161).
 6. **Q6. How the gained clause is represented.**
    - **(a) Recommended:** two `Card` fields (`EnchantSwapped`, `EnchantReturned`) read first by `attachmentLegalLocked`, as ADR 0141 did for bestow.
    - **(b)** A general layer-6 "enchant" ability that effects can grant and remove. It is more faithful to CR 613.1f, but no card in the catalog needs it, and it touches every Aura's legality.
+   - **Decision:** (a). Two `Card` fields, `EnchantSwapped` and `EnchantReturned`, read first by `attachmentLegalLocked`.
