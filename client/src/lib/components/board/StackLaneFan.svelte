@@ -58,6 +58,7 @@
   import { cardArt } from "../../cardArt";
   import { boardExpandLayout } from "../../boardExpand";
   import Icon from "../Icon.svelte";
+  import ArtCredit from "./ArtCredit.svelte";
 
   interface Props extends StackLaneStyleProps {
     styleName: StackLaneStyle;
@@ -242,6 +243,10 @@
         <div class="art">
           {#if src}
             <img {src} alt="" loading="lazy" decoding="async" use:cardArt={src} />
+            <ArtCredit
+              scryfallId={item.artCard?.scryfall_id}
+              face={item.artCard?.active_face ?? 0}
+            />
           {:else}
             <Icon name={item.kind === "spell" ? "spark" : "bolt"} size={22} />
           {/if}
