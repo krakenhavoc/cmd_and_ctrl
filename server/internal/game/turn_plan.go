@@ -252,12 +252,15 @@ func (g *Game) noteStepBegunLocked() {
 // No phase or step can have been added in a turn written before the
 // plan, so the turn so far is the template up to the cursor, and the
 // counts are what noteStepBegunLocked would have recorded walking it.
-// Two steps of the template are left out, both the way a live game
-// leaves them out: #717's first-strike damage step before the cursor
-// (it exists only when a combatant had first or double strike, which
-// the file cannot say; usually it did not), and, while the mulligan
-// window is open, the untap and upkeep steps it holds (they have not
-// begun).
+// Three kinds of step of the template are left out, all the way a live
+// game leaves them out: #717's first-strike damage step before the
+// cursor (it exists only when a combatant had first or double strike,
+// which the file cannot say; usually it did not); the declare blockers
+// and combat damage steps of a combat nothing is attacking in
+// (CR 508.8, #2899 - a file past the end of combat cannot say whether
+// anything attacked, and reads as though nothing did, the same bet);
+// and, while the mulligan window is open, the untap and upkeep steps it
+// holds (they have not begun).
 //
 // Caller must hold g.mu in write mode.
 func (g *Game) derivePrePlanOrdinalsLocked() {
@@ -274,6 +277,9 @@ func (g *Game) derivePrePlanOrdinalsLocked() {
 	t.PhaseStarted = 0
 	for i, step := range turnSequence[:idx+1] {
 		if step == StepFirstStrikeDamage && i != idx {
+			continue
+		}
+		if i != idx && !g.stepExistsLocked(step) {
 			continue
 		}
 		if id := templatePhaseID(step); id != t.PhaseStarted {

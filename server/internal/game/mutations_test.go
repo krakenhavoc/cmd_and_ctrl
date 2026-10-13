@@ -844,7 +844,10 @@ func TestDeclareBlockerRejectsOutsideStep(t *testing.T) {
 
 func TestDeclareBlockerRejectsMissingAttacker(t *testing.T) {
 	g := newActiveGame(t)
+	attacker := pushCreatureToBattlefield(t, g, g.Seats[0])
 	blocker := pushCreatureToBattlefield(t, g, g.Seats[1])
+	advanceTo(t, g, StepDeclareAttackers)
+	_ = g.DeclareAttacker(attacker, g.Seats[1].ID)
 	advanceTo(t, g, StepDeclareBlockers)
 	if err := g.DeclareBlocker(blocker, uuid.New()); err != ErrCardNotFound {
 		t.Errorf("missing attacker: got %v, want ErrCardNotFound", err)
