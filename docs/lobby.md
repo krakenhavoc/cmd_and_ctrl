@@ -1668,6 +1668,11 @@ artifacts gone. A bug report filed against this game keeps working —
 precisely so a later delete cannot orphan the issue — but the live
 replay of a game nobody reported is gone for good.
 
+It also works on a **database-only** game: a `games` row the lobby does
+not hold because the restore pass never brought its room back (#2987).
+That deletes the row with its seats and invites, plus any restore point
+or ADR 0041 file left for it. There is no room to evict.
+
 **Response 204** — no body.
 
 ### `POST /games/{id}/archive` *(admin only)*
@@ -1685,6 +1690,15 @@ This is the action for clearing old games off the lobby screen.
 
 **Response 200** — the updated `GameMeta`, carrying `archived_at`.
 Invite tokens are stripped.
+
+A **database-only** game (a row with no room behind it, #2987) can be
+archived and unarchived too: only `archived_at` changes, and the
+response is built from the stored rows (seats as recorded, no invite
+tokens). Such rows are rare: at boot, any game still `lobby` or
+`active` in the database whose room the restore pass did not bring back
+is marked `ended` (no outcome), so it stops reading as active. The
+exception is a restore point left on disk for a roll-forward
+(`schema_too_new`, `unknown_effect_key`), whose row is left alone.
 
 **Errors**
 

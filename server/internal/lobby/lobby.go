@@ -1454,7 +1454,8 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 
 	entry, ok := l.games[id]
 	if !ok {
-		return GameMeta{}, ErrGameNotFound
+		// A row the restore pass never brought back (#2987).
+		return l.setArchivedUnresidentLocked(id, archived)
 	}
 	switch {
 	case archived && !entry.meta.Archived():
@@ -1500,7 +1501,8 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	defer l.mu.Unlock()
 	entry, ok := l.games[id]
 	if !ok {
-		return ErrGameNotFound
+		// A row the restore pass never brought back (#2987).
+		return l.deleteUnresidentLocked(id)
 	}
 	// Deleting a running table closes it (ADR 0123 §3). One already
 	// archived was counted then, and a practice table never is.
