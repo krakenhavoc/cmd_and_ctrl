@@ -342,49 +342,9 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 		if !o.Restored() {
 			continue
 		}
-		entry, err := l.loadEntry(o.GameID, o.Room)
-		if err != nil {
-			log.Error("restored game has no usable lobby metadata; dropping it (nobody could be invited back in)",
-				"game_id", o.GameID, "err", err)
-			l.mgr.Delete(o.GameID)
-			continue
+		if l.adoptRestored(log, o) {
+			restored++
 		}
-
-		// The host rides the games row, not the engine snapshot; hand it
-		// back to the room so is_host and the host gates survive the
-		// restart (ADR 0075 §2.1).
-		o.Room.SetHost(entry.meta.HostPlayerID)
-		l.mu.Lock()
-		l.games[o.GameID] = entry
-		// The engine is authoritative for lifecycle state; the row can
-		// be stale if the process died between the two writes.
-		l.syncStateLocked(entry)
-		l.syncHostLocked(entry)
-		// Bot seats do not come back on their own. The seat itself is
-		// carried — Player.IsBot / BotTier ride the engine snapshot
-		// and seats.bot_tier rides the row — but the runner was a
-		// goroutine in the process that died, so an active game with a
-		// bot seat would otherwise resume with the bot's chair occupied
-		// and nobody in it, and the table would hang the first time
-		// priority reached it. Relaunch here, under the same guard
-		// Start uses.
-		// An archived table is retired: it is hidden from the listing
-		// and SetArchived stopped its runners on the way out. Booting
-		// them again here would resurrect exactly the goroutines
-		// archiving exists to stop.
-		var startBots func()
-		if o.Room.Game.CurrentState() == game.StateActive {
-			l.startWatchLocked(entry)
-			if !entry.meta.Archived() {
-				startBots = l.botStartLocked(entry)
-			}
-		}
-		l.mu.Unlock()
-		if startBots != nil {
-			startBots()
-			log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
-		}
-		restored++
 	}
 
 	// Whatever the database calls unfinished and the lobby does not
@@ -399,6 +359,57 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 		log.Info("lobby restored from disk", "games", restored)
 	}
 	return restored
+}
+
+// adoptRestored pairs one restored room with its games and seats rows,
+// registers the table in the lobby, and relaunches its bot runners. It
+// is the second half of a restore, shared by the boot pass
+// (RestoreFromDisk) and the hot pass (RestoreDeferred). A room with no
+// usable row is dropped and unregistered, and false is returned.
+func (l *Lobby) adoptRestored(log *slog.Logger, o ws.RestoreOutcome) bool {
+	entry, err := l.loadEntry(o.GameID, o.Room)
+	if err != nil {
+		log.Error("restored game has no usable lobby metadata; dropping it (nobody could be invited back in)",
+			"game_id", o.GameID, "err", err)
+		l.mgr.Delete(o.GameID)
+		return false
+	}
+
+	// The host rides the games row, not the engine snapshot; hand it
+	// back to the room so is_host and the host gates survive the
+	// restart (ADR 0075 §2.1).
+	o.Room.SetHost(entry.meta.HostPlayerID)
+	l.mu.Lock()
+	l.games[o.GameID] = entry
+	// The engine is authoritative for lifecycle state; the row can
+	// be stale if the process died between the two writes.
+	l.syncStateLocked(entry)
+	l.syncHostLocked(entry)
+	// Bot seats do not come back on their own. The seat itself is
+	// carried — Player.IsBot / BotTier ride the engine snapshot
+	// and seats.bot_tier rides the row — but the runner was a
+	// goroutine in the process that died, so an active game with a
+	// bot seat would otherwise resume with the bot's chair occupied
+	// and nobody in it, and the table would hang the first time
+	// priority reached it. Relaunch here, under the same guard
+	// Start uses.
+	// An archived table is retired: it is hidden from the listing
+	// and SetArchived stopped its runners on the way out. Booting
+	// them again here would resurrect exactly the goroutines
+	// archiving exists to stop.
+	var startBots func()
+	if o.Room.Game.CurrentState() == game.StateActive {
+		l.startWatchLocked(entry)
+		if !entry.meta.Archived() {
+			startBots = l.botStartLocked(entry)
+		}
+	}
+	l.mu.Unlock()
+	if startBots != nil {
+		startBots()
+		log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
+	}
+	return true
 }
 
 // loadEntry rebuilds one restored game's lobby entry from its rows and

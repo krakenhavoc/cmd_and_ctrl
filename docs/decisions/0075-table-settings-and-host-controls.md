@@ -371,3 +371,27 @@ reported or blocked.
 host-visible list of who is blocked; reporting a spectator or a chat line
 directly from the chat panel; notifying the operator (the list is polled by
 looking at it); per-table or per-account mutes.
+
+### Amendment (2026-10-13): the operator is told a report arrived (#3113 item 1)
+
+§2.6 item 3 said nothing was sent to anyone and left "notifying the operator"
+for a follow-up. The smallest honest version is now in: a counter and an alert.
+
+- **`cmdctrl_player_reports_total`** (no labels) goes up once for each report
+  `FileReport` stores. A rejected report (self, a bot, a spectator, an empty
+  reason, a rate-limited call) is never counted, so the number is the Reports
+  tab's number of arrivals. It carries no table, player or reason: metrics have
+  closed label sets by design ([ADR 0123](0123-monitoring-metrics-logs-dashboards-and-alerts.md) §3).
+- **`PlayerReportFiled`** (warning, prod only) fires when the counter rose in the
+  last 15 minutes and goes to the monitoring Discord channel with the rest of
+  the alerts. The message says a report exists and to open the Reports tab. It
+  does not say who or why: the channel is not an admin view, and what a report
+  holds is on the privacy page. 15 minutes is a first guess, and dev is left out
+  because a report filed on dev is a tester.
+- Nothing about what is stored, or for how long, changes, so the privacy page
+  and `PRIVACY_SCHEMA_VERSION` do not move. A Discord message through the bot
+  was the other option in #3113; the alert path already reaches the same
+  channel and needs no new secret.
+
+Items 2 to 4 of #3113 (unblock and a block list, spectators, `/admin/live`'s
+"left" wording) are still open.

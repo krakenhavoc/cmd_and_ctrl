@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
@@ -215,6 +216,21 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	if entry.Link() {
 		return finishDiscordLink(c, w, r, entry, identity, user, u.ID)
+	}
+
+	// At the connection cap the seat is not claimed: the socket it
+	// needs would be refused (ADR 0148 section 4). The person is sent
+	// back to the invite's own join page, which says the server is full
+	// in the one sentence every other refusal uses; a JSON 503 here
+	// would be shown to them as a blank page, since this is a browser
+	// navigation and not a fetch. The sign-in itself is recorded above,
+	// and the retry skips Discord's screen.
+	if c.Lobby.ConnectionsFull() {
+		back := url.Values{}
+		back.Set("t", entry.InviteToken)
+		back.Set("error", capacity.CodeServerFull)
+		http.Redirect(w, r, "/#/games/"+entry.GameID.String()+"/join?"+back.Encode(), http.StatusFound)
+		return nil
 	}
 
 	meta, playerID, err := c.Lobby.JoinAs(entry.GameID, entry.InviteToken, "", identity, u.ID)

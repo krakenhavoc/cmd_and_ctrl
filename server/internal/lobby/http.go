@@ -830,6 +830,9 @@ func Handler(c Config) http.Handler {
 	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
 	// from memory, with names from the database when there is one.
 	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))
+	// Brings back the tables the boot left on disk because the load cap
+	// was full, as load frees up (ADR 0148, #3103; restore_deferred.go).
+	mux.Handle("POST /admin/capacity/restore-deferred", requireAdmin(c, handlerFunc(c, adminRestoreDeferred)))
 
 	return mux
 }

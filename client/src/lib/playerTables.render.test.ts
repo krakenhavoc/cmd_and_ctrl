@@ -13,6 +13,7 @@ import Join from "../routes/Join.svelte";
 import PrebuiltDeckPicker from "./components/PrebuiltDeckPicker.svelte";
 import YourDecksPicker from "./components/YourDecksPicker.svelte";
 import { GUEST_NAME_KEY } from "./guestName";
+import { SERVER_FULL_MESSAGE } from "./serverFull";
 import { GUEST_LAST_DECK_KEY } from "./lastDeck";
 import { setSession, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
@@ -379,5 +380,39 @@ describe("the Join page remembers a guest's name", () => {
     await settle();
     expect(container.querySelector('input[placeholder="your name"]')).toBeNull();
     expect(container.textContent).toMatch(/Join as Alice/);
+  });
+
+  // ADR 0148 / #3103: the Discord callback sends the browser back to the
+  // invite's own page when the server is at its connection cap. The page
+  // says so in the one sentence every other refusal uses, and offers the
+  // Discord button again for the retry.
+  it("opens with the server-full message after the Discord callback was refused at the cap", async () => {
+    routes = {
+      [`GET /games/${GAME}/preview?t=inv`]: () => preview,
+      "GET /auth/discord/config": () => ({ enabled: true }),
+    };
+    stubServer();
+    const { container } = render(
+      Join as never,
+      { gameID: GAME, inviteToken: "inv", spectator: false, serverFull: true } as never,
+    );
+    await settle();
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toBe(SERVER_FULL_MESSAGE);
+    expect(container.querySelector("a.discord-btn")).not.toBeNull();
+  });
+
+  it("shows no error on a plain visit", async () => {
+    routes = {
+      [`GET /games/${GAME}/preview?t=inv`]: () => preview,
+      "GET /auth/discord/config": () => ({ enabled: true }),
+    };
+    stubServer();
+    const { container } = render(
+      Join as never,
+      { gameID: GAME, inviteToken: "inv", spectator: false } as never,
+    );
+    await settle();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 });

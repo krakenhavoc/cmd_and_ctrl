@@ -19,7 +19,7 @@ import (
 // deferred table's restore point stays on disk untouched and its games
 // row is left as it is (RestoreFromDisk keeps it out of
 // closeUnresidentRows), so a later boot, or this boot with a raised
-// cap, brings it back. Without this a crash under load restores the
+// cap, brings it back; or RestoreDeferred, while the server is up. Without this a crash under load restores the
 // load that caused it, and the server loops (#2978: 29 of 36 test
 // tables came straight back on boot).
 //
@@ -38,9 +38,21 @@ import (
 // dropped by the pass anyway. With the cap off it admits everything
 // (returns nil).
 func (l *Lobby) restoreAdmission(log *slog.Logger) ws.RestoreAdmission {
+	return l.admission(log, nil)
+}
+
+// admission is restoreAdmission for both passes. The boot pass hands it
+// a nil held: nothing else is running yet, so the load it reads is the
+// load. The hot pass (RestoreDeferred) runs while the lobby serves
+// creates, which check the cap under l.mu against everything the lobby
+// holds, so it passes a non-nil held: the admitted cost is then reserved
+// in the same critical section that decides the fit, and the caller
+// releases it (releaseHeld) once the tables are registered. Without
+// that a create landing between this decision and the registration
+// would see the load before the restored tables and overshoot the cap.
+func (l *Lobby) admission(log *slog.Logger, held *int) ws.RestoreAdmission {
 	l.mu.Lock()
 	lim := l.limits
-	used := l.loadLocked()
 	l.mu.Unlock()
 	if !lim.LoadCapped() {
 		return nil
@@ -68,21 +80,36 @@ func (l *Lobby) restoreAdmission(log *slog.Logger) ws.RestoreAdmission {
 			return a.GameID.String() < b.GameID.String()
 		})
 		deferred := map[uuid.UUID]bool{}
-		admitted := 0
+		admitted, admittedCost := 0, 0
+		l.mu.Lock()
+		used := l.loadLocked()
 		for _, c := range queue {
 			if lim.Fits(used, c.cost) {
 				used += c.cost
+				admittedCost += c.cost
 				admitted++
 				continue
 			}
 			deferred[c.GameID] = true
 		}
+		if held != nil {
+			l.reserved += admittedCost
+			*held = admittedCost
+		}
+		l.mu.Unlock()
 		if len(deferred) > 0 {
-			log.Warn("restore pass: more tables than the load cap allows; the rest stay on disk for a later boot",
+			log.Warn("restore pass: more tables than the load cap allows; the rest stay on disk until there is room",
 				"cap", lim.MaxLoad, "load_after_restore", used, "restored", admitted, "deferred", len(deferred))
 		}
 		return deferred
 	}
+}
+
+// releaseHeld gives back the load admission reserved for a hot restore.
+func (l *Lobby) releaseHeld(cost int) {
+	l.mu.Lock()
+	l.reserved -= cost
+	l.mu.Unlock()
 }
 
 // rowRetired reports whether a restore point's table costs the load

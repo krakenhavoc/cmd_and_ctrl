@@ -137,6 +137,61 @@ groups:
           summary: "{{ $labels.env }}: restore points on {{ $labels.host }} are {{ $value | humanizeDuration }} behind"
           description: "The oldest restore point among active tables on {{ $labels.host }} ({{ $labels.env }}) is {{ $value | humanizeDuration }} old. A deploy or crash now would rewind that table that far."
 
+  - name: cmdctrl-capacity
+    rules:
+      # The boot's restore pass left tables on disk because the load cap
+      # was full (ADR 0148 section 7). To their players each reads "game
+      # not found" until the operator brings them back
+      # (POST /admin/capacity/restore-deferred, which also lowers this
+      # gauge) or the next boot. The gauge persists, so unlike
+      # RestoreAbandonedGames this one does not look at the process age:
+      # it stays until the tables are back, and repeats every 4 h.
+      - alert: RestoreDeferredGames
+        expr: cmdctrl_boot_restore_deferred_games{job="cmdctrl-server"} > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $value }} table(s) on {{ $labels.host }} are waiting on disk, not restored"
+          description: "{{ $value }} table(s) on {{ $labels.host }} ({{ $labels.env }}) were not restored at the last boot because the table-load cap was full. Their players see \"game not found\". Free load and POST /admin/capacity/restore-deferred, or restart with a raised cap."
+
+      # ADR 0148: a cap this close to full is about to turn people away.
+      # The ratio is per resource (table_load, ws_connections). A cap that
+      # is off reports a limit of 0, which would divide to +Inf or NaN, so
+      # the divisor keeps only the capped resources. The table_load cap is
+      # soft (people sit at tables already admitted), so the ratio can pass
+      # 1; the rule still fires, and that is when new tables are refused.
+      # FIRST GUESS, not measured: 0.8 for 10 minutes is the figure #3103
+      # suggested before any week of prod data existed. Tune it from the
+      # Overview dashboard's Capacity row (ADR 0148, the 2026-10-13
+      # amendment).
+      - alert: CapacityHigh
+        expr: >-
+          cmdctrl_capacity_used{job="cmdctrl-server"}
+          / (cmdctrl_capacity_limit{job="cmdctrl-server"} > 0)
+          > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $labels.resource }} on {{ $labels.host }} is at {{ $value | humanizePercentage }} of its cap"
+          description: "{{ $labels.resource }} on {{ $labels.host }} ({{ $labels.env }}) has been over 80% of its capacity cap for 10 minutes (now {{ $value | humanizePercentage }}). At 100% new tables, bot seats or newcomers are turned away. The 80% and 10 minutes are a first guess (ADR 0148), not a measured threshold."
+
+  - name: cmdctrl-moderation
+    rules:
+      # ADR 0075 section 2.6 (#3113): a "report player" lands in the admin
+      # Reports tab and tells nobody. The counter goes up once per stored
+      # report, with no label, so this names no player, table or reason:
+      # the message says to open the tab. 15 minutes is a first guess at
+      # a window that survives a scrape gap yet resolves before the next
+      # repeat. Prod only: a report filed on dev is somebody testing.
+      - alert: PlayerReportFiled
+        expr: increase(cmdctrl_player_reports_total{job="cmdctrl-server", env="prod"}[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: a player report was filed"
+          description: "{{ $labels.env }} stored a new player report in the last 15 minutes. Open the Reports tab in the admin views to read it (ADR 0075 section 2.6). The window is a first guess; the alert says only that a report exists, never who or why."
+
   - name: cmdctrl-hosts
     rules:
       # scripts/backup-offsite.sh writes these to the textfile directory at

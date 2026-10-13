@@ -158,7 +158,12 @@
 {:else if $route.name === "myGames"}
   <MyGames />
 {:else if $route.name === "join"}
-  <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
+  <Join
+    gameID={$route.gameID}
+    inviteToken={$route.inviteToken}
+    spectator={$route.spectator}
+    serverFull={$route.serverFull === true}
+  />
 {:else if $route.name === "reclaim"}
   <Reclaim gameID={$route.gameID} ticket={$route.ticket} />
 {:else if $route.name === "game"}
