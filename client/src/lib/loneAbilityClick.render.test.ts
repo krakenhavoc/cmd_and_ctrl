@@ -316,6 +316,38 @@ describe("one usable ability activates on click (#2201)", () => {
     });
   });
 
+  // #3265: two instances of one trigger. The player clicks the first's
+  // target; the second is answered with it once the server has taken
+  // the first, and the first's re-opened prompt is not answered again.
+  it("a repeated trigger's later instance takes the target picked for the first", () => {
+    const elf = permanent("elf", "Llanowar Elves", "Creature — Elf", { power: 1, toughness: 1 });
+    const prompt = (id: string) => ({
+      id,
+      kind: "pick_target",
+      chooser: ME,
+      source: "bear",
+      reason: "Choose target creature",
+      pick_target: { cards: ["bear", "elf"], min: 1, max: 1 },
+      pick_target_cards: ["bear", "elf"],
+      options: [],
+    });
+    const b = mountBoard([bear(), elf], [prompt("p1"), prompt("p2")]);
+    const answers = () => b.sent.filter((s) => s.type === "resolve_choice");
+    expect(answers()).toHaveLength(0);
+
+    click(b.tile("elf"));
+    expect(answers()).toHaveLength(1);
+    expect(answers()[0]!.params).toMatchObject({ choice_id: "p1" });
+
+    // The server took the first answer: only the second instance waits.
+    b.setProps({ view: gameView([bear(), elf], [prompt("p2")]) } as never);
+    expect(answers()).toHaveLength(2);
+    expect(answers()[1]!.params).toMatchObject({
+      choice_id: "p2",
+      targets: [{ kind: "card", id: "elf" }],
+    });
+  });
+
   it("a planeswalker with exactly one usable loyalty ability activates it", () => {
     const b = mountBoard([walker(2)]);
     click(b.tile("walker"));
