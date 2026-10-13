@@ -1,0 +1,25 @@
+-- Migration 0015: users.deleted_at (ADR 0149, #2983): self-serve
+-- account deletion.
+--
+--   users.deleted_at  the Unix millisecond time the person deleted
+--                     their account, or NULL for a live account.
+--
+-- Deleting an account does not delete the users row. It scrubs it to a
+-- tombstone (display name "Deleted player", no avatar, no Discord
+-- identity) and leaves the id in place, for two reasons: the seats,
+-- games and invites that point at it keep their foreign keys, so the
+-- other players' history is intact; and the row keeps its
+-- sessions_invalid_before watermark, so a session token issued before
+-- the deletion stays refused after a restart (sessions are stateless
+-- signed tokens, and the watermark is the only thing that revokes
+-- them). See internal/accountdelete.
+--
+-- A plain ADD COLUMN with no default and no CHECK, like 0004, 0007 and
+-- 0010. No backfill: every user row written before this reads NULL,
+-- which is "live".
+--
+-- Rolling back: an older binary refuses this schema (ErrSchemaTooNew).
+-- The column is additive and can be dropped by hand; see
+-- docs/environments.md.
+
+ALTER TABLE users ADD COLUMN deleted_at INTEGER;

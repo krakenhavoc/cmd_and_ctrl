@@ -19,6 +19,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
@@ -237,6 +238,12 @@ type Config struct {
 	// finds none.
 	TableSetups tablesetups.Store
 
+	// Accounts is self-serve account deletion (ADR 0149, migration
+	// 0015), behind DELETE /me/account. Nil answers 503: with no
+	// database no principal carries a UserID, so the route answers 403
+	// first and this is only reached by a misconfigured deployment.
+	Accounts accountdelete.Store
+
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
 	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
@@ -339,6 +346,7 @@ type GameEvictor interface {
 //	PUT  /me/admin-mode     — allowlisted person: switch admin mode on or off
 //	GET  /me/decks          — authenticated: the caller's deck library
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
+//	DELETE /me/account      — signed in: delete the caller's own account (ADR 0149)
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/playmats       — signed in: the caller's saved playmats (ADR 0128 §11), up to three, which is active, and the wash
@@ -667,6 +675,13 @@ func Handler(c Config) http.Handler {
 	// its checks, so a refused request costs nothing.
 	settingsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
+	// Delete my account (ADR 0149, #2983). Any authenticated role
+	// reaches the handler, which refuses a session with no user: it acts
+	// on the caller's own account and names no one else. A bucket of
+	// one try every 10 seconds, burst 3, stops a script guessing the
+	// confirmation phrase and costs a person nothing.
+	accountDeleteLimit := newLimiter(0.1, 3)
+	mux.Handle("DELETE /me/account", auth.Middleware(c.Auth)(perCallerLimit(accountDeleteLimit, handlerFunc(c, deleteMyAccount))))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
 	// Playmats (ADR 0128, §11: three slots). The writes that decode an
 	// image (upload, link, fit) are rate-limited per person (a burst of

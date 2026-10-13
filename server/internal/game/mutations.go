@@ -10142,6 +10142,26 @@ func (g *Game) SetDiscordIdentity(playerID uuid.UUID, discordID, avatarHash, dis
 	return nil
 }
 
+// AnonymisePlayer replaces a seat's name and drops the Discord identity
+// metadata SetDiscordIdentity stamped (account deletion, ADR 0149,
+// #2983). The seat keeps its id, place, cards, life and every other
+// field, so a finished game still reads the same to the people who
+// played it. Valid in any state; the lobby only calls it for a table
+// that has ended. Unknown player → ErrPlayerNotFound.
+func (g *Game) AnonymisePlayer(playerID uuid.UUID, name string) error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	p := g.playerByIDLocked(playerID)
+	if p == nil {
+		return ErrPlayerNotFound
+	}
+	p.Name = name
+	p.DiscordID = ""
+	p.DiscordAvatarHash = ""
+	p.DisplayName = ""
+	return nil
+}
+
 // SetBot marks a seat as bot-driven with the named policy tier and
 // the curated deck it was seated with (deckID may be empty when the
 // caller supplied a raw decklist). Lobby state only — a seat cannot
