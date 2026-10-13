@@ -2008,7 +2008,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// has been paid for, so the card HAS been cycled, and the
 	// watchers see it with the card already in the graveyard, which
 	// is where CR 702.29c says it is.
-	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
+	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers, params.XValue); err != nil {
 		return err
 	}
 	// ADR 0109 §8 (#1862), CR 400.7j: "the discarded card" — Land's

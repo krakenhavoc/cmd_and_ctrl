@@ -20,20 +20,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // your control ... it creates" framing, but the clause is the same:
 // only tokens created under Mondrak's controller's control double.
 //
-// Sandbox simplification, declared, and the same one its cycle
-// sibling Solphim, Mayhem Dominus carries: the activated ability is
-// not offered. Its {W/P} Phyrexian mana would need a pay-2-life
-// alternative on an ABILITY cost, which the engine has only for
-// spells, and the indestructible counter is not a counter the state
-// checks read.
+// The activated ability is Zopandrel's and Drivnod's: Phyrexian mana
+// ({W/P} paid with {W} or 2 life, announced with the activation) plus a
+// sacrifice of exactly two other artifacts and/or creatures paid at
+// announce, and the indestructible counter is a keyword counter
+// (CR 122.1b).
 func init() {
 	Register(Spec{
 		OracleID:     "fe83087d-c6c1-40be-9295-baaa1c6b2db1",
 		Name:         "Mondrak, Glory Dominus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"{1}{W/P}{W/P}, Sacrifice two other artifacts and/or creatures\" ability that puts an indestructible counter on Mondrak can't be activated."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			TokensDoubled("Mondrak, Glory Dominus: double tokens"),
 		},
+		Activated: []ActivatedAbility{{
+			Label:   "{1}{W/P}{W/P}, Sacrifice two other artifacts and/or creatures: Put an indestructible counter on Mondrak.",
+			Purpose: game.Purpose{Answers: game.AnswerProtect | game.AnswerSacOutlet},
+			Cost:    Plus(ManaCost("{1}{W/P}{W/P}"), SacrificeAnotherN(2, "two other artifacts and/or creatures", Or(Artifact(), Creature()))),
+			Effect:  putIndestructibleCounterOnSource(),
+		}},
 	})
 }

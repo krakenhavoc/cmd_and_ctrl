@@ -553,34 +553,35 @@ func TestB15SimulacrumSynthesizerScriesAndBuildsConstructsItSizes(t *testing.T) 
 	if p := effectivePower(t, g, construct); p != 5 {
 		t.Errorf("a second Synthesizer is one more artifact, not a second sizing: power %d, want 5", p)
 	}
+	// The sizing is the Construct's own (#3172): the Synthesizers leaving
+	// costs it only the artifacts they were, never the sizing.
 	b15Destroy(t, g, synth)
 	if p := effectivePower(t, g, construct); p != 4 {
-		t.Errorf("the surviving Synthesizer takes over the sizing: power %d, want 4", p)
+		t.Errorf("one Synthesizer fewer is one artifact fewer: power %d, want 4", p)
 	}
 	b15Destroy(t, g, other)
-	if p := effectivePower(t, g, construct); p != 0 {
-		t.Errorf("with no Synthesizer the Construct shrinks to 0/0 — the declared gap: power %d", p)
+	if p := effectivePower(t, g, construct); p != 3 {
+		t.Errorf("with no Synthesizer the Construct still counts its artifacts (Signet, Big Rock, itself): power %d, want 3", p)
 	}
-	// The engine treats a printed 0/0 that never had a counter as a
-	// placeholder and never sweeps it (CurrentToughness's convention),
-	// so the shrunken Construct lingers rather than dying. Pinned so a
-	// change in that convention shows up here.
 	runStateChecksViaDraw(t, g)
 	if !g.Battlefield.Contains(construct) {
-		t.Error("a printed 0/0 that never had a counter is not swept by the toughness SBA")
+		t.Error("a Construct that counts three artifacts is a 3/3 and survives the state check")
+	}
+	if spec, _ := Lookup(b15SimulacrumSynthesizerOracle); spec.Completeness != CompletenessFull {
+		t.Errorf("Simulacrum Synthesizer completeness = %v, want Full", spec.Completeness)
 	}
 }
 
 // #683: a Construct that has had counters and lost them all is no
-// placeholder (Card.LostLastCounter), so when the last Synthesizer
-// leaves and it shrinks to 0/0 it dies — the caveat's second clause.
-// A Construct that never had a counter still lingers beside it.
-func TestB15SynthesizerConstructThatLostItsCountersDiesWhenItShrinks(t *testing.T) {
+// placeholder (Card.LostLastCounter). With the sizing on the token
+// itself it never shrinks to 0/0, so it survives the Synthesizer
+// leaving and losing its counter alike.
+func TestB15SynthesizerConstructKeepsItsSizeWhenTheSynthesizerLeaves(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	synth := b12Push(g, me.ID, "Simulacrum Synthesizer", "Artifact", b15SimulacrumSynthesizerOracle, 0, 0)
 	g.WithWriteLock(func() {
-		_ = g.CreateTokenForEffect(me.ID, TokenCard("0/0 colorless Construct artifact"), 2)
+		_ = g.CreateTokenForEffect(me.ID, UrzaConstructToken(), 2)
 	})
 	var constructs []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
@@ -591,11 +592,11 @@ func TestB15SynthesizerConstructThatLostItsCountersDiesWhenItShrinks(t *testing.
 	if len(constructs) != 2 {
 		t.Fatalf("want 2 Constructs, got %d", len(constructs))
 	}
-	spent, fresh := constructs[0], constructs[1]
+	spent := constructs[0]
 
 	gainAndLoseACounter(t, g, spent)
 	if !g.Battlefield.Contains(spent) {
-		t.Fatal("while the Synthesizer sizes it, a Construct survives losing its last counter")
+		t.Fatal("a Construct survives losing its last counter")
 	}
 	if got := effectiveToughness(t, g, spent); got != 3 {
 		t.Errorf("Synthesizer and two Constructs: toughness %d, want 3", got)
@@ -603,14 +604,13 @@ func TestB15SynthesizerConstructThatLostItsCountersDiesWhenItShrinks(t *testing.
 
 	b15Destroy(t, g, synth)
 	runStateChecksViaDraw(t, g)
-	if g.Battlefield.Contains(spent) {
-		t.Error("a Construct that lost its counters survived shrinking to 0/0")
+	for _, id := range constructs {
+		if !g.Battlefield.Contains(id) {
+			t.Error("a Construct died when the Synthesizer left; its sizing is its own")
+		}
 	}
-	if !g.Battlefield.Contains(fresh) {
-		t.Error("a Construct that never had a counter should linger as a 0/0")
-	}
-	if spec, _ := Lookup(b15SimulacrumSynthesizerOracle); len(spec.Caveats) != 1 || !strings.Contains(spec.Caveats[0], "lost them all dies") {
-		t.Errorf("the caveat must tell players the spent Construct dies: %v", spec.Caveats)
+	if got := effectiveToughness(t, g, spent); got != 2 {
+		t.Errorf("two Constructs and no Synthesizer: toughness %d, want 2", got)
 	}
 }
 
