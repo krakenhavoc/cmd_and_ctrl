@@ -90,6 +90,14 @@ type Facing struct {
 	Player uuid.UUID
 	// Carry is the plain data the card put on the choice.
 	Carry []uuid.UUID
+	// Remaining is how many more times this same FaceVillainousChoice
+	// will ask a question after this one (CR 701.55c/d: the other
+	// players, and the additional times a Valeyard gives one of them).
+	// Zero on the last. A card that chains a SECOND choice off the end
+	// of the first (Hunted by The Family's next target) starts it only
+	// when Remaining is zero, so the chain is not begun once per
+	// additional time.
+	Remaining int
 }
 
 // VillainousChoice is one card's villainous choice, registered once
@@ -208,12 +216,25 @@ func (c *VillainousChoice) answered(ctx *Context, r game.OptionPicked) error {
 		if r.Index == 1 {
 			opt = c.b
 		}
-		err = opt.Body(ctx, Facing{Player: r.Chooser, Carry: carry})
+		err = opt.Body(ctx, Facing{Player: r.Chooser, Carry: carry, Remaining: stillToAsk(ctx.Game, waiting)})
 	}
 	if nextErr := c.ask(ctx, waiting, carry); err == nil {
 		err = nextErr
 	}
 	return err
+}
+
+// stillToAsk is how many of the waiting players are still in the game:
+// the ones ask will actually put a question to. A player who has left
+// is skipped there (CR 800.4a), so Facing.Remaining must not count them.
+func stillToAsk(g *game.Game, waiting []uuid.UUID) int {
+	n := 0
+	for _, p := range waiting {
+		if pl := g.PlayerByIDForEffect(p); pl != nil && !pl.Eliminated {
+			n++
+		}
+	}
+	return n
 }
 
 // villainousSacrifice is the body of "[that player] sacrifices a <label>

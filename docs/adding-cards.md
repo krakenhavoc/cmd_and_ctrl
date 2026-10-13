@@ -7759,6 +7759,31 @@ FaceVillainousChoice{Players: ctx.Opponents(), Choice: damoclesBaseChoice}.Apply
 - **A body that asks a follow-up** (a sacrifice, a discard) leaves it open
   beside the next question in the chain; there is no "after every prompt
   this body opened" seam.
+- **One choice per target** ("for each of them, that creature's
+  controller faces a villainous choice", Hunted by The Family, #3143)
+  chains the choices: the card sorts its targets into APNAP order of
+  their controllers, and each body starts the next target's question
+  from `Facing.Remaining == 0` (the last time this question is asked,
+  so a Valeyard's additional times do not start the chain twice). Put
+  the targets in `Carry`; re-check each at its turn by the clause, not
+  by `ctx.LegalTargets()` (the spell has left the stack by then). The
+  choice is a `*VillainousChoice` set from `init`, because the body
+  reads it again.
+- **"Choose an opponent with the most life"** (The Master) is
+  `OpponentsWithTheMostLife(ctx)`: one seat is the answer, several is a
+  tie the controller breaks with `ChoosePlayer{Only: tied}`.
+- **A body that acts on the card that died** (The Master's exile,
+  Missy's return) records it with `eventCardTriggerItem(label)` on the
+  trigger's `Build` and finds it again with `deadCardInGraveyard`, which
+  checks it is still the same object (CR 400.7).
+- **Putting a creature that is already in play into combat** ("gain
+  control of it, tap it, and it's attacking that player", Midnight
+  Crusader Shuttle) is `Game.PutOnBattlefieldAttackingForEffect`, after
+  the control change: CR 506.3c, never declared, so no attack trigger.
+- **"The total power of Daleks that died this turn"** is
+  `Game.DiedPowerWithSubtypeThisTurn("Dalek")`, a per-turn tally of each
+  dying creature's last-known power by creature type, so a token that
+  has already ceased to exist still counts.
 
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 

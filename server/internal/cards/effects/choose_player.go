@@ -104,6 +104,13 @@ type ChoosePlayer struct {
 	// Among is the pool the clause admits. Zero value is Players.
 	Among PlayerPool
 
+	// Only, when set, is exactly the seats the clause admits, in place of
+	// Among — for a clause whose pool is computed from the board:
+	// "choose an opponent with the most life among your opponents" (The
+	// Master, Gallifrey's End) is the tied opponents. Except still
+	// applies. The engine drops any seat that has left the game.
+	Only []uuid.UUID
+
 	// Except are seats the clause rules out — "choose a SECOND
 	// player" is Players minus the players already chosen, which is
 	// ctx.ChosenPlayers().
@@ -124,9 +131,13 @@ func (c ChoosePlayer) Apply(ctx *Context) error {
 	}
 	item := ctx.Item
 	then := c.Then
+	pool := c.Only
+	if pool == nil {
+		pool = c.Among.seats(ctx, chooser)
+	}
 	queued := ctx.Game.QueueChoosePlayerForEffect(game.ChoosePlayerPrompt{
 		Chooser:  chooser,
-		Among:    exceptPlayers(c.Among.seats(ctx, chooser), c.Except),
+		Among:    exceptPlayers(pool, c.Except),
 		Source:   ctx.Source(),
 		Question: c.Question,
 		Item:     item,
@@ -179,6 +190,32 @@ func ChoosePlayerAsEnters(label string, among PlayerPool) func(*game.Card, *Cont
 // safe under either lock.
 func ChosenPlayerOf(g *game.Game, source uuid.UUID) uuid.UUID {
 	return g.ChosenPlayerOf(source)
+}
+
+// OpponentsWithTheMostLife is "the opponents with the most life among
+// your opponents": every opponent of the effect's controller still in
+// the game whose life total is the highest of theirs, in seat order.
+// One seat is the answer to "the opponent with the most life"; several
+// is the tie the controller breaks (CR 101.4 says nothing, the card
+// says "choose"). Empty when the controller has no opponents left.
+// Pass the result to ChoosePlayer.Only only when it is not empty: an
+// empty list there falls back to the Among pool.
+func OpponentsWithTheMostLife(ctx *Context) []uuid.UUID {
+	var best []uuid.UUID
+	top := 0
+	for _, id := range ctx.Opponents() {
+		p := ctx.Game.PlayerByIDForEffect(id)
+		if p == nil || p.Eliminated {
+			continue
+		}
+		switch {
+		case len(best) == 0 || p.Life > top:
+			best, top = []uuid.UUID{id}, p.Life
+		case p.Life == top:
+			best = append(best, id)
+		}
+	}
+	return best
 }
 
 // exceptPlayers drops `except` from `ids`, keeping order.
