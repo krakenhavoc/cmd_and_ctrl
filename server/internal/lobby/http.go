@@ -163,6 +163,9 @@ type Config struct {
 	// /community. "" hides every Discord placement in the client. The
 	// sign-up gate itself is Discord.Gate.
 	CommunityInviteURL string
+	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
+	// off: GET /community says so and the client offers no room.
+	DiscordVoice discord.Voice
 	// DiscordBot is the server's bot-token credential, for ADR 0051
 	// decision 5's direct-message invites (S34 sub-PR 6). The zero
 	// value means CMDCTRL_DISCORD_BOT_TOKEN is unset, which is a
