@@ -1447,3 +1447,42 @@ fallback.
 so a copy of a spell kicked with its second kicker reads "kicked with its [B]
 kicker" and not [A], and a Double Major token of a permanent spell carries the
 same record onto the battlefield.
+
+## Amendment (2026-10-13, [#3232](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3232)): a kicker whose cost is {X}, with a floor
+
+"Kicker {X}" (Verdeloth the Ancient, Emblazoned Golem), "Kicker {X}{2}" (Kangee, Aerie Keeper) and "Kicker {X}. X can't
+be 0." (Thieving Skydiver) are kickers whose mana half carries an {X}. Most of the machinery was already right:
+`AdditionalCostMana` appends the kicker's `{X}` slots to the total at CR 601.2f, the pool multiplies the one announced
+`XValue` into every slot, `Card.CastX()` carries it onto the permanent for an enters trigger (CR 107.3m), and CR 107.3b's
+free-cast lock reads the PRINTED cost, which has no {X} here. Three things were missing, all about the announcement.
+
+**1. A floor.** `AdditionalCost.MinX` is "X can't be 0" attached to the kicker (`effects.KickerX("{X}", 1)`; zero is no
+floor). `OptionalCostsXFloor(optional, chosen)` is the largest `MinX` among the costs the caster chose, and the announce
+gate in `castSpellLocked` refuses a cast under it with `ErrInvalidParam`, beside the other X checks (after the optional
+choice is known to be in range, before targets). The floor is a property of the clause and not the card, for the reason
+`AbilityCost.MinX` is on the cost: the printed sentence is attached to the kicker.
+
+**2. An X only when kicked.** The {X} is the kicker's, so a caster who does not kick has no {X} in the cost they pay.
+`validateOptionalCostX` refuses a non-zero X when the card offers an {X} optional cost, none is chosen, and nothing else
+prices X (the printed or claimed cost has no {X}; no "pay X life", "blight X" or waterbend {X}). Without it an unkicked
+announcement of X=5 would be recorded on the stack item and `Card.CastX` would carry a number nothing paid for.
+
+**3. The readers that must agree.** The bot enumerator's X floor is `enumeratedXFloor(key, OptionalCostsXFloor(optional,
+chosen))` for the expansion that pays the kicker, so a kicked move is never offered under it and is not offered at all
+when X=1 is unaffordable; the unkicked expansion prices no {X} and announces none. The view stamps the floor on the offer
+as `optional_costs[].x_min` (omitted at 0). The client asks for X once the kicker is among the chosen optional costs
+(`hasXCost(card, altCost, optionalCosts)`), and the X picker opens at `optionalCostXFloor`.
+
+`Register` refuses a negative `MinX`, a `MinX` on a cost whose mana has no {X}, and an {X} optional cost that repeats
+(X is one announced number, so a multikicker cannot carry it).
+
+Back-out: drop the `MinX` check in `castSpellLocked` and a kicked Thieving Skydiver at X=0 is accepted
+(`TestThievingSkydiverKickedWithXZeroIsRefused`); drop `validateOptionalCostX`'s second rule and an unkicked X=2 is
+accepted (`TestThievingSkydiverUnkickedChargesNoXAndHasNoTrigger`); drop the enumerator's floor and a kicked X=0 move is
+offered and the dispatcher refuses it (`TestKickedSkydiverIsNeverOfferedAtXZero`); drop `x_min` and the view test fails.
+
+Not covered: Emblazoned Golem also prints "Spend only colored mana on X. No more than one mana of each color may be spent
+this way" (a distinct-colours cap with no shape, [ADR 0040](0040-mana-pipeline.md)), so it stays out.
+
+Tests: `cards/effects/kicker_x_test.go`, `legal/kicker_x_test.go`, `protocol/optional_cost_x_min_view_test.go`,
+`client/src/lib/kickerX.test.ts`.

@@ -1266,6 +1266,12 @@ type OptionalCostView struct {
 	// 1 for kicker and buyback, the multikicker cap for multikicker.
 	// The client renders a checkbox at 1 and a stepper above it.
 	MaxTimes int `json:"max_times,omitempty"`
+	// XMin is the floor on the announced X while this cost is paid —
+	// Thieving Skydiver's "Kicker {X}. X can't be 0" is 1 (#3232). Absent
+	// for a cost with no floor, and meaningful only beside a mana_cost
+	// that contains {X}. The server refuses a kicked cast under it; the
+	// client's X picker opens at it.
+	XMin int `json:"x_min,omitempty"`
 	// Energy is the "pay N {E}" each payment of this cost charges (ADR
 	// 0129 §5): Reiterating Bolt's "Replicate—Pay {E}{E}{E}" is 3. For
 	// such a cost MaxTimes is capped at the payments the viewer's energy
@@ -6922,6 +6928,7 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 			Label:        oc.Label,
 			ManaCost:     oc.ManaCost,
 			MaxTimes:     oc.MaxPayments(),
+			XMin:         oc.MinX,
 			DiscardCards: oc.DiscardCards,
 		}
 		// ADR 0129 §5: an energy cost is paid only as many times as the
