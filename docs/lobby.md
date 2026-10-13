@@ -2376,6 +2376,28 @@ No body.
   revoked: another tab may still hold it, and it runs out at its own
   expiry.
 
+**The sign-up gate** ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)
+§1 item 5). With the gate on, a half-spent session is re-checked before
+it is re-issued: the stored refresh token (`identities.refresh_token`)
+is exchanged with Discord for an access token, the rotated refresh token
+is stored in its place, and the person's member record in the community
+server is read again. An allowlisted admin
+(`CMDCTRL_DISCORD_ADMIN_USER_IDS`) is exempt and asks nothing.
+
+- **Admitted:** renewed as above, and the answer recorded on the account.
+- **Refused** (left the server, or no longer holds the admitting role):
+  **401**, not renewed, and the person's `sessions_invalid_before` moves
+  to now, so every session they hold ends and their sockets close, as
+  with an admin's revoke. The answer is recorded on the account.
+- **No refresh token** (none was stored because `CMDCTRL_IDENTITY_KEY`
+  was unset, or Discord rejects it): **200** with the same token, not
+  renewed. The session runs to its expiry and the next sign-in is the
+  check.
+- **Discord did not answer** (a 5xx, a timeout, a 429 after one retry):
+  renewed anyway, and logged at WARN. Nothing is recorded.
+
+Below half-life the route asks Discord nothing, gate or no gate.
+
 Renewal is how a signed-in session outlives its first 30 days. Revocation
 is still the way to end one: a token issued before
 `users.sessions_invalid_before` fails before the handler runs, and a
@@ -2391,7 +2413,7 @@ when it reinstalls a saved identity.
 
 | Status | Reason |
 |---|---|
-| 401 | no credential (a `?token=` alone counts as none), or one that is invalid, expired or revoked, including a revocation during the renewal |
+| 401 | no credential (a `?token=` alone counts as none), or one that is invalid, expired or revoked, including a revocation during the renewal; or the sign-up gate's re-check refused the person, which revokes every session they hold |
 | 403 | authenticated but not a signed-in person: the admin token, a guest seat or spectator, a reclaim ticket's session, or any session on a server with no database |
 | 429 | the per-person bucket is spent |
 
@@ -3523,7 +3545,9 @@ requests (at most 100, newest first, then `deck_requests_truncated`).
     "last_sign_in_at": 1791200000000,
     "discord_linked_at": 1790000000000,
     "sessions_invalid_before": 1791150000000,
-    "revoke_path": "/admin/users/<uuid>/revoke-sessions"
+    "revoke_path": "/admin/users/<uuid>/revoke-sessions",
+    "access_checked_at": 1791190000000,
+    "access_result": "admitted"
   },
   "games": [ { "id": "<game uuid>", "their_seat": 0, "…": "a table row, below" } ],
   "games_truncated": false,
@@ -3551,6 +3575,13 @@ decision 3), so there is no list of them. `sessions_invalid_before`,
 absent while unset, is the only per-person session state: a session
 issued at or before it is refused. `revoke_path` is
 [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only).
+`access_result` is the sign-up gate's last answer for the account
+([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)
+§1 item 7): `admitted`, `not_member`, `no_role`, or `unchecked` when
+there has been none (the gate was off, or the account is an exempt
+admin); `access_checked_at`, absent for never, is when it was given. A
+refused sign-in writes nothing, so a refusal is only ever recorded by
+the re-check at renewal.
 A deck has no list and no coverage report. A deck request is matched to
 the account through its Discord identity in SQL. `playmats` are the
 account's saved playmats in slot order, absent for none, each with its
@@ -3874,6 +3905,54 @@ callback also:
   that user, and clears the pending id. One transaction, idempotent,
   on every sign-in. A failure is logged and the sign-in goes ahead;
   the next sign-in tries again.
+
+### The sign-up gate (ADR 0156 §1)
+
+[ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)
+§1. With `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and
+`CMDCTRL_DISCORD_PLAYER_ROLE_ID` both set, an account needs that role in
+that Discord server (on the C2 server, Elder Dragon Highlander, which a
+mod grants; the role everyone gets on joining gives no account). With
+both unset the gate is off and everything below is skipped: sign-in is
+exactly as described above.
+
+- **Scope.** `start` asks Discord for `identify guilds.members.read`
+  instead of `identify`.
+- **The check.** After `/users/@me`, the callback reads
+  `GET /users/@me/guilds/{guild}/member` with the person's access token.
+  Admitted when it answers 200 and `roles` contains the role. A 404 (not
+  a member) or a member without the role is refused. Anything else (a
+  5xx, a timeout, a 429 after one retry) is an outage.
+- **Admins are exempt:** a Discord id on `CMDCTRL_DISCORD_ADMIN_USER_IDS`
+  is admitted without the call.
+- **Admitted:** unchanged, and the answer is stored on the account
+  (`users.access_checked_at`, `users.access_result`).
+- **Refused, login page** (and linking Discord to a guest seat): **302**
+  to `/#/request-access`. No session is issued, and no `users` or
+  `identities` row is created or touched; a linked seat stays the guest's.
+- **Refused, invite link:** the person takes the seat as a **guest**
+  named from their Discord display name, with no `user_id` and no Discord
+  identity on the seat or the session, exactly as if they had typed that
+  name. The fragment is the invite flow's, with `name` and no `user_id`.
+  The session lasts `CMDCTRL_SESSION_TTL`.
+- **Outage:** **302** to `/#/request-access?retry=1`, in either flow,
+  and nothing is written. A sign-in fails closed.
+
+The re-check at renewal is under
+[`POST /me/session`](#post-mesession-adr-0110-1-items-5-and-6-s55).
+
+### `GET /community` (ADR 0156 §6)
+
+Public, no credential. The client's source for every Discord placement:
+
+```json
+{ "invite_url": "https://discord.gg/…", "gate": true }
+```
+
+`invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
+then hides every Discord link). `gate` is whether sign-up needs the
+admitting role. No guild, role or user id is ever in it. Answered with
+`Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`
 

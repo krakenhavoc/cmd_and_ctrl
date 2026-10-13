@@ -8,6 +8,7 @@
   import { onMount } from "svelte";
   import { fetchAdminAccount, removeUserPlaymat, revokeUserSessions } from "../../api";
   import {
+    accessResultLabel,
     accountsHash,
     avatarSrc,
     externalLink,
@@ -165,6 +166,15 @@
               <RelTime ms={d.sign_in.sessions_invalid_before} {now} />
             {:else}
               <span class="dim">never</span>
+            {/if}
+          </dd>
+        </div>
+        <div>
+          <dt>Discord role</dt>
+          <dd>
+            {accessResultLabel(d.sign_in.access_result)}
+            {#if d.sign_in.access_checked_at}
+              <span class="dim">· <RelTime ms={d.sign_in.access_checked_at} {now} /></span>
             {/if}
           </dd>
         </div>

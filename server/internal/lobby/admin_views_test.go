@@ -97,8 +97,9 @@ func newAdminViewsWorld(t *testing.T) *adminViewsWorld {
 
 	// Ann: an account with a Discord identity, a sealed refresh token
 	// and scopes, a saved deck and a deck request.
-	exec(`INSERT INTO users (id, display_name, avatar_url, created_at, last_seen_at, sessions_invalid_before) VALUES (?, 'Ann', ?, ?, ?, ?)`,
-		w.ann.String(), "/avatars/"+annSnowflake+"/abcdef.png", now-1000, now-500, now-100)
+	exec(`INSERT INTO users (id, display_name, avatar_url, created_at, last_seen_at, sessions_invalid_before, access_checked_at, access_result)
+	      VALUES (?, 'Ann', ?, ?, ?, ?, ?, 'admitted')`,
+		w.ann.String(), "/avatars/"+annSnowflake+"/abcdef.png", now-1000, now-500, now-100, now-400)
 	exec(`INSERT INTO identities (provider, subject, user_id, display_name, refresh_token, scopes, linked_at)
 	      VALUES ('discord', ?, ?, 'Ann', ?, 'identify', ?)`, annSnowflake, w.ann.String(), []byte(refreshMarker), now-1000)
 	if _, err := decklibrary.NewSQLStore(d).UpsertFromLink(ctx, w.ann, "Ann's deck", "moxfield", "Commander:\n1 Atraxa\n"+deckListMarker,
@@ -274,13 +275,13 @@ func TestAdminViewsServeOnlyTheirFields(t *testing.T) {
 			[]string{"accounts[].avatar_url", "accounts[].playing_now", "accounts[].games_played"}},
 		{"/admin/users/" + w.ann.String(), fieldSet(
 			[]string{"generated_at", "games_truncated", "deck_requests_truncated",
-				"playmats", "playmats[].slot", "playmats[].url", "playmats[].active", "sign_in.last_sign_in_at", "sign_in.discord_linked_at", "sign_in.sessions_invalid_before", "sign_in.revoke_path",
+				"playmats", "playmats[].slot", "playmats[].url", "playmats[].active", "sign_in.last_sign_in_at", "sign_in.discord_linked_at", "sign_in.sessions_invalid_before", "sign_in.revoke_path", "sign_in.access_checked_at", "sign_in.access_result",
 				"decks", "decks[].id", "decks[].name", "decks[].format", "decks[].source_url", "decks[].commanders", "decks[].commanders[]",
 				"decks[].card_count", "decks[].created_at", "decks[].updated_at",
 				"deck_requests", "deck_requests[].deck_key", "deck_requests[].asked_at", "deck_requests[].issue_number", "deck_requests[].issue_url",
 				"games", "games[].their_seat"},
 			accountFields("account."), gameRowFields("games[].")),
-			[]string{"playmats[].url", "playmats[].active", "sign_in.sessions_invalid_before", "decks[].commanders[]", "deck_requests[].issue_url", "games[].their_seat",
+			[]string{"playmats[].url", "playmats[].active", "sign_in.sessions_invalid_before", "sign_in.access_checked_at", "sign_in.access_result", "decks[].commanders[]", "deck_requests[].issue_url", "games[].their_seat",
 				"games[].seats[].agent_client", "games[].seats[].discord_pending", "games[].creator.name"}},
 		{"/admin/games?practice=include", fieldSet([]string{"generated_at", "next_cursor", "games"}, gameRowFields("games[].")),
 			[]string{"games[].practice", "games[].seats[].agent_client", "games[].seats[].bot_tier", "games[].seats[].account.avatar_url",

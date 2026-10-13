@@ -33,6 +33,11 @@ type Config struct {
 	ClientID     string
 	ClientSecret string
 	RedirectURI  string
+	// Gate is ADR 0156 §1's sign-up gate: the community server and the
+	// role that admits a person. The zero value is off. ConfigFromEnv
+	// leaves it unset; main parses it with GateFromEnv, which can fail
+	// the boot, and sets it here.
+	Gate Gate
 }
 
 // Enabled reports whether the config has the three values needed

@@ -40,7 +40,17 @@
 //	                        as NULL, with a warning on every boot. Too short
 //	                        or reused: boot fails. Rotating it makes stored
 //	                        refresh tokens unreadable; nothing else breaks.
-//	CMDCTRL_SEED_DEMO    — if "1", seed a 4-player demo game at startup.
+//	                        With the sign-up gate on it is also what lets a
+//	                        renewal re-check the role (ADR 0156 §1 item 5).
+//	CMDCTRL_DISCORD_COMMUNITY_GUILD_ID / CMDCTRL_DISCORD_PLAYER_ROLE_ID
+//	                      — the sign-up gate (ADR 0156 §1): signing in
+//	                        needs this role in this server. Both set: on.
+//	                        Neither: off. One alone, or a malformed
+//	                        snowflake: boot fails.
+//	CMDCTRL_DISCORD_INVITE_URL — the community server's invite, served by
+//	                        GET /community. Unset hides it; not an https
+//	                        URL: boot fails.
+//	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
 //
@@ -486,10 +496,26 @@ func main() {
 	}
 
 	discordCfg := discord.ConfigFromEnv()
+	discordCfg.Gate = cfg.Gate
 	if discordCfg.Enabled() {
 		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)
 	} else {
 		log.Info("discord oauth disabled — set CMDCTRL_DISCORD_CLIENT_ID/SECRET/REDIRECT_URI to enable")
+	}
+	// ADR 0156 §1: said once, either way, like the DM invites below.
+	switch {
+	case !cfg.Gate.Enabled():
+		log.Info("sign-up gate off: any Discord account may sign in; set "+
+			discord.CommunityGuildEnv+" and "+discord.PlayerRoleEnv+" to require the admitting role",
+			"vars", []string{discord.CommunityGuildEnv, discord.PlayerRoleEnv})
+	case database == nil:
+		log.Warn("sign-up gate on with no user database: sign-in is checked, but nothing can be re-checked at renewal")
+	default:
+		log.Info("sign-up gate on: signing in needs the admitting role in the community server, re-checked at renewal",
+			"scopes", discordCfg.Scopes())
+	}
+	if cfg.CommunityInviteURL == "" {
+		log.Info("community invite unset: the client hides its Discord links", "var", discord.InviteURLEnv)
 	}
 
 	// The bot token the server itself uses for direct-message invites
@@ -599,6 +625,8 @@ func main() {
 		Capacity:    cfg.Capacity,
 		Discord:     discordCfg,
 		DiscordBot:  discordBot,
+		// GET /community (ADR 0156 §6).
+		CommunityInviteURL: cfg.CommunityInviteURL,
 		// The DM invite's link is built against the same public origin
 		// bug-report attachments use, and for the same reason there is
 		// no default: a wrong origin produces a DM full of dead links.
@@ -797,6 +825,14 @@ type config struct {
 	// whose Discord ID is on it is an admin, like the shared token.
 	// Empty is a supported state. A malformed entry fails the boot.
 	Admins *lobby.AdminList
+	// Gate is ADR 0156 §1's sign-up gate: CMDCTRL_DISCORD_COMMUNITY_GUILD_ID
+	// and CMDCTRL_DISCORD_PLAYER_ROLE_ID, both or neither. One without
+	// the other, or a malformed snowflake, fails the boot.
+	Gate discord.Gate
+	// CommunityInviteURL is CMDCTRL_DISCORD_INVITE_URL, served by GET
+	// /community. Empty hides the client's Discord placements; a value
+	// that is not an https URL fails the boot.
+	CommunityInviteURL string
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -1038,6 +1074,21 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Admins = admins
+
+	// The sign-up gate (ADR 0156 §1 item 1). Half a gate would admit
+	// everyone or no one without saying which, so it stops the boot.
+	gate, gerr := discord.GateFromEnv(os.Getenv)
+	if gerr != nil {
+		log.Error("sign-up gate config invalid", "err", gerr)
+		os.Exit(1)
+	}
+	c.Gate = gate
+	invite, ierr := discord.InviteURLFromEnv(os.Getenv)
+	if ierr != nil {
+		log.Error("community invite invalid", "err", ierr)
+		os.Exit(1)
+	}
+	c.CommunityInviteURL = invite
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")

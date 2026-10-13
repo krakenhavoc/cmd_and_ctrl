@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  accessResultLabel,
   accountsHash,
   accountsQuery,
   adminViewHash,
@@ -448,5 +449,15 @@ describe("Live now's poll schedule (§7)", () => {
     expect(p.state).toBe("paused");
     expect(loads).toBe(at);
     p.stop();
+  });
+});
+
+describe("accessResultLabel", () => {
+  it("words the sign-up gate's last answer (ADR 0156 §1 item 7)", () => {
+    expect(accessResultLabel("admitted")).toBe("admitted");
+    expect(accessResultLabel("not_member")).toBe("refused: not a member");
+    expect(accessResultLabel("no_role")).toBe("refused: no role");
+    expect(accessResultLabel("unchecked")).toBe("unchecked");
+    expect(accessResultLabel(undefined)).toBe("unchecked");
   });
 });

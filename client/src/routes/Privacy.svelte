@@ -30,10 +30,11 @@
     {
       what: "Your Discord sign-in",
       details:
-        "Your Discord user id, display name and avatar, and the time you last signed in. We ask Discord for the “identify” permission only: no email address and no server list. When the server has an encryption key set, Discord’s refresh token is kept, encrypted; otherwise it is thrown away.",
-      why: "To make you the same person on every device, put your name and picture on your seat, and keep your decks and games with you.",
+        "Your Discord user id, display name and avatar, and the time you last signed in. We ask Discord for the “identify” permission: no email address and no server list. When sign-up needs the account role in the C2 Discord server (Elder Dragon Highlander), we also ask for “guilds.members.read”, which Discord describes as reading your member info (nickname, avatar, roles) in servers you are in. The server uses it only to read your own membership of the C2 server, and from it only whether you hold that role: it keeps the answer (admitted, not a member, or no role) and when it was given, and nothing else from that record. It asks again each time your sign-in is renewed. If Discord turns you away at sign-in, nothing is kept about you. When the server has an encryption key set, Discord’s refresh token is kept, encrypted, and is what lets the server ask again at renewal; otherwise it is thrown away.",
+      why: "To make you the same person on every device, put your name and picture on your seat, keep your decks and games with you, and keep accounts to members of the C2 Discord.",
       howLong: "Until you delete your account.",
-      source: "migrations 0003; discord/oauth.go discordScopes",
+      source:
+        "migrations 0003, 0019 users.access_checked_at, users.access_result; discord/oauth.go Scopes; discord/gate.go CheckMember; lobby/access_gate.go",
     },
     {
       what: "Your session",
@@ -144,7 +145,7 @@
     },
     {
       who: "Discord",
-      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy.",
+      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed.",
     },
     {
       who: "GitHub",

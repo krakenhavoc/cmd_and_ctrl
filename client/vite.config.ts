@@ -74,6 +74,10 @@ export default defineConfig({
       // same reasoning as /roadmap.
       "/deck-coverage": { target: goServer, changeOrigin: true },
       "/deck-requests": { target: goServer, changeOrigin: true },
+      // The C2 Discord invite and whether sign-up is gated (ADR 0156
+      // §6). Same silent failure as /config without it: Vite answers
+      // with index.html and every Discord placement stays hidden.
+      "/community": { target: goServer, changeOrigin: true },
       "/me": { target: goServer, changeOrigin: true },
       // POST /logout and POST /logout/everywhere (ADR 0051 decision
       // 6). Missing before S34 sub-PR 7: without it Vite answered the

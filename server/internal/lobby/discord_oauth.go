@@ -128,10 +128,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	client := c.DiscordHTTPClient
-	if client == nil {
-		client = http.DefaultClient
-	}
+	client := c.discordClient()
 	token, err := c.Discord.ExchangeCode(r.Context(), client, code, entry.CodeVerifier)
 	if err != nil {
 		return httpError(http.StatusFailedDependency, err.Error())
@@ -139,6 +136,14 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	user, err := c.Discord.FetchUser(r.Context(), client, token.AccessToken)
 	if err != nil {
 		return httpError(http.StatusFailedDependency, err.Error())
+	}
+
+	// The sign-up gate (ADR 0156 §1 item 4), before anything is written
+	// about the person: a refusal answers the request itself, and
+	// leaves no users row behind.
+	admitted, gateChecked, err := signInGate(c, w, r, entry, user, token.AccessToken)
+	if err != nil || !admitted {
+		return err
 	}
 
 	identity := DiscordIdentity{
@@ -158,7 +163,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	// is users.NoStore and u.ID is zero, which is today's session.
 	scopes := token.Scope
 	if scopes == "" {
-		scopes = discord.RequestedScopes
+		scopes = c.Discord.Scopes()
 	}
 	u, err := c.userStore().UpsertFromDiscord(r.Context(), user, token.RefreshToken, scopes)
 	if err != nil {
@@ -166,6 +171,12 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		// gets a plain sentence and the log gets the detail.
 		c.logger().Error("record Discord sign-in failed", "discord_id", user.ID, "err", err)
 		return httpError(http.StatusInternalServerError, "could not record your sign-in; try again")
+	}
+
+	// The gate admitted them after asking Discord: say so on the
+	// account, for the admin view (ADR 0156 §1 item 7).
+	if gateChecked {
+		c.recordAccess(r.Context(), u.ID, discord.AccessAdmitted)
 	}
 
 	// Seats this snowflake claimed before it had a users row — every

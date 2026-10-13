@@ -9,6 +9,7 @@
   import { isAdminViewReturn, takeAfterSignIn } from "../lib/decksPage";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import Icon from "../lib/components/Icon.svelte";
+  import { gateRefusalNotice } from "../lib/gateRefusal";
 
   // Login is for signed-out visitors (ADR 0112 §1): Discord sign-in
   // and the invite box, nothing else. The router sends every session
@@ -42,6 +43,9 @@
   // vars hides the button rather than offering one that 503s. Same
   // posture as Join.svelte.
   let discordEnabled = $state(false);
+  // The sign-up gate's refusal (ADR 0156 §1), until #3182's gate page
+  // takes #/request-access over from this fallback.
+  const gateNotice = typeof location === "undefined" ? "" : gateRefusalNotice(location.hash);
   onMount(() => {
     if (admin) return;
     void discordAuthEnabled().then((on) => {
@@ -117,6 +121,9 @@
       <p class="tagline">The Commander table, over the wire.</p>
     </div>
 
+    {#if gateNotice && !admin}
+      <p class="notice" role="status">{gateNotice}</p>
+    {/if}
     {#if $expiryNotice}
       <p class="notice" role="status"><Icon name="undo" size={14} /> {$expiryNotice}</p>
     {/if}

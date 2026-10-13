@@ -16,6 +16,12 @@ package lobby
 //     with a fresh IdentityTTL. A person who uses the site at least once
 //     in every half-lifetime is never asked to sign in again.
 //
+// With the sign-up gate on (ADR 0156 §1 item 5), a renewal first asks
+// Discord again whether the person holds the role (renewalGate): a
+// refusal withdraws every session they hold and answers 401; no refresh
+// token to ask with answers the session as it is, not renewed; an
+// outage renews anyway, logged at WARN. An allowlisted admin is exempt.
+//
 // What a renewal keeps and what it changes: the principal is copied
 // whole, so the role, the user, the game and seat (or the watched
 // game), the seat label and the cached Discord fields are the same.
@@ -65,7 +71,24 @@ func renewSession(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	cred := auth.CredentialFromCookieOrHeader(r)
 	tok, out := cred, p
-	if halfSpent(p, c.now()) {
+	spent := halfSpent(p, c.now())
+	verdict := renewalGo
+	if spent {
+		// The sign-up gate's re-check (ADR 0156 §1 item 5). Off, or for
+		// an exempt admin, it is renewalGo without a call.
+		verdict = c.renewalGate(r.Context(), p)
+	}
+	if verdict == renewalRefused {
+		// Every session this person holds ends, this one included: the
+		// role is gone, so the account is closed to them until a mod
+		// gives it back and they sign in again.
+		if _, err := revokeUser(r.Context(), c, p.UserID); err != nil {
+			return err
+		}
+		clearSessionCookie(c, w)
+		return httpError(http.StatusUnauthorized, "session revoked: your Discord account no longer has the role this site needs")
+	}
+	if spent && verdict == renewalGo {
 		renewed := p
 		renewed.IssuedAt, renewed.ExpiresAt = time.Time{}, time.Time{}
 		// A UserID and no source session: IdentityTTL (issueFor).
@@ -95,8 +118,10 @@ func renewSession(c Config, w http.ResponseWriter, r *http.Request) error {
 	})
 }
 
-// now is the lobby's clock: Config.Now, or the wall clock. Only the
-// renewal's half-life test reads it; the authenticator keeps its own.
+// now is the lobby's clock: Config.Now, or the wall clock. The
+// renewal's half-life test reads it, and so does the time an access
+// check is recorded at (ADR 0156 §1 item 7); the authenticator keeps
+// its own.
 func (c Config) now() time.Time {
 	if c.Now != nil {
 		return c.Now()
