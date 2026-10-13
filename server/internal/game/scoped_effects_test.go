@@ -242,7 +242,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
 		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModGoad: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModSetBasicLandTypes:                true,

@@ -327,6 +327,16 @@ type AlternativeCost struct {
 	// button already renders.
 	WarpExile bool
 
+	// Dash is dash's "it gains haste, and it's returned from the
+	// battlefield to its owner's hand at the beginning of the next end
+	// step" (CR 702.109a, #3172). The third sibling of SacrificeOnEntry
+	// and WarpExile, with the same shape: the clause attaches to the
+	// permanent's ENTRY and uses ordinary machinery — a scoped haste
+	// effect and a CR 603.7 delayed trigger (dash.go). Set it with
+	// effects.Dash, never by hand: a hand-rolled {1}{R} offer would be a
+	// discounted creature that keeps its haste and never goes home.
+	Dash bool
+
 	// EntersWithCounterName / EntersWithCounterCount is "this
 	// creature escapes with a +1/+1 counter on it" (CR 702.138c) —
 	// the clause most escape creatures print directly under the
@@ -1176,6 +1186,9 @@ func (g *Game) queueAltCostEntryTriggerLocked(card Card, item *StackItem) {
 	}
 	if alt.WarpExile {
 		g.scheduleWarpExileLocked(card, item, alt)
+	}
+	if alt.Dash {
+		g.applyDashLocked(card, item, alt)
 	}
 	if !alt.SacrificeOnEntry {
 		return

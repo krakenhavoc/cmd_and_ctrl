@@ -279,3 +279,40 @@ and Demon of Death's Gate. Still not covered: emerge (CR 702.119 —
 the sacrificed creature's mana value reduces the mana half), Firecat
 Blitz's "Flashback—{R}{R}, Sacrifice X Mountains", and Cabal Therapy
 (its front half needs a card-name choice at resolution).
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172)): dash, freerunning, a flash surcharge, and what a payment remembers
+
+Four small pieces landed with the "cav-b" caveat slice of the card-completeness tracker, each on a shape this ADR
+already has.
+
+**Dash (CR 702.109).** `AlternativeCost.Dash`, built only by `effects.Dash(cost)`, is the third sibling of
+`SacrificeOnEntry` and `WarpExile`: a clause attached to the permanent's entry, applied in
+`queueAltCostEntryTriggerLocked` (`game/dash.go`). It registers a layer-6 haste scoped effect for as long as the
+creature remains on the battlefield, pinned to the object (`ForAsLongAsOnBattlefieldDuration`), and schedules a
+CR 603.7 delayed trigger at the next end step (`dash/return`, a registered body) that returns the creature to its
+owner's hand. The trigger records the creature's `ObjectEpoch` when it is scheduled and returns it only if it is still
+that object (CR 400.7), so a dashed creature that died or was flickered stays where it is. The delayed trigger uses the
+stack, so any player may respond. A granted offer may not carry `Dash`.
+
+**Freerunning (CR 702.173).** `effects.Freerunning(cost, creatureType)` is an alternative cost with a `Condition`, shaped
+like Spectacle. The condition reads the turn tally of who dealt combat damage to which player (`CombatDamagedPlayers`),
+which already recorded the dealer's name and subtypes; it gains a third identity, "was a commander"
+(`PlayersDealtCombatDamageThisTurnByCommander`), so an Assassin that died in the same combat still counts.
+
+**Flash for more.** "You may cast this spell as though it had flash if you pay {N} more" is an offer priced at the
+printed cost plus {N} with `AsThoughFlash` (`effects.FlashForMore`), the engine path ADR 0129 §5 built for Primal
+Prayers. Casting for the printed cost stays sorcery-speed only (CR 601.3c). Modelling a surcharge as an alternative
+cost means it cannot be combined with another alternative cost on the same spell; cost reductions apply to it as they
+would to the printed cost plus {N}.
+
+**What a payment remembers.** `PaidCost.Convoked` records the creatures tapped to convoke a spell, in the order named
+(Lethal Scheme's "each creature that convoked this spell connives"); a copy of the spell does not carry it (CR 707.10).
+`CastTally` gains `ManaSpent` and `ManaSpentLast`, the mana spent on spells this turn read from each spell's payment
+record as it became cast, so "whenever you expend N" is a cast whose running total crossed N (`CastTally.Expended`,
+`effects.WheneverYouExpend`). A payment the engine waived counts as no mana: weaker than printed, never stronger.
+
+Back-out: remove the `Dash` clause and constructor and Ragavan reverts to caveated; each other piece is one constructor
+or one field with the test named below.
+
+Tests: `cards/effects/cav_b_dash_test.go`, `cav_b_test.go` (flash surcharge, freerunning, delirium discount, gift),
+`cav_b_connive_test.go`, `cav_b_expend_test.go`.

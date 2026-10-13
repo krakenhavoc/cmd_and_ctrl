@@ -8598,6 +8598,28 @@ Three things to know:
   [opening_hand_actions_test.go](../server/internal/cards/effects/opening_hand_actions_test.go),
   which stop before the first keep so the hands can be stocked.
 
+### Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)
+
+Seven small mechanics, each a constructor or helper in `server/internal/cards/effects/`; the engine pieces behind the
+first, second and sixth are in the amendments of [ADR 0025](decisions/0025-alternative-costs.md) and
+[ADR 0045](decisions/0045-combat-restrictions.md) dated 2026-10-13.
+
+```go
+AlternativeCosts: []game.AlternativeCost{Dash("{1}{R}")},                   // Ragavan: haste, back to hand at the next end step
+AlternativeCosts: []game.AlternativeCost{Freerunning("{1}{B}", "Assassin")}, // Restart Sequence: Assassin or commander connected
+AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},  // Asinine Antics: printed cost + {2}, total spelled out
+Triggered: []game.TriggeredAbility{Training("Hopeful Initiate — training")}, // +1/+1 counter beside a bigger attacker
+Triggered: []game.TriggeredAbility{Targeting(WheneverYouExpend(8, "…", effect), spec)}, // Trailtracker Scout
+Activated: []ActivatedAbility{Encore("{3}{R}")},                            // Impulsive Pilferer: one bound token per opponent
+ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(ctx) // Lethal Scheme
+```
+
+Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
+that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
+the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
+(`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
+counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

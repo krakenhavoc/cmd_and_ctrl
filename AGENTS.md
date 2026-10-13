@@ -582,6 +582,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Adding a Room or a split card (ADR 0103, #1756)](docs/adding-cards.md#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](docs/adding-cards.md#abilities-from-the-hand-660)
   - [Special actions from the hand (#658, #659)](docs/adding-cards.md#special-actions-from-the-hand-658-659)
+  - [Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)](docs/adding-cards.md#dash-freerunning-a-flash-surcharge-training-expend-encore-and-connive-3172)
   - [Adding a `Spec` slot (#622)](docs/adding-cards.md#adding-a-spec-slot-622)
   - [When in doubt](docs/adding-cards.md#when-in-doubt)
 
