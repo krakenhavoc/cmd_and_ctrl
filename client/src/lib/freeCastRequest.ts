@@ -20,6 +20,7 @@ export const freeCastRequest = guardedWritable<string | null>(null, "freeCastReq
 export const mayCastKeywordsThatOpenACast: ReadonlySet<string> = new Set([
   "discover",
   "cascade",
+  "exile_until",
   "suspend",
   "rebound",
 ]);

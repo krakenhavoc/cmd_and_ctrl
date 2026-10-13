@@ -1,0 +1,91 @@
+package effects
+
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
+
+// Tibalt's Trickery — Instant {1}{R}:
+//
+//	"Counter target spell. Choose 1, 2, or 3 at random. Its controller
+//	 mills that many cards, then exiles cards from the top of their
+//	 library until they exile a nonland card with a different name than
+//	 that spell. They may cast that card without paying its mana cost.
+//	 Then they put the exiled cards on the bottom of their library in a
+//	 random order."
+//
+// The counter is the ordinary CounterTarget; everything after it is
+// done TO and BY the countered spell's controller, who may be anyone
+// at the table. The number is drawn from the game's keyed random
+// stream (an undo or restore redraws the same one), the mill waits for
+// its CR 614 window through MillToZoneThenForEffect, and the walk is
+// Game.ExileUntilCastFreeForEffect, which is cascade's body with the
+// hit test passed in: here a nonland card whose name differs from the
+// countered spell's, read BEFORE the counter so a spell that is gone
+// afterwards still names its exclusion.
+//
+// The free cast is a grant the chooser uses right after this resolves,
+// not an inline cast during resolution — the same stand-in cascade and
+// discover use, with the same window (it closes on their next priority
+// pass and the card goes to the bottom). If the target spell is
+// already gone, the spell is countered on resolution (CR 608.2b) and
+// none of this happens.
+//
+// No simplification beyond that shared stand-in.
+func init() {
+	Register(Spec{
+		OracleID:     "6623cb85-fb1e-4561-8b21-0977c25096c2",
+		Name:         "Tibalt's Trickery",
+		Completeness: CompletenessFull,
+		Targets:      TargetSpell("target spell"),
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			if len(item.Targets) == 0 {
+				return nil
+			}
+			stackID := item.Targets[0].ID
+			target := ctx.Game.StackItemForEffect(stackID)
+			if target == nil {
+				return nil
+			}
+			victim := target.Controller
+			name := ""
+			if card, ok := ctx.Game.LookupCardForEffect(stackID); ok {
+				name = card.Name
+			}
+			if err := (CounterTarget{StackID: stackID}).Apply(ctx); err != nil {
+				return err
+			}
+			source := item.SourceCardID
+			n := tibaltsTrickeryCount(ctx)
+			return ctx.Game.MillToZoneThenForEffect(victim, n, game.ZoneGraveyard, nil,
+				func(g *game.Game, _ []uuid.UUID) error {
+					return g.ExileUntilCastFreeForEffect(victim, source, func(c game.Card) bool {
+						return !c.IsLand() && c.Name != name
+					})
+				})
+		},
+	})
+}
+
+// tibaltsTrickeryOptions are the three equally likely numbers, as fixed
+// IDs because the keyed random stream picks among IDs.
+var tibaltsTrickeryOptions = []uuid.UUID{
+	uuid.MustParse("00000000-0000-0000-0000-000000000001"),
+	uuid.MustParse("00000000-0000-0000-0000-000000000002"),
+	uuid.MustParse("00000000-0000-0000-0000-000000000003"),
+}
+
+// tibaltsTrickeryCount is "choose 1, 2, or 3 at random".
+func tibaltsTrickeryCount(ctx *Context) int {
+	picked := ctx.Game.ChooseAtRandomForEffect(randomDraw(ctx), tibaltsTrickeryOptions, 1)
+	if len(picked) == 0 {
+		return 1
+	}
+	for i, id := range tibaltsTrickeryOptions {
+		if id == picked[0] {
+			return i + 1
+		}
+	}
+	return 1
+}
