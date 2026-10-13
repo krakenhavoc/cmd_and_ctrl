@@ -21,6 +21,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { emit as tutorialEmit } from "../../tutorialBus";
+  import { openAbilityPopover, popoverSurface } from "../../abilityPopover";
   import {
     canCastFromHand,
     castAnywayBlocked,
@@ -280,6 +281,35 @@
   function handleCardClick(card: CardView): void {
     if (!isSelf) return;
     onPlayCard?.(card);
+  }
+
+  // #3280: a card that cannot be played or cast right now but has
+  // something else to do from the hand (cycling on a land once the land
+  // drop is spent, a foretell, a Spirit Guide's mana) opens its ability
+  // popover on a left-click, the one route into those rows a plain click
+  // can reach. Before this, such a card was lit (its pip, its ring) and
+  // not dimmed, yet a click did nothing and the only words anywhere were
+  // the tooltip's "No land plays left this turn". A card that CAN be
+  // played keeps its click as the play: the popover is the right-click and
+  // the pip, as it is for a creature with cycling.
+  const surface = popoverSurface();
+  function handCanOpenMenu(card: CardView): boolean {
+    return (
+      isSelf &&
+      ((card.zone_abilities?.length ?? 0) > 0 ||
+        (card.zone_mana_abilities?.length ?? 0) > 0 ||
+        (card.special_actions?.length ?? 0) > 0) &&
+      handHasAction(legalGate, card.instance_id)
+    );
+  }
+  function openHandMenu(card: CardView): void {
+    openAbilityPopover(card.instance_id, surface);
+  }
+  // The tooltip on a card that is not playable: the reason, and the
+  // pointer to what it can do instead.
+  function slotTitle(card: CardView, reason: string): string {
+    if (!handCanOpenMenu(card)) return reason;
+    return reason ? `${reason}. Click for its other abilities.` : "Click for its other abilities.";
   }
 
   // legalityFor computes the cast-from-hand legality for a single
@@ -664,7 +694,7 @@
       class:drag-source={dragging && dragCardID === c.instance_id}
       class:gap-left={shift < 0}
       class:gap-right={shift > 0}
-      title={isSelf && !leg.legal ? leg.reason : undefined}
+      title={isSelf && !leg.legal ? slotTitle(c, leg.reason ?? "") : undefined}
       onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, c, i) : undefined}
       onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
       style:transform={layout === "stacked"
@@ -706,7 +736,11 @@
             readyZone="hand"
             ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
             idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
-            onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
+            onClick={isSelf && leg.legal
+              ? () => handleCardClick(c)
+              : handCanOpenMenu(c)
+                ? () => openHandMenu(c)
+                : undefined}
           />
         </div>
         {#if isSelf && (c.known_by_seats?.length ?? 0) > 0}

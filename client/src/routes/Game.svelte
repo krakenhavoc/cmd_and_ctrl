@@ -2512,6 +2512,7 @@
           {autopassEnabled}
           {loopNotice}
           {readyActions}
+          attackersReady={attackAllReady ? attackPlan.eligible.length : 0}
           onPassPriority={passPriority}
           onPassTurn={passTurn}
           onToggleAutopass={toggleAutopass}

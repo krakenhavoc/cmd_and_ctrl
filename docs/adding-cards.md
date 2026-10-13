@@ -83,6 +83,23 @@ surface tiny.
    resolution; a creature removed from combat in response is illegal,
    and a source that has left is read from its last-known blocks
    (#1863, ADR 0019 amendment 2026-10-07).
+   "Target card in exile" is `TargetCardInExile(label, preds…)`, picked
+   in the zone browser's exile tab like a graveyard card; "target face-up
+   exiled card" adds `FaceUp()` (Pull from Eternity). "Target creature
+   card exiled with this" wraps the clause in `ExiledWithThis(spec)`:
+   `Targets: ExiledWithThis(TargetCardInExile("target creature card
+   exiled with The Darkness Crystal", Creature()))`. It is data on
+   `game.TargetSpec.ExiledWithSource`, judged at announce and at
+   resolution against `Card.ExiledWith` naming the source OBJECT (a
+   second Crystal's exiles, a stale epoch and an unlinked card are out;
+   a source that has left is read from its last-known record; no source
+   admits nothing). Only a card whose exile stamped `Card.ExiledWith`
+   carries the link, which today is a replacement exile
+   (`ReplacementEvent.ExiledWith`); an ability-resolution exile does not
+   stamp it until ADR 0155's stamp lands, so a card that exiles from an
+   ability still uses the event-log record and a choice. A face-down
+   exiled card its chooser has not seen is never offered (#3259, ADR 0019
+   amendment 2026-10-13).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact

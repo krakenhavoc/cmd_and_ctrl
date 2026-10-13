@@ -6,12 +6,13 @@ import type { Hint } from "../../hints/hint";
 const hint: Hint = {
   id: "table.dock",
   // 2: ADR 0143 §4.2, Pass turn became End turn and autopass Skip to my turn.
-  version: 2,
+  // 3: #3267, the primary reads Pass, Next or No attacks by what it does.
+  version: 3,
   place: "table",
   order: 10,
   anchor: { label: L.actions },
   title: "Your controls",
-  body: "next moves the game on, End turn plays out your turn, and Skip to my turn passes until yours. Anything the game needs opens here.",
+  body: `${L.next} moves on, ${L.pass} lets a spell resolve, ${L.endTurn} plays out your turn, ${L.skipToMyTurn} passes until yours. The game asks here.`,
 };
 
 export default hint;

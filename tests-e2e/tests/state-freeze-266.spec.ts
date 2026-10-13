@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
 import { joinAsPlayer } from "./players";
+import { DOCK_PRIMARY } from "./dock-primary";
 
 // Guard for the #266 "[in-app] State freeze" class: the board stops
 // updating while the socket stays green and the server keeps moving.
@@ -144,7 +145,7 @@ test.describe("#266 state freeze", () => {
             for (const p of players) {
               if (
                 await p.page
-                  .getByRole("button", { name: "next", exact: true })
+                  .getByRole("button", { name: DOCK_PRIMARY })
                   .isEnabled()
               ) {
                 return true;
@@ -163,10 +164,7 @@ test.describe("#266 state freeze", () => {
       if (someoneHolds) {
         held++;
         for (const p of players) {
-          const next = p.page.getByRole("button", {
-            name: "next",
-            exact: true,
-          });
+          const next = p.page.getByRole("button", { name: DOCK_PRIMARY });
           if (await next.isEnabled()) {
             // Bounded: the seat's own client can auto-pass between
             // isEnabled() and the click, and an unbounded click then
