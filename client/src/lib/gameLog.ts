@@ -112,6 +112,10 @@ const LOG_TONE: Record<LogKind, string> = {
   ring_tempted: "tone-cast",
   // ADR 0146: a vote is a play the table watches as it is cast.
   vote: "tone-cast",
+  // ADR 0150 §5: who stopped an "unless any player pays" effect is a
+  // play the table watches; each decline is quieter.
+  any_player_paid: "tone-cast",
+  any_player_declined: "tone-quiet",
   // #1021. A control change is a swing in the game and reads like a
   // removal spell; the rest are beats of a turn a player narrates
   // without raising their voice.

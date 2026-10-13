@@ -145,3 +145,25 @@ describe("passHint while a commander is being decided (ADR 0115 PR 5)", () => {
     expect(passHint(v, true)).toBe("passing moves to Begin Combat");
   });
 });
+
+describe("passHint while an any-player offer is open (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice", seat: 0 },
+    { id: "b", name: "Bob", seat: 1 },
+  ] as never;
+  const link = {
+    id: "c1",
+    kind: "pay_unless",
+    chooser: "a",
+    count: 1,
+    source: "src",
+    pay_cost: "{1}",
+    any_player_offer: { controller: "b", order: ["a", "b"] },
+  } as never;
+  const battlefield = { cards: [{ instance_id: "src", name: "Rhystic Circle" }] } as never;
+
+  it("names who is deciding and whose effect it is", () => {
+    const v = view("precombat_main", { seats, battlefield, pending_choices: [link] });
+    expect(passHint(v, false)).toBe("Alice is deciding whether to pay {1} (Bob's Rhystic Circle)");
+  });
+});

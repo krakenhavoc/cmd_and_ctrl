@@ -1535,6 +1535,10 @@ type pendingChoiceSnapshot struct {
 	// ADR 0146: a ballot's vote so far (CR 701.38). Its continuation
 	// key is checked like pickThen's.
 	CouncilVote *CouncilVote `json:"councilVote,omitempty"`
+	// ADR 0150: a pay_unless link of an any-player offer. Its branches
+	// are closures, so a table waiting on one is not a restore point;
+	// the data rides the undo clone like every other field.
+	AnyPlayerOffer *AnyPlayerOffer `json:"anyPlayerOffer,omitempty"`
 	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
@@ -2535,6 +2539,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -3398,6 +3403,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,

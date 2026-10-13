@@ -1004,6 +1004,7 @@ var pendingChoiceFields = plan(
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.
 	"CouncilVote", carried, "",
+	"AnyPlayerOffer", carried, "",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a

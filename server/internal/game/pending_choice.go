@@ -971,6 +971,12 @@ type PendingChoice struct {
 	// point and shown to every seat; nil on every other prompt.
 	CouncilVote *CouncilVote
 
+	// AnyPlayerOffer makes a pay_unless one LINK of an "unless any
+	// player pays" offer (ADR 0150, any_player_pays.go): whose effect
+	// it is, the order the table is asked in and who has declined.
+	// Plain data, shown to every seat; nil on every other prompt.
+	AnyPlayerOffer *AnyPlayerOffer
+
 	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is
@@ -3635,6 +3641,9 @@ func (g *Game) QueuePayUnlessForEffect(
 type payUnlessExtras struct {
 	onPay  func(g *Game) error
 	action *PayAction
+	// offer makes the prompt one link of an any-player offer (ADR
+	// 0150, any_player_pays.go): PendingChoice.AnyPlayerOffer.
+	offer *AnyPlayerOffer
 }
 
 // queuePayUnlessLocked is the one body behind every pay-unless.
@@ -3644,9 +3653,10 @@ type payUnlessExtras struct {
 // upkeep_pay_unless.go); `guards` is the stack object whose fate the
 // decline decides, or uuid.Nil for the detached Rhystic shape (#951,
 // counter_unless_paid.go). They are separate because they are facts
-// about different parts of the board — the cursor and the stack — and
-// no caller sets both. Both are read LIVE by the gate, so neither can
-// hold the table after the thing it is about has gone.
+// about different parts of the board — the cursor and the stack. Only
+// an any-player offer about a spell sets both (ADR 0150 decision 2).
+// Both are read LIVE by the gate, so neither can hold the table after
+// the thing it is about has gone.
 func (g *Game) queuePayUnlessLocked(
 	chooser, source uuid.UUID,
 	cost, question string,
@@ -3691,6 +3701,7 @@ func (g *Game) queuePayUnlessLocked(
 		PayCost:         cost,
 		OwedInStep:      owed,
 		GuardsStackItem: guards,
+		AnyPlayerOffer:  extra.offer,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,

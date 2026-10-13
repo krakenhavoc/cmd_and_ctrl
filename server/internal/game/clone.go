@@ -278,6 +278,7 @@ func (g *Game) cloneLocked() *Game {
 			cloned.OptionCarry = copyUUIDs(c.OptionCarry)
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
+			cloned.AnyPlayerOffer = cloneAnyPlayerOffer(c.AnyPlayerOffer)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox
