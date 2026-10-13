@@ -16,12 +16,12 @@ import (
 // after the controller has drawn. The discard is the facing player's own
 // pick (three, or the whole hand when it holds fewer). The second option
 // is the CONTROLLER's "you may": a choose-cards pick over the nonland
-// cards in their hand with a floor of zero, then a one-shot {0} cast
-// permission over the card picked, which is the shape Rishkar's and
-// Kari Zev's Expertise use for the same sentence and carries the same
-// timing (the card is cast through the ordinary cast action, with its
-// own restrictions). The controller's hand is hidden, so the hint a bot
-// sees on that option is a fixed guess and not a read of it.
+// cards in their hand with a floor of zero, then the free cast every
+// "cast a spell from your hand without paying its mana cost" offers
+// (offerFreeHandCast, #3270): the client opens the cast chain at once,
+// timing is ignored (CR 608.2g), and passing priority ends the chance.
+// The controller's hand is hidden, so the hint a bot sees on that option
+// is a fixed guess and not a read of it.
 //
 // No simplifications.
 var greatIntelligencesPlanChoice = NewVillainousChoice("great-intelligences-plan",
@@ -36,37 +36,7 @@ var greatIntelligencesPlanChoice = NewVillainousChoice("great-intelligences-plan
 		Label: "The controller of Great Intelligence's Plan may cast a spell from their hand without paying its mana cost",
 		Harm:  3,
 		Body: func(ctx *Context, _ Facing) error {
-			controller := ctx.Controller()
-			var candidates []uuid.UUID
-			for _, id := range allHandCardIDs(ctx.Game, controller) {
-				if c, ok := ctx.Game.LookupCardForEffect(id); ok && !c.IsLand() {
-					candidates = append(candidates, id)
-				}
-			}
-			if len(candidates) == 0 {
-				return nil
-			}
-			ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-				Chooser:  controller,
-				Source:   ctx.Source(),
-				Question: "Great Intelligence's Plan — cast a spell from your hand without paying its mana cost?",
-				Cards:    candidates,
-				Min:      0,
-				Max:      1,
-				Zone:     game.ZoneHand,
-				Then: func(g *game.Game, picked []uuid.UUID) error {
-					if len(picked) == 0 {
-						return nil
-					}
-					g.GrantCastPermissionOverCardForEffect(picked[0], game.CastPermission{
-						Player:   controller,
-						Cost:     "{0}",
-						CastOnly: true,
-						Label:    "Great Intelligence's Plan — cast it without paying its mana cost",
-					})
-					return nil
-				},
-			})
+			offerFreeHandCast(ctx, ctx.Controller(), "Great Intelligence's Plan", "a spell", nil)
 			return nil
 		},
 	})

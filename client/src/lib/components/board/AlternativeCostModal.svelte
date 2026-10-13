@@ -107,9 +107,20 @@
     seats?: PlayerView[];
     // ADR 0150 §5: a forced cast pays no mana, so it offers no Assist row.
     forceCast?: boolean;
+    // #3270: the offer to start on when the card has it, so a free cast
+    // the player just picked (Buster Sword) opens on its free offer
+    // rather than on the printed cost.
+    preferKey?: string;
   }
 
-  const { card, onConfirm, onCancel, seats = [], forceCast = false }: Props = $props();
+  const {
+    card,
+    onConfirm,
+    onCancel,
+    seats = [],
+    forceCast = false,
+    preferKey = undefined,
+  }: Props = $props();
 
   // ADR 0150 §5: the Assist row's offer, and the player picked (none by
   // default: casting alone is the ordinary answer).
@@ -217,7 +228,12 @@
     const id = card?.instance_id ?? null;
     if (id !== lastCardID) {
       lastCardID = id;
-      chosen = printedOK ? undefined : offers[0]?.key;
+      chosen =
+        preferKey !== undefined && offers.some((o) => o.key === preferKey)
+          ? preferKey
+          : printedOK
+            ? undefined
+            : offers[0]?.key;
       paying = new Map();
       giftTo = undefined;
       assistTo = undefined;

@@ -17,7 +17,7 @@ const hint: Hint = {
   title: "Keys for everything",
   body: (k) => {
     if (!k.helpKey) return "Every keyboard shortcut is listed under Shortcuts in Settings.";
-    const next = k.nextKey ? ` ${k.nextKey} presses next.` : "";
+    const next = k.nextKey ? ` ${k.nextKey} presses ${L.next} (or ${L.pass}).` : "";
     return `Press ${k.helpKey} to see every keyboard shortcut.${next}`;
   },
   when: (c) => hasHoverPointer() && atViewersSecondTurn(c),

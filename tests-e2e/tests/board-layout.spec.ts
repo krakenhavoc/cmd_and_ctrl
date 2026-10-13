@@ -3,6 +3,7 @@ import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck } from "./deck-fixture";
 import { joinAsPlayer } from "./players";
 import { handCardCount, unreachableHandCards } from "./hand-reach";
+import { DOCK_PRIMARY } from "./dock-primary";
 
 // board-layout: smoke-tests the new HTML/CSS player panel that replaces
 // the PixiJS canvas board. Asserts the wireframe is wired up — each
@@ -119,10 +120,10 @@ test.describe("board layout", () => {
     ).toBeVisible();
     await expect(page.getByRole("button", { name: /^Undo/ })).toHaveCount(1);
     await expect(
-      dock.getByRole("button", { name: "next", exact: true }),
+      dock.getByRole("button", { name: DOCK_PRIMARY }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "next", exact: true }),
+      page.getByRole("button", { name: DOCK_PRIMARY }),
     ).toHaveCount(1);
     // ADR 0143 §4.2: End turn (formerly Pass turn) is drawn for the
     // active seat only, so exactly one of the two pages has it, once.

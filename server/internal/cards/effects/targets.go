@@ -62,6 +62,15 @@ func Not(pred CardPredicate) CardPredicate {
 	}
 }
 
+// FaceUp is "face-up" for a card in exile (Pull from Eternity, Riftsweeper):
+// not exiled face down (foretell, hideaway, manifest-style exile). The
+// engine's exile walk already refuses a face-down card its chooser has not
+// seen, so this is the printed word for the cards the chooser HAS seen --
+// a face-down card is not a "face-up exiled card" however well it is known.
+func FaceUp() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return !c.FaceDown }
+}
+
 // --- type predicates (post-layer, so type-changers compose) ----
 
 func Creature() CardPredicate {
@@ -507,6 +516,52 @@ func TargetCardInGraveyard(label string, preds ...CardPredicate) *game.TargetSpe
 		},
 		Min: 1, Max: 1,
 	}
+}
+
+// TargetCardInExile — "target card in exile", narrowed by predicates
+// (Creature() for "creature card", YouOwn() for "a card you own in
+// exile"). The exile sibling of TargetCardInGraveyard: the picker is
+// the zone browser's exile tab, and the clause is re-judged at
+// resolution (CR 608.2b), so a card that left exile in response is an
+// illegal target. A face-down card the caster has not seen is never
+// offered (the engine's walk drops it), so the legal set cannot leak
+// what a hidden card is.
+//
+// "Exiled with this" is not a predicate here -- a CardPredicate is handed
+// the caster, not the source. Wrap the clause in ExiledWithThis (#3259).
+func TargetCardInExile(label string, preds ...CardPredicate) *game.TargetSpec {
+	pred := And(preds...)
+	return &game.TargetSpec{
+		Mode:  "card_in_exile",
+		Label: label,
+		Zones: []game.ZoneKind{game.ZoneExile},
+		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, _ game.ZoneKind) bool {
+			return pred(g, caster, c)
+		},
+		Min: 1, Max: 1,
+	}
+}
+
+// ExiledWithThis narrows a clause to the cards exiled with its own
+// source (CR 607.2a): "target creature card exiled with The Darkness
+// Crystal". It is data on the clause (game.TargetSpec.ExiledWithSource),
+// judged in the one shared walk, so the legal set, the announce check
+// (CR 601.2c), the resolution re-check (CR 608.2b), the client's picker
+// and the bot's moves are one answer. The link is the OBJECT, so a
+// second Crystal's exiles are not offered, and a Crystal that left and
+// came back has no claim on what its earlier self exiled (CR 400.7).
+// Wrap the whole clause, like RelativeToSource:
+//
+//	Targets: ExiledWithThis(TargetCardInExile("target creature card exiled with this", Creature()))
+//
+// Only a card whose exile stamped Card.ExiledWith carries the link:
+// today that is a replacement exile (ReplacementEvent.ExiledWith, ADR
+// 0066's 2026-10-07 amendment). A card exiled some other way -- by a
+// resolving ability, until ADR 0155's stamp lands -- is never "exiled
+// with" anything here, so the clause admits nothing for it.
+func ExiledWithThis(spec *game.TargetSpec) *game.TargetSpec {
+	spec.ExiledWithSource = true
+	return spec
 }
 
 // --- S23 mass-effect predicates ----------------------------------

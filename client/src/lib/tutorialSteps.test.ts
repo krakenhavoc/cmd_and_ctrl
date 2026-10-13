@@ -145,7 +145,7 @@ describe("the script", () => {
     expect(anchorsOf(CAST_CREATURE, ctx(v))).toEqual([{ label: "your hand" }]);
     expect(anchorsOf(ON_THE_STACK, ctx(v))).toEqual([
       { label: L.stackPile.any },
-      { label: L.next, within: L.actions },
+      { label: L.pass, within: L.actions },
     ]);
     expect(anchorsOf(COMMANDER, ctx(v))).toEqual([
       { label: L.commandZone.any, within: "your board" },
@@ -161,14 +161,14 @@ describe("the script", () => {
 
   it("names the player's own next key, and copes with none", () => {
     expect(copyText(MOVE_ALONG.body, keys)).toBe(
-      "The dock's next button moves the game on a step, and so does Space. End turn plays out the rest of your turn for you.",
+      "The dock's Next button moves the game on a step, and so does Space. End turn plays out the rest of your turn for you.",
     );
     expect(copyText(MOVE_ALONG.body, noKeys)).not.toContain("so does");
     const leave = WATCH_BOT.first!(ctx(board()))!;
     expect(copyText(leave.body, keys)).toBe(
-      "Skip to my turn switches itself off in your own main phase. Press next (Space) once, then turn it on.",
+      "Skip to my turn switches itself off in your own main phase. Press Next (Space) once, then turn it on.",
     );
-    expect(copyText(leave.body, noKeys)).toContain("Press next once");
+    expect(copyText(leave.body, noKeys)).toContain("Press Next once");
   });
 
   it("never sends the player to the ⋯ menu for Undo: it is on the dock's row now", () => {
@@ -321,7 +321,7 @@ describe("step 4: play a land", () => {
     expect(d.id).toBe("to-main");
     expect(d.anchor).toEqual({ label: "actions" });
     expect(copyText(d.body, keys)).toBe(
-      "A land goes down in your main phase. Press next (Space) in the dock until it reads Main.",
+      "A land goes down in your main phase. Press Next (Space) in the dock until it reads Main.",
     );
     expect(PLAY_LAND.first!(ctx(board({ step: "precombat_main" })))).toBeNull();
     expect(PLAY_LAND.first!(ctx(board({ step: "postcombat_main" })))).toBeNull();
@@ -457,7 +457,7 @@ describe("step 7: cast a creature", () => {
     const d = CAST_CREATURE.first!(stuck)!;
     expect(d.id).toBe("cast-next-turn");
     expect(d.anchor).toEqual({ label: "actions" });
-    expect(copyText(d.body, keys)).toMatch(/press next \(Space\) in the dock until your next turn/);
+    expect(copyText(d.body, keys)).toMatch(/press Next \(Space\) in the dock until your next turn/);
     expect(
       CAST_CREATURE.first!(ctx(withMoves({ hand: [dreadmaw, e] }, [e.instance_id]))),
     ).toBeNull();
@@ -476,9 +476,9 @@ describe("step 8: your spell is on the stack", () => {
 
   it("points at the stack pile and names your own next key", () => {
     expect(copyText(ON_THE_STACK.body, keys)).toBe(
-      "Your creature waits on the stack, on the left, until both players pass. Press next (Space) in the dock and it resolves.",
+      "Your creature waits on the stack, on the left, until both players pass. Press Pass (Space) in the dock and it resolves.",
     );
-    expect(copyText(ON_THE_STACK.body, noKeys)).toContain("Press next in the dock");
+    expect(copyText(ON_THE_STACK.body, noKeys)).toContain("Press Pass in the dock");
   });
 
   it("completes when the stack empties with the creature on the battlefield", () => {
@@ -586,9 +586,9 @@ describe("step 10's detour: one more creature (#3012)", () => {
     const d = MOVE_ALONG.first!(ctx(board({ stack: [memnite()] })))!;
     expect(d.id).toBe("resolve-too");
     expect(copyText(d.body, keys)).toBe(
-      "Press next (Space) in the dock and your creature resolves, as before.",
+      "Press Pass (Space) in the dock and your creature resolves, as before.",
     );
-    expect(d.anchor).toEqual([{ label: L.stackPile.any }, { label: L.next, within: L.actions }]);
+    expect(d.anchor).toEqual([{ label: L.stackPile.any }, { label: L.pass, within: L.actions }]);
   });
 
   it("never holds the step: next still moves the turn on", () => {
@@ -728,7 +728,7 @@ describe("step 12: abilities live on right-click", () => {
     expect(d.id).toBe("ready-next-turn");
     expect(d.anchor).toEqual({ label: "actions" });
     expect(copyText(d.body, keys)).toMatch(
-      /Press next \(Space\) in the dock until your next turn\.$/,
+      /Press Next \(Space\) in the dock until your next turn\.$/,
     );
     // Skip to my turn left on past the main phase would pass the turn.
     expect(id(auto(board({ step: "begin_combat", mine: [ready()] })))).toBe("autopass-off");
@@ -780,16 +780,16 @@ describe("step 13: attack", () => {
     ).toBe("next-combat");
     const main = ATTACK.first!(ctx(board({ step: "precombat_main", mine: [ready()] })))!;
     expect(copyText(main.body, keys)).toBe(
-      "Play a land and cast what you like, then press next (Space) until it reads Declare Attackers.",
+      "Play a land and cast what you like, then press Next (Space) until it reads Declare Attackers.",
     );
     const d = ATTACK.first!(ctx(board({ step: "upkeep", mine: [ready()] })))!;
     expect(copyText(d.body, keys)).toBe(
-      "Press next (Space) in the dock until it reads Main, then play a land and cast what you like.",
+      "Press Next (Space) in the dock until it reads Main, then play a land and cast what you like.",
     );
     // Combat has begun: Main 1 is behind the player, so no Main copy.
     const c = ATTACK.first!(ctx(board({ step: "begin_combat", mine: [ready()] })))!;
     expect(copyText(c.body, keys)).toBe(
-      "Press next (Space) in the dock until it reads Declare Attackers.",
+      "Press Next (Space) in the dock until it reads Declare Attackers.",
     );
   });
 
@@ -940,7 +940,7 @@ describe("a whole tutorial", () => {
     expect(at()).toBe("on-the-stack");
     expect(anchorsOf(run.current().step, run.context())).toEqual([
       { label: L.stackPile.any },
-      { label: L.next, within: L.actions },
+      { label: L.pass, within: L.actions },
     ]);
     const sickE = { ...e, summoning_sick: true };
     move({ mine: [tf, sickE], hand: left, landsPlayed: 1 });

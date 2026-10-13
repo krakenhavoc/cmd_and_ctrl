@@ -112,7 +112,12 @@
     togglePayCard,
   } from "../../payCards";
   import { damageSourceCaption, permanentWhoseCaption } from "../../damageSource";
-  import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
+  import {
+    freeCastRequest,
+    handFreeCastRequest,
+    isFreeCastPick,
+    mayCastKeywordsThatOpenACast,
+  } from "../../freeCastRequest";
 
   interface Props {
     snap: GameView;
@@ -499,6 +504,13 @@
   function submit(): void {
     if (!active || !viewerID) return;
     if (!canSubmit) return;
+    // #3270 (CR 608.2g): picking the card for "cast a spell from your hand
+    // without paying its mana cost" is the start of the cast. Board opens
+    // the cast chain (targets, modes, X) once the snapshot carrying the
+    // grant arrives; picking none clears any earlier request.
+    if (isFreeCastPick(active)) {
+      handFreeCastRequest.set(selected.size > 0 ? (Array.from(selected)[0] ?? null) : null);
+    }
     answer({ card_ids: Array.from(selected) });
   }
 
@@ -2526,8 +2538,14 @@
           {:else}
             Pick between {pickMin} and {pickMax} of these.
           {/if}
-          What happens to them is the card's business, and it will tell you next — choosing them costs
-          nothing on its own.
+          {#if isFreeCastPick(active)}
+            The card you pick is cast right now without paying its mana cost, whatever its timing,
+            and you choose its targets next. If you don't cast it now you can't later. Pick none to
+            cast nothing.
+          {:else}
+            What happens to them is the card's business, and it will tell you next — choosing them
+            costs nothing on its own.
+          {/if}
         {:else if isRevealPick}
           {#if pickMin === pickMax}
             Pick {pickMax} of these.

@@ -22,6 +22,7 @@ tests-e2e/
     ├── deck-fixture.ts        # minimal legal Commander deck (Kenrith + 99 Plains)
     ├── entry.spec.ts          # invite page: table preview, full table, spectator link
     ├── env.ts                 # shared constants (admin token, etc.)
+    ├── free-cast-hand-3270.spec.ts # #3270: "cast a spell from your hand without paying its mana cost" (Surtland Elementalist): the pick starts the cast at once, a sorcery in the declare attackers step included; none casts nothing
     ├── full-game.spec.ts      # 2-player game: join → upload → start → mulligan → turns
     ├── game.spec.ts           # game route WS handshake
     ├── join.spec.ts           # invite-link → join flow

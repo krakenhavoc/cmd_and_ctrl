@@ -76,7 +76,7 @@
   import { stackHoldStatus, stackHoldStatusText } from "../../stackHold";
   import { settings } from "../../settings";
   import { ariaKeyshortcuts, effectiveBindings, formatChord, isMacLike } from "../../shortcuts";
-  import { passHint } from "../../dockHint";
+  import { passHint, primaryKind, primaryTitles, type PrimaryKind } from "../../dockHint";
   import { L } from "../../labels";
 
   interface Props {
@@ -90,6 +90,9 @@
     loopNotice?: string;
     // ADR 0105 §7: the header's "N actions available" count.
     readyActions?: number;
+    // How many of the viewer's creatures could attack right now: 0
+    // unless the viewer is declaring attackers (#3267's "No attacks").
+    attackersReady?: number;
     onPassPriority: () => void;
     onPassTurn: () => void;
     onToggleAutopass: () => void;
@@ -122,6 +125,7 @@
     autopassEnabled,
     loopNotice = "",
     readyActions = 0,
+    attackersReady = 0,
     onPassPriority,
     onPassTurn,
     onToggleAutopass,
@@ -141,6 +145,17 @@
   const preGame = $derived(!!view.opening_roll);
   const canPass = $derived(viewerHasPriority && !preGame);
   const canPassTurn = $derived(viewerIsActive && !preGame);
+
+  // #3267: the primary says what pressing it does — Pass with something
+  // on the stack, No attacks when creatures could attack and none has,
+  // Next otherwise. Its accessible name is its visible text.
+  const PRIMARY_LABELS: Record<PrimaryKind, string> = {
+    pass: L.pass,
+    next: L.next,
+    noAttacks: L.noAttacks,
+  };
+  const primary = $derived(primaryKind(view, attackersReady));
+  const primaryLabel = $derived(PRIMARY_LABELS[primary]);
 
   // ---- keys --------------------------------------------------------
   // Read from the same binding map the dispatcher uses, so a rebound
@@ -788,16 +803,16 @@
         type="button"
         class="dock-btn primary next"
         class:viewer-priority={canPass}
-        aria-label={L.next}
+        aria-label={primaryLabel}
         disabled={!canPass}
         aria-keyshortcuts={ariaKeys(keys.passPriority)}
         onclick={onPassPriority}
         onkeydown={(e) => enterPresses(e, canPass, onPassPriority)}
         title={canPass
-          ? `pass priority — rotates to next seat${keyHint(keys.passPriority)}`
+          ? `${primaryTitles[primary]}${keyHint(keys.passPriority)}`
           : "you don't hold priority"}
       >
-        {L.next}{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
+        {primaryLabel}{#if nextCap}<kbd class="cap" aria-hidden="true">{nextCap}</kbd>{/if}
       </button>
     </div>
   {/if}
