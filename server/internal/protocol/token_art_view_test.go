@@ -60,3 +60,20 @@ func TestViewOfCardIsTokenSurvivesRedaction(t *testing.T) {
 		t.Errorf("scryfall_id survived redaction as %q, want cleared", redacted.ScryfallID)
 	}
 }
+
+// TestViewOfCardStampsTokenCopy (#3043): token_copy marks a token that
+// carries an oracle ID (a copy of a real card) and nothing else.
+func TestViewOfCardStampsTokenCopy(t *testing.T) {
+	cp := game.Card{InstanceID: uuid.New(), Name: "Vaultborn Tyrant", TypeLine: "Token Creature — Dinosaur", OracleID: "oracle-vt"}
+	if v := viewOfCard(cp); !v.IsToken || !v.TokenCopy {
+		t.Errorf("token copy: is_token=%v token_copy=%v, want both true", v.IsToken, v.TokenCopy)
+	}
+	plain := game.Card{InstanceID: uuid.New(), Name: "Treasure", TypeLine: "Token Artifact — Treasure"}
+	if v := viewOfCard(plain); !v.IsToken || v.TokenCopy {
+		t.Errorf("plain token: is_token=%v token_copy=%v, want true/false", v.IsToken, v.TokenCopy)
+	}
+	real := game.Card{InstanceID: uuid.New(), Name: "Sol Ring", TypeLine: "Artifact", OracleID: "oracle-sr"}
+	if v := viewOfCard(real); v.TokenCopy {
+		t.Error("real card: token_copy = true, want false")
+	}
+}

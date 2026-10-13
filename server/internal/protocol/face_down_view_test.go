@@ -94,6 +94,8 @@ var redactedCardKeys = map[string]bool{
 	// what identifies the printing and IS redacted (scryfall_id is
 	// not in this table).
 	"is_token": true,
+	// #3043: a token copy is publicly a token copy, like is_token.
+	"token_copy": true,
 	// #1339: who is defending against an attack is as public as what
 	// it is attacking — it is derived from it.
 	"defending_player": true,
@@ -237,6 +239,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Controller:          owner,
 		ScryfallID:          "scryfall",
 		IsToken:             true,
+		TokenCopy:           true,
 		TypeLine:            "Legendary Creature — Test",
 		Colors:              []string{"B", "R"},
 		Protection:          []ProtectionView{{Printed: "red", Kind: "color", Value: "R"}},

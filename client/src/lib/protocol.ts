@@ -3558,6 +3558,9 @@ export interface CardView extends CastSurfaceView {
   // `scryfall_id`, that id is a resolved Scryfall TOKEN PRINTING
   // chosen for its art, not a card this player owns.
   is_token?: boolean;
+  // #3043: a token that is a copy of a real card (carries the original's
+  // art and frame). Always alongside is_token; public.
+  token_copy?: boolean;
   // Scryfall printed type line ("Legendary Creature — Human Wizard").
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
