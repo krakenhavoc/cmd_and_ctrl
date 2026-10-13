@@ -91,6 +91,27 @@ func stampGrantedAbilities(g *game.Game, card game.Card, c *CardView) {
 		}
 	}
 	c.GrantedAbilities = viewOfGrantedAbilities(g, card)
+	c.UnautomatedLenders = viewOfUnautomatedLenders(g, &card)
+}
+
+// viewOfUnautomatedLenders projects game.UnautomatedLendersOf: each lender
+// the catalog cannot lend from, by id and printed name, once per lender.
+// A lender in a hidden zone is left out, as borrowed_from clears it.
+func viewOfUnautomatedLenders(g *game.Game, card *game.Card) []GrantedByView {
+	lenders := g.UnautomatedLendersOf(card)
+	if len(lenders) == 0 {
+		return nil
+	}
+	out := make([]GrantedByView, 0, len(lenders))
+	seen := make(map[uuid.UUID]bool, len(lenders))
+	for _, l := range lenders {
+		if seen[l.InstanceID] || lenderHidden(g, l.InstanceID.String()) {
+			continue
+		}
+		seen[l.InstanceID] = true
+		out = append(out, GrantedByView{ID: l.InstanceID.String(), Name: l.Name})
+	}
+	return out
 }
 
 // borrowedFromView builds a borrowed row's borrowed_from: the lender's

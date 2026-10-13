@@ -131,3 +131,46 @@ func TestBorrowedAbilitiesReachTheWireForEveryViewer(t *testing.T) {
 		})
 	}
 }
+
+// ADR 0155 owner decision 2: a lender the catalog has no entry for lends
+// nothing, and the borrower's card names it so the menu can say
+// "<lender>: not automated". A catalogued lender, a basic land and a token
+// are not named.
+func TestUnautomatedLendersReachTheWire(t *testing.T) {
+	stubViewBorrows(t)
+	g := buildActiveGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	known := game.NewCard("Mana Elf", me.ID)
+	known.TypeLine = "Creature — Elf"
+	known.OracleID = viewBorrowLender
+	unknown := game.NewCard("Mystery Bear", me.ID)
+	unknown.TypeLine = "Creature — Bear"
+	unknown.OracleID = "no-such-card"
+	ooze := game.NewCard("Necrotic Ooze", me.ID)
+	ooze.TypeLine = "Creature — Ooze"
+	ooze.OracleID = viewBorrowOoze
+	g.WithWriteLock(func() {
+		g.Seats[1].Graveyard.PushTop(known)
+		g.Seats[1].Graveyard.PushTop(unknown)
+		ooze.KnownBy = map[uuid.UUID]bool{me.ID: true, opp.ID: true}
+		g.Battlefield.PushTop(ooze)
+	})
+	g.BumpLayerVersionForTest()
+
+	for _, viewer := range []string{me.ID.String(), opp.ID.String(), ""} {
+		fv := FilterViewFor(ViewOfGame(g), viewer)
+		var got *CardView
+		for i := range fv.Battlefield.Cards {
+			if fv.Battlefield.Cards[i].InstanceID == ooze.InstanceID.String() {
+				got = &fv.Battlefield.Cards[i]
+			}
+		}
+		if got == nil {
+			t.Fatal("the ooze is missing from the view")
+		}
+		if len(got.UnautomatedLenders) != 1 || got.UnautomatedLenders[0].ID != unknown.InstanceID.String() ||
+			got.UnautomatedLenders[0].Name != "Mystery Bear" {
+			t.Errorf("viewer %q: unautomated_lenders = %+v, want only the uncatalogued bear", viewer, got.UnautomatedLenders)
+		}
+	}
+}

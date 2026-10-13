@@ -177,7 +177,7 @@ export function manaAbilityOption(
   const choice = slots.some((s) => s.includes("|"));
   const symbols = slots.flatMap((s) => s.split("|"));
   // ADR 0093: a granted row names its grantor beside the cost rider.
-  const granted = grantedFromLabel(a);
+  const granted = grantedFromLabel(a, card.instance_id);
   const rider = [manaAbilityRider(a), granted].filter(Boolean).join(" · ");
   const different = differentColorsCount(produced);
   const caption =

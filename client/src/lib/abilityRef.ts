@@ -47,9 +47,51 @@ export function hasGrantedActivatedAbility(card: CardView): boolean {
   return (card.activated_abilities ?? []).some((r) => !!r.granted_by);
 }
 
-/** "from Cryptolith Rite", or "" for the permanent's own row. */
-export function grantedFromLabel(row: { granted_by?: { name?: string } }): string {
+/** The prefix of a lent row's ref (ADR 0155 Decision 5): "borrow:<key>:<i>:<n>". */
+export const BORROW_REF_PREFIX = "borrow:";
+
+/** Whether a ref names a row lent by "has all activated abilities of …". */
+export function isBorrowedRef(ref: string | undefined): boolean {
+  return !!ref && ref.startsWith(BORROW_REF_PREFIX);
+}
+
+/** Whether a row is lent: it has a `borrow:` ref or names its lender. */
+export function isBorrowedRow(row: { ref?: string; borrowed_from?: unknown }): boolean {
+  return !!row.borrowed_from || isBorrowedRef(row.ref);
+}
+
+/**
+ * The ref of a lent row without its trailing instance count: the catalog
+ * row it was read from. Two Llanowar Elves in two graveyards lend
+ * "borrow:<key>:0:0" and "borrow:<key>:0:1", which are one row twice
+ * (CR 113.2c). "" for a ref that is not a lent row's.
+ */
+export function borrowedRowKey(ref: string | undefined): string {
+  if (!ref || !isBorrowedRef(ref)) return "";
+  const cut = ref.lastIndexOf(":");
+  return cut > BORROW_REF_PREFIX.length ? ref.slice(0, cut) : ref;
+}
+
+/**
+ * "from Cryptolith Rite", or "" for the permanent's own row.
+ *
+ * A lent row (ADR 0155) is "from <lender>", the object it was read off. Its
+ * `granted_by` is the borrowing permanent, so it says nothing the card does
+ * not: a row an object gave itself, which is every self-borrower's, reads
+ * as "" when the card's id (`selfID`) is passed.
+ */
+export function grantedFromLabel(
+  row: {
+    ref?: string;
+    granted_by?: { id?: string; name?: string };
+    borrowed_from?: { name?: string };
+  },
+  selfID?: string,
+): string {
+  if (row.borrowed_from) return row.borrowed_from.name ? `from ${row.borrowed_from.name}` : "";
+  if (isBorrowedRef(row.ref)) return "";
   if (!row.granted_by) return "";
+  if (selfID && row.granted_by.id === selfID) return "";
   return row.granted_by.name ? `from ${row.granted_by.name}` : "granted";
 }
 

@@ -2791,6 +2791,12 @@ export interface ActivatedAbilityView {
   // this one (Necrotic Sliver's "{3}, Sacrifice this permanent: …" on
   // every Sliver). Absent on the permanent's own abilities.
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
@@ -4067,6 +4073,10 @@ export interface CardView extends CastSurfaceView {
   // CR 707.9a grant (no source). The one place a granted TRIGGER is
   // visible at all — it has no menu row. One entry per grantor.
   granted_abilities?: GrantedAbilityView[];
+  // ADR 0155 owner decision 2: the objects this permanent "has all activated
+  // abilities of" that the catalog does not automate. They lend nothing; the
+  // menu names each in a disabled "<lender>: not automated" line.
+  unautomated_lenders?: GrantedByView[];
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).
@@ -4243,6 +4253,12 @@ export interface ManaAbilityView {
   // granted this one (Cryptolith Rite's "{T}: Add one mana of any
   // color." on every creature you control).
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana

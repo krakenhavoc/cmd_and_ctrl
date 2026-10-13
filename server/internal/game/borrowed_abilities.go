@@ -661,3 +661,50 @@ func BorrowsOf(c Card) []BorrowInfo {
 	}
 	return out
 }
+
+// --- the lender the engine does not know (ADR 0155 owner decision 2) ------
+
+// UnautomatedLendersOf lists the lenders of the borrows `c` makes for
+// itself whose abilities the engine cannot lend: an object with no catalog
+// entry and no CR 305.6 land type, so it lends nothing and the borrower's
+// menu names it in a disabled "<lender>: not automated" line instead.
+//
+// A face-down object is left out (CR 708.2a: it has no abilities to lend),
+// and so is a token with no entry, which would be one line per Soldier. A
+// borrower that has lost its abilities, or whose designation gate is
+// closed, borrows nothing and names nothing. Self-borrowers only: the
+// recipient is the static's own source, which is every card of the
+// battlefield and graveyard family. The statics are the catalog's, so this
+// is read-only and safe under the view's read lock.
+func (g *Game) UnautomatedLendersOf(c *Card) []*Card {
+	if c == nil || c.faceDownPermanent() || c.HasLostAllAbilities() {
+		return nil
+	}
+	var out []*Card
+	for _, ab := range staticAbilitiesOf(c) {
+		if ab.Borrows == nil || ab.Borrows.Lenders == nil || ab.AppliesTo == nil ||
+			!StaticFunctionsFromZone(ab, ZoneBattlefield) || !ab.AppliesTo(c, g, c) {
+			continue
+		}
+		for _, l := range ab.Borrows.Lenders(g, c) {
+			if l == nil || l.InstanceID == c.InstanceID || !lenderUnautomated(l) {
+				continue
+			}
+			out = append(out, l)
+		}
+	}
+	return out
+}
+
+// lenderUnautomated reports whether a lender lends nothing because the
+// engine has no entry for it.
+func lenderUnautomated(l *Card) bool {
+	if l.FaceDown || IsTokenPtr(l) {
+		return false
+	}
+	if key := catalogKeyOf(l); key != "" && CatalogLookup != nil && CatalogLookup(key) != nil {
+		return false
+	}
+	// A basic land has no entry and still lends its CR 305.6 mana ability.
+	return len(lentRowsOf(l, 0)) == 0
+}
