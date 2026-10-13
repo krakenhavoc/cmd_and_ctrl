@@ -5901,7 +5901,11 @@ func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 // shapes are known not to:
 //
 //   - all identical — same source card and same label. Two Bident
-//     draws are interchangeable and asking would be noise.
+//     draws are interchangeable and asking would be noise. (Not when
+//     the copies read their own triggering subjects through the layers
+//     and one copy's gain could change what another reads: two
+//     Righteous Valkyrie gains. Game.identicalBatchOrderShowsLocked
+//     asks that, #3021.)
 //   - all commutative — every item is a StackItem.Commutes item, so
 //     any order leaves the same board (#1511: a board of prowess
 //     creatures, which would otherwise ask on every noncreature
@@ -5940,14 +5944,11 @@ func seatNeedsTriggerOrder(items []*StackItem, mode TriggerOrderMode) bool {
 		return false
 	}
 	allOrdered := true
-	allSame := true
+	allSame := identicalItems(items)
 	allCommute := true
 	for _, t := range items {
 		if !t.Ordered {
 			allOrdered = false
-		}
-		if t.SourceCardID != items[0].SourceCardID || t.Label != items[0].Label {
-			allSame = false
 		}
 		if !commutesForOrdering(t) {
 			allCommute = false
@@ -5957,6 +5958,18 @@ func seatNeedsTriggerOrder(items []*StackItem, mode TriggerOrderMode) bool {
 		return false
 	}
 	return !copiesOfOneSourceBlindAbility(items)
+}
+
+// identicalItems is the sub-PR 8 test: every item has the first
+// item's source card and label. Game.identicalBatchOrderShowsLocked
+// (#3021) asks the board again when such items read their subjects.
+func identicalItems(items []*StackItem) bool {
+	for _, t := range items {
+		if t.SourceCardID != items[0].SourceCardID || t.Label != items[0].Label {
+			return false
+		}
+	}
+	return true
 }
 
 // commutesForOrdering is the per-item half of the #1511 skip: the

@@ -6,6 +6,7 @@
 **Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
 **Amendment:** 2026-09-24 · **Accepted** · [A trigger still announcing holds its batch (CR 603.3b / 603.3d)](#amendment-2026-09-24--a-trigger-still-announcing-holds-its-batch-cr-6033b--6033d--accepted--s39) · [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529)
 **Amendment:** 2026-10-11 · **Accepted** · [The independence check, on the boards people play](#amendment-2026-10-11--the-independence-check-on-the-boards-people-play-3013--accepted) · [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013)
+**Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
 
 ## Context
 
@@ -4335,3 +4336,55 @@ control) as a read, so a token maker beside it conflicts.
 
 What a step would need: the trigger context to snapshot the damage source as its object (a `TriggerContext` change,
 so a snapshot field and a closure-fields entry), after which `GainLifeEqualToSubject{SubjectToughness}` fits.
+
+## Amendment 2026-10-12 — an identical batch is asked again when its copies read their subjects (#3021) · Accepted
+
+Issue [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021). Found by #3020 (the #3013 amendment's
+sub-PR 2), which recorded it as "still not covered".
+
+### The question
+
+Sub-PR 8 skips the CR 603.3b order prompt when every item in a seat's batch has one source card and one label. Its
+argument is that such items are interchangeable. That holds when the copies differ only in their source and
+read nothing that differs between them. It does not hold when each copy reads its own triggering subject.
+Two Righteous Valkyrie triggers, for two Angels that enter together, are one source and one label. Each gains life
+equal to a different creature's toughness. Valkyrie's anthem (+2/+2 while you have 7 more life than you started
+with) is a layer-7 static that reads the life total, so the first gain can cross the line and change what the
+second one reads. The order shows, and sub-PR 8 skipped it without looking.
+
+### Decision
+
+**Yes. The same-source, same-label skip also passes the characteristic test of the #3013 amendment when the items read
+their triggering subjects.** Nothing else of the independence check is added to it.
+
+- `Game.identicalBatchOrderShowsLocked` (`game/trigger_independence.go`) runs only for a batch the pure
+  `seatNeedsTriggerOrder` has just skipped. It asks (reason `characteristic`) when all of these hold:
+  - the seat's mode is "when it matters" (an unknown mode behaves as that one; "never" and "always" are untouched),
+  - at least one item is unanswered and every item is identical by the sub-PR 8 test (`identicalItems`),
+  - every item is one the footprint check can describe, and at least one reads a characteristic of its subject
+    (`triggerAccess.charReads`, set by `GainLifeEqualToSubject`),
+  - for some pair, `characteristicReadConflict` holds: one copy changes something a static on the board could read
+    (any change for a layer-7, copy or ability-removal static, and only a life total when the only static
+    declares `DependsOnLifeTotal`; an item that only moves life passes the first kind).
+  `characteristicReadConflict` is the test #3020 added, lifted out of `accessesConflictLocked` so both callers share
+  one definition.
+- **The narrowing is the point.** The full check is not run on an identical batch. It would add object ties (two
+  counters on one permanent), reactors and the rest to boards that have never asked, for items that really are
+  interchangeable. An item the check cannot describe keeps the old skip, for the same reason. So the prompt
+  appears only for a copy that reads a different creature's toughness beside a static that can move it:
+  Righteous Valkyrie's own batch. Trostani, Verdant Sun's Avatar and Wolverine Riders beside no such static,
+  or beside a lord that does not read life (Elvish Archdruid), stay unasked, and so do two Bident draws, two
+  prowess pumps and two Annihilator triggers.
+- No wire or client change. The prompt is the existing `trigger_order`, and the enumerator (`legal/choices.go`) and
+  the heuristic (`aiseat/heuristic/choices.go`) already answer it for any batch. It is counted under the existing
+  `characteristic` metric label.
+- Where the old rule is stated above (the sub-PR 2 note's "Still not covered", the #1968 amendment's "Only the
+  existing identical skip still ignores the trigger context") it was true on 2026-10-11 and is superseded here for
+  the subject-reading case only.
+
+### Tests
+
+`cards/effects/trigger_independence_3021_test.go`: two Valkyrie gains for two Angels ask and are counted under
+`characteristic`; the bot is offered both orders and the engine accepts one; "never" does not ask; an answered batch
+is not asked again; Trostani alone and Riders beside Elvish Archdruid do not ask. The unchanged-skip cases are
+`game/trigger_order_test.go` (identical draws) and `cards/effects/annihilator_test.go`.
