@@ -5,6 +5,8 @@ import (
 	"strings"
 	"sync"
 	"unicode/utf8"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 )
 
 // The table-name generator (#2630): a blank name on POST /games, and
@@ -134,6 +136,11 @@ func (g *TableNameGenerator) Generate(display string) string {
 
 func personalNameUsable(s string) bool {
 	if s == "" || utf8.RuneCountInString(s) > maxPersonalNameLen {
+		return false
+	}
+	// A generated table name must never carry a name the filter refuses
+	// (#2984): the personal templates are left out for one.
+	if moderation.Name(s) != nil {
 		return false
 	}
 	for _, r := range s {

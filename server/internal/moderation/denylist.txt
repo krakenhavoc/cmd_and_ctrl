@@ -1,0 +1,78 @@
+# denylist.txt: the words the name and chat filter refuses (#2984, ADR 0075
+# section 2.6).
+#
+# SCOPE. Slurs and a few direct abuse phrases, for display names, table
+# names and chat on a table strangers share. It is NOT a profanity filter:
+# ordinary swearing, insults and trash talk are table banter and stay
+# allowed. It is also not a safety system. It stops the casual and the
+# lazy; a determined person gets past any list, and the report button and
+# the host's remove-and-block are the real tools.
+#
+# MAINTAINED BY HAND. There is no external service and no generated step.
+# To add a word, add a line here and run
+#
+#   go test ./internal/moderation/
+#
+# With CMDCTRL_SCRYFALL_DUMP set to the Scryfall dump, the card-name test
+# fails if the new word appears inside any real card name, so a false
+# positive on Magic vocabulary is caught before it ships.
+#
+# FORMAT. One entry per line, lower case, plain letters. Blank lines and
+# lines starting with # are ignored. The filter folds case, diacritics,
+# look-alike letters and leetspeak (n1gg3r), ignores zero-width characters,
+# reads spaced-out letters (n i g g e r), and treats a stretched letter as
+# the same letter (niiigger), so list the plain spelling only.
+#
+#   word           a SUBSTRING entry: matches inside any word. Use it only
+#                  for a long, distinctive word that no ordinary word
+#                  contains. "ass" here would flag "classic", so it is not.
+#   =word          a WHOLE-WORD entry: matches only a word on its own.
+#   =two words     a whole-word PHRASE: the words in a row, in order.
+#
+# When in doubt use =. A missed slur costs a report; a refused card name
+# costs a player an afternoon.
+
+nigger
+nigga
+faggot
+retarded
+wetback
+towelhead
+raghead
+beaner
+pedophile
+paedophile
+
+=cunt
+=cunts
+=fag
+=fags
+=dyke
+=dykes
+=kike
+=kikes
+=spic
+=spics
+=chink
+=chinks
+=gook
+=gooks
+=coon
+=coons
+=paki
+=tranny
+=trannies
+=shemale
+=retard
+=retards
+=slut
+=sluts
+=whore
+=whores
+=pedo
+=pedos
+=kkk
+=kys
+=kill yourself
+=kill your self
+=neck yourself

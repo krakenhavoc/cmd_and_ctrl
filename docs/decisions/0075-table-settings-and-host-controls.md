@@ -17,6 +17,9 @@ that dev features are gated server-side),
 field once S34 lands)
 **Amends:** [ADR 0023](0023-develop-environment.md). Spawning stops being
 dev-only; a production table can allow it through a visible table setting.
+**Amended by:** the [2026-10-13 amendment](#amendment--2026-10-13-moderation-for-a-public-table-2984)
+at the end of this file (#2984): the name and chat filter, remove-and-block,
+and report a player.
 
 ---
 
@@ -254,3 +257,117 @@ Sub-PRs 1 and 2 are independent. 3 depends on both. 4 depends on 2 and on 1's
   easy to drop.
 - Settings **templates** (a "house rules" preset reused across tables) wait
   for S34, which is where a per-user store appears.
+
+---
+
+## Amendment — 2026-10-13: moderation for a public table (#2984)
+
+**Issue:** [#2984](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2984).
+**Numbering:** no new ADR. Seats, the host and who may manage a table are this
+ADR's; removing a seat is [ADR 0060](0060-leaving-the-game.md)'s
+2026-10-12 amendment (#2785, #3093). A block is one more thing the host can do
+to a seat, so it belongs here as §2.6. ADR 0149 (the privacy page) is amended
+only in the sense that it now lists these tables.
+**Builds on:** §2.1 (the host), [ADR 0051](0051-user-database.md) (users and
+seats), [ADR 0149](0149-privacy-notice-and-account-deletion.md) (what is stored
+and how it is deleted), [ADR 0124](0124-admin-views-accounts-games-and-who-is-on-now.md)
+(the admin views).
+
+### 2.6 Moderation
+
+A public post means strangers share tables. Three small tools, none of which
+changes the lobby state machine (a removal and a join are the transitions they
+already were; a block is a refusal on the join).
+
+1. **A name and chat filter.** `internal/moderation`: a hand-kept denylist
+   (`denylist.txt`, which owns the rules for adding to it) and a normaliser that
+   folds case, diacritics, look-alike letters, leetspeak, zero-width characters,
+   stretched letters, and letters spaced out one or two at a time. Entries are
+   either **whole-word** (`=word`, most of them: `ass` as a substring would flag
+   "classic") or **substring** (only long distinctive words, at least five
+   letters). It is a slur filter, not a profanity filter: swearing and trash
+   talk are table banter.
+   - **Names** are refused, not rewritten: a guest name, the Discord display
+     name shown on a seat (global name first, the username as the fallback,
+     the join refused if both are listed) and an explicit table name. The error
+     is a 400 with the stable `code` `name_not_allowed`, and says to pick
+     another name without saying which word.
+   - **Chat** is **masked**, not rejected. A false positive costs one word
+     instead of a message, and a rejection would teach the sender which spelling
+     to try next. The sender sees the masked line too, so what the table read is
+     what a report holds. Bot lines are not filtered.
+   - A **test holds the list clear of Magic**: every card name in the Scryfall
+     dump (skipped without `CMDCTRL_SCRYFALL_DUMP`, like the other dump tests)
+     and every catalog name (always), each tested bare and inside a sentence,
+     and each face of a split card.
+2. **Remove and block.** `DELETE /games/{id}/seats/{player_id}?block=true`.
+   - **Who** is unchanged from #2785 and #3093, by the owner's decision of
+     2026-10-12: on an unstarted table the host, the creator or an admin; on a
+     started game an admin alone. `?block=true` adds no authority.
+   - **What a block keys on** decides what it can hold against, so the limits are
+     in the open. A signed-in seat is blocked by its account and its Discord id;
+     a guest seat by its folded name (`moderation.Key`). A guest has no account,
+     no stable id, and no address the server keeps, so a different name gets
+     past a name block; so does a blocked signed-in person who signs out and
+     joins as a guest under a new name. A name block is applied to guest joins
+     only, so two people called "Alex" on Discord are not one person. We did not
+     key on an IP address: it would mean storing one, it punishes everyone behind
+     a shared address, and it is trivially changed by the person it is aimed at.
+   - **The wall is the invite.** Rotating it was always the way to keep a person
+     out; a block answers the narrower, common case without changing the link
+     for everybody. The Remove control says so beside the checkbox. This also
+     answers #3093's worry that a removed person who still holds the link can sit
+     down again.
+   - **Scope and storage:** per table, in `table_blocks` (migration 0016,
+     deleted with the game), read back at restore, so a restart does not lift
+     it. There is **no unblock**: a block is one host's act at one table, and a
+     mistake costs a new invite or a new table, never a ban from the site. The
+     refusal is a 403 with the stable `code` `blocked_from_table`, given only
+     after the invite is checked. A spectator invite is a separate credential and
+     is not blocked; rotate it too.
+3. **Report a player.** `POST /games/{id}/reports`, from the ⋯ menu.
+   - A seated player reports another **human** seat (not themselves, not a bot,
+     not a spectator, who has no seat to name). Nothing is sent to anyone and
+     nothing is done to the reported player: it is a tip to the operator, listed
+     on the admin **Reports** tab (`GET /admin/reports`, admin only) beside
+     Live now, Games and Accounts, with Dismiss.
+   - **Rate limit** per reporter: a burst of three, then one every five minutes,
+     counted before the request is validated, so a script cannot probe for free.
+   - **A recent chat excerpt.** Chat is otherwise not stored at all (§ on chat in
+     `docs/protocol.md`). Each room keeps the last 20 human lines in memory only,
+     lost at a restart, and a report copies the last 10 at the moment it is
+     filed. Nothing else about chat changes.
+   - **Storage and retention:** `player_reports` (migration 0016). Removed 90
+     days after it is filed, past 500 rows (oldest first), or on Dismiss; swept
+     every six hours and on each filing and read. It outlives its table.
+     Deleting an account removes every report the person filed or is the subject
+     of; a report that merely quotes their chat line keeps the line until it
+     expires, which the privacy page says.
+
+**Privacy.** The page now states chat's in-memory window, what a report holds,
+and what a block keeps (`accountdelete.Inventory` lists both tables;
+`PRIVACY_SCHEMA_VERSION` is 16).
+
+**Alternatives considered.**
+
+- *Reject a chat line that matches.* Rejected: it blocks the message over a
+  possible false positive, and it tells the sender what to dodge.
+- *Block by IP address or a browser token.* Rejected for guests above; a browser
+  token would be a new thing to store about a person for a control a determined
+  person defeats by opening a private window.
+- *A site-wide ban list.* Out of scope: the server has no account-level
+  moderation state, and ADR 0149 just spent a release deleting accounts, not
+  adding to what they hold.
+- *Let the host kick from a started game.* The owner decided 2026-10-12 that
+  removal from a started game is admin-only (#3093), and this does not widen it.
+
+**Consequences.** Three new surfaces and one migration. The filter is
+maintained by hand and goes stale slowly; its test is what lets someone add a
+word without reading thirty thousand card names. A guest who is blocked and
+renames gets back in, and the docs and the control say so. Spectators cannot be
+reported or blocked.
+
+**Out of scope, left for follow-ups:** unblocking; blocking a spectator; a
+host-visible list of who is blocked; reporting a spectator or a chat line
+directly from the chat panel; notifying the operator (the list is polled by
+looking at it); per-table or per-account mutes.

@@ -48,7 +48,7 @@ export function removeSeatQuestion(seatName: string): string {
 
 export const REMOVE_SEAT_CONSEQUENCE =
   "Their seat opens up and they are disconnected. " +
-  "The invite link still works, so mint a new one if you do not want them back.";
+  "The invite link still works unless you block them below, so mint a new one if you do not want them back.";
 
 // A started game keeps the seat in the list: the player leaves the game
 // the way a conceding player does (CR 800.4a), and the engine records it

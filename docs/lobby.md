@@ -286,8 +286,9 @@ agent seat:
 
 | Status | Reason |
 |---|---|
-| 400 | empty name; or `agent` with a signed-in session (`an agent seat joins as a guest`) |
+| 400 | empty name; a name on the filter's list (`code: "name_not_allowed"`, see [Moderation](#moderation-2984)); or `agent` with a signed-in session (`an agent seat joins as a guest`) |
 | 401 | invite token did not match |
+| 403 | the table removed and blocked this person (`code: "blocked_from_table"`, see [Moderation](#moderation-2984)) |
 | 404 | game not found |
 | 409 | game already started, game full, or the signed-in person already holds a seat at this table |
 | 503 | the connection cap is full: `code: "server_full"`, nothing was seated (see [When the server is full](#when-the-server-is-full-adr-0148)) |
@@ -351,8 +352,9 @@ own it can do nothing else — the WS authorizer refuses it outright.
 
 | Status | Reason |
 |---|---|
-| 400 | empty name on the anonymous path; or `agent` with a signed-in session |
+| 400 | empty name on the anonymous path; a name on the filter's list (`code: "name_not_allowed"`); or `agent` with a signed-in session |
 | 401 | no live table has that invite code (an archived one reads the same way) |
+| 403 | the table removed and blocked this person (`code: "blocked_from_table"`) |
 | 409 | game already started, game full, a session that already belongs to a table, or the signed-in person already holds a seat at this table |
 
 Since S34 sub-PR 4 a seat claimed on the Discord path records its
@@ -714,7 +716,7 @@ again (see `GET /games/{id}`).
 |---|---|
 | 401 | unauthenticated |
 | 403 | the caller is not a signed-in person and not the admin token |
-| 400 | an unknown `setup` (a blank name is not an error: the server names the table) |
+| 400 | an unknown `setup` (a blank name is not an error: the server names the table); or a `name` on the filter's list (`code: "name_not_allowed"`, see [Moderation](#moderation-2984)) |
 | 409 | the caller already has 3 open tables; the message names them. Start one, or end one with `/c2-end` |
 | 429 | the caller created tables too quickly (1 per 30 s, burst 3 by default), or this address did (`CMDCTRL_CREATE_IP_*`); `Retry-After: 30` |
 | 503 | the server is full: `code: "server_full"` (see [When the server is full](#when-the-server-is-full-adr-0148)) |
@@ -1627,6 +1629,10 @@ numbers. Same authorisation as adding one. Returns the updated
 Remove a **human or agent (MCP) guest seat** from a table. Returns the
 updated `GameMeta` (with the invites, for a caller who may see them).
 
+**`?block=true`** (#2984) also blocks the removed seat from taking a seat
+at this table again; see [Moderation](#moderation-2984). It adds nothing to
+who may call the route: a caller who may not remove may not block.
+
 - **Unstarted table** (#2785): the seat leaves the table, seat numbers
   close up, the slot is free for the next join, and the stored seats row
   is rewritten.
@@ -1662,9 +1668,9 @@ are answered `409` on a started game.
   The client shows "You were removed from this table" rather than a
   silent disconnect.
 - The **invite is not touched.** On an unstarted table a removed person
-  who still has the invite link can sit down again, as a new seat.
-  Rotate the invite (`POST /games/{id}/invites/rotate`) to keep them
-  out. A started game takes no new players, so this applies to the
+  who still has the invite link can sit down again, as a new seat,
+  unless the removal also blocked them (`?block=true`, below). Rotate the
+  invite (`POST /games/{id}/invites/rotate`) to keep everyone else out. A started game takes no new players, so this applies to the
   spectator link only: see below.
 - **A removed player does not keep spectating.** Their own session is
   refused, in a started game too (a player who merely *conceded* keeps
@@ -3150,6 +3156,140 @@ are unaffected, including the caller's.
 | 503 | no user database (`CMDCTRL_DATA_DIR` empty) |
 
 ---
+
+## Moderation (#2984)
+
+Basic tools for tables strangers share
+([ADR 0075 §2.6](decisions/0075-table-settings-and-host-controls.md)): a
+name and chat filter, remove-and-block, and report a player. There is no
+external service, no account ban and no automatic action against anyone:
+the filter stops the casual, the block is per table, and a report is a tip
+to the person who runs the server.
+
+### The name and chat filter
+
+A small hand-kept denylist of slurs and a few direct abuse phrases
+(`server/internal/moderation/denylist.txt`; its header says what it covers
+and how to add to it), with normalisation: case, diacritics, look-alike
+letters, leetspeak (`n1gg3r`), zero-width characters, stretched letters
+and letters spaced out one or two at a time. It is **not** a profanity
+filter: ordinary swearing and trash talk pass. A test holds it clear of
+every Magic card name, in the Scryfall dump (`CMDCTRL_SCRYFALL_DUMP`) and
+in the catalog.
+
+- **Display names** (a guest's typed name, or the Discord display name
+  shown on a seat): a name on the list is refused with **400**
+  `{"error": "that name isn't allowed here; pick another", "code":
+  "name_not_allowed"}` and nothing is seated. For a Discord seat the
+  global name is tried first; if only it is listed the username stands in,
+  and if both are the join is refused with `your Discord display name
+  isn't allowed here; change it on Discord and sign in again` (same code).
+- **Table names** (`POST /games` with an explicit `name`): the same 400.
+  The generated names are hand-written and checked, and a creator's own
+  display name is left out of the personal templates if it is listed.
+- **Chat**: a listed word is **masked** with asterisks before anyone sees
+  the line, the sender included, and the rest of the message goes out.
+  Masking rather than refusing: a false positive costs one word, not the
+  message, and the sender is not told which word to rephrase around. Bot
+  lines are not filtered. See [protocol.md, chat](protocol.md#chat-both-directions--added-in-s07).
+
+### Remove and block
+
+`DELETE /games/{id}/seats/{player_id}?block=true` removes the seat (the
+routes and authority are those above: the host, creator or an admin on an
+unstarted table; an admin alone on a started game) **and** blocks it from
+this table. A blocked person who tries again, through the invite link or
+the Discord sign-in flow, is refused **403** `{"error": "you were removed
+from this table and can't take a seat here again", "code":
+"blocked_from_table"}`. The refusal comes after the invite is checked, so
+only someone holding a valid invite sees it, and it does not say who
+blocked them.
+
+What a block keys on, and so what it holds against:
+
+| The removed seat was | Blocked by | A person gets back in by |
+|---|---|---|
+| signed in with Discord | their account and their Discord id | nothing short of a different Discord account; **or** signing out and joining as a guest under another name |
+| a guest | their name, folded (case, spacing, accents, leetspeak: `Bob`, `b0b` and `B O B` are one guest) | typing a different name |
+
+A guest has no account, no stable id and no address the server keeps, so
+a name is all there is; the block is a speed bump for them, not a wall. A
+name block never touches a signed-in joiner: two people called "Alex" on
+Discord are two people. **Rotating the invite is the wall**
+([`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate-creator-or-admin)),
+and the Remove control says so.
+
+A block is **per table**, stored with it (`table_blocks`, migration
+0016) so a restart does not lift it, and it is deleted with the table. It
+is never shown to anyone and there is no unblock: a mistake costs a new
+invite or a new table, never a ban from the site. A spectator invite is a
+separate credential and a block does not reach it. Deleting an account
+removes the blocks keyed on that account and its Discord id.
+
+### `POST /games/{id}/reports`
+
+A seated player reports another human seat at the same table. The
+session must be the seat's own (an admin token, a spectator and a seat at
+another table get **403**).
+
+```json
+{ "player_id": "<the reported seat's player id>", "reason": "slurs in chat" }
+```
+
+**Response 201** `{"id": "<report id>"}`. The report keeps both seats'
+names and account ids, the table's name, the reason (at most 300
+characters), and up to 10 recent chat lines (everyone's, with the seat
+names they were written under, already masked). Nobody is notified, the
+reported player is not told, and nothing happens to them automatically.
+
+**Rate limit:** per reporter (their account, or their seat for a guest),
+a burst of **3** then one every **5 minutes**. A refused attempt still
+spends a token. Over it: **429**.
+
+| Status | Reason |
+|---|---|
+| 400 | no reason, or a malformed `player_id` |
+| 401 | no session |
+| 403 | not a seat at this table (an admin token, a spectator, another table's player, or a removed seat) |
+| 404 | no such table |
+| 422 | your own seat, a bot, or a player who is not at this table |
+| 429 | too many reports |
+
+Chat is not stored anywhere else. The last 20 lines of each table are
+held in memory (`ws.RecentChatLimit`) only so a report can attach them,
+and are gone when the server restarts.
+
+### `GET /admin/reports` *(admin only)*
+
+The reports, newest first, for the admin **Reports** tab (`#/admin/reports`).
+`requireAdmin`, so an allowlisted person in player mode gets a non-admin's
+403. Works with or without the user database.
+
+```json
+{
+  "retention_days": 90,
+  "reports": [{
+    "id": "<uuid>", "created_at": 1791868000000,
+    "game_id": "<uuid>", "game_name": "Friday night",
+    "reporter": { "player_id": "<uuid>", "user_id": "<uuid, signed-in only>", "name": "Alice" },
+    "reported": { "player_id": "<uuid>", "name": "Bob" },
+    "reason": "slurs in chat",
+    "excerpt": [{ "author": "Bob", "text": "you are ********", "at": "2026-10-13T11:51:00Z" }]
+  }]
+}
+```
+
+A report is removed **90 days** after it is filed (`lobby.ReportRetention`,
+swept every 6 hours and on every filing and read), or sooner, oldest
+first, past 500 (`lobby.ReportMaxRows`). It outlives its table.
+Deleting an account removes the reports that person filed or is the
+subject of. The privacy page states all of this.
+
+### `DELETE /admin/reports/{id}` *(admin only)*
+
+Dismiss a report: **204**, **404** if there is none, **400** for a
+malformed id. It removes the report from the list and does nothing else
+to anyone.
 
 ## Admin views (ADR 0124)
 

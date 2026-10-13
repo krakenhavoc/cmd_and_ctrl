@@ -1001,6 +1001,15 @@ non-empty, ≤ 1000 characters). The server **discards** any client-
 supplied `author_id`, `author_name`, or `timestamp` and re-stamps all
 three from the connection's authenticated principal before broadcast.
 
+**Chat filter (#2984):** before it is stamped and broadcast, a listed slur in
+`payload.text` (a small hand-kept denylist with normalisation; see
+[lobby.md, Moderation](lobby.md#moderation-2984)) is replaced with asterisks of
+the same length, so every client, the sender included, receives the masked
+text. The frame is otherwise unchanged: no error, no field says a line was
+masked. The server also keeps the last 20 lines of each table in memory, only
+so a player report can attach them; reconnecting clients still receive no
+chat history. Server-originated bot lines are not filtered.
+
 **Server → client:** broadcast to every client bound to the same game
 (including the originator, so the local UI surfaces the canonical
 server-stamped message rather than echoing the unstamped local copy).

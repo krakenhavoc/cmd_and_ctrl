@@ -180,6 +180,7 @@ func (s *SQLStore) DeleteGame(ctx context.Context, id uuid.UUID) error {
 		for _, q := range []string{
 			`DELETE FROM seats WHERE game_id = ?`,
 			`DELETE FROM invites WHERE game_id = ?`,
+			`DELETE FROM table_blocks WHERE game_id = ?`,
 			`DELETE FROM games WHERE id = ?`,
 		} {
 			if _, err := tx.ExecContext(ctx, q, id.String()); err != nil {

@@ -34,7 +34,7 @@ export const CONTACT_TEXT = "see the project's GitHub";
  * cannot ship without someone reading this page again (ADR 0149 §6).
  * Bump it when you have.
  */
-export const PRIVACY_SCHEMA_VERSION = 15;
+export const PRIVACY_SCHEMA_VERSION = 16;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
@@ -59,6 +59,18 @@ export const PRIVACY_FACTS = {
   deckRequestWindowHours: 24,
   /** playmat.MaxSlots: saved playmats per account. */
   playmatSlots: 3,
+  /** lobby.ReportRetention, in days: how long a player report is kept. */
+  reportDays: 90,
+  /** lobby.ReportMaxRows: reports kept at most; the oldest go first. */
+  reportMax: 500,
+  /** lobby reportExcerptLines: recent chat lines a report carries. */
+  reportChatLines: 10,
+  /** lobby reportBurst: reports one person can file in a burst. */
+  reportsPerWindow: 3,
+  /** lobby reportEvery, in minutes: then one more per this long. */
+  reportEveryMinutes: 5,
+  /** ws.RecentChatLimit: chat lines a table remembers in memory, only to attach to a report. */
+  chatRecentLines: 20,
   /** ADR 0123 decision 7: how long the monitoring stack keeps server logs. */
   logDays: 30,
   /** scripts/backup-offsite.sh: restic keeps this many daily snapshots. */

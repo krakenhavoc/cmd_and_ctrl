@@ -67,6 +67,12 @@ func TestPrivacyNoticeNumbersMatchTheServer(t *testing.T) {
 	check("deckRequestsPerWindow", deckRequestLimit, "deckRequestLimit")
 	check("deckRequestWindowHours", int(deckRequestWindow/time.Hour), "deckRequestWindow")
 	check("playmatSlots", playmat.MaxSlots, "playmat.MaxSlots")
+	check("reportDays", int(ReportRetention/day), "ReportRetention")
+	check("reportMax", ReportMaxRows, "ReportMaxRows")
+	check("reportChatLines", reportExcerptLines, "reportExcerptLines")
+	check("reportsPerWindow", reportBurst, "reportBurst")
+	check("reportEveryMinutes", int(reportEvery/time.Minute), "reportEvery")
+	check("chatRecentLines", ws.RecentChatLimit, "ws.RecentChatLimit")
 
 	// Backups: scripts/backup-offsite.sh is the source.
 	script := readRepoFile(t, "scripts/backup-offsite.sh")

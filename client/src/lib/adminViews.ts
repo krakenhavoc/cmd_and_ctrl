@@ -57,7 +57,8 @@ export type AdminView =
   | { view: "games"; filter: GamesFilter }
   | { view: "game"; id: string }
   | { view: "accounts"; filter: AccountsFilter }
-  | { view: "account"; id: string };
+  | { view: "account"; id: string }
+  | { view: "reports" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -117,6 +118,8 @@ export function parseAdminView(rest: string[], params: URLSearchParams): AdminVi
     case "accounts":
       if (id !== undefined) return id ? { view: "account", id } : null;
       return { view: "accounts", filter: accountsFilterFrom(params) };
+    case "reports":
+      return id === undefined ? { view: "reports" } : null;
     default:
       return null;
   }
@@ -192,13 +195,17 @@ export function adminViewHash(v: AdminView): string {
       return accountsHash(v.filter);
     case "account":
       return accountHash(v.id);
+    case "reports":
+      return REPORTS_HASH;
   }
 }
 
 export const LIVE_HASH = "#/admin/live";
+/** The Reports view (#2984): what players have reported at their tables. */
+export const REPORTS_HASH = "#/admin/reports";
 
 /** The tab a view belongs to in the `navigation "admin views"` strip. */
-export type AdminTab = "live" | "games" | "accounts";
+export type AdminTab = "live" | "games" | "accounts" | "reports";
 
 export function tabOf(v: AdminView): AdminTab {
   if (v.view === "game") return "games";
@@ -207,6 +214,40 @@ export function tabOf(v: AdminView): AdminTab {
 }
 
 // --- the responses (docs/lobby.md, "Admin views" and "Live now") ------
+
+/** One side of a report: the seat's name, and its account when it had one. */
+export interface AdminReportParty {
+  player_id: string;
+  user_id?: string;
+  name: string;
+}
+
+/** One chat line in a report's excerpt, as the table saw it (already masked). */
+export interface AdminReportLine {
+  author: string;
+  text: string;
+  /** RFC 3339, as the server stamped the line. */
+  at: string;
+}
+
+/** One report (`GET /admin/reports`, docs/lobby.md "Moderation"). */
+export interface AdminReport {
+  id: string;
+  /** Unix milliseconds. */
+  created_at: number;
+  game_id: string;
+  game_name: string;
+  reporter: AdminReportParty;
+  reported: AdminReportParty;
+  reason: string;
+  excerpt: AdminReportLine[];
+}
+
+export interface AdminReportsResponse {
+  reports: AdminReport[];
+  /** How long a report is kept before the server removes it. */
+  retention_days: number;
+}
 
 /** A person's account as a row names it. */
 export interface AdminAccountRef {

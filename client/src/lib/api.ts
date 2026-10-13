@@ -34,6 +34,7 @@ import {
   type AdminAccountsResponse,
   type AdminGameResponse,
   type AdminGamesResponse,
+  type AdminReportsResponse,
   type GamesFilter,
   type LiveNowResponse,
 } from "./adminViews";
@@ -582,9 +583,45 @@ export async function removeBotSeat(gameID: string, playerID: string): Promise<G
 // creator are answered 409. An ended game (409), the host's own seat
 // and a bot (422) are refused. The seat's session stops working and its
 // sockets close; the invite is untouched.
-export async function removeSeat(gameID: string, playerID: string): Promise<GameMeta> {
-  const res = await authFetch(`/games/${gameID}/seats/${playerID}`, { method: "DELETE" });
+//
+// With `block: true` (#2984) the same call also blocks the removed seat
+// from taking a seat at THIS table again: the account, for a signed-in
+// person; the folded name, for a guest. A guest who types another name
+// gets past it, so the control says to mint a new invite too.
+export async function removeSeat(
+  gameID: string,
+  playerID: string,
+  opts: { block?: boolean } = {},
+): Promise<GameMeta> {
+  const q = opts.block ? "?block=true" : "";
+  const res = await authFetch(`/games/${gameID}/seats/${playerID}${q}`, { method: "DELETE" });
   return (await res.json()) as GameMeta;
+}
+
+// reportPlayer files a report against another seat at the table (#2984).
+// A seat at that table only; one report per five minutes, burst of
+// three (429 past it). Nobody is told who reported. Returns the report id.
+export async function reportPlayer(
+  gameID: string,
+  playerID: string,
+  reason: string,
+): Promise<{ id: string }> {
+  const res = await authFetch(`/games/${gameID}/reports`, {
+    method: "POST",
+    body: JSON.stringify({ player_id: playerID, reason }),
+  });
+  return (await res.json()) as { id: string };
+}
+
+// fetchAdminReports lists the player reports, newest first. Admin only.
+export async function fetchAdminReports(): Promise<AdminReportsResponse> {
+  const res = await authFetch("/admin/reports", { method: "GET" });
+  return (await res.json()) as AdminReportsResponse;
+}
+
+// dismissAdminReport removes one report. Admin only.
+export async function dismissAdminReport(id: string): Promise<void> {
+  await authFetch(`/admin/reports/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 // replayURL returns an authenticated download URL for a game's

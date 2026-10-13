@@ -1072,6 +1072,11 @@ func sameAnswerProbes() []sameAnswerProbe {
 			return fx.call(t, "GET", "/admin/games/"+fx.table.ID.String(), nil)
 		}},
 		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
+		// Player reports (#2984).
+		{"GET /admin/reports", []string{"route:GET /admin/reports"}, true, httpProbe("GET", "/admin/reports", nil)},
+		{"DELETE /admin/reports/{id}", []string{"route:DELETE /admin/reports/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", "/admin/reports/"+uuid.New().String(), nil)
+		}},
 
 		// Handler checks through c.isAdmin.
 		{"POST /games/{id}/spawn", []string{"requireTableManager"}, true, httpProbe("POST", "/games/{id}/spawn", func(*probeFixture) any {

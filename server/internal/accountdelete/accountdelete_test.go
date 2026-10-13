@@ -190,6 +190,27 @@ func seed(t *testing.T) fixture {
 		f.otherGame.String(), f.other.String())
 	exec(t, d, `INSERT INTO seats (game_id, seat, player_id, user_id, guest_name) VALUES (?, 0, ?, ?, 'Bea')`,
 		f.otherGame.String(), uuid.NewString(), f.other.String())
+
+	// Moderation (migration 0016, #2984): a report the person filed, one
+	// about them, one between strangers to them; blocks keyed on their
+	// account, their Discord id and a guest name, plus one on the other
+	// person's account.
+	for _, r := range []struct{ id, by, about string }{
+		{"r-filed", f.user.String(), f.other.String()},
+		{"r-about", f.other.String(), f.user.String()},
+		{"r-other", f.other.String(), uuid.NewString()},
+	} {
+		exec(t, d, `INSERT INTO player_reports (id, created_at, game_id, game_name, reporter_player_id, reporter_user_id, reporter_name,
+			reported_player_id, reported_user_id, reported_name, reason, excerpt)
+			VALUES (?, 1, ?, 'Friday pod', ?, ?, 'A', ?, ?, 'B', 'rude', '[]')`,
+			r.id, f.endedGame.String(), uuid.NewString(), r.by, uuid.NewString(), r.about)
+	}
+	for _, b := range []struct{ kind, subject string }{
+		{"user", f.user.String()}, {"discord", userSubject}, {"name", "bob"},
+		{"user", f.other.String()}, {"discord", otherSubject},
+	} {
+		exec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES (?, ?, ?, 1)`, f.endedGame.String(), b.kind, b.subject)
+	}
 	return f
 }
 
@@ -240,6 +261,22 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	var hostDiscord sql.NullString
 	if err := f.d.QueryRow(`SELECT host_discord_id FROM games WHERE id = ?`, f.endedGame.String()).Scan(&hostDiscord); err != nil || hostDiscord.Valid {
 		t.Errorf("host_discord_id = %v, %v: want NULL", hostDiscord, err)
+	}
+
+	// Moderation: reports the person filed or is the subject of go whole;
+	// a stranger's stays. Blocks on their account and Discord id go; a
+	// folded guest name and the other person's blocks stay.
+	if n := count(t, f.d, `SELECT COUNT(*) FROM player_reports WHERE reporter_user_id = ? OR reported_user_id = ?`, u, u); n != 0 {
+		t.Errorf("%d reports left for the deleted user", n)
+	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM player_reports`); n != 1 {
+		t.Errorf("player_reports = %d, want only the stranger's report", n)
+	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM table_blocks WHERE (kind = 'user' AND subject = ?) OR (kind = 'discord' AND subject = ?)`, u, userSubject); n != 0 {
+		t.Errorf("%d blocks left on the deleted user's account or Discord id", n)
+	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM table_blocks`); n != 3 {
+		t.Errorf("table_blocks = %d, want the name block and the other person's two", n)
 	}
 
 	// The tombstone.

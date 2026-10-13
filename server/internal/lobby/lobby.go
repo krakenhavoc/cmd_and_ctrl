@@ -24,6 +24,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -386,6 +387,10 @@ type gameEntry struct {
 	practice      bool
 	practiceOwner string
 	practiceHuman uuid.UUID
+
+	// blocks are the identities this table will not seat again (blocks.go,
+	// table_blocks). Guarded by l.mu like meta.
+	blocks map[blockKey]struct{}
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -468,6 +473,13 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 // (host_discord_id) and never served.
 func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID string) (GameMeta, error) {
 	name = trimToLimit(name, maxTableNameLen)
+	if name != "" {
+		// #2984: a typed table name goes through the name filter. The
+		// generated ones below are written by hand and checked by a test.
+		if err := moderation.Name(name); err != nil {
+			return GameMeta{}, err
+		}
+	}
 	if name == "" {
 		// A blank name is a request for a surprise (#2630): every create
 		// path converges here, so the site, the admin token and the
@@ -739,12 +751,21 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	// Fall back to the Discord display name when the caller didn't
 	// pass an explicit override. This is the path the OAuth
 	// callback takes — the user never typed a name.
+	identity, err := cleanDiscordIdentity(identity)
+	if err != nil {
+		return GameMeta{}, uuid.Nil, err
+	}
 	if strings.TrimSpace(playerName) == "" && identity.Populated() {
 		playerName = identity.DisplayName()
 	}
 	playerName = trimToLimit(playerName, 40)
 	if playerName == "" {
 		return GameMeta{}, uuid.Nil, ErrEmptyName
+	}
+	// #2984: the name filter. A refused name is the joiner's to change,
+	// so it is told before any seat or lock is taken.
+	if err := moderation.Name(playerName); err != nil {
+		return GameMeta{}, uuid.Nil, err
 	}
 
 	// Registered BEFORE the lock defer so it runs after l.mu is
@@ -769,6 +790,12 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
+	// #2984: removed-and-blocked from this table. After the invite, which
+	// is the credential, so the refusal is only ever seen by someone who
+	// holds one.
+	if entry.blockedLocked(userID, identity.ID, playerName) {
+		return GameMeta{}, uuid.Nil, ErrBlockedFromTable
+	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
 	}
@@ -788,7 +815,6 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 		game.NewCard("Placeholder Filler", uuid.Nil),
 	}
 	var p *game.Player
-	var err error
 	bindNamedHost := false
 	broadcast, err = l.applyLocked(id, entry, func() error {
 		added, addErr := entry.room.Game.AddPlayer(playerName, deck)

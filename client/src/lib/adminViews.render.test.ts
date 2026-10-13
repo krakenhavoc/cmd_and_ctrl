@@ -297,15 +297,21 @@ const button = (c: ParentNode, name: string): HTMLButtonElement | undefined =>
   [...c.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === name);
 
 describe("the tab strip", () => {
-  it("is navigation 'admin views' with Live now, Games and Accounts, the current one marked", async () => {
+  it("is navigation 'admin views' with Live now, Games, Accounts and Reports, the current one marked", async () => {
     const c = await show({ view: "game", id: GAME });
     const nav = c.querySelector('nav[aria-label="admin views"]')!;
     const links = [...nav.querySelectorAll("a")];
-    expect(links.map((a) => a.textContent?.trim())).toEqual(["Live now", "Games", "Accounts"]);
+    expect(links.map((a) => a.textContent?.trim())).toEqual([
+      "Live now",
+      "Games",
+      "Accounts",
+      "Reports",
+    ]);
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
       "#/admin/live",
       "#/admin/games",
       "#/admin/accounts",
+      "#/admin/reports",
     ]);
     expect(links[1].getAttribute("aria-current")).toBe("page");
   });

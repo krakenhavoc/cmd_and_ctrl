@@ -102,6 +102,19 @@ var Inventory = join(
 	cols("user_playmats", Deleted, "the rows; the image files are removed by the caller",
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 
+	cols("table_blocks", NotPersonal, "which table refused to seat someone again; the game it belongs to",
+		"game_id", "created_at"),
+	cols("table_blocks", Deleted, "the rows whose subject is the person's account id or Discord id (a folded guest name names no account and stays)",
+		"kind", "subject"),
+
+	cols("player_reports", Deleted, "every report the person filed or is the subject of, whole",
+		"id", "reporter_player_id", "reporter_user_id", "reporter_name",
+		"reported_player_id", "reported_user_id", "reported_name", "reason"),
+	cols("player_reports", Kept, "a recent-chat excerpt carries other players' lines under their seat names; it goes with its report at 90 days, and a report that names neither the deleted person as reporter nor as subject keeps its excerpt as it was",
+		"excerpt"),
+	cols("player_reports", NotPersonal, "when and where; the table's name is already part of the game record",
+		"created_at", "game_id", "game_name"),
+
 	cols("bot_model_budget", NotPersonal, "server-wide token counters",
 		"key", "value", "updated_at"),
 )

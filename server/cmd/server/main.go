@@ -358,6 +358,10 @@ func main() {
 	// row and closes the person's admin sockets with 4001 so the admin
 	// menu goes away at the table too.
 	go lobby.RunAdminModeSweeper(ctx, admins, hub, log, lobby.AdminModeSweepInterval)
+	// Player reports are kept for lobby.ReportRetention (90 days, stated
+	// on the privacy page). The prune also runs when one is filed or the
+	// list is read; this sweep keeps the promise on a quiet server.
+	go lobby.RunReportSweeper(ctx, l, log, lobby.ReportSweepInterval)
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
