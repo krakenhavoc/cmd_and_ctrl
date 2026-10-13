@@ -5747,6 +5747,18 @@ discovered spell's `EventCast` when it is cast. Cascade's grant has the
 same cap (one below the cascading spell), timing and pass-closed window;
 its uncast hit goes to the bottom on the pass.
 
+**Exile until a card matches, then a free cast (#3213, [ADR 0099](decisions/0099-discover.md) amendment 2026-10-13):** cascade and discover are keywords; a card that prints the same walk with its own test calls the shared body:
+
+```go
+// Tibalt's Trickery: the countered spell's controller walks their library
+// to a nonland card with a different name and may cast it free.
+ctx.Game.ExileUntilCastFreeForEffect(victim, source, func(c game.Card) bool {
+    return !c.IsLand() && c.Name != name   // closes over scalars read before the call
+})
+```
+
+The chooser is the player whose library is walked. There is no mana value cap, the grant lapses to the bottom of the library on their next pass, and the prompt asks under `MayCastKeywordExileUntil`. For "put it onto the battlefield with N counters" from exile, `ReturnFromExile{Counters: map[string]int{game.CounterPlusOne: 2}}` seeds them on the entry event (ADR 0113 amendment 2026-10-13).
+
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
