@@ -307,6 +307,15 @@ func (m *RoomManager) RestoreRoomsAdmitting(admit RestoreAdmission) []RestoreOut
 			out = append(out, bad)
 			continue
 		}
+		// A table that already has a room is live: its restore point is
+		// the one it keeps writing, not a table waiting to come back. At
+		// boot nothing is registered, so this only matters for the hot
+		// pass (lobby.RestoreDeferred, ADR 0148's 2026-10-13 amendment),
+		// where rebuilding it would replace a running room with its own
+		// older self.
+		if m.Get(file.Snapshot.ID) != nil {
+			continue
+		}
 		files = append(files, loaded{path, file})
 	}
 
@@ -330,7 +339,7 @@ func (m *RoomManager) RestoreRoomsAdmitting(admit RestoreAdmission) []RestoreOut
 	for _, f := range files {
 		id := f.file.Snapshot.ID
 		if deferred[id] {
-			m.log.Warn("restore point left on disk: the table-load cap is full (raise the cap or free tables, then restart)",
+			m.log.Warn("restore point left on disk: the table-load cap is full (free tables and POST /admin/capacity/restore-deferred, or raise the cap and restart)",
 				"game_id", id, "path", f.path, "restore_point_age", time.Since(f.file.Snapshot.TakenAt).Round(time.Second).String())
 			out = append(out, RestoreOutcome{GameID: id, Deferred: true, Reason: ReasonOverCapacity})
 			continue

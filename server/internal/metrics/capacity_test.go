@@ -40,6 +40,14 @@ func TestCapacityRefusalsAreCountedByReason(t *testing.T) {
 	}
 }
 
+func TestPlayerReportedCountsOneStoredReport(t *testing.T) {
+	before := testutil.ToFloat64(playerReports)
+	PlayerReported()
+	if got := testutil.ToFloat64(playerReports); got != before+1 {
+		t.Errorf("cmdctrl_player_reports_total = %v, want %v", got, before+1)
+	}
+}
+
 func TestBootRestoreDeferredGauge(t *testing.T) {
 	SetBootRestoreDeferred(7)
 	if got := testutil.ToFloat64(bootRestoreDeferred); got != 7 {

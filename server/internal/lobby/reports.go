@@ -4,10 +4,12 @@ package lobby
 //
 // A seated player files a report against another seat from the table:
 // who, why in a sentence, and the last few chat lines as the table saw
-// them. It goes to the admin Reports list and nowhere else; nobody is
-// notified, nothing is automatically done to the reported player, and
-// the reporter is not told what happened. The report is a tip to the
-// operator, who decides.
+// them. It goes to the admin Reports list and nowhere else; nothing is
+// automatically done to the reported player, and the reporter is not
+// told what happened. The report is a tip to the operator, who decides.
+// The operator is told one is waiting by the cmdctrl_player_reports_total
+// counter and the PlayerReportFiled alert on it (ADR 0123 section 7,
+// #3113), which carries a count and nothing else: no name, no reason.
 //
 //	POST   /games/{id}/reports    a seat at that table; rate limited per reporter
 //	GET    /admin/reports         admin only
@@ -36,6 +38,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 const (
@@ -131,6 +134,9 @@ func (l *Lobby) FileReport(in ReportInput) (ReportRecord, error) {
 	if err := l.store.AddReport(ctx, rec); err != nil {
 		return ReportRecord{}, err
 	}
+	// Counted once the row is stored, so the operator's alert (ADR 0123
+	// section 7) means a report an admin can open, never a rejected one.
+	metrics.PlayerReported()
 	l.pruneReports(ctx, rec.CreatedAt)
 	return rec, nil
 }

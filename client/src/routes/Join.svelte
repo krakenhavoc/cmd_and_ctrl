@@ -10,7 +10,7 @@
   } from "../lib/api";
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
-  import { lobbyErrorMessage } from "../lib/serverFull";
+  import { lobbyErrorMessage, SERVER_FULL_MESSAGE } from "../lib/serverFull";
   import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
@@ -28,15 +28,20 @@
     gameID: string;
     inviteToken: string;
     spectator: boolean;
+    // The Discord callback bounced the browser back here because the
+    // server is at its connection cap (ADR 0148, #3103). The page opens
+    // with the one "server is full" sentence instead of a blank failure.
+    serverFull?: boolean;
   }
-  const { gameID, inviteToken, spectator }: Props = $props();
+  const { gameID, inviteToken, spectator, serverFull = false }: Props = $props();
 
   // A guest's last typed name, pre-filled (ADR 0110 §5 item 6, owner
   // answer 8). A signed-in person is never asked: their seat takes the
   // Discord name, so the field is not shown to them at all.
   let name = $state(loadGuestName());
   let busy = $state(false);
-  let error = $state("");
+  // svelte-ignore state_referenced_locally
+  let error = $state(serverFull ? SERVER_FULL_MESSAGE : "");
 
   // discordEnabled gates the "Sign in with Discord" button. Probed
   // once on mount from /auth/discord/config — a deploy without the

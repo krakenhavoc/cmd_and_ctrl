@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -232,6 +234,63 @@ func TestDiscordCallbackHappyPath(t *testing.T) {
 	}
 	if p.DiscordAvatarHash != "avhash" {
 		t.Errorf("DiscordAvatarHash: got %q", p.DiscordAvatarHash)
+	}
+}
+
+// At the connection cap the callback does not claim a seat. It sends the
+// browser back to the invite's own join page with the capacity code, which
+// the client words as "the server is full" (client/src/routes/Join.svelte),
+// instead of answering a navigation with a JSON 503 (ADR 0148, #3103).
+func TestDiscordCallbackAtTheConnectionCapRedirectsToTheJoinPageWithoutSeating(t *testing.T) {
+	srv, l, _, store := newDiscordTestStack(t)
+	meta, _ := l.Create("FNM")
+	lim := capacity.Defaults()
+	lim.MaxConns = 5
+	l.SetCapacity(lim, func() int { return 5 })
+
+	state, _, err := store.Start(meta.ID, meta.InviteToken)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	client := *srv.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	before := refused(t, metrics.RefuseJoinConnections)
+	resp, err := client.Get(srv.URL + "/auth/discord/callback?state=" + state + "&code=code-1")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status: got %d, want 302", resp.StatusCode)
+	}
+	want := "/#/games/" + meta.ID.String() + "/join?error=server_full&t=" + meta.InviteToken
+	if loc := resp.Header.Get("Location"); loc != want {
+		t.Errorf("Location = %q, want %q", loc, want)
+	}
+	if strings.Contains(resp.Header.Get("Location"), "token=") {
+		t.Error("a refused join handed out a session")
+	}
+	if got, _ := l.Get(meta.ID); len(got.Players) != 0 {
+		t.Errorf("a refused join took %d seat(s)", len(got.Players))
+	}
+	if got := refused(t, metrics.RefuseJoinConnections); got != before+1 {
+		t.Errorf("join_connections refusals = %v, want %v", got, before+1)
+	}
+
+	// Room again: the same flow seats the person as usual.
+	l.SetCapacity(lim, func() int { return 4 })
+	state, _, err = store.Start(meta.ID, meta.InviteToken)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	resp2, err := client.Get(srv.URL + "/auth/discord/callback?state=" + state + "&code=code-1")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp2.Body.Close()
+	if loc := resp2.Header.Get("Location"); !strings.HasPrefix(loc, "/#/oauth-complete?") {
+		t.Errorf("with room the join should complete, Location = %q", loc)
 	}
 }
 

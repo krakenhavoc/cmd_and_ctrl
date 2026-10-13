@@ -14,6 +14,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics/metricstest"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
@@ -90,8 +91,13 @@ func TestReportIsStoredWithTheRecentChatAndListedForTheAdmin(t *testing.T) {
 		room.RecordChat(protocol.ChatPayload{AuthorName: "Bob", Text: fmt.Sprintf("line %d", i), Timestamp: "2026-10-13T00:00:00Z"})
 	}
 
+	counted := metricstest.Value(t, "cmdctrl_player_reports_total", nil)
 	resp := s.report(t, meta.ID, alice.Token, bob.PlayerID, "  slurs in chat  ")
 	wantCode(t, resp, http.StatusCreated)
+	// The operator's alert (#3113) counts the stored report: one.
+	if got := metricstest.Value(t, "cmdctrl_player_reports_total", nil); got != counted+1 {
+		t.Errorf("cmdctrl_player_reports_total = %v after one report, want %v", got, counted+1)
+	}
 
 	got := s.adminList(t)
 	if len(got.Reports) != 1 {
@@ -159,6 +165,7 @@ func TestReportRefusals(t *testing.T) {
 	spec := decodeSession(t, postJSON(t, s.srv, "/games/"+meta.ID.String()+"/spectate", "",
 		map[string]string{"invite_token": meta.SpectatorInvite}), http.StatusOK)
 
+	counted := metricstest.Value(t, "cmdctrl_player_reports_total", nil)
 	wantCode(t, s.report(t, meta.ID, "", bob.PlayerID, "x"), http.StatusUnauthorized)
 	wantCode(t, s.report(t, meta.ID, spec.Token, bob.PlayerID, "x"), http.StatusForbidden)           // a spectator has no seat
 	wantCode(t, s.report(t, meta.ID, adminSession(t, s.a), bob.PlayerID, "x"), http.StatusForbidden) // nor does the admin token
@@ -172,6 +179,9 @@ func TestReportRefusals(t *testing.T) {
 	wantCode(t, resp, http.StatusBadRequest)
 	if n := len(s.adminList(t).Reports); n != 0 {
 		t.Errorf("a refused report was stored: %d", n)
+	}
+	if got := metricstest.Value(t, "cmdctrl_player_reports_total", nil); got != counted {
+		t.Errorf("cmdctrl_player_reports_total moved to %v on refused reports, want %v", got, counted)
 	}
 }
 

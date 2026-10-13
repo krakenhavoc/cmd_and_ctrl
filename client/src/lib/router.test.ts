@@ -12,6 +12,28 @@ describe("parseHash", () => {
     expect(parseHash("#/home")).toEqual({ name: "home" });
   });
 
+  // ADR 0148 / #3103: the Discord callback lands the browser back on the
+  // invite's join page with the capacity code. Only that code is read; any
+  // other `error` value is ignored, and a plain join route is unchanged.
+  it("parses a join link, and the server_full code the Discord callback adds", () => {
+    expect(parseHash("#/games/g1/join?t=inv")).toEqual({
+      name: "join",
+      gameID: "g1",
+      inviteToken: "inv",
+      spectator: false,
+    });
+    expect(parseHash("#/games/g1/join?error=server_full&t=inv")).toEqual({
+      name: "join",
+      gameID: "g1",
+      inviteToken: "inv",
+      spectator: false,
+      serverFull: true,
+    });
+    expect(parseHash("#/games/g1/join?error=something_else&t=inv")).toEqual(
+      parseHash("#/games/g1/join?t=inv"),
+    );
+  });
+
   it("parses #/roadmap", () => {
     expect(parseHash("#/roadmap")).toEqual({ name: "roadmap" });
   });

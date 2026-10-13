@@ -304,6 +304,10 @@ type Lobby struct {
 	limits    capacity.Limits
 	connCount func() int
 	reserved  int
+	// restoreMu serialises RestoreDeferred (restore_deferred.go), so two
+	// admin clicks cannot both rebuild the same deferred table. It is
+	// taken before l.mu and never while holding it.
+	restoreMu sync.Mutex
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the

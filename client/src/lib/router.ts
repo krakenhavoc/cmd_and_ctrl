@@ -55,7 +55,11 @@ export type Route =
   // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
   // one door the lobby offer and Settings' replay (sub-PR 5) both use.
   | { name: "practice" }
-  | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
+  // serverFull is set only when the Discord callback sent the browser
+  // back here because the server is at its connection cap (ADR 0148,
+  // #3103): `?error=server_full`. Absent otherwise, so a plain join
+  // route compares equal to what it always did.
+  | { name: "join"; gameID: string; inviteToken: string; spectator: boolean; serverFull?: true }
   // Seat reclaim: an admin-minted, single-use, short-lived link that
   // puts a disconnected player back in their OWN seat at a table that
   // has already started. Public like /join — the ticket is the
@@ -153,6 +157,7 @@ export function parseHash(hash: string): Route {
           gameID: parts[1],
           inviteToken: params.get("t") ?? "",
           spectator: params.get("spectator") === "1",
+          ...(params.get("error") === "server_full" ? { serverFull: true as const } : {}),
         };
       }
       if (parts.length >= 3 && parts[2] === "reclaim") {

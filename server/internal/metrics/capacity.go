@@ -9,8 +9,9 @@ import "github.com/prometheus/client_golang/prometheus"
 //	cmdctrl_capacity_limit{resource}       the cap; 0 means the cap is off
 //	cmdctrl_capacity_used{resource}        what is carried now
 //	cmdctrl_capacity_refusals_total{reason}  requests turned away
-//	cmdctrl_boot_restore_deferred_games    tables the last boot did not bring back
-//	                                       because the load cap was full
+//	cmdctrl_boot_restore_deferred_games    tables not brought back because the load
+//	                                       cap was full: set at boot, and by the hot
+//	                                       restore to those still waiting
 //
 // The two gauges are a collector read at scrape time, like the tables
 // collector; the counter and the boot gauge are event metrics.
@@ -58,7 +59,7 @@ var (
 
 	bootRestoreDeferred = prometheus.NewGauge(prometheus.GaugeOpts{
 		Name: "cmdctrl_boot_restore_deferred_games",
-		Help: "Unended tables the last boot left on disk, not restored, because the table-load cap was full. Zero when everything fit.",
+		Help: "Unended tables left on disk, not restored, because the table-load cap was full: set at boot, and again by POST /admin/capacity/restore-deferred to those still waiting. Zero when everything fit.",
 	})
 
 	capacityLimitDesc = prometheus.NewDesc("cmdctrl_capacity_limit",

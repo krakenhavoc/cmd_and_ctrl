@@ -24,6 +24,7 @@ func eventMetrics() []prometheus.Collector {
 		gamesEnded,
 		gameDuration,
 		usersCreated,
+		playerReports,
 		wsConnects,
 		wsDisconnects,
 		wsRejections,

@@ -406,3 +406,110 @@ tests:
             exp_annotations:
               summary: "monitoring: the monitoring config sync on cmd-and-ctrl-monitoring has not succeeded for 1h 20m 0s"
               description: "The monitoring VM (cmd-and-ctrl-monitoring) has not applied deploy/monitoring/ from main for 1h 20m 0s. Its rules and dashboards are the last good copy."
+
+  # ------------------------------------------------------------ CapacityHigh
+  - name: CapacityHigh, a resource over 80% of its cap for 10 minutes; a cap that is off is ignored
+    interval: 1m
+    input_series:
+      # Climbs past 80% at minute 5 and stays: 10 minutes later it fires.
+      - series: 'cmdctrl_capacity_used{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", resource="table_load"}'
+        values: "10 20 40 60 70 150x30"
+      - series: 'cmdctrl_capacity_limit{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", resource="table_load"}'
+        values: "180x35"
+      # Busy, but under the line.
+      - series: 'cmdctrl_capacity_used{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", resource="ws_connections"}'
+        values: "300x35"
+      - series: 'cmdctrl_capacity_limit{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464", resource="ws_connections"}'
+        values: "400x35"
+      # Dev with its caps off (limit 0): used > 0 must not divide to +Inf.
+      - series: 'cmdctrl_capacity_used{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", resource="table_load"}'
+        values: "50x35"
+      - series: 'cmdctrl_capacity_limit{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", resource="table_load"}'
+        values: "0x35"
+      - series: 'cmdctrl_capacity_used{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", resource="ws_connections"}'
+        values: "0x35"
+      - series: 'cmdctrl_capacity_limit{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464", resource="ws_connections"}'
+        values: "0x35"
+    alert_rule_test:
+      # Under 80% for the first five minutes, then pending for ten.
+      - eval_time: 4m
+        alertname: CapacityHigh
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: CapacityHigh
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: CapacityHigh
+        exp_alerts:
+          - exp_labels:
+              alertname: CapacityHigh
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+              resource: table_load
+            exp_annotations:
+              summary: "prod: table_load on cmd-and-ctrl is at 83.33% of its cap"
+              description: "table_load on cmd-and-ctrl (prod) has been over 80% of its capacity cap for 10 minutes (now 83.33%). At 100% new tables, bot seats or newcomers are turned away. The 80% and 10 minutes are a first guess (ADR 0148), not a measured threshold."
+
+  # ------------------------------------------------------ RestoreDeferredGames
+  - name: RestoreDeferredGames, tables left on disk by the load cap; quiet at zero and once they are restored
+    interval: 1m
+    input_series:
+      # Two tables deferred at boot, then the hot-restore route brings
+      # them back at minute 10 and the gauge drops to 0.
+      - series: 'cmdctrl_boot_restore_deferred_games{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "2x9 0x20"
+      # A dev boot where everything fit.
+      - series: 'cmdctrl_boot_restore_deferred_games{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: RestoreDeferredGames
+        exp_alerts:
+          - exp_labels:
+              alertname: RestoreDeferredGames
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: 2 table(s) on cmd-and-ctrl are waiting on disk, not restored"
+              description: "2 table(s) on cmd-and-ctrl (prod) were not restored at the last boot because the table-load cap was full. Their players see \"game not found\". Free load and POST /admin/capacity/restore-deferred, or restart with a raised cap."
+      - eval_time: 15m
+        alertname: RestoreDeferredGames
+        exp_alerts: []
+
+  # --------------------------------------------------------- PlayerReportFiled
+  - name: PlayerReportFiled, any new stored report within 15 minutes on prod; dev is ignored
+    interval: 1m
+    input_series:
+      # No report for ten minutes, one at minute 10, none after.
+      - series: 'cmdctrl_player_reports_total{job="cmdctrl-server", env="prod", host="cmd-and-ctrl", instance="127.0.0.1:9464"}'
+        values: "0x9 1x50"
+      # A dev tester files one too.
+      - series: 'cmdctrl_player_reports_total{job="cmdctrl-server", env="dev", host="cmd-and-ctrl-dev", instance="127.0.0.1:9464"}'
+        values: "0x9 1x50"
+    alert_rule_test:
+      - eval_time: 8m
+        alertname: PlayerReportFiled
+        exp_alerts: []
+      - eval_time: 12m
+        alertname: PlayerReportFiled
+        exp_alerts:
+          - exp_labels:
+              alertname: PlayerReportFiled
+              severity: warning
+              job: cmdctrl-server
+              env: prod
+              host: cmd-and-ctrl
+              instance: 127.0.0.1:9464
+            exp_annotations:
+              summary: "prod: a player report was filed"
+              description: "prod stored a new player report in the last 15 minutes. Open the Reports tab in the admin views to read it (ADR 0075 section 2.6). The window is a first guess; the alert says only that a report exists, never who or why."
+      # Resolved once the window has moved past it.
+      - eval_time: 40m
+        alertname: PlayerReportFiled
+        exp_alerts: []

@@ -66,7 +66,7 @@ So the load can sit above the cap (people keep sitting at tables that were admit
 
 `Hub.ServeWS` turns a socket away when the live count has reached `CMDCTRL_MAX_WS_CONNECTIONS` **and** the caller has no seat and is not an admin. A seated player is mid-game or reconnecting to a table that is already counted; an admin is the operator looking at a full server. The check runs before the initial snapshot is built, which is the expensive part of an admit, so a flood of refused sockets costs a handshake and one frame each. It is a soft cap (check and admit are not one atomic step), so a burst of simultaneous newcomers can overshoot it by the burst.
 
-The front doors check it too: `POST /games/{id}/join`, `POST /join` and `POST /games/{id}/spectate` answer `server_full` when the count is at the cap, rather than seat someone whose socket would then be refused. The Discord OAuth callback join is not gated (a redirect flow has no place to show a message); its socket is refused at the hub like any other newcomer's.
+The front doors check it too: `POST /games/{id}/join`, `POST /join` and `POST /games/{id}/spectate` answer `server_full` when the count is at the cap, rather than seat someone whose socket would then be refused. The Discord OAuth callback join is not gated (a redirect flow has no place to show a message); its socket is refused at the hub like any other newcomer's. *(Amended 2026-10-13: it is gated now, and redirects to the join page; see the amendment below.)*
 
 ### 5. The refusal is a stable code and a friendly sentence
 
@@ -94,7 +94,7 @@ An ended table, an archived table and a table with no `games` row cost nothing a
 
 **What happens to the rest: nothing.** A deferred table's restore point stays on disk, byte for byte, and its `games` and `seats` rows are untouched. They are **not** ended: `closeUnresidentRows` (#2987) keeps them out, by the same mechanism that keeps a `schema_too_new` roll-forward table. That is the point of the choice. Ending a deferred table throws away a game the server merely had no room for yet; leaving it costs a row that reads `active` with no room behind it until the next boot, which `DELETE /games/{id}` already handles (#2987's unresident delete). A later boot, or this one's successor with a raised cap, brings it back, and a player whose table is deferred sees what they see for any table the server has lost track of ("game not found"); the boot log names each by id, and `cmdctrl_boot_restore_deferred_games` counts them.
 
-There is no runtime "admit the deferred ones" route. A deferred table comes back at the next restart. A hot-restore button is a possible follow-up if deferral turns out to happen often; the load test suggests it should happen only after a crash, which is the case it is for.
+There is no runtime "admit the deferred ones" route. A deferred table comes back at the next restart. *(Amended 2026-10-13: there is now an admin route; see the amendment below.)* A hot-restore button is a possible follow-up if deferral turns out to happen often; the load test suggests it should happen only after a crash, which is the case it is for.
 
 ### 8. What an operator sees
 
@@ -108,8 +108,48 @@ There is no runtime "admit the deferred ones" route. A deferred table comes back
 - The default cap is conservative against the measured ceiling and exact against the owner's target; the first real traffic should tune the weights, not the code.
 - The load can exceed the cap by the humans who sit at admitted tables. That is intended and bounded: at most `MaxPlayers` per admitted table.
 - A deferred table is invisible to its players until the next boot. Acceptable for the case it exists for (post-crash); revisit with a hot-restore route if it ever happens in normal running.
-- An alert on `cmdctrl_capacity_used / cmdctrl_capacity_limit` is deliberately not added: the right threshold comes from the first week of data.
+- ~~An alert on `cmdctrl_capacity_used / cmdctrl_capacity_limit` is deliberately not added: the right threshold comes from the first week of data.~~ *(Amended 2026-10-13: added, as a first guess, with the threshold to be tuned from data; see the amendment below.)*
 
 ## Back-out
 
 Set `CMDCTRL_MAX_TABLE_LOAD=0` and `CMDCTRL_MAX_WS_CONNECTIONS=0` to turn the caps off with no deploy; the creation rates keep their old defaults. The restore pass admits everything when the load cap is off.
+
+## Amendment (2026-10-13): alerts, a hot restore for deferred tables, and the OAuth join at the cap (#3103)
+
+PR #3101 left three follow-ups on purpose. Here is what was decided for each. No new ADR number was needed.
+
+### 1. Alerts (first-guess thresholds)
+
+Three rules in `deploy/monitoring/rules/cmdctrl.yml`, each with `promtool` tests, documented in `docs/monitoring.md` and listed in [ADR 0123](0123-monitoring-metrics-logs-dashboards-and-alerts.md) §7:
+
+| Alert | Expression | For | Severity |
+|---|---|---|---|
+| `CapacityHigh` | `cmdctrl_capacity_used / (cmdctrl_capacity_limit > 0) > 0.8`, per `resource` | 10 m | warning |
+| `RestoreDeferredGames` | `cmdctrl_boot_restore_deferred_games > 0` | none | warning |
+| `PlayerReportFiled` | `increase(cmdctrl_player_reports_total[15m]) > 0` (prod only; ADR 0075's 2026-10-13 amendment) | none | warning |
+
+- **The 80% and the 10 minutes are a first guess, not a measurement.** They are #3103's own example, written before a week of prod data exists, and the rule's annotation says so. The alert is a heads-up that the cap is about to turn people away, not an outage, so it is `warning` on both envs and nothing here pages. Tune it from the Overview's Capacity row (load against the cap, and refusals by reason) after the first busy weeks: if it fires on ordinary evenings, raise the line or the duration; if refusals show up without it firing, lower them. The table-load cap is soft, so the ratio can pass 1; the rule still fires, which is when new tables are refused.
+- **A cap that is off reports a limit of 0.** `used / 0` is `+Inf` (or `NaN` at 0/0), which would either fire forever or never resolve. The divisor keeps only capped resources (`> 0`), and a promtool case pins it.
+- **`RestoreDeferredGames` has no time limit**, unlike `RestoreAbandonedGames`. A deferred table is a state that persists, not an event at boot: its players read "game not found" for as long as it lasts, and the alert repeats every 4 hours until the tables are back (the route below, or a restart).
+
+### 2. Hot restore: an admin route, not a timer
+
+`POST /admin/capacity/restore-deferred` (admin only, [lobby API](../lobby.md#post-admincapacityrestore-deferred-admin-only)) restores the deferred tables that fit under the cap now. It is `Lobby.RestoreDeferred` (`restore_deferred.go`), which runs the boot pass's own pieces: `RoomManager.RestoreRoomsAdmitting` over the restore points on disk, `Lobby.admission` (the same ranking and first-fit as `restoreAdmission`, which is now a wrapper over it), and `adoptRestored` (the boot's pairing of a room with its `games` and `seats` rows, extracted from `RestoreFromDisk` unchanged). So the order is the boot's (people first, newest first, first-fit), and a table comes back exactly as it would at a boot with room.
+
+Differences, all because the server is serving:
+
+- **A table that already has a room is skipped** (`RestoreRoomsAdmitting` now ignores a restore point whose game is registered). At boot nothing is, so nothing changes there. At runtime a live table's restore point is the one it keeps writing, and rebuilding from it would replace a running room with its older self.
+- **The admitted cost is reserved against the cap in the same critical section that decides the fit**, and released once the rooms are registered. Without it a create arriving between the decision and the registration would see the load without the restored tables and overshoot. `TestHotRestoreHoldsItsAdmittedLoadAgainstConcurrentCreates` pins it.
+- **Rows are never closed** (`closeUnresidentRows` is the boot's tidy-up, not a runtime one), and the restore points of tables still waiting are not touched: byte for byte, with their rows still `lobby` or `active`.
+- **Two calls run one after the other** (`restoreMu`).
+- **`cmdctrl_boot_restore_deferred_games` is set to the tables still waiting after the pass,** so `RestoreDeferredGames` clears when the last one is back. The name keeps its "boot" (it is the contract, ADR 0123 §3), but it is now "deferred and not yet restored".
+
+*Why a route and not a periodic pass.* Deferral happens after a crash that left more load on disk than the cap admits, which is exactly when the operator is already looking, and `RestoreDeferredGames` tells them. A timer would restore tables on its own while someone is still deciding why the server fell over, could undo a deliberate low cap during an incident, and would bring a table back to players mid-deploy or mid-investigation with nobody watching. It is also strictly more machinery (an interval, a goroutine, a shutdown path) for a case #2977's load test says should be rare. The route is the minimum #3103 asked for and a timer can call the same `RestoreDeferred` later if deferral turns out to happen in ordinary running. Nothing in this change prevents it.
+
+Out of scope: a button in the admin views. The route is a `curl` away with the admin credential, and the alert's runbook line in `docs/monitoring.md` names it.
+
+### 3. The Discord join at the connection cap
+
+The callback is a browser navigation, so the JSON 503 every other join route sends would be shown as a blank page. In the invite-link flow it now checks the connection cap just before it would claim the seat, and at the cap answers **302** to `/#/games/{id}/join?error=server_full&t={invite}` with no session in the URL. The sign-in itself has already been recorded, and the retry skips Discord's screen. The client parses `error=server_full` onto the `join` route (`serverFull`), and `Join.svelte` opens with the same `SERVER_FULL_MESSAGE` every other refusal uses and its Discord button for the retry. The refusal counts as `join_connections` like the other front doors.
+
+Not gated: the login-page flow and the link flow. Neither opens a socket for a table, and an identity-only sign-in is not a join.

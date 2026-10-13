@@ -136,7 +136,20 @@ restore points stay on disk untouched and their rows are left as they
 were (not ended), so the next boot, or a raised cap, restores them; until
 then they read as "game not found". The boot log names each one and
 `cmdctrl_boot_restore_deferred_games` counts them. `DELETE
-/games/{id}` still removes a deferred table.
+/games/{id}` still removes a deferred table. An admin brings deferred
+tables back **without a restart** with
+[`POST /admin/capacity/restore-deferred`](#post-admincapacityrestore-deferred-admin-only)
+once load has freed up. The `RestoreDeferredGames` alert says when there
+are any ([monitoring](monitoring.md#alerts)).
+
+**The Discord join at the connection cap.** `GET /auth/discord/callback`
+is a browser navigation, so a JSON 503 would be shown as a blank page. At
+the connection cap, an invite-link callback does **not** claim the seat:
+it answers **302** to `/#/games/{id}/join?error=server_full&t={invite}`
+(no session in the URL), and the join page opens with the same friendly
+sentence and its Discord button for the retry. The sign-in itself is
+recorded. The login-page flow (no table named) and the link flow are not
+affected: they open no socket.
 
 ## Public routes (no credential required)
 
@@ -3617,6 +3630,48 @@ seats carry.
 | 401 | no session |
 | 403 | caller is not an admin, including an allowlisted person in player mode |
 | 503 | the server wired no WebSocket hub (not a production configuration) |
+
+---
+
+## Capacity (#3103)
+
+### `POST /admin/capacity/restore-deferred` *(admin only)*
+
+Restores the tables the boot left on disk because the table-load cap was
+full ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md),
+2026-10-13 amendment), as many as fit under the cap **now**. No body.
+
+It runs the boot pass's own code over the restore points on disk:
+tables with people first, then the most recently active, first-fit by
+cost. A restore point whose table already has a room is skipped, so it
+never touches a live table. The admitted cost is held against the cap
+while the rooms are rebuilt, so a table created at the same moment
+cannot push the load past it. Rows are never closed by this call. Two
+calls at once run one after the other.
+
+```json
+{ "restored": 1, "still_deferred": 1, "failed": 0, "load": 10, "load_limit": 180 }
+```
+
+- `restored`: tables brought back and registered.
+- `still_deferred`: tables still on disk because the cap has no room yet.
+  Their restore points and rows are exactly as they were.
+- `failed`: restore points that could not be rebuilt (a newer schema, an
+  unreadable file, a table with no usable rows). They are logged as at
+  boot and are not counted as deferred.
+- `load`, `load_limit`: the table load after the call, against the cap
+  (`0` is no cap, and then every deferred table comes back).
+
+Also sets `cmdctrl_boot_restore_deferred_games` to `still_deferred`, so the
+`RestoreDeferredGames` alert clears when the last one is back. It answers
+**200** with zeros when nothing was waiting.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session |
+| 403 | caller is not an admin, including an allowlisted person in player mode |
 
 ---
 
