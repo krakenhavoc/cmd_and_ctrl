@@ -2526,6 +2526,13 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // #3225: the largest X the viewer may announce while claiming THIS
+  // offer — "you may cast this spell as though it had flash if X is 3
+  // or less" (CR 601.3c) — already folded with the card's printed
+  // `x_max`. The server refuses a larger X under the claim; the cast for
+  // the printed cost is not bound by it. Present only on an offer that
+  // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).
+  x_max?: number;
   // ADR 0126 §6: what the spell does when cast for this cost, where
   // that differs from the card's own purpose (overload). Bot data.
   purpose?: PurposeView;

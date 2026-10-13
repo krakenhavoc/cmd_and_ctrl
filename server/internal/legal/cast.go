@@ -856,7 +856,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	// locked at 0 (CR 107.3b), and announcedX reads a ceiling on a cost
 	// with no {X} slot as the PRICE of X, which this is not.
 	if cost.XSlots > 0 {
-		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), xLifeCeiling)
+		xLifeCeiling = e.printedXCeiling(game.CatalogKey(card), offer, xLifeCeiling)
 	}
 	// #1677: Phyrexian symbols paid with life (CR 107.4f). The offer's
 	// own life (Force of Will's "pay 1 life") is held back so the two

@@ -398,6 +398,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
+			// #3225.
+			XMax: new(3),
 			// ADR 0126 §6.
 			Purpose: &PurposeView{Sweep: &SweepView{Matches: "nonland_permanents", How: "bounce", OpponentsOnly: true}},
 		}},
@@ -957,6 +959,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,
+	// #3225: the offer's X ceiling folded with the card's board-set one,
+	// the same per-seat number the card's own x_max is.
+	"XMax": surfacePrivate,
 	// ADR 0126 §6: what the spell does when cast for this cost, read
 	// off the printed card like Label.
 	"Purpose": surfacePublicPile,

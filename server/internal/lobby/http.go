@@ -2269,7 +2269,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// #2581: the spell's printed X ceiling, read now for this caster —
 	// the count CastSpell refuses above — so the picker stops at it.
 	var xMax *int
-	if ceiling, ok := g.SpellXCeiling(p.PlayerID, game.CatalogKey(price.Card)); ok {
+	if ceiling, ok := g.SpellXCeilingForCast(p.PlayerID, card, params); ok {
 		xMax = &ceiling
 	}
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
