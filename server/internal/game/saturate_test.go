@@ -2,6 +2,7 @@ package game
 
 import (
 	"math"
+	"runtime"
 	"testing"
 )
 
@@ -56,5 +57,45 @@ func TestParseProducedManaIsBounded(t *testing.T) {
 	slots, capped, err = parseProducedMana(RepeatMana("{G}", MaxProducedMana))
 	if err != nil || capped || len(slots) != MaxProducedMana {
 		t.Errorf("exactly the ceiling: len=%d capped=%v err=%v, want %d slots, not capped", len(slots), capped, err, MaxProducedMana)
+	}
+}
+
+// TestParseProducedManaSumAcrossSlotsIsBounded: each slot is under the
+// ceiling but together they are not.
+func TestParseProducedManaSumAcrossSlotsIsBounded(t *testing.T) {
+	slots, capped, err := parseProducedMana("{G1000}{R1000}{U1000}")
+	if err != nil || !capped || len(slots) != MaxProducedMana {
+		t.Errorf("summed slots: len=%d capped=%v err=%v, want %d slots, capped", len(slots), capped, err, MaxProducedMana)
+	}
+}
+
+// TestParseProducedManaDoesNotAllocateTheAskedForAmount: a slot that
+// asks for five million mana must be cut BEFORE it is built, not after.
+// The result alone cannot tell the two apart (the sum cap truncates the
+// same list), so this reads the allocator.
+func TestParseProducedManaDoesNotAllocateTheAskedForAmount(t *testing.T) {
+	var before, after runtime.MemStats
+	runtime.GC()
+	runtime.ReadMemStats(&before)
+	slots, capped, err := parseProducedMana("{G5000000}")
+	runtime.ReadMemStats(&after)
+	if err != nil || !capped || len(slots) != MaxProducedMana {
+		t.Fatalf("len=%d capped=%v err=%v, want %d slots, capped", len(slots), capped, err, MaxProducedMana)
+	}
+	if grew := after.TotalAlloc - before.TotalAlloc; grew > 8<<20 {
+		t.Errorf("parsing {G5000000} allocated %d bytes; the amount must be cut before it is built", grew)
+	}
+}
+
+// TestPowerReadIsPinnedWithNoCounters: a layer effect that scales on the
+// board can overflow with no counter on the card at all, so the read
+// pins the sum, not only the counter part of it.
+func TestPowerReadIsPinnedWithNoCounters(t *testing.T) {
+	c := Card{Name: "Big", TypeLine: "Creature — Test", Power: math.MaxInt, Toughness: math.MinInt}
+	if got := c.PowerForComparison(); got != MaxCount {
+		t.Errorf("PowerForComparison = %d, want %d", got, MaxCount)
+	}
+	if got := c.CurrentToughness(); got != -MaxCount {
+		t.Errorf("CurrentToughness = %d, want %d", got, -MaxCount)
 	}
 }
