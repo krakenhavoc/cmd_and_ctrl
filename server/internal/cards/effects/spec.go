@@ -1064,6 +1064,15 @@ type Spec struct {
 	// abilities gives no extra vote.
 	ExtraVote game.ExtraVote
 
+	// OpponentsFaceVillainousChoicesAgain declares the printed static
+	// "If an opponent would face a villainous choice, they face that
+	// choice an additional time" (The Valeyard): CR 701.55c, #3140. Each
+	// such permanent adds one question to every opponent's villainous
+	// choice, counted when the choice is faced. Judged through
+	// CatalogAbilityKey, so a permanent that lost its abilities adds
+	// none.
+	OpponentsFaceVillainousChoicesAgain bool
+
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
 	//

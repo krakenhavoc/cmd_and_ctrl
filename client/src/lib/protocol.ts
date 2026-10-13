@@ -1754,6 +1754,12 @@ export interface PickOptionView {
    * pay is refused and the prompt stays open.
    */
   mana_cost?: string;
+  /**
+   * What this option costs its chooser besides life and mana, in cards
+   * (#3140): the hint a bot reads on a villainous choice (CR 701.55).
+   * The client shows the option's label and nothing of this.
+   */
+  harm?: number;
 }
 
 export interface ReplacementOptionView {

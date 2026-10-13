@@ -7700,6 +7700,46 @@ each vote as it is cast, shows the tally on every seat's dock, and skips
 a player who has left. Secret council (#2926) and "whenever players
 finish voting" (#2927) are not this shape.
 
+### A villainous choice (ADR 0018 amendment 2026-10-13, #3140, CR 701.55)
+
+"[A player] faces a villainous choice — [A], or [B]" is a registered
+`effects.VillainousChoice`, built once per printed choice and faced with
+`FaceVillainousChoice`:
+
+```go
+var damoclesBaseChoice = NewVillainousChoice("damocles-base", "Damocles Base — …?",
+    VillainousOption{Label: "Sacrifice a nontoken creature of your choice", Harm: 2,
+        Possible: villainousCanSacrifice(pred), Body: villainousSacrifice("a nontoken creature", pred)},
+    VillainousOption{Label: "Lose 2 life; …", LifeCost: 2, Harm: 1, Body: …})
+…
+FaceVillainousChoice{Players: ctx.Opponents(), Choice: damoclesBaseChoice}.Apply(ctx)
+```
+
+- **The question is the facing player's**, an `option_pick` with a keyed
+  continuation, so a table waiting on it is still a restore point. The key
+  (`option-pick/villainous-<key>`) is an on-disk identity: never rename it.
+  Run `-update-effect-keys` after adding one.
+- **Both options are always offered** (CR 701.55b). Write each `Body` to do
+  as much as it can: a sacrifice with no creature sacrifices nothing. Never
+  prune an option because it can't be carried out; `Possible` only tells a
+  bot the option costs the player nothing.
+- **Who does what.** The facing player is `Facing.Player`, the effect's
+  controller `ctx.Controller()`, the card `ctx.Source()`. A body that asks
+  the *controller* a question ("you may cast a spell", "you may put a
+  Construct onto the battlefield") queues it addressed to them. Bodies run
+  when the facing player answers: read the board then and capture nothing.
+- **Don't hint from a hidden zone.** `Harm` and `Possible` reach the facing
+  player's bot on the wire; computing them from the controller's hand would
+  hand the table that hand. Use a fixed guess for anything hidden.
+- **Several players, several times.** `Players` is asked in APNAP order, one
+  at a time (CR 701.55d). `Spec.OpponentsFaceVillainousChoicesAgain` (The
+  Valeyard) adds one question per such permanent an opponent faces
+  (CR 701.55c), counted by `Game.VillainousChoiceTimesForEffect` when the
+  choice is faced.
+- **A body that asks a follow-up** (a sacrifice, a discard) leaves it open
+  beside the next question in the chain; there is no "after every prompt
+  this body opened" seam.
+
 ### Day and night, daybound and nightbound (ADR 0132, #2561, CR 731 / 702.145)
 
 The game itself can be day or night. The designation, the untap-step

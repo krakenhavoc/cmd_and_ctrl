@@ -1,0 +1,11 @@
+---
+title: "Villainous choice"
+date: 2026-10-13
+issues: [3140]
+---
+**Villainous choice** (#3140, CR 701.55, [ADR 0018 amendment 2026-10-13](decisions/0018-triggers-on-the-stack.md)) — "[a player] faces a villainous choice — A, or B" had no support, so none of the Doctor Who and Sonic cards that print it could be added, and The Valeyard's first ability did nothing.
+- **A registered pair behind an option pick.** `effects.NewVillainousChoice` registers the two option bodies under `option-pick/villainous-<key>`; `effects.FaceVillainousChoice{Players, Choice, Carry}` asks the facing player (never the controller) with a keyed continuation, so the table stays a restore point. Both options are always offered (CR 701.55b), the players are asked one at a time in APNAP order with each player's repeats first (CR 701.55c, d), and the list in the prompt's carry is the order.
+- **"An additional time."** `Spec.OpponentsFaceVillainousChoicesAgain` and `Game.VillainousChoiceTimesForEffect`: one plus one per such permanent an opponent of the facing player controls, read when the choice is faced.
+- **The bot.** `game.ChoiceOption.Harm` / wire `pick_options[].harm` is the card's hint of what an option costs besides life and mana; the heuristic takes the cheapest loss and never the option that kills it. The enumerator already offered every option of an option pick.
+- **Cards (8):** The Valeyard (caveat removed), Damocles Base, Sword of Kang, The Dalek Emperor (with a Dalek token row), This Is How It Ends, Sycorax Commander, Dr. Eggman, Davros, Dalek Creator and Great Intelligence's Plan, all Full.
+- **Still waiting, each on its own piece ([#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)):** Missy (a graveyard put face down and tapped with a listed Cyberman body), Hunted by The Family (a no-duration "becomes a 1/1 white Human and loses all abilities" on up to four targets, each faced by its controller), Genesis of the Daleks (the power of Daleks that died this turn), The Master, Gallifrey's End (the opponent with the most life), Midnight Crusader Shuttle (a creature put into an attack already declared) and Ensnared by the Mara (exile until a nonland card, then a free cast from exile).

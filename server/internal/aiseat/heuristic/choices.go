@@ -142,6 +142,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if v, why, ok := costedOptionValue(ch, cp.OptionIndex); ok {
 			return v, why
 		}
+		// #3140: a villainous choice (villainous_choice.go).
+		if v, why, ok := st.villainousValue(ch, cp.OptionIndex); ok {
+			return v, why
+		}
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:

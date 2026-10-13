@@ -14,19 +14,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Valeyard's controller has cast their votes in a vote, they are offered
 // one more, and may decline it.
 //
-// The first ability is NOT implemented. A villainous choice (CR 701.55)
-// is a keyword action with no engine support at all: nothing in this
-// game asks one, so there is no choice for an opponent to face, and no
-// card in the catalog that could make one. Declared weaker than printed,
-// which is the safe direction: the first ability never has a choice to
-// double, so it cannot change a game today. It is its own seam, with the
-// keyword action itself, and not a flag on this card.
+// The first ability is CR 701.55c's replacement effect (#3140): "A
+// replacement effect may replace an instruction to face a villainous
+// choice with an instruction to face that choice some number of
+// additional times. In that case, the entire process … is performed for
+// that player the appropriate number of times one at a time." It is
+// Spec.OpponentsFaceVillainousChoicesAgain, a count read when a choice
+// is faced (Game.VillainousChoiceTimesForEffect): each Valeyard under
+// an opponent's control adds one question, "the same or different
+// choices" each time, so two of them make three. It applies to the
+// players who are its controller's opponents, not to its controller.
+//
+// No simplifications.
 func init() {
 	Register(Spec{
 		OracleID:     "ed202f1d-3511-45f4-bfbc-e6b76d4311d1",
 		Name:         "The Valeyard",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Villainous choices aren't in the game yet, so its first ability does nothing."},
+		Completeness: CompletenessFull,
 		ExtraVote:    game.ExtraVoteYouMay,
+
+		OpponentsFaceVillainousChoicesAgain: true,
 	})
 }
