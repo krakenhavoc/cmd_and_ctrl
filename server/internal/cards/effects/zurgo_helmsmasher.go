@@ -32,20 +32,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that can go false is the case a "grant once and forget"
 // implementation of the keyword would have got wrong.
 //
-// # DECLARED SIMPLIFICATION
+// # The counter trigger
 //
-// One of Zurgo's four lines is not enforced, weaker than printed,
-// never stronger.
-//
-//   - "Whenever a creature dealt damage by Zurgo this turn dies, put
-//     a +1/+1 counter on Zurgo" needs per-creature damage-SOURCE
-//     history. `Card.DamageMarked` is a bare integer and
-//     `MarkedLethalByDeathtouch` is a bool; neither records WHO dealt
-//     the damage, and nothing else in the engine does either. A
-//     faithful version needs a damaged-by set on the card, cleared at
-//     cleanup alongside DamageMarked — a small engine change, but one
-//     with no second card asking for it yet, so it is not being
-//     speculatively built here.
+// "Whenever a creature dealt damage by Zurgo Helmsmasher this turn dies"
+// reads the turn's damage events through damagedBySinceEntering (Bushi
+// Tenderfoot's read): the source and the victim each start over when they
+// re-enter the battlefield (CR 400.7), and the damage counts as dealt
+// after prevention. Zurgo must still be on the battlefield to get the
+// counter, and the creature that died may be any player's.
 //
 // "Attacks each combat if able" is no longer on that list. #1595 gave
 // the engine CR 508.1d attack-requirement enforcement
@@ -54,15 +48,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // able" on the creature's own ability list, so a Zurgo that loses all
 // abilities (CR 613.1f) stops being required to swing.
 //
-// Haste, the conditional indestructible, and the attack requirement
-// are all fully live.
+// All four lines are live.
 func init() {
 	Register(Spec{
 		OracleID:        "6c48d888-9f5d-43f4-adbd-61dbdba09260",
 		Name:            "Zurgo Helmsmasher",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The +1/+1 counter trigger never happens: the engine does not record which creature dealt a creature its damage."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
+		Triggered: []game.TriggeredAbility{
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				_, died := diedCreature(ev, g)
+				return died && ev.CardID != source.InstanceID && damagedBySinceEntering(g, source.InstanceID, ev.CardID)
+			}, "Zurgo Helmsmasher — put a +1/+1 counter on it", func(g *game.Game, item *game.StackItem) error {
+				if !onBattlefield(g, item.SourceCardID) {
+					return nil
+				}
+				return AddCounter{Target: item.SourceCardID, Kind: game.CounterPlusOne, N: 1}.Apply(NewContext(g, item))
+			}),
+		},
 		Static: []game.StaticAbility{
 			AttacksEachCombat(),
 			{

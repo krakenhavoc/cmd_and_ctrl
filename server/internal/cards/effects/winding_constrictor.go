@@ -26,24 +26,15 @@ import (
 // Constrictors add two. A removal (a negative delta) is not counters
 // being "put on" and passes through untouched.
 //
-// SANDBOX GAP, weaker than printed: the second sentence — counters
-// YOU get (poison, energy, experience) — is not modelled.
-//
-// It was unbuildable when this card shipped, because player counters
-// had no replacement pipeline at all. ADR 0056 Decision 5 gave them
-// one (RepEventCounter now carries CounterPlayer, and Vorinclex and
-// Lae'zel already read it), so the gap is now an ADOPTABLE one rather
-// than a missing mechanic: a second ReplacementEffect keyed on
-// ev.CounterPlayer == src.Controller is the whole of it. It is not in
-// ADR 0056's PR 1, which lists the cards whose CURRENT answers the
-// placer changes; this card's answer is unchanged, it simply has a
-// clause it could now keep. Never stronger either way.
+// The second sentence is a second replacement on the same event: a
+// positive placement whose CounterPlayer (ADR 0056 Decision 5) is the
+// Constrictor's controller gets one more of that kind, whoever is giving
+// them (poison from an infect creature, energy, experience, rad).
 func init() {
 	Register(Spec{
 		OracleID:     "c9404d7d-a026-4082-9fcb-1ab571a136b5",
 		Name:         "Winding Constrictor",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Counters you get yourself (poison, energy, experience) aren't increased — only counters put on your artifacts and creatures are."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
 			Watches: []game.EventKind{game.EventCounterPlaced},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
@@ -64,6 +55,19 @@ func init() {
 				return src.Controller
 			},
 			Label: "Winding Constrictor: one more counter of that kind",
+		}, {
+			Watches: []game.EventKind{game.EventCounterPlaced},
+			AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
+				return ev.Kind == game.RepEventCounter && ev.CounterDelta > 0 && ev.CounterPlayer == src.Controller
+			},
+			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+				ev.CounterDelta++
+				return nil
+			},
+			Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+				return src.Controller
+			},
+			Label: "Winding Constrictor: you get one more counter of that kind",
 		}},
 	})
 }

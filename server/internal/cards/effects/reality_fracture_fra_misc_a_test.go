@@ -32,7 +32,7 @@ func TestFraMiscACardsAreRegistered(t *testing.T) {
 		rfmaEnlightenedConfidant: {"Enlightened Confidant", CompletenessFull},
 		rfmaEyeOfJace:            {"Eye of Jace", CompletenessFull},
 		rfmaProctorOfPotential:   {"Proctor of Potential", CompletenessFull},
-		rfmaSurveillancePhantasm: {"Surveillance Phantasm", CompletenessCaveats},
+		rfmaSurveillancePhantasm: {"Surveillance Phantasm", CompletenessFull},
 		rfmaYuriko:               {"Yuriko, Hope from the Shadows", CompletenessFull},
 		rfmaRoilingCanopy:        {"Roiling Canopy", CompletenessFull},
 		rfmaRoomOfRefuge:         {"Room of Refuge", CompletenessFull},

@@ -659,8 +659,8 @@ func TestB19WindingConstrictorAddsOneCounterOfEachKind(t *testing.T) {
 	if n := counterCount(g, colossus, "+1/+1"); n != 3 {
 		t.Errorf("enters with 2+1 counters, got %d", n)
 	}
-	if spec, _ := Lookup(b19WindingConstrictorOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the player-counter gap must be declared")
+	if spec, _ := Lookup(b19WindingConstrictorOracle); spec.Completeness != CompletenessFull {
+		t.Error("the card is complete since the player-counter half landed (#3172)")
 	}
 }
 

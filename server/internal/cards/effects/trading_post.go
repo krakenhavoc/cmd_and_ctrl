@@ -10,31 +10,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 your graveyard to your hand.
 //	 {1}, {T}, Sacrifice an artifact: Draw a card."
 //
-// The artifact deck's Swiss-army knife. Three of the four abilities
+// The artifact deck's Swiss-army knife. All four abilities
 // are CR 602 activated abilities built from the cost components the
-// engine has — mana, tap, life, sacrifice-a-creature (the Goat it
+// engine has — mana, tap, discard-a-card, life, sacrifice-a-creature (the Goat it
 // just made qualifies, as printed) and sacrifice-an-artifact (the
 // Post itself qualifies, as printed). The regrowth targets an
 // artifact card the controller owns, picked in the zone browser and
 // re-checked at resolution.
 //
-// Sandbox simplification, declared: the first ability, "{1}, {T},
-// Discard a card: You gain 4 life", is NOT registered. An activated
-// ability's cost has no discard component (AbilityCost carries tap,
-// sacrifice-this, sacrifice-another, mana, life and loyalty — the
-// discard cost the engine has is the cast-time AdditionalCost, a
-// different pipeline), and shipping the ability with the discard
-// omitted would be stronger than printed. Three abilities of four,
-// weaker and never stronger; the lifegain lands with the discard
-// cost component.
 func init() {
 	postCost := Plus(ManaCost("{1}"), TapCost())
 	Register(Spec{
 		OracleID:     "63788566-e25a-44bb-bb55-197e1b93b3e8",
 		Name:         "Trading Post",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The \"{1}, {T}, Discard a card: You gain 4 life\" ability isn't implemented — the other three abilities work."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{
+			{
+				Label:   "{1}, {T}, Discard a card: You gain 4 life",
+				Purpose: game.Purpose{LifeGain: 4, Answers: game.AnswerValue},
+				Cost:    Plus(postCost, DiscardACard()),
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					return GainLife{Player: item.Controller, Amount: 4}.Apply(NewContext(g, item))
+				},
+			},
 			{
 				Label:   "{1}, {T}, Pay 1 life: Create a 0/1 white Goat",
 				Purpose: game.Purpose{Answers: game.AnswerMakesBlocker},
