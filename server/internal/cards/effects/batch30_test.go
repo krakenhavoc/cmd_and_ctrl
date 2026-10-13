@@ -2,7 +2,6 @@ package effects
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -308,16 +307,16 @@ func TestB30WindgracesJudgmentDestroysOnePermanentPerOpponent(t *testing.T) {
 	bAura := b12Permanent(g, b.ID, "B's Enchantment", "Enchantment")
 	bLand := seedLand(g, b.ID, "Forest", "Basic Land — Forest", "")
 	legal := legalCards(g, me.ID, b30WindgracesJudgmentOracle)
-	if legal[mine] || legal[bLand] || !legal[aBear] || !legal[bAura] {
+	if legal[mine] || legal[bLand] || !legal[aBear] {
 		t.Fatal("only nonland permanents opponents control are legal")
 	}
-	// #1559: one per opponent is the clause's set rule — two of one
-	// opponent's permanents are refused at announce (CR 601.2c).
+	// One clause per opponent: two of one opponent's permanents are
+	// refused at announce (CR 601.2c).
 	err := castCatalogSpellErr(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: aRock}, {Kind: game.TargetCard, ID: bAura},
 	})
-	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "controlled by different players") {
-		t.Fatalf("two of one opponent's permanents are refused naming the rule, got %v", err)
+	if !errors.Is(err, game.ErrIllegalTarget) {
+		t.Fatalf("two of one opponent's permanents are refused, got %v", err)
 	}
 	castCatalogSpell(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: bAura},
@@ -332,8 +331,8 @@ func TestB30WindgracesJudgmentDestroysOnePermanentPerOpponent(t *testing.T) {
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own permanents are untouched")
 	}
-	if spec, _ := Lookup(b30WindgracesJudgmentOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("judging a target by its controller at resolution, not by its bound opponent, is a declared gap")
+	if spec, _ := Lookup(b30WindgracesJudgmentOracle); spec.Completeness != CompletenessFull {
+		t.Error("each pick is bound to its opponent now")
 	}
 }
 

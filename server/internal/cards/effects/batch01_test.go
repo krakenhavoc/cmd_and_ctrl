@@ -646,6 +646,20 @@ func TestArcaneDenialCountersAndBothPlayersDrawAtTheNextUpkeep(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
+	// "May draw up to two": a number prompt to the victim; the caster's
+	// own card follows the answer.
+	pa := payAmountPrompt(g, opp.ID)
+	if pa == nil || pa.PayAmount.Min != 0 || pa.PayAmount.Max != 2 {
+		t.Fatalf("the victim is asked for 0..2: %+v", pa)
+	}
+	if me.Hand.Size() != meBefore {
+		t.Error("the caster draws after the victim's answer, not before")
+	}
+	if err := g.ResolvePayAmount(pa.ID, opp.ID, 2); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+
 	if got := opp.Hand.Size(); got != oppBefore+2 {
 		t.Errorf("the countered spell's controller drew %d, want 2", got-oppBefore)
 	}
@@ -654,6 +668,40 @@ func TestArcaneDenialCountersAndBothPlayersDrawAtTheNextUpkeep(t *testing.T) {
 	}
 	if n := len(g.DelayedTriggers); n != 0 {
 		t.Errorf("delayed triggers left queued: %d", n)
+	}
+}
+
+// The victim may draw FEWER (the old caveat): zero and one are answers,
+// and the caster still draws their card.
+func TestArcaneDenialVictimMayDrawFewer(t *testing.T) {
+	for _, n := range []int{0, 1} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		bolt := batch01OpponentCasts(t, g, opp, "Lightning Bolt", lightningBoltOracle, "",
+			[]game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}})
+		castCatalogSpell(t, g, "Arcane Denial", "Instant", arcaneDenialOracle,
+			[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+		passPriorityAroundTable(t, g)
+		advanceToUpkeepOf(t, g, 1)
+		oppBefore, meBefore := opp.Hand.Size(), me.Hand.Size()
+		passPriorityAroundTable(t, g)
+		pa := payAmountPrompt(g, opp.ID)
+		if pa == nil {
+			t.Fatal("no number prompt")
+		}
+		if err := g.ResolvePayAmount(pa.ID, opp.ID, n); err != nil {
+			t.Fatal(err)
+		}
+		passPriorityAroundTable(t, g)
+		if got := opp.Hand.Size() - oppBefore; got != n {
+			t.Errorf("chose %d, drew %d", n, got)
+		}
+		if got := me.Hand.Size() - meBefore; got != 1 {
+			t.Errorf("chose %d: the caster drew %d, want 1", n, got)
+		}
+	}
+	if spec, _ := Lookup(arcaneDenialOracle); spec.Completeness != CompletenessFull {
+		t.Error("the up-to-two choice landed")
 	}
 }
 

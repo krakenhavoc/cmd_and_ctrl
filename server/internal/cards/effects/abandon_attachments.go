@@ -10,33 +10,30 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // type line is what "Lesson spell" watchers read, so nothing on the
 // card is needed for that).
 //
-// Sandbox simplification, declared in full because it is the one
-// that changes how the card plays — Victimize's old posture one zone
-// over: the discard is modelled as an ADDITIONAL COST TO CAST
-// rather than as an optional resolution-time action. The engine's
-// resolution-time discard prompt is a fixed count with no
-// continuation and no "you may", so "you may discard a card. If you
-// do, …" has no shape mid-resolution, and a discard cost is the only
-// discard-with-a-choice shape that exists (Thrill of Possibility's).
-// The observable differences all run the weaker way:
-//
-//   - The card is discarded at announce, so a discard payoff
-//     triggers ABOVE the spell and resolves first, and countering
-//     the spell does not give the card back.
-//   - With no other card in hand the spell cannot be cast at all
-//     (printed, it can be cast to do nothing).
-//   - The discard is never declined: casting it means discarding.
-//
-// The draw is the printed two, on resolution.
+// "You may discard a card" is the discard prompt with a floor of zero
+// (UpTo), asked as the spell resolves; the draw is its continuation and
+// runs only for a player who did discard ("if you do"). So a countered
+// spell keeps the card, and a player with an empty hand can cast it to
+// do nothing.
 func init() {
 	Register(Spec{
-		OracleID:       "82333385-631f-4abf-b159-bb367f1c6fd9",
-		Name:           "Abandon Attachments",
-		Completeness:   CompletenessCaveats,
-		Caveats:        []string{"You must discard a card as you cast it rather than choosing on resolution, so you can't cast it with no other card in hand and countering it doesn't give the card back."},
-		AdditionalCost: DiscardCost(1),
+		OracleID:     "82333385-631f-4abf-b159-bb367f1c6fd9",
+		Name:         "Abandon Attachments",
+		Completeness: CompletenessFull,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return DrawCards{Player: item.Controller, N: 2}.Apply(ctx)
+			player := item.Controller
+			return ctx.Game.PlayerDiscardsThenForEffect(game.DiscardPrompt{
+				Player:   player,
+				Source:   item.SourceCardID,
+				N:        1,
+				UpTo:     true,
+				Question: "Abandon Attachments — you may discard a card; if you do, draw two",
+			}, func(g *game.Game, done game.PromptedDiscards) error {
+				if !done.Discarded(player) {
+					return nil
+				}
+				return g.DrawNForEffect(player, 2)
+			})
 		},
 	})
 }

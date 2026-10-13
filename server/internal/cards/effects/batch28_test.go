@@ -576,14 +576,25 @@ func TestB28UlvenwaldTrackerMakesYourCreatureFightAnother(t *testing.T) {
 	if !b12Card(t, g, tracker).Tapped {
 		t.Error("the Tracker tapped to activate")
 	}
-	// Their creature first is the wrong way round: nothing happens.
+	// Their creature first is the wrong way round: refused at announce.
 	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(tracker) })
 	other := pushVanillaCreature(g, opp.ID, "Their Ox", 3, 3)
-	b16Activate(t, g, me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{
+	if err := g.ActivateCatalogAbility(me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{
 		{Kind: game.TargetCard, ID: other}, {Kind: game.TargetCard, ID: mine},
-	}})
-	if c := b12Card(t, g, other); c.DamageMarked != 0 {
-		t.Error("slot 0 must be yours — a pair that doesn't fit does nothing")
+	}}); err == nil {
+		t.Error("slot 0 must be yours — a pair that doesn't fit is refused")
+	}
+	// A creature cannot fight itself: "another".
+	if err := g.ActivateCatalogAbility(me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{
+		{Kind: game.TargetCard, ID: mine}, {Kind: game.TargetCard, ID: mine},
+	}}); err == nil {
+		t.Error("the second target is another creature")
+	}
+	if b12Card(t, g, tracker).Tapped {
+		t.Error("a refused activation costs nothing")
+	}
+	if spec, _ := Lookup(b28UlvenwaldTrackerOracle); spec.Completeness != CompletenessFull {
+		t.Error("the per-slot clauses landed")
 	}
 }
 

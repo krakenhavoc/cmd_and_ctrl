@@ -19,22 +19,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature in a graveyard, the clause fails the CR 608.2b re-check,
 // and the ability fizzles.
 //
-// Sandbox simplification, declared: "spell OR ABILITY" is spells
-// only. An activated or triggered ability on the stack is a
-// StackMeta item with no card in the stack zone, and the target
-// clauses enumerate cards, so an ability that targets you cannot be
-// chosen. Weaker than printed, never stronger.
+// "Spell OR ability" is TargetSpellOrAbility (#1211): an activated or
+// triggered ability on the stack is a legal pick when it targets you
+// or a creature you control, and a countered ability simply goes away.
 func init() {
 	Register(Spec{
 		OracleID:        "59c7496b-19a2-478b-b28f-6f153c2458ae",
 		Name:            "Siren Stormtamer",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Only spells can be countered — an ability that targets you or your creature can't be picked."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Activated: []ActivatedAbility{{
-			Label:   "{U}, Sacrifice this creature: Counter target spell that targets you or a creature you control.",
+			Label:   "{U}, Sacrifice this creature: Counter target spell or ability that targets you or a creature you control.",
 			Cost:    Plus(ManaCost("{U}"), SacrificeThis()),
-			Targets: TargetSpell("target spell that targets you or a creature you control", b10SpellTargetsYouOrACreatureYouControl()),
+			Targets: TargetSpellOrAbility("target spell or ability that targets you or a creature you control", b10ItemTargetsYouOrACreatureYouControl),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 					return nil

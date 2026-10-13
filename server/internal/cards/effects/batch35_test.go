@@ -229,22 +229,58 @@ func TestB35DreadSummonsMillsEveryoneAndZombifiesTheCreatureCards(t *testing.T) 
 	}
 }
 
-func TestB35AbandonAttachmentsDiscardsAsACostAndDrawsTwo(t *testing.T) {
+func TestB35AbandonAttachmentsMayDiscardAndIfSoDrawsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
+	fodder := handCardFull(me, "Fodder", "Sorcery", "", "", nil)
 	hand := me.Hand.Size()
-	_, paid := castWithDiscard(t, g, "Abandon Attachments", b35AbandonAttachmentsOracle, "Sorcery", 1)
-	if !me.Graveyard.Contains(paid[0]) {
-		t.Fatal("the discard is paid at announce")
+	castCatalogSpell(t, g, "Abandon Attachments", "Instant — Lesson", b35AbandonAttachmentsOracle, nil)
+	if !me.Hand.Contains(fodder) {
+		t.Fatal("nothing is discarded at cast")
 	}
 	passPriorityAroundTable(t, g)
-	// hand + fodder + spell, minus the fodder, minus the spell, plus two.
-	if me.Hand.Size() != hand+2 {
-		t.Errorf("hand %d → %d, want +2 net", hand, me.Hand.Size())
+	c := discardChoiceFor(g, me.ID)
+	if c == nil || c.ChooseMin != 0 {
+		t.Fatalf("a 'may discard' prompt with a floor of zero: %+v", c)
 	}
-	spec, _ := Lookup(b35AbandonAttachmentsOracle)
-	if spec.Completeness != CompletenessCaveats || spec.AdditionalCost == nil || spec.AdditionalCost.DiscardCards != 1 {
-		t.Error("the discard-as-cost is a declared gap")
+	answerDiscard(t, g, me.ID, fodder)
+	passPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(fodder) {
+		t.Error("the chosen card is discarded")
+	}
+	// hand before + the spell, minus the spell, minus the fodder, plus two.
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d -> %d, want +1 net", hand, me.Hand.Size())
+	}
+}
+
+// "If you do": declining the discard draws nothing, and the card stays.
+func TestB35AbandonAttachmentsDeclinedDrawsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	fodder := handCardFull(me, "Fodder", "Sorcery", "", "", nil)
+	castCatalogSpell(t, g, "Abandon Attachments", "Instant — Lesson", b35AbandonAttachmentsOracle, nil)
+	hand := me.Hand.Size()
+	passPriorityAroundTable(t, g)
+	answerDiscard(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(fodder) || me.Hand.Size() != hand {
+		t.Errorf("declined: hand %d -> %d, fodder kept %v", hand, me.Hand.Size(), me.Hand.Contains(fodder))
+	}
+	if spec, _ := Lookup(b35AbandonAttachmentsOracle); spec.Completeness != CompletenessFull || spec.AdditionalCost != nil {
+		t.Error("the discard is an effect now, not a cost")
+	}
+}
+
+// Castable with no other card in hand, and countering it keeps the card.
+func TestB35AbandonAttachmentsCastableWithAnEmptyHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	me.Hand.Cards = nil
+	castCatalogSpell(t, g, "Abandon Attachments", "Instant — Lesson", b35AbandonAttachmentsOracle, nil)
+	passPriorityAroundTable(t, g)
+	if discardChoiceFor(g, me.ID) != nil || me.Hand.Size() != 0 {
+		t.Errorf("an empty hand discards nothing and draws nothing: hand %d", me.Hand.Size())
 	}
 }
 

@@ -44,14 +44,7 @@ func init() {
 						}
 						return DealDamage{Source: item.SourceCardID, Target: t.ID, Amount: 2}.Apply(ctx)
 					}),
-				ModeDoing("Tap target creature.", TargetCreature("target creature"),
-					func(_ *game.StackItem, ctx *Context, occ int) error {
-						t, ok := ModeTarget(ctx, occ)
-						if !ok {
-							return nil
-						}
-						return TapTarget{Target: t.ID}.Apply(ctx)
-					}),
+				ModeDoing("Tap target creature.", TargetCreature("target creature"), TapTheModesTarget),
 				ModeDoing("Sacrifice this artifact. You gain 3 life.", nil,
 					func(item *game.StackItem, ctx *Context, _ int) error {
 						if onBattlefield(ctx.Game, item.SourceCardID) {

@@ -763,7 +763,23 @@ func TestRFPBLichsRelicPaidDestroysOnePerOpponent(t *testing.T) {
 	}
 	rfpbCastRelic(t, g, me, 2)
 	answerPayUnless(t, g, me.ID, true)
-	rfpbSettle(t, g, me.ID, refs...)
+	// One clause per opponent, asked one prompt at a time.
+	for i := 0; i < 8; i++ {
+		passPriorityAroundTable(t, g)
+		pick := latestPickTarget(g, me.ID)
+		if pick == nil {
+			break
+		}
+		var ref []game.TargetRef
+		for _, r := range refs {
+			if hasID(pick.PickTargetCards, r.ID) {
+				ref = []game.TargetRef{r}
+			}
+		}
+		if err := g.ResolvePickTargets(pick.ID, me.ID, ref); err != nil {
+			t.Fatalf("resolve the target prompt: %v", err)
+		}
+	}
 	for _, v := range victims {
 		if _, ok := battlefieldCard(g, v); ok {
 			t.Error("a victim survived the Relic")

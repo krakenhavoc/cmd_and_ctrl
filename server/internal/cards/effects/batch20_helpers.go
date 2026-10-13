@@ -175,33 +175,44 @@ func b20ExileTopUntilEndOfNextTurn(g *game.Game, item *game.StackItem, n int) er
 	return err
 }
 
-// b20EachPlayerDrawsAndGainsOne is Kwain's activation: each player
-// draws a card, then each player who drew gains 1 life — APNAP from
-// the active seat, eliminated seats skipped. A player whose library
-// is empty is treated as declining the draw (the one case where the
-// printed "may" is a real decision) and gains nothing.
+// b20EachPlayerDrawsAndGainsOne is Kwain's activation: each player MAY
+// draw a card, then each player who drew gains 1 life. The question
+// goes to each player in APNAP order (CR 101.4), eliminated seats
+// skipped; each yes draws at once, and the life comes after the last
+// answer. A player with no library may say yes (and loses to it,
+// CR 704.5b) but did not draw a card, so gains nothing.
 func b20EachPlayerDrawsAndGainsOne(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	numSeats := len(g.Seats)
-	if numSeats == 0 {
+	return b20KwainAsk(NewContext(g, item), apnapPlayers(g), nil)
+}
+
+func b20KwainAsk(ctx *Context, order, drew []uuid.UUID) error {
+	if len(order) == 0 {
+		for _, id := range drew {
+			if err := (GainLife{Player: id, Amount: 1}).Apply(ctx); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
-	start := g.Turn.ActiveSeat
-	var drew []uuid.UUID
-	for i := 0; i < numSeats; i++ {
-		p := g.Seats[(start+i)%numSeats]
-		if p == nil || p.Eliminated || p.Library == nil || p.Library.Size() == 0 {
-			continue
-		}
-		if err := (DrawCards{Player: p.ID, N: 1}).Apply(ctx); err != nil {
-			return err
-		}
-		drew = append(drew, p.ID)
+	who, rest := order[0], order[1:]
+	if p := ctx.Game.PlayerByIDForEffect(who); p == nil || p.Eliminated {
+		return b20KwainAsk(ctx, rest, drew)
 	}
-	for _, id := range drew {
-		if err := (GainLife{Player: id, Amount: 1}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return MayChoice{
+		Player:   who,
+		Question: "Kwain, Itinerant Meddler — draw a card?",
+		OnYes: func(ctx *Context) error {
+			p := ctx.Game.PlayerByIDForEffect(who)
+			got := p != nil && p.Library != nil && p.Library.Size() > 0
+			if err := (DrawCards{Player: who, N: 1}).Apply(ctx); err != nil {
+				return err
+			}
+			next := drew
+			if got {
+				next = append(append([]uuid.UUID(nil), drew...), who)
+			}
+			return b20KwainAsk(ctx, rest, next)
+		},
+		OnNo: func(ctx *Context) error { return b20KwainAsk(ctx, rest, drew) },
+	}.Apply(ctx)
 }

@@ -186,39 +186,33 @@ func b10GreatestManaValueCreatureOrPlaneswalkerYouControl() CardPredicate {
 	}
 }
 
-// b10SpellTargetsYouOrACreatureYouControl is Siren Stormtamer's
-// clause: the candidate spell on the stack has at least one target
-// that is the caster or a creature the caster controls ON THE
+// b10ItemTargetsYouOrACreatureYouControl is Siren Stormtamer's
+// clause: the candidate spell or ability on the stack has at least one
+// target that is the caster or a creature the caster controls ON THE
 // BATTLEFIELD. The zone check matters: a creature already in a
 // graveyard keeps its Controller field, and without it the Stormtamer
 // could protect a creature that has already left — which is also why
 // sacrificing the Stormtamer to counter a spell aimed only at itself
 // fizzles the ability at resolution, exactly as the printed card's
 // ruling has it.
-func b10SpellTargetsYouOrACreatureYouControl() CardPredicate {
-	return func(g *game.Game, caster uuid.UUID, c game.Card) bool {
-		item := g.StackItemForEffect(c.InstanceID)
-		if item == nil {
-			return false
-		}
-		for _, t := range item.Targets {
-			switch t.Kind {
-			case game.TargetPlayer:
-				if t.ID == caster {
-					return true
-				}
-			case game.TargetCard:
-				z := g.FindCardZoneForEffect(t.ID)
-				if z == nil || z.Kind != game.ZoneBattlefield {
-					continue
-				}
-				if tc, ok := g.LookupCardForEffect(t.ID); ok && tc.IsCreature() && tc.Controller == caster {
-					return true
-				}
+func b10ItemTargetsYouOrACreatureYouControl(g *game.Game, caster uuid.UUID, item *game.StackItem) bool {
+	for _, t := range item.Targets {
+		switch t.Kind {
+		case game.TargetPlayer:
+			if t.ID == caster {
+				return true
+			}
+		case game.TargetCard:
+			z := g.FindCardZoneForEffect(t.ID)
+			if z == nil || z.Kind != game.ZoneBattlefield {
+				continue
+			}
+			if tc, ok := g.LookupCardForEffect(t.ID); ok && tc.IsCreature() && tc.Controller == caster {
+				return true
 			}
 		}
-		return false
 	}
+	return false
 }
 
 // b10OneOf matches a permanent whose instance ID is in `keep` — the

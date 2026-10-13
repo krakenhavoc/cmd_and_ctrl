@@ -6195,6 +6195,38 @@ one `ChooseCardsPrompt` with no `FromPlayer` and no `Zone`: the candidates
 are public, the view looks them up by id, and the effect that acts on the
 answer already tolerates a card that has gone.
 
+**"You may draw / search / discard", asked of someone** (#3172, cav-f) is a
+question first: `MayChoice` for a draw (Mystic Remora, Kwain: one
+`MayChoice` per player in `apnapPlayers` order, chained), a
+`ChooseNumber` for "up to two" (Arcane Denial's victim, from a delayed
+trigger's body), `DiscardPrompt{UpTo: true}` with `Then` gated on
+`done.Discarded(player)` for "you may discard a card. If you do"
+(Abandon Attachments), and a `QueueConfirmForEffect` ahead of a
+non-optional search when "who searches" matters (Tempt with Discovery:
+a searcher may still fail to find, and still counts as having searched).
+
+**"Choose one" on a trigger is `Modes`, not a target prompt.** Voracious
+Hydra, Tiller Engine and Ertai Resurrected declare
+`TriggeredAbility.Modes` with `ModeDoing` bullets; a bullet whose target
+has no legal pick is simply not offered. Do not smuggle the mode into a
+"up to one target" clause. "Choose up to one" is `ChooseN(…, 0, 1, …)`.
+`TapTheModesTarget` and `DestroyTheModesTarget` are the shared bullet
+bodies.
+
+**"Target X and target Y" with different predicates** is `Clauses`, in a
+mode as on a spell (Hull Breach, Ulvenwald Tracker). A clause that exists
+only sometimes (Return to Dust's second target in your own main phase)
+is an "up to one" clause whose predicate is false the rest of the time.
+
+**"For each opponent, up to one target … that player controls"** on a
+spell or reflexive trigger is `perOpponentClauses` in
+[opponent_clauses.go](../server/internal/cards/effects/opponent_clauses.go):
+one clause per opponent in turn order, each bound to its opponent
+(Windgrace's Judgment, Lich's Relic). A permanent that changes hands in
+response is an illegal target for the clause it was chosen under.
+Molten Primordial's `TargetsFrom` is the same idea for a trigger that can
+name seats directly.
+
 **An intervening "if"** (Thopter Spy Network, Emeria) is read where the
 trigger is declared and again at the top of the `Effect`; the second read
 is the one a response can change (CR 603.4).

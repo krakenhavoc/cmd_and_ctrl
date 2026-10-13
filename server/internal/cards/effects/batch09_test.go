@@ -697,7 +697,7 @@ func TestB09SyphonMindDrawsOnePerOpponentWhoDiscards(t *testing.T) {
 
 // --- Roiling Regrowth ---------------------------------------------
 
-func TestB09RoilingRegrowthSacrificesAtCastAndFetchesTwoTappedBasics(t *testing.T) {
+func TestB09RoilingRegrowthSacrificesOnResolutionAndFetchesTwoTappedBasics(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	fodder := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
@@ -707,11 +707,15 @@ func TestB09RoilingRegrowthSacrificesAtCastAndFetchesTwoTappedBasics(t *testing.
 		game.Card{Name: "Forest C", TypeLine: "Basic Land — Forest"},
 		game.Card{Name: "Bayou", TypeLine: "Land — Swamp Forest"},
 	)
-	castWithSacrifice(t, g, "Roiling Regrowth", "Instant", b09RoilingRegrowthOracle, fodder)
-	if g.Battlefield.Contains(fodder) {
-		t.Error("the sacrifice is a cost and is paid at announce")
+	castCatalogSpell(t, g, "Roiling Regrowth", "Instant", b09RoilingRegrowthOracle, nil)
+	if !g.Battlefield.Contains(fodder) {
+		t.Error("nothing is sacrificed at cast")
 	}
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, fodder)
+	if g.Battlefield.Contains(fodder) {
+		t.Error("the land is sacrificed as the spell resolves")
+	}
 	c := searchChoiceFor(g, me.ID)
 	if c == nil {
 		t.Fatal("no search prompt")

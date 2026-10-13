@@ -145,44 +145,6 @@ func b22SlimeShrink() game.StaticAbility {
 	}
 }
 
-// b22DestroyFirstArtifactAndFirstEnchantment is Hull Breach's third
-// mode: of the two targets picked, the first that is an artifact and
-// the first that is an enchantment are destroyed. The picker cannot
-// tie a predicate to a slot, so it accepts any two artifacts or
-// enchantments; two of the same kind destroy only the first, which
-// is weaker than the printed clause and never stronger.
-func b22DestroyFirstArtifactAndFirstEnchantment(ctx *Context) error {
-	artifact, enchantment := uuid.Nil, uuid.Nil
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		c, ok := ctx.Game.LookupCardForEffect(t.ID)
-		if !ok {
-			continue
-		}
-		if artifact == uuid.Nil && c.IsArtifact() {
-			artifact = t.ID
-			continue
-		}
-		if enchantment == uuid.Nil && c.IsEnchantment() {
-			enchantment = t.ID
-		}
-	}
-	for _, id := range []uuid.UUID{artifact, enchantment} {
-		if id == uuid.Nil {
-			continue
-		}
-		if z := ctx.Game.FindCardZoneForEffect(id); z == nil || z.Kind != game.ZoneBattlefield {
-			continue
-		}
-		if err := (DestroyTarget{Target: id}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 // b22TuckThirdFromTop is God-Eternal Oketra's return: the card goes
 // into its owner's library third from the top — under the top two
 // cards, or on the bottom when the library holds fewer than two.

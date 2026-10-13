@@ -608,7 +608,7 @@ func TestB18ManyPartingsFetchesABasicToHandAndMakesAFood(t *testing.T) {
 	}
 }
 
-func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
+func TestB18CycleOfRenewalSacrificesALandOnResolutionAndFetchesTwoTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	land := b12Permanent(g, me.ID, "Old Forest", "Basic Land — Forest")
@@ -620,16 +620,17 @@ func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Cycle of Renewal", TypeLine: "Instant — Lesson",
 		OracleID: b18CycleOfRenewalOracle, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
-		t.Fatal("the land sacrifice is an additional cost")
-	}
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{SacrificeIDs: []uuid.UUID{land}}); err != nil {
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	if g.Battlefield.Contains(land) {
-		t.Error("the land is sacrificed on cast")
+	if !g.Battlefield.Contains(land) {
+		t.Error("nothing is sacrificed at cast")
 	}
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, land)
+	if g.Battlefield.Contains(land) {
+		t.Error("the land is sacrificed as the spell resolves")
+	}
 	takeSearchPrompts(t, g)
 	for _, name := range []string{"Forest", "Plains"} {
 		l := findBattlefieldByName(g, name)
@@ -640,8 +641,8 @@ func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
 			t.Errorf("%s enters tapped", name)
 		}
 	}
-	if spec, _ := Lookup(b18CycleOfRenewalOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the cost-not-effect posture must be declared")
+	if spec, _ := Lookup(b18CycleOfRenewalOracle); spec.Completeness != CompletenessFull {
+		t.Error("the sacrifice is part of the effect now")
 	}
 }
 
