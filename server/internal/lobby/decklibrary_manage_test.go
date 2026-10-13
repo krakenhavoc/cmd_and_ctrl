@@ -360,3 +360,63 @@ func TestLibraryReadsAreThrottled(t *testing.T) {
 		t.Error("12 rapid reads never hit 429")
 	}
 }
+
+// TestMyDecksCarriesCommanderCards pins ADR 0158 §2's additions to GET
+// /me/decks: each commander's printing (one with an image) and colour
+// identity, and the deck's identity as their union in WUBRG order. A
+// commander with no image anywhere, or no match, keeps its row with no
+// id, so the client draws a plain band rather than a broken image.
+func TestMyDecksCarriesCommanderCards(t *testing.T) {
+	st, owner, tok, idx := manageSetup(t)
+	tymna := uuid.New()
+	kraum := uuid.New()
+	idx.Put(cards.Card{ID: tymna, OracleID: uuid.New(), Name: "Tymna the Weaver", ColorIdentity: []string{"W", "B"},
+		ImageURIs: map[string]string{"art_crop": "https://example.test/t.jpg"}})
+	idx.Put(cards.Card{ID: kraum, OracleID: uuid.New(), Name: "Kraum, Ludevic's Opus", ColorIdentity: []string{"U", "R"},
+		CardFaces: []cards.CardFace{{Name: "Kraum, Ludevic's Opus", ImageURIs: map[string]string{"art_crop": "https://example.test/k.jpg"}}}})
+	ctx := context.Background()
+	if _, err := st.library.Upsert(ctx, owner, "Partners", "text", manageDeckText,
+		[]string{"Tymna the Weaver", "Kraum, Ludevic's Opus"}, 100); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := st.library.Upsert(ctx, owner, "Odd", "text", manageDeckText,
+		[]string{"Test Commander", "Nobody At All"}, 100); err != nil {
+		t.Fatal(err)
+	}
+
+	resp := doGet(t, st.srv, "/me/decks", tok)
+	defer resp.Body.Close()
+	var got myDecksResponse
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil || resp.StatusCode != 200 {
+		t.Fatalf("status %d, decode %v", resp.StatusCode, err)
+	}
+	byName := map[string]myDeckInfo{}
+	for _, d := range got.Decks {
+		byName[d.Name] = d
+	}
+
+	p := byName["Partners"]
+	if len(p.CommanderCards) != 2 {
+		t.Fatalf("partners commander_cards = %+v", p.CommanderCards)
+	}
+	if p.CommanderCards[0].ScryfallID != tymna.String() || p.CommanderCards[1].ScryfallID != kraum.String() {
+		t.Errorf("partner ids = %+v, want %s then %s", p.CommanderCards, tymna, kraum)
+	}
+	if fmt.Sprint(p.ColorIdentity) != "[W U B R]" {
+		t.Errorf("partners identity = %v, want [W U B R] (WUBRG order)", p.ColorIdentity)
+	}
+
+	o := byName["Odd"]
+	if len(o.CommanderCards) != 2 {
+		t.Fatalf("odd commander_cards = %+v", o.CommanderCards)
+	}
+	if c := o.CommanderCards[0]; c.Name != "Test Commander" || c.ScryfallID != "" || fmt.Sprint(c.ColorIdentity) != "[W]" {
+		t.Errorf("imageless commander = %+v, want no id and identity [W]", c)
+	}
+	if c := o.CommanderCards[1]; c.Name != "Nobody At All" || c.ScryfallID != "" || len(c.ColorIdentity) != 0 {
+		t.Errorf("unknown commander = %+v, want no id and no colours", c)
+	}
+	if fmt.Sprint(o.ColorIdentity) != "[W]" {
+		t.Errorf("odd identity = %v, want [W]", o.ColorIdentity)
+	}
+}
