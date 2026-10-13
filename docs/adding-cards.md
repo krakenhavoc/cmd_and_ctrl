@@ -9267,7 +9267,7 @@ ctx.SourcePermanent()                                                           
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
   its own `AltCostKey` and no pick (#3270).
 
-### Mobilize, a life-gain drain and "equipped creature phases out" (#3245)
+### Pieces from the Mass Casualty deck (#3245)
 
 - **Mobilize N** is `Triggered: []game.TriggeredAbility{Mobilize("Voice of Victory", 2)}` (`mobilize.go`): N 1/1 red
   Warriors tapped and attacking, placed with `CreateTokensAttackingYourChoice` (the defender offered first), and one
@@ -9278,6 +9278,15 @@ ctx.SourcePermanent()                                                           
   (`aura_helpers.go`, beside `tapAttachedHost`); the Equipment phases out with its host.
 - **"Whenever you attack with this creature and/or your commander"** is `OncePerBatch(On(game.EventAttack,
   thisOrYourCommanderAttacked, …))` (Ainok Strike Leader).
+- **Bargain** is `OptionalCosts: []game.AdditionalCost{Bargain()}` (`bargain.go`); "if this spell was bargained" is
+  `ctx.OptionalCostTimes(BargainKey) > 0`.
+- **"You may cast the exiled card without paying its mana cost if its mana value is N or less. Put it into your hand
+  if it wasn't cast this way"** is `g.CastExiledFreeOrToHandForEffect(player, source, card, N)` (ADR 0099 amendment
+  2026-10-13). Search face down first with `SearchLibrary{Dest: game.ZoneExile, FaceDown: game.FaceDownPermitted}`.
+- **"For each permanent exiled this way"** with an "until" is `ExileUntil{…, Then: func(ctx, exiled bool) error}`,
+  counting the trues (Abdel Adrian).
+- **A preparation card's prepare spell that prints an existing spell's text** reuses that spell's body: Grave
+  Researcher's Reanimate is `OnResolve: reanimateLosingItsManaValue`.
 
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 

@@ -24,6 +24,13 @@ describe("mayCastCopy (ADR 0099 §7)", () => {
     expect(mayCastKeywordsThatOpenACast.has("exile_until")).toBe(true);
   });
 
+  it("words a free-or-hand prompt around the hand and opens a free cast", () => {
+    const c = mayCastCopy("free_or_hand");
+    expect(c.decline).toBe("Put it into your hand");
+    expect(c.accept).toBe("Cast it free");
+    expect(mayCastKeywordsThatOpenACast.has("free_or_hand")).toBe(true);
+  });
+
   it("words a rebound prompt around staying in exile", () => {
     const c = mayCastCopy("rebound");
     expect(c.source).toContain("702.88");

@@ -21,6 +21,7 @@ export const mayCastKeywordsThatOpenACast: ReadonlySet<string> = new Set([
   "discover",
   "cascade",
   "exile_until",
+  "free_or_hand",
   "suspend",
   "rebound",
 ]);
