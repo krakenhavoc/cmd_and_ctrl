@@ -4152,12 +4152,30 @@ the Earth) sets nothing. Today the two behave the same at the prompt,
 and a card that says "may" keeps the flag so that stays true if "you
 may search" ever stops shuffling on a decline.
 
-The engine's only search reads a LIBRARY, a hidden zone. A search of a
-public zone ("search your graveyard") has no fail to find: the searcher
-sees everything, so they must find a valid card when one is present.
-There is no such primitive yet — those cards are choose-from-zone
-prompts with their own minimums — and `searchFloor` in
-`game/effect_api.go` is the rule written down for the day one lands.
+**"Search your library and/or graveyard" (#3217):** set
+`AlsoGraveyard: true` on `SearchLibrary` and write `Shuffle: true` as the
+card prints it ("If you search your library this way, shuffle"):
+
+```go
+SearchLibrary{Player: p, Predicate: …, Dest: game.ZoneHand, Limit: 1,
+    Reveal: true, Shuffle: true, AlsoGraveyard: true}   // Tower Winder, Delivery Moogle
+```
+
+The prompt offers the matches from both zones, marked by zone. "And/or"
+lets the searcher choose which zones to look in, so the floor is the
+ordinary library-search floor: a stated quality may find nothing even
+with a match in the graveyard, and an unconditional search must find
+`min(limit, cards in both zones)`. A take that comes wholly out of the
+graveyard does not search the library, so the engine skips the shuffle
+and `EventSearchLibrary`; any library card taken, or nothing found,
+shuffles (finding nothing counts as a library search: a declared
+simplification, a no-op in play). You do not model that, and you do not
+write a second search for the graveyard half. The graveyard searched is the library owner's, so do not
+combine it with `LibraryOwner`, and the destination is hand, battlefield
+or exile. A search of ONLY a public zone ("search your graveyard") is
+still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
+its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
+Prodigy) also reads the hand and is not covered.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `Then`, not on the next line:

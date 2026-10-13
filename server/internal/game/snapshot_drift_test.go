@@ -984,6 +984,7 @@ var pendingChoiceFields = plan(
 	// for free, which is the bug the field exists to stop.
 	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
+	"SearchGraveyardCards", carried, "",
 	"SearchMax", carried, "",
 	"SearchMin", carried, "",
 	// S28 cascade: which card the "you may cast it without paying

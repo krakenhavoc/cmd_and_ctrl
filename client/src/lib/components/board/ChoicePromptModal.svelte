@@ -533,11 +533,16 @@
   // pick on the tile takes one copy; the selection still holds each
   // copy's instance_id, so the answer and the count are unchanged.
   // A card with no name stays on its own tile.
+  // #3217: the graveyard half of an "and/or graveyard" search. A
+  // Command Tower in the library and one in the graveyard are two
+  // different tiles — they are not the same pick.
+  const searchGraveyardIDs = $derived(new Set(active?.search_graveyard ?? []));
   const searchGroups = $derived.by<CardView[][]>(() => {
     if (!isSearch) return [];
     const groups = new Map<string, CardView[]>();
     for (const c of optionCards) {
-      const key = c.name || c.instance_id;
+      const zone = searchGraveyardIDs.has(c.instance_id) ? "gy:" : "lib:";
+      const key = zone + (c.name || c.instance_id);
       const g = groups.get(key);
       if (g) g.push(c);
       else groups.set(key, [c]);
@@ -2502,7 +2507,12 @@
           {:else}
             Take up to {pickMax} of these, or find nothing — you may always come up short.
           {/if}
-          Only you can see them, and your library is shuffled either way.
+          {#if searchGraveyardIDs.size > 0}
+            Cards marked Graveyard are public. Taking one means you never looked in your library, so
+            it isn't shuffled; taking a library card, or nothing, shuffles it.
+          {:else}
+            Only you can see them, and your library is shuffled either way.
+          {/if}
         {:else if isCopyTarget && active?.exchanges_text}
           Pick a creature to exchange text boxes with — each takes the other's rules text and keeps
           its own name, types and power and toughness. Or pick nothing and keep its own text.
@@ -2628,7 +2638,7 @@
       </p>
       <div class="card-grid">
         {#if isSearch}
-          {#each searchGroups as group (group[0].name || group[0].instance_id)}
+          {#each searchGroups as group ((searchGraveyardIDs.has(group[0].instance_id) ? "gy:" : "lib:") + (group[0].name || group[0].instance_id))}
             {@const picked = groupPicked(group)}
             <button
               type="button"
@@ -2642,9 +2652,10 @@
               <Card card={group[0]} />
               <PickName card={group[0]} />
               <span class="source-caption">
-                {group.length > 1 ? `×${group.length}` : ""}{picked > 0
-                  ? `${group.length > 1 ? " · " : ""}${picked} taken`
-                  : ""}
+                {searchGraveyardIDs.has(group[0].instance_id) ? "Graveyard · " : ""}{group.length >
+                1
+                  ? `×${group.length}`
+                  : ""}{picked > 0 ? `${group.length > 1 ? " · " : ""}${picked} taken` : ""}
               </span>
             </button>
           {/each}

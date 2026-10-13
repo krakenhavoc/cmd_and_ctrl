@@ -1520,16 +1520,17 @@ type pendingChoiceSnapshot struct {
 	LibraryTopDepth int         `json:"libraryTopDepth,omitempty"`
 	TriggerOrderIDs []uuid.UUID `json:"triggerOrderIds,omitempty"`
 	// #3015: the sentence under "Order your triggers".
-	TriggerOrderWhy string      `json:"triggerOrderWhy,omitempty"`
-	PayCost         string      `json:"payCost,omitempty"`
-	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
-	SearchMax       int         `json:"searchMax"`
-	SearchMin       int         `json:"searchMin,omitempty"`
-	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
-	MayCastKeyword  string      `json:"mayCastKeyword,omitempty"`
-	AcceptLabel     string      `json:"acceptLabel,omitempty"`
-	LifeCost        int         `json:"lifeCost,omitempty"`
-	DeclineLabel    string      `json:"declineLabel,omitempty"`
+	TriggerOrderWhy      string      `json:"triggerOrderWhy,omitempty"`
+	PayCost              string      `json:"payCost,omitempty"`
+	SearchCards          []uuid.UUID `json:"searchCards,omitempty"`
+	SearchGraveyardCards []uuid.UUID `json:"searchGraveyardCards,omitempty"`
+	SearchMax            int         `json:"searchMax"`
+	SearchMin            int         `json:"searchMin,omitempty"`
+	MayCastCard          uuid.UUID   `json:"mayCastCard,omitempty"`
+	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
+	AcceptLabel          string      `json:"acceptLabel,omitempty"`
+	LifeCost             int         `json:"lifeCost,omitempty"`
+	DeclineLabel         string      `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -2556,6 +2557,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
+		SearchGraveyardCards: copyUUIDs(c.SearchGraveyardCards),
 		SearchMax:            c.SearchMax,
 		SearchMin:            c.SearchMin,
 		MayCastCard:          c.MayCastCard,
@@ -3427,6 +3429,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
+		SearchGraveyardCards: copyUUIDs(c.SearchGraveyardCards),
 		SearchMax:            c.SearchMax,
 		SearchMin:            c.SearchMin,
 		MayCastCard:          c.MayCastCard,

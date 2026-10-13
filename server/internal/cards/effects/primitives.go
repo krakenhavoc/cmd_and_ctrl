@@ -1072,6 +1072,18 @@ type SearchLibrary struct {
 	// Dest is game.ZoneExile. The zero value, game.FaceDownNone, is
 	// an ordinary face-up exile.
 	FaceDown game.FaceDownKind
+	// AlsoGraveyard is "search your library AND/OR GRAVEYARD" (#3217 —
+	// Finale of Devastation, Tower Winder, Ajani's Aid). The picker
+	// offers matches from both zones, marked by zone. "And/or" lets the
+	// searcher choose their zones, so the floor is unchanged: a stated
+	// quality may still find nothing even with a match in the graveyard.
+	// A take that came wholly from the graveyard does not search the
+	// library, so it does not shuffle — "If you search your library this
+	// way, shuffle." Taking nothing counts as a library search (shuffle
+	// and event); see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle
+	// as the card prints it; the engine decides whether the library was
+	// searched.
+	AlsoGraveyard bool
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -1099,6 +1111,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		LibraryOwner:       s.LibraryOwner,
 		Unbounded:          s.Unbounded,
 		FaceDown:           s.FaceDown,
+		AlsoGraveyard:      s.AlsoGraveyard,
 	})
 }
 
