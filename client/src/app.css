@@ -912,3 +912,28 @@ textarea::placeholder {
   background: var(--accent-soft);
   color: var(--fg);
 }
+
+/* Registered so the Web Animations in lib/animations.ts can interpolate
+   them (an unregistered custom property flips at the halfway point).
+   --tap-rot is the tap rotation, --impact-glow the combat hit's flash
+   (ADR 0134 section 2). Their initial values are what the consumers'
+   var() fallbacks said: no rotation, no glow. --impact-x is NOT
+   registered, on purpose: an unset one is what keeps the avatar disc's
+   `translate` at none (PlayerIdentity.svelte), and a registered property
+   is never unset. The shake animates --impact-shake instead and points
+   an inline --impact-x at it for the length of the shake. */
+@property --tap-rot {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+@property --impact-glow {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --impact-shake {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}

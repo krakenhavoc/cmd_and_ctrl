@@ -674,7 +674,7 @@
     >
       <!-- #2396: .rise lifts the card on hover while the slot stays put
            and keeps the pointer. Inner wrapper (.deal-wrap) carries the
-           deal-in / deal-out transforms (inline, from GSAP) so they
+           deal-in / deal-out transforms (inline) so they
            don't fight the .hand-slot's fan-layout transform or the
            lift. -->
       <div class="rise">
