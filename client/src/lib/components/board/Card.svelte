@@ -24,6 +24,7 @@
   import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { creditText, useArtist } from "../../artistCredit.svelte";
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
@@ -471,8 +472,23 @@
   // — is the same markup a full card draws. A card with no art (a
   // token with no printing) keeps the name fallback, as before.
   const artTile = $derived(imgSize === "art_crop" && !!imgSrc && !showsCardBack(card, faceDown));
+  // #2982: Scryfall's art crop drops the artist line and its image
+  // guidelines ask that it not be hidden, so a tile credits the artist
+  // itself. Only a tile asks: a full card prints the line on the card.
+  const artist = useArtist(() => ({
+    id: artTile ? card.scryfall_id : null,
+    face: card.active_face ?? 0,
+  }));
 
-  // Real MTG card back bundled as a static asset under client/public.
+  // The tooltip repeats the credit: a compact tile is too narrow to print it.
+  const tipName = $derived(
+    artTile && artist.value
+      ? `${displayName(card)} (${creditText(artist.value)})`
+      : displayName(card),
+  );
+
+  // The card back is our own (the C2 mark, client/tools/gen-card-back.py), bundled as a static asset under client/public;
+  // it replaced a scan of Wizards' back, whose logo does not belong on this site (#2982).
   // Two sizes to keep hand/battlefield thumbnails snappy while the
   // hover-zoom overlay gets a crisper back. Served at /card-back*.jpg
   // by Vite and in production by whoever serves the built client.
@@ -787,6 +803,7 @@
   class="card"
   class:face-down={showBack}
   class:art-tile={artTile}
+  class:has-credit={artTile && !!artist.value}
   class:tapped={card.tapped}
   class:selected
   class:targetable
@@ -808,11 +825,7 @@
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
-  title={showBack
-    ? ""
-    : ready && idleHint
-      ? `${displayName(card)} — ${idleHint}`
-      : displayName(card)}
+  title={showBack ? "" : ready && idleHint ? `${displayName(card)} — ${idleHint}` : tipName}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -850,6 +863,11 @@
       <!-- #2209: the art crop has no title bar. Hidden from assistive
            tech because the card's own accessible name already is it. -->
       <span class="art-name" aria-hidden="true">{displayName(card)}</span>
+      {#if artist.value}
+        <!-- #2982: "Illus. <artist>". Hidden from assistive tech like the
+             name strip beside it; the tile's tooltip carries it too. -->
+        <span class="art-credit" aria-hidden="true">{creditText(artist.value)}</span>
+      {/if}
     {/if}
     {#if showFaceDownBadge}
       <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
@@ -1401,12 +1419,21 @@
   .card.art-tile {
     --art-name-size: clamp(9px, calc(var(--card-w, 80px) * 0.085), 13px);
     --art-strip-h: calc(var(--art-name-size) + 7px);
-    --face-top: var(--art-strip-h);
+    --face-top: calc(var(--art-strip-h) + var(--art-credit-h, 0px));
+  }
+  /* #2982: the artist line sits directly under the name strip and the
+     top-anchored marks step down below both. Its height is 0 on a tile
+     narrower than 70px (the compact rows), where the text could not be
+     read: calc(width - 70px) * 1000 is a length that clamps to 0 at or
+     under 70px and to the full height just above it. The hover zoom is
+     the full card, which prints the artist itself. */
+  .card.art-tile.has-credit {
+    --art-credit-h: clamp(0px, calc((var(--card-w, 80px) - 70px) * 1000), 11px);
   }
   /* The failed-art pip steps under the strip with everything else. A
      tapped tile keeps its own 58% (below). */
   .card.art-tile:not(.tapped) {
-    --art-error-top: calc(22px + var(--art-strip-h));
+    --art-error-top: calc(22px + var(--art-strip-h) + var(--art-credit-h, 0px));
   }
   .card.tapped {
     /* A tapped tile turns 90° clockwise: its left edge becomes its top
@@ -1503,6 +1530,29 @@
     overflow: hidden;
     text-overflow: ellipsis;
     pointer-events: none;
+  }
+  .art-credit {
+    position: absolute;
+    top: var(--art-strip-h);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    height: var(--art-credit-h, 0px);
+    padding: 0 5px;
+    font-size: 8px;
+    line-height: var(--art-credit-h, 0px);
+    font-style: italic;
+    color: #e6e0cf;
+    background: rgba(6, 9, 18, 0.62);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  :global(:root[data-theme="high-contrast"]) .art-credit {
+    color: #fff;
+    background: #000;
   }
   :global(:root[data-theme="high-contrast"]) .art-name {
     color: #fff;

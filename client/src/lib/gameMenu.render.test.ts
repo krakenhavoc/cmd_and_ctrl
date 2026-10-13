@@ -211,6 +211,7 @@ describe("GameMenu", () => {
       "Back to lobby",
       "Tips for the table",
       "Keyboard shortcuts",
+      "Legal notice",
       "Concede…",
     ]);
     // Mulligan to N keeps its field and its Go.
@@ -405,6 +406,7 @@ describe("GameMenu", () => {
       "Back to lobby",
       "Tips for the table",
       "Keyboard shortcuts",
+      "Legal notice",
     ]);
     expect(m.container.querySelector('input[aria-label="mulligan hand size"]')).toBeNull();
   });
@@ -438,6 +440,34 @@ describe("GameMenu", () => {
     expect(m.container.querySelector('[role="menu"]')).toBeNull();
   });
 
+  // #2982: the footer is not on the table, so the notice is in the menu.
+  it("Legal notice opens the Fan Content Policy notice, with its link, and Close returns focus", async () => {
+    const m = mountMenu();
+    await open(m.trigger);
+    click(item(m.container, "Legal notice")!);
+    await settle();
+    const dialog = m.container.querySelector<HTMLElement>(
+      '[role="dialog"][aria-label="legal notice"]',
+    )!;
+    expect(dialog).not.toBeNull();
+    expect(m.container.querySelector('[role="menu"]')).toBeNull();
+    expect(dialog.textContent!.replace(/\s+/g, " ")).toContain(
+      "cmd_and_ctrl is unofficial Fan Content permitted under the Fan Content Policy.",
+    );
+    const hrefs = [...dialog.querySelectorAll("a")].map((a) => a.getAttribute("href"));
+    expect(hrefs).toContain("https://company.wizards.com/en/legal/fancontentpolicy");
+    expect(hrefs).toContain("https://scryfall.com");
+    click(dialog.querySelector<HTMLButtonElement>("button.keep")!);
+    flushSync();
+    expect(m.container.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("a spectator reaches the notice too", async () => {
+    const m = mountMenu({ seated: false, placement: "down" });
+    await open(m.trigger);
+    expect(item(m.container, "Legal notice")).toBeDefined();
+  });
+
   it("offers Replay the tutorial on the practice table only", async () => {
     const onReplayTutorial = vi.fn();
     const m = mountMenu({ practice: true, onReplayTutorial });
@@ -447,6 +477,7 @@ describe("GameMenu", () => {
       "Tips for the table",
       "Keyboard shortcuts",
       "Replay the tutorial",
+      "Legal notice",
     ]);
     click(item(m.container, "Replay the tutorial")!);
     flushSync();
