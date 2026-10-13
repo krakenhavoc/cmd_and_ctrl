@@ -222,6 +222,67 @@ export const COMPLETENESS_LABELS: Record<Completeness, string> = {
   unreviewed: "Unreviewed",
 };
 
+/** Per-value counts for the sidebar's Completeness and Type facets. */
+export interface FacetCounts {
+  completeness: Record<Completeness, number>;
+  types: Record<TypeFilter, number>;
+}
+
+/**
+ * facetCounts counts the cards each sidebar value would show.
+ *
+ * Each facet is counted with every OTHER filter applied and its own
+ * cleared, so a count says "tick this and you get N" — the number a
+ * person wants before they click, and one that never hides a value
+ * they have already ticked. Computed from the catalogue the page has
+ * loaded; there is no server round trip.
+ */
+export function facetCounts(entries: CatalogEntry[], filter: CatalogFilter): FacetCounts {
+  const completeness: Record<Completeness, number> = { full: 0, caveats: 0, unreviewed: 0 };
+  for (const e of filterCatalog(entries, { ...filter, completeness: [] })) {
+    completeness[e.completeness]++;
+  }
+  const types = Object.fromEntries(TYPE_FILTERS.map((t) => [t, 0])) as Record<TypeFilter, number>;
+  for (const e of filterCatalog(entries, { ...filter, types: [] })) {
+    for (const t of TYPE_FILTERS) if ((e.types ?? []).includes(t)) types[t]++;
+  }
+  return { completeness, types };
+}
+
+/** One removable chip over the grid: a single active filter value. */
+export type FilterChip =
+  | { kind: "query"; value: string; label: string }
+  | { kind: "colors"; value: ColorFilter; label: string }
+  | { kind: "types"; value: TypeFilter; label: string }
+  | { kind: "completeness"; value: Completeness; label: string };
+
+/** activeChips lists one chip per active filter value, in sidebar order. */
+export function activeChips(filter: CatalogFilter): FilterChip[] {
+  const chips: FilterChip[] = [];
+  const q = filter.query.trim();
+  if (q) chips.push({ kind: "query", value: q, label: `“${q}”` });
+  for (const b of filter.completeness) {
+    chips.push({ kind: "completeness", value: b, label: COMPLETENESS_LABELS[b] });
+  }
+  for (const c of filter.colors) chips.push({ kind: "colors", value: c, label: COLOR_LABELS[c] });
+  for (const t of filter.types) chips.push({ kind: "types", value: t, label: t });
+  return chips;
+}
+
+/** removeChip returns the filter without the chip's value. */
+export function removeChip(filter: CatalogFilter, chip: FilterChip): CatalogFilter {
+  switch (chip.kind) {
+    case "query":
+      return { ...filter, query: "" };
+    case "colors":
+      return { ...filter, colors: filter.colors.filter((v) => v !== chip.value) };
+    case "types":
+      return { ...filter, types: filter.types.filter((v) => v !== chip.value) };
+    case "completeness":
+      return { ...filter, completeness: filter.completeness.filter((v) => v !== chip.value) };
+  }
+}
+
 export const COMPLETENESS_BLURBS: Record<Completeness, string> = {
   full: "Every clause printed on the card is implemented.",
   caveats: "Works, but a printed clause is not modelled. The card says which.",
