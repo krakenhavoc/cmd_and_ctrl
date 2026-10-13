@@ -1,8 +1,8 @@
 # ADR 0152 — More Than Meets the Eye, convert and living metal (CR 702.162, 701.28, 702.161)
 
-**Status:** Proposed · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
+**Status:** Accepted (owner decisions 2026-10-13) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
 **Issues:** [#1856](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1856) (seam: More Than Meets the Eye, convert and living metal — Goldbug, Humanity's Ally). Found by [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) PR 3 (#1806), S50 tracker #1784. Registry row: `more-than-meets-the-eye` (missing; the implementation closes it).
-**Owner decisions:** needed. See [Questions for the owner](#questions-for-the-owner). No engine code is written until they are answered.
+**Owner decisions:** the owner answered all five questions on 2026-10-13, each with the recommended option (a). The answers are recorded inline under [Questions for the owner (answered 2026-10-13)](#questions-for-the-owner-answered-2026-10-13) and are binding on the implementation PRs in §8.
 **Numbering:** assigned by the S53 plan. Before writing, I checked every ref with `git log --all -- 'docs/decisions/015*'` after `git fetch`: no branch has a 015x file. The highest number on `origin/develop` is 0149. This ADR is **0152**.
 **Builds on:** [ADR 0034](0034-multi-face-cards.md) (the face model), [ADR 0079](0079-transforming-a-permanent.md) (transform in place; "return it transformed"), [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) §4 (disturb: `AlternativeCost.CastsFace`), [ADR 0118](0118-strict-payment-by-default-and-alternative-costs-for-every-spell.md) (alternative costs from any zone), [ADR 0126](0126-bots-that-play-their-decks.md) (the heuristic prices what a card does), [ADR 0132](0132-day-and-night.md) (daybound's "can't transform except").
 
@@ -173,32 +173,37 @@ The heuristic has to price a converted cast as the permanent it produces. Otherw
 - **Living metal as a scoped effect applied at the start of each turn.** That stores state for something that is a pure read of whose turn it is, and needs a cleanup on a control change mid-turn. The static needs neither.
 - **Leaving CR 701.28e to each card file.** That is what transform does today. With 15 cards that turn over in both directions, that means 15 hand-written checks, and the double-flip case would still be wrong.
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-13)
 
-Each question lists the recommended option first.
+Each question lists the recommended option first. The owner chose (a), the recommended option, on all five questions on 2026-10-13. The options not chosen are kept for the record.
 
 1. **How a convert appears in events (§2; CR 701.27e, 701.28a, 712.20).**
    - **(a) Recommended:** `EventTransform` with `Converted: true`. The layer bump, "transforms into" triggers and `AsTransformsInto` work with no change, and a plain "whenever … transforms" reader checks `!Converted`.
    - (b) A new `EventConvert` kind, added to every reader that should see it. Cleaner to read, but a reader that forgets the second case fails silently.
    - (c) No distinction: a convert is a transform. The log says "transformed". This is wrong for a future plain "transforms" trigger.
+   - **Decision:** (a). A convert is `EventTransform` with `Converted: true`.
 
 2. **CR 701.27f / 701.28e: "if it has already converted, the instruction is ignored" (§3).**
    - **(a) Recommended:** an engine rule. `Card.TurnOvers`, recorded on stack items and delayed triggers, is checked by `ConvertThis` and `TransformThis`. Two additive v7 fields. Matches the rule exactly, including two turn-overs in a row.
    - (b) A face check in `ConvertThis`: convert only if the source still shows the face whose ability this is. No new state. Right for the double-strike case, wrong when the permanent turned over twice since the ability went on the stack.
    - (c) Nothing. Two "convert it" triggers would flip it twice.
+   - **Decision:** (a). CR 701.27f / 701.28e is an engine rule: `Card.TurnOvers`, recorded on stack items and delayed triggers, is checked by `ConvertThis` and `TransformThis`.
 
 3. **Where living metal comes from (§4; CR 702.161a).**
    - **(a) Recommended:** `effects.LivingMetal()`, declared on the back face's entry by the card file, with the keyword in `canonicalKeywords` for the badge. This is how flashback and disturb work, and it is reviewed together with the rest of the card.
    - (b) Derived by the engine from the printed keyword (the way phasing is read from `Effective().Abilities`), so a back face with the keyword works with no card file. That covers the 13 Vehicles without card files, but none of them can be cast converted or convert without one anyway, and it adds a layer-4 effect that depends on a layer-6 read.
+   - **Decision:** (a). Living metal is `effects.LivingMetal()`, declared by the card file on the back face's entry, and the keyword joins `canonicalKeywords`.
 
 4. **The bot's price for a converted cast (§6).**
    - **(a) Recommended:** in scope: `casts_face` on the offer, and the heuristic prices the face the move casts. Without it the bot always pays the cheaper price, which is right for Goldbug and wrong for Megatron and Ultra Magnus.
    - (b) Out of scope for now: the bot prices both casts as the front face, with a caveat on each card, and a follow-up issue.
+   - **Decision:** (a). The bot prices converted casts now: `casts_face` goes on the offer view, and the heuristic prices the face the move casts.
 
 5. **How many cards ship with the seam (§8).**
    - **(a) Recommended:** the engine PR ships Goldbug, Humanity's Ally (the issue's waiting card) if its other text is already covered, and one card issue is filed for the other 14, to be gap-checked one at a time.
    - (b) All 15 in this sprint, each card's other text included. Several need seams of their own (Soundwave's cast of a copy from a graveyard, Flamewar's intel counters, Slicer's "can't be sacrificed"), so this is several sprints of work, not one.
    - (c) The engine only, with no proof card. That leaves the registry row's `Waiting` empty with nothing showing that the seam works.
+   - **Decision:** (a). Goldbug, Humanity's Ally is the proof card in the engine PR, and one card issue is filed for the other 14.
 
 ## Consequences
 
