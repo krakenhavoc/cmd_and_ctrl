@@ -16,13 +16,14 @@ opponents' stack abilities, which have no card-backed target object.
 
 ## Decision
 
-1. Add `EventCrimeCommitted`, once per qualifying announcement, with the
-   announcing controller in `Actor`, the source in `Source`, and the announced
-   object in `StackItemID`. No qualifying-target count or persistent tally is
-   needed. A separate later announcement is another crime.
+1. Annotate exactly one existing `EventBecomesTarget` per qualifying
+   announcement with `CrimeCommitted`. Its `Actor`, `Source`, and
+   `StackItemID` already identify the controller, source and announcement.
+   The first qualifying target slot carries the annotation; a separate later
+   announcement is another crime. No new event-log entry or tally is needed.
 2. The common announcement helper checks the complete target set while the
-   announcement exists, then emits ordinary becomes-target events and the
-   single crime event. It is called only by successful casts, catalog and
+   announcement exists, then emits ordinary becomes-target events with the
+   single crime annotation. It is called only by successful casts, catalog and
    sandbox activations, and actual placement of targeted triggered abilities.
    Trigger placement keeps the existing APNAP batch boundary and deferred
    target announcement flag. Copies and retargeting retain their ordinary
@@ -35,9 +36,16 @@ opponents' stack abilities, which have no card-backed target object.
 4. Catalog cards use the shared `YouCommittedCrime` predicate. Magda and
    Lazav migrate to the new event; Forsaken Miner supplies a graveyard proof
    card using the existing resolution-time payment and object-identity guard.
-5. This is an additive event kind using existing serialized event fields.
+5. This is an additive optional boolean on the existing serialized event.
    No snapshot structure, unfinished choice frame or schema version changes.
    Historical becomes-target events are not replayed as crimes on restore.
+
+The initial implementation used a separate logged crime event. The frozen
+corpus guard showed that this changes existing histories' sequence numbers
+and lengths, despite requiring no new game state. The annotation preserves
+those histories and makes old fixture values a subset of fresh captures;
+frozen fixtures are unchanged. The crime predicate reads the annotation,
+never the mere existence of a becomes-target event.
 
 ## Validation
 
