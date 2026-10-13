@@ -96,7 +96,7 @@ planned just-in-time from the S12 pain-point triage.
 | S50     | Seams from the deck re-checks                                        | 7     | [#1784](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1784) | —        | **done**    |
 | S51     | Turn-scoped effects, object history, and the rest of the damage shields | 7     | [#1908](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1908) | —          | **done**    |
 | S52     | Rule gates, land types, mana and cost components                     | 7     | [#1909](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1909) | —          | **done**    |
-| S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | planned     |
+| S53     | Faces, zones, and shared payment (ADR first)                         | 7     | [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910) | —          | in progress |
 | S54     | Tutorial: a scripted practice game                                   | 7     | [#1911](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1911) | —          | **done**    |
 | S55     | Remember me: durable sign-in, account settings, admins and saved setups | 6  | [#1950](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1950) | —          | **done**    |
 | S56     | Table UX: one action dock, bottom right                              | 7     | [#1958](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1958) | —          | **done**    |
@@ -110,10 +110,13 @@ planned just-in-time from the S12 pain-point triage.
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | **done**    |
 | S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
 | S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | **done**    |
-| S67     | Bots round 3: no stalls, sharper sequencing                          | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/76) | —          | in progress |
+| S67     | Bots round 3: no stalls, sharper sequencing                          | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/76) | —          | **done**    |
 | S68     | Cost components and alternative costs                                | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/77) | —          | **done**    |
 | S69     | Combat you can watch: table animations                               | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/78) | —          | **done**    |
-| S70     | Public beta: a table strangers can find                              | 7     | [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985) | —          | planned     |
+| S70     | Public beta: a table strangers can find                              | 7     | [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985) | —          | in progress |
+| S71     | A front door: site shell, front page and a Discord gate              | 7     | [#3177](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3177) | —          | in progress |
+| S72     | Smoother table play: fewer clicks, the London mulligan, rematch      | 7     | [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294) | —          | planned     |
+| S73     | Big boards: layout and per-action cost                               | 7     | [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295) | —          | planned     |
 
 On 2026-10-11 the milestones for S37, S41, S47–S49, S51, S52, S54–S57, S60–S64, S68 and S69 were
 closed. Their open stragglers (18 issues) moved to the **Backlog** milestone, to be picked up at the
@@ -3204,7 +3207,10 @@ S51 holds turn-scoped effects, object history and damage shields; S52 holds rule
 
 ### Status
 
-**Planned.** Nothing has shipped under this name.
+**In progress** (2026-10-13 triage). Everything has shipped except #1557's last part: assist and unless-any-player-pays (#1903, #1857, #3204), transform from the graveyard (#1900), More Than Meets the Eye (#1856, #3195, #3196), opponent-caused discard (#1861, #3168), Animate Dead (#1780), and the battlefield and graveyard lenders (#3200). These reached `main` in #3287. Three issues are still open:
+
+- #1557 waits on [#3201](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3201), the exiled-with lenders (ADR 0155 PR 3).
+- #1892, flip cards, shipped with 14 cards (#3215, #3260). Two cards still wait on the seams #3160 and #3250.
 
 ---
 
@@ -3667,7 +3673,7 @@ From the tracker, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/298
 
 ### Status
 
-**Planned** (2026-10-10).
+**In progress** (2026-10-13 triage). All eight members are closed: #3101, #2988, #3094, #3099, #3120, #3106, #3108 and #3110. Exit criteria 2 to 4 still need their evidence posted on #2985, and criteria 5 and 6 are the owner's calls.
 
 ---
 
@@ -3691,6 +3697,63 @@ Opened 2026-10-13, when the owner asked for the site to be tidied, the Discord s
 3. A signed-out visitor with no Discord account can play a practice game from the front page, and can join a host's table by invite link.
 4. Every non-game page uses the shared frame. The before and after screenshots at 1440 and 820 px are attached to the slices' PRs.
 5. With `CMDCTRL_DISCORD_INVITE_URL` unset, no Discord placement shows. With the guild and role unset, sign-in behaves as it did before S71.
+
+### Status
+
+**Planned** (2026-10-13).
+
+---
+
+## S72 — Smoother table play: fewer clicks, the London mulligan, rematch
+
+**Phase:** 7 · **Goal:** stop asking for clicks that aren't choices, make mulligans follow CR 103.5, and let a finished table play again. Tracking issue [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294).
+
+Opened at the 2026-10-13 triage of every open issue.
+
+- [ ] [#2799](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2799): mulligans follow CR 103.5, with the free first mulligan in multiplayer (P1)
+- [ ] [#3264](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3264): choose a lone legal target automatically
+- [ ] [#3265](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3265): one target for every instance of a repeated trigger
+- [ ] [#3266](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3266): declare attackers by toggling creatures, and keep Attack all
+- [ ] [#3285](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3285): rematch with the same table after game over
+- [ ] [#3262](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3262): several badges on a player hide their life total
+- [ ] [#3095](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3095): the damage-assignment sheet covers the defender's creature row at 1280x720
+
+### Exit criteria
+
+From the tracker, [#3294](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3294):
+
+1. A mulligan puts N cards on the bottom after keep, with the first one free in multiplayer. Players decide in turn order, and bots follow the same rule.
+2. A trigger or spell with exactly one legal target never waits on a click. Repeated triggers can share a target. Attackers are staged and then confirmed.
+3. A finished table can rematch with the same seats, decks and settings.
+4. Life totals stay visible with any number of badges, and the board's damage steppers can be clicked at 1280x720.
+5. The nightly E2E is green on each client-interaction PR's branch.
+
+### Status
+
+**Planned** (2026-10-13). #3264, #3265 and #3266 already have PRs open (#3284, #3286, #3291).
+
+---
+
+## S73 — Big boards: layout and per-action cost
+
+**Phase:** 7 · **Goal:** very large boards stay readable, and an action on one costs little more than on a small board. Tracking issue [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295).
+
+Opened at the 2026-10-13 triage, from the owner's 2026-10-11 review of a 39-creature board, and the profiling in #3041 and #3136.
+
+- [ ] [#3044](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3044): use vertical room, and stack lands legibly, on a crowded board
+- [ ] [#3045](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3045): close the empty band between the creature row and the back row
+- [ ] [#3046](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3046): stack identical nontoken permanents into one pile with a count
+- [ ] [#3041](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3041): store the mana pool as runs, not one token per mana
+- [ ] [#3136](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3136): the per-action `Game.Clone` and the restore-point write: sparse snapshots or copy-on-write
+
+### Exit criteria
+
+From the tracker, [#3295](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3295):
+
+1. On the 2344x1377 review board, no row shrinks below a readable size while the panel has empty height. Lands can be clicked one by one, and identical permanents show as one pile with a count.
+2. A 2^20 floating-mana pool costs about the same per action as an empty one.
+3. The per-action Clone and restore-point cost falls measurably on #2113's soak profile, and undo behaves the same.
+4. A snapshot-schema change, if any, follows the snapshot compatibility rules (AGENTS.md §5).
 
 ### Status
 
