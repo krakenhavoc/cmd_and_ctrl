@@ -111,14 +111,8 @@
           <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">GitHub</a>.
         </li>
         <li>
-          {#if DISCORD_INVITE_URL}
-            Chat with us on
-            <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">Discord</a>.
-          {:else}
-            <!-- TODO(owner): Discord invite. No public invite is configured in the repo;
-                 set DISCORD_INVITE_URL in lib/about.ts and this line becomes a link. -->
-            A community chat link is not set up yet.
-          {/if}
+          Chat with us on
+          <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">Discord</a>.
         </li>
       </ul>
     </section>

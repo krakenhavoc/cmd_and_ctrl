@@ -83,9 +83,9 @@ describe("the about page", () => {
     // The Fan Content wording is LegalNotice's own, not a second copy here.
     expect(text).toContain("Magic: The Gathering is a trademark of Wizards of the Coast LLC");
     expect(text).toContain("Scryfall");
-    // No Discord invite is configured, so none is invented.
-    expect(DISCORD_INVITE_URL).toBeNull();
-    expect(hrefs.some((h) => /discord\.(gg|com)/.test(h ?? ""))).toBe(false);
+    // The community Discord invite is linked.
+    expect(DISCORD_INVITE_URL).toBe("https://discord.gg/z7x9Ehpnjw");
+    expect(hrefs).toContain(DISCORD_INVITE_URL);
   });
 
   it("shows a card count only when the server supplied it", async () => {

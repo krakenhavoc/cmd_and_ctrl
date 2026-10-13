@@ -51,6 +51,8 @@ Use the in-app "Report a bug" button, or open a
 be automated, check the deck on the [decks page](https://cmd.labxp.io/#/decks) and use
 **Request missing cards**. Requests need a Discord sign-in.
 
+To find a game or just chat, join the [C2 Discord](https://discord.gg/z7x9Ehpnjw).
+
 ## Sponsoring
 
 If you enjoy the project, you can support it through
