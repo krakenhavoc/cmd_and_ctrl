@@ -41,6 +41,7 @@ describe("parseHash", () => {
   // #2983: the privacy notice.
   it("parses #/privacy", () => {
     expect(parseHash("#/privacy")).toEqual({ name: "privacy" });
+    expect(parseHash("#/about")).toEqual({ name: "about" });
   });
 
   // ADR 0112 §3 item 2: the decks page is #/decks, and #/deck-check

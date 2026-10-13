@@ -4959,6 +4959,40 @@ All three ride a granted permission instead — see the next paragraph.
 Declare `ZoneExile` only when the card's own printed text grants the
 cast to every copy, at any time, however it got there.
 
+**A cast zone that is open only while a condition holds (#3105):**
+"You may cast this card from your graveyard as long as you control a
+Zombie" (Gravecrawler), "...as long as you control a black or green
+permanent" (Marang River Prowler), "Max speed — You may cast this card
+from your graveyard" (Lightwheel Enhancements) are the card's OWN
+permission with a condition on it. Declare them in `Spec.CastableZonesIf`
+instead of `CastableZones`:
+
+```go
+CastableZonesIf: []game.ConditionalCastZone{MaxSpeedCastableFrom(game.ZoneGraveyard)},                 // speed
+CastableZonesIf: []game.ConditionalCastZone{{Zone: game.ZoneGraveyard, Cond: ownerControlsAZombie}},  // anything else
+```
+
+`Cond` is `func(g *game.Game, owner uuid.UUID, card game.Card) bool`. It
+is asked of the card's OWNER (a card's own text opens its owner's zone
+and nobody else's) and must be pure: read the game it is handed,
+capture nothing, store nothing. The engine, the view's `castable_here`,
+the legal-move enumerator and so the bot all read it through one
+predicate (`Game.cardOpensZoneLocked`, reached from outside the package as
+`CardCastableFromAnyFaceLocked`), so the cast button appears and
+disappears as the condition flips and the four can never disagree.
+Only a graveyard is accepted (`Register` panics otherwise, and on a nil
+`Cond`), and a zone-bound `AlternativeCost` such as flashback may name a
+zone listed here.
+
+Do **not** write it as `CastableZones` plus a `CastCondition` that looks
+the card's zone up (Oathsworn Vampire, The Indomitable predate this and
+still do). A `CastCondition` refuses EVERY cast out of that zone, so a
+Snapcaster Mage or Underworld Breach grant over the same card would be
+refused whenever the condition is false; the conditional zone gates only
+the card's own text, and a permission still opens the zone. The
+difference also decides whether a one-spell permission (Locke) is
+spent: only a cast the grant was the reason for spends it.
+
 **Granted permissions (S42, [ADR 0066](decisions/0066-granted-cast-and-play-permissions.md)):**
 when an EFFECT rather than a card's own text opens a zone — Snapcaster
 Mage giving flashback, Underworld Breach giving escape, Bolas's Citadel
@@ -7778,6 +7812,11 @@ it. Never write the speed check by hand.
   (the glossary's "Max Speed"), so a Surveyor's graveyard ability reads
   its owner's speed. Declare `Zones` as for any graveyard ability; the
   max speed half follows it there (CR 702.178b).
+- **"Max speed — You may cast this card from your graveyard"**
+  (Lightwheel Enhancements) is a conditional cast zone, not an
+  ability: `CastableZonesIf: []game.ConditionalCastZone{MaxSpeedCastableFrom(game.ZoneGraveyard)}`.
+  See "A cast zone that is open only while a condition holds" under
+  "Casting from somewhere other than hand".
 - **A static that reads the speed needs no `DependsOn…` flag.** Every
   speed change emits `game.EventSpeedChanged`, which bumps the layer
   version.

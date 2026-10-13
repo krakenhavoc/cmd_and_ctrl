@@ -383,9 +383,14 @@ var mechanics = []Mechanic{
 					return true
 				}
 			}
+			for _, z := range s.CastableZonesIf {
+				if z.Zone == game.ZoneGraveyard {
+					return true
+				}
+			}
 			return false
 		},
-		Evidence:   "the spec lists game.ZoneGraveyard in CastableZones",
+		Evidence:   "the spec lists game.ZoneGraveyard in CastableZones or CastableZonesIf",
 		Confidence: Exact,
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard}`,
 	},

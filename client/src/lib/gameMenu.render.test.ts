@@ -212,6 +212,7 @@ describe("GameMenu", () => {
       "Tips for the table",
       "Keyboard shortcuts",
       "Legal notice",
+      "About this project",
       "Concede…",
     ]);
     // Mulligan to N keeps its field and its Go.
@@ -407,6 +408,7 @@ describe("GameMenu", () => {
       "Tips for the table",
       "Keyboard shortcuts",
       "Legal notice",
+      "About this project",
     ]);
     expect(m.container.querySelector('input[aria-label="mulligan hand size"]')).toBeNull();
   });
@@ -484,6 +486,7 @@ describe("GameMenu", () => {
       "Keyboard shortcuts",
       "Replay the tutorial",
       "Legal notice",
+      "About this project",
     ]);
     click(item(m.container, "Replay the tutorial")!);
     flushSync();

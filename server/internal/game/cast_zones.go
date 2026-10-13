@@ -57,6 +57,60 @@ import "github.com/google/uuid"
 // nearly every card.
 var CatalogCastableZones func(oracleID string) []ZoneKind
 
+// ConditionalCastZone is a zone a card opens for itself only while a
+// condition holds — "Max speed — You may cast this card from your
+// graveyard" (Lightwheel Enhancements, ADR 0138 and the 2026-10-13
+// amendment to ADR 0066).
+//
+// The condition is asked of the card's OWNER, because a card's own text
+// opens its owner's zone and nobody else's, with the game and the card
+// being cast (the face already materialised, as for CastCondition). It
+// must be PURE: it reads the game it is handed and captures nothing, so
+// it survives Clone and undo, and the answer can change from one
+// snapshot to the next without anything being rebuilt. It gates ONLY the
+// card's own opening of the zone: a permission that opens the same zone
+// (Snapcaster Mage's flashback grant, Underworld Breach) still does, at
+// any speed, which is the difference from a CastCondition that refuses
+// every cast out of the zone.
+type ConditionalCastZone struct {
+	Zone ZoneKind
+	Cond func(g *Game, owner uuid.UUID, card Card) bool
+}
+
+// CatalogCastableZonesIf is the catalog hook for Spec.CastableZonesIf,
+// wired beside CatalogCastableZones. Nil, or a nil return, is the
+// ordinary case: the card declares no conditional zone.
+var CatalogCastableZonesIf func(oracleID string) []ConditionalCastZone
+
+// cardOpensZoneLocked is THE predicate for "does this card's own text
+// let its owner cast it from `zone` right now": an unconditional
+// CastableZones declaration, or a CastableZonesIf entry whose condition
+// holds. Hand is always true. `key` is the catalog key the cast path
+// resolved (castPathKey), which differs from CatalogKey(card) only for
+// a disturbed card.
+//
+// Every consumer asks this one function: validateCastPathLocked (the
+// engine), CardCastableFromAnyFaceLocked (the legal-move enumerator and
+// the view), castUsesGrantLocked and the delve ordering. A condition
+// therefore cannot hold for the engine and fail for the bot, or the
+// reverse (#1171's lesson).
+//
+// Caller must hold g.mu.
+func (g *Game) cardOpensZoneLocked(card Card, key string, zone ZoneKind) bool {
+	if CardCastableFromZone(key, zone) {
+		return true
+	}
+	if CatalogCastableZonesIf == nil || key == "" {
+		return false
+	}
+	for _, cz := range CatalogCastableZonesIf(key) {
+		if cz.Zone == zone && cz.Cond != nil && cz.Cond(g, card.Owner, card) {
+			return true
+		}
+	}
+	return false
+}
+
 // defaultCastableZones is what a card that declares nothing gets:
 // its owner's hand, and nowhere else (CR 601.2).
 var defaultCastableZones = []ZoneKind{ZoneHand}
@@ -86,7 +140,10 @@ func CastableZonesFor(oracleID string) []ZoneKind {
 }
 
 // CardCastableFromZone reports whether the card's own text allows a
-// cast out of `zone`. Hand is always true. The command zone and
+// cast out of `zone` UNCONDITIONALLY. Hand is always true. A zone that is
+// open only while a condition holds (Spec.CastableZonesIf) is not
+// answered here, because the answer needs a game; use
+// Game.CardCastableFromAnyFaceLocked, which asks both halves. The command zone and
 // exile answer false unless the card says so — their permissions
 // come from the format and from per-instance grants respectively,
 // and the cast path checks those separately.
@@ -123,12 +180,18 @@ func CardCastableFromZone(oracleID string, zone ZoneKind) bool {
 // zone itself and names its own faces (validateCastPathLocked rule 4,
 // faceForCastLocked), so it is a different question with a different
 // answer and neither caller reaches here holding one.
-func CardCastableFromAnyFace(c Card, zone ZoneKind) bool {
+//
+// A method on the game since the 2026-10-13 amendment to ADR 0066: a
+// zone a card opens only while a condition holds (Lightwheel
+// Enhancements at max speed) needs the game to be answered, so the
+// enumerator and the view pass theirs rather than each asking the
+// unconditional table. Caller must hold g.mu.
+func (g *Game) CardCastableFromAnyFaceLocked(c Card, zone ZoneKind) bool {
 	// The single-faced fast path, which is ~33,000 of the oracle IDs
 	// in the game and every card in a typical graveyard: one catalog
 	// key, no face walk and no slice.
 	if len(c.Faces) < 2 {
-		return CardCastableFromZone(CatalogKey(c), zone)
+		return g.cardOpensZoneLocked(c, CatalogKey(c), zone)
 	}
 	for _, face := range c.CastableFaces() {
 		// Materialised onto a COPY, exactly as CastSpell and the
@@ -136,7 +199,7 @@ func CardCastableFromAnyFace(c Card, zone ZoneKind) bool {
 		// without this function learning how a face becomes a key.
 		probe := c
 		probe.SetFace(face)
-		if CardCastableFromZone(CatalogKey(probe), zone) {
+		if g.cardOpensZoneLocked(probe, CatalogKey(probe), zone) {
 			return true
 		}
 		// ADR 0103, CR 702.127a: an aftermath half opens its owner's
@@ -347,7 +410,7 @@ func (g *Game) castUsesGrantLocked(card Card, srcKind ZoneKind, alt *Alternative
 		return true
 	}
 	aftermathOpens, _ := aftermathZoneRule(card, srcKind)
-	return !aftermathOpens && !CardCastableFromZone(castPathKey(card, alt), srcKind)
+	return !aftermathOpens && !g.cardOpensZoneLocked(card, castPathKey(card, alt), srcKind)
 }
 
 // validateCastPathLocked is the S29 gate, widened by ADR 0066: may
@@ -419,7 +482,7 @@ func (g *Game) validateCastPathLocked(card Card, srcKind ZoneKind, alt *Alternat
 	if err != nil {
 		return err
 	}
-	opensItself := aftermathOpens || CardCastableFromZone(key, srcKind)
+	opensItself := aftermathOpens || g.cardOpensZoneLocked(card, key, srcKind)
 	switch srcKind {
 	case ZoneHand, ZoneCommand:
 		return nil
