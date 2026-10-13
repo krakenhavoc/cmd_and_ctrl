@@ -13,19 +13,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it does not target, so hexproof and shroud are irrelevant and each
 // opponent chooses their own (EachPlayerSacrifices).
 //
-// Simplification, declared: hexproof FROM planeswalkers is a
-// source-qualified hexproof the targeting gate has no shape for
-// (ADR 0038 §7 sets out why protection-style keywords are per-card),
-// so the card ships without it. Weaker than printed, never stronger.
+// Hexproof from planeswalkers is game.HexproofFromPlaneswalkers
+// (#3172, ADR 0038's amendment of 2026-10-13): hexproof that refuses
+// only a source with the quality, tested at the targeting choke point
+// the way protection is and only against an opponent's source. Its
+// controller's own planeswalkers can still target it.
 func init() {
 	Register(Spec{
-		OracleID:     "06b7987d-c876-4369-9c2d-ce1d35a01097",
-		Name:         "Eradicator Valkyrie",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Hexproof from planeswalkers isn't implemented — planeswalkers' abilities can target it.",
-		},
-		PrintedKeywords: []string{"flying", "lifelink"},
+		OracleID:        "06b7987d-c876-4369-9c2d-ce1d35a01097",
+		Name:            "Eradicator Valkyrie",
+		Completeness:    CompletenessFull,
+		PrintedKeywords: []string{"flying", "lifelink", game.HexproofFromPlaneswalkers},
 		Activated: []ActivatedAbility{
 			BoastAnswering(
 				game.AnswerSacOutlet|game.AnswerRemove,

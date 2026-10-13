@@ -121,6 +121,10 @@ then carries neither the broad nor the narrow ability, which errs
 weaker. `hexproof` is the only token in that set today; shroud and
 the combat keywords have no parameterised form.
 
+*Amended 2026-10-13 (#3172):* the narrow ability is now enforced, so
+the card carries the narrow token and still never the broad one. See
+the amendment at the end of this ADR.
+
 ### 7. Ward and protection are deliberately **not** here
 
 Both belong to the same family and neither is a missing afternoon of
@@ -534,3 +538,66 @@ on last-known information like every other field there. It is
 - **Archetype of Aggression** and **Archetype of Courage** are moved
   onto `LoseAndCantHave`. Their caveats described exactly this gap,
   so they now ship `full`.
+
+## Amendment (2026-10-13, #3172): hexproof from a quality
+
+§6 refused "Hexproof from [quality]" as a token because the engine had
+no vocabulary for the quality, and left the 21 cards that print it
+without the ability. Protection's grammar (ADR 0072) has since given
+the engine that vocabulary and the source-aware targeting call
+(`TargetSource`, #662), so the variant is now built on the same pieces.
+
+### C1. One token, one reader
+
+`"hexproof from <quality>"` is a token in `Characteristic.Abilities`,
+parsed only by `game.ParseHexproofFromQuality` (`game/hexproof_from.go`).
+It reuses `parseQuality` for colours, card types and creature types, and
+adds two colour-count qualities that only hexproof prints:
+`monocolored` (the source has exactly one colour) and `each color` /
+`all colors` (at least one). They are new `ProtectionQualityKind`s that
+protection's own parser never produces, so ADR 0072 §10's closed grammar
+stands. A quality outside the grammar, or one protection has that
+hexproof does not (everything, a player, a mana value, a Ring-bearer),
+parses as no token, which errs weaker.
+
+### C2. The choke point asks both questions
+
+`canBeTargetedBy` refuses when the permanent has a parseable variant, its
+controller is not the source's controller (hexproof's test, CR 702.11b),
+and the source's characteristics have the quality (protection's test).
+The player half (`canPlayerBeTargetedByLocked`) does the same, so Veil of
+Summer can give a player "hexproof from blue". Both are read by the
+bot's enumerator for free, as §5 says of hexproof.
+
+An unknown source (no snapshot) matches no quality, so it refuses nothing.
+
+### C3. How it composes with the rest of the family
+
+- **Waivers.** "As though it didn't have hexproof" (A1) waives the
+  variant too: `hexproofFromRefuses` goes through the same
+  `hexproofBypassedLocked`. Shroud and protection are untouched.
+- **Can't have.** `enforceCantHaveLocked` strips every `hexproof from …`
+  token when `hexproof` is among the tokens an object can't have
+  (CR 702.11e makes them variants of hexproof).
+- **The importer.** `CanonicalKeywords` accepts a whole
+  `hexproof from <quality>` clause, and `deck.printedKeywords` reads it
+  off the oracle line as protection's is read, because Scryfall's array
+  carries only "Hexproof from". The bare `hexproof` Scryfall tags beside
+  it is still dropped by the narrow-variant check, so Knight of Grace is
+  hexproof from black and not hexproof.
+
+### C4. Cards
+
+Eradicator Valkyrie (planeswalkers), Breaker of Creation (each color),
+Dragonfire Blade (monocolored, granted to the equipped creature), Veil of
+Summer (blue and black, to the player and to the permanents controlled as
+it resolves, until end of turn) and Soulflayer (a delved creature's
+variant, per its 2020-01-24 ruling) ship `full`.
+
+### C5. Ward—Discard
+
+Not a targeting restriction, so it is in this ADR only by §7's
+pointer. `effects.WardDiscard(n)` is a fifth `WardCost` component beside
+mana, waterbend, life and sacrifice: a Confirm whose accept branch queues
+the payer's own discard prompt, with the spell countered on a decline or
+when the payer's hand is smaller than the cost.

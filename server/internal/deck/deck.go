@@ -311,6 +311,7 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 	}
 	var scanned map[string]int
 	wantProtection := false
+	wantHexproofFrom := false
 	wantToxic := false
 	wantAnnihilator := false
 	wantRenown := false
@@ -326,6 +327,14 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 			// that the engine does not enforce is simply dropped.
 			if strings.EqualFold(strings.TrimSpace(raw), "protection") {
 				wantProtection = true
+			}
+			// HEXPROOF FROM [quality] (CR 702.11e, #3172) is protection's
+			// shape: the array says "Hexproof from" and the quality is
+			// only in the oracle line, so the token comes from the line
+			// scan below. The bare "Hexproof" Scryfall tags beside it is
+			// dropped by the narrow-variant check.
+			if strings.EqualFold(strings.TrimSpace(raw), "hexproof from") {
+				wantHexproofFrom = true
 			}
 			// TOXIC (CR 702.164) is the same shape: the array says
 			// "Toxic" and the amount is only in the oracle line
@@ -417,6 +426,27 @@ func printedKeywordsForFace(c cards.Card, face int) []string {
 		// imports.
 		sort.Strings(protections)
 		out = append(out, protections...)
+	}
+	if wantHexproofFrom {
+		lines := front
+		if lines == nil {
+			if scanned == nil {
+				scanned = keywordLineCountsOf(c)
+			}
+			lines = scanned
+		}
+		var variants []string
+		for kw, n := range lines {
+			if n == 0 {
+				continue
+			}
+			if _, ok := game.ParseHexproofFromQuality(kw); ok && !containsString(out, kw) {
+				variants = append(variants, kw)
+			}
+		}
+		// Sorted for the same stable-badge reason as protection.
+		sort.Strings(variants)
+		out = append(out, variants...)
 	}
 	// Toxic and annihilator are numbered keywords: Scryfall's array
 	// says only the word, so their tokens are read off the keyword

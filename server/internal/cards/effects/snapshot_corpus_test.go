@@ -1441,6 +1441,18 @@ func corpusCounterShields(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	castCatalogSpell(t, g, "Veil of Summer", "Instant", cgVeilOfSummerOracle, nil)
 	passPriorityAroundTable(t, g)
+	// Veil of Summer also grants hexproof from blue and from black
+	// (#3172). This board is about the counter shield, and its fixture
+	// predates that half ("never edit the fixture"), so the board keeps
+	// building what the fixture holds: only the shield grant stays.
+	kept := me.Statics[:0:0]
+	for _, st := range me.Statics {
+		if st.Keyword == "" {
+			kept = append(kept, st)
+		}
+	}
+	me.Statics = kept
+	g.ScopedEffects = nil
 	village := pushCatalogPermanent(g, me.ID, "Mistrise Village", "Land", cgMistriseVillageOracle, false)
 	shusher := pushCatalogPermanent(g, me.ID, "Vexing Shusher", "Creature — Goblin Shaman", cgVexingShusherOracle, false)
 	bear := castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)

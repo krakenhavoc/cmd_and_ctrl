@@ -25,20 +25,19 @@ import (
 // The front targets one card in any graveyard, the back up to two cards
 // in any graveyards (not "a single graveyard").
 //
-// DECLARED SIMPLIFICATION, weaker than printed: Ward—Discard a card is
-// not implemented. A ward cost is one of mana, life or a sacrifice
-// (ward.go), and there is no discard component. Leaving the ward out
-// makes the creature easier to target than printed, never harder.
+// Ward—Discard a card is Ward(WardDiscard(1)) (#3172, ward.go): the
+// spell's controller is asked to discard a card of their choice or the
+// spell is countered, and a caster with an empty hand is countered
+// without a prompt. Both faces carry it, as printed.
 func init() {
 	const oracle = "0bbd6cad-9b6f-45a6-9f2e-d7b4853586ae"
-	caveat := "Ward—Discard a card isn't implemented — opponents can target it without discarding."
 	Register(Spec{
 		OracleID:        oracle,
 		Name:            "Graveyard Trespasser",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{caveat},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"daybound"},
 		Triggered: []game.TriggeredAbility{
+			Ward(WardDiscard(1), "Graveyard Trespasser — ward, discard a card"),
 			Targeting(
 				WhenThisEntersOrAttacks("Graveyard Trespasser — exile up to one target card from a graveyard",
 					graveyardExileAndDrain(false)),
@@ -48,10 +47,10 @@ func init() {
 	Register(Spec{
 		OracleID:        oracle + "#1",
 		Name:            "Graveyard Glutton",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{caveat},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"nightbound"},
 		Triggered: []game.TriggeredAbility{
+			Ward(WardDiscard(1), "Graveyard Glutton — ward, discard a card"),
 			Targeting(
 				WhenThisEntersOrAttacks("Graveyard Glutton — exile up to two target cards from graveyards",
 					graveyardExileAndDrain(true)),

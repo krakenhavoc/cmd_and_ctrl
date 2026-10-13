@@ -2546,6 +2546,33 @@ owner (`server/internal/game/protection.go`):
    against. A hand-typed near-miss mints no token and the card ships
    looking finished and doing nothing.
 
+**Hexproof from a quality (CR 702.11e, #3172, ADR 0038's amendment of
+2026-10-13).** The same shape one rule over: the token is
+`"hexproof from <quality>"`, it goes in `PrintedKeywords`,
+`GrantToAttached` or `GrantKeywordUntilEOT` like any keyword, and its one
+reader is `server/internal/game/hexproof_from.go`. Use the constants
+(`game.HexproofFromPlaneswalkers`, `HexproofFromMonocolored`,
+`HexproofFromEachColor`) or `game.HexproofFromColor("U")` for a colour
+pick, never a hand-typed string. The quality is tested against the
+SOURCE of the spell or ability exactly as protection's is, but only an
+OPPONENT's source is refused (CR 702.11b), so the permanent's own
+controller can still target it. The grammar is protection's colours, card
+types and creature types plus `monocolored` and `each color`
+(`all colors`); anything else parses as no token. A player can have it
+too: `GainPlayerKeyword{Keyword: game.HexproofFromColor("U"), …}` or
+`Spec.PlayerKeywords`. A hexproof waiver ("as though it didn't have
+hexproof") waives the variant, and "can't have hexproof" strips it. The
+deck importer stamps the token for a card whose oracle line prints the
+variant (Knight of Grace), and never the broad `hexproof` beside it.
+
+**Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
+`WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
+and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
+component; a composite such as Captain Howler's "{2}, Pay 2 life" is not
+built. A discard ward asks the caster to confirm, then to pick the card
+from their own hand; a caster with fewer cards than the cost is
+countered with no prompt.
+
 The four checks are engine-side and a card opts into none of them:
 targeting (`CanBeTargetedBy`, CR 702.16b), attachment
 (`attachmentLegalLocked`, CR 702.16c-d), damage (the
