@@ -84,13 +84,11 @@ describe("the voice calls", () => {
   it("surface the server's refusal", async () => {
     vi.stubGlobal(
       "fetch",
-      vi
-        .fn()
-        .mockResolvedValue(
-          new Response(JSON.stringify({ error: "voice rooms are off on this server" }), {
-            status: 503,
-          }),
-        ),
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: "voice rooms are off on this server" }), {
+          status: 503,
+        }),
+      ),
     );
     await expect(setVoiceRoom("g-1", true)).rejects.toThrow(/voice rooms are off/);
   });
