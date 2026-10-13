@@ -20,13 +20,14 @@ import (
 // permanent is still on the battlefield, so "nontoken" is read there.
 // The card is put onto the battlefield only if it is still in a
 // graveyard as the trigger resolves; one that has left (exiled, or
-// taken by another It That Betrays) stays where it is.
+// taken by another It That Betrays) stays where it is. An Aura put onto
+// the battlefield this way chooses what it enchants as it enters, and
+// its new controller chooses (CR 303.4f, #3158).
 func init() {
 	Register(Spec{
 		OracleID:        "b11187ab-f8a8-422b-b550-4495f96de0f2",
 		Name:            "It That Betrays",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"An Aura returned this way comes back unattached and is put into the graveyard — you don't get to choose what it enchants."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"annihilator 2"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventSacrifice, AnOpponentSacrificedANontokenPermanent,

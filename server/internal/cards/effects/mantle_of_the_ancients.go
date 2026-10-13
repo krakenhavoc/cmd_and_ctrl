@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -67,20 +65,11 @@ func mantleOfTheAncientsReturn(g *game.Game, item *game.StackItem) error {
 			ids = append(ids, id)
 		}
 	}
+	// Each card ENTERS attached to the host (#3158), so an Aura is not
+	// asked CR 303.4f's question: the effect names what it enchants.
 	return ReturnFromGraveyardTogether{
-		Targets: ids,
-		Then: func(ctx *Context, entered []uuid.UUID) error {
-			hostRef := game.TargetRef{Kind: game.TargetCard, ID: hostID}
-			for _, id := range entered {
-				if !onBattlefield(ctx.Game, id) {
-					continue
-				}
-				if err := ctx.Game.AttachForEffect(id, hostRef); err != nil && !errors.Is(err, game.ErrCardNotFound) {
-					return err
-				}
-			}
-			return nil
-		},
+		Targets:    ids,
+		AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: hostID},
 	}.Apply(NewContext(g, item))
 }
 

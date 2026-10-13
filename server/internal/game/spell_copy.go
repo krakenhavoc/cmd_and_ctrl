@@ -773,16 +773,26 @@ func (g *Game) resolvePermanentSpellCopyLocked(top Card, item *StackItem) error 
 	// attached the same way. Bestowed is not a copiable value, so the
 	// template does not carry it; the copy's stack card does.
 	bestowed := top.Bestowed
+	// #3158: the copy NAMES its host, so the token enters attached to it
+	// rather than being asked CR 303.4f's question (aura_host.go). A
+	// bestowed copy is a creature card until it is seeded below, which
+	// the entry does not see as an Aura, so it keeps the attach after.
+	var entry TokenEntryOptions
+	if host, ok := singleAuraHost(targets); ok && !bestowed && tmpl.IsAura() {
+		entry.AttachedTo = host
+	}
 	return g.CreateTokensThenForEffect(TokenCreation{
 		Controller: item.Controller,
-		Groups:     []TokenGroup{{Template: tmpl, Count: 1}},
+		Groups:     []TokenGroup{{Template: tmpl, Count: 1, Entry: entry}},
 		Source:     item.SourceCardID,
 	}, func(g *Game, created []uuid.UUID) error {
 		for _, id := range created {
 			if bestowed {
 				g.seedBestowedEntryLocked(id, nil)
 			}
-			g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
+			if entry.AttachedTo.Kind == "" {
+				g.attachResolvedAuraLocked(id, &StackItem{Targets: targets})
+			}
 			g.adoptSpellControlLocked(controlRecords, id, controlBase)
 		}
 		return nil

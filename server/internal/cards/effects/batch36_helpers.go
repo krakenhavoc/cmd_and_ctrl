@@ -226,19 +226,17 @@ func b36ReturnCardsExiledWithToOwnersHands(g *game.Game, item *game.StackItem) e
 	return nil
 }
 
-// b36ReturnAllNonAuraEnchantmentCards is Replenish's body: every
-// enchantment card in the caster's graveyard that is not an Aura
-// returns to the battlefield under its owner's control, all of them
-// as one entry (#1867), so every ETB trigger sees the whole batch
-// (CR 603.6a). Auras stay where they are — the printed "Auras with
-// nothing to enchant remain in your graveyard", applied to every Aura,
-// because the reanimation path has no CR 303.4f choose-what-to-enchant
-// prompt (see the card file). The cards are read before anything
-// moves.
-func b36ReturnAllNonAuraEnchantmentCards(ctx *Context) error {
+// b36ReturnAllEnchantmentCards is Replenish's body: every enchantment
+// card in the caster's graveyard returns to the battlefield under its
+// owner's control, all of them as one entry (#1867), so every ETB
+// trigger sees the whole batch (CR 603.6a). Each Aura chooses what it
+// enchants as it enters (CR 303.4f, #3158), and one with nothing to
+// enchant stays in the graveyard (CR 303.4g). The cards are read before
+// anything moves.
+func b36ReturnAllEnchantmentCards(ctx *Context) error {
 	return ReturnFromGraveyardTogether{
 		Targets: graveyardCardIDs(ctx, ctx.Controller(), func(c game.Card) bool {
-			return c.IsEnchantment() && !c.IsAura()
+			return c.IsEnchantment()
 		}),
 	}.Apply(ctx)
 }

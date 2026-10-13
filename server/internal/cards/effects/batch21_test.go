@@ -400,8 +400,10 @@ func TestB21BrilliantRestorationReturnsArtifactsAndEnchantments(t *testing.T) {
 	if g.Battlefield.Contains(theirs) || !opp.Graveyard.Contains(theirs) {
 		t.Error("an opponent's graveyard is not yours")
 	}
-	if spec, _ := Lookup(b21BrilliantRestorationOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the unattached-Aura gap must be declared")
+	// #3158: an Aura it returns chooses its host as it enters
+	// (aura_host_cards_test.go), so nothing is declared.
+	if spec, _ := Lookup(b21BrilliantRestorationOracle); spec.Completeness != CompletenessFull {
+		t.Error("Brilliant Restoration is complete since CR 303.4f's choice")
 	}
 }
 

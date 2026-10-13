@@ -8539,9 +8539,43 @@ Triggered: []game.TriggeredAbility{WhenThisEnters("Dance of the Dead — …", D
   reach nothing while the host is a card in a graveyard.
 - "At the beginning of the upkeep of enchanted creature's controller" is
   `On(game.EventBeginUpkeep, UpkeepOfEnchantedCreaturesController, …)`.
-- An Aura put onto the battlefield without being cast can't choose what it
-  enchants yet (CR 303.4f, #3158); it enchants nothing and goes to the
-  graveyard.
+- Put onto the battlefield without being cast (Sun Titan, Replenish), the
+  Aura chooses a creature card in a graveyard as it enters and the same
+  enters trigger returns it (CR 303.4f, #3158). See the next section.
+
+### Auras put onto the battlefield without being cast (CR 303.4f, #3158)
+
+An Aura that enters any way other than by resolving as an Aura spell —
+reanimated, fetched, put from a library or hand, returned from exile, a
+token copy — chooses what it enchants AS IT ENTERS, and the engine asks
+for you. Write the return, the search or the put as you would for any
+permanent; do not filter Auras out, and do not attach anything
+afterwards.
+
+- The choice is the last step of the entry's CR 614 window
+  (`game/aura_host.go`). The candidates are the Aura's own `Spec.Targets`
+  (its enchant clause, graveyard clauses included), read without the
+  targeting gate: hexproof doesn't stop it, protection does. Cards
+  entering in the same batch are never candidates (Replenish's ruling).
+- One legal host is taken without asking. With none, the Aura stays in
+  the zone it was leaving (CR 303.4g), and a token isn't created.
+- An Aura with no catalogued enchant clause is a manual object and is
+  left alone, as before.
+
+When the EFFECT names the host ("put it onto the battlefield attached to
+Light-Paws", "return … attached to enchanted creature"), say so on the
+entry, so the Aura enters attached and is not asked:
+
+```go
+SearchLibrary{…, EntersAttachedTo: game.TargetRef{Kind: game.TargetCard, ID: source}}  // Light-Paws
+ReturnFromGraveyardTogether{Targets: ids, AttachedTo: hostRef}                        // Mantle of the Ancients
+g.PutOntoBattlefieldTogetherThenForEffect(entries, game.ZoneEntryOptions{AttachedTo: hostRef}, nil) // Gift of Immortality
+game.TokenEntryOptions{AttachedTo: hostRef}                                            // a token created attached
+```
+
+An Aura that can't legally enchant the named host stays where it was
+(CR 303.4i). A non-Aura given `AttachedTo` (Mantle's Equipment) is
+attached as it enters and left to CR 704.5n.
 
 ### Suspect (CR 701.60, #2698)
 

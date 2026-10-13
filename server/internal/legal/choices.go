@@ -467,7 +467,11 @@ func (e *enumerator) choiceMoves() bool {
 		// which stops the seat dead because the engine also refuses
 		// pass_priority while a choice is open. Any seat that cast a
 		// battle, or that controlled two legends, was stuck.
-		case game.PendingChoicePickTarget, game.PendingChoiceChooseProtector, game.PendingChoiceLegendRule:
+		// #3158: CR 303.4f's aura_host is the same single {kind, id}
+		// pick out of a server-computed set, min 1 max 1, so one answer
+		// per candidate host.
+		case game.PendingChoicePickTarget, game.PendingChoiceChooseProtector, game.PendingChoiceLegendRule,
+			game.PendingChoiceAuraHost:
 			cands := make([]game.TargetRef, 0, len(c.PickTargetPlayers)+len(c.PickTargetCards))
 			for _, id := range c.PickTargetPlayers {
 				cands = append(cands, game.TargetRef{Kind: game.TargetPlayer, ID: id})

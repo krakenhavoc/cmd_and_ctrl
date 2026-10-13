@@ -14,24 +14,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // every ETB trigger sees the whole batch (CR 603.6a). Not targeted, as printed, and
 // castable with an empty graveyard to no effect.
 //
-// Sandbox simplification, declared: an Aura returned this way comes
-// back UNATTACHED, and CR 704.5m then puts it straight into the
-// graveyard. CR 303.4f is the clause that is missing — it lets the
-// Aura's controller choose what it enchants as it enters, and the
-// reanimation path has no such prompt. So the Aura goes back to the
-// graveyard it came from instead of enchanting something. Weaker than
-// printed (the Aura does nothing), never stronger.
-//
-// It used to SIT on the battlefield forever instead, which was worse
-// than weak: an Aura attached to nothing is a board state CR 704.5m
-// forbids and no sequence of legal plays can reach. That branch of
-// the state-based action landed in the S24 tail.
+// An Aura returned this way chooses what it enchants as it enters
+// (CR 303.4f, #3158), one question per Aura, among the objects and
+// players already there — not another permanent this spell is
+// returning. One with nothing to enchant stays in the graveyard
+// (CR 303.4g).
 func init() {
 	Register(Spec{
 		OracleID:     "9584a8ae-2aba-42b8-8983-0467d6bd5698",
 		Name:         "Brilliant Restoration",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An Aura returned this way comes back unattached and is put into the graveyard — you don't get to choose what it enchants."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return b21ReturnAllArtifactAndEnchantmentCards(ctx, ctx.Controller())
 		},

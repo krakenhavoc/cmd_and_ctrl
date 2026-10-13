@@ -8404,8 +8404,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// — so it rides the same projection and the client's existing
 		// highlight flow answers it; the KIND is what routes the
 		// answer to ResolveRetarget rather than to ResolvePickTarget.
+		// #3158: CR 303.4f's aura_host is a fifth — what an Aura put
+		// onto the battlefield enchants, picked from a server-computed
+		// set of cards (a graveyard card included) and players, and
+		// routed on the kind to ResolveAuraHost.
 		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule ||
-			c.Kind == game.PendingChoiceChooseProtector || c.Kind == game.PendingChoiceRetarget {
+			c.Kind == game.PendingChoiceChooseProtector || c.Kind == game.PendingChoiceRetarget ||
+			c.Kind == game.PendingChoiceAuraHost {
 			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())

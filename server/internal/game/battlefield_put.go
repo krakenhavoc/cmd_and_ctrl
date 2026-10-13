@@ -109,6 +109,16 @@ type ZoneEntryOptions struct {
 	// the counter placement windows after it see them. Read-only: the
 	// batch copies it onto each event. nil for every other caller.
 	EntersWithCounters map[string]int
+
+	// AttachedTo is the host the putting effect names — "return … to
+	// the battlefield attached to enchanted creature" (Mantle of the
+	// Ancients, #3158). Seeded onto every card's entry event: each card
+	// enters attached to it, and an Aura is not asked CR 303.4f's
+	// question. An Aura that can't legally enchant it stays where it was
+	// (CR 303.4i); an Equipment is attached and left to CR 704.5n. The
+	// zero value is every other put, whose Auras choose their hosts as
+	// they enter (aura_host.go).
+	AttachedTo TargetRef
 }
 
 // LibraryEntryOptions are ZoneEntryOptions for a library source, named

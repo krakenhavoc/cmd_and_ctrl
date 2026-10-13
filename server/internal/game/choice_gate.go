@@ -266,6 +266,10 @@ var choiceGateDecisions = map[PendingChoiceKind]bool{
 	// answering it by entering — and Xantcha's ruling is that nobody may
 	// act while it is on the battlefield before an opponent controls it.
 	PendingChoiceEntryController: true,
+	// CR 303.4f, #3158. What an Aura put onto the battlefield enchants
+	// is chosen as it enters, with the CR 614 pipeline suspended on the
+	// answer: entry_controller's reason.
+	PendingChoiceAuraHost: true,
 	// ADR 0109 §10, CR 614.12a. Riot's "a +1/+1 counter or haste" is
 	// asked before the permanent enters, with the CR 614 pipeline
 	// suspended on the answer: entry_controller's reason.

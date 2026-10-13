@@ -1057,13 +1057,14 @@ func TestB38TitaniasCommandRunsTwoModesInPrintedOrder(t *testing.T) {
 	}
 }
 
-func TestB38OpenTheVaultsRebuildsEveryonesArtifactsButLeavesAuras(t *testing.T) {
+// Its Auras choose their hosts as they enter (#3158); that half is
+// aura_host_cards_test.go's.
+func TestB38OpenTheVaultsRebuildsEveryonesArtifactsAndEnchantments(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	mine := b38Graveyard(g, me.ID, "Sol Ring", "Artifact", "{1}", 0, 0)
 	theirs := b38Graveyard(g, opp.ID, "Their Signet", "Artifact", "{2}", 0, 0)
 	ench := b38Graveyard(g, me.ID, "Glorious Anthem", "Enchantment", "{1}{W}{W}", 0, 0)
-	aura := b38Graveyard(g, me.ID, "Rancor", "Enchantment — Aura", "{G}", 0, 0)
 	creature := b38Graveyard(g, me.ID, "Bear", "Creature — Bear", "{1}{G}", 2, 2)
 	castCatalogSpell(t, g, "Open the Vaults", "Sorcery", b38OpenTheVaultsOracle, nil)
 	passPriorityAroundTable(t, g)
@@ -1086,10 +1087,6 @@ func TestB38OpenTheVaultsRebuildsEveryonesArtifactsButLeavesAuras(t *testing.T) 
 	}
 	if g.Battlefield.Contains(creature) {
 		t.Error("a creature card is neither an artifact nor an enchantment")
-	}
-	// Declared caveat: Auras are left where they are.
-	if g.Battlefield.Contains(aura) {
-		t.Error("the declared simplification leaves Aura cards in their graveyards")
 	}
 }
 

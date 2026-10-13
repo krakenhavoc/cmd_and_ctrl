@@ -26,6 +26,9 @@ const BOARD_ANSWERED = new Set<string>([
   "choose_protector",
   // #1196: the CR 115.7 retarget, answered on the board too.
   "retarget",
+  // #3158: CR 303.4f, what an Aura put onto the battlefield enchants —
+  // a permanent, a player, or a card in a graveyard (zone browser).
+  "aura_host",
 ]);
 
 export function isBoardAnsweredChoice(kind: string): boolean {

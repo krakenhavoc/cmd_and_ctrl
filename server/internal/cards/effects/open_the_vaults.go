@@ -30,41 +30,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // so entry replacements apply and every enters-the-battlefield trigger
 // sees the whole batch (CR 603.6a).
 //
-// # Declared simplification (weaker than printed): Auras stay put
+// # Auras
 //
 // The parenthesis on the card is doing real work: an Aura that comes
-// back has to arrive ATTACHED to something legal, chosen by its
-// controller, and only remains in the graveyard when there is nothing
-// it could enchant. Putting an Aura onto the battlefield attached to
-// a chosen permanent is machinery the engine does not have yet
-// (`aura-put-onto-battlefield`), and an Aura returned WITHOUT it would
-// enter attached to nothing and be put straight back into the
-// graveyard by the state-based sweep — a trip through the battlefield
-// the printed card never takes, which would wrongly fire enters- and
-// dies-triggers.
-//
-// So Aura cards are left in their graveyards, unconditionally. That
-// is strictly less than the card does: an Aura that had nothing to
-// enchant stays put either way, and one that did simply is not
-// returned. Nothing here lets a deck do something paper would not.
-//
-// Every other artifact and enchantment — equipment, mana rocks,
-// Sagas, enchantment creatures — comes back.
+// back arrives ATTACHED to something legal, chosen by its controller
+// (its owner) as it enters, and only remains in the graveyard when
+// there is nothing it could enchant (CR 303.4f, 303.4g; #3158). Each
+// Aura asks its own question, among the objects and players already
+// there — not another permanent this spell is returning.
 func init() {
 	Register(Spec{
 		OracleID:     "1e9c473e-bd65-4e1f-b2ab-cac58dc581c9",
 		Name:         "Open the Vaults",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Aura cards are left in their graveyards — only the other artifacts and enchantments come back.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			// Controller left zero: "under their owners' control" is
 			// exactly the default, and naming the caster here is the
 			// mistake the field's doc comment exists to prevent.
 			return ReturnFromGraveyardTogether{
 				Targets: allGraveyardsCardIDs(ctx, func(c game.Card) bool {
-					return !c.IsAura() && (c.IsArtifact() || c.IsEnchantment())
+					return c.IsArtifact() || c.IsEnchantment()
 				}),
 			}.Apply(ctx)
 		},

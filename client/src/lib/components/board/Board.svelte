@@ -2917,11 +2917,13 @@
               ? "Battle"
               : mine.kind === "retarget"
                 ? "Retarget"
-                : mine.kind === "untap_choice"
-                  ? "Untap step"
-                  : mine.kind === "choose_cards"
-                    ? "Choose"
-                    : "Triggered ability",
+                : mine.kind === "aura_host"
+                  ? "Aura"
+                  : mine.kind === "untap_choice"
+                    ? "Untap step"
+                    : mine.kind === "choose_cards"
+                      ? "Choose"
+                      : "Triggered ability",
         owner: viewerID ?? "",
         controller: viewerID ?? "",
       };

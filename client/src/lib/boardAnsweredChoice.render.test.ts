@@ -83,8 +83,8 @@ function mount(choices: unknown[]): HTMLElement {
 }
 
 describe("choices answered on the board", () => {
-  it("names the four board-answered kinds and nothing else", () => {
-    for (const k of ["pick_target", "legend_rule", "choose_protector", "retarget"]) {
+  it("names the five board-answered kinds and nothing else", () => {
+    for (const k of ["pick_target", "legend_rule", "choose_protector", "retarget", "aura_host"]) {
       expect(isBoardAnsweredChoice(k), k).toBe(true);
     }
     for (const k of ["pay_unless", "choose_cards", "discard_from_hand", "reveal_pick"]) {
@@ -100,6 +100,12 @@ describe("choices answered on the board", () => {
 
   it("does not open the modal for choose_protector", () => {
     const container = mount([{ ...legendRule, id: "p-1", kind: "choose_protector" }]);
+    expect(container.querySelector(".prompt-backdrop")).toBeNull();
+  });
+
+  // #3158: CR 303.4f's host choice is answered on the board.
+  it("does not open the modal for aura_host", () => {
+    const container = mount([{ ...legendRule, id: "a-1", kind: "aura_host" }]);
     expect(container.querySelector(".prompt-backdrop")).toBeNull();
   });
 

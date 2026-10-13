@@ -24,23 +24,18 @@ import (
 // with "none" a legal answer. The bottoming does not wait for that
 // answer, which nothing about the answer could change.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: Aura cards are not
-// offered, only Equipment. An Aura put onto the battlefield without
-// being cast needs its controller to choose what it enchants as it
-// enters (CR 303.4f), and the library-to-battlefield move has no entry
-// prompt to ask that with — the same reason every library, hand and
-// search entry skips the Clone choice. Offering an Aura it then could
-// not attach would put a permanent onto the battlefield that the next
-// state-based check sends to the graveyard.
+// An Aura put onto the battlefield this way chooses what it enchants as
+// it enters (CR 303.4f, #3158); with nothing to enchant it stays among
+// the cards that go to the bottom (CR 303.4g). The attach offer is for
+// an Equipment only, as printed.
 func init() {
 	Register(Spec{
 		OracleID:        "b4dbbf56-d7df-4183-bb48-cfc6b4d0468f",
 		Name:            "Armored Skyhunter",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Only an Equipment card can be put onto the battlefield — Aura cards among the six aren't offered."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Armored Skyhunter — look at the top six cards; you may put an Equipment onto the battlefield",
+			WheneverThisAttacks("Armored Skyhunter — look at the top six cards; you may put an Aura or Equipment onto the battlefield",
 				armoredSkyhunterLook),
 		},
 	})
@@ -51,15 +46,19 @@ func armoredSkyhunterLook(g *game.Game, item *game.StackItem) error {
 	return PutFromLibraryOntoBattlefield{
 		Player:   controller,
 		Cards:    g.LookAtTopOfLibraryForEffect(controller, 6),
-		Match:    OfSubtype("Equipment"),
+		Match:    Or(OfSubtype("Aura"), OfSubtype("Equipment")),
 		Max:      1,
 		Optional: true,
-		Label:    "Armored Skyhunter — you may put an Equipment card from among them onto the battlefield",
+		Label:    "Armored Skyhunter — you may put an Aura or Equipment card from among them onto the battlefield",
 		Then: func(g *game.Game, res PutFromLibraryResult) error {
 			if err := PutRestOnBottomInRandomOrder(g, res); err != nil {
 				return err
 			}
 			if len(res.Entered) == 0 {
+				return nil
+			}
+			// "If an Equipment is put onto the battlefield this way".
+			if c, ok := g.LookupCardForEffect(res.Entered[0]); !ok || !c.HasSubtype("Equipment") {
 				return nil
 			}
 			return offerAttachToACreatureYouControl(g, source, controller, res.Entered[0],

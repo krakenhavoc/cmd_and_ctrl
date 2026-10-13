@@ -851,6 +851,33 @@ forced change is made with no prompt, and a spell nothing could move
 onto the object asks nothing at all. The `reason` text says which
 object the target is changing to.
 
+### `aura_host` — what an Aura put onto the battlefield enchants (#3158, CR 303.4f)
+
+`pending_choices` may carry `kind: "aura_host"`. An Aura put onto the
+battlefield any way other than by resolving as an Aura spell — Sun
+Titan returning Animate Dead, Replenish, a fetched or a token-copied
+Aura — chooses what it enchants as it enters, and this is that
+question, addressed to the player it is entering under. `source` is the
+Aura (still in the zone it is leaving).
+
+It carries and is answered exactly like `pick_target`: `pick_target:
+{players, cards, min: 1, max: 1}` with the legal hosts, answered with
+`resolve_choice { choice_id, target }` (or the banner's one-element
+`targets`). A card host may be a card in a GRAVEYARD — Animate Dead's
+"creature card in a graveyard" — which the board picker reaches through
+the zone browser, as it does for Sun Titan's own target. The `kind`
+routes the answer to the entry rather than to a trigger.
+
+It is not targeting: hexproof and shroud do not keep a permanent off
+the list, and protection does (CR 702.16c). The other cards entering
+at the same time are never on it. The prompt opens only when there is
+a choice: one legal host is taken without asking, and with none the
+Aura stays where it was (CR 303.4g) and nothing is asked. An effect
+that names the host ("attached to Light-Paws", a copy of an Aura
+spell) asks nothing either. Like every prompt that pauses an entry, it
+blocks the table, and an answer outside the list comes back
+`bad_request` with the prompt still open.
+
 ### `ack` (server → client) — ADR 0122 §6.4
 
 Every action the server applies is acknowledged to the connection that

@@ -340,6 +340,10 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 		for name, n := range b.opts.EntersWithCounters {
 			ev.AddCounterAtETB(name, n)
 		}
+		// #3158: the putting effect's own "attached to …" clause.
+		if b.opts.AttachedTo.Kind != "" {
+			ev.auraHost, ev.auraHostFixed = b.opts.AttachedTo, true
+		}
 		if m.token {
 			ev.EntersTapped = m.tokenEntry.Tapped
 			ev.EntersAttacking = m.attacking

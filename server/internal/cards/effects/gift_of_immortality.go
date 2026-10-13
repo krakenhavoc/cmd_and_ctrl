@@ -88,15 +88,15 @@ func giftOfImmortalityReturnAura(g *game.Game, item *game.StackItem, p game.Effe
 		return nil
 	}
 	aura := item.Targets[0].ID
-	back, err := g.ReturnToBattlefieldForEffect(aura, uuid.Nil, false)
-	if errors.Is(err, game.ErrCardNotFound) {
+	z := g.FindCardZoneForEffect(aura)
+	if z == nil || (z.Kind != game.ZoneGraveyard && z.Kind != game.ZoneExile) {
 		return nil
 	}
-	if err != nil {
-		return err
-	}
-	if back == uuid.Nil {
-		back = aura
-	}
-	return g.AttachForEffect(back, game.TargetRef{Kind: game.TargetCard, ID: p.Object.ID})
+	// It ENTERS attached to the creature (#3158): the effect names the
+	// host, so CR 303.4f asks nothing, and the CR 704.5m check never
+	// sees the Aura unattached.
+	return g.PutOntoBattlefieldTogetherThenForEffect(
+		[]game.BatchEntry{{CardID: aura, From: z.Kind}},
+		game.ZoneEntryOptions{AttachedTo: game.TargetRef{Kind: game.TargetCard, ID: p.Object.ID}},
+		nil)
 }
