@@ -1359,7 +1359,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			controller = ev.Actor
 		}
 		g.recordEnteredSubtypesLocked(controller, g.enteredWithLayersLocked(c))
-		g.recordEnteredCardTypesLocked(controller, c)
+		g.recordEnteredCardTypesLocked(controller, g.enteredWithLayersLocked(c))
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return

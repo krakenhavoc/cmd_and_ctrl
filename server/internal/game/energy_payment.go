@@ -2,7 +2,6 @@ package game
 
 import (
 	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
 )
@@ -73,7 +72,7 @@ func EnergyPaymentWords(n int) string {
 	if n <= 0 {
 		return "0 {E}"
 	}
-	return strings.Repeat("{E}", n)
+	return RepeatMana("{E}", n)
 }
 
 // QueueEnergyPaymentForEffect asks p.Chooser whether to pay p.N energy.
