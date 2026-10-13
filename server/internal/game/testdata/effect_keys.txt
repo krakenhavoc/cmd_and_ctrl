@@ -219,3 +219,6 @@ body discard-by-opponent/return-the-discarded-card
 body discard-by-opponent/return-to-hand
 body discard-by-opponent/return-with-counter
 condition discard/opponent-caused-yours
+body megatron-destructive-force/strike
+body ratchet-field-medic/return
+body transformers/convert-this
