@@ -144,6 +144,7 @@ battlefield.cards[].faces[].StartingLoyalty	number:int
 battlefield.cards[].faces[].Toughness	number:int
 battlefield.cards[].faces[].TypeLine	string
 battlefield.cards[].faces[].VariableToughness	bool
+battlefield.cards[].flipped	bool
 battlefield.cards[].fused	bool
 battlefield.cards[].goadedBy	custom(uuid.UUID)
 battlefield.cards[].goads	array
@@ -644,6 +645,7 @@ exile.cards[].faces[].StartingLoyalty	number:int
 exile.cards[].faces[].Toughness	number:int
 exile.cards[].faces[].TypeLine	string
 exile.cards[].faces[].VariableToughness	bool
+exile.cards[].flipped	bool
 exile.cards[].fused	bool
 exile.cards[].goadedBy	custom(uuid.UUID)
 exile.cards[].goads	array
@@ -1240,6 +1242,7 @@ lastKnownStack[].card.faces[].StartingLoyalty	number:int
 lastKnownStack[].card.faces[].Toughness	number:int
 lastKnownStack[].card.faces[].TypeLine	string
 lastKnownStack[].card.faces[].VariableToughness	bool
+lastKnownStack[].card.flipped	bool
 lastKnownStack[].card.fused	bool
 lastKnownStack[].card.goadedBy	custom(uuid.UUID)
 lastKnownStack[].card.goads	array
@@ -2547,6 +2550,7 @@ phasedOut.cards[].faces[].StartingLoyalty	number:int
 phasedOut.cards[].faces[].Toughness	number:int
 phasedOut.cards[].faces[].TypeLine	string
 phasedOut.cards[].faces[].VariableToughness	bool
+phasedOut.cards[].flipped	bool
 phasedOut.cards[].fused	bool
 phasedOut.cards[].goadedBy	custom(uuid.UUID)
 phasedOut.cards[].goads	array
@@ -3179,6 +3183,7 @@ seats[].command.cards[].faces[].StartingLoyalty	number:int
 seats[].command.cards[].faces[].Toughness	number:int
 seats[].command.cards[].faces[].TypeLine	string
 seats[].command.cards[].faces[].VariableToughness	bool
+seats[].command.cards[].flipped	bool
 seats[].command.cards[].fused	bool
 seats[].command.cards[].goadedBy	custom(uuid.UUID)
 seats[].command.cards[].goads	array
@@ -3511,6 +3516,7 @@ seats[].emblems.cards[].faces[].StartingLoyalty	number:int
 seats[].emblems.cards[].faces[].Toughness	number:int
 seats[].emblems.cards[].faces[].TypeLine	string
 seats[].emblems.cards[].faces[].VariableToughness	bool
+seats[].emblems.cards[].flipped	bool
 seats[].emblems.cards[].fused	bool
 seats[].emblems.cards[].goadedBy	custom(uuid.UUID)
 seats[].emblems.cards[].goads	array
@@ -3834,6 +3840,7 @@ seats[].graveyard.cards[].faces[].StartingLoyalty	number:int
 seats[].graveyard.cards[].faces[].Toughness	number:int
 seats[].graveyard.cards[].faces[].TypeLine	string
 seats[].graveyard.cards[].faces[].VariableToughness	bool
+seats[].graveyard.cards[].flipped	bool
 seats[].graveyard.cards[].fused	bool
 seats[].graveyard.cards[].goadedBy	custom(uuid.UUID)
 seats[].graveyard.cards[].goads	array
@@ -4155,6 +4162,7 @@ seats[].hand.cards[].faces[].StartingLoyalty	number:int
 seats[].hand.cards[].faces[].Toughness	number:int
 seats[].hand.cards[].faces[].TypeLine	string
 seats[].hand.cards[].faces[].VariableToughness	bool
+seats[].hand.cards[].flipped	bool
 seats[].hand.cards[].fused	bool
 seats[].hand.cards[].goadedBy	custom(uuid.UUID)
 seats[].hand.cards[].goads	array
@@ -4488,6 +4496,7 @@ seats[].library.cards[].faces[].StartingLoyalty	number:int
 seats[].library.cards[].faces[].Toughness	number:int
 seats[].library.cards[].faces[].TypeLine	string
 seats[].library.cards[].faces[].VariableToughness	bool
+seats[].library.cards[].flipped	bool
 seats[].library.cards[].fused	bool
 seats[].library.cards[].goadedBy	custom(uuid.UUID)
 seats[].library.cards[].goads	array
@@ -5039,6 +5048,7 @@ stack.cards[].faces[].StartingLoyalty	number:int
 stack.cards[].faces[].Toughness	number:int
 stack.cards[].faces[].TypeLine	string
 stack.cards[].faces[].VariableToughness	bool
+stack.cards[].flipped	bool
 stack.cards[].fused	bool
 stack.cards[].goadedBy	custom(uuid.UUID)
 stack.cards[].goads	array

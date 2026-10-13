@@ -134,11 +134,12 @@ func facesCarryKeywords(faces []Face) bool {
 
 // FaceKeywordsApply reports whether a card of this layout has its
 // keywords read per face — the double-faced layouts, whose faces are
-// separate sets of characteristics (CR 712.8). Split, adventure and
-// prepare cards keep their card-level keywords. Exported for the deck
-// importer.
+// separate sets of characteristics (CR 712.8), and a flip card, whose
+// flipped half has its own text box (CR 710.2, ADR 0151 decision 3).
+// Split, adventure and prepare cards keep their card-level keywords.
+// Exported for the deck importer.
 func FaceKeywordsApply(layout string) bool {
-	return layout == LayoutTransform || layout == LayoutModalDFC
+	return layout == LayoutTransform || layout == LayoutModalDFC || layout == LayoutFlip
 }
 
 // Multi-face layouts, as Scryfall spells them. Only the ones the
@@ -176,7 +177,23 @@ const (
 	// prepared (CR 722.3c, ADR 0090, prepare.go).
 	LayoutSplit   = "split"
 	LayoutPrepare = "prepare"
+
+	// LayoutFlip is a Kamigawa flip card (CR 710, ADR 0151): ONE face
+	// printed the right way up and an alternative set of
+	// characteristics printed upside down. It is single-faced (CR
+	// 710.1), always cast as its top half (CR 710.2), and reaches its
+	// flipped half only by the flip verb (flip.go), which is not
+	// transforming. Face 1 is the flipped half; a flip card's
+	// ActiveFace is 1 exactly when Card.Flipped is true.
+	LayoutFlip = "flip"
 )
+
+// IsFlipCard reports whether c is a flip card with both halves
+// imported (CR 710.1): the shape the flip verb and the copy rules
+// act on.
+func IsFlipCard(c Card) bool {
+	return c.Layout == LayoutFlip && len(c.Faces) == 2
+}
 
 // SetFace switches the card to face i and re-materialises the flat
 // printed fields from it. It is the ONLY writer of ActiveFace: the
@@ -205,16 +222,25 @@ func (c *Card) SetFace(i int) {
 	c.ActiveFace = i
 	c.Name = f.Name
 	c.TypeLine = f.TypeLine
-	c.ManaCost = f.ManaCost
-	c.Colors = append([]string(nil), f.Colors...)
+	// CR 710.1c (ADR 0151 decision 3): a flip card's colour and mana
+	// cost don't change when it flips. Scryfall prints the flipped
+	// half with no cost and no colour, so both always come from the
+	// top half, whichever half is up.
+	cost, colors := f.ManaCost, f.Colors
+	if c.Layout == LayoutFlip {
+		cost, colors = c.Faces[0].ManaCost, c.Faces[0].Colors
+	}
+	c.ManaCost = cost
+	c.Colors = append([]string(nil), colors...)
 	c.Power = f.Power
 	c.Toughness = f.Toughness
 	c.VariableToughness = f.VariableToughness
 	c.StartingLoyalty = f.StartingLoyalty
 	c.StartingDefense = f.StartingDefense
 	// ADR 0107 §4: a double-faced card's printed keywords are the face
-	// that is up's too (CR 712.8d, 712.8e). Only when the importer
-	// recorded them per face — an older card keeps its card-level list.
+	// that is up's too (CR 712.8d, 712.8e), and so are a flip card's
+	// (CR 710.2, ADR 0151 decision 3). Only when the importer recorded
+	// them per face — an older card keeps its card-level list.
 	if FaceKeywordsApply(c.Layout) && facesCarryKeywords(c.Faces) {
 		c.Keywords = append([]string(nil), f.Keywords...)
 		if len(c.Keywords) == 0 {

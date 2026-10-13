@@ -1007,6 +1007,10 @@ export type LogKind =
   // a player announces out loud, and a reader scrolling back wants
   // to know when it happened.
   | "transform"
+  // ADR 0151 (#1892): a flip card on the battlefield was flipped
+  // (CR 710). `label` is the name it flipped FROM. Its own kind,
+  // never `flip`, which is a coin flip.
+  | "flip_permanent"
   // ADR 0145: two cards were melded into one permanent (CR 701.42a).
   // `card_id` is the melded permanent and `label` names the two cards
   // it was melded from.

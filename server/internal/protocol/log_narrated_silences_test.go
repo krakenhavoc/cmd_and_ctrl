@@ -559,6 +559,29 @@ func TestLogNarratesATransform(t *testing.T) {
 	assertNoUUID(t, entry.Text)
 }
 
+// TestLogNarratesAFlip — CR 710.3 (ADR 0151 decision 5): whether a
+// permanent is flipped must be clear at all times, and a flip is not a
+// zone change, so this line is the table's only word of it. Its own
+// kind, never LogFlip, which is a coin flip.
+func TestLogNarratesAFlip(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	tok := battlefieldCard(t, g, "Tok-Tok, Volcano Born", "Legendary Creature — Goblin Shaman", owner.ID)
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventFlipPermanent, Actor: owner.ID,
+			CardID: tok, Label: "Akki Lavarunner",
+		})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogFlipPermanent)
+	if want := "Akki Lavarunner flipped into Tok-Tok, Volcano Born"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	assertNoUUID(t, entry.Text)
+}
+
 // --- 7. no blockers (#1279, #1500) -----------------------------------
 //
 // #1279 gave a defending player's CR 509.1 block declaration a

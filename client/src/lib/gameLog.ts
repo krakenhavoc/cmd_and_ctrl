@@ -173,6 +173,8 @@ const LOG_TONE: Record<LogKind, string> = {
   // whisper (#1256) — louder than the quiet choose_* / scry-family
   // tones, toned like the other permanent motions (token, cycle).
   transform: "tone-zone",
+  // ADR 0151: a flip card turning upside down, toned like a turn-over.
+  flip_permanent: "tone-zone",
   // ADR 0145: two cards becoming one permanent, toned like a turn-over.
   meld: "tone-zone",
   phase_out: "tone-zone",

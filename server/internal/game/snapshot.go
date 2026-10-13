@@ -796,6 +796,10 @@ type cardSnapshot struct {
 	BattleX           float64             `json:"battleX"`
 	BattleY           float64             `json:"battleY"`
 	Counters          map[string]int      `json:"counters,omitempty"`
+	// Flipped is Card.Flipped (ADR 0151, CR 110.5): the flipped status.
+	// Additive within v8; absent means unflipped, which is true of every
+	// file written before flip cards could flip.
+	Flipped bool `json:"flipped,omitempty"`
 	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
 	// 613.7c timestamp of each keyword counter kind. Additive within v7;
 	// an older file has none, and an unstamped keyword counter is
@@ -2095,6 +2099,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		Flipped:                  c.Flipped,
 		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
@@ -2972,6 +2977,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		Flipped:                  c.Flipped,
 		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,

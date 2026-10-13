@@ -466,6 +466,16 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	if c.ActiveFace != 0 && !c.PrepareCopy && dst.Kind != ZoneBattlefield && dst.Kind != ZoneStack {
 		c.SetFace(0)
 	}
+	// CR 710.4 / 110.5d (ADR 0151 decision 1): a flipped permanent that
+	// leaves the battlefield "retains no memory of its status". Only a
+	// permanent has one, and a battlefield-to-battlefield move does not
+	// exist, so every card arrives on the battlefield unflipped (CR
+	// 110.5b) unless an entry set the status in its source zone on
+	// purpose (ReturnFromGraveyardFlippedForEffect). The face reset
+	// above has already put a flip card back on its top half.
+	if dst.Kind != ZoneBattlefield {
+		c.Flipped = false
+	}
 	// ADR 0103, CR 709.4 / 709.5: a SPLIT card is its two halves
 	// combined in every zone but the stack and the battlefield, a Room
 	// on the battlefield is the halves its doors have unlocked (none,

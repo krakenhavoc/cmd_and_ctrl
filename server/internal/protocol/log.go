@@ -386,6 +386,12 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogFlipPermanent — a flip card on the battlefield was flipped (CR
+	// 710, ADR 0151 decision 5). `Label` is the name it flipped FROM.
+	// Narrated for LogTransform's reason and CR 710.3's: whether a
+	// permanent is flipped must be clear at all times. Not "flip", which
+	// is LogFlip, a coin flip.
+	LogFlipPermanent LogKind = "flip_permanent"
 	// LogMeld — two cards were melded into one permanent (CR 701.42a).
 	// `CardID` is the melded permanent and `Label` names the two cards
 	// it was melded from, which no other line says: the exile and the
@@ -1713,6 +1719,14 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventFlipPermanent:
+		// CR 710, ADR 0151. Not a zone move and not a transform, so this
+		// is the only line that says the permanent is now its other half.
+		base.Kind = LogFlipPermanent
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventMeld:
 		// CR 701.42a. The entry already logged the permanent arriving;
 		// this is the line that says it is two cards.
@@ -2496,6 +2510,13 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s was melded", card)
 		}
 		return fmt.Sprintf("%s melded into %s", e.Label, card)
+	case LogFlipPermanent:
+		// The card name is the half it flipped INTO; Label is the one
+		// it flipped from, cleared on a redacted entry.
+		if e.Label == "" {
+			return fmt.Sprintf("%s flipped", card)
+		}
+		return fmt.Sprintf("%s flipped into %s", e.Label, card)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label

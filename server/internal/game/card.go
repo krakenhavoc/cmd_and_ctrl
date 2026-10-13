@@ -1126,6 +1126,21 @@ type Card struct {
 	// the battlefield; ignored in other zones.
 	Tapped bool
 
+	// Flipped is CR 110.5's flipped/unflipped status (ADR 0151). Only
+	// a permanent has it (CR 110.5d); a card enters the battlefield
+	// unflipped unless the effect putting it there says otherwise (CR
+	// 110.5b, ReturnFromGraveyardFlippedForEffect), and it is cleared
+	// by every move to a zone other than the battlefield (CR 710.4).
+	// It is not a characteristic (CR 110.5a) and is never copied (CR
+	// 707.2): the copy rules read the COPIER's status to pick the
+	// half of a copied flip card (CR 707.3, setPrintedValues).
+	//
+	// For a flip card (IsFlipCard) ActiveFace is 1 exactly when this
+	// is true; every other card's ActiveFace ignores it. A permanent
+	// that is not a flip card keeps it once set, irrelevant (CR
+	// 110.5c). Written only by flip.go and MoveCard.
+	Flipped bool
+
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
 	IsCommander bool
