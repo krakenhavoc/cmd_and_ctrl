@@ -154,6 +154,21 @@ type AdditionalCost struct {
 	// for (ADR 0073 §4).
 	Repeat int
 
+	// MinX is the floor on the announced X when this optional cost is
+	// paid (#3232): Thieving Skydiver's "Kicker {X}. X can't be 0."
+	// is a kicker whose mana half is {X} (so the caster's one announced
+	// X is what it charges, CR 107.3a) with MinX 1. The floor binds the
+	// announcement only WHILE the cost is chosen: an unkicked cast of
+	// the same card announces no X at all (OptionalCostsXFloor,
+	// validateOptionalCostX).
+	//
+	// A property of the clause and not of the card, for the reason
+	// AbilityCost.MinX is on the cost and not on the ability: the
+	// printed sentence is attached to the kicker. Zero is "X may be 0"
+	// (Verdeloth, Kangee). Register allows it only on an optional cost
+	// whose ManaCost has an {X} and which is paid at most once.
+	MinX int
+
 	// ChoosesOpponent is gift's cost (CR 702.174a): "As an additional
 	// cost to cast this spell, you may choose an opponent." Paying it
 	// is NAMING a player rather than handing anything over — the

@@ -993,6 +993,33 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3232, CR 107.3a / 601.2b: a kicker whose cost is {X} ("Kicker
+	// {X}. X can't be 0.", Thieving Skydiver) makes X part of the same
+	// announcement. The floor binds only while that cost is chosen, and
+	// an unkicked cast announces no X at all (optional_x.go). Asked
+	// after the choice itself is known to be in range, with the
+	// alternative cost and exile grant already settled so "the cost
+	// being paid" is the one the caster actually pays.
+	if OptionalCostsOfferX(optionalCosts) {
+		paidHasX := false
+		if pc, perr := ParseCost(CastCostFor(card, alt, grant).Paid); perr == nil {
+			paidHasX = pc.XSlots > 0
+		}
+		otherX := !TapPermanentsCostFor(CatalogKey(card)).Empty()
+		if ac, aerr := ChosenAdditionalCost(AdditionalCostFor(CatalogKey(card)), params.CostBranch); aerr == nil && ac != nil {
+			otherX = otherX || ac.PayLifeX || ac.BlightX
+		}
+		if err := validateOptionalCostX(optionalCosts, params.OptionalCosts, params.XValue, paidHasX, otherX); err != nil {
+			slog.Warn("cast_spell rejected: X does not fit the optional cost",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"x_value", params.XValue,
+				"optional_costs", params.OptionalCosts,
+				"x_floor", OptionalCostsXFloor(optionalCosts, params.OptionalCosts),
+			)
+			return err
+		}
+	}
 	// ADR 0089, CR 702.174a: a gift cost is paid by CHOOSING an
 	// opponent, so its announcement is the index above plus a
 	// recipient. Checked here with the rest of CR 601.2b, before the

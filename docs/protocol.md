@@ -2067,6 +2067,12 @@ readable by every client that ignores them.
   A present-and-empty `sacrifice_options` means the offer cannot be
   taken right now (a Constant Mists with no land), exactly as it does
   for a mandatory cost.
+  **`x_min`** (#3232, omitted at 0) is the floor on the announced
+  `x_value` while this offer is paid, for a kicker whose `mana_cost`
+  contains {X} (Thieving Skydiver's "Kicker {X}. X can't be 0" is 1).
+  The client asks for X once such an offer is chosen and opens the
+  picker at the floor; the server refuses a cast under it, and refuses a
+  non-zero `x_value` when the offer is not chosen.
 
   `key` is not unique on a card. "Kicker {R} and/or {W}" (CR 702.33b,
   #2153) is two offers that both carry `key: "kicker"`, each with

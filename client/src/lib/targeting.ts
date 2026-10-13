@@ -1322,11 +1322,40 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // own on a card whose printed cost has none — Avacyn's Judgment prints
 // {1}{R} and its madness cost is {X}{R}, and that X is also the damage
 // it divides. `altCost` is the key of the offer being claimed.
-export function hasXCost(card: CardView, altCost?: string): boolean {
+//
+// #3232 adds the fifth: a kicker whose cost is {X} (Thieving Skydiver,
+// Verdeloth the Ancient). The X belongs to the kicker, so it is asked
+// only once the kicker is among the optional costs the player chose
+// (`optionalCosts`, the indices already on the cast's choices); an
+// unkicked cast announces no X.
+export function hasXCost(card: CardView, altCost?: string, optionalCosts?: number[]): boolean {
   if (card.tap_cost?.demands_x) return true;
   if (card.additional_cost?.demands_x) return true;
   if ((alternativeCostByKey(card, altCost)?.mana_cost ?? "").includes("{X}")) return true;
+  if (chosenOptionalCosts(card, optionalCosts).some((o) => (o.mana_cost ?? "").includes("{X}")))
+    return true;
   return (card.mana_cost ?? "").includes("{X}");
+}
+
+// chosenOptionalCosts resolves the optional-cost indices a cast has
+// announced so far to their offers, skipping an index the card does not
+// have.
+function chosenOptionalCosts(card: CardView, indices: number[] | undefined): OptionalCostView[] {
+  const offers = optionalCostsOf(card);
+  const out: OptionalCostView[] = [];
+  for (const index of indices ?? []) {
+    const offer = offers.find((o) => o.index === index);
+    if (offer) out.push(offer);
+  }
+  return out;
+}
+
+// optionalCostXFloor is the smallest X the chosen optional costs allow
+// (#3232): the largest `x_min` among them, 0 when none names a floor.
+// The server refuses a kicked cast under it, so the X picker opens at
+// it rather than letting the player type a value the cast rejects.
+export function optionalCostXFloor(card: CardView, optionalCosts: number[] | undefined): number {
+  return chosenOptionalCosts(card, optionalCosts).reduce((m, o) => Math.max(m, o.x_min ?? 0), 0);
 }
 
 // xCeilingFor is the largest X the viewer may announce for this cast

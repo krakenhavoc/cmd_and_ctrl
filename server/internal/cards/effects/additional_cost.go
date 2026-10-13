@@ -423,6 +423,26 @@ func Kicker(mana string) game.AdditionalCost {
 	}
 }
 
+// KickerX is CR 702.33's "Kicker {X}" (Verdeloth the Ancient), or
+// "Kicker {X}{2}" with a tail (Kangee, Aerie Keeper): a kicker whose
+// mana half carries an {X}, so the caster's one announced X is what the
+// kicker charges (CR 107.3a) and, for a permanent, what its enters
+// trigger reads back with source.CastX() (CR 107.3m). `mana` must
+// contain an {X}; Register refuses one that does not, and a kicker that
+// repeats.
+//
+// `minX` is the floor "X can't be 0" prints (Thieving Skydiver): pass 1.
+// It binds only while the kicker is paid — an unkicked cast announces
+// no X (#3232, ADR 0073's 2026-10-13 amendment).
+//
+//	OptionalCosts: []game.AdditionalCost{KickerX("{X}", 1)},   // Thieving Skydiver
+//	OptionalCosts: []game.AdditionalCost{KickerX("{X}", 0)},   // Verdeloth the Ancient
+func KickerX(mana string, minX int) game.AdditionalCost {
+	c := Kicker(mana)
+	c.MinX = minX
+	return c
+}
+
 // Kickers is CR 702.33b's "Kicker [cost 1] and/or [cost 2]", which
 // "means the same thing as 'Kicker [cost 1]' and 'Kicker [cost 2]'" —
 // so it is exactly two Kicker entries, in printed order, both keyed
