@@ -146,6 +146,12 @@
     isLegalPlayerTarget,
     isMultiPick,
     lonePick,
+    repeatsOf,
+    shareTargetOn,
+    sharedFrom,
+    sharedPick,
+    sharedStillWanted,
+    sharedTarget,
     opensTargetPicker,
     togglePick,
     canConfirm,
@@ -1519,14 +1525,20 @@
   // #3264: a step with one legal target is answered for the player, as
   // the click would answer it (lonePick says which prompts qualify). A
   // walk whose next step is also lone carries on the same way.
+  // #3265: so is a repeated trigger's instance when the player chose one
+  // target for all of them, and that target is still legal for it.
   let autoPicked: TargetingState | null = null;
   $effect(() => {
     const t = $targeting;
     if (!t || t === autoPicked || dividePrompt) return;
-    const ref = lonePick(t);
+    const ref = lonePick(t) ?? sharedPick(t, $sharedTarget);
     if (!ref) return;
     autoPicked = t;
     stepOrFire({ ...t, picked: [ref] });
+  });
+  // The kept target is forgotten once no prompt could use it.
+  $effect(() => {
+    if ($sharedTarget && !sharedStillWanted($sharedTarget, view)) sharedTarget.set(null);
   });
 
   function fireTargets(state: TargetingState, targets: TargetRef[]): void {
@@ -1540,6 +1552,10 @@
       const answer = choiceAnswer(state, targets);
       const dist = distributionOf(state);
       if (dist) answer.distribution = dist;
+      // #3265: one target for every instance of a repeated trigger.
+      if ($shareTargetOn && targets.length === 1 && repeatsOf(state, view) > 0) {
+        sharedTarget.set(sharedFrom(state, targets[0]!));
+      }
       guardedSendAction("resolve_choice", answer, viewerID ?? undefined);
       targeting.set(null);
       return;

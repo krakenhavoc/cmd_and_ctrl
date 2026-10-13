@@ -158,6 +158,14 @@ export interface TargetingHandlers {
   // #2394: a card-set pick answered on the board offers the same
   // choice as the list. Called with the choice's ID.
   onShowList?: (choiceID: string) => void;
+  // #3265: the same ability has `count` more instances waiting for a
+  // target, and the player may answer them all with this pick.
+  share?: { count: number; on: boolean; onToggle: () => void };
+}
+
+// sameTargetLabel is the toggle's text: this prompt and the rest.
+export function sameTargetLabel(count: number): string {
+  return `Same target for all ${count + 1}`;
 }
 
 export function targetingRequest(
@@ -190,6 +198,7 @@ export function targetingRequest(
   // A card-set pick offers its list instead (#2394): the same question,
   // in the modal's grid, for a player who would rather read names.
   const showList = h.onShowList;
+  const share = multi ? undefined : h.share;
   const choiceID = state.choiceID;
   const secondary: DockAction[] = choiceID
     ? cardSet && showList
@@ -222,6 +231,22 @@ export function targetingRequest(
     detail: targetingDetail(state, view) || undefined,
     primary,
     secondary,
+    ...(share && share.count > 0
+      ? {
+          row: [
+            {
+              id: "same-target",
+              label: sameTargetLabel(share.count),
+              title: share.on
+                ? "your pick also answers the other instances of this trigger, where it is legal"
+                : "ask for each instance's target separately",
+              pressed: share.on,
+              alignEnd: true,
+              onPress: share.onToggle,
+            },
+          ],
+        }
+      : {}),
   };
 }
 

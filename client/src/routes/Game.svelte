@@ -110,6 +110,8 @@
   import {
     cancel as cancelTargeting,
     confirm as confirmTargeting,
+    repeatsOf,
+    shareTargetOn,
     targeting,
   } from "../lib/targeting";
   import type { ActionType, PlayerView } from "../lib/protocol";
@@ -1821,6 +1823,12 @@
           // targeting flow once the choice is no longer board-answered,
           // and ChoicePromptModal opens it.
           onShowList: showChoiceAsList,
+          // #3265: one target for every instance of a repeated trigger.
+          share: {
+            count: repeatsOf($targeting, view),
+            on: $shareTargetOn,
+            onToggle: () => shareTargetOn.update((on) => !on),
+          },
         })
       : null,
   );
