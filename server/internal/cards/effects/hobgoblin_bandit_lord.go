@@ -33,21 +33,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // A tap ability on a creature, so summoning sickness applies.
 //
-// One declared simplification, weaker than printed and inherited from
-// the tally: a creature that was a Goblin at the moment it entered
-// ONLY because of another permanent's static ability — a Maskwood
-// Nexus already on the battlefield, a Conspiracy naming Goblin — is
-// not counted. The layer cache is rebuilt after an entry rather than
-// during it, so the tally reads the permanent's own types and a
-// granted one is invisible to it.
+// A creature that is a Goblin as it enters only through another
+// permanent's static ability — a Maskwood Nexus already on the
+// battlefield — counts: the tally reads the permanent with the layer
+// pass applied (#2940).
 func init() {
 	Register(Spec{
 		OracleID:     "43fea418-db6f-4953-89d1-6873b2ca41a8",
 		Name:         "Hobgoblin Bandit Lord",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A creature that was only a Goblin because of another permanent (a Maskwood Nexus, a Conspiracy) when it entered isn't counted.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			TribalAnthem(TribeFilter{Tribes: []string{"Goblin"}, Others: true, YoursOnly: true}, 1, 1),
 		},

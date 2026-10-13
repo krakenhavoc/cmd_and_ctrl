@@ -113,6 +113,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"removeObjectsOwnedByLocked": "CR 800.4a: filters a leaving player's cards out of each zone",
 		// A dry run that puts the slice back before it returns.
 		"entryCharacteristicsLocked": "the CR 614.12 look-ahead (ADR 0109 §10): a copy of the battlefield slice plus the entering card under a look-ahead ID no zone holds, put back before it returns",
+		"enteredWithLayersLocked":    "the entry tally's dry layer pass (#2940): a copy of the battlefield slice, same instance IDs, put back before it returns",
 		// ADR 0145, meld.
 		"meldInExileLocked": "the carrier's exile slot becomes the melded object under the same instance ID; the other card was lifted out with Remove first",
 		"meldOrderChosen":   "CR 712.21a: swaps two cards' places within one graveyard or library",
