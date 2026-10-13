@@ -16,7 +16,6 @@
   import Reclaim from "./routes/Reclaim.svelte";
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
-  import MyGames from "./routes/MyGames.svelte";
   import Decks from "./routes/Decks.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import Privacy from "./routes/Privacy.svelte";
@@ -169,8 +168,6 @@
   <Practice />
 {:else if $route.name === "catalog"}
   <Catalog />
-{:else if $route.name === "myGames"}
-  <MyGames />
 {:else if $route.name === "join"}
   <Join
     gameID={$route.gameID}

@@ -31,6 +31,15 @@ func (st *state) payAmountValue(ch *protocol.PendingChoiceView, amount *int) (fl
 	}
 	pa := ch.PayAmount
 	n := *amount
+	// ADR 0150 §6: an assist helper always answers 0. In a free-for-all
+	// game helping another player cast a spell is never worth it to the
+	// heuristic, and nothing in Purpose says otherwise.
+	if pa.Unit == "assist" || pa.Resource == "mana" {
+		if n == 0 {
+			return 1, "pay amount: don't help another player cast a spell"
+		}
+		return -1, "pay amount: helping another player cast a spell"
+	}
 	floor := 0
 	if pa.Resource == "none" {
 		floor = pa.Min

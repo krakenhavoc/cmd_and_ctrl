@@ -134,9 +134,9 @@ describe("connectionBanner — session_ended", () => {
     expect(banner?.link).toEqual({ href: "#/login", label: "Sign in" });
   });
 
-  it("links a signed-in identity to My games instead", () => {
+  it("links a signed-in identity to Tables instead", () => {
     const banner = connectionBanner("session_ended", 0, true);
-    expect(banner?.link).toEqual({ href: "#/my-games", label: "My games" });
+    expect(banner?.link).toEqual({ href: "#/lobby", label: "Tables" });
   });
 
   it("defaults to the guest link when signedIn is omitted", () => {

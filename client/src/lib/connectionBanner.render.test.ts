@@ -111,11 +111,11 @@ describe("the retry control", () => {
     expect(link?.getAttribute("href")).toBe("#/login");
   });
 
-  it("links a signed-in identity to My games instead", () => {
+  it("links a signed-in identity to Tables instead", () => {
     const { container } = mount({ status: "session_ended", signedIn: true });
     const link = container.querySelector("a.retry");
-    expect(link?.getAttribute("href")).toBe("#/my-games");
-    expect(link?.textContent).toContain("My games");
+    expect(link?.getAttribute("href")).toBe("#/lobby");
+    expect(link?.textContent).toContain("Tables");
   });
 });
 

@@ -163,6 +163,9 @@ type Config struct {
 	// /community. "" hides every Discord placement in the client. The
 	// sign-up gate itself is Discord.Gate.
 	CommunityInviteURL string
+	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
+	// off: GET /community says so and the client offers no room.
+	DiscordVoice discord.Voice
 	// DiscordBot is the server's bot-token credential, for ADR 0051
 	// decision 5's direct-message invites (S34 sub-PR 6). The zero
 	// value means CMDCTRL_DISCORD_BOT_TOKEN is unset, which is a
@@ -2612,8 +2615,21 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 	admin := c.isAdmin(p)
+	viewerID := replayViewerID(p)
 	if !admin && p.GameID != id {
-		return httpError(http.StatusForbidden, "not a seat in this game")
+		// A signed-in person whose session is bound elsewhere may still
+		// download a game they sat at, seen from their own seat: the
+		// Tables page's History offers Replay on every finished game
+		// (ADR 0158 §1 item 3), as the seat's own session always could.
+		meta, err := c.Lobby.Get(id)
+		if err != nil {
+			return httpError(http.StatusForbidden, "not a seat in this game")
+		}
+		seat, ok := seatOfUser(meta.Players, p.UserID)
+		if !ok || seat.IsBot {
+			return httpError(http.StatusForbidden, "not a seat in this game")
+		}
+		viewerID = seat.PlayerID.String()
 	}
 	room := c.Lobby.RoomOf(id)
 	if room == nil {
@@ -2658,7 +2674,7 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
 		return nil
 	}
-	streamFilteredReplay(c, w, f, replayViewerID(p))
+	streamFilteredReplay(c, w, f, viewerID)
 	return nil
 }
 
@@ -3317,6 +3333,28 @@ type myDeckInfo struct {
 	// Coverage is absent when this server has no card index or the
 	// stored list no longer parses.
 	Coverage *myDeckCoverageInfo `json:"coverage,omitempty"`
+	// CommanderCards is each commander resolved against the card index
+	// (ADR 0158 §2): the printing whose art crop leads the deck's card
+	// on the Decks page, and its colour identity. Present on GET and
+	// POST /me/decks, in the order of Commanders; omitted when there
+	// is no card index or no commander.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
+	// ColorIdentity is the union of the resolved commanders' colour
+	// identities, in WUBRG order. Empty for a colourless deck and for
+	// one whose commanders did not resolve; CommanderCards says which.
+	ColorIdentity []string `json:"color_identity,omitempty"`
+}
+
+// myDeckCommander is one commander on a GET /me/decks entry.
+type myDeckCommander struct {
+	Name string `json:"name"`
+	// ScryfallID is a printing with an image, for /cards/{id}/image.
+	// Empty when the name did not resolve or no printing has one.
+	ScryfallID string `json:"scryfall_id,omitempty"`
+	// ColorIdentity is the commander's WUBRG letters: [] for a
+	// colourless one, null when the name did not resolve, so the page
+	// can tell colourless (steel) from unknown (neutral).
+	ColorIdentity []string `json:"color_identity"`
 }
 
 // myDecksResponse is the body of GET /me/decks.
@@ -3419,6 +3457,7 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 		UpdatedAt:  d.UpdatedAt,
 		SourceURL:  d.SourceURL,
 	}
+	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders)
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
 			n, m := rep.AsPrinted()
@@ -3519,6 +3558,63 @@ func renameMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		ID: renamed.ID.String(), Name: renamed.Name, Commanders: nonNil(renamed.Commanders),
 		CardCount: renamed.CardCount, UpdatedAt: renamed.UpdatedAt, SourceURL: renamed.SourceURL,
 	})
+}
+
+// libraryCommanders resolves a saved deck's commander names against
+// idx for the Decks page's art and aura (ADR 0158 §2). The index's
+// name lookup already prefers a playable printing; when that printing
+// carries no image, the oracle's representative printing is tried
+// before giving up, so the client gets an id it can always draw or no
+// id at all, never one that 404s. A name that does not resolve keeps
+// its row, with no id and no colours.
+func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []string) {
+	if idx == nil || len(names) == 0 {
+		return nil, nil
+	}
+	out := make([]myDeckCommander, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		if strings.TrimSpace(name) == "" {
+			continue
+		}
+		cmd := myDeckCommander{Name: name}
+		if card, ok := idx.FindByName(name); ok {
+			cmd.ColorIdentity = nonNil(card.ColorIdentity)
+			for _, l := range card.ColorIdentity {
+				seen[l] = true
+			}
+			if !cardHasImage(card) {
+				if alt, ok := idx.FindByOracleID(card.OracleID); ok && cardHasImage(alt) {
+					card = alt
+				}
+			}
+			if cardHasImage(card) {
+				cmd.ScryfallID = card.ID.String()
+			}
+		}
+		out = append(out, cmd)
+	}
+	var identity []string
+	for _, l := range []string{"W", "U", "B", "R", "G"} {
+		if seen[l] {
+			identity = append(identity, l)
+		}
+	}
+	return out, identity
+}
+
+// cardHasImage reports whether the image route can serve card: an
+// image on the card itself or on any face.
+func cardHasImage(c cards.Card) bool {
+	if len(c.ImageURIs) > 0 {
+		return true
+	}
+	for _, f := range c.CardFaces {
+		if len(f.ImageURIs) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func nonNil(s []string) []string {

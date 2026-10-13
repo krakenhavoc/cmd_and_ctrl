@@ -1555,6 +1555,8 @@ lastKnownStack[].item.paid.altCostObjects	array
 lastKnownStack[].item.paid.altCostObjects[]	object
 lastKnownStack[].item.paid.altCostObjects[].epoch	number:int
 lastKnownStack[].item.paid.altCostObjects[].id	custom(uuid.UUID)
+lastKnownStack[].item.paid.assistPaid	number:int
+lastKnownStack[].item.paid.assistedBy	custom(uuid.UUID)
 lastKnownStack[].item.paid.convoked	array
 lastKnownStack[].item.paid.convoked[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.costBranch	number:int
@@ -1822,6 +1824,8 @@ pausedModeWalk.item.paid.altCostObjects	array
 pausedModeWalk.item.paid.altCostObjects[]	object
 pausedModeWalk.item.paid.altCostObjects[].epoch	number:int
 pausedModeWalk.item.paid.altCostObjects[].id	custom(uuid.UUID)
+pausedModeWalk.item.paid.assistPaid	number:int
+pausedModeWalk.item.paid.assistedBy	custom(uuid.UUID)
 pausedModeWalk.item.paid.convoked	array
 pausedModeWalk.item.paid.convoked[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.costBranch	number:int
@@ -2348,6 +2352,8 @@ pendingTriggers[].paid.altCostObjects	array
 pendingTriggers[].paid.altCostObjects[]	object
 pendingTriggers[].paid.altCostObjects[].epoch	number:int
 pendingTriggers[].paid.altCostObjects[].id	custom(uuid.UUID)
+pendingTriggers[].paid.assistPaid	number:int
+pendingTriggers[].paid.assistedBy	custom(uuid.UUID)
 pendingTriggers[].paid.convoked	array
 pendingTriggers[].paid.convoked[]	custom(uuid.UUID)
 pendingTriggers[].paid.costBranch	number:int
@@ -5450,6 +5456,8 @@ stackMeta[].paid.altCostObjects	array
 stackMeta[].paid.altCostObjects[]	object
 stackMeta[].paid.altCostObjects[].epoch	number:int
 stackMeta[].paid.altCostObjects[].id	custom(uuid.UUID)
+stackMeta[].paid.assistPaid	number:int
+stackMeta[].paid.assistedBy	custom(uuid.UUID)
 stackMeta[].paid.convoked	array
 stackMeta[].paid.convoked[]	custom(uuid.UUID)
 stackMeta[].paid.costBranch	number:int

@@ -1062,6 +1062,29 @@ wire. It is what the lobby UI's rotate-invite buttons check (see
 even be seated at it, so this can be `true` on a game where `mySeat`
 finds nothing.
 
+**A game in play** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md)
+§1 item 4) carries two more fields, which the Tables page's "Now" cards
+show:
+
+```json
+{
+  "state": "active",
+  "turn": 7,
+  "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "life": 31 }]
+}
+```
+
+- `turn` is the game view's `turn.number`, the number the board shows
+  (the round: every seat has reached it). It is omitted while the
+  opening roll is still open, before turn 1 has begun.
+- `life` on each `players[]` entry is that seat's life total.
+
+Both are public at the table, since every seat and spectator sees them,
+and they go to every caller of this list. A table in the lobby or a
+game that has ended carries neither. They are read fresh from the
+engine on each list and never stored, and `GET /games/{id}` does not
+carry them. Additive: an older client ignores them.
+
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and
@@ -2567,7 +2590,11 @@ construction.
         "unknown": 0,
         "as_printed": 78,
         "resolved": 90
-      }
+      },
+      "commander_cards": [
+        { "name": "Atraxa, Praetors' Voice", "scryfall_id": "<uuid>", "color_identity": ["W", "U", "B", "G"] }
+      ],
+      "color_identity": ["W", "U", "B", "G"]
     }
   ]
 }
@@ -2589,6 +2616,17 @@ unresolved ones included). The page says "N of M cards play as
 printed" from `as_printed_copies` and `deck_size`. The list builds the catalogue verdicts
 once per request and reuses them for every deck. `coverage` is absent
 when the server has no card index or a stored list no longer parses.
+**`commander_cards` and `color_identity`** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) §2)
+are what the Decks page's grid draws: one entry per name in
+`commanders`, in the same order, resolved against the card index by
+name. `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`; it is absent when the name did not
+resolve or no printing has an image, and the page then draws a plain
+band. A commander's `color_identity` is `[]` when it is colourless and
+`null` when its name did not resolve. `color_identity` on the deck is the union of its commanders'
+identities in WUBRG order, absent when that is empty (colourless, or
+nothing resolved). Both are absent with no card index. `PATCH`'s answer
+does not carry them.
 These reads, and the four routes below, share a per-client bucket of 1
 request per second with a burst of 5 (429 past it).
 

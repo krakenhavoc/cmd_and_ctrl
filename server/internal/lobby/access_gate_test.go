@@ -578,7 +578,11 @@ func TestRenewalBelowHalfLifeAsksNothing(t *testing.T) {
 // --- GET /community ------------------------------------------------------
 
 func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
-	s := newSignupStack(t, true, func(c *Config) { c.CommunityInviteURL = "https://discord.gg/c2table" })
+	const voiceCategory = "424242424242424242"
+	s := newSignupStack(t, true, func(c *Config) {
+		c.CommunityInviteURL = "https://discord.gg/c2table"
+		c.DiscordVoice = discord.Voice{Token: "bot-token", GuildID: gateGuild, CategoryID: voiceCategory}
+	})
 	resp := doGet(t, s.srv, "/community", "")
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(resp.Body)
@@ -592,10 +596,11 @@ func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
 	if err := json.Unmarshal(raw, &body); err != nil {
 		t.Fatal(err)
 	}
-	if len(body) != 2 || body["invite_url"] != "https://discord.gg/c2table" || body["gate"] != true {
+	if len(body) != 3 || body["invite_url"] != "https://discord.gg/c2table" || body["gate"] != true || body["voice"] != true {
 		t.Errorf("body = %s", raw)
 	}
-	if strings.Contains(string(raw), gateGuild) || strings.Contains(string(raw), gateRole) {
+	if strings.Contains(string(raw), gateGuild) || strings.Contains(string(raw), gateRole) ||
+		strings.Contains(string(raw), voiceCategory) {
 		t.Errorf("GET /community serves an id: %s", raw)
 	}
 
@@ -604,8 +609,8 @@ func TestCommunityIsPublicCacheableAndNamesNoIDs(t *testing.T) {
 	defer resp2.Body.Close()
 	var offBody map[string]any
 	_ = json.NewDecoder(resp2.Body).Decode(&offBody)
-	if offBody["invite_url"] != "" || offBody["gate"] != false {
-		t.Errorf("gate off, no invite: %v", offBody)
+	if offBody["invite_url"] != "" || offBody["gate"] != false || offBody["voice"] != false {
+		t.Errorf("gate off, no invite, no voice: %v", offBody)
 	}
 }
 

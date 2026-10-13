@@ -2282,6 +2282,37 @@ func (g *Game) WinnerSeat() (seat int, ok bool) {
 	return found, true
 }
 
+// TableGlance is what the lobby's table list shows of a game in play
+// (ADR 0158 §1 item 4): the turn number and each seat's life total.
+// Both are public at the table, so nothing here is filtered.
+type TableGlance struct {
+	// Turn is the game view's turn.number (Turn.Round): the number the
+	// board shows, which every seat has reached.
+	Turn int
+	// Life is each seated player's life total, by player ID.
+	Life map[uuid.UUID]int
+}
+
+// Glance reads TableGlance under the game's read lock. ok is false
+// unless the game is active: a game in the lobby or ended has no turn
+// worth showing. The caller may hold the lobby's lock (the lobby always
+// takes its own lock before a game's, never the other way round).
+func (g *Game) Glance() (TableGlance, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.State != StateActive {
+		return TableGlance{}, false
+	}
+	out := TableGlance{Turn: g.Turn.Round, Life: make(map[uuid.UUID]int, len(g.Seats))}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		out.Life[p.ID] = p.Life
+	}
+	return out, true
+}
+
 // ActivePlayer returns the player whose turn it currently is, or nil
 // if the game has not yet started.
 func (g *Game) ActivePlayer() *Player {

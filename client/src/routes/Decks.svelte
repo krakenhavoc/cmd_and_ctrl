@@ -11,10 +11,12 @@
   //      name field. A check writes nothing; saving is always the
   //      explicit button (owner answer 2), and neither button does the
   //      other's job (§3 item 6).
-  //   4. Your decks: the library, with rename, delete, the report and a
-  //      request button on every deck, pasted ones included (§3 item 5).
-  //   5. Pre-built decks: read-only, never copied into the library
-  //      (owner answer 4).
+  //   4. Your decks: a grid led by each commander's art, in an aura of
+  //      its colour identity, with a coverage ring, the report, a request
+  //      button when something is manual, and Rename / Delete in a ⋯
+  //      menu (ADR 0158 §2; ADR 0112 §3 item 5).
+  //   5. Pre-built decks: behind a link under the grid, read-only, never
+  //      copied into the library (owner answer 4).
   //
   // Public. #/deck-check is a permanent alias of this route, because
   // the Discord bot's /c2-deck-check replies link there. Who sees which
@@ -38,6 +40,8 @@
   import { catalogSearchHash } from "../lib/roadmap";
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
+  import DeckCard from "../lib/components/decks/DeckCard.svelte";
+  import { DECK_SORTS, sortDecks, type DeckSort } from "../lib/deckGrid";
   import {
     checkDeck,
     requestDeck,
@@ -68,13 +72,7 @@
     savedMessage,
     takePendingDeckText,
   } from "../lib/decksPage";
-  import {
-    coverageDetail,
-    coverageLine,
-    deckSubtitle,
-    sourceHost,
-    type MyDeckInfo,
-  } from "../lib/myDecks";
+  import type { MyDeckInfo } from "../lib/myDecks";
   import {
     deckSubtitle as prebuiltSubtitle,
     summariseCoverage,
@@ -269,11 +267,9 @@
 
   // --- 4. your decks -------------------------------------------------
 
-  let renaming = $state("");
-  let renameValue = $state("");
-  let renameError = $state("");
-  let confirmDelete = $state("");
   let busy = $state("");
+  let sort = $state<DeckSort>("recent");
+  const sorted = $derived(sortDecks(decks, sort));
 
   let reportFor = $state("");
   let libReport = $state<CoverageReport | null>(null);
@@ -308,28 +304,17 @@
     }
   });
 
-  function startRename(d: MyDeckInfo): void {
-    renaming = d.id;
-    renameValue = d.name;
-    renameError = "";
-    confirmDelete = "";
-  }
-
-  async function saveRename(d: MyDeckInfo): Promise<void> {
-    const name = renameValue.trim();
-    if (!name || busy) return;
-    if (name === d.name) {
-      renaming = "";
-      return;
-    }
+  // A rename answers the card with the server's message, or "" once the
+  // new name is in the list.
+  async function renameDeck(d: MyDeckInfo, name: string): Promise<string> {
+    if (busy) return "";
     busy = d.id;
-    renameError = "";
     try {
       const updated = await renameMyDeck(d.id, name);
       decks = decks.map((x) => (x.id === d.id ? { ...x, name: updated.name } : x));
-      renaming = "";
+      return "";
     } catch (err) {
-      renameError = message(err, "couldn't rename that deck");
+      return message(err, "couldn't rename that deck");
     } finally {
       busy = "";
     }
@@ -343,7 +328,6 @@
       await deleteMyDeck(d.id);
       decks = decks.filter((x) => x.id !== d.id);
       if (reportFor === d.id) closeReport();
-      confirmDelete = "";
     } catch (err) {
       libError = message(err, "couldn't delete that deck");
     } finally {
@@ -400,6 +384,7 @@
   // GET /decks is session-gated on the server, so the section shows for
   // any session and a signed-out visitor does not ask for it.
   let prebuilt = $state<PrebuiltDeck[]>([]);
+  let prebuiltOpen = $state(false);
   let prebuiltLoaded = $state(false);
   let prebuiltError = $state("");
 
@@ -457,60 +442,69 @@
 <Page
   eyebrow="Cards"
   title="Decks"
-  lede="Paste an Archidekt link or a plain decklist to see how much of it plays as printed. Request what's missing, and save the decks you play. On Moxfield, open the deck → Export → Copy plain text, and paste that."
+  lede="Check how much of a deck plays as printed, request what's missing, and keep the decks you play."
   width="wide"
 >
   <div class="stack">
-    <!-- 1. Check a deck -->
-    <form class="input-card" onsubmit={submit} aria-labelledby="check-h">
-      <h2 id="check-h" class="sec-title">Check a deck</h2>
-      <div class="tabs" role="tablist" aria-label="how to check a deck">
-        <button
-          type="button"
-          role="tab"
-          class="tab"
-          class:on={tab === "link"}
-          aria-selected={tab === "link"}
-          onclick={() => (tab = "link")}
-        >
-          Link
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="tab"
-          class:on={tab === "paste"}
-          aria-selected={tab === "paste"}
-          onclick={() => (tab = "paste")}
-        >
-          Paste a list
-        </button>
-      </div>
+    <!-- 1. Check a deck: one line (ADR 0158 §2 item 1) -->
+    <div class="check">
+      <form
+        class="check-bar"
+        class:pasting={tab === "paste"}
+        onsubmit={submit}
+        aria-labelledby="check-h"
+      >
+        <h2 id="check-h" class="sr-only">Check a deck</h2>
+        <div class="seg" role="tablist" aria-label="how to check a deck">
+          <button
+            type="button"
+            role="tab"
+            class:on={tab === "link"}
+            aria-selected={tab === "link"}
+            onclick={() => (tab = "link")}
+          >
+            Link
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class:on={tab === "paste"}
+            aria-selected={tab === "paste"}
+            onclick={() => (tab = "paste")}
+          >
+            Paste a list
+          </button>
+        </div>
 
-      {#if tab === "link"}
-        <input
-          type="text"
-          class="url-field"
-          placeholder="https://archidekt.com/decks/123456"
-          aria-label={L.deckLink}
-          bind:value={urlInput}
-        />
-      {:else}
-        <textarea
-          rows="7"
-          class="paste-field"
-          placeholder={"1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n1 Doubling Season\n..."}
-          aria-label="decklist"
-          bind:value={textInput}
-        ></textarea>
-      {/if}
+        {#if tab === "link"}
+          <input
+            type="text"
+            class="check-field"
+            placeholder="https://archidekt.com/decks/123456 · on Moxfield, paste the list instead"
+            aria-label={L.deckLink}
+            bind:value={urlInput}
+          />
+        {:else}
+          <textarea
+            rows="6"
+            class="check-field paste"
+            placeholder={"1 Atraxa, Praetors' Voice *CMDR*\n1 Sol Ring\n1 Doubling Season\n..."}
+            aria-label="decklist"
+            aria-describedby="paste-hint"
+            bind:value={textInput}
+          ></textarea>
+        {/if}
 
-      <div class="row-actions">
-        <button type="submit" class="primary lg" disabled={loading}>
+        <button type="submit" class="btn primary check-go" disabled={loading}>
           {loading ? "Checking…" : "Check this deck"}
         </button>
-      </div>
-    </form>
+      </form>
+      {#if tab === "paste"}
+        <p id="paste-hint" class="check-hint">
+          On Moxfield, open the deck, then Export and Copy plain text, and paste it here.
+        </p>
+      {/if}
+    </div>
 
     {#if errorMessage}
       <p class="notice err" role="alert">
@@ -746,181 +740,115 @@
       </section>
     {/if}
 
-    <!-- 4. Your decks -->
-    {#if access.library !== "hidden"}
-      <section class="panel" aria-labelledby="yours-h">
-        <h2 id="yours-h" class="sec-title">Your decks</h2>
-        {#if access.library === "signIn"}
-          <p class="help">
-            Saved decks are kept for your Discord account.
-            <a class="ghost-link inline" href={discordLoginHref()} onclick={beforeSignIn}
-              >Sign in with Discord to see them.</a
-            >
-          </p>
-        {:else if access.library === "linkDiscord"}
-          <p class="help">
-            Saved decks are kept for a Discord account. Link Discord from your table's menu to keep
-            decks here.
-          </p>
-        {:else if libLoading && decks.length === 0}
+    <!-- 4. Your decks: the grid (ADR 0158 §2 item 2) -->
+    {#if access.library === "signIn"}
+      <p class="help">
+        Saved decks are kept for your Discord account.
+        <a class="ghost-link inline" href={discordLoginHref()} onclick={beforeSignIn}
+          >Sign in with Discord to see them.</a
+        >
+      </p>
+    {:else if access.library === "linkDiscord"}
+      <p class="help">
+        Saved decks are kept for a Discord account. Link Discord from your table's menu to keep
+        decks here.
+      </p>
+    {:else if access.library === "allowed"}
+      <section class="yours" aria-labelledby="yours-h">
+        <div class="yours-head">
+          <h2 id="yours-h" class="sec-title">Your decks</h2>
+          {#if decks.length > 0}<span class="sec-count">{decks.length}</span>{/if}
+          <span class="grow"></span>
+          {#if decks.length > 1}
+            <div class="seg" role="group" aria-label="sort your decks">
+              {#each DECK_SORTS as o (o.key)}
+                <button
+                  type="button"
+                  class:on={sort === o.key}
+                  aria-pressed={sort === o.key}
+                  onclick={() => (sort = o.key)}
+                >
+                  {o.label}
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
+
+        {#if libLoading && decks.length === 0}
           <p class="help" aria-live="polite">Loading your decks…</p>
         {:else if decks.length === 0 && !libError}
           <p class="help">
             No saved decks yet. Decks you save here, or import at a table while signed in, are kept.
           </p>
-        {:else}
-          <ul class="decks" aria-label={L.yourDecks}>
-            {#each decks as d (d.id)}
-              <li class="deck">
-                <div class="line">
-                  {#if renaming === d.id}
-                    <form
-                      class="rename"
-                      onsubmit={(e) => {
-                        e.preventDefault();
-                        void saveRename(d);
-                      }}
-                    >
-                      <input
-                        type="text"
-                        bind:value={renameValue}
-                        maxlength="100"
-                        aria-label={`new name for ${d.name}`}
-                      />
-                      <button
-                        type="submit"
-                        class="primary"
-                        disabled={busy !== "" || !renameValue.trim()}
-                      >
-                        Save
-                      </button>
-                      <button type="button" onclick={() => (renaming = "")}>Cancel</button>
-                    </form>
-                  {:else}
-                    <span class="name">{d.name}</span>
-                  {/if}
-                </div>
-                {#if renaming === d.id && renameError}
-                  <p class="notice err" role="alert">{renameError}</p>
-                {/if}
-                <div class="meta">{deckSubtitle(d)}</div>
-                {#if coverageLine(d)}
-                  <div class="cov">{coverageLine(d)}</div>
-                  {#if coverageDetail(d)}
-                    <div class="cov-detail">{coverageDetail(d)}</div>
-                  {/if}
-                {/if}
-                {#if d.source_url}
-                  <div class="meta">
-                    From <a href={d.source_url} target="_blank" rel="noopener noreferrer"
-                      >{sourceHost(d.source_url)}</a
-                    >
-                  </div>
-                {/if}
-
-                <div class="row-btns">
-                  {#if d.coverage}
-                    <button
-                      type="button"
-                      onclick={() => toggleReport(d)}
-                      aria-expanded={reportFor === d.id}
-                    >
-                      {reportFor === d.id ? "Hide report" : "Coverage report"}
-                    </button>
-                  {/if}
-                  {#if libraryDeckRequestable(d)}
-                    <button
-                      type="button"
-                      onclick={() => requestSaved(d)}
-                      disabled={requesting !== ""}
-                      aria-label={`request missing cards for ${d.name}`}
-                    >
-                      {requesting === d.id ? "Requesting…" : "Request missing cards"}
-                    </button>
-                  {/if}
-                  <button type="button" onclick={() => startRename(d)} disabled={busy !== ""}>
-                    Rename
-                  </button>
-                  {#if confirmDelete === d.id}
-                    <span class="confirm" role="alert">
-                      Delete {d.name}?
-                      <button
-                        type="button"
-                        class="danger"
-                        disabled={busy !== ""}
-                        onclick={() => remove(d)}
-                      >
-                        {busy === d.id ? "…" : "Delete"}
-                      </button>
-                      <button type="button" onclick={() => (confirmDelete = "")}>Keep</button>
-                    </span>
-                  {:else}
-                    <button
-                      type="button"
-                      onclick={() => {
-                        confirmDelete = d.id;
-                        renaming = "";
-                      }}
-                      disabled={busy !== ""}
-                      aria-label={`delete ${d.name}`}
-                    >
-                      Delete
-                    </button>
-                  {/if}
-                </div>
-
-                {#if deckRequests[d.id]}
-                  {@const res = deckRequests[d.id]}
-                  <p class="outcome" class:warn={res.status === "rate_limited"} role="status">
-                    {deckRequestOutcomeMessage(res)}
-                    {#if res.issue_url}
-                      <a href={res.issue_url} target="_blank" rel="noreferrer noopener">
-                        #{res.issue_number}
-                        <Icon name="link" size={11} />
-                      </a>
-                    {/if}
-                  </p>
-                {/if}
-                {#if deckRequestErrors[d.id]}
-                  <p class="notice err" role="alert">
-                    <Icon name="x" size={14} />
-                    <span>{deckRequestErrors[d.id]}</span>
-                  </p>
-                {/if}
-
-                {#if reportFor === d.id}
-                  <div class="lib-report">
-                    {#if libReportError}
-                      <p class="notice err" role="alert">{libReportError}</p>
-                    {:else if !libGrouped || !libReport}
-                      <p class="help">Building the report…</p>
-                    {:else}
-                      {#each BUCKET_ORDER as b (b)}
-                        {#if libGrouped[b].length > 0}
-                          <details open={b === "manual" || b === "unreviewed"}>
-                            <summary>{BUCKET_LABELS[b]} ({libGrouped[b].length})</summary>
-                            <ul>
-                              {#each libGrouped[b] as c (c.oracle_id || c.name)}
-                                <li>
-                                  {c.name}
-                                  {#if c.caveats && c.caveats.length > 0}
-                                    <span class="caveat">— {c.caveats.join(" ")}</span>
-                                  {/if}
-                                </li>
-                              {/each}
-                            </ul>
-                          </details>
-                        {/if}
-                      {/each}
-                      {#if libReport.unknown.length > 0}
-                        <p class="help">
-                          Not found in the card index: {libReport.unknown.join(", ")}
-                        </p>
+        {:else if decks.length > 0}
+          <ul class="deck-grid" aria-label={L.yourDecks}>
+            {#each sorted as d (d.id)}
+              <DeckCard
+                deck={d}
+                reportOpen={reportFor === d.id}
+                canRequest={libraryDeckRequestable(d)}
+                requesting={requesting === d.id}
+                requestLocked={requesting !== ""}
+                busy={busy !== ""}
+                onReport={() => toggleReport(d)}
+                onRequest={() => requestSaved(d)}
+                onRename={(name) => renameDeck(d, name)}
+                onDelete={() => remove(d)}
+              >
+                {#snippet below()}
+                  {#if deckRequests[d.id]}
+                    {@const res = deckRequests[d.id]}
+                    <p class="outcome" class:warn={res.status === "rate_limited"} role="status">
+                      {deckRequestOutcomeMessage(res)}
+                      {#if res.issue_url}
+                        <a href={res.issue_url} target="_blank" rel="noreferrer noopener">
+                          #{res.issue_number}
+                          <Icon name="link" size={11} />
+                        </a>
                       {/if}
-                    {/if}
-                  </div>
-                {/if}
-              </li>
+                    </p>
+                  {/if}
+                  {#if deckRequestErrors[d.id]}
+                    <p class="notice err" role="alert">
+                      <Icon name="x" size={14} />
+                      <span>{deckRequestErrors[d.id]}</span>
+                    </p>
+                  {/if}
+                  {#if reportFor === d.id}
+                    <div class="lib-report">
+                      {#if libReportError}
+                        <p class="notice err" role="alert">{libReportError}</p>
+                      {:else if !libGrouped || !libReport}
+                        <p class="help">Building the report…</p>
+                      {:else}
+                        {#each BUCKET_ORDER as b (b)}
+                          {#if libGrouped[b].length > 0}
+                            <details open={b === "manual" || b === "unreviewed"}>
+                              <summary>{BUCKET_LABELS[b]} ({libGrouped[b].length})</summary>
+                              <ul>
+                                {#each libGrouped[b] as c (c.oracle_id || c.name)}
+                                  <li>
+                                    {c.name}
+                                    {#if c.caveats && c.caveats.length > 0}
+                                      <span class="caveat">— {c.caveats.join(" ")}</span>
+                                    {/if}
+                                  </li>
+                                {/each}
+                              </ul>
+                            </details>
+                          {/if}
+                        {/each}
+                        {#if libReport.unknown.length > 0}
+                          <p class="help">
+                            Not found in the card index: {libReport.unknown.join(", ")}
+                          </p>
+                        {/if}
+                      {/if}
+                    </div>
+                  {/if}
+                {/snippet}
+              </DeckCard>
             {/each}
           </ul>
         {/if}
@@ -933,35 +861,52 @@
       </section>
     {/if}
 
-    <!-- 5. Pre-built decks (owner answer 4): read-only, never copied. -->
+    <!-- 5. Pre-built decks (owner answer 4): a link under the grid that
+         opens the read-only list. Never copied into the library. -->
     {#if isSignedIn && (prebuilt.length > 0 || prebuiltError)}
-      <section class="panel" aria-labelledby="prebuilt-h">
-        <h2 id="prebuilt-h" class="sec-title">Pre-built decks</h2>
-        <p class="help">
-          Ready-made decks you can pick at any table. They stay here, and are never copied into your
-          decks.
+      <section class="prebuilt" aria-label="pre-built decks section">
+        <p class="prebuilt-line">
+          No deck yet?
+          <button
+            type="button"
+            class="link-btn"
+            aria-expanded={prebuiltOpen}
+            aria-controls="prebuilt-list"
+            onclick={() => (prebuiltOpen = !prebuiltOpen)}
+          >
+            {prebuiltOpen ? "Hide the pre-built decks" : "Pick a pre-built"}
+          </button>
         </p>
-        {#if prebuiltError}
-          <p class="notice err" role="alert">
-            <Icon name="x" size={14} />
-            <span>{prebuiltError}</span>
-          </p>
-        {:else}
-          <ul class="decks prebuilt" aria-label="pre-built decks">
-            {#each prebuilt as p (p.id)}
-              {@const cov = summariseCoverage(p.coverage)}
-              <li class="deck">
-                <span class="name">{p.name}</span>
-                {#if prebuiltSubtitle(p)}
-                  <div class="meta">{prebuiltSubtitle(p)}</div>
-                {/if}
-                <div class="cov tone-{cov.tone}">{cov.headline}</div>
-                {#if cov.detail}
-                  <div class="cov-detail">{cov.detail}</div>
-                {/if}
-              </li>
-            {/each}
-          </ul>
+        {#if prebuiltOpen}
+          <div id="prebuilt-list" class="prebuilt-panel">
+            <h2 class="sec-title small">Pre-built decks</h2>
+            <p class="help">
+              Ready-made decks you can pick at any table. They stay here, and are never copied into
+              your decks.
+            </p>
+            {#if prebuiltError}
+              <p class="notice err" role="alert">
+                <Icon name="x" size={14} />
+                <span>{prebuiltError}</span>
+              </p>
+            {:else}
+              <ul class="decks prebuilt-decks" aria-label="pre-built decks">
+                {#each prebuilt as p (p.id)}
+                  {@const cov = summariseCoverage(p.coverage)}
+                  <li class="deck">
+                    <span class="name">{p.name}</span>
+                    {#if prebuiltSubtitle(p)}
+                      <div class="meta">{prebuiltSubtitle(p)}</div>
+                    {/if}
+                    <div class="cov tone-{cov.tone}">{cov.headline}</div>
+                    {#if cov.detail}
+                      <div class="cov-detail">{cov.detail}</div>
+                    {/if}
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
         {/if}
       </section>
     {/if}
@@ -982,73 +927,183 @@
     font-size: 19px;
     font-weight: 800;
     letter-spacing: -0.005em;
+    text-transform: none;
     color: var(--fg);
   }
 
-  /* --- input card -------------------------------------------------- */
-  .input-card,
-  .panel {
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  /* --- the check bar: one line ---------------------------------------- */
+  .check {
     display: flex;
     flex-direction: column;
-    gap: 12px;
-    padding: 16px;
+    gap: 8px;
+  }
+  .check-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
     border-radius: var(--radius-lg);
     background: var(--surface);
     border: 1px solid var(--border);
     min-width: 0;
   }
-  .tabs {
-    display: inline-flex;
-    gap: 4px;
-    align-self: flex-start;
+  .check-bar.pasting {
+    align-items: flex-start;
   }
-  .tab {
-    height: 28px;
-    padding: 0 12px;
-    border-radius: 999px;
-    background: var(--surface-sunken);
-    border: 1px solid var(--border);
-    color: var(--fg-muted);
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    cursor: pointer;
-  }
-  .tab:hover {
-    background: var(--surface-hover);
-    color: var(--fg);
-  }
-  .tab.on {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent-strong);
-  }
-  .url-field {
-    width: 100%;
+  .check-field {
+    flex: 1;
+    min-width: 0;
+    height: 40px;
     box-sizing: border-box;
     font-family: var(--font-mono);
     font-size: 13px;
   }
-  .paste-field {
-    width: 100%;
-    box-sizing: border-box;
-    min-height: 128px;
-    font-family: var(--font-mono);
+  .check-field.paste {
+    height: auto;
+    min-height: 120px;
     font-size: 12px;
     line-height: 1.5;
     resize: vertical;
   }
+  .check-go {
+    flex: 0 0 auto;
+  }
+  .check-hint {
+    margin: 0;
+    padding-left: 4px;
+    font-size: 12.5px;
+    color: var(--fg-muted);
+  }
+
+  /* A segmented control: the check's Link / Paste, the grid's sort. */
+  .seg {
+    display: inline-flex;
+    flex: 0 0 auto;
+    gap: 2px;
+    padding: 3px;
+    border-radius: var(--radius);
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+  }
+  .seg button {
+    height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-radius: calc(var(--radius) - 2px);
+    background: transparent;
+    color: var(--fg-muted);
+    font: 600 12.5px/1 var(--font-ui);
+    cursor: pointer;
+  }
+  .seg button:hover {
+    color: var(--fg);
+    background: var(--overlay);
+  }
+  .seg button.on {
+    background: var(--surface-raised);
+    color: var(--fg);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* --- your decks: the grid ------------------------------------------- */
+  .yours {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    min-width: 0;
+    margin-top: 8px;
+  }
+  .yours-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
+  .sec-count {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--fg-dim);
+  }
+  .grow {
+    flex: 1;
+  }
+  .deck-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    align-items: stretch;
+  }
+  @media (max-width: 1099px) {
+    .deck-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+  @media (max-width: 599px) {
+    .deck-grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  /* --- the pre-built link and list ------------------------------------ */
+  .prebuilt {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .prebuilt-line {
+    margin: 0;
+    font-size: 13px;
+    color: var(--fg-muted);
+  }
+  .link-btn {
+    all: unset;
+    color: var(--accent-strong);
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .link-btn::after {
+    content: " →";
+  }
+  .link-btn:hover {
+    color: var(--accent);
+  }
+  .link-btn:focus-visible {
+    outline: 2px solid var(--accent-strong);
+    outline-offset: 2px;
+    border-radius: 2px;
+  }
+  .prebuilt-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px;
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+  .sec-title.small {
+    font-size: 16px;
+  }
+
   .row-actions {
     display: flex;
     justify-content: flex-end;
   }
   .row-actions.start {
     justify-content: flex-start;
-  }
-  .lg {
-    height: 38px;
-    padding: 0 18px;
-    font-size: 13px;
   }
 
   /* --- notices ------------------------------------------------------ */
@@ -1441,41 +1496,9 @@
     font-size: 11.5px;
     color: var(--fg-dim);
   }
-  .row-btns {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    margin-top: 10px;
-  }
-  .deck .outcome,
-  .deck .notice {
-    margin-top: 8px;
-  }
-  .rename {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    width: 100%;
-  }
-  .rename input {
-    flex: 1 1 200px;
-    min-width: 0;
-  }
-  .confirm {
-    display: inline-flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px;
-    font-size: 12.5px;
-    color: var(--danger);
-  }
-  .danger {
-    color: var(--danger);
-    border-color: var(--danger);
-  }
   .lib-report {
-    margin-top: 12px;
+    max-height: 320px;
+    overflow: auto;
     padding: 10px 12px;
     border-radius: 8px;
     border: 1px solid var(--border);
@@ -1509,8 +1532,8 @@
     .row-actions {
       justify-content: stretch;
     }
-    .row-actions .lg {
-      width: 100%;
+    .check-bar {
+      flex-wrap: wrap;
     }
   }
 </style>

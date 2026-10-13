@@ -4,12 +4,14 @@ import type {
   ActivatedAbilityView,
   AdditionalCostView,
   AlternativeCostView,
+  AssistOfferView,
   CardView,
   DivideView,
   LegalTargetsView,
   ModeOptionView,
   OptionalCostView,
   PendingChoiceView,
+  PlayerView,
   TapCostView,
 } from "./protocol";
 import type { CounterPayment } from "./counterCost";
@@ -99,6 +101,10 @@ export interface CastChoices {
   // when `optionalCosts` claims the gift offer; the server rejects it
   // on a cast that does not.
   giftOpponent?: string;
+  // ADR 0150 §5 (CR 702.132a): the player asked to help pay the generic
+  // mana of a spell with assist — a player ID from the card's
+  // `assist.players`. Undefined casts it alone.
+  assistPlayer?: string;
   // ADR 0100 §2: which branch of an either/or additional cost is being
   // paid — an index into `additional_cost.branches`. Required by the
   // server on a card with branches and refused on any other, so it is
@@ -214,6 +220,10 @@ export function applyCastChoices(
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
+  // ADR 0150 §5: omitted unless somebody was asked — the server refuses
+  // it on a spell without assist.
+  if (choices.assistPlayer !== undefined && choices.assistPlayer !== "")
+    params.assist_player = choices.assistPlayer;
   // ADR 0100: sent whenever chosen, branch 0 included — the server
   // never defaults a missing branch.
   if (choices.costBranch !== undefined) params.cost_branch = choices.costBranch;
@@ -1030,6 +1040,21 @@ export function optionalCostSelection(counts: Map<number, number>): number[] {
 export function optionalCostOpponentOptions(offer: OptionalCostView): string[] | undefined {
   if (!offer.chooses_opponent) return undefined;
   return offer.opponent_options ?? [];
+}
+
+// assistOf is a spell with assist's offer (ADR 0150 §5): "up to {max}"
+// and the players who may be asked, or undefined for a card without
+// assist. A forced cast pays no mana, so it has nothing to help with.
+export function assistOf(card: CardView, forceCast = false): AssistOfferView | undefined {
+  if (forceCast || !card.assist || card.assist.max <= 0) return undefined;
+  return card.assist;
+}
+
+// assistPlayerLabel names one player in the Assist row. A bot always
+// answers 0 (ADR 0150 owner decision 8), so its seat says so.
+export function assistPlayerLabel(seat: Pick<PlayerView, "name" | "is_bot"> | undefined): string {
+  if (!seat) return "A player";
+  return seat.is_bot ? `${seat.name} (always declines)` : seat.name;
 }
 
 // TargetClauseOverride is the target-clause trio an offer carries when

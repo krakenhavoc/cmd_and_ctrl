@@ -428,6 +428,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Energy: 1, Printed: true}},
 		// #2581: the viewer's own printed X ceiling.
 		XMax: new(int),
+		// ADR 0150 §5: the viewer's own assist offer.
+		Assist: &AssistOfferView{Max: 3, Players: []string{"p"}},
 	}
 }
 
@@ -833,6 +835,8 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"CastPrices": surfacePrivate,
 	// #2581: a count read off the asking seat's board.
 	"XMax": surfacePrivate,
+	// ADR 0150 §5: who the asking seat may ask to help pay.
+	"Assist": surfacePrivate,
 	// #2167: which types a per-type permission leaves is the holder's
 	// own budget.
 	"PermissionTypes": surfacePrivate,

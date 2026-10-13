@@ -977,6 +977,13 @@ type PendingChoice struct {
 	// Plain data, shown to every seat; nil on every other prompt.
 	AnyPlayerOffer *AnyPlayerOffer
 
+	// Assist makes a pay_amount an assist helper's prompt (ADR 0150 §4,
+	// assist.go): who is casting what, and the generic it has. Plain
+	// data, shown to every seat (the caster's waiting line reads it).
+	// Never captured: the prompt always carries a chooseValueResume
+	// frame, as every pay_amount does.
+	Assist *AssistPrompt
+
 	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
 	// color of your choice"). nil for the stored form, whose answer is

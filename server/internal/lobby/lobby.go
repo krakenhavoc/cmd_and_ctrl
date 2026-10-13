@@ -138,6 +138,13 @@ type GameMeta struct {
 	// somebody else's table. Omitted (false) for every response that
 	// does not go through redactMetaFor.
 	IsCreator bool `json:"is_creator,omitempty"`
+
+	// Turn is the turn number of a game in play (ADR 0158 §1 item 4):
+	// the game view's turn.number, the number the board shows. Set only
+	// by List, and only while the game is active; zero (omitted)
+	// otherwise, and during the opening roll, before turn 1 begins. Never persisted: the engine is the authority, and the
+	// list reads it fresh each time.
+	Turn int `json:"turn,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -197,6 +204,12 @@ type SeatInfo struct {
 	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
 	// or agent seat. Mirrors GameMeta.HostPlayerID.
 	IsHost bool `json:"is_host,omitempty"`
+
+	// Life is the seat's life total while the game is in play (ADR 0158
+	// §1 item 4), set by List alongside GameMeta.Turn. Nil (omitted) in
+	// the lobby, once the game has ended, and on every other route.
+	// Public at the table: every seat and spectator sees it.
+	Life *int `json:"life,omitempty"`
 
 	// UserID is the users row of the signed-in person holding the seat
 	// (seats.user_id, ADR 0051 sub-PR 4), or "" for a guest, a bot,
@@ -1478,6 +1491,7 @@ func (l *Lobby) list(archived bool) []GameMeta {
 		m := copyMeta(e.meta)
 		m.InviteToken = ""
 		m.SpectatorInvite = ""
+		glanceAt(e, &m)
 		out = append(out, m)
 	}
 	// Deterministic ordering by creation time helps the lobby UI
@@ -1629,6 +1643,28 @@ func copyMeta(m GameMeta) GameMeta {
 	// be at the table yet; nobody reading the meta needs it.
 	out.HostDiscordID = ""
 	return out
+}
+
+// glanceAt adds the turn and the life totals of a game in play to its
+// listed meta m (ADR 0158 §1 item 4). It reads the game under the
+// game's own read lock while the caller holds l.mu, the order the lobby
+// always takes them in (syncStateLocked does the same). A game in the
+// lobby or ended gets neither field. m is the caller's copy: the
+// players slice is copyMeta's, so nothing here touches the lobby's meta.
+func glanceAt(e *gameEntry, m *GameMeta) {
+	if e.room == nil || e.room.Game == nil {
+		return
+	}
+	glance, ok := e.room.Game.Glance()
+	if !ok {
+		return
+	}
+	m.Turn = glance.Turn
+	for i := range m.Players {
+		if life, seated := glance.Life[m.Players[i].PlayerID]; seated {
+			m.Players[i].Life = &life
+		}
+	}
 }
 
 func sortMetaByCreatedAt(s []GameMeta) {

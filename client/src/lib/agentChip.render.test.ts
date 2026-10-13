@@ -182,8 +182,10 @@ describe("in the lobby list", () => {
     const chips = container.querySelectorAll(CHIP);
     expect(chips.length).toBe(1);
     expect(chips[0].textContent).toContain("AI · claude-code");
-    expect(container.querySelectorAll(".botchip").length).toBe(1);
-    expect(chips[0].closest("li")?.querySelector(".botchip")).toBeNull();
+    // The bot seat is marked as a bot (its robot avatar), the agent seat
+    // is not.
+    expect(container.querySelectorAll("li.seat.bot").length).toBe(1);
+    expect(chips[0].closest("li")?.classList.contains("bot")).toBe(false);
   });
 });
 

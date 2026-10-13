@@ -9,6 +9,7 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
+  import { HISTORY_HASH } from "../lib/tablesPage";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { removedNotice, session } from "../lib/session";
   import { serverFull } from "../lib/serverFull";
@@ -83,6 +84,7 @@
   import {
     GAME_OVER_GRACE_MS,
     anyPlayerOfferRequest,
+    assistRequest,
     councilVoteRequest,
     gameOverRequest,
     inlineRefusal,
@@ -1847,6 +1849,17 @@
     const name = findCardView(view, link.source)?.name || "a card";
     return anyPlayerOfferRequest(link, viewerID, view.seats, name);
   });
+  // ADR 0150 §5: a cast parked on an assist helper. The caster's line
+  // carries Cancel request (owner decision 5); every other seat but the
+  // helper, whose own prompt is the pay_amount, reads it.
+  const assistDockRequest = $derived.by(() => {
+    if (!view || !viewerID) return null;
+    const ask = view.pending_choices?.find((c) => c.assist) ?? null;
+    if (!ask) return null;
+    return assistRequest(ask, viewerID, view.seats, () =>
+      client.sendAction("cancel_assist", viewerID ?? undefined, { choice_id: ask.id }),
+    );
+  });
   // #2919: Back to lobby is held for a moment after the game ends, so a
   // click meant for `next`, whose corner it takes, cannot leave the table.
   let gameOverArmed = $state(false);
@@ -1942,7 +1955,7 @@
     onLifeHistory: () => (showLifeHistory = true),
     onTableSettings: () => (tableSettingsOpen = true),
     onSpawn: () => (spawnerOpen = true),
-    onMyGames: () => navigate("#/my-games"),
+    onMyGames: () => navigate(HISTORY_HASH),
     onBack: back,
     onConcede: concede,
     onStartVote: (topic, options) =>
@@ -2429,6 +2442,9 @@
         {/if}
         {#if anyPlayerOfferDockRequest}
           <DockRequest request={anyPlayerOfferDockRequest} />
+        {/if}
+        {#if assistDockRequest}
+          <DockRequest request={assistDockRequest} />
         {/if}
         {#if fanfare && !fanfareDismissed}
           <GameEndFanfare

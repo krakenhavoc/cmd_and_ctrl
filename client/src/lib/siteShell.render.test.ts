@@ -80,14 +80,11 @@ describe("the site header's links", () => {
     expect(container.querySelector('button[aria-controls="account-menu"]')).toBeNull();
   });
 
-  it("signed in with Discord: Tables and My games | Decks, Catalog and Roadmap", async () => {
+  it("signed in with Discord: Tables | Decks, Catalog and Roadmap (no My games, ADR 0158 §1)", async () => {
     session.set(sess("identified", USER));
     const { container } = render(SiteHeader as never, {} as never);
     await settle();
-    expect(navGroups(container)).toEqual([
-      [L.navTables, "My games"],
-      ["Decks", "Catalog", "Roadmap"],
-    ]);
+    expect(navGroups(container)).toEqual([[L.navTables], ["Decks", "Catalog", "Roadmap"]]);
     // The route is still the Lobby's; only the words changed.
     const tables = [...container.querySelectorAll("nav a")].find(
       (a) => a.textContent?.trim() === L.navTables,
@@ -97,7 +94,7 @@ describe("the site header's links", () => {
     expect(container.querySelector('button[aria-controls="account-menu"]')).not.toBeNull();
   });
 
-  it("a guest seat and the admin token get no My games, which needs a Discord account", async () => {
+  it("a guest seat and the admin token get the same groups", async () => {
     for (const s of [sess("player"), sess("admin")]) {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);

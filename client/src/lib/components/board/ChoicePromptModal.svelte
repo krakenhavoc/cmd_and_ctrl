@@ -1897,7 +1897,9 @@
         ? L.energyToPay
         : payAmountUnit === "life"
           ? L.lifeToPay
-          : L.numberToChoose}
+          : payAmountUnit === "mana"
+            ? "mana to pay"
+            : L.numberToChoose}
     >
       <button
         type="button"
@@ -1931,6 +1933,10 @@
         <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
       {:else if payAmountUnit === "life"}
         <span class="pay-amount-of">of {payAmountView.max} life</span>
+      {:else if payAmountUnit === "mana"}
+        <!-- ADR 0150 §5: an assist helper's generic mana, up to what
+             their pool and untapped sources can make. -->
+        <span class="pay-amount-of">up to {"{"}{payAmountView.max}{"}"} generic</span>
       {:else if !payAmountView.no_max}
         <span class="pay-amount-of">up to {payAmountView.max}</span>
       {/if}

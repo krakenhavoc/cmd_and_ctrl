@@ -340,6 +340,17 @@ func (g *Game) ResolvePayAmount(choiceID, chooserID uuid.UUID, amount int) error
 		if !g.CanPayLifeLocked(g.playerByIDLocked(chooserID), amount) {
 			return ErrInvalidParam
 		}
+	case PayResourceMana:
+		// ADR 0150 §4: an assist helper's answer is refused, with the
+		// prompt left open, when they can't fund it now (CR 118.3). The
+		// mana itself is paid by the cast's re-run, together with the
+		// caster's (CR 601.2h), so nothing is spent here.
+		if choice.Assist == nil {
+			return ErrInvalidParam
+		}
+		if _, _, ok := g.assistFundsLocked(chooserID, amount, choice.Assist.spend); !ok {
+			return ErrInsufficientMana
+		}
 	}
 	frame := choice.chooseValueResume
 	source := choice.Source

@@ -180,7 +180,7 @@ export function connectionBanner(
       tone: "ended",
       headline: "Your session ended — sign in again",
       detail: signedIn
-        ? `${STALE_BOARD_SENTENCE} Head to My games to get back to an open table.`
+        ? `${STALE_BOARD_SENTENCE} Head to Tables to get back to an open table.`
         : `${STALE_BOARD_SENTENCE} Nothing you do will reach the game until you sign in again.`,
       retryLabel: "",
       link: signedIn ? SIGNED_IN_RETURN_LINK : { href: "#/login", label: "Sign in" },

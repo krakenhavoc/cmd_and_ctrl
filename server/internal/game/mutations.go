@@ -533,6 +533,18 @@ type CastSpellParams struct {
 	// announcement's resume sets it, so no payload answers for
 	// another player's commander.
 	commanderAnswers map[uuid.UUID]bool
+
+	// AssistPlayer is the player the caster asks to help pay the
+	// generic mana of a spell with assist (CR 702.132a, ADR 0150 §4).
+	// Must be another player still in the game, and the spell must have
+	// assist and a generic part in its total cost; anything else is
+	// refused. The cast is parked on a pay_amount prompt to that player
+	// before anything is paid (assist.go).
+	AssistPlayer uuid.UUID
+
+	// assistPaid is the helper's answer, attached by the parked
+	// announcement's resume. Unexported, like commanderAnswers.
+	assistPaid *assistAnswer
 }
 
 // InsufficientManaError is returned by CastSpell when the Strict
@@ -992,6 +1004,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"oracle_id", card.OracleID,
 			"gift_opponent", params.GiftOpponent,
 			"optional_costs", params.OptionalCosts,
+		)
+		return err
+	}
+	// ADR 0150 §4, CR 702.132a: assist's "choose another player", with
+	// the rest of the announcement. Whether the total cost has a
+	// generic part is asked where the cost is totalled, at the park.
+	if err := g.validateAssistChoiceLocked(playerID, &card, params); err != nil {
+		slog.Warn("cast_spell rejected: bad assist choice",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"assist_player", params.AssistPlayer,
+			"err", err,
 		)
 		return err
 	}
@@ -1534,6 +1558,26 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		return nil
 	}
 	params.commanderAnswers = answers
+	// ADR 0150 §4, CR 702.132a: a spell cast with assist waits here, at
+	// the same point and for the same reason, on the helper's answer —
+	// nothing tapped, paid or moved. The answer casts it again with the
+	// amount attached (assist.go).
+	if params.AssistPlayer != uuid.Nil && params.assistPaid == nil {
+		parked, err := g.parkForAssistLocked(p, card, cardID, params)
+		if err != nil {
+			return err
+		}
+		if parked {
+			return nil
+		}
+	}
+	// CR 601.2h: the helper's share and the caster's remaining cost are
+	// both planned before either is paid, so a short side pays nothing
+	// on either.
+	assist, err := g.prepareAssistLocked(p, card, params)
+	if err != nil {
+		return err
+	}
 
 	// S15 sub-PR 5 auto-tap. When AutoTap is set, plan a tap of the
 	// caller's untapped permanents and materialise the produced mana
@@ -1560,6 +1604,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	paid, err := g.applyCastCostLocked(p, card, params, cardID)
 	if err != nil {
 		return err
+	}
+	// ADR 0150 §4: the helper's share, planned above with the caster's.
+	// Their mana is spent to cast this spell, so it joins the record the
+	// spend riders and the "mana spent to cast it" readers read.
+	if assist != nil {
+		helped, err := g.payAssistLocked(assist, cardID)
+		if err != nil {
+			return err
+		}
+		paid.Mana = append(paid.Mana, helped...)
+		paid.AssistedBy = assist.helper.ID
+		paid.AssistPaid = assist.amount
 	}
 	// Non-land: route through the stack. The card lives in
 	// Game.Stack; the announce-time choices live in StackMeta.
@@ -2921,7 +2977,13 @@ func (g *Game) effectiveCostLocked(p *Player, card Card, params CastSpellParams)
 	if err != nil {
 		return ParsedCost{}, err
 	}
-	return g.costAfterModifiersLocked(cost, p, card, params)
+	cost, err = g.costAfterModifiersLocked(cost, p, card, params)
+	if err != nil {
+		return ParsedCost{}, err
+	}
+	// ADR 0150 §4: what an assist helper pays comes off the generic the
+	// caster owes. Only the parked cast's re-run carries an answer.
+	return params.assistPaid.lessFrom(cost, params.XValue), nil
 }
 
 // costAfterModifiersLocked is effectiveCostLocked's tail: the board's
@@ -5185,6 +5247,19 @@ func (g *Game) dropChoicesForPlayerLocked(playerID uuid.UUID) []*replacementResu
 	for _, c := range g.PendingChoices {
 		if c != nil && c.Chooser != playerID && c.CouncilVote != nil && c.CouncilVote.Voter == playerID {
 			chosenFor = append(chosenFor, c.CouncilVote)
+			continue
+		}
+		// ADR 0150 §4: an assist helper's prompt for a caster who has
+		// left. The cast was parked before anything was paid, and there
+		// is nobody left to make it (CR 800.4a), so the prompt is
+		// withdrawn and nothing runs.
+		if c != nil && c.Chooser != playerID && c.Assist != nil && c.Assist.Caster == playerID {
+			g.EmitEvent(Event{
+				Kind:   EventPendingChoiceDropped,
+				Actor:  c.Chooser,
+				Source: c.Source,
+				Label:  string(c.Kind),
+			})
 			continue
 		}
 		if c == nil || c.Chooser != playerID {
