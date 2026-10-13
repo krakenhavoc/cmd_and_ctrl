@@ -4688,11 +4688,11 @@ the live `*Game` (`resumeClause`'s contract).
 Conquest lose their caveats and are `CompletenessFull`. The roadmap row
 `graveyard-choice-after-a-sacrifice` is closed.
 
-**Not done.** Grapple with the Past ("mill three cards, then you may
-return a creature or land card") picks its card at cast, before the
-mill, in the posture Rise of the Witch-king had. It can move to the same
-helper inside its mill's continuation; it is not a sacrifice and is left
-to its own change.
+**Grapple with the Past (#2941).** Moved to the same helper afterwards.
+The mill is a synchronous primitive, so no continuation was needed: the
+spell mills, then `ReturnChosenFromGraveyard` (new `ToHand` field; any
+creature or land card, Min 0, Max 1) offers the graveyard as it then is.
+It has no target clause and is `CompletenessFull`.
 
 
 ## Amendment — 2026-10-12: individual expanded draws and first-draw exceptions (S58, #2033, #2077)

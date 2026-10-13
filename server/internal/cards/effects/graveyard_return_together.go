@@ -193,6 +193,13 @@ func exiledCardIDs(ctx *Context, match func(game.Card) bool) []uuid.UUID {
 // owner's control, tapped when Tapped is set, and the Zone re-check on
 // submit refuses a card that left the graveyard while the question was
 // open.
+//
+// ToHand (#2941) sends the chosen cards to their owner's hand instead:
+// "mill three, then you may return a creature or land card from your
+// graveyard to your hand" (Grapple with the Past). The offer is then
+// every non-token card Match accepts, permanent or not, since a hand
+// return has no battlefield to be a permanent for. Each card goes
+// through ReturnFromGraveyard, the exit the targeted spells use.
 type ReturnChosenFromGraveyard struct {
 	Player   uuid.UUID
 	Question string
@@ -200,6 +207,7 @@ type ReturnChosenFromGraveyard struct {
 	Except   uuid.UUID
 	Min, Max int
 	Tapped   bool
+	ToHand   bool
 }
 
 func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
@@ -209,7 +217,7 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 	}
 	var candidates []uuid.UUID
 	for _, id := range graveyardCardIDs(ctx, player, func(c game.Card) bool {
-		return c.IsPermanent() && !c.IsToken() && (r.Match == nil || r.Match(c))
+		return (r.ToHand || c.IsPermanent()) && !c.IsToken() && (r.Match == nil || r.Match(c))
 	}) {
 		if id != r.Except {
 			candidates = append(candidates, id)
@@ -222,7 +230,10 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 	if r.Tapped {
 		dest = game.ChooseOntoBattlefieldTapped
 	}
-	item, tapped := ctx.Item, r.Tapped
+	item, tapped, toHand := ctx.Item, r.Tapped, r.ToHand
+	if toHand {
+		dest = ""
+	}
 	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
 		Chooser:     player,
 		FromPlayer:  player,
@@ -235,6 +246,15 @@ func (r ReturnChosenFromGraveyard) Apply(ctx *Context) error {
 		Destination: dest,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
 			if len(picked) == 0 {
+				return nil
+			}
+			if toHand {
+				hctx := NewContext(g, item)
+				for _, id := range picked {
+					if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneHand}).Apply(hctx); err != nil {
+						return err
+					}
+				}
 				return nil
 			}
 			return ReturnFromGraveyardTogether{Targets: picked, Tapped: tapped}.Apply(NewContext(g, item))
