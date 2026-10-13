@@ -3956,6 +3956,13 @@ Served by the `cards` package. Both routes require authentication.
 Card metadata from the Scryfall bulk index. 404 if the card is
 unknown or the index has not been loaded yet.
 
+`artist` (#2982, additive, omitted when Scryfall prints none) is the
+illustrator's name, and each entry of `card_faces` carries its own
+`artist` for a double-faced card. The client credits it ("Illus.
+<artist>") wherever Scryfall's `art_crop` image, which drops the artist
+line, is the main view of a card: the board's art tiles and the stack
+lane's tiles. Full card images print the line themselves.
+
 ### `GET /cards/{id}/image?size=<name>`
 
 Serves the card image bytes. On cache miss, downloads from Scryfall's

@@ -786,6 +786,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}GameMenu.svelte`, "lib/components/Settings.svelte"],
     doc: "Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table",
   }),
+  legalNotice: label({
+    name: "Legal notice",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982)",
+  }),
   showTips: label({
     name: "Show tips",
     kind: "text",

@@ -31,10 +31,26 @@ describe("SiteFooter", () => {
     const { container } = render(SiteFooter as never, {} as never);
     const footer = container.querySelector("footer");
     expect(footer).not.toBeNull();
-    expect(footer!.textContent).toContain(
-      "Unofficial fan content, not approved or endorsed by Wizards of the Coast.",
+    const text = footer!.textContent!.replace(/\s+/g, " ");
+    // #2982: the policy's own sentence, exactly, with its words linked.
+    expect(text).toContain(
+      "cmd_and_ctrl is unofficial Fan Content permitted under the Fan Content Policy.",
     );
-    expect(footer!.textContent).not.toContain("permitted under the Fan Content Policy");
+    expect(text).toContain("Not approved or endorsed by Wizards of the Coast.");
+    expect(text).toContain("©Wizards of the Coast LLC.");
+    // The visible line carries it, not only the Legal disclosure.
+    expect(footer!.querySelector(".line")!.textContent!.replace(/\s+/g, " ")).toContain(
+      "cmd_and_ctrl is unofficial Fan Content permitted under the Fan Content Policy.",
+    );
+    const policy = [...footer!.querySelectorAll("a")].filter(
+      (a) => a.textContent === "Fan Content Policy",
+    );
+    expect(policy.length).toBeGreaterThan(0);
+    expect(
+      policy.every(
+        (a) => a.getAttribute("href") === "https://company.wizards.com/en/legal/fancontentpolicy",
+      ),
+    ).toBe(true);
     const hrefs = [...footer!.querySelectorAll("a")].map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("https://scryfall.com");
     expect(hrefs).toContain("https://company.wizards.com/en/legal/fancontentpolicy");

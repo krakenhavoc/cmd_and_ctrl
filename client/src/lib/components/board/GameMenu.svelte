@@ -28,6 +28,7 @@
   import { tick } from "svelte";
   import Icon from "../Icon.svelte";
   import ModalLayer from "../ModalLayer.svelte";
+  import LegalNotice from "../LegalNotice.svelte";
   import {
     TABLE_ROLL_ITEMS,
     clampMulligan,
@@ -47,7 +48,7 @@
   const props: Props = $props();
   const placement = $derived(props.placement ?? "up");
 
-  type Mode = "closed" | "menu" | "vote" | "concede";
+  type Mode = "closed" | "menu" | "vote" | "concede" | "legal";
   let mode = $state<Mode>("closed");
   let root: HTMLElement | undefined = $state();
   let trigger: HTMLButtonElement | undefined = $state();
@@ -76,7 +77,8 @@
     await tick();
     if (next === "menu") items()[0]?.focus();
     else if (next === "vote") pop()?.querySelector<HTMLInputElement>("input")?.focus();
-    else if (next === "concede") pop()?.querySelector<HTMLButtonElement>("button.keep")?.focus();
+    else if (next === "concede" || next === "legal")
+      pop()?.querySelector<HTMLButtonElement>("button.keep")?.focus();
   }
   function close(refocus: boolean): void {
     if (mode === "closed") return;
@@ -365,6 +367,12 @@
           {L.replayTutorial}
         </button>
       {/if}
+      <!-- #2982: the site footer is not on the table, so the fan-content
+           notice is reachable from here. -->
+      <button class="mi" role="menuitem" onclick={() => void show("legal")}>
+        <Icon name="help" size={15} />
+        {L.legalNotice}
+      </button>
       {#if props.seated}
         <div class="sep"></div>
         <!-- Last, and confirmed: Concede is irreversible. Disabled, not
@@ -413,6 +421,14 @@
         <button type="button" class="danger" onclick={confirmConcede}
           ><Icon name="flag" size={14} /> Concede</button
         >
+      </div>
+    </div>
+  {:else if mode === "legal"}
+    <div class="pop confirm legal" role="dialog" aria-modal="true" aria-label="legal notice">
+      <div class="confirm-title">Legal notice</div>
+      <div class="confirm-body"><LegalNotice /></div>
+      <div class="pop-actions">
+        <button type="button" class="keep" onclick={() => close(true)}>Close</button>
       </div>
     </div>
   {/if}
@@ -632,6 +648,18 @@
     font-size: 12.5px;
     color: var(--fg-muted);
     line-height: 1.45;
+  }
+  .confirm.legal {
+    width: 340px;
+    max-height: min(70vh, 420px);
+    overflow-y: auto;
+  }
+  .confirm-body :global(p) {
+    margin: 0;
+  }
+  .confirm-body :global(a) {
+    color: var(--fg);
+    text-decoration: underline;
   }
   .pop-actions {
     display: flex;

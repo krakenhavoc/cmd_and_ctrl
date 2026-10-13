@@ -166,6 +166,14 @@ type Card struct {
 	// exclude the 106 non-black-bordered token records without a
 	// second field lookup elsewhere. Added in ADR 0078.
 	BorderColor string `json:"border_color"`
+	// Artist is the illustrator's name as Scryfall prints it. Carried
+	// so the client can credit the artist on a surface that shows only
+	// the art crop (Scryfall's art_crop drops the artist line; their
+	// image guidelines ask that it not be removed from view, #2982).
+	// It rides GET /cards/{id}, which the client already fetches, and
+	// deliberately NOT the per-frame CardView. Empty for the few
+	// records that print none; omitted on the wire then.
+	Artist string `json:"artist,omitempty"`
 	// AllParts is Scryfall's all_parts list, KEPT ONLY for its meld
 	// entries (component "meld_part" / "meld_result"): Load drops every
 	// other related card (tokens, combo pieces) as it decodes, so the
@@ -273,6 +281,9 @@ func attachMeldResults(byID map[uuid.UUID]Card, byName map[string]Card, byOracle
 // card. Only the fields the server reads are mirrored from Scryfall's
 // richer face schema.
 type CardFace struct {
+	// Artist is this face's illustrator; the two sides of a
+	// double-faced card are often by different artists (#2982).
+	Artist     string            `json:"artist,omitempty"`
 	Name       string            `json:"name"`
 	TypeLine   string            `json:"type_line"`
 	OracleText string            `json:"oracle_text"`
