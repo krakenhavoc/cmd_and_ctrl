@@ -260,8 +260,32 @@ func TestB35ThirstForDiscoveryDrawsThreeAndOwesTwoDiscards(t *testing.T) {
 	if discardOwed(g, me.ID) != 2 {
 		t.Errorf("owes %d discards, want 2", discardOwed(g, me.ID))
 	}
-	if spec, _ := Lookup(b35ThirstForDiscoveryOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing basic-land alternative is a declared gap")
+	if spec, _ := Lookup(b35ThirstForDiscoveryOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the basic-land alternative is offered: nothing is left to declare")
+	}
+}
+
+// "Discard two cards unless you discard a basic land card": one basic
+// land card is a complete answer; a nonbasic land is not.
+func TestB35ThirstForDiscoveryAcceptsOneBasicLand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	forest := handCardFull(me, "Forest", "Basic Land — Forest", "", "", nil)
+	temple := handCardFull(me, "Temple", "Land", "", "", nil)
+	castCatalogSpell(t, g, "Thirst for Discovery", "Instant", b35ThirstForDiscoveryOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := discardChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no discard prompt")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{temple}); err == nil {
+		t.Fatal("a nonbasic land alone was accepted")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{forest}); err != nil {
+		t.Fatalf("one basic land card is a complete discard: %v", err)
+	}
+	if me.Hand.Contains(forest) || !me.Hand.Contains(temple) {
+		t.Error("only the basic land was discarded")
 	}
 }
 

@@ -28,7 +28,7 @@ func init() {
 		Static:          []game.StaticAbility{RestrictSelf(game.CantBeBlocked)},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Suspicious Stowaway — draw a card, then discard a card",
-				func(g *game.Game, item *game.StackItem) error { return b16DrawThenDiscard(g, item, 1, 1) }),
+				func(g *game.Game, item *game.StackItem) error { return b16DrawThenDiscard(g, item, 1) }),
 		},
 	})
 	Register(Spec{

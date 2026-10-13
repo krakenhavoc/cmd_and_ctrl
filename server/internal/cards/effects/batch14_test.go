@@ -815,25 +815,31 @@ func TestB14ArchfiendOfDepravityLeavesEachOpponentTwoCreatures(t *testing.T) {
 	}
 	advanceToEndStepOf(t, g, 1)
 	passPriorityAroundTable(t, g)
-	c := sacrificeChoiceFor(g, opp.ID)
+	c := chooseCardsChoiceFor(g, opp.ID)
 	if c == nil {
-		t.Fatal("the opponent is asked to sacrifice")
+		t.Fatal("the opponent is asked which creatures to keep")
 	}
-	if len(c.SacrificeOptions) != 4 {
-		t.Errorf("the prompt offers their four creatures, offered %d", len(c.SacrificeOptions))
+	if len(c.ChooseCards) != 4 || c.ChooseMin != 0 || c.ChooseMax != 2 {
+		t.Errorf("the prompt offers their four creatures, up to two: %d cards, %d..%d", len(c.ChooseCards), c.ChooseMin, c.ChooseMax)
 	}
-	answerSacrifice(t, g, opp.ID, theirs[0])
-	answerSacrifice(t, g, opp.ID, theirs[1])
-	if sacrificeChoiceFor(g, opp.ID) != nil {
-		t.Error("with two creatures left there is nothing more to sacrifice")
+	// Three is more than "up to two": the answer is refused, prompt open.
+	if err := g.ResolveChooseCards(c.ID, opp.ID, theirs[:3]); err == nil {
+		t.Fatal("keeping three creatures was accepted")
 	}
+	// The player names the two they KEEP, and the other two are sacrificed.
+	answerChooseCards(t, g, opp.ID, theirs[2], theirs[3])
+	passPriorityAroundTable(t, g)
 	if n := b14CreaturesControlled(g, opp.ID); n != 2 {
 		t.Errorf("the opponent keeps two, has %d", n)
+	}
+	if !g.Battlefield.Contains(theirs[2]) || !g.Battlefield.Contains(theirs[3]) ||
+		g.Battlefield.Contains(theirs[0]) || g.Battlefield.Contains(theirs[1]) {
+		t.Error("the two chosen creatures stay and the rest are sacrificed")
 	}
 	if !g.Battlefield.Contains(mine) {
 		t.Error("the Archfiend's controller is not asked")
 	}
-	if sacrificeChoiceFor(g, me.ID) != nil {
+	if chooseCardsChoiceFor(g, me.ID) != nil {
 		t.Error("no prompt for the controller")
 	}
 }
@@ -1251,7 +1257,7 @@ func TestB14ResourcefulDefenseMovesTheCountersLeftAfterCR7045q(t *testing.T) {
 	}
 }
 
-func TestB14ResourcefulDefenseMovesAllCountersForFiveMana(t *testing.T) {
+func TestB14ResourcefulDefenseMovesTheChosenNumberOfCountersForFiveMana(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	defense := b12Push(g, me.ID, "Resourceful Defense", "Enchantment", b14ResourcefulDefenseOracle, 0, 0)
@@ -1267,11 +1273,23 @@ func TestB14ResourcefulDefenseMovesAllCountersForFiveMana(t *testing.T) {
 		t.Fatalf("activate: %v", err)
 	}
 	passPriorityAroundTable(t, g)
-	if got := b12Counter(t, g, from, "+1/+1"); got != 0 {
-		t.Errorf("the source is emptied: %d left", got)
+	// "Any number" is the player's: asked as the ability resolves, from
+	// none to every counter the first target has.
+	c := payAmountPrompt(g, me.ID)
+	if c == nil {
+		t.Fatal("how many counters to move is asked as the ability resolves")
 	}
-	if got := b12Counter(t, g, to, "+1/+1"); got != 3 {
-		t.Errorf("the destination receives them: %d, want 3", got)
+	if pa := c.PayAmount; pa.Min != 0 || pa.Max != 3 || pa.Goal != 3 {
+		t.Fatalf("prompt = %+v, want 0 through 3 with all three suggested", *pa)
+	}
+	if err := g.ResolvePayAmount(c.ID, me.ID, 2); err != nil {
+		t.Fatalf("answer 2: %v", err)
+	}
+	if got := b12Counter(t, g, from, "+1/+1"); got != 1 {
+		t.Errorf("one counter stays on the source: %d left", got)
+	}
+	if got := b12Counter(t, g, to, "+1/+1"); got != 2 {
+		t.Errorf("the destination receives the two chosen: %d, want 2", got)
 	}
 }
 

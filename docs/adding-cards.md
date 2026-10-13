@@ -6124,6 +6124,52 @@ OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets
 are answers.
 
+**"You may sacrifice a creature. If you do, …"** (#3172, ADR 0018
+amendment 2026-10-13, third) is `maySacrificeOne(g, item, question,
+match, another, then)` in [may_sacrifice.go](../server/internal/cards/effects/may_sacrifice.go),
+called from the trigger's `Effect`. It asks as the ability RESOLVES, over
+what the controller controls then, with a floor of zero for the "may",
+and `then(ctx, sacrificed)` runs only for a permanent that really left
+(a CR 614 window that kept it, or a sacrifice nothing could pay, is "you
+did not"). Read the creature's power with `departedCreaturePower`, which
+is its last-known information. **Do not declare the choice as the
+trigger's `Targets`**: that settles it when the trigger goes on the stack,
+lets an opponent answer it, and makes a hexproof creature unpickable, all
+of which are caveats the printed card does not have.
+
+**"Choose up to N / any number of creatures you control, then sacrifice
+the rest"** (Archfiend of Depravity, Slaughter the Strong) is
+`keepCreaturesThenSacrificeTheRest` in
+[keep_creatures_sacrifice_rest.go](../server/internal/cards/effects/keep_creatures_sacrifice_rest.go):
+one `choose_cards` prompt per seat (APNAP) over that seat's own
+creatures, with `most` as the ceiling and `totalPowerAtMost(n)` as a set
+rule, then one simultaneous sacrifice of everything not kept. A seat that
+can keep its whole board is not asked.
+
+**"Any number / up to N counters" of whatever kinds** (Glissa Sunslayer,
+Resourceful Defense) is `chooseCounters` in
+[choose_counters.go](../server/internal/cards/effects/choose_counters.go):
+a `ChooseNumber` per kind of counter on the permanent, in sorted order,
+each bounded by what it has and by what is left of the ceiling, handing
+`then` a kind-to-count map. Give it a `counterGoal` so a bot knows which
+kinds it wants gone.
+
+**"Discard two cards unless you discard a <kind> card"** (Thirst for
+Knowledge, Thirst for Discovery) is `discardTwoUnlessOne` in
+[draw_then.go](../server/internal/cards/effects/draw_then.go): a registered
+draw-then continuation whose discard prompt has a floor of one and a set
+rule that accepts a single card only when it qualifies (Compulsive
+Research's shape).
+
+**A choice among cards in several graveyards** (Extract from Darkness) is
+one `ChooseCardsPrompt` with no `FromPlayer` and no `Zone`: the candidates
+are public, the view looks them up by id, and the effect that acts on the
+answer already tolerates a card that has gone.
+
+**An intervening "if"** (Thopter Spy Network, Emeria) is read where the
+trigger is declared and again at the top of the `Effect`; the second read
+is the one a response can change (CR 603.4).
+
 ### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
 
 "Target player reveals their hand. You choose a nonland card from it.

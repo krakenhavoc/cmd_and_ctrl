@@ -14,29 +14,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // to the Chitterspitter every upkeep, and the rest grow. Three
 // abilities:
 //
-//   - The upkeep trigger is The Goose Mother's shape: the "you may"
-//     is the trigger's optional prompt, the token is chosen as the
-//     trigger's target (any token you control — the picker the
-//     engine has for a choice among your own permanents), and on
-//     resolution it is sacrificed and the acorn counter follows
-//     only from the sacrifice (b29SacrificeChosenTokenThenAcorn).
+//   - The upkeep trigger asks "you may sacrifice a token" as it
+//     RESOLVES (maySacrificeOne, CR 608.2c): any token you control
+//     then, hexproof or not, and the acorn counter follows only a
+//     token that really went (b29SacrificeChosenTokenThenAcorn).
 //   - The lord is the scaling anthem over Squirrels the controller
 //     controls, reading the acorn counters on every recompute
 //     (b29SquirrelsYouControlPerAcornCounter).
 //   - The activation is a CR 602 ability with a mana-and-tap cost,
 //     no summoning sickness (an artifact), making one Squirrel.
 //
-// Sandbox simplification, declared (the Goose Mother's caveat):
-// the token is chosen when the trigger goes on the stack, not on
-// resolution, so an opponent who removes it in response fizzles
-// the trigger and no counter is placed, where printed you would
-// pick another. Weaker, never stronger.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "4a338863-d599-46e7-9c30-e11b898ae1b0",
 		Name:         "Chitterspitter",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"You pick the token to sacrifice when the upkeep trigger goes on the stack rather than on resolution, so opponents can respond to the choice."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			b29SquirrelsYouControlPerAcornCounter(),
 		},
@@ -45,10 +38,8 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return ev.Actor == source.Controller
 			},
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Chitterspitter — sacrifice a token to put an acorn counter on it?"},
-			Targets:        TargetPermanent("a token you control", IsTokenPredicate(), YouControl()),
-			Key:            "Chitterspitter — sacrifice a token, put an acorn counter on it",
-			Effect:         b29SacrificeChosenTokenThenAcorn,
+			Key:    "Chitterspitter — sacrifice a token, put an acorn counter on it",
+			Effect: b29SacrificeChosenTokenThenAcorn,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{G}, {T}: Create a 1/1 green Squirrel creature token.",

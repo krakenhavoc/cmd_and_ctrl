@@ -110,9 +110,10 @@ func b14OpponentsEndStepBegan(ev game.Event, source *game.Card) bool {
 // b14PermanentYouControlLeft is Resourceful Defense's condition: a
 // permanent the source's controller controlled left the battlefield,
 // for anywhere, with counters on it. The controller is the one it had
-// as it left (leftUnderControlOf, #1682); the card is still looked up
-// post-move, so a token that ceased to exist on leaving is not seen,
-// which is the diedCreature posture and weaker than printed. "If it had counters on it" is the CR 603.10 record the
+// as it left (leftUnderControlOf, #1682); a token that ceases to exist on
+// leaving is still seen, because the trigger is looked at as it leaves
+// (TestCavAResourcefulDefenseTriggersForATokenThatLeaves). "If it had
+// counters on it" is the CR 603.10 record the
 // engine writes as the permanent leaves (LastKnownCountersForEffect),
 // the reading The Ozolith's condition makes.
 func b14PermanentYouControlLeft(ev game.Event, source *game.Card, g *game.Game) bool {
@@ -337,56 +338,47 @@ func b14MillUntilLand(ctx *Context, player uuid.UUID) error {
 	}.Apply(ctx)
 }
 
-// b14PlayerSacrificesAllButN is Archfiend of Depravity's body: the
-// player keeps up to `keep` creatures and sacrifices the rest, as
-// their own choice. The engine's sacrifice prompt picks ONE
-// permanent, so "choose two to keep" is asked as (creatures − keep)
-// prompts to sacrifice one each — the same decision from the other
-// side, made by the same player, with the option list trimmed after
-// every answer. Queued in one go, so a creature that leaves between
-// two answers for some other reason (a lord's death shrinking a
-// toughness to zero) is not deducted from what is still owed; that
-// corner is declared on the card.
-func b14PlayerSacrificesAllButN(g *game.Game, source, player uuid.UUID, keep int, reason string) {
-	excess := b14CreaturesControlled(g, player) - keep
-	if excess < 1 {
-		return
-	}
-	g.PlayerSacrificesNForEffect(source, player, sacrificeSpec("a creature", Creature()), reason, excess)
-}
-
-// b14MoveAllCounters moves every counter on `from` onto `to`, kind
-// by kind — Resourceful Defense's activated ability with "any
-// number" read as all of them. Both must be on the battlefield; the
-// removal goes through the same counter primitive as the placement,
-// so a doubler sees the placement and nothing sees a removal it
-// should not.
-func b14MoveAllCounters(ctx *Context, from, to uuid.UUID) error {
-	src, ok := ctx.Game.LookupCardForEffect(from)
-	if !ok || len(src.Counters) == 0 {
-		return nil
-	}
+// b14MoveChosenCounters is Resourceful Defense's activated ability:
+// the controller chooses how many counters of each kind to move from
+// `from` (any number), as the ability resolves, and exactly those move to
+// `to`. Both must be on the battlefield; the removal goes through the same
+// counter primitive as the placement, so a doubler sees the placement and
+// nothing sees a removal it should not.
+func b14MoveChosenCounters(ctx *Context, from, to uuid.UUID) error {
 	if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
 		return nil
 	}
-	kinds := make([]string, 0, len(src.Counters))
-	for kind := range src.Counters {
-		kinds = append(kinds, kind)
-	}
-	sort.Strings(kinds)
-	for _, kind := range kinds {
-		n := src.Counters[kind]
-		if n <= 0 {
-			continue
-		}
-		if err := (AddCounter{Target: from, Kind: kind, N: -n}).Apply(ctx); err != nil {
-			return err
-		}
-		if err := (AddCounter{Target: to, Kind: kind, N: n}).Apply(ctx); err != nil {
-			return err
-		}
-	}
-	return nil
+	return chooseCounters(ctx, from, 0, "Resourceful Defense — move any number of counters", nil,
+		func(ctx *Context, picked map[string]int) error {
+			if z := ctx.Game.FindCardZoneForEffect(to); z == nil || z.Kind != game.ZoneBattlefield {
+				return nil
+			}
+			kinds := make([]string, 0, len(picked))
+			for kind := range picked {
+				kinds = append(kinds, kind)
+			}
+			sort.Strings(kinds)
+			for _, kind := range kinds {
+				n := picked[kind]
+				src, ok := ctx.Game.LookupCardForEffect(from)
+				if !ok {
+					return nil
+				}
+				if have := src.Counters[kind]; have < n {
+					n = have
+				}
+				if n <= 0 {
+					continue
+				}
+				if err := (AddCounter{Target: from, Kind: kind, N: -n}).Apply(ctx); err != nil {
+					return err
+				}
+				if err := (AddCounter{Target: to, Kind: kind, N: n}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 }
 
 // b14PutCounters puts a set of counters, keyed by kind, on a

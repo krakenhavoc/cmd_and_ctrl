@@ -57,7 +57,7 @@ func kataraMayDrawPerExperience(g *game.Game, item *game.StackItem) error {
 		YesLabel: "Draw",
 		NoLabel:  "Decline",
 		OnYes: func(ctx *Context) error {
-			return b16DrawThenDiscard(ctx.Game, ctx.Item, experienceCounters(ctx.Game, ctx.Controller()), 1)
+			return b16DrawThenDiscard(ctx.Game, ctx.Item, experienceCounters(ctx.Game, ctx.Controller()))
 		},
 	}.Apply(NewContext(g, item))
 }

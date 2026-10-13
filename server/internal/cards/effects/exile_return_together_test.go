@@ -229,13 +229,14 @@ func TestTevalReturnsItsLandTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	land := batch01GraveyardCard(me, "Forest", "Basic Land — Forest")
-	item := &game.StackItem{Controller: me.ID, Targets: sgCards(land)}
+	item := &game.StackItem{Controller: me.ID}
 	before := len(g.Events)
 	g.WithWriteLock(func() {
-		if err := b25MillThreeThenReturnChosenLandTapped(g, item); err != nil {
+		if err := b25MillThreeThenMayReturnLandTapped(g, item); err != nil {
 			t.Fatalf("Teval: %v", err)
 		}
 	})
+	answerChooseCards(t, g, me.ID, land)
 	c, ok := g.LookupCardForEffect(land)
 	if !ok || !onBattlefield(g, land) || !c.Tapped {
 		t.Fatal("the land is on the battlefield, tapped")

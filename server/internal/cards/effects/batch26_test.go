@@ -308,10 +308,26 @@ func TestB26ExpelTheInterlopersDestroysAtOrAboveTheChosenPower(t *testing.T) {
 	theirFour := b12Creature(g, opp.ID, "Their Hill Giant", "Creature — Giant", 4, 3)
 	theirThree := b12Creature(g, opp.ID, "Their Knight", "Creature — Knight", 3, 3)
 	spec, _ := Lookup(b26ExpelTheInterlopersOracle)
-	if spec.Modes == nil || len(spec.Modes.Options) != 11 {
-		t.Fatalf("eleven numbers, 0 through 10: got %+v", spec.Modes)
+	if spec.Modes != nil || spec.Completeness != CompletenessFull {
+		t.Fatalf("the number is chosen as the spell resolves, not as a mode at cast: %+v", spec.Modes)
 	}
-	castModal(t, g, "Expel the Interlopers", "Sorcery", b26ExpelTheInterlopersOracle, []int{4}, nil)
+	castCatalogSpell(t, g, "Expel the Interlopers", "Sorcery", b26ExpelTheInterlopersOracle, nil)
+	if payAmountPrompt(g, me.ID) != nil {
+		t.Fatal("nothing is asked while the spell is on the stack: opponents do not learn the number")
+	}
+	passPriorityAroundTable(t, g)
+	c := payAmountPrompt(g, me.ID)
+	if c == nil {
+		t.Fatal("the number is asked as the spell resolves")
+	}
+	if pa := c.PayAmount; pa.Min != 0 || pa.Max != 10 || pa.NoMax {
+		t.Fatalf("prompt = %+v, want 0 through 10", *pa)
+	} else if pa.Goal != 3 {
+		t.Errorf("goal %d, want 3: it kills their 4 and 3 for the loss of only your 5", pa.Goal)
+	}
+	if err := g.ResolvePayAmount(c.ID, me.ID, 4); err != nil {
+		t.Fatalf("answer 4: %v", err)
+	}
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(myBig) || g.Battlefield.Contains(theirFour) {
 		t.Error("power 4 and 5 are destroyed, yours included")
@@ -321,7 +337,11 @@ func TestB26ExpelTheInterlopersDestroysAtOrAboveTheChosenPower(t *testing.T) {
 	}
 	// Zero is Wrath of God.
 	advanceToPrecombatMainOf(t, g, 0)
-	castModal(t, g, "Expel the Interlopers", "Sorcery", b26ExpelTheInterlopersOracle, []int{0}, nil)
+	castCatalogSpell(t, g, "Expel the Interlopers", "Sorcery", b26ExpelTheInterlopersOracle, nil)
+	passPriorityAroundTable(t, g)
+	if err := g.ResolvePayAmount(payAmountPrompt(g, me.ID).ID, me.ID, 0); err != nil {
+		t.Fatalf("answer 0: %v", err)
+	}
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(mySmall) || g.Battlefield.Contains(theirThree) {
 		t.Error("a 0 destroys every creature")

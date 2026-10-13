@@ -150,23 +150,6 @@ func b25LifeAboveStarting(g *game.Game, player uuid.UUID) bool {
 	return p != nil && p.Life > game.StartingLife
 }
 
-// b25GraveyardHasLandCard reports whether the player's graveyard
-// holds a land card — the question Teval's targeted attack trigger
-// asks before it is declared, so the mill is never dropped with an
-// empty legal set.
-func b25GraveyardHasLandCard(g *game.Game, player uuid.UUID) bool {
-	p := g.PlayerByIDForEffect(player)
-	if p == nil || p.Graveyard == nil {
-		return false
-	}
-	for _, c := range p.Graveyard.Cards {
-		if c.IsLand() {
-			return true
-		}
-	}
-	return false
-}
-
 // b25OpponentControlsACreature reports whether any creature on the
 // battlefield is controlled by someone other than `controller` —
 // "creature you don't control", the question Voracious Hydra's
@@ -246,23 +229,57 @@ const b25TevalAttackLabel = "Teval, the Balanced Scale — mill three, then retu
 // which the "one or more" dedup keys on.
 const b25TevalLeftGraveyardLabel = "Teval, the Balanced Scale — cards left your graveyard"
 
-// b25MillThreeThenReturnChosenLandTapped is Teval's attack trigger:
-// mill three, then return the land chosen when the trigger went on
-// the stack — if one was chosen and it is still in the graveyard —
-// to the battlefield tapped, with "tapped" on the entry event rather
+// b25MillThreeThenMayReturnLandTapped is Teval's attack trigger: "mill
+// three cards. Then you may return a land card from your graveyard to
+// the battlefield tapped".
+//
+// The land is chosen AFTER the mill, as the ability resolves (CR 608.2c),
+// so a land the trigger itself milled is a legal pick and opponents see
+// nothing until it is made. "You may" is the floor of zero.
+func b25MillThreeThenMayReturnLandTapped(g *game.Game, item *game.StackItem) error {
+	return b25MillThreeThenReturnLandTapped(g, item, 0)
+}
+
+// b25MillThreeThenReturnLandTapped is the shared body of Teval's and
+// Blossoming Tortoise's triggers. `min` is 0 for "you may return" and 1
+// for "return": with no land card in the graveyard after the mill there
+// is nothing to ask either way. "Tapped" rides the entry event rather
 // than a tap after it (#1872).
-func b25MillThreeThenReturnChosenLandTapped(g *game.Game, item *game.StackItem) error {
+func b25MillThreeThenReturnLandTapped(g *game.Game, item *game.StackItem, min int) error {
 	ctx := NewContext(g, item)
 	if err := (MillCards{Player: item.Controller, N: 3}).Apply(ctx); err != nil {
 		return err
 	}
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return ReturnFromGraveyard{Target: t.ID, Dest: game.ZoneBattlefield, Tapped: true}.Apply(ctx)
+	controller := item.Controller
+	candidates := graveyardCardIDs(ctx, controller, game.Card.IsLand)
+	if len(candidates) == 0 {
+		return nil
 	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    controller,
+		FromPlayer: controller,
+		Source:     item.SourceCardID,
+		Question:   "Return a land card from your graveyard to the battlefield tapped",
+		Cards:      candidates,
+		Min:        min,
+		Max:        1,
+		Zone:       game.ZoneGraveyard,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			for _, id := range picked {
+				if err := (ReturnFromGraveyard{Target: id, Dest: game.ZoneBattlefield, Tapped: true}).Apply(NewContext(g, item)); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
 	return nil
+}
+
+// b25MillThreeThenReturnLandTappedAlways is Blossoming Tortoise's body:
+// the same, with the return not optional.
+func b25MillThreeThenReturnLandTappedAlways(g *game.Game, item *game.StackItem) error {
+	return b25MillThreeThenReturnLandTapped(g, item, 1)
 }
 
 // b25VoraciousHydraLabel is the stack label both declarations of
