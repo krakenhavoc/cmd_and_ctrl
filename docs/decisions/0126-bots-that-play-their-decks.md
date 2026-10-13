@@ -1019,6 +1019,75 @@ The owner accepted the amendment on 2026-10-12. They took the recommendation on 
 4. **Simic does not change now.** The landfall payoff purpose is [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072), in S67.
 5. **Esper is not trimmed.**
 
+## Amendment 2026-10-12: blocks that survive as a set
+
+**Status:** Accepted (owner decisions 2026-10-12). The owner accepted the check with `BlockSetSurvives` on, and had the horizon's unneeded waiting turn filed as [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080); see [Owner decisions (#3066, 2026-10-12)](#owner-decisions-3066-2026-10-12) at the end of this amendment. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()` (§9).
+**Issue:** [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066), filed from #2474 (PR #3065). Sprint S67. Tracker #890.
+**Amends:** the block planner (`decideBlock`, `heuristic/combat.go`), which [Out of scope](#out-of-scope) left alone, as the [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) and the two amendments of 2026-10-12 on the race and the attrition horizon did for the attack planner. No ADR covers the block planner, and `docs/bot.md` documents it.
+
+### The problem
+
+Blocks are declared one at a time, and `decideBlock` scores each block on its own: the damage it saves, the attacker it kills and the creatures it loses (#1548). Nothing checks that the blocks together leave the defender alive. The full seed-1409 Wurm mirror ends on this misblock ([Open (#2474)](#open-2474)):
+
+- **The defender:** on 3, with its 3/3 commander as its only creature.
+- **The attack:** a Bear 2/2 and a 3/3 commander.
+
+The Bear block scores +6.90: it kills the Bear and loses nothing. The commander block scores +6.00: the two commanders trade. So the defender blocks the Bear, takes 3 from the commander and dies. Commander on commander takes 2 and lives. The line #2474 found then takes another turn, which no whole game in the tree played.
+
+### Decision
+
+**The blocks survive as a set** (`BlockSetSurvives`, `heuristic/blockset.go`; on in `DefaultConfig`, off in `BaselineConfig`).
+
+1. **When it runs.** Before it scores the blocks on offer, the block planner asks whether finishing the declaration now kills the bot. If it does not, nothing changes: blocking more never lets more damage through, so every block on offer survives too.
+2. **What kills.** The bot's life, unless it can't lose for life (ADR 0057); ten poison counters from infect and toxic (CR 104.3d, 702.90b, 702.164c); and the table's commander damage, 21 by default, from one commander (CR 903.10a). A trampler's overflow counts (`connects`, CR 702.19b), a double striker deals its damage twice (CR 702.4b), and a menace attacker with one blocker counts as unblocked (CR 702.110b).
+3. **The search.** When finishing kills, each block on offer is asked whether some way of spending the bot's creatures that are still free after it survives (`survivable`). Each free creature blocks one attacker that still gets damage through, or nothing. Which creature may block which attacker is read off the block moves on offer, so the search never pairs creatures the enumerator would not let block. It stops at the first set that survives. It prunes a branch when its free creatures could not stop enough damage even if each stopped a whole attacker, and gives up after 2000 boards (`blockSearchBudget`). A block whose search gives up counts as unknown, and is neither chosen nor ruled out.
+4. **The choice.** If some block on offer survives, the bot declares the best-scored such block, even at a score of zero or less, since finishing kills. If the best-scored block overall survives, that is the same block with the same reason as before. When the check changed the pick, the reason says `…, a set that survives (+6.00)`. If no block survives, or every search gave up, the decision is the old one.
+
+On the issue's board, finishing now takes 5. The Bear block leaves no free creature and 3 through, which kills. The commander block leaves 2 through, which does not. So the bot blocks commander on commander.
+
+### Measured
+
+The tables, and every game that changes, are under [Measurements, #3066](#3066-blocks-that-survive-as-a-set-2026-10-12). In short, at `develop` `2b6f13831`, from non-race lockstep runs:
+
+| | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm | Run 1 wins, esper / izzet / black / simic |
+|---|---:|---:|---|---|---|
+| `develop` | 16.17 | 13.25 | 5 / 6 | 7 / 6, on the misblock | 18 / 5 / 25 / 16 |
+| **`BlockSetSurvives`** | **16.08** | **13.33** | 5 / **7** | **8 / 7** | 18 / 5 / 25 / 16, every game the same |
+
+- **The full Wurm mirror plays the line out.** The defender trades commanders and lives on 1. Both commanders are cast again, the bot's in its own second main phase. The Bear and the commander then swing into one blocker, and the defender, with no surviving block left, dies. The games end on turns 8 and 7, one turn later than the misblock, with the same winners.
+- **The line is a turn shorter than the horizon planned.** The horizon counts the bot's commander summoning sick on the board after the trade and waits a turn for it (`afterExchange`, `afterWait`). The bot casts it again in the same turn's second main phase, so by its next turn the commander has been under its control since that turn began (CR 302.6), and no turn is spent waiting. `TestAttritionWaitsForTheCommanderItCastAgain` pins the decision on the board the horizon predicts, which the game never reaches.
+- **2 of the 24 gate games change, each at a block the check changed, and neither changes its winner.** Seed 104 ends a turn sooner (13 → 12) and seed 202 a turn later (13 → 14). On the mirrors, Wurm + Ogre with the edge on seat 1 ends a turn later (6 → 7): the defender, on 4 with its commander, chumps the Ogre and takes 3 instead of trading commanders and taking 4. Every other game plays move for move as on `develop`.
+- **Run 1 does not change.** All 64 games of §8's run 1 end on the same turn with the same winner, the same lives and the same number of decisions. Defenders facing lethal with a choice of blocks are rare at four seats with these decks.
+
+### Options considered and rejected
+
+- **Choosing the whole set at once**, declaring blocks from one search of every assignment. It would replace the planner's scores, which every gate game reads, rather than adding a check to them. The per-block declaration with a lookahead keeps today's choice wherever the bot survives, and the check costs nothing on a board where finishing survives.
+- **Minimising the damage taken when finishing kills.** That is a different objective, which would change every chump the bot makes when it is not in lethal range. The check only rules out blocks that leave no way to live.
+- **Checking only life.** Poison and commander damage kill as surely, and they are cheap to count from the public view (`PlayerView.poison`, `commander_damage`).
+
+### Open (#3066)
+
+- **The bot's own model of the defender does not change.** The race's `blockToSurvive` and the attrition horizon's free answer predict the defender's blocks with their own greedy, not with `decideBlock`. Where the two disagree the attacker misjudges a swing, as before.
+- **The horizon's waiting turn is pessimistic.** See the second bullet under Measured. It costs a line a turn of the horizon's three, so a line that needs a wait and two more exchanges is never found. It is not part of this amendment: it is [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080).
+
+### Questions for the owner (#3066, answered 2026-10-12)
+
+Each lists the recommended option first.
+
+1. **Accept the check, on in `DefaultConfig()`?**
+   - **(a) Recommended:** yes. It fixes the issue's misblock, the full Wurm mirror plays the line out, it moves no winner in any gate game or in run 1, and it runs only on a board where finishing the declaration kills.
+   - **(b)** Keep it as an off switch. The full Wurm mirror keeps ending on the misblock.
+2. **The horizon's waiting turn** (Open, second bullet).
+   - **(a) Recommended:** file it as its own issue: the horizon counts a commander the bot casts again in its second main phase as able to attack on its next turn. It changes the horizon's search, which needs its own gate measurements.
+   - **(b)** Leave it. The wait is pessimistic, so it only loses lines and never sends a bad one.
+
+### Owner decisions (#3066, 2026-10-12)
+
+The owner accepted the amendment on 2026-10-12 and took the recommendation on both questions. No section above changed.
+
+1. **The set-level block check is accepted.** `BlockSetSurvives` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
+2. **The horizon's waiting turn is its own issue:** [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080), in Backlog. It changes the attrition horizon's search, not the block planner, so it is not part of this amendment.
+
 ## Consequences
 
 - About a third of each curated deck stops being dead. The decks can then be judged on their lists, which is what #2436 needs.
@@ -2233,3 +2302,35 @@ Not detectably worse at either step: the lower bound clears 25% at `develop` and
 - `boteval suite run --policy heuristic`: 41 of 41 at step 2, every tag at 100%.
 - `go test ./...`: green, including `TestImpulseIsTakenInTheOwnMainPhase`, `TestImpulseIsNotTakenWhenTheCardWouldBeLost`, `TestImpulseNeedsBothSwitches` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`), so none was re-pinned.
 - With the dump, `go test ./internal/decks/`: green. `TestRealDumpDecksAreLegalCommanderDecks` now matches a double-faced card by its front face, as `Load`'s oracle-ID check does.
+
+### #3066: blocks that survive as a set (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-blocks-that-survive-as-a-set), accepted. `develop` is `2b6f13831`, with #3065's commander-trade horizon and #2480's impulse price. The branch is that tree with `BlockSetSurvives` on, so `develop` is the row with it off. The runs are #2400's and #2474's: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212) with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, `TestHeuristicBeatsRandomHeadToHead`, and the seed-1409 mirrors in `lockstep_game_test.go`, each with `AISEAT_DEBUG=1` so the move logs can be compared. Run 1 is §8's (four `heuristic` seats, 64 games, seed 1, `--rotate --lockstep`, the real dump). A board is the turns with the edge on seat 0 / seat 1.
+
+| | 4-seat mean | 2-seat mean | Drake | Wurm + Bear | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|---|---|
+| `develop` | 16.17 | 13.25 | 8 / 8 | 1 / 2 | 5 / 6 | 7 / 6 |
+| **`BlockSetSurvives`** | **16.08** | **13.33** | 8 / 8 | 1 / 2 | 5 / **7** | **8 / 7** |
+
+No gate game stalls, and heuristic beats random 12–0, on both.
+
+**Per game that changes** (turns / winner seat). Every other game plays move for move as on `develop`: the move logs differ only in these five games, and in each the first different move is a block the check changed.
+
+| Game | `develop` | `BlockSetSurvives` | The first different move |
+|---|---|---|---|
+| seed 104 | 13 / 2 | **12** / 2 | A defender with its commander as its only blocker faces a Wurm, an Ogre and a Bear. It chumps the Ogre (+3.65) where it blocked the Bear (+6.90), and lives through the combat that killed it on `develop`. |
+| seed 202 | 13 / 0 | **14** / 0 | The defender's fourth block: its commander chumps the second Ogre (+3.65) where it joined a Bear on the first to kill it (+4.35), which let lethal through. |
+| Wurm + Ogre, edge seat 1 | 6 / 1 | **7** / 1 | The defender, on 4 with its commander, faces an Ogre and a commander. It chumps the Ogre and takes 3 (+3.65) where it traded commanders and took 4 (+6.00). |
+| full Wurm, edge seat 0 | 7 / 0 | **8** / 0 | The issue's board. The defender, on 3, trades commanders and takes 2 (+6.00) where it blocked the Bear and took 3 (+6.90). |
+| full Wurm, edge seat 1 | 6 / 1 | **7** / 1 | The same board with the seats swapped. |
+
+**The full Wurm mirror, move by move** (edge on seat 0; seat 1 is the mirror image). Round 7: seat 0 sends the commander and the Bear (`attack: attrition — 0 of mine (1 cast again) for 0 of theirs and 2 sure now, a race within 2 exchange(s); crack-back 3 < my 6`). Seat 1 blocks commander on commander (`block: chump to survive, a set that survives (+6.00)`), takes 2 from the Bear and is on 1. Both commanders go to the command zone, and seat 0 casts its own again in its second main phase. Seat 1 casts its own in its turn. Round 8: seat 0's commander is not summoning sick, so seat 0 sends the Bear and the commander at once (`attack: all-in for the kill`). Seat 1 has one blocker and two attackers, no block survives, and it dies on −2. The horizon's planned line had a waiting turn between the two swings, which the game does not need ([the amendment](#amendment-2026-10-12-blocks-that-survive-as-a-set)).
+
+**Run 1, seed 1** (wins of 64): esper-control 18, izzet-aggro 5, mono-black-aristocrats 25, simic-ramp 16, on `develop` and on the branch. All 64 games end on the same turn with the same winner, the same lives and the same number of decisions for every seat. 0 stalls, turns p50 13, and the `never` lists are the same.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`.
+- `go test ./internal/aiseat/heuristic/ ./internal/aiseat/suite/...`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns the switch off. The new decision tests are in `heuristic/blockset_decide_test.go`: the issue's board (and, with the switch off, the old +6.90 Bear block), commander damage on 19 and on 18, the tenth poison counter from toxic, trample overflow, a set that needs two blockers, and a board where no set survives, which decides as with the switch off.
+- `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/` with `-race`: green, and its gate seeds and mirrors match the non-race runs above game for game. `./internal/aiseat/...` and `./internal/botarena/` are green too. Decision latency over 2294 decisions is p50 112µs, p99 9.75ms and max 51.8ms (`-race`, with the other `-race` packages running beside it), under the 50ms p99 bar.
+- **Latency without `-race`,** three runs of `TestHeuristicDecisionLatency` each, on the same box one after the other: `develop` p50 13.2–13.4µs, p99 1.10–1.14ms, max 5.0–5.5ms over 2389 decisions; the branch p50 13.8–14.2µs, p99 1.14–1.21ms, max 7.2–7.8ms over 2294 decisions. Its game (seed 4242) is one of the games a block changes, so the two are not the same decisions. The check runs only when finishing the declaration kills, and stops at the first set that survives.

@@ -849,7 +849,18 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 	}
 	desperate := life-through <= p.cfg.BlockChumpLife
 
+	// #3066 (Config.BlockSetSurvives): when finishing now would kill
+	// the bot, a block after which no way of spending the free
+	// creatures survives is ruled out, as long as some block on offer
+	// leaves one (blockset.go).
+	var set *blockSet
+	if p.cfg.BlockSetSurvives {
+		if b := newBlockSet(st, moves); b.dies() {
+			set = b
+		}
+	}
 	best, bestVal, bestReason := -1, 0.0, ""
+	saving, savingVal, savingReason := -1, 0.0, ""
 	for i := range moves {
 		if moves[i].Kind != legal.KindBlock {
 			continue
@@ -904,6 +915,18 @@ func (p *Policy) decideBlock(st *state, moves []legal.Move) (aiseat.Decision, bo
 		if best < 0 || v > bestVal {
 			best, bestVal, bestReason = i, v, reason
 		}
+		if set != nil && set.after(atk, adding) == blockSurvives && (saving < 0 || v > savingVal) {
+			saving, savingVal, savingReason = i, v, reason
+		}
+	}
+	if saving >= 0 && (saving != best || bestVal <= 0) {
+		// Finishing now dies, and the best-scored block either leaves
+		// no way to live or is not worth declaring on its own. This one
+		// leaves a way: the best-scored such block, whatever its score.
+		return aiseat.Decision{
+			Index:  saving,
+			Reason: fmt.Sprintf("block: %s, a set that survives (%+.2f)", savingReason, savingVal),
+		}, true
 	}
 	if best >= 0 && bestVal > 0 {
 		return aiseat.Decision{
