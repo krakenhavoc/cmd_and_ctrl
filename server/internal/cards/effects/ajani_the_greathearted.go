@@ -55,6 +55,7 @@ func init() {
 		// and the dev spawner.
 		StartingLoyalty: 5,
 		Static: []game.StaticAbility{{
+			Label: "Creatures you control have vigilance.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller

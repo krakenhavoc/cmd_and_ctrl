@@ -43,6 +43,7 @@ func init() {
 		XMatters:                   true,
 		Completeness:               CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label: "This creature has trample as long as it has ten or more +1/+1 counters on it.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID && target.Counters["+1/+1"] >= 10

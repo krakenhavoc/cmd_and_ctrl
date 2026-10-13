@@ -71,6 +71,7 @@ func init() {
 		},
 		PrintedKeywords: []string{"indestructible"},
 		Static: []game.StaticAbility{{
+			Label: "As long as your devotion to black is less than five, this isn't a creature.",
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&

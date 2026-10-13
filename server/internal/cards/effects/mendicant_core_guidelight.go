@@ -25,6 +25,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{StartYourEngines},
 		Static: []game.StaticAbility{{
+			Label:     "Power is equal to the number of artifacts you control.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
 			AppliesTo: selfOnly,

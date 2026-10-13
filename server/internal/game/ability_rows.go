@@ -218,6 +218,10 @@ type staticRowSlot struct {
 	// Label is not a sentence a player reads (BlockRule's is the
 	// clause's tail, "creatures with greater power").
 	ownLabel bool
+	// nestedLabel names a struct field of each entry that holds the
+	// entry's wording instead of the entry itself (a gated cast
+	// permission's Permission).
+	nestedLabel string
 	// label, when set, answers for a slot that is not a list of
 	// structs: a bool, a count, a keyword list. It returns one label per
 	// row, nil for none.
@@ -241,10 +245,10 @@ var staticRowSlots = []staticRowSlot{
 	{field: "BlockRules", label: blockRuleRows},
 	{field: "AttackLimits", label: attackLimitRows},
 	{field: "ExertOnAttack", fallback: "You may exert this creature as it attacks."},
-	{field: "HexproofBypasses", fallback: "Ignores hexproof"},
+	{field: "HexproofBypasses", label: hexproofBypassRows},
 	{field: "WardSuppressions", fallback: "Stops ward from triggering"},
 	{field: "TargetingRestrictions", fallback: "Targeting restriction", ownLabel: true},
-	{field: "SpecialActionGrants", fallback: "Grants a special action"},
+	{field: "SpecialActionGrants", label: specialActionGrantRows},
 	{field: "UntapStep", fallback: "Untaps during other untap steps", ownLabel: true},
 	{field: "UntapStepRestrictions", fallback: "Untap restriction", ownLabel: true},
 	{field: "CounterRemovalLocks", fallback: "Counters can't be removed", ownLabel: true},
@@ -257,26 +261,26 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ActivationTimings", fallback: "Changes when abilities can be activated", ownLabel: true},
 	{field: "SpellsCantBeCountered", fallback: "Spells can't be countered", ownLabel: true},
 	{field: "HandSize", label: handSizeRows},
-	{field: "ManaPool", fallback: "Changes how mana empties"},
+	{field: "ManaPool", label: manaPoolRows},
 	{field: "PlayerKeywords", label: playerKeywordRows},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
 	{field: "DamageStaysThroughCleanup", label: boolRow("Damage isn't removed from this creature during cleanup steps.")},
 	{field: "LoyaltyTwiceEachTurn", label: boolRow("You may activate its loyalty abilities twice each turn rather than only once.")},
 	{field: "ExtraVote", label: extraVoteRows},
-	{field: "DamageCantBePrevented", fallback: "Damage can't be prevented"},
+	{field: "DamageCantBePrevented", label: unpreventableDamageRows},
 	{field: "CantGainLife", fallback: "Life can't be gained", ownLabel: true},
-	{field: "DamageAsThough", fallback: "Changes how damage is dealt"},
-	{field: "AnyColorSpend", fallback: "Spend mana as though it were any color"},
+	{field: "DamageAsThough", fallback: "Changes how damage is dealt", ownLabel: true},
+	{field: "AnyColorSpend", label: anyColorSpendRows},
 	{field: "LifeForMana", fallback: "Lets you pay life for mana", ownLabel: true},
-	{field: "LegendRuleExemptions", fallback: "The legend rule doesn't apply"},
-	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty"},
-	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice"},
+	{field: "LegendRuleExemptions", label: legendRuleExemptionRows},
+	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty", ownLabel: true},
+	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice", ownLabel: true},
 	{field: "GameEndGates", label: gameEndGateRows},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},
 	{field: "CastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
-	{field: "GatedCastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
+	{field: "GatedCastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true, nestedLabel: "Permission"},
 	{field: "CastTimings", fallback: "Changes when spells can be cast", ownLabel: true},
-	{field: "GrantedAlternativeCosts", fallback: "Offers another way to pay for spells"},
+	{field: "GrantedAlternativeCosts", label: grantedAlternativeCostRows},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 }
 
@@ -329,8 +333,14 @@ func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, na
 				}
 			}
 			if s.ownLabel {
-				if f := e.FieldByName("Label"); f.IsValid() && f.Kind() == reflect.String {
-					label = f.String()
+				holder := e
+				if s.nestedLabel != "" {
+					holder = e.FieldByName(s.nestedLabel)
+				}
+				if holder.IsValid() && holder.Kind() == reflect.Struct {
+					if f := holder.FieldByName("Label"); f.IsValid() && f.Kind() == reflect.String {
+						label = f.String()
+					}
 				}
 			}
 			// #2410: a replacement's RowLabel is wording written for the

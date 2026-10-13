@@ -36,6 +36,7 @@ func init() {
 			Effect: copyTargetedAbility,
 		}},
 		Static: []game.StaticAbility{{
+			Label:    "Other enchantment creatures you control get +1/+1.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

@@ -133,6 +133,7 @@ func b22PutCounterOnEachCreatureYouDontControl(g *game.Game, item *game.StackIte
 // the end-step trigger's counters shrink the creature at once.
 func b22SlimeShrink() game.StaticAbility {
 	return game.StaticAbility{
+		Label:    "Creatures you don't control get -1/-1 for each slime counter on them.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

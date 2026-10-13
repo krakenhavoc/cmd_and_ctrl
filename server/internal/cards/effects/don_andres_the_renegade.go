@@ -37,6 +37,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Each creature you control but don't own is a Pirate in addition to its other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: donAndresStolenCreature,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -46,6 +47,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Each creature you control but don't own has menace and deathtouch.",
 				Layer:     game.Layer6Ability,
 				AppliesTo: donAndresStolenCreature,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -57,6 +59,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Each creature you control but don't own gets +2/+2.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
 				AppliesTo: donAndresStolenCreature,

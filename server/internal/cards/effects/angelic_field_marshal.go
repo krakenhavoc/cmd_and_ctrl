@@ -41,6 +41,7 @@ func init() {
 		PrintedKeywords: []string{"flying"},
 		Static: []game.StaticAbility{
 			{
+				Label:    "As long as you control your commander, this creature gets +2/+2.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
@@ -52,6 +53,7 @@ func init() {
 				},
 			},
 			{
+				Label: "As long as you control your commander, creatures you control have vigilance.",
 				Layer: game.Layer6Ability,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return target.IsCreature() && target.Controller == source.Controller && lieutenant(g, source)

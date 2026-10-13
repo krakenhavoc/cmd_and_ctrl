@@ -54,6 +54,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"deathtouch", "lifelink"},
 		Static: []game.StaticAbility{{
+			Label:    "Power is equal to the number of card types among cards in all graveyards, and its toughness is that number plus 1.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

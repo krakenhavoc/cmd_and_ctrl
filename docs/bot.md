@@ -893,7 +893,7 @@ Two prices go with the windows:
 The catalog declares a `purpose` on a card, a mode, an alternative cost
 or an activated row (`effects.Spec.Purpose`, [ADR 0126
 §6](decisions/0126-bots-that-play-their-decks.md)). It is declared by
-hand, like `Completeness`. In S66, every card in the four curated decks
+hand, like `Completeness`. In S66, every card in the first four curated decks
 in the priced classes declares one, and so does every catalog board
 wipe. A card with no purpose is priced as before: an instant or sorcery
 at `SpellPerMana` (0.60) times its mana value, with `SpellFloor` under
@@ -1624,7 +1624,7 @@ first — a board where two seats have spent two cards answering one
 creature, and over-rating their answers is not a decision anyone is
 worried about.
 
-## The four curated decks
+## The curated decks
 
 Curated, not generated, and **every card in them is covered by a
 build-failing test**: a card whose oracle ID has no registered effect
@@ -1639,6 +1639,9 @@ time a spec was refactored.
 | `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — landfall: extra land drops every turn, a card off each with Tatyova, and landfall payoffs that turn the lands into mana, tokens and threats |
 | `esper-control` | The Long Answer | Y'shtola, Night's Blessed | Control (WUB) — big spells: every noncreature spell of mana value 3 or more drains each opponent, so the answers also win the game |
 | `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — death triggers: sacrifice creatures for value, drain the table each time one dies, then reanimate the best of them |
+| `mono-green-stompy` | Stampede | Goreclaw, Terror of Qal Sisma | Stompy (G) — ramp into oversized creatures a turn early; Goreclaw makes every big spell cheaper and every big attacker hit harder |
+| `mono-white-weenie` | Strength in Numbers | Adeline, Resplendent Cathar | Weenie (W) — cheap white creatures and tokens; Adeline makes a Human every time you attack, and anthems turn the swarm lethal |
+| `boros-voltron` | Armed and Dangerous | Aurelia, the Law Above | Voltron (RW) — twenty-one Equipment and four Auras on one big flier, protected by instant-speed answers |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
 fetchlands and dual lands, but few tutors and little fast mana (Sol
@@ -1651,10 +1654,15 @@ the two partner Pirates, Ragavan and the two Artillerists), and that
 test fails the build when a card falls below it. A saved table setup
 names a deck by ID, so it seats the current list.
 
+The three added by [#554](https://github.com/krakenhavoc/cmd_and_ctrl/issues/554)
+(Stampede, Strength in Numbers, Armed and Dangerous) are held to a
+stricter bar than the four above: every non-basic card in them is graded
+`full`, with no entry on the minor-caveats list.
+
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
-All four are in the picker. The `placeholder-mono-red` stand-in that
+All seven are in the picker. The `placeholder-mono-red` stand-in that
 sub-PR 4 shipped — a commander and ninety-nine Mountains — is gone
 from it.
 
@@ -1664,10 +1672,7 @@ paste into the upload box — and then parses, resolves and validates it
 against the same Scryfall index, so there is no second legality path
 to keep in sync.
 
-Not built, and for two different reasons. **Voltron / Equipment /
-Aura** is waiting on card count rather than on engine machinery: the
-attachment layer shipped, and so did the first seven attachments,
-which is seven short of a deck. **Combo** is out on principle — a bot
+Not built: **combo**, which is out on principle — a bot
 executing a combo line is a bad experience for the table regardless of
 how well the catalog supports it.
 
@@ -3373,7 +3378,7 @@ on offer. The move is enumerated either way; what is missing is the
 number, not the option.
 
 **No deckbuilding.** A bot never builds, tunes or swaps a deck. In the
-lobby, picking one of the four curated decks is the whole of the
+lobby, picking one of the curated decks is the whole of the
 customisation. The API also takes a pasted decklist instead of a
 curated one (`{tier, format, source}`, [above](#under-the-hood)). The
 test harness uses that path, and so can anyone trying a list that is

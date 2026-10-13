@@ -755,7 +755,10 @@ not.
   still reading generically.
 - Slots that are data rather than a sentence (hand size, attack limits,
   block rules, game-end gates, cast permissions) are worded from their
-  fields in `game/ability_row_labels.go`.
+  fields in `game/ability_row_labels.go`; mana-pool, any-colour-spend,
+  legend-rule, unpreventable-damage and granted-alternative-cost slots
+  in `game/ability_row_labels_slots.go` (#3133). A new slot kind gets a
+  row builder there and an entry in `staticRowSlots`, not a fallback.
 
 ### Adding a static ability (S16+)
 

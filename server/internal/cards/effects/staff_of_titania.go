@@ -38,6 +38,7 @@ func init() {
 		Name:         "Staff of Titania",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:     "Equipped creature gets +X/+X, where X is the number of Forests you control.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: AttachedToSource,

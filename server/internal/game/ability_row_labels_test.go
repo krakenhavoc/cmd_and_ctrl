@@ -25,6 +25,71 @@ func staticLabels(rows []AbilityRow) []string {
 	return out
 }
 
+// #3133: the slot kinds #2410 left on their fallbacks, worded from their
+// own fields. The Label on each entry is deliberately left empty, so a
+// row that reads right can only have come from the fields.
+func TestSlotKindsLeftOnFallbacksAreWordedFromTheirFields(t *testing.T) {
+	three := 3
+	stubRowDefs(t, map[string]*CardDef{
+		"slots": {
+			AnyColorSpend: []AnyColorSpendStatic{{Whose: AnyColorSpendYou}, {Whose: AnyColorSpendEveryPlayer}},
+			LegendRuleExemptions: []LegendRuleExemption{
+				{Whose: LegendRuleExemptYours}, {Whose: LegendRuleExemptEveryone},
+			},
+			DamageCantBePrevented: []UnpreventableDamageStatic{
+				{Scope: UnpreventableAll}, {Scope: UnpreventableCombat},
+				{Scope: UnpreventableCombatByYourCreatures}, {Scope: UnpreventableByThis},
+			},
+			ManaPool: []ManaPoolStatic{
+				{Kind: ManaPoolKeep, Colors: []string{"R"}},
+				{Players: ManaPoolEachPlayer, Kind: ManaPoolKeep},
+				{Kind: ManaPoolBecomesColorless},
+			},
+			GrantedAlternativeCosts: []GrantedAlternativeCost{
+				{Offer: AlternativeCost{}, Zones: []ZoneKind{ZoneHand}},
+				{Offer: AlternativeCost{ManaCost: "{W}{U}{B}{R}{G}"}},
+				{Offer: AlternativeCost{Energy: 1, AsThoughFlash: true}, Spells: PermissionFilter{CreatureOnly: true}, MaxManaValue: &three},
+			},
+			GatedCastPermissions: []CastPermissionGate{{
+				Permission: CastPermission{Label: "Play a land or cast a spell from the top of your library (Slots)"},
+			}},
+			SpecialActionGrants: []SpecialActionGrant{
+				{Kind: SpecialActionPlot, Zone: ZoneLibrary, Nonland: true, CostIsManaCost: true},
+			},
+			HexproofBypasses: []HexproofBypass{{YoursOnly: true}, {}},
+		},
+	})
+	got := staticLabels(AbilityRowsOf(Card{OracleID: "slots", Name: "Slots"}))
+	want := []string{
+		"Spells and abilities you control can ignore hexproof.",
+		"Spells and abilities can ignore hexproof.",
+		"You may plot nonland cards from the top of your library. Their plot cost is equal to their mana cost.",
+		"You don't lose unspent red mana as steps and phases end.",
+		"Players don't lose unspent mana as steps and phases end.",
+		"If you would lose unspent mana as steps and phases end, it becomes colorless instead.",
+		"Damage can't be prevented.",
+		"Combat damage can't be prevented.",
+		"Combat damage dealt by creatures you control can't be prevented.",
+		"Damage dealt by this creature can't be prevented.",
+		"You may spend mana as though it were mana of any color.",
+		"Players may spend mana as though it were mana of any color.",
+		"The legend rule doesn't apply to permanents you control.",
+		"The legend rule doesn't apply.",
+		"Play a land or cast a spell from the top of your library",
+		"You may cast spells from your hand without paying their mana costs.",
+		"You may pay {W}{U}{B}{R}{G} rather than pay the mana cost for spells you cast.",
+		"You may pay {E} rather than pay the mana cost for creature spells you cast with mana value 3 or less. Spells cast this way can be cast as though they had flash.",
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("labels = %q\nwant %q", got, want)
+	}
+	for _, r := range AbilityRowsOf(Card{OracleID: "slots", Name: "Slots"}) {
+		if r.Generic {
+			t.Errorf("%q is flagged generic", r.Label)
+		}
+	}
+}
+
 func TestStructuredSlotsAreWordedFromTheirFields(t *testing.T) {
 	stubRowDefs(t, map[string]*CardDef{
 		"slots": {
