@@ -1496,7 +1496,10 @@ jobs:
       # Highlander on the C2 server) in that server; with both empty the
       # gate is off. CMDCTRL_DISCORD_INVITE_URL is the public invite the
       # client shows through GET /community; empty hides every Discord
-      # placement.
+      # placement. CMDCTRL_DISCORD_VOICE_CATEGORY_ID (ADR 0159 §7) is the
+      # category table voice rooms are created in; it needs the guild, and
+      # the server keeps voice off on a host without the bot token
+      # (production only), so it is safe to set at repo level.
       #
       # BOTH hosts, and ALWAYS written, empty included, exactly like the
       # admin allowlist above: clearing a variable must turn the gate off
@@ -1506,8 +1509,9 @@ jobs:
       # repo-level variable applies to both.
       #
       # Checked here before anything is written, with the server's own rules
-      # (discord.GateFromEnv, discord.InviteURLFromEnv): both ids or neither,
-      # each 1-20 digits, and an https invite. The server refuses to boot on
+      # (discord.GateFromEnv, discord.InviteURLFromEnv, discord.VoiceFromEnv):
+      # both ids or neither, each 1-20 digits, an https invite, and a voice
+      # category only with the guild. The server refuses to boot on
       # any of those, so a deploy that fails in this step leaves the running
       # server and its env file as they were.
       - name: Sync server env (community)
@@ -1515,11 +1519,17 @@ jobs:
           CMDCTRL_DISCORD_COMMUNITY_GUILD_ID: ${{ vars.CMDCTRL_DISCORD_COMMUNITY_GUILD_ID }}
           CMDCTRL_DISCORD_PLAYER_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_PLAYER_ROLE_ID }}
           CMDCTRL_DISCORD_INVITE_URL: ${{ vars.CMDCTRL_DISCORD_INVITE_URL }}
+          CMDCTRL_DISCORD_VOICE_CATEGORY_ID: ${{ vars.CMDCTRL_DISCORD_VOICE_CATEGORY_ID }}
         run: |
           trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
           guild="$(trim "${CMDCTRL_DISCORD_COMMUNITY_GUILD_ID}")"
           role="$(trim "${CMDCTRL_DISCORD_PLAYER_ROLE_ID}")"
           invite="$(trim "${CMDCTRL_DISCORD_INVITE_URL}")"
+          voice="$(trim "${CMDCTRL_DISCORD_VOICE_CATEGORY_ID}")"
+          if [ -n "${voice}" ] && [ -z "${guild}" ]; then
+            echo "::error::CMDCTRL_DISCORD_VOICE_CATEGORY_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set the guild too, or clear the category, in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
+          fi
           if [ -n "${guild}" ] && [ -z "${role}" ]; then
             echo "::error::CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is set but CMDCTRL_DISCORD_PLAYER_ROLE_ID is not; the server would refuse to boot. Set both (gate on) or neither (gate off) in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
@@ -1528,7 +1538,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_PLAYER_ROLE_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set both (gate on) or neither (gate off) in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}"; do
             name="${pair%%=*}"; id="${pair#*=}"
             if [ -n "${id}" ] && ! [[ "${id}" =~ ^[0-9]{1,20}$ ]]; then
               echo "::error::${name} is not a Discord id (digits only, at most 20); the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
@@ -1539,14 +1549,15 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_INVITE_URL must be an https URL such as https://discord.gg/<code>; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}"; do
             name="${pair%%=*}"; value="${pair#*=}"
             printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
           done
           if [ -n "${guild}" ]; then gate=on; else gate=off; fi
           if [ -n "${invite}" ]; then shown=set; else shown=unset; fi
-          echo "set the community variables (sign-up gate ${gate}, invite ${shown})"
+          if [ -n "${voice}" ]; then rooms=set; else rooms=unset; fi
+          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms})"
 
       # ADR 0123 §2 and §10: the server's /metrics listener, which the
       # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server

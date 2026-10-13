@@ -16,8 +16,8 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
-// voiceTable is a lobby table with a Discord seat, a guest and a bot.
-func voiceTable(t *testing.T, l *Lobby) (meta GameMeta, discordSeat, guest, bot uuid.UUID) {
+// voiceTestTable is a lobby table with a Discord seat, a guest and a bot.
+func voiceTestTable(t *testing.T, l *Lobby) (meta GameMeta, discordSeat, guest, bot uuid.UUID) {
 	t.Helper()
 	meta, err := l.Create("Voice night")
 	if err != nil {
@@ -41,7 +41,7 @@ func voiceTable(t *testing.T, l *Lobby) (meta GameMeta, discordSeat, guest, bot 
 
 func TestVoiceStampIsNilWithVoiceOff(t *testing.T) {
 	l := newTestLobby(t)
-	meta, _, _, _ := voiceTable(t, l)
+	meta, _, _, _ := voiceTestTable(t, l)
 	if v := l.RoomOf(meta.ID).Voice(); v != nil {
 		t.Errorf("voice off, stamp = %+v; want nil", v)
 	}
@@ -60,7 +60,7 @@ func TestVoiceStampIsNilWithVoiceOff(t *testing.T) {
 func TestVoiceStampGivesEachSeatItsAccess(t *testing.T) {
 	l := newTestLobby(t)
 	l.SetVoiceRoomsEnabled(true)
-	meta, alice, gus, bot := voiceTable(t, l)
+	meta, alice, gus, bot := voiceTestTable(t, l)
 
 	v := l.RoomOf(meta.ID).Voice()
 	if v == nil || v.Enabled || v.Status != protocol.VoiceStatusOff {
@@ -106,7 +106,7 @@ func TestVoiceStampGivesEachSeatItsAccess(t *testing.T) {
 func TestVoiceStampFollowsTheSeats(t *testing.T) {
 	l := newTestLobby(t)
 	l.SetVoiceRoomsEnabled(true)
-	meta, _, _, _ := voiceTable(t, l)
+	meta, _, _, _ := voiceTestTable(t, l)
 	_, bob, err := l.JoinWithIdentity(meta.ID, meta.InviteToken, "Bob", DiscordIdentity{ID: "502", Username: "bob"})
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestVoiceStampFollowsTheSeats(t *testing.T) {
 func TestVoiceRoomRefusedForArchivedAndUnknownTables(t *testing.T) {
 	l := newTestLobby(t)
 	l.SetVoiceRoomsEnabled(true)
-	meta, _, _, _ := voiceTable(t, l)
+	meta, _, _, _ := voiceTestTable(t, l)
 	if _, err := l.SetVoiceRoom(meta.ID, true); err != nil {
 		t.Fatal(err)
 	}
@@ -163,7 +163,7 @@ func TestVoiceRoomSurvivesARestart(t *testing.T) {
 	dir := t.TempDir()
 	l, _ := newDurableLobby(t, dir)
 	l.SetVoiceRoomsEnabled(true)
-	meta, alice, _, _ := voiceTable(t, l)
+	meta, alice, _, _ := voiceTestTable(t, l)
 	if _, err := l.SetVoiceRoom(meta.ID, true); err != nil {
 		t.Fatal(err)
 	}
