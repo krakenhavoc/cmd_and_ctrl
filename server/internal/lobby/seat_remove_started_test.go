@@ -355,3 +355,37 @@ func TestRemoveStartedSeatRefusals(t *testing.T) {
 		t.Errorf("RemoveSeat on a started table: %v, want ErrGameStarted", err)
 	}
 }
+
+// TestRemovedSeatIsNotExemptFromTheConnectionCap: the cap (ADR 0148)
+// never asks a seated player, and a removed player is not seated. The
+// seat check refuses the credential at authorisation, before the hub
+// decides whether the socket counts as a seat's, so the answer at a full
+// server is the same 401 as anywhere else and not a "server full" frame
+// (which would invite a retry loop) nor an admit.
+func TestRemovedSeatIsNotExemptFromTheConnectionCap(t *testing.T) {
+	s := newSeatRemoveStack(t)
+	meta, seats := s.startedTable(t, uuid.New(), "Alice", "Bob", "Carol")
+	alice, bob := seats[0], seats[1]
+	s.wantStatus(t, s.del(t, meta.ID, bob.PlayerID, adminToken(t, s.srv)), http.StatusOK)
+
+	// Fill the server: one spectator socket against a cap of one.
+	s.hub.SetMaxConnections(1)
+	spec := decodeSession(t, postJSON(t, s.srv, "/games/"+meta.ID.String()+"/spectate", "",
+		map[string]string{"invite_token": meta.SpectatorInvite}), http.StatusOK)
+	specConn, _, err := websocket.DefaultDialer.Dial(s.wsURL(spec.Token), nil)
+	if err != nil {
+		t.Fatalf("the first connection was refused: %v", err)
+	}
+	defer specConn.Close()
+
+	_, upgrade, err := websocket.DefaultDialer.Dial(s.wsURL(bob.Token), nil)
+	if err == nil || upgrade == nil || upgrade.StatusCode != http.StatusUnauthorized {
+		t.Fatalf("removed seat at a full server: err=%v upgrade=%v, want a 401 at the upgrade", err, upgrade)
+	}
+	// The exemption itself is intact for a seat that is still seated.
+	aliceConn, _, err := websocket.DefaultDialer.Dial(s.wsURL(alice.Token), nil)
+	if err != nil {
+		t.Fatalf("a seated player was refused at the cap: %v", err)
+	}
+	aliceConn.Close()
+}
