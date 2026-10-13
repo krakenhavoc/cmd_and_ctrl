@@ -25,21 +25,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // first strike") gives Soulflayer nothing, which is what reading the
 // card's own keyword list does.
 //
-// Simplification: the 2020-01-24 ruling gives Soulflayer a keyword's
-// VARIANT when the exiled card has one — "hexproof from white". The
-// engine has no hexproof-from keyword (ADR 0038 §6), so such a card
-// gives Soulflayer nothing. That is weaker than printed, never
-// stronger.
+// The 2020-01-24 ruling gives Soulflayer a keyword's VARIANT when the
+// exiled card has one: "hexproof from white" on a delved creature
+// gives Soulflayer hexproof from white (#3172, game.HexproofFromTokens,
+// ADR 0038's amendment of 2026-10-13), and not plain hexproof, which
+// the card does not have.
 func init() {
 	Register(Spec{
 		OracleID:     "d45cf9b1-d916-48bf-8b99-60cd09230a4b",
 		Name:         "Soulflayer",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A creature card with hexproof from a color or quality doesn't give Soulflayer that ability.",
-		},
-		Delve:  true,
-		Static: []game.StaticAbility{soulflayerKeywordsFromDelvedCards()},
+		Completeness: CompletenessFull,
+		Delve:        true,
+		Static:       []game.StaticAbility{soulflayerKeywordsFromDelvedCards()},
 	})
 }
 
@@ -66,6 +63,15 @@ func soulflayerKeywordsFromDelvedCards() game.StaticAbility {
 						c.Abilities = game.AppendKeywordAbility(c.Abilities, kw)
 						break
 					}
+				}
+			}
+			// "The same is true for … hexproof": a variant counts.
+			for i := range linked {
+				if !linked[i].IsCreature() {
+					continue
+				}
+				for _, tok := range game.HexproofFromTokens(&linked[i]) {
+					c.Abilities = game.AppendKeywordAbility(c.Abilities, tok)
 				}
 			}
 		},

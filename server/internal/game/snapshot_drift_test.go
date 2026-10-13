@@ -510,6 +510,9 @@ var cardFields = plan(
 	// ADR 0071 amendment 2026-10-09 (#2049): the CR 702.112b renowned
 	// designation, carried for Monstrous's reason.
 	"Renowned", carried, "",
+	// #3172: "has dealt combat damage", the object history behind Ruric
+	// Thar's conditional hexproof, carried for Renowned's reason.
+	"DealtCombatDamage", carried, "",
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",

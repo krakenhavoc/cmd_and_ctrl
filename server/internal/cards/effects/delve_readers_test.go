@@ -201,6 +201,34 @@ func TestSoulflayerHasTheKeywordsOfItsDelvedCreatureCards(t *testing.T) {
 	}
 }
 
+// The 2020-01-24 ruling: a delved creature with a keyword's VARIANT
+// gives Soulflayer that variant (#3172). "Hexproof from black" on the
+// exiled card is hexproof from black on Soulflayer, never plain
+// hexproof, and a noncreature card's variant gives nothing.
+func TestSoulflayerHasTheHexproofVariantOfItsDelvedCreatureCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	delve := []uuid.UUID{
+		pushGraveyardTyped(me, "Knight", "Creature — Human Knight", "hexproof from black"),
+		pushGraveyardTyped(me, "Instant", "Instant", "hexproof from red"),
+	}
+	id := castAndResolve(t, g, "Soulflayer", "Creature — Demon", "{4}{B}{B}", soulflayerOracle, delve)
+	if !effectiveAbilitiesContain(t, g, id, "hexproof from black") {
+		t.Fatalf("Soulflayer lacks hexproof from black: %v", effectiveAbilities(t, g, id))
+	}
+	for _, kw := range []string{"hexproof", "hexproof from red"} {
+		if effectiveAbilitiesContain(t, g, id, kw) {
+			t.Errorf("Soulflayer has %q", kw)
+		}
+	}
+	if creatureTargetableFrom(g, opp.ID, id, srcBlack) {
+		t.Error("an opponent's black spell must not target it")
+	}
+	if !creatureTargetableFrom(g, opp.ID, id, srcRed) {
+		t.Error("a red spell still can")
+	}
+}
+
 // --- Ethereal Forager ------------------------------------------------
 
 // pushLinkedForager puts an Ethereal Forager onto the battlefield whose

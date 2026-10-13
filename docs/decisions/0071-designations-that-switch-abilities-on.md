@@ -1741,3 +1741,22 @@ Pursuit ship `full`. Shiny Impetus and Incriminating Impetus move from
 - Any later "one of them" over an entry batch reuses
   `enteredInTriggeringBatch`; a batch over another event kind is a sibling
   function over the same log.
+
+## Amendment (2026-10-13): a ninth gate, "hasn't dealt combat damage yet" (#3172)
+
+Ruric Thar, Magecrusher "has hexproof as long as they haven't dealt combat
+damage yet". It is the Monstrous shape turned over: a layer-6 self-grant
+behind a gate, where the gate is satisfied by the ABSENCE of a mark.
+
+- **`Card.DealtCombatDamage`** is the mark. `emitDealDamageLocked`, the one
+  place a settled damage event is emitted, sets it for a combat event whose
+  source is on the battlefield, and bumps the layer version so the next pass
+  drops the static. Damage that was fully prevented never reaches that
+  function, so it is not "dealt" (CR 120.3). The mark is cleared at both
+  CR 400.7 sites (`zone.go`, `entry_tail.go`), is not copiable, and rides
+  clone and the snapshot like `Renowned` (additive within v8; the shape file
+  records `dealtCombatDamage`).
+- **`DesignationHasntDealtCombatDamage`** (`game.HasntDealtCombatDamage()`)
+  reads `!c.DealtCombatDamage`. Appended, so no kind's value moves.
+- **Card:** Ruric Thar, Magecrusher ships `full`.
+- A future "if it has dealt combat damage" condition reads the same mark.

@@ -533,6 +533,23 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 			}
 			return true
 		}
+		// CR 702.11e: "hexproof from [quality]" on a player (Veil of
+		// Summer). The opponent test is hexproof's, the quality test
+		// protection's, and the waiver is hexproof's too.
+		if IsHexproofFromToken(tok) {
+			hq, hok := ParseHexproofFromQuality(tok)
+			if !hok || p.ID == src.Controller {
+				return true
+			}
+			if !charsRead {
+				chars, charsRead = src.Characteristics(), true
+			}
+			if hq.Matches(chars) && !g.playerHexproofBypassedLocked(p, src.Controller) {
+				allowed = false
+				return false
+			}
+			return true
+		}
 		q, ok := ParseProtectionQuality(tok)
 		if !ok {
 			return true

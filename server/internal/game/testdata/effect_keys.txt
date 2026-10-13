@@ -207,3 +207,5 @@ option option-pick/villainous-the-master-gallifreys-end
 body dash/return
 body dalkovan-encampment/warriors
 condition attack/you-attack
+body draw/controller-one
+condition combat/that-creature-hit-a-player

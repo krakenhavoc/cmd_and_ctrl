@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Captain Howler, Sea Scourge — Legendary Creature — Shark Pirate
 // {2}{U}{R}, 5/4 (issue #1112):
@@ -11,42 +15,28 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Whenever that creature deals combat damage to a player this
 //	 turn, you draw a card."
 //
-// Three declared gaps, all weaker than printed and none stronger —
-// see docs/engine-seams.md, two new rows this card adds:
+// The second and third sentences are one trigger, complete since #3172
+// slice cav-e:
 //
-//   - WARD IS A COMPOSITE COST. `effects.Ward` charges exactly one of
-//     mana, life or a sacrifice (ward.go's WardCost.validate) — CR
-//     702.21a's printed shapes are each single-component, and "{2},
-//     pay 2 life" is a composite this card is the first to need.
-//     ward.go's own comment already says why a hand-rolled mix is
-//     refused rather than half-charged ("{1}, pay 1 life" is not a
-//     printed ward). Left off entirely: the creature is a perfectly
-//     legal target with no cost offered, which is weaker than
-//     printed and never stronger.
-//   - "ONE OR MORE … THAT MANY" HAS NO BATCH COUNT. The engine emits
-//     one EventDiscardCard per card, and OncePerBatch (#587) only
-//     suppresses the later events of a batch — it does not report how
-//     many objects were in it, and nothing else in the engine does
-//     either (the Ingenious Artillerist audit under #1112 hit the
-//     same wall on the same printed idiom). So "for each card
-//     discarded this way" cannot scale: OncePerBatch gives one
-//     trigger for the whole discard, correctly avoiding a second
-//     target prompt and a doubled pump, but the pump it applies is
-//     the SINGLE-card amount regardless of how many were actually
-//     discarded. Discarding one card is exact; discarding two or more
-//     is weaker than printed, never stronger, which is the direction
-//     #259 requires.
-//   - THE PAYOFF DELAYED TRIGGER HAS NO SHAPE. "Whenever THAT
-//     creature deals combat damage to a player THIS TURN" is a
-//     delayed triggered ability that has to re-fire for as long as
-//     the turn lasts and stay bound to one specific instance —
-//     `DelayedTrigger`'s event-conditioned form (#663) fires once and
-//     is removed (double strike would need it twice), and nothing
-//     else in the engine registers a repeating, instance-scoped
-//     watch. Approximating it with a one-shot delayed trigger would
-//     silently drop a second connection in the same turn, so it is
-//     left out rather than guessed at, per the batch brief. The pump
-//     above ships on its own; the draw does not.
+//   - "ONE OR MORE … FOR EACH" is the batch total (ADR 0108 amendment
+//     2026-10-13, game/batch_total.go): the engine emits one
+//     EventDiscardCard per card, and `AtBatchEnd: ThatManyEvents()` holds
+//     the trigger until the discard has finished, so it goes on the stack
+//     ONCE — one target pick — with `item.Trigger.Event.Amount` the number
+//     of cards discarded. The pump is +2/+0 times that.
+//   - "WHENEVER THAT CREATURE DEALS COMBAT DAMAGE TO A PLAYER THIS TURN"
+//     is CR 603.7b's repeating delayed trigger (#2169, DelayedOnEvent
+//     with Repeats), scheduled as the pump resolves and bound to the
+//     chosen creature's object. It fires for every hit until cleanup (a
+//     double striker draws twice) and a second discard this turn
+//     schedules a second, independent watch, as the card reads.
+//
+// One gap is declared, weaker than printed and never stronger: WARD IS A
+// COMPOSITE COST. `effects.Ward` charges exactly one of mana, life, a
+// sacrifice or a discard (ward.go's WardCost.validate); "{2}, pay 2 life"
+// is a composite this card is the first to need, and a hand-rolled mix
+// is refused rather than half-charged. Left off entirely, the creature is
+// a perfectly legal target with no cost offered.
 func init() {
 	Register(Spec{
 		OracleID:     "46c99d67-8307-4af0-afd0-377714806614",
@@ -54,30 +44,65 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"Ward isn't implemented on this creature — it can be targeted for free.",
-			"Discarding more than one card at once still only pumps the chosen creature by +2/+0, not +2/+0 for each card discarded.",
-			"The bonus card draw for the pumped creature dealing combat damage to a player isn't implemented.",
 		},
 		Triggered: []game.TriggeredAbility{
-			OncePerBatch(Targeting(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			withAtBatchEnd(Targeting(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
-			}, "Captain Howler, Sea Scourge — target creature gets +2/+0 until end of turn",
-				captainHowlerPump), TargetCreature("target creature"))),
+			}, "Captain Howler, Sea Scourge — target creature gets +2/+0 until end of turn for each card discarded this way",
+				captainHowlerPump), TargetCreature("target creature")), ThatManyEvents()),
 		},
 	})
 }
 
-// captainHowlerPump is the resolution body: +2/+0 until end of turn
-// on the target chosen when this instance of the trigger went on the
-// stack.
+var (
+	// "Whenever <that creature> deals combat damage to a player": an
+	// EventDealDamage, combat, from CondParams.Object, to a player.
+	thatCreatureHitAPlayerCondition = game.DelayedCondition("combat/that-creature-hit-a-player", thatCreatureHitAPlayer)
+
+	// "You draw a card."
+	drawACardForTheControllerBody = game.SimpleDelayedBody("draw/controller-one", drawACardForTheController)
+)
+
+func thatCreatureHitAPlayer(ev game.Event, _ *game.DelayedTrigger, g *game.Game, p game.EffectParams) bool {
+	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || p.Object.ID == uuid.Nil || ev.Source != p.Object.ID {
+		return false
+	}
+	return g.PlayerByIDForEffect(ev.Target) != nil
+}
+
+func drawACardForTheController(g *game.Game, item *game.StackItem) error {
+	return DrawCards{Player: item.Controller, N: 1}.Apply(NewContext(g, item))
+}
+
+// captainHowlerPump is the resolution body: +2/+0 until end of turn for
+// each card discarded in the batch, on the target chosen when this
+// instance of the trigger went on the stack, and the delayed draw
+// trigger bound to that creature.
 //
 // Caller holds g.mu.
 func captainHowlerPump(g *game.Game, item *game.StackItem) error {
 	if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
 		return nil
 	}
-	return BoostUntilEOT{
-		Target: item.Targets[0].ID,
-		Power:  2,
-		Label:  "Captain Howler, Sea Scourge — +2/+0 until end of turn",
-	}.Apply(NewContext(g, item))
+	ctx := NewContext(g, item)
+	target := item.Targets[0].ID
+	if err := (BoostUntilEOT{
+		Target: target,
+		Power:  2 * settledEventAmount(item),
+		Label:  "Captain Howler, Sea Scourge — +2/+0 for each card discarded",
+	}).Apply(ctx); err != nil {
+		return err
+	}
+	c, ok := g.LookupCardForEffect(target)
+	if !ok {
+		return nil
+	}
+	return DelayedOnEvent{
+		Label:      "Captain Howler, Sea Scourge — draw a card",
+		On:         []game.EventKind{game.EventDealDamage},
+		Condition:  thatCreatureHitAPlayerCondition,
+		CondParams: game.EffectParams{Object: game.ObjectRef{ID: target, Epoch: c.ObjectEpoch}},
+		Body:       drawACardForTheControllerBody,
+		Repeats:    true,
+	}.Apply(ctx)
 }

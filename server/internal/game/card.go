@@ -1464,6 +1464,17 @@ type Card struct {
 	// snapshot. Here for alignment, beside the other bools.
 	Renowned bool
 
+	// DealtCombatDamage is "has dealt combat damage" (#3172): the
+	// object-history fact behind Ruric Thar's "has hexproof as long as
+	// they haven't dealt combat damage yet". Set by emitDealDamageLocked
+	// when combat damage this permanent was the source of actually
+	// landed, and kept until the permanent leaves the battlefield (CR
+	// 400.7: a new object has dealt nothing). Not a characteristic, so a
+	// copy never takes it (CopiableValuesOf never reads it); carried by
+	// clone and the snapshot like Renowned. Read through the
+	// HasntDealtCombatDamage gate.
+	DealtCombatDamage bool
+
 	// Bestowed is CR 702.103b's "bestowed" status (ADR 0141, #2862): a
 	// spell cast for its bestow cost, and the permanent that spell
 	// becomes, is an Aura enchantment with enchant creature and not a

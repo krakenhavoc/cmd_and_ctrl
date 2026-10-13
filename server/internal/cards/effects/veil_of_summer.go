@@ -26,28 +26,48 @@ import (
 //     so it covers spells already on the stack and spells cast later
 //     this turn (CR 611.2c), and ends at cleanup (CR 514.2). "Control"
 //     is the spell's current controller.
-//   - THE HEXPROOF IS NOT IMPLEMENTED. "Hexproof from [quality]" is not
-//     a keyword the engine has (ADR 0038 §6 refused it as a token), for
-//     a permanent or for a player, so this half grants nothing. That is
-//     weaker than printed, never stronger: an opponent's blue or black
-//     spell can still target you and your permanents.
+//   - THE HEXPROOF is two grants of "hexproof from [colour]" (CR 702.11e,
+//     #3172, ADR 0038's amendment of 2026-10-13), one for blue and one
+//     for black, each given twice over: to every permanent you control
+//     as the spell resolves (GrantKeywordUntilEOT, CR 611.2c — a
+//     permanent that arrives later this turn is not covered) and to you
+//     (GainPlayerKeyword, until end of turn). An opponent's blue or
+//     black spell or ability can no longer target either; a red or
+//     colourless one still can, and your own spells always can.
 func init() {
 	Register(Spec{
 		OracleID:     "002965be-a36f-4a09-9ce0-c6535bca1703",
 		Name:         "Veil of Summer",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You and your permanents don't gain hexproof from blue and from black — opponents' blue and black spells and abilities can still target them.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			if anOpponentCastASpellThisTurn(ctx, func(c game.Card) bool { return c.HasColor("U") || c.HasColor("B") }) {
 				if err := (DrawCards{N: 1}).Apply(ctx); err != nil {
 					return err
 				}
 			}
-			return GrantCounterShield{From: "Veil of Summer", Grant: SpellsCantBeCounteredThisTurn(
+			if err := (GrantCounterShield{From: "Veil of Summer", Grant: SpellsCantBeCounteredThisTurn(
 				"Spells you control can't be countered this turn.",
-				game.CounterShieldYouControl, game.PermissionFilter{})}.Apply(ctx)
+				game.CounterShieldYouControl, game.PermissionFilter{})}).Apply(ctx); err != nil {
+				return err
+			}
+			hexproofFrom := []string{game.HexproofFromColor("U"), game.HexproofFromColor("B")}
+			if err := (GrantKeywordUntilEOT{
+				Match:    YouControl(),
+				Keywords: hexproofFrom,
+				Label:    "Veil of Summer — hexproof from blue and from black",
+			}).Apply(ctx); err != nil {
+				return err
+			}
+			for _, kw := range hexproofFrom {
+				if err := (GainPlayerKeyword{
+					Player:  ctx.Controller(),
+					Keyword: kw,
+					Label:   "Veil of Summer — " + kw,
+				}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
 		},
 	})
 }

@@ -72,6 +72,7 @@ battlefield.cards[].craftedWith[]	object
 battlefield.cards[].craftedWith[].epoch	number:int
 battlefield.cards[].craftedWith[].id	custom(uuid.UUID)
 battlefield.cards[].damageMarked	number:int
+battlefield.cards[].dealtCombatDamage	bool
 battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
@@ -572,6 +573,7 @@ exile.cards[].craftedWith[]	object
 exile.cards[].craftedWith[].epoch	number:int
 exile.cards[].craftedWith[].id	custom(uuid.UUID)
 exile.cards[].damageMarked	number:int
+exile.cards[].dealtCombatDamage	bool
 exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
@@ -1168,6 +1170,7 @@ lastKnownStack[].card.craftedWith[]	object
 lastKnownStack[].card.craftedWith[].epoch	number:int
 lastKnownStack[].card.craftedWith[].id	custom(uuid.UUID)
 lastKnownStack[].card.damageMarked	number:int
+lastKnownStack[].card.dealtCombatDamage	bool
 lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
@@ -2475,6 +2478,7 @@ phasedOut.cards[].craftedWith[]	object
 phasedOut.cards[].craftedWith[].epoch	number:int
 phasedOut.cards[].craftedWith[].id	custom(uuid.UUID)
 phasedOut.cards[].damageMarked	number:int
+phasedOut.cards[].dealtCombatDamage	bool
 phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
@@ -3113,6 +3117,7 @@ seats[].command.cards[].craftedWith[]	object
 seats[].command.cards[].craftedWith[].epoch	number:int
 seats[].command.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].command.cards[].damageMarked	number:int
+seats[].command.cards[].dealtCombatDamage	bool
 seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
@@ -3445,6 +3450,7 @@ seats[].emblems.cards[].craftedWith[]	object
 seats[].emblems.cards[].craftedWith[].epoch	number:int
 seats[].emblems.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].emblems.cards[].damageMarked	number:int
+seats[].emblems.cards[].dealtCombatDamage	bool
 seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
@@ -3768,6 +3774,7 @@ seats[].graveyard.cards[].craftedWith[]	object
 seats[].graveyard.cards[].craftedWith[].epoch	number:int
 seats[].graveyard.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].graveyard.cards[].damageMarked	number:int
+seats[].graveyard.cards[].dealtCombatDamage	bool
 seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
@@ -4089,6 +4096,7 @@ seats[].hand.cards[].craftedWith[]	object
 seats[].hand.cards[].craftedWith[].epoch	number:int
 seats[].hand.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].hand.cards[].damageMarked	number:int
+seats[].hand.cards[].dealtCombatDamage	bool
 seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
@@ -4422,6 +4430,7 @@ seats[].library.cards[].craftedWith[]	object
 seats[].library.cards[].craftedWith[].epoch	number:int
 seats[].library.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].library.cards[].damageMarked	number:int
+seats[].library.cards[].dealtCombatDamage	bool
 seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
@@ -4973,6 +4982,7 @@ stack.cards[].craftedWith[]	object
 stack.cards[].craftedWith[].epoch	number:int
 stack.cards[].craftedWith[].id	custom(uuid.UUID)
 stack.cards[].damageMarked	number:int
+stack.cards[].dealtCombatDamage	bool
 stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
