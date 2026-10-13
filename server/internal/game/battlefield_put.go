@@ -100,6 +100,15 @@ type ZoneEntryOptions struct {
 	// artifact creatures". nil is CR 708.2a's default 2/2, which is
 	// what manifest and cloak get. Ignored without FaceDown. #1270.
 	FaceDownListed *FaceDownListing
+
+	// EntersWithCounters are counters the putting effect says the
+	// permanent enters with (Dodecapod's discard replacement: "put it
+	// onto the battlefield with two +1/+1 counters on it", ADR 0153).
+	// SEEDED onto every card's entry event, as Tapped is, so the
+	// counters are the entry's own and the entry's CR 614 window and
+	// the counter placement windows after it see them. Read-only: the
+	// batch copies it onto each event. nil for every other caller.
+	EntersWithCounters map[string]int
 }
 
 // LibraryEntryOptions are ZoneEntryOptions for a library source, named

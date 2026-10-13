@@ -334,6 +334,12 @@ func (g *Game) continueEntryBatchLocked(b *entryBatch) error {
 				batchIndex: i,
 			},
 		}
+		// ADR 0153: the putting effect's own "with N counters" clause,
+		// copied onto this card's event (AddCounterAtETB sums into the
+		// event's own map, so the options map is never written).
+		for name, n := range b.opts.EntersWithCounters {
+			ev.AddCounterAtETB(name, n)
+		}
 		if m.token {
 			ev.EntersTapped = m.tokenEntry.Tapped
 			ev.EntersAttacking = m.attacking

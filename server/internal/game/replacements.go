@@ -51,7 +51,7 @@ import (
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
-//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.9)
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, DiscardCauseController, Source, NewZone, NewZoneOwner, EntersWithCounters (CR 701.9)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
 //	                 CounterFromCombatDamage
@@ -767,10 +767,30 @@ type ReplacementEvent struct {
 	// the voluntary/involuntary framing #160 was written around, and
 	// ADR 0061.
 	//
-	// Source names the card whose effect or cost asked for it, so the
-	// Obstinate Baloth family ("a spell or ability an opponent controls
-	// causes you to discard") can read its controller.
+	// Source (above) names the card whose effect or cost asked for the
+	// discard. It is set on every discard since ADR 0153; before that
+	// this comment claimed it was and it was not. It is NOT how the
+	// Obstinate Baloth family reads who caused the discard: the card's
+	// controller and the controller of the spell or ability that made
+	// the player discard can differ (CR 113.8: a stolen permanent's
+	// ability, a copied spell). DiscardCauseController below is that.
+	//
+	// A discard replacement that puts the card onto the battlefield
+	// (NewZone = ZoneBattlefield, ADR 0153 §2) may also ask for counters
+	// through AddCounterAtETB on this event (Dodecapod's "with two +1/+1
+	// counters on it"). The engine seeds them onto the battlefield
+	// entry it starts, so they are the entry's own counters and the
+	// entry's CR 614 window (Hardened Scales) sees them.
 	DiscardCause DiscardCause
+
+	// DiscardCauseController is the controller of the resolving spell
+	// or ability whose instruction is making the player discard
+	// (CR 113.8 / 602.2 / 603.3a: the STACK ITEM's controller, never
+	// the controller of the card it came from). uuid.Nil when the
+	// discard is not an effect's: a cost, the cleanup step's
+	// turn-based action (CR 514.1), a manual move. Read it through
+	// DiscardCausedByOpponent. ADR 0153 §1.
+	DiscardCauseController uuid.UUID
 
 	// --- RepEventCreateTokens fields ---
 
