@@ -1174,7 +1174,7 @@ player); RoleAdmin may set any seat.
 
 ```json
 {
-  "deck": "izzet-aggro",   // a deck id from GET /decks
+  "deck": "mono-red-aggro",   // a deck id from GET /decks
   "player_id": "<uuid>"
 }
 ```
@@ -1219,7 +1219,7 @@ Private decks (upstream 401/403) and unsupported hosts surface as
   "game": { "...GameMeta with updated seat..." },
   "deck_name": "Atraxa Superfriends",
   "card_count": 100,
-  "deck_id": "izzet-aggro",
+  "deck_id": "mono-red-aggro",
   "commanders": ["Atraxa, Praetors' Voice"],
   "warnings": [
     { "code": "sideboard_not_supported_in_commander", "message": "..." }
@@ -1415,7 +1415,7 @@ deck, not an empty picker implying there are none.
 {
   "decks": [
     {
-      "id": "izzet-aggro",
+      "id": "mono-red-aggro",
       "name": "Forge and Fury",
       "archetype": "aggro",
       "summary": "...",
@@ -1484,7 +1484,7 @@ answer for every table — so the client fetches it once.
     { "tier": "strong", "label": "Strong", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
-    { "id": "izzet-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
+    { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
     { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
     { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Y'shtola, Night's Blessed" },
     { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }
@@ -1553,7 +1553,7 @@ The player-facing form names a curated deck from `GET /bot/options`:
 ```json
 {
   "tier": "random",
-  "deck": "izzet-aggro",
+  "deck": "mono-red-aggro",
   "name": "Bot 1"            // optional; defaults to "Bot N"
 }
 ```
@@ -1580,7 +1580,7 @@ fails exactly where a human's upload would.
 
 ```json
 {
-  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "izzet-aggro" } ] },
+  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "mono-red-aggro" } ] },
   "player_id": "<uuid>",
   "deck_name": "...",
   "warnings": [ ... ],       // as for /decks, omitted when empty

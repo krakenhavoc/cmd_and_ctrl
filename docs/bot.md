@@ -1675,7 +1675,7 @@ time a spec was refactored.
 
 | ID | Name | Commander | Archetype |
 |---|---|---|---|
-| `izzet-aggro` | Forge and Fury | Purphoros, God of the Forge | Aggro (R) — Goblins and tokens: every creature that enters is 2 damage to each opponent from Purphoros, and more from the pingers behind it. Mono-red since [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071); the ID is still `izzet-aggro` |
+| `mono-red-aggro` | Forge and Fury | Purphoros, God of the Forge | Aggro (R) — Goblins and tokens: every creature that enters is 2 damage to each opponent from Purphoros, and more from the pingers behind it. It was `izzet-aggro` (Raid and Ransack) until [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071); the old ID still resolves to it |
 | `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — landfall: extra land drops every turn, a card off each with Tatyova, and landfall payoffs that turn the lands into mana, tokens and threats |
 | `esper-control` | The Long Answer | Y'shtola, Night's Blessed | Control (WUB) — big spells: every noncreature spell of mana value 3 or more drains each opponent, so the answers also win the game |
 | `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — death triggers: sacrifice creatures for value, drain the table each time one dies, then reanimate the best of them |
@@ -2029,7 +2029,7 @@ To take it, point a seat at a keyed endpoint and play:
 ```bash
 CMDCTRL_ANTHROPIC_API_KEY=sk-… \
   ./server/bin/boteval arena --seats assisted,heuristic,heuristic,heuristic \
-    --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+    --decks mono-red-aggro,simic-ramp,esper-control,mono-black-aristocrats \
     --games 4 --seed 1 --rotate --out ./arena-out
 ```
 
@@ -2065,7 +2065,7 @@ asks every bot PR to carry.
 
 ```
 boteval arena --seats assisted,heuristic,heuristic,heuristic \
-              --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+              --decks mono-red-aggro,simic-ramp,esper-control,mono-black-aristocrats \
               --games 10 --seed 1 --rotate \
               --model qwen3:14b --endpoint http://192.168.1.18:11434/v1 \
               --max-think 20s --dump ../data/scryfall/default-cards.json \

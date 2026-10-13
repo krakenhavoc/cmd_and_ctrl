@@ -73,7 +73,7 @@ const CHECKED: CoverageReport = {
 
 const PREBUILT: PrebuiltDeck[] = [
   {
-    id: "izzet-aggro",
+    id: "mono-red-aggro",
     name: "Raid and Ransack",
     archetype: "aggro",
     commander: "Mary Read and Anne Bonny",

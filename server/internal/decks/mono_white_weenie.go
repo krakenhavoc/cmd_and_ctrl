@@ -5,7 +5,7 @@ package decks
 // is a 1WW commander whose power is the number of creatures you
 // control, and she makes a 1/1 Human for each opponent every time you
 // attack, so the plan is to have more bodies than the table has
-// answers. Forge and Fury (izzet-aggro) turns each body it makes into
+// answers. Forge and Fury (mono-red-aggro) turns each body it makes into
 // damage to each opponent; this deck wins by attacking with them.
 //
 // Added by #554 as the mono-coloured aggro option, and deliberately

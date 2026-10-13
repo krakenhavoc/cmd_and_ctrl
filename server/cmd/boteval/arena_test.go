@@ -61,7 +61,7 @@ func TestParseArenaFlagsSeatsRequired(t *testing.T) {
 // heuristic tier on its frozen pre-S66 config, tallied under its own
 // name.
 func TestParseArenaFlagsTakesHeuristicBaseline(t *testing.T) {
-	a, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic-baseline", "--decks", "izzet-aggro,simic-ramp"}, io.Discard)
+	a, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic-baseline", "--decks", "mono-red-aggro,simic-ramp"}, io.Discard)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -92,10 +92,10 @@ func TestParseArenaFlagsRejectsUnknownTier(t *testing.T) {
 // configuration that silently measures nothing: two seats on curated
 // decks and two on vanilla bears is not a comparison.
 func TestParseArenaFlagsDeckArity(t *testing.T) {
-	if _, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--decks", "izzet-aggro"}, io.Discard); err == nil {
+	if _, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--decks", "mono-red-aggro"}, io.Discard); err == nil {
 		t.Fatal("a deck list shorter than the seat list was accepted")
 	}
-	a, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--decks", "izzet-aggro,simic-ramp"}, io.Discard)
+	a, err := parseArenaFlags([]string{"--seats", "heuristic,heuristic", "--decks", "mono-red-aggro,simic-ramp"}, io.Discard)
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
@@ -179,7 +179,7 @@ func TestParseArenaFlagsArtifactsNeedOut(t *testing.T) {
 func TestParseArenaFlagsNames(t *testing.T) {
 	a, err := parseArenaFlags([]string{
 		"--seats", "heuristic,heuristic",
-		"--decks", "izzet-aggro,simic-ramp",
+		"--decks", "mono-red-aggro,simic-ramp",
 		"--names", "izzet,simic",
 	}, io.Discard)
 	if err != nil {
@@ -242,7 +242,7 @@ func TestCreateArenaRunDirNeverReusesADirectory(t *testing.T) {
 func TestArenaFlagsConfig(t *testing.T) {
 	a, err := parseArenaFlags([]string{
 		"--seats", "assisted,heuristic,heuristic,heuristic",
-		"--decks", "izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats",
+		"--decks", "mono-red-aggro,simic-ramp,esper-control,mono-black-aristocrats",
 		"--games", "4", "--seed", "77", "--rotate", "--turn-budget", "45",
 		"--endpoint", "http://box:11434/v1", "--model", "qwen3:14b",
 		"--replays", "--out", "/tmp/arena",
@@ -251,7 +251,7 @@ func TestArenaFlagsConfig(t *testing.T) {
 		t.Fatalf("parse: %v", err)
 	}
 	cfg := a.config(nil, nil, nil, "/tmp/arena/run", nil)
-	if len(cfg.Seats) != 4 || cfg.Seats[0].Tier != tiers.Assisted || cfg.Seats[0].Deck != "izzet-aggro" {
+	if len(cfg.Seats) != 4 || cfg.Seats[0].Tier != tiers.Assisted || cfg.Seats[0].Deck != "mono-red-aggro" {
 		t.Fatalf("seats = %+v", cfg.Seats)
 	}
 	if cfg.Games != 4 || cfg.Seed != 77 || !cfg.Rotate || cfg.TurnBudget != 45 {

@@ -75,7 +75,7 @@ subcommands:
           whether the reply parsed as an index, and wall time.
 
           boteval probe [--endpoint URL] [--model ID] [--max-tokens N] [--think]
-                        [--deck izzet-aggro] [--dump path/to/default-cards.json]
+                        [--deck mono-red-aggro] [--dump path/to/default-cards.json]
 
           Env fallbacks: CMDCTRL_OPENAI_ENDPOINT, CMDCTRL_OPENAI_API_KEY,
           CMDCTRL_BOT_MODEL, CMDCTRL_BOT_THINK, CMDCTRL_BOT_MAX_TOKENS,

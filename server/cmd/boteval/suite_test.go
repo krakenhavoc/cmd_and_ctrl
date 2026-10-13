@@ -118,11 +118,11 @@ func TestParseSuiteHarvestNeedsSourceAndDestination(t *testing.T) {
 }
 
 func TestParseSuiteRender(t *testing.T) {
-	o, err := parseSuiteRender([]string{"--pos", "p.json", "--deck", "izzet-aggro"})
+	o, err := parseSuiteRender([]string{"--pos", "p.json", "--deck", "mono-red-aggro"})
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if o.Pos != "p.json" || o.Deck != "izzet-aggro" {
+	if o.Pos != "p.json" || o.Deck != "mono-red-aggro" {
 		t.Fatalf("parsed %+v", o)
 	}
 	// A bare path is the shape anybody types after a harvest prints

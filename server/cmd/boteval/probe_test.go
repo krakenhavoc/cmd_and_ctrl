@@ -311,7 +311,7 @@ func TestBuildClientNeedsAnEndpoint(t *testing.T) {
 // back empty, and it never runs in CI unless something asks it to —
 // so something does.
 func TestRepresentativeInputFindsAnEscalatedWindow(t *testing.T) {
-	in, err := representativeInput(nil, "izzet-aggro")
+	in, err := representativeInput(nil, "mono-red-aggro")
 	if err != nil {
 		t.Fatalf("representativeInput: %v", err)
 	}

@@ -147,7 +147,7 @@ func TestStartBotsPassesTheDeckToTheFactory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for i := 0; i < 2; i++ {
-		if _, _, err := l.AddBot(meta.ID, "Bot", string(aiseat.TierRandom), "izzet-aggro", "Raid and Ransack", monoRedDeck(uuid.Nil)); err != nil {
+		if _, _, err := l.AddBot(meta.ID, "Bot", string(aiseat.TierRandom), "mono-red-aggro", "Forge and Fury", monoRedDeck(uuid.Nil)); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -160,8 +160,8 @@ func TestStartBotsPassesTheDeckToTheFactory(t *testing.T) {
 		t.Fatalf("factory built %d policies, want 2", len(f.built))
 	}
 	for _, seat := range f.built {
-		if seat.Deck != "izzet-aggro" {
-			t.Errorf("seat reached the factory with deck %q, want izzet-aggro", seat.Deck)
+		if seat.Deck != "mono-red-aggro" {
+			t.Errorf("seat reached the factory with deck %q, want mono-red-aggro", seat.Deck)
 		}
 	}
 }

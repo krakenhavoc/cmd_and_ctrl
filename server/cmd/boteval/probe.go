@@ -319,7 +319,7 @@ func runProbe(args []string) int {
 	modelID := fs.String("model", "", "model id (default: $CMDCTRL_BOT_MODEL)")
 	maxTokens := fs.Int("max-tokens", 0, "max_tokens for the call (default: $CMDCTRL_BOT_MAX_TOKENS, else the assisted tier's routine profile, or 8000 with --think)")
 	think := fs.Bool("think", false, "let the model THINK before it answers (default: $CMDCTRL_BOT_THINK)")
-	deckID := fs.String("deck", "izzet-aggro", "curated deck whose list becomes the static prompt block")
+	deckID := fs.String("deck", "mono-red-aggro", "curated deck whose list becomes the static prompt block")
 	dump := fs.String("dump", "", "Scryfall bulk dump for oracle text (default: $CMDCTRL_SCRYFALL_DUMP)")
 	timeout := fs.Duration("timeout", 5*time.Minute, "wall clock for the one call")
 	contextLen := fs.Int("context", 0, "the server's context size in tokens, for the truncation verdict (default: read from Ollama's /api/ps, else unknown)")

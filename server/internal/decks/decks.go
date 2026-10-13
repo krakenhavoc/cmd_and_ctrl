@@ -44,8 +44,8 @@
 // Seven decks in seven archetypes:
 //
 //   - aggro, ramp-stompy (Simic), control (Esper) — the three the
-//     sprint planned for. The aggro deck was Izzet until #3071 rebuilt
-//     it as mono-red under Purphoros; its ID is still izzet-aggro.
+//     sprint planned for. The aggro deck was Izzet (izzet-aggro) until
+//     #3071 rebuilt it as mono-red under Purphoros (mono-red-aggro).
 //   - aristocrats (mono-black) — added because S21's sacrifice outlets
 //     and death payoffs and S23's board wipes both landed. The sprint
 //     doc deferred this on the grounds that they had not.
@@ -219,7 +219,7 @@ type Deck struct {
 // all is the registry, in picker order. Adding a deck means adding it
 // here; nothing else discovers decks.
 var all = []Deck{
-	izzetAggro,
+	monoRedAggro,
 	simicRamp,
 	esperControl,
 	monoBlackAristocrats,
@@ -248,11 +248,26 @@ func IDs() []string {
 	return out
 }
 
+// legacyIDs maps a retired deck ID to the ID of the deck that replaced
+// it. Migration 0018 rewrites the IDs the database stores, but a
+// guest's browser, an engine snapshot and an operator's script keep the
+// old one, so Lookup answers it too. The returned Deck carries the NEW
+// ID, so whatever is stored from it from then on is the new one. IDs()
+// never lists an old ID: the pickers offer each deck once.
+var legacyIDs = map[string]string{
+	// #3071: the Izzet Pirates deck was rebuilt as mono-red under
+	// Purphoros, and its ID followed.
+	"izzet-aggro": "mono-red-aggro",
+}
+
 // Lookup returns the deck with the given ID. The second return is false
 // for an unknown ID — that is a client sending a deck name this build
 // does not have, which the caller should surface as a 400 rather than
 // substituting a default.
 func Lookup(id string) (Deck, bool) {
+	if renamed, ok := legacyIDs[id]; ok {
+		id = renamed
+	}
 	for _, d := range all {
 		if d.ID == id {
 			return d, true
@@ -300,7 +315,7 @@ func (d Deck) Decklist() string {
 // Load turns a deck ID into a resolved, validated deck.List, ready to
 // seat. This is the whole interface the lobby needs:
 //
-//	list, err := decks.Load(cfg.Cards, "izzet-aggro")
+//	list, err := decks.Load(cfg.Cards, "mono-red-aggro")
 //
 // It runs the same pipeline as an uploaded decklist — ParseText,
 // Resolve against the Scryfall index, Validate — and then adds one

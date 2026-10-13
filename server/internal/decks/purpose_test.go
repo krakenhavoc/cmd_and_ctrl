@@ -35,7 +35,7 @@ var curatedInstantsAndSorceries = []string{
 	"Austere Command", "Farewell", "Cyclonic Rift", "Aetherize", "Read the Bones",
 	"Ambition's Cost", "Divination", "Pull from Tomorrow", "Fact or Fiction",
 	"Sphinx's Revelation", "Treasure Cruise", "Dig Through Time", "Diabolic Tutor",
-	// izzet-aggro
+	// mono-red-aggro
 	"Lightning Bolt", "Shock", "Abrade", "Arc Trail", "Incinerate", "Lightning Strike",
 	"Chaos Warp", "Vandalblast", "Hordeling Outburst", "Krenko's Command", "Dragon Fodder",
 	"Strike It Rich", "Faithless Looting", "Big Score", "Unexpected Windfall", "Seize the Spoils",

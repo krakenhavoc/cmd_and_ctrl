@@ -22,17 +22,18 @@ package decks
 // the table by turn four or five whatever the deck draws. A mono-red
 // commander keeps the deck inside the colours the owner allowed (#3071).
 //
-// The ID stays izzet-aggro so saved table setups, a player's last deck
-// and every measurement script keep naming it; the name, the summary
-// and the cards are what changed.
+// The ID was izzet-aggro until #3071 renamed it with the deck.
+// Migration 0018 rewrites saved table setups and last-deck records, and
+// legacyIDs (decks.go) still resolves the old ID for anything else
+// that kept it: a guest's browser, an engine snapshot, a script.
 //
 // Every non-basic card below is in the effect catalog and graded full,
 // apart from Path of Ancestry on full_test.go's minor-caveats list;
 // decks_test.go and full_test.go fail the build if that stops being
 // true.
 
-var izzetAggro = Deck{
-	ID:        "izzet-aggro",
+var monoRedAggro = Deck{
+	ID:        "mono-red-aggro",
 	Name:      "Forge and Fury",
 	Archetype: "aggro",
 	Identity:  "R",
