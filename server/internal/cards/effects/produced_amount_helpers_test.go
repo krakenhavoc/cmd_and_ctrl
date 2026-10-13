@@ -21,10 +21,11 @@ func producedOf(ab ManaAbility, g *game.Game, controller, source uuid.UUID) stri
 
 // producedOfShape is producedOf for the built game.ManaAbilityShape.
 func producedOfShape(ab game.ManaAbilityShape, g *game.Game, controller, source uuid.UUID) string {
-	if ab.ProducedAmount == nil {
-		return ab.ProducedFunc(g, controller, source)
+	out := ab.ProducedFunc(g, controller, source)
+	if out.IsAmount() {
+		return renderManaAmount(out.Amount)
 	}
-	return renderManaAmount(ab.ProducedAmount(g, controller, source))
+	return out.Text
 }
 
 func renderManaAmount(a game.ManaAmount) string {

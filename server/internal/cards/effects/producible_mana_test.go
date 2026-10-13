@@ -266,7 +266,7 @@ func TestProducibleReadsATokenLandsProducedFunc(t *testing.T) {
 		Controller: me.ID,
 		ManaAbilities: []game.ManaAbilityShape{{
 			TapCost:      true,
-			ProducedFunc: ProducedChosenColor(),
+			ProducedFunc: foldProduced(ManaAbility{ProducedFunc: ProducedChosenColor()}),
 			Label:        "Add one mana of the chosen color",
 		}},
 	})

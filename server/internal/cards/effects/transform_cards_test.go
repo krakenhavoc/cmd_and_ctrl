@@ -250,7 +250,7 @@ func TestVaultOfCatlacanManaAbilitiesAreLiveAfterTheTransform(t *testing.T) {
 	// activation, and five artifacts is what is on the board.
 	var scaled *game.ManaAbilityShape
 	for i := range after {
-		if after[i].ProducedFunc != nil || after[i].ProducedAmount != nil {
+		if after[i].ProducedFunc != nil {
 			scaled = &after[i]
 		}
 	}

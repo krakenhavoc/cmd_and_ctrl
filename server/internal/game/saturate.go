@@ -121,6 +121,17 @@ func (g *Game) emitCountCappedLocked(what string, card, actor uuid.UUID, ceiling
 	})
 }
 
+// ManaOutput is what a computed mana ability returns (#3042): text in the
+// ParseProducedMana grammar, or, for a count-driven output, a ManaAmount.
+// An Amount with Options set wins over Text.
+type ManaOutput struct {
+	Text   string
+	Amount ManaAmount
+}
+
+// IsAmount reports whether the output is the structured count.
+func (o ManaOutput) IsAmount() bool { return len(o.Amount.Options) > 0 }
+
 // ManaAmount is a count-driven mana output as data (#3042): N mana in
 // the slot whose colour options are Options. The zero value, a
 // non-positive N or an empty Options adds nothing.
@@ -178,9 +189,11 @@ func slotsFromAmount(a ManaAmount) (slots []ProducedManaEntry, capped bool) {
 // announces a cut, reads slotsFromAmount itself. Read-only.
 // Caller must hold g.mu.
 func manaAbilitySlotsLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) ([]ProducedManaEntry, error) {
-	if ab != nil && ab.ProducedAmount != nil && ab.ProducedForPaid == nil && ab.DerivedMatch == nil {
-		slots, _ := slotsFromAmount(ab.ProducedAmount(g, playerID, cardID))
-		return slots, nil
+	if ab != nil && ab.ProducedFunc != nil && ab.ProducedForPaid == nil && ab.DerivedMatch == nil {
+		if out := ab.ProducedFunc(g, playerID, cardID); out.IsAmount() {
+			slots, _ := slotsFromAmount(out.Amount)
+			return slots, nil
+		}
 	}
 	return ParseProducedMana(manaAbilityProducedLocked(g, playerID, cardID, ab, paid))
 }

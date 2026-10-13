@@ -7340,16 +7340,23 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	var capped bool
 	// #3042: a count-driven ability yields its slots as data, with the
 	// ceiling applied to the count before anything is built.
-	amountDriven := ab.ProducedAmount != nil && ab.DerivedMatch == nil && ab.ProducedForPaid == nil
+	amountDriven := false
+	if ab.ProducedFunc != nil && ab.DerivedMatch == nil && ab.ProducedForPaid == nil {
+		out := ab.ProducedFunc(g, playerID, cardID)
+		if out.IsAmount() {
+			amountDriven = true
+			slots, capped = slotsFromAmount(out.Amount)
+		} else {
+			produced = out.Text
+		}
+	}
 	if amountDriven {
-		slots, capped = slotsFromAmount(ab.ProducedAmount(g, playerID, cardID))
+		// slots built above
 	} else if ab.DerivedMatch != nil {
 		// #1323: same seeded visited set as manaAbilityProducedLocked
 		// — `card` is already the exact Card this ability belongs to,
 		// so no lookup is needed.
 		produced = pipeString(g.derivedManaLocked(*card, &ab, map[uuid.UUID]bool{cardID: true}))
-	} else if ab.ProducedFunc != nil {
-		produced = ab.ProducedFunc(g, playerID, cardID)
 	}
 	// #789: an output that depends on what the cost PAID wins over
 	// both — "Add {C} for each storage counter removed this way" can
@@ -7830,7 +7837,7 @@ func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbil
 			out = pipeString(g.derivedManaLocked(c, ab, map[uuid.UUID]bool{cardID: true}))
 		}
 	} else if ab.ProducedFunc != nil {
-		out = ab.ProducedFunc(g, playerID, cardID)
+		out = ab.ProducedFunc(g, playerID, cardID).Text
 	}
 	if ab.ProducedForPaid != nil {
 		out = ab.ProducedForPaid(g, playerID, cardID, paid)
@@ -7916,7 +7923,7 @@ func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilitySh
 	if g == nil {
 		return false
 	}
-	computed := ab.ProducedFunc != nil || ab.ProducedAmount != nil || ab.ProducedForPaid != nil || ab.DerivedMatch != nil
+	computed := ab.ProducedFunc != nil || ab.ProducedForPaid != nil || ab.DerivedMatch != nil
 	if !ab.NarrowToCommanderIdentity && !computed {
 		return false
 	}

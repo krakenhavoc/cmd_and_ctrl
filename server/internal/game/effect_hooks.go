@@ -549,21 +549,13 @@ type ManaAbilityShape struct {
 	// Same locking contract as Condition: read-only, under g.mu.
 	//
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
-	ProducedFunc func(g *Game, controller, source uuid.UUID) string
-
-	// ProducedAmount is ProducedFunc for a COUNT-DRIVEN output (#3042):
-	// "Add {G} for each Elf", "Add an amount of {G} equal to this
-	// creature's power", "Add N mana of any one color". It returns the
-	// slot and the count as data, so no text is built and re-parsed per
-	// mana — a Marwyn at 2^40 power used to build a 3 TB string before
-	// the engine could look at it. The engine applies the
-	// MaxProducedMana ceiling (and announces it) on N itself.
 	//
-	// Precedence: ProducedForPaid > DerivedMatch > ProducedAmount >
-	// ProducedFunc > Produced. A card declares one of ProducedAmount and
-	// ProducedFunc, never both (Register refuses it). Mixed or fixed
-	// output keeps the string form. Same locking contract as ProducedFunc.
-	ProducedAmount func(g *Game, controller, source uuid.UUID) ManaAmount
+	// #3042: the result is a ManaOutput, text OR a count. A count-driven
+	// ability ("Add {G} for each Elf", "equal to this creature's power")
+	// returns a ManaAmount, so no text is built and re-parsed per mana
+	// and the engine applies the MaxProducedMana ceiling to N itself.
+	// This is ONE hook, not two: the closure ratchet counts func fields.
+	ProducedFunc func(g *Game, controller, source uuid.UUID) ManaOutput
 
 	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting

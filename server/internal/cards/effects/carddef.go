@@ -105,8 +105,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			PreRider:                  a.PreRider,
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
-			ProducedFunc:              a.ProducedFunc,
-			ProducedAmount:            a.ProducedAmount,
+			ProducedFunc:              foldProduced(a),
 			ProducedForPaid:           a.ProducedForPaid,
 			DerivesFromOtherSources:   a.DerivesFromOtherSources,
 			DerivedMatch:              a.DerivedMatch,
@@ -414,4 +413,19 @@ func gatedStandingCastPermissions(in []game.CastPermissionGate) []game.CastPermi
 		out[i].Permission.Duration = game.WhileInZoneDuration()
 	}
 	return out
+}
+
+// foldProduced is the shape's single produce hook (#3042): the spec's
+// string ProducedFunc, or its count-driven ProducedAmount, as one
+// func returning a game.ManaOutput. Nil when the spec declares neither.
+func foldProduced(a ManaAbility) func(g *game.Game, controller, source uuid.UUID) game.ManaOutput {
+	switch {
+	case a.ProducedAmount != nil:
+		f := a.ProducedAmount
+		return func(g *game.Game, c, s uuid.UUID) game.ManaOutput { return game.ManaOutput{Amount: f(g, c, s)} }
+	case a.ProducedFunc != nil:
+		f := a.ProducedFunc
+		return func(g *game.Game, c, s uuid.UUID) game.ManaOutput { return game.ManaOutput{Text: f(g, c, s)} }
+	}
+	return nil
 }
