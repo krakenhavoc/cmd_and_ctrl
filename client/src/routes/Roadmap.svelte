@@ -136,6 +136,17 @@
   {/if}
 {/snippet}
 
+{#snippet searchBox()}
+  <input
+    type="text"
+    class="search"
+    placeholder="search a mechanic, keyword or card name"
+    aria-label={L.searchRoadmap}
+    disabled={loading}
+    bind:value={query}
+  />
+{/snippet}
+
 <Page eyebrow="Cards" title="What the engine plays, and what's next" width="wide">
   {#snippet lede()}
     Every keyword, mechanic and engine gap the rules engine knows about.
@@ -147,6 +158,11 @@
   {/snippet}
   <div class="stack">
     {#if loading}
+      <!-- The search box is the roadmap.search hint's anchor: it must exist before the
+           data does, or a slow load makes the hint engine skip the page's own tip (#3305). -->
+      <div class="filters">
+        {@render searchBox()}
+      </div>
       <p class="help" aria-live="polite">Loading the roadmap…</p>
     {:else if error}
       <p class="notice err" role="alert">
@@ -222,13 +238,7 @@
       {/if}
 
       <div class="filters">
-        <input
-          type="text"
-          class="search"
-          placeholder="search a mechanic, keyword or card name"
-          aria-label={L.searchRoadmap}
-          bind:value={query}
-        />
+        {@render searchBox()}
         <div class="facets">
           <fieldset class="facet">
             <legend>Kind</legend>
