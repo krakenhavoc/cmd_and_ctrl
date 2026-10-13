@@ -84,6 +84,8 @@ func EntersTappedUnlessYouRevealFromHand(
 	matches func(game.Card) bool,
 ) game.ReplacementEffect {
 	return game.ReplacementEffect{
+		RowLabel:        "Enters tapped unless you reveal " + clause + " from your hand.",
+		EntryOnly:       true,
 		Watches:         []game.EventKind{game.EventZoneMove},
 		SelfReplacement: true,
 		Label:           name,

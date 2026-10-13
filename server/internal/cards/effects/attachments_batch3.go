@@ -75,6 +75,7 @@ func attachedCreatureDealtDamageToOpponent(ev game.Event, source *game.Card, g *
 // for the full note.
 func PumpAttachedPer(power, toughness int, count func(g *game.Game, source *game.Card) int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Attached creature gets " + signedPT(power, toughness) + " for each one the card counts.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: AttachedToSource,
@@ -99,6 +100,7 @@ func PumpAttachedPer(power, toughness int, count func(g *game.Game, source *game
 // the engine honours, or the grant is a badge with nothing behind it.
 func GrantToAttachedWhile(cond func(host *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Attached creature has " + joinWords(keywords) + " while a condition holds.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return AttachedToSource(target, g, source) && cond(target, g, source)

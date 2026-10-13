@@ -80,6 +80,7 @@ func init() {
 func otherTappedLegendaryCreaturesYouControlHaveIndestructible() game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
+		Label: "Other tapped legendary creatures you control have indestructible.",
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return target.InstanceID != source.InstanceID &&
 				target.Controller == source.Controller &&

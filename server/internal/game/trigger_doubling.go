@@ -5,8 +5,13 @@ import "github.com/google/uuid"
 // TriggerDoubler is a catalog-declared CR 603.2d count modifier for a
 // triggered ability. Each matching doubler adds one instance.
 type TriggerDoubler struct {
-	Label   string
-	Applies func(g *Game, q TriggerDoublingQuery) bool
+	Label string
+	// RowLabel is the row's wording on the art tile's ◆ chip (#2410):
+	// "Abilities that trigger when a permanent enters trigger an
+	// additional time." Label is the CR 616 ordering prompt's name and
+	// stays as it was. Display only.
+	RowLabel string
+	Applies  func(g *Game, q TriggerDoublingQuery) bool
 
 	// ActiveWhen is the ADR 0071 designation gate: this doubler is
 	// active only while its source permanent has the named

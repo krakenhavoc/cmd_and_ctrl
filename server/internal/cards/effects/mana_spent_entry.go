@@ -69,7 +69,9 @@ func CreaturesYouControlEnterWithCountersPerManaFrom(label string, kinds game.Ma
 // and does not.
 func SelfEntersWithCountersIfNoManaSpent(kind string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		RowLabel:  "Enters with " + counterCountPhrase(n, kind) + " on it if no mana was spent to cast it.",
+		EntryOnly: true,
+		Watches:   []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&

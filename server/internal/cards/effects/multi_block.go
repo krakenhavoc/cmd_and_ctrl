@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"fmt"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // multi_block.go is the card half of #1706: a creature that can block
 // more than one attacker (CR 509.1a/b). The engine half is
@@ -28,6 +32,7 @@ func CanBlockAdditional(applies func(target *game.Card, g *game.Game, source *ga
 		panic("effects: CanBlockAdditional needs a positive count")
 	}
 	return game.StaticAbility{
+		Label:     canBlockAdditionalLabel(n),
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -36,10 +41,19 @@ func CanBlockAdditional(applies func(target *game.Card, g *game.Game, source *ga
 	}
 }
 
+// canBlockAdditionalLabel is CanBlockAdditional's row wording.
+func canBlockAdditionalLabel(n int) string {
+	if n == 1 {
+		return "Can block an additional creature each combat."
+	}
+	return fmt.Sprintf("Can block %d additional creatures each combat.", n)
+}
+
 // CanBlockAnyNumber is "can block any number of creatures" on every
 // permanent `applies` selects.
 func CanBlockAnyNumber(applies func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Can block any number of creatures.",
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

@@ -1426,6 +1426,20 @@ type ReplacementEffect struct {
 	// the wire carries it; no localisation yet.
 	Label string
 
+	// EntryOnly marks a replacement that does all its work as the
+	// object enters the battlefield and has nothing to say afterwards
+	// ("This land enters tapped", CR 614.12). The art tile's ◆ chip
+	// drops it once the object is in play (#2410,
+	// game.AbilityRowsOnBattlefield). Display only: the replacement
+	// pipeline never reads it.
+	EntryOnly bool
+
+	// RowLabel is the replacement's wording on the art tile's ◆ chip
+	// ("Enters tapped."), in the Caveats tone: a sentence a player
+	// reads. Label stays the CR 616 prompt header and is only the chip's
+	// fallback. Display only, like EntryOnly.
+	RowLabel string
+
 	// entryKeyword names the keyword an engine-derived entry
 	// replacement stands for — KeywordRiot or KeywordUnleash (ADR 0109
 	// §10, riot.go). Empty for every catalog, scoped and built-in

@@ -33,6 +33,7 @@ func gainLifeAndGetEnergy(life, energy int) Effect {
 // is what "enchanted creature" names.
 func pumpEnchantedCreature(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Enchanted creature gets " + signedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: AttachedToSource,

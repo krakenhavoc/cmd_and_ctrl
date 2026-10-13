@@ -72,6 +72,7 @@ func printedB16LanderToken() tokenTemplate {
 // selects — Death Baron's Skeletons and Zombies, Lyra's Angels.
 func b16Anthem(applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Gives " + signedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: applies,
@@ -90,6 +91,7 @@ func b16Anthem(applies func(target *game.Card, g *game.Game, source *game.Card) 
 // keyword gets one badge.
 func b16GrantKeywords(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Gives " + joinWords(keywords) + ".",
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

@@ -23,8 +23,8 @@ func init() {
 		Name:         "Legion Loyalty",
 		Completeness: CompletenessFull,
 		Grants:       []AbilityGrant{{Key: "legion-loyalty/myriad", Triggered: []game.TriggeredAbility{GrantedMyriad("Legion Loyalty")}, Text: "Myriad"}},
-		Static: []game.StaticAbility{GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		Static: []game.StaticAbility{Labelled(GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return target.Controller == source.Controller && target.IsCreature()
-		}, "legion-loyalty/myriad")},
+		}, "legion-loyalty/myriad"), "Creatures you control have myriad.")},
 	})
 }

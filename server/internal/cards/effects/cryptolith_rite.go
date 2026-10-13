@@ -23,6 +23,6 @@ func init() {
 		Name:         "Cryptolith Rite",
 		Completeness: CompletenessFull,
 		Grants:       []AbilityGrant{AnyColorManaGrant(cryptolithRiteGrant)},
-		Static:       []game.StaticAbility{GrantAbilities(b16CreaturesYouControl, cryptolithRiteGrant)},
+		Static:       []game.StaticAbility{Labelled(GrantAbilities(b16CreaturesYouControl, cryptolithRiteGrant), "Creatures you control have \"{T}: Add one mana of any color.\"")},
 	})
 }

@@ -34,6 +34,7 @@ func Renowned() game.Designation { return game.RenownedGate() }
 func RenownedKeywords(keywords ...string) game.StaticAbility {
 	kws := append([]string(nil), keywords...)
 	return game.StaticAbility{
+		Label:      "Has " + joinWords(keywords) + " while renowned.",
 		Layer:      game.Layer6Ability,
 		ActiveWhen: Renowned(),
 		AppliesTo:  selfOnly,

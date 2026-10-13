@@ -124,6 +124,7 @@ func MaxSpeedStatic(s game.StaticAbility) game.StaticAbility {
 // Raider, Nesting Bot, Walking Sarcophagus).
 func MaxSpeedSelfPump(power, toughness int) game.StaticAbility {
 	return MaxSpeedStatic(game.StaticAbility{
+		Label:     "Gets " + signedPT(power, toughness) + " at max speed.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: thisPermanent,

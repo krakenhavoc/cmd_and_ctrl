@@ -57,6 +57,7 @@ func SelfCreatureOrAttached(target *game.Card, g *game.Game, source *game.Card) 
 // SelfCreatureOrAttached, `count` read off the source on every pass.
 func PumpSelfCreatureOrAttachedPer(power, toughness int, count func(g *game.Game, source *game.Card) int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Gets or gives " + signedPT(power, toughness) + " for each one the card counts.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: SelfCreatureOrAttached,

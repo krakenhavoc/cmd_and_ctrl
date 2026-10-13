@@ -18,6 +18,7 @@ const (
 	rowsFixtureAngel    = "rows-fixture-angel"    // keywords only
 	rowsFixtureMutation = "rows-fixture-mutation" // other creatures lose all abilities
 	rowsFixtureRite     = "rows-fixture-rite"     // creatures you control have a dies trigger
+	rowsFixtureTapland  = "rows-fixture-tapland"  // "This land enters tapped."
 	rowsGrantTrigger    = "rows-fixture/dies-draw"
 )
 
@@ -67,6 +68,7 @@ func stubAbilityRowFixtures(t *testing.T) {
 			},
 			GrantAbilities: []string{rowsGrantTrigger},
 		}}},
+		rowsFixtureTapland: {Replacements: []game.ReplacementEffect{{EntryOnly: true, RowLabel: "Enters tapped."}}},
 		game.GrantKey(rowsGrantTrigger): {
 			Triggered: []game.TriggeredAbility{{Key: "Rite — when this creature dies, draw a card", Watches: []game.EventKind{game.EventLTB}}},
 			GrantText: "When this creature dies, draw a card.",
@@ -203,7 +205,7 @@ func TestAbilityRowsFollowRemovalAndGrants(t *testing.T) {
 			t.Errorf("a creature that lost all abilities lists %+v, want none", c)
 		}
 	}
-	if r := findCardView(t, fv.Battlefield, rite.InstanceID); r == nil || len(r.AbilityRows) != 1 || r.AbilityRows[0].Label != "Grants abilities" {
+	if r := findCardView(t, fv.Battlefield, rite.InstanceID); r == nil || len(r.AbilityRows) != 1 || r.AbilityRows[0].Label != "Grants: When this creature dies, draw a card." {
 		t.Errorf("the Rite itself lists %+v, want its grant static", r)
 	}
 }
@@ -284,5 +286,36 @@ func TestAbilityRowsAreHiddenWithTheCard(t *testing.T) {
 	}
 	if got := redactCardForViewer(stamped, true); len(got.AbilityRows) != 1 {
 		t.Errorf("a knower lost ability_rows")
+	}
+}
+
+// #2410: "This land enters tapped" has done its work once the land is on
+// the battlefield, so the permanent's tile carries no ◆ chip for it; the
+// same land in the hand still promises it.
+func TestSpentEntryReplacementIsOnlyOnTheHandTile(t *testing.T) {
+	stubAbilityRowFixtures(t)
+	g := buildActiveGame(t)
+	me := g.Seats[0]
+	inPlay := rowsFixtureCard("Tapland", "Land", rowsFixtureTapland, me.ID)
+	inHand := rowsFixtureCard("Tapland", "Land", rowsFixtureTapland, me.ID)
+	g.WithWriteLock(func() {
+		inPlay.KnownBy = map[uuid.UUID]bool{me.ID: true}
+		inHand.KnownBy = map[uuid.UUID]bool{me.ID: true}
+		g.Battlefield.PushTop(inPlay)
+		me.Hand.PushTop(inHand)
+	})
+	g.BumpLayerVersionForTest()
+	mine := FilterViewFor(ViewOfGame(g), me.ID.String())
+	if c := findCardView(t, mine.Battlefield, inPlay.InstanceID); c == nil || c.AbilityRows != nil {
+		t.Errorf("a tapland in play lists %+v, want no rows", c)
+	}
+	for _, s := range mine.Seats {
+		if s.ID != me.ID.String() {
+			continue
+		}
+		c := findCardView(t, s.Hand, inHand.InstanceID)
+		if c == nil || len(c.AbilityRows) != 1 || c.AbilityRows[0] != (AbilityRowView{Kind: "static", Label: "Enters tapped."}) {
+			t.Errorf("the tapland in hand lists %+v, want its enters-tapped row", c)
+		}
 	}
 }

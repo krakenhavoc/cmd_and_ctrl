@@ -8713,7 +8713,9 @@ func viewOfZone(z *game.Zone) ZoneView {
 		}
 		// #2219: the art tile's ability chips, on the two zones a tile
 		// is drawn in.
-		if onBattlefield || z.Kind == game.ZoneHand {
+		if onBattlefield {
+			cards[i].AbilityRows = viewOfBattlefieldAbilityRows(c)
+		} else if z.Kind == game.ZoneHand {
 			cards[i].AbilityRows = viewOfAbilityRows(c)
 		}
 		// ADR 0126 §6: what the card does, where a seat decides to

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -25,6 +27,7 @@ import (
 // godUnlessDevotion is the God clause for `color` ("B", "U", …).
 func godUnlessDevotion(color string) game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Isn't a creature unless your devotion to " + colorWords([]string{color}) + " is 5 or more.",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID &&
@@ -76,6 +79,7 @@ func symbolIsAnyColor(options, colors []string) bool {
 // isn't a creature" (Mogis, God of Slaughter: black and red, seven).
 func godUnlessDevotionToColors(threshold int, colors ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label: fmt.Sprintf("Isn't a creature unless your devotion to %s is %d or more.", colorWords(colors), threshold),
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID &&

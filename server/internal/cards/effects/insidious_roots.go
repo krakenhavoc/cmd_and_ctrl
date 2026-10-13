@@ -29,7 +29,7 @@ func init() {
 		Name:         "Insidious Roots",
 		Completeness: CompletenessFull,
 		Grants:       []AbilityGrant{AnyColorManaGrant(insidiousRootsGrant)},
-		Static:       []game.StaticAbility{GrantAbilities(creatureTokensYouControl, insidiousRootsGrant)},
+		Static:       []game.StaticAbility{Labelled(GrantAbilities(creatureTokensYouControl, insidiousRootsGrant), "Creature tokens you control have \"{T}: Add one mana of any color.\"")},
 		Triggered: []game.TriggeredAbility{
 			OncePerBatch(On(game.EventZoneMove,
 				func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -14,7 +14,8 @@ import (
 // against its live characteristics.
 func DoublesEntering(filter CardPredicate) game.TriggerDoubler {
 	return game.TriggerDoubler{
-		Label: "entering",
+		Label:    "entering",
+		RowLabel: "Abilities that trigger when a permanent enters trigger an additional time.",
 		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
 			if q.FromSpell || !q.HasSubject || !isEntering(q.Event) {
 				return false
@@ -32,7 +33,8 @@ func DoublesEntering(filter CardPredicate) game.TriggerDoubler {
 // that has already left can still be classified correctly.
 func DoublesDying(filter CardPredicate) game.TriggerDoubler {
 	return game.TriggerDoubler{
-		Label: "dying",
+		Label:    "dying",
+		RowLabel: "Abilities that trigger when a creature dies trigger an additional time.",
 		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
 			if q.FromSpell || !q.HasSubject || !isDying(q.Event) {
 				return false
@@ -49,7 +51,8 @@ func DoublesDying(filter CardPredicate) game.TriggerDoubler {
 // an attack is deliberately not included; EventAttack is the rules cause.
 func DoublesAttacking(filter CardPredicate) game.TriggerDoubler {
 	return game.TriggerDoubler{
-		Label: "attacking",
+		Label:    "attacking",
+		RowLabel: "Abilities that trigger when a creature attacks trigger an additional time.",
 		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
 			if q.FromSpell || !q.HasSubject || q.Event.Kind != game.EventAttack {
 				return false
@@ -77,7 +80,8 @@ type DoublesAbilitiesOfOptions struct {
 // permanents; the future spell-aware helper will opt into that separately.
 func DoublesAbilitiesOf(filter CardPredicate, opts DoublesAbilitiesOfOptions) game.TriggerDoubler {
 	return game.TriggerDoubler{
-		Label: "ability source",
+		Label:    "ability source",
+		RowLabel: "Some of your abilities trigger an additional time.",
 		Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
 			if q.FromSpell || q.Ability == nil {
 				return false

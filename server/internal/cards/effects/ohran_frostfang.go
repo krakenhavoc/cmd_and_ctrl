@@ -52,6 +52,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:                    game.Layer6Ability,
+			Label:                    "Attacking creatures you control have deathtouch.",
 			DependsOnAttackingStatus: true,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller && target.AttackingTarget != uuid.Nil

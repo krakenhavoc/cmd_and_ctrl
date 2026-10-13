@@ -32,7 +32,9 @@ import (
 // and an ETB trigger already finds it prepared.
 func SelfEntersPrepared() game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		RowLabel:  "Enters prepared.",
+		EntryOnly: true,
+		Watches:   []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&

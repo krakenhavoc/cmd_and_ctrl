@@ -28,7 +28,7 @@ func init() {
 			Label:    "Add one mana of any color",
 		}},
 		Grants: []AbilityGrant{AnyColorManaGrant(chromaticLanternGrant)},
-		Static: []game.StaticAbility{GrantAbilities(landsYouControl, chromaticLanternGrant)},
+		Static: []game.StaticAbility{Labelled(GrantAbilities(landsYouControl, chromaticLanternGrant), "Lands you control have \"{T}: Add one mana of any color.\"")},
 	})
 }
 

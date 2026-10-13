@@ -2,6 +2,7 @@ package effects
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 
@@ -50,6 +51,7 @@ import (
 // the same pass.
 func RestrictAttached(r game.Restriction) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     restrictedLabel("Attached creature ", r),
 		Layer:     game.Layer6Ability,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -77,15 +79,19 @@ func RestrictSelf(r game.Restriction) game.StaticAbility {
 // on itself, and nothing for any other set, which the tile then
 // describes by its layer.
 func selfRestrictionLabel(r game.Restriction) string {
-	switch r {
-	case game.CantAttack:
-		return "Can't attack."
-	case game.CantBlock:
-		return "Can't block."
-	case game.CantBeBlocked:
-		return "Can't be blocked."
+	return restrictedLabel("", r)
+}
+
+// restrictedLabel is "<prefix>can't attack or block." for a restriction
+// set, or nothing for a set restrictionClause does not word. With no
+// prefix the sentence opens on the clause ("Can't attack.").
+func restrictedLabel(prefix string, r game.Restriction) string {
+	clause := restrictionClause(r)
+	if clause == "" {
+		return ""
 	}
-	return ""
+	l := prefix + clause + "."
+	return strings.ToUpper(l[:1]) + l[1:]
 }
 
 // RestrictUntilEOT is "target creature can't be blocked this turn"
@@ -161,6 +167,7 @@ func (r RestrictUntilEOT) Apply(ctx *Context) error {
 // and both must hold for the bits to apply.
 func RestrictAttachedWhile(cond func(host *game.Card, g *game.Game, source *game.Card) bool, r game.Restriction) game.StaticAbility {
 	return game.StaticAbility{
+		Label: strings.TrimSuffix(restrictedLabel("Attached creature ", r), ".") + " while a condition holds.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return AttachedToSource(target, g, source) && cond(target, g, source)

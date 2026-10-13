@@ -66,6 +66,7 @@ func AttacksEachCombat() game.StaticAbility {
 func AttacksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
 	return game.StaticAbility{
 		Layer: game.Layer6Ability,
+		Label: "Creatures it affects attack each combat if able.",
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.IsCreature() && appliesTo(target, g, source)
 		},

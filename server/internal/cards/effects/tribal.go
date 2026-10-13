@@ -136,6 +136,7 @@ func (f TribeFilter) Matches(target *game.Card, _ *game.Game, source *game.Card)
 // creature the filter matches.
 func TribalAnthem(f TribeFilter, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     f.subject() + " get " + signedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: f.Matches,
@@ -156,6 +157,7 @@ func TribalAnthem(f TribeFilter, power, toughness int) game.StaticAbility {
 // a fresh Door of Destinies does.
 func TribalScalingAnthem(f TribeFilter, per func(source *game.Card, g *game.Game) int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     f.subject() + " get +1/+1 for each one the card counts.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: f.Matches,
@@ -174,7 +176,9 @@ func TribalScalingAnthem(f TribeFilter, per func(source *game.Card, g *game.Game
 // (game/keywords.go). Granting anything else appends a string nothing
 // reads.
 func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
-	return KeywordGrant(f.Matches, keyword)
+	ab := KeywordGrant(f.Matches, keyword)
+	ab.Label = f.subject() + " have " + keyword + "."
+	return ab
 }
 
 // KeywordGrant is the shared shape of every layer-6 keyword grant:
@@ -195,6 +199,7 @@ func TribalKeywordGrant(f TribeFilter, keyword string) game.StaticAbility {
 // a Rat that prints toxic 1 gives a total of 2 (CR 702.164b).
 func KeywordGrant(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keyword string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Grants " + keyword + ".",
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -226,6 +231,7 @@ func KeywordGrant(applies func(target *game.Card, g *game.Game, source *game.Car
 // is the hardest kind of bug to see.
 func AllCreatureTypesGrant(f TribeFilter) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     f.subject() + " are every creature type.",
 		Layer:     game.Layer4Type,
 		AppliesTo: f.Matches,
 		Apply:     applyAllCreatureTypes,
@@ -305,6 +311,7 @@ func ChosenTypeManaRestrictions() func(*game.Game, uuid.UUID, uuid.UUID) []strin
 // the rule every chosen-type reader follows.
 func IsAlsoTheChosenType() game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Is also the chosen creature type.",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID && source.NamedTribe != ""

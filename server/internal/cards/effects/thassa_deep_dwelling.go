@@ -40,6 +40,7 @@ func init() {
 		PrintedKeywords: []string{"indestructible"},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer4Type,
+			Label: "Isn't a creature unless your devotion to blue is 5 or more.",
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&
 					devotionTo(g, source.Controller, "U") < 5

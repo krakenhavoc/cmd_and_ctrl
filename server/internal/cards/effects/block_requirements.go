@@ -79,7 +79,9 @@ func BlocksEachCombat() game.StaticAbility {
 // BlocksEachCombatWhere is "<creatures> block each combat if able" from
 // a permanent — Grand Melee's "All creatures".
 func BlocksEachCombatWhere(appliesTo func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
-	return BlockRequirementWhere(game.BlockRequirementBlocks, appliesTo)
+	ab := BlockRequirementWhere(game.BlockRequirementBlocks, appliesTo)
+	ab.Label = "Creatures it affects block each combat if able."
+	return ab
 }
 
 // AllAbleToBlockDoSo is "All creatures able to block this creature do

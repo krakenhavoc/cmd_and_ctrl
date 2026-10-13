@@ -27,7 +27,8 @@ func init() {
 		Name:         "Angrath's Marauders",
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDealDamage},
+			Watches:  []game.EventKind{game.EventDealDamage},
+			RowLabel: "Damage your sources would deal is doubled.",
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 {
 					return false
