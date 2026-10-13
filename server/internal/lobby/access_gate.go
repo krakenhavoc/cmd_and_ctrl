@@ -65,9 +65,10 @@ func (c Config) discordClient() *http.Client {
 }
 
 // gateApplies reports whether discordID has to pass the gate: the gate
-// is on and the account is not an exempt admin.
+// is on and the account is neither an exempt admin nor on the
+// exemption list (discord.GateExemptEnv).
 func (c Config) gateApplies(discordID string) bool {
-	return c.Discord.Gate.Enabled() && !gateExempt(c.Admins, discordID)
+	return c.Discord.Gate.Enabled() && !gateExempt(c.Admins, discordID) && !c.Discord.Gate.Exempts(discordID)
 }
 
 // checkMember is one member check with the gate's timeout.

@@ -50,6 +50,25 @@ func TestGateFromEnvBothOrNeither(t *testing.T) {
 	}
 }
 
+func TestGateFromEnvReadsTheExemptList(t *testing.T) {
+	g, err := GateFromEnv(envOf(map[string]string{
+		CommunityGuildEnv: "111", PlayerRoleEnv: "222", GateExemptEnv: " 333, 444 ,,",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !g.Exempts("333") || !g.Exempts("444") || g.Exempts("555") || g.Exempts("") {
+		t.Errorf("exempt list read wrong: %+v", g)
+	}
+	if _, err := GateFromEnv(envOf(map[string]string{GateExemptEnv: "333,abc"})); err == nil ||
+		!strings.Contains(err.Error(), GateExemptEnv) || strings.Contains(err.Error(), "abc") {
+		t.Errorf("a malformed entry: err %v, want one naming %s without the value", err, GateExemptEnv)
+	}
+	if g, err := GateFromEnv(envOf(map[string]string{GateExemptEnv: "333"})); err != nil || g.Enabled() {
+		t.Errorf("a list with the gate off: %+v %v, want off and no error", g, err)
+	}
+}
+
 func TestGateFromEnvRefusesMalformedSnowflakes(t *testing.T) {
 	for _, tc := range []struct {
 		env  map[string]string

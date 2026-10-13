@@ -1507,11 +1507,15 @@ jobs:
       # empty value would leave the old one in the env file forever. Each
       # GitHub environment (`dev`, `prod`) may hold its own value; a
       # repo-level variable applies to both.
+      # CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS is a comma-separated list of
+      # Discord user ids that sign in without the role: the accounts that
+      # predate the gate, kept in by hand.
       #
       # Checked here before anything is written, with the server's own rules
       # (discord.GateFromEnv, discord.InviteURLFromEnv, discord.VoiceFromEnv):
-      # both ids or neither, each 1-20 digits, an https invite, and a voice
-      # category only with the guild. The server refuses to boot on
+      # both ids or neither, each 1-20 digits (every exempt entry too), an
+      # https invite, and a voice category only with the guild. The server
+      # refuses to boot on
       # any of those, so a deploy that fails in this step leaves the running
       # server and its env file as they were.
       - name: Sync server env (community)
@@ -1520,8 +1524,17 @@ jobs:
           CMDCTRL_DISCORD_PLAYER_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_PLAYER_ROLE_ID }}
           CMDCTRL_DISCORD_INVITE_URL: ${{ vars.CMDCTRL_DISCORD_INVITE_URL }}
           CMDCTRL_DISCORD_VOICE_CATEGORY_ID: ${{ vars.CMDCTRL_DISCORD_VOICE_CATEGORY_ID }}
+          CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS: ${{ vars.CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS }}
         run: |
           trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+          exempt="${CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS//[[:space:]]/}"
+          IFS=',' read -ra exempt_ids <<< "${exempt}"
+          for id in "${exempt_ids[@]}"; do
+            if [ -n "${id}" ] && ! [[ "${id}" =~ ^[0-9]{1,20}$ ]]; then
+              echo "::error::CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS has an entry that is not a Discord user id (digits only, at most 20); the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+              exit 1
+            fi
+          done
           guild="$(trim "${CMDCTRL_DISCORD_COMMUNITY_GUILD_ID}")"
           role="$(trim "${CMDCTRL_DISCORD_PLAYER_ROLE_ID}")"
           invite="$(trim "${CMDCTRL_DISCORD_INVITE_URL}")"
@@ -1549,7 +1562,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_INVITE_URL must be an https URL such as https://discord.gg/<code>; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
             name="${pair%%=*}"; value="${pair#*=}"
             printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
@@ -1557,7 +1570,7 @@ jobs:
           if [ -n "${guild}" ]; then gate=on; else gate=off; fi
           if [ -n "${invite}" ]; then shown=set; else shown=unset; fi
           if [ -n "${voice}" ]; then rooms=set; else rooms=unset; fi
-          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms})"
+          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, ${#exempt_ids[@]} exempt id(s))"
 
       # ADR 0123 §2 and §10: the server's /metrics listener, which the
       # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server
