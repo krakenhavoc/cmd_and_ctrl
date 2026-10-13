@@ -46,9 +46,9 @@ func init() {
 			filter:   TribeFilter{Tribes: []string{"Elf"}, Others: true, YoursOnly: true},
 			spec: func(s *Spec) {
 				s.ManaAbilities = []ManaAbility{{
-					Cost:         ManaAbilityCost{Tap: true},
-					ProducedFunc: ProducedPerPermanent("G", MatchCreatureSubtype("Elf")),
-					Label:        "Add {G} for each Elf you control",
+					Cost:           ManaAbilityCost{Tap: true},
+					ProducedAmount: ProducedPerPermanent("G", MatchCreatureSubtype("Elf")),
+					Label:          "Add {G} for each Elf you control",
 				}}
 			},
 		},

@@ -176,10 +176,10 @@ func TestElvishArchdruidCountsElvesIncludingChangelings(t *testing.T) {
 			t.Fatal("Elvish Archdruid not on the battlefield")
 		}
 		abilities := game.ManaAbilitiesForCard(card)
-		if len(abilities) != 1 || abilities[0].ProducedFunc == nil {
+		if len(abilities) != 1 || abilities[0].ProducedFunc == nil && abilities[0].ProducedAmount == nil {
 			t.Fatalf("Elvish Archdruid mana abilities = %+v", abilities)
 		}
-		produced = abilities[0].ProducedFunc(g, mine, druid)
+		produced = producedOfShape(abilities[0], g, mine, druid)
 	})
 	if produced != "{G}{G}{G}" {
 		t.Errorf("Archdruid produced = %q, want {G}{G}{G} (Llanowar + changeling + itself)", produced)

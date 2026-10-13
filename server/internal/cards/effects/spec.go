@@ -1850,6 +1850,16 @@ type ManaAbility struct {
 	// than by hand.
 	ProducedFunc func(g *game.Game, controller, source uuid.UUID) string
 
+	// ProducedAmount is ProducedFunc for a count-driven output (#3042):
+	// it returns the slot and the count as data (game.ManaAmount), so a
+	// large count never becomes a string. Build one with
+	// ProducedPerPermanent, ProducedOneColor, ProducedPerCounterOnThis,
+	// ProducedChosenColorAmount, ProducedAnyCombinationOfColors or
+	// ManaOf. Wins over ProducedFunc; declare one or the other, never
+	// both (Register panics). Mixed or fixed output keeps ProducedFunc.
+	// Same read-only-under-g.mu contract.
+	ProducedAmount func(g *game.Game, controller, source uuid.UUID) game.ManaAmount
+
 	// ProducedForPaid computes Produced from what the cost actually
 	// PAID, for an ability whose printed text derives its output
 	// from the payment rather than from the board (#789):

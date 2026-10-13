@@ -226,9 +226,8 @@ func (g *Game) producibleManaVisitingLocked(c Card, visiting map[uuid.UUID]bool)
 		// produce {C} and one holding none could not — and a
 		// Reflecting Pool next to it has to see the same answer the
 		// activation would give.
-		produced := manaAbilityProducedLocked(g, c.Controller, c.InstanceID, &ab,
+		slots, err := manaAbilitySlotsLocked(g, c.Controller, c.InstanceID, &ab,
 			g.maxCounterPaymentLocked(c.Controller, c.InstanceID, ab.RemoveCounters))
-		slots, err := ParseProducedMana(produced)
 		if err != nil {
 			continue
 		}

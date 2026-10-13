@@ -13,7 +13,7 @@ import (
 // "On the battlefield" — every player's, not just the controller's —
 // so this counts every Elf at the table, itself included. Marwyn,
 // the Nurturer's shape (fixed-colour, repeated by a count read at
-// activation) with a wider count: game.RepeatMana("{G}", n) rather
+// activation) with a wider count: a ProducedAmount of n rather
 // than Marwyn's controller-scoped loop. A board with zero Elves
 // still exists (the Priest was just cast and hasn't resolved into
 // its own count yet an instant later): the ability adds nothing and
@@ -28,14 +28,14 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:  ManaAbilityCost{Tap: true},
 			Label: "Add {G} for each Elf on the battlefield",
-			ProducedFunc: func(g *game.Game, _, _ uuid.UUID) string {
+			ProducedAmount: func(g *game.Game, _, _ uuid.UUID) game.ManaAmount {
 				n := 0
 				for _, c := range g.BattlefieldCardsForEffect() {
 					if c.HasSubtype("Elf") {
 						n++
 					}
 				}
-				return game.RepeatMana("{G}", n)
+				return game.ManaAmount{Options: []string{"G"}, N: n}
 			},
 		}},
 	})

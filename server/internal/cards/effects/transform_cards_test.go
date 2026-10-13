@@ -250,14 +250,14 @@ func TestVaultOfCatlacanManaAbilitiesAreLiveAfterTheTransform(t *testing.T) {
 	// activation, and five artifacts is what is on the board.
 	var scaled *game.ManaAbilityShape
 	for i := range after {
-		if after[i].ProducedFunc != nil {
+		if after[i].ProducedFunc != nil || after[i].ProducedAmount != nil {
 			scaled = &after[i]
 		}
 	}
 	if scaled == nil {
 		t.Fatal("neither ability scales with the artifact count")
 	}
-	if got := scaled.ProducedFunc(g, me.ID, id); got != "{U}{U}{U}{U}{U}" {
+	if got := producedOfShape(*scaled, g, me.ID, id); got != "{U}{U}{U}{U}{U}" {
 		t.Errorf("produced = %q, want five {U} for five artifacts", got)
 	}
 }

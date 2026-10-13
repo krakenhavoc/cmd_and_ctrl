@@ -106,6 +106,7 @@ func manaShapes(in []ManaAbility) []game.ManaAbilityShape {
 			NarrowToCommanderIdentity: a.NarrowToCommanderIdentity,
 			Condition:                 manaAbilityCondition(a),
 			ProducedFunc:              a.ProducedFunc,
+			ProducedAmount:            a.ProducedAmount,
 			ProducedForPaid:           a.ProducedForPaid,
 			DerivesFromOtherSources:   a.DerivesFromOtherSources,
 			DerivedMatch:              a.DerivedMatch,

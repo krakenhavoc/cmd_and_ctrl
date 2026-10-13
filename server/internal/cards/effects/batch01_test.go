@@ -1477,7 +1477,7 @@ func TestNykthosProducesPerColourDevotion(t *testing.T) {
 	if spec.ManaAbilities[1].Cost.Mana != "{2}" {
 		t.Errorf("the devotion ability costs %q, want {2}", spec.ManaAbilities[1].Cost.Mana)
 	}
-	if got := spec.ManaAbilities[1].ProducedFunc(g, me.ID, id); got != "{G2}" {
+	if got := producedOf(spec.ManaAbilities[1], g, me.ID, id); got != "{G2}" {
 		t.Errorf("produced = %q, want {G2} (devotion to green is two)", got)
 	}
 }
@@ -1495,7 +1495,7 @@ func TestThreeTreeCityScalesWithTheNamedTribe(t *testing.T) {
 		})
 	}
 	spec, _ := Lookup(threeTreeCityOracle)
-	if got := spec.ManaAbilities[1].ProducedFunc(g, me.ID, id); got != OneColorOfAmount(3) {
+	if got := producedOf(spec.ManaAbilities[1], g, me.ID, id); got != OneColorOfAmount(3) {
 		t.Errorf("produced = %q, want %q", got, OneColorOfAmount(3))
 	}
 }
@@ -1830,11 +1830,11 @@ func TestGemstoneCavernsNeedsALuckCounterForColour(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	id := seedPermanentWithOracle(g, me.ID, "Gemstone Caverns", "Legendary Land", gemstoneCavernsOracle)
 	spec, _ := Lookup(gemstoneCavernsOracle)
-	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, id); got != "{C}" {
+	if got := producedOf(spec.ManaAbilities[0], g, me.ID, id); got != "{C}" {
 		t.Errorf("produced without a luck counter = %q, want {C}", got)
 	}
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(id, "luck", 1) })
-	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, id); got != "{W|U|B|R|G}" {
+	if got := producedOf(spec.ManaAbilities[0], g, me.ID, id); got != "{W|U|B|R|G}" {
 		t.Errorf("produced with a luck counter = %q, want the five-colour pick", got)
 	}
 }

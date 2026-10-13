@@ -123,7 +123,11 @@ var closureClassCeilings = map[string]int{
 	// into (owner decision, 2026-09-25): Game.StackMeta,
 	// Game.PendingTriggers, Game.lastKnownStack and lastKnownSpell.card.
 	// The sixth line, lastKnownSpell.item, became keyed.
-	"census:IntrinsicAbilityCards": 49,
+	// 49 + ManaAbilityShape.ProducedAmount (#3042): the count-driven twin
+	// of ProducedFunc, carried on the same shape by the same route and so
+	// charged to the same counter. It is a SIBLING of an existing blocker
+	// rather than a new kind of one, and the two retire together.
+	"census:IntrinsicAbilityCards": 50,
 	"transient":                    1,
 }
 

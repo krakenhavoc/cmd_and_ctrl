@@ -18,9 +18,9 @@ func init() {
 		Name:         "Loot, the Nexus",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(rfCreatureCDifferentPowers),
-			Label:        "{T}: Choose a color. Add one mana of that color for each different power among creatures you control",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: ProducedOneColor(rfCreatureCDifferentPowers),
+			Label:          "{T}: Choose a color. Add one mana of that color for each different power among creatures you control",
 		}},
 	})
 }

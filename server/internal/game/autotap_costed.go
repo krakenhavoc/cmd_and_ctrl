@@ -111,7 +111,7 @@ func (g *Game) autoTapCostedCost(asker uuid.UUID, source Card, a ManaAbilityShap
 	// The planner books a static output. A computed one may read what
 	// the plan changes (Doubling Cube reads the pool), and a pre-rider
 	// or a spend rider is a closure it cannot price.
-	if a.ProducedFunc != nil || a.DerivedMatch != nil || a.ProducedForPaid != nil ||
+	if a.ProducedFunc != nil || a.ProducedAmount != nil || a.DerivedMatch != nil || a.ProducedForPaid != nil ||
 		a.PreRider != nil || len(a.SpendRiders) > 0 {
 		return ParsedCost{}, false
 	}

@@ -148,7 +148,7 @@ func TestSelvalaAddsOneAnyColorPickPerPointOfGreatestPower(t *testing.T) {
 	if !ok || len(spec.ManaAbilities) != 1 {
 		t.Fatalf("Selvala should register exactly one mana ability, got %+v", spec.ManaAbilities)
 	}
-	got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, selvala)
+	got := producedOf(spec.ManaAbilities[0], g, me.ID, selvala)
 	if want := AnyCombinationOfColors(5); got != want {
 		t.Fatalf("produced = %q, want %q (five independent any-colour slots)", got, want)
 	}

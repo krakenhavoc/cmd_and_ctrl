@@ -43,7 +43,7 @@ func init() {
 		},
 		ManaAbilities: []ManaAbility{{
 			Cost: ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(func(g *game.Game, controller, _ uuid.UUID) int {
+			ProducedAmount: ProducedOneColor(func(g *game.Game, controller, _ uuid.UUID) int {
 				return b42GreatestPowerControlledBy(g, controller)
 			}),
 			Label: "{T}: Add X mana of any one color, where X is the greatest power among creatures you control",

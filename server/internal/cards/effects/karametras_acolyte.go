@@ -23,9 +23,9 @@ func init() {
 		Name:         "Karametra's Acolyte",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: b28ProducedDevotion("G"),
-			Label:        "Add {G} equal to your devotion to green",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: b28ProducedDevotion("G"),
+			Label:          "Add {G} equal to your devotion to green",
 		}},
 	})
 }

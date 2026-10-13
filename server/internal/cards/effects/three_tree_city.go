@@ -51,9 +51,9 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:         ManaAbilityCost{Tap: true, Mana: "{2}"},
-				ProducedFunc: ProducedOneColor(creaturesYouControlOfTheChosenType),
-				Label:        "Choose a color: add that much mana of it for your creatures of the chosen type",
+				Cost:           ManaAbilityCost{Tap: true, Mana: "{2}"},
+				ProducedAmount: ProducedOneColor(creaturesYouControlOfTheChosenType),
+				Label:          "Choose a color: add that much mana of it for your creatures of the chosen type",
 			},
 		},
 	})

@@ -116,16 +116,16 @@ func MonocoloredSpellsOfTheChosenColor() func(*game.Game, uuid.UUID, uuid.UUID) 
 	}
 }
 
-// ProducedChosenColorAmount is the ProducedFunc for "Add N mana of the
+// ProducedChosenColorAmount is the ProducedAmount for "Add N mana of the
 // chosen color" — Throne of Eldraine's four. Like ProducedChosenColor
 // (its N = 1 case), it produces nothing before a colour is chosen.
-func ProducedChosenColorAmount(n int) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	return func(g *game.Game, _, source uuid.UUID) string {
+func ProducedChosenColorAmount(n int) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	return func(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 		c := g.ChosenColorOf(source)
 		if c == "" || n <= 0 {
-			return ""
+			return game.ManaAmount{}
 		}
-		return game.RepeatMana("{"+c+"}", n)
+		return game.ManaAmount{Options: []string{c}, N: n}
 	}
 }
 

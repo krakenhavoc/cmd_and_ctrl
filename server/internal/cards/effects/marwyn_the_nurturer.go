@@ -39,12 +39,12 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:  ManaAbilityCost{Tap: true},
 			Label: "Add an amount of {G} equal to Marwyn's power",
-			ProducedFunc: func(g *game.Game, _ uuid.UUID, source uuid.UUID) string {
+			ProducedAmount: func(g *game.Game, _ uuid.UUID, source uuid.UUID) game.ManaAmount {
 				c, ok := g.LookupCardForEffect(source)
 				if !ok {
-					return ""
+					return game.ManaAmount{}
 				}
-				return game.RepeatMana("{G}", c.CurrentPower())
+				return game.ManaAmount{Options: []string{"G"}, N: c.CurrentPower()}
 			},
 		}},
 	})

@@ -99,6 +99,7 @@ ManaAbilityShape.DerivedMatch                census:IntrinsicAbilityCards       
 ManaAbilityShape.DiscardCards                census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.DiscardCards
 ManaAbilityShape.ExileCards                  census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.ExileCards
 ManaAbilityShape.PreRider                    census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.PreRider
+ManaAbilityShape.ProducedAmount              census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.ProducedAmount
 ManaAbilityShape.ProducedForPaid             census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.ProducedForPaid
 ManaAbilityShape.ProducedFunc                census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.ProducedFunc
 ManaAbilityShape.RemoveCounters              census:IntrinsicAbilityCards       # Game.simultaneousExit.ManaAbilities.RemoveCounters

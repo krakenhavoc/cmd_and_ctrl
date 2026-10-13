@@ -19,9 +19,9 @@ func init() {
 		Name:         "Magus of the Coffers",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true, Mana: "{2}"},
-			ProducedFunc: ProducedPerPermanent("B", MatchLandSubtype("Swamp")),
-			Label:        "{2}, {T}: Add {B} for each Swamp you control",
+			Cost:           ManaAbilityCost{Tap: true, Mana: "{2}"},
+			ProducedAmount: ProducedPerPermanent("B", MatchLandSubtype("Swamp")),
+			Label:          "{2}, {T}: Add {B} for each Swamp you control",
 		}},
 	})
 }

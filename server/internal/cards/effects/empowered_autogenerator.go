@@ -73,10 +73,10 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			PreRider:     b39AutogeneratorCharge,
-			ProducedFunc: ProducedOneColor(b39AutogeneratorOutput),
-			Label:        "Put a charge counter on this artifact. Add X mana of any one color, where X is the number of charge counters on it",
+			Cost:           ManaAbilityCost{Tap: true},
+			PreRider:       b39AutogeneratorCharge,
+			ProducedAmount: ProducedOneColor(b39AutogeneratorOutput),
+			Label:          "Put a charge counter on this artifact. Add X mana of any one color, where X is the number of charge counters on it",
 		}},
 	})
 }

@@ -27,9 +27,9 @@ func init() {
 		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(largestSharedCreatureTypeGroup),
-			Label:        "Add X mana of any one color (X = most creatures you control sharing a type)",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: ProducedOneColor(largestSharedCreatureTypeGroup),
+			Label:          "Add X mana of any one color (X = most creatures you control sharing a type)",
 		}},
 	})
 }

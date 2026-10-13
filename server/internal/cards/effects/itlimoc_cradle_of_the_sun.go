@@ -24,9 +24,9 @@ func init() {
 				Label:    "{T}: Add {G}",
 			},
 			{
-				Cost:         ManaAbilityCost{Tap: true},
-				ProducedFunc: ProducedPerPermanent("G", MatchCreature),
-				Label:        "{T}: Add {G} for each creature you control",
+				Cost:           ManaAbilityCost{Tap: true},
+				ProducedAmount: ProducedPerPermanent("G", MatchCreature),
+				Label:          "{T}: Add {G} for each creature you control",
 			},
 		},
 	})

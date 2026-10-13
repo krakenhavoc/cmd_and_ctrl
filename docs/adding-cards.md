@@ -701,10 +701,16 @@ toughness at `game.MaxCount` (2^30) and a single production's mana at
 exponential and a `strings.Repeat("{G}", power)` at 2^40 is a 3 TB
 allocation that kills the whole server, not just the table. The counter
 and P/T clamps are in the engine and need nothing from a card. **The mana
-one does:** a `ProducedFunc` or `AddMana` that repeats a symbol by a board
-quantity (a power, a counter total, a creature count) must build the
-string with `game.RepeatMana(slot, n)`, never `strings.Repeat`, because
-the string is allocated before the engine can see it. `RepeatMana` hands
+one does:** a mana ABILITY whose output is a board quantity (a power, a
+counter total, a creature count) declares `ProducedAmount` (#3042) and
+returns a `game.ManaAmount{Options, N}`, so no text is ever built and the
+engine cuts and announces the count itself; use `ProducedPerPermanent`,
+`ProducedPerCounterOnThis`, `ProducedOneColor`,
+`ProducedChosenColorAmount` or `ProducedAnyCombinationOfColors` rather
+than a hand-written row. A mixed or fixed output keeps `ProducedFunc`.
+A SPELL or trigger `AddMana` that repeats a symbol by a board quantity must
+build the string with `game.RepeatMana(slot, n)`, never `strings.Repeat`,
+because the string is allocated before the engine can see it. `RepeatMana` hands
 the engine one slot past the ceiling so the engine's own cut can announce
 it (a `count_capped` log line); a bare `strings.Repeat` is a bug in any
 card whose count can be exponential. Use `game.SaturatingAdd` /
