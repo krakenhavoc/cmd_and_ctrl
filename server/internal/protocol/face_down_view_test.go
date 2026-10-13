@@ -288,6 +288,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Auto:                   true,
 		Unimplemented:          true,
 		MayMakeManaUnautomated: true,
+		// ADR 0153 §5: what an opponent-caused discard does for the card.
+		DiscardByOpponent: "battlefield",
 		// #992: the announce surface is one embedded block now, on
 		// CardView and on every castable CardFaceView alike. The
 		// reflection guard below recurses into it, so a field added
@@ -328,6 +330,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		// ability rows it describes.
 		GrantedAbilities:   []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
 		UnautomatedLenders: []GrantedByView{{ID: "lender", Name: "Uncatalogued Elf"}},
+		TextBoxFrom:        "Grizzly Bears",
 		// #2219: the tile's ability rows. Redacted with the ability
 		// lists they are read beside.
 		AbilityRows: []AbilityRowView{{Kind: "triggered", Label: "Draw a card"}},
@@ -702,7 +705,7 @@ func TestFaceDownPermanentShipsItsPublicBody(t *testing.T) {
 	// Identity: still gone, and mostly never stamped, because
 	// CatalogKey answers "" for a face-down permanent.
 	if theirs.ScryfallID != "" || theirs.ManaCost != "" || len(theirs.Faces) != 0 ||
-		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented || theirs.MayMakeManaUnautomated ||
+		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented || theirs.MayMakeManaUnautomated || theirs.DiscardByOpponent != "" ||
 		len(theirs.ManaAbilities) != 0 || len(theirs.ActivatedAbilities) != 0 {
 		t.Errorf("opponent: the card under the back leaked: %+v", theirs)
 	}

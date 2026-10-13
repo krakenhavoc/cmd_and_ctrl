@@ -234,6 +234,8 @@ func buildDef(spec Spec) *game.CardDef {
 		GrantedAlternativeCosts:             spec.GrantedAlternativeCosts,
 		OpeningHand:                         spec.OpeningHand,
 		LibraryTopVisible:                   spec.LibraryTopVisible,
+		DiscardByOpponent:                   spec.DiscardByOpponent,
+		DiscardByOpponentForHand:            spec.DiscardByOpponentForHand,
 		CastCondition:                       spec.CastCondition,
 		CastConditionLabel:                  spec.CastConditionLabel,
 		CastRestrictions:                    spec.CastRestrictions,

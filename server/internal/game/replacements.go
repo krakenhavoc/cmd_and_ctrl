@@ -617,6 +617,13 @@ type ReplacementEvent struct {
 	// it as a duration copy once the permanent has its entry stamp.
 	copyUntilEndOfTurn bool
 
+	// exchangeTextWith names the creature an "as this enters, you may
+	// exchange its text box and another creature's" choice picked (ADR
+	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by
+	// settleEntryTextExchangeLocked once the zone move has stamped the
+	// entering object, before EventETB.
+	exchangeTextWith uuid.UUID
+
 	// stackItem is the resolving spell's StackItem, carried across a
 	// paused entry so the resume can finish the two jobs only stack
 	// resolution does: attaching a resolved Aura to what it targeted

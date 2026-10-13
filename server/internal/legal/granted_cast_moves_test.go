@@ -1,6 +1,7 @@
 package legal_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -226,4 +227,35 @@ func TestEnumeratorOffersNothingFromTheseZonesWithoutAPermission(t *testing.T) {
 			t.Errorf("the top of an unopened library was offered a move: %q", m.Label)
 		}
 	}
+}
+
+// #3234: a "cast it without paying its mana cost" grant over a HAND
+// card (Kari Zev's Expertise, Rishkar's Expertise) is offered as a cast
+// the engine accepts with an empty pool.
+func TestEnumeratorOffersAFreeCastGrantedOverAHandCard(t *testing.T) {
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	id := handCard(seat, game.Card{
+		Name: "Granted Sorcery", TypeLine: "Sorcery", ManaCost: "{3}{U}", Layout: "normal",
+	})
+	g.WithWriteLock(func() {
+		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+			Player: seat.ID, Cost: "{0}", CastOnly: true,
+		})
+	})
+
+	moves := legal.EnumerateFor(g, seat.ID)
+	free := false
+	for _, m := range castMovesFor(moves, id) {
+		if strings.Contains(string(m.Params), game.AltCostKeyGrantedCost) {
+			free = true
+		}
+	}
+	if !free {
+		t.Fatalf("no free cast offered over the hand card: %v", labels(moves))
+	}
+	dispatchAll(t, g, seat.ID, moves)
 }

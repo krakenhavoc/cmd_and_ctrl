@@ -111,7 +111,9 @@ func printedInputsOf(c *Card) printedInputs {
 		power:     c.Power,
 		toughness: c.Toughness,
 		colors:    c.Colors,
-		keywords:  c.Keywords,
+		// ADR 0160: the importer's keywords of the text the object has
+		// now — an exchanged text box's, under a textBox record.
+		keywords: c.textKeywords(),
 
 		colorCDADropped: c.ColorCDADropped,
 	}

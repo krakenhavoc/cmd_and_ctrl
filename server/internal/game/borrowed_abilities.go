@@ -384,7 +384,9 @@ func ownRowKey(lender *Card, slot string, i int, label string) (string, bool) {
 	if slot == BorrowSlotMana {
 		instance = len(lender.ManaAbilities) > 0
 	}
-	if !instance {
+	// ADR 0160: under an exchanged text box the carried list is not
+	// the lender's text, and the exchanged key holds every row.
+	if !instance || lender.TextBox != nil {
 		key := catalogKeyOf(lender)
 		return key, key != ""
 	}

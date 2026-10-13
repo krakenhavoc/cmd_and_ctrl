@@ -255,6 +255,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			sign, reason = -1.0, "pitch our worst"
 		}
 		var v float64
+		// ADR 0153 §5: an opponent's spell or ability is making the bot
+		// discard, so a card that does something when discarded that way
+		// is priced by what it does (discard_by_opponent.go).
+		forced := sign < 0 && st.opponentForcedDiscard(ch)
 		for _, id := range cp.CardIDs {
 			c := lookup(id)
 			if sign > 0 {
@@ -267,7 +271,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			if sign < 0 {
 				// A discard the bot's own payoffs pay for
 				// (discard_payoff.go).
-				v += st.discardPayoff(p.cfg, c)
+				v += st.discardPayoff(p.cfg, c) + st.forcedDiscardCredit(p.cfg, c, forced)
 			}
 		}
 		return v, reason
@@ -513,6 +517,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return p.entryPayLifeValue(st, m, cp.Apply)
 
 	case choiceCopyTarget:
+		// ADR 0160: the same prompt, asking whom to exchange text
+		// boxes with (Deadpool, Trading Card).
+		if ch != nil && ch.ExchangesText {
+			return st.textExchangeValue(cp.CardIDs, lookup)
+		}
 		// #2390: "enter as a copy of" — the best permanent on offer.
 		return st.copyTargetValue(cp.CardIDs, lookup)
 
@@ -711,6 +720,7 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 	if ch == nil || len(ch.Options) == 0 || ch.FromPlayer != st.me || st.seat == nil {
 		return 0, false
 	}
+	forced := st.opponentForcedDiscard(ch)
 	hand := st.seatHand()
 	held := make(map[string]*protocol.CardView, len(hand))
 	for i := range hand {
@@ -728,7 +738,7 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 		if slices.Contains(named, id) {
 			// Named is discarded: what the bot's own discard payoffs
 			// pay for it (discard_payoff.go) is kept too.
-			kept += st.discardPayoff(cfg, c)
+			kept += st.discardPayoff(cfg, c) + st.forcedDiscardCredit(cfg, c, forced)
 			continue
 		}
 		kept += st.handKeepValue(cfg, c)

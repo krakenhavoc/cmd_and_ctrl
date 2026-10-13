@@ -946,6 +946,9 @@ func (g *Game) recomputeLayersLocked() {
 	// printed baseline BEFORE the pass, so layers 2-7 run on their
 	// result (CR 613.1a). See duration_copy.go.
 	g.materialiseDurationCopiesLocked()
+	// ADR 0160: layer 3's exchanged text boxes, after layer 1 and
+	// before the pass, whose static gather reads the key they decide.
+	g.materialiseTextBoxesLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
 	// ADR 0104: layer 2 for the SPELLS on the stack — the same

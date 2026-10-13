@@ -87,6 +87,18 @@ type Purpose struct {
 	// 2026-10-06). Nil is "not a discard payoff". Refused on every
 	// other slot. A pointer so Purpose stays comparable.
 	DiscardPayoff *DiscardPayoff
+	// OnOpponentDiscard is set on a TRIGGERED row of a card that pays
+	// out when an opponent's spell or ability makes its controller
+	// discard THAT card ("if a spell or ability an opponent controls
+	// causes you to discard this card, create four Gnome tokens"), in
+	// DiscardPayoff's units and per printed amount (ADR 0153 §5). The
+	// heuristic prices that discard of the card in hand that much
+	// cheaper, and only when an opponent caused it. Any is set, because
+	// the card is the discarded card. A row that sits on the battlefield
+	// never pays out for other discards by it, which is why this is not
+	// DiscardPayoff. Nil is "declares nothing". Refused on every other
+	// slot. A pointer so Purpose stays comparable.
+	OnOpponentDiscard *DiscardPayoff
 	// LandfallPayoff is set on a TRIGGERED row that pays out whenever a
 	// land enters under its controller's control ("Landfall — Whenever a
 	// land you control enters"), and says what it pays for EACH land:
@@ -468,6 +480,7 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		Sweep:                     p.Sweep,
 		DeathPayoff:               p.DeathPayoff || o.DeathPayoff,
 		DiscardPayoff:             p.DiscardPayoff,
+		OnOpponentDiscard:         p.OnOpponentDiscard,
 		LandfallPayoff:            p.LandfallPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
@@ -488,6 +501,9 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.DiscardPayoff == nil {
 		out.DiscardPayoff = o.DiscardPayoff
+	}
+	if out.OnOpponentDiscard == nil {
+		out.OnOpponentDiscard = o.OnOpponentDiscard
 	}
 	if out.LandfallPayoff == nil {
 		out.LandfallPayoff = o.LandfallPayoff

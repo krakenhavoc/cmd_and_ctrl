@@ -1,0 +1,372 @@
+{
+  "id": "pitch-the-baloth-to-an-opponents-mind-rot",
+  "v": 1,
+  "tags": [
+    "discard"
+  ],
+  "note": "An opponent's Mind Rot is resolving and the bot must pitch one of Obstinate Baloth and a Forest. The Baloth is the card to pitch: a spell an opponent controls made the bot discard it, so it is put onto the battlefield instead of the graveyard, and the Forest is a land the bot wants (ADR 0153 §5). Built by hand from the ADR's example, not harvested from a game.",
+  "gate": [
+    "heuristic"
+  ],
+  "source": {
+    "seat": 0,
+    "reviewer": "ADR 0153 owner decisions",
+    "reviewed_at": "2026-10-13"
+  },
+  "input": {
+    "view": {
+      "id": "00000000-0000-0000-0000-000000000000",
+      "state": "active",
+      "seats": [
+        {
+          "id": "00000000-0000-0000-0000-000000000000",
+          "name": "Seat0",
+          "seat": 0,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "count": 60,
+            "cards": null
+          },
+          "hand": {
+            "kind": "hand",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "count": 2,
+            "cards": [
+              {
+                "instance_id": "10000000-0000-0000-0000-000000000001",
+                "name": "Obstinate Baloth",
+                "owner": "00000000-0000-0000-0000-000000000000",
+                "controller": "00000000-0000-0000-0000-000000000000",
+                "type_line": "Creature — Bear",
+                "power": 4,
+                "toughness": 4,
+                "known_by_you": true,
+                "discard_by_opponent": "battlefield",
+                "mana_cost": "{2}{G}{G}"
+              },
+              {
+                "instance_id": "10000000-0000-0000-0000-000000000002",
+                "name": "Mountain",
+                "owner": "00000000-0000-0000-0000-000000000000",
+                "controller": "00000000-0000-0000-0000-000000000000",
+                "type_line": "Basic Land — Mountain",
+                "known_by_you": true,
+                "mana_abilities": [
+                  {
+                    "index": 0,
+                    "ref": "",
+                    "tap_cost": true,
+                    "produced": "{R}"
+                  }
+                ]
+              }
+            ]
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "count": 0,
+            "cards": null
+          },
+          "command": {
+            "kind": "command",
+            "count": 0,
+            "cards": null
+          },
+          "commander_damage": null,
+          "life_history": null,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 0,
+          "lands_played_this_turn": 0
+        },
+        {
+          "id": "00000000-0000-0000-0000-000000000001",
+          "name": "Seat1",
+          "seat": 1,
+          "life": 40,
+          "library": {
+            "kind": "library",
+            "count": 60,
+            "cards": null
+          },
+          "hand": {
+            "kind": "hand",
+            "count": 0,
+            "cards": null
+          },
+          "graveyard": {
+            "kind": "graveyard",
+            "owner": "00000000-0000-0000-0000-000000000001",
+            "count": 1,
+            "cards": [
+              {
+                "instance_id": "10000000-0000-0000-0000-000000000009",
+                "name": "Mind Rot",
+                "owner": "00000000-0000-0000-0000-000000000001",
+                "controller": "00000000-0000-0000-0000-000000000001",
+                "type_line": "Instant",
+                "known_by_you": true,
+                "mana_cost": "{2}{B}"
+              }
+            ]
+          },
+          "command": {
+            "kind": "command",
+            "count": 0,
+            "cards": null
+          },
+          "commander_damage": null,
+          "life_history": null,
+          "max_hand_size": 7,
+          "land_drops_per_turn": 0,
+          "lands_played_this_turn": 0
+        }
+      ],
+      "battlefield": {
+        "kind": "battlefield",
+        "count": 8,
+        "cards": [
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000100",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000101",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000102",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000103",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000104",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000105",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000106",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          },
+          {
+            "instance_id": "10000000-0000-0000-0000-000000000107",
+            "name": "Mountain",
+            "owner": "00000000-0000-0000-0000-000000000000",
+            "controller": "00000000-0000-0000-0000-000000000000",
+            "type_line": "Basic Land — Mountain",
+            "known_by_you": true,
+            "mana_abilities": [
+              {
+                "index": 0,
+                "ref": "",
+                "tap_cost": true,
+                "produced": "{R}"
+              }
+            ]
+          }
+        ]
+      },
+      "stack": {
+        "kind": "stack",
+        "count": 0,
+        "cards": null
+      },
+      "exile": {
+        "kind": "exile",
+        "count": 0,
+        "cards": null
+      },
+      "phased_out": {
+        "kind": "",
+        "count": 0,
+        "cards": null
+      },
+      "turn": {
+        "seq": 1,
+        "number": 1,
+        "active_seat": 0,
+        "priority_holder": 0,
+        "phase": "",
+        "step": "precombat_main"
+      },
+      "mulligans_open": false,
+      "undo_limit": 0,
+      "starting_seat": 0,
+      "pending_choices": [
+        {
+          "id": "choice-discard",
+          "kind": "choose_cards",
+          "chooser": "00000000-0000-0000-0000-000000000000",
+          "from_player": "00000000-0000-0000-0000-000000000000",
+          "count": 1,
+          "source": "10000000-0000-0000-0000-000000000009",
+          "reason": "Mind Rot — discard a card",
+          "options": [
+            {
+              "instance_id": "10000000-0000-0000-0000-000000000001",
+              "name": "Obstinate Baloth",
+              "owner": "00000000-0000-0000-0000-000000000000",
+              "controller": "00000000-0000-0000-0000-000000000000",
+              "type_line": "Creature — Bear",
+              "power": 4,
+              "toughness": 4,
+              "known_by_you": true,
+              "discard_by_opponent": "battlefield",
+              "mana_cost": "{2}{G}{G}"
+            },
+            {
+              "instance_id": "10000000-0000-0000-0000-000000000002",
+              "name": "Mountain",
+              "owner": "00000000-0000-0000-0000-000000000000",
+              "controller": "00000000-0000-0000-0000-000000000000",
+              "type_line": "Basic Land — Mountain",
+              "known_by_you": true,
+              "mana_abilities": [
+                {
+                  "index": 0,
+                  "ref": "",
+                  "tap_cost": true,
+                  "produced": "{R}"
+                }
+              ]
+            }
+          ],
+          "choose_min": 1,
+          "choose_max": 1
+        }
+      ]
+    },
+    "seat": "00000000-0000-0000-0000-000000000000",
+    "moves": [
+      {
+        "type": "resolve_choice",
+        "player": "00000000-0000-0000-0000-000000000000",
+        "params": {
+          "card_ids": [
+            "10000000-0000-0000-0000-000000000001"
+          ],
+          "choice_id": "choice-discard"
+        },
+        "kind": "choice",
+        "label": "Discard Obstinate Baloth",
+        "source": "00000000-0000-0000-0000-000000000000"
+      },
+      {
+        "type": "resolve_choice",
+        "player": "00000000-0000-0000-0000-000000000000",
+        "params": {
+          "card_ids": [
+            "10000000-0000-0000-0000-000000000002"
+          ],
+          "choice_id": "choice-discard"
+        },
+        "kind": "choice",
+        "label": "Discard Forest",
+        "source": "00000000-0000-0000-0000-000000000000"
+      }
+    ]
+  },
+  "expected": {
+    "accept": [
+      {
+        "label": "Discard Obstinate Baloth"
+      }
+    ],
+    "reject": [
+      {
+        "label": "Discard Forest"
+      }
+    ]
+  },
+  "at_capture": {}
+}

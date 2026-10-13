@@ -2350,6 +2350,29 @@ Assert the OBSERVABLE result — name, P/T, types, counters, and for
 anything with a catalog entry, its behaviour — because a copy that
 rewrote only the display fields looks identical on the wire.
 
+### Exchanging text boxes (ADR 0160)
+
+A text box here is the catalog KEY plus the importer's keywords, so
+"exchange the text boxes of two creatures" (CR 612.5) swaps exactly
+those and leaves name, types, P/T, mana cost and colour alone. Two
+shapes:
+
+```go
+// "As this enters, you may exchange its text box and another creature's"
+Replacements: []game.ReplacementEffect{
+    EntersExchangingTextBoxes("Deadpool, Trading Card", anotherCreatureOnBattlefield),
+},
+// "…choose two target creatures. For as long as this remains, exchange their text boxes"
+Targeting(WhenThisEnters(label, ExchangeTargetTextBoxesWhileSourceRemains),
+    TargetCreature("two target creatures").WithCount(2, 2)),
+```
+
+Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
+d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
+read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
+`CatalogAbilityKey` are what follow the exchange. Changing single
+words (Glamerdye, Magical Hack) has no shape yet; ADR 0160 §9 plans it.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,
@@ -8581,6 +8604,57 @@ Static: []game.StaticAbility{LivingMetal()},
   checks `!ev.Converted`.
 - **Living metal sets no power or toughness.** The Vehicle's printed ones
   apply while it is a creature (CR 301.7b).
+
+### "If a spell or ability an opponent controls causes you to discard" (ADR 0153, #1861)
+
+Sixteen cards read who caused a discard. The test is the controller of the
+**stack item** that made you discard (CR 113.8), never the source card's
+controller: `game.DiscardCausedByOpponent(ev)` on a replacement event and
+`game.DiscardCausedByOpponentOf(ev, player)` on an `EventDiscardCard`. Your own
+spell, a discard paid as a cost and the cleanup step's discard never count.
+Painful Quandary asks you to discard while its trigger resolves, so it is an
+opponent's effect discard (owner decision 4).
+
+```go
+// Obstinate Baloth, Loxodon Smiter, Nullhide Ferox, Wilt-Leaf Liege: onto the battlefield
+DiscardByOpponent: game.DiscardByOpponentBattlefield,
+Replacements: []game.ReplacementEffect{
+	OntoTheBattlefieldWhenAnOpponentMakesYouDiscardThis("Obstinate Baloth", nil),
+},
+// Dodecapod: the same with map[string]int{game.CounterPlusOne: 2}
+
+// Nephalia Academy: any card its controller discards, on top of the library (optional)
+DiscardByOpponentForHand: game.DiscardByOpponentLibrary,
+Replacements: []game.ReplacementEffect{DiscardBecomes{
+	Dst: game.ZoneLibrary, ByOpponent: true, Optional: true, OnApply: reveal, ...}.Build()},
+
+// "When ... causes you to discard this card": a trigger that watches from the graveyard
+DiscardByOpponent: game.DiscardByOpponentTrigger,
+Triggered: []game.TriggeredAbility{
+	InGraveyard(On(game.EventDiscardCard, DiscardedByAnOpponent(true), "label", effect)),
+},
+```
+
+- **A card's own replacement works from the hand**: the engine's self-replacement
+  pass finds it (the way madness is found), so write `ThisCard: true` and the
+  card replaces only its own discard. `ByOpponent` and a battlefield `Dst` both
+  require the event to still be headed for the graveyard (CR 614.5), so madness
+  or Rest in Peace taking the card first switches the replacement off.
+- **A discard that lands on the battlefield enters through the ordinary entry
+  window** (`game/discard_entry.go`): enters tapped, enters with counters and
+  "exile it instead" all apply, and `EventDiscardCard` names the zone the card
+  really reached.
+- **A "this card" trigger fires from the graveyard only** (owner decision 6), so
+  its card carries `discardTriggerFromExileCaveat` and is `CompletenessCaveats`.
+  "You" is the card's owner while it sits there (CR 108.4). "Return this card
+  at the beginning of the next end step" is `scheduleReturnOfThisCard` with the
+  `returnDiscardedToHandBody` / `returnDiscardedWithCounterBody` bodies, which pin
+  the card as an object (CR 400.7).
+- **Declare it for the bot, never let it be inferred**: `Spec.DiscardByOpponent`
+  (and `DiscardByOpponentForHand` on a permanent) rides the wire as
+  `CardView.discard_by_opponent`. A trigger that pays in tokens, counters or
+  damage also declares `Purpose.OnOpponentDiscard` (Metrognome's four Gnomes).
+  The bot reads both only when an opponent caused the prompt.
 
 ### Partner with (CR 702.124j, #2142)
 

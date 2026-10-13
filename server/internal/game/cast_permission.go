@@ -1003,6 +1003,11 @@ func (g *Game) castPermissionHoldersLocked(c Card) []uuid.UUID {
 	return out
 }
 
+// AltCostKeyGrantedCost is the alternative-cost key a hand grant with a
+// Cost but no AltCostKey of its own is given ("cast it without paying
+// its mana cost" over a hand card). An on-disk identity, never renamed.
+const AltCostKeyGrantedCost = "granted-cost"
+
 // GrantCastPermissionOverCardForEffect grants `perm` over one card
 // wherever it currently sits, filling in the zone from where the card
 // actually is. Reports whether the card was found.
@@ -1025,6 +1030,14 @@ func (g *Game) GrantCastPermissionOverCardForEffect(cardID uuid.UUID, perm CastP
 	}
 	if perm.Zone != z.Kind {
 		return false
+	}
+	if perm.Zone == ZoneHand && perm.AltCostKey == "" && perm.Cost != "" {
+		// A hand permission applies only to a cast that claims the
+		// offer under its key (ForClaim), so a keyless one prices
+		// nothing and the cast pays the printed cost (#3234: Kari
+		// Zev's, Rishkar's). A hand grant that names a price is a CR
+		// 118.9 alternative cost; give it the shared key.
+		perm.AltCostKey = AltCostKeyGrantedCost
 	}
 	for _, c := range z.Cards {
 		if c.InstanceID != cardID {
