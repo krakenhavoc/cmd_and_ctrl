@@ -3404,3 +3404,70 @@ Additive within v7. The new kind is one more on-disk identity (ADR 0041 phase 3)
 - **Knowledge Pool** and **Etali, Primal Conqueror** cast another player's exiled card or a card
   exiled by a different trigger; **Shaman's Trance** bans a graveyard rather than a hand and opens other
   players' graveyards (`play-from-other-players-graveyards`).
+
+## Amendment — 2026-10-13 (#3105): a cast zone a card opens only while a condition holds
+
+Lightwheel Enhancements ("Max speed — You may cast this card from your graveyard"), Gravecrawler ("as long
+as you control a Zombie") and Marang River Prowler ("as long as you control a black or green permanent")
+print a graveyard permission that depends on the game. `Spec.CastableZones` is unconditional and its hook
+(`CatalogCastableZones`) takes an oracle ID with no game, so the zone could not depend on state. No number
+is taken: this amends the S29 declaration this ADR already owns.
+
+### Decision 1 — a second declaration, not a wider hook
+
+`Spec.CastableZonesIf []game.ConditionalCastZone{Zone, Cond}`, with `Cond func(g *Game, owner uuid.UUID,
+card Card) bool`, reaches the engine through a second catalog hook (`CatalogCastableZonesIf`). The
+unconditional hook keeps its signature and every existing card is untouched: nothing in `CastableZones`,
+`CastableZonesFor` or `CardCastableFromZone` changed meaning. `CardCastableFromZone` stays the answer to
+"does the card open this zone UNCONDITIONALLY"; its three engine-side callers moved to the new predicate.
+
+### Decision 2 — one predicate, asked by everyone
+
+`Game.cardOpensZoneLocked(card, key, zone)` is the unconditional declaration OR a conditional entry whose
+condition holds. It is read by `validateCastPathLocked` (the engine), `castUsesGrantLocked` (is a permission
+the REASON the cast is legal), `CardCastableFromAnyFaceLocked` (the legal-move enumerator, so a bot, and the
+view's `castable_here`, so the client's button) and the delve ordering. That is #1171's lesson applied
+before the divergence rather than after it: the condition cannot hold for the engine and fail for the bot.
+`CardCastableFromAnyFace` became a method on the game for the same reason (it needs the game to answer); it
+is the exported `CardCastableFromAnyFaceLocked`, caller holding `g.mu`, and has two callers.
+
+### Decision 3 — the owner is asked, and the condition is data about the game, not state
+
+A card's own text opens its owner's zone and nobody else's, so `Cond` receives `card.Owner`; "max speed" is
+the owner's (ADR 0138 §5). The condition reads the game it is handed, captures nothing and is stored
+nowhere: nothing is added to `Game`, `Card` or the snapshot, so Clone, undo and the bot's look-ahead answer
+from the copy they hold (`TestConditionalZoneFollowsTheCloneNotTheOriginal`), and the cast button follows a
+speed change on the next frame with no invalidation. The closure lives on `CardDef` beside `CastCondition`;
+it is not reachable from `Game`, so the closure ratchet is untouched and no ceiling moved.
+
+### Decision 4 — why not `CastCondition`
+
+Oathsworn Vampire and The Indomitable already gate a graveyard cast with `CastCondition` plus a lookup of the
+card's own zone. That refuses every cast out of the graveyard while the condition is false, including one a
+permission opens: Snapcaster Mage's flashback over a Gravecrawler with no Zombie in play would be refused,
+which the printed cards never do (CR 601.2, and rule 4 of `validateCastPathLocked`: a permission must never
+take away a path, and must never be blocked by a condition on a path it is not using). The conditional zone
+gates only the card's own opening, so a permission still opens the zone
+(`TestAPermissionStillOpensAConditionalZoneThatIsClosed`) and a one-spell permission is spent only when it was the
+reason (`TestALimitedGrantIsSpentOnlyWhileAConditionalZoneIsClosed`). The two existing cards were left on
+`CastCondition`: moving them is a behaviour change to cards this issue does not own, and the stricter
+reading is the safe direction.
+
+### Decision 5 — only a graveyard, and a condition is required
+
+`Register` panics on a `CastableZonesIf` zone that is not the graveyard (hand and command are the format's,
+exile and the library are per-instance permissions, as for `CastableZones`) and on a nil `Cond`, which would
+be an unconditional zone written the long way round. A zone-bound `AlternativeCost` (flashback, escape) may
+name a zone listed in either field.
+
+### Snapshot
+
+None. Nothing is stored.
+
+### Out of scope, stated
+
+- **Ebondeath, Dracolich** ("if a creature not named Ebondeath died this turn") and **Eelectrocute** ("as long
+  as you've rolled a 6 this turn") need a per-turn record the engine does not keep (deaths by name, die
+  results); **Undead Sprinter**, **Glimpse the Cosmos** and **Haakon, Stromgald Scourge** also change the price
+  or open other cards. The conditional zone would carry their gates once those records exist.
+- **Moving Oathsworn Vampire and The Indomitable** onto `CastableZonesIf` (Decision 4).

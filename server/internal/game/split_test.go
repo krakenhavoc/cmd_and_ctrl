@@ -144,7 +144,7 @@ func TestAftermathHalfCastsOnlyFromAGraveyard(t *testing.T) {
 	var anyFace bool
 	g.WithWriteLock(func() {
 		c := *findCardForTest(me.Graveyard, inYard)
-		anyFace = CardCastableFromAnyFace(c, ZoneGraveyard)
+		anyFace = g.CardCastableFromAnyFaceLocked(c, ZoneGraveyard)
 	})
 	if !anyFace {
 		t.Error("CardCastableFromAnyFace(graveyard) = false for an aftermath card")

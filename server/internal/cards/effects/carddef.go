@@ -192,6 +192,7 @@ func buildDef(spec Spec) *game.CardDef {
 		HexproofBypasses:           spec.HexproofBypasses,
 		WardSuppressions:           spec.WardSuppressions,
 		CastableZones:              spec.CastableZones,
+		CastableZonesIf:            spec.CastableZonesIf,
 		SpecialActions:             spec.SpecialActions,
 		SpecialActionGrants:        spec.SpecialActionGrants,
 		UntapStep:                  spec.UntapStep,

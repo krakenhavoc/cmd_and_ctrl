@@ -4962,7 +4962,7 @@ func stampLegalTargets(g *game.Game, seats []PlayerView, anyGrant bool) {
 					// all on the wire: no `castable_here`, no price
 					// list, no target clause, and no cast button behind
 					// a cast CastSpell would have accepted.
-					if grant == nil && (live == nil || !game.CardCastableFromAnyFace(*live, zone.kind)) {
+					if grant == nil && (live == nil || !g.CardCastableFromAnyFaceLocked(*live, zone.kind)) {
 						continue
 					}
 					// `castable_here` is NOT set here (#1015):

@@ -146,8 +146,8 @@ func Register(spec Spec) {
 		// to list the zone as well, and finding out at boot is far
 		// cheaper than finding out when a flashback button never
 		// appears.
-		if ac.FromZone != "" && ac.FromZone != game.ZoneHand && !zoneDeclared(spec.CastableZones, ac.FromZone) {
-			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones",
+		if ac.FromZone != "" && ac.FromZone != game.ZoneHand && !zoneDeclared(spec.CastableZones, ac.FromZone) && !conditionalZoneDeclared(spec.CastableZonesIf, ac.FromZone) {
+			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones or CastableZonesIf",
 				spec.Name, ac.Key, ac.FromZone))
 		}
 		// #1727: an offer's card component rides ONE wire list
@@ -221,6 +221,18 @@ func Register(spec Spec) {
 		if z == game.ZoneExile {
 			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
 				spec.Name))
+		}
+	}
+	// ADR 0066 amendment (2026-10-13): a conditional zone is a card-level
+	// declaration too, so the same refusals apply, plus a nil condition,
+	// which would be an unconditional zone written the long way round.
+	for _, cz := range spec.CastableZonesIf {
+		switch {
+		case cz.Zone != game.ZoneGraveyard:
+			panic(fmt.Sprintf("effects.Register: %q declares %s in CastableZonesIf — only a graveyard is a card-level conditional cast zone (hand and command are the format's, exile and the library are per-instance permissions, ADR 0066)",
+				spec.Name, cz.Zone))
+		case cz.Cond == nil:
+			panic(fmt.Sprintf("effects.Register: %q declares %s in CastableZonesIf with no condition — list it in CastableZones", spec.Name, cz.Zone))
 		}
 	}
 	// ADR 0073: the optional additional costs. Six boot checks, each
@@ -1253,6 +1265,16 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 func zoneDeclared(zones []game.ZoneKind, zone game.ZoneKind) bool {
 	for _, z := range zones {
 		if z == zone {
+			return true
+		}
+	}
+	return false
+}
+
+// conditionalZoneDeclared is zoneDeclared for Spec.CastableZonesIf.
+func conditionalZoneDeclared(zones []game.ConditionalCastZone, zone game.ZoneKind) bool {
+	for _, z := range zones {
+		if z.Zone == zone {
 			return true
 		}
 	}

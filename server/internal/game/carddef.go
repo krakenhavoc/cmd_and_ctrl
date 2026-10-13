@@ -170,6 +170,11 @@ type CardDef struct {
 	// through CatalogAbilityKey; see targeting_restriction.go.
 	TargetingRestrictions []TargetingRestriction
 	CastableZones         []ZoneKind
+	// CastableZonesIf are the zones the card opens for itself only
+	// while a condition holds (Lightwheel Enhancements, "Max speed —
+	// You may cast this card from your graveyard"). Read through
+	// cardOpensZoneLocked, beside CastableZones.
+	CastableZonesIf []ConditionalCastZone
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -716,6 +721,12 @@ func init() {
 	CatalogCastableZones = func(key string) []ZoneKind {
 		if d := catalogDef(key); d != nil {
 			return d.CastableZones
+		}
+		return nil
+	}
+	CatalogCastableZonesIf = func(key string) []ConditionalCastZone {
+		if d := catalogDef(key); d != nil {
+			return d.CastableZonesIf
 		}
 		return nil
 	}
