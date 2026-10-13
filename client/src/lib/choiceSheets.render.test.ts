@@ -300,7 +300,6 @@ describe("a card grid is a sheet", () => {
         kind: "search_library",
         reason: "Tower Winder — a card named Command Tower",
         search_max: 1,
-        search_min: 1,
         options: [card("lib", "Command Tower"), card("gy", "Command Tower")],
         search_graveyard: ["gy"],
       }),
@@ -310,8 +309,8 @@ describe("a card grid is a sheet", () => {
     expect(tiles).toHaveLength(2);
     expect(tiles[0].textContent).not.toContain("Graveyard");
     expect(tiles[1].textContent).toContain("Graveyard");
-    // The public card must be found: no Find nothing.
-    expect(barButton("Find nothing")).toBeNull();
+    // "And/or" lets the searcher look only in the library: Find nothing stays.
+    expect(barButton("Find nothing")).not.toBeNull();
     click(tiles[1]);
     keyFromBody("Enter");
     expect(sent).toEqual([

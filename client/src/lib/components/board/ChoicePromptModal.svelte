@@ -2497,7 +2497,7 @@
           {/if}
           {#if searchGraveyardIDs.size > 0}
             Cards marked Graveyard are public. Taking one means you never looked in your library, so
-            it isn't shuffled; taking a library card shuffles it.
+            it isn't shuffled; taking a library card, or nothing, shuffles it.
           {:else}
             Only you can see them, and your library is shuffled either way.
           {/if}

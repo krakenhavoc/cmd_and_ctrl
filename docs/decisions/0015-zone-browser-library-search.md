@@ -262,18 +262,30 @@ engine searched one library only. This is that day.
   qualifying card. The engine does not ask which zones: it offers every
   match from both in one prompt, the way a player with the graveyard face
   up on the table would look there first.
-- The graveyard is public, so CR 701.23b's "may fail to find" is a
-  hidden-zone rule and does not reach it: **while a matching card is in
-  the graveyard, the search must find one** (`min(limit, graveyard
-  matches)`), from either zone. Taking a library card satisfies it;
-  taking nothing does not. With no graveyard match the search is exactly
-  the library-only search of the amendment above, fail to find included.
+- "And/or" lets the searcher choose which zones to look in, so the
+  graveyard half adds **no must-find**: a player may search only the
+  library and fail to find even with a match in the graveyard (the
+  rulings on Ajani's Aid and Finale of Devastation). The floor is the
+  library-only floor of the amendment above: zero for a search with a
+  stated quality, `min(limit, cards in both zones)` for an unconditional
+  "a card" search (no catalog card has one today). An earlier draft of
+  this amendment made a graveyard match mandatory (`min(limit, graveyard
+  matches)`); that removed a choice the cards print and was reverted
+  before it landed.
 - "If you search your library this way, shuffle": **a take that comes
   wholly out of the graveyard did not search the library**, so it does
   not shuffle and does not fire `EventSearchLibrary` (an Archivist of
-  Oghma must not trigger). Taking any library card, or nothing, is a
-  library search and shuffles. A card taken from the graveyard is a
-  public card, so it is never revealed as a library card.
+  Oghma must not trigger). Taking any library card is a library search
+  and shuffles. A card taken from the graveyard is a public card, so it
+  is never revealed as a library card.
+- **Declared simplification: finding nothing counts as a library
+  search** (shuffle plus `EventSearchLibrary`), the common case. The
+  engine does not ask which zones were searched, so a player who looked
+  only in the graveyard and found nothing would, by the rules, not have
+  shuffled. Finding nothing in the graveyard alone is a no-op difference
+  for play (a shuffle of an unknown library), and the card comments on
+  Finale of Devastation, Tower Winder, Ajani's Aid and Delivery Moogle
+  say so.
 
 ### The shape
 
@@ -281,11 +293,11 @@ engine searched one library only. This is that day.
   AlsoGraveyard`). The graveyard searched is the library owner's, so it
   is not meaningful with `LibraryOwner`; the destination is hand,
   battlefield or exile (not `ZoneLibrary`).
-- **`spec.floorZones(lib, gy)`** is the floor, from `searchFloor` with
-  `hiddenZone=false` when `gy > 0`; an unconditional search counts both
-  zones' cards. `searchFloorLocked` recomputes it from the live zones
-  when the prompt carries graveyard candidates, so the floor falls if the
-  public card leaves while the prompt is open.
+- **`spec.floorZones(lib, gy)`** is the floor: `searchFloor` over the
+  library's rule, with an unconditional search counting both zones'
+  cards. `searchFloorLocked` recomputes it from the live zones when the
+  prompt carries graveyard candidates, so an unconditional search's
+  floor falls if its candidates leave while the prompt is open.
 - **`PendingChoice.SearchGraveyardCards`** (wire `search_graveyard`,
   omitempty, chooser-only like `options`) is the subset of
   `SearchCards` that sits in the graveyard; the library's candidates
@@ -305,7 +317,8 @@ engine searched one library only. This is that day.
   caption, and its hint says what the shuffle depends on. The enumerator
   needed no change: it offers picks over `SearchCards` and asks the engine
   to accept each, and the fail-to-find answer it marks always-legal
-  appears only when the floor is zero.
+  appears whenever the floor is zero, which for a stated-quality search is
+  always.
 
 ### Back-out
 

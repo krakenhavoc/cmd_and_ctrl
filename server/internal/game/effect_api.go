@@ -2480,19 +2480,24 @@ type SearchLibrarySpec struct {
 	// graveyard is searched beside the library, under the same
 	// predicate, in the same prompt.
 	//
-	// The two zones are not alike and the rules treat them differently
-	// (CR 701.23b, 701.23d):
+	// "And/or" lets the searcher choose which zones to look in, so the
+	// rules put no must-find on the graveyard half: a player may search
+	// only the library and fail to find with a match sitting in the
+	// graveyard (CR 701.23b), exactly as for a plain library search. The
+	// floor is therefore zero for a search with a stated quality, and an
+	// unconditional "a card" search still has to find min(limit, cards in
+	// both zones) (CR 701.23d).
 	//
-	//   - the graveyard is PUBLIC, so a stated quality does not let the
-	//     searcher fail to find while a matching card is in it — the
-	//     floor is the graveyard's match count, not zero;
-	//   - the library is only "searched" if the searcher looks in it, so
-	//     a take that comes entirely from the graveyard neither shuffles
-	//     nor fires EventSearchLibrary — "If you search your library
-	//     this way, shuffle."
+	// What the zone changes is the shuffle ("If you search your library
+	// this way, shuffle"): a take that comes entirely from the graveyard
+	// neither shuffles nor fires EventSearchLibrary.
 	//
-	// A search that takes nothing, or anything from the library, did
-	// search it. The graveyard searched is the library owner's, so
+	// Declared simplification: the engine does not ask which zones were
+	// searched. A take of nothing is treated as a library search (shuffle
+	// and event), the common case; a player who looked only in the
+	// graveyard and found nothing would not have shuffled. The
+	// difference is a no-op for play. The graveyard searched is the
+	// library owner's, so
 	// combining this with LibraryOwner is not meaningful. Dest must be a
 	// zone the cards leave to (hand, battlefield, exile); ZoneLibrary
 	// with ToTop is not supported.
@@ -2527,21 +2532,15 @@ func (spec SearchLibrarySpec) floor(matches int) int {
 // floorZones is floor for a search that also reads the graveyard
 // (#3217): `lib` matches in the library, `gy` in the graveyard.
 //
-// A graveyard match is a public card, so CR 701.23b does not let the
-// searcher fail to find while one is there (searchFloor's hiddenZone
-// false half, which this is the first real caller of). With no
-// graveyard match the search is exactly the old library-only one. An
-// unconditional search has no stated quality to make that distinction
-// with: it must find min(limit, lib+gy), whichever zone they are in.
+// "And/or" lets the searcher pick the zones, so a graveyard match does
+// not take away the right to fail to find: a search with a stated
+// quality has floor zero however many matches either zone holds (the
+// rulings on Ajani's Aid and Finale of Devastation). An unconditional
+// search has no stated quality to hide behind and must find
+// min(limit, lib+gy), whichever zone they are in (CR 701.23d).
 func (spec SearchLibrarySpec) floorZones(lib, gy int) int {
-	if gy == 0 {
-		return spec.floor(lib)
-	}
-	fewer := spec.Optional || spec.UpTo || spec.Unbounded
-	if !spec.statedQuality() {
-		return searchFloor(true, false, fewer, spec.Limit, lib+gy)
-	}
-	return searchFloor(false, true, fewer, spec.Limit, gy)
+	return searchFloor(true, spec.statedQuality(), spec.Optional || spec.UpTo || spec.Unbounded,
+		spec.Limit, lib+gy)
 }
 
 // searchFloor is CR 701.23b and 701.23d as a pure function, so the rule

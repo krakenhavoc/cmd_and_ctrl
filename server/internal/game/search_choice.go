@@ -190,8 +190,8 @@ func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
 	}
 	if len(choice.SearchGraveyardCards) > 0 && choice.searchResume != nil {
 		// #3217: an "and/or graveyard" search recomputes its floor from
-		// the live zones, because the graveyard half is what raises it
-		// (a public card must be found) and that card may have left.
+		// the live zones: an unconditional one must find min(limit,
+		// cards in BOTH zones), and those cards may have left.
 		for _, id := range choice.SearchCards {
 			if !inGY[id] && p.Library.Contains(id) {
 				inLibrary++

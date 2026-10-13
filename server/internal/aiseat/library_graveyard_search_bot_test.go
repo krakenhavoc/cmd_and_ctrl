@@ -10,9 +10,9 @@ import (
 )
 
 // library_graveyard_search_bot_test.go — #3217. A bot at a "search your
-// library and/or graveyard" prompt is enumerated both zones' cards and
-// is not offered fail to find while a public match is on the menu, so a
-// policy that prefers it falls through to a take. Not behind
+// library and/or graveyard" prompt is enumerated both zones' cards and,
+// because "and/or" lets the searcher look only in the library, fail to
+// find too: a policy that prefers it may use it. Not behind
 // AISEAT_GAME_TESTS: one prompt, milliseconds.
 
 func stockGraveyard(me *game.Player, c game.Card) uuid.UUID {
@@ -44,7 +44,7 @@ func TestHeuristicSeatAnswersALibraryAndGraveyardSearch(t *testing.T) {
 	}
 }
 
-func TestBotCannotFailToFindWhileAGraveyardMatchIsOnOffer(t *testing.T) {
+func TestBotMayFailToFindWithAGraveyardMatchOnOffer(t *testing.T) {
 	g := newSettledTable(t, 3218)
 	me := g.Seats[g.Turn.ActiveSeat]
 	stockSearchLibrary(me, game.Card{Name: "Command Tower", TypeLine: "Land"})
@@ -57,8 +57,8 @@ func TestBotCannotFailToFindWhileAGraveyardMatchIsOnOffer(t *testing.T) {
 	pol := &failToFindPolicy{}
 	driveChoices(t, g, pol, me.ID, 4)
 
-	if pol.failed != 0 {
-		t.Error("fail to find was on the menu although the graveyard holds a match")
+	if pol.failed != 1 {
+		t.Error("fail to find was not on the menu although a stated-quality search may find nothing")
 	}
 	if owesChoice(g, me.ID) {
 		t.Error("the seat still owes the search")

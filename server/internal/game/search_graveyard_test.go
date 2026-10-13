@@ -11,6 +11,10 @@ import (
 // graveyard" (SearchLibrarySpec.AlsoGraveyard), the rule beside the
 // code. Tower Winder, Finale of Devastation and Ajani's Aid exercise it
 // through the catalog.
+//
+// "And/or" lets the searcher choose their zones, so a graveyard match
+// does not remove the right to find nothing; only an unconditional
+// search has a floor.
 
 func TestFloorZonesTable(t *testing.T) {
 	named := func(c Card) bool { return c.Name == "X" }
@@ -21,11 +25,13 @@ func TestFloorZonesTable(t *testing.T) {
 		want   int
 	}{
 		{"stated quality, library only", SearchLibrarySpec{Pred: named, Limit: 1}, 3, 0, 0},
-		{"stated quality, graveyard match", SearchLibrarySpec{Pred: named, Limit: 1}, 0, 1, 1},
-		{"stated quality, both zones", SearchLibrarySpec{Pred: named, Limit: 1}, 5, 1, 1},
-		{"stated quality, two wanted, one public", SearchLibrarySpec{Pred: named, Limit: 2}, 5, 1, 1},
+		{"stated quality, graveyard match", SearchLibrarySpec{Pred: named, Limit: 1}, 0, 1, 0},
+		{"stated quality, both zones", SearchLibrarySpec{Pred: named, Limit: 1}, 5, 1, 0},
+		{"stated quality, two wanted, one in the graveyard", SearchLibrarySpec{Pred: named, Limit: 2}, 5, 1, 0},
 		{"stated quality, up to five", SearchLibrarySpec{Pred: named, Limit: 5, UpTo: true}, 5, 3, 0},
 		{"unconditional counts both zones", SearchLibrarySpec{Limit: 3}, 1, 1, 2},
+		{"unconditional, empty library, graveyard card", SearchLibrarySpec{Limit: 1}, 0, 1, 1},
+		{"unconditional, up to three", SearchLibrarySpec{Limit: 3, UpTo: true}, 1, 1, 0},
 		{"you may search", SearchLibrarySpec{Pred: named, Limit: 1, Optional: true}, 1, 1, 0},
 	}
 	for _, c := range cases {
@@ -49,8 +55,8 @@ func knowLibrary(p *Player) {
 
 func named(n string) func(Card) bool { return func(c Card) bool { return c.Name == n } }
 
-// A graveyard match, nothing in the library: found unasked, no search
-// event, no shuffle, Then runs with the card.
+// A graveyard match, nothing in the library: the searcher takes it, no
+// search event, no shuffle, Then runs with the card.
 func TestGraveyardOnlyMatchIsFoundWithoutSearchingTheLibrary(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -62,6 +68,11 @@ func TestGraveyardOnlyMatchIsFoundWithoutSearchingTheLibrary(t *testing.T) {
 		Player: me.ID, Pred: named("Wanted"), Dest: ZoneHand, Limit: 1, Shuffle: true,
 		AlsoGraveyard: true, Then: func(_ *Game, found []uuid.UUID) error { then = found; return nil },
 	})
+	if c := openSearch(g, me.ID); c == nil || c.SearchMin != 0 {
+		t.Fatalf("a stated-quality search asks and may find nothing: %+v", c)
+	} else if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{id}); err != nil {
+		t.Fatal(err)
+	}
 	if !me.Hand.Contains(id) || me.Graveyard.Contains(id) {
 		t.Fatal("the graveyard card did not reach the hand")
 	}
@@ -87,6 +98,11 @@ func TestGraveyardTakeToTheBattlefieldEnters(t *testing.T) {
 		Player: me.ID, Pred: named("Wanted"), Dest: ZoneBattlefield, Limit: 1, Shuffle: true,
 		AlsoGraveyard: true,
 	})
+	if c := openSearch(g, me.ID); c == nil {
+		t.Fatal("no prompt")
+	} else if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{id}); err != nil {
+		t.Fatal(err)
+	}
 	if !g.Battlefield.Contains(id) || me.Graveyard.Contains(id) {
 		t.Fatal("the graveyard card did not enter the battlefield")
 	}
@@ -103,7 +119,7 @@ func TestGraveyardTakeToTheBattlefieldEnters(t *testing.T) {
 	}
 }
 
-// Both zones: both offered, marked, the graveyard one is a floor of one.
+// Both zones: both offered and marked; the floor stays zero.
 func TestBothZonesAreOfferedMarkedByZone(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
@@ -122,26 +138,24 @@ func TestBothZonesAreOfferedMarkedByZone(t *testing.T) {
 	if len(c.SearchGraveyardCards) != 1 || c.SearchGraveyardCards[0] != gy {
 		t.Errorf("graveyard candidates = %v, want [%s]", c.SearchGraveyardCards, gy)
 	}
-	if c.SearchMin != 1 {
-		t.Errorf("SearchMin = %d, want 1: a public match must be found", c.SearchMin)
+	if c.SearchMin != 0 {
+		t.Errorf("SearchMin = %d, want 0: \"and/or\" lets the searcher look only in the library", c.SearchMin)
 	}
 	g.ReadSnapshot(func() {
-		if got := g.SearchFloorLocked(c); got != 1 {
-			t.Errorf("SearchFloorLocked = %d, want 1", got)
+		if got := g.SearchFloorLocked(c); got != 0 {
+			t.Errorf("SearchFloorLocked = %d, want 0", got)
 		}
 	})
-	if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); !errors.Is(err, ErrInvalidParam) {
-		t.Fatalf("fail to find = %v, want ErrInvalidParam", err)
-	}
 }
 
-// The floor is recomputed from the live zones: once the public card has
-// left the graveyard, the library half is a hidden-zone search for a
-// stated quality again and may fail to find.
-func TestTheFloorFallsWhenTheGraveyardMatchLeaves(t *testing.T) {
+// Finding nothing with a graveyard match present is legal, and counts as
+// a library search: the event fires and the library is shuffled (the
+// declared simplification).
+func TestFindingNothingWithAGraveyardMatchIsAllowedAndShuffles(t *testing.T) {
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	searchLibraryOf(me, "Wanted")
+	knowLibrary(me)
 	gy := gyCard(me, "Wanted")
 	runSearch(t, g, SearchLibrarySpec{
 		Player: me.ID, Pred: named("Wanted"), Dest: ZoneHand, Limit: 1, Shuffle: true, AlsoGraveyard: true,
@@ -150,15 +164,47 @@ func TestTheFloorFallsWhenTheGraveyardMatchLeaves(t *testing.T) {
 	if c == nil {
 		t.Fatal("no prompt")
 	}
-	if err := g.MoveCardByID(ZoneRef{Kind: ZoneGraveyard, Owner: me.ID},
-		ZoneRef{Kind: ZoneExile}, gy); err != nil {
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); err != nil {
+		t.Fatalf("finding nothing = %v, want accepted", err)
+	}
+	if !me.Graveyard.Contains(gy) || me.Hand.Contains(gy) {
+		t.Error("nothing should have been taken")
+	}
+	if searchEvents(g) != 1 || libraryKnownTo(me, me.ID) != 0 {
+		t.Errorf("events=%d known=%d: finding nothing is treated as a library search",
+			searchEvents(g), libraryKnownTo(me, me.ID))
+	}
+}
+
+// An unconditional "a card" search is the one that keeps a floor, and it
+// counts BOTH zones. The floor is recomputed from the live zones, so it
+// falls when the candidates leave rather than wedging the table.
+func TestUnconditionalAlsoGraveyardFloorCountsBothZonesAndFalls(t *testing.T) {
+	g := newActiveGame(t)
+	me := g.Seats[0]
+	lib := searchLibraryOf(me, "A")
+	gy := gyCard(me, "B")
+	runSearch(t, g, SearchLibrarySpec{
+		Player: me.ID, Dest: ZoneHand, Limit: 1, Shuffle: true, AlsoGraveyard: true,
+	})
+	c := openSearch(g, me.ID)
+	if c == nil {
+		t.Fatal("no prompt")
+	}
+	if len(c.SearchCards) != 2 || c.SearchMin != 1 {
+		t.Fatalf("candidates/min = %d/%d, want 2/1", len(c.SearchCards), c.SearchMin)
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); !errors.Is(err, ErrInvalidParam) {
+		t.Fatalf("an unconditional search must find: %v", err)
+	}
+	if err := g.MoveCardByID(ZoneRef{Kind: ZoneGraveyard, Owner: me.ID}, ZoneRef{Kind: ZoneExile}, gy); err != nil {
+		t.Fatalf("exile: %v", err)
+	}
+	if err := g.MoveCardByID(ZoneRef{Kind: ZoneLibrary, Owner: me.ID}, ZoneRef{Kind: ZoneExile}, lib[0]); err != nil {
 		t.Fatalf("exile: %v", err)
 	}
 	if err := g.ResolveSearchLibrary(c.ID, me.ID, nil); err != nil {
-		t.Fatalf("the graveyard match is gone, so finding nothing must be accepted: %v", err)
-	}
-	if searchEvents(g) != 1 {
-		t.Errorf("EventSearchLibrary fired %d times, want 1: nothing was taken, so the library was searched", searchEvents(g))
+		t.Fatalf("both candidates are gone, so finding nothing must be accepted: %v", err)
 	}
 }
 
@@ -175,8 +221,8 @@ func TestMixedTakeShuffles(t *testing.T) {
 	})
 	c := openSearch(g, me.ID)
 	if c == nil {
-		// Two wanted of two available: the floor is the public card's count
-		// (1), not the match count, so this asks.
+		// Two wanted of two available, but a stated quality has floor 0,
+		// not the match count, so this asks.
 		t.Fatal("expected a prompt")
 	}
 	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{ids[0], gy}); err != nil {

@@ -21,12 +21,15 @@ import (
 //
 // SearchLibrary{AlsoGraveyard: true}: the picker offers the matching
 // creature cards from the library and the graveyard together, marked
-// by zone. A creature card in the graveyard is a public match, so while
-// one is there the search must find a card (CR 701.23b is a hidden-zone
-// rule); a library-only match may still be declined. A card taken from
-// the graveyard means the library was never searched, so "If you search
-// your library this way, shuffle" does not shuffle it; taking a library
-// card shuffles. Whichever zone it comes from, the pump below still
+// by zone. "And/or" lets the player choose their zones, so the search
+// may still find nothing even with a creature in the graveyard (it is a
+// search for a stated quality, CR 701.23b). A card taken from the
+// graveyard means the library was never searched, so "If you search your
+// library this way, shuffle" does not shuffle it; taking a library card
+// shuffles. Declared simplification: finding nothing counts as a library
+// search (shuffle), the common case; a player who looked only in the
+// graveyard and found nothing would not have shuffled, which changes
+// nothing in play. Whichever zone it comes from, the pump below still
 // runs. See ADR 0015's 2026-10-13 amendment.
 //
 // # The pump is unconditional on X, not on the search succeeding

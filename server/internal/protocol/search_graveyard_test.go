@@ -9,9 +9,9 @@ import (
 )
 
 // #3217: a "search your library and/or graveyard" prompt marks which of
-// its options sit in the graveyard (search_graveyard) and floors the
-// search at one while a public card is on offer. The searcher sees it;
-// the opponent is told none of it, like search_max.
+// its options sit in the graveyard (search_graveyard) and leaves
+// search_min absent ("and/or" lets the searcher look only in the library).
+// The searcher sees it; the opponent is told none of it, like search_max.
 func TestSearchPromptMarksTheGraveyardHalf(t *testing.T) {
 	g := game.NewGame()
 	for i := 0; i < 2; i++ {
@@ -54,8 +54,8 @@ func TestSearchPromptMarksTheGraveyardHalf(t *testing.T) {
 	if len(pc.SearchGraveyard) != 1 || pc.SearchGraveyard[0] != gyID.String() {
 		t.Errorf("search_graveyard = %v, want just the graveyard Tower %s", pc.SearchGraveyard, gyID)
 	}
-	if pc.SearchMin != 1 {
-		t.Errorf("search_min = %d, want 1: a public match must be found", pc.SearchMin)
+	if pc.SearchMin != 0 {
+		t.Errorf("search_min = %d, want 0: finding nothing stays legal", pc.SearchMin)
 	}
 
 	theirs := FilterViewFor(ViewOfGame(g), opponent.ID.String())

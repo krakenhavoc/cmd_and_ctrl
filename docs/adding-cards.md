@@ -4161,15 +4161,16 @@ SearchLibrary{Player: p, Predicate: …, Dest: game.ZoneHand, Limit: 1,
     Reveal: true, Shuffle: true, AlsoGraveyard: true}   // Tower Winder, Delivery Moogle
 ```
 
-The prompt offers the matches from both zones, marked by zone. The
-graveyard is a public zone, so the searcher **must find** a card while
-one matches there (`min(limit, graveyard matches)`; the library half is
-still a hidden-zone search that may come up empty when the graveyard has
-no match). A take that comes wholly out of the graveyard does not
-search the library, so the engine skips the shuffle and
-`EventSearchLibrary`; any library card taken, or nothing found, shuffles.
-You do not model that, and you do not write a second search for the
-graveyard half. The graveyard searched is the library owner's, so do not
+The prompt offers the matches from both zones, marked by zone. "And/or"
+lets the searcher choose which zones to look in, so the floor is the
+ordinary library-search floor: a stated quality may find nothing even
+with a match in the graveyard, and an unconditional search must find
+`min(limit, cards in both zones)`. A take that comes wholly out of the
+graveyard does not search the library, so the engine skips the shuffle
+and `EventSearchLibrary`; any library card taken, or nothing found,
+shuffles (finding nothing counts as a library search: a declared
+simplification, a no-op in play). You do not model that, and you do not
+write a second search for the graveyard half. The graveyard searched is the library owner's, so do not
 combine it with `LibraryOwner`, and the destination is hand, battlefield
 or exile. A search of ONLY a public zone ("search your graveyard") is
 still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is

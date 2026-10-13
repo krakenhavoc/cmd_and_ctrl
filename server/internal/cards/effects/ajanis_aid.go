@@ -18,10 +18,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // nor shuffles.
 //
 // The search reads the library AND the graveyard (#3217,
-// SearchLibrary.AlsoGraveyard). An Ajani in the graveyard is a public
-// match, so a player who says yes must find it; taking it skips the
-// shuffle, and taking one from the library (or finding nothing there)
-// shuffles.
+// SearchLibrary.AlsoGraveyard). A player who says yes may search either
+// zone or both, so finding nothing stays legal even with an Ajani in the
+// graveyard; taking it skips the shuffle, and taking one from the
+// library (or finding nothing) shuffles (declared simplification:
+// finding nothing counts as a library search; a no-op in play).
 func init() {
 	Register(Spec{
 		OracleID:     "b3779fbe-7701-433b-afad-bebd6096a3c8",

@@ -1074,13 +1074,15 @@ type SearchLibrary struct {
 	FaceDown game.FaceDownKind
 	// AlsoGraveyard is "search your library AND/OR GRAVEYARD" (#3217 —
 	// Finale of Devastation, Tower Winder, Ajani's Aid). The picker
-	// offers matches from both zones, marked by zone. A graveyard
-	// match is public, so while one is there the searcher must find
-	// something (CR 701.23b is a hidden-zone rule); and a take that
-	// came wholly from the graveyard does not search the library, so
-	// it does not shuffle — "If you search your library this way,
-	// shuffle." Set Shuffle as the card prints it; the engine decides
-	// whether the library was searched.
+	// offers matches from both zones, marked by zone. "And/or" lets the
+	// searcher choose their zones, so the floor is unchanged: a stated
+	// quality may still find nothing even with a match in the graveyard.
+	// A take that came wholly from the graveyard does not search the
+	// library, so it does not shuffle — "If you search your library this
+	// way, shuffle." Taking nothing counts as a library search (shuffle
+	// and event); see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle
+	// as the card prints it; the engine decides whether the library was
+	// searched.
 	AlsoGraveyard bool
 }
 

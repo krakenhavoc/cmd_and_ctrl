@@ -773,10 +773,11 @@ type PendingChoice struct {
 	// graveyard" cards (#3217, ADR 0015's 2026-10-13 amendment). Empty
 	// for a library-only search, which is every search but those.
 	//
-	// It is what makes the floor and the shuffle zone-aware: a card in
-	// the graveyard is public, so CR 701.23b's "may fail to find" does
-	// not reach it, and a card taken from it means the library was
-	// never searched. Wire-serialised as PendingChoiceView.
+	// It is what makes the shuffle zone-aware: a take wholly from the
+	// graveyard means the library was never searched. It does not raise
+	// the floor ("and/or" lets the searcher look only in the library, so
+	// a stated-quality search may still find nothing); it also tells the
+	// client which tiles to caption. Wire-serialised as PendingChoiceView.
 	// SearchGraveyard, and withheld from non-choosers with the rest of
 	// the search prompt.
 	SearchGraveyardCards []uuid.UUID

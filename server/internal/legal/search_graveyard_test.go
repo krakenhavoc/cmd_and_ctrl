@@ -11,9 +11,8 @@ import (
 
 // search_graveyard_test.go — #3217: the enumerator over a "search your
 // library and/or graveyard" prompt. It offers a take from either zone,
-// never offers "fail to find" while a public card is on offer (the
-// engine would refuse it), and offers it again once only library
-// candidates remain.
+// offers "fail to find" beside them ("and/or" lets the searcher look
+// only in the library, so a graveyard match removes nothing).
 
 func openCombinedSearch(t *testing.T, graveyardMatch bool) (*game.Game, *game.Player, uuid.UUID, uuid.UUID) {
 	t.Helper()
@@ -37,26 +36,27 @@ func openCombinedSearch(t *testing.T, graveyardMatch bool) (*game.Game, *game.Pl
 	return g, me, libID, gyID
 }
 
-func TestEnumeratorOffersBothZonesAndNoFailToFindWhilePublicCardIsThere(t *testing.T) {
+func TestEnumeratorOffersBothZonesAndFailToFind(t *testing.T) {
 	g, me, libID, gyID := openCombinedSearch(t, true)
 	moves := legal.EnumerateFor(g, me.ID)
 	dispatchAll(t, g, me.ID, moves)
 
 	offered := map[uuid.UUID]bool{}
+	failToFind := false
 	for _, m := range moves {
 		if m.Kind != legal.KindChoice {
 			continue
 		}
-		if m.AlwaysLegal {
-			t.Errorf("%q is marked always-legal, but the engine refuses a short answer while the graveyard holds a match", m.Label)
-		}
 		ids := pickedCardIDs(t, m)
 		if len(ids) == 0 {
-			t.Errorf("offered fail to find: %q", m.Label)
+			failToFind = m.AlwaysLegal
 		}
 		for _, id := range ids {
 			offered[id] = true
 		}
+	}
+	if !failToFind {
+		t.Errorf("no always-legal fail to find with a graveyard match present: %v", labels(moves))
 	}
 	if !offered[libID] || !offered[gyID] {
 		t.Errorf("offered library=%v graveyard=%v, want both zones (%v)", offered[libID], offered[gyID], labels(moves))

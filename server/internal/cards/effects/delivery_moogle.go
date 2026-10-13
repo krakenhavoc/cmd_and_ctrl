@@ -9,11 +9,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 an artifact card with mana value 2 or less, reveal it, and put it
 //	 into your hand. If you search your library this way, shuffle."
 //
-// Not a "may": the search is compulsory, and an artifact card with mana
-// value 2 or less in the graveyard is a public match, so the engine
-// makes the searcher take one while any is there (CR 701.23b is a
-// hidden-zone rule, #3217). Taking a graveyard card skips the shuffle;
-// taking a library artifact, or none, shuffles.
+// Not a "may", but it is a search for a stated quality, so it may find
+// nothing (CR 701.23b), and "and/or" lets the player choose their zones
+// (#3217). Taking a graveyard card skips the shuffle; taking a library
+// artifact, or none, shuffles (declared simplification: finding nothing
+// counts as a library search; a no-op in play).
 func init() {
 	Register(Spec{
 		OracleID:        "60043b87-6008-4cfa-9d8f-6ee6e3f70766",
