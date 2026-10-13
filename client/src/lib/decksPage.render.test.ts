@@ -594,7 +594,9 @@ describe("#/decks: the grid (ADR 0158 §2)", () => {
     expect(
       container.querySelector('button[aria-label="request missing cards for Atraxa"]'),
     ).not.toBeNull();
-    expect(container.querySelector('button[aria-label="request missing cards for Done"]')).toBeNull();
+    expect(
+      container.querySelector('button[aria-label="request missing cards for Done"]'),
+    ).toBeNull();
   });
 
   it("sorts by Recent, Name and Coverage", async () => {
