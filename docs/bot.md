@@ -278,6 +278,18 @@ cheapest by mana value, keeping the most mana for the rest of the turn
 branch: the creature survives and deals no combat damage. An option
 pick with no costed option keeps the enumerator's first answer.
 
+**A villainous choice (`option_pick` again, #3140, CR 701.55).** The
+player who faces it picks one of two bad options. The enumerator offers
+both whatever the seat's board, because the rules let a player pick an
+option they can't carry out (CR 701.55b); each answer carries its life as
+`cost.life`, and the card adds `pick_options[].harm`, what the option costs
+besides life and mana in cards (a card from hand is 1, a creature 2; zero
+for an option that would do nothing to this seat right now). The heuristic
+takes the cheapest loss: the life through `LifeCostValue` plus the harm as
+that many cards in hand, and never an option that costs its last life
+(`heuristic/villainous_choice.go`). A prompt whose options carry no harm
+keeps the enumerator's first answer.
+
 **A choose-a-player prompt (`option_pick` again, #929).** "Choose a
 player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
 is an option pick whose branches are SEATS, one option per eligible

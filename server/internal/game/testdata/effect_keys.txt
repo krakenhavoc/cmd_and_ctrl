@@ -191,3 +191,10 @@ vote vote/tyrants-choice
 vote vote/custodi-squire
 vote vote/selvalas-stampede
 vote vote/trial-of-a-time-lord
+option option-pick/villainous-damocles-base
+option option-pick/villainous-davros-dalek-creator
+option option-pick/villainous-dr-eggman
+option option-pick/villainous-great-intelligences-plan
+option option-pick/villainous-sycorax-commander
+option option-pick/villainous-the-dalek-emperor
+option option-pick/villainous-this-is-how-it-ends

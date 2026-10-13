@@ -776,6 +776,10 @@ type PickOptionView struct {
 	// moves before the answer, when it is refused and the prompt stays
 	// open.
 	ManaCost string `json:"mana_cost,omitempty"`
+	// Harm is what the branch costs the chooser besides life and mana,
+	// in cards (#3140): a villainous choice's two bad options, so a bot
+	// can take the lesser. A hint; absent when the card gave none.
+	Harm int `json:"harm,omitempty"`
 }
 
 // LegalTargetsView is the wire shape of game.LegalTargets: player
@@ -8034,7 +8038,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			c.Kind == game.PendingChoiceEntryReadAhead) && len(c.PickOptions) > 0 {
 			v.PickOptions = make([]PickOptionView, 0, len(c.PickOptions))
 			for _, opt := range c.PickOptions {
-				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost}
+				out := PickOptionView{Label: opt.Label, LifeCost: opt.LifeCost, ManaCost: opt.ManaCost, Harm: opt.Harm}
 				if opt.Player != uuid.Nil {
 					out.Player = opt.Player.String()
 				}

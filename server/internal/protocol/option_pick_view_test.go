@@ -1,6 +1,8 @@
 package protocol
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -246,5 +248,42 @@ func TestCoerciveDiscardStillHandsTheChooserBacks(t *testing.T) {
 		if o.KnownByYou || o.Name != "" {
 			t.Errorf("a back, not a face: %+v", o)
 		}
+	}
+}
+
+// TestAVillainousChoiceCarriesItsHintsOnTheWire — #3140. A villainous
+// choice (CR 701.55) is an option pick whose two options carry what
+// they cost the chooser besides mana: `life_cost` and `harm`, both for a
+// bot picking the lesser evil. Public to every seat, and absent for an
+// option that costs nothing.
+func TestAVillainousChoiceCarriesItsHintsOnTheWire(t *testing.T) {
+	g := buildThreeSeatGame(t)
+	facing := g.Seats[1]
+	g.WithWriteLock(func() {
+		g.QueueOptionPickForEffect(game.OptionPickPrompt{
+			Chooser:  facing.ID,
+			Question: "Damocles Base — sacrifice a nontoken creature, or lose 2 life?",
+			Options: []game.ChoiceOption{
+				{Label: "Sacrifice a nontoken creature"},
+				{Label: "Lose 2 life", LifeCost: 2, Harm: 1},
+			},
+			Then: func(*game.Game, int) error { return nil },
+		})
+	})
+	for _, viewer := range []string{facing.ID.String(), g.Seats[0].ID.String()} {
+		c := choiceFor(t, FilterViewFor(ViewOfGame(g), viewer), string(game.PendingChoiceOptionPick))
+		if len(c.PickOptions) != 2 {
+			t.Fatalf("two options on the wire, got %+v", c.PickOptions)
+		}
+		if c.PickOptions[0].Harm != 0 || c.PickOptions[1].Harm != 1 || c.PickOptions[1].LifeCost != 2 {
+			t.Errorf("hints = %+v", c.PickOptions)
+		}
+	}
+	raw, err := json.Marshal(PickOptionView{Label: "Free"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(raw), "harm") {
+		t.Errorf("a free option writes a harm key: %s", raw)
 	}
 }

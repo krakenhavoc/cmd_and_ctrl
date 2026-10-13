@@ -170,6 +170,16 @@ type ChoiceOption struct {
 	// between the question and the answer. No {X}, and never on the
 	// first option, which is the always-legal way out.
 	ManaCost string `json:",omitempty"`
+
+	// Harm is what this branch costs the chooser besides life and
+	// mana, as the card's own estimate in cards (1 is about one card
+	// from hand, 2 about a creature), or 0 for a branch that costs
+	// nothing a policy could price (#3140). It exists for the prompts
+	// whose branches are both bad — a villainous choice (CR 701.55) —
+	// so a bot can take the lesser. It is a hint on the wire and
+	// nothing more: the engine never reads it, the branch does the
+	// harm.
+	Harm int `json:",omitempty"`
 }
 
 // cloneChoiceOptions deep-copies an option list. Each option owns a

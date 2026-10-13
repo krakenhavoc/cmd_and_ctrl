@@ -1382,8 +1382,10 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"DamageStaysThroughCleanup": defFieldInert, "AnyColorSpend": defFieldInert, "LoyaltyTwiceEachTurn": defFieldInert,
 	// ADR 0146: an extra vote changes how a vote resolves while its
 	// permanent is there.
-	"ExtraVote":   defFieldOwnRules,
-	"LifeForMana": defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
+	"ExtraVote": defFieldOwnRules,
+	// #3140: CR 701.55c, the count a villainous choice is faced.
+	"OpponentsFaceVillainousChoicesAgain": defFieldOwnRules,
+	"LifeForMana":                         defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
 	"GrantText": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
