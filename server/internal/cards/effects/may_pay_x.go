@@ -26,6 +26,9 @@ type MayPayX struct {
 	Chooser uuid.UUID
 	// Cost is the printed cost: "{X}{R}".
 	Cost string
+	// Symbol is "pay any amount of {R}": the cost is X of that one
+	// symbol. Set it instead of Cost (Leyline Tyrant).
+	Symbol string
 	// Label names the card in the prompts.
 	Label string
 	// Buys says what X buys in the payment's header, with "X" standing
@@ -54,6 +57,7 @@ func (m MayPayX) Apply(ctx *Context) error {
 		Chooser:    energyChooser(ctx, m.Chooser),
 		Source:     ctx.Source(),
 		Cost:       m.Cost,
+		Symbol:     m.Symbol,
 		Label:      m.Label,
 		Buys:       m.Buys,
 		Goal:       goal,

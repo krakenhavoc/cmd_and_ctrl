@@ -16,50 +16,42 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not card-effect data; what this Spec carries is the X Knights, and
 // the defeated trigger that hands over Teferi Akosa of Zhalfir.
 //
-// The Knights are why the front face was never the problem: X is
-// announced at CR 601.2b and the tokens are just CreateToken with
-// `N: ctx.X()`. What the two faces share is one oracle ID, and the
-// back registers under it plus "#1" (see deluge_of_the_dead.go).
-//
-// # SANDBOX SIMPLIFICATION, declared: the Knights arrive a beat early
-//
-// Printed, "when this Siege enters" is a triggered ability: the
-// battle enters, the trigger goes on the stack, the table gets a
-// response window, and the tokens arrive when it resolves. Here they
-// are created as the SPELL resolves, a beat before the battle enters,
-// because that is the last moment the announced X is readable — the
-// stack item is gone by the time the entry pipeline runs, and an ETB
-// trigger built from the permanent has no X to read at all. It is
-// Hydroid Krasis's and Goldvein Hydra's trade, made for their reason,
-// and it is the weaker direction: the tokens are on the battlefield
-// either way, and what is lost is the window between the two. What
-// would close it is an entry that remembers what the spell announced,
-// which is the same gap Hydroid Krasis's own caveat names.
+// The Knights are an ordinary "when this Siege enters" trigger. X is
+// announced at CR 601.2b and the permanent remembers it (CR 400.7d,
+// Card.CastX), so Build stamps it on the trigger's Params and the effect
+// makes that many tokens as the trigger resolves — after the table has
+// had its response window, as printed. What the two faces share is one
+// oracle ID, and the back registers under it plus "#1" (see
+// deluge_of_the_dead.go).
 func init() {
 	Register(Spec{
 		OracleID:     invasionOfNewPhyrexiaOracleID,
 		Name:         "Invasion of New Phyrexia",
-		Completeness: CompletenessCaveats,
-		XMatters:     true,
-		Caveats: []string{
-			SiegeTransformedCastCaveat,
-			"The X Knights are created as the Siege resolves rather than from an entry trigger, because the announced X is unreadable once the battle is a permanent — so nobody gets a response window between the Siege entering and the tokens arriving.",
-		},
+		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
 			Defense: 6,
 			Subtype: BattleSubtypeSiege,
 		},
-		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			// X can be 0, and CreateToken with N <= 0 makes nothing,
-			// which is the printed outcome rather than a case to
-			// special-case here.
-			return CreateToken{
-				Controller: item.Controller,
-				Template:   TokenCard("2/2 white and blue Knight with vigilance"),
-				N:          ctx.X(),
-			}.Apply(ctx)
-		},
 		Triggered: []game.TriggeredAbility{
+			{
+				Watches:   []game.EventKind{game.EventETB},
+				AppliesTo: Self,
+				Key:       "Invasion of New Phyrexia — create X 2/2 Knights with vigilance",
+				Build: func(_ game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
+					item := game.NewTriggeredItem(source, "Invasion of New Phyrexia — create X 2/2 white and blue Knight creature tokens with vigilance")
+					item.Params.Amount = source.CastX()
+					return item
+				},
+				Effect: func(g *game.Game, item *game.StackItem) error {
+					// X can be 0, and CreateToken with N <= 0 makes
+					// nothing, which is the printed outcome.
+					return CreateToken{
+						Controller: item.Controller,
+						Template:   TokenCard("2/2 white and blue Knight with vigilance"),
+						N:          item.Params.Amount,
+					}.Apply(NewContext(g, item))
+				},
+			},
 			DefeatedTrigger("Invasion of New Phyrexia — defeated: exile it, then cast Teferi Akosa of Zhalfir", SiegeDefeated()),
 		},
 	})

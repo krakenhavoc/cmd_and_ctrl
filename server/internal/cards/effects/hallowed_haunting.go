@@ -17,38 +17,55 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the trigger is Sigil of the Empty Throne's condition
 // (enchantmentSpellCastByYou) and makes a Spirit Cleric.
 //
-// Sandbox simplification, and the reason the card carries a
-// caveat (the Simulacrum Synthesizer posture): the Spirit Cleric's
-// printed "power and toughness are each equal to the number of
-// Spirits you control" is an ability OF THE TOKEN, and a token
-// template has no static-ability slot and no oracle ID for the
-// catalog to key one on. So the Haunting carries it on the tokens'
-// behalf — a layer 7a set over the 0/0 Spirit Cleric tokens its
-// controller controls, counting that controller's Spirits, applied
-// by the FIRST Haunting the controller controls only, so two
-// Hauntings size a token once (b29SpiritClericSizing). The
-// observable difference is what happens when the last Haunting
-// leaves: the tokens lose their sizing and shrink to 0/0, where
-// printed they keep it for good. Weaker than printed, never
-// stronger. (A shrunken Cleric that never had a counter lingers as a
-// 0/0 body: the engine's toughness state-based action skips a
-// printed 0/0 with no counters, the CurrentToughness convention. One
-// that had counters and lost them all is not skipped
-// (Card.LostLastCounter, #683), so it dies when it shrinks, which is
-// weaker still: a printed Cleric never shrinks at all. The batch 29
-// tests pin both.)
+// The Spirit Cleric's printed "power and toughness are each equal to
+// the number of Spirits you control" is an ability of the TOKEN, so it
+// lives on the token's own template (ADR 0083): a layer 7a
+// characteristic-defining static the token carries wherever it goes,
+// counting its controller's Spirits (itself included). It survives the
+// Haunting leaving, as printed. The CDA sets the toughness
+// (Characteristic.PTDefined), so a Cleric never lingers as a stand-in
+// 0/0.
 func init() {
 	Register(Spec{
 		OracleID:     "e310ab58-180e-4840-bc8d-9f9b06f1b478",
 		Name:         "Hallowed Haunting",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Spirit Cleric tokens get their size from Hallowed Haunting rather than on their own, so if it leaves the battlefield they shrink to 0/0, and a Spirit Cleric that had counters and lost them all dies."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			b16GrantKeywords(b29CreaturesYouControlWithSevenEnchantments, "flying", "vigilance"),
-			b29SpiritClericSizing(),
 		},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, enchantmentSpellCastByYou, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: TokenCard("0/0 white Spirit Cleric"), N: 1})),
+			On(game.EventCast, enchantmentSpellCastByYou, "Hallowed Haunting — create a Spirit Cleric", Do(CreateToken{Template: spiritClericToken(), N: 1})),
 		},
 	})
+}
+
+// spiritClericToken is the white Spirit Cleric creature token with "This
+// token's power and toughness are each equal to the number of Spirits you
+// control."
+func spiritClericToken() game.Card { return tokenFromCatalog(printedSpiritClericToken) }
+
+func printedSpiritClericToken() tokenTemplate {
+	return tokenTemplate{
+		Slug: "spirit-cleric",
+		Card: game.Card{
+			Name:              "Spirit Cleric",
+			TypeLine:          "Token Creature — Spirit Cleric",
+			Colors:            []string{"W"},
+			VariableToughness: true, // printed */*
+		},
+		Static: []game.StaticAbility{{
+			Label:    "This token's power and toughness are each equal to the number of Spirits you control.",
+			Layer:    game.Layer7PT,
+			SubLayer: game.SubLayer7A_CDA,
+			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+				return target.InstanceID == source.InstanceID
+			},
+			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+				n := b29SpiritsControlled(g, source.Controller)
+				c.Power = n
+				c.Toughness = n
+			},
+		}},
+		Text: "This token's power and toughness are each equal to the number of Spirits you control.",
+	}
 }

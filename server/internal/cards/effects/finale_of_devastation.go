@@ -19,6 +19,9 @@ import (
 //
 // # Declared simplification: library only (Tower Winder's shape)
 //
+// Tracked in #3217 (search your library and/or graveyard), shared with
+// Tower Winder and Ajani's Aid.
+//
 // SearchLibrary is a library-zone primitive; the engine has no
 // combined library-AND-graveyard search yet (the same gap Tower
 // Winder's own header documents). A creature card already in the

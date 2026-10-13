@@ -346,3 +346,13 @@ Considered and rejected: **`PayResourceMana`**, the stepper charging the pool di
 **Cards.** Tilonalli's Summoner and Flameblast Dragon ("Whenever this creature attacks, you may pay {X}{R}. If you do, it deals X damage to any target.") ship Full. The registry row `pay-x-on-resolution` is closed. The other "you may pay {X}" cards in the format (Azor, the Lawbringer, Decree of Justice's cycling trigger, Vigil for the Lost, Rise of the Hobgoblins and the like) need only this seam and are left to the catalog batches.
 
 **Out of scope.** "Unless that player pays {X}" where the card fixes X (Esper Sentinel's "where X is this creature's power") is a fixed cost settled before the prompt, and already ships. A cost with two {X} ({X}{X}, Numa, Joraga Chieftain) is refused for now.
+
+## Amendment (2026-10-13, #3172, cav-g2): any amount of one mana symbol
+
+"You may pay any amount of {R}. When you do, it deals that much damage" (Leyline Tyrant's dies trigger) is the #2727 pair of
+prompts with a different settle. `game.MayPayX` gains `Symbol` ("{R}"), set instead of `Cost`: X is the number of that symbol,
+`largestPayableXLocked` probes `canPayCostLocked` on `Symbol` repeated X times, and the payment prompt is that same cost. `effects.MayPayX.Symbol` exposes it. The "when you do" is
+a `ReflexiveTrigger` carrying X in `Params.Amount`, targeted when it goes on the stack (CR 603.3d). The bot and the client need
+nothing: they are the same two prompts.
+
+Back-out: drop the `Symbol` field and its branch in `QueueMayPayXForEffect`; `TestLeylineTyrantDiesPayRedForThatMuchDamage` fails.

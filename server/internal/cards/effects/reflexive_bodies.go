@@ -51,6 +51,16 @@ var (
 	// spell" — untargeted, the spell rides the payload.
 	breechesCopyThatSpellBody = game.SimpleDelayedBody("breeches/copy-that-spell", breechesCopyThatSpell)
 
+	// Leyline Tyrant: "when you do, it deals that much damage to any
+	// target", the amount the {R} paid, carried as Params.Amount. The body is
+	// Breeches' "deal Params.Amount damage to the chosen target" (the effect
+	// itself is card-agnostic).
+	leylineTyrantDamageBody = game.ReflexiveBody("leyline-tyrant/damage", breechesBlastEffect, constTargets(TargetAny))
+
+	// Gilgamesh, Master-at-Arms: "you may attach one of them to a
+	// Samurai you control" — untargeted, the Equipment ride the payload.
+	gilgameshAttachBody = game.SimpleDelayedBody("gilgamesh/attach-equipment", gilgameshAttach)
+
 	// Breeches, the Blastmaker: "when you lose the flip, deal damage
 	// equal to that spell's mana value to any target" — the amount is
 	// fixed when the flip was lost, so it rides Params.Amount rather

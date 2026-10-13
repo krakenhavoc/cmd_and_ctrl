@@ -85,7 +85,7 @@ func TestLibraryToBattlefieldCardsAreRegistered(t *testing.T) {
 		plAtlaPalaniOracle:               {"Atla Palani, Nest Tender", CompletenessFull},
 		plUreniOracle:                    {"Ureni of the Unwritten", CompletenessFull},
 		plMajesticOracle:                 {"Majestic Genesis", CompletenessFull},
-		plGilgameshOracle:                {"Gilgamesh, Master-at-Arms", CompletenessCaveats},
+		plGilgameshOracle:                {"Gilgamesh, Master-at-Arms", CompletenessFull},
 		plSkyhunterOracle:                {"Armored Skyhunter", CompletenessCaveats},
 		esikaGodOfTheTreeOracleID:        {"Esika, God of the Tree", CompletenessFull},
 		esikaGodOfTheTreeOracleID + "#1": {"The Prismatic Bridge", CompletenessFull},

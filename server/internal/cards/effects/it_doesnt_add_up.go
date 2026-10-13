@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -17,33 +15,30 @@ import (
 // "It" is the NEW object (CR 400.7), so the suspect is aimed at the id
 // the return reports, not at the card's old one.
 //
-// One declared simplification, weaker than printed: if the creature
-// asks a question as it enters (a copy effect, a shockland's payment)
-// the entry completes from that answer and the return reports nothing
-// here, so it is not suspected.
+// The suspect is the entry's tail (ReturnFromGraveyardToBattlefieldThenForEffect, ADR 0154),
+// so it runs inline when the creature simply enters and from the
+// player's answer when the entry first asks something — a returned
+// Clone's copy pick, a returned shockland's payment — and it lands on
+// the permanent that is on the battlefield by then.
 func init() {
 	Register(Spec{
 		OracleID:     "dcfc8c59-d032-414d-9da6-125ebcb1366c",
 		Name:         "It Doesn't Add Up",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If the creature asks a question as it enters, such as a copy effect, it comes back but isn't suspected."},
+		Completeness: CompletenessFull,
 		Targets:      targetCreatureInYourGraveyard(),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			target, ok := b16FirstLegalTargetCard(ctx)
 			if !ok {
 				return nil
 			}
-			entered, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(target, ctx.Controller(), false, nil)
-			if err != nil {
-				if errors.Is(err, game.ErrCardNotFound) {
-					return nil // CR 608.2b: it left the graveyard in response
+			// CR 608.2b: a creature that left the graveyard in response is
+			// told to the tail as uuid.Nil, and nothing is suspected.
+			return ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(target, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error {
+				if entered != uuid.Nil {
+					g.SuspectForEffect(entered)
 				}
-				return err
-			}
-			if entered == uuid.Nil {
 				return nil
-			}
-			return Suspect{Target: entered}.Apply(ctx)
+			})
 		},
 	})
 }

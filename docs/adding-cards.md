@@ -8825,6 +8825,40 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
   Aid (no combined library-and-graveyard search).
 
+### Any amount of {R}, a return with a tail, a copy that isn't a creature, a token that sizes itself and a Siege's window (#3172, cav-g2)
+
+Six small pieces, each in a 2026-10-13 amendment of the ADR that owns it
+([0129](decisions/0129-energy-getting-and-paying-it.md), [0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md),
+[0043](decisions/0043-copy-effects.md), [0083](decisions/0083-token-abilities.md),
+[0066](decisions/0066-granted-cast-and-play-permissions.md)).
+
+```go
+MayPayX{Symbol: "{R}", Label: "Leyline Tyrant", Goal: XAsHighAsYouCan, OnPay: func(ctx *Context, x int) error {
+    return ReflexiveTrigger{Label: "…", Body: leylineTyrantDamageBody, Params: game.EffectParams{Amount: x}}.Apply(ctx)
+}}.Apply(ctx)                                                                  // "pay any amount of {R}. When you do …"
+ctx.Game.ReturnFromGraveyardToBattlefieldThenForEffect(id, ctx.Controller(), false, func(g *game.Game, entered uuid.UUID) error { … }) // It Doesn't Add Up
+v.SetCardTypes("Artifact")                                                     // "except it's an artifact" (no "in addition")
+{Mana: []ManaAbility{…}}                                                       // an AbilityGrant a COPY can take: v.GrantAbility(key)
+tokenTemplate{Slug: "spirit-cleric", Static: []game.StaticAbility{cda}}        // a token that sizes itself
+Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                    // Grafdigger's Cage: an entry that is refused
+```
+
+- **"Any amount of {R}" is `MayPayX{Symbol}`**, not a fixed `MayPay`: X is chosen as the ability resolves, from 0 to the red
+  the chooser can produce, then paid through the ordinary "you may pay" prompt. Paying 0 is declining.
+- **A "then" that must see the NEW permanent** goes through `ReturnFromGraveyardToBattlefieldThenForEffect` (ADR 0154): the suspect of It Doesn't Add Up
+  lands even when the returned creature first asks a question (a Clone's copy pick).
+- **A copy "except it's an artifact"** replaces the types (`SetCardTypes`); `AddCardType` is the "in addition" form. The
+  Effigy's extra "{T}: Add {U}" is a registered mana grant the copy takes with `GrantAbility`.
+- **A token's own power and toughness** is a layer 7a static on its template, not a static of the card that makes it, so it
+  survives that card leaving.
+- **A Siege's transformed cast** is a flash-timed free cast that closes when its holder passes priority (`SiegeDefeated`), so
+  a Siege defeated on anyone's turn can be cast; and "when this Siege enters, … X" reads `source.CastX()` in an entry trigger.
+- **A Gilgamesh-style "when you put … this way, you may attach"** is a `ReflexiveTrigger` carrying the entered cards as its
+  payload; the body asks which one, then which host.
+- **A `ContinuesAfterRemoval` static** in the layer after a removal's own layer carries on past an OLDER removal (Idol of False
+  Gods' 7b base 0/0); one in the removal's own layer does not, because ADR 0093 decision 3 orders every layer 6 removal
+  first.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

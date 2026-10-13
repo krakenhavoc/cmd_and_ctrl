@@ -50,8 +50,12 @@ import (
 type MayPayX struct {
 	// Chooser answers both prompts and pays. Source attributes them.
 	Chooser, Source uuid.UUID
-	// Cost is the printed cost with exactly one {X}: "{X}{R}".
+	// Cost is the printed cost with exactly one {X}: "{X}{R}". Leave it
+	// empty when Symbol is set.
 	Cost string
+	// Symbol is "pay ANY AMOUNT of {R}" (Leyline Tyrant): the cost is X of
+	// this one mana symbol, "{R}", and nothing else. Set instead of Cost.
+	Symbol string
 	// Label names the card in the prompts' headers ("Tilonalli's
 	// Summoner").
 	Label string
@@ -79,9 +83,22 @@ type MayPayX struct {
 //
 // Caller must hold g.mu.
 func (g *Game) QueueMayPayXForEffect(p MayPayX) error {
-	cost, err := ParseCost(p.Cost)
-	if err == nil && cost.XSlots != 1 {
-		err = errMayPayXNoX
+	var cost ParsedCost
+	var err error
+	settle := func(x int) ParsedCost { return cost.SettleX(x) }
+	if p.Symbol != "" {
+		// "Any amount of {R}": X copies of the one symbol.
+		cost, err = ParseCost(p.Symbol)
+		settle = func(x int) ParsedCost {
+			c, _ := ParseCost(strings.Repeat(p.Symbol, x))
+			return c
+		}
+		p.Cost = "X " + p.Symbol
+	} else {
+		cost, err = ParseCost(p.Cost)
+		if err == nil && cost.XSlots != 1 {
+			err = errMayPayXNoX
+		}
 	}
 	if err != nil {
 		g.EmitEvent(Event{
@@ -95,7 +112,7 @@ func (g *Game) QueueMayPayXForEffect(p MayPayX) error {
 	if pl == nil || pl.Eliminated {
 		return nil
 	}
-	ceiling := g.largestPayableXLocked(pl, cost, p.Source)
+	ceiling := g.largestPayableXLocked(pl, settle, p.Source)
 	if ceiling < 0 {
 		// Not even X = 0 can be paid: "Pay" is not an answer (CR
 		// 118.3), and "Don't pay" is the only one left.
@@ -116,7 +133,7 @@ func (g *Game) QueueMayPayXForEffect(p MayPayX) error {
 		Unit:     p.Unit,
 		Question: p.Label + " — choose X for " + p.Cost + " (you can pay up to " + strconv.Itoa(ceiling) + ")",
 		Then: func(g *Game, x int) error {
-			settled := cost.SettleX(x)
+			settled := settle(x)
 			run := func(g *Game) error {
 				if onPay == nil {
 					return nil
@@ -154,8 +171,8 @@ var errMayPayXNoX = errors.New("the cost must have exactly one {X}")
 // not one per point.
 //
 // Caller must hold g.mu.
-func (g *Game) largestPayableXLocked(p *Player, cost ParsedCost, source uuid.UUID) int {
-	ok := func(x int) bool { return g.canPayCostLocked(p, cost.SettleX(x), source) }
+func (g *Game) largestPayableXLocked(p *Player, settle func(x int) ParsedCost, source uuid.UUID) int {
+	ok := func(x int) bool { return g.canPayCostLocked(p, settle(x), source) }
 	if !ok(0) {
 		return -1
 	}

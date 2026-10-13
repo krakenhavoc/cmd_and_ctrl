@@ -33,14 +33,29 @@ func excessNoncombatDamageToOpponentCreature(ev game.Event, source *game.Card, g
 	if !ok || !target.IsCreature() || target.Controller == source.Controller {
 		return 0
 	}
-	toughness := target.CurrentToughness()
-	after := target.DamageMarked - toughness
-	if after <= 0 {
+	prior := target.DamageMarked - ev.Amount
+	if prior < 0 {
+		prior = 0
+	}
+	// Lethal damage still needed before this event (CR 120.6). A source
+	// with deathtouch makes any nonzero amount lethal (CR 702.2b), so
+	// for it one point is all that was needed and the rest is excess.
+	need := target.CurrentToughness() - prior
+	if need < 0 {
+		need = 0
+	}
+	if need > 1 && damageSourceHasDeathtouch(ev, g) {
+		need = 1
+	}
+	if ev.Amount <= need {
 		return 0
 	}
-	before := (target.DamageMarked - ev.Amount) - toughness
-	if before < 0 {
-		before = 0
-	}
-	return after - before
+	return ev.Amount - need
+}
+
+// damageSourceHasDeathtouch reads the damaging object's effective
+// deathtouch as it is right now, from whichever zone holds it.
+func damageSourceHasDeathtouch(ev game.Event, g *game.Game) bool {
+	src, ok := g.LookupCardForEffect(ev.Source)
+	return ok && game.HasKeyword(&src, "deathtouch")
 }
