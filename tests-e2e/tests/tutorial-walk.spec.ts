@@ -173,6 +173,11 @@ const BOTTOM_FIRST = [
  * over it, trying the rows of its on-screen part in `rows` order and
  * each row from the middle outwards. Null when none of it shows. Runs
  * in the page.
+ *
+ * The point must show `el` with a few pixels to spare on every side
+ * (#3241). The resting hand cuts its cards off along its bottom edge,
+ * and a point a fraction of a pixel inside that edge passes this page's
+ * hit test and then fails the pointer action's own.
  */
 function visiblePoint(
   el: Element,
@@ -185,12 +190,24 @@ function visiblePoint(
   const right = Math.min(r.right, window.innerWidth);
   if (bottom - top < 4 || right - left < 4) return null;
   const steps = [0.5, 0.35, 0.65, 0.2, 0.8, 0.1, 0.9];
+  const MARGIN = 3;
+  const shows = (x: number, y: number): boolean => {
+    const hit = document.elementFromPoint(x, y);
+    return !!hit && el.contains(hit);
+  };
   for (const fy of rows) {
     for (const fx of steps) {
       const x = left + (right - left) * fx;
       const y = top + (bottom - top) * fy;
-      const hit = document.elementFromPoint(x, y);
-      if (hit && el.contains(hit)) return { x: x - r.left, y: y - r.top };
+      if (
+        shows(x, y) &&
+        shows(x - MARGIN, y) &&
+        shows(x + MARGIN, y) &&
+        shows(x, y - MARGIN) &&
+        shows(x, y + MARGIN)
+      ) {
+        return { x: x - r.left, y: y - r.top };
+      }
     }
   }
   return null;
@@ -265,10 +282,27 @@ class Walk {
    * Move the pointer off the board. A card in the hand lifts while the
    * pointer rests on it and covers the rows above, as it would for a
    * player, who also moves the pointer away first.
+   *
+   * Then wait for the hand to come to rest (#3241): the browser drops
+   * its hover a frame later, the cards sink back on a transition, and a
+   * hand just dealt or kept is still sliding in. A point picked from a
+   * card in motion is a point on where it was, which the pointer then
+   * misses. A looping animation never ends, so it does not count.
    */
   private async park(): Promise<void> {
     const size = this.page.viewportSize();
     await this.page.mouse.move((size?.width ?? 1280) / 2, 4);
+    await expect
+      .poll(() =>
+        this.hand.evaluate(
+          (hand) =>
+            !hand.matches(":hover") &&
+            hand
+              .getAnimations({ subtree: true })
+              .every((a) => a.effect?.getComputedTiming().endTime === Infinity),
+        ),
+      )
+      .toBe(true);
   }
 
   /**
