@@ -3,17 +3,15 @@
   // §3 item 3). Page.svelte draws it at the top of the page frame.
   //
   // Grouped, not flat:
-  //   - Signed in: the wordmark, then Tables and My games | Decks,
-  //     Catalog and Roadmap. On the right the C2 Discord, Help, and the
+  //   - Signed in: the wordmark, then Tables | Decks, Catalog and
+  //     Roadmap. (My games is Tables' History since ADR 0158 §1.) On the right the C2 Discord, Help, and the
   //     account menu. In admin mode an accent-tinted Admin link follows
   //     as its own group, and the account menu keeps its Admin item.
   //   - Signed out: the wordmark, then Decks, Roadmap and About. On the
   //     right the C2 Discord, Help, and Sign in.
   //
   // "Tables" is the Lobby (the route stays #/lobby); its name is a
-  // contract label (L.navTables). My games needs a session tied to a
-  // Discord user; a guest or the admin token would land on a page that
-  // can only tell them to sign in. The Discord link shows only when the
+  // contract label (L.navTables). The Discord link shows only when the
   // server names an invite (GET /community, lib/community.ts).
   //
   // Not shown on Game: the board has its own command bar.
@@ -177,12 +175,10 @@
 
     <nav class="site-nav" aria-label="Site">
       {#if isSignedIn}
-        <!-- Play: your tables, and the games you have played. -->
+        <!-- Play: your tables now, and the games you have played (ADR
+             0158 §1: My games is Tables' History). -->
         <div class="grp">
           {@render navLink("#/lobby", "lobby", L.navTables)}
-          {#if hasLinkedUser}
-            {@render navLink("#/my-games", "myGames", "My games")}
-          {/if}
         </div>
         <!-- Look things up: decks, the cards the engine plays, what's next. -->
         <div class="grp">

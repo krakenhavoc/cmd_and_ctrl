@@ -9,6 +9,7 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
+  import { HISTORY_HASH } from "../lib/tablesPage";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { removedNotice, session } from "../lib/session";
   import { serverFull } from "../lib/serverFull";
@@ -1954,7 +1955,7 @@
     onLifeHistory: () => (showLifeHistory = true),
     onTableSettings: () => (tableSettingsOpen = true),
     onSpawn: () => (spawnerOpen = true),
-    onMyGames: () => navigate("#/my-games"),
+    onMyGames: () => navigate(HISTORY_HASH),
     onBack: back,
     onConcede: concede,
     onStartVote: (topic, options) =>

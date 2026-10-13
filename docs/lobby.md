@@ -1062,6 +1062,29 @@ wire. It is what the lobby UI's rotate-invite buttons check (see
 even be seated at it, so this can be `true` on a game where `mySeat`
 finds nothing.
 
+**A game in play** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md)
+§1 item 4) carries two more fields, which the Tables page's "Now" cards
+show:
+
+```json
+{
+  "state": "active",
+  "turn": 7,
+  "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "life": 31 }]
+}
+```
+
+- `turn` is the game view's `turn.number`, the number the board shows
+  (the round: every seat has reached it). It is omitted while the
+  opening roll is still open, before turn 1 has begun.
+- `life` on each `players[]` entry is that seat's life total.
+
+Both are public at the table, since every seat and spectator sees them,
+and they go to every caller of this list. A table in the lobby or a
+game that has ended carries neither. They are read fresh from the
+engine on each list and never stored, and `GET /games/{id}` does not
+carry them. Additive: an older client ignores them.
+
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and

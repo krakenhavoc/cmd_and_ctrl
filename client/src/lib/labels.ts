@@ -690,7 +690,14 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "form",
     owners: ["routes/Lobby.svelte"],
-    doc: "the Lobby's create-a-table form; the lobby.create hint points at it",
+    doc: "the Tables page's new-table form, opened by + New table (ADR 0158 §1 item 1)",
+  }),
+  newTable: label({
+    name: "new table",
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Tables page head's + New table, which opens the new-table form; the lobby.create hint points at it",
   }),
   suggestTableName: label({
     name: "suggest a name",

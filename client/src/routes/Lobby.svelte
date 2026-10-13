@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, tick } from "svelte";
+  import { SvelteMap } from "svelte/reactivity";
   import {
     addBotSeat,
     archiveGame,
@@ -27,13 +28,13 @@
     type ReclaimTicket,
     type SeatInfo,
   } from "../lib/api";
-  import { inviteURL, reclaimURL, spectatorInviteURL, navigate } from "../lib/router";
+  import { inviteURL, reclaimURL, spectatorInviteURL, navigate, route } from "../lib/router";
   import { L } from "../lib/labels";
   import NewTableRow from "../lib/components/NewTableRow.svelte";
   import { session, LobbyApiError } from "../lib/session";
   import { lobbyErrorMessage } from "../lib/serverFull";
   import { adminNotice, isAdmin as isAdminSession } from "../lib/admin";
-  import { signedInUserID } from "../lib/myGames";
+  import { signedInUserID, type MyGame } from "../lib/myGames";
   import { community } from "../lib/community";
   import { GUEST_CODE_MESSAGE, inviteHash, joinBoxFor, myTables } from "../lib/signedInHome";
   import { seatColor } from "../lib/colors";
@@ -45,12 +46,30 @@
     setupSummary,
     type TableSetup,
   } from "../lib/tableSetup";
+  import {
+    contextLine,
+    filterHistory,
+    HISTORY_FILTERS,
+    HISTORY_FIRST,
+    HISTORY_ID,
+    HISTORY_STEP,
+    historyRows,
+    moreCount,
+    nowTables,
+    seatLine,
+    seatName,
+    statusChip,
+    whenLabel,
+    type HistoryFilter,
+    type HistoryRow,
+  } from "../lib/tablesPage";
   import type { TableSettingsView } from "../lib/protocol";
   import type { TableSettingsPatch } from "../lib/tableSettings";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
+  import MoreMenu, { type MoreItem } from "../lib/components/MoreMenu.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
   import { canRemoveSeat, removeSeatConsequence, removeSeatQuestion } from "../lib/seatRemoval";
   import { BLOCK_HINT, BLOCK_LABEL, canManageBlocks } from "../lib/moderation";
@@ -60,36 +79,47 @@
   import { noteMyGames } from "../lib/hints/endedGame";
   import { defaultBotTier, tierNote, tierOptionLabel } from "../lib/botTier";
 
-  // Lobby is the signed-in home (ADR 0112 §1): every session lands
-  // here, under the site header and its account menu. At the top, a
-  // "Join a table" card (a code or a link for a signed-in person, a
-  // link for a guest, none for the admin token) beside the create form
-  // (any signed-in person, and the admin). Under them, the tables:
-  // a signed-in person's own (myTables), every table for an admin.
-  // Each table shows its seats, the deck-upload panel for your own
-  // seat, and the way into the game once all seats are ready.
+  // Tables, the signed-in home (ADR 0112 §1, ADR 0158 §1). The page
+  // head holds the join box and + New table. Under it, two sections:
+  //
+  //   - Now: the tables in the lobby or in play that this person sits
+  //     at or created (every table for an admin), one card each with a
+  //     primary button, Copy invite, a ⋯ menu, the four seats and the
+  //     lobby's own controls in the footer.
+  //   - History: every table they sat at that has ended or been
+  //     archived (GET /me/games minus Now), one compact row each, with
+  //     client-side filters. My games used to be its own page.
   let games = $state<GameMeta[]>([]);
   let error = $state("");
   let newName = $state("");
   let busy = $state(false);
+  let loaded = $state(false);
 
   // --- creating a table, and the last setup (ADR 0110 §5) ---------
   //
   // Any signed-in person may create a table (owner answer 2). Their
-  // last setup (the bots, settings and people of the last table they
-  // created that started) is offered as "use my last setup", which the
-  // server applies to the new table. Right after creating, the new
-  // table opens its tablemate picker, people from the last setup
-  // first.
+  // last setup is offered as "Use my last setup", which the server
+  // applies to the new table. The form opens from + New table and stays
+  // open after a failed create, so the error can be read.
   const canCreate = $derived(canCreateTables($session));
+  let newOpen = $state(false);
+  let createError = $state("");
+
+  async function openNewTable(): Promise<void> {
+    newOpen = !newOpen;
+    createError = "";
+    if (newOpen) {
+      await tick();
+      document.querySelector<HTMLInputElement>('input[aria-label="game name"]')?.focus();
+    }
+  }
 
   // --- joining a table (ADR 0112 §1 item 3) ------------------------
   //
-  // The box that used to be on the login page. A pasted link opens its
-  // Join page, whoever is asking. A bare code is posted to POST /join
-  // only by a signed-in person, whom the server seats as their Discord
-  // identity; a guest is told before anything is sent, since the server
-  // refuses a guest's code (409).
+  // A pasted link opens its Join page, whoever is asking. A bare code
+  // is posted to POST /join only by a signed-in person, whom the server
+  // seats as their Discord identity; a guest is told before anything is
+  // sent, since the server refuses a guest's code (409).
   const joinBox = $derived(joinBoxFor($session));
   let joinInput = $state("");
   let joining = $state(false);
@@ -111,9 +141,8 @@
     }
     joining = true;
     try {
-      // The new seat session replaces this page's session, so the list
-      // below shows the new table with its deck panel, as the old
-      // login-page flow did once it landed here.
+      // The new seat session replaces this page's session, so Now
+      // shows the new table with its deck panel.
       await joinByCode(raw);
       joinInput = "";
       await refresh();
@@ -124,60 +153,58 @@
     }
   }
 
-  // --- your tables (ADR 0112 §1 item 6, owner answer 3) -------------
+  // --- your games (GET /me/games) ----------------------------------
   //
-  // The open tables where this person holds a seat through ANOTHER
-  // session: GET /me/games entries with a `rejoin` path, by game id. A
-  // table there that this session is not bound to gets an "Open" button,
-  // which trades this session for that seat's (POST /me/games/{id}/
-  // session) and then opens it.
-  let rejoinPaths = $state<Map<string, string>>(new Map());
-  const rejoinable = $derived(new Set(rejoinPaths.keys()));
+  // Every seat this person holds, from any device. An open table there
+  // has a `rejoin` path: a table in Now that this session is not bound
+  // to gets Open or Resume, which trades this session for that seat's
+  // (POST /me/games/{id}/session). The rest is History.
+  let mine = $state<MyGame[]>([]);
+  const mineByID = $derived(new Map(mine.map((g) => [g.id, g])));
+  const rejoinable = $derived(new Set(mine.filter((g) => g.rejoin).map((g) => g.id)));
   let opening = $state<string | null>(null);
 
   async function loadMyGames(): Promise<void> {
     const userID = signedInUserID($session);
     if (!userID) {
-      rejoinPaths = new Map();
+      mine = [];
       return;
     }
     try {
-      const mine = await fetchMyGames();
+      const list = await fetchMyGames();
       // The same read tells the tutorial offer whether this person has
       // finished a game (ADR 0125 §3.7, LobbyPractice.hint.ts).
-      noteMyGames(userID, mine);
-      const next = new Map<string, string>();
-      for (const g of mine) if (g.rejoin) next.set(g.id, g.rejoin);
-      rejoinPaths = next;
+      noteMyGames(userID, list);
+      mine = list;
     } catch {
-      // Keep what we had: a failed read must not hide a table, and the
-      // list below still shows this session's own and created tables.
+      // Keep what we had: a failed read must not hide a table.
     }
   }
 
   // rejoinsHere: a table where this person holds a seat that this
   // session is not bound to.
-  function rejoinsHere(g: GameMeta): boolean {
-    return rejoinable.has(g.id) && $session?.gameID !== g.id;
+  function rejoinsHere(id: string): boolean {
+    return rejoinable.has(id) && $session?.gameID !== id;
   }
 
-  async function openMine(g: GameMeta): Promise<void> {
-    const path = rejoinPaths.get(g.id);
+  async function openMine(id: string, state: GameMeta["state"]): Promise<void> {
+    const path = mineByID.get(id)?.rejoin;
     if (!path || opening) return;
-    opening = g.id;
+    opening = id;
     error = "";
     try {
       await rejoinMyGame(path);
       // A table still in the lobby opens here, where the deck is
-      // imported; one underway opens on the board (as My games does).
-      if (g.state === "lobby") await refresh();
-      else navigate(`#/games/${g.id}`);
+      // imported; one underway opens on the board.
+      if (state === "lobby") await refresh();
+      else navigate(`#/games/${id}`);
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "couldn't open that table";
     } finally {
       opening = null;
     }
   }
+
   let lastSetup = $state<TableSetup | null>(null);
   let useLastSetup = $state(true);
   // The table this page just created: its tablemate picker starts open.
@@ -186,29 +213,20 @@
   let createdNote = $state<{ gameID: string; message: string } | null>(null);
   let seatBusy = $state<string | null>(null);
 
-  // Track the freshly-created game's invite tokens client-side — the
-  // List endpoint strips both invites, so we remember them per
-  // session so admins can copy each link without re-fetching
-  // /games/{id}. The spectator invite (S11) is distinct from the
-  // player invite — sharing the player one with a spectator would
-  // let them claim a seat.
-  const recentInvites = new Map<string, string>();
-  const recentSpectatorInvites = new Map<string, string>();
+  // The invite tokens this page holds, per table. GET /games strips
+  // both invites, so they come from the create response, a rotation,
+  // or GET /games/{id} for the creator and a seated player. The
+  // spectator invite is distinct from the player one: sharing the
+  // player one with a spectator would let them claim a seat.
+  const recentInvites = new SvelteMap<string, string>();
+  const recentSpectatorInvites = new SvelteMap<string, string>();
 
   // --- bot seats (S31, ADR 0033 §9) -------------------------------
   //
-  // Bots take REAL seats out of the same four, so a seated human can
-  // add at most three. The control therefore lives on the open-seat
-  // placeholders: when there is no open seat there is nothing to add
-  // a bot to, and the affordance disappears on its own rather than
-  // needing a count.
-  //
-  // The option catalog is game-independent — the same tiers and decks
-  // for every table — so it is fetched once on mount. `enabled` false
-  // means this server has no bot host at all; we hide the control
-  // rather than offer a button that 503s.
+  // Bots take real seats out of the same four, so the control lives on
+  // the open seats. The option catalog is fetched once; `enabled` false
+  // means this server has no bot host, and Add bot is not offered.
   let botOptions = $state<BotOptions | null>(null);
-  // The game whose Add-bot picker is open, or null.
   let botPickerFor = $state<string | null>(null);
   let botTier = $state("");
   let botDeck = $state("");
@@ -223,8 +241,7 @@
   );
 
   // canManageBots: admin, or a player seated at this table. Mirrors
-  // the server gate — the endpoint is authoritative, this only keeps
-  // us from rendering a button that always 403s.
+  // the server gate; the endpoint is authoritative.
   function canManageBots(g: GameMeta): boolean {
     if (g.state !== "lobby" || !botsOfferable) return false;
     if (isAdmin) return true;
@@ -233,14 +250,9 @@
 
   // --- table settings (ADR 0075 §2.5) -----------------------------
   //
-  // The lobby half of the settings panel. Only the manager is offered
-  // it here, and that is a LIMITATION rather than a decision: the
-  // settings are public (every viewer gets them on the game view),
-  // but the lobby's HTTP surface has only a write — PATCH — so the
-  // read below is an empty patch and inherits the write's gate. At
-  // the table, where the snapshot carries them, everyone sees the
-  // same panel read-only. A `GET /games/{id}/settings` would close
-  // the gap; it is server work and belongs in its own change.
+  // Offered to the host and the admin: the lobby's HTTP surface has
+  // only the write, PATCH, so the read is an empty patch and inherits
+  // the write's gate.
   let settingsFor = $state<string | null>(null);
   let tableSettings = $state<TableSettingsView | null>(null);
   let settingsBusy = $state(false);
@@ -268,9 +280,6 @@
     settingsBusy = true;
     settingsError = null;
     try {
-      // The response is the WHOLE settings object after the patch, so
-      // the panel re-renders from the server's answer rather than
-      // from what it hoped it had set.
       tableSettings = await patchTableSettings(gameID, patch);
     } catch (e) {
       settingsError = e instanceof Error ? e.message : String(e);
@@ -280,10 +289,7 @@
   }
 
   // canRotateInvites: admin, or the table's own creator (#1098).
-  // g.is_creator is computed server-side per viewer — see
-  // redactMetaFor in server/internal/lobby/http.go — so this mirrors
-  // the server's CanRotateInvites without ever seeing a raw creator
-  // id; the endpoint stays authoritative either way.
+  // g.is_creator is computed server-side per viewer.
   function canRotateInvites(g: GameMeta): boolean {
     return isAdmin || g.is_creator === true;
   }
@@ -324,18 +330,12 @@
   }
 
   // --- removing someone's seat (#2785) -----------------------------
-  //
-  // Offered to the host, the creator and an admin, on a person's seat at
-  // a table that has not started (lib/seatRemoval.ts decides; the server
-  // is the gate). It asks first, because it disconnects someone.
   let confirmRemove = $state<{ gameID: string; seat: SeatInfo } | null>(null);
   let removeBusy = $state(false);
-  // The confirm's "also block them" box (#2984). Off each time it opens:
-  // a block is a second decision, not the default.
+  // The confirm's "also block them" box (#2984), off each time it opens.
   let removeBlock = $state(false);
   let removeError = $state<{ gameID: string; message: string } | null>(null);
-  // Bumped after a removal, so a block list that is already on screen
-  // reads the new entry (#3113).
+  // Bumped after a removal, so a block list on screen reads the new entry.
   let blockRefresh = $state(0);
 
   function canRemove(g: GameMeta, p: SeatInfo): boolean {
@@ -365,51 +365,39 @@
     return botOptions?.decks.find((d) => d.id === id)?.name ?? id;
   }
 
-  // The curated deck names are flavour ("Forge and Fury", "Body
-  // Count"), so the <option> text alone does not say which one
-  // attacks. The description leads with the archetype, and it belongs
-  // on the page rather than in a title= tooltip — a tooltip is not an
-  // answer on a touch device, and picking an archetype is the whole
-  // decision this control exists for.
   const botTierNote = $derived(tierNote(botOptions?.tiers ?? [], botTier));
   const botDeckDescription = $derived(
     botOptions?.decks.find((d) => d.id === botDeck)?.description ?? "",
   );
 
-  // --- admin: retiring old tables ---------------------------------
+  // --- archiving and deleting (admin) ------------------------------
   //
-  // Two actions, deliberately not the same button. ARCHIVE hides the
-  // table and keeps everything (snapshot, replay, invite tokens), so
-  // it is the one to reach for when clearing the lobby down. DELETE
-  // reaps the replay JSONL and the restore point along with the
-  // table and cannot be undone, so it lives behind the archived view
-  // and its own confirmation.
-  // The shared token, or a signed-in person on the server's admin
-  // allowlist (ADR 0110 §3, lib/admin.ts). The server decides every
-  // admin route; this only decides what the lobby offers.
+  // ARCHIVE hides a table and keeps everything; DELETE reaps the replay
+  // and the restore point and cannot be undone, so it is offered only on
+  // an archived table, behind its own confirmation. The admin is the
+  // shared token, or an allowlisted person in admin mode (lib/admin.ts).
   const isAdmin = $derived(isAdminSession($session));
-  let showArchived = $state(false);
   let archived = $state<GameMeta[]>([]);
   let manageBusy = $state(false);
-  // The pending confirmation, if any: which table and which action.
   let confirming = $state<{ id: string; kind: "archive" | "delete" } | null>(null);
 
-  // Tables whose invites this page has already asked the server for,
-  // so a creator who reloads gets their links back (GET /games/{id}
-  // serves them to the creator, in the process that minted them) and a
-  // table whose plaintext is gone is not asked about on every poll.
+  // Tables whose invites this page has already asked the server for.
   const askedInvites = new Set<string>();
 
-  async function loadCreatorInvites(list: GameMeta[]): Promise<void> {
+  async function loadInvites(list: GameMeta[]): Promise<void> {
     for (const g of list) {
-      if (!g.is_creator || recentInvites.has(g.id) || askedInvites.has(g.id)) continue;
+      // The creator (wherever they are) and a seated player at a table
+      // still in the lobby: GET /games/{id} serves them the invites.
+      const seated = $session?.gameID === g.id && g.state === "lobby";
+      if (!g.is_creator && !seated) continue;
+      if (recentInvites.has(g.id) || askedInvites.has(g.id)) continue;
       askedInvites.add(g.id);
       try {
         const full = await getGame(g.id);
         if (full.invite_token) recentInvites.set(g.id, full.invite_token);
         if (full.spectator_invite) recentSpectatorInvites.set(g.id, full.spectator_invite);
       } catch {
-        // No links on this card; "new invite link" still works.
+        // No cached link; Copy invite mints one for those who may.
       }
     }
   }
@@ -417,27 +405,19 @@
   async function refresh(): Promise<void> {
     try {
       const [list] = await Promise.all([listGames(), loadMyGames()]);
-      await loadCreatorInvites(list);
+      await loadInvites(list);
       games = list;
-      if (isAdmin && showArchived) archived = await listGames({ archived: true });
+      if (isAdmin) archived = await listGames({ archived: true });
+      else archived = [];
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : "list failed";
-    }
-  }
-
-  async function toggleArchived(): Promise<void> {
-    showArchived = !showArchived;
-    if (showArchived) {
-      try {
-        archived = await listGames({ archived: true });
-      } catch (err) {
-        error = err instanceof LobbyApiError ? err.message : "could not list archived tables";
-      }
+    } finally {
+      loaded = true;
     }
   }
 
   // manage runs one admin table action with shared busy / error /
-  // confirmation handling, so the three of them cannot drift.
+  // confirmation handling.
   async function manage(fn: () => Promise<unknown>, failure: string): Promise<void> {
     manageBusy = true;
     error = "";
@@ -445,7 +425,6 @@
       await fn();
       confirming = null;
       await refresh();
-      if (showArchived) archived = await listGames({ archived: true });
     } catch (err) {
       error = err instanceof LobbyApiError ? err.message : failure;
     } finally {
@@ -455,17 +434,11 @@
 
   // --- admin: seat reclaim links ----------------------------------
   //
-  // A reclaim link is a bearer credential for ONE player's seat:
-  // whoever opens it plays as that player, hand and all. So it is
-  // minted on demand (never derivable from the game or seat), shown
-  // once, single use, and short-lived — and the panel says all three
-  // out loud, because the person clicking "copy" is about to paste it
-  // into a chat window.
+  // A reclaim link is a bearer credential for ONE player's seat, so it
+  // is minted on demand, shown once, single use and short-lived, and
+  // the panel says all three.
   let reclaim = $state<{ gameID: string; ticket: ReclaimTicket; url: string } | null>(null);
   let reclaimBusy = $state<string | null>(null);
-  // Scoped to the table it happened on — the seat rows live inside
-  // the per-game {#each}, so an unscoped message would print under
-  // every table on the page.
   let reclaimError = $state<{ gameID: string; message: string } | null>(null);
 
   async function onSeatLink(gameID: string, p: SeatInfo): Promise<void> {
@@ -485,8 +458,6 @@
     }
   }
 
-  // Minutes rather than seconds: the TTL is a promise to the host
-  // ("this stops working soon"), not a countdown to watch.
   function ttlLabel(t: ReclaimTicket): string {
     const mins = Math.max(1, Math.round(t.ttl_seconds / 60));
     const at = new Date(t.expires_at);
@@ -500,7 +471,7 @@
     e.preventDefault();
     // A blank name is fine: the server picks one (#2630).
     busy = true;
-    error = "";
+    createError = "";
     try {
       const withSetup = useLastSetup && lastSetup !== null;
       const meta = await createGame(newName.trim(), withSetup ? { setup: "last" } : {});
@@ -510,9 +481,10 @@
       const note = setupResultMessage(meta.setup);
       createdNote = note ? { gameID: meta.id, message: note } : null;
       newName = "";
+      newOpen = false;
       await refresh();
     } catch (err) {
-      error = lobbyErrorMessage(err, "create failed");
+      createError = lobbyErrorMessage(err, "create failed");
     } finally {
       busy = false;
     }
@@ -528,12 +500,9 @@
     }
   }
 
-  // Transient "✓ copied" flash keyed by "<gameID>:<kind>" so the two
-  // copy buttons (player / spectator invite) on multiple game rows
-  // each flash independently. Mirrors the Settings.svelte export-copy
-  // pattern: status flash on success, surfaced error on failure
-  // (writeText rejects on insecure origins and unfocused tabs —
-  // silently swallowing that left users pasting nothing).
+  // A transient "copied" flash keyed by "<gameID>:<kind>", so each
+  // copy button flashes on its own. A failed write is surfaced:
+  // writeText rejects on insecure origins and unfocused tabs.
   let copied = $state<string | null>(null);
   const COPY_FLASH_MS = 1500;
   async function copyToClipboard(url: string, key: string): Promise<void> {
@@ -541,7 +510,6 @@
       await navigator.clipboard.writeText(url);
       copied = key;
       setTimeout(() => {
-        // Only clear if no newer copy came in meanwhile.
         if (copied === key) copied = null;
       }, COPY_FLASH_MS);
     } catch {
@@ -549,45 +517,44 @@
     }
   }
 
-  async function copyInvite(id: string): Promise<void> {
-    const token = recentInvites.get(id);
+  // copyInvite copies the table's invite link (ADR 0158 §1 item 2). With
+  // none held here, one who may rotate invites gets a new one minted
+  // first. Nobody else ever sees the button without a link.
+  async function copyInvite(g: GameMeta): Promise<void> {
+    let token = recentInvites.get(g.id);
     if (!token) {
-      // Can't happen from the UI — the button that calls this only
-      // renders once a token is cached — but a stale token dropping
-      // out from under a click is not a wall we need to hit. "New
-      // link" (onRotateInvite below) is the actual way back in.
-      error = "no invite token cached for this game — use “new link” to mint one";
-      return;
+      if (!canRotateInvites(g)) return;
+      rotateBusy = `${g.id}:player`;
+      try {
+        token = (await rotateInvite(g.id, "player")).token;
+        recentInvites.set(g.id, token);
+      } catch (err) {
+        rotateError = {
+          gameID: g.id,
+          message: err instanceof LobbyApiError ? err.message : "could not make an invite link",
+        };
+        return;
+      } finally {
+        rotateBusy = null;
+      }
     }
-    await copyToClipboard(inviteURL(id, token), `${id}:invite`);
+    await copyToClipboard(inviteURL(g.id, token), `${g.id}:invite`);
   }
 
   async function copySpectatorInvite(id: string): Promise<void> {
     const token = recentSpectatorInvites.get(id);
-    if (!token) {
-      error = "no spectator invite cached for this game — use “new link” to mint one";
-      return;
-    }
+    if (!token) return;
     await copyToClipboard(spectatorInviteURL(id, token), `${id}:spectator`);
   }
 
-  // --- admin: rotating a lost or compromised invite ----------------
+  // --- rotating a lost or compromised invite ----------------------
   //
-  // Only the process that minted a game can show its invite
-  // plaintext (ADR 0051 decision 4) — after a restart there is no way
-  // to recover a lost link for a table that's still running, and
-  // "re-open as admin" (the old hint) never actually worked. Rotating
-  // is the real fix: it revokes the current invite of one kind and
-  // mints a replacement, which works whether or not this process ever
-  // held the old plaintext. The trade the UI has to be honest about:
-  // the OLD link of that kind stops working the instant this
-  // succeeds, so it asks first.
+  // Rotating revokes the current invite of one kind and mints a
+  // replacement. The old link stops working at once, so it asks first.
   type InviteKind = "player" | "spectator";
   let confirmRotate = $state<{ gameID: string; kind: InviteKind } | null>(null);
   let rotateBusy = $state<string | null>(null); // `${gameID}:${kind}`
   let rotateError = $state<{ gameID: string; message: string } | null>(null);
-  // The freshly-minted link, shown once so the admin can copy or send
-  // it — mirrors the seat-reclaim panel below.
   let rotated = $state<{ gameID: string; kind: InviteKind; url: string } | null>(null);
 
   function inviteKindLabel(kind: InviteKind): string {
@@ -595,8 +562,7 @@
   }
 
   async function onRotateInvite(gameID: string, kind: InviteKind): Promise<void> {
-    const key = `${gameID}:${kind}`;
-    rotateBusy = key;
+    rotateBusy = `${gameID}:${kind}`;
     rotateError = null;
     try {
       const res = await rotateInvite(gameID, kind);
@@ -606,10 +572,6 @@
       else recentSpectatorInvites.set(gameID, res.token);
       rotated = { gameID, kind, url };
       confirmRotate = null;
-      // Forces the "copy invite" / "spectator link" buttons (which
-      // key off recentInvites/recentSpectatorInvites, not reactive
-      // state) to notice the map changed — same trick onCreate uses.
-      await refresh();
     } catch (err) {
       rotateError = {
         gameID,
@@ -623,10 +585,8 @@
     }
   }
 
-  // takeSeat sits the creator down at their own table, as themselves:
-  // the server takes the seat's name from their Discord sign-in. The
-  // new seat session replaces this page's session, so the page then
-  // shows the table as a seated player would.
+  // takeSeat sits the creator down at their own table, as themselves.
+  // The new seat session replaces this page's session.
   async function takeSeat(g: GameMeta): Promise<void> {
     const invite = recentInvites.get(g.id);
     if (!invite) return;
@@ -646,36 +606,34 @@
     navigate(`#/games/${id}`);
   }
 
-  // mySeat returns the seat this user occupies in game g, or null if
-  // the session isn't bound to a seat in g (admin viewing someone
-  // else's game, or a RolePlayer viewing a different game entirely).
-  function mySeat(g: GameMeta) {
+  // mySeat returns the seat this SESSION occupies in game g, or null.
+  function mySeat(g: GameMeta): SeatInfo | null {
     const s = $session;
     if (!s?.playerID || s.gameID !== g.id) return null;
     return g.players.find((p) => p.player_id === s.playerID) ?? null;
   }
 
-  // startsFromSeat: a seated player who may start this table from the
-  // lobby — its host, or its creator. Any seated player may (the server
-  // allows it); the button is offered to the person running the table
-  // so four seats do not race to press it.
+  // mySeatNumber: the seat this person holds at g, through this session
+  // or another one (GET /me/games).
+  function mySeatNumber(g: GameMeta): number | null {
+    return mySeat(g)?.seat ?? mineByID.get(g.id)?.seat ?? null;
+  }
+
+  // startsFromSeat: a seated host or creator, who may start the table.
   function startsFromSeat(g: GameMeta): boolean {
     const me = mySeat(g);
     return me !== null && (me.is_host === true || g.is_creator === true);
   }
 
-  // canStart returns true when Start would succeed: at least 2 seats
-  // and every seat has uploaded a real deck.
   function canStart(g: GameMeta): boolean {
     return g.state === "lobby" && g.players.length >= 2 && g.players.every((p) => p.deck_uploaded);
   }
 
-  // startReason explains a disabled primary action in one line —
-  // the admin's Start table, or a seated player's Enter table.
+  // startReason explains why the table cannot start yet, in one line.
   function startReason(g: GameMeta): string {
     if (g.state !== "lobby") return "";
     const me = mySeat(g);
-    if (me && !me.deck_uploaded) return "Upload your deck below";
+    if (me && !me.deck_uploaded) return "Choose your deck below";
     if (g.players.length < 2) return "Needs at least two seats";
     const pending = g.players.filter((p) => !p.deck_uploaded);
     if (pending.length === 1) return `Waiting on ${seatName(pending[0])}'s deck`;
@@ -684,74 +642,248 @@
     return "";
   }
 
-  function seatName(p: SeatInfo): string {
-    return p.display_name || p.name;
+  // The card's one primary button (ADR 0158 §1 item 2): Open in the
+  // lobby, Resume in play. A seat held through another session is
+  // reclaimed first. Whoever may start a table of two or more gets
+  // Start in its place; Open moves to the ⋯ menu.
+  interface Primary {
+    label: string;
+    run: () => void;
+    disabled?: boolean;
+    title?: string;
+    busy?: boolean;
+  }
+
+  function mayStart(g: GameMeta): boolean {
+    return g.state === "lobby" && g.players.length >= 2 && (startsFromSeat(g) || isAdmin);
+  }
+
+  function primaryFor(g: GameMeta): Primary {
+    const held = mySeatNumber(g) !== null;
+    if (rejoinsHere(g.id)) {
+      return {
+        label: g.state === "active" ? "Resume" : "Open",
+        run: () => void openMine(g.id, g.state),
+        disabled: opening !== null,
+        busy: opening === g.id,
+        title: "open your seat at this table",
+      };
+    }
+    if (mayStart(g)) {
+      const reason = startReason(g);
+      return {
+        label: "Start",
+        run: () => void onStart(g.id),
+        disabled: !canStart(g),
+        title: reason || "start the game",
+      };
+    }
+    if (g.state === "active") {
+      return { label: held ? "Resume" : "Open", run: () => openGame(g.id) };
+    }
+    return { label: "Open", run: () => openGame(g.id) };
+  }
+
+  // Copy invite (§1 item 2): the host or creator, in the lobby, when
+  // there is a link to copy or one they may make.
+  function offersCopyInvite(g: GameMeta): boolean {
+    if (g.state !== "lobby") return false;
+    const mayShare = isAdmin || g.is_creator === true || mySeat(g)?.is_host === true;
+    return mayShare && (recentInvites.has(g.id) || canRotateInvites(g));
+  }
+
+  function moreFor(g: GameMeta): MoreItem[] {
+    const items: MoreItem[] = [];
+    if (mayStart(g) && !rejoinsHere(g.id)) {
+      items.push({ label: "Open table", onclick: () => openGame(g.id) });
+    }
+    if (g.state === "lobby" && g.is_creator && !mySeat(g) && recentInvites.has(g.id)) {
+      items.push({
+        label: seatBusy === g.id ? "Taking a seat…" : "Take a seat",
+        disabled: seatBusy !== null,
+        onclick: () => void takeSeat(g),
+      });
+    }
+    if (recentSpectatorInvites.has(g.id)) {
+      items.push({ label: "Copy spectator link", onclick: () => void copySpectatorInvite(g.id) });
+    }
+    if (canRotateInvites(g)) {
+      items.push({
+        label: "New invite link",
+        title: "mint a new player invite — the current one stops working immediately",
+        disabled: rotateBusy !== null,
+        onclick: () => (confirmRotate = { gameID: g.id, kind: "player" }),
+      });
+      items.push({
+        label: "New spectator link",
+        title: "mint a new spectator link — the current one stops working immediately",
+        disabled: rotateBusy !== null,
+        onclick: () => (confirmRotate = { gameID: g.id, kind: "spectator" }),
+      });
+    }
+    if (canManageTableFor(g)) {
+      items.push({
+        label: settingsFor === g.id ? "Hide table settings" : "Table settings",
+        title: "undos, starting life, commander damage, table pace, spawning",
+        onclick: () => (settingsFor === g.id ? (settingsFor = null) : openTableSettings(g.id)),
+      });
+    }
+    // The server's replay gate: an admin any time after the lobby.
+    if (isAdmin && g.state !== "lobby") {
+      const url = replayURL(g.id);
+      if (url) items.push({ label: "Download replay", href: url, download: `${g.id}.jsonl` });
+    }
+    if (isAdmin) {
+      items.push({
+        label: "Archive",
+        title: "hide this table from the list — nothing is deleted",
+        disabled: manageBusy,
+        onclick: () => (confirming = { id: g.id, kind: "archive" }),
+      });
+    }
+    return items;
+  }
+
+  // The card footer's two panels: invite a tablemate, and your deck.
+  // Open on their own when they are the next thing to do (a table just
+  // created; a deck not chosen yet), until the person toggles them.
+  let panelChoice = $state<Record<string, "invite" | "deck" | null>>({});
+
+  function panelFor(g: GameMeta): "invite" | "deck" | null {
+    if (g.id in panelChoice) return panelChoice[g.id];
+    if (justCreated === g.id) return "invite";
+    const seat = mySeat(g);
+    if (seat && g.state === "lobby" && !seat.deck_uploaded) return "deck";
+    return null;
+  }
+
+  function togglePanel(g: GameMeta, which: "invite" | "deck"): void {
+    panelChoice = { ...panelChoice, [g.id]: panelFor(g) === which ? null : which };
+  }
+
+  function canInvite(g: GameMeta): boolean {
+    return (
+      g.state === "lobby" &&
+      canInviteTablemates($session, $session?.gameID, g.id, g.is_creator === true)
+    );
   }
 
   function initials(p: SeatInfo): string {
     return seatName(p).trim().slice(0, 1).toUpperCase() || "?";
   }
 
-  // Commander tables seat four; pad the grid with open slots so the
-  // card reads as a table rather than a list.
+  // A table in the lobby seats four, so its card pads with open seats
+  // (where Add bot lives). A game in play shows who is there.
   const TABLE_SEATS = 4;
   function seatSlots(g: GameMeta): (SeatInfo | null)[] {
-    const sorted = [...g.players].sort((a, b) => a.seat - b.seat);
-    const slots: (SeatInfo | null)[] = [...sorted];
-    while (slots.length < TABLE_SEATS) slots.push(null);
+    const slots: (SeatInfo | null)[] = [...g.players].sort((a, b) => a.seat - b.seat);
+    if (g.state === "lobby") while (slots.length < TABLE_SEATS) slots.push(null);
     return slots;
   }
 
-  function timeAgo(iso: string): string {
-    const ms = Date.now() - Date.parse(iso);
-    if (!Number.isFinite(ms) || ms < 0) return "just now";
-    const m = Math.floor(ms / 60_000);
-    if (m < 1) return "just now";
-    if (m < 60) return `${m}m ago`;
-    const h = Math.floor(m / 60);
-    if (h < 24) return `${h}h ago`;
-    const d = Math.floor(h / 24);
-    return `${d}d ago`;
+  // What the page lists (lib/signedInHome.ts's myTables): every table
+  // for an admin, a signed-in person's own, and a guest's view as it
+  // always was. Now is the part of it in the lobby or in play.
+  const visibleGames = $derived(myTables(games, $session, { admin: isAdmin, rejoinable }));
+  const now = $derived(nowTables(visibleGames));
+  const nowIDs = $derived(new Set(now.map((g) => g.id)));
+
+  // --- History (§1 item 3) ------------------------------------------
+  let historyFilter = $state<HistoryFilter>("all");
+  let historyShown = $state(HISTORY_FIRST);
+  let confirmDelete = $state<string | null>(null);
+
+  const history = $derived(historyRows(mine, [...visibleGames, ...archived], nowIDs));
+  const filtered = $derived(filterHistory(history, historyFilter));
+  const shownRows = $derived(filtered.slice(0, historyShown));
+  const more = $derived(moreCount(filtered.length, historyShown));
+
+  function setFilter(f: HistoryFilter): void {
+    historyFilter = f;
+    historyShown = HISTORY_FIRST;
   }
 
-  // What the list shows (lib/signedInHome.ts's myTables): every table
-  // for an admin, a signed-in person's own tables, and a guest's view
-  // as it always was.
-  const visibleGames = $derived(myTables(games, $session, { admin: isAdmin, rejoinable }));
+  // Replay, as the server's gate allows it: an admin after the lobby,
+  // and anyone who sat at a game once it has ended.
+  function replayFor(r: HistoryRow): string | null {
+    const allowed =
+      (isAdmin && r.state !== "lobby") ||
+      (r.state === "ended" && (r.seated || $session?.gameID === r.id));
+    return allowed ? replayURL(r.id) : null;
+  }
 
-  const summary = $derived.by(() => {
-    const list = visibleGames;
-    if (list.length === 0) return "No tables yet.";
-    const live = list.filter((g) => g.state === "active").length;
-    const waiting = list.filter((g) => g.state === "lobby").length;
-    const parts = [`${list.length} table${list.length === 1 ? "" : "s"}`];
-    if (live) parts.push(`${live} in progress`);
-    if (waiting) parts.push(`${waiting} in the lobby`);
-    return parts.join(" · ");
-  });
+  function historyMore(r: HistoryRow): MoreItem[] {
+    const items: MoreItem[] = [];
+    if (rejoinsHere(r.id)) {
+      items.push({
+        label: "Open",
+        disabled: opening !== null,
+        onclick: () => void openMine(r.id, r.state),
+      });
+    } else if (isAdmin || $session?.gameID === r.id) {
+      items.push({ label: "Open", onclick: () => openGame(r.id) });
+    }
+    if (isAdmin) {
+      if (r.archived) {
+        items.push({
+          label: "Unarchive",
+          disabled: manageBusy,
+          onclick: () => void manage(() => unarchiveGame(r.id), "unarchive failed"),
+        });
+        items.push({
+          label: "Delete…",
+          danger: true,
+          disabled: manageBusy,
+          onclick: () => (confirmDelete = r.id),
+        });
+      } else {
+        items.push({
+          label: "Archive",
+          disabled: manageBusy,
+          onclick: () => void manage(() => archiveGame(r.id), "archive failed"),
+        });
+      }
+    }
+    return items;
+  }
 
-  // Poll while any visible table is still in the lobby so seats,
-  // decks and the admin's Start show up without a manual refresh
-  // (the lobby has no WebSocket; the game route does).
+  // Poll while a table in Now can change (the lobby has no WebSocket),
+  // and re-read on focus, so seats, decks, turns and life totals keep up.
   const POLL_MS = 5000;
   onMount(() => {
     void refresh();
-    // The last setup, for "use my last setup". Signed-in only; a
-    // failure just leaves the option off.
     if (signedInUserID($session)) {
       void fetchMySetup()
         .then((r) => (lastSetup = r.setup ?? null))
         .catch(() => undefined);
     }
-    // Best-effort: a server without the bot routes leaves botOptions
-    // null and the Add-bot control simply never appears.
     void fetchBotOptions()
       .then((o) => (botOptions = o))
       .catch(() => undefined);
     const t = setInterval(() => {
-      if (visibleGames.some((g) => g.state === "lobby")) void refresh();
+      if (now.length > 0) void refresh();
     }, POLL_MS);
-    return () => clearInterval(t);
+    const onFocus = (): void => void refresh();
+    const onVisible = (): void => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  });
+
+  // #/lobby?show=history (and the old #/my-games, which redirects
+  // there) scrolls to History once the lists have loaded.
+  let scrolledToHistory = false;
+  $effect(() => {
+    const r = $route;
+    if (!loaded || r.name !== "lobby" || r.show !== "history" || scrolledToHistory) return;
+    scrolledToHistory = true;
+    void tick().then(() => document.getElementById(HISTORY_ID)?.scrollIntoView?.());
   });
 
   // A table sent us here (ADR 0112 §2 item 5): its connection needed
@@ -765,10 +897,46 @@
   });
 </script>
 
-<!-- The site header is the Lobby's only chrome (ADR 0112 §1 item 4):
-     its account menu took over the command bar's session chip, settings
-     and sign-out controls. Page draws it, and the title (ADR 0156 §3). -->
-<Page eyebrow="Play" title="Tables" titleLabel={L.lobbyTitle} lede={summary}>
+{#snippet headActions()}
+  {#if joinBox !== "none"}
+    <form class="join" onsubmit={onJoin}>
+      <input
+        class="mono"
+        type="text"
+        placeholder={joinBox === "code" ? "invite code or link" : "invite link"}
+        aria-label={joinBox === "code" ? "invite code or link" : "invite link"}
+        title={joinBox === "code"
+          ? "The code from your pod's invite, or the whole link. You sit as your Discord name; a spectator link opens the table read-only."
+          : "The whole invite link. A spectator link opens the table read-only."}
+        bind:value={joinInput}
+      />
+      <button type="submit" class="btn ghost" disabled={joining || !joinInput.trim()}>
+        {joining ? "…" : "Join"}
+      </button>
+    </form>
+  {/if}
+  {#if canCreate}
+    <button
+      type="button"
+      class="btn primary"
+      aria-label={L.newTable}
+      aria-expanded={newOpen}
+      onclick={openNewTable}
+    >
+      + New table
+    </button>
+  {/if}
+{/snippet}
+
+<!-- The site header is the page's only chrome (ADR 0112 §1 item 4):
+     Page draws it, and the title (ADR 0156 §3). -->
+<Page
+  eyebrow="Play"
+  title="Tables"
+  titleLabel={L.lobbyTitle}
+  lede="Your tables now, and every game you've played."
+  actions={joinBox !== "none" || canCreate ? headActions : undefined}
+>
   <section class="lobby">
     <RemovedNotice />
 
@@ -779,746 +947,616 @@
       </div>
     {/if}
 
-    {#if joinBox !== "none" || canCreate}
-      <!-- Join first: on a narrow screen the two cards stack, and joining
-         is what most people arrive to do. -->
-      <div class="starts">
-        {#if joinBox !== "none"}
-          <form class="start-card" onsubmit={onJoin}>
-            <h2 class="panel-h">join a table</h2>
-            <div class="create-row">
-              <input
-                class="mono"
-                type="text"
-                placeholder={joinBox === "code" ? "invite code or link" : "invite link"}
-                aria-label={joinBox === "code" ? "invite code or link" : "invite link"}
-                bind:value={joinInput}
-              />
-              <button type="submit" class="primary" disabled={joining || !joinInput.trim()}>
-                {joining ? "…" : "join"}
-              </button>
-            </div>
-            <p class="start-help">
-              {#if joinBox === "code"}
-                Paste the code from your pod's invite, or the whole link. You sit as your Discord
-                name. A spectator link opens the table read-only.
-              {:else}
-                Paste the whole invite link. A spectator link opens the table read-only.
-              {/if}
-            </p>
-            {#if joinError}
-              <p class="error" role="alert">{joinError}</p>
-            {/if}
-          </form>
+    {#if joinError}
+      <p class="error" role="alert">{joinError}</p>
+    {/if}
+
+    {#if canCreate && newOpen}
+      <form class="new-table" aria-label={L.createGame} onsubmit={onCreate}>
+        <span class="nt-label">New table</span>
+        <div class="nt-row"><NewTableRow bind:name={newName} {busy} /></div>
+        {#if lastSetup}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={useLastSetup} />
+            <span>
+              Use my last setup
+              <span class="setup-sum">{setupSummary(lastSetup, botDeckName)}</span>
+            </span>
+          </label>
         {/if}
-        {#if canCreate}
-          <form class="start-card create" aria-label={L.createGame} onsubmit={onCreate}>
-            <h2 class="panel-h">create game</h2>
-            <NewTableRow bind:name={newName} {busy} />
-            {#if lastSetup}
-              <label class="use-setup">
-                <input type="checkbox" bind:checked={useLastSetup} />
-                <span>
-                  Use my last setup
-                  <span class="setup-sum">{setupSummary(lastSetup, botDeckName)}</span>
-                </span>
-              </label>
-            {/if}
-          </form>
+        {#if createError}
+          <p class="error nt-error" role="alert">{createError}</p>
         {/if}
-      </div>
+      </form>
     {/if}
 
     {#if error}
       <p class="error">{error}</p>
     {/if}
 
-    {#if visibleGames.length === 0}
-      {#if joinBox === "code"}
-        <!-- ADR 0112 §1 item 7: a signed-in person with no tables. -->
-        <div class="empty-card">
-          <p>
-            You're not at a table yet. Paste an invite code above, or create a table and invite your
-            pod.
-          </p>
-        </div>
-        <!-- ADR 0156 §6: three ways to start. The third is the C2 Discord,
-             and only when the server names an invite (GET /community). -->
-        <div class="empty-cards">
-          <div class="card">
-            <h3>{L.practiceGame}</h3>
-            <p>Five minutes against a bot that shows you where everything is.</p>
-            <a class="btn ghost sm" href="#/practice">{L.startPractice}</a>
+    <section class="now" aria-labelledby="now-h">
+      <h2 class="sec-h" id="now-h">Now <span class="count">{now.length}</span></h2>
+
+      {#if now.length === 0}
+        {#if joinBox === "code"}
+          <!-- ADR 0112 §1 item 7: a signed-in person with no tables. -->
+          <div class="empty-card">
+            <p>
+              You're not at a table yet. Paste an invite code above, or create a table and invite
+              your pod.
+            </p>
           </div>
-          <div class="card">
-            <h3>Bring a deck</h3>
-            <p>Check how much of your list plays as printed, and save it.</p>
-            <a class="btn ghost sm" href="#/decks">Decks</a>
-          </div>
-          {#if $community.invite_url}
-            <div class="card pod">
-              <h3>No pod yet?</h3>
-              <p>Players post open seats on our Discord.</p>
-              <a
-                class="btn discord sm"
-                href={$community.invite_url}
-                target="_blank"
-                rel="noopener noreferrer"><Icon name="discord" size={15} /> {L.findAPod}</a
-              >
+          <!-- ADR 0156 §6: three ways to start. The third is the C2
+               Discord, only when the server names an invite. -->
+          <div class="empty-cards">
+            <div class="card">
+              <h3>{L.practiceGame}</h3>
+              <p>Five minutes against a bot that shows you where everything is.</p>
+              <a class="btn ghost sm" href="#/practice">{L.startPractice}</a>
             </div>
-          {/if}
-        </div>
-      {:else}
-        <p class="muted empty">
-          {#if canCreate}
-            Create a table, then send the invite link to your pod.
-          {:else}
-            You're not seated at a table yet — ask for an invite link.
-          {/if}
-        </p>
-      {/if}
-    {:else}
-      <ul class="games">
-        {#each visibleGames as g (g.id)}
-          {@const seat = mySeat(g)}
-          {@const reason = startReason(g)}
-          <li class="tcard" class:mine={seat !== null}>
-            <div class="trow">
-              <div class="tid">
-                <div class="tname">{g.name}</div>
-                <div class="chips">
-                  {#if g.state === "active"}
-                    <span class="chip live"><i class="dot"></i>In progress</span>
-                  {:else if g.state === "ended"}
-                    <span class="chip ended">Ended</span>
-                  {:else}
-                    <span class="chip">Lobby</span>
-                  {/if}
-                  <span class="meta">{g.players.length} of {TABLE_SEATS} seats</span>
-                  <span class="meta">·</span>
-                  <span class="meta">created {timeAgo(g.created_at)}</span>
-                </div>
+            <div class="card">
+              <h3>Bring a deck</h3>
+              <p>Check how much of your list plays as printed, and save it.</p>
+              <a class="btn ghost sm" href="#/decks">Decks</a>
+            </div>
+            {#if $community.invite_url}
+              <div class="card pod">
+                <h3>No pod yet?</h3>
+                <p>Players post open seats on our Discord.</p>
+                <a
+                  class="btn discord sm"
+                  href={$community.invite_url}
+                  target="_blank"
+                  rel="noopener noreferrer"><Icon name="discord" size={15} /> {L.findAPod}</a
+                >
               </div>
-              <div class="actions">
-                <div class="arow">
-                  {#if recentInvites.has(g.id)}
-                    <button class:on={copied === `${g.id}:invite`} onclick={() => copyInvite(g.id)}>
+            {/if}
+          </div>
+        {:else}
+          <p class="muted empty">
+            {#if canCreate}
+              No tables right now. Make one with New table, then send the invite link to your pod.
+            {:else}
+              You're not seated at a table yet. Ask for an invite link.
+            {/if}
+          </p>
+        {/if}
+      {:else}
+        <ul class="games" aria-label="tables now">
+          {#each now as g (g.id)}
+            {@const seat = mySeat(g)}
+            {@const myNo = mySeatNumber(g)}
+            {@const chip = statusChip(g)}
+            {@const primary = primaryFor(g)}
+            {@const items = moreFor(g)}
+            {@const reason = startReason(g)}
+            {@const panel = panelFor(g)}
+            <li class="tcard" class:mine={myNo !== null}>
+              <div class="thead">
+                <div class="tid">
+                  <h3 class="tname">{g.name}</h3>
+                  <span class="chip" class:live={chip.live}>
+                    {#if chip.live}<i class="dot ok"></i>{/if}{chip.label}
+                  </span>
+                  <span class="ctx">{contextLine(g, { seat: myNo })}</span>
+                </div>
+                <div class="tact">
+                  {#if offersCopyInvite(g)}
+                    <button
+                      type="button"
+                      class="btn ghost sm"
+                      class:on={copied === `${g.id}:invite`}
+                      disabled={rotateBusy !== null}
+                      title={recentInvites.has(g.id)
+                        ? "copy this table's invite link"
+                        : "no link is held here: this makes a new one, and an older link stops working"}
+                      onclick={() => copyInvite(g)}
+                    >
                       {#if copied === `${g.id}:invite`}
                         <Icon name="check" size={13} /> Invite copied
                       {:else}
-                        <Icon name="link" size={13} /> copy invite
+                        <Icon name="link" size={13} /> Copy invite
                       {/if}
                     </button>
                   {/if}
-                  {#if recentSpectatorInvites.has(g.id)}
-                    <button
-                      class:on={copied === `${g.id}:spectator`}
-                      onclick={() => copySpectatorInvite(g.id)}
-                    >
-                      {#if copied === `${g.id}:spectator`}
-                        <Icon name="check" size={13} /> Link copied
-                      {:else}
-                        <Icon name="link" size={13} /> Spectator link
+                  {#if items.length > 0}
+                    <MoreMenu label={`more for ${g.name}`} {items} />
+                  {/if}
+                  <button
+                    type="button"
+                    class="btn primary sm"
+                    disabled={primary.disabled}
+                    title={primary.title}
+                    onclick={primary.run}
+                  >
+                    {primary.busy ? "…" : primary.label}
+                  </button>
+                </div>
+              </div>
+
+              <ul class="seats" aria-label="seats">
+                {#each seatSlots(g) as p, i (p?.player_id ?? `open-${i}`)}
+                  {#if p}
+                    {@const avatar = avatarURL(p.discord_id, p.discord_avatar_hash)}
+                    {@const line = seatLine(g, p, botDeckName)}
+                    <li class="seat" class:you={myNo === p.seat} class:bot={p.is_bot}>
+                      <span class="sav" class:bot={p.is_bot} style:border-color={seatColor(p.seat)}>
+                        {#if p.is_bot}
+                          <i class="botmark" style:color={seatColor(p.seat)}>
+                            <Icon name="robot" size={18} />
+                          </i>
+                        {:else if avatar}
+                          <img src={avatar} alt="" />
+                        {:else}
+                          <i style:background={seatColor(p.seat)}>{initials(p)}</i>
+                        {/if}
+                      </span>
+                      <div class="sinfo">
+                        <div class="sname">
+                          {seatName(p)}
+                          {#if p.is_host}<b
+                              title="Table host: may manage the table alongside the admin">host</b
+                            >{/if}
+                          {#if myNo === p.seat}<b>you</b>{/if}
+                        </div>
+                        {#if p.is_agent && !p.is_bot}
+                          <div class="sagent"><AgentChip seat={p} /></div>
+                        {/if}
+                        <div class="sstat" class:pend={line.pending}>
+                          {#if !line.pending && (p.is_bot || p.deck_uploaded)}<i class="dot ok"
+                            ></i>{/if}{line.text}
+                        </div>
+                      </div>
+                      {#if !p.is_bot && isAdmin}
+                        <!-- Admin-only: the disconnected player's way back in. -->
+                        <button
+                          class="seat-link"
+                          title={`generate a one-time link that returns ${seatName(p)} to this seat`}
+                          aria-label={`seat link for ${seatName(p)}`}
+                          disabled={reclaimBusy !== null}
+                          onclick={() => onSeatLink(g.id, p)}
+                        >
+                          {reclaimBusy === p.player_id ? "…" : "seat link"}
+                        </button>
                       {/if}
-                    </button>
+                      {#if !p.is_bot && canRemove(g, p)}
+                        <button
+                          class="seat-link seat-remove"
+                          title={`remove ${seatName(p)} from this table`}
+                          aria-label={`remove ${seatName(p)}`}
+                          disabled={removeBusy}
+                          onclick={() => {
+                            removeBlock = false;
+                            confirmRemove = { gameID: g.id, seat: p };
+                          }}
+                        >
+                          remove
+                        </button>
+                      {/if}
+                      {#if p.is_bot && canManageBots(g)}
+                        <button
+                          class="seat-x"
+                          title="remove this bot"
+                          aria-label={`remove ${seatName(p)}`}
+                          disabled={botBusy}
+                          onclick={() => onRemoveBot(g.id, p.player_id)}
+                        >
+                          <Icon name="x" size={12} />
+                        </button>
+                      {/if}
+                    </li>
+                  {:else}
+                    <li class="seat open">
+                      <span class="sav open"></span>
+                      <div class="sinfo">
+                        <div class="sname dim">Open seat</div>
+                        <div class="sstat dim">send the invite link</div>
+                      </div>
+                      {#if canManageBots(g) && botPickerFor !== g.id}
+                        <button
+                          class="seat-add"
+                          disabled={botBusy}
+                          onclick={() => openBotPicker(g.id)}
+                        >
+                          <Icon name="robot" size={13} /> Add bot
+                        </button>
+                      {/if}
+                    </li>
                   {/if}
-                  {#if canRotateInvites(g)}
-                    <!-- Replaces the old "re-open as admin to recover"
-                       hint, which never actually worked (the invite
-                       plaintext only ever lived in the memory of the
-                       process that minted it — see docs/lobby.md).
-                       This mints a real replacement. Admin or the
-                       table's own creator (#1098); see
-                       canRotateInvites above. -->
-                    <button
-                      class="ghost"
-                      title="mint a new player invite — the current one stops working immediately"
-                      disabled={rotateBusy !== null}
-                      onclick={() => (confirmRotate = { gameID: g.id, kind: "player" })}
-                    >
-                      <Icon name="undo" size={13} />
-                      {rotateBusy === `${g.id}:player` ? "…" : "new invite link"}
-                    </button>
-                    <button
-                      class="ghost"
-                      title="mint a new spectator link — the current one stops working immediately"
-                      disabled={rotateBusy !== null}
-                      onclick={() => (confirmRotate = { gameID: g.id, kind: "spectator" })}
-                    >
-                      <Icon name="undo" size={13} />
-                      {rotateBusy === `${g.id}:spectator` ? "…" : "new spectator link"}
-                    </button>
+                {/each}
+              </ul>
+
+              {#if botPickerFor === g.id}
+                <div class="bot-picker">
+                  <label>
+                    <span>tier</span>
+                    <select bind:value={botTier} disabled={botBusy}>
+                      {#each botOptions?.tiers ?? [] as t (t.tier)}
+                        <option value={t.tier} disabled={!t.available} title={t.description}>
+                          {tierOptionLabel(t)}
+                        </option>
+                      {/each}
+                    </select>
+                  </label>
+                  <label>
+                    <span>deck</span>
+                    <select bind:value={botDeck} disabled={botBusy}>
+                      {#each botOptions?.decks ?? [] as d (d.id)}
+                        <option value={d.id} title={d.description}>{d.name}</option>
+                      {/each}
+                    </select>
+                  </label>
+                  {#if botTierNote}
+                    <p class="deck-desc" class:tier-warning={botTierNote.warning}>
+                      {botTierNote.text}
+                    </p>
                   {/if}
-                  {#if canManageTableFor(g)}
-                    <!-- ADR 0075 §2.5. Offered to the host and the admin
-                       because this page can only READ the settings
-                       through the write route (see openTableSettings).
-                       -->
-                    <button
-                      class="ghost"
-                      class:on={settingsFor === g.id}
-                      aria-expanded={settingsFor === g.id}
-                      title="undos, starting life, commander damage, table pace, spawning"
-                      onclick={() =>
-                        settingsFor === g.id ? (settingsFor = null) : openTableSettings(g.id)}
-                    >
-                      <Icon name="gear" size={13} /> table settings
-                    </button>
+                  {#if botDeckDescription}
+                    <p class="deck-desc">{botDeckDescription}</p>
                   {/if}
-                  <!-- Mirror the server's downloadReplay gate: admins may
-                     pull the replay any time after the lobby phase, but
-                     players get 403 until the game has ended (the JSONL
-                     carries unfiltered hidden information mid-game). -->
-                  {#if g.state === "ended" || (isAdmin && g.state !== "lobby")}
-                    {@const url = replayURL(g.id)}
-                    {#if url}
-                      <a class="btn-link" href={url} download={`${g.id}.jsonl`}>
-                        <Icon name="draw" size={13} /> Replay
-                      </a>
-                    {/if}
-                  {/if}
-                  {#if isAdmin}
-                    <button
-                      class="ghost"
-                      title="hide this table from the lobby — nothing is deleted"
-                      disabled={manageBusy}
-                      onclick={() => (confirming = { id: g.id, kind: "archive" })}
-                    >
-                      archive
-                    </button>
-                  {/if}
-                  {#if rejoinsHere(g)}
-                    <!-- ADR 0112 §1 item 6: a seat this person holds through
-                       another session. Opening it trades this session for
-                       that seat's. -->
+                  <div class="bot-actions">
                     <button
                       class="primary"
-                      disabled={opening !== null}
-                      title="open your seat at this table"
-                      onclick={() => openMine(g)}
+                      disabled={botBusy || !botTier || !botDeck}
+                      onclick={() => onAddBot(g.id)}
                     >
-                      {opening === g.id ? "…" : "Open"}
-                      <Icon name="chevronRight" size={13} />
+                      {botBusy ? "adding…" : "add bot"}
                     </button>
-                  {:else if g.state === "lobby" && g.is_creator && !seat && recentInvites.has(g.id)}
-                    <!-- ADR 0110 §5 item 4: the creator sits down at their
-                       own table, as themselves. -->
-                    <button disabled={seatBusy !== null} onclick={() => takeSeat(g)}>
-                      {seatBusy === g.id ? "…" : "take a seat"}
+                    <button class="ghost" disabled={botBusy} onclick={() => (botPickerFor = null)}>
+                      cancel
                     </button>
-                  {/if}
-                  {#if rejoinsHere(g)}
-                    <!-- Open (above) is the only way in. -->
-                  {:else if g.state === "lobby" && seat && !startsFromSeat(g)}
-                    <!-- Seated players wait for the host; the button goes
-                       live once the poll sees the table start. -->
-                    <button class="primary" disabled title="waiting for the host to start">
-                      enter table <Icon name="chevronRight" size={13} />
-                    </button>
-                  {:else if g.state === "lobby"}
-                    {#if !seat}
-                      <button onclick={() => openGame(g.id)}>open table</button>
-                    {/if}
-                    {#if g.players.length >= 2}
-                      <button
-                        class="primary"
-                        disabled={!canStart(g)}
-                        title={reason || "start the game"}
-                        onclick={() => onStart(g.id)}
-                      >
-                        start table <Icon name="chevronRight" size={13} />
-                      </button>
-                    {/if}
-                  {:else if g.state === "active"}
-                    <button class="primary" onclick={() => openGame(g.id)}>
-                      {seat ? "enter table" : "open table"}
-                      <Icon name="chevronRight" size={13} />
-                    </button>
+                  </div>
+                  {#if botError}<div class="bot-error">{botError}</div>{/if}
+                  <p class="hint">
+                    A bot takes a real seat, arrives with its deck already loaded, and starts
+                    playing when you press Start.
+                  </p>
+                </div>
+              {:else if botError}
+                <div class="bot-error">{botError}</div>
+              {/if}
+
+              {#if settingsFor === g.id}
+                <div class="tsettings">
+                  {#if tableSettings}
+                    <TableSettingsPanel
+                      settings={tableSettings}
+                      canManage={canManageTableFor(g)}
+                      gameState={g.state}
+                      busy={settingsBusy}
+                      error={settingsError}
+                      onpatch={(patch) => applyTableSettings(g.id, patch)}
+                    />
+                  {:else if settingsBusy}
+                    <p class="muted">loading settings…</p>
                   {:else}
-                    <button class="ghost" onclick={() => openGame(g.id)}>open table</button>
+                    <p class="error">{settingsError ?? "couldn't load this table's settings"}</p>
                   {/if}
                 </div>
-                {#if reason}
-                  <div class="reason">{reason}</div>
-                {/if}
-              </div>
-            </div>
+              {/if}
 
-            <ul class="seats" aria-label="seats">
-              {#each seatSlots(g) as p, i (p?.player_id ?? `open-${i}`)}
-                {#if p}
-                  {@const avatar = avatarURL(p.discord_id, p.discord_avatar_hash)}
-                  <li
-                    class="seat"
-                    class:you={p.player_id === $session?.playerID}
-                    class:bot={p.is_bot}
-                  >
-                    <span class="sav" class:bot={p.is_bot} style:border-color={seatColor(p.seat)}>
-                      {#if p.is_bot}
-                        <i class="botmark" style:color={seatColor(p.seat)}>
-                          <Icon name="robot" size={18} />
-                        </i>
-                      {:else if avatar}
-                        <img src={avatar} alt="" />
-                      {:else}
-                        <i style:background={seatColor(p.seat)}>{initials(p)}</i>
-                      {/if}
-                    </span>
-                    <div class="sinfo">
-                      <div class="sname">
-                        seat {p.seat + 1}: {seatName(p)}
-                        {#if p.is_bot}<b class="botchip">bot</b>{/if}
-                        {#if p.is_host}<b
-                            title="Table host: may manage the table alongside the admin">host</b
-                          >{/if}
-                        {#if p.player_id === $session?.playerID}<b>you</b>{/if}
-                      </div>
-                      {#if p.is_agent && !p.is_bot}
-                        <div class="sagent"><AgentChip seat={p} /></div>
-                      {/if}
-                      {#if p.is_bot}
-                        <div class="sstat">
-                          <i class="dot ok"></i>{p.bot_tier || "bot"} · {botDeckName(p.bot_deck) ||
-                            p.deck_name ||
-                            "deck ready"}
-                        </div>
-                      {:else if p.deck_uploaded}
-                        <div class="sstat"><i class="dot ok"></i>{p.deck_name || "deck ready"}</div>
-                      {:else}
-                        <div class="sstat pend">deck pending</div>
-                      {/if}
-                    </div>
-                    {#if !p.is_bot && isAdmin}
-                      <!-- Admin-only, per seat: the disconnected player's
-                         way back in. Sits where the bot's remove
-                         button sits, because it is the same kind of
-                         thing — a per-seat operator action. -->
-                      <button
-                        class="seat-link"
-                        title={`generate a one-time link that returns ${seatName(p)} to this seat`}
-                        aria-label={`seat link for ${seatName(p)}`}
-                        disabled={reclaimBusy !== null}
-                        onclick={() => onSeatLink(g.id, p)}
-                      >
-                        {reclaimBusy === p.player_id ? "…" : "seat link"}
-                      </button>
-                    {/if}
-                    {#if !p.is_bot && canRemove(g, p)}
-                      <button
-                        class="seat-link seat-remove"
-                        title={`remove ${seatName(p)} from this table`}
-                        aria-label={`remove ${seatName(p)}`}
-                        disabled={removeBusy}
-                        onclick={() => {
-                          removeBlock = false;
-                          confirmRemove = { gameID: g.id, seat: p };
-                        }}
-                      >
-                        remove
-                      </button>
-                    {/if}
-                    {#if p.is_bot && canManageBots(g)}
-                      <button
-                        class="seat-x"
-                        title="remove this bot"
-                        aria-label={`remove ${seatName(p)}`}
-                        disabled={botBusy}
-                        onclick={() => onRemoveBot(g.id, p.player_id)}
-                      >
-                        <Icon name="x" size={12} />
-                      </button>
-                    {/if}
-                  </li>
-                {:else}
-                  <li class="seat open">
-                    <span class="sav open"></span>
-                    <div class="sinfo">
-                      <div class="sname dim">Open seat</div>
-                      <div class="sstat dim">
-                        {g.state === "lobby" ? "send the invite link" : "—"}
-                      </div>
-                    </div>
-                    {#if canManageBots(g) && botPickerFor !== g.id}
-                      <button
-                        class="seat-add"
-                        disabled={botBusy}
-                        onclick={() => openBotPicker(g.id)}
-                      >
-                        add bot
-                      </button>
-                    {/if}
-                  </li>
-                {/if}
-              {/each}
-            </ul>
-
-            {#if settingsFor === g.id}
-              <div class="tsettings">
-                {#if tableSettings}
-                  <TableSettingsPanel
-                    settings={tableSettings}
-                    canManage={canManageTableFor(g)}
-                    gameState={g.state}
-                    busy={settingsBusy}
-                    error={settingsError}
-                    onpatch={(patch) => applyTableSettings(g.id, patch)}
-                  />
-                {:else if settingsBusy}
-                  <p class="muted">loading settings…</p>
-                {:else}
-                  <p class="error">{settingsError ?? "couldn't load this table's settings"}</p>
-                {/if}
-              </div>
-            {/if}
-
-            {#if confirming?.id === g.id}
-              <div class="confirm" class:danger={confirming.kind === "delete"} role="alert">
-                {#if confirming.kind === "archive"}
+              {#if confirming?.id === g.id && confirming.kind === "archive"}
+                <div class="confirm" role="alert">
                   <p>
                     <strong>Archive “{g.name}”?</strong>
-                    It leaves this list and stops taking part — bots stop, and anyone still connected
-                    is dropped. Nothing is deleted: the board, the replay and the invite links are all
-                    kept, and you can restore it from <em>archived tables</em> below.
+                    It leaves Now and stops taking part — bots stop, and anyone still connected is dropped.
+                    Nothing is deleted: the board, the replay and the invite links are all kept, and you
+                    can unarchive it from History.
                   </p>
-                {:else}
-                  <p>
-                    <strong>Delete “{g.name}” permanently?</strong>
-                    This destroys the board, the restore point and the replay file. It cannot be undone.
-                    Archive instead if you only want it off the list.
-                  </p>
-                {/if}
-                <div class="confirm-actions">
-                  <button
-                    class="primary"
-                    disabled={manageBusy}
-                    onclick={() =>
-                      manage(
-                        () =>
-                          confirming?.kind === "delete" ? deleteGame(g.id) : archiveGame(g.id),
-                        confirming?.kind === "delete" ? "delete failed" : "archive failed",
-                      )}
-                  >
-                    {confirming.kind === "delete" ? "delete permanently" : "archive table"}
-                  </button>
-                  <button class="ghost" disabled={manageBusy} onclick={() => (confirming = null)}>
-                    cancel
-                  </button>
-                </div>
-              </div>
-            {/if}
-
-            {#if confirmRotate?.gameID === g.id}
-              <div class="confirm" role="alert">
-                <p>
-                  <strong>Mint a new {inviteKindLabel(confirmRotate.kind)}?</strong>
-                  The current {inviteKindLabel(confirmRotate.kind)} link stops working the moment this
-                  happens — anyone still holding it will need the new one.
-                </p>
-                <div class="confirm-actions">
-                  <button
-                    class="primary"
-                    disabled={rotateBusy !== null}
-                    onclick={() => onRotateInvite(g.id, confirmRotate!.kind)}
-                  >
-                    {rotateBusy === `${g.id}:${confirmRotate.kind}` ? "minting…" : "mint new link"}
-                  </button>
-                  <button
-                    class="ghost"
-                    disabled={rotateBusy !== null}
-                    onclick={() => (confirmRotate = null)}
-                  >
-                    cancel
-                  </button>
-                </div>
-              </div>
-            {/if}
-
-            {#if rotated?.gameID === g.id}
-              <div class="reclaim">
-                <div class="rhead">
-                  <span class="panel-h">new {inviteKindLabel(rotated.kind)}</span>
-                  <button
-                    class="ghost"
-                    aria-label="dismiss the new link"
-                    onclick={() => (rotated = null)}><Icon name="x" size={12} /></button
-                  >
-                </div>
-                <input
-                  class="rurl"
-                  type="text"
-                  readonly
-                  value={rotated.url}
-                  aria-label={`new ${inviteKindLabel(rotated.kind)}`}
-                  onfocus={(e) => e.currentTarget.select()}
-                />
-                <div class="ractions">
-                  <button
-                    class:on={copied === `${g.id}:rotated`}
-                    onclick={() => copyToClipboard(rotated!.url, `${g.id}:rotated`)}
-                  >
-                    {#if copied === `${g.id}:rotated`}
-                      <Icon name="check" size={13} /> Link copied
-                    {:else}
-                      <Icon name="link" size={13} /> copy new link
-                    {/if}
-                  </button>
-                </div>
-                <p class="hint warn">
-                  The old {inviteKindLabel(rotated.kind)} link no longer works. Send this one out instead.
-                </p>
-              </div>
-            {/if}
-            {#if rotateError?.gameID === g.id}
-              <div class="bot-error">{rotateError.message}</div>
-            {/if}
-
-            {#if reclaim?.gameID === g.id}
-              <div class="reclaim">
-                <div class="rhead">
-                  <span class="panel-h">seat link — {reclaim.ticket.player_name}</span>
-                  <button
-                    class="ghost"
-                    aria-label="dismiss the seat link"
-                    onclick={() => (reclaim = null)}><Icon name="x" size={12} /></button
-                  >
-                </div>
-                <input
-                  class="rurl"
-                  type="text"
-                  readonly
-                  value={reclaim.url}
-                  aria-label="seat reclaim link"
-                  onfocus={(e) => e.currentTarget.select()}
-                />
-                <div class="ractions">
-                  <button
-                    class:on={copied === `${g.id}:reclaim`}
-                    onclick={() => copyToClipboard(reclaim!.url, `${g.id}:reclaim`)}
-                  >
-                    {#if copied === `${g.id}:reclaim`}
-                      <Icon name="check" size={13} /> Link copied
-                    {:else}
-                      <Icon name="link" size={13} /> copy seat link
-                    {/if}
-                  </button>
-                  <span class="rttl">
-                    works once · expires in {ttlLabel(reclaim.ticket)}
-                  </span>
-                </div>
-                <p class="hint warn">
-                  Send this to {reclaim.ticket.player_name} and nobody else. Anyone who opens it plays
-                  as them — their hand included. It stops working the moment it is used.
-                </p>
-              </div>
-            {/if}
-            {#if reclaimError?.gameID === g.id}
-              <div class="bot-error">{reclaimError.message}</div>
-            {/if}
-
-            {#if confirmRemove?.gameID === g.id}
-              <div class="confirm danger" role="alert">
-                <p>
-                  <strong>{removeSeatQuestion(seatName(confirmRemove.seat))}</strong>
-                  {removeSeatConsequence(g)}
-                </p>
-                <label class="block-opt">
-                  <input type="checkbox" bind:checked={removeBlock} disabled={removeBusy} />
-                  <span>{BLOCK_LABEL}</span>
-                </label>
-                <p class="hint">{BLOCK_HINT}</p>
-                <div class="confirm-actions">
-                  <button
-                    class="primary"
-                    disabled={removeBusy}
-                    onclick={() => onRemoveSeat(g.id, confirmRemove!.seat.player_id)}
-                  >
-                    {removeBusy ? "removing…" : "remove from table"}
-                  </button>
-                  <button
-                    class="ghost"
-                    disabled={removeBusy}
-                    onclick={() => (confirmRemove = null)}
-                  >
-                    cancel
-                  </button>
-                </div>
-              </div>
-            {/if}
-            {#if removeError?.gameID === g.id}
-              <div class="bot-error">{removeError.message}</div>
-            {/if}
-
-            <!-- #3113: who this table has blocked, with an Unblock. The
-               host and the creator see it on a table that has not started;
-               an admin on any table. The server is the gate. -->
-            {#if canManageBlocks(g, { isAdmin, isHost: mySeat(g)?.is_host === true })}
-              <BlockList gameID={g.id} refreshKey={blockRefresh} />
-            {/if}
-
-            {#if botPickerFor === g.id}
-              <div class="bot-picker">
-                <label>
-                  <span>tier</span>
-                  <select bind:value={botTier} disabled={botBusy}>
-                    {#each botOptions?.tiers ?? [] as t (t.tier)}
-                      <option value={t.tier} disabled={!t.available} title={t.description}>
-                        {tierOptionLabel(t)}
-                      </option>
-                    {/each}
-                  </select>
-                </label>
-                <label>
-                  <span>deck</span>
-                  <select bind:value={botDeck} disabled={botBusy}>
-                    {#each botOptions?.decks ?? [] as d (d.id)}
-                      <option value={d.id} title={d.description}>{d.name}</option>
-                    {/each}
-                  </select>
-                </label>
-                {#if botTierNote}
-                  <p class="deck-desc" class:tier-warning={botTierNote.warning}>
-                    {botTierNote.text}
-                  </p>
-                {/if}
-                {#if botDeckDescription}
-                  <p class="deck-desc">{botDeckDescription}</p>
-                {/if}
-                <div class="bot-actions">
-                  <button
-                    class="primary"
-                    disabled={botBusy || !botTier || !botDeck}
-                    onclick={() => onAddBot(g.id)}
-                  >
-                    {botBusy ? "adding…" : "add bot"}
-                  </button>
-                  <button class="ghost" disabled={botBusy} onclick={() => (botPickerFor = null)}>
-                    cancel
-                  </button>
-                </div>
-                {#if botError}<div class="bot-error">{botError}</div>{/if}
-                <p class="hint">
-                  A bot takes a real seat, arrives with its deck already loaded, and starts playing
-                  when you press start.
-                </p>
-              </div>
-            {:else if botError}
-              <div class="bot-error">{botError}</div>
-            {/if}
-
-            {#if createdNote?.gameID === g.id}
-              <p class="hint setup-note" role="status">{createdNote.message}</p>
-            {/if}
-
-            {#if g.state === "lobby" && canInviteTablemates($session, $session?.gameID, g.id, g.is_creator === true)}
-              <!-- Open on the table this page just created (ADR 0110 §5
-                 item 3): inviting people is the next thing to do. -->
-              <details class="invite-picker" open={justCreated === g.id}>
-                <summary>
-                  <span class="panel-h">invite a tablemate</span>
-                </summary>
-                <TablematePicker gameID={g.id} lastTable={lastSetup?.tablemates ?? []} />
-              </details>
-            {/if}
-
-            {#if seat && g.state === "lobby" && $session?.playerID}
-              <details class="deck-upload" open={!seat.deck_uploaded}>
-                <summary>
-                  <span class="panel-h">
-                    {seat.deck_uploaded ? "replace your deck" : "choose your deck"}
-                  </span>
-                  {#if seat.deck_uploaded}
-                    <span class="deck-ok"
-                      ><i class="dot ok"></i>{seat.deck_name || "deck ready"}</span
+                  <div class="confirm-actions">
+                    <button
+                      class="primary"
+                      disabled={manageBusy}
+                      onclick={() => manage(() => archiveGame(g.id), "archive failed")}
                     >
-                  {/if}
-                </summary>
-                <p class="hint">
-                  Every deck is validated against Commander rules — 100-card singleton, color
-                  identity, format legality — whichever way it arrives.
-                </p>
-                <DeckUploadForm
-                  gameID={g.id}
-                  playerID={$session.playerID}
-                  onSuccess={() => void refresh()}
-                />
-              </details>
-            {/if}
-          </li>
-        {/each}
-      </ul>
-    {/if}
+                      archive table
+                    </button>
+                    <button class="ghost" disabled={manageBusy} onclick={() => (confirming = null)}>
+                      cancel
+                    </button>
+                  </div>
+                </div>
+              {/if}
 
-    {#if isAdmin}
-      <section class="archive">
-        <button class="ghost arch-toggle" onclick={toggleArchived}>
-          {showArchived ? "hide" : "show"} archived tables
-          {#if showArchived && archived.length > 0}({archived.length}){/if}
-        </button>
-        {#if showArchived}
-          {#if archived.length === 0}
-            <p class="muted empty">Nothing archived.</p>
-          {:else}
-            <ul class="arch-list">
-              {#each archived as g (g.id)}
-                <li class="arch-row">
-                  <div class="arch-id">
-                    <span class="arch-name">{g.name}</span>
-                    <span class="meta">
-                      {g.players.length} seats · {g.state} · archived {g.archived_at
-                        ? timeAgo(g.archived_at)
-                        : ""}
+              {#if confirmRotate?.gameID === g.id}
+                <div class="confirm" role="alert">
+                  <p>
+                    <strong>Mint a new {inviteKindLabel(confirmRotate.kind)}?</strong>
+                    The current {inviteKindLabel(confirmRotate.kind)} link stops working the moment this
+                    happens — anyone still holding it will need the new one.
+                  </p>
+                  <div class="confirm-actions">
+                    <button
+                      class="primary"
+                      disabled={rotateBusy !== null}
+                      onclick={() => onRotateInvite(g.id, confirmRotate!.kind)}
+                    >
+                      {rotateBusy === `${g.id}:${confirmRotate.kind}`
+                        ? "minting…"
+                        : "mint new link"}
+                    </button>
+                    <button
+                      class="ghost"
+                      disabled={rotateBusy !== null}
+                      onclick={() => (confirmRotate = null)}
+                    >
+                      cancel
+                    </button>
+                  </div>
+                </div>
+              {/if}
+
+              {#if rotated?.gameID === g.id}
+                <div class="reclaim">
+                  <div class="rhead">
+                    <span class="panel-h">new {inviteKindLabel(rotated.kind)}</span>
+                    <button
+                      class="ghost"
+                      aria-label="dismiss the new link"
+                      onclick={() => (rotated = null)}><Icon name="x" size={12} /></button
+                    >
+                  </div>
+                  <input
+                    class="rurl"
+                    type="text"
+                    readonly
+                    value={rotated.url}
+                    aria-label={`new ${inviteKindLabel(rotated.kind)}`}
+                    onfocus={(e) => e.currentTarget.select()}
+                  />
+                  <div class="ractions">
+                    <button
+                      class:on={copied === `${g.id}:rotated`}
+                      onclick={() => copyToClipboard(rotated!.url, `${g.id}:rotated`)}
+                    >
+                      {#if copied === `${g.id}:rotated`}
+                        <Icon name="check" size={13} /> Link copied
+                      {:else}
+                        <Icon name="link" size={13} /> copy new link
+                      {/if}
+                    </button>
+                  </div>
+                  <p class="hint warn">
+                    The old {inviteKindLabel(rotated.kind)} link no longer works. Send this one out instead.
+                  </p>
+                </div>
+              {/if}
+              {#if rotateError?.gameID === g.id}
+                <div class="bot-error">{rotateError.message}</div>
+              {/if}
+
+              {#if reclaim?.gameID === g.id}
+                <div class="reclaim">
+                  <div class="rhead">
+                    <span class="panel-h">seat link — {reclaim.ticket.player_name}</span>
+                    <button
+                      class="ghost"
+                      aria-label="dismiss the seat link"
+                      onclick={() => (reclaim = null)}><Icon name="x" size={12} /></button
+                    >
+                  </div>
+                  <input
+                    class="rurl"
+                    type="text"
+                    readonly
+                    value={reclaim.url}
+                    aria-label="seat reclaim link"
+                    onfocus={(e) => e.currentTarget.select()}
+                  />
+                  <div class="ractions">
+                    <button
+                      class:on={copied === `${g.id}:reclaim`}
+                      onclick={() => copyToClipboard(reclaim!.url, `${g.id}:reclaim`)}
+                    >
+                      {#if copied === `${g.id}:reclaim`}
+                        <Icon name="check" size={13} /> Link copied
+                      {:else}
+                        <Icon name="link" size={13} /> copy seat link
+                      {/if}
+                    </button>
+                    <span class="rttl">
+                      works once · expires in {ttlLabel(reclaim.ticket)}
                     </span>
                   </div>
-                  <div class="arow">
+                  <p class="hint warn">
+                    Send this to {reclaim.ticket.player_name} and nobody else. Anyone who opens it plays
+                    as them — their hand included. It stops working the moment it is used.
+                  </p>
+                </div>
+              {/if}
+              {#if reclaimError?.gameID === g.id}
+                <div class="bot-error">{reclaimError.message}</div>
+              {/if}
+
+              {#if confirmRemove?.gameID === g.id}
+                <div class="confirm danger" role="alert">
+                  <p>
+                    <strong>{removeSeatQuestion(seatName(confirmRemove.seat))}</strong>
+                    {removeSeatConsequence(g)}
+                  </p>
+                  <label class="block-opt">
+                    <input type="checkbox" bind:checked={removeBlock} disabled={removeBusy} />
+                    <span>{BLOCK_LABEL}</span>
+                  </label>
+                  <p class="hint">{BLOCK_HINT}</p>
+                  <div class="confirm-actions">
                     <button
-                      disabled={manageBusy}
-                      onclick={() => manage(() => unarchiveGame(g.id), "restore failed")}
+                      class="primary"
+                      disabled={removeBusy}
+                      onclick={() => onRemoveSeat(g.id, confirmRemove!.seat.player_id)}
                     >
-                      restore
+                      {removeBusy ? "removing…" : "remove from table"}
                     </button>
                     <button
-                      class="ghost danger"
-                      disabled={manageBusy}
-                      onclick={() => (confirming = { id: g.id, kind: "delete" })}
+                      class="ghost"
+                      disabled={removeBusy}
+                      onclick={() => (confirmRemove = null)}
                     >
-                      delete…
+                      cancel
                     </button>
                   </div>
-                  {#if confirming?.id === g.id && confirming.kind === "delete"}
-                    <div class="confirm danger" role="alert">
-                      <p>
-                        <strong>Delete “{g.name}” permanently?</strong>
-                        This destroys the board, the restore point and the replay file. It cannot be undone.
-                      </p>
-                      <div class="confirm-actions">
-                        <button
-                          class="primary"
-                          disabled={manageBusy}
-                          onclick={() => manage(() => deleteGame(g.id), "delete failed")}
-                        >
-                          delete permanently
-                        </button>
-                        <button
-                          class="ghost"
-                          disabled={manageBusy}
-                          onclick={() => (confirming = null)}
-                        >
-                          cancel
-                        </button>
-                      </div>
-                    </div>
-                  {/if}
-                </li>
-              {/each}
-            </ul>
-          {/if}
-        {/if}
-      </section>
-    {/if}
+                </div>
+              {/if}
+              {#if removeError?.gameID === g.id}
+                <div class="bot-error">{removeError.message}</div>
+              {/if}
 
-    <p class="foot">
-      <button class="ghost" onclick={refresh}><Icon name="undo" size={13} /> refresh</button>
-    </p>
+              <!-- #3113: who this table has blocked, with an Unblock. -->
+              {#if canManageBlocks(g, { isAdmin, isHost: mySeat(g)?.is_host === true })}
+                <BlockList gameID={g.id} refreshKey={blockRefresh} />
+              {/if}
+
+              {#if createdNote?.gameID === g.id}
+                <p class="hint setup-note" role="status">{createdNote.message}</p>
+              {/if}
+
+              {#if g.state === "lobby" && (canInvite(g) || (seat && $session?.playerID) || reason)}
+                <!-- The lobby's own controls (§1 item 2): invite a
+                     tablemate, your deck, and what the table waits on. -->
+                <div class="tfoot">
+                  {#if canInvite(g)}
+                    <button
+                      type="button"
+                      class="foot-toggle"
+                      aria-expanded={panel === "invite"}
+                      onclick={() => togglePanel(g, "invite")}
+                    >
+                      Invite a tablemate <i class="caret" class:up={panel === "invite"}></i>
+                    </button>
+                  {/if}
+                  {#if seat && $session?.playerID}
+                    <button
+                      type="button"
+                      class="foot-toggle"
+                      class:pend={!seat.deck_uploaded}
+                      aria-expanded={panel === "deck"}
+                      onclick={() => togglePanel(g, "deck")}
+                    >
+                      {seat.deck_uploaded
+                        ? `Change deck · ${seat.deck_name || "deck ready"}`
+                        : "Choose your deck"}
+                      <i class="caret" class:up={panel === "deck"}></i>
+                    </button>
+                  {/if}
+                  {#if reason}<span class="reason">{reason}</span>{/if}
+                </div>
+                {#if panel === "invite" && canInvite(g)}
+                  <div class="invite-picker">
+                    <TablematePicker gameID={g.id} lastTable={lastSetup?.tablemates ?? []} />
+                  </div>
+                {:else if panel === "deck" && seat && $session?.playerID}
+                  <div class="deck-upload">
+                    <p class="hint">
+                      Every deck is validated against Commander rules — 100-card singleton, color
+                      identity, format legality — whichever way it arrives.
+                    </p>
+                    <DeckUploadForm
+                      gameID={g.id}
+                      playerID={$session.playerID}
+                      onSuccess={() => void refresh()}
+                    />
+                  </div>
+                {/if}
+              {/if}
+            </li>
+          {/each}
+        </ul>
+      {/if}
+    </section>
+
+    <section class="history" id={HISTORY_ID} aria-labelledby="history-h">
+      <div class="sec-head">
+        <h2 class="sec-h" id="history-h">
+          History <span class="count">{history.length} game{history.length === 1 ? "" : "s"}</span>
+        </h2>
+        {#if history.length > 0}
+          <div class="seg" role="group" aria-label="filter history">
+            {#each HISTORY_FILTERS as f (f.id)}
+              <button
+                type="button"
+                aria-pressed={historyFilter === f.id}
+                class:on={historyFilter === f.id}
+                onclick={() => setFilter(f.id)}>{f.label}</button
+              >
+            {/each}
+          </div>
+        {/if}
+      </div>
+
+      {#if history.length === 0}
+        <p class="muted empty">
+          {#if signedInUserID($session) || isAdmin}
+            Games you finish show up here, with their replays.
+          {:else}
+            Your games are kept for your Discord account. Sign in with Discord to see them here.
+          {/if}
+        </p>
+      {:else}
+        <div class="hist">
+          <div class="hrow hhead" aria-hidden="true">
+            <span>Table</span><span>Result</span><span>With</span><span>When</span><span></span>
+          </div>
+          {#if filtered.length === 0}
+            <p class="muted hist-empty">No games match this filter.</p>
+          {/if}
+          <ul class="hlist" aria-label="history">
+            {#each shownRows as r (r.id)}
+              {@const replay = replayFor(r)}
+              {@const ritems = historyMore(r)}
+              <li class="hrow">
+                <span class="hname">{r.name}</span>
+                <span><span class="chip result {r.result.tone}">{r.result.label}</span></span>
+                <span class="hwith">{r.others || "nobody else"}</span>
+                <span class="hwhen">{whenLabel(r)}</span>
+                <span class="hact">
+                  {#if replay}
+                    <a class="btn ghost sm" href={replay} download={`${r.id}.jsonl`}>
+                      <Icon name="draw" size={13} /> Replay
+                    </a>
+                  {/if}
+                  {#if ritems.length > 0}
+                    <MoreMenu label={`more for ${r.name}`} items={ritems} />
+                  {/if}
+                </span>
+                {#if confirmDelete === r.id}
+                  <div class="confirm danger hconfirm" role="alert">
+                    <p>
+                      <strong>Delete “{r.name}” permanently?</strong>
+                      This destroys the board, the restore point and the replay file. It cannot be undone.
+                    </p>
+                    <div class="confirm-actions">
+                      <button
+                        class="primary"
+                        disabled={manageBusy}
+                        onclick={() =>
+                          manage(async () => {
+                            await deleteGame(r.id);
+                            confirmDelete = null;
+                          }, "delete failed")}
+                      >
+                        delete permanently
+                      </button>
+                      <button
+                        class="ghost"
+                        disabled={manageBusy}
+                        onclick={() => (confirmDelete = null)}
+                      >
+                        cancel
+                      </button>
+                    </div>
+                  </div>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+          {#if more > 0}
+            <button type="button" class="show-more" onclick={() => (historyShown += HISTORY_STEP)}>
+              Show {more} more
+            </button>
+          {/if}
+        </div>
+      {/if}
+    </section>
   </section>
 </Page>
 
@@ -1537,50 +1575,45 @@
     color: var(--fg-dim);
     font-weight: 600;
   }
-  /* The two start cards (ADR 0112 §1 item 3): join and create, side by
-     side, stacking join-first on a narrow screen. */
-  .starts {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr));
-    gap: 12px;
-  }
-  .start-card {
+
+  /* --- the page head: join and + New table (§1 item 1) --- */
+  .join {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    min-width: 0;
-    padding: 14px 16px;
-    border-radius: 12px;
-    border: 1px solid var(--border);
-    background: var(--surface);
-  }
-  .start-help {
-    margin: 0;
-    font-size: 12px;
-    line-height: 1.5;
-    color: var(--fg-muted);
-  }
-  .create-row {
-    display: flex;
-    align-items: center;
     gap: 8px;
   }
-  .create-row input[type="text"] {
-    flex: 1;
-    min-width: 0;
+  .join input {
+    width: 230px;
+    height: 40px;
     margin: 0;
-    height: 36px;
     padding: 0 12px;
     box-sizing: border-box;
-    font-size: 13px;
-  }
-  .create-row input.mono {
     font-family: var(--font-mono);
     font-size: 12.5px;
   }
-  .create-row button {
-    height: 36px;
-    flex: 0 0 auto;
+  .new-table {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px 14px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    background: var(--surface);
+  }
+  .nt-label {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+  .nt-row {
+    flex: 1 1 360px;
+    min-width: 0;
+  }
+  .nt-error {
+    flex: 1 0 100%;
   }
   .use-setup {
     display: flex;
@@ -1599,14 +1632,13 @@
     color: var(--fg-muted);
   }
   .setup-note {
-    margin: 8px 0 0;
+    margin: 0;
   }
   .mode-notice {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
-    margin: 0 0 16px;
     padding: 10px 14px;
     border: 1px solid var(--border-strong);
     border-left: 3px solid var(--accent);
@@ -1623,14 +1655,49 @@
     color: var(--fg-muted);
   }
   .empty {
-    margin: 12px 0;
+    margin: 0;
     font-size: 13.5px;
   }
-  /* A signed-in person's empty Lobby (ADR 0112 §1 item 7). */
-  .empty-card {
+
+  /* --- the two sections --- */
+  .now,
+  .history {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 14px;
+  }
+  .history {
+    margin-top: 18px;
+    scroll-margin-top: 16px;
+  }
+  .sec-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+  .sec-h {
+    margin: 0;
+    font-family: var(--font-display);
+    font-size: 21px;
+    font-weight: 700;
+    color: var(--fg);
+    text-transform: none;
+    letter-spacing: -0.01em;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .count {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--fg-dim);
+  }
+
+  /* A signed-in person's empty Now (ADR 0112 §1 item 7). */
+  .empty-card {
     padding: 18px 20px;
     border-radius: 12px;
     border: 1px dashed var(--border-strong);
@@ -1644,7 +1711,6 @@
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 16px;
-    margin-top: 16px;
   }
   .empty-cards .card {
     display: flex;
@@ -1675,6 +1741,7 @@
     }
   }
 
+  /* --- Now: one card per table --- */
   .games {
     list-style: none;
     padding: 0;
@@ -1687,62 +1754,74 @@
     background: var(--surface);
     border: 1px solid var(--border);
     border-radius: 14px;
-    padding: 18px 22px 20px;
+    padding: 18px 20px;
     display: flex;
     flex-direction: column;
-    gap: 16px;
+    gap: 14px;
   }
   .tcard.mine {
-    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
-    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 45%, transparent);
   }
-  .trow {
+  .thead {
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
-    gap: 20px;
+    align-items: center;
+    gap: 12px 20px;
     flex-wrap: wrap;
   }
   .tid {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px 12px;
     min-width: 0;
   }
   .tname {
+    margin: 0;
     font-family: var(--font-display);
     font-size: 18px;
     font-weight: 700;
     letter-spacing: -0.01em;
     color: var(--fg);
   }
-  .chips {
+  .ctx {
+    font-size: 12.5px;
+    color: var(--fg-dim);
+  }
+  .tact {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 8px;
-    flex-wrap: wrap;
+    margin-left: auto;
+  }
+  .tact .btn.on {
+    color: var(--mint);
+    border-color: color-mix(in srgb, var(--mint) 40%, transparent);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: default;
   }
   .chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
-    height: 20px;
-    padding: 0 8px;
+    gap: 6px;
+    height: 22px;
+    padding: 0 9px;
     border-radius: 999px;
-    border: 1px solid var(--border-strong);
+    border: 1px solid var(--accent-line);
     font-family: var(--font-mono);
     font-size: 10px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
-    color: var(--fg-muted);
+    color: var(--accent-strong);
     font-weight: 600;
+    white-space: nowrap;
   }
   .chip.live {
-    color: var(--accent-strong);
-    border-color: var(--accent-line);
-    background: var(--accent-soft);
-  }
-  .chip.ended {
-    color: var(--fg-dim);
-    border-color: var(--border);
+    color: var(--mint);
+    border-color: color-mix(in srgb, var(--mint) 45%, transparent);
+    background: color-mix(in srgb, var(--mint) 8%, transparent);
   }
   .dot {
     display: inline-block;
@@ -1755,57 +1834,6 @@
   .dot.ok {
     background: var(--mint);
   }
-  .meta {
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    color: var(--fg-dim);
-    letter-spacing: 0.04em;
-  }
-  .actions {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-    flex: 0 0 auto;
-  }
-  .arow {
-    display: flex;
-    gap: 6px;
-    align-items: center;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-  }
-  .arow button,
-  .btn-link {
-    height: 32px;
-    padding: 0 12px;
-    font-size: 12.5px;
-  }
-  .arow button.on {
-    color: var(--mint);
-    border-color: color-mix(in srgb, var(--mint) 40%, transparent);
-  }
-  .btn-link {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    border-radius: var(--radius);
-    border: 1px solid var(--border-strong);
-    background: var(--surface-raised);
-    color: var(--fg);
-    font-weight: 600;
-    text-decoration: none;
-    box-sizing: border-box;
-  }
-  .btn-link:hover {
-    background: var(--surface-hover);
-    color: var(--fg);
-  }
-  .reason {
-    font-size: 11px;
-    color: var(--fg-dim);
-    text-align: right;
-  }
 
   .seats {
     list-style: none;
@@ -1815,7 +1843,9 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 10px;
   }
-  @media (max-width: 760px) {
+  /* Four seats in one row from the laptop up; two by two on a tablet,
+     where a fourth of the card is too narrow for a name and Add bot. */
+  @media (max-width: 1023px) {
     .seats {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
@@ -1827,7 +1857,7 @@
     padding: 10px 12px;
     border-radius: 10px;
     background: var(--surface-sunken);
-    border: 1px solid transparent;
+    border: 1px solid var(--border);
     min-width: 0;
   }
   .seat.you {
@@ -1838,8 +1868,8 @@
     background: transparent;
   }
   .sav {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     border: 2px solid var(--border-strong);
     padding: 2px;
@@ -1869,9 +1899,10 @@
   }
   .sinfo {
     min-width: 0;
+    flex: 1 1 auto;
   }
   .sname {
-    font-size: 12.5px;
+    font-size: 13px;
     font-weight: 700;
     color: var(--fg);
     white-space: nowrap;
@@ -1893,12 +1924,12 @@
     font-weight: 500;
   }
   .sstat {
-    font-size: 11px;
+    font-size: 11.5px;
     color: var(--fg-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    margin-top: 1px;
+    margin-top: 2px;
     display: flex;
     align-items: center;
     gap: 5px;
@@ -1906,8 +1937,6 @@
   .sstat.pend {
     color: var(--accent-strong);
   }
-
-  /* --- bot seats (S31) ------------------------------------------- */
   .seat.bot {
     border-style: dashed;
     border-color: var(--border-strong);
@@ -1923,14 +1952,9 @@
     margin: 2px 0;
     min-width: 0;
   }
-  .sname b.botchip {
-    color: var(--fg-muted);
-  }
-  /* The seat row is a flex row; these push to its trailing edge. */
   .seat-x,
   .seat-add,
   .seat-link {
-    margin-left: auto;
     flex: 0 0 auto;
     border-radius: 8px;
     border: 1px solid var(--border-strong);
@@ -1946,16 +1970,22 @@
     height: 22px;
     padding: 0;
   }
-  .seat-add,
+  .seat-add {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 30px;
+    padding: 0 10px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--fg);
+    white-space: nowrap;
+    background: var(--surface-raised);
+  }
   .seat-link {
     font-size: 11px;
-    padding: 4px 9px;
+    padding: 4px 8px;
     white-space: nowrap;
-  }
-  /* Two per-seat text buttons side by side (an admin's seat link and the
-     remove control): only the first takes the auto margin. */
-  .seat-link + .seat-link {
-    margin-left: 6px;
   }
   .seat-x:hover:not(:disabled),
   .seat-add:hover:not(:disabled),
@@ -1970,16 +2000,62 @@
     cursor: default;
   }
 
-  /* --- admin table management ------------------------------------ */
-  /* Same card-inset shell as .confirm, so a disclosure inside a table
-     card reads the same whether it is a settings panel or a
-     confirmation. */
-  .tsettings {
-    border: 1px solid var(--border-strong);
-    border-radius: 10px;
+  /* --- the card footer: the lobby's own controls --- */
+  .tfoot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+  .foot-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: auto;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--fg-muted);
+    font: 600 12.5px/1.4 var(--font-ui);
+    cursor: pointer;
+  }
+  .foot-toggle:hover {
+    color: var(--fg);
+  }
+  .foot-toggle.pend {
+    color: var(--accent-strong);
+  }
+  .caret {
+    width: 5px;
+    height: 5px;
+    border-right: 1.5px solid currentColor;
+    border-bottom: 1.5px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
+    transition: transform 120ms var(--ease);
+  }
+  .caret.up {
+    transform: translateY(1px) rotate(-135deg);
+  }
+  .reason {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--fg-dim);
+  }
+  .deck-upload,
+  .invite-picker {
     padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
     background: var(--surface-sunken);
   }
+  .deck-upload .hint {
+    margin-top: 0;
+  }
+
+  /* --- the card's inset panels: settings, confirmations, new links --- */
+  .tsettings,
   .confirm {
     border: 1px solid var(--border-strong);
     border-radius: 10px;
@@ -2019,57 +2095,6 @@
     gap: 8px;
     margin-top: 10px;
   }
-  .arch-toggle {
-    font-size: 12px;
-  }
-  .archive {
-    border-top: 1px solid var(--border);
-    padding-top: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    align-items: flex-start;
-  }
-  .arch-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .arch-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    padding: 10px 14px;
-    border: 1px solid var(--border);
-    border-radius: 10px;
-    background: var(--surface-sunken);
-  }
-  .arch-id {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    min-width: 0;
-  }
-  .arch-name {
-    font-family: var(--font-display);
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--fg-muted);
-  }
-  .arch-row .confirm {
-    flex: 1 0 100%;
-  }
-  button.danger {
-    color: var(--danger);
-  }
-
-  /* --- seat reclaim link ----------------------------------------- */
   .reclaim {
     display: flex;
     flex-direction: column;
@@ -2161,8 +2186,6 @@
     flex: 1 0 100%;
     margin: 0;
   }
-  /* Breaks the picker row so the description reads as a caption under
-     the two selects rather than a third column squeezed beside them. */
   .deck-desc {
     flex: 1 0 100%;
     margin: 0;
@@ -2175,53 +2198,6 @@
   .bot-error {
     color: var(--danger);
     font-size: 12px;
-    flex: 1 0 100%;
-  }
-
-  /* The invite picker wears the deck panel's disclosure exactly, so
-     a game card reads as one stack of panels rather than two
-     unrelated controls (ADR 0051 decision 8, S34 sub-PR 6). */
-  .deck-upload,
-  .invite-picker {
-    border-top: 1px solid var(--border);
-    padding-top: 12px;
-  }
-  .invite-picker summary,
-  .deck-upload summary {
-    cursor: pointer;
-    list-style: none;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-  }
-  .invite-picker summary::-webkit-details-marker,
-  .deck-upload summary::-webkit-details-marker {
-    display: none;
-  }
-  .invite-picker summary::before,
-  .deck-upload summary::before {
-    content: "";
-    width: 6px;
-    height: 6px;
-    border-right: 1.5px solid var(--fg-dim);
-    border-bottom: 1.5px solid var(--fg-dim);
-    transform: rotate(-45deg);
-    transition: transform 120ms var(--ease);
-  }
-  .invite-picker[open] summary::before,
-  .deck-upload[open] summary::before {
-    transform: rotate(45deg);
-  }
-  .invite-picker summary:hover .panel-h,
-  .deck-upload summary:hover .panel-h {
-    color: var(--fg);
-  }
-  .deck-ok {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    color: var(--fg-muted);
   }
   .hint {
     font-size: 12px;
@@ -2229,7 +2205,124 @@
     line-height: 1.5;
     margin: 10px 0 0;
   }
-  .foot {
+
+  /* --- History: one compact row per game (§1 item 3) --- */
+  .seg {
+    display: inline-flex;
+    padding: 3px;
+    gap: 2px;
+    border: 1px solid var(--border-strong);
+    border-radius: var(--radius);
+    background: var(--surface);
+  }
+  .seg button {
+    height: 28px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--fg-muted);
+    font: 600 13px/1 var(--font-ui);
+    cursor: pointer;
+  }
+  .seg button:hover {
+    color: var(--fg);
+  }
+  .seg button.on {
+    background: var(--surface-hover);
+    color: var(--fg);
+  }
+  .hist {
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface);
+  }
+  .hlist {
+    list-style: none;
     margin: 0;
+    padding: 0;
+  }
+  .hrow {
+    display: grid;
+    /* Fixed result, when and action columns, so the header row (outside
+       the list) and every game row line up whatever each row holds. */
+    grid-template-columns: minmax(0, 2.4fr) 132px minmax(0, 1.6fr) 104px 148px;
+    align-items: center;
+    gap: 12px 16px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+  }
+  .hhead {
+    border-top: 0;
+    padding-top: 12px;
+    padding-bottom: 10px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--fg-dim);
+  }
+  .hname {
+    font-weight: 700;
+    font-size: 14px;
+    color: var(--fg);
+    overflow-wrap: anywhere;
+  }
+  .hwith,
+  .hwhen {
+    font-size: 13px;
+    color: var(--fg-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .hwhen {
+    color: var(--fg-dim);
+  }
+  .hact {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .chip.result.won {
+    color: var(--accent-strong);
+    border-color: var(--accent-line);
+    background: var(--accent-soft);
+  }
+  .chip.result.ended,
+  .chip.result.open {
+    color: var(--fg-muted);
+    border-color: var(--border-strong);
+  }
+  .chip.result.archived {
+    color: var(--fg-dim);
+    border-color: var(--border-strong);
+    border-style: dashed;
+  }
+  .hconfirm {
+    grid-column: 1 / -1;
+  }
+  .hist-empty {
+    margin: 0;
+    padding: 14px 18px;
+    border-top: 1px solid var(--border);
+    font-size: 13px;
+  }
+  .show-more {
+    display: block;
+    width: 100%;
+    height: 44px;
+    border: 0;
+    border-top: 1px solid var(--border);
+    border-radius: 0 0 14px 14px;
+    background: transparent;
+    color: var(--fg-muted);
+    font: 600 13.5px/1 var(--font-ui);
+    cursor: pointer;
+  }
+  .show-more:hover {
+    color: var(--fg);
+    background: var(--overlay-faint);
   }
 </style>

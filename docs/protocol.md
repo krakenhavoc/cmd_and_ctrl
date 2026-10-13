@@ -1626,8 +1626,11 @@ in the order the server produced them. Consumers can stream the file
 and re-derive the game timeline.
 
 `GET /games/{id}/replay` returns the log as `application/x-ndjson`.
-Authorization: admin or any seat (player / spectator) in this game.
-Returns 204 when no Apply has fired yet (empty replay). The
+Authorization: admin or any seat (player / spectator) in this game,
+and a signed-in person whose account held a seat in it, through any
+session (the Tables page's History, ADR 0158 §1 item 3). Everyone but
+the admin waits for the game to end and gets the log filtered for
+their own seat (a spectator, the public view). Returns 204 when no Apply has fired yet (empty replay). The
 crash-recovery dump (single `<game-id>.json` file holding the
 latest snapshot) is orthogonal — it exists for server restarts;
 the replay log is the additive history.
