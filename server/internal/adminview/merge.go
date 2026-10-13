@@ -143,6 +143,31 @@ type SignIn struct {
 	DiscordLinkedAt       int64  `json:"discord_linked_at,omitempty"`
 	SessionsInvalidBefore int64  `json:"sessions_invalid_before,omitempty"`
 	RevokePath            string `json:"revoke_path"`
+	// AccessCheckedAt is when the sign-up gate last had an answer from
+	// Discord for this account; absent for never (ADR 0156 §1 item 7).
+	AccessCheckedAt int64 `json:"access_checked_at,omitempty"`
+	// AccessResult is that answer: AccessAdmitted, AccessNotMember,
+	// AccessNoRole, or AccessUnchecked when there has been none (the
+	// gate was off, or the account is an exempt admin).
+	AccessResult string `json:"access_result"`
+}
+
+// The sign-up gate's answers as the account view serves them. The first
+// three are users.access_result's values; the client words them
+// ("admitted", "refused: not a member", "refused: no role").
+const (
+	AccessAdmitted  = "admitted"
+	AccessNotMember = "not_member"
+	AccessNoRole    = "no_role"
+	AccessUnchecked = "unchecked"
+)
+
+// accessResult is the stored answer as served: "" (NULL) is unchecked.
+func accessResult(stored string) string {
+	if stored == "" {
+		return AccessUnchecked
+	}
+	return stored
 }
 
 // Deck is a saved deck without its list (§3.2).
@@ -399,6 +424,8 @@ func MergeAccount(rows AccountRows, live []string, ov Overlay, now time.Time) Ac
 			DiscordLinkedAt:       ms(rows.DiscordLinkedAt),
 			SessionsInvalidBefore: ms(rows.SessionsInvalidBefore),
 			RevokePath:            "/admin/users/" + rows.Account.ID + "/revoke-sessions",
+			AccessCheckedAt:       ms(rows.AccessCheckedAt),
+			AccessResult:          accessResult(rows.AccessResult),
 		},
 		Games:                 make([]Game, 0, len(rows.Games)),
 		GamesTruncated:        rows.GamesTruncated,

@@ -151,8 +151,9 @@ func seed(t *testing.T) fixture {
 		id   uuid.UUID
 		name string
 	}{{f.user, "Ian"}, {f.other, "Bea"}} {
-		exec(t, d, `INSERT INTO users (id, display_name, avatar_url, created_at, last_seen_at, last_deck, playmat_id, playmat_wash, admin_mode_at)
-			VALUES (?, ?, '/avatars/x/y.png', 100, 200, '{"kind":"prebuilt","id":"x"}', ?, 60, 300)`,
+		exec(t, d, `INSERT INTO users (id, display_name, avatar_url, created_at, last_seen_at, last_deck, playmat_id, playmat_wash, admin_mode_at,
+				access_checked_at, access_result)
+			VALUES (?, ?, '/avatars/x/y.png', 100, 200, '{"kind":"prebuilt","id":"x"}', ?, 60, 300, 400, 'admitted')`,
 			u.id.String(), u.name, "mat-"+u.name)
 	}
 	exec(t, d, `INSERT INTO identities (provider, subject, user_id, display_name, avatar_hash, refresh_token, scopes, linked_at)
@@ -299,6 +300,14 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	}
 	if dn != DeletedPlayerName || avatar.Valid || lastDeck.Valid || playmat.Valid || wash.Valid || mode != 0 {
 		t.Errorf("tombstone not scrubbed: %q %v %v %v %v mode=%d", dn, avatar, lastDeck, playmat, wash, mode)
+	}
+	var checkedAt sql.NullInt64
+	var access sql.NullString
+	if err := f.d.QueryRow(`SELECT access_checked_at, access_result FROM users WHERE id = ?`, u).Scan(&checkedAt, &access); err != nil {
+		t.Fatal(err)
+	}
+	if checkedAt.Valid || access.Valid {
+		t.Errorf("tombstone keeps the sign-up gate's answer: %v %v", checkedAt, access)
 	}
 	if invalid != at.UnixMilli() || deleted != at.UnixMilli() || lastSeen != at.UnixMilli() {
 		t.Errorf("tombstone clocks = %d %d %d, want %d", invalid, deleted, lastSeen, at.UnixMilli())

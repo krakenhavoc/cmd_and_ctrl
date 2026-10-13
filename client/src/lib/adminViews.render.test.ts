@@ -161,6 +161,8 @@ const ACCOUNT: AdminAccountResponse = {
     last_sign_in_at: NOW - 86_400_000,
     discord_linked_at: NOW - 30 * 86_400_000,
     revoke_path: `/admin/users/${USER}/revoke-sessions`,
+    access_checked_at: NOW - 3_600_000,
+    access_result: "no_role",
   },
   games: [{ ...ROW, their_seat: 0 }],
   games_truncated: false,
@@ -433,6 +435,7 @@ describe("one account", () => {
     const t = text(c);
     expect(t).toContain("zed");
     expect(t).toContain("no list on the server");
+    expect(t).toContain("refused: no role");
     expect(t).toContain("Atraxa superfriends");
     expect(t).toContain("moxfield:abc");
     expect(

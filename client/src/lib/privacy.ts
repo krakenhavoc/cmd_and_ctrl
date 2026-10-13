@@ -36,8 +36,13 @@ export const CONTACT_TEXT = "see the project's GitHub";
  *
  * 18 (#3071) renames a pre-built deck ID inside users.last_deck and
  * table_setups, which the notice already covers; it stores nothing new.
+ *
+ * 19 (#3179, ADR 0156 §1) adds users.access_checked_at and
+ * users.access_result, the sign-up gate's last answer; the notice's
+ * "Your Discord sign-in" row names them, and the guilds.members.read
+ * scope the gate asks for.
  */
-export const PRIVACY_SCHEMA_VERSION = 18;
+export const PRIVACY_SCHEMA_VERSION = 19;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

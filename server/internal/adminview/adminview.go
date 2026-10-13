@@ -124,6 +124,11 @@ type AccountRows struct {
 	// are not columns the store reads.
 	Playmats              []PlaymatSlot
 	SessionsInvalidBefore time.Time // zero while users.sessions_invalid_before is 0
+	// AccessCheckedAt and AccessResult are the sign-up gate's last
+	// answer for the account (users.access_checked_at and
+	// users.access_result, ADR 0156 §1 item 7): zero and "" for never.
+	AccessCheckedAt       time.Time
+	AccessResult          string
 	Games                 []GameRow // newest first, each with TheirSeat
 	GamesTruncated        bool
 	Decks                 []DeckRow // newest first

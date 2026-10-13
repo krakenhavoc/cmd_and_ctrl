@@ -199,6 +199,16 @@ func isAllowlisted(a *Admins, p auth.Principal) bool {
 	return p.UserID != uuid.Nil && p.DiscordID != "" && a.list.Has(p.DiscordID)
 }
 
+// gateExempt reports whether a Discord account skips the sign-up gate
+// (ADR 0156 §1 item 4): anyone on the allowlist, whatever their admin
+// mode, so the owner can never lock themselves out by losing a role.
+// It asks the list by snowflake rather than by principal because the
+// gate runs at sign-in, before there is a session. It confers nothing
+// else: admin is still isAdmin's answer.
+func gateExempt(a *Admins, discordID string) bool {
+	return a != nil && a.list.Has(discordID)
+}
+
 // isAdminPrincipal is isAdmin with the Admins passed in, for the
 // callers that hold one but no Config (WSAuthorizer): the shared token,
 // or an allowlisted person in admin mode. Any failure to know the mode

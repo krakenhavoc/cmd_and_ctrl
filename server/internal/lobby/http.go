@@ -158,6 +158,11 @@ type Config struct {
 	// http.DefaultClient. The DM-invite route shares it; nil there
 	// means a client with a short timeout.
 	DiscordHTTPClient *http.Client
+	// CommunityInviteURL is the C2 Discord server's public invite
+	// (CMDCTRL_DISCORD_INVITE_URL, ADR 0156 §1 item 1), served by GET
+	// /community. "" hides every Discord placement in the client. The
+	// sign-up gate itself is Discord.Gate.
+	CommunityInviteURL string
 	// DiscordBot is the server's bot-token credential, for ADR 0051
 	// decision 5's direct-message invites (S34 sub-PR 6). The zero
 	// value means CMDCTRL_DISCORD_BOT_TOKEN is unset, which is a
@@ -370,7 +375,8 @@ type GameEvictor interface {
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	GET  /me/setup          — signed in: the caller's last table setup
 //	GET  /me/last-deck      — signed in: the deck the caller last seated
-//	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life
+//	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life (re-checking the sign-up gate, ADR 0156 §1)
+//	GET  /community         — public: the C2 Discord invite and whether sign-up is gated (ADR 0156 §6)
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
@@ -448,6 +454,10 @@ func Handler(c Config) http.Handler {
 	// screen. Constant and secret-free in production.
 	mux.Handle("GET /config", handlerFunc(c, clientConfig))
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
+	// The community server's invite and whether sign-up is gated (ADR
+	// 0156 §6). Public, constant per deploy, and cacheable for five
+	// minutes; it carries no ids.
+	mux.Handle("GET /community", handlerFunc(c, community))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
 	// Linking Discord to a seat already held (S34 sub-PR 4, from S12.5

@@ -33,6 +33,40 @@ type discordStub struct {
 	tokenBody   string
 	userStatus  int
 	userBody    string
+	// The sign-up gate's two calls (ADR 0156 §1): the member endpoint,
+	// and the token endpoint answering a refresh_token grant. Counted so
+	// a test can show a call was, or was not, made.
+	memberStatus  int
+	memberBody    string
+	memberCalls   int
+	refreshStatus int
+	refreshBody   string
+	refreshCalls  int
+	lastRefresh   string // the refresh_token the last refresh grant carried
+}
+
+// setMember changes what the member endpoint answers.
+func (s *discordStub) setMember(status int, body string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.memberStatus, s.memberBody = status, body
+}
+
+// setRefresh changes what a refresh_token grant answers.
+func (s *discordStub) setRefresh(status int, body string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.refreshStatus, s.refreshBody = status, body
+}
+
+// calls returns how many member checks and refresh grants were made,
+// and resets both counts.
+func (s *discordStub) calls() (member, refresh int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	member, refresh = s.memberCalls, s.refreshCalls
+	s.memberCalls, s.refreshCalls = 0, 0
+	return member, refresh
 }
 
 // setUser changes the Discord account /users/@me reports.
@@ -68,11 +102,25 @@ func newDiscordTestStackWith(t *testing.T, configure func(*Config)) (*httptest.S
 		tokenBody:   `{"access_token":"tok-stub","token_type":"Bearer","expires_in":3600,"scope":"identify"}`,
 		userStatus:  http.StatusOK,
 		userBody:    `{"id":"discord-99","username":"alice","global_name":"Alice","avatar":"avhash"}`,
+		// Off-gate tests never reach these; a gated test sets them.
+		memberStatus:  http.StatusNotFound,
+		memberBody:    `{"message":"Unknown Guild"}`,
+		refreshStatus: http.StatusOK,
+		refreshBody:   `{"access_token":"at-refreshed","token_type":"Bearer","expires_in":3600,"refresh_token":"rt-rotated","scope":"identify guilds.members.read"}`,
 	}
 	stubMux := http.NewServeMux()
-	stubMux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, _ *http.Request) {
+	stubMux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
 		stub.mu.Lock()
 		defer stub.mu.Unlock()
+		if r.PostForm.Get("grant_type") == "refresh_token" {
+			stub.refreshCalls++
+			stub.lastRefresh = r.PostForm.Get("refresh_token")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(stub.refreshStatus)
+			_, _ = w.Write([]byte(stub.refreshBody))
+			return
+		}
 		stub.tokenCalled = true
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(stub.tokenStatus)
@@ -86,11 +134,20 @@ func newDiscordTestStackWith(t *testing.T, configure func(*Config)) (*httptest.S
 		w.WriteHeader(stub.userStatus)
 		_, _ = w.Write([]byte(stub.userBody))
 	})
+	stubMux.HandleFunc("GET /users/@me/guilds/{guild}/member", func(w http.ResponseWriter, _ *http.Request) {
+		stub.mu.Lock()
+		defer stub.mu.Unlock()
+		stub.memberCalls++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(stub.memberStatus)
+		_, _ = w.Write([]byte(stub.memberBody))
+	})
 	stub.srv = httptest.NewServer(stubMux)
 	t.Cleanup(stub.srv.Close)
 
 	// Point the discord package at the stub.
 	t.Cleanup(swapDiscordEndpoints(stub.srv.URL+"/oauth2/token", stub.srv.URL+"/users/@me"))
+	t.Cleanup(discord.SwapMemberEndpointForTesting(stub.srv.URL + "/users/@me/guilds"))
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")

@@ -337,6 +337,27 @@ export interface AdminSignIn {
   discord_linked_at?: number;
   sessions_invalid_before?: number;
   revoke_path: string;
+  /** When the sign-up gate last had an answer from Discord (ADR 0156 §1 item 7). */
+  access_checked_at?: number;
+  /** That answer; "unchecked" when there has been none. */
+  access_result: AdminAccessResult;
+}
+
+/** The sign-up gate's last answer for an account (lobby adminview.Access*). */
+export type AdminAccessResult = "admitted" | "not_member" | "no_role" | "unchecked";
+
+/** How the account view words each answer. */
+export function accessResultLabel(r: AdminAccessResult | undefined): string {
+  switch (r) {
+    case "admitted":
+      return "admitted";
+    case "not_member":
+      return "refused: not a member";
+    case "no_role":
+      return "refused: no role";
+    default:
+      return "unchecked";
+  }
 }
 
 export interface AdminDeck {
