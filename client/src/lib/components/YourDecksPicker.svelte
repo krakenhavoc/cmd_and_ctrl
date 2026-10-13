@@ -26,9 +26,11 @@
     /** The deck to preselect when it is a library deck still listed. */
     lastDeck?: LastDeck | null;
     onSuccess?: (res: UploadDeckResponse) => void;
+    /** How many saved decks there are, once known: 0 for a guest or a failed fetch. */
+    onLibrary?: (count: number) => void;
   }
 
-  const { gameID, playerID: _playerID, lastDeck = null, onSuccess }: Props = $props();
+  const { gameID, playerID: _playerID, lastDeck = null, onSuccess, onLibrary }: Props = $props();
 
   const sess = $derived($session);
   const signedIn = $derived(isSignedIn(sess?.principal.user_id));
@@ -65,6 +67,7 @@
   onMount(() => {
     if (!signedIn) {
       loaded = true;
+      onLibrary?.(0);
       return;
     }
     void fetchMyDecks()
@@ -79,6 +82,7 @@
       })
       .finally(() => {
         loaded = true;
+        onLibrary?.(decks.length);
       });
   });
 
