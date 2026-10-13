@@ -38,8 +38,7 @@ func init() {
 	Register(Spec{
 		OracleID:        invasionOfInnistradOracleID,
 		Name:            "Invasion of Innistrad",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{SiegeTransformedCastCaveat},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Battle: &BattleSpec{
 			Defense: 5,

@@ -229,6 +229,9 @@ var tokenTemplates = []tokenTemplateBuilder{
 
 	// Reality Fracture: Vraska, Soul of Stone's Sculpture Treasure.
 	printedSculptureTreasureToken,
+
+	// Hallowed Haunting's Spirit Cleric: a */* token that sizes itself.
+	printedSpiritClericToken,
 }
 
 // tokenTemplatesBySlug indexes the list above. Written once by init

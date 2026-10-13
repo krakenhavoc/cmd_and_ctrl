@@ -352,6 +352,17 @@ func (v *PrintedValues) RemoveSupertype(s string) {
 	v.setTypeLine(kept, types, subs)
 }
 
+// SetCardTypes is "except it's an artifact" with no "in addition to its
+// other types" (Machine God's Effigy, CR 707.9b): the copy's card types
+// become exactly `types`, supertypes are kept, and the subtypes go with
+// the types they belonged to (CR 205.3d — a subtype that no longer
+// matches a card type is dropped). The mirror of AddCardType, which
+// keeps the old types.
+func (v *PrintedValues) SetCardTypes(types ...string) {
+	supers, _, _ := ParseTypeLine(v.TypeLine)
+	v.setTypeLine(supers, append([]string(nil), types...), nil)
+}
+
 // AddSubtype adds a subtype the copy has "in addition to its other
 // types" — Phantasmal Image's "it's an Illusion in addition to its
 // other types" (CR 707.9b). Idempotent, and appended rather than

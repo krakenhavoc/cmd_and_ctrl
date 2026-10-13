@@ -31,20 +31,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Wizard") — that contrast is the evidence. Supertypes survive, so a
 // copy of a legendary creature is legendary.
 //
-// Sandbox simplifications, both declared rather than papered over:
-//
-//   - The copy is read from wherever the discarded card now sits
-//     rather than from last-known information in the graveyard. In
-//     practice the two agree — the copiable values are printed
-//     values and don't change by zone — but a card exiled in
-//     response to the trigger would be copied out of exile instead
-//     of failing over to LKI. There is no LKI store reachable from
-//     an ability's Effect.
-//
-// The second simplification this card used to declare is gone: since
-// #762 a created token runs the ordinary entry pipeline, so a copied
-// card's Spec.AsEnters clause fires on the token along with its ETB
-// triggers.
+// The copy is read from wherever the discarded card now sits. That is
+// the printed result and not a simplification: a card exiled in
+// response is still copied, because the copiable values are the printed
+// ones and do not change by zone (CR 707.2), which is also what the
+// last-known-information reading (CR 608.2h) gives. Since #762 a created
+// token runs the ordinary entry pipeline, so a copied card's
+// Spec.AsEnters clause fires on the token along with its ETB triggers.
 //
 // The discarded card's instance ID is a fact about what happened, so
 // it rides item.Trigger.Event.CardID (#1223) rather than a value
@@ -53,8 +46,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "db266661-f783-4907-9e52-6963eec05431",
 		Name:         "Hashaton, Scarab's Fist",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A discarded card exiled in response is still copied."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDiscardCard},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

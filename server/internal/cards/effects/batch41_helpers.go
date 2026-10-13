@@ -224,6 +224,27 @@ func b41ZombieYouControlDealtCombatDamageToAnOpponent(ev game.Event, source *gam
 	return ok && c.Controller == source.Controller && c.HasSubtype("Zombie")
 }
 
+// b41FirstZombieHitOnThatOpponent is true for the first event of this
+// batch in which a Zombie `source`'s controller controls dealt combat
+// damage to ev's target. Counting only those makes an event total the
+// number of DISTINCT opponents hit (Hordewing Skaab). A log that does
+// not hold the event yet, or holds no match, accepts it.
+func b41FirstZombieHitOnThatOpponent(ev game.Event, source *game.Card, g *game.Game) bool {
+	for _, prior := range g.Events {
+		if prior.Batch < ev.Batch {
+			continue
+		}
+		if prior.Batch > ev.Batch {
+			break
+		}
+		if prior.Target != ev.Target || !b41ZombieYouControlDealtCombatDamageToAnOpponent(prior, source, g) {
+			continue
+		}
+		return prior.Source == ev.Source
+	}
+	return true
+}
+
 // b41SliverYouControlBecameAnOpponentsTarget is Diffusion Sliver's
 // condition. It is Ward's AppliesTo widened from "this permanent" to
 // "a Sliver creature you control": the same CR 702.21a shape, with

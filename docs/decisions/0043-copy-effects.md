@@ -1211,3 +1211,12 @@ watches it, and the public log says nothing (the copy is on the stack the table 
 them. A copy of an ability emits nothing. Cards that say "cast" only keep `instantOrSorceryCastByYou`.
 
 Back-out: drop the emit; the magecraft cards stop seeing copies (`TestCavCMagecraftTriggersOnCopies` fails).
+
+## Amendment (2026-10-13, #3172, cav-g2): "except it's an artifact" replaces the types
+
+`PrintedValues.SetCardTypes(types...)` is the clause with no "in addition to its other types" (Machine God's Effigy: "except it's an
+artifact … (It's not a creature.)"): the copy's card types become exactly `types`, supertypes are kept and subtypes go with the types
+they belonged to (CR 205.3d). `AddCardType` stays the "in addition" form. The Effigy also takes a registered mana-ability grant
+(`AbilityGrant.Mana`, already merged by the copy-grant path) so the copy has "{T}: Add {U}" besides the copied card's abilities.
+
+Back-out: remove the `v.SetCardTypes("Artifact")` line; `TestMachineGodsEffigyCopiesACreatureAsANonCreatureArtifact` fails.
