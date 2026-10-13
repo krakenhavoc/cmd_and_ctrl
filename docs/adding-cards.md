@@ -695,6 +695,23 @@ only, and `Register` refuses it beside delve or convoke / waterbend.
 Emblazoned Golem's one-of-each-colour cap still has no shape. See ADR 0040's
 2026-10-03 and 2026-10-07 amendments.
 
+**Counts have a ceiling (#3040).** The engine pins counters, power and
+toughness at `game.MaxCount` (2^30) and a single production's mana at
+`game.MaxProducedMana` (1024), because a doubling board (Ouroboroid) is
+exponential and a `strings.Repeat("{G}", power)` at 2^40 is a 3 TB
+allocation that kills the whole server, not just the table. The counter
+and P/T clamps are in the engine and need nothing from a card. **The mana
+one does:** a `ProducedFunc` or `AddMana` that repeats a symbol by a board
+quantity (a power, a counter total, a creature count) must build the
+string with `game.RepeatMana(slot, n)`, never `strings.Repeat`, because
+the string is allocated before the engine can see it. `RepeatMana` hands
+the engine one slot past the ceiling so the engine's own cut can announce
+it (a `count_capped` log line); a bare `strings.Repeat` is a bug in any
+card whose count can be exponential. Use `game.SaturatingAdd` /
+`game.SaturatingMul` when a card does its own arithmetic on such a count.
+The ceilings are not a Caveat on any card: they are far past anything a
+real table reaches, and a card does not become incomplete for them.
+
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 

@@ -165,7 +165,7 @@ func (g *Game) applyPlayerCounterLocked(ev *ReplacementEvent) error {
 		return ErrPlayerEliminated
 	}
 	before := p.Counters[ev.CounterName]
-	next := before + ev.CounterDelta
+	next := SaturatingAdd(before, ev.CounterDelta) // #3040
 	if next < 0 {
 		next = 0
 	}

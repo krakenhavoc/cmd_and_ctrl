@@ -3656,9 +3656,13 @@ func (g *Game) addManaSlotsLocked(
 	pending *[]ColorRequirement,
 	reason func(ProducedManaEntry) string,
 ) error {
-	slots, err := ParseProducedMana(produced)
+	slots, capped, err := parseProducedMana(produced)
 	if err != nil {
 		return err
+	}
+	if capped {
+		// #3040: the production passed MaxProducedMana and was cut.
+		g.emitCountCappedLocked("mana", source, p.ID, MaxProducedMana)
 	}
 	// Read once, and only when a slot could use it: the identity read
 	// walks every zone, and Dark Ritual's three "{B}" slots have

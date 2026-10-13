@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -39,7 +37,7 @@ func tanukiTransplanterMana(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return AddMana{
-		Produced: strings.Repeat("{G}", info.Power),
+		Produced: game.RepeatMana("{G}", info.Power),
 		Riders:   []game.ManaSpendRider{KeepManaUntilEndOfTurn()},
 	}.Apply(ctx)
 }

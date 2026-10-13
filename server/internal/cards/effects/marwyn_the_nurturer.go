@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -46,7 +44,7 @@ func init() {
 				if !ok {
 					return ""
 				}
-				return strings.Repeat("{G}", c.CurrentPower())
+				return game.RepeatMana("{G}", c.CurrentPower())
 			},
 		}},
 	})

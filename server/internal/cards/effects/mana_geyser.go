@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -55,7 +53,7 @@ func init() {
 			}
 			return AddMana{
 				Player:   item.Controller,
-				Produced: strings.Repeat("{R}", n),
+				Produced: game.RepeatMana("{R}", n),
 			}.Apply(ctx)
 		},
 	})

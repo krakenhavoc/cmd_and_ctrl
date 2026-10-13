@@ -2,7 +2,6 @@ package effects
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/google/uuid"
 
@@ -126,7 +125,7 @@ func ProducedChosenColorAmount(n int) func(*game.Game, uuid.UUID, uuid.UUID) str
 		if c == "" || n <= 0 {
 			return ""
 		}
-		return strings.Repeat("{"+c+"}", n)
+		return game.RepeatMana("{"+c+"}", n)
 	}
 }
 

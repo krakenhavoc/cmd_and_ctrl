@@ -186,7 +186,7 @@ func AnyCombinationOfColors(n int) string {
 	if n <= 0 {
 		return ""
 	}
-	return strings.Repeat("{"+strings.Join(game.AllColors, "|")+"}", n)
+	return game.RepeatMana("{"+strings.Join(game.AllColors, "|")+"}", n)
 }
 
 // ProducedAnyCombinationOfColors is the ProducedFunc for "Add X mana

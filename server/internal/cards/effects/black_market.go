@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -43,7 +41,7 @@ func init() {
 				if !ok || src.Counters["charge"] == 0 {
 					return nil
 				}
-				return g.AddManaForEffect(item.Controller, item.SourceCardID, strings.Repeat("{B}", src.Counters["charge"]))
+				return g.AddManaForEffect(item.Controller, item.SourceCardID, game.RepeatMana("{B}", src.Counters["charge"]))
 			}),
 		},
 	})
