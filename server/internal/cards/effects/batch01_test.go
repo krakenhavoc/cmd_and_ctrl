@@ -439,6 +439,12 @@ func TestTirelessProvisionerMakesATreasureOnLandfall(t *testing.T) {
 
 	playLandFromHand(t, g, "Forest", "")
 	passPriorityAroundTable(t, g)
+	// The token is chosen as the trigger resolves: Treasure first, then Food.
+	c := latestOptionPickFor(g, me.ID)
+	if c == nil || len(c.PickOptions) != 2 || c.PickOptions[0].Label != "Create a Treasure token" {
+		t.Fatalf("a Food-or-Treasure choice, Treasure first: %+v", c)
+	}
+	answerOptionPick(t, g, me.ID, 0)
 	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 {
 		t.Fatal("a land drop should make one Treasure")
 	}
@@ -448,8 +454,24 @@ func TestTirelessProvisionerMakesATreasureOnLandfall(t *testing.T) {
 		_ = g.CreateTokenForEffect(opp.ID, game.Card{Name: "Forest", TypeLine: "Token Land — Forest"}, 1)
 	})
 	passPriorityAroundTable(t, g)
-	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 {
+	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 || latestOptionPickFor(g, me.ID) != nil {
 		t.Error("an opponent's land triggered my landfall")
+	}
+}
+
+// The other answer is a Food token.
+func TestTirelessProvisionerCanMakeAFoodOnLandfall(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Tireless Provisioner", "Creature — Elf Scout", tirelessProvisionerOracle, false)
+	playLandFromHand(t, g, "Forest", "")
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 1)
+	if countBattlefieldNamed(g, me.ID, "Food") != 1 || countBattlefieldNamed(g, me.ID, "Treasure") != 0 {
+		t.Error("choosing Food makes a Food and no Treasure")
+	}
+	if spec, _ := Lookup(tirelessProvisionerOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("both tokens are offered: nothing is left to declare")
 	}
 }
 

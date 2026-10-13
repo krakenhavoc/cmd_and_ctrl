@@ -14,15 +14,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The Duskmourn self-mill commander whose own attack trigger feeds
 // its own token trigger. Flying rides PrintedKeywords.
 //
-// The attack trigger mills three, then returns the chosen land. Its
-// "you may return a land card from your graveyard" is written as an
-// "up to one" target clause over the controller's graveyard (Grapple
-// with the Past's posture), declared TWICE for the reason Hazel's
-// Brewmaster gives: the engine drops a targeted trigger whose legal
-// set is empty, which would drop the mill with it, so the targeted
-// entry fires only while the graveyard holds a land card and the
-// untargeted mill-only entry fires only when it does not. Exactly
-// one applies to any attack.
+// The attack trigger mills three, then asks "you may return a land
+// card from your graveyard" as it resolves (b25MillThreeThenReturnLandTapped,
+// CR 608.2c): a floor of zero for the "may", over the lands in the
+// graveyard AFTER the mill, so a land the trigger itself milled can be
+// the one that comes back. Nothing is targeted, so the trigger always
+// mills.
 //
 // The second trigger is Teval's Judgment's condition
 // (b16CardLeftYourGraveyard — a move out of the controller's own
@@ -34,35 +31,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The land enters tapped: "tapped" rides its entry event (#1872), so
 // nothing sees an untapped land arrive or a land become tapped.
 //
-// One declared simplification, weaker than printed: the land to
-// return is picked when the attack trigger goes on the stack, before
-// the three cards are milled, so a land milled by the trigger itself
-// cannot be the one returned and opponents see the pick before it
-// resolves. A pick that left the graveyard in response counters the
-// trigger (CR 608.2b) and the mill does not happen either; a pick of
-// no land simply mills.
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "c8cbf0ec-ec98-4cb3-8068-60e92bbd740d",
-		Name:         "Teval, the Balanced Scale",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The land to return is picked when the attack trigger goes on the stack, before the three cards are milled — so a land milled by the trigger itself can't be the one that comes back.",
-		},
+		OracleID:        "c8cbf0ec-ec98-4cb3-8068-60e92bbd740d",
+		Name:            "Teval, the Balanced Scale",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventAttack},
-				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-					return attackDeclared(ev, source) && b25GraveyardHasLandCard(g, source.Controller)
-				},
-				Targets: TargetCardInGraveyard("up to one land card in your graveyard to return tapped", YouOwn(), Land()).WithCount(0, 1),
-				Key:     b25TevalAttackLabel,
-				Effect:  b25MillThreeThenReturnChosenLandTapped,
-			},
-			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return attackDeclared(ev, source) && !b25GraveyardHasLandCard(g, source.Controller)
-			}, b25TevalAttackLabel, b25MillThreeThenReturnChosenLandTapped),
+			On(game.EventAttack, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+				return attackDeclared(ev, source)
+			}, b25TevalAttackLabel, b25MillThreeThenMayReturnLandTapped),
 			OncePerBatch(OnAny([]game.EventKind{game.EventZoneMove, game.EventCast}, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b16CardLeftYourGraveyard(ev, source, g)
 			}, b25TevalLeftGraveyardLabel, Do(CreateToken{Template: TokenCard("2/2 black Zombie Druid"), N: 1}))),

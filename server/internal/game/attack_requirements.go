@@ -86,7 +86,8 @@ import (
 
 // AttackRequirement is one CR 508.1d requirement on one creature.
 //
-// Three shapes, told apart by OtherThan and MostLifeOpponentOf:
+// Four shapes, told apart by OtherThan, MostLifeOpponentOf and MustAttack
+// (MustAttack: "attacks that player this turn if able", encore, #3172):
 //
 //   - OtherThan == uuid.Nil: "attacks each combat if able" — obeyed by
 //     attacking anything.
@@ -124,6 +125,11 @@ type AttackRequirement struct {
 	// (#2744). It is the requirement's "you", the controller of the
 	// source that imposes it.
 	MostLifeOpponentOf uuid.UUID
+	// MustAttack, when set, makes this "attacks MustAttack this turn if
+	// able" (#3172, encore): obeyed only by attacking that player
+	// themself. An attack on their planeswalker or battle obeys the plain
+	// requirement and not this one, as for OtherThan.
+	MustAttack uuid.UUID
 }
 
 // obeyedBy reports whether an attack at `target` obeys r. uuid.Nil is
@@ -136,6 +142,9 @@ func (r AttackRequirement) obeyedBy(g *Game, target uuid.UUID) bool {
 	}
 	if r.MostLifeOpponentOf != uuid.Nil {
 		return g.isMostLifeOpponentLocked(r.MostLifeOpponentOf, target)
+	}
+	if r.MustAttack != uuid.Nil {
+		return target == r.MustAttack
 	}
 	if r.OtherThan == uuid.Nil {
 		return true
@@ -535,6 +544,8 @@ type AttackRequirementError struct {
 	// Requirement names, for the sentence.
 	GoaderName    string
 	OtherThanName string
+	// MustAttackName is the display name of Requirement.MustAttack.
+	MustAttackName string
 }
 
 // Error is the debug form.
@@ -564,6 +575,13 @@ func (e *AttackRequirementError) Sentence(viewer uuid.UUID) string {
 	}
 	if r.MostLifeOpponentOf != uuid.Nil {
 		s := who + " must attack an opponent with the most life if able"
+		if r.SourceName != "" && r.SourceName != e.AttackerName {
+			s += " (" + r.SourceName + ")"
+		}
+		return s + "."
+	}
+	if r.MustAttack != uuid.Nil {
+		s := who + " must attack " + player(r.MustAttack, e.MustAttackName) + " this turn if able"
 		if r.SourceName != "" && r.SourceName != e.AttackerName {
 			s += " (" + r.SourceName + ")"
 		}
@@ -610,6 +628,9 @@ func (g *Game) attackRequirementErrorLocked(id uuid.UUID, reqs []AttackRequireme
 	}
 	if p := g.playerByIDLocked(e.Requirement.OtherThan); p != nil {
 		e.OtherThanName = p.Name
+	}
+	if p := g.playerByIDLocked(e.Requirement.MustAttack); p != nil {
+		e.MustAttackName = p.Name
 	}
 	return e
 }

@@ -381,9 +381,11 @@ func TestB29ChitterspitterEatsATokenEachUpkeepAndGrowsSquirrels(t *testing.T) {
 		t.Fatalf("no acorns: power %d, want 1", got)
 	}
 	b12ToMyNextUpkeep(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	pickCard(t, g, me.ID, token)
+	passPriorityAroundTable(t, g)
+	if prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID); prompt == nil || prompt.ChooseMin != 0 || hasID(prompt.ChooseCards, squirrel) || !hasID(prompt.ChooseCards, token) {
+		t.Fatal("only tokens are offered, as the trigger resolves, with a floor of zero for the \"may\"")
+	}
+	answerOwnPermanents(t, g, me.ID, token)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(token) {
 		t.Error("the chosen token is sacrificed")
@@ -670,15 +672,17 @@ func TestB29ZiatoraFlingsAtTheEndStepThroughAReflexiveTrigger(t *testing.T) {
 	}
 	before := opp.Life
 	advanceToEndStepOf(t, g, 0)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	for _, id := range p.PickTargetCards {
+	passPriorityAroundTable(t, g)
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil || p.ChooseMin != 0 {
+		t.Fatal("the sacrifice is asked as the trigger resolves, with a floor of zero for the \"may\"")
+	}
+	for _, id := range p.ChooseCards {
 		if id == ziatora {
 			t.Error("Ziatora herself is not \"another creature\"")
 		}
 	}
-	pickCard(t, g, me.ID, fodder)
+	answerOwnPermanents(t, g, me.ID, fodder)
 	// The end-step trigger resolves: the sacrifice, then the
 	// reflexive trigger asks for its target.
 	b04WaitForPick(t, g, me.ID)
@@ -692,6 +696,29 @@ func TestB29ZiatoraFlingsAtTheEndStepThroughAReflexiveTrigger(t *testing.T) {
 	}
 	if got := b29CountNamed(g, me.ID, "Treasure"); got != 3 {
 		t.Errorf("%d Treasures, want 3", got)
+	}
+}
+
+// The damage is the sacrificed creature's last-known power, so an
+// anthem counts: a 1/1 under a Glorious Anthem is a 2-power Fling.
+func TestB29ZiatoraCountsAnAnthemInTheDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b29Push(g, me.ID, "Ziatora, the Incinerator", "Legendary Creature — Demon Dragon", b29ZiatoraOracle, "{3}{B}{R}{G}", 6, 6, "B", "R", "G")
+	fodder := b16Creature(g, me.ID, "Fodder", "Creature — Goblin", 1, 1, "R")
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Glorious Anthem", TypeLine: "Enchantment",
+		OracleID: gloriousAnthemOracle, Owner: me.ID, Controller: me.ID,
+	})
+	before := opp.Life
+	advanceToEndStepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID, fodder)
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("a 1/1 under an anthem: opponent life %d, want %d (power 2)", opp.Life, before-2)
 	}
 }
 

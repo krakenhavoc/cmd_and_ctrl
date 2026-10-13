@@ -286,9 +286,8 @@ func technomancerETB(t *testing.T, g *game.Game, me *game.Player, victim uuid.UU
 	t.Helper()
 	castAndResolveCreature(t, g, "Ruthless Technomancer", "Creature — Human Wizard",
 		b19RuthlessTechnomancerOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	pickCard(t, g, me.ID, victim)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID, victim)
 	passPriorityAroundTable(t, g)
 }
 

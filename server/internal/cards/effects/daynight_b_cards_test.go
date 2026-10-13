@@ -170,10 +170,12 @@ func TestDayNightBTableWerewolvesHaveTheirPrintedPower(t *testing.T) {
 }
 
 // Oakshade Stalker's flash-for-more option is the declared gap.
-func TestOakshadeStalkerShipsWithItsFlashCaveat(t *testing.T) {
+func TestOakshadeStalkerOffersItsFlashSurcharge(t *testing.T) {
+	// #3172: the flash-for-{2}-more clause landed (FlashForMore), so the
+	// card carries no caveat any more; cav_b_test.go casts it.
 	spec, ok := Lookup(dnbOakshade)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("Oakshade Stalker: %+v, want one caveat", spec)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.AlternativeCosts) != 1 || !spec.AlternativeCosts[0].AsThoughFlash {
+		t.Fatalf("Oakshade Stalker: %+v, want full with the flash surcharge offer", spec)
 	}
 	if back, _ := Lookup(dnbOakshade + "#1"); back.Completeness != CompletenessFull {
 		t.Errorf("Moonlit Ambusher is %v, want full", back.Completeness)

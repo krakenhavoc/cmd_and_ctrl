@@ -39,6 +39,7 @@ func TestForetellCardsDeclareTheirPrintedCost(t *testing.T) {
 		{"Saw It Coming", sawItComingOracle, "{1}{U}"},
 		{"Behold the Multiverse", beholdTheMultiverseOracl, "{1}{U}"},
 		{"Cosmic Intervention", cosmicInterventionOracle, "{1}{W}"},
+		{"Spectral Deluge", b41SpectralDelugeOracle, "{1}{U}{U}"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			sa := foretellOf(tc.oracle)

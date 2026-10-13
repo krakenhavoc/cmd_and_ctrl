@@ -1764,6 +1764,44 @@ A practice table is not like other tables:
 | 429 | this caller opened practice tables too quickly (or the IP deck bucket is empty) |
 | 503 | no bot host; no card index; the `random` tier is not offered; or all 8 practice tables are in use |
 
+### `POST /games/practice/guest` (ADR 0156 §2, S71)
+
+Public: **no session needed.** For a visitor who has no account (and,
+with the Discord gate on, may not get one yet) it mints a guest session
+and opens a practice table for it in one step. No body.
+
+The guest is an ordinary guest: name `Player`, no `user_id`, a session
+of `CMDCTRL_SESSION_TTL`. It can play its practice table and do
+nothing a guest cannot, so `POST /games` still answers it 403. The
+response and the cookie are exactly
+[`POST /games/practice`](#post-gamespractice-adr-0076-s54)'s: `token`,
+`expires_at`, `principal`, `game` (`practice: true`) and `player_id`,
+with the session cookie set to the seat. The client installs `token`
+as it would a join's. The table is the same one, on the same decks and
+bot, through the same code, and is just as unlisted and unpersisted.
+
+- **One live practice table per guest session.** A call that carries
+  the guest's session cookie (or bearer token) **replaces** that
+  session's table with a fresh one instead of adding a second or
+  answering 409; the new response carries the new session. A call
+  with no session, or with one that is not a practice seat, is a new
+  guest.
+- **Per client IP: 3 per 10 minutes** (429 over, with `Retry-After`).
+  The limiter honours `CMDCTRL_TRUST_FORWARDED` and
+  `CMDCTRL_DEV_RELAX_RATE_LIMITS` like every other. The per-IP table
+  creation bucket (`CMDCTRL_CREATE_IP_*`) and the deck bucket apply as
+  well.
+- **ADR 0148's caps apply**, since the table is opened by the same
+  `CreatePractice`: the 8-table practice ceiling answers 503, and the
+  weighted table-load cap answers 503 with the stable
+  `code: "server_full"` and a `Retry-After`.
+
+| Status | Reason |
+|---|---|
+| 201 | opened; body as above |
+| 429 | this IP asked too often |
+| 503 | no bot host; no card index; the `random` tier is not offered; all 8 practice tables are in use; or the server is full (`code: "server_full"`) |
+
 ### `POST /games/{id}/practice/leave` (ADR 0076, S54)
 
 Abandon a practice table and put the caller's own session cookie

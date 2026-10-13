@@ -268,6 +268,22 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Warp("{cost}")} — the exile clause rides the constructor`,
 	},
 	{
+		Name:       "dash",
+		Phrases:    []string{"dash"},
+		Implements: altCost("dash"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "dash") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Dash("{cost}")} — the haste and the return-to-hand ride the constructor (#3172)`,
+	},
+	{
+		Name:       "freerunning",
+		Phrases:    []string{"freerunning"},
+		Implements: altCost("freerunning"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "freerunning") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Freerunning("{cost}", "Assassin")} — the Assassin-or-commander gate rides the constructor (#3172)`,
+	},
+	{
 		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
 		// the graveyard that casts the card's back face.
 		Name:       "disturb",

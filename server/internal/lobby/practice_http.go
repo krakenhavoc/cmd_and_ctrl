@@ -4,6 +4,7 @@ package lobby
 // (practice.go, ADR 0076 §2.2):
 //
 //	POST /games/practice              — any session: open one, seated
+//	POST /games/practice/guest        — no session: mint a guest, open one (ADR 0156 §2)
 //	POST /games/{id}/practice/leave   — the practice token: abandon it
 //
 // # The session swap, and putting it back
@@ -60,6 +61,43 @@ type practiceLeaveRequest struct {
 
 // createPractice handles POST /games/practice.
 func createPractice(c Config, w http.ResponseWriter, r *http.Request) error {
+	p, ok := auth.PrincipalFromContext(r.Context())
+	if !ok {
+		return httpError(http.StatusInternalServerError, "missing principal")
+	}
+	return openPractice(c, w, r, p, &p, practiceOwner(c, p))
+}
+
+// createGuestPractice handles POST /games/practice/guest (ADR 0156 §2):
+// no session needed. It mints a guest (name "Player", no user, the
+// SessionTTL lifetime) and opens a practice table for it in the same
+// step, through the same openPractice as the signed-in route, so the
+// decks, the bot, the practice ceiling and ADR 0148's load cap are one
+// code path.
+//
+// One live table per guest session: a call that carries a session
+// which is itself a practice seat inherits that table's owner, so
+// CreatePractice replaces the old table rather than adding a second
+// (the same replace-not-resume rule as POST /games/practice). That is
+// the friendlier of replacing and a 409: a guest who reloads the front
+// page and presses the button again gets a fresh table instead of an
+// error they cannot act on. The per-IP bucket is what bounds a loop.
+func createGuestPractice(c Config, w http.ResponseWriter, r *http.Request) error {
+	owner := "guest:" + uuid.NewString()
+	if prev, ok := optionalSession(c, r); ok && prev.Role == auth.RolePlayer && prev.GameID != uuid.Nil {
+		if o, ok := c.Lobby.PracticeOwner(prev.GameID); ok {
+			owner = o
+		}
+	}
+	guest := auth.Principal{Role: auth.RolePlayer, Name: "Player"}
+	return openPractice(c, w, r, guest, nil, owner)
+}
+
+// openPractice is the shared half of the two practice routes: it opens
+// a practice table for p, owned by owner, and answers with the seat's
+// session. source is the session the seat is minted from (issueFor),
+// or nil for a guest minted here.
+func openPractice(c Config, w http.ResponseWriter, r *http.Request, p auth.Principal, source *auth.Principal, owner string) error {
 	if c.Bots == nil {
 		return httpError(http.StatusServiceUnavailable, "bot seats are not enabled on this server")
 	}
@@ -75,10 +113,6 @@ func createPractice(c Config, w http.ResponseWriter, r *http.Request) error {
 	}
 	if !offered {
 		return httpError(http.StatusServiceUnavailable, "the practice bot's tier is not available on this server")
-	}
-	p, ok := auth.PrincipalFromContext(r.Context())
-	if !ok {
-		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 
 	// The decks run the same parse → resolve → validate pipeline as a
@@ -107,7 +141,7 @@ func createPractice(c Config, w http.ResponseWriter, r *http.Request) error {
 		Name:     name,
 		Identity: identity,
 		UserID:   p.UserID,
-		Owner:    practiceOwner(c, p),
+		Owner:    owner,
 		DeckName: playerDeck.Name,
 		Cards:    humanList.ToGameCards(),
 		// ADR 0076 §2.2 as amended 2026-10-11 (#2992): a fixed opening
@@ -139,7 +173,7 @@ func createPractice(c Config, w http.ResponseWriter, r *http.Request) error {
 		PlayerID: playerID,
 		Name:     name,
 	}, identity)
-	tok, issued, err := issueFor(r.Context(), c, seat, &p)
+	tok, issued, err := issueFor(r.Context(), c, seat, source)
 	if err != nil {
 		return err
 	}

@@ -197,6 +197,18 @@ func TestChainOfSmogCopiesItselfForTheDiscardingPlayer(t *testing.T) {
 		[]game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}})
 	passPriorityAroundTable(t, g)
 
+	// The discarding player chooses the two cards (not at random).
+	hand := discardChoiceFor(g, opp.ID)
+	if hand == nil || hand.ChooseMin != 2 || hand.ChooseMax != 2 {
+		t.Fatalf("the target chooses two cards to discard: %+v", hand)
+	}
+	picks := []uuid.UUID{opp.Hand.Cards[3].InstanceID, opp.Hand.Cards[5].InstanceID}
+	answerDiscard(t, g, opp.ID, picks...)
+	for _, id := range picks {
+		if !opp.Graveyard.Contains(id) {
+			t.Error("the chosen card is in the graveyard")
+		}
+	}
 	if got := len(opp.Hand.Cards); got != before-2 {
 		t.Errorf("hand %d → %d, want two discarded", before, got)
 	}
@@ -220,6 +232,8 @@ func TestChainOfSmogCopiesItselfForTheDiscardingPlayer(t *testing.T) {
 	}
 
 	passPriorityAroundTable(t, g)
+	// The copy's target chooses their own two cards too.
+	answerDiscard(t, g, third.ID, third.Hand.Cards[0].InstanceID, third.Hand.Cards[1].InstanceID)
 	// The third player may also copy; decline so the chain stops.
 	if c := latestConfirmFor(g, third.ID); c != nil {
 		answerMayChoice(t, g, third.ID, false)

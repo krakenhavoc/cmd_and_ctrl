@@ -631,6 +631,15 @@ func Handler(c Config) http.Handler {
 	practiceLimit := newLimiter(1.0/5, 3)
 	mux.Handle("POST /games/practice",
 		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, createIPGate(createIPLimit, handlerFunc(c, createPractice))))))
+	// The guest's practice table (ADR 0156 §2): public, no session. It
+	// mints the session it seats, so it sits outside auth.Middleware.
+	// Per client IP, 3 per 10 minutes (the limiter honours
+	// CMDCTRL_TRUST_FORWARDED and CMDCTRL_DEV_RELAX_RATE_LIMITS like
+	// every other); the operator's per-IP creation bucket and the deck
+	// bucket apply too, and CreatePractice holds it to ADR 0148's caps.
+	guestPracticeLimit := newLimiter(3.0/600, 3)
+	mux.Handle("POST /games/practice/guest",
+		guestPracticeLimit.Middleware(deckLimit.Middleware(createIPGate(createIPLimit, handlerFunc(c, createGuestPractice)))))
 	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own

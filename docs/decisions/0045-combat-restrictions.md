@@ -4769,3 +4769,19 @@ the existing `block_pending_seats` / `blocks_declared_seats` carry the answer.
 - **A sandbox move that makes a new defending player while priority is
   parked.** It can only come from a manual verb. That player is pending and is
   waited on like any other declaring defender.
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172)): "attacks that player this turn if able" (encore)
+
+Encore makes a token copy for each opponent that "attacks that opponent this turn if able". The plain requirement lets
+the token attack anyone, which is stronger than printed, so the requirement gains a fourth shape: `AttackRequirement.
+MustAttack` names a player, and an attack obeys it only by attacking that player themself (a planeswalker or battle they
+control does not count, as for `OtherThan`). It is written by `ModAttackPlayerIfAble` (`game.AttackPlayerIfAbleMod`),
+layer 6 like the plain requirement, its own mod kind so an older binary refuses a restore point that names it
+(`ErrUnknownEffectKey`). The existing search that judges requirements against what a creature could attack for free
+needs no change: a target that cannot be attacked (an opponent who left, an attack tax) obeys nothing, so nothing is
+owed, which is the "if able" half. The refusal sentence reads "<creature> must attack <player> this turn if able."
+
+Back-out: drop `ModAttackPlayerIfAble` and `Encore`; Impulsive Pilferer reverts to caveated.
+
+Tests: `cards/effects/cav_b_encore_test.go` (one token per opponent, each bound to its own, a wrong declaration refused,
+all sacrificed at the end step).

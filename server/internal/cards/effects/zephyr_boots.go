@@ -42,7 +42,7 @@ func init() {
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return attachedCreatureDealtCombatDamageToPlayer(ev, source, g)
 			}, "Zephyr Boots — draw a card, then discard a card", func(g *game.Game, item *game.StackItem) error {
-				return b16DrawThenDiscard(g, item, 1, 1)
+				return b16DrawThenDiscard(g, item, 1)
 			}),
 		},
 		Activated: []ActivatedAbility{EquipAbility("{2}")},

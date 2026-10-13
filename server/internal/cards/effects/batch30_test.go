@@ -441,12 +441,14 @@ func TestB30ExtractFromDarknessMillsEveryoneThenReanimatesTheTarget(t *testing.T
 	me, opp := g.Seats[0], g.Seats[1]
 	dead := b17GraveyardCard(opp, "Their Dead Golem", "Creature — Golem", "{4}")
 	bolt := b17GraveyardCard(opp, "Spent Bolt", "Instant", "{R}")
-	if legal := legalCards(g, me.ID, b30ExtractFromDarknessOracle); !legal[dead] || legal[bolt] {
-		t.Fatal("a creature card in any graveyard is legal; an instant is not")
-	}
 	libs := []int{me.Library.Size(), opp.Library.Size(), g.Seats[2].Library.Size(), g.Seats[3].Library.Size()}
-	castCatalogSpell(t, g, "Extract from Darkness", "Sorcery", b30ExtractFromDarknessOracle, b16TargetCard(dead))
+	castCatalogSpell(t, g, "Extract from Darkness", "Sorcery", b30ExtractFromDarknessOracle, nil)
 	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || !hasID(pick.ChooseCards, dead) || hasID(pick.ChooseCards, bolt) {
+		t.Fatal("a creature card in any graveyard is offered after the mill; an instant is not")
+	}
+	answerChooseCards(t, g, me.ID, dead)
 	for i, p := range g.Seats {
 		if p.Library.Size() != libs[i]-2 {
 			t.Errorf("seat %d mills two: %d → %d", i, libs[i], p.Library.Size())
@@ -458,8 +460,35 @@ func TestB30ExtractFromDarknessMillsEveryoneThenReanimatesTheTarget(t *testing.T
 	if c := b12Card(t, g, dead); c.Controller != me.ID {
 		t.Error("under the caster's control")
 	}
-	if spec, _ := Lookup(b30ExtractFromDarknessOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the announce-time choice is a declared gap")
+	if spec, _ := Lookup(b30ExtractFromDarknessOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the choice is made after the mill, as printed: nothing is left to declare")
+	}
+}
+
+// The choice follows the mill, so a creature the spell itself milled
+// can be the one put onto the battlefield, and the spell can be cast
+// when no graveyard holds a creature yet.
+func TestB30ExtractFromDarknessCanTakeACreatureItJustMilled(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	milled := b10LibraryTop(opp, "Milled Golem", "Creature — Golem", "{4}", 3, 3)
+	b10LibraryTop(opp, "Milled Filler", "Instant", "{R}", 0, 0)
+	for _, p := range g.Seats {
+		for _, c := range p.Graveyard.Cards {
+			if c.IsCreature() {
+				t.Fatal("setup: no graveyard holds a creature before the spell")
+			}
+		}
+	}
+	castCatalogSpell(t, g, "Extract from Darkness", "Sorcery", b30ExtractFromDarknessOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || !hasID(pick.ChooseCards, milled) {
+		t.Fatal("the creature the spell milled is a legal pick")
+	}
+	answerChooseCards(t, g, me.ID, milled)
+	if c := b12Card(t, g, milled); c.Controller != me.ID || !g.Battlefield.Contains(milled) {
+		t.Error("the milled creature enters under the caster's control")
 	}
 }
 

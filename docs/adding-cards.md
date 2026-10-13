@@ -6124,6 +6124,52 @@ OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets
 are answers.
 
+**"You may sacrifice a creature. If you do, …"** (#3172, ADR 0018
+amendment 2026-10-13, third) is `maySacrificeOne(g, item, question,
+match, another, then)` in [may_sacrifice.go](../server/internal/cards/effects/may_sacrifice.go),
+called from the trigger's `Effect`. It asks as the ability RESOLVES, over
+what the controller controls then, with a floor of zero for the "may",
+and `then(ctx, sacrificed)` runs only for a permanent that really left
+(a CR 614 window that kept it, or a sacrifice nothing could pay, is "you
+did not"). Read the creature's power with `departedCreaturePower`, which
+is its last-known information. **Do not declare the choice as the
+trigger's `Targets`**: that settles it when the trigger goes on the stack,
+lets an opponent answer it, and makes a hexproof creature unpickable, all
+of which are caveats the printed card does not have.
+
+**"Choose up to N / any number of creatures you control, then sacrifice
+the rest"** (Archfiend of Depravity, Slaughter the Strong) is
+`keepCreaturesThenSacrificeTheRest` in
+[keep_creatures_sacrifice_rest.go](../server/internal/cards/effects/keep_creatures_sacrifice_rest.go):
+one `choose_cards` prompt per seat (APNAP) over that seat's own
+creatures, with `most` as the ceiling and `totalPowerAtMost(n)` as a set
+rule, then one simultaneous sacrifice of everything not kept. A seat that
+can keep its whole board is not asked.
+
+**"Any number / up to N counters" of whatever kinds** (Glissa Sunslayer,
+Resourceful Defense) is `chooseCounters` in
+[choose_counters.go](../server/internal/cards/effects/choose_counters.go):
+a `ChooseNumber` per kind of counter on the permanent, in sorted order,
+each bounded by what it has and by what is left of the ceiling, handing
+`then` a kind-to-count map. Give it a `counterGoal` so a bot knows which
+kinds it wants gone.
+
+**"Discard two cards unless you discard a <kind> card"** (Thirst for
+Knowledge, Thirst for Discovery) is `discardTwoUnlessOne` in
+[draw_then.go](../server/internal/cards/effects/draw_then.go): a registered
+draw-then continuation whose discard prompt has a floor of one and a set
+rule that accepts a single card only when it qualifies (Compulsive
+Research's shape).
+
+**A choice among cards in several graveyards** (Extract from Darkness) is
+one `ChooseCardsPrompt` with no `FromPlayer` and no `Zone`: the candidates
+are public, the view looks them up by id, and the effect that acts on the
+answer already tolerates a card that has gone.
+
+**An intervening "if"** (Thopter Spy Network, Emeria) is read where the
+trigger is declared and again at the top of the `Effect`; the second read
+is the one a response can change (CR 603.4).
+
 ### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
 
 "Target player reveals their hand. You choose a nonland card from it.
@@ -8551,6 +8597,28 @@ Three things to know:
   kept every hand. Use `openingTable`, `handWith` and `keepAll` in
   [opening_hand_actions_test.go](../server/internal/cards/effects/opening_hand_actions_test.go),
   which stop before the first keep so the hands can be stocked.
+
+### Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)
+
+Seven small mechanics, each a constructor or helper in `server/internal/cards/effects/`; the engine pieces behind the
+first, second and sixth are in the amendments of [ADR 0025](decisions/0025-alternative-costs.md) and
+[ADR 0045](decisions/0045-combat-restrictions.md) dated 2026-10-13.
+
+```go
+AlternativeCosts: []game.AlternativeCost{Dash("{1}{R}")},                   // Ragavan: haste, back to hand at the next end step
+AlternativeCosts: []game.AlternativeCost{Freerunning("{1}{B}", "Assassin")}, // Restart Sequence: Assassin or commander connected
+AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},  // Asinine Antics: printed cost + {2}, total spelled out
+Triggered: []game.TriggeredAbility{Training("Hopeful Initiate — training")}, // +1/+1 counter beside a bigger attacker
+Triggered: []game.TriggeredAbility{Targeting(WheneverYouExpend(8, "…", effect), spec)}, // Trailtracker Scout
+Activated: []ActivatedAbility{Encore("{3}{R}")},                            // Impulsive Pilferer: one bound token per opponent
+ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(ctx) // Lethal Scheme
+```
+
+Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
+that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
+the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
+(`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
+counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
 ### Adding a `Spec` slot (#622)
 

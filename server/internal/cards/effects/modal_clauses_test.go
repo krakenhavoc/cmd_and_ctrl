@@ -335,6 +335,9 @@ func TestResourcefulDefenseRefusesOnePermanentInBothSlots(t *testing.T) {
 		t.Fatalf("two distinct permanents: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	if err := g.ResolvePayAmount(payAmountPrompt(g, me.ID).ID, me.ID, 3); err != nil {
+		t.Fatalf("move all three: %v", err)
+	}
 	if counterCount(g, b, "+1/+1") != 3 || counterCount(g, a, "+1/+1") != 0 {
 		t.Error("the counters moved from slot 0 to slot 1")
 	}

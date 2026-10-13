@@ -738,6 +738,17 @@ func (g *Game) PlayersDealtCombatDamageThisTurnBySubtype(controller uuid.UUID, s
 	return g.combatDamagedPlayersLocked(controller, combatDamageSubtypeKey(subtype), IsCreatureType(subtype))
 }
 
+// PlayersDealtCombatDamageThisTurnByCommander is the same set for a
+// COMMANDER: a creature that was a commander (Card.IsCommander, whoever
+// owns it) and was under `controller`'s control as it dealt the damage
+// — freerunning's "with an Assassin or commander" (CR 702.173a,
+// #3172).
+//
+// Caller must hold g.mu.
+func (g *Game) PlayersDealtCombatDamageThisTurnByCommander(controller uuid.UUID) map[uuid.UUID]bool {
+	return g.combatDamagedPlayersLocked(controller, combatDamageCommanderKey, false)
+}
+
 // combatDamagedPlayersLocked collects the seated players with a
 // non-empty cell under one identity, folding in the changeling
 // bucket when the caller asked about a creature type. Seats are
@@ -944,6 +955,11 @@ func combatDamageNameKey(name string) string { return "n:" + strings.ToLower(nam
 
 func combatDamageSubtypeKey(subtype string) string { return "s:" + strings.ToLower(subtype) }
 
+// combatDamageCommanderKey is the third identity: the dealer was a
+// commander as it dealt the damage (freerunning, CR 702.173a). Its tag
+// cannot collide with a card name ("n:") or a subtype ("s:").
+const combatDamageCommanderKey = "c:commander"
+
 // recordCombatDamageToPlayerLocked records one creature's combat
 // damage to one player under every identity a reader may ask for: its
 // name, and each subtype it has right now. A creature with every
@@ -962,6 +978,9 @@ func (g *Game) recordCombatDamageToPlayerLocked(controller uuid.UUID, dealer *Ca
 	}
 	if dealer.Name != "" {
 		bump(combatDamageNameKey(dealer.Name))
+	}
+	if dealer.IsCommander {
+		bump(combatDamageCommanderKey)
 	}
 	all := HasAllCreatureTypes(dealer)
 	for _, s := range dealer.Effective().Subtypes {

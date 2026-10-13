@@ -20,19 +20,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // that payment, which is how the card is meant to be played once
 // training has grown it.
 //
-// One declared simplification, weaker than printed: TRAINING is not
-// implemented. It is a keyword ability (CR 702.138) with an attack
-// trigger the engine has no shape for yet, so the Initiate never
-// grows itself — the ability still works with counters from anywhere
-// else (Cathars' Crusade, a Sword, another player's Ajani). Shipping
-// training's counter without its trigger would be inventing a card;
-// leaving it off is the #259 direction.
+// Training is the shared Training() trigger (training.go).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "317169b8-9014-48e6-862b-ca21b706846e",
 		Name:         "Hopeful Initiate",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Training isn't implemented — attacking alongside a bigger creature doesn't put a +1/+1 counter on the Initiate."},
+		Completeness: CompletenessFull,
+		Triggered:    []game.TriggeredAbility{Training("Hopeful Initiate — training: put a +1/+1 counter on it")},
 		Activated: []ActivatedAbility{{
 			Label: "{2}{W}, Remove two +1/+1 counters from among creatures you control: Destroy target artifact or enchantment.",
 			Cost: Plus(

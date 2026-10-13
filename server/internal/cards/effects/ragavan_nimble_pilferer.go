@@ -22,13 +22,15 @@ import (
 // the top is stranded in exile, which the permission's CastOnly
 // flag models. That is not a sandbox shortcut; it's the card.
 //
-// Dash {1}{R} is an alternative cast path (S29) and isn't modelled.
+// Dash {1}{R} is the shared Dash constructor (freerunning.go): an alternative
+// cost whose entry clause gives haste and returns the creature to its
+// owner's hand at the next end step (game/dash.go). No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "37108cd4-bbab-4ce3-9ed6-f60e8422e703",
-		Name:         "Ragavan, Nimble Pilferer",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Dash isn't available — Ragavan can only be cast normally for {R}."},
+		OracleID:         "37108cd4-bbab-4ce3-9ed6-f60e8422e703",
+		Name:             "Ragavan, Nimble Pilferer",
+		Completeness:     CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{Dash("{1}{R}")},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -497,8 +497,47 @@ func TestB18ThirstForKnowledgeDrawsThreeThenOwesTwo(t *testing.T) {
 	if discardOwed(g, me.ID) != 2 {
 		t.Errorf("discard owed = %d, want 2", discardOwed(g, me.ID))
 	}
-	if spec, _ := Lookup(b18ThirstForKnowledgeOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the artifact-discard gap must be declared")
+	if spec, _ := Lookup(b18ThirstForKnowledgeOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the artifact-discard alternative is offered: nothing is left to declare")
+	}
+}
+
+// "Discard two cards unless you discard an artifact card": one artifact
+// card is a complete answer, one other card is not, and two of anything
+// is.
+func TestB18ThirstForKnowledgeAcceptsOneArtifactOrTwoCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	rock := handCardFull(me, "Sol Ring", "Artifact", "{1}", "", nil)
+	bear := handCardFull(me, "Bear", "Creature — Bear", "{1}{G}", "", nil)
+	other := handCardFull(me, "Bolt", "Instant", "{R}", "", nil)
+	castCatalogSpell(t, g, "Thirst for Knowledge", "Instant", b18ThirstForKnowledgeOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := discardChoiceFor(g, me.ID)
+	if c == nil || c.ChooseMin != 1 || c.ChooseMax != 2 {
+		t.Fatalf("a floor of one and a ceiling of two: %+v", c)
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{bear}); err == nil {
+		t.Fatal("one non-artifact card was accepted")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{rock}); err != nil {
+		t.Fatalf("one artifact card is a complete discard: %v", err)
+	}
+	if me.Hand.Contains(rock) || !me.Hand.Contains(bear) || !me.Hand.Contains(other) {
+		t.Error("only the artifact card was discarded")
+	}
+}
+
+func TestB18ThirstForKnowledgeAcceptsTwoOrdinaryCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := handCardFull(me, "Bear", "Creature — Bear", "{1}{G}", "", nil)
+	other := handCardFull(me, "Bolt", "Instant", "{R}", "", nil)
+	castCatalogSpell(t, g, "Thirst for Knowledge", "Instant", b18ThirstForKnowledgeOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerDiscard(t, g, me.ID, bear, other)
+	if me.Hand.Contains(bear) || me.Hand.Contains(other) {
+		t.Error("two cards of any kind are a complete discard")
 	}
 }
 

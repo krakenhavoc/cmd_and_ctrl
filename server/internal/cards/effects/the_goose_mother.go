@@ -29,26 +29,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it (the trigger still resolves on its own last-known-X, CR 603.10),
 // which the resolve-time shortcut could not model.
 //
-// The attack trigger is Springbloom Druid's shape: "you may" is the
-// trigger prompt, the Food is chosen through the pick_target prompt
-// when the trigger goes on the stack ("a Food you control" — a Food
-// you control can never be an illegal pick), and at resolution the
-// Food is sacrificed if it is still there and the draw follows only
-// from the sacrifice. With no Food the trigger is removed with no
-// prompt (CR 603.3d), which matches "you may sacrifice a Food" with
-// nothing to sacrifice.
+// The attack trigger asks "you may sacrifice a Food" as it RESOLVES
+// (maySacrificeOne, CR 608.2c): over the Foods you control then, and the
+// draw follows only a Food that really went. With no Food there is no
+// question, which is "you may sacrifice a Food" with nothing to
+// sacrifice.
 //
-// One declared simplification remains, weaker than printed: the Food
-// to sacrifice is chosen when the attack trigger goes on the stack,
-// not on resolution.
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "de595f1b-3f7d-45e0-a31b-ed23e5d1ee48",
-		Name:         "The Goose Mother",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick the Food to sacrifice when the attack trigger goes on the stack rather than on resolution.",
-		},
+		OracleID:                   "de595f1b-3f7d-45e0-a31b-ed23e5d1ee48",
+		Name:                       "The Goose Mother",
+		Completeness:               CompletenessFull,
 		PrintedKeywords:            []string{"flying"},
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
 		Triggered: []game.TriggeredAbility{
@@ -78,10 +70,8 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return attackDeclared(ev, source)
 				},
-				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "The Goose Mother — sacrifice a Food to draw a card?"},
-				Targets:        TargetPermanent("a Food you control", And(HasSubtype("Food"), YouControl())),
-				Key:            b27GooseMotherAttackLabel,
-				Effect:         b27SacrificeChosenThenDraw,
+				Key:    b27GooseMotherAttackLabel,
+				Effect: b27SacrificeChosenThenDraw,
 			},
 		},
 	})
