@@ -245,6 +245,7 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"deck_request_asks", res.Counts.DeckRequestAsks,
 		"settings_rows", res.Counts.SettingsRows,
 		"setup_rows", res.Counts.SetupRows,
+		"notification_pref_rows", res.Counts.NotifyPrefRows,
 		"identities", res.Counts.Identities,
 		"reports", res.Counts.Reports,
 		"table_blocks", res.Counts.Blocks,

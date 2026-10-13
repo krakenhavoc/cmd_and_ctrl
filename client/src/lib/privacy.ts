@@ -47,8 +47,13 @@ export const CONTACT_TEXT = "see the project's GitHub";
  * the room's channel id. Neither is about a person; the notice's voice
  * paragraph comes with the voice manager (ADR 0159 §8), which is what
  * sends seated players' Discord ids to Discord.
+ *
+ * 21 (#3320, ADR 0162 §5) adds notification_prefs: a person's three
+ * Discord DM notification switches and when Discord last refused one.
+ * The notice's "Your Discord notifications" row names it, and the
+ * Discord paragraph says what the messages carry (§6).
  */
-export const PRIVACY_SCHEMA_VERSION = 20;
+export const PRIVACY_SCHEMA_VERSION = 21;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

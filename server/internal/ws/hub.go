@@ -106,6 +106,11 @@ type Hub struct {
 	// maxConns is the live-connection ceiling (ADR 0148, #2977). 0 is
 	// no cap. Read on every upgrade, so it is an atomic.
 	maxConns atomic.Int64
+
+	// seatLeft is when each seat last stopped being present: a seat
+	// connection closed, or reported its tab hidden (ADR 0162 §2,
+	// presence.go). Guarded by mu.
+	seatLeft map[seatKey]time.Time
 }
 
 // Binding is what the upgrade authorizer hands to the hub: the
@@ -308,6 +313,9 @@ func (h *Hub) unregister(c *Client) {
 	if _, ok := h.clients[c]; ok {
 		delete(h.clients, c)
 		close(c.send)
+		if !c.hidden {
+			h.markLeftLocked(c)
+		}
 	}
 }
 
@@ -344,6 +352,10 @@ type LiveSocket struct {
 	Admin    bool
 	// ConnectedAt is when the hub admitted the connection.
 	ConnectedAt time.Time
+	// Hidden is the connection's latest visibility frame (ADR 0162
+	// §2): true once it said its tab is hidden. A connection that never
+	// sent one is visible.
+	Hidden bool
 }
 
 // Role is the connection's role label (metrics.WSRole): seat,
@@ -374,6 +386,7 @@ func (h *Hub) LiveSockets() []LiveSocket {
 			ReadOnly:    c.readOnly,
 			Admin:       c.admin,
 			ConnectedAt: c.connectedAt,
+			Hidden:      c.hidden,
 		})
 	}
 	return out
@@ -917,6 +930,11 @@ type Client struct {
 	// legalMoves rate-limits legal_moves_request frames (ADR 0122
 	// §6.1, legal_moves.go). Read goroutine only.
 	legalMoves legalMovesLimiter
+
+	// hidden is the latest `visibility` frame's answer (ADR 0162 §2,
+	// presence.go): true while the client's tab is hidden. False until
+	// the client says otherwise. Guarded by hub.mu.
+	hidden bool
 }
 
 // role is the connection's role label (ADR 0123 §3): seat, spectator
@@ -997,6 +1015,8 @@ func (c *Client) handleFrame(raw []byte) {
 		c.handleChat(frame)
 	case protocol.KindLegalMovesRequest:
 		c.handleLegalMovesRequest(frame)
+	case protocol.KindVisibility:
+		c.handleVisibility(frame)
 	default:
 		c.sendError(frame.ID, protocol.CodeBadRequest,
 			"unknown or unsupported kind")

@@ -332,6 +332,9 @@ type Lobby struct {
 	// admin clicks cannot both rebuild the same deferred table. It is
 	// taken before l.mu and never while holding it.
 	restoreMu sync.Mutex
+	// events is told when a table fills or starts (ADR 0162, notify.go).
+	// Set once at boot by SetTableEvents; nil tells nobody.
+	events TableEvents
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the
@@ -946,6 +949,7 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	}
 	entry.meta.Players = append(entry.meta.Players, seat)
 	l.persistSeatsLocked(entry)
+	l.noteFilledLocked(entry, p.ID)
 	if bindNamedHost {
 		entry.meta.HostDiscordID = ""
 		l.persistGameLocked(entry)
@@ -1245,6 +1249,7 @@ func (l *Lobby) Start(id uuid.UUID) (GameMeta, error) {
 	}
 	l.syncStateLocked(entry)
 	l.startWatchLocked(entry)
+	l.noteStartedLocked(entry)
 	// Chained onto the broadcast thunk so it runs after l.mu is
 	// released: StartBots spawns goroutines that begin committing to
 	// the room immediately, and holding the lobby-wide mutex across
@@ -1379,6 +1384,7 @@ func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 		BotDeck:      deckID,
 	})
 	l.persistSeatsLocked(entry)
+	l.noteFilledLocked(entry, uuid.Nil)
 	return copyMeta(entry.meta), p.ID, nil
 }
 
