@@ -2743,6 +2743,17 @@ type CardView struct {
 	// for "Cast anyway". Omitted when false; cleared with
 	// Unimplemented on a face-down card. See game.MayMakeManaUnautomated.
 	MayMakeManaUnautomated bool `json:"may_make_mana_unautomated,omitempty"`
+	// DiscardByOpponent (ADR 0153 §5) is on a card in a hand that does
+	// something when a spell or ability an opponent controls makes its
+	// owner discard it, declared by the card's catalog constructor and
+	// never inferred from its text: "battlefield" (it is put onto the
+	// battlefield instead of the graveyard), "library" (it goes on top
+	// of its owner's library instead; Nephalia Academy declares this for
+	// every card in its controller's hand) or "trigger" (the discard
+	// triggers an ability of the card). Omitted when the card does
+	// nothing of the kind, and cleared with the rest of a hidden card's
+	// identity. The bot prices such a discard off it.
+	DiscardByOpponent string `json:"discard_by_opponent,omitempty"`
 	// CastSurfaceView is the announce surface of the card AS THE FACE
 	// IT IS SHOWING. Embedded rather than listed, so `target_mode`,
 	// `legal_targets` and the rest keep the names and the JSON keys
@@ -4843,6 +4854,7 @@ func ViewOfGame(g *game.Game) GameView {
 			}
 		}
 		stampLibraryTop(g, view.Seats)
+		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
@@ -9725,6 +9737,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// anyone could read much from it.
 	out.Unimplemented = false
 	out.MayMakeManaUnautomated = false
+	// ADR 0153: "put onto the battlefield when an opponent makes you
+	// discard it" names a creature card as loudly as its text does.
+	out.DiscardByOpponent = ""
 	// ADR 0034: the face list names the card twice over — both
 	// halves, their costs and their type lines. A face-down Sea Gate
 	// Restoration that still shipped "Sea Gate, Reborn // Land" in
@@ -10430,6 +10445,41 @@ func cantPlayLandReason(err error) string {
 // Caller must hold g.mu.
 func grantedCast(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind) *game.CastPermission {
 	return g.CastPermissionForLocked(caster, card, kind)
+}
+
+// stampDiscardByOpponent files each hand card's `discard_by_opponent`
+// (ADR 0153 §5): what an opponent-caused discard does for the card, from
+// the card's own catalog declaration or from a permanent its owner
+// controls that declares it for the whole hand (Nephalia Academy). Hand
+// cards only; FilterViewFor strips every other seat's hand, and clears
+// the field on a card the viewer cannot see.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampDiscardByOpponent(g *game.Game, seats []PlayerView) {
+	if game.CatalogDiscardByOpponent == nil {
+		return
+	}
+	for si := range seats {
+		seat := &seats[si]
+		owner, err := uuid.Parse(seat.ID)
+		if err != nil {
+			continue
+		}
+		p := g.PlayerByIDForEffect(owner)
+		if p == nil || p.Hand == nil {
+			continue
+		}
+		for ci := range seat.Hand.Cards {
+			cv := &seat.Hand.Cards[ci]
+			for hi := range p.Hand.Cards {
+				if p.Hand.Cards[hi].InstanceID.String() != cv.InstanceID {
+					continue
+				}
+				cv.DiscardByOpponent = string(g.DiscardByOpponentOf(&p.Hand.Cards[hi]))
+				break
+			}
+		}
+	}
 }
 
 // stampLibraryTop applies CR 401.5's visibility to the card currently

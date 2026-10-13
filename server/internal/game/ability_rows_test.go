@@ -15,6 +15,8 @@ import (
 // so a slot added to CardDef is placed rather than silently dropped.
 var abilityRowFieldsNotRows = map[string]string{
 	"Resolve":                    "the spell's effect as it resolves, not an ability of the object",
+	"DiscardByOpponent":          "a declaration the bot reads about a hand card, not an ability of the object (ADR 0153 §5)",
+	"DiscardByOpponentForHand":   "a declaration the bot reads about the hand, not an ability of the object (ADR 0153 §5)",
 	"AsEnters":                   "the CR 614.12 choice as it enters; its answer is on the wire as chosen_color and the rest",
 	"AsTransformsInto":           "a transform's as-it-transforms clause, run once",
 	"AsAttached":                 "an attachment's as-it-becomes-attached choice, run once per attach (#2709)",

@@ -915,6 +915,19 @@
       }
     ]
   },
+  "pitch-the-baloth-to-an-opponents-mind-rot": {
+    "decision": 0,
+    "ranking": [
+      {
+        "index": 0,
+        "value": 11.9
+      },
+      {
+        "index": 1,
+        "value": 5.8
+      }
+    ]
+  },
   "sacrifice-the-creature-the-removal-targets": {
     "decision": 0,
     "ranking": [

@@ -93,6 +93,9 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	if p.DiscardPayoff != nil && slot != purposeOnTriggered {
 		fail("sets DiscardPayoff off a triggered row")
 	}
+	if p.OnOpponentDiscard != nil && slot != purposeOnTriggered {
+		fail("sets OnOpponentDiscard off a triggered row")
+	}
 	if p.LandfallPayoff != nil && slot != purposeOnTriggered {
 		fail("sets LandfallPayoff off a triggered row — a landfall payoff is a \"whenever a land you control enters\" trigger (#3072)")
 	}
@@ -112,6 +115,7 @@ func checkPurpose(name, where string, slot purposeSlot, p game.Purpose) {
 	}
 	checkPump(p.Pump, fail)
 	checkDiscardPayoff(p.DiscardPayoff, fail)
+	checkDiscardPayoff(p.OnOpponentDiscard, fail)
 	checkLandfallPayoff(p.LandfallPayoff, fail)
 	checkSweep(p.Sweep, fail)
 }
