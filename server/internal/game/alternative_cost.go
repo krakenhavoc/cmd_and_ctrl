@@ -441,6 +441,28 @@ type AlternativeCost struct {
 	// for any other flash grant (CR 101.2).
 	AsThoughFlash bool
 
+	// XCeiling is a ceiling on the X announced WHILE THIS OFFER IS
+	// CLAIMED — "you may cast this spell as though it had flash if X is
+	// 3 or less" (Silver Scrutiny, #3225). Zero, the overwhelming
+	// majority, is no ceiling; Register refuses a negative.
+	//
+	// CR 601.3c: an effect that lets a spell be cast as though it had
+	// flash only if a condition holds lets its caster BEGIN to cast it
+	// at instant speed, and the condition is then checked against the
+	// announcement. So the offer is the spell's printed cost with
+	// AsThoughFlash, and this field is the condition: an X above it is
+	// refused under the claim (castSpellLocked), the enumerator never
+	// offers one (legal/x.go) and the view stamps the ceiling on the
+	// offer as `x_max` so the X picker stops at it. The sorcery-speed
+	// cast for the printed cost carries no such limit — it is not the
+	// offer — which is the whole point of modelling the condition on
+	// the offer rather than on the card (Spec.XCeiling).
+	//
+	// Folded with a printed Spec.XCeiling by SpellXCeilingForOfferLocked,
+	// keeping the smaller. Charges nothing, so duplicatesListedPrice
+	// treats an offer carrying one as more than a price.
+	XCeiling int
+
 	// Bestow is CR 702.103's "cast it bestowed": paying this cost makes
 	// the spell an Aura enchantment with enchant creature and not a
 	// creature (CR 702.103b), as it is put onto the stack and for every

@@ -1304,6 +1304,17 @@ export function hasXCost(card: CardView, altCost?: string): boolean {
   return (card.mana_cost ?? "").includes("{X}");
 }
 
+// xCeilingFor is the largest X the viewer may announce for this cast
+// (CR 601.2b), or undefined when nothing bounds it. A claimed offer that
+// carries its own ceiling (#3225: "as though it had flash if X is 3 or
+// less") wins — the server already folded the card's printed `x_max`
+// into it — and otherwise the card's own `x_max` applies. The cast for
+// the printed cost, which claims no offer, is therefore not bound by an
+// offer it is not using.
+export function xCeilingFor(card: CardView, altCost: string | undefined): number | undefined {
+  return alternativeCostByKey(card, altCost)?.x_max ?? card.x_max;
+}
+
 // castLocksXAtZero reports CR 107.3b: a spell with {X} in its mana
 // cost, cast while paying neither that cost nor an alternative cost
 // that includes X, has 0 as its only legal X — so there is nothing to

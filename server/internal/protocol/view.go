@@ -1513,6 +1513,15 @@ type AlternativeCostView struct {
 	// picker drops an offer this is set on exactly as it drops the
 	// printed row when PrintedCostTimingClosed is set.
 	TimingClosed bool `json:"timing_closed,omitempty"`
+
+	// XMax is the largest X the viewer may announce while claiming THIS
+	// offer, set only for an offer that carries a ceiling of its own
+	// (#3225: Silver Scrutiny's "as though it had flash if X is 3 or
+	// less", CR 601.3c) and already folded with the card's printed
+	// `x_max` — the same number CastSpell refuses above. The X picker
+	// reads it for the claimed offer; the card's own `x_max` still
+	// bounds the cast for the printed cost. Absent for every other offer.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -5477,6 +5486,9 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.TapOptions = nil
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
+		// #3225: folded with the card's board-set ceiling, so it is the
+		// asking seat's number like the card's own `x_max`.
+		o.XMax = nil
 		out[i] = o
 	}
 	return out
@@ -6688,6 +6700,11 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
 			Purpose: viewOfPurpose(ac.Purpose),
+		}
+		if ac.XCeiling > 0 && live != nil {
+			if ceiling, ok := g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac); ok {
+				v.XMax = &ceiling
+			}
 		}
 		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {

@@ -939,13 +939,22 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// X is announced, and never again — the stack item keeps the X
 	// announced (x_ceiling.go). Refused rather than clamped, for the
 	// reason the X lock above is.
-	if ceiling, ok := g.SpellXCeilingLocked(playerID, CatalogKey(card)); ok && params.XValue > ceiling {
-		slog.Warn("cast_spell rejected: X above the printed ceiling",
+	//
+	// #3225, CR 601.3c: the claimed alternative cost may carry a
+	// ceiling of its own ("as though it had flash if X is 3 or less"),
+	// so the question is asked with the offer in hand.
+	if ceiling, ok := g.SpellXCeilingForOfferLocked(playerID, CatalogKey(card), alt); ok && params.XValue > ceiling {
+		label := "the claimed alternative cost's X ceiling"
+		if xc := XCeilingFor(CatalogKey(card)); xc != nil && (alt == nil || alt.XCeiling <= 0 || alt.XCeiling >= ceiling) {
+			label = xc.Label
+		}
+		slog.Warn("cast_spell rejected: X above the ceiling",
 			"card_name", card.Name,
 			"oracle_id", card.OracleID,
 			"x_value", params.XValue,
 			"x_ceiling", ceiling,
-			"ceiling", XCeilingFor(CatalogKey(card)).Label,
+			"ceiling", label,
+			"alternative_cost", params.AlternativeCost,
 		)
 		return ErrInvalidParam
 	}

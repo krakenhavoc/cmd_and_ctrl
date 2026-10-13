@@ -140,6 +140,18 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two alternative costs keyed %q", spec.Name, ac.Key))
 		}
 		seenAlt[ac.Key] = true
+		// #3225: a per-offer X ceiling bounds an X the offer's own
+		// price announces, so it needs an {X} to bound; on a cost
+		// without one the engine locks X at 0 (CR 107.3b) and the
+		// number would never be read. A negative is a typo.
+		if ac.XCeiling < 0 {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a negative XCeiling", spec.Name, ac.Key))
+		}
+		if ac.XCeiling > 0 {
+			if pc, err := game.ParseCost(ac.ManaCost); err != nil || pc.XSlots == 0 {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with an XCeiling but a mana cost %q that has no {X} to bound", spec.Name, ac.Key, ac.ManaCost))
+			}
+		}
 		// S29: an offer bound to a zone the card cannot be cast from
 		// is unclaimable — the cast path rejects the zone before it
 		// ever looks at the price. A card file that wrote one meant

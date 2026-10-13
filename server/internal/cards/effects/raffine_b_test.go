@@ -222,8 +222,10 @@ func TestSilverScrutinyDrawsX(t *testing.T) {
 		t.Errorf("drew %d cards, want 4", got)
 	}
 	spec, _ := Lookup(rbSilverScrutinyOracl)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) == 0 {
-		t.Error("the missing flash clause must be a declared caveat")
+	// #3225: the flash clause is the card's per-offer X ceiling now, so
+	// nothing is left to caveat (flash_if_x_at_most_test.go covers it).
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("Silver Scrutiny is fully implemented and must not declare a caveat")
 	}
 }
 

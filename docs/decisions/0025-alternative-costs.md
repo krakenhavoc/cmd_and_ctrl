@@ -316,3 +316,49 @@ or one field with the test named below.
 
 Tests: `cards/effects/cav_b_dash_test.go`, `cav_b_test.go` (flash surcharge, freerunning, delirium discount, gift),
 `cav_b_connive_test.go`, `cav_b_expend_test.go`.
+
+## Amendment (2026-10-13, [#3225](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3225)): a per-offer X ceiling, for "as though it had flash if X is N or less"
+
+Silver Scrutiny prints "You may cast this spell as though it had flash if X is 3 or less." CR 601.3c lets the caster
+BEGIN the cast at instant speed and then requires the announced X to satisfy the condition. The two "as though it had
+flash" shapes the engine had could not express that: a flat grant (`CastKindAsThoughFlash`) opens the window for every X,
+and the offer that opens it for one claim (`AlternativeCost.AsThoughFlash`, `FlashForMore`) bounded nothing. Shipping
+either would let a player draw ten cards at instant speed, which is stronger than printed, so the card shipped as a
+sorcery with a declared caveat.
+
+**`AlternativeCost.XCeiling int`** (zero is no ceiling) is the condition, carried on the offer. The offer is priced at the
+card's own mana cost with `AsThoughFlash`, so claiming it costs nothing extra, and an X above the ceiling is refused
+WHILE THAT OFFER IS CLAIMED. The ordinary sorcery-speed cast for the printed cost is not the offer and takes any X, which
+is why the number lives on the offer and not on `Spec.XCeiling` (`game/x_ceiling.go`, #2581), which would bound
+every cast of the spell. `effects.FlashIfXAtMost(cost, max)` builds it; hand-rolling the offer compiles and casts for
+nothing extra, but forgets either half (the window or the bound).
+
+**One function answers every reader.** `game.SpellXCeilingForOfferLocked(caster, key, offer)` is the smaller of the card's
+printed ceiling and the offer's, and these now ask through it with the offer in hand:
+
+- the announce gate in `castSpellLocked` (after CR 107.3b's free-cast lock, before the optional costs), refusing with
+  `ErrInvalidParam`;
+- the enumerator's `printedXCeiling` (`legal/x.go`), which folds it into the ceiling slot a cost already fills and only
+  where the cost being searched has an {X}, so at instant speed no move announces X above it and no open range exceeds it;
+- the view, which stamps it on the offer as `alternative_costs[].x_max` (already folded with the card's `x_max`; present
+  only on an offer that carries one);
+- the auto-tap preview, through `Game.SpellXCeilingForCast`, which resolves the claimed offer from the query's
+  `alternative_cost` exactly as the cast does, so `x_max` in the preview is the claimed offer's.
+
+The client's X picker takes `xCeilingFor(card, altCost)`: the claimed offer's `x_max`, else the card's. The offer's number
+beats the card's because the server already folded the card's into it.
+
+`Register` refuses a negative `XCeiling` and one on a cost with no {X} (the engine locks X at 0 there, so the number
+would never be read). A granted offer may not carry one (`checkGrantedAlternativeCosts`): none has been needed, and the
+seam has never been checked against it. `onlyMana` treats an offer with a ceiling as more than a price, so
+`duplicatesListedPrice` never folds it into the printed row.
+
+Silver Scrutiny is the card (`full`). Claiming the offer in a main phase is still the offer: X is bounded by the claim,
+not by the speed it is cast at.
+
+Back-out: pass `nil` for the offer at each of the four readers and the offer stops being bounded (the named test per
+reader fails); drop the field and `FlashIfXAtMost`, and Silver Scrutiny returns to a sorcery with its caveat.
+
+Tests: `cards/effects/flash_if_x_at_most_test.go` (gate, `Register` checks, the card), `legal/offer_x_ceiling_test.go`,
+`protocol/offer_x_ceiling_view_test.go`, `lobby/auto_tap_preview_offer_x_ceiling_test.go`,
+`client/src/lib/xCeilingForOffer.test.ts`.

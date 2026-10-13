@@ -8765,6 +8765,22 @@ the offer replaces the mana cost; casting for the printed cost stays sorcery-spe
 (`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
 counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
 
+### Flash if X is N or less (#3225)
+
+"You may cast this spell as though it had flash if X is 3 or less" (Silver Scrutiny) is an offer at the printed cost that
+opens the instant-speed window for its own claim and bounds the X announced under it
+([ADR 0025](decisions/0025-alternative-costs.md), amendment dated 2026-10-13):
+
+```go
+AlternativeCosts: []game.AlternativeCost{FlashIfXAtMost("{X}{U}{U}", 3)}, // Silver Scrutiny
+```
+
+Use the constructor, never `Spec.XCeiling` and never a flat `CastKindAsThoughFlash`: the first bounds the sorcery-speed
+cast too (nothing prints that), the second opens instant speed for every X (stronger than printed). The printed cost
+stays sorcery-speed with any X. The ceiling rides `AlternativeCost.XCeiling`, read through
+`game.SpellXCeilingForOfferLocked` by the announce gate, the enumerator, the view (`alternative_costs[].x_max`) and the
+auto-tap preview; `Register` refuses one on a cost with no {X}.
+
 ### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
 
 Five shapes that used to be caveats; the engine pieces are in the 2026-10-13 amendments of
