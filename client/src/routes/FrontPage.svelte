@@ -23,7 +23,7 @@
   import { expiryNotice } from "../lib/session";
   import { community } from "../lib/community";
   import { PRIVACY_HASH } from "../lib/privacy";
-  import { ABOUT_HASH } from "../lib/about";
+  import { ABOUT_HASH, GUIDE_HASH } from "../lib/about";
   import { L } from "../lib/labels";
 
   let discordEnabled = $state(false);
@@ -156,9 +156,12 @@
       <a class="link-arrow" href="#/roadmap">Roadmap</a>
     </div>
     <div class="card">
-      <h2>About</h2>
-      <p>What this project is, its limits, and how to send feedback.</p>
-      <a class="link-arrow" href={ABOUT_HASH}>About</a>
+      <h2>New here?</h2>
+      <p>How to get in, find a pod and play your first game; and what this project is.</p>
+      <p class="links">
+        <a class="link-arrow" href={GUIDE_HASH}>Getting started</a>
+        <a class="link-arrow" href={ABOUT_HASH}>About</a>
+      </p>
     </div>
   </section>
 </main>
@@ -342,6 +345,16 @@
   .card .link-arrow {
     margin-top: 14px;
     font-size: 13.5px;
+  }
+  /* Two links in one card, side by side, in the place one would sit. */
+  .card .links {
+    margin: 14px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+  }
+  .card .links .link-arrow {
+    margin-top: 0;
   }
   .invite-card p {
     margin-bottom: 16px;

@@ -43,6 +43,10 @@ export type Route =
   // does not do for you, where to send feedback, and the credits. Public:
   // it is what a stranger reads before deciding to sign in.
   | { name: "about" }
+  // The getting-started guide: getting in, finding a pod, a table, the
+  // C2 Discord's channels and commands. Public like About, for the same
+  // reader; the Discord's #welcome posts say the same things.
+  | { name: "guide" }
   // The one decks page (ADR 0112 §3): check a deck by link or paste,
   // its coverage report, "Request missing cards", "Save to my decks",
   // the saved library and the pre-built decks. Public like the roadmap:
@@ -146,6 +150,8 @@ export function parseHash(hash: string): Route {
       return { name: "privacy" };
     case "about":
       return { name: "about" };
+    case "guide":
+      return { name: "guide" };
     // #/deck-check is a permanent alias of #/decks (see the Route type).
     case "decks":
     case "deck-check": {

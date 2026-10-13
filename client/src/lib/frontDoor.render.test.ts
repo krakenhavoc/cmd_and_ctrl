@@ -116,7 +116,7 @@ describe("the front page (§4)", () => {
 
     // The four cards, the invite box first, with its labels unchanged.
     const cards = [...container.querySelectorAll(".cards h2")].map((h) => h.textContent);
-    expect(cards).toEqual(["Have an invite?", "Check a deck", "Roadmap", "About"]);
+    expect(cards).toEqual(["Have an invite?", "Check a deck", "Roadmap", "New here?"]);
     expect(container.querySelector('input[aria-label="invite code or link"]')).not.toBeNull();
     expect(linkNamed(container, "Decks")!.getAttribute("href")).toBe("#/decks");
     expect(container.querySelector('a[href="#/privacy"]')).not.toBeNull();

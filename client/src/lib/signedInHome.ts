@@ -40,6 +40,8 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   "privacy",
   // The About page (#2981): the first thing a stranger from a post reads.
   "about",
+  // The getting-started guide: written for someone not signed in yet.
+  "guide",
   // The one decks page (ADR 0112 §3 item 1), and its #/deck-check
   // alias: a signed-out visitor can check a deck, for the same reason
   // the roadmap is public, and the Discord bot links straight here.
