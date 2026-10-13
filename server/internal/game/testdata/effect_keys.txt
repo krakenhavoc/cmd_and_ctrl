@@ -214,3 +214,8 @@ condition attach/this-aura-left
 body gilgamesh/attach-equipment
 body leyline-tyrant/damage
 body copy/the-spell-you-just-cast-twice
+body flip/the-source
+body discard-by-opponent/return-the-discarded-card
+body discard-by-opponent/return-to-hand
+body discard-by-opponent/return-with-counter
+condition discard/opponent-caused-yours
