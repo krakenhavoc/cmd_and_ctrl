@@ -434,7 +434,7 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) triggerOrderWhy {
 		}
 	}
 	if card, kind, reacts := g.reactorLocked(emits); reacts {
-		return triggerOrderWhy{reason: TriggerOrderReasonReactor, card: card, event: kind, life: batchLife(accs)}
+		return triggerOrderWhy{reason: TriggerOrderReasonReactor, card: card, event: kind}
 	}
 	// A token the batch creates with a keyword trigger that watches an
 	// event the batch causes (evolve watches entering) reacts to the
@@ -442,7 +442,7 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) triggerOrderWhy {
 	for _, a := range accs {
 		for _, k := range sortedKinds(a.tokenWatches) {
 			if emits[k] {
-				return triggerOrderWhy{reason: TriggerOrderReasonReactor, event: k, life: batchLife(accs), token: true}
+				return triggerOrderWhy{reason: TriggerOrderReasonReactor, event: k, token: true}
 			}
 		}
 	}

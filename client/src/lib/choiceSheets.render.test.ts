@@ -367,7 +367,7 @@ describe("the order kinds are sheets", () => {
   });
 
   it("trigger_order: says why it asked, under the heading, when the server gave a reason (#3015)", () => {
-    const why = "Ajani's Pridemate reacts to life gain.";
+    const why = "Ajani's Pridemate watches life totals.";
     const { sent } = mount(
       snap({ kind: "trigger_order", trigger_options: opts, trigger_order_why: why }),
     );

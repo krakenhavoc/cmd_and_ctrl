@@ -27,8 +27,9 @@ type triggerOrderWhy struct {
 	// card is the name of the card the sentence is about ("" when the
 	// cause has no card: a player static, a delayed trigger).
 	card string
-	// event is the event kind a reactor watches, and life the way the
-	// batch moves life totals, which words a life event.
+	// event is the event kind a reactor watches (named as a family,
+	// never a direction), and life the way the item that changes a
+	// characteristic moves life totals.
 	event EventKind
 	life  lifeDirection
 	// player is the player a sentence about leaving the game names.
@@ -59,11 +60,16 @@ func lifeWords(d lifeDirection) string {
 	return "life changes"
 }
 
-// eventWords says what a watcher of the event kind is watching for.
-func eventWords(kind EventKind, life lifeDirection) string {
+// eventFamily names what a watcher of the event kind watches, as the
+// family of event and never a direction in it. A card's declared watch
+// is an event KIND (change_life), which does not say whether it cares
+// about a gain or a loss, so a sentence that said "reacts to life gain"
+// could be false for a card that watches loss. The family is true of
+// every watcher of the kind.
+func eventFamily(kind EventKind) string {
 	switch kind {
 	case EventChangeLife:
-		return lifeWords(life)
+		return "life totals"
 	case EventDealDamage:
 		return "damage"
 	case EventCounterPlaced:
@@ -94,18 +100,6 @@ func eventWords(kind EventKind, life lifeDirection) string {
 	return "what these triggers do"
 }
 
-// batchLife is the way a batch's items move life totals: up if every
-// one that moves any moves it up, down if all down, both otherwise.
-func batchLife(accs []triggerAccess) lifeDirection {
-	var d lifeDirection
-	for _, a := range accs {
-		for _, dir := range a.life {
-			d |= dir
-		}
-	}
-	return d
-}
-
 // triggerOrderSentenceLocked is the line under the heading. It is empty
 // for a batch that was not asked about; every reason has a sentence,
 // and an unknown one falls back to a generic line rather than none.
@@ -128,14 +122,14 @@ func (g *Game) triggerOrderSentenceLocked(w triggerOrderWhy, chooser uuid.UUID) 
 		}
 		return "Something in play could change how these triggers resolve."
 	case TriggerOrderReasonReactor:
-		what := eventWords(w.event, w.life)
+		what := eventFamily(w.event)
 		switch {
 		case w.token:
-			return "A token these triggers create reacts to " + what + "."
+			return "A token these triggers create watches " + what + "."
 		case w.card != "":
-			return w.card + " reacts to " + what + "."
+			return w.card + " watches " + what + "."
 		}
-		return "Something in play reacts to " + what + "."
+		return "Something in play watches " + what + "."
 	case TriggerOrderReasonRipple:
 		if w.card != "" {
 			return "Something else in play is keeping track of " + w.card + "."

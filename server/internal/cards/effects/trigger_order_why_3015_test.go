@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -30,7 +31,23 @@ func TestTheOrderPromptSaysWhyOnARealBoard(t *testing.T) {
 		marwynAndRiders(g, me.ID)
 		pushCatalogPermanent(g, me.ID, "Ajani's Pridemate", "Creature — Cat Soldier", b24AjanisPridemateOracle, false)
 		b20CastCreature(t, g, me, "Llanowar Elves", "Creature — Elf Druid", "", 1, 1)
-		wantWhy(t, settleUntilOrderPrompt(t, g), "Ajani's Pridemate reacts to life gain.")
+		wantWhy(t, settleUntilOrderPrompt(t, g), "Ajani's Pridemate watches life totals.")
+	})
+	t.Run("reactor: a loss watcher beside a gain-only batch is named by family, not direction", func(t *testing.T) {
+		// Exquisite Blood only cares about life LOST, and the batch
+		// (Riders' gain, Marwyn's counter) only gains. The declared
+		// watch is the event kind, which does not say which, so the
+		// sentence must not say "gain" or "loss" about the watcher.
+		g := newCatalogGame(t)
+		me := g.Seats[0]
+		marwynAndRiders(g, me.ID)
+		pushCatalogPermanent(g, me.ID, "Exquisite Blood", "Enchantment", b04ExquisiteBloodOracle, false)
+		b20CastCreature(t, g, me, "Llanowar Elves", "Creature — Elf Druid", "", 1, 1)
+		ch := settleUntilOrderPrompt(t, g)
+		wantWhy(t, ch, "Exquisite Blood watches life totals.")
+		if strings.Contains(ch.TriggerOrderWhy, "gain") || strings.Contains(ch.TriggerOrderWhy, "loss") {
+			t.Errorf("a watcher's direction is not known, but the sentence claims one: %q", ch.TriggerOrderWhy)
+		}
 	})
 	t.Run("reactor: a token the batch makes watches entering", func(t *testing.T) {
 		g := newCatalogGame(t)
@@ -38,7 +55,7 @@ func TestTheOrderPromptSaysWhyOnARealBoard(t *testing.T) {
 		pushCatalogPermanent(g, me.ID, "Evolve Token Probe", "Enchantment", evolveTokenProbe, false)
 		pushCatalogPermanent(g, me.ID, "Independence Token Probe", "Enchantment", independenceTokenProbe, false)
 		castNoncreature(t, g)
-		wantWhy(t, settleUntilOrderPrompt(t, g), "A token these triggers create reacts to permanents entering the battlefield.")
+		wantWhy(t, settleUntilOrderPrompt(t, g), "A token these triggers create watches permanents entering the battlefield.")
 	})
 	t.Run("reactor: a draw watcher", func(t *testing.T) {
 		g := newCatalogGame(t)
@@ -46,7 +63,7 @@ func TestTheOrderPromptSaysWhyOnARealBoard(t *testing.T) {
 		pushCatalogPermanent(g, me.ID, "Chasm Skulker", "Creature — Squid Horror", chasmSkulkerOracle, false)
 		ch := enterTwo(t, g, "Llanowar Visionary", "Creature — Elf Druid Shaman", llanowarVisionaryOracle,
 			"Cauldron Familiar", "Creature — Bat", cauldronFamiliarOracle)
-		wantWhy(t, ch, "Chasm Skulker reacts to cards being drawn.")
+		wantWhy(t, ch, "Chasm Skulker watches cards being drawn.")
 	})
 	t.Run("undescribed: a trigger the game cannot read", func(t *testing.T) {
 		g := newCatalogGame(t)

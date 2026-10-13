@@ -1516,7 +1516,7 @@ export interface PendingChoiceView {
   trigger_options?: ReplacementOptionView[];
   // #3015: for kind "trigger_order", one sentence in the player's
   // terms that says why the game asked instead of ordering the batch
-  // itself ("Ajani's Pridemate reacts to life gain."). Display text,
+  // itself ("Ajani's Pridemate watches life totals."). Display text,
   // shown under the heading; absent when there is no reason.
   trigger_order_why?: string;
   // S20 sub-PR 2: populated for kind "pick_target" — a targeted

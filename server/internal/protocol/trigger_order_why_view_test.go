@@ -32,18 +32,18 @@ func queueTriggerOrderPrompt(t *testing.T, g *game.Game, why string) *game.Playe
 
 func TestTriggerOrderWhyRidesTheWire(t *testing.T) {
 	g := newTwoSeatGame(t)
-	me := queueTriggerOrderPrompt(t, g, "Ajani's Pridemate reacts to life gain.")
+	me := queueTriggerOrderPrompt(t, g, "Ajani's Pridemate watches life totals.")
 
 	v := FilterViewFor(ViewOfGame(g), me.ID.String())
 	ch := choiceFor(t, v, string(game.PendingChoiceTriggerOrder))
-	if ch.TriggerOrderWhy != "Ajani's Pridemate reacts to life gain." {
+	if ch.TriggerOrderWhy != "Ajani's Pridemate watches life totals." {
 		t.Errorf("TriggerOrderWhy = %q", ch.TriggerOrderWhy)
 	}
 	raw, err := json.Marshal(ch)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(raw), `"trigger_order_why":"Ajani's Pridemate reacts to life gain."`) {
+	if !strings.Contains(string(raw), `"trigger_order_why":"Ajani's Pridemate watches life totals."`) {
 		t.Errorf("the key is not on the wire: %s", raw)
 	}
 

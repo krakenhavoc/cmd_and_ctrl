@@ -4411,7 +4411,7 @@ should say it.
   (`pendingChoices[].triggerOrderWhy`, `omitempty`, an additive change that zero-values to "no sentence") and the
   wire as `trigger_order_why` on the `trigger_order` pending choice (`docs/protocol.md`). The client shows it under
   the heading. Server-side because the prompt's other text (`reason`, the labels) is built there, and because the
-  facts a sentence needs (the card behind a static, the event a watcher reacts to) exist only where the check runs.
+  facts a sentence needs (the card behind a static, the event a watcher watches) exist only where the check runs.
 - **The check carries the facts it already found.** `triggerOrderConflictLocked` and `accessesConflictLocked` return a
   `triggerOrderWhy` (the reason plus the card, the event, the life direction or the player the sentence names)
   instead of the bare reason. `somethingReactsLocked` became `reactorLocked`, which returns the card and event kind
@@ -4429,7 +4429,7 @@ should say it.
   | `always` | You've set your triggers to ask every time. |
   | `undescribed` | *Wolverine Riders'* trigger is handled by the players, so the game can't tell whether the order matters. |
   | `board_opaque` | *Humility* could change how these triggers resolve. |
-  | `reactor` | *Ajani's Pridemate* reacts to life gain. (`life gain`, `life loss` or `life changes`, by what the items do; other events: damage, cards being drawn, permanents entering, and so on.) A token the items create is "A token these triggers create reacts to …". |
+  | `reactor` | *Ajani's Pridemate* watches life totals. Named by the family of event the card declares it watches (life totals, damage, cards being drawn, permanents entering, and so on), never by a direction. A token the items create is "A token these triggers create watches …". |
   | `ripple` | Something else in play is keeping track of *Oblivion Ring*. |
   | `elimination` | You (or the player's name) could leave the game partway through these triggers, which changes what the rest do. |
   | `object_tie` | These triggers both change *Marwyn*. (One writes and one reads: "One of these triggers changes *Marwyn*, which another looks at.") |
@@ -4443,10 +4443,13 @@ should say it.
   static, a delayed trigger) gets the same sentence with "Something in play".
 - **What the sentence is not.** Display text. It is not read back, not part of the resolve payload, and not shown to
   the enumerator or a bot: `legal/choices.go` and the heuristic read `TriggerOrderIDs` only, and the #3021 test that
-  offers a bot both orders runs against a prompt that now carries the sentence. A `reactor` sentence says what the
-  batch does and what the card watches; it does not claim the card's trigger would fire (the check cannot evaluate
-  that, which is why it asked), so "reacts to life gain" can name a card that watches life loss when the batch only
-  gains. That is the check being conservative, said plainly, not a new inaccuracy.
+  offers a bot both orders runs against a prompt that now carries the sentence. A `reactor` sentence names the family of event the
+  card watches and never a direction in it. A card's declared watch is an event kind (`change_life`), which does not
+  say whether it cares about a gain or a loss, and the check cannot evaluate the card's own condition (which is why
+  it asked). "Reacts to life gain" would be false for a card that watches life loss when the batch only gains, so the
+  sentence says "watches life totals" for every watcher of the kind. If a watcher's direction is ever declared as
+  data, the specific wording can return for it alone; until then the family wording is used everywhere. (The
+  `characteristic` sentence does say "life gain" or "life loss": that is what the item itself does, which is known.)
 - **A prompt queued before this change** has no sentence and shows the old heading alone.
 
 ### Tests
