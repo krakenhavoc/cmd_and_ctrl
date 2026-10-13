@@ -71,7 +71,7 @@ func init() {
 				Cost:    LoyaltyCost(1),
 				Purpose: game.Purpose{Draws: 1, Discards: 1},
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return b16DrawThenDiscard(g, item, 1, 1)
+					return b16DrawThenDiscard(g, item, 1)
 				},
 			},
 			{

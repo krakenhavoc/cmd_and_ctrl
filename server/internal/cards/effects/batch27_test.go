@@ -1069,10 +1069,12 @@ func TestB27TheGooseMotherEntersWithCountersFoodAndEatsToDraw(t *testing.T) {
 	}
 	hand := me.Hand.Size()
 	declareAttack(t, g, opp.ID, goose)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
+	passPriorityAroundTable(t, g)
 	food := findBattlefieldByName(g, "Food")
-	pickCard(t, g, me.ID, food)
+	if prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID); prompt == nil || prompt.ChooseMin != 0 || !hasID(prompt.ChooseCards, food) {
+		t.Fatal("the Food is chosen as the trigger resolves, with a floor of zero for the \"may\"")
+	}
+	answerOwnPermanents(t, g, me.ID, food)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(food) || b27CountNamed(g, me.ID, "Food") != 1 {
 		t.Error("the chosen Food is sacrificed")

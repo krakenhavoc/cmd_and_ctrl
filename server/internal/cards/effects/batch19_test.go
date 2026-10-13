@@ -462,13 +462,18 @@ func TestB19RuthlessTechnomancerTradesACreatureForTreasures(t *testing.T) {
 	beast := b16Creature(g, me.ID, "Beast", "Creature — Beast", 4, 4, "G")
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(beast, "+1/+1", 1) })
 	mancer := castAndResolveCreature(t, g, "Ruthless Technomancer", "Creature — Human Wizard", b19RuthlessTechnomancerOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if hasID(p.PickTargetCards, mancer) || !hasID(p.PickTargetCards, beast) {
+	passPriorityAroundTable(t, g)
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil {
+		t.Fatal("the sacrifice is asked as the trigger resolves")
+	}
+	if p.ChooseMin != 0 || p.ChooseMax != 1 {
+		t.Errorf("bounds %d..%d, want 0..1 — \"you MAY sacrifice\"", p.ChooseMin, p.ChooseMax)
+	}
+	if hasID(p.ChooseCards, mancer) || !hasID(p.ChooseCards, beast) {
 		t.Error("ANOTHER creature you control: the Technomancer itself is not offered")
 	}
-	pickCard(t, g, me.ID, beast)
+	answerOwnPermanents(t, g, me.ID, beast)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(beast) {
 		t.Fatal("the chosen creature is sacrificed")
@@ -480,15 +485,16 @@ func TestB19RuthlessTechnomancerTradesACreatureForTreasures(t *testing.T) {
 	// Declined: nothing happens.
 	bear := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
 	castAndResolveCreature(t, g, "Ruthless Technomancer", "Creature — Human Wizard", b19RuthlessTechnomancerOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(bear) || b16CountNamed(g, "Treasure") != 5 {
 		t.Error("declining sacrifices nothing and makes nothing")
 	}
-	// ADR 0109 §9: the reanimation ability is registered now; only the
-	// enter trigger's caveat remains.
-	if spec, _ := Lookup(b19RuthlessTechnomancerOracle); spec.Completeness != CompletenessCaveats || len(spec.Activated) != 1 || len(spec.Caveats) != 1 {
-		t.Error("the reanimation ability is registered and only the trigger's caveat remains")
+	// The sacrifice is chosen at resolution and the reanimation ability is
+	// registered, so nothing is left to declare.
+	if spec, _ := Lookup(b19RuthlessTechnomancerOracle); spec.Completeness != CompletenessFull || len(spec.Activated) != 1 || len(spec.Caveats) != 0 {
+		t.Error("the card is complete: the reanimation ability is registered and the sacrifice is chosen at resolution")
 	}
 }
 

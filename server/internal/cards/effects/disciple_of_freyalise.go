@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Disciple of Freyalise // Garden of Freyalise — the FRONT face,
 // Creature — Elf Druid {3}{G}{G}{G}, 3/3:
@@ -14,61 +18,32 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the bare oracle ID (game.CatalogKey).
 //
 // Ruthless Technomancer's shape exactly, with the payoff swapped from
-// Treasures to life and cards: the "you may" is the trigger's
-// optional prompt, the sacrificed creature is chosen as the trigger's
-// target when it goes on the stack (so an opponent can respond to the
-// choice — the same declared sandbox timing Ruthless Technomancer and
-// Springbloom Druid carry), its power is read just before the
-// sacrifice, and SacrificePermanent.Then gates the payoff on the
-// sacrifice's own answer (#993) rather than a live board re-read —
-// which is what keeps a sacrificed COMMANDER's life and cards arriving
-// even though it is still on the battlefield while its owner answers
-// CR 903.9.
+// Treasures to life and cards: the sacrifice is chosen as the trigger
+// RESOLVES (maySacrificeOne, CR 608.2c), so an opponent cannot answer
+// the choice and hexproof is no obstacle. The life and cards are the
+// sacrificed creature's last-known power (CR 608.2h), and they follow
+// only a sacrifice that really happened — a sacrificed commander still
+// pays out (CR 701.17a).
 func init() {
 	Register(Spec{
 		OracleID:     "2699005b-a471-429f-a9d8-fbf2077ee2fd",
 		Name:         "Disciple of Freyalise",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick the creature to sacrifice when the enter trigger goes on the stack rather than on resolution, so opponents can respond to the choice.",
-		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:        []game.EventKind{game.EventETB},
-			AppliesTo:      b06SelfETB,
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?"},
-			Targets:        Another(TargetCreature("another creature you control", YouControl())),
-			Key:            "Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				target := item.Targets[0].ID
-				if target == item.SourceCardID {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				if !ctx.IsTargetLegal(item.Targets[0]) {
-					return nil
-				}
-				victim, ok := g.LookupCardForEffect(target)
-				if !ok {
-					return nil
-				}
-				power := victim.CurrentPower()
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Disciple of Freyalise — sacrifice a creature, gain life and draw equal to its power", func(g *game.Game, item *game.StackItem) error {
 				controller := item.Controller
-				return SacrificePermanent{
-					Target: target,
-					Then: func(ctx *Context, sacrificed bool) error {
-						if !sacrificed || power <= 0 {
+				return maySacrificeOne(g, item, "Disciple of Freyalise — sacrifice another creature to gain that much life and draw that many cards?", Creature(), true,
+					func(ctx *Context, sacrificed uuid.UUID) error {
+						power := departedCreaturePower(ctx.Game, sacrificed)
+						if power <= 0 {
 							return nil
 						}
 						if err := (GainLife{Player: controller, Amount: power}).Apply(ctx); err != nil {
 							return err
 						}
 						return DrawCards{Player: controller, N: power}.Apply(ctx)
-					},
-				}.Apply(ctx)
-			},
-		}},
+					})
+			}),
+		},
 	})
 }

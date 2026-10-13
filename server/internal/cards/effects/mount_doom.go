@@ -24,24 +24,16 @@ import (
 // the destruction is one simultaneous event over every creature not
 // chosen.
 //
-// Sandbox simplification, declared (the Azorius Chancery posture):
-// "choose up to two creatures" is a resolution-time choice, not a
-// target, and the pick_target prompt is the one picker the engine has
-// for choosing among permanents — so the two survivors are picked at
-// announce as targets. Two consequences, both weaker than printed:
-// opponents see the choice before the ability resolves, and a
-// creature with hexproof or shroud cannot be chosen to survive, even
-// your own. A third, the same way: if every chosen creature is gone
-// by resolution the ability fizzles as a targeted one does (CR
-// 608.2b), and the wipe does not happen.
+// "Choose up to two creatures" is made as the ability RESOLVES
+// (CR 608.2c), not as targets: one pick over every creature on the
+// battlefield with a floor of zero, so opponents cannot answer the
+// choice, a creature with hexproof or shroud can be kept, and the wipe
+// still happens if the creatures you would have kept are gone.
 func init() {
 	Register(Spec{
 		OracleID:     "995c8dac-fd27-468a-abd4-02372cf0c850",
 		Name:         "Mount Doom",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The up-to-two creatures that survive the last ability are picked when it's activated rather than on resolution, so opponents can respond to the choice, and a creature with hexproof or shroud can't be picked.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Life: 1},
 			Produced: "{B|R}",
@@ -59,16 +51,30 @@ func init() {
 			{
 				Label:        "{5}{B}{R}, {T}, Sacrifice Mount Doom and a legendary artifact: Choose up to two creatures, then destroy the rest.",
 				Cost:         Plus(ManaCost("{5}{B}{R}"), TapCost(), SacrificeThis(), b10SacrificeALegendaryArtifact()),
-				Targets:      TargetCreature("up to two creatures to keep").WithCount(0, 2),
 				SorcerySpeed: true,
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					var keep []uuid.UUID
-					for _, t := range item.Targets {
-						if t.Kind == game.TargetCard {
-							keep = append(keep, t.ID)
+					var creatures []uuid.UUID
+					for _, c := range g.BattlefieldCardsForEffect() {
+						if c.IsCreature() {
+							creatures = append(creatures, c.InstanceID)
 						}
 					}
-					return b10DestroyAllCreaturesExcept(NewContext(g, item), keep)
+					if len(creatures) == 0 {
+						return nil
+					}
+					g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+						Chooser:  item.Controller,
+						Source:   item.SourceCardID,
+						Question: "Mount Doom — choose up to two creatures; destroy the rest",
+						Cards:    creatures,
+						Min:      0,
+						Max:      2,
+						Zone:     game.ZoneBattlefield,
+						Then: func(g *game.Game, keep []uuid.UUID) error {
+							return b10DestroyAllCreaturesExcept(NewContext(g, item), keep)
+						},
+					})
+					return nil
 				},
 			},
 		},

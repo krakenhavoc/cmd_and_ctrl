@@ -20,9 +20,6 @@ var minorCaveats = map[string]string{
 	// With strict mana off a spell cast with its mana can still be
 	// countered; it is in the Simic deck as a one-drop mana creature.
 	"Delighted Halfling": "a mana creature whose \"can't be countered\" rider is the missing clause",
-	// Landfall always makes the Treasure, which is what a ramp deck
-	// would pick.
-	"Tireless Provisioner": "the Food option is never offered",
 }
 
 // TestEveryCuratedCardIsFull is the owner's card-quality bar for the

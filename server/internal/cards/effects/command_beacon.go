@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Command Beacon — Land:
 //
@@ -26,18 +30,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // same window every other commander move opens and this card is not
 // special-cased out of it.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: with two commanders
-// (partners, a Background) the card takes the FIRST one in the
-// command zone rather than asking which. The printed card lets the
-// player choose. One commander — every other deck — is unaffected.
+// With two commanders (partners, a Background) in the command zone the
+// player chooses which one comes back (CR 608.2c); with one there is no
+// question to ask.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "7e8c2a18-e404-40ff-a9e0-ec3eeb6d576e",
 		Name:         "Command Beacon",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"With two commanders in the command zone it takes the first one rather than asking you which.",
-		},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{C}",
@@ -61,5 +63,30 @@ func commandBeaconToHand(g *game.Game, item *game.StackItem) error {
 	if p == nil || p.Command == nil || len(p.Command.Cards) == 0 {
 		return nil
 	}
-	return g.BounceToHandForEffect(p.Command.Cards[0].InstanceID)
+	if len(p.Command.Cards) == 1 {
+		return g.BounceToHandForEffect(p.Command.Cards[0].InstanceID)
+	}
+	candidates := make([]uuid.UUID, 0, len(p.Command.Cards))
+	for _, c := range p.Command.Cards {
+		candidates = append(candidates, c.InstanceID)
+	}
+	g.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
+		Chooser:    item.Controller,
+		FromPlayer: item.Controller,
+		Source:     item.SourceCardID,
+		Question:   "Command Beacon — put which commander into your hand?",
+		Cards:      candidates,
+		Min:        1,
+		Max:        1,
+		Zone:       game.ZoneCommand,
+		Then: func(g *game.Game, picked []uuid.UUID) error {
+			for _, id := range picked {
+				if err := g.BounceToHandForEffect(id); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	})
+	return nil
 }

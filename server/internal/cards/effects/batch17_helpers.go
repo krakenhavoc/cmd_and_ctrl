@@ -186,9 +186,9 @@ func b17PermanentSacrificedToPay(g *game.Game, item *game.StackItem) (uuid.UUID,
 // last left the battlefield, read without the harvester's LKI
 // characteristic (which only a dies trigger receives): its printed
 // power plus every P/T counter read back off the log (#1664),
-// floored at zero the way CurrentPower floors it. A static bonus
-// from another permanent is not in it — declared on the card that
-// reads this.
+// floored at zero the way CurrentPower floors it. The departure
+// record holds the post-layer power, so an anthem's or an Equipment's
+// bonus is in it (CR 608.2h).
 func b17LastKnownPowerOffBattlefield(g *game.Game, cardID uuid.UUID) int {
 	var p int
 	if info, ok := g.LastKnownPermanentForEffect(cardID); ok {

@@ -17,9 +17,8 @@ package decks
 // Every non-basic card below is in the effect catalog and graded full,
 // and none of them is on full_test.go's minor-caveats list: this deck
 // was built to a stricter bar than the first four, and decks_test.go and
-// full_test.go fail the build if that stops being true. Cultivate and
-// Tireless Provisioner, which Deep Roots plays under a named caveat,
-// were left out; Skyshroud Claim and Wood Elves were left out because
+// full_test.go fail the build if that stops being true. Cultivate, which
+// Deep Roots plays under a named caveat, was left out; Skyshroud Claim and Wood Elves were left out because
 // the catalog has not graded them. Carnage Tyrant, Thrun and Primeval
 // Titan, the staples a stompy list would want, are not in the catalog
 // at all.
