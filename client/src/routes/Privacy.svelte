@@ -16,6 +16,8 @@
   import Page from "../lib/components/Page.svelte";
   import DeleteAccount from "../lib/components/DeleteAccount.svelte";
   import { CONTACT_TEXT, CONTACT_URL, PRIVACY_FACTS as F } from "../lib/privacy";
+  import { OPERATOR_NAME, OPERATOR_STATE } from "../lib/legalNotice";
+  import { TERMS_HASH } from "../lib/terms";
 
   interface Row {
     what: string;
@@ -173,14 +175,16 @@
 <Page
   eyebrow="Privacy"
   title="What is stored about you, and how to delete it"
-  lede="cmd_and_ctrl is a hobby Magic: The Gathering Commander table run by one person. This page says what it stores, why, for how long, who else sees it, and how to delete it. We do not sell data, show ads or run analytics. The only cookie is the session cookie. If this page and the code ever disagree, that is a bug."
+  lede="cmd_and_ctrl is a hobby Magic: The Gathering Commander table. This page says what it stores, why, for how long, who else sees it, and how to delete it. We do not sell data, show ads or run analytics. The only cookie is the session cookie. If this page and the code ever disagree, that is a bug."
   width="prose"
 >
   {#snippet meta()}
-    <!-- TODO(owner): contact. No address has been chosen, so this points at
-         the project's GitHub rather than inventing one. -->
+    <!-- The operator and its contact (#3358) come from lib/legalNotice.ts,
+         the same constants the terms of service use. -->
     <p class="contact" id="contact">
-      Contact: <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">{CONTACT_TEXT}</a>.
+      Run by {OPERATOR_NAME}, a {OPERATOR_STATE} limited liability company. Contact:
+      <a href={CONTACT_URL}>{CONTACT_TEXT}</a>. See also the
+      <a href={TERMS_HASH}>terms of service</a>.
     </p>
   {/snippet}
   <div class="stack">
@@ -238,8 +242,7 @@
     </section>
 
     <p class="help dim">
-      Contact: <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">{CONTACT_TEXT}</a>.
-      Questions about what is stored are welcome.
+      Contact: <a href={CONTACT_URL}>{CONTACT_TEXT}</a>. Questions about what is stored are welcome.
     </p>
   </div>
 </Page>
