@@ -23,6 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Creature tokens you control get +1/+1.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
 				AppliesTo: b05CreatureTokenYouControl,
@@ -32,6 +33,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Creature tokens you control have vigilance.",
 				Layer:     game.Layer6Ability,
 				AppliesTo: b05CreatureTokenYouControl,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

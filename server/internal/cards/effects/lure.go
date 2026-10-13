@@ -26,7 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Static: []game.StaticAbility{
-			BlockRequirementWhere(game.BlockRequirementLure, AttachedToSource),
+			Labelled(BlockRequirementWhere(game.BlockRequirementLure, AttachedToSource), "All creatures able to block enchanted creature do so."),
 		},
 	})
 }

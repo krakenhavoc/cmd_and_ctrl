@@ -29,6 +29,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "deathtouch", "lifelink"},
 		Static: []game.StaticAbility{{
+			Label:    "Power is equal to 1 plus the number of card types among cards in your opponents' graveyards.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

@@ -38,6 +38,7 @@ func init() {
 		Name:         "Darksteel Forge",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label: "Artifacts you control have indestructible.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsArtifact() && target.Controller == source.Controller

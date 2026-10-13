@@ -152,7 +152,20 @@ func PreventAllDamageDealtTo(p PreventionStatic) game.ReplacementEffect {
 		Replace:    preventThatDamage,
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
 		Label:      p.Label,
+		RowLabel:   p.rowLabel(),
 	}
+}
+
+// rowLabel is the chip's sentence: the card's own header without its
+// name ("Prevent damage to it and remove a +1/+1 counter."), plus the
+// condition when the static only works under one. The header is written
+// per card and already reads as the printed ability.
+func (p PreventionStatic) rowLabel() string {
+	l := rowLabelFromHeader(p.Label)
+	if l != "" && p.While != nil {
+		l += " Only while its condition on the card holds."
+	}
+	return l
 }
 
 func (p PreventionStatic) replacement(per game.PreventionUnit) game.ReplacementEffect {
@@ -167,6 +180,7 @@ func (p PreventionStatic) replacement(per game.PreventionUnit) game.ReplacementE
 		Then:       p.Then,
 		ThenPer:    per,
 		Label:      p.Label,
+		RowLabel:   p.rowLabel(),
 	}
 }
 

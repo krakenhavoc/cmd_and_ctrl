@@ -34,6 +34,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Static: []game.StaticAbility{{
+			Label:    "Gets +1/+1 for each color among permanents you control.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

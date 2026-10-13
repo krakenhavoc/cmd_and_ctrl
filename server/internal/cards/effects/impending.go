@@ -138,6 +138,7 @@ func impendingCost(n int, cost string) game.AlternativeCost {
 // somehow gained time counters without impending is covered too.
 func impendingNotACreature() game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Isn't a creature while it has a time counter on it.",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID && target.Counters[game.CounterTime] > 0

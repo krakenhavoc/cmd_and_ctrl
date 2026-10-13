@@ -143,6 +143,7 @@ func frYouControlAJace(g *game.Game, player uuid.UUID) bool {
 func frEntersTappedUnlessYouBeholdAJace(name string) game.ReplacementEffect {
 	rep := EntersTappedUnlessYouRevealFromHand(name, "a Jace card",
 		func(c game.Card) bool { return c.HasSubtype(frJaceSubtype) })
+	rep.RowLabel = "Enters tapped unless you control a Jace or reveal one from your hand."
 	applies := rep.AppliesTo
 	rep.AppliesTo = func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 		if !applies(ev, g, src) {
@@ -329,6 +330,7 @@ func fraThresholdMet(g *game.Game, controller uuid.UUID) bool {
 // self-modifier read live on every recompute.
 func fraThresholdSelfPT(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:    "Gets " + signedPT(power, toughness) + " while there are seven or more cards in your graveyard.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7C_Modify,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
@@ -344,9 +346,11 @@ func fraThresholdSelfPT(power, toughness int) game.StaticAbility {
 // fraThresholdSelfKeywords is "Threshold — This creature has <keywords>
 // as long as there are seven or more cards in your graveyard".
 func fraThresholdSelfKeywords(keywords ...string) game.StaticAbility {
-	return b16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
+	s := b16GrantKeywords(func(target *game.Card, g *game.Game, source *game.Card) bool {
 		return target.InstanceID == source.InstanceID && fraThresholdMet(g, source.Controller)
 	}, keywords...)
+	s.Label = "Has " + joinWords(keywords) + " while there are seven or more cards in your graveyard."
+	return s
 }
 
 // fraBecomesPreparedAtUpkeep is "At the beginning of your upkeep, if

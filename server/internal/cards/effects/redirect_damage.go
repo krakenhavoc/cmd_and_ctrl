@@ -278,7 +278,8 @@ func staticRedirection(label string, w redirectWhere) game.ReplacementEffect {
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 			return src.Controller
 		},
-		Label: label,
+		Label:    label,
+		RowLabel: rowLabelFromHeader(label),
 	}
 }
 

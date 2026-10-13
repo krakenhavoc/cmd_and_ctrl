@@ -29,7 +29,7 @@ func init() {
 		Name:         "Cast Through Time",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			SpellsYouControlHave(Or(Instant(), Sorcery()), game.KeywordRebound),
+			Labelled(SpellsYouControlHave(Or(Instant(), Sorcery()), game.KeywordRebound), "Instant and sorcery spells you control have rebound."),
 		},
 	})
 }

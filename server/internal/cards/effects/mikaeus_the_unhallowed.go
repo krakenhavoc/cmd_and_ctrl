@@ -28,6 +28,7 @@ func init() {
 		PrintedKeywords: []string{"intimidate"},
 		Static: []game.StaticAbility{
 			{
+				Label:     "Other non-Human creatures you control get +1/+1.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
 				AppliesTo: nonHumans,
@@ -36,7 +37,7 @@ func init() {
 					c.Toughness++
 				},
 			},
-			KeywordGrant(nonHumans, game.KeywordUndying),
+			Labelled(KeywordGrant(nonHumans, game.KeywordUndying), "Other non-Human creatures you control have undying."),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventDealDamage, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -28,6 +28,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
 		Static: []game.StaticAbility{{
+			Label: "Isn't a creature unless your devotion to blue is five or more.",
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&

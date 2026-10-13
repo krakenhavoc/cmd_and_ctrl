@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -56,6 +58,7 @@ func blockRequirementStatic(kind game.BlockRequirementKind, filter string, appli
 		panic("effects: blocker filter " + filter + " is not a registered filter on a Lure")
 	}
 	return game.StaticAbility{
+		Label: blockRequirementLabel(kind, filter),
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.IsCreature() && appliesTo(target, g, source)
@@ -68,6 +71,31 @@ func blockRequirementStatic(kind game.BlockRequirementKind, filter string, appli
 			c.BlockRequirements = append(c.BlockRequirements, r)
 		},
 	}
+}
+
+// blockRequirementLabel is the chip's sentence for a requirement. The
+// subject is the creatures the card's predicate picks, which the
+// constructor cannot read, so the wording says "affected" and a card
+// that knows better wraps the row in Labelled (#3129).
+func blockRequirementLabel(kind game.BlockRequirementKind, filter string) string {
+	switch kind {
+	case game.BlockRequirementBlocks:
+		return "Creatures it affects block each combat if able."
+	case game.BlockRequirementLure:
+		able := "creatures"
+		switch filter {
+		case game.BlockerFilterWall:
+			able = "Walls"
+		case game.BlockerFilterFlying:
+			able = "creatures with flying"
+		}
+		return "All " + able + " able to block creatures it affects do so."
+	case game.BlockRequirementMustBeBlocked:
+		return "Creatures it affects must be blocked if able."
+	case game.BlockRequirementExactlyOne:
+		return "Creatures it affects must be blocked by exactly one creature if able."
+	}
+	return ""
 }
 
 // BlocksEachCombat is "This creature blocks each combat if able"
@@ -102,7 +130,9 @@ func FilteredLure(filter string) game.StaticAbility {
 	if filter == "" {
 		panic("effects: FilteredLure needs a filter; use AllAbleToBlockDoSo for an unfiltered Lure")
 	}
-	return blockRequirementStatic(game.BlockRequirementLure, filter, selfOnly)
+	s := blockRequirementStatic(game.BlockRequirementLure, filter, selfOnly)
+	s.Label = strings.Replace(s.Label, "creatures it affects", "it", 1)
+	return s
 }
 
 // MustBeBlocked is "This creature must be blocked if able" (Gaea's

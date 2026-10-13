@@ -138,6 +138,7 @@ func youControlACreatureNamed(name string) func(g *game.Game, source *game.Card)
 // counts the enchanted creature (#2733).
 func GoadAttached() game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Attached creature is goaded.",
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.IsCreature() && AttachedToSource(target, g, source)

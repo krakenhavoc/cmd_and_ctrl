@@ -77,6 +77,7 @@ func b07TripleDamageFromYourSources() game.ReplacementEffect {
 			ev.DamageAmount *= 3
 			return nil
 		},
+		RowLabel: "If a source you control would deal damage to a permanent or player, it deals triple that damage instead.",
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 			return src.Controller
 		},

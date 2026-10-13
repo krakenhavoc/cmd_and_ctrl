@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -93,6 +95,7 @@ func b31LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Ca
 // moment the layer cache next rebuilds.
 func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 	return game.StaticAbility{
+		Label: fmt.Sprintf("Isn't a creature unless you have %d or more cards in your graveyard.", n),
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID && b31GraveyardSize(g, source.Controller) < n

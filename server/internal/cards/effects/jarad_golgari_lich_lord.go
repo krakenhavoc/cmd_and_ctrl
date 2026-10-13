@@ -42,6 +42,7 @@ func init() {
 		Name:         "Jarad, Golgari Lich Lord",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Gets +1/+1 for each creature card in your graveyard.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

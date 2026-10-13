@@ -26,8 +26,8 @@ func init() {
 		Name:         "Cybermen Squadron",
 		Completeness: CompletenessFull,
 		Grants:       []AbilityGrant{{Key: "cybermen-squadron/myriad", Triggered: []game.TriggeredAbility{GrantedMyriad("Cybermen Squadron")}, Text: "Myriad"}},
-		Static: []game.StaticAbility{GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+		Static: []game.StaticAbility{Labelled(GrantAbilities(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 			return target.Controller == source.Controller && target.IsArtifact() && target.IsCreature() && !target.IsLegendary()
-		}, "cybermen-squadron/myriad")},
+		}, "cybermen-squadron/myriad"), "Nonlegendary artifact creatures you control have myriad.")},
 	})
 }

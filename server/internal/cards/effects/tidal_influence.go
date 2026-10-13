@@ -47,8 +47,8 @@ func init() {
 			b10EntersWithCounters(tide, 1, "Tidal Influence: enters with a tide counter"),
 		},
 		Static: []game.StaticAbility{
-			whileExactlyTideCounters(1, blueCreatures, -2, 0),
-			whileExactlyTideCounters(3, blueCreatures, 2, 0),
+			Labelled(whileExactlyTideCounters(1, blueCreatures, -2, 0), "While it has exactly 1 tide counter on it, blue creatures get -2/+0."),
+			Labelled(whileExactlyTideCounters(3, blueCreatures, 2, 0), "While it has exactly 3 tide counters on it, blue creatures get +2/+0."),
 		},
 		Triggered: []game.TriggeredAbility{
 			AtYourUpkeep("Tidal Influence — put a tide counter", putACounterOnThis(tide)),

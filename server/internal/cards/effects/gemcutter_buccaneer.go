@@ -48,7 +48,7 @@ func init() {
 		},
 		Static: []game.StaticAbility{
 			AreAlsoEquipment("Treasures you control are Equipment in addition to their other types.", treasuresYouControl),
-			GrantAbilities(treasuresYouControl, gemcutterPumpGrant, gemcutterEquipPirateGrant, gemcutterEquipGrant),
+			Labelled(GrantAbilities(treasuresYouControl, gemcutterPumpGrant, gemcutterEquipPirateGrant, gemcutterEquipGrant), "Treasures you control have \"Equipped creature gets +2/+0\", \"Equip Pirate {1}\" and \"Equip {3}\"."),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

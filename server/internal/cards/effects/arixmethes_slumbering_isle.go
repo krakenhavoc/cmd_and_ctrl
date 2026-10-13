@@ -59,6 +59,7 @@ func init() {
 			Label: "Arixmethes enters tapped with five slumber counters",
 		}},
 		Static: []game.StaticAbility{{
+			Label: "Is a land while it has a slumber counter on it.",
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID && target.Counters["slumber"] > 0

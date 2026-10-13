@@ -20,7 +20,7 @@ func init() {
 		Name:         "Nemesis Mask",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			BlockRequirementWhere(game.BlockRequirementLure, AttachedToSource),
+			Labelled(BlockRequirementWhere(game.BlockRequirementLure, AttachedToSource), "All creatures able to block equipped creature do so."),
 		},
 		Activated: []ActivatedAbility{EquipAbility("{3}")},
 	})
