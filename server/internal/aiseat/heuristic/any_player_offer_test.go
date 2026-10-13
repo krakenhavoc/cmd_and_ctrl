@@ -47,6 +47,44 @@ func TestABotOpponentPaysAnAnyPlayerOfferWithoutFreeRiding(t *testing.T) {
 	}
 }
 
+// lifeOfferValues is anyPlayerOfferValues for an opponent's offer paid
+// in life or damage (ADR 0150 §6), with the bot at `life`.
+func lifeOfferValues(t *testing.T, life, n int, damage bool) (pay, decline float64) {
+	t.Helper()
+	pol := heuristic.New()
+	const id = "44444444-4444-4444-4444-444444444444"
+	ch := protocol.PendingChoiceView{
+		ID: id, Kind: "pay_unless", Chooser: seatID(1).String(),
+		AnyPlayerOffer: &protocol.AnyPlayerOfferView{
+			Controller: seatID(0).String(),
+			Order:      []string{seatID(0).String(), seatID(1).String(), seatID(2).String()},
+		},
+	}
+	if damage {
+		ch.PayDamage, ch.PayCost = &n, "5 damage"
+	} else {
+		ch.PayLife, ch.PayCost = &n, "5 life"
+	}
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1, withLife(life)), newSeat(2)}, withChoice(ch))
+	in := input(1, v,
+		choiceMove(t, 1, id, "pay", map[string]any{"apply": true}),
+		choiceMove(t, 1, id, "decline", map[string]any{"apply": false}))
+	return rankValue(t, pol, in, "pay"), rankValue(t, pol, in, "decline")
+}
+
+// A life or damage price is paid above the Phyrexian life floor and
+// declined below it (ADR 0150 §6, ADR 0131 §5).
+func TestABotOpponentPaysLifeOrDamageOnlyAboveTheFloor(t *testing.T) {
+	for _, damage := range []bool{false, true} {
+		if pay, decline := lifeOfferValues(t, 40, 5, damage); pay <= decline {
+			t.Errorf("damage=%v at 40 life: pay %.3f, decline %.3f; the bot must pay", damage, pay, decline)
+		}
+		if pay, decline := lifeOfferValues(t, 12, 5, damage); pay >= decline {
+			t.Errorf("damage=%v at 12 life: pay %.3f, decline %.3f; 7 is below the floor", damage, pay, decline)
+		}
+	}
+}
+
 func TestIcyPrisonsOfferIsPaidByItsControllerAndNotByAnOpponent(t *testing.T) {
 	if pay, decline := anyPlayerOfferValues(t, 0, 0, true); pay <= decline {
 		t.Errorf("own Icy Prison: pay %.3f, decline %.3f; the controller keeps it", pay, decline)

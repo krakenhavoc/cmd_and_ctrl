@@ -1600,6 +1600,15 @@ export interface PendingChoiceView {
   // 0 {E} is a payment too, so 0 is present. A "Pay" from a seat with
   // less energy is a decline.
   pay_energy?: number;
+  // ADR 0150 §3: the other payments of a "pay_unless" that name nothing,
+  // each answered with { apply: true } alone. pay_life: pay that much
+  // life (a seat with less, or whose life can't change, can't pay).
+  // pay_damage: the prompt's source deals that much damage to the
+  // chooser, always a payment. pay_nothing: "yes" costs nothing
+  // (Distant Memories). At most one is present.
+  pay_life?: number;
+  pay_damage?: number;
+  pay_nothing?: boolean;
   // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
   // {E}". Answered with { amount }: 0, or min..max.
   pay_amount?: PayAmountView;

@@ -2378,10 +2378,8 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 		}
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
-	case LogAnyPlayerPaid:
-		return fmt.Sprintf("%s paid %s for %s", actor, nameOr(e.Label, "the cost"), card)
-	case LogAnyPlayerDeclined:
-		return fmt.Sprintf("%s didn't pay %s for %s", actor, nameOr(e.Label, "the cost"), card)
+	case LogAnyPlayerPaid, LogAnyPlayerDeclined:
+		return anyPlayerAnswerText(e.Kind == LogAnyPlayerPaid, actor, e.Label, card)
 	case LogRingTempted:
 		// ADR 0114 §9 and owner decision 2: "The Ring tempts Alice (2)
 		// — Alice chooses Nazgûl as their Ring-bearer". The engine
@@ -3040,4 +3038,35 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 		subject = abilityName(e.Label, cardName)
 	}
 	return fmt.Sprintf("%s answered %s to %s (automatic)", actor, answer, subject)
+}
+
+// anyPlayerAnswerText is one answer to an any-player offer (ADR 0150
+// §5), worded for its payment: "Alice paid {2} for Rhystic Tutor",
+// "Alice paid 5 life for Dash Hopes", "Alice took 6 damage from Book
+// Burning", "Alice chose to sacrifice a land for Argothian Wurm", and
+// "Alice said yes to Distant Memories" for an offer that costs
+// nothing. A decline is the same sentence negated.
+func anyPlayerAnswerText(paid bool, actor, label, card string) string {
+	switch {
+	case label == "":
+		if paid {
+			return fmt.Sprintf("%s said yes to %s", actor, card)
+		}
+		return fmt.Sprintf("%s said no to %s", actor, card)
+	case strings.HasSuffix(label, " damage"):
+		if paid {
+			return fmt.Sprintf("%s took %s from %s", actor, label, card)
+		}
+		return fmt.Sprintf("%s didn't take %s from %s", actor, label, card)
+	case label[0] >= 'a' && label[0] <= 'z':
+		// A verb: "sacrifice a land", "discard three cards".
+		if paid {
+			return fmt.Sprintf("%s chose to %s for %s", actor, label, card)
+		}
+		return fmt.Sprintf("%s chose not to %s for %s", actor, label, card)
+	}
+	if paid {
+		return fmt.Sprintf("%s paid %s for %s", actor, label, card)
+	}
+	return fmt.Sprintf("%s didn't pay %s for %s", actor, label, card)
 }

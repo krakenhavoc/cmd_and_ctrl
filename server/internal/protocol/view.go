@@ -536,6 +536,21 @@ type PendingChoiceView struct {
 	// Absent for every other pay-unless.
 	PayEnergy *int `json:"pay_energy,omitempty"`
 
+	// PayLife, PayDamage and PayNothing are the other payments of a
+	// "pay_unless" that name nothing (ADR 0150 §3), each answered with
+	// `{apply: true}` alone:
+	//   - PayLife: pay that much life. With less life than that, or a
+	//     life total that can't change, "Pay" is a decline (CR 119.4,
+	//     119.8).
+	//   - PayDamage: the prompt's source deals that much damage to the
+	//     chooser. Always a payment.
+	//   - PayNothing: "yes" costs nothing (Distant Memories' "any
+	//     opponent may have you put that card into your hand").
+	// At most one is present, and none for every other pay-unless.
+	PayLife    *int `json:"pay_life,omitempty"`
+	PayDamage  *int `json:"pay_damage,omitempty"`
+	PayNothing bool `json:"pay_nothing,omitempty"`
+
 	// PayAmount populates the "pay_amount" kind (ADR 0129 §3): "you may
 	// pay any amount of {E}". The chooser answers `{amount: n}` with
 	// min <= n <= max. Absent for other kinds.
@@ -7866,9 +7881,19 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		// ADR 0108 §5: the discard or sacrifice half of a pay-unless;
 		// ADR 0129 §3: or its energy.
-		if a := c.PayAction(); a != nil && a.Kind == game.PayActionEnergy {
+		// ADR 0150 §3: or its life, its damage, or nothing at all.
+		if a := c.PayAction(); a != nil && a.NamesNothing() {
 			n := a.Count
-			v.PayEnergy = &n
+			switch a.Kind {
+			case game.PayActionEnergy:
+				v.PayEnergy = &n
+			case game.PayActionLife:
+				v.PayLife = &n
+			case game.PayActionDamage:
+				v.PayDamage = &n
+			case game.PayActionNothing:
+				v.PayNothing = true
+			}
 		} else if a != nil {
 			v.PayCards = &PayCardsView{
 				Action:  string(a.Kind),
@@ -8007,7 +8032,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.MaxUsefulWins = c.CoinMaxUsefulWins
 			v.Wins = c.CoinWins
 		}
-		if c.Kind == game.PendingChoiceConfirm {
+		// ADR 0150 §5: an any-player link may name its answers ("Take 5
+		// damage").
+		if c.Kind == game.PendingChoiceConfirm || c.Kind == game.PendingChoicePayUnless {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost

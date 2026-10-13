@@ -151,7 +151,7 @@ Why park and not pause with the spell on the stack: the engine casts a spell in 
 
 ### 6. The bot
 
-**As an offeree (any player pays).** The card declares what the offer is worth to its controller in the existing `Purpose` (Rhystic Tutor: `Tutors: 1`; Rhystic Shield, Wild Might: `Answers: AnswerPump`; Icy Prison: a removal row, since nobody paying keeps the creature exiled). The heuristic reads `any_player_offer` and:
+**As an offeree (any player pays).** The card declares what the offer is worth to its controller in the existing `Purpose` (Rhystic Tutor: `Tutors: 1`; Rhystic Shield, Wild Might: `Answers: AnswerPump`; Icy Prison: the other way round, since nobody paying sacrifices the Prison and returns the exiled creature, so the payment is what the controller wants; PR 1 marks that offer `HelpsController`). The heuristic reads `any_player_offer` and:
 
 - **is the controller** (or, for "if a player does" cards, the player the payment hurts): never pays;
 - **is an opponent of the controller:** pays when it can and the price is below what not paying gives the controller, scored against `giftsValue`. A mana price goes through `taxAgainstPlan`'s check (don't pay a tax that strands the turn plan's next spell). A life price uses the Phyrexian floor (`phyrexianLifeFloor`, ADR 0131 §5). A sacrifice or discard uses the existing least-valuable-cards score.
