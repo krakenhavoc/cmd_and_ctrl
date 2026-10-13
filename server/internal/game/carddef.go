@@ -115,7 +115,12 @@ type CardDef struct {
 	// delve" (Teval, Arbiter of Virtue; ADR 0100 sub-PR 2). Read from
 	// the battlefield through DelveForLocked.
 	SpellsYouCastHaveDelve bool
-	CostModifiers          []CostModifier
+	// GrantedOptionalCosts are a permanent's "each <kind of> spell you
+	// cast has <optional-cost keyword>" (Silverquill, the Disputant's
+	// casualty 1; granted_optional_cost.go). Read from the battlefield
+	// through OptionalCostsForCastLocked.
+	GrantedOptionalCosts []GrantedOptionalCost
+	CostModifiers        []CostModifier
 	// SelfCostModifiers change what THIS card costs to cast (ADR 0048
 	// addendum §11), read by SelfCostModifiersFor for the spell being
 	// priced and never from the battlefield.
@@ -664,6 +669,12 @@ func init() {
 			return d.Delve
 		}
 		return false
+	}
+	CatalogGrantedOptionalCosts = func(key string) []GrantedOptionalCost {
+		if d := catalogDef(key); d != nil {
+			return d.GrantedOptionalCosts
+		}
+		return nil
 	}
 	CatalogSpellsHaveDelve = func(key string) bool {
 		if d := catalogDef(key); d != nil {
