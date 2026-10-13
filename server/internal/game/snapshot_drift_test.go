@@ -932,6 +932,9 @@ var pendingChoiceFields = plan(
 	"LibraryTopCount", carried, "",
 	"LibraryTopDepth", carried, "",
 	"TriggerOrderIDs", carried, "",
+	// #3015: the sentence under "Order your triggers". A restored
+	// prompt reads as the live one did.
+	"TriggerOrderWhy", carried, "",
 	"PayCost", carried, "",
 	// #997: the step a pay-or-else prompt has to be answered in
 	// (Stasis, Pact of Negation, cumulative upkeep). Carried so a

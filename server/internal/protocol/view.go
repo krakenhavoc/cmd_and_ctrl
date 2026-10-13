@@ -459,6 +459,14 @@ type PendingChoiceView struct {
 	// submits `order []string` of these IDs in RESOLUTION order
 	// (first entry resolves first). Added in S19 sub-PR 8.
 	TriggerOptions []ReplacementOptionView `json:"trigger_options,omitempty"`
+	// TriggerOrderWhy is, on a "trigger_order" prompt, one sentence in
+	// the player's terms that says why the game asked rather than
+	// ordering the batch itself ("Ajani's Pridemate reacts to life
+	// gain."), shown under the heading (#3015). Display text only,
+	// built server-side like Reason. Absent when the prompt has no
+	// reason, on every other kind, and on a prompt queued before the
+	// field existed.
+	TriggerOrderWhy string `json:"trigger_order_why,omitempty"`
 
 	// PickTarget populates the S20 "pick_target" kind: the legal
 	// players / cards a targeted trigger's controller may choose
@@ -8142,6 +8150,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// PendingChoiceTriggerOrder — S19 sub-PR 8. Resolve each
 		// pending-trigger ID to its label + source so the reorder
 		// list reads as card names, not UUIDs.
+		if c.Kind == game.PendingChoiceTriggerOrder {
+			v.TriggerOrderWhy = c.TriggerOrderWhy
+		}
 		if c.Kind == game.PendingChoiceTriggerOrder && len(c.TriggerOrderIDs) > 0 {
 			v.TriggerOptions = make([]ReplacementOptionView, 0, len(c.TriggerOrderIDs))
 			for _, id := range c.TriggerOrderIDs {

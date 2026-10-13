@@ -724,6 +724,13 @@ type PendingChoice struct {
 	// IDs in resolution order. Added in S19 sub-PR 8.
 	TriggerOrderIDs []uuid.UUID
 
+	// TriggerOrderWhy is, for a PendingChoiceTriggerOrder, the one
+	// sentence that says why the prompt was asked, in the player's
+	// terms (#3015, trigger_order_why.go). Display text only: nothing
+	// reads it back, and it never changes whether the seat is asked.
+	// Empty on every other kind.
+	TriggerOrderWhy string
+
 	// triggerResume is the server-only continuation frame for a
 	// PendingChoiceTriggerPrompt entry: the captured event +
 	// source-card value copy + LKI characteristics + the Build

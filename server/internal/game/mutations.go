@@ -5809,7 +5809,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		ask, reason := g.triggerOrderAskLocked(items, p.TriggerOrder)
+		ask, why := g.triggerOrderAskWhyLocked(items, p.TriggerOrder)
 		if !ask {
 			continue
 		}
@@ -5821,7 +5821,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 		// as it is queued, by why it was asked. A held drain runs again
 		// at every boundary until it is answered; those passes find the
 		// prompt already open and stop above.
-		metrics.TriggerOrderPrompt(string(reason))
+		metrics.TriggerOrderPrompt(string(why.reason))
 		ids := make([]uuid.UUID, len(items))
 		for i, t := range items {
 			ids[i] = t.ID
@@ -5832,6 +5832,8 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 			Count:           len(ids),
 			Reason:          "Order your triggers",
 			TriggerOrderIDs: ids,
+			// #3015: the same reason, said to the player.
+			TriggerOrderWhy: g.triggerOrderSentenceLocked(why, p.ID),
 		})
 	}
 	if held {
