@@ -35,8 +35,9 @@ func init() {
 // lose <kw> and can't have or gain <kw>." (Aggression, Courage,
 // Endurance, Finality, Imagination.)
 func archetypeStatics(keyword string) []game.StaticAbility {
-	return []game.StaticAbility{
-		b16GrantKeywords(b16CreaturesYouControl, keyword),
-		LoseAndCantHave(b27CreaturesOpponentsControl, keyword),
-	}
+	grant := b16GrantKeywords(b16CreaturesYouControl, keyword)
+	grant.Label = "Creatures you control have " + keyword + "."
+	strip := LoseAndCantHave(b27CreaturesOpponentsControl, keyword)
+	strip.Label = "Creatures your opponents control lose " + keyword + " and can't have or gain it."
+	return []game.StaticAbility{grant, strip}
 }

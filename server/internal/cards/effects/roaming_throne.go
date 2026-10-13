@@ -72,5 +72,6 @@ func roamingThroneDoubler() game.TriggerDoubler {
 		},
 	})
 	d.Label = "Roaming Throne"
+	d.RowLabel = "Abilities of other creatures of the chosen type trigger an additional time."
 	return d
 }

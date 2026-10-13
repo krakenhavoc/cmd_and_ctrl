@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -74,7 +76,9 @@ func b06ExileListedCards(g *game.Game, item *game.StackItem) error {
 // youControlLandTyped with the same lowercase needle twice is exactly
 // that.
 func b06EntersTappedUnlessLandType(subtype string) game.ReplacementEffect {
-	return SelfEntersTappedUnless(youControlLandTyped(subtype, subtype))
+	ab := SelfEntersTappedUnless(youControlLandTyped(subtype, subtype))
+	ab.RowLabel = "Enters tapped unless you control " + articleFor(strings.ToLower(subtype)) + " " + subtype + "."
+	return ab
 }
 
 // b06SelfETB is the AppliesTo every "when this permanent enters"

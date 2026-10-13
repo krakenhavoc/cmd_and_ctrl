@@ -23,7 +23,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the ordinary walk.
 func SelfEntersTapped() game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		RowLabel:  "Enters tapped.",
+		EntryOnly: true,
+		Watches:   []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&
@@ -52,7 +54,9 @@ func SelfEntersTapped() game.ReplacementEffect {
 // the finished permanent.
 func SelfEntersTappedWithCounters(kind string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		RowLabel:  "Enters tapped with " + counterCountPhrase(n, kind) + " on it.",
+		EntryOnly: true,
+		Watches:   []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&

@@ -723,6 +723,40 @@ real table reaches, and a card does not become incomplete for them.
 For non-mana, non-static activated abilities (planeswalker +1/-1,
 equip, cycling, etc.), wait — see the deferral list below.
 
+### Words for the ◆ chip (#2410)
+
+An art tile's ◆ chip lists a card's static abilities by their wording
+(`StaticAbility.Label`, or `RowLabel` on a replacement, trigger doubler
+or suppressor). A row with no words reads as what kind of effect it is
+("Power/toughness effect"), which tells a player nothing the card does
+not.
+
+- **Put the words in the shared constructor**, built from its
+  arguments, so every card that calls it gains them: `TribalAnthem`
+  reads "Other Goblins you control get +1/+1.", `PumpAttached` reads
+  "Attached creature gets +2/+2.", `SelfEntersTapped` reads "Enters
+  tapped." A constructor whose subject is a predicate it cannot read
+  (`KeywordGrant(applies, …)`) says what it gives and leaves the subject
+  to the card; the card wraps it with `Labelled(…, "Lands you control
+  have …")` when the card knows better.
+- **Same tone as `Caveats`**: a sentence a player reads, no engine
+  vocabulary (no layer, replacement, predicate). A test scans the
+  catalog for it.
+- **`RowLabel`, not `Label`, on a replacement.** `ReplacementEffect.Label`
+  is the CR 616 ordering prompt's header; the chip's wording is
+  separate so changing one never changes the other.
+- **A replacement spent on entry sets `EntryOnly: true`.** The chip
+  drops it once the permanent is on the battlefield
+  (`game.AbilityRowsOnBattlefield`); the hand tile keeps it.
+- **The guard**: `TestFamilyConstructorsCarryALabel` fails when a
+  function returning a `game.StaticAbility` / `game.ReplacementEffect`
+  has neither a `Label` nor an entry in its exemption list.
+  `TestGenericStaticRowCount` (`ABILITY_LABEL_SCAN=1`) prints the rows
+  still reading generically.
+- Slots that are data rather than a sentence (hand size, attack limits,
+  block rules, game-end gates, cast permissions) are worded from their
+  fields in `game/ability_row_labels.go`.
+
 ### Adding a static ability (S16+)
 
 Static abilities (anthems, type-changers, keyword grants, CDAs) live

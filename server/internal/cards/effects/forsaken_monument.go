@@ -37,9 +37,9 @@ func init() {
 		Name:         "Forsaken Monument",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			Labelled(b16Anthem(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller && target.IsColorless()
-			}, 2, 2),
+			}, 2, 2), "Colorless creatures you control get +2/+2."),
 		},
 		ManaTriggers: []game.ManaTrigger{{
 			Label: "Forsaken Monument — add an additional {C}",

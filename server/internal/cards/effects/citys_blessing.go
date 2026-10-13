@@ -74,6 +74,7 @@ func SelfWhileCitysBlessing() func(target *game.Card, g *game.Game, source *game
 // Winder): a layer 7c modification.
 func SelfPumpWhileCitysBlessing(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Gets " + signedPT(power, toughness) + " while you have the city's blessing.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: SelfWhileCitysBlessing(),
@@ -88,7 +89,9 @@ func SelfPumpWhileCitysBlessing(power, toughness int) game.StaticAbility {
 // as you have the city's blessing" (Skymarcher Aspirant, Storm Fleet
 // Swashbuckler, Slippery Scoundrel's hexproof): a layer 6 grant.
 func SelfKeywordWhileCitysBlessing(keyword string) game.StaticAbility {
-	return KeywordGrant(SelfWhileCitysBlessing(), keyword)
+	ab := KeywordGrant(SelfWhileCitysBlessing(), keyword)
+	ab.Label = "Has " + keyword + " while you have the city's blessing."
+	return ab
 }
 
 // CantAttackUnlessYouHaveTheCitysBlessing is "This creature can't

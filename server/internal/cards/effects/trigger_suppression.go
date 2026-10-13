@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"strings"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // trigger_suppression.go: the vocabulary for "[an event] doesn't cause
 // abilities to trigger" (#1735). This file pairs with trigger_doubling.go.
@@ -27,7 +31,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a token being created (CR 701.7a puts it onto the battlefield).
 func SuppressesEntering(filter CardPredicate) game.TriggerSuppressor {
 	return game.TriggerSuppressor{
-		Label: "entering",
+		Label:    "entering",
+		RowLabel: "Some permanents entering don't cause abilities to trigger.",
 		Suppresses: func(g *game.Game, q game.TriggerSuppressionQuery) bool {
 			if !q.HasSubject || !isEntering(q.Event) {
 				return false
@@ -45,7 +50,8 @@ func SuppressesEntering(filter CardPredicate) game.TriggerSuppressor {
 // the same way.
 func SuppressesDying(filter CardPredicate) game.TriggerSuppressor {
 	return game.TriggerSuppressor{
-		Label: "dying",
+		Label:    "dying",
+		RowLabel: "Some creatures dying don't cause abilities to trigger.",
 		Suppresses: func(g *game.Game, q game.TriggerSuppressionQuery) bool {
 			if !q.HasSubject || !isDying(q.Event) {
 				return false
@@ -63,6 +69,9 @@ func SuppressesDying(filter CardPredicate) game.TriggerSuppressor {
 // in.
 func OfOpponentsPermanents(s game.TriggerSuppressor) game.TriggerSuppressor {
 	inner := s.Suppresses
+	if s.RowLabel != "" {
+		s.RowLabel = strings.TrimSuffix(s.RowLabel, ".") + ", for your opponents' permanents."
+	}
 	s.Suppresses = func(g *game.Game, q game.TriggerSuppressionQuery) bool {
 		if !q.SourceIsPermanent || q.SourceLKI.Controller == q.SuppressorLKI.Controller {
 			return false
@@ -84,5 +93,6 @@ func suppressionSubject(g *game.Game, q game.TriggerSuppressionQuery) game.Card 
 func CreaturesEnteringDontTrigger(label string) game.TriggerSuppressor {
 	s := SuppressesEntering(Creature())
 	s.Label = label
+	s.RowLabel = "Creatures entering don't cause abilities to trigger."
 	return s
 }

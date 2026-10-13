@@ -19,9 +19,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the look-ahead stamps, so an opponent's grant gives your creature
 // nothing.
 func NontokenCreaturesYouControlHave(keyword string) game.StaticAbility {
-	return KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+	ab := KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.IsCreature() && !target.IsToken() && target.Controller == source.Controller
 	}, keyword)
+	ab.Label = "Nontoken creatures you control have " + keyword + "."
+	return ab
 }
 
 // CreaturesYouControlWithCountersHave is "<other> creatures you control
@@ -31,7 +33,7 @@ func NontokenCreaturesYouControlHave(keyword string) game.StaticAbility {
 // live card: a counter is a marker the layer pass reads, and placing or
 // removing one bumps the layer version.
 func CreaturesYouControlWithCountersHave(kind string, others bool, keyword string) game.StaticAbility {
-	return KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+	ab := KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		if !target.IsCreature() || target.Controller != source.Controller {
 			return false
 		}
@@ -40,14 +42,31 @@ func CreaturesYouControlWithCountersHave(kind string, others bool, keyword strin
 		}
 		return hasCounterOfKind(*target, kind)
 	}, keyword)
+	subject := "Creatures"
+	if others {
+		subject = "Other creatures"
+	}
+	ab.Label = subject + " you control with " + counterPhrase(kind) + " on them have " + keyword + "."
+	return ab
+}
+
+// counterPhrase is "a counter" / "a +1/+1 counter" for the wording of a
+// counter-gated row.
+func counterPhrase(kind string) string {
+	if kind == "" {
+		return "a counter"
+	}
+	return "a " + kind + " counter"
 }
 
 // ThisHasWhileItHasCounter is "This creature has <keyword> as long as it
 // has a <kind> counter on it" — Chaos Imps' trample.
 func ThisHasWhileItHasCounter(kind, keyword string) game.StaticAbility {
-	return KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
+	ab := KeywordGrant(func(target *game.Card, _ *game.Game, source *game.Card) bool {
 		return target.InstanceID == source.InstanceID && hasCounterOfKind(*target, kind)
 	}, keyword)
+	ab.Label = "Has " + keyword + " while it has " + counterPhrase(kind) + " on it."
+	return ab
 }
 
 // hasCounterOfKind reports whether the card carries a counter of `kind`,

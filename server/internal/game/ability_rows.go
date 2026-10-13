@@ -76,15 +76,29 @@ type AbilityRow struct {
 	// Exert is the triggered row's TriggeredAbility.Exert (ADR 0130's
 	// amendment of 2026-10-07): "linked", "payoff" or empty.
 	Exert ExertRow
+	// Generic is true when the catalog gave the row no wording and Label
+	// is only what kind of effect it is ("Replacement effect"). Never on
+	// the wire: it is how a test counts the rows still waiting for a
+	// label (#2410).
+	Generic bool
 }
 
 // AbilityRowsOf lists the object's non-keyword triggered, static and
 // activated abilities right now, in that order. Nil for an object with
 // none — an uncatalogued card, a vanilla creature, a face-down
 // permanent.
-func AbilityRowsOf(c Card) []AbilityRow { return abilityRowsOf(&c) }
+func AbilityRowsOf(c Card) []AbilityRow { return abilityRowsOf(&c, false) }
 
-func abilityRowsOf(c *Card) []AbilityRow {
+// AbilityRowsOnBattlefield is AbilityRowsOf for an object that is on
+// the battlefield. It leaves out the rows that were spent as the object
+// entered (#2410): "This land enters tapped" is a CR 614.12 replacement
+// that applied as the land came in, so a tapland already in play has
+// nothing left for the ◆ chip to name. Off the battlefield (the hand
+// tile) the same replacement is still a promise about the future, so
+// AbilityRowsOf keeps it.
+func AbilityRowsOnBattlefield(c Card) []AbilityRow { return abilityRowsOf(&c, true) }
+
+func abilityRowsOf(c *Card, onBattlefield bool) []AbilityRow {
 	if c.faceDownPermanent() {
 		return nil
 	}
@@ -94,21 +108,23 @@ func abilityRowsOf(c *Card) []AbilityRow {
 		if t.Keyword != "" {
 			continue
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowTriggered, Label: abilityRowLabel(t.Key, names, "Triggered ability"), Purpose: t.Purpose, Exert: t.Exert})
+		label, generic := abilityRowText(t.Key, names, "Triggered ability")
+		out = append(out, AbilityRow{Kind: AbilityRowTriggered, Label: label, Generic: generic, Purpose: t.Purpose, Exert: t.Exert})
 	}
-	out = appendStaticRows(out, c, names)
+	out = appendStaticRows(out, c, names, onBattlefield)
 	for _, a := range activatedAbilitiesOf(c) {
 		if IsKeywordActivatedAbility(a) {
 			continue
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowActivated, Label: abilityRowLabel(a.Label, names, "Activated ability"), Purpose: a.Purpose})
+		label, generic := abilityRowText(a.Label, names, "Activated ability")
+		out = append(out, AbilityRow{Kind: AbilityRowActivated, Label: label, Generic: generic, Purpose: a.Purpose})
 	}
 	return out
 }
 
 // appendStaticRows adds the object's static rows: its Static list, then
 // each slot in staticRowSlots, in CardDef order.
-func appendStaticRows(out []AbilityRow, c *Card, names []string) []AbilityRow {
+func appendStaticRows(out []AbilityRow, c *Card, names []string, onBattlefield bool) []AbilityRow {
 	d := catalogDef(catalogAbilityKeyOf(c))
 	if d == nil {
 		return out
@@ -122,13 +138,39 @@ func appendStaticRows(out []AbilityRow, c *Card, names []string) []AbilityRow {
 		if len(s.Keywords) > 0 || s.ContinuesAfterRemoval {
 			continue
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowStatic, Label: abilityRowLabel(s.Label, names, staticLayerLabel(s))})
+		label, generic := abilityRowText(s.Label, names, staticLayerLabel(s))
+		if generic {
+			// A granted-ability bundle carries the text of what it
+			// gives (ADR 0093): say that rather than only "Grants
+			// abilities" (#2410).
+			if text := grantedTextOf(s); text != "" {
+				label, generic = "Grants: "+text, false
+			}
+		}
+		out = append(out, AbilityRow{Kind: AbilityRowStatic, Label: label, Generic: generic})
 	}
 	def := reflect.ValueOf(d).Elem()
 	for i, slot := range staticRowSlots {
-		out = slot.appendRows(out, c, def.Field(staticRowSlotIndex[i]), names)
+		out = slot.appendRows(out, c, def.Field(staticRowSlotIndex[i]), names, onBattlefield)
 	}
 	return out
+}
+
+// grantedTextOf joins the printed text of the bundles a static grants,
+// or "" when any of them has none.
+func grantedTextOf(s StaticAbility) string {
+	if len(s.GrantAbilities) == 0 {
+		return ""
+	}
+	texts := make([]string, 0, len(s.GrantAbilities))
+	for _, k := range s.GrantAbilities {
+		t := strings.TrimSpace(GrantTextFor(k))
+		if t == "" {
+			return ""
+		}
+		texts = append(texts, t)
+	}
+	return strings.Join(texts, " ")
 }
 
 // staticLayerLabel describes a Static row that declares no Label by
@@ -182,7 +224,7 @@ type staticRowSlot struct {
 // their type declares ActiveWhen.
 var staticRowSlots = []staticRowSlot{
 	{field: "Replacements", fallback: "Replacement effect", ownLabel: true},
-	{field: "EntersWithCountersFromCast", fallback: "Enters with counters"},
+	{field: "EntersWithCountersFromCast", label: entersWithCountersRows},
 	{field: "TriggerDoublers", fallback: "Abilities trigger an additional time", ownLabel: true},
 	{field: "TriggerSuppressors", fallback: "Stops abilities from triggering", ownLabel: true},
 	{field: "SpellsYouCastHaveDelve", label: boolRow("Spells you cast have delve.")},
@@ -190,8 +232,8 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ExhaustPermissions", fallback: "Exhaust abilities can be activated again", ownLabel: true},
 	{field: "BoastLimits", fallback: "Creatures can boast more than once each turn", ownLabel: true},
 	{field: "AttackTaxes", fallback: "Attack tax", ownLabel: true},
-	{field: "BlockRules", fallback: "Blocking restriction"},
-	{field: "AttackLimits", fallback: "Limits how many creatures can attack"},
+	{field: "BlockRules", label: blockRuleRows},
+	{field: "AttackLimits", label: attackLimitRows},
 	{field: "ExertOnAttack", fallback: "You may exert this creature as it attacks."},
 	{field: "HexproofBypasses", fallback: "Ignores hexproof"},
 	{field: "WardSuppressions", fallback: "Stops ward from triggering"},
@@ -208,7 +250,7 @@ var staticRowSlots = []staticRowSlot{
 	{field: "ActivationRestrictions", fallback: "Activation restriction", ownLabel: true},
 	{field: "ActivationTimings", fallback: "Changes when abilities can be activated", ownLabel: true},
 	{field: "SpellsCantBeCountered", fallback: "Spells can't be countered", ownLabel: true},
-	{field: "HandSize", fallback: "Changes maximum hand size"},
+	{field: "HandSize", label: handSizeRows},
 	{field: "ManaPool", fallback: "Changes how mana empties"},
 	{field: "PlayerKeywords", label: playerKeywordRows},
 	{field: "PlayerLifeTotalLocked", label: boolRow("Your life total can't change.")},
@@ -223,11 +265,11 @@ var staticRowSlots = []staticRowSlot{
 	{field: "LegendRuleExemptions", fallback: "The legend rule doesn't apply"},
 	{field: "ZeroLoyaltyExemptions", fallback: "Planeswalkers aren't put into graveyards for having 0 loyalty"},
 	{field: "OpponentEffectProtections", fallback: "Opponents' effects can't make you discard or sacrifice"},
-	{field: "GameEndGates", fallback: "Changes who can win or lose"},
+	{field: "GameEndGates", label: gameEndGateRows},
 	{field: "AdditionalLandPlays", label: additionalLandPlayRows},
-	{field: "CastPermissions", fallback: "Lets you play cards from another zone"},
-	{field: "GatedCastPermissions", fallback: "Lets you play cards from another zone"},
-	{field: "CastTimings", fallback: "Changes when spells can be cast"},
+	{field: "CastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
+	{field: "GatedCastPermissions", fallback: "Lets you play cards from another zone", ownLabel: true},
+	{field: "CastTimings", fallback: "Changes when spells can be cast", ownLabel: true},
 	{field: "GrantedAlternativeCosts", fallback: "Offers another way to pay for spells"},
 	{field: "LibraryTopVisible", label: libraryTopRows},
 }
@@ -251,7 +293,7 @@ var staticRowSlotIndex = func() []int {
 var designationType = reflect.TypeOf(Designation{})
 
 // appendRows adds one slot's rows.
-func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, names []string) []AbilityRow {
+func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, names []string, onBattlefield bool) []AbilityRow {
 	if !v.IsValid() || v.IsZero() {
 		return out
 	}
@@ -262,7 +304,7 @@ func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, na
 		return out
 	}
 	if v.Kind() != reflect.Slice {
-		return append(out, AbilityRow{Kind: AbilityRowStatic, Label: s.fallback})
+		return append(out, AbilityRow{Kind: AbilityRowStatic, Label: s.fallback, Generic: !strings.HasSuffix(s.fallback, ".")})
 	}
 	for i := 0; i < v.Len(); i++ {
 		e := v.Index(i)
@@ -273,13 +315,26 @@ func (s staticRowSlot) appendRows(out []AbilityRow, c *Card, v reflect.Value, na
 					continue
 				}
 			}
+			// #2410: a replacement that applied as the object entered is
+			// spent once it is on the battlefield.
+			if onBattlefield {
+				if spent := e.FieldByName("EntryOnly"); spent.IsValid() && spent.Kind() == reflect.Bool && spent.Bool() {
+					continue
+				}
+			}
 			if s.ownLabel {
 				if f := e.FieldByName("Label"); f.IsValid() && f.Kind() == reflect.String {
 					label = f.String()
 				}
 			}
+			// #2410: a replacement's RowLabel is wording written for the
+			// chip, and wins over the CR 616 prompt header in Label.
+			if f := e.FieldByName("RowLabel"); f.IsValid() && f.Kind() == reflect.String && f.String() != "" {
+				label = f.String()
+			}
 		}
-		out = append(out, AbilityRow{Kind: AbilityRowStatic, Label: abilityRowLabel(label, names, s.fallback)})
+		text, generic := abilityRowText(label, names, s.fallback)
+		out = append(out, AbilityRow{Kind: AbilityRowStatic, Label: text, Generic: generic})
 	}
 	return out
 }
@@ -366,18 +421,33 @@ var abilityRowLabelSeparators = []string{" — ", ": ", " - "}
 // abilityRowLabel is raw with the object's own name dropped from the
 // front, capitalised, or fallback when nothing is left.
 func abilityRowLabel(raw string, names []string, fallback string) string {
-	l := stripLeadingName(strings.TrimSpace(raw), names)
-	if l == "" {
-		return fallback
-	}
-	r, size := utf8.DecodeRuneInString(l)
-	if unicode.IsLower(r) {
-		return string(unicode.ToUpper(r)) + l[size:]
-	}
+	l, _ := abilityRowText(raw, names, fallback)
 	return l
 }
 
+// abilityRowText is abilityRowLabel plus whether the fallback answered.
+func abilityRowText(raw string, names []string, fallback string) (string, bool) {
+	l := stripLeadingName(strings.TrimSpace(raw), names)
+	if l == "" {
+		return fallback, true
+	}
+	r, size := utf8.DecodeRuneInString(l)
+	if unicode.IsLower(r) {
+		return string(unicode.ToUpper(r)) + l[size:], false
+	}
+	return l, false
+}
+
 func stripLeadingName(l string, names []string) string {
+	// A cast permission's label ends in the card it belongs to, "Play a
+	// land from your graveyard (Crucible of Worlds)": the name is the
+	// attribution a log wants and a tile already shows.
+	for _, n := range names {
+		if suffix := " (" + n + ")"; strings.HasSuffix(l, suffix) {
+			l = strings.TrimSpace(strings.TrimSuffix(l, suffix))
+			break
+		}
+	}
 	for _, n := range names {
 		if l == n {
 			return ""

@@ -51,6 +51,10 @@ import "github.com/google/uuid"
 // Spec.TriggerSuppressors with the effects-package helpers
 // (SuppressesEntering, SuppressesDying, OfOpponentsPermanents).
 type TriggerSuppressor struct {
+	// RowLabel is the row's wording on the art tile's ◆ chip (#2410).
+	// Display only.
+	RowLabel string
+
 	// Label is the card's printed name. It is used only in logs and
 	// tests: a suppressed ability leaves nothing on the wire to
 	// attribute.

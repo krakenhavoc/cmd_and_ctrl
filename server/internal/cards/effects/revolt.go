@@ -71,7 +71,9 @@ func AtYourEndStepIfRevolt(label string, effect Effect) game.TriggeredAbility {
 // entering creature has not left anything.
 func SelfEntersWithCountersIfRevolt(kind string, n int) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		RowLabel:  "Enters with " + counterCountPhrase(n, kind) + " on it if a permanent left the battlefield under your control this turn.",
+		EntryOnly: true,
+		Watches:   []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			return ev.Kind == game.RepEventMove &&
 				ev.NewZone == game.ZoneBattlefield &&

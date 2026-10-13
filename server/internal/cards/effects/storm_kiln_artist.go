@@ -35,6 +35,7 @@ func init() {
 		Caveats:      []string{"Copied instants and sorceries make no Treasure; only spells you actually cast trigger it."},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
+			Label:    "Gets +1/+0 for each artifact you control.",
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID

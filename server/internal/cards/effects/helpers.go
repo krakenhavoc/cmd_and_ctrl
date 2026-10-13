@@ -985,6 +985,7 @@ func putIndestructibleCounterOnSource() Effect {
 
 func EachLandIsAlso(subtype string) game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Each land is also a " + subtype + ".",
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 			return target.IsLand()

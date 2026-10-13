@@ -114,6 +114,7 @@ func QuerySubtype(subtype string) game.PermanentQuery {
 // is, naming that creature as the source.
 func selfAttackTargetRestriction(r game.AttackTargetRestriction) game.StaticAbility {
 	return game.StaticAbility{
+		Label: attackTargetLabel(r),
 		Layer: game.Layer6Ability,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.IsCreature() && selfOnly(target, g, source)

@@ -101,6 +101,7 @@ func ProducedColorOrChosen(color string) func(*game.Game, uuid.UUID, uuid.UUID) 
 // source. An unchosen colour matches nothing.
 func ChosenColorAnthem(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Creatures you control of the chosen color get " + signedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: CreatureYouControlOfChosenColor,

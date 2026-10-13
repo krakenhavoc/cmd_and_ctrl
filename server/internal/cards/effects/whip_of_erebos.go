@@ -57,6 +57,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
+			Label: "Creatures you control have lifelink.",
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller
 			},

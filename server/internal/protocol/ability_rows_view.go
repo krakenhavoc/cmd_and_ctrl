@@ -35,7 +35,18 @@ type AbilityRowView struct {
 // and nowhere else: a graveyard card is never a tile, and the list
 // would only make every frame longer.
 func viewOfAbilityRows(c game.Card) []AbilityRowView {
-	rows := game.AbilityRowsOf(c)
+	return viewOfAbilityRowList(game.AbilityRowsOf(c))
+}
+
+// viewOfBattlefieldAbilityRows is viewOfAbilityRows for a card on the
+// battlefield (#2410): a replacement spent as the permanent entered
+// ("This land enters tapped") is no longer one of its abilities, so the
+// ◆ chip leaves it out. The hand tile keeps it.
+func viewOfBattlefieldAbilityRows(c game.Card) []AbilityRowView {
+	return viewOfAbilityRowList(game.AbilityRowsOnBattlefield(c))
+}
+
+func viewOfAbilityRowList(rows []game.AbilityRow) []AbilityRowView {
 	if len(rows) == 0 {
 		return nil
 	}

@@ -165,7 +165,9 @@ func AnyColorManaGrant(key string) AbilityGrant {
 // reaches every player's Slivers and the source itself; "Sliver
 // creatures you control have …" (Manaweft Sliver) adds YoursOnly.
 func TribalAbilityGrant(f TribeFilter, keys ...string) game.StaticAbility {
-	return GrantAbilities(f.Matches, keys...)
+	ab := GrantAbilities(f.Matches, keys...)
+	ab.Label = f.subject() + " have additional abilities."
+	return ab
 }
 
 // GrantAbilitiesToAttached is GrantAbilities over the permanent this

@@ -22,7 +22,7 @@ func init() {
 		Name:         "Blood Moon",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			SetsBasicLandType(nonbasicLand, nil, []string{"Mountain"}),
+			Labelled(SetsBasicLandType(nonbasicLand, nil, []string{"Mountain"}), "Nonbasic lands are Mountains."),
 		},
 	})
 }

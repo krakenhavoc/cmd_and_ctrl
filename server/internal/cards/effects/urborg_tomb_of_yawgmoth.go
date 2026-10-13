@@ -72,6 +72,7 @@ func init() {
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,
+				Label: "Each land is a Swamp in addition to its other land types.",
 				// "Each land" — every land on the battlefield, not
 				// just the controller's. Reading IsLand through the
 				// effective view is deliberate: a permanent that

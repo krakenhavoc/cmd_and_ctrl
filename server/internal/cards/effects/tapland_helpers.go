@@ -41,7 +41,9 @@ import (
 // guaranteed correct at this point.
 func SelfEntersTappedUnless(untapped func(g *game.Game, controller uuid.UUID) bool) game.ReplacementEffect {
 	return game.ReplacementEffect{
-		Watches: []game.EventKind{game.EventZoneMove},
+		RowLabel:  "Enters tapped unless a condition is met.",
+		EntryOnly: true,
+		Watches:   []game.EventKind{game.EventZoneMove},
 		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 			if ev.Kind != game.RepEventMove || ev.NewZone != game.ZoneBattlefield {
 				return false

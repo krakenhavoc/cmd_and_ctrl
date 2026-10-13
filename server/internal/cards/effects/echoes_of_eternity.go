@@ -26,7 +26,8 @@ func init() {
 		Name:         "Echoes of Eternity",
 		Completeness: CompletenessFull,
 		TriggerDoublers: []game.TriggerDoubler{{
-			Label: "Echoes of Eternity",
+			Label:    "Echoes of Eternity",
+			RowLabel: "Abilities of your colorless sources trigger an additional time.",
 			Applies: func(g *game.Game, q game.TriggerDoublingQuery) bool {
 				if q.Ability == nil || q.SourceLKI.Controller != q.DoublerLKI.Controller {
 					return false

@@ -189,6 +189,7 @@ func b43AttachedHasColor(color string) func(target *game.Card, g *game.Game, sou
 // conditional pump.
 func b43PumpAttachedWhen(when func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Attached creature gets " + signedPT(power, toughness) + " while a condition holds.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: when,
@@ -205,6 +206,7 @@ func b43PumpAttachedWhen(when func(target *game.Card, g *game.Game, source *game
 func b43GrantToAttachedWhen(when func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	granted := append([]string(nil), keywords...)
 	return game.StaticAbility{
+		Label:     "Attached creature has " + joinWords(keywords) + " while a condition holds.",
 		Layer:     game.Layer6Ability,
 		AppliesTo: when,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

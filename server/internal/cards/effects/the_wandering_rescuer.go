@@ -53,6 +53,7 @@ func init() {
 		TapCost:         Convoke(),
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
+			Label: "Other tapped creatures you control have hexproof.",
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID != source.InstanceID &&
 					target.Controller == source.Controller &&

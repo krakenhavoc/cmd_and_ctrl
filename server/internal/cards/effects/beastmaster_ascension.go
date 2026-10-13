@@ -33,6 +33,7 @@ func init() {
 		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
+			Label:    "Creatures you control get +5/+5 while this has seven or more quest counters.",
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller &&

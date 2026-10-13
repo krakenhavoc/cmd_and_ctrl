@@ -45,7 +45,8 @@ func init() {
 			Effect:  putIndestructibleCounterOnSource(),
 		}},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDealDamage},
+			Watches:  []game.EventKind{game.EventDealDamage},
+			RowLabel: "Noncombat damage your sources would deal to an opponent or their permanents is doubled.",
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.IsCombatDamage {
 					return false
