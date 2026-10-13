@@ -101,10 +101,12 @@ func (c Card) IsAttachedTo(hostID uuid.UUID) bool {
 // A TargetRef that names neither a card nor a player is still
 // ErrInvalidParam. That is a malformed call, not a game situation.
 //
-// CR 301.5c's "creature only" rule for Equipment is NOT enforced here:
-// an effect that says "attach" to a non-creature is legal to perform,
-// and the SBA unattaches it immediately afterwards, which is precisely
-// how the rules sequence it.
+// A fourth: an attachment that is already attached would be MOVED onto
+// something it can't legally be attached to (an Aura's enchant clause,
+// protection, an Equipment's creature-only rule, CR 301.5c). It stays
+// where it is (CR 701.3b, #3160). An attachment that is not attached yet
+// (an Aura entering or resolving, CR 303.4f) is not moved and is not
+// checked here: it attaches and the state-based action decides.
 //
 // Caller must hold g.mu (this is a *ForEffect surface — it runs
 // inside a resolution that already owns the write lock).
@@ -147,8 +149,8 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	// ADR 0154 decision 4, CR 701.3b: an Aura whose enchant clause is
 	// "enchant creature put onto the battlefield with this Aura" can't be
 	// attached to anything else, and an attempt to move it leaves it where
-	// it is (Animate Dead's 2016-06-08 ruling). Only the swapped clause;
-	// the general check for every Aura is #3160.
+	// it is (Animate Dead's 2016-06-08 ruling). The general check for
+	// every attachment is below (#3160).
 	if c.EnchantSwapped && !g.swappedEnchantAdmitsLocked(c, host) {
 		g.emitAttachSkippedLocked(attachmentID, host, "this Aura can enchant only the creature put onto the battlefield with it")
 		return nil
@@ -160,6 +162,18 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	// Aura that leaves a graveyard card for the permanent that card became
 	// moves too.
 	moved := c.AttachedTo != host || c.AttachedEpoch != offEpoch
+	// CR 701.3b (#3160): an Aura, Equipment or Fortification that is
+	// already attached and would be moved onto an object or player it
+	// can't legally be attached to does not move. Only a MOVE: an Aura
+	// that is not attached yet is entering the battlefield (CR 303.4f) or
+	// has just resolved (CR 608.3c), which is not attaching an Aura "already
+	// on the battlefield", and it keeps the attach-then-state-based-action
+	// path. The test is the one CR 704.5m/n asks of the finished
+	// attachment, run against the host it would have.
+	if moved && c.IsAttached() && !g.attachmentLegalOnLocked(c, host, offEpoch) {
+		g.emitAttachSkippedLocked(attachmentID, host, "this permanent can't be attached to that host")
+		return nil
+	}
 	c.AttachedTo = host
 	c.AttachedEpoch = offEpoch
 	c.AttachedAt = timeNowUnixNano()
@@ -181,6 +195,34 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.runAsAttachedLocked(attachmentID)
 	}
 	return nil
+}
+
+// attachmentLegalOnLocked asks CR 704.5m/n's question of the attachment
+// as if it were attached to `host` (with the host's off-battlefield
+// epoch, zero for a battlefield host), without attaching it.
+//
+// Caller must hold g.mu.
+func (g *Game) attachmentLegalOnLocked(c *Card, host TargetRef, epoch int) bool {
+	probe := *c
+	probe.AttachedTo = host
+	probe.AttachedEpoch = epoch
+	return g.attachmentLegalLocked(&probe)
+}
+
+// AttachLegalForEffect reports whether the attachment on the battlefield
+// could legally be attached to the permanent `host` (CR 701.3b): an
+// Aura's enchant clause and protection, an Equipment's creature-only
+// rule. A card offering the choice of where to move an attachment
+// (Autumn-Tail, Kitsune Sage) lists only the hosts this admits. False
+// when either is not on the battlefield.
+//
+// Caller must hold g.mu.
+func (g *Game) AttachLegalForEffect(attachmentID, host uuid.UUID) bool {
+	c := findBattlefieldCard(g, attachmentID)
+	if c == nil || c.InstanceID == host || findCardOnBattlefield(g, host) < 0 {
+		return false
+	}
+	return g.attachmentLegalOnLocked(c, TargetRef{Kind: TargetCard, ID: host}, 0)
 }
 
 // runAsAttachedLocked runs the attachment's "As this <permanent>
