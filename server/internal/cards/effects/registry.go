@@ -435,6 +435,11 @@ func Register(spec Spec) {
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
 		}
+		// #3042: two computed outputs would leave the precedence
+		// (ProducedAmount wins) as the only thing deciding which one runs.
+		if ma.ProducedAmount != nil && ma.ProducedFunc != nil {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares both ProducedAmount and ProducedFunc — set one", spec.Name, i))
+		}
 		// ADR 0130 §4: as for an activated ability, an exert beside a
 		// cost that moves the source is not modelled.
 		if ma.Cost.Exert && (ma.Cost.Sacrifice || ma.Cost.ExileSelf) {

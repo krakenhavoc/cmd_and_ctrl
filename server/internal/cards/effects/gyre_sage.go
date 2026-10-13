@@ -26,19 +26,19 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordEvolve},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: gyreSageProduced,
-			Label:        "Add {G} for each +1/+1 counter on this creature",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: gyreSageProduced,
+			Label:          "Add {G} for each +1/+1 counter on this creature",
 		}},
 	})
 }
 
 // gyreSageProduced is one {G} per +1/+1 counter on the ability's own
 // source.
-func gyreSageProduced(g *game.Game, _, source uuid.UUID) string {
+func gyreSageProduced(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
-		return ""
+		return game.ManaAmount{}
 	}
-	return game.RepeatMana("{G}", c.Counters[game.CounterPlusOne])
+	return game.ManaAmount{Options: []string{"G"}, N: c.Counters[game.CounterPlusOne]}
 }

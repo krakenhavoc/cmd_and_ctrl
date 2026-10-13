@@ -132,7 +132,7 @@ func TestManaTriggerDoesNotFireOnAnEmptyProduction(t *testing.T) {
 	me := g.Seats[0]
 	empty := pushIntrinsicPermanent(g, me, "Uncharted Haven", "Land", []ManaAbilityShape{{
 		TapCost:      true,
-		ProducedFunc: func(*Game, uuid.UUID, uuid.UUID) string { return "" },
+		ProducedFunc: func(*Game, uuid.UUID, uuid.UUID) ManaOutput { return ManaOutput{} },
 		Label:        "Add one mana of the chosen color",
 	}}, nil)
 	pushAuraOn(g, me, "Wild Growth", wildGrowthTestOracle, empty)

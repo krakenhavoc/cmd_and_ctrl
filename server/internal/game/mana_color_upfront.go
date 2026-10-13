@@ -58,8 +58,7 @@ func ManaAbilityColorOptions(g *Game, playerID, cardID uuid.UUID, ab ManaAbility
 	if g == nil {
 		return nil
 	}
-	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
-	slots, err := ParseProducedMana(produced)
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return nil
 	}
@@ -116,8 +115,7 @@ func ManaAbilityAddsDifferentColors(g *Game, playerID, cardID uuid.UUID, ab Mana
 	if g == nil {
 		return false
 	}
-	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
-	slots, err := ParseProducedMana(produced)
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	if err != nil {
 		return false
 	}
@@ -138,8 +136,7 @@ func (g *Game) validateUpfrontManaColors(playerID, cardID uuid.UUID, ab ManaAbil
 	if len(colors) == 0 {
 		return nil
 	}
-	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
-	slots, err := ParseProducedMana(produced)
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	if err != nil || !hasMultiOptionSlot(slots) {
 		return ErrIllegalManaColor
 	}

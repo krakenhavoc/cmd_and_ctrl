@@ -44,9 +44,9 @@ func init() {
 			},
 		},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(SourcePower),
-			Label:        "Add X mana of any one color, where X is this creature's power",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: ProducedOneColor(SourcePower),
+			Label:          "Add X mana of any one color, where X is this creature's power",
 		}},
 	})
 }

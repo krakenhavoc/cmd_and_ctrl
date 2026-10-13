@@ -95,9 +95,9 @@ func init() {
 			},
 		}},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true, Mana: "{G}"},
-			ProducedFunc: ProducedAnyCombinationOfColors(selvalaGreatestPower),
-			Label:        "{G}, {T}: Add X mana in any combination of colors, where X is the greatest power among creatures you control",
+			Cost:           ManaAbilityCost{Tap: true, Mana: "{G}"},
+			ProducedAmount: ProducedAnyCombinationOfColors(selvalaGreatestPower),
+			Label:          "{G}, {T}: Add X mana in any combination of colors, where X is the greatest power among creatures you control",
 		}},
 	})
 }

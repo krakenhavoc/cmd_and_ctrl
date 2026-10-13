@@ -30,9 +30,9 @@ func init() {
 		Name:         "Gaea's Cradle",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedPerPermanent("G", MatchCreature),
-			Label:        "Add {G} for each creature you control",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: ProducedPerPermanent("G", MatchCreature),
+			Label:          "Add {G} for each creature you control",
 		}},
 	})
 }

@@ -2306,8 +2306,7 @@ func (g *Game) materializePlanLocked(p *Player, plan tapPlan, cost ParsedCost) {
 		if rc := ab.RemoveCounters; rc != nil {
 			counterPaid.CountersRemoved = rc.N
 		}
-		producedStr := manaAbilityProducedLocked(g, p.ID, cardID, ab, counterPaid)
-		slots, err := ParseProducedMana(producedStr)
+		slots, err := manaAbilitySlotsLocked(g, p.ID, cardID, ab, counterPaid)
 		if err != nil {
 			continue
 		}
@@ -2686,7 +2685,7 @@ func (g *Game) materializeExiledManaSourceLocked(
 	if ab.Condition != nil && !ab.Condition(g, p.ID, cardID) {
 		return
 	}
-	slots, err := ParseProducedMana(manaAbilityProducedLocked(g, p.ID, cardID, ab, PaidCost{}))
+	slots, err := manaAbilitySlotsLocked(g, p.ID, cardID, ab, PaidCost{})
 	if err != nil {
 		return
 	}
@@ -7337,13 +7336,27 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// Coffers count the Swamps that are still there and Empowered
 	// Autogenerator count the charge counter it just placed.
 	produced := ab.Produced
-	if ab.DerivedMatch != nil {
+	var slots []ProducedManaEntry
+	var capped bool
+	// #3042: a count-driven ability yields its slots as data, with the
+	// ceiling applied to the count before anything is built.
+	amountDriven := false
+	if ab.ProducedFunc != nil && ab.DerivedMatch == nil && ab.ProducedForPaid == nil {
+		out := ab.ProducedFunc(g, playerID, cardID)
+		if out.IsAmount() {
+			amountDriven = true
+			slots, capped = slotsFromAmount(out.Amount)
+		} else {
+			produced = out.Text
+		}
+	}
+	if amountDriven {
+		// slots built above
+	} else if ab.DerivedMatch != nil {
 		// #1323: same seeded visited set as manaAbilityProducedLocked
 		// — `card` is already the exact Card this ability belongs to,
 		// so no lookup is needed.
 		produced = pipeString(g.derivedManaLocked(*card, &ab, map[uuid.UUID]bool{cardID: true}))
-	} else if ab.ProducedFunc != nil {
-		produced = ab.ProducedFunc(g, playerID, cardID)
 	}
 	// #789: an output that depends on what the cost PAID wins over
 	// both — "Add {C} for each storage counter removed this way" can
@@ -7353,7 +7366,9 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if ab.ProducedForPaid != nil {
 		produced = ab.ProducedForPaid(g, playerID, cardID, paid)
 	}
-	slots, capped, err := parseProducedMana(produced)
+	if !amountDriven {
+		slots, capped, err = parseProducedMana(produced)
+	}
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if capped {
 		// #3040: the production passed MaxProducedMana and was cut.
@@ -7822,7 +7837,7 @@ func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbil
 			out = pipeString(g.derivedManaLocked(c, ab, map[uuid.UUID]bool{cardID: true}))
 		}
 	} else if ab.ProducedFunc != nil {
-		out = ab.ProducedFunc(g, playerID, cardID)
+		out = ab.ProducedFunc(g, playerID, cardID).Text
 	}
 	if ab.ProducedForPaid != nil {
 		out = ab.ProducedForPaid(g, playerID, cardID, paid)
@@ -7912,8 +7927,7 @@ func ManaAbilityAddsNoMana(g *Game, playerID, cardID uuid.UUID, ab ManaAbilitySh
 	if !ab.NarrowToCommanderIdentity && !computed {
 		return false
 	}
-	produced := manaAbilityProducedLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
-	slots, err := ParseProducedMana(produced)
+	slots, err := manaAbilitySlotsLocked(g, playerID, cardID, &ab, g.maxCounterPaymentLocked(playerID, cardID, ab.RemoveCounters))
 	if err != nil {
 		// A broken declaration is not this rule's business.
 		return false

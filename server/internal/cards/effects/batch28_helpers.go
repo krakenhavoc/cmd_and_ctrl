@@ -330,10 +330,10 @@ func b28AddCountersToDamageAtOpponents(label, kind string) game.ReplacementEffec
 // devotion to <color>" — Karametra's Acolyte. Devotion is read at
 // activation (devotionTo, CR 700.5: hybrid symbols count for every
 // colour they offer); zero devotion adds nothing and still taps.
-func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	slot := "{" + strings.ToUpper(color) + "}"
-	return func(g *game.Game, controller, _ uuid.UUID) string {
-		return game.RepeatMana(slot, devotionTo(g, controller, color))
+func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	opts := []string{strings.ToUpper(color)}
+	return func(g *game.Game, controller, _ uuid.UUID) game.ManaAmount {
+		return game.ManaAmount{Options: opts, N: devotionTo(g, controller, color)}
 	}
 }
 

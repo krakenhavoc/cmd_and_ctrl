@@ -464,10 +464,10 @@ func TestGyreSageTapsForAGreenPerCounter(t *testing.T) {
 		TypeLine: "Creature — Elf Druid", Power: 1, Toughness: 2, Owner: me, Controller: me,
 	})
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(sage, game.CounterPlusOne, 3) })
-	var produced string
+	var produced game.ManaAmount
 	g.WithWriteLock(func() { produced = gyreSageProduced(g, me, sage) })
-	if produced != "{G}{G}{G}" {
-		t.Errorf("Gyre Sage with three counters produces %q, want {G}{G}{G}", produced)
+	if produced.N != 3 || len(produced.Options) != 1 || produced.Options[0] != "G" {
+		t.Errorf("Gyre Sage with three counters produces %+v, want three {G}", produced)
 	}
 }
 

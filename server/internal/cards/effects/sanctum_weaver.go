@@ -25,7 +25,7 @@ func init() {
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost: ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(func(g *game.Game, controller, _ uuid.UUID) int {
+			ProducedAmount: ProducedOneColor(func(g *game.Game, controller, _ uuid.UUID) int {
 				return b29EnchantmentsControlled(g, controller)
 			}),
 			Label: "Add X mana of any one color, where X is the number of enchantments you control",

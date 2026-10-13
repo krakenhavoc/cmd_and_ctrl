@@ -549,7 +549,13 @@ type ManaAbilityShape struct {
 	// Same locking contract as Condition: read-only, under g.mu.
 	//
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
-	ProducedFunc func(g *Game, controller, source uuid.UUID) string
+	//
+	// #3042: the result is a ManaOutput, text OR a count. A count-driven
+	// ability ("Add {G} for each Elf", "equal to this creature's power")
+	// returns a ManaAmount, so no text is built and re-parsed per mana
+	// and the engine applies the MaxProducedMana ceiling to N itself.
+	// This is ONE hook, not two: the closure ratchet counts func fields.
+	ProducedFunc func(g *Game, controller, source uuid.UUID) ManaOutput
 
 	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting

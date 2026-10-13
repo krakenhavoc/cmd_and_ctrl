@@ -35,9 +35,9 @@ func init() {
 		},
 		ManaAbilities: []ManaAbility{
 			MaxSpeedMana(ManaAbility{
-				Cost:         ManaAbilityCost{Tap: true},
-				ProducedFunc: ProducedPerPermanent("R", MatchCreatureSubtype("Goblin")),
-				Label:        "Max speed — {T}: Add {R} for each Goblin you control.",
+				Cost:           ManaAbilityCost{Tap: true},
+				ProducedAmount: ProducedPerPermanent("R", MatchCreatureSubtype("Goblin")),
+				Label:          "Max speed — {T}: Add {R} for each Goblin you control.",
 			}),
 		},
 	})

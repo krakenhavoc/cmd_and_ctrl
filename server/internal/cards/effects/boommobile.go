@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -73,7 +71,7 @@ func boommobileMana(g *game.Game, item *game.StackItem) error {
 		"Boommobile — choose a color of mana to add",
 		func(g *game.Game, color string) error {
 			return g.AddManaWithOptionsForEffect(controller, source,
-				strings.Repeat("{"+color+"}", 4),
+				"{"+color+"4}",
 				game.AddManaOptions{Restrictions: []string{ManaRestrictActivate}})
 		})
 	return nil

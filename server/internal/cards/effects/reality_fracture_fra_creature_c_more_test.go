@@ -404,7 +404,7 @@ func TestLootCountsDifferentPowers(t *testing.T) {
 	pushVanillaCreature(g, me.ID, "Four again", 4, 1)
 	pushVanillaCreature(g, g.Seats[1].ID, "Theirs", 7, 7)
 	spec, _ := Lookup(rfcLootOracle)
-	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, loot); got != OneColorOfAmount(2) {
+	if got := producedOf(spec.ManaAbilities[0], g, me.ID, loot); got != OneColorOfAmount(2) {
 		t.Errorf("produced = %q, want %q (powers 2 and 4 are two different powers)", got, OneColorOfAmount(2))
 	}
 }

@@ -1095,9 +1095,8 @@ func manaPlannableSlotsLocked(
 	identity commanderIdentity,
 	priceProduction, fromTap bool,
 ) []ProducedManaEntry {
-	producedStr := manaAbilityProducedLocked(g, controller, c.InstanceID, picked,
+	slots, err := manaAbilitySlotsLocked(g, controller, c.InstanceID, picked,
 		g.maxCounterPaymentLocked(controller, c.InstanceID, picked.RemoveCounters))
-	slots, err := ParseProducedMana(producedStr)
 	if err != nil || len(slots) == 0 {
 		return nil
 	}

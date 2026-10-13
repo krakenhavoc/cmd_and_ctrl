@@ -120,3 +120,80 @@ func (g *Game) emitCountCappedLocked(what string, card, actor uuid.UUID, ceiling
 		Amount: ceiling,
 	})
 }
+
+// ManaOutput is what a computed mana ability returns (#3042): text in the
+// ParseProducedMana grammar, or, for a count-driven output, a ManaAmount.
+// An Amount with Options set wins over Text.
+type ManaOutput struct {
+	Text   string
+	Amount ManaAmount
+}
+
+// IsAmount reports whether the output is the structured count.
+func (o ManaOutput) IsAmount() bool { return len(o.Amount.Options) > 0 }
+
+// ManaAmount is a count-driven mana output as data (#3042): N mana in
+// the slot whose colour options are Options. The zero value, a
+// non-positive N or an empty Options adds nothing.
+//
+//   - one option: N mana of that colour (Gaea's Cradle, Marwyn);
+//   - several options, OneColor false: N independent picks, one mana
+//     each (Selvala's "three mana in any combination of colors");
+//   - several options, OneColor true: ONE pick, and N mana of the
+//     picked colour ("N mana of any one color", Mona Lisa).
+//
+// It is the smaller of the two shapes #3042 sketched: a (colour, n)
+// pair cannot say "any one color", a run list is #3041's pool shape and
+// no helper here mixes colours in one result. Options is shared, not
+// copied, by the slots built from it; callers keep it immutable.
+type ManaAmount struct {
+	Options  []string
+	N        int
+	OneColor bool
+}
+
+// slotsFromAmount is the structured twin of parseProducedMana for a
+// ProducedAmount ability: the slots the engine would have parsed, built
+// straight from the count with the MaxProducedMana ceiling applied to N
+// BEFORE anything is allocated, and capped reporting whether it bit.
+// No text exists at any point.
+func slotsFromAmount(a ManaAmount) (slots []ProducedManaEntry, capped bool) {
+	if a.N <= 0 || len(a.Options) == 0 {
+		return nil, false
+	}
+	n := a.N
+	if n > MaxProducedMana {
+		n, capped = MaxProducedMana, true
+	}
+	if a.OneColor && len(a.Options) > 1 {
+		entry := ProducedManaEntry{Options: a.Options}
+		if n != 1 {
+			entry.Amounts = make(map[string]int, len(a.Options))
+			for _, c := range a.Options {
+				entry.Amounts[c] = n
+			}
+		}
+		return []ProducedManaEntry{entry}, capped
+	}
+	slots = make([]ProducedManaEntry, n)
+	for i := range slots {
+		slots[i] = ProducedManaEntry{Options: a.Options}
+	}
+	return slots, capped
+}
+
+// manaAbilitySlotsLocked is the produced-mana slots one mana ability
+// would add, given what its cost paid: manaAbilityProducedLocked's
+// precedence, but a ProducedAmount ability never goes through text.
+// The result is bounded by the ceiling; the pool-adding site, which
+// announces a cut, reads slotsFromAmount itself. Read-only.
+// Caller must hold g.mu.
+func manaAbilitySlotsLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) ([]ProducedManaEntry, error) {
+	if ab != nil && ab.ProducedFunc != nil && ab.ProducedForPaid == nil && ab.DerivedMatch == nil {
+		if out := ab.ProducedFunc(g, playerID, cardID); out.IsAmount() {
+			slots, _ := slotsFromAmount(out.Amount)
+			return slots, nil
+		}
+	}
+	return ParseProducedMana(manaAbilityProducedLocked(g, playerID, cardID, ab, paid))
+}

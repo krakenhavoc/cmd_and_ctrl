@@ -26,9 +26,9 @@ func init() {
 				Label:    "Add {C}",
 			},
 			{
-				Cost:         ManaAbilityCost{Tap: true, Mana: "{3}"},
-				ProducedFunc: ProducedPerPermanent("B", matchBasicSwamp),
-				Label:        "{3}, {T}: Add {B} for each basic Swamp you control",
+				Cost:           ManaAbilityCost{Tap: true, Mana: "{3}"},
+				ProducedAmount: ProducedPerPermanent("B", matchBasicSwamp),
+				Label:          "{3}, {T}: Add {B} for each basic Swamp you control",
 			},
 		},
 	})

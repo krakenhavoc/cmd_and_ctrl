@@ -48,7 +48,7 @@ func init() {
 		AsEnters:     ChooseColorAsEnters(game.ColorForMana, "Throne of Eldraine"),
 		ManaAbilities: []ManaAbility{{
 			Cost:             ManaAbilityCost{Tap: true},
-			ProducedFunc:     ProducedChosenColorAmount(4),
+			ProducedAmount:   ProducedChosenColorAmount(4),
 			RestrictionsFunc: MonocoloredSpellsOfTheChosenColor(),
 			Label:            "Add four mana of the chosen color. Spend this mana only to cast monocolored spells of that color",
 		}},

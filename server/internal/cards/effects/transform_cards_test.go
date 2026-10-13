@@ -257,7 +257,7 @@ func TestVaultOfCatlacanManaAbilitiesAreLiveAfterTheTransform(t *testing.T) {
 	if scaled == nil {
 		t.Fatal("neither ability scales with the artifact count")
 	}
-	if got := scaled.ProducedFunc(g, me.ID, id); got != "{U}{U}{U}{U}{U}" {
+	if got := producedOfShape(*scaled, g, me.ID, id); got != "{U}{U}{U}{U}{U}" {
 		t.Errorf("produced = %q, want five {U} for five artifacts", got)
 	}
 }
