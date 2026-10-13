@@ -980,6 +980,63 @@ activate a loyalty ability of enchanted planeswalker" is
 `WheneverYouActivateALoyaltyAbilityOfEnchanted`. See `teferis_talent.go`
 and `enchanted_planeswalker.go`.
 
+### "Has all activated abilities of …" (ADR 0155, #1557)
+
+A grant names a fixed bundle. A borrow lends whatever activated and mana
+abilities other objects have right now (Marvin, Necrotic Ooze, Mirran
+Safehouse). It is a layer-6 static on the borrower that declares a
+`game.AbilityBorrow`, built with `HasActivatedAbilitiesOf` ("~ has …"; the
+borrower is the recipient) or `GrantActivatedAbilitiesOf` ("[recipients]
+have …"). `Label` is the printed clause, which the wire shows and a rider
+keys on; `Lenders` is the only card-specific part, and two constructors
+cover the lender sets that ship:
+
+```go
+// Marvin: "… of creatures you control that don't have the same name as this creature."
+Static: []game.StaticAbility{HasActivatedAbilitiesOf(game.AbilityBorrow{
+    Label: clause,
+    Lenders: BattlefieldLenders(func(_ *game.Game, source *game.Card, c game.Card) bool {
+        return c.IsCreature() && c.Controller == source.Controller && c.Name != source.Name
+    }),
+})},
+// Necrotic Ooze: "… of all creature cards in all graveyards."
+Lenders: GraveyardLenders(AllGraveyards, ByController(Creature())),
+// Thranduil: "… of all Elf cards in your graveyard."
+Lenders: GraveyardLenders(YourGraveyard, ByController(HasSubtype("Elf"))),
+```
+
+`ByController` lifts an ordinary `CardPredicate` (the caster is the
+borrower's controller); a `LenderPredicate` also sees the borrowing source.
+The source is never its own lender, and `Except: game.BorrowExceptMana`
+(Sharkey) or `BorrowExceptLoyalty` leaves a kind of row out. A card in a
+graveyard has no layered characteristic, so its rows come from its catalog
+entry, which is why the lender must be catalogued; an uncatalogued one
+lends nothing and the borrower's menu names it in a disabled
+"<lender>: not automated" line (`CardView.unautomated_lenders`).
+
+The riders of the printed text are separate Spec fields, not part of the
+borrow:
+
+- "Activated abilities of [lenders] can't be activated" (Drana and
+  Linvala, Sharkey) is `ActivationRestrictions` with
+  `OpponentsSourcesCantActivate`. It judges the SOURCE object, so the
+  lender is stopped and the borrower's lent copy is not.
+- "You may spend mana as though it were mana of any color to activate
+  those abilities" is `AnyColorSpend:
+  BorrowedAbilitiesSpendableAsAnyColor(label, borrowClause)`. It covers
+  only the rows that borrow lent (`ManaSpendContext.AbilityOrigin`).
+- "You may activate each of those abilities only once each turn" is
+  `AbilityBorrow.EachOncePerTurn`.
+
+A test asserts behaviour, with a catalogued lender such as Llanowar
+Elves: put the lender in the zone, read the borrower's rows through
+`game.ManaAbilitiesWithOrigins` / `ActivatedAbilitiesWithOrigins` (each
+lent origin has `Borrowed` set and a `borrow:<key>:<i>:<n>` ref), then
+activate with that ref. See `borrowed_lender_cards_test.go`.
+
+The client groups lent rows under "From <lender>" and shows identical rows
+once (`client/src/lib/borrowedRows.ts`); nothing per card.
+
 ### Abilities any player may activate (ADR 0106, #1793)
 
 "Any player may activate this ability" (CR 602.2, CR 602.1b) is one bit

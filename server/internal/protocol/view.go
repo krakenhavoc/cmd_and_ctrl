@@ -3035,6 +3035,15 @@ type CardView struct {
 	// is nearly always — means nothing granted this permanent anything.
 	GrantedAbilities []GrantedAbilityView `json:"granted_abilities,omitempty"`
 
+	// UnautomatedLenders names each object this permanent "has all
+	// activated abilities of" that the catalog has no entry for (ADR 0155
+	// owner decision 2): it lends nothing, and the menu shows a disabled
+	// "<lender>: not automated" line so the player knows to resolve its
+	// ability by hand. Absent, which is nearly always, means none. Cleared
+	// with the ability rows for a viewer who cannot see the card, and for a
+	// lender in a hidden zone.
+	UnautomatedLenders []GrantedByView `json:"unautomated_lenders,omitempty"`
+
 	// AbilityRows are the card's non-keyword triggered, static and
 	// activated abilities right now, triggered first, each with a short
 	// label (#2219, game.AbilityRowsOf). The art tile draws one chip per
@@ -9750,6 +9759,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// the card underneath, and "rarely" is not the bar this function
 	// holds a field to.
 	out.GrantedAbilities = nil
+	out.UnautomatedLenders = nil
 	// #2219: the tile's ability rows are read off the card's catalog
 	// entry exactly as the ability lists above are, and "Draw a card"
 	// under a face-down card says which card it is.

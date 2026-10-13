@@ -326,7 +326,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		// ADR 0093: the granted-ability text list. Redacted with the
 		// ability rows it describes.
-		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
+		GrantedAbilities:   []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
+		UnautomatedLenders: []GrantedByView{{ID: "lender", Name: "Uncatalogued Elf"}},
 		// #2219: the tile's ability rows. Redacted with the ability
 		// lists they are read beside.
 		AbilityRows: []AbilityRowView{{Kind: "triggered", Label: "Draw a card"}},

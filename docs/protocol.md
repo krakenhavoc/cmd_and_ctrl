@@ -2868,6 +2868,15 @@ the recipient's summoning sickness. Three things reach the wire.
   borrower's (CR 201.5b): Necrotic Ooze's lent "{T}: Mana Elf gains you 1
   life." is "{T}: Necrotic Ooze gains you 1 life." A row from a borrow
   that allows each ability once each turn is `exhausted` once used.
+- **`unautomated_lenders: [{id, name}]` on the CardView** (ADR 0155 owner
+  decision 2). The objects a permanent "has all activated abilities of"
+  that the catalog has no entry for. They lend nothing, so no row carries
+  them; the menu draws one disabled "<name>: not automated" line each so
+  the player knows to resolve the ability by hand. A token, a face-down
+  object and a basic land (whose CR 305.6 mana ability is lent) are never
+  listed, nor is a lender in a hand or a library. Absent when empty, and
+  cleared with the ability rows for a viewer who cannot see the card.
+  Public, so it rides every viewer's snapshot.
 - **`granted_abilities: [{text, source_id?, source_name?}]` on the
   CardView.** The printed text of every ability another effect gave the
   permanent — layer-6 grants, and a copy's CR 707.9a grant (Phantasmal
