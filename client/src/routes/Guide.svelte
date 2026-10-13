@@ -121,7 +121,10 @@
           The game only asks what a player at a real table would have to answer. Most of the time
           you press <strong>Pass</strong> in the action dock to let things move on.
         </li>
-        <li><strong>Skip to my turn</strong> passes for you until your next main phase.</li>
+        <li>
+          <strong>Skip to my turn</strong> passes and resolves everything until your next main phase.
+          It stops only for a choice you have to make.
+        </li>
         <li>Misclicked? There's <strong>undo</strong>.</li>
         <li>
           A card without the <span class="chip">AUTO</span> badge is yours to resolve: move the pieces

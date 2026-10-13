@@ -552,8 +552,8 @@
       title={(autopassPaused
         ? "Skip to my turn PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
         : autopassEnabled
-          ? "Skip to my turn ON — passes for you until your next main phase, stopping only when you can answer an opponent's spell, an attack or an opponent's end step; click to turn off"
-          : "Skip to my turn — pass for you until your next main phase. It still stops when you can answer an opponent's spell, an attack or an opponent's end step, and a pinned phase icon still stops you") +
+          ? "Skip to my turn ON — passes and resolves everything until your next main phase, stopping only for a choice you have to make; click to turn off"
+          : "Skip to my turn — pass and resolve everything until your next main phase. It stops only for a choice you have to make, or a pinned phase icon") +
         keyHint(keys.toggleAutopass)}
     >
       {autopassPaused

@@ -148,18 +148,18 @@ describe("bluff chip", () => {
     const c = mount();
     const b = main(c);
     expect(b.disabled).toBe(true);
-    expect(b.title).toContain("needs Smart auto-pass: in Careful");
+    expect(b.title).toContain("needs Smart auto-pass: on Careful");
     b.click();
     flushSync();
     expect(get(bluffArmed)).toBe(false);
     expect(gp().bluffCounterspell).toBe(false);
   });
 
-  it("is disabled, with a reason, in Manual", () => {
+  it("is disabled, with a reason, with auto-pass off", () => {
     settings.update((s) => ({ ...s, gameplay: { ...s.gameplay, passMode: "manual" } }));
     const b = main(mount());
     expect(b.disabled).toBe(true);
-    expect(b.title).toContain("needs Smart auto-pass: in Manual");
+    expect(b.title).toContain("needs Smart auto-pass: with auto-pass off");
   });
 
   it("shows armed state when armed from elsewhere", () => {
