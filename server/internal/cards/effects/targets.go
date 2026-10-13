@@ -197,8 +197,18 @@ func PowerLE(n int) CardPredicate {
 }
 
 // PowerGE passes when the creature's current power is ≥ n.
+//
+// A creature SPELL is read with its own characteristic-defining ability
+// applied (CR 604.3, CR 113.6a: it works on the stack), so a `*/*`
+// creature spell such as Tarmogoyf counts what its text says
+// (Spellbreaker Behemoth). Anything else reads its current power.
 func PowerGE(n int) CardPredicate {
-	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.CurrentPower() >= n }
+	return func(g *game.Game, _ uuid.UUID, c game.Card) bool {
+		if g != nil && g.Stack != nil && g.Stack.Contains(c.InstanceID) {
+			return g.PowerAnywhereForEffect(c) >= n
+		}
+		return c.CurrentPower() >= n
+	}
 }
 
 // ToughnessGE passes when the creature's current toughness is ≥ n —

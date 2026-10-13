@@ -9168,6 +9168,36 @@ ctx.SourcePermanent()                                                           
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
   its own `AltCostKey` and no pick (#3270).
 
+### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
+
+Pieces that used to be caveats; the engine notes are in the 2026-10-13 amendments of [ADR 0045](decisions/0045-combat-restrictions.md),
+[ADR 0026](decisions/0026-delayed-triggers.md) and [ADR 0066](decisions/0066-granted-cast-and-play-permissions.md).
+
+```go
+Static: []game.StaticAbility{{Layer: game.Layer6Ability, DependsOnEvents: []game.EventKind{game.EventScry, game.EventSurveil},
+    AppliesTo: selfOnly, Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, src *game.Card) { /* defender unless scried */ }}}
+c.CantBeAttacked = true                                                                  // in a layer 6 Apply: The Aetherspark, attached
+AnyColorSpend: YouMaySpendManaAsAnyTypeToCast("creature spells", "Creature")             // Vizier: coloured mana also pays {C}
+AlternativeCosts: []game.AlternativeCost{FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander()))} // Timely Ward
+DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b, Repeats: true} // body reads item.Trigger.Event.Amount
+```
+
+- **A static whose condition is "has happened this turn" or "is blocking"** lists the event kinds in `DependsOnEvents`;
+  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`
+  and `EventBlock` are read; a new kind needs an arm in `layerVersionBump.OnEvent`. Put the keyword in the static, not in
+  `PrintedKeywords`, when the static is what removes it (Surveillance Phantasm grants `defender` unless it scried).
+- **`PowerGE` on a spell reads the spell's own characteristic-defining ability**, so a `*/*` creature spell counts as what its
+  text says (Spellbreaker Behemoth).
+- **A delayed trigger's body can read the triggering event** (`item.Trigger.Event`), for "that much".
+- **A creature put onto the battlefield as a copy keeps its copied values for a trigger that resolves after it left**
+  (`PermanentInfo.Copiable`); Unstable Shapeshifter reads it.
+- **A cost of tapping several named permanents is a mana ability's `TapOthers`** (Heritage Druid's shape, The Cabbage Merchant's two
+  Foods), and a discard is `DiscardACard()` in `Plus(...)` (Trading Post).
+- **Cards that stay caveated**, with the gap named: Sunbird's Invocation (the chosen card is cast from exile because a revealed
+  non-top library card has no client affordance to cast from), Transmutation Font (a "different names" rule over a three-permanent
+  sacrifice), The Warring Triad (mill as an activated-ability cost), Vorinclex, Monstrous Raider (counter placements that name no
+  placer), Tower Winder (waits on #3217).
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`
