@@ -2225,7 +2225,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.
-	g.emitBecameTargetLocked(playerID, cardID, itemID, params.Targets)
+	g.emitAnnouncedTargetsLocked(playerID, cardID, itemID, params.Targets)
 	// #758: the tap-another component's board half, paid HERE
 	// rather than in the payment block above and for the reason the
 	// cast path pays its convoke taps after the spell is on the
