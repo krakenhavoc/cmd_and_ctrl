@@ -46,8 +46,14 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * the room's channel id. Neither is about a person; the notice's voice
  * paragraph comes with the voice manager (ADR 0159 §8), which is what
  * sends seated players' Discord ids to Discord.
+ *
+ * 21 (#3319, ADR 0161 §6) adds games.lfg and games.lfg_message_id: a
+ * table's choice of the Discord #lfg board and its post's message id.
+ * Neither is about a person; the Discord row now says what a post shows
+ * the community server (the host's Discord account among it) and when
+ * it is deleted (ADR 0161 §8).
  */
-export const PRIVACY_SCHEMA_VERSION = 20;
+export const PRIVACY_SCHEMA_VERSION = 21;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
