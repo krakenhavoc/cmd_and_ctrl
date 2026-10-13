@@ -1707,6 +1707,12 @@ type CastTally struct {
 	// 708.4). Call Forth the Tempest's "the total mana value of other
 	// spells you've cast this turn" subtracts its own (#2743).
 	ManaValue int `json:"manaValue,omitempty"`
+	// InstantSorcery counts the instant and sorcery spells the player cast
+	// this turn, read as each spell became cast like Artifact (#3258).
+	// Arcane Bombardment's "whenever you cast your first instant or
+	// sorcery spell each turn" is InstantSorcery == 1 once the tally is
+	// bumped, which is before EventCast.
+	InstantSorcery int `json:"instantSorcery,omitempty"`
 	// ManaSpent is the total mana the player spent to cast spells this
 	// turn (#3172), counted as each spell became cast off its payment
 	// record, so a cost reduction, X and every additional cost's mana all

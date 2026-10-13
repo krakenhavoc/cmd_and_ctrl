@@ -556,6 +556,10 @@ var cardFields = plan(
 	// come back wrong and say nothing.
 	"Prepared", carried, "",
 	"PrepareCopy", carried, "",
+	// #3258: a copy of a card made to be cast (CR 707.12). Carried for
+	// PrepareCopy's reason: a restore that dropped it would bring back
+	// a real card beside a permission that was meant to expire.
+	"CardCopy", carried, "",
 	"PreparedBy", carried, "",
 	// ADR 0091 (#1331): the hideaway link. Carried — the zero value is
 	// a legal state ("not hidden by anything"), so a restore that

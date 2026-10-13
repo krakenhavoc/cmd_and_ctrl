@@ -6873,6 +6873,27 @@ file says only WHEN the permanent becomes prepared —
 from a trigger or an ability — and what the prepare spell does. Read
 `g.IsPreparedForEffect(id)` for "if this creature isn't prepared".
 
+
+### Copying a card and casting the copy (#3258)
+
+"Copy that card, and you may cast the copy" (Mizzix's Mastery, Arcane
+Bombardment) is `CopyAndCast`, not `CopySpellForEffect` (a spell already on
+the stack) and not `CreateTokenCopy` (a permanent):
+
+```go
+CopyAndCast{Cards: exiled, Free: true}.Apply(ctx)       // "without paying its mana cost"
+CopyAndCast{Cards: exiled, FollowUp: key}.Apply(ctx)    // "you may cast the copy. If you do, ..."
+```
+
+Hand it the cards that REALLY reached exile (the continuation of
+`ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
+gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
+free-cast offer, all at once with no cap; the player casts them in the order
+they like. A copy not cast by the player's next priority pass ceases to
+exist, and a cast one ceases on resolution (a permanent becomes a token). It
+is an exact copy, so the catalog resolves it as the original. See ADR 0066's
+2026-10-13 amendment.
+
 ### Adding a hideaway card (S43+, ADR 0091)
 
 Hideaway is two linked abilities (CR 607.2a), and a card file writes

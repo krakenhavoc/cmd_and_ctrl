@@ -1040,6 +1040,9 @@ type cardSnapshot struct {
 	// which is what every game before ADR 0090 was.
 	Prepared    bool `json:"prepared,omitempty"`
 	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// CardCopy is a copy of a card made to be cast (CR 707.12, #3258):
+	// the not-a-card marker, carried for PrepareCopy's reason. Additive.
+	CardCopy bool `json:"cardCopy,omitempty"`
 	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
 	// comment above (#1492).
 	PreparedBy PermissionCardRef `json:"preparedBy"`
@@ -2205,6 +2208,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -3092,6 +3096,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,

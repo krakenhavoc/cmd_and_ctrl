@@ -314,7 +314,15 @@ func (g *Game) emitDiscoverLocked(player, source uuid.UUID, n int, discovered uu
 // Caller must hold g.mu (write).
 func (g *Game) closePassWindowsLocked(holder uuid.UUID) bool {
 	g.closeMiracleWindowLocked(holder)
-	return g.lapsePassClosedGrantsLocked(holder)
+	lapsed := g.lapsePassClosedGrantsLocked(holder)
+	if lapsed {
+		// #3258: a copy of a card (card_copy.go) nobody may cast any more
+		// ceases to exist now, not at whatever state check runs next — the
+		// pass that closed its window may not run one before the table
+		// looks.
+		g.cardCopySweepSBALocked()
+	}
+	return lapsed
 }
 
 // lapsePassClosedGrantsLocked drops every LapseOnPass permission
