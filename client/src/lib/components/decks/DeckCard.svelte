@@ -4,8 +4,8 @@
   // Led by the commander's art crop (partners side by side), framed by
   // an aura in the commander's colour identity, then the name, the
   // commander and card count, a coverage ring and the notes line. The
-  // actions are Coverage report, Request missing when something is
-  // manual, and a ⋯ menu with Rename and Delete; Delete still asks.
+  // actions are Coverage report, Request missing when the deck has cards
+  // to request, and a ⋯ menu with Rename and Delete; Delete still asks.
   //
   // The page owns the requests and the report (it holds one open report
   // at a time); the card owns its menu, its rename field and its

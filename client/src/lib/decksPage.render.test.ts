@@ -582,13 +582,19 @@ describe("#/decks: the grid (ADR 0158 §2)", () => {
     expect(partners.classList.contains("plain")).toBe(true);
   });
 
-  it("offers Request missing only when something is manual", async () => {
-    const counts = { ...COUNTS, manual: 0, unreviewed: 4 };
-    library = [deck({ coverage: { ...library[0].coverage!, counts } })];
+  it("offers Request missing when the deck has cards to request, unreviewed included", async () => {
+    const unreviewed = { ...COUNTS, manual: 0, unreviewed: 4 };
+    const nothing = { ...COUNTS, manual: 0, unreviewed: 0 };
+    library = [
+      deck({ coverage: { ...library[0].coverage!, counts: unreviewed } }),
+      deck({ id: "d2", name: "Done", coverage: { ...library[0].coverage!, counts: nothing } }),
+    ];
     const { container } = render(Decks as never, {} as never);
     await settle();
-    expect(button(container, "Coverage report")).toBeDefined();
-    expect(button(container, "Request missing")).toBeUndefined();
+    expect(
+      container.querySelector('button[aria-label="request missing cards for Atraxa"]'),
+    ).not.toBeNull();
+    expect(container.querySelector('button[aria-label="request missing cards for Done"]')).toBeNull();
   });
 
   it("sorts by Recent, Name and Coverage", async () => {

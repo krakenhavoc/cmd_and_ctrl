@@ -66,7 +66,7 @@ The owner chose "use commander art for the main show, and an aura of the command
 
      The colours are fixed per identity and do not follow the skin, because they mean the deck's colours, not chrome.
    - **Under the art:** the deck name, the commander and card count, and a **coverage ring** with "98/100". The ring is green at ≥ 96 % and amber below. A notes line ("2 simplified · from archidekt.com") follows.
-   - **The actions:** **Coverage report**, plus **Request missing** when something is manual. A **⋯** menu holds Rename and Delete; Delete keeps its confirm.
+   - **The actions:** **Coverage report**, plus **Request missing** when the deck has cards to request (as before). A **⋯** menu holds Rename and Delete; Delete keeps its confirm.
    - A deck whose commander cannot be resolved to an image shows the aura over a plain band, never a broken image.
 3. **No deck yet?** The pre-built picker link stays under the grid. A signed-out visitor sees the check bar only, as today (ADR 0112 §3).
 
