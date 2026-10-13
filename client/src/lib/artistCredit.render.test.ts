@@ -15,6 +15,7 @@ import BattlefieldRow from "./components/board/BattlefieldRow.svelte";
 import Hand from "./components/board/Hand.svelte";
 import HoverZoomOverlay from "./components/board/HoverZoomOverlay.svelte";
 import StackLaneFan from "./components/board/StackLaneFan.svelte";
+import DeckCard from "./components/decks/DeckCard.svelte";
 import { artistOf, creditText } from "./artistCredit.svelte";
 import type { CardMeta } from "./cardMetaCache";
 import { hoveredCard } from "./cardTypes";
@@ -296,6 +297,71 @@ describe("the stack lane's fan tile", () => {
     metaByID.set(id, {});
     const { container } = mountFan(id);
     await settle();
+    expect(container.querySelector(".art-credit")).toBeNull();
+  });
+});
+
+// ADR 0158 §2: a saved deck on the Decks page is led by its commander's
+// art crop, so the crop carries the credit, one per partner.
+describe("the Decks grid's commander art", () => {
+  function mountDeck(...ids: string[]) {
+    const deck = {
+      id: "d1",
+      name: "Partners",
+      commanders: ids.map((_, i) => `Commander ${i}`),
+      card_count: 100,
+      updated_at: "2026-10-01T00:00:00Z",
+      commander_cards: ids.map((id, i) => ({
+        name: `Commander ${i}`,
+        scryfall_id: id,
+        color_identity: ["W"],
+      })),
+      color_identity: ["W"],
+    };
+    const noop = () => {};
+    return render(
+      DeckCard as never,
+      {
+        deck,
+        reportOpen: false,
+        canRequest: false,
+        requesting: false,
+        requestLocked: false,
+        busy: false,
+        onReport: noop,
+        onRequest: noop,
+        onRename: async () => "",
+        onDelete: async () => {},
+      } as never,
+    );
+  }
+
+  it("credits each commander's artist on its own crop", async () => {
+    const a = newID();
+    const b = newID();
+    metaByID.set(a, { artist: "Winona Nelson" });
+    metaByID.set(b, { artist: "Jason Rainville" });
+    const { container } = mountDeck(a, b);
+    const crops = [...container.querySelectorAll<HTMLElement>(".band .crop")];
+    expect(crops.map((c) => c.querySelector("img")?.getAttribute("src"))).toEqual([
+      `/cards/${a}/image?size=art_crop`,
+      `/cards/${b}/image?size=art_crop`,
+    ]);
+    await settle();
+    expect(crops.map((c) => c.querySelector(".art-credit")?.textContent)).toEqual([
+      "Illus. Winona Nelson",
+      "Illus. Jason Rainville",
+    ]);
+    expect(crops[0].getAttribute("title")).toBe("Commander 0 (Illus. Winona Nelson)");
+    expect(requested).toEqual([`/cards/${a}`, `/cards/${b}`]);
+  });
+
+  it("prints nothing on a crop whose printing names no artist", async () => {
+    const id = newID();
+    metaByID.set(id, {});
+    const { container } = mountDeck(id);
+    await settle();
+    expect(container.querySelector(".band img")).not.toBeNull();
     expect(container.querySelector(".art-credit")).toBeNull();
   });
 });

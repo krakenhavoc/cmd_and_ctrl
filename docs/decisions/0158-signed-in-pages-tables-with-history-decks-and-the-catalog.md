@@ -57,7 +57,7 @@ The owner chose "use commander art for the main show, and an aura of the command
 1. **The check bar** is one line: **Link** | **Paste a list** toggle, the input, then **Check this deck**. The Moxfield export hint becomes the input's placeholder, or the line under it when pasting. The report under it is unchanged.
 2. **Your decks** is a grid of three columns at 1200 px and two at tablet width.
    - **Sorting:** a segmented control, **Recent · Name · Coverage**.
-   - **The art is the main visual.** Each deck card is led by the commander's art crop (`/cards/{id}/image?size=art_crop`, the existing image route and cache), about 140 px tall, faded into the card at the bottom. A partner pair shows both crops side by side.
+   - **The art is the main visual.** Each deck card is led by the commander's art crop (`/cards/{id}/image?size=art_crop`, the existing image route and cache). `GET /me/decks` carries what the page needs for it: each commander's printing id (`commander_cards[].scryfall_id`, a printing with an image, absent when none resolves) and colour identity, and the deck's identity as their union (`color_identity`). Commander names alone could not be drawn, because no route outside a game resolves a name to a printing, about 140 px tall, faded into the card at the bottom. A partner pair shows both crops side by side.
    - **The artist is credited on the art** (#2982, `artistCredit.svelte.ts`). This is required, as it is everywhere an art crop is the main view of a card.
    - **The aura is the colour identity.** The card's border and a soft outer glow take the commander's colour identity:
      - W, U, B, R and G each map to one fixed colour token;
@@ -66,7 +66,7 @@ The owner chose "use commander art for the main show, and an aura of the command
 
      The colours are fixed per identity and do not follow the skin, because they mean the deck's colours, not chrome.
    - **Under the art:** the deck name, the commander and card count, and a **coverage ring** with "98/100". The ring is green at ≥ 96 % and amber below. A notes line ("2 simplified · from archidekt.com") follows.
-   - **The actions:** **Coverage report**, plus **Request missing** when something is manual. A **⋯** menu holds Rename and Delete; Delete keeps its confirm.
+   - **The actions:** **Coverage report**, plus **Request missing** when the deck has cards to request (as before). A **⋯** menu holds Rename and Delete; Delete keeps its confirm.
    - A deck whose commander cannot be resolved to an image shows the aura over a plain band, never a broken image.
 3. **No deck yet?** The pre-built picker link stays under the grid. A signed-out visitor sees the check bar only, as today (ADR 0112 §3).
 

@@ -7,9 +7,13 @@
 //   - "Request missing cards" and "Save to my decks" are separate, and
 //     each is replaced by the right prompt for a visitor who may not use
 //     it (§3 item 3);
-//   - the library keeps rename, delete and the report, and every deck,
-//     pasted or linked, asks for its missing cards by deck_id (item 5);
-//   - the pre-built decks are a read-only list (owner answer 4);
+//   - the library is a grid (ADR 0158 §2): each deck led by its
+//     commander's art, in an aura of its colour identity, with a coverage
+//     ring, the report, Request missing when something is manual, and
+//     Rename / Delete in a ⋯ menu; every deck, pasted or linked, asks for
+//     its missing cards by deck_id (ADR 0112 §3 item 5);
+//   - the pre-built decks are a read-only list behind a link (owner
+//     answer 4);
 //   - signing in from the page stores the way back (item 7).
 //
 // The lobby's saved-deck picker shares the coverage line, so its test
@@ -198,6 +202,14 @@ const button = (c: HTMLElement, text: string): HTMLButtonElement | undefined =>
 function type(el: HTMLInputElement | HTMLTextAreaElement, value: string): void {
   el.value = value;
   el.dispatchEvent(new Event("input", { bubbles: true }));
+  flushSync();
+}
+
+const ring = (c: HTMLElement, name: string): string | null =>
+  c.querySelector(`article[aria-label="${name}"] [role="img"]`)?.getAttribute("aria-label") ?? null;
+
+function openMenu(c: HTMLElement, name: string): void {
+  click(c.querySelector<HTMLButtonElement>(`button[aria-label="more for ${name}"]`)!);
   flushSync();
 }
 
@@ -427,12 +439,13 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     );
   });
 
-  it("lists each saved deck with its playable count and source link", async () => {
+  it("lists each saved deck with its coverage ring and source link", async () => {
     const { container } = render(Decks as never, {} as never);
     await settle();
     const text = container.textContent ?? "";
-    expect(text).toContain("95 of 98 cards play as printed");
-    expect(text).toContain("30 of 40 cards play as printed");
+    expect(ring(container, "Atraxa")).toBe("95 of 98 cards play as printed");
+    expect(ring(container, "Linked")).toBe("30 of 40 cards play as printed");
+    expect(text).toContain("95/98");
     expect(text).toContain("1 simplified");
     expect(text).toContain("2 you resolve by hand");
     const link = container.querySelector<HTMLAnchorElement>(
@@ -472,9 +485,11 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     expect(container.textContent).toContain("Doubling Season");
   });
 
-  it("renames, and shows the server's message on a conflict", async () => {
+  it("renames from the ⋯ menu, and shows the server's message on a conflict", async () => {
     const { container } = render(Decks as never, {} as never);
     await settle();
+    expect(button(container, "Rename")).toBeUndefined();
+    openMenu(container, "Atraxa");
     click(button(container, "Rename")!);
     flushSync();
     type(container.querySelector<HTMLInputElement>("form.rename input")!, "Atraxa Prime");
@@ -486,6 +501,7 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     expect(container.textContent).toContain("Atraxa Prime");
 
     renameStatus = 409;
+    openMenu(container, "Atraxa Prime");
     click(button(container, "Rename")!);
     flushSync();
     type(container.querySelector<HTMLInputElement>("form.rename input")!, "Linked");
@@ -494,9 +510,10 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     expect(container.textContent).toContain("you already have a deck with that name");
   });
 
-  it("deletes only after a confirm", async () => {
+  it("deletes from the ⋯ menu, and only after a confirm", async () => {
     const { container } = render(Decks as never, {} as never);
     await settle();
+    openMenu(container, "Atraxa");
     click(container.querySelector<HTMLButtonElement>('button[aria-label="delete Atraxa"]')!);
     flushSync();
     expect(calls.some((c) => c.method === "DELETE")).toBe(false);
@@ -504,15 +521,109 @@ describe("#/decks: your decks (§3 items 1.4, 5 and 9)", () => {
     click(button(container, "Delete")!);
     await settle();
     expect(calls.find((c) => c.method === "DELETE")?.url).toBe("/me/decks/d1");
-    expect(container.textContent).not.toContain("95 of 98 cards play as printed");
-    expect(container.textContent).toContain("30 of 40 cards play as printed");
+    expect(ring(container, "Atraxa")).toBeNull();
+    expect(ring(container, "Linked")).toBe("30 of 40 cards play as printed");
+  });
+});
+
+describe("#/decks: the grid (ADR 0158 §2)", () => {
+  const PARTNERS = deck({
+    id: "d3",
+    name: "Partners",
+    commanders: ["Tymna the Weaver", "Kraum, Ludevic's Opus"],
+    updated_at: "2026-09-20T08:00:00Z",
+    commander_cards: [
+      {
+        name: "Tymna the Weaver",
+        scryfall_id: "aaaaaaaa-0000-4000-8000-000000000001",
+        color_identity: ["W", "B"],
+      },
+      {
+        name: "Kraum, Ludevic's Opus",
+        scryfall_id: "aaaaaaaa-0000-4000-8000-000000000002",
+        color_identity: ["U", "R"],
+      },
+    ],
+    color_identity: ["W", "U", "B", "R"],
+  });
+
+  it("leads a deck with its commanders' art crops, partners side by side", async () => {
+    library = [PARTNERS];
+    const { container } = render(Decks as never, {} as never);
+    await settle();
+    const imgs = [...container.querySelectorAll<HTMLImageElement>("article .band img")];
+    expect(imgs.map((i) => i.getAttribute("src"))).toEqual([
+      "/cards/aaaaaaaa-0000-4000-8000-000000000001/image?size=art_crop",
+      "/cards/aaaaaaaa-0000-4000-8000-000000000002/image?size=art_crop",
+    ]);
+    // The aura runs through the identity, on fixed tokens.
+    const cell = container.querySelector<HTMLElement>("li.cell")!;
+    expect(cell.classList.contains("has-aura")).toBe(true);
+    expect(cell.style.getPropertyValue("--aura")).toBe(
+      "linear-gradient(120deg, var(--identity-w), var(--identity-u), var(--identity-b), var(--identity-r))",
+    );
+  });
+
+  it("draws a plain band, never a broken image, when no art resolves or an image fails", async () => {
+    library = [
+      deck({ commander_cards: [{ name: "Atraxa, Praetors' Voice", color_identity: null }] }),
+      PARTNERS,
+    ];
+    const { container } = render(Decks as never, {} as never);
+    await settle();
+    const [plain, partners] = [...container.querySelectorAll<HTMLElement>("article .band")];
+    expect(plain.classList.contains("plain")).toBe(true);
+    expect(plain.querySelector("img")).toBeNull();
+    // An unknown identity keeps a neutral border.
+    expect(container.querySelector("li.cell")!.classList.contains("has-aura")).toBe(false);
+    for (const img of partners.querySelectorAll("img")) img.dispatchEvent(new Event("error"));
+    flushSync();
+    expect(partners.querySelector("img")).toBeNull();
+    expect(partners.classList.contains("plain")).toBe(true);
+  });
+
+  it("offers Request missing when the deck has cards to request, unreviewed included", async () => {
+    const unreviewed = { ...COUNTS, manual: 0, unreviewed: 4 };
+    const nothing = { ...COUNTS, manual: 0, unreviewed: 0 };
+    library = [
+      deck({ coverage: { ...library[0].coverage!, counts: unreviewed } }),
+      deck({ id: "d2", name: "Done", coverage: { ...library[0].coverage!, counts: nothing } }),
+    ];
+    const { container } = render(Decks as never, {} as never);
+    await settle();
+    expect(
+      container.querySelector('button[aria-label="request missing cards for Atraxa"]'),
+    ).not.toBeNull();
+    expect(
+      container.querySelector('button[aria-label="request missing cards for Done"]'),
+    ).toBeNull();
+  });
+
+  it("sorts by Recent, Name and Coverage", async () => {
+    library = [deck({ id: "z", name: "Zed" }), ...library];
+    const { container } = render(Decks as never, {} as never);
+    await settle();
+    const names = () =>
+      [...container.querySelectorAll('ul[aria-label="your decks"] .name')].map(
+        (n) => n.textContent,
+      );
+    expect(names()).toEqual(["Zed", "Atraxa", "Linked"]);
+    click(button(container, "Name")!);
+    flushSync();
+    expect(names()).toEqual(["Atraxa", "Linked", "Zed"]);
+    click(button(container, "Coverage")!);
+    flushSync();
+    expect(names()).toEqual(["Atraxa", "Zed", "Linked"]);
   });
 });
 
 describe("#/decks: pre-built decks (owner answer 4)", () => {
-  it("lists them read-only, with each one's as-printed line", async () => {
+  it("lists them read-only behind the link under the grid", async () => {
     const { container } = render(Decks as never, {} as never);
     await settle();
+    expect(container.querySelector('ul[aria-label="pre-built decks"]')).toBeNull();
+    click(button(container, "Pick a pre-built")!);
+    flushSync();
     const list = container.querySelector<HTMLElement>('ul[aria-label="pre-built decks"]')!;
     expect(list.textContent).toContain("Raid and Ransack");
     expect(list.textContent).toContain("Every card is implemented · 58 of 60 nonbasic cards");
