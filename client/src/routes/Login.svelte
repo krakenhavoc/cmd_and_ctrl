@@ -169,6 +169,7 @@
           <p class="help">
             Your Discord name and avatar become your seat, and your tables, games and decks follow
             you to any device.
+            <a href="#/privacy">What we store, and how to delete it.</a>
           </p>
         </div>
       {/if}
@@ -226,6 +227,14 @@
       <p class="foot">
         <a class="ghost-link" href="#/home">
           <Icon name="link" size={12} /> Site map
+        </a>
+      </p>
+
+      <!-- #2983: the privacy notice, reachable even where Discord sign-in
+           is off (the link inside the Discord card is the one in context). -->
+      <p class="foot">
+        <a class="ghost-link" href="#/privacy">
+          <Icon name="link" size={12} /> Privacy and your data
         </a>
       </p>
     {/if}

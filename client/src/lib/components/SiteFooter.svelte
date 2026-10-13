@@ -8,6 +8,7 @@
   // Policy"; the sentence is the owner's call and was added on purpose.
   import LegalNotice from "./LegalNotice.svelte";
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
+  import { PRIVACY_HASH } from "../privacy";
 </script>
 
 <footer class="site-footer">
@@ -17,6 +18,9 @@
     >. Not approved or endorsed by Wizards of the Coast. Card data and images from
     <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer">Scryfall</a>.
   </p>
+  <!-- #2983: the privacy notice is one click from every page outside the
+       table; the table's own copy is in the ⋯ menu's Legal notice. -->
+  <p class="line"><a href={PRIVACY_HASH}>Privacy and your data</a></p>
   <details class="legal">
     <summary aria-label="Legal notice">Legal</summary>
     <LegalNotice />

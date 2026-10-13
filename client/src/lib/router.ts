@@ -30,6 +30,11 @@ export type Route =
   // Public like /catalog was meant to be closed — see ADR 0092 for why
   // this one is the opposite call.
   | { name: "roadmap" }
+  // The privacy notice (#2983, ADR 0149): what is stored, why, for how
+  // long, who it is shared with, and how a signed-in person deletes
+  // their account. Public: a stranger deciding whether to sign in has
+  // to be able to read it first, and the page holds no account data.
+  | { name: "privacy" }
   // The one decks page (ADR 0112 §3): check a deck by link or paste,
   // its coverage report, "Request missing cards", "Save to my decks",
   // the saved library and the pre-built decks. Public like the roadmap:
@@ -117,6 +122,8 @@ export function parseHash(hash: string): Route {
       return { name: "home" };
     case "roadmap":
       return { name: "roadmap" };
+    case "privacy":
+      return { name: "privacy" };
     // #/deck-check is a permanent alias of #/decks (see the Route type).
     case "decks":
     case "deck-check": {

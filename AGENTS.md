@@ -87,6 +87,7 @@ cmd_and_ctrl/
 │   │   ├── deckrequests/ # which GitHub issue tracks each requested deck, and who asked when (ADR 0095, migration 0006)
 │   │   ├── usersettings/ # a signed-in person's synced settings: one JSON object, 32 KiB cap, If-Match revision (ADR 0110 §4, migration 0008)
 │   │   ├── tablesetups/  # the last setup each person started a table with: settings, bots, tablemates (ADR 0110 §5, migration 0008)
+│   │   ├── accountdelete/ # self-serve account deletion (ADR 0149, migration 0015): one SQL transaction, the tombstone, and Inventory — every column with its deletion treatment, held to the live schema by a test
 │   │   ├── snapshotscrub/ # the scrubber behind cmd/snapshotscrub: generic-JSON rewrite, refuses snowflakes and emails (#522)
 │   │   ├── capacity/    # the server's caps and their defaults: weighted table load, WebSocket connections, creation rates; policy and arithmetic only, the lobby and hub enforce them (ADR 0148)
 │   │   ├── metrics/     # Prometheus metrics on our own registry, served on a loopback-only listener; route-pattern HTTP labels, closed label sets guarded by a test (ADR 0123)
@@ -244,6 +245,20 @@ promoted squash commits back to their original PRs and honors line-leading
 `Closes`, `Fixes`, and `Resolves` directives from the `## Issues` section. Keep
 each closing directive explicit in that section; prose such as "does not close"
 and references outside it are deliberately ignored.
+
+### Storing anything about a person (ADR 0149)
+
+The public privacy notice (`client/src/routes/Privacy.svelte`, `#/privacy`) states
+what is stored, for how long and who sees it, and "Delete my account"
+(`DELETE /me/account`) removes it. A change that stores anything new about a
+person, or changes how long something is kept, updates three things in the same
+PR: `accountdelete.Inventory` and `Delete` (what deletion does to it), the
+page, and the numbers in `client/src/lib/privacy.ts`. Three tests enforce it:
+`accountdelete.TestInventoryCoversTheSchema` fails on a column with no deletion
+decision, `lobby.TestPrivacyNoticeNumbersMatchTheServer` on a stated number that
+no longer matches its source, and `lobby.TestPrivacyNoticeIsCurrentWithTheSchema`
+on any migration newer than `PRIVACY_SCHEMA_VERSION`, so every migration costs
+one read of the page and a one-line bump.
 
 ### Model tiers
 

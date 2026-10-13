@@ -140,6 +140,7 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/budget"
@@ -610,6 +611,7 @@ func main() {
 		UserSettings:      newUserSettingsStore(database),
 		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
+		Accounts:          newAccountDeleter(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -1178,6 +1180,17 @@ func newTableSetupStore(database *db.DB) tablesetups.Store {
 		return tablesetups.NoStore{}
 	}
 	return tablesetups.NewSQLStore(database)
+}
+
+// newAccountDeleter builds self-serve account deletion (ADR 0149,
+// migration 0015). No database returns nil, which keeps it a nil
+// interface: with no database no session has a user, so the route
+// answers 403 before it would ask.
+func newAccountDeleter(database *db.DB) accountdelete.Store {
+	if database == nil {
+		return nil
+	}
+	return accountdelete.NewSQLStore(database)
 }
 
 // newDeckRequestStore builds ADR 0095's deck-request store (migration

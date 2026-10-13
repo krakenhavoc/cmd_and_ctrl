@@ -97,6 +97,14 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
     }
   });
 
+  // #2983: a stranger deciding whether to sign in must be able to read
+  // the privacy notice first.
+  it("keeps a signed-out visitor on the privacy notice", () => {
+    const r = parseHash("#/privacy");
+    expect(isPublicRoute(r)).toBe(true);
+    expect(routeRedirect(r, null)).toBeNull();
+  });
+
   it("leaves a session on a gated route alone", () => {
     for (const [, s] of SESSIONS) {
       if (s === null) continue;

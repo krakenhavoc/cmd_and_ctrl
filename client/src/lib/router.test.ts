@@ -16,6 +16,11 @@ describe("parseHash", () => {
     expect(parseHash("#/roadmap")).toEqual({ name: "roadmap" });
   });
 
+  // #2983: the privacy notice.
+  it("parses #/privacy", () => {
+    expect(parseHash("#/privacy")).toEqual({ name: "privacy" });
+  });
+
   // ADR 0112 §3 item 2: the decks page is #/decks, and #/deck-check
   // parses to the SAME route, permanently. The Discord bot's
   // /c2-deck-check replies link #/deck-check?url=<link> (and a pasted

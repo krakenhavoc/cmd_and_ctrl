@@ -36,11 +36,15 @@
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
   import HelpMenu from "./HelpMenu.svelte";
+  import DeleteAccountDialog from "./DeleteAccountDialog.svelte";
+  import { PRIVACY_HASH } from "../privacy";
   import { isAdmin } from "../admin";
 
   let menuOpen = $state(false);
   let accountOpen = $state(false);
   let accountError = $state("");
+  // "Delete my account" (#2983, ADR 0149) opens a confirmation dialog.
+  let deleteOpen = $state(false);
   let accountEl = $state<HTMLElement | null>(null);
 
   const isSignedIn = $derived($session !== null);
@@ -122,6 +126,12 @@
   function settings(): void {
     closeAccount();
     openSettings();
+  }
+
+  function openDelete(): void {
+    closeAccount();
+    closeMenu();
+    deleteOpen = true;
   }
 
   async function signOut(): Promise<void> {
@@ -282,6 +292,15 @@
                   onclick={signOutEverywhere}>Sign out everywhere</button
                 >
               {/if}
+              <div class="acct-sep" aria-hidden="true"></div>
+              <a class="acct-item" href={PRIVACY_HASH} onclick={closeAccount}>
+                Privacy and your data
+              </a>
+              {#if hasLinkedUser}
+                <button type="button" class="acct-item acct-danger" onclick={openDelete}>
+                  Delete my account
+                </button>
+              {/if}
               {#if accountError}
                 <p class="acct-error" role="alert">{accountError}</p>
               {/if}
@@ -294,6 +313,10 @@
     </div>
   </div>
 </header>
+
+{#if deleteOpen}
+  <DeleteAccountDialog onclose={() => (deleteOpen = false)} />
+{/if}
 
 <style>
   /* Bleeds to the edge of #app's 1080px column, the same negative-
@@ -476,6 +499,9 @@
     height: 1px;
     margin: 4px 6px;
     background: var(--border);
+  }
+  .acct-danger {
+    color: var(--danger);
   }
   .acct-error {
     margin: 4px 10px 6px;

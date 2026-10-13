@@ -3085,6 +3085,42 @@ another one.
 | 404 | the user row no longer exists |
 | 503 | the server has a user session but no revocation list (not a production configuration) |
 
+### `DELETE /me/account` (ADR 0149, #2983)
+
+Self-serve account deletion: the caller deletes their own account. Body
+`{"confirm": "delete my account"}`; the server checks the phrase, case-
+and space-insensitively. The route names no account (the user id is the
+session's), so only the caller's own can be deleted, and an admin gets
+no extra reach.
+
+It removes the person's decks, deck-request history, playmats (rows and
+image files), synced settings, last table setup, and the Discord
+identity (id, name, avatar hash, encrypted refresh token); turns every
+seat they held into `"Deleted player"` in the lobby, the live room, the
+games' files on disk (crash dump, replay, restore point) and the
+database; scrubs the `users` row to a tombstone (`deleted_at` set, name
+`"Deleted player"`, session watermark stamped); revokes every session
+and closes open sockets; and clears the cookie. It does not delete the
+`users` row, the games, or anything the other players keep. GitHub
+issues already filed are public and stay.
+
+**Response 204**, with a `Set-Cookie` that evicts the session cookie.
+
+| Status | Reason |
+|---|---|
+| 400 | the confirmation phrase is missing or wrong |
+| 401 | no session, or one that is expired or revoked |
+| 403 | the session has no user: a guest seat, a spectator link, the admin token, or any session on a server with no database |
+| 404 | the account no longer exists |
+| 409 | the person holds a seat at a table that has not ended; the message names it. Nothing was changed |
+| 410 | the account was already deleted |
+| 429 | one try every ten seconds, burst three, per caller |
+| 503 | the server has no user database |
+
+The audit line `account deleted` carries the user id and counts, never a
+name or a Discord id. The client's deletion dialog (the account menu)
+and the privacy page (`#/privacy`) both call this route.
+
 ### `POST /admin/users/{id}/revoke-sessions` *(admin only)*
 
 ADR 0051's "admin remove-user". It does what the name says and nothing

@@ -512,6 +512,9 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
       "Sign in with a different Discord account",
       "Sign out",
       "Sign out everywhere",
+      // #2983: the privacy notice, and deleting the account.
+      "Privacy and your data",
+      "Delete my account",
     ]);
     expect(menu.querySelector("a")?.getAttribute("href")).toBe(
       "/auth/discord/start?prompt=consent",
@@ -533,7 +536,8 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
     const items = [...container.querySelectorAll("#account-menu .acct-item")].map((el) =>
       el.textContent?.trim(),
     );
-    expect(items).toEqual(["Settings", "Sign out"]);
+    // A guest has no account to delete, but can read the privacy notice (#2983).
+    expect(items).toEqual(["Settings", "Sign out", "Privacy and your data"]);
     expect(container.querySelector("#account-menu")?.textContent).toMatch(/guest seat/);
   });
 

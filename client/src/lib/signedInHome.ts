@@ -29,6 +29,9 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // art or anything else session-gated.
   "home",
   "roadmap",
+  // The privacy notice (#2983): readable before signing in, linked from
+  // the sign-in screen.
+  "privacy",
   // The one decks page (ADR 0112 §3 item 1), and its #/deck-check
   // alias: a signed-out visitor can check a deck, for the same reason
   // the roadmap is public, and the Discord bot links straight here.
