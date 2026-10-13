@@ -92,3 +92,29 @@ func TestHeuristicVotesToExileTheirBestPermanent(t *testing.T) {
 		t.Errorf("the bot voted for %q, want their biggest permanent", got)
 	}
 }
+
+// A vote over cards in a graveyard (Custodi Squire, `council_vote.zone`):
+// the cards return to the vote's controller, so its bot votes for the best
+// card and an opponent's bot for the worst. None of the cards is on the
+// battlefield, which is how the bot tells this from a removal vote.
+func TestHeuristicVotesForCardsInAGraveyardBySide(t *testing.T) {
+	small := creature("g-small", 0, "Small", 1, 1)
+	big := creature("g-big", 0, "Big", 6, 6)
+	opts := []protocol.PickOptionView{
+		{Label: "Small", Cards: []protocol.CardView{small}},
+		{Label: "Big", Cards: []protocol.CardView{big}},
+	}
+	vote := protocol.CouncilVoteView{
+		Options: []string{"Small", "Big"}, Tally: []int{0, 0}, Offered: []int{0, 1}, Zone: "graveyard",
+	}
+	vote.Controller = seatID(0).String()
+	in := ballotInput(t, vote, opts)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Big" {
+		t.Errorf("the controller's bot voted for %q, want its best card back", got)
+	}
+	vote.Controller = seatID(1).String()
+	in = ballotInput(t, vote, opts)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Small" {
+		t.Errorf("an opponent's bot voted for %q, want the card that helps the controller least", got)
+	}
+}

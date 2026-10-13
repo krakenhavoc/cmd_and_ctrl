@@ -351,6 +351,33 @@ describe("voteRequest and gameOverRequest", () => {
     expect(ballotNote(choice({ kind: "option_pick" }), 0)).toBeUndefined();
   });
 
+  it("names who is choosing for whom when someone else casts the ballot (Illusion of Choice)", () => {
+    const ballot = choice({
+      kind: "option_pick",
+      chooser: "a",
+      reason: "Plea for Power — vote for time or knowledge — you choose Bob's vote",
+      pick_options: [{ label: "time" }, { label: "knowledge" }],
+      council_vote: {
+        controller: "a",
+        voter: "b",
+        options: ["time", "knowledge"],
+        tally: [0, 0],
+        offered: [0, 1],
+      },
+    });
+    const seats = [
+      { id: "a", name: "Ann" },
+      { id: "b", name: "Bob" },
+      { id: "c", name: "Cy" },
+    ];
+    // A seat that is neither sees who is choosing for whom.
+    expect(councilVoteRequest(ballot, "c", seats)?.detail).toBe("Ann is choosing Bob's vote");
+    // The chooser answers the ballot itself; the voter does not, so Bob
+    // is shown the same line as any watcher.
+    expect(councilVoteRequest(ballot, "a", seats)).toBeNull();
+    expect(councilVoteRequest(ballot, "b", seats)?.detail).toBe("Ann is choosing Bob's vote");
+  });
+
   it("game over is Back to lobby, with no Enter", () => {
     const back = vi.fn();
     const r = gameOverRequest(back);

@@ -44,6 +44,15 @@ func tuckAllCreaturesToBottomByOwner(ctx *Context, item *game.StackItem, label s
 	for _, c := range swept {
 		ids = append(ids, c.InstanceID)
 	}
+	return tuckCardsToBottomByOwner(ctx, item, ids, label)
+}
+
+// tuckCardsToBottomByOwner puts every card in ids on the bottom of its
+// owner's library as one simultaneous exit, from any zone, and then asks
+// each owner with more than one of them to order their own (CR 401.4).
+// The body Terminus and Trial of a Time Lord share ("the owner of each
+// card puts that card on the bottom of their library").
+func tuckCardsToBottomByOwner(ctx *Context, item *game.StackItem, ids []uuid.UUID, label string) error {
 	return ctx.Game.TuckCardsToLibraryThenForEffect(ids, game.TuckOptions{ToBottom: true}, func(g *game.Game, tucked []uuid.UUID) error {
 		// Rebuilt from the live *Game, the contract every continuation
 		// follows: undo restores this game's fields in place.

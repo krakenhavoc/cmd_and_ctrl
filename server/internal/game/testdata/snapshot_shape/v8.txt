@@ -1972,6 +1972,7 @@ pendingChoices[].councilVote.voter	custom(uuid.UUID)
 pendingChoices[].councilVote.voters	array
 pendingChoices[].councilVote.voters[]	custom(uuid.UUID)
 pendingChoices[].councilVote.votesLeft	number:int
+pendingChoices[].councilVote.zone	string
 pendingChoices[].count	number:int
 pendingChoices[].damageAssignment	object
 pendingChoices[].damageAssignment.AllowTrample	bool
