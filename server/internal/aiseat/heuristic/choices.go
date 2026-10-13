@@ -59,6 +59,7 @@ const (
 	choiceChooseSource        = "choose_source"
 	choiceCommanderReturn     = "commander_return"
 	choicePayAmount           = "pay_amount"
+	choiceAuraHost            = "aura_host"
 )
 
 // damageSourceThreat ranks a choose_source candidate (ADR 0107 §6
@@ -208,6 +209,14 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			v += st.ringBearerValue(lookup(id))
 		}
 		return v, "the Ring to the hardest hitter"
+
+	case choiceAuraHost:
+		// #3158, CR 303.4f (aura_host.go).
+		t := cp.Target
+		if t == nil && len(cp.Targets) == 1 {
+			t = &cp.Targets[0]
+		}
+		return st.auraHostValue(p.cfg, t)
 
 	case choicePickTarget:
 		targets := cp.Targets

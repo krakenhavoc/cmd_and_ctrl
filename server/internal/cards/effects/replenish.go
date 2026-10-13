@@ -8,29 +8,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 battlefield. (Auras with nothing to enchant remain in your
 //	 graveyard.)"
 //
-// The enchantress deck's mass reanimation. Every non-Aura enchantment
+// The enchantress deck's mass reanimation. Every enchantment
 // card in the caster's graveyard comes back under its owner's
 // control — an enchantment creature is an enchantment and counts —
 // all of them as one entry (#1867), so its own enters-tapped clause
 // runs and every ETB trigger sees the whole batch (CR 603.6a). Not targeted, as
 // printed, and castable with an empty graveyard to no effect.
 //
-// Sandbox simplification, declared: EVERY Aura stays in the
-// graveyard, not only the ones with nothing to enchant. CR 303.4f —
-// the Aura's controller chooses what it enchants as it enters — has
-// no prompt on the reanimation path, and Brilliant Restoration's
-// posture (return it unattached, let CR 704.5m bin it) would fire
-// the Aura's enters triggers for nothing. Leaving it where it is
-// matches the printed parenthetical exactly for the no-legal-host
-// case and is weaker than printed for the rest, never stronger.
+// Every Aura comes back too (#3158): as each one enters, its controller
+// chooses what it enchants (CR 303.4f), one question per Aura, among the
+// objects and players already there — not another permanent Replenish
+// is returning. An Aura with nothing to enchant stays in the graveyard,
+// which is the printed parenthetical (CR 303.4g).
 func init() {
 	Register(Spec{
 		OracleID:     "523ae937-5535-490d-96ea-07f331b5e5ad",
 		Name:         "Replenish",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Auras stay in your graveyard — you don't get to choose what they enchant, so only non-Aura enchantments return."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return b36ReturnAllNonAuraEnchantmentCards(ctx)
+			return b36ReturnAllEnchantmentCards(ctx)
 		},
 	})
 }

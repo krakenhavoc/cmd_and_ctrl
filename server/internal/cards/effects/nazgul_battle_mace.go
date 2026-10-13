@@ -27,11 +27,11 @@ import (
 // put onto the battlefield under your control if it is still in a
 // graveyard.
 //
-// Sandbox simplifications, declared: a card a replacement sent
+// Sandbox simplification, declared: a card a replacement sent
 // somewhere other than a graveyard (Rest in Peace) stays there, where
-// the ruling would still put it onto the battlefield; and an Aura comes
-// back unattached and is put into the graveyard, as for Carmen, Cruel
-// Skymarcher. Both are weaker than printed.
+// the ruling would still put it onto the battlefield. Weaker than
+// printed. An Aura put onto the battlefield chooses what it enchants as
+// it enters (CR 303.4f, #3158).
 func init() {
 	Register(Spec{
 		OracleID:     "1ea3ba2d-e88f-4879-92f2-681637094b45",
@@ -39,7 +39,6 @@ func init() {
 		Completeness: CompletenessCaveats,
 		Caveats: []string{
 			"A sacrificed card that went somewhere other than a graveyard isn't put onto the battlefield.",
-			"An Aura returned this way comes back unattached and is put into the graveyard — you don't get to choose what it enchants.",
 		},
 		Grants: []AbilityGrant{{
 			Key: nazgulBattleMaceGrant,

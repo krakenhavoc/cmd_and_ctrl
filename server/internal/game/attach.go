@@ -729,16 +729,8 @@ func (g *Game) attachResolvedAuraLocked(cardID uuid.UUID, item *StackItem) {
 	if idx < 0 || !g.Battlefield.Cards[idx].IsAura() {
 		return
 	}
-	var host TargetRef
-	n := 0
-	for _, t := range item.Targets {
-		switch t.Kind {
-		case TargetCard, TargetPlayer:
-			host = t
-			n++
-		}
-	}
-	if n != 1 {
+	host, ok := singleAuraHost(item.Targets)
+	if !ok {
 		return
 	}
 	_ = g.AttachForEffect(cardID, host)

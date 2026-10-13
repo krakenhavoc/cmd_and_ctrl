@@ -2076,6 +2076,11 @@ func dispatch(g *game.Game, a Action) error {
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
 				return g.ResolveRetarget(choiceID, a.Player, []game.TargetRef{ref})
 			}
+			// #3158, CR 303.4f: what an Aura put onto the battlefield
+			// enchants. The same one-ref payload; it targets nothing.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceAuraHost {
+				return g.ResolveAuraHost(choiceID, a.Player, ref)
+			}
 			dist, err := parseDistribution(p.Distribution)
 			if err != nil {
 				return fmt.Errorf("resolve_choice %w", err)
@@ -2118,6 +2123,13 @@ func dispatch(g *game.Game, a Action) error {
 			// branch is reached at all — `targets: []` is non-nil.
 			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceRetarget {
 				return g.ResolveRetarget(choiceID, a.Player, refs)
+			}
+			// #3158: the banner's plural form of the aura_host answer.
+			if kind, ok := g.PendingChoiceKindFor(choiceID); ok && kind == game.PendingChoiceAuraHost {
+				if len(refs) != 1 {
+					return game.ErrInvalidParam
+				}
+				return g.ResolveAuraHost(choiceID, a.Player, refs[0])
 			}
 			dist, err := parseDistribution(p.Distribution)
 			if err != nil {

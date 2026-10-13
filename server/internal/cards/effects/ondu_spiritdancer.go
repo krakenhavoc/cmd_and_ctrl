@@ -19,15 +19,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // not copy again (a token copy's entry is an enchantment entering
 // under your control too, but the once-per-turn tally stops it).
 //
-// Declared weaker than printed for Auras: a token copy of an Aura is
-// not attached to anything and is put into the graveyard at once,
-// because the copy is not given a host to enchant.
+// A token copy of an Aura chooses what it enchants as it is created
+// (CR 303.4f, #3158); with nothing it could enchant, it isn't created
+// (CR 303.4g).
 func init() {
 	Register(Spec{
 		OracleID:     "d2ae893f-52af-4645-8712-d62fb78f901e",
 		Name:         "Ondu Spiritdancer",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A token copy of an Aura isn't attached to anything, so it doesn't stay on the battlefield."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventETB, anEnchantmentEnteredUnderYourControl,
 				onduSpiritdancerLabel, ondusCopyTheEnchantment),

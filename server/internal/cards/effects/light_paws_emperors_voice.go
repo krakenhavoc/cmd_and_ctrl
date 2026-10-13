@@ -22,24 +22,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // read at trigger time and carried on the item's Params, because the
 // entering Aura may be gone by the time the search runs — and a name
 // no Aura the controller controls has (read at resolution, as
-// printed), and the found card is put onto the battlefield and then
-// attached to Light-Paws in the search's continuation
-// (b29SearchAuraAttachedToSource). Nothing is searched if Light-Paws
-// has left the battlefield: there is nothing to attach the card to.
-//
-// Sandbox simplification, declared, weaker than printed: an Aura
-// found this way that cannot legally enchant Light-Paws ("enchant
-// land", "enchant creature you don't control") is attached anyway
-// and then put into the graveyard by the CR 704.5m state-based
-// action, where printed it would stay in the library. The search
-// offers every Aura card, because the enchant clause of a card in
-// the library is not readable from a library predicate.
+// printed), and the found card is put onto the battlefield attached
+// to Light-Paws (b29SearchAuraAttachedToSource). It ENTERS attached
+// (#3158, SearchLibrary.EntersAttachedTo), so an Aura that can't
+// legally enchant Light-Paws ("enchant land", "enchant creature you
+// don't control") stays in the library, as CR 303.4i says. Nothing is
+// searched if Light-Paws has left the battlefield: there is nothing to
+// attach the card to.
 func init() {
 	Register(Spec{
 		OracleID:     "1718a442-b878-4690-b608-a013de3d79fc",
 		Name:         "Light-Paws, Emperor's Voice",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An Aura found by the search that can't legally enchant Light-Paws goes to your graveyard instead of staying in your library."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventETB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {

@@ -229,8 +229,9 @@ func TestBulwarkOxPutsACounterOnTargetAndProtectsCounteredCreatures(t *testing.T
 
 func TestGuardianSunmareFetchesANonlandPermanentOfManaValueThreeOrLess(t *testing.T) {
 	spec, ok := Lookup(guardianSunmareOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("Guardian Sunmare: want one declared Aura caveat, got %+v", spec.Caveats)
+	// #3158: a fetched Aura chooses its host as it enters.
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("Guardian Sunmare: want complete with no caveat, got %+v", spec.Caveats)
 	}
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

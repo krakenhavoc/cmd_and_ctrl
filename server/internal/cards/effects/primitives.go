@@ -1104,6 +1104,12 @@ type SearchLibrary struct {
 	// as the card prints it; the engine decides whether the library was
 	// searched.
 	AlsoGraveyard bool
+	// EntersAttachedTo is "put that card onto the battlefield ATTACHED
+	// TO …" (Light-Paws, #3158): the found Aura enters attached to it,
+	// and one that can't legally enchant it stays in the library
+	// (CR 303.4i). Leave it zero otherwise; a found Aura then chooses
+	// what it enchants as it enters (CR 303.4f).
+	EntersAttachedTo game.TargetRef
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -1132,6 +1138,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		Unbounded:          s.Unbounded,
 		FaceDown:           s.FaceDown,
 		AlsoGraveyard:      s.AlsoGraveyard,
+		EntersAttachedTo:   s.EntersAttachedTo,
 	})
 }
 

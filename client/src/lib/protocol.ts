@@ -1225,6 +1225,12 @@ export interface PendingChoiceView {
     // 0 is a printed "you may", and the banner's Done button submits
     // the empty list to decline.
     | "retarget"
+    // #3158, CR 303.4f: "choose what this Aura enchants as it enters",
+    // for an Aura put onto the battlefield without being cast (Sun
+    // Titan's Animate Dead, Replenish). The same `pick_target` payload
+    // (cards, a card in a graveyard included, and players; min 1 max 1),
+    // answered on the board. It targets nothing.
+    | "aura_host"
     // S21: "each player sacrifices a creature of their choice"
     // (Grave Pact, Fleshbag Marauder). Answered with the generic
     // {choice_id, card_ids} payload — one entry — and rendered by the

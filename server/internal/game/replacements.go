@@ -617,6 +617,21 @@ type ReplacementEvent struct {
 	// it as a duration copy once the permanent has its entry stamp.
 	copyUntilEndOfTurn bool
 
+	// auraHost is what an Aura entering other than by resolving as an
+	// Aura spell enters attached to (CR 303.4f, #3158, aura_host.go):
+	// the object or player its controller chose in the window, or the
+	// one the effect putting it named (auraHostFixed — "attached to
+	// Light-Paws", Gift of Immortality, a copy of an Aura spell).
+	// auraHostSettled marks the choice made, so a resumed window does
+	// not ask again. Value fields, so the undo clone of a paused event
+	// copies them with the struct. The finisher attaches between the
+	// zone move and EventETB (attachEnteringAuraLocked). A fixed host
+	// on a non-Aura (Mantle of the Ancients' Equipment) is attached the
+	// same way, unchecked: CR 704.5n judges it afterwards.
+	auraHost        TargetRef
+	auraHostFixed   bool
+	auraHostSettled bool
+
 	// exchangeTextWith names the creature an "as this enters, you may
 	// exchange its text box and another creature's" choice picked (ADR
 	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by
@@ -1736,6 +1751,18 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 		// shield that will do nothing is never an ordering question.
 		applicable = g.settleUnpreventableLocked(ev, applicable)
 		if len(applicable) == 0 {
+			// CR 303.4f (#3158): the window has settled, and an Aura
+			// entering other than as a resolving Aura spell chooses
+			// what it enchants as it enters — the window's last step,
+			// before anything moves (aura_host.go).
+			switch g.settleEnteringAuraHostLocked(ev) {
+			case auraHostAsked:
+				return ev, errReplacementPending
+			case auraHostStays:
+				// CR 303.4g / 303.4i: it remains in its current zone.
+				ev.Cancel()
+				return nil, nil
+			}
 			return ev, nil
 		}
 		// A PREEMPTIVE effect applies before anything else and

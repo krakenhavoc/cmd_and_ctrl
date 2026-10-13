@@ -124,6 +124,7 @@ func TestZoneCardsAreWrittenOnlyAtKnownPoints(t *testing.T) {
 		"LegalTargetsForClauseForEffect":          "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"LegalTargetsForAnnouncedClauseForEffect": "LegalTargets.Cards: candidate UUIDs, not zone cards",
 		"queueRelatedRetargetLocked":              "LegalTargets.Cards: candidate UUIDs, not zone cards",
+		"auraHostCandidatesLocked":                "LegalTargets.Cards: candidate UUIDs, not zone cards (#3158)",
 		"snapshotZone":                            "zoneSnapshot.Cards",
 		"QueueReselectAttackForEffect":            "an option's Cards []uuid.UUID",
 		"GrantCastPermissionToCardsForEffect":     "CastPermission.Cards",

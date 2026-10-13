@@ -2433,6 +2433,15 @@ type SearchLibrarySpec struct {
 	// "additional" means. CR 614.1c, 122.6.
 	EntersWithCounters map[string]int
 
+	// EntersAttachedTo is the host the fetching effect names for an Aura
+	// it puts onto the battlefield — Light-Paws' "put that card onto the
+	// battlefield attached to Light-Paws" (#3158). Seeded onto the entry
+	// event, so the Aura enters attached and is not asked CR 303.4f's
+	// question; one that can't legally enchant the host stays in the
+	// library (CR 303.4i). The zero value is every other search, whose
+	// Aura chooses its host as it enters (aura_host.go).
+	EntersAttachedTo TargetRef
+
 	// Optional marks a "you MAY search" — the whole search is optional,
 	// which is a different thing from failing to find (#3053).
 	//
@@ -3028,6 +3037,9 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		// Copied: the event owns its map (replacements add to it), and
 		// the spec is shared with a pending prompt.
 		EntersWithCounters: copyCounterMap(spec.EntersWithCounters),
+		// #3158: "put that card onto the battlefield attached to …".
+		auraHost:      spec.EntersAttachedTo,
+		auraHostFixed: spec.EntersAttachedTo.Kind != "",
 	})
 	return err
 }
@@ -3190,6 +3202,15 @@ type TokenEntryOptions struct {
 	// the "…with haste" half of a card that pumps the token it makes.
 	// Additive: the template's own keywords are kept.
 	Keywords []string
+
+	// AttachedTo is the host a created Aura token enters attached to,
+	// when the creating effect names one — a copy of an Aura spell
+	// becomes a token attached to the copy's target (CR 707.10, #3158).
+	// Seeded onto the token's entry event, so it is not asked CR
+	// 303.4f's question, and an illegal host means the token isn't
+	// created (CR 303.4i). The zero value is every other creation,
+	// whose Aura token chooses its host as it enters (aura_host.go).
+	AttachedTo TargetRef
 }
 
 // CreateTokensForEffect is CreateTokenForEffect with entry options,

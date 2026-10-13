@@ -16,22 +16,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // through the search path, so its own ETB triggers and enters-tapped
 // clauses fire.
 //
-// Sandbox simplification, declared: an Aura fetched this way enters
-// UNATTACHED and stays that way. CR 303.4f lets Zur's controller
-// choose what it enchants as it enters; the attach target is chosen
-// by the SPELL (attachResolvedAuraLocked reads the resolving stack
-// item) and a fetch has no stack item to read, so there is nothing to
-// ask — and the attachment state-based action sweeps only an Aura
-// attached to something illegal, not one attached to nothing.
-// Weaker than printed (the Aura does nothing), never stronger — and
-// it is the Aura half of Zur's toolbox (Shielded by Faith, Diplomatic
-// Immunity) that this loses.
+// An Aura fetched this way — the Aura half of Zur's toolbox (Shielded
+// by Faith, Diplomatic Immunity) — chooses what it enchants as it
+// enters (CR 303.4f, #3158); with nothing to enchant it stays in the
+// library (CR 303.4g), and the library is shuffled either way.
 func init() {
 	Register(Spec{
 		OracleID:        "d7950018-d744-48a8-81aa-0d8384703f48",
 		Name:            "Zur the Enchanter",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"An Aura fetched this way enters unattached and stays that way — you don't get to choose what it enchants."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisAttacks("Zur the Enchanter — you may search for an enchantment with mana value 3 or less", func(g *game.Game, item *game.StackItem) error {

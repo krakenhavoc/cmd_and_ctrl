@@ -858,21 +858,19 @@ func TestB36ExtinguishAllHopeSparesEnchantmentCreaturesAndIndestructibles(t *tes
 	}
 }
 
-func TestB36ReplenishReturnsNonAuraEnchantmentsFromYourGraveyardOnly(t *testing.T) {
+// The Auras Replenish returns choose their hosts as they enter (#3158);
+// that half is aura_host_cards_test.go's.
+func TestB36ReplenishReturnsEnchantmentsFromYourGraveyardOnly(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	anthem := b17GraveyardCard(me, "Glorious Anthem", "Enchantment", "{1}{W}{W}")
 	god := b17GraveyardCard(me, "God", "Legendary Enchantment Creature — God", "{3}{W}")
-	aura := b17GraveyardCard(me, "Rancor", "Enchantment — Aura", "{G}")
 	rock := b17GraveyardCard(me, "Signet", "Artifact", "{2}")
 	theirs := b17GraveyardCard(opp, "Their Anthem", "Enchantment", "{1}{W}{W}")
 	castCatalogSpell(t, g, "Replenish", "Sorcery", b36ReplenishOracle, nil)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(anthem) || !g.Battlefield.Contains(god) {
-		t.Error("every non-Aura enchantment card returns, an enchantment creature included")
-	}
-	if !me.Graveyard.Contains(aura) {
-		t.Error("an Aura stays in the graveyard (the declared gap)")
+		t.Error("every enchantment card returns, an enchantment creature included")
 	}
 	if !me.Graveyard.Contains(rock) || !opp.Graveyard.Contains(theirs) {
 		t.Error("an artifact and an opponent's enchantment are left alone")

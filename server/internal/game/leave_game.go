@@ -641,6 +641,14 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// it would have named went with them (CR 800.4a).
 	PendingChoiceEntryDiscardFromHand: {},
 	PendingChoiceEntrySacrifice:       {},
+	// aura_host (CR 303.4f, #3158) is entry_controller's row for its
+	// reason: the chooser is the would-be controller of the entering
+	// Aura, normally their own card, which leaves the game with them
+	// (CR 800.4a); when it is not, the effect putting it has ceased to
+	// exist with its controller. The frame rides replacementResume, so
+	// finishDroppedReplacementLocked abandons the entry and the Aura
+	// stays where it was.
+	PendingChoiceAuraHost: {},
 	// mana_pick is a cost's other half: the mana would enter a pool
 	// that has left the game with its player.
 	PendingChoiceMana: {},

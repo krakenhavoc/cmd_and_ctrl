@@ -86,7 +86,7 @@ func TestLibraryToBattlefieldCardsAreRegistered(t *testing.T) {
 		plUreniOracle:                    {"Ureni of the Unwritten", CompletenessFull},
 		plMajesticOracle:                 {"Majestic Genesis", CompletenessFull},
 		plGilgameshOracle:                {"Gilgamesh, Master-at-Arms", CompletenessFull},
-		plSkyhunterOracle:                {"Armored Skyhunter", CompletenessCaveats},
+		plSkyhunterOracle:                {"Armored Skyhunter", CompletenessFull},
 		esikaGodOfTheTreeOracleID:        {"Esika, God of the Tree", CompletenessFull},
 		esikaGodOfTheTreeOracleID + "#1": {"The Prismatic Bridge", CompletenessFull},
 	} {
@@ -661,8 +661,9 @@ func TestArmoredSkyhunterPutsAnEquipmentAndOffersTheAttach(t *testing.T) {
 	if pick == nil {
 		t.Fatal("no Equipment offered")
 	}
-	if hasID(pick.ChooseCards, aura) {
-		t.Error("Auras are a declared omission and must not be offered")
+	// #3158: an Aura card is offered too (aura_host_cards_test.go).
+	if !hasID(pick.ChooseCards, aura) || !hasID(pick.ChooseCards, sword) {
+		t.Error("an Aura or Equipment card among the six is offered")
 	}
 	answerChooseCards(t, g, me.ID, sword)
 	if !g.Battlefield.Contains(sword) {
