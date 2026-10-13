@@ -1,8 +1,8 @@
 # ADR 0151 — Flip cards: a status, not a face (CR 710, CR 110.5)
 
-**Status:** Proposed · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first)
+**Status:** Accepted (owner decisions 2026-10-13) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first)
 **Issues:** [#1892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1892) (seam: flip cards, Rune-Tail, Kitsune Ascendant). Found while landing [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) §1 (#1858), which moved Rune-Tail onto this row. Registry row: `flip-cards` (to be closed with the implementation). Tracker: [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910).
-**Owner decisions:** needed before any engine code. See [Questions for the owner](#questions-for-the-owner).
+**Owner decisions:** 2026-10-13, every recommendation accepted. See [Questions for the owner (answered 2026-10-13)](#questions-for-the-owner-answered-2026-10-13).
 **Numbering:** assigned 0151 for S53 (0150–0155 are being written in parallel). After `git fetch --all --prune`, `git log --all --name-only -- 'docs/decisions/015*'` found no file numbered 015x on any ref, and every remote head (`origin/develop`, `origin/main`, `origin/cost-ledger`, `origin/docs/issue-audit`, `origin/feat/750-conditional-block-restrictions`, `origin/feat/playmats`, `origin/fix/caddy-reload-admin-off`, `origin/wip/836-one-click-default`, `pr/2326`) tops out at 0149.
 **Builds on:** [ADR 0034](0034-multi-face-cards.md) (the face model: `Card.Faces`, `ActiveFace`, `SetFace`, the `#N` catalog key), [ADR 0079](0079-transforming-a-permanent.md) (turning a permanent over in place, and its "exile/graveyard, then return transformed" siblings), [ADR 0107](0107-state-triggers-rebound-disturb-and-damage-prevention.md) §1 (state triggers) and §4 (per-face keywords), [ADR 0145](0145-meld.md) (the last layout to leave `layoutSimplifications`).
 
@@ -70,7 +70,7 @@ and one invariant, held in one place: **for a card whose `Layout` is `flip`, `Ac
 
 The cleared-on-move half is one line beside the CR 712.8a reset in `MoveCard`, under the same condition: a move whose destination is not the battlefield clears `Flipped`, as the face reset already sets a flip card back to face 0 there. Only a permanent can be flipped (CR 110.5d) and a battlefield-to-battlefield move does not exist (a blink is two moves), so every card arrives on the battlefield unflipped (CR 110.5b) unless an entry deliberately set the status in its source zone first, which is decision 6 and nothing else.
 
-Owner question 1 offers the cheaper alternative (no field, `ActiveFace` is the status) and says what it gets wrong.
+Owner question 1 offered the cheaper alternative (no field, `ActiveFace` is the status); the owner chose the field.
 
 ### 2. The verb: `Game.FlipPermanentForEffect`, and `effects.FlipThis`
 
@@ -138,7 +138,7 @@ No other entry site takes a status. A Clone, a reanimation or a blink of a flip 
 **The image.** One printed image serves both halves.
 
 - Server: `cards.ImageURIForFace` answers face 1 of a `flip` card with the top-level image, so `/cards/{id}/image?face=1` never 404s (it does today, from the hover inset).
-- Client: `cardImageURL` (`client/src/lib/cardImage.ts`) always asks for face 0 of a `flip` card, so the browser and service-worker caches hold one image per printing. `Card.svelte` turns a flipped flip card's image 180° (composed with the tap rotation, so a tapped flipped permanent is 270°, which is CR 710.3's "clear when tapped"); owner question 2. `HoverZoomOverlay.svelte`'s `otherFace` inset shows the same image turned the other way, labelled with the other half's name.
+- Client: `cardImageURL` (`client/src/lib/cardImage.ts`) always asks for face 0 of a `flip` card, so the browser and service-worker caches hold one image per printing. `Card.svelte` turns a flipped flip card's image 180° (composed with the tap rotation, so a tapped flipped permanent is 270°, which is CR 710.3's "clear when tapped") (owner decision 2). `HoverZoomOverlay.svelte`'s `otherFace` inset shows the same image turned the other way, labelled with the other half's name.
 - `faces.ts`: `LAYOUT_FLIP = "flip"`, and `needsFacePicker` stays false (CR 710.2: a flip card is only ever cast as its top half).
 
 **The bot.** Nothing new to decide. Every flip is a trigger or ability the card already resolves; the ki cycle's "you may flip it" is a `confirm`, which the heuristic's `choiceConfirm` arm (`aiseat/heuristic/choices.go`) already takes ("take the offer") unless the accept branch costs life. Flipping is never worse for the card's controller in the printed pool. The bot's permanent valuation reads the effective characteristics, which are the flipped half's after the flip.
@@ -209,21 +209,24 @@ All in the ordinary packages, no new harness:
 
 **The thing most likely to be got wrong later.** Reading `ActiveFace != 0` as "transformed". For a flip card it means flipped, which is not transformed: it keeps its colour and cost, it can't be turned back, and it is not a double-faced card. Code that means "transformed" must ask the layout too, as `manaCostForValue` and `faceForClaimLocked` already do.
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-13)
 
 1. **How is "flipped" stored?**
    - **A.** No new field: `ActiveFace == 1` on a flip card is the status. Cheapest; every printed flip card plays right. A flipped permanent that becomes a copy of another flip card shows the unflipped half (CR 110.5c, 707.3 wrong), and a flipped permanent turned face down and back up comes back unflipped.
    - **B.** A `Card.Flipped` status bool (CR 110.5), with `ActiveFace` following it for flip cards (decision 1). One snapshot-carried field more; the copy and face-down cases are right.
    - **Recommendation: B.** The rules model flipped as a status like tapped, which is already a field, and the copy rules (CR 707.3) need the status to outlive the face. The cost is one bool and its snapshot plumbing, which the drift tests enforce.
+   - **Decision:** (B) — a `Card.Flipped` status field, with `ActiveFace` following it for flip cards.
 
 2. **How does a flipped permanent look on the board?**
    - **A.** The card image turned 180°, as in paper, so the flipped half reads right side up; tapped is 270°. The hover overlay shows it the same way, with the top half as the inset.
    - **B.** The image stays upright, with a "Flipped" badge and the flipped half's name as the tile label.
    - **C.** Both: rotate, and a small badge for anyone who does not know flip cards.
    - **Recommendation: A.** It is what the physical card does, it needs no new UI element, and the flipped half's name, type and P/T are then readable on the art itself. The hover panel's text already names the half that is up.
+   - **Decision:** (A) — the image turned 180° (270° when tapped), on the board and in the hover overlay.
 
 3. **What ships in the first implementation PR?**
    - **A.** The engine (decisions 1–8) and all 19 cards in one PR.
    - **B.** The engine with three proof cards that each exercise a different path: Rune-Tail (a state trigger, the card the issue waits on), Akki Lavarunner (a self trigger, and keywords that change on the flip), and Homura (entering flipped, decision 6). The other 16 follow as a card batch issue, the ones marked "check" in decision 8 audited there.
    - **C.** The engine and Rune-Tail only.
    - **Recommendation: B.** Three cards cover every engine path this ADR adds, keep the engine PR reviewable, and the card batch is mechanical once the verb exists.
+   - **Decision:** (B) — the engine with Rune-Tail, Akki Lavarunner and Homura; the other 16 cards follow as a card-batch issue.
