@@ -30,6 +30,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/clientip"
 )
 
 // Timing constants mirror the canonical gorilla/websocket chat example
@@ -415,7 +416,7 @@ func (h *Hub) refuseFull(w http.ResponseWriter, r *http.Request) {
 	metrics.CapacityRefused(metrics.RefuseWSConnections)
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		h.log.Warn("ws upgrade failed while refusing at the connection cap", "err", err, "remote", r.RemoteAddr)
+		h.log.Warn("ws upgrade failed while refusing at the connection cap", "err", err, "remote", clientip.FromRequest(r))
 		return
 	}
 	defer func() { _ = conn.Close() }()
@@ -468,7 +469,7 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// resolveBinding logs nothing — we log here so that auth
 		// failures are visible at exactly one level.
-		h.log.Warn("ws upgrade rejected", "err", err, "remote", r.RemoteAddr)
+		h.log.Warn("ws upgrade rejected", "err", err, "remote", clientip.FromRequest(r))
 		status := statusFor(err)
 		metrics.WSUpgradeRejected(rejectReasonFor(status))
 		http.Error(w, err.Error(), status)
@@ -521,14 +522,14 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		metrics.WSUpgradeRejected(metrics.RejectUpgradeFailed)
-		h.log.Error("ws upgrade failed", "err", err, "remote", r.RemoteAddr)
+		h.log.Error("ws upgrade failed", "err", err, "remote", clientip.FromRequest(r))
 		return
 	}
 	client := &Client{
 		hub:      h,
 		conn:     conn,
 		send:     make(chan []byte, 16),
-		log:      h.log.With("remote", r.RemoteAddr, "game", gameID.String(), "player", playerID.String()),
+		log:      h.log.With("remote", clientip.FromRequest(r), "game", gameID.String(), "player", playerID.String()),
 		gameID:   gameID,
 		playerID: playerID,
 		readOnly: binding.ReadOnly,
