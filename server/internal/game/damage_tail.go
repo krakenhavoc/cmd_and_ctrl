@@ -968,6 +968,7 @@ func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLife
 		Target:            ev.DamageTarget,
 		Amount:            ev.DamageAmount,
 		DamageNotLifeLoss: notLifeLoss,
+		DamageInstance:    ev.DamageInstance,
 		Combat:            t.combat,
 		CombatStep:        t.combatStep,
 	})

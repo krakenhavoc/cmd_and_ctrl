@@ -23,27 +23,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // damaged by the fight reflects that damage too, since it triggers on
 // any damage.
 //
-// One declared simplification, weaker than printed and the same one
-// Screaming Nemesis carries: the engine emits one damage event per
-// SOURCE, so a Taunter blocked by two creatures fires twice — once per
-// blocker's damage, each with its own opponent target — where the
-// printed card fires once for the total. The same damage is reflected
-// either way; only the split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the Taunter was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	Register(Spec{
 		OracleID:        "3e41648f-c5a9-4b26-b97e-8176fe5e9c85",
 		Name:            "Brash Taunter",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If two or more sources damage it at the same time, it reflects each source's damage separately instead of the total in one go."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b35SelfWasDealtDamage(ev, source)
 			},
-			Targets: TargetPlayer("target opponent", Opponent()),
-			Key:     "Brash Taunter — it deals that much damage to target opponent",
-			Effect:  damagedCreatureReflectsChosenAmount,
+			Targets:    TargetPlayer("target opponent", Opponent()),
+			Key:        "Brash Taunter — it deals that much damage to target opponent",
+			AtBatchEnd: ThatMuchDamage(),
+			Effect:     damagedCreatureReflectsChosenAmount,
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{2}{R}, {T}: This creature fights another target creature.",

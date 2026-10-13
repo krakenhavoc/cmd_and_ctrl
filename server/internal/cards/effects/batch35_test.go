@@ -783,6 +783,7 @@ func TestB35ScreamingNemesisReflectsDamageToAnyOtherTarget(t *testing.T) {
 	assertKeywords(t, g, nemesis, "haste")
 	life := opp.Life
 	b27Damage(g, theirs, nemesis, 1)
+	g.RunStateChecksForTest() // #3172: "dealt damage" triggers wait for the batch to settle
 	b04WaitForPick(t, g, me.ID)
 	b16PickPlayer(t, g, me.ID, opp.ID)
 	passPriorityAroundTable(t, g)
@@ -791,6 +792,7 @@ func TestB35ScreamingNemesisReflectsDamageToAnyOtherTarget(t *testing.T) {
 	}
 	// Choosing the Nemesis itself does nothing — "any OTHER target".
 	b27Damage(g, theirs, nemesis, 1)
+	g.RunStateChecksForTest() // #3172: "dealt damage" triggers wait for the batch to settle
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, nemesis)
 	passPriorityAroundTable(t, g)
@@ -808,8 +810,8 @@ func TestB35ScreamingNemesisReflectsDamageToAnyOtherTarget(t *testing.T) {
 	if g.Battlefield.Contains(theirs) {
 		t.Error("the dead Nemesis still deals its 5 to the chosen creature")
 	}
-	if spec, _ := Lookup(b35ScreamingNemesisOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing no-lifegain clause is a declared gap")
+	if spec, _ := Lookup(b35ScreamingNemesisOracle); spec.Completeness != CompletenessFull {
+		t.Error("the no-lifegain clause and the batched damage both landed (#3172 cav-d)")
 	}
 }
 

@@ -206,6 +206,7 @@ func TestHexhavenInvigoratorFetchesThatManyLandsTapped(t *testing.T) {
 	}
 	before := len(battlefieldIDsNamed(g, "Forest"))
 	g.WithWriteLock(func() { _ = g.DealDamageToCreatureForEffect(uuid.Nil, inv, 3) })
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 	answerSearchByID(t, g, me.ID, lib[0], lib[1], lib[2])
 	passPriorityAroundTable(t, g)

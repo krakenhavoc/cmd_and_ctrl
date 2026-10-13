@@ -668,6 +668,7 @@ func TestIllTemperedLonerReflectsDamage(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	g.RunStateChecksForTest()
 	monSettle(t, g)
 	answerPickTargetPlayer(t, g, opp.ID)
 	monSettle(t, g)
@@ -698,6 +699,7 @@ func TestHowlpackAvengerReflectsDamageToOtherPermanents(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	g.RunStateChecksForTest()
 	monSettle(t, g)
 	answerPickTargetPlayer(t, g, opp.ID)
 	monSettle(t, g)

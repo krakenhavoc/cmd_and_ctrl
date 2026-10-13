@@ -1,0 +1,6 @@
+---
+title: "Simultaneous damage and discards read as one event"
+date: 2026-10-13
+issues: [3172]
+---
+**Simultaneous damage and discards read as one event** (#3172 slice cav-d, [ADR 0108 amendment 2026-10-13](decisions/0108-turn-scoped-effects-object-history-and-damage-shields.md), CR 120.3 / 510.2 / 603.2c) — "whenever this is dealt damage, … that much" and "whenever you … one or more …, … that many" fired once per damage source, discarded card or entering permanent. `TriggeredAbility.AtBatchEnd` now has a second reading, `BatchEndCondition.Total` (`game/batch_total.go`): the match is staged and settled once the batch is over, with the settled event's `Amount` rewritten to the total. `BatchTotalDamage` sums the damage one damage instance dealt to one object (new transient `Event.DamageInstance`, so a double-blocked creature triggers once and Blasphemous Act is still one trigger per creature); `BatchTotalEvents` counts the batch's matching events. Card side: `AtBatchEnd: ThatMuchDamage()` / `ThatManyEvents()`. **Cards (all Full):** Repercussion, Barbed Servitor, Brash Taunter, Hexhaven Invigorator, Screaming Nemesis, Ill-Tempered Loner, Howlpack Avenger, Wrathful Red Dragon, Wrathful Raptors, Pain for All, Cryptcaller Chariot, Magmakin Artillerist, Ingenious Artillerist, and Widespread Brutality (a stale caveat, proved by a test).

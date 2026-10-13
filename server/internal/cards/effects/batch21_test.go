@@ -1145,8 +1145,8 @@ func TestB21WrathfulRedDragonReflectsDamageDealtToYourDragons(t *testing.T) {
 	if latestPickTarget(g, opp.ID) != nil {
 		t.Error("their Dragon taking damage is not a Dragon YOU control")
 	}
-	if spec, _ := Lookup(b21WrathfulRedDragonOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the per-source batching gap must be declared")
+	if spec, _ := Lookup(b21WrathfulRedDragonOracle); spec.Completeness != CompletenessFull {
+		t.Error("the per-source batching gap is closed (#3172 cav-d)")
 	}
 }
 
