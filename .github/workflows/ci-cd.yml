@@ -714,8 +714,9 @@ jobs:
   # `develop` alone, so only this job, on a push to develop, can read
   # it. It no longer publishes to main, which lets the `main` ruleset
   # drop its deploy-key bypass: main is only ever a merge of develop
-  # (plus the odd hotfix), so its census is develop's, and every main
-  # run so far has ended "census block unchanged; nothing to publish".
+  # (plus the odd hotfix), so its census is develop's: the main runs
+  # checked for #3335 all ended "census block unchanged; nothing to
+  # publish".
   # A hotfix that changes the catalog gets its census on develop once
   # main is merged back, which docs/environments.md already requires.
   # Until the owner creates the environment's secret, GitHub falls back

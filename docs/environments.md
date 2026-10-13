@@ -280,8 +280,8 @@ dead links.
 pushes the regenerated catalog census with, back to `develop`
 (Discussion #1231, review points 2 and 3). It used to publish to
 `main` as well. Since #3335 it does not: `main` is a merge of
-`develop`, so its census is `develop`'s (every `main` run before then
-ended "census block unchanged"), and that lets the `main` ruleset have
+`develop`, so its census is `develop`'s (the `main` runs checked for
+#3335 ended "census block unchanged"), and that lets the `main` ruleset have
 no bypass at all. It is a repository
 deploy key rather than `GITHUB_TOKEN` or a ruleset bypass for the
 GitHub Actions app, on purpose: a deploy key can be scoped to exactly
