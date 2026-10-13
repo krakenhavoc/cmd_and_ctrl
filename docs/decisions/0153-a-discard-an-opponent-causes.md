@@ -1,8 +1,8 @@
 # ADR 0153 — A discard an opponent causes: who controls the cause, and a discard that enters the battlefield (CR 614.1a, CR 701.9a)
 
-**Status:** Proposed · 2026-10-13 · S53 — Faces, zones, and shared payment (tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910))
+**Status:** Accepted (owner decisions 2026-10-13) · S53 — Faces, zones, and shared payment (tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910))
 **Issues:** [#1861](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1861) (seam: "if an opponent causes you to discard this card", Nullhide Ferox; found landing ADR 0106 PR 6, #1793, tracker #1784). Registry row: `discarded-by-an-opponent`.
-**Owner decisions:** needed. See [Questions for the owner](#questions-for-the-owner). Nothing in the engine changes until they are answered.
+**Owner decisions:** all six questions answered on 2026-10-13, each with the recommended option. See [Questions for the owner (answered 2026-10-13)](#questions-for-the-owner-answered-2026-10-13). The Decisions section stands as written.
 **Numbering:** assigned **0153** for S53. After `git fetch --all --prune` I read the `docs/decisions/` file names on every remote head (`origin/develop`, `origin/main` and the seven other branches). The highest number anywhere is 0149, and 0150–0155 are being written for S53 in parallel.
 **Builds on:** [ADR 0013](0013-replacement-effects.md) (the CR 614 pipeline; §5g, a discard counted wherever the card lands; §10a, the three discard causes), [ADR 0061](0061-token-creation-and-discard-are-replaceable-events.md) (`RepEventDiscard`, #650), #1320 (`MoveCause` on zone-change events), #478 / #1322 (the resumable battlefield entry and the entry batch), [ADR 0098](0098-discard-as-a-permanent-would-enter.md) Decision 4 (an entry the window sends elsewhere), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) owner decision 6 (a PR lands every card its seam unblocks), [ADR 0126](0126-bots-that-play-their-decks.md) (the heuristic prices declared card facts).
 
@@ -44,7 +44,7 @@ The Scryfall dump the repo uses (`data/scryfall/default-cards.json`) has **17** 
 
 So the issue is right about the battlefield redirect. It is wrong that the cause controller is missing everywhere: it is on the event, just not on the replacement event. It also undercounts the family. The seam closes for 6 cards, and the predicate in §4 lets the other 10 land in the same sprint.
 
-## Decisions (proposed)
+## Decisions
 
 ### 1. The replacement event carries the cause
 
@@ -143,7 +143,7 @@ Card tests (one file per card per convention) for all 16 cards, each verified ag
 - **Let `routeDestinationLocked` resolve `ZoneBattlefield` and `MoveCard` it there.** This skips the entire entry contract (see Context). Rejected.
 - **One combined window for the discard and the entry.** That would need the replacement loop to change event kind mid-loop and re-gather appliers, which no other event does. Decision 3 explains why two chained windows are rules-equivalent here.
 
-## Questions for the owner
+## Questions for the owner (answered 2026-10-13)
 
 1. **Where the battlefield redirect is handled.**
    - (a) In the engine: the one branch in `executeZoneRouteLocked` that hands a discard settled on the battlefield to the entry pipeline (§2).
@@ -152,11 +152,15 @@ Card tests (one file per card per convention) for all 16 cards, each verified ag
 
    **Recommendation: (a).** (b) cancels the discard, so the card is not "discarded this way" and the discard event is lost (see Alternatives). (c) leaves the issue's own card, Nullhide Ferox, waiting.
 
+   **Decision:** (a). The engine branch in `executeZoneRouteLocked` hands a discard that settles on the battlefield to the entry pipeline.
+
 2. **The entry's replacement window.**
    - (a) A second, chained CR 614 window for the entry (§3), so enters-tapped, enters-with-counters and entry-exile effects apply.
    - (b) No entry window: the card lands with only what the discard replacement said.
 
    **Recommendation: (a).** CR 614.12 makes entry replacements apply to this entry. (b) would let a Baloth dodge an opponent's "creatures enter tapped" effect.
+
+   **Decision:** (a). The entry gets its own chained CR 614 window.
 
 3. **Log order of the two events.**
    - (a) `EventETB` first, then `EventDiscardCard` carrying the true landing zone, emitted at the entry's terminal outcome (§2).
@@ -164,11 +168,15 @@ Card tests (one file per card per convention) for all 16 cards, each verified ag
 
    **Recommendation: (a).** Triggers are gathered together either way (CR 603.3). (b) can name the wrong zone when the entry window redirects or cancels the card.
 
+   **Decision:** (a). `EventETB` comes first, then `EventDiscardCard` with the true landing zone.
+
 4. **An "unless you discard" forced by an opponent's spell** (Painful Quandary: "that player loses 5 life unless they discard a card"). Under CR 118.12 the discard is a cost the player chooses to pay while the opponent's spell resolves. The engine files this one as an effect discard today, because `painfulQuandaryDiscard` queues an ordinary discard prompt. So under §1 it would put a Baloth onto the battlefield.
    - (a) Leave it as it is: the opponent's resolving spell is what makes you discard, so the card's replacement applies. No change.
    - (b) Make it a cost: move Painful Quandary onto the pay-unless discard (`PayActionDiscard`, `DiscardCauseCost`), so the Baloth goes to the graveyard. This matches the reading that costs are not effects (Library of Leng's ruling).
 
    **Recommendation: (a)** for now. The printed trigger is "a spell or ability an opponent controls **causes** you to discard", and the opponent's spell is what puts the choice in front of you. Library of Leng's ruling is about a different phrase ("an effect causes"). I could not find a Gatherer ruling that settles this combination, so it is worth a check. Either answer is one small change in Painful Quandary's file, not in the engine.
+
+   **Decision:** (a). An opponent's Painful Quandary stays an effect discard, so the replacement applies. No Gatherer ruling was found for this combination, so it is still worth a check.
 
 5. **Scope of the card PR.**
    - (a) All 16 Commander-legal cards (the 6 replacements and the 10 triggers) in PR 2, per ADR 0106 owner decision 6.
@@ -176,11 +184,15 @@ Card tests (one file per card per convention) for all 16 cards, each verified ag
 
    **Recommendation: (a).** The triggers need only §4's predicate, and splitting them out leaves them uncatalogued for no engine reason.
 
+   **Decision:** (a). All 16 Commander-legal cards land in the card PR.
+
 6. **The triggered "this card" when the discard was sent to exile instead** (madness or Rest in Peace ordered first).
    - (a) Trigger from the graveyard only, like cycling's "when you cycle this card", with a caveat.
    - (b) Watch from the graveyard and exile both.
 
    **Recommendation: (a)** to match the cycling precedent. (b) is a one-field change if the owner wants the corner covered.
+
+   **Decision:** (a). The trigger watches from the graveyard only, with a caveat on the card.
 
 ## Consequences
 
