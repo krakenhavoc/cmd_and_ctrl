@@ -281,8 +281,9 @@ NextExtraRef  int           // per game; mints ExtraTurn.Ref
 - **Skipped steps (CR 500.11) are unchanged.** The step-transition
   replacement window still cancels a step on entry, and the cursor pops
   the next entry. Removing the declare blockers and combat damage steps
-  when nobody attacks (CR 508.8) could be a plan edit too, but it is not
-  part of this ADR.
+  when nobody attacks (CR 508.8) is not a plan edit after all - it
+  needs the board, so it rides the step-exists predicate (2026-10-12
+  amendment, #2899).
 
 ## Decision 4 — Extra phases and steps (CR 500.8-500.10a, 505.1a)
 
@@ -744,8 +745,8 @@ reads the `combat_damage` stop and has no grid row of its own).
   but binding it to "that turn" is a card-PR question.
 - **The CR 514.3a extra cleanup step.** It could be a plan splice, but
   [ADR 0035](0035-until-end-of-turn-effects.md)'s simplification stands.
-- **Skipping declare blockers and combat damage when nobody attacks**
-  (CR 508.8).
+- ~~**Skipping declare blockers and combat damage when nobody attacks**
+  (CR 508.8).~~ Done: see the 2026-10-12 amendment (#2899).
 - **Per-target attack restrictions** (Port Razer, Bloodthirster).
 - **"Until your next turn" durations** (#755) and **"next untap step"**
   (#751). Both use this ADR's identity, but neither is built here.
@@ -1411,3 +1412,58 @@ extra turns need is small, so only that half is built.
    "that turn". Ugin's Nexus is the same replacement with the "an
    opponent" comparison dropped, and waits on its other half (the
    exile-instead, take-a-turn clause), not on this seam.
+
+## Amendment (2026-10-12, #2899) — no attackers, no blockers, no damage (CR 508.8)
+
+Decision 3 ("skipped steps are unchanged") and Decision 14 left this
+out: "if no creatures are declared as attackers or put onto the
+battlefield attacking, skip the declare blockers step and the combat
+damage step" (CR 508.8, checked against the 2026-09-25 text). **Done.**
+The engine used to walk both steps anyway, so a player could be given
+priority in a step the turn does not have, and "at the beginning of the
+declare blockers step" or combat-damage triggers fired in a combat with
+nothing in it.
+
+1. **It is not a plan edit.** The plan is built when the turn begins,
+   before anyone has declared an attacker, so it cannot know. Decision 12
+   made the same call for #717's first-strike step: the plan lists the
+   step in every combat, and `stepExistsLocked` decides as the cursor
+   lands on it. CR 508.8 is the second and third answers of that same
+   predicate: `declare_blockers`, `first_strike_damage` and
+   `combat_damage` do not exist in a combat nothing attacked in. The
+   walk-through is the one a cancelled step makes (CR 500.11), so
+   nothing announces, no turn-based action runs, nobody gets priority,
+   `StepsBegun` does not count the steps, and the step-transition
+   replacement window never opens for them. `end_combat` still happens:
+   the rule names two steps.
+2. **"Attacked" is a record, not a scan.** `Game.combatHadAttackers` is
+   set by `noteAttackAnnouncedLocked`, the one door a declared attacker
+   and a creature put onto the battlefield attacking (CR 506.3c, which
+   announces nothing but is marked announced) both pass through, and is
+   cleared with the rest of combat as the end of combat step ends, so
+   an additional combat phase (#753) asks the question afresh. A
+   creature attacking right now also counts, which covers a declaration
+   staged but not yet locked in. A live scan alone would be wrong the
+   other way: an attacker that dies in the declare attackers step's own
+   priority window WAS declared, and the declare blockers step still
+   happens. The field is carried by `Clone` / `RestoreFrom` and the
+   persisted snapshot (additive, no schema bump; a file without it falls
+   back to the live board).
+3. **A restore point written before the plan.** `derivePrePlanOrdinals`
+   leaves the two steps out of its counts when nothing is attacking, the
+   way it already leaves out the first-strike step. A file past the end
+   of combat cannot say whether anything attacked and reads as though
+   nothing did.
+4. **The wire is unchanged.** `TurnView.upcoming` still lists the two
+   steps until the declaration is over, like `first_strike_damage`: the
+   plan is the template, and what the combat will walk is decided as the
+   cursor lands. The client and the bots act on the current step, so
+   neither can wait on a prompt in a step that never begins; the
+   enumerator offers nothing there for the same reason.
+5. **Effect on the pinned bot games.** The arena's seeded games are
+   shorter by the passes the seats used to make in empty combats (see
+   `botarena/opening_roll_pin_test.go`), and four corpus boards that
+   walked a whole turn (`fired_arcane_denial`, `rebound_on_stack`,
+   `rebound_free_cast_grant`, `suspend_haste`) were regenerated: the old
+   fixture held a turn with steps the rules no longer give it, which no
+   board can still build.

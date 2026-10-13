@@ -623,3 +623,64 @@ semantics did not move. A fix to a helper that changes what a board
 actually represents (a different card, a different zone, a different
 player) is a new board under a new name, not a regeneration of the old
 one.
+
+## Amendment 2026-10-12 (#2899): a third sanctioned regeneration — a rules change in the scripted boards
+
+The #1698 amendment covers a schema addition and the #1712 one a test
+double that started doing what production always did. This one is a
+third shape, and it is recorded separately because the case is not
+identical: a **rules change** altered what four scripted boards play
+through, with no change to what any snapshot key means.
+
+**What happened.** CR 508.8 (#2899, [ADR 0059](0059-turn-machinery.md)'s
+2026-10-12 amendment): a combat in which no creature is declared as an
+attacker or put onto the battlefield attacking no longer has a declare
+blockers, first strike damage or combat damage step. Four corpus boards
+walk a whole turn with nobody attacking, on their way to the state they
+freeze: `fired_arcane_denial`, `rebound_on_stack`,
+`rebound_free_cast_grant` and `suspend_haste`. They used to pass through
+`declare_blockers` and `combat_damage`; they now go from
+`declare_attackers` straight to `end_combat`, because those steps no
+longer exist in that combat. The other boards do not walk an empty combat
+and are untouched.
+
+**Why this is not a compatibility break.** Decision P10's test, applied
+the way #1712 applied it: the four ORIGINAL v8 files, unmodified from
+`origin/develop`, still pass `TestSnapshotCorpusRestores` under the
+binary that carries the change (verified before touching any of them:
+`v8/fired_arcane_denial.json`, `v8/rebound_on_stack.json`,
+`v8/rebound_free_cast_grant.json` and `v8/suspend_haste.json` all PASS).
+Regenerating them is not fixing a restore failure; it is unblocking
+`TestSnapshotCorpusBoardsStillMatchTheirFixtures`, which cannot tell "the
+wire format changed" apart from "the scripted board now plays a turn the
+rules shortened". The one field this change adds, `combatHadAttackers`,
+is additive and `omitempty`: a file written without it restores as
+false, and `stepExistsLocked` then reads the live board
+(`combatHasAttackersLocked`), so the old file is read correctly. A table
+resting in `declare_blockers` with nothing attacking when the deploy
+lands, whose restore point therefore has no such key, restores and moves
+on to `end_combat` without stalling:
+`TestRestorePointFromBeforeThisChangeRestingInDeclareBlockersMovesOn`.
+No schema bump.
+
+**What changed in the files, and why that is the whole change.** Hunk by
+hunk against the committed originals (sample in the PR body), each file
+differs only by what the shortened combat removes: the `step_began`
+events for `declare_blockers` and `combat_damage` (and `first_strike_damage`
+never began), the matching `turnTally.stepsBegun` entries, every
+subsequent event `seq`, and `turnTally.firstEvent` / `eventSeq`, which
+move down by the number of removed events (two per empty combat the
+board walks). No key was renamed and no value took on a new meaning.
+
+**What was done.** The four files under
+`internal/game/testdata/snapshots/v8/` named above were deleted and
+rewritten by `TestWriteSnapshotCorpus -write-corpus`, in the same PR as
+this amendment. No other fixture was touched.
+
+**What this does not authorise.** Same boundary as the two amendments
+above: not a license to regenerate a fixture because a rule changed. It
+applies where the only difference is that a scripted board now plays out
+a turn with fewer steps than before, the original fixtures still restore
+unchanged, and the amendment is written first. A rules change that
+alters what a snapshot key means, or makes an old file restore wrongly,
+is a schema bump.

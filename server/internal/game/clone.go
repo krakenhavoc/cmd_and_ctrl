@@ -399,6 +399,7 @@ func (g *Game) cloneLocked() *Game {
 	// same reason.
 	out.blockDeclarationClosed = g.blockDeclarationClosed
 	out.attacksDeclared = g.attacksDeclared
+	out.combatHadAttackers = g.combatHadAttackers
 	// #716: and the combat damage steps' participation record rewinds
 	// with the combat it belongs to. An undo back into the priority
 	// window between the two steps that dropped it would let every
@@ -1170,6 +1171,7 @@ func (g *Game) RestoreFrom(src *Game) {
 	g.blocksDeclared = src.blocksDeclared
 	g.blockDeclarationClosed = src.blockDeclarationClosed
 	g.attacksDeclared = src.attacksDeclared
+	g.combatHadAttackers = src.combatHadAttackers
 	g.firstStrikeStepParticipants = src.firstStrikeStepParticipants
 	g.Listeners = src.Listeners
 	g.PendingChoices = src.PendingChoices

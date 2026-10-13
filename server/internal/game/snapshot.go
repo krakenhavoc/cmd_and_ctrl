@@ -506,6 +506,14 @@ type GameSnapshot struct {
 	// for. No schema bump.
 	AttacksDeclared bool `json:"attacksDeclared,omitempty"`
 
+	// CombatHadAttackers is whether anything has attacked this combat
+	// phase (CR 508.8, #2899, Game.combatHadAttackers) - what keeps the
+	// declare blockers and combat damage steps in the turn after every
+	// attacker has left. A file written before it restores as false,
+	// which is right outside combat and, mid-combat, falls back to the
+	// live board (stepExistsLocked reads both). No schema bump.
+	CombatHadAttackers bool `json:"combatHadAttackers,omitempty"`
+
 	// AttackDefenders is each attacker's defending player as its
 	// attack was last pointed (#1364, Game.attackDefenders) — what
 	// lets a creature whose planeswalker or battle has left still be
@@ -1806,6 +1814,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.BlockDeclarationClosed = g.blockDeclarationClosed
 	s.AttacksDeclared = g.attacksDeclared
+	s.CombatHadAttackers = g.combatHadAttackers
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
@@ -2687,6 +2696,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.blockDeclarationClosed = s.BlockDeclarationClosed
 	g.attacksDeclared = s.AttacksDeclared
+	g.combatHadAttackers = s.CombatHadAttackers
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)

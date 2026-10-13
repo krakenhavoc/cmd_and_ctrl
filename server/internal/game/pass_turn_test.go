@@ -162,9 +162,16 @@ func TestEndTurnWalksEveryStepAndFiresStepTriggers(t *testing.T) {
 	g.SettlePassTurn()
 	opponentPassesUntil(t, g, opp, func() bool { return g.Turn.Seq != seq })
 
-	want := []Step{StepBeginCombat, StepDeclareAttackers, StepDeclareBlockers, StepCombatDamage,
+	// CR 508.8: nothing attacked, so the declare blockers and combat
+	// damage steps never began (#2899).
+	want := []Step{StepBeginCombat, StepDeclareAttackers,
 		StepEndCombat, StepPostcombatMain, StepEnd, StepCleanup}
 	got := stepsBegunInTurn(g, seq)
+	for _, b := range got {
+		if b == StepDeclareBlockers || b == StepCombatDamage {
+			t.Errorf("step %s began in a turn nothing attacked in (began: %v)", b, got)
+		}
+	}
 	for _, s := range want {
 		found := false
 		for _, b := range got {

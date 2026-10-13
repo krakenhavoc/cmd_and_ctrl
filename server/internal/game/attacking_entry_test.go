@@ -197,7 +197,7 @@ func TestPutOntoBattlefieldAttackingIgnoresAnUnattackableDefender(t *testing.T) 
 	g := newActiveGame(t)
 	me := g.Seats[0]
 	ninja := pushHandCreature(t, g, me, "Ninja", 2, 2)
-	advanceIntoStep(t, g, StepDeclareBlockers)
+	advanceIntoStep(t, g, StepDeclareAttackers)
 
 	g.WithWriteLock(func() {
 		if _, err := g.PutFromHandOntoBattlefieldForEffect(ninja, HandEntryOptions{

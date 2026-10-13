@@ -347,6 +347,7 @@ battlefield.owner	custom(uuid.UUID)
 blockDeclarationClosed	bool
 blocksDeclared	map:array
 blocksDeclared{}	bool
+combatHadAttackers	bool
 continuations	object
 continuations.choiceResumeFrames	number:int
 continuations.delayedTriggerEffects	number:int

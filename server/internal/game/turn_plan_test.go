@@ -59,7 +59,10 @@ func addPhases(t *testing.T, g *Game, anchor AnchorKind, kinds ...PhaseKind) []i
 	return ids
 }
 
-var combatSteps = []Step{StepBeginCombat, StepDeclareAttackers, StepDeclareBlockers, StepCombatDamage, StepEndCombat}
+// combatSteps is what a combat nothing attacks in walks: CR 508.8
+// (#2899) skips the declare blockers and combat damage steps, which
+// the plan still lists. The tests here never declare an attacker.
+var combatSteps = []Step{StepBeginCombat, StepDeclareAttackers, StepEndCombat}
 
 func concatSteps(parts ...[]Step) []Step {
 	var out []Step
@@ -71,8 +74,9 @@ func concatSteps(parts ...[]Step) []Step {
 
 // TestTurnPlanWalksTheTemplate: with nothing added, the plan is the
 // fixed sequence it replaced, #717's first-strike step still walked
-// through when nobody has first strike, and every template phase has
-// its template id.
+// through when nobody has first strike, the declare blockers and
+// combat damage steps walked through when nobody attacks (CR 508.8),
+// and every template phase has its template id.
 func TestTurnPlanWalksTheTemplate(t *testing.T) {
 	g := newActiveGame(t)
 	if g.Turn.Step != StepUpkeep || g.Turn.PhaseID != 1 {
@@ -81,8 +85,7 @@ func TestTurnPlanWalksTheTemplate(t *testing.T) {
 	got := walkRestOfTurn(t, g)
 	want := []plannedPos{
 		{StepDraw, 1}, {StepPrecombatMain, 2},
-		{StepBeginCombat, 3}, {StepDeclareAttackers, 3}, {StepDeclareBlockers, 3},
-		{StepCombatDamage, 3}, {StepEndCombat, 3},
+		{StepBeginCombat, 3}, {StepDeclareAttackers, 3}, {StepEndCombat, 3},
 		{StepPostcombatMain, 4}, {StepEnd, 5},
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -128,7 +131,7 @@ func TestRelentlessAssaultShapeFromPrecombatMain(t *testing.T) {
 	if !reflect.DeepEqual(stepsOf(walked), wantSteps) {
 		t.Fatalf("walked %v\nwant   %v", stepsOf(walked), wantSteps)
 	}
-	if walked[0].phaseID != 6 || walked[5].phaseID != 7 || walked[6].phaseID != 3 || walked[11].phaseID != 4 {
+	if walked[0].phaseID != 6 || walked[3].phaseID != 7 || walked[4].phaseID != 3 || walked[7].phaseID != 4 {
 		t.Errorf("phase ids along the walk: %+v", walked)
 	}
 	// combat 1, main 2, combat 2, main 3.
@@ -458,13 +461,13 @@ func TestTurnPlanSnapshotRoundTrip(t *testing.T) {
 func TestHandMovedCursorRebuildsThePlan(t *testing.T) {
 	g := newActiveGame(t)
 	g.WithWriteLock(func() {
-		g.Turn.Step = StepDeclareBlockers
+		g.Turn.Step = StepBeginCombat
 		g.Turn.Phase = PhaseCombat
 	})
 	if _, err := g.AdvanceStep(); err != nil {
 		t.Fatal(err)
 	}
-	if g.Turn.Step != StepCombatDamage || g.Turn.PhaseID != 3 {
-		t.Fatalf("after a hand-moved declare blockers: %+v", g.Turn)
+	if g.Turn.Step != StepDeclareAttackers || g.Turn.PhaseID != 3 {
+		t.Fatalf("after a hand-moved begin combat: %+v", g.Turn)
 	}
 }
