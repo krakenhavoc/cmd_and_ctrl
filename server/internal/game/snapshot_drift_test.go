@@ -432,6 +432,9 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// ADR 0154 decision 3: the epoch of an off-battlefield host (Animate
+	// Dead's graveyard card), carried for AttachedTo's reason.
+	"AttachedEpoch", carried, "",
 	// The layer-2 control baseline. Carried rather than rebuilt: a
 	// restore that dropped it would re-capture the CURRENT (stolen)
 	// controller as the base, and the creature would never go home.
@@ -526,6 +529,10 @@ var cardFields = plan(
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",
+	// ADR 0154 decision 4: Animate Dead's gained enchant clause and the
+	// creature it names, carried for Bestowed's reason.
+	"EnchantSwapped", carried, "",
+	"EnchantReturned", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for
 	// Monstrous's reason.

@@ -337,6 +337,8 @@ func (g *Game) resetAsNewObjectLocked(oldID uuid.UUID) uuid.UUID {
 		c.Renowned = false
 		c.DealtCombatDamage = false
 		c.Bestowed = false
+		c.EnchantSwapped = false
+		c.EnchantReturned = ObjectRef{}
 		c.Saddled = false
 		c.SaddledBy = nil
 		c.Suspected = false

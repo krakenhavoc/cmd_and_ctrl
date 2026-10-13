@@ -8328,6 +8328,32 @@ Static: []game.StaticAbility{PumpSelfCreatureOrAttachedPer(1, 1, count)}, // "Th
   (CR 702.103f). Write none of that.
 - Never build the offer by hand: `Bestow` is what sets `AlternativeCost.Bestow`.
 
+### Auras that enchant a card in a graveyard (ADR 0154, #1780)
+
+"Enchant creature card in a graveyard" is an ordinary enchant clause, built
+from the graveyard target clause. The Aura resolves attached to the card
+(CR 608.3c) and stays legal while that card is the same object in a
+graveyard. `effects/graveyard_auras.go` has the pieces:
+
+```go
+Targets: EnchantCreatureCardInGraveyard(),                             // Animate Dead
+Targets: EnchantCardInGraveyard("instant", Instant()),                 // a Spellweaver Volute clause
+Triggered: []game.TriggeredAbility{WhenThisEnters("Animate Dead — …", Do(AnimateEnchantedCard{}))},
+Triggered: []game.TriggeredAbility{WhenThisEnters("Dance of the Dead — …", Do(AnimateEnchantedCard{Tapped: true}))},
+```
+
+- `AnimateEnchantedCard` is the whole "it loses … and gains … Return
+  enchanted creature card … attach this Aura to it. When this Aura leaves
+  the battlefield, that creature's controller sacrifices it." Write none
+  of it by hand.
+- The "Enchanted creature …" statics (`PumpAttached`, `enchantedDoesntUntap`)
+  reach nothing while the host is a card in a graveyard.
+- "At the beginning of the upkeep of enchanted creature's controller" is
+  `On(game.EventBeginUpkeep, UpkeepOfEnchantedCreaturesController, …)`.
+- An Aura put onto the battlefield without being cast can't choose what it
+  enchants yet (CR 303.4f, #3158); it enchants nothing and goes to the
+  graveyard.
+
 ### Suspect (CR 701.60, #2698)
 
 Suspected is a designation that **gives** abilities rather than switching

@@ -2171,6 +2171,42 @@ func (g *Game) ReturnFromGraveyardWithCountersForEffect(cardID, controller uuid.
 // enters with. FaceDownNone is every face-up return; nil counters is
 // every return that names none.
 func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int) (uuid.UUID, error) {
+	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, nil)
+}
+
+// ReturnFromGraveyardToBattlefieldThenForEffect is
+// ReturnFromGraveyardTappedForEffect to the battlefield with the rest of
+// the effect as a continuation, the graveyard twin of
+// ReturnFromExileToBattlefieldThenForEffect: `then` is told the entering
+// permanent's ID (a graveyard return keeps the instance ID) once the
+// entry is complete, or uuid.Nil when nothing entered.
+//
+// Animate Dead is the caller (ADR 0154 decision 5): "return enchanted
+// creature card to the battlefield under your control and attach this
+// Aura to it" must attach to the permanent, and a returning Clone or a
+// creature with a pay-life entry pauses the entry, so the attach cannot
+// be written on the line after the return.
+//
+// `then` runs exactly once: at once when nothing paused, from the resume
+// when something did, and with uuid.Nil when the card is not in a
+// graveyard, when a replacement cancelled or redirected the entry, or
+// when the prompt was taken away.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
+	if z := g.findCardZoneLocked(cardID); z == nil || z.Kind != ZoneGraveyard {
+		if then != nil {
+			return then(g, uuid.Nil)
+		}
+		return nil
+	}
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, then)
+	return err
+}
+
+// returnFromGraveyardEntryLocked is the body of every graveyard return,
+// with the caller's continuation for a battlefield entry (nil for none).
+func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -2248,6 +2284,11 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 		// before the window opens so a counter replacement sees it.
 		for name, n := range counters {
 			ev.AddCounterAtETB(name, n)
+		}
+		if then != nil {
+			// ADR 0154: the caller's continuation, run from the landing
+			// whether the entry settled inline or on a resume.
+			ev.entryTail = &entryTail{then: then}
 		}
 		return g.enterBattlefieldThroughPipelineLocked(ev)
 	}
