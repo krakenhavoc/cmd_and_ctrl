@@ -1382,6 +1382,20 @@ type Spec struct {
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
 
+	// DiscardByOpponent declares what "if a spell or ability an
+	// opponent controls causes you to discard this card" does for this
+	// card while it sits in a hand: game.DiscardByOpponentBattlefield
+	// (Obstinate Baloth) or game.DiscardByOpponentTrigger (Sand
+	// Golem). It rides the wire as CardView.discard_by_opponent so the
+	// bot can price an opponent's discard (ADR 0153 §5). Declared by
+	// the card's constructor, never inferred from its text.
+	DiscardByOpponent game.DiscardByOpponentKind
+
+	// DiscardByOpponentForHand is the same declaration made for every
+	// card in this permanent's controller's hand while it is on the
+	// battlefield: game.DiscardByOpponentLibrary on Nephalia Academy.
+	DiscardByOpponentForHand game.DiscardByOpponentKind
+
 	// UntapStep declares the printed clause "untap <these> during
 	// each other player's untap step" — Seedborn Muse, Unwinding
 	// Clock, Drumbellower, Bender's Waterskin, and the second half

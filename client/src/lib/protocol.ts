@@ -3892,6 +3892,13 @@ export interface CardView extends CastSurfaceView {
   // "Add {X}" clause). Smart autopass reads it to hold the main phase
   // for "Cast anyway". Absent when false.
   may_make_mana_unautomated?: boolean;
+  // ADR 0153 §5: on a hand card that does something when a spell or
+  // ability an opponent controls makes its owner discard it. Declared by
+  // the card, never inferred: "battlefield" (put onto the battlefield
+  // instead), "library" (on top of its owner's library instead) or
+  // "trigger" (the discard triggers an ability of the card). Absent
+  // otherwise.
+  discard_by_opponent?: "battlefield" | "library" | "trigger";
   // #992: the announce surface of the face that is UP. Inherited
   // from CastSurfaceView, so every existing `card.legal_targets`
   // read is unchanged and `cardAsFace` has an identically shaped

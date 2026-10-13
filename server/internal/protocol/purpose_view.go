@@ -58,6 +58,10 @@ type PurposeView struct {
 	// whenever its controller discards a card it matches (ADR 0126's
 	// amendment of 2026-10-06).
 	DiscardPayoff *DiscardPayoffView `json:"discard_payoff,omitempty"`
+	// OnOpponentDiscard is present on a triggered row of a card that
+	// pays out when an opponent's spell or ability makes its controller
+	// discard that card, in discard_payoff's units (ADR 0153 §5).
+	OnOpponentDiscard *DiscardPayoffView `json:"on_opponent_discard,omitempty"`
 	// LandfallPayoff is present on a triggered row that pays out
 	// whenever a land enters under its controller's control, and says
 	// what it pays for each land (#3072).
@@ -270,6 +274,15 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 	}
 	if d := p.DiscardPayoff; d != nil {
 		v.DiscardPayoff = &DiscardPayoffView{
+			Any:                d.Any,
+			Types:              append([]string(nil), d.Types...),
+			Tokens:             d.Tokens,
+			Counters:           d.Counters,
+			DamageEachOpponent: d.DamageEachOpponent,
+		}
+	}
+	if d := p.OnOpponentDiscard; d != nil {
+		v.OnOpponentDiscard = &DiscardPayoffView{
 			Any:                d.Any,
 			Types:              append([]string(nil), d.Types...),
 			Tokens:             d.Tokens,

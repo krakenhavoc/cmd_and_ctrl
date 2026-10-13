@@ -476,6 +476,15 @@ type CardDef struct {
 	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
 	// library_top.go.
 	LibraryTopVisible LibraryTopVisibility
+
+	// DiscardByOpponent and DiscardByOpponentForHand are what the card
+	// declares about "if a spell or ability an opponent controls causes
+	// you to discard" (ADR 0153 §5): its own shape while it sits in a
+	// hand, and the shape it gives every card in its controller's hand
+	// while it is on the battlefield (Nephalia Academy). Read through
+	// CatalogDiscardByOpponent; see discard_by_opponent.go.
+	DiscardByOpponent        DiscardByOpponentKind
+	DiscardByOpponentForHand DiscardByOpponentKind
 }
 
 // CatalogLookup is the one production hook: the catalog's definition
@@ -983,6 +992,12 @@ func init() {
 			return d.OpeningHand
 		}
 		return nil
+	}
+	CatalogDiscardByOpponent = func(key string) (DiscardByOpponentKind, DiscardByOpponentKind) {
+		if d := catalogDef(key); d != nil {
+			return d.DiscardByOpponent, d.DiscardByOpponentForHand
+		}
+		return DiscardByOpponentNone, DiscardByOpponentNone
 	}
 	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
 		if d := catalogDef(key); d != nil {

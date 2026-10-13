@@ -64,7 +64,7 @@ func TestPraetorsAreRegistered(t *testing.T) {
 		complete Completeness
 	}{
 		{jinGitaxiasOracleID, CompletenessFull},
-		{jinGitaxiasOracleID + "#1", CompletenessCaveats},
+		{jinGitaxiasOracleID + "#1", CompletenessFull},
 		{sheoldredTrueScripturesOracleID, CompletenessFull},
 		{sheoldredTrueScripturesOracleID + "#1", CompletenessFull},
 	} {
