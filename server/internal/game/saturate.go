@@ -189,11 +189,10 @@ func slotsFromAmount(a ManaAmount) (slots []ProducedManaEntry, capped bool) {
 // announces a cut, reads slotsFromAmount itself. Read-only.
 // Caller must hold g.mu.
 func manaAbilitySlotsLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) ([]ProducedManaEntry, error) {
-	if ab != nil && ab.ProducedFunc != nil && ab.ProducedForPaid == nil && ab.DerivedMatch == nil {
-		if out := ab.ProducedFunc(g, playerID, cardID); out.IsAmount() {
-			slots, _ := slotsFromAmount(out.Amount)
-			return slots, nil
-		}
+	out := manaAbilityProducedLocked(g, playerID, cardID, ab, paid)
+	if out.IsAmount() {
+		slots, _ := slotsFromAmount(out.Amount)
+		return slots, nil
 	}
-	return ParseProducedMana(manaAbilityProducedLocked(g, playerID, cardID, ab, paid))
+	return ParseProducedMana(out.Text)
 }

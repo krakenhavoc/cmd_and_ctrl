@@ -7335,28 +7335,21 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// CR 605.3b's "resolves immediately" means, and what makes Cabal
 	// Coffers count the Swamps that are still there and Empowered
 	// Autogenerator count the charge counter it just placed.
-	produced := ab.Produced
 	var slots []ProducedManaEntry
 	var capped bool
-	// #3042: a count-driven ability yields its slots as data, with the
-	// ceiling applied to the count before anything is built.
-	amountDriven := false
-	if ab.ProducedFunc != nil && ab.DerivedMatch == nil && ab.ProducedForPaid == nil {
-		out := ab.ProducedFunc(g, playerID, cardID)
-		if out.IsAmount() {
-			amountDriven = true
-			slots, capped = slotsFromAmount(out.Amount)
-		} else {
-			produced = out.Text
-		}
-	}
-	if amountDriven {
-		// slots built above
-	} else if ab.DerivedMatch != nil {
+	// #3042 / #3112: the output is text OR a count. A count yields its
+	// slots as data, with the ceiling applied to the count before
+	// anything is built.
+	var out ManaOutput
+	if ab.DerivedMatch != nil {
 		// #1323: same seeded visited set as manaAbilityProducedLocked
 		// — `card` is already the exact Card this ability belongs to,
 		// so no lookup is needed.
-		produced = pipeString(g.derivedManaLocked(*card, &ab, map[uuid.UUID]bool{cardID: true}))
+		out.Text = pipeString(g.derivedManaLocked(*card, &ab, map[uuid.UUID]bool{cardID: true}))
+	} else if ab.ProducedFunc != nil {
+		out = ab.ProducedFunc(g, playerID, cardID)
+	} else {
+		out.Text = ab.Produced
 	}
 	// #789: an output that depends on what the cost PAID wins over
 	// both — "Add {C} for each storage counter removed this way" can
@@ -7364,10 +7357,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	// counts came off a moment ago and the board no longer shows
 	// how many there were.
 	if ab.ProducedForPaid != nil {
-		produced = ab.ProducedForPaid(g, playerID, cardID, paid)
+		out = ab.ProducedForPaid(g, playerID, cardID, paid)
 	}
-	if !amountDriven {
-		slots, capped, err = parseProducedMana(produced)
+	if out.IsAmount() {
+		slots, capped = slotsFromAmount(out.Amount)
+	} else {
+		slots, capped, err = parseProducedMana(out.Text)
 	}
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
 	if capped {
@@ -7813,7 +7808,7 @@ func containsColor(set []string, c string) bool {
 	return false
 }
 
-// manaAbilityProducedLocked is the produced-mana string one mana
+// manaAbilityProducedLocked is the produced-mana output (text or count) one mana
 // ability would add, given what its cost paid. THE one place the
 // three-slot precedence lives — ProducedForPaid beats ProducedFunc
 // (or DerivedMatch) beats Produced — so the activation, the
@@ -7822,11 +7817,11 @@ func containsColor(set []string, c string) bool {
 // what a source makes.
 //
 // Read-only. Caller must hold g.mu.
-func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) string {
+func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbilityShape, paid PaidCost) ManaOutput {
 	if ab == nil {
-		return ""
+		return ManaOutput{}
 	}
-	out := ab.Produced
+	out := ManaOutput{Text: ab.Produced}
 	if ab.DerivedMatch != nil {
 		// #1323: seed the visited set with the source's OWN instance
 		// ID before recursing, exactly as producibleManaVisitingLocked
@@ -7834,10 +7829,10 @@ func manaAbilityProducedLocked(g *Game, playerID, cardID uuid.UUID, ab *ManaAbil
 		// THIS activation (not just to an intermediate card) would
 		// not be caught by a fresh, empty set.
 		if c, ok := g.LookupCardForEffect(cardID); ok {
-			out = pipeString(g.derivedManaLocked(c, ab, map[uuid.UUID]bool{cardID: true}))
+			out = ManaOutput{Text: pipeString(g.derivedManaLocked(c, ab, map[uuid.UUID]bool{cardID: true}))}
 		}
 	} else if ab.ProducedFunc != nil {
-		out = ab.ProducedFunc(g, playerID, cardID).Text
+		out = ab.ProducedFunc(g, playerID, cardID)
 	}
 	if ab.ProducedForPaid != nil {
 		out = ab.ProducedForPaid(g, playerID, cardID, paid)

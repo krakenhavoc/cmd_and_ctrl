@@ -80,8 +80,7 @@ func init() {
 						if color == "" {
 							return nil
 						}
-						return g.AddManaForEffect(player, source,
-							game.RepeatMana("{"+color+"}", 3*paid))
+						return g.AddManaWithOptionsForEffect(player, source, "", game.AddManaOptions{Amount: ManaN(3*paid, color)})
 					})
 				return nil
 			},

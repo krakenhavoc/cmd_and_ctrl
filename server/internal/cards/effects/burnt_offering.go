@@ -27,7 +27,7 @@ func init() {
 			if x <= 0 {
 				return nil
 			}
-			return AddMana{Produced: game.RepeatMana("{B|R}", x)}.Apply(ctx)
+			return AddMana{Amount: ManaN(x, "B", "R")}.Apply(ctx)
 		},
 	})
 }

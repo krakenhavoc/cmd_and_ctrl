@@ -50,7 +50,7 @@ func init() {
 			if excess <= 0 {
 				return nil
 			}
-			return AddMana{Produced: game.RepeatMana("{R}", excess)}.Apply(ctx)
+			return AddMana{Amount: ManaN(excess, "R")}.Apply(ctx)
 		},
 	})
 }

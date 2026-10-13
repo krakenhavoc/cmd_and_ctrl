@@ -52,8 +52,8 @@ func init() {
 				return nil
 			}
 			return AddMana{
-				Player:   item.Controller,
-				Produced: game.RepeatMana("{R}", n),
+				Player: item.Controller,
+				Amount: ManaN(n, "R"),
 			}.Apply(ctx)
 		},
 	})

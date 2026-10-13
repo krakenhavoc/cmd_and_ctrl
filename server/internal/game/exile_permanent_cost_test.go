@@ -251,9 +251,9 @@ func TestExilePermanentCostOnAManaAbility(t *testing.T) {
 	me := g.Seats[0]
 	var seen PaidCost
 	ab := foodChainShape()
-	ab.ProducedForPaid = func(_ *Game, _, _ uuid.UUID, paid PaidCost) string {
+	ab.ProducedForPaid = func(_ *Game, _, _ uuid.UUID, paid PaidCost) ManaOutput {
 		seen = paid
-		return "{G}{G}"
+		return ManaOutput{Text: "{G}{G}"}
 	}
 	src := manaSource(g, me, ab)
 	bear := pushExileCostCreature(g, me, "Bear")

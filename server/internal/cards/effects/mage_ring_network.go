@@ -22,8 +22,8 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     storage counters. The count is announced at activation — the
 //     floor is zero, because "any number" really does include none —
 //     and reaches the produced-mana computation through the one
-//     paid-cost record: ProducedPerCounterRemoved repeats {C} once
-//     per counter that came off.
+//     paid-cost record: ProducedPerCounterRemoved yields a count of
+//     {C}, one per counter that came off.
 //
 // The count is a fact about the ANNOUNCEMENT, which is what makes the
 // card work at all: by the time the mana is minted the counters are
@@ -51,7 +51,7 @@ func init() {
 					Tap:            true,
 					RemoveCounters: RemoveCountersXFromThis(game.CounterStorage, 0).RemoveCounters,
 				},
-				ProducedForPaid: ProducedPerCounterRemoved("{C}"),
+				ProducedForPaid: ProducedPerCounterRemoved("C"),
 				Label:           "Remove any number of storage counters: Add {C} for each",
 			},
 		},

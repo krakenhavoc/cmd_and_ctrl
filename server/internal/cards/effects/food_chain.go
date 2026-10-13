@@ -58,13 +58,13 @@ func init() {
 // up-front colour list ask before any payment — the answer is one mana
 // of any one colour: what Food Chain could make is the five colours,
 // and how many is the payment's business.
-func foodChainProduced(g *game.Game, _, _ uuid.UUID, paid game.PaidCost) string {
+func foodChainProduced(g *game.Game, _, _ uuid.UUID, paid game.PaidCost) game.ManaOutput {
 	if len(paid.Exiled) == 0 {
-		return OneColorOfAmount(1)
+		return game.ManaOutput{Amount: game.ManaAmount{Options: game.AllColors, N: 1, OneColor: true}}
 	}
 	mv := 0
 	if info, ok := g.LastKnownPermanentForEffect(paid.Exiled[0]); ok {
 		mv = info.ManaValue
 	}
-	return OneColorOfAmount(1 + mv)
+	return game.ManaOutput{Amount: game.ManaAmount{Options: game.AllColors, N: 1 + mv, OneColor: true}}
 }

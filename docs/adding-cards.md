@@ -559,7 +559,7 @@ the among form, still refuse it.
 An ability whose OUTPUT depends on what the cost paid declares
 `ProducedForPaid` instead of `Produced` — "Add {C} for each storage
 counter removed this way" is
-`ProducedForPaid: ProducedPerCounterRemoved("{C}")`. It is handed the
+`ProducedForPaid: ProducedPerCounterRemoved("C")` (a count, #3112). It is handed the
 one `game.PaidCost` record, because by the time the mana is minted the
 counters are gone.
 
@@ -708,12 +708,14 @@ engine cuts and announces the count itself; use `ProducedPerPermanent`,
 `ProducedPerCounterOnThis`, `ProducedOneColor`,
 `ProducedChosenColorAmount` or `ProducedAnyCombinationOfColors` rather
 than a hand-written row. A mixed or fixed output keeps `ProducedFunc`.
-A SPELL or trigger `AddMana` that repeats a symbol by a board quantity must
-build the string with `game.RepeatMana(slot, n)`, never `strings.Repeat`,
-because the string is allocated before the engine can see it. `RepeatMana` hands
-the engine one slot past the ceiling so the engine's own cut can announce
-it (a `count_capped` log line); a bare `strings.Repeat` is a bug in any
-card whose count can be exponential. Use `game.SaturatingAdd` /
+A SPELL or trigger `AddMana` that scales by a board quantity declares the
+count form, `AddMana{Amount: ManaN(n, "R")}` (#3112; several options such as
+`ManaN(n, "B", "R")` are n independent picks), and a payment-driven
+`ProducedForPaid` returns a `game.ManaOutput`; the engine builds the slots
+from the count, cuts it at the ceiling before allocating and announces the
+cut (a `count_capped` log line). Never build text with `strings.Repeat` or
+`game.RepeatMana` for a game quantity; `RepeatMana` survives for energy
+labels. Use `game.SaturatingAdd` /
 `game.SaturatingMul` when a card does its own arithmetic on such a count.
 The ceilings are not a Caveat on any card: they are far past anything a
 real table reaches, and a card does not become incomplete for them.

@@ -110,7 +110,7 @@ var (
 			if p.Amount > maxManaDrainRefund {
 				return fmt.Errorf("mana-drain/refund: implausible amount %d", p.Amount)
 			}
-			return AddMana{Produced: game.RepeatMana("{C}", p.Amount)}.Apply(NewContext(g, item))
+			return AddMana{Amount: ManaN(p.Amount, "C")}.Apply(NewContext(g, item))
 		})
 
 	// The event condition of "when you NEXT CAST a <filter> spell this

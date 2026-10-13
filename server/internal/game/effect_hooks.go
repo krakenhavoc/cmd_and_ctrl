@@ -512,7 +512,12 @@ type ManaAbilityShape struct {
 	// that is what "could" means — a Mage-Ring Network with three
 	// storage counters could produce {C}, and one with none could
 	// not.
-	ProducedForPaid func(g *Game, controller, source uuid.UUID, paid PaidCost) string
+	//
+	// #3112: the result is a ManaOutput, text OR a count, exactly as
+	// ProducedFunc's is. A payment-driven count ("for each counter
+	// removed") returns a ManaAmount so no text is built per counter.
+	// Still ONE hook per concern: the closure ratchet counts func fields.
+	ProducedForPaid func(g *Game, controller, source uuid.UUID, paid PaidCost) ManaOutput
 
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "Activate only
