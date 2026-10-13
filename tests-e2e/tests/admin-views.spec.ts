@@ -37,18 +37,19 @@ test.describe("admin views", () => {
       await page.getByRole("button", { name: "log in" }).click();
       await expect(page).toHaveURL(/#\/lobby$/);
 
-      // The header's Admin link, an admin's only, goes to Live now.
+      // The account menu's Admin link (ADR 0156 §3), an admin's only,
+      // goes to Live now.
+      await page.getByRole("button", { name: /^account menu/ }).click();
       await page
-        .getByRole("navigation", { name: "Site" })
+        .getByRole("group", { name: "account" })
         .getByRole("link", { name: "Admin", exact: true })
         .click();
       await expect(page).toHaveURL(/#\/admin\/live$/);
 
       const tabs = page.getByRole("navigation", { name: "admin views" });
-      await expect(tabs.getByRole("link", { name: "Live now" })).toHaveAttribute(
-        "aria-current",
-        "page",
-      );
+      await expect(
+        tabs.getByRole("link", { name: "Live now" }),
+      ).toHaveAttribute("aria-current", "page");
       await expect(tabs.getByRole("link", { name: "Games" })).toBeVisible();
       await expect(tabs.getByRole("link", { name: "Accounts" })).toBeVisible();
 
@@ -59,7 +60,9 @@ test.describe("admin views", () => {
       const card = live.getByRole("listitem").filter({ hasText: name }).first();
       await expect(card).toBeVisible({ timeout: 25_000 });
       const seat = card.getByRole("listitem").filter({ hasText: "Alice" });
-      await expect(seat).toContainText(/connected\s*·\s*since/, { timeout: 25_000 });
+      await expect(seat).toContainText(/connected\s*·\s*since/, {
+        timeout: 25_000,
+      });
       await expect(seat).not.toContainText("not connected");
 
       // Games lists the same table, newest first.
@@ -73,13 +76,17 @@ test.describe("admin views", () => {
       // The row opens the table's detail.
       await row.getByRole("link", { name }).click();
       await expect(page).toHaveURL(new RegExp(`#/admin/games/${game.id}$`));
-      await expect(page.getByRole("link", { name: /Open table/ })).toBeVisible();
+      await expect(
+        page.getByRole("link", { name: /Open table/ }),
+      ).toBeVisible();
 
       // Accounts renders its table (the token's stack may have none in it).
       await tabs.getByRole("link", { name: "Accounts" }).click();
       await expect(page).toHaveURL(/#\/admin\/accounts$/);
       await expect(
-        page.getByRole("table", { name: "accounts" }).or(page.getByText("No accounts match.")),
+        page
+          .getByRole("table", { name: "accounts" })
+          .or(page.getByText("No accounts match.")),
       ).toBeVisible();
     } finally {
       await closeAll(alice);
@@ -98,9 +105,13 @@ test.describe("admin views", () => {
     await page.goto("/#/admin");
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
-    await expect(page).toHaveURL(/#\/admin\/games\?state=active&archived=false$/);
+    await expect(page).toHaveURL(
+      /#\/admin\/games\?state=active&archived=false$/,
+    );
     await expect(
-      page.getByRole("table", { name: "games" }).or(page.getByText("No tables match.")),
+      page
+        .getByRole("table", { name: "games" })
+        .or(page.getByText("No tables match.")),
     ).toBeVisible();
   });
 });

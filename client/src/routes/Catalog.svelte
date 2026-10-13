@@ -16,7 +16,7 @@
 
   import { onMount } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import { cardArt } from "../lib/cardArt";
   import { route } from "../lib/router";
   import { L } from "../lib/labels";
@@ -94,19 +94,13 @@
   });
 </script>
 
-<SiteHeader />
-
-<section class="entry">
+<Page
+  eyebrow="What the engine plays"
+  title="Card catalogue"
+  lede="Every card wired into the rules engine, and how completely each one is implemented. Cards not listed here still work in the sandbox — you just resolve them by hand."
+  width="wide"
+>
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">What the engine plays</p>
-      <h1>Card catalogue</h1>
-      <p class="lede">
-        Every card wired into the rules engine, and how completely each one is implemented. Cards
-        not listed here still work in the sandbox — you just resolve them by hand.
-      </p>
-    </div>
-
     {#if loading}
       <p class="help" aria-live="polite">Loading the catalogue…</p>
     {:else if error}
@@ -247,43 +241,17 @@
       {/if}
     {/if}
   </div>
-</section>
+</Page>
 
 <style>
   /* Shell shared with Join.svelte and Reclaim.svelte via SiteHeader;
      the centering wrapper below is otherwise unchanged. */
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(1180px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(8px, 2vh, 24px);
   }
 
-  .eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-  }
-  h1 {
-    margin: 0;
-  }
-  .lede {
-    margin: 10px 0 0;
-    max-width: 62ch;
-    color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.55;
-  }
   .help {
     margin: 0;
     color: var(--fg-muted);

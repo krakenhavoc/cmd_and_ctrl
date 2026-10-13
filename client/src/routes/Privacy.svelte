@@ -13,7 +13,7 @@
   // that stores something about a person, update this page in the same
   // change (ADR 0149 §6). The source of each row is cited in its
   // `source` field below; the test does not read it, a reviewer does.
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import DeleteAccount from "../lib/components/DeleteAccount.svelte";
   import { CONTACT_TEXT, CONTACT_URL, PRIVACY_FACTS as F } from "../lib/privacy";
 
@@ -169,26 +169,20 @@
   ];
 </script>
 
-<SiteHeader />
-
-<section class="entry">
+<Page
+  eyebrow="Privacy"
+  title="What is stored about you, and how to delete it"
+  lede="cmd_and_ctrl is a hobby Magic: The Gathering Commander table run by one person. This page says what it stores, why, for how long, who else sees it, and how to delete it. We do not sell data, show ads or run analytics. The only cookie is the session cookie. If this page and the code ever disagree, that is a bug."
+  width="prose"
+>
+  {#snippet meta()}
+    <!-- TODO(owner): contact. No address has been chosen, so this points at
+         the project's GitHub rather than inventing one. -->
+    <p class="contact" id="contact">
+      Contact: <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">{CONTACT_TEXT}</a>.
+    </p>
+  {/snippet}
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">Privacy</p>
-      <h1>What is stored about you, and how to delete it</h1>
-      <p class="lede">
-        cmd_and_ctrl is a hobby Magic: The Gathering Commander table run by one person. This page
-        says what it stores, why, for how long, who else sees it, and how to delete it. We do not
-        sell data, show ads or run analytics. The only cookie is the session cookie. If this page
-        and the code ever disagree, that is a bug.
-      </p>
-      <!-- TODO(owner): contact. No address has been chosen, so this points at
-           the project's GitHub rather than inventing one. -->
-      <p class="contact" id="contact">
-        Contact: <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">{CONTACT_TEXT}</a>.
-      </p>
-    </div>
-
     <section aria-labelledby="stored-title">
       <h2 id="stored-title">What is stored, and why</h2>
       <ul class="rows">
@@ -247,36 +241,14 @@
       Questions about what is stored are welcome.
     </p>
   </div>
-</section>
+</Page>
 
 <style>
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(860px, 100%);
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 26px;
-    margin: clamp(8px, 2vh, 24px) 0 48px;
-  }
-  .eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
   }
   h2 {
     margin: 0 0 10px;
@@ -290,13 +262,6 @@
     font-size: 14px;
     font-weight: 700;
     color: var(--fg);
-  }
-  .lede {
-    margin: 10px 0 0;
-    max-width: 68ch;
-    color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.6;
   }
   .contact {
     margin: 8px 0 0;

@@ -743,6 +743,15 @@ export const LABEL_SPECS = {
     doc: "the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here",
   }),
 
+  // -- The site header (ADR 0156 §3) --
+  navTables: label({
+    name: "Tables",
+    kind: "text",
+    role: "link",
+    owners: ["lib/components/SiteHeader.svelte"],
+    doc: "the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156)",
+  }),
+
   // -- Help (ADR 0125 §6) --
   help: label({
     name: "help",

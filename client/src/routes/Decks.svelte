@@ -37,7 +37,7 @@
   } from "../lib/api";
   import { catalogSearchHash } from "../lib/roadmap";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import {
     checkDeck,
     requestDeck,
@@ -454,20 +454,13 @@
   {/if}
 {/snippet}
 
-<SiteHeader />
-
-<section class="entry">
+<Page
+  eyebrow="Check, request, keep"
+  title="Decks"
+  lede="Paste an Archidekt link or a plain decklist to see how much of it plays as printed. Request what's missing, and save the decks you play. On Moxfield, open the deck → Export → Copy plain text, and paste that."
+  width="wide"
+>
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">Check, request, keep</p>
-      <h1>Decks</h1>
-      <p class="lede">
-        Paste an Archidekt link or a plain decklist to see how much of it plays as printed. Request
-        what's missing, and save the decks you play. On Moxfield, open the deck → Export → Copy
-        plain text, and paste that.
-      </p>
-    </div>
-
     <!-- 1. Check a deck -->
     <form class="input-card" onsubmit={submit} aria-labelledby="check-h">
       <h2 id="check-h" class="sec-title">Check a deck</h2>
@@ -973,45 +966,16 @@
       </section>
     {/if}
   </div>
-</section>
+</Page>
 
 <style>
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(920px, 100%);
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 20px;
-    margin: clamp(8px, 2vh, 24px) 0 48px;
   }
 
-  .eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
-  }
-  .lede {
-    margin: 10px 0 0;
-    max-width: 64ch;
-    color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.6;
-  }
   .sec-title {
     margin: 0;
     font-family: var(--font-display);

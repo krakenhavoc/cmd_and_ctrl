@@ -1,55 +1,104 @@
 <script lang="ts">
-  // SiteFooter — the unofficial-fan-content and Scryfall notice (#2191).
-  // Mounted once by App.svelte for every route outside the table: the
-  // game and the practice table never show it, because it must not take
-  // table space. They reach the same words from the ⋯ menu's Help group
-  // instead (#2982). Since #2982 it carries the Fan Content Policy's own
-  // sentence, "unofficial Fan Content permitted under the Fan Content
-  // Policy"; the sentence is the owner's call and was added on purpose.
+  // SiteFooter — one row under every page outside the table (ADR 0156 §3
+  // item 4): Discord, About, Privacy and GitHub, then the Fan Content
+  // line (#2191). Mounted once by App.svelte; the game and the practice
+  // table never show it, because it must not take table space. They
+  // reach the same words from the ⋯ menu's Help group instead (#2982).
+  //
+  // The Fan Content sentence and the Legal disclosure (ADR 0149) are the
+  // owner's call and are unchanged. The Discord link comes first, and
+  // only when the server names an invite (GET /community).
   import LegalNotice from "./LegalNotice.svelte";
+  import Icon from "./Icon.svelte";
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
   import { PRIVACY_HASH } from "../privacy";
-  import { ABOUT_HASH } from "../about";
+  import { ABOUT_HASH, REPO_URL } from "../about";
+  import { community } from "../community";
 </script>
 
 <footer class="site-footer">
-  <p class="line">
-    cmd_and_ctrl is unofficial Fan Content permitted under the
-    <a href={FAN_CONTENT_POLICY_URL} target="_blank" rel="noopener noreferrer">Fan Content Policy</a
-    >. Not approved or endorsed by Wizards of the Coast. Card data and images from
-    <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer">Scryfall</a>.
-  </p>
-  <!-- #2983: the privacy notice is one click from every page outside the
-       table; the table's own copy is in the ⋯ menu's Legal notice. -->
-  <p class="line">
-    <a href={ABOUT_HASH}>About this project</a> ·
-    <a href={PRIVACY_HASH}>Privacy and your data</a>
-  </p>
-  <details class="legal">
-    <summary aria-label="Legal notice">Legal</summary>
-    <LegalNotice />
-  </details>
+  <div class="row">
+    <nav class="links" aria-label="Site footer">
+      {#if $community.invite_url}
+        <a class="discord" href={$community.invite_url} target="_blank" rel="noopener noreferrer"
+          ><Icon name="discord" size={14} /> Discord</a
+        >
+      {/if}
+      <a href={ABOUT_HASH}>About</a>
+      <!-- #2983: the privacy notice is one click from every page outside
+           the table; the table's own copy is in the ⋯ menu's Legal notice. -->
+      <a href={PRIVACY_HASH}>Privacy</a>
+      <a href={REPO_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
+    </nav>
+    <div class="fine">
+      <p class="line">
+        cmd_and_ctrl is unofficial Fan Content permitted under the
+        <a href={FAN_CONTENT_POLICY_URL} target="_blank" rel="noopener noreferrer"
+          >Fan Content Policy</a
+        >. Not approved or endorsed by Wizards of the Coast. Card data and images from
+        <a href="https://scryfall.com" target="_blank" rel="noopener noreferrer">Scryfall</a>.
+      </p>
+      <details class="legal">
+        <summary aria-label="Legal notice">Legal</summary>
+        <LegalNotice />
+      </details>
+    </div>
+  </div>
 </footer>
 
 <style>
   .site-footer {
-    margin-top: 2rem;
-    padding-top: 1rem;
+    margin-top: auto;
     border-top: 1px solid var(--border);
+    color: var(--fg-dim);
+    font-size: 12.5px;
+    line-height: 1.6;
+  }
+  .row {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 22px var(--page-gutter) 30px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px 28px;
+    box-sizing: content-box;
+  }
+  .links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 18px;
+    white-space: nowrap;
+  }
+  .links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
     color: var(--fg-muted);
-    font-size: 0.75rem;
-    line-height: 1.5;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .links a:hover,
+  .links a:focus-visible {
+    color: var(--fg);
+  }
+  .links a.discord :global(svg) {
+    color: #aab3ff;
+  }
+  .fine {
+    flex: 1 1 420px;
+    min-width: 0;
     overflow-wrap: anywhere;
   }
-  .site-footer :global(p) {
-    margin: 0 0 0.5rem;
+  .fine :global(p) {
+    margin: 0 0 0.4rem;
   }
-  .site-footer :global(a) {
+  .fine :global(a) {
     color: var(--fg-muted);
     text-decoration: underline;
   }
-  .site-footer :global(a:hover),
-  .site-footer :global(a:focus-visible) {
+  .fine :global(a:hover),
+  .fine :global(a:focus-visible) {
     color: var(--fg);
   }
   summary {

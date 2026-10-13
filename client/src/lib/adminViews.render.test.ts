@@ -524,17 +524,23 @@ describe("the gate", () => {
   });
 });
 
+// ADR 0156 §3: Admin moved from the site nav into the account menu.
 describe("the header's Admin link", () => {
   const adminLink = (c: HTMLElement) =>
-    [...c.querySelectorAll('nav[aria-label="Site"] a')].find((a) => a.textContent === "Admin");
+    [...c.querySelectorAll("#account-menu a")].find((a) => a.textContent?.trim() === "Admin");
+  const openAccount = (c: HTMLElement) => {
+    const btn = c.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]');
+    if (btn) click(btn);
+  };
 
-  it("is last in the site nav for the token and for admin mode, going to Live now", async () => {
+  it("is in the account menu for the token and for admin mode, going to Live now", async () => {
     for (const s of [token(), person(true)]) {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
-      const links = [...container.querySelectorAll('nav[aria-label="Site"] a')];
-      expect(links.at(-1)?.textContent).toBe("Admin");
+      const nav = [...container.querySelectorAll('nav[aria-label="Site"] a')];
+      expect(nav.map((a) => a.textContent)).not.toContain("Admin");
+      openAccount(container);
       expect(adminLink(container)?.getAttribute("href")).toBe("#/admin/live");
       destroy();
     }
@@ -545,6 +551,7 @@ describe("the header's Admin link", () => {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
+      openAccount(container);
       expect(adminLink(container)).toBeUndefined();
       destroy();
     }

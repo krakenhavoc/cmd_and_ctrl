@@ -12,7 +12,7 @@
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
 
   // "My games" (ADR 0051 decision 4, S34 sub-PR 4): every table the
@@ -74,15 +74,8 @@
   const backHref = $derived($session ? "#/lobby" : "#/login");
 </script>
 
-<SiteHeader />
-
-<section class="entry">
+<Page eyebrow="Every table you've sat at" title="My games" width="prose">
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">Every table you've sat at</p>
-      <h1>my games</h1>
-    </div>
-
     <div class="card">
       {#if !userID}
         <p class="help first">
@@ -141,42 +134,14 @@
       <a class="ghost-link" href={backHref}><Icon name="chevronLeft" size={12} /> Back</a>
     </p>
   </div>
-</section>
+</Page>
 
 <style>
   /* Same shell as Reclaim.svelte and Join.svelte. */
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(860px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(24px, 6vh, 60px);
-    align-items: center;
-  }
-  .head {
-    text-align: center;
-  }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-  }
-  h1 {
-    margin: 6px 0 0;
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--fg);
   }
   .card {
     width: min(600px, 100%);

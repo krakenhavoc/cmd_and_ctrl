@@ -27,7 +27,8 @@ import ShortcutLayer from "./components/ShortcutLayer.svelte";
 import { L } from "./labels";
 import { POLL_MS } from "./tutorial";
 import { defaultSettings, settings, settingsOpen } from "./settings";
-import { _resetHintsForTests, replayTips, TIP_BODY_ID } from "./hints/runtime";
+import { _resetHintsForTests, replayTips, TIP_BODY_ID, TIP_SLOT_ATTR } from "./hints/runtime";
+import PageTipSlot from "./components/hints/PageTipSlot.svelte";
 import { _resetTableMomentForTests, publishTableMoment } from "./hints/tableMoment";
 import { SITE_WINDOW_MS } from "./hints/queue";
 import type { Hint, HintPlace } from "./hints/hint";
@@ -251,6 +252,51 @@ describe("HintLayer on a site page", () => {
     click(head);
     expect(buttonNamed("Got it")).toBeDefined();
     expect(card.textContent).toContain("Anything you need to answer opens here.");
+  });
+});
+
+// ADR 0156 §3 item 5: a page in the site frame has a tip slot under its
+// lede, and its tips are drawn there, in the page's flow, not over it.
+describe("HintLayer on a page in the site frame", () => {
+  function frame(): HTMLElement {
+    const { container } = render(PageTipSlot as never, {} as never);
+    return container.querySelector<HTMLElement>(`[${TIP_SLOT_ATTR}]`)!;
+  }
+
+  it("draws the page's tip in the slot, with no floating card, and Got it still works", () => {
+    const slot = frame();
+    const target = anchor();
+    render(HintLayer as never, { hints: [hint("lobby.controls")] } as never);
+    poll();
+
+    const cards = document.querySelectorAll(`[aria-label="${L.tip}"]`);
+    expect(cards).toHaveLength(1);
+    const card = cards[0] as HTMLElement;
+    expect(slot.contains(card)).toBe(true);
+    expect(card.classList.contains("inline")).toBe(true);
+    // In the flow: no viewport position of its own.
+    expect(card.style.top).toBe("");
+    expect(card.style.left).toBe("");
+    expect(target.getAttribute("aria-describedby")).toBe(TIP_BODY_ID);
+    expect(live()).toBe("Tip: Your controls. Anything you need to answer opens here.");
+
+    click(buttonNamed("Got it")!);
+    poll();
+    expect(tip()).toBeNull();
+    expect(get(settings).help.seen["lobby.controls"]).toBe(1);
+  });
+
+  it("leaves a table hint floating even with a slot on the page", () => {
+    const slot = frame();
+    routeStore.value!.set({ name: "game", gameID: "g" });
+    anchor();
+    publishTableMoment({ moment: moment(), view: null, viewerID: ME });
+    render(HintLayer as never, { hints: [hint("table.dock")] } as never);
+    poll();
+    const card = tip();
+    expect(card).not.toBeNull();
+    expect(slot.contains(card)).toBe(false);
+    expect(card!.classList.contains("inline")).toBe(false);
   });
 });
 

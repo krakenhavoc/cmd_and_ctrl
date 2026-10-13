@@ -11,7 +11,7 @@
   // fails the page says nothing about a count rather than a stale one.
   // Legal text is LegalNotice.svelte, not a second copy.
   import { onMount } from "svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import LegalNotice from "../lib/components/LegalNotice.svelte";
   import { fetchRoadmap, type RoadmapCardCounts } from "../lib/roadmap";
   import { DISCORD_INVITE_URL, ISSUES_URL, NEVER_PAYWALLED_URL, REPO_URL } from "../lib/about";
@@ -30,19 +30,13 @@
   });
 </script>
 
-<SiteHeader />
-
-<section class="entry">
+<Page
+  eyebrow="About"
+  title="What this is"
+  lede="A private-table Magic: The Gathering Commander sandbox for four players, built as a hobby. It is in beta: expect rough edges, and expect things to change."
+  width="prose"
+>
   <div class="stack">
-    <header>
-      <p class="eyebrow">About</p>
-      <h1>What this is</h1>
-      <p class="lede">
-        A private-table Magic: The Gathering Commander sandbox for four players, built as a hobby.
-        It is in beta: expect rough edges, and expect things to change.
-      </p>
-    </header>
-
     <section aria-labelledby="free-title">
       <h2 id="free-title">Free and unofficial</h2>
       <ul class="points">
@@ -137,34 +131,14 @@
       <div class="legal"><LegalNotice /></div>
     </section>
   </div>
-</section>
+</Page>
 
 <style>
-  .entry {
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(760px, 100%);
     min-width: 0;
     display: flex;
     flex-direction: column;
     gap: 24px;
-    margin: clamp(8px, 2vh, 24px) 0 48px;
-  }
-  .eyebrow {
-    margin: 0 0 6px;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-  }
-  h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-weight: 800;
-    letter-spacing: -0.01em;
   }
   h2 {
     margin: 0 0 10px;
@@ -172,13 +146,6 @@
     letter-spacing: -0.01em;
     text-transform: none;
     color: var(--accent);
-  }
-  .lede {
-    margin: 10px 0 0;
-    max-width: 68ch;
-    color: var(--fg-muted);
-    font-size: 14px;
-    line-height: 1.6;
   }
   .points {
     margin: 0;

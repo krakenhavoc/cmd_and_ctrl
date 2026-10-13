@@ -86,6 +86,10 @@ export default defineConfig({
       // with index.html, the JSON parse fails, and env.ts falls back
       // to production — i.e. no dev features in `make client-dev`.
       "/config": { target: goServer, changeOrigin: true },
+      // The C2 Discord invite and whether sign-up is gated (ADR 0156 §6).
+      // Without the proxy Vite answers with index.html, the JSON parse
+      // fails, and lib/community.ts hides every Discord placement.
+      "/community": { target: goServer, changeOrigin: true },
       // Dev-only tool routes (card search + spawn). Same failure mode
       // as /config but quieter: without this the card search gets
       // Vite's index.html, fails to parse, and searchDevCards's
