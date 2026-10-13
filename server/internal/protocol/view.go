@@ -6976,14 +6976,14 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		if err != nil {
 			continue
 		}
-		card, ok := g.LookupCardForEffect(instanceID)
+		card, ok := g.LookupCardPtrForEffect(instanceID)
 		if !ok {
 			continue
 		}
-		c.ActivatedAbilities = viewOfActivatedAbilities(g, card, controller, game.ZoneBattlefield, restricted)
+		c.ActivatedAbilities = viewOfActivatedAbilities(g, *card, controller, game.ZoneBattlefield, restricted)
 		// ADR 0093 Decision 8: the grantor's name on each granted mana
 		// row, and the granted-ability text list.
-		stampGrantedAbilities(g, card, c)
+		stampGrantedAbilities(g, *card, c)
 		// ADR 0082 decision 9: a FACE-DOWN permanent carries its
 		// CR 116.2g "turn face up" row, from the same projection the
 		// hand's foretell and suspend rows come from and with the
@@ -6999,9 +6999,9 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// offer is derived from the face-down kind, so
 		// SpecialActionsOfferedByCard answers nothing for a face-up
 		// permanent, and the declared kinds are hand keywords.
-		c.SpecialActions = viewOfSpecialActions(g, card, controller, game.ZoneBattlefield)
+		c.SpecialActions = viewOfSpecialActions(g, *card, controller, game.ZoneBattlefield)
 		c.LoyaltyActivated = g.LoyaltySpentLocked(instanceID)
-		c.EchoDue = g.EchoDueLocked(&card)
+		c.EchoDue = g.EchoDueLocked(card)
 		stampManaSacrificeOptions(g, card, controller, c.ManaAbilities)
 		stampManaConditions(g, card, controller, c.ManaAbilities, restricted)
 		stampManaIdentity(g, card, controller, c.ManaAbilities)
@@ -7015,7 +7015,7 @@ func stampActivatedAbilities(g *game.Game, bf *ZoneView) {
 		// ADR 0106 §1 decision 5: and after that, each OTHER seat's copy
 		// of an "Any player may activate" row, stamped with that seat as
 		// the activator.
-		c.stampAnyPlayerOffers(g, card, controller, restricted)
+		c.stampAnyPlayerOffers(g, *card, controller, restricted)
 	}
 }
 
@@ -7142,13 +7142,13 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			if !ok {
 				continue
 			}
-			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, card, owner, game.ZoneHand, restricted))
+			c.stampZoneAbilitiesFor(owner, viewOfActivatedAbilities(g, *card, owner, game.ZoneHand, restricted))
 			// #1228: the CR 605 rows beside the CR 602 ones. The same
 			// pass, because it is the same question about the same
 			// card — "what may you activate here" — and a second walk
 			// of every hand would be a second answer to keep in step.
-			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(&card, game.ZoneHand))
-			c.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneHand)
+			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(card, game.ZoneHand))
+			c.SpecialActions = viewOfSpecialActions(g, *card, owner, game.ZoneHand)
 		}
 		stampLibraryTopSpecialActions(g, &seat.Library, owner)
 		stampZoneAbilitiesInPile(g, &seat.Graveyard, game.ZoneGraveyard, owner, restricted)
@@ -7186,12 +7186,12 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 		if !ok {
 			continue
 		}
-		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, card, you, kind, restricted))
+		c.stampZoneAbilitiesFor(you, viewOfActivatedAbilities(g, *card, you, kind, restricted))
 		// #1228: nil for every pile today — game.supportedManaAbilityZones
 		// is the hand alone, so the zone predicate answers no here —
 		// and the call is made anyway so that adding a zone to that
 		// list is adding it in one place rather than two.
-		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(&card, kind))
+		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(card, kind))
 	}
 }
 
@@ -7204,15 +7204,15 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 // project, and since ADR 0069 an object CR 708.2a has silenced has
 // the empty key too — so a face-down card in exile offers no rows
 // without this function knowing what face-down means.
-func liveCardForAbilityRows(g *game.Game, c *CardView) (game.Card, bool) {
+func liveCardForAbilityRows(g *game.Game, c *CardView) (*game.Card, bool) {
 	if c.oracleID == "" {
-		return game.Card{}, false
+		return nil, false
 	}
 	instanceID, err := uuid.Parse(c.InstanceID)
 	if err != nil {
-		return game.Card{}, false
+		return nil, false
 	}
-	return g.LookupCardForEffect(instanceID)
+	return g.LookupCardPtrForEffect(instanceID)
 }
 
 // stampLibraryTopSpecialActions puts the special-action rows a GRANT
@@ -7311,8 +7311,11 @@ func viewOfSpecialActions(g *game.Game, card game.Card, owner uuid.UUID, zone ga
 // `restricted` is g.AnyActivationRestrictionsForEffect(), which the
 // caller takes ONCE per view (#1261): it walks the battlefield, and
 // this runs for every permanent on it.
-func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView, restricted bool) {
-	raw := game.ManaAbilitiesForCard(card)
+func stampManaConditions(g *game.Game, card *game.Card, controller uuid.UUID, views []ManaAbilityView, restricted bool) {
+	if len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
 		if i >= len(raw) {
 			continue
@@ -7323,7 +7326,7 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 		// means — Cursed Totem reaches a Birds of Paradise's {G},
 		// Pithing Needle never does.
 		if restricted {
-			views[i].CantActivate = g.CantActivateReasonLocked(controller, card, game.ZoneBattlefield,
+			views[i].CantActivate = g.CantActivateReasonLocked(controller, *card, game.ZoneBattlefield,
 				game.ActivationAbility{Label: raw[i].Label, Mana: true})
 		}
 		// ADR 0129 §8: a controller short of the energy the row costs
@@ -7357,8 +7360,11 @@ func stampManaConditions(g *game.Game, card game.Card, controller uuid.UUID, vie
 // grey the row instead of letting a player tap a land for no mana.
 // Split from viewOfManaAbilities for the reason the conditions are:
 // that projection has no game handle. Caller must hold g's read lock.
-func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
-	raw := game.ManaAbilitiesForCard(card)
+func stampManaIdentity(g *game.Game, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
 		if i >= len(raw) {
 			continue
@@ -7388,14 +7394,17 @@ func stampManaIdentity(g *game.Game, card game.Card, controller uuid.UUID, views
 // discount that empties the component out completely still stamps a
 // pointer to "", which is a real answer and not the same as nil (see
 // ManaAbilityView.ChargedManaCost). Caller must hold g's read lock.
-func stampManaChargedCost(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
-	raw := game.ManaAbilitiesForCard(card)
+func stampManaChargedCost(g *game.Game, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
 		if i >= len(raw) || raw[i].ManaCost == "" {
 			continue
 		}
 		views[i].PhyrexianSymbols, views[i].PhyrexianGranted = phyrexianSymbolsIn(g, controller, raw[i].ManaCost)
-		if charged, err := g.ManaAbilityManaCostForEffect(controller, card, raw[i]); err == nil {
+		if charged, err := g.ManaAbilityManaCostForEffect(controller, *card, raw[i]); err == nil {
 			s := charged.String()
 			views[i].ChargedManaCost = &s
 		}
@@ -7408,8 +7417,11 @@ func stampManaChargedCost(g *game.Game, card game.Card, controller uuid.UUID, vi
 // viewOfManaAbilities for the reason the conditions and the identity
 // are — that projection has no game handle, and the option list is a
 // walk of the battlefield. Caller must hold g's read lock.
-func stampManaCounterCosts(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
-	raw := game.ManaAbilitiesForCard(card)
+func stampManaCounterCosts(g *game.Game, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
 		if i >= len(raw) {
 			continue
@@ -7682,8 +7694,11 @@ func livePlayer(g *game.Game, id uuid.UUID) bool {
 // needs one. Same division the activated abilities already use, and
 // the same two lists: sacrificeCostOptions and
 // DiscardCostOptionsForEffect.
-func stampManaSacrificeOptions(g *game.Game, card game.Card, controller uuid.UUID, views []ManaAbilityView) {
-	raw := game.ManaAbilitiesForCard(card)
+func stampManaSacrificeOptions(g *game.Game, card *game.Card, controller uuid.UUID, views []ManaAbilityView) {
+	if len(views) == 0 {
+		return
+	}
+	raw := game.ManaAbilitiesOf(card)
 	for i := range views {
 		if i >= len(raw) {
 			continue

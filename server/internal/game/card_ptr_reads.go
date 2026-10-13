@@ -50,3 +50,30 @@ func IsMeldedPtr(c *Card) bool { return len(c.MeldedFrom) > 0 }
 
 // IsMeldCardPtr is Card.IsMeldCard without the receiver copy.
 func IsMeldCardPtr(c *Card) bool { return c.Meld != nil && c.Meld.ResultOracleID != "" }
+
+// ManaAbilitiesOf is ManaAbilitiesForCard without the receiver copy
+// (#3131). The rows are read-only, exactly as ManaAbilitiesForCard's
+// are, and nothing on the way to them writes to c.
+func ManaAbilitiesOf(c *Card) []ManaAbilityShape { return manaAbilitiesOf(c) }
+
+// LookupCardPtrForEffect is LookupCardForEffect without the copy: it
+// returns a pointer to the card where it sits in its zone, or to a
+// private copy for a token whose entry window is open (which is in no
+// zone).
+//
+// The pointer is only good for the span the caller holds g's lock, and
+// a caller must not write through it. It exists for the view, which
+// runs under the read lock and only reads; an effect that wants the
+// card's characteristics before moving it still wants LookupCardForEffect,
+// whose copy survives the move.
+func (g *Game) LookupCardPtrForEffect(cardID uuid.UUID) (*Card, bool) {
+	z, pos := g.locateCardLocked(cardID)
+	if z == nil {
+		c, ok := g.enteringTokenLocked(cardID)
+		if !ok {
+			return nil, false
+		}
+		return &c, true
+	}
+	return &z.Cards[pos], true
+}
