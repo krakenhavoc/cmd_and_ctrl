@@ -1094,6 +1094,12 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"POST /games/{id}/decks for Alice's seat", []string{"uploadDeck"}, true, httpProbe("POST", "/games/{id}/decks", func(fx *probeFixture) any {
 			return uploadDeckRequest{Format: "text", Source: "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n", PlayerID: fx.alice}
 		})},
+		// #2785: removing someone's seat is the host's, the creator's or an
+		// admin's. Bob is the seat asked about, so admin mode removes him
+		// and player mode is refused.
+		{"DELETE /games/{id}/seats/{player}", []string{"removeSeat"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", fx.tablePath("/seats/"+fx.bob.String()), nil)
+		}},
 		{"POST /games/{id}/seats/bot", []string{"botSeatAuthorised"}, true, httpProbe("POST", "/games/{id}/seats/bot", func(*probeFixture) any {
 			return addBotRequest{Tier: "random", Deck: "test-mono-white"}
 		})},

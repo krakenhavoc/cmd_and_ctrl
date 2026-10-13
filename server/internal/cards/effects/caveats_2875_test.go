@@ -47,6 +47,13 @@ func TestBerserkIsCastablePerCombatInATurnWithTwoCombats(t *testing.T) {
 		t.Fatalf("beginning of the second combat, after the first combat's damage: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	// The additional combat needs an attacker of its own to have a
+	// combat damage step at all (CR 508.8).
+	runner := pushVanillaCreature(g, me.ID, "Runner", 1, 1)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(runner, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker in the second combat: %v", err)
+	}
 	advanceTo(t, g, game.StepCombatDamage)
 	if err := s58p6CastNow(g, me, "Berserk", "Instant", s58p6BerserkOracle, cardTarget(aurelia)); err == nil {
 		t.Error("cast in the second combat's damage step")

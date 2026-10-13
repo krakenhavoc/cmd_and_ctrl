@@ -234,6 +234,10 @@ var gameFields = plan(
 	// declaration whose triggers have fired, and one that invented it
 	// would let a re-made declaration skip its requirements.
 	"attacksDeclared", carried, "",
+	// #2899 / CR 508.8: whether anything attacked this combat. Carried
+	// with attacksDeclared: an undo across the declaration that
+	// dropped it would skip the blockers of a combat that had them.
+	"combatHadAttackers", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a

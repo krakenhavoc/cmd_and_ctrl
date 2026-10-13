@@ -124,6 +124,10 @@ var (
 	// user has since signed out everywhere or been removed by an
 	// admin (ADR 0051 decision 6). Only WithRevocation returns it.
 	ErrRevokedCredential = errors.New("auth: revoked credential")
+	// ErrSeatRemoved is a genuine, unexpired player session whose seat
+	// the table's host, creator or the admin has since removed (#2785).
+	// Only WithSeatCheck returns it; the 401 carries SeatRemovedMessage.
+	ErrSeatRemoved = errors.New("auth: seat removed")
 )
 
 // Authenticator mints and validates credentials. Implementations must

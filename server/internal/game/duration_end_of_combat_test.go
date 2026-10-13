@@ -75,6 +75,13 @@ func TestUntilEndOfCombatEndsWhenTheEndOfCombatStepEnds(t *testing.T) {
 	if !combatShield(t, g, 1, d) {
 		t.Fatal("the shield was not registered")
 	}
+	// An attacker, so the combat has the declare blockers and combat
+	// damage steps (CR 508.8).
+	attacker := pushCombatant(t, g, g.Seats[0], "Bears", 2, 2)
+	advanceToStepOfSeat(t, g, 0, StepDeclareAttackers)
+	if err := g.DeclareAttacker(attacker, g.Seats[1].ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
 	for _, step := range []Step{StepDeclareAttackers, StepDeclareBlockers, StepCombatDamage, StepEndCombat} {
 		advanceToStepOfSeat(t, g, 0, step)
 		if n := scopedEffectCount(g); n != 1 {

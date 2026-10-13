@@ -10,7 +10,7 @@
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
-  import { session } from "../lib/session";
+  import { removedNotice, session } from "../lib/session";
   import {
     adminChipFor,
     adminNotice,
@@ -52,6 +52,7 @@
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
   import ConnectionBanner from "../lib/components/ConnectionBanner.svelte";
+  import RemovedNotice from "../lib/components/RemovedNotice.svelte";
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -2119,12 +2120,19 @@
     />
   {/if}
 
-  <ConnectionBanner
-    status={$status}
-    attempt={$reconnectAttempt}
-    onRetry={() => client.retryNow()}
-    signedIn={lastKnownSignedIn}
-  />
+  <!-- #2785: a removed seat's socket closes for good, and the plain
+       "Disconnected — Reconnect" banner would offer a redial that is
+       refused. The notice says what happened instead. -->
+  {#if $removedNotice}
+    <RemovedNotice withLink />
+  {:else}
+    <ConnectionBanner
+      status={$status}
+      attempt={$reconnectAttempt}
+      onRetry={() => client.retryNow()}
+      signedIn={lastKnownSignedIn}
+    />
+  {/if}
 
   <div class="play-area">
     {#if view}

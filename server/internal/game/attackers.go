@@ -160,6 +160,10 @@ func (g *Game) noteAttackAnnouncedLocked(id uuid.UUID) {
 		g.announcedAttacks = map[uuid.UUID]bool{}
 	}
 	g.announcedAttacks[id] = true
+	// CR 508.8: a declared attacker and a creature put onto the
+	// battlefield attacking both keep the declare blockers and combat
+	// damage steps in the turn (stepExistsLocked).
+	g.combatHadAttackers = true
 }
 
 // clearAttackAnnouncementsLocked forgets this combat's announcements.
@@ -171,6 +175,8 @@ func (g *Game) clearAttackAnnouncementsLocked() {
 	// #1571: and the CR 508.1d checkpoint — next combat's declaration
 	// is judged afresh.
 	g.attacksDeclared = false
+	// #2899: and CR 508.8's record of whether anything attacked.
+	g.combatHadAttackers = false
 	// #1364: the last-known defending players describe this combat's
 	// attacks too.
 	g.attackDefenders = nil

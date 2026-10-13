@@ -575,6 +575,16 @@ export async function removeBotSeat(gameID: string, playerID: string): Promise<G
   return (await res.json()) as GameMeta;
 }
 
+// removeSeat takes a human or agent seat off an unstarted table
+// (#2785). The server lets the table host, the game's creator or an
+// admin do it, and refuses a started table (409), the host's own seat
+// and a bot (422). The seat's session stops working and its sockets
+// close; the invite is untouched.
+export async function removeSeat(gameID: string, playerID: string): Promise<GameMeta> {
+  const res = await authFetch(`/games/${gameID}/seats/${playerID}`, { method: "DELETE" });
+  return (await res.json()) as GameMeta;
+}
+
 // replayURL returns an authenticated download URL for a game's
 // replay JSONL. Ships the session token as ?token= because browser
 // downloads can't set Authorization headers. Consumed by the lobby

@@ -112,6 +112,8 @@ func MiddlewareWith(a Authenticator, credential func(*http.Request) string, requ
 					msg = "invalid credential"
 				case ErrRevokedCredential:
 					msg = "session revoked"
+				case ErrSeatRemoved:
+					msg = SeatRemovedMessage
 				default:
 					msg = err.Error()
 				}

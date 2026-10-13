@@ -122,8 +122,10 @@ func (p rotationProbe) assertCleanNextTurn(t *testing.T) {
 	}
 
 	// N's own combat, with nothing declared: the departed player's
-	// 3/3 is not attacking any more, so N takes nothing.
-	advanceIntoStep(t, g, StepCombatDamage)
+	// 3/3 is not attacking any more, so N takes nothing. Nobody
+	// attacks, so CR 508.8 walks the cursor past the combat damage
+	// step to the end of combat.
+	advanceIntoStep(t, g, StepEndCombat)
 	if p.n.Life != 37 {
 		t.Errorf("N took damage in its own combat: life %d, want 37", p.n.Life)
 	}

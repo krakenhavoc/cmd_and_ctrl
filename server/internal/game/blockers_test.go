@@ -89,9 +89,17 @@ func TestSeatOwesBlockDecisionNoLegalBlock(t *testing.T) {
 		defender := g.Seats[0]
 		g.Turn.ActiveSeat = 1
 		pushCreatureFor(t, g, defender, 2, 2)
-		advanceIntoStep(t, g, StepDeclareBlockers)
+		// CR 508.8: with nothing attacking the declare blockers step
+		// is skipped, so the cursor never rests on it; the question
+		// is asked from the declare attackers step and from the end
+		// of combat step the walk lands on.
+		advanceIntoStep(t, g, StepDeclareAttackers)
 		if g.SeatOwesBlockDecision(defender.ID) {
 			t.Error("nothing is attacking — no decision is owed")
+		}
+		advanceIntoStep(t, g, StepEndCombat)
+		if g.SeatOwesBlockDecision(defender.ID) {
+			t.Error("the declare blockers step was skipped — no decision is owed")
 		}
 	})
 

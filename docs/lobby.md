@@ -1568,6 +1568,53 @@ numbers. Same authorisation as adding one. Returns the updated
 | 409 | game already started |
 | 422 | the seat is a human, not a bot |
 
+### `DELETE /games/{id}/seats/{player_id}` (#2785)
+
+Remove a **human or agent (MCP) guest seat** from an **unstarted**
+table: the seat leaves the table, seat numbers close up, the slot is free
+for the next join, and the stored seats row is rewritten. Returns the
+updated `GameMeta` (with the invites, for a caller who may see them).
+
+**Who may call it:** the table **host**, the game's **creator** (the
+signed-in person who made it, seated or not) or an **admin**. This is
+narrower than the bot route above, which any seated player may use; no
+one gains the ability who did not already manage the table.
+
+**What happens to the removed seat:**
+
+- Its session stops validating. Sessions are signed, not stored, so this
+  is a check against the table's seat list, not a revocation entry
+  (`auth.WithSeatCheck`): every authenticated route answers `401` with
+  `{"error": "removed from table"}`, a reconnect is refused at the
+  WebSocket upgrade, and a bot seat route or a reclaim link cannot be
+  reached with the old token.
+- Its open WebSockets are closed with code **1000** and reason
+  `removed from table` (see [protocol.md, close codes](protocol.md#close-codes-which-ones-redial)).
+  The client shows "You were removed from this table" rather than a
+  silent disconnect.
+- The **invite is not touched.** A removed person who still has the
+  invite link can sit down again, as a new seat. Rotate the invite
+  (`POST /games/{id}/invites/rotate`) to keep them out.
+
+**Scope:** unstarted tables only. Removing a seat from a game that has
+started would need a rules-sound answer for that seat's permanents and
+objects (conceding them out, CR 800.4a), which is an open owner
+decision; the route refuses a started table with `409`.
+
+The route sits beside `POST /games/{id}/seats/bot` and
+`DELETE /games/{id}/seats/bot/{player_id}` because it is the same
+resource, a seat at the table, addressed by player id. The two `DELETE`
+patterns have different segment counts, so they never collide, and a
+bot's id sent here is refused rather than handled under this gate.
+
+| Status | Reason |
+|---|---|
+| 401 | no session, or an expired / revoked one |
+| 403 | caller is not the host, the creator or an admin; or `player_id` is not a seat here |
+| 404 | game not found |
+| 409 | game already started |
+| 422 | the seat is the host's (transfer the host first, `POST /games/{id}/host`), or a bot's (use the bot route) |
+
 ### `POST /games/practice` (ADR 0076, S54)
 
 Open the tutorial's **practice table** for the caller, seated: one
