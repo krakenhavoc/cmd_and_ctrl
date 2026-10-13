@@ -2432,6 +2432,10 @@ export interface OptionalCostView {
 export interface AlternativeCostView {
   key: string;
   label?: string;
+  // ADR 0152 §5: the printed face this offer casts, when it is not the
+  // face the card shows — disturb's and More Than Meets the Eye's back
+  // face. The picker names it ("casts Goldbug, Scrappy Scout").
+  casts_face?: number;
   mana_cost?: string;
   // The target clause the spell has WHEN THIS COST IS PAID, already
   // resolved server-side against the cost's rewrite. Absent means the

@@ -518,6 +518,9 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 	cp := decode[castParams](m.Params)
 	card := st.castSource(cp.InstanceID)
+	// ADR 0152 §6: a cast of another face is priced as that face, so
+	// the cheaper converted price is not taken for the same card.
+	card = castFaceOf(card, cp.Face)
 	if castSacrificesAll(card) {
 		return sacrificeAllDeclined, "cast declined: its cost sacrifices everything (#2097)"
 	}
@@ -753,6 +756,36 @@ func (st *state) castSource(id string) *protocol.CardView {
 		}
 	}
 	return nil
+}
+
+// castFaceOf is the card as the spell a move casts: the view with the
+// printed face face's name, types, cost and size in place of the
+// active face's (ADR 0152 §6). The card itself when face is the one it
+// already shows, or the wire carries no such face.
+//
+// The face's own ability rows are not on the wire, so the front's
+// keyword and row bonuses are dropped rather than carried over to a
+// different permanent. A face with living metal is a creature of its
+// printed size on every turn the bot attacks with it, so it is priced
+// as one; its value as a blocker is not counted.
+func castFaceOf(c *protocol.CardView, face int) *protocol.CardView {
+	if c == nil || face <= 0 || face == c.ActiveFace || face >= len(c.Faces) {
+		return c
+	}
+	f := c.Faces[face]
+	out := *c
+	out.Name, out.TypeLine, out.ManaCost = f.Name, f.TypeLine, f.ManaCost
+	out.Power, out.Toughness = f.Power, f.Toughness
+	out.ActiveFace = face
+	out.Abilities, out.AbilityRows, out.Protection, out.Purpose = nil, nil, nil, nil
+	if strings.Contains(strings.ToLower(f.OracleText), "living metal") && !isCreature(&out) {
+		if head, tail, ok := strings.Cut(out.TypeLine, " — "); ok {
+			out.TypeLine = head + " Creature — " + tail
+		} else {
+			out.TypeLine += " Creature"
+		}
+	}
+	return &out
 }
 
 // isPermanentSpell reports whether a card in hand will become a

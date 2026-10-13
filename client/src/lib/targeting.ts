@@ -1210,6 +1210,15 @@ export function alternativeCostByKey(
   return alternativeCostsOf(card).find((a) => a.key === key);
 }
 
+// castsFaceName is the name of the face an offer casts, for the picker
+// (ADR 0152 §5): "Goldbug, Scrappy Scout" under More Than Meets the Eye,
+// the back face under disturb. Undefined when the offer casts the face
+// the card shows, or the card carries no such face.
+export function castsFaceName(card: CardView, offer: AlternativeCostView): string | undefined {
+  if (!offer.casts_face) return undefined;
+  return card.faces?.[offer.casts_face]?.name;
+}
+
 // altCostPayOptions returns the cards that can pay an offer's
 // card-shaped half, or undefined when the offer charges none — which
 // is every S22 keyword and most S28 ones. An empty array means the
