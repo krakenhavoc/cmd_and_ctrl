@@ -7,6 +7,7 @@
 **Amendment:** 2026-09-24 · **Accepted** · [A trigger still announcing holds its batch (CR 603.3b / 603.3d)](#amendment-2026-09-24--a-trigger-still-announcing-holds-its-batch-cr-6033b--6033d--accepted--s39) · [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529)
 **Amendment:** 2026-10-11 · **Accepted** · [The independence check, on the boards people play](#amendment-2026-10-11--the-independence-check-on-the-boards-people-play-3013--accepted) · [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013)
 **Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
+**Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
 
 ## Context
 
@@ -4388,3 +4389,71 @@ their triggering subjects.** Nothing else of the independence check is added to 
 `characteristic`; the bot is offered both orders and the engine accepts one; "never" does not ask; an answered batch
 is not asked again; Trostani alone and Riders beside Elvish Archdruid do not ask. The unchanged-skip cases are
 `game/trigger_order_test.go` (identical draws) and `cards/effects/annihilator_test.go`.
+
+
+## Amendment 2026-10-13 — the order prompt says why it asked (#3015) · Accepted
+
+Issue [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015). The owner chose it on 2026-10-11 (decision 5 of
+the #3013 amendment), to build after sub-PR 1's reason counter. #3021's `characteristic` case (above) is covered too.
+
+### The question
+
+The CR 603.3b "Order your triggers" prompt says only that. A player who is asked for an order that looks irrelevant
+(two life gains, a counter) cannot tell whether the game found a real conflict or gave up on a card it cannot read.
+The engine already knows: `triggerOrderAskLocked` returns a `TriggerOrderReason`, and the drain counts it. The prompt
+should say it.
+
+### Decision
+
+**Yes. Each prompt carries one sentence, built on the server from the reason, in the player's terms.**
+
+- `PendingChoice.TriggerOrderWhy` (`game/pending_choice.go`) holds the sentence. It rides the snapshot
+  (`pendingChoices[].triggerOrderWhy`, `omitempty`, an additive change that zero-values to "no sentence") and the
+  wire as `trigger_order_why` on the `trigger_order` pending choice (`docs/protocol.md`). The client shows it under
+  the heading. Server-side because the prompt's other text (`reason`, the labels) is built there, and because the
+  facts a sentence needs (the card behind a static, the event a watcher reacts to) exist only where the check runs.
+- **The check carries the facts it already found.** `triggerOrderConflictLocked` and `accessesConflictLocked` return a
+  `triggerOrderWhy` (the reason plus the card, the event, the life direction or the player the sentence names)
+  instead of the bare reason. `somethingReactsLocked` became `reactorLocked`, which returns the card and event kind
+  it matched; `triggerOrderBoardOpaqueLocked` returns the first card that made the board opaque;
+  `characteristicReadConflict` returns the card behind the static it found. The yes/no decision and the reason are
+  unchanged (`triggerOrderAskLocked` is now a wrapper over `triggerOrderAskWhyLocked`), and the metric counts the
+  same labels. Where the old code took the first of a map, it now takes the first in a fixed order, so the sentence
+  is stable; no decision depends on which.
+- **The words** (`game/trigger_order_why.go`, `triggerOrderSentenceLocked`). Every `TriggerOrderReason` has one, plus
+  a generic fallback for a reason this binary has no case for. None uses the check's vocabulary (a test fails on
+  "footprint", "characteristic", "batch", "engine" and the reason labels).
+
+  | Reason | Sentence |
+  |---|---|
+  | `always` | You've set your triggers to ask every time. |
+  | `undescribed` | *Wolverine Riders'* trigger is handled by the players, so the game can't tell whether the order matters. |
+  | `board_opaque` | *Humility* could change how these triggers resolve. |
+  | `reactor` | *Ajani's Pridemate* reacts to life gain. (`life gain`, `life loss` or `life changes`, by what the items do; other events: damage, cards being drawn, permanents entering, and so on.) A token the items create is "A token these triggers create reacts to …". |
+  | `ripple` | Something else in play is keeping track of *Oblivion Ring*. |
+  | `elimination` | You (or the player's name) could leave the game partway through these triggers, which changes what the rest do. |
+  | `object_tie` | These triggers both change *Marwyn*. (One writes and one reads: "One of these triggers changes *Marwyn*, which another looks at.") |
+  | `rules` | *Sokka's* trigger changes the rules the other triggers resolve under. |
+  | `library` | These triggers both work on the same library or graveyard. |
+  | `monarch` | These triggers both make you the monarch. |
+  | `characteristic` | The life gain from one trigger can change *Righteous Valkyrie's* bonus, which another trigger counts. For an identical batch (#3021): "The first life gain can change …". |
+
+  A legend is named by the part of its name before the comma ("Marwyn", "Sokka"); a face-down permanent is
+  "a face-down permanent", because every seat reads the sentence (CR 708.2). A reason with no card to name (a player
+  static, a delayed trigger) gets the same sentence with "Something in play".
+- **What the sentence is not.** Display text. It is not read back, not part of the resolve payload, and not shown to
+  the enumerator or a bot: `legal/choices.go` and the heuristic read `TriggerOrderIDs` only, and the #3021 test that
+  offers a bot both orders runs against a prompt that now carries the sentence. A `reactor` sentence says what the
+  batch does and what the card watches; it does not claim the card's trigger would fire (the check cannot evaluate
+  that, which is why it asked), so "reacts to life gain" can name a card that watches life loss when the batch only
+  gains. That is the check being conservative, said plainly, not a new inaccuracy.
+- **A prompt queued before this change** has no sentence and shows the old heading alone.
+
+### Tests
+
+`game/trigger_order_why_test.go`: every reason in `TriggerOrderReasons()` has a case with the exact sentence, the
+banned-word check, the fallbacks, the sentence stored on a queued prompt (and unchanged by the held drain), the
+legend short name. `cards/effects/trigger_order_why_3015_test.go`: the real boards each reason can reach (reactor three
+ways, undescribed, object tie, characteristic two ways, library, elimination, rules, always) produce their sentence.
+`protocol/trigger_order_why_view_test.go`: the field rides the wire and is omitted when empty or on another kind.
+`ChoicePromptModal` render test in `client/src/lib/choiceSheets.render.test.ts`.

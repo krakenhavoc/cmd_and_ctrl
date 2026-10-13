@@ -2379,6 +2379,12 @@
         {/each}
       </ul>
     {:else if isReplacementOrder || isTriggerOrder}
+      {#if isTriggerOrder && active.trigger_order_why}
+        <!-- #3015: why the game asked instead of ordering the batch itself. -->
+        <p class="prompt-hint prompt-why">
+          {active.trigger_order_why}
+        </p>
+      {/if}
       <p class="prompt-hint">
         {#if isTriggerOrder}
           Two or more of your abilities triggered at once. Click them in the order they should
@@ -2908,6 +2914,10 @@
   }
   .prompt-hint.warn {
     color: var(--danger);
+  }
+  .prompt-why {
+    color: var(--fg);
+    font-weight: 500;
   }
   .assign-input input {
     width: 70px;

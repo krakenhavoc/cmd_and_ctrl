@@ -366,6 +366,33 @@ describe("the order kinds are sheets", () => {
     expect(sent[0].params).toEqual({ choice_id: "choice-1", order: ["t2", "t1"] });
   });
 
+  it("trigger_order: says why it asked, under the heading, when the server gave a reason (#3015)", () => {
+    const why = "Ajani's Pridemate reacts to life gain.";
+    const { sent } = mount(
+      snap({ kind: "trigger_order", trigger_options: opts, trigger_order_why: why }),
+    );
+    expectSheet("Order your triggers");
+    const line = inSheet(".prompt-why");
+    expect(line).toHaveLength(1);
+    expect(line[0].textContent?.trim()).toBe(why);
+    // It is text only: the prompt is answered exactly as before.
+    click(inSheet("button.prompt-opt")[1]);
+    click(inSheet("button.prompt-opt")[0]);
+    click(barButton("Resolve in this order")!);
+    expect(sent[0].params).toEqual({ choice_id: "choice-1", order: ["t2", "t1"] });
+  });
+
+  it("trigger_order: no reason, no line; replacement_order never has one", () => {
+    mount(snap({ kind: "trigger_order", trigger_options: opts }));
+    expectSheet("Order your triggers");
+    expect(inSheet(".prompt-why")).toHaveLength(0);
+    cleanup();
+    mount(
+      snap({ kind: "replacement_order", replacement_options: opts, trigger_order_why: "stray" }),
+    );
+    expect(inSheet(".prompt-why")).toHaveLength(0);
+  });
+
   it("trigger_order: Auto-order answers in the order a skipped batch stacks", () => {
     const { sent } = mount(snap({ kind: "trigger_order", trigger_options: opts }));
     click(barButton("Auto-order")!);

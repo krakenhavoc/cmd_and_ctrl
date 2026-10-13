@@ -2,6 +2,7 @@ package game
 
 import (
 	"reflect"
+	"sort"
 
 	"github.com/google/uuid"
 )
@@ -143,6 +144,10 @@ const (
 // the board: what it reads and writes, and which events it causes.
 type triggerAccess struct {
 	controller uuid.UUID
+	// source is the item's source card, for the sentence that says why
+	// the prompt was asked (trigger_order_why.go). It never feeds a
+	// decision.
+	source uuid.UUID
 	// Objects (cards and permanents), by instance ID.
 	reads, writes map[uuid.UUID]bool
 	// pumped are the objects the item pumps (FootprintPumpSource): a
@@ -207,6 +212,9 @@ func (a *triggerAccess) writesOnlyLife() bool {
 // toughness at all, and whether any of those reads a life total.
 type layerStatics struct {
 	pt, life bool
+	// ptCard and lifeCard name the first card behind each flag, for
+	// the sentence that says why the prompt was asked.
+	ptCard, lifeCard string
 }
 
 // layerStaticsLocked reads the battlefield and the emblems for static
@@ -239,8 +247,14 @@ func (g *Game) layerStaticsLocked() layerStatics {
 			}
 			for _, st := range d.Static {
 				if st.Layer == Layer7PT || st.Layer == Layer1Copy || st.RemovesAbilities {
+					if !out.pt {
+						out.ptCard = whyCardName(z.Cards[i])
+					}
 					out.pt = true
 					if st.DependsOnLifeTotal {
+						if !out.life {
+							out.lifeCard = whyCardName(z.Cards[i])
+						}
 						out.life = true
 					}
 				}
@@ -350,21 +364,31 @@ func (g *Game) seatNeedsTriggerOrderLocked(items []*StackItem, mode TriggerOrder
 //
 // Caller must hold g.mu.
 func (g *Game) triggerOrderAskLocked(items []*StackItem, mode TriggerOrderMode) (bool, TriggerOrderReason) {
+	ask, why := g.triggerOrderAskWhyLocked(items, mode)
+	return ask, why.reason
+}
+
+// triggerOrderAskWhyLocked is triggerOrderAskLocked with the facts the
+// prompt's sentence names (trigger_order_why.go). Same decision, same
+// reason: the extra detail is read off what the check already found.
+//
+// Caller must hold g.mu.
+func (g *Game) triggerOrderAskWhyLocked(items []*StackItem, mode TriggerOrderMode) (bool, triggerOrderWhy) {
 	if !seatNeedsTriggerOrder(items, mode) {
 		// The one skip the board is asked about again: an identical
 		// batch whose items read their triggering subjects (#3021).
-		if g.identicalBatchOrderShowsLocked(items, mode) {
-			return true, TriggerOrderReasonCharacteristic
+		if w, shows := g.identicalBatchOrderShowsLocked(items, mode); shows {
+			return true, w
 		}
-		return false, ""
+		return false, triggerOrderWhy{}
 	}
 	if mode == TriggerOrderAlways || mode == TriggerOrderNever {
-		return true, TriggerOrderReasonAlways
+		return true, triggerOrderWhy{reason: TriggerOrderReasonAlways}
 	}
-	if reason := g.triggerOrderConflictLocked(items); reason != "" {
-		return true, reason
+	if w := g.triggerOrderConflictLocked(items); w.reason != "" {
+		return true, w
 	}
-	return false, ""
+	return false, triggerOrderWhy{}
 }
 
 // triggerOrderConflictLocked reports "" when every order of items gives
@@ -375,19 +399,20 @@ func (g *Game) triggerOrderAskLocked(items []*StackItem, mode TriggerOrderMode) 
 // this was triggersIndependentLocked, a bool.)
 //
 // Caller must hold g.mu.
-func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason {
+func (g *Game) triggerOrderConflictLocked(items []*StackItem) triggerOrderWhy {
 	if len(items) < 2 {
-		return TriggerOrderReasonUndescribed
+		return triggerOrderWhy{reason: TriggerOrderReasonUndescribed}
 	}
-	if g.triggerOrderBoardOpaqueLocked() {
-		return TriggerOrderReasonBoardOpaque
+	if card, opaque := g.triggerOrderBoardOpaqueLocked(); opaque {
+		return triggerOrderWhy{reason: TriggerOrderReasonBoardOpaque, card: card}
 	}
 	accs := make([]triggerAccess, len(items))
 	for i, t := range items {
 		a, ok := g.triggerAccessLocked(t)
 		if !ok {
-			return TriggerOrderReasonUndescribed
+			return triggerOrderWhy{reason: TriggerOrderReasonUndescribed, card: g.whyCardNameLocked(t.SourceCardID)}
 		}
+		a.source = t.SourceCardID
 		accs[i] = a
 	}
 	emits := map[EventKind]bool{}
@@ -408,21 +433,29 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 			draws[p] += n
 		}
 	}
-	if g.somethingReactsLocked(emits) {
-		return TriggerOrderReasonReactor
+	if card, kind, reacts := g.reactorLocked(emits); reacts {
+		return triggerOrderWhy{reason: TriggerOrderReasonReactor, card: card, event: kind, life: batchLife(accs)}
 	}
 	// A token the batch creates with a keyword trigger that watches an
 	// event the batch causes (evolve watches entering) reacts to the
 	// items after its maker and not to those before it.
 	for _, a := range accs {
-		for k := range a.tokenWatches {
+		for _, k := range sortedKinds(a.tokenWatches) {
 			if emits[k] {
-				return TriggerOrderReasonReactor
+				return triggerOrderWhy{reason: TriggerOrderReasonReactor, event: k, life: batchLife(accs), token: true}
 			}
 		}
 	}
 	if g.writtenObjectsRippleLocked(written) {
-		return TriggerOrderReasonRipple
+		w := triggerOrderWhy{reason: TriggerOrderReasonRipple}
+		// Name the first written object the records mention, if one alone does.
+		for _, id := range sortedIDs(written) {
+			if g.writtenObjectsRippleLocked(map[uuid.UUID]bool{id: true}) {
+				w.card = g.whyCardNameLocked(id)
+				break
+			}
+		}
+		return w
 	}
 	// Who might leave the game while the batch resolves (CR 104.3b and
 	// 104.3c, state-based losses checked between the resolutions): a player
@@ -444,7 +477,7 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 	// with them (CR 800.4a), so where they leave in it shows.
 	for _, a := range accs {
 		if eliminable[a.controller] {
-			return TriggerOrderReasonElimination
+			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: a.controller}
 		}
 	}
 	// The board's layer statics, read once and only for a batch with a
@@ -459,41 +492,52 @@ func (g *Game) triggerOrderConflictLocked(items []*StackItem) TriggerOrderReason
 	}
 	for i := range accs {
 		for j := i + 1; j < len(accs); j++ {
-			if r := g.accessesConflictLocked(&accs[i], &accs[j], eliminable, statics); r != "" {
-				return r
+			if w := g.accessesConflictLocked(&accs[i], &accs[j], eliminable, statics); w.reason != "" {
+				return w
 			}
-			if r := g.accessesConflictLocked(&accs[j], &accs[i], eliminable, statics); r != "" {
-				return r
+			if w := g.accessesConflictLocked(&accs[j], &accs[i], eliminable, statics); w.reason != "" {
+				return w
 			}
 		}
 	}
-	return ""
+	return triggerOrderWhy{}
+}
+
+// sortedKinds lists a set of event kinds in a fixed order.
+func sortedKinds(set map[EventKind]bool) []EventKind {
+	out := make([]EventKind, 0, len(set))
+	for k := range set {
+		out = append(out, k)
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
+	return out
 }
 
 // accessesConflictLocked reports whether a's writes can change what b
-// reads or writes, as the reason they conflict, or "" when they don't.
-// Called both ways round for each pair.
-func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool, statics func() layerStatics) TriggerOrderReason {
+// reads or writes, as the reason they conflict (with the facts its
+// sentence names), or the zero value when they don't. Called both ways
+// round for each pair.
+func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.UUID]bool, statics func() layerStatics) triggerOrderWhy {
 	if a.rules {
-		return TriggerOrderReasonRules
+		return triggerOrderWhy{reason: TriggerOrderReasonRules, card: g.whyCardNameLocked(a.source)}
 	}
 	if a.pumpRules && (b.charReads || b.traitReads) {
-		return TriggerOrderReasonRules
+		return triggerOrderWhy{reason: TriggerOrderReasonRules, card: g.whyCardNameLocked(a.source)}
 	}
 	// b reads a characteristic through the layers, and a changes
 	// something a static on the board could read to compute it: a life
 	// total for a static that declares it reads one, anything else for
 	// any static that can change power or toughness (#3013).
-	if characteristicReadConflict(a, b, statics) {
-		return TriggerOrderReasonCharacteristic
+	if card, conflict := characteristicReadConflict(a, b, statics); conflict {
+		return triggerOrderWhy{reason: TriggerOrderReasonCharacteristic, card: card, life: accessLifeDirection(a)}
 	}
 	if a.monarch && b.monarch {
-		return TriggerOrderReasonMonarch
+		return triggerOrderWhy{reason: TriggerOrderReasonMonarch}
 	}
 	// A tie on one object asks, whatever the two do to it.
-	for id := range a.writes {
+	for _, id := range sortedIDs(a.writes) {
 		if b.writes[id] || b.reads[id] {
-			return TriggerOrderReasonObjectTie
+			return triggerOrderWhy{reason: TriggerOrderReasonObjectTie, card: g.whyCardNameLocked(id), both: b.writes[id]}
 		}
 	}
 	for p, dir := range a.life {
@@ -502,15 +546,15 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// and a loss commute too, unless the player could reach 0 in
 		// between and lose (CR 704.5a).
 		if other != 0 && other != dir && eliminable[p] {
-			return TriggerOrderReasonElimination
+			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: p}
 		}
 	}
 	for p := range a.cards {
 		if b.cards[p] {
-			return TriggerOrderReasonLibrary
+			return triggerOrderWhy{reason: TriggerOrderReasonLibrary}
 		}
 	}
-	for p := range eliminable {
+	for _, p := range sortedIDs(eliminable) {
 		if a.life[p]&lifeDown == 0 && a.draws[p] == 0 {
 			continue
 		}
@@ -518,26 +562,42 @@ func (g *Game) accessesConflictLocked(a, b *triggerAccess, eliminable map[uuid.U
 		// to anything p owns or controls, depends on whether b comes
 		// first. Another loss of life is the same either way.
 		if b.life[p]&lifeUp != 0 || b.cards[p] || b.playerReads[p] {
-			return TriggerOrderReasonElimination
+			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: p}
 		}
 		if g.touchesObjectsOfLocked(b, p) {
-			return TriggerOrderReasonElimination
+			return triggerOrderWhy{reason: TriggerOrderReasonElimination, player: p}
 		}
 	}
-	return ""
+	return triggerOrderWhy{}
+}
+
+// accessLifeDirection is the way an item moves life totals, folded across players.
+func accessLifeDirection(a *triggerAccess) lifeDirection {
+	var d lifeDirection
+	for _, dir := range a.life {
+		d |= dir
+	}
+	return d
 }
 
 // characteristicReadConflict reports whether b reads a characteristic
 // through the layers and a changes something a static on the board
 // could read to compute it: a life total for a static that declares it
 // reads one, anything else for any static that can change power or
-// toughness (#3013). It is the whole test for TriggerOrderReasonCharacteristic.
-func characteristicReadConflict(a, b *triggerAccess, statics func() layerStatics) bool {
+// toughness (#3013). It is the whole test for TriggerOrderReasonCharacteristic,
+// and it names the card behind the static it found.
+func characteristicReadConflict(a, b *triggerAccess, statics func() layerStatics) (string, bool) {
 	if !b.charReads || !a.writesAnything() {
-		return false
+		return "", false
 	}
 	st := statics()
-	return st.life || (st.pt && !a.writesOnlyLife())
+	if st.life {
+		return st.lifeCard, true
+	}
+	if st.pt && !a.writesOnlyLife() {
+		return st.ptCard, true
+	}
+	return "", false
 }
 
 // identicalBatchOrderShowsLocked is #3021: the sub-PR 8 skip (every
@@ -559,9 +619,9 @@ func characteristicReadConflict(a, b *triggerAccess, statics func() layerStatics
 // for no reason but the one that is true.
 //
 // Caller must hold g.mu.
-func (g *Game) identicalBatchOrderShowsLocked(items []*StackItem, mode TriggerOrderMode) bool {
+func (g *Game) identicalBatchOrderShowsLocked(items []*StackItem, mode TriggerOrderMode) (triggerOrderWhy, bool) {
 	if len(items) < 2 || mode == TriggerOrderAlways || mode == TriggerOrderNever {
-		return false
+		return triggerOrderWhy{}, false
 	}
 	anyOpen := false
 	for _, t := range items {
@@ -570,20 +630,20 @@ func (g *Game) identicalBatchOrderShowsLocked(items []*StackItem, mode TriggerOr
 		}
 	}
 	if !anyOpen || !identicalItems(items) {
-		return false
+		return triggerOrderWhy{}, false
 	}
 	accs := make([]triggerAccess, len(items))
 	reads := false
 	for i, t := range items {
 		a, ok := g.triggerAccessLocked(t)
 		if !ok {
-			return false
+			return triggerOrderWhy{}, false
 		}
 		accs[i] = a
 		reads = reads || a.charReads
 	}
 	if !reads {
-		return false
+		return triggerOrderWhy{}, false
 	}
 	var st *layerStatics
 	statics := func() layerStatics {
@@ -595,12 +655,17 @@ func (g *Game) identicalBatchOrderShowsLocked(items []*StackItem, mode TriggerOr
 	}
 	for i := range accs {
 		for j := range accs {
-			if i != j && characteristicReadConflict(&accs[i], &accs[j], statics) {
-				return true
+			if i == j {
+				continue
+			}
+			if card, conflict := characteristicReadConflict(&accs[i], &accs[j], statics); conflict {
+				return triggerOrderWhy{
+					reason: TriggerOrderReasonCharacteristic, card: card, life: accessLifeDirection(&accs[i]), identical: true,
+				}, true
 			}
 		}
 	}
-	return false
+	return triggerOrderWhy{}, false
 }
 
 // touchesObjectsOfLocked reports whether the access reads or writes an
@@ -978,14 +1043,14 @@ func (g *Game) objectInertLocked(id uuid.UUID) bool {
 // characteristics of the objects it locked in (CR 611.2c).
 //
 // Caller must hold g.mu.
-func (g *Game) triggerOrderBoardOpaqueLocked() bool {
+func (g *Game) triggerOrderBoardOpaqueLocked() (card string, opaque bool) {
 	zones := []*Zone{g.Battlefield}
 	for _, p := range g.Seats {
 		if p == nil {
 			continue
 		}
 		if len(p.Statics) > 0 {
-			return true
+			return "", true
 		}
 		zones = append(zones, p.Emblems)
 	}
@@ -996,16 +1061,16 @@ func (g *Game) triggerOrderBoardOpaqueLocked() bool {
 		for i := range z.Cards {
 			c := &z.Cards[i]
 			if Unimplemented(*c) {
-				return true
+				return whyCardName(*c), true
 			}
 			if d := catalogDef(catalogAbilityKeyOf(c)); d != nil {
 				if global, _ := defBearsRules(d); global {
-					return true
+					return whyCardName(*c), true
 				}
 			}
 			for _, t := range triggersOf(c) {
 				if t.State != "" {
-					return true
+					return whyCardName(*c), true
 				}
 			}
 		}
@@ -1013,15 +1078,15 @@ func (g *Game) triggerOrderBoardOpaqueLocked() bool {
 	for i := range g.ScopedEffects {
 		se := &g.ScopedEffects[i]
 		if se.Scope != ScopeNone {
-			return true
+			return "", true
 		}
 		for _, m := range se.Mods {
 			if !characteristicModKinds[m.Kind] {
-				return true
+				return "", true
 			}
 		}
 	}
-	return false
+	return "", false
 }
 
 // characteristicModKinds are the continuing-effect mods that only change
@@ -1067,14 +1132,14 @@ var knownBuiltinReplacementLabels = map[string]bool{
 // batch's items, so where it lands depends on the order.
 //
 // Caller must hold g.mu.
-func (g *Game) somethingReactsLocked(emits map[EventKind]bool) bool {
-	watches := func(kinds []EventKind) bool {
+func (g *Game) reactorLocked(emits map[EventKind]bool) (card string, kind EventKind, reacts bool) {
+	watches := func(kinds []EventKind) (EventKind, bool) {
 		for _, k := range kinds {
 			if emits[k] {
-				return true
+				return k, true
 			}
 		}
-		return false
+		return "", false
 	}
 	zones := []*Zone{g.Battlefield}
 	for _, p := range g.Seats {
@@ -1089,16 +1154,17 @@ func (g *Game) somethingReactsLocked(emits map[EventKind]bool) bool {
 		for i := range z.Cards {
 			c := &z.Cards[i]
 			for _, t := range triggersOf(c) {
-				if watches(t.Watches) {
-					return true
+				if k, ok := watches(t.Watches); ok {
+					return whyCardName(*c), k, true
 				}
 			}
 			if CatalogReplacements == nil {
 				continue
 			}
 			for _, r := range CatalogReplacements(catalogAbilityKeyOf(c)) {
-				if len(r.Watches) == 0 || watches(r.Watches) {
-					return true
+				k, ok := watches(r.Watches)
+				if len(r.Watches) == 0 || ok {
+					return whyCardName(*c), k, true
 				}
 			}
 		}
@@ -1108,7 +1174,7 @@ func (g *Game) somethingReactsLocked(emits map[EventKind]bool) bool {
 			for _, z := range g.triggerZonesOfKindLocked(zk) {
 				for i := range z.Cards {
 					if triggerZones.declares(CatalogKey(z.Cards[i])) {
-						return true
+						return whyCardName(z.Cards[i]), k, true
 					}
 				}
 			}
@@ -1120,31 +1186,39 @@ func (g *Game) somethingReactsLocked(emits map[EventKind]bool) bool {
 		}
 		for i := range p.Graveyard.Cards {
 			for _, r := range CatalogReplacements(catalogAbilityKeyOf(&p.Graveyard.Cards[i])) {
-				if r.FromGraveyard && (len(r.Watches) == 0 || watches(r.Watches)) {
-					return true
+				k, ok := watches(r.Watches)
+				if r.FromGraveyard && (len(r.Watches) == 0 || ok) {
+					return whyCardName(p.Graveyard.Cards[i]), k, true
 				}
 			}
 		}
 	}
 	for _, dt := range g.DelayedTriggers {
-		if dt != nil && watches(dt.On) {
-			return true
+		if dt == nil {
+			continue
+		}
+		if k, ok := watches(dt.On); ok {
+			return "", k, true
 		}
 	}
 	for i := range g.BuiltinReplacements {
 		r := &g.BuiltinReplacements[i]
-		if !knownBuiltinReplacementLabels[r.Label] && (len(r.Watches) == 0 || watches(r.Watches)) {
-			return true
+		k, ok := watches(r.Watches)
+		if !knownBuiltinReplacementLabels[r.Label] && (len(r.Watches) == 0 || ok) {
+			return "", k, true
 		}
 	}
 	// CR 702.179d: the active player's speed goes up when an opponent
 	// loses life during their turn — an inherent trigger with no card.
 	if emits[EventChangeLife] || emits[EventDealDamage] {
 		if a := g.Turn.ActiveSeat; a >= 0 && a < len(g.Seats) && g.Seats[a] != nil && g.Seats[a].Speed > 0 {
-			return true
+			if emits[EventChangeLife] {
+				return "", EventChangeLife, true
+			}
+			return "", EventDealDamage, true
 		}
 	}
-	return false
+	return "", "", false
 }
 
 // writtenObjectsRippleLocked reports whether changing one of the

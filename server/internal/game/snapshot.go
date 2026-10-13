@@ -1474,6 +1474,8 @@ type pendingChoiceSnapshot struct {
 	LibraryTopCount int         `json:"libraryTopCount,omitempty"`
 	LibraryTopDepth int         `json:"libraryTopDepth,omitempty"`
 	TriggerOrderIDs []uuid.UUID `json:"triggerOrderIds,omitempty"`
+	// #3015: the sentence under "Order your triggers".
+	TriggerOrderWhy string      `json:"triggerOrderWhy,omitempty"`
 	PayCost         string      `json:"payCost,omitempty"`
 	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
 	SearchMax       int         `json:"searchMax"`
@@ -2489,6 +2491,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		LibraryTopCount:      c.LibraryTopCount,
 		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
+		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
@@ -3345,6 +3348,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		LibraryTopCount:      c.LibraryTopCount,
 		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
+		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,

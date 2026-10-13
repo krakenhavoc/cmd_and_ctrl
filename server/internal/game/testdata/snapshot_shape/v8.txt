@@ -2177,6 +2177,7 @@ pendingChoices[].searchMax	number:int
 pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)
+pendingChoices[].triggerOrderWhy	string
 pendingTriggers	array
 pendingTriggers[]	object
 pendingTriggers[].altCost	string

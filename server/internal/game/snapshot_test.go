@@ -246,6 +246,7 @@ func enrich(t *testing.T, g *Game) {
 			SacrificeOptions:  []uuid.UUID{spellID},
 			ScryCards:         []uuid.UUID{spellID},
 			TriggerOrderIDs:   []uuid.UUID{spellID},
+			TriggerOrderWhy:   "Test Permanent reacts to life gain.",
 			PayCost:           "{2}",
 			SearchCards:       []uuid.UUID{spellID},
 			SearchMax:         1,
