@@ -65,9 +65,19 @@ func AssertFaceInvariant(t *testing.T, g *Game) {
 			t.Errorf("%s: %q TypeLine = %q but face has %q",
 				where, c.Name, c.TypeLine, f.TypeLine)
 		}
-		if c.ManaCost != f.ManaCost {
+		wantCost := f.ManaCost
+		if c.Layout == LayoutFlip {
+			// CR 710.1c (ADR 0151): a flip card's cost is its top
+			// half's on both halves, and its face follows its status.
+			wantCost = c.Faces[0].ManaCost
+			if IsFlipCard(c) && (c.ActiveFace == 1) != c.Flipped {
+				t.Errorf("%s: flip card %q has ActiveFace %d and Flipped %v",
+					where, c.Name, c.ActiveFace, c.Flipped)
+			}
+		}
+		if c.ManaCost != wantCost {
 			t.Errorf("%s: %q ManaCost = %q but face has %q",
-				where, c.Name, c.ManaCost, f.ManaCost)
+				where, c.Name, c.ManaCost, wantCost)
 		}
 		if c.Power != f.Power || c.Toughness != f.Toughness {
 			t.Errorf("%s: %q P/T = %d/%d but face has %d/%d",

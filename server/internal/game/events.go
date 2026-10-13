@@ -1136,6 +1136,24 @@ const (
 	// (ADR 0152 §2, owner decision 1).
 	EventTransform EventKind = "transform"
 
+	// EventFlipPermanent — CardID, a flip card on the battlefield, was
+	// flipped (CR 710, ADR 0151). Actor is its controller and Label is
+	// the name it flipped FROM, the only place that name survives.
+	//
+	// NOT "flip": rngStreamFlip and EventFlipCoin already mean a coin
+	// flip, and a log reader or trigger author must not confuse the
+	// two. Not a zone change and not a transform (CR 701.27 is about
+	// double-faced cards; a flip card is single-faced), so "whenever
+	// this transforms" never sees it.
+	//
+	// Two consumers. layerVersionBump invalidates the layer engine, for
+	// EventTransform's reason: the printed name, type line, P/T and
+	// catalog entry changed wholesale with the permanent sitting still.
+	// And the log narrates it (CR 710.3: whether a permanent is flipped
+	// must be clear at all times). No printed card triggers on a
+	// permanent flipping, so no trigger constructor ships.
+	EventFlipPermanent EventKind = "flip_permanent"
+
 	// EventMeld — two cards were melded (CR 701.42a) and CardID is the
 	// melded permanent that has just entered the battlefield. Actor is
 	// its controller and Label names the two cards it was melded from

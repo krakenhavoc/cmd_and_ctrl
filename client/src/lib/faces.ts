@@ -24,6 +24,27 @@ export const LAYOUT_ADVENTURE = "adventure";
 export const LAYOUT_SPLIT = "split";
 
 /**
+ * Scryfall's layout for a Kamigawa flip card (CR 710, ADR 0151): one
+ * printed card whose alternative half is printed upside down. It is
+ * cast only as its top half (CR 710.2), so needsFacePicker stays
+ * false, and it has ONE image for both halves.
+ */
+export const LAYOUT_FLIP = "flip";
+
+/**
+ * isFlippedFlipCard reports whether `card` is a flip card showing its
+ * flipped half. The wire needs no field for it: a flip card's face
+ * follows its flipped status, so `active_face === 1` IS "flipped"
+ * (ADR 0151 §7). Every other card answers false, a transformed DFC
+ * included.
+ */
+export function isFlippedFlipCard(
+  card: Pick<CardView, "layout" | "active_face"> | null | undefined,
+): boolean {
+  return card?.layout === LAYOUT_FLIP && (card.active_face ?? 0) === 1;
+}
+
+/**
  * isAftermathFace reports whether face `i` of a split card is its
  * AFTERMATH half (CR 702.127a) — read, as the server reads it, off the
  * face's own oracle text, because the keyword is not a canonical

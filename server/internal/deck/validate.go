@@ -371,9 +371,12 @@ func identitySet(syms []string) map[string]struct{} {
 // pair's combined back face (game.Card.Meld) and melds when its meld
 // ability resolves. The combined back face's OWN record is not a card a
 // deck can hold, and meldBackFaceViolations refuses it.
-var layoutSimplifications = map[string]string{
-	"flip": "imports as its front face only",
-}
+//
+// `flip`, the last entry, left it with ADR 0151 (#1892): a flip card is
+// cast as its top half (CR 710.2) and flips on the battlefield
+// (game.FlipPermanentForEffect). The map is empty now and stays, with
+// unsupportedLayoutViolations, for the next layout the engine half-plays.
+var layoutSimplifications = map[string]string{}
 
 // unsupportedLayoutViolations reports one non-fatal violation per
 // distinct simplification, naming the cards it applies to.

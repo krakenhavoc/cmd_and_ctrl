@@ -547,6 +547,34 @@ func (g *Game) CraftMaterialsForEffect(refs []ObjectRef) []Card {
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
+	// The card is on its front face (CR 712.8a); ask the transform
+	// question of that shape, whatever a stray ActiveFace says.
+	return g.returnFromGraveyardOnFaceLocked(cardID, 1, false, CanTransform, controller, tapped, counters)
+}
+
+// returnFromGraveyardOnFaceLocked is the body "return it from a
+// graveyard to the battlefield <on another face>" shares between its
+// two forms: the transform form above (CR 712.14a) and the flip form,
+// "return it to the battlefield flipped" (Homura, Human Ascendant, CR
+// 110.5b, ADR 0151 decision 6).
+//
+// `guard` is asked of the card as it sits in the graveyard, on its
+// front face (CR 712.8a, 710.2); a card it refuses is left where it is
+// and nothing is returned, with no error. Otherwise `face` is set on
+// the card IN THE GRAVEYARD — with the flipped status too when
+// `flipped` — so the CR 614 pipeline finds that face's catalog key on
+// the way in, and the ordinary graveyard entry runs. The move to the
+// battlefield keeps both, because MoveCard resets them only for a
+// destination that is not the battlefield.
+//
+// If the entry is cancelled or redirected both are put back, so no card
+// is left in a graveyard on its other face or flipped. A PAUSED entry
+// (a CR 616 ordering prompt or an entry choice is open) keeps them: the
+// resume needs them, and a card still in a graveyard with a prompt open
+// is mid-move.
+//
+// Caller must hold g.mu.
+func (g *Game) returnFromGraveyardOnFaceLocked(cardID uuid.UUID, face int, flipped bool, guard func(Card) bool, controller uuid.UUID, tapped bool, counters map[string]int) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -561,17 +589,24 @@ func (g *Game) ReturnFromGraveyardTransformedForEffect(cardID, controller uuid.U
 	if card == nil {
 		return uuid.Nil, ErrCardNotFound
 	}
-	// The card is on its front face (CR 712.8a); ask the transform
-	// question of that shape, whatever a stray ActiveFace says.
 	front := *card
 	front.ActiveFace = 0
-	if !CanTransform(front) {
+	front.Flipped = false
+	if !guard(front) {
 		return uuid.Nil, nil
 	}
-	setFaceInZoneLocked(src, cardID, 1)
+	setFaceInZoneLocked(src, cardID, face)
+	if flipped {
+		card.Flipped = true
+	}
 	id, err := g.returnFromGraveyardFaceLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters)
 	if id == uuid.Nil && len(g.PendingChoices) == 0 {
 		if z := g.findCardZoneLocked(cardID); z != nil && z.Kind == ZoneGraveyard {
+			for i := range z.Cards {
+				if z.Cards[i].InstanceID == cardID {
+					z.Cards[i].Flipped = false
+				}
+			}
 			setFaceInZoneLocked(z, cardID, 0)
 		}
 	}

@@ -19,6 +19,7 @@
 
   import { hoveredCard } from "../../cardTypes";
   import { cardImageURL } from "../../cardImage";
+  import { isFlippedFlipCard, LAYOUT_FLIP } from "../../faces";
   import { cardArt } from "../../cardArt";
   import { isToken } from "../../tokenGroups";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
@@ -36,6 +37,10 @@
 
   const card = $derived($hoveredCard);
   const imgSrc = $derived(cardImageURL(card, "normal"));
+  // ADR 0151 (owner decision 2): a flipped flip card's one image is
+  // shown turned 180 degrees, as on the board, so the half that is up
+  // reads the right way up.
+  const flippedArt = $derived(isFlippedFlipCard(card));
   // The OTHER face of a multi-face card, if there is one — the back
   // of a modal DFC being previewed from hand, or the front of one
   // already flipped onto the battlefield. Null for the ~33,000
@@ -45,7 +50,11 @@
     if (!faces || faces.length < 2) return null;
     const active = card?.active_face ?? 0;
     const idx = active === 0 ? 1 : 0;
-    return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx) };
+    // A flip card's other half is the same image turned the other way
+    // (ADR 0151 section 7): upside down beside its top half, upright
+    // beside a flipped permanent.
+    const turned = card?.layout === LAYOUT_FLIP && !flippedArt;
+    return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx), turned };
   });
 
   // ADR 0145 — meld. A melded permanent shows the two cards it is
@@ -186,6 +195,7 @@
           <img
             src={imgSrc}
             alt=""
+            class:flipped={flippedArt}
             fetchpriority="high"
             use:cardArt={{ url: imgSrc, interactive: false }}
           />
@@ -216,6 +226,7 @@
             <img
               src={otherFace.src}
               alt={otherFace.face.name}
+              class:flipped={otherFace.turned}
               use:cardArt={{ url: otherFace.src, interactive: false }}
             />
           {/key}
@@ -435,6 +446,10 @@
     height: 100%;
     object-fit: cover;
     display: block;
+  }
+  /* ADR 0151: a flip card's image turned to show its other half. */
+  img.flipped {
+    transform: rotate(180deg);
   }
 
   /* ADR 0145: a melded permanent's two cards (or a meld card's combined

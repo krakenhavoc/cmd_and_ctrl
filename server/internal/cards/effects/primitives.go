@@ -947,9 +947,19 @@ type ReturnFromGraveyard struct {
 	// the permanent enters with (CR 614.1c). Only read when Transformed
 	// is set; a plain return names none today.
 	Counters map[string]int
+
+	// Flipped returns a flip card flipped — "return it to the
+	// battlefield flipped" (Homura, Human Ascendant, CR 110.5b, ADR 0151
+	// decision 6). Only meaningful for Dest == ZoneBattlefield. A card
+	// that is not a flip card is left where it is.
+	Flipped bool
 }
 
 func (r ReturnFromGraveyard) Apply(ctx *Context) error {
+	if r.Flipped {
+		_, err := ctx.Game.ReturnFromGraveyardFlippedForEffect(r.Target, r.Controller, r.Tapped)
+		return nothingIfGone(err)
+	}
 	if r.Transformed {
 		_, err := ctx.Game.ReturnFromGraveyardTransformedForEffect(r.Target, r.Controller, r.Tapped, r.Counters)
 		return nothingIfGone(err)
