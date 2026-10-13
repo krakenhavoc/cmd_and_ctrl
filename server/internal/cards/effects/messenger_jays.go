@@ -17,10 +17,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // draw has settled does the controller discard the same number, so the
 // drawn cards are legal discards (draw_then.go).
 //
-// The discard count is the quill votes, not the cards that really
-// arrived. They differ only when a replacement effect swallows a draw
-// (an empty library loses the game on the next state check anyway), and
-// then the controller discards more than printed, never fewer.
+// The discard count is the cards that really arrived, not the quill
+// votes: a draw a replacement effect swallowed (Notion Thief on the
+// opponent's side of the table) costs no discard.
 //
 // A bot votes feather for its own Jays and quill for an opponent's,
 // where the card filtering is the smaller gift.
@@ -49,7 +48,36 @@ var messengerJaysVoted = VoteResultThen("vote/messenger-jays", func(ctx *Context
 		return err
 	}
 	if n := r.Votes(1); n > 0 {
-		return drawThenDiscard(ctx.Game, ctx.Controller(), ctx.Source(), n, n, "Messenger Jays — discard a card for each card drawn")
+		return ctx.Game.DrawNThenForEffect(ctx.Controller(), n, game.DrawThen{
+			Ref: messengerJaysDiscardRef, Player: ctx.Controller(), Source: ctx.Source(), N: n,
+		})
+	}
+	return nil
+})
+
+// messengerJaysDiscardRef is "for each card drawn this way, discard a
+// card": it runs once every draw has settled and asks for one discard per
+// card that really arrived. A draw a replacement swallowed or redirected
+// (Notion Thief, dredge) leaves no EventDrawCard for the player, so it
+// costs no discard. The draws are counted back to the vote's last ballot,
+// the last thing that happened before them.
+var messengerJaysDiscardRef = game.RegisterDrawThen("messenger-jays-discard", func(g *game.Game, d game.DrawThen) error {
+	drawn := 0
+	for i := len(g.Events) - 1; i >= 0; i-- {
+		ev := g.Events[i]
+		if ev.Kind == game.EventVoteCast {
+			break
+		}
+		if ev.Kind == game.EventDrawCard && ev.Actor == d.Player {
+			drawn++
+		}
+	}
+	drawn = min(drawn, d.N)
+	if drawn > 0 {
+		g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+			Player: d.Player, Source: d.Source, N: drawn,
+			Question: "Messenger Jays — discard a card for each card drawn",
+		})
 	}
 	return nil
 })

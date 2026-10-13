@@ -267,6 +267,29 @@ func TestMessengerJaysCountersThenDrawsAndDiscards(t *testing.T) {
 	_ = handBefore
 }
 
+// A draw a replacement redirects is not "a card drawn this way": with an
+// opponent's Notion Thief out, the quill draws go to the Thief's
+// controller and the Jays' controller discards nothing.
+func TestMessengerJaysDiscardsOnlyForCardsActuallyDrawn(t *testing.T) {
+	g := newCatalogGame(t)
+	order := voteOrder(g)
+	me, thief := order[0], order[1]
+	seedReplacementPermanent(g, b10NotionThiefOracle, "Notion Thief", thief.ID)
+	castCatalogSpell(t, g, "Messenger Jays", "Creature — Bird", messengerJaysOracle, nil)
+	passPriorityAroundTable(t, g)
+	myHand, thiefHand := me.Hand.Size(), thief.Hand.Size()
+	voteRound(t, g, "quill", "quill", "feather", "feather")
+	if discardOwed(g, me.ID) != 0 {
+		t.Errorf("owes %d discards although no card was drawn", discardOwed(g, me.ID))
+	}
+	if me.Hand.Size() != myHand {
+		t.Errorf("hand %d -> %d, want unchanged (draws were stolen)", myHand, me.Hand.Size())
+	}
+	if thief.Hand.Size() != thiefHand+2 {
+		t.Errorf("Notion Thief's controller hand %d -> %d, want +2", thiefHand, thief.Hand.Size())
+	}
+}
+
 func TestMessengerJaysWithNoQuillVotesDrawsNothing(t *testing.T) {
 	g := newCatalogGame(t)
 	order := voteOrder(g)
