@@ -32,6 +32,7 @@ func init() {
 		Name:         "Elvish Reclaimer",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "This creature gets +2/+2 as long as there are three or more land cards in your graveyard.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

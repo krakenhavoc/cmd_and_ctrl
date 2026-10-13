@@ -56,6 +56,7 @@ func init() {
 		Name:         "Anara, Wolvid Familiar",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:     "During your turn, commanders you control have indestructible.",
 			Layer:     game.Layer6Ability,
 			AppliesTo: commanderYouControlOnYourTurn,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

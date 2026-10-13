@@ -23,6 +23,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Commander creatures you own are Giants in addition to their other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: commanderCreatureYouOwn,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -32,6 +33,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Commander creatures you own have base power and toughness 10/10.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7B_Set,
 				AppliesTo: commanderCreatureYouOwn,

@@ -22,6 +22,7 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Static: []game.StaticAbility{{
+			Label:     "Other creatures you control with flying get +1/+1.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: b29OtherCreaturesYouControlWithFlying,

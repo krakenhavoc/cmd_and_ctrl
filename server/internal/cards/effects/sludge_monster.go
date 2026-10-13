@@ -64,12 +64,14 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:            "Non-Horror creatures with slime counters on them lose all abilities.",
 				Layer:            game.Layer6Ability,
 				RemovesAbilities: true,
 				AppliesTo:        b38SlimedNonHorror,
 				Apply:            func(*game.Characteristic, *game.Card, *game.Game, *game.Card) {},
 			},
 			{
+				Label:     "Non-Horror creatures with slime counters on them have base power and toughness 2/2.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7B_Set,
 				AppliesTo: b38SlimedNonHorror,

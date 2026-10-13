@@ -35,6 +35,7 @@ func init() {
 			AtEachUpkeep("Illustrious Wanderglyph — create a 1/1 Gnome", Do(CreateToken{Template: TokenCard("1/1 colorless Gnome artifact"), N: 1})),
 		},
 		Static: []game.StaticAbility{{
+			Label:    "Other artifact creatures you control get +2/+2 as long as you have the city's blessing.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: WhileCitysBlessing(func(target *game.Card, _ *game.Game, source *game.Card) bool {

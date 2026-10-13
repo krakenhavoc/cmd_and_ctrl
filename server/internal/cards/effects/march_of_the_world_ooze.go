@@ -47,6 +47,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:     "Creatures you control have base power and toughness 6/6.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7B_Set,
 				AppliesTo: b41CreatureYouControlStatic,
@@ -56,6 +57,7 @@ func init() {
 				},
 			},
 			{
+				Label:     "Creatures you control are Oozes in addition to their other types.",
 				Layer:     game.Layer4Type,
 				AppliesTo: b41CreatureYouControlStatic,
 				Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

@@ -89,6 +89,7 @@ func b29CreaturesYouControlWithSevenEnchantments(target *game.Card, g *game.Game
 // printed characteristic-defining ability.
 func b29SpiritClericSizing() game.StaticAbility {
 	return game.StaticAbility{
+		Label:    "Spirit Cleric tokens you control have power and toughness each equal to the number of Spirits you control.",
 		Layer:    game.Layer7PT,
 		SubLayer: game.SubLayer7A_CDA,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

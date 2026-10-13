@@ -17,6 +17,7 @@ func init() {
 		Name:         "Spear of Heliod",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Creatures you control get +1/+1.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

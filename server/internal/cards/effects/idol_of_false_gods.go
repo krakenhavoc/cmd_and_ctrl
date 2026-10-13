@@ -73,6 +73,7 @@ func idolHasEightCounters(target *game.Card, _ *game.Game, source *game.Card) bo
 func idolOfFalseGodsStatics() []game.StaticAbility {
 	return []game.StaticAbility{
 		{
+			Label:     "As long as this artifact has eight or more +1/+1 counters on it, it's a creature in addition to its other types.",
 			Layer:     game.Layer4Type,
 			AppliesTo: idolHasEightCounters,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -82,6 +83,7 @@ func idolOfFalseGodsStatics() []game.StaticAbility {
 			},
 		},
 		{
+			Label:     "As long as this artifact has eight or more +1/+1 counters on it, it's a 0/0 creature.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: idolHasEightCounters,
@@ -90,6 +92,7 @@ func idolOfFalseGodsStatics() []game.StaticAbility {
 			},
 		},
 		{
+			Label:     "As long as this artifact has eight or more +1/+1 counters on it, it has annihilator 2.",
 			Layer:     game.Layer6Ability,
 			AppliesTo: idolHasEightCounters,
 			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

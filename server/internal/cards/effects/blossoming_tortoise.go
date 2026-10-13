@@ -60,6 +60,7 @@ func init() {
 			"Activated abilities of lands you control don't cost {1} less — the discount isn't implemented.",
 		},
 		Static: []game.StaticAbility{{
+			Label:     "Land creatures you control get +1/+1.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: b31LandCreaturesYouControl,
