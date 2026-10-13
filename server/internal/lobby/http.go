@@ -253,6 +253,11 @@ type Config struct {
 	// its file picker. See ADR 0017 §6.
 	BugStore *bugstore.Store
 
+	// BugLimits tunes the throttle in front of POST /bugreport (ADR
+	// 0017 §10): per-account window, daily cap, dedupe window. The zero
+	// value means the defaults; production sets nothing.
+	BugLimits BugLimits
+
 	// DeckRequestFiler files and joins ADR 0095's deck-request issues.
 	// Nil turns POST /deck-requests off (503 naming
 	// CMDCTRL_GITHUB_TOKEN). Production wires the same *github.Client
@@ -729,7 +734,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.saveDeck))))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
-	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
+	bugs := newBugGate(c)
+	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugs.report))))
+	// The kill switch and the queue of reports kept instead of filed (ADR 0017 §10).
+	mux.Handle("GET /admin/bugreport", requireAdmin(c, handlerFunc(c, bugs.adminBugReport)))
+	mux.Handle("PUT /admin/bugreport/paused", requireAdmin(c, handlerFunc(c, bugs.adminSetBugPaused)))
 	// Unauthenticated by necessity — Camo presents no session. The
 	// report ID in the path is the capability, and it only ever
 	// appears inside a private-repo issue. bugstore enforces the

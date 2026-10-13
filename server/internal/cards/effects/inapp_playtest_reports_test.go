@@ -286,6 +286,13 @@ func TestIssue1158CapstoneResolvesOffMalcolmsFreeCast(t *testing.T) {
 func TestIssue1158CapstoneResolvesOffMalcolmAtFlashSpeed(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
+	// The table is in a combat damage step, which a combat nobody
+	// attacks in does not have (CR 508.8): send a creature in.
+	runner := pushVanillaCreature(g, me.ID, "Runner", 1, 1)
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(runner, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
 	for g.Turn.Step != game.StepCombatDamage {
 		if _, err := g.AdvanceStep(); err != nil {
 			t.Fatalf("AdvanceStep: %v", err)

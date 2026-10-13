@@ -8,6 +8,9 @@
 **Revised:** 2026-09-16 · §9 added (credentials redacted before a
 report is published, #721; blocks #517) · Branch
 `fix/redact-tokens-721`
+**Revised:** 2026-10-12 · §10 added (throttling, +1 duplicates, the
+`player-report` label, an admin kill switch, #2979) · Branch
+`feat/2979-bugreport-throttle`
 
 ## Context
 
@@ -396,3 +399,139 @@ reporter name or title through, or into the stored manifest. It seeds
 every string field of the issue, principal, context and log entry by
 reflection, so a field added later is covered unless it is explicitly
 exempted as server-issued.
+
+---
+
+## 10. Throttling, duplicates, the `player-report` label and a kill switch (added 2026-10-12)
+
+**Branch** `feat/2979-bugreport-throttle` · #2979
+
+The button files issues with the server's token. §5 put a per-IP bucket
+in front of it, which stops a stuck retry loop. It does not stop a
+crowd: with public traffic every signed-in visitor can make the token
+write to the tracker, from as many addresses as they like. This section
+adds the limits that bound that, and a way to stop it without a deploy.
+It is implemented in `internal/lobby/bugreport_gate.go`; the IP bucket
+is unchanged and still the outermost check (§5).
+
+### 10.1 Over a limit, the report is kept, not refused
+
+A report that hits a cap, or arrives while filing is paused, is
+**queued**: stored in the bug store (`<data>/bugreports/<report-id>/`,
+the directory §6 already defines) with the title and body it would have
+been filed with, already rendered and redacted (§9), plus its
+screenshots and pins. The reporter gets **`202 Accepted`** with
+`status: "queued"` and a `note` that says plainly it was saved for the
+admin and **has not been filed**. A cap must not look like a failure to
+someone who took the trouble to write a report, and it must not look
+like an issue exists when none does.
+
+An admin lists the queue at `GET /admin/bugreport` and files what
+deserves it by hand. Queued reports are ordinary store directories:
+`Prune` ages them out after 90 days and evicts the oldest first when
+the store passes its size ceiling (§6), so a long unattended queue can
+lose its oldest entries. A server with **no data dir has nowhere to
+queue**: it refuses instead (`429` over a limit, `503` while paused).
+
+### 10.2 The limits
+
+| limit | default | scope | persisted |
+|---|---|---|---|
+| IP bucket (§5) | burst 3, then 1 / 30 s | client address | no |
+| per account | 5 per hour, sliding | the session's account | no |
+| global daily cap | 50 issues per UTC day | everyone | yes |
+
+"Account" is the signed-in user, else the Discord identity, else the
+session's seat, else the admin login. A guest session can mint a new
+seat, so for guests the IP bucket and the daily cap are what bound
+them; the per-account window is only as strong as the identity behind
+it. The per-account windows are memory-only on purpose: a restart
+forgets who reported in the last hour, which costs at most one extra
+report per account, and the IP bucket and the daily cap both survive.
+The values are constants in `bugreport_gate.go`, overridable in
+`lobby.Config.BugLimits` (tests do); there is deliberately no
+environment variable.
+
+Order of decision, first match wins: **paused → account window →
+duplicate → daily cap → file.** The duplicate check sits before the cap
+so a +1 still lands once the day's cap is spent, since a comment adds
+no issue. A comment does count against the account window. The
+reservation is taken before artifacts are built and **given back** if
+anything then fails, so a GitHub outage does not eat anyone's allowance
+or the day's cap.
+
+### 10.3 Duplicates become a +1
+
+A report whose **normalised title** (lower case, runs of non-letters and
+non-digits folded to one space) or **error signature** matches an issue
+this server opened inside the last 24 hours adds a `+1 — another bug
+report of this` comment to that issue (reporter, game coordinates, the
+description quoted) instead of opening another, and answers `200` with
+`status: "commented"` and the issue it joined. Both keys are scoped to
+the kind: the same words as an idea and as a bug are two issues.
+
+The **error signature** is the first client log line of kind `error`,
+lower-cased with uuids and digits masked, and only if it is at least 16
+characters (a bare "failed" would merge unrelated reports). It is the
+"stack" of the issue's wording: the client log is the only place a
+stack-like string reaches the server, and only for the kinds that carry
+the log (bug, question). **There is no card key.** No card id reaches a
+report: the context is game, turn, phase, step, seq and connection. A
+card field would be a wire change; the title and the error line catch
+the repeats this needs to catch.
+
+A +1 carries no screenshots, log or pins: the issue it joins has its
+own, and the point is to stop the pile growing. The reporter's images
+on a duplicate are not kept.
+
+The recent-filing index lives in `<data>/bugreports/gate.json`, written
+atomically on every filing, so a restart does not forget what was filed
+a minute ago. It is capped at 200 entries and the window; a comment that
+GitHub answers 404/410 (the issue was deleted) drops that entry and the
+report is filed or queued as new. Matching on a *closed* issue still
+comments: a regression is worth a notification on the old thread.
+
+Not done, deliberately: matching by similarity. Exact normalised match
+is predictable and explainable; fuzzy match merges reports that are not
+duplicates and nobody sees it happen.
+
+### 10.4 The `player-report` label
+
+Every issue the button opens carries `player-report` **in addition to**
+its kind's label (§8), so triage can filter the public's reports from the
+maintainers' own. The label is applied the same way the kind label is: in
+the create request, and with the same §8.5 safety net. The echoed
+`label` in the response is still the kind's.
+
+**The label must exist on the repo.** The server never creates labels
+(§8.2 is about exactly that). What GitHub does with an unknown label on
+create depends on the token: with push access it creates the label with
+default colour and no description; without it, the label is silently
+dropped or the request is refused (403/422), in which case §8.5
+re-files the issue unlabelled and logs at error level. Either way the
+report is not lost, but the owner should create `player-report` before
+launch.
+
+### 10.5 The kill switch
+
+`PUT /admin/bugreport/paused` `{"paused": true|false}` (admin only, like
+every `/admin/*` route; the audit line `requireAdmin` writes is the
+record of who). While paused **nothing is sent to GitHub** — no issues
+and no comments — and every report is queued (§10.1). The flag is
+persisted in `gate.json`, so a restart does not silently resume filing;
+resuming is the same call with `false`. `GET /admin/bugreport` returns
+the flag, today's count against the cap, the per-account limit and the
+queue (newest 100). There is no client UI for it yet; the routes are
+plain JSON an operator can `curl`.
+
+### 10.6 Consequences
+
+- `POST /bugreport` now has three success shapes (`201` filed, `200`
+  commented, `202` queued), each carrying `status`. The client reads the
+  field and falls back to `filed` when it is absent; the modal shows the
+  server's `note` for the two new ones.
+- `BugReporter` stays one method wide. The comment half is an optional
+  `BugCommenter` interface the handler type-asserts, so a reporter
+  without it simply never dedupes.
+- The daily cap and the dedupe index are per server process tree: two
+  servers sharing a data dir would each count their own. There is one.
