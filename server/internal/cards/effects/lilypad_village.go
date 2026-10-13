@@ -24,18 +24,13 @@ import (
 // every creature type (a Maskwood Nexus arriving afterwards) does not
 // open it, and a Rat token that entered and has since died still does.
 //
-// One declared simplification, weaker than printed: the tally reads a
-// permanent's printed types (with any copy effect it entered as) at
-// the moment of entry, before continuous effects are applied to it, so
-// a creature that had one of the four types only through a static
-// ability as it entered (a Soldier entering while you control Maskwood
-// Nexus) does not count. The printed card would count it.
+// The tally reads the permanent with the layer pass applied (#2940),
+// so a Soldier that enters while you control Maskwood Nexus counts.
 func init() {
 	Register(Spec{
 		OracleID:     "5bb06e6f-e3af-4caa-b66d-77248ad46b61",
 		Name:         "Lilypad Village",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A creature that was a Bird, Frog, Otter, or Rat only because of another effect (such as Maskwood Nexus) when it entered doesn't enable the surveil ability."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

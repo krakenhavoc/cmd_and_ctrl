@@ -639,20 +639,12 @@ func subtypeTallyKey(player uuid.UUID, subtype string) string {
 // that had every creature type counts for any creature type.
 //
 // "As they entered" is the characteristics the permanent carried at
-// its EventETB: its printed values, with a copy effect it entered
-// under (CR 707.2) and the face it entered on already applied. The
-// layer cache is rebuilt after an entry, not during it, so continuous
-// effects from static abilities are NOT part of that reading. That
-// makes a type GRANTED at the moment of entry invisible — a Soldier
-// that entered while its controller's Maskwood Nexus was on the
-// battlefield counts as a Soldier only, where the printed rules count
-// it as every type — which is weaker than the rules, and a card that
-// reads this declares it. The opposite case, a static that REMOVES a
-// subtype from a permanent as it enters, would read stronger; no
-// catalog card removes a creature type from anything but the
-// permanent an Aura is already attached to, or from itself only while
-// a condition holds (Arixmethes, The Warring Triad), and a reader for
-// those types has to account for it.
+// its EventETB with the layer pass applied (#2940): its printed values,
+// a copy effect it entered under (CR 707.2), the face it entered on, and
+// every continuous effect already in force — a Soldier that enters
+// under Maskwood Nexus counts as every creature type. The pass is a dry
+// run (enteredWithLayersLocked); the opposite case, a static that
+// REMOVES a subtype from a permanent as it enters, is read the same way.
 //
 // Caller must hold g.mu.
 func (g *Game) EnteredWithSubtypeThisTurn(playerID uuid.UUID, subtype string) int {
@@ -1011,6 +1003,51 @@ func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
 	recordSubtypeTally(&g.TurnTally.EnteredSubtypes, controller, c)
 }
 
+// enteredWithLayersLocked is the entering permanent with the layer pass
+// applied to it (#2940). The tally listener runs ahead of
+// layerVersionBump, so at EventETB the permanent's layer cache is still
+// empty or stale and Effective() would read its printed values — a
+// Soldier entering under Maskwood Nexus would count as a Soldier only.
+// The pass runs over a COPY of the battlefield slice (the same dry-run
+// idiom as entryCharacteristicsLocked), so no real card's cache, no
+// timestamp and no event is touched; the entry stamp the real listener
+// has not yet given the card is borrowed from lookAheadEntryStampLocked
+// so it sorts after every permanent already there (CR 613.7d). A card
+// that is not on the battlefield (a hand-written event in a test) is
+// returned as is.
+//
+// Caller must hold g.mu (write).
+func (g *Game) enteredWithLayersLocked(c *Card) *Card {
+	if c == nil || g.Battlefield == nil {
+		return c
+	}
+	idx := -1
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == c.InstanceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return c
+	}
+	orig := g.Battlefield.Cards
+	dry := make([]Card, len(orig))
+	copy(dry, orig)
+	dry[idx].effective = nil
+	if dry[idx].EnteredBattlefieldAt == 0 {
+		dry[idx].EnteredBattlefieldAt = g.lookAheadEntryStampLocked()
+	}
+	g.Battlefield.Cards = dry
+	defer func() { g.Battlefield.Cards = orig }()
+	g.layerPassLocked()
+	out := dry[idx]
+	if out.effective == nil {
+		return c
+	}
+	return &out
+}
+
 // recordSacrificedSubtypesLocked adds one sacrificed permanent to
 // TurnTally.SacrificedSubtypes under `actor`, the player who
 // sacrificed it.
@@ -1321,7 +1358,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if controller == uuid.Nil {
 			controller = ev.Actor
 		}
-		g.recordEnteredSubtypesLocked(controller, c)
+		g.recordEnteredSubtypesLocked(controller, g.enteredWithLayersLocked(c))
 		g.recordEnteredCardTypesLocked(controller, c)
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
