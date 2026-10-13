@@ -56,9 +56,19 @@ func (t Transform) Apply(ctx *Context) error {
 // Reads the source off the Context rather than capturing a *game.Card,
 // for the reason every trigger Effect does: undo restores a cloned
 // game and a captured pointer resolves against the wrong one.
+//
+// CR 701.27f: an ability of a permanent that tries to transform it does
+// so only if the permanent hasn't transformed or converted since the
+// ability was put onto the stack (for a delayed trigger, since it was
+// created). That is an engine rule now (ADR 0152 §3): the item records
+// the source's turn-over count, and a count that has moved means the
+// instruction is ignored.
 type TransformThis struct{}
 
 func (TransformThis) Apply(ctx *Context) error {
+	if sourceTurnedOverSince(ctx) {
+		return nil
+	}
 	return Transform{Target: ctx.Source()}.Apply(ctx)
 }
 

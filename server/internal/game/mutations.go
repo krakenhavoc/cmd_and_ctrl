@@ -4001,12 +4001,14 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		// StackItem.SourceEpoch.
 		SourceEpoch:  g.cardObjectEpochLocked(sourceCardID),
 		SourceObject: g.sourceObjectRefLocked(sourceCardID),
-		Label:        params.Label,
-		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
-		XValue:       params.XValue,
-		Distribution: cloneDistributionLocked(params.Distribution),
-		Seq:          g.nextStackSeqLocked(),
+		// ADR 0152 §3, read with the object it names.
+		SourceTurnOvers: g.TurnOversForEffect(sourceCardID),
+		Label:           params.Label,
+		Targets:         append([]TargetRef(nil), params.Targets...),
+		Modes:           append([]int(nil), params.Modes...),
+		XValue:          params.XValue,
+		Distribution:    cloneDistributionLocked(params.Distribution),
+		Seq:             g.nextStackSeqLocked(),
 	}
 	// CR 115.3: the targets are chosen as the ability goes on the
 	// stack, and becoming a target is an event whether the ability
@@ -4221,11 +4223,13 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Owner:        playerID,
 		SourceCardID: sourceCardID,
 		SourceObject: g.sourceObjectRefLocked(sourceCardID),
-		Label:        params.Label,
-		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
-		XValue:       params.XValue,
-		Distribution: cloneDistributionLocked(params.Distribution),
+		// ADR 0152 §3, read with the object it names.
+		SourceTurnOvers: g.TurnOversForEffect(sourceCardID),
+		Label:           params.Label,
+		Targets:         append([]TargetRef(nil), params.Targets...),
+		Modes:           append([]int(nil), params.Modes...),
+		XValue:          params.XValue,
+		Distribution:    cloneDistributionLocked(params.Distribution),
 		// CR 603.3d / 115.3: a manually-announced trigger chooses its
 		// targets as it goes on the stack, same as the harvested kind,
 		// so the drain that places it emits the "becomes the target"
@@ -6811,6 +6815,11 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if g.ManaAbilityExhausted(playerID, cardID, ab) {
 		return ErrAbilityExhausted
 	}
+	// ADR 0155 Decision 7: a lent row from a once-each-turn borrow.
+	borrowedKey := g.borrowedTallyKeyLocked(cardID, origins.At(abilityIdx))
+	if g.BorrowedRowSpentLocked(cardID, origins.At(abilityIdx)) {
+		return ErrBorrowedAbilityUsed
+	}
 	// "Activate only if you control five or more lands" (Temple of
 	// the False God), "…three or more artifacts" (Mox Opal). CR
 	// 602.5: an activation restriction is checked before anything
@@ -6991,7 +7000,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// permanent's own characteristics are what a restricted
 		// token is tested against — Eldrazi Temple mana can fund a
 		// colorless Eldrazi's ability, not a Signet's.
-		spendCtx := ManaSpendForAbility(*card)
+		spendCtx := ManaSpendForAbilityRow(*card, origins.At(abilityIdx))
 		// #1600: an Orrery's controller may pay a filter land's {W/U}
 		// with colourless — the same widening the pay step below
 		// spends under, because it spends this manaCost.
@@ -7116,6 +7125,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	}
 
 	g.noteAbilityActivationLocked(activationKey)
+	g.noteBorrowedActivationLocked(borrowedKey)
 
 	// --- pay ----------------------------------------------------
 	//
@@ -7128,7 +7138,7 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 		// Same context the validation above used. Spending under a
 		// different context than the check would let a restricted
 		// token pay for something it was never cleared for.
-		spent, ok := p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbility(*card))
+		spent, ok := p.ManaPool.SpendManaFor(manaCost, 0, ManaSpendForAbilityRow(*card, origins.At(abilityIdx)))
 		if !ok {
 			return &InsufficientManaError{Missing: []string{manaCost.String()}}
 		}

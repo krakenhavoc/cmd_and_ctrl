@@ -293,6 +293,22 @@ type ManaSpendContext struct {
 	// ManaSpendForCastFrom and ManaSpendForCastParams; meaningless for
 	// any other purpose.
 	CastFrom ZoneKind
+
+	// AbilityOrigin is the row being paid for, for an activated or mana
+	// ability's own payment (ADR 0155 Decision 7): set by the activation
+	// and mana-ability payment sites, the zero origin everywhere else. A
+	// spend rider's Covers reads it to reach only the rows one borrow lent
+	// ("spend mana as though it were mana of any color to activate those
+	// abilities").
+	AbilityOrigin AbilityOrigin
+}
+
+// ManaSpendForAbilityRow is ManaSpendForAbility for one row of the
+// source's ability list: the same context, with the row's origin.
+func ManaSpendForAbilityRow(c Card, o AbilityOrigin) ManaSpendContext {
+	ctx := ManaSpendForAbility(c)
+	ctx.AbilityOrigin = o
+	return ctx
 }
 
 // ManaSpendForCastFrom is ManaSpendForCast for a cast from a known

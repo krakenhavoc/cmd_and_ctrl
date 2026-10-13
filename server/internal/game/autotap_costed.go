@@ -140,12 +140,15 @@ func (g *Game) autoTapCostedAbilitiesFor(asker uuid.UUID, source Card) []autoTap
 	abilities, origins := ManaAbilitiesWithOrigins(source)
 	var out []autoTapCandidate
 	for i := range abilities {
+		o := origins.At(i)
+		if o.Borrowed && o.Lent != nil && o.Lent.EachOncePerTurn {
+			continue
+		}
 		cost, ok := g.autoTapCostedCost(asker, source, abilities[i])
 		if !ok {
 			continue
 		}
-		o := origins.At(i)
-		out = append(out, autoTapCandidate{ab: abilities[i], ref: o.Ref, granted: o.Granted(), cost: cost})
+		out = append(out, autoTapCandidate{ab: abilities[i], ref: o.Ref, granted: o.Granted() || o.Borrowed, cost: cost})
 	}
 	return out
 }

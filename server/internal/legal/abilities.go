@@ -213,7 +213,9 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 	// protection against. Never the seat: a red player's colourless
 	// artifact ability may still point at a pro-red creature.
 	abilitySrc := game.SourceObject(e.seat, source)
+	defer func() { e.rowOrigin = game.AbilityOrigin{} }()
 	for idx, ab := range abilities {
+		e.rowOrigin = origins.At(idx)
 		// CR 113.6: the ability has to function from the zone the
 		// card is in. Same predicate the engine gates on, so a
 		// hand card's battlefield abilities are never offered and
@@ -265,6 +267,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 		// is never offered an exhaust ability this object has already
 		// spent (#544).
 		if g.AbilityExhausted(e.seat, source.InstanceID, ab) {
+			continue
+		}
+		// ADR 0155 Decision 7: a once-each-turn lent row this borrower
+		// has already used, the reader ActivateCatalogAbility refuses on.
+		if g.BorrowedRowSpentLocked(source.InstanceID, origins.At(idx)) {
 			continue
 		}
 		// CR 702.142a (#2697): "Activate only if this creature
@@ -838,7 +845,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 					// that is both the sacrifice and the mana is a move the
 					// engine refuses; offering it is #544.
 					if ab.Cost.Mana != "" && (len(sacs) > 0 || len(discardIDs) > 0 || len(exileIDs) > 0 || len(topIDs) > 0) &&
-						!e.payableExcluding(abilityMana, xValue, phyrexianLife, game.ManaSpendForAbility(*source),
+						!e.payableExcluding(abilityMana, xValue, phyrexianLife, e.abilitySpend(source),
 							game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs)) {
 						continue
 					}
@@ -862,7 +869,7 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 							// is a move the engine refuses. #1600: and for the
 							// exiled permanents (ActivationAutoTapExclusions).
 							if ab.Cost.Mana != "" && (len(taps) > 0 || len(perms) > 0) &&
-								!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, game.ManaSpendForAbility(*source),
+								!e.payableExcluding(abilityMana, tapXValue, phyrexianLife, e.abilitySpend(source),
 									game.WithAutoTapExclusions(abilityExcluded, sacs, discardIDs, exileIDs, topIDs, taps, perms)) {
 								continue
 							}
@@ -1132,7 +1139,7 @@ func (e *enumerator) abilityManaPayment(source *game.Card, zone game.ZoneKind, a
 	// COMPUTED component, the amount the engine charges beside it. The
 	// caller already refused an unpriceable one, so ok is not re-read.
 	reserved, _ := e.g.AbilityLifeCostLocked(e.seat, source.InstanceID, ab.Cost)
-	x, life, ok := e.affordablePayment(cost, game.ManaSpendForAbility(*source), floor, reserved, excluded)
+	x, life, ok := e.affordablePayment(cost, e.abilitySpend(source), floor, reserved, excluded)
 	if !ok {
 		return abilityManaPayment{}, false
 	}
@@ -2144,6 +2151,11 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 		if g.ManaAbilityExhausted(e.seat, source.InstanceID, ab) {
 			continue
 		}
+		// ADR 0155 Decision 7: the lent once-each-turn row, as
+		// ActivateManaAbility refuses it.
+		if g.BorrowedRowSpentLocked(source.InstanceID, origins.At(idx)) {
+			continue
+		}
 		// #1210, CR 602.5: the board-wide "can't be activated"
 		// gate. Cursed Totem does NOT exempt mana abilities, so a
 		// Birds of Paradise under one is not a move — the same
@@ -2215,7 +2227,7 @@ func (e *enumerator) manaMovesForSource(source *game.Card, zone game.ZoneKind, r
 				continue
 			}
 			// #1600: widened as ActivateManaAbility widens it.
-			manaSpend = game.ManaSpendForAbility(*source)
+			manaSpend = game.ManaSpendForAbilityRow(*source, origins.At(idx))
 			manaCostAsPaid = g.CostAsPaidByForEffect(e.seat, manaSpend, cost, 0)
 			sourceOnly := game.ManaActivationAutoTapExclusions(source.InstanceID, game.ManaAbilityParams{})
 			if !g.AutoTapTopUpForEffectExcluding(e.seat, manaCostAsPaid, 0, manaSpend, sourceOnly) {

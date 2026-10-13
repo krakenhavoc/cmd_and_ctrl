@@ -14,7 +14,8 @@
 //   - declare attackers goes to end of combat when nothing attacked
 //     (CR 508.8), and to declare blockers otherwise.
 
-import { commanderReturnWaiting } from "./commanderReturn";
+import { anyPlayerWaiting } from "./choiceDock";
+import { commanderReturnWaiting, findCardView } from "./commanderReturn";
 import { openingRollStatus } from "./openingRoll";
 import type { GameView } from "./protocol";
 import { buildStackLane } from "./stackLane";
@@ -63,6 +64,10 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   // question in the action bar, which hides this line.
   const deciding = commanderReturnWaiting(view);
   if (deciding) return deciding;
+  // ADR 0150 §5: an "unless any player pays" link holds the step while
+  // one player decides. The player asked has it in the action bar.
+  const offering = anyPlayerOfferWaiting(view);
+  if (offering) return offering;
   if (!viewerHasPriority) return blockWaitHint(view);
 
   const top = topOfStackName(view);
@@ -74,6 +79,16 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   if (!next) return "";
   if (next === "next_turn") return "passing ends the turn";
   return `passing moves to ${STEP_LABELS[next]}`;
+}
+
+// anyPlayerOfferWaiting is "Carol is deciding whether to pay {2} (Bob's
+// Rhystic Tutor)" while an any-player link is open, or "". Public state
+// only: every seat's view carries the link and its chooser.
+function anyPlayerOfferWaiting(view: GameView): string {
+  const c = view.pending_choices?.find((p) => p.any_player_offer);
+  if (!c) return "";
+  const name = findCardView(view, c.source)?.name || "a card";
+  return anyPlayerWaiting(c, view.seats ?? [], name);
 }
 
 // blockWaitHint names the defenders still declaring blockers while

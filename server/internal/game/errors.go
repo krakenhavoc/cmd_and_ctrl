@@ -365,6 +365,12 @@ var (
 	// before the printed condition, so nothing is paid.
 	ErrAbilityExhausted = errors.New("game: this exhaust ability has already been activated")
 
+	// ErrBorrowedAbilityUsed is returned when a borrowed row from a borrow
+	// that says "You may activate each of those abilities only once each
+	// turn" (Mairsil, the Pretender) has already been activated by this
+	// permanent this turn (ADR 0155 Decision 7).
+	ErrBorrowedAbilityUsed = errors.New("game: each of those abilities can be activated only once each turn")
+
 	// ErrBoastNotAttacked and ErrBoastSpent are the two halves of a
 	// boast ability's activation instruction (CR 702.142a, #2697):
 	// "Activate only if this creature attacked this turn" and "only once

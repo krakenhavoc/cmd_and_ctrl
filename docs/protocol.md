@@ -1207,7 +1207,7 @@ canonical type definition. High-level shape:
   - `saga_chapter` / `class_level` — a Saga reached a chapter (CR 714.2b) or a Class became a level (CR 716.2); `amount` is the chapter or the level.
   - `door_unlocked` / `door_locked` — a Room's door was unlocked (CR 709.5c: the unlock special action, an instruction, or the Room entering with the door of the half that was cast) or locked (CR 709.5g). `label` is the door's name. `room_fully_unlocked` — a Room got its second unlocked door (CR 709.5i); its own line by owner decision (ADR 0103). A fully locked Room has no name, so these lines name it by its two halves.
   - `settings` — the host or the admin changed a table setting ([ADR 0075](decisions/0075-table-settings-and-host-controls.md) §2.3, S35). `label` is the setting's key (`undo_limit`, `undo_scope`, `starting_life`, `commander_damage`, `bot_pace`, `allow_spawn`) and `choice` its **new** value as text — an int in decimal (`"-1"` is unlimited), a bool as `"true"`/`"false"`, an enum as its string. One line per field that actually moved; a no-op patch says nothing. `seat` is the host who changed it, or `-1` for the server admin, which the rendered text reads as "The admin". The only kind that is about the rules the game is being played under rather than about the game, which is exactly why it is written down: a budget that quietly halved mid-game is what this line prevents. It carries **no card**, so none of the card-identity redaction below applies to it.
-  - `transform` — a permanent was turned over to its other face (CR 701.27a, S46, [ADR 0079](decisions/0079-transforming-a-permanent.md)). The entry's card name is the face it turned **into**, because `viewOfCard` reads the active face; `label` is the name of the face it turned **from**, which is the only place that name survives. A transform is **not** a zone change (CR 712.18 — the permanent doesn't become a new object), so there is no `zone` entry beside it and this is the only line the table gets. It is narrated rather than silent, unlike the other board-state changes, because a card physically turning over is announced out loud and a reader scrolling back wants to know when it happened.
+  - `transform` — a permanent was turned over to its other face (CR 701.27a, S46, [ADR 0079](decisions/0079-transforming-a-permanent.md)). The entry's card name is the face it turned **into**, because `viewOfCard` reads the active face; `label` is the name of the face it turned **from**, which is the only place that name survives. A transform is **not** a zone change (CR 712.18 — the permanent doesn't become a new object), so there is no `zone` entry beside it and this is the only line the table gets. It is narrated rather than silent, unlike the other board-state changes, because a card physically turning over is announced out loud and a reader scrolling back wants to know when it happened. A **convert** (CR 701.28a, [ADR 0152](decisions/0152-more-than-meets-the-eye-convert-and-living-metal.md) §2) is the same entry with `converted: true`, and its text says "converted" instead of "transformed".
   - `meld` — two cards were melded into one permanent (CR 701.42a, [ADR 0145](decisions/0145-meld.md), #2699). `card_id` is the melded permanent, which has just entered the battlefield (its own `zone` line says so, under the combined back face's name), and `label` names the two cards it was melded from — the only line that says the permanent is two cards. Cleared with the name on a redacted entry, like every label.
   - `turn_face_down` — a permanent that was face up on the battlefield was turned face down (CR 708.2a, S46, [ADR 0082's 2026-09-23 amendment](decisions/0082-casting-face-down-and-turning-face-up.md), #1209). `card_id` is the permanent and `target` the object that did it (Ixidron, Cyber Conversion). Narrated for `phase_out`'s reason: turning face down is neither a zone change nor a transform (CR 701.27b says so in as many words), so no other line says it, and the board silently stops showing a card the table could read a second ago. The entry **names the source and not the permanent**, and that is not a redaction: a CR 708.2 object has no name for ANY viewer, its controller included (`CardView.Name` is the effective characteristic's, and the controller gets the art through `scryfall_id` / `face_visible` instead), so the line reads "Ixidron turned a card face down" for the whole table. The reverse direction is the next entry, and only for an effect's turn; the CR 116.2g special action's own `special_action` entry already carries that one.
   - `turn_face_up` — a face-down permanent was turned face up by an **effect** (CR 708.8 / 701.40b, [ADR 0082's second 2026-10-07 amendment](decisions/0082-casting-face-down-and-turning-face-up.md), #2590: Hauntwoods Shrieker, Zimone, Staff Room). `card_id` is the permanent, which is public again by the time the line is written (turning it up makes every seat a knower), and `target` the object that did it. The text reads "Zimone, Mystery Unraveler turned Grizzly Bears face up". The special action has no line of this kind.
@@ -2823,11 +2823,16 @@ the recipient's summoning sickness. Three things reach the wire.
     declared list (a designation gate opening does not renumber it);
   - `land:<colour>` — a CR 305.6 intrinsic land ability (`land:G`);
   - `grant:<bundle>:<i>:<n>` — ability `i` of the `n`th instance of a
-    granted bundle.
+    granted bundle;
+  - `borrow:<key>:<i>:<n>` — the `n`th lent instance of row `i` of a
+    catalog list, on a permanent that "has all activated abilities of"
+    another object (ADR 0155); `borrow:land:<colour>:<n>` for a lent
+    CR 305.6 land ability. Two identical lenders lend two instances.
 
   Granted rows always come AFTER the permanent's own and intrinsic rows,
-  so a grant appearing never renumbers an existing row; a grant
-  vanishing can renumber later ones. `activate_ability` and
+  and borrowed rows after the granted ones, so a grant or a borrow
+  appearing never renumbers an existing row; one vanishing can renumber
+  later ones. `activate_ability` and
   `activate_mana_ability` accept `ref` beside `ability_index` and check
   it against the row at that index BEFORE anything is validated or
   paid. A mismatch is refused with `that ability is no longer at that
@@ -2844,10 +2849,20 @@ the recipient's summoning sickness. Three things reach the wire.
   the click never picks a silent default between two mana abilities
   (ADR 0093 Decision 8, as ADR 0117 §1 and its 2026-10-04 amendment
   amend it).
+- **`borrowed_from: {id, name}` on a borrowed row** (ADR 0155 Decision
+  10). The lender: the object the row was read off, by id and printed
+  name. Absent on every row that is not lent, and when the lender sits
+  in a hand or a library. A borrowed row's `granted_by` names the
+  borrowing permanent, and its `label` reads the lender's name as the
+  borrower's (CR 201.5b): Necrotic Ooze's lent "{T}: Mana Elf gains you 1
+  life." is "{T}: Necrotic Ooze gains you 1 life." A row from a borrow
+  that allows each ability once each turn is `exhausted` once used.
 - **`granted_abilities: [{text, source_id?, source_name?}]` on the
   CardView.** The printed text of every ability another effect gave the
   permanent — layer-6 grants, and a copy's CR 707.9a grant (Phantasmal
-  Image's sacrifice trigger), which has no `source_id`. This is the only
+  Image's sacrifice trigger), which has no `source_id`, and one line per
+  borrowing effect, its printed clause ("Has all activated abilities of
+  all creature cards in all graveyards."). This is the only
   place a granted TRIGGER, which has no row, is visible. Public, and
   cleared with the ability rows for a viewer who cannot see the card
   (a face-down permanent's non-controllers).
