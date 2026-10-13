@@ -1,7 +1,7 @@
 # Contributing to C2
 
-Thanks for your interest in C2 (cmd & ctrl). It's a hobby project for a small group of friends,
-built a few hours a week, and outside contributions are welcome.
+Thanks for your interest in C2 (cmd & ctrl). It's a free hobby project, built a few hours a
+week and now in an open beta, and outside contributions are welcome.
 
 This page is the short version. [AGENTS.md](AGENTS.md) is the full working guide: repo layout,
 commands and conventions. It's addressed to AI coding agents, but everything in it applies to

@@ -8,9 +8,10 @@ vision and phased roadmap; this file is about *how* to work, not *what* to build
 
 ## 1. What this project is
 
-A private, personal 4-player Magic: The Gathering Commander sandbox
-with a Go game server and a TypeScript client. Personal-use only — not
-a product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
+A free, non-commercial 4-player Magic: The Gathering Commander table
+with a Go game server and a TypeScript client. Built for friends first,
+and in an open beta through the C2 Discord since S70; still not a
+product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
 ("sandbox first, rules grafted in incrementally from S13+") decision.
 
 Three hard problems, ranked: **game state and multiplayer sync** (Go
@@ -37,8 +38,10 @@ service names); don't rename those to match.
 2. **This is a hobby project at ~10 hours/week.** Optimise for momentum and
    clarity, not enterprise rigour. No microservices, no k8s, no premature
    abstractions. One VPS. One database. One deployable per service.
-3. **Personal use only changes the calculus.** Legal risk is low (Cockatrice and
-   XMage exist). Scale is ≤8 users. Don't build for hypothetical public launch.
+3. **Free and non-commercial changes the calculus.** This is fan content: never
+   charge for anything, keep guest play, and keep card data out from behind any
+   sign-in or Discord gate (PLAN.md §1). Scale is one small VM under the ADR 0148
+   caps; grow it on measured load, not on a hypothetical.
 4. **UX polish is the entire point.** "Make it feel good" is core product
    work and deserves real care. Sandbox features (manual resolution,
    manual priority) are a deliberate design choice, not a shortcut.
@@ -599,13 +602,13 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
 ## 8. Things to explicitly *not* do
 
 - Do not add CI/CD beyond basic lint + test until there's code to protect.
-- Do not introduce a database, auth provider, or payment anything without
-  discussion. Shared password is fine for now (see [PLAN.md §4](PLAN.md#4-tech-stack)).
+- Do not add payment of any kind: no paid tier, paid feature or paywall
+  (PLAN.md §1). Discuss a new datastore or sign-in provider before adding one.
 - Do not attempt a "full rules engine" sprint. Rules enforcement grows
   incrementally in the S13+ B→C track, one mechanic at a time, driven by
   real games. See [PLAN.md §2.3](PLAN.md#23-why-not-option-c-straight-custom-rules-engine).
 - Do not reintroduce a dependency on XMage or any JVM tooling. That was
   evaluated and rejected in S01.
 - Do not generate card art, card text, or anything else that would pull this
-  project out of "private, personal use" territory.
+  project out of fan-content territory.
 - Do not create commits or PRs that do not reference a sprint (see section 4).
