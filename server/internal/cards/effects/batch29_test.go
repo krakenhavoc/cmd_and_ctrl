@@ -827,8 +827,18 @@ func TestB29WitchsOvenBakesOneOrTwoFood(t *testing.T) {
 	if got := b29CountNamed(g, me.ID, "Food"); got != 5 {
 		t.Errorf("a 3/3 with a +1/+1 counter: %d Food, want 5 (two more)", got)
 	}
-	if spec, _ := Lookup(b29WitchsOvenOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the static-bonus gap must be declared")
+	// A bonus from another permanent counts: a 3/3 under a +1/+1 anthem
+	// had toughness 4 as it last stood (CR 603.10, #3172).
+	pushCatalogPermanent(g, me.ID, "Glorious Anthem", "Enchantment", gloriousAnthemOracle, false)
+	boosted := pushTribalCreature(g, me.ID, "Boosted", "Creature — Bear", 3, 3)
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(oven) })
+	before := b29CountNamed(g, me.ID, "Food")
+	b16Activate(t, g, me.ID, oven, 0, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{boosted}})
+	if got := b29CountNamed(g, me.ID, "Food"); got != before+2 {
+		t.Errorf("a 3/3 under an anthem: %d Food, want %d (two more)", got, before+2)
+	}
+	if spec, _ := Lookup(b29WitchsOvenOracle); spec.Completeness != CompletenessFull {
+		t.Error("the card is complete: the last-known toughness is post-layer")
 	}
 }
 

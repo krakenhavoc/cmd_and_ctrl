@@ -9196,7 +9196,7 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
 - **Cards that stay caveated**, with the gap named: Sunbird's Invocation (the chosen card is cast from exile because a revealed
   non-top library card has no client affordance to cast from), Transmutation Font (a "different names" rule over a three-permanent
   sacrifice), The Warring Triad (mill as an activated-ability cost), Vorinclex, Monstrous Raider (counter placements that name no
-  placer), Tower Winder (waits on #3217).
+  placer). Tower Winder landed Full with #3217.
 
 ### Adding a `Spec` slot (#622)
 
