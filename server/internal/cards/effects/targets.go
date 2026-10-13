@@ -787,6 +787,13 @@ func YourCommander() CardPredicate {
 	}
 }
 
+// ACommander passes for any card that is a commander (Card.IsCommander,
+// CR 903.4), whoever controls it: Timely Ward's "if it targets a
+// commander". YourCommander is the narrower, controller-bound one.
+func ACommander() CardPredicate {
+	return func(_ *game.Game, _ uuid.UUID, c game.Card) bool { return c.IsCommander }
+}
+
 // Clauses builds a multi-clause target statement out of the ordinary
 // single-clause constructors, in printed order (#764, ADR 0065 §1):
 //

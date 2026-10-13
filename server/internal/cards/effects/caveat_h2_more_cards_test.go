@@ -152,3 +152,37 @@ func TestWindingConstrictorAddsOneToCountersYouGet(t *testing.T) {
 		t.Errorf("an opponent's poison = %d, want 2 (not increased)", got)
 	}
 }
+
+const h2VizierOracle = "4f890d42-e4f1-4eed-aa6c-718865de8927"
+
+func TestVizierOfTheMenagerieLetsAnyManaPayACreatureSpellsColorlessSymbol(t *testing.T) {
+	g, me, _ := spendTable(t)
+	pushCatalogPermanent(g, me.ID, "Vizier of the Menagerie", "Creature — Snake Cleric", h2VizierOracle, false)
+	creature := handSpell(me, "Colourless Seer", "Creature — Eldrazi", "{1}{C}")
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}{R}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	if err := g.CastSpell(me.ID, creature, game.CastSpellParams{Strict: true}); err != nil {
+		t.Fatalf("red mana for a creature spell's {C}: %v", err)
+	}
+}
+
+func TestVizierOfTheMenagerieDoesNotWidenNonCreatureSpells(t *testing.T) {
+	g, me, _ := spendTable(t)
+	pushCatalogPermanent(g, me.ID, "Vizier of the Menagerie", "Creature — Snake Cleric", h2VizierOracle, false)
+	sorcery := handSpell(me, "Colourless Sorcery", "Sorcery", "{C}")
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	refusedForMana(t, g.CastSpell(me.ID, sorcery, game.CastSpellParams{Strict: true}), "red for a sorcery's {C}")
+}
+
+func TestOathOfNissaStillLeavesColorlessSymbolsAlone(t *testing.T) {
+	g, me, _ := spendTable(t)
+	pushCatalogPermanent(g, me.ID, "Oath of Nissa", "Legendary Enchantment", oathOfNissaOracle, false)
+	walker := handSpell(me, "Colourless Walker", "Legendary Planeswalker — Test", "{1}{C}")
+	if err := g.AddManaForEffect(me.ID, uuid.Nil, "{R}{R}"); err != nil {
+		t.Fatalf("AddManaForEffect: %v", err)
+	}
+	refusedForMana(t, g.CastSpell(me.ID, walker, game.CastSpellParams{Strict: true}), "red for a planeswalker's {C} under the colour grant")
+}

@@ -280,6 +280,15 @@ type Characteristic struct {
 	// creature, never stored here.
 	AttackTargetRestrictions []AttackTargetRestriction `json:",omitempty"`
 
+	// CantBeAttacked is "this permanent can't be attacked" (The
+	// Aetherspark, while it is attached to a creature): the target-keyed
+	// twin of AttackTargetRestrictions. Written by an ordinary layer
+	// static on the permanent itself; canAttackTargetLocked reads it, so
+	// the declaration verbs, the enumerator and the view's attack
+	// targets all drop the permanent. Only a planeswalker or battle is
+	// ever a target, so it is never read for anything else.
+	CantBeAttacked bool `json:",omitempty"`
+
 	// BlockRequirements are the CR 509.1c requirements this object
 	// carries — "blocks each combat if able" on a would-be blocker
 	// (Watchdog, Grand Melee's second line), and on an attacker "all

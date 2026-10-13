@@ -17,7 +17,6 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Post itself qualifies, as printed). The regrowth targets an
 // artifact card the controller owns, picked in the zone browser and
 // re-checked at resolution.
-//
 func init() {
 	postCost := Plus(ManaCost("{1}"), TapCost())
 	Register(Spec{
