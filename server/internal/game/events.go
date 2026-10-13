@@ -1131,6 +1131,9 @@ const (
 	// "whenever this transforms" (CR 701.27e) writable — no new
 	// constructor was needed, because the harvester already watches
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
+	//
+	// A CONVERT (CR 701.28a) is this kind too, with Event.Converted set
+	// (ADR 0152 §2, owner decision 1).
 	EventTransform EventKind = "transform"
 
 	// EventMeld — two cards were melded (CR 701.42a) and CardID is the
@@ -1655,6 +1658,17 @@ type Event struct {
 	// binary that drops the key from a restored trigger's event loses
 	// nothing it acts on.
 	Loyalty bool `json:"loyalty,omitempty"`
+
+	// Converted marks an EventTransform whose turn-over was a CONVERT
+	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a
+	// transform. A convert follows the rules for transforming, so every
+	// reader EventTransform already has — the layer bump, a "transforms
+	// into" trigger (CR 701.27e names both actions), the "as this
+	// transforms" clause (CR 712.20) — sees it with no second case. A
+	// plain "whenever this transforms" reader checks !Converted, and
+	// the log says "converted" instead of "transformed". False on every
+	// other event.
+	Converted bool `json:"converted,omitempty"`
 
 	// CombatStep names which combat damage step dealt a combat
 	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular

@@ -998,6 +998,9 @@ func stampTriggerSource(item *StackItem, source Card, tc TriggerContext) {
 		source.InstanceID == uuid.Nil || item.SourceCardID != source.InstanceID {
 		return
 	}
+	// ADR 0152 §3: CR 701.27f / 701.28e's reference point, off the
+	// same value copy.
+	item.SourceTurnOvers = source.TurnOvers
 	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID {
 		item.SourceObject = obj.Ref()
 		return

@@ -835,6 +835,11 @@ type cardSnapshot struct {
 	// permanents by enteredBattlefieldAt (entry_ordinal.go).
 	EntryOrdinal int64 `json:"entryOrdinal,omitempty"`
 	ObjectEpoch  int   `json:"objectEpoch,omitempty"`
+	// TurnOvers is Card.TurnOvers (ADR 0152 §3): how many times the
+	// permanent has transformed or converted in place. Absent from every
+	// earlier file, which restores it as 0, as it does every stack
+	// item's and delayed trigger's SourceTurnOvers, so they still agree.
+	TurnOvers int `json:"turnOvers,omitempty"`
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
@@ -1245,6 +1250,10 @@ type stackItemSnapshot struct {
 	SourceCardID   uuid.UUID  `json:"sourceCardId"`
 	SourceEpoch    int        `json:"sourceEpoch,omitempty"`
 	SourceObject   *ObjectRef `json:"sourceObject,omitempty"` // #1418; nil = unstamped
+	// SourceTurnOvers is StackItem.SourceTurnOvers (ADR 0152 §3, CR
+	// 701.27f / 701.28e). Absent from earlier files, which restore it
+	// as 0 with every card's TurnOvers.
+	SourceTurnOvers int `json:"sourceTurnOvers,omitempty"`
 	// GrantedBy is StackItem.GrantedBy (ADR 0109 §2): the object that
 	// granted an activated ability. A pointer so it is omitted for every
 	// item that has no grantor — nearly all of them — and a binary that
@@ -1339,7 +1348,8 @@ type delayedTriggerSnapshot struct {
 	ID                 uuid.UUID  `json:"id"`
 	Controller         uuid.UUID  `json:"controller"`
 	SourceCardID       uuid.UUID  `json:"sourceCardId"`
-	SourceObject       *ObjectRef `json:"sourceObject,omitempty"` // #1418
+	SourceObject       *ObjectRef `json:"sourceObject,omitempty"`    // #1418
+	SourceTurnOvers    int        `json:"sourceTurnOvers,omitempty"` // ADR 0152 §3
 	Label              string     `json:"label,omitempty"`
 	At                 Step       `json:"at"`
 	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
@@ -2118,6 +2128,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
+		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -2258,43 +2269,44 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 // no zone at all).
 func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus) stackItemSnapshot {
 	out := stackItemSnapshot{
-		ID:             s.ID,
-		Kind:           s.Kind,
-		Controller:     s.Controller,
-		BaseController: s.BaseController,
-		Owner:          s.Owner,
-		SourceCardID:   s.SourceCardID,
-		SourceEpoch:    s.SourceEpoch,
-		SourceObject:   s.SourceObject.stamped(),
-		GrantedBy:      uuidPtrOrNil(s.GrantedBy),
-		Label:          s.Label,
-		DoubledBy:      s.DoubledBy,
-		DoubledByName:  s.DoubledByName,
-		Targets:        copyTargetRefs(s.Targets),
-		Payload:        copyTargetRefs(s.Payload),
-		Trigger:        cloneTriggerContext(s.Trigger),
-		Modes:          copyInts(s.Modes),
-		XValue:         s.XValue,
-		Distribution:   copyIntMap(s.Distribution),
-		HoldPriority:   s.HoldPriority,
-		CastFromZone:   s.CastFromZone,
-		AltCost:        s.AltCost,
-		Foretold:       s.Foretold,
-		FaceDown:       s.FaceDown,
-		AltCostExiles:  s.AltCostExiles,
-		SplitSecond:    s.SplitSecond,
-		IsCopy:         s.IsCopy,
-		Uncopyable:     s.Uncopyable,
-		Seq:            s.Seq,
-		Ordered:        s.Ordered,
-		Commutes:       s.Commutes,
-		Paid:           clonePaidCost(s.Paid),
-		HasEffect:      s.Effect != nil,
-		HasTargetSpec:  s.targetSpec != nil,
-		HasModeSpec:    s.modeSpec != nil,
-		OracleID:       oracleID,
-		Body:           s.Body,
-		Params:         effectParamsOrNil(s.Params),
+		ID:              s.ID,
+		Kind:            s.Kind,
+		Controller:      s.Controller,
+		BaseController:  s.BaseController,
+		Owner:           s.Owner,
+		SourceCardID:    s.SourceCardID,
+		SourceEpoch:     s.SourceEpoch,
+		SourceObject:    s.SourceObject.stamped(),
+		SourceTurnOvers: s.SourceTurnOvers,
+		GrantedBy:       uuidPtrOrNil(s.GrantedBy),
+		Label:           s.Label,
+		DoubledBy:       s.DoubledBy,
+		DoubledByName:   s.DoubledByName,
+		Targets:         copyTargetRefs(s.Targets),
+		Payload:         copyTargetRefs(s.Payload),
+		Trigger:         cloneTriggerContext(s.Trigger),
+		Modes:           copyInts(s.Modes),
+		XValue:          s.XValue,
+		Distribution:    copyIntMap(s.Distribution),
+		HoldPriority:    s.HoldPriority,
+		CastFromZone:    s.CastFromZone,
+		AltCost:         s.AltCost,
+		Foretold:        s.Foretold,
+		FaceDown:        s.FaceDown,
+		AltCostExiles:   s.AltCostExiles,
+		SplitSecond:     s.SplitSecond,
+		IsCopy:          s.IsCopy,
+		Uncopyable:      s.Uncopyable,
+		Seq:             s.Seq,
+		Ordered:         s.Ordered,
+		Commutes:        s.Commutes,
+		Paid:            clonePaidCost(s.Paid),
+		HasEffect:       s.Effect != nil,
+		HasTargetSpec:   s.targetSpec != nil,
+		HasModeSpec:     s.modeSpec != nil,
+		OracleID:        oracleID,
+		Body:            s.Body,
+		Params:          effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
@@ -2393,6 +2405,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
 		SourceObject:       d.SourceObject.stamped(),
+		SourceTurnOvers:    d.SourceTurnOvers,
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
@@ -2994,6 +3007,7 @@ func restoreCard(c *cardSnapshot) Card {
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
+		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -3182,39 +3196,40 @@ func restorePlayer(p *playerSnapshot) *Player {
 // caller flags its source.
 func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	out := &StackItem{
-		ID:             s.ID,
-		Kind:           s.Kind,
-		Controller:     s.Controller,
-		BaseController: s.BaseController,
-		Owner:          s.Owner,
-		SourceCardID:   s.SourceCardID,
-		SourceEpoch:    s.SourceEpoch,
-		SourceObject:   s.SourceObject.value(),
-		GrantedBy:      uuidOrNil(s.GrantedBy),
-		Label:          s.Label,
-		DoubledBy:      s.DoubledBy,
-		DoubledByName:  s.DoubledByName,
-		Targets:        copyTargetRefs(s.Targets),
-		Payload:        copyTargetRefs(s.Payload),
-		Trigger:        cloneTriggerContext(s.Trigger),
-		Modes:          copyInts(s.Modes),
-		XValue:         s.XValue,
-		Distribution:   copyIntMap(s.Distribution),
-		HoldPriority:   s.HoldPriority,
-		CastFromZone:   s.CastFromZone,
-		AltCost:        s.AltCost,
-		Foretold:       s.Foretold,
-		FaceDown:       s.FaceDown,
-		AltCostExiles:  s.AltCostExiles,
-		SplitSecond:    s.SplitSecond,
-		IsCopy:         s.IsCopy,
-		Uncopyable:     s.Uncopyable,
-		Seq:            s.Seq,
-		Ordered:        s.Ordered,
-		Commutes:       s.Commutes,
-		Paid:           clonePaidCost(s.Paid),
-		Body:           s.Body,
-		Params:         effectParamsValue(s.Params),
+		ID:              s.ID,
+		Kind:            s.Kind,
+		Controller:      s.Controller,
+		BaseController:  s.BaseController,
+		Owner:           s.Owner,
+		SourceCardID:    s.SourceCardID,
+		SourceEpoch:     s.SourceEpoch,
+		SourceObject:    s.SourceObject.value(),
+		SourceTurnOvers: s.SourceTurnOvers,
+		GrantedBy:       uuidOrNil(s.GrantedBy),
+		Label:           s.Label,
+		DoubledBy:       s.DoubledBy,
+		DoubledByName:   s.DoubledByName,
+		Targets:         copyTargetRefs(s.Targets),
+		Payload:         copyTargetRefs(s.Payload),
+		Trigger:         cloneTriggerContext(s.Trigger),
+		Modes:           copyInts(s.Modes),
+		XValue:          s.XValue,
+		Distribution:    copyIntMap(s.Distribution),
+		HoldPriority:    s.HoldPriority,
+		CastFromZone:    s.CastFromZone,
+		AltCost:         s.AltCost,
+		Foretold:        s.Foretold,
+		FaceDown:        s.FaceDown,
+		AltCostExiles:   s.AltCostExiles,
+		SplitSecond:     s.SplitSecond,
+		IsCopy:          s.IsCopy,
+		Uncopyable:      s.Uncopyable,
+		Seq:             s.Seq,
+		Ordered:         s.Ordered,
+		Commutes:        s.Commutes,
+		Paid:            clonePaidCost(s.Paid),
+		Body:            s.Body,
+		Params:          effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item
@@ -3260,6 +3275,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
 		SourceObject:       d.SourceObject.value(),
+		SourceTurnOvers:    d.SourceTurnOvers,
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,

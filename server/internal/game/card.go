@@ -425,6 +425,27 @@ type Card struct {
 	// of it are equal.
 	ObjectEpoch int
 
+	// TurnOvers counts how many times this card has turned over in
+	// place on the battlefield — transformed or converted (CR 701.27a,
+	// 701.28a; ADR 0152 §3). turnOverInPlaceLocked is its one writer.
+	//
+	// It is CR 701.27f / 701.28e's memory: an ability of a permanent
+	// that tries to transform or convert it does so only if the
+	// permanent "hasn't transformed or converted since the ability was
+	// put onto the stack" (for a delayed trigger, since it was
+	// created). StackItem.SourceTurnOvers and
+	// DelayedTrigger.SourceTurnOvers record this count at that moment,
+	// and effects.TransformThis / ConvertThis do nothing once it has
+	// moved. A face check cannot answer the question when the permanent
+	// has turned over twice since.
+	//
+	// Never reset, like ObjectEpoch: a zone move is a new object
+	// (CR 400.7), which the SourceObject check already answers, and only
+	// whether two readings are equal matters. Zero in a restore point
+	// written before the field existed, and so on every item stamped
+	// then: the two still agree.
+	TurnOvers int
+
 	// ControlledSinceUpkeep is the value of the controller's
 	// Player.UpkeepsBegun when this permanent last came under that
 	// player's control: as it entered the battlefield, and at each

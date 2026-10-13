@@ -339,6 +339,7 @@ battlefield.cards[].tapped	bool
 battlefield.cards[].tokenArtOnly	bool
 battlefield.cards[].tokenKey	string
 battlefield.cards[].toughness	number:int
+battlefield.cards[].turnOvers	number:int
 battlefield.cards[].typeLine	string
 battlefield.cards[].unlocked	number:uint8
 battlefield.cards[].variableToughness	bool
@@ -444,6 +445,7 @@ delayedTriggers[].sourceCardId	custom(uuid.UUID)
 delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
 delayedTriggers[].sourceObject.id	custom(uuid.UUID)
+delayedTriggers[].sourceTurnOvers	number:int
 delayedTriggers[].turnOf	custom(uuid.UUID)
 delayedTriggers[].until	bool
 delayedTriggers[].untilLeaves	object
@@ -482,6 +484,7 @@ events[].colors	array
 events[].colors[]	string
 events[].combat	bool
 events[].combat_step	string
+events[].converted	bool
 events[].damage_not_life_loss	number:int
 events[].discard_cause	string
 events[].entered_from	string
@@ -839,6 +842,7 @@ exile.cards[].tapped	bool
 exile.cards[].tokenArtOnly	bool
 exile.cards[].tokenKey	string
 exile.cards[].toughness	number:int
+exile.cards[].turnOvers	number:int
 exile.cards[].typeLine	string
 exile.cards[].unlocked	number:uint8
 exile.cards[].variableToughness	bool
@@ -1435,6 +1439,7 @@ lastKnownStack[].card.tapped	bool
 lastKnownStack[].card.tokenArtOnly	bool
 lastKnownStack[].card.tokenKey	string
 lastKnownStack[].card.toughness	number:int
+lastKnownStack[].card.turnOvers	number:int
 lastKnownStack[].card.typeLine	string
 lastKnownStack[].card.unlocked	number:uint8
 lastKnownStack[].card.variableToughness	bool
@@ -1561,6 +1566,7 @@ lastKnownStack[].item.sourceEpoch	number:int
 lastKnownStack[].item.sourceObject	object
 lastKnownStack[].item.sourceObject.epoch	number:int
 lastKnownStack[].item.sourceObject.id	custom(uuid.UUID)
+lastKnownStack[].item.sourceTurnOvers	number:int
 lastKnownStack[].item.splitSecond	bool
 lastKnownStack[].item.targets	array
 lastKnownStack[].item.targetsAnnouncePending	bool
@@ -1593,6 +1599,7 @@ lastKnownStack[].item.trigger.Event.colors	array
 lastKnownStack[].item.trigger.Event.colors[]	string
 lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
+lastKnownStack[].item.trigger.Event.converted	bool
 lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.entered_from	string
@@ -1826,6 +1833,7 @@ pausedModeWalk.item.sourceEpoch	number:int
 pausedModeWalk.item.sourceObject	object
 pausedModeWalk.item.sourceObject.epoch	number:int
 pausedModeWalk.item.sourceObject.id	custom(uuid.UUID)
+pausedModeWalk.item.sourceTurnOvers	number:int
 pausedModeWalk.item.splitSecond	bool
 pausedModeWalk.item.targets	array
 pausedModeWalk.item.targetsAnnouncePending	bool
@@ -1858,6 +1866,7 @@ pausedModeWalk.item.trigger.Event.colors	array
 pausedModeWalk.item.trigger.Event.colors[]	string
 pausedModeWalk.item.trigger.Event.combat	bool
 pausedModeWalk.item.trigger.Event.combat_step	string
+pausedModeWalk.item.trigger.Event.converted	bool
 pausedModeWalk.item.trigger.Event.damage_not_life_loss	number:int
 pausedModeWalk.item.trigger.Event.discard_cause	string
 pausedModeWalk.item.trigger.Event.entered_from	string
@@ -2329,6 +2338,7 @@ pendingTriggers[].sourceEpoch	number:int
 pendingTriggers[].sourceObject	object
 pendingTriggers[].sourceObject.epoch	number:int
 pendingTriggers[].sourceObject.id	custom(uuid.UUID)
+pendingTriggers[].sourceTurnOvers	number:int
 pendingTriggers[].splitSecond	bool
 pendingTriggers[].targets	array
 pendingTriggers[].targetsAnnouncePending	bool
@@ -2361,6 +2371,7 @@ pendingTriggers[].trigger.Event.colors	array
 pendingTriggers[].trigger.Event.colors[]	string
 pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
+pendingTriggers[].trigger.Event.converted	bool
 pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.entered_from	string
@@ -2742,6 +2753,7 @@ phasedOut.cards[].tapped	bool
 phasedOut.cards[].tokenArtOnly	bool
 phasedOut.cards[].tokenKey	string
 phasedOut.cards[].toughness	number:int
+phasedOut.cards[].turnOvers	number:int
 phasedOut.cards[].typeLine	string
 phasedOut.cards[].unlocked	number:uint8
 phasedOut.cards[].variableToughness	bool
@@ -3374,6 +3386,7 @@ seats[].command.cards[].tapped	bool
 seats[].command.cards[].tokenArtOnly	bool
 seats[].command.cards[].tokenKey	string
 seats[].command.cards[].toughness	number:int
+seats[].command.cards[].turnOvers	number:int
 seats[].command.cards[].typeLine	string
 seats[].command.cards[].unlocked	number:uint8
 seats[].command.cards[].variableToughness	bool
@@ -3706,6 +3719,7 @@ seats[].emblems.cards[].tapped	bool
 seats[].emblems.cards[].tokenArtOnly	bool
 seats[].emblems.cards[].tokenKey	string
 seats[].emblems.cards[].toughness	number:int
+seats[].emblems.cards[].turnOvers	number:int
 seats[].emblems.cards[].typeLine	string
 seats[].emblems.cards[].unlocked	number:uint8
 seats[].emblems.cards[].variableToughness	bool
@@ -4029,6 +4043,7 @@ seats[].graveyard.cards[].tapped	bool
 seats[].graveyard.cards[].tokenArtOnly	bool
 seats[].graveyard.cards[].tokenKey	string
 seats[].graveyard.cards[].toughness	number:int
+seats[].graveyard.cards[].turnOvers	number:int
 seats[].graveyard.cards[].typeLine	string
 seats[].graveyard.cards[].unlocked	number:uint8
 seats[].graveyard.cards[].variableToughness	bool
@@ -4350,6 +4365,7 @@ seats[].hand.cards[].tapped	bool
 seats[].hand.cards[].tokenArtOnly	bool
 seats[].hand.cards[].tokenKey	string
 seats[].hand.cards[].toughness	number:int
+seats[].hand.cards[].turnOvers	number:int
 seats[].hand.cards[].typeLine	string
 seats[].hand.cards[].unlocked	number:uint8
 seats[].hand.cards[].variableToughness	bool
@@ -4683,6 +4699,7 @@ seats[].library.cards[].tapped	bool
 seats[].library.cards[].tokenArtOnly	bool
 seats[].library.cards[].tokenKey	string
 seats[].library.cards[].toughness	number:int
+seats[].library.cards[].turnOvers	number:int
 seats[].library.cards[].typeLine	string
 seats[].library.cards[].unlocked	number:uint8
 seats[].library.cards[].variableToughness	bool
@@ -5234,6 +5251,7 @@ stack.cards[].tapped	bool
 stack.cards[].tokenArtOnly	bool
 stack.cards[].tokenKey	string
 stack.cards[].toughness	number:int
+stack.cards[].turnOvers	number:int
 stack.cards[].typeLine	string
 stack.cards[].unlocked	number:uint8
 stack.cards[].variableToughness	bool
@@ -5363,6 +5381,7 @@ stackMeta[].sourceEpoch	number:int
 stackMeta[].sourceObject	object
 stackMeta[].sourceObject.epoch	number:int
 stackMeta[].sourceObject.id	custom(uuid.UUID)
+stackMeta[].sourceTurnOvers	number:int
 stackMeta[].splitSecond	bool
 stackMeta[].targets	array
 stackMeta[].targetsAnnouncePending	bool
@@ -5395,6 +5414,7 @@ stackMeta[].trigger.Event.colors	array
 stackMeta[].trigger.Event.colors[]	string
 stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
+stackMeta[].trigger.Event.converted	bool
 stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.entered_from	string

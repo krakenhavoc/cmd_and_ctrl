@@ -1113,6 +1113,9 @@ export interface LogEvent {
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).
   combat?: boolean;
+  // ADR 0152 §2 (#1856): a `transform` entry whose turn-over was a
+  // convert (CR 701.28a). The rendered `text` already says "converted".
+  converted?: boolean;
   // Which combat damage step dealt a combat `damage` entry (CR 510.4).
   // Set only when that combat had a first-strike step; combat with no
   // first strike or double strike anywhere is untagged, so its

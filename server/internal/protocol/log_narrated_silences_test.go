@@ -556,6 +556,34 @@ func TestLogNarratesATransform(t *testing.T) {
 	if want := "Storm the Vault transformed into Vault of Catlacan"; entry.Text != want {
 		t.Errorf("text: got %q, want %q", entry.Text, want)
 	}
+	if entry.Converted {
+		t.Error("a transform is marked converted")
+	}
+	assertNoUUID(t, entry.Text)
+}
+
+// TestLogNarratesAConvert — CR 701.28a (ADR 0152 §2, #1856). A convert
+// is an EventTransform marked Converted, and the line says "converted",
+// the word the card prints.
+func TestLogNarratesAConvert(t *testing.T) {
+	g := buildActiveGame(t)
+	owner := g.Seats[0]
+	goldbug := battlefieldCard(t, g, "Goldbug, Scrappy Scout", "Legendary Artifact — Vehicle", owner.ID)
+
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{
+			Kind: game.EventTransform, Actor: owner.ID,
+			CardID: goldbug, Amount: 1, Label: "Goldbug, Humanity's Ally", Converted: true,
+		})
+	})
+
+	entry := findLog(t, ViewOfGame(g).Log, LogTransform)
+	if want := "Goldbug, Humanity's Ally converted into Goldbug, Scrappy Scout"; entry.Text != want {
+		t.Errorf("text: got %q, want %q", entry.Text, want)
+	}
+	if !entry.Converted {
+		t.Error("the entry is not marked converted")
+	}
 	assertNoUUID(t, entry.Text)
 }
 

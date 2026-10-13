@@ -1781,6 +1781,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// last-known record), not the card in its new zone. SourceEpoch
 	// below keeps the post-cost reading its readers want.
 	sourceObject := g.sourceObjectRefLocked(cardID)
+	// ADR 0152 §3: the turn-over count, read with the object it names.
+	sourceTurnOvers := g.TurnOversForEffect(cardID)
 
 	// --- pay ----------------------------------------------------
 	//
@@ -2075,6 +2077,8 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 		// say so. See StackItem.SourceEpoch.
 		SourceEpoch:  g.cardObjectEpochLocked(cardID),
 		SourceObject: sourceObject,
+		// CR 701.27f / 701.28e (ADR 0152 §3).
+		SourceTurnOvers: sourceTurnOvers,
 		// ADR 0109 §2, owner decision 2: the object that granted this
 		// row, uuid.Nil for the source's own. See StackItem.GrantedBy.
 		GrantedBy:    origins.At(index).GrantedBy,

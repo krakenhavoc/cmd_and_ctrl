@@ -4001,12 +4001,14 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 		// StackItem.SourceEpoch.
 		SourceEpoch:  g.cardObjectEpochLocked(sourceCardID),
 		SourceObject: g.sourceObjectRefLocked(sourceCardID),
-		Label:        params.Label,
-		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
-		XValue:       params.XValue,
-		Distribution: cloneDistributionLocked(params.Distribution),
-		Seq:          g.nextStackSeqLocked(),
+		// ADR 0152 §3, read with the object it names.
+		SourceTurnOvers: g.TurnOversForEffect(sourceCardID),
+		Label:           params.Label,
+		Targets:         append([]TargetRef(nil), params.Targets...),
+		Modes:           append([]int(nil), params.Modes...),
+		XValue:          params.XValue,
+		Distribution:    cloneDistributionLocked(params.Distribution),
+		Seq:             g.nextStackSeqLocked(),
 	}
 	// CR 115.3: the targets are chosen as the ability goes on the
 	// stack, and becoming a target is an event whether the ability
@@ -4221,11 +4223,13 @@ func (g *Game) AnnounceTrigger(playerID, sourceCardID uuid.UUID, params AbilityP
 		Owner:        playerID,
 		SourceCardID: sourceCardID,
 		SourceObject: g.sourceObjectRefLocked(sourceCardID),
-		Label:        params.Label,
-		Targets:      append([]TargetRef(nil), params.Targets...),
-		Modes:        append([]int(nil), params.Modes...),
-		XValue:       params.XValue,
-		Distribution: cloneDistributionLocked(params.Distribution),
+		// ADR 0152 §3, read with the object it names.
+		SourceTurnOvers: g.TurnOversForEffect(sourceCardID),
+		Label:           params.Label,
+		Targets:         append([]TargetRef(nil), params.Targets...),
+		Modes:           append([]int(nil), params.Modes...),
+		XValue:          params.XValue,
+		Distribution:    cloneDistributionLocked(params.Distribution),
 		// CR 603.3d / 115.3: a manually-announced trigger chooses its
 		// targets as it goes on the stack, same as the harvested kind,
 		// so the drain that places it emits the "becomes the target"
