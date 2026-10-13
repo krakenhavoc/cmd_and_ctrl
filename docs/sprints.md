@@ -3686,7 +3686,7 @@ Opened 2026-10-13, when the owner asked for the site to be tidied, the Discord s
 
 ### Exit criteria
 
-1. With the gate on, a Discord account without the Player role cannot create an account. It reaches the gate page, and no `users` row is written for it. The same account with the role signs in.
+1. With the gate on, a Discord account with only the Planeswalker role cannot create an account. It reaches the gate page, and no `users` row is written for it. The same account with Elder Dragon Highlander signs in.
 2. Removing the role ends that person's access at their next renewal. A Discord outage during a renewal signs nobody out.
 3. A signed-out visitor with no Discord account can play a practice game from the front page, and can join a host's table by invite link.
 4. Every non-game page uses the shared frame. The before and after screenshots at 1440 and 820 px are attached to the slices' PRs.

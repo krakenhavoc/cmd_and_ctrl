@@ -30,7 +30,7 @@ Owner answers 1–3 and 7.
 
 1. **Config.** Three new server variables:
    - `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`: the C2 server's snowflake.
-   - `CMDCTRL_DISCORD_PLAYER_ROLE_ID`: the role that admits a person.
+   - `CMDCTRL_DISCORD_PLAYER_ROLE_ID`: the role that admits a person. On the C2 server this is **Elder Dragon Highlander** (owner, 2026-10-13; see "The C2 server's roles" below).
    - `CMDCTRL_DISCORD_INVITE_URL`: the public invite link (`https://discord.gg/…`). It replaces the client constant, so the link can change without a release.
 
    **The gate is on when the guild and the role are both set, and off when both are unset.** One without the other fails the boot naming the missing variable, as a malformed snowflake does. With the gate off, sign-in behaves exactly as today; that is every dev loop and test, and any environment the owner leaves open. The invite URL is independent: set, it is shown; unset, every Discord placement is hidden. CD writes all three from Actions variables of the same names (an environment-level value overrides the repo-level one), always, empty included, like the admin allowlist: clearing a variable turns the gate off on the next deploy.
@@ -58,6 +58,17 @@ Owner answers 1–3 and 7.
 
 7. **Admin view.** Accounts (ADR 0124) shows, per person, when the role was last confirmed and the result of the last check ("admitted", "refused: not a member", "refused: no role", "unchecked"). A new nullable `users.access_checked_at` and `users.access_result` hold it (one additive migration). A refused sign-in writes nothing, per item 4, so the view only ever shows people who once had an account.
 
+#### The C2 server's roles
+
+Set up by the owner on 2026-10-13. Discord holds them, not this repo; recorded here because the copy follows them.
+
+| Role | Who has it | What it means here |
+|---|---|---|
+| **Planeswalker** | everyone who joins through the invite link | a member of the community; **no account**. The gate refuses them as "member without the role". They can still play a guest practice game (§2) and sit at a host's table by invite link. |
+| **Elder Dragon Highlander** | given by a mod, on request | **may sign in**: create an account, host tables, keep decks. This is `CMDCTRL_DISCORD_PLAYER_ROLE_ID`. |
+
+The request runs through Discord's onboarding. One question is "request account access"; answering yes adds the member to the access-request channel, where a mod grants Elder Dragon Highlander. Taking the role away ends that person's account access at their next renewal (item 5).
+
 ### 2. A guest practice game
 
 Owner answer 4. Today the practice table needs a session, so a stranger must sign in with Discord first. Under the gate that would shut out everyone not yet approved, and it already falls short of S70's exit criterion 3.
@@ -84,7 +95,7 @@ Owner answer 5.
 Owner answer 5, mockup A.
 
 - **`#/`** for a signed-out visitor becomes the front page. `#/login` stays as an alias, since links, the e2e suite and the OAuth error path use it, and `#/home` redirects to `#/`. `#/admin`'s token form is unchanged.
-- **The hero:** an eyebrow, a one-line pitch and a short lede, then two buttons side by side: **Sign in with Discord** and **Join our Discord server**. Beside them is a three-step panel: *Join the C2 Discord*, *Ask for a seat in the server*, *Sign in and sit down*. With the gate off, the panel shows only step 3 and a line inviting people to the server.
+- **The hero:** an eyebrow, a one-line pitch and a short lede, then two buttons side by side: **Sign in with Discord** and **Join our Discord server**. Beside them is a three-step panel: *Join the C2 Discord*, *Request account access* (answer yes in onboarding and a mod gives the Elder Dragon Highlander role), *Sign in and sit down*. With the gate off, the panel shows only step 3 and a line inviting people to the server.
 - **Below:** a row of four cards. **Have an invite?** has the code box, today's join behaviour unchanged. **Check a deck**, **Roadmap** and **About** link out. **Try a practice game** (§2) sits under the hero buttons.
 - **A signed-in person** still lands on Tables (ADR 0112 §1).
 
@@ -92,10 +103,13 @@ Owner answer 5, mockup A.
 
 `#/request-access`, public.
 
-- It explains that accounts are for members of the C2 Discord with the Player role, in three steps:
-  1. Join, with the invite button.
-  2. Ask in the server. The channel's name is copy, not config.
-  3. **Check again**, which restarts Discord sign-in. Discord remembers the consent, so this is a redirect, not a prompt.
+- It explains that accounts are for members of the C2 Discord with the Elder Dragon Highlander role, in steps that follow the server's onboarding:
+  1. **Join**, with the invite button. Everyone who joins is a Planeswalker.
+  2. **Answer yes to "request account access"** in the server's onboarding. A member who already joined and answered no changes the answer in the server's *Channels & Roles*.
+  3. **Ask in the access-request channel** that the answer opens. A mod gives the Elder Dragon Highlander role.
+  4. **Check again**, which restarts Discord sign-in. Discord remembers the consent, so this is a redirect, not a prompt.
+
+  The role and channel names are copy in the client, not config: renaming them on Discord means a copy change here.
 - It offers **Try a practice game**, and says that an invite link from a host still works.
 - With `?retry=1` it leads with "Discord didn't answer; try again".
 
