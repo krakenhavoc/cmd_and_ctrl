@@ -145,6 +145,7 @@
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
+    lonePick,
     opensTargetPicker,
     togglePick,
     canConfirm,
@@ -1513,6 +1514,19 @@
   $effect(() => {
     setConfirmHandler(confirmTargets);
     return () => setConfirmHandler(null);
+  });
+
+  // #3264: a step with one legal target is answered for the player, as
+  // the click would answer it (lonePick says which prompts qualify). A
+  // walk whose next step is also lone carries on the same way.
+  let autoPicked: TargetingState | null = null;
+  $effect(() => {
+    const t = $targeting;
+    if (!t || t === autoPicked || dividePrompt) return;
+    const ref = lonePick(t);
+    if (!ref) return;
+    autoPicked = t;
+    stepOrFire({ ...t, picked: [ref] });
   });
 
   function fireTargets(state: TargetingState, targets: TargetRef[]): void {

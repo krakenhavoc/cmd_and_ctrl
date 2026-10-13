@@ -279,13 +279,17 @@ describe("one usable ability activates on click (#2201)", () => {
     expect(b.activations()).toEqual([]);
   });
 
-  it("an Equipment with Equip usable starts the equip flow: the creature choice", () => {
+  it("an Equipment with Equip usable and one creature to equip activates onto it (#3264)", () => {
     const b = mountBoard([bonesplitter(), bear()]);
     click(b.tile("sword"));
-    const t = get(targeting);
-    expect(t?.card.instance_id).toBe("sword");
-    expect(t?.ability?.index).toBe(0);
-    expect([...(t?.legal?.cards ?? [])]).toEqual(["bear"]);
+    // The creature choice had one answer, so it was made for the player.
+    expect(b.activations()).toHaveLength(1);
+    expect(b.activations()[0].params).toMatchObject({
+      source_card_id: "sword",
+      ability_index: 0,
+      targets: [{ kind: "card", id: "bear" }],
+    });
+    expect(get(targeting)).toBeNull();
     expect(get(abilityPopover)).toBeNull();
   });
 

@@ -1527,6 +1527,32 @@ function breaksSame(t: TargetingState, id: string): boolean {
   });
 }
 
+// lonePick is the target the current step leaves no choice about
+// (#3264), or null when the player is asked as before. It is chosen
+// for them only when:
+//
+//   - the step takes exactly one target and exactly one is legal;
+//   - the prompt is a trigger's pick_target (CR 603.3d: a required
+//     target with one legal choice is that choice) or an activated
+//     ability's walk, which the player started on purpose;
+//   - nothing about the pick is still to be read: no price per target
+//     (the banner shows an equip's price before its one click).
+//
+// A spell's targets always wait for the click, so a misclicked removal
+// spell whose only legal target is the caster's own creature can still
+// be cancelled.
+export function lonePick(t: TargetingState): TargetRef | null {
+  if (!t.legal || t.min !== 1 || t.max !== 1 || t.picked.length > 0) return null;
+  if (t.choiceKind !== "pick_target" && !t.ability) return null;
+  if (t.ability?.prices && Object.keys(t.ability.prices).length > 0) return null;
+  const players = [...t.legal.players];
+  const cards = [...t.legal.cards];
+  if (players.length + cards.length !== 1) return null;
+  return players.length === 1
+    ? { kind: "player", id: players[0]! }
+    : { kind: "card", id: cards[0]! };
+}
+
 // legalTargetCount is the banner's "N legal targets" figure; -1 when
 // the prompt is free-form.
 export function legalTargetCount(t: TargetingState): number {

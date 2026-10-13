@@ -184,11 +184,16 @@ test.describe("S19 ETB triggers", () => {
     setup = await setupS19Game(browser, request);
     const { admin, caster, opponent } = setup;
 
-    // Stage the opponent's artifact on their battlefield.
+    // Stage the opponent's artifact on their battlefield, and an
+    // enchantment beside it: with one legal target the pick would be
+    // made for the caster (#3264), and this spec clicks it.
     await adminMoveByName(admin, opponent.playerID, CARDS.SolRing, "library", "battlefield");
+    await adminMoveByName(admin, opponent.playerID, CARDS.GloriousAnthem, "library", "battlefield");
     await admin.waitFor(
-      (v) => findCardOnBattlefield(v, CARDS.SolRing) !== null,
-      "Sol Ring on battlefield",
+      (v) =>
+        findCardOnBattlefield(v, CARDS.SolRing) !== null &&
+        findCardOnBattlefield(v, CARDS.GloriousAnthem) !== null,
+      "Sol Ring and Glorious Anthem on battlefield",
     );
 
     // Caster's Reclamation Sage hits the battlefield → optional
@@ -259,6 +264,44 @@ test.describe("S19 ETB triggers", () => {
       "Sol Ring routed to opponent's graveyard",
     );
     expect(after.pending_choices ?? []).toHaveLength(0);
+  });
+
+  test("Reclamation Sage → Yes with one legal target picks it for the caster (#3264)", async ({
+    browser,
+    request,
+  }) => {
+    test.slow();
+    setup = await setupS19Game(browser, request);
+    const { admin, caster, opponent } = setup;
+
+    await adminMoveByName(admin, opponent.playerID, CARDS.SolRing, "library", "battlefield");
+    await admin.waitFor(
+      (v) => findCardOnBattlefield(v, CARDS.SolRing) !== null,
+      "Sol Ring on battlefield",
+    );
+    await adminMoveByName(
+      admin,
+      caster.playerID,
+      CARDS.ReclamationSage,
+      "library",
+      "battlefield",
+    );
+    await dockOf(caster.page)
+      .getByRole("dialog", { name: /Reclamation Sage —/i })
+      .getByRole("button", { name: /^Yes$/ })
+      .click({ timeout: 20_000 });
+
+    // No click on the Sol Ring: it was the only artifact or enchantment,
+    // so the caster's client answered the pick_target with it.
+    const ring = findCardOnBattlefield(admin.snapshot(), CARDS.SolRing);
+    await admin.waitFor(
+      (v) =>
+        (v.pending_choices ?? []).length === 0 &&
+        (v.stack_items ?? []).some((it) =>
+          (it.targets ?? []).some((t) => t.id === ring?.instance_id),
+        ),
+      "Reclamation Sage trigger on the stack, aimed at the Sol Ring",
+    );
   });
 
   test("Reclamation Sage optional ETB → No leaves artifact untouched", async ({
@@ -348,10 +391,15 @@ test.describe("S19 ETB triggers", () => {
 
     // Seed graveyard: admin moves Lightning Bolt from caster's
     // library to graveyard.
+    // A second card too: with one legal target the pick would be made
+    // for the caster (#3264), and this spec picks from the browser.
     await adminMoveByName(admin, caster.playerID, CARDS.LightningBolt, "library", "graveyard");
+    await adminMoveByName(admin, caster.playerID, CARDS.GloriousAnthem, "library", "graveyard");
     await admin.waitFor(
-      (v) => findCardInPlayerGraveyard(v, caster.playerID, CARDS.LightningBolt) !== null,
-      "Lightning Bolt in caster graveyard",
+      (v) =>
+        findCardInPlayerGraveyard(v, caster.playerID, CARDS.LightningBolt) !== null &&
+        findCardInPlayerGraveyard(v, caster.playerID, CARDS.GloriousAnthem) !== null,
+      "Lightning Bolt and Glorious Anthem in caster graveyard",
     );
 
     await adminMoveByName(
