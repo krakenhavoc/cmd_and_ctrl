@@ -364,7 +364,7 @@
     return botOptions?.decks.find((d) => d.id === id)?.name ?? id;
   }
 
-  // The curated deck names are flavour ("Raid and Ransack", "Body
+  // The curated deck names are flavour ("Forge and Fury", "Body
   // Count"), so the <option> text alone does not say which one
   // attacks. The description leads with the archetype, and it belongs
   // on the page rather than in a title= tooltip — a tooltip is not an

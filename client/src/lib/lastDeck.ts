@@ -26,6 +26,17 @@ export interface LastDeck {
 /** Where a guest's last pre-built deck is kept. */
 export const GUEST_LAST_DECK_KEY = "cmdctrl.lastDeck";
 
+/**
+ * Retired pre-built deck IDs and the deck that replaced each (the
+ * server's decks.legacyIDs). A signed-in person's record was rewritten
+ * by migration 0018; a guest's lives in this browser, so it is
+ * translated as it is read.
+ */
+export const LEGACY_PREBUILT_IDS: Readonly<Record<string, string>> = {
+  // #3071: the Izzet deck was rebuilt as mono-red under Purphoros.
+  "izzet-aggro": "mono-red-aggro",
+};
+
 /** readGuestLastDeck is the guest's remembered pre-built deck, or null. */
 export function readGuestLastDeck(): LastDeck | null {
   let raw: string | null;
@@ -38,7 +49,7 @@ export function readGuestLastDeck(): LastDeck | null {
   try {
     const v = JSON.parse(raw) as Partial<LastDeck>;
     if (v.kind === "prebuilt" && typeof v.id === "string" && v.id !== "") {
-      return { kind: "prebuilt", id: v.id };
+      return { kind: "prebuilt", id: LEGACY_PREBUILT_IDS[v.id] ?? v.id };
     }
   } catch {
     // A value this build cannot read is no preselection.

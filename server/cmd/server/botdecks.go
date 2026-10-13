@@ -50,7 +50,7 @@ func (botDeckCatalog) Decklist(id string) (aiseat.DeckInfo, string, bool) {
 //
 // The archetype is prefixed onto the description rather than dropped:
 // aiseat.DeckInfo has no Archetype field, and the deck NAMES are
-// flavour ("Raid and Ransack", "Body Count"), so without it the picker
+// flavour ("Forge and Fury", "Body Count"), so without it the picker
 // is four names and no way to tell which one attacks. Issue #89 asked
 // for an archetype picker; this is the archetype, carried in the one
 // field that survives the interface.

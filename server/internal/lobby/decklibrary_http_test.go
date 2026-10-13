@@ -446,7 +446,7 @@ func TestSaveToLibrarySkipsAPrebuiltCatalogPick(t *testing.T) {
 	list := &deck.List{Name: "", Commanders: []cards.Card{{Name: "Test Commander"}}}
 	p := auth.Principal{Role: auth.RolePlayer, UserID: owner}
 
-	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, p.GameID, p.PlayerID, "izzet-aggro", "text", "1 Test Commander\n", list, []string{"Test Commander"})
+	got, _ := saveToLibrary(context.Background(), Config{DeckLibrary: st.library}, p, p.GameID, p.PlayerID, "mono-red-aggro", "text", "1 Test Commander\n", list, []string{"Test Commander"})
 	if got != "" {
 		t.Errorf("catalog pick: saveToLibrary = %q, want empty", got)
 	}

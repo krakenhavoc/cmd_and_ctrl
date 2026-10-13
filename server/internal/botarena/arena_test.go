@@ -130,7 +130,7 @@ func TestSummaryMarkdown(t *testing.T) {
 	sum := botarena.Summary{
 		Config: botarena.ConfigSummary{
 			Seats: []botarena.SeatSpec{
-				{Tier: tiers.Assisted, Deck: "izzet-aggro"},
+				{Tier: tiers.Assisted, Deck: "mono-red-aggro"},
 				{Tier: tiers.Heuristic, Deck: "simic-ramp"},
 			},
 			Games: 2, Seed: 7, Rotate: true, TurnBudget: 60,
@@ -152,7 +152,7 @@ func TestSummaryMarkdown(t *testing.T) {
 	md := sum.Markdown()
 	for _, want := range []string{
 		"## Arena — 2 games, 2 seats",
-		"assisted(izzet-aggro)",
+		"assisted(mono-red-aggro)",
 		"qwen3:14b",
 		"q4_k_m",
 		"### Play",
@@ -300,7 +300,7 @@ func TestValidateRefusesBadShapes(t *testing.T) {
 		{"one seat", botarena.Config{Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}}, Games: 1}},
 		{"no games", botarena.Config{Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}}, Games: 0}},
 		{"unknown tier", botarena.Config{Seats: []botarena.SeatSpec{{Tier: "genius"}, {Tier: tiers.Heuristic}}, Games: 1}},
-		{"deck with no index", botarena.Config{Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic, Deck: "izzet-aggro"}, {Tier: tiers.Heuristic}}, Games: 1}},
+		{"deck with no index", botarena.Config{Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic, Deck: "mono-red-aggro"}, {Tier: tiers.Heuristic}}, Games: 1}},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

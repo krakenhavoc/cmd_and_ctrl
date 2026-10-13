@@ -17,7 +17,7 @@ import (
 // Both are here rather than in the caller because which deck a seat
 // plays is a property of the MEASUREMENT, not of the harness: a win
 // rate measured on BattleDeck and a win rate measured on
-// izzet-aggro-vs-esper-control are two different numbers, and a
+// mono-red-aggro-vs-esper-control are two different numbers, and a
 // report that cannot say which one it took is not a report.
 
 // BattleDeck is 65 vanilla red cards with a real curve, some evasion

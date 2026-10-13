@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13). 2026-10-13, [izzet-aggro rebuilt around Purphoros](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros) ([#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071)): accepted (owner decisions 2026-10-13).
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -275,7 +275,7 @@ A mana ability with a sacrifice cost (the Altars) is used by the auto-tapper whe
 
 Every sub-PR from §1 onward carries ADR 0052's report block in its description, plus this ADR's two tables. The runs:
 
-1. **The four-deck rotation.** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1`. 64 games is 16 full rotations, so every deck sits in every chair 16 times. It reports per-deck win rates with intervals, the Cards table and the `never` counts. About 5 s a game, so about 6 minutes.
+1. **The four-deck rotation.** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,mono-red-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1`. The aggro deck was `izzet-aggro` until [#3071](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros), and the measurements below that predate it name it so. 64 games is 16 full rotations, so every deck sits in every chair 16 times. It reports per-deck win rates with intervals, the Cards table and the `never` counts. About 5 s a game, so about 6 minutes.
 2. **New against baseline.** Two `heuristic` and two `heuristic-baseline` contestants, 48 games with the decks split one way and 48 with them swapped, so each policy plays each deck equally (96 games, 192 seat-games per policy). This measures strength, which run 1 cannot: four copies of one policy win 25% each by construction.
 3. **The position suite.** `boteval suite run --policy heuristic`. Every gated position passes. Overall agreement and each tag's agreement are not lower than before the PR. Each sub-PR adds the positions for its class (below), labelled from its own arena decision logs, and gates them.
 4. **The nightly gates.** `bot-games`, `bot-soak` (the heuristic gate's fixed seeds 101..120, the random soak of 100 games) and `catalog-soak` stay green on the PR's branch, run with `gh workflow run` before merge. If the catalog soak fails with an `EventEffectError` on a card the bot now casts for the first time, that is a real engine bug the pricing has uncovered. It is filed as its own issue and fixed, or the card's `Completeness` is corrected. It is not a reason to revert the price.
@@ -1164,6 +1164,109 @@ The owner accepted the amendment on 2026-10-13 and took the recommendation on bo
 1. **The landfall price is accepted.** `PriceLandfallPayoffs` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
 2. **The open items are one issue:** [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146), in Backlog: Ancient Greenwarden's doubling, a payoff's own cast price, and the fetch lands.
 3. **The random-bot game test's timeout is its own issue:** [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147), in Backlog. `TestFourRandomBotsPlayToAWinner` hits its wall clock on `develop` as on this branch ([Measurements](#3072-landfall-payoffs-2026-10-12)), so it is not part of this amendment.
+
+## Amendment 2026-10-13: izzet-aggro rebuilt around Purphoros
+
+**Status:** Accepted (owner decisions 2026-10-13). The owner took the Purphoros list, had the deck's ID renamed to `mono-red-aggro` in the same PR, accepted Simic's run-1 rate, and had the canary and the token makers filed as [#3164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3164) and [#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165); see [Owner decisions (#3071, 2026-10-13)](#owner-decisions-3071-2026-10-13) at the end of this amendment. The code is in the PR that adds this section: the deck list, its new ID with migration 0018 and an alias for the old one, the test lists that name its cards, and the docs that describe it. No price, weight or switch changes.
+**Issue:** [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071), filed from #2480's [owner decision 3](#owner-decisions-2480-2026-10-12). Sprint S67.
+**Amends:** the izzet-aggro list #2436 set and #2480 swapped two cards of. No other deck changes.
+
+### The problem
+
+#2480 found that no swap of two to four cards moves izzet-aggro beyond noise, and the owner asked for a rebuild that may change the commander. Re-measured on `develop` at `f1bf51ff6`, with #3072's landfall price, over four seed blocks of §8's run 1 (64 games each, `--rotate --lockstep`):
+
+| Deck | Run 1, seeds 1, 1001, 2001, 3001 | Every `heuristic` seat-game (run 1 and run 2) |
+|---|---|---|
+| esper-control | 98 / 256, 38.3% (32.5%–44.4%) | 203 / 448, 45.3% (40.8%–49.9%) |
+| izzet-aggro | **9 / 256, 3.5% (1.9%–6.5%)** | **21 / 448, 4.7% (3.1%–7.1%)** |
+| mono-black-aristocrats | 81 / 256, 31.6% (26.3%–37.6%) | 169 / 448, 37.7% (33.4%–42.3%) |
+| simic-ramp | 68 / 256, 26.6% (21.5%–32.3%) | 137 / 448, 30.6% (26.5%–35.0%) |
+
+### Decision (proposed)
+
+**1. The commander is Purphoros, God of the Forge, and the deck is mono-red.** Whenever another creature enters under its controller's control, Purphoros deals 2 damage to each opponent. It is indestructible and costs four, and the bot casts it in every one of the 253 run-1 games in which it could, so the deck's engine is on the table by turn four or five whatever the library deals. Damage to each opponent is what the two strongest decks win with (#2480 question 3: Syr Konrad and Y'shtola), and a four-seat table pays it three times.
+
+**2. The 99 feeds that trigger.** It keeps 31 of the old list's non-basic cards and the Mountains, and the commander and 41 cards are new, every one graded `full` and legal in Commander; Path of Ancestry is still the deck's only minor-caveats card.
+
+- **Damage to each opponent when a creature or an artifact enters:** Impact Tremors, Witty Roastmaster, Molten Gatekeeper, Agate Instigator, Fanatic of Mogis (once, as it enters), and the kept Weftstalker Ardent and Reckless Fireweaver (a Treasure is an artifact entering).
+- **When a spell is cast:** Firebrand Archer, Kessig Flamebreather, Erebor Flamesmith, Coruscation Mage, Firespitter Whelp, Fiery Inscription, Brimstone Vandal, and the kept Guttersnipe.
+- **More per hit:** Torbran, Thane of Red Fell and Hellrider.
+- **Creatures that bring creatures:** Goblin Instigator, Beetleback Chief, Siege-Gang Commander, Legion Warboss, Goblin Rabblemaster, both Krenkos, Hanweir Garrison, Loyal Apprentice, Young Pyromancer, Person of Interest, Pashalik Mons, Fearless Liberator, Goblin Matron, and the token spells Hordeling Outburst, Krenko's Command and Dragon Fodder.
+- **Treasure and card flow:** Charming Scoundrel, Patron of the Arts, Rapacious Dragon, Seize the Spoils, Strike It Rich, Ruby Medallion, Fire Diamond, and the kept Captain Lannery Storm, Generous Plunderer, Professional Face-Breaker, Fable of the Mirror-Breaker, Goldspan Dragon, Big Score, Unexpected Windfall, Faithless Looting and four rocks.
+- **Removal:** the kept Lightning Bolt, Shock, Arc Trail, Abrade, Chaos Warp and Vandalblast, with Incinerate, Lightning Strike and Wild Slash.
+- **Out:** Mary Read and Anne Bonny and the whole Pirate and discard plan (the Pirates, Marauding Mako, Scrounging Skyray, Glint-Horn Buccaneer, Magmakin and Ingenious Artillerist, Monument to Endurance, Smuggler's Copter), every blue card (the counterspells, Cyclonic Rift, Pongify, Rapid Hybridization, Preordain, Frantic Search, Mulldrifter, Ledger Shredder), Windfall and Wheel of Fortune, Blaze, Solphim and Ancient Copper Dragon, and the Izzet lands. Ten non-basic lands stay; the rest are 27 Mountains.
+
+**3. The ID becomes `mono-red-aggro`** (owner decision 2, below), following the other mono-coloured decks' colour-archetype IDs; the name is now Forge and Fury and the summary is rewritten. A saved table setup and a player's last deck name a deck by ID, so migration 0018 rewrites `izzet-aggro` to `mono-red-aggro` in `users.last_deck` and in each bot of `table_setups`. `decks.Lookup` still answers `izzet-aggro` with the new deck (`legacyIDs`), for what the migration cannot reach: a guest's browser (which the client also translates as it reads it), an engine snapshot, an operator's script. `IDs()` and the pickers list only the new ID. The rename does not change a game: run 1 at seed 1 plays all 64 games move for move the same under either ID.
+
+### Measured
+
+The tables are under [Measurements, #3071](#3071-izzet-aggro-rebuilt-around-purphoros-2026-10-13). In short, over §8's run 1 and run 2 at seeds 1, 1001, 2001 and 3001:
+
+| | esper, run 1 | izzet, run 1 | mono-black, run 1 | simic, run 1 | Izzet, every `heuristic` seat-game | Run 2 `heuristic` |
+|---|---|---|---|---|---|---|
+| `develop` `f1bf51ff6` | 98 / 256, 38.3% | 9 / 256, 3.5% (1.9%–6.5%) | 81 / 256, 31.6% | 68 / 256, 26.6% | 21 / 448, 4.7% | 274 / 768, 35.7% (32.4%–39.1%) |
+| **the rebuild** | 66 / 256, 25.8% (20.8%–31.5%) | **77 / 256, 30.1% (24.8%–36.0%)** | 69 / 256, 27.0% (21.9%–32.7%) | 44 / 256, 17.2% (13.1%–22.3%) | **152 / 448, 33.9% (29.7%–38.4%)** | 289 / 768, 37.6% (34.3%–41.1%) |
+
+- **Izzet's interval overlaps every other deck's.** It is 29.7% to 31.2% in each seed block, against 1.6% to 6.2% before.
+- **Simic falls to 17.2% in run 1,** below the issue's 20%, and its interval (13.1%–22.3%) still holds 20%. Over every `heuristic` seat-game it is 24.3% (20.6%–28.5%), from 30.6%. The rebuild's wins come from all three decks, and Esper loses the most (38.3% to 25.8%), but Simic is the one that ends lowest. See question 3.
+- **The commander is what moved it.** Scouted with run 1, the same engine cards under a blue-red commander, in a list with blue card flow, won 8% to 10%, and two lighter versions of this list won as much as it does (below). Only Purphoros in the command zone took the deck past 25%.
+- **Run 2 is not worse.** `heuristic` wins 37.6% of its seat-games, against 35.7% on `develop`, and its lower bound clears 25% in every seed block.
+- **The cards are used.** The `never` lists hold at most two of Izzet's rows per seed block (Pashalik Mons's sacrifice and Fearless Liberator's boast), against two or three before. Hordeling Outburst is cast in 9 of the 37 games it is offered in, and Krenko, Mob Boss's activation is taken in 8 of 30; see question 5.
+- **Health:** 0 stalls, 0 rejected moves and 0 runner fallbacks in all 1,280 games. Turns p50 in run 1 is 12, from 13. The suite is 41 of 41, every tag at 100%.
+
+**Scouted variants** (run 1 only, pooled over the seed blocks named; the list measured above is the last row):
+
+| Variant | Seeds | esper | izzet | mono-black | simic |
+|---|---|---|---|---|---|
+| Vivi Ornitier (UR), a spells-and-tokens list on the same engine cards with blue card flow and counterspells | 1, 1001 | 38 / 128 | 10 / 128, 7.8% | 54 / 128 | 26 / 128 |
+| Gandalf the Grey (UR), the same list with Vivi in the 99 | 1, 1001 | 40 / 128 | 13 / 128, 10.2% | 47 / 128 | 28 / 128 |
+| Purphoros, the first draft (six of its cards never cast) | 1, 1001 | 37 / 128 | 37 / 128, 28.9% | 31 / 128 | 23 / 128, 18.0% |
+| Purphoros, the proposed cards in a different order (so every game is dealt differently) | 1, 1001, 2001 | 55 / 192 | 52 / 192, 27.1% | 48 / 192 | 37 / 192, 19.3% |
+| the same without Torbran, one more Mountain | 1, 1001, 2001 | 47 / 192 | 65 / 192, 33.9% | 43 / 192 | 37 / 192, 19.3% |
+| the proposed list without Torbran, Hellrider, Witty Roastmaster and Molten Gatekeeper, for Thrill of Possibility, Ox of Agonas, Commander's Sphere and a Mountain | 1–3001 | 55 / 256 | 86 / 256, 33.6% | 75 / 256 | 40 / 256, 15.6% |
+| the proposed list without Witty Roastmaster, Molten Gatekeeper and Agate Instigator, for three Mountains | 1–3001 | 78 / 256 | 77 / 256, 30.1% | 59 / 256 | 42 / 256, 16.4% |
+| **proposed** | 1–3001 | 66 / 256 | **77 / 256, 30.1%** | 69 / 256 | 44 / 256, 17.2% |
+
+A deck list's card order decides the shuffle, so a list in a new order is a new sample: the fourth row is the proposed cards in the scouting order, and it lands 3 points from the proposed row. Taking out the strongest cards did not make the deck weaker beyond that noise, and Simic sits between 15.6% and 19.3% under every Purphoros list.
+
+### Options considered and rejected
+
+- **Keeping a blue-red commander.** Vivi Ornitier and Gandalf the Grey, on the same engine cards, are 8% and 10%: better than 3.5%, and still far below the other decks. Saheeli, Jewel of Avishkar, the first choice, is not legal in Commander in the Scryfall dump.
+- **A weaker Purphoros list,** to leave Simic above 20%. Two were measured over four seed blocks (above), and neither moved Izzet or Simic beyond noise.
+- **More card swaps on the Mary Read list.** #2480 measured three sets and none moved it.
+
+### Questions for the owner (#3071, answered 2026-10-13)
+
+Each lists the recommended option first.
+
+1. **The rebuild.**
+   - **(a) Recommended:** accept the Purphoros list. Izzet's run-1 interval overlaps every other deck's, run 2 is not worse, and every card is graded `full`.
+   - **(b)** Keep the deck blue-red with Gandalf the Grey's list, at about 10%.
+   - **(c)** Reject. The deck stays as it is.
+2. **The ID and the name.** The deck is mono-red with the ID `izzet-aggro` and the name Forge and Fury.
+   - **(a) Recommended:** keep the ID now and file a follow-up to rename it (with a migration of saved table setups and last-deck records), so this PR changes the list and nothing that stores it.
+   - **(b)** Rename the ID in this PR.
+   - **(c)** Keep the ID for good; only the name says what the deck is.
+3. **Simic at 17.2% in run 1** (13.1%–22.3%; 24.3% over every `heuristic` seat-game).
+   - **(a) Recommended:** accept it as about 20%, and re-measure Simic when #3146 (Greenwarden's doubling, a payoff's cast price, fetch lands) is built, since it is the deck that issue strengthens.
+   - **(b)** Hold the rebuild until #3146 lands.
+   - **(c)** Look for a weaker Purphoros list. Two attempts did not move it.
+4. **The A3 canary.** Mary Read and Anne Bonny's loot (§8, A3) is in no curated deck now, so the arena report shows it as not offered.
+   - **(a) Recommended:** replace it with Faithless Looting (cast), the loot class in the rebuilt deck, in a follow-up.
+   - **(b)** Drop the canary.
+5. **Two token makers the heuristic undervalues.** Hordeling Outburst is cast in 9 of 37 games, and Krenko, Mob Boss's activation, which declares no token count because its X is counted at resolution, is taken in 8 of 30.
+   - **(a) Recommended:** one Backlog issue to price token-making activations by the tokens and what they trigger, measured on this deck.
+   - **(b)** Leave them.
+
+### Owner decisions (#3071, 2026-10-13)
+
+The owner accepted the amendment on 2026-10-13. They took the recommendation on questions 1, 3, 4 and 5, and option (b) on question 2. Decision 3 above was rewritten to match; no other section changed.
+
+1. **The rebuild is accepted:** the Purphoros list, as measured.
+2. **The ID is renamed in this PR,** to `mono-red-aggro`, with migration 0018 for saved table setups and last-deck records, and `izzet-aggro` kept as an alias that resolves to it (decision 3).
+3. **Simic's 17.2% in run 1 is accepted** as about 20%. It is re-measured when [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146) is built, which a comment on that issue records.
+4. **The A3 loot canary becomes Faithless Looting (cast):** [#3164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3164), in Backlog.
+5. **The token makers are one Backlog issue:** [#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165), pricing token-making spells and activations by what the tokens trigger.
 
 ## Consequences
 
@@ -2462,3 +2565,54 @@ By seed, in run 1: the Hart's activation went from 3 of 13 games (3 of 728 windo
 - `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`.
 - `go test -race ./...`: green, including `TestHartIsActivatedWithTatyovaOut`, `TestHartIsKeptWhenTheLandsPayLittle`, `TestHartWithTatyovaNeedsTheSwitch`, `TestARampSpellIsWorthMoreWithTatyovaOut`, `TestEveryLandfallAmountIsPriced`, `TestLandfallPayoffDeclarations`, `TestLandfallPayoffGuard`, `TestLandfallPayoffOnTheWire` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`).
 - `AISEAT_GAME_TESTS=1` over `./internal/aiseat/` with `-race` and `-timeout=60m`: every game test passes but `TestFourRandomBotsPlayToAWinner`, whose three games (seeds 31000–31002) hit the 300 s wall clock at turns 19–20. It fails the same way on `develop` `489b289aa`, run alone on a quiet machine, and it seats the random policy, which reads no purpose. It is [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147).
+
+### #3071: izzet-aggro rebuilt around Purphoros (2026-10-13)
+
+The [amendment of 2026-10-13](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros), accepted (owner decisions 2026-10-13). The runs below name the deck `izzet-aggro`: they were taken before the owner had the ID renamed to `mono-red-aggro`. `develop` is `f1bf51ff6`, with #3072's landfall price; the branch is that tree with the rebuilt list, and no price, weight or switch changes. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). Each at seeds 1, 1001, 2001 and 3001. **0 stalls, 0 rejected moves and 0 runner fallbacks in all 640 games on each side.** The raw run directories were deleted once the tables were extracted.
+
+**Run 1** (wins of 64 per seed block, Wilson 95%):
+
+| Deck | Seed 1, `develop` | Seed 1, rebuild | Seed 1001, `develop` | Seed 1001, rebuild | Seed 2001, `develop` | Seed 2001, rebuild | Seed 3001, `develop` | Seed 3001, rebuild | Pooled, `develop` | Pooled, rebuild |
+|---|---|---|---|---|---|---|---|---|---|---|
+| esper-control | 19, 29.7% (19.9%–41.8%) | 18, 28.1% (18.6%–40.1%) | 24, 37.5% (26.7%–49.7%) | 20, 31.2% (21.2%–43.4%) | 30, 46.9% (35.2%–58.9%) | 16, 25.0% (16.0%–36.8%) | 25, 39.1% (28.1%–51.3%) | 12, 18.8% (11.1%–30.0%) | 98 / 256, 38.3% (32.5%–44.4%) | 66 / 256, 25.8% (20.8%–31.5%) |
+| izzet-aggro | 4, 6.2% (2.5%–15.0%) | 19, 29.7% (19.9%–41.8%) | 1, 1.6% (0.3%–8.3%) | 19, 29.7% (19.9%–41.8%) | 2, 3.1% (0.9%–10.7%) | 20, 31.2% (21.2%–43.4%) | 2, 3.1% (0.9%–10.7%) | 19, 29.7% (19.9%–41.8%) | 9 / 256, 3.5% (1.9%–6.5%) | 77 / 256, 30.1% (24.8%–36.0%) |
+| mono-black-aristocrats | 21, 32.8% (22.6%–45.0%) | 13, 20.3% (12.3%–31.7%) | 24, 37.5% (26.7%–49.7%) | 17, 26.6% (17.3%–38.5%) | 17, 26.6% (17.3%–38.5%) | 16, 25.0% (16.0%–36.8%) | 19, 29.7% (19.9%–41.8%) | 23, 35.9% (25.3%–48.2%) | 81 / 256, 31.6% (26.3%–37.6%) | 69 / 256, 27.0% (21.9%–32.7%) |
+| simic-ramp | 20, 31.2% (21.2%–43.4%) | 14, 21.9% (13.5%–33.4%) | 15, 23.4% (14.7%–35.1%) | 8, 12.5% (6.5%–22.8%) | 15, 23.4% (14.7%–35.1%) | 12, 18.8% (11.1%–30.0%) | 18, 28.1% (18.6%–40.1%) | 10, 15.6% (8.7%–26.4%) | 68 / 256, 26.6% (21.5%–32.3%) | 44 / 256, 17.2% (13.1%–22.3%) |
+| turns p50 | 13 | 12 | 13 | 12 | 13 | 12 | 13 | 12 | | |
+| not ended / rejected / fallbacks | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | | |
+
+`never` lists for izzet-aggro. `develop`: Glint-Horn Buccaneer's, Marauding Mako's and Scrounging Skyray's activations at seed 1; Mako's and Skyray's at 1001 and 3001; Glint-Horn's, Reflection of Kiki-Jiki's and Skyray's at 2001. Rebuild: none at seed 1; Pashalik Mons's sacrifice at 1001; Fearless Liberator's boast at 2001; both at 3001. The other decks' lists are the same on both sides, apart from rows that come and go with the games dealt (Warren Soultrader's and Hedron Archive's activations, Burnished Hart's on mono-black).
+
+**Run 2** (wins of 48 per deck per half):
+
+| | Seed 1, `develop` | Seed 1, rebuild | Seed 1001, `develop` | Seed 1001, rebuild | Seed 2001, `develop` | Seed 2001, rebuild | Seed 3001, `develop` | Seed 3001, rebuild |
+|---|---|---|---|---|---|---|---|---|
+| half A, `heuristic` esper / izzet | 17 / 5 | 21 / 17 | 27 / 3 | 24 / 16 | 30 / 3 | 19 / 22 | 31 / 1 | 19 / 20 |
+| half A, `heuristic-baseline` black / simic | 13 / 13 | 5 / 5 | 7 / 11 | 3 / 5 | 11 / 4 | 5 / 2 | 8 / 8 | 4 / 5 |
+| half B, `heuristic` black / simic | 20 / 20 | 19 / 13 | 24 / 15 | 17 / 17 | 24 / 16 | 19 / 20 | 20 / 18 | 11 / 15 |
+| half B, `heuristic-baseline` esper / izzet | 6 / 2 | 5 / 11 | 6 / 3 | 6 / 8 | 6 / 2 | 4 / 5 | 9 / 1 | 6 / 16 |
+| **`heuristic`** | 62 / 192, 32.3% (26.1%–39.2%) | 70 / 192, 36.5% (30.0%–43.5%) | 69 / 192, 35.9% (29.5%–42.9%) | 74 / 192, 38.5% (31.9%–45.6%) | 73 / 192, 38.0% (31.5%–45.1%) | 80 / 192, 41.7% (34.9%–48.7%) | 70 / 192, 36.5% (30.0%–43.5%) | 65 / 192, 33.9% (27.5%–40.8%) |
+| **`heuristic-baseline`** | 34 / 192, 17.7% (13.0%–23.7%) | 26 / 192, 13.5% (9.4%–19.1%) | 27 / 192, 14.1% (9.8%–19.7%) | 22 / 192, 11.5% (7.7%–16.7%) | 23 / 192, 12.0% (8.1%–17.3%) | 16 / 192, 8.3% (5.2%–13.1%) | 26 / 192, 13.5% (9.4%–19.1%) | 31 / 192, 16.1% (11.6%–22.0%) |
+
+Pooled over the four seed blocks, `heuristic` is 274 / 768, 35.7% (32.4%–39.1%) on `develop` and 289 / 768, 37.6% (34.3%–41.1%) on the branch; `heuristic-baseline` 110 and 95 of 768. Every game in every run is dealt differently on the branch, since the Izzet library changed. Turns p50 in run 2 falls by one to three turns in half A and up to two in half B.
+
+**Every `heuristic` seat-game per deck** (run 1 and the `heuristic` half of run 2, four seed blocks):
+
+| Deck | `develop` | Rebuild |
+|---|---|---|
+| esper-control | 203 / 448, 45.3% (40.8%–49.9%) | 149 / 448, 33.3% (29.1%–37.7%) |
+| izzet-aggro | 21 / 448, 4.7% (3.1%–7.1%) | 152 / 448, 33.9% (29.7%–38.4%) |
+| mono-black-aristocrats | 169 / 448, 37.7% (33.4%–42.3%) | 135 / 448, 30.1% (26.1%–34.5%) |
+| simic-ramp | 137 / 448, 30.6% (26.5%–35.0%) | 109 / 448, 24.3% (20.6%–28.5%) |
+
+**Izzet's cards in run 1** (games used of games offered, four seed blocks): Purphoros cast in 253 of 253; Siege-Gang Commander 47 of 54, Krenko, Mob Boss 63 of 69, Impact Tremors 44 of 48, Torbran 42 of 45, Fanatic of Mogis 46 of 47, Goldspan Dragon 36 of 36. The least used: Pashalik Mons's sacrifice 2 of 34, Fearless Liberator's boast 1 of 5, Krenko, Mob Boss's activation 8 of 30, Hordeling Outburst 9 of 37, Seize the Spoils 14 of 38.
+
+**The scouted variants** in the amendment's table were each built as their own binary and run with run 1 only, at the seeds named. A list in another card order is another set of games, which is why the scouting order of the proposed cards is its own row.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`. The positions are fixed boards, so a deck list does not change them.
+- `go test -race ./...`: green. No pinned arena digest moved (`opening_roll_pin_test.go` seats the synthetic battle deck), so none was re-pinned.
+- With the dump, `go test ./internal/decks/ ./internal/botarena/ ./internal/lobby/ ./internal/tablesetups/ ./cmd/boteval/`: green for izzet-aggro, including `TestLockstepRotatedSeedsReplay` (seeds 13 and 52 replay move for move), `TestRealDumpPurposeCuratedSpellList` and `TestRealDumpPurposeAudit`. `TestRealDumpDecksAreLegalCommanderDecks` and `TestTriageDecks` fail for mono-green-stompy, mono-white-weenie and boros-voltron, which this PR does not touch: the local dump (2026-09-24) calls a card in each not legal in Commander.
+- **The rename does not change a game.** Run 1 at seed 1, built once with the deck's ID put back to `izzet-aggro` and once with `mono-red-aggro`, plays all 64 games the same (turns, every seat's life and decision count), and both give esper 18, the aggro deck 19, mono-black 13 and Simic 14 wins, as in the table above. The ID is not part of the deal; the card order is.
+- **Migration 0018:** `TestMigration0018RenamesTheDeckInLastDeckRecords` and `TestMigration0018RenamesTheDeckInTableSetups` (a bot named after the old ID keeps its name; other bots, the setup's settings, tablemates, `game_id` and `updated_at` are unchanged). `TestLegacyIDsResolveToTheirReplacement` holds the alias, and the client's `lastDeck.test.ts` a guest's stored old ID.

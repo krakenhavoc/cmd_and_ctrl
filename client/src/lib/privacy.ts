@@ -33,8 +33,11 @@ export const CONTACT_TEXT = "see the project's GitHub";
  * fails when a newer migration exists, so a change to what is stored
  * cannot ship without someone reading this page again (ADR 0149 §6).
  * Bump it when you have.
+ *
+ * 18 (#3071) renames a pre-built deck ID inside users.last_deck and
+ * table_setups, which the notice already covers; it stores nothing new.
  */
-export const PRIVACY_SCHEMA_VERSION = 17;
+export const PRIVACY_SCHEMA_VERSION = 18;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

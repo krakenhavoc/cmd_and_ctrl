@@ -106,7 +106,7 @@ describe("orderedColors", () => {
 
 describe("deckSubtitle", () => {
   const base: PrebuiltDeck = {
-    id: "izzet-aggro",
+    id: "mono-red-aggro",
     name: "Raid and Ransack",
     card_count: 100,
     coverage: cov({}),

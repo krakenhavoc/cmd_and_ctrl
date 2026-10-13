@@ -860,6 +860,24 @@ the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0018 (#3071) changes data only: the pre-built deck
+`izzet-aggro` was renamed `mono-red-aggro`, and the migration rewrites
+that ID in `users.last_deck` and in the bots of `table_setups`. An older
+binary refuses the v18 schema. To roll back, put the old ID back and
+forget the version:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "UPDATE users SET last_deck = json_set(last_deck, '$.id', 'izzet-aggro') WHERE json_valid(last_deck) AND json_extract(last_deck, '$.kind') = 'prebuilt' AND json_extract(last_deck, '$.id') = 'mono-red-aggro'; UPDATE table_setups SET body = replace(body, '\"deck_id\":\"mono-red-aggro\"', '\"deck_id\":\"izzet-aggro\"'); DELETE FROM schema_migrations WHERE version = 18;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Skipping the two updates costs only a preselection: an older binary
+does not know `mono-red-aggro`, so those people's last deck and the
+remembered bots' deck are not found. Rolling forward again renames them.
+
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30
 days; [ADR 0051](decisions/0051-user-database.md) decision 3). Seat,

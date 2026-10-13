@@ -45,7 +45,7 @@ func TestSetLastDeckRoundTripsBothKinds(t *testing.T) {
 	if got, err := s.LastDeck(ctx, id); err != nil || got != lib {
 		t.Errorf("LastDeck = %+v, %v; want %+v", got, err, lib)
 	}
-	pre := LastDeck{Kind: LastDeckPrebuilt, ID: "izzet-aggro"}
+	pre := LastDeck{Kind: LastDeckPrebuilt, ID: "mono-red-aggro"}
 	if err := s.SetLastDeck(ctx, id, pre); err != nil {
 		t.Fatalf("SetLastDeck(prebuilt): %v", err)
 	}

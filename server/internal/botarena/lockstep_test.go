@@ -128,7 +128,7 @@ func TestArenaLockstepSeedReplaysMoveForMove(t *testing.T) {
 			t.Fatalf("load %s: %v", dump, err)
 		}
 		var seats []botarena.SeatSpec
-		for _, d := range []string{"esper-control", "izzet-aggro", "mono-black-aristocrats", "simic-ramp"} {
+		for _, d := range []string{"esper-control", "mono-red-aggro", "mono-black-aristocrats", "simic-ramp"} {
 			seats = append(seats, botarena.SeatSpec{Tier: tiers.Heuristic, Deck: d})
 		}
 		assertReplays(t, botarena.Config{
