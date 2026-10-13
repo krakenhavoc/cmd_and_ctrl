@@ -43,6 +43,16 @@ export function mayCastCopy(
         decline: "Put it on the bottom",
       };
       break;
+    case "exile_until":
+      copy = {
+        source: "exile until · free cast",
+        hint:
+          "Cast it for nothing now, or put it on the bottom of your library with the rest. If you choose " +
+          "to cast it and then pass without casting, it goes to the bottom.",
+        accept: "Cast it free",
+        decline: "Put it on the bottom",
+      };
+      break;
     case "suspend":
       copy = {
         source: "suspend · CR 702.62",

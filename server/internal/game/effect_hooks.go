@@ -42,6 +42,24 @@ func CatalogKey(c Card) string { return catalogKeyOf(&c) }
 // Internal callers that hold a *Card use this; CatalogKey stays the
 // exported by-value shape every catalog file and open branch calls.
 func catalogKeyOf(c *Card) string {
+	// CR 612.5, ADR 0160: a permanent whose text box was exchanged has
+	// the other object's rules text, and in this engine the rules text
+	// IS the key. Layer 3 applies after layer 1b (CR 613.1c), so this
+	// wins over the face-down silence below: a face-down creature
+	// exchanged with a face-up one has that one's text. The field is nil
+	// off the battlefield and for every permanent no exchange applies
+	// to, so this is one nil check on the hot path.
+	if c.TextBox != nil {
+		return c.TextBox.Key
+	}
+	return printedTextKeyOf(c)
+}
+
+// printedTextKeyOf is catalogKeyOf with no text-box exchange in the way:
+// the key of the rules text the object has of its own (printed, or set
+// by a copy effect's copiable values). An exchange reads it for the
+// text it hands over.
+func printedTextKeyOf(c *Card) string {
 	// CR 708.2a, ADR 0069 decision 4: a face-down permanent has NO
 	// TEXT — no triggered, activated, mana, static or replacement
 	// abilities, no cost modifiers, no "as enters" hook, no printed

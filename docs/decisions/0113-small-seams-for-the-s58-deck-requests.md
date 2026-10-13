@@ -602,3 +602,28 @@ None. The tag is an opaque string already carried on `ManaToken.Restrictions`.
 ### Snapshot impact
 
 None. The grant and the duration are existing, recorded shapes.
+
+## Amendment 2026-10-13 — An exile return that enters with counters (#3213)
+
+**Why it lands here.** The Darkness Crystal (Kuja deck, slice kuja-b) puts a creature card exiled with it "onto the battlefield tapped under your control with two additional +1/+1 counters on it". `ReturnFromGraveyardWithCountersForEffect` (above) had no exile twin, so the counters could only be added a beat after the entry, which an enters trigger and a counter doubler would both see wrongly. It changes no earlier decision.
+
+### Decision
+
+1. **`Game.ReturnFromExileWithCountersThenForEffect(card, controller, tapped, counters, then)`**, the exile return with the counters seeded onto the entry event as `EntersWithCounters` (CR 614.1c), the way the graveyard door does. `returnFromExileToBattlefieldLocked` takes the map; the two existing doors pass nil. `then` is the same exactly-once continuation, told the new object's ID.
+2. **`effects.ReturnFromExile.Counters`**, which routes to it when set.
+
+### Wire, client and bot
+
+None.
+
+### Tests
+
+`cards/effects/kuja_b_crystal_test.go` (`TestDarknessCrystalReturnsAnExiledCreatureTappedWithCounters`: tapped, under the caster's control, with two +1/+1 counters, the unlinked exiled creature not offered).
+
+### Back-out
+
+Remove `EntersWithCounters: copyCounterMap(counters)` from the entry event in `returnFromExileToBattlefieldLocked`: the counters test fails (zero counters).
+
+### Snapshot impact
+
+None. The counters ride the entry event, which is not persisted.

@@ -626,6 +626,10 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 	// here, once the zone move above has stamped the object the
 	// record has to name, and before EventETB.
 	g.settleTimedEntryCopyLocked(ev, l.entered)
+	// ADR 0160: an "as this enters, exchange text boxes" choice gets its
+	// records here, for the same reason — they pin the stamped object —
+	// and before EventETB, so the gained text's enters triggers fire.
+	g.settleEntryTextExchangeLocked(ev, l.entered)
 	// CR 702.136a (#1556): riot's "it gains haste", once the zone move
 	// has stamped the object the record pins, and before EventETB.
 	g.grantRiotHasteLocked(ev, l.entered)
@@ -667,7 +671,13 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 //
 // Caller must hold g.mu.
 func (g *Game) runEntryHooksLocked(l entryLanding) {
-	g.fireETBHookLocked(l.entered, CatalogKey(l.moved))
+	key := CatalogKey(l.moved)
+	// ADR 0160: a permanent that entered exchanging text boxes runs the
+	// gained text's hook; l.moved predates the exchange.
+	if c := findBattlefieldCard(g, l.entered); c != nil && c.TextBox != nil {
+		key = catalogKeyOf(c)
+	}
+	g.fireETBHookLocked(l.entered, key)
 	if l.ev.stackItem != nil {
 		g.queueAltCostEntryTriggerLocked(l.moved, l.ev.stackItem)
 	}

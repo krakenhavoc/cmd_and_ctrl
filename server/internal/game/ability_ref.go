@@ -296,7 +296,7 @@ func activatedAbilityRefFor(source Card, index int, origins AbilityOrigins, ab A
 		// An own row is a catalog row only when the object reads its
 		// abilities from the catalog: a card carrying its own
 		// instance list (census:IntrinsicAbilityCards) indexes that.
-		if source.HasLostAllAbilities() || len(source.ActivatedAbilities) > 0 {
+		if source.HasLostAllAbilities() || (len(source.ActivatedAbilities) > 0 && source.TextBox == nil) {
 			return nil
 		}
 		ref.Key = CatalogKey(source)

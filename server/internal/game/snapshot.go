@@ -1040,6 +1040,9 @@ type cardSnapshot struct {
 	// which is what every game before ADR 0090 was.
 	Prepared    bool `json:"prepared,omitempty"`
 	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// CardCopy is a copy of a card made to be cast (CR 707.12, #3258):
+	// the not-a-card marker, carried for PrepareCopy's reason. Additive.
+	CardCopy bool `json:"cardCopy,omitempty"`
 	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
 	// comment above (#1492).
 	PreparedBy PermissionCardRef `json:"preparedBy"`
@@ -1508,6 +1511,7 @@ type pendingChoiceSnapshot struct {
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
 	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
+	ExchangesText     bool            `json:"exchangesText,omitempty"`
 	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
@@ -2204,6 +2208,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -2542,6 +2547,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,
@@ -3090,6 +3096,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -3411,6 +3418,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,

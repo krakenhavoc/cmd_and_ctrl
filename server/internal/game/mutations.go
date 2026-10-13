@@ -1732,7 +1732,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// COPY, and a copy is not a card — so it takes CR 707.10's exits
 		// off the stack (it ceases to exist rather than landing in a
 		// graveyard), which is the path Twincast's copies already use.
-		IsCopy: card.PrepareCopy,
+		IsCopy: card.PrepareCopy || card.CardCopy,
 		// CR 702.34a / CR 400.7g, ADR 0066. The fact travels with the
 		// stack object because the catalog cannot answer for it: a
 		// card given flashback by Snapcaster was cast for a cost the
@@ -1928,6 +1928,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			ch := SourceCharacteristics(sc)
 			if characteristicHasType(ch, "Instant") || characteristicHasType(ch, "Sorcery") {
 				tally = tally.withInstantSorceryColors(ch.Colors)
+				tally.InstantSorcery++
 			}
 			// Artificer Class's "first artifact spell you cast each turn".
 			if characteristicHasType(ch, "Artifact") {
@@ -4823,6 +4824,11 @@ func (g *Game) stateBasedActionsLocked() (fired, left bool) {
 	// and in exile once the permanent that kept it there is gone or
 	// unprepared. Beside the token sweep, for the token sweep's reason.
 	if g.prepareCopySweepSBALocked() {
+		fired = true
+	}
+	// 704.5e again, for a copy of a CARD (CR 707.12, #3258): one nothing
+	// is waiting to cast ceases to exist. See card_copy.go.
+	if g.cardCopySweepSBALocked() {
 		fired = true
 	}
 	// CR 702.179a (ADR 0138): a player with no speed who controls a

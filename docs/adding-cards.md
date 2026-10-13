@@ -83,6 +83,23 @@ surface tiny.
    resolution; a creature removed from combat in response is illegal,
    and a source that has left is read from its last-known blocks
    (#1863, ADR 0019 amendment 2026-10-07).
+   "Target card in exile" is `TargetCardInExile(label, preds…)`, picked
+   in the zone browser's exile tab like a graveyard card; "target face-up
+   exiled card" adds `FaceUp()` (Pull from Eternity). "Target creature
+   card exiled with this" wraps the clause in `ExiledWithThis(spec)`:
+   `Targets: ExiledWithThis(TargetCardInExile("target creature card
+   exiled with The Darkness Crystal", Creature()))`. It is data on
+   `game.TargetSpec.ExiledWithSource`, judged at announce and at
+   resolution against `Card.ExiledWith` naming the source OBJECT (a
+   second Crystal's exiles, a stale epoch and an unlinked card are out;
+   a source that has left is read from its last-known record; no source
+   admits nothing). Only a card whose exile stamped `Card.ExiledWith`
+   carries the link, which today is a replacement exile
+   (`ReplacementEvent.ExiledWith`); an ability-resolution exile does not
+   stamp it until ADR 0155's stamp lands, so a card that exiles from an
+   ability still uses the event-log record and a choice. A face-down
+   exiled card its chooser has not seen is never offered (#3259, ADR 0019
+   amendment 2026-10-13).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -2349,6 +2366,29 @@ pick)` (pass `uuid.Nil` to decline) → assert on the battlefield card.
 Assert the OBSERVABLE result — name, P/T, types, counters, and for
 anything with a catalog entry, its behaviour — because a copy that
 rewrote only the display fields looks identical on the wire.
+
+### Exchanging text boxes (ADR 0160)
+
+A text box here is the catalog KEY plus the importer's keywords, so
+"exchange the text boxes of two creatures" (CR 612.5) swaps exactly
+those and leaves name, types, P/T, mana cost and colour alone. Two
+shapes:
+
+```go
+// "As this enters, you may exchange its text box and another creature's"
+Replacements: []game.ReplacementEffect{
+    EntersExchangingTextBoxes("Deadpool, Trading Card", anotherCreatureOnBattlefield),
+},
+// "…choose two target creatures. For as long as this remains, exchange their text boxes"
+Targeting(WhenThisEnters(label, ExchangeTargetTextBoxesWhileSourceRemains),
+    TargetCreature("two target creatures").WithCount(2, 2)),
+```
+
+Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
+d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
+read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
+`CatalogAbilityKey` are what follow the exchange. Changing single
+words (Glamerdye, Magical Hack) has no shape yet; ADR 0160 §9 plans it.
 
 ### Adding a combat-keyword card (S18+)
 
@@ -5724,6 +5764,18 @@ discovered spell's `EventCast` when it is cast. Cascade's grant has the
 same cap (one below the cascading spell), timing and pass-closed window;
 its uncast hit goes to the bottom on the pass.
 
+**Exile until a card matches, then a free cast (#3213, [ADR 0099](decisions/0099-discover.md) amendment 2026-10-13):** cascade and discover are keywords; a card that prints the same walk with its own test calls the shared body:
+
+```go
+// Tibalt's Trickery: the countered spell's controller walks their library
+// to a nonland card with a different name and may cast it free.
+ctx.Game.ExileUntilCastFreeForEffect(victim, source, func(c game.Card) bool {
+    return !c.IsLand() && c.Name != name   // closes over scalars read before the call
+})
+```
+
+The chooser is the player whose library is walked. There is no mana value cap, the grant lapses to the bottom of the library on their next pass, and the prompt asks under `MayCastKeywordExileUntil`. For "put it onto the battlefield with N counters" from exile, `ReturnFromExile{Counters: map[string]int{game.CounterPlusOne: 2}}` seeds them on the entry event (ADR 0113 amendment 2026-10-13).
+
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
@@ -6837,6 +6889,27 @@ file says only WHEN the permanent becomes prepared —
 `SelfEntersPrepared()` for "enters prepared", `BecomePrepared{Target}`
 from a trigger or an ability — and what the prepare spell does. Read
 `g.IsPreparedForEffect(id)` for "if this creature isn't prepared".
+
+
+### Copying a card and casting the copy (#3258)
+
+"Copy that card, and you may cast the copy" (Mizzix's Mastery, Arcane
+Bombardment) is `CopyAndCast`, not `CopySpellForEffect` (a spell already on
+the stack) and not `CreateTokenCopy` (a permanent):
+
+```go
+CopyAndCast{Cards: exiled, Free: true}.Apply(ctx)       // "without paying its mana cost"
+CopyAndCast{Cards: exiled, FollowUp: key}.Apply(ctx)    // "you may cast the copy. If you do, ..."
+```
+
+Hand it the cards that REALLY reached exile (the continuation of
+`ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
+gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
+free-cast offer, all at once with no cap; the player casts them in the order
+they like. A copy not cast by the player's next priority pass ceases to
+exist, and a cast one ceases on resolution (a permanent becomes a token). It
+is an exact copy, so the catalog resolves it as the original. See ADR 0066's
+2026-10-13 amendment.
 
 ### Adding a hideaway card (S43+, ADR 0091)
 
@@ -8984,7 +9057,10 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   creatures alike and outlive the planeswalker that made them.
 - **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when
   `known` is false (the weaker direction). A player with no commander has a colourless identity.
-- **A free cast from hand with a ceiling** (Buster Sword) is the Rishkar's Expertise pick plus a `{0}` `CastPermission`.
+- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, "Buster Sword",
+  "a spell with mana value N or less", ManaValueLE(N))`: one prompt, then the pass-closed any-timing `{0}` cast (#3270).
+  Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
+  castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
   Emrakul, the Exigent Doom (a hand ability whose granted mana ability lasts "until this card is cast from exile"; durations
   have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
@@ -9042,13 +9118,16 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   `ReturnFromGraveyardTogether.Then`.
 - **A madness cost with life** is `Madness: "{2}{B}", MadnessLife: 8` (ADR 0066
   amendment 2026-10-13).
-- **A free cast of cards in your hand during a resolution** (The Great Synthesis)
-  cannot be a plain hand `CastPermission`: a hand permission applies only to a cast
-  that claims the alternative cost it carries (`CastPermission.ForClaim`). Give it an
-  `AltCostKey` (an on-disk identity) and a `Cost: "{0}"`, `CastOnly`, `TimingFlash` and
-  `LapseOnPass: game.LapseStaysInExile`; the offer shows in the cost picker and the
-  caster claims it. Kari Zev's and Rishkar's Expertise grant one without a key (#3234,
-  open).
+- **A free cast of cards in your hand during a resolution** is cast "as part of" the resolution (CR 608.2g), so it
+  ignores timing and is now or never. A hand permission applies only to a cast that claims the alternative cost it
+  carries (`CastPermission.ForClaim`), and the grant that does all of it is `Game.FreeCastFromHandPermission`: `{0}`,
+  claimed under `AltCostKeyGrantedCost`, `CastOnly`, `TimingFlash` and `LapseOnPass: game.LapseStaysInHand`, so the
+  holder's next pass ends it and the card stays in hand. "You may cast a spell from your hand" with a pick (Buster
+  Sword, Kari Zev's and Rishkar's Expertise, Surtland Elementalist, Great Intelligence's Plan) is
+  `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
+  The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
+  enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
+  its own `AltCostKey` and no pick (#3270).
 
 ### Adding a `Spec` slot (#622)
 

@@ -94,6 +94,15 @@ type CopySelector struct {
 	// any event; see settleTimedEntryCopyLocked for how it gets its
 	// end.
 	UntilEndOfTurn bool
+
+	// ExchangeText makes the pick the creature to EXCHANGE TEXT BOXES
+	// with instead of the object to copy (ADR 0160 Decision 6): "As
+	// Deadpool enters, you may exchange his text box and another
+	// creature's" (CR 612.5). The prompt, its answer and its resume are
+	// the copy choice's; nothing is copied, Except and UntilEndOfTurn
+	// are ignored, and the exchange is registered once the permanent's
+	// object identity exists, before EventETB.
+	ExchangeText bool
 }
 
 // offerCopyChoiceLocked handles an applicable copy-selector
@@ -169,6 +178,7 @@ func (g *Game) queueCopyTargetPromptLocked(
 		Source:               source,
 		Reason:               reason,
 		CopyOptions:          append([]uuid.UUID(nil), candidates...),
+		ExchangesText:        chosen.effect.CopySelector != nil && chosen.effect.CopySelector.ExchangeText,
 		ReplacementEffectIDs: []ReplacementEffectID{chosen.id},
 		replacementResume: &replacementResumeFrame{
 			ev:         ev,
@@ -229,7 +239,10 @@ func (g *Game) ResolveCopyTarget(choiceID, chooserID, cardID uuid.UUID) error {
 	// forever.
 	g.markReplacementAppliedLocked(ev, chosen.id)
 
-	if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
+	exchange := chosen.effect.CopySelector != nil && chosen.effect.CopySelector.ExchangeText
+	if exchange && cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
+		ev.exchangeTextWith = cardID
+	} else if cardID != uuid.Nil && g.copyCandidateStillLegalLocked(ev, chosen, cardID) {
 		if src, ok := g.battlefieldCardLocked(cardID); ok {
 			values := CopiableValuesOf(*src)
 			if sel := chosen.effect.CopySelector; sel != nil && sel.Except != nil {

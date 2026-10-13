@@ -1156,6 +1156,7 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 			TokenKey:   c.TokenKey,
 			ActiveFace: c.ActiveFace,
 			AttachedTo: c.AttachedTo,
+			TextBox:    c.TextBox,
 		}
 		// #1218: The Ozolith's "if it had counters on it" — snapshotted
 		// here, before MoveCard's battlefield-exit cleanup zeroes

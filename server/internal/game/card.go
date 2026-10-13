@@ -198,6 +198,15 @@ type Card struct {
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
 
+	// TextBox is the text box this permanent has when it is not its own
+	// (CR 612.5, ADR 0160): the result of the textBox records, written
+	// by materialiseTextBoxesLocked and read by catalogKeyOf and the
+	// layer-0 keyword merge. Derived, never persisted — a restore
+	// rebuilds it from ScopedEffects — and cleared on every battlefield
+	// exit (CR 400.7). IMMUTABLE once set: replaced, never written
+	// through, so Clone shares the pointer.
+	TextBox *TextBoxValues
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
@@ -1422,6 +1431,18 @@ type Card struct {
 	// NORMAL ones, so MoveCard's CR 712.8a front-face reset skips it.
 	// Carried by the snapshot.
 	PrepareCopy bool
+
+	// CardCopy marks a COPY OF A CARD made to be cast (CR 707.12; ADR 0066's
+	// 2026-10-13 card-copy amendment, #3258): Mizzix's Mastery's "copy it, and
+	// you may cast the copy", Arcane Bombardment, Kaervek, Spellweaver Volute.
+	// It is NOT A CARD (CR 707.12, 704.5e), so cardCopySweepSBALocked removes
+	// it from any zone it sits in unless a stored cast permission still names
+	// it; once cast, its spell is a StackItem with IsCopy set and ceases to
+	// exist as it leaves the stack (a permanent spell becomes a token as it
+	// resolves, CR 707.10b). Unlike PrepareCopy it keeps ALL the copied
+	// card's copiable values, so its oracle ID — and with it every catalog
+	// hook — is the original's. Carried by the snapshot.
+	CardCopy bool
 
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own
