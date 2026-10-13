@@ -174,6 +174,12 @@ describe("libraryDeckRequestable (§3 item 5)", () => {
     expect(libraryDeckRequestable(libDeck({ coverage, source_url: "https://x" }))).toBe(true);
   });
 
+  it("offers it only for a manual card, not an unreviewed one (ADR 0158 §2)", () => {
+    const counts = { manual: 0, unreviewed: 3, caveats: 0, automated: 5, no_effect: 1 };
+    const coverage = { ...COV_COPIES, counts, unknown: 0, as_printed: 6, resolved: 9 };
+    expect(libraryDeckRequestable(libDeck({ coverage }))).toBe(false);
+  });
+
   it("offers it when the coverage is unknown, and not when nothing is missing", () => {
     expect(libraryDeckRequestable(libDeck({}))).toBe(true);
     const counts = { manual: 0, unreviewed: 0, caveats: 2, automated: 5, no_effect: 1 };

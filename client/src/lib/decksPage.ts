@@ -108,14 +108,14 @@ export function savedMessage(res: SaveDeckResponse): string {
 }
 
 // libraryDeckRequestable decides whether a library deck shows "Request
-// missing cards" (§3 item 5): every deck, link or pasted, unless its
-// coverage shows nothing to ask for, the same rule the check report
-// uses (canRequestCards). A deck whose coverage the server could not
-// compute keeps the button, and the server's answer is the final word.
+// missing" (ADR 0112 §3 item 5, narrowed by ADR 0158 §2): every deck,
+// link or pasted, that has a card you resolve by hand. A deck whose
+// coverage the server could not compute keeps the button, and the
+// server's answer is the final word.
 export function libraryDeckRequestable(d: MyDeckInfo): boolean {
   const c = d.coverage;
   if (!c) return true;
-  return c.counts.manual > 0 || c.counts.unreviewed > 0;
+  return c.counts.manual > 0;
 }
 
 // --- the sign-in return route (§3 item 7) ---------------------------
