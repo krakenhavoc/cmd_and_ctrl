@@ -359,6 +359,15 @@ test.describe("S19 ETB triggers", () => {
     const { admin, caster, opponent } = setup;
 
     await adminMoveByName(admin, opponent.playerID, CARDS.SolRing, "library", "battlefield");
+    // A Plains beside it: with one legal target the pick would be made
+    // for the caster (#3264), and this spec clicks the Sol Ring.
+    await adminMoveByName(admin, opponent.playerID, CARDS.Plains, "library", "battlefield");
+    await admin.waitFor(
+      (v) =>
+        findCardOnBattlefield(v, CARDS.SolRing) !== null &&
+        findCardOnBattlefield(v, CARDS.Plains) !== null,
+      "Sol Ring and a Plains on battlefield",
+    );
 
     await adminMoveByName(admin, caster.playerID, CARDS.AcidicSlime, "library", "battlefield");
 
