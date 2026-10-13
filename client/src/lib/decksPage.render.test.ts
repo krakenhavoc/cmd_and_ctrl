@@ -301,8 +301,9 @@ describe("#/decks: who sees what (§3 item 3)", () => {
     setSession(null);
     const { container } = render(Decks as never, {} as never);
     await settle();
-    // Nothing session-gated is asked for.
-    expect(calls).toHaveLength(0);
+    // Nothing session-gated is asked for. The header asks whether the
+    // server has Discord sign-in, for its Sign in link (public).
+    expect(calls.filter((c) => c.url !== "/auth/discord/config")).toHaveLength(0);
     expect(container.textContent).toContain("Sign in with Discord to see them.");
     await checkLink(container);
     const text = container.textContent ?? "";
@@ -313,7 +314,9 @@ describe("#/decks: who sees what (§3 item 3)", () => {
     expect(button(container, "Save to my decks")).toBeUndefined();
     expect(container.querySelector('ul[aria-label="your decks"]')).toBeNull();
     expect(container.textContent).not.toContain("Pre-built decks");
-    expect(calls.map((c) => c.url)).toEqual(["/deck-coverage"]);
+    expect(calls.map((c) => c.url).filter((u) => u !== "/auth/discord/config")).toEqual([
+      "/deck-coverage",
+    ]);
   });
 
   it("stores the way back before a signed-out visitor signs in (§3 item 7)", async () => {
