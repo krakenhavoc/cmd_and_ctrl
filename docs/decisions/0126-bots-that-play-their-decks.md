@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): proposed.
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13).
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -1090,7 +1090,7 @@ The owner accepted the amendment on 2026-10-12 and took the recommendation on bo
 
 ## Amendment 2026-10-12: landfall payoffs
 
-**Status:** Proposed. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Status:** Accepted (owner decisions 2026-10-13). The owner accepted the landfall price with `PriceLandfallPayoffs` on, and had the open items filed as [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146) and the random-bot game test's timeout as [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147); see [Owner decisions (#3072, 2026-10-13)](#owner-decisions-3072-2026-10-13) at the end of this amendment. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()`.
 **Issue:** [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072), filed from #2480's [owner decision 4](#owner-decisions-2480-2026-10-12). Sprint S67.
 **Amends:** §6 (a new purpose field, `landfall_payoff`, on a triggered row) and what §6's `lands`, #2678's extra land drop and #2680's put from hand are worth. No other price and no deck changes.
 
@@ -1144,7 +1144,9 @@ The tables are under [Measurements, #3072](#3072-landfall-payoffs-2026-10-12). I
 - **Casting a payoff** is still priced by its body. Tatyova cast before a turn of land drops is worth the cards she will draw, which nothing prices. The commander is cast in 63 of 64 games anyway.
 - **Fetch lands** (Simic has seven) are cracked at the flat `ActivateBase`, so a payoff does not make them more likely. They were not declared (see above).
 
-### Questions for the owner (#3072)
+All three are [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146).
+
+### Questions for the owner (#3072, answered 2026-10-13)
 
 Each lists the recommended option first.
 
@@ -1154,6 +1156,14 @@ Each lists the recommended option first.
 2. **The open items** (Greenwarden's doubling, a payoff's own cast price, fetch lands).
    - **(a) Recommended:** one Backlog issue for all three, measured together, since each changes Simic alone.
    - **(b)** Leave them.
+
+### Owner decisions (#3072, 2026-10-13)
+
+The owner accepted the amendment on 2026-10-13 and took the recommendation on both questions. No section above changed.
+
+1. **The landfall price is accepted.** `PriceLandfallPayoffs` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
+2. **The open items are one issue:** [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146), in Backlog: Ancient Greenwarden's doubling, a payoff's own cast price, and the fetch lands.
+3. **The random-bot game test's timeout is its own issue:** [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147), in Backlog. `TestFourRandomBotsPlayToAWinner` hits its wall clock on `develop` as on this branch ([Measurements](#3072-landfall-payoffs-2026-10-12)), so it is not part of this amendment.
 
 ## Consequences
 
@@ -2404,7 +2414,7 @@ No gate game stalls, and heuristic beats random 12–0, on both.
 
 ### #3072: landfall payoffs (2026-10-12)
 
-The [amendment of 2026-10-12](#amendment-2026-10-12-landfall-payoffs), proposed. `develop` is `489b289aa`, with #3066's block check and #2480's impulse price. The branch is that tree with `PriceLandfallPayoffs` true in `DefaultConfig()` and false in `BaselineConfig()`, and the declarations; no weight is new. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). Each at seeds 1 and 1001. **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
+The [amendment of 2026-10-12](#amendment-2026-10-12-landfall-payoffs), accepted (owner decisions 2026-10-13). `develop` is `489b289aa`, with #3066's block check and #2480's impulse price. The branch is that tree with `PriceLandfallPayoffs` true in `DefaultConfig()` and false in `BaselineConfig()`, and the declarations; no weight is new. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). Each at seeds 1 and 1001. **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
 
 **Run 1** (wins of 64, Wilson 95%):
 
@@ -2451,4 +2461,4 @@ By seed, in run 1: the Hart's activation went from 3 of 13 games (3 of 728 windo
 
 - `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`.
 - `go test -race ./...`: green, including `TestHartIsActivatedWithTatyovaOut`, `TestHartIsKeptWhenTheLandsPayLittle`, `TestHartWithTatyovaNeedsTheSwitch`, `TestARampSpellIsWorthMoreWithTatyovaOut`, `TestEveryLandfallAmountIsPriced`, `TestLandfallPayoffDeclarations`, `TestLandfallPayoffGuard`, `TestLandfallPayoffOnTheWire` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`).
-- `AISEAT_GAME_TESTS=1` over `./internal/aiseat/` with `-race` and `-timeout=60m`: every game test passes but `TestFourRandomBotsPlayToAWinner`, whose three games (seeds 31000–31002) hit the 300 s wall clock at turns 19–20. It fails the same way on `develop` `489b289aa`, run alone on a quiet machine, and it seats the random policy, which reads no purpose.
+- `AISEAT_GAME_TESTS=1` over `./internal/aiseat/` with `-race` and `-timeout=60m`: every game test passes but `TestFourRandomBotsPlayToAWinner`, whose three games (seeds 31000–31002) hit the 300 s wall clock at turns 19–20. It fails the same way on `develop` `489b289aa`, run alone on a quiet machine, and it seats the random policy, which reads no purpose. It is [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147).
