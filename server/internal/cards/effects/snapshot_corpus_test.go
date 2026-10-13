@@ -929,9 +929,13 @@ func corpusNarset(t *testing.T) *game.Game {
 	g := newCorpusGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMain(t, g)
-	waiting := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 6)
+	// The frozen v8 fixture records the type line the old helper built
+	// from the name ("— Narset Transcendent"), and a fixture is never
+	// edited, so this board keeps building exactly that (#2803).
+	const fixtureLine = "Legendary Planeswalker — Narset Transcendent"
+	waiting := pushCatalogWalkerWithLine(g, me.ID, "Narset Transcendent", fixtureLine, narsetOracle, 6)
 	b16Activate(t, g, me.ID, waiting, 1, game.ActivateAbilityParams{})
-	ultimate := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 9)
+	ultimate := pushCatalogWalkerWithLine(g, me.ID, "Narset Transcendent", fixtureLine, narsetOracle, 9)
 	b16Activate(t, g, me.ID, ultimate, 2, game.ActivateAbilityParams{})
 	if len(g.DelayedTriggers) != 1 || me.Emblems == nil || len(me.Emblems.Cards) != 1 {
 		t.Fatalf("setup: %d delayed triggers and an emblem zone %v, want one of each", len(g.DelayedTriggers), me.Emblems)

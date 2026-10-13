@@ -18,14 +18,73 @@ const (
 	wanderingEmperorOracle  = "0c7f18d5-36cb-4bc6-a358-443b97666215"
 )
 
+// walkerSubtypes is the REAL planeswalker subtype of every card
+// pushCatalogWalker seats, from the printed type line. It is a table and
+// not a derivation because the subtype is not in the name: "Jace, the
+// Mind Sculptor" is a Jace, "Nicol Bolas, God-Pharaoh" a Bolas and "The
+// Wandering Emperor" an Emperor. The helper used to build the type line
+// as "Legendary Planeswalker — " + name, which gave the first of those
+// the subtypes "Jace," and "the Mind Sculptor": a Jace-typed rule
+// (Jace's Machinations, "a Jace you control", behold a Jace) silently
+// missed the walker (#2803). An unlisted name panics, so a new walker
+// has to state its subtype rather than inherit a wrong one.
+var walkerSubtypes = map[string]string{
+	"Dovin Baan":                   "Dovin",
+	"Elspeth, Sun's Champion":      "Elspeth",
+	"Gideon of the Trials":         "Gideon",
+	"Jace, the Mind Sculptor":      "Jace",
+	"Kaya, Orzhov Usurper":         "Kaya",
+	"Narset Transcendent":          "Narset",
+	"Nicol Bolas, God-Pharaoh":     "Bolas",
+	"Tamiyo, Collector of Tales":   "Tamiyo",
+	"Teferi, Hero of Dominaria":    "Teferi",
+	"Teferi, Master of Time":       "Teferi",
+	"Teferi, Temporal Archmage":    "Teferi",
+	"Teferi, Time Raveler":         "Teferi",
+	"Teferi, Who Slows the Sunset": "Teferi",
+	"Tezzeret, Cruel Captain":      "Tezzeret",
+	"The Wandering Emperor":        "Emperor",
+	"Ugin, Eye of the Storms":      "Ugin",
+}
+
+// A walker seated by the helper has the printed subtype, not name words.
+func TestPushCatalogWalkerUsesTheRealSubtype(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	for name, want := range map[string]string{
+		"Jace, the Mind Sculptor":  "Jace",
+		"Nicol Bolas, God-Pharaoh": "Bolas",
+		"The Wandering Emperor":    "Emperor",
+	} {
+		id := pushCatalogWalker(g, me.ID, name, "", 3)
+		c, _ := g.LookupCardForEffect(id)
+		subs := c.Effective().Subtypes
+		if len(subs) != 1 || subs[0] != want {
+			t.Errorf("%s: subtypes = %v, want [%s]", name, subs, want)
+		}
+	}
+}
+
 // pushCatalogWalker seats a catalog planeswalker with `loyalty`
-// loyalty counters under the active seat's control.
+// loyalty counters under the active seat's control. Its type line is the
+// printed one: see walkerSubtypes.
 func pushCatalogWalker(g *game.Game, owner uuid.UUID, name, oracle string, loyalty int) uuid.UUID {
+	sub, ok := walkerSubtypes[name]
+	if !ok {
+		panic("pushCatalogWalker: no real subtype recorded for " + name + "; add it to walkerSubtypes")
+	}
+	return pushCatalogWalkerWithLine(g, owner, name, "Legendary Planeswalker — "+sub, oracle, loyalty)
+}
+
+// pushCatalogWalkerWithLine is pushCatalogWalker with the type line
+// spelled out. Use it only where a frozen fixture records a type line
+// that is not the printed one (corpusNarset).
+func pushCatalogWalkerWithLine(g *game.Game, owner uuid.UUID, name, typeLine, oracle string, loyalty int) uuid.UUID {
 	id := uuid.New()
 	g.Battlefield.PushTop(game.Card{
 		InstanceID: id,
 		Name:       name,
-		TypeLine:   "Legendary Planeswalker — " + name,
+		TypeLine:   typeLine,
 		OracleID:   oracle,
 		Owner:      owner,
 		Controller: owner,

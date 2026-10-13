@@ -268,28 +268,66 @@ func TestDeclineFromLayerBSurvivesAModelFailure(t *testing.T) {
 // on a bot. A model that simply never answers must cost the budget
 // and then hand over, not blow through it.
 func TestASlowModelDegradesInsideTheDeadline(t *testing.T) {
+	// A wall-clock margin on Decide's elapsed time failed under load
+	// (#2721). What the test is about is the deadline the model call
+	// was given, so a client records it and the assertion is arithmetic
+	// on it: the call ends Reserve before the runner's deadline,
+	// however long the machine took to get there. Scheduling can only
+	// push the call's deadline LATER (by the gap between two adjacent
+	// lines in Decide), never earlier, hence the one-sided bound.
+	const (
+		deadline = 600 * time.Millisecond
+		reserve  = 200 * time.Millisecond
+	)
 	b := &stubB{index: 1, reason: "the heuristic's pick"}
-	p := testPolicy(t, NeverAnswers(), b, func(c *Config) {
-		c.Reserve = 200 * time.Millisecond
+	var callDeadline time.Time
+	client := &deadlineProbe{onCall: func(dl time.Time) { callDeadline = dl }}
+	p := testPolicy(t, client, b, func(c *Config) {
+		c.Reserve = reserve
 		c.MinBudget = 50 * time.Millisecond
 	})
-	const deadline = 600 * time.Millisecond
-	started := time.Now()
-	d := decide(t, p, castWindow(), deadline)
-	elapsed := time.Since(started)
+	ctx, cancel := context.WithTimeout(context.Background(), deadline)
+	defer cancel()
+	parentDeadline, _ := ctx.Deadline()
+	d, err := p.Decide(ctx, castWindow())
+	if err != nil {
+		t.Fatalf("Decide: %v", err)
+	}
 
 	if d.Index != 1 {
 		t.Errorf("index = %d, want Layer B's 1", d.Index)
 	}
-	// The budget is deadline - Reserve, so the call should give up
-	// with the reserve still unspent.
-	if elapsed >= deadline-100*time.Millisecond {
-		t.Errorf("Decide took %v of a %v deadline; the reserve was spent and the runner would have force-passed",
-			elapsed, deadline)
+	if client.calls != 1 {
+		t.Fatalf("model calls = %d, want 1", client.calls)
+	}
+	// The budget is deadline - Reserve, so the call must give up with
+	// the reserve still unspent.
+	if callDeadline.Before(parentDeadline.Add(-reserve)) || callDeadline.After(parentDeadline.Add(-reserve/2)) {
+		t.Errorf("the model call's deadline is %v before the runner's; want the %v reserve (and not much less)",
+			parentDeadline.Sub(callDeadline), reserve)
 	}
 	if st := p.Stats(); st.ByFallback[FallbackError] != 1 {
 		t.Errorf("fallbacks = %v", st.ByFallback)
 	}
+}
+
+// deadlineProbe is a Client that records the deadline of the context
+// it was handed and then behaves like a model that never answers: it
+// blocks until that context ends.
+type deadlineProbe struct {
+	calls  int
+	onCall func(time.Time)
+}
+
+func (*deadlineProbe) Name() string { return "deadline-probe" }
+
+func (c *deadlineProbe) Complete(ctx context.Context, _ Request) (Response, error) {
+	c.calls++
+	if dl, ok := ctx.Deadline(); ok {
+		c.onCall(dl)
+	}
+	<-ctx.Done()
+	return Response{}, ctx.Err()
 }
 
 // With almost no time left there is no point dialling at all.
