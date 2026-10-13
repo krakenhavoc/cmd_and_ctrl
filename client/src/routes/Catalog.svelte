@@ -156,6 +156,7 @@
     class="search"
     placeholder="search name, type or rules text"
     aria-label={L.searchCatalogue}
+    disabled={loading}
     bind:value={query}
   />
 {/snippet}
@@ -229,7 +230,21 @@
   width="wide"
 >
   {#if loading}
-    <p class="help" aria-live="polite">Loading the catalogue…</p>
+    <!-- The search box is the catalog.search hint's anchor: it must exist before the data
+         does (#3305). The facets need the data, so only the box shows, disabled. -->
+    {#if narrow}
+      <div class="bar">{@render searchBox()}</div>
+    {:else}
+      <div class="layout">
+        <aside class="sidebar" aria-label="Filters">
+          {@render searchBox()}
+        </aside>
+        <div class="main">
+          <p class="help" aria-live="polite">Loading the catalogue…</p>
+        </div>
+      </div>
+    {/if}
+    {#if narrow}<p class="help" aria-live="polite">Loading the catalogue…</p>{/if}
   {:else if error}
     <p class="notice err" role="alert">
       <Icon name="x" size={14} />
