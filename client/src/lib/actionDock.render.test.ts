@@ -116,7 +116,7 @@ function mountDock(props: Record<string, unknown> = {}) {
 }
 
 // The accessible name the e2e suite matches: text content without the
-// aria-hidden key cap. ("next" is matched with `exact: true`.)
+// aria-hidden key cap. ("Next" is matched with `exact: true`.)
 function accessibleName(el: Element): string {
   const copy = el.cloneNode(true) as Element;
   copy.querySelectorAll('[aria-hidden="true"]').forEach((n) => n.remove());
@@ -151,7 +151,7 @@ describe("ActionDock", () => {
     // The action bar: Pass turn on the left, next — the primary — on the right.
     const bar = dock.querySelector(".dock-bar")!;
     const bar_ = [...bar.querySelectorAll("button")];
-    expect(bar_.map(accessibleName)).toEqual(["End turn", "next"]);
+    expect(bar_.map(accessibleName)).toEqual(["End turn", "Next"]);
     expect(bar_[1].classList.contains("primary")).toBe(true);
     // `next` and the toggles are not inside each other's group.
     expect(toggles.contains(bar_[1])).toBe(false);
@@ -159,7 +159,7 @@ describe("ActionDock", () => {
 
   it("draws exactly one next and one End turn on your turn", () => {
     const d = mountDock();
-    expect(buttonsNamed(d.container, "next")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(1);
     expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
   });
 
@@ -168,7 +168,7 @@ describe("ActionDock", () => {
   // priority.
   it("shows End turn only on your turn, and keeps next rendered but disabled", () => {
     const d = mountDock({ viewerHasPriority: false, viewerIsActive: false });
-    const next = buttonsNamed(d.container, "next")[0]!;
+    const next = buttonsNamed(d.container, "Next")[0]!;
     expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
     expect(next.disabled).toBe(true);
     expect(next.title).toBe("you don't hold priority");
@@ -199,7 +199,7 @@ describe("ActionDock", () => {
 
   it("wires next, Pass turn and autopass to their handlers", () => {
     const d = mountDock();
-    click(buttonsNamed(d.container, "next")[0]!);
+    click(buttonsNamed(d.container, "Next")[0]!);
     click(buttonsNamed(d.container, "End turn")[0]!);
     click(d.q("button.action.skip-to-my-turn")!);
     expect(d.calls).toMatchObject({ pass: 1, passTurn: 1, autopass: 1 });
@@ -207,7 +207,7 @@ describe("ActionDock", () => {
 
   it("Enter on the focused next presses it, once, and goes no further", () => {
     const d = mountDock();
-    const next = buttonsNamed(d.container, "next")[0]!;
+    const next = buttonsNamed(d.container, "Next")[0]!;
     let reachedWindow = 0;
     const onWindow = (e: KeyboardEvent) => {
       if (e.key === "Enter") reachedWindow++;
@@ -231,7 +231,7 @@ describe("ActionDock", () => {
 
   it("Escape never passes, and focus does not move to next on a priority frame", () => {
     const d = mountDock({ viewerHasPriority: false });
-    const next = buttonsNamed(d.container, "next")[0]!;
+    const next = buttonsNamed(d.container, "Next")[0]!;
     d.setProps({ viewerHasPriority: true } as never);
     expect(document.activeElement).not.toBe(next);
     next.focus();
@@ -241,7 +241,7 @@ describe("ActionDock", () => {
 
   it("prints the bound keys: a Space cap on next, and aria-keyshortcuts on every button", () => {
     const d = mountDock();
-    const next = buttonsNamed(d.container, "next")[0]!;
+    const next = buttonsNamed(d.container, "Next")[0]!;
     expect(next.querySelector("kbd.cap")?.textContent).toBe("Space");
     expect(next.querySelector("kbd.cap")?.getAttribute("aria-hidden")).toBe("true");
     expect(next.getAttribute("aria-keyshortcuts")).toBe("Space");
@@ -256,7 +256,7 @@ describe("ActionDock", () => {
     flushSync();
     expect(next.querySelector("kbd.cap")).toBeNull();
     expect(next.hasAttribute("aria-keyshortcuts")).toBe(false);
-    expect(accessibleName(next)).toBe("next");
+    expect(accessibleName(next)).toBe("Next");
   });
 
   it("says what next will do, from public state, only while you hold priority", () => {
@@ -433,9 +433,9 @@ describe("the dock's requests", () => {
     expect(attacks).toEqual([OPP]);
     // A step row does not take the bar: next and Pass turn are still
     // there, once each, and not inside the request.
-    expect(buttonsNamed(d.container, "next")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(1);
     expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
-    expect(dlg.contains(buttonsNamed(d.container, "next")[0]!)).toBe(false);
+    expect(dlg.contains(buttonsNamed(d.container, "Next")[0]!)).toBe(false);
   });
 
   it("offers Choose attackers… beside Attack all with two creatures and no tax (#2441)", () => {
@@ -545,7 +545,7 @@ describe("the dock's requests", () => {
     expect(primary.classList.contains("primary")).toBe(true);
     expect(dlg.querySelector(".dock-bar")?.lastElementChild).toBe(primary);
     // A stronger request takes the bar: next and Pass turn give way.
-    expect(buttonsNamed(d.container, "next")).toHaveLength(0);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(0);
     expect(buttonsNamed(d.container, "End turn")).toHaveLength(0);
     click(primary);
     expect(finished).toBe(1);
@@ -559,7 +559,7 @@ describe("the dock's requests", () => {
     h.close();
     flushSync();
     expect(dialog(d.container, "declare blockers")).toBeNull();
-    expect(buttonsNamed(d.container, "next")).toHaveLength(1);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(1);
     expect(buttonsNamed(d.container, "End turn")).toHaveLength(1);
   });
 
@@ -598,7 +598,7 @@ describe("the dock's requests", () => {
     expect(cancel.getAttribute("aria-keyshortcuts")).toBe("Escape");
     expect(cancel.querySelector("kbd.cap")?.textContent).toBe("Esc");
     expect(bar.querySelector(".primary")).toBeNull();
-    expect(buttonsNamed(d.container, "next")).toHaveLength(0);
+    expect(buttonsNamed(d.container, "Next")).toHaveLength(0);
     click(cancel);
     expect(cancelled).toBe(1);
   });

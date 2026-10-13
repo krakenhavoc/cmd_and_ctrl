@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { L } from "../../client/src/lib/labels";
 import { ADMIN_TOKEN } from "./env";
 import { handCardCount, unreachableHandCards } from "./hand-reach";
+import { DOCK_PRIMARY } from "./dock-primary";
 
 // tutorial-layout: the tutorial's coach card must not cost the board
 // any height (ADR 0076 §2.3, #1081 follow-up).
@@ -246,7 +247,7 @@ for (const size of [
       // Upkeep and draw come first: pass until the land is playable.
       const next = page
         .getByRole("region", { name: L.actions, exact: true })
-        .getByRole("button", { name: L.next, exact: true });
+        .getByRole("button", { name: DOCK_PRIMARY });
       const until = Date.now() + 30_000;
       while (!(await forest.isVisible())) {
         if (Date.now() > until) break;

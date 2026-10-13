@@ -24,6 +24,7 @@ import {
 } from "./lobby-api";
 import { SERVER_ORIGIN, SERVER_WS_ORIGIN } from "./env";
 import { makeS19CasterDeck, makeS19OpponentDeck } from "./s19-deck-fixture";
+import { DOCK_PRIMARY } from "./dock-primary";
 
 // --- Snapshot view types --------------------------------------
 //
@@ -848,7 +849,7 @@ export async function resolveStack(setup: S19Setup, maxAttempts = 20): Promise<S
     }
     const before = items.length;
     try {
-      await page.getByRole("button", { name: /^next$/ }).click({ timeout: 2000 });
+      await page.getByRole("button", { name: DOCK_PRIMARY }).click({ timeout: 2000 });
     } catch {
       // Button went disabled under us — priority moved. Re-read.
       continue;
