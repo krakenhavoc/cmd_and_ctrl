@@ -8,10 +8,10 @@ vision and phased roadmap; this file is about *how* to work, not *what* to build
 
 ## 1. What this project is
 
-A private, personal 4-player Magic: The Gathering Commander sandbox
-with a Go game server and a TypeScript client. Personal-use only — not
-a product. See [PLAN.md](PLAN.md) for scope, stack, and the Option B
-("sandbox first, rules grafted in incrementally from S13+") decision.
+A free, unofficial 4-player Magic: The Gathering Commander table with
+a Go game server, an automation-first rules engine, bots and a TypeScript
+client, in public beta for the C2 Discord community. See [PLAN.md](PLAN.md),
+the charter, for who it is for, scope, principles and the beta goals.
 
 Three hard problems, ranked: **game state and multiplayer sync** (Go
 server, authoritative state, WebSocket broadcast), **UX polish** (the
@@ -34,18 +34,24 @@ service names); don't rename those to match.
 1. **Read [PLAN.md](PLAN.md) before making architectural suggestions.** The
    central decision (reuse XMage vs build from scratch) is already made. Do not
    relitigate it without new information.
-2. **This is a hobby project at ~10 hours/week.** Optimise for momentum and
+2. **This is a hobby project, not a company.** Optimise for momentum and
    clarity, not enterprise rigour. No microservices, no k8s, no premature
    abstractions. One VPS. One database. One deployable per service.
-3. **Personal use only changes the calculus.** Legal risk is low (Cockatrice and
-   XMage exist). Scale is ≤8 users. Don't build for hypothetical public launch.
+3. **Build for the beta in [PLAN.md](PLAN.md), not beyond it.** C2 is a public
+   beta for a small community: tens of players on one VM, held to the capacity
+   caps of [ADR 0148](docs/decisions/0148-capacity-limits-for-a-public-launch.md).
+   It is free fan content within the Wizards Fan Content Policy. Strangers'
+   data and safety matter: privacy ([ADR 0149](docs/decisions/0149-privacy-notice-and-account-deletion.md)),
+   moderation and limits are product work. Don't build for a scale or audience
+   the charter doesn't name.
 4. **UX polish is the entire point.** "Make it feel good" is core product
-   work and deserves real care. Sandbox features (manual resolution,
-   manual priority) are a deliberate design choice, not a shortcut.
+   work and deserves real care. Automation comes first; the sandbox actions
+   (manual resolution, manual priority) stay as the fallback for whatever
+   the engine doesn't know yet.
 5. **We do not use XMage.** This was evaluated and rejected in S01 — see
-   [PLAN.md §2.2](PLAN.md#22-why-not-option-a-the-s01-discovery). The entire
-   backend is an original Go game server; the rules engine (eventually,
-   S13+) is grown incrementally on top of it. No Java anywhere in the stack.
+   [PLAN.md, History](PLAN.md#history). The entire backend is an original Go
+   game server; the rules engine is grown incrementally on top of it. No Java
+   anywhere in the stack.
 
 ---
 
@@ -53,7 +59,7 @@ service names); don't rename those to match.
 
 ```
 cmd_and_ctrl/
-├── PLAN.md              # vision, roadmap, open decisions
+├── PLAN.md              # the charter: what C2 is, who the beta is for, scope, goals
 ├── AGENTS.md            # this file
 ├── Makefile             # top-level dev/test/lint targets
 ├── .devcontainer/       # Go + Node dev environment
@@ -460,12 +466,11 @@ A restore point written by yesterday's binary has to restore in today's. Three t
 
 ## 6. When you're unsure
 
-1. Re-read [PLAN.md](PLAN.md) section 2 (architectural decision) and section 6
-   (roadmap).
+1. Re-read [PLAN.md](PLAN.md): scope (section 3) and principles (section 5).
 2. Check the current sprint in [docs/sprints.md](docs/sprints.md) — the scope
    there is authoritative for "what should I be working on right now".
-3. Look for an open decision in [PLAN.md](PLAN.md) section 7. If the question is
-   listed there, surface it to the user rather than guessing.
+3. Look for an ADR in [docs/decisions/](docs/decisions/) that settles it. If
+   none does, surface the question to the user rather than guessing.
 4. Prefer a spike (time-boxed, throwaway) over speculative architecture.
 
 ### Rules citations
@@ -597,14 +602,13 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
 
 ## 8. Things to explicitly *not* do
 
-- Do not add CI/CD beyond basic lint + test until there's code to protect.
-- Do not introduce a database, auth provider, or payment anything without
-  discussion. Shared password is fine for now (see [PLAN.md §4](PLAN.md#4-tech-stack)).
+- Do not add a second database, a new auth provider, any payment, or a new
+  hosted service without an ADR. SQLite and Discord sign-in are the stack
+  (see [PLAN.md §4](PLAN.md#4-tech-stack)).
 - Do not attempt a "full rules engine" sprint. Rules enforcement grows
-  incrementally in the S13+ B→C track, one mechanic at a time, driven by
-  real games. See [PLAN.md §2.3](PLAN.md#23-why-not-option-c-straight-custom-rules-engine).
+  incrementally, one mechanic at a time, driven by the decks people bring.
 - Do not reintroduce a dependency on XMage or any JVM tooling. That was
   evaluated and rejected in S01.
-- Do not generate card art, card text, or anything else that would pull this
-  project out of "private, personal use" territory.
+- Do not generate card art, card text, or anything else outside the Wizards
+  Fan Content Policy; card data and images come from Scryfall.
 - Do not create commits or PRs that do not reference a sprint (see section 4).
