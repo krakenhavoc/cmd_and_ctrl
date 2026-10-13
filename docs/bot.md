@@ -2952,7 +2952,8 @@ unknown.
 `BaselineConfig()` turns it off. The decision and its numbers are in
 [ADR 0126's amendment on blocks that survive as a
 set](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-blocks-that-survive-as-a-set),
-proposed on 2026-10-12.
+accepted on 2026-10-12. The horizon's unneeded waiting turn the
+full Wurm mirror showed is #3080.
 
 ### Combat priced by what combat does (#2675, #2690, #2676)
 

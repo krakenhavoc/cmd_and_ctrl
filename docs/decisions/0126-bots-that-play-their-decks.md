@@ -1021,7 +1021,7 @@ The owner accepted the amendment on 2026-10-12. They took the recommendation on 
 
 ## Amendment 2026-10-12: blocks that survive as a set
 
-**Status:** Proposed. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()` (§9). The owner's decisions are [below](#questions-for-the-owner-3066).
+**Status:** Accepted (owner decisions 2026-10-12). The owner accepted the check with `BlockSetSurvives` on, and had the horizon's unneeded waiting turn filed as [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080); see [Owner decisions (#3066, 2026-10-12)](#owner-decisions-3066-2026-10-12) at the end of this amendment. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()` (§9).
 **Issue:** [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066), filed from #2474 (PR #3065). Sprint S67. Tracker #890.
 **Amends:** the block planner (`decideBlock`, `heuristic/combat.go`), which [Out of scope](#out-of-scope) left alone, as the [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) and the two amendments of 2026-10-12 on the race and the attrition horizon did for the attack planner. No ADR covers the block planner, and `docs/bot.md` documents it.
 
@@ -1068,9 +1068,9 @@ The tables, and every game that changes, are under [Measurements, #3066](#3066-b
 ### Open (#3066)
 
 - **The bot's own model of the defender does not change.** The race's `blockToSurvive` and the attrition horizon's free answer predict the defender's blocks with their own greedy, not with `decideBlock`. Where the two disagree the attacker misjudges a swing, as before.
-- **The horizon's waiting turn is pessimistic.** See the second bullet under Measured. It costs a line a turn of the horizon's three, so a line that needs a wait and two more exchanges is never found. It is not part of this amendment.
+- **The horizon's waiting turn is pessimistic.** See the second bullet under Measured. It costs a line a turn of the horizon's three, so a line that needs a wait and two more exchanges is never found. It is not part of this amendment: it is [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080).
 
-### Questions for the owner (#3066)
+### Questions for the owner (#3066, answered 2026-10-12)
 
 Each lists the recommended option first.
 
@@ -1080,6 +1080,13 @@ Each lists the recommended option first.
 2. **The horizon's waiting turn** (Open, second bullet).
    - **(a) Recommended:** file it as its own issue: the horizon counts a commander the bot casts again in its second main phase as able to attack on its next turn. It changes the horizon's search, which needs its own gate measurements.
    - **(b)** Leave it. The wait is pessimistic, so it only loses lines and never sends a bad one.
+
+### Owner decisions (#3066, 2026-10-12)
+
+The owner accepted the amendment on 2026-10-12 and took the recommendation on both questions. No section above changed.
+
+1. **The set-level block check is accepted.** `BlockSetSurvives` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
+2. **The horizon's waiting turn is its own issue:** [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080), in Backlog. It changes the attrition horizon's search, not the block planner, so it is not part of this amendment.
 
 ## Consequences
 
@@ -2298,7 +2305,7 @@ Not detectably worse at either step: the lower bound clears 25% at `develop` and
 
 ### #3066: blocks that survive as a set (2026-10-12)
 
-The [amendment of 2026-10-12](#amendment-2026-10-12-blocks-that-survive-as-a-set), proposed. `develop` is `2b6f13831`, with #3065's commander-trade horizon and #2480's impulse price. The branch is that tree with `BlockSetSurvives` on, so `develop` is the row with it off. The runs are #2400's and #2474's: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212) with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, `TestHeuristicBeatsRandomHeadToHead`, and the seed-1409 mirrors in `lockstep_game_test.go`, each with `AISEAT_DEBUG=1` so the move logs can be compared. Run 1 is §8's (four `heuristic` seats, 64 games, seed 1, `--rotate --lockstep`, the real dump). A board is the turns with the edge on seat 0 / seat 1.
+The [amendment of 2026-10-12](#amendment-2026-10-12-blocks-that-survive-as-a-set), accepted. `develop` is `2b6f13831`, with #3065's commander-trade horizon and #2480's impulse price. The branch is that tree with `BlockSetSurvives` on, so `develop` is the row with it off. The runs are #2400's and #2474's: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212) with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, `TestHeuristicBeatsRandomHeadToHead`, and the seed-1409 mirrors in `lockstep_game_test.go`, each with `AISEAT_DEBUG=1` so the move logs can be compared. Run 1 is §8's (four `heuristic` seats, 64 games, seed 1, `--rotate --lockstep`, the real dump). A board is the turns with the edge on seat 0 / seat 1.
 
 | | 4-seat mean | 2-seat mean | Drake | Wurm + Bear | Wurm + Ogre | full Wurm |
 |---|---:|---:|---|---|---|---|
