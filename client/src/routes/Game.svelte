@@ -113,6 +113,7 @@
   import {
     autopassSuspended,
     blockDeclarationPending,
+    holdCombatWindow,
     loopNoticeText,
     owesBlockDecision,
     owesAttackRequirement,
@@ -694,6 +695,9 @@
         lastCastByCardID.set(instanceID, { ...stash });
       }
     }
+    // #672: pulling a creature out of combat must not let smart
+    // auto-pass close the window the correction was made in.
+    if (type === "remove_from_combat") holdCombatWindow(view);
     client.sendAction(type, player, params);
   };
 

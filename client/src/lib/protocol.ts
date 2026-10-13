@@ -197,6 +197,9 @@ export type ActionType =
   | "discard_selection"
   | "draw_card"
   | "end_vote"
+  // #672 (CR 506.4): take ONE creature out of combat; params
+  // `{instance_id}`. The per-card sibling of clear_combat.
+  | "remove_from_combat"
   | "keep_hand"
   // ADR 0121 §3: the opening roll. `roll_opening` rolls the caller's
   // d20; `host_roll_remaining` (host or admin) rolls for every seat

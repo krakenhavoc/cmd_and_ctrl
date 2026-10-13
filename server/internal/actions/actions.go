@@ -72,7 +72,11 @@ const (
 	// active player still holds priority.
 	TypeFinishBlocks Type = "finish_blocks"
 	TypeClearCombat  Type = "clear_combat"
-	TypeAdvanceStep  Type = "advance_step"
+	// TypeRemoveFromCombat takes ONE creature out of combat (#672,
+	// CR 506.4). Params carry `{instance_id}`. Controller-gated like
+	// the declarations, unlike its table-wide sibling clear_combat.
+	TypeRemoveFromCombat Type = "remove_from_combat"
+	TypeAdvanceStep      Type = "advance_step"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -1213,6 +1217,22 @@ func dispatch(g *game.Game, a Action) error {
 
 	case TypeClearCombat:
 		return g.ClearCombat()
+
+	case TypeRemoveFromCombat:
+		var p struct {
+			InstanceID string `json:"instance_id"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("remove_from_combat instance_id: %w", err)
+		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
+		}
+		return g.RemoveFromCombat(instanceID)
 
 	case TypeAdvanceStep:
 		// Sandbox affordance: advance the step cursor by one without
