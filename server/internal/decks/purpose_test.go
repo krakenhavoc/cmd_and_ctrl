@@ -50,6 +50,13 @@ var curatedInstantsAndSorceries = []string{
 	"Explosive Vegetation", "Harrow", "Hour of Promise", "Circuitous Route", "Titania's Command",
 	"Overrun", "Return of the Wildspeaker", "Shamanic Revelation", "Eureka Moment", "Harmonize",
 	"Beast Within", "Krosan Grip",
+	// mono-green-stompy
+	"Naturalize", "Bite Down",
+	// mono-white-weenie
+	"Call the Coppercoats", "Secure the Wastes",
+	"Council's Judgment", "Fateful Absence", "Flawless Maneuver",
+	// boros-voltron
+	"Akroma's Will", "Boros Charm", "Lightning Helix", "Wild Slash", "Teferi's Protection",
 }
 
 // valueIsTheirTarget is ADR 0126 §6's short, named list of curated
@@ -88,6 +95,13 @@ var valueIsTheirTarget = map[string]string{
 	"Zombify":            "reanimation of the target",
 	"Dread Return":       "reanimation of the target",
 	"Stitch Together":    "reanimation of the target, or its return to hand",
+	// The first three are stompy and weenie removal; Council's Judgment
+	// has no target at all (each player votes), but it is removal and
+	// its value is the permanent the table picks.
+	"Naturalize":         "removal",
+	"Bite Down":          "removal",
+	"Fateful Absence":    "removal",
+	"Council's Judgment": "removal",
 }
 
 // noPrintedAmount is the curated spells that do something in a priced
@@ -109,6 +123,11 @@ var noPrintedAmount = map[string]string{
 	"Overrun":                   "a combat pump: its value is the attack (ADR 0126 Out of scope)",
 	"Return of the Wildspeaker": "draws as many as the greatest power, or a pump",
 	"Shamanic Revelation":       "draws one per creature, counted at resolution",
+	"Call the Coppercoats":      "makes one token per creature the chosen opponents control, counted at resolution",
+	"Secure the Wastes":         "makes X tokens",
+	"Flawless Maneuver":         "a protection spell: indestructible for the team, no fixed amount",
+	"Teferi's Protection":       "a protection spell: phases out the controller's permanents, no fixed amount",
+	"Akroma's Will":             "a team keyword grant or protection, by mode: no fixed amount",
 }
 
 // curatedTargetPurposes is every curated spell whose value depends on
