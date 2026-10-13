@@ -53,6 +53,13 @@ type Options struct {
 	// more" + MoreHint), naming the tool that shows the rest. The MCP
 	// seat sets it; the bot has no such tool and leaves it empty.
 	MoreHint string
+	// OpponentMaxZoneCards, when above zero, caps an opponent's
+	// battlefield at this many GROUPS where MaxZoneCards caps the
+	// viewer's own. The cut is the same one (grouping first, then the
+	// class order, then an exact "… and N more" tail), so a seat that
+	// must shrink the board trims opponents without ever dropping a
+	// permanent unannounced (#3123).
+	OpponentMaxZoneCards int
 }
 
 func (o Options) maxZoneCards() int {
@@ -143,7 +150,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		for _, e := range s.Emblems {
 			fmt.Fprintf(&b, "  emblem: %s\n", EmblemLine(e))
 		}
-		if bf := battlefieldOf(v, s.ID, opts); bf != "" {
+		if bf := battlefieldOf(v, s.ID, me, opts); bf != "" {
 			fmt.Fprintf(&b, "  battlefield: %s\n", bf)
 		}
 		if gy := cardNames(s.Graveyard.Cards, max, opts); gy != "" {
@@ -268,7 +275,7 @@ func writePayAmount(b *strings.Builder, pa *protocol.PayAmountView) {
 // lands, the bulk. Within a class the group that arrived most recently
 // stays, since the newest permanents are the ones a player just made. The
 // kept groups print in their original battlefield order.
-func battlefieldOf(v *protocol.GameView, seat string, opts Options) string {
+func battlefieldOf(v *protocol.GameView, seat, viewer string, opts Options) string {
 	type group struct {
 		label string
 		n     int
@@ -293,7 +300,11 @@ func battlefieldOf(v *protocol.GameView, seat string, opts Options) string {
 		g.last = i
 	}
 	keep := make([]bool, len(groups))
-	if max := opts.maxZoneCards(); len(groups) > max {
+	max := opts.maxZoneCards()
+	if seat != viewer && opts.OpponentMaxZoneCards > 0 {
+		max = opts.OpponentMaxZoneCards
+	}
+	if len(groups) > max {
 		rank := make([]int, len(groups))
 		for i := range rank {
 			rank[i] = i

@@ -26,8 +26,10 @@ const (
 	budgetCard = 2000
 	// compactZoneCards is the zone cap the bot uses too.
 	compactZoneCards = 24
-	// trimmedBattlefield is how many of an opponent's permanents the
-	// compact board keeps once it is over budget.
+	// trimmedBattlefield is how many of an opponent's permanent GROUPS
+	// the compact board keeps once it is over budget; boardtext does the
+	// grouping and the cut, so every permanent is shown or counted in
+	// the "… and N more" tail (#3123).
 	trimmedBattlefield = 12
 	// fullLogLines is how much public log get_state(full) carries.
 	fullLogLines = 24
@@ -203,35 +205,6 @@ func graveyardsToCounts(v *protocol.GameView) {
 	}
 }
 
-// trimOpponentBattlefields keeps each opponent's highest-power
-// permanents and says how many more there are.
-func trimOpponentBattlefields(v *protocol.GameView, me string, keep int) {
-	byController := map[string][]protocol.CardView{}
-	var order []string
-	var out []protocol.CardView
-	for _, c := range v.Battlefield.Cards {
-		if c.Controller == me {
-			out = append(out, c)
-			continue
-		}
-		if _, ok := byController[c.Controller]; !ok {
-			order = append(order, c.Controller)
-		}
-		byController[c.Controller] = append(byController[c.Controller], c)
-	}
-	for _, ctl := range order {
-		cards := byController[ctl]
-		if len(cards) <= keep {
-			out = append(out, cards...)
-			continue
-		}
-		sort.SliceStable(cards, func(i, j int) bool { return cards[i].Power > cards[j].Power })
-		out = append(out, cards[:keep]...)
-		out = append(out, protocol.CardView{Controller: ctl, Name: fmt.Sprintf("and %d more", len(cards)-keep)})
-	}
-	v.Battlefield.Cards = out
-}
-
 // boardOptions are the renderer's knobs for this reader: the bot's zone
 // cap, the unimplemented note spelled out (§5), and each owed choice's id
 // for legal_moves(choice) (#2794).
@@ -287,8 +260,7 @@ func (l *sinceLog) dropOldest() {
 // compactBoard is the board in wait_for_decision and get_state(compact),
 // with the public log and chat lines since the last decision, held to
 // budgetCompact. Over the cap it degrades in §5's order: graveyards to
-// counts, then opponents' battlefields to their 12 highest-power
-// permanents, then log and chat lines from the oldest. A cut log says how
+// counts, then opponents' battlefields to 12 groups each (boardtext's cut), then log and chat lines from the oldest. A cut log says how
 // many entries it left out.
 func compactBoard(v *protocol.GameView, me string, log sinceLog, chatLines []string) string {
 	sv := safeView(v)
@@ -302,8 +274,9 @@ func compactBoard(v *protocol.GameView, me string, log sinceLog, chatLines []str
 	if text = joinBoard(board, log, chatLines); len(text) <= budgetCompact {
 		return text
 	}
-	trimOpponentBattlefields(sv, me, trimmedBattlefield)
-	board = boardtext.Render(sv, me, boardOptions(compactZoneCards))
+	opts := boardOptions(compactZoneCards)
+	opts.OpponentMaxZoneCards = trimmedBattlefield
+	board = boardtext.Render(sv, me, opts)
 	for len(log.lines)+len(chatLines) > 0 {
 		if text = joinBoard(board, log, chatLines); len(text) <= budgetCompact {
 			return text
