@@ -7,6 +7,7 @@ import type {
   AssistOfferView,
   CardView,
   DivideView,
+  GameView,
   LegalTargetsView,
   ModeOptionView,
   OptionalCostView,
@@ -1560,6 +1561,88 @@ export function lonePick(t: TargetingState): TargetRef | null {
   return players.length === 1
     ? { kind: "player", id: players[0]! }
     : { kind: "card", id: cards[0]! };
+}
+
+// ---- One target for a repeated trigger (#3265) ----
+//
+// When one ability triggers several times at once (three creatures
+// enter under the same permanent, or a doubler adds an instance), each
+// instance queues its own pick_target (CR 603.3d), all at the same time.
+// The player may pick once for all of them: the first answer is kept as
+// the shared target and every later sibling whose legal set still holds
+// it is answered with it. Each instance is still its own ability on the
+// stack with its own target; this only fills in the choice.
+//
+// Siblings are prompts of the same chooser from the same source with
+// the same clause wording: the same ability on the same permanent,
+// doubled instances included. Two copies of one card stay separate.
+
+export interface SharedTarget {
+  source: string;
+  reason: string;
+  ref: TargetRef;
+}
+
+/** The target kept for the rest of a repeated trigger's instances. */
+export const sharedTarget: Writable<SharedTarget | null> = guardedWritable(null, "sharedTarget");
+
+/** The dock's "Same target for all" toggle: on unless the player turns it off. */
+export const shareTargetOn: Writable<boolean> = guardedWritable(true, "shareTargetOn");
+
+function isRepeatable(t: TargetingState): boolean {
+  return t.choiceKind === "pick_target" && t.max === 1 && !!t.choiceID;
+}
+
+/**
+ * repeatsOf counts the OTHER pick_target prompts waiting on the same
+ * chooser for the same ability as `t`'s, or 0 when `t` is not a
+ * one-target trigger prompt.
+ */
+export function repeatsOf(t: TargetingState, view: GameView | null | undefined): number {
+  if (!isRepeatable(t) || !view) return 0;
+  const choices = view.pending_choices ?? [];
+  const mine = choices.find((c) => c.id === t.choiceID);
+  if (!mine) return 0;
+  return choices.filter(
+    (c) =>
+      c.id !== mine.id &&
+      c.kind === "pick_target" &&
+      c.chooser === mine.chooser &&
+      c.source === mine.source &&
+      c.reason === mine.reason,
+  ).length;
+}
+
+/** sharedFrom is what to keep after answering `t` with `ref`. */
+export function sharedFrom(t: TargetingState, ref: TargetRef): SharedTarget | null {
+  if (!isRepeatable(t)) return null;
+  return { source: t.card.instance_id, reason: t.label ?? "", ref: { kind: ref.kind, id: ref.id } };
+}
+
+/**
+ * sharedPick is the kept target, when `t` is a sibling of the prompt it
+ * answered and the target is still legal for it; otherwise null, and
+ * the player is asked as usual.
+ */
+export function sharedPick(t: TargetingState, shared: SharedTarget | null): TargetRef | null {
+  if (!shared || !isRepeatable(t) || !t.legal || t.picked.length > 0) return null;
+  if (t.card.instance_id !== shared.source || (t.label ?? "") !== shared.reason) return null;
+  const legal = shared.ref.kind === "player" ? t.legal.players : t.legal.cards;
+  return legal.has(shared.ref.id) ? { kind: shared.ref.kind, id: shared.ref.id } : null;
+}
+
+/**
+ * sharedStillWanted reports whether any prompt in the view could still
+ * use the kept target; once none can, the caller forgets it.
+ */
+export function sharedStillWanted(
+  shared: SharedTarget | null,
+  view: GameView | null | undefined,
+): boolean {
+  if (!shared || !view) return false;
+  return (view.pending_choices ?? []).some(
+    (c) => c.kind === "pick_target" && c.source === shared.source && c.reason === shared.reason,
+  );
 }
 
 // legalTargetCount is the banner's "N legal targets" figure; -1 when

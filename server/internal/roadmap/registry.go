@@ -630,6 +630,15 @@ var items = []Item{
 		Printed: printedLine("ward"),
 	},
 	{
+		Slug: "crimes", Name: "Committing a crime", Kind: KindMechanic, Status: StatusImplemented,
+		Summary:     "Casting a spell, activating an ability, or putting a triggered ability on the stack that targets an opponent, something they control, or a card in their graveyard commits one crime. Copies and changing targets do not commit another crime.",
+		Rules:       []string{"700.13"},
+		Printed:     printedWords("crime"),
+		ADR:         "0157-crimes-at-announcement.md",
+		Examples:    []string{"Magda, the Hoardmaster", "Lazav, Familiar Stranger", "Forsaken Miner"},
+		EngineNotes: "#2944: EventBecomesTarget.CrimeCommitted is annotated once by successful cast/activation/trigger announcement. The target-set classifier includes stack abilities using their controller, while copied objects and retargeting retain only ordinary becomes-target events. Existing event fields carry actor/source/stack-item attribution; no snapshot schema change. Forsaken Miner uses the existing graveyard trigger and resolution-time payment with the shared object-epoch guard.",
+	},
+	{
 		Slug: "equip", Name: "Equip", Kind: KindMechanic, Status: StatusImplemented,
 		Summary: "Pay an Equipment's equip cost to attach it to a creature you control, as a sorcery.",
 		Rules:   []string{"702.6"},

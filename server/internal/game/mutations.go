@@ -1995,7 +1995,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// Emitted after EventCast so a "becomes the target" trigger and
 	// a "whenever a player casts a spell" trigger queue in printed
 	// order.
-	g.emitBecameTargetLocked(playerID, cardID, cardID, params.Targets)
+	g.emitAnnouncedTargetsLocked(playerID, cardID, cardID, params.Targets)
 	// ADR 0099 §5: a cast that used a pass-closed grant (discover,
 	// cascade) spends it, so the caster's next pass does not lapse a
 	// card that is already on the stack — and a discover grant's cast
@@ -4116,7 +4116,7 @@ func (g *Game) ActivateAbility(playerID, sourceCardID uuid.UUID, params AbilityP
 	// (activated.go) and the manual trigger announce below: after the
 	// item exists, so a ward or "becomes the target" trigger harvested
 	// off it lands on the stack above the thing that targeted.
-	g.emitBecameTargetLocked(playerID, sourceCardID, id, params.Targets)
+	g.emitAnnouncedTargetsLocked(playerID, sourceCardID, id, params.Targets)
 	// And the drain the catalog path runs for the same reason: the
 	// activator receives priority right after activating (CR 117.3c),
 	// so a trigger harvested off the announce goes on the stack at
@@ -6034,7 +6034,7 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 func (g *Game) announcePlacedTargetsLocked(placed []*StackItem) {
 	for _, t := range placed {
 		t.TargetsAnnouncePending = false
-		g.emitBecameTargetLocked(t.Controller, t.SourceCardID, t.ID, t.Targets)
+		g.emitAnnouncedTargetsLocked(t.Controller, t.SourceCardID, t.ID, t.Targets)
 	}
 }
 
