@@ -677,6 +677,37 @@ describe("buildMenuSections — combat", () => {
     expect(item?.items).toBeUndefined();
   });
 
+  // #672: the per-creature sibling of "Clear ALL combat".
+  it("offers Remove from combat only on an attacking or blocking creature", () => {
+    const attacker = card("c1", "a", { attacking_target: "b" });
+    const blocker = card("c2", "a", { blocking_target: "c9" });
+    const idle = card("c3", "a");
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [attacker, blocker, idle],
+      step: "declare_blockers",
+    });
+    for (const c of [attacker, blocker]) {
+      expect(itemById(buildMenuSections(v, c, "a", false), "combat-remove")?.action).toEqual({
+        type: "remove_from_combat",
+        params: { instance_id: c.instance_id },
+      });
+    }
+    const sections = buildMenuSections(v, idle, "a", false);
+    expect(itemById(sections, "combat-remove")).toBeUndefined();
+    // The table-wide reset stays beside it.
+    expect(itemById(sections, "combat-clear")).toBeDefined();
+  });
+
+  it("hides Remove from combat where the viewer cannot override the card", () => {
+    const foreign = card("c1", "b", { attacking_target: "a" });
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [foreign],
+      step: "declare_blockers",
+    });
+    const sections = buildMenuSections(v, foreign, "a", false);
+    expect(itemById(sections, "combat-remove")).toBeUndefined();
+  });
+
   it("always offers the clear-combat escape hatch during combat", () => {
     const c = card("c1", "a");
     const v = view([seat("a", "Alice")], { battlefield: [c], step: "combat_damage" });

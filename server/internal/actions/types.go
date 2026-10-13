@@ -28,6 +28,7 @@ var allTypes = []Type{
 	TypeDeclareBlockers,
 	TypeFinishBlocks,
 	TypeClearCombat,
+	TypeRemoveFromCombat,
 	TypeAdvanceStep,
 	TypeSetMonarch,
 	TypeSetInitiative,

@@ -1806,6 +1806,18 @@ function combatItems(view: GameView, card: CardView, gate: LegalActions): MenuIt
       })),
     });
   }
+  // #672 (CR 506.4): take THIS creature back out of combat, leaving
+  // every other declaration alone. Offered only on a creature that is
+  // attacking or blocking — on anything else the server refuses it.
+  // The menu itself is already behind canOverride.
+  if (card.attacking_target || card.blocking_target || (card.blocking_targets?.length ?? 0) > 0) {
+    items.push({
+      id: "combat-remove",
+      label: "Remove from combat",
+      hint: "this creature only — no combat damage dealt or taken",
+      action: { type: "remove_from_combat", params: { instance_id: card.instance_id } },
+    });
+  }
   items.push({
     id: "combat-clear",
     label: "Clear ALL combat",
