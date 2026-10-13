@@ -231,8 +231,20 @@ func TestFourRandomBotsPlayToAWinner(t *testing.T) {
 		// decided by decking rather than by combat — which takes as
 		// many turns as there are cards.
 		turnBudget = 200
-		wall       = 300 * time.Second
+		baseWall   = 300 * time.Second
 	)
+	// Wall clock per game. A random game is not long: 24 turns and
+	// ~3,500 moves, ~20-30s without -race. Its cost is per move — every
+	// applied action marshals and writes a ~100 KB restore point, and
+	// the replay captures a full frame — and -race makes that ~12x
+	// slower: measured 251s / 334s / 343s for seeds 31000-31002 (#3147),
+	// which blew the old flat 300s. So the budget is 3x under -race:
+	// 900s is ~2.6x the slowest measured game, and the three default
+	// games (928s together) still fit the nightly's 30m package timeout.
+	wall := baseWall
+	if raceEnabled {
+		wall = 3 * baseWall
+	}
 	games := 3
 	if n, err := strconv.Atoi(os.Getenv("AISEAT_RANDOM_GAMES")); err == nil && n > 0 {
 		games = n
