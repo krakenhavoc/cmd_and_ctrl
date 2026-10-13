@@ -262,6 +262,7 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		PhasedOut:              true,
 		FaceVisible:            true,
 		KnownByYou:             true,
+		KnownBySeats:           []string{"stamped-by-the-filter"},
 		knowers:                knowers,
 		oracleID:               "oracle",
 		BattleX:                &x,
@@ -604,6 +605,12 @@ func TestRedactionZoneByViewer(t *testing.T) {
 					want := card
 					want.knowers = nil
 					want.KnownByYou = true
+					// #671: the filter stamps known_by_seats on the
+					// owner's own hand and nowhere else.
+					want.KnownBySeats = nil
+					if zone == "hand" && vw.viewer == ownerID && vw.knowers[oppID] {
+						want.KnownBySeats = []string{oppID}
+					}
 					if !reflect.DeepEqual(got[0], want) {
 						t.Errorf("knower's copy altered:\n got %+v\nwant %+v", got[0], want)
 					}

@@ -152,6 +152,11 @@
   // the reconcile, the sorts, the storage and its failures — is
   // handOrder.ts.
   const gameID = $derived(snap?.id ?? null);
+
+  // #671: seat IDs on a hand card's known_by_seats, as names.
+  function knownByNames(ids: string[]): string {
+    return ids.map((id) => snap?.seats.find((s) => s.id === id)?.name ?? "a player").join(", ");
+  }
   const orderKey = $derived(gameID && viewerID ? handOrderKey(gameID, viewerID) : "");
   const storedOrder = $derived(isSelf ? loadHandOrder(gameID, viewerID) : null);
   let orderOverride = $state<{ key: string; ids: string[] } | null>(null);
@@ -704,6 +709,12 @@
             onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
           />
         </div>
+        {#if isSelf && (c.known_by_seats?.length ?? 0) > 0}
+          <!-- #671: which other seats currently know this card. -->
+          <span class="known-by" title="Known by {knownByNames(c.known_by_seats ?? [])}">
+            {c.known_by_seats?.length}
+          </span>
+        {/if}
       </div>
     </div>
   {/each}
@@ -833,7 +844,24 @@
     z-index: 20;
   }
   .rise {
+    position: relative;
     transition: transform 220ms var(--ease);
+  }
+  /* #671: the count of other seats that know this hand card; the
+     tooltip names them. Purely informational, so it takes no clicks. */
+  .known-by {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 1.2em;
+    padding: 0 0.35em;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    text-align: center;
+    pointer-events: none;
   }
   .hand:not(.opponent):not(.scroll):hover > .hand-slot > .rise {
     transform: rotate(calc(-1 * var(--slot-rot, 0deg))) translateY(var(--hand-rise))

@@ -233,3 +233,55 @@ ALL combat", which wipes every declaration on the table. There is no
 server verb to remove a single creature from combat (CR 506.4), so this
 is a partial, and #672 adds the verb and the row. It did not block
 closing #170.
+
+## Amendment (2026-10-13): the `reveal_card` verb ([#671](https://github.com/krakenhavoc/cmd_and_ctrl/issues/671))
+
+The 2026-09-16 amendment recorded the owner's decision; this one records
+how it was built, and a place where the build departs from the issue's
+wording. It is a third exception to §1 (after `to_bottom` and
+`remove_from_combat`): a new verb, because no existing action can make a
+seat a knower of a hand card.
+
+1. **One verb, two shapes.** `reveal_card {card_id, to?}`. Hand cards
+   only: a card anywhere else is refused (`ErrNotInHand`), because a card
+   in a public zone is already known and one in a library is hidden by
+   rules this menu has no business overriding. Gated by
+   `requireCardController` like the rest of the menu (the admin bypasses),
+   and the client shows the rows only with "Manual card controls on
+   right-click" on.
+2. **Without `to`: "Reveal to table".** `game.RevealForEffect`, so every
+   seat becomes a knower (eliminated seats too, as for any reveal) and the
+   grouped `reveal_cards` events fire; the `reveals` frame and banner show
+   it. The label is "revealed a card from their hand".
+3. **With `to`: "Show to <player>".** `AddKnower(to)` and nothing else:
+   no reveal frame, no banner, no wire change beyond that one seat's view
+   carrying the card, which `keepKnownInHandZone` and `Hand.svelte`
+   already handle. The target must be seated and not eliminated, and not
+   the owner. The Comprehensive Rules have no action for this
+   (CR 701.20a reveals to all players), so it is a table courtesy.
+4. **The event.** The issue asked for "a distinct event kind, or no
+   event" for the private show. The build emits `EventRevealCards` with
+   `Target` set and `RevealSeq` zero instead, because the log projection
+   (`protocol/log.go` `revealEntry`, `renderRevealText`) was written
+   ahead of this verb for exactly that shape: it words it "P1 revealed a
+   card from their hand to P2" for every viewer and names the card to
+   nobody, with a test pinning it. The reveal frame keys on a non-zero
+   `RevealSeq` and skips it. The event comment still defines
+   `EventRevealCards` as a table reveal for every producer except this
+   one.
+5. **How long it lasts.** As long as `KnownBy` does; the verb adds no
+   expiry of its own. Every exit from a hand already does the right
+   thing: a move to the library (`ClearKnown`) or face down in exile
+   (the knowledge is replaced) drops it, a mulligan clears hand and
+   library, and a move to a public zone makes every seat a knower anyway.
+   A test pins the library exit.
+6. **Undo.** One entry, from the ordinary `Room.ApplyAction` path;
+   `cloneCard` deep-copies `KnownBy`, so undo takes the knowledge back.
+7. **`known_by_seats`.** `CardView.known_by_seats` (omitempty) lists the
+   other seats that know a hand card. `FilterViewFor` stamps it on the
+   viewer's own hand cards only and `redactCardForViewer` zeroes it
+   everywhere else; the unexported `knowers` map still never reaches the
+   wire. The client shows a small count badge on the card, with the names
+   in its tooltip.
+8. **Bots.** Not enumerated: it is a sandbox verb, so it is absent from
+   `internal/legal` and from the `aiseat` allow-list.

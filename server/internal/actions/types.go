@@ -29,6 +29,7 @@ var allTypes = []Type{
 	TypeFinishBlocks,
 	TypeClearCombat,
 	TypeRemoveFromCombat,
+	TypeRevealCard,
 	TypeAdvanceStep,
 	TypeSetMonarch,
 	TypeSetInitiative,

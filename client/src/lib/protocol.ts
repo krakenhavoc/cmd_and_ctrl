@@ -200,6 +200,9 @@ export type ActionType =
   // #672 (CR 506.4): take ONE creature out of combat; params
   // `{instance_id}`. The per-card sibling of clear_combat.
   | "remove_from_combat"
+  // #671: reveal a HAND card to the table, or show it to one player;
+  // params `{card_id, to?}`.
+  | "reveal_card"
   | "keep_hand"
   // ADR 0121 §3: the opening roll. `roll_opening` rolls the caller's
   // d20; `host_roll_remaining` (host or admin) rolls for every seat
@@ -3616,6 +3619,9 @@ export interface CardView extends CastSurfaceView {
   // public and reaches every viewer, because an opponent has to see
   // the 2/2 to block it.
   known_by_you?: boolean;
+  // #671: the OTHER seats (player IDs, table order) that know this
+  // hand card. Sent on the viewer's own hand cards only.
+  known_by_seats?: string[];
   // Normalised battlefield position in [0, 1], stamped by
   // `set_battlefield_position`.
   //

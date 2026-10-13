@@ -969,6 +969,13 @@ func TestCardActionRejectsWrongController(t *testing.T) {
 				return mustJSON(map[string]string{"instance_id": cardID})
 			},
 		},
+		{
+			name: "reveal_card",
+			ty:   TypeRevealCard,
+			params: func(cardID string, _, _ *game.Player) json.RawMessage {
+				return mustJSON(map[string]string{"card_id": cardID})
+			},
+		},
 	}
 
 	for _, tc := range cases {

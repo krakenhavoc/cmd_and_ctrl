@@ -2368,6 +2368,15 @@ type CardView struct {
 	// visible so the engine state stays observable. Added in S13.5.
 	KnownByYou bool `json:"known_by_you,omitempty"`
 
+	// KnownBySeats lists the OTHER seats (by player ID, table order)
+	// that currently know this hand card (#671, ADR 0028's 2026-10-13
+	// amendment). Stamped by FilterViewFor on the viewer's OWN hand
+	// cards only and never on anyone else's, because "who has seen my
+	// card" is the owner's information and handing it to an opponent
+	// would tell them who else has been shown what. Empty when nobody
+	// else knows the card.
+	KnownBySeats []string `json:"known_by_seats,omitempty"`
+
 	// knowers is the set of player UUID strings that currently
 	// know this card. Populated by viewOfCard from
 	// game.Card.KnownBy; consumed by FilterViewFor which clears it
@@ -8818,6 +8827,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// shroud, protection and "target opponent" all narrow by who
 		// is asking.
 		out.Hand = applyCastStampsFor(redactZone(p.Hand, isKnower), viewerID)
+		if viewerID != "" && viewerID != SpectatorViewerID && p.ID == viewerID {
+			out.Hand = stampKnownBySeats(out.Hand, p.Hand, seatIDs, viewerID)
+		}
 		// #1022: a graveyard is public, but a cast permission over one
 		// of its cards held by ANOTHER seat is that seat's answer, so
 		// the stamps it produced come off for everybody else — the
@@ -9192,6 +9204,26 @@ func redactZone(z ZoneView, isKnower func(CardView) bool) ZoneView {
 	return out
 }
 
+// stampKnownBySeats sets KnownBySeats on the owner's own hand cards
+// (#671) from the pre-redaction zone's knowers. out and src are
+// index-aligned (redactZone preserves order). The owner is left out of
+// the list: they know their own card, so listing them says nothing.
+func stampKnownBySeats(out, src ZoneView, seatIDs []string, ownerID string) ZoneView {
+	for i := range out.Cards {
+		if i >= len(src.Cards) {
+			break
+		}
+		var seats []string
+		for _, id := range seatIDs {
+			if id != ownerID && src.Cards[i].knowers[id] {
+				seats = append(seats, id)
+			}
+		}
+		out.Cards[i].KnownBySeats = seats
+	}
+	return out
+}
+
 // applyCastStampsFor promotes the announce-time cast stamps this
 // viewer's own seat was offered into the exported fields, and drops
 // everybody else's (#978, #1022, #1037).
@@ -9342,6 +9374,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out := c
 	out.knowers = nil
 	out.KnownByYou = known
+	// #671: stamped afterwards, on the owner's own hand only, never
+	// trusted from the input.
+	out.KnownBySeats = nil
 	// `castOffers` deliberately SURVIVES this function, unlike
 	// `knowers`: applyCastStampsFor runs immediately after the zone
 	// projection and needs the map to hand this viewer their own cast

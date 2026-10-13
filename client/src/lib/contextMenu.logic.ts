@@ -162,6 +162,30 @@ export interface MenuAction {
 // it can fire. The component renders a tiny inline form for it.
 export type MenuPrompt = "custom_counter" | "mark_damage";
 
+// revealItems builds a hand card's "Reveal to table" row and one
+// "Show to <player>" row per OTHER seated, non-eliminated player
+// (#671). Eliminated seats are skipped here as the server refuses them.
+function revealItems(view: GameView, card: CardView): MenuItem[] {
+  const items: MenuItem[] = [
+    {
+      id: "reveal-table",
+      label: "Reveal to table",
+      hint: "every player sees it; stays known until it leaves your hand",
+      action: { type: "reveal_card", params: { card_id: card.instance_id } },
+    },
+  ];
+  for (const s of view.seats) {
+    if (s.id === card.owner || s.eliminated) continue;
+    items.push({
+      id: `reveal-to-${s.id}`,
+      label: `Show to ${s.name}`,
+      hint: "only they see it",
+      action: { type: "reveal_card", params: { card_id: card.instance_id, to: s.id } },
+    });
+  }
+  return items;
+}
+
 // MenuActivate marks an item that hands off to the board's existing
 // ability flows instead of sending a bare action. Activating an
 // ability can open a sacrifice picker or enter targeting, and both
@@ -2079,6 +2103,10 @@ export function buildMenuSections(
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
+    // #671 (ADR 0028, 2026-10-13): show the card to the table, or to
+    // one other seated player. The menu is already behind canOverride,
+    // and the server re-checks the controller.
+    sections.push({ id: "reveal", label: "reveal", items: revealItems(view, card) });
   }
 
   // ADR 0118 §2: with admin overrides on, a right-click opens this menu
