@@ -129,6 +129,9 @@ const LOG_TONE: Record<LogKind, string> = {
   // standing answer. A decision, so toned like a cast.
   auto_answer: "tone-cast",
   counters: "tone-quiet",
+  // #3040. A ceiling biting is a rule of the table speaking up, not a
+  // whisper, so it reads like the step spine rather than a counter line.
+  count_capped: "tone-step",
   scry: "tone-quiet",
   surveil: "tone-quiet",
   discover: "tone-zone",

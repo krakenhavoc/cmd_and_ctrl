@@ -1567,10 +1567,12 @@ func ptWithCounters(eff Characteristic, counters map[string]int) (power, toughne
 	power, toughness = eff.Power, eff.Toughness
 	if counters != nil {
 		dp, dt := PTCounterDelta(counters)
-		power += dp
-		toughness += dt
+		power = SaturatingAdd(power, dp)
+		toughness = SaturatingAdd(toughness, dt)
 	}
-	return power, toughness
+	// #3040: pinned even with no counters — a layer 7 effect that
+	// scales on the board can overflow on its own.
+	return ClampCount(power), ClampCount(toughness)
 }
 
 // PowerToughness is CurrentPower, PowerForComparison and

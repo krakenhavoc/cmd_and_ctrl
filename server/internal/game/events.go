@@ -681,6 +681,14 @@ const (
 	// rotation seam when the RepEventExtraTurn window cancels.
 	EventExtraTurnSkipped EventKind = "extra_turn_skipped"
 
+	// EventCountCapped — a count hit the table's ceiling and was pinned
+	// to it (#3040, saturate.go). Label names the quantity ("+1/+1
+	// counters", "power", "mana"), Source is the object whose count was
+	// capped (uuid.Nil when there is none), Actor the player involved
+	// (the mana's owner), and Amount the ceiling it was pinned to.
+	// Narrated as LogCountCapped so a capped table is told it is capped.
+	EventCountCapped EventKind = "count_capped"
+
 	// EventKeywordAction is the second engine-internal sentinel of
 	// the same shape, and the replacement-watch key for a KEYWORD
 	// ACTION with a count: proliferate (CR 701.34), scry (CR 701.22),

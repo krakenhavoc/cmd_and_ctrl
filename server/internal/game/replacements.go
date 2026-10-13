@@ -1668,6 +1668,12 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 	}
 
 	for iter := 0; iter < maxReplacementIters; iter++ {
+		// #3040: a stack of doublers multiplies CounterDelta once per
+		// pass; pin it each round so the chain itself cannot wrap
+		// before the placement's own ceiling sees the number.
+		if ev.Kind == RepEventCounter && ev.CounterDelta > MaxCount {
+			ev.CounterDelta = MaxCount
+		}
 		g.splitExpandedDrawLocked(ev)
 		if ev.Canceled {
 			return nil, nil

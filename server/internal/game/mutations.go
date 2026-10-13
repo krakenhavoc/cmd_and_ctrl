@@ -7338,8 +7338,12 @@ func (g *Game) activateManaAbilityLocked(playerID, cardID uuid.UUID, abilityIdx 
 	if ab.ProducedForPaid != nil {
 		produced = ab.ProducedForPaid(g, playerID, cardID, paid)
 	}
-	slots, err := ParseProducedMana(produced)
+	slots, capped, err := parseProducedMana(produced)
 	_ = card // card is deliberately nil after a sacrifice; keep the intent explicit
+	if capped {
+		// #3040: the production passed MaxProducedMana and was cut.
+		g.emitCountCappedLocked("mana", cardID, playerID, MaxProducedMana)
+	}
 	if err != nil {
 		// Mal-formed produced string: emit an effect-error event and
 		// stop short of adding mana. The cost has already been paid —
@@ -9915,6 +9919,18 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 			if z.Cards[i].Counters == nil {
 				z.Cards[i].Counters = make(map[string]int)
 			}
+			// #3040: a count never passes the table ceiling. delta is
+			// rewritten to what actually landed, so the keyword stamp,
+			// the Saga chapter span and the event all describe the
+			// placement that happened rather than the one asked for.
+			capped := false
+			if delta > 0 && delta > MaxCount-z.Cards[i].Counters[name] {
+				delta = MaxCount - z.Cards[i].Counters[name]
+				if delta < 0 {
+					delta = 0
+				}
+				capped = true
+			}
 			z.Cards[i].Counters[name] += delta
 			newAmount := z.Cards[i].Counters[name]
 			// ADR 0101 / CR 613.7c: a keyword counter's timestamp moves
@@ -9942,6 +9958,9 @@ func (g *Game) applyCounterByLocked(cardID uuid.UUID, name string, delta int, pl
 				Actor:  placer,
 				Source: source,
 			})
+			if capped {
+				g.emitCountCappedLocked(name+" counters", cardID, placer, MaxCount)
+			}
 			// CR 714.2b: lore counters put on a Saga fire the chapters
 			// they crossed, whatever put them there (#2123). After the
 			// counter event, so a chapter's trigger sees the count.

@@ -333,7 +333,7 @@ func b28AddCountersToDamageAtOpponents(label, kind string) game.ReplacementEffec
 func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) string {
 	slot := "{" + strings.ToUpper(color) + "}"
 	return func(g *game.Game, controller, _ uuid.UUID) string {
-		return strings.Repeat(slot, devotionTo(g, controller, color))
+		return game.RepeatMana(slot, devotionTo(g, controller, color))
 	}
 }
 

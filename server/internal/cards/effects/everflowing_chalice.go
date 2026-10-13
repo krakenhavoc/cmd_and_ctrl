@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -52,5 +50,5 @@ func everflowingChaliceProduced(g *game.Game, _, source uuid.UUID) string {
 	if !ok {
 		return ""
 	}
-	return strings.Repeat("{C}", c.Counters[game.CounterCharge])
+	return game.RepeatMana("{C}", c.Counters[game.CounterCharge])
 }

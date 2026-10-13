@@ -102,8 +102,10 @@ func PTCounterDelta(counters map[string]int) (power, toughness int) {
 		if !ok {
 			continue
 		}
-		power += p * n
-		toughness += t * n
+		// #3040: saturating, so a counter total at the ceiling times a
+		// large printed modifier cannot wrap.
+		power = SaturatingAdd(power, SaturatingMul(p, n))
+		toughness = SaturatingAdd(toughness, SaturatingMul(t, n))
 	}
 	return power, toughness
 }

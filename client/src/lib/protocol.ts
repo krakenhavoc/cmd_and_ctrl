@@ -951,6 +951,11 @@ export type LogKind =
   | "activate"
   | "cycle"
   | "counters"
+  // #3040: a count hit the table's ceiling and was pinned to it.
+  // `label` is the quantity ("+1/+1 counters", "mana"), `amount` the
+  // ceiling, `card_id` the object whose count was capped (or the mana's
+  // source).
+  | "count_capped"
   | "scry"
   | "surveil"
   // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and

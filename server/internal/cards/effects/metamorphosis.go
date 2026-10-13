@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -33,7 +31,7 @@ func init() {
 				"Metamorphosis — choose a color of mana",
 				func(g *game.Game, color string) error {
 					return AddMana{
-						Produced:     strings.Repeat("{"+color+"}", x),
+						Produced:     game.RepeatMana("{"+color+"}", x),
 						Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")},
 					}.Apply(NewContext(g, item))
 				})
