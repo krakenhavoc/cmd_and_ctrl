@@ -188,3 +188,6 @@ vote vote/sail-into-the-west
 vote vote/split-decision
 vote vote/travel-through-caradhras
 vote vote/tyrants-choice
+vote vote/custodi-squire
+vote vote/selvalas-stampede
+vote vote/trial-of-a-time-lord

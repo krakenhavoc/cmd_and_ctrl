@@ -340,18 +340,38 @@ func restIntoGraveyard(g *game.Game, ids []uuid.UUID) error {
 //
 // Caller holds g.mu.
 func revealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reason string) ([]uuid.UUID, uuid.UUID) {
-	p := ctx.PlayerByID(player)
-	if p == nil || p.Library == nil {
-		return nil, uuid.Nil
+	run, hits := revealUntilCount(ctx, player, pred, 1, reason)
+	if len(hits) == 0 {
+		return run, uuid.Nil
 	}
-	hit := uuid.Nil
+	return run, hits[0]
+}
+
+// revealUntilCount is revealUntil for "reveal cards from the top of your
+// library until you reveal N creature cards" (Selvala's Stampede, a
+// creature card for each wild vote; ADR 0146 amendment 2026-10-13): it
+// stops at the Nth card that passes `pred` and returns every card
+// revealed (top first, the last hit last) and the hits, oldest first —
+// fewer than n when the library ran out first. n below 1 reveals
+// nothing and announces nothing. The same token rule applies: a token
+// is revealed with the rest but is never a hit (CR 108.2).
+//
+// Caller holds g.mu.
+func revealUntilCount(ctx *Context, player uuid.UUID, pred func(game.Card) bool, n int, reason string) ([]uuid.UUID, []uuid.UUID) {
+	p := ctx.PlayerByID(player)
+	if p == nil || p.Library == nil || n < 1 {
+		return nil, nil
+	}
+	var hits []uuid.UUID
 	run := make([]uuid.UUID, 0, 8)
 	for i := len(p.Library.Cards) - 1; i >= 0; i-- {
 		c := p.Library.Cards[i]
 		run = append(run, c.InstanceID)
 		if !c.IsToken() && pred(c) {
-			hit = c.InstanceID
-			break
+			hits = append(hits, c.InstanceID)
+			if len(hits) == n {
+				break
+			}
 		}
 	}
 	ctx.Game.RevealForEffect(game.RevealSpec{
@@ -360,7 +380,7 @@ func revealUntil(ctx *Context, player uuid.UUID, pred func(game.Card) bool, reas
 		Reason: reason,
 		Cards:  run,
 	})
-	return run, hit
+	return run, hits
 }
 
 // RevealUntilThenPutOntoBattlefield is the reveal-until family's whole

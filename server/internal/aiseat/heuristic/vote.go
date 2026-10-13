@@ -67,6 +67,16 @@ func (st *state) voteValue(ch *protocol.PendingChoiceView, index *int) (float64,
 	if opt < len(v.Tally) {
 		tally = v.Tally[opt]
 	}
+	if v.Zone != "" {
+		// Cards in a graveyard (Custodi Squire): they return to the
+		// vote's controller, so its bot votes for the best card and an
+		// opponent's for the worst, both leaning towards a card that
+		// already has votes.
+		if v.Controller == st.me {
+			return 1 + st.permanentValue(c) + 0.5*float64(tally), "vote for our best card in the " + v.Zone + ": " + c.Name, true
+		}
+		return 1 - st.permanentValue(c) + 0.5*float64(tally), "vote for their worst card in the " + v.Zone + ": " + c.Name, true
+	}
 	if c.Controller == st.me {
 		return -st.permanentValue(c), "vote against our own " + c.Name, true
 	}

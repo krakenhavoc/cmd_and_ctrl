@@ -1922,6 +1922,9 @@ export interface CouncilVoteView {
   // voting now.
   controller: string;
   voter: string;
+  // Where the cards the options name are, when not the battlefield
+  // ("graveyard": Custodi Squire). Absent otherwise.
+  zone?: string;
   // The vote's choices in printed order, and the votes each has so far.
   options: string[];
   tally: number[];

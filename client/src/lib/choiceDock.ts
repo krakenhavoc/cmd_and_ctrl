@@ -637,7 +637,14 @@ export function councilVoteRequest(
 ): DockRequest | null {
   const v = c?.council_vote;
   if (!c || !v || c.chooser === viewerID) return null;
-  const voter = seats.find((s) => s.id === c.chooser)?.name ?? "A player";
+  const nameOf = (id: string) => seats.find((s) => s.id === id)?.name ?? "A player";
+  const voter = nameOf(c.chooser);
+  // Illusion of Choice (ADR 0146, second amendment): the player answering
+  // is not the player whose vote it is.
+  const detail =
+    v.voter && v.voter !== c.chooser
+      ? `${voter} is choosing ${nameOf(v.voter)}'s vote`
+      : `${voter} is voting`;
   return voteRequest({
     vote: {
       id: c.id,
@@ -650,7 +657,7 @@ export function councilVoteRequest(
     seats,
     tally: v.tally,
     label: "vote",
-    detail: `${voter} is voting`,
+    detail,
   });
 }
 

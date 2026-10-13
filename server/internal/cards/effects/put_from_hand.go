@@ -73,6 +73,17 @@ type PutFromHandOntoBattlefield struct {
 	// battlefield") leaves it false.
 	Optional bool
 
+	// Max is how many cards the clause puts: 0 and 1 are "a card" (the
+	// default), N is "up to N" with Optional and exactly N without
+	// ("you may put a permanent card from your hand onto the
+	// battlefield FOR EACH free vote", Selvala's Stampede). More than
+	// one card enters as one simultaneous batch, so every CR 614
+	// window sees the board as it stood before any of them arrived and
+	// every ETB fires after all have landed. The ceiling is the number
+	// of matching cards in hand, so a player holding fewer than N is
+	// asked about the cards they have.
+	Max int
+
 	// Label is the prompt's header, "<card> — <the printed clause>".
 	// It is what the player and the bot's move list read, so write
 	// the card's sentence rather than a description of the mechanic.
@@ -103,8 +114,13 @@ type PutFromHandResult struct {
 
 	// Entered is the permanent that arrived, or uuid.Nil when
 	// nothing did: a declined "you may", no matching card in hand,
-	// or a replacement that canceled the entry.
+	// or a replacement that canceled the entry. With Max above one it
+	// is the first of EnteredAll.
 	Entered uuid.UUID
+
+	// EnteredAll is every permanent that arrived, in the order
+	// picked: one entry for a single put, up to Max for a batch.
+	EnteredAll []uuid.UUID
 }
 
 func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
@@ -121,7 +137,14 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		}
 		return nil
 	}
-	floor := 1
+	max := p.Max
+	if max < 1 {
+		max = 1
+	}
+	if max > len(candidates) {
+		max = len(candidates)
+	}
+	floor := max
 	if p.Optional {
 		floor = 0
 	}
@@ -143,19 +166,40 @@ func (p PutFromHandOntoBattlefield) Apply(ctx *Context) error {
 		Question:    label,
 		Cards:       candidates,
 		Min:         floor,
-		Max:         1,
+		Max:         max,
 		// Re-checked on submit: the pick must still be in that
 		// player's hand when the answer arrives.
 		Zone: game.ZoneHand,
 		Then: func(g *game.Game, picked []uuid.UUID) error {
 			report := func(g *game.Game, entered uuid.UUID) error {
 				if then != nil {
-					return then(g, PutFromHandResult{Source: source, Player: player, Entered: entered})
+					res := PutFromHandResult{Source: source, Player: player, Entered: entered}
+					if entered != uuid.Nil {
+						res.EnteredAll = []uuid.UUID{entered}
+					}
+					return then(g, res)
 				}
 				return nil
 			}
 			if len(picked) == 0 {
 				return report(g, uuid.Nil)
+			}
+			if len(picked) > 1 {
+				// One simultaneous entry (entry_batch.go), told what
+				// entered when the last card's window has settled.
+				return g.PutCardsFromHandOntoBattlefieldThenForEffect(picked, game.HandEntryOptions{
+					Controller: player,
+					Tapped:     tapped,
+				}, func(g *game.Game, in []uuid.UUID) error {
+					if then == nil {
+						return nil
+					}
+					res := PutFromHandResult{Source: source, Player: player, EnteredAll: in}
+					if len(in) > 0 {
+						res.Entered = in[0]
+					}
+					return then(g, res)
+				})
 			}
 			// Through the Then door (#1322): the land may stop to ask
 			// its own question (a shockland's life), and a rider on
