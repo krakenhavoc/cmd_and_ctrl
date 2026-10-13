@@ -108,7 +108,7 @@ planned just-in-time from the S12 pain-point triage.
 | S62     | An agent at the table                                                | 7     | [#2230](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2230) | —          | **done**    |
 | S63     | Monitoring: metrics, logs, dashboards and alerts                     | 7     | [#2281](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2281) | —          | **done**    |
 | S64     | Admin views: accounts, games and who is on now                       | 7     | [#2296](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2296) | —          | **done**    |
-| S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | in progress |
+| S65     | A walkthrough that keeps up: first-use hints and a refreshed tutorial | 7    | [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2313) | —          | **done**    |
 | S66     | Bots that play their decks                                           | 7     | [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) | —          | **done**    |
 | S67     | Bots round 3: no stalls, sharper sequencing                          | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/76) | —          | **done**    |
 | S68     | Cost components and alternative costs                                | 7     | [milestone](https://github.com/krakenhavoc/cmd_and_ctrl/milestone/77) | —          | **done**    |
@@ -3570,16 +3570,16 @@ Opened 2026-10-05, after a survey found the practice tutorial was the only walkt
 
 The members are ADR 0125's Delivery PRs.
 
-- [ ] ADR 0125: first-use hints and a refreshed tutorial (PR 1, with this section)
-- [ ] PR 2: the label registry and its guard. `client/src/lib/labels.ts`, components render contract labels as `L.<key>`, anchors are typed to the registry, `labels.test.ts` runs in the `client` job, `docs/labels.md` is generated, and AGENTS.md §5's labels paragraph points at it.
-- [ ] PR 3: the practice table rolls. `StartWithOpeningRoll` on the practice table, and a practice bot that wins the roll hands the first turn to the player (`aiseat.SeatSpec.FirstTurnTo`).
-- [ ] PR 4: the hint engine. `lib/hints/` (collection, queue, placement, the table's quiet moment), the hint card and layer, the synced `help` settings group (settings v21) with its union merge, and the Go to the tip shortcut.
-- [ ] PR 5: Help and the way in. The header's Help menu, the ⋯ menu's Help group, Settings → Advanced's tips section, Home's Practice game tile, and the `site.help` and `lobby.practice` hints (ADR 0076 sub-PR 5).
-- [ ] PR 6: site hints. The Lobby, Decks, Settings, Catalog, Roadmap and admin views.
-- [ ] PR 7: table hints. The dock, the opening roll, the stack, right-click, the commander, the attention strip, the ⋯ menu, the expanded board and the keymap.
-- [ ] PR 8: the tutorial refresh. Fourteen steps: the roll, the stack and the commander are new, and completed steps mark the hints they teach as seen.
-- [ ] PR 9: the nightly walks. `tutorial-walk.spec.ts` and `hints.spec.ts`, both failing on any "has no anchor" log line (ADR 0076 sub-PR 6).
-- [ ] PR 10: the exit check, its evidence on #2313, and the amendment notes in ADR 0076 and ADR 0121.
+- [x] ADR 0125: first-use hints and a refreshed tutorial (PR 1, with this section)
+- [x] PR 2: the label registry and its guard. `client/src/lib/labels.ts`, components render contract labels as `L.<key>`, anchors are typed to the registry, `labels.test.ts` runs in the `client` job, `docs/labels.md` is generated, and AGENTS.md §5's labels paragraph points at it.
+- [x] PR 3: the practice table rolls. `StartWithOpeningRoll` on the practice table, and a practice bot that wins the roll hands the first turn to the player (`aiseat.SeatSpec.FirstTurnTo`).
+- [x] PR 4: the hint engine. `lib/hints/` (collection, queue, placement, the table's quiet moment), the hint card and layer, the synced `help` settings group (settings v21) with its union merge, and the Go to the tip shortcut.
+- [x] PR 5: Help and the way in. The header's Help menu, the ⋯ menu's Help group, Settings → Advanced's tips section, Home's Practice game tile, and the `site.help` and `lobby.practice` hints (ADR 0076 sub-PR 5).
+- [x] PR 6: site hints. The Lobby, Decks, Settings, Catalog, Roadmap and admin views.
+- [x] PR 7: table hints. The dock, the opening roll, the stack, right-click, the commander, the attention strip, the ⋯ menu, the expanded board and the keymap.
+- [x] PR 8: the tutorial refresh. Fourteen steps: the roll, the stack and the commander are new, and completed steps mark the hints they teach as seen.
+- [x] PR 9: the nightly walks. `tutorial-walk.spec.ts` and `hints.spec.ts`, both failing on any "has no anchor" log line (ADR 0076 sub-PR 6).
+- [x] PR 10: the exit check, its evidence on #2313, and the amendment notes in ADR 0076 and ADR 0121.
 
 ### Exit criteria
 
@@ -3594,7 +3594,13 @@ From the tracker, [#2313](https://github.com/krakenhavoc/cmd_and_ctrl/issues/231
 
 ### Status
 
-**In progress** (2026-10-11). ADR 0125 is accepted (#2317). PRs 2–10 merged into `develop` on 2026-10-05 and 2026-10-06 (#2320, #2321, #2332, #2345, #2341, #2344, #2351, #2393, #2398); the tutorial is still being tuned from playtests (#3004, #3008, #3017).
+**Done** (2026-10-13). ADR 0125 is accepted (#2317), and PRs 2 to 10 merged on 2026-10-05 and 2026-10-06 (#2320, #2321, #2332, #2345, #2341, #2344, #2351, #2393, #2398). They reached `main` in #2402. The tutorial was tuned from playtests afterwards (#3004, #3008, #3017).
+
+Exit criteria:
+- **2:** re-proved after S71 rebuilt the site pages. Develop's nightly [38471987796](https://github.com/krakenhavoc/cmd_and_ctrl/actions/runs/38471987796) was green, with the tutorial walk and the hints spec and no "has no anchor" line.
+- **3:** proved by the scratch PR #2397.
+- **4 and 5:** the owner checked them on cmd-dev on 2026-10-13.
+- **The last flaky failure:** the hints spec's one flaky failure was a real race. A slow roadmap load skipped the page's own tip. It was fixed in #3307 (#3305). The evidence is on #2313.
 
 ---
 
