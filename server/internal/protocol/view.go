@@ -732,6 +732,9 @@ type PendingChoiceView struct {
 	// who has been asked. Public: every seat sees who is deciding.
 	// Absent on every other prompt.
 	AnyPlayerOffer *AnyPlayerOfferView `json:"any_player_offer,omitempty"`
+	// Assist marks a pay_amount as an assist helper's prompt (ADR 0150
+	// §5): who is casting what. Public. Absent on every other prompt.
+	Assist *AssistPromptView `json:"assist,omitempty"`
 }
 
 // AnyPlayerOfferView is an any-player offer in progress
@@ -1598,6 +1601,36 @@ type PayAmountView struct {
 	Marks []int `json:"marks,omitempty"`
 	// SelfDamage says each point is also dealt to the chooser.
 	SelfDamage bool `json:"self_damage,omitempty"`
+}
+
+// AssistOfferView is a spell with assist's offer to its caster
+// (ADR 0150 §5).
+type AssistOfferView struct {
+	// Max is the generic part of the total cost for the default
+	// announcement out of this zone (commander tax and cost modifiers
+	// included): "up to {Max}". The prompt to the helper caps it again
+	// at what they can make.
+	Max int `json:"max"`
+	// Players are the players the caster may ask: every other player
+	// still in the game, in seat order.
+	Players []string `json:"players"`
+}
+
+// AssistPromptView marks a pay_amount as an assist helper's prompt
+// (ADR 0150 §5). Public: the caster's dock shows a waiting line from
+// it, and every other seat a read-only one.
+type AssistPromptView struct {
+	// Caster is the player casting the spell; the prompt's chooser is
+	// the helper.
+	Caster string `json:"caster"`
+	// Spell is the card being cast, SpellName its name and ManaCost its
+	// total cost as announced ("{3}{B}").
+	Spell     string `json:"spell"`
+	SpellName string `json:"spell_name"`
+	ManaCost  string `json:"mana_cost,omitempty"`
+	// Generic is the generic part of the total cost. The prompt's own
+	// max is the most the helper can pay, which may be less.
+	Generic int `json:"generic"`
 }
 
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
@@ -3412,6 +3445,13 @@ type CastSurfaceView struct {
 	// `alternative_costs`, because the client asks both questions in
 	// one modal.
 	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
+	// Assist is a spell with assist's offer to this caster (CR
+	// 702.132a, ADR 0150 §5): who may be asked to help pay its generic
+	// mana and how much generic there is. Read by the cast flow's
+	// Assist row, which sends the pick as `assist_player`. Absent for
+	// every card without assist. Per viewer: the players and the total
+	// are this caster's.
+	Assist *AssistOfferView `json:"assist,omitempty"`
 	// CantCast is the printed clause that stops this card being cast
 	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
 	// "Each player can't cast more than one spell each turn", "Cast
@@ -5377,6 +5417,8 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastPrices = nil
 	// #2581: and so is an X ceiling read off one seat's board.
 	s.XMax = nil
+	// ADR 0150 §5: and assist's offer, which is "who may YOU ask".
+	s.Assist = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -5912,6 +5954,17 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
 	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	// ADR 0150 §5: assist's "choose another player", asked in the same
+	// modal as the gift's opponent. The total is the engine's own
+	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
+	if haveLive {
+		if most, players, ok := g.AssistOfferLocked(caster, live, kind); ok {
+			out.Assist = &AssistOfferView{Max: most, Players: cardIDStrings(players)}
+			if out.Assist.Players == nil {
+				out.Assist.Players = []string{}
+			}
+		}
+	}
 	// #2581: the printed X ceiling, read for this caster now — the
 	// count CastSpell will read as X is announced (CR 601.2b).
 	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
@@ -8168,6 +8221,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				HelpsController: o.HelpsController,
 			}
 		}
+		if a := c.Assist; a != nil {
+			v.Assist = &AssistPromptView{
+				Caster:    a.Caster.String(),
+				Spell:     a.Spell.String(),
+				SpellName: a.SpellName,
+				ManaCost:  a.ManaCost,
+				Generic:   a.Generic,
+			}
+		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
@@ -9589,6 +9651,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.TapCost = nil
 	// ADR 0100: "delve" names the card as loudly as its mana cost.
 	out.Delve = nil
+	// ADR 0150: and so does "assist".
+	out.Assist = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.

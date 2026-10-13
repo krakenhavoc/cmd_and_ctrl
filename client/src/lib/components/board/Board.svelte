@@ -121,6 +121,7 @@
     isModal,
     discardCostOf,
     castAdditionalCost,
+    assistOf,
     costBranchesOf,
     castSacrificeClause,
     castSacrificeLabel,
@@ -527,11 +528,15 @@
   // the vast majority of casts of these cards will be.
   let altCostPromptCard = $state<CardView | null>(null);
   let altCostPromptChoices: CastChoices = {};
+  // ADR 0150 §5: a forced cast pays no mana, so the modal offers no
+  // Assist row for one.
+  let altCostPromptForceCast = $state(false);
   function confirmAltCost(
     key: string | undefined,
     optional: number[],
     giftOpponent?: string,
     costBranch?: number,
+    assistPlayer?: string,
   ): void {
     const card = altCostPromptCard;
     const choices = altCostPromptChoices;
@@ -550,6 +555,9 @@
     // ADR 0100: the either/or branch is announced in the same step
     // (CR 601.2b); the branch's own picker opens next in the chain.
     if (costBranch !== undefined) next = { ...next, costBranch };
+    // ADR 0150 §5: the helper asked, if any; the cast rides it as
+    // `assist_player` and waits for their answer.
+    if (assistPlayer !== undefined) next = { ...next, assistPlayer };
     afterAltCost(card, next);
   }
 
@@ -1140,12 +1148,17 @@
     //
     // ADR 0100: and an either/or additional cost's branch radio, the
     // same "what am I paying for this?" question.
+    //
+    // ADR 0150 §5: and assist's "ask a player to help pay", which sits
+    // where the gift's opponent picker does.
     if (
       alternativeCostsOf(card).length > 0 ||
       optionalCostsOf(card).length > 0 ||
-      costBranchesOf(card).length > 0
+      costBranchesOf(card).length > 0 ||
+      assistOf(card, choices.forceCast === true) !== undefined
     ) {
       altCostPromptChoices = choices;
+      altCostPromptForceCast = choices.forceCast === true;
       altCostPromptCard = card;
       return;
     }
@@ -3529,6 +3542,7 @@
   <AlternativeCostModal
     card={altCostPromptCard}
     seats={view.seats}
+    forceCast={altCostPromptForceCast}
     onConfirm={confirmAltCost}
     onCancel={() => {
       altCostPromptCard = null;

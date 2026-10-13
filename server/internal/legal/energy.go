@@ -87,6 +87,13 @@ func payAmountMove(reason string, pa *game.PayAmountPrompt, amount int) (string,
 		return fmt.Sprintf("%s: pay %d life", reason, amount), &MoveCost{Life: amount}
 	case game.PayResourceNone:
 		return fmt.Sprintf("%s: choose %d", reason, amount), nil
+	case game.PayResourceMana:
+		// ADR 0150 §4: an assist helper's answer. The mana comes out of
+		// the helper's pool and auto-tapper when the cast is made.
+		if amount == 0 {
+			return reason + ": don't help", nil
+		}
+		return fmt.Sprintf("%s: help pay {%d}", reason, amount), nil
 	}
 	if amount == 0 {
 		return reason + ": pay nothing", nil

@@ -285,6 +285,15 @@ type PaidCost struct {
 	// spell: a copy is not cast and was not convoked (CR 707.10), so
 	// spell_copy.go does not carry it.
 	Convoked []uuid.UUID `json:"convoked,omitempty"`
+
+	// AssistedBy is the player who helped pay for the spell with assist
+	// (CR 702.132a, ADR 0150 §4), and AssistPaid how much of its generic
+	// mana they paid. Their mana is in Mana with the caster's, since it
+	// was spent to cast the spell. Zero for a cast nobody helped with,
+	// and for a COPY (CR 707.10), which spell_copy.go does not carry it
+	// onto.
+	AssistedBy uuid.UUID `json:"assistedBy,omitempty"`
+	AssistPaid int       `json:"assistPaid,omitempty"`
 }
 
 // PaidCostBranch reports whether the either/or branch keyed `key` was
@@ -427,7 +436,8 @@ func (p PaidCost) IsZero() bool {
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
 		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0 &&
-		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0
+		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
+		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
