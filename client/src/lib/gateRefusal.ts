@@ -17,5 +17,5 @@ export function gateRefusalNotice(hash: string): string {
   if (new URLSearchParams(query).get("retry") === "1") {
     return "Discord didn't answer when we checked your account. Try signing in again.";
   }
-  return "Accounts are for members of the C2 Discord server who have been given access. Ask in the server, then sign in again. An invite link from a host still works without an account.";
+  return "Accounts are for members of the C2 Discord with the Elder Dragon Highlander role. Join the server, answer yes to “request account access”, and sign in again once a mod gives you the role. An invite link from a host still works without an account.";
 }
