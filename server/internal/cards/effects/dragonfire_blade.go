@@ -19,18 +19,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature for the full {4}. The generic floor is the engine's:
 // nothing here can take the cost below zero.
 //
-// One clause does not ship, and it is declared rather than dropped
-// silently (#259 — a card that quietly loses a clause is stronger than
-// printed, never the direction to err):
-//
-//   - "Hexproof from monocolored" is protection-FAMILY vocabulary —
-//     it tests the QUALITY of the source of a spell or ability, not
-//     a simple targeting bit — and ADR 0038 §7 rules the whole family
-//     out for exactly that reason: the targeting choke point never
-//     receives the source's colour count to test against. Plain
-//     hexproof (from everything) would be a real and strictly
-//     stronger ability than what is printed, so it is left off
-//     entirely rather than substituted.
+// "Hexproof from monocolored" is a layer-6 grant of
+// game.HexproofFromMonocolored (#3172, ADR 0038's amendment of
+// 2026-10-13): an opponent's source with exactly one colour can't
+// target the equipped creature, a multicolored or colourless one can.
+// It is not plain hexproof, which would be strictly stronger.
 func init() {
 	equip := EquipAbility("{4}")
 	equip.CostModifiers = []game.CostModifier{
@@ -41,11 +34,8 @@ func init() {
 	Register(Spec{
 		OracleID:     "e809b847-b712-4558-95ea-9bb7356cde91",
 		Name:         "Dragonfire Blade",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Hexproof from monocolored creatures and spells isn't implemented — the equipped creature gets no hexproof from this card.",
-		},
-		Static:    []game.StaticAbility{PumpAttached(2, 2)},
-		Activated: []ActivatedAbility{equip},
+		Completeness: CompletenessFull,
+		Static:       []game.StaticAbility{PumpAttached(2, 2), GrantToAttached(game.HexproofFromMonocolored)},
+		Activated:    []ActivatedAbility{equip},
 	})
 }

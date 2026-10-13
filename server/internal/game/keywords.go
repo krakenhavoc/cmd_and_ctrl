@@ -379,6 +379,8 @@ const KeywordChangeling = "changeling"
 //     abilities AT ALL, its own controller's included.
 //   - hexproof (CR 702.11b) — can't be the target of spells or
 //     abilities your OPPONENTS control.
+//   - hexproof from [quality] (CR 702.11e) — the same, but only for a
+//     source with the quality (hexproof_from.go).
 //   - protection (CR 702.16b) — can't be the target of spells with
 //     the stated quality, or of abilities from a SOURCE with it.
 //
@@ -463,6 +465,14 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 		return false
 	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
+		return false
+	}
+	// CR 702.11e: "hexproof from [quality]" is hexproof that refuses
+	// only a source with the quality, so it asks the source, as
+	// protection does, and the opponent test, as hexproof does. It
+	// takes the same waiver: "as though it didn't have hexproof"
+	// waives the variant too (hexproof_from.go).
+	if hexproofFromRefuses(c, src) && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
 	// CR 702.16b. The pre-test is cheap and the snapshot is not, so
@@ -566,6 +576,14 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	}
 	if toks, ok := ProtectionTokens(s); ok {
 		return toks, true
+	}
+	// Hexproof from [quality] (CR 702.11e) is parameterised the same
+	// way: Scryfall's array says only "Hexproof from" and the quality
+	// is in the oracle line, so a card's token comes from the line scan
+	// and a bare "hexproof from" is refused (ADR 0038 §6 and its
+	// amendment of 2026-10-13).
+	if q, ok := ParseHexproofFromQuality(s); ok {
+		return []string{HexproofFromToken(q)}, true
 	}
 	return nil, false
 }

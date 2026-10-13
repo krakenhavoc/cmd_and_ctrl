@@ -709,10 +709,10 @@ func TestRFPBGideonOathlessPingsAnOpponentWhoActivatesALoyaltyAbility(t *testing
 	}
 }
 
-func TestRFPBGideonOathlessIsDeclaredWithItsWardCaveat(t *testing.T) {
+func TestRFPBGideonOathlessCarriesItsWard(t *testing.T) {
 	spec, ok := Lookup(rfpbGideonOathlessOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("Gideon the Oathless must ship with the ward caveat: %+v", spec.Caveats)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("Gideon the Oathless is complete since ward—discard landed (#3172): %+v", spec.Caveats)
 	}
 }
 

@@ -77,7 +77,13 @@ func (g *Game) enforceCantHaveLocked() {
 			continue
 		}
 		kept := make([]string, 0, len(ch.Abilities))
+		// CR 702.11e: hexproof from [quality] is a variant of hexproof,
+		// so an object that can't have hexproof can't have any of them.
+		noHexproof := containsFold(ch.CantHave, KeywordHexproof)
 		for _, a := range ch.Abilities {
+			if noHexproof && IsHexproofFromToken(a) {
+				continue
+			}
 			if !containsFold(ch.CantHave, a) {
 				kept = append(kept, a)
 			}

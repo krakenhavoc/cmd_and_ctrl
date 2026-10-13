@@ -1769,6 +1769,9 @@ func checkPlayerKeywords(spec Spec) {
 		if _, ok := game.ParseProtectionQuality(kw); ok {
 			continue
 		}
+		if _, ok := game.ParseHexproofFromQuality(kw); ok {
+			continue
+		}
 		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+
 			"use %q or a \"protection from <quality>\" token the closed grammar parses (ADR 0072, #1197)",
 			spec.Name, i, kw, game.KeywordHexproof))

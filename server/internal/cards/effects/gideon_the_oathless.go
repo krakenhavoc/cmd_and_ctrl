@@ -15,11 +15,8 @@ import (
 //	 Whenever an opponent activates a loyalty ability, Gideon deals 1
 //	 damage to that player."
 //
-// DECLARED SIMPLIFICATION, weaker than printed: Ward—Discard a card is
-// not implemented. A ward cost is one of mana, life or a sacrifice
-// (ward.go) and there is no discard component, the same gap Graveyard
-// Trespasser ships with. Leaving the ward out makes Gideon easier to
-// target than printed, never harder.
+// Ward—Discard a card is Ward(WardDiscard(1)) (#3172, ward.go), the
+// same shape Graveyard Trespasser uses.
 //
 // Both damage triggers read the player from the triggering event, not
 // from a target: "that player" is not a target, so hexproof and shroud
@@ -28,9 +25,9 @@ func init() {
 	Register(Spec{
 		OracleID:     "7afa530f-ea51-4bee-af3b-59b83ea5cb25",
 		Name:         "Gideon the Oathless",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Ward—Discard a card isn't implemented — opponents can target Gideon without discarding."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
+			Ward(WardDiscard(1), "Gideon the Oathless — ward, discard a card"),
 			On(game.EventETB, anOpponentsCreatureEntered,
 				"Gideon the Oathless — 1 damage to that player",
 				gideonOathlessPing(func(item *game.StackItem, g *game.Game) uuid.UUID {

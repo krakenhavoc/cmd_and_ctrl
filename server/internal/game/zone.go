@@ -321,6 +321,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// 702.112b: and so is renowned — a flickered renown creature is
 		// a new object whose renown can trigger again.
 		c.Renowned = false
+		c.DealtCombatDamage = false
 		c.Saddled = false
 		c.SaddledBy = nil
 		// ADR 0071 amendment (#2698) / CR 400.7 + CR 701.60: and so is
