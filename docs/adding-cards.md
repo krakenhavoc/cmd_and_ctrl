@@ -8875,6 +8875,32 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   Gods' 7b base 0/0); one in the removal's own layer does not, because ADR 0093 decision 3 orders every layer 6 removal
   first.
 
+### Three small pieces from the Raffine deck (#3212)
+
+- **Connive X** is `ConniveX{Controller, Creature, X}` (`connive.go`): draw X, then
+  one discard prompt for X cards, then a +1/+1 counter per nonland card discarded.
+  `ConniveEach` is the one-at-a-time form for several creatures. Raffine counts the
+  attacking creatures when the ability resolves.
+- **"Instead exile it with a <kind> counter on it"** is `GraveyardBecomesExile{ExileCounter: "void"}`;
+  the counter lands with the card (`ReplacementEvent.ExileCounter`, ADR 0013 amendment
+  2026-10-13). Read it back with `c.Counters["void"]` on a card in `g.Exile`. Dauthi
+  Voidwalker's choice among those cards is a `ChooseCardsPrompt`, and the play is a
+  `CastPermission` over the chosen exile card with `Cost: "{0}"` and `CastOnly` false.
+- **"in addition to its other colors"** is `game.AddColorsMod("B")` beside
+  `game.AddSubtypesMod("Zombie")`, in a `ScopedEffectFor` pinned with
+  `g.PinnedTo(game.IndefiniteDuration(), id)` (ADR 0041 amendment 2026-10-13).
+  A return that may pause for an entry question applies it from
+  `ReturnFromGraveyardTogether.Then`.
+- **A madness cost with life** is `Madness: "{2}{B}", MadnessLife: 8` (ADR 0066
+  amendment 2026-10-13).
+- **A free cast of cards in your hand during a resolution** (The Great Synthesis)
+  cannot be a plain hand `CastPermission`: a hand permission applies only to a cast
+  that claims the alternative cost it carries (`CastPermission.ForClaim`). Give it an
+  `AltCostKey` (an on-disk identity) and a `Cost: "{0}"`, `CastOnly`, `TimingFlash` and
+  `LapseOnPass: game.LapseStaysInExile`; the offer shows in the cost picker and the
+  caster claims it. Kari Zev's and Rishkar's Expertise grant one without a key (#3234,
+  open).
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

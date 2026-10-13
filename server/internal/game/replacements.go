@@ -450,6 +450,16 @@ type ReplacementEvent struct {
 	// the permanent (CR 400.7).
 	ExiledWith PermissionCardRef
 
+	// ExileCounter is a replacement's declaration that a card it sent to
+	// EXILE arrives there with one counter of this kind on it: Dauthi
+	// Voidwalker's "instead exile it with a void counter on it". Like
+	// ExiledWith it rides the event, because the replacement runs before
+	// the card moves, and the two landing functions stamp it once the
+	// card has really landed in exile (stampExileCounterLocked). A move
+	// a later replacement redirected elsewhere stamps nothing. Empty
+	// declares none.
+	ExileCounter string
+
 	// Destruction says this battlefield exit is a DESTRUCTION
 	// (CR 701.7a), as opposed to the other things that take the same
 	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally

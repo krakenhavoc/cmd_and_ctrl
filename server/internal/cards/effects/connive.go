@@ -64,3 +64,50 @@ func conniveChain(g *game.Game, item *game.StackItem, controller uuid.UUID, ids 
 	})
 	return nil
 }
+
+// ConniveX makes ONE creature connive X (CR 701.50): draw X cards, then
+// discard X cards, then put a +1/+1 counter on the creature for each
+// nonland card discarded this way. Raffine, Scheming Seer is the user,
+// where X is the number of attacking creatures. X is read by the caller
+// when the ability resolves.
+//
+// The discard is one prompt for all X cards, and the counters are counted
+// on the answer, so discarding two nonland cards is two counters. A
+// creature that has left the battlefield by then still draws and discards
+// (CR 701.50c) and gets nothing. Fewer cards in hand than X discards the
+// hand (CR 701.9a), which DiscardPrompt already clamps.
+type ConniveX struct {
+	Controller uuid.UUID
+	Creature   uuid.UUID
+	X          int
+}
+
+// Apply draws, then queues the discard whose continuation adds counters.
+func (c ConniveX) Apply(ctx *Context) error {
+	if c.X <= 0 {
+		return nil
+	}
+	g := ctx.Game
+	if err := (DrawCards{Player: c.Controller, N: c.X}).Apply(ctx); err != nil {
+		return err
+	}
+	g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+		Player:   c.Controller,
+		Source:   c.Creature,
+		N:        c.X,
+		Question: "Connive: discard cards",
+		Then: func(g *game.Game, _ uuid.UUID, discarded []uuid.UUID) error {
+			nonland := 0
+			for _, id := range discarded {
+				if card, ok := g.LookupCardForEffect(id); ok && !card.IsLand() {
+					nonland++
+				}
+			}
+			if nonland == 0 || !onBattlefield(g, c.Creature) {
+				return nil
+			}
+			return g.AddCounterForEffect(c.Creature, game.CounterPlusOne, nonland)
+		},
+	})
+	return nil
+}

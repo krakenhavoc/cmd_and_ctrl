@@ -142,7 +142,6 @@ func TestBatch26CardsAreRegistered(t *testing.T) {
 	for _, skipped := range []string{
 		"4b96c22a-0d5b-44fd-b326-5f3ffcc3917b", // Deadpool, Trading Card — text-box exchange
 		"8e62d05a-6efd-4764-bca8-97895e0cb613", // Caesar, Legion's Emperor — modal reflexive trigger
-		"2993dc7d-723d-4a9b-94bd-4bb02a9f7243", // Tishana's Tidebinder — abilities on the stack can't be targeted
 		// Great Divide Guide came off this list with ADR 0093 and ships
 		// in great_divide_guide.go.
 		"8d35cef8-a52d-45fb-8f5f-cccea26826d0", // Wyll's Reversal — a die roll and target redirection

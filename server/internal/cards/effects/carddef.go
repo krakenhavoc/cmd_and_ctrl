@@ -226,6 +226,7 @@ func buildDef(spec Spec) *game.CardDef {
 		WantsManaFrom:                       spec.WantsManaFrom,
 		AdditionalLandPlays:                 spec.AdditionalLandPlays,
 		XMatters:                            spec.XMatters,
+		MadnessLife:                         spec.MadnessLife,
 		XCeiling:                            spec.XCeiling,
 		CastPermissions:                     standingCastPermissions(spec.CastPermissions),
 		GatedCastPermissions:                gatedStandingCastPermissions(spec.GatedCastPermissions),

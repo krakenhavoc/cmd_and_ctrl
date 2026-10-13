@@ -20,6 +20,25 @@ import "github.com/google/uuid"
 // is no EventResolve to open a window on. It is also read by a pure-data
 // PermissionFilter, which has a Card in hand and no log to walk.
 
+// stampExileCounterLocked puts one `kind` counter on the card that has
+// just landed in `dst`, when `dst` is exile and the move declared one
+// (ReplacementEvent.ExileCounter). A no-op for every other destination,
+// for an empty kind, and for a card that is not in `dst`.
+func stampExileCounterLocked(dst *Zone, cardID uuid.UUID, kind string) {
+	if dst == nil || dst.Kind != ZoneExile || kind == "" {
+		return
+	}
+	for i := range dst.Cards {
+		if dst.Cards[i].InstanceID == cardID {
+			if dst.Cards[i].Counters == nil {
+				dst.Cards[i].Counters = map[string]int{}
+			}
+			dst.Cards[i].Counters[kind]++
+			return
+		}
+	}
+}
+
 // stampExiledWithLocked writes the "exiled with" link onto the card
 // that has just landed in `dst`, when `dst` is exile and the move
 // declared a link. A no-op for every other destination, for the zero
