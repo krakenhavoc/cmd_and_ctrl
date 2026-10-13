@@ -310,6 +310,13 @@ type ManaSpendContext struct {
 	// on someone else's creature is not covered. Zero for a cast.
 	Controller uuid.UUID
 	Payer      uuid.UUID
+
+	// Object is the object whose ability is being paid for
+	// (ManaSpendForAbility), uuid.Nil for a cast. Quicksilver Elemental's
+	// "to pay the activation costs of THIS creature's abilities"
+	// (AnyColorSpendStatic.OwnAbilities) compares it with the rider's
+	// source.
+	Object uuid.UUID
 }
 
 // ManaSpendForAbilityRow is ManaSpendForAbility for one row of the
@@ -378,6 +385,7 @@ func ManaSpendForAbility(c Card) ManaSpendContext {
 		Colors:           c.EffectiveColors(),
 		AllCreatureTypes: HasAllCreatureTypes(&c),
 		Controller:       c.Controller,
+		Object:           c.InstanceID,
 	}
 }
 

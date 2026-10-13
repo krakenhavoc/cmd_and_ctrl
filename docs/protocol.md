@@ -2908,8 +2908,13 @@ the recipient's summoning sickness. Three things reach the wire.
   amend it).
 - **`borrowed_from: {id, name}` on a borrowed row** (ADR 0155 Decision
   10). The lender: the object the row was read off, by id and printed
-  name. Absent on every row that is not lent, and when the lender sits
-  in a hand or a library. A borrowed row's `granted_by` names the
+  name. Absent on every row that is not lent. When the lender sits in a
+  hand or a library it reaches only the viewers who may see it there
+  (#3202): a library top revealed to the table (Conspicuous Snoop) is
+  everyone's, a top only its owner may look at is the owner's, and a
+  hand card is its owner's and each seat it was revealed to; every
+  other viewer gets the row without it. `unautomated_lenders` follows
+  the same rule. A borrowed row's `granted_by` names the
   borrowing permanent, and its `label` reads the lender's name as the
   borrower's (CR 201.5b): Necrotic Ooze's lent "{T}: Mana Elf gains you 1
   life." is "{T}: Necrotic Ooze gains you 1 life." A row from a borrow

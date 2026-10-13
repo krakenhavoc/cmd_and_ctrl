@@ -276,6 +276,7 @@ var gameFields = plan(
 	"openingHands", dropped, "restores empty: the practice table's scripted opening hand (ADR 0076 §2.2), read once by the deal; a practice table writes no restore point, and a restore after the deal has nothing left to deal",
 	"layerVersion", carried, "advanced by one on restore to force a recompute",
 	"lastResolvedVersion", carried, "",
+	"libraryTopWatch", rebuilt, "the library tops the last layer pass read while a DependsOnLibraryTop static was in play (ADR 0155 §8); a restored game's first recompute re-arms it",
 
 	"Listeners", rebuilt, "process-lifetime singletons installed by NewGame; a new binary's listener set wins",
 	"BuiltinReplacements", rebuilt, "registered by NewGame, not per-game state",
@@ -482,6 +483,9 @@ var cardFields = plan(
 	// (Phyrexian Processor's life paid). A player's choice, so nothing
 	// can rebuild it — and it is the size of every token it makes.
 	"ChosenNumber", carried, "",
+	// ADR 0155 §8 (#3202): the permanent chosen as it entered (Scheming
+	// Fence's). A player's choice, so nothing can rebuild it.
+	"ChosenPermanent", carried, "",
 	"Devoured", carried, "",
 	// ADR 0097: the "hasn't been chosen" memory with no duration —
 	// player choices nothing can re-derive.

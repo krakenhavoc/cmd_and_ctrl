@@ -529,6 +529,7 @@ func (g *Game) cloneLocked() *Game {
 	// matches the original's at capture time.
 	out.layerVersion.Store(g.layerVersion.Load())
 	out.lastResolvedVersion.Store(g.lastResolvedVersion.Load())
+	out.libraryTopWatch = append([]libraryTopMark(nil), g.libraryTopWatch...)
 	return out
 }
 
