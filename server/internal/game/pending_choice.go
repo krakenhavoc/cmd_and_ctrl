@@ -686,6 +686,12 @@ type PendingChoice struct {
 	// Added in S16.5 (#159).
 	CopyOptions []uuid.UUID
 
+	// ExchangesText marks a PendingChoiceCopyTarget whose pick is the
+	// creature to exchange text boxes with rather than the object to
+	// copy (CopySelector.ExchangeText, ADR 0160 Decision 6). The answer
+	// is the same; only the wording differs. Wire `exchanges_text`.
+	ExchangesText bool
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).
@@ -761,6 +767,20 @@ type PendingChoice struct {
 	// non-choosers entirely, because the length of this list is
 	// itself hidden information about a hidden zone.
 	SearchCards []uuid.UUID
+
+	// SearchGraveyardCards is the subset of SearchCards that sits in
+	// the searcher's GRAVEYARD, for the "search your library and/or
+	// graveyard" cards (#3217, ADR 0015's 2026-10-13 amendment). Empty
+	// for a library-only search, which is every search but those.
+	//
+	// It is what makes the shuffle zone-aware: a take wholly from the
+	// graveyard means the library was never searched. It does not raise
+	// the floor ("and/or" lets the searcher look only in the library, so
+	// a stated-quality search may still find nothing); it also tells the
+	// client which tiles to caption. Wire-serialised as PendingChoiceView.
+	// SearchGraveyard, and withheld from non-choosers with the rest of
+	// the search prompt.
+	SearchGraveyardCards []uuid.UUID
 
 	// SearchMax is how many of SearchCards the chooser may take.
 	SearchMax int

@@ -382,3 +382,12 @@ stronger than printed, so the shape is recorded and the schema stays at its vers
 
 Back-out: drop the `OncePerBatch` check in `fireEventDelayedTriggersLocked`; Dalkovan Encampment makes its Warriors once
 per attacker (`TestCavCDalkovanWarriorsComeAfterTheLandIsGone` fails).
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), cav-h2): a fired delayed trigger carries its triggering event
+
+The harvester stamps `StackItem.Trigger` only on an ability that declares `Watches`, and a delayed trigger's dispatch
+builds its ability without them (it is handed the match). So a body could read the triggering object from the payload but
+not the event's `Amount`. `dispatchEventDelayedTriggerLocked` now sets `item.Trigger = &TriggerContext{Event: ev}` itself,
+which is what "that much life" needs: Vizkopa Guildmage's "whenever you gain life this turn, each opponent loses that much
+life" is a repeating `DelayedOnEvent` on `EventChangeLife` whose body reads `ctx.Trigger().Event.Amount`. `Object` stays
+nil. Back-out: drop the line and `TestVizkopaGuildmageDrainsOpponentsByTheLifeYouGainThisTurn` fails.

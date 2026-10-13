@@ -4,18 +4,13 @@
   import { LobbyApiError, session, type ApiViolation } from "../session";
   import { preselectFor, rememberGuestLastDeck, type LastDeck } from "../lastDeck";
   import { signedInUserID } from "../myGames";
-  import {
-    deckSubtitle,
-    imperfectCardLine,
-    orderedColors,
-    summariseCoverage,
-    type PrebuiltDeck,
-  } from "../prebuiltDecks";
+  import { imperfectCardLine, summariseCoverage, type PrebuiltDeck } from "../prebuiltDecks";
+  import { prebuiltRow } from "../deckPicker";
+  import DeckRadioList from "./DeckRadioList.svelte";
   import Icon from "./Icon.svelte";
 
-  // PrebuiltDeckPicker is the "I just want to play" path: four decks
-  // whose cards this engine actually implements, installed with one
-  // press. It sits above the paste-a-decklist box in
+  // PrebuiltDeckPicker is the "I just want to play" path: decks whose
+  // cards this engine actually implements, installed with one press. It sits above the paste-a-decklist box in
   // DeckUploadForm.svelte, so both the lobby panel and the in-game
   // deck-import modal get it without either having to know it exists.
   //
@@ -24,7 +19,9 @@
   // which is not the same as "every card works fully", and the gap
   // between those two claims is exactly where a player's trust gets
   // spent. So the picker states the real profile, and the caveated
-  // cards are one click away rather than hidden.
+  // cards are one click away rather than hidden. The rows carry the
+  // short figure (deckPicker.ts); the full sentence, the summary and
+  // the caveats are said once, for the selected deck, under the list.
 
   interface Props {
     gameID: string;
@@ -32,9 +29,17 @@
     /** The deck to preselect when it is a pre-built deck still offered. */
     lastDeck?: LastDeck | null;
     onSuccess?: (res: UploadDeckResponse) => void;
+    /**
+     * Start as a one-line toggle (the player has saved decks of their
+     * own). null holds the section back until the caller knows.
+     */
+    collapsed?: boolean | null;
   }
 
-  const { gameID, playerID, lastDeck = null, onSuccess }: Props = $props();
+  const { gameID, playerID, lastDeck = null, onSuccess, collapsed = false }: Props = $props();
+
+  let expanded = $state(false);
+  const open = $derived(collapsed === false || expanded);
 
   let decks = $state<PrebuiltDeck[]>([]);
   // null until the probe settles. A server without the route (or a
@@ -49,6 +54,7 @@
   let installed = $state("");
 
   const current = $derived(decks.find((d) => d.id === selected));
+  const rows = $derived(decks.map(prebuiltRow));
 
   // Preselect the last deck once both the list and the last deck are
   // in, unless the player has already picked one themselves.
@@ -114,88 +120,86 @@
   }
 </script>
 
-{#if loaded && decks.length > 0}
+{#if loaded && decks.length > 0 && collapsed !== null}
   <div class="prebuilt">
-    <p class="lede">
-      Pick one and press play. Every card in these decks is implemented by this engine — each deck
-      says exactly how completely.
-    </p>
-
-    <ul class="decks">
-      {#each decks as deck (deck.id)}
-        {@const cov = summariseCoverage(deck.coverage)}
-        <li>
-          <label class="deck" class:sel={selected === deck.id}>
-            <input
-              type="radio"
-              name="prebuilt-deck"
-              value={deck.id}
-              bind:group={selected}
-              onchange={() => (touched = true)}
-            />
-            <span class="body">
-              <span class="top">
-                <span class="name">{deck.name}</span>
-                <span class="pips">
-                  {#each orderedColors(deck.colors) as c (c)}
-                    <i class="pip pip-{c}">{c}</i>
-                  {/each}
-                </span>
-              </span>
-              <span class="sub">{deckSubtitle(deck)}</span>
-              {#if deck.summary}<span class="summary">{deck.summary}</span>{/if}
-              <span class="cov cov-{cov.tone}">
-                <i class="dot" class:ok={cov.tone === "full"}></i>{cov.headline}
-              </span>
-            </span>
-          </label>
-        </li>
-      {/each}
-    </ul>
-
-    {#if current && coverage && coverage.detail}
-      <p class="detail"><b>{current.name}</b>: {coverage.detail}.</p>
+    {#if collapsed}
+      <button
+        type="button"
+        class="toggle"
+        class:open
+        aria-expanded={open}
+        onclick={() => (expanded = !expanded)}
+      >
+        <Icon name="chevronRight" size={12} />
+        or play a pre-built deck ({decks.length})
+      </button>
     {/if}
+    {#if open}
+      <p class="lede">
+        Pick one and press play. Every card in these decks is implemented by this engine — each deck
+        says exactly how completely.
+      </p>
 
-    {#if imperfect.length > 0}
-      <!-- Same register as DeckUploadForm's `unimplemented` block, and
+      <DeckRadioList
+        {rows}
+        name="prebuilt-deck"
+        bind:selected
+        filterLabel="filter the pre-built decks"
+        onpick={() => (touched = true)}
+      />
+
+      {#if current && coverage}
+        <div class="chosen">
+          {#if current.summary}<p class="summary">{current.summary}</p>{/if}
+          <p class="cov cov-{coverage.tone}">
+            <i class="dot" class:ok={coverage.tone === "full"}></i>{coverage.headline}
+          </p>
+          {#if coverage.detail}
+            <p class="detail"><b>{current.name}</b>: {coverage.detail}.</p>
+          {/if}
+        </div>
+      {/if}
+
+      {#if imperfect.length > 0}
+        <!-- Same register as DeckUploadForm's `unimplemented` block, and
            for the same reason: this deck is fine and installed-able.
            Collapsed because the count is what sets the expectation and
            the names are for whoever wants to check a specific card. -->
-      <details class="caveats">
-        <summary>
-          which {imperfect.length}
-          {imperfect.length === 1 ? "card" : "cards"}, and what changes?
-        </summary>
-        <ul>
-          {#each imperfect as card (card.name)}
-            <li>
-              <b>{card.name}</b>
-              <span>{imperfectCardLine(card)}</span>
-            </li>
+        <details class="caveats">
+          <summary>
+            which {imperfect.length}
+            {imperfect.length === 1 ? "card" : "cards"}, and what changes?
+          </summary>
+          <ul>
+            {#each imperfect as card (card.name)}
+              <li>
+                <b>{card.name}</b>
+                <span>{imperfectCardLine(card)}</span>
+              </li>
+            {/each}
+          </ul>
+        </details>
+      {/if}
+
+      <div class="row-actions">
+        {#if installed}
+          <p class="success"><Icon name="check" size={13} /> playing {installed}</p>
+        {/if}
+        <button class="primary" onclick={install} disabled={busy || !selected}>
+          {busy ? "installing…" : current ? `play ${current.name}` : "play this deck"}
+        </button>
+      </div>
+
+      {#if errorMessage}
+        <pre class="deck-error">{errorMessage}</pre>
+      {/if}
+      {#if violations.length}
+        <ul class="viol">
+          {#each violations as v (v.code + (v.card ?? "") + v.message)}
+            <li class="vi"><span class="code">{v.code}</span>{violationLabel(v)}</li>
           {/each}
         </ul>
-      </details>
-    {/if}
-
-    <div class="row-actions">
-      {#if installed}
-        <p class="success"><Icon name="check" size={13} /> playing {installed}</p>
       {/if}
-      <button class="primary" onclick={install} disabled={busy || !selected}>
-        {busy ? "installing…" : "play this deck"}
-      </button>
-    </div>
-
-    {#if errorMessage}
-      <pre class="deck-error">{errorMessage}</pre>
-    {/if}
-    {#if violations.length}
-      <ul class="viol">
-        {#each violations as v (v.code + (v.card ?? "") + v.message)}
-          <li class="vi"><span class="code">{v.code}</span>{violationLabel(v)}</li>
-        {/each}
-      </ul>
     {/if}
   </div>
 {/if}
@@ -206,95 +210,46 @@
     padding-bottom: 14px;
     border-bottom: 1px solid var(--border);
   }
+  /* The collapsed section: a quiet text button, not a second primary. */
+  .toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+    padding: 2px 0;
+    border: 0;
+    background: none;
+    color: var(--fg-muted);
+    font: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+  }
+  .toggle:hover {
+    color: var(--fg);
+  }
+  .toggle :global(svg) {
+    transition: transform 120ms var(--ease);
+  }
+  .toggle.open {
+    margin-bottom: 8px;
+  }
+  .toggle.open :global(svg) {
+    transform: rotate(90deg);
+  }
   .lede {
     margin: 0 0 10px;
     font-size: 12.5px;
     line-height: 1.5;
     color: var(--fg-muted);
   }
-  .decks {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: grid;
-    gap: 8px;
-  }
-  .deck {
-    display: flex;
-    gap: 10px;
-    align-items: flex-start;
-    padding: 10px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border);
-    background: var(--surface-sunken);
-    cursor: pointer;
-  }
-  .deck.sel {
-    border-color: var(--accent);
-    background: var(--accent-soft);
-  }
-  .deck input {
-    margin-top: 3px;
-    flex: 0 0 auto;
-  }
-  .body {
+  .chosen {
+    margin-top: 8px;
     display: flex;
     flex-direction: column;
     gap: 3px;
-    min-width: 0;
-  }
-  .top {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .name {
-    font-weight: 600;
-    font-size: 13.5px;
-    color: var(--fg);
-  }
-  .pips {
-    display: inline-flex;
-    gap: 3px;
-  }
-  /* Same tints and the same "colour on the text, not the fill"
-     treatment as the catalogue page's colour filter, so a player who
-     has seen one recognises the other. */
-  .pip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    border: 1px solid currentColor;
-    background: color-mix(in srgb, currentColor 16%, transparent);
-    font-size: 9px;
-    font-style: normal;
-    font-weight: 700;
-  }
-  .pip-W {
-    color: #e8dcc0;
-  }
-  .pip-U {
-    color: #7fb4e8;
-  }
-  .pip-B {
-    color: #b09ac4;
-  }
-  .pip-R {
-    color: #e88b7f;
-  }
-  .pip-G {
-    color: #7fc79a;
-  }
-  .sub {
-    font-size: 11.5px;
-    color: var(--fg-dim);
-    text-transform: lowercase;
   }
   .summary {
+    margin: 0;
     font-size: 12px;
     line-height: 1.45;
     color: var(--fg-muted);
@@ -303,7 +258,7 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    margin-top: 2px;
+    margin: 0;
     font-size: 11.5px;
     color: var(--fg-muted);
   }
@@ -327,7 +282,7 @@
     font-weight: 600;
   }
   .detail {
-    margin: 8px 0 0;
+    margin: 0;
     font-size: 11.5px;
     line-height: 1.45;
     color: var(--fg-dim);
@@ -367,6 +322,14 @@
     align-items: center;
     justify-content: flex-end;
     margin-top: 10px;
+  }
+  /* "play <deck name>": a long name ellipsises rather than widening
+     the button past the panel. */
+  .row-actions button {
+    max-width: min(100%, 22rem);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .success {
     margin: 0;

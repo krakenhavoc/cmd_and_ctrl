@@ -3576,3 +3576,83 @@ cost, and a life payment is a cost, CR 119.4).
 - **Back-out.** Delete the `AltCostKeyMadness` block in `AlternativeCostFor`:
   `TestShadowgrangeArchfiendMadnessChargesEightLife/enough_life` fails
   (life stays 20, not 12) and `/not_enough_life` succeeds in casting.
+
+## Amendment — 2026-10-13 (#3258): casting a copy of a card
+
+Mizzix's Mastery and Arcane Bombardment print "copy it, and you may cast the copy" over one card or a whole set. Until now the
+engine copied a CARD in one place only, the prepare spell (ADR 0090, CR 722.3c), kept alive by a derived permission that reads a
+prepared permanent. Every other cast permission opened the card itself. This amendment generalises that copy to one made by an
+effect and kept alive by an ordinary stored permission. No new rule, and no new permission field.
+
+### Decision 1 — the copy is a real object marked `Card.CardCopy`
+
+`Game.CopyCardsAndOfferCastsForEffect(CardCopyOffer, cards)` (`game/card_copy.go`) makes a copy of each named card that is in exile
+or a graveyard, in the zone the card is in (CR 707.12; a graveyard copy goes to the creating player's graveyard), from the card's
+copiable values (CR 707.2). It keeps every one of them, unlike the prepare copy, so its oracle ID is the original's and every
+catalog hook resolves it as the original: a copy of a Lightning Bolt is a Lightning Bolt. It carries no counters, status, "exiled
+with" link or permission. It is created, not moved, so no zone-move event announces it and nothing "was exiled" (the prepare copy
+does the same).
+
+### Decision 2 — the offer is the existing `ScopeCards` permission, one per copy
+
+"Any number of the copies" needs no new shape: the grants are independent, casting one leaves the others, and the order the
+player casts them in is the order they go on the stack (the last cast resolves first). The cast is the ordinary cast out of the
+zone, so casting triggers fire, targets and modes are chosen, the bot enumerator and the client's cast offers see it, and a `{0}`
+price locks X at 0 (CR 107.3b). `CardCopyOffer` carries `Cost` (`{0}` for "without paying its mana cost", empty for "cast the
+copy" at the printed cost), `Timing`, `Lapse` and `FollowUp`, all straight onto the permission. The window is the one discover,
+cascade and the Siege grants use: `TimingFlash` with `LapseStaysInExile`, the grant model's stand-in for CR 608.2g.
+
+### Decision 3 — the sweep is CR 704.5e, keyed on the offer
+
+`cardCopySweepSBALocked` removes a `CardCopy` in any zone that no stored permission names. Every way a window can close then ends
+the copy with no per-site code: the holder passing (`closePassWindowsLocked` also runs the sweep directly, since a pass may reach
+no state check before the table looks), the end of the turn (`sweepCastPermissionsLocked`), or the copy leaving its zone. A copy
+that is cast is the spell on the stack (`StackItem.IsCopy`, now `card.PrepareCopy || card.CardCopy`) and ceases on resolution; a
+permanent spell becomes a token (CR 707.10b), through the path Twincast's copies already use.
+
+### Decision 4 — the effects door is `effects.CopyAndCast`
+
+`CopyAndCast{Cards, Player, Free, FollowUp}` is the card-facing primitive. It always uses `TimingFlash` and `LapseStaysInExile`.
+Mizzix's Mastery feeds it the cards its exile really landed (`ExileCardsThenForEffect`'s continuation, so a card a replacement
+sent elsewhere is not copied). Arcane Bombardment feeds it every card still exiled with the enchantment (`b27ExiledWith`), so the
+copies are made again from the same originals on every trigger.
+
+### Decision 5 — the first-instant-or-sorcery clock
+
+`CastTally.InstantSorcery` counts the instant and sorcery spells a player cast this turn, bumped beside `Artifact` as each spell
+becomes cast, so `== 1` on the cast event means "your first".
+
+### Snapshot
+
+Additive within v8, omitted when zero: `cardCopy` on every card path and `spellsCastThisTurn{}.instantSorcery`.
+
+### Out of scope, stated
+
+- **The window closes on the holder's next priority pass** instead of being an inline cast inside the resolution, the posture
+  every "you may cast it" a resolution offers takes (ADR 0091, discover.go). A cast on another player's turn can be preceded by
+  responses.
+- **A total mana value budget** (Uldaros Theorix's "total mana value 6 or less") is the separate `budgeted-free-casts` seam (#2017).
+- **Paradigm** (#1866) needs a recurring offer at each first main phase over a card that stays in exile, plus a self-exile and a
+  per-name record. **Spellweaver Volute** (#3157) needs its sorcery-cast trigger and the CR 303.4f re-attach (#3158).
+  **Kaervek, the Punisher** (#2947) is `CopyAndCast{Free: false, FollowUp: …}` plus the crime fix (#2944).
+- **A copy in a hand or a library** is not made; no card asks.
+- **Cast from a copy made in another seat's graveyard** is not modelled; the copy goes to the creator's.
+
+Back-out: remove `card.CardCopy` from the `IsCopy` line in `CastSpell`, and `TestCardCopyOfAPermanentCardResolvesAsAToken` fails;
+remove the sweep call in `runStateChecksLocked`, and `TestCardCopyWithNoOfferCeasesAtTheNextStateCheck` fails.
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), cav-h2): "mana of any type", and a flash window bound to a target
+
+**Any type.** `AnyColorSpendStatic.AnyType` is the grant Vizier of the Menagerie prints, "you can spend mana of any type to
+cast creature spells": the colour grant plus colourless being a type, so coloured mana also pays a `{C}` symbol.
+`spendGrantLocked` reports whether a covering grant is the any-type kind and `widenForAnyColorSpend(cost, anyType)` then
+widens the `{C}` requirement too (Oath of Nissa and the other colour grants still leave it alone). `YouMaySpendManaAsAnyTypeToCast`
+is the constructor.
+
+**Flash if it targets.** `FlashIfTargets(cost, what, clause)` is [ADR 0025](0025-alternative-costs.md)'s flash-window
+offer (`AsThoughFlash`) carrying the narrower target clause the flash cast must satisfy (`AlternativeCost.Targets`). Timely Ward
+offers `{2}{W}` with "enchant creature" narrowed to a commander (`ACommander`); the printed cast is sorcery-speed with
+any creature.
+
+Back-out: `AnyType` false makes `TestVizierOfTheMenagerieLetsAnyManaPayACreatureSpellsColorlessSymbol` fail; the flash offer
+removed returns Timely Ward to its caveat.

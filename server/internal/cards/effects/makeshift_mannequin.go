@@ -1,7 +1,7 @@
 package effects
 
 import (
-	"errors"
+	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -20,8 +20,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "d9dfdbbb-75b3-43d3-8ed6-371cb98a0124",
 		Name:         "Makeshift Mannequin",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A creature that asks a question as it enters, such as a Clone, comes back without the sacrifice ability."},
+		Completeness: CompletenessFull,
 		Targets:      targetCreatureInYourGraveyard(),
 		Grants: []AbilityGrant{{
 			Key:  makeshiftMannequinGrant,
@@ -30,22 +29,27 @@ func init() {
 				On(game.EventBecomesTarget, Self, "Makeshift Mannequin — sacrifice it", SacrificeThisIfStillOnBattlefield),
 			},
 		}},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			ts := ctx.LegalTargets()
 			if len(ts) == 0 {
 				return nil
 			}
-			id := ts[0].ID
-			if _, err := ctx.Game.ReturnFromGraveyardWithCountersForEffect(id, ctx.Controller(), false,
-				map[string]int{"mannequin": 1}); err != nil && !errors.Is(err, game.ErrCardNotFound) {
-				return err
-			}
-			// A graveyard return keeps the card's ID (Gift of Immortality).
-			if !onBattlefield(ctx.Game, id) {
-				return nil
-			}
-			return grantWhileItHasCounter(ctx, id, "mannequin",
-				"Makeshift Mannequin — sacrifice it when it becomes a target, while it has a mannequin counter", makeshiftMannequinGrant)
+			// The grant is the entry's tail (ADR 0154): a creature that
+			// asks a question as it enters (a Clone's copy pick) still gets
+			// it once the pick is answered. Plain values only; the tail
+			// runs from a resume as well as inline.
+			source, controller := item.SourceCardID, item.Controller
+			return ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(ts[0].ID, controller, false,
+				map[string]int{"mannequin": 1},
+				func(g *game.Game, entered uuid.UUID) error {
+					// A graveyard return keeps the card's ID (Gift of Immortality).
+					if entered == uuid.Nil || !onBattlefield(g, entered) {
+						return nil
+					}
+					tail := NewContext(g, &game.StackItem{SourceCardID: source, Controller: controller})
+					return grantWhileItHasCounter(tail, entered, "mannequin",
+						"Makeshift Mannequin — sacrifice it when it becomes a target, while it has a mannequin counter", makeshiftMannequinGrant)
+				})
 		},
 	})
 }

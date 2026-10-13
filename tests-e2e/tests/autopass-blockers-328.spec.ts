@@ -3,6 +3,7 @@ import { adminLogin, createGame, uploadDeckAs, startGameAs } from "./lobby-api";
 import { makeCommanderDeck, COMMANDER_NAME } from "./deck-fixture";
 import { joinAsPlayer } from "./players";
 import { openAdminClient, playerByID, findCardInZone, type SnapshotView, keepAllHands } from "./s19-helpers";
+import { DOCK_PRIMARY } from "./dock-primary";
 
 // #328 — "blockers stage did not happen with autopass".
 //
@@ -214,7 +215,7 @@ test.describe("#328 autopass skips the blocking window", () => {
       await expect(
         blockRequest.getByRole("group", { name: "declare blockers" }),
       ).toContainText("Choose blockers, or declare none");
-      await expect(defender.page.getByRole("button", { name: "next", exact: true })).toHaveCount(0);
+      await expect(defender.page.getByRole("button", { name: DOCK_PRIMARY })).toHaveCount(0);
       const noBlocks = blockRequest.getByRole("button", { name: "No blocks", exact: true });
       await expect(noBlocks).toBeEnabled();
       // ADR 0111 PR 4 (owner decision 2026-10-02): ONE click declares
@@ -235,7 +236,7 @@ test.describe("#328 autopass skips the blocking window", () => {
       );
       // With the declaration done the request closes and next is back.
       await expect(blockRequest).toHaveCount(0);
-      await expect(defender.page.getByRole("button", { name: "next", exact: true })).toHaveCount(1);
+      await expect(defender.page.getByRole("button", { name: DOCK_PRIMARY })).toHaveCount(1);
       void attacker;
     } finally {
       admin.close();

@@ -1,0 +1,6 @@
+---
+title: "An Aura that can't be moved onto a creature stays where it is"
+date: 2026-10-13
+issues: [3160]
+---
+**An Aura that can't be moved onto a creature stays where it is** (#3160, CR 701.3b, CR 303.4j, [ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md) decision 3): `Game.AttachForEffect` (`game/attach.go`) used to attach and leave the CR 704.5m/n state-based action to undo it, so an Aura moved onto a permanent it could not enchant (the wrong type, or protection from its colour) went to its owner's graveyard instead of staying where it was. It now asks `attachmentLegalLocked`, the question the state-based action asks, of the attachment as if it were on the new host (`attachmentLegalOnLocked`), and an attachment that is already attached and fails it does not move: a quiet `EventAttachSkipped`. This covers Equipment and Fortifications too (CR 301.5c). It deliberately checks only a move: an Aura that is not attached yet is entering the battlefield (CR 303.4f) or has just resolved (CR 608.3c), and keeps the attach-then-state-based-action path. `Game.AttachLegalForEffect` lets a card offer only the hosts an attachment may go to. **Cards:** Kitsune Mystic // Autumn-Tail, Kitsune Sage (Full): Autumn-Tail targets the Aura and picks "another creature" as the ability resolves, from the creatures that Aura can enchant.

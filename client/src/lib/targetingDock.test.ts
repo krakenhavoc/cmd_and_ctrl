@@ -55,6 +55,20 @@ describe("the dock's targeting prompt names the stack half it is asking about (#
   }
 });
 
+// #3259: a card in exile lives in a player's exile pile, which the viewer
+// has to open, so the sentence says where to look (and is not the "a
+// target" a mode the switch does not know falls through to).
+describe("the dock's targeting prompt names where an exile pick is made (#3259)", () => {
+  it("card_in_exile", () => {
+    begin(card("The Darkness Crystal"), "card_in_exile");
+    const line = lineOf(current());
+    expect(line).toContain("a card in exile");
+    expect(line).toContain("exile pile");
+    expect(line).not.toContain("Click a target to target");
+    cancel();
+  });
+});
+
 // #1659: the amount being divided is named while the player is still
 // picking, not only once DivideDamageModal opens.
 describe("#1659 — the dock's targeting prompt shows the divided amount", () => {

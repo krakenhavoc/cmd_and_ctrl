@@ -72,7 +72,13 @@
   import VotingPanel from "./VotingPanel.svelte";
   import ZoneBrowserModal from "./ZoneBrowserModal.svelte";
   import { zoneBrowser, closeZoneBrowser } from "../../zoneBrowser";
-  import { freeCastRequest, freeCastTarget } from "../../freeCastRequest";
+  import {
+    freeCastRequest,
+    freeCastTarget,
+    handFreeCastRequest,
+    handFreeCastTarget,
+    isFreeCastPick,
+  } from "../../freeCastRequest";
   import { phasedOutCards } from "../../phasedOut";
   import { canActivateSorcerySpeedAbility } from "../../timing";
   import CardContextMenu from "./CardContextMenu.svelte";
@@ -236,6 +242,8 @@
     sendAction: ActionSender;
     combatMode: "idle" | "attack" | "block";
     selectedCombatCardID: string | null;
+    // #3266: the attackers the viewer has staged, drawn as attacking.
+    stagedAttackers?: ReadonlySet<string>;
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
@@ -278,6 +286,8 @@
     legalGate?: LegalActions;
   }
 
+  const NO_STAGED: ReadonlySet<string> = new Set();
+
   const {
     view,
     viewerID,
@@ -285,6 +295,7 @@
     sendAction,
     combatMode,
     selectedCombatCardID,
+    stagedAttackers = NO_STAGED,
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
@@ -540,6 +551,9 @@
   // ADR 0150 §5: a forced cast pays no mana, so the modal offers no
   // Assist row for one.
   let altCostPromptForceCast = $state(false);
+  // #3270: the offer the picker opens on, set when a free cast the player
+  // just picked has a question of its own before the cost.
+  let altCostPromptPrefer = $state<string | undefined>(undefined);
   function confirmAltCost(
     key: string | undefined,
     optional: number[],
@@ -551,6 +565,7 @@
     const choices = altCostPromptChoices;
     altCostPromptCard = null;
     altCostPromptChoices = {};
+    altCostPromptPrefer = undefined;
     if (!card) return;
     // ADR 0073 (#664): one prompt answers both halves of CR 601.2b —
     // the cost paid INSTEAD of the mana cost, and the costs paid ON
@@ -1308,6 +1323,46 @@
     freeCastRequest.set(null);
     if (target) handlePlayCard(target, "exile");
   });
+
+  // #3270 (CR 608.2g): "you may cast a spell from your hand without paying
+  // its mana cost". Picking the card in the choose_cards prompt left its
+  // id in handFreeCastRequest; once the snapshot carrying the grant shows
+  // the free offer on that hand card, the cast chain (targets, modes, X)
+  // starts at once, with the free offer already chosen. Cancelling the
+  // chain leaves the card in hand; the window closes on the next pass.
+  $effect(() => {
+    const id = $handFreeCastRequest;
+    if (!id) return;
+    const me = view.seats.find((s) => s.id === viewerID);
+    const pickOpen = (view.pending_choices ?? []).some(
+      (c) => isFreeCastPick(c) && c.chooser === viewerID,
+    );
+    const target = handFreeCastTarget(me?.hand.cards, id, pickOpen);
+    if (target === undefined) return;
+    handFreeCastRequest.set(null);
+    if (target) startHandFreeCast(target.card, target.key);
+  });
+
+  // startHandFreeCast opens the cast of a hand card for its granted free
+  // offer. A card whose chain has a question of its own before the cost
+  // (a face, a permission type, a kicker, an either/or cost, assist) goes
+  // through the ordinary chain with the free offer preselected, so no
+  // choice is skipped; every other card goes straight to targets.
+  function startHandFreeCast(card: CardView, key: string): void {
+    const base = castChoicesBase(undefined, false, false, false);
+    const asks =
+      needsFacePicker(card) ||
+      needsPermissionTypePicker(card) ||
+      optionalCostsOf(card).length > 0 ||
+      costBranchesOf(card).length > 0 ||
+      assistOf(card, false) !== undefined;
+    if (asks) {
+      altCostPromptPrefer = key;
+      handlePlayCard(card);
+      return;
+    }
+    afterAltCost(card, { ...base, altCost: key });
+  }
 
   // S20 sub-PR 4: a modal spell asks for its mode(s) after X and
   // before targeting. The picker's confirm continues with the
@@ -3274,6 +3329,7 @@
       exile={exileForOwner(seat.id)}
       {combatMode}
       {selectedCombatCardID}
+      {stagedAttackers}
       {onSelectCombatCard}
       {onDeclareAttack}
       {onDeclareBlock}
@@ -3304,6 +3360,7 @@
       exile={exileForOwner(seat.id)}
       {combatMode}
       {selectedCombatCardID}
+      {stagedAttackers}
       {onSelectCombatCard}
       {onDeclareAttack}
       {onDeclareBlock}
@@ -3589,10 +3646,12 @@
     card={altCostPromptCard}
     seats={view.seats}
     forceCast={altCostPromptForceCast}
+    preferKey={altCostPromptPrefer}
     onConfirm={confirmAltCost}
     onCancel={() => {
       altCostPromptCard = null;
       altCostPromptChoices = {};
+      altCostPromptPrefer = undefined;
     }}
   />
   <AltCostPaymentModal

@@ -1,6 +1,7 @@
 package legal_test
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -225,5 +226,73 @@ func TestEnumeratorOffersNothingFromTheseZonesWithoutAPermission(t *testing.T) {
 		if m.Source == seat.Library.Cards[len(seat.Library.Cards)-1].InstanceID {
 			t.Errorf("the top of an unopened library was offered a move: %q", m.Label)
 		}
+	}
+}
+
+// #3234: a "cast it without paying its mana cost" grant over a HAND
+// card (Kari Zev's Expertise, Rishkar's Expertise) is offered as a cast
+// the engine accepts with an empty pool.
+func TestEnumeratorOffersAFreeCastGrantedOverAHandCard(t *testing.T) {
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepPrecombatMain)
+
+	id := handCard(seat, game.Card{
+		Name: "Granted Sorcery", TypeLine: "Sorcery", ManaCost: "{3}{U}", Layout: "normal",
+	})
+	g.WithWriteLock(func() {
+		g.GrantCastPermissionOverCardForEffect(id, game.CastPermission{
+			Player: seat.ID, Cost: "{0}", CastOnly: true,
+		})
+	})
+
+	moves := legal.EnumerateFor(g, seat.ID)
+	free := false
+	for _, m := range castMovesFor(moves, id) {
+		if strings.Contains(string(m.Params), game.AltCostKeyGrantedCost) {
+			free = true
+		}
+	}
+	if !free {
+		t.Fatalf("no free cast offered over the hand card: %v", labels(moves))
+	}
+	dispatchAll(t, g, seat.ID, moves)
+}
+
+// #3270: the free cast a resolving ability opens (Buster Sword, Kari Zev's
+// Expertise) is offered to a bot in a step a sorcery could not be cast in,
+// every move offered is accepted, and the holder's pass ends the offer.
+func TestEnumeratorOffersAHandFreeCastAtAnyTimingUntilThePass(t *testing.T) {
+	g := newTable(t)
+	seat := g.Seats[g.Turn.ActiveSeat]
+	clearHand(seat)
+	advanceTo(t, g, game.StepEnd)
+
+	id := handCard(seat, game.Card{
+		Name: "Granted Sorcery", TypeLine: "Sorcery", ManaCost: "{3}{U}", Layout: "normal",
+	})
+	free := func() bool {
+		for _, m := range castMovesFor(legal.EnumerateFor(g, seat.ID), id) {
+			if strings.Contains(string(m.Params), game.AltCostKeyGrantedCost) {
+				return true
+			}
+		}
+		return false
+	}
+	if free() {
+		t.Fatal("a free cast is offered before anything grants it")
+	}
+	g.WithWriteLock(func() { g.FreeCastFromHandForEffect(seat.ID, uuid.Nil, id, "Buster Sword") })
+	if !free() {
+		t.Fatalf("no free cast offered in the end step: %v", labels(legal.EnumerateFor(g, seat.ID)))
+	}
+	dispatchAll(t, g, seat.ID, legal.EnumerateFor(g, seat.ID))
+
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("pass: %v", err)
+	}
+	if free() {
+		t.Fatal("the free cast is still offered after the holder passed")
 	}
 }

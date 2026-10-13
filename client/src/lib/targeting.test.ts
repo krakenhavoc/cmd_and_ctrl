@@ -23,6 +23,8 @@ import {
   isLegalCardTarget,
   isLegalPlayerTarget,
   isTargetingStack,
+  isTargetingGraveyard,
+  isTargetingExile,
   opensTargetPicker,
   legalTargetCount,
   targeting,
@@ -633,12 +635,42 @@ describe("targeting an ability on the stack — #1211, CR 115.4", () => {
       "stack_ability",
       "stack_item",
       "card_in_graveyard",
+      "card_in_exile",
     ] as const) {
       expect(opensTargetPicker(mode)).toBe(true);
     }
     expect(opensTargetPicker(undefined)).toBe(false);
     expect(opensTargetPicker("")).toBe(false);
     expect(opensTargetPicker("something_new")).toBe(false);
+  });
+
+  it("a card in exile is picked by the server's legal set, like a graveyard card (#3259)", () => {
+    // The Darkness Crystal's ability: the legal set holds the one creature
+    // card exiled with it, in someone's exile pile. The zone browser's exile
+    // tab hands the click to the same membership test a graveyard card gets.
+    begin(
+      card({
+        instance_id: "crystal",
+        name: "The Darkness Crystal",
+        legal_targets: { players: [], cards: ["exiled-bear"] },
+      }),
+      "card_in_exile",
+    );
+    const t = get(targeting)!;
+    expect(t.mode).toBe("card_in_exile");
+    expect(isTargetingExile(t.mode)).toBe(true);
+    expect(isTargetingGraveyard(t.mode)).toBe(false);
+    expect(isLegalCardTarget(t, "exiled-bear")).toBe(true);
+    expect(isLegalCardTarget(t, "other-exiled-card")).toBe(false);
+    expect(isLegalCardTarget(t, "a-player-or-creature")).toBe(false);
+  });
+
+  it("a free-form exile prompt still lets a browsed exile card through", () => {
+    // No server legal set (a card left on the free-form picker): the mode
+    // heuristic decides, and an exile pick is not refused as a non-target.
+    begin(card({ instance_id: "free", name: "Free-form" }), "card_in_exile");
+    const t = get(targeting)!;
+    expect(isLegalCardTarget(t, "anything-in-the-pile")).toBe(true);
   });
 
   it("a picked ability is an ordinary card-kind ref carrying the stack item's id", () => {

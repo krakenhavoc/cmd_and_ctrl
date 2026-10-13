@@ -112,7 +112,12 @@
     togglePayCard,
   } from "../../payCards";
   import { damageSourceCaption, permanentWhoseCaption } from "../../damageSource";
-  import { freeCastRequest, mayCastKeywordsThatOpenACast } from "../../freeCastRequest";
+  import {
+    freeCastRequest,
+    handFreeCastRequest,
+    isFreeCastPick,
+    mayCastKeywordsThatOpenACast,
+  } from "../../freeCastRequest";
 
   interface Props {
     snap: GameView;
@@ -499,6 +504,13 @@
   function submit(): void {
     if (!active || !viewerID) return;
     if (!canSubmit) return;
+    // #3270 (CR 608.2g): picking the card for "cast a spell from your hand
+    // without paying its mana cost" is the start of the cast. Board opens
+    // the cast chain (targets, modes, X) once the snapshot carrying the
+    // grant arrives; picking none clears any earlier request.
+    if (isFreeCastPick(active)) {
+      handFreeCastRequest.set(selected.size > 0 ? (Array.from(selected)[0] ?? null) : null);
+    }
     answer({ card_ids: Array.from(selected) });
   }
 
@@ -521,11 +533,16 @@
   // pick on the tile takes one copy; the selection still holds each
   // copy's instance_id, so the answer and the count are unchanged.
   // A card with no name stays on its own tile.
+  // #3217: the graveyard half of an "and/or graveyard" search. A
+  // Command Tower in the library and one in the graveyard are two
+  // different tiles — they are not the same pick.
+  const searchGraveyardIDs = $derived(new Set(active?.search_graveyard ?? []));
   const searchGroups = $derived.by<CardView[][]>(() => {
     if (!isSearch) return [];
     const groups = new Map<string, CardView[]>();
     for (const c of optionCards) {
-      const key = c.name || c.instance_id;
+      const zone = searchGraveyardIDs.has(c.instance_id) ? "gy:" : "lib:";
+      const key = zone + (c.name || c.instance_id);
       const g = groups.get(key);
       if (g) g.push(c);
       else groups.set(key, [c]);
@@ -1736,7 +1753,9 @@
       : isSearch
         ? [c.reason || "Search your library", "search · CR 701.23"]
         : isCopyTarget
-          ? [c.reason || "Enter as a copy of…", "copy · CR 707"]
+          ? c.exchanges_text
+            ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
+            : [c.reason || "Enter as a copy of…", "copy · CR 707"]
           : isUntapChoice
             ? [c.reason || "Untap step — choose which permanents untap", "untap · CR 502.3"]
             : isEntryReveal
@@ -1767,8 +1786,12 @@
         ? "Take"
         : isCopyTarget
           ? none
-            ? "Enter as itself"
-            : "Enter as a copy"
+            ? c.exchanges_text
+              ? "Keep its own text"
+              : "Enter as itself"
+            : c.exchanges_text
+              ? "Exchange text boxes"
+              : "Enter as a copy"
           : isUntapChoice
             ? "Untap"
             : isEntryReveal
@@ -2484,7 +2507,15 @@
           {:else}
             Take up to {pickMax} of these, or find nothing — you may always come up short.
           {/if}
-          Only you can see them, and your library is shuffled either way.
+          {#if searchGraveyardIDs.size > 0}
+            Cards marked Graveyard are public. Taking one means you never looked in your library, so
+            it isn't shuffled; taking a library card, or nothing, shuffles it.
+          {:else}
+            Only you can see them, and your library is shuffled either way.
+          {/if}
+        {:else if isCopyTarget && active?.exchanges_text}
+          Pick a creature to exchange text boxes with — each takes the other's rules text and keeps
+          its own name, types and power and toughness. Or pick nothing and keep its own text.
         {:else if isCopyTarget}
           Pick what it enters as a copy of — it copies the printed card, so counters, damage and
           other effects don't come across. Or copy nothing and let it enter as itself.
@@ -2517,8 +2548,14 @@
           {:else}
             Pick between {pickMin} and {pickMax} of these.
           {/if}
-          What happens to them is the card's business, and it will tell you next — choosing them costs
-          nothing on its own.
+          {#if isFreeCastPick(active)}
+            The card you pick is cast right now without paying its mana cost, whatever its timing,
+            and you choose its targets next. If you don't cast it now you can't later. Pick none to
+            cast nothing.
+          {:else}
+            What happens to them is the card's business, and it will tell you next — choosing them
+            costs nothing on its own.
+          {/if}
         {:else if isRevealPick}
           {#if pickMin === pickMax}
             Pick {pickMax} of these.
@@ -2601,7 +2638,7 @@
       </p>
       <div class="card-grid">
         {#if isSearch}
-          {#each searchGroups as group (group[0].name || group[0].instance_id)}
+          {#each searchGroups as group ((searchGraveyardIDs.has(group[0].instance_id) ? "gy:" : "lib:") + (group[0].name || group[0].instance_id))}
             {@const picked = groupPicked(group)}
             <button
               type="button"
@@ -2615,9 +2652,10 @@
               <Card card={group[0]} />
               <PickName card={group[0]} />
               <span class="source-caption">
-                {group.length > 1 ? `×${group.length}` : ""}{picked > 0
-                  ? `${group.length > 1 ? " · " : ""}${picked} taken`
-                  : ""}
+                {searchGraveyardIDs.has(group[0].instance_id) ? "Graveyard · " : ""}{group.length >
+                1
+                  ? `×${group.length}`
+                  : ""}{picked > 0 ? `${group.length > 1 ? " · " : ""}${picked} taken` : ""}
               </span>
             </button>
           {/each}

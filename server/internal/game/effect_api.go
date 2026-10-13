@@ -2204,6 +2204,28 @@ func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller 
 	return err
 }
 
+// ReturnFromGraveyardWithCountersThenForEffect is
+// ReturnFromGraveyardToBattlefieldThenForEffect with counters the
+// creature enters with: "return target creature card from your graveyard
+// to the battlefield with a mannequin counter on it. For as long as it
+// has a mannequin counter, it has ..." (Makeshift Mannequin). The
+// counters ride the entry event (CR 614.1c), and `then` runs once the
+// entry is complete, even when the creature first asked a question (a
+// Clone's copy pick), with the entering permanent's ID or uuid.Nil.
+//
+// `controller` uuid.Nil is "under its owner's control". Caller must
+// hold g.mu. Added for #3172 (cav-h1).
+func (g *Game) ReturnFromGraveyardWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
+	if z := g.findCardZoneLocked(cardID); z == nil || z.Kind != ZoneGraveyard {
+		if then != nil {
+			return then(g, uuid.Nil)
+		}
+		return nil
+	}
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, counters, then)
+	return err
+}
+
 // returnFromGraveyardEntryLocked is the body of every graveyard return,
 // with the caller's continuation for a battlefield entry (nil for none).
 func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
@@ -2474,6 +2496,39 @@ type SearchLibrarySpec struct {
 	// 0 and 1 are the top and a library shorter than Depth takes the
 	// card on the bottom. Meaningful only with ToTop.
 	Depth int
+
+	// AlsoGraveyard is "search your library AND/OR GRAVEYARD" (#3217,
+	// Finale of Devastation, Tower Winder, Ajani's Aid): the searcher's
+	// graveyard is searched beside the library, under the same
+	// predicate, in the same prompt.
+	//
+	// "And/or" lets the searcher choose which zones to look in, so the
+	// rules put no must-find on the graveyard half: a player may search
+	// only the library and fail to find with a match sitting in the
+	// graveyard (CR 701.23b), exactly as for a plain library search. The
+	// floor is therefore zero for a search with a stated quality, and an
+	// unconditional "a card" search still has to find min(limit, cards in
+	// both zones) (CR 701.23d).
+	//
+	// What the zone changes is the shuffle ("If you search your library
+	// this way, shuffle"): a take that comes entirely from the graveyard
+	// neither shuffles nor fires EventSearchLibrary.
+	//
+	// Declared simplification: the engine does not ask which zones were
+	// searched. A take of nothing is treated as a library search (shuffle
+	// and event), the common case; a player who looked only in the
+	// graveyard and found nothing would not have shuffled. The
+	// difference is a no-op for play. The graveyard searched is the
+	// library owner's, so
+	// combining this with LibraryOwner is not meaningful. Dest must be a
+	// zone the cards leave to (hand, battlefield, exile); ZoneLibrary
+	// with ToTop is not supported.
+	AlsoGraveyard bool
+
+	// libraryUntouched is set by executeSearchTakeLocked, on the copy it
+	// carries into the finish, when every card taken came out of the
+	// graveyard. Never set by a card.
+	libraryUntouched bool
 }
 
 // statedQuality reports whether the search names something the card
@@ -2494,6 +2549,20 @@ func (spec SearchLibrarySpec) statedQuality() bool {
 func (spec SearchLibrarySpec) floor(matches int) int {
 	return searchFloor(true, spec.statedQuality(), spec.Optional || spec.UpTo || spec.Unbounded,
 		spec.Limit, matches)
+}
+
+// floorZones is floor for a search that also reads the graveyard
+// (#3217): `lib` matches in the library, `gy` in the graveyard.
+//
+// "And/or" lets the searcher pick the zones, so a graveyard match does
+// not take away the right to fail to find: a search with a stated
+// quality has floor zero however many matches either zone holds (the
+// rulings on Ajani's Aid and Finale of Devastation). An unconditional
+// search has no stated quality to hide behind and must find
+// min(limit, lib+gy), whichever zone they are in (CR 701.23d).
+func (spec SearchLibrarySpec) floorZones(lib, gy int) int {
+	return searchFloor(true, spec.statedQuality(), spec.Optional || spec.UpTo || spec.Unbounded,
+		spec.Limit, lib+gy)
 }
 
 // searchFloor is CR 701.23b and 701.23d as a pure function, so the rule
@@ -2636,6 +2705,20 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 			matched = append(matched, c)
 		}
 	}
+	// #3217: "and/or graveyard". The graveyard's matches follow the
+	// library's in one candidate list, and the prompt marks which are
+	// which (PendingChoice.SearchGraveyardCards).
+	var gyMatches []uuid.UUID
+	if spec.AlsoGraveyard {
+		for _, c := range p.Graveyard.Cards {
+			if spec.Pred == nil || spec.Pred(c) {
+				gyMatches = append(gyMatches, c.InstanceID)
+				matched = append(matched, c)
+			}
+		}
+	}
+	libMatches := len(matches)
+	matches = append(matches, gyMatches...)
 	if len(matches) == 0 {
 		// Nothing to find. Still a search: the event fires and the
 		// shuffle happens, because the card said "then shuffle"
@@ -2649,7 +2732,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// whole match set rather than a forced take-all.
 		spec.Limit = len(matches)
 	}
-	if spec.floor(len(matches)) == len(matches) && len(matches) <= spec.Limit &&
+	if spec.floorZones(libMatches, len(gyMatches)) == len(matches) && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
 		// No decision to make — the rules force the searcher to take
 		// every match (CR 701.23d: an unconditional "a card" against a
@@ -2662,7 +2745,7 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// a chain rather than the line after the loop.
 		return g.executeSearchTakeLocked(spec, p, matches)
 	}
-	g.queueSearchChoiceLocked(spec, p, matches)
+	g.queueSearchChoiceLocked(spec, p, matches, gyMatches)
 	return nil
 }
 
@@ -2706,7 +2789,7 @@ func (g *Game) searchDestZoneLocked(p *Player, dest ZoneKind) (*Zone, error) {
 // match set would hand the table a census of the library.
 //
 // Caller must hold g.mu.
-func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches []uuid.UUID) {
+func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matches, gyMatches []uuid.UUID) {
 	known := make(map[uuid.UUID]bool, len(matches))
 	for _, id := range matches {
 		known[id] = true
@@ -2721,16 +2804,19 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		reason = "Search your library"
 	}
 	g.QueueChoiceForEffect(PendingChoice{
-		Kind:         PendingChoiceSearchLibrary,
-		Chooser:      spec.Player,
-		FromPlayer:   spec.Player,
-		Count:        spec.Limit,
-		Source:       spec.Source,
-		Reason:       reason,
-		SearchCards:  append([]uuid.UUID(nil), matches...),
-		SearchMax:    spec.Limit,
-		SearchMin:    spec.floor(len(matches)),
-		searchResume: &searchResumeFrame{spec: spec},
+		Kind:        PendingChoiceSearchLibrary,
+		Chooser:     spec.Player,
+		FromPlayer:  spec.Player,
+		Count:       spec.Limit,
+		Source:      spec.Source,
+		Reason:      reason,
+		SearchCards: append([]uuid.UUID(nil), matches...),
+		SearchMax:   spec.Limit,
+		SearchMin:   spec.floorZones(len(matches)-len(gyMatches), len(gyMatches)),
+		// #3217: the graveyard half. Public, so it is never marked
+		// known the way the library's candidates are.
+		SearchGraveyardCards: append([]uuid.UUID(nil), gyMatches...),
+		searchResume:         &searchResumeFrame{spec: spec},
 	})
 }
 
@@ -2746,6 +2832,17 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 //
 // Caller must hold g.mu.
 func (g *Game) executeSearchTakeLocked(spec SearchLibrarySpec, p *Player, ids []uuid.UUID) error {
+	// #3217: a take that came wholly out of the graveyard never looked
+	// in the library, so it is not "searched" — no shuffle, no
+	// EventSearchLibrary (finishSearchLocked). A take of nothing, or of
+	// any library card, is a library search.
+	spec.libraryUntouched = spec.AlsoGraveyard && len(ids) > 0
+	for _, id := range ids {
+		if !p.Graveyard.Contains(id) {
+			spec.libraryUntouched = false
+			break
+		}
+	}
 	destZone, err := g.searchDestZoneLocked(p, spec.Dest)
 	if err != nil || destZone == p.Library {
 		// ZoneLibrary means the card does not leave the library.
@@ -2830,9 +2927,10 @@ func (g *Game) searchEnterEachThenFinishLocked(spec SearchLibrarySpec, ids, foun
 	if p == nil {
 		return ErrPlayerNotFound
 	}
-	// A card that is no longer in the library is skipped rather than
-	// fetched: it left while an earlier card's entry prompt was open.
-	for len(ids) > 0 && !p.Library.Contains(ids[0]) {
+	// A card that is no longer in the library (or, for an "and/or
+	// graveyard" search, the graveyard) is skipped rather than fetched:
+	// it left while an earlier card's entry prompt was open.
+	for len(ids) > 0 && !p.Library.Contains(ids[0]) && !(spec.AlsoGraveyard && p.Graveyard.Contains(ids[0])) {
 		ids = ids[1:]
 	}
 	if len(ids) == 0 {
@@ -2898,9 +2996,16 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 	// Authority of the Consuls asks whose permanent is entering, and
 	// a self-replacement's condition ("unless you control two or
 	// fewer other lands") counts the lands of whoever that is.
-	for i := range p.Library.Cards {
-		if p.Library.Cards[i].InstanceID == id {
-			p.Library.Cards[i].Controller = spec.Player
+	from, zone := ZoneLibrary, p.Library
+	if spec.AlsoGraveyard && p.Graveyard.Contains(id) {
+		// #3217: the card came out of the graveyard, and the entry
+		// window must say so (moveRedirectedEntryLocked compares the
+		// event's OldZone to where the card actually is).
+		from, zone = ZoneGraveyard, p.Graveyard
+	}
+	for i := range zone.Cards {
+		if zone.Cards[i].InstanceID == id {
+			zone.Cards[i].Controller = spec.Player
 			break
 		}
 	}
@@ -2908,7 +3013,7 @@ func (g *Game) searchEnterBattlefieldLocked(spec SearchLibrarySpec, p *Player, i
 		Kind:    RepEventMove,
 		Actor:   spec.Player,
 		CardID:  id,
-		OldZone: ZoneLibrary,
+		OldZone: from,
 		NewZone: ZoneBattlefield,
 		// The fetching effect's own "put it onto the battlefield
 		// TAPPED" clause is seeded onto the event rather than OR-ed
@@ -2972,6 +3077,16 @@ func (g *Game) revealLibraryCardsLocked(spec SearchLibrarySpec, p *Player, ids [
 // finishSearchLocked emits EventSearchLibrary, shuffles if the card
 // said to, and runs the continuation. Caller must hold g.mu.
 func (g *Game) finishSearchLocked(spec SearchLibrarySpec, p *Player, found []uuid.UUID) error {
+	if spec.libraryUntouched {
+		// #3217: the whole take came out of the graveyard, so the
+		// library was not searched: no EventSearchLibrary (an
+		// Archivist of Oghma must not fire), no shuffle. The
+		// instruction after the search still happens.
+		if spec.Then != nil {
+			return spec.Then(g, found)
+		}
+		return nil
+	}
 	g.EmitEvent(Event{
 		Kind:  EventSearchLibrary,
 		Actor: spec.Player,
@@ -3476,7 +3591,7 @@ func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
-	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil)
+	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, nil)
 }
 
 // ReturnFromExileToBattlefieldThenForEffect is the exile return with the
@@ -3502,7 +3617,23 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, then)
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, then)
+	return err
+}
+
+// ReturnFromExileWithCountersThenForEffect is the exile return for "put
+// it onto the battlefield ... with two additional +1/+1 counters on it"
+// (The Darkness Crystal, #3213). The counters are a CR 614.1c "enters
+// with", so they ride the entry event exactly as
+// ReturnFromGraveyardWithCountersForEffect's do: an enters trigger
+// finds them already on the permanent, a counter replacement (Doubling
+// Season) sees them, and a paused entry still places them. A nil or
+// empty map is ReturnFromExileToBattlefieldThenForEffect. `then` is the
+// same exactly-once continuation, told the new object's ID.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, then)
 	return err
 }
 
@@ -3510,13 +3641,13 @@ func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid
 // doors.
 //
 // Caller must hold g.mu.
-func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	// CR 712.21c (ADR 0145): a return that finds the card a melded
 	// permanent left exile as finds both its cards, and returns each.
 	// The other card goes first and on its own; the card the effect
 	// named is the one whose new ID the caller is told.
 	if partner := g.meldSplitPartnerInExileLocked(cardID); partner != uuid.Nil {
-		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
+		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
 			return uuid.Nil, err
 		}
 	}
@@ -3565,13 +3696,14 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 	// the card, so a Thassa blink that paused would otherwise come back
 	// untapped.
 	return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
-		Kind:           RepEventMove,
-		Actor:          newController,
-		CardID:         cardID,
-		OldZone:        ZoneExile,
-		NewZone:        ZoneBattlefield,
-		EntersTapped:   tapped,
-		entryResumable: true,
+		Kind:               RepEventMove,
+		Actor:              newController,
+		CardID:             cardID,
+		OldZone:            ZoneExile,
+		NewZone:            ZoneBattlefield,
+		EntersTapped:       tapped,
+		EntersWithCounters: copyCounterMap(counters),
+		entryResumable:     true,
 		// CR 400.7: the returning permanent is a NEW OBJECT. The
 		// finisher mints the ID and strips the old object's
 		// battlefield state, on the inline path and the resumed one

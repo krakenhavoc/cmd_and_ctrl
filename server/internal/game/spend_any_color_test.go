@@ -337,7 +337,7 @@ func TestWidenForAnyColorSpend(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := widenForAnyColorSpend(cost)
+	got := widenForAnyColorSpend(cost, false)
 	if got.Generic != 2 {
 		t.Errorf("generic %d, want 2 — the grant widens, it does not fold", got.Generic)
 	}
@@ -350,18 +350,35 @@ func TestWidenForAnyColorSpend(t *testing.T) {
 			t.Errorf("%s: AnyMana = %v, want %v", r.String(), r.AnyMana, want[i])
 		}
 	}
-	if again := widenForAnyColorSpend(got); again.String() != got.String() || len(again.Required) != len(got.Required) {
+	if again := widenForAnyColorSpend(got, false); again.String() != got.String() || len(again.Required) != len(got.Required) {
 		t.Errorf("widening twice changed the cost: %v", again)
 	}
-	if plain := widenForAnyColorSpend(ParsedCost{Generic: 3}); plain.Generic != 3 || plain.Required != nil {
+	if plain := widenForAnyColorSpend(ParsedCost{Generic: 3}, false); plain.Generic != 3 || plain.Required != nil {
 		t.Errorf("generic-only cost changed: %+v", plain)
+	}
+}
+
+// The any-TYPE kind (Vizier of the Menagerie) also widens {C}: colourless
+// is a type. Snow stays out, as before.
+func TestWidenForAnyTypeSpendWidensColorless(t *testing.T) {
+	cost, err := ParseCost("{2}{U}{C}")
+	if err != nil {
+		t.Fatal(err)
+	}
+	color := widenForAnyColorSpend(cost, false)
+	typed := widenForAnyColorSpend(cost, true)
+	if color.Required[1].AnyMana {
+		t.Error("the colour grant widened a {C}")
+	}
+	if !typed.Required[0].AnyMana || !typed.Required[1].AnyMana {
+		t.Errorf("the type grant left a symbol unwidened: %+v", typed.Required)
 	}
 }
 
 // The pool solver and its missing-mana breakdown agree with each other
 // on a widened cost: what is short is named by the printed symbol.
 func TestAnyColorSpendMissingNamesThePrintedSymbol(t *testing.T) {
-	cost := widenForAnyColorSpend(ParsedCost{Generic: 1, Required: []ColorRequirement{{Options: []string{"U"}}, {Options: []string{"U"}}}})
+	cost := widenForAnyColorSpend(ParsedCost{Generic: 1, Required: []ColorRequirement{{Options: []string{"U"}}, {Options: []string{"U"}}}}, false)
 	pool := ManaPool{{Color: "R"}}
 	if pool.CanPay(cost, 0) {
 		t.Fatal("one red paid {1}{U}{U}")

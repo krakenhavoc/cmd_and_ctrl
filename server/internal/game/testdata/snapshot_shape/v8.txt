@@ -44,6 +44,7 @@ battlefield.cards[].battleX	number:float64
 battlefield.cards[].battleY	number:float64
 battlefield.cards[].bestowed	bool
 battlefield.cards[].blockingTarget	custom(uuid.UUID)
+battlefield.cards[].cardCopy	bool
 battlefield.cards[].catalogAbilities	object
 battlefield.cards[].catalogAbilities.activated	number:int
 battlefield.cards[].catalogAbilities.mana	number:int
@@ -554,6 +555,7 @@ exile.cards[].battleX	number:float64
 exile.cards[].battleY	number:float64
 exile.cards[].bestowed	bool
 exile.cards[].blockingTarget	custom(uuid.UUID)
+exile.cards[].cardCopy	bool
 exile.cards[].catalogAbilities	object
 exile.cards[].catalogAbilities.activated	number:int
 exile.cards[].catalogAbilities.mana	number:int
@@ -951,6 +953,7 @@ lastKnownBattlefield{}.BorrowedAbilities[].Lender	custom(uuid.UUID)
 lastKnownBattlefield{}.BorrowedAbilities[].LenderName	string
 lastKnownBattlefield{}.BorrowedAbilities[].Slot	string
 lastKnownBattlefield{}.BorrowedAbilities[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.CantBeAttacked	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHave[]	string
 lastKnownBattlefield{}.Colors	array
@@ -1068,6 +1071,7 @@ lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Lender	custom(uuid.UU
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].LenderName	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Slot	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.CantBeAttacked	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHave[]	string
 lastKnownPermanents{}[].characteristic.Colors	array
@@ -1184,6 +1188,7 @@ lastKnownStack[].card.battleX	number:float64
 lastKnownStack[].card.battleY	number:float64
 lastKnownStack[].card.bestowed	bool
 lastKnownStack[].card.blockingTarget	custom(uuid.UUID)
+lastKnownStack[].card.cardCopy	bool
 lastKnownStack[].card.catalogAbilities	object
 lastKnownStack[].card.catalogAbilities.activated	number:int
 lastKnownStack[].card.catalogAbilities.mana	number:int
@@ -1724,6 +1729,11 @@ lastKnownTriggerIdentity{}.attachedTo.Kind	string
 lastKnownTriggerIdentity{}.attachedTo.Mode	number:int
 lastKnownTriggerIdentity{}.attachedTo.Slot	number:int
 lastKnownTriggerIdentity{}.oracleID	string
+lastKnownTriggerIdentity{}.textBox	object
+lastKnownTriggerIdentity{}.textBox.from	string
+lastKnownTriggerIdentity{}.textBox.key	string
+lastKnownTriggerIdentity{}.textBox.keywords	array
+lastKnownTriggerIdentity{}.textBox.keywords[]	string
 lastKnownTriggerIdentity{}.tokenKey	string
 lastResolvedVersion	number:uint64
 layerVersion	number:uint64
@@ -2140,6 +2150,7 @@ pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Lender	custom(uu
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].LenderName	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Slot	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.CantBeAttacked	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
@@ -2177,6 +2188,7 @@ pendingChoices[].declineLabel	string
 pendingChoices[].discardLabel	string
 pendingChoices[].discardOptions	array
 pendingChoices[].discardOptions[]	custom(uuid.UUID)
+pendingChoices[].exchangesText	bool
 pendingChoices[].fromPlayer	custom(uuid.UUID)
 pendingChoices[].guardsStackItem	custom(uuid.UUID)
 pendingChoices[].id	custom(uuid.UUID)
@@ -2282,6 +2294,8 @@ pendingChoices[].scryCards	array
 pendingChoices[].scryCards[]	custom(uuid.UUID)
 pendingChoices[].searchCards	array
 pendingChoices[].searchCards[]	custom(uuid.UUID)
+pendingChoices[].searchGraveyardCards	array
+pendingChoices[].searchGraveyardCards[]	custom(uuid.UUID)
 pendingChoices[].searchMax	number:int
 pendingChoices[].searchMin	number:int
 pendingChoices[].source	custom(uuid.UUID)
@@ -2535,6 +2549,7 @@ phasedOut.cards[].battleX	number:float64
 phasedOut.cards[].battleY	number:float64
 phasedOut.cards[].bestowed	bool
 phasedOut.cards[].blockingTarget	custom(uuid.UUID)
+phasedOut.cards[].cardCopy	bool
 phasedOut.cards[].catalogAbilities	object
 phasedOut.cards[].catalogAbilities.activated	number:int
 phasedOut.cards[].catalogAbilities.mana	number:int
@@ -3043,6 +3058,12 @@ scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].supertypes	array
 scopedEffects[].mods[].supertypes[]	string
 scopedEffects[].mods[].text	string
+scopedEffects[].mods[].textBox	array
+scopedEffects[].mods[].textBox[]	object
+scopedEffects[].mods[].textBox[].from	string
+scopedEffects[].mods[].textBox[].key	string
+scopedEffects[].mods[].textBox[].keywords	array
+scopedEffects[].mods[].textBox[].keywords[]	string
 scopedEffects[].mods[].then	string
 scopedEffects[].mods[].thenPer	string
 scopedEffects[].mods[].to	array
@@ -3181,6 +3202,7 @@ seats[].command.cards[].battleX	number:float64
 seats[].command.cards[].battleY	number:float64
 seats[].command.cards[].bestowed	bool
 seats[].command.cards[].blockingTarget	custom(uuid.UUID)
+seats[].command.cards[].cardCopy	bool
 seats[].command.cards[].catalogAbilities	object
 seats[].command.cards[].catalogAbilities.activated	number:int
 seats[].command.cards[].catalogAbilities.mana	number:int
@@ -3521,6 +3543,7 @@ seats[].emblems.cards[].battleX	number:float64
 seats[].emblems.cards[].battleY	number:float64
 seats[].emblems.cards[].bestowed	bool
 seats[].emblems.cards[].blockingTarget	custom(uuid.UUID)
+seats[].emblems.cards[].cardCopy	bool
 seats[].emblems.cards[].catalogAbilities	object
 seats[].emblems.cards[].catalogAbilities.activated	number:int
 seats[].emblems.cards[].catalogAbilities.mana	number:int
@@ -3852,6 +3875,7 @@ seats[].graveyard.cards[].battleX	number:float64
 seats[].graveyard.cards[].battleY	number:float64
 seats[].graveyard.cards[].bestowed	bool
 seats[].graveyard.cards[].blockingTarget	custom(uuid.UUID)
+seats[].graveyard.cards[].cardCopy	bool
 seats[].graveyard.cards[].catalogAbilities	object
 seats[].graveyard.cards[].catalogAbilities.activated	number:int
 seats[].graveyard.cards[].catalogAbilities.mana	number:int
@@ -4181,6 +4205,7 @@ seats[].hand.cards[].battleX	number:float64
 seats[].hand.cards[].battleY	number:float64
 seats[].hand.cards[].bestowed	bool
 seats[].hand.cards[].blockingTarget	custom(uuid.UUID)
+seats[].hand.cards[].cardCopy	bool
 seats[].hand.cards[].catalogAbilities	object
 seats[].hand.cards[].catalogAbilities.activated	number:int
 seats[].hand.cards[].catalogAbilities.mana	number:int
@@ -4522,6 +4547,7 @@ seats[].library.cards[].battleX	number:float64
 seats[].library.cards[].battleY	number:float64
 seats[].library.cards[].bestowed	bool
 seats[].library.cards[].blockingTarget	custom(uuid.UUID)
+seats[].library.cards[].cardCopy	bool
 seats[].library.cards[].catalogAbilities	object
 seats[].library.cards[].catalogAbilities.activated	number:int
 seats[].library.cards[].catalogAbilities.mana	number:int
@@ -5059,6 +5085,7 @@ spellsCastThisTurn{}	object
 spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
+spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
 spellsCastThisTurn{}.manaSpent	number:int
 spellsCastThisTurn{}.manaSpentLast	number:int
@@ -5085,6 +5112,7 @@ stack.cards[].battleX	number:float64
 stack.cards[].battleY	number:float64
 stack.cards[].bestowed	bool
 stack.cards[].blockingTarget	custom(uuid.UUID)
+stack.cards[].cardCopy	bool
 stack.cards[].catalogAbilities	object
 stack.cards[].catalogAbilities.activated	number:int
 stack.cards[].catalogAbilities.mana	number:int

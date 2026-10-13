@@ -272,6 +272,9 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// bounced Cavern of Souls names a tribe again when it is
 		// replayed, and a Cavern in a graveyard names none.
 		c.NamedTribe = ""
+		// ADR 0160 / CR 400.7: an exchanged text box belonged to the
+		// permanent; the card in the new zone has its own text again.
+		c.TextBox = nil
 		// #2322 / CR 400.7: a colour exception's dropped devoid belongs to
 		// the copy object, not the card; a new object has its own text.
 		c.ColorCDADropped = false

@@ -19,23 +19,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // name-matched tutor to hand, revealed, with the shuffle the printed
 // text requires.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): the search looks at
-// your LIBRARY only. SearchLibrary is a library-zone primitive and
-// the engine has no combined library-and-graveyard search yet, so a
-// Command Tower already in the graveyard cannot be found. A card in
-// hand is strictly better than a card in the graveyard for every
-// deck that plays this, and the library is where the Tower is in
-// almost every game it matters, so the loss is small and it is never
-// a gain: the printed card can find strictly more places than this
-// one does.
+// The search reads the library AND the graveyard (#3217,
+// SearchLibrary.AlsoGraveyard): a Command Tower in the graveyard is a
+// public match, but "and/or" lets the player choose their zones, so
+// they may still find nothing; a Tower taken from the graveyard skips
+// the shuffle ("If you search your library this way"), and one taken
+// from the library, or none found, shuffles (declared simplification:
+// finding nothing counts as a library search; a player who looked only
+// in the graveyard and found nothing would not have shuffled, a no-op
+// in play).
 func init() {
 	Register(Spec{
-		OracleID:     "c1aecc8a-db3a-4158-b1f1-bfe06d782482",
-		Name:         "Tower Winder",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The search looks in your library only. A Command Tower already in your graveyard can't be found.",
-		},
+		OracleID:        "c1aecc8a-db3a-4158-b1f1-bfe06d782482",
+		Name:            "Tower Winder",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"reach", "deathtouch"},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, b06SelfETB, "Tower Winder — search for Command Tower",
@@ -47,7 +44,9 @@ func init() {
 						Limit:     1,
 						Reveal:    true,
 						Shuffle:   true,
-						Reason:    "Choose a card named Command Tower to put into your hand",
+						// #3217: "library and/or graveyard".
+						AlsoGraveyard: true,
+						Reason:        "Choose a card named Command Tower to put into your hand",
 					}.Apply(NewContext(g, item))
 				}),
 		},

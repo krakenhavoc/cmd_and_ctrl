@@ -365,23 +365,36 @@ func TestB20GrindingStationMillsThreeAndMayUntapWhenAnArtifactEnters(t *testing.
 	}
 }
 
-func TestB20TradingPostThreeAbilitiesAndTheDeclaredDiscardGap(t *testing.T) {
+func TestB20TradingPostFourAbilities(t *testing.T) {
 	spec, ok := Lookup(b20TradingPostOracle)
 	if !ok {
 		t.Fatal("Trading Post not registered")
 	}
-	if len(spec.Activated) != 3 || spec.Completeness != CompletenessCaveats {
-		t.Fatalf("three abilities ship and the discard gap is declared, got %d / %v", len(spec.Activated), spec.Completeness)
+	if len(spec.Activated) != 4 || spec.Completeness != CompletenessFull {
+		t.Fatalf("all four abilities ship, got %d / %v", len(spec.Activated), spec.Completeness)
 	}
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	post := b12Push(g, me.ID, "Trading Post", "Artifact", b20TradingPostOracle, 0, 0)
 	advanceToMain(t, g)
 
+	// {1}, {T}, Discard a card: gain 4 life.
+	b06AddMana(me, "C")
+	toss := handCardForTest(me, "Spare Card", "Sorcery", "")
+	lifeBefore := me.Life
+	b16Activate(t, g, me.ID, post, 0, game.ActivateAbilityParams{DiscardIDs: []uuid.UUID{toss}})
+	if me.Life != lifeBefore+4 {
+		t.Errorf("discard for life: %d → %d, want +4", lifeBefore, me.Life)
+	}
+	if me.Hand.Contains(toss) {
+		t.Error("the discarded card leaves the hand")
+	}
+	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(post) })
+
 	// {1}, {T}, Pay 1 life: a Goat.
 	b06AddMana(me, "C")
 	life := me.Life
-	b16Activate(t, g, me.ID, post, 0, game.ActivateAbilityParams{})
+	b16Activate(t, g, me.ID, post, 1, game.ActivateAbilityParams{})
 	if me.Life != life-1 {
 		t.Errorf("life %d → %d, want -1", life, me.Life)
 	}
@@ -398,7 +411,7 @@ func TestB20TradingPostThreeAbilitiesAndTheDeclaredDiscardGap(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(post) })
 	b06AddMana(me, "C")
 	relic := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
-	b16Activate(t, g, me.ID, post, 1, game.ActivateAbilityParams{
+	b16Activate(t, g, me.ID, post, 2, game.ActivateAbilityParams{
 		SacrificeIDs: []uuid.UUID{goat},
 		Targets:      b16TargetCard(relic),
 	})
@@ -413,7 +426,7 @@ func TestB20TradingPostThreeAbilitiesAndTheDeclaredDiscardGap(t *testing.T) {
 	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(post) })
 	b06AddMana(me, "C")
 	hand := me.Hand.Size()
-	b16Activate(t, g, me.ID, post, 2, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{post}})
+	b16Activate(t, g, me.ID, post, 3, game.ActivateAbilityParams{SacrificeIDs: []uuid.UUID{post}})
 	if g.Battlefield.Contains(post) {
 		t.Error("'sacrifice an artifact' includes the Post itself")
 	}

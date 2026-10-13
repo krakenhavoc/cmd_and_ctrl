@@ -42,7 +42,17 @@
     declareAttackerParams,
     isCantExertError,
     selectAttackerFor,
+    type AttackerSelection,
   } from "../lib/exert";
+  import {
+    isStaged,
+    pruneStage,
+    soleTarget,
+    stageAt,
+    stagedParams,
+    unstage,
+    type StagedAttack,
+  } from "../lib/attackStage";
   import { cardMenu, closeCardMenu } from "../lib/contextMenu";
   import { closeManaSourcePicker, manaSourcePicker } from "../lib/manaSourcePicker";
   import { abilityPopover, closeAbilityPopover } from "../lib/abilityPopover";
@@ -1361,16 +1371,46 @@
     else if (combatMode === "block") selectBlocker(cardID);
   }
 
+  // #3266: attackers are staged by clicking them (lib/attackStage.ts) and
+  // sent together by the dock's primary, "Attack with N".
+  let attackStage = $state<StagedAttack[]>([]);
+  const stagedAttackerIDs = $derived(new Set(attackStage.map((s) => s.attacker)));
+
   function selectAttacker(cardID: string): void {
-    combatSelection =
-      combatSelection?.kind === "attacker" && combatSelection.cardID === cardID
-        ? null
-        : selectAttackerFor(cardID, legalActions);
+    // A staged creature's second click takes it back out.
+    if (isStaged(attackStage, cardID)) {
+      attackStage = unstage(attackStage, cardID);
+      combatSelection = null;
+      return;
+    }
+    if (combatSelection?.kind === "attacker" && combatSelection.cardID === cardID) {
+      combatSelection = null;
+      return;
+    }
+    const sel = selectAttackerFor(cardID, legalActions);
+    if (stageAtSoleTarget(sel)) return;
+    combatSelection = sel;
+  }
+  // stageAtSoleTarget stages a creature with one legal attack target
+  // there at once (every duel without a planeswalker or battle). Not
+  // one already declared: re-pointing it is still declare_attacker's.
+  function stageAtSoleTarget(sel: AttackerSelection): boolean {
+    if (isAttacking(sel.cardID)) return false;
+    const only = soleTarget(legalActions.attackTargets(sel.cardID));
+    const next = only ? stageAt(attackStage, sel, only) : null;
+    if (!next) return false;
+    attackStage = next;
+    combatSelection = null;
+    return true;
+  }
+  function isAttacking(cardID: string): boolean {
+    return !!view?.battlefield.cards.find((c) => c.instance_id === cardID)?.attacking_target;
   }
   // ADR 0130 §7: the dock's "Attack" / "Attack and exert" answer.
   function chooseExert(exert: boolean): void {
     if (combatSelection?.kind !== "attacker") return;
     combatSelection = { ...combatSelection, exert };
+    stageAtSoleTarget(combatSelection);
   }
   function selectBlocker(cardID: string): void {
     combatSelection =
@@ -1380,14 +1420,79 @@
   }
   function declareAttackTarget(targetPlayerID: string): void {
     if (!viewerID || combatSelection?.kind !== "attacker") return;
-    // ADR 0130 §7: null while the exert question is open — the click
-    // commits nothing until the player answers it in the dock. The
-    // params carry auto_tap (ADR 0080) and, when chosen, exert.
+    // #3266: a creature not yet attacking is staged at the clicked
+    // player, planeswalker or battle; the primary sends the lot. ADR
+    // 0130 §7: nothing is staged while the exert question is open.
+    if (!isAttacking(combatSelection.cardID)) {
+      const next = stageAt(attackStage, combatSelection, targetPlayerID);
+      if (!next) return;
+      attackStage = next;
+      combatSelection = null;
+      return;
+    }
+    // Re-pointing a declared attacker is declare_attacker's, as before.
+    // The params carry auto_tap (ADR 0080) and, when chosen, exert.
     const params = declareAttackerParams(combatSelection, targetPlayerID);
     if (!params) return;
     client.sendAction("declare_attacker", undefined, params);
     combatSelection = null;
     play("attack");
+  }
+
+  // #3266: the primary's "Attack with N". One declare_attackers carries
+  // every staged attacker and its target; once the server has taken it
+  // the primary's pass follows, as pressing next after declaring did. A
+  // refusal (an attack tax the lands can't pay, say) passes nothing and
+  // keeps the stage, so the player can change it and try again.
+  let attackCommit = $state<{ frame: string; seq: number; ids: string[] } | null>(null);
+  function commitAttack(): void {
+    if (attackCommit) return;
+    const params = stagedParams(attackStage);
+    if (!params) return;
+    combatSelection = null;
+    const frame = client.sendAction("declare_attackers", undefined, params);
+    if (frame) attackCommit = { frame, seq: $lastSeq, ids: attackStage.map((s) => s.attacker) };
+    play("attack");
+  }
+  $effect(() => {
+    const p = attackCommit;
+    if (!p) return;
+    if ($lastError?.replyTo === p.frame) {
+      attackCommit = null;
+      return;
+    }
+    if (view?.turn?.step !== "declare_attackers") {
+      attackCommit = null;
+      attackStage = [];
+      return;
+    }
+    const seq = $lastSeq;
+    // Not answered yet: wait for a frame that shows the attack.
+    if (seq <= p.seq || !p.ids.some(isAttacking)) return;
+    attackCommit = null;
+    attackStage = [];
+    if (!viewerHasPriority) return;
+    if (view.pending_choices?.some((c) => c.chooser === viewerID)) return;
+    if (seq === lastAutoPassedSeq) return;
+    lastAutoPassedSeq = seq;
+    passPriority();
+  });
+  // The stage lives for one declaration: it empties when the step ends,
+  // and a creature that can no longer attack drops out of it.
+  $effect(() => {
+    if (attackCommit) return;
+    if (!canDeclareAttackers) {
+      if (attackStage.length > 0) attackStage = [];
+      return;
+    }
+    const pruned = pruneStage(attackStage, (id) => legalActions.canAttack(id));
+    if (pruned !== attackStage) attackStage = pruned;
+  });
+  // pressPrimary is the dock's primary and its key: Attack with N with
+  // attackers staged, a pass otherwise.
+  function pressPrimary(): void {
+    if (canDeclareAttackers && attackStage.length > 0) commitAttack();
+    else passPriority();
   }
   // ---- Attack with all (#318) ----
   // Declaring a wide board one creature at a time is the loudest
@@ -1432,6 +1537,8 @@
 
   function sendBulkAttack(defenderSeatID: string, params: AttackAllParams): void {
     combatSelection = null;
+    // #3266: Attack all declares at once and replaces the staged set.
+    attackStage = [];
     const frameID = client.sendAction("declare_attackers", undefined, params);
     lastAttackAllAttempt = frameID ? { defenderSeatID, frameID } : null;
     play("attack");
@@ -1677,7 +1784,8 @@
   // fix to one is a fix to both.
   onMount(() =>
     registerShortcutHandlers({
-      passPriority,
+      // #3266: the key presses the primary, so it commits a staged attack.
+      passPriority: pressPrimary,
       passTurn,
       undo: () => client.sendAction("undo"),
       // Availability guarantees exactly one defender here — the
@@ -1768,6 +1876,7 @@
           plan: attackPlan,
           ready: attackAllReady,
           blockedHint: attackBlockedHint,
+          staged: attackStage.length,
           attackAllChord: keys.attackAll,
           seatColor,
           onAttackAll: attackAllAt,
@@ -2260,6 +2369,7 @@
           disabled={actionsDisabled($status)}
           {combatMode}
           {selectedCombatCardID}
+          stagedAttackers={stagedAttackerIDs}
           onSelectCombatCard={handleSelectCombatCard}
           onDeclareAttack={declareAttackTarget}
           onDeclareBlock={declareBlockTarget}
@@ -2520,7 +2630,9 @@
           {autopassEnabled}
           {loopNotice}
           {readyActions}
-          onPassPriority={passPriority}
+          attackersReady={attackAllReady ? attackPlan.eligible.length : 0}
+          attackersStaged={canDeclareAttackers ? attackStage.length : 0}
+          onPassPriority={pressPrimary}
           onPassTurn={passTurn}
           onToggleAutopass={toggleAutopass}
           undosLeft={viewerSeat?.undos_remaining ?? 0}

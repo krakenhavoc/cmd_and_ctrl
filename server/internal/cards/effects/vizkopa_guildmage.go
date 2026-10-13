@@ -15,17 +15,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // second one fire — a lifelinked commander connecting for eight
 // drains three opponents for eight each.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): the SECOND ability
-// is not implemented. What it creates is a TRIGGERED ability that
-// exists for the rest of the turn and fires on an event ("whenever
-// you gain life"), which is a floating trigger. The engine's two
-// duration mechanisms are turn-scoped STATICS
-// (a ScopedEffect record, #279) and step-keyed DELAYED
-// triggers (ScheduleDelayedTriggerForEffect, CR 603.7) — a static
-// changes a characteristic, and a delayed trigger fires at a named
-// step, so neither can express "watch an event kind until end of
-// turn". Nothing is stronger than printed here: the Guildmage ships
-// as its lifelink half only, which is strictly a subset of the card.
+// The second ability makes a floating triggered ability, which is a
+// repeating DelayedOnEvent (CR 603.7b, Lyra's shape): "whenever you gain
+// life" is an EventChangeLife on its controller with a positive amount,
+// once per gain, and the body reads that amount off the fired item's
+// trigger ("that much"). It lapses at end of turn. Activating it twice
+// stacks two watchers, as printed.
 //
 // The first ability is complete. Lifelink is a canonical keyword and
 // the grant is turn-scoped, pinned to the targeted creature with its
@@ -35,10 +30,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "f19e7c5c-67fa-4ae4-89b8-afa0e08a6c48",
 		Name:         "Vizkopa Guildmage",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only the lifelink ability works. The second ability — \"whenever you gain life this turn, each opponent loses that much life\" — can't be activated.",
-		},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{W}{B}: Target creature gains lifelink until end of turn.",
 			Cost:    ManaCost("{1}{W}{B}"),
@@ -56,6 +48,33 @@ func init() {
 				}
 				return nil
 			},
+		}, {
+			Label:   "{1}{W}{B}: Whenever you gain life this turn, each opponent loses that much life.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    ManaCost("{1}{W}{B}"),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return DelayedOnEvent{
+					Label:     "Vizkopa Guildmage — each opponent loses that much life",
+					On:        []game.EventKind{game.EventChangeLife},
+					Condition: vizkopaGuildmageGainCondition,
+					Body:      vizkopaGuildmageDrainBody,
+					Repeats:   true,
+				}.Apply(NewContext(g, item))
+			},
 		}},
 	})
 }
+
+var (
+	vizkopaGuildmageGainCondition = game.DelayedCondition("caveat-h2/vizkopa-guildmage-you-gain-life",
+		func(ev game.Event, dt *game.DelayedTrigger, _ *game.Game, _ game.EffectParams) bool {
+			return ev.Kind == game.EventChangeLife && ev.Target == dt.Controller && ev.Amount > 0
+		})
+	vizkopaGuildmageDrainBody = game.SimpleDelayedBody("caveat-h2/vizkopa-guildmage-drain",
+		func(g *game.Game, item *game.StackItem) error {
+			if item.Trigger == nil {
+				return nil
+			}
+			return eachOpponentLosesLife(g, item, item.Trigger.Event.Amount)
+		})
+)

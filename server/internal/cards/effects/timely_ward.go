@@ -20,23 +20,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // file carries: sacrifice, exile, -X/-X to zero toughness, and the
 // legend rule.
 //
-// ONE SIMPLIFICATION, strictly weaker: the conditional flash is not
-// offered. "As though it had flash IF IT TARGETS A COMMANDER" is a
-// cast-timing permission that depends on the target chosen during
-// the cast it is gating — the engine's flash gate reads a keyword off
-// the card before any target exists, and Spec.PrintedKeywords is
-// unconditional, so declaring flash here would let the Aura be cast
-// at instant speed onto ANY creature. That is stronger than printed,
-// which is the one direction a simplification must never go. So the
-// Aura is sorcery-speed only, which is a worse card than the printed
-// one and never a better one.
+// The conditional flash is FlashIfTargets: an offer at the printed cost
+// that opens the instant-speed window for its own claim and narrows the
+// target clause to a commander (CR 601.3c checks the condition against
+// the announcement). The plain cast stays sorcery-speed with any creature.
 func init() {
 	Register(Spec{
 		OracleID:     "8e589dca-d31e-4d2f-81b1-18e5f9198795",
 		Name:         "Timely Ward",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"It can't be cast at instant speed on a commander — it's sorcery-speed only."},
+		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		AlternativeCosts: []game.AlternativeCost{
+			FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander())),
+		},
 		Static: []game.StaticAbility{
 			GrantToAttached("indestructible"),
 		},

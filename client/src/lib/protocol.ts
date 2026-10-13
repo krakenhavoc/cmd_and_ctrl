@@ -1628,6 +1628,14 @@ export interface PendingChoiceView {
   // an unconditional "a card" / "three cards" search (CR 701.23d), where
   // an empty answer is refused and the client offers no such button.
   search_min?: number;
+  // #3217: on a "search your library and/or graveyard" prompt, the
+  // instance IDs among `options` that are in the searcher's graveyard.
+  // Everything else is a library card. Absent for a library-only search.
+  search_graveyard?: string[];
+  // ADR 0160: a "copy_target" prompt whose pick is the creature to
+  // exchange text boxes with rather than the object to copy (Deadpool,
+  // Trading Card). Same {card_ids} answer, same empty decline.
+  exchanges_text?: boolean;
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
@@ -1715,6 +1723,12 @@ export interface PendingChoiceView {
   // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // #2680 / #3270: kind "choose_cards" only, and only to its chooser.
+  // Where the named card goes when the card says so: "battlefield",
+  // "battlefield_tapped", or "cast_free" ("you may cast a spell from
+  // your hand without paying its mana cost" — answering with a card
+  // opens its cast at once). Absent on a plain discard or look.
+  choose_destination?: string;
   // #2525: kind "proliferate" only. The seats on offer beside
   // `options` (player IDs), and the engine's suggested answer
   // (instance IDs and player IDs) for the modal to pre-select. A
@@ -4087,6 +4101,12 @@ export interface CardView extends CastSurfaceView {
   // abilities of" that the catalog does not automate. They lend nothing; the
   // menu names each in a disabled "<lender>: not automated" line.
   unautomated_lenders?: GrantedByView[];
+  // ADR 0160 (CR 612.5) — the object whose text box this permanent has
+  // when it is not its own (Exchange of Words, Deadpool, Trading Card).
+  // Its abilities, keywords and rows already are that text's; the
+  // printed oracle text the inspector fetches is not. Absent when the
+  // permanent has its own text.
+  text_box_from?: string;
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).

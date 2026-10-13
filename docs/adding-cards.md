@@ -83,6 +83,23 @@ surface tiny.
    resolution; a creature removed from combat in response is illegal,
    and a source that has left is read from its last-known blocks
    (#1863, ADR 0019 amendment 2026-10-07).
+   "Target card in exile" is `TargetCardInExile(label, preds…)`, picked
+   in the zone browser's exile tab like a graveyard card; "target face-up
+   exiled card" adds `FaceUp()` (Pull from Eternity). "Target creature
+   card exiled with this" wraps the clause in `ExiledWithThis(spec)`:
+   `Targets: ExiledWithThis(TargetCardInExile("target creature card
+   exiled with The Darkness Crystal", Creature()))`. It is data on
+   `game.TargetSpec.ExiledWithSource`, judged at announce and at
+   resolution against `Card.ExiledWith` naming the source OBJECT (a
+   second Crystal's exiles, a stale epoch and an unlinked card are out;
+   a source that has left is read from its last-known record; no source
+   admits nothing). Only a card whose exile stamped `Card.ExiledWith`
+   carries the link, which today is a replacement exile
+   (`ReplacementEvent.ExiledWith`); an ability-resolution exile does not
+   stamp it until ADR 0155's stamp lands, so a card that exiles from an
+   ability still uses the event-log record and a choice. A face-down
+   exiled card its chooser has not seen is never offered (#3259, ADR 0019
+   amendment 2026-10-13).
    Predicates compose with `And` / `Or` / `Not`; add missing ones to
    `targets.go`, not to the card file. Multi-target clauses set the
    count on the same spec — `TargetCreature("two target nonartifact
@@ -2350,6 +2367,29 @@ Assert the OBSERVABLE result — name, P/T, types, counters, and for
 anything with a catalog entry, its behaviour — because a copy that
 rewrote only the display fields looks identical on the wire.
 
+### Exchanging text boxes (ADR 0160)
+
+A text box here is the catalog KEY plus the importer's keywords, so
+"exchange the text boxes of two creatures" (CR 612.5) swaps exactly
+those and leaves name, types, P/T, mana cost and colour alone. Two
+shapes:
+
+```go
+// "As this enters, you may exchange its text box and another creature's"
+Replacements: []game.ReplacementEffect{
+    EntersExchangingTextBoxes("Deadpool, Trading Card", anotherCreatureOnBattlefield),
+},
+// "…choose two target creatures. For as long as this remains, exchange their text boxes"
+Targeting(WhenThisEnters(label, ExchangeTargetTextBoxesWhileSourceRemains),
+    TargetCreature("two target creatures").WithCount(2, 2)),
+```
+
+Any other duration calls `g.ExchangeTextBoxesForEffect(source, a, b,
+d, label)` directly; it refuses a partial exchange (CR 701.12a). Never
+read `Card.OracleID` to ask what a permanent DOES — `CatalogKey` /
+`CatalogAbilityKey` are what follow the exchange. Changing single
+words (Glamerdye, Magical Hack) has no shape yet; ADR 0160 §9 plans it.
+
 ### Adding a combat-keyword card (S18+)
 
 Creatures with printed combat keywords (flying, reach, deathtouch,
@@ -4112,12 +4152,30 @@ the Earth) sets nothing. Today the two behave the same at the prompt,
 and a card that says "may" keeps the flag so that stays true if "you
 may search" ever stops shuffling on a decline.
 
-The engine's only search reads a LIBRARY, a hidden zone. A search of a
-public zone ("search your graveyard") has no fail to find: the searcher
-sees everything, so they must find a valid card when one is present.
-There is no such primitive yet — those cards are choose-from-zone
-prompts with their own minimums — and `searchFloor` in
-`game/effect_api.go` is the rule written down for the day one lands.
+**"Search your library and/or graveyard" (#3217):** set
+`AlsoGraveyard: true` on `SearchLibrary` and write `Shuffle: true` as the
+card prints it ("If you search your library this way, shuffle"):
+
+```go
+SearchLibrary{Player: p, Predicate: …, Dest: game.ZoneHand, Limit: 1,
+    Reveal: true, Shuffle: true, AlsoGraveyard: true}   // Tower Winder, Delivery Moogle
+```
+
+The prompt offers the matches from both zones, marked by zone. "And/or"
+lets the searcher choose which zones to look in, so the floor is the
+ordinary library-search floor: a stated quality may find nothing even
+with a match in the graveyard, and an unconditional search must find
+`min(limit, cards in both zones)`. A take that comes wholly out of the
+graveyard does not search the library, so the engine skips the shuffle
+and `EventSearchLibrary`; any library card taken, or nothing found,
+shuffles (finding nothing counts as a library search: a declared
+simplification, a no-op in play). You do not model that, and you do not
+write a second search for the graveyard half. The graveyard searched is the library owner's, so do not
+combine it with `LibraryOwner`, and the destination is hand, battlefield
+or exile. A search of ONLY a public zone ("search your graveyard") is
+still a choose-from-zone prompt; `searchFloor(hiddenZone=false, …)` is
+its rule. A "graveyard, hand, and/or library" search (Mishra, Artificer
+Prodigy) also reads the hand and is not covered.
 
 **Scry (S21):** use the `Scry` primitive. Anything the card says
 *after* "then" goes in `Then`, not on the next line:
@@ -5724,6 +5782,18 @@ discovered spell's `EventCast` when it is cast. Cascade's grant has the
 same cap (one below the cascading spell), timing and pass-closed window;
 its uncast hit goes to the bottom on the pass.
 
+**Exile until a card matches, then a free cast (#3213, [ADR 0099](decisions/0099-discover.md) amendment 2026-10-13):** cascade and discover are keywords; a card that prints the same walk with its own test calls the shared body:
+
+```go
+// Tibalt's Trickery: the countered spell's controller walks their library
+// to a nonland card with a different name and may cast it free.
+ctx.Game.ExileUntilCastFreeForEffect(victim, source, func(c game.Card) bool {
+    return !c.IsLand() && c.Name != name   // closes over scalars read before the call
+})
+```
+
+The chooser is the player whose library is walked. There is no mana value cap, the grant lapses to the bottom of the library on their next pass, and the prompt asks under `MayCastKeywordExileUntil`. For "put it onto the battlefield with N counters" from exile, `ReturnFromExile{Counters: map[string]int{game.CounterPlusOne: 2}}` seeds them on the entry event (ADR 0113 amendment 2026-10-13).
+
 **Mana from a spell (roadmap batch 01):** "Add {B}{B}{B}" on a SPELL
 (Dark Ritual) or a non-mana ability (Mana Drain's refund) is the
 `AddMana` primitive in `add_mana.go`, not a `ManaAbility` — a mana
@@ -6837,6 +6907,27 @@ file says only WHEN the permanent becomes prepared —
 `SelfEntersPrepared()` for "enters prepared", `BecomePrepared{Target}`
 from a trigger or an ability — and what the prepare spell does. Read
 `g.IsPreparedForEffect(id)` for "if this creature isn't prepared".
+
+
+### Copying a card and casting the copy (#3258)
+
+"Copy that card, and you may cast the copy" (Mizzix's Mastery, Arcane
+Bombardment) is `CopyAndCast`, not `CopySpellForEffect` (a spell already on
+the stack) and not `CreateTokenCopy` (a permanent):
+
+```go
+CopyAndCast{Cards: exiled, Free: true}.Apply(ctx)       // "without paying its mana cost"
+CopyAndCast{Cards: exiled, FollowUp: key}.Apply(ctx)    // "you may cast the copy. If you do, ..."
+```
+
+Hand it the cards that REALLY reached exile (the continuation of
+`ExileCardsThenForEffect` / `ExileCardThenForEffect`, not a pre-count). Each
+gets a copy (CR 707.12) in exile, or in the graveyard it came from, and a
+free-cast offer, all at once with no cap; the player casts them in the order
+they like. A copy not cast by the player's next priority pass ceases to
+exist, and a cast one ceases on resolution (a permanent becomes a token). It
+is an exact copy, so the catalog resolves it as the original. See ADR 0066's
+2026-10-13 amendment.
 
 ### Adding a hideaway card (S43+, ADR 0091)
 
@@ -8984,7 +9075,10 @@ g.CommanderIdentityColorsForEffect(controller)                                  
   creatures alike and outlive the planeswalker that made them.
 - **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when
   `known` is false (the weaker direction). A player with no commander has a colourless identity.
-- **A free cast from hand with a ceiling** (Buster Sword) is the Rishkar's Expertise pick plus a `{0}` `CastPermission`.
+- **A free cast from hand with a ceiling** (Buster Sword) is `offerFreeHandCast(ctx, controller, "Buster Sword",
+  "a spell with mana value N or less", ManaValueLE(N))`: one prompt, then the pass-closed any-timing `{0}` cast (#3270).
+  Never write the pick and a keyless `CastPermission` by hand: the pick would open nothing and the card would stay
+  castable all turn.
 - **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
   Emrakul, the Exigent Doom (a hand ability whose granted mana ability lasts "until this card is cast from exile"; durations
   have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
@@ -9024,6 +9118,27 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   Gods' 7b base 0/0); one in the removal's own layer does not, because ADR 0093 decision 3 orders every layer 6 removal
   first.
 
+### A reanimation's counters and tail, "when you cycle" with an X, and a token's own sizing (#3172, cav-h1)
+
+```go
+ctx.Game.ReturnFromGraveyardWithCountersForEffect(id, uuid.Nil, false, map[string]int{"-1/-1": 1})    // Persist
+ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(id, ctrl, false, counters, func(g *game.Game, entered uuid.UUID) error { … }) // Makeshift Mannequin
+InGraveyard(On(game.EventCycle, Self, "…", func(g, item) error { x := item.Trigger.Event.Amount; … })) // Shark Typhoon
+ctx.SourcePermanent()                                                                                  // Ratatwotwo's X, last-known once it has left
+```
+
+- **"Return … with a counter on it"** is an "enters with" clause: pass the counters to the return, never add them on
+  the next line (an entry trigger would see the creature at printed size, and a Clone's question would swallow the
+  second step). A "then" that needs the new permanent (a grant, a suspect) is the `…ThenForEffect` tail.
+- **`EventCycle.Amount` is the cycling cost's X**, so "when you cycle this card, create an X/X" is its own
+  graveyard trigger (ADR 0062 amendment 2026-10-13) and the cycling ability only draws.
+- **A creature token that counts something** (Simulacrum Synthesizer's Construct) uses the token's own static
+  (`UrzaConstructToken`), not a static on the card that made it.
+- **A trigger's resolution-time "if"** reads the event off `item.Trigger.Event` (the Forest that entered), so
+  the check is the card's own condition and not a stricter stand-in.
+- **A Mycosynth Lattice-style "permanents are colorless"** is a layer 5 static that clears `Colors`; cards in hand,
+  graveyard and exile and spells on the stack are still not reached.
+
 ### Three small pieces from the Raffine deck (#3212)
 
 - **Connive X** is `ConniveX{Controller, Creature, X}` (`connive.go`): draw X, then
@@ -9042,13 +9157,46 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   `ReturnFromGraveyardTogether.Then`.
 - **A madness cost with life** is `Madness: "{2}{B}", MadnessLife: 8` (ADR 0066
   amendment 2026-10-13).
-- **A free cast of cards in your hand during a resolution** (The Great Synthesis)
-  cannot be a plain hand `CastPermission`: a hand permission applies only to a cast
-  that claims the alternative cost it carries (`CastPermission.ForClaim`). Give it an
-  `AltCostKey` (an on-disk identity) and a `Cost: "{0}"`, `CastOnly`, `TimingFlash` and
-  `LapseOnPass: game.LapseStaysInExile`; the offer shows in the cost picker and the
-  caster claims it. Kari Zev's and Rishkar's Expertise grant one without a key (#3234,
-  open).
+- **A free cast of cards in your hand during a resolution** is cast "as part of" the resolution (CR 608.2g), so it
+  ignores timing and is now or never. A hand permission applies only to a cast that claims the alternative cost it
+  carries (`CastPermission.ForClaim`), and the grant that does all of it is `Game.FreeCastFromHandPermission`: `{0}`,
+  claimed under `AltCostKeyGrantedCost`, `CastOnly`, `TimingFlash` and `LapseOnPass: game.LapseStaysInHand`, so the
+  holder's next pass ends it and the card stays in hand. "You may cast a spell from your hand" with a pick (Buster
+  Sword, Kari Zev's and Rishkar's Expertise, Surtland Elementalist, Great Intelligence's Plan) is
+  `offerFreeHandCast` in `free_hand_cast.go`: a `choose_cards` pick tagged `ChooseCastFree`, whose answer grants it.
+  The client opens the cast chain the moment the pick is answered, the bot prices the pick as a cast and the
+  enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
+  its own `AltCostKey` and no pick (#3270).
+
+### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
+
+Pieces that used to be caveats; the engine notes are in the 2026-10-13 amendments of [ADR 0045](decisions/0045-combat-restrictions.md),
+[ADR 0026](decisions/0026-delayed-triggers.md) and [ADR 0066](decisions/0066-granted-cast-and-play-permissions.md).
+
+```go
+Static: []game.StaticAbility{{Layer: game.Layer6Ability, DependsOnEvents: []game.EventKind{game.EventScry, game.EventSurveil},
+    AppliesTo: selfOnly, Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, src *game.Card) { /* defender unless scried */ }}}
+c.CantBeAttacked = true                                                                  // in a layer 6 Apply: The Aetherspark, attached
+AnyColorSpend: YouMaySpendManaAsAnyTypeToCast("creature spells", "Creature")             // Vizier: coloured mana also pays {C}
+AlternativeCosts: []game.AlternativeCost{FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander()))} // Timely Ward
+DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b, Repeats: true} // body reads item.Trigger.Event.Amount
+```
+
+- **A static whose condition is "has happened this turn" or "is blocking"** lists the event kinds in `DependsOnEvents`;
+  without it the layer cache is stale until something unrelated bumps it. Only `EventScry`, `EventSurveil`, `EventDealDamage`
+  and `EventBlock` are read; a new kind needs an arm in `layerVersionBump.OnEvent`. Put the keyword in the static, not in
+  `PrintedKeywords`, when the static is what removes it (Surveillance Phantasm grants `defender` unless it scried).
+- **`PowerGE` on a spell reads the spell's own characteristic-defining ability**, so a `*/*` creature spell counts as what its
+  text says (Spellbreaker Behemoth).
+- **A delayed trigger's body can read the triggering event** (`item.Trigger.Event`), for "that much".
+- **A creature put onto the battlefield as a copy keeps its copied values for a trigger that resolves after it left**
+  (`PermanentInfo.Copiable`); Unstable Shapeshifter reads it.
+- **A cost of tapping several named permanents is a mana ability's `TapOthers`** (Heritage Druid's shape, The Cabbage Merchant's two
+  Foods), and a discard is `DiscardACard()` in `Plus(...)` (Trading Post).
+- **Cards that stay caveated**, with the gap named: Sunbird's Invocation (the chosen card is cast from exile because a revealed
+  non-top library card has no client affordance to cast from), Transmutation Font (a "different names" rule over a three-permanent
+  sacrifice), The Warring Triad (mill as an activated-ability cost), Vorinclex, Monstrous Raider (counter placements that name no
+  placer). Tower Winder landed Full with #3217.
 
 ### Adding a `Spec` slot (#622)
 

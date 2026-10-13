@@ -172,6 +172,27 @@ func (st *state) copyTargetValue(ids []string, lookup func(string) *protocol.Car
 	return v, "copy: the most valuable permanent"
 }
 
+// textExchangeValue scores an answer to an exchange-text prompt (ADR
+// 0160): the entering permanent takes the picked creature's text and
+// hands it its own. Take the best text an OPPONENT has — their creature
+// gets ours in return, drawback and all (Deadpool's upkeep loss). One of
+// our own is a poor trade, worth only a little more than declining.
+func (st *state) textExchangeValue(ids []string, lookup func(string) *protocol.CardView) (float64, string) {
+	if len(ids) == 0 {
+		return 0, "exchange: keep its own text"
+	}
+	c := lookup(ids[0])
+	if c == nil {
+		return 0, "exchange: a permanent it cannot see"
+	}
+	if c.Controller == st.me {
+		return 0.02, "exchange: one of its own creatures"
+	}
+	fresh := *c
+	fresh.Tapped, fresh.SummoningSick, fresh.Restrictions, fresh.AttachedTo = false, false, nil, nil
+	return st.w.permanentValue(&fresh), "exchange: the best text an opponent has"
+}
+
 // legendaryIControl reports whether c is legendary and the bot controls
 // a permanent with its name — c itself included.
 func (st *state) legendaryIControl(c *protocol.CardView) bool {

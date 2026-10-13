@@ -517,6 +517,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return p.entryPayLifeValue(st, m, cp.Apply)
 
 	case choiceCopyTarget:
+		// ADR 0160: the same prompt, asking whom to exchange text
+		// boxes with (Deadpool, Trading Card).
+		if ch != nil && ch.ExchangesText {
+			return st.textExchangeValue(cp.CardIDs, lookup)
+		}
 		// #2390: "enter as a copy of" — the best permanent on offer.
 		return st.copyTargetValue(cp.CardIDs, lookup)
 

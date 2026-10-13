@@ -35,6 +35,9 @@
     cards: CardView[];
     viewerID: string | null;
     selectedCombatCardID?: string | null;
+    // #3266: staged attackers, drawn with the attacking ring until the
+    // dock's Attack with N sends them.
+    stagedAttackers?: ReadonlySet<string>;
     onCardClick?: (card: CardView, ev: MouseEvent) => void;
     // onActivateManaAbility — fires `activate_mana_ability` for a
     // battlefield permanent the viewer controls. Routed down to
@@ -145,6 +148,7 @@
     cards,
     viewerID,
     selectedCombatCardID = null,
+    stagedAttackers,
     onCardClick,
     onActivateManaAbility,
     onRawTap,
@@ -363,7 +367,8 @@
                   selected={memberIDs
                     ? !!selectedCombatCardID && memberIDs.includes(selectedCombatCardID)
                     : selectedCombatCardID === c.instance_id}
-                  attacking={!!c.attacking_target}
+                  attacking={!!c.attacking_target ||
+                    (memberIDs ?? [c.instance_id]).some((id) => stagedAttackers?.has(id))}
                   blocking={!!c.blocking_target}
                   {memberIDs}
                   onClick={p.group && onGroupClick

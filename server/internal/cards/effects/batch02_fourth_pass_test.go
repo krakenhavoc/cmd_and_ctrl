@@ -256,7 +256,7 @@ func hasKeyword(list []string, kw string) bool {
 // --- Finale of Devastation ---------------------------------------------
 
 // TestB02dFinaleOfDevastationFindsACreatureAndPumpsAtXTen proves the
-// library-only search (declared caveat) and the unconditional X>=10
+// "library and/or graveyard" search (#3217) and the unconditional X>=10
 // pump together: a creature at mana value <= X is a legal find, one
 // above X is not, and every creature you control gets +X/+X and haste
 // until end of turn regardless of what the search turned up.

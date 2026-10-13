@@ -85,6 +85,53 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   return `passing moves to ${STEP_LABELS[next]}`;
 }
 
+/**
+ * PrimaryKind is what the dock's primary says it does (#3267):
+ *   - "pass": something is on the stack, so a pass hands priority on and,
+ *     once everyone passes, lets the top item resolve;
+ *   - "noAttacks": declare attackers, creatures could attack and none
+ *     has, so a pass declares no attackers and skips the rest of combat
+ *     (CR 508.8);
+ *   - "next": the stack is empty and an all-pass moves the game on;
+ *   - "attack": declare attackers with creatures staged (#3266), so the
+ *     primary sends them as one declaration and then passes.
+ *
+ * `attackersReady` is how many of the viewer's creatures could attack
+ * right now, and `attackersStaged` how many they have staged: both 0
+ * unless the viewer is the one declaring.
+ */
+export type PrimaryKind = "pass" | "next" | "noAttacks" | "attack";
+
+export function primaryKind(
+  view: GameView | null | undefined,
+  attackersReady: number,
+  attackersStaged = 0,
+): PrimaryKind {
+  if (!view) return "next";
+  if (view.turn?.step === "declare_attackers" && attackersStaged > 0) return "attack";
+  if (stackHolds(view)) return "pass";
+  if (
+    view.turn?.step === "declare_attackers" &&
+    attackersReady > 0 &&
+    afterDeclareAttackers(view) === "end_combat"
+  ) {
+    return "noAttacks";
+  }
+  return "next";
+}
+
+// primaryTitles is each kind's tooltip, before the key hint.
+export const primaryTitles: Record<PrimaryKind, string> = {
+  pass: "pass priority — once everyone passes, the top of the stack resolves",
+  next: "pass priority — once everyone passes, the game moves to the next step",
+  noAttacks: "attack with nothing and skip the rest of combat",
+  attack: "declare the creatures you picked as attackers, then pass priority",
+};
+
+function stackHolds(view: GameView): boolean {
+  return (view.stack_items?.length ?? 0) > 0 || (view.stack?.count ?? 0) > 0;
+}
+
 // anyPlayerOfferWaiting is "Carol is deciding whether to pay {2} (Bob's
 // Rhystic Tutor)" while an any-player link is open, or "". Public state
 // only: every seat's view carries the link and its chooser.
@@ -112,7 +159,7 @@ function blockWaitHint(view: GameView): string {
 }
 
 function topOfStackName(view: GameView): string {
-  if ((view.stack_items?.length ?? 0) === 0 && (view.stack?.count ?? 0) === 0) return "";
+  if (!stackHolds(view)) return "";
   const model = buildStackLane({
     stack: view.stack,
     stackItems: view.stack_items,

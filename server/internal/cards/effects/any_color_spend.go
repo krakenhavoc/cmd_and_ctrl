@@ -64,3 +64,14 @@ func YouMaySpendManaAsAnyColorToCast(what string, types ...string) []game.AnyCol
 		},
 	}}
 }
+
+// YouMaySpendManaAsAnyTypeToCast is "You can spend mana of any type to cast
+// <what>." (Vizier of the Menagerie): YouMaySpendManaAsAnyColorToCast's
+// grant, plus colourless being a type, so coloured mana also pays a {C}
+// symbol.
+func YouMaySpendManaAsAnyTypeToCast(what string, types ...string) []game.AnyColorSpendStatic {
+	out := YouMaySpendManaAsAnyColorToCast(what, types...)
+	out[0].Label = "You can spend mana of any type to cast " + what + "."
+	out[0].AnyType = true
+	return out
+}

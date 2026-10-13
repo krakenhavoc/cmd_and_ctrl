@@ -87,6 +87,11 @@ type triggerIdentityLKI struct {
 	TokenKey   string    `json:"tokenKey,omitempty"`
 	ActiveFace int       `json:"activeFace,omitempty"`
 	AttachedTo TargetRef `json:"attachedTo,omitempty"`
+	// TextBox is the exchanged text box the permanent had (ADR 0160,
+	// CR 603.10a): an exchanged creature that dies with "when this
+	// creature dies" in its GAINED text triggers, and one that gave
+	// its own away does not. Immutable, shared like Card.TextBox.
+	TextBox *TextBoxValues `json:"textBox,omitempty"`
 }
 
 // harvestPass is the event-local, immutable view shared by every matching
@@ -321,6 +326,7 @@ func (g *Game) withLastKnownTriggerIdentityLocked(c Card) Card {
 	c.TokenKey = identity.TokenKey
 	c.ActiveFace = identity.ActiveFace
 	c.AttachedTo = identity.AttachedTo
+	c.TextBox = identity.TextBox
 	if lki, ok := g.lastKnownBattlefield[c.InstanceID]; ok {
 		c.Name = lki.Name
 		c.Controller = lki.Controller

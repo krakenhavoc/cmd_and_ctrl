@@ -456,29 +456,103 @@ func TestAvatarRokuCreatesADragonToken(t *testing.T) {
 
 // --- The Legend of Yangchen // Avatar Yangchen ----------------------
 
-// TestYangchenChapterOneExilesAnOpponentsExpensivePermanent is the
-// entry + chapter I proof: the declared slice of the printed ability
-// (the controller's own target, not every player's).
-func TestYangchenChapterOneExilesAnOpponentsExpensivePermanent(t *testing.T) {
+// TestYangchenChapterOneEveryPlayerChoosesFromTheSharedPool is the entry +
+// chapter I proof: starting with the controller, each player chooses up to
+// one permanent with mana value 3 or greater from among permanents the
+// controller's opponents control, each answer narrows the next player's
+// pool, and the picks are exiled together after the last answer.
+func TestYangchenChapterOneEveryPlayerChoosesFromTheSharedPool(t *testing.T) {
 	g := newCatalogGame(t)
 	seat := g.Turn.ActiveSeat
 	me := g.Seats[seat]
 	opp := g.Seats[(seat+1)%len(g.Seats)]
-	victim := pushBattlefieldCardWithTimestamp(g, game.Card{
-		InstanceID: uuid.New(), Name: "Their Big Rock", TypeLine: "Artifact",
-		ManaCost: "{4}", Owner: opp.ID, Controller: opp.ID,
-	})
+	opp2 := g.Seats[(seat+2)%len(g.Seats)]
+	push := func(owner uuid.UUID, name, cost string) uuid.UUID {
+		return pushBattlefieldCardWithTimestamp(g, game.Card{
+			InstanceID: uuid.New(), Name: name, TypeLine: "Artifact",
+			ManaCost: cost, Owner: owner, Controller: owner,
+		})
+	}
+	rock := push(opp.ID, "Their Big Rock", "{4}")
+	statue := push(opp2.ID, "Their Statue", "{5}")
+	cheap := push(opp.ID, "Their Cheap Rock", "{2}")
+	mine := push(me.ID, "My Own Rock", "{4}")
 
 	saga := importAndCast(t, g, yangchenRow(), me)
 	passPriorityAroundTable(t, g)
-	pickCard(t, g, me.ID, victim)
+
+	ask := func(who uuid.UUID) *game.PendingChoice {
+		t.Helper()
+		var c *game.PendingChoice
+		for _, pc := range g.PendingChoices {
+			if pc != nil && pc.Chooser == who && (pc.Kind == game.PendingChoiceOwnPermanents || pc.Kind == game.PendingChoiceTheirPermanents) {
+				c = pc
+			}
+		}
+		if c == nil {
+			t.Fatalf("no permanent prompt for %s: %+v", who, g.PendingChoices)
+		}
+		return c
+	}
+	answer := func(c *game.PendingChoice, picks ...uuid.UUID) {
+		t.Helper()
+		var err error
+		if c.Kind == game.PendingChoiceOwnPermanents {
+			err = g.ResolveOwnPermanents(c.ID, c.Chooser, picks)
+		} else {
+			err = g.ResolveTheirPermanents(c.ID, c.Chooser, picks)
+		}
+		if err != nil {
+			t.Fatalf("answer: %v", err)
+		}
+	}
+	offers := func(c *game.PendingChoice, id uuid.UUID) bool {
+		for _, cand := range c.ChooseCards {
+			if cand == id {
+				return true
+			}
+		}
+		return false
+	}
+
+	first := ask(me.ID)
+	if !offers(first, rock) || !offers(first, statue) || offers(first, cheap) || offers(first, mine) {
+		t.Fatalf("the first pool is the opponents' permanents with mana value 3 or more: %v", first.ChooseCards)
+	}
+	if first.ChooseMin != 0 || first.ChooseMax != 1 {
+		t.Errorf("up to one: %d..%d", first.ChooseMin, first.ChooseMax)
+	}
+	answer(first, rock)
+
+	second := ask(opp.ID)
+	if offers(second, rock) || !offers(second, statue) {
+		t.Fatalf("the second pool lost what the first player took: %v", second.ChooseCards)
+	}
+	answer(second)
+
+	// Players with nothing to take still get their say; nobody else gets
+	// the prompt twice.
+	for len(g.PendingChoices) > 0 {
+		c := g.PendingChoices[0]
+		if c == nil || (c.Kind != game.PendingChoiceOwnPermanents && c.Kind != game.PendingChoiceTheirPermanents) {
+			break
+		}
+		if c.Chooser == opp2.ID {
+			answer(c, statue)
+			continue
+		}
+		answer(c)
+	}
 	passPriorityAroundTable(t, g)
 
 	if got := loreCountersOn(g, saga); got != 1 {
 		t.Fatalf("lore counters after entry = %d, want 1", got)
 	}
-	if g.Battlefield.Contains(victim) {
-		t.Error("chapter I did not exile the qualifying permanent")
+	if g.Battlefield.Contains(rock) || g.Battlefield.Contains(statue) {
+		t.Error("chapter I did not exile both chosen permanents")
+	}
+	if !g.Battlefield.Contains(cheap) || !g.Battlefield.Contains(mine) {
+		t.Error("an ineligible permanent was exiled")
 	}
 }
 

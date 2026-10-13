@@ -1040,6 +1040,9 @@ type cardSnapshot struct {
 	// which is what every game before ADR 0090 was.
 	Prepared    bool `json:"prepared,omitempty"`
 	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// CardCopy is a copy of a card made to be cast (CR 707.12, #3258):
+	// the not-a-card marker, carried for PrepareCopy's reason. Additive.
+	CardCopy bool `json:"cardCopy,omitempty"`
 	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
 	// comment above (#1492).
 	PreparedBy PermissionCardRef `json:"preparedBy"`
@@ -1508,6 +1511,7 @@ type pendingChoiceSnapshot struct {
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
 	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
+	ExchangesText     bool            `json:"exchangesText,omitempty"`
 	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
@@ -1516,16 +1520,17 @@ type pendingChoiceSnapshot struct {
 	LibraryTopDepth int         `json:"libraryTopDepth,omitempty"`
 	TriggerOrderIDs []uuid.UUID `json:"triggerOrderIds,omitempty"`
 	// #3015: the sentence under "Order your triggers".
-	TriggerOrderWhy string      `json:"triggerOrderWhy,omitempty"`
-	PayCost         string      `json:"payCost,omitempty"`
-	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
-	SearchMax       int         `json:"searchMax"`
-	SearchMin       int         `json:"searchMin,omitempty"`
-	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
-	MayCastKeyword  string      `json:"mayCastKeyword,omitempty"`
-	AcceptLabel     string      `json:"acceptLabel,omitempty"`
-	LifeCost        int         `json:"lifeCost,omitempty"`
-	DeclineLabel    string      `json:"declineLabel,omitempty"`
+	TriggerOrderWhy      string      `json:"triggerOrderWhy,omitempty"`
+	PayCost              string      `json:"payCost,omitempty"`
+	SearchCards          []uuid.UUID `json:"searchCards,omitempty"`
+	SearchGraveyardCards []uuid.UUID `json:"searchGraveyardCards,omitempty"`
+	SearchMax            int         `json:"searchMax"`
+	SearchMin            int         `json:"searchMin,omitempty"`
+	MayCastCard          uuid.UUID   `json:"mayCastCard,omitempty"`
+	MayCastKeyword       string      `json:"mayCastKeyword,omitempty"`
+	AcceptLabel          string      `json:"acceptLabel,omitempty"`
+	LifeCost             int         `json:"lifeCost,omitempty"`
+	DeclineLabel         string      `json:"declineLabel,omitempty"`
 	// OwedInStep: the step a pay-or-else prompt has to be answered in
 	// (#997). Carried so a restored game gates the same way, cheap
 	// and honest even though every prompt that sets it today also
@@ -2204,6 +2209,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -2542,6 +2548,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,
@@ -2550,6 +2557,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
+		SearchGraveyardCards: copyUUIDs(c.SearchGraveyardCards),
 		SearchMax:            c.SearchMax,
 		SearchMin:            c.SearchMin,
 		MayCastCard:          c.MayCastCard,
@@ -3090,6 +3098,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -3411,6 +3420,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,
@@ -3419,6 +3429,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
+		SearchGraveyardCards: copyUUIDs(c.SearchGraveyardCards),
 		SearchMax:            c.SearchMax,
 		SearchMin:            c.SearchMin,
 		MayCastCard:          c.MayCastCard,

@@ -849,3 +849,18 @@ Proof card: **Fblthp, Lost on the Range**, `full`. Scryfall lists Plot among
 its keywords, but Fblthp itself does not have plot. It gives plot to the top
 card of your library. So it declares no `Plot(...)` of its own, and a Fblthp in
 hand cannot be plotted.
+
+## Amendment — 2026-10-13: the cycle event carries the cost's X (#3172, cav-h1)
+
+Decision 7 gave "when you cycle this card" a zone dimension, and Shark Typhoon shipped without it: the
+Shark was made by the cycling ability itself because a separate trigger had no way to read the `{X}` the
+cycling cost paid. `EventCycle` now carries it: `Event.Amount` is the X the cycling ability was announced
+with, 0 for a cycling cost without `{X}` (`payAbilityDiscardsLocked`, `game/discard_cost.go`).
+
+Shark Typhoon is now the printed pair: `InGraveyard(On(game.EventCycle, Self, …))` makes the Shark from
+`item.Trigger.Event.Amount`, and the cycling ability only draws. The trigger goes on the stack above the
+ability (CR 702.29c), so countering the ability no longer stops the Shark, and the Shark exists before the
+draw resolves. No wire change: the log narrates `EventCycle` without reading `Amount`.
+
+Back-out: drop `Amount: xValue` from the event; `TestSharkTyphoonCyclingTriggerResolvesAboveTheCyclingAbility`
+and `TestSharkTyphoonCyclingMakesAnXByXShark` fail.

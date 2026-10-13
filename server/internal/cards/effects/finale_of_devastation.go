@@ -17,18 +17,20 @@ import (
 // A green finisher X-spell: a Craterhoof Behemoth stapled to a
 // Chord-of-Calling-shaped tutor, once X clears 10.
 //
-// # Declared simplification: library only (Tower Winder's shape)
+// # The search covers both zones (#3217)
 //
-// Tracked in #3217 (search your library and/or graveyard), shared with
-// Tower Winder and Ajani's Aid.
-//
-// SearchLibrary is a library-zone primitive; the engine has no
-// combined library-AND-graveyard search yet (the same gap Tower
-// Winder's own header documents). A creature card already in the
-// graveyard can't be found here. The loss is real but bounded: the
-// library is where the target usually is, this never finds something
-// the printed card couldn't, and the shuffle still fires exactly as
-// printed for the half that IS implemented.
+// SearchLibrary{AlsoGraveyard: true}: the picker offers the matching
+// creature cards from the library and the graveyard together, marked
+// by zone. "And/or" lets the player choose their zones, so the search
+// may still find nothing even with a creature in the graveyard (it is a
+// search for a stated quality, CR 701.23b). A card taken from the
+// graveyard means the library was never searched, so "If you search your
+// library this way, shuffle" does not shuffle it; taking a library card
+// shuffles. Declared simplification: finding nothing counts as a library
+// search (shuffle), the common case; a player who looked only in the
+// graveyard and found nothing would not have shuffled, which changes
+// nothing in play. Whichever zone it comes from, the pump below still
+// runs. See ADR 0015's 2026-10-13 amendment.
 //
 // # The pump is unconditional on X, not on the search succeeding
 //
@@ -52,10 +54,7 @@ func init() {
 		OracleID:     "69872a9a-fe54-4e58-940c-89395af71acd",
 		Name:         "Finale of Devastation",
 		XMatters:     true,
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The search looks in your library only. A creature card already in your graveyard can't be found.",
-		},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			x := ctx.X()
 			item := ctx.Item
@@ -65,7 +64,9 @@ func init() {
 				Dest:      game.ZoneBattlefield,
 				Limit:     1,
 				Shuffle:   true,
-				Reason:    "Finale of Devastation — a creature card with mana value X or less",
+				// #3217: "library and/or graveyard".
+				AlsoGraveyard: true,
+				Reason:        "Finale of Devastation — a creature card with mana value X or less",
 				Then: func(g *game.Game, _ []uuid.UUID) error {
 					if x < 10 {
 						return nil

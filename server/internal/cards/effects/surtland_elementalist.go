@@ -37,38 +37,7 @@ func init() {
 // Kari Zev's Expertise's free cast with the predicate swapped from
 // "mana value 2 or less" to "instant or sorcery".
 func surtlandElementalistOfferFreeCast(ctx *Context, controller uuid.UUID) error {
-	pred := Or(Instant(), Sorcery())
-	var candidates []uuid.UUID
-	for _, id := range allHandCardIDs(ctx.Game, controller) {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok || !pred(ctx.Game, controller, c) {
-			continue
-		}
-		candidates = append(candidates, id)
-	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   ctx.Source(),
-		Question: "Surtland Elementalist — cast an instant or sorcery spell from your hand without paying its mana cost?",
-		Cards:    candidates,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			g.GrantCastPermissionOverCardForEffect(picked[0], game.CastPermission{
-				Player:   controller,
-				Cost:     "{0}",
-				CastOnly: true,
-				Label:    "Surtland Elementalist — cast it without paying its mana cost",
-			})
-			return nil
-		},
-	})
+	offerFreeHandCast(ctx, controller, "Surtland Elementalist",
+		"an instant or sorcery spell", Or(Instant(), Sorcery()))
 	return nil
 }

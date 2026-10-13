@@ -694,6 +694,12 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 			if ev.CardID != uuid.Nil {
 				item.Payload = append(item.Payload, TargetRef{Kind: TargetCard, ID: ev.CardID})
 			}
+			// The event itself, so "that much life" / "that many cards" reads
+			// ctx.Trigger().Event.Amount like any harvested trigger does
+			// (Vizkopa Guildmage). Without Watches the harvester's own stamp
+			// skips this item. Object stays nil: a delayed trigger names its
+			// object through the payload.
+			item.Trigger = &TriggerContext{Event: ev}
 			return item
 		},
 	}

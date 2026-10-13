@@ -57,6 +57,10 @@ function modeHint(mode: TargetingMode | string | undefined): string {
       return "a spell or ability on the stack";
     case "card_in_graveyard":
       return "a card in a graveyard";
+    // #3259: the cards live in a player's exile pile, which the viewer
+    // opens like a graveyard; the sentence says where to look.
+    case "card_in_exile":
+      return "a card in exile (open a player's exile pile)";
     default:
       return "a target";
   }

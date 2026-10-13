@@ -450,6 +450,12 @@ type ReturnFromExile struct {
 	Controller uuid.UUID
 	Tapped     bool
 
+	// Counters are the counters it ENTERS with, by kind (#3213, The
+	// Darkness Crystal's "with two additional +1/+1 counters on it"):
+	// a CR 614.1c "enters with", carried on the entry event, so a
+	// counter replacement sees them and an enters trigger finds them.
+	Counters map[string]int
+
 	// Then is the rest of the sentence about the permanent that
 	// returned (#1327) — Phelia, Exuberant Shepherd's "if it entered
 	// under your control, put a +1/+1 counter on Phelia". `entered` is
@@ -466,6 +472,9 @@ func (r ReturnFromExile) Apply(ctx *Context) error {
 	z := ctx.Game.FindCardZoneForEffect(r.Target)
 	if z == nil || z.Kind != game.ZoneExile {
 		return nil
+	}
+	if len(r.Counters) > 0 {
+		return ctx.Game.ReturnFromExileWithCountersThenForEffect(r.Target, r.Controller, r.Tapped, r.Counters, r.Then)
 	}
 	if r.Then != nil {
 		return ctx.Game.ReturnFromExileToBattlefieldThenForEffect(r.Target, r.Controller, r.Tapped, r.Then)
@@ -1063,6 +1072,18 @@ type SearchLibrary struct {
 	// Dest is game.ZoneExile. The zero value, game.FaceDownNone, is
 	// an ordinary face-up exile.
 	FaceDown game.FaceDownKind
+	// AlsoGraveyard is "search your library AND/OR GRAVEYARD" (#3217 —
+	// Finale of Devastation, Tower Winder, Ajani's Aid). The picker
+	// offers matches from both zones, marked by zone. "And/or" lets the
+	// searcher choose their zones, so the floor is unchanged: a stated
+	// quality may still find nothing even with a match in the graveyard.
+	// A take that came wholly from the graveyard does not search the
+	// library, so it does not shuffle — "If you search your library this
+	// way, shuffle." Taking nothing counts as a library search (shuffle
+	// and event); see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle
+	// as the card prints it; the engine decides whether the library was
+	// searched.
+	AlsoGraveyard bool
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -1090,6 +1111,7 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		LibraryOwner:       s.LibraryOwner,
 		Unbounded:          s.Unbounded,
 		FaceDown:           s.FaceDown,
+		AlsoGraveyard:      s.AlsoGraveyard,
 	})
 }
 

@@ -224,8 +224,8 @@ describe("combat in the action dock", () => {
     expect(group.textContent).toContain("2 ready to attack");
     const all = buttons(group, "Attack Opp with all 2 creatures");
     expect(all).toHaveLength(1);
-    // The step continues with next: it is still in the bar.
-    expect(buttons(dock, "next")).toHaveLength(1);
+    // #3267: nothing declared yet, so the bar's primary says No attacks.
+    expect(buttons(dock, "No attacks")).toHaveLength(1);
 
     const strip = stripOf(c);
     expect(strip.querySelector(".att.attack-all")).toBeNull();
@@ -283,7 +283,7 @@ describe("combat in the action dock", () => {
     const noBlocks = buttons(dlg, "No blocks")[0]!;
     expect(noBlocks.classList.contains("primary")).toBe(true);
     // It takes the bar: next and Pass turn give way.
-    expect(buttons(c, "next")).toHaveLength(0);
+    expect(buttons(c, "Next")).toHaveLength(0);
     expect(buttons(stripOf(c), /block/i)).toHaveLength(0);
     click(noBlocks);
     expect(FakeSocket.last!.actions()).toContain("finish_blocks");

@@ -382,6 +382,9 @@ func (g *Game) canAttackTargetLocked(attackerController, target uuid.UUID) error
 		if g.defendingPlayerForAttackLocked(target) == attackerController {
 			return ErrIllegalAttackTarget
 		}
+		if c := findBattlefieldCard(g, target); c != nil && c.Effective().CantBeAttacked {
+			return ErrIllegalAttackTarget
+		}
 		return nil
 	}
 	return ErrIllegalAttackTarget

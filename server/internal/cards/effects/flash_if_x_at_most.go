@@ -39,3 +39,22 @@ func FlashIfXAtMost(cost string, max int) game.AlternativeCost {
 		XCeiling:      max,
 	}
 }
+
+// FlashIfTargets is "You may cast this spell as though it had flash if it
+// targets <what>" (Timely Ward: a commander). Same shape as FlashIfXAtMost:
+// an offer at the card's printed cost that opens the instant-speed window
+// for its own claim, here carrying the NARROWER target clause the flash
+// cast must satisfy (AlternativeCost.Targets). The printed clause still
+// governs the sorcery-speed cast; claiming the offer is what narrows it,
+// so the spell cannot be flashed onto a creature that isn't a commander.
+//
+//	AlternativeCosts: []game.AlternativeCost{FlashIfTargets("{2}{W}", "a commander", EnchantCreature(ACommander()))}
+func FlashIfTargets(cost, what string, clause *game.TargetSpec) game.AlternativeCost {
+	return game.AlternativeCost{
+		Key:           "flash-if-targets",
+		Label:         fmt.Sprintf("Cast with flash — it targets %s (%s)", what, cost),
+		ManaCost:      cost,
+		AsThoughFlash: true,
+		Targets:       clause,
+	}
+}
