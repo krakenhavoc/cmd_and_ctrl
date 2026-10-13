@@ -576,6 +576,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Voting: will of the council and council's dilemma (ADR 0146, #2143, CR 701.38)](docs/adding-cards.md#voting-will-of-the-council-and-councils-dilemma-adr-0146-2143-cr-70138)
   - [Designations: Class levels, solved Cases, station thresholds (#757, #759)](docs/adding-cards.md#designations-class-levels-solved-cases-station-thresholds-757-759)
   - [Bestow (ADR 0141, #2862, CR 702.103)](docs/adding-cards.md#bestow-adr-0141-2862-cr-702103)
+  - [Auras that enchant a card in a graveyard (ADR 0154, #1780)](docs/adding-cards.md#auras-that-enchant-a-card-in-a-graveyard-adr-0154-1780)
   - [Suspect (CR 701.60, #2698)](docs/adding-cards.md#suspect-cr-70160-2698)
   - [Meld (ADR 0145, #2699, CR 701.42)](docs/adding-cards.md#meld-adr-0145-2699-cr-70142)
   - [More Than Meets the Eye, convert and living metal (ADR 0152, #1856)](docs/adding-cards.md#more-than-meets-the-eye-convert-and-living-metal-adr-0152-1856)

@@ -847,16 +847,22 @@ type cardSnapshot struct {
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
-	ControlledSinceUpkeep    int              `json:"controlledSinceUpkeep,omitempty"`
-	SummonedThisTurn         bool             `json:"summonedThisTurn"`
-	MarkedLethalByDeathtouch bool             `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool             `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool             `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef        `json:"attachedTo,omitempty"`
-	AttachedAt               int64            `json:"attachedAt,omitempty"`
-	BaseController           uuid.UUID        `json:"baseController,omitempty"`
-	FaceDownListed           *FaceDownListing `json:"faceDownListed,omitempty"`
-	FaceTurnedAt             int64            `json:"faceTurnedAt,omitempty"`
+	ControlledSinceUpkeep    int       `json:"controlledSinceUpkeep,omitempty"`
+	SummonedThisTurn         bool      `json:"summonedThisTurn"`
+	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
+	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
+	AttachedAt               int64     `json:"attachedAt,omitempty"`
+	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
+	// CR 400.7 epoch of an off-battlefield host (Animate Dead's graveyard
+	// card) at the attach. Additive within v8 and absent at zero, which is
+	// every battlefield host and every file written before it: no
+	// catalogued Aura could be attached off the battlefield then.
+	AttachedEpoch  int              `json:"attachedEpoch,omitempty"`
+	BaseController uuid.UUID        `json:"baseController,omitempty"`
+	FaceDownListed *FaceDownListing `json:"faceDownListed,omitempty"`
+	FaceTurnedAt   int64            `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -985,6 +991,16 @@ type cardSnapshot struct {
 	// and a bestowed spell on the stack into a creature spell. Additive
 	// within v7: an older binary ignores the key.
 	Bestowed bool `json:"bestowed,omitempty"`
+	// EnchantSwapped and EnchantReturned are ADR 0154 decision 4's gained
+	// clause, "enchant creature put onto the battlefield with this Aura",
+	// and the creature it names. Carried for Bestowed's reason: a restore
+	// that dropped them would give a resolved Animate Dead its printed
+	// graveyard clause back, which its returned creature fails, and bury
+	// it. Additive within v8 and absent at zero (a pointer, so a zero ref
+	// is omitted); a file without them restores the printed clause, which
+	// is every Aura before this change.
+	EnchantSwapped  bool       `json:"enchantSwapped,omitempty"`
+	EnchantReturned *ObjectRef `json:"enchantReturned,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -2151,6 +2167,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintedPTKnown:           c.PrintedPTKnown,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		AttachedEpoch:            c.AttachedEpoch,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -2171,6 +2188,8 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
 		Bestowed:                 c.Bestowed,
+		EnchantSwapped:           c.EnchantSwapped,
+		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -3033,6 +3052,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintedPTKnown:           c.PrintedPTKnown,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		AttachedEpoch:            c.AttachedEpoch,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -3053,6 +3073,8 @@ func restoreCard(c *cardSnapshot) Card {
 		Renowned:                 c.Renowned,
 		DealtCombatDamage:        c.DealtCombatDamage,
 		Bestowed:                 c.Bestowed,
+		EnchantSwapped:           c.EnchantSwapped,
+		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -3620,4 +3642,22 @@ func copyPrintedValues(in *PrintedValues) *PrintedValues {
 	}
 	out := in.Clone()
 	return &out
+}
+
+// snapshotObjectRefPtr carries a Card ObjectRef field that is omitted
+// at its zero value (Card.EnchantReturned): nil for the zero ref.
+func snapshotObjectRefPtr(r ObjectRef) *ObjectRef {
+	if r == (ObjectRef{}) {
+		return nil
+	}
+	return &r
+}
+
+// restoreObjectRefPtr is snapshotObjectRefPtr's inverse: the zero ref
+// for an absent key.
+func restoreObjectRefPtr(r *ObjectRef) ObjectRef {
+	if r == nil {
+		return ObjectRef{}
+	}
+	return *r
 }

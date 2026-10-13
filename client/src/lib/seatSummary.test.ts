@@ -4,6 +4,7 @@ import {
   attachmentHostIDs,
   buildSeatSummary,
   creatureStats,
+  graveyardHostLabels,
   manaAvailable,
   manaLabel,
   structuralPermanents,
@@ -284,6 +285,39 @@ describe("attachmentHostIDs", () => {
       attached_to: { kind: "player", id: "b" },
     });
     expect(attachmentHostIDs([curse]).size).toBe(0);
+  });
+});
+
+describe("graveyardHostLabels", () => {
+  it("names the graveyard card an Animate Dead enchants, and its owner", () => {
+    const zombie = card({ instance_id: "zombie", name: "Gravecrawler", owner: "b" });
+    const b = seat("b", {
+      name: "Bea",
+      graveyard: { kind: "graveyard", owner: "b", count: 1, cards: [zombie] },
+    });
+    const aura = card({
+      instance_id: "animate",
+      type_line: "Enchantment — Aura",
+      attached_to: { kind: "card", id: "zombie" },
+    });
+    expect(graveyardHostLabels([aura], [seat("a"), b])).toEqual({
+      animate: "Gravecrawler in Bea's graveyard",
+    });
+  });
+
+  it("leaves out an Aura on a permanent and a Curse on a player", () => {
+    const bear = creature("bear", 2);
+    const aura = card({
+      instance_id: "aura",
+      type_line: "Enchantment — Aura",
+      attached_to: { kind: "card", id: "bear" },
+    });
+    const curse = card({
+      instance_id: "curse",
+      type_line: "Enchantment — Aura Curse",
+      attached_to: { kind: "player", id: "b" },
+    });
+    expect(graveyardHostLabels([bear, aura, curse], [seat("a"), seat("b")])).toEqual({});
   });
 });
 

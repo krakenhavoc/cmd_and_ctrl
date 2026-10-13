@@ -209,3 +209,5 @@ body dalkovan-encampment/warriors
 condition attack/you-attack
 body draw/controller-one
 condition combat/that-creature-hit-a-player
+body attach/sacrifice-the-returned-creature
+condition attach/this-aura-left

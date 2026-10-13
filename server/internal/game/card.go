@@ -586,6 +586,26 @@ type Card struct {
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
 
+	// AttachedEpoch is the host's Card.ObjectEpoch at the moment of the
+	// attach, for a host that is NOT on the battlefield: the creature card
+	// in a graveyard an Animate Dead enchants (ADR 0154 decision 3,
+	// CR 400.7). attachmentLegalLocked reads it only for an off-battlefield
+	// host, where a card that left the graveyard and came back with the
+	// same instance ID is a new object the Aura never enchanted
+	// (CR 303.4c). Zero for every battlefield host: the epoch pin on
+	// battlefield attachments is #3159, not this field.
+	//
+	// Set by AttachForEffect and cleared wherever AttachedTo is.
+	AttachedEpoch int
+
+	// EnchantReturned is the creature the resolution of Animate Dead's
+	// enters trigger put onto the battlefield (instance and epoch): the
+	// "creature put onto the battlefield with this Aura" the swapped
+	// clause names (EnchantSwapped, in the bool block below; ADR 0154
+	// decision 4). Zero when nothing came back. Cleared with
+	// EnchantSwapped at both CR 400.7 sites.
+	EnchantReturned ObjectRef
+
 	// FaceTurnedAt is the CR 613.7f timestamp: "a permanent receives
 	// a new timestamp each time it turns face up or face down". The
 	// layer engine orders this permanent's own static abilities by
@@ -1526,6 +1546,22 @@ type Card struct {
 	// spell copy gets by copying the card. Carried by clone and the
 	// snapshot. Here for alignment, beside the other bools.
 	Bestowed bool
+
+	// EnchantSwapped is ADR 0154 decision 4: this Aura has lost its
+	// printed enchant clause and gained "enchant creature put onto the
+	// battlefield with this Aura" (Animate Dead's and Dance of the
+	// Dead's enters trigger). attachmentLegalLocked reads it before the
+	// catalog clause, as it reads Bestowed: the Aura is legal only on the
+	// permanent EnchantReturned names, and AttachForEffect refuses to move
+	// it anywhere else (CR 701.3b).
+	//
+	// A continuous effect from a resolved ability (CR 611.2c) whose
+	// affected object is this Aura, so it ends when the Aura changes
+	// zones: cleared at both CR 400.7 sites, beside Bestowed. Not a
+	// copiable value. Carried by clone and the snapshot.
+	// EnchantReturned (the creature it names) sits beside AttachedEpoch,
+	// for alignment.
+	EnchantSwapped bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
