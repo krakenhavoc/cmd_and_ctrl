@@ -3039,9 +3039,18 @@ HandSize: []game.HandSizeStatic{PlayersHaveNoMaxHandSize()},
 - **The cleanup discard is the active player's only** (CR 514.1),
   against their own maximum, so "each opponent" never makes the
   controller discard.
-- **A grant for a duration** ("until your next turn", "for as long as
-  you control this Saga") has no shape yet; only the rest of the game
-  does.
+- **A change a resolving spell or ability makes** is not a `Spec` slot at
+  all, because it must not exist unless the ability resolved (countering
+  or stifling it leaves nothing). It is
+  `Game.GrantHandSizeForEffect(player, kind, n, label, source, duration)`
+  from the `OnResolve` / trigger `Effect` (ADR 0113's amendments of
+  2026-10-08 and 2026-10-13): Inspired Idea (rest of the game), Enter the
+  Infinite (until your next turn), The Great Synthesis chapter I ("for as
+  long as you control this Saga",
+  `DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)`,
+  whose `false` means the source is already gone, so register nothing).
+  "For the rest of the game" with a single "no maximum" can also use
+  `SetMaxHandSizeForEffect` (Finale of Revelation, Praetor's Counsel).
 
 ### Attaching, and an ability whose source has gone (#812)
 
