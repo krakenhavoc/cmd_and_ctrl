@@ -883,6 +883,89 @@ Limited per caller: one every ten seconds, burst of three.
 | 429 | too many requests |
 | 503 | voice rooms are off on this server |
 
+### `PUT /games/{id}/lfg`
+
+Post the table to the community server's **#lfg** channel, or withdraw the
+post ([ADR 0161](decisions/0161-an-lfg-board-in-discord.md) §1). **Host or
+admin only** (`CanManageTable`). `POST /games` takes the same choice as
+`"lfg": true`, which a server without the board ignores, and which a table
+with no host to name (the admin token naming nobody) is created without.
+
+Turning it on needs a table in the **lobby** with an **empty seat**, not the
+practice table, whose host is **signed in with Discord**: the post names the
+host. A named host who has not sat down yet (`host_discord_id`, ADR 0075
+§2.1) counts. It also needs the table's invite link in this process's memory,
+since the post is a copy of it; a table restored after a restart has only the
+hash, exactly the gap `POST /games/{id}/invites/dm` has.
+
+**The post.** One message per table, by the bot: the LFG role's mention in
+the content (`CMDCTRL_DISCORD_LFG_ROLE_ID`, `allowed_mentions` naming only
+that role), and an embed with the table's name, the host as a Discord
+mention, the seat count (`2 of 4`, never the seated names), whether the table
+asked for a voice room, the table settings that change how the game plays
+when they are not the default (starting life, commander damage, undos, card
+spawning), and when the table was opened. One link button, **Join table**,
+opens the invite link; the server needs no interactions endpoint.
+
+**The ping.** Only a new post pings, and at most once per host per 30
+minutes; a post inside the cooldown goes up silently. An edit never pings.
+A post that replaces one deleted on Discord does not ping.
+
+**The post follows the table.** An LFG manager (`lfg_manager.go`) with the
+voice manager's shape: lobby hooks mark the table dirty (a seat filled or
+freed, an invite rotated, the host's toggle, the voice choice, the lifecycle),
+one worker reads the table and posts, edits or deletes, and never holds the
+lobby lock across a Discord call. Settings change over the game socket, so
+the worker also reads every opted-in table every 30 seconds; a read that
+finds nothing new makes no call. Edits are coalesced to one per post per 10
+seconds.
+
+| Table event | The post |
+|---|---|
+| a seat filled or freed | edited: the seat count |
+| every seat taken | edited: `· Full`, the button **Table full** and disabled; a freed seat restores it |
+| the invite rotated | edited: the button's new link |
+| settings changed, voice toggled, host passed to another Discord seat | edited |
+| the game starts, the host withdraws it, the table is archived or deleted, the host is now a guest | deleted |
+
+**Failures.** A 429 waits its `retry_after` (capped at 30 s) and retries; a
+5xx or a timeout retries with backoff, three tries in all, then the post is
+`unavailable`. A 403 (the bot cannot post in the channel) logs once per
+table and is `unavailable` at once. The table plays as it would without the
+post, and the host's toggle tries again. A 404 on an edit means the post was
+deleted on Discord: the id is cleared and the table is posted afresh.
+
+**Durability.** `games.lfg` and `games.lfg_message_id` (migration 0021). At
+boot the manager adopts each resident table's message and edits it to the
+table as it is now, or deletes it when the table no longer wants it; a
+`games` row the restore pass did not bring back has its message deleted and
+the column cleared. After a restart the process holds no invite plaintext,
+so an edit leaves the button as it was (its link still works) until the
+invite is rotated. The manager never lists the channel and never touches a
+message no row names: #lfg is shared.
+
+**Request**
+
+```json
+{ "enabled": true }
+```
+
+**Response 200**: the updated `GameMeta`, with `lfg` and `lfg_status`:
+`pending` (not posted yet, or the table cannot be posted right now),
+`posted`, or `unavailable`. Both are omitted when the table is not opted in.
+`lfg_status` is not persisted; the manager reports it.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 409 | turning it on for a table that is not waiting in the lobby, has no empty seat, has a guest host, or whose invite link this server no longer holds (turning it off is always allowed) |
+| 503 | the board is off on this server: `CMDCTRL_DISCORD_LFG_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set (and `CMDCTRL_PUBLIC_BASE_URL`, which the join link is built on) |
+
 ### `PATCH /games/{id}/settings`
 
 Change the table's settings
@@ -4044,12 +4127,14 @@ The re-check at renewal is under
 Public, no credential. The client's source for every Discord placement:
 
 ```json
-{ "invite_url": "https://discord.gg/…", "gate": true }
+{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true }
 ```
 
 `invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
 then hides every Discord link). `gate` is whether sign-up needs the
-admitting role. No guild, role or user id is ever in it. Answered with
+admitting role. `voice` is whether a host may give a table a voice room
+(ADR 0159), and `lfg` whether a host may post a table to #lfg (ADR 0161,
+[`PUT /games/{id}/lfg`](#put-gamesidlfg)). No guild, role or user id is ever in it. Answered with
 `Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`
