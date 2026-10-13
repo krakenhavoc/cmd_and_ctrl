@@ -426,7 +426,7 @@
   {:else if mode === "legal"}
     <div class="pop confirm legal" role="dialog" aria-modal="true" aria-label="legal notice">
       <div class="confirm-title">Legal notice</div>
-      <div class="confirm-body"><LegalNotice /></div>
+      <div class="confirm-body"><LegalNotice newTab /></div>
       <div class="pop-actions">
         <button type="button" class="keep" onclick={() => close(true)}>Close</button>
       </div>

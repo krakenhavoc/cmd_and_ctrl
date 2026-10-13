@@ -457,6 +457,12 @@ describe("GameMenu", () => {
     const hrefs = [...dialog.querySelectorAll("a")].map((a) => a.getAttribute("href"));
     expect(hrefs).toContain("https://company.wizards.com/en/legal/fancontentpolicy");
     expect(hrefs).toContain("https://scryfall.com");
+    // #2983: the privacy notice, in a new tab so a game in progress is not left.
+    const privacy = [...dialog.querySelectorAll("a")].find(
+      (a) => a.getAttribute("href") === "#/privacy",
+    )!;
+    expect(privacy).toBeDefined();
+    expect(privacy.getAttribute("target")).toBe("_blank");
     click(dialog.querySelector<HTMLButtonElement>("button.keep")!);
     flushSync();
     expect(m.container.querySelector('[role="dialog"]')).toBeNull();

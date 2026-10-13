@@ -1374,6 +1374,42 @@ export async function logoutEverywhere(): Promise<void> {
   throw new LobbyApiError(res.status, message);
 }
 
+// deleteMyAccount deletes the signed-in person's own account (DELETE
+// /me/account, ADR 0149, #2983). `confirm` is the typed phrase; the
+// server checks it again. On success the account, its sessions and this
+// browser's saved sign-in are gone, so the local session is dropped.
+//
+// It bypasses authFetch like logout does, because a 401 here is an
+// answer ("you are already signed out"), not a reason to throw "session
+// expired" from underneath a dialog that is mid-confirmation. A refusal
+// (the person still holds a seat at a live table: 409) keeps the
+// session and surfaces the server's sentence, which names the table.
+export async function deleteMyAccount(confirm: string): Promise<void> {
+  await sessionSettled();
+  const s = currentSession();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (s?.token) headers.Authorization = `Bearer ${s.token}`;
+  const res = await fetch("/me/account", {
+    method: "DELETE",
+    headers,
+    body: JSON.stringify({ confirm }),
+    credentials: "same-origin",
+  });
+  if (res.ok) {
+    clearSavedIdentity();
+    setSession(null);
+    return;
+  }
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const body = (await res.json()) as { error?: string };
+    if (body.error) message = body.error;
+  } catch {
+    // not JSON — keep the status line
+  }
+  throw new LobbyApiError(res.status, message);
+}
+
 // --- develop-environment card spawner (ADR 0023) ---------------------
 //
 // These call routes that exist only on a dev deployment. In

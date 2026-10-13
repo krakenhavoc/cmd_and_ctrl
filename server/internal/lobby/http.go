@@ -17,9 +17,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
-	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
