@@ -1700,7 +1700,7 @@ const SeatRemovedReason = "removed from table"
 // EvictSeat closes every player connection bound to (gameID, playerID)
 // with close code 1000 and SeatRemovedReason, and returns how many it
 // closed. The lobby calls it after the host, the creator or the admin
-// removes a seat from an unstarted table (#2785).
+// removes a seat from a table (#2785, #3093).
 //
 // Admin connections are left alone: an admin may be bound to the seat
 // as a viewer (?player=), that is not the seat holder's session, and

@@ -8,11 +8,10 @@ package lobby
 // sat down under the wrong name could not be moved, and the only way
 // out was a new table and a new invite.
 //
-// SCOPE: unstarted tables only. Removing a seat from a game that has
-// started needs a CR-sound answer for that seat's permanents and
-// objects (concede them out, CR 800.4a), which is the owner's call and
-// is not built here. The route refuses a started table with 409, and
-// the engine's RemovePlayer refuses it again underneath.
+// SCOPE: unstarted tables for the host, the creator and an admin, and
+// STARTED tables for an admin alone (#3093, the owner's call of
+// 2026-10-12). The host and the creator get a 409 on a started table,
+// as before, and the engine's RemovePlayer refuses it again underneath.
 //
 // WHO: the table host, the game's creator, or an admin. That is the
 // set that manages the table (CanManageTable) and the invites
@@ -20,7 +19,26 @@ package lobby
 // which any seated player may call: removing a person is not the same
 // kind of act as adding a bot, and no one gains it who did not have it.
 //
-// WHAT A REMOVAL DOES:
+// WHAT A REMOVAL FROM A STARTED GAME DOES (RemoveStartedSeat):
+//
+//   - the seat concedes, through game.RemoveSeatFromGame, which is
+//     Concede: CR 800.4a runs exactly as it does for a player who gives
+//     up (their objects leave, control effects end, their stack items
+//     cease to exist, the turn and priority move on, one player left
+//     ends the game). The log records a concession;
+//   - the seat is NOT taken out of the seat list. The game is under way,
+//     the others have been looking at that player, and the engine keeps
+//     the eliminated seat in turn order; it reads as a player who left;
+//   - the engine marks the seat Removed, which is what the session check
+//     reads (below). It rides the snapshot, so a restart keeps it;
+//   - the undo ring is emptied. Everything on it is a clone from before
+//     the seat left, and undoing one would put the player back at a
+//     table that has already refused them;
+//   - a removed player does not keep spectating: their session is
+//     refused like an unstarted removal's. A person holding the
+//     spectator invite can still open the table as any spectator can.
+//
+// WHAT A REMOVAL FROM AN UNSTARTED TABLE DOES:
 //
 //   - the seat leaves the engine, so seat numbers close up, the slot is
 //     free for the next join, and every connected client gets the new
@@ -58,6 +76,11 @@ var (
 	// ErrSeatIsBotRoute refuses a bot seat on the human-seat route: bots
 	// have their own, with its own, wider, authorisation.
 	ErrSeatIsBotRoute = errors.New("lobby: that seat is a bot; remove it with DELETE /games/{id}/seats/bot/{player}")
+
+	// ErrGameNotInProgress refuses removing a seat from a game that is
+	// not under way: an ended game has nothing left to leave (a table
+	// still in the lobby has RemoveSeat).
+	ErrGameNotInProgress = errors.New("lobby: the game is not in progress; there is no seat to concede out of it")
 )
 
 // SeatEvictor closes the WebSockets of one removed seat. *ws.Hub
@@ -74,8 +97,10 @@ func CanRemoveSeat(p auth.Principal, meta GameMeta, admin bool) bool {
 }
 
 // SeatRemoved implements auth.SeatChecker: true when the game is live in
-// this lobby and has no seat with that player id. A game the lobby does
-// not hold says false: nothing is known, so nothing is refused.
+// this lobby and either has no seat with that player id (an unstarted
+// table's removal drops the seat) or has one an admin removed from a
+// started game (game.Player.Removed). A game the lobby does not hold
+// says false: nothing is known, so nothing is refused.
 func (l *Lobby) SeatRemoved(gameID, playerID uuid.UUID) bool {
 	l.mu.Lock()
 	entry, ok := l.games[gameID]
@@ -83,10 +108,23 @@ func (l *Lobby) SeatRemoved(gameID, playerID uuid.UUID) bool {
 	if !ok {
 		return false
 	}
-	return entry.room.Game.PlayerByID(playerID) == nil
+	return entry.room.Game.SeatRemoved(playerID)
 }
 
 var _ auth.SeatChecker = (*Lobby)(nil)
+
+// seatRemovedAt reports whether the seat at index seat of entry's list
+// was removed from a started game, so the rejoin link of "my games" is
+// not offered to someone whose session would be refused. Caller holds
+// l.mu.
+func seatRemovedAt(entry *gameEntry, seat int) bool {
+	for _, s := range entry.meta.Players {
+		if s.Seat == seat {
+			return entry.room.Game.SeatRemoved(s.PlayerID)
+		}
+	}
+	return false
+}
 
 // RemoveSeat takes a non-host, non-bot seat off an unstarted table and
 // returns the table as it now stands. The caller is authorised at the
@@ -145,6 +183,58 @@ func (l *Lobby) RemoveSeat(id, playerID uuid.UUID) (GameMeta, error) {
 	return copyMeta(entry.meta), nil
 }
 
+// RemoveStartedSeat takes a non-host, non-bot seat out of a game that is
+// under way by conceding it (#3093) and returns the table as it now
+// stands. The caller has checked at the HTTP layer that the requester
+// is an admin: this function has no notion of who is asking. The seat
+// stays in the list; see the file comment for what the removal does.
+func (l *Lobby) RemoveStartedSeat(id, playerID uuid.UUID) (GameMeta, error) {
+	var broadcast func()
+	defer func() {
+		if broadcast != nil {
+			broadcast()
+		}
+	}()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+
+	entry, ok := l.games[id]
+	if !ok {
+		return GameMeta{}, ErrGameNotFound
+	}
+	if entry.room.Game.CurrentState() != game.StateActive {
+		return GameMeta{}, ErrGameNotInProgress
+	}
+	seat, ok := findSeat(entry.meta.Players, playerID)
+	if !ok {
+		return GameMeta{}, ErrPlayerNotInGame
+	}
+	if seat.IsBot {
+		return GameMeta{}, ErrSeatIsBotRoute
+	}
+	if entry.room.HostPlayerID() == playerID {
+		return GameMeta{}, ErrCannotRemoveHost
+	}
+	view, seq, err := entry.room.ApplyExternalClearingUndo(func() error {
+		return entry.room.Game.RemoveSeatFromGame(playerID)
+	})
+	if err != nil {
+		if errors.Is(err, game.ErrGameNotActive) {
+			return GameMeta{}, ErrGameNotInProgress
+		}
+		return GameMeta{}, err
+	}
+	if l.broadcast != nil {
+		b := l.broadcast
+		broadcast = func() { b.BroadcastState(id, seq, view) }
+	}
+	// The concession can end the game; record it the way every other
+	// path that ends one does.
+	l.syncStateLocked(entry)
+	l.syncHostLocked(entry)
+	return copyMeta(entry.meta), nil
+}
+
 // removeSeat handles DELETE /games/{id}/seats/{player}.
 //
 // The route shape: the bot routes are POST /games/{id}/seats/bot and
@@ -155,10 +245,14 @@ func (l *Lobby) RemoveSeat(id, playerID uuid.UUID) (GameMeta, error) {
 // them, and a bot's player id sent here is answered 422 with a pointer
 // to the bot route rather than handled under this stricter gate.
 //
+// A table that has started takes the admin only (#3093): the host and
+// the creator are answered 409, as they were before the admin could.
+//
 //	401  anonymous
 //	403  not the host, the creator or an admin; or player is not a seat here
 //	404  no such table
-//	409  the table has started
+//	409  the table has started and the caller is not an admin; or the game
+//	     has ended
 //	422  the seat is the host's, or a bot's
 func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 	id, err := gameIDFromPath(r)
@@ -181,7 +275,13 @@ func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !CanRemoveSeat(p, meta, admin) {
 		return ErrNotSeatManager
 	}
-	meta, err = c.Lobby.RemoveSeat(id, playerID)
+	if meta.State == string(game.StateLobby) {
+		meta, err = c.Lobby.RemoveSeat(id, playerID)
+	} else if !admin {
+		return ErrGameStarted
+	} else {
+		meta, err = c.Lobby.RemoveStartedSeat(id, playerID)
+	}
 	if err != nil {
 		return err
 	}

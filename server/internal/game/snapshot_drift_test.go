@@ -603,6 +603,10 @@ var playerFields = plan(
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",
 	"Eliminated", carried, "",
+	// #3093: an admin removed the seat from a started game. Carried: the
+	// lobby refuses the seat's session on it, and a restart that forgot
+	// it would let the removed player straight back in.
+	"Removed", carried, "",
 	"HandKept", carried, "",
 	"MulliganDecided", carried, "",
 	"TriggerOrder", carried, "",

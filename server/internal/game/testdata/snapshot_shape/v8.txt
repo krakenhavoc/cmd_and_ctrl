@@ -4689,6 +4689,7 @@ seats[].mulliganDecided	bool
 seats[].mulligansTaken	number:int
 seats[].name	string
 seats[].poison	number:int
+seats[].removed	bool
 seats[].seat	number:int
 seats[].speed	number:int
 seats[].statics	array

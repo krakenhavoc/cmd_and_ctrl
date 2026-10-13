@@ -93,7 +93,7 @@ export const SEAT_REMOVED_MESSAGE = "removed from table";
 // REMOVED_NOTICE is what the removed player reads. Plain, and it says
 // what happened and who did it, because the alternative this replaces
 // was a silent disconnect.
-export const REMOVED_NOTICE = "You were removed from this table by its host.";
+export const REMOVED_NOTICE = "You were removed from this table.";
 
 // removedNotice holds REMOVED_NOTICE from the moment the client learns
 // its seat is gone until the player dismisses it. It lives here, not on

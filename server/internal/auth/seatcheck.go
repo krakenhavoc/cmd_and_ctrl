@@ -38,7 +38,9 @@ type SeatChecker interface {
 // the seat is what is checked. It needs no list of its own: the lobby's
 // seat list is the truth, it survives a restart because the seats do,
 // and a removed seat that is later re-created gets a new player id, so
-// an old token can never match it.
+// an old token can never match it. A seat removed from a STARTED game
+// (#3093) stays in the list, so the engine's Player.Removed flag, carried
+// by the snapshot, is what answers instead.
 //
 // Everything other than a player session passes straight through:
 // admin, spectator and identified sessions name no seat.

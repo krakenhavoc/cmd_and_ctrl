@@ -168,7 +168,7 @@ func (l *Lobby) MyGames(userID uuid.UUID) ([]MyGame, error) {
 			mg.ArchivedAt = millisPtr(entry.meta.ArchivedAt)
 			mg.WinnerSeat = entry.winnerSeat
 			mg.Outcome = entry.outcome
-			if !entry.meta.Archived() {
+			if !entry.meta.Archived() && !seatRemovedAt(entry, r.Seat) {
 				mg.Rejoin = rejoinPath(g.ID)
 			}
 		}
@@ -203,7 +203,7 @@ func (l *Lobby) ReclaimByUser(gameID, userID uuid.UUID) (GameMeta, SeatInfo, err
 	l.syncStateLocked(entry)
 	l.syncHostLocked(entry)
 	seat, ok := seatOfUser(entry.meta.Players, userID)
-	if !ok {
+	if !ok || entry.room.Game.SeatRemoved(seat.PlayerID) { // #3093
 		return GameMeta{}, SeatInfo{}, ErrPlayerNotInGame
 	}
 	return copyMeta(entry.meta), seat, nil

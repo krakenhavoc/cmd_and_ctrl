@@ -575,11 +575,13 @@ export async function removeBotSeat(gameID: string, playerID: string): Promise<G
   return (await res.json()) as GameMeta;
 }
 
-// removeSeat takes a human or agent seat off an unstarted table
-// (#2785). The server lets the table host, the game's creator or an
-// admin do it, and refuses a started table (409), the host's own seat
-// and a bot (422). The seat's session stops working and its sockets
-// close; the invite is untouched.
+// removeSeat takes a human or agent seat off a table (#2785, #3093).
+// On an unstarted table the server lets the table host, the game's
+// creator or an admin do it. On a started game only an admin may, and
+// it concedes the seat out of the game (CR 800.4a); the host and the
+// creator are answered 409. An ended game (409), the host's own seat
+// and a bot (422) are refused. The seat's session stops working and its
+// sockets close; the invite is untouched.
 export async function removeSeat(gameID: string, playerID: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${gameID}/seats/${playerID}`, { method: "DELETE" });
   return (await res.json()) as GameMeta;
