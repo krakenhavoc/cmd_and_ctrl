@@ -608,6 +608,16 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 		if ev.DiscardCause == "" {
 			ev.DiscardCause = DiscardCauseEffect
 		}
+		// ADR 0153 §1: who caused it, for "a spell or ability an
+		// opponent controls causes you to discard". r.Cause is already
+		// resolved above, so the effect case names the resolving STACK
+		// ITEM's controller (CR 113.8), never the source card's. A cost,
+		// the cleanup step and a manual move leave it uuid.Nil: nobody's
+		// spell or ability made the player discard.
+		ev.Source = r.Source
+		if r.Cause.Kind == MoveCauseEffect {
+			ev.DiscardCauseController = r.Cause.Controller
+		}
 	}
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
@@ -646,6 +656,15 @@ func (g *Game) routeCardToZoneLocked(r zoneRoute) (paused bool, err error) {
 func (g *Game) executeZoneRouteLocked(ev *ReplacementEvent) (err error) {
 	if ev == nil || ev.zoneRoute == nil {
 		return ErrInvalidParam
+	}
+	if ev.Kind == RepEventDiscard && ev.NewZone == ZoneBattlefield {
+		// ADR 0153 §2: a discard a replacement settled on the
+		// battlefield (Obstinate Baloth) is an ENTRY, which owes its
+		// own CR 614 window, ETB and controller stamp. Handed off before
+		// the route tail below is registered: the entry can pause, and
+		// the rest of the discard batch belongs to its continuation.
+		// Both the inline path and the CR 616 resume reach this line.
+		return g.discardOntoBattlefieldLocked(ev)
 	}
 	// #865: this function is only ever reached for a route that is
 	// going to settle here, so EVERY exit of it is terminal — the move

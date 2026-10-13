@@ -132,6 +132,20 @@ func discardMoveCause(c DiscardCause, player uuid.UUID) MoveCause {
 	return MoveCause{}
 }
 
+// DiscardCausedByOpponentOf reports whether an event is `player`
+// discarding a card because a resolving spell or ability an OPPONENT
+// controls told them to — the triggered half of "if a spell or ability
+// an opponent controls causes you to discard" (ADR 0153 §4: Sand Golem,
+// Psychic Purge, Spiritual Focus). The cause controller is the stack
+// item's (CR 113.8), so a stolen permanent's ability is its thief's. A
+// cost, the cleanup discard and the player's own spells are never an
+// opponent's. Every other player is an opponent (CR 102.3).
+func DiscardCausedByOpponentOf(ev Event, player uuid.UUID) bool {
+	return ev.Kind == EventDiscardCard && player != uuid.Nil &&
+		ev.Actor == player && ev.Cause == MoveCauseEffect &&
+		ev.CauseController != uuid.Nil && ev.CauseController != player
+}
+
 // ExiledBySpellOrAbilityOf reports whether a zone-change event is a
 // card moved INTO EXILE by a resolving spell or ability that `player`
 // controls — the "a spell or ability you control exiles" clause
