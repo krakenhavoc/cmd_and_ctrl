@@ -82,7 +82,7 @@ const seat = (): PlayerView =>
   }) as unknown as PlayerView;
 
 // The viewer's precombat main phase, holding priority, the stack empty.
-const gameView = (battlefield: CardView[]): GameView =>
+const gameView = (battlefield: CardView[], choices: unknown[] = []): GameView =>
   ({
     id: "g1",
     state: "active",
@@ -92,7 +92,7 @@ const gameView = (battlefield: CardView[]): GameView =>
     exile: zone("exile", undefined),
     stack_items: [],
     pending_triggers: [],
-    pending_choices: [],
+    pending_choices: choices,
     turn: { number: 3, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
     mulligans_open: false,
   }) as unknown as GameView;
@@ -102,12 +102,12 @@ interface Sent {
   params?: Record<string, unknown>;
 }
 
-function mountBoard(cards: CardView[]) {
+function mountBoard(cards: CardView[], choices: unknown[] = []) {
   const sent: Sent[] = [];
   const r = render(
     Board as never,
     {
-      view: gameView(cards),
+      view: gameView(cards, choices),
       viewerID: ME,
       isAdmin: false,
       sendAction: (type: ActionType, params?: Record<string, unknown>) =>
@@ -291,6 +291,29 @@ describe("one usable ability activates on click (#2201)", () => {
     });
     expect(get(targeting)).toBeNull();
     expect(get(abilityPopover)).toBeNull();
+  });
+
+  // #3264: the snapshot still carries the choice after the answer goes
+  // out, and the board re-opens its prompt. Answering again looped on
+  // the main thread and froze the page; it is answered once.
+  it("a trigger's lone target is answered once, though its prompt re-opens", () => {
+    const pick = {
+      id: "pick-1",
+      kind: "pick_target",
+      chooser: ME,
+      source: "bear",
+      reason: "Choose target creature",
+      pick_target: { cards: ["bear"], min: 1, max: 1 },
+      pick_target_cards: ["bear"],
+      options: [],
+    };
+    const b = mountBoard([bear()], [pick]);
+    const answers = b.sent.filter((s) => s.type === "resolve_choice");
+    expect(answers).toHaveLength(1);
+    expect(answers[0]!.params).toMatchObject({
+      choice_id: "pick-1",
+      targets: [{ kind: "card", id: "bear" }],
+    });
   });
 
   it("a planeswalker with exactly one usable loyalty ability activates it", () => {
