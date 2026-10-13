@@ -407,8 +407,9 @@
   // my turn since ADR 0143 §4.2 ("pass for me until my turn"). It
   // stays on until the viewer clicks it again or their own precombat
   // main comes round, whichever is first. When on, it overrides
-  // settings.passMode and the stepStops grid, but still holds where
-  // the viewer can respond (rule 4). It does NOT override a
+  // settings.passMode and the stepStops grid and passes every window,
+  // response or not (#3316); only a choice the viewer owes stops it
+  // (rule 1). It does NOT override a
   // manual one-time pin (#526) — see autopassDecision.ts for the
   // full precedence and why. The effect still requires the viewer to
   // actually hold priority (so we don't spam the server with "you do
@@ -627,9 +628,10 @@
       }
       return;
     }
-    if (verdict === "pass" && hold > 0) {
+    if (verdict === "pass" && hold > 0 && !gates.autopassToggle) {
       // ADR 0119 §2: someone else's item has not been up for the hold
-      // yet. Wait out the rest; `next` still passes at once.
+      // yet. Wait out the rest; `next` still passes at once. Skip to
+      // my turn does not wait (#3316): it resolves everything it can.
       armTimedPass("hold", () => hold);
       return;
     }

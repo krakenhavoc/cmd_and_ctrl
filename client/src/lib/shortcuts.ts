@@ -138,7 +138,7 @@ export const SHORTCUTS: readonly ShortcutDef[] = [
   {
     id: "toggleAutopass",
     label: L.skipToMyTurn,
-    hint: "Pass for you until your next main phase, stopping only when you can answer an opponent's spell, an attack or an opponent's end step.",
+    hint: "Pass and resolve everything until your next main phase, stopping only for a choice you have to make.",
     group: "priority",
     defaultBinding: "Shift+p",
     kind: "view",
