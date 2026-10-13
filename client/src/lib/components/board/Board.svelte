@@ -235,6 +235,8 @@
     sendAction: ActionSender;
     combatMode: "idle" | "attack" | "block";
     selectedCombatCardID: string | null;
+    // #3266: the attackers the viewer has staged, drawn as attacking.
+    stagedAttackers?: ReadonlySet<string>;
     onSelectCombatCard: (cardID: string) => void;
     onDeclareAttack: (targetPlayerID: string) => void;
     onDeclareBlock: (attackerCardID: string) => void;
@@ -277,6 +279,8 @@
     legalGate?: LegalActions;
   }
 
+  const NO_STAGED: ReadonlySet<string> = new Set();
+
   const {
     view,
     viewerID,
@@ -284,6 +288,7 @@
     sendAction,
     combatMode,
     selectedCombatCardID,
+    stagedAttackers = NO_STAGED,
     onSelectCombatCard,
     onDeclareAttack,
     onDeclareBlock,
@@ -3283,6 +3288,7 @@
       exile={exileForOwner(seat.id)}
       {combatMode}
       {selectedCombatCardID}
+      {stagedAttackers}
       {onSelectCombatCard}
       {onDeclareAttack}
       {onDeclareBlock}
@@ -3313,6 +3319,7 @@
       exile={exileForOwner(seat.id)}
       {combatMode}
       {selectedCombatCardID}
+      {stagedAttackers}
       {onSelectCombatCard}
       {onDeclareAttack}
       {onDeclareBlock}

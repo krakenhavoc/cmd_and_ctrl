@@ -44,6 +44,8 @@ export interface AttackRowInput {
   ready: boolean;
   // blockedSummary(plan.blocked).
   blockedHint: string;
+  // #3266: how many creatures the player has staged to attack.
+  staged?: number;
   // The bound attack-all chord (offered on the duel button only: the
   // shortcut refuses to guess between opponents).
   attackAllChord?: string;
@@ -75,6 +77,14 @@ function attackAllTitle(view: GameView, plan: AttackAllPlan, opp: PlayerView): s
 
 function attackQuestion(input: AttackRowInput): { question: string; detail: string } {
   const { plan, ready, blockedHint } = input;
+  // #3266: creatures are staged by clicking them; the primary sends them.
+  const staged = input.staged ?? 0;
+  if (ready && staged > 0) {
+    return {
+      question: `${staged} attacking`,
+      detail: "click a creature to add or remove it",
+    };
+  }
   if (ready) {
     const detail = [
       plan.declared.length > 0 ? `${plan.declared.length} already declared` : "",

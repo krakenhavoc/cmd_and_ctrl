@@ -190,29 +190,6 @@ func b15OtherCreaturesControlledWithSameName(g *game.Game, controller, except uu
 	return n
 }
 
-// b15IsFirstOfItsNameControlledBy reports whether `source` is the
-// earliest-entered permanent with its oracle ID that its controller
-// controls — the dedup a static that stands in for a TOKEN's own
-// ability needs (Simulacrum Synthesizer's Constructs): two
-// Synthesizers must size a Construct once, not twice. Ties on the
-// timestamp (a fixture board) break on instance ID so exactly one
-// wins.
-func b15IsFirstOfItsNameControlledBy(g *game.Game, source *game.Card) bool {
-	for i := range g.Battlefield.Cards {
-		c := &g.Battlefield.Cards[i]
-		if c.InstanceID == source.InstanceID || c.Controller != source.Controller || c.OracleID != source.OracleID {
-			continue
-		}
-		if c.EnteredBattlefieldAt < source.EnteredBattlefieldAt {
-			return false
-		}
-		if c.EnteredBattlefieldAt == source.EnteredBattlefieldAt && c.InstanceID.String() < source.InstanceID.String() {
-			return false
-		}
-	}
-	return true
-}
-
 // b15ArtifactsControlled counts the artifacts `controller` controls
 // on the post-layer type line. Walks the live slice: it runs inside
 // a layer recompute.

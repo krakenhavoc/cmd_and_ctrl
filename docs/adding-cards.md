@@ -9100,6 +9100,27 @@ Replacements: []game.ReplacementEffect{{ … ev.Cancel() … }}                 
   Gods' 7b base 0/0); one in the removal's own layer does not, because ADR 0093 decision 3 orders every layer 6 removal
   first.
 
+### A reanimation's counters and tail, "when you cycle" with an X, and a token's own sizing (#3172, cav-h1)
+
+```go
+ctx.Game.ReturnFromGraveyardWithCountersForEffect(id, uuid.Nil, false, map[string]int{"-1/-1": 1})    // Persist
+ctx.Game.ReturnFromGraveyardWithCountersThenForEffect(id, ctrl, false, counters, func(g *game.Game, entered uuid.UUID) error { … }) // Makeshift Mannequin
+InGraveyard(On(game.EventCycle, Self, "…", func(g, item) error { x := item.Trigger.Event.Amount; … })) // Shark Typhoon
+ctx.SourcePermanent()                                                                                  // Ratatwotwo's X, last-known once it has left
+```
+
+- **"Return … with a counter on it"** is an "enters with" clause: pass the counters to the return, never add them on
+  the next line (an entry trigger would see the creature at printed size, and a Clone's question would swallow the
+  second step). A "then" that needs the new permanent (a grant, a suspect) is the `…ThenForEffect` tail.
+- **`EventCycle.Amount` is the cycling cost's X**, so "when you cycle this card, create an X/X" is its own
+  graveyard trigger (ADR 0062 amendment 2026-10-13) and the cycling ability only draws.
+- **A creature token that counts something** (Simulacrum Synthesizer's Construct) uses the token's own static
+  (`UrzaConstructToken`), not a static on the card that made it.
+- **A trigger's resolution-time "if"** reads the event off `item.Trigger.Event` (the Forest that entered), so
+  the check is the card's own condition and not a stricter stand-in.
+- **A Mycosynth Lattice-style "permanents are colorless"** is a layer 5 static that clears `Colors`; cards in hand,
+  graveyard and exile and spells on the stack are still not reached.
+
 ### Three small pieces from the Raffine deck (#3212)
 
 - **Connive X** is `ConniveX{Controller, Creature, X}` (`connive.go`): draw X, then

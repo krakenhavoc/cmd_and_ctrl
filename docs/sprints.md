@@ -3190,14 +3190,14 @@ S51 holds turn-scoped effects, object history and damage shields; S53 holds face
 
 Planned 2026-10-01 in the triage of all open issues. The tracker holds each member's detail and its card counts; re-verify a row against `origin/develop` before starting it.
 
-- [ ] [#1903](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1903) — unless any player pays (Rhystic Circle)
-- [ ] [#1857](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1857) — assist: another player helps pay the generic mana
-- [ ] [#1900](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1900) — returning a card to the battlefield transformed from a graveyard (small, can go first)
-- [ ] [#1892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1892) — flip cards
-- [ ] [#1856](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1856) — More Than Meets the Eye, convert and living metal
-- [ ] [#1861](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1861) — "if an opponent causes you to discard this card"
-- [ ] [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780) — an Aura that enchants a card in a graveyard (Animate Dead)
-- [ ] [#1557](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1557) — "has all activated abilities of ...", moved from S38
+- [x] [#1903](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1903): unless any player pays (Rhystic Circle). [ADR 0150](decisions/0150-other-players-pay-any-player-offers-and-assist.md). The mana offer and 7 cards shipped in [#3203](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3203). Life, damage, sacrifice and discard payments and 14 more cards shipped in [#3236](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3236).
+- [x] [#1857](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1857): assist, where another player helps pay the generic mana. ADR 0150. The engine, the helper's prompt and Fan Favorite shipped in [#3238](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3238). The other 15 assist cards shipped in [#3269](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3269).
+- [x] [#1900](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1900): returning a card to the battlefield transformed from a graveyard. Closed before this sprint started.
+- [ ] [#1892](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1892): flip cards. [ADR 0151](decisions/0151-flip-cards.md). The engine, the 180° view and 3 cards shipped in [#3215](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3215), and 14 more cards in [#3260](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3260), for 17 of 19. Kitsune Mystic waits on [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160) (CR 701.3b for Auras). Sasaya waits on [#3250](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3250) (reveal your hand as a cost).
+- [x] [#1856](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1856): More Than Meets the Eye, convert and living metal. [ADR 0152](decisions/0152-more-than-meets-the-eye-convert-and-living-metal.md). The engine and Goldbug shipped in [#3194](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3194), and the bot pricing of converted casts in [#3224](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3224). 9 more Transformers cards shipped in [#3279](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3279). Five wait on their own seams: [#3275](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3275), [#3276](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3276), [#3277](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3277), [#2651](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2651) and [#2947](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2947).
+- [x] [#1861](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1861): "if an opponent causes you to discard this card". [ADR 0153](decisions/0153-a-discard-an-opponent-causes.md). The engine shipped in [#3167](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3167), and the 16 cards with bot pricing in [#3257](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3257).
+- [x] [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780): an Aura that enchants a card in a graveyard. [ADR 0154](decisions/0154-auras-that-enchant-a-card-in-a-graveyard.md). The engine, Animate Dead (with a caveat), Dance of the Dead and the client badge shipped in [#3197](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3197). The follow-ups are [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156)–[#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161).
+- [ ] [#1557](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1557): "has all activated abilities of ...", moved from S38. [ADR 0155](decisions/0155-having-another-objects-activated-abilities.md). The layer-6 borrow seam shipped in [#3198](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3198), and 10 battlefield and graveyard lenders in [#3255](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3255). The exiled-with lenders ([#3201](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3201), this sprint) and the end-of-turn, library-top and chosen-permanent borrows ([#3202](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3202), Backlog) are still open.
 
 #1903 and #1857 share one ADR and need a client prompt for the other payer.
 
@@ -3205,12 +3205,21 @@ Planned 2026-10-01 in the triage of all open issues. The tracker holds each memb
 
 S51 holds turn-scoped effects, object history and damage shields; S52 holds rule gates, land types and cost components.
 
+### Exit criteria
+
+From the tracker, [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910):
+
+1. Every member issue is closed, or carries a named decision explaining why it is not.
+2. The sprint section in `docs/sprints.md` is written and its index row added (this section).
+3. Any new engine primitive is reflected in the roadmap registry (`server/internal/roadmap/registry.go`), with a closed-seam fragment.
+4. Lands on `main` with the next promotion.
+
 ### Status
 
-**In progress** (2026-10-13 triage). Everything has shipped except #1557's last part: assist and unless-any-player-pays (#1903, #1857, #3204), transform from the graveyard (#1900), More Than Meets the Eye (#1856, #3195, #3196), opponent-caused discard (#1861, #3168), Animate Dead (#1780), and the battlefield and graveyard lenders (#3200). These reached `main` in #3287. Three issues are still open:
+**In progress.** ADRs 0150–0155 were accepted on 2026-10-13. The owner took every recommendation. Everything above had merged by 2026-10-13 and reached prod with the promotion in [#3287](https://github.com/krakenhavoc/cmd_and_ctrl/pull/3287).
 
-- #1557 waits on [#3201](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3201), the exiled-with lenders (ADR 0155 PR 3).
-- #1892, flip cards, shipped with 14 cards (#3215, #3260). Two cards still wait on the seams #3160 and #3250.
+- **Closed seams:** five members are closed: #1903, #1857, #1856, #1861 and #1780. Each has its roadmap row and closed-seam fragment.
+- **Still open:** #1892 has 2 of 19 flip cards waiting on other seams. #1557 has its last two card groups to go: #3201 in this sprint and #3202 in the Backlog.
 
 ---
 

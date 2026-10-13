@@ -267,6 +267,17 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's primary on an empty stack (#3267): pass priority so the game moves to the next step (its visible text and its aria-label); the tutorial's stack step anchors here too, within actions",
   }),
+  attackWith: dynamicLabel({
+    stem: "Attack with ",
+    match: "prefix",
+    shape: "Attack with <N>",
+    make: (n: number) => `Attack with ${n}`,
+    example: [2],
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary in declare attackers while creatures are staged (#3266): sends them as one declaration, then passes (its visible text and its aria-label)",
+  }),
   noAttacks: label({
     name: "No attacks",
     kind: "aria",
