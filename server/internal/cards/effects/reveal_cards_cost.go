@@ -46,6 +46,18 @@ func RevealN(n int, label, color string) game.AbilityCost {
 	}}
 }
 
+// RevealYourHand is "Reveal your hand" as a cost (#3250; CR 602.2b,
+// 701.20a) — Sasaya, Orochi Ascendant. The whole hand is shown to the
+// table as the cost is paid at activation, so there is no count and no
+// pick; an empty hand pays it.
+//
+//	RevealYourHand()
+//
+// It claims no X and names no card, so it composes with any other
+// component (a card file that also spends cards from the hand is
+// fine: revealing moves nothing).
+func RevealYourHand() game.AbilityCost { return game.AbilityCost{RevealHand: true} }
+
 // checkRevealCardsClause is the boot-time rules for the reveal
 // component of an activated ability's cost. `where` names the ability
 // in the panic ("ability 0").

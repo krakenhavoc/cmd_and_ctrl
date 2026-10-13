@@ -139,6 +139,13 @@ func (p *Policy) costValue(st *state, src *protocol.CardView, c legal.MoveCost) 
 	if c.Hand > 0 {
 		v -= st.w.Hand * float64(c.Hand)
 	}
+	// #3250: "Reveal your hand" (Sasaya). It buys the opponents a look
+	// at every card the seat holds, so it is priced at one card's worth
+	// of hand: an activation that does something worth more is still
+	// made, and a reveal that leads nowhere is not repeated.
+	if c.RevealHand {
+		v -= st.w.Hand
+	}
 	// ADR 0129 §7: the energy the move spends, at the flat per-counter
 	// weight. A sink is used when what it buys is worth more than its
 	// counters.

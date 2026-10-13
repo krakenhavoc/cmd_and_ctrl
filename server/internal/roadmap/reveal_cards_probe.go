@@ -13,3 +13,15 @@ func declaresRevealCards(s effects.Spec) bool {
 	}
 	return false
 }
+
+// declaresRevealHand is the "Reveal your hand" cost probe (#3250): an
+// activated ability whose cost reveals the whole hand
+// (game.AbilityCost.RevealHand, built by effects.RevealYourHand).
+func declaresRevealHand(s effects.Spec) bool {
+	for _, a := range s.Activated {
+		if a.Cost.RevealHand {
+			return true
+		}
+	}
+	return false
+}

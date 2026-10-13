@@ -4085,6 +4085,12 @@ type ActivatedAbilityView struct {
 	RevealCostLabel      string   `json:"reveal_cost_label,omitempty"`
 	RevealCostOptions    []string `json:"reveal_cost_options,omitempty"`
 	RevealCostCountFromX bool     `json:"reveal_cost_count_from_x,omitempty"`
+	// RevealHandCost marks "Reveal your hand" as a cost (#3250) —
+	// Sasaya, Orochi Ascendant. Nothing is named or counted: the whole
+	// hand is shown to the table when the ability is activated, so the
+	// client sends no `reveal_ids` and opens no picker. Public: the cost
+	// is printed on the card.
+	RevealHandCost bool `json:"reveal_hand_cost,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -10817,6 +10823,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.RevealCostCountFromX = rc.CountFromX
 			v.RevealCostOptions = cardIDStrings(g.RevealCardsOptionsForEffect(caster, c.InstanceID, rc))
 		}
+		v.RevealHandCost = a.Cost.RevealHand
 		// ADR 0109 §7 (#1902): the two library components, off the
 		// walk the engine validates against.
 		if n := a.Cost.PutFromHandOnLibraryTop; n > 0 {
