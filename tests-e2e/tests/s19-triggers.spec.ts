@@ -292,15 +292,23 @@ test.describe("S19 ETB triggers", () => {
       .click({ timeout: 20_000 });
 
     // No click on the Sol Ring: it was the only artifact or enchantment,
-    // so the caster's client answered the pick_target with it.
-    const ring = findCardOnBattlefield(admin.snapshot(), CARDS.SolRing);
+    // so the caster's client answered the pick_target with it, and the
+    // trigger goes on the stack with no prompt left open.
     await admin.waitFor(
       (v) =>
         (v.pending_choices ?? []).length === 0 &&
-        (v.stack_items ?? []).some((it) =>
-          (it.targets ?? []).some((t) => t.id === ring?.instance_id),
-        ),
-      "Reclamation Sage trigger on the stack, aimed at the Sol Ring",
+        triggerOnStack(v, CARDS.ReclamationSage) !== null,
+      "Reclamation Sage trigger on the stack with no pick asked",
+      20_000,
+    );
+
+    // It was aimed at the Sol Ring: resolving it destroys the ring.
+    await resolveStack(setup);
+    await admin.waitFor(
+      (v) =>
+        findCardOnBattlefield(v, CARDS.SolRing) === null &&
+        findCardInPlayerGraveyard(v, opponent.playerID, CARDS.SolRing) !== null,
+      "Sol Ring routed to opponent's graveyard",
     );
   });
 
@@ -351,6 +359,15 @@ test.describe("S19 ETB triggers", () => {
     const { admin, caster, opponent } = setup;
 
     await adminMoveByName(admin, opponent.playerID, CARDS.SolRing, "library", "battlefield");
+    // A Plains beside it: with one legal target the pick would be made
+    // for the caster (#3264), and this spec clicks the Sol Ring.
+    await adminMoveByName(admin, opponent.playerID, CARDS.Plains, "library", "battlefield");
+    await admin.waitFor(
+      (v) =>
+        findCardOnBattlefield(v, CARDS.SolRing) !== null &&
+        findCardOnBattlefield(v, CARDS.Plains) !== null,
+      "Sol Ring and a Plains on battlefield",
+    );
 
     await adminMoveByName(admin, caster.playerID, CARDS.AcidicSlime, "library", "battlefield");
 

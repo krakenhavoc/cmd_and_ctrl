@@ -1527,13 +1527,21 @@
   // walk whose next step is also lone carries on the same way.
   // #3265: so is a repeated trigger's instance when the player chose one
   // target for all of them, and that target is still legal for it.
+  //
+  // A pending choice is answered this way once. Until the server's next
+  // snapshot drops it, the effect below re-opens its prompt; answering
+  // that again would loop on the main thread. If the server refuses the
+  // answer, the re-opened prompt waits for the player's click.
   let autoPicked: TargetingState | null = null;
+  const autoAnswered = new Set<string>();
   $effect(() => {
     const t = $targeting;
     if (!t || t === autoPicked || dividePrompt) return;
+    if (t.choiceID && autoAnswered.has(t.choiceID)) return;
     const ref = lonePick(t) ?? sharedPick(t, $sharedTarget);
     if (!ref) return;
     autoPicked = t;
+    if (t.choiceID) autoAnswered.add(t.choiceID);
     stepOrFire({ ...t, picked: [ref] });
   });
   // The kept target is forgotten once no prompt could use it.
@@ -1556,6 +1564,9 @@
       if ($shareTargetOn && targets.length === 1 && repeatsOf(state, view) > 0) {
         sharedTarget.set(sharedFrom(state, targets[0]!));
       }
+      // Answered: its re-opened prompt is not answered for the player
+      // again, by the kept target or any other.
+      autoAnswered.add(state.choiceID);
       guardedSendAction("resolve_choice", answer, viewerID ?? undefined);
       targeting.set(null);
       return;
