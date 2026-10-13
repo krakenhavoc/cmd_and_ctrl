@@ -295,38 +295,26 @@ const b29LightPawsLabel = "Light-Paws, Emperor's Voice — search for an Aura to
 // fired. Nothing is searched when the source has left the
 // battlefield — there is nothing to attach the card to, and printed
 // it would stay in the library. The names are read at resolution, as
-// printed; the attach runs in the search's continuation, once the
-// card is actually on the battlefield.
+// printed. The found card enters ATTACHED to the source (#3158,
+// SearchLibrary.EntersAttachedTo): one that can't legally enchant it
+// stays in the library (CR 303.4i), and the library is shuffled either
+// way.
 func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem) error {
 	if !onBattlefield(g, item.SourceCardID) {
 		return nil
 	}
 	maxMV := item.Params.Amount
 	taken := b29AuraNamesControlled(g, item.Controller)
-	source := item.SourceCardID
 	return SearchLibrary{
 		Player: item.Controller,
 		Predicate: func(c game.Card) bool {
 			return c.IsAura() && c.ManaValue() <= maxMV && !taken[c.Name]
 		},
-		Dest:    game.ZoneBattlefield,
-		Limit:   1,
-		Shuffle: true,
-		Reason:  "Light-Paws, Emperor's Voice — an Aura card with mana value " + strconv.Itoa(maxMV) + " or less",
-		Then: func(g *game.Game, found []uuid.UUID) error {
-			if !onBattlefield(g, source) {
-				return nil
-			}
-			for _, id := range found {
-				if !onBattlefield(g, id) {
-					continue
-				}
-				if err := g.AttachForEffect(id, game.TargetRef{Kind: game.TargetCard, ID: source}); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Dest:             game.ZoneBattlefield,
+		Limit:            1,
+		Shuffle:          true,
+		Reason:           "Light-Paws, Emperor's Voice — an Aura card with mana value " + strconv.Itoa(maxMV) + " or less",
+		EntersAttachedTo: game.TargetRef{Kind: game.TargetCard, ID: item.SourceCardID},
 	}.Apply(NewContext(g, item))
 }
 
@@ -390,7 +378,7 @@ func b29SacrificeChosenTokenThenAcorn(g *game.Game, item *game.StackItem) error 
 
 // b29FoodForSacrificedCreature is Witch's Oven's activation: one
 // Food, or two if the creature sacrificed to pay had toughness 4 or
-// greater as it last stood — printed toughness plus its counters
+// greater as it last stood — post-layer toughness with its counters
 // (b29LastKnownToughnessOffBattlefield).
 func b29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
 	n := 1

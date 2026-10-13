@@ -16,11 +16,13 @@ import (
 //	 less than or equal to that damage without paying its mana cost.
 //	 Equip {2}"
 //
-// The free cast (#3172) is the same offer Rishkar's Expertise and Surtland
-// Elementalist make: after the draw, the controller picks a nonland card
-// from hand with mana value no greater than the damage dealt (or none),
-// and the pick is granted a one-shot "cast it for {0}" permission, so it
-// is cast through the ordinary announce path with its targets and modes.
+// The free cast (#3172, #3270) is the same offer Rishkar's Expertise and
+// Surtland Elementalist make (offerFreeHandCast): after the draw, the
+// controller picks a nonland card from hand with mana value no greater
+// than the damage dealt (or none). The pick opens the cast at once, at any
+// timing (CR 608.2g), through the ordinary announce path with its
+// targets, modes and additional costs; passing priority without casting
+// ends the chance and the card stays in hand.
 // The damage is read off the trigger's event, so a lifelinking or
 // doubled-damage hit counts what was actually dealt.
 //
@@ -61,38 +63,8 @@ func busterSwordOfferFreeCast(ctx *Context, controller uuid.UUID, damage int) er
 	if damage < 0 {
 		return nil
 	}
-	pred := And(Not(Land()), ManaValueLE(damage))
-	var candidates []uuid.UUID
-	for _, id := range allHandCardIDs(ctx.Game, controller) {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok || !pred(ctx.Game, controller, c) {
-			continue
-		}
-		candidates = append(candidates, id)
-	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   ctx.Source(),
-		Question: "Buster Sword — cast a spell with mana value " + strconv.Itoa(damage) + " or less from your hand without paying its mana cost?",
-		Cards:    candidates,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			g.GrantCastPermissionOverCardForEffect(picked[0], game.CastPermission{
-				Player:   controller,
-				Cost:     "{0}",
-				CastOnly: true,
-				Label:    "Buster Sword — cast it without paying its mana cost",
-			})
-			return nil
-		},
-	})
+	offerFreeHandCast(ctx, controller, "Buster Sword",
+		"a spell with mana value "+strconv.Itoa(damage)+" or less",
+		ManaValueLE(damage))
 	return nil
 }

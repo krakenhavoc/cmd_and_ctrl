@@ -440,6 +440,17 @@ to the opponent with the highest `SeatEval.Strength`, a helpful one
 ranks a seat by how close it is to dying — "your life total becomes 4"
 costs a seat at 5 life almost nothing.
 
+**What an Aura enchants (`aura_host`, #3158, CR 303.4f).** An Aura put
+onto the battlefield without being cast (Sun Titan's Animate Dead,
+Replenish, a fetched Aura) is offered one answer per legal host. A card
+in a graveyard is priced at its creature value whoever owns it, because
+every Aura with a graveyard clause returns that card under the bot's
+control: Animate Dead takes the best creature in any graveyard. A
+permanent or a player is read the way an Aura spell's target is: an
+opponent's creature as answered, the bot's own at `OwnPermanentTarget`
+with its best creature first. Like the cast, it cannot tell a buff Aura
+from a curse, because nothing on the wire says which.
+
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
 of its own rather than a second spelling of `choose_cards`. "As this

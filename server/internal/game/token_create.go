@@ -549,6 +549,10 @@ func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID
 	for name, n := range next.entry.Counters {
 		ev.AddCounterAtETB(name, n)
 	}
+	// #3158: a creation that names the Aura token's host.
+	if next.entry.AttachedTo.Kind != "" {
+		ev.auraHost, ev.auraHostFixed = next.entry.AttachedTo, true
+	}
 	ev.entryTail = &entryTail{then: func(g *Game, entered uuid.UUID) error {
 		// uuid.Nil means nothing entered — the window cancelled or
 		// redirected it, or its prompt was taken away. A token that

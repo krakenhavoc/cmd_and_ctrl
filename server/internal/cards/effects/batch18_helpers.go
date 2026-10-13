@@ -86,34 +86,6 @@ func b18ControlsPermanentOfColor(g *game.Game, player uuid.UUID, color string) b
 
 // --- trigger conditions ------------------------------------------
 
-// b18CommittedCrime is Magda's "whenever you commit a crime": the
-// source's controller targeted an opponent, a permanent or spell an
-// opponent controls, or a card in an opponent's graveyard (CR
-// 700.13). EventBecomesTarget fires once per target slot at
-// announce, with the targeting player in Actor and the target in
-// Target; CardID is uuid.Nil when the target is a player.
-func b18CommittedCrime(ev game.Event, source *game.Card, g *game.Game) bool {
-	if ev.Kind != game.EventBecomesTarget || ev.Actor != source.Controller {
-		return false
-	}
-	if ev.CardID == uuid.Nil {
-		p := g.PlayerByIDForEffect(ev.Target)
-		return p != nil && p.ID != source.Controller
-	}
-	z := g.FindCardZoneForEffect(ev.CardID)
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	if z == nil || !ok {
-		return false
-	}
-	switch z.Kind {
-	case game.ZoneBattlefield, game.ZoneStack:
-		return c.Controller != source.Controller
-	case game.ZoneGraveyard:
-		return c.Owner != source.Controller
-	}
-	return false
-}
-
 // b18AnotherAngelOrClericYouControlEntered is Righteous Valkyrie's
 // condition, reading effective subtypes so a changeling counts.
 func b18AnotherAngelOrClericYouControlEntered(ev game.Event, source *game.Card, g *game.Game) (game.Card, bool) {

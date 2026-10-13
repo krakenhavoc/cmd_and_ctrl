@@ -33,6 +33,8 @@ Owner answers 1–3 and 7.
    - `CMDCTRL_DISCORD_PLAYER_ROLE_ID`: the role that admits a person. On the C2 server this is **Elder Dragon Highlander** (owner, 2026-10-13; see "The C2 server's roles" below).
    - `CMDCTRL_DISCORD_INVITE_URL`: the public invite link (`https://discord.gg/…`). It replaces the client constant, so the link can change without a release.
 
+   **Amendment (owner, 2026-10-13): an exemption list.** `CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS` is a comma-separated list of Discord user ids that sign in and renew without the role and without a member check, the same way an admin on the allowlist does. It keeps the accounts that existed before the gate went live from being locked out while they're given the role. A malformed entry fails the boot and the deploy, and CD writes the variable on every deploy, empty included.
+
    **The gate is on when the guild and the role are both set, and off when both are unset.** One without the other fails the boot naming the missing variable, as a malformed snowflake does. With the gate off, sign-in behaves exactly as today; that is every dev loop and test, and any environment the owner leaves open. The invite URL is independent: set, it is shown; unset, every Discord placement is hidden. CD writes all three from Actions variables of the same names (an environment-level value overrides the repo-level one), always, empty included, like the admin allowlist: clearing a variable turns the gate off on the next deploy.
 
 2. **Scope.** With the gate on, the authorize request asks for `identify guilds.members.read`. Discord's consent screen then reads that the site "will read your member info (nickname, avatar, roles…) in servers you're in"; that line is the cost of the gate and the privacy notice (ADR 0149) says so. With the gate off the scope stays `identify`.
@@ -55,6 +57,8 @@ Owner answers 1–3 and 7.
    - Existing accounts are checked by exactly this path: nothing is grandfathered (owner answer 2).
 
 6. **What the gate covers.** Only accounts: signing in, and therefore creating tables, My games, the deck library, synced settings and the catalog. Guests seated by a host's invite, spectator links, seat reclaim and the public pages are unchanged.
+
+   **Amendment (2026-10-13, S70 [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)): the catalog is not gated.** Scryfall's guidelines forbid putting its data behind a chat-server membership, so `GET /catalog`, its image route and `#/catalog` are public ([ADR 0042](0042-card-catalog-page.md)'s amendment). The header shows Catalog signed out too.
 
 7. **Admin view.** Accounts (ADR 0124) shows, per person, when the role was last confirmed and the result of the last check ("admitted", "refused: not a member", "refused: no role", "unchecked"). A new nullable `users.access_checked_at` and `users.access_result` hold it (one additive migration). A refused sign-in writes nothing, per item 4, so the view only ever shows people who once had an account.
 

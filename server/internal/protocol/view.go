@@ -667,6 +667,11 @@ type PendingChoiceView struct {
 	// offer an empty answer and the server would refuse it.
 	SearchMax int `json:"search_max,omitempty"`
 	SearchMin int `json:"search_min,omitempty"`
+	// SearchGraveyard (#3217) lists the instance IDs among Options that
+	// are in the searcher's graveyard, on a "search your library and/or
+	// graveyard" prompt. Everything else in Options is a library card.
+	// Absent for a library-only search. Chooser-only, like Options.
+	SearchGraveyard []string `json:"search_graveyard,omitempty"`
 	// ExchangesText marks a "copy_target" prompt whose pick is the
 	// creature to exchange text boxes with, not the object to copy (ADR
 	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
@@ -4080,6 +4085,12 @@ type ActivatedAbilityView struct {
 	RevealCostLabel      string   `json:"reveal_cost_label,omitempty"`
 	RevealCostOptions    []string `json:"reveal_cost_options,omitempty"`
 	RevealCostCountFromX bool     `json:"reveal_cost_count_from_x,omitempty"`
+	// RevealHandCost marks "Reveal your hand" as a cost (#3250) —
+	// Sasaya, Orochi Ascendant. Nothing is named or counted: the whole
+	// hand is shown to the table when the ability is activated, so the
+	// client sends no `reveal_ids` and opens no picker. Public: the cost
+	// is printed on the card.
+	RevealHandCost bool `json:"reveal_hand_cost,omitempty"`
 	// TopCostN / Label / Options describe a "Put a card from your hand
 	// on top of your library" cost component (ADR 0109 §7, #1902) —
 	// Penance, Leashling. TopCostN is the count and marks the
@@ -8131,6 +8142,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		if c.Kind == game.PendingChoiceSearchLibrary && len(c.SearchCards) > 0 {
 			v.SearchMax = c.SearchMax
 			v.SearchMin = c.SearchMin
+			for _, id := range c.SearchGraveyardCards {
+				v.SearchGraveyard = append(v.SearchGraveyard, id.String())
+			}
 			v.Options = make([]CardView, 0, len(c.SearchCards))
 			for _, id := range c.SearchCards {
 				if card, ok := g.LookupCardForEffect(id); ok {
@@ -8396,8 +8410,13 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		// — so it rides the same projection and the client's existing
 		// highlight flow answers it; the KIND is what routes the
 		// answer to ResolveRetarget rather than to ResolvePickTarget.
+		// #3158: CR 303.4f's aura_host is a fifth — what an Aura put
+		// onto the battlefield enchants, picked from a server-computed
+		// set of cards (a graveyard card included) and players, and
+		// routed on the kind to ResolveAuraHost.
 		if c.Kind == game.PendingChoicePickTarget || c.Kind == game.PendingChoiceLegendRule ||
-			c.Kind == game.PendingChoiceChooseProtector || c.Kind == game.PendingChoiceRetarget {
+			c.Kind == game.PendingChoiceChooseProtector || c.Kind == game.PendingChoiceRetarget ||
+			c.Kind == game.PendingChoiceAuraHost {
 			pt := &LegalTargetsView{Min: c.PickTargetMin, Max: c.PickTargetMax}
 			for _, id := range c.PickTargetPlayers {
 				pt.Players = append(pt.Players, id.String())
@@ -9158,7 +9177,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1369: a permanent is public, but the cost options its
 		// ability rows read out of its controller's HAND are not, so
 		// they reach the controller's frame alone.
-		Battlefield: applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID),
+		// ADR 0155 Decision 10: and a borrowed row's lender in a hidden
+		// zone reaches the seats that may see it there.
+		Battlefield: applyLenderKnowersFor(applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID), viewerID, seatIDs),
 		Stack:       redactZone(v.Stack, isKnower),
 		// #978: exile is the one SHARED zone that carries
 		// announce-time cast stamps, and they were computed for one
@@ -9303,6 +9324,7 @@ func filterPendingChoices(src []PendingChoiceView, isKnower func(CardView) bool,
 			out[i].Options = nil
 			out[i].SearchMax = 0
 			out[i].SearchMin = 0
+			out[i].SearchGraveyard = nil
 			continue
 		}
 		// ADR 0133: an opening-hand action's question names a card in the
@@ -10808,6 +10830,7 @@ func viewOfActivatedAbilities(g *game.Game, c game.Card, caster uuid.UUID, zone 
 			v.RevealCostCountFromX = rc.CountFromX
 			v.RevealCostOptions = cardIDStrings(g.RevealCardsOptionsForEffect(caster, c.InstanceID, rc))
 		}
+		v.RevealHandCost = a.Cost.RevealHand
 		// ADR 0109 §7 (#1902): the two library components, off the
 		// walk the engine validates against.
 		if n := a.Cost.PutFromHandOnLibraryTop; n > 0 {

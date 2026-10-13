@@ -339,6 +339,11 @@ func Plus(costs ...game.AbilityCost) game.AbilityCost {
 		if c.RevealCards != nil {
 			out.RevealCards = c.RevealCards
 		}
+		// #3250: "Reveal your hand" likewise — dropped, Sasaya would
+		// flip for nothing and show nothing.
+		if c.RevealHand {
+			out.RevealHand = true
+		}
 		// #1213: the same reasoning again — a composed "{1}, Return a
 		// land you control to its owner's hand" that dropped the
 		// return would be a free token every turn, which is Meloku

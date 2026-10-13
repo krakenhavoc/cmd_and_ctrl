@@ -935,6 +935,11 @@ func (e *enumerator) abilityMovesForSource(source *game.Card, zone game.ZoneKind
 								// cost throws away, which the params cannot
 								// name.
 								cost = withHandDiscard(cost, handN)
+								// #3250: and "Reveal your hand", which names no card.
+								cost = withRevealHand(cost, ab.Cost.RevealHand)
+								if ab.Cost.RevealHand {
+									label += " revealing your hand"
+								}
 								// ADR 0122 §6.2: an open X, where nothing else in
 								// the move is fixed by it — no X-bound or
 								// X-counted target, no count of sacrificed or

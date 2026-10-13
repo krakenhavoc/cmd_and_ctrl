@@ -78,16 +78,12 @@ import (
 // (OneColorOfAmount), never ten separate picks, which would be a
 // strictly better card.
 //
-// WHAT IS NOT WIRED: "can't be attacked". Planeswalkers can be
-// attacked (game/attack_target.go, S27), and combat damage removes
-// their loyalty (CR 120.3c), but the engine has no "can't be
-// attacked" restriction for a permanent: the attack-target check
-// (classifyAttackTargetLocked) asks only whether the target is a
-// player, a planeswalker or a battle, and an AttackLimit with Max 0
-// is inert. So an attached
-// Aetherspark can still be attacked — WEAKER than printed, which is
-// the direction a simplification may go — and the caveat says so. It
-// becomes a real restriction when the engine grows one (no seam yet).
+// "CAN'T BE ATTACKED" is a layer 6 static on the Aetherspark itself that
+// sets Characteristic.CantBeAttacked while it is attached to a creature.
+// canAttackTargetLocked reads it, so the declaration verbs refuse the
+// walker, the legal-move enumerator and the view's attack targets drop
+// it, and it is attackable again the moment it is unattached (the attach
+// events wake the layer cache).
 //
 // Printed loyalty reaches the card through deck import (ADR 0032 §1),
 // so Spec.StartingLoyalty is deliberately unset: it is printed card
@@ -96,10 +92,17 @@ func init() {
 	Register(Spec{
 		OracleID:     "483c747a-b602-4747-95bc-72c2c17ed509",
 		Name:         "The Aetherspark",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Aetherspark can still be attacked while it's attached to a creature.",
-		},
+		Completeness: CompletenessFull,
+		Static: []game.StaticAbility{{
+			Layer: game.Layer6Ability,
+			Label: "Can't be attacked while attached to a creature.",
+			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
+				return target.InstanceID == source.InstanceID && source.AttachedTo.Kind == game.TargetCard
+			},
+			Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
+				c.CantBeAttacked = true
+			},
+		}},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventDealDamage},
 			AppliesTo: equippedCreatureDealtCombatDamageOnYourTurn,

@@ -256,6 +256,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
 		// because a grant needs a catalog bundle to mean anything.
 		ModGrantAbilities: true,
+		// ADR 0155 Decision 9 (#3202): its cases are in
+		// borrowed_abilities_resolved_test.go, because a lent row needs a
+		// catalog row to mean anything.
+		ModBorrowAbilities: true,
 		// ADR 0041 P8 (tier 3b): replacement kinds, which no layer
 		// applies. Their cases are in scoped_replacements_test.go here
 		// and in cards/effects.

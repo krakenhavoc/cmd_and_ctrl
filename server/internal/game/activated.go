@@ -379,6 +379,18 @@ type AbilityCost struct {
 	// CountFromX the count IS the announced X, and DemandsX counts it.
 	RevealCards *RevealCardsCost
 
+	// RevealHand is "Reveal your hand" as a cost (#3250, CR 602.2b /
+	// 701.20a) — Sasaya, Orochi Ascendant's "Reveal your hand: If you
+	// have seven or more land cards in your hand, flip Sasaya." The
+	// whole hand is the clause, so there is no count to announce and no
+	// card to name; the activator picks nothing. It is paid at
+	// activation (CR 601.2h), so every opponent sees the hand before
+	// they may respond and a countered ability has still shown it.
+	// Revealing moves nothing (CR 701.20b), and an empty hand pays it
+	// (CR 118.3) with nothing to show. See payRevealHandCostLocked in
+	// reveal_hand_cost.go. An ACTIVATED ability only, like RevealCards.
+	RevealHand bool
+
 	// ReturnToHand returns permanents the activator controls to their
 	// OWNERS' hands as part of the cost (#1213) — Quirion Ranger's
 	// "Return a Forest you control to its owner's hand", Master
@@ -1946,6 +1958,10 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// revealed card is shown while the source is still on the
 	// battlefield, and nothing it shows moves.
 	g.payRevealCardsCostLocked(playerID, cardID, ab.Cost.RevealCards, params.RevealIDs)
+	// #3250: and "Reveal your hand", the whole of it, at the same point.
+	if ab.Cost.RevealHand {
+		g.payRevealHandCostLocked(playerID, cardID)
+	}
 	if err := g.payCostSacrificesLocked(sacrifices, params.commanderAnswers); err != nil {
 		return err
 	}
@@ -2008,7 +2024,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// has been paid for, so the card HAS been cycled, and the
 	// watchers see it with the card already in the graveyard, which
 	// is where CR 702.29c says it is.
-	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers); err != nil {
+	if err := g.payAbilityDiscardsLocked(playerID, cardID, ab, discards, params.commanderAnswers, params.XValue); err != nil {
 		return err
 	}
 	// ADR 0109 §8 (#1862), CR 400.7j: "the discarded card" — Land's
@@ -2209,7 +2225,7 @@ func (g *Game) activateCatalogAbilityLocked(playerID, cardID uuid.UUID, index in
 	// put on the stack. S22, for "whenever ~ becomes the target of a
 	// spell or ability" (Monk Gyatso) — the clause names abilities as
 	// well as spells, so the activated path has to emit too.
-	g.emitBecameTargetLocked(playerID, cardID, itemID, params.Targets)
+	g.emitAnnouncedTargetsLocked(playerID, cardID, itemID, params.Targets)
 	// #758: the tap-another component's board half, paid HERE
 	// rather than in the payment block above and for the reason the
 	// cast path pays its convoke taps after the spell is on the

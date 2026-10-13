@@ -21,21 +21,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // -1/-0 is the ordinary "enchanted creature" static, which reaches
 // nothing while the host is a card in a graveyard.
 //
-// Caveat (ADR 0154 Question 1): the engine has no CR 303.4f choice of
-// what an Aura enchants when it is put onto the battlefield without being
-// cast, for any Aura (#3158). Put onto the battlefield by Sun Titan,
-// Replenish or a Worldgorger Dragon loop, Animate Dead enchants nothing
-// and goes to the graveyard.
+// Put onto the battlefield any other way (Sun Titan, Replenish, a
+// Worldgorger Dragon loop), its controller chooses a creature card in a
+// graveyard for it to enchant as it enters (CR 303.4f, #3158), and the
+// same enters trigger returns that card. With no creature card in any
+// graveyard it stays where it was (CR 303.4g).
 func init() {
 	Register(Spec{
 		OracleID:     "c0d8fef4-65f4-4769-982d-b397d2b7e977",
 		Name:         "Animate Dead",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Put onto the battlefield any other way than by casting it (Sun Titan, Replenish), it enchants nothing and goes to the graveyard.",
-		},
-		Targets: EnchantCreatureCardInGraveyard(),
-		Static:  []game.StaticAbility{PumpAttached(-1, 0)},
+		Completeness: CompletenessFull,
+		Targets:      EnchantCreatureCardInGraveyard(),
+		Static:       []game.StaticAbility{PumpAttached(-1, 0)},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Animate Dead — return enchanted creature card to the battlefield under your control",
 				Do(AnimateEnchantedCard{})),

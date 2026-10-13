@@ -82,7 +82,7 @@ const seat = (): PlayerView =>
   }) as unknown as PlayerView;
 
 // The viewer's precombat main phase, holding priority, the stack empty.
-const gameView = (battlefield: CardView[]): GameView =>
+const gameView = (battlefield: CardView[], choices: unknown[] = []): GameView =>
   ({
     id: "g1",
     state: "active",
@@ -92,7 +92,7 @@ const gameView = (battlefield: CardView[]): GameView =>
     exile: zone("exile", undefined),
     stack_items: [],
     pending_triggers: [],
-    pending_choices: [],
+    pending_choices: choices,
     turn: { number: 3, active_seat: 0, priority_holder: 0, phase: "main1", step: "main" },
     mulligans_open: false,
   }) as unknown as GameView;
@@ -102,12 +102,12 @@ interface Sent {
   params?: Record<string, unknown>;
 }
 
-function mountBoard(cards: CardView[]) {
+function mountBoard(cards: CardView[], choices: unknown[] = []) {
   const sent: Sent[] = [];
   const r = render(
     Board as never,
     {
-      view: gameView(cards),
+      view: gameView(cards, choices),
       viewerID: ME,
       isAdmin: false,
       sendAction: (type: ActionType, params?: Record<string, unknown>) =>
@@ -279,14 +279,73 @@ describe("one usable ability activates on click (#2201)", () => {
     expect(b.activations()).toEqual([]);
   });
 
-  it("an Equipment with Equip usable starts the equip flow: the creature choice", () => {
+  it("an Equipment with Equip usable and one creature to equip activates onto it (#3264)", () => {
     const b = mountBoard([bonesplitter(), bear()]);
     click(b.tile("sword"));
-    const t = get(targeting);
-    expect(t?.card.instance_id).toBe("sword");
-    expect(t?.ability?.index).toBe(0);
-    expect([...(t?.legal?.cards ?? [])]).toEqual(["bear"]);
+    // The creature choice had one answer, so it was made for the player.
+    expect(b.activations()).toHaveLength(1);
+    expect(b.activations()[0].params).toMatchObject({
+      source_card_id: "sword",
+      ability_index: 0,
+      targets: [{ kind: "card", id: "bear" }],
+    });
+    expect(get(targeting)).toBeNull();
     expect(get(abilityPopover)).toBeNull();
+  });
+
+  // #3264: the snapshot still carries the choice after the answer goes
+  // out, and the board re-opens its prompt. Answering again looped on
+  // the main thread and froze the page; it is answered once.
+  it("a trigger's lone target is answered once, though its prompt re-opens", () => {
+    const pick = {
+      id: "pick-1",
+      kind: "pick_target",
+      chooser: ME,
+      source: "bear",
+      reason: "Choose target creature",
+      pick_target: { cards: ["bear"], min: 1, max: 1 },
+      pick_target_cards: ["bear"],
+      options: [],
+    };
+    const b = mountBoard([bear()], [pick]);
+    const answers = b.sent.filter((s) => s.type === "resolve_choice");
+    expect(answers).toHaveLength(1);
+    expect(answers[0]!.params).toMatchObject({
+      choice_id: "pick-1",
+      targets: [{ kind: "card", id: "bear" }],
+    });
+  });
+
+  // #3265: two instances of one trigger. The player clicks the first's
+  // target; the second is answered with it once the server has taken
+  // the first, and the first's re-opened prompt is not answered again.
+  it("a repeated trigger's later instance takes the target picked for the first", () => {
+    const elf = permanent("elf", "Llanowar Elves", "Creature — Elf", { power: 1, toughness: 1 });
+    const prompt = (id: string) => ({
+      id,
+      kind: "pick_target",
+      chooser: ME,
+      source: "bear",
+      reason: "Choose target creature",
+      pick_target: { cards: ["bear", "elf"], min: 1, max: 1 },
+      pick_target_cards: ["bear", "elf"],
+      options: [],
+    });
+    const b = mountBoard([bear(), elf], [prompt("p1"), prompt("p2")]);
+    const answers = () => b.sent.filter((s) => s.type === "resolve_choice");
+    expect(answers()).toHaveLength(0);
+
+    click(b.tile("elf"));
+    expect(answers()).toHaveLength(1);
+    expect(answers()[0]!.params).toMatchObject({ choice_id: "p1" });
+
+    // The server took the first answer: only the second instance waits.
+    b.setProps({ view: gameView([bear(), elf], [prompt("p2")]) } as never);
+    expect(answers()).toHaveLength(2);
+    expect(answers()[1]!.params).toMatchObject({
+      choice_id: "p2",
+      targets: [{ kind: "card", id: "elf" }],
+    });
   });
 
   it("a planeswalker with exactly one usable loyalty ability activates it", () => {

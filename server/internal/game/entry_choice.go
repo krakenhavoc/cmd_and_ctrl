@@ -641,6 +641,10 @@ func (g *Game) announceEntryLocked(l entryLanding) {
 	// un-paused path orders it.
 	if ev.stackItem != nil {
 		g.attachResolvedAuraLocked(l.entered, ev.stackItem)
+	} else {
+		// CR 303.4f (#3158): an Aura put onto the battlefield enters
+		// attached to the host its window settled, at the same point.
+		g.attachEnteringAuraLocked(l.entered, ev)
 	}
 	g.EmitEvent(Event{
 		Kind:             EventETB,

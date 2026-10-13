@@ -775,6 +775,24 @@ type Card struct {
 	// PermanentInfo.ChosenNumber once the permanent has gone.
 	ChosenNumber int
 
+	// ChosenPermanent is the PERMANENT chosen for this permanent as it
+	// entered (CR 614.12): Scheming Fence's "As this creature enters, you
+	// may choose a nonland permanent", read back by "activated abilities
+	// of the chosen permanent can't be activated" and "this creature has
+	// all activated abilities of the chosen permanent" (ADR 0155 §8,
+	// #3202). The zero ref is "none chosen", both before the answer
+	// arrives and when the controller chose nothing.
+	//
+	// An OBJECT, not a card: the ref carries the CR 400.7 epoch, so a
+	// chosen permanent that leaves the battlefield and returns is a new
+	// object nobody chose. The seventh member of the family, with its
+	// lifecycle: per INSTANCE, carried by the snapshot and by clone,
+	// cleared when this permanent leaves the battlefield, and NOT a
+	// copiable value (CR 707.2). Written by Game.SetChosenPermanentForEffect
+	// (choose_permanent.go) and by nothing else; read with
+	// Game.ChosenPermanentOf.
+	ChosenPermanent ObjectRef
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.
@@ -1072,9 +1090,12 @@ type Card struct {
 	//
 	// Cleared by MoveCard on every move, so a card that leaves exile
 	// and comes back by another route was not exiled with anything.
-	// Carried by the snapshot. An ability-resolution exile (Duplicant,
-	// Angel of Serenity) keeps the effects package's event-log record
-	// (b27ExiledWith) and does not write this.
+	// Carried by the snapshot. A RESOLVING ABILITY's exile writes it too
+	// when it goes through Game.ExileLinkedForEffect (ADR 0155 §8,
+	// #3201): Duplicant, Angel of Serenity, and every "has all activated
+	// abilities of all cards exiled with it" borrower, whose lenders are
+	// read on every layer pass. Other ability exiles still keep the
+	// effects package's event-log record (b27ExiledWith).
 	ExiledWith PermissionCardRef
 
 	// Solved, Prepared and PrepareCopy live in the bool block at the

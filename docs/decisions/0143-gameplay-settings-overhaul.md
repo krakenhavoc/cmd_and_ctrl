@@ -185,6 +185,8 @@ The tutorial forces Manual (it forced `autoPassPriority` off) and restores the p
 - **Skip to my turn** is today's autopass toggle with the safety belt built in. It clears itself at the start of your own main 1, always. `autopassPersistThroughTurns` is removed, along with its warning.
 - Both obey the hard blocks (rule 1) and a phase pin (rule 3), as the toggle does today.
 
+**Amendment (#3316, owner, 2026-10-13).** Skip to my turn is no longer Smart's passing. It passes every priority window, including an opponent's item, combat and an opponent's end step the player could respond to. It never bluffs and does not wait out the stack hold. Only rule 1's choices, a pin, and the player's own main 1 stop it. Manual is labelled **Off** in Settings; its stored value stays `manual`.
+
 **4.3 The bluff chip** is disabled in Manual and in Careful, with the title "bluffing needs Smart auto-pass: in {mode} you stop anyway, so a pause gives nothing away". This replaces today's "needs smart auto-pass" condition.
 
 **4.4 Labels.** "autopass" is a registered label and the tutorial's step-9 anchor (ADR 0076 §2.4, ADR 0125 §2). It is renamed in `labels.ts` to "Skip to my turn", and Pass turn becomes "End turn". Both tutorial steps, the dock hint (`ActionDock.hint.ts`) and the e2e specs that select on either label change in the same PR. That PR runs the branch E2E.

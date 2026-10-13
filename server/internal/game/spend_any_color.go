@@ -77,6 +77,24 @@ type AnyColorSpendStatic struct {
 	// A context with no object (an "unless pays" cost, an attack tax)
 	// is a payment a narrowed grant does not reach.
 	Covers func(ManaSpendContext) bool
+	// AnyType makes it "as though it were mana of any TYPE" (Vizier of
+	// the Menagerie): colourless is a type too, so coloured mana may also
+	// pay a {C} symbol (CR 106.1b no longer stops it). False is the
+	// colour grant, which leaves {C} alone.
+	AnyType bool
+	// From narrows the grant to mana of ONE colour (an uppercase WUBRG
+	// letter): "You may spend BLUE mana as though it were mana of any
+	// color" (Quicksilver Elemental; ADR 0155 Decision 7). Each coloured
+	// symbol the payment reaches then admits that colour beside its own,
+	// and no other mana. Empty is every colour of mana, which is every
+	// grant written before it.
+	From string
+	// OwnAbilities narrows the grant to the activation costs of THIS
+	// permanent's abilities — "to pay the activation costs of this
+	// creature's abilities" (Quicksilver Elemental): a payment whose
+	// ManaSpendContext.Object is the permanent the static is on, its own
+	// rows and every row it was lent alike. Composes with Covers.
+	OwnAbilities bool
 }
 
 // CatalogAnyColorSpend returns the spend statics a permanent with the
@@ -87,10 +105,59 @@ var CatalogAnyColorSpend func(key string) []AnyColorSpendStatic
 // spendsManaAsAnyColorLocked is THE reader: may `payer` spend mana as
 // though it were mana of any color for the payment `ctx` describes?
 //
+// A grant narrowed to one colour of mana (From) is not that, and answers
+// false here; costAsPaidByLocked still applies it.
+//
 // Caller must hold g.mu (read or write). Reads only.
 func (g *Game) spendsManaAsAnyColorLocked(payer uuid.UUID, ctx ManaSpendContext) bool {
-	if CatalogAnyColorSpend == nil || g.Battlefield == nil || payer == uuid.Nil {
-		return false
+	return g.spendGrantLocked(payer, ctx).any
+}
+
+// spendGrant is what the spend grants covering one payment allow.
+type spendGrant struct {
+	// any: every mana may be spent as though it were mana of any color;
+	// anyType: of any type, so a {C} too.
+	any, anyType bool
+	// from lists the colours of mana a one-colour grant (From) lets
+	// stand for any colour.
+	from []string
+}
+
+// note folds one covering grant in.
+func (s *spendGrant) note(anyType bool, from string) {
+	if from == "" {
+		s.any = true
+		s.anyType = s.anyType || anyType
+		return
+	}
+	for _, f := range s.from {
+		if f == from {
+			return
+		}
+	}
+	s.from = append(s.from, from)
+}
+
+// spendGrantLocked is the reader behind spendsManaAsAnyColorLocked and
+// costAsPaidByLocked: every grant covering the payment, folded.
+//
+// Two kinds of grant are read. A permanent's printed static
+// (CatalogAnyColorSpend), live off the battlefield; and the rider a
+// RESOLVED borrow wrote on the rows it lent (BorrowedAbility.SpendFrom,
+// Grell Philosopher's "you may spend blue mana as though it were mana of
+// any color to activate those abilities", ADR 0155 Decision 7), which
+// lasts exactly as long as those rows do, whatever happens to the
+// permanent whose trigger lent them.
+func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) spendGrant {
+	var out spendGrant
+	if payer == uuid.Nil {
+		return out
+	}
+	if o := ctx.AbilityOrigin; o.Borrowed && o.Lent != nil && o.Lent.SpendFrom != "" && o.Lent.Activator == payer {
+		out.note(false, o.Lent.SpendFrom)
+	}
+	if CatalogAnyColorSpend == nil || g.Battlefield == nil {
+		return out
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
@@ -108,13 +175,26 @@ func (g *Game) spendsManaAsAnyColorLocked(payer uuid.UUID, ctx ManaSpendContext)
 			default:
 				continue
 			}
-			if s.Covers != nil && !s.Covers(ctx) {
+			if s.OwnAbilities && (ctx.Object == uuid.Nil || ctx.Object != src.InstanceID) {
 				continue
 			}
-			return true
+			if s.Covers != nil && !s.Covers(withPayer(ctx, payer)) {
+				continue
+			}
+			out.note(s.AnyType, s.From)
+			if out.anyType {
+				return out
+			}
 		}
 	}
-	return false
+	return out
+}
+
+// withPayer is ctx with its Payer filled in, for a Covers that compares
+// the object's controller with the player paying.
+func withPayer(ctx ManaSpendContext, payer uuid.UUID) ManaSpendContext {
+	ctx.Payer = payer
+	return ctx
 }
 
 // SpendsManaAsAnyColorForEffect is the *ForEffect surface over the
@@ -133,10 +213,11 @@ func (g *Game) SpendsManaAsAnyColorForEffect(payer uuid.UUID, ctx ManaSpendConte
 // no colour to spend mana as though it were. Generic and {X} need no
 // widening. Idempotent, and it returns `cost` itself when there is
 // nothing to widen.
-func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
+func widenForAnyColorSpend(cost ParsedCost, anyType bool) ParsedCost {
+	colourless := func(r ColorRequirement) bool { return !anyType && requiresColorless(r) }
 	need := false
 	for _, r := range cost.Required {
-		if !r.AnyMana && !requiresColorless(r) && !unpayableByAnyMana(r) {
+		if !r.AnyMana && !colourless(r) && !unpayableByAnyMana(r) {
 			need = true
 			break
 		}
@@ -147,7 +228,7 @@ func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 	out := cost
 	out.Required = make([]ColorRequirement, len(cost.Required))
 	for i, r := range cost.Required {
-		if !requiresColorless(r) && !unpayableByAnyMana(r) {
+		if !colourless(r) && !unpayableByAnyMana(r) {
 			r.AnyMana = true
 		}
 		out.Required[i] = r
@@ -183,10 +264,53 @@ func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 	// marked: life never pays generic mana (the 2019-08-23 ruling).
 	cost = g.grantLifeForManaLocked(payer, cost)
 	cost = cost.foldSpendOnly(x)
-	if len(cost.Required) == 0 || !g.spendsManaAsAnyColorLocked(payer, ctx) {
+	if len(cost.Required) == 0 {
 		return cost
 	}
-	return widenForAnyColorSpend(cost)
+	grant := g.spendGrantLocked(payer, ctx)
+	switch {
+	case grant.any:
+		return widenForAnyColorSpend(cost, grant.anyType)
+	case len(grant.from) > 0:
+		return widenFromColors(cost, grant.from)
+	}
+	return cost
+}
+
+// widenFromColors is widenForAnyColorSpend for a grant narrowed to some
+// colours of mana (AnyColorSpendStatic.From): each coloured symbol also
+// admits mana of those colours. The symbol keeps its own colours first,
+// so the solvers still pay a {G} with green when there is green. A {C}
+// is left alone for widenForAnyColorSpend's reason (blue mana is not
+// colourless), and so is a symbol already widened to any mana. Returns
+// `cost` itself when nothing changes.
+func widenFromColors(cost ParsedCost, from []string) ParsedCost {
+	var out []ColorRequirement
+	for i, r := range cost.Required {
+		if r.AnyMana || len(r.Options) == 0 || requiresColorless(r) || unpayableByAnyMana(r) {
+			continue
+		}
+		var add []string
+		for _, f := range from {
+			if !matchColor(f, r.Options) {
+				add = append(add, f)
+			}
+		}
+		if len(add) == 0 {
+			continue
+		}
+		if out == nil {
+			out = append([]ColorRequirement(nil), cost.Required...)
+		}
+		r.Options = append(append([]string(nil), r.Options...), add...)
+		out[i] = r
+	}
+	if out == nil {
+		return cost
+	}
+	widened := cost
+	widened.Required = out
+	return widened
 }
 
 // CostAsPaidByForEffect is costAsPaidByLocked for a caller that already

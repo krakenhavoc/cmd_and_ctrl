@@ -297,6 +297,14 @@ type ExileTarget struct {
 	// something that acts on what it is told, not as the next line of
 	// the card.
 	Then func(ctx *Context, exiled bool) error
+
+	// Linked stamps CR 607.2a's "exiled with this" link on the card as
+	// it lands in exile (Card.ExiledWith, ADR 0155 §8): the resolving
+	// item's source OBJECT. For an exile whose card another ability of
+	// the same source reads back ("all creature cards exiled with it",
+	// Duplicant's "the last creature card exiled with it"). A source with
+	// no object to name exiles with no link.
+	Linked bool
 }
 
 func (e ExileTarget) Apply(ctx *Context) error {
@@ -309,7 +317,14 @@ func (e ExileTarget) Apply(ctx *Context) error {
 		}
 		return nil
 	}
+	var link game.ObjectRef
+	if e.Linked {
+		link, _ = ctx.SourceRef()
+	}
 	if e.Then == nil {
+		if e.Linked {
+			return nothingIfGone(ctx.Game.ExileLinkedForEffect(link, e.Target))
+		}
 		return nothingIfGone(ctx.Game.ExileCardForEffect(e.Target))
 	}
 	// The context is rebuilt inside the continuation from the live
@@ -317,6 +332,11 @@ func (e ExileTarget) Apply(ctx *Context) error {
 	// this game's fields in place, so a captured *Game would be the
 	// wrong one.
 	item := ctx.Item
+	if e.Linked {
+		return ctx.Game.ExileLinkedThenForEffect(link, []uuid.UUID{e.Target}, func(g *game.Game, exiled []uuid.UUID) error {
+			return e.Then(NewContext(g, item), len(exiled) == 1)
+		})
+	}
 	return ctx.Game.ExileCardThenForEffect(e.Target, func(g *game.Game, exiled bool) error {
 		return e.Then(NewContext(g, item), exiled)
 	})
@@ -1072,6 +1092,24 @@ type SearchLibrary struct {
 	// Dest is game.ZoneExile. The zero value, game.FaceDownNone, is
 	// an ordinary face-up exile.
 	FaceDown game.FaceDownKind
+	// AlsoGraveyard is "search your library AND/OR GRAVEYARD" (#3217 —
+	// Finale of Devastation, Tower Winder, Ajani's Aid). The picker
+	// offers matches from both zones, marked by zone. "And/or" lets the
+	// searcher choose their zones, so the floor is unchanged: a stated
+	// quality may still find nothing even with a match in the graveyard.
+	// A take that came wholly from the graveyard does not search the
+	// library, so it does not shuffle — "If you search your library this
+	// way, shuffle." Taking nothing counts as a library search (shuffle
+	// and event); see game.SearchLibrarySpec.AlsoGraveyard. Set Shuffle
+	// as the card prints it; the engine decides whether the library was
+	// searched.
+	AlsoGraveyard bool
+	// EntersAttachedTo is "put that card onto the battlefield ATTACHED
+	// TO …" (Light-Paws, #3158): the found Aura enters attached to it,
+	// and one that can't legally enchant it stays in the library
+	// (CR 303.4i). Leave it zero otherwise; a found Aura then chooses
+	// what it enchants as it enters (CR 303.4f).
+	EntersAttachedTo game.TargetRef
 }
 
 func (s SearchLibrary) Apply(ctx *Context) error {
@@ -1099,6 +1137,8 @@ func (s SearchLibrary) Apply(ctx *Context) error {
 		LibraryOwner:       s.LibraryOwner,
 		Unbounded:          s.Unbounded,
 		FaceDown:           s.FaceDown,
+		AlsoGraveyard:      s.AlsoGraveyard,
+		EntersAttachedTo:   s.EntersAttachedTo,
 	})
 }
 

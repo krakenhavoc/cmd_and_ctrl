@@ -1,6 +1,6 @@
 # ADR 0154 — Auras that enchant a card in a graveyard (Animate Dead)
 
-**Status:** Accepted (owner decisions 2026-10-13) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
+**Status:** Accepted (owner decisions 2026-10-13); amended 2026-10-13 for #3158 (see the end) · 2026-10-13 · S53 — Faces, zones, and shared payment (ADR first), tracker [#1910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1910)
 **Issues:** [#1780](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1780) (seam: an Aura that enchants a card in a graveyard). Registry row: `aura-on-a-graveyard-card` (status `missing`; it changes with the implementation, not with this ADR).
 **Owner decisions:** 2026-10-13. The owner accepted the ADR and chose the recommended option, (a), on all six questions. The answers are recorded under [Questions for the owner](#questions-for-the-owner-answered-2026-10-13), and no section above them changed.
 **Follow-ups:** [#3156](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3156) (Necromancy), [#3157](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3157) (Spellweaver Volute), [#3158](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3158) (the CR 303.4f prompt for every Aura), [#3159](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3159) (a flickered host keeps its attachments: bug, starts with a failing test), [#3160](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3160) (CR 701.3b for every Aura), [#3161](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3161) (reanimation-family bot pricing).
@@ -230,3 +230,45 @@ Each lists the recommended option first. The owner chose (a), the recommended op
    - **(a) Recommended:** two `Card` fields (`EnchantSwapped`, `EnchantReturned`) read first by `attachmentLegalLocked`, as ADR 0141 did for bestow.
    - **(b)** A general layer-6 "enchant" ability that effects can grant and remove. It is more faithful to CR 613.1f, but no card in the catalog needs it, and it touches every Aura's legality.
    - **Decision:** (a). Two `Card` fields, `EnchantSwapped` and `EnchantReturned`, read first by `attachmentLegalLocked`.
+
+## Amendment — 2026-10-13: a reanimation with counters and a tail (#3172, cav-h1)
+
+Decision 5 gave the graveyard return a continuation, `ReturnFromGraveyardToBattlefieldThenForEffect`, so
+that a "then" that must see the NEW permanent lands even when the creature first asks a question (a
+Clone's copy pick, a shockland's payment). Three more cards were waiting on the same shape, one of them
+with counters:
+
+- **`ReturnFromGraveyardWithCountersThenForEffect(card, controller, tapped, counters, then)`** is that
+  continuation beside the "enters with counters" clause. The counters ride the entry event (CR 614.1c),
+  so a Doubling Season sees them; `then` runs once, with the entering permanent's ID or `uuid.Nil`.
+  Makeshift Mannequin grants its sacrifice ability from the tail, so a returned Clone has it.
+- **Persist** ("with a -1/-1 counter on it") uses `ReturnFromGraveyardWithCountersForEffect`, the form
+  without a tail: the counter is part of the entry, not a second step after it.
+- **Presumed Dead** suspects the returned creature from the tail, so a returned Clone is suspected.
+
+Back-out: stop passing the counter map (Persist), skip the grant (Mannequin) or the suspect (Presumed
+Dead) in the tail; each named test fails (`TestPersistCounterRidesTheEntry`,
+`TestMakeshiftMannequinGrantLandsAfterACloneAnswersItsEntryQuestion`,
+`TestPresumedDeadSuspectsACloneThatAsksAsItReturns`).
+
+## Amendment 2026-10-13 ([#3158](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3158)): CR 303.4f for every Aura
+
+Owner decision Q1 (a) shipped Animate Dead with a caveat and filed the host choice as #3158. This amendment is that follow-up. No section above changes; it removes the caveat Question 1 gave Animate Dead and the "Out of scope" item it names.
+
+**The rule.** CR 303.4f: an Aura entering the battlefield other than by resolving as an Aura spell, when the effect putting it there doesn't specify what it enchants, has its controller choose a legal object or player for it as it enters. CR 303.4g: with no legal choice it stays in its current zone (a token isn't created). The named-host case, an effect that puts an Aura onto the battlefield attached to something it can't legally enchant, is cited here as CR 303.4i, the number this ADR's Context section uses for the pinned edition. The pinned TXT was not in the builder's checkout, so check the subrule letters against it.
+
+**Decision 11. The choice is the last step of the entry's CR 614 window.** When the apply-loop has nothing left to apply, `settleEnteringAuraHostLocked` (`game/aura_host.go`) asks, before anything moves. That keeps "as it enters" observable: the Aura is never on the battlefield unattached, so CR 704.5m sees nothing, and no enters trigger fires for an Aura that then falls off. It also reuses the pause every entry question already has. The reanimation, the library search, the exile return, the hand / library / graveyard / exile put batch (#1322) and created tokens (#762) are all `entryResumable` (the "declared gap" about the search and reanimation paths predates #478), and the paused event resumes through `replacementResume`. A simultaneous entry walks one card's window at a time, so Replenish asks once per Aura.
+
+It applies to an entry that is a move onto the battlefield (or a created token), is not a resolving spell (CR 303.4a covers those), is not face down, does not enter as a copy, and whose card is an Aura with a catalogued enchant clause. An uncatalogued Aura is still a manual object, as `attachmentLegalLocked` treats it.
+
+**Decision 12. The candidates.** The Aura's catalogued `TargetSpec`, read through `specMatchesLocked` without the targeting gate (CR 115.1: choosing a host targets nothing, so hexproof and shroud don't apply), then CR 702.16c's protection test against the Aura, for a permanent or a player. A graveyard clause (decision 1) offers the creature cards in every graveyard. The Aura itself and every other card of the same simultaneous entry are excluded: they are not yet objects an Aura can enter attached to, and the Replenish ruling says an Aura it returns can't enchant another permanent it returns. One candidate is a forced choice and asks nothing. None is CR 303.4g, and the entry is cancelled. The chooser is the would-be controller on the event, which ADR 0102 keeps current.
+
+**Decision 13. Where the answer goes.** `ReplacementEvent.auraHost` (with `auraHostSettled`) carries it to the one finisher, which attaches through `AttachForEffect` between the zone move and `EventETB` (`attachEnteringAuraLocked`, beside `attachResolvedAuraLocked`). So decision 2's off-battlefield attach and decision 3's epoch pin apply to a graveyard host exactly as they do for a cast Animate Dead, and decision 5's enters trigger reads the host off `AttachedTo` unchanged: Sun Titan returning Animate Dead returns the chosen creature. The fields are plain values on the event, copied by the undo clone of a paused frame. Nothing new is snapshotted, because a paused entry is already counted by `ContinuationCensus.ChoiceResumeFrames`.
+
+**Decision 14. An effect that names the host is not asked.** `SearchLibrarySpec.EntersAttachedTo` (Light-Paws), `ZoneEntryOptions.AttachedTo` (Mantle of the Ancients' batch, and Gift of Immortality's single return through the batch door) and `TokenEntryOptions.AttachedTo` (a copy of an Aura spell, CR 707.10) seed `auraHostFixed`. The window checks the named host against the same predicate and cancels the entry when it is illegal (CR 303.4i), so a Light-Paws search that finds an "enchant land" Aura leaves it in the library. A non-Aura with a named host (Mantle's Equipment) is attached at the same point and left to CR 704.5n. Those three cards used to enter and then attach in a continuation; they now enter attached.
+
+**Decision 15. The prompt.** `PendingChoiceAuraHost` (`aura_host`) carries the candidates in `PickTargetCards` / `PickTargetPlayers` with min and max 1, rides the `pick_target` wire projection and is answered with the `{target}` (or one-element `{targets}`) payload, so the client's board picker answers it, and a graveyard card through the zone browser. It blocks the table (entry_controller's reason) and is dropped, not reassigned, when its chooser leaves: the paused entry is abandoned and the Aura stays where it was. The enumerator offers one move per host. The heuristic prices a graveyard host by its creature value whoever owns it, since every Aura with a graveyard clause returns that card under its controller. A battlefield or player host is read like an Aura spell's target: an opponent's permanent as removed, the bot's own at `OwnPermanentTarget` with its best creature first. That inherits the cast path's blind spot (nothing on the wire says whether an Aura is a buff or a curse) and does not touch Question 5's cast price (#3161).
+
+**What it does not do.** The sandbox `move_card` verb cannot pause and keeps its old behaviour. An Aura entering as a copy (Copy Enchantment's shape) is not asked; no catalogued card has it. Spellweaver Volute's "attach it to another instant card" moves an Aura already on the battlefield, which is not CR 303.4f, and stays with #3157.
+
+**Cards.** Animate Dead is Full. So are Light-Paws, Emperor's Voice, Brilliant Restoration, Ondu Spiritdancer, Zur the Enchanter, Carmen, Cruel Skymarcher, Open the Vaults, Guardian Sunmare, Armored Skyhunter, It That Betrays and Replenish. Nazgûl Battle-Mace drops its Aura caveat and keeps its Rest in Peace one. The registry row `aura-chooses-its-host-as-it-enters` is implemented.

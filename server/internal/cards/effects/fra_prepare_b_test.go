@@ -182,10 +182,10 @@ func TestStingerquillVoxmancerVerseHitsOnlyAnOpponent(t *testing.T) {
 	}
 }
 
-func TestWhiplashWordsmithEntersPreparedAndDeclaresItsCaveat(t *testing.T) {
+func TestWhiplashWordsmithEntersPrepared(t *testing.T) {
 	spec, ok := Lookup(fraWhiplashWordsmith)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("spec = %+v ok=%v, want one declared caveat", spec, ok)
+	if !ok || spec.Completeness != CompletenessFull {
+		t.Fatalf("spec = %+v ok=%v, want a complete card", spec, ok)
 	}
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]

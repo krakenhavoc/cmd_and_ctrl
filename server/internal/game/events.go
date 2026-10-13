@@ -79,7 +79,8 @@ const (
 
 	// EventCycle — Actor cycled CardID (CR 702.29b): they activated
 	// its cycling ability and paid the cost, which discarded it.
-	// Source and CardID are both the cycled card.
+	// Source and CardID are both the cycled card, and Amount is the
+	// X the cycling cost was announced with (0 when it has none).
 	//
 	// Emitted AFTER the cost's EventDiscardCard, with the card
 	// already in the graveyard, because that is where CR 702.29c
@@ -575,10 +576,8 @@ const (
 	// same object twice (AllowSame) likewise emits two, matching CR
 	// 115.3's per-instance-of-the-word-"target" reading.
 	//
-	// Known gap: an effect that CHANGES a spell's targets after
-	// announce (Deflecting Swat, Redirect) does not re-emit, because
-	// the engine has no change-targets path at all. When one lands,
-	// it emits here too.
+	// Copies and changed targets emit this event too. Only a qualifying
+	// announcement carries CrimeCommitted (CR 700.13).
 	//
 	// Added in S22 for Monk Gyatso; "becomes the target of a spell
 	// or ability" is a common Commander clause and this is the only
@@ -1342,6 +1341,11 @@ const (
 // Seq is a monotonic per-Game counter stamped at emit time. First
 // event has Seq == 1; zero is the un-stamped sentinel.
 type Event struct {
+	// CrimeCommitted marks the first qualifying target of a successful
+	// cast, activation or triggered-ability placement (CR 700.13).
+	// Copies and retargeting leave it false. Additive within schema v8.
+	CrimeCommitted bool `json:"crime_committed,omitempty"`
+
 	Seq uint64 `json:"seq"`
 
 	// Batch names the EVENT BATCH this event belongs to: the run of
@@ -1861,25 +1865,31 @@ const (
 // Emitted AFTER the item exists, so a trigger harvested off this
 // event lands on PendingTriggers above the thing that targeted.
 // Caller must hold g.mu.
-func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets []TargetRef) {
-	for _, t := range targets {
+func (g *Game) emitBecameTargetLocked(actor, source, itemID uuid.UUID, targets []TargetRef, announcedCrimeSlot ...int) {
+	crimeSlot := -1
+	if len(announcedCrimeSlot) > 0 {
+		crimeSlot = announcedCrimeSlot[0]
+	}
+	for i, t := range targets {
 		switch t.Kind {
 		case TargetCard:
 			g.EmitEvent(Event{
-				Kind:        EventBecomesTarget,
-				Actor:       actor,
-				Source:      source,
-				StackItemID: itemID,
-				Target:      t.ID,
-				CardID:      t.ID,
+				Kind:           EventBecomesTarget,
+				Actor:          actor,
+				Source:         source,
+				StackItemID:    itemID,
+				Target:         t.ID,
+				CardID:         t.ID,
+				CrimeCommitted: i == crimeSlot,
 			})
 		case TargetPlayer:
 			g.EmitEvent(Event{
-				Kind:        EventBecomesTarget,
-				Actor:       actor,
-				Source:      source,
-				StackItemID: itemID,
-				Target:      t.ID,
+				Kind:           EventBecomesTarget,
+				Actor:          actor,
+				Source:         source,
+				StackItemID:    itemID,
+				Target:         t.ID,
+				CrimeCommitted: i == crimeSlot,
 			})
 		}
 	}

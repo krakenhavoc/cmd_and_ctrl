@@ -5,10 +5,8 @@
   // Public on purpose: App.svelte lists "roadmap" as a public route and
   // the server mounts GET /roadmap without auth.Middleware. That is safe
   // because of what the body is: card NAMES and caveat sentences this
-  // repo wrote, never art or oracle text (ADR 0092 Decision 1). A
-  // signed-in viewer's example card names link into the catalogue,
-  // which shows the art behind its own session gate; a signed-out
-  // viewer sees plain text.
+  // repo wrote, never art or oracle text (ADR 0092 Decision 1). The
+  // example card names link into the catalogue, which shows the art.
   //
   // The data is server/internal/roadmap's registry, checked against the
   // live catalog in CI, so the page says nothing a test does not hold.
@@ -16,7 +14,6 @@
   import { onMount } from "svelte";
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
-  import { session } from "../lib/session";
   import { L } from "../lib/labels";
   import { toggle } from "../lib/catalog";
   import {
@@ -46,8 +43,6 @@
   let query = $state("");
   let kinds = $state<RoadmapKind[]>([]);
   let statuses = $state<RoadmapStatus[]>([]);
-
-  const isSignedIn = $derived($session !== null);
 
   const items = $derived(data?.items ?? []);
   const upNext = $derived(data ? nextItems(data) : []);
@@ -110,14 +105,9 @@
   });
 </script>
 
-<!-- A card name: a catalogue link for a signed-in viewer, plain text
-     otherwise (the catalogue needs a session; see the header comment). -->
+<!-- A card name: a link into the public catalogue. -->
 {#snippet cardName(name: string)}
-  {#if isSignedIn}
-    <a class="cname" href={catalogSearchHash(name)}>{name}</a>
-  {:else}
-    <span class="cname">{name}</span>
-  {/if}
+  <a class="cname" href={catalogSearchHash(name)}>{name}</a>
 {/snippet}
 
 {#snippet links(issue: number | undefined, adr: string | undefined, rules: string[] | undefined)}
@@ -136,6 +126,17 @@
   {/if}
 {/snippet}
 
+{#snippet searchBox()}
+  <input
+    type="text"
+    class="search"
+    placeholder="search a mechanic, keyword or card name"
+    aria-label={L.searchRoadmap}
+    disabled={loading}
+    bind:value={query}
+  />
+{/snippet}
+
 <Page eyebrow="Cards" title="What the engine plays, and what's next" width="wide">
   {#snippet lede()}
     Every keyword, mechanic and engine gap the rules engine knows about.
@@ -147,6 +148,11 @@
   {/snippet}
   <div class="stack">
     {#if loading}
+      <!-- The search box is the roadmap.search hint's anchor: it must exist before the
+           data does, or a slow load makes the hint engine skip the page's own tip (#3305). -->
+      <div class="filters">
+        {@render searchBox()}
+      </div>
       <p class="help" aria-live="polite">Loading the roadmap…</p>
     {:else if error}
       <p class="notice err" role="alert">
@@ -222,13 +228,7 @@
       {/if}
 
       <div class="filters">
-        <input
-          type="text"
-          class="search"
-          placeholder="search a mechanic, keyword or card name"
-          aria-label={L.searchRoadmap}
-          bind:value={query}
-        />
+        {@render searchBox()}
         <div class="facets">
           <fieldset class="facet">
             <legend>Kind</legend>

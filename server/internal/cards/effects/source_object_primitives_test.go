@@ -636,7 +636,9 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 	spells := map[string]bool{
 		"teferis_protection.go": true, "teferis_reproach.go": true,
 		"avatars_wrath.go": true, "blue_suns_zenith.go": true,
-		"temporal_mastery.go": true, "temporal_trespass.go": true,
+		// "Shuffle Beacon of Immortality into its owner's library." (#3245)
+		"beacon_of_immortality.go": true,
+		"temporal_mastery.go":      true, "temporal_trespass.go": true,
 		"bound_determined.go": true, // Bound's "Exile this card." (ADR 0106 PR 3)
 		// Restorative Burst, the sorcery back face: "Exile Restorative Burst."
 		"pestilent_cauldron.go": true,

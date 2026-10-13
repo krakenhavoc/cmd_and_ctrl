@@ -12,7 +12,7 @@
   import Icon from "./Icon.svelte";
   import { FAN_CONTENT_POLICY_URL } from "../legalNotice";
   import { PRIVACY_HASH } from "../privacy";
-  import { ABOUT_HASH, REPO_URL } from "../about";
+  import { ABOUT_HASH, GUIDE_HASH, REPO_URL } from "../about";
   import { community } from "../community";
 </script>
 
@@ -24,6 +24,7 @@
           ><Icon name="discord" size={14} /> Discord</a
         >
       {/if}
+      <a href={GUIDE_HASH}>Guide</a>
       <a href={ABOUT_HASH}>About</a>
       <!-- #2983: the privacy notice is one click from every page outside
            the table; the table's own copy is in the ⋯ menu's Legal notice. -->

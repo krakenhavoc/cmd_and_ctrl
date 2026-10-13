@@ -316,11 +316,32 @@ type StaticAbility struct {
 	// nothing else: an exiled card cast, put into a hand, or shuffled
 	// into a library.
 	//
+	// It also covers a card ARRIVING in exile from a hand, a library or
+	// the stack (ADR 0155 PR 3, #3201): a borrower that lends from the
+	// cards exiled with it (Mairsil's cage from a hand) gains the rows
+	// the moment the card lands.
+	//
 	// Same contract as the flags above, and opt-in for their reason:
 	// impulse draw, foretell and adventures move cards out of exile at
 	// most tables, and gating the bump is what keeps those free for the
 	// tables with no such card in play. See layerVersionBump.OnEvent.
 	DependsOnExile bool
+
+	// DependsOnLibraryTop is DependsOnHandSize for the TOP CARD of a
+	// library — Conspicuous Snoop's and Skill Borrower's "as long as the
+	// top card of your library is …, this creature has all activated
+	// abilities of that card" (ADR 0155 §8, #3202).
+	//
+	// The top of a library changes on a draw, a mill, a cast from the
+	// top, a card put on top, a scry, a surveil and a shuffle, and the
+	// last three move no card across a zone boundary, so no event names
+	// them all. The flag therefore arms a WATCH rather than an event
+	// arm: a pass that finds such a static on the battlefield records
+	// every library's top card (libraryTopWatch), and the staleness check
+	// re-runs the pass the moment one differs (libraryTopMovedLocked).
+	// Opt-in for the flags' reason: a table with no such static records
+	// nothing and checks nothing.
+	DependsOnLibraryTop bool
 
 	// DependsOnManaPool is DependsOnHandSize for a player's mana pool —
 	// Omnath, Locus of Mana's "gets +1/+1 for each unspent green mana
@@ -329,6 +350,24 @@ type StaticAbility struct {
 	// in play; see layerVersionBump.OnEvent's mana arm and
 	// manaPoolStaticIsLiveLocked.
 	DependsOnManaPool bool
+
+	// DependsOnEvents is DependsOnHandSize for a condition that is
+	// "has this happened this turn" or "is this blocking" — Surveillance
+	// Phantasm's "as long as you've scried or surveilled this turn"
+	// (EventScry, EventSurveil), Whiplash Wordsmith's "as long as an
+	// opponent was dealt noncombat damage this turn" (EventDealDamage)
+	// and Sting's "as long as it's blocking or blocked by a Goblin or
+	// Orc" (EventBlock). The listed kinds each bump the layer version
+	// while a permanent declaring them is in play; the turn's own
+	// advance already bumps unconditionally, which clears the first two.
+	// EventBlock also covers the other exit of a block, combat ending or
+	// a blocker leaving combat (invalidateLayersForAttackChangeLocked).
+	//
+	// Same contract and same reason as the flags above; the list keeps
+	// a third and fourth card from needing a flag each. Only these four
+	// kinds are read by the listener (its EventScry arm), so any other
+	// kind here would do nothing.
+	DependsOnEvents []EventKind
 
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
@@ -900,7 +939,7 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 // completion, and bumps the recompute counter so the fast-path test
 // can assert it ran exactly once.
 func (g *Game) RecomputeLayersIfStaleLocked() {
-	if g.layerVersion.Load() == g.lastResolvedVersion.Load() {
+	if g.layerVersion.Load() == g.lastResolvedVersion.Load() && !g.libraryTopMovedLocked() {
 		return
 	}
 	g.recomputeLayersLocked()
@@ -975,6 +1014,9 @@ func (g *Game) recomputeLayersLocked() {
 	// is undone before the next pass cannot revive it. Holds are not
 	// layer inputs, so this does not touch the layer version.
 	g.sweepUntapHoldsLocked()
+	// ADR 0155 §8: the library tops this pass read, while something
+	// reads them (library_top_watch.go).
+	g.armLibraryTopWatchLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
 	// ADR 0109 §3: a duration that compares powers (Old Man of the Sea)
 	// reads this pass's OUTPUT, which the sweep at the top of it could

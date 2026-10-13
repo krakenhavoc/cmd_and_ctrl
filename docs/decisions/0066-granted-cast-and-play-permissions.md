@@ -3640,3 +3640,41 @@ Additive within v8, omitted when zero: `cardCopy` on every card path and `spells
 
 Back-out: remove `card.CardCopy` from the `IsCopy` line in `CastSpell`, and `TestCardCopyOfAPermanentCardResolvesAsAToken` fails;
 remove the sweep call in `runStateChecksLocked`, and `TestCardCopyWithNoOfferCeasesAtTheNextStateCheck` fails.
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), cav-h2): "mana of any type", and a flash window bound to a target
+
+**Any type.** `AnyColorSpendStatic.AnyType` is the grant Vizier of the Menagerie prints, "you can spend mana of any type to
+cast creature spells": the colour grant plus colourless being a type, so coloured mana also pays a `{C}` symbol.
+`spendGrantLocked` reports whether a covering grant is the any-type kind and `widenForAnyColorSpend(cost, anyType)` then
+widens the `{C}` requirement too (Oath of Nissa and the other colour grants still leave it alone). `YouMaySpendManaAsAnyTypeToCast`
+is the constructor.
+
+**Flash if it targets.** `FlashIfTargets(cost, what, clause)` is [ADR 0025](0025-alternative-costs.md)'s flash-window
+offer (`AsThoughFlash`) carrying the narrower target clause the flash cast must satisfy (`AlternativeCost.Targets`). Timely Ward
+offers `{2}{W}` with "enchant creature" narrowed to a commander (`ACommander`); the printed cast is sorcery-speed with
+any creature.
+
+Back-out: `AnyType` false makes `TestVizierOfTheMenagerieLetsAnyManaPayACreatureSpellsColorlessSymbol` fail; the flash offer
+removed returns Timely Ward to its caveat.
+
+## Amendment — 2026-10-13 (#3201, ADR 0155 §8): a resolving ability's exile stamps "exiled with" too
+
+The 2026-10-07 amendment (#2530) stamped `Card.ExiledWith` only for a replacement's exile. ADR 0155 §8 (accepted 2026-10-13)
+extends the stamp to an exile made by a resolving ability, because a "has all activated abilities of all cards exiled with it"
+borrow reads its lenders on every layer pass, where the event-log walk (`b27ExiledWith`) is far too slow.
+
+- **The verb is opt-in.** `Game.ExileLinkedForEffect(source, card)` and `ExileLinkedThenForEffect(source, ids, then)` are the
+  ordinary exile route with the source OBJECT on it (`zoneRoute.ExiledWith`). The route seeds `ReplacementEvent.ExiledWith`, so
+  the stamp lands through the same two finishers as Valgavoth's, and only when the card really lands in exile: a commander its
+  owner moves to the command zone, or a card a replacement sends to a graveyard, is linked to nothing. The card side is
+  `effects.ExileTarget{Linked: true}`, which names the resolving item's source object (`SourceObjectForEffect`), so a source
+  that left and came back is a new object with no claim on the card (CR 400.7).
+- **Only the linked ability writes it.** The stamp names the object, not the ability (#2651's ability ref is not added). That is
+  enough for CR 607.2a as long as only the linked exile uses the verb, which is how the cards declare it. Two linked pairs on one
+  object sharing one stamp is the weakness ADR 0155 Decision 6 already declares.
+- **Readers.** `Game.ExiledWithForEffect(ref)` lists the linked cards in exile order. Duplicant and Angel of Serenity moved onto
+  it from `b27ExiledWith`; the other event-log readers stay as they are (#2651 tracks them).
+- **Invalidation.** A `DependsOnExile` static now also bumps the layer version when a card ARRIVES in exile from a hand, a library
+  or the stack (a move from the battlefield or a graveyard already bumped).
+
+No snapshot change: `Card.ExiledWith` is already carried.

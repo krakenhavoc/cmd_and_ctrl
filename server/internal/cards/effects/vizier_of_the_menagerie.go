@@ -12,22 +12,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // permission is the Elven Chorus one: creature spells only, printed
 // cost. The third line is Oath of Nissa's shape — an AnyColorSpend
 // narrowed to casting a creature spell (CR 609.4b), from any zone, not
-// only the library. "Any type" is slightly wider than "any color": it
-// also lets coloured mana pay a {C} symbol. The engine's spend grant
-// does not reach that half (CR 106.1b; only a creature that costs {C}
-// shows it), which is the caveat.
+// only the library. "Any type" is wider than "any color": colourless is
+// a type, so coloured mana also pays a {C} symbol. That is the AnyType
+// kind of the grant (YouMaySpendManaAsAnyTypeToCast).
 func init() {
 	Register(Spec{
 		OracleID:          "4f890d42-e4f1-4eed-aa6c-718865de8927",
 		Name:              "Vizier of the Menagerie",
-		Completeness:      CompletenessCaveats,
-		Caveats:           []string{"Mana of any type is only spent as any colour on creature spells — coloured mana still can't pay a {C} cost symbol."},
+		Completeness:      CompletenessFull,
 		LibraryTopVisible: game.LibraryTopOwner,
 		CastPermissions: []game.CastPermission{
 			PlayFromTopOfYourLibrary(
 				game.PermissionFilter{CreatureOnly: true},
 				"Cast a creature spell from the top of your library (Vizier of the Menagerie)"),
 		},
-		AnyColorSpend: YouMaySpendManaAsAnyColorToCast("creature spells", "Creature"),
+		AnyColorSpend: YouMaySpendManaAsAnyTypeToCast("creature spells", "Creature"),
 	})
 }

@@ -164,6 +164,21 @@ func CraftWithCardsOrMore(n int, color, colorWord string, cardTypes ...string) g
 	return cost
 }
 
+// CraftWithNonlandsWithActivatedAbilities is The Enigma Jewel's "Craft
+// with four or more nonlands with activated abilities": n or more from
+// among other permanents you control and/or cards in your graveyard, none
+// of them a land, each with at least one activated ability (a mana
+// ability counts, CR 605.1a). A permanent is judged by its abilities now,
+// a card in the graveyard by its catalog entry (#3201).
+func CraftWithNonlandsWithActivatedAbilities(n int) game.AbilityCost {
+	cost := craftMaterials(n, "", "",
+		craftCountWord(n)+" or more nonlands with activated abilities from among other permanents you control and/or cards in your graveyard")
+	cost.ExilePermanents.OrMore = true
+	cost.ExilePermanents.Nonland = true
+	cost.ExilePermanents.WithActivatedAbilities = true
+	return cost
+}
+
 func craftMaterials(n int, cardType, subtype, label string) game.AbilityCost {
 	return game.AbilityCost{ExilePermanents: &game.ExilePermanentsCost{
 		Count:         n,

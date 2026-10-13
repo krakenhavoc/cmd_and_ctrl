@@ -44,11 +44,17 @@ type ReturnFromGraveyardTogether struct {
 	Targets    []uuid.UUID
 	Controller uuid.UUID
 	Tapped     bool
+	// AttachedTo is "… to the battlefield attached to <host>" (Mantle of
+	// the Ancients, #3158): every card enters attached to it. Zero for a
+	// return that names no host, whose Auras choose theirs as they enter
+	// (CR 303.4f).
+	AttachedTo game.TargetRef
 	Then       func(ctx *Context, entered []uuid.UUID) error
 }
 
 func (r ReturnFromGraveyardTogether) Apply(ctx *Context) error {
-	return putCardsFromZoneTogether(ctx, game.ZoneGraveyard, r.Targets, r.Controller, r.Tapped, r.Then)
+	return putCardsFromZoneTogetherWith(ctx, game.ZoneGraveyard, r.Targets,
+		game.ZoneEntryOptions{Controller: r.Controller, Tapped: r.Tapped, AttachedTo: r.AttachedTo}, r.Then)
 }
 
 // legalTargetCardIDs is the spell's or ability's still-legal card
@@ -129,6 +135,13 @@ func (r ReturnFromExileTogether) Apply(ctx *Context) error {
 // onto the battlefield as one entry through the engine's batch door.
 func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.UUID, controller uuid.UUID, tapped bool,
 	then func(ctx *Context, entered []uuid.UUID) error) error {
+	return putCardsFromZoneTogetherWith(ctx, from, targets, game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, then)
+}
+
+// putCardsFromZoneTogetherWith is putCardsFromZoneTogether with the whole
+// set of entry options.
+func putCardsFromZoneTogetherWith(ctx *Context, from game.ZoneKind, targets []uuid.UUID, opts game.ZoneEntryOptions,
+	then func(ctx *Context, entered []uuid.UUID) error) error {
 	entries := make([]game.BatchEntry, 0, len(targets))
 	for _, id := range targets {
 		z := ctx.Game.FindCardZoneForEffect(id)
@@ -148,8 +161,7 @@ func putCardsFromZoneTogether(ctx *Context, from game.ZoneKind, targets []uuid.U
 			return then(NewContext(g, item), entered)
 		}
 	}
-	return ctx.Game.PutOntoBattlefieldTogetherThenForEffect(entries,
-		game.ZoneEntryOptions{Controller: controller, Tapped: tapped}, next)
+	return ctx.Game.PutOntoBattlefieldTogetherThenForEffect(entries, opts, next)
 }
 
 // exiledCardIDs is the cards in exile that match, read once before

@@ -20,9 +20,22 @@
 # HTTP only. The Cloudflare tunnel terminates TLS at the edge and forwards
 # plain HTTP to this origin, so Caddy must not try to obtain its own
 # certificate -- hence auto_https off.
+#
+# trusted_proxies: cloudflared is Caddy's only client and connects from
+# loopback (its ingress is http://localhost:80, which may resolve to either
+# family). Without this, Caddy treats it as untrusted and REPLACES the
+# X-Forwarded-For that Cloudflare built with "127.0.0.1", so the server's
+# fallback client address is loopback for every visitor (#3334). Trusted,
+# Caddy keeps Cloudflare's header and appends cloudflared's address. The
+# server reads CF-Connecting-IP first, which Caddy passes through either way,
+# and walks X-Forwarded-For from the right past loopback only as a fallback;
+# see server/internal/util/clientip.
 {
 	admin off
 	auto_https off
+	servers {
+		trusted_proxies static 127.0.0.1/32 ::1
+	}
 }
 
 :80 {

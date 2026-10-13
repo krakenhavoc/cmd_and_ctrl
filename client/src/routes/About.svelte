@@ -70,9 +70,8 @@
           one part to you, and the card's entry in the catalogue says which.
         </li>
         <li>
-          See <a href="#/catalog">the catalogue</a> (sign in to browse it with card art) and
-          <a href="#/roadmap">the roadmap</a>, which is public, for what is built, partial and
-          missing.
+          See <a href="#/catalog">the catalogue</a> and <a href="#/roadmap">the roadmap</a> for what is
+          built, partial and missing.
         </li>
         <li>
           <a href="#/decks">Check a deck</a> to see how much of it plays as printed before you sit down.

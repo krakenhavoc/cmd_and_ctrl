@@ -93,6 +93,8 @@
     // How many of the viewer's creatures could attack right now: 0
     // unless the viewer is declaring attackers (#3267's "No attacks").
     attackersReady?: number;
+    // How many attackers the viewer has staged (#3266's "Attack with N").
+    attackersStaged?: number;
     onPassPriority: () => void;
     onPassTurn: () => void;
     onToggleAutopass: () => void;
@@ -126,6 +128,7 @@
     loopNotice = "",
     readyActions = 0,
     attackersReady = 0,
+    attackersStaged = 0,
     onPassPriority,
     onPassTurn,
     onToggleAutopass,
@@ -149,13 +152,16 @@
   // #3267: the primary says what pressing it does — Pass with something
   // on the stack, No attacks when creatures could attack and none has,
   // Next otherwise. Its accessible name is its visible text.
-  const PRIMARY_LABELS: Record<PrimaryKind, string> = {
+  // #3266: Attack with N while creatures are staged.
+  const PRIMARY_LABELS: Record<Exclude<PrimaryKind, "attack">, string> = {
     pass: L.pass,
     next: L.next,
     noAttacks: L.noAttacks,
   };
-  const primary = $derived(primaryKind(view, attackersReady));
-  const primaryLabel = $derived(PRIMARY_LABELS[primary]);
+  const primary = $derived(primaryKind(view, attackersReady, attackersStaged));
+  const primaryLabel = $derived(
+    primary === "attack" ? L.attackWith(attackersStaged) : PRIMARY_LABELS[primary],
+  );
 
   // ---- keys --------------------------------------------------------
   // Read from the same binding map the dispatcher uses, so a rebound
@@ -546,8 +552,8 @@
       title={(autopassPaused
         ? "Skip to my turn PAUSED — a loop is resolving (CR 732). Use next to step through it; passing resumes on the next real play"
         : autopassEnabled
-          ? "Skip to my turn ON — passes for you until your next main phase, stopping only when you can answer an opponent's spell, an attack or an opponent's end step; click to turn off"
-          : "Skip to my turn — pass for you until your next main phase. It still stops when you can answer an opponent's spell, an attack or an opponent's end step, and a pinned phase icon still stops you") +
+          ? "Skip to my turn ON — passes and resolves everything until your next main phase, stopping only for a choice you have to make; click to turn off"
+          : "Skip to my turn — pass and resolve everything until your next main phase. It stops only for a choice you have to make, or a pinned phase icon") +
         keyHint(keys.toggleAutopass)}
     >
       {autopassPaused

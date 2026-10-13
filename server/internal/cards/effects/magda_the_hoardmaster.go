@@ -13,13 +13,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 creature token with flying and haste. Activate only as a
 //	 sorcery."
 //
-// The Outlaws of Thunder Junction crime commander. "Commit a crime"
-// is EventBecomesTarget (S22), which fires once per target slot at
-// announce with the targeting player in Actor: an opponent, a
-// permanent or spell an opponent controls, or a card in an
-// opponent's graveyard qualifies (b18CommittedCrime, CR 700.13).
-// The trigger goes on the stack above the spell that targeted, as
-// printed — Magda pays out even if the spell is then countered.
+// Crimes use the once-per-announcement CrimeCommitted annotation (CR 700.13).
+// The trigger goes above the announcing spell or ability even if it is
+// later countered. Copies and target changes commit no new crime.
 // "Only once each turn" is the Exemplar of Light tally: the per-turn
 // tally is asked for an earlier announce of this same ability
 // (b11TriggeredThisTurn). The Treasure enters tapped
@@ -40,7 +36,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b18CommittedCrime(ev, source, g) &&
+				return YouCommittedCrime(ev, source) &&
 					!b11TriggeredThisTurn(g, source.InstanceID, b18MagdaTreasureLabel)
 			}, b18MagdaTreasureLabel, Do(CreateToken{
 				Template: tappedTreasureToken(),

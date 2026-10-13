@@ -22,15 +22,14 @@ import (
 // attackers it blocks (CR 509.3a). "Enchanted by a Chef Role" means a
 // Chef Role is attached to it, whoever controls the Role.
 //
-// Last-known information (CR 608.2h) for X is not modelled: if Ratatwotwo
-// has left the battlefield when the bonus resolves, the creature gets
-// nothing rather than the power Ratatwotwo last had.
+// X is Ratatwotwo's power as the bonus resolves, or its last-known power
+// once it has left the battlefield (CR 608.2h): ctx.SourcePermanent
+// answers with the live permanent or the departed object's record.
 func init() {
 	Register(Spec{
 		OracleID:     "0edd7d9a-af37-4d3b-8b4b-913c36dadf82",
 		Name:         "Ratatwotwo",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If Ratatwotwo has left the battlefield by the time the bonus resolves, the creature gets no bonus instead of using Ratatwotwo's last power."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Targeting(
 				WhenThisEnters("Ratatwotwo — create a Chef Role token attached to up to one other target creature you control",
@@ -49,15 +48,16 @@ func init() {
 					if item.Trigger == nil {
 						return nil
 					}
-					self, ok := g.LookupCardForEffect(item.SourceCardID)
+					ctx := NewContext(g, item)
+					self, ok := ctx.SourcePermanent()
 					if !ok {
 						return nil
 					}
-					x := self.CurrentPower()
+					x := max(self.Power, 0)
 					return BoostUntilEOT{
 						Target: item.Trigger.Event.CardID, Power: x, Toughness: x,
 						Label: "Ratatwotwo — +X/+X",
-					}.Apply(NewContext(g, item))
+					}.Apply(ctx)
 				}),
 		},
 	})

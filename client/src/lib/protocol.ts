@@ -1225,6 +1225,12 @@ export interface PendingChoiceView {
     // 0 is a printed "you may", and the banner's Done button submits
     // the empty list to decline.
     | "retarget"
+    // #3158, CR 303.4f: "choose what this Aura enchants as it enters",
+    // for an Aura put onto the battlefield without being cast (Sun
+    // Titan's Animate Dead, Replenish). The same `pick_target` payload
+    // (cards, a card in a graveyard included, and players; min 1 max 1),
+    // answered on the board. It targets nothing.
+    | "aura_host"
     // S21: "each player sacrifices a creature of their choice"
     // (Grave Pact, Fleshbag Marauder). Answered with the generic
     // {choice_id, card_ids} payload — one entry — and rendered by the
@@ -1628,6 +1634,10 @@ export interface PendingChoiceView {
   // an unconditional "a card" / "three cards" search (CR 701.23d), where
   // an empty answer is refused and the client offers no such button.
   search_min?: number;
+  // #3217: on a "search your library and/or graveyard" prompt, the
+  // instance IDs among `options` that are in the searcher's graveyard.
+  // Everything else is a library card. Absent for a library-only search.
+  search_graveyard?: string[];
   // ADR 0160: a "copy_target" prompt whose pick is the creature to
   // exchange text boxes with rather than the object to copy (Deadpool,
   // Trading Card). Same {card_ids} answer, same empty decline.
@@ -1719,6 +1729,12 @@ export interface PendingChoiceView {
   // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // #2680 / #3270: kind "choose_cards" only, and only to its chooser.
+  // Where the named card goes when the card says so: "battlefield",
+  // "battlefield_tapped", or "cast_free" ("you may cast a spell from
+  // your hand without paying its mana cost" — answering with a card
+  // opens its cast at once). Absent on a plain discard or look.
+  choose_destination?: string;
   // #2525: kind "proliferate" only. The seats on offer beside
   // `options` (player IDs), and the engine's suggested answer
   // (instance IDs and player IDs) for the modal to pre-select. A
@@ -2995,6 +3011,9 @@ export interface ActivatedAbilityView {
   reveal_cost_label?: string;
   reveal_cost_options?: string[];
   reveal_cost_count_from_x?: boolean;
+  // #3250: "Reveal your hand" as a cost (Sasaya). Names no card and no
+  // count: the whole hand is shown when the ability is activated.
+  reveal_hand_cost?: boolean;
   // ADR 0109 §7 (#1902): "Put a card from your hand on top of your
   // library" (Penance, Leashling). The count, the clause as printed and
   // the cards in the viewer's hand that could pay; the picks ride

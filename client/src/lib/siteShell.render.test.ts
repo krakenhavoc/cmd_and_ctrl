@@ -68,10 +68,10 @@ afterEach(() => {
 });
 
 describe("the site header's links", () => {
-  it("signed out: Decks, Roadmap and About, then Sign in; no Home and no Tables", async () => {
+  it("signed out: Decks, Catalog, Roadmap, Guide and About, then Sign in; no Home and no Tables", async () => {
     const { container } = render(SiteHeader as never, {} as never);
     await settle();
-    expect(navGroups(container)).toEqual([["Decks", "Roadmap", "About"]]);
+    expect(navGroups(container)).toEqual([["Decks", "Catalog", "Roadmap", "Guide", "About"]]);
     const signIn = container.querySelector("a.sign-in");
     expect(signIn?.textContent?.trim()).toBe("Sign in");
     // No Discord sign-in on this stub server: Sign in goes to the front page.
@@ -143,7 +143,7 @@ describe("the C2 Discord in the shell", () => {
     expect(icon?.getAttribute("target")).toBe("_blank");
     expect(icon?.getAttribute("rel")).toContain("noopener");
     const links = [...footer.container.querySelectorAll("nav a")].map((a) => a.textContent?.trim());
-    expect(links).toEqual(["Discord", "About", "Privacy", "GitHub"]);
+    expect(links).toEqual(["Discord", "Guide", "About", "Privacy", "GitHub"]);
     expect(discordLink(footer.container)).not.toBeNull();
   });
 });

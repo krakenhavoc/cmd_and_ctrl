@@ -12,20 +12,31 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 //	Vicious Verse — "Vicious Verse deals 1 damage to target opponent."
 //
-// Weaker than printed: the engine's turn tally records noncombat damage
-// by the SOURCE's controller, not by who was dealt it, and a static
-// ability only recomputes on a zone or counter change, so "an opponent
-// was dealt noncombat damage this turn" has nothing to read and nothing
-// to wake it. Rather than guess, the flying and haste line is left out;
-// the card is the 3/3 body and Vicious Verse.
+// "As long as an opponent was dealt noncombat damage this turn, this
+// creature has flying and haste" is a self-only layer 6 static over the
+// turn's damage tally (WasDealtNoncombatDamageThisTurn), woken on each
+// damage event by DependsOnEvents; the turn's own advance clears it.
 func init() {
 	const id = "e1ffb884-a89e-4e2a-9beb-8bd5838b6a94"
 	Register(Spec{
 		OracleID:     id,
 		Name:         "Whiplash Wordsmith",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The flying and haste it gets after an opponent is dealt noncombat damage isn't implemented — it is a 3/3 with no abilities of its own."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersPrepared()},
+		Static: []game.StaticAbility{{
+			Layer:           game.Layer6Ability,
+			Label:           "Has flying and haste as long as an opponent was dealt noncombat damage this turn.",
+			DependsOnEvents: []game.EventKind{game.EventDealDamage},
+			AppliesTo:       selfOnly,
+			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+				for _, seat := range g.Seats {
+					if seat.ID != source.Controller && g.WasDealtNoncombatDamageThisTurn(seat.ID) {
+						appendKeywordsTo(c, []string{"flying", "haste"})
+						return
+					}
+				}
+			},
+		}},
 	})
 	Register(Spec{
 		OracleID:     id + "#1",

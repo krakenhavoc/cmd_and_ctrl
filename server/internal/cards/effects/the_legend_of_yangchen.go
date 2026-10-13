@@ -1,6 +1,12 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // The Legend of Yangchen — Enchantment — Saga, {3}{W}{W}:
 //
@@ -17,24 +23,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // III is the exile-and-return verb, as on every other transforming
 // Saga in this batch; see avatar_yangchen.go for the back face.
 //
-// SANDBOX SIMPLIFICATION on chapter I, and it is why this face is not
-// Full. The printed ability asks EVERY player at the table, in turn
-// order starting with the controller, to choose a permanent to exile
-// from a SHARED pool — the engine has no prompt that lets a player
-// other than a permanent's controller choose it at all (the
-// "non-owner choosing among another player's permanents" seam,
-// docs/engine-seams.md — Tragic Arrogance, Gluntch, the Bestower), and
-// this chapter adds a second axis those two cards don't have: several
-// players choosing from the same pool in one chapter. That whole
-// shape is out of reach, but the controller's OWN half is not: "a
-// permanent with mana value 3 or greater an opponent controls" is an
-// ordinary target clause the controller announces, same as Despark's,
-// so chapter I ships as "exile target permanent with mana value 3 or
-// greater an opponent controls" — one exile instead of up to N, chosen
-// only by the controller. TestRegisteredSagasDeclareContiguousChapters
-// is also why this can't simply be dropped: a Saga that skips a
-// chapter number is a typo the engine actively guards against, so a
-// smaller-but-real chapter I is the right shape, not an absent one.
+// Chapter I is a chain of ChoosePermanents legs, one per player in turn
+// order starting with the Saga's controller (CR 101.4 and the card's own
+// "starting with you"). Every leg offers the same shared pool, the
+// permanents with mana value 3 or greater that the controller's opponents
+// control, minus what earlier legs already took, so each answer narrows
+// the next; each player picks up to one; the picks are exiled together
+// once the last player has answered. It does not target.
 //
 // Chapter II is Combustible Gearhulk's yes/no shape with the asker and
 // the answerer swapped: THIS card's controller decides (MayChoice
@@ -45,15 +40,10 @@ func init() {
 	Register(Spec{
 		OracleID:     theLegendOfYangchenOracleID,
 		Name:         "The Legend of Yangchen",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Chapter I only exiles one permanent, chosen by you — it doesn't also ask every other player to choose one from the same pool.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			ChapterTriggerTargeting(1, "The Legend of Yangchen — exile target permanent with mana value 3 or greater an opponent controls",
-				TargetPermanent("target permanent with mana value 3 or greater an opponent controls",
-					And(ManaValueGE(3), OpponentControls())),
-				ExileFirstTarget),
+			ChapterTrigger(1, "The Legend of Yangchen — each player chooses up to one permanent with mana value 3 or greater from among permanents your opponents control; exile those permanents",
+				yangchenChapterOne),
 			ChapterTriggerTargeting(2, "The Legend of Yangchen — you may have target opponent draw three cards",
 				TargetPlayer("target opponent", Opponent()),
 				yangchenChapterTwoMayDraw),
@@ -90,4 +80,65 @@ func yangchenChapterTwoMayDraw(g *game.Game, item *game.StackItem) error {
 	}
 	// CR 608.2b: the target left before this resolved.
 	return nil
+}
+
+// yangchenChapterOne starts the chain at the Saga's controller.
+func yangchenChapterOne(g *game.Game, item *game.StackItem) error {
+	ctx := NewContext(g, item)
+	return yangchenChoose(ctx, seatsStartingWith(g, ctx.Controller()), 0, nil)
+}
+
+// yangchenChoose asks players[i] for their pick from what is left of the
+// pool, then the next player; after the last it exiles the lot. Only IDs
+// are carried between legs.
+func yangchenChoose(ctx *Context, players []uuid.UUID, i int, chosen []uuid.UUID) error {
+	if i >= len(players) {
+		for _, id := range chosen {
+			if err := (ExileTarget{Target: id}).Apply(ctx); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+	controller := ctx.Controller()
+	taken := append([]uuid.UUID(nil), chosen...)
+	return ChoosePermanents{
+		Player:   players[i],
+		Of:       []uuid.UUID{players[i]},
+		Question: "The Legend of Yangchen — choose up to one permanent with mana value 3 or greater from among permanents your opponents control",
+		Candidates: func(g *game.Game, _ uuid.UUID) ([]uuid.UUID, int, int) {
+			var pool []uuid.UUID
+			for _, c := range g.Battlefield.Cards {
+				if c.Controller == controller || slices.Contains(taken, c.InstanceID) {
+					continue
+				}
+				if mv, ok := g.ManaValueForEffect(c); ok && mv >= 3 {
+					pool = append(pool, c.InstanceID)
+				}
+			}
+			return pool, 0, 1
+		},
+		Then: func(ctx *Context, picked game.PromptedPicks) error {
+			return yangchenChoose(ctx, players, i+1, append(taken, picked.Cards()...))
+		},
+	}.Apply(ctx)
+}
+
+// seatsStartingWith lists the seats still in the game in turn order,
+// beginning with `first`.
+func seatsStartingWith(g *game.Game, first uuid.UUID) []uuid.UUID {
+	n := len(g.Seats)
+	start := 0
+	for i, p := range g.Seats {
+		if p != nil && p.ID == first {
+			start = i
+		}
+	}
+	var out []uuid.UUID
+	for i := 0; i < n; i++ {
+		if p := g.Seats[(start+i)%n]; p != nil && !p.Eliminated {
+			out = append(out, p.ID)
+		}
+	}
+	return out
 }

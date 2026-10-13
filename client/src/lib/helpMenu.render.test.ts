@@ -124,7 +124,7 @@ describe('the site header\'s Help: button "help" and its menu', () => {
     }
   });
 
-  it("opens a menu named by its button, with the four items in order, focus on the first", async () => {
+  it("opens a menu named by its button, with the five items in order, focus on the first", async () => {
     session.set(sess("identified", USER));
     render(HelpMenu as never, {} as never);
     await openHelp();
@@ -136,6 +136,7 @@ describe('the site header\'s Help: button "help" and its menu', () => {
       "Tips for this page",
       "Show all tips again",
       "Practice game",
+      "Getting started",
       "Keyboard shortcuts",
     ]);
     expect(document.activeElement).toBe(menuItems()[0]);

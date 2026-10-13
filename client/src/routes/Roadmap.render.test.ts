@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { tick } from "svelte";
 
 import Roadmap from "./Roadmap.svelte";
+import { L } from "../lib/labels";
 import { cleanup, flushSync, render } from "../lib/test/render.svelte";
 
 const realFetch = globalThis.fetch;
@@ -102,5 +103,17 @@ describe("the roadmap's collapsing sections", () => {
     const secs = sections(container);
     expect(secs.map((d) => d.dataset.status)).toEqual(["missing"]);
     expect(secs[0]!.open).toBe(true);
+  });
+});
+
+describe("the roadmap's search box while the data loads (#3305)", () => {
+  it("is on the page and disabled before the fetch answers", async () => {
+    globalThis.fetch = vi.fn(() => new Promise(() => {})) as never;
+    const { container } = render(Roadmap as never, {} as never);
+    await settle();
+    const input = container.querySelector<HTMLInputElement>("input.search");
+    expect(input).not.toBeNull();
+    expect(input!.getAttribute("aria-label")).toBe(L.searchRoadmap);
+    expect(input!.disabled).toBe(true);
   });
 });

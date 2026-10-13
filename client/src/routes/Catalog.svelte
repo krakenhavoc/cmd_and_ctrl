@@ -1,13 +1,10 @@
 <script lang="ts">
   // Catalog — the list of every card this engine automates.
   //
-  // Signed-in only. The server mounts GET /catalog behind
-  // auth.Middleware (main.go says why: the repository describes itself
-  // as private and personal-use, and this page serves card art), and
-  // App.svelte's auth effect does not list "catalog" as a public route,
-  // so a signed-out visitor is sent to /login. It is not behind the dev
-  // gate: it ships in production. The public page about what the engine
-  // supports is the roadmap (ADR 0092), which carries card names only.
+  // Public (ADR 0042). The server mounts GET /catalog without a session
+  // and signedInHome.ts lists "catalog" as a public route: sign-up needs
+  // a role on the C2 Discord (ADR 0156), and Scryfall's guidelines rule
+  // out putting card data behind a chat server (S70, #2985).
   //
   // The page's one job is to be honest. A card is shown as Complete
   // only where a human declared it so in the card file; anything
@@ -156,6 +153,7 @@
     class="search"
     placeholder="search name, type or rules text"
     aria-label={L.searchCatalogue}
+    disabled={loading}
     bind:value={query}
   />
 {/snippet}
@@ -229,7 +227,21 @@
   width="wide"
 >
   {#if loading}
-    <p class="help" aria-live="polite">Loading the catalogue…</p>
+    <!-- The search box is the catalog.search hint's anchor: it must exist before the data
+         does (#3305). The facets need the data, so only the box shows, disabled. -->
+    {#if narrow}
+      <div class="bar">{@render searchBox()}</div>
+    {:else}
+      <div class="layout">
+        <aside class="sidebar" aria-label="Filters">
+          {@render searchBox()}
+        </aside>
+        <div class="main">
+          <p class="help" aria-live="polite">Loading the catalogue…</p>
+        </div>
+      </div>
+    {/if}
+    {#if narrow}<p class="help" aria-live="polite">Loading the catalogue…</p>{/if}
   {:else if error}
     <p class="notice err" role="alert">
       <Icon name="x" size={14} />

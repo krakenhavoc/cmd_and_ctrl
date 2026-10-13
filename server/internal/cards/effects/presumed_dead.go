@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"errors"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -21,17 +19,16 @@ import (
 // the new object it became (CR 400.7). A token that dies is gone and
 // returns nothing, and so is not suspected.
 //
-// One declared simplification, weaker than printed: if the creature
-// asks a question as it re-enters (a copy effect, a shockland's
-// payment) it comes back but is not suspected.
+// The suspect is the entry's tail (ADR 0154), so it lands even when the
+// creature first asks a question as it re-enters (a copy effect, a
+// shockland's payment).
 const presumedDeadReturn = "presumed-dead/return"
 
 func init() {
 	Register(Spec{
 		OracleID:     "a2d3e3f0-7399-4eb9-a0cf-831710c3d431",
 		Name:         "Presumed Dead",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If the creature asks a question as it comes back, such as a copy effect, it returns but isn't suspected."},
+		Completeness: CompletenessFull,
 		Targets:      TargetCreature("target creature"),
 		Grants: []AbilityGrant{{
 			Key: presumedDeadReturn,
@@ -63,21 +60,18 @@ func presumedDeadReturnsAndSuspects(g *game.Game, item *game.StackItem) error {
 	if z == nil || z.Kind != game.ZoneGraveyard || !sameGraveyardObject(z, item) {
 		return nil
 	}
-	entered, err := g.ReturnFromGraveyardWithCountersForEffect(item.SourceCardID, uuid.Nil, false, nil)
-	if err != nil {
-		if errors.Is(err, game.ErrCardNotFound) {
+	return g.ReturnFromGraveyardToBattlefieldThenForEffect(item.SourceCardID, uuid.Nil, false,
+		func(g *game.Game, entered uuid.UUID) error {
+			if entered == uuid.Nil {
+				return nil
+			}
+			// The game mutator, not the Suspect primitive: this ability's
+			// source IS the card that came back, a new object since it
+			// died, and the primitive's #1432 guard would read that as "the
+			// old object's ability must not reach the new one" and do
+			// nothing. Here the new object is exactly what the instruction
+			// names.
+			g.SuspectForEffect(entered)
 			return nil
-		}
-		return err
-	}
-	if entered == uuid.Nil {
-		return nil
-	}
-	// The game mutator, not the Suspect primitive: this ability's source
-	// IS the card that came back, a new object since it died, and the
-	// primitive's #1432 guard would read that as "the old object's
-	// ability must not reach the new one" and do nothing. Here the new
-	// object is exactly what the instruction names.
-	g.SuspectForEffect(entered)
-	return nil
+		})
 }

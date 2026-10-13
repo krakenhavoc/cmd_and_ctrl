@@ -864,6 +864,18 @@ func (g *Game) WasDealtNoncombatDamageLastTurn(player uuid.UUID) bool {
 	return slices.Contains(g.TurnTally.PrevNoncombatVictims, player)
 }
 
+// WasDealtNoncombatDamageThisTurn is WasDealtNoncombatDamageLastTurn for
+// the turn in progress (Whiplash Wordsmith's "an opponent was dealt
+// noncombat damage this turn"). Caller must hold g.mu.
+func (g *Game) WasDealtNoncombatDamageThisTurn(player uuid.UUID) bool {
+	for _, r := range g.TurnTally.NoncombatDamage {
+		if r.Victim == player {
+			return true
+		}
+	}
+	return false
+}
+
 // NoncombatDamageThisTurnForEffect is how much noncombat damage sources
 // `controller` controlled dealt this turn, counting only sources that
 // were `color` ("R") as they dealt it; an empty color counts every

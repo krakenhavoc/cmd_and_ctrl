@@ -15,15 +15,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // of mana value 3 or less: creature, artifact, enchantment, planeswalker
 // or battle.
 //
-// DECLARED GAP, weaker than printed: an Aura fetched this way enters
-// unattached and stays that way, because the attach target is chosen by
-// the casting spell and a fetch has no spell (Zur the Enchanter's gap).
+// An Aura fetched this way chooses what it enchants as it enters
+// (CR 303.4f, #3158); with nothing to enchant it stays in the library
+// (CR 303.4g).
 func init() {
 	Register(Spec{
 		OracleID:     "3b319540-4db1-43d3-8f4d-f5a276ad78e4",
 		Name:         "Guardian Sunmare",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An Aura fetched this way enters unattached and stays that way — you don't get to choose what it enchants."},
+		Completeness: CompletenessFull,
 		Activated:    []ActivatedAbility{Saddle(4)},
 		Triggered: []game.TriggeredAbility{
 			Ward(WardMana("{2}"), "Guardian Sunmare — ward {2}"),

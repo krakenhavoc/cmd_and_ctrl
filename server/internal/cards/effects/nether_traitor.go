@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"github.com/google/uuid"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -93,38 +91,5 @@ func netherTraitorWasThere(g *game.Game, source *game.Card, ev game.Event) bool 
 }
 
 func netherTraitorMayPay(g *game.Game, item *game.StackItem) error {
-	if !netherTraitorStillThere(g, item) {
-		return nil
-	}
-	return MayPay{
-		Chooser:  item.Controller,
-		Cost:     "{B}",
-		Question: "Nether Traitor — pay {B} to return it to the battlefield?",
-		OnPay: func(ctx *Context) error {
-			if !netherTraitorStillThere(ctx.Game, ctx.Item) {
-				return nil
-			}
-			return returnThisCardFromYourGraveyard(ctx.Game, ctx.Item)
-		},
-	}.Apply(NewContext(g, item))
-}
-
-// netherTraitorStillThere is "this card" in the graveyard: the very
-// object that triggered, not a card of the same name that left and
-// came back (CR 400.7).
-func netherTraitorStillThere(g *game.Game, item *game.StackItem) bool {
-	z := g.FindCardZoneForEffect(item.SourceCardID)
-	if z == nil || z.Kind != game.ZoneGraveyard {
-		return false
-	}
-	ref := item.SourceObject
-	if ref.ID != item.SourceCardID || ref.ID == uuid.Nil {
-		return true
-	}
-	for i := range z.Cards {
-		if z.Cards[i].InstanceID == ref.ID {
-			return z.Cards[i].ObjectEpoch == ref.Epoch
-		}
-	}
-	return false
+	return mayPayForGraveyardReturn(g, item, "{B}", "Nether Traitor — pay {B} to return it to the battlefield?")
 }

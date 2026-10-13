@@ -24,12 +24,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // on one creature each gives +1/+1 and each upkeep cost may be paid
 // (2004-10-04 ruling), which the per-Aura statics and triggers give.
 //
-// Like every catalogued Aura but Animate Dead it is marked Full: no Aura
-// can yet choose what it enchants when it is put onto the battlefield
-// without being cast (CR 303.4f, #3158), and the cards that do that
-// (Replenish, Brilliant Restoration) carry that caveat themselves. ADR
-// 0154 Question 1 gave Animate Dead its own caveat because players reach
-// for Sun Titan and Worldgorger Dragon lines with it first.
+// Put onto the battlefield without being cast, it chooses a creature card
+// in a graveyard to enchant as it enters (CR 303.4f, #3158), and its
+// enters trigger returns that card, as Animate Dead's does.
 func init() {
 	Register(Spec{
 		OracleID:              "15d5b198-edbe-40f3-87e2-d72f7f0c58ab",

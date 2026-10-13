@@ -150,9 +150,13 @@ func b27GreatestManaValueAmongArtifactsControlled(g *game.Game, controller uuid.
 	return best
 }
 
-// b27ExiledWith is the "card exiled with this permanent" record
-// (Duplicant), read back off the event log because nothing on a Card
-// carries it. A card counts as exiled with `source` when its most
+// b27ExiledWith is the "card exiled with this permanent" record, read
+// back off the event log, for the abilities whose exile does not stamp
+// Card.ExiledWith. Duplicant and Angel of Serenity, which it was written
+// for, have moved onto the stamp (ExileTarget.Linked, ADR 0155 §8), and
+// so has every "has all activated abilities of all cards exiled with
+// it" borrower, which reads its lenders on every layer pass where this
+// walk would be far too slow. A card counts as exiled with `source` when its most
 // recent move into exile happened while an ability of `source`
 // labelled `label` was resolving: the resolution opens with an
 // EventResolve naming the source and the label, and stays open until
@@ -233,15 +237,21 @@ func b27ExiledWith(g *game.Game, source uuid.UUID, label string) []uuid.UUID {
 }
 
 // b27LastCreatureCardExiledWith is Duplicant's "the last creature
-// card exiled with it": the newest of the exiled-with cards that is
-// a creature card, read where it sits in exile (printed types — no
-// layer applies off the battlefield).
-func b27LastCreatureCardExiledWith(g *game.Game, source uuid.UUID, label string) (game.Card, bool) {
-	ids := b27ExiledWith(g, source, label)
-	for i := len(ids) - 1; i >= 0; i-- {
-		c, ok := g.LookupCardForEffect(ids[i])
-		if ok && c.IsCreature() {
-			return c, true
+// card exiled with it": the newest card in exile linked to the source
+// OBJECT (Card.ExiledWith, stamped by its linked imprint exile, ADR 0155
+// §8) that is a creature card, read where it sits in exile (printed
+// types — no layer applies off the battlefield). Exile order is landing
+// order, so the last linked creature card is the one exiled most
+// recently; a Duplicant that left and came back is a new object with no
+// link (CR 400.7).
+func b27LastCreatureCardExiledWith(g *game.Game, source *game.Card) (game.Card, bool) {
+	if source == nil {
+		return game.Card{}, false
+	}
+	linked := g.ExiledWithForEffect(game.PermissionCardRef{ID: source.InstanceID, Epoch: source.ObjectEpoch})
+	for i := len(linked) - 1; i >= 0; i-- {
+		if linked[i].IsCreature() {
+			return *linked[i], true
 		}
 	}
 	return game.Card{}, false
@@ -548,7 +558,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			// layers are re-read when one does (#3172).
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
+				if exiled, ok := b27LastCreatureCardExiledWith(g, source); ok {
 					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled))
 				}
 			},
@@ -561,7 +571,7 @@ func b27DuplicantStatics() []game.StaticAbility {
 			// As above.
 			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
+				if exiled, ok := b27LastCreatureCardExiledWith(g, source); ok {
 					c.Power = exiled.Power
 					c.Toughness = exiled.Toughness
 				}

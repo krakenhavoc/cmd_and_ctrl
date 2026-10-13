@@ -131,6 +131,15 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 	for _, id := range choice.SearchCards {
 		candidates[id] = true
 	}
+	// #3217: which of the candidates were offered from the graveyard.
+	// A candidate is checked against the zone it was offered from: a
+	// library card that was milled while the prompt was open is no
+	// longer a legal pick, and must not become one by turning up in
+	// the other pile.
+	fromGraveyard := make(map[uuid.UUID]bool, len(choice.SearchGraveyardCards))
+	for _, id := range choice.SearchGraveyardCards {
+		fromGraveyard[id] = true
+	}
 	seen := make(map[uuid.UUID]bool, len(picks))
 	chosen := make([]Card, 0, len(picks))
 	for _, id := range picks {
@@ -143,7 +152,14 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 		// is re-checked against the live library rather than trusted
 		// from the frozen candidate list.
 		card, ok := g.LookupCardForEffect(id)
-		if !ok || !p.Library.Contains(id) {
+		if !ok {
+			return ErrCardNotFound
+		}
+		if fromGraveyard[id] {
+			if !p.Graveyard.Contains(id) {
+				return ErrCardNotFound
+			}
+		} else if !p.Library.Contains(id) {
 			return ErrCardNotFound
 		}
 		chosen = append(chosen, card)
@@ -161,10 +177,31 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 //
 // Caller must hold g.mu.
 func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
-	if choice == nil || choice.SearchMin <= 0 {
+	if choice == nil {
 		return 0
 	}
-	inLibrary := 0
+	inLibrary, inGraveyard := 0, 0
+	inGY := make(map[uuid.UUID]bool, len(choice.SearchGraveyardCards))
+	for _, id := range choice.SearchGraveyardCards {
+		inGY[id] = true
+		if p.Graveyard.Contains(id) {
+			inGraveyard++
+		}
+	}
+	if len(choice.SearchGraveyardCards) > 0 && choice.searchResume != nil {
+		// #3217: an "and/or graveyard" search recomputes its floor from
+		// the live zones: an unconditional one must find min(limit,
+		// cards in BOTH zones), and those cards may have left.
+		for _, id := range choice.SearchCards {
+			if !inGY[id] && p.Library.Contains(id) {
+				inLibrary++
+			}
+		}
+		return choice.searchResume.spec.floorZones(inLibrary, inGraveyard)
+	}
+	if choice.SearchMin <= 0 {
+		return 0
+	}
 	for _, id := range choice.SearchCards {
 		if p.Library.Contains(id) {
 			inLibrary++
