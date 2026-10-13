@@ -55,11 +55,13 @@ On a PR, `changes` skips the Go jobs when only `client/` or
 `cmdctrl-ci` is a small job that passes when the others passed or
 were skipped, so it stays the one required check.
 
-The CI jobs (`changes` through `census-publish`) run on GitHub-hosted
-`ubuntu-latest` runners (#1433), which are free for a public
-repository. The self-hosted runners do only what needs the LAN: the
-two CD jobs, the Scryfall refresh and the nightly workflows. Two
-safeguards keep the hosted jobs free:
+The CI jobs (`changes` through `census-publish`) and every nightly test
+job run on GitHub-hosted `ubuntu-latest` runners (#1433, #3335), which
+are free for a public repository. The self-hosted runners do only what
+needs the LAN: the two CD jobs and the Scryfall refresh. No test code
+runs on them, because they hold the deploy credentials; see
+[Runners and credentials](#runners-and-credentials). Two safeguards
+keep the hosted jobs free:
 
 - If the repository is ever made private, the CI jobs go back to
   `self-hosted` automatically.
@@ -205,8 +207,9 @@ before any ssh.
 | this repo | `CMDCTRL_HOST`, `CMDCTRL_DEV_HOST` | Actions **variables**, not secrets; CD fails the run if the one for the branch is unset, or if the two are equal |
 | this repo | `CMDCTRL_PUBLIC_BASE_URL`, `CMDCTRL_DEV_PUBLIC_BASE_URL` | variables; default to the two fqdns |
 | this repo | `CMDCTRL_DISCORD_REDIRECT_URI`, `CMDCTRL_DEV_DISCORD_REDIRECT_URI` | variables; no default — unset means sign-in stays off on that host |
-| this repo | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts |
-| this repo | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
+| **environments `prod` and `dev`** | `CMDCTRL_DEPLOY_SSH_KEY` | environment secret, one per environment; the private key the deploy jobs (and, from `prod`, the Scryfall refresh) log in to the host as `krkn` with. Unset falls back to the runner's own `~/.ssh` key with a `::warning::`. See [Runners and credentials](#runners-and-credentials) |
+| this repo, or (preferred, #3335) **environments `prod` and `dev`** | `CMDCTRL_DISCORD_CLIENT_ID`, `CMDCTRL_DISCORD_CLIENT_SECRET`, `CMDCTRL_GITHUB_TOKEN` | secrets; shared by both hosts. Only the deploy jobs read them, so they can live in both environments instead of at repository level, where any branch's workflow run can read them |
+| this repo, or (preferred, #3335) **environment `prod`** | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`, `CMDCTRL_DISCORD_PLAYER_ROLE_ID` | variables; Discord snowflakes. The **sign-up gate** on **both** hosts ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §1): with both set, an account needs that role (Elder Dragon Highlander on the C2 server) in that server. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (community)", which refuses one without the other or a malformed id before writing. Both unset is supported: the gate is off |
@@ -217,7 +220,7 @@ before any ssh.
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_RESTIC_PASSWORD` | environment secret, set in each; that host's restic repository key. **Never change it once the repository exists**, and keep a copy in the password manager: it is the only way to read a backup if GitHub's copy is lost, since secrets are write-only |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_MONITORING_URL` | variable; the monitoring VM's fixed address, scheme and host only (`http://192.168.200.40`: no port, no path, no trailing slash). One VM serves both hosts, so a repo-level value is enough. See [Monitoring agent](#monitoring-agent) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_MONITORING_PUSH_PASSWORD` | environment secret, set in each; that host's push credential on the monitoring VM (its hash is a HomeLab tfvar). Written to `/etc/alloy/env`. Unset or `REPLACE_ME`: Alloy is stopped, with a warning |
-| this repo | `CENSUS_DEPLOY_KEY` | secret; the `census-publish` job's own push credential, not `GITHUB_TOKEN`. See [Census publish deploy key](#census-publish-deploy-key) below for setup |
+| **environment `census`** | `CENSUS_DEPLOY_KEY` | environment secret; the `census-publish` job's own push credential, not `GITHUB_TOKEN`. The environment admits `develop` only (#3335). Until it holds the secret, the job falls back to a repository secret of the same name. See [Census publish deploy key](#census-publish-deploy-key) below for setup |
 
 The preview's admin token is generated by Terraform and lands in
 `/etc/cmd_and_ctrl/env` on the dev VM — the same path production uses
@@ -274,8 +277,12 @@ dead links.
 ### Census publish deploy key
 
 `CENSUS_DEPLOY_KEY` is what the `census-publish` job in `ci-cd.yml`
-pushes the regenerated catalog census with, back to `develop` and
-`main` (Discussion #1231, review points 2 and 3). It is a repository
+pushes the regenerated catalog census with, back to `develop`
+(Discussion #1231, review points 2 and 3). It used to publish to
+`main` as well. Since #3335 it does not: `main` is a merge of
+`develop`, so its census is `develop`'s (every `main` run before then
+ended "census block unchanged"), and that lets the `main` ruleset have
+no bypass at all. It is a repository
 deploy key rather than `GITHUB_TOKEN` or a ruleset bypass for the
 GitHub Actions app, on purpose: a deploy key can be scoped to exactly
 this repository and named individually as a bypass actor, where an
@@ -299,17 +306,25 @@ are Luke's):
    access".
 3. Add the **private** half (the whole `census-publish-deploy-key`
    file, `-----BEGIN OPENSSH PRIVATE KEY-----` line through
-   `-----END...-----`) as the repository secret `CENSUS_DEPLOY_KEY`:
-   Settings → Secrets and variables → Actions → New repository secret.
+   `-----END...-----`) as the secret `CENSUS_DEPLOY_KEY` of the
+   **`census` environment**: Settings → Environments → `census` (create
+   it if missing, with "Deployment branches and tags" set to
+   "Selected branches and tags" and the single rule `develop`) → Add
+   environment secret. Not a repository secret: any workflow run on any
+   branch of this repository can read one of those, and this key
+   bypasses the `develop` ruleset.
    Delete the local copy of both files afterwards — like the restic
    password above, GitHub secrets are write-only, so there is no way
    to read this back later; regenerate and replace it if it is lost.
-4. On **both** the `develop` and `main` rulesets (Settings → Rules →
-   Rulesets), add **Deploy keys** as a bypass actor, mode "Always".
-   This names deploy keys as a class of actor, not this specific key,
-   so it authorizes exactly the credential `census-publish` holds and
+4. On the **`develop`** ruleset only (Settings → Rules → Rulesets),
+   add **Deploy keys** as a bypass actor, mode "Always". This names
+   deploy keys as a class of actor, not this specific key, so it
+   authorizes exactly the credential `census-publish` holds and
    nothing else in this workflow — the narrower scope Luke's review
-   asked for in place of the app-wide bypass #1247 shipped with.
+   asked for in place of the app-wide bypass #1247 shipped with. The
+   **`main`** ruleset has no bypass actor: nothing reaches `main` but
+   a reviewed merge (#3335). Keep this the only deploy key with write
+   access, since any other one would get the same bypass.
 
 **Rotation:** repeat steps 1-3 with a new key pair, then remove the
 old public key from Settings → Deploy keys. Step 4 does not need to
@@ -323,6 +338,83 @@ skip-CI marker. GitHub applies that marker to pull-request runs too, on any
 PR whose head is the marked commit. The develop → main promotion PR's head
 is develop's tip, so every promotion opened just after a census publish got
 no checks and could not merge (#1810).
+
+## Runners and credentials
+
+What can reach the hosts, and from where (#3335).
+
+**Runners.** The self-hosted runners exist for the jobs that must reach
+the LAN: `cmdctrl-cd-dev`, `cmdctrl-cd-prod` and
+`scryfall-refresh.yml`. Every test job, nightly ones included, runs on
+GitHub-hosted runners, so no `npm ci`, Playwright install or test
+binary runs where a deploy credential is. Keep it that way: a new job
+that wants a self-hosted runner and is not a deploy is a design
+question, not a `runs-on` line.
+
+The deploy jobs run on the runners that carry the label named by the
+repository variable `CMDCTRL_DEPLOY_RUNNER_LABEL` (`deploy`). Unset,
+they run on any self-hosted runner, as before #3335. To set it, label
+the runners first (Settings → Actions → Runners → the runner → Labels),
+then set the variable. The other order queues every deploy with no
+runner to take it. Unsetting the variable is the undo.
+
+Two settings still send test jobs to self-hosted runners: making the
+repository private (the `github.event.repository.private` fallback)
+and setting `CI_RUNNER` to `self-hosted`. Either would put dependency
+code on whichever self-hosted runner takes the job, a deploy runner
+included if the runners share a host or a user. Do neither without
+first giving test jobs runners of their own, on a machine or user that
+holds no deploy key.
+
+**Credentials.**
+
+| Credential | Where it lives | Who can read it |
+|---|---|---|
+| SSH key for `krkn` on each host | environment secret `CMDCTRL_DEPLOY_SSH_KEY` in `dev` and `prod` (until set: the runner user's `~/.ssh`) | a job that names the environment, on that environment's branch: `develop` for `dev`, `main` for `prod` |
+| Host public keys | variables `CMDCTRL_HOST_KEY`, `CMDCTRL_DEV_HOST_KEY` | public; see [SSH host keys](#ssh-host-keys) |
+| Server and bot secrets | `prod` and `dev` environment secrets (repository secrets until moved) | as above. A repository secret is readable by any same-repository run, on any branch |
+| Census deploy key | environment secret `CENSUS_DEPLOY_KEY` in `census` | `census-publish`, on `develop` |
+| Alert webhook | repository secret `CMDCTRL_ALERT_DISCORD_WEBHOOK` | any same-repository run. `uptime.yml` runs every 10 minutes and on pull requests, so it has no environment and the secret stays here; it can only post to the one Discord channel |
+
+`krkn` has broad `sudo` on both hosts, so its SSH key is root on both.
+Making `${DEPLOY_ROOT}/scripts` root-owned would not change that while
+the grant is broad, and CD cannot do it alone: whatever installs the
+scripts as root needs that same `sudo`. The fix is on the host side, in
+the HomeLab template: a sudoers grant narrowed to the exact commands CD
+runs, and the scripts it runs as root installed root-owned, outside
+`krkn`'s reach. Until then, the protection is that the key exists only
+inside a deploy job.
+
+**Rotation runbook (outline).** Where each value lives and what picks
+up a new one. None needs a code change.
+
+- **Deploy SSH key** (`CMDCTRL_DEPLOY_SSH_KEY`): `ssh-keygen -t ed25519 -N ""`,
+  one pair per host. Add the public half to `krkn`'s `authorized_keys`
+  through the HomeLab template and apply, set the private half as that
+  environment's secret, and re-run a deploy. Remove the old public key
+  once a deploy with the new one is green.
+- **Admin token** (`CMDCTRL_ADMIN_TOKEN`): a HomeLab Terraform secret per
+  host, written into `/etc/cmd_and_ctrl/env` by cloud-init. Change the
+  tfvar, apply, restart the service. The next production deploy copies
+  it into `bot.env`. Every admin-token session ends.
+- **Discord bot token** (`CMDCTRL_DISCORD_BOT_TOKEN`): reset it in the
+  Developer Portal, update the secret, re-run the latest `main` deploy.
+  It rewrites both `bot.env` and the server's env file.
+- **Discord OAuth client secret** (`CMDCTRL_DISCORD_CLIENT_SECRET`):
+  reset it in the Developer Portal, update the secret (in both
+  environments), re-run a deploy of each branch. Sign-in fails on a
+  host until its deploy has run.
+- **GitHub PAT** (`CMDCTRL_GITHUB_TOKEN`): create a new fine-grained
+  token (Issues: write, this repository only), update the secret,
+  re-run a deploy of each branch, then revoke the old token.
+- **Session and identity keys** (`CMDCTRL_SESSION_KEY`,
+  `CMDCTRL_IDENTITY_KEY`): live only on the host. Delete the line from
+  `/etc/cmd_and_ctrl/env` and redeploy; CD generates a new one. A new
+  session key logs everyone out. A new identity key makes the stored
+  Discord refresh tokens unreadable and logs nobody out
+  ([Secrets](#secrets)).
+- **Census deploy key** (`CENSUS_DEPLOY_KEY`): see
+  [Census publish deploy key](#census-publish-deploy-key).
 
 ## Capacity
 
