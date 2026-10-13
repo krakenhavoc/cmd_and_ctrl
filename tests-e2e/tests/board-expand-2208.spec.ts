@@ -51,9 +51,20 @@ test.describe("expanded board (#2208)", () => {
       "library",
       "battlefield",
     );
+    // #3264: a second legal target, so the Sage's pick below is asked
+    // rather than answered for the caster.
+    await adminMoveByName(
+      admin,
+      opponent.playerID,
+      CARDS.GloriousAnthem,
+      "library",
+      "battlefield",
+    );
     await admin.waitFor(
-      (v) => findCardOnBattlefield(v, CARDS.SolRing) !== null,
-      "Sol Ring on battlefield",
+      (v) =>
+        findCardOnBattlefield(v, CARDS.SolRing) !== null &&
+        findCardOnBattlefield(v, CARDS.GloriousAnthem) !== null,
+      "Sol Ring and Glorious Anthem on battlefield",
     );
 
     const table = page.getByRole("region", {

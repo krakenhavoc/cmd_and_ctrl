@@ -151,6 +151,7 @@
     isLegalCardTarget,
     isLegalPlayerTarget,
     isMultiPick,
+    lonePick,
     opensTargetPicker,
     togglePick,
     canConfirm,
@@ -1568,6 +1569,27 @@
   $effect(() => {
     setConfirmHandler(confirmTargets);
     return () => setConfirmHandler(null);
+  });
+
+  // #3264: a step with one legal target is answered for the player, as
+  // the click would answer it (lonePick says which prompts qualify). A
+  // walk whose next step is also lone carries on the same way.
+  //
+  // A pending choice is answered this way once. Until the server's next
+  // snapshot drops it, the effect below re-opens its prompt; answering
+  // that again would loop on the main thread. If the server refuses the
+  // answer, the re-opened prompt waits for the player's click.
+  let autoPicked: TargetingState | null = null;
+  const autoAnswered = new Set<string>();
+  $effect(() => {
+    const t = $targeting;
+    if (!t || t === autoPicked || dividePrompt) return;
+    if (t.choiceID && autoAnswered.has(t.choiceID)) return;
+    const ref = lonePick(t);
+    if (!ref) return;
+    autoPicked = t;
+    if (t.choiceID) autoAnswered.add(t.choiceID);
+    stepOrFire({ ...t, picked: [ref] });
   });
 
   function fireTargets(state: TargetingState, targets: TargetRef[]): void {
