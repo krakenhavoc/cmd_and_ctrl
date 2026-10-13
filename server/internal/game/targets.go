@@ -104,6 +104,22 @@ func (s TargetSource) PowerToughness() (power, toughness int, ok bool) {
 	return 0, 0, false
 }
 
+// ObjectRef names the object this walk is relative to, as the
+// {instance, epoch} a Card.ExiledWith link records: the live source's
+// own epoch, or a departed source's last-known record (CR 608.2h,
+// DepartedID plus the record's Epoch). ok is false when the walk has no
+// source object at all (SourceChooser, a snapshot-only source), in which
+// case "exiled with this" admits nothing rather than everything.
+func (s TargetSource) ObjectRef() (PermissionCardRef, bool) {
+	switch {
+	case s.Departed != nil && s.DepartedID != uuid.Nil:
+		return PermissionCardRef{ID: s.DepartedID, Epoch: s.Departed.Epoch}, true
+	case s.Object != nil:
+		return PermissionCardRef{ID: s.Object.InstanceID, Epoch: s.Object.ObjectEpoch}, true
+	}
+	return PermissionCardRef{}, false
+}
+
 // SourceObject is the ordinary case: a live spell or ability source.
 func SourceObject(controller uuid.UUID, obj *Card) TargetSource {
 	return TargetSource{Controller: controller, Object: obj}
@@ -283,7 +299,8 @@ type TargetSpec struct {
 
 	// Mode is the client-facing hint derived from the spec: "any",
 	// "player", "creature", "permanent", "stack_spell",
-	// "stack_ability", "stack_item", "card_in_graveyard". Drives
+	// "stack_ability", "stack_item", "card_in_graveyard",
+	// "card_in_exile". Drives
 	// banner copy and which surfaces enter targeting mode; legality
 	// itself comes from LegalTargets, not from Mode.
 	//
@@ -304,7 +321,7 @@ type TargetSpec struct {
 	Players bool
 
 	// Zones lists the card zones a card target may live in
-	// (ZoneBattlefield, ZoneStack, ZoneGraveyard). Empty means no
+	// (ZoneBattlefield, ZoneStack, ZoneGraveyard, ZoneExile). Empty means no
 	// card targets.
 	Zones []ZoneKind
 
@@ -352,6 +369,25 @@ type TargetSpec struct {
 	// nothing, never everything. Build one with effects.BlockedBySource
 	// / BlockingSource / BlockingEquipped.
 	CombatWithSource SourceCombat
+
+	// ExiledWithSource is "exiled with this": the candidate must carry
+	// Card.ExiledWith naming the clause's own source, as the very
+	// object it is (CR 607.2a, CR 400.7) -- The Darkness Crystal's
+	// "target creature card exiled with The Darkness Crystal" (#3259,
+	// ADR 0019's 2026-10-13 amendment). Pair it with Zones
+	// {ZoneExile}; it reads a link only a card in exile carries.
+	//
+	// DATA, not a closure, for the reason RelativeToSource is: CardOK
+	// is handed the caster and the candidate, never the object whose
+	// ability this is, and a spec rides a paused prompt and a stack
+	// item. It is judged in the one shared walk beside CardOK, so the
+	// legal set, the announce check (CR 601.2c), the resolution
+	// re-check (CR 608.2b), the client's picker and the bot's moves are
+	// one answer. The source is TargetSource.ObjectRef: the live object
+	// while it stands, its last-known record once it has left (CR
+	// 608.2h). With no source at all the clause admits NOTHING. Build
+	// one with effects.ExiledWithThis.
+	ExiledWithSource bool
 
 	// PlayerOK is the candidate predicate for player targets. Nil
 	// means every seated, non-eliminated player qualifies. Same
@@ -891,6 +927,9 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 		for _, z := range g.zonesOfKindLocked(zk) {
 			for i := range z.Cards {
 				c := z.Cards[i]
+				if hiddenExileCard(zk, &c, src.Controller) {
+					continue
+				}
 				if targeting && !g.canBeTargetedWithLocked(restrictions, &c, zk, src) {
 					continue
 				}
@@ -924,6 +963,18 @@ func (g *Game) specMatchesLocked(src TargetSource, spec *TargetSpec, targeting b
 		}
 	}
 	return out
+}
+
+// hiddenExileCard reports whether c is a face-down card in exile that
+// `chooser` has not seen (CR 406.3a: foretold, hidden, plotted-style
+// exile). A clause over exiled cards must not offer one: the legal set
+// crosses the wire and the bot's move list, and a predicate that said
+// "creature card" of a card the chooser cannot look at would tell them
+// its type. Face-up exile is public, and a face-down card its chooser
+// has seen is theirs to name; a spec that does not look in exile never
+// reaches this.
+func hiddenExileCard(zone ZoneKind, c *Card, chooser uuid.UUID) bool {
+	return zone == ZoneExile && c.FaceDown && !c.IsKnownTo(chooser)
 }
 
 // excludesSource reports whether a candidate is the live source object
@@ -1154,6 +1205,9 @@ func (g *Game) specMatchLocked(src TargetSource, spec *TargetSpec, ref TargetRef
 			if c.InstanceID != ref.ID {
 				continue
 			}
+			if hiddenExileCard(z.Kind, &c, src.Controller) {
+				return false
+			}
 			if targeting && !g.canBeTargetedByLocked(&c, z.Kind, src) {
 				return false
 			}
@@ -1322,12 +1376,24 @@ func (s *TargetSpec) combatAdmits(g *Game, src TargetSource, c Card) bool {
 	return false
 }
 
+// exiledWithAdmits is ExiledWithSource's gate: true without the flag,
+// and with it only a card whose Card.ExiledWith names the source object
+// (CR 607.2a). A walk with no source object admits nothing, and so does
+// the zero link: "exiled with nothing" is not a qualification.
+func (s *TargetSpec) exiledWithAdmits(src TargetSource, c Card) bool {
+	if !s.ExiledWithSource {
+		return true
+	}
+	ref, ok := src.ObjectRef()
+	return ok && ref.ID != uuid.Nil && c.ExiledWith == ref
+}
+
 // sourceAdmits is the source-relative gate: RelativeToSource's stat
-// comparisons and CombatWithSource's combat relation. True with
-// neither, false when there is one and the walk has no source to be
-// relative to.
+// comparisons, CombatWithSource's combat relation and
+// ExiledWithSource's exile link. True with none of them, false when
+// there is one and the walk has no source to be relative to.
 func (s *TargetSpec) sourceAdmits(g *Game, src TargetSource, c Card) bool {
-	if !s.combatAdmits(g, src, c) {
+	if !s.combatAdmits(g, src, c) || !s.exiledWithAdmits(src, c) {
 		return false
 	}
 	if len(s.RelativeToSource) == 0 {

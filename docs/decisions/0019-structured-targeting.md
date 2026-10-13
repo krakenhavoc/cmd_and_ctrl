@@ -959,3 +959,101 @@ don't or can't" a plain branch.
 **Out of scope.** Nothing here changes which targets are legal at
 announce (CR 601.2c) or the partial-illegal case, which already resolved.
 Only Gilded Drake prints the sentence in the current Scryfall dump.
+
+## Amendment (2026-10-13, #3259): a card in exile as a target, and "exiled with this" (CR 607.2a)
+
+"Put **target** creature card exiled with The Darkness Crystal onto the
+battlefield" names a card in exile by its link to the object whose
+ability this is. Two halves were missing, and the card shipped with a
+caveat (the card was chosen as the ability resolved, so it could not be
+responded to with the choice in view). `TargetSpec.Zones` already took
+`ZoneExile` and the engine walked it, but nothing could answer the clause:
+the client's picker did not open for it, and `CardOK` is handed the caster
+and the candidate, never the source.
+
+### 1. `card_in_exile`, the exile sibling of `card_in_graveyard`
+
+`effects.TargetCardInExile(label, preds...)` declares `Zones {ZoneExile}`
+and `Mode "card_in_exile"`. Nothing in the legal-set walk changed for it:
+the legal set, the announce check (CR 601.2c) and the resolution re-check
+(CR 608.2b) were already one walk over `Zones`. The client learns the mode
+(`opensTargetPicker`, the banner sentence, the free-form fallback) and
+answers it through the zone browser's exile tab, whose cards already route
+clicks to the targeting store. A card is in one player's exile pile, so
+the viewer opens the pile that holds it, as for graveyards; the banner
+says so. `effects.FaceUp()` is Pull from Eternity's "face-up".
+
+### 2. `TargetSpec.ExiledWithSource`
+
+A bool on the clause, built with `effects.ExiledWithThis(spec)`. It is
+judged in `sourceAdmits`, beside `RelativeToSource` and `CombatWithSource`,
+for the reason those are data: a spec rides a paused prompt and a stack
+item, and a func there is a restore-point blocker. The comparison is
+`Card.ExiledWith == {source id, source epoch}`:
+
+- the live source's own `ObjectEpoch`, so a second Crystal's exiles are
+  not offered and a Crystal that left and came back (a new object, CR
+  400.7) has no claim on what its earlier self exiled;
+- a source that has left is read from its last-known record
+  (`TargetSource.Departed`, CR 608.2h), so an ability already on the stack
+  still reaches the cards its source exiled;
+- a walk with no source object (`SourceChooser`, a snapshot-only source)
+  and the zero link admit **nothing**, never everything.
+
+New `TargetSource.ObjectRef` is the {instance, epoch} read. No snapshot
+shape, no wire field and no closure changed: `TargetSpec` is re-derived
+from the catalog, and `Card.ExiledWith` was already carried by the
+snapshot (ADR 0066's 2026-10-07 amendment).
+
+### 3. A face-down exiled card is never offered to someone who has not seen it
+
+A clause over exile can reach foretold, hidden or plotted cards. The legal
+set crosses the wire and the bot's move list, and a predicate that said
+"creature card" of a card its chooser may not look at would tell them its
+type. The shared walk and the announce check now drop a face-down card in
+exile the chooser is not a knower of (`hiddenExileCard`). Face-up exile is
+public and unaffected.
+
+### 4. Who stamps the link
+
+Only a replacement exile stamps `Card.ExiledWith` today
+(`ReplacementEvent.ExiledWith`), which is The Darkness Crystal's shape. An
+ability-resolution exile (Duplicant, Angel of Serenity) is still found
+through the effects package's event-log record, and ADR 0155's planned
+stamp is unchanged and still its own work. A clause that wants those cards
+waits for it; this amendment adds the clause, not the stamp.
+
+### 5. The bot
+
+The enumerator needed nothing: it reads the same legal set. The heuristic
+priced an exile target as 0, so it could not tell a 6/4 from a 1/1 for
+"take it" effects; `cardTargetValue` now prices a card in exile as
+`cardValue`, whoever owned it. A hate effect over exile (Pull from
+Eternity) scores the same, which costs the bot at worst one cheap card
+spent on a good target.
+
+### Cards
+
+The Darkness Crystal (`Full`: the ability now targets) and Pull from
+Eternity (`Full`). No other catalog card had a "choose on resolution"
+caveat or comment standing in for an exile target; the Bronzebeak
+Foragers, Gelatinous Cube and Nyla family wait on the ability-exile stamp
+(section 4), not on this clause.
+
+### Tests
+
+`game/targets_exiled_with_test.go` pins the bare walk (object identity,
+stale epoch, no source, the resolution re-check, a departed source, a
+hidden card, a Clone); `legal/exile_targets_test.go` pins that the
+enumerator, the wire's `legal_targets` / `target_mode` and the engine's
+dispatch agree; `cards/effects/kuja_b_crystal_test.go` and
+`pull_from_eternity_test.go` pin announce, resolution and response;
+`aiseat/heuristic/exile_target_test.go` pins the pricing; the client
+suite pins the mode vocabulary.
+
+### Out of scope (still)
+
+- The ability-exile `Card.ExiledWith` stamp (ADR 0155 PR 3).
+- A pile-level hint on the table ("2 legal targets in this exile pile").
+  The dock's "N legal" count and the sentence "a card in exile (open a
+  player's exile pile)" say it; a per-pile ring would be client polish.
