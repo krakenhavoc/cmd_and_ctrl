@@ -313,7 +313,10 @@ func activatedAbilityRows(c *Card, wantOrigins bool) ([]ActivatedAbilityShape, A
 			}
 		}
 	}
-	grants := layeredGrants(c)
+	// ADR 0093 amendment 2026-10-13: a permanent's layered grants, or a
+	// card's zone grants (zone_grants.go) — the same GrantedAbility data,
+	// so the rows below and their refs need no second path.
+	grants := abilityGrantsOf(c)
 	if len(grants) == 0 || CatalogActivatedAbilities == nil {
 		out, origins := own, AbilityOrigins(nil)
 		if wantOrigins && ownIdx != nil {

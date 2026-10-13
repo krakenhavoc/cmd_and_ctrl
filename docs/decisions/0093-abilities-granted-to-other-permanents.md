@@ -6,6 +6,7 @@
 2026-09-24 — PR 4 (duration grants, #1584); see "Amendment 2026-09-24 — what PR 4 built".
 2026-10-10 — Decision 10 lifted for layer-7c statics, and a name and type-line set (#2562); see
 "Amendment 2026-10-10 — a permanent that becomes an Equipment".
+2026-10-13 — a grant to cards in a hand, graveyard or exile (#3233); see "Amendment 2026-10-13".
 **Issue:** [#754](https://github.com/krakenhavoc/cmd_and_ctrl/issues/754) (this seam — the public roadmap's
 top missing seam, `abilities-granted-to-other-permanents` in `server/internal/roadmap/registry.go`)
 **Numbering:** swept with the AGENTS.md §4 check on 2026-09-24 — `git fetch origin`, then every
@@ -863,3 +864,60 @@ Pinned by `TestTheIrencragBecomesEverflameAndEquips`, `TestTheIrencragDeclinedSt
 `TestPuresteelPaladinGrantsEquipZeroWithMetalcraft` (`internal/cards/effects`) and, in `internal/game`,
 `TestSetTypesFollowsTheTypeRules`, `TestBecomeNamedModProblems` and the two new rows of
 `TestEveryModKindAppliesInItsLayer`.
+
+## Amendment 2026-10-13 — a static can give an activated ability to CARDS in a hand, graveyard or exile (#3233)
+
+Satoru Umezawa prints "Each creature card in your hand has ninjutsu {2}{U}{B}." Decision 4 refused a bundle
+ability that functions off the battlefield, because the layer pass reaches permanents alone and the grant
+would have had nowhere to live. This amendment gives it somewhere, for **activated abilities only**.
+
+**1. The declaration.** `StaticAbility.GrantZone` (`ZoneHand`, `ZoneGraveyard` or `ZoneExile`; empty is the
+battlefield, as before) sits beside `GrantAbilities`. `AppliesTo` is asked of each CARD in that zone of every
+seat, with the static's source as `source`. Build it with `effects.GrantAbilitiesInZone(zone, appliesTo, keys…)`
+and `effects.CardsYouOwn(match)`. The battlefield gather skips such a static, as it skips `AffectsSpells`, so a
+predicate written for a hand card cannot reach a permanent. `AbilityGrant.Zone` says where a bundle's
+recipients are. For a non-battlefield zone `Register` accepts activated abilities only, each of which must
+list that zone in `Zones` and must not need a permanent to pay. `TestEveryGrantKeyResolves` checks the
+static's zone against its bundle's.
+
+**2. The stamp.** The grant is a layer-6 effect (CR 613.1f, 113.10), so it is a layer-pass step. It is
+modelled on the stack keyword step (ADR 0107 §3), because a card off the battlefield has no layered
+characteristic. `zoneGrantPassLocked` runs after layer 2 has settled control. For each card the static
+accepts it appends the same `GrantedAbility` data a permanent's grant is (bundle key, grantor, activator) to
+`Card.zoneGranted`, in the grantor's timestamp order (CR 613.7). Nothing else is stored: no closure, no
+second field, no new wire or snapshot shape. `zoneGranted` is rebuilt, never snapshotted (the drift test
+classifies it `rebuilt`), and a Clone shares the immutable slice.
+
+**3. The one reader.** `activatedAbilityRows` reads `abilityGrantsOf(c)`, which is a permanent's layered
+grants or, off the battlefield, `zoneGranted`. So the activation path (`ActivateCatalogAbility`, ref check,
+`MayActivate`, `AbilityFunctionsFromZone`), the wire's `zone_abilities` row (with `granted_by`), the legal
+enumerator (so a bot is offered it) and the stack item's `catalog/activated` ref all see a granted hand
+ability with no change of their own. The ref is `grant:<bundle>:<i>:<n>`, so two Satorus are two rows
+and a stale ref is refused. Undo and restore resolve the ref from the bundle's own catalog key, not from the
+source card.
+
+**4. When it ends.** The grant is re-derived on every pass, so it ends the pass after its source leaves the
+battlefield or loses its abilities (CR 113.6, 613.6; the judgement is the battlefield pass's final answer,
+as the spell statics are judged). `MoveCard` clears `zoneGranted`, since the card is a new object (CR 400.7).
+A card ENTERING a hand, graveyard or exile while a source grants into that zone bumps the layer version
+(`layerVersionBump`, gated on a live source), because that move alone invalidates nothing; a card drawn
+while Satoru is out has the ability at once.
+
+**5. Not covered.** Triggered, static and mana abilities on cards off the battlefield. The command zone (a
+commander's text names it). An exact CR 613.7 ordering for a grantor whose own static is newer than the
+effect that silences it: no pair of cards in the catalog makes it observable, and exactness would mean
+running this step inside the bucket loop. Dynamic costs ("encore {X}, where X is its mana value", Graywater's
+Fixer) need a bundle ability whose cost is read off the recipient, which nothing declares yet.
+
+**Cards.** Satoru Umezawa (Full: the hand grant, plus a once-a-turn look trigger that reads the activation
+event's label, so a printed or a granted ninjutsu triggers it), Rhet-Tomb Mystic and Tectonic Reformation
+(cycling to cards in hand), Sedris, the Traitor King and Solemn Doomguide (unearth to cards in a graveyard).
+
+Pinned by `TestSatoruGivesCreatureCardsInHandNinjutsuWhileHeIsOut`, `TestACardDrawnWhileSatoruIsOutHasTheGrant`,
+`TestTwoSatorusGiveTwoNinjutsuRows`, `TestASilencedSatoruGrantsNothing`,
+`TestHandGrantsSurviveCloneAndSnapshotRestore`, `TestAGrantedNinjutsuReturnsTheAttackerAndPutsTheCreatureInAttacking`,
+`TestAGrantedNinjutsuRefusesAStaleRef`, `TestSatorusLookTriggersOncePerTurnOffAnyNinjutsu`,
+`TestGraveyardGrantsUnearth`, `TestAGrantedUnearthReturnsTheCreatureFromTheGraveyard`,
+`TestGrantedCyclingCyclesTheCard`, `TestAZoneGrantEndsWhenTheCardChangesZone`,
+`TestZoneGrantRegistrationRefusals` (`internal/cards/effects`), `TestAGrantedNinjutsuIsEnumeratedForABot`
+(`internal/legal`) and `TestAGrantedHandAbilityIsAZoneAbilitiesRowForItsOwnerOnly` (`internal/protocol`).

@@ -50,7 +50,7 @@ func GrantedStaticProblem(s StaticAbility) string {
 		return "a granted static cannot remove or grant abilities"
 	case s.ActiveWhen.IsGate():
 		return "a granted static cannot declare ActiveWhen — a designation is the host's"
-	case len(s.Zones) > 0 || s.AffectsSpells:
+	case len(s.Zones) > 0 || s.AffectsSpells || s.GrantZone != "":
 		return "a granted static functions on the battlefield over permanents only"
 	case s.DependsOnHandSize || s.DependsOnLifeTotal || s.DependsOnAttackingStatus ||
 		s.DependsOnSpellsCast || s.DependsOnExile || s.DependsOnManaPool:

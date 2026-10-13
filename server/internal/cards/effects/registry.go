@@ -799,6 +799,9 @@ func Register(spec Spec) {
 	// rewrites a static the way a suspend declaration grows a
 	// trigger — Spec.Static is what the layer pass gathers.
 	game.IndexStaticZones(spec.OracleID, spec.Static)
+	// ADR 0093 amendment 2026-10-13: and the zone-grant statics, so the
+	// layer pass finds a Satoru by one map read per permanent.
+	game.IndexZoneGrants(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's

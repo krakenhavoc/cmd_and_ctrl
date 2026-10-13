@@ -913,6 +913,17 @@ the key with the token's slug. A granted trigger's source is the enchanted
 creature, so write its `AppliesTo` against `source` as you would for a
 creature's own trigger (ADR 0093 amendment 2026-10-08).
 
+**An ability given to CARDS in a hand, graveyard or exile** ("Each creature
+card in your hand has ninjutsu {2}{U}{B}", Satoru Umezawa; "Each creature
+card in your graveyard has unearth {2}{B}", Sedris) declares the bundle with
+`Zone: game.ZoneHand` (or `ZoneGraveyard`, `ZoneExile`) and names it from a
+`GrantAbilitiesInZone(zone, CardsYouOwn(match), key)` static (ADR 0093
+amendment 2026-10-13). The bundle holds activated abilities only, each
+functioning from that zone (`Ninjutsu(…)`, `Cycling(…)`, `Unearth(…)`);
+`Register` refuses anything else. Use `CardsYouOwn` for "your" and a plain
+predicate for the card type (`creatureCard`, `landCard`). See
+`satoru_umezawa.go`, `rhet_tomb_mystic.go` and `sedris_the_traitor_king.go`.
+
 The other constructors: `TribalAbilityGrant(TribeFilter{…}, key)` for
 "All Slivers have …" / "Sliver creatures you control have …", and
 `GrantAbilitiesToAttached(key)` for "Equipped creature has …" /
