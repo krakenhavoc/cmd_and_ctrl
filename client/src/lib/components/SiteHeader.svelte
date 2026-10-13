@@ -5,7 +5,8 @@
   // Grouped, not flat:
   //   - Signed in: the wordmark, then Tables and My games | Decks,
   //     Catalog and Roadmap. On the right the C2 Discord, Help, and the
-  //     account menu. Admin lives in the account menu, for an admin.
+  //     account menu. In admin mode an accent-tinted Admin link follows
+  //     as its own group, and the account menu keeps its Admin item.
   //   - Signed out: the wordmark, then Decks, Roadmap and About. On the
   //     right the C2 Discord, Help, and Sign in.
   //
@@ -122,6 +123,8 @@
     closeAccount();
   }
 
+  const onAdminRoute = $derived($route.name === "adminViews" || $route.name === "adminLogin");
+
   function current(name: string): boolean {
     return $route.name === name;
   }
@@ -187,6 +190,18 @@
           {@render navLink("#/catalog", "catalog", "Catalog")}
           {@render navLink("#/roadmap", "roadmap", "Roadmap")}
         </div>
+        {#if adminOn}
+          <!-- Admin mode is loud: its own group, in the accent. The same
+               condition as the account menu's Admin item (#3221). -->
+          <div class="grp">
+            <a
+              class="admin-link"
+              href="#/admin/live"
+              class:current={onAdminRoute}
+              aria-current={onAdminRoute ? "page" : undefined}>Admin</a
+            >
+          </div>
+        {/if}
       {:else}
         <div class="grp">
           {@render navLink("#/decks", "decks", "Decks")}
@@ -368,6 +383,19 @@
   .site-nav a.current {
     color: var(--fg);
     background: var(--surface-raised);
+  }
+
+  /* Admin mode, visible from the nav: an accent-tinted pill. */
+  .site-nav a.admin-link {
+    color: var(--accent-strong);
+    background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+  }
+  .site-nav a.admin-link:hover,
+  .site-nav a.admin-link.current {
+    color: var(--accent-strong);
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+    border-color: var(--accent);
   }
 
   .account {

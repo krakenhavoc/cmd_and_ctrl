@@ -527,7 +527,7 @@ describe("the gate", () => {
   });
 });
 
-// ADR 0156 §3: Admin moved from the site nav into the account menu.
+// ADR 0156 §3: Admin is in the account menu, and in the site nav in admin mode (#3221).
 describe("the header's Admin link", () => {
   const adminLink = (c: HTMLElement) =>
     [...c.querySelectorAll("#account-menu a")].find((a) => a.textContent?.trim() === "Admin");
@@ -536,13 +536,37 @@ describe("the header's Admin link", () => {
     if (btn) click(btn);
   };
 
+  it("is in the nav, as its own group, in admin mode, and current on admin routes", async () => {
+    for (const s of [token(), person(true)]) {
+      session.set(s);
+      location.hash = "#/lobby";
+      await new Promise((r) => setTimeout(r, 0));
+      const { container, destroy } = render(SiteHeader as never, {} as never);
+      await settle();
+      const groups = [...container.querySelectorAll('nav[aria-label="Site"] .grp')];
+      const last = groups[groups.length - 1];
+      expect([...last.querySelectorAll("a")].map((a) => a.textContent?.trim())).toEqual(["Admin"]);
+      const a = last.querySelector("a")!;
+      expect(a.getAttribute("href")).toBe("#/admin/live");
+      expect(a.getAttribute("aria-current")).toBeNull();
+      destroy();
+    }
+    session.set(person(true));
+    location.hash = "#/admin/live";
+    await new Promise((r) => setTimeout(r, 0));
+    const { container, destroy } = render(SiteHeader as never, {} as never);
+    await settle();
+    const link = container.querySelector('nav[aria-label="Site"] a.admin-link');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    destroy();
+    location.hash = "";
+  });
+
   it("is in the account menu for the token and for admin mode, going to Live now", async () => {
     for (const s of [token(), person(true)]) {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
-      const nav = [...container.querySelectorAll('nav[aria-label="Site"] a')];
-      expect(nav.map((a) => a.textContent)).not.toContain("Admin");
       openAccount(container);
       expect(adminLink(container)?.getAttribute("href")).toBe("#/admin/live");
       destroy();
@@ -554,6 +578,8 @@ describe("the header's Admin link", () => {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
+      const nav = [...container.querySelectorAll('nav[aria-label="Site"] a')];
+      expect(nav.map((a) => a.textContent?.trim())).not.toContain("Admin");
       openAccount(container);
       expect(adminLink(container)).toBeUndefined();
       destroy();

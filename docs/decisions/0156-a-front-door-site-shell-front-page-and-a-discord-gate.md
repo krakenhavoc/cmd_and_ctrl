@@ -84,7 +84,7 @@ Owner answer 5.
 1. **A page frame.** A new `Page.svelte` gives every non-game route the same container and head: an optional eyebrow, a title, a lede, and an actions slot on the right. It also sets a width (`wide` 1200 px for tables and grids, `prose` 72ch for reading). Titles are sentence case, in the display face, at one size. One set of breakpoints replaces the five: tablet (≥ 820 px) is the design target (the tablet-minimum rule); below it the frame and header wrap but get no separate layout.
 2. **Shared primitives** go into `app.css`: `.card`, `.btn` with `primary`, `ghost` and `discord` variants, and `.link-arrow`. A page keeps one-off CSS only for what is truly its own.
 3. **The header, grouped.**
-   - Signed in: the wordmark, then **Tables** and **My games** | **Decks**, **Catalog** and **Roadmap**. On the right: the Discord icon, Help, and the account menu. **Admin** moves into the account menu, shown in admin mode.
+   - Signed in: the wordmark, then **Tables** and **My games** | **Decks**, **Catalog** and **Roadmap**. On the right: the Discord icon, Help, and the account menu. **Admin** shows in admin mode, as its own accent-tinted group after Roadmap in the header nav and as an item in the account menu (owner, 2026-10-13).
    - Signed out: the wordmark, then **Decks**, **Roadmap** and **About**. On the right: the Discord icon, Help, and **Sign in**.
    - "Home" leaves the header. The route stays `#/lobby`, and only the link's text becomes "Tables", through `labels.ts` (ADR 0125 §2).
 4. **The footer** is one row: Discord, About, Privacy, GitHub, then the Fan Content line. The legal disclosure (ADR 0149) is unchanged.
