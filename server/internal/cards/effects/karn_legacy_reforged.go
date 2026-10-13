@@ -49,7 +49,7 @@ func init() {
 					return nil
 				}
 				return AddMana{
-					Produced:     game.RepeatMana("{C}", n),
+					Amount:       ManaN(n, "C"),
 					Restrictions: []string{ManaRestrictNotNonartifactSpell},
 					Riders:       []game.ManaSpendRider{KeepManaUntilEndOfTurn()},
 				}.Apply(NewContext(g, item))

@@ -3611,6 +3611,14 @@ type AddManaOptions struct {
 	// pick carries them on the queued PendingChoice, as a mana
 	// ability's pick does.
 	Riders []ManaSpendRider
+
+	// Amount is the count form of the produced mana (#3112): "Add {R}
+	// for each ...", "add N mana of any one color". When it has Options
+	// it is used INSTEAD of the produced string, and the slots are built
+	// straight from the count with the MaxProducedMana ceiling applied
+	// to N before anything is allocated, then the same walk and the same
+	// announcement as the text path. No text exists at any point.
+	Amount ManaAmount
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
@@ -3622,6 +3630,10 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	p := g.playerByIDLocked(playerID)
 	if p == nil || p.Eliminated {
 		return nil
+	}
+	if opts.Amount.Options != nil {
+		slots, capped := slotsFromAmount(opts.Amount)
+		return g.addManaEntriesLocked(p, source, slots, capped, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
 	}
 	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
 }
@@ -3660,6 +3672,24 @@ func (g *Game) addManaSlotsLocked(
 	if err != nil {
 		return err
 	}
+	return g.addManaEntriesLocked(p, source, slots, capped, narrow, restrictions, riders, pending, reason)
+}
+
+// addManaEntriesLocked is addManaSlotsLocked's body once the slots
+// exist, whether they were parsed from text or built from a ManaAmount
+// (#3112). `capped` says the ceiling bit while they were made; it is
+// announced here, once, for both forms.
+func (g *Game) addManaEntriesLocked(
+	p *Player,
+	source uuid.UUID,
+	slots []ProducedManaEntry,
+	capped bool,
+	narrow bool,
+	restrictions []string,
+	riders []ManaSpendRider,
+	pending *[]ColorRequirement,
+	reason func(ProducedManaEntry) string,
+) error {
 	if capped {
 		// #3040: the production passed MaxProducedMana and was cut.
 		g.emitCountCappedLocked("mana", source, p.ID, MaxProducedMana)

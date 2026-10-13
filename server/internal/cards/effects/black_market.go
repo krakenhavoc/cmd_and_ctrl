@@ -41,7 +41,7 @@ func init() {
 				if !ok || src.Counters["charge"] == 0 {
 					return nil
 				}
-				return g.AddManaForEffect(item.Controller, item.SourceCardID, game.RepeatMana("{B}", src.Counters["charge"]))
+				return g.AddManaWithOptionsForEffect(item.Controller, item.SourceCardID, "", game.AddManaOptions{Amount: ManaN(src.Counters["charge"], "B")})
 			}),
 		},
 	})

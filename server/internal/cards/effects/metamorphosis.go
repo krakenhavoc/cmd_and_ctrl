@@ -31,7 +31,7 @@ func init() {
 				"Metamorphosis — choose a color of mana",
 				func(g *game.Game, color string) error {
 					return AddMana{
-						Produced:     game.RepeatMana("{"+color+"}", x),
+						Amount:       ManaN(x, color),
 						Restrictions: []string{ManaRestrictCast, ManaRestrictType("Creature")},
 					}.Apply(NewContext(g, item))
 				})

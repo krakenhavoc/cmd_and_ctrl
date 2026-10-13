@@ -37,7 +37,7 @@ func tanukiTransplanterMana(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return AddMana{
-		Produced: game.RepeatMana("{G}", info.Power),
-		Riders:   []game.ManaSpendRider{KeepManaUntilEndOfTurn()},
+		Amount: ManaN(info.Power, "G"),
+		Riders: []game.ManaSpendRider{KeepManaUntilEndOfTurn()},
 	}.Apply(ctx)
 }

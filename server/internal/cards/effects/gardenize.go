@@ -32,7 +32,7 @@ func init() {
 				if n <= 0 {
 					return nil
 				}
-				return AddMana{Player: item.Controller, Produced: game.RepeatMana("{G}", n)}.Apply(NewContext(g, item))
+				return AddMana{Player: item.Controller, Amount: ManaN(n, "G")}.Apply(NewContext(g, item))
 			}),
 		},
 	})

@@ -61,20 +61,20 @@ func NoManaWasSpentToCast(g *game.Game, spellID uuid.UUID) bool {
 	return g.StackItemPaidForEffect(spellID).NoManaSpent()
 }
 
-// ProducedPerCounterRemoved is the produced-mana string for a mana
-// ability that adds one slot per counter its cost removed —
+// ProducedPerCounterRemoved is the produced-mana output for a mana
+// ability that adds one mana per counter its cost removed —
 // Mage-Ring Network's "Add {C} for each storage counter removed this
-// way" is ProducedPerCounterRemoved("{C}") (#789).
+// way" is ProducedPerCounterRemoved("C") (#789).
 //
-// `slot` is one brace token; it is repeated once per counter. Removing
-// nothing produces nothing, which is the printed behaviour of a
-// variable removal that removed no counters — the land still taps.
-func ProducedPerCounterRemoved(slot string) func(*game.Game, uuid.UUID, uuid.UUID, game.PaidCost) string {
-	return func(_ *game.Game, _, _ uuid.UUID, paid game.PaidCost) string {
-		out := ""
-		for i := 0; i < paid.CountersRemoved; i++ {
-			out += slot
-		}
-		return out
+// `color` is one colour letter ("C", "B"). The result is a count, not
+// text (#3112): the engine caps it at game.MaxProducedMana before it
+// builds anything and announces the cut, so a land holding a huge pile
+// of counters cannot allocate a huge string. Removing nothing produces
+// nothing, which is the printed behaviour of a variable removal that
+// removed no counters — the land still taps.
+func ProducedPerCounterRemoved(color string) func(*game.Game, uuid.UUID, uuid.UUID, game.PaidCost) game.ManaOutput {
+	opts := []string{color}
+	return func(_ *game.Game, _, _ uuid.UUID, paid game.PaidCost) game.ManaOutput {
+		return game.ManaOutput{Amount: game.ManaAmount{Options: opts, N: paid.CountersRemoved}}
 	}
 }

@@ -47,7 +47,7 @@ func init() {
 				Tap:            true,
 				RemoveCounters: RemoveCountersXFromThis(game.CounterStorage, 0).RemoveCounters,
 			},
-			ProducedForPaid: ProducedPerCounterRemoved("{B}"),
+			ProducedForPaid: ProducedPerCounterRemoved("B"),
 			Label:           "Remove any number of storage counters: Add {B} for each",
 		}},
 	})

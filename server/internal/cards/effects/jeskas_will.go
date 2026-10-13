@@ -69,7 +69,7 @@ func jeskasWillRitual(item *game.StackItem, ctx *Context, occurrence int) error 
 	if n <= 0 {
 		return nil
 	}
-	return AddMana{Player: item.Controller, Produced: game.RepeatMana("{R}", n)}.Apply(ctx)
+	return AddMana{Player: item.Controller, Amount: ManaN(n, "R")}.Apply(ctx)
 }
 
 // jeskasWillImpulse is the second bullet: three cards off the top,

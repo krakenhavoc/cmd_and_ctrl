@@ -1865,7 +1865,7 @@ type ManaAbility struct {
 	// from the payment rather than from the board (#789):
 	//
 	//	Mage-Ring Network  "Add {C} for each storage counter removed
-	//	                    this way"  →  ProducedPerCounterRemoved("{C}")
+	//	                    this way"  →  ProducedPerCounterRemoved("C")
 	//
 	// Wins over ProducedFunc, which wins over Produced. It is handed
 	// the same game.PaidCost a stack item carries — a mana ability
@@ -1876,7 +1876,10 @@ type ManaAbility struct {
 	// 106.7's "could produce" reader evaluates it with the largest
 	// payment the source could make right now, so a Network with
 	// three counters could produce {C} and one with none could not.
-	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) string
+	//
+	// The result is a game.ManaOutput (#3112): text, or a ManaAmount for
+	// a count-driven output, which the engine caps before it allocates.
+	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) game.ManaOutput
 
 	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting

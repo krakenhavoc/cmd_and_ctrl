@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			named := allGraveyardsCardIDs(ctx, func(c game.Card) bool { return c.Name == "Rite of Flame" })
-			return AddMana{Produced: "{R}{R}" + game.RepeatMana("{R}", len(named))}.Apply(ctx)
+			return AddMana{Amount: ManaN(2+len(named), "R")}.Apply(ctx)
 		},
 	})
 }

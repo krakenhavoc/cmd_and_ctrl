@@ -70,7 +70,7 @@ func quintoriusMinusSix(g *game.Game, item *game.StackItem) error {
 		if len(exiled) == 0 {
 			return nil
 		}
-		if err := g.AddManaForEffect(controller, source, game.RepeatMana("{R}", len(exiled))); err != nil {
+		if err := g.AddManaWithOptionsForEffect(controller, source, "", game.AddManaOptions{Amount: ManaN(len(exiled), "R")}); err != nil {
 			return err
 		}
 		var cards []game.Card
