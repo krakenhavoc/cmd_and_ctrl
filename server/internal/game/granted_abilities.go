@@ -359,6 +359,13 @@ func ManaAbilitiesWithOrigins(c Card) ([]ManaAbilityShape, AbilityOrigins) {
 	return manaAbilityRows(&c, true)
 }
 
+// ManaAbilitiesWithOriginsOf is ManaAbilitiesWithOrigins without the
+// receiver copy (#2113). The returned slices are read-only: a land's
+// intrinsic row is shared (intrinsicLandRows).
+func ManaAbilitiesWithOriginsOf(c *Card) ([]ManaAbilityShape, AbilityOrigins) {
+	return manaAbilityRows(c, true)
+}
+
 // manaAbilityRows is the one body behind ManaAbilitiesForCard and
 // ManaAbilitiesWithOrigins. Takes a pointer so neither it nor the
 // catalog-key read copies the card (#1498).
@@ -427,9 +434,13 @@ func manaAbilityRows(c *Card, wantOrigins bool) ([]ManaAbilityShape, AbilityOrig
 	}
 	// Still no grant and no origins wanted: hand back the half that is
 	// there without allocating, as the accessor always has.
-	if len(granted) == 0 && !wantOrigins {
-		if len(declared) == 0 {
+	if len(declared) == 0 && len(granted) == 0 {
+		if !wantOrigins {
 			return intrinsic, nil
+		}
+		// #2113: the one-type land's origin row is shared too.
+		if o := intrinsicLandOriginsFor(intrinsic); o != nil {
+			return intrinsic, o
 		}
 	}
 	// A declared ability and an intrinsic one can name the same

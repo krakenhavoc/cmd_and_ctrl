@@ -62,13 +62,7 @@ func (c Card) IsRole() bool {
 // anything. The zero TargetRef (Kind == "") is the unattached
 // sentinel, and TargetNone / TargetSelf are treated as unattached
 // too — neither names a host.
-func (c Card) IsAttached() bool {
-	switch c.AttachedTo.Kind {
-	case TargetCard, TargetPlayer:
-		return c.AttachedTo.ID != uuid.Nil
-	}
-	return false
-}
+func (c Card) IsAttached() bool { return IsAttachedPtr(&c) }
 
 // IsAttachedTo reports whether this card is attached to the named
 // card. The common shape in a catalog AppliesTo predicate —

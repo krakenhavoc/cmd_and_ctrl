@@ -98,6 +98,12 @@ func AbilityRowsOf(c Card) []AbilityRow { return abilityRowsOf(&c, false) }
 // AbilityRowsOf keeps it.
 func AbilityRowsOnBattlefield(c Card) []AbilityRow { return abilityRowsOf(&c, true) }
 
+// AbilityRowsOfPtr and AbilityRowsOnBattlefieldPtr are the two without
+// the receiver copy (#2113).
+func AbilityRowsOfPtr(c *Card) []AbilityRow { return abilityRowsOf(c, false) }
+
+func AbilityRowsOnBattlefieldPtr(c *Card) []AbilityRow { return abilityRowsOf(c, true) }
+
 func abilityRowsOf(c *Card, onBattlefield bool) []AbilityRow {
 	if c.faceDownPermanent() {
 		return nil
