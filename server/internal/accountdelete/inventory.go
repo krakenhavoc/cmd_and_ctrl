@@ -103,9 +103,9 @@ var Inventory = join(
 		"user_id", "slot", "playmat_id", "width", "height", "created_at"),
 
 	cols("table_blocks", NotPersonal, "which table refused to seat someone again; the game it belongs to",
-		"game_id", "created_at"),
-	cols("table_blocks", Deleted, "the rows whose subject is the person's account id or Discord id (a folded guest name names no account and stays)",
-		"kind", "subject"),
+		"game_id", "created_at", "entry_id"),
+	cols("table_blocks", Deleted, "every row of an entry that has a row whose subject is the person's account id or Discord id, so the display-name label and a spectator-session marker under the same entry go with it (a folded guest name names no account and stays)",
+		"kind", "subject", "label"),
 
 	cols("player_reports", Deleted, "every report the person filed or is the subject of, whole",
 		"id", "reporter_player_id", "reporter_user_id", "reporter_name",

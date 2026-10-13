@@ -52,7 +52,8 @@
   import Icon from "../lib/components/Icon.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
   import { canRemoveSeat, removeSeatConsequence, removeSeatQuestion } from "../lib/seatRemoval";
-  import { BLOCK_HINT, BLOCK_LABEL } from "../lib/moderation";
+  import { BLOCK_HINT, BLOCK_LABEL, canManageBlocks } from "../lib/moderation";
+  import BlockList from "../lib/components/BlockList.svelte";
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
@@ -332,6 +333,9 @@
   // a block is a second decision, not the default.
   let removeBlock = $state(false);
   let removeError = $state<{ gameID: string; message: string } | null>(null);
+  // Bumped after a removal, so a block list that is already on screen
+  // reads the new entry (#3113).
+  let blockRefresh = $state(0);
 
   function canRemove(g: GameMeta, p: SeatInfo): boolean {
     return canRemoveSeat(g, p, { isAdmin, mySeat: mySeat(g) });
@@ -343,6 +347,7 @@
     try {
       await removeSeat(gameID, playerID, { block: removeBlock });
       confirmRemove = null;
+      blockRefresh += 1;
       await refresh();
     } catch (err) {
       removeError = {
@@ -1322,6 +1327,13 @@
           {/if}
           {#if removeError?.gameID === g.id}
             <div class="bot-error">{removeError.message}</div>
+          {/if}
+
+          <!-- #3113: who this table has blocked, with an Unblock. The
+               host and the creator see it on a table that has not started;
+               an admin on any table. The server is the gate. -->
+          {#if canManageBlocks(g, { isAdmin, isHost: mySeat(g)?.is_host === true })}
+            <BlockList gameID={g.id} refreshKey={blockRefresh} />
           {/if}
 
           {#if botPickerFor === g.id}

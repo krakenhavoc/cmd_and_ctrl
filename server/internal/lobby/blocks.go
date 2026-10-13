@@ -24,15 +24,23 @@ package lobby
 //     "Alex" on Discord are not one person, and the account is the
 //     identity there.
 //
-// Blocks are per table, persisted with it (table_blocks, migration 0016)
-// and read back when the table is restored, so a restart does not lift
-// them. They leave with the table. There is no unblock: a block is made
-// by an act the host chose, at one table, and a mistake costs a new
-// invite or a new table, never a ban from the site.
+// Blocks are per table, persisted with it (table_blocks, migrations 0016
+// and 0017) and read back when the table is restored, so a restart does
+// not lift them. They leave with the table.
+//
+// THE LIST AND THE UNBLOCK (#3113). A block is one ENTRY: the rows one
+// removal wrote (an account and its Discord id are two rows, one entry),
+// shown by a label (an account's display name, a guest's folded name,
+// never a Discord id). The host and the creator may list and lift the
+// entries of a table that has not started; an admin may on any table.
+// That is the same authority split as removing a seat (seat_remove.go).
+// A mistake costs one click, not a new invite.
 
 import (
+	"cmp"
 	"errors"
 	"log/slog"
+	"sort"
 	"strings"
 	"time"
 
@@ -56,6 +64,44 @@ const (
 type blockKey struct {
 	kind    BlockKind
 	subject string
+}
+
+// blockInfo is what a blockKey carries beside its identity: the entry it
+// belongs to, how the list names it, and when it was made.
+type blockInfo struct {
+	entry string
+	label string
+	at    time.Time
+}
+
+// BlockEntry kinds, as the list reports them.
+const (
+	BlockEntryAccount = "account"
+	BlockEntryGuest   = "guest"
+)
+
+// BlockEntry is one line of a table's block list: a person the table
+// will not seat again.
+type BlockEntry struct {
+	// ID addresses the entry for the unblock.
+	ID string `json:"id"`
+	// Label is the account's display name, or the guest's folded name.
+	// Never a Discord id.
+	Label string `json:"label"`
+	// Kind is "account" or "guest", so the list can say what the block
+	// holds against and what it does not.
+	Kind      string `json:"kind"`
+	CreatedAt int64  `json:"created_at"` // Unix milliseconds
+}
+
+// blockLabelOf is how the block list names a seat: a signed-in person by
+// the name the table knew them by, a guest by the folded name the block
+// actually matches on. A Discord id is never a label.
+func blockLabelOf(s SeatInfo) string {
+	if s.UserID != "" || s.DiscordID != "" {
+		return cmp.Or(s.DisplayName, s.Name)
+	}
+	return moderation.Key(s.Name)
 }
 
 // blockKeysOf lists the identities a seat can be blocked by.
@@ -100,25 +146,31 @@ func (e *gameEntry) blockedLocked(userID uuid.UUID, discordID, name string) bool
 	return false
 }
 
-// addBlocksLocked remembers keys on the entry and writes them. A failed
-// write is logged and the block still holds for the life of the process:
-// the host asked for it, and refusing the removal over a database error
-// would leave the person seated.
-func (l *Lobby) addBlocksLocked(entry *gameEntry, keys []blockKey) {
+// addBlocksLocked remembers keys on the entry as ONE block entry named
+// label, and writes them. A failed write is logged and the block still holds
+// for the life of the process: the host asked for it, and refusing the
+// removal over a database error would leave the person seated.
+func (l *Lobby) addBlocksLocked(entry *gameEntry, keys []blockKey, label string) {
 	if len(keys) == 0 {
 		return
 	}
 	if entry.blocks == nil {
-		entry.blocks = make(map[blockKey]struct{}, len(keys))
+		entry.blocks = make(map[blockKey]blockInfo, len(keys))
 	}
-	now := time.Now().UTC()
+	now := time.Now().UTC().Truncate(time.Millisecond)
+	entryID := uuid.NewString()
 	for _, k := range keys {
-		entry.blocks[k] = struct{}{}
+		lbl := label
+		if k.kind == BlockSpectator {
+			lbl = "" // a session marker names no one
+		}
+		entry.blocks[k] = blockInfo{entry: entryID, label: lbl, at: now}
 		if entry.practice {
 			continue
 		}
 		ctx, cancel := storeCtx()
-		err := l.store.AddBlock(ctx, entry.meta.ID, BlockRecord{Kind: k.kind, Subject: k.subject, CreatedAt: now})
+		err := l.store.AddBlock(ctx, entry.meta.ID,
+			BlockRecord{Kind: k.kind, Subject: k.subject, EntryID: entryID, Label: lbl, CreatedAt: now})
 		cancel()
 		if err != nil {
 			slog.Default().Warn("persist table block failed", "game_id", entry.meta.ID, "kind", k.kind, "err", err)
@@ -127,7 +179,7 @@ func (l *Lobby) addBlocksLocked(entry *gameEntry, keys []blockKey) {
 }
 
 // loadBlocks reads a table's blocks back at restore.
-func (l *Lobby) loadBlocks(id uuid.UUID) map[blockKey]struct{} {
+func (l *Lobby) loadBlocks(id uuid.UUID) map[blockKey]blockInfo {
 	ctx, cancel := storeCtx()
 	defer cancel()
 	recs, err := l.store.Blocks(ctx, id)
@@ -138,11 +190,98 @@ func (l *Lobby) loadBlocks(id uuid.UUID) map[blockKey]struct{} {
 	if len(recs) == 0 {
 		return nil
 	}
-	out := make(map[blockKey]struct{}, len(recs))
+	out := make(map[blockKey]blockInfo, len(recs))
 	for _, r := range recs {
-		out[blockKey{r.Kind, r.Subject}] = struct{}{}
+		out[blockKey{r.Kind, r.Subject}] = blockInfo{entry: r.EntryID, label: r.Label, at: r.CreatedAt}
 	}
 	return out
+}
+
+// ErrBlockNotFound is the unblock of an entry the table does not have.
+var ErrBlockNotFound = errors.New("lobby: no such block at this table")
+
+// BlockList is a table's block entries, oldest first. An entry that is
+// only a spectator session marker (a removal without "also block", or of
+// a guest with no name to match) is not listed: it names no one and there
+// is nothing for a host to lift. The caller is authorised at the HTTP
+// layer.
+func (l *Lobby) BlockList(id uuid.UUID) ([]BlockEntry, error) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	if !ok {
+		return nil, ErrGameNotFound
+	}
+	byID := map[string]*BlockEntry{}
+	var order []string
+	for k, info := range entry.blocks {
+		if k.kind == BlockSpectator {
+			continue
+		}
+		e := byID[info.entry]
+		if e == nil {
+			e = &BlockEntry{ID: info.entry, Kind: BlockEntryGuest, CreatedAt: info.at.UnixMilli()}
+			byID[info.entry] = e
+			order = append(order, info.entry)
+		}
+		if k.kind == BlockUser || k.kind == BlockDiscord {
+			e.Kind = BlockEntryAccount
+		}
+		if e.Label == "" || (k.kind == BlockUser && info.label != "") {
+			e.Label = info.label
+		}
+		if ms := info.at.UnixMilli(); ms < e.CreatedAt {
+			e.CreatedAt = ms
+		}
+	}
+	out := make([]BlockEntry, 0, len(order))
+	for _, o := range order {
+		out = append(out, *byID[o])
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].CreatedAt != out[j].CreatedAt {
+			return out[i].CreatedAt < out[j].CreatedAt
+		}
+		return out[i].ID < out[j].ID
+	})
+	return out, nil
+}
+
+// Unblock lifts one block entry: the person can take a seat (or
+// spectate) at this table again. It removes the entry's spectator-session
+// marker too, so a session the table killed with the entry works again.
+// ErrBlockNotFound when the table has no such entry. The caller is
+// authorised at the HTTP layer.
+func (l *Lobby) Unblock(id uuid.UUID, entryID string) error {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	entry, ok := l.games[id]
+	if !ok {
+		return ErrGameNotFound
+	}
+	var keys []blockKey
+	for k, info := range entry.blocks {
+		if info.entry == entryID && entryID != "" {
+			keys = append(keys, k)
+		}
+	}
+	if len(keys) == 0 {
+		return ErrBlockNotFound
+	}
+	// The store first: a failed delete must not leave the table
+	// believing a block is lifted that a restart would bring back.
+	if !entry.practice {
+		ctx, cancel := storeCtx()
+		_, err := l.store.DeleteBlockEntry(ctx, id, entryID)
+		cancel()
+		if err != nil {
+			return err
+		}
+	}
+	for _, k := range keys {
+		delete(entry.blocks, k)
+	}
+	return nil
 }
 
 // BlockCount is how many identities the table has blocked, for tests and
@@ -186,9 +325,22 @@ func (l *Lobby) forgetBlocksOf(userID uuid.UUID, discordID string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	for _, e := range l.games {
-		delete(e.blocks, blockKey{BlockUser, userID.String()})
-		if discordID != "" {
-			delete(e.blocks, blockKey{BlockDiscord, discordID})
+		// The store deletes whole entries (accountdelete): the label is
+		// the person's name, and a spectator marker under the same entry
+		// goes with it. The in-memory copy does the same.
+		gone := map[string]bool{}
+		for _, k := range []blockKey{{BlockUser, userID.String()}, {BlockDiscord, discordID}} {
+			if k.subject == "" {
+				continue
+			}
+			if info, ok := e.blocks[k]; ok {
+				gone[info.entry] = true
+			}
+		}
+		for k, info := range e.blocks {
+			if gone[info.entry] {
+				delete(e.blocks, k)
+			}
 		}
 	}
 }

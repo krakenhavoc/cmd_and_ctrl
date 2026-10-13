@@ -609,6 +609,7 @@ func main() {
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
 		SeatEvictor:       hub,
+		SpectatorHub:      hub,
 		AdminSockets:      hub,
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,

@@ -394,7 +394,7 @@ type gameEntry struct {
 
 	// blocks are the identities this table will not seat again (blocks.go,
 	// table_blocks). Guarded by l.mu like meta.
-	blocks map[blockKey]struct{}
+	blocks map[blockKey]blockInfo
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -925,6 +925,15 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 // (lobby, active, ended) — there's no analogue to ErrGameStarted /
 // ErrGameFull. Added in S11.
 func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
+	return l.SpectateAs(id, invite, uuid.Nil, "", "")
+}
+
+// SpectateAs is Spectate for a caller whose identity is known: it also
+// refuses (ErrBlockedFromWatching) a person the table has removed and
+// blocked (#3113). userID is uuid.Nil for a guest and discordID is ""
+// without a Discord identity; name is the label they are watching under,
+// which only a guest's block matches on.
+func (l *Lobby) SpectateAs(id uuid.UUID, invite string, userID uuid.UUID, discordID, name string) (GameMeta, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -938,6 +947,9 @@ func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
 		return GameMeta{}, err
 	} else if rec.Kind != InviteSpectator {
 		return GameMeta{}, ErrInvalidInvite
+	}
+	if entry.blockedLocked(userID, discordID, name) {
+		return GameMeta{}, ErrBlockedFromWatching
 	}
 	return copyMeta(entry.meta), nil
 }

@@ -22,10 +22,12 @@ package lobby
 // filed, the list is capped at ReportMaxRows (oldest first), and account
 // deletion removes the reports a person filed or is the subject of.
 //
-// Not reportable: a bot (nobody typed its name or its lines), the
-// reporter's own seat, and a spectator, who has no seat to name. A
-// spectator who abuses chat is dealt with by rotating the spectator
-// invite or, for an operator, closing the table.
+// Not reportable: a bot (nobody typed its name or its lines) and the
+// reporter's own seat. A SPECTATOR is reportable since #3113 (spectators.go):
+// the request names "spectator_id" in place of "player_id", the report
+// goes through the same limit into the same list, and the admin reads the
+// reported line as "<name> (spectator)". The spectator must have a socket
+// open at the table when the report is filed.
 
 import (
 	"context"
@@ -39,6 +41,7 @@ import (
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
 const (
@@ -75,7 +78,10 @@ type ReportInput struct {
 	GameID           uuid.UUID
 	ReporterPlayerID uuid.UUID
 	ReportedPlayerID uuid.UUID
-	Reason           string
+	// ReportedSpectator, when set, is the reported party in place of
+	// ReportedPlayerID: a spectator the hub reports as watching (#3113).
+	ReportedSpectator *ws.LiveSpectator
+	Reason            string
 }
 
 // FileReport stores a report and returns it. The reporter must hold a
@@ -88,7 +94,7 @@ func (l *Lobby) FileReport(in ReportInput) (ReportRecord, error) {
 	if r := []rune(reason); len(r) > MaxReportReasonLen {
 		reason = string(r[:MaxReportReasonLen])
 	}
-	if in.ReporterPlayerID == in.ReportedPlayerID {
+	if in.ReportedSpectator == nil && in.ReporterPlayerID == in.ReportedPlayerID {
 		return ReportRecord{}, ErrReportSelf
 	}
 
@@ -99,7 +105,13 @@ func (l *Lobby) FileReport(in ReportInput) (ReportRecord, error) {
 		return ReportRecord{}, ErrGameNotFound
 	}
 	reporter, rok := findSeat(entry.meta.Players, in.ReporterPlayerID)
-	reported, tok := findSeat(entry.meta.Players, in.ReportedPlayerID)
+	var (
+		reported SeatInfo
+		tok      bool
+	)
+	if in.ReportedSpectator == nil {
+		reported, tok = findSeat(entry.meta.Players, in.ReportedPlayerID)
+	}
 	name, room := entry.meta.Name, entry.room
 	removed := rok && room.Game.SeatRemoved(reporter.PlayerID)
 	l.mu.Unlock()
@@ -107,7 +119,7 @@ func (l *Lobby) FileReport(in ReportInput) (ReportRecord, error) {
 	if !rok || removed {
 		return ReportRecord{}, ErrPlayerNotInGame
 	}
-	if !tok || reported.IsBot {
+	if in.ReportedSpectator == nil && (!tok || reported.IsBot) {
 		return ReportRecord{}, ErrReportTarget
 	}
 
@@ -128,6 +140,9 @@ func (l *Lobby) FileReport(in ReportInput) (ReportRecord, error) {
 		ReportedName:     reported.Name,
 		Reason:           reason,
 		Excerpt:          excerpt,
+	}
+	if in.ReportedSpectator != nil {
+		rec.ReportedPlayerID, rec.ReportedUserID, rec.ReportedName = reportedSpectator(*in.ReportedSpectator)
 	}
 	ctx, cancel := storeCtx()
 	defer cancel()
@@ -197,8 +212,11 @@ func RunReportSweeper(ctx context.Context, l *Lobby, log *slog.Logger, interval 
 // --- HTTP ---------------------------------------------------------------
 
 type reportRequest struct {
-	PlayerID string `json:"player_id"`
-	Reason   string `json:"reason"`
+	// PlayerID is the reported seat's player id. SpectatorID names a
+	// spectator instead (GET /games/{id}/spectators); exactly one is set.
+	PlayerID    string `json:"player_id,omitempty"`
+	SpectatorID string `json:"spectator_id,omitempty"`
+	Reason      string `json:"reason"`
 }
 
 type reportFiled struct {
@@ -211,6 +229,7 @@ type reportFiled struct {
 //	403  the caller does not hold a seat at this table
 //	404  no such table
 //	400  no reason, or a malformed player id
+//	404  the reported spectator is not watching this table
 //	422  your own seat, a bot, or a player who is not at this table
 //	429  too many reports (per reporter; see the route's limiter)
 //	201  {"id": "<report id>"}
@@ -232,16 +251,31 @@ func reportPlayer(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-	target, err := uuid.Parse(body.PlayerID)
-	if err != nil {
-		return httpError(http.StatusBadRequest, "player_id must be a seat's player id")
+	in := ReportInput{GameID: id, ReporterPlayerID: p.PlayerID, Reason: body.Reason}
+	switch {
+	case body.SpectatorID != "" && body.PlayerID != "":
+		return httpError(http.StatusBadRequest, "name a player_id or a spectator_id, not both")
+	case body.SpectatorID != "":
+		specID, perr := uuid.Parse(body.SpectatorID)
+		if perr != nil {
+			return httpError(http.StatusBadRequest, "spectator_id must be a spectator's id")
+		}
+		if c.SpectatorHub == nil {
+			return ErrNoSpectatorHub
+		}
+		who, found := findSpectator(c.SpectatorHub.Spectators(id), specID)
+		if !found {
+			return httpError(http.StatusNotFound, ErrSpectatorNotWatching.Error())
+		}
+		in.ReportedSpectator = &who
+	default:
+		target, perr := uuid.Parse(body.PlayerID)
+		if perr != nil {
+			return httpError(http.StatusBadRequest, "player_id must be a seat's player id")
+		}
+		in.ReportedPlayerID = target
 	}
-	rec, err := c.Lobby.FileReport(ReportInput{
-		GameID:           id,
-		ReporterPlayerID: p.PlayerID,
-		ReportedPlayerID: target,
-		Reason:           body.Reason,
-	})
+	rec, err := c.Lobby.FileReport(in)
 	if err != nil {
 		return err
 	}

@@ -183,7 +183,7 @@ func (l *Lobby) RemoveSeatBlocking(id, playerID uuid.UUID, block bool) (GameMeta
 		return GameMeta{}, err
 	}
 	if block {
-		l.addBlocksLocked(entry, blockKeysOf(entry.meta.Players[idx]))
+		l.addBlocksLocked(entry, blockKeysOf(entry.meta.Players[idx]), blockLabelOf(entry.meta.Players[idx]))
 	}
 	entry.meta.Players = append(entry.meta.Players[:idx], entry.meta.Players[idx+1:]...)
 	for i := range entry.meta.Players {
@@ -245,7 +245,7 @@ func (l *Lobby) RemoveStartedSeatBlocking(id, playerID uuid.UUID, block bool) (G
 		return GameMeta{}, err
 	}
 	if block {
-		l.addBlocksLocked(entry, blockKeysOf(seat))
+		l.addBlocksLocked(entry, blockKeysOf(seat), blockLabelOf(seat))
 	}
 	if l.broadcast != nil {
 		b := l.broadcast

@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -126,6 +127,16 @@ type Binding struct {
 	ReadOnly bool
 	UserID   uuid.UUID
 	IssuedAt time.Time
+	// SpectatorID, SpectatorName and DiscordID describe the spectator
+	// session behind a read-only connection (#3113), so the table can
+	// list who is watching and the lobby can report, remove or block
+	// one. Zero / empty for everything that is not a spectator session.
+	// SpectatorName is the label the spectator gave or signed in with;
+	// DiscordID is their Discord snowflake when signed in, used to block
+	// them and never sent to a client.
+	SpectatorID   uuid.UUID
+	SpectatorName string
+	DiscordID     string
 	// Admin marks a connection authenticated as an admin: the shared
 	// token, or a signed-in person on the admin allowlist (ADR 0110 §3,
 	// lobby.WSAuthorizer decides). An admin may bind to a player's
@@ -524,6 +535,10 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		admin:    binding.Admin,
 		userID:   binding.UserID,
 		issuedAt: binding.IssuedAt,
+
+		spectatorID:   binding.SpectatorID,
+		spectatorName: binding.SpectatorName,
+		discordID:     binding.DiscordID,
 	}
 
 	// Pre-stage the initial snapshot into the client's send channel
@@ -887,6 +902,12 @@ type Client struct {
 	userID   uuid.UUID
 	issuedAt time.Time
 
+	// spectatorID, spectatorName and discordID are Binding's, kept for
+	// Spectators and EvictSpectator (#3113).
+	spectatorID   uuid.UUID
+	spectatorName string
+	discordID     string
+
 	// connectedAt is when the hub admitted the connection (admit,
 	// under h.mu), for the admin views' Live now (ADR 0124 §5). Read
 	// only by LiveSockets, under the hub's read lock.
@@ -917,6 +938,10 @@ func (c *Client) binding() Binding {
 		Admin:    c.admin,
 		UserID:   c.userID,
 		IssuedAt: c.issuedAt,
+
+		SpectatorID:   c.spectatorID,
+		SpectatorName: c.spectatorName,
+		DiscordID:     c.discordID,
 	}
 }
 
@@ -1724,6 +1749,91 @@ func (h *Hub) EvictSeat(gameID, playerID uuid.UUID) int {
 	victims := make([]*Client, 0)
 	for c := range h.clients {
 		if c.gameID == gameID && c.playerID == playerID && !c.admin {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SeatRemovedReason),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
+// LiveSpectator is one spectator session with a socket open at a table,
+// as the lobby's moderation routes read it (#3113).
+type LiveSpectator struct {
+	// ID is the session's Principal.SpectatorID.
+	ID uuid.UUID
+	// Name is the label the spectator gave, or their Discord display
+	// name when signed in. "" for a guest who gave none.
+	Name string
+	// UserID and DiscordID are set for a signed-in spectator. They are
+	// what a block holds against; neither is ever sent to a client.
+	UserID    uuid.UUID
+	DiscordID string
+	// Since is when the session's first socket here connected.
+	Since time.Time
+}
+
+// Spectators lists the spectator sessions with a live socket at gameID,
+// oldest first, one entry per session however many tabs it has open. An
+// admin's socket is never listed: an admin is not a spectator of the
+// table, and cannot be removed from it. A spectator session minted before
+// SpectatorID existed has no id and is left out, because nothing could
+// address it.
+func (h *Hub) Spectators(gameID uuid.UUID) []LiveSpectator {
+	if gameID == uuid.Nil {
+		return nil
+	}
+	h.mu.RLock()
+	seen := map[uuid.UUID]int{}
+	var out []LiveSpectator
+	for c := range h.clients {
+		if c.gameID != gameID || c.playerID != uuid.Nil || !c.readOnly || c.admin || c.spectatorID == uuid.Nil {
+			continue
+		}
+		if i, ok := seen[c.spectatorID]; ok {
+			if c.connectedAt.Before(out[i].Since) {
+				out[i].Since = c.connectedAt
+			}
+			continue
+		}
+		seen[c.spectatorID] = len(out)
+		out = append(out, LiveSpectator{
+			ID: c.spectatorID, Name: c.spectatorName,
+			UserID: c.userID, DiscordID: c.discordID, Since: c.connectedAt,
+		})
+	}
+	h.mu.RUnlock()
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].Since.Equal(out[j].Since) {
+			return out[i].Since.Before(out[j].Since)
+		}
+		return out[i].ID.String() < out[j].ID.String()
+	})
+	return out
+}
+
+// EvictSpectator closes every socket of one spectator session at gameID
+// with close code 1000 and SeatRemovedReason, and returns how many it
+// closed. The client treats the reason as it does a removed seat's: 1000
+// is terminal, and the removed-notice shows. The lobby calls it after the
+// host, the creator or an admin removes a spectator (#3113); the session
+// itself is refused from then on (auth.WithSeatCheck).
+func (h *Hub) EvictSpectator(gameID, spectatorID uuid.UUID) int {
+	if gameID == uuid.Nil || spectatorID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.gameID == gameID && c.spectatorID == spectatorID && !c.admin {
 			victims = append(victims, c)
 		}
 	}

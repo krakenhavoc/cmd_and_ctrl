@@ -44,10 +44,11 @@ func newSeatRemoveStack(t *testing.T) *seatRemoveStack {
 	l.SetStateBroadcaster(hub)
 	mux := http.NewServeMux()
 	mux.Handle("/", Handler(Config{
-		Lobby:       l,
-		Auth:        a,
-		AdminToken:  "shared-admin-token",
-		SeatEvictor: hub,
+		Lobby:        l,
+		Auth:         a,
+		AdminToken:   "shared-admin-token",
+		SeatEvictor:  hub,
+		SpectatorHub: hub,
 	}))
 	mux.HandleFunc("GET /ws", hub.ServeWS)
 	srv := httptest.NewServer(mux)

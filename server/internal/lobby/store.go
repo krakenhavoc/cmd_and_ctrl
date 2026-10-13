@@ -212,6 +212,9 @@ type Store interface {
 	AddBlock(ctx context.Context, gameID uuid.UUID, b BlockRecord) error
 	// Blocks lists a table's blocks, oldest first.
 	Blocks(ctx context.Context, gameID uuid.UUID) ([]BlockRecord, error)
+	// DeleteBlockEntry removes every row of one removal's entry (the
+	// unblock, #3113) and returns how many it removed.
+	DeleteBlockEntry(ctx context.Context, gameID uuid.UUID, entryID string) (int, error)
 	// AddReport stores a player report (migration 0016, #2984).
 	AddReport(ctx context.Context, r ReportRecord) error
 	// Reports lists every stored report, newest first.

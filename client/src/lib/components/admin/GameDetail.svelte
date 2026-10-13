@@ -20,6 +20,7 @@
   } from "../../adminViews";
   import { LobbyApiError } from "../../session";
   import Icon from "../Icon.svelte";
+  import BlockList from "../BlockList.svelte";
   import AccountLink from "./AccountLink.svelte";
   import RelTime from "./RelTime.svelte";
   import SeatList from "./SeatList.svelte";
@@ -197,6 +198,12 @@
       <h3>Seats</h3>
       <SeatList seats={g.seats} {now} winnerSeat={g.winner_seat} label="seats" />
     </div>
+
+    <!-- #3113: who this table has blocked, and the unblock. Any state:
+         the admin's alone once the table has started. A table the lobby
+         no longer holds has no list to read, and the component says
+         nothing for it. -->
+    <BlockList gameID={g.id} showEmpty />
 
     {#if g.connections}
       <div class="card">

@@ -197,6 +197,11 @@ type Config struct {
 	// reason ws.SeatRemovedReason. Nil leaves them up until they next
 	// reconnect, when the upgrade is refused.
 	SeatEvictor SeatEvictor
+	// SpectatorHub lists who is watching a table and closes the sockets
+	// of a spectator the host, the creator or an admin removed (#3113),
+	// with close reason ws.SeatRemovedReason. Nil: the spectator routes
+	// list nobody and refuse a removal with 503.
+	SpectatorHub SpectatorHub
 
 	// AdminViews is the admin views' read-only store (ADR 0124 §5),
 	// behind GET /admin/users, /admin/users/{id}, /admin/games and
@@ -335,6 +340,10 @@ type GameEvictor interface {
 //	POST /games/{id}/setup  — signed in, host / creator / admin: apply the caller's last setup
 //	POST /games/{id}/archive — admin: retire the table from the listing
 //	DELETE /games/{id}/archive — admin: put it back
+//	GET  /games/{id}/blocks — host / creator / admin: who this table has blocked
+//	DELETE /games/{id}/blocks/{block_id} — the same: lift one block
+//	GET  /games/{id}/spectators — a seat / host / creator / admin: who is watching
+//	DELETE /games/{id}/spectators/{spectator} — host / creator / admin: remove one (?block=true)
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
@@ -588,6 +597,12 @@ func Handler(c Config) http.Handler {
 	// seat from an unstarted table; an admin alone from a started game, by
 	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// #3113: the block list and the unblock (blocks_http.go), and
+	// spectators: who is watching, and removing one (spectators.go).
+	mux.Handle("GET /games/{id}/blocks", auth.Middleware(c.Auth)(handlerFunc(c, listBlocks)))
+	mux.Handle("DELETE /games/{id}/blocks/{block_id}", auth.Middleware(c.Auth)(handlerFunc(c, unblock)))
+	mux.Handle("GET /games/{id}/spectators", auth.Middleware(c.Auth)(handlerFunc(c, listSpectators)))
+	mux.Handle("DELETE /games/{id}/spectators/{spectator}", auth.Middleware(c.Auth)(handlerFunc(c, removeSpectator)))
 	// #2984: "report player". A seat at the table files it; it goes to
 	// the admin Reports list (reports.go). One report per five minutes
 	// per reporter, burst of three: a person has a few real complaints
@@ -1511,11 +1526,6 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 		return capacity.ErrServerFull
 	}
 
-	meta, err := c.Lobby.Spectate(id, body.InviteToken)
-	if err != nil {
-		return err
-	}
-
 	// A signed-in person who watches stays signed in (ADR 0110 §1
 	// item 2): the spectator session carries their user and Discord
 	// identity, so /me/* keeps working, a revocation reaches the
@@ -1525,12 +1535,21 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	identity, source := signedInIdentity(c, r)
 	p := auth.Principal{
 		Role:   auth.RoleSpectator,
-		GameID: meta.ID,
+		GameID: id,
 		Name:   trimToLimit(body.Name, 40),
+		// One id per session (#3113): what lets the table report, remove
+		// or block this spectator, who holds no seat.
+		SpectatorID: uuid.New(),
 	}
 	if source != nil {
 		p.UserID = source.UserID
 		p = withIdentity(p, identity)
+	}
+	// A table that removed-and-blocked this person (as a seat or as a
+	// spectator) does not let them watch either (#3113).
+	meta, err := c.Lobby.SpectateAs(id, body.InviteToken, p.UserID, p.DiscordID, p.Name)
+	if err != nil {
+		return err
 	}
 	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
@@ -3998,7 +4017,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrBlockedFromTable):
+	case errors.Is(err, ErrBlockedFromTable), errors.Is(err, ErrBlockedFromWatching):
 		// 403 with the stable code the join page matches (#2984).
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusForbidden)
@@ -4018,6 +4037,10 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrReportReasonEmpty):
 		status = http.StatusBadRequest
+	case errors.Is(err, ErrSpectatorNotWatching), errors.Is(err, ErrBlockNotFound):
+		status = http.StatusNotFound
+	case errors.Is(err, ErrNoSpectatorHub):
+		status = http.StatusServiceUnavailable
 	// ADR 0075 §2.3, the two halves of a refused settings patch. A
 	// value outside its range is a malformed request (400); a
 	// starting-life change after Start is a well-formed request the

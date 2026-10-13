@@ -14,6 +14,7 @@
 
 import type { HandSort } from "./handOrder";
 import { L } from "./labels";
+import type { SpectatorLine } from "./api";
 import type { ReportTarget } from "./moderation";
 
 export interface GameMenuOptions {
@@ -89,7 +90,21 @@ export interface GameMenuOptions {
   reportTargets?: ReportTarget[];
   // Sends the report; rejects with the server's refusal, which the form
   // shows (lib/moderation.ts reportErrorMessage).
-  onReport?: (playerID: string, reason: string) => Promise<void>;
+  // A report against a spectator passes "spectator" as the third
+  // argument (#3113); a seat's report passes two.
+  onReport?: (targetID: string, reason: string, kind?: "spectator") => Promise<void>;
+  // #3113: who is watching. Reads GET /games/{id}/spectators when the
+  // report form or the Spectators panel opens. Absent hides both the
+  // spectators in the report form and the panel.
+  loadSpectators?: () => Promise<SpectatorLine[]>;
+  // The panel's remove buttons: the table host and admins (the server
+  // lets the creator too, but only a seated viewer has this menu). Any
+  // game state; a spectator is not in the game.
+  canRemoveSpectators?: boolean;
+  onRemoveSpectator?: (
+    spectatorID: string,
+    block: boolean,
+  ) => Promise<{ blocked: boolean; spectators: SpectatorLine[] }>;
   // Called once the confirm is accepted. Concede is irreversible.
   onConcede: () => void;
   onStartVote: (topic: string, options: string[]) => void;

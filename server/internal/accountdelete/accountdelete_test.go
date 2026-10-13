@@ -205,11 +205,17 @@ func seed(t *testing.T) fixture {
 			VALUES (?, 1, ?, 'Friday pod', ?, ?, 'A', ?, ?, 'B', 'rude', '[]')`,
 			r.id, f.endedGame.String(), uuid.NewString(), r.by, uuid.NewString(), r.about)
 	}
-	for _, b := range []struct{ kind, subject string }{
-		{"user", f.user.String()}, {"discord", userSubject}, {"name", "bob"},
-		{"user", f.other.String()}, {"discord", otherSubject},
+	// One removal is one entry (migration 0017): the deleted person's
+	// account and Discord id share "e-user" with the display-name label,
+	// and a spectator-session marker rides under it; a guest's name and
+	// the other person's pair are entries of their own.
+	for _, b := range []struct{ kind, subject, entry, label string }{
+		{"user", f.user.String(), "e-user", "Alice"}, {"discord", userSubject, "e-user", "Alice"},
+		{"spectator", "sess-1", "e-user", ""}, {"name", "bob", "e-bob", "bob"},
+		{"user", f.other.String(), "e-other", "Zed"}, {"discord", otherSubject, "e-other", "Zed"},
 	} {
-		exec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at) VALUES (?, ?, ?, 1)`, f.endedGame.String(), b.kind, b.subject)
+		exec(t, d, `INSERT INTO table_blocks (game_id, kind, subject, created_at, entry_id, label) VALUES (?, ?, ?, 1, ?, ?)`,
+			f.endedGame.String(), b.kind, b.subject, b.entry, b.label)
 	}
 	return f
 }
@@ -277,6 +283,9 @@ func TestDeleteRemovesOrAnonymisesEveryTable(t *testing.T) {
 	}
 	if n := count(t, f.d, `SELECT COUNT(*) FROM table_blocks`); n != 3 {
 		t.Errorf("table_blocks = %d, want the name block and the other person's two", n)
+	}
+	if n := count(t, f.d, `SELECT COUNT(*) FROM table_blocks WHERE entry_id = 'e-user' OR label = 'Alice'`); n != 0 {
+		t.Errorf("%d rows of the deleted person's block entry remain (their display-name label, or the spectator marker under it)", n)
 	}
 
 	// The tombstone.

@@ -34,7 +34,7 @@ export const CONTACT_TEXT = "see the project's GitHub";
  * cannot ship without someone reading this page again (ADR 0149 §6).
  * Bump it when you have.
  */
-export const PRIVACY_SCHEMA_VERSION = 16;
+export const PRIVACY_SCHEMA_VERSION = 17;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

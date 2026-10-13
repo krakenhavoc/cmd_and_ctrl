@@ -59,6 +59,8 @@ export const REPORT_SENT = "Report sent. Thank you.";
 export interface ReportTarget {
   id: string;
   name: string;
+  /** A spectator (#3113) rather than a seat. Absent means a seat. */
+  kind?: "seat" | "spectator";
 }
 
 interface ReportableSeat {
@@ -96,4 +98,86 @@ export function reportErrorMessage(err: unknown): string {
     return err.message;
   }
   return "Couldn't send the report. Try again.";
+}
+
+// --- spectators (#3113) -------------------------------------------------
+
+interface WatchingLine {
+  id: string;
+  name: string;
+}
+
+/** spectatorTargets: the people watching, as report targets. */
+export function spectatorTargets(lines: readonly WatchingLine[]): ReportTarget[] {
+  return lines.map((s) => ({ id: s.id, name: s.name, kind: "spectator" as const }));
+}
+
+export const SPECTATORS_MENU_LABEL = "Who's watching…";
+export const SPECTATORS_TITLE = "Spectators";
+export const SPECTATORS_EMPTY = "Nobody is watching right now.";
+export const SPECTATORS_HINT =
+  "Removing a spectator ends their session at this table and closes their screen. They can come back through the spectator link unless you also block them. " +
+  "A signed-in spectator is blocked by their account. A guest is blocked by the name they gave, so a guest with no name cannot be blocked: mint a new spectator link instead.";
+export const REMOVE_SPECTATOR_LABEL = "Remove";
+export const BLOCK_SPECTATOR_LABEL = "Remove and block";
+export const SPECTATOR_NO_NAME_NOTE =
+  "Removed. This guest gave no name, so there was nothing to block; mint a new spectator link to keep them out.";
+export const SPECTATOR_REMOVED_NOTE = "Removed.";
+export const SPECTATOR_BLOCKED_NOTE = "Removed and blocked from this table.";
+export const REPORT_SPECTATORS_GROUP = "Spectators";
+export const REPORT_SEATS_GROUP = "Players";
+
+/** The sentence for a failed spectator removal. */
+export function spectatorErrorMessage(err: unknown): string {
+  if (err instanceof LobbyApiError) {
+    if (err.status === 404) return "That spectator isn't watching any more.";
+    return err.message;
+  }
+  return "Couldn't remove the spectator. Try again.";
+}
+
+// --- the block list and the unblock (#3113) -----------------------------
+
+export const BLOCK_LIST_TITLE = "Blocked from this table";
+export const BLOCK_LIST_EMPTY = "Nobody is blocked from this table.";
+export const UNBLOCK_LABEL = "Unblock";
+export const BLOCK_LIST_HINT =
+  "Unblocking lets that person take a seat, or watch, again if they still have an invite. " +
+  "An account block holds against the account. A guest block holds against the name only.";
+
+/** What a block entry holds against, in a few words, for its row. */
+export function blockKindLabel(kind: "account" | "guest"): string {
+  return kind === "account" ? "account" : "guest name";
+}
+
+export interface BlockViewer {
+  /** The viewer is an admin (shared token, or an allowlisted person in admin mode). */
+  isAdmin: boolean;
+  /** The viewer is the table's host: their seat carries is_host. */
+  isHost: boolean;
+}
+
+/**
+ * canManageBlocks reports whether the block list belongs on table `g` for
+ * this viewer. It mirrors the server's rule for removing a seat: the host,
+ * the creator or an admin on a table that has not started; an admin alone
+ * on any other. An ended or archived table offers the admin the list too,
+ * since a block outlives the game.
+ */
+export function canManageBlocks(
+  g: { state: string; is_creator?: boolean },
+  viewer: BlockViewer,
+): boolean {
+  if (viewer.isAdmin) return true;
+  if (g.state !== "lobby") return false;
+  return viewer.isHost || g.is_creator === true;
+}
+
+/** The sentence for a failed block-list read or unblock. */
+export function blockErrorMessage(err: unknown): string {
+  if (err instanceof LobbyApiError) {
+    if (err.status === 404) return "That block is already gone.";
+    return err.message;
+  }
+  return "Couldn't reach the server. Try again.";
 }
