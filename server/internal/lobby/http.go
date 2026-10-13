@@ -182,6 +182,11 @@ type Config struct {
 	// open. Nil leaves them up until they next reconnect, when the
 	// upgrade is refused.
 	SessionEvictor UserSessionEvictor
+	// SeatEvictor closes the sockets of a seat the host, the creator or
+	// an admin removed from an unstarted table (#2785), with close
+	// reason ws.SeatRemovedReason. Nil leaves them up until they next
+	// reconnect, when the upgrade is refused.
+	SeatEvictor SeatEvictor
 
 	// AdminViews is the admin views' read-only store (ADR 0124 §5),
 	// behind GET /admin/users, /admin/users/{id}, /admin/games and
@@ -541,6 +546,9 @@ func Handler(c Config) http.Handler {
 	// player already seated at the table.
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
+	// #2785: the host, the creator or an admin removes a human or agent
+	// seat from an unstarted table (seat_remove.go).
+	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
 	// The tutorial's practice table (ADR 0076 §2.2, practice_http.go).
 	// Any session may open one: that is what a tutorial is for. It
 	// installs two decklists, so it rides the deck bucket, and a
@@ -3881,9 +3889,9 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrNotTableManager), errors.Is(err, ErrNotInviteManager):
+	case errors.Is(err, ErrNotTableManager), errors.Is(err, ErrNotInviteManager), errors.Is(err, ErrNotSeatManager):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrHostIneligible):
+	case errors.Is(err, ErrHostIneligible), errors.Is(err, ErrCannotRemoveHost), errors.Is(err, ErrSeatIsBotRoute):
 		status = http.StatusUnprocessableEntity
 	// ADR 0075 §2.3, the two halves of a refused settings patch. A
 	// value outside its range is a malformed request (400); a
@@ -3912,6 +3920,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrInvalidCredential),
 		errors.Is(err, auth.ErrExpiredCredential),
 		errors.Is(err, auth.ErrRevokedCredential),
+		errors.Is(err, auth.ErrSeatRemoved),
 		errors.Is(err, auth.ErrUnknownPrincipal):
 		status = http.StatusUnauthorized
 	}

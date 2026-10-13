@@ -1634,6 +1634,46 @@ func (h *Hub) EvictGame(gameID uuid.UUID) int {
 	return len(victims)
 }
 
+// SeatRemovedReason is the close-frame reason EvictSeat sends, with
+// code 1000. The client matches on it to show "you were removed from
+// this table" instead of a silent disconnect (#2785), and 1000 is
+// terminal on the client (ADR 0044 decision 2): redialling would
+// present a session whose seat is gone and be refused.
+const SeatRemovedReason = "removed from table"
+
+// EvictSeat closes every player connection bound to (gameID, playerID)
+// with close code 1000 and SeatRemovedReason, and returns how many it
+// closed. The lobby calls it after the host, the creator or the admin
+// removes a seat from an unstarted table (#2785).
+//
+// Admin connections are left alone: an admin may be bound to the seat
+// as a viewer (?player=), that is not the seat holder's session, and
+// the admin did not lose anything. Cleanup is the same as EvictGame's:
+// close the socket and let the read pump's deferred unregister drain.
+func (h *Hub) EvictSeat(gameID, playerID uuid.UUID) int {
+	if gameID == uuid.Nil || playerID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.gameID == gameID && c.playerID == playerID && !c.admin {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SeatRemovedReason),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
 // SessionRevokedReason is the close-frame reason EvictUserSessions
 // sends, with code 1000. 1000 is terminal on the client (ADR 0044
 // decision 2), which is right: redialling would present the same

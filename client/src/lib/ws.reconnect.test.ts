@@ -9,7 +9,7 @@ import {
   isTerminalClose,
   withSessionToken,
 } from "./ws";
-import { session, type Session } from "./session";
+import { REMOVED_NOTICE, removedNotice, session, type Session } from "./session";
 import { REWIND_NOTICE } from "./connectionBanner";
 import { PROTOCOL_VERSION } from "./protocol";
 
@@ -407,6 +407,26 @@ describe("#518 — close 1000 stays terminal", () => {
     vi.advanceTimersByTime(LADDER_MS);
     expect(FakeSocket.opened).toHaveLength(1);
     expect(get(client.status)).toBe("disconnected");
+  });
+});
+
+describe('#2785 — close 1000 "removed from table"', () => {
+  it("is terminal and raises the removed notice", () => {
+    removedNotice.set("");
+    const { client, socket } = connected();
+    closeFrom(socket, CLOSE_NORMAL, "removed from table");
+
+    expect(get(removedNotice)).toBe(REMOVED_NOTICE);
+    expect(get(client.status)).toBe("disconnected");
+    vi.advanceTimersByTime(LADDER_MS);
+    expect(FakeSocket.opened).toHaveLength(1);
+  });
+
+  it("is not raised by any other terminal close", () => {
+    removedNotice.set("");
+    const { socket } = connected();
+    closeFrom(socket, CLOSE_NORMAL, "game deleted");
+    expect(get(removedNotice)).toBe("");
   });
 });
 

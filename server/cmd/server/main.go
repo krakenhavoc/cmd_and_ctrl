@@ -301,6 +301,10 @@ func main() {
 	if revocations != nil {
 		authenticator = auth.WithRevocation(authenticator, revocations)
 	}
+	// A seat the host, the creator or an admin removed from an unstarted
+	// table stops validating (#2785). Same placement rule as above: wrapped
+	// before anything takes a reference to authenticator.
+	authenticator = auth.WithSeatCheck(authenticator, l)
 	// Admin mode (ADR 0112 §2): an allowlisted person is an admin only
 	// while they have switched admin mode on, for 12 hours at a time.
 	// Loaded once here and written through on every switch. A failed
@@ -576,6 +580,7 @@ func main() {
 		Users:             userStore,
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
+		SeatEvictor:       hub,
 		AdminSockets:      hub,
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
