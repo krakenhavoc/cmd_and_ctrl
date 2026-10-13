@@ -80,8 +80,6 @@ export interface SnapshotStackItem {
   controller: string;
   source_card_id: string;
   label?: string;
-  // What the item targets (protocol.ts StackItemView.targets).
-  targets?: { kind: string; id: string }[];
 }
 
 export interface SnapshotTurn {
