@@ -13,10 +13,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // attack. With the commander looting every turn this is a slow but
 // inevitable clock on the whole table.
 //
-// Batching: the card reads "one or more cards… that
-// much damage", one trigger per batch. The engine emits one
-// EventDiscardCard per card, so a two-card discard deals 1 twice
-// rather than 2 once. Same total, two log lines.
+// Batching: the card reads "one or more cards… that much damage", one
+// trigger per batch. The engine emits one EventDiscardCard per card, so
+// the trigger waits for the discard to finish (AtBatchEnd,
+// ThatManyEvents) and deals the number of cards you discarded in that
+// batch to each opponent as ONE damage event: a two-card discard deals
+// 2 once, as printed.
 //
 // Cycling {1}{R} arrived with #660 and works: an activated ability
 // from hand (CR 702.29a) whose discard feeds the damage trigger above
@@ -33,16 +35,13 @@ func init() {
 	Register(Spec{
 		OracleID:     "900b9409-9c16-414d-8674-2ea42c2415a1",
 		Name:         "Magmakin Artillerist",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Discarding several cards at once deals the damage as separate 1s.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			TriggerWithPurpose(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			TriggerWithPurpose(withAtBatchEnd(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
-			}, "Magmakin Artillerist — 1 damage to each opponent", func(g *game.Game, item *game.StackItem) error {
-				return damageToEachOpponent(g, item, 1)
-			}), game.Purpose{DiscardPayoff: &game.DiscardPayoff{Any: true, DamageEachOpponent: 1}}),
+			}, "Magmakin Artillerist — that much damage to each opponent", func(g *game.Game, item *game.StackItem) error {
+				return damageToEachOpponent(g, item, settledEventAmount(item))
+			}), ThatManyEvents()), game.Purpose{DiscardPayoff: &game.DiscardPayoff{Any: true, DamageEachOpponent: 1}}),
 			InGraveyard(On(game.EventCycle, Self,
 				"Magmakin Artillerist — cycled: 1 damage to each opponent",
 				func(g *game.Game, item *game.StackItem) error {

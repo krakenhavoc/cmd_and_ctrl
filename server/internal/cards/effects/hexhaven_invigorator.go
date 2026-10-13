@@ -15,21 +15,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Limit = the damage, Optional so the player may decline the search (and
 // with it the shuffle), and the lands enter tapped.
 //
-// DECLARED SIMPLIFICATION, weaker than printed, the same one Ill-Tempered
-// Loner carries: the engine emits one damage event per SOURCE, so a
-// creature damaged by two blockers at once searches twice, once per
-// blocker's damage, where the printed card searches once for the total.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and searches once for the
+// TOTAL the creature was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	const label = "Hexhaven Invigorator — search for up to that many land cards, put them onto the battlefield tapped"
 	Register(Spec{
 		OracleID:        "12d617b1-c95b-4b1c-a586-ccfdf5898b03",
 		Name:            "Hexhaven Invigorator",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If two or more sources damage it at the same time, it searches once for each source's damage instead of once for the total."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			Key:     label,
+			Watches:    []game.EventKind{game.EventDealDamage},
+			Key:        label,
+			AtBatchEnd: ThatMuchDamage(),
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b35SelfWasDealtDamage(ev, source)
 			},

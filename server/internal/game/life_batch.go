@@ -62,6 +62,10 @@ type stagedBatchTrigger struct {
 	Event  Event
 	Source uuid.UUID
 	Key    string
+	// Group is the second dimension of the staging key: what the
+	// ability's total is taken over (batch_total.go). Empty for the
+	// life-loss reading, which asks one question of the whole batch.
+	Group string
 }
 
 // noteLifeLostLocked records n life lost by player in the live batch.
@@ -109,14 +113,14 @@ func cloneBatchLifeLossTotals(in batchLifeLossTotals) batchLifeLossTotals {
 // the batch settles. One entry per (source, key, batch): a second
 // matching event of the same batch adds nothing, because the question
 // is asked once, of the final totals. Caller must hold g.mu.
-func (g *Game) stageBatchEndTriggerLocked(ev Event, source uuid.UUID, key string) {
+func (g *Game) stageBatchEndTriggerLocked(ev Event, source uuid.UUID, key, group string) {
 	for _, s := range g.stagedBatchTriggers {
-		if s.Source == source && s.Key == key && s.Event.Batch == ev.Batch {
+		if s.Source == source && s.Key == key && s.Event.Batch == ev.Batch && s.Group == group {
 			return
 		}
 	}
 	g.stagedBatchTriggers = append(g.stagedBatchTriggers[:len(g.stagedBatchTriggers):len(g.stagedBatchTriggers)],
-		stagedBatchTrigger{Event: ev, Source: source, Key: key})
+		stagedBatchTrigger{Event: ev, Source: source, Key: key, Group: group})
 }
 
 // settleBatchEndTriggersLocked asks every staged ability whether its
@@ -151,7 +155,16 @@ func (g *Game) settleBatchEndTriggersLocked() {
 			if !t.AtBatchEnd.holds(&src, g) {
 				continue
 			}
-			pass := g.newHarvestPassLocked(s.Event)
+			ev := s.Event
+			if t.AtBatchEnd.Total != BatchTotalNone {
+				// batch_total.go: the settled event carries the total.
+				total := g.batchTotalLocked(&src, lki, t, s.Event)
+				if total <= 0 {
+					continue
+				}
+				ev.Amount = total
+			}
+			pass := g.newHarvestPassLocked(ev)
 			pass.settled = true
 			g.harvestMatchLocked(&pass, src, lki, t, triggerOfPermanent)
 		}
@@ -165,9 +178,18 @@ type BatchEndCondition struct {
 	// source's controller lost exactly this much life in the batch.
 	// Eliminated seats do not count.
 	OpponentLostExactly int
+
+	// Total, when set, makes the ability a "that much" / "that many"
+	// reading over the simultaneous events instead of a life question:
+	// it is dispatched once per group with the settled event's Amount
+	// rewritten to the total. See batch_total.go.
+	Total BatchTotal
 }
 
 func (c *BatchEndCondition) holds(source *Card, g *Game) bool {
+	if c.Total != BatchTotalNone {
+		return true // batchTotalLocked decides, with the totals in hand
+	}
 	if c.OpponentLostExactly > 0 {
 		for _, seat := range g.Seats {
 			if seat == nil || seat.Eliminated || seat.ID == source.Controller {

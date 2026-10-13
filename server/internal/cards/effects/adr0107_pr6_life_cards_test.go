@@ -242,6 +242,7 @@ func TestScreamingNemesisStopsLifeGainForTheRestOfTheGame(t *testing.T) {
 	g.WithWriteLock(func() {
 		g.EmitEvent(game.Event{Kind: game.EventDealDamage, Source: uuid.Nil, Target: nemesis, Amount: 2})
 	})
+	g.RunStateChecksForTest() // #3172: "dealt damage" triggers wait for the batch to settle
 	answerPickTargetPlayer(t, g, opp.ID)
 	passPriorityAroundTable(t, g)
 	if opp.Life != 38 {
@@ -254,8 +255,8 @@ func TestScreamingNemesisStopsLifeGainForTheRestOfTheGame(t *testing.T) {
 		t.Error("only the damaged player is covered")
 	}
 	spec, _ := Lookup(screamingNemesisOracle)
-	if len(spec.Caveats) != 1 {
-		t.Errorf("one caveat left (simultaneous damage), got %v", spec.Caveats)
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("Nemesis is full now, got %v %v", spec.Completeness, spec.Caveats)
 	}
 }
 

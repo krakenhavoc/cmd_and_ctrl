@@ -579,3 +579,28 @@ Four ship `full`: Glyph of Destruction (a CR 603.7 delayed trigger destroys the 
 ### What is still out
 
 - **Winter's Chill** moves to a new row, `x-capped-by-a-count` (#2581). Its "this combat" prevention is expressible now. "X can't be greater than the number of snow lands you control" is not: the engine bounds X only through a cost, so the card would cast for any X, stronger than printed.
+
+## Amendment 2026-10-13 — "that much" and "that many" read the simultaneous total (#3172, slice cav-d)
+
+Ten cards print "whenever this is dealt damage, … that much" (Repercussion, Barbed Servitor, Brash Taunter, Hexhaven Invigorator, Screaming Nemesis, Ill-Tempered Loner and Howlpack Avenger, Wrathful Red Dragon, Wrathful Raptors, Pain for All) and three print "whenever you … one or more …, … that many" (Cryptcaller Chariot, Magmakin Artillerist, Ingenious Artillerist). The engine emits one event per damage source, per discarded card and per entering permanent, so each of them fired once per event: a creature double-blocked fired twice with two target picks, and a per-hit damage booster counted every hit. All thirteen carried the caveat.
+
+### The rules
+
+- **CR 120.3, CR 510.2:** damage that is dealt at the same time is one event; "all combat damage that's been assigned is dealt simultaneously."
+- **CR 603.2c:** an ability triggers once each time its trigger event occurs, and "one or more" abilities read the whole event.
+
+### Decision
+
+1. **`AtBatchEnd` gains a second reading, `BatchEndCondition.Total`.** #2183 built `AtBatchEnd` for "exactly N life": the match is staged when its first event arrives and asked once, with the batch's final totals, at the next priority grant or as the next batch opens. `Total` reuses that: the ability is dispatched once per group, with the settled event's `Amount` rewritten to the total. A card's `Build` and `Effect` already read `Event.Amount`, so adding `AtBatchEnd: ThatMuchDamage()` is the whole card-side change. The ability's own `AppliesTo` is re-run over the logged events, so its filter ("artifacts you control", "cards you discard") applies to the sum.
+2. **Two totals.** `BatchTotalDamage` sums the damage dealt to the staged event's object in the staged event's **damage instance** (this ADR's owner decision 4). Each damaged object is its own group, so Blasphemous Act is one trigger per creature, and two separate instructions on one creature inside one resolution stay two triggers, because they are two events. `BatchTotalEvents` counts the matching events of the batch, one group per batch (the `OncePerBatch` unit).
+3. **`Event.DamageInstance`.** `emitDealDamageLocked` stamps the instance onto the event it emits (it was only on `ReplacementEvent`). It is `json:"-"`, like the counter it names: a restored event reads zero and groups on the batch alone, which is the ADR 0107 behaviour and never more than the batch.
+4. **A floor.** The total is never less than the first event's own amount, so a short log errs weaker than printed.
+
+### Costs, stated
+
+- A "dealt damage" trigger no longer goes pending the instant the damage lands; it goes pending at the priority boundary (`runStateChecksLocked`), before the state-based sweep, so a creature killed by the damage is still there to trigger. A test that deals damage by hand outside a resolution calls `RunStateChecksForTest()` first. The sandbox's mark-damage verb already runs the boundary.
+- Staged triggers are not persisted (as for #2183): a server restart between the damage and the next priority grant loses the trigger. Weaker than printed.
+
+### Cards
+
+All thirteen go `full`, and Widespread Brutality's stale caveat ("one after another") goes with them: its damage is one `DamageInstanceForEffect` scope and the new test pins one shared instance. Ob Nixilis, Captive Kingpin keeps the life-loss reading unchanged.

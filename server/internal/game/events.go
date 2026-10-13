@@ -1393,6 +1393,18 @@ type Event struct {
 	// the life loss it was taken for when it was written.
 	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
 
+	// DamageInstance is the ADR 0108 damage instance an EventDealDamage
+	// was dealt in (2026-10-13 amendment): every damage event one
+	// instruction or one combat damage step opens shares it, which is
+	// what CR 120.3 / 510.2 mean by "at the same time". A "whenever ~
+	// is dealt damage" ability that reads the total (BatchTotalDamage,
+	// life_batch.go) groups on (Batch, Target, DamageInstance).
+	//
+	// TRANSIENT, like the counter it names: never serialised, so an
+	// event restored from a snapshot reads as zero and groups on the
+	// batch alone — the ADR 0107 behaviour, never more than the batch.
+	DamageInstance DamageInstance `json:"-"`
+
 	// Round is the table-facing round for EventStepBegan. Amount carries
 	// the turn sequence on EventStepBegan and EventTurnBegan; keeping the
 	// display value separate lets same-seat and extra turns retain distinct

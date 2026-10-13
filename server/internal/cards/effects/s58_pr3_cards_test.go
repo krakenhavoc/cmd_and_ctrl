@@ -57,14 +57,12 @@ func TestS58PR3Registered(t *testing.T) {
 			t.Errorf("%s: registered=%v name=%q", name, ok, spec.Name)
 		}
 	}
-	nemesis, _ := Lookup("fcb7c93c-46ab-49b5-a6e0-35d73f3be8f0")
+	// #3172 cav-d: both read the total of simultaneous damage now, so
+	// neither carries the one-event-per-source caveat any more.
 	for _, oracle := range []string{s58BrashTaunter, s58PainForAll} {
 		spec, _ := Lookup(oracle)
-		if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-			t.Errorf("%s: want one caveat, got %v / %v", spec.Name, spec.Completeness, spec.Caveats)
-		}
-		if oracle == s58BrashTaunter && spec.Caveats[0] != nemesis.Caveats[0] {
-			t.Errorf("Brash Taunter's caveat should be Screaming Nemesis's: %q", spec.Caveats[0])
+		if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+			t.Errorf("%s: want full, got %v / %v", spec.Name, spec.Completeness, spec.Caveats)
 		}
 	}
 }
@@ -420,6 +418,7 @@ func TestS58PainForAll(t *testing.T) {
 	}
 	lives := b27Lives(g)
 	b27Damage(g, foe, host, 2)
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 	after := b27Lives(g)
 	if after[0] != lives[0] {
