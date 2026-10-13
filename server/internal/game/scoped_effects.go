@@ -490,6 +490,17 @@ type Mod struct {
 	Player       uuid.UUID   `json:"player,omitempty"`
 	// Grants is ModGrantAbilities' bundle keys, in GrantKey form.
 	Grants []string `json:"grants,omitempty"`
+	// Borrows is ModBorrowAbilities' lent rows, captured as the effect
+	// resolved (ADR 0155 Decision 9), and SpendFrom its "you may spend
+	// <colour> mana as though it were mana of any color to activate
+	// those abilities" rider, a WUBRG letter or empty.
+	Borrows   []LentRow `json:"borrows,omitempty"`
+	SpendFrom string    `json:"spendFrom,omitempty"`
+	// Unautomated names, by Lender and LenderName alone, the lenders a
+	// borrowAbilities mod could not lend from because the catalog has no
+	// entry for them (ADR 0155 owner decision 2): the recipient's menu
+	// shows "<lender>: not automated" while the record lasts.
+	Unautomated []LentRow `json:"unautomated,omitempty"`
 	// Amount is ModPreventDamage's charge LEFT (tier 3b). A shield that
 	// absorbs damage is replaced by a record with a lower Amount, never
 	// mutated in place (see ScopedEffect's contract).
@@ -845,6 +856,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModBlockAnyNumber:   {layer: Layer6Ability},
 	// #1584, ADR 0093 PR 4
 	ModGrantAbilities: {layer: Layer6Ability},
+	// ADR 0155 Decision 9 (#3202)
+	ModBorrowAbilities: {layer: Layer6Ability},
 	// #1879: Veiled Serpent's granted attack restriction.
 	ModCantAttackUnlessDefenderControls: {layer: Layer6Ability},
 	// ADR 0109 §1 (#1881): CR 305.7 from a resolved effect.
@@ -1310,6 +1323,9 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := textBoxModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
+		if problem := borrowModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
 		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {
 			named = true
 		}
@@ -1363,6 +1379,8 @@ func cloneMods(mods []Mod) []Mod {
 		m.Keywords = copyStrings(m.Keywords)
 		m.Supertypes = copyStrings(m.Supertypes)
 		m.Grants = copyStrings(m.Grants)
+		m.Borrows = append([]LentRow(nil), m.Borrows...)
+		m.Unautomated = append([]LentRow(nil), m.Unautomated...)
 		m.Objects = append([]ObjectRef(nil), m.Objects...)
 		m.To = append([]ObjectRef(nil), m.To...)
 		m.Queries = clonePermanentQueries(m.Queries)
@@ -1569,13 +1587,19 @@ func adaptScopedEffects(records []ScopedEffect) []ContinuousEffect {
 				// pass is over (foldRuleScopedRestrictionsLocked).
 				continue
 			}
+			apply := modApply(m)
+			if m.Kind == ModBorrowAbilities {
+				// ADR 0155 Decision 9: the captured rows, written in
+				// this record's timestamp slot.
+				apply = borrowModApply(m, e.Label)
+			}
 			out = append(out, staticContinuousEffect{
 				ability: StaticAbility{
 					Layer:            spec.layer,
 					SubLayer:         spec.subLayer,
 					RemovesAbilities: spec.removes,
 					AppliesTo:        applies,
-					Apply:            modApply(m),
+					Apply:            apply,
 					// ModGrantAbilities (ADR 0093 PR 4): the same
 					// declaration a granting static makes, so the
 					// engine writes the grant in this slot with the

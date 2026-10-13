@@ -1056,6 +1056,38 @@ recipients are other permanents (Hazel's Brewmaster's Foods, Steward of
 the Harvest's creatures) is `GrantActivatedAbilitiesOf(appliesTo,
 borrow)`, and its not-automated lenders show on each recipient.
 
+The last two lender sets (ADR 0155 PR 4, #3202):
+
+```go
+// Conspicuous Snoop: "As long as the top card of your library is a Goblin card, … of that card."
+borrow := HasActivatedAbilitiesOf(game.AbilityBorrow{
+    Label:   clause,
+    Lenders: TopOfLibraryLender(ByController(Subtype("Goblin"))),
+})
+borrow.DependsOnLibraryTop = true
+// Scheming Fence: "… of the chosen permanent", with the choice made as it enters.
+AsEnters: ChoosePermanentAsEnters("Scheming Fence — you may choose a nonland permanent", Nonland()),
+Lenders:  ChosenPermanentLender(),
+```
+
+`DependsOnLibraryTop` arms a watch on every library's top card, so a draw,
+a scry or a shuffle re-reads the borrow; pair it with the card's
+`LibraryTopVisible` (the top is lent while revealed). The choice is stored
+as an object (`game.Card.ChosenPermanent`), so a chosen permanent that
+leaves is gone for good; its "can't be activated" half is
+`ChosenPermanentCantActivate`.
+
+A borrow made by a RESOLVING ability for a turn (Quicksilver Elemental,
+Grell Philosopher, Havengul Lich) is not a static: the effect captures the
+lender's rows as it resolves and registers a `borrowAbilities` record with
+`BorrowAbilitiesFor{Target or Match, Lender, Label}` (set `Printed` to read
+a card as printed wherever it is now). The record keeps the rows after the
+lender leaves (CR 608.2h), restores from a snapshot, and names an
+uncatalogued lender as not automated. "You may spend blue mana as though it
+were mana of any color" is `game.AnyColorSpendStatic{From: "U"}`, with
+`OwnAbilities: true` for "this creature's abilities"; a resolved borrow's
+own rider is `BorrowAbilitiesFor.SpendFrom`, which rides the lent rows.
+
 `ByController` lifts an ordinary `CardPredicate` (the caster is the
 borrower's controller); a `LenderPredicate` also sees the borrowing source.
 The source is never its own lender, and `Except: game.BorrowExceptMana`
@@ -1083,7 +1115,8 @@ A test asserts behaviour, with a catalogued lender such as Llanowar
 Elves: put the lender in the zone, read the borrower's rows through
 `game.ManaAbilitiesWithOrigins` / `ActivatedAbilitiesWithOrigins` (each
 lent origin has `Borrowed` set and a `borrow:<key>:<i>:<n>` ref), then
-activate with that ref. See `borrowed_lender_cards_test.go`.
+activate with that ref (`Strict: true` when the test is about what pays).
+See `borrowed_lender_cards_test.go` and `borrowed_last_cards_test.go`.
 
 The client groups lent rows under "From <lender>" and shows identical rows
 once (`client/src/lib/borrowedRows.ts`); nothing per card.

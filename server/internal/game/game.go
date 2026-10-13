@@ -912,6 +912,12 @@ type Game struct {
 	layerVersion        atomic.Uint64
 	lastResolvedVersion atomic.Uint64
 
+	// libraryTopWatch is each library's top card as the last layer pass
+	// saw it, recorded only while a static declaring DependsOnLibraryTop
+	// is on the battlefield (library_top_watch.go). A cache, never
+	// persisted: a restore runs a fresh pass, which re-arms it.
+	libraryTopWatch []libraryTopMark
+
 	// recomputeCount instruments the layer engine for the fast-path
 	// regression test (exit criterion #10): two consecutive snapshot
 	// reads with no events between invoke RecomputeLayersLocked
@@ -2416,7 +2422,7 @@ func (g *Game) WithWriteLock(fn func()) {
 // built from game types).
 func (g *Game) ReadSnapshot(fn func()) {
 	g.mu.RLock()
-	for g.layerVersion.Load() != g.lastResolvedVersion.Load() {
+	for g.layerVersion.Load() != g.lastResolvedVersion.Load() || g.libraryTopMovedLocked() {
 		g.mu.RUnlock()
 		g.mu.Lock()
 		g.RecomputeLayersIfStaleLocked()

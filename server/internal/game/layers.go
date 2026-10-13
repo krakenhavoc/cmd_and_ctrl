@@ -327,6 +327,22 @@ type StaticAbility struct {
 	// tables with no such card in play. See layerVersionBump.OnEvent.
 	DependsOnExile bool
 
+	// DependsOnLibraryTop is DependsOnHandSize for the TOP CARD of a
+	// library — Conspicuous Snoop's and Skill Borrower's "as long as the
+	// top card of your library is …, this creature has all activated
+	// abilities of that card" (ADR 0155 §8, #3202).
+	//
+	// The top of a library changes on a draw, a mill, a cast from the
+	// top, a card put on top, a scry, a surveil and a shuffle, and the
+	// last three move no card across a zone boundary, so no event names
+	// them all. The flag therefore arms a WATCH rather than an event
+	// arm: a pass that finds such a static on the battlefield records
+	// every library's top card (libraryTopWatch), and the staleness check
+	// re-runs the pass the moment one differs (libraryTopMovedLocked).
+	// Opt-in for the flags' reason: a table with no such static records
+	// nothing and checks nothing.
+	DependsOnLibraryTop bool
+
 	// DependsOnManaPool is DependsOnHandSize for a player's mana pool —
 	// Omnath, Locus of Mana's "gets +1/+1 for each unspent green mana
 	// you have" (#2363). The pool changes with every land tap and every
@@ -923,7 +939,7 @@ func DistinctCardTypesInAllGraveyards(g *Game) int {
 // completion, and bumps the recompute counter so the fast-path test
 // can assert it ran exactly once.
 func (g *Game) RecomputeLayersIfStaleLocked() {
-	if g.layerVersion.Load() == g.lastResolvedVersion.Load() {
+	if g.layerVersion.Load() == g.lastResolvedVersion.Load() && !g.libraryTopMovedLocked() {
 		return
 	}
 	g.recomputeLayersLocked()
@@ -998,6 +1014,9 @@ func (g *Game) recomputeLayersLocked() {
 	// is undone before the next pass cannot revive it. Holds are not
 	// layer inputs, so this does not touch the layer version.
 	g.sweepUntapHoldsLocked()
+	// ADR 0155 §8: the library tops this pass read, while something
+	// reads them (library_top_watch.go).
+	g.armLibraryTopWatchLocked()
 	g.lastResolvedVersion.Store(g.layerVersion.Load())
 	// ADR 0109 §3: a duration that compares powers (Old Man of the Sea)
 	// reads this pass's OUTPUT, which the sweep at the top of it could

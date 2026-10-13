@@ -126,6 +126,13 @@ type BorrowedAbility struct {
 	// EachOncePerTurn copies AbilityBorrow.EachOncePerTurn, which the
 	// activation gate reads without the static.
 	EachOncePerTurn bool
+	// SpendFrom is a resolved borrow's spend rider on the rows it lent:
+	// "You may spend blue mana as though it were mana of any color to
+	// activate those abilities" (Grell Philosopher) is "U". It rides the
+	// row rather than a permanent's static because the rider is part of
+	// the resolved effect, and lasts as long as the rows do
+	// (spendGrantLocked). Empty on every static borrow's row.
+	SpendFrom string
 }
 
 // sameRow reports whether two entries lend the same catalog row — CR
@@ -572,6 +579,9 @@ func (g *Game) applyOneBorrowLocked(pb pendingBorrow, st *layerPassState) {
 		for _, r := range rows {
 			r.Source, r.Activator, r.Borrow = from, you, id
 			r.EachOncePerTurn = eff.ability.Borrows.EachOncePerTurn
+			// A re-lent row is this borrow's now, and a resolved
+			// borrow's spend rider was about the rows IT lent.
+			r.SpendFrom = ""
 			target.effective.BorrowedAbilities = append(target.effective.BorrowedAbilities, r)
 		}
 	}
@@ -727,6 +737,20 @@ func (g *Game) UnautomatedLendersOf(c *Card) []*Card {
 			}
 		}
 	}
+	// A resolved borrow (Decision 9) names the lender it could not lend
+	// from on its record, which outlives the lender: a stand-in object
+	// carrying its ID and printed name.
+	for i := range g.ScopedEffects {
+		e := &g.ScopedEffects[i]
+		for _, m := range e.Mods {
+			if m.Kind != ModBorrowAbilities || len(m.Unautomated) == 0 || !affectedPredicate(e.Affected)(c, g, nil) {
+				continue
+			}
+			for _, u := range m.Unautomated {
+				out = append(out, &Card{InstanceID: u.Lender, Name: u.LenderName})
+			}
+		}
+	}
 	return out
 }
 
@@ -741,4 +765,49 @@ func lenderUnautomated(l *Card) bool {
 	}
 	// A basic land has no entry and still lends its CR 305.6 mana ability.
 	return len(lentRowsOf(l, 0)) == 0
+}
+
+// LenderKnowersLocked is the wire's per-viewer question about a lent
+// row's lender (ADR 0155 Decision 10): is it in a zone whose contents are
+// hidden (a hand or a library), and if so, which seats may see it there.
+//
+//   - A library's TOP card is seen by the seats LibraryTopKnowersLocked
+//     names: every seat while it is revealed (Conspicuous Snoop's and
+//     Skill Borrower's "play with the top card of your library
+//     revealed"), its owner under "you may look at the top card".
+//     Any other library card is seen by nobody.
+//   - A hand card is seen by its owner and by every seat it was revealed
+//     to (Card.KnownBy).
+//
+// hidden is false, and knowers nil, for a lender in a public zone or one
+// the game no longer has, whose last-known name was public.
+//
+// Caller must hold g.mu (read or write).
+func (g *Game) LenderKnowersLocked(id uuid.UUID) (hidden bool, knowers []uuid.UUID) {
+	z := g.findCardZoneLocked(id)
+	if z == nil {
+		return false, nil
+	}
+	switch z.Kind {
+	case ZoneLibrary:
+		if n := len(z.Cards); n > 0 && z.Cards[n-1].InstanceID == id {
+			seen, _ := g.LibraryTopKnowersLocked(z.Owner)
+			return true, seen
+		}
+		return true, nil
+	case ZoneHand:
+		knowers = append(knowers, z.Owner)
+		for i := range z.Cards {
+			if z.Cards[i].InstanceID != id {
+				continue
+			}
+			for seat, known := range z.Cards[i].KnownBy {
+				if known && seat != z.Owner {
+					knowers = append(knowers, seat)
+				}
+			}
+		}
+		return true, knowers
+	}
+	return false, nil
 }

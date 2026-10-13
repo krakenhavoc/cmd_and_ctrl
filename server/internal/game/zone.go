@@ -301,6 +301,7 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 		// entered. A Phyrexian Processor that is bounced and recast
 		// pays life again.
 		c.ChosenNumber = 0
+		c.ChosenPermanent = ObjectRef{}
 		c.Devoured = 0
 		// #653 / #664, CR 400.7: how the SPELL was cast is a fact
 		// about the permanent that spell became, and CR 400.7d's

@@ -775,6 +775,24 @@ type Card struct {
 	// PermanentInfo.ChosenNumber once the permanent has gone.
 	ChosenNumber int
 
+	// ChosenPermanent is the PERMANENT chosen for this permanent as it
+	// entered (CR 614.12): Scheming Fence's "As this creature enters, you
+	// may choose a nonland permanent", read back by "activated abilities
+	// of the chosen permanent can't be activated" and "this creature has
+	// all activated abilities of the chosen permanent" (ADR 0155 §8,
+	// #3202). The zero ref is "none chosen", both before the answer
+	// arrives and when the controller chose nothing.
+	//
+	// An OBJECT, not a card: the ref carries the CR 400.7 epoch, so a
+	// chosen permanent that leaves the battlefield and returns is a new
+	// object nobody chose. The seventh member of the family, with its
+	// lifecycle: per INSTANCE, carried by the snapshot and by clone,
+	// cleared when this permanent leaves the battlefield, and NOT a
+	// copiable value (CR 707.2). Written by Game.SetChosenPermanentForEffect
+	// (choose_permanent.go) and by nothing else; read with
+	// Game.ChosenPermanentOf.
+	ChosenPermanent ObjectRef
+
 	// Devoured is how many creatures this permanent devoured as it
 	// entered (CR 702.82a), the number CR 702.82b's "each creature it
 	// devoured" counts. Stamped at entry from ReplacementEvent.

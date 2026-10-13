@@ -9177,7 +9177,9 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		// #1369: a permanent is public, but the cost options its
 		// ability rows read out of its controller's HAND are not, so
 		// they reach the controller's frame alone.
-		Battlefield: applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID),
+		// ADR 0155 Decision 10: and a borrowed row's lender in a hidden
+		// zone reaches the seats that may see it there.
+		Battlefield: applyLenderKnowersFor(applyAbilityOffersFor(redactZone(v.Battlefield, isKnower), viewerID), viewerID, seatIDs),
 		Stack:       redactZone(v.Stack, isKnower),
 		// #978: exile is the one SHARED zone that carries
 		// announce-time cast stamps, and they were computed for one

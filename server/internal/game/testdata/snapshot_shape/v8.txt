@@ -55,6 +55,9 @@ battlefield.cards[].chosenColor	string
 battlefield.cards[].chosenName	string
 battlefield.cards[].chosenNumber	number:int
 battlefield.cards[].chosenOption	string
+battlefield.cards[].chosenPermanent	object
+battlefield.cards[].chosenPermanent.epoch	number:int
+battlefield.cards[].chosenPermanent.id	custom(uuid.UUID)
 battlefield.cards[].chosenPlayer	custom(uuid.UUID)
 battlefield.cards[].classLevel	number:int
 battlefield.cards[].colorCDADropped	bool
@@ -567,6 +570,9 @@ exile.cards[].chosenColor	string
 exile.cards[].chosenName	string
 exile.cards[].chosenNumber	number:int
 exile.cards[].chosenOption	string
+exile.cards[].chosenPermanent	object
+exile.cards[].chosenPermanent.epoch	number:int
+exile.cards[].chosenPermanent.id	custom(uuid.UUID)
 exile.cards[].chosenPlayer	custom(uuid.UUID)
 exile.cards[].classLevel	number:int
 exile.cards[].colorCDADropped	bool
@@ -954,6 +960,7 @@ lastKnownBattlefield{}.BorrowedAbilities[].Lender	custom(uuid.UUID)
 lastKnownBattlefield{}.BorrowedAbilities[].LenderName	string
 lastKnownBattlefield{}.BorrowedAbilities[].Slot	string
 lastKnownBattlefield{}.BorrowedAbilities[].Source	custom(uuid.UUID)
+lastKnownBattlefield{}.BorrowedAbilities[].SpendFrom	string
 lastKnownBattlefield{}.CantBeAttacked	bool
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHave[]	string
@@ -1072,6 +1079,7 @@ lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Lender	custom(uuid.UU
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].LenderName	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Slot	string
 lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Source	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].SpendFrom	string
 lastKnownPermanents{}[].characteristic.CantBeAttacked	bool
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHave[]	string
@@ -1200,6 +1208,9 @@ lastKnownStack[].card.chosenColor	string
 lastKnownStack[].card.chosenName	string
 lastKnownStack[].card.chosenNumber	number:int
 lastKnownStack[].card.chosenOption	string
+lastKnownStack[].card.chosenPermanent	object
+lastKnownStack[].card.chosenPermanent.epoch	number:int
+lastKnownStack[].card.chosenPermanent.id	custom(uuid.UUID)
 lastKnownStack[].card.chosenPlayer	custom(uuid.UUID)
 lastKnownStack[].card.classLevel	number:int
 lastKnownStack[].card.colorCDADropped	bool
@@ -2153,6 +2164,7 @@ pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Lender	custom(uu
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].LenderName	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Slot	string
 pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].SpendFrom	string
 pendingChoices[].damageAssignment.SourceLKI.CantBeAttacked	bool
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
@@ -2564,6 +2576,9 @@ phasedOut.cards[].chosenColor	string
 phasedOut.cards[].chosenName	string
 phasedOut.cards[].chosenNumber	number:int
 phasedOut.cards[].chosenOption	string
+phasedOut.cards[].chosenPermanent	object
+phasedOut.cards[].chosenPermanent.epoch	number:int
+phasedOut.cards[].chosenPermanent.id	custom(uuid.UUID)
 phasedOut.cards[].chosenPlayer	custom(uuid.UUID)
 phasedOut.cards[].classLevel	number:int
 phasedOut.cards[].colorCDADropped	bool
@@ -2937,6 +2952,15 @@ scopedEffects[].mods	array
 scopedEffects[].mods[]	object
 scopedEffects[].mods[].amount	number:int
 scopedEffects[].mods[].andDealtBy	bool
+scopedEffects[].mods[].borrows	array
+scopedEffects[].mods[].borrows[]	object
+scopedEffects[].mods[].borrows[].color	string
+scopedEffects[].mods[].borrows[].index	number:int
+scopedEffects[].mods[].borrows[].key	string
+scopedEffects[].mods[].borrows[].kind	number:uint8
+scopedEffects[].mods[].borrows[].lender	custom(uuid.UUID)
+scopedEffects[].mods[].borrows[].lenderName	string
+scopedEffects[].mods[].borrows[].slot	string
 scopedEffects[].mods[].colors	array
 scopedEffects[].mods[].colors[]	string
 scopedEffects[].mods[].combatOnly	bool
@@ -3055,6 +3079,7 @@ scopedEffects[].mods[].sourceFilter[].powerAtMost	number:int
 scopedEffects[].mods[].sourceFilter[].powerBounded	bool
 scopedEffects[].mods[].sourceZone	string
 scopedEffects[].mods[].sources	string
+scopedEffects[].mods[].spendFrom	string
 scopedEffects[].mods[].spentBatch	number:uint64
 scopedEffects[].mods[].spentInstance	number:uint64
 scopedEffects[].mods[].subtypes	array
@@ -3078,6 +3103,15 @@ scopedEffects[].mods[].to[].id	custom(uuid.UUID)
 scopedEffects[].mods[].toughness	number:int
 scopedEffects[].mods[].types	array
 scopedEffects[].mods[].types[]	string
+scopedEffects[].mods[].unautomated	array
+scopedEffects[].mods[].unautomated[]	object
+scopedEffects[].mods[].unautomated[].color	string
+scopedEffects[].mods[].unautomated[].index	number:int
+scopedEffects[].mods[].unautomated[].key	string
+scopedEffects[].mods[].unautomated[].kind	number:uint8
+scopedEffects[].mods[].unautomated[].lender	custom(uuid.UUID)
+scopedEffects[].mods[].unautomated[].lenderName	string
+scopedEffects[].mods[].unautomated[].slot	string
 scopedEffects[].scope	string
 scopedEffects[].seq	number:int64
 scopedEffects[].source	object
@@ -3217,6 +3251,9 @@ seats[].command.cards[].chosenColor	string
 seats[].command.cards[].chosenName	string
 seats[].command.cards[].chosenNumber	number:int
 seats[].command.cards[].chosenOption	string
+seats[].command.cards[].chosenPermanent	object
+seats[].command.cards[].chosenPermanent.epoch	number:int
+seats[].command.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].command.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].command.cards[].classLevel	number:int
 seats[].command.cards[].colorCDADropped	bool
@@ -3558,6 +3595,9 @@ seats[].emblems.cards[].chosenColor	string
 seats[].emblems.cards[].chosenName	string
 seats[].emblems.cards[].chosenNumber	number:int
 seats[].emblems.cards[].chosenOption	string
+seats[].emblems.cards[].chosenPermanent	object
+seats[].emblems.cards[].chosenPermanent.epoch	number:int
+seats[].emblems.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].emblems.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].emblems.cards[].classLevel	number:int
 seats[].emblems.cards[].colorCDADropped	bool
@@ -3890,6 +3930,9 @@ seats[].graveyard.cards[].chosenColor	string
 seats[].graveyard.cards[].chosenName	string
 seats[].graveyard.cards[].chosenNumber	number:int
 seats[].graveyard.cards[].chosenOption	string
+seats[].graveyard.cards[].chosenPermanent	object
+seats[].graveyard.cards[].chosenPermanent.epoch	number:int
+seats[].graveyard.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].graveyard.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].graveyard.cards[].classLevel	number:int
 seats[].graveyard.cards[].colorCDADropped	bool
@@ -4220,6 +4263,9 @@ seats[].hand.cards[].chosenColor	string
 seats[].hand.cards[].chosenName	string
 seats[].hand.cards[].chosenNumber	number:int
 seats[].hand.cards[].chosenOption	string
+seats[].hand.cards[].chosenPermanent	object
+seats[].hand.cards[].chosenPermanent.epoch	number:int
+seats[].hand.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].hand.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].hand.cards[].classLevel	number:int
 seats[].hand.cards[].colorCDADropped	bool
@@ -4562,6 +4608,9 @@ seats[].library.cards[].chosenColor	string
 seats[].library.cards[].chosenName	string
 seats[].library.cards[].chosenNumber	number:int
 seats[].library.cards[].chosenOption	string
+seats[].library.cards[].chosenPermanent	object
+seats[].library.cards[].chosenPermanent.epoch	number:int
+seats[].library.cards[].chosenPermanent.id	custom(uuid.UUID)
 seats[].library.cards[].chosenPlayer	custom(uuid.UUID)
 seats[].library.cards[].classLevel	number:int
 seats[].library.cards[].colorCDADropped	bool
@@ -5127,6 +5176,9 @@ stack.cards[].chosenColor	string
 stack.cards[].chosenName	string
 stack.cards[].chosenNumber	number:int
 stack.cards[].chosenOption	string
+stack.cards[].chosenPermanent	object
+stack.cards[].chosenPermanent.epoch	number:int
+stack.cards[].chosenPermanent.id	custom(uuid.UUID)
 stack.cards[].chosenPlayer	custom(uuid.UUID)
 stack.cards[].classLevel	number:int
 stack.cards[].colorCDADropped	bool
