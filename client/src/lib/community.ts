@@ -17,10 +17,12 @@ export interface Community {
   invite_url: string | null;
   /** Accounts need the Player role on the C2 Discord (ADR 0156 §1). */
   gate: boolean;
+  /** A host may give a table a Discord voice room (ADR 0159 §7). */
+  voice?: boolean;
 }
 
 /** The initial value, and the value every failure resolves to. */
-export const NO_COMMUNITY: Community = { invite_url: null, gate: false };
+export const NO_COMMUNITY: Community = { invite_url: null, gate: false, voice: false };
 
 const store = guardedWritable<Community>(NO_COMMUNITY, "community");
 
@@ -34,8 +36,8 @@ export const community: Readable<Community> = { subscribe: store.subscribe };
  */
 export function parseCommunity(body: unknown): Community {
   if (typeof body !== "object" || body === null) return NO_COMMUNITY;
-  const b = body as { invite_url?: unknown; gate?: unknown };
-  return { invite_url: inviteURL(b.invite_url), gate: b.gate === true };
+  const b = body as { invite_url?: unknown; gate?: unknown; voice?: unknown };
+  return { invite_url: inviteURL(b.invite_url), gate: b.gate === true, voice: b.voice === true };
 }
 
 function inviteURL(v: unknown): string | null {

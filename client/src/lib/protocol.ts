@@ -406,6 +406,9 @@ export interface GameView {
   // The table's settings (ADR 0075 §2.2). Public: every viewer,
   // spectators included, gets the same object. Added in S35 (#1032).
   settings?: TableSettingsView;
+  // The table's Discord voice room (ADR 0159 §6), reduced by the server
+  // to this viewer's own access. Absent when the server offers none.
+  voice?: VoiceView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -4518,6 +4521,20 @@ export function uuid(): string {
 // TableSettingsView is a table's configuration (ADR 0075 §2.2). The
 // keys match the settings patch the server accepts, so a client can
 // send back exactly the fields it read.
+// VoiceView is the table's Discord voice room on the game view (ADR 0159
+// §6). `url` reaches only a viewer who was let in, while the room is
+// ready.
+export interface VoiceView {
+  enabled: boolean;
+  status: VoiceStatus;
+  you?: VoiceAccess;
+  url?: string;
+}
+
+export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
+
+export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;
