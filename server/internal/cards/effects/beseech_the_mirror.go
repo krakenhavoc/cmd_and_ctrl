@@ -15,7 +15,7 @@ import (
 //	 paying its mana cost if that spell's mana value is 4 or less. Put
 //	 the exiled card into your hand if it wasn't cast this way."
 //
-// Bargain is an optional cost (Bargain(), additional_cost.go). The
+// Bargain is the shared optional cost (g2Bargain, exile_if_dies_g2.go). The
 // search exiles face down, so the table sees a card back. Bargained,
 // the card is offered as a free cast capped at mana value 4
 // (Game.CastExiledFreeOrToHandForEffect): declined, passed on or over
@@ -29,11 +29,11 @@ func init() {
 		OracleID:      "cbbe535b-12d6-4e6c-8b26-9220f06a1604",
 		Name:          "Beseech the Mirror",
 		Completeness:  CompletenessFull,
-		OptionalCosts: []game.AdditionalCost{Bargain()},
+		OptionalCosts: []game.AdditionalCost{g2Bargain()},
 		Purpose:       game.Purpose{Tutors: 1},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			controller, source := ctx.Controller(), ctx.Source()
-			bargained := ctx.OptionalCostTimes(BargainKey) > 0
+			bargained := g2WasBargained(ctx)
 			return SearchLibrary{
 				Player:   controller,
 				Limit:    1,

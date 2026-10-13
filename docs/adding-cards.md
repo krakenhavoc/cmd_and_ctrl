@@ -9278,8 +9278,8 @@ ctx.SourcePermanent()                                                           
   (`aura_helpers.go`, beside `tapAttachedHost`); the Equipment phases out with its host.
 - **"Whenever you attack with this creature and/or your commander"** is `OncePerBatch(On(game.EventAttack,
   thisOrYourCommanderAttacked, …))` (Ainok Strike Leader).
-- **Bargain** is `OptionalCosts: []game.AdditionalCost{Bargain()}` (`bargain.go`); "if this spell was bargained" is
-  `ctx.OptionalCostTimes(BargainKey) > 0`.
+- **Bargain** is `OptionalCosts: []game.AdditionalCost{g2Bargain()}` (`exile_if_dies_g2.go`); "if this spell was
+  bargained" is `g2WasBargained(ctx)`.
 - **"You may cast the exiled card without paying its mana cost if its mana value is N or less. Put it into your hand
   if it wasn't cast this way"** is `g.CastExiledFreeOrToHandForEffect(player, source, card, N)` (ADR 0099 amendment
   2026-10-13). Search face down first with `SearchLibrary{Dest: game.ZoneExile, FaceDown: game.FaceDownPermitted}`.
