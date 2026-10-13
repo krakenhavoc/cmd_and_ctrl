@@ -3,6 +3,7 @@ package model
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -127,6 +128,9 @@ const (
 	ImprovNoBudget = "no-budget"
 	// ImprovCapped — MaxImprovCalls is spent for this seat.
 	ImprovCapped = "capped"
+	// ImprovBudgetCapped — the server's daily or monthly model cap is
+	// spent, or model calls are switched off (#2980). No call was made.
+	ImprovBudgetCapped = "budget-capped"
 	// ImprovError — the call failed: outage, HTTP error, timeout.
 	ImprovError = "error"
 	// ImprovMalformed — the reply was not a bundle.
@@ -379,6 +383,12 @@ func (p *Policy) Improvise(ctx context.Context, in aiseat.Input) (aiseat.Improvi
 	started := time.Now()
 	resp, err := p.cfg.Client.Complete(callCtx, req)
 	latency := time.Since(started)
+	if errors.Is(err, ErrBudgetExceeded) {
+		p.rec.improv(ImprovBudgetCapped, 0, Usage{})
+		p.cfg.Log.Debug("bot improvisation skipped: model spend cap reached or model calls switched off",
+			"tier", p.cfg.Tier, "card", sp.Name)
+		return aiseat.Improvisation{}, false
+	}
 	if err != nil {
 		p.rec.improv(ImprovError, latency, resp.Usage)
 		p.cfg.Log.Warn("bot improvisation call failed; the card was left alone",

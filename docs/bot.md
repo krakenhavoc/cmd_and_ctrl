@@ -481,7 +481,43 @@ server picks the local one when both are set.
 | `CMDCTRL_BOT_THINK` | `1` lets the model think before it picks a move. An experiment, off by default — see [Letting the model think](#letting-the-model-think-2196). |
 | `CMDCTRL_BOT_MAX_TOKENS` | The decision calls' reply budget in tokens. Unset keeps 128 routine / 256 frontier, or 8000 with `CMDCTRL_BOT_THINK` on. |
 | `CMDCTRL_BOT_IMPROVISE` | `0` turns [improvisation](#improvisation-and-why-an-undo-is-free) off. On by default for the model tiers. |
-| `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
+| `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. Subject to the spend caps below. |
+| `CMDCTRL_BOT_MODEL_DAILY_TOKENS` | Cap on hosted-model tokens per UTC day. Default `1000000`; `0` turns it off. |
+| `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS` | Cap on hosted-model tokens per UTC month. Default `10000000`; `0` turns it off. |
+
+### Spend caps, the kill switch, and what is never charged for (#2980)
+
+A hosted model costs the operator money, so the server bounds it
+([ADR 0033](decisions/0033-ai-bot-seat.md), amendment 2026-10-12).
+
+- **What the server does with a key.** With `CMDCTRL_ANTHROPIC_API_KEY`
+  (or `ANTHROPIC_API_KEY`) set, `assisted` and `strong` call the hosted
+  model while under the caps. With neither key nor
+  `CMDCTRL_OPENAI_ENDPOINT`, they are `available:false` in
+  `GET /bot/options` and a request to seat one is a 422. Both unset is a
+  supported server, not a broken one. The code cannot see production's
+  environment: whoever runs the server confirms which of these it is.
+- **Daily and monthly caps**, counted in tokens from the API's `usage`
+  fields (input, output, cache reads and cache writes), per UTC day and
+  UTC month. **On by default** at 1,000,000 a day and 10,000,000 a month;
+  `CMDCTRL_BOT_MODEL_DAILY_TOKENS` and `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS`
+  change them, and `0` turns a cap off. They do not apply to a
+  self-hosted `CMDCTRL_OPENAI_ENDPOINT` model, which has no bill. The
+  counters live in the database and survive a restart.
+- **Over a cap**, the model tiers behave as they do with no key: a seat
+  already at a table keeps playing on the rules filter and the heuristic,
+  the picker greys the tiers out with a reason, and `GET /bot/options`
+  carries a `model_note` saying the budget is used up and when it resets
+  (00:00 UTC).
+- **The kill switch.** An admin turns every model call off without a
+  redeploy with `PUT /admin/bot/model {"enabled": false}` and reads the
+  counters with `GET /admin/bot/model`
+  ([lobby.md](lobby.md#get-and-put-adminbotmodel-admin-only)). It
+  survives a restart. Turning it back on does not lift a cap.
+- **No tier is ever paywalled.** All four tiers are free to every player
+  on a server that offers them. A cap protects the operator's bill; it is
+  not a product boundary, and nothing in the code checks for payment or
+  entitlement.
 
 **Thinking is turned off on the local transport, and that is a
 deadline decision.** Several strong local models — qwen3 among them —

@@ -1429,6 +1429,12 @@ answer for every table — so the client fetches it once.
 }
 ```
 
+When the model tiers are off because a spend cap is used up or an admin
+switched model calls off (#2980), the response also carries `model_note`,
+one sentence saying so and, for a cap, when it resets, and each model
+tier's `reason` carries the same text. Absent otherwise. See
+[bot.md](bot.md#spend-caps-the-kill-switch-and-what-is-never-charged-for-2980).
+
 Every declared tier is listed, including the ones THIS server cannot
 play. `available: false` is what the picker greys out — asking for one
 is a 422, never a silent downgrade to a weaker tier, because a bot
@@ -3358,6 +3364,48 @@ seats carry.
 | 401 | no session |
 | 403 | caller is not an admin, including an allowlisted person in player mode |
 | 503 | the server wired no WebSocket hub (not a production configuration) |
+
+---
+
+## Bot model spend (#2980)
+
+### `GET` and `PUT /admin/bot/model` *(admin only)*
+
+The hosted-model spend guard ([ADR 0033](decisions/0033-ai-bot-seat.md),
+amendment 2026-10-12): the daily and monthly token counters and the kill
+switch. Both verbs answer with the same body.
+
+`PUT` takes `{"enabled": false}` to turn every model call off at once, for
+every table, without a redeploy, and `{"enabled": true}` to turn them back
+on (a spent cap still applies). `enabled` is required: a missing field is
+a 400, never a silent off. The setting survives a restart.
+
+**Response 200**
+
+```json
+{
+  "state": "daily_cap",
+  "enabled": true,
+  "note": "Bots on the assisted and strong tiers are unavailable, and any already seated play like the heuristic tier. This server's daily model budget is used up; it resets 2026-10-13 00:00 UTC.",
+  "daily_tokens": 1004211,
+  "daily_limit": 1000000,
+  "monthly_tokens": 3120440,
+  "monthly_limit": 10000000,
+  "day_resets_at": "2026-10-13T00:00:00Z",
+  "month_resets_at": "2026-11-01T00:00:00Z"
+}
+```
+
+`state` is `ok`, `disabled` (the switch), `monthly_cap` or `daily_cap`;
+`note` is empty when it is `ok`. A limit of `0` means that cap is off.
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing or not a boolean, or an unknown field |
+| 401 | no session |
+| 403 | caller is not an admin |
+| 500 | the switch could not be saved |
+| 503 | no model transport is configured, so there is nothing to cap |
 
 ---
 

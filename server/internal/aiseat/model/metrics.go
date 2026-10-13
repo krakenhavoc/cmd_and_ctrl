@@ -36,6 +36,11 @@ const (
 	// FallbackNoBudget — the runner's deadline left too little time
 	// to try. No call was made.
 	FallbackNoBudget = "no-budget"
+	// FallbackBudgetCapped — the server's daily or monthly model cap
+	// is spent, or an admin switched model calls off (#2980). No call
+	// was made and nothing was billed; the seat plays Layer B exactly
+	// as it does with no key.
+	FallbackBudgetCapped = "budget-capped"
 	// FallbackError — the call failed: outage, HTTP error, timeout.
 	FallbackError = "error"
 	// FallbackMalformed — the reply was not an index.
