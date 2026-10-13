@@ -102,6 +102,14 @@ const ReboundFreeCastLabel = "Rebound — cast it without paying its mana cost"
 // happens to it).
 const LapseStaysInExile PermissionLapse = "exile"
 
+// LapseStaysInHand is the same lapse for a card in a HAND: a free cast
+// the holder passes on leaves the card where it is. Buster Sword's,
+// Rishkar's Expertise's and the other "you may cast a spell from your
+// hand without paying its mana cost" offers use it (#3270). Nothing
+// moves when it fires; the grant is simply gone, which is what "if you
+// don't cast it during the resolution, you can't" comes to.
+const LapseStaysInHand PermissionLapse = "stays_in_hand"
+
 // spellRebounds reports whether a spell that has just RESOLVED is
 // exiled by its rebound (CR 702.88a) instead of going to its owner's
 // graveyard.

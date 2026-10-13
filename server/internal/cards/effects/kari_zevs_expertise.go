@@ -18,8 +18,9 @@ import (
 // Or(Creature(), Subtype("Vehicle")) — and the free cast is Rishkar's
 // Expertise's second sentence with the mana-value ceiling lowered from
 // five to two: a choose_cards pick over the hand, floor zero ("you
-// MAY"), filtered to nonland cards with mana value 2 or less, then a
-// one-shot {0} cast permission over whichever card was picked.
+// MAY"), filtered to nonland cards with mana value 2 or less, then the
+// pass-closed free cast over whichever card was picked (offerFreeHandCast,
+// #3270): the cast opens at once and ignores timing, CR 608.2g.
 //
 // No simplification.
 func init() {
@@ -60,38 +61,7 @@ func init() {
 // Rishkar's Expertise's rishkarsExpertiseOfferFreeCast with the
 // ceiling lowered to two.
 func kariZevsExpertiseOfferFreeCast(ctx *Context, controller uuid.UUID) error {
-	pred := And(Not(Land()), ManaValueLE(2))
-	var candidates []uuid.UUID
-	for _, id := range allHandCardIDs(ctx.Game, controller) {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok || !pred(ctx.Game, controller, c) {
-			continue
-		}
-		candidates = append(candidates, id)
-	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   ctx.Source(),
-		Question: "Kari Zev's Expertise — cast a spell with mana value 2 or less from your hand without paying its mana cost?",
-		Cards:    candidates,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			g.GrantCastPermissionOverCardForEffect(picked[0], game.CastPermission{
-				Player:   controller,
-				Cost:     "{0}",
-				CastOnly: true,
-				Label:    "Kari Zev's Expertise — cast it without paying its mana cost",
-			})
-			return nil
-		},
-	})
+	offerFreeHandCast(ctx, controller, "Kari Zev's Expertise",
+		"a spell with mana value 2 or less", ManaValueLE(2))
 	return nil
 }

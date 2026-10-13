@@ -27,6 +27,10 @@ import (
 const (
 	chooseOntoBattlefield       = "battlefield"
 	chooseOntoBattlefieldTapped = "battlefield_tapped"
+	// chooseCastFree is "you may cast a spell from your hand without
+	// paying its mana cost" (#3270): the named card is not given up but
+	// cast, so it is priced as what it resolves into, like a put.
+	chooseCastFree = "cast_free"
 )
 
 // choiceOwnPermanents is game.PendingChoiceOwnPermanents on the wire.
@@ -44,7 +48,9 @@ const lateLandShare = 0.3
 // (handKeepValue, the discard's scale), and a named one adds what it
 // is worth on the battlefield over that: putGain. So the prompt is
 // answered by the card that gains most, and declined only when nothing
-// gains. The second return is false when the rule has no opinion: the
+// gains. A free cast (chooseCastFree, #3270) is priced the same way:
+// the card is not given up, it resolves for no mana. The second return
+// is false when the rule has no opinion: the
 // Config is off, the prompt declares no battlefield destination, or a
 // candidate is not in the bot's hand.
 func (p *Policy) valuePutOntoBattlefield(st *state, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
@@ -53,7 +59,7 @@ func (p *Policy) valuePutOntoBattlefield(st *state, ch *protocol.PendingChoiceVi
 	}
 	tapped := false
 	switch ch.ChooseDestination {
-	case chooseOntoBattlefield:
+	case chooseOntoBattlefield, chooseCastFree:
 	case chooseOntoBattlefieldTapped:
 		tapped = true
 	default:

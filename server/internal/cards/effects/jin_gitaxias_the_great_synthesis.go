@@ -136,7 +136,7 @@ func greatSynthesisChapterThree(g *game.Game, item *game.StackItem) error {
 			Cost:        "{0}",
 			CastOnly:    true,
 			Timing:      game.TimingFlash,
-			LapseOnPass: game.LapseStaysInExile,
+			LapseOnPass: game.LapseStaysInHand,
 			Source:      item.SourceCardID,
 			SourceName:  "The Great Synthesis",
 			Label:       "The Great Synthesis — cast it without paying its mana cost",
