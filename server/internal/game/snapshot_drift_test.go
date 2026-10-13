@@ -340,6 +340,11 @@ var cardFields = plan(
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
+	// ADR 0151: CR 110.5's flipped status. Carried: a restore that
+	// dropped it would leave a flipped flip card unable to say so, and
+	// a copy effect reading the copier's status would pick the wrong
+	// half (CR 707.3).
+	"Flipped", carried, "",
 	"NextUntapSkips", carried, "",
 	"BattleX", carried, "",
 	"BattleY", carried, "",

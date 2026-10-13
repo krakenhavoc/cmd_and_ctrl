@@ -831,6 +831,16 @@ func ImageURIForFace(c Card, size string, face int) string {
 		}
 		return ""
 	}
+	// ADR 0151: a flip card has ONE printed image, at the top level,
+	// and its card_faces carry none. Its flipped half is the same card
+	// turned upside down (CR 710.1), so face 1 serves that image — the
+	// client turns it — rather than a 404 for the hover inset.
+	if c.Layout == "flip" && face < len(c.CardFaces) {
+		if uri := pick(c.CardFaces[face].ImageURIs); uri != "" {
+			return uri
+		}
+		return pick(c.ImageURIs)
+	}
 	if face < len(c.CardFaces) {
 		return pick(c.CardFaces[face].ImageURIs)
 	}

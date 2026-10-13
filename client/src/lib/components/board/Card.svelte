@@ -70,7 +70,7 @@
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import DamageStepper from "./DamageStepper.svelte";
   import { boardDamageAssign } from "../../damageAssignment";
-  import { displayName } from "../../faces";
+  import { displayName, isFlippedFlipCard } from "../../faces";
   import { ICONS } from "../../icons";
   import { ringBearerTitle } from "../../ringEmblem";
   import {
@@ -465,6 +465,15 @@
   // knowing faces exist.
   const imgSize = $derived(tableImageSize(card, size, artOnly));
   const imgSrc = $derived(cardImageURL(card, imgSize));
+  // ADR 0151 (owner decision 2): a flipped flip card shows its one
+  // printed image turned 180°, as the physical card is, so the flipped
+  // half reads the right way up. Only the image turns — the badges,
+  // counters and pips stay upright — and the tile's own tap rotation
+  // composes with it, so a tapped flipped permanent's art is at 270°
+  // (CR 710.3: whether it is flipped must be clear tapped or not). An
+  // art tile shows the crop, which has no halves to read, and its name
+  // strip already names the half that is up, so it is not turned.
+  const flippedArt = $derived(isFlippedFlipCard(card));
   // #2209: the art tile. The crop has no frame, so the tile draws the
   // name itself in a strip along the top, and every top-anchored mark
   // (CMD, GOAD, counters, the designation, the pips) steps down below
@@ -864,6 +873,7 @@
     <img
       src={imgSrc}
       alt={displayName(card)}
+      class:flipped={flippedArt && !artTile}
       loading="lazy"
       decoding="async"
       draggable="false"
@@ -1536,6 +1546,10 @@
     object-fit: cover;
     display: block;
     pointer-events: none;
+  }
+  /* ADR 0151: a flipped flip card's image, upside down. */
+  img.flipped {
+    transform: rotate(180deg);
   }
   /* #2209: the name strip. Drawn over art, never over the page, so its
      colours are fixed rather than themed: near-white type on a
