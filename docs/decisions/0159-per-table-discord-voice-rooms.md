@@ -49,7 +49,9 @@ The room is created in the configured category with these overwrites:
 |---|---|---|
 | `@everyone` | — | View Channel, Connect |
 | each seated Discord user who is a **member** of the community server | View Channel, Connect, Speak, Video, Use Voice Activity, Send Messages, Read Message History | — |
-| the bot's own user | View Channel, Connect, Manage Channels, Manage Permissions, Move Members | — |
+| the bot's own user | View Channel, Connect | — |
+
+Managing the room (Manage Channels, Manage Permissions, Move Members) comes from the **bot's role, server-wide**, not from an overwrite: Discord refuses an overwrite that grants Manage Permissions to anyone but an administrator. The bot's overwrite only keeps the room visible to it despite the `@everyone` deny.
 
 - **Membership first.** An overwrite does not invite anyone to the server. Before granting, the manager checks `GET /guilds/{guild}/members/{user}` (a REST call; no privileged gateway intent). A 404 is "not in the server": no overwrite, and the table tells that player to join (§6).
 - **Seat changes.** A Discord seat filled → check and grant. A seat left, removed or reclaimed by someone else → delete that user's overwrite, and if `voice-states` shows them connected **to this room**, disconnect them (`PATCH /guilds/{guild}/members/{user}` with `channel_id: null`). The room id is compared first, so a player is never pulled out of a different channel.
@@ -117,8 +119,9 @@ The notice (ADR 0149) gains one short paragraph: when a host turns on a voice ro
 ### Owner setup (once, not code)
 
 1. Invite the C2 Discord application's bot to the CMD & CTRL server (Developer Portal → OAuth2 → URL Generator, scope `bot`).
-2. Create a category, for example **Table voice**, at the bottom of the channel list. Give the bot's role, on that category: View Channel, Manage Channels, Manage Permissions, Connect, Speak, Video, Use Voice Activity, Send Messages, Read Message History and Move Members. Discord lets a bot grant only permissions it holds.
-3. Set the Actions variable `CMDCTRL_DISCORD_VOICE_CATEGORY_ID` to the category's id, and `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` if slice 2 of ADR 0156 has not already.
+2. Give the bot's role, **server-wide** (Server Settings → Roles): View Channels, Manage Channels, Manage Roles, Move Members, Connect, Speak, Video, Use Voice Activity, Send Messages and Read Message History. Discord lets a bot grant only permissions it holds, and a channel overwrite cannot give it Manage Permissions (§3). Keep the bot's role below the moderators' roles.
+3. Create a category, for example **Table voice**, at the bottom of the channel list, and keep nothing else in it.
+4. Set the Actions variable `CMDCTRL_DISCORD_VOICE_CATEGORY_ID` to the category's id, and `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` if slice 2 of ADR 0156 has not already.
 
 ## Slices
 
