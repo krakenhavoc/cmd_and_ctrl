@@ -277,3 +277,37 @@ The owner accepted every recommendation.
 4. **Prompt shape.** Discover reuses `may_cast`, with the accept and decline labels and a keyword field (Decision 3 and §Client).
 5. **Chimil, the Inner Sun** ships with a player-facing caveat on "Spells you control can't be countered".
 6. **Hit the Mother Lode** makes no Treasures on an empty walk. With no hit there is no discovered card (CR 701.57c).
+
+---
+
+## Amendment 2026-10-13 — "Exile until ... you may cast it" with the caller's test (#3213)
+
+**Why it lands here.** Tibalt's Trickery (Kuja deck, slice kuja-b) is cascade's walk with a different hit test: "exile cards from the top of their library until they exile a nonland card with a different name than that spell. They may cast that card without paying its mana cost. Then they put the exiled cards on the bottom of their library in a random order." It changes no earlier decision.
+
+### Decision
+
+1. **One entry point.** `Game.ExileUntilCastFreeForEffect(player, source, hit func(Card) bool)` in `game/exile_until_cast.go`. It is `CascadeForEffect` on the pieces this ADR already shares: `exileUntilLocked` for the walk, the `may_cast` prompt, a `{0}` flash-timed grant that lapses to the bottom of the library on the chooser's next pass (`LapseToLibraryBottom`), and `PutOnBottomInRandomOrderForEffect`.
+2. **No mana value cap.** `MaxSpellManaValue` is nil. The hit test is the caller's, so the card can carry any condition (here: nonland and a different name). A walk that finds nothing puts the pile back and asks nothing.
+3. **The chooser is the walked player.** The caller names whose library is walked and who chooses. For Tibalt's Trickery that is the countered spell's controller, not the caster.
+4. **`hit` is not stored.** It runs during the walk only. It may close over scalars read before the call (a name), never a `*Card`, so the continuation that follows stays restoreable.
+5. **Prompt keyword.** The prompt asks under `MayCastKeywordExileUntil` (`"exile_until"`), which the client words like cascade and opens a free cast for (`mayCast.ts`, `freeCastRequest.ts`).
+
+### Wire, client and bot
+
+No new field and no new prompt kind: `may_cast` with a new `may_cast_keyword` value. The client adds one copy case and puts the keyword in `mayCastKeywordsThatOpenACast`. The enumerator offers accept and decline for every `may_cast`, whatever its keyword.
+
+### Cards
+
+- **Tibalt's Trickery: Full.** The counter, the random 1, 2 or 3 (the keyed stream, so undo redraws the same number), the mill through its CR 614 window, then this walk.
+
+### Tests
+
+`game/exile_until_cast_test.go` (the walk stops on the caller's hit; accept grants an uncapped free flash cast and bottoms the pile; decline and no-hit bottom everything) and `cards/effects/tibalts_trickery_test.go` (the victim, not the caster, mills, walks and chooses; a land and a same-name card are passed over; decline; no target spell refused).
+
+### Back-out
+
+Make the walk ignore the caller's test (`hit` replaced by a constant false): `TestExileUntilCastStopsOnTheCallersHit` and the Tibalt's Trickery tests fail.
+
+### Snapshot impact
+
+None. The grant, the prompt and the keyword string are existing persisted shapes.

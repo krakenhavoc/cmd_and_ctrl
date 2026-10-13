@@ -450,6 +450,12 @@ type ReturnFromExile struct {
 	Controller uuid.UUID
 	Tapped     bool
 
+	// Counters are the counters it ENTERS with, by kind (#3213, The
+	// Darkness Crystal's "with two additional +1/+1 counters on it"):
+	// a CR 614.1c "enters with", carried on the entry event, so a
+	// counter replacement sees them and an enters trigger finds them.
+	Counters map[string]int
+
 	// Then is the rest of the sentence about the permanent that
 	// returned (#1327) — Phelia, Exuberant Shepherd's "if it entered
 	// under your control, put a +1/+1 counter on Phelia". `entered` is
@@ -466,6 +472,9 @@ func (r ReturnFromExile) Apply(ctx *Context) error {
 	z := ctx.Game.FindCardZoneForEffect(r.Target)
 	if z == nil || z.Kind != game.ZoneExile {
 		return nil
+	}
+	if len(r.Counters) > 0 {
+		return ctx.Game.ReturnFromExileWithCountersThenForEffect(r.Target, r.Controller, r.Tapped, r.Counters, r.Then)
 	}
 	if r.Then != nil {
 		return ctx.Game.ReturnFromExileToBattlefieldThenForEffect(r.Target, r.Controller, r.Tapped, r.Then)

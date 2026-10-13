@@ -3476,7 +3476,7 @@ func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
-	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil)
+	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, nil)
 }
 
 // ReturnFromExileToBattlefieldThenForEffect is the exile return with the
@@ -3502,7 +3502,23 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, then)
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, then)
+	return err
+}
+
+// ReturnFromExileWithCountersThenForEffect is the exile return for "put
+// it onto the battlefield ... with two additional +1/+1 counters on it"
+// (The Darkness Crystal, #3213). The counters are a CR 614.1c "enters
+// with", so they ride the entry event exactly as
+// ReturnFromGraveyardWithCountersForEffect's do: an enters trigger
+// finds them already on the permanent, a counter replacement (Doubling
+// Season) sees them, and a paused entry still places them. A nil or
+// empty map is ReturnFromExileToBattlefieldThenForEffect. `then` is the
+// same exactly-once continuation, told the new object's ID.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, then)
 	return err
 }
 
@@ -3510,13 +3526,13 @@ func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid
 // doors.
 //
 // Caller must hold g.mu.
-func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	// CR 712.21c (ADR 0145): a return that finds the card a melded
 	// permanent left exile as finds both its cards, and returns each.
 	// The other card goes first and on its own; the card the effect
 	// named is the one whose new ID the caller is told.
 	if partner := g.meldSplitPartnerInExileLocked(cardID); partner != uuid.Nil {
-		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
+		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
 			return uuid.Nil, err
 		}
 	}
@@ -3565,13 +3581,14 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 	// the card, so a Thassa blink that paused would otherwise come back
 	// untapped.
 	return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
-		Kind:           RepEventMove,
-		Actor:          newController,
-		CardID:         cardID,
-		OldZone:        ZoneExile,
-		NewZone:        ZoneBattlefield,
-		EntersTapped:   tapped,
-		entryResumable: true,
+		Kind:               RepEventMove,
+		Actor:              newController,
+		CardID:             cardID,
+		OldZone:            ZoneExile,
+		NewZone:            ZoneBattlefield,
+		EntersTapped:       tapped,
+		EntersWithCounters: copyCounterMap(counters),
+		entryResumable:     true,
 		// CR 400.7: the returning permanent is a NEW OBJECT. The
 		// finisher mints the ID and strips the old object's
 		// battlefield state, on the inline path and the resumed one
