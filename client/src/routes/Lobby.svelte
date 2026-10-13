@@ -2244,7 +2244,9 @@
   }
   .hrow {
     display: grid;
-    grid-template-columns: minmax(0, 2.4fr) minmax(0, 1fr) minmax(0, 1.6fr) minmax(0, 1fr) auto;
+    /* Fixed result, when and action columns, so the header row (outside
+       the list) and every game row line up whatever each row holds. */
+    grid-template-columns: minmax(0, 2.4fr) 132px minmax(0, 1.6fr) 104px 148px;
     align-items: center;
     gap: 12px 16px;
     padding: 12px 18px;
