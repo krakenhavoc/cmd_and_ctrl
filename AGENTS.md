@@ -581,6 +581,7 @@ Subsections of [docs/adding-cards.md](docs/adding-cards.md):
   - [Suspect (CR 701.60, #2698)](docs/adding-cards.md#suspect-cr-70160-2698)
   - [Meld (ADR 0145, #2699, CR 701.42)](docs/adding-cards.md#meld-adr-0145-2699-cr-70142)
   - [More Than Meets the Eye, convert and living metal (ADR 0152, #1856)](docs/adding-cards.md#more-than-meets-the-eye-convert-and-living-metal-adr-0152-1856)
+  - ["If a spell or ability an opponent controls causes you to discard" (ADR 0153, #1861)](docs/adding-cards.md#if-a-spell-or-ability-an-opponent-controls-causes-you-to-discard-adr-0153-1861)
   - [Partner with (CR 702.124j, #2142)](docs/adding-cards.md#partner-with-cr-702124j-2142)
   - [Choose a Background, partner and Doctor's companion (ADR 0144, #2874)](docs/adding-cards.md#choose-a-background-partner-and-doctors-companion-adr-0144-2874)
   - [Renown (CR 702.112, #2049)](docs/adding-cards.md#renown-cr-702112-2049)

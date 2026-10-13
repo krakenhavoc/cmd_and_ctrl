@@ -1097,6 +1097,20 @@ TokenWeight × tokens
 So with Mary Read out, the bot loots away the Island rather than the
 Mountain.
 
+A discard an opponent forces is priced by what the card does
+(`discard_by_opponent.go`, ADR 0153 §5,
+[#1861](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1861)). The
+hand card's `discard_by_opponent` is declared by the catalog
+(`battlefield`, `library` or `trigger`), never read from its name, and the
+bot uses it only when the prompt's `source` is a spell or ability an
+opponent controls. A `battlefield` card (Obstinate Baloth, Dodecapod) is
+put onto the battlefield instead of the graveyard, so discarding it gains
+`cardValue`: with a Baloth and a land in hand, an opponent's Mind Rot
+makes the bot pitch the Baloth. A `trigger` card costs less by what its
+`on_opponent_discard` row pays, in the units above (Metrognome's four
+Gnomes are `4 × TokenWeight`). `library` is declared and not priced. The
+bot does not hold a Baloth in hand to bait the discard.
+
 A card that can turn itself into a card is a cheaper discard
 (`SelfReplacingDiscards`, `self_replacing.go`, ADR 0126's amendment of
 2026-10-12, [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)).
