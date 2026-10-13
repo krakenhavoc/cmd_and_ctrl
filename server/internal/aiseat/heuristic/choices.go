@@ -600,6 +600,22 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 				}
 				return 1 - 0.4*e/(1+e), "pay the energy"
 			}
+			// ADR 0150 §6: a life price (Dash Hopes' 5 life, Temporal
+			// Extortion's half) or damage taken (Browbeat's 5) is
+			// priced as Phyrexian life is: declined below the floor,
+			// paid above it.
+			if kind == choicePayUnless && ch != nil && (ch.PayLife != nil || ch.PayDamage != nil) {
+				n := 0
+				if ch.PayLife != nil {
+					n = *ch.PayLife
+				} else {
+					n = *ch.PayDamage
+				}
+				if st.myLife()-n < phyrexianLifeFloor {
+					return phyrexianLifeDeclined, "the life would take it below the floor"
+				}
+				return 0.75, "pay with life"
+			}
 			// ADR 0131 §5: a mana payment that spends 2 life on a symbol
 			// (a ward {B} under K'rrik, a printed {B/P}) is the Phyrexian
 			// life a cast spends. It takes the cast's floor: declined

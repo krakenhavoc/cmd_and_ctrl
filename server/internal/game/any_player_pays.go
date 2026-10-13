@@ -56,9 +56,20 @@ type AnyPlayerPays struct {
 	// Cost is the mana payment, as ParseCost reads it, with any X
 	// already worked out by the card (Soul Strings' {X}).
 	Cost string
-	// Action is a payment that is not mana (ADR 0108 §5). Nil for a
-	// mana payment; when set, Cost is the payment's printed words.
+	// Action is a payment that is not mana (ADR 0108 §5, ADR 0150 §3):
+	// life, damage, a sacrifice, a discard, or nothing at all. Nil for
+	// a mana payment; when set, Cost is the payment's printed words.
 	Action *PayAction
+	// PerPayer builds the payment for the player being asked, when it
+	// differs from player to player: Temporal Extortion's "half their
+	// life, rounded up" (ADR 0150 §3). It runs as each link is queued,
+	// so it reads that player's life then, and returns the payment and
+	// its words, which replace Action and Cost for that link. Optional.
+	PerPayer func(g *Game, payer uuid.UUID) (PayAction, string)
+	// AcceptLabel and DeclineLabel name the two answers when "Pay" and
+	// "Don't pay" read wrong: "Take 5 damage", "Let them have it".
+	// Optional; empty keeps the client's words.
+	AcceptLabel, DeclineLabel string
 	// Question is the dialog header each offeree sees.
 	Question string
 	// Opponents narrows the offer to the controller's opponents ("any
@@ -116,7 +127,9 @@ func (g *Game) QueueAnyPlayerPaysForEffect(p AnyPlayerPays) error {
 	if p.Action != nil {
 		a := *p.Action
 		p.Action = &a
-	} else if _, err := ParseCost(p.Cost); err != nil {
+	} else if _, err := ParseCost(p.Cost); err != nil && p.PerPayer == nil {
+		// (A PerPayer offer builds each link's payment as it is
+		// queued, so its Cost is not mana.)
 		// A programming error, surfaced once rather than once per
 		// player; the card still does something.
 		g.EmitEvent(Event{
@@ -162,22 +175,31 @@ func (g *Game) offerAnyPlayerFromLocked(p AnyPlayerPays, offer *AnyPlayerOffer, 
 		}
 		link := cloneAnyPlayerOffer(offer)
 		after := next + 1
+		cost, action := p.Cost, p.Action
+		if p.PerPayer != nil {
+			// ADR 0150 §3: this player's own price, worked out now.
+			a, words := p.PerPayer(g, who)
+			action, cost = &a, words
+		}
 		decline := func(g *Game) error {
-			g.EmitEvent(Event{Kind: EventAnyPlayerDeclined, Actor: who, Source: p.Source, Label: p.Cost})
+			g.EmitEvent(Event{Kind: EventAnyPlayerDeclined, Actor: who, Source: p.Source, Label: cost})
 			moved := cloneAnyPlayerOffer(link)
 			moved.Declined = append(moved.Declined, who)
 			return g.offerAnyPlayerFromLocked(p, moved, after, owed)
 		}
 		pay := func(g *Game) error {
-			g.EmitEvent(Event{Kind: EventAnyPlayerPaid, Actor: who, Source: p.Source, Label: p.Cost})
+			g.EmitEvent(Event{Kind: EventAnyPlayerPaid, Actor: who, Source: p.Source, Label: cost})
 			if p.OnPaid == nil {
 				return nil
 			}
 			return p.OnPaid(g, who)
 		}
-		return g.queuePayUnlessLocked(who, p.Source, p.Cost, p.Question, decline,
+		return g.queuePayUnlessLocked(who, p.Source, cost, p.Question, decline,
 			owed, p.Guards, nil,
-			payUnlessExtras{onPay: pay, action: p.Action, offer: link})
+			payUnlessExtras{
+				onPay: pay, action: action, offer: link,
+				acceptLabel: p.AcceptLabel, declineLabel: p.DeclineLabel,
+			})
 	}
 	if p.OnNobody == nil {
 		return nil
