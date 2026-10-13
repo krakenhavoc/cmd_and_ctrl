@@ -31,23 +31,7 @@ func init() {
 			Targeting(
 				On(game.EventLTB, anotherCreatureOrPlaneswalkerYouControlDied,
 					"Massacre Girl, Most Wanted — 1 damage to target opponent and you gain 1 life",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						victim := uuid.Nil
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind == game.TargetPlayer {
-								victim = t.ID
-								break
-							}
-						}
-						if victim == uuid.Nil {
-							return nil
-						}
-						if err := (DealDamage{Source: item.SourceCardID, Target: victim, Amount: 1}).Apply(ctx); err != nil {
-							return err
-						}
-						return GainLife{Amount: 1}.Apply(ctx)
-					}),
+					oneDamageToTargetOpponentAndGainOne),
 				TargetPlayer("target opponent", Opponent()),
 			),
 			On(game.EventDealDamage, anOpponentWasDealtNoncombatDamage,
