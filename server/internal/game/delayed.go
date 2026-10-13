@@ -221,8 +221,12 @@ type DelayedTrigger struct {
 	// removed by the duration sweep, not by firing (ADR 0059 sub-PR
 	// 2b).
 	// ScheduleDelayedTriggerForEffect stamps UntilEndOfTurn on an
-	// event-conditioned trigger that names none, because every
-	// printed one says "this turn".
+	// event-conditioned trigger that names none, because most printed
+	// ones say "this turn". One that does not is handed
+	// IndefiniteDuration() by its caller: "When this Aura leaves the
+	// battlefield, that creature's controller sacrifices it" (Animate
+	// Dead, ADR 0154 decision 6) waits for as long as the game lasts,
+	// survives every cleanup step, and still fires once (CR 603.7b).
 	Duration *Duration
 
 	// --- CR 610.3: an "until" return (#1729, until_return.go) -------
@@ -333,10 +337,11 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	// CR 701.28e: "for a delayed trigger, the reference point is when
 	// the delayed trigger was created" — now.
 	dt.SourceTurnOvers = g.TurnOversForEffect(dt.SourceCardID)
-	// #663: "this turn" is the printed duration of every
-	// event-conditioned delayed trigger there is, and CR 514.2 ends
-	// it at cleanup whether or not it fired. A caller that means
-	// something longer hands over its own Duration.
+	// #663: "this turn" is the printed duration of most
+	// event-conditioned delayed triggers, and CR 514.2 ends it at
+	// cleanup whether or not it fired. A caller that means something
+	// longer hands over its own Duration — IndefiniteDuration() for
+	// one with no end at all (Animate Dead, ADR 0154 decision 6).
 	if (len(dt.On) > 0 || dt.isManaTrigger()) && dt.Duration == nil {
 		d := g.UntilEndOfTurnDuration()
 		dt.Duration = &d

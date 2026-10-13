@@ -32,6 +32,7 @@ battlefield.cards[].activeFace	number:int
 battlefield.cards[].alsoBlocking	array
 battlefield.cards[].alsoBlocking[]	custom(uuid.UUID)
 battlefield.cards[].attachedAt	number:int64
+battlefield.cards[].attachedEpoch	number:int
 battlefield.cards[].attachedTo	object
 battlefield.cards[].attachedTo.ID	custom(uuid.UUID)
 battlefield.cards[].attachedTo.Kind	string
@@ -114,6 +115,10 @@ battlefield.cards[].durationCopyBase.TokenKey	string
 battlefield.cards[].durationCopyBase.Toughness	number:int
 battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
+battlefield.cards[].enchantReturned	object
+battlefield.cards[].enchantReturned.epoch	number:int
+battlefield.cards[].enchantReturned.id	custom(uuid.UUID)
+battlefield.cards[].enchantSwapped	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
 battlefield.cards[].exertOnAttack	bool
@@ -536,6 +541,7 @@ exile.cards[].activeFace	number:int
 exile.cards[].alsoBlocking	array
 exile.cards[].alsoBlocking[]	custom(uuid.UUID)
 exile.cards[].attachedAt	number:int64
+exile.cards[].attachedEpoch	number:int
 exile.cards[].attachedTo	object
 exile.cards[].attachedTo.ID	custom(uuid.UUID)
 exile.cards[].attachedTo.Kind	string
@@ -618,6 +624,10 @@ exile.cards[].durationCopyBase.TokenKey	string
 exile.cards[].durationCopyBase.Toughness	number:int
 exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
+exile.cards[].enchantReturned	object
+exile.cards[].enchantReturned.epoch	number:int
+exile.cards[].enchantReturned.id	custom(uuid.UUID)
+exile.cards[].enchantSwapped	bool
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
 exile.cards[].exertOnAttack	bool
@@ -1160,6 +1170,7 @@ lastKnownStack[].card.activeFace	number:int
 lastKnownStack[].card.alsoBlocking	array
 lastKnownStack[].card.alsoBlocking[]	custom(uuid.UUID)
 lastKnownStack[].card.attachedAt	number:int64
+lastKnownStack[].card.attachedEpoch	number:int
 lastKnownStack[].card.attachedTo	object
 lastKnownStack[].card.attachedTo.ID	custom(uuid.UUID)
 lastKnownStack[].card.attachedTo.Kind	string
@@ -1242,6 +1253,10 @@ lastKnownStack[].card.durationCopyBase.TokenKey	string
 lastKnownStack[].card.durationCopyBase.Toughness	number:int
 lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
+lastKnownStack[].card.enchantReturned	object
+lastKnownStack[].card.enchantReturned.epoch	number:int
+lastKnownStack[].card.enchantReturned.id	custom(uuid.UUID)
+lastKnownStack[].card.enchantSwapped	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
 lastKnownStack[].card.exertOnAttack	bool
@@ -2496,6 +2511,7 @@ phasedOut.cards[].activeFace	number:int
 phasedOut.cards[].alsoBlocking	array
 phasedOut.cards[].alsoBlocking[]	custom(uuid.UUID)
 phasedOut.cards[].attachedAt	number:int64
+phasedOut.cards[].attachedEpoch	number:int
 phasedOut.cards[].attachedTo	object
 phasedOut.cards[].attachedTo.ID	custom(uuid.UUID)
 phasedOut.cards[].attachedTo.Kind	string
@@ -2578,6 +2594,10 @@ phasedOut.cards[].durationCopyBase.TokenKey	string
 phasedOut.cards[].durationCopyBase.Toughness	number:int
 phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
+phasedOut.cards[].enchantReturned	object
+phasedOut.cards[].enchantReturned.epoch	number:int
+phasedOut.cards[].enchantReturned.id	custom(uuid.UUID)
+phasedOut.cards[].enchantSwapped	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
 phasedOut.cards[].exertOnAttack	bool
@@ -3136,6 +3156,7 @@ seats[].command.cards[].activeFace	number:int
 seats[].command.cards[].alsoBlocking	array
 seats[].command.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].command.cards[].attachedAt	number:int64
+seats[].command.cards[].attachedEpoch	number:int
 seats[].command.cards[].attachedTo	object
 seats[].command.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].command.cards[].attachedTo.Kind	string
@@ -3218,6 +3239,10 @@ seats[].command.cards[].durationCopyBase.TokenKey	string
 seats[].command.cards[].durationCopyBase.Toughness	number:int
 seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
+seats[].command.cards[].enchantReturned	object
+seats[].command.cards[].enchantReturned.epoch	number:int
+seats[].command.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].command.cards[].enchantSwapped	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
 seats[].command.cards[].exertOnAttack	bool
@@ -3470,6 +3495,7 @@ seats[].emblems.cards[].activeFace	number:int
 seats[].emblems.cards[].alsoBlocking	array
 seats[].emblems.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].emblems.cards[].attachedAt	number:int64
+seats[].emblems.cards[].attachedEpoch	number:int
 seats[].emblems.cards[].attachedTo	object
 seats[].emblems.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].emblems.cards[].attachedTo.Kind	string
@@ -3552,6 +3578,10 @@ seats[].emblems.cards[].durationCopyBase.TokenKey	string
 seats[].emblems.cards[].durationCopyBase.Toughness	number:int
 seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
+seats[].emblems.cards[].enchantReturned	object
+seats[].emblems.cards[].enchantReturned.epoch	number:int
+seats[].emblems.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].emblems.cards[].enchantSwapped	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
 seats[].emblems.cards[].exertOnAttack	bool
@@ -3795,6 +3825,7 @@ seats[].graveyard.cards[].activeFace	number:int
 seats[].graveyard.cards[].alsoBlocking	array
 seats[].graveyard.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedAt	number:int64
+seats[].graveyard.cards[].attachedEpoch	number:int
 seats[].graveyard.cards[].attachedTo	object
 seats[].graveyard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedTo.Kind	string
@@ -3877,6 +3908,10 @@ seats[].graveyard.cards[].durationCopyBase.TokenKey	string
 seats[].graveyard.cards[].durationCopyBase.Toughness	number:int
 seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
+seats[].graveyard.cards[].enchantReturned	object
+seats[].graveyard.cards[].enchantReturned.epoch	number:int
+seats[].graveyard.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].graveyard.cards[].enchantSwapped	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
 seats[].graveyard.cards[].exertOnAttack	bool
@@ -4118,6 +4153,7 @@ seats[].hand.cards[].activeFace	number:int
 seats[].hand.cards[].alsoBlocking	array
 seats[].hand.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].hand.cards[].attachedAt	number:int64
+seats[].hand.cards[].attachedEpoch	number:int
 seats[].hand.cards[].attachedTo	object
 seats[].hand.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].hand.cards[].attachedTo.Kind	string
@@ -4200,6 +4236,10 @@ seats[].hand.cards[].durationCopyBase.TokenKey	string
 seats[].hand.cards[].durationCopyBase.Toughness	number:int
 seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
+seats[].hand.cards[].enchantReturned	object
+seats[].hand.cards[].enchantReturned.epoch	number:int
+seats[].hand.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].hand.cards[].enchantSwapped	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
 seats[].hand.cards[].exertOnAttack	bool
@@ -4453,6 +4493,7 @@ seats[].library.cards[].activeFace	number:int
 seats[].library.cards[].alsoBlocking	array
 seats[].library.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].library.cards[].attachedAt	number:int64
+seats[].library.cards[].attachedEpoch	number:int
 seats[].library.cards[].attachedTo	object
 seats[].library.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].library.cards[].attachedTo.Kind	string
@@ -4535,6 +4576,10 @@ seats[].library.cards[].durationCopyBase.TokenKey	string
 seats[].library.cards[].durationCopyBase.Toughness	number:int
 seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
+seats[].library.cards[].enchantReturned	object
+seats[].library.cards[].enchantReturned.epoch	number:int
+seats[].library.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].library.cards[].enchantSwapped	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
 seats[].library.cards[].exertOnAttack	bool
@@ -5006,6 +5051,7 @@ stack.cards[].activeFace	number:int
 stack.cards[].alsoBlocking	array
 stack.cards[].alsoBlocking[]	custom(uuid.UUID)
 stack.cards[].attachedAt	number:int64
+stack.cards[].attachedEpoch	number:int
 stack.cards[].attachedTo	object
 stack.cards[].attachedTo.ID	custom(uuid.UUID)
 stack.cards[].attachedTo.Kind	string
@@ -5088,6 +5134,10 @@ stack.cards[].durationCopyBase.TokenKey	string
 stack.cards[].durationCopyBase.Toughness	number:int
 stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
+stack.cards[].enchantReturned	object
+stack.cards[].enchantReturned.epoch	number:int
+stack.cards[].enchantReturned.id	custom(uuid.UUID)
+stack.cards[].enchantSwapped	bool
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
 stack.cards[].exertOnAttack	bool

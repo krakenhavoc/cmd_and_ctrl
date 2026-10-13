@@ -368,6 +368,26 @@ var mechanics = []Mechanic{
 		Adopt:      `Bestow("{cost}") — it bundles the enchant creature target and the Aura spell (ADR 0141)`,
 	},
 	{
+		// ADR 0154 (#1780): an Aura whose enchant clause is a card in a
+		// graveyard (Animate Dead, Dance of the Dead).
+		Name:    "graveyard aura",
+		Phrases: []string{"enchant creature card in a graveyard", "enchants a card in a graveyard"},
+		Implements: func(s effects.Spec) bool {
+			if s.Targets == nil || !strings.HasPrefix(s.Targets.Label, "enchant ") {
+				return false
+			}
+			for _, z := range s.Targets.Zones {
+				if z == game.ZoneGraveyard {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "the spec's enchant clause (Targets) lists game.ZoneGraveyard",
+		Confidence: Exact,
+		Adopt:      `Targets: EnchantCardInGraveyard("creature", Creature()) — the Aura resolves attached to the card (ADR 0154)`,
+	},
+	{
 		Name:       "overload",
 		Phrases:    []string{"overload"},
 		Implements: altCost("overload"),
