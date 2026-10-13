@@ -612,6 +612,10 @@ type Mod struct {
 	// reason Objects is one — every other mod writes nothing, and the
 	// record stays plain data with no pointer in it (ADR 0041 P1).
 	Copy []PrintedValues `json:"copy,omitempty"`
+	// TextBox is ModExchangeText's text box (ADR 0160): exactly one
+	// entry, required on that kind and refused on every other. A slice
+	// for the reason Copy is one.
+	TextBox []TextBoxValues `json:"textBox,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -792,6 +796,9 @@ const (
 	// readerCopy is the layer-1 materialiser (#1593,
 	// duration_copy.go): it runs before the layer pass, not in it.
 	readerCopy
+	// readerText is the layer-3 text-box materialiser (ADR 0160,
+	// text_box.go): like readerCopy, it runs before the pass.
+	readerText
 	// readerRule is a CR 613.11 rules gate (ADR 0107 §5): the damage
 	// prevention and redirection gates and the life-gain gate.
 	readerRule
@@ -894,8 +901,11 @@ var modKinds = map[ModKind]modKindSpec{
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
 	// Everflame, Heroes' Legacy" (become_named.go).
-	ModSetName:  {layer: Layer3Text},
-	ModSetTypes: {layer: Layer4Type},
+	ModSetName: {layer: Layer3Text},
+	// ADR 0160: one half of an exchange of text boxes, applied to the
+	// key before the pass (text_box.go).
+	ModExchangeText: {reader: readerText, layer: Layer3Text},
+	ModSetTypes:     {layer: Layer4Type},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -1297,7 +1307,10 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := becomeNamedModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
-		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
+		if problem := textBoxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {
 			named = true
 		}
 	}
@@ -1356,6 +1369,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.SourceFilter = cloneSourceFilters(m.SourceFilter)
 		m.RecipientFilter = cloneRecipientFilters(m.RecipientFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
+		m.TextBox = cloneTextBoxSlice(m.TextBox)
 		out[i] = m
 	}
 	return out

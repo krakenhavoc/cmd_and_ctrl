@@ -1628,6 +1628,10 @@ export interface PendingChoiceView {
   // an unconditional "a card" / "three cards" search (CR 701.23d), where
   // an empty answer is refused and the client offers no such button.
   search_min?: number;
+  // ADR 0160: a "copy_target" prompt whose pick is the creature to
+  // exchange text boxes with rather than the object to copy (Deadpool,
+  // Trading Card). Same {card_ids} answer, same empty decline.
+  exchanges_text?: boolean;
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
@@ -4080,6 +4084,12 @@ export interface CardView extends CastSurfaceView {
   // abilities of" that the catalog does not automate. They lend nothing; the
   // menu names each in a disabled "<lender>: not automated" line.
   unautomated_lenders?: GrantedByView[];
+  // ADR 0160 (CR 612.5) — the object whose text box this permanent has
+  // when it is not its own (Exchange of Words, Deadpool, Trading Card).
+  // Its abilities, keywords and rows already are that text's; the
+  // printed oracle text the inspector fetches is not. Absent when the
+  // permanent has its own text.
+  text_box_from?: string;
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).

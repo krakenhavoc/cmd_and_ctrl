@@ -82,6 +82,9 @@ func (g *Game) sweepScopedStaticsLocked(endOfTurn bool) {
 		// are read directly, and the permanent must not be the
 		// copied card for one more read after its copy is over.
 		g.materialiseDurationCopiesLocked()
+		// ADR 0160: and an exchange that just ended gives the text back
+		// now, for the same reason.
+		g.materialiseTextBoxesLocked()
 	}
 }
 

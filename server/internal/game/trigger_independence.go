@@ -1104,7 +1104,7 @@ var characteristicModKinds = map[ModKind]bool{
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 	ModGrantAbilities: true, ModCantAttackUnlessDefenderControls: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
-	ModBecomeCopy: true, ModCantBeBlockedExceptBy: true,
+	ModBecomeCopy: true, ModExchangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
 	ModCantBeBlockedByPower: true,
 }

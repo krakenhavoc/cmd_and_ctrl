@@ -2891,6 +2891,27 @@ Identical grants are not merged: two grantors give two rows, each
 labelled with its grantor (CR 113.2c; the working default until the
 owner settles ADR 0093's open presentation question).
 
+## Exchanged text boxes (ADR 0160, #2779, 2026-10-13)
+
+Additive, `v` unmoved. CR 612.5: Exchange of Words, and Deadpool,
+Trading Card's entry choice, swap the rules text of two creatures.
+
+- **`text_box_from: string` on the CardView.** The name of the object
+  whose text box this permanent has, when it is not its own. Its
+  `abilities`, `ability_rows`, `activated_abilities`, `mana_abilities`,
+  `auto` and `token_text` already describe that text; its name, type
+  line, P/T, mana cost and colours are its own. The printed oracle text
+  a client fetches by `scryfall_id` is therefore NOT what the permanent
+  does, and the inspector says so. Absent when the permanent has its own
+  text. Public, and cleared with the ability rows for a viewer who
+  cannot see the card.
+- **`exchanges_text: true` on a `copy_target` PendingChoiceView.** The
+  pick is the creature to exchange text boxes with ("As Deadpool enters,
+  you may exchange his text box and another creature's"), not the object
+  to copy. Same `options[]`, same `{choice_id, card_ids}` answer, and an
+  empty list still declines (he keeps his own text). Absent on every
+  other prompt.
+
 ## Abilities any player may activate (ADR 0106 §1, #1793, 2026-10-01)
 
 Additive, `v` unmoved. CR 602.2 lets an ability say who may activate

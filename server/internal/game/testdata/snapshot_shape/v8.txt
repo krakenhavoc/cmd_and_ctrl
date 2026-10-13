@@ -1724,6 +1724,11 @@ lastKnownTriggerIdentity{}.attachedTo.Kind	string
 lastKnownTriggerIdentity{}.attachedTo.Mode	number:int
 lastKnownTriggerIdentity{}.attachedTo.Slot	number:int
 lastKnownTriggerIdentity{}.oracleID	string
+lastKnownTriggerIdentity{}.textBox	object
+lastKnownTriggerIdentity{}.textBox.from	string
+lastKnownTriggerIdentity{}.textBox.key	string
+lastKnownTriggerIdentity{}.textBox.keywords	array
+lastKnownTriggerIdentity{}.textBox.keywords[]	string
 lastKnownTriggerIdentity{}.tokenKey	string
 lastResolvedVersion	number:uint64
 layerVersion	number:uint64
@@ -2177,6 +2182,7 @@ pendingChoices[].declineLabel	string
 pendingChoices[].discardLabel	string
 pendingChoices[].discardOptions	array
 pendingChoices[].discardOptions[]	custom(uuid.UUID)
+pendingChoices[].exchangesText	bool
 pendingChoices[].fromPlayer	custom(uuid.UUID)
 pendingChoices[].guardsStackItem	custom(uuid.UUID)
 pendingChoices[].id	custom(uuid.UUID)
@@ -3043,6 +3049,12 @@ scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].supertypes	array
 scopedEffects[].mods[].supertypes[]	string
 scopedEffects[].mods[].text	string
+scopedEffects[].mods[].textBox	array
+scopedEffects[].mods[].textBox[]	object
+scopedEffects[].mods[].textBox[].from	string
+scopedEffects[].mods[].textBox[].key	string
+scopedEffects[].mods[].textBox[].keywords	array
+scopedEffects[].mods[].textBox[].keywords[]	string
 scopedEffects[].mods[].then	string
 scopedEffects[].mods[].thenPer	string
 scopedEffects[].mods[].to	array

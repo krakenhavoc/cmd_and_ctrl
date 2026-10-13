@@ -247,6 +247,13 @@
         {#if meta?.mana_cost}<span class="cost"><ManaCost cost={meta.mana_cost} size={13} /></span
           >{/if}
       </div>
+      <!-- ADR 0160: an exchanged text box. The oracle text below is
+           what the card prints, which is no longer what it does. -->
+      {#if card.text_box_from}
+        <div class="text-box-from">
+          Has the text box of {card.text_box_from} — the printed text below doesn't apply.
+        </div>
+      {/if}
       {#if meta?.oracle_text}
         <div class="oracle">{meta.oracle_text}</div>
       {:else if meta === null}
@@ -554,6 +561,16 @@
   .oracle.dim {
     color: var(--fg-dim);
     font-style: italic;
+  }
+  /* ADR 0160: an exchanged text box, set apart like a grant. */
+  .text-box-from {
+    margin: 4px 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px dashed var(--border, var(--fg-dim));
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--fg);
   }
   /* ADR 0093: granted abilities, read like oracle text but set apart
      from it — the card did not print them. */

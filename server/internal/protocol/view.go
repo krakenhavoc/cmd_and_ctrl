@@ -667,6 +667,11 @@ type PendingChoiceView struct {
 	// offer an empty answer and the server would refuse it.
 	SearchMax int `json:"search_max,omitempty"`
 	SearchMin int `json:"search_min,omitempty"`
+	// ExchangesText marks a "copy_target" prompt whose pick is the
+	// creature to exchange text boxes with, not the object to copy (ADR
+	// 0160 Decision 6, Deadpool, Trading Card). Same answer, same empty
+	// decline; only the wording differs.
+	ExchangesText bool `json:"exchanges_text,omitempty"`
 	// Placement populates the ADR 0088 "put_in_library" kind: which
 	// lanes the answer may use — "top" ({top_order} alone), "bottom"
 	// ({bottom} alone, top-first) or "top_or_bottom" (both). Absent
@@ -3043,6 +3048,13 @@ type CardView struct {
 	// with the ability rows for a viewer who cannot see the card, and for a
 	// lender in a hidden zone.
 	UnautomatedLenders []GrantedByView `json:"unautomated_lenders,omitempty"`
+	// TextBoxFrom names the object whose text box this permanent has
+	// when it is not its own (CR 612.5, ADR 0160): Exchange of Words,
+	// Deadpool, Trading Card. Its abilities, keywords and ability rows
+	// already are that text's; this is the line that says why. Absent —
+	// which is nearly always — means the permanent has its own text.
+	// Cleared with the ability rows for a viewer who cannot see them.
+	TextBoxFrom string `json:"text_box_from,omitempty"`
 
 	// AbilityRows are the card's non-keyword triggered, static and
 	// activated abilities right now, triggered first, each with a short
@@ -7954,6 +7966,7 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			AutoAnswerPrompt: c.AutoAnswerPrompt,
 			AskedByHand:      string(c.AskedByHand),
 			PrivateText:      c.PrivateText(),
+			ExchangesText:    c.ExchangesText,
 		}
 		// ADR 0131 §2: the life half of a mana payment.
 		if c.Kind == game.PendingChoicePayUnless && c.PayAction() == nil {
@@ -9760,6 +9773,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// holds a field to.
 	out.GrantedAbilities = nil
 	out.UnautomatedLenders = nil
+	// ADR 0160: and so does where its text box came from.
+	out.TextBoxFrom = ""
 	// #2219: the tile's ability rows are read off the card's catalog
 	// entry exactly as the ability lists above are, and "Draw a card"
 	// under a face-down card says which card it is.
@@ -10084,6 +10099,7 @@ func viewOfCardPtr(c *game.Card) CardView {
 		// #522: a card a restore stripped of abilities is not
 		// presented as automated for the rest of the game.
 		Auto:                   game.IsAutoCard(game.CatalogKeyOf(c)) && !c.AbilitiesLostOnRestore,
+		TextBoxFrom:            c.TextBoxFrom(),
 		Unimplemented:          game.UnimplementedOf(c),
 		MayMakeManaUnautomated: game.MayMakeManaUnautomatedOf(c),
 		// #992: `target_mode` is the one announce field this
