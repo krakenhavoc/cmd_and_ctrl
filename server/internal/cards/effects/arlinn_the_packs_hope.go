@@ -23,19 +23,18 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a planeswalker, so it can still be attacked and takes damage as one
 // (CR 306.8), which is a printed drawback and not a gap.
 //
-// DECLARED SIMPLIFICATION, weaker than printed: the +1 gives only the
-// flash half. A "creatures you control enter with an additional +1/+1
-// counter until your next turn" effect needs a replacement that lasts
-// for a duration, and the engine has only the ones a permanent carries
-// while it is in play. The flash half is the same timing grant Teferi,
-// Time Raveler uses for sorceries, filtered to creature spells.
+// The +1's second half (#3172) is a PlayerStatic grant with an until-your-
+// next-turn duration (game.GrantCreaturesEnterWithCountersForEffect) read by
+// a built-in entry replacement, so every creature entering under the
+// controller until then, tokens included, gets the counter through the
+// counter pipeline. The flash half is the same timing grant Teferi, Time
+// Raveler uses for sorceries, filtered to creature spells.
 func init() {
 	const oracle = "f227ce07-7e96-4a36-ab7c-9be6e777d649"
 	Register(Spec{
 		OracleID:        oracle,
 		Name:            "Arlinn, the Pack's Hope",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The +1 lets you cast creature spells as though they had flash, but your creatures don't enter with an additional +1/+1 counter."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"daybound"},
 		StartingLoyalty: 4,
 		Activated: []ActivatedAbility{
@@ -43,11 +42,18 @@ func init() {
 				Label: "+1: Until your next turn, you may cast creature spells as though they had flash, and each creature you control enters with an additional +1/+1 counter on it.",
 				Cost:  LoyaltyCost(1),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return GrantCastTiming{
+					ctx := NewContext(g, item)
+					if err := (GrantCastTiming{
 						Filter:            game.PermissionFilter{CreatureOnly: true},
 						UntilYourNextTurn: true,
 						Label:             "Until your next turn, you may cast creature spells as though they had flash.",
-					}.Apply(NewContext(g, item))
+					}).Apply(ctx); err != nil {
+						return err
+					}
+					g.GrantCreaturesEnterWithCountersForEffect(item.Controller, game.CounterPlusOne, 1,
+						"Arlinn, the Pack's Hope: each creature you control enters with an additional +1/+1 counter",
+						item.SourceCardID, DurationUntilYourNextTurn(ctx, item.Controller))
+					return nil
 				},
 			},
 			{

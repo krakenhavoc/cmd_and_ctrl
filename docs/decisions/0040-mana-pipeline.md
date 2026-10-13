@@ -1352,3 +1352,34 @@ a creature's mana and an animated Mutavault does while it is one.
 Proof cards: Drain Life, Consume Spirit (full); Imperiosaur, Myr Superion
 (full); Soul Burn (caveat). Tracker
 [#887](https://github.com/krakenhavoc/cmd_and_ctrl/issues/887).
+
+## Amendment 2026-10-13 — mana that lasts until end of combat, and a spend purpose for turning a permanent face up (#3172)
+
+Two additions to the same machinery, both small, both made for caveated cards.
+
+**`ManaRiderKeepUntilEndOfCombat`** is `ManaRiderKeepUntilEndOfTurn`'s sibling
+(2026-10-05 amendment above): a mark on the token, not a spend instruction.
+`sweepManaPoolLocked` keeps a marked token across every step boundary whose
+new step lies in the combat phase (`stepPhase`) and strips the mark at the
+first boundary outside it, after which the token is ordinary and lost (or kept
+by a static) like any other. Firebending is `AddMana` with
+`effects.KeepManaUntilEndOfCombat()` in `Riders`. Avatar Roku and the Dragon
+token it makes are the proof cards.
+
+**`SpendPurposeTurnFaceUp`** / **`ManaRestrictTurnFaceUp`** (`"purpose:turn_face_up"`)
+is `SpendPurposeUnlock`'s sibling: the cost of the turn-face-up special action
+(CR 116.2g, morph, megamorph, disguise, a manifested creature's mana cost) is
+paid with this purpose, so mana restricted to "turn a permanent face up"
+pays it and mana restricted to casting does not. `specialActionSpendContext`
+maps the kind; the legal-move enumerator prices with the same function. The
+three object-property restrictions (colorless, monocolored, multicolored)
+read "the object being paid for", and a face-down permanent is not one, so
+`ManaSpendContext.hasPaidForObject` keeps them off the new purpose. Creeping
+Peeper is the proof card.
+
+Not done, and why: **Damping Sphere's land half** ("if a land is tapped for two
+or more mana, it produces {C} instead") still waits. The RepEventProduceMana
+window opens once per mana SLOT (`{C}{C}` is two slots, two windows), so a
+replacement cannot see the activation's total. It needs the window to carry
+the activation's slot count, and the preview the auto-tapper takes through
+`producedManaPreviewLocked` has to agree with it. The card keeps its caveat.

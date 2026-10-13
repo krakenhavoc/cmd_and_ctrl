@@ -26,22 +26,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Hydra's own replacement makes it two. The Hydra is a printed 1/1,
 // so spending its last counter leaves a 1/1, not a 0/0.
 //
-// One declared simplification, weaker than printed: "another target
-// creature" is matched by NAME, the catalog's convention for
-// "another" on an activated ability's target clause (Dour Port-Mage,
-// Ioreth). A target predicate is not told which permanent is
-// activating, so it cannot exclude just this one: the Hydra cannot
-// target itself, as printed, and cannot target a second Benevolent
-// Hydra either, which the printed card can.
+// "Another target creature" is the clause's own ExcludeSource, so the
+// exclusion is by instance: the Hydra cannot target itself, as printed,
+// and a second Benevolent Hydra is a legal target, as printed (#3172).
 func init() {
 	Register(Spec{
 		OracleID:                   "01dbf1bc-ca62-4fb6-959c-ef7c0dc03bb0",
 		Name:                       "Benevolent Hydra",
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
-		Completeness:               CompletenessCaveats,
-		Caveats: []string{
-			"The tap ability can't move a counter onto another Benevolent Hydra.",
-		},
+		Completeness:               CompletenessFull,
 		Replacements: []game.ReplacementEffect{
 			b28OtherCreaturesYouControlGetAnExtraCounter("Benevolent Hydra: +1 +1/+1 counter"),
 		},

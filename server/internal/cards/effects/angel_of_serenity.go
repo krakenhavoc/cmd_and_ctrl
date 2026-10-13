@@ -22,39 +22,35 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // keeps), so a card something else has since moved on is not pulled
 // out of wherever it went.
 //
-// Sandbox simplifications, declared, both weaker than printed:
-//
-//   - The target clause covers creatures on the BATTLEFIELD only.
-//     The picker is single-zone — a clause spanning the battlefield
-//     and the graveyards has no client mode — so the "and/or creature
-//     cards from graveyards" half is not offered. She still exiles
-//     three opposing creatures; she cannot exile a graveyard threat,
-//     and cannot be used to return your own dead creatures to hand.
-//   - "Another" is enforced by NAME rather than by instance, because
-//     the clause is declared at init() before any Angel exists. In a
-//     singleton format that is the same creature; a token copy of
-//     her would also be excluded. The Effect declines its own source
-//     as well.
+// The target clause spans two zones (#3172): "creatures from the
+// battlefield and/or creature cards from graveyards", so its Zones are the
+// battlefield and the graveyards, and the creature predicate reads a
+// graveyard card's printed type line. "Another" is the clause's own
+// ExcludeSource, so a token copy of her is a legal target, as printed.
 func init() {
 	Register(Spec{
-		OracleID:     "f4ce6078-8c7b-4f68-b324-13130c63a983",
-		Name:         "Angel of Serenity",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The trigger can only exile creatures on the battlefield — creature cards in graveyards can't be chosen.",
-			"The trigger can't target another creature named Angel of Serenity, such as a token copy of her.",
-		},
+		OracleID:        "f4ce6078-8c7b-4f68-b324-13130c63a983",
+		Name:            "Angel of Serenity",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
 			{
 				Watches:        []game.EventKind{game.EventETB},
 				AppliesTo:      b06SelfETB,
 				OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Angel of Serenity — exile up to three other target creatures?"},
-				Targets:        Another(TargetCreature("up to three other target creatures")).WithCount(0, 3),
+				Targets:        angelOfSerenityTargets(),
 				Key:            b36AngelOfSerenityExileLabel,
 				Effect:         b36ExileChosenCreatures,
 			},
 			On(game.EventLTB, Self, "Angel of Serenity — return the exiled cards to their owners' hands", b36ReturnCardsExiledWithToOwnersHands),
 		},
 	})
+}
+
+// angelOfSerenityTargets is "up to three other target creatures from the
+// battlefield and/or creature cards from graveyards".
+func angelOfSerenityTargets() *game.TargetSpec {
+	spec := Another(TargetCreature("up to three other target creatures and/or creature cards in graveyards")).WithCount(0, 3)
+	spec.Zones = []game.ZoneKind{game.ZoneBattlefield, game.ZoneGraveyard}
+	return spec
 }

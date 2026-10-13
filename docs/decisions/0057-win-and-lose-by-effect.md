@@ -1181,3 +1181,19 @@ difference from the printed card is declared as a caveat: a creature
 that lost its abilities BEFORE the Kirin was attached would have the
 grant by timestamp order (CR 613.7), and the Kirin's gate is off for it.
 That errs weaker than printed.
+
+## Amendment 2026-10-13 — Angel's Grace's life floor (#3172)
+
+Decision 8 scoped Angel's Grace's third sentence out ("damage that would
+reduce your life total to less than 1 reduces it to 1 instead"). It is now in,
+as a fourth payload on the player-static slice (`PlayerStatic.LifeFloorOne`,
+`game/life_floor.go`), granted with an until-end-of-turn duration beside the
+two game-end gates.
+
+It is a cap on the life the damage COSTS, applied in the one place that decides
+that (`applyResolvedDamageToPlayerLocked`, beside the `LifeTotalLocked` check),
+not a replacement of the damage amount. That is what the 2021-03-19 ruling
+needs: the damage is still dealt in full, lifelink gains all of it, a "dealt
+damage" trigger and the commander tally see all of it, and the part that cost
+no life rides the event as `DamageNotLifeLoss`. A player already below 1 is
+left alone. Non-damage life loss is not floored, as printed.

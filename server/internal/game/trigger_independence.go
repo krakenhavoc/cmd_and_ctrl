@@ -1121,6 +1121,9 @@ var knownBuiltinReplacementLabels = map[string]bool{
 	regenerationShieldReplacement.Label:       true,
 	protectionPreventsDamageReplacement.Label: true,
 	lifeTotalCantChangeReplacement.Label:      true,
+	// The entry-counters grant exists only while a player static does,
+	// and any player static makes the board opaque already.
+	playerEntryCountersReplacement.Label: true,
 }
 
 // somethingReactsLocked reports whether anything in the game watches

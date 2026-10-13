@@ -13,12 +13,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the way in and a card on the way out.
 //
 // Colour is read from the card's computed colours (Card.HasColor:
-// Scryfall's `colors`, falling back to the mana cost), so a black
-// creature token counts only if its template stamps Colors — the
-// catalog's Zombie does and its Faerie Rogue does not, so a
-// Bitterblossom token neither drains nor feeds the sacrifice. Weaker
-// than printed, and the fix is a `Colors` stamp on the template, not
-// this card.
+// Scryfall's `colors`, falling back to the mana cost). A token counts
+// by the colours its template records: the token table records them
+// for every coloured key (#1127, pinned by a test), so a Bitterblossom
+// Faerie Rogue or a Zombie both drain and feed the sacrifice.
 //
 // "Another" on the sacrifice cost is object identity (effects.Another,
 // CR 109.1): Ayara herself is refused, which is the printed restriction.
@@ -26,10 +24,7 @@ func init() {
 	Register(Spec{
 		OracleID:     "388168b3-ec68-4af2-b88c-6a5ec88c15f6",
 		Name:         "Ayara, First of Locthwain",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A black creature token only counts if its token template records its colour, so some older tokens neither trigger the drain nor can be sacrificed.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if ev.CardID == source.InstanceID {

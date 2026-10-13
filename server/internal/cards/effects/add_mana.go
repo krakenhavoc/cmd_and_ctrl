@@ -70,6 +70,14 @@ func KeepManaUntilEndOfTurn() game.ManaSpendRider {
 	return game.ManaSpendRider{Kind: game.ManaRiderKeepUntilEndOfTurn}
 }
 
+// KeepManaUntilEndOfCombat is the mark for "this mana lasts until end of
+// combat" (firebending; #3172). Put it in AddMana.Riders; the
+// step-boundary sweep keeps the mana through the combat phase and
+// empties it normally at the first boundary outside it.
+func KeepManaUntilEndOfCombat() game.ManaSpendRider {
+	return game.ManaSpendRider{Kind: game.ManaRiderKeepUntilEndOfCombat}
+}
+
 func (a AddMana) Apply(ctx *Context) error {
 	if a.Produced == "" && len(a.Amount.Options) == 0 {
 		return nil

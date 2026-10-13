@@ -8795,6 +8795,36 @@ c.DamageByToughness = true                                                      
 - **A caveat can be wrong.** Drana, Liberator of Malakir said her counters landed after regular damage; the first-strike step
   has been a real step with a priority window since #717, and the existing test already proved the printed behaviour.
 
+### Mana that lasts through combat, turn-face-up mana, a life floor, entry counters for a duration and last turn's damage (#3172)
+
+Five pieces that used to be caveats; the engine notes are in the 2026-10-13 amendments of
+[ADR 0040](decisions/0040-mana-pipeline.md), [ADR 0057](decisions/0057-win-and-lose-by-effect.md),
+[ADR 0013](decisions/0013-replacement-effects.md) and [ADR 0049](decisions/0049-card-engine-seam-review.md).
+
+```go
+AddMana{Produced: "{R}{R}{R}{R}", Riders: []game.ManaSpendRider{KeepManaUntilEndOfCombat()}}  // firebending: lasts until end of combat
+Restrictions: []string{game.ManaRestrictAnyOf([]string{game.ManaRestrictCast, game.ManaRestrictType("Enchantment")},
+    []string{game.ManaRestrictUnlock}, []string{game.ManaRestrictTurnFaceUp})}                  // Creeping Peeper
+ctx.Game.GrantLifeFloorForEffect(ctx.Controller(), label, ctx.Source(), ctx.Game.UntilEndOfTurnDuration()) // Angel's Grace
+g.GrantCreaturesEnterWithCountersForEffect(controller, game.CounterPlusOne, 1, label, source, duration)    // Arlinn's +1
+g.WasDealtNoncombatDamageLastTurn(playerID)                                                     // Command the Stage's upkeep "if"
+g.CommanderIdentityColorsForEffect(controller)                                                   // Commander's Plate, in a layer 6 Apply
+```
+
+- **Firebending is `firebending(n)`** in `avatar_roku.go`: the mana is real and spendable in the declare blockers and damage
+  steps, and gone by the postcombat main phase.
+- **Turn-face-up mana** has its own spend purpose, so a Peeper's `{U}` pays a morph cost and not a spell.
+- **The life floor caps the life the damage costs**, not the damage: lifelink and "dealt damage" triggers still see all of it.
+- **Entry counters for a duration** are a player grant read by a built-in entry replacement, so they reach tokens and cast
+  creatures alike and outlive the planeswalker that made them.
+- **Commander identity in a static**: `CommanderIdentityColorsForEffect` answers `(colours, known)`. Grant nothing when
+  `known` is false (the weaker direction). A player with no commander has a colourless identity.
+- **A free cast from hand with a ceiling** (Buster Sword) is the Rishkar's Expertise pick plus a `{0}` `CastPermission`.
+- **Cards that stay caveated**, with the gap named: Damping Sphere (mana production windows open per slot, not per activation),
+  Emrakul, the Exigent Doom (a hand ability whose granted mana ability lasts "until this card is cast from exile"; durations
+  have no such kind), Cloudsteel Kirin (the quoted "can't lose" is a granted game-end gate and grants carry none) and Ajani's
+  Aid (no combined library-and-graveyard search).
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`

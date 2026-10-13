@@ -87,7 +87,7 @@ func TestLibraryToBattlefieldCardsAreRegistered(t *testing.T) {
 		plMajesticOracle:                 {"Majestic Genesis", CompletenessFull},
 		plGilgameshOracle:                {"Gilgamesh, Master-at-Arms", CompletenessCaveats},
 		plSkyhunterOracle:                {"Armored Skyhunter", CompletenessCaveats},
-		esikaGodOfTheTreeOracleID:        {"Esika, God of the Tree", CompletenessCaveats},
+		esikaGodOfTheTreeOracleID:        {"Esika, God of the Tree", CompletenessFull},
 		esikaGodOfTheTreeOracleID + "#1": {"The Prismatic Bridge", CompletenessFull},
 	} {
 		spec, ok := Lookup(oracle)

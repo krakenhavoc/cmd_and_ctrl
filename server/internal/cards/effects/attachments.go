@@ -469,6 +469,19 @@ func attachedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card,
 	return g.PlayerByIDForEffect(ev.Target) != nil
 }
 
+// attachedCreatureDealtCombatDamageToPlayerOrBattle is the same condition
+// for "deals combat damage to a player or battle" (Beamtown Beatstick).
+func attachedCreatureDealtCombatDamageToPlayerOrBattle(ev game.Event, source *game.Card, g *game.Game) bool {
+	if attachedCreatureDealtCombatDamageToPlayer(ev, source, g) {
+		return true
+	}
+	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || !source.IsAttachedTo(ev.Source) {
+		return false
+	}
+	target, ok := g.LookupCardForEffect(ev.Target)
+	return ok && target.IsBattle()
+}
+
 // untapAllLandsControlledBy is Sword of Feast and Famine's back half
 // ("untap all lands you control"), which is a plain loop rather than
 // a primitive because nothing else in the catalog untaps a set.
