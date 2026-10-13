@@ -1061,8 +1061,15 @@ export async function fetchBugReportConfig(): Promise<BugReportConfig> {
 // `reportID` is present only when the report stored artifacts — it is
 // the key the operator uses to pull the pinned replay.
 export interface BugReportResult {
-  url: string;
-  number: number;
+  // "filed": a new issue. "commented": a recent report already opened
+  // one, so this became a +1 on it. "queued": the server is over a
+  // limit or paused, so the report is kept for the admin and NOT filed
+  // (no url/number).
+  status: "filed" | "commented" | "queued";
+  url?: string;
+  number?: number;
+  // The server's own sentence for commented/queued; shown verbatim.
+  note?: string;
   reportID?: string;
   // The label the issue actually landed with. Absent when the label
   // was rejected upstream and the server re-filed unlabelled — so the
@@ -1123,14 +1130,19 @@ export async function submitBugReport(draft: BugReportDraft): Promise<BugReportR
   }
   const res = await authFetch("/bugreport", { method: "POST", body });
   const parsed = (await res.json()) as {
-    url: string;
-    number: number;
+    status?: BugReportResult["status"];
+    url?: string;
+    number?: number;
+    note?: string;
     report_id?: string;
     label?: string;
   };
   return {
+    // A server older than the throttle sends no status; it only ever filed.
+    status: parsed.status ?? "filed",
     url: parsed.url,
     number: parsed.number,
+    note: parsed.note,
     reportID: parsed.report_id,
     label: parsed.label,
   };

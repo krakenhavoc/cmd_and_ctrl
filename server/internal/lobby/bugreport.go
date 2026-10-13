@@ -277,17 +277,23 @@ func bugReportConfig(c Config, w http.ResponseWriter, _ *http.Request) error {
 	})
 }
 
-// bugReport handles POST /bugreport. Session-gated (any role —
-// spectators hit bugs too) and rate-limited at the mux. 201 with
-// {url, number, report_id} on success so the client can link straight
-// to the filed issue.
+// report handles POST /bugreport. Session-gated (any role —
+// spectators hit bugs too) and rate-limited at the mux. What it
+// answers depends on the throttle (bugreport_gate.go):
+//
+//   - 201 {url, number, label?, report_id?, status:"filed"}: a new
+//     issue was opened.
+//   - 200 {url, number, status:"commented"}: a recent report already
+//     opened this one, so a +1 was added to that issue.
+//   - 202 {status:"queued", report_id, note}: over a limit, or filing
+//     is paused. Kept for an admin; NOT filed.
 //
 // Accepts either application/json (prose + context + log) or
 // multipart/form-data with a `report` part holding that same JSON and
 // zero or more `image` file parts. Two shapes rather than one because
 // the JSON path predates attachments and is the one the tests, the
 // docs, and any curl-wielding operator already know.
-func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
+func (g *bugGate) report(c Config, w http.ResponseWriter, r *http.Request) error {
 	if c.BugReporter == nil {
 		return httpError(http.StatusServiceUnavailable, "bug reporting not configured on this server")
 	}
@@ -325,22 +331,14 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusBadRequest, fmt.Sprintf("at most %d images per report", bugstore.MaxImages))
 	}
 
-	// Artifacts are assembled before the issue is filed, because the
-	// image URLs and report ID have to appear in the body. If filing
-	// then fails, the report is discarded — otherwise every GitHub
-	// outage would leave orphaned images on disk at live URLs.
-	report, err := buildBugArtifacts(c, p, kind, req.Context, images)
-	if err != nil {
-		return err
-	}
-
+	now := c.now().UTC()
 	in := bugIssue{
 		Principal: p,
 		Kind:      kind,
 		Desc:      strings.TrimSpace(req.Description),
 		Ctx:       req.Context,
 		UserAgent: r.UserAgent(),
-		Now:       time.Now().UTC(),
+		Now:       now,
 	}
 	// The log rides along only for the kinds that can use it. A
 	// client that sends one anyway (an older build, a curl) has it
@@ -349,30 +347,119 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 	if kind.Log {
 		in.Log = req.Log
 	}
+
+	// The throttle decides before anything is stored or sent. A +1
+	// comes first because it is cheap and needs no artifacts; a queued
+	// report needs a place to be kept, so without a store it is
+	// refused with the status that says why.
+	acct := bugAccountKey(p)
+	keys := bugDedupeKeys(kind, title, in.Log)
+	commenter, _ := c.BugReporter.(BugCommenter)
+	var d bugDecision
+	for attempt := 0; ; attempt++ {
+		d = g.decide(now, acct, keys, commenter != nil)
+		if d.route != bugRouteComment {
+			break
+		}
+		url, cerr := commenter.CreateComment(r.Context(), d.issue.Number, renderBugPlusOne(in))
+		if cerr == nil {
+			return writeJSON(w, http.StatusOK, map[string]any{
+				"status":  "commented",
+				"url":     d.issue.URL,
+				"number":  d.issue.Number,
+				"note":    "This was already reported, so your report was added to the existing issue.",
+				"comment": url,
+			})
+		}
+		g.release(now, acct, false)
+		// A deleted issue cannot take a +1: forget it and decide
+		// once more, which will file or queue this report as new.
+		if upstreamGone(cerr) && attempt == 0 {
+			g.forget(d.issue.Number)
+			continue
+		}
+		return httpError(http.StatusFailedDependency, fmt.Sprintf("filing the issue failed: %s", cerr))
+	}
+	if d.route == bugRouteQueue && !c.BugStore.Enabled() {
+		return queueUnavailable(d.reason)
+	}
+	// undo gives back the reservation when the report then fails. A
+	// queued report reserved nothing.
+	undo := func() {
+		if d.route == bugRouteFile {
+			g.release(now, acct, true)
+		}
+	}
+
+	// Artifacts are assembled before the issue is filed, because the
+	// image URLs and report ID have to appear in the body. If filing
+	// then fails, the report is discarded — otherwise every GitHub
+	// outage would leave orphaned images on disk at live URLs.
+	report, err := buildBugArtifacts(c, p, kind, req.Context, images)
+	if err != nil {
+		undo()
+		return err
+	}
+	if d.route == bugRouteQueue && report == nil {
+		// A queued report always needs its directory: that is where
+		// the manifest holding the issue-to-be lives.
+		rep, nerr := c.BugStore.NewReport()
+		if nerr != nil {
+			return httpError(http.StatusInternalServerError, "preparing the report failed")
+		}
+		report = &bugArtifacts{Report: rep}
+	}
 	if report != nil {
 		in.ReportID = report.ID
 		in.Images = report.Images()
 		in.Replay = report.Replay()
 		in.GameLog = report.GameLog()
 	}
+	gameID := ""
+	if req.Context != nil {
+		// Client-supplied and written to disk in the manifest:
+		// redacted for the same reason the issue body is (#721).
+		gameID = redact.Secrets(req.Context.GameID)
+	}
 
 	// The title is client text published verbatim as the issue title,
 	// so it is redacted like the body (#721).
-	url, number, label, err := fileBugIssue(r.Context(), c, bugTitlePrefix+redact.Secrets(title), renderBugIssueBody(in), kind.Label)
+	issueTitle := bugTitlePrefix + redact.Secrets(title)
+
+	if d.route == bugRouteQueue {
+		q := bugstore.QueuedReport{
+			Reason:   d.reason,
+			Kind:     kind.Noun,
+			Label:    kind.Label,
+			Reporter: redact.Secrets(clip(reporterName(p), bugFieldMax)),
+			Title:    issueTitle,
+			Body:     renderBugIssueBody(in),
+		}
+		if err := report.CommitQueued(gameID, q); err != nil {
+			report.discard()
+			return httpError(http.StatusInternalServerError, "saving the report failed")
+		}
+		if c.Log != nil {
+			c.Log.Info("bugreport: queued", "reason", d.reason, "report_id", report.ID)
+		}
+		return writeJSON(w, http.StatusAccepted, map[string]any{
+			"status":    "queued",
+			"report_id": report.ID,
+			"note":      queueNote(d.reason),
+		})
+	}
+
+	url, number, label, err := fileBugIssue(r.Context(), c, issueTitle, renderBugIssueBody(in), kind.Label)
 	if err != nil {
 		report.discard()
+		undo()
 		// 424 (not 502, which Cloudflare replaces, #1644): the upstream filing
 		// failed. The client shows a "try again / tell the admin"
 		// message; err carries no secrets (github.Client redacts).
 		return httpError(http.StatusFailedDependency, fmt.Sprintf("filing the issue failed: %s", err))
 	}
+	g.recordFiled(now, keys, number, url)
 	if report != nil {
-		gameID := ""
-		if req.Context != nil {
-			// Client-supplied and written to disk in the manifest:
-			// redacted for the same reason the issue body is (#721).
-			gameID = redact.Secrets(req.Context.GameID)
-		}
 		// A manifest that fails to write costs forensics later, not
 		// the report the user just filed — log-and-continue.
 		if err := report.Commit(gameID, url); err != nil {
@@ -386,7 +473,7 @@ func bugReport(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	body := map[string]any{"url": url, "number": number}
+	body := map[string]any{"status": "filed", "url": url, "number": number}
 	if label != "" {
 		// Echoed so the modal can say "filed as enhancement" — and so
 		// it says nothing when the label didn't land, rather than
@@ -422,9 +509,11 @@ type statusCoder interface{ StatusCode() int }
 // the issue already, and a duplicate is worse than a 424 the
 // reporter can act on.
 func fileBugIssue(ctx context.Context, c Config, title, body, label string) (string, int, string, error) {
-	var labels []string
+	// Every issue the button opens carries bugPlayerLabel, whatever its
+	// kind. The echoed label stays the KIND's (what the modal says).
+	labels := []string{bugPlayerLabel}
 	if label != "" {
-		labels = []string{label}
+		labels = []string{label, bugPlayerLabel}
 	}
 	url, number, err := c.BugReporter.CreateIssue(ctx, title, body, labels)
 	if err == nil {

@@ -26,7 +26,7 @@
   // is sent.
 
   import { onDestroy, untrack } from "svelte";
-  import { submitBugReport } from "../api";
+  import { submitBugReport, type BugReportResult } from "../api";
   import {
     BUG_DESC_MAX,
     BUG_KINDS,
@@ -79,9 +79,7 @@
   let images = $state<File[]>([]);
   let submitting = $state(false);
   let error = $state<string | null>(null);
-  let filedURL = $state<string | null>(null);
-  let filedNumber = $state<number | null>(null);
-  let filedLabel = $state<string | null>(null);
+  let sent = $state<BugReportResult | null>(null);
   let fileInput = $state<HTMLInputElement | null>(null);
 
   // The kind drives the copy and the attachments. The server keeps
@@ -201,9 +199,7 @@
         log: spec.log && includeLog ? capturedLog : undefined,
         images,
       });
-      filedURL = res.url;
-      filedNumber = res.number;
-      filedLabel = res.label ?? null;
+      sent = res;
     } catch (e) {
       error = e instanceof Error ? e.message : "filing the issue failed";
     } finally {
@@ -231,13 +227,24 @@
 
 <div class="backdrop" role="dialog" aria-modal="true" aria-labelledby="bug-report-title">
   <div class="modal">
-    {#if filedURL}
+    {#if sent}
       <h2 id="bug-report-title">Sent — thank you</h2>
-      <p class="hint">
-        Your {spec.kind === "bug" ? "report" : spec.kind} is now
-        <a href={filedURL} target="_blank" rel="noreferrer">issue #{filedNumber}</a>
-        in the project tracker{#if filedLabel}, labelled <code>{filedLabel}</code>{/if}.
-      </p>
+      {#if sent.status === "queued"}
+        <!-- Not filed: the server is over a limit or paused. Say so
+             plainly rather than implying an issue exists. -->
+        <p class="hint">{sent.note}</p>
+      {:else if sent.status === "commented"}
+        <p class="hint">
+          {sent.note}
+          <a href={sent.url} target="_blank" rel="noreferrer">Issue #{sent.number}</a>.
+        </p>
+      {:else}
+        <p class="hint">
+          Your {spec.kind === "bug" ? "report" : spec.kind} is now
+          <a href={sent.url} target="_blank" rel="noreferrer">issue #{sent.number}</a>
+          in the project tracker{#if sent.label}, labelled <code>{sent.label}</code>{/if}.
+        </p>
+      {/if}
       <div class="footer">
         <span></span>
         <button type="button" class="submit" onclick={onclose}>Done</button>
