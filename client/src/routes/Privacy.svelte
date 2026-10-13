@@ -76,6 +76,30 @@
         "migrations 0002, 0004, 0007, 0010; ws/persist.go EndedTableRetention; ws/room.go snapshotPath, replayPath",
     },
     {
+      what: "Chat",
+      details: `Table chat is not stored. The server holds the last ${F.chatRecentLines} lines of each table in memory, with the seat names they were written under, and only so that a player report can attach them. They are gone when the server restarts. A listed slur is replaced with asterisks before anyone sees the line.`,
+      why: "So a report about what someone said has the words in it, and so slurs do not reach the table.",
+      howLong:
+        "In memory only, until the server restarts. A copy is kept only inside a report (see below).",
+      source: "ws/chat_recent.go RecentChatLimit; moderation/filter.go",
+    },
+    {
+      what: "Player reports",
+      details: `When a player at your table reports another, the server keeps both seats’ names and account ids, the reporter’s one-line reason, the table’s name, and up to ${F.reportChatLines} recent chat lines (everyone’s, with the seat names they were written under). Only server admins can read it. Nobody is told who reported, and nothing happens to the reported player unless an admin decides it should. One person can file ${F.reportsPerWindow} reports in a burst, then one every ${F.reportEveryMinutes} minutes.`,
+      why: "So the operator can see abuse at a public table and act on it.",
+      howLong: `${F.reportDays} days after it is filed, or sooner if more than ${F.reportMax} are waiting (the oldest go first), or when an admin dismisses it. Deleting your account removes every report you filed or are the subject of; a report that only quotes one of your chat lines keeps the line until it expires.`,
+      source: "migration 0016 player_reports; lobby/reports.go ReportRetention, ReportMaxRows",
+    },
+    {
+      what: "Tables that removed you",
+      details:
+        "When a table’s host (or an admin) removes someone and chooses to block them, that table keeps what it needs to refuse them again: for a signed-in person, their account id and Discord id; for a guest, their name folded to lower case without spacing or accents. It is per table and is never shown to anyone.",
+      why: "So a removed person cannot sit straight back down with the same invite link.",
+      howLong:
+        "Until the table is deleted, or you delete your account (a guest’s folded name names no account and goes with the table).",
+      source: "migration 0016 table_blocks; lobby/blocks.go",
+    },
+    {
       what: "Deck requests",
       details: `When you ask for a deck’s missing cards, a row with your Discord id counts your requests (${F.deckRequestsPerWindow} every ${F.deckRequestWindowHours} hours). The request itself is a GitHub issue that names you by display name (see GitHub below).`,
       why: "To limit how many requests one person can make.",

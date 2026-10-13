@@ -1,8 +1,9 @@
 <script lang="ts">
   // Admin: the admin views (ADR 0124 §7). One page with a tab strip
-  // (`navigation "admin views"`: Live now, Games, Accounts) and one child
-  // per view under lib/components/admin/: Live now, Games, one table,
-  // Accounts and one account. The Grafana Overview's tiles link here.
+  // (`navigation "admin views"`: Live now, Games, Accounts, Reports) and one
+  // child per view under lib/components/admin/: Live now, Games, one table,
+  // Accounts, one account and Reports (#2984). The Grafana Overview's tiles
+  // link here.
   //
   // Who sees what:
   //   - signed out: the router sends the visitor to #/login, storing the
@@ -22,12 +23,14 @@
   import GameDetail from "../lib/components/admin/GameDetail.svelte";
   import AccountsList from "../lib/components/admin/AccountsList.svelte";
   import AccountDetail from "../lib/components/admin/AccountDetail.svelte";
+  import ReportsList from "../lib/components/admin/ReportsList.svelte";
   import { isAdmin, isAdminAllowed, refreshAdminStatus } from "../lib/admin";
   import {
     accountsHash,
     adminViewHash,
     gamesHash,
     LIVE_HASH,
+    REPORTS_HASH,
     tabOf,
     type AdminView,
   } from "../lib/adminViews";
@@ -64,13 +67,16 @@
           ? "one table"
           : view.view === "accounts"
             ? "accounts"
-            : "one account",
+            : view.view === "reports"
+              ? "reports"
+              : "one account",
   );
 
   const TABS = [
     { id: "live", label: L.adminLiveNowTab, href: LIVE_HASH },
     { id: "games", label: L.adminGamesTab, href: gamesHash() },
     { id: "accounts", label: L.adminAccountsTab, href: accountsHash() },
+    { id: "reports", label: L.adminReportsTab, href: REPORTS_HASH },
   ] as const;
 </script>
 
@@ -105,6 +111,8 @@
           <GameDetail id={view.id} {onforbidden} />
         {:else if view.view === "accounts"}
           <AccountsList filter={view.filter} {onforbidden} />
+        {:else if view.view === "reports"}
+          <ReportsList {onforbidden} />
         {:else}
           <AccountDetail id={view.id} {onforbidden} />
         {/if}

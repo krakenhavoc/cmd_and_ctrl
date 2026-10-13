@@ -32,6 +32,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
@@ -587,6 +588,14 @@ func Handler(c Config) http.Handler {
 	// seat from an unstarted table; an admin alone from a started game, by
 	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// #2984: "report player". A seat at the table files it; it goes to
+	// the admin Reports list (reports.go). One report per five minutes
+	// per reporter, burst of three: a person has a few real complaints
+	// in a night, and a flood is the abuse this route must not become.
+	reportLimit := newLimiter(1/reportEvery.Seconds(), reportBurst)
+	mux.Handle("POST /games/{id}/reports", auth.Middleware(c.Auth)(perCallerLimit(reportLimit, handlerFunc(c, reportPlayer))))
+	mux.Handle("GET /admin/reports", requireAdmin(c, handlerFunc(c, adminListReports)))
+	mux.Handle("DELETE /admin/reports/{id}", requireAdmin(c, handlerFunc(c, adminDismissReport)))
 	// The tutorial's practice table (ADR 0076 §2.2, practice_http.go).
 	// Any session may open one: that is what a tutorial is for. It
 	// installs two decklists, so it rides the deck bucket, and a
@@ -3986,10 +3995,26 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
+	case errors.Is(err, ErrBlockedFromTable):
+		// 403 with the stable code the join page matches (#2984).
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": CodeBlockedFromTable})
+		return
+	case errors.Is(err, moderation.ErrNameNotAllowed), errors.Is(err, ErrDiscordNameNotAllowed):
+		// A name is a request body the caller can fix: 400, like an
+		// empty one, with a code the forms match (#2984).
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": CodeNameNotAllowed})
+		return
 	case errors.Is(err, ErrNotTableManager), errors.Is(err, ErrNotInviteManager), errors.Is(err, ErrNotSeatManager):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrHostIneligible), errors.Is(err, ErrCannotRemoveHost), errors.Is(err, ErrSeatIsBotRoute):
+	case errors.Is(err, ErrHostIneligible), errors.Is(err, ErrCannotRemoveHost), errors.Is(err, ErrSeatIsBotRoute),
+		errors.Is(err, ErrReportSelf), errors.Is(err, ErrReportTarget):
 		status = http.StatusUnprocessableEntity
+	case errors.Is(err, ErrReportReasonEmpty):
+		status = http.StatusBadRequest
 	// ADR 0075 §2.3, the two halves of a refused settings patch. A
 	// value outside its range is a malformed request (400); a
 	// starting-life change after Start is a well-formed request the

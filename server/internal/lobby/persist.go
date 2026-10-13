@@ -497,5 +497,7 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// The previous process counted an end it recorded, or an
 		// archive (metrics.go).
 		endCounted: rec.EndedAt != nil || rec.ArchivedAt != nil,
+		// The identities this table refused to seat again (blocks.go).
+		blocks: l.loadBlocks(id),
 	}, nil
 }

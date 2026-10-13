@@ -222,6 +222,7 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 
 	if c.Lobby != nil {
 		c.Lobby.anonymiseDeletedSeats(res.Seats, res.DiscordSubject)
+		c.Lobby.forgetBlocksOf(id, res.DiscordSubject)
 	}
 	if c.Playmats != nil {
 		if err := c.Playmats.ForgetFiles(res.PlaymatIDs); err != nil {
@@ -245,6 +246,8 @@ func finishAccountDeletion(ctx context.Context, c Config, id uuid.UUID, res acco
 		"settings_rows", res.Counts.SettingsRows,
 		"setup_rows", res.Counts.SetupRows,
 		"identities", res.Counts.Identities,
+		"reports", res.Counts.Reports,
+		"table_blocks", res.Counts.Blocks,
 		"sockets_closed", revoked,
 		"games_scrubbed", len(res.Seats))
 }

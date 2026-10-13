@@ -51,8 +51,10 @@ package lobby
 //     ws.SeatRemovedReason, which is how the removed client learns why.
 //
 // The invite is not touched. A removed person who still holds the
-// invite link can sit down again, as a new seat. Rotating the invite is
-// the way to stop that, and the Remove control says so.
+// invite link can sit down again, as a new seat, UNLESS the remover also
+// blocked them (?block=true, blocks.go, #2984): then the same account, or
+// a guest of the same name, is refused with a clear message. Rotating the
+// invite is the way to stop everyone else, and the Remove control says so.
 
 import (
 	"errors"
@@ -131,6 +133,12 @@ func seatRemovedAt(entry *gameEntry, seat int) bool {
 // HTTP layer (CanRemoveSeat). Socket eviction is the HTTP layer's too:
 // the lobby has no hub reference.
 func (l *Lobby) RemoveSeat(id, playerID uuid.UUID) (GameMeta, error) {
+	return l.RemoveSeatBlocking(id, playerID, false)
+}
+
+// RemoveSeatBlocking is RemoveSeat that also, when block is true, blocks
+// the removed seat from taking a seat at this table again (blocks.go).
+func (l *Lobby) RemoveSeatBlocking(id, playerID uuid.UUID, block bool) (GameMeta, error) {
 	var broadcast func()
 	defer func() {
 		if broadcast != nil {
@@ -174,6 +182,9 @@ func (l *Lobby) RemoveSeat(id, playerID uuid.UUID) (GameMeta, error) {
 		}
 		return GameMeta{}, err
 	}
+	if block {
+		l.addBlocksLocked(entry, blockKeysOf(entry.meta.Players[idx]))
+	}
 	entry.meta.Players = append(entry.meta.Players[:idx], entry.meta.Players[idx+1:]...)
 	for i := range entry.meta.Players {
 		entry.meta.Players[i].Seat = i
@@ -189,6 +200,15 @@ func (l *Lobby) RemoveSeat(id, playerID uuid.UUID) (GameMeta, error) {
 // is an admin: this function has no notion of who is asking. The seat
 // stays in the list; see the file comment for what the removal does.
 func (l *Lobby) RemoveStartedSeat(id, playerID uuid.UUID) (GameMeta, error) {
+	return l.RemoveStartedSeatBlocking(id, playerID, false)
+}
+
+// RemoveStartedSeatBlocking is RemoveStartedSeat that also blocks the
+// seat's identities from this table, when block is true. A started table
+// takes no new seats, so the block matters if it is ever restarted from
+// a restore point or the person is later asked to spectate, and it keeps
+// the record the admin made.
+func (l *Lobby) RemoveStartedSeatBlocking(id, playerID uuid.UUID, block bool) (GameMeta, error) {
 	var broadcast func()
 	defer func() {
 		if broadcast != nil {
@@ -223,6 +243,9 @@ func (l *Lobby) RemoveStartedSeat(id, playerID uuid.UUID) (GameMeta, error) {
 			return GameMeta{}, ErrGameNotInProgress
 		}
 		return GameMeta{}, err
+	}
+	if block {
+		l.addBlocksLocked(entry, blockKeysOf(seat))
 	}
 	if l.broadcast != nil {
 		b := l.broadcast
@@ -275,12 +298,14 @@ func removeSeat(c Config, w http.ResponseWriter, r *http.Request) error {
 	if !CanRemoveSeat(p, meta, admin) {
 		return ErrNotSeatManager
 	}
+	// ?block=true also blocks the removed seat from this table (#2984).
+	block := r.URL.Query().Get("block") == "true"
 	if meta.State == string(game.StateLobby) {
-		meta, err = c.Lobby.RemoveSeat(id, playerID)
+		meta, err = c.Lobby.RemoveSeatBlocking(id, playerID, block)
 	} else if !admin {
 		return ErrGameStarted
 	} else {
-		meta, err = c.Lobby.RemoveStartedSeat(id, playerID)
+		meta, err = c.Lobby.RemoveStartedSeatBlocking(id, playerID, block)
 	}
 	if err != nil {
 		return err

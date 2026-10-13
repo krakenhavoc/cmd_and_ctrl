@@ -206,6 +206,21 @@ type Store interface {
 	// no user (a guest, a bot, a Discord seat still pending). See
 	// tablemates.go.
 	Tablemates(ctx context.Context, userID string) ([]TablemateRecord, error)
+
+	// AddBlock records that a table will not seat an identity again
+	// (migration 0016, #2984). Idempotent. Blocks leave with their game.
+	AddBlock(ctx context.Context, gameID uuid.UUID, b BlockRecord) error
+	// Blocks lists a table's blocks, oldest first.
+	Blocks(ctx context.Context, gameID uuid.UUID) ([]BlockRecord, error)
+	// AddReport stores a player report (migration 0016, #2984).
+	AddReport(ctx context.Context, r ReportRecord) error
+	// Reports lists every stored report, newest first.
+	Reports(ctx context.Context) ([]ReportRecord, error)
+	// DeleteReport removes one report. ErrStoreNotFound if absent.
+	DeleteReport(ctx context.Context, id uuid.UUID) error
+	// PruneReports removes reports filed before `before`, then the oldest
+	// beyond the newest `keep`. It returns how many it removed.
+	PruneReports(ctx context.Context, before time.Time, keep int) (int, error)
 }
 
 // UserSeatRecord is one row of "My games": a seat a user holds, the
@@ -231,6 +246,8 @@ type memoryStore struct {
 	games   map[uuid.UUID]GameRecord
 	seats   map[uuid.UUID][]SeatRecord
 	invites map[InviteHash]InviteRecord
+	blocks  map[uuid.UUID][]BlockRecord
+	reports []ReportRecord
 }
 
 // NewMemoryStore returns a Store that keeps everything in process
@@ -240,6 +257,7 @@ func NewMemoryStore() Store {
 		games:   make(map[uuid.UUID]GameRecord),
 		seats:   make(map[uuid.UUID][]SeatRecord),
 		invites: make(map[InviteHash]InviteRecord),
+		blocks:  make(map[uuid.UUID][]BlockRecord),
 	}
 }
 
@@ -291,6 +309,7 @@ func (s *memoryStore) DeleteGame(_ context.Context, id uuid.UUID) error {
 	defer s.mu.Unlock()
 	delete(s.games, id)
 	delete(s.seats, id)
+	delete(s.blocks, id)
 	for h, inv := range s.invites {
 		if inv.GameID == id {
 			delete(s.invites, h)

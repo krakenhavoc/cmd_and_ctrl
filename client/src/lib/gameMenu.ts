@@ -14,6 +14,7 @@
 
 import type { HandSort } from "./handOrder";
 import { L } from "./labels";
+import type { ReportTarget } from "./moderation";
 
 export interface GameMenuOptions {
   // A seat of the viewer's own at this table: the sandbox tools, the
@@ -82,6 +83,13 @@ export interface GameMenuOptions {
   onSpawn: () => void;
   onMyGames: () => void;
   onBack: () => void;
+  // #2984: "Report a player...". The people the viewer can report (every
+  // other human seat; lib/moderation.ts reportTargets). Empty or absent
+  // hides the entry, so a table of one human and some bots offers none.
+  reportTargets?: ReportTarget[];
+  // Sends the report; rejects with the server's refusal, which the form
+  // shows (lib/moderation.ts reportErrorMessage).
+  onReport?: (playerID: string, reason: string) => Promise<void>;
   // Called once the confirm is accepted. Concede is irreversible.
   onConcede: () => void;
   onStartVote: (topic: string, options: string[]) => void;

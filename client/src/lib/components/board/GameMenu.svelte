@@ -40,6 +40,15 @@
   import { adminChipTitle, adminSwitchLabel } from "../../admin";
   import { HAND_SORTS } from "../../handOrder";
   import { L } from "../../labels";
+  import {
+    REPORT_INTRO,
+    REPORT_MENU_LABEL,
+    REPORT_REASON_MAX,
+    REPORT_SENT,
+    REPORT_TITLE,
+    canSendReport,
+    reportErrorMessage,
+  } from "../../moderation";
 
   type Props = GameMenuOptions & {
     // "up": the dock's chip. "down": the command bar's icon.
@@ -48,7 +57,7 @@
   const props: Props = $props();
   const placement = $derived(props.placement ?? "up");
 
-  type Mode = "closed" | "menu" | "vote" | "concede" | "legal";
+  type Mode = "closed" | "menu" | "vote" | "concede" | "legal" | "report";
   let mode = $state<Mode>("closed");
   let root: HTMLElement | undefined = $state();
   let trigger: HTMLButtonElement | undefined = $state();
@@ -59,6 +68,13 @@
   }
 
   let mulliganTo = $state(7);
+  // The report form (#2984). Left filled after a refusal so a retry costs
+  // nothing; cleared once a report is sent.
+  let reportTarget = $state("");
+  let reportReason = $state("");
+  let reportBusy = $state(false);
+  let reportError = $state("");
+  let reportSent = $state(false);
   let topic = $state("");
   let optionsText = $state("yes, no");
 
@@ -77,6 +93,7 @@
     await tick();
     if (next === "menu") items()[0]?.focus();
     else if (next === "vote") pop()?.querySelector<HTMLInputElement>("input")?.focus();
+    else if (next === "report") pop()?.querySelector<HTMLSelectElement>("select")?.focus();
     else if (next === "concede" || next === "legal")
       pop()?.querySelector<HTMLButtonElement>("button.keep")?.focus();
   }
@@ -134,6 +151,28 @@
     close(false);
     if (cannotConcede) return;
     props.onConcede();
+  }
+  function openReport(): void {
+    reportError = "";
+    reportSent = false;
+    const targets = props.reportTargets ?? [];
+    if (!targets.some((t) => t.id === reportTarget)) reportTarget = targets[0]?.id ?? "";
+    void show("report");
+  }
+  async function sendReport(e: SubmitEvent): Promise<void> {
+    e.preventDefault();
+    if (reportBusy || !props.onReport || !canSendReport(reportTarget, reportReason)) return;
+    reportBusy = true;
+    reportError = "";
+    try {
+      await props.onReport(reportTarget, reportReason.trim());
+      reportSent = true;
+      reportReason = "";
+    } catch (err) {
+      reportError = reportErrorMessage(err);
+    } finally {
+      reportBusy = false;
+    }
   }
   function startVote(e: SubmitEvent): void {
     e.preventDefault();
@@ -306,6 +345,18 @@
           <Icon name="check" size={15} /> Call a vote…
         </button>
       {/if}
+      {#if props.seated && props.onReport && (props.reportTargets?.length ?? 0) > 0}
+        <!-- #2984: tell the people who run the server about a player. -->
+        <button
+          class="mi"
+          role="menuitem"
+          onclick={openReport}
+          title="report a player's name, chat or behaviour to the server's admins"
+        >
+          <Icon name="flag" size={15} />
+          {REPORT_MENU_LABEL}
+        </button>
+      {/if}
       {#if props.discordLink}
         <!-- A navigation, not a fetch: the server answers with a 302 to
              Discord's consent screen and comes back to this table with
@@ -409,6 +460,43 @@
           >start</button
         >
       </div>
+    </form>
+  {:else if mode === "report"}
+    <form class="pop vote-form report-form" aria-label="report a player" onsubmit={sendReport}>
+      <div class="menu-h">{REPORT_TITLE}</div>
+      {#if reportSent}
+        <p class="report-note" role="status">{REPORT_SENT}</p>
+        <div class="pop-actions">
+          <button type="button" class="keep" onclick={() => close(true)}>Close</button>
+        </div>
+      {:else}
+        <p class="report-note">{REPORT_INTRO}</p>
+        <select bind:value={reportTarget} aria-label="player to report" disabled={reportBusy}>
+          {#each props.reportTargets ?? [] as t (t.id)}
+            <option value={t.id}>{t.name}</option>
+          {/each}
+        </select>
+        <textarea
+          bind:value={reportReason}
+          maxlength={REPORT_REASON_MAX}
+          rows="3"
+          placeholder="what's the problem?"
+          aria-label="reason for the report"
+          disabled={reportBusy}
+        ></textarea>
+        {#if reportError}
+          <p class="report-note report-err" role="alert">{reportError}</p>
+        {/if}
+        <div class="pop-actions">
+          <button type="button" onclick={() => close(true)}>cancel</button>
+          <button
+            type="submit"
+            class="go"
+            disabled={reportBusy || !canSendReport(reportTarget, reportReason)}
+            >{reportBusy ? "sending…" : "send"}</button
+          >
+        </div>
+      {/if}
     </form>
   {:else if mode === "concede"}
     <div class="pop confirm" role="dialog" aria-modal="true" aria-label="concede the game?">
@@ -631,6 +719,26 @@
     outline: none;
     border-color: var(--magenta);
     box-shadow: 0 0 0 2px color-mix(in srgb, var(--magenta) 25%, transparent);
+  }
+  .report-form select,
+  .report-form textarea {
+    background: var(--surface-sunken);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    border-radius: var(--radius-sm);
+    padding: 6px 8px;
+    font: inherit;
+    font-size: 12.5px;
+    resize: vertical;
+  }
+  .report-note {
+    margin: 0;
+    font-size: 12px;
+    line-height: 1.45;
+    color: var(--fg-muted);
+  }
+  .report-err {
+    color: var(--danger);
   }
   .confirm {
     gap: 8px;

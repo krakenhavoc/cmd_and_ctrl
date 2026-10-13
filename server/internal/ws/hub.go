@@ -27,6 +27,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -1015,8 +1016,8 @@ func (c *Client) handleChat(frame protocol.Frame) {
 	// of AuthorID to decide whether to apply seat-color styling.
 	authorName := "spectator"
 	authorID := ""
+	room := c.hub.resolveRoom(c)
 	if c.playerID != uuid.Nil {
-		room := c.hub.resolveRoom(c)
 		if room == nil {
 			c.sendError(frame.ID, protocol.CodeInternal, "game is no longer available")
 			return
@@ -1027,11 +1028,20 @@ func (c *Client) handleChat(frame protocol.Frame) {
 		}
 	}
 
+	// #2984: a listed word is masked before anyone sees the line, the
+	// sender included, so what the table reads is what the report
+	// excerpt holds. Masking rather than refusing: the rest of the
+	// message still goes out and a false positive costs one word.
+	text, _ = moderation.Chat(text)
+
 	out := protocol.ChatPayload{
 		AuthorID:   authorID,
 		AuthorName: authorName,
 		Text:       text,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+	}
+	if room != nil {
+		room.RecordChat(out)
 	}
 	payload, err := json.Marshal(out)
 	if err != nil {

@@ -23,7 +23,13 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
-  import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
+  import {
+    discordAuthEnabled,
+    discordLinkHref,
+    fetchBugReportConfig,
+    reportPlayer,
+  } from "../lib/api";
+  import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { stampManaEnforcement } from "../lib/manaEnforcement";
@@ -1878,6 +1884,12 @@
       ? { href: discordLinkHref(gameID), label: linkDiscordLabel(Boolean(viewerSeat?.discord_id)) }
       : null,
     myGames: signedInUserID(sess) !== null,
+    // #2984: report another human seat to the server's admins. The
+    // practice table's only other seat is a bot, so it offers none.
+    reportTargets: dockShown ? reportTargets(seats, viewerID) : [],
+    onReport: async (playerID, reason) => {
+      await reportPlayer(gameID, playerID, reason);
+    },
     adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,

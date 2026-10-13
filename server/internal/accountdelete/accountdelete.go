@@ -11,7 +11,9 @@
 //     (a lobby or an active game). SeatedError names the table.
 //  2. Delete: decks, user_settings, table_setups, user_playmats, the
 //     identities row (Discord id, name, avatar hash and the encrypted
-//     refresh token), and the person's deck_request_asks rows.
+//     refresh token), the person's deck_request_asks rows, the player
+//     reports they filed or are the subject of, and the table blocks
+//     keyed on their account or Discord id (#2984).
 //  3. Anonymise: the person's seats keep their place in the game but
 //     take the name DeletedPlayerName and lose any pending Discord id;
 //     games.host_discord_id is cleared if it was theirs.
@@ -89,6 +91,8 @@ type Counts struct {
 	SettingsRows    int
 	SetupRows       int
 	Identities      int
+	Reports         int
+	Blocks          int
 }
 
 // Result is what Delete hands back after it commits.
@@ -267,6 +271,19 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 		return Result{}, err
 	}
 	if err := exec(&res.Counts.Identities, `DELETE FROM identities WHERE user_id = ?`, uid); err != nil {
+		return Result{}, err
+	}
+	// Moderation (migration 0016, #2984): the reports the person filed or
+	// is the subject of, and the table blocks keyed on their account or
+	// Discord id. A block on a folded guest name names no account and
+	// stays; so does a report that merely quotes them in an excerpt.
+	if err := exec(&res.Counts.Reports,
+		`DELETE FROM player_reports WHERE reporter_user_id = ? OR reported_user_id = ?`, uid, uid); err != nil {
+		return Result{}, err
+	}
+	if err := exec(&res.Counts.Blocks,
+		`DELETE FROM table_blocks WHERE (kind = 'user' AND subject = ?) OR (kind = 'discord' AND ? <> '' AND subject = ?)`,
+		uid, res.DiscordSubject, res.DiscordSubject); err != nil {
 		return Result{}, err
 	}
 

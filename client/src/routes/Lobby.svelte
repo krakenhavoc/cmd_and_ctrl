@@ -52,6 +52,7 @@
   import Icon from "../lib/components/Icon.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
   import { canRemoveSeat, removeSeatConsequence, removeSeatQuestion } from "../lib/seatRemoval";
+  import { BLOCK_HINT, BLOCK_LABEL } from "../lib/moderation";
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
@@ -327,6 +328,9 @@
   // is the gate). It asks first, because it disconnects someone.
   let confirmRemove = $state<{ gameID: string; seat: SeatInfo } | null>(null);
   let removeBusy = $state(false);
+  // The confirm's "also block them" box (#2984). Off each time it opens:
+  // a block is a second decision, not the default.
+  let removeBlock = $state(false);
   let removeError = $state<{ gameID: string; message: string } | null>(null);
 
   function canRemove(g: GameMeta, p: SeatInfo): boolean {
@@ -337,7 +341,7 @@
     removeBusy = true;
     removeError = null;
     try {
-      await removeSeat(gameID, playerID);
+      await removeSeat(gameID, playerID, { block: removeBlock });
       confirmRemove = null;
       await refresh();
     } catch (err) {
@@ -1090,7 +1094,10 @@
                       title={`remove ${seatName(p)} from this table`}
                       aria-label={`remove ${seatName(p)}`}
                       disabled={removeBusy}
-                      onclick={() => (confirmRemove = { gameID: g.id, seat: p })}
+                      onclick={() => {
+                        removeBlock = false;
+                        confirmRemove = { gameID: g.id, seat: p };
+                      }}
                     >
                       remove
                     </button>
@@ -1294,6 +1301,11 @@
                 <strong>{removeSeatQuestion(seatName(confirmRemove.seat))}</strong>
                 {removeSeatConsequence(g)}
               </p>
+              <label class="block-opt">
+                <input type="checkbox" bind:checked={removeBlock} disabled={removeBusy} />
+                <span>{BLOCK_LABEL}</span>
+              </label>
+              <p class="hint">{BLOCK_HINT}</p>
               <div class="confirm-actions">
                 <button
                   class="primary"
@@ -1947,6 +1959,22 @@
   }
   .confirm strong {
     color: var(--fg);
+  }
+  .confirm .block-opt {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 10px;
+    font-size: 12.5px;
+    color: var(--fg);
+  }
+  .confirm .block-opt input {
+    margin: 0;
+  }
+  .confirm .hint {
+    margin-top: 4px;
+    font-size: 11.5px;
+    color: var(--fg-dim);
   }
   .confirm-actions {
     display: flex;

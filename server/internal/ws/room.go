@@ -134,6 +134,10 @@ type Room struct {
 	// Guarded by its own mutex, never by mu. In memory only; a restart
 	// forgets it, which costs at most one extra roll.
 	tableRolls tableRollLimiter
+
+	// chat is the last few chat lines, for a player report's excerpt
+	// (chat_recent.go). Its own mutex; in memory only.
+	chat chatRing
 }
 
 // restorePointRecord is Room's bookkeeping about its own last written
