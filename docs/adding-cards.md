@@ -3733,6 +3733,34 @@ Never build this window by hand with another `Duration`: the helper is
 the only thing that closes it, and it closes only windows the same
 holder got from the same source object.
 
+**"During any turn you attacked with …, you may play that card" and
+"you may play it if you control a …" (#3192, ADR 0066 second
+amendment of 2026-10-13):** an exiled card whose permission is live
+only while a condition holds, dormant (granted, still exiled) on the
+turns it does not. Name the condition on the primitive:
+
+```go
+ExileTopWithPermission{From: c, GrantTo: c, N: 1, WhileExiled: true,
+    Condition: &game.PermissionCondition{Key: game.CondAttackedWithToken}}  // Neyali
+```
+
+The keys are `CondAttackedWithToken`, `CondAttackedWithCommander`,
+`CondAttackedWithSubtype` (`Subtype`), `CondAttackedWithAtLeast` (`N`,
+different creatures), `CondAttackedWithObject` (`attackedWithObject(item)`
+for "this creature"), `CondAttackedThisTurn`, `CondControlSubtype` and
+`CondLoreCounterOnObject`; a new one is a `game.RegisterPermissionCondition`
+in `game/cast_permission_condition.go` (a pure predicate over the game and
+the holder, plus the printed clause for the client). Two things are NOT
+conditions: a spell-type gate ("if it's a creature spell", "an instant or
+sorcery spell") is `Filter: game.PermissionFilter{CreatureOnly: true}` on the
+primitive, and "for as long as you control <source>" is a source-bound window,
+`Window: &d` with `d := forAsLongAsYouControlWindow(g, item.SourceCardID,
+item.Controller)` (or `forAsLongAsOnBattlefieldWindow` for "as long as this
+remains", Pick Up the Pace). Use `WhileExiled` for "for as long as it remains
+exiled" and the default for "this turn". The attack conditions read tallies
+written as each attacker is declared, so a token that died in combat still
+counts, and every tally resets at the turn boundary.
+
 **The client has ONE cast entry point** (#874), `handlePlayCard` in
 `Board.svelte`, and every surface that casts a card reaches it: the
 hand, the graveyard's flashback button, and the exile pile's impulse

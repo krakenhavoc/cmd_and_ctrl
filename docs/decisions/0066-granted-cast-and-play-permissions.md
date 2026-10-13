@@ -3471,3 +3471,79 @@ None. Nothing is stored.
   results); **Undead Sprinter**, **Glimpse the Cosmos** and **Haakon, Stromgald Scourge** also change the price
   or open other cards. The conditional zone would carry their gates once those records exist.
 - **Moving Oathsworn Vampire and The Indomitable** onto `CastableZonesIf` (Decision 4).
+
+## Amendment — 2026-10-13 (#3192): a granted permission that is live only while a condition holds
+
+Neyali ("during any turn you attacked with a token, you may play that card"), Boros Strike-Captain, Goblin
+Researcher, Robber of the Rich, Neriv, Pick Up the Pace, Possibility Technician and Summon: Brynhildr print
+an exile permission that is neither an until-end-of-turn window nor "for as long as it remains exiled": it
+is live on some turns and not others, and the card stays exiled the whole time. Before this a card was
+re-granted by a trigger that had to resolve on the right turn, which is weaker than printed (it needs the
+source on the battlefield and the trigger to resolve). #3105 solved the same question for the zone a card's
+own text opens (`Spec.CastableZonesIf`); this is the per-instance counterpart. No number is taken: it amends
+the `CastPermission` model this ADR owns.
+
+### Decision 1 — a condition is a key plus plain parameters, on the permission
+
+`CastPermission.Condition *PermissionCondition` carries a registered key (`game.PermissionConditionKey`,
+`RegisterPermissionCondition`) and parameters (`Subtype`, `N`, `ObjectID`/`ObjectEpoch`). A permission is
+stored state, mirrored into the snapshot, so a closure is not available (that is why `CastPermissionGate`
+exists only for catalog-declared standing permissions); the registry is the `RegisterCastFollowUp` shape, so
+the closure-field ratchet does not move. A restore naming a key this binary never registered is refused
+(`ErrUnknownEffectKey`), and an unknown key at run time fails closed (dormant), never open.
+
+### Decision 2 — evaluated in the one liveness test
+
+`CastPermissionActiveForEffect` is already the test the cast path, the view's castable flags and `exile_play`
+stamp, the legal-move enumerator (and so the bot), the library-top look and the hand branch all read. The
+condition is checked there, beside `NotBeforeSeq` and `RequiresNoSpellsCast`, and nowhere else. The
+permission is not dropped when the condition is false: the sweep keys on the duration and the named objects,
+not on the condition, so the same grant is live again on the next turn the condition holds
+(`TestConditionalPermissionFlipsAcrossTurns`).
+
+### Decision 3 — attack history is recorded as the attacker is declared
+
+"Attacked with a token / a commander / a Rogue" is a question about the attacker AS IT WAS DECLARED, asked
+later in the turn when a token that traded in combat is gone (CR 704.5d). `PlayerTurnTally.TokensAttacked`
+and `CommandersAttacked` and `TurnTally.AttackedSubtypes` (the `EnteredSubtypes` keys and changeling rule)
+are written from `EventAttack`; "N or more creatures" and "this specific creature" read the existing
+`TurnTally.Attacks` list (distinct objects, so a second combat does not double count; the epoch makes a
+blinked creature a new object). "Put a lore counter on this Saga" reads `TurnTally.LoreCounterPut`, written
+in `loreCountersPutLocked`, the one choke point for lore counters. All reset at the turn boundary with the
+rest of `TurnTally`. "You control a <subtype>" is a pure battlefield read.
+
+### Decision 4 — a spell-type gate is a Filter, not a condition
+
+"If it's a creature spell" (Vivien, Champion of the Wilds) and "if it's an instant or sorcery spell" (Nivix) are
+properties of the card, not of the game. `PermissionFilter` already expresses them for a standing permission;
+`CoversCard` now applies it to a named-cards permission as well (the zero filter matches everything, so no
+existing grant changes).
+
+### Decision 5 — "for as long as you control <source>" needed nothing
+
+`Duration{ForAsLongAs, WhileYouControlSource | WhileSourceOnBattlefield}` is read by the same liveness test and
+ends for good when the source leaves or changes hands (CR 611.2b). Lightning, Security Sergeant, Victor Mancha
+and Pick Up the Pace use it as is; a source already gone when the trigger resolves gets a window that never
+started, so the card is exiled and never playable (`effects.forAsLongAsYouControlWindow`).
+
+### Decision 6 — the wire says the grant is dormant
+
+`exile_play` gains `condition` (the printed clause) and `condition_unmet`. The grant is still public; the
+client withholds the play button while the condition is false. Castable flags are per holder and read the
+liveness test, so a dormant grant stamps none.
+
+### Snapshot
+
+Additive within v8, omitted when empty: `seats[].castPermissions[].condition`, `turnTally.attackedSubtypes`,
+`turnTally.loreCounterPut`, `turnTally.players[*].tokensAttacked` and `commandersAttacked`.
+
+### Out of scope, stated
+
+- **Summon: Brynhildr** needs a "when you next cast a creature spell this turn, it gains haste" delayed cast
+  trigger for its chapters II and III as well; the lore-counter condition (`CondLoreCounterOnObject`) is
+  ready and pinned in the engine tests.
+- **Gandalf, Goblins' Bane, Intet, Gwen Stacy, Taster of Wares, Kotose, Hama, The Day of the Doctor and
+  Vivien, Champion of the Wilds** use this plus other pieces (a face-down adventure exile, an optional
+  payment, a transforming face, a reveal-and-choose, a graveyard/hand/library search by name, waterbend on a
+  granted cast, a legendary-card dig, a loyalty ability's pick-from-three) and were left for later slices.
+- **A dormant grant's client caption** (why the card is not playable now) is the printed `condition` text only.

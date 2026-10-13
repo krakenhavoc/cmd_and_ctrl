@@ -204,6 +204,12 @@ func (g *Game) loreCountersPutLocked(cardID uuid.UUID, before, after int) {
 	if card == nil || !IsSaga(*card) {
 		return
 	}
+	// #3192: "during any turn you put a lore counter on this Saga" reads
+	// this. A fresh slice, never an append into shared capacity: the undo
+	// clone holds the backing array too.
+	put := make([]PermissionCardRef, len(g.TurnTally.LoreCounterPut), len(g.TurnTally.LoreCounterPut)+1)
+	copy(put, g.TurnTally.LoreCounterPut)
+	g.TurnTally.LoreCounterPut = append(put, PermissionCardRef{ID: cardID, Epoch: card.ObjectEpoch})
 	g.fireSagaChaptersLocked(*card, before, after)
 }
 

@@ -3636,6 +3636,15 @@ type ExilePlayView struct {
 	// its own. A client that ignores it says "until end of turn".
 	Until       string `json:"until,omitempty"`
 	UntilPlayer string `json:"until_player,omitempty"`
+
+	// Condition is the clause a CONDITIONAL grant is live under, as the
+	// card prints it: "during a turn you attacked with a token" (#3192,
+	// ADR 0066's second 2026-10-13 amendment). ConditionUnmet is true
+	// while that clause is false: the card keeps its grant but cannot be
+	// played right now, so the client withholds the button. Both absent
+	// for an unconditional grant. Public, like the rest of the grant.
+	Condition      string `json:"condition,omitempty"`
+	ConditionUnmet bool   `json:"condition_unmet,omitempty"`
 }
 
 // ActivatedAbilityView is one CR 602 activated ability on a
@@ -10132,6 +10141,10 @@ func exilePlayViewOf(g *game.Game, card game.Card, perm *game.CastPermission) *E
 	}
 	if untilPlayer != uuid.Nil {
 		view.UntilPlayer = untilPlayer.String()
+	}
+	if label := game.PermissionConditionLabel(perm); label != "" {
+		view.Condition = label
+		view.ConditionUnmet = g.PermissionConditionUnmetLocked(perm)
 	}
 	return view
 }

@@ -2986,6 +2986,12 @@ seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
+seats[].castPermissions[].condition	object
+seats[].castPermissions[].condition.key	string
+seats[].castPermissions[].condition.n	number:int
+seats[].castPermissions[].condition.objectEpoch	number:int
+seats[].castPermissions[].condition.objectID	custom(uuid.UUID)
+seats[].castPermissions[].condition.subtype	string
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
@@ -5494,6 +5500,8 @@ turnPlan[]	object
 turnPlan[].phaseId	number:int
 turnPlan[].step	string
 turnTally	object
+turnTally.attackedSubtypes	map:string
+turnTally.attackedSubtypes{}	number:int
 turnTally.attacks	array
 turnTally.attacks[]	object
 turnTally.attacks[].attacker	custom(uuid.UUID)
@@ -5535,6 +5543,10 @@ turnTally.loopLowSet	bool
 turnTally.loopProgressed	bool
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
+turnTally.loreCounterPut	array
+turnTally.loreCounterPut[]	object
+turnTally.loreCounterPut[].epoch	number:int
+turnTally.loreCounterPut[].id	custom(uuid.UUID)
 turnTally.modesChosen	map:string
 turnTally.modesChosen{}	array
 turnTally.modesChosen{}[]	number:int
@@ -5558,6 +5570,7 @@ turnTally.players{}.attacksDeclared	number:int
 turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
+turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.landsEntered	number:int
@@ -5570,6 +5583,7 @@ turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.speedTriggered	bool
+turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int

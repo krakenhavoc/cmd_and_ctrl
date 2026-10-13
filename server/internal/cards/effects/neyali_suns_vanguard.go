@@ -23,26 +23,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (OncePerBatchPerPlayer, CR 603.2c / #784). Its body (b32NeyaliAttack)
 // exiles the top card of your library if a token is attacking a PLAYER
 // as the trigger resolves (a token declared against a planeswalker first
-// and one against a player second still count), with permission to play
-// it this turn, and grants again every card an earlier resolution
-// exiled that is still in exile. The turns you attack with a token are
-// exactly the turns this trigger resolves, so re-granting on each
-// resolution is "during any turn you attacked with a token".
-//
-// Remaining sandbox simplification, declared, weaker than printed: the
-// exiled cards' permission depends on Neyali's trigger resolving. A
-// turn on which tokens attacked only a planeswalker or a battle, or on
-// which Neyali was gone, re-grants nothing, where printed the
-// permission outlives her. "This turn" is the engine's impulse-exile
-// window, which ends at the controller's cleanup.
+// and one against a player second still count). The permission to play
+// it is a conditional exile play (#3192, ADR 0066's second 2026-10-13
+// amendment): it lasts for as long as the card stays exiled and is live
+// only during a turn its holder attacked with a token
+// (game.CondAttackedWithToken, read off the per-turn tally as each
+// attacker is declared, so a token that died in combat still counts).
+// On a turn no token attacked it is dormant, not gone, and it does not
+// depend on Neyali, or her trigger, still being there.
 func init() {
 	Register(Spec{
 		OracleID:     "4012b400-7dcd-43d6-8806-39a3cb743d8f",
 		Name:         "Neyali, Suns' Vanguard",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"A card exiled with Neyali can be played on a later turn only when her trigger resolves that turn — tokens must attack a player while she is on the battlefield.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			AttackingCreaturesHave("Attacking tokens you control have double strike.",
 				func(c *game.Card) bool { return IsToken(*c) }, "double strike"),

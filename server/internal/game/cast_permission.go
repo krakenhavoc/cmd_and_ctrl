@@ -698,6 +698,19 @@ type CastPermission struct {
 	// can come between).
 	RequiresNoSpellsCast bool `json:"requiresNoSpellsCast,omitempty"`
 
+	// Condition makes the permission live only while a registered
+	// condition holds (#3192, ADR 0066's second 2026-10-13 amendment):
+	// "during any turn you attacked with a token, you may play that card"
+	// (Neyali), "you may play it if you control a Kavu". Unlike a
+	// Duration it does not END the permission when false; the card stays
+	// exiled with its grant and the permission is simply dormant, then
+	// live again on a turn the condition holds. Evaluated in
+	// CastPermissionActiveForEffect, the one liveness test, so the cast
+	// path, the view, the enumerator and the bot cannot disagree. A key
+	// is data (cast_permission_condition.go); nil is unconditional, which
+	// is every permission written before the field existed.
+	Condition *PermissionCondition `json:"condition,omitempty"`
+
 	// --- provenance ------------------------------------------------
 
 	// Source is the card instance whose effect granted this, and
@@ -738,6 +751,11 @@ func (g *Game) CastPermissionActiveForEffect(p *CastPermission, playerID uuid.UU
 	if p.RequiresNoSpellsCast && g.CastTallyFor(playerID).Total > 0 {
 		return false
 	}
+	// #3192: a conditional permission is dormant, not over, while its
+	// condition is false.
+	if !g.permissionConditionHoldsLocked(p, playerID) {
+		return false
+	}
 	// `false`: this is a query, not the cleanup sweep. An
 	// UntilEndOfTurn permission is live for the whole of the turn it
 	// names and is dropped by sweepCastPermissionsLocked at that
@@ -769,7 +787,12 @@ func (p *CastPermission) CoversCard(c Card, zone ZoneKind) bool {
 	if p.Scope == ScopeStanding {
 		return p.Filter.Matches(c) && p.perTypeOpens(c)
 	}
-	return p.NamesCard(c) && p.perTypeOpens(c)
+	// #3192: a ScopeCards permission may carry a Filter too, as a
+	// spell-type gate on the NAMED cards — "you may cast it if it's a
+	// creature spell" (Vivien), "if it's an instant or sorcery spell"
+	// (Nivix). The zero filter matches everything, which is every
+	// permission written before this.
+	return p.NamesCard(c) && p.Filter.Matches(c) && p.perTypeOpens(c)
 }
 
 // GrantsFaces returns the faces this permission opens, when it names

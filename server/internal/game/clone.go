@@ -753,6 +753,10 @@ func cloneCastPermissions(in []CastPermission) []CastPermission {
 		if len(in[i].Faces) > 0 {
 			out[i].Faces = append([]int(nil), in[i].Faces...)
 		}
+		if in[i].Condition != nil {
+			cond := *in[i].Condition
+			out[i].Condition = &cond
+		}
 		// #2167: the per-type budget and what it has spent.
 		if len(in[i].PerType) > 0 {
 			out[i].PerType = append([]string(nil), in[i].PerType...)

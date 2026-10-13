@@ -2655,6 +2655,13 @@ export interface ExilePlayView {
   // label. Absent: say "until end of turn", as before the field.
   until?: ExilePlayUntil;
   until_player?: string;
+  // #3192: the clause a CONDITIONAL grant is live under ("during a turn
+  // you attacked with a token"), and whether it is false right now. The
+  // card keeps its grant while the condition is false, so the client
+  // withholds the play button instead of hiding the grant. Absent for an
+  // unconditional grant.
+  condition?: string;
+  condition_unmet?: boolean;
 }
 
 // #2559: the windows `exile_play.until` names.
