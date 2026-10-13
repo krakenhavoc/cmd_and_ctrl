@@ -207,6 +207,8 @@
 
   let lastSetup = $state<TableSetup | null>(null);
   let useLastSetup = $state(true);
+  // ADR 0159 §1: shown only when the server offers voice rooms.
+  let wantVoiceRoom = $state(false);
   // The table this page just created: its tablemate picker starts open.
   let justCreated = $state<string | null>(null);
   // What applying the setup did, shown on the new table's card.
@@ -474,7 +476,10 @@
     createError = "";
     try {
       const withSetup = useLastSetup && lastSetup !== null;
-      const meta = await createGame(newName.trim(), withSetup ? { setup: "last" } : {});
+      const meta = await createGame(newName.trim(), {
+        ...(withSetup ? { setup: "last" as const } : {}),
+        voiceRoom: $community.voice && wantVoiceRoom,
+      });
       if (meta.invite_token) recentInvites.set(meta.id, meta.invite_token);
       if (meta.spectator_invite) recentSpectatorInvites.set(meta.id, meta.spectator_invite);
       justCreated = meta.id;
@@ -961,6 +966,17 @@
             <span>
               Use my last setup
               <span class="setup-sum">{setupSummary(lastSetup, botDeckName)}</span>
+            </span>
+          </label>
+        {/if}
+        {#if $community.voice}
+          <label class="use-setup">
+            <input type="checkbox" bind:checked={wantVoiceRoom} />
+            <span>
+              Create a voice room
+              <span class="setup-sum"
+                >a private channel in the CMD & CTRL Discord for this table's players</span
+              >
             </span>
           </label>
         {/if}
