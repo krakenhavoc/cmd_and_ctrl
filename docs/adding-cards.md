@@ -3091,6 +3091,15 @@ does the same for the #1534 variants, planeswalker targets included.
 
 ### Adding a triggered ability (S19+)
 
+**Committing a crime (CR 700.13, ADR 0157).** Watch
+`game.EventBecomesTarget` and use `YouCommittedCrime(ev, source)`.
+The engine annotates one event with `CrimeCommitted` per qualifying cast, activation or triggered
+ability placement, including targets that are opponents' stack abilities.
+Ordinary target events also fire for copies and target changes; only the
+crime annotation counts. A graveyard self-return with optional mana uses
+`mayPayForGraveyardReturn`, which checks that the same object remains there
+before offering payment and after it finishes.
+
 Triggered abilities ("when ~ enters", "when ~ dies", "at the
 beginning of your upkeep") live on `Spec.Triggered
 []game.TriggeredAbility`. A per-game harvester listens to the event

@@ -483,6 +483,7 @@ events[].colors	array
 events[].colors[]	string
 events[].combat	bool
 events[].combat_step	string
+events[].crime_committed	bool
 events[].damage_not_life_loss	number:int
 events[].discard_cause	string
 events[].entered_from	string
@@ -1596,6 +1597,7 @@ lastKnownStack[].item.trigger.Event.colors	array
 lastKnownStack[].item.trigger.Event.colors[]	string
 lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
+lastKnownStack[].item.trigger.Event.crime_committed	bool
 lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.entered_from	string
@@ -1861,6 +1863,7 @@ pausedModeWalk.item.trigger.Event.colors	array
 pausedModeWalk.item.trigger.Event.colors[]	string
 pausedModeWalk.item.trigger.Event.combat	bool
 pausedModeWalk.item.trigger.Event.combat_step	string
+pausedModeWalk.item.trigger.Event.crime_committed	bool
 pausedModeWalk.item.trigger.Event.damage_not_life_loss	number:int
 pausedModeWalk.item.trigger.Event.discard_cause	string
 pausedModeWalk.item.trigger.Event.entered_from	string
@@ -2364,6 +2367,7 @@ pendingTriggers[].trigger.Event.colors	array
 pendingTriggers[].trigger.Event.colors[]	string
 pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
+pendingTriggers[].trigger.Event.crime_committed	bool
 pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.entered_from	string
@@ -5411,6 +5415,7 @@ stackMeta[].trigger.Event.colors	array
 stackMeta[].trigger.Event.colors[]	string
 stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
+stackMeta[].trigger.Event.crime_committed	bool
 stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.entered_from	string

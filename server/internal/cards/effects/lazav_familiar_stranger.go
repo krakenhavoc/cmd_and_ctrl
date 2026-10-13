@@ -17,7 +17,7 @@ import (
 //	 their graveyards is a crime.)"
 //
 // "Commit a crime" reuses Magda, the Hoardmaster's reading of it
-// (batch18_helpers.go's b18CommittedCrime, EventBecomesTarget) and the
+// (YouCommittedCrime, CrimeCommitted annotation) and the
 // once-per-turn tally (b11TriggeredThisTurn) her ability already
 // exercises.
 //
@@ -62,7 +62,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			On(game.EventBecomesTarget, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return b18CommittedCrime(ev, source, g) &&
+				return YouCommittedCrime(ev, source) &&
 					!b11TriggeredThisTurn(g, source.InstanceID, lazavFamiliarStrangerLabel)
 			}, lazavFamiliarStrangerLabel, lazavFamiliarStrangerEffect),
 		},
