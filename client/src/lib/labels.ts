@@ -752,6 +752,36 @@ export const LABEL_SPECS = {
     doc: "the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156)",
   }),
 
+  // -- The front door (ADR 0156 §4–6) --
+  signInWithDiscord: label({
+    name: "Sign in with Discord",
+    kind: "text",
+    role: "link",
+    owners: ["routes/FrontPage.svelte"],
+    doc: "the front page's Discord sign-in, shown when the server has Discord sign-in configured",
+  }),
+  joinDiscordServer: label({
+    name: "Join our Discord server",
+    kind: "text",
+    role: "link",
+    owners: ["routes/FrontPage.svelte"],
+    doc: "the front page's link to the C2 Discord invite; hidden when GET /community names none",
+  }),
+  tryPracticeGame: label({
+    name: "Try a practice game",
+    kind: "text",
+    role: "link",
+    owners: ["routes/FrontPage.svelte", "routes/RequestAccess.svelte"],
+    doc: "the front page's and the gate page's way in without an account: #/practice, a guest practice game when signed out",
+  }),
+  findAPod: label({
+    name: "Find a pod",
+    kind: "text",
+    role: "link",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Lobby's empty state: the C2 Discord invite, in the No pod yet? card; hidden when GET /community names none",
+  }),
+
   // -- Help (ADR 0125 §6) --
   help: label({
     name: "help",
@@ -785,8 +815,8 @@ export const LABEL_SPECS = {
     name: "Practice game",
     kind: "text",
     role: "menuitem",
-    owners: ["lib/components/HelpMenu.svelte", "routes/Home.svelte"],
-    doc: "Help, and Home's Help tile: opens a practice table; signed out it reads Practice game (sign in first) and goes to sign in",
+    owners: ["lib/components/HelpMenu.svelte", "routes/Lobby.svelte"],
+    doc: "Help, and the Lobby's empty-state card: opens a practice table, a guest one when signed out (ADR 0156 §2)",
   }),
   keyboardShortcutsItem: label({
     name: "Keyboard shortcuts",
@@ -820,8 +850,8 @@ export const LABEL_SPECS = {
     name: "Start practice",
     kind: "text",
     role: "link",
-    owners: ["routes/LobbyPractice.hint.ts"],
-    doc: "the lobby.practice tip's action, to #/practice; the tip's Got it reads Not now beside it",
+    owners: ["routes/LobbyPractice.hint.ts", "routes/Lobby.svelte"],
+    doc: "the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it",
   }),
 
   // -- Everywhere --

@@ -121,13 +121,17 @@ export function emptyContext(place: HintPlace, route: string = place): HintConte
 
 /**
  * placeOfRoute is the hint place a route offers, or null for a route
- * that offers none: sign-in, the invite and reclaim doors, the practice
- * door and the OAuth hand-off each do one thing and say so (§3.8), and
- * the game route is the table.
+ * that offers none: the admin token's form, the gate page, the invite
+ * and reclaim doors, the practice door and the OAuth hand-off each do
+ * one thing and say so (§3.8), and the game route is the table. The
+ * front page ("login", ADR 0156 §4) is the "home" place.
  */
 export function placeOfRoute(name: string): HintPlace | null {
   switch (name) {
-    case "home":
+    // The front page (ADR 0156 §4) took over from #/home, the site
+    // portal, and keeps its place: no tip of its own, the site's first.
+    case "login":
+      return "home";
     case "lobby":
     case "decks":
     case "catalog":

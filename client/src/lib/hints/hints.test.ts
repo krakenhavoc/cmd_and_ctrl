@@ -138,7 +138,16 @@ describe("placeOfRoute", () => {
     expect(placeOfRoute("adminViews")).toBe("admin");
     expect(placeOfRoute("myGames")).toBe("my-games");
     expect(placeOfRoute("game")).toBe("table");
-    for (const r of ["login", "adminLogin", "join", "reclaim", "practice", "oauthComplete"]) {
+    // The front page (ADR 0156 §4) took #/home's place.
+    expect(placeOfRoute("login")).toBe("home");
+    for (const r of [
+      "adminLogin",
+      "requestAccess",
+      "join",
+      "reclaim",
+      "practice",
+      "oauthComplete",
+    ]) {
       expect(placeOfRoute(r), r).toBeNull();
     }
   });

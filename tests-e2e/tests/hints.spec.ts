@@ -191,8 +191,9 @@ test.describe("first-use hints", () => {
     try {
       const help = page.getByRole("button", { name: L.help, exact: true });
 
-      // Home, signed out: no hint of its own, so the site's Help tip.
-      await pageCycle(page, { url: "/#/home", title: SITE_HELP, anchor: help });
+      // The front page (ADR 0156 §4, which took #/home's place), signed
+      // out: no hint of its own, so the site's Help tip.
+      await pageCycle(page, { url: "/#/", title: SITE_HELP, anchor: help });
 
       // The public pages.
       await pageCycle(page, {

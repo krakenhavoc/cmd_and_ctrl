@@ -16,8 +16,15 @@ import type { Session } from "./session";
 
 // The routes a signed-out visitor may open.
 const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
+  // The front page (ADR 0156 §4), at #/ and its alias #/login.
   "login",
   "adminLogin",
+  // The gate page (ADR 0156 §5): the Discord callback sends a refused
+  // sign-in here, and a refused sign-in leaves no session behind.
+  "requestAccess",
+  // The practice table's door (ADR 0076 §2.2). Signed out it opens a
+  // guest practice game (ADR 0156 §2, POST /games/practice/guest).
+  "practice",
   // An invite or spectator link is how a new player arrives.
   "join",
   // The whole point of a reclaim link is that the holder has no session
@@ -25,9 +32,7 @@ const PUBLIC_ROUTES: ReadonlySet<Route["name"]> = new Set<Route["name"]>([
   // cannot get past.
   "reclaim",
   "oauthComplete",
-  // The site portal and the public roadmap (#1386): neither shows card
-  // art or anything else session-gated.
-  "home",
+  // The public roadmap (#1386): no card art, nothing session-gated.
   "roadmap",
   // The privacy notice (#2983): readable before signing in, linked from
   // the sign-in screen.
@@ -57,6 +62,8 @@ export function returnRouteFor(r: Route, s: Session | null, hash: string): strin
 // routeRedirect is the router's auth gate: where to send a visitor on
 // route r holding session s, or null to stay.
 //
+//   - #/home is retired (ADR 0156 §4): a visitor goes to #/, the front
+//     page, and a session to the Lobby, the signed-in home.
 //   - A signed-out visitor on a gated route goes to #/login.
 //   - Every session on #/login goes to the Lobby (ADR 0112 §1 item 1):
 //     Login is for signed-out visitors only. The Lobby has the header
@@ -81,6 +88,7 @@ export function returnRouteFor(r: Route, s: Session | null, hash: string): strin
 // round trip are public and never redirected, whatever the browser
 // holds (§1 item 2).
 export function routeRedirect(r: Route, s: Session | null): string | null {
+  if (r.name === "home") return s ? "#/lobby" : "#/";
   if (!s) return isPublicRoute(r) ? null : "#/login";
   if (r.name === "login") return "#/lobby";
   if (r.name === "adminLogin") {

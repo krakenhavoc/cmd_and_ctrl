@@ -5,10 +5,12 @@
   //
   // The routing rules are intentionally small, and live in
   // lib/signedInHome.ts: most unauthenticated routes redirect to
-  // /login, and a session on /login goes to the Lobby.
+  // /login (the front page), and a session on it goes to the Lobby.
 
   import { applyFavicon } from "./lib/favicon";
-  import Login from "./routes/Login.svelte";
+  import FrontPage from "./routes/FrontPage.svelte";
+  import RequestAccess from "./routes/RequestAccess.svelte";
+  import AdminLogin from "./routes/AdminLogin.svelte";
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
   import Reclaim from "./routes/Reclaim.svelte";
@@ -16,7 +18,6 @@
   import Catalog from "./routes/Catalog.svelte";
   import MyGames from "./routes/MyGames.svelte";
   import Decks from "./routes/Decks.svelte";
-  import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
   import Privacy from "./routes/Privacy.svelte";
   import About from "./routes/About.svelte";
@@ -142,17 +143,18 @@
   });
 </script>
 
-<!-- Every route but the sign-in page and the table draws its own frame
-     (Page.svelte, ADR 0156 §3); the sign-in page keeps its centred
-     column until the front page replaces it. -->
+<!-- Every route but #/admin's token form and the table draws its own
+     frame (Page.svelte, ADR 0156 §3); the token form keeps its centred
+     column. "login" is the front page, at #/ and #/login (§4). #/home
+     renders nothing: the router sends it on (signedInHome.ts). -->
 {#if $route.name === "login"}
-  <div class="app-column"><Login /></div>
+  <FrontPage />
+{:else if $route.name === "requestAccess"}
+  <RequestAccess retry={$route.retry === true} />
 {:else if $route.name === "adminLogin"}
-  <div class="app-column"><Login admin /></div>
+  <div class="app-column"><AdminLogin /></div>
 {:else if $route.name === "adminViews"}
   <Admin view={$route.view} />
-{:else if $route.name === "home"}
-  <Home />
 {:else if $route.name === "roadmap"}
   <Roadmap />
 {:else if $route.name === "privacy"}

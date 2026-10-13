@@ -103,16 +103,20 @@ registered, or when this file is stale.
 | `searchRoadmap` | `search the roadmap` | textbox | aria | `routes/Roadmap.svelte` | the Roadmap's search field; the roadmap.search hint points at it |
 | `lobbyTitle` | `cmd_and_ctrl · lobby` | heading | aria | `routes/Lobby.svelte` | the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here |
 | `navTables` | `Tables` | link | text | `lib/components/SiteHeader.svelte` | the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156) |
+| `signInWithDiscord` | `Sign in with Discord` | link | text | `routes/FrontPage.svelte` | the front page's Discord sign-in, shown when the server has Discord sign-in configured |
+| `joinDiscordServer` | `Join our Discord server` | link | text | `routes/FrontPage.svelte` | the front page's link to the C2 Discord invite; hidden when GET /community names none |
+| `tryPracticeGame` | `Try a practice game` | link | text | `routes/FrontPage.svelte`<br>`routes/RequestAccess.svelte` | the front page's and the gate page's way in without an account: #/practice, a guest practice game when signed out |
+| `findAPod` | `Find a pod` | link | text | `routes/Lobby.svelte` | the Lobby's empty state: the C2 Discord invite, in the No pod yet? card; hidden when GET /community names none |
 | `help` | `help` | button | aria | `lib/components/HelpMenu.svelte` | the site header's Help button; the menu it opens is named by it (aria-labelledby), and the site.help hint anchors here |
 | `tipsForThisPage` | `Tips for this page` | menuitem | text | `lib/components/HelpMenu.svelte` | Help: shows this page's tips again, one after another, even with tips off |
 | `tipsForTheTable` | `Tips for the table` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: shows the table's tips again at the next quiet moments |
 | `showAllTipsAgain` | `Show all tips again` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`lib/components/Settings.svelte` | Help, and Settings → Advanced: forgets every dismissed tip and turns tips back on |
-| `practiceGame` | `Practice game` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`routes/Home.svelte` | Help, and Home's Help tile: opens a practice table; signed out it reads Practice game (sign in first) and goes to sign in |
+| `practiceGame` | `Practice game` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`routes/Lobby.svelte` | Help, and the Lobby's empty-state card: opens a practice table, a guest one when signed out (ADR 0156 §2) |
 | `keyboardShortcutsItem` | `Keyboard shortcuts` | menuitem | text | `lib/components/HelpMenu.svelte`<br>`lib/components/board/GameMenu.svelte` | Help, and the ⋯ menu's Help group: opens the keymap overlay |
 | `replayTutorial` | `Replay the tutorial` | menuitem | text | `lib/components/board/GameMenu.svelte`<br>`lib/components/Settings.svelte` | Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table |
 | `legalNotice` | `Legal notice` | menuitem | text | `lib/components/board/GameMenu.svelte` | the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982) |
 | `showTips` | `Show tips` | checkbox | text | `lib/components/Settings.svelte` | Settings → Advanced: on unless Hide tips was pressed on a tip |
-| `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts` | the lobby.practice tip's action, to #/practice; the tip's Got it reads Not now beside it |
+| `startPractice` | `Start practice` | link | text | `routes/LobbyPractice.hint.ts`<br>`routes/Lobby.svelte` | the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it |
 | `tip` | `tip` | complementary | aria | `lib/components/hints/HintCard.svelte` | a first-use hint's card (ADR 0125 §3.6); one at a time, and Go to the tip (i) moves focus to it |
 | `keyboardShortcuts` | `keyboard shortcuts` | dialog | text | `lib/components/ShortcutsOverlay.svelte` | the keymap overlay (?), named by its heading |
 | `rememberThisAnswer` | `Remember this answer` | button | text | `lib/choiceDock.ts` | the toggle under a prompt that can take a standing answer; on, the next button pressed also sets the rule (Yes or Pay: Always; No or Don't pay: Never) |

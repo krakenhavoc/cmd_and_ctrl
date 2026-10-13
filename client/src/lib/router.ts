@@ -20,11 +20,15 @@ export type Route =
   // hash names; a value the server does not know is dropped here, so
   // it is never sent (lib/adminViews.ts).
   | { name: "adminViews"; view: AdminView }
-  // The site portal (#1386, ADR 0092): a public sitemap of link cards
-  // to everywhere else on the site, grouped by what you're trying to
-  // do. Exists alongside SiteHeader as a second entry point — the
-  // owner will pick between the two later.
+  // #/home was the site portal (#1386, ADR 0092). ADR 0156 §4 retired
+  // it: the front page serves visitors and the header everyone else.
+  // The route survives only so old links land somewhere: the router
+  // sends it on (signedInHome.ts's routeRedirect).
   | { name: "home" }
+  // The gate page (ADR 0156 §5): where the Discord callback sends a
+  // sign-in the role gate refused. `retry` is ?retry=1, the callback's
+  // word that Discord did not answer the check. Public.
+  | { name: "requestAccess"; retry?: true }
   // The public roadmap (PR 2 of the same plan): what the rules engine
   // automates today, what's partial, what's missing, and what's next.
   // Public like /catalog was meant to be closed — see ADR 0092 for why
@@ -106,6 +110,7 @@ export type Route =
       userID?: string;
     };
 
+// "login" is the front page (ADR 0156 §4): #/ and #/login both open it.
 const defaultRoute: Route = { name: "login" };
 
 // parseHash is exported for tests; everything else reads `route`.
@@ -128,6 +133,10 @@ export function parseHash(hash: string): Route {
     }
     case "home":
       return { name: "home" };
+    case "request-access":
+      return params.get("retry") === "1"
+        ? { name: "requestAccess", retry: true }
+        : { name: "requestAccess" };
     case "roadmap":
       return { name: "roadmap" };
     case "privacy":

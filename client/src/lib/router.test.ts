@@ -1,5 +1,5 @@
-// router.test.ts — parseHash coverage for the site portal (#1386):
-// #/home and #/roadmap, plus a couple of the existing routes so a
+// router.test.ts — parseHash coverage: the front page and the gate page
+// (ADR 0156), #/roadmap, plus a couple of the existing routes so a
 // regression here doesn't silently start returning the default
 // (login) route for either of them.
 
@@ -8,8 +8,21 @@ import { describe, expect, it } from "vitest";
 import { parseHash } from "./router";
 
 describe("parseHash", () => {
-  it("parses #/home", () => {
+  // ADR 0156 §4: #/ is the front page and #/login an alias of it (the
+  // OAuth error path and the e2e suite use it). #/home still parses, so
+  // the router can send old links on (signedInHome.test.ts).
+  it("parses #/ and #/login as the front page, and keeps #/home for its redirect", () => {
+    expect(parseHash("#/")).toEqual({ name: "login" });
+    expect(parseHash("")).toEqual({ name: "login" });
+    expect(parseHash("#/login")).toEqual({ name: "login" });
     expect(parseHash("#/home")).toEqual({ name: "home" });
+  });
+
+  // ADR 0156 §5: the gate page, and ?retry=1 when Discord did not answer.
+  it("parses #/request-access, with and without ?retry=1", () => {
+    expect(parseHash("#/request-access")).toEqual({ name: "requestAccess" });
+    expect(parseHash("#/request-access?retry=1")).toEqual({ name: "requestAccess", retry: true });
+    expect(parseHash("#/request-access?retry=0")).toEqual({ name: "requestAccess" });
   });
 
   // ADR 0148 / #3103: the Discord callback lands the browser back on the

@@ -5,7 +5,7 @@
 // spectator, reclaim or Discord link; the Discord round trip from the
 // login page lands on the Lobby; the Lobby's "Join a table" card, its
 // "your tables" list and its empty state; the header's account menu and
-// wordmark; the login page with no token card; and Home's join card.
+// wordmark; the front page with no token card; and #/home's redirect.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anchorOf, emptyContext } from "./hints/hint";
@@ -14,8 +14,8 @@ import CREATE_HINT from "../routes/Lobby.hint";
 
 import App from "../App.svelte";
 import Lobby from "../routes/Lobby.svelte";
-import Login from "../routes/Login.svelte";
-import Home from "../routes/Home.svelte";
+import FrontPage from "../routes/FrontPage.svelte";
+import AdminLogin from "../routes/AdminLogin.svelte";
 import SiteHeader from "./components/SiteHeader.svelte";
 import { currentSession, setSession, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
@@ -457,14 +457,15 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     expect(empty.querySelector("p")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
       "You're not at a table yet. Paste an invite code above, or create a table and invite your pod.",
     );
-    const links = [...empty.querySelectorAll("a")].map((a) => [
+    // ADR 0156 §6: Practice game and Bring a deck; the No pod yet? card
+    // only with an invite (frontDoor.render.test.ts covers both cases).
+    const links = [...container.querySelectorAll(".empty-cards a")].map((a) => [
       a.textContent?.trim(),
       a.getAttribute("href"),
     ]);
     expect(links).toEqual([
-      ["Practice against bots", "#/practice"],
-      ["Check a deck", "#/decks"],
-      ["My games", "#/my-games"],
+      ["Start practice", "#/practice"],
+      ["Decks", "#/decks"],
     ]);
     // The Join and Create cards are above it.
     expect(container.querySelector('input[aria-label="invite code or link"]')).not.toBeNull();
@@ -477,11 +478,11 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
     return container.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
   }
 
-  it("sends the wordmark to the Lobby for a session, and home without one", async () => {
+  it("sends the wordmark to the Lobby for a session, and the front page without one", async () => {
     stubServer();
     const out = render(SiteHeader as never, {} as never);
     await settle();
-    expect(out.container.querySelector(".wordmark")?.getAttribute("href")).toBe("#/home");
+    expect(out.container.querySelector(".wordmark")?.getAttribute("href")).toBe("#/");
     expect(out.container.querySelector('a[href="#/login"]')?.textContent).toMatch(/Sign in/);
     out.destroy();
 
@@ -558,7 +559,7 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
 describe("the login page and #/admin", () => {
   it("has no token card for a signed-out visitor", async () => {
     stubServer();
-    const { container } = render(Login as never, {} as never);
+    const { container } = render(FrontPage as never, {} as never);
     await settle();
     expect(container.textContent).not.toMatch(/Admin log in/);
     expect(container.textContent).not.toMatch(/token/i);
@@ -567,7 +568,7 @@ describe("the login page and #/admin", () => {
 
   it("shows #/admin's token form signed out, with no note", async () => {
     stubServer();
-    const { container } = render(Login as never, { admin: true } as never);
+    const { container } = render(AdminLogin as never, {} as never);
     await settle();
     expect(container.querySelector('input[placeholder="admin token"]')).not.toBeNull();
     expect(container.querySelector('[role="note"]')).toBeNull();
@@ -577,7 +578,7 @@ describe("the login page and #/admin", () => {
   it("tells a signed-in person on #/admin that the token replaces their session", async () => {
     setSession(sess("identified", USER));
     stubServer();
-    const { container } = render(Login as never, { admin: true } as never);
+    const { container } = render(AdminLogin as never, {} as never);
     await settle();
     expect(container.querySelector('input[placeholder="admin token"]')).not.toBeNull();
     expect(container.querySelector('[role="note"]')?.textContent).toMatch(
@@ -588,7 +589,7 @@ describe("the login page and #/admin", () => {
   it("tells a guest the same, without a sign-in to set aside", async () => {
     setSession(sess("player", NIL, { name: "Guest" }));
     stubServer();
-    const { container } = render(Login as never, { admin: true } as never);
+    const { container } = render(AdminLogin as never, {} as never);
     await settle();
     const note = container.querySelector('[role="note"]')?.textContent ?? "";
     expect(note).toMatch(/replaces this browser's session/);
@@ -596,21 +597,24 @@ describe("the login page and #/admin", () => {
   });
 });
 
-describe("Home's join card", () => {
-  it("links the Lobby for a session, and sign-in without one", async () => {
+// ADR 0156 §4: #/home is retired. Old links land on the front page, or
+// on the Lobby for a session.
+describe("#/home", () => {
+  it("goes to the front page signed out", async () => {
     stubServer();
-    const out = render(Home as never, {} as never);
+    await goTo("#/home");
+    const { container } = render(App as never, {} as never);
     await settle();
-    const join = () =>
-      [...document.querySelectorAll("a.tile")].find((a) =>
-        /Join with an invite/.test(a.textContent ?? ""),
-      );
-    expect(join()?.getAttribute("href")).toBe("#/login");
-    out.destroy();
+    expect(location.hash).toBe("#/");
+    expect(container.textContent).toMatch(/Have an invite\?/);
+  });
 
+  it("goes to the Lobby for a session", async () => {
     setSession(sess("player", NIL, { name: "Guest" }));
-    render(Home as never, {} as never);
+    stubServer();
+    await goTo("#/home");
+    render(App as never, {} as never);
     await settle();
-    expect(join()?.getAttribute("href")).toBe("#/lobby");
+    expect(location.hash).toBe("#/lobby");
   });
 });

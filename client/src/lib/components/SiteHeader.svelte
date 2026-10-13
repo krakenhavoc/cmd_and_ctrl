@@ -93,9 +93,9 @@
   const adminOn = $derived(isAdmin($session));
   const acctLabel = $derived(`account menu: ${whoAmI}${adminOn ? " (admin mode on)" : ""}`);
 
-  // The wordmark is the way home: the Lobby for a session, the public
-  // site map without one (ADR 0112 §1 item 5).
-  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/home");
+  // The wordmark is the way home: the Lobby for a session, the
+  // front page without one (ADR 0112 §1 item 5, ADR 0156 §4).
+  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/");
 
   function closeAccount(): void {
     accountOpen = false;
