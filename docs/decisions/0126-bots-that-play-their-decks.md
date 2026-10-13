@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): proposed.
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -1087,6 +1087,73 @@ The owner accepted the amendment on 2026-10-12 and took the recommendation on bo
 
 1. **The set-level block check is accepted.** `BlockSetSurvives` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
 2. **The horizon's waiting turn is its own issue:** [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080), in Backlog. It changes the attrition horizon's search, not the block planner, so it is not part of this amendment.
+
+## Amendment 2026-10-12: landfall payoffs
+
+**Status:** Proposed. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Issue:** [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072), filed from #2480's [owner decision 4](#owner-decisions-2480-2026-10-12). Sprint S67.
+**Amends:** §6 (a new purpose field, `landfall_payoff`, on a triggered row) and what §6's `lands`, #2678's extra land drop and #2680's put from hand are worth. No other price and no deck changes.
+
+### The problem
+
+[#2480](#why-the-cards-go-unused) found Burnished Hart's activation offered 346 times on simic-ramp and taken once. Its two lands are priced at `ManaSource` each plus the ramp premium, against the Hart's own body, and by the time Simic has the Hart and {3} to spare its deficit has closed. In 141 of the 150 windows of its own main phase with an empty stack it controlled a landfall payoff, 127 of them Tatyova, so those two lands were two cards and two life. Nothing priced that. Re-measured on `develop` at `489b289aa` (run 1, both seed blocks), Simic's Hart activation was taken in 5 of 1,047 windows, and in 540 of the 559 seed-1 windows the decision log can read, Simic controlled a payoff.
+
+### Decision
+
+**1. A landfall row declares what it pays** (`game.LandfallPayoff`, `purpose.landfall_payoff` on the wire). The amounts are per land that enters under its controller's control: `draws`, `life_gain`, `tokens`, `mana`, `counters` (on its source), `energy` and `damage_each_opponent`. It is declared by hand, like every purpose, and only on a triggered row (`effects.Register` refuses it anywhere else, and refuses one that pays nothing). A card file builds the row with `effects.LandfallPaying(label, payoff, effect)` in place of `Landfall(label, effect)`. It is declared on Simic's Tatyova, Lotus Cobra, Tireless Tracker, Tireless Provisioner, Sporemound, Rampaging Baloths and Courser of Kruphix (`TestCuratedDeckPurposes` holds each to it), and on the catalog's other fixed-amount landfall rows: Architect of the Untamed, Emeria Angel, Koth of the Homestead, Koth, the Geomancer (the damage only), Maja, Nesting Dragon, Nissa, Worldsoul Speaker, both Omnaths that pay a fixed amount, Primeval Bounty, Roil Cartographer, Sabotender, Sazh's Chocobo, Scute Swarm, The Necrobloom, Undergrowth Champion and Zendikar's Roil. A payoff counted at resolution (Avenger of Zendikar's counter on each Plant) or conditioned on the lands (Field of the Dead) declares none.
+
+**2. A land the bot puts onto the battlefield is worth what its payoffs pay** (`PriceLandfallPayoffs`, `aiseat/heuristic/landfall.go`). Per land, over the triggered rows of the bot's own permanents, in the units the policy already uses:
+
+```
+Weights.Hand × draws + MarginalLife(own life) × life_gain + TokenWeight × tokens
++ 0.5 × TokenWeight × mana + (Weights.Power + Weights.Toughness) × counters
++ Weights.Energy × energy + DamageToOpponent × damage_each_opponent × live opponents
+```
+
+It is added in the three places a land the bot puts down is priced: a declared purpose's `lands` (Burnished Hart's and Sakura-Tribe Elder's activations, Harrow, Cultivate, Solemn Simulacrum), the lands an extra land drop lets the bot play this turn (#2678), and a land put from hand (#2680). The ordinary land drop is not repriced: it is taken before any cast already. An opponent's payoff pays the opponent, so it adds nothing.
+
+On turn 8 with seven lands, the Hart's activation is −1.20 without a payoff and **+1.44** with Tatyova out (two cards and two life), so the bot cracks it. With only Courser of Kruphix it is −0.96, and with an opponent's Tatyova −1.20, so it keeps the Hart (`TestHartIsActivatedWithTatyovaOut`, `TestHartIsKeptWhenTheLandsPayLittle`).
+
+No weight is new. The one constant is `landfallManaShare` (0.5): a landfall mana empties at the end of the step, so it is half a Treasure.
+
+### Measured
+
+The tables are under [Measurements, #3072](#3072-landfall-payoffs-2026-10-12). In short, over run 1 at seeds 1 and 1001 (128 games) and run 2 at both seeds (384 `heuristic` seat-games):
+
+| | Simic, run 1 | Simic, every `heuristic` seat-game | Run 2 `heuristic` | Hart activation, Simic run 1 |
+|---|---|---|---|---|
+| `develop` `489b289aa` | 28 / 128, 21.9% (15.6%–29.8%) | 61 / 224, 27.2% (21.8%–33.4%) | 134 / 384, 34.9% (30.3%–39.8%) | 5 of 1,047 windows, in 5 of 27 games |
+| **`PriceLandfallPayoffs`** | **35 / 128, 27.3% (20.4%–35.6%)** | **70 / 224, 31.2% (25.5%–37.6%)** | 131 / 384, 34.1% (29.6%–39.0%) | **21 of 225 windows, in 21 of 26 games** |
+
+- **The Hart is used.** It is taken in 21 of the 26 games it is offered in, against 5 of 27, and it is offered in far fewer windows because it is cracked early. In run 2 the `heuristic` Simic's Hart goes from 2 of 19 games to 12 of 17.
+- **The other land-makers move with it.** Explosive Vegetation is cast in 50 of 67 games it is offered in (28 of 55 on `develop`), Sakura-Tribe Elder's sacrifice is used in 33 of 41 (17 of 42), and Harrow, Cultivate and Kodama's Reach are each cast a little more.
+- **Simic's win rate rises, within noise.** Every interval overlaps the one before. Mono-black's run-1 share falls from 49 to 46 of 128 and Esper's from 45 to 42, in games the change re-dealt.
+- **Run 2 is not detectably worse.** Half A (`heuristic` on Esper and Izzet, so no `heuristic` seat holds a payoff) plays every game as `develop` does at both seeds. Half B changes 34 and 38 of 48 games.
+- **Health:** 0 stalls and 0 rejected moves in every run, turns p50 unchanged (13 and 14 in run 1). The suite is 41 of 41, every tag at 100%, on both.
+
+### Options considered and rejected
+
+- **Deriving the payoff from the effect** (a `Do(DrawCards{N: 1})` body read at registration). Several payoffs are hand-written closures (Tatyova's is), and §6 says purposes are declared, never derived. `LandfallPaying` is the one-line declaration instead.
+- **Repricing the land drop.** It is already priced above every cast, so a payoff would change nothing.
+- **Pricing Ancient Greenwarden's doubling.** It is a static, not a landfall row, and it pays nothing alone. See Open.
+- **Declaring `lands: 1` on the fetch lands.** A fetch's activation is priced at the flat `ActivateBase` today and is cracked. A declared `lands` would make it pay for the land it sacrifices, and without a payoff it would fall under `PassThreshold`. That is a change to fetches, not to landfall.
+
+### Open (#3072)
+
+- **Ancient Greenwarden** doubles every landfall trigger and is in Simic's list. A doubler would need its own declaration (on the static, read with the payoffs).
+- **Casting a payoff** is still priced by its body. Tatyova cast before a turn of land drops is worth the cards she will draw, which nothing prices. The commander is cast in 63 of 64 games anyway.
+- **Fetch lands** (Simic has seven) are cracked at the flat `ActivateBase`, so a payoff does not make them more likely. They were not declared (see above).
+
+### Questions for the owner (#3072)
+
+Each lists the recommended option first.
+
+1. **Accept the landfall price, with `PriceLandfallPayoffs` on in `DefaultConfig()`?**
+   - **(a) Recommended:** yes. The Hart and the other land-makers are used when a payoff is out, Simic's numbers move up within noise, and run 2 and the suite do not move.
+   - **(b)** Keep it as an off switch. The declarations stay, and the bot prices lands as before.
+2. **The open items** (Greenwarden's doubling, a payoff's own cast price, fetch lands).
+   - **(a) Recommended:** one Backlog issue for all three, measured together, since each changes Simic alone.
+   - **(b)** Leave them.
 
 ## Consequences
 
@@ -2334,3 +2401,54 @@ No gate game stalls, and heuristic beats random 12–0, on both.
 - `go test ./internal/aiseat/heuristic/ ./internal/aiseat/suite/...`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns the switch off. The new decision tests are in `heuristic/blockset_decide_test.go`: the issue's board (and, with the switch off, the old +6.90 Bear block), commander damage on 19 and on 18, the tenth poison counter from toxic, trample overflow, a set that needs two blockers, and a board where no set survives, which decides as with the switch off.
 - `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/` with `-race`: green, and its gate seeds and mirrors match the non-race runs above game for game. `./internal/aiseat/...` and `./internal/botarena/` are green too. Decision latency over 2294 decisions is p50 112µs, p99 9.75ms and max 51.8ms (`-race`, with the other `-race` packages running beside it), under the 50ms p99 bar.
 - **Latency without `-race`,** three runs of `TestHeuristicDecisionLatency` each, on the same box one after the other: `develop` p50 13.2–13.4µs, p99 1.10–1.14ms, max 5.0–5.5ms over 2389 decisions; the branch p50 13.8–14.2µs, p99 1.14–1.21ms, max 7.2–7.8ms over 2294 decisions. Its game (seed 4242) is one of the games a block changes, so the two are not the same decisions. The check runs only when finishing the declaration kills, and stops at the first set that survives.
+
+### #3072: landfall payoffs (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-landfall-payoffs), proposed. `develop` is `489b289aa`, with #3066's block check and #2480's impulse price. The branch is that tree with `PriceLandfallPayoffs` true in `DefaultConfig()` and false in `BaselineConfig()`, and the declarations; no weight is new. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). Each at seeds 1 and 1001. **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
+
+**Run 1** (wins of 64, Wilson 95%):
+
+| Deck | Seed 1, `develop` | Seed 1, branch | Seed 1001, `develop` | Seed 1001, branch | Pooled, `develop` | Pooled, branch |
+|---|---|---|---|---|---|---|
+| esper-control | 18, 28.1% (18.6%–40.1%) | 18, 28.1% (18.6%–40.1%) | 27, 42.2% (30.9%–54.4%) | 24, 37.5% (26.7%–49.7%) | 45 / 128, 35.2% (27.4%–43.8%) | 42 / 128, 32.8% (25.3%–41.3%) |
+| izzet-aggro | 5, 7.8% (3.4%–17.0%) | 4, 6.2% (2.5%–15.0%) | 1, 1.6% (0.3%–8.3%) | 1, 1.6% (0.3%–8.3%) | 6 / 128, 4.7% (2.2%–9.8%) | 5 / 128, 3.9% (1.7%–8.8%) |
+| mono-black-aristocrats | 25, 39.1% (28.1%–51.3%) | 22, 34.4% (23.9%–46.6%) | 24, 37.5% (26.7%–49.7%) | 24, 37.5% (26.7%–49.7%) | 49 / 128, 38.3% (30.3%–46.9%) | 46 / 128, 35.9% (28.1%–44.5%) |
+| simic-ramp | 16, 25.0% (16.0%–36.8%) | 20, 31.2% (21.2%–43.4%) | 12, 18.8% (11.1%–30.0%) | 15, 23.4% (14.7%–35.1%) | 28 / 128, 21.9% (15.6%–29.8%) | **35 / 128, 27.3% (20.4%–35.6%)** |
+| games that differ from `develop` | — | 44 (20 winners) | — | 45 (15 winners) | | |
+| turns p50 | 13 | 13 | 14 | 14 | | |
+
+`never` lists are the same on both, apart from Izzet's at seed 1001, which Glint-Horn Buccaneer's and Reflection of Kiki-Jiki's activations leave on the branch (in games the change re-dealt). Burnished Hart's activation stays `never` on mono-black-aristocrats, which has no landfall payoff.
+
+**Run 2** (wins of 48 per deck):
+
+| | Seed 1, `develop` | Seed 1, branch | Seed 1001, `develop` | Seed 1001, branch |
+|---|---|---|---|---|
+| half A, `heuristic` esper / izzet | 17 / 5 | 17 / 5 | 27 / 3 | 27 / 3 |
+| half A, `heuristic-baseline` black / simic | 13 / 13 | 13 / 13 | 7 / 11 | 7 / 11 |
+| half B, `heuristic` black / simic | 25 / 20 | 20 / 20 | 24 / 13 | 24 / 15 |
+| half B, `heuristic-baseline` esper / izzet | 2 / 1 | 6 / 2 | 10 / 1 | 6 / 3 |
+| **`heuristic`** | **67 / 192, 34.9% (28.5%–41.9%)** | **62 / 192, 32.3% (26.1%–39.2%)** | **67 / 192, 34.9% (28.5%–41.9%)** | **69 / 192, 35.9% (29.5%–42.9%)** |
+| games that differ, halves A / B | — | 0 / 34 | — | 0 / 38 |
+
+Pooled over both seeds, `heuristic` is 134 / 384, 34.9% (30.3%–39.8%) on `develop` and 131 / 384, 34.1% (29.6%–39.0%) on the branch; `heuristic-baseline` 58 and 61 of 384. Half A plays every game as `develop` does, because no `heuristic` seat there holds a landfall payoff and `heuristic-baseline` has the switch off. Turns p50 is unchanged in every half.
+
+**Simic, every `heuristic` seat-game** (run 1 at both seeds and run 2's half B): 61 / 224, 27.2% (21.8%–33.4%) on `develop`; 70 / 224, 31.2% (25.5%–37.6%) on the branch.
+
+**Simic's land-makers** (`heuristic` seats; games used of games offered, and windows taken of windows offered):
+
+| Card | Run 1, `develop` | Run 1, branch | Run 2 half B, `develop` | Run 2 half B, branch |
+|---|---|---|---|---|
+| Burnished Hart, activation | 5 of 27 games (5 of 1,047 windows) | **21 of 26 (21 of 225)** | 2 of 19 (2 of 786) | **12 of 17 (12 of 140)** |
+| Sakura-Tribe Elder, activation | 17 of 42 | 33 of 41 | 13 of 31 | 23 of 26 |
+| Explosive Vegetation | 28 of 55 | 50 of 67 | 20 of 37 | 29 of 37 |
+| Harrow | 47 of 56 | 56 of 61 | 37 of 41 | 39 of 42 |
+| Cultivate | 48 of 61 | 58 of 65 | 30 of 45 | 35 of 43 |
+| Kodama's Reach | 34 of 47 | 49 of 58 | 36 of 46 | 39 of 45 |
+
+By seed, in run 1: the Hart's activation went from 3 of 13 games (3 of 728 windows) to 9 of 11 (9 of 64) at seed 1, and from 2 of 14 (2 of 319) to 12 of 15 (12 of 161) at seed 1001. From run 1's decision logs at seed 1, Simic controlled a landfall payoff in 540 of the 559 Hart windows the logs carry on `develop` (2 taken); on the branch, in 36 of 49 (8 taken), and the activation's price in those windows had a median of +1.04 against −0.80 on `develop`.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`.
+- `go test -race ./...`: green, including `TestHartIsActivatedWithTatyovaOut`, `TestHartIsKeptWhenTheLandsPayLittle`, `TestHartWithTatyovaNeedsTheSwitch`, `TestARampSpellIsWorthMoreWithTatyovaOut`, `TestEveryLandfallAmountIsPriced`, `TestLandfallPayoffDeclarations`, `TestLandfallPayoffGuard`, `TestLandfallPayoffOnTheWire` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`).
+- `AISEAT_GAME_TESTS=1` over `./internal/aiseat/` with `-race` and `-timeout=60m`: every game test passes but `TestFourRandomBotsPlayToAWinner`, whose three games (seeds 31000–31002) hit the 300 s wall clock at turns 19–20. It fails the same way on `develop` `489b289aa`, run alone on a quiet machine, and it seats the random policy, which reads no purpose.
