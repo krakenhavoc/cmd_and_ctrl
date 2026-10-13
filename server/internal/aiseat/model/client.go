@@ -168,6 +168,14 @@ var ErrNoClient = errors.New("aiseat/model: no model client configured")
 // drill readable.
 var ErrOutage = errors.New("aiseat/model: model endpoint unreachable")
 
+// ErrBudgetExceeded is what the server's spend guard (aiseat/budget)
+// returns when the daily or monthly model cap is spent, or an admin
+// has switched model calls off (#2980). No request left the process,
+// so nothing was billed. The policy treats it as FallbackBudgetCapped:
+// the heuristic's answer, which was computed first, with no warning
+// line per window.
+var ErrBudgetExceeded = errors.New("aiseat/model: model spend cap reached or model calls switched off")
+
 // ErrNoBudget means the runner's deadline left too little time to
 // attempt a call. The decision is Layer B's and no call is made.
 var ErrNoBudget = errors.New("aiseat/model: no time left to call a model")

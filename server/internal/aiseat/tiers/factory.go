@@ -73,9 +73,22 @@ type FactoryOptions struct {
 	// CMDCTRL_BOT_MAX_TOKENS; #2196). Both off by default.
 	Think     bool
 	MaxTokens int
+	// Gate is the hosted-model spend guard (#2980). Nil means no guard.
+	// It does NOT make a model tier unbuildable: a tier the gate blocks
+	// is still built, and its seat plays the heuristic under the tier's
+	// name for as long as the cap holds. What it changes is the PICKER,
+	// which stops offering the tier (TierStatus) and says why.
+	Gate ModelGate
 	// Meter is the shared Layer A absorption meter. Nil allocates
 	// one, so Factory.Meter is always readable.
 	Meter *rules.Meter
+}
+
+// ModelGate reports whether model calls are being made. Blocked is
+// the note a player sees when they are not, and empty when they are.
+// *budget.Budget implements it.
+type ModelGate interface {
+	Blocked() string
 }
 
 // NewFactory builds the factory. The zero FactoryOptions is valid and
@@ -120,7 +133,30 @@ func (f *Factory) HasClient() bool { return f.opt.Client != nil }
 // running when a transport goes away mid-game (which is what the
 // funnel's fallback is for), and is not something a picker offers up
 // front.
+//
+// A spend cap or the admin kill switch (#2980) also reports a model
+// tier unavailable, with the cap's own note as the reason. That is the
+// picker's answer only: see buildable, which NewPolicy asks instead.
 func (f *Factory) TierStatus(t aiseat.Tier) aiseat.TierStatus {
+	st := f.buildable(t)
+	if !st.Available {
+		return st
+	}
+	tier, _ := Parse(string(t))
+	if tier.NeedsModel() && f.opt.Gate != nil {
+		if note := f.opt.Gate.Blocked(); note != "" {
+			return aiseat.TierStatus{Reason: note}
+		}
+	}
+	return st
+}
+
+// buildable is TierStatus without the spend gate: can this server
+// construct a policy for t at all. A seat whose tier the gate blocks
+// is still built, because the lobby may have added it before the cap
+// tripped and a seat left idle would stall its table; its model
+// client refuses every call and the seat plays Layer B.
+func (f *Factory) buildable(t aiseat.Tier) aiseat.TierStatus {
 	tier, err := Parse(string(t))
 	if err != nil {
 		return aiseat.TierStatus{Reason: fmt.Sprintf("%q is not a tier this build knows", t)}
@@ -152,7 +188,7 @@ func (f *Factory) NewPolicy(seat aiseat.SeatSpec) (aiseat.Policy, error) {
 	if err != nil {
 		return nil, fmt.Errorf("%w: %q", aiseat.ErrUnknownTier, seat.Tier)
 	}
-	if st := f.TierStatus(aiseat.Tier(tier)); !st.Available {
+	if st := f.buildable(aiseat.Tier(tier)); !st.Available {
 		return nil, fmt.Errorf("%w: %q: %s", aiseat.ErrTierUnavailable, tier, st.Reason)
 	}
 	opt := Options{
