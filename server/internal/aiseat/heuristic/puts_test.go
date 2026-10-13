@@ -81,6 +81,29 @@ func TestThePutFromHandPutsTheLandTheHandWants(t *testing.T) {
 	}
 }
 
+// #3270: Buster Sword's "cast a spell from your hand without paying its
+// mana cost" names a card to CAST, not to give up. Priced as a discard it
+// always chose nothing and the bot never used the card; it now takes the
+// most valuable spell it can cast for free.
+func TestTheFreeCastPickCastsTheBestSpell(t *testing.T) {
+	const choiceID = "choice-free-cast"
+	small := creature(cardID(1), 0, "Bear", 2, 2)
+	big := creature(cardID(2), 0, "Giant", 5, 5)
+	big.ManaCost = "{4}{R}"
+	pick := handChoice(choiceID, "Buster Sword — cast a spell from your hand without paying its mana cost?", 0, 1, small, big)
+	pick.ChooseDestination = "cast_free"
+	v := newView([]protocol.PlayerView{newSeat(0, withHand(small, big)), newSeat(1)},
+		withBattlefield(land(cardID(30), 0)), withChoice(pick))
+	in := input(0, v,
+		choiceMove(t, 0, choiceID, "choose nothing", ids()),
+		choiceMove(t, 0, choiceID, "cast the Bear", ids(cardID(1))),
+		choiceMove(t, 0, choiceID, "cast the Giant", ids(cardID(2))),
+	)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "cast the Giant" {
+		t.Fatalf("chose %q, want the Giant cast for free", got)
+	}
+}
+
 // A choose_cards over the bot's own hand with no destination is still
 // a discard: the loot's half keeps the old price (#798).
 func TestAHandPickWithNoDestinationIsStillADiscard(t *testing.T) {

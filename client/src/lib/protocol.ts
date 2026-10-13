@@ -1719,6 +1719,12 @@ export interface PendingChoiceView {
   // not told the size of a choice over someone else's hidden cards.
   choose_min?: number;
   choose_max?: number;
+  // #2680 / #3270: kind "choose_cards" only, and only to its chooser.
+  // Where the named card goes when the card says so: "battlefield",
+  // "battlefield_tapped", or "cast_free" ("you may cast a spell from
+  // your hand without paying its mana cost" — answering with a card
+  // opens its cast at once). Absent on a plain discard or look.
+  choose_destination?: string;
   // #2525: kind "proliferate" only. The seats on offer beside
   // `options` (player IDs), and the engine's suggested answer
   // (instance IDs and player IDs) for the modal to pre-select. A

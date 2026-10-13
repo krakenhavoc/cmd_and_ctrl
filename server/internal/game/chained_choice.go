@@ -645,4 +645,11 @@ const (
 	ChooseOntoBattlefield ChooseDestination = "battlefield"
 	// ChooseOntoBattlefieldTapped: the same, tapped.
 	ChooseOntoBattlefieldTapped ChooseDestination = "battlefield_tapped"
+	// ChooseCastFree: the named hand card is cast without paying its
+	// mana cost, as the ability resolves (CR 608.2g, #3270). The
+	// continuation grants the pass-closed free cast
+	// (FreeCastFromHandPermission); the client opens the cast chain
+	// the moment the pick is submitted, and the bot prices the pick
+	// as the cast it is rather than as a discard.
+	ChooseCastFree ChooseDestination = "cast_free"
 )

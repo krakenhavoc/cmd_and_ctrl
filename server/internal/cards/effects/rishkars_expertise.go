@@ -18,10 +18,9 @@ import (
 // The free cast is a `choose_cards` pick over the hand — the same
 // door Brainstorm's tuck-back and Malcolm's discard offer use —
 // filtered to nonland cards with mana value 5 or less, floor zero
-// ("you MAY cast"), then a one-shot `{0}` cast permission over
-// whichever card was picked (`GrantCastPermissionOverCardForEffect`
-// with `Zone` left empty auto-fills to wherever the card sits, which
-// for a card that never left the hand is the hand itself).
+// ("you MAY cast"), then the pass-closed free cast over whichever card
+// was picked (offerFreeHandCast, #3270): the cast opens at once and
+// ignores timing, CR 608.2g.
 //
 // No simplification.
 func init() {
@@ -48,38 +47,7 @@ func init() {
 // allHandCardIDs (brainstorm.go) is the type-agnostic list, filtered
 // here against "nonland, mana value 5 or less".
 func rishkarsExpertiseOfferFreeCast(ctx *Context, controller uuid.UUID) error {
-	pred := And(Not(Land()), ManaValueLE(5))
-	var candidates []uuid.UUID
-	for _, id := range allHandCardIDs(ctx.Game, controller) {
-		c, ok := ctx.Game.LookupCardForEffect(id)
-		if !ok || !pred(ctx.Game, controller, c) {
-			continue
-		}
-		candidates = append(candidates, id)
-	}
-	if len(candidates) == 0 {
-		return nil
-	}
-	ctx.Game.QueueChooseCardsForEffect(game.ChooseCardsPrompt{
-		Chooser:  controller,
-		Source:   ctx.Source(),
-		Question: "Rishkar's Expertise — cast a spell with mana value 5 or less from your hand without paying its mana cost?",
-		Cards:    candidates,
-		Min:      0,
-		Max:      1,
-		Zone:     game.ZoneHand,
-		Then: func(g *game.Game, picked []uuid.UUID) error {
-			if len(picked) == 0 {
-				return nil
-			}
-			g.GrantCastPermissionOverCardForEffect(picked[0], game.CastPermission{
-				Player:   controller,
-				Cost:     "{0}",
-				CastOnly: true,
-				Label:    "Rishkar's Expertise — cast it without paying its mana cost",
-			})
-			return nil
-		},
-	})
+	offerFreeHandCast(ctx, controller, "Rishkar's Expertise",
+		"a spell with mana value 5 or less", ManaValueLE(5))
 	return nil
 }
