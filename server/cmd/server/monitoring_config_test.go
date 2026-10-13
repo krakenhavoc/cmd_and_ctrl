@@ -284,8 +284,10 @@ func TestOverviewTilesLinkToTheAdminViews(t *testing.T) {
 						Options string `json:"options"`
 					} `json:"matcher"`
 					Properties []struct {
-						ID    string         `json:"id"`
-						Value []overviewLink `json:"value"`
+						ID string `json:"id"`
+						// Raw: only a "links" property is a list of links; the
+						// others (color, line style) carry objects.
+						Value json.RawMessage `json:"value"`
 					} `json:"properties"`
 				} `json:"overrides"`
 			} `json:"fieldConfig"`
@@ -367,7 +369,14 @@ func TestOverviewTilesLinkToTheAdminViews(t *testing.T) {
 					continue
 				}
 				for _, pr := range o.Properties {
-					if pr.ID == "links" && len(pr.Value) == 1 && pr.Value[0].URL == s+"games?practice=only" && pr.Value[0].TargetBlank {
+					if pr.ID != "links" {
+						continue
+					}
+					var links []overviewLink
+					if err := json.Unmarshal(pr.Value, &links); err != nil {
+						t.Fatalf("panel 9: links override: %v", err)
+					}
+					if len(links) == 1 && links[0].URL == s+"games?practice=only" && links[0].TargetBlank {
 						practice = true
 					}
 				}

@@ -40,11 +40,13 @@
      * between My games and Login. Ignored by every other status.
      */
     signedIn?: boolean;
+    /** The socket was refused at the server's connection cap (ADR 0148). */
+    full?: boolean;
   }
 
-  let { status, attempt = 0, onRetry, signedIn = false }: Props = $props();
+  let { status, attempt = 0, onRetry, signedIn = false, full = false }: Props = $props();
 
-  const banner = $derived(connectionBanner(status, attempt, signedIn));
+  const banner = $derived(connectionBanner(status, attempt, signedIn, full));
   // #2995: "Reconnected" is only true after a drop. A fresh table goes
   // connecting to connected and has nothing to be reconnected from, so
   // the connected line stays silent until the status has been stale.

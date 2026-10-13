@@ -1935,6 +1935,382 @@
         "x": 20,
         "y": 36
       }
+    },
+    {
+      "id": 27,
+      "type": "row",
+      "title": "Capacity",
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 40
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Table load against its cap",
+      "description": "The weighted load of the unended tables (a bot seat costs more than a human seat; ADR 0148) and the cap new tables are held to. A limit of 0 means the cap is off. Existing tables are never refused because of it.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(cmdctrl_capacity_used{env=\"$env\", resource=\"table_load\"})",
+          "legendFormat": "load",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(cmdctrl_capacity_limit{env=\"$env\", resource=\"table_load\"})",
+          "legendFormat": "cap",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "lineInterpolation": "linear",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "pointSize": 4
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "id": 28,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 41
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "WebSocket connections against their cap",
+      "description": "Live sockets and the ceiling a newcomer with no seat is turned away at. Seated players always connect. A limit of 0 means the cap is off.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(cmdctrl_capacity_used{env=\"$env\", resource=\"ws_connections\"})",
+          "legendFormat": "connections",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "max(cmdctrl_capacity_limit{env=\"$env\", resource=\"ws_connections\"})",
+          "legendFormat": "cap",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "lineInterpolation": "linear",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "pointSize": 4
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0,
+          "links": [
+            {
+              "title": "Open in cmd_and_ctrl",
+              "url": "${site:raw}/#/admin/live",
+              "targetBlank": true
+            }
+          ]
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "B"
+            },
+            "properties": [
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "id": 29,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 41
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests turned away, by reason",
+      "description": "Creates, bot seats, joins and sockets refused with the server-full message, and creates held by the per-account or per-IP rate (ADR 0148). Tables the last boot left on disk because the cap was full are cmdctrl_boot_restore_deferred_games.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "expr": "sum by (reason) (increase(cmdctrl_capacity_refusals_total{env=\"$env\"}[$__rate_interval]))",
+          "legendFormat": "{{reason}}",
+          "range": true,
+          "instant": false,
+          "editorMode": "code"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "showPoints": "never",
+            "spanNulls": false,
+            "lineInterpolation": "linear",
+            "axisPlacement": "auto",
+            "axisLabel": "",
+            "barAlignment": 0,
+            "stacking": {
+              "mode": "none",
+              "group": "A"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            },
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "pointSize": 4
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          },
+          "mappings": [],
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true,
+          "calcs": []
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc",
+          "hideZeros": false
+        }
+      },
+      "id": 30,
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 41
+      }
     }
   ]
 }

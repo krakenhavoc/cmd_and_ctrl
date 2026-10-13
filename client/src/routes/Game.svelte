@@ -11,6 +11,7 @@
   import { navigate } from "../lib/router";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
   import { removedNotice, session } from "../lib/session";
+  import { serverFull } from "../lib/serverFull";
   import {
     adminChipFor,
     adminNotice,
@@ -2131,6 +2132,7 @@
       attempt={$reconnectAttempt}
       onRetry={() => client.retryNow()}
       signedIn={lastKnownSignedIn}
+      full={$serverFull}
     />
   {/if}
 

@@ -70,6 +70,17 @@ type liveNowResponse struct {
 	// hold. It should be 0.
 	UnboundSockets int           `json:"unbound_sockets"`
 	Totals         liveNowTotals `json:"totals"`
+	// Capacity is the load and the connections against their caps
+	// (ADR 0148), the same numbers as cmdctrl_capacity_used and
+	// cmdctrl_capacity_limit. A limit of 0 means that cap is off.
+	Capacity liveNowCapacity `json:"capacity"`
+}
+
+type liveNowCapacity struct {
+	Load            int `json:"load"`
+	LoadLimit       int `json:"load_limit"`
+	Connections     int `json:"connections"`
+	ConnectionLimit int `json:"connection_limit"`
 }
 
 type liveNowTable struct {
@@ -153,6 +164,8 @@ func adminLive(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	out.fillNames(names)
+	u := c.Lobby.CapacityUsage()
+	out.Capacity = liveNowCapacity{Load: u.Load, LoadLimit: u.LoadLimit, Connections: u.Conns, ConnectionLimit: u.ConnLimit}
 	out.GeneratedAt = c.now().UnixMilli()
 	return writeJSON(w, http.StatusOK, out)
 }

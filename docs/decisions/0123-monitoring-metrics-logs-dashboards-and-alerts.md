@@ -112,6 +112,9 @@ This is how the privacy rules in ADR 0017 §9 and AGENTS.md §5 carry over to me
 | `cmdctrl_ws_connections` | gauge *(collector)* | `role` = `seat\|spectator\|admin` |
 | `cmdctrl_ws_connects_total` / `cmdctrl_ws_disconnects_total` | counter | `role` |
 | `cmdctrl_ws_upgrade_rejections_total` | counter | `reason` (the hub's existing rejection cases, as a closed set) |
+| `cmdctrl_capacity_limit` / `cmdctrl_capacity_used` | gauge *(collector)* | `resource` = `table_load\|ws_connections` *([ADR 0148](0148-capacity-limits-for-a-public-launch.md): the cap, 0 = off, and what is carried against it)* |
+| `cmdctrl_capacity_refusals_total` | counter | `reason` = `table_load\|bot_seat\|ws_connections\|join_connections\|create_account\|create_ip` *(ADR 0148)* |
+| `cmdctrl_boot_restore_deferred_games` | gauge | — *(ADR 0148: tables the boot left on disk because the load cap was full)* |
 | `cmdctrl_ws_frames_total` | counter | `direction` = `in\|out`, `type` (protocol frame types) |
 | `cmdctrl_ws_broadcast_seconds` | histogram | — |
 | Go runtime and process | `collectors.NewGoCollector`, `NewProcessCollector` | — |

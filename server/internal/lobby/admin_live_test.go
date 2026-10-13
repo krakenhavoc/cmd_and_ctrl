@@ -284,6 +284,8 @@ var liveFields = map[string]bool{
 	"tables[].admins[].as_seat": true, "tables[].admins[].since": true,
 	"totals": true, "totals.players_connected": true, "totals.spectators": true, "totals.bot_seats": true,
 	"totals.practice_tables": true, "totals.admin_views": true,
+	"capacity": true, "capacity.load": true, "capacity.load_limit": true,
+	"capacity.connections": true, "capacity.connection_limit": true,
 }
 
 // forbiddenKeyParts may not appear in any key (ADR 0124 §8).
