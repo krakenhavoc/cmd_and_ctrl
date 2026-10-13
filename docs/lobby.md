@@ -3650,6 +3650,7 @@ after the report is filed and disappears when the game is evicted.
 
 ```json
 {
+  "status": "filed",
   "url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/123",
   "number": 123,
   "label": "bug",
@@ -3657,8 +3658,26 @@ after the report is filed and disappears when the game is evicted.
 }
 ```
 
+**Three successes** (ADR 0017 §10). The body's `status` says which:
+
+| Status | `status` | Meaning |
+|---|---|---|
+| 201 | `filed` | a new issue was opened (body above) |
+| 200 | `commented` | the same normalised title, or the same client error line, was filed inside the last 24 h, so a `+1` comment went on that issue instead. Body: `status`, `url`, `number` of the existing issue, `comment` (the comment's URL), `note`. Screenshots on a duplicate are not kept |
+| 202 | `queued` | over a limit, or filing is paused: the report was **kept for the admin and not filed**. Body: `status`, `report_id`, `note` (a sentence for the reporter that says so). No `url` or `number` |
+
+The limits are 5 reports per account per hour and 50 issues per UTC
+day across everyone, on top of the per-IP bucket below. A server with
+no `CMDCTRL_DATA_DIR` has nowhere to queue, so there those cases are
+`429` (a limit) and `503` (paused) instead of `202`.
+
+Every issue filed carries the `player-report` label as well as the
+kind's label; `label` in the body is still the kind's. The label must
+exist on the repo (ADR 0017 §10.4).
+
 `report_id` is present only when the report stored artifacts (images,
-a pinned replay, or both). It is the key for both routes below.
+a pinned replay, or both), and always on a `queued` response. It is the
+key for the routes below.
 
 `label` is the label the issue actually landed with, and is absent
 when none did — so a client can say "filed as enhancement" only when
@@ -3678,6 +3697,60 @@ that is true.
 A rejected attachment fails the whole report — no issue is filed — and
 a report whose GitHub call fails has its stored artifacts deleted, so
 an outage never leaves orphaned images at live URLs.
+
+### `GET /admin/bugreport`
+
+**Admin only.** The state of the throttle (ADR 0017 §10) and the
+reports kept instead of filed, newest first, at most 100.
+
+**Response 200**
+
+```json
+{
+  "paused": false,
+  "filed_today": 12,
+  "daily_cap": 50,
+  "account_max": 5,
+  "account_window_seconds": 3600,
+  "queue_enabled": true,
+  "queued": [
+    {
+      "report_id": "6f1c0b7e-9a2d-4c31-8f55-1b2d3e4f5a60",
+      "created_at": "2026-10-12T16:00:00Z",
+      "reason": "account limit",
+      "kind": "bug",
+      "label": "bug",
+      "reporter": "Alice",
+      "game_id": "…",
+      "title": "[in-app] cast dialog eats X value",
+      "body": "…the markdown body it would have been filed with…"
+    }
+  ]
+}
+```
+
+`reason` is `paused`, `account limit` or `daily cap`. `paused_at` is
+present while paused. `queue_enabled` is false on a server with no data
+dir, where `queued` is always empty. A queued report's pinned replay and
+game log are fetched with the routes below, by `report_id`.
+
+| Status | Reason |
+|---|---|
+| 401 | no valid session |
+| 403 | not an admin |
+
+### `PUT /admin/bugreport/paused`
+
+**Admin only.** The kill switch: `{"paused": true}` stops every GitHub
+write (issues and `+1` comments) without a redeploy and queues each
+report instead; `{"paused": false}` resumes. The flag survives a
+restart. Answers `{"paused": <bool>}`.
+
+| Status | Reason |
+|---|---|
+| 400 | `paused` missing |
+| 401 | no valid session |
+| 403 | not an admin |
 
 ### `GET /bugreport/att/{report_id}/{name}`
 

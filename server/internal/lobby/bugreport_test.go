@@ -208,7 +208,7 @@ func TestBugReportFilesIssue(t *testing.T) {
 			t.Errorf("issue body missing %q\n----\n%s", want, body)
 		}
 	}
-	if len(rep.labels[0]) != 1 || rep.labels[0][0] != "bug" {
+	if len(rep.labels[0]) != 2 || rep.labels[0][0] != "bug" || rep.labels[0][1] != "player-report" {
 		t.Errorf("labels = %v", rep.labels[0])
 	}
 }

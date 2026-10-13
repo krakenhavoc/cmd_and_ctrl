@@ -1042,6 +1042,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"GET /games/{id}/creator", []string{"route:GET /games/{id}/creator"}, true, httpProbe("GET", "/games/{id}/creator?discord_id="+listedDiscordID, nil)},
 		{"GET /bugreport/{id}/replay", []string{"route:GET /bugreport/{id}/replay"}, true, httpProbe("GET", "/bugreport/abc/replay", nil)},
 		{"GET /bugreport/{id}/gamelog", []string{"route:GET /bugreport/{id}/gamelog"}, true, httpProbe("GET", "/bugreport/abc/gamelog", nil)},
+		// The bug-report kill switch and queue (ADR 0017 §10).
+		{"GET /admin/bugreport", []string{"route:GET /admin/bugreport"}, true, httpProbe("GET", "/admin/bugreport", nil)},
+		{"PUT /admin/bugreport/paused", []string{"route:PUT /admin/bugreport/paused"}, true, httpProbe("PUT", "/admin/bugreport/paused", func(*probeFixture) any { return map[string]bool{"paused": false} })},
 		{"POST /admin/users/{id}/revoke-sessions", []string{"route:POST /admin/users/{id}/revoke-sessions"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},

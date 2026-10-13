@@ -23,6 +23,8 @@
 //	<report-id>/replay.jsonl   pinned replay tail, admin-only
 //	<report-id>/gamelog.txt    pinned public game log, admin-only
 //	<report-id>/manifest.json  what this report holds, for pruning + forensics
+//	                           (a queued report's carries the issue it would have opened)
+//	gate.json                  throttle state: kill switch, daily count, recent filings (gate.go)
 //
 // The directory name is a v4 uuid, so it doubles as the capability
 // token in the public image URL: 122 bits of entropy is far past
@@ -217,6 +219,9 @@ type Manifest struct {
 	Images    []Image     `json:"images,omitempty"`
 	Replay    *ReplayPin  `json:"replay,omitempty"`
 	GameLog   *GameLogPin `json:"game_log,omitempty"`
+	// Queued is set when the report was NOT filed on GitHub and is
+	// waiting for an admin (ADR 0017 §10). Nil for a filed report.
+	Queued *QueuedReport `json:"queued,omitempty"`
 }
 
 // Report accumulates one report's artifacts. Not safe for concurrent
@@ -429,6 +434,17 @@ func (r *Report) PinReplay(srcPath string) (*ReplayPin, error) {
 
 // Commit writes the manifest, marking the report complete.
 func (r *Report) Commit(gameID, issueURL string) error {
+	return r.commit(gameID, issueURL, nil)
+}
+
+// CommitQueued writes the manifest of a report that was kept here
+// instead of being filed: the same artifacts as a filed report, plus
+// the issue it WOULD have opened, so an admin can file it by hand.
+func (r *Report) CommitQueued(gameID string, q QueuedReport) error {
+	return r.commit(gameID, "", &q)
+}
+
+func (r *Report) commit(gameID, issueURL string, q *QueuedReport) error {
 	m := Manifest{
 		ID:        r.ID,
 		CreatedAt: time.Now().UTC(),
@@ -437,6 +453,7 @@ func (r *Report) Commit(gameID, issueURL string) error {
 		Images:    r.images,
 		Replay:    r.replay,
 		GameLog:   r.gameLog,
+		Queued:    q,
 	}
 	buf, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
