@@ -812,14 +812,17 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 	return finishLog(out, v)
 }
 
-// logCache is what publicLogOf keeps in the game's projection slot: the
-// current fold, and how many events every fold of this game has
+// logCache is what publicLogOf and publicRevealsOf keep in the game's
+// projection slot: the current fold, and how many events every fold of this game has
 // projected. The count outlives a refold, which is what lets the cost
 // test see one (TestPublicLogViewFoldsOnlyNewEvents); production never
 // reads it.
 type logCache struct {
 	fold   *logFold
 	folded int
+	// reveals is the reveal window's grouping fold (#3131), kept in the
+	// same slot because it is valid under the same conditions.
+	reveals *revealFold
 }
 
 // finishLog resolves names and knower sets out of v and renders every
@@ -831,7 +834,7 @@ func finishLog(out []LogEvent, v *GameView) []LogEvent {
 	}
 	resolveLogNames(out, v)
 	for i := range out {
-		out[i].Text = renderLogText(out[i], out[i].cardName, out[i].targetName)
+		out[i].Text = renderLogTextOf(&out[i], out[i].cardName, out[i].targetName)
 	}
 	return out
 }
@@ -1896,11 +1899,14 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		return seatNames[i]
 	}
 
-	cards := make(map[string]CardView, len(wanted))
+	// Pointers into the view's own zones, not copies: a CardView is
+	// large, and the lookups below ran once or twice per entry per
+	// frame (#3131). Nothing here writes through them.
+	cards := make(map[string]*CardView, len(wanted))
 	if len(wanted) > 0 {
-		indexCardsInto(cards, wanted, v.Battlefield, v.Stack, v.Exile)
+		indexCardPtrsInto(cards, wanted, v.Battlefield, v.Stack, v.Exile)
 		for _, s := range v.Seats {
-			indexCardsInto(cards, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
+			indexCardPtrsInto(cards, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
 		}
 	}
 
@@ -1917,12 +1923,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			}
 		}
 		if c, ok := cards[e.CardID]; ok {
-			e.cardName = logNameOf(c)
+			e.cardName = logNameOf(*c)
 			e.cardKnowers = c.knowers
 			e.cardFound = true
 		}
 		if c, ok := cards[e.Target]; ok {
-			e.targetName = logNameOf(c)
+			e.targetName = logNameOf(*c)
 			e.targetKnowers = c.knowers
 		}
 		// Revealed cards are looked up in every zone, hands and
@@ -1935,7 +1941,11 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 				if j >= logRevealNamesMax {
 					break
 				}
-				e.revealNames = append(e.revealNames, cards[id].Name)
+				name := ""
+				if c, ok := cards[id]; ok {
+					name = c.Name
+				}
+				e.revealNames = append(e.revealNames, name)
 			}
 			e.revealIDs = nil
 		}
@@ -2040,6 +2050,19 @@ func (e *LogEvent) setTarget(id uuid.UUID, seatOf func(uuid.UUID) int) {
 		return
 	}
 	e.Target = id.String()
+}
+
+// indexCardPtrsInto is indexCardsInto without the copies: it records a
+// pointer to each wanted card in the view's own zone slice.
+func indexCardPtrsInto(dst map[string]*CardView, wanted map[string]bool, zones ...ZoneView) {
+	for _, z := range zones {
+		for i := range z.Cards {
+			c := &z.Cards[i]
+			if wanted[c.InstanceID] {
+				dst[c.InstanceID] = c
+			}
+		}
+	}
 }
 
 // indexCardsInto adds every card of the given zones whose ID is in
@@ -2168,6 +2191,14 @@ func shortCardName(name string) string {
 // An unknown card renders as "a card" — the entry still says that
 // SOMETHING moved, which is public, without saying what.
 func renderLogText(e LogEvent, cardName, targetName string) string {
+	return renderLogTextOf(&e, cardName, targetName)
+}
+
+// renderLogTextOf is renderLogText over a pointer: finishLog renders every
+// entry of the ring on every frame, and a LogEvent is large enough that
+// copying it per entry showed up in the profile (#3131). Nothing here
+// writes through e.
+func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 	card := nameOr(cardName, "a card")
 	actor := nameOr(e.actorName, "someone")
 	// A target is either a seated player or a card; exactly one of the
@@ -2179,11 +2210,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 
 	switch e.Kind {
 	case LogRoll, LogFlip:
-		return renderRandomLogText(e, actor, card)
+		return renderRandomLogText(*e, actor, card)
 	case LogOpeningRoll, LogStartingPlayer:
-		return renderOpeningRollLogText(e, actor, target)
+		return renderOpeningRollLogText(*e, actor, target)
 	case LogTableRoll:
-		return renderTableRollLogText(e, actor)
+		return renderTableRollLogText(*e, actor)
 	case LogStep:
 		// "Turn" counts turns and the round rides beside it, the same
 		// two numbers in the same words as the agent's board header,
@@ -2192,9 +2223,9 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		if e.Round == 0 || e.Turn == 0 {
 			// Backward-compatible rendering for persisted pre-ADR-0059
 			// EventStepBegan entries, which carry only Amount.
-			return fmt.Sprintf("Turn %d — %s · %s", e.Turn, actor, prettyStep(e.Step))
+			return "Turn " + strconv.Itoa(e.Turn) + " — " + actor + " · " + prettyStep(e.Step)
 		}
-		return fmt.Sprintf("Turn %d (round %d) — %s · %s", e.Turn, e.Round, actor, prettyStep(e.Step))
+		return "Turn " + strconv.Itoa(e.Turn) + " (round " + strconv.Itoa(e.Round) + ") — " + actor + " · " + prettyStep(e.Step)
 	case LogCast:
 		// ADR 0118 owner decision 4: an unpaid cast says so, in these
 		// words, after the zone.
@@ -2224,7 +2255,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("%s countered %s", card, target)
 	case LogZone:
-		return renderZoneText(e, card)
+		return renderZoneText(*e, card)
 	case LogSacrifice:
 		return fmt.Sprintf("%s sacrificed %s", actor, card)
 	case LogExert:
@@ -2254,7 +2285,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
 	case LogEliminated:
-		return renderEliminatedText(e, actor, cardName)
+		return renderEliminatedText(*e, actor, cardName)
 	case LogGameOver:
 		switch e.Cause {
 		case game.OutcomeCauseAllLost:
@@ -2270,7 +2301,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
 			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
 	case LogReveal:
-		return renderRevealText(e, actor)
+		return renderRevealText(*e, actor)
 	case LogChooseColor:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
 	case LogChooseType:
@@ -2348,7 +2379,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
 	case LogAutoAnswer:
-		return renderAutoAnswerText(e, actor, cardName)
+		return renderAutoAnswerText(*e, actor, cardName)
 	case LogTrigger:
 		line := fmt.Sprintf("%s's trigger: %s", actor, abilityName(e.Label, cardName))
 		if e.Label == "" && cardName == "" {
@@ -2362,14 +2393,14 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogActivate:
 		return fmt.Sprintf("%s activated %s", actor, abilityName(e.Label, cardName))
 	case LogCounters:
-		return renderCountersText(e, card)
+		return renderCountersText(*e, card)
 	case LogCountCapped:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s capped at %d", e.Label, e.Amount)
 		}
 		return fmt.Sprintf("%s: %s capped at %d", card, e.Label, e.Amount)
 	case LogScry, LogSurveil:
-		return renderLookText(e, actor)
+		return renderLookText(*e, actor)
 	case LogDiscover:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s discovered %d and found nothing", actor, e.Amount)
@@ -2399,9 +2430,9 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogRoomFullyUnlocked:
 		return fmt.Sprintf("%s is fully unlocked", card)
 	case LogSettings:
-		return renderSettingsText(e)
+		return renderSettingsText(*e)
 	case LogSpawn:
-		return renderSpawnText(e, target)
+		return renderSpawnText(*e, target)
 	case LogStorm:
 		// "Grapeshot — storm count 3". The em dash is the separator
 		// every storm-shaped stack label in the catalog already uses,
