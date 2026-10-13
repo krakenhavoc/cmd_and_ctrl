@@ -175,6 +175,7 @@ func metaFromRecords(rec GameRecord, seats []SeatRecord) GameMeta {
 		HostPlayerID:  rec.HostPlayerID,
 		HostDiscordID: rec.HostDiscordID,
 		CreatedBy:     parseUUIDOrNil(rec.CreatedBy),
+		VoiceRoom:     rec.VoiceRoom,
 	}
 	for _, s := range seats {
 		meta.Players = append(meta.Players, SeatInfo{

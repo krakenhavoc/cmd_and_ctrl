@@ -913,6 +913,9 @@ func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, se
 		// The admin views (ADR 0124): a store with no rows, so admin
 		// mode reaches each handler's answer.
 		c.AdminViews = emptyAdminViews{}
+		// PUT /games/{id}/voice (ADR 0159): voice rooms on, so the
+		// route reaches its host-or-admin decision instead of a 503.
+		c.Lobby.SetVoiceRoomsEnabled(true)
 	}, listedDiscordID)
 	fx := &probeFixture{s: s, user: user}
 	var err error
@@ -1094,6 +1097,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 		})},
 		{"PATCH /games/{id}/settings", []string{"updateTableSettings"}, true, httpProbe("PATCH", "/games/{id}/settings", func(*probeFixture) any {
 			return map[string]any{"undo_limit": 3}
+		})},
+		{"PUT /games/{id}/voice", []string{"putVoiceRoom"}, true, httpProbe("PUT", "/games/{id}/voice", func(*probeFixture) any {
+			return map[string]any{"enabled": true}
 		})},
 		{"GET /games", []string{"listGames"}, false, httpProbe("GET", "/games", nil)},
 		{"GET /games?archived=1", []string{"listGames"}, false, httpProbe("GET", "/games?archived=1", nil)},

@@ -92,6 +92,10 @@ type GameView struct {
 	// object, because undo rules and the spawn switch are things the
 	// other players should be able to see. Added in S35 (#1032).
 	Settings *TableSettingsView `json:"settings,omitempty"`
+	// Voice is the table's Discord voice room (ADR 0159 §6), stamped by
+	// the room and reduced per viewer by FilterViewFor. Nil when the
+	// feature is off on this server.
+	Voice *VoiceView `json:"voice,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -9140,7 +9144,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Vote:          v.Vote,
 		UndoLimit:     v.UndoLimit,
 		Settings:      v.Settings,
-		StartingSeat:  v.StartingSeat,
+		// ADR 0159 §6: the viewer's own access, and the link only when
+		// they may use it.
+		Voice:        filterVoiceFor(v.Voice, viewerID),
+		StartingSeat: v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll:           v.OpeningRoll,
 		StackItems:            v.StackItems,

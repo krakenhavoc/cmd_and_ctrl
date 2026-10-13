@@ -60,6 +60,8 @@ var Inventory = join(
 		"created_by"),
 	cols("games", Deleted, "set to NULL when it was the deleted person's Discord id",
 		"host_discord_id"),
+	cols("games", NotPersonal, "the table's choice of a Discord voice room and the room's channel id (ADR 0159); neither names a person",
+		"voice_room", "voice_channel_id"),
 
 	cols("seats", Kept, "the seat keeps its place in the game",
 		"game_id", "seat", "player_id", "bot_tier", "agent_client", "deck_name"),

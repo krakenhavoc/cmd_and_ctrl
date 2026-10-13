@@ -41,8 +41,14 @@ export const CONTACT_TEXT = "see the project's GitHub";
  * users.access_result, the sign-up gate's last answer; the notice's
  * "Your Discord sign-in" row names them, and the guilds.members.read
  * scope the gate asks for.
+ *
+ * 20 (#3223, ADR 0159 §5) adds games.voice_room and
+ * games.voice_channel_id: a table's choice of a Discord voice room and
+ * the room's channel id. Neither is about a person; the notice's voice
+ * paragraph comes with the voice manager (ADR 0159 §8), which is what
+ * sends seated players' Discord ids to Discord.
  */
-export const PRIVACY_SCHEMA_VERSION = 19;
+export const PRIVACY_SCHEMA_VERSION = 20;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

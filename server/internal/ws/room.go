@@ -110,6 +110,12 @@ type Room struct {
 	// URL (ADR 0128 amendment). Same guard.
 	playmatWashes map[uuid.UUID]int
 
+	// voice is the table's Discord voice room (ADR 0159 §6), set by the
+	// lobby through SetVoice and stamped on every capture. Guarded by
+	// voiceMu, never by mu, for the same reason as host. See voice.go.
+	voiceMu sync.Mutex
+	voice   *protocol.VoiceView
+
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
 	// census (#524) can report how far a live table has drifted from
@@ -714,6 +720,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampUndoAutoAnswerLocked(&view)
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
+	r.stampVoiceLocked(&view)
 	r.mu.Unlock()
 	return protocol.FilterViewFor(view, viewerID)
 }
@@ -759,6 +766,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampUndoAutoAnswerLocked(&view)
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
+	r.stampVoiceLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot

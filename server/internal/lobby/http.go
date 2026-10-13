@@ -356,6 +356,7 @@ type GameEvictor interface {
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
+//	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -566,6 +567,9 @@ func Handler(c Config) http.Handler {
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
+	// ADR 0159 §1: the table's Discord voice room, on or off. Host or
+	// admin, authorised inside the handler with CanManageTable.
+	mux.Handle("PUT /games/{id}/voice", auth.Middleware(c.Auth)(handlerFunc(c, putVoiceRoom)))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it
@@ -975,6 +979,10 @@ type createGameRequest struct {
 	// new table (ADR 0110 §5 item 2), exactly as POST
 	// /games/{id}/setup would. Empty applies nothing.
 	Setup string `json:"setup,omitempty"`
+	// VoiceRoom asks for a Discord voice room for the table (ADR 0159
+	// §1), as PUT /games/{id}/voice would. Ignored when the server
+	// offers none: the client only shows the box when it does.
+	VoiceRoom bool `json:"voice_room,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1175,6 +1183,15 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 		}
 
 		out := createGameResponse{GameMeta: meta}
+		if body.VoiceRoom {
+			// ADR 0159 §1. The creator is the table's manager until a
+			// host sits down; a server with voice off ignores the ask.
+			if voiced, verr := c.Lobby.SetVoiceRoom(meta.ID, true); verr == nil {
+				out.GameMeta = voiced
+			} else if !errors.Is(verr, ErrVoiceRoomsOff) {
+				c.Log.Warn("voice room on create failed", "game_id", meta.ID.String(), "err", verr)
+			}
+		}
 		if from == setupFromLast {
 			res := applyLastSetup(r.Context(), c, p, meta.ID)
 			out.Setup = &res
