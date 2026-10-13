@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import type { GameMeta, SeatInfo } from "./api";
-import { canRemoveSeat, REMOVE_SEAT_CONSEQUENCE, removeSeatQuestion } from "./seatRemoval";
+import {
+  canRemoveSeat,
+  REMOVE_SEAT_CONSEQUENCE,
+  removeSeatConsequence,
+  removeSeatQuestion,
+} from "./seatRemoval";
 
 // #2785: who is shown the Remove control. The server is the gate; this
 // only has to agree with it often enough that nobody is offered a
@@ -61,11 +66,25 @@ describe("canRemoveSeat", () => {
     expect(canRemoveSeat(g, carol, { isAdmin: false, mySeat: carol })).toBe(false);
   });
 
-  it("is hidden once the table has started or ended", () => {
-    for (const state of ["active", "ended"] as const) {
-      const g = game({ state });
-      expect(canRemoveSeat(g, bob, { isAdmin: true, mySeat: host })).toBe(false);
-    }
+  it("is hidden once the game has ended", () => {
+    const g = game({ state: "ended" });
+    expect(canRemoveSeat(g, bob, { isAdmin: true, mySeat: host })).toBe(false);
+  });
+
+  // #3093: a started game takes the admin alone.
+  it("is offered on a started game to an admin only", () => {
+    const g = game({ state: "active", is_creator: true });
+    expect(canRemoveSeat(g, bob, { isAdmin: true, mySeat: null })).toBe(true);
+    expect(canRemoveSeat(g, bob, { isAdmin: true, mySeat: carol })).toBe(true);
+    expect(canRemoveSeat(g, bob, { isAdmin: false, mySeat: host })).toBe(false);
+    expect(canRemoveSeat(g, bob, { isAdmin: false, mySeat: null })).toBe(false);
+  });
+
+  it("keeps the host, bot and own-seat exclusions on a started game", () => {
+    const g = game({ state: "active" });
+    expect(canRemoveSeat(g, host, { isAdmin: true, mySeat: null })).toBe(false);
+    expect(canRemoveSeat(g, bot, { isAdmin: true, mySeat: null })).toBe(false);
+    expect(canRemoveSeat(g, carol, { isAdmin: true, mySeat: carol })).toBe(false);
   });
 });
 
@@ -74,5 +93,12 @@ describe("the confirm copy", () => {
     expect(removeSeatQuestion("Bob")).toBe("Remove Bob from this table?");
     expect(REMOVE_SEAT_CONSEQUENCE).toMatch(/disconnected/);
     expect(REMOVE_SEAT_CONSEQUENCE).toMatch(/invite link still works/);
+  });
+
+  it("says a started game concedes the player out", () => {
+    expect(removeSeatConsequence(game({ state: "lobby" }))).toBe(REMOVE_SEAT_CONSEQUENCE);
+    expect(removeSeatConsequence(game({ state: "active" }))).toMatch(
+      /^This concedes the player out of the game\./,
+    );
   });
 });

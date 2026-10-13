@@ -184,9 +184,9 @@ func TestRemoveSeatRefusesAStartedTable(t *testing.T) {
 	if _, err := s.l.Start(meta.ID); err != nil {
 		t.Fatalf("Start: %v", err)
 	}
-	// Even the admin: the started-game case needs a concede-out answer
-	// the owner has not given (CR 800.4a).
-	s.wantStatus(t, s.del(t, meta.ID, bob.PlayerID, adminToken(t, s.srv)), http.StatusConflict)
+	// The host is refused on a started table. Only an admin may remove
+	// a seat from a started game (#3093); the admin's rows are in
+	// seat_remove_started_test.go.
 	s.wantStatus(t, s.del(t, meta.ID, bob.PlayerID, alice.Token), http.StatusConflict)
 	if n := len(mustGet(t, s.l, meta.ID).Players); n != 2 {
 		t.Fatalf("a refused removal changed a started table: %d seats", n)

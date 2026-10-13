@@ -51,7 +51,7 @@
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
-  import { canRemoveSeat, REMOVE_SEAT_CONSEQUENCE, removeSeatQuestion } from "../lib/seatRemoval";
+  import { canRemoveSeat, removeSeatConsequence, removeSeatQuestion } from "../lib/seatRemoval";
   import AgentChip from "../lib/components/AgentChip.svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
   import { noteMyGames } from "../lib/hints/endedGame";
@@ -1292,7 +1292,7 @@
             <div class="confirm danger" role="alert">
               <p>
                 <strong>{removeSeatQuestion(seatName(confirmRemove.seat))}</strong>
-                {REMOVE_SEAT_CONSEQUENCE}
+                {removeSeatConsequence(g)}
               </p>
               <div class="confirm-actions">
                 <button

@@ -657,7 +657,11 @@ type playerSnapshot struct {
 	// attacked last turn" until the player's next turn ends.
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
 	Eliminated      bool           `json:"eliminated"`
-	HandKept        bool           `json:"handKept"`
+	// Removed is Player.Removed (#3093): an admin removed the seat from
+	// a started game. Additive: a file written before it restores with
+	// false for every seat, which is what none of them were.
+	Removed  bool `json:"removed,omitempty"`
+	HandKept bool `json:"handKept"`
 	// MulliganDecided is Player.MulliganDecided (#2237). Additive: a
 	// file written before it restores with false for every seat, which
 	// reads as a fresh round of decisions.
@@ -2196,6 +2200,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
+		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
@@ -3100,6 +3105,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
+		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
 		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),

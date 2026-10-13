@@ -148,7 +148,7 @@ func (l *Lobby) MintReclaim(gameID, playerID uuid.UUID) (ReclaimTicket, error) {
 		return ReclaimTicket{}, ErrGameArchived
 	}
 	seat, ok := findSeat(entry.meta.Players, playerID)
-	if !ok {
+	if !ok || entry.room.Game.SeatRemoved(playerID) { // #3093
 		return ReclaimTicket{}, ErrPlayerNotInGame
 	}
 	if seat.IsBot {
@@ -221,7 +221,7 @@ func (l *Lobby) RedeemReclaim(gameID uuid.UUID, tok string) (GameMeta, SeatInfo,
 	// never be the thing that puts a player back at a table they are
 	// no longer at.
 	seat, ok := findSeat(entry.meta.Players, rec.playerID)
-	if !ok {
+	if !ok || entry.room.Game.SeatRemoved(rec.playerID) { // #3093
 		return GameMeta{}, SeatInfo{}, ErrPlayerNotInGame
 	}
 

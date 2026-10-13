@@ -9602,13 +9602,23 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	if p.Eliminated {
 		return ErrPlayerEliminated
 	}
+	g.concedeLocked(p)
+	return nil
+}
+
+// concedeLocked is Concede after its checks: p is a seated, not yet
+// eliminated player of an active game. Shared with RemoveSeatFromGame
+// (remove_seat.go), which is a concession the admin makes for the seat.
+// Caller must hold g.mu.
+func (g *Game) concedeLocked(p *Player) {
+	playerID := p.ID
 	g.EmitEvent(Event{Kind: EventConcede, Actor: playerID})
 	if g.OpeningRoll != nil {
 		// ADR 0121 §1: nobody is the active player yet, nothing is on
 		// the stack and nobody has a hand, so the seat leaves through
 		// the opening roll's own path.
 		g.leaveOpeningRollLocked(p)
-		return nil
+		return
 	}
 	if g.MulligansOpen {
 		// CR 103.5: a seat that leaves mid-decision is skipped; the
@@ -9638,7 +9648,6 @@ func (g *Game) Concede(playerID uuid.UUID) error {
 	// priority is parked for their declaration was the one the table
 	// was waiting on; if nobody else is, the declaration is over.
 	g.settleBlockDeclarationLocked()
-	return nil
 }
 
 // PassTurn skips to the next player's untap step, regardless of

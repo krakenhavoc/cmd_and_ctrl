@@ -191,7 +191,7 @@ type Config struct {
 	// upgrade is refused.
 	SessionEvictor UserSessionEvictor
 	// SeatEvictor closes the sockets of a seat the host, the creator or
-	// an admin removed from an unstarted table (#2785), with close
+	// an admin removed from a table (#2785; from a started game, an admin only, #3093), with close
 	// reason ws.SeatRemovedReason. Nil leaves them up until they next
 	// reconnect, when the upgrade is refused.
 	SeatEvictor SeatEvictor
@@ -576,7 +576,8 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
 	// #2785: the host, the creator or an admin removes a human or agent
-	// seat from an unstarted table (seat_remove.go).
+	// seat from an unstarted table; an admin alone from a started game, by
+	// conceding it out (#3093, seat_remove.go).
 	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
 	// The tutorial's practice table (ADR 0076 §2.2, practice_http.go).
 	// Any session may open one: that is what a tutorial is for. It
@@ -3960,6 +3961,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusUnauthorized
 	case errors.Is(err, ErrGameFull),
 		errors.Is(err, ErrGameStarted),
+		errors.Is(err, ErrGameNotInProgress),
 		errors.Is(err, ErrSeatTaken),
 		errors.Is(err, ErrAlreadySeated),
 		errors.Is(err, ErrDeckNotUploaded),

@@ -311,7 +311,7 @@ func main() {
 	if revocations != nil {
 		authenticator = auth.WithRevocation(authenticator, revocations)
 	}
-	// A seat the host, the creator or an admin removed from an unstarted
+	// A seat the host, the creator or an admin removed from a
 	// table stops validating (#2785). Same placement rule as above: wrapped
 	// before anything takes a reference to authenticator.
 	authenticator = auth.WithSeatCheck(authenticator, l)

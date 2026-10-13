@@ -8,7 +8,9 @@ a departed player's choice (800.4g/h), last known information (800.4i), and
 800.4f's consequence and the departure table's drop-action column
 ([#961](https://github.com/krakenhavoc/cmd_and_ctrl/issues/961)). See the
 amendments at the end of this file; Decision 8's "Still open" list is now
-empty.
+empty. Amended again 2026-10-12 — an admin removing a seat from a started
+game is a concession, with a `Removed` record for the lobby
+([#3093](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3093)).
 **Issue:** [#769](https://github.com/krakenhavoc/cmd_and_ctrl/issues/769)
 **Numbering:** on 2026-09-18, after `git fetch --all --prune`, every remote
 branch was listed with `git ls-tree docs/decisions/`. The highest number
@@ -836,3 +838,89 @@ machinery one map row each.
   The `EventPendingChoiceDropped` breadcrumb is still emitted by the
   prune paths; the departure sweep's own drop is not narrated, and that
   is unchanged from every other kind.
+
+## Amendment — 2026-10-12: an admin removes a seat from a started game (#3093)
+
+#2785 let the host, the creator or an admin take a seat off an
+**unstarted** table and left a started game to the owner, because a seat
+leaving mid-game needs a rules-sound answer for everything it owns. This
+ADR already is that answer: a seat that leaves a game is CR 800.4a. The
+owner's call (2026-10-12) is that removing a seat from a started game is
+in scope, **for an admin only**.
+
+### 1. The removal is a concession, through the one door
+
+`game.RemoveSeatFromGame` runs the same path `Concede` runs (the shared
+`concedeLocked`), so every decision above holds with no new code: the
+seat's objects leave (Decisions 1–3), the control effects it held end
+before its remaining objects are exiled (Decision 4), its stack items,
+prompts and triggers go, priority moves off it, the turn moves on if it
+was the active seat (ADR 0059), and one player left ends the game with
+the usual win check (and a game-ending departure keeps the final board,
+Decision 5). The log records what a concession records: `EventConcede`,
+then `EventPlayerEliminated` labelled `concede`. There is no separate
+"removed" loss cause. The table sees a player leave the game; who made
+them is the lobby's business, and a loss cause nobody else can see would
+only be a second thing for the replay and the result screen to learn.
+
+A seat that has already left (conceded, or lost) is not conceded twice.
+It is only marked, so an admin can still take the seat away from a
+player who has gone.
+
+### 2. The seat stays in the list; the record is `Player.Removed`
+
+An unstarted removal deletes the seat. A started game cannot: the
+engine keeps an eliminated seat in turn order, the result screen and the
+log name it, and the other players have been looking at that person. The
+seat stays in `GameMeta.Players` and in the seats rows, and the engine
+marks it `Player.Removed`. That flag is what `Lobby.SeatRemoved` (the
+`auth.SeatChecker`) reads, beside the old "no such seat" test.
+
+A conceded player is **not** a removed one. `Eliminated` is true for
+both; only `Removed` says the seat was taken away. That is the whole
+reason for a second flag. A player who gives up keeps their credential
+and may keep watching their own table; a removed player's credential is
+refused everywhere (`401 removed from table`, socket closed 1000 with the
+same reason, reclaim and "my games" rejoin refused).
+
+`Removed` is carried by the snapshot (`seats[].removed`, omitempty;
+additive, no schema bump) and by `Clone`, so a restart keeps the
+refusal. A binary from before this change reads the file with the key
+dropped and restores the seat as eliminated but not removed, which lets
+the credential back in as a spectator of its own table and nothing more.
+It does not ride the wire.
+
+### 3. A removed player does not keep spectating
+
+The default was no and it stands: the session is refused, as in #2785.
+Someone holding the table's **spectator invite** can still open the table
+as a spectator, as anyone with that link can; the invite does not know
+who is holding it, and rotating invites is not automatic (the owner left
+that question as #3091 had it).
+
+### 4. The undo ring is emptied
+
+Every entry on the room's undo ring is a clone from before the seat
+left. Undoing one would restore the removed player to the table while
+their credential stays refused. The removal runs through
+`Room.ApplyExternalClearingUndo`, which empties the ring on success. A
+voluntary concession is still an ordinary action and still undoable.
+
+### 5. Who may do it, and the refusals
+
+`DELETE /games/{id}/seats/{player_id}`: on a started game an **admin**
+alone, and the host and the creator are answered `409` as before. A
+bot's seat (`422`, the bot route), the host's seat (`422`, transfer the
+host first) and a seat that is not at the table (`403`) are refused as
+on an unstarted table. An ended game answers `409`: there is nothing
+left to leave.
+
+### Consequences
+
+- Nothing in the departure machinery changed: the new code is a wrapper,
+  a flag and a route branch. A card or engine fix to Concede is a fix to
+  the removal.
+- A bot at the table answers whatever the departure leaves open through
+  its runner's ordinary wake; `TestRemoveSeatMidPromptLeavesTheBotTablePlaying`
+  runs the CR 800.4g reassigned prompt to completion with the removal as
+  the departure.

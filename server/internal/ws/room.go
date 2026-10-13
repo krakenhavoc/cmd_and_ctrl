@@ -499,6 +499,22 @@ func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error)
 	return r.ApplyExternalAction(ActionTag{fixedType: metrics.ActionTypeLobby, seatKind: metrics.SeatKindHuman}, fn)
 }
 
+// ApplyExternalClearingUndo is ApplyExternal for a mutation that must
+// not be taken back: on success it empties the undo ring. An admin
+// removing a seat from a started game (#3093) is that case. Every
+// entry already on the ring holds a clone from before the seat left,
+// so undoing one would restore the removed player to the table, and
+// their session would be refused while their seat played on.
+func (r *Room) ApplyExternalClearingUndo(fn func() error) (protocol.GameView, uint64, error) {
+	return r.ApplyExternal(func() error {
+		if err := fn(); err != nil {
+			return err
+		}
+		r.undoStack = nil
+		return nil
+	})
+}
+
 // ApplyExternalAction is ApplyExternal for an action that mints no undo
 // entry (actions.MintsNoUndo, the table settings), tagged as
 // ApplyAction tags one.

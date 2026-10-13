@@ -1624,15 +1624,30 @@ numbers. Same authorisation as adding one. Returns the updated
 
 ### `DELETE /games/{id}/seats/{player_id}` (#2785)
 
-Remove a **human or agent (MCP) guest seat** from an **unstarted**
-table: the seat leaves the table, seat numbers close up, the slot is free
-for the next join, and the stored seats row is rewritten. Returns the
+Remove a **human or agent (MCP) guest seat** from a table. Returns the
 updated `GameMeta` (with the invites, for a caller who may see them).
 
-**Who may call it:** the table **host**, the game's **creator** (the
-signed-in person who made it, seated or not) or an **admin**. This is
-narrower than the bot route above, which any seated player may use; no
-one gains the ability who did not already manage the table.
+- **Unstarted table** (#2785): the seat leaves the table, seat numbers
+  close up, the slot is free for the next join, and the stored seats row
+  is rewritten.
+- **Started game** (#3093): the seat **concedes out of the game**, per CR
+  800.4a, through the same path as a player's own concession. Everything
+  the seat owns leaves the game, effects that gave it control end, its
+  spells and abilities on the stack cease to exist, and the turn and
+  priority move on if they were its. If one player is left the game
+  ends and that player wins. The log records a concession; there is no
+  separate "removed" result. The seat **stays in the seat list** (the
+  game is under way and the seat is still part of its record) and shows
+  as a player who left. The undo history is cleared, so the removal
+  cannot be taken back. See
+  [ADR 0060's 2026-10-12 amendment](decisions/0060-leaving-the-game.md).
+
+**Who may call it:** on an unstarted table the table **host**, the
+game's **creator** (the signed-in person who made it, seated or not) or
+an **admin**; on a started game an **admin only**. This is narrower than
+the bot route above, which any seated player may use; no one gains the
+ability who did not already manage the table. The host and the creator
+are answered `409` on a started game.
 
 **What happens to the removed seat:**
 
@@ -1646,14 +1661,18 @@ one gains the ability who did not already manage the table.
   `removed from table` (see [protocol.md, close codes](protocol.md#close-codes-which-ones-redial)).
   The client shows "You were removed from this table" rather than a
   silent disconnect.
-- The **invite is not touched.** A removed person who still has the
-  invite link can sit down again, as a new seat. Rotate the invite
-  (`POST /games/{id}/invites/rotate`) to keep them out.
-
-**Scope:** unstarted tables only. Removing a seat from a game that has
-started would need a rules-sound answer for that seat's permanents and
-objects (conceding them out, CR 800.4a), which is an open owner
-decision; the route refuses a started table with `409`.
+- The **invite is not touched.** On an unstarted table a removed person
+  who still has the invite link can sit down again, as a new seat.
+  Rotate the invite (`POST /games/{id}/invites/rotate`) to keep them
+  out. A started game takes no new players, so this applies to the
+  spectator link only: see below.
+- **A removed player does not keep spectating.** Their own session is
+  refused, in a started game too (a player who merely *conceded* keeps
+  theirs). Anyone holding the table's spectator invite can still open
+  the table as a spectator; the invite cannot tell who is holding it.
+  Reclaim links and the "my games" rejoin link refuse the seat as well.
+- In a started game the refusal is the engine's `Player.Removed` flag
+  (snapshot field `seats[].removed`), so it survives a server restart.
 
 The route sits beside `POST /games/{id}/seats/bot` and
 `DELETE /games/{id}/seats/bot/{player_id}` because it is the same
@@ -1666,7 +1685,7 @@ bot's id sent here is refused rather than handled under this gate.
 | 401 | no session, or an expired / revoked one |
 | 403 | caller is not the host, the creator or an admin; or `player_id` is not a seat here |
 | 404 | game not found |
-| 409 | game already started |
+| 409 | the game has started and the caller is not an admin; or the game has ended |
 | 422 | the seat is the host's (transfer the host first, `POST /games/{id}/host`), or a bot's (use the bot route) |
 
 ### `POST /games/practice` (ADR 0076, S54)
