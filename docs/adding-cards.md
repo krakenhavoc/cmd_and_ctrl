@@ -9267,6 +9267,18 @@ ctx.SourcePermanent()                                                           
   enumerator offers the cast. "Every card in your hand" (The Great Synthesis) writes the same grant over each card with
   its own `AltCostKey` and no pick (#3270).
 
+### Mobilize, a life-gain drain and "equipped creature phases out" (#3245)
+
+- **Mobilize N** is `Triggered: []game.TriggeredAbility{Mobilize("Voice of Victory", 2)}` (`mobilize.go`): N 1/1 red
+  Warriors tapped and attacking, placed with `CreateTokensAttackingYourChoice` (the defender offered first), and one
+  delayed trigger that sacrifices exactly those tokens at the next end step.
+- **"Whenever you gain life, target opponent loses that much life"** is
+  `WheneverYouGainLifeTargetOpponentLosesThatMuch(label)` (`life_gain_drain.go`), shared by Sanguine Bond and Vito.
+- **"Equipped creature phases out"** on the Equipment's own ability is `Effect: phaseOutAttachedHost`
+  (`aura_helpers.go`, beside `tapAttachedHost`); the Equipment phases out with its host.
+- **"Whenever you attack with this creature and/or your commander"** is `OncePerBatch(On(game.EventAttack,
+  thisOrYourCommanderAttacked, …))` (Ainok Strike Leader).
+
 ### Statics that read block status or this turn's events, "can't be attacked", any-type mana, flash-if-it-targets (#3172, cav-h2)
 
 Pieces that used to be caveats; the engine notes are in the 2026-10-13 amendments of [ADR 0045](decisions/0045-combat-restrictions.md),

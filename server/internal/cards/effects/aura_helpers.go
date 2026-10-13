@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // aura_helpers.go — counting helpers for Auras whose bonus is "for
 // each <thing>" (PumpAttachedPer's `count`). Append-only, per the
@@ -88,4 +92,16 @@ func tapAttachedHost(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	return TapTarget{Target: host.InstanceID}.Apply(NewContext(g, item))
+}
+
+// phaseOutAttachedHost is "equipped creature phases out" for an
+// attachment's own ability (Robe of Stars). The Equipment goes with its
+// host (CR 702.26g); an attachment that has fallen off by resolution
+// phases nothing out.
+func phaseOutAttachedHost(g *game.Game, item *game.StackItem) error {
+	host := attachedHostFor(g, item.SourceCardID)
+	if host == nil {
+		return nil
+	}
+	return PhaseOut{Targets: []uuid.UUID{host.InstanceID}}.Apply(NewContext(g, item))
 }

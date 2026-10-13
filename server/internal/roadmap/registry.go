@@ -482,9 +482,8 @@ var items = []Item{
 	},
 	{
 		Slug: "pay-life-instead", Name: "Pay life instead of mana", Kind: KindMechanic, Status: StatusImplemented,
-		Summary:          "Spells that let you pay life rather than their mana cost when a condition holds.",
-		Mechanic:         "pay life instead",
-		NoCatalogExample: "Its only catalogued card hasn't been reviewed yet, so none is listed as fully automated.",
+		Summary:  "Spells that let you pay life rather than their mana cost when a condition holds.",
+		Mechanic: "pay life instead",
 	},
 	{
 		// ADR 0131 (#2531). Casts, activations and attack taxes shipped
