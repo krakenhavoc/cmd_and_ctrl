@@ -1315,6 +1315,12 @@ type AlternativeCostView struct {
 	Key string `json:"key"`
 	// Label is the clause as printed ("Overload {4}{R}").
 	Label string `json:"label,omitempty"`
+	// CastsFace is the printed face this offer casts, when it is not
+	// the face the card shows: disturb's back face (CR 702.146a), and
+	// More Than Meets the Eye's (CR 702.162a, ADR 0152 §5). The
+	// picker names that face and the bot prices it. Absent for every
+	// offer that casts the face as it sits.
+	CastsFace int `json:"casts_face,omitempty"`
 	// ManaCost is what this cost charges, in brace notation. Empty
 	// means free.
 	ManaCost string `json:"mana_cost,omitempty"`
@@ -6653,7 +6659,8 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 		// of the filter is exactly the drift #1012 was about.
 		v := AlternativeCostView{
 			Key: ac.Key, Label: ac.Label, ManaCost: ac.ManaCost,
-			Life: ac.Life, Energy: ac.Energy, PayLabel: ac.PayLabel,
+			CastsFace: ac.CastsFace,
+			Life:      ac.Life, Energy: ac.Energy, PayLabel: ac.PayLabel,
 			// CR 107.3b (#831). An offer is a cost; the rule asks
 			// only whether the printed {X} survives into it, so the
 			// pair of strings IS the whole question here. A grant

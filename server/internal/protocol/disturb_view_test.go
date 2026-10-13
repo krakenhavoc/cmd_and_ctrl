@@ -63,6 +63,10 @@ func TestDisturbOfferCarriesTheBackFacesTargetClause(t *testing.T) {
 	if offer.Key != "disturb" || offer.Label != "Disturb {3}{W}" || offer.ManaCost != "{3}{W}" {
 		t.Errorf("offer = %+v, want Disturb {3}{W}", offer)
 	}
+	// ADR 0152 §5: the offer names the face it casts.
+	if offer.CastsFace != 1 {
+		t.Errorf("casts_face = %d, want 1 (the back face)", offer.CastsFace)
+	}
 	if offer.TargetMode == "" || offer.LegalTargets == nil {
 		t.Fatalf("the disturb offer carries no target clause, so the client would cast the Aura with no creature: %+v", offer)
 	}
