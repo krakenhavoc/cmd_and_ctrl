@@ -12,27 +12,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 Whenever a Vampire you control dies, you may pay 2 life. If you
 //	 do, draw a card."
 //
-// The Vampire tribal six-drop. The printed static is written as an
-// attack trigger for the reason Blade Historian gives: the layer
-// engine does not recompute on an attack declaration, so a static
-// gated on "is attacking" stays cached from before combat. One
-// trigger per attacking Vampire the controller controls — the
-// Troublemakers themselves included — granting both keywords until
-// end of turn through the turn-scoped registry
-// (b34AttackingVampiresHaveDeathtouchAndLifelink). The dies trigger
+// The Vampire tribal six-drop. The printed static is a layer 6 grant
+// gated on Card.AttackingTarget (AttackingCreaturesHave, declared
+// DependsOnAttackingStatus so the cache is rebuilt as attackers are
+// declared, put onto the battlefield attacking, or leave combat), on
+// every Vampire the controller controls — the Troublemakers
+// themselves included, and a Vampire that enters attacking too. The
+// dies trigger
 // fires for any Vampire creature the controller controlled — a
 // Vampire as it last existed on the battlefield (CR 603.10a, #1679),
 // grants included — the Troublemakers' own death included; its "you may pay 2 life" is
 // the ordinary trigger prompt, and a controller who cannot pay when
 // it resolves neither pays nor draws.
 //
-// Two declared simplifications, both weaker than printed:
-//
-//   - Blade Historian's: the grant lasts the turn rather than the
-//     attack, and lands only on Vampires DECLARED as attackers. A
-//     Vampire put onto the battlefield attacking is not covered; a
-//     Vampire removed from combat keeps the keywords until end of
-//     turn, which changes nothing outside combat.
+// No simplification.
 //
 // The pay-2-life decision used to be taken when the trigger fired
 // (the CR 603.5 "you may" prompt the harvester asks before the
@@ -45,12 +38,12 @@ func init() {
 	Register(Spec{
 		OracleID:     "1a362e4d-6c02-4b67-ab63-c6622e505195",
 		Name:         "Crossway Troublemakers",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Deathtouch and lifelink are granted as each of your Vampires is declared as an attacker and last until end of turn, so a Vampire that enters the battlefield already attacking doesn't get them.",
+		Completeness: CompletenessFull,
+		Static: []game.StaticAbility{
+			AttackingCreaturesHave("Attacking Vampires you control have deathtouch and lifelink.",
+				func(c *game.Card) bool { return c.HasSubtype("Vampire") }, "deathtouch", "lifelink"),
 		},
 		Triggered: []game.TriggeredAbility{
-			b34AttackingVampiresHaveDeathtouchAndLifelink("Crossway Troublemakers"),
 			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b34VampireYouControlDied(ev, source, g)
 			}, "Crossway Troublemakers — pay 2 life, draw a card", crosswayMayPayTwoLifeToDraw),

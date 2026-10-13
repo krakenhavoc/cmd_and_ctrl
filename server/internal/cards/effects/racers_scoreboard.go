@@ -23,7 +23,7 @@ func init() {
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Racers' Scoreboard — draw two cards, then discard a card",
 				func(g *game.Game, item *game.StackItem) error {
-					return b16DrawThenDiscard(g, item, 2, 1)
+					return b16DrawThenDiscard(g, item, 2)
 				}),
 		},
 		CostModifiers: []game.CostModifier{

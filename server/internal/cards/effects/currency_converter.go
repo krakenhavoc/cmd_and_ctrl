@@ -79,7 +79,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(ManaCost("{2}"), TapCost()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return b16DrawThenDiscard(g, item, 1, 1)
+					return b16DrawThenDiscard(g, item, 1)
 				},
 			},
 			{

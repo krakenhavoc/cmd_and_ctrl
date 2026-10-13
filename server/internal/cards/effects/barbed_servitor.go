@@ -23,17 +23,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // event's amount. It is life LOSS, not damage, so a damage prevention
 // effect on the opponent does not stop it.
 //
-// One declared simplification, weaker than printed and Brash Taunter's:
-// the engine emits one damage event per SOURCE, so a Servitor blocked
-// by two creatures fires twice — once per blocker's damage — where the
-// printed card fires once for the total. The same life is lost either
-// way; only the split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and loses the opponent the
+// TOTAL the Servitor was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	Register(Spec{
 		OracleID:        "e3d82066-d8b9-47bf-8821-1370c506970b",
 		Name:            "Barbed Servitor",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If two or more sources damage it at the same time, it makes the opponent lose life for each source's damage separately instead of the total in one go."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Barbed Servitor — suspect it", func(g *game.Game, item *game.StackItem) error {
@@ -45,9 +42,10 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return b35SelfWasDealtDamage(ev, source)
 				},
-				Targets: TargetPlayer("target opponent", Opponent()),
-				Key:     "Barbed Servitor — target opponent loses that much life",
-				Effect:  damagedCreatureDrainsChosenOpponent,
+				Targets:    TargetPlayer("target opponent", Opponent()),
+				Key:        "Barbed Servitor — target opponent loses that much life",
+				AtBatchEnd: ThatMuchDamage(),
+				Effect:     damagedCreatureDrainsChosenOpponent,
 			},
 		},
 	})

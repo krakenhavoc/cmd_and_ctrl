@@ -15,28 +15,18 @@ import (
 //
 // The Demon that lets everyone keep two. The trigger fires on every
 // opponent's end step (the event's Actor is the active player), and
-// the choice is THAT PLAYER's: it is asked through the engine's
-// sacrifice prompt, which offers a player their own permanents and
-// nobody else's — so hexproof and indestructible are irrelevant, as
-// they are on paper, because nothing is targeted or destroyed.
+// the choice is THAT PLAYER's: they are asked once, over their own
+// creatures, for up to two to keep (keepCreaturesThenSacrificeTheRest),
+// and then everything else they control is sacrificed at once. Nothing
+// is targeted or destroyed, so hexproof and indestructible are
+// irrelevant, as they are on paper.
 //
-// Sandbox simplification, declared: the prompt picks one creature at
-// a time, so "choose two to keep" is asked as (creatures − 2)
-// prompts to sacrifice one each — the same decision from the other
-// side, made by the same player, with the option list trimmed after
-// every answer. The prompts are queued together when the ability
-// resolves, so in the one corner where a creature leaves between two
-// answers for some OTHER reason (a lord sacrificed first, shrinking a
-// damaged creature to zero toughness) the remaining prompts still
-// ask for the count computed at resolution, and the player can end
-// with fewer than two. Nothing can respond between the answers — a
-// pending prompt holds priority — so that corner is the only one.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "af247e2f-b271-4f5b-ab98-4579d2c17c21",
 		Name:            "Archfiend of Depravity",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The opponent is asked to sacrifice one creature at a time until two remain, rather than choosing the two to keep up front."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventBeginEndStep},
@@ -49,8 +39,8 @@ func init() {
 				if item.Trigger != nil {
 					victim = item.Trigger.Event.Actor
 				}
-				b14PlayerSacrificesAllButN(g, item.SourceCardID, victim, 2, "Archfiend of Depravity — sacrifice a creature (keep up to two)")
-				return nil
+				return keepCreaturesThenSacrificeTheRest(g, item, []uuid.UUID{victim},
+					"Archfiend of Depravity — choose up to two creatures to keep; the rest are sacrificed", 2, nil)
 			},
 		}},
 	})

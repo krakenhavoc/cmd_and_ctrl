@@ -78,6 +78,12 @@ type DelayedOnEvent struct {
 	// every matching event until the turn ends instead of on the first
 	// one only (Great Train Heist). Leave false for "when you next …".
 	Repeats bool
+
+	// OncePerBatch makes a Repeats trigger fire once for each event
+	// batch rather than once per event: "whenever you attack this turn"
+	// (Dalkovan Encampment), where the engine emits an EventAttack per
+	// attacking creature (CR 603.2c).
+	OncePerBatch bool
 }
 
 func (d DelayedOnEvent) Apply(ctx *Context) error {
@@ -97,6 +103,7 @@ func (d DelayedOnEvent) Apply(ctx *Context) error {
 		Body:             d.Body,
 		Params:           d.Params,
 		Repeats:          d.Repeats,
+		OncePerBatch:     d.OncePerBatch,
 	})
 	return nil
 }

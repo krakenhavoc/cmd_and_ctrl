@@ -277,7 +277,7 @@ func TestB31LeoninWarleaderAttacksWithTwoLifelinkCats(t *testing.T) {
 	if n := triggersOnStackFrom(g, warleader); n != 1 {
 		t.Fatalf("one attack trigger, got %d", n)
 	}
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	cats := battlefieldIDsNamed(g, "Cat")
 	if len(cats) != 2 {
 		t.Fatalf("%d Cats, want 2", len(cats))
@@ -700,12 +700,12 @@ func TestB31BlossomingTortoiseMillsAndReturnsALandOnEntryAndAttack(t *testing.T)
 	seedGraveyardCard(t, g, "Bear", "Creature — Bear", "")
 	library := me.Library.Size()
 	tortoise := castAndResolveCreature(t, g, "Blossoming Tortoise", "Creature — Turtle", b31BlossomingTortoiseOracle)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, swamp) || len(p.PickTargetCards) != 1 {
-		t.Errorf("only land cards in your graveyard are offered: %v", p.PickTargetCards)
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, swamp) || len(p.ChooseCards) != 1 || p.ChooseMin != 1 {
+		t.Fatalf("only land cards in your graveyard are offered, and the return is not optional: %+v", p)
 	}
-	pickCard(t, g, me.ID, swamp)
+	answerChooseCards(t, g, me.ID, swamp)
 	passPriorityAroundTable(t, g)
 	if got := me.Library.Size(); got != library-3 {
 		t.Errorf("mill three: library %d → %d", library, got)
@@ -719,15 +719,67 @@ func TestB31BlossomingTortoiseMillsAndReturnsALandOnEntryAndAttack(t *testing.T)
 	advanceTo(t, g, game.StepPrecombatMain)
 	library = me.Library.Size()
 	declareAttack(t, g, opp.ID, tortoise)
-	if latestPickTarget(g, me.ID) != nil {
-		t.Error("no land card: no pick (the untargeted declaration)")
-	}
 	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("no land card: no pick")
+	}
 	if got := me.Library.Size(); got != library-3 {
 		t.Errorf("the attack mills three: library %d → %d", library, got)
 	}
-	if spec, _ := Lookup(b31BlossomingTortoiseOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the pick-before-mill and discount gaps must be declared")
+	if spec, _ := Lookup(b31BlossomingTortoiseOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the land is chosen after the mill and the discount is in: nothing is left to declare")
+	}
+}
+
+// The land is chosen after the mill, so one the trigger itself milled
+// is the only legal pick when the graveyard held none before.
+func TestB31BlossomingTortoiseCanReturnALandItJustMilled(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	milled := b10LibraryTop(me, "Milled Swamp", "Basic Land — Swamp", "", 0, 0)
+	b10LibraryTop(me, "Filler A", "Instant", "{R}", 0, 0)
+	b10LibraryTop(me, "Filler B", "Instant", "{R}", 0, 0)
+	castAndResolveCreature(t, g, "Blossoming Tortoise", "Creature — Turtle", b31BlossomingTortoiseOracle)
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, milled) {
+		t.Fatal("a land the trigger milled is offered")
+	}
+	answerChooseCards(t, g, me.ID, milled)
+	if !g.Battlefield.Contains(milled) || !b31Tapped(t, g, milled) {
+		t.Error("the milled land returns tapped")
+	}
+}
+
+// Activated abilities of lands you control cost {1} less: Mount Doom's
+// {1}{B}{R} is {B}{R} with the Tortoise out. From a pool of exactly three,
+// one is left with the Tortoise and none without it; the discount is only
+// generic mana.
+func TestB31BlossomingTortoiseDiscountsLandActivations(t *testing.T) {
+	for _, withTortoise := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		if withTortoise {
+			b31Push(g, me.ID, "Blossoming Tortoise", "Creature — Turtle", b31BlossomingTortoiseOracle, "{2}{G}{G}", 3, 3, "G")
+		}
+		doom := pushCatalogPermanent(g, me.ID, "Mount Doom", "Legendary Land", "995c8dac-fd27-468a-abd4-02372cf0c850", false)
+		advanceToMain(t, g)
+		floatForTest(g, me, "BRC")
+		lifeBefore := opp.Life
+		if err := g.ActivateCatalogAbility(me.ID, doom, 0, game.ActivateAbilityParams{}); err != nil {
+			t.Fatalf("Mount Doom (Tortoise %v): %v", withTortoise, err)
+		}
+		want := 0
+		if withTortoise {
+			want = 1
+		}
+		if len(me.ManaPool) != want {
+			t.Errorf("Tortoise %v: %d mana left, want %d", withTortoise, len(me.ManaPool), want)
+		}
+		passPriorityAroundTable(t, g)
+		if opp.Life != lifeBefore-1 {
+			t.Errorf("Tortoise %v: the ability resolved, opponent life %d want %d", withTortoise, opp.Life, lifeBefore-1)
+		}
 	}
 }
 

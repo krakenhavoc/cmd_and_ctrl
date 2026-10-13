@@ -21,22 +21,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // damage still deals it (the damage path does not need the source on
 // the battlefield).
 //
-// Sandbox simplification, declared, the Phyrexian Obliterator
-// posture: the engine emits one damage event per SOURCE, so a Dragon
-// damaged by two blockers at once fires twice — once per blocker's
-// damage, each with its own target — where the printed card fires
-// once for the total. The same damage is reflected either way; only
-// the split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the Dragon was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	Register(Spec{
 		OracleID:        "17c2a962-994a-49f1-8c4e-ebcc43c3c92a",
 		Name:            "Wrathful Red Dragon",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If two or more sources damage a Dragon at the same time, it reflects each source's damage separately instead of the total in one go."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			Key:     "Wrathful Red Dragon — the damaged Dragon deals that much damage to any non-Dragon target",
+			Watches:    []game.EventKind{game.EventDealDamage},
+			Key:        "Wrathful Red Dragon — the damaged Dragon deals that much damage to any non-Dragon target",
+			AtBatchEnd: ThatMuchDamage(),
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b21DragonYouControlDealtDamage(ev, source, g)
 			},

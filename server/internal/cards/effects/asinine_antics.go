@@ -15,16 +15,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // each one the caster controls replaces the caster's earlier Role on
 // that creature (CR 704.5z).
 //
-// Simplification: the "as though it had flash if you pay {2} more"
-// permission has no shape in the cast-timing engine (an optional
-// surcharge that unlocks instant timing), so the spell is
-// sorcery-speed only. Weaker than printed, never stronger.
+// The flash clause is FlashForMore (flash_for_more.go): an offer that
+// costs the printed {2}{U}{U} plus {2} and opens the instant-speed
+// window for that cast only.
+//
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "0a0a051c-59ed-4286-b842-a34da7ef15d5",
-		Name:         "Asinine Antics",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"It can't be cast as though it had flash for {2} more — it can only be cast when you could cast a sorcery."},
+		OracleID:         "0a0a051c-59ed-4286-b842-a34da7ef15d5",
+		Name:             "Asinine Antics",
+		Completeness:     CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			var hosts []game.Card
 			for _, c := range ctx.Game.BattlefieldCardsForEffect() {

@@ -117,9 +117,12 @@ func (s *SQLStore) Account(ctx context.Context, id uuid.UUID) (AccountRows, erro
 		invalid int64
 		linked  sql.NullInt64
 		played  sql.NullInt64
+		checked sql.NullInt64
+		access  sql.NullString
 	)
 	err := s.q.QueryRowContext(ctx,
 		`SELECT u.id, u.display_name, u.avatar_url, u.created_at, u.last_seen_at, u.sessions_invalid_before,
+		        u.access_checked_at, u.access_result,
 		        (SELECT i.linked_at FROM identities i WHERE i.user_id = u.id AND i.provider = 'discord'),
 		        (SELECT COUNT(DISTINCT g.id) FROM seats s JOIN games g ON g.id = s.game_id
 		          WHERE s.user_id = u.id AND g.started_at IS NOT NULL),
@@ -127,7 +130,7 @@ func (s *SQLStore) Account(ctx context.Context, id uuid.UUID) (AccountRows, erro
 		          WHERE s.user_id = u.id AND g.started_at IS NOT NULL)
 		   FROM users u
 		  WHERE u.id = ?`, id.String()).
-		Scan(&out.Account.ID, &out.Account.Name, &avatar, &created, &seen, &invalid, &linked, &out.Account.GamesPlayed, &played)
+		Scan(&out.Account.ID, &out.Account.Name, &avatar, &created, &seen, &invalid, &checked, &access, &linked, &out.Account.GamesPlayed, &played)
 	if err == sql.ErrNoRows {
 		return AccountRows{}, ErrNotFound
 	}
@@ -137,6 +140,7 @@ func (s *SQLStore) Account(ctx context.Context, id uuid.UUID) (AccountRows, erro
 	out.Account.AvatarURL = avatar.String
 	out.Account.FirstSeenAt, out.Account.LastSignInAt, out.Account.LastPlayedAt = millis(created), millis(seen), nullMillis(played)
 	out.DiscordLinkedAt = nullMillis(linked)
+	out.AccessCheckedAt, out.AccessResult = nullMillis(checked), access.String
 	if invalid > 0 {
 		out.SessionsInvalidBefore = millis(invalid)
 	}

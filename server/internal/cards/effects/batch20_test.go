@@ -716,11 +716,12 @@ func TestB20StarfallInvocationDestroysAllCreaturesAndDeclaresTheGift(t *testing.
 		t.Error("a noncreature survives")
 	}
 	// S30 (#470 / #446): the indestructible half of this assertion was
-	// an engine gap, not a card gap, and it is closed. The gift is
-	// still the one clause this card does not offer.
+	// an engine gap, not a card gap, and it is closed. The gift landed
+	// with #3172 (cav-b): the card is Full and the return is tested in
+	// cav_b_test.go.
 	spec, _ := Lookup(b20StarfallInvocationOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Error("the un-offered gift is declared, and it is the only caveat left")
+	if spec.Completeness != CompletenessFull || spec.Gift == nil {
+		t.Error("Starfall Invocation offers its gift and has no caveat left")
 	}
 }
 

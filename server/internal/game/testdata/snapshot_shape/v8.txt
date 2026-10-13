@@ -421,6 +421,7 @@ delayedTriggers[].manaTapSubtype	string
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
 delayedTriggers[].on[]	string
+delayedTriggers[].oncePerBatch	bool
 delayedTriggers[].optionalQuestion	string
 delayedTriggers[].params	object
 delayedTriggers[].params.ability	object
@@ -869,6 +870,7 @@ lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].MustAttack	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
@@ -924,6 +926,7 @@ lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
 lastKnownBattlefield{}.Controller	custom(uuid.UUID)
+lastKnownBattlefield{}.DamageByToughness	bool
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -971,6 +974,7 @@ lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttack	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
@@ -1026,6 +1030,7 @@ lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.DamageByToughness	bool
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -1498,6 +1503,8 @@ lastKnownStack[].item.paid.altCostObjects	array
 lastKnownStack[].item.paid.altCostObjects[]	object
 lastKnownStack[].item.paid.altCostObjects[].epoch	number:int
 lastKnownStack[].item.paid.altCostObjects[].id	custom(uuid.UUID)
+lastKnownStack[].item.paid.convoked	array
+lastKnownStack[].item.paid.convoked[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.costBranch	number:int
 lastKnownStack[].item.paid.delved	array
 lastKnownStack[].item.paid.delved[]	object
@@ -1761,6 +1768,8 @@ pausedModeWalk.item.paid.altCostObjects	array
 pausedModeWalk.item.paid.altCostObjects[]	object
 pausedModeWalk.item.paid.altCostObjects[].epoch	number:int
 pausedModeWalk.item.paid.altCostObjects[].id	custom(uuid.UUID)
+pausedModeWalk.item.paid.convoked	array
+pausedModeWalk.item.paid.convoked[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.costBranch	number:int
 pausedModeWalk.item.paid.delved	array
 pausedModeWalk.item.paid.delved[]	object
@@ -1998,6 +2007,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].OtherThan	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
@@ -2053,6 +2063,7 @@ pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -2260,6 +2271,8 @@ pendingTriggers[].paid.altCostObjects	array
 pendingTriggers[].paid.altCostObjects[]	object
 pendingTriggers[].paid.altCostObjects[].epoch	number:int
 pendingTriggers[].paid.altCostObjects[].id	custom(uuid.UUID)
+pendingTriggers[].paid.convoked	array
+pendingTriggers[].paid.convoked[]	custom(uuid.UUID)
 pendingTriggers[].paid.costBranch	number:int
 pendingTriggers[].paid.delved	array
 pendingTriggers[].paid.delved[]	object
@@ -4901,6 +4914,8 @@ spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
+spellsCastThisTurn{}.manaSpent	number:int
+spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 splitSecondActive	bool
 stack	object
@@ -5290,6 +5305,8 @@ stackMeta[].paid.altCostObjects	array
 stackMeta[].paid.altCostObjects[]	object
 stackMeta[].paid.altCostObjects[].epoch	number:int
 stackMeta[].paid.altCostObjects[].id	custom(uuid.UUID)
+stackMeta[].paid.convoked	array
+stackMeta[].paid.convoked[]	custom(uuid.UUID)
 stackMeta[].paid.costBranch	number:int
 stackMeta[].paid.delved	array
 stackMeta[].paid.delved[]	object

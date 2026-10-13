@@ -310,12 +310,12 @@ func b16UntapAllYouControlMatching(ctx *Context, controller uuid.UUID, match fun
 	return nil
 }
 
-// b16DrawThenDiscard is "draw N cards, then discard M" in the printed
-// order (Relic of Sauron's two-for-one): the draws land first so a
+// b16DrawThenDiscard is "draw N cards, then discard a card" in the
+// printed order (Relic of Sauron's two-for-one): the draws land first so a
 // drawn card is a legal discard, and the discard is the player's
 // choice, queued as a prompt.
-func b16DrawThenDiscard(g *game.Game, item *game.StackItem, draw, discard int) error {
-	return drawThenDiscard(g, item.Controller, item.SourceCardID, draw, discard, "")
+func b16DrawThenDiscard(g *game.Game, item *game.StackItem, draw int) error {
+	return drawThenDiscard(g, item.Controller, item.SourceCardID, draw, 1, "")
 }
 
 // b16FirstLegalTargetCard returns the first announce-time target

@@ -1029,10 +1029,17 @@ func TestB17BreenaTriggersOncePerOpponentAttacked(t *testing.T) {
 	advanceToMainOf(t, g, 1)
 	theirHand := opp.Hand.Size()
 	declareAttack(t, g, other.ID, raiders[0], raiders[1])
-	if n := len(g.PendingChoices); n != 1 || latestPickTarget(g, me.ID) == nil {
-		t.Fatalf("two creatures at one opponent: ONE trigger, one creature pick; %d prompts", n)
+	if n := b784Triggers(g, breena); n != 1 {
+		t.Fatalf("two creatures at one opponent: ONE trigger; %d on the stack", n)
 	}
-	pickCard(t, g, me.ID, bear)
+	passPriorityAroundTable(t, g)
+	// The creature is chosen as the trigger resolves, not as it is put on
+	// the stack: a hexproof creature of yours is as good as any.
+	pick := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if pick == nil || pick.ChooseMin != 1 || pick.ChooseMax != 1 || !hasID(pick.ChooseCards, bear) || !hasID(pick.ChooseCards, breena) {
+		t.Fatal("one creature pick at resolution, offering every creature you control")
+	}
+	answerOwnPermanents(t, g, me.ID, bear)
 	passPriorityAroundTable(t, g)
 	if opp.Hand.Size() != theirHand+1 {
 		t.Errorf("the attacking player draws 1, drew %d", opp.Hand.Size()-theirHand)
@@ -1040,20 +1047,15 @@ func TestB17BreenaTriggersOncePerOpponentAttacked(t *testing.T) {
 	if counterCount(g, bear, "+1/+1") != 2 {
 		t.Errorf("two +1/+1 counters on the picked creature, got %d", counterCount(g, bear, "+1/+1"))
 	}
-	// A third creature at the same opponent: nothing more this combat.
-	if err := g.DeclareAttacker(raiders[2], other.ID); err != nil {
-		t.Fatal(err)
-	}
-	if latestPickTarget(g, me.ID) != nil {
-		t.Error("the same opponent attacked again this combat does not re-trigger")
-	}
+	// (Two creatures at that opponent were ONE trigger above, not one
+	// per creature.)
 
 	// Attacking the opponent who is BEHIND does not pay.
 	advanceToMainOf(t, g, 1)
 	theirHand = opp.Hand.Size()
 	declareAttack(t, g, third.ID, raiders[0])
 	passPriorityAroundTable(t, g)
-	if latestPickTarget(g, me.ID) != nil || opp.Hand.Size() != theirHand {
+	if latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID) != nil || opp.Hand.Size() != theirHand {
 		t.Error("the attacked opponent has less life than the other: no trigger")
 	}
 
@@ -1061,10 +1063,60 @@ func TestB17BreenaTriggersOncePerOpponentAttacked(t *testing.T) {
 	// of hers.
 	advanceToMainOf(t, g, 1)
 	declareAttack(t, g, me.ID, raiders[0])
-	if latestPickTarget(g, me.ID) != nil {
+	if b784Triggers(g, breena) != 0 {
 		t.Error("you are not one of your own opponents")
 	}
-	_ = breena
+}
+
+// An additional combat triggers her again for the same opponent: the
+// once-per-combat guard is per combat, and there is no per-turn tally on
+// top of it. Aurelia, the Warleader supplies the extra combat.
+func TestB17BreenaTriggersAgainInAnAdditionalCombat(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	third := g.Seats[(g.Turn.ActiveSeat+2)%len(g.Seats)]
+	breena := b12Push(g, me.ID, "Breena, the Demagogue", "Legendary Creature — Bird Warlock", b17BreenaOracle, 1, 3)
+	aurelia := pushDiesCreatureForTest(g, me.ID, "Aurelia, the Warleader", aureliaWarleaderOracle, "Legendary Creature — Angel", 3, 4)
+	opp.Life, third.Life = 40, 30
+	handBefore := me.Hand.Size()
+
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(aurelia, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker: %v", err)
+	}
+	lockInAttacks(t, g)
+	answerTriggerOrderInOfferedOrder(t, g)
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID) == nil {
+		t.Fatal("the first combat triggers Breena")
+	}
+	answerOwnPermanents(t, g, me.ID, breena)
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, breena, "+1/+1"); got != 2 {
+		t.Fatalf("first combat: %d counters on Breena, want 2", got)
+	}
+	advanceTo(t, g, game.StepEndCombat)
+	if next := stepOnce(t, g); next.Step != game.StepBeginCombat {
+		t.Fatalf("after the first combat: %+v, want an additional combat", next)
+	}
+	advanceTo(t, g, game.StepDeclareAttackers)
+	if err := g.DeclareAttacker(aurelia, opp.ID); err != nil {
+		t.Fatalf("DeclareAttacker in the second combat: %v", err)
+	}
+	lockInAttacks(t, g)
+	passPriorityAroundTable(t, g)
+	if latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID) == nil {
+		t.Fatal("the same opponent attacked in an additional combat triggers Breena again")
+	}
+	answerOwnPermanents(t, g, me.ID, breena)
+	passPriorityAroundTable(t, g)
+	if got := counterCount(g, breena, "+1/+1"); got != 4 {
+		t.Errorf("after the second combat: %d counters, want 4", got)
+	}
+	if got := me.Hand.Size() - handBefore; got < 2 {
+		t.Errorf("the attacker drew %d from Breena over two combats, want at least 2", got)
+	}
 }
 
 func TestB17TesharReturnsACheapCreatureWhenYouCastAHistoricSpell(t *testing.T) {

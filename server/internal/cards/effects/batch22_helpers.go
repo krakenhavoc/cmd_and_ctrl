@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"sort"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -145,65 +143,6 @@ func b22SlimeShrink() game.StaticAbility {
 			c.Toughness -= n
 		},
 	}
-}
-
-// b22KeepLowestPowerWithinTotal is Slaughter the Strong's auto-pick
-// for one player: the creatures they keep, chosen lowest power first
-// (battlefield order on a tie) while the running total stays at or
-// under `limit`, so as many creatures as possible survive. A
-// creature whose power alone exceeds the limit is never kept; a
-// zero-power creature always is. Returns the kept instance IDs.
-func b22KeepLowestPowerWithinTotal(g *game.Game, player uuid.UUID, limit int) []uuid.UUID {
-	type entry struct {
-		id    uuid.UUID
-		power int
-		order int
-	}
-	var mine []entry
-	for i, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller == player && c.IsCreature() {
-			mine = append(mine, entry{id: c.InstanceID, power: c.CurrentPower(), order: i})
-		}
-	}
-	sort.SliceStable(mine, func(i, j int) bool {
-		if mine[i].power != mine[j].power {
-			return mine[i].power < mine[j].power
-		}
-		return mine[i].order < mine[j].order
-	})
-	var keep []uuid.UUID
-	total := 0
-	for _, e := range mine {
-		if total+e.power > limit {
-			break
-		}
-		total += e.power
-		keep = append(keep, e.id)
-	}
-	return keep
-}
-
-// b22EachPlayerKeepsWithinPowerAndSacrificesTheRest is Slaughter the
-// Strong's body: every seated player keeps the b22KeepLowestPowerWithinTotal
-// set and sacrifices every other creature they control. The keep
-// sets are all chosen before anything is sacrificed (CR 608.2c —
-// "then"), and the sacrifices go one creature at a time in
-// battlefield order through the ordinary sacrifice path, so
-// aristocrats payoffs see each one.
-func b22EachPlayerKeepsWithinPowerAndSacrificesTheRest(g *game.Game, item *game.StackItem, limit int) error {
-	keep := map[uuid.UUID]bool{}
-	for _, p := range g.Seats {
-		if p == nil || p.Eliminated {
-			continue
-		}
-		for _, id := range b22KeepLowestPowerWithinTotal(g, p.ID, limit) {
-			keep[id] = true
-		}
-	}
-	ctx := NewContext(g, item)
-	return b08SacrificeAllMatching(ctx, func(_ *game.Game, _ uuid.UUID, c game.Card) bool {
-		return c.IsCreature() && !keep[c.InstanceID]
-	})
 }
 
 // b22DestroyFirstArtifactAndFirstEnchantment is Hull Breach's third

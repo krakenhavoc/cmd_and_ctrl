@@ -94,6 +94,21 @@ func b03OpponentControlsMoreLands(g *game.Game, controller uuid.UUID) bool {
 	return false
 }
 
+// magecraftEvents are the events magecraft watches: "whenever you cast
+// OR COPY an instant or sorcery spell" (CR 207.2c). A copy is created,
+// not cast, so it has its own event (EventSpellCopied).
+var magecraftEvents = []game.EventKind{game.EventCast, game.EventSpellCopied}
+
+// instantOrSorceryCastOrCopiedByYou is magecraft's trigger condition:
+// the controller cast or copied an instant or sorcery spell.
+func instantOrSorceryCastOrCopiedByYou(ev game.Event, source *game.Card, g *game.Game) bool {
+	if (ev.Kind != game.EventCast && ev.Kind != game.EventSpellCopied) || ev.Actor != source.Controller {
+		return false
+	}
+	spell, ok := g.LookupCardForEffect(ev.CardID)
+	return ok && (spell.IsInstant() || spell.IsSorcery())
+}
+
 // instantOrSorceryCastByYou is the magecraft-shaped condition
 // Guttersnipe shares with Storm-Kiln Artist: the controller cast an
 // instant or sorcery.

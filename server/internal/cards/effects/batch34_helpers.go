@@ -215,18 +215,6 @@ func b34SelfOrAnotherNontokenHistoricYouControlEntered(ev game.Event, source *ga
 	return ok && !IsToken(c) && b09IsHistoric(c)
 }
 
-// b34VampireYouControlAttacked is Crossway Troublemakers' first
-// condition: a Vampire the source's controller controls was declared
-// as an attacker — the Troublemakers themselves included. Effective
-// subtypes, so a changeling counts.
-func b34VampireYouControlAttacked(ev game.Event, source *game.Card, g *game.Game) bool {
-	if !attackDeclaredByYou(ev, source.Controller) {
-		return false
-	}
-	c, ok := g.LookupCardForEffect(ev.CardID)
-	return ok && c.IsCreature() && c.HasSubtype("Vampire")
-}
-
 // b34VampireYouControlDied is Crossway Troublemakers' second
 // condition: a Vampire creature its controller controlled died —
 // the Troublemakers' own death included, since a dies trigger looks
@@ -307,32 +295,6 @@ func b34DoubleDamageToOpponents(label string) game.ReplacementEffect {
 			return src.Controller
 		},
 		Label: label,
-	}
-}
-
-// --- triggers ------------------------------------------------------
-
-// b34AttackingVampiresHaveDeathtouchAndLifelink is Crossway
-// Troublemakers' printed static written as an attack trigger, for
-// the reason Blade Historian gives: an attack declaration does not
-// rebuild the layer cache, so a static gated on "is attacking"
-// would not see it. One trigger per attacking Vampire the
-// controller controls, granting both keywords until end of turn
-// through the turn-scoped registry, which does invalidate the cache.
-func b34AttackingVampiresHaveDeathtouchAndLifelink(name string) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventAttack},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-			return b34VampireYouControlAttacked(ev, source, g)
-		},
-		Key: name + " — the attacking Vampire has deathtouch and lifelink",
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			return GrantKeywordUntilEOT{
-				Target:   item.Trigger.Event.CardID,
-				Keywords: []string{"deathtouch", "lifelink"},
-				Label:    name + " — deathtouch and lifelink",
-			}.Apply(NewContext(g, item))
-		},
 	}
 }
 

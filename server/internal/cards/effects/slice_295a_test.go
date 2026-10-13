@@ -207,15 +207,17 @@ func TestDiscipleOfFreyaliseSacrificesForLifeAndCards(t *testing.T) {
 	me := g.Seats[0]
 	beast := b16Creature(g, me.ID, "Beast", "Creature — Beast", 4, 4, "G")
 	discipleID := castAndResolveCreature(t, g, "Disciple of Freyalise", "Creature — Elf Druid", discipleOfFreyaliseOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	prompt := latestPickTarget(g, me.ID)
-	if hasID(prompt.PickTargetCards, discipleID) || !hasID(prompt.PickTargetCards, beast) {
+	passPriorityAroundTable(t, g)
+	prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if prompt == nil {
+		t.Fatal("the sacrifice is asked as the trigger resolves")
+	}
+	if hasID(prompt.ChooseCards, discipleID) || !hasID(prompt.ChooseCards, beast) {
 		t.Errorf("ANOTHER creature you control: Disciple itself must not be offered")
 	}
 	lifeBefore := me.Life
 	handBefore := me.Hand.Size()
-	pickCard(t, g, me.ID, beast)
+	answerOwnPermanents(t, g, me.ID, beast)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(beast) {
 		t.Fatal("the chosen creature is sacrificed")
@@ -234,10 +236,34 @@ func TestDiscipleOfFreyaliseDecliningSacrificesNothing(t *testing.T) {
 	bear := b16Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2, "G")
 	lifeBefore := me.Life
 	castAndResolveCreature(t, g, "Disciple of Freyalise", "Creature — Elf Druid", discipleOfFreyaliseOracle)
-	answerLatestTriggerPrompt(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID)
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(bear) || me.Life != lifeBefore {
 		t.Error("declining sacrifices nothing and gains no life")
+	}
+}
+
+// The choice is made as the trigger resolves, so a creature with hexproof
+// is a legal pick: the sacrifice does not target.
+func TestDiscipleOfFreyaliseCanSacrificeAHexproofCreature(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	slippery := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Slippery", TypeLine: "Creature — Beast", Power: 3, Toughness: 3,
+		Keywords: []string{"hexproof", "shroud"}, Owner: me.ID, Controller: me.ID,
+	})
+	lifeBefore := me.Life
+	castAndResolveCreature(t, g, "Disciple of Freyalise", "Creature — Elf Druid", discipleOfFreyaliseOracle)
+	passPriorityAroundTable(t, g)
+	prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if prompt == nil || !hasID(prompt.ChooseCards, slippery) {
+		t.Fatal("a hexproof, shroud creature is offered")
+	}
+	answerOwnPermanents(t, g, me.ID, slippery)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(slippery) || me.Life != lifeBefore+3 {
+		t.Errorf("on battlefield %v, life %d, want gone and %d", g.Battlefield.Contains(slippery), me.Life, lifeBefore+3)
 	}
 }
 

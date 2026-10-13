@@ -434,8 +434,9 @@ func TestB32TrailtrackerScoutTapsForAnyColour(t *testing.T) {
 		t.Fatalf("with no commander the pick offers all five colours, got %+v", pick)
 	}
 	spec, _ := Lookup(b32TrailtrackerScoutOracle)
-	if len(spec.Triggered) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the expend trigger is a declared omission, not a half-built ability")
+	// #3172: the expend 8 trigger landed; cav_b_expend_test.go drives it.
+	if len(spec.Triggered) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("Trailtracker Scout declares its expend 8 trigger and no caveat")
 	}
 }
 

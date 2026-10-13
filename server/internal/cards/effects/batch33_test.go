@@ -594,7 +594,7 @@ func TestB33DalkovanEncampmentPrimedMakesTwoAttackingWarriorsPerActivation(t *te
 	b06AddMana(me, "W", "C", "C")
 	b16Activate(t, g, me.ID, land, 0, game.ActivateAbilityParams{})
 	declareAttack(t, g, opp.ID, bear, elf)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	warriors := b33AttackingTokensNamed(g, me.ID, opp.ID, "Warrior")
 	if len(warriors) != 4 {
 		t.Fatalf("two activations, two attackers: %d Warriors tapped and attacking, want 4", len(warriors))

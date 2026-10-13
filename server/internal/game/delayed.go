@@ -257,6 +257,15 @@ type DelayedTrigger struct {
 	// tied to its source: the spell that made it is in a graveyard.
 	Repeats bool
 
+	// OncePerBatch is CR 603.2c for a repeating trigger: the printed
+	// "whenever you ATTACK this turn" (Dalkovan Encampment) is one
+	// occurrence per declaration however many creatures were declared,
+	// and the engine emits one EventAttack per creature. With this set
+	// the trigger fires once for each event batch (the guard
+	// TriggeredAbility.OncePerBatch uses, keyed by the trigger's ID).
+	// Meaningful only with Repeats; a one-shot trigger fires once anyway.
+	OncePerBatch bool
+
 	// ManaTapSubtype and ManaAdds are the CR 605.1b twin: a triggered
 	// MANA ability a spell sets up for the turn. "Until end of turn,
 	// whenever a player taps a Swamp for mana, that player adds an
@@ -488,6 +497,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		UntilLeaves:        dt.UntilLeaves,
 		Due:                dt.Due,
 		Repeats:            dt.Repeats,
+		OncePerBatch:       dt.OncePerBatch,
 		ManaTapSubtype:     dt.ManaTapSubtype,
 		ManaAdds:           dt.ManaAdds,
 	}
@@ -575,6 +585,13 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 			continue
 		}
 		if dt.matchesEventLocked(ev, g) && !g.delayedTriggerSuppressedLocked(pass, dt) {
+			// CR 603.2c: a "whenever you attack" fires once for the
+			// whole declaration. Test-and-set, so it sits last: a match
+			// the trigger did not take must not use the batch up.
+			if dt.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, dt.ID, "delayed-once-per-batch") {
+				keep = append(keep, dt)
+				continue
+			}
 			fire = append(fire, dt)
 			if dt.Repeats {
 				// CR 603.7b: a stated duration ("this turn") keeps it

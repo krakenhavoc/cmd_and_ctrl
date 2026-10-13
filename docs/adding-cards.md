@@ -5710,6 +5710,8 @@ devoid either.
 | "Whenever ~ deals combat damage to a player" | `EventDealDamage` | `ev.Source == source.InstanceID && combatDamageToPlayerBy(ev, source.Controller, g)` |
 | "Whenever a creature you control deals combat damage to a player" | `EventDealDamage` | `combatDamageToPlayerBy(ev, source.Controller, g)` — checks `ev.Combat`, player target, creature source |
 | "Whenever **one or more** creatures you control attack / enter / leave" (no object named) | the same kind as the per-creature wording | wrap the ability in `OncePerBatch(...)` (#587) — the engine emits one event per creature and declines the rest of the **batch** (see below). Without it the card ships **stronger** than printed |
+| "Whenever ~ / a [thing] you control **is dealt damage**, … **that much**" | `EventDealDamage` | add `AtBatchEnd: ThatMuchDamage()` (needs a `Key`). The engine emits one event per source, so without it a creature double-blocked triggers twice; with it the ability waits for the batch to settle and reads the TOTAL dealt to that object in one damage instance, in `item.Trigger.Event.Amount` (Wrathful Red Dragon, Repercussion, #3172). Hand-built test damage needs `g.RunStateChecksForTest()` before the trigger appears |
+| "Whenever you [discard / create / have enter] **one or more** …, … **that many**" | the per-object kind | wrap with `withAtBatchEnd(On(…), ThatManyEvents())` and read `settledEventAmount(item)` — one trigger per batch with the count of matching events (Cryptcaller Chariot, Magmakin Artillerist, Ingenious Artillerist) |
 | "Whenever **one or more** creatures you control deal combat damage to **a player**" / "whenever you attack **a player**" | the same kind as the per-creature wording | `OncePerBatchPerPlayer(...)`, or the ready-made `WheneverOneOrMoreCreaturesYouControlDealCombatDamageToAPlayer(creature, label, effect)` — once per **player**, not once per step (#784, CR 603.2c). The clause names an object, so the guard keys on it: three creatures hitting three opponents are three triggers, two hitting one opponent are one. A card whose stack label is computed per player (Breena, Nature's Will) sets a static `Key` and lets the guard supply the player |
 | "Whenever a creature / land you control enters" (landfall) | `EventETB` | `enteredUnderYourControl(ev, source, g, false)` then `c.IsCreature()` / `c.IsLand()` (Impact Tremors, Tireless Provisioner) |
 | "Whenever you create or sacrifice a token" | `EventTokenCreated` + `EventSacrifice` on one ability | `ev.Actor == source.Controller`, and for the sacrifice half `IsToken(LookupCardForEffect(ev.CardID))` — the sacrifice event fires **before** the zone move, so the token is still findable (Mirkwood Bats) |
@@ -6123,6 +6125,52 @@ the passthrough with it**. One behaviour rides along: a set rule turns
 OFF the "the only legal answer is every candidate" shortcut, because
 with a rule it is the rule and not the count that decides which subsets
 are answers.
+
+**"You may sacrifice a creature. If you do, …"** (#3172, ADR 0018
+amendment 2026-10-13, third) is `maySacrificeOne(g, item, question,
+match, another, then)` in [may_sacrifice.go](../server/internal/cards/effects/may_sacrifice.go),
+called from the trigger's `Effect`. It asks as the ability RESOLVES, over
+what the controller controls then, with a floor of zero for the "may",
+and `then(ctx, sacrificed)` runs only for a permanent that really left
+(a CR 614 window that kept it, or a sacrifice nothing could pay, is "you
+did not"). Read the creature's power with `departedCreaturePower`, which
+is its last-known information. **Do not declare the choice as the
+trigger's `Targets`**: that settles it when the trigger goes on the stack,
+lets an opponent answer it, and makes a hexproof creature unpickable, all
+of which are caveats the printed card does not have.
+
+**"Choose up to N / any number of creatures you control, then sacrifice
+the rest"** (Archfiend of Depravity, Slaughter the Strong) is
+`keepCreaturesThenSacrificeTheRest` in
+[keep_creatures_sacrifice_rest.go](../server/internal/cards/effects/keep_creatures_sacrifice_rest.go):
+one `choose_cards` prompt per seat (APNAP) over that seat's own
+creatures, with `most` as the ceiling and `totalPowerAtMost(n)` as a set
+rule, then one simultaneous sacrifice of everything not kept. A seat that
+can keep its whole board is not asked.
+
+**"Any number / up to N counters" of whatever kinds** (Glissa Sunslayer,
+Resourceful Defense) is `chooseCounters` in
+[choose_counters.go](../server/internal/cards/effects/choose_counters.go):
+a `ChooseNumber` per kind of counter on the permanent, in sorted order,
+each bounded by what it has and by what is left of the ceiling, handing
+`then` a kind-to-count map. Give it a `counterGoal` so a bot knows which
+kinds it wants gone.
+
+**"Discard two cards unless you discard a <kind> card"** (Thirst for
+Knowledge, Thirst for Discovery) is `discardTwoUnlessOne` in
+[draw_then.go](../server/internal/cards/effects/draw_then.go): a registered
+draw-then continuation whose discard prompt has a floor of one and a set
+rule that accepts a single card only when it qualifies (Compulsive
+Research's shape).
+
+**A choice among cards in several graveyards** (Extract from Darkness) is
+one `ChooseCardsPrompt` with no `FromPlayer` and no `Zone`: the candidates
+are public, the view looks them up by id, and the effect that acts on the
+answer already tolerates a card that has gone.
+
+**An intervening "if"** (Thopter Spy Network, Emeria) is read where the
+trigger is declared and again at the top of the `Effect`; the second read
+is the one a response can change (CR 603.4).
 
 ### "Reveals their hand. You choose a … card from it" (ADR 0116, #2078)
 
@@ -8552,6 +8600,58 @@ Three things to know:
   [opening_hand_actions_test.go](../server/internal/cards/effects/opening_hand_actions_test.go),
   which stop before the first keep so the hands can be stocked.
 
+### Dash, freerunning, a flash surcharge, training, expend, encore and connive (#3172)
+
+Seven small mechanics, each a constructor or helper in `server/internal/cards/effects/`; the engine pieces behind the
+first, second and sixth are in the amendments of [ADR 0025](decisions/0025-alternative-costs.md) and
+[ADR 0045](decisions/0045-combat-restrictions.md) dated 2026-10-13.
+
+```go
+AlternativeCosts: []game.AlternativeCost{Dash("{1}{R}")},                   // Ragavan: haste, back to hand at the next end step
+AlternativeCosts: []game.AlternativeCost{Freerunning("{1}{B}", "Assassin")}, // Restart Sequence: Assassin or commander connected
+AlternativeCosts: []game.AlternativeCost{FlashForMore("{4}{U}{U}", "{2}")},  // Asinine Antics: printed cost + {2}, total spelled out
+Triggered: []game.TriggeredAbility{Training("Hopeful Initiate — training")}, // +1/+1 counter beside a bigger attacker
+Triggered: []game.TriggeredAbility{Targeting(WheneverYouExpend(8, "…", effect), spec)}, // Trailtracker Scout
+Activated: []ActivatedAbility{Encore("{3}{R}")},                            // Impulsive Pilferer: one bound token per opponent
+ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(ctx) // Lethal Scheme
+```
+
+Use the constructor, never a hand-built `game.AlternativeCost`: a hand-rolled `{1}{R}` offer is a discounted creature
+that keeps its haste and never goes home. `FlashForMore` takes the TOTAL (the printed cost plus the surcharge) because
+the offer replaces the mana cost; casting for the printed cost stays sorcery-speed. Convoke now records who tapped
+(`ctx.Paid().Convoked`), and expend reads a per-turn mana tally (`CastTally.ManaSpent`), so a free or waived cast
+counts as no mana. Encore binds each token to its opponent with `game.AttackPlayerIfAbleMod`.
+
+### Attacking statics, tokens that enter attacking or blocking, magecraft copies and damage by toughness (#3172)
+
+Five shapes that used to be caveats; the engine pieces are in the 2026-10-13 amendments of
+[ADR 0026](decisions/0026-delayed-triggers.md), [ADR 0043](decisions/0043-copy-effects.md) and
+[ADR 0045](decisions/0045-combat-restrictions.md).
+
+```go
+Static: []game.StaticAbility{AttackingCreaturesHave("Attacking creatures you control have double strike.", nil, "double strike")}
+CreateTokensAttackingYourChoice{Template: tmpl, N: 2, Tapped: true, Prefer: triggerAttackTarget(item), Label: "Hero of Bladehold"}
+g.CreateTokensBlockingForEffect(item.Controller, tmpl, 1, item.Trigger.Event.Target)              // Brimaz's blocking Cat
+DelayedOnEvent{On: []game.EventKind{game.EventAttack}, Condition: youAttackCondition, Body: body, Repeats: true, OncePerBatch: true}
+OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+    return instantOrSorceryCastOrCopiedByYou(ev, source, g)
+}, "label", effect)                                                                               // cast OR copy
+c.DamageByToughness = true                                                                        // in a layer 6 Apply: Ghalta
+```
+
+- **"Attacking creatures you control have X" is a static**, not an attack trigger: `AttackingCreaturesHave` gates on
+  `Card.AttackingTarget` and declares `DependsOnAttackingStatus`, so the layer cache is rebuilt as attackers are declared,
+  put onto the battlefield attacking, pulled out of combat, or combat ends. A trigger granting the keyword until end of turn
+  misses a token that enters attacking and keeps the keyword after combat. `match` narrows the creatures (Vampires, tokens).
+- **"Tapped and attacking" with no player named** is `CreateTokensAttackingYourChoice`, never `CreateTokensAttackingForEffect`
+  with a fixed defender. `triggerAttackTarget(item)` is what the attacker that fired the trigger attacked, for `Prefer`. A test
+  that makes such tokens uses `passAndSettleAttackSplit`, which answers each "how many attack whom" prompt with its goal.
+- **"Whenever you attack this turn"** is a repeating delayed trigger with `OncePerBatch`, not a trigger on the land or
+  creature that set it up: it outlives its source.
+- **Magecraft is cast or copy.** A cast-only trigger (Guttersnipe) keeps `instantOrSorceryCastByYou`.
+- **A caveat can be wrong.** Drana, Liberator of Malakir said her counters landed after regular damage; the first-strike step
+  has been a real step with a priority window since #717, and the existing test already proved the printed behaviour.
+
 ### Adding a `Spec` slot (#622)
 
 The engine reads the catalog through one precomputed `game.CardDef`
@@ -8569,3 +8669,4 @@ reading the `CardDef` and are not set by the catalog any more.
 [ADR 0010](decisions/0010-card-effect-catalog.md) captures every
 architectural decision and sandbox simplification the catalog was built
 around. Start there.
+

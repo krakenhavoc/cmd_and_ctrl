@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Ruthless Technomancer — Creature — Human Wizard {3}{B}, 2/4 (EDHREC
 // rank 2087):
@@ -40,55 +44,29 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // chosen (CR 602.2b, 601.2c) and again as the ability resolves
 // (CR 608.2b). A card in a graveyard has its printed power.
 //
-// One sandbox simplification, declared, weaker than printed: the
-// creature is chosen when the trigger goes on the stack, not on
-// resolution (Springbloom's caveat): an opponent who removes it in
-// response fizzles the trigger, where printed you would pick another.
-// A second Technomancer cannot be chosen — the "another" is by name,
-// the same read Noxious Gearhulk uses.
+// The sacrifice is chosen as the trigger RESOLVES (CR 608.2c), through
+// maySacrificeOne, not as its target: an opponent cannot answer the
+// choice, hexproof is no obstacle, and a creature removed in response
+// just leaves the others to pick from. The Treasure count is the
+// sacrificed creature's last-known power (CR 608.2h).
 func init() {
 	Register(Spec{
 		OracleID:     "4e58ad76-37c7-4531-b207-6890b39a2679",
 		Name:         "Ruthless Technomancer",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick the creature to sacrifice when the enter trigger goes on the stack rather than on resolution, so opponents can respond to the choice.",
-		},
-		Triggered: []game.TriggeredAbility{{
-			Watches:        []game.EventKind{game.EventETB},
-			AppliesTo:      b06SelfETB,
-			OptionalPrompt: &game.TriggerOptionalPrompt{Question: "Ruthless Technomancer — sacrifice another creature for Treasures equal to its power?"},
-			Targets:        Another(TargetCreature("another creature you control", YouControl())),
-			Key:            "Ruthless Technomancer — sacrifice a creature, Treasures equal to its power",
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
-					return nil
-				}
-				target := item.Targets[0].ID
-				if target == item.SourceCardID {
-					return nil
-				}
-				ctx := NewContext(g, item)
-				if !ctx.IsTargetLegal(item.Targets[0]) {
-					return nil
-				}
-				victim, ok := g.LookupCardForEffect(target)
-				if !ok {
-					return nil
-				}
-				power := victim.CurrentPower()
+		Completeness: CompletenessFull,
+		Triggered: []game.TriggeredAbility{
+			WhenThisEnters("Ruthless Technomancer — sacrifice another creature, Treasures equal to its power", func(g *game.Game, item *game.StackItem) error {
 				controller := item.Controller
-				return SacrificePermanent{
-					Target: target,
-					Then: func(ctx *Context, sacrificed bool) error {
-						if !sacrificed || power <= 0 {
+				return maySacrificeOne(g, item, "Ruthless Technomancer — sacrifice another creature for Treasures equal to its power?", Creature(), true,
+					func(ctx *Context, sacrificed uuid.UUID) error {
+						power := departedCreaturePower(ctx.Game, sacrificed)
+						if power <= 0 {
 							return nil
 						}
 						return CreateToken{Controller: controller, Template: TreasureToken(), N: power}.Apply(ctx)
-					},
-				}.Apply(ctx)
-			},
-		}},
+					})
+			}),
+		},
 		Activated: []ActivatedAbility{{
 			Label: "{2}{B}, Sacrifice X artifacts: Return target creature card with power X or less from your graveyard to the battlefield. X can't be 0.",
 			Cost:  Plus(ManaCost("{2}{B}"), SacrificeX("X artifacts", Artifact()), MinX(1)),

@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("The Echoverse Fulcrum — draw a card, then discard a card", func(g *game.Game, item *game.StackItem) error {
-				return b16DrawThenDiscard(g, item, 1, 1)
+				return b16DrawThenDiscard(g, item, 1)
 			}),
 		},
 		Activated: []ActivatedAbility{{

@@ -1762,6 +1762,13 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// above it. The mana side of the payment was already folded into
 	// the cost gate above; this is the board half.
 	g.payTapPermanentsCostLocked(playerID, params.TapIDs)
+	// #3172: convoke records WHO tapped, for "each creature that
+	// convoked this spell" (Lethal Scheme). Waterbend is not convoke.
+	if len(params.TapIDs) > 0 && TapPermanentsCostFor(CatalogKey(card)).Key == "convoke" {
+		if item := g.StackMeta[cardID]; item != nil {
+			item.Paid.Convoked = append([]uuid.UUID(nil), params.TapIDs...)
+		}
+	}
 	// ADR 0100 §1: delve's exiles, in the same window and for the same
 	// reason as escape's — with the spell already on the stack, so a
 	// "whenever a card leaves your graveyard" watcher triggers above
@@ -1843,6 +1850,15 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			break
 		}
 	}
+	// #3172: the mana this spell cost, for expend. The payment record is
+	// complete by now, and a waived payment (OnPaper) is unknown, which
+	// counts 0: weaker than printed, never stronger.
+	spent := 0
+	if item := g.StackMeta[cardID]; item != nil {
+		spent = item.Paid.Spent().Total()
+	}
+	tally.ManaSpent += spent
+	tally.ManaSpentLast = spent
 	g.SpellsCastThisTurn[playerID] = tally
 	// CR 722.3c / 601.2i (ADR 0090): "that permanent loses the prepared
 	// designation at the time the spell becomes cast" — here, with
@@ -9192,6 +9208,22 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
+// combatDamagePower is the amount of combat damage a combatant assigns
+// (CR 510.1a): its power, or its toughness when an effect says it assigns
+// damage equal to its toughness rather than its power and its toughness
+// is the greater (CR 510.1c, Ghalta the Immovable). Everything the damage
+// pass does with "the attacker's power" - trample, deathtouch, lethal
+// damage assignment, lifelink, commander damage - reads this number.
+func (c *Card) combatDamagePower() int {
+	p := c.CurrentPower()
+	if c.effective != nil && c.effective.DamageByToughness {
+		if t := c.CurrentToughness(); t > p {
+			return t
+		}
+	}
+	return p
+}
+
 // assignAndDealCombatDamageLocked assigns and applies damage for one
 // combat damage step. step is that step's Event.CombatStep value:
 // CombatStepFirstStrike selects the first-strike step, and anything
@@ -9269,7 +9301,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil {
-			power[c.InstanceID] = c.CurrentPower()
+			power[c.InstanceID] = c.combatDamagePower()
 		}
 	}
 

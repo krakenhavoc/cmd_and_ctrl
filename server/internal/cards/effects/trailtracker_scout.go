@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Trailtracker Scout — Creature — Raccoon Scout {1}{G}, 1/3 (EDHREC
 // rank 3396):
 //
@@ -14,24 +16,28 @@ package effects
 // identity — and summoning sickness applies, as the engine enforces
 // for a creature's tap ability.
 //
-// Sandbox simplification, declared (the Magda posture: one whole
-// ability omitted): the expend trigger is not implemented. "Expend
-// 8" is a running count of mana spent on spells within a turn, and
-// the engine keeps no such tally — the mana-spent event only fires
-// under strict-mode casts, so a permissive-mode cast paid on paper
-// would never count and the trigger could not be trusted to fire at
-// all. The Scout is a mana dork, which is what the card is played
-// for; weaker than printed, never stronger.
+// The expend trigger is WheneverYouExpend (expend.go), a per-turn tally
+// of mana spent on spells, with the "up to one target permanent card in
+// your graveyard" clause declared on the ability: no prompt when the
+// graveyard holds none (CR 603.3d), the target re-checked as the trigger
+// resolves (CR 608.2b).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "d38646dc-d1ea-473c-aaf1-df8ba327459f",
 		Name:         "Trailtracker Scout",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The expend trigger isn't implemented — spending your eighth mana in a turn doesn't return a permanent card from your graveyard."},
+		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",
 			Label:    "Add one mana of any color",
 		}},
+		Triggered: []game.TriggeredAbility{
+			Targeting(
+				WheneverYouExpend(8, "Trailtracker Scout — return up to one target permanent card from your graveyard to your hand",
+					returnFirstLegalGraveyardTargetToHand),
+				TargetCardInGraveyard("up to one target permanent card from your graveyard", YouOwn(), Permanent()).WithCount(0, 1)),
+		},
 	})
 }

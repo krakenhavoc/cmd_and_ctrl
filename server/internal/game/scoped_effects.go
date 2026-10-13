@@ -75,6 +75,13 @@ const (
 	// ModAddRestrictions is: not a characteristic, written where the
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
+	// ModAttackPlayerIfAble is "attacks <that player> this turn if able"
+	// (#3172, encore's token copies: "For each opponent, create a token
+	// copy that attacks that opponent this turn if able"). Player is the
+	// player it must attack. Layer 6 and appended, like the plain
+	// requirement; its own kind, because an older binary that read it as
+	// the plain requirement would let the token attack anyone.
+	ModAttackPlayerIfAble ModKind = "attackPlayerIfAble" // layer 6
 	// ModGoad is goad as a continuous effect from a resolved ability
 	// (#2733): "as long as this enchantment remains on the battlefield,
 	// that creature is also goaded" (Hot Pursuit). Player is the
@@ -814,6 +821,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #3172
+	ModAttackPlayerIfAble: {layer: Layer6Ability},
 	// #2733
 	ModGoad: {layer: Layer6Ability},
 	// #1597
@@ -1018,6 +1027,13 @@ func SetBaseToughnessMod(n int) Mod { return Mod{Kind: ModSetBaseToughness, Toug
 // the record's source, so a refusal names the card.
 func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
+}
+
+// AttackPlayerIfAbleMod is "attacks `player` this turn if able"
+// (#3172, ModAttackPlayerIfAble). Attributed to the record's source, so a
+// refusal names the card.
+func AttackPlayerIfAbleMod(player uuid.UUID) Mod {
+	return Mod{Kind: ModAttackPlayerIfAble, Player: player}
 }
 
 // GoadMod is goad from a resolved ability for as long as its duration
@@ -1783,6 +1799,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		otherThan := m.Player
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
 			r := AttackRequirement{OtherThan: otherThan}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModAttackPlayerIfAble:
+		must := m.Player
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackRequirement{MustAttack: must}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

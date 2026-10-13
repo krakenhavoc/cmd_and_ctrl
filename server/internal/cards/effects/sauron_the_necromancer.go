@@ -30,22 +30,17 @@ import (
 // same Sauron is on the battlefield as its controller's Ring-bearer; a
 // Sauron that left, even one that came back, does not save it (ruling).
 //
-// Caveat: CR 508.4 lets the token's controller choose which defending
-// player, planeswalker or battle it attacks. The engine has it join
-// whatever Sauron is attacking (Skyknight Vanguard's reading,
-// skyknightVanguardDefender), so at a table where every opponent is a
-// defending player (CR 802.2) the choice is narrower than printed.
+// CR 508.4 lets the token's controller choose which defending player,
+// planeswalker or battle it attacks, and CreateTokensAttackingYourChoice
+// asks (a bot sends it where Sauron went). No simplification.
 func init() {
 	sauronNecromancerExileBody = game.DelayedBody("sauron-the-necromancer/exile-token-unless-ring-bearer", sauronNecromancerExileToken)
 	attacks := WheneverThisAttacks("Sauron, the Necromancer — exile a creature card and make an attacking Wraith copy", sauronNecromancerRaise)
 	attacks.Targets = TargetCardInGraveyard("target creature card from your graveyard", YouOwn(), Creature())
 	Register(Spec{
-		OracleID:     "8dcd7e2b-75a9-476a-a0a0-798613e8dad6",
-		Name:         "Sauron, the Necromancer",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The Wraith token always attacks whatever Sauron is attacking; you can't send it at another opponent.",
-		},
+		OracleID:        "8dcd7e2b-75a9-476a-a0a0-798613e8dad6",
+		Name:            "Sauron, the Necromancer",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered:       []game.TriggeredAbility{attacks},
 	})
@@ -65,7 +60,7 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 		return nil
 	}
 	sauronWraithException(&tmpl)
-	tmpl.AttackingTarget = skyknightVanguardDefender(g, item.SourceCardID)
+	prefer := triggerAttackTarget(item)
 	sauron := game.ObjectRef{ID: item.SourceCardID, Epoch: -1}
 	if c, ok := g.LookupCardForEffect(item.SourceCardID); ok {
 		sauron.Epoch = c.ObjectEpoch
@@ -74,21 +69,25 @@ func sauronNecromancerRaise(g *game.Game, item *game.StackItem) error {
 		Target: ids[0],
 		Then: func(ctx *Context, _ bool) error {
 			item := ctx.Item
-			return ctx.Game.CreateTokensThenForEffect(game.TokenCreation{
+			return CreateTokensAttackingYourChoice{
 				Controller: item.Controller,
-				Source:     item.SourceCardID,
-				Groups:     []game.TokenGroup{{Template: tmpl, Count: 1}},
-			}, func(g *game.Game, created []uuid.UUID) error {
-				if len(created) == 0 {
-					return nil
-				}
-				return ScheduleDelayedTrigger{
-					Label:  "Sauron, the Necromancer — exile the Wraith unless Sauron is your Ring-bearer",
-					Cards:  created,
-					Body:   sauronNecromancerExileBody,
-					Params: game.EffectParams{Object: sauron},
-				}.Apply(NewContext(g, item))
-			})
+				Template:   tmpl,
+				N:          1,
+				Tapped:     true,
+				Prefer:     prefer,
+				Label:      "Sauron, the Necromancer",
+				Then: func(ctx *Context, created []uuid.UUID) error {
+					if len(created) == 0 {
+						return nil
+					}
+					return ScheduleDelayedTrigger{
+						Label:  "Sauron, the Necromancer — exile the Wraith unless Sauron is your Ring-bearer",
+						Cards:  created,
+						Body:   sauronNecromancerExileBody,
+						Params: game.EffectParams{Object: sauron},
+					}.Apply(ctx)
+				},
+			}.Apply(NewContext(ctx.Game, item))
 		},
 	}.Apply(ctx)
 }

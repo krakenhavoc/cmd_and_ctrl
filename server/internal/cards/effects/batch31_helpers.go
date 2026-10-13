@@ -240,7 +240,7 @@ func b31TapChosenOrUntapLandEffect(g *game.Game, item *game.StackItem) error {
 // b31BlossomingTortoiseLabel is the stack label both declarations
 // of Blossoming Tortoise's trigger share. The trigger's body is no
 // longer a batch 31 helper: once #767 removed its library clamp it
-// matched Teval's, so both use b25MillThreeThenReturnChosenLandTapped.
+// matched Teval's, so both use b25MillThreeThenReturnLandTapped.
 const b31BlossomingTortoiseLabel = "Blossoming Tortoise — mill three, then return a land card tapped"
 
 // b31LifeBecomes sets `player`'s life total to `total` the way CR

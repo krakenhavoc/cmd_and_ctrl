@@ -62,12 +62,6 @@ a player right now.
 //
 // Key is Finding.Key() — "<card name> / <mechanic>".
 var adoptableGaps = map[string]string{
-	"Starfall Invocation / gift": `ADR 0089 (#1267) landed gift and adopted it on
-		six cards. Starfall's promised branch returns "a creature card
-		put into your graveyard this way", which needs a resolution-time
-		pick among the cards THIS wipe moved; offering the promise
-		without it would give the opponent a card for nothing, so the
-		card stays unpromisable until that pick is written.`,
 	"Lier, Disciple of the Drowned / flashback": `A phrase collision, pinned
 		rather than dodged (ADR 0106 PR 2, #1806). Lier's granted
 		flashback works (a standing CastPermission, Underworld Breach's

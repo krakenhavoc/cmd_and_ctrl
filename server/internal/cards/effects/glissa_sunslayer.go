@@ -37,19 +37,18 @@ import (
 // First strike and deathtouch are printed keywords and come off the
 // imported card.
 //
-// Declared simplification, weaker than printed: the third bullet
-// removes three counters (or all of them, if fewer) rather than
-// asking how many and of which kind. "Up to three" is a count prompt
-// for an ability at resolution, the same seam Resourceful Defense's
-// "any number" waits on; removing the maximum is a legal answer to
-// the printed choice and never more than the player could have
-// chosen.
+// The third bullet asks how many counters to remove, up to three, and of
+// which kind, as it resolves (chooseCounters, CR 608.2c): one question per
+// kind of counter the permanent carries, each bounded by what is left of
+// the three. The bot's suggestion takes every counter off an opponent's
+// permanent but a -1/-1 counter, and only a -1/-1 counter off its own.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "8859a692-d107-4de2-9110-4681fc2761c7",
 		Name:         "Glissa Sunslayer",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The counter-removal mode always removes as many counters as it can — you can't choose how many or which kind."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			b64GlissaTrigger(),
 		},
@@ -77,7 +76,7 @@ func b64GlissaTrigger() game.TriggeredAbility {
 				if !ok {
 					return nil
 				}
-				return b64RemoveUpToCounters(ctx, t.ID, 3)
+				return b64ChooseAndRemoveCounters(ctx, t.ID, 3)
 			}),
 	)
 	return t
@@ -99,37 +98,33 @@ func b64HasAnyCounter() CardPredicate {
 	}
 }
 
-// b64RemoveUpToCounters removes up to n counters from a permanent,
-// kinds in a stable order so the same board always gives the same
-// answer. "Up to" is read as "as many as possible" — see the card
-// comment's declared simplification.
-func b64RemoveUpToCounters(ctx *Context, target uuid.UUID, n int) error {
-	c, ok := ctx.Game.LookupCardForEffect(target)
-	if !ok || n <= 0 {
-		return nil
-	}
-	kinds := make([]string, 0, len(c.Counters))
-	for kind := range c.Counters {
-		kinds = append(kinds, kind)
-	}
-	sort.Strings(kinds)
-	left := n
-	for _, kind := range kinds {
-		if left <= 0 {
-			break
-		}
-		have := c.Counters[kind]
-		if have <= 0 {
-			continue
-		}
-		take := have
-		if take > left {
-			take = left
-		}
-		if err := (AddCounter{Target: target, Kind: kind, N: -take}).Apply(ctx); err != nil {
-			return err
-		}
-		left -= take
-	}
-	return nil
+// b64ChooseAndRemoveCounters is "remove up to n counters from target
+// permanent": the controller chooses how many of each kind, then they are
+// removed through the ordinary counter primitive.
+func b64ChooseAndRemoveCounters(ctx *Context, target uuid.UUID, n int) error {
+	you := ctx.Controller()
+	return chooseCounters(ctx, target, n, "Glissa Sunslayer — remove up to three counters",
+		func(ctx *Context, kind string, most int) int {
+			mine := false
+			if c, ok := ctx.Game.LookupCardForEffect(target); ok {
+				mine = c.Controller == you
+			}
+			if (kind == "-1/-1") == mine {
+				return most
+			}
+			return 0
+		},
+		func(ctx *Context, picked map[string]int) error {
+			kinds := make([]string, 0, len(picked))
+			for kind := range picked {
+				kinds = append(kinds, kind)
+			}
+			sort.Strings(kinds)
+			for _, kind := range kinds {
+				if err := (AddCounter{Target: target, Kind: kind, N: -picked[kind]}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return nil
+		})
 }

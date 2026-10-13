@@ -21,22 +21,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a prevention or lifelink check sees; a Dinosaur that died to the
 // damage still deals it. Enrage payoffs fire off the same event.
 //
-// Sandbox simplification, declared, the Wrathful Red Dragon posture:
-// the engine emits one damage event per SOURCE, so a Dinosaur
-// damaged by two blockers at once fires twice — once per blocker's
-// damage, each with its own target — where the printed card fires
-// once for the total. The same damage is reflected either way; only
-// the split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the Dinosaur was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	Register(Spec{
 		OracleID:        "1ba92b64-d821-4c24-aed6-fc90d0c63c10",
 		Name:            "Wrathful Raptors",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"If two or more sources damage a Dinosaur at the same time, it reflects each source's damage separately instead of the total in one go."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			Key:     "Wrathful Raptors — the damaged Dinosaur deals that much damage to any non-Dinosaur target",
+			Watches:    []game.EventKind{game.EventDealDamage},
+			Key:        "Wrathful Raptors — the damaged Dinosaur deals that much damage to any non-Dinosaur target",
+			AtBatchEnd: ThatMuchDamage(),
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b24SubtypeYouControlDealtDamage(ev, source, g, "Dinosaur")
 			},

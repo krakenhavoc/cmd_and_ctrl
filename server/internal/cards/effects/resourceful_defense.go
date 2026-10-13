@@ -40,25 +40,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a no-op, and re-checks each slot against its own clause at
 // resolution (CR 608.2b).
 //
-// Sandbox simplifications, declared, both weaker than printed:
+// The activated ability asks "any number of counters" as it resolves
+// (chooseCounters, CR 608.2c): how many of each kind the first target
+// carries, then moves exactly those. A token that leaves the battlefield
+// ceases to exist, but the controller and counters it had are the engine's
+// last-known information (CR 603.10), so the trigger fires for a token
+// too.
 //
-//   - The activated ability moves ALL the counters from the first
-//     target to the second. "Any number" needs a count prompt for an
-//     ability at resolution, which does not exist; moving everything
-//     is a legal answer to the printed choice, and never more than
-//     the player could have chosen.
-//   - A token that leaves the battlefield ceases to exist, so the
-//     trigger cannot read whose it was and does not fire for it.
-//     A card that left is read where it sits now.
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "83e78565-e61f-4bbc-b834-f47941f7e3ec",
 		Name:         "Resourceful Defense",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The activated ability moves every counter from the first target to the second — you can't choose how many.",
-			"The trigger doesn't fire for a token that leaves the battlefield.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventLTB},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
@@ -85,7 +79,7 @@ func init() {
 				if !ok {
 					return nil
 				}
-				return b14MoveAllCounters(ctx, from.ID, to.ID)
+				return b14MoveChosenCounters(ctx, from.ID, to.ID)
 			},
 		}},
 	})

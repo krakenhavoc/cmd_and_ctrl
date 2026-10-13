@@ -250,9 +250,9 @@ func (s *SQLStore) SetLastDeck(ctx context.Context, id uuid.UUID, d LastDeck) er
 // returned). An error means a token is stored but cannot be opened —
 // most likely CMDCTRL_IDENTITY_KEY changed since it was sealed.
 //
-// Nothing calls this yet: silent profile refresh (decision 5) is its
-// first user. It exists now so the round trip is tested against the
-// real column rather than only against Sealer.
+// The sign-up gate's re-check at renewal (ADR 0156 §1 item 5) is its
+// caller: it trades this token for a new access token, and stores the
+// rotated one with SetRefreshToken.
 func (s *SQLStore) RefreshToken(ctx context.Context, subject string) (token string, ok bool, err error) {
 	var sealed []byte
 	err = s.db.QueryRowContext(ctx,

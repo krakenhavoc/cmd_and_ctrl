@@ -78,7 +78,8 @@ var Inventory = join(
 	cols("users", Kept, "the tombstone keeps its id and creation time so other tables stay consistent",
 		"id", "created_at", "deleted_at"),
 	cols("users", Anonymised, "replaced by \"Deleted player\" / NULL / now",
-		"display_name", "avatar_url", "last_seen_at", "last_deck", "playmat_id", "playmat_wash", "admin_mode_at"),
+		"display_name", "avatar_url", "last_seen_at", "last_deck", "playmat_id", "playmat_wash", "admin_mode_at",
+		"access_checked_at", "access_result"),
 	cols("users", Kept, "the revocation watermark must outlive the deletion, or a token issued before it works again after a restart",
 		"sessions_invalid_before"),
 

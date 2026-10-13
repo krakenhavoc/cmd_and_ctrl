@@ -76,8 +76,8 @@
 //     not blocking. Land Tax — the land-count check is made as the
 //     trigger goes on the stack. Both are minor against a weenie deck,
 //     but the bar here is no caveats at all.
-//   - Cultivate and Tireless Provisioner — on the minor-caveats list
-//     for Deep Roots, so not repeated for Stampede.
+//   - Cultivate — on the minor-caveats list for Deep Roots, so not
+//     repeated for Stampede.
 //   - Raise the Alarm and Increasing Devotion — full, but they price a
 //     printed token count and declare no Purpose (ADR 0126 §6,
 //     purpose_test.go), so the bot would price them as blanks.
@@ -103,7 +103,6 @@
 //     for their mana.
 //   - Cultivate — the hand-or-battlefield choice is lost only with one
 //     basic left in the library.
-//   - Tireless Provisioner — landfall always makes the Treasure.
 //
 // Before #2436 the decks also carried cards nobody had graded, and
 // cards like Victimize whose simplification made them STRONGER than

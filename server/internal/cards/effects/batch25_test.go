@@ -561,8 +561,8 @@ func TestB25BladeHistorianGivesAttackersDoubleStrike(t *testing.T) {
 	if hasAbility(effectiveAbilities(t, g, theirs), "double strike") {
 		t.Error("an opponent's attacker is not yours")
 	}
-	if spec, _ := Lookup(b25BladeHistorianOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the attack-declaration gap is declared")
+	if spec, _ := Lookup(b25BladeHistorianOracle); spec.Completeness != CompletenessFull {
+		t.Error("Blade Historian is a layer 6 static now: nothing is left to declare")
 	}
 }
 
@@ -663,12 +663,12 @@ func TestB25TevalMillsReturnsALandAndMakesZombiesWhenCardsLeave(t *testing.T) {
 	library := me.Library.Size()
 	grave := me.Graveyard.Size()
 	declareAttack(t, g, opp.ID, teval)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, forest) || p.PickTargetMin != 0 {
-		t.Error("up to one land card in your graveyard")
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, forest) || p.ChooseMin != 0 || p.ChooseMax != 1 {
+		t.Fatal("you may return a land card: a floor of zero, asked after the mill")
 	}
-	pickCard(t, g, me.ID, forest)
+	answerChooseCards(t, g, me.ID, forest)
 	passPriorityAroundTable(t, g)
 	if me.Library.Size() != library-3 {
 		t.Errorf("mill three: library %d → %d", library, me.Library.Size())
@@ -696,15 +696,36 @@ func TestB25TevalMillsReturnsALandAndMakesZombiesWhenCardsLeave(t *testing.T) {
 	advanceToMainOf(t, g, 0)
 	library = me.Library.Size()
 	declareAttack(t, g, opp.ID, teval)
-	if latestPickTarget(g, me.ID) != nil {
+	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
 		t.Error("nothing to return: no prompt")
 	}
-	passPriorityAroundTable(t, g)
 	if me.Library.Size() != library-3 {
 		t.Error("the mill does not depend on a land being in the graveyard")
 	}
-	if spec, _ := Lookup(b25TevalOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the pick-before-mill gap is declared")
+	if spec, _ := Lookup(b25TevalOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the land is chosen after the mill: nothing is left to declare")
+	}
+}
+
+// The land is chosen after the mill, so one the trigger itself milled
+// is a legal pick, and "you may" lets the player take none.
+func TestB25TevalCanReturnALandItJustMilled(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	teval := b21Push(g, me.ID, "Teval, the Balanced Scale", "Legendary Creature — Spirit Dragon", b25TevalOracle, 4, 4, "B", "G", "U")
+	milled := b10LibraryTop(me, "Milled Swamp", "Basic Land — Swamp", "", 0, 0)
+	b10LibraryTop(me, "Filler A", "Instant", "{R}", 0, 0)
+	b10LibraryTop(me, "Filler B", "Instant", "{R}", 0, 0)
+	declareAttack(t, g, opp.ID, teval)
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, milled) {
+		t.Fatal("a land the trigger milled is offered")
+	}
+	answerChooseCards(t, g, me.ID, milled)
+	if !g.Battlefield.Contains(milled) || !b25Tapped(t, g, milled) {
+		t.Error("the milled land returns tapped")
 	}
 }
 

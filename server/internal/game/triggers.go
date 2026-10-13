@@ -826,7 +826,7 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	// settle pass asks again with the final totals and comes back here
 	// with pass.settled set.
 	if t.AtBatchEnd != nil && !pass.settled && origin == triggerOfPermanent && t.Key != "" {
-		g.stageBatchEndTriggerLocked(pass.ev, source.InstanceID, t.Key)
+		g.stageBatchEndTriggerLocked(pass.ev, source.InstanceID, t.Key, t.AtBatchEnd.group(pass.ev))
 		return
 	}
 	if g.triggerSuppressedLocked(pass, source, lki, &t, origin) {

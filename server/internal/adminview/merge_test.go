@@ -53,6 +53,14 @@ func TestMergeAccountServesItsSections(t *testing.T) {
 		got.SignIn.LastSignInAt != at(time.Hour).UnixMilli() || got.SignIn.DiscordLinkedAt == 0 || got.SignIn.SessionsInvalidBefore != 0 {
 		t.Errorf("account / sign-in = %+v / %+v", got.Account, got.SignIn)
 	}
+	// Never checked by the sign-up gate (ADR 0156 §1 item 7).
+	if got.SignIn.AccessResult != AccessUnchecked || got.SignIn.AccessCheckedAt != 0 {
+		t.Errorf("unchecked account: access %q at %d", got.SignIn.AccessResult, got.SignIn.AccessCheckedAt)
+	}
+	rows.AccessCheckedAt, rows.AccessResult = at(2*time.Hour), AccessNotMember
+	if c := MergeAccount(rows, nil, Overlay{}, t0).SignIn; c.AccessResult != AccessNotMember || c.AccessCheckedAt != at(2*time.Hour).UnixMilli() {
+		t.Errorf("checked account: access %q at %d", c.AccessResult, c.AccessCheckedAt)
+	}
 	if len(got.Playmats) != 2 || got.Playmats[0].URL != "/playmats/abc" || got.Playmats[0].Active ||
 		got.Playmats[1].Slot != 3 || !got.Playmats[1].Active {
 		t.Errorf("Playmats = %+v", got.Playmats)

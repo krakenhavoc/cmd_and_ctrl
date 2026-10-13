@@ -156,7 +156,7 @@ func TestDorotheasRetributionMakesAnAttackingSpiritForOneCombat(t *testing.T) {
 
 	before := opp.Life
 	declareAttack(t, g, opp.ID, bear)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	spirits := battlefieldIDsNamed(g, "Spirit")
 	if len(spirits) != 1 {
 		t.Fatalf("%d Spirit tokens, want 1", len(spirits))

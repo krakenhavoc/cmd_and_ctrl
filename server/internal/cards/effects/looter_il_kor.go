@@ -19,7 +19,7 @@ func init() {
 				p := g.PlayerByIDForEffect(ev.Target)
 				return p != nil && p.ID != source.Controller
 			}, "Looter il-Kor — draw, then discard", func(g *game.Game, item *game.StackItem) error {
-				return b16DrawThenDiscard(g, item, 1, 1)
+				return b16DrawThenDiscard(g, item, 1)
 			}),
 		},
 	})

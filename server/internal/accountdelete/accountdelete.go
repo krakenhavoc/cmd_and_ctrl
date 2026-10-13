@@ -294,6 +294,7 @@ func (s *SQLStore) Delete(ctx context.Context, id uuid.UUID) (Result, error) {
 	if err := exec(nil,
 		`UPDATE users SET display_name = ?, avatar_url = NULL, last_deck = NULL,
 		   playmat_id = NULL, playmat_wash = NULL, admin_mode_at = 0,
+		   access_checked_at = NULL, access_result = NULL,
 		   last_seen_at = ?, sessions_invalid_before = MAX(sessions_invalid_before, ?),
 		   deleted_at = ?
 		 WHERE id = ?`,
