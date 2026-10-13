@@ -28,15 +28,7 @@ func init() {
 				c, ok := enteredUnderYourControl(ev, source, g, true)
 				return ok && c.HasSubtype(subtype)
 			},
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, label)
-				epoch := -1
-				if c, ok := g.LookupCardForEffect(ev.CardID); ok {
-					epoch = c.ObjectEpoch
-				}
-				item.Params.Object = game.ObjectRef{ID: ev.CardID, Epoch: epoch}
-				return item
-			},
+			Build:  eventCardTriggerItem(label),
 			Effect: effect,
 		}
 	}

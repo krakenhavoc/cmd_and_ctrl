@@ -5484,6 +5484,8 @@ turnTally.damageDealers[].combat	bool
 turnTally.damageDealers[].epoch	number:int
 turnTally.damageDealers[].source	custom(uuid.UUID)
 turnTally.damageDealers[].victim	custom(uuid.UUID)
+turnTally.diedPowerBySubtype	map:string
+turnTally.diedPowerBySubtype{}	number:int
 turnTally.entered	map:array
 turnTally.enteredCardTypes	map:string
 turnTally.enteredCardTypes{}	number:int

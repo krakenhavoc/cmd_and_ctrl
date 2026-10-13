@@ -198,3 +198,9 @@ option option-pick/villainous-great-intelligences-plan
 option option-pick/villainous-sycorax-commander
 option option-pick/villainous-the-dalek-emperor
 option option-pick/villainous-this-is-how-it-ends
+option option-pick/villainous-ensnared-by-the-mara
+option option-pick/villainous-genesis-of-the-daleks
+option option-pick/villainous-hunted-by-the-family
+option option-pick/villainous-midnight-crusader-shuttle
+option option-pick/villainous-missy
+option option-pick/villainous-the-master-gallifreys-end

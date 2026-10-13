@@ -199,6 +199,22 @@ type TurnTally struct {
 	// condition silently stopped being true for the commonest case
 	// the card was printed for.
 	SacrificedSubtypes map[string]int `json:"sacrificedSubtypes,omitempty"`
+	// DiedPowerBySubtype is the table-wide total POWER of the creatures
+	// that died this turn (went from the battlefield to a graveyard),
+	// per creature type they had as they died, keyed by the lower-cased
+	// subtype; a creature with every creature type is counted once under
+	// enteredAllCreatureTypes (#3143, Genesis of the Daleks' "the total
+	// power of Daleks that died this turn"). Read through
+	// Game.DiedPowerWithSubtypeThisTurn.
+	//
+	// Power and types are the permanent as it last existed on the
+	// battlefield (CR 608.2h, CR 603.10a): the exit's departure record
+	// carries the power with counters and layers applied, the event
+	// carries the post-layer subtypes. A tally rather than a graveyard
+	// walk because a token that died is gone from the graveyard by the
+	// time anything asks (CR 704.5d), and a card there has none of the
+	// power or types it died with. Additive within the current schema.
+	DiedPowerBySubtype map[string]int `json:"diedPowerBySubtype,omitempty"`
 	// CombatDamagedPlayers records which players were dealt combat
 	// damage this turn and by WHAT, keyed by combatDamageTallyKey:
 	// one cell per (the dealing creature's controller, an identity it
@@ -969,6 +985,72 @@ func subtypeTallyCount(m map[string]int, playerID uuid.UUID, subtype string) int
 	return n
 }
 
+// DiedPowerWithSubtypeThisTurn is the total power of the creatures with
+// creature type `subtype` that died this turn, whoever controlled them
+// — Genesis of the Daleks' "the total power of Daleks that died this
+// turn". A creature with every creature type (a changeling) counts for
+// any creature type. Each creature's power is the one it last had on
+// the battlefield, +1/+1 counters and layers included, so a token that
+// has already ceased to exist still counts. The total is floored at
+// zero: "loses life equal to" a negative number loses none.
+//
+// Caller must hold g.mu.
+func (g *Game) DiedPowerWithSubtypeThisTurn(subtype string) int {
+	if subtype == "" {
+		return 0
+	}
+	n := g.TurnTally.DiedPowerBySubtype[strings.ToLower(subtype)]
+	if IsCreatureType(subtype) {
+		n += g.TurnTally.DiedPowerBySubtype[enteredAllCreatureTypes]
+	}
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// recordDiedPowerLocked adds the creature an EventLTB to the graveyard
+// names to TurnTally.DiedPowerBySubtype, once per creature type it
+// had, with the power it last had on the battlefield. The caller has
+// already decided it was a creature.
+//
+// The departure record is the normal source of the power. An exit that
+// left none (a hand-built fixture moving a card by hand) falls back to
+// the CR 603.10 snapshot's power, the same number whenever no counter
+// is involved, and the subtypes come from the event, or from that
+// snapshot for an event that carries none.
+//
+// Caller must hold g.mu.
+func (g *Game) recordDiedPowerLocked(ev Event) {
+	var subtypes []string
+	all := false
+	power := 0
+	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
+		subtypes, all, power = lki.Subtypes, lki.AllCreatureTypes, lki.Power
+	}
+	if ev.LastKnownTypes != nil {
+		subtypes, all = ev.LastKnownSubtypes, ev.LastKnownAllCreatureTypes
+	}
+	if info, ok := g.LastKnownPermanentForEffect(ev.CardID); ok {
+		power = info.Power
+	}
+	bump := func(key string) {
+		if g.TurnTally.DiedPowerBySubtype == nil {
+			g.TurnTally.DiedPowerBySubtype = map[string]int{}
+		}
+		g.TurnTally.DiedPowerBySubtype[key] += power
+	}
+	for _, s := range subtypes {
+		if all && IsCreatureType(s) {
+			continue
+		}
+		bump(strings.ToLower(s))
+	}
+	if all {
+		bump(enteredAllCreatureTypes)
+	}
+}
+
 // EnteredWithCardTypeThisTurn reports how many permanents entered the
 // battlefield under playerID's control this turn having card type
 // `cardType` (any case) as they entered — EnteredWithSubtypeThisTurn's
@@ -1162,6 +1244,7 @@ func cloneTurnTally(t TurnTally) TurnTally {
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
+	out.DiedPowerBySubtype = copyStringIntMap(t.DiedPowerBySubtype)
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
 	if len(t.DamageDealers) > 0 {
 		out.DamageDealers = append([]DamageDealtRecord(nil), t.DamageDealers...)
@@ -1396,6 +1479,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			return
 		}
 		g.TurnTally.CreaturesDied++
+		g.recordDiedPowerLocked(ev)
 		// #1682 / CR 603.10a: "died under your control" is the
 		// controller the permanent had as it left, which the exit
 		// stamped on the event — not the graveyard card's field, which
