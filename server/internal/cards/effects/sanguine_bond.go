@@ -29,24 +29,8 @@ func init() {
 		OracleID:     "73089a39-a2f6-4aa2-a058-e6551475153d",
 		Name:         "Sanguine Bond",
 		Completeness: CompletenessFull,
-		Triggered: []game.TriggeredAbility{{
-			Watches: []game.EventKind{game.EventChangeLife},
-			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-				return ev.Target == source.Controller && ev.Amount > 0
-			},
-			Targets: TargetPlayer("target opponent", Opponent()),
-			Key:     "Sanguine Bond — target opponent loses that much life",
-			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
-				item := game.NewTriggeredItem(source, "Sanguine Bond — target opponent loses that much life")
-				item.Params.Amount = ev.Amount
-				return item
-			},
-			Effect: func(g *game.Game, item *game.StackItem) error {
-				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetPlayer {
-					return nil
-				}
-				return g.ChangePlayerLifeForEffect(item.SourceCardID, item.Targets[0].ID, -item.Params.Amount)
-			},
-		}},
+		Triggered: []game.TriggeredAbility{
+			WheneverYouGainLifeTargetOpponentLosesThatMuch("Sanguine Bond — target opponent loses that much life"),
+		},
 	})
 }

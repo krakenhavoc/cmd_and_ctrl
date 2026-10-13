@@ -45,6 +45,9 @@ func init() {
 		// Roadmap batch 25 (#387): Land — Island Mountain, the same
 		// two-basics clause.
 		{"f808b510-907a-4c3c-aea1-efb825c8e13e", "Scorched Geyser", "U", "R"},
+		// Mass Casualty deck request (#3245): Land — Plains Swamp, the
+		// same two-basics clause.
+		{"6216635f-8e6e-40a3-9659-ef6352ab92ce", "Eclipsed Steppe", "W", "B"},
 	} {
 		Register(Spec{
 			OracleID:      land.oracleID,
