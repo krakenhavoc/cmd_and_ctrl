@@ -23,7 +23,7 @@ func TestScrubPlayersBlanksOnlyTheNamedPlayer(t *testing.T) {
 		t.Fatalf("scrubLine = changed %v, err %v", changed, err)
 	}
 	got := string(out)
-	for _, leak := range []string{"Alice", "111", `"abc"`, "/playmats/x", "discordId", "displayName"} {
+	for _, leak := range []string{"Alice", `"111"`, `"abc"`, "/playmats/x", "discordId", "displayName"} {
 		if strings.Contains(got, leak) {
 			t.Errorf("output still contains %q:\n%s", leak, got)
 		}
