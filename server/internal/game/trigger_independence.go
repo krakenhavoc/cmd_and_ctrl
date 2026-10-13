@@ -1368,7 +1368,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	"CostModifiers": defFieldInert, "SelfCostModifiers": defFieldInert,
 	"ExhaustPermissions": defFieldInert, "BoastLimits": defFieldInert,
 	"AttackTaxes": defFieldInert, "BlockRules": defFieldInert, "AttackLimits": defFieldInert,
-	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert,
+	"ExertOnAttack": defFieldInert, "CastableZones": defFieldInert, "CastableZonesIf": defFieldInert,
 	"SpecialActions": defFieldInert, "SpecialActionGrants": defFieldInert,
 	"UntapStep": defFieldInert, "UntapStepRestrictions": defFieldInert,
 	"CounterRemovalLocks": defFieldInert, "UntapCaps": defFieldInert,

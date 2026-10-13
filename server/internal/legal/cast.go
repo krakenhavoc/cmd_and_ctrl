@@ -240,7 +240,7 @@ func (e *enumerator) castMovesFromZone(c game.Card, kind game.ZoneKind, from str
 		// until #1171 the view asked it of face 0 alone, so a card
 		// this loop offered a bot reached the frame with no announce
 		// stamps at all.
-		if perm == nil && !(mine && game.CardCastableFromAnyFace(c, kind)) {
+		if perm == nil && !(mine && g.CardCastableFromAnyFaceLocked(c, kind)) {
 			return
 		}
 	}

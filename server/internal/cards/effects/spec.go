@@ -839,6 +839,29 @@ type Spec struct {
 	// instance instead, through game.CastPermission.
 	CastableZones []game.ZoneKind
 
+	// CastableZonesIf is CastableZones for a zone the card opens only
+	// WHILE A CONDITION HOLDS — Lightwheel Enhancements' "Max speed —
+	// You may cast this card from your graveyard". Use it, not
+	// CastableZones plus a CastCondition, when the clause is the
+	// card's permission rather than a restriction on the spell: a
+	// CastCondition refuses every cast out of the zone, so a
+	// Snapcaster-granted flashback would be refused below max speed,
+	// which the printed card never does.
+	//
+	//	CastableZonesIf: []game.ConditionalCastZone{
+	//		MaxSpeedCastableFrom(game.ZoneGraveyard),
+	//	},
+	//
+	// The condition is asked of the card's owner and must be pure
+	// (reads the game it is handed, captures nothing). The engine, the
+	// view, the legal-move enumerator and the bot all read it through
+	// one predicate (game.Game.CardCastableFromAnyFaceLocked), so they
+	// cannot disagree. A zone-bound AlternativeCost may name a zone
+	// listed here or in CastableZones. Only the graveyard is accepted:
+	// hand and command are the format's, exile and the library are
+	// per-instance permissions.
+	CastableZonesIf []game.ConditionalCastZone
+
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers from its owner's hand — foretell (CR 702.143) and
 	// suspend (CR 702.62). A special action does NOT use the stack
