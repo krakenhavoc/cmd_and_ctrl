@@ -1304,10 +1304,11 @@
          controller's (CR 709.5e). -->
     <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
   {/if}
-  {#if $boardDamageAssign && !!onClick && readyZone === "battlefield" && !memberIDs}
+  {#if $boardDamageAssign && !!onClick && readyZone === "battlefield"}
     <!-- #2956: combat damage ticked up and down on the blockers
-         themselves, and the running total on the attacker. -->
-    <DamageStepper cardID={card.instance_id} name={displayName(card)} />
+         themselves, and the running total on the attacker. #2958: a
+         token group's card carries one stepper for all its members. -->
+    <DamageStepper cardID={card.instance_id} name={displayName(card)} {memberIDs} />
   {/if}
   {#if manaMenuOpen && hasMenu}
     <div class="mana-menu-anchor" use:anchoredMenu>

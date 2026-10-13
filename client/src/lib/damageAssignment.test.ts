@@ -9,10 +9,12 @@ import {
   initialShares,
   lethalOf,
   stepBlocker,
+  stepGroup,
   stepTrample,
   toAnswer,
   trampleShort,
 } from "./damageAssignment";
+import type { DamageShares } from "./damageAssignment";
 import type { DamageAssignmentView, PendingChoiceView } from "./protocol";
 
 // damageAssignment.test.ts — #2956, ADR 0147: the prompt opens on the
@@ -233,5 +235,62 @@ describe("auto-assign", () => {
     expect(text).toBe(
       "Vivi Ornitier: 4 to Solphim, 3 to Professional Face-Breaker, 2 to Corsair Captain, 35 to Bob (trample)",
     );
+  });
+});
+
+// #2958: a stepper on a token group's card. Three 2-toughness Soldier
+// tokens block a 7-power attacker with no trample.
+describe("stepGroup (a token group's stepper)", () => {
+  const ids = ["t1", "t2", "t3"];
+  const lethal = { t1: 2, t2: 2, t3: 2 };
+  const zero: DamageShares = { amounts: { t1: 0, t2: 0, t3: 0 }, trample: 0 };
+
+  it("spreads lethal to each token in turn, then the rest on the last", () => {
+    let s = zero;
+    const seen: number[][] = [];
+    for (let i = 0; i < 5; i++) {
+      s = stepGroup(s, ids, 1, 7, lethal);
+      seen.push(ids.map((id) => s.amounts[id]));
+    }
+    expect(seen).toEqual([
+      [1, 0, 0],
+      [2, 0, 0],
+      [2, 1, 0],
+      [2, 2, 0],
+      [2, 2, 1],
+    ]);
+    // The sixth makes the last token lethal; the seventh piles onto it.
+    s = stepGroup(s, ids, 1, 7, lethal);
+    s = stepGroup(s, ids, 1, 7, lethal);
+    expect(s.amounts).toEqual({ t1: 2, t2: 2, t3: 3 });
+  });
+
+  it("gives back from the last token with damage, undoing the + order", () => {
+    let s: DamageShares = { amounts: { t1: 2, t2: 2, t3: 3 }, trample: 0 };
+    for (const want of [
+      [2, 2, 2],
+      [2, 2, 1],
+      [2, 2, 0],
+      [2, 1, 0],
+    ]) {
+      s = stepGroup(s, ids, -1, 7, lethal);
+      expect(ids.map((id) => s.amounts[id])).toEqual(want);
+    }
+  });
+
+  it("is stepBlocker's rules: no change at the power cap, trample feeds it", () => {
+    const full = { amounts: { t1: 2, t2: 2, t3: 1 }, trample: 0 };
+    expect(stepGroup(full, ids, 1, 5, lethal)).toBe(full);
+    expect(stepGroup(zero, ids, -1, 5, lethal)).toBe(zero);
+    const over = { amounts: { t1: 2, t2: 2, t3: 0 }, trample: 3 };
+    const next = stepGroup(over, ids, 1, 7, lethal);
+    expect(next).toEqual({ amounts: { t1: 2, t2: 2, t3: 1 }, trample: 2 });
+    // Exactly what the lone-blocker stepper does for that member.
+    expect(next).toEqual(stepBlocker(over, "t3", 1, 7));
+  });
+
+  it("only counts members that are in the assignment", () => {
+    expect(stepGroup(zero, ["x", "y"], 1, 5, lethal)).toBe(zero);
+    expect(stepGroup(zero, ["x", "t2"], 1, 5, lethal).amounts.t2).toBe(1);
   });
 });

@@ -259,3 +259,110 @@ describe("auto-assign combat damage (on by default)", () => {
     expect(numbers(sheetPanel()!)).toEqual([0, 3, 2, 0]);
   });
 });
+
+// #2958: a blocker inside a token group is stepped from the group's
+// card. Two Soldier tokens (lethal 1 each) and a Captain (lethal 2)
+// block a 5-power attacker with no trample.
+describe("the stepper on a token group's card", () => {
+  const groupFrame: DamageAssignmentView = {
+    attacker_card_id: "vivi",
+    blocker_card_ids: ["s1", "s2", "captain"],
+    attacker_power: 5,
+    allow_trample: false,
+    lethal: [1, 1, 2],
+    covers_lethal: false,
+    suggested: {
+      assignments: [
+        { blocker_id: "s1", amount: 1 },
+        { blocker_id: "s2", amount: 0 },
+        { blocker_id: "captain", amount: 2 },
+      ],
+    },
+  };
+  const groupView = () =>
+    dockTestView({
+      battlefield: {
+        kind: "battlefield",
+        count: 4,
+        cards: [
+          card("vivi", "Vivi Ornitier", { attacking_target: "opp" }),
+          card("s1", "Soldier", { owner: "opp", controller: "opp" }),
+          card("s2", "Soldier", { owner: "opp", controller: "opp" }),
+          card("captain", "Corsair Captain", { owner: "opp", controller: "opp" }),
+        ],
+      },
+      pending_choices: [
+        {
+          id: "c1",
+          kind: "damage_assignment",
+          chooser: "me",
+          from_player: "me",
+          count: 3,
+          damage_assignment: groupFrame,
+        },
+      ],
+    } as unknown as Partial<GameView>);
+
+  beforeEach(() => {
+    settings.set({
+      ...defaultSettings(),
+      gameplay: { ...defaultSettings().gameplay, autoAssignCombatDamage: false },
+    });
+  });
+
+  it("steps lethal-first across the tokens and the sheet follows", () => {
+    mountSheet(groupView());
+    const sheet = sheetPanel()!;
+    expect(numbers(sheet)).toEqual([1, 0, 2]);
+    const g = render(DamageStepper as never, {
+      cardID: "s1",
+      name: "Soldier",
+      memberIDs: ["s1", "s2"],
+    });
+    const lbl = "Soldier (group of 2)";
+    const add = () =>
+      g.container.querySelector<HTMLButtonElement>(`button[aria-label="${L.addDamage(lbl)}"]`)!;
+    const remove = () =>
+      g.container.querySelector<HTMLButtonElement>(`button[aria-label="${L.removeDamage(lbl)}"]`)!;
+    // One stepper for the group: 1 of 2 so far, not yet lethal for both.
+    expect(g.container.querySelectorAll("[data-testid='damage-stepper']")).toHaveLength(1);
+    expect(g.container.querySelector(".amount strong")?.textContent).toBe("1");
+    expect(g.container.textContent).toContain("/2");
+    expect(g.container.textContent).not.toContain("✓");
+
+    // + goes to the second token (the first is lethal), the sheet's
+    // second row moves, and the group is now lethal for every member.
+    click(add());
+    flushSync();
+    expect(numbers(sheet)).toEqual([1, 1, 2]);
+    expect(get(boardDamageAssign)?.shares.amounts).toEqual({ s1: 1, s2: 1, captain: 2 });
+    expect(g.container.textContent).toContain("✓");
+
+    // 4 of 5 assigned, so + still works and piles onto the last token.
+    click(add());
+    flushSync();
+    expect(numbers(sheet)).toEqual([1, 2, 2]);
+    expect(add().disabled).toBe(true);
+
+    // − gives back from the last token, the sheet agrees.
+    click(remove());
+    click(remove());
+    flushSync();
+    expect(numbers(sheet)).toEqual([1, 0, 2]);
+    expect(sheet.querySelector(".prompt-count")?.textContent).toContain("3 / 5 assigned");
+  });
+
+  it("the sheet's own numbers drive the group's stepper too", () => {
+    mountSheet(groupView());
+    const g = render(DamageStepper as never, {
+      cardID: "s1",
+      name: "Soldier",
+      memberIDs: ["s1", "s2"],
+    });
+    boardDamageAssign.update((s) =>
+      s ? { ...s, shares: { amounts: { s1: 0, s2: 0, captain: 2 }, trample: 0 } } : s,
+    );
+    flushSync();
+    expect(g.container.querySelector(".amount strong")?.textContent).toBe("0");
+  });
+});
