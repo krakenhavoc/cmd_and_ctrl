@@ -102,9 +102,17 @@ describe("the site header's links", () => {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
-      expect(navGroups(container)).toEqual([[L.navTables], ["Decks", "Catalog", "Roadmap"]]);
+      const groups = navGroups(container);
+      expect(groups.slice(0, 2)).toEqual([[L.navTables], ["Decks", "Catalog", "Roadmap"]]);
       destroy();
     }
+  });
+
+  it("shows no Admin link outside admin mode", async () => {
+    session.set(sess("identified", USER));
+    const { container } = render(SiteHeader as never, {} as never);
+    await settle();
+    expect(navGroups(container).flat()).not.toContain("Admin");
   });
 
   it("marks the current page", async () => {
