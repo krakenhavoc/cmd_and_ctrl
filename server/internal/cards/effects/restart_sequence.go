@@ -15,16 +15,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // value cap, straight to the battlefield — which is what makes it a
 // Commander card rather than a limited one.
 //
-// DECLARED SIMPLIFICATION (weaker than printed): FREERUNNING is not
-// implemented, so the spell always costs its full {3}{B}. Freerunning
-// is an alternative cost gated on a condition that has to be measured
-// across the turn ("you dealt combat damage to a player this turn
-// with an Assassin or commander"), and the alternative-cost slot
-// carries a price, not a gate — an unconditional {1}{B} offer would
-// be strictly STRONGER than the printed card, which is the direction
-// #259 forbids, so the offer is left out entirely instead. Paying
-// four mana where the card sometimes asks two is the weaker
-// direction, which is the allowed one.
+// Freerunning {1}{B} is an alternative cost gated on the turn tally of
+// who dealt combat damage to a player (freerunning.go): an Assassin or a
+// commander under your control, read as the damage was dealt.
 //
 // The reanimation is complete. The target is chosen from your own
 // graveyard through the zone-browser picker and re-checked at
@@ -33,13 +26,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // control, untapped and summoning sick.
 func init() {
 	Register(Spec{
-		OracleID:     "c415bfdd-3d42-4f94-9f93-7e310becbc8b",
-		Name:         "Restart Sequence",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Freerunning isn't implemented — the spell always costs {3}{B}, never the cheaper {1}{B}.",
-		},
-		Targets: targetCreatureInYourGraveyard(),
+		OracleID:         "c415bfdd-3d42-4f94-9f93-7e310becbc8b",
+		Name:             "Restart Sequence",
+		Completeness:     CompletenessFull,
+		AlternativeCosts: []game.AlternativeCost{Freerunning("{1}{B}", "Assassin")},
+		Targets:          targetCreatureInYourGraveyard(),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			return returnFirstLegalGraveyardTargetToBattlefield(ctx.Game, item)
 		},

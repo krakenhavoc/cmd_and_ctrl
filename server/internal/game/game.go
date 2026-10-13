@@ -1704,6 +1704,25 @@ type CastTally struct {
 	// 708.4). Call Forth the Tempest's "the total mana value of other
 	// spells you've cast this turn" subtracts its own (#2743).
 	ManaValue int `json:"manaValue,omitempty"`
+	// ManaSpent is the total mana the player spent to cast spells this
+	// turn (#3172), counted as each spell became cast off its payment
+	// record, so a cost reduction, X and every additional cost's mana all
+	// count and a free or waived payment counts 0. ManaSpentLast is the
+	// share of it that the MOST RECENT spell paid. Together they answer
+	// expend's "as you spend your Nth total mana to cast spells during a
+	// turn" (an ability word of Bloomburrow, with no rule of its own
+	// beyond the trigger text): the Nth mana was spent by this spell
+	// exactly when ManaSpent >= N and ManaSpent-ManaSpentLast < N. Read
+	// through CastTally.Expended.
+	ManaSpent     int `json:"manaSpent,omitempty"`
+	ManaSpentLast int `json:"manaSpentLast,omitempty"`
+}
+
+// Expended reports whether the spell just cast spent the player's Nth
+// total mana on spells this turn (expend N, #3172): the running total
+// reached N with this spell and had not reached it before.
+func (t CastTally) Expended(n int) bool {
+	return n > 0 && t.ManaSpent >= n && t.ManaSpent-t.ManaSpentLast < n
 }
 
 // CastInstantOrSorceryOfColor reports whether the tally includes an
