@@ -77,10 +77,16 @@ export interface GameMeta {
   // creator. Lets the creator rotate their own table's invites, same
   // as the admin.
   is_creator?: boolean;
+  // ADR 0159 §1: the host asked for a Discord voice room.
+  voice_room?: boolean;
   // The tutorial's practice table (ADR 0076 §2.2): one seat, one
   // `random` bot, never listed and never persisted. Mirrors
   // lobby.GameMeta.Practice.
   practice?: boolean;
+  // The turn number of a game in play (ADR 0158 §1 item 4): the game
+  // view's turn.number. GET /games only, only while active, and absent
+  // during the opening roll.
+  turn?: number;
 }
 
 export interface SeatInfo {
@@ -107,6 +113,9 @@ export interface SeatInfo {
   agent_client?: string;
   // True on the table host's seat (ADR 0075 §2.1). Never on a bot.
   is_host?: boolean;
+  // The seat's life total while the game is in play (ADR 0158 §1 item
+  // 4). GET /games only; absent in the lobby and once the game ends.
+  life?: number;
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
@@ -267,13 +276,15 @@ export interface CreateGameResponse extends GameMeta {
 // createGame creates a table (POST /games). Any signed-in person may
 // (ADR 0110 §5 item 4, owner answer 2): a 409 names their open tables
 // when they already have three, and a 429 says they are creating too
-// quickly. `setup: "last"` applies their remembered setup to it.
+// quickly. `setup: "last"` applies their remembered setup to it, and
+// `voiceRoom` asks for a Discord voice room (ADR 0159 §1).
 export async function createGame(
   name: string,
-  opts: { setup?: "last" } = {},
+  opts: { setup?: "last"; voiceRoom?: boolean } = {},
 ): Promise<CreateGameResponse> {
-  const body: { name: string; setup?: string } = { name };
+  const body: { name: string; setup?: string; voice_room?: boolean } = { name };
   if (opts.setup) body.setup = opts.setup;
+  if (opts.voiceRoom) body.voice_room = true;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),

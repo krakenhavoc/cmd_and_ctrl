@@ -199,6 +199,11 @@ func MoveCard(src, dst *Zone, id uuid.UUID) (Card, error) {
 	// pinned grants are handed to the permanent separately (CR
 	// 400.7a, inheritSpellControlLocked).
 	c.stackGranted = nil
+	// ADR 0093 amendment 2026-10-13 / CR 400.7: an ability a static
+	// gave this card in its old hand, graveyard or exile is that
+	// object's, and the new one is not given it until the next layer
+	// pass (the layer-version bump on a card entering such a zone).
+	c.zoneGranted = nil
 	// ADR 0141 / CR 400.7, CR 702.103: bestowed belongs to the spell
 	// and the permanent it becomes, never to the card. Every zone
 	// change ends it, a resolving one included: the battlefield entry

@@ -867,6 +867,13 @@ func (p *CastPermission) AlternativeCostFor(card Card) *AlternativeCost {
 	if p.Cost != "" {
 		out.ManaCost = p.Cost
 	}
+	if p.AltCostKey == AltCostKeyMadness {
+		// "Madness—{2}{B}, Pay 8 life": the life is printed on the card,
+		// not on the grant, so it is read from the catalog here rather
+		// than stored on the permission (no snapshot field, and a
+		// restored table prices the cast the same way).
+		out.Life = MadnessLifeFor(CatalogKey(card))
+	}
 	if p.LifeEqualToManaValue {
 		// CR 202.3: the life is the card's mana value, read off the
 		// face being cast. The mana cost is REPLACED, not added to —

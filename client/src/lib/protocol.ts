@@ -231,6 +231,9 @@ export type ActionType =
   // answers to repeated prompts, replacing the list ("always" or
   // "never"; Ask is no rule). A setting, not a play: never undoable.
   | "set_auto_answers"
+  // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
+  // withdraws the request for help an assisted cast is parked on.
+  | "cancel_assist"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -403,6 +406,9 @@ export interface GameView {
   // The table's settings (ADR 0075 §2.2). Public: every viewer,
   // spectators included, gets the same object. Added in S35 (#1032).
   settings?: TableSettingsView;
+  // The table's Discord voice room (ADR 0159 §6), reduced by the server
+  // to this viewer's own access. Absent when the server offers none.
+  voice?: VoiceView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -1660,6 +1666,12 @@ export interface PendingChoiceView {
    * order asked, and who has declined. Public on every seat's view.
    */
   any_player_offer?: AnyPlayerOfferView;
+  /**
+   * ADR 0150 §5: present when this pay_amount asks an assist helper how
+   * much of another player's spell to pay: who is casting what. Public on
+   * every seat's view; the caster's dock shows a waiting line from it.
+   */
+  assist?: AssistPromptView;
 
   accept_label?: string;
   decline_label?: string;
@@ -1981,6 +1993,29 @@ export interface CouncilVoteView {
 // AnyPlayerOfferView is an "unless any player pays" offer in progress
 // (ADR 0150 §5), as its open link carries it. The link's chooser is the
 // player asked now.
+// AssistOfferView is a spell with assist's offer to its caster (ADR 0150
+// §5): "up to {max}", and the players who may be asked.
+export interface AssistOfferView {
+  // The generic part of the total cost for the default announcement out
+  // of this zone, commander tax and cost modifiers included.
+  max: number;
+  // Every other player still in the game, in seat order.
+  players: string[];
+}
+
+// AssistPromptView is an assist helper's prompt (ADR 0150 §5), as the
+// pay_amount carries it. The prompt's chooser is the helper.
+export interface AssistPromptView {
+  caster: string;
+  // The card being cast, its name and its total cost as announced.
+  spell: string;
+  spell_name: string;
+  mana_cost?: string;
+  // The generic part of the total cost; the prompt's max is the most
+  // the helper can pay, which may be less.
+  generic: number;
+}
+
 export interface AnyPlayerOfferView {
   // The controller of the effect being paid against ("you" on the card).
   controller: string;
@@ -2391,6 +2426,11 @@ export interface OptionalCostView {
   // and buyback, the multikicker cap above that. 1 renders a
   // checkbox, more renders a stepper.
   max_times?: number;
+  // #3232: the floor on the announced X while this cost is paid —
+  // Thieving Skydiver's "Kicker {X}. X can't be 0" is 1. Absent when the
+  // cost has no floor; meaningful only beside a `mana_cost` containing
+  // {X}. Read by optionalCostXFloor (targeting.ts).
+  x_min?: number;
   // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
   // replicate, 3). `max_times` is then capped at what the viewer's energy
   // pays for, and `energy_short` says it pays for none.
@@ -2535,6 +2575,13 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // #3225: the largest X the viewer may announce while claiming THIS
+  // offer — "you may cast this spell as though it had flash if X is 3
+  // or less" (CR 601.3c) — already folded with the card's printed
+  // `x_max`. The server refuses a larger X under the claim; the cast for
+  // the printed cost is not bound by it. Present only on an offer that
+  // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).
+  x_max?: number;
   // ADR 0126 §6: what the spell does when cast for this cost, where
   // that differs from the card's own purpose (overload). Bot data.
   purpose?: PurposeView;
@@ -2577,8 +2624,11 @@ export interface PayAmountView {
   min: number;
   max: number;
   goal?: number;
-  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
-  resource?: "energy" | "life" | "none";
+  // ADR 0150 §4: "assist" is {1} of another player's spell.
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other" | "assist";
+  // ADR 0150 §4: "mana" is generic mana an assist helper pays from their
+  // pool and then their untapped sources.
+  resource?: "energy" | "life" | "none" | "mana";
   no_max?: boolean;
   marks?: number[];
   self_damage?: boolean;
@@ -2744,6 +2794,12 @@ export interface ActivatedAbilityView {
   // this one (Necrotic Sliver's "{3}, Sacrifice this permanent: …" on
   // every Sliver). Absent on the permanent's own abilities.
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
@@ -3417,6 +3473,12 @@ export interface CastSurfaceView {
   // same picker the alternative costs open, because CR 601.2b
   // announces them together. Absent for nearly every card.
   optional_costs?: OptionalCostView[];
+  // ADR 0150 §5 (CR 702.132a): a spell with assist's offer to this
+  // caster — who may be asked to help pay its generic mana, and how
+  // much generic there is. The cast modal's Assist row reads it and the
+  // pick rides cast_spell as `assist_player`. Absent for every card
+  // without assist.
+  assist?: AssistOfferView;
   // #760 (ADR 0073 §7): the printed clause that stops this card being
   // cast from the zone it is in right now — "Each player can't cast
   // more than one spell each turn", "Cast this spell only if you
@@ -3826,6 +3888,13 @@ export interface CardView extends CastSurfaceView {
   // "Add {X}" clause). Smart autopass reads it to hold the main phase
   // for "Cast anyway". Absent when false.
   may_make_mana_unautomated?: boolean;
+  // ADR 0153 §5: on a hand card that does something when a spell or
+  // ability an opponent controls makes its owner discard it. Declared by
+  // the card, never inferred: "battlefield" (put onto the battlefield
+  // instead), "library" (on top of its owner's library instead) or
+  // "trigger" (the discard triggers an ability of the card). Absent
+  // otherwise.
+  discard_by_opponent?: "battlefield" | "library" | "trigger";
   // #992: the announce surface of the face that is UP. Inherited
   // from CastSurfaceView, so every existing `card.legal_targets`
   // read is unchanged and `cardAsFace` has an identically shaped
@@ -4014,6 +4083,10 @@ export interface CardView extends CastSurfaceView {
   // CR 707.9a grant (no source). The one place a granted TRIGGER is
   // visible at all — it has no menu row. One entry per grantor.
   granted_abilities?: GrantedAbilityView[];
+  // ADR 0155 owner decision 2: the objects this permanent "has all activated
+  // abilities of" that the catalog does not automate. They lend nothing; the
+  // menu names each in a disabled "<lender>: not automated" line.
+  unautomated_lenders?: GrantedByView[];
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).
@@ -4190,6 +4263,12 @@ export interface ManaAbilityView {
   // granted this one (Cryptolith Rite's "{T}: Add one mana of any
   // color." on every creature you control).
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana
@@ -4449,6 +4528,20 @@ export function uuid(): string {
 // TableSettingsView is a table's configuration (ADR 0075 §2.2). The
 // keys match the settings patch the server accepts, so a client can
 // send back exactly the fields it read.
+// VoiceView is the table's Discord voice room on the game view (ADR 0159
+// §6). `url` reaches only a viewer who was let in, while the room is
+// ready.
+export interface VoiceView {
+  enabled: boolean;
+  status: VoiceStatus;
+  you?: VoiceAccess;
+  url?: string;
+}
+
+export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
+
+export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;

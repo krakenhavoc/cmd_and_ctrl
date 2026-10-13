@@ -145,7 +145,7 @@
     },
     {
       who: "Discord",
-      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed.",
+      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included.",
     },
     {
       who: "GitHub",

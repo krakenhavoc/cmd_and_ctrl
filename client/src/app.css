@@ -344,6 +344,20 @@ body {
 :root {
   --page-gutter: 28px;
 }
+
+/* A deck's colour identity (ADR 0158 §2): the aura on the Decks grid.
+   Fixed, not skin tokens, and no skin may override them: they mean the
+   deck's colours, not chrome. Black is a dusk violet and white a warm
+   parchment so both read as a glow on a dark page and a light one;
+   colourless is steel. */
+:root {
+  --identity-w: #eadb9c;
+  --identity-u: #3f8fe0;
+  --identity-b: #8d6fb3;
+  --identity-r: #e2533a;
+  --identity-g: #35a866;
+  --identity-c: #94a3b3;
+}
 @media (max-width: 819px) {
   :root {
     --page-gutter: 20px;

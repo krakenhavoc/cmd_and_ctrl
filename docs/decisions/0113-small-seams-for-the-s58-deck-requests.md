@@ -567,3 +567,38 @@ None. The tag is an opaque string already carried on `ManaToken.Restrictions`.
 
 - Doctor's companion in the deck validator.
 - A positive "noncreature" predicate for targets: those are `Not(Creature())` and already exist.
+
+## Amendment 2026-10-13 — A hand-size change that ends with a source ("for as long as you control this Saga") (#3247)
+
+**Why it lands here.** The 2026-10-08 amendment (#2108) built the missing half of §3: a maximum-hand-size change a resolving spell makes, stored as the ninth `PlayerStatic` payload with its own `Duration`. The Great Synthesis chapter I is the one card whose duration is tied to its own source, and it shipped caveated (#3237, deck request #3212) because the engine was believed not to have that shape. It does, and no engine change is needed. This amendment records the decision and the card.
+
+### What exists, what was missing
+
+- `GrantHandSizeForEffect` takes any `Duration`, and `EffectiveMaxHandSizeLocked` tests each grant's duration itself through `durationExpiredLocked`, which already evaluates the source-bound kinds (`ForAsLongAs` with `WhileYouControlSource`, `SourceEnteredAt` pinning the CR 400.7 object) that exile permissions use (#3211). The snapshot already carries `seats[].statics[].handSize` and the duration's source fields.
+- The card, not the engine, was the gap. It declared `NoMaxHandSize: true` on the Saga face, a static derived from the battlefield. A static applies whether or not chapter I resolved, so a countered or stifled chapter I still lifted the maximum.
+
+### The rules
+
+- **CR 611.2b.** A continuous effect from a resolving ability with a "for as long as" duration lasts while the condition holds, and one whose condition is already false as it would begin never begins. Chapter I's grant therefore starts only if the Saga is on the battlefield under the controller when the ability resolves.
+- **CR 701.6b / 113.7a.** A countered ability does nothing; a resolving ability's effect needs the ability to resolve. A static of the Saga would apply regardless.
+- **CR 400.7.** Chapter III exiles and returns the Saga as a new object, so "this Saga" is gone and the effect ends.
+
+### Decision
+
+1. **The chapter I effect creates the grant.** After the draw, it asks `DurationWhileYouControlSource(ctx, item.SourceCardID, item.Controller)` and, when that returns a duration, calls `GrantHandSizeForEffect(controller, HandSizeNoMaximum, 0, label, source, d)`. `false` (the Saga has left, or is a new object, #1432) registers nothing.
+2. **No static on the face.** `NoMaxHandSize` is removed from The Great Synthesis; its `Caveats` go, and the card is `CompletenessFull`.
+3. **No new record, reader or wire field.** The reader, the cleanup discard and the view's `max_hand_size` all go through `EffectiveMaxHandSizeLocked`, so the grant ends exactly when its duration does, with nothing swept by the card.
+
+### Cards
+
+- **The Great Synthesis (Jin-Gitaxias back face): Full.**
+- **Praetor's Counsel: Full** and **Wisdom of Ages: Full.** "Return … from your graveyard to your hand, … you have no maximum hand size for the rest of the game, exile this": the player-level grant (`SetMaxHandSizeForEffect`), the same one Finale of Revelation and Sea Gate Restoration use. They were the other uncatalogued spells in the dump that make a hand-size effect when they resolve and need nothing else.
+- Not done, and why: Spirit Water Revival (an optional waterbend additional cost that switches the whole effect), Choice of Fortunes (seek, which has no primitive), Power Without Equal and Your Puny Minds Cannot Fathom (schemes), Undercity Reaches (chaos ensues).
+
+### Tests
+
+`cards/effects/great_synthesis_hand_size_test.go`: resolved means no maximum in the view and no discard at cleanup; the Saga leaving restores seven and the cleanup discards; chapter III's flicker ends it; a countered chapter I leaves nothing; a Saga gone before chapter I resolves starts nothing; `Clone` and a JSON snapshot carry the grant with its source-bound duration. `cards/effects/graveyard_hand_size_cards_test.go` for the two spells.
+
+### Snapshot impact
+
+None. The grant and the duration are existing, recorded shapes.

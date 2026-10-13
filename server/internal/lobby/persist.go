@@ -120,6 +120,9 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		// room's effective host before any write that matters.
 		HostPlayerID:  entry.meta.HostPlayerID,
 		HostDiscordID: entry.meta.HostDiscordID,
+		// ADR 0159 §5.
+		VoiceRoom:      entry.meta.VoiceRoom,
+		VoiceChannelID: entry.voiceChannelID,
 	}
 	return rec
 }
@@ -134,6 +137,7 @@ func (l *Lobby) persistSeatsLocked(entry *gameEntry) {
 	if entry.practice {
 		return // practice.go: a practice table has no rows
 	}
+	l.voiceChangedLocked(entry)
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.ReplaceSeats(ctx, entry.meta.ID, seatRecords(entry.meta.Players)); err != nil {
@@ -148,6 +152,7 @@ func (l *Lobby) persistGameLocked(entry *gameEntry) {
 	if entry.practice {
 		return // practice.go: a practice table has no rows
 	}
+	l.voiceChangedLocked(entry)
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.UpdateGame(ctx, gameRecordLocked(entry)); err != nil {
@@ -230,6 +235,10 @@ func (l *Lobby) dropEntryLocked(id uuid.UUID) {
 	if e, ok := l.games[id]; ok {
 		close(e.stop)
 		delete(l.games, id)
+		// ADR 0159 §2: a deleted table's room goes with it.
+		if l.voice != nil && !e.practice {
+			l.voice.notify(id)
+		}
 	}
 }
 
@@ -446,6 +455,8 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// the room, which decides whether it still stands.
 		HostPlayerID:  rec.HostPlayerID,
 		HostDiscordID: rec.HostDiscordID,
+		// ADR 0159 §5: the host's choice survives a restart.
+		VoiceRoom: rec.VoiceRoom,
 		// CreatedBy (#1098): rec.CreatedBy is "" for an admin-created
 		// or file-imported game (Nil, matching CreateWith), and a
 		// stored UUID otherwise. A row somehow holding something
@@ -492,7 +503,7 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		}
 		meta.Players = append(meta.Players, info)
 	}
-	return &gameEntry{
+	entry := &gameEntry{
 		meta:       meta,
 		room:       room,
 		stop:       make(chan struct{}),
@@ -510,5 +521,10 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		endCounted: rec.EndedAt != nil || rec.ArchivedAt != nil,
 		// The identities this table refused to seat again (blocks.go).
 		blocks: l.loadBlocks(id),
-	}, nil
+		// ADR 0159 §5: the voice manager adopts it if the channel is
+		// still in the category.
+		voiceChannelID: rec.VoiceChannelID,
+	}
+	l.restampVoice(entry)
+	return entry, nil
 }

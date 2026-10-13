@@ -1114,6 +1114,21 @@ type Card struct {
 	// object (CR 400.7).
 	stackGranted []string
 
+	// zoneGranted is the ability bundles the zone grant step of the
+	// layer pass gave this CARD while it sits in a hand, a graveyard or
+	// exile (CR 113.10, 613.1f, ADR 0093's amendment 2026-10-13, #3233):
+	// Satoru Umezawa's "each creature card in your hand has ninjutsu".
+	// Written by zoneGrantPassLocked (zone_grants.go), read by
+	// activatedAbilityRows beside the layered grants a permanent has.
+	// Plain data (bundle key, grantor, activator), never a closure.
+	//
+	// A derived cache like `effective` and `stackGranted`: never
+	// snapshotted (a restore forces a recompute, which rebuilds it from
+	// the battlefield statics), always replaced with a fresh slice and
+	// never written in place, and cleared by MoveCard on every zone
+	// change, because a grant to a card ends with the object (CR 400.7).
+	zoneGranted []GrantedAbility
+
 	// --- bools --------------------------------------------------------
 	//
 	// Every bool on Card lives here, together, rather than beside the

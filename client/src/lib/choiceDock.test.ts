@@ -9,6 +9,8 @@ import {
   anyPlayerOfferLine,
   anyPlayerOfferRequest,
   anyPlayerWaiting,
+  assistRequest,
+  assistWaiting,
   ballotNote,
   choiceRequest,
   councilVoteRequest,
@@ -511,5 +513,66 @@ describe("an unless-any-player-pays offer (ADR 0150 §5)", () => {
     expect(r.primary?.label).toBe("Let them have the card");
     expect(r.secondary?.map((a) => a.label)).toEqual(["Let them draw three"]);
     expect(r.hint).toContain("It costs you nothing.");
+  });
+});
+
+describe("assist (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice" },
+    { id: "b", name: "Bob" },
+    { id: "c", name: "Carol" },
+  ];
+  // Alice casts Fan Favorite and asks Bob, who can pay up to {2}.
+  const ask = (over: Partial<PendingChoiceView> = {}) =>
+    choice({
+      kind: "pay_amount",
+      chooser: "b",
+      reason: "Alice asks you to help pay for Fan Favorite",
+      pay_amount: { min: 0, max: 2, unit: "assist", resource: "mana" },
+      assist: {
+        caster: "a",
+        spell: "s1",
+        spell_name: "Fan Favorite",
+        mana_cost: "{3}{B}",
+        generic: 3,
+      },
+      ...over,
+    });
+
+  it("asks the helper with the caster, the spell and its cost, and pays from a stepper", () => {
+    const h = { ...handlers(), onAmount: vi.fn() };
+    const r = choiceRequest(ask(), { sourceName: "a card", seats, payAmount: 2 }, h);
+    expect(r.label).toBe("Alice asks you to help pay for Fan Favorite ({3}{B})");
+    expect(r.tag).toBe("assist");
+    expect(r.hint).toContain("Pay up to {2} of its generic mana, or nothing.");
+    expect(r.primary?.label).toBe("Pay {2}");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Don't help"]);
+    r.primary?.onPress();
+    r.secondary?.[0].onPress();
+    expect(h.onAmount.mock.calls).toEqual([[2], [0]]);
+    const none = choiceRequest(ask(), { sourceName: "x", seats, payAmount: 0 }, h);
+    expect(none.primary?.disabled).toBe(true);
+  });
+
+  it("gives the caster a waiting line with Cancel request", () => {
+    const cancel = vi.fn();
+    const r = assistRequest(ask(), "a", seats, cancel);
+    expect(r?.rank).toBe("step");
+    expect(r?.question).toBe("Waiting for Bob to help pay for Fan Favorite");
+    expect(r?.row?.map((a) => a.label)).toEqual(["Cancel request"]);
+    r?.row?.[0].onPress();
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("is read-only for everyone else, and absent for the helper", () => {
+    const r = assistRequest(ask(), "c", seats, vi.fn());
+    expect(r?.question).toBe("Bob is deciding how much to help pay for Alice's Fan Favorite");
+    expect(r?.row).toBeUndefined();
+    expect(r?.primary).toBeUndefined();
+    expect(assistRequest(ask(), "b", seats, vi.fn())).toBeNull();
+    expect(assistRequest(choice({ kind: "pay_amount" }), "a", seats, vi.fn())).toBeNull();
+    expect(assistWaiting(ask(), null, seats)).toBe(
+      "Bob is deciding how much to help pay for Alice's Fan Favorite",
+    );
   });
 });

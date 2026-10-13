@@ -98,6 +98,12 @@ type GraveyardBecomesExile struct {
 	// whose cards are simply gone (Rest in Peace, Leyline of the Void).
 	LinkExiled bool
 
+	// ExileCounter puts one counter of this kind on each card it
+	// exiles: Dauthi Voidwalker's "instead exile it with a void counter
+	// on it". The counter is stamped when the card lands in exile and
+	// stays on it there. Leave it empty for every other member.
+	ExileCounter string
+
 	// Label is the CR 616 prompt header, shown when this and another
 	// replacement both apply to the same move.
 	Label string
@@ -142,6 +148,7 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 		Replace: func(ev *game.ReplacementEvent, _ *game.Game, src *game.Card) error {
 			ev.NewZone = game.ZoneExile
 			ev.NewZoneOwner = uuid.Nil
+			ev.ExileCounter = r.ExileCounter
 			if r.LinkExiled && src != nil {
 				ev.ExiledWith = game.PermissionCardRef{ID: src.InstanceID, Epoch: src.ObjectEpoch}
 			}

@@ -195,8 +195,8 @@
       <!-- "X can't be 0" is a printed floor, not advice: the
            server refuses an announcement under it outright. -->
       <p class="prompt-hint">
-        Pick a value for X — this ability's X can't be less than {floor}. The check below reads your
-        untapped sources and says whether auto-tap can pay for it.
+        Pick a value for X — X can't be less than {floor}. The check below reads your untapped
+        sources and says whether auto-tap can pay for it.
       </p>
     {:else if maxXUnit === "loyalty"}
       <!-- #1944: a −X loyalty cost spends no mana, so there is no

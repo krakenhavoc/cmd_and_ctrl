@@ -279,6 +279,7 @@ func (g *Game) cloneLocked() *Game {
 			// ADR 0146: a ballot's vote is mutated as it is cast.
 			cloned.CouncilVote = cloneCouncilVote(c.CouncilVote)
 			cloned.AnyPlayerOffer = cloneAnyPlayerOffer(c.AnyPlayerOffer)
+			cloned.Assist = cloneAssistPrompt(c.Assist)
 			// #793: the replacement resume frame holds the in-flight
 			// ReplacementEvent, and answering the prompt MUTATES it —
 			// Doubling Season doubles CounterDelta in place, Rhox
@@ -777,30 +778,31 @@ func cloneStackItem(s *StackItem) *StackItem {
 		return nil
 	}
 	out := &StackItem{
-		ID:              s.ID,
-		Kind:            s.Kind,
-		Controller:      s.Controller,
-		BaseController:  s.BaseController,
-		Owner:           s.Owner,
-		SourceCardID:    s.SourceCardID,
-		SourceEpoch:     s.SourceEpoch,
-		SourceObject:    s.SourceObject,
-		SourceTurnOvers: s.SourceTurnOvers,
-		GrantedBy:       s.GrantedBy,
-		Label:           s.Label,
-		DoubledBy:       s.DoubledBy,
-		DoubledByName:   s.DoubledByName,
-		XValue:          s.XValue,
-		HoldPriority:    s.HoldPriority,
-		SplitSecond:     s.SplitSecond,
-		AltCost:         s.AltCost,
-		Foretold:        s.Foretold,
-		FaceDown:        s.FaceDown,
-		AltCostExiles:   s.AltCostExiles,
-		CastFromZone:    s.CastFromZone,
-		IsCopy:          s.IsCopy,
-		Uncopyable:      s.Uncopyable,
-		Seq:             s.Seq,
+		ID:               s.ID,
+		Kind:             s.Kind,
+		Controller:       s.Controller,
+		BaseController:   s.BaseController,
+		Owner:            s.Owner,
+		SourceCardID:     s.SourceCardID,
+		SourceEpoch:      s.SourceEpoch,
+		SourceObject:     s.SourceObject,
+		SourceTurnOvers:  s.SourceTurnOvers,
+		GrantedBy:        s.GrantedBy,
+		Label:            s.Label,
+		DoubledBy:        s.DoubledBy,
+		DoubledByName:    s.DoubledByName,
+		XValue:           s.XValue,
+		HoldPriority:     s.HoldPriority,
+		SplitSecond:      s.SplitSecond,
+		AltCost:          s.AltCost,
+		Foretold:         s.Foretold,
+		FaceDown:         s.FaceDown,
+		AltCostExiles:    s.AltCostExiles,
+		CastFromZone:     s.CastFromZone,
+		IsCopy:           s.IsCopy,
+		Uncopyable:       s.Uncopyable,
+		ExileWithCounter: s.ExileWithCounter,
+		Seq:              s.Seq,
 		// #789 / #761: what the announcement paid. Deep-copied
 		// (clonePaidCost reallocates the token slice and each
 		// token's Restrictions) because an undo snapshot that

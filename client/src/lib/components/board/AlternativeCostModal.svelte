@@ -61,7 +61,15 @@
   // starts on the first branch the server says is payable, and an
   // unpayable branch is shown disabled. The chosen branch's own picker
   // (discard, sacrifice, blight) opens next in the chain.
+  //
+  // ADR 0150 §5 (CR 702.132a): a spell with assist adds an Assist row —
+  // "Ask a player to help pay (up to {3})" — with nobody picked by
+  // default. The pick rides the cast as `assist_player`, and the cast
+  // waits for that player's answer. A bot always answers 0, and its row
+  // says so (owner decision 8).
   import {
+    assistOf,
+    assistPlayerLabel,
     castableAlternativeCostsOf,
     castsFaceName,
     costBranchesOf,
@@ -85,19 +93,31 @@
     // to, present exactly when a gift offer is being paid.
     // ADR 0100: and the either/or branch, present exactly when the card
     // has branches.
+    // ADR 0150 §5: and the player asked to help pay, when one was picked.
     onConfirm: (
       key: string | undefined,
       optional: number[],
       giftOpponent?: string,
       costBranch?: number,
+      assistPlayer?: string,
     ) => void;
     onCancel: () => void;
     // #1267: the table, so a gift's opponent picker can name players
     // rather than print their IDs.
     seats?: PlayerView[];
+    // ADR 0150 §5: a forced cast pays no mana, so it offers no Assist row.
+    forceCast?: boolean;
   }
 
-  const { card, onConfirm, onCancel, seats = [] }: Props = $props();
+  const { card, onConfirm, onCancel, seats = [], forceCast = false }: Props = $props();
+
+  // ADR 0150 §5: the Assist row's offer, and the player picked (none by
+  // default: casting alone is the ordinary answer).
+  const assist = $derived(card ? assistOf(card, forceCast) : undefined);
+  let assistTo = $state<string | undefined>(undefined);
+  const assistPlayer = $derived(
+    assist && assistTo !== undefined && assist.players.includes(assistTo) ? assistTo : undefined,
+  );
 
   function playerName(id: string): string {
     return seats.find((s) => s.id === id)?.name ?? "Opponent";
@@ -200,6 +220,7 @@
       chosen = printedOK ? undefined : offers[0]?.key;
       paying = new Map();
       giftTo = undefined;
+      assistTo = undefined;
       branch = card ? firstPayableBranch(card) : undefined;
     }
   });
@@ -211,6 +232,7 @@
       optionalCostSelection(paying),
       giftOpponent,
       branches.length > 0 ? branch : undefined,
+      assistPlayer,
     );
   }
 </script>
@@ -232,13 +254,15 @@
     secondary={[cancelAction(onCancel)]}
   >
     <p class="prompt-hint">
-      {offers.length === 0 && addOns.length === 0
-        ? "Pay which additional cost?"
-        : offers.length === 0
-          ? "Pay any additional costs?"
-          : printedOK
-            ? "Cast this for which cost?"
-            : "Cast this for which cost? Its mana cost can't be paid from here."}
+      {offers.length === 0 && addOns.length === 0 && branches.length === 0 && assist
+        ? "Ask another player to help pay?"
+        : offers.length === 0 && addOns.length === 0
+          ? "Pay which additional cost?"
+          : offers.length === 0
+            ? "Pay any additional costs?"
+            : printedOK
+              ? "Cast this for which cost?"
+              : "Cast this for which cost? Its mana cost can't be paid from here."}
     </p>
     {#if offers.length > 0}
       <ul class="prompt-options">
@@ -390,6 +414,42 @@
                 </div>
               {/if}
             {/if}
+          </li>
+        {/each}
+      </ul>
+    {/if}
+    {#if assist}
+      <p class="prompt-hint add-on-hint">
+        Ask a player to help pay (up to <ManaCost cost={`{${assist.max}}`} size={14} />)
+        <span class="prompt-src" aria-hidden="true">CR 702.132a</span>
+      </p>
+      <ul class="prompt-options" role="radiogroup" aria-label="Ask a player to help pay">
+        <li>
+          <button
+            type="button"
+            class="prompt-opt"
+            role="radio"
+            class:on={assistPlayer === undefined}
+            aria-checked={assistPlayer === undefined}
+            onclick={() => (assistTo = undefined)}
+          >
+            <span class="prompt-radio" aria-hidden="true"></span>
+            <span class="name">Nobody — pay it all yourself</span>
+          </button>
+        </li>
+        {#each assist.players as pid (pid)}
+          <li>
+            <button
+              type="button"
+              class="prompt-opt"
+              role="radio"
+              class:on={assistPlayer === pid}
+              aria-checked={assistPlayer === pid}
+              onclick={() => (assistTo = pid)}
+            >
+              <span class="prompt-radio" aria-hidden="true"></span>
+              <span class="name">{assistPlayerLabel(seats.find((s) => s.id === pid))}</span>
+            </button>
           </li>
         {/each}
       </ul>

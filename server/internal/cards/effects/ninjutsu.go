@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -99,7 +101,7 @@ func ReturnAnUnblockedAttacker() game.AbilityCost {
 // which is the same rule read through the bots.
 func Ninjutsu(cost string) ActivatedAbility {
 	return ActivatedAbility{
-		Label: "Ninjutsu " + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
+		Label: ninjutsuLabelPrefix + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
 			"Put this card onto the battlefield from your hand tapped and attacking.)",
 		Cost:  Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
 		Zones: []game.ZoneKind{game.ZoneHand},
@@ -139,7 +141,7 @@ func Ninjutsu(cost string) ActivatedAbility {
 //     (the CR 108.4 "you") — the same scoping the graveyard has.
 func CommanderNinjutsu(cost string) ActivatedAbility {
 	return ActivatedAbility{
-		Label: "Commander ninjutsu " + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
+		Label: commanderNinjutsuLabelPrefix + cost + " (" + cost + ", Return an unblocked attacker you control to hand: " +
 			"Put this card onto the battlefield from your hand or the command zone tapped and attacking.)",
 		Cost:    Plus(ManaCost(cost), ReturnAnUnblockedAttacker()),
 		Zones:   []game.ZoneKind{game.ZoneHand, game.ZoneCommand},
@@ -205,4 +207,21 @@ func ninjutsuEnter(g *game.Game, item *game.StackItem) error {
 		return err
 	}
 	return nil
+}
+
+// The printed label of a ninjutsu row starts with its keyword. The
+// activation event carries the label (game.Event.Label) and no keyword
+// bit, so "whenever you activate a ninjutsu ability" (Satoru Umezawa)
+// reads it here, from the same constants the two constructors build the
+// label with — a test pins that both constructors satisfy it.
+const (
+	ninjutsuLabelPrefix          = "Ninjutsu "
+	commanderNinjutsuLabelPrefix = "Commander ninjutsu "
+)
+
+// ANinjutsuAbility — the activation event is of a ninjutsu ability
+// (CR 702.49) or a commander ninjutsu ability (CR 702.49d), whether the
+// card printed it or a static granted it to a card in hand.
+func ANinjutsuAbility(ev game.Event, _ *game.Card, _ game.Characteristic, _ *game.Game) bool {
+	return strings.HasPrefix(ev.Label, ninjutsuLabelPrefix) || strings.HasPrefix(ev.Label, commanderNinjutsuLabelPrefix)
 }

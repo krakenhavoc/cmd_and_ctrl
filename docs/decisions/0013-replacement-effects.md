@@ -4737,3 +4737,28 @@ the counter pipeline and a Doubling Season doubles them. The built-in is set
 aside by the trigger-independence check (`knownBuiltinReplacementLabels`): it
 exists only while a player static does, and any player static already makes the
 board opaque to that check.
+
+## Amendment — 2026-10-13: a replacement can leave a counter on the card it exiles (#3212)
+
+Dauthi Voidwalker's "if a card would be put into an opponent's graveyard from
+anywhere, instead exile it with a void counter on it" is
+`GraveyardBecomesExile` plus a counter on the card that lands.
+
+- **`ReplacementEvent.ExileCounter`** (a counter kind, empty for none) is
+  `ExiledWith`'s twin. A replacement runs before the card moves, so it cannot
+  write to the card; it leaves the kind on the event, and the two functions
+  that perform every replaced move's landing (`executeZoneRouteLocked` and
+  `executeBattlefieldLeaveLocked`) call `stampExileCounterLocked` once the card
+  has really landed in exile. A move a later replacement redirected to the
+  command zone, a library or a hand stamps nothing. The counter is one `+1` on
+  `Card.Counters`, so it is cleared by the next move like any counter off the
+  battlefield.
+- **`GraveyardBecomesExile.ExileCounter`** sets it. `Dauthi Voidwalker` is the
+  first user ("void").
+- `executeBattlefieldLeaveLocked` gains an `exileCounter string` parameter;
+  its three callers pass the event's value or `""`.
+- **Back-out.** Delete the `stampExileCounterLocked` call in
+  `executeZoneRouteLocked`: `TestDauthiVoidwalkerExilesOpponentsCardsWithAVoidCounter`
+  fails (no counter on a milled card). Delete the call in
+  `executeBattlefieldLeaveLocked`: `TestDauthiVoidwalkerExilesADyingOpponentCreature`
+  fails.

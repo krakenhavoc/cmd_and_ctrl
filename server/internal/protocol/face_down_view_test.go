@@ -288,6 +288,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		Auto:                   true,
 		Unimplemented:          true,
 		MayMakeManaUnautomated: true,
+		// ADR 0153 §5: what an opponent-caused discard does for the card.
+		DiscardByOpponent: "battlefield",
 		// #992: the announce surface is one embedded block now, on
 		// CardView and on every castable CardFaceView alike. The
 		// reflection guard below recurses into it, so a field added
@@ -326,7 +328,8 @@ func everyFieldCardView(owner string, knowers map[string]bool) CardView {
 		ManaAbilities: []ManaAbilityView{{Index: 0, Label: "Add {U}"}},
 		// ADR 0093: the granted-ability text list. Redacted with the
 		// ability rows it describes.
-		GrantedAbilities: []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
+		GrantedAbilities:   []GrantedAbilityView{{Text: "{T}: Add one mana of any color.", SourceID: "grantor", SourceName: "Cryptolith Rite"}},
+		UnautomatedLenders: []GrantedByView{{ID: "lender", Name: "Uncatalogued Elf"}},
 		// #2219: the tile's ability rows. Redacted with the ability
 		// lists they are read beside.
 		AbilityRows: []AbilityRowView{{Kind: "triggered", Label: "Draw a card"}},
@@ -398,6 +401,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
+			// #3225.
+			XMax: new(3),
 			// ADR 0126 §6.
 			Purpose: &PurposeView{Sweep: &SweepView{Matches: "nonland_permanents", How: "bounce", OpponentsOnly: true}},
 		}},
@@ -426,6 +431,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Energy: 1, Printed: true}},
 		// #2581: the viewer's own printed X ceiling.
 		XMax: new(int),
+		// ADR 0150 §5: the viewer's own assist offer.
+		Assist: &AssistOfferView{Max: 3, Players: []string{"p"}},
 	}
 }
 
@@ -697,7 +704,7 @@ func TestFaceDownPermanentShipsItsPublicBody(t *testing.T) {
 	// Identity: still gone, and mostly never stamped, because
 	// CatalogKey answers "" for a face-down permanent.
 	if theirs.ScryfallID != "" || theirs.ManaCost != "" || len(theirs.Faces) != 0 ||
-		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented || theirs.MayMakeManaUnautomated ||
+		theirs.Auto || theirs.TargetMode != "" || theirs.Unimplemented || theirs.MayMakeManaUnautomated || theirs.DiscardByOpponent != "" ||
 		len(theirs.ManaAbilities) != 0 || len(theirs.ActivatedAbilities) != 0 {
 		t.Errorf("opponent: the card under the back leaked: %+v", theirs)
 	}
@@ -831,6 +838,8 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"CastPrices": surfacePrivate,
 	// #2581: a count read off the asking seat's board.
 	"XMax": surfacePrivate,
+	// ADR 0150 §5: who the asking seat may ask to help pay.
+	"Assist": surfacePrivate,
 	// #2167: which types a per-type permission leaves is the holder's
 	// own budget.
 	"PermissionTypes": surfacePrivate,
@@ -957,6 +966,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,
+	// #3225: the offer's X ceiling folded with the card's board-set one,
+	// the same per-seat number the card's own x_max is.
+	"XMax": surfacePrivate,
 	// ADR 0126 §6: what the spell does when cast for this cost, read
 	// off the printed card like Label.
 	"Purpose": surfacePublicPile,

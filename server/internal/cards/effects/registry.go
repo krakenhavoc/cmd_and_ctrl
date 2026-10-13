@@ -140,6 +140,18 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two alternative costs keyed %q", spec.Name, ac.Key))
 		}
 		seenAlt[ac.Key] = true
+		// #3225: a per-offer X ceiling bounds an X the offer's own
+		// price announces, so it needs an {X} to bound; on a cost
+		// without one the engine locks X at 0 (CR 107.3b) and the
+		// number would never be read. A negative is a typo.
+		if ac.XCeiling < 0 {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a negative XCeiling", spec.Name, ac.Key))
+		}
+		if ac.XCeiling > 0 {
+			if pc, err := game.ParseCost(ac.ManaCost); err != nil || pc.XSlots == 0 {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with an XCeiling but a mana cost %q that has no {X} to bound", spec.Name, ac.Key, ac.ManaCost))
+			}
+		}
 		// S29: an offer bound to a zone the card cannot be cast from
 		// is unclaimable — the cast path rejects the zone before it
 		// ever looks at the price. A card file that wrote one meant
@@ -317,6 +329,19 @@ func Register(spec Spec) {
 		// payments per cast is a wire shape nothing asks for.
 		if oc.MaxPayments() > 1 && oc.CardsDemanded() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q repeats and demands cards or permanents — only a mana-only cost may repeat", spec.Name, oc.Key))
+		}
+		// #3232: an {X} in an optional cost is the caster's one announced
+		// X (CR 107.3a), so it is paid at most once — "X, paid three
+		// times" is not a card — and a floor on X is meaningful only on
+		// a cost that charges one. A negative floor is a typo.
+		if oc.MinX < 0 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has a negative MinX", spec.Name, oc.Key))
+		}
+		if oc.MinX > 0 && !game.OptionalCostHasX(oc) {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q declares MinX but its mana cost %q has no {X}", spec.Name, oc.Key, oc.ManaCost))
+		}
+		if game.OptionalCostHasX(oc) && oc.MaxPayments() > 1 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has an {X} and repeats — X is one announced number, so it may be paid at most once", spec.Name, oc.Key))
 		}
 		// PayLifeX rides the shared XValue slot (ADR 0021 §3), and two
 		// claimants on one number is a bug waiting to be written.
@@ -787,6 +812,9 @@ func Register(spec Spec) {
 	// rewrites a static the way a suspend declaration grows a
 	// trigger — Spec.Static is what the layer pass gathers.
 	game.IndexStaticZones(spec.OracleID, spec.Static)
+	// ADR 0093 amendment 2026-10-13: and the zone-grant statics, so the
+	// layer pass finds a Satoru by one map read per permanent.
+	game.IndexZoneGrants(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's

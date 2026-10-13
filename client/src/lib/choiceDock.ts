@@ -290,6 +290,16 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
     case "pay_amount": {
       const pa = c.pay_amount;
       const resource = pa ? payAmountResource(pa) : "energy";
+      if (c.assist) {
+        // ADR 0150 §5: "Alice asks you to help pay for Fan Favorite
+        // ({3}{B})." The spell is in Alice's hand, so its name comes
+        // with the prompt rather than from the board.
+        return {
+          title: assistAskLine(c, ctx.seats ?? []),
+          tag: "assist",
+          hint: pa ? payAmountHint(pa, c.assist.spell_name) : undefined,
+        };
+      }
       const what = resource === "none" ? "choose a number" : `pay ${resource}`;
       return {
         title: reason || `${ctx.sourceName} — ${what}?`,
@@ -430,6 +440,19 @@ function answersFor(
       const onAmount = h.onAmount ?? (() => {});
       const min = c.pay_amount?.min ?? 0;
       const resource = c.pay_amount ? payAmountResource(c.pay_amount) : "energy";
+      if (resource === "mana") {
+        // ADR 0150 §5: an assist helper pays {n} of the generic, or
+        // doesn't help (0).
+        return {
+          primary: {
+            id: "pay",
+            label: `Pay {${n}}`,
+            disabled: n <= 0 || ctx.payAmountAnswerable === false,
+            onPress: () => onAmount(n),
+          },
+          secondary: [{ id: "none", label: "Don't help", onPress: () => onAmount(0) }],
+        };
+      }
       if (resource === "none") {
         return {
           primary: {
@@ -800,6 +823,59 @@ export function anyPlayerOfferRequest(
 // open.
 export function anyPlayerWaiting(c: PendingChoiceView, seats: Seats, sourceName: string): string {
   return `${anyPlayerSeatName(seats, c.chooser)} is deciding whether to ${payPhrase(c)} (${anyPlayerWhose(c, seats, sourceName)})`;
+}
+
+// ---- assist (ADR 0150 §5) --------------------------------------------------
+//
+// A spell with assist is parked while the player asked decides how much
+// of its generic mana to pay. The helper answers an ordinary pay_amount
+// (resource "mana"); the caster sees a waiting line with Cancel request
+// (owner decision 5), and everyone else the same line read-only.
+
+// assistAskLine is the helper's header: "Alice asks you to help pay for
+// Fan Favorite ({3}{B})".
+export function assistAskLine(c: PendingChoiceView, seats: Seats): string {
+  const a = c.assist;
+  if (!a) return c.reason ?? "";
+  const cost = a.mana_cost ? ` (${a.mana_cost})` : "";
+  return `${anyPlayerSeatName(seats, a.caster)} asks you to help pay for ${a.spell_name}${cost}`;
+}
+
+// assistWaiting is the line every seat but the helper reads while the
+// request is open: "Waiting for Bob to help pay for Fan Favorite" for the
+// caster, "Bob is deciding how much to help pay for Alice's Fan
+// Favorite" for everyone else.
+export function assistWaiting(c: PendingChoiceView, viewerID: string | null, seats: Seats): string {
+  const a = c.assist;
+  if (!a) return "";
+  const helper = anyPlayerSeatName(seats, c.chooser);
+  if (a.caster === viewerID) return `Waiting for ${helper} to help pay for ${a.spell_name}`;
+  return `${helper} is deciding how much to help pay for ${anyPlayerSeatName(seats, a.caster)}'s ${a.spell_name}`;
+}
+
+// assistRequest is the open request as every seat but the helper sees
+// it: the caster's carries Cancel request, which withdraws it; everyone
+// else's has no buttons. Null when `c` is not an assist prompt or the
+// viewer is the helper (their own prompt answers it).
+export function assistRequest(
+  c: PendingChoiceView | null | undefined,
+  viewerID: string | null,
+  seats: Seats,
+  onCancel: () => void,
+): DockRequest | null {
+  if (!c || !c.assist || c.chooser === viewerID) return null;
+  const mine = c.assist.caster === viewerID;
+  return {
+    rank: "step",
+    label: "assist",
+    tag: "assist",
+    tone: "plain",
+    question: assistWaiting(c, viewerID, seats),
+    hint: mine
+      ? `Nothing is paid until they answer. Up to {${c.pay_amount?.max ?? c.assist.generic}} of its generic mana.`
+      : undefined,
+    row: mine ? [{ id: "cancel-assist", label: "Cancel request", onPress: onCancel }] : undefined,
+  };
 }
 
 // ---- the game's end ---------------------------------------------------------

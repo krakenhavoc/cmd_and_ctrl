@@ -123,6 +123,17 @@ func (n *normalizer) game(v protocol.GameView) protocol.GameView {
 		_ = n.id(p.ID)
 		out.Seats[i].ID = n.ids[p.ID]
 	}
+	// ADR 0159 §6: the voice room's access is keyed by player id.
+	if v.Voice != nil {
+		voice := *v.Voice
+		if v.Voice.Access != nil {
+			voice.Access = make(map[string]string, len(v.Voice.Access))
+			for id, a := range v.Voice.Access {
+				voice.Access[n.id(id)] = a
+			}
+		}
+		out.Voice = &voice
+	}
 	for i, p := range v.Seats {
 		out.Seats[i] = n.player(p, out.Seats[i].ID)
 	}
@@ -511,8 +522,10 @@ func everyFieldGameViewForNormalizer() protocol.GameView {
 			ID: "vote-1", Topic: "raise a toast", Options: []string{"yes"},
 			Initiator: ownerID, Ballots: map[string]int{ownerID: 0},
 		},
-		UndoLimit:    3,
-		Settings:     &protocol.TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
+		UndoLimit: 3,
+		Settings:  &protocol.TableSettingsView{UndoLimit: 3, UndoScope: "own", StartingLife: 40, BotPace: "normal"},
+		Voice: &protocol.VoiceView{Enabled: true, Status: protocol.VoiceStatusReady, URL: "https://discord.com/channels/1/2",
+			Access: map[string]string{ownerID: protocol.VoiceAccessGranted}},
 		StartingSeat: 1,
 		OpeningRoll: &protocol.OpeningRollView{Rounds: []protocol.OpeningRollRoundView{
 			{Seats: []int{0, 1}, Rolls: []protocol.OpeningRollDieView{{Seat: 0, Result: 12}}},

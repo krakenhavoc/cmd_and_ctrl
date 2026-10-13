@@ -1,5 +1,8 @@
 import { describe, it, expect } from "vitest";
 import {
+  activeChips,
+  facetCounts,
+  removeChip,
   catalogImageURL,
   filterCatalog,
   matchesColor,
@@ -150,5 +153,68 @@ describe("catalogImageURL", () => {
 
   it("returns null when the dump has no printing for the card", () => {
     expect(catalogImageURL(card({ scryfall_id: undefined, missing: true }))).toBeNull();
+  });
+});
+
+describe("facetCounts", () => {
+  const cards = [
+    card({ oracle_id: "a", types: ["instant"], completeness: "full", color_identity: ["R"] }),
+    card({ oracle_id: "b", types: ["creature"], completeness: "caveats", color_identity: ["R"] }),
+    card({
+      oracle_id: "c",
+      types: ["artifact", "creature"],
+      completeness: "unreviewed",
+      color_identity: [],
+    }),
+  ];
+
+  it("counts every value over the whole catalogue with no filter", () => {
+    const n = facetCounts(cards, EMPTY_FILTER);
+    expect(n.completeness).toEqual({ full: 1, caveats: 1, unreviewed: 1 });
+    expect(n.types.creature).toBe(2);
+    expect(n.types.artifact).toBe(1);
+    expect(n.types.land).toBe(0);
+  });
+
+  it("applies the other facets but not its own", () => {
+    const n = facetCounts(cards, filter({ colors: ["R"], types: ["creature"] }));
+    // completeness: red creatures only -> b
+    expect(n.completeness).toEqual({ full: 0, caveats: 1, unreviewed: 0 });
+    // types: red cards -> a (instant), b (creature); own facet ignored
+    expect(n.types.instant).toBe(1);
+    expect(n.types.creature).toBe(1);
+    expect(n.types.artifact).toBe(0);
+  });
+});
+
+describe("activeChips and removeChip", () => {
+  it("makes no chips for an empty filter", () => {
+    expect(activeChips(EMPTY_FILTER)).toEqual([]);
+  });
+
+  it("makes one chip per active value", () => {
+    const f = filter({
+      query: " bolt ",
+      colors: ["R", "C"],
+      types: ["instant"],
+      completeness: ["full"],
+    });
+    expect(activeChips(f).map((c) => `${c.kind}:${c.label}`)).toEqual([
+      "query:“bolt”",
+      "completeness:Complete",
+      "colors:Red",
+      "colors:Colourless",
+      "types:instant",
+    ]);
+  });
+
+  it("removes only the chip's own value", () => {
+    const f = filter({ query: "bolt", colors: ["R", "U"], types: ["instant"] });
+    const chips = activeChips(f);
+    const red = chips.find((c) => c.kind === "colors" && c.value === "R")!;
+    expect(removeChip(f, red).colors).toEqual(["U"]);
+    const q = chips.find((c) => c.kind === "query")!;
+    expect(removeChip(f, q).query).toBe("");
+    expect(removeChip(f, q).types).toEqual(["instant"]);
   });
 });

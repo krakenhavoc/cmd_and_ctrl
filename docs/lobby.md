@@ -827,6 +827,62 @@ claimant does not take the table back.
 | 404 | game not found |
 | 422 | `player_id` is not a seat at this table, is a bot or an agent seat, or has left the game |
 
+### `PUT /games/{id}/voice`
+
+Turn the table's Discord voice room on or off
+([ADR 0159](decisions/0159-per-table-discord-voice-rooms.md) §1). **Host or
+admin only** (`CanManageTable`). `POST /games` takes the same choice as
+`"voice_room": true`, which a server with voice rooms off ignores.
+
+With voice on, the server makes a private voice channel in the community
+server once a Discord-signed-in player is seated, lets in the seated players
+who are members of the server, and deletes it 10 minutes after the game
+ends, when the table is archived or deleted, when the host turns voice off,
+or after 2 hours with no game action, no seat change and nobody connected.
+The room's state rides the game view as `voice` (status, the viewer's own
+access, and the link for a viewer who was let in;
+[protocol.md](protocol.md)). Nothing here waits on Discord: the voice
+manager does its work in the background and the table sees it on the next
+snapshot.
+
+**Request**
+
+```json
+{ "enabled": true }
+```
+
+**Response 200**: the updated `GameMeta`, with `voice_room`.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 409 | turning it on for a practice table, or one that has ended or been archived (turning it off is always allowed) |
+| 503 | voice rooms are off on this server: `CMDCTRL_DISCORD_VOICE_CATEGORY_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set |
+
+### `POST /games/{id}/voice/refresh`
+
+A seated player asks the voice manager to check again whether they are in
+the community server (they just joined it), and to reopen a room removed for
+idleness ([ADR 0159](decisions/0159-per-table-discord-voice-rooms.md) §3).
+Limited per caller: one every ten seconds, burst of three.
+
+**Response 202**: no body. The table sees the result on the game view.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | unauthenticated |
+| 403 | the caller is not seated at this table |
+| 409 | the table has no voice room on, or the caller's seat did not sign in with Discord |
+| 429 | too many requests |
+| 503 | voice rooms are off on this server |
+
 ### `PATCH /games/{id}/settings`
 
 Change the table's settings
@@ -1061,6 +1117,29 @@ wire. It is what the lobby UI's rotate-invite buttons check (see
 `POST /games/{id}/invites/rotate` above); a table's creator need not
 even be seated at it, so this can be `true` on a game where `mySeat`
 finds nothing.
+
+**A game in play** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md)
+§1 item 4) carries two more fields, which the Tables page's "Now" cards
+show:
+
+```json
+{
+  "state": "active",
+  "turn": 7,
+  "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "life": 31 }]
+}
+```
+
+- `turn` is the game view's `turn.number`, the number the board shows
+  (the round: every seat has reached it). It is omitted while the
+  opening roll is still open, before turn 1 has begun.
+- `life` on each `players[]` entry is that seat's life total.
+
+Both are public at the table, since every seat and spectator sees them,
+and they go to every caller of this list. A table in the lobby or a
+game that has ended carries neither. They are read fresh from the
+engine on each list and never stored, and `GET /games/{id}` does not
+carry them. Additive: an older client ignores them.
 
 ### `GET /games/{id}`
 
@@ -2567,7 +2646,11 @@ construction.
         "unknown": 0,
         "as_printed": 78,
         "resolved": 90
-      }
+      },
+      "commander_cards": [
+        { "name": "Atraxa, Praetors' Voice", "scryfall_id": "<uuid>", "color_identity": ["W", "U", "B", "G"] }
+      ],
+      "color_identity": ["W", "U", "B", "G"]
     }
   ]
 }
@@ -2589,6 +2672,17 @@ unresolved ones included). The page says "N of M cards play as
 printed" from `as_printed_copies` and `deck_size`. The list builds the catalogue verdicts
 once per request and reuses them for every deck. `coverage` is absent
 when the server has no card index or a stored list no longer parses.
+**`commander_cards` and `color_identity`** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) §2)
+are what the Decks page's grid draws: one entry per name in
+`commanders`, in the same order, resolved against the card index by
+name. `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`; it is absent when the name did not
+resolve or no printing has an image, and the page then draws a plain
+band. A commander's `color_identity` is `[]` when it is colourless and
+`null` when its name did not resolve. `color_identity` on the deck is the union of its commanders'
+identities in WUBRG order, absent when that is empty (colourless, or
+nothing resolved). Both are absent with no card index. `PATCH`'s answer
+does not carry them.
 These reads, and the four routes below, share a per-client bucket of 1
 request per second with a burst of 5 (429 past it).
 

@@ -167,3 +167,24 @@ describe("passHint while an any-player offer is open (ADR 0150 §5)", () => {
     expect(passHint(v, false)).toBe("Alice is deciding whether to pay {1} (Bob's Rhystic Circle)");
   });
 });
+
+describe("passHint while an assisted cast waits (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice", seat: 0 },
+    { id: "b", name: "Bob", seat: 1 },
+  ] as never;
+  const ask = {
+    id: "c1",
+    kind: "pay_amount",
+    chooser: "b",
+    count: 1,
+    source: "fan",
+    pay_amount: { min: 0, max: 3, unit: "assist", resource: "mana" },
+    assist: { caster: "a", spell: "fan", spell_name: "Fan Favorite", generic: 3 },
+  } as never;
+
+  it("names the helper, the caster and the spell", () => {
+    const v = view("precombat_main", { seats, pending_choices: [ask] });
+    expect(passHint(v, true)).toBe("Bob is deciding how much to help pay for Alice's Fan Favorite");
+  });
+});

@@ -56,6 +56,11 @@ const (
 	ModAddSubtypes      ModKind = "addSubtypes"      // layer 4
 	ModAllCreatureTypes ModKind = "allCreatureTypes" // layer 4
 	ModSetColors        ModKind = "setColors"        // layer 5
+	// ModAddColors is "is <colour> in addition to its other colours"
+	// (Liliana, Death's Majesty's reanimated "black Zombie"). Layer 5;
+	// it unions the colours rather than replacing them, so a later
+	// setColors still wins by timestamp and an earlier one is kept.
+	ModAddColors        ModKind = "addColors"        // layer 5
 	ModAddKeywords      ModKind = "addKeywords"      // layer 6
 	ModRemoveKeywords   ModKind = "removeKeywords"   // layer 6
 	ModLoseAllAbilities ModKind = "loseAllAbilities" // layer 6
@@ -810,6 +815,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddSubtypes:      {layer: Layer4Type},
 	ModAllCreatureTypes: {layer: Layer4Type},
 	ModSetColors:        {layer: Layer5Color},
+	ModAddColors:        {layer: Layer5Color},
 	ModAddKeywords:      {layer: Layer6Ability},
 	ModRemoveKeywords:   {layer: Layer6Ability},
 	ModLoseAllAbilities: {layer: Layer6Ability, removes: true},
@@ -990,6 +996,10 @@ func AllCreatureTypesMod() Mod { return Mod{Kind: ModAllCreatureTypes} }
 // SetColorsMod sets the object's colours (layer 5). Reads Colors;
 // an empty list makes it colourless.
 func SetColorsMod(colors ...string) Mod { return Mod{Kind: ModSetColors, Colors: copyStrings(colors)} }
+
+// AddColorsMod adds colours in addition to the object's others (layer
+// 5, CR 105.3). Reads Colors.
+func AddColorsMod(colors ...string) Mod { return Mod{Kind: ModAddColors, Colors: copyStrings(colors)} }
 
 // AddKeywordsMod grants keyword abilities (layer 6) through
 // AppendKeywordAbility, so a cumulative keyword stays cumulative and
@@ -1751,6 +1761,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		colors := m.Colors
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Colors = copyStrings(colors)
+		}
+	case ModAddColors:
+		colors := m.Colors
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			for _, c := range colors {
+				if !typeListHas(ch.Colors, c) {
+					ch.Colors = append(ch.Colors, c)
+				}
+			}
 		}
 	case ModAddKeywords, ModLoseAllAbilities:
 		// loseAllAbilities: the engine empties the list for a

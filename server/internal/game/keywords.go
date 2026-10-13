@@ -178,6 +178,14 @@ var canonicalKeywords = map[string]bool{
 	// is the badge and the ADR 0037 coverage signal.
 	"more than meets the eye": true,
 	"living metal":            true,
+	// assist (CR 702.132a) joins with #1857 (ADR 0150 §4), in the same
+	// change that teaches the cast path to honour it: cast_spell's
+	// `assist_player`, the cast parked on the helper's pay_amount, and
+	// the re-run that pays both players or neither (assist.go). Its
+	// consumer is castSpellLocked, which reads it off the card being
+	// cast (HasAssist), so a printed assist stamped by the importer
+	// works with no catalog entry.
+	KeywordAssist: true,
 	// plot (CR 702.170) joins with #1342, in the same change that
 	// teaches the engine to honour it: the CR 116.2 special action
 	// from hand (SpecialActionPlot, plot.go) and the free later cast

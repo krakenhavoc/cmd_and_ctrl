@@ -125,8 +125,14 @@ func (e *enumerator) blightXCeiling(addCost *game.AdditionalCost) int {
 // slot, so announcedX's "no {X} slot, the cost ceiling is the whole
 // answer" branch (Toxic Deluge) never reads a printed ceiling as a
 // price: a free cast of Winter's Chill still announces X=0.
-func (e *enumerator) printedXCeiling(key string, ceiling int) int {
-	c, ok := e.g.SpellXCeilingForEffect(e.seat, key)
+//
+// `offer` is the alternative cost this cast claims, or nil (#3225): a
+// flash-on-X offer ("as though it had flash if X is 3 or less") carries
+// a ceiling of its own that CastSpell reads through the same call
+// (SpellXCeilingForOfferLocked), so the instant-speed move is never
+// offered above it while the sorcery-speed cast for the printed cost is.
+func (e *enumerator) printedXCeiling(key string, offer *game.AlternativeCost, ceiling int) int {
+	c, ok := e.g.SpellXCeilingForOfferEffect(e.seat, key, offer)
 	if !ok {
 		return ceiling
 	}

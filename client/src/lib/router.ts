@@ -57,7 +57,10 @@ export type Route =
   // #/deck-check?url=<link> for the full report, and every reply
   // already posted must keep working. router.test.ts pins it.
   | { name: "decks"; url?: string }
-  | { name: "lobby" }
+  // Tables, the signed-in home. `show: "history"` scrolls to its History
+  // section (ADR 0158 §1 item 5): #/lobby?show=history, where the old
+  // #/my-games redirects.
+  | { name: "lobby"; show?: "history" }
   // The tutorial's practice table (ADR 0076 §2.2): opening this route
   // opens a fresh practice game for the signed-in session and moves on
   // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
@@ -84,9 +87,9 @@ export type Route =
   // `query` is #/catalog?q=<text>, which pre-fills the search box. The
   // roadmap links a signed-in viewer's example card names here.
   | { name: "catalog"; query?: string }
-  // "My games" (ADR 0051 decision 4, S34): every seat the signed-in
-  // person holds, with a way back into the open ones. Session-gated;
-  // the page itself explains what a guest or admin session is missing.
+  // The retired "My games" page (ADR 0051 decision 4, S34). Its list is
+  // Tables' History now (ADR 0158 §1 item 5), and #/my-games only
+  // redirects there (signedInHome.routeRedirect), so a bookmark lands.
   | { name: "myGames" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
@@ -150,7 +153,9 @@ export function parseHash(hash: string): Route {
       return u ? { name: "decks", url: u } : { name: "decks" };
     }
     case "lobby":
-      return { name: "lobby" };
+      return params.get("show") === "history"
+        ? { name: "lobby", show: "history" }
+        : { name: "lobby" };
     case "practice":
       return { name: "practice" };
     case "catalog": {

@@ -7,6 +7,7 @@
 import { describe, expect, it } from "vitest";
 
 import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "./joinRecovery";
+import { parseHash } from "./router";
 
 describe("GUEST_RETURN_ADVICE", () => {
   it("points a guest at a seat reclaim link", () => {
@@ -25,14 +26,10 @@ describe("GUEST_RETURN_ADVICE", () => {
 });
 
 describe("SIGNED_IN_RETURN_LINK", () => {
-  it("sends a signed-in identity to My games", () => {
-    expect(SIGNED_IN_RETURN_LINK).toEqual({ href: "#/my-games", label: "My games" });
-  });
-
-  // router.ts's parseHash only recognises "my-games", not "me/games" —
-  // a link built from the wrong one silently 404s into the lobby
-  // fallback instead of My games.
-  it("uses the route the router actually parses", () => {
-    expect(SIGNED_IN_RETURN_LINK.href).toBe("#/my-games");
+  // Tables, whose Now lists the open tables they hold a seat at (ADR
+  // 0158 §1; it was My games before).
+  it("sends a signed-in identity to Tables", () => {
+    expect(SIGNED_IN_RETURN_LINK).toEqual({ href: "#/lobby", label: "Tables" });
+    expect(parseHash(SIGNED_IN_RETURN_LINK.href)).toEqual({ name: "lobby" });
   });
 });

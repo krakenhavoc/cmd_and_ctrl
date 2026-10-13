@@ -272,14 +272,14 @@ describe("the router (§1 items 1 and 2)", () => {
 });
 
 describe("the lobby.create hint", () => {
-  it("anchors on the create form a signed-in person sees", async () => {
+  it("anchors on + New table, which a signed-in person sees", async () => {
     setSession(sess("player", USER));
     stubServer();
     const { container } = render(Lobby as never, {} as never);
     await settle();
     const a = anchorOf(CREATE_HINT, { ...emptyContext("lobby"), signedIn: true });
     expect(resolveAnchor(a!, container)).toBe(
-      container.querySelector('form[aria-label="create game"]'),
+      container.querySelector('button[aria-label="new table"]'),
     );
   });
 });
@@ -351,8 +351,8 @@ describe("the Lobby's Join a table card (§1 item 3)", () => {
     await settle();
     expect(container.querySelector('input[aria-label="invite code or link"]')).toBeNull();
     expect(container.querySelector('input[aria-label="invite link"]')).toBeNull();
-    // The create form is still there.
-    expect(container.querySelector('input[aria-label="game name"]')).not.toBeNull();
+    // + New table is still there.
+    expect(container.querySelector('button[aria-label="new table"]')).not.toBeNull();
   });
 
   it("has no command bar of its own", async () => {
@@ -396,14 +396,17 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
 
     const names = [...container.querySelectorAll(".tname")].map((n) => n.textContent);
     expect(names).toEqual(["Created", "Seat elsewhere", "Seat in the lobby"]);
-    expect(container.textContent).not.toMatch(/Other pod/);
+    // The ended table they sat at is History's (ADR 0158 §1 item 3).
+    expect(container.querySelector(".now")?.textContent).not.toMatch(/Other pod/);
+    expect(container.querySelector("#history")?.textContent).toMatch(/Other pod/);
 
     const card = [...container.querySelectorAll("li.tcard")].find((li) =>
       /Seat elsewhere/.test(li.textContent ?? ""),
     )!;
-    const open = buttonNamed(card, /^\s*Open\s*$/);
+    // A game in play resumes (ADR 0158 §1 item 2).
+    const open = buttonNamed(card, /^\s*Resume\s*$/);
     expect(open).toBeDefined();
-    // Open is the only way in: no "open table", which would watch as a
+    // Resume is the only way in: no "open table", which would watch as a
     // stranger.
     expect(buttonNamed(card, /open table|enter table/)).toBeUndefined();
     click(open!);
@@ -432,8 +435,8 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     await settle();
     expect(currentSession()?.gameID).toBe(G4);
     expect(location.hash).toBe("#/lobby");
-    expect(buttonNamed(container, /^\s*Open\s*$/)).toBeUndefined();
-    expect(container.querySelector("details.deck-upload")).not.toBeNull();
+    // Seated now, with no deck yet: the deck panel is open.
+    expect(container.querySelector(".deck-upload")).not.toBeNull();
   });
 
   it("shows the admin token every table", async () => {
@@ -467,9 +470,9 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
       ["Start practice", "#/practice"],
       ["Decks", "#/decks"],
     ]);
-    // The Join and Create cards are above it.
+    // The join box and + New table are in the head above it.
     expect(container.querySelector('input[aria-label="invite code or link"]')).not.toBeNull();
-    expect(container.querySelector('input[aria-label="game name"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="new table"]')).not.toBeNull();
   });
 });
 

@@ -14,7 +14,7 @@
 //   - declare attackers goes to end of combat when nothing attacked
 //     (CR 508.8), and to declare blockers otherwise.
 
-import { anyPlayerWaiting } from "./choiceDock";
+import { anyPlayerWaiting, assistWaiting } from "./choiceDock";
 import { commanderReturnWaiting, findCardView } from "./commanderReturn";
 import { openingRollStatus } from "./openingRoll";
 import type { GameView } from "./protocol";
@@ -68,6 +68,10 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   // one player decides. The player asked has it in the action bar.
   const offering = anyPlayerOfferWaiting(view);
   if (offering) return offering;
+  // ADR 0150 §5: a cast parked on an assist helper. The helper has the
+  // prompt and the caster a request with Cancel; this is the table's.
+  const ask = view.pending_choices?.find((p) => p.assist);
+  if (ask) return assistWaiting(ask, null, view.seats ?? []);
   if (!viewerHasPriority) return blockWaitHint(view);
 
   const top = topOfStackName(view);

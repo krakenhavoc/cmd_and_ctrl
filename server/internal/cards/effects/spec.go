@@ -906,6 +906,13 @@ type Spec struct {
 	// madness.
 	Madness string
 
+	// MadnessLife is the "Pay N life" a madness cost adds to its mana
+	// (CR 702.35a, 119.4): Shadowgrange Archfiend's "Madness—{2}{B},
+	// Pay 8 life" is `Madness: "{2}{B}", MadnessLife: 8`. The offer
+	// charges both, and a player with less life than that cannot cast
+	// it for its madness cost. Zero for every other madness card.
+	MadnessLife int
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice
@@ -1374,6 +1381,20 @@ type Spec struct {
 	// which also means the answer is always about whatever is on top
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
+
+	// DiscardByOpponent declares what "if a spell or ability an
+	// opponent controls causes you to discard this card" does for this
+	// card while it sits in a hand: game.DiscardByOpponentBattlefield
+	// (Obstinate Baloth) or game.DiscardByOpponentTrigger (Sand
+	// Golem). It rides the wire as CardView.discard_by_opponent so the
+	// bot can price an opponent's discard (ADR 0153 §5). Declared by
+	// the card's constructor, never inferred from its text.
+	DiscardByOpponent game.DiscardByOpponentKind
+
+	// DiscardByOpponentForHand is the same declaration made for every
+	// card in this permanent's controller's hand while it is on the
+	// battlefield: game.DiscardByOpponentLibrary on Nephalia Academy.
+	DiscardByOpponentForHand game.DiscardByOpponentKind
 
 	// UntapStep declares the printed clause "untap <these> during
 	// each other player's untap step" — Seedborn Muse, Unwinding

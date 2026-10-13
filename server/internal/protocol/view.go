@@ -92,6 +92,10 @@ type GameView struct {
 	// object, because undo rules and the spawn switch are things the
 	// other players should be able to see. Added in S35 (#1032).
 	Settings *TableSettingsView `json:"settings,omitempty"`
+	// Voice is the table's Discord voice room (ADR 0159 §6), stamped by
+	// the room and reduced per viewer by FilterViewFor. Nil when the
+	// feature is off on this server.
+	Voice *VoiceView `json:"voice,omitempty"`
 	// StartingSeat is the seat index that took the first turn. Used
 	// by the server to enforce the CR 103.8a turn-1 skip-draw rule
 	// (two-player games only — CR 103.8c);
@@ -732,6 +736,9 @@ type PendingChoiceView struct {
 	// who has been asked. Public: every seat sees who is deciding.
 	// Absent on every other prompt.
 	AnyPlayerOffer *AnyPlayerOfferView `json:"any_player_offer,omitempty"`
+	// Assist marks a pay_amount as an assist helper's prompt (ADR 0150
+	// §5): who is casting what. Public. Absent on every other prompt.
+	Assist *AssistPromptView `json:"assist,omitempty"`
 }
 
 // AnyPlayerOfferView is an any-player offer in progress
@@ -1263,6 +1270,12 @@ type OptionalCostView struct {
 	// 1 for kicker and buyback, the multikicker cap for multikicker.
 	// The client renders a checkbox at 1 and a stepper above it.
 	MaxTimes int `json:"max_times,omitempty"`
+	// XMin is the floor on the announced X while this cost is paid —
+	// Thieving Skydiver's "Kicker {X}. X can't be 0" is 1 (#3232). Absent
+	// for a cost with no floor, and meaningful only beside a mana_cost
+	// that contains {X}. The server refuses a kicked cast under it; the
+	// client's X picker opens at it.
+	XMin int `json:"x_min,omitempty"`
 	// Energy is the "pay N {E}" each payment of this cost charges (ADR
 	// 0129 §5): Reiterating Bolt's "Replicate—Pay {E}{E}{E}" is 3. For
 	// such a cost MaxTimes is capped at the payments the viewer's energy
@@ -1513,6 +1526,15 @@ type AlternativeCostView struct {
 	// picker drops an offer this is set on exactly as it drops the
 	// printed row when PrintedCostTimingClosed is set.
 	TimingClosed bool `json:"timing_closed,omitempty"`
+
+	// XMax is the largest X the viewer may announce while claiming THIS
+	// offer, set only for an offer that carries a ceiling of its own
+	// (#3225: Silver Scrutiny's "as though it had flash if X is 3 or
+	// less", CR 601.3c) and already folded with the card's printed
+	// `x_max` — the same number CastSpell refuses above. The X picker
+	// reads it for the claimed offer; the card's own `x_max` still
+	// bounds the cast for the printed cost. Absent for every other offer.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1598,6 +1620,36 @@ type PayAmountView struct {
 	Marks []int `json:"marks,omitempty"`
 	// SelfDamage says each point is also dealt to the chooser.
 	SelfDamage bool `json:"self_damage,omitempty"`
+}
+
+// AssistOfferView is a spell with assist's offer to its caster
+// (ADR 0150 §5).
+type AssistOfferView struct {
+	// Max is the generic part of the total cost for the default
+	// announcement out of this zone (commander tax and cost modifiers
+	// included): "up to {Max}". The prompt to the helper caps it again
+	// at what they can make.
+	Max int `json:"max"`
+	// Players are the players the caster may ask: every other player
+	// still in the game, in seat order.
+	Players []string `json:"players"`
+}
+
+// AssistPromptView marks a pay_amount as an assist helper's prompt
+// (ADR 0150 §5). Public: the caster's dock shows a waiting line from
+// it, and every other seat a read-only one.
+type AssistPromptView struct {
+	// Caster is the player casting the spell; the prompt's chooser is
+	// the helper.
+	Caster string `json:"caster"`
+	// Spell is the card being cast, SpellName its name and ManaCost its
+	// total cost as announced ("{3}{B}").
+	Spell     string `json:"spell"`
+	SpellName string `json:"spell_name"`
+	ManaCost  string `json:"mana_cost,omitempty"`
+	// Generic is the generic part of the total cost. The prompt's own
+	// max is the most the helper can pay, which may be less.
+	Generic int `json:"generic"`
 }
 
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
@@ -2691,6 +2743,17 @@ type CardView struct {
 	// for "Cast anyway". Omitted when false; cleared with
 	// Unimplemented on a face-down card. See game.MayMakeManaUnautomated.
 	MayMakeManaUnautomated bool `json:"may_make_mana_unautomated,omitempty"`
+	// DiscardByOpponent (ADR 0153 §5) is on a card in a hand that does
+	// something when a spell or ability an opponent controls makes its
+	// owner discard it, declared by the card's catalog constructor and
+	// never inferred from its text: "battlefield" (it is put onto the
+	// battlefield instead of the graveyard), "library" (it goes on top
+	// of its owner's library instead; Nephalia Academy declares this for
+	// every card in its controller's hand) or "trigger" (the discard
+	// triggers an ability of the card). Omitted when the card does
+	// nothing of the kind, and cleared with the rest of a hidden card's
+	// identity. The bot prices such a discard off it.
+	DiscardByOpponent string `json:"discard_by_opponent,omitempty"`
 	// CastSurfaceView is the announce surface of the card AS THE FACE
 	// IT IS SHOWING. Embedded rather than listed, so `target_mode`,
 	// `legal_targets` and the rest keep the names and the JSON keys
@@ -2982,6 +3045,15 @@ type CardView struct {
 	// cannot (a face-down permanent's non-controllers). Absent — which
 	// is nearly always — means nothing granted this permanent anything.
 	GrantedAbilities []GrantedAbilityView `json:"granted_abilities,omitempty"`
+
+	// UnautomatedLenders names each object this permanent "has all
+	// activated abilities of" that the catalog has no entry for (ADR 0155
+	// owner decision 2): it lends nothing, and the menu shows a disabled
+	// "<lender>: not automated" line so the player knows to resolve its
+	// ability by hand. Absent, which is nearly always, means none. Cleared
+	// with the ability rows for a viewer who cannot see the card, and for a
+	// lender in a hidden zone.
+	UnautomatedLenders []GrantedByView `json:"unautomated_lenders,omitempty"`
 
 	// AbilityRows are the card's non-keyword triggered, static and
 	// activated abilities right now, triggered first, each with a short
@@ -3412,6 +3484,13 @@ type CastSurfaceView struct {
 	// `alternative_costs`, because the client asks both questions in
 	// one modal.
 	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
+	// Assist is a spell with assist's offer to this caster (CR
+	// 702.132a, ADR 0150 §5): who may be asked to help pay its generic
+	// mana and how much generic there is. Read by the cast flow's
+	// Assist row, which sends the pick as `assist_player`. Absent for
+	// every card without assist. Per viewer: the players and the total
+	// are this caster's.
+	Assist *AssistOfferView `json:"assist,omitempty"`
 	// CantCast is the printed clause that stops this card being cast
 	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
 	// "Each player can't cast more than one spell each turn", "Cast
@@ -4775,6 +4854,7 @@ func ViewOfGame(g *game.Game) GameView {
 			}
 		}
 		stampLibraryTop(g, view.Seats)
+		stampDiscardByOpponent(g, view.Seats)
 		stampActivatedAbilities(g, &view.Battlefield)
 		stampZoneAbilities(g, view.Seats, &view.Exile)
 		stampCombatTargets(g, &view)
@@ -5377,6 +5457,8 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastPrices = nil
 	// #2581: and so is an X ceiling read off one seat's board.
 	s.XMax = nil
+	// ADR 0150 §5: and assist's offer, which is "who may YOU ask".
+	s.Assist = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -5477,6 +5559,9 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.TapOptions = nil
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
+		// #3225: folded with the card's board-set ceiling, so it is the
+		// asking seat's number like the card's own `x_max`.
+		o.XMax = nil
 		out[i] = o
 	}
 	return out
@@ -5912,6 +5997,17 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
 	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	// ADR 0150 §5: assist's "choose another player", asked in the same
+	// modal as the gift's opponent. The total is the engine's own
+	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
+	if haveLive {
+		if most, players, ok := g.AssistOfferLocked(caster, live, kind); ok {
+			out.Assist = &AssistOfferView{Max: most, Players: cardIDStrings(players)}
+			if out.Assist.Players == nil {
+				out.Assist.Players = []string{}
+			}
+		}
+	}
 	// #2581: the printed X ceiling, read for this caster now — the
 	// count CastSpell will read as X is announced (CR 601.2b).
 	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
@@ -6689,6 +6785,11 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// by.
 			Purpose: viewOfPurpose(ac.Purpose),
 		}
+		if ac.XCeiling > 0 && live != nil {
+			if ceiling, ok := g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac); ok {
+				v.XMax = &ceiling
+			}
+		}
 		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
 			v.TargetMode = spec.Mode
@@ -6852,6 +6953,7 @@ func viewOfOptionalCosts(g *game.Game, caster uuid.UUID, src game.TargetSource, 
 			Label:        oc.Label,
 			ManaCost:     oc.ManaCost,
 			MaxTimes:     oc.MaxPayments(),
+			XMin:         oc.MinX,
 			DiscardCards: oc.DiscardCards,
 		}
 		// ADR 0129 §5: an energy cost is paid only as many times as the
@@ -8168,6 +8270,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				HelpsController: o.HelpsController,
 			}
 		}
+		if a := c.Assist; a != nil {
+			v.Assist = &AssistPromptView{
+				Caster:    a.Caster.String(),
+				Spell:     a.Spell.String(),
+				SpellName: a.SpellName,
+				ManaCost:  a.ManaCost,
+				Generic:   a.Generic,
+			}
+		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
 		}
@@ -9054,7 +9165,10 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 		Vote:          v.Vote,
 		UndoLimit:     v.UndoLimit,
 		Settings:      v.Settings,
-		StartingSeat:  v.StartingSeat,
+		// ADR 0159 §6: the viewer's own access, and the link only when
+		// they may use it.
+		Voice:        filterVoiceFor(v.Voice, viewerID),
+		StartingSeat: v.StartingSeat,
 		// ADR 0121 §3: every die is public the moment it lands.
 		OpeningRoll:           v.OpeningRoll,
 		StackItems:            v.StackItems,
@@ -9589,6 +9703,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.TapCost = nil
 	// ADR 0100: "delve" names the card as loudly as its mana cost.
 	out.Delve = nil
+	// ADR 0150: and so does "assist".
+	out.Assist = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.
@@ -9621,6 +9737,9 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// anyone could read much from it.
 	out.Unimplemented = false
 	out.MayMakeManaUnautomated = false
+	// ADR 0153: "put onto the battlefield when an opponent makes you
+	// discard it" names a creature card as loudly as its text does.
+	out.DiscardByOpponent = ""
 	// ADR 0034: the face list names the card twice over — both
 	// halves, their costs and their type lines. A face-down Sea Gate
 	// Restoration that still shipped "Sea Gate, Reborn // Land" in
@@ -9655,6 +9774,7 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	// the card underneath, and "rarely" is not the bar this function
 	// holds a field to.
 	out.GrantedAbilities = nil
+	out.UnautomatedLenders = nil
 	// #2219: the tile's ability rows are read off the card's catalog
 	// entry exactly as the ability lists above are, and "Draw a card"
 	// under a face-down card says which card it is.
@@ -10325,6 +10445,41 @@ func cantPlayLandReason(err error) string {
 // Caller must hold g.mu.
 func grantedCast(g *game.Game, caster uuid.UUID, card game.Card, kind game.ZoneKind) *game.CastPermission {
 	return g.CastPermissionForLocked(caster, card, kind)
+}
+
+// stampDiscardByOpponent files each hand card's `discard_by_opponent`
+// (ADR 0153 §5): what an opponent-caused discard does for the card, from
+// the card's own catalog declaration or from a permanent its owner
+// controls that declares it for the whole hand (Nephalia Academy). Hand
+// cards only; FilterViewFor strips every other seat's hand, and clears
+// the field on a card the viewer cannot see.
+//
+// Runs under the read lock ViewOfGame already holds.
+func stampDiscardByOpponent(g *game.Game, seats []PlayerView) {
+	if game.CatalogDiscardByOpponent == nil {
+		return
+	}
+	for si := range seats {
+		seat := &seats[si]
+		owner, err := uuid.Parse(seat.ID)
+		if err != nil {
+			continue
+		}
+		p := g.PlayerByIDForEffect(owner)
+		if p == nil || p.Hand == nil {
+			continue
+		}
+		for ci := range seat.Hand.Cards {
+			cv := &seat.Hand.Cards[ci]
+			for hi := range p.Hand.Cards {
+				if p.Hand.Cards[hi].InstanceID.String() != cv.InstanceID {
+					continue
+				}
+				cv.DiscardByOpponent = string(g.DiscardByOpponentOf(&p.Hand.Cards[hi]))
+				break
+			}
+		}
+	}
 }
 
 // stampLibraryTop applies CR 401.5's visibility to the card currently

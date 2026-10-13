@@ -184,6 +184,18 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		exileStaticIsLiveLocked(g) {
 		g.layerVersion.Add(1)
 	}
+	// ADR 0093 amendment 2026-10-13 (#3233): a CARD entering a hand, a
+	// graveyard or exile while a permanent grants abilities to the cards
+	// there ("each creature card in your hand has ninjutsu") has the
+	// grant from that moment, and a move off the battlefield bumps
+	// above already. Conditional in the hand-size bump's mould: the
+	// walk is bounded by the board and runs only for a move into one of
+	// the three zones, so a table with no such permanent pays nothing.
+	if ev.NewZone != ev.OldZone && ev.NewZone != ZoneBattlefield && ev.OldZone != ZoneBattlefield &&
+		(ev.NewZone == ZoneHand || ev.NewZone == ZoneGraveyard || ev.NewZone == ZoneExile) &&
+		zoneGrantStaticIsLiveLocked(g, ev.NewZone) {
+		g.layerVersion.Add(1)
+	}
 	switch ev.Kind {
 	case EventZoneMove:
 		if ev.OldZone == ZoneBattlefield || ev.NewZone == ZoneBattlefield {

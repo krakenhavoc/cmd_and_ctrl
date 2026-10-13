@@ -40,6 +40,102 @@ func GrantActivatedAbilitiesOf(appliesTo func(target *game.Card, g *game.Game, s
 	}
 }
 
+// LenderPredicate picks the lenders of a borrow. It is a CardPredicate that
+// also sees the borrowing source, for the clauses that compare with it
+// ("that don't have the same name as this creature"). `source.Controller`
+// is "you".
+type LenderPredicate func(g *game.Game, source *game.Card, c game.Card) bool
+
+// ByController lifts a CardPredicate (YouControl(), Creature() …) to a
+// LenderPredicate whose caster is the borrowing source's controller.
+func ByController(p CardPredicate) LenderPredicate {
+	return func(g *game.Game, source *game.Card, c game.Card) bool {
+		return p(g, source.Controller, c)
+	}
+}
+
+// BattlefieldLenders is "… the activated abilities of [permanents matching
+// P]": every permanent on the battlefield that matches. The borrowing
+// source itself is never its own lender, because its own abilities are
+// already its own ("each other creature", "creatures you control that
+// don't have the same name"). Types, control and counters are read after
+// layers 1-5 have settled, and the lender's rows after its own layer 6
+// (ADR 0155 Decision 3).
+func BattlefieldLenders(p LenderPredicate) func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		if g == nil || g.Battlefield == nil || source == nil {
+			return nil
+		}
+		var out []*game.Card
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			if c.InstanceID == source.InstanceID || !p(g, source, *c) {
+				continue
+			}
+			out = append(out, c)
+		}
+		return out
+	}
+}
+
+// LenderGraveyards says whose graveyards a graveyard lender reads.
+type LenderGraveyards uint8
+
+const (
+	// YourGraveyard is "cards in your graveyard" (Thranduil, Trazyn): the
+	// borrowing source's controller's.
+	YourGraveyard LenderGraveyards = iota
+	// AllGraveyards is "cards in all graveyards" (Necrotic Ooze, Mirran
+	// Safehouse).
+	AllGraveyards
+)
+
+// GraveyardLenders is "… the activated abilities of [cards matching P] in
+// [your / all] graveyards". A card there has no layered characteristic, so
+// the engine reads its printed abilities through its catalog entry and its
+// designation gate (CR 113.6 keeps an ability that works only on the
+// battlefield from being lent as usable there, which the activation path
+// enforces). The borrowing source is never its own lender.
+func GraveyardLenders(whose LenderGraveyards, p LenderPredicate) func(g *game.Game, source *game.Card) []*game.Card {
+	return func(g *game.Game, source *game.Card) []*game.Card {
+		if g == nil || source == nil {
+			return nil
+		}
+		var out []*game.Card
+		for _, seat := range g.Seats {
+			if seat == nil || seat.Graveyard == nil {
+				continue
+			}
+			if whose == YourGraveyard && seat.ID != source.Controller {
+				continue
+			}
+			for i := range seat.Graveyard.Cards {
+				c := &seat.Graveyard.Cards[i]
+				if c.InstanceID == source.InstanceID || !p(g, source, *c) {
+					continue
+				}
+				out = append(out, c)
+			}
+		}
+		return out
+	}
+}
+
+// BorrowedAbilitiesSpendableAsAnyColor is the rider "You may spend mana as
+// though it were mana of any color to activate those abilities." for the
+// borrow whose printed clause is `borrowLabel` (Drana and Linvala): the
+// borrower's controller, for the rows that borrow lent and no others
+// (ADR 0155 Decision 7).
+func BorrowedAbilitiesSpendableAsAnyColor(label, borrowLabel string) []game.AnyColorSpendStatic {
+	return []game.AnyColorSpendStatic{{
+		Label: label,
+		Whose: game.AnyColorSpendYou,
+		Covers: func(ctx game.ManaSpendContext) bool {
+			return ctx.AbilityOrigin.LentByBorrow(borrowLabel)
+		},
+	}}
+}
+
 // checkStaticBorrows is ADR 0155 Decision 1's refusal. A borrow is an
 // ability-adding effect, CR 613.1f's layer 6, and the engine applies it
 // in its own step at the end of that bucket, so:

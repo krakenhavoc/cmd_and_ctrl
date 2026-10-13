@@ -200,3 +200,13 @@ Card tests (one file per card per convention) for all 16 cards, each verified ag
 - A discard can land on the battlefield through the same entry every other effect uses. No new prompt kind, event kind, snapshot field or continuation slot is added.
 - 16 cards become catalogable. Nullhide Ferox leaves the row's `Waiting` list, and the row moves to Implemented.
 - Out of scope: discard caused by a static ability (no printed card needs it), team play's notion of an opponent, and any bot strategy that holds these cards to bait a discard.
+
+## Amendment 2026-10-13 (PR 2, #3168)
+
+What the card PR found different from the text above, none of it changing a decision:
+
+- **The card's own replacement needs `ThisCard`.** `DiscardBecomes` gains `ThisCard` beside `ByOpponent`, so a Baloth replaces only its own discard from the hand (the self-replacement pass finds it, as it finds madness) and a second copy on the battlefield replaces nothing. It also gains `OnApply`, which Nephalia Academy uses to reveal the card, with the existing `RevealForEffect` (`EventRevealCards`) rather than a new event.
+- **The bot cannot read a stack item.** By the time a discard prompt is open, the resolving spell has left the stack and sits in its caster's graveyard, so `PendingChoiceView.Source` is placed from the view's stack items, then the battlefield, the stack and the graveyards (`controllerOfSource`). An ability's source is its permanent on the battlefield.
+- **A trigger card's declared payoff is `Purpose.OnOpponentDiscard`**, a `DiscardPayoff` on the card's own triggered row, not `DiscardPayoff`: a `DiscardPayoff` on a row that sits on the battlefield pays for every discard, which Metrognome's four Gnomes do not. Only Metrognome declares one; the other trigger cards pay in amounts `discardPayoff` has no unit for. `library` is declared on the wire and not priced, as §5 lists only the other two.
+- **No log wording changes.** The log has no "discarded" line: `EventDiscardCard` is deliberately silent because the zone move already tells it ("X entered the battlefield" for a Baloth, "X was put into the graveyard" otherwise). `labels.ts` is the contract-label registry and has no zone suffix to extend.
+- **The nine "this card" trigger cards are `CompletenessCaveats`** (owner decision 6): one shared caveat that a card madness or Rest in Peace exiles does not trigger. Orvar adds a second, that a permanent its cast trigger copies must still be on the battlefield when the ability resolves.
