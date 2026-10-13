@@ -797,7 +797,14 @@
        width is bounded by --hand-overlap below; this is the backstop
        for the case where it is not. */
     max-width: 100%;
-    overflow: hidden;
+    /* #3241: clip, not hidden. A hidden box is still a scroll container,
+       so anything that scrolls a card into view (keyboard focus on a
+       card, a test driver's scroll-into-view) scrolled the strip and
+       left it scrolled: the resting cards sat up to the hidden share
+       higher than they should, and dropped by that much the moment a
+       hover set overflow: visible, out from under the pointer that
+       hovered them. A clipped box cannot be scrolled at all. */
+    overflow: clip;
     position: relative;
     z-index: 1;
     transition:
@@ -904,7 +911,7 @@
      peek/reveal interaction would feel wrong on someone else's hand. */
   .hand.opponent {
     max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.55));
-    overflow: hidden;
+    overflow: clip;
   }
   /* #956 — the overlap is handOverlap()'s answer, published by the
      markup as --hand-overlap, rather than three hard-coded per-layout
