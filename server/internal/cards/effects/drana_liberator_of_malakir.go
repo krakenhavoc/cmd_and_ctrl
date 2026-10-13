@@ -16,20 +16,20 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // end of combat), Drana herself included, as printed. Counters go on
 // through AddCounter, so a doubler applies.
 //
-// Sandbox simplification, declared: first strike is the point of the
-// card — in paper the counters land between the first-strike and
-// regular damage steps, so the rest of the team hits harder in the
-// same combat. The engine deals both damage steps inside one step
-// entry with no priority window between them, so Drana's trigger
-// resolves after regular damage has already been dealt. The counters
-// still go on every attacker and stay — the team is bigger from the
-// next combat on, not this one. Weaker than printed, never stronger.
+// First strike is the point of the card, and it works as printed: the
+// first-strike damage step is a real step with a priority window
+// (CR 510.4, #717), and the cursor cannot leave it owing what is on the
+// stack (CR 117.4, #914), so the trigger resolves and the counters land
+// BEFORE the regular damage step, which reads each creature's power
+// then. TestB13DranaGrowsEveryAttackerWhenSheConnects proves it (2 from
+// Drana, then a Bear grown to 3). The caveat this card carried said the
+// counters came after regular damage; that stopped being true when the
+// first-strike step landed. No simplification.
 func init() {
 	Register(Spec{
 		OracleID:        "89b24b5f-d837-4274-8877-8ff7dc2708ba",
 		Name:            "Drana, Liberator of Malakir",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The +1/+1 counters land after this combat's regular damage rather than between first-strike and regular damage, so the rest of the team doesn't hit harder in the same combat."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying", "first strike"},
 		Triggered: []game.TriggeredAbility{
 			WheneverThisDealsCombatDamageToAPlayer("Drana — a +1/+1 counter on each attacking creature you control", func(g *game.Game, item *game.StackItem) error {

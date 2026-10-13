@@ -69,7 +69,7 @@ var exertAttackCards = []exertCard{
 	{"Rhet-Crop Spearmaster", rhetCropOracle, "Creature — Human Warrior", 3, 1, CompletenessFull, 1, 0},
 	{"Rhonas's Stalwart", rhonassStalwartOracle, "Creature — Human Warrior", 2, 2, CompletenessFull, 1, 0},
 	{"Rohirrim Chargers", rohirrimChargersOracle, "Creature — Human Knight", 4, 4, CompletenessFull, 0, 1},
-	{"Sandstorm Crasher", sandstormCrasherOracle, "Creature — Minotaur Berserker Wizard", 3, 4, CompletenessCaveats, 1, 0},
+	{"Sandstorm Crasher", sandstormCrasherOracle, "Creature — Minotaur Berserker Wizard", 3, 4, CompletenessFull, 1, 0},
 	{"Tah-Crop Elite", tahCropEliteOracle, "Creature — Bird Warrior", 2, 2, CompletenessFull, 1, 0},
 	{"Themberchaud", themberchaudOracle, "Legendary Creature — Dragon", 5, 5, CompletenessFull, 1, 0},
 	{"Trueheart Twins", trueheartTwinsOracle, "Creature — Jackal Warrior", 4, 4, CompletenessFull, 0, 1},
@@ -652,7 +652,7 @@ func TestSandstormCrasherCopiesAndSacrificesAtEndStep(t *testing.T) {
 	declareExerting(t, g, crasher, opp.ID)
 	lockInAttacks(t, g)
 	pickTriggerTarget(t, g, me.ID, hydra)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 
 	var token *game.Card
 	for i := range g.Battlefield.Cards {

@@ -87,16 +87,6 @@ func b33IslandsControlled(g *game.Game, controller uuid.UUID) int {
 	return n
 }
 
-// b33ResolutionsThisTurn counts how many times an ability of `source`
-// labelled `label` has resolved this turn — the per-turn tally's
-// per-object resolution count (Turn.Round is no use here: it counts
-// rounds). Dalkovan Encampment's "whenever you
-// attack THIS TURN" is created once per activation, so the count is
-// how many copies of the delayed trigger exist.
-func b33ResolutionsThisTurn(g *game.Game, source uuid.UUID, label string) int {
-	return g.ResolvedThisTurn(source, label)
-}
-
 // b33CountersPlacedDelta is how many `kind` counters the
 // EventCounterPlaced `ev` PUT on its target, or zero for a removal.
 // b11CountersWerePlaced's walk with the delta kept: the event carries
@@ -599,38 +589,12 @@ func b33SacrificeListedCards(g *game.Game, item *game.StackItem) error {
 }
 
 // b33DalkovanEncampmentLabel is the stack label of Dalkovan
-// Encampment's activated ability — what the attack trigger counts.
+// Encampment's activated ability.
 const b33DalkovanEncampmentLabel = "{2}{W}, {T}: Whenever you attack this turn, create two 1/1 red Warrior tokens tapped and attacking; sacrifice them at the next end step"
 
-// b33DalkovanAttackLabel is the stack label of the attack trigger
-// itself — the "one or more" dedup keys on it.
+// b33DalkovanAttackLabel is the stack label of the delayed attack
+// trigger the activated ability sets up.
 const b33DalkovanAttackLabel = "Dalkovan Encampment — create two 1/1 red Warriors tapped and attacking"
-
-// b33DalkovanWarriors is Dalkovan Encampment's attack body: two 1/1
-// red Warriors per activation of the land this turn, tapped and
-// attacking the player the first declared attacker was declared
-// against (item.Trigger.Event.Target, ADR 0041 P9), and a delayed
-// trigger that sacrifices them at the beginning of the next end step.
-func b33DalkovanWarriors(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	n := 2 * b33ResolutionsThisTurn(g, item.SourceCardID, b33DalkovanEncampmentLabel)
-	if n <= 0 {
-		return nil
-	}
-	cursor := b25LastEventSeq(g)
-	if err := g.CreateTokensAttackingForEffect(item.Controller, b33TappedAttackingRedWarrior(), n, item.Trigger.Event.Target); err != nil {
-		return err
-	}
-	tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
-	if len(tokens) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		Label: "Dalkovan Encampment — sacrifice the Warriors",
-		Cards: tokens,
-		Body:  sacrificeListedCardsBody,
-	}.Apply(ctx)
-}
 
 // tuckSelfThirdFromTop is God-Eternal Bontu's return body —
 // Oketra's: the card, if it is still in a graveyard or in exile, goes

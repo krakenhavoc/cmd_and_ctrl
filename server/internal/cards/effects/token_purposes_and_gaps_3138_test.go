@@ -316,7 +316,7 @@ func TestHeroOfBladeholdMakesTwoAttackingSoldiersAndBattleCries(t *testing.T) {
 		if stackFullyEmpty(g) {
 			break
 		}
-		passPriorityAroundTable(t, g)
+		passAndSettleAttackSplit(t, g, me.ID)
 	}
 	soldiers := battlefieldIDsNamed(g, "Soldier")
 	if len(soldiers) != 2 {

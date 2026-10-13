@@ -9208,6 +9208,22 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 	return !g.firstStrikeStepParticipants[c.InstanceID] || HasKeyword(c, "double strike")
 }
 
+// combatDamagePower is the amount of combat damage a combatant assigns
+// (CR 510.1a): its power, or its toughness when an effect says it assigns
+// damage equal to its toughness rather than its power and its toughness
+// is the greater (CR 510.1c, Ghalta the Immovable). Everything the damage
+// pass does with "the attacker's power" - trample, deathtouch, lethal
+// damage assignment, lifelink, commander damage - reads this number.
+func (c *Card) combatDamagePower() int {
+	p := c.CurrentPower()
+	if c.effective != nil && c.effective.DamageByToughness {
+		if t := c.CurrentToughness(); t > p {
+			return t
+		}
+	}
+	return p
+}
+
 // assignAndDealCombatDamageLocked assigns and applies damage for one
 // combat damage step. step is that step's Event.CombatStep value:
 // CombatStepFirstStrike selects the first-strike step, and anything
@@ -9285,7 +9301,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 	for i := range g.Battlefield.Cards {
 		c := &g.Battlefield.Cards[i]
 		if c.AttackingTarget != uuid.Nil || c.BlockingTarget != uuid.Nil {
-			power[c.InstanceID] = c.CurrentPower()
+			power[c.InstanceID] = c.combatDamagePower()
 		}
 	}
 

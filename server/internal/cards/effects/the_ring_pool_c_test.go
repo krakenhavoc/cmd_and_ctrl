@@ -195,6 +195,7 @@ func TestSauronTheNecromancer(t *testing.T) {
 		declareAttack(t, g, opp.ID, sauron)
 		ringAnswerPickIfAsked(t, g, dead)
 		ringSettle(t, g)
+		passAndSettleAttackSplit(t, g, me.ID)
 		if !g.Exile.Contains(dead) {
 			t.Fatal("the creature card was not exiled")
 		}

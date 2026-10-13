@@ -115,32 +115,6 @@ func b25AnotherGoblinYouControlDied(ev game.Event, source *game.Card, g *game.Ga
 	return ok && dead.InstanceID != source.InstanceID && leftUnderControlOf(ev, dead) == source.Controller && leftAsSubtype(ev, dead, "Goblin")
 }
 
-// b25AttackersHaveDoubleStrike is "attacking creatures you control
-// have double strike" (Blade Historian) — Berserkers' Onslaught's
-// trigger, shared: one trigger per attacking creature the
-// controller controls, granting double strike until end of turn
-// through the turn-scoped static registry. See the Onslaught's file
-// for why the printed static is a trigger.
-func b25AttackersHaveDoubleStrike(name string) game.TriggeredAbility {
-	return game.TriggeredAbility{
-		Watches: []game.EventKind{game.EventAttack},
-		AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
-			return attackDeclaredByYou(ev, source.Controller)
-		},
-		Key: name + " — the attacking creature has double strike",
-		Effect: func(g *game.Game, item *game.StackItem) error {
-			if item.Trigger == nil {
-				return nil
-			}
-			return GrantKeywordUntilEOT{
-				Target:   item.Trigger.Event.CardID,
-				Keywords: []string{"double strike"},
-				Label:    name + " — double strike",
-			}.Apply(NewContext(g, item))
-		},
-	}
-}
-
 // --- state reads ---------------------------------------------------
 
 // b25LifeAboveStarting is Cosmos Elixir's test: the player's life

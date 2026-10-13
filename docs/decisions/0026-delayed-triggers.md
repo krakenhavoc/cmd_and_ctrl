@@ -369,3 +369,16 @@ APNAP drain are the harvester's and not a second copy.
   for combat, SBAs and targeting. Shipping Thassa would have meant
   shipping a permanently-a-creature Thassa and calling it a
   simplification, which is a different card rather than a smaller one.
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172)): "whenever you attack this turn" fires once per declaration
+
+A repeating event-conditioned delayed trigger fired once per event, and the engine emits one `EventAttack` per attacking
+creature, so "whenever you attack this turn" (Dalkovan Encampment) would have made its tokens once per creature.
+`DelayedTrigger.OncePerBatch` (`DelayedOnEvent.OncePerBatch`) fires it once per event batch, through the same
+`oncePerBatchAllowsLocked` guard a catalog trigger's `OncePerBatch` uses, keyed by the trigger's ID. The match is
+tested last, so a match the trigger did not take does not use the batch up. Two activations are two triggers and two
+firings. The flag is carried in the snapshot (`oncePerBatch`, additive; an older binary fires once per creature, which is
+stronger than printed, so the shape is recorded and the schema stays at its version).
+
+Back-out: drop the `OncePerBatch` check in `fireEventDelayedTriggersLocked`; Dalkovan Encampment makes its Warriors once
+per attacker (`TestCavCDalkovanWarriorsComeAfterTheLandIsGone` fails).

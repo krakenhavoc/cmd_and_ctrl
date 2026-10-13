@@ -561,8 +561,8 @@ func TestB25BladeHistorianGivesAttackersDoubleStrike(t *testing.T) {
 	if hasAbility(effectiveAbilities(t, g, theirs), "double strike") {
 		t.Error("an opponent's attacker is not yours")
 	}
-	if spec, _ := Lookup(b25BladeHistorianOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the attack-declaration gap is declared")
+	if spec, _ := Lookup(b25BladeHistorianOracle); spec.Completeness != CompletenessFull {
+		t.Error("Blade Historian is a layer 6 static now: nothing is left to declare")
 	}
 }
 

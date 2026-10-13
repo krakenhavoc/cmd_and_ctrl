@@ -3094,6 +3094,21 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 	}, nil)
 }
 
+// CreateTokensBlockingForEffect creates n copies of template under
+// controller's control, each BLOCKING the attacking creature `attacker`
+// (CR 506.3d): Brimaz's "create a 1/1 white Cat Soldier creature token
+// with vigilance that's blocking that creature". The tokens were never
+// declared as blockers, so nothing that watches block declarations sees
+// them; see stampEntryBlockerLocked for the rest of the rule.
+//
+// Caller must hold g.mu.
+func (g *Game) CreateTokensBlockingForEffect(controller uuid.UUID, template Card, n int, attacker uuid.UUID) error {
+	return g.CreateTokensThenForEffect(TokenCreation{
+		Controller: controller,
+		Groups:     []TokenGroup{{Template: template, Count: n, Blocking: attacker}},
+	}, nil)
+}
+
 // ScryForEffect performs a scry N (CR 701.22): the player looks at the
 // top N cards of their library and then decides which go to the bottom
 // and in what order the rest go back on top.
