@@ -157,6 +157,21 @@ describe("the front page (§4)", () => {
   });
 });
 
+describe("the header's Sign in, signed out", () => {
+  it("starts Discord sign-in directly, as the hero does", async () => {
+    const { container } = render(SiteHeader as never, {} as never);
+    await settle();
+    expect(container.querySelector("a.sign-in")?.getAttribute("href")).toBe("/auth/discord/start");
+  });
+
+  it("goes to the front page when the server has no Discord sign-in", async () => {
+    routes["GET /auth/discord/config"] = () => ({ body: { enabled: false } });
+    const { container } = render(SiteHeader as never, {} as never);
+    await settle();
+    expect(container.querySelector("a.sign-in")?.getAttribute("href")).toBe("#/");
+  });
+});
+
 describe("the gate page (§5)", () => {
   it("walks the four onboarding steps, with Join, Check again and a practice game", async () => {
     community({ invite_url: INVITE, gate: true });

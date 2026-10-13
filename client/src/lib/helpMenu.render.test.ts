@@ -118,8 +118,7 @@ describe('the site header\'s Help: button "help" and its menu', () => {
       const nav = r.container.querySelector("nav.site-nav")!;
       // After the nav in document order, and before the account control.
       expect(nav.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-      const acct =
-        r.container.querySelector(".acct-btn") ?? r.container.querySelector('a[href="#/login"]');
+      const acct = r.container.querySelector(".acct-btn") ?? r.container.querySelector("a.sign-in");
       expect(btn.compareDocumentPosition(acct!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
       r.destroy();
     }
@@ -206,18 +205,20 @@ describe('the site header\'s Help: button "help" and its menu', () => {
     expect(hintEngine().tick({ ...env, now: 3 })?.id).toBe("site.help");
   });
 
-  it("has no tips for a page that offers none (the gate page), and says so", async () => {
-    routeStore.value!.set({ name: "requestAccess" });
-    render(HelpMenu as never, {} as never);
-    await openHelp();
-    const item = itemNamed("Tips for this page") as HTMLButtonElement;
-    expect(item.disabled).toBe(true);
-    expect(item.title).toBe("this page has no tips");
-    // The front page has none of its own, but the site's tip is replayed
-    // there (ADR 0156 §4: it took #/home's place).
-    cleanup();
-    document.body.innerHTML = "";
-    routeStore.value!.set({ name: "login" });
+  // ADR 0125 §3.8: the sign-in page, which is the front page since ADR
+  // 0156 §4, and the gate page offer no tips; a site page does.
+  it("has no tips for a page that offers none (the front page, the gate page), and says so", async () => {
+    for (const name of ["login", "requestAccess"] as const) {
+      routeStore.value!.set({ name });
+      render(HelpMenu as never, {} as never);
+      await openHelp();
+      const item = itemNamed("Tips for this page") as HTMLButtonElement;
+      expect(item.disabled, name).toBe(true);
+      expect(item.title).toBe("this page has no tips");
+      cleanup();
+      document.body.innerHTML = "";
+    }
+    routeStore.value!.set({ name: "roadmap" });
     render(HelpMenu as never, {} as never);
     await openHelp();
     expect((itemNamed("Tips for this page") as HTMLButtonElement).disabled).toBe(false);
@@ -324,10 +325,13 @@ describe("Settings → Advanced: Tips and the tutorial", () => {
     expect(routeStore.navigate).toHaveBeenLastCalledWith("#/practice");
   });
 
-  it("signed out, Replay the tutorial goes to sign in first", () => {
+  // ADR 0156 §2: #/practice opens a guest practice game when signed out.
+  it("signed out, Replay the tutorial opens a practice table too", () => {
     const section = openAdvanced();
-    click(button(section, "Replay the tutorial (sign in first)")!);
-    expect(routeStore.navigate).toHaveBeenLastCalledWith("#/login");
+    expect(button(section, "Replay the tutorial (sign in first)")).toBeUndefined();
+    click(button(section, "Replay the tutorial")!);
+    expect(get(settingsOpen)).toBe(false);
+    expect(routeStore.navigate).toHaveBeenLastCalledWith("#/practice");
   });
 });
 

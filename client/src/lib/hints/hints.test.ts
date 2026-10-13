@@ -138,9 +138,10 @@ describe("placeOfRoute", () => {
     expect(placeOfRoute("adminViews")).toBe("admin");
     expect(placeOfRoute("myGames")).toBe("my-games");
     expect(placeOfRoute("game")).toBe("table");
-    // The front page (ADR 0156 §4) took #/home's place.
-    expect(placeOfRoute("login")).toBe("home");
+    // The front page is the sign-in page (ADR 0156 §4): no tips (§3.8).
     for (const r of [
+      "login",
+      "home",
       "adminLogin",
       "requestAccess",
       "join",

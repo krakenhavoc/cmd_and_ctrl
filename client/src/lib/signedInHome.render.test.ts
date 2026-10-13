@@ -483,7 +483,7 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
     const out = render(SiteHeader as never, {} as never);
     await settle();
     expect(out.container.querySelector(".wordmark")?.getAttribute("href")).toBe("#/");
-    expect(out.container.querySelector('a[href="#/login"]')?.textContent).toMatch(/Sign in/);
+    expect(out.container.querySelector("a.sign-in")?.textContent).toMatch(/Sign in/);
     out.destroy();
 
     setSession(sess("player", USER));

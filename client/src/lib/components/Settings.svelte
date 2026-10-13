@@ -46,7 +46,6 @@
   import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
   import { navigate } from "../router";
-  import { session } from "../session";
 
   // ADR 0143 §3.2: the table pace's names, for the Reading time line.
   const PACE_NAMES: Record<TablePace, string> = {
@@ -385,8 +384,8 @@
 
   // Tips and the tutorial (ADR 0125 §6). Show all tips again forgets
   // every dismissed tip and switches tips back on; Replay the tutorial
-  // opens a practice table, which needs a session (signed out it goes
-  // to sign in first, as Help's "Practice game" does).
+  // opens a practice table: a guest one for a signed-out visitor (ADR
+  // 0156 §2), as Help's "Practice game" does.
   let tipsReset = $state(false);
   function onShowAllTipsAgain(): void {
     showAllTipsAgain();
@@ -394,7 +393,7 @@
   }
   function onReplayTutorial(): void {
     closeSettings();
-    navigate($session ? "#/practice" : "#/login");
+    navigate("#/practice");
   }
 
   $effect(() => {
@@ -1388,7 +1387,7 @@
               <div class="adv-row">
                 <button onclick={onShowAllTipsAgain}>{L.showAllTipsAgain}</button>
                 <button onclick={onReplayTutorial}>
-                  {$session ? L.replayTutorial : `${L.replayTutorial} (sign in first)`}
+                  {L.replayTutorial}
                 </button>
                 {#if tipsReset}<span class="saved">✓ every tip will show again</span>{/if}
               </div>

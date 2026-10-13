@@ -72,7 +72,10 @@ describe("the site header's links", () => {
     const { container } = render(SiteHeader as never, {} as never);
     await settle();
     expect(navGroups(container)).toEqual([["Decks", "Roadmap", "About"]]);
-    expect(container.querySelector('a[href="#/login"]')?.textContent?.trim()).toBe("Sign in");
+    const signIn = container.querySelector("a.sign-in");
+    expect(signIn?.textContent?.trim()).toBe("Sign in");
+    // No Discord sign-in on this stub server: Sign in goes to the front page.
+    expect(signIn?.getAttribute("href")).toBe("#/");
     expect(container.querySelector('nav a[href="#/home"]')).toBeNull();
     expect(container.querySelector('button[aria-controls="account-menu"]')).toBeNull();
   });
@@ -90,7 +93,7 @@ describe("the site header's links", () => {
       (a) => a.textContent?.trim() === L.navTables,
     );
     expect(tables?.getAttribute("href")).toBe("#/lobby");
-    expect(container.querySelector('a[href="#/login"]')).toBeNull();
+    expect(container.querySelector("a.sign-in")).toBeNull();
     expect(container.querySelector('button[aria-controls="account-menu"]')).not.toBeNull();
   });
 

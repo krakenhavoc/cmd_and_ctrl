@@ -191,19 +191,32 @@ test.describe("first-use hints", () => {
     try {
       const help = page.getByRole("button", { name: L.help, exact: true });
 
-      // The front page (ADR 0156 §4, which took #/home's place), signed
-      // out: no hint of its own, so the site's Help tip.
-      await pageCycle(page, { url: "/#/", title: SITE_HELP, anchor: help });
+      // The front page is the sign-in page (ADR 0156 §4), which shows no
+      // tip at all (ADR 0125 §3.8), not even the site's.
+      await page.goto("/#/");
+      await expectNoTipThisVisit(page, help);
 
-      // The public pages.
-      await pageCycle(page, {
-        url: "/#/roadmap",
-        title: "What comes next",
-        anchor: page.getByRole("textbox", {
-          name: L.searchRoadmap,
-          exact: true,
-        }),
+      // The roadmap: its own hint first, and the site's Help tip on the
+      // next visit (one tip a visit). Then the usual cycle: nothing on
+      // a reload, and Help → Tips for this page shows both again.
+      const roadmapSearch = page.getByRole("textbox", {
+        name: L.searchRoadmap,
+        exact: true,
       });
+      await page.goto("/#/roadmap");
+      await expectTipBeside(page, "What comes next", roadmapSearch);
+      await dismiss(page);
+      await page.reload();
+      await expectTipBeside(page, SITE_HELP, help);
+      await dismiss(page);
+      await page.reload();
+      await expectNoTipThisVisit(page, roadmapSearch);
+      await tipsForThisPage(page);
+      await expectTipBeside(page, "What comes next", roadmapSearch);
+      await dismiss(page);
+      await expectTipBeside(page, SITE_HELP, help);
+      await dismiss(page);
+      await expect(tipOf(page)).toHaveCount(0);
       await pageCycle(page, {
         url: "/#/decks",
         title: "Check a deck",

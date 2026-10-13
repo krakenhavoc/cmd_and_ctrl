@@ -17,7 +17,6 @@
   // sign-in is configured, so a server without it never offers a 503.
   import { onMount } from "svelte";
   import SiteHeader from "../lib/components/SiteHeader.svelte";
-  import PageTipSlot from "../lib/components/hints/PageTipSlot.svelte";
   import InviteBox from "../lib/components/InviteBox.svelte";
   import Icon from "../lib/components/Icon.svelte";
   import { discordAuthEnabled, discordLoginHref } from "../lib/api";
@@ -88,8 +87,6 @@
         {/if}
         <a href={PRIVACY_HASH}>What we store, and how to delete it.</a>
       </p>
-
-      <PageTipSlot />
     </div>
 
     <aside class="steps-panel" aria-label="how to get an account">
