@@ -18,6 +18,7 @@ import SiteHeader from "./components/SiteHeader.svelte";
 import FrontPage from "../routes/FrontPage.svelte";
 import Privacy from "../routes/Privacy.svelte";
 import { CONTACT_URL, DELETE_PHRASE, PRIVACY_FACTS, PRIVACY_HASH } from "./privacy";
+import { LEGAL_CONTACT_EMAIL, OPERATOR_NAME } from "./legalNotice";
 import { navigate, route } from "./router";
 import { session, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
@@ -84,7 +85,7 @@ function type(input: HTMLInputElement, text: string): void {
 }
 
 describe("the privacy page", () => {
-  it("renders signed out, with the contact placeholder and the stated numbers", () => {
+  it("renders signed out, with the operator's contact and the stated numbers", () => {
     const { container } = render(Privacy as never, {} as never);
     const text = container.textContent!.replace(/\s+/g, " ");
 
@@ -95,13 +96,16 @@ describe("the privacy page", () => {
     ]) {
       expect(text).toContain(heading);
     }
-    // The contact is the placeholder, not an invented address.
-    expect(text).toContain("Contact: see the project's GitHub");
+    // The contact is the operator's legal address (#3358), the one the
+    // terms of service give, and no other address appears.
+    expect(text).toContain(`Contact: ${LEGAL_CONTACT_EMAIL}`);
+    expect(text).toContain(`Run by ${OPERATOR_NAME}`);
     const contact = [...container.querySelectorAll("a")].filter(
       (a) => a.getAttribute("href") === CONTACT_URL,
     );
     expect(contact.length).toBeGreaterThan(0);
-    expect(text).not.toMatch(/[\w.+-]+@[\w-]+\.[\w.]+/);
+    const addresses = new Set(text.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g));
+    expect([...addresses]).toEqual([LEGAL_CONTACT_EMAIL]);
 
     // The numbers come from lib/privacy.ts, which a Go test pins to the server.
     expect(text).toContain(`${PRIVACY_FACTS.endedTableDays} days after it ends`);

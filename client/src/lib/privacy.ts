@@ -10,6 +10,8 @@
 // something about a person, accountdelete.Inventory fails first; then
 // update the page in the same change (ADR 0149 §6).
 
+import { LEGAL_CONTACT_EMAIL, LEGAL_CONTACT_URL } from "./legalNotice";
+
 /** The hash route of the notice. */
 export const PRIVACY_HASH = "#/privacy";
 
@@ -17,15 +19,12 @@ export const PRIVACY_HASH = "#/privacy";
 export const DELETE_PHRASE = "delete my account";
 
 /**
- * The contact the notice gives.
- *
- * TODO(owner): contact. The notice says "see the project's GitHub" and links
- * the repository, because no contact address has been chosen. Put the
- * address (or form) here and in the page, and update the PR trail in
- * ADR 0149. Nobody invented one on the owner's behalf.
+ * The contact the notice gives: the operator's legal address (#3358),
+ * which lives in lib/legalNotice.ts with the operator's name so the
+ * terms of service and this notice cannot name different ones.
  */
-export const CONTACT_URL = "https://github.com/krakenhavoc/cmd_and_ctrl";
-export const CONTACT_TEXT = "see the project's GitHub";
+export const CONTACT_URL = LEGAL_CONTACT_URL;
+export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
 
 /**
  * The database schema version (the highest server/internal/db/migrations

@@ -38,6 +38,10 @@ export type Route =
   // their account. Public: a stranger deciding whether to sign in has
   // to be able to read it first, and the page holds no account data.
   | { name: "privacy" }
+  // The terms of service (#3358): who runs the site, who may use it, and
+  // the rules for using it. Public, like the privacy notice: a stranger
+  // reads them before signing in.
+  | { name: "terms" }
   // The About page (#2981): what this project is, what the engine does and
   // does not do for you, where to send feedback, and the credits. Public:
   // it is what a stranger reads before deciding to sign in.
@@ -145,6 +149,8 @@ export function parseHash(hash: string): Route {
       return { name: "roadmap" };
     case "privacy":
       return { name: "privacy" };
+    case "terms":
+      return { name: "terms" };
     case "about":
       return { name: "about" };
     case "guide":
