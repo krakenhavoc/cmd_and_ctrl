@@ -83,6 +83,7 @@ func TestMagmakinArtilleristBurnsOnEveryDiscard(t *testing.T) {
 	fodder := handCard(me, "Fodder", "Sorcery")
 
 	g.WithWriteLock(func() { _ = g.DiscardRandomForEffect(me.ID, 1) })
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 	_ = fodder
 

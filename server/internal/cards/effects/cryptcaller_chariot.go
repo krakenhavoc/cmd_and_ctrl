@@ -23,31 +23,26 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Crew 2 is the standard crew cost: tap any number of untapped
 // creatures you control with total power 2 or more, and the Chariot
 // becomes an artifact creature until end of turn (CR 702.122).
-//
-// DECLARED SIMPLIFICATION (batching): the card reads "one
+// // DECLARED SIMPLIFICATION (batching): the card reads "one
 // or more cards … that many", one trigger for the whole batch. The
-// engine emits one EventDiscardCard per card, so discarding three
-// cards to a single Windfall fires three triggers of one Zombie each
-// rather than one trigger of three. Same total Zombies, three log
-// lines — and three separate response windows, which is the
-// observable difference.
+// engine emits one EventDiscardCard per card, so the trigger waits for
+// the discard to finish (AtBatchEnd, ThatManyEvents) and counts the
+// cards you discarded in that event batch: a Windfall of three is one
+// trigger making three Zombies, as printed.
 func init() {
 	Register(Spec{
-		OracleID:     "2bdd0bcb-6cfb-48e7-972e-355ff46621a4",
-		Name:         "Cryptcaller Chariot",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Discarding several cards at once makes the Zombies one trigger at a time rather than all at once.",
-		},
+		OracleID:        "2bdd0bcb-6cfb-48e7-972e-355ff46621a4",
+		Name:            "Cryptcaller Chariot",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"menace"},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
+			withAtBatchEnd(On(game.EventDiscardCard, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return discardedByYou(ev, source)
-			}, "Cryptcaller Chariot — create a tapped 2/2 black Zombie", func(g *game.Game, item *game.StackItem) error {
+			}, "Cryptcaller Chariot — create that many tapped 2/2 black Zombies", func(g *game.Game, item *game.StackItem) error {
 				tmpl := TokenCard("2/2 black Zombie")
 				tmpl.Tapped = true
-				return CreateToken{Controller: item.Controller, Template: tmpl, N: 1}.Apply(NewContext(g, item))
-			}),
+				return CreateToken{Controller: item.Controller, Template: tmpl, N: settledEventAmount(item)}.Apply(NewContext(g, item))
+			}), ThatManyEvents()),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Crew 2",

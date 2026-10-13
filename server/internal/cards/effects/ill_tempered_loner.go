@@ -22,13 +22,13 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature itself. The back face watches every permanent its controller
 // controls (including itself), so a planeswalker or battle takes part.
 //
-// DECLARED SIMPLIFICATION, weaker than printed, the same one Screaming
-// Nemesis carries: the engine emits one damage event per SOURCE, so a
-// creature damaged by two blockers at once triggers twice, once per
-// blocker's damage, where the printed card triggers once for the total.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the creature was dealt at the same time, with one target pick: a
+// creature damaged by two blockers at once triggers once, as printed
+// (CR 120.3, CR 510.2). The back face groups per damaged permanent.
 func init() {
 	const oracle = "6e0b3317-394d-42cc-a350-cb5ce051787a"
-	caveat := "If two or more sources damage it at the same time, it reflects each source's damage separately instead of the total in one go."
 	pump := func(name string) ActivatedAbility {
 		return ActivatedAbility{
 			Label:   "{1}{R}: This creature gets +2/+0 until end of turn.",
@@ -44,8 +44,9 @@ func init() {
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Kind == game.EventDealDamage && ev.Amount > 0 && when(ev, source, g)
 			},
-			Targets: TargetAny(),
-			Key:     label,
+			Targets:    TargetAny(),
+			Key:        label,
+			AtBatchEnd: ThatMuchDamage(),
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, label)
 				item.Params.Amount = ev.Amount
@@ -66,8 +67,7 @@ func init() {
 	Register(Spec{
 		OracleID:        oracle,
 		Name:            "Ill-Tempered Loner",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{caveat},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"daybound"},
 		Triggered: []game.TriggeredAbility{
 			reflect("Ill-Tempered Loner", func(ev game.Event, source *game.Card, _ *game.Game) bool {
@@ -79,8 +79,7 @@ func init() {
 	Register(Spec{
 		OracleID:        oracle + "#1",
 		Name:            "Howlpack Avenger",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{caveat},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"nightbound"},
 		Triggered: []game.TriggeredAbility{
 			reflect("Howlpack Avenger", func(ev game.Event, source *game.Card, g *game.Game) bool {
