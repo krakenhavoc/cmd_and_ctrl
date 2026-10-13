@@ -230,3 +230,40 @@ Each lists the recommended option first. The owner chose (a), the recommended op
    - **(a) Recommended:** two `Card` fields (`EnchantSwapped`, `EnchantReturned`) read first by `attachmentLegalLocked`, as ADR 0141 did for bestow.
    - **(b)** A general layer-6 "enchant" ability that effects can grant and remove. It is more faithful to CR 613.1f, but no card in the catalog needs it, and it touches every Aura's legality.
    - **Decision:** (a). Two `Card` fields, `EnchantSwapped` and `EnchantReturned`, read first by `attachmentLegalLocked`.
+
+## Amendment (2026-10-13, #3159 and #3160): the epoch pin reaches every attachment, and `AttachForEffect` refuses an illegal attach
+
+Both follow-ups land together, in `attach.go`, ahead of the graveyard-host seam. Neither changes a decision above; they replace what Q2 and Q3 deferred, and they fix the storage convention the seam will build on.
+
+### 1. `Card.AttachedEpoch` exists, and it pins every attachment (#3159, Q2)
+
+The field decision 3 describes was not in the tree when this amendment was written, so it is introduced here, with one change of convention: it holds the host's `ObjectEpoch` **plus one**, and zero means "not pinned". A fixture that sets `AttachedTo` by hand, or a game saved before the field existed, is unpinned and keeps the old behaviour. Storing the bare epoch would read every old save as "pinned to epoch 0" and bury every Aura on the first state-based check after a deploy. The graveyard-host seam must use the same convention.
+
+- `AttachForEffect` stamps it for a card host (a player host has no epoch). `MoveCard`'s battlefield exit, `UnattachForEffect`, `attachmentSBALocked` and the spell-copy reset clear it with `AttachedTo`.
+- `attachmentLegalLocked` reads it for a host **on the battlefield** too, which is the part Q2 deferred: a pinned attachment whose host is a different object now is illegal. An Aura goes to the graveyard (CR 303.4c, 704.5m), an Equipment is unattached and stays (CR 301.5c, 704.5n). Decision 3's reading for an off-battlefield host is unchanged and still belongs to the graveyard seam.
+- `moved` in `AttachForEffect` compares the pin as well, so re-attaching to the same ID as a new object is a move: new timestamp, and "As this becomes attached" runs again.
+- The snapshot carries it (`attachedEpoch`, additive, recorded in `v8.txt`); `Clone` copies it as a plain field.
+
+What the bug needs to be reachable: the host must come back with the **same instance ID**, inside one resolution. `Flicker` and `ReturnFromExileTogether` mint a new ID (`resetAsNewObjectLocked`), so Cloudshift and Ephemerate were already right, and the tests in `attachments_flicker_test.go` pin that. A return through the graveyard or hand keeps the ID (`ReturnFromGraveyardForEffect` and the other `ReturnFrom…ForEffect` helpers), and that is the path `attach_new_object_test.go` drives.
+
+### 2. An attach that can't be made does nothing (#3160, Q3)
+
+`AttachForEffect` now asks `attachRefusalLocked` before it moves anything. A refusal is an `EventAttachSkipped` with the reason on `Label` (in player terms, so the game log can show it), and the attachment stays on its current host.
+
+| Attachment | Refused when |
+|---|---|
+| any | the host has protection from it (CR 702.16c-d, and a player's protection from everything, CR 702.16i) |
+| Aura with a catalog clause | the clause's `TargetSpec` rejects the host (CR 303.4j), evaluated without the targeting gate, the same predicate the sweep asks |
+| bestowed Aura | the host is not a creature (CR 702.103b) |
+| Equipment | the host is a player or a noncreature (CR 301.5c), or the Equipment is itself a creature without reconfigure |
+| Fortification | the host is not a land (CR 301.6) |
+
+Two scoping rules keep this from changing more than the issue asked. An Aura with no catalog clause (a sandbox Aura, a Role token) is refused only for protection, as before. An Equipment that carries a layer 4 static (Luxior, Giada's Gift: "equipped permanent is a creature") is not refused for a noncreature host, because the question cannot be answered before the link exists; the sweep decides, as it did. The protection test is one function shared by the refusal and the sweep, so the two cannot disagree.
+
+The sweep gained the Fortification half it was missing: a Fortification now needs a land host, where it used to be held to the creature rule.
+
+**Which catalog cards change.** The refusal matters only when an attachment is **moved** off a host it is already on, because a refused attach of a fresh permanent leaves it unattached, which the CR 704.5m sweep buries exactly as the old attach-then-undo did. Those cards: the equip family (`attachments.go`), Magnetic Theft and Brass Squire (an Equipment aimed at a creature protected from it), and Maddening Hex (a Curse aimed at a protected player). The three cards named in #3160, Illusory Gains, Prison Term and Shielded by Faith, are not in the catalog; they are the cases this makes right when they arrive. Light-Paws, Mantle of the Ancients, Gift of Immortality, Hammer of Nazahn, Rohirrim Chargers, Armored Skyhunter and the Role tokens put an attachment onto the battlefield and are unchanged in outcome.
+
+### Back-out
+
+Revert the `attachRefusalLocked` call in `AttachForEffect` and the refusal tests fail (`attach_refusal_test.go`, `attachments_refusal_test.go`); revert the epoch comparison in `attachmentLegalLocked` and `TestFlickeredHostKeepsNoAura` and `…NoEquipment` fail.

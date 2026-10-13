@@ -110,7 +110,7 @@ var silentEventKinds = map[string]string{
 	// non-event. The breadcrumb exists for a stall dump and the
 	// catalog soak, which is exactly the posture the two rows above
 	// take.
-	"EventAttachSkipped": "CR 701.3b's attach that doesn't happen changes nothing a player could observe; the event is a breadcrumb for a stall dump, not a table fact (#812, #1017)",
+	"EventAttachSkipped": "CR 701.3b's attach that doesn't happen leaves the board as it was, and EventAttach and EventUnattach are silent too, so the table reads the result off the board; the event carries the reason (#3160) for a stall dump, not a log line (#812, #1017)",
 	// #1382. A card becomes plotted two ways and the table is told
 	// both: the plot special action's LogSpecialAction line names the
 	// card and the price ("Plot {3}{R}"), and an "it becomes plotted"

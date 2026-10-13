@@ -505,6 +505,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	copyCard.CounterStampedAt = nil
 	copyCard.LostLastCounter = false
 	copyCard.AttachedTo = TargetRef{}
+	copyCard.AttachedEpoch = 0
 	copyCard.effective = nil
 	// CR 707.2: a keyword an effect GAVE the original spell (ADR 0107
 	// §3) is not a copiable value. The next stack step gives the copy

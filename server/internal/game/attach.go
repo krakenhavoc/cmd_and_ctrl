@@ -101,10 +101,24 @@ func (c Card) IsAttachedTo(hostID uuid.UUID) bool {
 // A TargetRef that names neither a card nor a player is still
 // ErrInvalidParam. That is a malformed call, not a game situation.
 //
-// CR 301.5c's "creature only" rule for Equipment is NOT enforced here:
-// an effect that says "attach" to a non-creature is legal to perform,
-// and the SBA unattaches it immediately afterwards, which is precisely
-// how the rules sequence it.
+// # An attach to something it can't be attached to doesn't move (CR 701.3b)
+//
+// Since #3160 a fourth way: the attachment can't legally be attached
+// to THAT object or player (attachRefusalLocked). An Aura whose enchant
+// clause rejects the host, any attachment whose host has protection
+// from it, an Equipment aimed at a noncreature or a player, a
+// Fortification aimed at a nonland: each is an EventAttachSkipped with
+// the reason on Label, and the attachment stays where it was, attached
+// to whatever it was attached to (CR 701.3b, 303.4j). Before, the
+// attach happened and the CR 704.5m/n sweep then buried the Aura or
+// dropped the Equipment, which is not what the rules sequence: Illusory
+// Gains aimed at a protected creature lost the Aura. The refusal reads
+// the same predicate the sweep does, so an attach it accepts is one
+// the sweep keeps.
+//
+// The attach also pins the HOST'S OBJECT (Card.AttachedEpoch, #3159),
+// so a host that is later a new object with the same ID stops holding
+// it (CR 400.7).
 //
 // Caller must hold g.mu (this is a *ForEffect surface — it runs
 // inside a resolution that already owns the write lock).
@@ -136,8 +150,23 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.emitAttachSkippedLocked(attachmentID, host, "a permanent cannot be attached to itself")
 		return nil
 	}
-	moved := c.AttachedTo != host
+	// CR 701.3b / 303.4j (#3160): an attach that the attachment can't
+	// legally make does nothing. It stays where it is, with whatever
+	// it was attached to, and the breadcrumb says why.
+	if why := g.attachRefusalLocked(c, host); why != "" {
+		g.emitAttachSkippedLocked(attachmentID, host, why)
+		return nil
+	}
+	hostEpoch := 0
+	if host.Kind == TargetCard {
+		hostEpoch = findBattlefieldCard(g, host.ID).ObjectEpoch + 1
+	}
+	// Attaching to the same ID as a NEW OBJECT is attaching to a
+	// different object (CR 701.3b-c, #3159), so the pin takes part in
+	// "did it move".
+	moved := c.AttachedTo != host || c.AttachedEpoch != hostEpoch
 	c.AttachedTo = host
+	c.AttachedEpoch = hostEpoch
 	c.AttachedAt = timeNowUnixNano()
 	g.EmitEvent(Event{
 		Kind:   EventAttach,
@@ -259,6 +288,7 @@ func (g *Game) UnattachForEffect(attachmentID uuid.UUID) error {
 	g.unbestowLocked(c)
 	c.AttachedTo = TargetRef{}
 	c.AttachedAt = 0
+	c.AttachedEpoch = 0
 	g.EmitEvent(Event{
 		Kind:   EventUnattach,
 		Actor:  c.Controller,
@@ -304,6 +334,128 @@ func (g *Game) AttachmentsOf(hostID uuid.UUID) []uuid.UUID {
 		}
 	}
 	return out
+}
+
+// attachmentProtectedFromHostLocked is CR 702.16c-d's attachment rule
+// for one prospective link: may `c` NOT be attached to `host` because
+// the host has protection from a quality `c` has? Both halves:
+//
+//   - A permanent with protection from a quality can't be enchanted,
+//     equipped or fortified by anything WITH that quality. The test is
+//     against the ATTACHMENT, not against its controller: a red Aura
+//     falls off a pro-red creature whoever controls it. #662.
+//   - CR 702.16i's attachment half: the host may be a PLAYER, and a
+//     player with protection from everything can't be enchanted by an
+//     Aura (#1197, ADR 0072's 2026-09-22 amendment). "Enchant player"
+//     is Curse of Opulence's clause and the reason Card.AttachedTo is
+//     a TargetRef rather than a card ID at all. Equipment and
+//     Fortifications never reach the player half in practice: they
+//     attach only to a permanent (CR 301.5, 301.6).
+//
+// Shared by the state-based action (attachmentLegalLocked, "may it stay")
+// and by AttachForEffect ("may it move there", CR 701.3b, #3160) so the
+// two cannot disagree about protection.
+//
+// Caller must hold g.mu.
+func (g *Game) attachmentProtectedFromHostLocked(c *Card, host TargetRef) bool {
+	switch host.Kind {
+	case TargetCard:
+		if h := findBattlefieldCard(g, host.ID); h != nil {
+			return HasProtection(h) && ProtectedFrom(h, SourceCharacteristics(c))
+		}
+	case TargetPlayer:
+		if p := g.playerByIDLocked(host.ID); p != nil {
+			_, refused := g.PlayerProtectedFromLocked(p, SourceCharacteristics(c))
+			return refused
+		}
+	}
+	return false
+}
+
+// grantsHostATypeLocked reports whether the attachment carries a layer 4
+// static ability, the kind that can change what its host IS. Luxior,
+// Giada's Gift is the case: "Equipped permanent isn't a planeswalker and
+// is a creature in addition to its other types", with an "Equip
+// planeswalker" ability, so the planeswalker it is aimed at is not a
+// creature until the link exists. attachRefusalLocked cannot test the
+// host's types after the attach without making it, so for such an
+// attachment it leaves the type question to the sweep, which sees the
+// post-attach board (the pre-#3160 behaviour, and the only one that
+// keeps Luxior working).
+//
+// Caller must hold g.mu.
+func grantsHostATypeLocked(c *Card) bool {
+	if CatalogStaticAbilities == nil {
+		return false
+	}
+	for _, s := range CatalogStaticAbilities(catalogAbilityKeyOf(c)) {
+		if s.Layer == Layer4Type {
+			return true
+		}
+	}
+	return false
+}
+
+// attachRefusalLocked is CR 701.3b / 303.4j for one prospective attach:
+// "if an effect tries to attach an Aura, Equipment, or Fortification
+// to an object or player it can't be attached to, the Aura, Equipment,
+// or Fortification doesn't move." It returns the reason, in player
+// terms, when `c` can't be attached to `host` (which the caller has
+// already found on the battlefield, or as a player), and "" when it can.
+//
+// The three questions, in the order AttachForEffect asks them:
+//
+//   - Protection (CR 702.16c-d), for every attachment: the shared
+//     attachmentProtectedFromHostLocked.
+//   - An Aura's enchant clause: the card's own catalog TargetSpec,
+//     evaluated WITHOUT the targeting gate, the literal predicate the
+//     state-based action asks (attachmentLegalLocked), so an attach
+//     this accepts is one the sweep will keep. A bestowed Aura's
+//     clause is "enchant creature" (CR 702.103b). An Aura the catalog
+//     has no clause for (a sandbox Aura, a Role token) keeps the
+//     pre-#3160 behaviour: only protection can refuse it.
+//   - Equipment (CR 301.5c) attaches to a creature, never a player, and
+//     an Equipment that is itself a creature may do it only with
+//     reconfigure; a Fortification (CR 301.6) attaches to a land.
+//
+// Caller must hold g.mu. Effective characteristics throughout.
+func (g *Game) attachRefusalLocked(c *Card, host TargetRef) string {
+	if c == nil {
+		return ""
+	}
+	if g.attachmentProtectedFromHostLocked(c, host) {
+		return "the host has protection from the attachment"
+	}
+	switch {
+	case c.IsAura():
+		if c.Bestowed {
+			h := findBattlefieldCard(g, host.ID)
+			if host.Kind != TargetCard || h == nil || !h.IsCreature() {
+				return "a bestowed Aura can only enchant a creature"
+			}
+			return ""
+		}
+		if spec := TargetSpecFor(catalogKeyOf(c)); spec != nil &&
+			!g.specMatchLocked(SourceChooser(c.Controller), spec, host, false) {
+			return "the Aura can't enchant that"
+		}
+	case c.HasSubtype("Equipment"):
+		if host.Kind != TargetCard {
+			return "Equipment can only be attached to a permanent"
+		}
+		if h := findBattlefieldCard(g, host.ID); h == nil ||
+			(!h.IsCreature() && !grantsHostATypeLocked(c)) {
+			return "Equipment can only be attached to a creature"
+		}
+		if !equipmentCreatureMayEquipLocked(c) {
+			return "an Equipment creature can't be attached without reconfigure"
+		}
+	case c.HasSubtype("Fortification"):
+		if h := findBattlefieldCard(g, host.ID); host.Kind != TargetCard || h == nil || !h.IsLand() {
+			return "a Fortification can only be attached to a land"
+		}
+	}
+	return ""
 }
 
 // attachmentLegalLocked answers CR 704.5m/n's question for one card:
@@ -376,6 +528,18 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		}
 		return !c.IsAura() || (TargetSpecFor(catalogKeyOf(c)) == nil && !c.IsRole())
 	}
+	// #3159 / CR 400.7: the host this attachment was linked to may have
+	// left and come back inside one resolution. The instance ID
+	// survives that, the object does not, and no state-based action
+	// ran in between. A pinned attachment (AttachedEpoch != 0) whose
+	// host is a different object now is attached to nothing that
+	// exists: an Aura goes to the graveyard (CR 303.4c, 704.5m), an
+	// Equipment is unattached (CR 301.5c, 704.5n).
+	if c.AttachedTo.Kind == TargetCard && c.AttachedEpoch != 0 {
+		if host := findBattlefieldCard(g, c.AttachedTo.ID); host != nil && host.ObjectEpoch+1 != c.AttachedEpoch {
+			return false
+		}
+	}
 	// CR 702.16c-d: a permanent with protection from a quality can't
 	// be enchanted, equipped or fortified by anything WITH that
 	// quality. Checked here, ahead of the catalogued-Aura branch
@@ -391,33 +555,8 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 	// business: attachmentSBALocked sends an illegal Aura to the
 	// graveyard (CR 704.5m) and merely unattaches an illegal
 	// Equipment or Fortification (CR 704.5n). #662.
-	if c.AttachedTo.Kind == TargetCard {
-		if idx := findCardOnBattlefield(g, c.AttachedTo.ID); idx >= 0 {
-			host := &g.Battlefield.Cards[idx]
-			if HasProtection(host) && ProtectedFrom(host, SourceCharacteristics(c)) {
-				return false
-			}
-		}
-	}
-	// CR 702.16i's attachment half: the host may be a PLAYER, and a
-	// player with protection from everything can't be enchanted by an
-	// Aura (#1197, ADR 0072's 2026-09-22 amendment). "Enchant player"
-	// is Curse of Opulence's clause and the reason Card.AttachedTo is
-	// a TargetRef rather than a card ID at all.
-	//
-	// Equipment and Fortifications never reach this: CR 301.5 and
-	// CR 301.6 both attach only to a permanent (a creature or a land,
-	// respectively — never a player), so a player host is always an
-	// Aura's.
-	//
-	// The test is against the ATTACHMENT, not against its controller,
-	// for the same reason the permanent branch above is.
-	if c.AttachedTo.Kind == TargetPlayer {
-		if host := g.playerByIDLocked(c.AttachedTo.ID); host != nil {
-			if _, refused := g.PlayerProtectedFromLocked(host, SourceCharacteristics(c)); refused {
-				return false
-			}
-		}
+	if g.attachmentProtectedFromHostLocked(c, c.AttachedTo) {
+		return false
 	}
 	// ADR 0141, CR 702.103b: a bestowed Aura's enchant clause is the
 	// enchant creature it gained, not its card's own (it prints none).
@@ -475,6 +614,11 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 		// CR 301.5c — an Equipment can only be attached to a
 		// creature. Effective, not printed: a creature that stopped
 		// being a creature drops its sword.
+		// A Fortification is the land twin (CR 301.6, #3160): it attaches
+		// to a land, and a land that stopped being one drops it.
+		if c.HasSubtype("Fortification") && !c.IsAura() {
+			return g.Battlefield.Cards[idx].IsLand()
+		}
 		if !g.Battlefield.Cards[idx].IsCreature() {
 			return false
 		}
@@ -593,6 +737,7 @@ func (g *Game) attachmentSBALocked() bool {
 			controller := c.Controller
 			c.AttachedTo = TargetRef{}
 			c.AttachedAt = 0
+			c.AttachedEpoch = 0
 			g.EmitEvent(Event{
 				Kind:   EventUnattach,
 				Actor:  controller,

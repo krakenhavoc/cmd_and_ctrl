@@ -845,6 +845,7 @@ type cardSnapshot struct {
 	PrintedPTKnown           bool             `json:"printedPTKnown,omitempty"`
 	AttachedTo               TargetRef        `json:"attachedTo,omitempty"`
 	AttachedAt               int64            `json:"attachedAt,omitempty"`
+	AttachedEpoch            int              `json:"attachedEpoch,omitempty"`
 	BaseController           uuid.UUID        `json:"baseController,omitempty"`
 	FaceDownListed           *FaceDownListing `json:"faceDownListed,omitempty"`
 	FaceTurnedAt             int64            `json:"faceTurnedAt,omitempty"`
@@ -2124,6 +2125,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintedPTKnown:           c.PrintedPTKnown,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		AttachedEpoch:            c.AttachedEpoch,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -2999,6 +3001,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintedPTKnown:           c.PrintedPTKnown,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		AttachedEpoch:            c.AttachedEpoch,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),

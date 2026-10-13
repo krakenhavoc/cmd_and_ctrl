@@ -233,10 +233,12 @@ func TestAnAuraTheChosenPlayerControlsFallsOff(t *testing.T) {
 	theirAura := pushAttachTestCard(g, other.ID, "Another Seat's Aura", "Enchantment — Aura")
 
 	g.WithWriteLock(func() {
+		// Set the link by hand: the Auras were attached BEFORE the
+		// quality applied. AttachForEffect now refuses to attach onto a
+		// host that is protected from the attachment (CR 701.3b, #3160),
+		// which TestAttachRefusesAHostProtectedFromTheChosenPlayer pins.
 		for _, id := range []uuid.UUID{mineAura, theirAura} {
-			if err := g.AttachForEffect(id, TargetRef{Kind: TargetCard, ID: nemesis}); err != nil {
-				t.Fatalf("attach %v: %v", id, err)
-			}
+			g.Battlefield.Cards[findCardOnBattlefield(g, id)].AttachedTo = TargetRef{Kind: TargetCard, ID: nemesis}
 		}
 		g.runStateChecksLocked()
 	})

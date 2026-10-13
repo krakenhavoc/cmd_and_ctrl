@@ -32,6 +32,7 @@ battlefield.cards[].activeFace	number:int
 battlefield.cards[].alsoBlocking	array
 battlefield.cards[].alsoBlocking[]	custom(uuid.UUID)
 battlefield.cards[].attachedAt	number:int64
+battlefield.cards[].attachedEpoch	number:int
 battlefield.cards[].attachedTo	object
 battlefield.cards[].attachedTo.ID	custom(uuid.UUID)
 battlefield.cards[].attachedTo.Kind	string
@@ -531,6 +532,7 @@ exile.cards[].activeFace	number:int
 exile.cards[].alsoBlocking	array
 exile.cards[].alsoBlocking[]	custom(uuid.UUID)
 exile.cards[].attachedAt	number:int64
+exile.cards[].attachedEpoch	number:int
 exile.cards[].attachedTo	object
 exile.cards[].attachedTo.ID	custom(uuid.UUID)
 exile.cards[].attachedTo.Kind	string
@@ -1123,6 +1125,7 @@ lastKnownStack[].card.activeFace	number:int
 lastKnownStack[].card.alsoBlocking	array
 lastKnownStack[].card.alsoBlocking[]	custom(uuid.UUID)
 lastKnownStack[].card.attachedAt	number:int64
+lastKnownStack[].card.attachedEpoch	number:int
 lastKnownStack[].card.attachedTo	object
 lastKnownStack[].card.attachedTo.ID	custom(uuid.UUID)
 lastKnownStack[].card.attachedTo.Kind	string
@@ -2422,6 +2425,7 @@ phasedOut.cards[].activeFace	number:int
 phasedOut.cards[].alsoBlocking	array
 phasedOut.cards[].alsoBlocking[]	custom(uuid.UUID)
 phasedOut.cards[].attachedAt	number:int64
+phasedOut.cards[].attachedEpoch	number:int
 phasedOut.cards[].attachedTo	object
 phasedOut.cards[].attachedTo.ID	custom(uuid.UUID)
 phasedOut.cards[].attachedTo.Kind	string
@@ -3054,6 +3058,7 @@ seats[].command.cards[].activeFace	number:int
 seats[].command.cards[].alsoBlocking	array
 seats[].command.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].command.cards[].attachedAt	number:int64
+seats[].command.cards[].attachedEpoch	number:int
 seats[].command.cards[].attachedTo	object
 seats[].command.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].command.cards[].attachedTo.Kind	string
@@ -3386,6 +3391,7 @@ seats[].emblems.cards[].activeFace	number:int
 seats[].emblems.cards[].alsoBlocking	array
 seats[].emblems.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].emblems.cards[].attachedAt	number:int64
+seats[].emblems.cards[].attachedEpoch	number:int
 seats[].emblems.cards[].attachedTo	object
 seats[].emblems.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].emblems.cards[].attachedTo.Kind	string
@@ -3709,6 +3715,7 @@ seats[].graveyard.cards[].activeFace	number:int
 seats[].graveyard.cards[].alsoBlocking	array
 seats[].graveyard.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedAt	number:int64
+seats[].graveyard.cards[].attachedEpoch	number:int
 seats[].graveyard.cards[].attachedTo	object
 seats[].graveyard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedTo.Kind	string
@@ -4030,6 +4037,7 @@ seats[].hand.cards[].activeFace	number:int
 seats[].hand.cards[].alsoBlocking	array
 seats[].hand.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].hand.cards[].attachedAt	number:int64
+seats[].hand.cards[].attachedEpoch	number:int
 seats[].hand.cards[].attachedTo	object
 seats[].hand.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].hand.cards[].attachedTo.Kind	string
@@ -4363,6 +4371,7 @@ seats[].library.cards[].activeFace	number:int
 seats[].library.cards[].alsoBlocking	array
 seats[].library.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].library.cards[].attachedAt	number:int64
+seats[].library.cards[].attachedEpoch	number:int
 seats[].library.cards[].attachedTo	object
 seats[].library.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].library.cards[].attachedTo.Kind	string
@@ -4912,6 +4921,7 @@ stack.cards[].activeFace	number:int
 stack.cards[].alsoBlocking	array
 stack.cards[].alsoBlocking[]	custom(uuid.UUID)
 stack.cards[].attachedAt	number:int64
+stack.cards[].attachedEpoch	number:int
 stack.cards[].attachedTo	object
 stack.cards[].attachedTo.ID	custom(uuid.UUID)
 stack.cards[].attachedTo.Kind	string

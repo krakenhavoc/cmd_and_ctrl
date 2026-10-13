@@ -565,6 +565,24 @@ type Card struct {
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
 
+	// AttachedEpoch pins the attachment to one OBJECT of its host, not
+	// just to the host's instance ID (CR 400.7; ADR 0154 decision 3,
+	// extended to every attachment by #3159). It is the host's
+	// Card.ObjectEpoch PLUS ONE at the moment AttachForEffect linked
+	// them, so the zero value means "not pinned": a fixture that set
+	// AttachedTo by hand, or a game restored from a file written before
+	// the field existed. An unpinned attachment keeps the pre-#3159
+	// behaviour, which is the safe direction for old saves.
+	//
+	// It exists because an instance ID survives a zone change. A host
+	// that leaves the battlefield and comes back inside one resolution
+	// (a graveyard return that keeps the ID) is a new object with the
+	// same ID, no state-based check runs in between, and without the
+	// epoch attachmentLegalLocked would find "the host" and let its
+	// Auras and Equipment follow it. Cleared with AttachedTo on every
+	// path that clears AttachedTo.
+	AttachedEpoch int
+
 	// FaceTurnedAt is the CR 613.7f timestamp: "a permanent receives
 	// a new timestamp each time it turns face up or face down". The
 	// layer engine orders this permanent's own static abilities by

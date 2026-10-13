@@ -422,6 +422,11 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// #3159: which OBJECT of the host the link was made to. Carried: a
+	// restore that dropped it would let a host that came back as a new
+	// object keep its Auras. Zero means unpinned, so a file written
+	// before the field existed restores to the old behaviour.
+	"AttachedEpoch", carried, "",
 	// The layer-2 control baseline. Carried rather than rebuilt: a
 	// restore that dropped it would re-capture the CURRENT (stolen)
 	// controller as the base, and the creature would never go home.
