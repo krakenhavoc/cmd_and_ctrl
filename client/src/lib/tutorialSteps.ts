@@ -95,7 +95,7 @@ const HAND: Anchor = { label: L.yourHand };
 const LANDS: Anchor = { label: L.lands, within: L.yourBoard };
 const CREATURES: Anchor = { label: L.creatures, within: L.yourBoard };
 const DOCK: Anchor = { label: L.actions };
-const NEXT: Anchor = { label: L.next, within: L.actions };
+const PASS: Anchor = { label: L.pass, within: L.actions };
 const ATTACK_ALL: Anchor = { label: L.attackAll.any, within: L.actions };
 const AUTOPASS: Anchor = { label: L.skipToMyTurn, within: L.actions };
 const ROLL_REQUEST: Anchor = { label: L.rollForFirstTurn };
@@ -283,11 +283,19 @@ function lessonGone(c: StepContext, what: string): string | null {
 
 // ---- Copy that names the player's own `next` chord ----
 
-/** "press next (Space)", or plain "press next" when it is unbound. */
-const pressNext = (k: CopyContext): string =>
-  k.nextKey ? `press next (${k.nextKey})` : "press next";
+/**
+ * "press Next (Space)", or plain "press Next" when it is unbound. The
+ * same key presses the dock's primary whatever it reads (#3267): Pass
+ * while the stack holds something, Next on an empty one.
+ */
+const pressNext = (k: CopyContext, button: string = L.next): string =>
+  k.nextKey ? `press ${button} (${k.nextKey})` : `press ${button}`;
 const PressNext = (k: CopyContext): string => {
   const s = pressNext(k);
+  return s[0].toUpperCase() + s.slice(1);
+};
+const PressPass = (k: CopyContext): string => {
+  const s = pressNext(k, L.pass);
   return s[0].toUpperCase() + s.slice(1);
 };
 
@@ -531,9 +539,9 @@ export const ON_THE_STACK: TutorialStep = {
   kind: "action",
   title: "Your spell is on the stack",
   body: (k) =>
-    `Your creature waits on the stack, on the left, until both players pass. ${PressNext(k)} in the dock and it resolves.`,
+    `Your creature waits on the stack, on the left, until both players pass. ${PressPass(k)} in the dock and it resolves.`,
   hint: "The bot passes too, and then your creature enters the battlefield.",
-  anchor: [STACK_PILE, NEXT],
+  anchor: [STACK_PILE, PASS],
   done: (c) =>
     !!c.start &&
     stackEmpty(c.view) &&
@@ -601,8 +609,8 @@ function castToo(c: StepContext): Detour | null {
     return {
       id: "resolve-too",
       title: "Let it resolve",
-      body: (k) => `${PressNext(k)} in the dock and your creature resolves, as before.`,
-      anchor: [STACK_PILE, NEXT],
+      body: (k) => `${PressPass(k)} in the dock and your creature resolves, as before.`,
+      anchor: [STACK_PILE, PASS],
     };
   }
   if (!sorcerySpeed(c)) return null;
@@ -623,7 +631,7 @@ export const MOVE_ALONG: TutorialStep = {
   kind: "action",
   title: "Move the turn along",
   body: (k) =>
-    `The dock's next button moves the game on a step${k.nextKey ? `, and so does ${k.nextKey}` : ""}. End turn plays out the rest of your turn for you.`,
+    `The dock's Next button moves the game on a step${k.nextKey ? `, and so does ${k.nextKey}` : ""}. End turn plays out the rest of your turn for you.`,
   hint: "The icons across the dock's top are the steps still to come this turn.",
   anchor: DOCK,
   done: (c) =>

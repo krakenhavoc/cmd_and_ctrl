@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import { L } from "../../client/src/lib/labels";
 import { ADMIN_TOKEN } from "./env";
 import { unreachableHandCards } from "./hand-reach";
+import { DOCK_PRIMARY } from "./dock-primary";
 
 // tutorial-walk: the practice tutorial, walked end to end (ADR 0125 §8,
 // ADR 0076 sub-PR 6, #1085).
@@ -344,7 +345,7 @@ class Walk {
   }
 
   private next(): Locator {
-    return this.dock.getByRole("button", { name: L.next, exact: true });
+    return this.dock.getByRole("button", { name: DOCK_PRIMARY });
   }
 
   /** Press next once, when this page holds priority, and wait for the game to move. */

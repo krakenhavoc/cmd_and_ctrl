@@ -728,7 +728,7 @@ describe("TutorialCoach: the middle steps", () => {
           ? {
               id: "to-main",
               title: "First, your main phase",
-              body: (k) => `Press next (${k.nextKey}) until it reads Main.`,
+              body: (k) => `Press Next (${k.nextKey}) until it reads Main.`,
               anchor: { label: L.actions },
             }
           : null,
@@ -736,7 +736,7 @@ describe("TutorialCoach: the middle steps", () => {
     const m = mount([WELCOME, land, HANDOFF]);
     expect(on(m, "First, your main phase")).toBe(true);
     // The player's own binding for `next`: Space by default.
-    expect(on(m, "Press next (Space) until it reads Main.")).toBe(true);
+    expect(on(m, "Press Next (Space) until it reads Main.")).toBe(true);
     expect(document.querySelector<HTMLElement>(".tutorial-scrim")!.style.left).toBe("914px");
     // A detour says what to do already: no hint over it.
     vi.advanceTimersByTime(25_000);
@@ -903,14 +903,14 @@ describe("TutorialCoach: the refreshed tutorial", () => {
     // Skip to my turn handed back in upkeep: the detour says to reach Main.
     expect(m.container.textContent).toContain("First, go to combat");
     expect(m.container.textContent).toContain(
-      "Press next (Space) in the dock until it reads Main, then play a land and cast what you like.",
+      "Press Next (Space) in the dock until it reads Main, then play a land and cast what you like.",
     );
     // The dock reads Main 1 now: the coach must publish the Main 1 copy.
     m.setProps({ view: board({ step: "precombat_main", mine: [elves()] }) as unknown as GameView });
     vi.advanceTimersByTime(POLL_MS);
     flushSync();
     expect(m.container.textContent).toContain(
-      "Play a land and cast what you like, then press next (Space) until it reads Declare Attackers.",
+      "Play a land and cast what you like, then press Next (Space) until it reads Declare Attackers.",
     );
     expect(m.container.textContent).not.toContain("until it reads Main, then");
   });

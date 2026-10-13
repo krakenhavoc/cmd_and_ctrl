@@ -104,7 +104,7 @@ describe("the table's hints", () => {
     for (const h of TABLE) {
       // ADR 0143 §4.2 renamed the dock's Pass turn and autopass, so the
       // dock's hint is offered again at version 2 (ADR 0125 §7).
-      expect(h.version, h.id).toBe(h.id === "table.dock" ? 2 : 1);
+      expect(h.version, h.id).toBe(h.id === "table.dock" ? 3 : 1);
       expect(h.place, h.id).toBe("table");
     }
     expect(new Set(TABLE.map((h) => h.order)).size).toBe(TABLE.length);
@@ -236,9 +236,9 @@ describe("each hint's own condition", () => {
 
   it("table.shortcuts names the player's own keys", () => {
     const [d, rebound, none] = COPY_CONTEXTS.map((k) => copyText(byID("table.shortcuts").body, k));
-    expect(d).toBe("Press ? to see every keyboard shortcut. Space presses next.");
+    expect(d).toBe("Press ? to see every keyboard shortcut. Space presses Next (or Pass).");
     expect(rebound).toContain("Ctrl+Shift+F12");
-    expect(rebound).toContain("Ctrl+Shift+Enter presses next.");
+    expect(rebound).toContain("Ctrl+Shift+Enter presses Next (or Pass).");
     expect(none).toMatch(/Settings/);
   });
 

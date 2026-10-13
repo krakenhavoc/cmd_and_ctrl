@@ -345,7 +345,7 @@ describe("the yes/no family, inline in the dock", () => {
       expect(yes[0].classList.contains("primary")).toBe(true);
       expect(yes[0].getAttribute("aria-keyshortcuts")).toBe("Y");
       expect(no[0].getAttribute("aria-keyshortcuts")).toBe("N");
-      expect(buttons(c, "next")).toHaveLength(0);
+      expect(buttons(c, "Next")).toHaveLength(0);
       expect(buttons(c, "End turn")).toHaveLength(0);
 
       click(no[0]);
@@ -358,7 +358,7 @@ describe("the yes/no family, inline in the dock", () => {
       // The server drains it: the dialog goes, next comes back.
       snapshot(table());
       expect(dialogNamed(dockOf(c), tc.name)).toBeNull();
-      expect(buttons(c, "next")).toHaveLength(1);
+      expect(buttons(c, "Next")).toHaveLength(1);
     });
   }
 
@@ -389,7 +389,7 @@ describe("the yes/no family, inline in the dock", () => {
     const c = await mountGame(withChoice({ reason: "Reclamation Sage — destroy?", chooser: OPP }));
     expect(dockOf(c).querySelector('[role="dialog"]')).toBeNull();
     expect(buttons(c, "Yes")).toHaveLength(0);
-    expect(buttons(c, "next")).toHaveLength(1);
+    expect(buttons(c, "Next")).toHaveLength(1);
   });
 
   it("pay_unless with card picks is a sheet in the dock, not inline (PR 6)", async () => {
@@ -674,7 +674,7 @@ describe("mana_pick and choose_color, inline", () => {
     expect(symbols).toHaveLength(3);
     // No action bar: a symbol is the answer. And not next either.
     expect(dlg.querySelector(".dock-bar")).toBeNull();
-    expect(buttons(c, "next")).toHaveLength(0);
+    expect(buttons(c, "Next")).toHaveLength(0);
     click(symbols[2]);
     keydown("2");
     keydown("Escape");
@@ -793,7 +793,7 @@ describe("the vote, in the dock", () => {
     expect(dlg.textContent).toContain("Monarchy?");
     expect(dlg.textContent).toContain("called by Opp");
     // A vote never stops the game: next and Pass turn stay.
-    expect(buttons(c, "next")).toHaveLength(1);
+    expect(buttons(c, "Next")).toHaveLength(1);
     expect(buttons(c, "End turn")).toHaveLength(1);
     // No floating panel as well.
     expect(c.querySelector(".vote-modal")).toBeNull();
@@ -841,7 +841,7 @@ describe("game over, in the dock", () => {
     expect(back).toHaveLength(1);
     expect(back[0].classList.contains("primary")).toBe(true);
     // It takes the bar: no next, no Pass turn.
-    expect(buttons(c, "next")).toHaveLength(0);
+    expect(buttons(c, "Next")).toHaveLength(0);
     // The banner is still in the strip, without its button.
     const strip = stripOf(c);
     expect(strip.querySelector(".game-end")).not.toBeNull();
@@ -862,7 +862,7 @@ describe("game over, in the dock", () => {
     location.hash = "#/games/game-1";
     const c = await mountGame(table());
     const corner = () => dockOf(c).querySelector<HTMLButtonElement>(".dock-btn.primary")!;
-    expect(accessibleName(corner())).toMatch(/^next/);
+    expect(accessibleName(corner())).toMatch(/^Next/);
     expect(corner().disabled).toBe(false);
 
     snapshot(

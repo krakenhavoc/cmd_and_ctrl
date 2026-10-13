@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { passHint } from "./dockHint";
+import { passHint, primaryKind } from "./dockHint";
 import type { CardView, GameView, StackItemView } from "./protocol";
 
 const zone = (kind: string, cards: CardView[] = []) => ({ kind, count: cards.length, cards });
@@ -39,6 +39,33 @@ const boltItem: StackItemView = {
   owner: "a",
   source_card_id: "bolt",
 };
+
+describe("primaryKind (#3267)", () => {
+  const bear = { instance_id: "bear", name: "Bear", attacking_target: "b" } as CardView;
+
+  it("is Pass while the stack holds something, whatever the step", () => {
+    const v = view("declare_attackers", {
+      stack: zone("stack", [bolt]) as GameView["stack"],
+      stack_items: [boltItem],
+    });
+    expect(primaryKind(v, 3)).toBe("pass");
+    expect(primaryKind(view("end", { stack_items: [boltItem] }), 0)).toBe("pass");
+  });
+
+  it("is No attacks in declare attackers when creatures could attack and none has", () => {
+    expect(primaryKind(view("declare_attackers"), 2)).toBe("noAttacks");
+  });
+
+  it("is Next once something attacks, with nothing ready, or outside declare attackers", () => {
+    const attacking = view("declare_attackers", {
+      battlefield: zone("battlefield", [bear]) as GameView["battlefield"],
+    });
+    expect(primaryKind(attacking, 2)).toBe("next");
+    expect(primaryKind(view("declare_attackers"), 0)).toBe("next");
+    expect(primaryKind(view("precombat_main"), 2)).toBe("next");
+    expect(primaryKind(null, 2)).toBe("next");
+  });
+});
 
 describe("passHint", () => {
   it("says nothing without priority, during mulligans, or with no view", () => {
