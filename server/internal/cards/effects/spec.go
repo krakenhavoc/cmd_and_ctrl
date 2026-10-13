@@ -906,6 +906,13 @@ type Spec struct {
 	// madness.
 	Madness string
 
+	// MadnessLife is the "Pay N life" a madness cost adds to its mana
+	// (CR 702.35a, 119.4): Shadowgrange Archfiend's "Madness—{2}{B},
+	// Pay 8 life" is `Madness: "{2}{B}", MadnessLife: 8`. The offer
+	// charges both, and a player with less life than that cannot cast
+	// it for its madness cost. Zero for every other madness card.
+	MadnessLife int
+
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
 	// in S21 sub-PR 2. Each entry declares its cost (tap, sacrifice

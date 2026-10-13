@@ -654,6 +654,7 @@ measured above, and the thirteenth, `grantAbilities`, is ADR 0093's.
 | `addSubtypes` | 4 | Amass, Kyoshi II, Coercive Recruiter, crew's subtypes |
 | `allCreatureTypes` | 4 | Shields of the Velis Vel (`Characteristic.AllCreatureTypes`) |
 | `setColors` | 5 | Cerulean Wisps |
+| `addColors` | 5 | Liliana, Death's Majesty's "black Zombie in addition to its other colors" (2026-10-13 amendment) |
 | `addKeywords` | 6 | Every `GrantKeywordUntilEOT`, earthbend's and suspend's haste. Goes through `AppendKeywordAbility`, so a cumulative keyword stays cumulative |
 | `removeKeywords` | 6 | Shadowspear |
 | `loseAllAbilities` | 6 | Sudden Spoiling. Sets `RemovesAbilities` and appends `Keywords` back (ADR 0046) |
@@ -2579,3 +2580,24 @@ the retirement that closes #1497 under the owner's answer to Q4.
     `census:IntrinsicAbilityCards`.
 - **No schema or fixture change.** The snapshot shape is unchanged.
   This PR adds no fixture and edits none.
+
+## Amendment — 2026-10-13: `addColors`, an additive layer-5 mod (#3212)
+
+Liliana, Death's Majesty's −3 returns a creature that "is a black Zombie in
+addition to its other colors and types", with no duration (CR 611.2a). The
+types half was already `addSubtypes`; the colour half had only `setColors`,
+which replaces, so a green Bear would have lost its green.
+
+- **`game.AddColorsMod(colors...)`** is a new kind, `addColors`, in layer 5
+  beside `setColors`. It appends each colour the characteristic does not
+  already have, so a later `setColors` still wins by timestamp and an earlier
+  one is kept. It is data (`Mod.Colors`), so a table holding one is a restore
+  point.
+- **No schema bump.** The kind is vocabulary growth within the version (the
+  paragraph above): a binary before it refuses a record naming the kind
+  (`ErrUnknownEffectKey`) rather than guessing. It is listed in
+  `characteristicModKinds` (it changes a characteristic, in every order) and
+  has its case in `TestEveryModKindHasATestCase`'s table.
+- **Back-out.** Delete the `ModAddColors` case from the layer switch:
+  `scoped_effects_test.go`'s `addColors` case fails (the base colours are not
+  kept). Delete the `modKinds` row: registration refuses the kind.

@@ -5536,7 +5536,7 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 		closeBatch = g.publishSimultaneousExitLocked(ev.zoneRoute.simultaneousExit)
 	}
 	defer closeBatch()
-	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.ExiledWith)
+	moveErr := g.executeBattlefieldLeaveLocked(ev.CardID, ev.NewZone, ev.NewZoneOwner, owner, ev.ShuffleDestinationLibrary, ev.ExiledWith, ev.ExileCounter)
 	tailErr := g.runRouteTailLocked(ev.zoneRoute)
 	if moveErr != nil {
 		return moveErr
@@ -5570,10 +5570,11 @@ func (g *Game) finishBattlefieldLeaveLocked(ev *ReplacementEvent, owner *Player)
 // (#2530): stamped onto the card as Card.ExiledWith once it has landed
 // in exile, and ignored for any other destination. The zero ref —
 // every caller but a replacement that declared the link — stamps
-// nothing.
+// nothing. exileCounter is ReplacementEvent.ExileCounter, carried and
+// stamped the same way (Dauthi Voidwalker's void counter).
 //
 // Caller must hold g.mu.
-func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith PermissionCardRef) error {
+func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, destOwner uuid.UUID, owner *Player, shuffleAfter bool, exiledWith PermissionCardRef, exileCounter string) error {
 	var destZone *Zone
 	var actor uuid.UUID
 	switch dest {
@@ -5660,6 +5661,7 @@ func (g *Game) executeBattlefieldLeaveLocked(cardID uuid.UUID, dest ZoneKind, de
 		_ = g.ShuffleLibraryForEffect(destZone.Owner)
 	}
 	stampExiledWithLocked(destZone, cardID, exiledWith)
+	stampExileCounterLocked(destZone, cardID, exileCounter)
 	g.EmitEvent(Event{
 		Kind:    EventZoneMove,
 		Actor:   actor,

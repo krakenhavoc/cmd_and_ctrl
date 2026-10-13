@@ -1,6 +1,8 @@
 package game
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -99,6 +101,21 @@ import (
 // so CR 702.35b's "if its madness cost was paid" (Avacyn's Judgment,
 // #653) will work however the permission arrived.
 const AltCostKeyMadness = "madness"
+
+// CatalogMadnessLife is the catalog hook for the "Pay N life" some
+// madness costs add to their mana (Shadowgrange Archfiend's "Madness—
+// {2}{B}, Pay 8 life"), wired from the CardDef like its neighbours. Nil
+// (no catalog) means no card declares one.
+var CatalogMadnessLife func(oracleID string) int
+
+// MadnessLifeFor is the life a card's madness cost charges beside its
+// mana, or zero.
+func MadnessLifeFor(oracleID string) int {
+	if CatalogMadnessLife == nil || oracleID == "" {
+		return 0
+	}
+	return CatalogMadnessLife(oracleID)
+}
 
 // MadnessReplacementLabel and MadnessTriggerLabel are the CR 616
 // prompt header and the stack label. Built once so the log, the
@@ -212,13 +229,17 @@ func (g *Game) offerMadnessCastLocked(owner, cardID uuid.UUID, cost string) erro
 		return nil
 	}
 	name := c.Name
+	priced := cost
+	if life := MadnessLifeFor(CatalogKey(*c)); life > 0 {
+		priced = fmt.Sprintf("%s and %d life", cost, life)
+	}
 	return g.QueueMayCastPromptForEffect(MayCastPrompt{
 		Chooser:      owner,
 		Source:       cardID,
 		Card:         cardID,
-		Question:     "Madness — cast " + name + " for its madness cost " + cost + "?",
+		Question:     "Madness — cast " + name + " for its madness cost " + priced + "?",
 		Keyword:      MayCastKeywordMadness,
-		AcceptLabel:  "Cast it for " + cost,
+		AcceptLabel:  "Cast it for " + priced,
 		DeclineLabel: "Put it into your graveyard",
 		OnAccept: func(g *Game) error {
 			g.grantMadnessCastLocked(owner, cardID, cost)

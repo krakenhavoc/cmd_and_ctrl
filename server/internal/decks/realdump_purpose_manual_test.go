@@ -123,7 +123,6 @@ var reviewedNotAWipe = map[string]string{
 	"Living Death":                             "a symmetric mass reanimation (purpose_test.go's noPrintedAmount)",
 	"Mandate of Peace":                         "ends combat and exiles the stack",
 	"Obeka, Brute Chronologist":                "ends the turn",
-	"Ondu Inversion // Ondu Skyruins":          "only the land face is catalogued; the sweep is played by hand",
 	"Rest in Peace":                            "exiles graveyards",
 	"Scavenger Grounds":                        "exiles graveyards",
 	"Soul-Guide Lantern":                       "exiles graveyards",

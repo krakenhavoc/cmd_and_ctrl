@@ -1097,7 +1097,7 @@ func (g *Game) triggerOrderBoardOpaqueLocked() (card string, opaque bool) {
 // event does, and makes the board opaque to the check.
 var characteristicModKinds = map[ModKind]bool{
 	ModSetController: true, ModAddTypes: true, ModRemoveTypes: true,
-	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true,
+	ModAddSubtypes: true, ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true,
 	ModAddKeywords: true, ModRemoveKeywords: true, ModLoseAllAbilities: true,
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
@@ -1389,7 +1389,7 @@ var cardDefFieldClass = map[string]defFieldClass{
 	// #3140: CR 701.55c, the count a villainous choice is faced.
 	"OpponentsFaceVillainousChoicesAgain": defFieldOwnRules,
 	"LifeForMana":                         defFieldInert, "Emblem": defFieldInert, "TokenText": defFieldInert,
-	"GrantText": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
+	"GrantText": defFieldInert, "MadnessLife": defFieldInert, "XMatters": defFieldInert, "XCeiling": defFieldInert,
 	"WantsDistinctColors": defFieldInert, "WantsManaFrom": defFieldInert,
 	"AdditionalLandPlays": defFieldInert, "CastPermissions": defFieldInert,
 	"GatedCastPermissions": defFieldInert, "CastTimings": defFieldInert,

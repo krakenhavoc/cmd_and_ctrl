@@ -387,6 +387,10 @@ type CardDef struct {
 	// effects.Spec.XMatters and internal/legal/x.go.
 	XMatters bool
 
+	// MadnessLife is the "Pay N life" a madness cost adds to its mana
+	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
+	MadnessLife int
+
 	// XCeiling is the spell's printed "X can't be greater than
 	// <count>" (#2581), read at announce through XCeilingFor; see
 	// x_ceiling.go. Nil for nearly every card.
@@ -937,6 +941,12 @@ func init() {
 	CatalogXMatters = func(key string) bool {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
+	}
+	CatalogMadnessLife = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.MadnessLife
+		}
+		return 0
 	}
 	CatalogXCeiling = func(key string) *XCeiling {
 		if d := catalogDef(key); d != nil {

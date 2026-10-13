@@ -3556,3 +3556,23 @@ its holder passes priority, leaving the card exiled. A Siege defeated on someone
 end-of-turn duration remains as a backstop. The four Sieges lose `SiegeTransformedCastCaveat`.
 
 Back-out: drop `Timing` and `LapseOnPass` from the grant; `TestSiegeDefeatedOnAnotherPlayersTurnCanStillBeCast` fails.
+
+## Amendment — 2026-10-13: a madness cost can charge life beside its mana (#3212)
+
+Shadowgrange Archfiend prints "Madness—{2}{B}, Pay 8 life" (CR 702.35a: any
+cost, and a life payment is a cost, CR 119.4).
+
+- **`Spec.Madness` stays the mana string.** `Spec.MadnessLife` (an int) is the
+  life, copied into `CardDef.MadnessLife` and read through
+  `game.MadnessLifeFor(oracleID)`, a catalog hook like `XMattersFor`.
+- **The grant is unchanged.** `CastPermission` gains no field (so the snapshot
+  shape does not change): `AlternativeCostFor` adds `Life` to the synthesised
+  offer when `AltCostKey` is `madness`, by asking the catalog, so a restored
+  table prices the cast the same way. The offer is an `AlternativeCost.Life`,
+  which the existing gates already honour: a player with fewer than N life
+  cannot claim it (`lifePayableBy`), and the life is paid with the mana as
+  part of the cast.
+- The may-cast prompt names it ("madness cost {2}{B} and 8 life").
+- **Back-out.** Delete the `AltCostKeyMadness` block in `AlternativeCostFor`:
+  `TestShadowgrangeArchfiendMadnessChargesEightLife/enough_life` fails
+  (life stays 20, not 12) and `/not_enough_life` succeeds in casting.

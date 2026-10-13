@@ -86,7 +86,7 @@ func init() {
 			ChapterTrigger(1, SagaChapterLabel(name, 1, "create a Dalek for each lore counter"), daleksForLore),
 			ChapterTrigger(2, SagaChapterLabel(name, 2, "create a Dalek for each lore counter"), daleksForLore),
 			ChapterTrigger(3, SagaChapterLabel(name, 3, "create a Dalek for each lore counter"), daleksForLore),
-			ChapterTriggerTargeting(4, SagaChapterLabel(name, 4, "target opponent faces a villainous choice"),
+			TriggerWithPurpose(ChapterTriggerTargeting(4, SagaChapterLabel(name, 4, "target opponent faces a villainous choice"),
 				TargetPlayer("target opponent", Opponent()),
 				func(g *game.Game, item *game.StackItem) error {
 					ctx := NewContext(g, item)
@@ -98,6 +98,9 @@ func init() {
 					}
 					return FaceVillainousChoice{Players: facing, Choice: genesisChoice}.Apply(ctx)
 				}),
+				// Either option sweeps creatures and neither sweeps all of them
+				// (ADR 0126 §6, owner decision 2).
+				game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy, Partial: true}}),
 		},
 	})
 }

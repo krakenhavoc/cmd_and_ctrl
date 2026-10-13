@@ -98,6 +98,12 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("colors = %v, want [U]", c.Colors)
 			}
 		}},
+		{"addColors", []Mod{AddColorsMod("B", "B")}, func(t *testing.T, base, c Characteristic, _ *Game) {
+			want := append(append([]string(nil), base.Colors...), "B")
+			if !reflect.DeepEqual(c.Colors, want) {
+				t.Errorf("colors = %v, want %v (the base colours kept, black once)", c.Colors, want)
+			}
+		}},
 		{"addKeywords", []Mod{AddKeywordsMod("flying", "flying")}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			n := 0
 			for _, a := range c.Abilities {
@@ -240,7 +246,7 @@ var attackRequirementTestPlayer = uuid.MustParse("00000000-0000-0000-0000-000000
 func TestEveryModKindHasATestCase(t *testing.T) {
 	covered := map[ModKind]bool{
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
-		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
+		ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
