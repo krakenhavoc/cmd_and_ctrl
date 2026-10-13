@@ -35,6 +35,7 @@ func init() {
 		Name:         "Thran Power Suit",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:     "Equipped creature gets +1/+1 for each Aura and Equipment attached to it.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7C_Modify,
 			AppliesTo: AttachedToSource,

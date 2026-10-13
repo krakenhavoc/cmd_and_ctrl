@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -71,7 +69,7 @@ func jeskasWillRitual(item *game.StackItem, ctx *Context, occurrence int) error 
 	if n <= 0 {
 		return nil
 	}
-	return AddMana{Player: item.Controller, Produced: strings.Repeat("{R}", n)}.Apply(ctx)
+	return AddMana{Player: item.Controller, Amount: ManaN(n, "R")}.Apply(ctx)
 }
 
 // jeskasWillImpulse is the second bullet: three cards off the top,

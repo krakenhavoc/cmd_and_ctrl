@@ -73,7 +73,14 @@
     sameSelection,
     selectionLegal,
   } from "../../boardChoicePick";
-  import { ballotNote, choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
+  import {
+    anyPlayerOfferLine,
+    anyPlayerWhose,
+    ballotNote,
+    choiceRequest,
+    inlineRefusal,
+    isInlineChoice,
+  } from "../../choiceDock";
   import { get } from "svelte/store";
   import { settings, updateSettings } from "../../settings";
   import { rememberedRule, ruleRefusalText, withRule } from "../../autoAnswerPref";
@@ -211,13 +218,24 @@
         active?.kind === "untap_choice" &&
         options.length > 0 &&
         (active.choose_max ?? 0) >= options.length;
+      // #3053: a search whose every match fits under the ceiling is the
+      // one the engine used to take without asking. It now asks (CR
+      // 701.23b — the searcher may find nothing), and the answer nearly
+      // every player gives is "take it", so it opens with the matches
+      // already taken: Enter takes them, "Find nothing" declines. With
+      // more matches than room there is a real choice to make and the
+      // picker starts empty.
+      const searchPreselect =
+        active?.kind === "search_library" &&
+        options.length > 0 &&
+        options.length <= (active.search_max ?? 1);
       // #2525: a proliferate opens on the engine's suggested pick — the
       // answer a player takes nearly every time — and the player's click
       // is the deviation.
       selected =
         active?.kind === "proliferate"
           ? new Set(active.choose_suggested ?? [])
-          : preselect
+          : preselect || searchPreselect
             ? new Set(options.map((c) => c.instance_id))
             : new Set();
       ordered = [];
@@ -274,10 +292,13 @@
   // S22 search_library — "search your library for ..." (CR 701.23).
   // Shares the card grid and the {choice_id, card_ids} payload with
   // discard / sacrifice; what differs is the floor. Every other
-  // card-grid kind demands exactly `count` picks, but a search may
-  // always find FEWER than it looked for, including none at all
-  // (CR 701.23b "you may fail to find"). So search_max is a ceiling
-  // and zero is a legal answer.
+  // card-grid kind demands exactly `count` picks, but a search for a
+  // card with a stated quality may find FEWER than it looked for,
+  // including none at all (CR 701.23b "you may fail to find"), so
+  // search_max is a ceiling and zero is a legal answer — and a
+  // separate "Find nothing" button says so (#3053). An unconditional
+  // search ("a card", CR 701.23d) must find that many: the server sends
+  // search_min then, and there is no such button.
   const isSearch = $derived(active?.kind === "search_library");
 
   // S16.5 copy_target — "you may have this creature enter as a copy
@@ -399,11 +420,13 @@
         : (active?.count ?? 0),
   );
   const pickMin = $derived(
-    isSearch || isCopyTarget
-      ? 0
-      : isCardSetPick || isRevealedVariant
-        ? (active?.choose_min ?? 0)
-        : (active?.count ?? 0),
+    isSearch
+      ? (active?.search_min ?? 0)
+      : isCopyTarget
+        ? 0
+        : isCardSetPick || isRevealedVariant
+          ? (active?.choose_min ?? 0)
+          : (active?.count ?? 0),
   );
   const canSubmit = $derived(selectionLegal(selected.size, pickMin, pickMax));
 
@@ -477,6 +500,14 @@
     if (!active || !viewerID) return;
     if (!canSubmit) return;
     answer({ card_ids: Array.from(selected) });
+  }
+
+  // #3053 (CR 701.23b): a search for a card with a stated quality may
+  // find nothing even with the match in front of you. Always an empty
+  // answer, whatever the grid currently has selected.
+  function findNothing(): void {
+    if (!active || !viewerID || !isSearch || pickMin > 0) return;
+    answer({ card_ids: [] });
   }
 
   // Options come redacted for non-knowers; filter to cards the
@@ -1282,6 +1313,7 @@
             payAmount: payAmountValue,
             payAmountAnswerable: payAmountOK,
             life: snap.seats?.find((s) => s.id === viewerID)?.life,
+            seats: snap.seats,
             body: isManaPick
               ? manaBody
               : isColorChoice
@@ -1515,7 +1547,7 @@
   // Keys (ADR 0111 §1): Enter presses a confirm that commits what the
   // player picked (Done, Take, Choose, Deal damage, an order). It never
   // presses a decline — an empty pick where nothing is a legal answer
-  // ("Fail to find", "Enter as itself", "Reveal nothing", "Don't
+  // ("Find nothing", "Enter as itself", "Reveal nothing", "Don't
   // discard …") — nor a payment ("Pay {2}", which keeps Y / N, as the
   // inline pay_unless does). A pending choice has no Escape: the game is
   // waiting on an answer, not on a way out.
@@ -1704,7 +1736,9 @@
       : isSearch
         ? [c.reason || "Search your library", "search · CR 701.23"]
         : isCopyTarget
-          ? [c.reason || "Enter as a copy of…", "copy · CR 707"]
+          ? c.exchanges_text
+            ? [c.reason || "Exchange text boxes with…", "text box · CR 612.5"]
+            : [c.reason || "Enter as a copy of…", "copy · CR 707"]
           : isUntapChoice
             ? [c.reason || "Untap step — choose which permanents untap", "untap · CR 502.3"]
             : isEntryReveal
@@ -1735,8 +1769,12 @@
         ? "Take"
         : isCopyTarget
           ? none
-            ? "Enter as itself"
-            : "Enter as a copy"
+            ? c.exchanges_text
+              ? "Keep its own text"
+              : "Enter as itself"
+            : c.exchanges_text
+              ? "Exchange text boxes"
+              : "Enter as a copy"
           : isUntapChoice
             ? "Untap"
             : isEntryReveal
@@ -1770,17 +1808,23 @@
       // sheet leaves more of the board in view.
       width: boardEligible ? 520 : 720,
       // An empty pick where empty is legal is a decline: no Enter. #2964:
-      // a search with nothing picked has no primary at all; Fail to find
-      // is a secondary, so Enter can never fail a search by habit.
+      // a search with nothing picked has no primary at all; "Find
+      // nothing" is a secondary, so Enter can never fail a search by
+      // habit. #3053: it stays on the bar while a card is taken too, so
+      // declining is one click either way and never a deselect-then-
+      // find-the-button hunt; it is absent when the rules make the
+      // searcher find (search_min).
       primary:
-        isSearch && none
+        isSearch && none && pickMin === 0
           ? null
           : confirmAction(verb, submit, {
               disabled: !canSubmit,
               enter: !(none && pickMin === 0),
             }),
       secondary: [
-        ...(isSearch && none ? [{ id: "fail", label: "Fail to find", onPress: submit }] : []),
+        ...(isSearch && pickMin === 0
+          ? [{ id: "fail", label: "Find nothing", onPress: findNothing }]
+          : []),
         ...(clearable
           ? [
               {
@@ -1859,7 +1903,9 @@
         ? L.energyToPay
         : payAmountUnit === "life"
           ? L.lifeToPay
-          : L.numberToChoose}
+          : payAmountUnit === "mana"
+            ? "mana to pay"
+            : L.numberToChoose}
     >
       <button
         type="button"
@@ -1893,6 +1939,10 @@
         <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
       {:else if payAmountUnit === "life"}
         <span class="pay-amount-of">of {payAmountView.max} life</span>
+      {:else if payAmountUnit === "mana"}
+        <!-- ADR 0150 §5: an assist helper's generic mana, up to what
+             their pool and untapped sources can make. -->
+        <span class="pay-amount-of">up to {"{"}{payAmountView.max}{"}"} generic</span>
       {:else if !payAmountView.no_max}
         <span class="pay-amount-of">up to {payAmountView.max}</span>
       {/if}
@@ -2177,6 +2227,16 @@
       </ul>
     {:else if isPayUnless}
       {#if payCards}
+        {#if active.any_player_offer}
+          <!-- ADR 0150 §5: a sacrifice or discard offered to the table
+               says whose effect it is and who else is asked. -->
+          <p class="prompt-hint">
+            {anyPlayerWhose(active, snap.seats ?? [], triggerSourceName(active.source))}. {anyPlayerOfferLine(
+              active,
+              snap.seats ?? [],
+            )}
+          </p>
+        {/if}
         <p class="prompt-hint">
           Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
             active.source,
@@ -2379,6 +2439,12 @@
         {/each}
       </ul>
     {:else if isReplacementOrder || isTriggerOrder}
+      {#if isTriggerOrder && active.trigger_order_why}
+        <!-- #3015: why the game asked instead of ordering the batch itself. -->
+        <p class="prompt-hint prompt-why">
+          {active.trigger_order_why}
+        </p>
+      {/if}
       <p class="prompt-hint">
         {#if isTriggerOrder}
           Two or more of your abilities triggered at once. Click them in the order they should
@@ -2416,12 +2482,18 @@
           Choose {active.count === 1 ? "a permanent" : `${active.count} permanents`} you control to sacrifice.
           This isn't optional — {triggerSourceName(active.source)} is making you.
         {:else if isSearch}
-          {#if pickMax === 1}
-            Take one of these, or none.
+          {#if pickMin > 0}
+            Take {pickMin === pickMax ? pickMax : `at least ${pickMin} and up to ${pickMax}`} of these
+            — this search has to find {pickMin === 1 ? "a card" : "cards"}.
+          {:else if pickMax === 1}
+            Take one of these, or find nothing — you may always come up empty.
           {:else}
-            Take up to {pickMax} of these, or none.
+            Take up to {pickMax} of these, or find nothing — you may always come up short.
           {/if}
           Only you can see them, and your library is shuffled either way.
+        {:else if isCopyTarget && active?.exchanges_text}
+          Pick a creature to exchange text boxes with — each takes the other's rules text and keeps
+          its own name, types and power and toughness. Or pick nothing and keep its own text.
         {:else if isCopyTarget}
           Pick what it enters as a copy of — it copies the printed card, so counters, damage and
           other effects don't come across. Or copy nothing and let it enter as itself.
@@ -2908,6 +2980,10 @@
   }
   .prompt-hint.warn {
     color: var(--danger);
+  }
+  .prompt-why {
+    color: var(--fg);
+    font-weight: 500;
   }
   .assign-input input {
     width: 70px;

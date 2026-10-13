@@ -87,6 +87,25 @@ type Purpose struct {
 	// 2026-10-06). Nil is "not a discard payoff". Refused on every
 	// other slot. A pointer so Purpose stays comparable.
 	DiscardPayoff *DiscardPayoff
+	// OnOpponentDiscard is set on a TRIGGERED row of a card that pays
+	// out when an opponent's spell or ability makes its controller
+	// discard THAT card ("if a spell or ability an opponent controls
+	// causes you to discard this card, create four Gnome tokens"), in
+	// DiscardPayoff's units and per printed amount (ADR 0153 §5). The
+	// heuristic prices that discard of the card in hand that much
+	// cheaper, and only when an opponent caused it. Any is set, because
+	// the card is the discarded card. A row that sits on the battlefield
+	// never pays out for other discards by it, which is why this is not
+	// DiscardPayoff. Nil is "declares nothing". Refused on every other
+	// slot. A pointer so Purpose stays comparable.
+	OnOpponentDiscard *DiscardPayoff
+	// LandfallPayoff is set on a TRIGGERED row that pays out whenever a
+	// land enters under its controller's control ("Landfall — Whenever a
+	// land you control enters"), and says what it pays for EACH land:
+	// Tatyova's card and life, Lotus Cobra's mana, Tireless Tracker's
+	// Clue (#3072). Nil is "not a landfall payoff". Refused on every
+	// other slot. A pointer so Purpose stays comparable.
+	LandfallPayoff *LandfallPayoff
 
 	// The fields below were added for exert (ADR 0130 §9 and its
 	// amendment of 2026-10-07). The heuristic reads them on a row the
@@ -301,6 +320,37 @@ type DiscardPayoff struct {
 	DamageEachOpponent int
 }
 
+// LandfallPayoff is what a landfall row pays its controller for each
+// land that enters under their control, as printed amounts (#3072). The
+// heuristic prices a land the bot puts onto the battlefield that much
+// higher. An amount counted at resolution ("a +1/+1 counter on each
+// Plant you control") or one the land's own name or count decides
+// ("if you control seven or more differently named lands") is not
+// declared, as everywhere in Purpose.
+type LandfallPayoff struct {
+	// Draws is the cards its controller draws: Tatyova 1.
+	Draws int
+	// LifeGain is the life its controller gains: Tatyova and Courser of
+	// Kruphix 1, Primeval Bounty 3.
+	LifeGain int
+	// Tokens is the tokens it creates for its controller: Tireless
+	// Tracker's Clue, Tireless Provisioner's Treasure or Food,
+	// Sporemound's Saproling, Rampaging Baloths' Beast 1.
+	Tokens int
+	// Mana is the mana it adds: Lotus Cobra 1, Omnath, Locus of the
+	// Void 2. It empties at the end of the step (CR 106.4).
+	Mana int
+	// Counters is the +1/+1 counters it puts on its source: Undergrowth
+	// Champion 1.
+	Counters int
+	// Energy is the energy counters its controller gets: Architect of
+	// the Untamed 1, Nissa, Worldsoul Speaker 2 (ADR 0129).
+	Energy int
+	// DamageEachOpponent is the damage its source deals to each
+	// opponent: Sabotender 1.
+	DamageEachOpponent int
+}
+
 // IsZero reports whether nothing is declared.
 func (p Purpose) IsZero() bool {
 	return p == Purpose{}
@@ -400,8 +450,11 @@ var SweepHows = []SweepHow{SweepDestroy, SweepExile, SweepBounce, SweepDamage, S
 //
 // The card's OWN key, not CatalogAbilityKey's merged one: a layer-6
 // grant gives a permanent abilities, not a different resolution.
-func CardPurposeOf(c Card) Purpose {
-	d := catalogDef(catalogKeyOf(&c))
+func CardPurposeOf(c Card) Purpose { return CardPurposeOfPtr(&c) }
+
+// CardPurposeOfPtr is CardPurposeOf without the receiver copy (#2113).
+func CardPurposeOfPtr(c *Card) Purpose {
+	d := catalogDef(catalogKeyOf(c))
 	if d == nil {
 		return Purpose{}
 	}
@@ -427,6 +480,8 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 		Sweep:                     p.Sweep,
 		DeathPayoff:               p.DeathPayoff || o.DeathPayoff,
 		DiscardPayoff:             p.DiscardPayoff,
+		OnOpponentDiscard:         p.OnOpponentDiscard,
+		LandfallPayoff:            p.LandfallPayoff,
 		Pump:                      p.Pump,
 		ExtraCombat:               p.ExtraCombat + o.ExtraCombat,
 		PreventCombatDamageToSelf: p.PreventCombatDamageToSelf || o.PreventCombatDamageToSelf,
@@ -446,6 +501,12 @@ func (p Purpose) plus(o Purpose, leftClauses int) Purpose {
 	}
 	if out.DiscardPayoff == nil {
 		out.DiscardPayoff = o.DiscardPayoff
+	}
+	if out.OnOpponentDiscard == nil {
+		out.OnOpponentDiscard = o.OnOpponentDiscard
+	}
+	if out.LandfallPayoff == nil {
+		out.LandfallPayoff = o.LandfallPayoff
 	}
 	targets := append([]TargetPurpose(nil), p.Targets.List()...)
 	for _, t := range o.Targets.List() {

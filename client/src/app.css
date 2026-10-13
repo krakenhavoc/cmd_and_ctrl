@@ -320,10 +320,48 @@ body {
   color: var(--fg);
 }
 
+/* The app is full width (ADR 0156 §3): the site header and footer run
+   edge to edge, and Page.svelte centres each page's content at its own
+   width. The table is position: fixed and ignores all of this. A column
+   keeps the footer at the bottom of a short page. */
 #app {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* The pages not yet in the site frame (the sign-in page) keep the old
+   centred column App.svelte wraps them in. */
+.app-column {
+  width: 100%;
   max-width: 1080px;
   margin: 0 auto;
   padding: 1.5rem;
+  box-sizing: border-box;
+}
+
+/* The site frame's sides and the old column's padding. */
+:root {
+  --page-gutter: 28px;
+}
+
+/* A deck's colour identity (ADR 0158 §2): the aura on the Decks grid.
+   Fixed, not skin tokens, and no skin may override them: they mean the
+   deck's colours, not chrome. Black is a dusk violet and white a warm
+   parchment so both read as a glow on a dark page and a light one;
+   colourless is steel. */
+:root {
+  --identity-w: #eadb9c;
+  --identity-u: #3f8fe0;
+  --identity-b: #8d6fb3;
+  --identity-r: #e2533a;
+  --identity-g: #35a866;
+  --identity-c: #94a3b3;
+}
+@media (max-width: 819px) {
+  :root {
+    --page-gutter: 20px;
+  }
 }
 
 /* Installed as a PWA (ADR 0031) the app draws under the notch and the home
@@ -332,11 +370,108 @@ body {
    this keeps the change inert for every non-installed player. */
 @media (display-mode: standalone) {
   #app {
-    padding-top: calc(1.5rem + env(safe-area-inset-top));
-    padding-right: calc(1.5rem + env(safe-area-inset-right));
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom));
-    padding-left: calc(1.5rem + env(safe-area-inset-left));
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    box-sizing: border-box;
   }
+}
+
+/* ---- The site shell's shared primitives (ADR 0156 §3 item 2) ----
+   A page keeps its own CSS only for what is truly its own. `.btn` and
+   `.link-arrow` are new names nothing else uses. `.card` is a name the
+   table and several pages already use for their own things, so the
+   primitive only applies inside the site frame and at zero specificity:
+   any page's own `.card` rule wins, and the table never sees it. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 40px;
+  padding: 0 18px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  color: var(--fg);
+  font: 700 14px/1 var(--font-ui);
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition:
+    background 120ms var(--ease),
+    border-color 120ms var(--ease),
+    color 120ms var(--ease);
+}
+.btn:hover {
+  background: var(--surface-hover);
+  color: var(--fg);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--accent-strong);
+  outline-offset: 2px;
+}
+.btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-fg);
+}
+.btn.primary:hover {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+  color: var(--accent-fg);
+}
+.btn.ghost {
+  background: transparent;
+  border-color: var(--border-strong);
+  color: var(--fg);
+}
+.btn.ghost:hover {
+  background: var(--overlay);
+}
+/* Discord's own blurple: the one brand colour that is not ours. */
+.btn.discord {
+  background: #5865f2;
+  border-color: #5865f2;
+  color: #fff;
+}
+.btn.discord:hover {
+  background: #4752c4;
+  border-color: #4752c4;
+  color: #fff;
+}
+.btn.sm {
+  height: 32px;
+  padding: 0 12px;
+  font-size: 12.5px;
+}
+.link-arrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-strong);
+  font-weight: 600;
+  text-decoration: none;
+}
+.link-arrow::after {
+  content: "→";
+  transition: transform 120ms var(--ease);
+}
+.link-arrow:hover {
+  color: var(--accent);
+}
+.link-arrow:hover::after {
+  transform: translateX(2px);
+}
+:where(.site-page) :where(.card) {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 22px;
+  box-sizing: border-box;
 }
 
 h1,
@@ -911,4 +1046,29 @@ textarea::placeholder {
 ::selection {
   background: var(--accent-soft);
   color: var(--fg);
+}
+
+/* Registered so the Web Animations in lib/animations.ts can interpolate
+   them (an unregistered custom property flips at the halfway point).
+   --tap-rot is the tap rotation, --impact-glow the combat hit's flash
+   (ADR 0134 section 2). Their initial values are what the consumers'
+   var() fallbacks said: no rotation, no glow. --impact-x is NOT
+   registered, on purpose: an unset one is what keeps the avatar disc's
+   `translate` at none (PlayerIdentity.svelte), and a registered property
+   is never unset. The shake animates --impact-shake instead and points
+   an inline --impact-x at it for the length of the shake. */
+@property --tap-rot {
+  syntax: "<angle>";
+  inherits: true;
+  initial-value: 0deg;
+}
+@property --impact-glow {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+@property --impact-shake {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
 }

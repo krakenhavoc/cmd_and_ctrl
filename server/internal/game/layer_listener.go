@@ -184,6 +184,18 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		exileStaticIsLiveLocked(g) {
 		g.layerVersion.Add(1)
 	}
+	// ADR 0093 amendment 2026-10-13 (#3233): a CARD entering a hand, a
+	// graveyard or exile while a permanent grants abilities to the cards
+	// there ("each creature card in your hand has ninjutsu") has the
+	// grant from that moment, and a move off the battlefield bumps
+	// above already. Conditional in the hand-size bump's mould: the
+	// walk is bounded by the board and runs only for a move into one of
+	// the three zones, so a table with no such permanent pays nothing.
+	if ev.NewZone != ev.OldZone && ev.NewZone != ZoneBattlefield && ev.OldZone != ZoneBattlefield &&
+		(ev.NewZone == ZoneHand || ev.NewZone == ZoneGraveyard || ev.NewZone == ZoneExile) &&
+		zoneGrantStaticIsLiveLocked(g, ev.NewZone) {
+		g.layerVersion.Add(1)
+	}
 	switch ev.Kind {
 	case EventZoneMove:
 		if ev.OldZone == ZoneBattlefield || ev.NewZone == ZoneBattlefield {
@@ -266,6 +278,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		// but a listener earlier in the slice than this one would
 		// otherwise read the stale characteristic off the card it was
 		// just told about.
+		g.layerVersion.Add(1)
+	case EventFlipPermanent:
+		// ADR 0151 decision 5, EventTransform's reason exactly: a flip
+		// changes the printed name, type line, base P/T, keywords and
+		// catalog entry at once with the permanent sitting still, so an
+		// anthem for legendary creatures must see Tok-Tok the moment
+		// Akki Lavarunner flips (CR 710.2's own example). The card's
+		// cache is nilled at the mutation site (FlipPermanentForEffect).
 		g.layerVersion.Add(1)
 	case EventPhaseOut, EventPhaseIn:
 		// ADR 0084 / CR 702.26: what is on the battlefield has just

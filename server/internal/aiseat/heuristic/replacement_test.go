@@ -173,3 +173,30 @@ func TestCloneSkipsALegendItAlreadyHas(t *testing.T) {
 		t.Errorf("an opponent's legend: chose %q, want Atraxa", got)
 	}
 }
+
+// --- copy_target that exchanges text (ADR 0160) ---------------------
+
+func exchangeDecision(t *testing.T, board []protocol.CardView, ids ...string) string {
+	t.Helper()
+	v := newView([]protocol.PlayerView{newSeat(0), newSeat(1)}, withTurn(5, 0, "precombat_main"), withBattlefield(board...),
+		withChoice(protocol.PendingChoiceView{
+			ID: copyChoiceID, Kind: "copy_target", Chooser: seatID(0).String(), FromPlayer: seatID(0).String(), Count: 1,
+			Source: cardID(50), ExchangesText: true,
+		}))
+	moves := []legal.Move{choiceMove(t, 0, copyChoiceID, "keep its own text", map[string]any{"card_ids": []string{}})}
+	for _, id := range ids {
+		moves = append(moves, choiceMove(t, 0, copyChoiceID, "exchange with "+id, map[string]any{"card_ids": []string{id}}))
+	}
+	in := input(0, v, moves...)
+	return chose(t, in, decide(t, heuristic.New(), in))
+}
+
+// Deadpool takes the best text an opponent has, and would rather not
+// hand his drawback to the bot's own best creature.
+func TestDeadpoolExchangesWithTheBestOpposingCreature(t *testing.T) {
+	mine := creature(cardID(1), 0, "My Dragon", 6, 6, keywords("flying"))
+	theirs := creature(cardID(2), 1, "Their Angel", 4, 4, keywords("flying", "vigilance"))
+	if got := exchangeDecision(t, []protocol.CardView{mine, theirs}, mine.InstanceID, theirs.InstanceID); got != "exchange with "+theirs.InstanceID {
+		t.Errorf("chose %q, want the opponent's Angel over the bot's own Dragon", got)
+	}
+}

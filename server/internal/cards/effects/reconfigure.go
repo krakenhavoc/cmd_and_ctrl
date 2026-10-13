@@ -167,8 +167,9 @@ func pumpTriggeringCreatureUntilEOT(ctx *Context, power, toughness int, label st
 // and is a black Demon"): CR 613.6 keeps it applying in the later
 // layers once it has started, whatever removes the source's abilities
 // part-way through the pass.
-func equippedCreatureIs(layer game.Layer, apply func(c *game.Characteristic)) game.StaticAbility {
+func equippedCreatureIs(layer game.Layer, label string, apply func(c *game.Characteristic)) game.StaticAbility {
 	return game.StaticAbility{
+		Label:                 label,
 		Layer:                 layer,
 		ContinuesAfterRemoval: true,
 		AppliesTo:             AttachedToSource,

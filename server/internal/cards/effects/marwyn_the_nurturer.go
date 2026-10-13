@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -41,12 +39,12 @@ func init() {
 		ManaAbilities: []ManaAbility{{
 			Cost:  ManaAbilityCost{Tap: true},
 			Label: "Add an amount of {G} equal to Marwyn's power",
-			ProducedFunc: func(g *game.Game, _ uuid.UUID, source uuid.UUID) string {
+			ProducedAmount: func(g *game.Game, _ uuid.UUID, source uuid.UUID) game.ManaAmount {
 				c, ok := g.LookupCardForEffect(source)
 				if !ok {
-					return ""
+					return game.ManaAmount{}
 				}
-				return strings.Repeat("{G}", c.CurrentPower())
+				return game.ManaAmount{Options: []string{"G"}, N: c.CurrentPower()}
 			},
 		}},
 	})

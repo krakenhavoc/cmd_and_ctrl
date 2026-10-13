@@ -33,6 +33,15 @@ type AddMana struct {
 	Player   uuid.UUID
 	Produced string
 
+	// Amount is the count form (#3112) for "Add {R} for each ...",
+	// "add N mana of any one color": a game.ManaAmount instead of
+	// Produced, used when Produced is empty. The engine builds the slots
+	// from the count with the MaxProducedMana ceiling applied to N before
+	// anything is allocated, and announces a cut — nothing builds a
+	// string whose length is a game quantity. Same pick, restriction,
+	// rider and replacement behaviour as Produced. Use ManaN to build one.
+	Amount game.ManaAmount
+
 	// NarrowToCommanderIdentity intersects a pipe pick with the
 	// controller's commander colour identity, exactly as
 	// ManaAbility.NarrowToCommanderIdentity does for a mana ability.
@@ -61,8 +70,16 @@ func KeepManaUntilEndOfTurn() game.ManaSpendRider {
 	return game.ManaSpendRider{Kind: game.ManaRiderKeepUntilEndOfTurn}
 }
 
+// KeepManaUntilEndOfCombat is the mark for "this mana lasts until end of
+// combat" (firebending; #3172). Put it in AddMana.Riders; the
+// step-boundary sweep keeps the mana through the combat phase and
+// empties it normally at the first boundary outside it.
+func KeepManaUntilEndOfCombat() game.ManaSpendRider {
+	return game.ManaSpendRider{Kind: game.ManaRiderKeepUntilEndOfCombat}
+}
+
 func (a AddMana) Apply(ctx *Context) error {
-	if a.Produced == "" {
+	if a.Produced == "" && len(a.Amount.Options) == 0 {
 		return nil
 	}
 	player := a.Player
@@ -70,5 +87,13 @@ func (a AddMana) Apply(ctx *Context) error {
 		player = ctx.Controller()
 	}
 	return ctx.Game.AddManaWithOptionsForEffect(player, ctx.Source(), a.Produced,
-		game.AddManaOptions{NarrowToCommanderIdentity: a.NarrowToCommanderIdentity, Restrictions: a.Restrictions, Riders: a.Riders})
+		game.AddManaOptions{Amount: a.Amount, NarrowToCommanderIdentity: a.NarrowToCommanderIdentity, Restrictions: a.Restrictions, Riders: a.Riders})
+}
+
+// ManaN is the count form of "Add N mana", each from the colour options
+// given: one option ("{R}") is N of that colour, several ("B", "R") are N
+// independent picks (Burnt Offering's "{B} or {R}" each). A count of zero
+// or less adds nothing. See AddMana.Amount.
+func ManaN(n int, options ...string) game.ManaAmount {
+	return game.ManaAmount{Options: options, N: n}
 }

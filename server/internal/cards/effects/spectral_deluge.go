@@ -36,21 +36,19 @@ import (
 // since the sweep is opponents-only — and any "whenever one or more
 // permanents leave" watcher sees the whole batch at once.
 //
-// Declared simplification, weaker than printed (#259): FORETELL is not
-// implemented (#658). The Deluge can only be cast from hand for its
-// full {4}{U}{U}; the "pay {2} now, {1}{U}{U} later" split, and the
-// information hiding that comes with the face-down exile, are not
-// available.
+// Foretell {1}{U}{U} is the keyword's own special action (foretell.go):
+// the {2} exile-face-down and the later cast for the foretell cost are
+// the engine's, so this file declares only the printed cost.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID: "bb9bb65e-504f-4edd-8d47-d0efa03e7d17",
 		Name:     "Spectral Deluge",
 		// ADR 0126 §6: only toughness X or less, X the Islands you control.
-		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, OpponentsOnly: true, Partial: true}},
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Foretell is not available — the Deluge can only be cast from your hand for its full {4}{U}{U}, never split across two turns as a face-down exiled card.",
-		},
+		Purpose:        game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepBounce, OpponentsOnly: true, Partial: true}},
+		Completeness:   CompletenessFull,
+		SpecialActions: []game.SpecialAction{Foretell("{1}{U}{U}")},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return BounceAllMatching{
 				Match: And(Creature(), OpponentControls(), b41ToughnessAtMostYourIslands()),

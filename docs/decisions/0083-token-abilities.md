@@ -388,3 +388,13 @@ card and for a vanilla token.
 
 Client (`client/src/lib/tokenText.render.test.ts`): rendered, full text in the
 `title`, printed line breaks kept, absent for a vanilla token and a printed card.
+
+## Amendment (2026-10-13, #3172, cav-g2): a token that sizes itself
+
+Hallowed Haunting's white Spirit Cleric ("power and toughness are each equal to the number of Spirits you control") is the first
+token template to carry a characteristic-defining static: a layer 7a static applying to the token itself, with
+`Card.VariableToughness` set on the template (the printed `*`). The layer 7a effect sets `PTDefined`, so the toughness state-based
+action reads the number the token computes. Nothing is carried on the creating card any more: the Cleric keeps its size when the
+Haunting leaves. Tokens made before this change (snapshots) carry no token key and keep their old 0/0.
+
+Back-out: clear the token key in `spiritClericToken`; `TestB29SpiritClericKeepsItsSizeWhenTheHauntingLeaves` fails.

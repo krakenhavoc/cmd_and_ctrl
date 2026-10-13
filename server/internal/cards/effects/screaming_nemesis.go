@@ -28,29 +28,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // when a player was actually dealt damage this way (see
 // b35RedirectDamageToChosen).
 //
-// One declared simplification, weaker than printed:
-//
-//   - The engine emits one damage event per SOURCE, so a Nemesis
-//     blocked by two creatures fires twice — once per blocker's
-//     damage, each with its own target — where the printed card
-//     fires once for the total (Wrathful Red Dragon's posture). The
-//     same damage is reflected either way; only the split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the Nemesis was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	Register(Spec{
-		OracleID:     "fcb7c93c-46ab-49b5-a6e0-35d73f3be8f0",
-		Name:         "Screaming Nemesis",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"If two or more sources damage it at the same time, it reflects each source's damage separately instead of the total in one go.",
-		},
+		OracleID:        "fcb7c93c-46ab-49b5-a6e0-35d73f3be8f0",
+		Name:            "Screaming Nemesis",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"haste"},
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 				return b35SelfWasDealtDamage(ev, source)
 			},
-			Targets: b35TargetAnyOther(),
-			Key:     "Screaming Nemesis — deal that much damage to any other target",
+			Targets:    b35TargetAnyOther(),
+			Key:        "Screaming Nemesis — deal that much damage to any other target",
+			AtBatchEnd: ThatMuchDamage(),
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) *game.StackItem {
 				item := game.NewTriggeredItem(source, "Screaming Nemesis — deal that much damage to any other target")
 				item.Params.Amount = ev.Amount

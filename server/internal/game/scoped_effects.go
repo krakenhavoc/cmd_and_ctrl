@@ -56,6 +56,11 @@ const (
 	ModAddSubtypes      ModKind = "addSubtypes"      // layer 4
 	ModAllCreatureTypes ModKind = "allCreatureTypes" // layer 4
 	ModSetColors        ModKind = "setColors"        // layer 5
+	// ModAddColors is "is <colour> in addition to its other colours"
+	// (Liliana, Death's Majesty's reanimated "black Zombie"). Layer 5;
+	// it unions the colours rather than replacing them, so a later
+	// setColors still wins by timestamp and an earlier one is kept.
+	ModAddColors        ModKind = "addColors"        // layer 5
 	ModAddKeywords      ModKind = "addKeywords"      // layer 6
 	ModRemoveKeywords   ModKind = "removeKeywords"   // layer 6
 	ModLoseAllAbilities ModKind = "loseAllAbilities" // layer 6
@@ -75,6 +80,13 @@ const (
 	// ModAddRestrictions is: not a characteristic, written where the
 	// text sits, only ever appended to (attack_requirements.go).
 	ModAddAttackRequirement ModKind = "addAttackRequirement" // layer 6
+	// ModAttackPlayerIfAble is "attacks <that player> this turn if able"
+	// (#3172, encore's token copies: "For each opponent, create a token
+	// copy that attacks that opponent this turn if able"). Player is the
+	// player it must attack. Layer 6 and appended, like the plain
+	// requirement; its own kind, because an older binary that read it as
+	// the plain requirement would let the token attack anyone.
+	ModAttackPlayerIfAble ModKind = "attackPlayerIfAble" // layer 6
 	// ModGoad is goad as a continuous effect from a resolved ability
 	// (#2733): "as long as this enchantment remains on the battlefield,
 	// that creature is also goaded" (Hot Pursuit). Player is the
@@ -294,6 +306,13 @@ const (
 	// playerCantBecomeMonarchLocked, which becomeMonarchLocked and the
 	// CR 725.4 hand-on ask. Reads Player.
 	ModCantBecomeMonarch ModKind = "cantBecomeMonarch"
+	// ModVoteChooser is "you choose how each player votes this turn"
+	// (ADR 0146 amendment 2026-10-13, #2928; CR 701.38): Illusion of
+	// Choice. Scope ScopeGame with Player set to the player who chooses.
+	// Read by voteChooserLocked at every ballot of a vote, so the
+	// ballot is put to that player instead of the voter; where several
+	// records stand the newest one (CR 613.7) wins. Reads Player.
+	ModVoteChooser ModKind = "voteChooser"
 	// ModCantBeRegenerated is "<that permanent> can't be regenerated
 	// this turn" (ADR 0108 §2, #1887; CR 701.19c): regeneration shields
 	// are not applied to it, and are not used up, and neither is a
@@ -593,6 +612,10 @@ type Mod struct {
 	// reason Objects is one — every other mod writes nothing, and the
 	// record stays plain data with no pointer in it (ADR 0041 P1).
 	Copy []PrintedValues `json:"copy,omitempty"`
+	// TextBox is ModExchangeText's text box (ADR 0160): exactly one
+	// entry, required on that kind and refused on every other. A slice
+	// for the reason Copy is one.
+	TextBox []TextBoxValues `json:"textBox,omitempty"`
 }
 
 // AffectedObject is one member of a ScopedEffect's affected set: the
@@ -773,6 +796,9 @@ const (
 	// readerCopy is the layer-1 materialiser (#1593,
 	// duration_copy.go): it runs before the layer pass, not in it.
 	readerCopy
+	// readerText is the layer-3 text-box materialiser (ADR 0160,
+	// text_box.go): like readerCopy, it runs before the pass.
+	readerText
 	// readerRule is a CR 613.11 rules gate (ADR 0107 §5): the damage
 	// prevention and redirection gates and the life-gain gate.
 	readerRule
@@ -796,6 +822,7 @@ var modKinds = map[ModKind]modKindSpec{
 	ModAddSubtypes:      {layer: Layer4Type},
 	ModAllCreatureTypes: {layer: Layer4Type},
 	ModSetColors:        {layer: Layer5Color},
+	ModAddColors:        {layer: Layer5Color},
 	ModAddKeywords:      {layer: Layer6Ability},
 	ModRemoveKeywords:   {layer: Layer6Ability},
 	ModLoseAllAbilities: {layer: Layer6Ability, removes: true},
@@ -807,6 +834,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModModifyPT:         {layer: Layer7PT, subLayer: SubLayer7C_Modify},
 	// #1571
 	ModAddAttackRequirement: {layer: Layer6Ability},
+	// #3172
+	ModAttackPlayerIfAble: {layer: Layer6Ability},
 	// #2733
 	ModGoad: {layer: Layer6Ability},
 	// #1597
@@ -855,6 +884,8 @@ var modKinds = map[ModKind]modKindSpec{
 	ModCantPlayFromHand: {reader: readerRule},
 	// ADR 0096 amendment (#2039): the monarch gate.
 	ModCantBecomeMonarch: {reader: readerRule},
+	// ADR 0146 amendment (#2928): who casts each player's ballot.
+	ModVoteChooser: {reader: readerRule},
 	// ADR 0108 §2 (#1887): the regeneration gate.
 	ModCantBeRegenerated: {reader: readerRule},
 	// Tier 3b (ADR 0041 P8): block-rule effects, not layer operations.
@@ -870,8 +901,11 @@ var modKinds = map[ModKind]modKindSpec{
 	ModBecomeCopy: {reader: readerCopy, layer: Layer1Copy},
 	// #2562: The Irencrag's "become a legendary Equipment artifact named
 	// Everflame, Heroes' Legacy" (become_named.go).
-	ModSetName:  {layer: Layer3Text},
-	ModSetTypes: {layer: Layer4Type},
+	ModSetName: {layer: Layer3Text},
+	// ADR 0160: one half of an exchange of text boxes, applied to the
+	// key before the pass (text_box.go).
+	ModExchangeText: {reader: readerText, layer: Layer3Text},
+	ModSetTypes:     {layer: Layer4Type},
 }
 
 // KnownModKind reports whether this binary can interpret k.
@@ -973,6 +1007,10 @@ func AllCreatureTypesMod() Mod { return Mod{Kind: ModAllCreatureTypes} }
 // an empty list makes it colourless.
 func SetColorsMod(colors ...string) Mod { return Mod{Kind: ModSetColors, Colors: copyStrings(colors)} }
 
+// AddColorsMod adds colours in addition to the object's others (layer
+// 5, CR 105.3). Reads Colors.
+func AddColorsMod(colors ...string) Mod { return Mod{Kind: ModAddColors, Colors: copyStrings(colors)} }
+
 // AddKeywordsMod grants keyword abilities (layer 6) through
 // AppendKeywordAbility, so a cumulative keyword stays cumulative and
 // any other is not duplicated. Reads Keywords.
@@ -1009,6 +1047,13 @@ func SetBaseToughnessMod(n int) Mod { return Mod{Kind: ModSetBaseToughness, Toug
 // the record's source, so a refusal names the card.
 func AddAttackRequirementMod(otherThan uuid.UUID) Mod {
 	return Mod{Kind: ModAddAttackRequirement, Player: otherThan}
+}
+
+// AttackPlayerIfAbleMod is "attacks `player` this turn if able"
+// (#3172, ModAttackPlayerIfAble). Attributed to the record's source, so a
+// refusal names the card.
+func AttackPlayerIfAbleMod(player uuid.UUID) Mod {
+	return Mod{Kind: ModAttackPlayerIfAble, Player: player}
 }
 
 // GoadMod is goad from a resolved ability for as long as its duration
@@ -1262,7 +1307,10 @@ func (g *Game) appendScopedEffectLocked(sourceID uuid.UUID, affected []AffectedO
 		if problem := becomeNamedModProblem(m); problem != "" {
 			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
 		}
-		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy {
+		if problem := textBoxModProblem(m); problem != "" {
+			panic(fmt.Sprintf("game: scoped effect %q: %s", label, problem))
+		}
+		if r := modKinds[m.Kind].reader; r != readerLayer && r != readerCopy && r != readerText {
 			named = true
 		}
 	}
@@ -1321,6 +1369,7 @@ func cloneMods(mods []Mod) []Mod {
 		m.SourceFilter = cloneSourceFilters(m.SourceFilter)
 		m.RecipientFilter = cloneRecipientFilters(m.RecipientFilter)
 		m.Copy = clonePrintedValuesSlice(m.Copy)
+		m.TextBox = cloneTextBoxSlice(m.TextBox)
 		out[i] = m
 	}
 	return out
@@ -1727,6 +1776,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
 			ch.Colors = copyStrings(colors)
 		}
+	case ModAddColors:
+		colors := m.Colors
+		return func(ch *Characteristic, _ *Card, _ *Game, _ *Card) {
+			for _, c := range colors {
+				if !typeListHas(ch.Colors, c) {
+					ch.Colors = append(ch.Colors, c)
+				}
+			}
+		}
 	case ModAddKeywords, ModLoseAllAbilities:
 		// loseAllAbilities: the engine empties the list for a
 		// RemovesAbilities effect before Apply runs (ADR 0046), so
@@ -1774,6 +1832,15 @@ func modApply(m Mod) func(*Characteristic, *Card, *Game, *Card) {
 		otherThan := m.Player
 		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
 			r := AttackRequirement{OtherThan: otherThan}
+			if src != nil {
+				r.Source, r.SourceName = src.InstanceID, src.Name
+			}
+			ch.AttackRequirements = append(ch.AttackRequirements, r)
+		}
+	case ModAttackPlayerIfAble:
+		must := m.Player
+		return func(ch *Characteristic, _ *Card, _ *Game, src *Card) {
+			r := AttackRequirement{MustAttack: must}
 			if src != nil {
 				r.Source, r.SourceName = src.InstanceID, src.Name
 			}

@@ -90,6 +90,16 @@ type AbilityGrant struct {
 	// limit is gone the pass its grant is.
 	AttackLimits []game.AttackLimit
 
+	// Zone is where the bundle's RECIPIENTS are: empty is the battlefield,
+	// as for every bundle before #3233. A hand, graveyard or exile bundle
+	// ("each creature card in your hand has ninjutsu {2}{U}{B}") is given
+	// to cards by a static built with GrantAbilitiesInZone, and holds
+	// activated abilities that function from that zone and nothing else —
+	// a card off the battlefield has no layered characteristic for a
+	// trigger, a static or a mana ability to live on (ADR 0093 amendment
+	// 2026-10-13).
+	Zone game.ZoneKind
+
 	// Text is the bundle as the granting card prints it, quoted ability
 	// and all: "{T}: Add one mana of any color." Required. The recipient
 	// has no printing that says it has the ability, and a granted
@@ -97,6 +107,35 @@ type AbilityGrant struct {
 	// thing that tells a player what their permanent can now do (ADR
 	// 0093 Decision 8; the reason ADR 0083 gives a token its Text).
 	Text string
+}
+
+// GrantAbilitiesInZone is GrantAbilities for the CARDS in a zone other
+// than the battlefield (ADR 0093 amendment 2026-10-13, #3233): "Each
+// creature card in your hand has ninjutsu {2}{U}{B}." is
+//
+//	GrantAbilitiesInZone(game.ZoneHand, creatureCardsYouOwn, "satoru-umezawa/ninjutsu")
+//
+// `appliesTo` is asked of each card in every seat's zone, with this
+// static's source as `source`; a card the predicate accepts has the
+// bundle's activated abilities for as long as it is in that zone and
+// the source is on the battlefield with its abilities. The bundle names
+// the same Zone (checked by TestEveryGrantKeyResolves).
+func GrantAbilitiesInZone(zone game.ZoneKind, appliesTo func(card *game.Card, g *game.Game, source *game.Card) bool, keys ...string) game.StaticAbility {
+	ab := GrantAbilities(appliesTo, keys...)
+	ab.GrantZone = zone
+	return ab
+}
+
+// CardsYouOwn is the common recipient predicate for a zone grant: the
+// source's controller's cards (in whichever zone the static names) that
+// `match` accepts. A card outside the battlefield is its owner's
+// (CR 108.4), and the pass only ever offers a card from a hand, a
+// graveyard or exile, so the owner test is the "your" of the printed
+// text.
+func CardsYouOwn(match func(card *game.Card) bool) func(card *game.Card, g *game.Game, source *game.Card) bool {
+	return func(card *game.Card, _ *game.Game, source *game.Card) bool {
+		return source != nil && card.Owner == source.Controller && match(card)
+	}
 }
 
 // buildGrantDef projects one bundle into the shape the engine reads.
@@ -165,7 +204,9 @@ func AnyColorManaGrant(key string) AbilityGrant {
 // reaches every player's Slivers and the source itself; "Sliver
 // creatures you control have …" (Manaweft Sliver) adds YoursOnly.
 func TribalAbilityGrant(f TribeFilter, keys ...string) game.StaticAbility {
-	return GrantAbilities(f.Matches, keys...)
+	ab := GrantAbilities(f.Matches, keys...)
+	ab.Label = f.subject() + " have additional abilities."
+	return ab
 }
 
 // GrantAbilitiesToAttached is GrantAbilities over the permanent this
@@ -214,6 +255,10 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 	where := func(kind string, i int) string {
 		return fmt.Sprintf("effects.Register: %q ability grant %s %s %d", name, gr.Key, kind, i)
 	}
+	if gr.Zone != "" && gr.Zone != game.ZoneBattlefield {
+		checkZoneGrantBundle(name, gr, where)
+		return
+	}
 	offBattlefield := func(zones []game.ZoneKind) bool {
 		for _, z := range zones {
 			if z != game.ZoneBattlefield {
@@ -238,6 +283,11 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 		if len(s.GrantAbilities) > 0 {
 			panic(where("static", i) + " grants abilities itself — a granted ability that grants another is not modelled")
 		}
+		// ADR 0155 Decision 1: a bundle that lends abilities would put a
+		// borrow inside a borrow.
+		if s.Borrows != nil {
+			panic(where("static", i) + " borrows abilities — a granted ability that lends others is not modelled")
+		}
 	}
 	for i, a := range gr.Activated {
 		if a.ActiveWhen.IsGate() {
@@ -257,11 +307,48 @@ func checkGrantAbilities(name string, gr AbilityGrant) {
 	checkManaAbilitiesAnswers(name, "ability grant "+gr.Key, gr.Mana)
 }
 
+// checkZoneGrantBundle is checkGrantAbilities for a bundle given to
+// CARDS in a hand, graveyard or exile (AbilityGrant.Zone). The recipient
+// has no layered characteristic, so the only kind of ability that can be
+// anywhere it functions is an activated one that functions from that
+// zone; everything else is refused at boot rather than shipped as text
+// that never does anything.
+func checkZoneGrantBundle(name string, gr AbilityGrant, where func(kind string, i int) string) {
+	if why := game.GrantZoneUnsupported(gr.Zone); why != "" {
+		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s — %s", name, gr.Key, gr.Zone, why))
+	}
+	if len(gr.Triggered) > 0 || len(gr.Static) > 0 || len(gr.Mana) > 0 || len(gr.LegendRuleExempt) > 0 || len(gr.AttackLimits) > 0 {
+		panic(fmt.Sprintf("effects.Register: %q ability grant %s is given to cards in %s but declares more than activated abilities — only an activated ability is modelled on a card off the battlefield", name, gr.Key, gr.Zone))
+	}
+	for i, a := range gr.Activated {
+		if a.ActiveWhen.IsGate() {
+			panic(where("activated ability", i) + " declares ActiveWhen — a designation is the host's; gate the grantor's static instead")
+		}
+		functions := false
+		for _, z := range a.Zones {
+			if z == gr.Zone {
+				functions = true
+			}
+		}
+		if !functions {
+			panic(where("activated ability", i) + " does not function from " + string(gr.Zone) + " — a granted ability must name the zone its recipients are in (ActivatedAbility.Zones)")
+		}
+		if why := game.AbilityNeedsPermanentSource(a.Cost); why != "" {
+			panic(where("activated ability", i) + " functions from " + string(gr.Zone) + " but declares " + why + " — that component needs a permanent on the battlefield")
+		}
+		checkAnyPlayerAbility(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
+		checkActivatedPurpose(name, fmt.Sprintf("ability grant %s activated ability %d", gr.Key, i), a)
+	}
+}
+
 // checkStaticGrants refuses a StaticAbility.GrantAbilities outside the
 // layer it belongs to. A grant is an ability-ADDING effect, CR 613.1f's
 // layer 6; declared anywhere else it would sort against the wrong
 // effects and a removal in layer 6 could never reach it.
 func checkStaticGrants(card, what string, statics []game.StaticAbility) {
+	// ADR 0155: the borrow, the other layer-6 ability-adding declaration,
+	// is held to its layer at every place a grant is.
+	checkStaticBorrows(card, what, statics)
 	for i, s := range statics {
 		if len(s.GrantAbilities) == 0 {
 			continue
@@ -274,6 +361,28 @@ func checkStaticGrants(card, what string, statics []game.StaticAbility) {
 			if k == "" {
 				panic(fmt.Sprintf("effects.Register: %q %s %d grants an ability bundle with no key", card, what, i))
 			}
+		}
+	}
+	// ADR 0093 amendment 2026-10-13: a grant to cards off the battlefield.
+	for i, s := range statics {
+		if s.GrantZone == "" {
+			continue
+		}
+		where := fmt.Sprintf("effects.Register: %q %s %d", card, what, i)
+		switch {
+		case what != "static":
+			panic(where + " grants to cards in a zone — only a battlefield permanent's static is gathered for it")
+		case len(s.GrantAbilities) == 0:
+			panic(where + " declares GrantZone but grants no ability bundle")
+		case s.Layer != game.Layer6Ability:
+			panic(fmt.Sprintf("%s grants to cards in a zone in layer %d — an ability grant is a layer-6 effect (CR 613.1f)", where, s.Layer))
+		case s.AppliesTo == nil:
+			panic(where + " grants to cards in a zone but has no AppliesTo")
+		case s.Apply != nil || s.RemovesAbilities || s.Borrows != nil || s.AffectsSpells || len(s.Zones) > 0:
+			panic(where + " grants to cards in a zone beside an Apply, a removal, a borrow, a spell clause or a declared source zone — declare those as a static of their own")
+		}
+		if why := game.GrantZoneUnsupported(s.GrantZone); why != "" {
+			panic(fmt.Sprintf("%s grants to cards in %s — %s", where, s.GrantZone, why))
 		}
 	}
 }

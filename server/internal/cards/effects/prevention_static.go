@@ -55,6 +55,10 @@ const (
 	ToAnOpponent
 	// ToACreature is "to a creature", any creature (Weeping Angel).
 	ToACreature
+	// ToCreaturesYouControl is "to creatures you control": a creature
+	// on the battlefield the static's controller controls (Rune-Tail's
+	// Essence, ADR 0151).
+	ToCreaturesYouControl
 )
 
 // StaticDamage narrows which damage a prevention static sees.
@@ -152,7 +156,20 @@ func PreventAllDamageDealtTo(p PreventionStatic) game.ReplacementEffect {
 		Replace:    preventThatDamage,
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID { return src.Controller },
 		Label:      p.Label,
+		RowLabel:   p.rowLabel(),
 	}
+}
+
+// rowLabel is the chip's sentence: the card's own header without its
+// name ("Prevent damage to it and remove a +1/+1 counter."), plus the
+// condition when the static only works under one. The header is written
+// per card and already reads as the printed ability.
+func (p PreventionStatic) rowLabel() string {
+	l := rowLabelFromHeader(p.Label)
+	if l != "" && p.While != nil {
+		l += " Only while its condition on the card holds."
+	}
+	return l
 }
 
 func (p PreventionStatic) replacement(per game.PreventionUnit) game.ReplacementEffect {
@@ -167,6 +184,7 @@ func (p PreventionStatic) replacement(per game.PreventionUnit) game.ReplacementE
 		Then:       p.Then,
 		ThenPer:    per,
 		Label:      p.Label,
+		RowLabel:   p.rowLabel(),
 	}
 }
 
@@ -208,6 +226,9 @@ func staticProtects(to StaticRecipient, target uuid.UUID, g *game.Game, src *gam
 	case ToACreature:
 		c, ok := g.LookupCardForEffect(target)
 		return ok && c.IsCreature() && g.Battlefield.Contains(target)
+	case ToCreaturesYouControl:
+		c, ok := g.LookupCardForEffect(target)
+		return ok && c.IsCreature() && c.Controller == src.Controller && g.Battlefield.Contains(target)
 	}
 	return false
 }

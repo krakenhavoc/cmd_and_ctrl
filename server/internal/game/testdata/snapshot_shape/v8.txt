@@ -32,6 +32,7 @@ battlefield.cards[].activeFace	number:int
 battlefield.cards[].alsoBlocking	array
 battlefield.cards[].alsoBlocking[]	custom(uuid.UUID)
 battlefield.cards[].attachedAt	number:int64
+battlefield.cards[].attachedEpoch	number:int
 battlefield.cards[].attachedTo	object
 battlefield.cards[].attachedTo.ID	custom(uuid.UUID)
 battlefield.cards[].attachedTo.Kind	string
@@ -43,6 +44,7 @@ battlefield.cards[].battleX	number:float64
 battlefield.cards[].battleY	number:float64
 battlefield.cards[].bestowed	bool
 battlefield.cards[].blockingTarget	custom(uuid.UUID)
+battlefield.cards[].cardCopy	bool
 battlefield.cards[].catalogAbilities	object
 battlefield.cards[].catalogAbilities.activated	number:int
 battlefield.cards[].catalogAbilities.mana	number:int
@@ -72,6 +74,7 @@ battlefield.cards[].craftedWith[]	object
 battlefield.cards[].craftedWith[].epoch	number:int
 battlefield.cards[].craftedWith[].id	custom(uuid.UUID)
 battlefield.cards[].damageMarked	number:int
+battlefield.cards[].dealtCombatDamage	bool
 battlefield.cards[].devoured	number:int
 battlefield.cards[].durationCopyBase	object
 battlefield.cards[].durationCopyBase.ActiveFace	number:int
@@ -113,6 +116,10 @@ battlefield.cards[].durationCopyBase.TokenKey	string
 battlefield.cards[].durationCopyBase.Toughness	number:int
 battlefield.cards[].durationCopyBase.TypeLine	string
 battlefield.cards[].durationCopyBase.VariableToughness	bool
+battlefield.cards[].enchantReturned	object
+battlefield.cards[].enchantReturned.epoch	number:int
+battlefield.cards[].enchantReturned.id	custom(uuid.UUID)
+battlefield.cards[].enchantSwapped	bool
 battlefield.cards[].enteredBattlefieldAt	number:int64
 battlefield.cards[].entryOrdinal	number:int64
 battlefield.cards[].exertOnAttack	bool
@@ -144,6 +151,7 @@ battlefield.cards[].faces[].StartingLoyalty	number:int
 battlefield.cards[].faces[].Toughness	number:int
 battlefield.cards[].faces[].TypeLine	string
 battlefield.cards[].faces[].VariableToughness	bool
+battlefield.cards[].flipped	bool
 battlefield.cards[].fused	bool
 battlefield.cards[].goadedBy	custom(uuid.UUID)
 battlefield.cards[].goads	array
@@ -339,6 +347,7 @@ battlefield.cards[].tapped	bool
 battlefield.cards[].tokenArtOnly	bool
 battlefield.cards[].tokenKey	string
 battlefield.cards[].toughness	number:int
+battlefield.cards[].turnOvers	number:int
 battlefield.cards[].typeLine	string
 battlefield.cards[].unlocked	number:uint8
 battlefield.cards[].variableToughness	bool
@@ -347,6 +356,7 @@ battlefield.owner	custom(uuid.UUID)
 blockDeclarationClosed	bool
 blocksDeclared	map:array
 blocksDeclared{}	bool
+combatHadAttackers	bool
 continuations	object
 continuations.choiceResumeFrames	number:int
 continuations.delayedTriggerEffects	number:int
@@ -420,6 +430,7 @@ delayedTriggers[].manaTapSubtype	string
 delayedTriggers[].on	array
 delayedTriggers[].onExtraTurn	number:int
 delayedTriggers[].on[]	string
+delayedTriggers[].oncePerBatch	bool
 delayedTriggers[].optionalQuestion	string
 delayedTriggers[].params	object
 delayedTriggers[].params.ability	object
@@ -442,6 +453,7 @@ delayedTriggers[].sourceCardId	custom(uuid.UUID)
 delayedTriggers[].sourceObject	object
 delayedTriggers[].sourceObject.epoch	number:int
 delayedTriggers[].sourceObject.id	custom(uuid.UUID)
+delayedTriggers[].sourceTurnOvers	number:int
 delayedTriggers[].turnOf	custom(uuid.UUID)
 delayedTriggers[].until	bool
 delayedTriggers[].untilLeaves	object
@@ -462,6 +474,10 @@ events[].actor	custom(uuid.UUID)
 events[].amount	number:int
 events[].answer_key	string
 events[].attacking_target	custom(uuid.UUID)
+events[].ballots	array
+events[].ballots[]	object
+events[].ballots[].option	number:int
+events[].ballots[].voter	custom(uuid.UUID)
 events[].batch	number:uint64
 events[].batch_seq	number:uint64
 events[].blocked	bool
@@ -476,6 +492,7 @@ events[].colors	array
 events[].colors[]	string
 events[].combat	bool
 events[].combat_step	string
+events[].converted	bool
 events[].damage_not_life_loss	number:int
 events[].discard_cause	string
 events[].entered_from	string
@@ -526,6 +543,7 @@ exile.cards[].activeFace	number:int
 exile.cards[].alsoBlocking	array
 exile.cards[].alsoBlocking[]	custom(uuid.UUID)
 exile.cards[].attachedAt	number:int64
+exile.cards[].attachedEpoch	number:int
 exile.cards[].attachedTo	object
 exile.cards[].attachedTo.ID	custom(uuid.UUID)
 exile.cards[].attachedTo.Kind	string
@@ -537,6 +555,7 @@ exile.cards[].battleX	number:float64
 exile.cards[].battleY	number:float64
 exile.cards[].bestowed	bool
 exile.cards[].blockingTarget	custom(uuid.UUID)
+exile.cards[].cardCopy	bool
 exile.cards[].catalogAbilities	object
 exile.cards[].catalogAbilities.activated	number:int
 exile.cards[].catalogAbilities.mana	number:int
@@ -566,6 +585,7 @@ exile.cards[].craftedWith[]	object
 exile.cards[].craftedWith[].epoch	number:int
 exile.cards[].craftedWith[].id	custom(uuid.UUID)
 exile.cards[].damageMarked	number:int
+exile.cards[].dealtCombatDamage	bool
 exile.cards[].devoured	number:int
 exile.cards[].durationCopyBase	object
 exile.cards[].durationCopyBase.ActiveFace	number:int
@@ -607,6 +627,10 @@ exile.cards[].durationCopyBase.TokenKey	string
 exile.cards[].durationCopyBase.Toughness	number:int
 exile.cards[].durationCopyBase.TypeLine	string
 exile.cards[].durationCopyBase.VariableToughness	bool
+exile.cards[].enchantReturned	object
+exile.cards[].enchantReturned.epoch	number:int
+exile.cards[].enchantReturned.id	custom(uuid.UUID)
+exile.cards[].enchantSwapped	bool
 exile.cards[].enteredBattlefieldAt	number:int64
 exile.cards[].entryOrdinal	number:int64
 exile.cards[].exertOnAttack	bool
@@ -638,6 +662,7 @@ exile.cards[].faces[].StartingLoyalty	number:int
 exile.cards[].faces[].Toughness	number:int
 exile.cards[].faces[].TypeLine	string
 exile.cards[].faces[].VariableToughness	bool
+exile.cards[].flipped	bool
 exile.cards[].fused	bool
 exile.cards[].goadedBy	custom(uuid.UUID)
 exile.cards[].goads	array
@@ -833,6 +858,7 @@ exile.cards[].tapped	bool
 exile.cards[].tokenArtOnly	bool
 exile.cards[].tokenKey	string
 exile.cards[].toughness	number:int
+exile.cards[].turnOvers	number:int
 exile.cards[].typeLine	string
 exile.cards[].unlocked	number:uint8
 exile.cards[].variableToughness	bool
@@ -864,6 +890,7 @@ lastKnownBattlefield{}.AttackRequirements	array
 lastKnownBattlefield{}.AttackRequirements[]	object
 lastKnownBattlefield{}.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
+lastKnownBattlefield{}.AttackRequirements[].MustAttack	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackRequirements[].SourceName	string
@@ -913,12 +940,26 @@ lastKnownBattlefield{}.BlockRequirements[].Kind	string
 lastKnownBattlefield{}.BlockRequirements[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.BlockRequirements[].SourceName	string
 lastKnownBattlefield{}.BlocksAnyNumber	bool
+lastKnownBattlefield{}.BorrowedAbilities	array
+lastKnownBattlefield{}.BorrowedAbilities[]	object
+lastKnownBattlefield{}.BorrowedAbilities[].Activator	custom(uuid.UUID)
+lastKnownBattlefield{}.BorrowedAbilities[].Borrow	string
+lastKnownBattlefield{}.BorrowedAbilities[].Color	string
+lastKnownBattlefield{}.BorrowedAbilities[].EachOncePerTurn	bool
+lastKnownBattlefield{}.BorrowedAbilities[].Index	number:int
+lastKnownBattlefield{}.BorrowedAbilities[].Key	string
+lastKnownBattlefield{}.BorrowedAbilities[].Kind	number:uint8
+lastKnownBattlefield{}.BorrowedAbilities[].Lender	custom(uuid.UUID)
+lastKnownBattlefield{}.BorrowedAbilities[].LenderName	string
+lastKnownBattlefield{}.BorrowedAbilities[].Slot	string
+lastKnownBattlefield{}.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.CantHave	array
 lastKnownBattlefield{}.CantHave[]	string
 lastKnownBattlefield{}.Colors	array
 lastKnownBattlefield{}.Colors[]	string
 lastKnownBattlefield{}.ControlSource	custom(uuid.UUID)
 lastKnownBattlefield{}.Controller	custom(uuid.UUID)
+lastKnownBattlefield{}.DamageByToughness	bool
 lastKnownBattlefield{}.GrantedAbilities	array
 lastKnownBattlefield{}.GrantedAbilities[]	object
 lastKnownBattlefield{}.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -966,6 +1007,7 @@ lastKnownPermanents{}[].characteristic.AttackRequirements	array
 lastKnownPermanents{}[].characteristic.AttackRequirements[]	object
 lastKnownPermanents{}[].characteristic.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.AttackRequirements[].MustAttack	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].OtherThan	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackRequirements[].SourceName	string
@@ -1015,12 +1057,26 @@ lastKnownPermanents{}[].characteristic.BlockRequirements[].Kind	string
 lastKnownPermanents{}[].characteristic.BlockRequirements[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.BlockRequirements[].SourceName	string
 lastKnownPermanents{}[].characteristic.BlocksAnyNumber	bool
+lastKnownPermanents{}[].characteristic.BorrowedAbilities	array
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[]	object
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Activator	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Borrow	string
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Color	string
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].EachOncePerTurn	bool
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Index	number:int
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Key	string
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Kind	number:uint8
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Lender	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].LenderName	string
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Slot	string
+lastKnownPermanents{}[].characteristic.BorrowedAbilities[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.CantHave	array
 lastKnownPermanents{}[].characteristic.CantHave[]	string
 lastKnownPermanents{}[].characteristic.Colors	array
 lastKnownPermanents{}[].characteristic.Colors[]	string
 lastKnownPermanents{}[].characteristic.ControlSource	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.Controller	custom(uuid.UUID)
+lastKnownPermanents{}[].characteristic.DamageByToughness	bool
 lastKnownPermanents{}[].characteristic.GrantedAbilities	array
 lastKnownPermanents{}[].characteristic.GrantedAbilities[]	object
 lastKnownPermanents{}[].characteristic.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -1118,6 +1174,7 @@ lastKnownStack[].card.activeFace	number:int
 lastKnownStack[].card.alsoBlocking	array
 lastKnownStack[].card.alsoBlocking[]	custom(uuid.UUID)
 lastKnownStack[].card.attachedAt	number:int64
+lastKnownStack[].card.attachedEpoch	number:int
 lastKnownStack[].card.attachedTo	object
 lastKnownStack[].card.attachedTo.ID	custom(uuid.UUID)
 lastKnownStack[].card.attachedTo.Kind	string
@@ -1129,6 +1186,7 @@ lastKnownStack[].card.battleX	number:float64
 lastKnownStack[].card.battleY	number:float64
 lastKnownStack[].card.bestowed	bool
 lastKnownStack[].card.blockingTarget	custom(uuid.UUID)
+lastKnownStack[].card.cardCopy	bool
 lastKnownStack[].card.catalogAbilities	object
 lastKnownStack[].card.catalogAbilities.activated	number:int
 lastKnownStack[].card.catalogAbilities.mana	number:int
@@ -1158,6 +1216,7 @@ lastKnownStack[].card.craftedWith[]	object
 lastKnownStack[].card.craftedWith[].epoch	number:int
 lastKnownStack[].card.craftedWith[].id	custom(uuid.UUID)
 lastKnownStack[].card.damageMarked	number:int
+lastKnownStack[].card.dealtCombatDamage	bool
 lastKnownStack[].card.devoured	number:int
 lastKnownStack[].card.durationCopyBase	object
 lastKnownStack[].card.durationCopyBase.ActiveFace	number:int
@@ -1199,6 +1258,10 @@ lastKnownStack[].card.durationCopyBase.TokenKey	string
 lastKnownStack[].card.durationCopyBase.Toughness	number:int
 lastKnownStack[].card.durationCopyBase.TypeLine	string
 lastKnownStack[].card.durationCopyBase.VariableToughness	bool
+lastKnownStack[].card.enchantReturned	object
+lastKnownStack[].card.enchantReturned.epoch	number:int
+lastKnownStack[].card.enchantReturned.id	custom(uuid.UUID)
+lastKnownStack[].card.enchantSwapped	bool
 lastKnownStack[].card.enteredBattlefieldAt	number:int64
 lastKnownStack[].card.entryOrdinal	number:int64
 lastKnownStack[].card.exertOnAttack	bool
@@ -1230,6 +1293,7 @@ lastKnownStack[].card.faces[].StartingLoyalty	number:int
 lastKnownStack[].card.faces[].Toughness	number:int
 lastKnownStack[].card.faces[].TypeLine	string
 lastKnownStack[].card.faces[].VariableToughness	bool
+lastKnownStack[].card.flipped	bool
 lastKnownStack[].card.fused	bool
 lastKnownStack[].card.goadedBy	custom(uuid.UUID)
 lastKnownStack[].card.goads	array
@@ -1425,6 +1489,7 @@ lastKnownStack[].card.tapped	bool
 lastKnownStack[].card.tokenArtOnly	bool
 lastKnownStack[].card.tokenKey	string
 lastKnownStack[].card.toughness	number:int
+lastKnownStack[].card.turnOvers	number:int
 lastKnownStack[].card.typeLine	string
 lastKnownStack[].card.unlocked	number:uint8
 lastKnownStack[].card.variableToughness	bool
@@ -1445,6 +1510,7 @@ lastKnownStack[].item.distribution	map:array
 lastKnownStack[].item.distribution{}	number:int
 lastKnownStack[].item.doubledBy	custom(uuid.UUID)
 lastKnownStack[].item.doubledByName	string
+lastKnownStack[].item.exileWithCounter	string
 lastKnownStack[].item.faceDown	string
 lastKnownStack[].item.foretold	bool
 lastKnownStack[].item.grantedBy	custom(uuid.UUID)
@@ -1493,6 +1559,10 @@ lastKnownStack[].item.paid.altCostObjects	array
 lastKnownStack[].item.paid.altCostObjects[]	object
 lastKnownStack[].item.paid.altCostObjects[].epoch	number:int
 lastKnownStack[].item.paid.altCostObjects[].id	custom(uuid.UUID)
+lastKnownStack[].item.paid.assistPaid	number:int
+lastKnownStack[].item.paid.assistedBy	custom(uuid.UUID)
+lastKnownStack[].item.paid.convoked	array
+lastKnownStack[].item.paid.convoked[]	custom(uuid.UUID)
 lastKnownStack[].item.paid.costBranch	number:int
 lastKnownStack[].item.paid.delved	array
 lastKnownStack[].item.paid.delved[]	object
@@ -1549,6 +1619,7 @@ lastKnownStack[].item.sourceEpoch	number:int
 lastKnownStack[].item.sourceObject	object
 lastKnownStack[].item.sourceObject.epoch	number:int
 lastKnownStack[].item.sourceObject.id	custom(uuid.UUID)
+lastKnownStack[].item.sourceTurnOvers	number:int
 lastKnownStack[].item.splitSecond	bool
 lastKnownStack[].item.targets	array
 lastKnownStack[].item.targetsAnnouncePending	bool
@@ -1563,6 +1634,10 @@ lastKnownStack[].item.trigger.Event.actor	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.amount	number:int
 lastKnownStack[].item.trigger.Event.answer_key	string
 lastKnownStack[].item.trigger.Event.attacking_target	custom(uuid.UUID)
+lastKnownStack[].item.trigger.Event.ballots	array
+lastKnownStack[].item.trigger.Event.ballots[]	object
+lastKnownStack[].item.trigger.Event.ballots[].option	number:int
+lastKnownStack[].item.trigger.Event.ballots[].voter	custom(uuid.UUID)
 lastKnownStack[].item.trigger.Event.batch	number:uint64
 lastKnownStack[].item.trigger.Event.batch_seq	number:uint64
 lastKnownStack[].item.trigger.Event.blocked	bool
@@ -1577,6 +1652,7 @@ lastKnownStack[].item.trigger.Event.colors	array
 lastKnownStack[].item.trigger.Event.colors[]	string
 lastKnownStack[].item.trigger.Event.combat	bool
 lastKnownStack[].item.trigger.Event.combat_step	string
+lastKnownStack[].item.trigger.Event.converted	bool
 lastKnownStack[].item.trigger.Event.damage_not_life_loss	number:int
 lastKnownStack[].item.trigger.Event.discard_cause	string
 lastKnownStack[].item.trigger.Event.entered_from	string
@@ -1651,6 +1727,11 @@ lastKnownTriggerIdentity{}.attachedTo.Kind	string
 lastKnownTriggerIdentity{}.attachedTo.Mode	number:int
 lastKnownTriggerIdentity{}.attachedTo.Slot	number:int
 lastKnownTriggerIdentity{}.oracleID	string
+lastKnownTriggerIdentity{}.textBox	object
+lastKnownTriggerIdentity{}.textBox.from	string
+lastKnownTriggerIdentity{}.textBox.key	string
+lastKnownTriggerIdentity{}.textBox.keywords	array
+lastKnownTriggerIdentity{}.textBox.keywords[]	string
 lastKnownTriggerIdentity{}.tokenKey	string
 lastResolvedVersion	number:uint64
 layerVersion	number:uint64
@@ -1704,6 +1785,7 @@ pausedModeWalk.item.distribution	map:array
 pausedModeWalk.item.distribution{}	number:int
 pausedModeWalk.item.doubledBy	custom(uuid.UUID)
 pausedModeWalk.item.doubledByName	string
+pausedModeWalk.item.exileWithCounter	string
 pausedModeWalk.item.faceDown	string
 pausedModeWalk.item.foretold	bool
 pausedModeWalk.item.grantedBy	custom(uuid.UUID)
@@ -1752,6 +1834,10 @@ pausedModeWalk.item.paid.altCostObjects	array
 pausedModeWalk.item.paid.altCostObjects[]	object
 pausedModeWalk.item.paid.altCostObjects[].epoch	number:int
 pausedModeWalk.item.paid.altCostObjects[].id	custom(uuid.UUID)
+pausedModeWalk.item.paid.assistPaid	number:int
+pausedModeWalk.item.paid.assistedBy	custom(uuid.UUID)
+pausedModeWalk.item.paid.convoked	array
+pausedModeWalk.item.paid.convoked[]	custom(uuid.UUID)
 pausedModeWalk.item.paid.costBranch	number:int
 pausedModeWalk.item.paid.delved	array
 pausedModeWalk.item.paid.delved[]	object
@@ -1808,6 +1894,7 @@ pausedModeWalk.item.sourceEpoch	number:int
 pausedModeWalk.item.sourceObject	object
 pausedModeWalk.item.sourceObject.epoch	number:int
 pausedModeWalk.item.sourceObject.id	custom(uuid.UUID)
+pausedModeWalk.item.sourceTurnOvers	number:int
 pausedModeWalk.item.splitSecond	bool
 pausedModeWalk.item.targets	array
 pausedModeWalk.item.targetsAnnouncePending	bool
@@ -1822,6 +1909,10 @@ pausedModeWalk.item.trigger.Event.actor	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.amount	number:int
 pausedModeWalk.item.trigger.Event.answer_key	string
 pausedModeWalk.item.trigger.Event.attacking_target	custom(uuid.UUID)
+pausedModeWalk.item.trigger.Event.ballots	array
+pausedModeWalk.item.trigger.Event.ballots[]	object
+pausedModeWalk.item.trigger.Event.ballots[].option	number:int
+pausedModeWalk.item.trigger.Event.ballots[].voter	custom(uuid.UUID)
 pausedModeWalk.item.trigger.Event.batch	number:uint64
 pausedModeWalk.item.trigger.Event.batch_seq	number:uint64
 pausedModeWalk.item.trigger.Event.blocked	bool
@@ -1836,6 +1927,7 @@ pausedModeWalk.item.trigger.Event.colors	array
 pausedModeWalk.item.trigger.Event.colors[]	string
 pausedModeWalk.item.trigger.Event.combat	bool
 pausedModeWalk.item.trigger.Event.combat_step	string
+pausedModeWalk.item.trigger.Event.converted	bool
 pausedModeWalk.item.trigger.Event.damage_not_life_loss	number:int
 pausedModeWalk.item.trigger.Event.discard_cause	string
 pausedModeWalk.item.trigger.Event.entered_from	string
@@ -1907,6 +1999,14 @@ pausedModeWalk.rest[]	number:int
 pendingChoices	array
 pendingChoices[]	object
 pendingChoices[].acceptLabel	string
+pendingChoices[].anyPlayerOffer	object
+pendingChoices[].anyPlayerOffer.controller	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.declined	array
+pendingChoices[].anyPlayerOffer.declined[]	custom(uuid.UUID)
+pendingChoices[].anyPlayerOffer.helpsController	bool
+pendingChoices[].anyPlayerOffer.opponents	bool
+pendingChoices[].anyPlayerOffer.order	array
+pendingChoices[].anyPlayerOffer.order[]	custom(uuid.UUID)
 pendingChoices[].askedByHand	string
 pendingChoices[].autoAnswerCard	string
 pendingChoices[].autoAnswerKey	string
@@ -1948,6 +2048,7 @@ pendingChoices[].councilVote.options	array
 pendingChoices[].councilVote.options[]	object
 pendingChoices[].councilVote.options[].Cards	array
 pendingChoices[].councilVote.options[].Cards[]	custom(uuid.UUID)
+pendingChoices[].councilVote.options[].Harm	number:int
 pendingChoices[].councilVote.options[].Label	string
 pendingChoices[].councilVote.options[].LifeCost	number:int
 pendingChoices[].councilVote.options[].ManaCost	string
@@ -1959,6 +2060,7 @@ pendingChoices[].councilVote.voter	custom(uuid.UUID)
 pendingChoices[].councilVote.voters	array
 pendingChoices[].councilVote.voters[]	custom(uuid.UUID)
 pendingChoices[].councilVote.votesLeft	number:int
+pendingChoices[].councilVote.zone	string
 pendingChoices[].count	number:int
 pendingChoices[].damageAssignment	object
 pendingChoices[].damageAssignment.AllowTrample	bool
@@ -1983,6 +2085,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackRequirements	array
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[]	object
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].GoadedBy	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MostLifeOpponentOf	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].MustAttack	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].OtherThan	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackRequirements[].SourceName	string
@@ -2032,12 +2135,26 @@ pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Kind	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.BlocksAnyNumber	bool
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities	array
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[]	object
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Activator	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Borrow	string
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Color	string
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].EachOncePerTurn	bool
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Index	number:int
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Key	string
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Kind	number:uint8
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Lender	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].LenderName	string
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Slot	string
+pendingChoices[].damageAssignment.SourceLKI.BorrowedAbilities[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.CantHave	array
 pendingChoices[].damageAssignment.SourceLKI.CantHave[]	string
 pendingChoices[].damageAssignment.SourceLKI.Colors	array
 pendingChoices[].damageAssignment.SourceLKI.Colors[]	string
 pendingChoices[].damageAssignment.SourceLKI.ControlSource	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.Controller	custom(uuid.UUID)
+pendingChoices[].damageAssignment.SourceLKI.DamageByToughness	bool
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities	array
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[]	object
 pendingChoices[].damageAssignment.SourceLKI.GrantedAbilities[].Activator	custom(uuid.UUID)
@@ -2068,6 +2185,7 @@ pendingChoices[].declineLabel	string
 pendingChoices[].discardLabel	string
 pendingChoices[].discardOptions	array
 pendingChoices[].discardOptions[]	custom(uuid.UUID)
+pendingChoices[].exchangesText	bool
 pendingChoices[].fromPlayer	custom(uuid.UUID)
 pendingChoices[].guardsStackItem	custom(uuid.UUID)
 pendingChoices[].id	custom(uuid.UUID)
@@ -2134,6 +2252,7 @@ pendingChoices[].pickOptions	array
 pendingChoices[].pickOptions[]	object
 pendingChoices[].pickOptions[].Cards	array
 pendingChoices[].pickOptions[].Cards[]	custom(uuid.UUID)
+pendingChoices[].pickOptions[].Harm	number:int
 pendingChoices[].pickOptions[].Label	string
 pendingChoices[].pickOptions[].LifeCost	number:int
 pendingChoices[].pickOptions[].ManaCost	string
@@ -2173,9 +2292,11 @@ pendingChoices[].scryCards[]	custom(uuid.UUID)
 pendingChoices[].searchCards	array
 pendingChoices[].searchCards[]	custom(uuid.UUID)
 pendingChoices[].searchMax	number:int
+pendingChoices[].searchMin	number:int
 pendingChoices[].source	custom(uuid.UUID)
 pendingChoices[].triggerOrderIds	array
 pendingChoices[].triggerOrderIds[]	custom(uuid.UUID)
+pendingChoices[].triggerOrderWhy	string
 pendingTriggers	array
 pendingTriggers[]	object
 pendingTriggers[].altCost	string
@@ -2194,6 +2315,7 @@ pendingTriggers[].distribution	map:array
 pendingTriggers[].distribution{}	number:int
 pendingTriggers[].doubledBy	custom(uuid.UUID)
 pendingTriggers[].doubledByName	string
+pendingTriggers[].exileWithCounter	string
 pendingTriggers[].faceDown	string
 pendingTriggers[].foretold	bool
 pendingTriggers[].grantedBy	custom(uuid.UUID)
@@ -2242,6 +2364,10 @@ pendingTriggers[].paid.altCostObjects	array
 pendingTriggers[].paid.altCostObjects[]	object
 pendingTriggers[].paid.altCostObjects[].epoch	number:int
 pendingTriggers[].paid.altCostObjects[].id	custom(uuid.UUID)
+pendingTriggers[].paid.assistPaid	number:int
+pendingTriggers[].paid.assistedBy	custom(uuid.UUID)
+pendingTriggers[].paid.convoked	array
+pendingTriggers[].paid.convoked[]	custom(uuid.UUID)
 pendingTriggers[].paid.costBranch	number:int
 pendingTriggers[].paid.delved	array
 pendingTriggers[].paid.delved[]	object
@@ -2298,6 +2424,7 @@ pendingTriggers[].sourceEpoch	number:int
 pendingTriggers[].sourceObject	object
 pendingTriggers[].sourceObject.epoch	number:int
 pendingTriggers[].sourceObject.id	custom(uuid.UUID)
+pendingTriggers[].sourceTurnOvers	number:int
 pendingTriggers[].splitSecond	bool
 pendingTriggers[].targets	array
 pendingTriggers[].targetsAnnouncePending	bool
@@ -2312,6 +2439,10 @@ pendingTriggers[].trigger.Event.actor	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.amount	number:int
 pendingTriggers[].trigger.Event.answer_key	string
 pendingTriggers[].trigger.Event.attacking_target	custom(uuid.UUID)
+pendingTriggers[].trigger.Event.ballots	array
+pendingTriggers[].trigger.Event.ballots[]	object
+pendingTriggers[].trigger.Event.ballots[].option	number:int
+pendingTriggers[].trigger.Event.ballots[].voter	custom(uuid.UUID)
 pendingTriggers[].trigger.Event.batch	number:uint64
 pendingTriggers[].trigger.Event.batch_seq	number:uint64
 pendingTriggers[].trigger.Event.blocked	bool
@@ -2326,6 +2457,7 @@ pendingTriggers[].trigger.Event.colors	array
 pendingTriggers[].trigger.Event.colors[]	string
 pendingTriggers[].trigger.Event.combat	bool
 pendingTriggers[].trigger.Event.combat_step	string
+pendingTriggers[].trigger.Event.converted	bool
 pendingTriggers[].trigger.Event.damage_not_life_loss	number:int
 pendingTriggers[].trigger.Event.discard_cause	string
 pendingTriggers[].trigger.Event.entered_from	string
@@ -2400,6 +2532,7 @@ phasedOut.cards[].activeFace	number:int
 phasedOut.cards[].alsoBlocking	array
 phasedOut.cards[].alsoBlocking[]	custom(uuid.UUID)
 phasedOut.cards[].attachedAt	number:int64
+phasedOut.cards[].attachedEpoch	number:int
 phasedOut.cards[].attachedTo	object
 phasedOut.cards[].attachedTo.ID	custom(uuid.UUID)
 phasedOut.cards[].attachedTo.Kind	string
@@ -2411,6 +2544,7 @@ phasedOut.cards[].battleX	number:float64
 phasedOut.cards[].battleY	number:float64
 phasedOut.cards[].bestowed	bool
 phasedOut.cards[].blockingTarget	custom(uuid.UUID)
+phasedOut.cards[].cardCopy	bool
 phasedOut.cards[].catalogAbilities	object
 phasedOut.cards[].catalogAbilities.activated	number:int
 phasedOut.cards[].catalogAbilities.mana	number:int
@@ -2440,6 +2574,7 @@ phasedOut.cards[].craftedWith[]	object
 phasedOut.cards[].craftedWith[].epoch	number:int
 phasedOut.cards[].craftedWith[].id	custom(uuid.UUID)
 phasedOut.cards[].damageMarked	number:int
+phasedOut.cards[].dealtCombatDamage	bool
 phasedOut.cards[].devoured	number:int
 phasedOut.cards[].durationCopyBase	object
 phasedOut.cards[].durationCopyBase.ActiveFace	number:int
@@ -2481,6 +2616,10 @@ phasedOut.cards[].durationCopyBase.TokenKey	string
 phasedOut.cards[].durationCopyBase.Toughness	number:int
 phasedOut.cards[].durationCopyBase.TypeLine	string
 phasedOut.cards[].durationCopyBase.VariableToughness	bool
+phasedOut.cards[].enchantReturned	object
+phasedOut.cards[].enchantReturned.epoch	number:int
+phasedOut.cards[].enchantReturned.id	custom(uuid.UUID)
+phasedOut.cards[].enchantSwapped	bool
 phasedOut.cards[].enteredBattlefieldAt	number:int64
 phasedOut.cards[].entryOrdinal	number:int64
 phasedOut.cards[].exertOnAttack	bool
@@ -2512,6 +2651,7 @@ phasedOut.cards[].faces[].StartingLoyalty	number:int
 phasedOut.cards[].faces[].Toughness	number:int
 phasedOut.cards[].faces[].TypeLine	string
 phasedOut.cards[].faces[].VariableToughness	bool
+phasedOut.cards[].flipped	bool
 phasedOut.cards[].fused	bool
 phasedOut.cards[].goadedBy	custom(uuid.UUID)
 phasedOut.cards[].goads	array
@@ -2707,6 +2847,7 @@ phasedOut.cards[].tapped	bool
 phasedOut.cards[].tokenArtOnly	bool
 phasedOut.cards[].tokenKey	string
 phasedOut.cards[].toughness	number:int
+phasedOut.cards[].turnOvers	number:int
 phasedOut.cards[].typeLine	string
 phasedOut.cards[].unlocked	number:uint8
 phasedOut.cards[].variableToughness	bool
@@ -2912,6 +3053,12 @@ scopedEffects[].mods[].subtypes[]	string
 scopedEffects[].mods[].supertypes	array
 scopedEffects[].mods[].supertypes[]	string
 scopedEffects[].mods[].text	string
+scopedEffects[].mods[].textBox	array
+scopedEffects[].mods[].textBox[]	object
+scopedEffects[].mods[].textBox[].from	string
+scopedEffects[].mods[].textBox[].key	string
+scopedEffects[].mods[].textBox[].keywords	array
+scopedEffects[].mods[].textBox[].keywords[]	string
 scopedEffects[].mods[].then	string
 scopedEffects[].mods[].thenPer	string
 scopedEffects[].mods[].to	array
@@ -2947,6 +3094,12 @@ seats[].castPermissions[].cards[].epoch	number:int
 seats[].castPermissions[].cards[].id	custom(uuid.UUID)
 seats[].castPermissions[].castOnly	bool
 seats[].castPermissions[].castsLeft	number:int
+seats[].castPermissions[].condition	object
+seats[].castPermissions[].condition.key	string
+seats[].castPermissions[].condition.n	number:int
+seats[].castPermissions[].condition.objectEpoch	number:int
+seats[].castPermissions[].condition.objectID	custom(uuid.UUID)
+seats[].castPermissions[].condition.subtype	string
 seats[].castPermissions[].cost	string
 seats[].castPermissions[].discardCard	bool
 seats[].castPermissions[].discardLandCard	bool
@@ -3032,6 +3185,7 @@ seats[].command.cards[].activeFace	number:int
 seats[].command.cards[].alsoBlocking	array
 seats[].command.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].command.cards[].attachedAt	number:int64
+seats[].command.cards[].attachedEpoch	number:int
 seats[].command.cards[].attachedTo	object
 seats[].command.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].command.cards[].attachedTo.Kind	string
@@ -3043,6 +3197,7 @@ seats[].command.cards[].battleX	number:float64
 seats[].command.cards[].battleY	number:float64
 seats[].command.cards[].bestowed	bool
 seats[].command.cards[].blockingTarget	custom(uuid.UUID)
+seats[].command.cards[].cardCopy	bool
 seats[].command.cards[].catalogAbilities	object
 seats[].command.cards[].catalogAbilities.activated	number:int
 seats[].command.cards[].catalogAbilities.mana	number:int
@@ -3072,6 +3227,7 @@ seats[].command.cards[].craftedWith[]	object
 seats[].command.cards[].craftedWith[].epoch	number:int
 seats[].command.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].command.cards[].damageMarked	number:int
+seats[].command.cards[].dealtCombatDamage	bool
 seats[].command.cards[].devoured	number:int
 seats[].command.cards[].durationCopyBase	object
 seats[].command.cards[].durationCopyBase.ActiveFace	number:int
@@ -3113,6 +3269,10 @@ seats[].command.cards[].durationCopyBase.TokenKey	string
 seats[].command.cards[].durationCopyBase.Toughness	number:int
 seats[].command.cards[].durationCopyBase.TypeLine	string
 seats[].command.cards[].durationCopyBase.VariableToughness	bool
+seats[].command.cards[].enchantReturned	object
+seats[].command.cards[].enchantReturned.epoch	number:int
+seats[].command.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].command.cards[].enchantSwapped	bool
 seats[].command.cards[].enteredBattlefieldAt	number:int64
 seats[].command.cards[].entryOrdinal	number:int64
 seats[].command.cards[].exertOnAttack	bool
@@ -3144,6 +3304,7 @@ seats[].command.cards[].faces[].StartingLoyalty	number:int
 seats[].command.cards[].faces[].Toughness	number:int
 seats[].command.cards[].faces[].TypeLine	string
 seats[].command.cards[].faces[].VariableToughness	bool
+seats[].command.cards[].flipped	bool
 seats[].command.cards[].fused	bool
 seats[].command.cards[].goadedBy	custom(uuid.UUID)
 seats[].command.cards[].goads	array
@@ -3339,6 +3500,7 @@ seats[].command.cards[].tapped	bool
 seats[].command.cards[].tokenArtOnly	bool
 seats[].command.cards[].tokenKey	string
 seats[].command.cards[].toughness	number:int
+seats[].command.cards[].turnOvers	number:int
 seats[].command.cards[].typeLine	string
 seats[].command.cards[].unlocked	number:uint8
 seats[].command.cards[].variableToughness	bool
@@ -3364,6 +3526,7 @@ seats[].emblems.cards[].activeFace	number:int
 seats[].emblems.cards[].alsoBlocking	array
 seats[].emblems.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].emblems.cards[].attachedAt	number:int64
+seats[].emblems.cards[].attachedEpoch	number:int
 seats[].emblems.cards[].attachedTo	object
 seats[].emblems.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].emblems.cards[].attachedTo.Kind	string
@@ -3375,6 +3538,7 @@ seats[].emblems.cards[].battleX	number:float64
 seats[].emblems.cards[].battleY	number:float64
 seats[].emblems.cards[].bestowed	bool
 seats[].emblems.cards[].blockingTarget	custom(uuid.UUID)
+seats[].emblems.cards[].cardCopy	bool
 seats[].emblems.cards[].catalogAbilities	object
 seats[].emblems.cards[].catalogAbilities.activated	number:int
 seats[].emblems.cards[].catalogAbilities.mana	number:int
@@ -3404,6 +3568,7 @@ seats[].emblems.cards[].craftedWith[]	object
 seats[].emblems.cards[].craftedWith[].epoch	number:int
 seats[].emblems.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].emblems.cards[].damageMarked	number:int
+seats[].emblems.cards[].dealtCombatDamage	bool
 seats[].emblems.cards[].devoured	number:int
 seats[].emblems.cards[].durationCopyBase	object
 seats[].emblems.cards[].durationCopyBase.ActiveFace	number:int
@@ -3445,6 +3610,10 @@ seats[].emblems.cards[].durationCopyBase.TokenKey	string
 seats[].emblems.cards[].durationCopyBase.Toughness	number:int
 seats[].emblems.cards[].durationCopyBase.TypeLine	string
 seats[].emblems.cards[].durationCopyBase.VariableToughness	bool
+seats[].emblems.cards[].enchantReturned	object
+seats[].emblems.cards[].enchantReturned.epoch	number:int
+seats[].emblems.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].emblems.cards[].enchantSwapped	bool
 seats[].emblems.cards[].enteredBattlefieldAt	number:int64
 seats[].emblems.cards[].entryOrdinal	number:int64
 seats[].emblems.cards[].exertOnAttack	bool
@@ -3476,6 +3645,7 @@ seats[].emblems.cards[].faces[].StartingLoyalty	number:int
 seats[].emblems.cards[].faces[].Toughness	number:int
 seats[].emblems.cards[].faces[].TypeLine	string
 seats[].emblems.cards[].faces[].VariableToughness	bool
+seats[].emblems.cards[].flipped	bool
 seats[].emblems.cards[].fused	bool
 seats[].emblems.cards[].goadedBy	custom(uuid.UUID)
 seats[].emblems.cards[].goads	array
@@ -3671,6 +3841,7 @@ seats[].emblems.cards[].tapped	bool
 seats[].emblems.cards[].tokenArtOnly	bool
 seats[].emblems.cards[].tokenKey	string
 seats[].emblems.cards[].toughness	number:int
+seats[].emblems.cards[].turnOvers	number:int
 seats[].emblems.cards[].typeLine	string
 seats[].emblems.cards[].unlocked	number:uint8
 seats[].emblems.cards[].variableToughness	bool
@@ -3687,6 +3858,7 @@ seats[].graveyard.cards[].activeFace	number:int
 seats[].graveyard.cards[].alsoBlocking	array
 seats[].graveyard.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedAt	number:int64
+seats[].graveyard.cards[].attachedEpoch	number:int
 seats[].graveyard.cards[].attachedTo	object
 seats[].graveyard.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].graveyard.cards[].attachedTo.Kind	string
@@ -3698,6 +3870,7 @@ seats[].graveyard.cards[].battleX	number:float64
 seats[].graveyard.cards[].battleY	number:float64
 seats[].graveyard.cards[].bestowed	bool
 seats[].graveyard.cards[].blockingTarget	custom(uuid.UUID)
+seats[].graveyard.cards[].cardCopy	bool
 seats[].graveyard.cards[].catalogAbilities	object
 seats[].graveyard.cards[].catalogAbilities.activated	number:int
 seats[].graveyard.cards[].catalogAbilities.mana	number:int
@@ -3727,6 +3900,7 @@ seats[].graveyard.cards[].craftedWith[]	object
 seats[].graveyard.cards[].craftedWith[].epoch	number:int
 seats[].graveyard.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].graveyard.cards[].damageMarked	number:int
+seats[].graveyard.cards[].dealtCombatDamage	bool
 seats[].graveyard.cards[].devoured	number:int
 seats[].graveyard.cards[].durationCopyBase	object
 seats[].graveyard.cards[].durationCopyBase.ActiveFace	number:int
@@ -3768,6 +3942,10 @@ seats[].graveyard.cards[].durationCopyBase.TokenKey	string
 seats[].graveyard.cards[].durationCopyBase.Toughness	number:int
 seats[].graveyard.cards[].durationCopyBase.TypeLine	string
 seats[].graveyard.cards[].durationCopyBase.VariableToughness	bool
+seats[].graveyard.cards[].enchantReturned	object
+seats[].graveyard.cards[].enchantReturned.epoch	number:int
+seats[].graveyard.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].graveyard.cards[].enchantSwapped	bool
 seats[].graveyard.cards[].enteredBattlefieldAt	number:int64
 seats[].graveyard.cards[].entryOrdinal	number:int64
 seats[].graveyard.cards[].exertOnAttack	bool
@@ -3799,6 +3977,7 @@ seats[].graveyard.cards[].faces[].StartingLoyalty	number:int
 seats[].graveyard.cards[].faces[].Toughness	number:int
 seats[].graveyard.cards[].faces[].TypeLine	string
 seats[].graveyard.cards[].faces[].VariableToughness	bool
+seats[].graveyard.cards[].flipped	bool
 seats[].graveyard.cards[].fused	bool
 seats[].graveyard.cards[].goadedBy	custom(uuid.UUID)
 seats[].graveyard.cards[].goads	array
@@ -3994,6 +4173,7 @@ seats[].graveyard.cards[].tapped	bool
 seats[].graveyard.cards[].tokenArtOnly	bool
 seats[].graveyard.cards[].tokenKey	string
 seats[].graveyard.cards[].toughness	number:int
+seats[].graveyard.cards[].turnOvers	number:int
 seats[].graveyard.cards[].typeLine	string
 seats[].graveyard.cards[].unlocked	number:uint8
 seats[].graveyard.cards[].variableToughness	bool
@@ -4008,6 +4188,7 @@ seats[].hand.cards[].activeFace	number:int
 seats[].hand.cards[].alsoBlocking	array
 seats[].hand.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].hand.cards[].attachedAt	number:int64
+seats[].hand.cards[].attachedEpoch	number:int
 seats[].hand.cards[].attachedTo	object
 seats[].hand.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].hand.cards[].attachedTo.Kind	string
@@ -4019,6 +4200,7 @@ seats[].hand.cards[].battleX	number:float64
 seats[].hand.cards[].battleY	number:float64
 seats[].hand.cards[].bestowed	bool
 seats[].hand.cards[].blockingTarget	custom(uuid.UUID)
+seats[].hand.cards[].cardCopy	bool
 seats[].hand.cards[].catalogAbilities	object
 seats[].hand.cards[].catalogAbilities.activated	number:int
 seats[].hand.cards[].catalogAbilities.mana	number:int
@@ -4048,6 +4230,7 @@ seats[].hand.cards[].craftedWith[]	object
 seats[].hand.cards[].craftedWith[].epoch	number:int
 seats[].hand.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].hand.cards[].damageMarked	number:int
+seats[].hand.cards[].dealtCombatDamage	bool
 seats[].hand.cards[].devoured	number:int
 seats[].hand.cards[].durationCopyBase	object
 seats[].hand.cards[].durationCopyBase.ActiveFace	number:int
@@ -4089,6 +4272,10 @@ seats[].hand.cards[].durationCopyBase.TokenKey	string
 seats[].hand.cards[].durationCopyBase.Toughness	number:int
 seats[].hand.cards[].durationCopyBase.TypeLine	string
 seats[].hand.cards[].durationCopyBase.VariableToughness	bool
+seats[].hand.cards[].enchantReturned	object
+seats[].hand.cards[].enchantReturned.epoch	number:int
+seats[].hand.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].hand.cards[].enchantSwapped	bool
 seats[].hand.cards[].enteredBattlefieldAt	number:int64
 seats[].hand.cards[].entryOrdinal	number:int64
 seats[].hand.cards[].exertOnAttack	bool
@@ -4120,6 +4307,7 @@ seats[].hand.cards[].faces[].StartingLoyalty	number:int
 seats[].hand.cards[].faces[].Toughness	number:int
 seats[].hand.cards[].faces[].TypeLine	string
 seats[].hand.cards[].faces[].VariableToughness	bool
+seats[].hand.cards[].flipped	bool
 seats[].hand.cards[].fused	bool
 seats[].hand.cards[].goadedBy	custom(uuid.UUID)
 seats[].hand.cards[].goads	array
@@ -4315,6 +4503,7 @@ seats[].hand.cards[].tapped	bool
 seats[].hand.cards[].tokenArtOnly	bool
 seats[].hand.cards[].tokenKey	string
 seats[].hand.cards[].toughness	number:int
+seats[].hand.cards[].turnOvers	number:int
 seats[].hand.cards[].typeLine	string
 seats[].hand.cards[].unlocked	number:uint8
 seats[].hand.cards[].variableToughness	bool
@@ -4341,6 +4530,7 @@ seats[].library.cards[].activeFace	number:int
 seats[].library.cards[].alsoBlocking	array
 seats[].library.cards[].alsoBlocking[]	custom(uuid.UUID)
 seats[].library.cards[].attachedAt	number:int64
+seats[].library.cards[].attachedEpoch	number:int
 seats[].library.cards[].attachedTo	object
 seats[].library.cards[].attachedTo.ID	custom(uuid.UUID)
 seats[].library.cards[].attachedTo.Kind	string
@@ -4352,6 +4542,7 @@ seats[].library.cards[].battleX	number:float64
 seats[].library.cards[].battleY	number:float64
 seats[].library.cards[].bestowed	bool
 seats[].library.cards[].blockingTarget	custom(uuid.UUID)
+seats[].library.cards[].cardCopy	bool
 seats[].library.cards[].catalogAbilities	object
 seats[].library.cards[].catalogAbilities.activated	number:int
 seats[].library.cards[].catalogAbilities.mana	number:int
@@ -4381,6 +4572,7 @@ seats[].library.cards[].craftedWith[]	object
 seats[].library.cards[].craftedWith[].epoch	number:int
 seats[].library.cards[].craftedWith[].id	custom(uuid.UUID)
 seats[].library.cards[].damageMarked	number:int
+seats[].library.cards[].dealtCombatDamage	bool
 seats[].library.cards[].devoured	number:int
 seats[].library.cards[].durationCopyBase	object
 seats[].library.cards[].durationCopyBase.ActiveFace	number:int
@@ -4422,6 +4614,10 @@ seats[].library.cards[].durationCopyBase.TokenKey	string
 seats[].library.cards[].durationCopyBase.Toughness	number:int
 seats[].library.cards[].durationCopyBase.TypeLine	string
 seats[].library.cards[].durationCopyBase.VariableToughness	bool
+seats[].library.cards[].enchantReturned	object
+seats[].library.cards[].enchantReturned.epoch	number:int
+seats[].library.cards[].enchantReturned.id	custom(uuid.UUID)
+seats[].library.cards[].enchantSwapped	bool
 seats[].library.cards[].enteredBattlefieldAt	number:int64
 seats[].library.cards[].entryOrdinal	number:int64
 seats[].library.cards[].exertOnAttack	bool
@@ -4453,6 +4649,7 @@ seats[].library.cards[].faces[].StartingLoyalty	number:int
 seats[].library.cards[].faces[].Toughness	number:int
 seats[].library.cards[].faces[].TypeLine	string
 seats[].library.cards[].faces[].VariableToughness	bool
+seats[].library.cards[].flipped	bool
 seats[].library.cards[].fused	bool
 seats[].library.cards[].goadedBy	custom(uuid.UUID)
 seats[].library.cards[].goads	array
@@ -4648,6 +4845,7 @@ seats[].library.cards[].tapped	bool
 seats[].library.cards[].tokenArtOnly	bool
 seats[].library.cards[].tokenKey	string
 seats[].library.cards[].toughness	number:int
+seats[].library.cards[].turnOvers	number:int
 seats[].library.cards[].typeLine	string
 seats[].library.cards[].unlocked	number:uint8
 seats[].library.cards[].variableToughness	bool
@@ -4688,6 +4886,7 @@ seats[].mulliganDecided	bool
 seats[].mulligansTaken	number:int
 seats[].name	string
 seats[].poison	number:int
+seats[].removed	bool
 seats[].seat	number:int
 seats[].speed	number:int
 seats[].statics	array
@@ -4759,6 +4958,9 @@ seats[].statics[].castBan.filter.sorceryOnly	bool
 seats[].statics[].castBan.filter.withCounter	string
 seats[].statics[].castBan.kind	string
 seats[].statics[].castBan.maxPerTurn	number:int
+seats[].statics[].creaturesEnterWithCounters	object
+seats[].statics[].creaturesEnterWithCounters.count	number:int
+seats[].statics[].creaturesEnterWithCounters.kind	string
 seats[].statics[].duration	object
 seats[].statics[].duration.Also	array
 seats[].statics[].duration.Also[]	number:int
@@ -4794,6 +4996,7 @@ seats[].statics[].keepManaColors	array
 seats[].statics[].keepManaColors[]	string
 seats[].statics[].keyword	string
 seats[].statics[].label	string
+seats[].statics[].lifeFloorOne	bool
 seats[].statics[].lifeTotalLocked	bool
 seats[].statics[].nextSpell	object
 seats[].statics[].nextSpell.active	bool
@@ -4877,7 +5080,10 @@ spellsCastThisTurn{}	object
 spellsCastThisTurn{}.Noncreature	number:int
 spellsCastThisTurn{}.Total	number:int
 spellsCastThisTurn{}.artifact	number:int
+spellsCastThisTurn{}.instantSorcery	number:int
 spellsCastThisTurn{}.instantSorceryColors	string
+spellsCastThisTurn{}.manaSpent	number:int
+spellsCastThisTurn{}.manaSpentLast	number:int
 spellsCastThisTurn{}.manaValue	number:int
 splitSecondActive	bool
 stack	object
@@ -4889,6 +5095,7 @@ stack.cards[].activeFace	number:int
 stack.cards[].alsoBlocking	array
 stack.cards[].alsoBlocking[]	custom(uuid.UUID)
 stack.cards[].attachedAt	number:int64
+stack.cards[].attachedEpoch	number:int
 stack.cards[].attachedTo	object
 stack.cards[].attachedTo.ID	custom(uuid.UUID)
 stack.cards[].attachedTo.Kind	string
@@ -4900,6 +5107,7 @@ stack.cards[].battleX	number:float64
 stack.cards[].battleY	number:float64
 stack.cards[].bestowed	bool
 stack.cards[].blockingTarget	custom(uuid.UUID)
+stack.cards[].cardCopy	bool
 stack.cards[].catalogAbilities	object
 stack.cards[].catalogAbilities.activated	number:int
 stack.cards[].catalogAbilities.mana	number:int
@@ -4929,6 +5137,7 @@ stack.cards[].craftedWith[]	object
 stack.cards[].craftedWith[].epoch	number:int
 stack.cards[].craftedWith[].id	custom(uuid.UUID)
 stack.cards[].damageMarked	number:int
+stack.cards[].dealtCombatDamage	bool
 stack.cards[].devoured	number:int
 stack.cards[].durationCopyBase	object
 stack.cards[].durationCopyBase.ActiveFace	number:int
@@ -4970,6 +5179,10 @@ stack.cards[].durationCopyBase.TokenKey	string
 stack.cards[].durationCopyBase.Toughness	number:int
 stack.cards[].durationCopyBase.TypeLine	string
 stack.cards[].durationCopyBase.VariableToughness	bool
+stack.cards[].enchantReturned	object
+stack.cards[].enchantReturned.epoch	number:int
+stack.cards[].enchantReturned.id	custom(uuid.UUID)
+stack.cards[].enchantSwapped	bool
 stack.cards[].enteredBattlefieldAt	number:int64
 stack.cards[].entryOrdinal	number:int64
 stack.cards[].exertOnAttack	bool
@@ -5001,6 +5214,7 @@ stack.cards[].faces[].StartingLoyalty	number:int
 stack.cards[].faces[].Toughness	number:int
 stack.cards[].faces[].TypeLine	string
 stack.cards[].faces[].VariableToughness	bool
+stack.cards[].flipped	bool
 stack.cards[].fused	bool
 stack.cards[].goadedBy	custom(uuid.UUID)
 stack.cards[].goads	array
@@ -5196,6 +5410,7 @@ stack.cards[].tapped	bool
 stack.cards[].tokenArtOnly	bool
 stack.cards[].tokenKey	string
 stack.cards[].toughness	number:int
+stack.cards[].turnOvers	number:int
 stack.cards[].typeLine	string
 stack.cards[].unlocked	number:uint8
 stack.cards[].variableToughness	bool
@@ -5219,6 +5434,7 @@ stackMeta[].distribution	map:array
 stackMeta[].distribution{}	number:int
 stackMeta[].doubledBy	custom(uuid.UUID)
 stackMeta[].doubledByName	string
+stackMeta[].exileWithCounter	string
 stackMeta[].faceDown	string
 stackMeta[].foretold	bool
 stackMeta[].grantedBy	custom(uuid.UUID)
@@ -5267,6 +5483,10 @@ stackMeta[].paid.altCostObjects	array
 stackMeta[].paid.altCostObjects[]	object
 stackMeta[].paid.altCostObjects[].epoch	number:int
 stackMeta[].paid.altCostObjects[].id	custom(uuid.UUID)
+stackMeta[].paid.assistPaid	number:int
+stackMeta[].paid.assistedBy	custom(uuid.UUID)
+stackMeta[].paid.convoked	array
+stackMeta[].paid.convoked[]	custom(uuid.UUID)
 stackMeta[].paid.costBranch	number:int
 stackMeta[].paid.delved	array
 stackMeta[].paid.delved[]	object
@@ -5323,6 +5543,7 @@ stackMeta[].sourceEpoch	number:int
 stackMeta[].sourceObject	object
 stackMeta[].sourceObject.epoch	number:int
 stackMeta[].sourceObject.id	custom(uuid.UUID)
+stackMeta[].sourceTurnOvers	number:int
 stackMeta[].splitSecond	bool
 stackMeta[].targets	array
 stackMeta[].targetsAnnouncePending	bool
@@ -5337,6 +5558,10 @@ stackMeta[].trigger.Event.actor	custom(uuid.UUID)
 stackMeta[].trigger.Event.amount	number:int
 stackMeta[].trigger.Event.answer_key	string
 stackMeta[].trigger.Event.attacking_target	custom(uuid.UUID)
+stackMeta[].trigger.Event.ballots	array
+stackMeta[].trigger.Event.ballots[]	object
+stackMeta[].trigger.Event.ballots[].option	number:int
+stackMeta[].trigger.Event.ballots[].voter	custom(uuid.UUID)
 stackMeta[].trigger.Event.batch	number:uint64
 stackMeta[].trigger.Event.batch_seq	number:uint64
 stackMeta[].trigger.Event.blocked	bool
@@ -5351,6 +5576,7 @@ stackMeta[].trigger.Event.colors	array
 stackMeta[].trigger.Event.colors[]	string
 stackMeta[].trigger.Event.combat	bool
 stackMeta[].trigger.Event.combat_step	string
+stackMeta[].trigger.Event.converted	bool
 stackMeta[].trigger.Event.damage_not_life_loss	number:int
 stackMeta[].trigger.Event.discard_cause	string
 stackMeta[].trigger.Event.entered_from	string
@@ -5440,6 +5666,8 @@ turnPlan[]	object
 turnPlan[].phaseId	number:int
 turnPlan[].step	string
 turnTally	object
+turnTally.attackedSubtypes	map:string
+turnTally.attackedSubtypes{}	number:int
 turnTally.attacks	array
 turnTally.attacks[]	object
 turnTally.attacks[].attacker	custom(uuid.UUID)
@@ -5458,6 +5686,8 @@ turnTally.damageDealers[].combat	bool
 turnTally.damageDealers[].epoch	number:int
 turnTally.damageDealers[].source	custom(uuid.UUID)
 turnTally.damageDealers[].victim	custom(uuid.UUID)
+turnTally.diedPowerBySubtype	map:string
+turnTally.diedPowerBySubtype{}	number:int
 turnTally.entered	map:array
 turnTally.enteredCardTypes	map:string
 turnTally.enteredCardTypes{}	number:int
@@ -5479,6 +5709,10 @@ turnTally.loopLowSet	bool
 turnTally.loopProgressed	bool
 turnTally.loopRun	map:string
 turnTally.loopRun{}	number:int
+turnTally.loreCounterPut	array
+turnTally.loreCounterPut[]	object
+turnTally.loreCounterPut[].epoch	number:int
+turnTally.loreCounterPut[].id	custom(uuid.UUID)
 turnTally.modesChosen	map:string
 turnTally.modesChosen{}	array
 turnTally.modesChosen{}[]	number:int
@@ -5490,6 +5724,7 @@ turnTally.noncombatDamage[].colors	array
 turnTally.noncombatDamage[].colors[]	string
 turnTally.noncombatDamage[].controller	custom(uuid.UUID)
 turnTally.noncombatDamage[].source	custom(uuid.UUID)
+turnTally.noncombatDamage[].victim	custom(uuid.UUID)
 turnTally.permissionTypes	map:string
 turnTally.permissionTypes{}	number:int
 turnTally.phaseStarted	number:int
@@ -5502,6 +5737,7 @@ turnTally.players{}.attacksDeclared	number:int
 turnTally.players{}.cardsDiscarded	number:int
 turnTally.players{}.cardsDrawn	number:int
 turnTally.players{}.combatDamageToPlayers	number:int
+turnTally.players{}.commandersAttacked	number:int
 turnTally.players{}.creaturesDied	number:int
 turnTally.players{}.energyPaidOrLost	number:int
 turnTally.players{}.landsEntered	number:int
@@ -5514,7 +5750,10 @@ turnTally.players{}.permanentsLeft	number:int
 turnTally.players{}.permanentsSacrificed	number:int
 turnTally.players{}.poisonHigh	number:int
 turnTally.players{}.speedTriggered	bool
+turnTally.players{}.tokensAttacked	number:int
 turnTally.players{}.tokensCreated	number:int
+turnTally.prevNoncombatVictims	array
+turnTally.prevNoncombatVictims[]	custom(uuid.UUID)
 turnTally.resolved	map:string
 turnTally.resolved{}	number:int
 turnTally.sacrificedSubtypes	map:string

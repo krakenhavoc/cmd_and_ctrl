@@ -14,7 +14,8 @@
 //   - declare attackers goes to end of combat when nothing attacked
 //     (CR 508.8), and to declare blockers otherwise.
 
-import { commanderReturnWaiting } from "./commanderReturn";
+import { anyPlayerWaiting, assistWaiting } from "./choiceDock";
+import { commanderReturnWaiting, findCardView } from "./commanderReturn";
 import { openingRollStatus } from "./openingRoll";
 import type { GameView } from "./protocol";
 import { buildStackLane } from "./stackLane";
@@ -63,6 +64,14 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   // question in the action bar, which hides this line.
   const deciding = commanderReturnWaiting(view);
   if (deciding) return deciding;
+  // ADR 0150 §5: an "unless any player pays" link holds the step while
+  // one player decides. The player asked has it in the action bar.
+  const offering = anyPlayerOfferWaiting(view);
+  if (offering) return offering;
+  // ADR 0150 §5: a cast parked on an assist helper. The helper has the
+  // prompt and the caster a request with Cancel; this is the table's.
+  const ask = view.pending_choices?.find((p) => p.assist);
+  if (ask) return assistWaiting(ask, null, view.seats ?? []);
   if (!viewerHasPriority) return blockWaitHint(view);
 
   const top = topOfStackName(view);
@@ -74,6 +83,57 @@ export function passHint(view: GameView | null | undefined, viewerHasPriority: b
   if (!next) return "";
   if (next === "next_turn") return "passing ends the turn";
   return `passing moves to ${STEP_LABELS[next]}`;
+}
+
+/**
+ * PrimaryKind is what the dock's primary says it does (#3267):
+ *   - "pass": something is on the stack, so a pass hands priority on and,
+ *     once everyone passes, lets the top item resolve;
+ *   - "noAttacks": declare attackers, creatures could attack and none
+ *     has, so a pass declares no attackers and skips the rest of combat
+ *     (CR 508.8);
+ *   - "next": the stack is empty and an all-pass moves the game on.
+ *
+ * `attackersReady` is how many of the viewer's creatures could attack
+ * right now: 0 unless the viewer is the one declaring.
+ */
+export type PrimaryKind = "pass" | "next" | "noAttacks";
+
+export function primaryKind(
+  view: GameView | null | undefined,
+  attackersReady: number,
+): PrimaryKind {
+  if (!view) return "next";
+  if (stackHolds(view)) return "pass";
+  if (
+    view.turn?.step === "declare_attackers" &&
+    attackersReady > 0 &&
+    afterDeclareAttackers(view) === "end_combat"
+  ) {
+    return "noAttacks";
+  }
+  return "next";
+}
+
+// primaryTitles is each kind's tooltip, before the key hint.
+export const primaryTitles: Record<PrimaryKind, string> = {
+  pass: "pass priority — once everyone passes, the top of the stack resolves",
+  next: "pass priority — once everyone passes, the game moves to the next step",
+  noAttacks: "attack with nothing and skip the rest of combat",
+};
+
+function stackHolds(view: GameView): boolean {
+  return (view.stack_items?.length ?? 0) > 0 || (view.stack?.count ?? 0) > 0;
+}
+
+// anyPlayerOfferWaiting is "Carol is deciding whether to pay {2} (Bob's
+// Rhystic Tutor)" while an any-player link is open, or "". Public state
+// only: every seat's view carries the link and its chooser.
+function anyPlayerOfferWaiting(view: GameView): string {
+  const c = view.pending_choices?.find((p) => p.any_player_offer);
+  if (!c) return "";
+  const name = findCardView(view, c.source)?.name || "a card";
+  return anyPlayerWaiting(c, view.seats ?? [], name);
 }
 
 // blockWaitHint names the defenders still declaring blockers while
@@ -93,7 +153,7 @@ function blockWaitHint(view: GameView): string {
 }
 
 function topOfStackName(view: GameView): string {
-  if ((view.stack_items?.length ?? 0) === 0 && (view.stack?.count ?? 0) === 0) return "";
+  if (!stackHolds(view)) return "";
   const model = buildStackLane({
     stack: view.stack,
     stackItems: view.stack_items,

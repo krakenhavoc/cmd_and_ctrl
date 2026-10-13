@@ -67,6 +67,14 @@ const (
 	// cast nor an activation, so mana restricted to either does not
 	// pay it; ManaRestrictUnlock is the restriction that does.
 	SpendPurposeUnlock ManaSpendPurpose = "unlock"
+
+	// SpendPurposeTurnFaceUp is paying the cost to turn a permanent face
+	// up (CR 116.2g, CR 708.6: morph, megamorph, disguise, and a
+	// manifested or cloaked creature's mana cost). Neither a cast nor an
+	// activation, so mana restricted to either does not pay it;
+	// ManaRestrictTurnFaceUp is the restriction that does (#3172,
+	// Creeping Peeper).
+	SpendPurposeTurnFaceUp ManaSpendPurpose = "turn_face_up"
 )
 
 // Restriction tag constants and constructors. Card files build tags
@@ -83,6 +91,11 @@ const (
 	// Lounge's and Creeping Peeper's restrictions. Combine it with a
 	// cast clause through ManaRestrictAnyOf.
 	ManaRestrictUnlock = "purpose:unlock"
+	// ManaRestrictTurnFaceUp permits the token only on the cost of
+	// turning a permanent face up (CR 116.2g) — the "turn a permanent
+	// face up" half of Creeping Peeper's restriction. Combine it with a
+	// cast clause through ManaRestrictAnyOf.
+	ManaRestrictTurnFaceUp = "purpose:turn_face_up"
 	// ManaRestrictColorless permits the token only when the object
 	// being paid for is colorless (CR 105.2c) — Shrine of the
 	// Forsaken Gods, Eldrazi Temple.
@@ -280,6 +293,22 @@ type ManaSpendContext struct {
 	// ManaSpendForCastFrom and ManaSpendForCastParams; meaningless for
 	// any other purpose.
 	CastFrom ZoneKind
+
+	// AbilityOrigin is the row being paid for, for an activated or mana
+	// ability's own payment (ADR 0155 Decision 7): set by the activation
+	// and mana-ability payment sites, the zero origin everywhere else. A
+	// spend rider's Covers reads it to reach only the rows one borrow lent
+	// ("spend mana as though it were mana of any color to activate those
+	// abilities").
+	AbilityOrigin AbilityOrigin
+}
+
+// ManaSpendForAbilityRow is ManaSpendForAbility for one row of the
+// source's ability list: the same context, with the row's origin.
+func ManaSpendForAbilityRow(c Card, o AbilityOrigin) ManaSpendContext {
+	ctx := ManaSpendForAbility(c)
+	ctx.AbilityOrigin = o
+	return ctx
 }
 
 // ManaSpendForCastFrom is ManaSpendForCast for a cast from a known
@@ -381,13 +410,15 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		return ctx.Purpose == SpendPurposeActivate
 	case ManaRestrictUnlock:
 		return ctx.Purpose == SpendPurposeUnlock
+	case ManaRestrictTurnFaceUp:
+		return ctx.Purpose == SpendPurposeTurnFaceUp
 	case ManaRestrictNoGeneric:
 		// Decided per symbol by the solvers (noGeneric), not by the
 		// object being paid for: nothing here to refuse.
 		return true
 	case ManaRestrictNotFromHand:
 		switch ctx.Purpose {
-		case SpendPurposeActivate, SpendPurposeUnlock:
+		case SpendPurposeActivate, SpendPurposeUnlock, SpendPurposeTurnFaceUp:
 			return true
 		case SpendPurposeCast:
 			return ctx.CastFrom != "" && ctx.CastFrom != ZoneHand
@@ -405,14 +436,14 @@ func (ctx ManaSpendContext) matchesRestriction(r string) bool {
 		// An unknown purpose has no object, so it has no colour
 		// either — refuse rather than read "no colours" as
 		// "colorless".
-		return ctx.Purpose != SpendPurposeUnknown && len(ctx.Colors) == 0
+		return ctx.hasPaidForObject() && len(ctx.Colors) == 0
 	case ManaRestrictMonocolored:
 		// #1600, CR 105.2a. The same unknown-purpose refusal as
 		// colorless: no object, no colour count.
-		return ctx.Purpose != SpendPurposeUnknown && distinctColorCount(ctx.Colors) == 1
+		return ctx.hasPaidForObject() && distinctColorCount(ctx.Colors) == 1
 	case ManaRestrictMulticolored:
 		// #1600, CR 105.2b.
-		return ctx.Purpose != SpendPurposeUnknown && distinctColorCount(ctx.Colors) >= 2
+		return ctx.hasPaidForObject() && distinctColorCount(ctx.Colors) >= 2
 	}
 	key, value, ok := strings.Cut(r, ":")
 	if !ok || value == "" || ctx.Purpose == SpendPurposeUnknown {
@@ -527,4 +558,13 @@ func containsFold(xs []string, want string) bool {
 		}
 	}
 	return false
+}
+
+// hasPaidForObject reports whether the payment is for an object whose
+// characteristics a restriction can read: a spell, an ability or a door.
+// An unknown purpose has no object, and neither does turning a permanent
+// face up (#3172): its face-down self has no colour a restriction should
+// read as "colorless".
+func (ctx ManaSpendContext) hasPaidForObject() bool {
+	return ctx.Purpose != SpendPurposeUnknown && ctx.Purpose != SpendPurposeTurnFaceUp
 }

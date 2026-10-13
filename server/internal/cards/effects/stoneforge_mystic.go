@@ -15,25 +15,33 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // an answer — and it is the half every Commander deck plays the card
 // for.
 //
-// Sandbox simplification, declared — the Ketria Triome posture, one
-// whole ability omitted: the activated ability is NOT implemented.
-// So the Mystic is a tutor and nothing more, which is weaker than
-// printed, never stronger, and the caveat says so.
+// The activated ability is PutFromHandOntoBattlefield over an
+// Equipment card, optional as printed ("You may put"). The Equipment
+// is PUT, not cast: no cast trigger fires and no mana is paid for it.
+// It arrives unattached, which is also as printed. A player with no
+// Equipment in hand is never prompted, so the ability resolves doing
+// nothing, exactly as the card does.
 //
-// The machinery it was waiting on has since landed and the ability
-// is now a small edit rather than a seam: the pick-from-hand prompt
-// shipped in #552 and the hand-to-battlefield move in #654, so
-// "{1}{W}, {T}: You may put an Equipment card from your hand onto
-// the battlefield" is an ActivatedAbility over
-// PutFromHandOntoBattlefield{Match: …Equipment…, Optional: true}.
-// Writing it is card work with its own tests, which is why #654 left
-// it for a roadmap batch.
+// No simplification. (This file carried a "not implemented" caveat
+// until #3138; the pick-from-hand prompt (#552) and the hand-to-
+// battlefield move (#654) it waited on had both landed.)
 func init() {
 	Register(Spec{
 		OracleID:     "358789f9-7d87-411d-919e-d597da665cbd",
 		Name:         "Stoneforge Mystic",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The {1}{W}, {T} ability isn't implemented — Equipment has to be cast from your hand the ordinary way."},
+		Completeness: CompletenessFull,
+		Activated: []ActivatedAbility{{
+			Label:   "{1}{W}, {T}: You may put an Equipment card from your hand onto the battlefield.",
+			Purpose: game.Purpose{Answers: game.AnswerValue},
+			Cost:    Plus(ManaCost("{1}{W}"), TapCost()),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				return PutFromHandOntoBattlefield{
+					Match:    OfSubtype("Equipment"),
+					Optional: true,
+					Label:    "Stoneforge Mystic — you may put an Equipment card from your hand onto the battlefield",
+				}.Apply(NewContext(g, item))
+			},
+		}},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Stoneforge Mystic — search for an Equipment card", func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{

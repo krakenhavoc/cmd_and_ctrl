@@ -92,6 +92,65 @@ Every request an admin-only route lets through is logged at Info as
 `admin action`, with the method and path and either `admin_user_id` (an
 allowlisted person) or `admin_id` (the token). No token is ever logged.
 
+## When the server is full (ADR 0148)
+
+The server holds itself to caps on its load, its WebSocket connections
+and the rate tables are created at ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md),
+#2977). A request the server will not take because of one is answered
+with a **stable code and a friendly sentence**, never a raw error:
+
+```json
+HTTP/1.1 503 Service Unavailable
+Retry-After: 30
+
+{ "error": "The server is full right now. Please try again in a few minutes.", "code": "server_full" }
+```
+
+Clients match `code`, not the sentence. It is returned by `POST /games`,
+`POST /games/practice`, `POST /games/{id}/seats/bot` (the table-load cap),
+and `POST /games/{id}/join`, `POST /join` and `POST /games/{id}/spectate`
+(the connection cap). Everything else about a table that already exists
+is outside the caps: a human taking a seat at it, starting it, playing
+it, and a seated player reconnecting are never refused. A socket turned
+away at the connection cap is told the same thing over the WebSocket
+([protocol](protocol.md#server-full)).
+
+| Variable | Default | |
+|---|---|---|
+| `CMDCTRL_MAX_TABLE_LOAD` | `180` | Weighted load ceiling over unended, unarchived tables; `0` is no cap. |
+| `CMDCTRL_LOAD_WEIGHT_TABLE` / `_HUMAN_SEAT` / `_BOT_SEAT` | `2` / `1` / `2` | A table costs the first plus the second per human seat and the third per bot seat: a four-human table is 6 (30 of them, the owner's 120-player target, fill the default cap), a four-bot table 10 (18 fit, under the ~31 prod collapsed at). |
+| `CMDCTRL_MAX_WS_CONNECTIONS` | `400` | Live sockets; a seated player and an admin are never refused. `0` is no cap. |
+| `CMDCTRL_CREATE_ACCOUNT_BURST` / `_INTERVAL` | `3` / `30s` | Per-account table creation (429 over). |
+| `CMDCTRL_CREATE_IP_BURST` / `_INTERVAL` | `6` / `20s` | Per client IP, for `POST /games` and `POST /games/practice` (429 over); the admin token is exempt. |
+
+A malformed value fails the boot naming the variable. The load, the
+connections, the caps and the number of refusals are Prometheus metrics
+(`cmdctrl_capacity_*`) and are shown on
+[`GET /admin/live`](#get-adminlive-admin-only) as `capacity`.
+
+**The boot restore pass respects the load cap.** When a restart would
+bring back more tables than the cap allows (the crash-loop #2978
+measured), the tables with people at them come back first, then the most
+recently active, first-fit by cost. The rest are **deferred**: their
+restore points stay on disk untouched and their rows are left as they
+were (not ended), so the next boot, or a raised cap, restores them; until
+then they read as "game not found". The boot log names each one and
+`cmdctrl_boot_restore_deferred_games` counts them. `DELETE
+/games/{id}` still removes a deferred table. An admin brings deferred
+tables back **without a restart** with
+[`POST /admin/capacity/restore-deferred`](#post-admincapacityrestore-deferred-admin-only)
+once load has freed up. The `RestoreDeferredGames` alert says when there
+are any ([monitoring](monitoring.md#alerts)).
+
+**The Discord join at the connection cap.** `GET /auth/discord/callback`
+is a browser navigation, so a JSON 503 would be shown as a blank page. At
+the connection cap, an invite-link callback does **not** claim the seat:
+it answers **302** to `/#/games/{id}/join?error=server_full&t={invite}`
+(no session in the URL), and the join page opens with the same friendly
+sentence and its Discord button for the retry. The sign-in itself is
+recorded. The login-page flow (no table named) and the link flow are not
+affected: they open no socket.
+
 ## Public routes (no credential required)
 
 ### `POST /admin/login`
@@ -240,10 +299,12 @@ agent seat:
 
 | Status | Reason |
 |---|---|
-| 400 | empty name; or `agent` with a signed-in session (`an agent seat joins as a guest`) |
+| 400 | empty name; a name on the filter's list (`code: "name_not_allowed"`, see [Moderation](#moderation-2984)); or `agent` with a signed-in session (`an agent seat joins as a guest`) |
 | 401 | invite token did not match |
+| 403 | the table removed and blocked this person (`code: "blocked_from_table"`, see [Moderation](#moderation-2984)) |
 | 404 | game not found |
 | 409 | game already started, game full, or the signed-in person already holds a seat at this table |
+| 503 | the connection cap is full: `code: "server_full"`, nothing was seated (see [When the server is full](#when-the-server-is-full-adr-0148)) |
 
 ---
 
@@ -304,8 +365,9 @@ own it can do nothing else — the WS authorizer refuses it outright.
 
 | Status | Reason |
 |---|---|
-| 400 | empty name on the anonymous path; or `agent` with a signed-in session |
+| 400 | empty name on the anonymous path; a name on the filter's list (`code: "name_not_allowed"`); or `agent` with a signed-in session |
 | 401 | no live table has that invite code (an archived one reads the same way) |
+| 403 | the table removed and blocked this person (`code: "blocked_from_table"`) |
 | 409 | game already started, game full, a session that already belongs to a table, or the signed-in person already holds a seat at this table |
 
 Since S34 sub-PR 4 a seat claimed on the Discord path records its
@@ -667,9 +729,10 @@ again (see `GET /games/{id}`).
 |---|---|
 | 401 | unauthenticated |
 | 403 | the caller is not a signed-in person and not the admin token |
-| 400 | an unknown `setup` (a blank name is not an error: the server names the table) |
+| 400 | an unknown `setup` (a blank name is not an error: the server names the table); or a `name` on the filter's list (`code: "name_not_allowed"`, see [Moderation](#moderation-2984)) |
 | 409 | the caller already has 3 open tables; the message names them. Start one, or end one with `/c2-end` |
-| 429 | the caller created tables too quickly (1 per 30 s, burst 3); `Retry-After: 30` |
+| 429 | the caller created tables too quickly (1 per 30 s, burst 3 by default), or this address did (`CMDCTRL_CREATE_IP_*`); `Retry-After: 30` |
+| 503 | the server is full: `code: "server_full"` (see [When the server is full](#when-the-server-is-full-adr-0148)) |
 
 ### `GET /games/name-suggestion` *(signed in, or the admin token)*
 
@@ -763,6 +826,62 @@ claimant does not take the table back.
 | 403 | caller is neither the host of this table nor the admin |
 | 404 | game not found |
 | 422 | `player_id` is not a seat at this table, is a bot or an agent seat, or has left the game |
+
+### `PUT /games/{id}/voice`
+
+Turn the table's Discord voice room on or off
+([ADR 0159](decisions/0159-per-table-discord-voice-rooms.md) §1). **Host or
+admin only** (`CanManageTable`). `POST /games` takes the same choice as
+`"voice_room": true`, which a server with voice rooms off ignores.
+
+With voice on, the server makes a private voice channel in the community
+server once a Discord-signed-in player is seated, lets in the seated players
+who are members of the server, and deletes it 10 minutes after the game
+ends, when the table is archived or deleted, when the host turns voice off,
+or after 2 hours with no game action, no seat change and nobody connected.
+The room's state rides the game view as `voice` (status, the viewer's own
+access, and the link for a viewer who was let in;
+[protocol.md](protocol.md)). Nothing here waits on Discord: the voice
+manager does its work in the background and the table sees it on the next
+snapshot.
+
+**Request**
+
+```json
+{ "enabled": true }
+```
+
+**Response 200**: the updated `GameMeta`, with `voice_room`.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 409 | turning it on for a practice table, or one that has ended or been archived (turning it off is always allowed) |
+| 503 | voice rooms are off on this server: `CMDCTRL_DISCORD_VOICE_CATEGORY_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set |
+
+### `POST /games/{id}/voice/refresh`
+
+A seated player asks the voice manager to check again whether they are in
+the community server (they just joined it), and to reopen a room removed for
+idleness ([ADR 0159](decisions/0159-per-table-discord-voice-rooms.md) §3).
+Limited per caller: one every ten seconds, burst of three.
+
+**Response 202**: no body. The table sees the result on the game view.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | unauthenticated |
+| 403 | the caller is not seated at this table |
+| 409 | the table has no voice room on, or the caller's seat did not sign in with Discord |
+| 429 | too many requests |
+| 503 | voice rooms are off on this server |
 
 ### `PATCH /games/{id}/settings`
 
@@ -999,6 +1118,29 @@ wire. It is what the lobby UI's rotate-invite buttons check (see
 even be seated at it, so this can be `true` on a game where `mySeat`
 finds nothing.
 
+**A game in play** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md)
+§1 item 4) carries two more fields, which the Tables page's "Now" cards
+show:
+
+```json
+{
+  "state": "active",
+  "turn": 7,
+  "players": [{ "player_id": "<uuid>", "name": "Alice", "seat": 0, "life": 31 }]
+}
+```
+
+- `turn` is the game view's `turn.number`, the number the board shows
+  (the round: every seat has reached it). It is omitted while the
+  opening roll is still open, before turn 1 has begun.
+- `life` on each `players[]` entry is that seat's life total.
+
+Both are public at the table, since every seat and spectator sees them,
+and they go to every caller of this list. A table in the lobby or a
+game that has ended carries neither. They are read fresh from the
+engine on each list and never stored, and `GET /games/{id}` does not
+carry them. Additive: an older client ignores them.
+
 ### `GET /games/{id}`
 
 Full metadata for a single game. The `invite_token` and
@@ -1111,7 +1253,7 @@ player); RoleAdmin may set any seat.
 
 ```json
 {
-  "deck": "izzet-aggro",   // a deck id from GET /decks
+  "deck": "mono-red-aggro",   // a deck id from GET /decks
   "player_id": "<uuid>"
 }
 ```
@@ -1156,7 +1298,7 @@ Private decks (upstream 401/403) and unsupported hosts surface as
   "game": { "...GameMeta with updated seat..." },
   "deck_name": "Atraxa Superfriends",
   "card_count": 100,
-  "deck_id": "izzet-aggro",
+  "deck_id": "mono-red-aggro",
   "commanders": ["Atraxa, Praetors' Voice"],
   "warnings": [
     { "code": "sideboard_not_supported_in_commander", "message": "..." }
@@ -1352,12 +1494,12 @@ deck, not an empty picker implying there are none.
 {
   "decks": [
     {
-      "id": "izzet-aggro",
-      "name": "Raid and Ransack",
+      "id": "mono-red-aggro",
+      "name": "Forge and Fury",
       "archetype": "aggro",
       "summary": "...",
-      "commander": "Mary Read and Anne Bonny",
-      "colors": ["U", "R"],
+      "commander": "Purphoros, God of the Forge",
+      "colors": ["R"],
       "card_count": 100,
       "coverage": {
         "cards": 88,
@@ -1399,7 +1541,7 @@ because the engine synthesises their mana ability from the type line.
 works fully" are different claims, and the client is expected to make
 only the one that is true — see `client/src/lib/prebuiltDecks.ts`.
 
-The same four decks back this route and `GET /bot/options`; they come
+The same pre-built decks back this route and `GET /bot/options`; they come
 from one registry (`server/internal/decks`), which is the part that
 must not fork.
 
@@ -1421,13 +1563,19 @@ answer for every table — so the client fetches it once.
     { "tier": "strong", "label": "Strong", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
-    { "id": "izzet-aggro", "name": "Raid and Ransack", "description": "aggro — …", "colors": ["U", "R"], "commander": "Mary Read and Anne Bonny" },
+    { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
     { "id": "simic-ramp", "name": "Deep Roots", "description": "ramp-stompy — …", "colors": ["U", "G"], "commander": "Tatyova, Benthic Druid" },
     { "id": "esper-control", "name": "The Long Answer", "description": "control — …", "colors": ["W", "U", "B"], "commander": "Y'shtola, Night's Blessed" },
     { "id": "mono-black-aristocrats", "name": "Body Count", "description": "aristocrats — …", "colors": ["B"], "commander": "Syr Konrad, the Grim" }
   ]
 }
 ```
+
+When the model tiers are off because a spend cap is used up or an admin
+switched model calls off (#2980), the response also carries `model_note`,
+one sentence saying so and, for a cap, when it resets, and each model
+tier's `reason` carries the same text. Absent otherwise. See
+[bot.md](bot.md#spend-caps-the-kill-switch-and-what-is-never-charged-for-2980).
 
 Every declared tier is listed, including the ones THIS server cannot
 play. `available: false` is what the picker greys out — asking for one
@@ -1454,10 +1602,10 @@ client hides the Add-bot control rather than offering a button that
 only the raw-decklist form of the add request works.
 
 A deck's `description` leads with its archetype — `aggro`,
-`ramp-stompy`, `control`, `aristocrats` — because the names are
+`ramp-stompy`, `control`, `aristocrats`, `stompy`, `weenie`, `voltron` — because the names are
 flavour and the archetype is what the player is actually choosing
-between. The catalog is the four pre-built decks in
-`server/internal/decks` — the same four `GET /decks` offers a human,
+between. The catalog is the pre-built decks in
+`server/internal/decks` — the same ones `GET /decks` offers a human,
 from one registry — every non-basic card of which is build-tested to
 resolve to a registered effect spec. `GET /decks` adds the coverage
 profile on top; `aiseat.DeckInfo` has no room for one and a bot does
@@ -1484,7 +1632,7 @@ The player-facing form names a curated deck from `GET /bot/options`:
 ```json
 {
   "tier": "random",
-  "deck": "izzet-aggro",
+  "deck": "mono-red-aggro",
   "name": "Bot 1"            // optional; defaults to "Bot N"
 }
 ```
@@ -1511,7 +1659,7 @@ fails exactly where a human's upload would.
 
 ```json
 {
-  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "izzet-aggro" } ] },
+  "game": { ...GameMeta, "players": [ ..., { "player_id": "<uuid>", "name": "Bot 1", "seat": 1, "deck_name": "...", "deck_uploaded": true, "is_bot": true, "bot_tier": "random", "bot_deck": "mono-red-aggro" } ] },
   "player_id": "<uuid>",
   "deck_name": "...",
   "warnings": [ ... ],       // as for /decks, omitted when empty
@@ -1568,6 +1716,78 @@ numbers. Same authorisation as adding one. Returns the updated
 | 409 | game already started |
 | 422 | the seat is a human, not a bot |
 
+### `DELETE /games/{id}/seats/{player_id}` (#2785)
+
+Remove a **human or agent (MCP) guest seat** from a table. Returns the
+updated `GameMeta` (with the invites, for a caller who may see them).
+
+**`?block=true`** (#2984) also blocks the removed seat from taking a seat
+at this table again; see [Moderation](#moderation-2984). It adds nothing to
+who may call the route: a caller who may not remove may not block.
+
+- **Unstarted table** (#2785): the seat leaves the table, seat numbers
+  close up, the slot is free for the next join, and the stored seats row
+  is rewritten.
+- **Started game** (#3093): the seat **concedes out of the game**, per CR
+  800.4a, through the same path as a player's own concession. Everything
+  the seat owns leaves the game, effects that gave it control end, its
+  spells and abilities on the stack cease to exist, and the turn and
+  priority move on if they were its. If one player is left the game
+  ends and that player wins. The log records a concession; there is no
+  separate "removed" result. The seat **stays in the seat list** (the
+  game is under way and the seat is still part of its record) and shows
+  as a player who left. The undo history is cleared, so the removal
+  cannot be taken back. See
+  [ADR 0060's 2026-10-12 amendment](decisions/0060-leaving-the-game.md).
+
+**Who may call it:** on an unstarted table the table **host**, the
+game's **creator** (the signed-in person who made it, seated or not) or
+an **admin**; on a started game an **admin only**. This is narrower than
+the bot route above, which any seated player may use; no one gains the
+ability who did not already manage the table. The host and the creator
+are answered `409` on a started game.
+
+**What happens to the removed seat:**
+
+- Its session stops validating. Sessions are signed, not stored, so this
+  is a check against the table's seat list, not a revocation entry
+  (`auth.WithSeatCheck`): every authenticated route answers `401` with
+  `{"error": "removed from table"}`, a reconnect is refused at the
+  WebSocket upgrade, and a bot seat route or a reclaim link cannot be
+  reached with the old token.
+- Its open WebSockets are closed with code **1000** and reason
+  `removed from table` (see [protocol.md, close codes](protocol.md#close-codes-which-ones-redial)).
+  The client shows "You were removed from this table" rather than a
+  silent disconnect.
+- The **invite is not touched.** On an unstarted table a removed person
+  who still has the invite link can sit down again, as a new seat,
+  unless the removal also blocked them (`?block=true`, below). Rotate the
+  invite (`POST /games/{id}/invites/rotate`) to keep everyone else out. A started game takes no new players, so this applies to the
+  spectator link only: see below.
+- **A removed player does not keep spectating.** Their own session is
+  refused, in a started game too (a player who merely *conceded* keeps
+  theirs). Anyone holding the table's spectator invite can still open
+  the table as a spectator; the invite cannot tell who is holding it,
+  unless the removal also blocked them (a block reaches the spectator
+  link too, #3113).
+  Reclaim links and the "my games" rejoin link refuse the seat as well.
+- In a started game the refusal is the engine's `Player.Removed` flag
+  (snapshot field `seats[].removed`), so it survives a server restart.
+
+The route sits beside `POST /games/{id}/seats/bot` and
+`DELETE /games/{id}/seats/bot/{player_id}` because it is the same
+resource, a seat at the table, addressed by player id. The two `DELETE`
+patterns have different segment counts, so they never collide, and a
+bot's id sent here is refused rather than handled under this gate.
+
+| Status | Reason |
+|---|---|
+| 401 | no session, or an expired / revoked one |
+| 403 | caller is not the host, the creator or an admin; or `player_id` is not a seat here |
+| 404 | game not found |
+| 409 | the game has started and the caller is not an admin; or the game has ended |
+| 422 | the seat is the host's (transfer the host first, `POST /games/{id}/host`), or a bot's (use the bot route) |
+
 ### `POST /games/practice` (ADR 0076, S54)
 
 Open the tutorial's **practice table** for the caller, seated: one
@@ -1623,6 +1843,44 @@ A practice table is not like other tables:
 | 429 | this caller opened practice tables too quickly (or the IP deck bucket is empty) |
 | 503 | no bot host; no card index; the `random` tier is not offered; or all 8 practice tables are in use |
 
+### `POST /games/practice/guest` (ADR 0156 §2, S71)
+
+Public: **no session needed.** For a visitor who has no account (and,
+with the Discord gate on, may not get one yet) it mints a guest session
+and opens a practice table for it in one step. No body.
+
+The guest is an ordinary guest: name `Player`, no `user_id`, a session
+of `CMDCTRL_SESSION_TTL`. It can play its practice table and do
+nothing a guest cannot, so `POST /games` still answers it 403. The
+response and the cookie are exactly
+[`POST /games/practice`](#post-gamespractice-adr-0076-s54)'s: `token`,
+`expires_at`, `principal`, `game` (`practice: true`) and `player_id`,
+with the session cookie set to the seat. The client installs `token`
+as it would a join's. The table is the same one, on the same decks and
+bot, through the same code, and is just as unlisted and unpersisted.
+
+- **One live practice table per guest session.** A call that carries
+  the guest's session cookie (or bearer token) **replaces** that
+  session's table with a fresh one instead of adding a second or
+  answering 409; the new response carries the new session. A call
+  with no session, or with one that is not a practice seat, is a new
+  guest.
+- **Per client IP: 3 per 10 minutes** (429 over, with `Retry-After`).
+  The limiter honours `CMDCTRL_TRUST_FORWARDED` and
+  `CMDCTRL_DEV_RELAX_RATE_LIMITS` like every other. The per-IP table
+  creation bucket (`CMDCTRL_CREATE_IP_*`) and the deck bucket apply as
+  well.
+- **ADR 0148's caps apply**, since the table is opened by the same
+  `CreatePractice`: the 8-table practice ceiling answers 503, and the
+  weighted table-load cap answers 503 with the stable
+  `code: "server_full"` and a `Retry-After`.
+
+| Status | Reason |
+|---|---|
+| 201 | opened; body as above |
+| 429 | this IP asked too often |
+| 503 | no bot host; no card index; the `random` tier is not offered; all 8 practice tables are in use; or the server is full (`code: "server_full"`) |
+
 ### `POST /games/{id}/practice/leave` (ADR 0076, S54)
 
 Abandon a practice table and put the caller's own session cookie
@@ -1668,6 +1926,11 @@ artifacts gone. A bug report filed against this game keeps working —
 precisely so a later delete cannot orphan the issue — but the live
 replay of a game nobody reported is gone for good.
 
+It also works on a **database-only** game: a `games` row the lobby does
+not hold because the restore pass never brought its room back (#2987).
+That deletes the row with its seats and invites, plus any restore point
+or ADR 0041 file left for it. There is no room to evict.
+
 **Response 204** — no body.
 
 ### `POST /games/{id}/archive` *(admin only)*
@@ -1685,6 +1948,15 @@ This is the action for clearing old games off the lobby screen.
 
 **Response 200** — the updated `GameMeta`, carrying `archived_at`.
 Invite tokens are stripped.
+
+A **database-only** game (a row with no room behind it, #2987) can be
+archived and unarchived too: only `archived_at` changes, and the
+response is built from the stored rows (seats as recorded, no invite
+tokens). Such rows are rare: at boot, any game still `lobby` or
+`active` in the database whose room the restore pass did not bring back
+is marked `ended` (no outcome), so it stops reading as active. The
+exception is a restore point left on disk for a roll-forward
+(`schema_too_new`, `unknown_effect_key`), whose row is left alone.
 
 **Errors**
 
@@ -2183,6 +2455,28 @@ No body.
   revoked: another tab may still hold it, and it runs out at its own
   expiry.
 
+**The sign-up gate** ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)
+§1 item 5). With the gate on, a half-spent session is re-checked before
+it is re-issued: the stored refresh token (`identities.refresh_token`)
+is exchanged with Discord for an access token, the rotated refresh token
+is stored in its place, and the person's member record in the community
+server is read again. An allowlisted admin
+(`CMDCTRL_DISCORD_ADMIN_USER_IDS`) is exempt and asks nothing.
+
+- **Admitted:** renewed as above, and the answer recorded on the account.
+- **Refused** (left the server, or no longer holds the admitting role):
+  **401**, not renewed, and the person's `sessions_invalid_before` moves
+  to now, so every session they hold ends and their sockets close, as
+  with an admin's revoke. The answer is recorded on the account.
+- **No refresh token** (none was stored because `CMDCTRL_IDENTITY_KEY`
+  was unset, or Discord rejects it): **200** with the same token, not
+  renewed. The session runs to its expiry and the next sign-in is the
+  check.
+- **Discord did not answer** (a 5xx, a timeout, a 429 after one retry):
+  renewed anyway, and logged at WARN. Nothing is recorded.
+
+Below half-life the route asks Discord nothing, gate or no gate.
+
 Renewal is how a signed-in session outlives its first 30 days. Revocation
 is still the way to end one: a token issued before
 `users.sessions_invalid_before` fails before the handler runs, and a
@@ -2198,7 +2492,7 @@ when it reinstalls a saved identity.
 
 | Status | Reason |
 |---|---|
-| 401 | no credential (a `?token=` alone counts as none), or one that is invalid, expired or revoked, including a revocation during the renewal |
+| 401 | no credential (a `?token=` alone counts as none), or one that is invalid, expired or revoked, including a revocation during the renewal; or the sign-up gate's re-check refused the person, which revokes every session they hold |
 | 403 | authenticated but not a signed-in person: the admin token, a guest seat or spectator, a reclaim ticket's session, or any session on a server with no database |
 | 429 | the per-person bucket is spent |
 
@@ -2352,7 +2646,11 @@ construction.
         "unknown": 0,
         "as_printed": 78,
         "resolved": 90
-      }
+      },
+      "commander_cards": [
+        { "name": "Atraxa, Praetors' Voice", "scryfall_id": "<uuid>", "color_identity": ["W", "U", "B", "G"] }
+      ],
+      "color_identity": ["W", "U", "B", "G"]
     }
   ]
 }
@@ -2374,6 +2672,17 @@ unresolved ones included). The page says "N of M cards play as
 printed" from `as_printed_copies` and `deck_size`. The list builds the catalogue verdicts
 once per request and reuses them for every deck. `coverage` is absent
 when the server has no card index or a stored list no longer parses.
+**`commander_cards` and `color_identity`** ([ADR 0158](decisions/0158-signed-in-pages-tables-with-history-decks-and-the-catalog.md) §2)
+are what the Decks page's grid draws: one entry per name in
+`commanders`, in the same order, resolved against the card index by
+name. `scryfall_id` is a printing with an image, for
+`/cards/{id}/image?size=art_crop`; it is absent when the name did not
+resolve or no printing has an image, and the page then draws a plain
+band. A commander's `color_identity` is `[]` when it is colourless and
+`null` when its name did not resolve. `color_identity` on the deck is the union of its commanders'
+identities in WUBRG order, absent when that is empty (colourless, or
+nothing resolved). Both are absent with no card index. `PATCH`'s answer
+does not carry them.
 These reads, and the four routes below, share a per-client bucket of 1
 request per second with a burst of 5 (429 past it).
 
@@ -2951,6 +3260,42 @@ another one.
 | 404 | the user row no longer exists |
 | 503 | the server has a user session but no revocation list (not a production configuration) |
 
+### `DELETE /me/account` (ADR 0149, #2983)
+
+Self-serve account deletion: the caller deletes their own account. Body
+`{"confirm": "delete my account"}`; the server checks the phrase, case-
+and space-insensitively. The route names no account (the user id is the
+session's), so only the caller's own can be deleted, and an admin gets
+no extra reach.
+
+It removes the person's decks, deck-request history, playmats (rows and
+image files), synced settings, last table setup, and the Discord
+identity (id, name, avatar hash, encrypted refresh token); turns every
+seat they held into `"Deleted player"` in the lobby, the live room, the
+games' files on disk (crash dump, replay, restore point) and the
+database; scrubs the `users` row to a tombstone (`deleted_at` set, name
+`"Deleted player"`, session watermark stamped); revokes every session
+and closes open sockets; and clears the cookie. It does not delete the
+`users` row, the games, or anything the other players keep. GitHub
+issues already filed are public and stay.
+
+**Response 204**, with a `Set-Cookie` that evicts the session cookie.
+
+| Status | Reason |
+|---|---|
+| 400 | the confirmation phrase is missing or wrong |
+| 401 | no session, or one that is expired or revoked |
+| 403 | the session has no user: a guest seat, a spectator link, the admin token, or any session on a server with no database |
+| 404 | the account no longer exists |
+| 409 | the person holds a seat at a table that has not ended; the message names it. Nothing was changed |
+| 410 | the account was already deleted |
+| 429 | one try every ten seconds, burst three, per caller |
+| 503 | the server has no user database |
+
+The audit line `account deleted` carries the user id and counts, never a
+name or a Discord id. The client's deletion dialog (the account menu)
+and the privacy page (`#/privacy`) both call this route.
+
 ### `POST /admin/users/{id}/revoke-sessions` *(admin only)*
 
 ADR 0051's "admin remove-user". It does what the name says and nothing
@@ -2980,6 +3325,235 @@ are unaffected, including the caller's.
 | 503 | no user database (`CMDCTRL_DATA_DIR` empty) |
 
 ---
+
+## Moderation (#2984)
+
+Basic tools for tables strangers share
+([ADR 0075 §2.6](decisions/0075-table-settings-and-host-controls.md)): a
+name and chat filter, remove-and-block, and report a player. There is no
+external service, no account ban and no automatic action against anyone:
+the filter stops the casual, the block is per table, and a report is a tip
+to the person who runs the server.
+
+### The name and chat filter
+
+A small hand-kept denylist of slurs and a few direct abuse phrases
+(`server/internal/moderation/denylist.txt`; its header says what it covers
+and how to add to it), with normalisation: case, diacritics, look-alike
+letters, leetspeak (`n1gg3r`), zero-width characters, stretched letters
+and letters spaced out one or two at a time. It is **not** a profanity
+filter: ordinary swearing and trash talk pass. A test holds it clear of
+every Magic card name, in the Scryfall dump (`CMDCTRL_SCRYFALL_DUMP`) and
+in the catalog.
+
+- **Display names** (a guest's typed name, or the Discord display name
+  shown on a seat): a name on the list is refused with **400**
+  `{"error": "that name isn't allowed here; pick another", "code":
+  "name_not_allowed"}` and nothing is seated. For a Discord seat the
+  global name is tried first; if only it is listed the username stands in,
+  and if both are the join is refused with `your Discord display name
+  isn't allowed here; change it on Discord and sign in again` (same code).
+- **Table names** (`POST /games` with an explicit `name`): the same 400.
+  The generated names are hand-written and checked, and a creator's own
+  display name is left out of the personal templates if it is listed.
+- **Chat**: a listed word is **masked** with asterisks before anyone sees
+  the line, the sender included, and the rest of the message goes out.
+  Masking rather than refusing: a false positive costs one word, not the
+  message, and the sender is not told which word to rephrase around. Bot
+  lines are not filtered. See [protocol.md, chat](protocol.md#chat-both-directions--added-in-s07).
+
+### Remove and block
+
+`DELETE /games/{id}/seats/{player_id}?block=true` removes the seat (the
+routes and authority are those above: the host, creator or an admin on an
+unstarted table; an admin alone on a started game) **and** blocks it from
+this table. A blocked person who tries again, through the invite link or
+the Discord sign-in flow, is refused **403** `{"error": "you were removed
+from this table and can't take a seat here again", "code":
+"blocked_from_table"}`. The refusal comes after the invite is checked, so
+only someone holding a valid invite sees it, and it does not say who
+blocked them.
+
+What a block keys on, and so what it holds against:
+
+| The removed seat was | Blocked by | A person gets back in by |
+|---|---|---|
+| signed in with Discord | their account and their Discord id | nothing short of a different Discord account; **or** signing out and joining as a guest under another name |
+| a guest | their name, folded (case, spacing, accents, leetspeak: `Bob`, `b0b` and `B O B` are one guest) | typing a different name |
+
+A guest has no account, no stable id and no address the server keeps, so
+a name is all there is; the block is a speed bump for them, not a wall. A
+name block never touches a signed-in joiner: two people called "Alex" on
+Discord are two people. **Rotating the invite is the wall**
+([`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate-creator-or-admin)),
+and the Remove control says so.
+
+A block is **per table**, stored with it (`table_blocks`, migrations
+0016 and 0017) so a restart does not lift it, and it is deleted with the
+table. It is **listed and can be lifted** (below, #3113). A block made
+against a spectator also stops that person taking a seat, and a block made
+against a seat also stops them watching: the keys are the table's, whatever
+the person was doing when they were made. Deleting an account removes
+every block *entry* that names that account or its Discord id, with the
+display name kept in it.
+
+### `GET /games/{id}/blocks` and `DELETE /games/{id}/blocks/{block_id}`
+
+Who this table has blocked, and lifting one (#3113).
+
+**Who may call them: the same split as removing a seat.** The table host,
+the game's creator or an admin on a table that has **not started**; an
+admin alone on a started or ended one. The host and the creator are
+answered **409** there (as `DELETE /games/{id}/seats/{player}` answers
+them), another seat or a spectator or a signed-in stranger **403**,
+anonymous **401**, an unknown table **404**.
+
+```json
+{ "blocks": [
+  { "id": "<opaque>", "label": "Dave", "kind": "account", "created_at": 1791868000000 },
+  { "id": "<opaque>", "label": "bob",   "kind": "guest",   "created_at": 1791868100000 }
+] }
+```
+
+One line per **removal**, not per identity: a signed-in person's account
+and Discord id are two rows and one line. `label` is the account's display
+name as the table knew it, or a guest's **folded** name (`Bob`, `b0b` and
+`B O B` list as `bob`); it is never a Discord id and never a user id.
+`kind` is `account` or `guest`, so the list can say what the block holds
+against (an account; or only a name). A spectator removed *without* "also
+block", and a guest spectator who gave no name, are not lines: there is
+nothing to lift.
+
+`DELETE` removes every row of the entry and answers **200** with the list
+as it now stands; **404** when the table has no such entry. The person can
+take a seat or watch again, if they still hold an invite. Lifting an entry
+also lifts the spectator-session marker written with it, so a spectator
+session the table killed with "remove and block" works again.
+
+Both are in the client: the host and the creator see the list on their
+waiting table's card, and an admin on any table's card in the lobby and on
+the Games view's table page.
+
+### `POST /games/{id}/reports`
+
+A seated player reports another human seat at the same table, or a
+**spectator** watching it (#3113). The session must be the seat's own (an
+admin token, a spectator and a seat at another table get **403**).
+
+```json
+{ "player_id": "<the reported seat's player id>", "reason": "slurs in chat" }
+{ "spectator_id": "<a spectator's id from GET /games/{id}/spectators>", "reason": "slurs in chat" }
+```
+
+Name exactly one (**400** for both). A spectator must have a socket open at
+the table when the report is filed (**404** otherwise); the report is the
+same record in the same list, with the reported line reading `<name>
+(spectator)`.
+
+**Response 201** `{"id": "<report id>"}`. The report keeps both seats'
+names and account ids, the table's name, the reason (at most 300
+characters), and up to 10 recent chat lines (everyone's, with the seat
+names they were written under, already masked). Nobody is notified, the
+reported player is not told, and nothing happens to them automatically.
+
+**Rate limit:** per reporter (their account, or their seat for a guest),
+a burst of **3** then one every **5 minutes**. A refused attempt still
+spends a token. Over it: **429**.
+
+| Status | Reason |
+|---|---|
+| 400 | no reason, a malformed `player_id` / `spectator_id`, or both named |
+| 401 | no session |
+| 403 | not a seat at this table (an admin token, a spectator, another table's player, or a removed seat) |
+| 404 | no such table, or the spectator is not watching it |
+| 422 | your own seat, a bot, or a player who is not at this table |
+| 429 | too many reports |
+
+Chat is not stored anywhere else. The last 20 lines of each table are
+held in memory (`ws.RecentChatLimit`) only so a report can attach them,
+and are gone when the server restarts.
+
+### Spectators: `GET /games/{id}/spectators`, `DELETE /games/{id}/spectators/{spectator_id}`
+
+A spectator holds no seat, so until #3113 nothing could be done about one
+short of rotating the spectator invite. Each spectator session now carries
+a random **spectator id** (`Principal.SpectatorID`, minted at
+`POST /games/{id}/spectate`, signed into the token), and the hub knows
+which sessions have a socket open at a table. Both routes work from that:
+"who is watching" is a session with a live socket, one line however many
+tabs it has open. A session minted before this existed has no id and
+cannot be listed, reported or removed until it expires.
+
+`GET` lists them, for a **seat of that table** or its host, creator or an
+admin (**403** otherwise):
+
+```json
+{ "spectators": [{ "id": "<session id>", "name": "Eve", "signed_in": true, "since": 1791868000000 }] }
+```
+
+`name` is what the spectator typed, or their Discord display name when
+signed in, put through the name filter; `"Spectator"` when there is none
+or it is refused. No user id and no Discord id is served. An admin's own
+socket is never listed.
+
+`DELETE ...?block=true` removes one (**404** when they are not watching):
+the **host, the creator or an admin**, in **any game state**. The owner's
+rule that a started game's *seats* are the admin's alone (#3093) protects
+the game: removing a seat concedes a player out of it. A spectator is not
+in the game, so removing one changes nothing a player can see or lose, and
+making the host wait for an admin to silence a chat-spammer mid-game would
+defeat the point.
+
+It ends that session at this table (`auth.WithSeatCheck` refuses it on
+every request and upgrade, with the same `removed from table` 401 a
+removed seat gets) and closes its sockets with code 1000 and reason
+`removed from table`, which the client shows as "You were removed from
+this table." The session marker is a `table_blocks` row (kind
+`spectator`, migration 0017), so a restart does not bring it back. With
+`?block=true` the spectator's identities are blocked too, exactly as a
+seat's: account and Discord id for a signed-in spectator, the folded name
+for a guest who gave one. The answer is **200**
+`{"blocked": bool, "spectators": [...]}`; `blocked` is **false** when a
+block was asked of a guest who gave no name, who has no identity a block
+can hold: they can come back with a new session while the spectator link
+works, so rotate it
+([`POST /games/{id}/invites/rotate`](#post-gamesidinvitesrotate-creator-or-admin)).
+
+A blocked person who tries to watch is refused **403**
+`{"error": "you were removed from this table and can't watch it again",
+"code": "blocked_from_table"}`.
+
+### `GET /admin/reports` *(admin only)*
+
+The reports, newest first, for the admin **Reports** tab (`#/admin/reports`).
+`requireAdmin`, so an allowlisted person in player mode gets a non-admin's
+403. Works with or without the user database.
+
+```json
+{
+  "retention_days": 90,
+  "reports": [{
+    "id": "<uuid>", "created_at": 1791868000000,
+    "game_id": "<uuid>", "game_name": "Friday night",
+    "reporter": { "player_id": "<uuid>", "user_id": "<uuid, signed-in only>", "name": "Alice" },
+    "reported": { "player_id": "<uuid>", "name": "Bob" },
+    "reason": "slurs in chat",
+    "excerpt": [{ "author": "Bob", "text": "you are ********", "at": "2026-10-13T11:51:00Z" }]
+  }]
+}
+```
+
+A report is removed **90 days** after it is filed (`lobby.ReportRetention`,
+swept every 6 hours and on every filing and read), or sooner, oldest
+first, past 500 (`lobby.ReportMaxRows`). It outlives its table.
+Deleting an account removes the reports that person filed or is the
+subject of. The privacy page states all of this.
+
+### `DELETE /admin/reports/{id}` *(admin only)*
+
+Dismiss a report: **204**, **404** if there is none, **400** for a
+malformed id. It removes the report from the list and does nothing else
+to anyone.
 
 ## Admin views (ADR 0124)
 
@@ -3065,7 +3639,9 @@ requests (at most 100, newest first, then `deck_requests_truncated`).
     "last_sign_in_at": 1791200000000,
     "discord_linked_at": 1790000000000,
     "sessions_invalid_before": 1791150000000,
-    "revoke_path": "/admin/users/<uuid>/revoke-sessions"
+    "revoke_path": "/admin/users/<uuid>/revoke-sessions",
+    "access_checked_at": 1791190000000,
+    "access_result": "admitted"
   },
   "games": [ { "id": "<game uuid>", "their_seat": 0, "…": "a table row, below" } ],
   "games_truncated": false,
@@ -3093,6 +3669,13 @@ decision 3), so there is no list of them. `sessions_invalid_before`,
 absent while unset, is the only per-person session state: a session
 issued at or before it is refused. `revoke_path` is
 [`POST /admin/users/{id}/revoke-sessions`](#post-adminusersidrevoke-sessions-admin-only).
+`access_result` is the sign-up gate's last answer for the account
+([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)
+§1 item 7): `admitted`, `not_member`, `no_role`, or `unchecked` when
+there has been none (the gate was off, or the account is an exempt
+admin); `access_checked_at`, absent for never, is when it was given. A
+refused sign-in writes nothing, so a refusal is only ever recorded by
+the re-check at renewal.
 A deck has no list and no coverage report. A deck request is matched to
 the account through its Discord identity in SQL. `playmats` are the
 account's saved playmats in slot order, absent for none, each with its
@@ -3255,10 +3838,20 @@ seats carry.
     "bot_seats": 1,
     "practice_tables": 0,
     "admin_views": 1
+  },
+  "capacity": {
+    "load": 14,
+    "load_limit": 180,
+    "connections": 9,
+    "connection_limit": 400
   }
 }
 ```
 
+- **`capacity`** is the weighted table load and the live sockets against
+  their caps ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md)),
+  the numbers `cmdctrl_capacity_used` and `cmdctrl_capacity_limit` report.
+  A limit of `0` means that cap is off.
 - **`tables`** lists every table with a live socket, and every running
   table that is not archived (a bots-only table has none). Running tables
   come first, then waiting ones, then ended ones, each by name. Practice
@@ -3267,7 +3860,12 @@ seats carry.
   `bot` or `agent`; `account` when a signed-in person holds it, else
   `guest_name`; `discord_pending` for a Discord seat whose person has not
   signed in again (the snowflake is never served); `bot_tier`,
-  `agent_client` and `deck_name` when set; `host`. `connected` is the
+  `agent_client` and `deck_name` when set; `host`; `removed: true` for a
+  seat an admin took out of a game under way (#3093; `game.Player.Removed`),
+  which the pages read as "removed" and not as a player who left or
+  dropped off (#3113). `removed` is absent on a table that is not in
+  memory, since the flag lives in the engine's snapshot, and on every
+  seat of a table that has not started. `connected` is the
   number of live sockets bound to the seat, an admin's included, and
   `since` the earliest of their connection times, absent when there is
   none. A seat's account takes its name from the seat and its avatar from
@@ -3300,6 +3898,90 @@ seats carry.
 
 ---
 
+## Capacity (#3103)
+
+### `POST /admin/capacity/restore-deferred` *(admin only)*
+
+Restores the tables the boot left on disk because the table-load cap was
+full ([ADR 0148](decisions/0148-capacity-limits-for-a-public-launch.md),
+2026-10-13 amendment), as many as fit under the cap **now**. No body.
+
+It runs the boot pass's own code over the restore points on disk:
+tables with people first, then the most recently active, first-fit by
+cost. A restore point whose table already has a room is skipped, so it
+never touches a live table. The admitted cost is held against the cap
+while the rooms are rebuilt, so a table created at the same moment
+cannot push the load past it. Rows are never closed by this call. Two
+calls at once run one after the other.
+
+```json
+{ "restored": 1, "still_deferred": 1, "failed": 0, "load": 10, "load_limit": 180 }
+```
+
+- `restored`: tables brought back and registered.
+- `still_deferred`: tables still on disk because the cap has no room yet.
+  Their restore points and rows are exactly as they were.
+- `failed`: restore points that could not be rebuilt (a newer schema, an
+  unreadable file, a table with no usable rows). They are logged as at
+  boot and are not counted as deferred.
+- `load`, `load_limit`: the table load after the call, against the cap
+  (`0` is no cap, and then every deferred table comes back).
+
+Also sets `cmdctrl_boot_restore_deferred_games` to `still_deferred`, so the
+`RestoreDeferredGames` alert clears when the last one is back. It answers
+**200** with zeros when nothing was waiting.
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 401 | no session |
+| 403 | caller is not an admin, including an allowlisted person in player mode |
+
+---
+
+## Bot model spend (#2980)
+
+### `GET` and `PUT /admin/bot/model` *(admin only)*
+
+The hosted-model spend guard ([ADR 0033](decisions/0033-ai-bot-seat.md),
+amendment 2026-10-12): the daily and monthly token counters and the kill
+switch. Both verbs answer with the same body.
+
+`PUT` takes `{"enabled": false}` to turn every model call off at once, for
+every table, without a redeploy, and `{"enabled": true}` to turn them back
+on (a spent cap still applies). `enabled` is required: a missing field is
+a 400, never a silent off. The setting survives a restart.
+
+**Response 200**
+
+```json
+{
+  "state": "daily_cap",
+  "enabled": true,
+  "note": "Bots on the assisted and strong tiers are unavailable, and any already seated play like the heuristic tier. This server's daily model budget is used up; it resets 2026-10-13 00:00 UTC.",
+  "daily_tokens": 1004211,
+  "daily_limit": 1000000,
+  "monthly_tokens": 3120440,
+  "monthly_limit": 10000000,
+  "day_resets_at": "2026-10-13T00:00:00Z",
+  "month_resets_at": "2026-11-01T00:00:00Z"
+}
+```
+
+`state` is `ok`, `disabled` (the switch), `monthly_cap` or `daily_cap`;
+`note` is empty when it is `ok`. A limit of `0` means that cap is off.
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing or not a boolean, or an unknown field |
+| 401 | no session |
+| 403 | caller is not an admin |
+| 500 | the switch could not be saved |
+| 503 | no model transport is configured, so there is nothing to cap |
+
+---
+
 ## Discord sign-in (S12.5, ADR 0004 / 0050 / 0051)
 
 `GET /auth/discord/start` and `GET /auth/discord/callback` are the
@@ -3317,6 +3999,54 @@ callback also:
   that user, and clears the pending id. One transaction, idempotent,
   on every sign-in. A failure is logged and the sign-in goes ahead;
   the next sign-in tries again.
+
+### The sign-up gate (ADR 0156 §1)
+
+[ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)
+§1. With `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and
+`CMDCTRL_DISCORD_PLAYER_ROLE_ID` both set, an account needs that role in
+that Discord server (on the C2 server, Elder Dragon Highlander, which a
+mod grants; the role everyone gets on joining gives no account). With
+both unset the gate is off and everything below is skipped: sign-in is
+exactly as described above.
+
+- **Scope.** `start` asks Discord for `identify guilds.members.read`
+  instead of `identify`.
+- **The check.** After `/users/@me`, the callback reads
+  `GET /users/@me/guilds/{guild}/member` with the person's access token.
+  Admitted when it answers 200 and `roles` contains the role. A 404 (not
+  a member) or a member without the role is refused. Anything else (a
+  5xx, a timeout, a 429 after one retry) is an outage.
+- **Admins are exempt:** a Discord id on `CMDCTRL_DISCORD_ADMIN_USER_IDS`
+  is admitted without the call.
+- **Admitted:** unchanged, and the answer is stored on the account
+  (`users.access_checked_at`, `users.access_result`).
+- **Refused, login page** (and linking Discord to a guest seat): **302**
+  to `/#/request-access`. No session is issued, and no `users` or
+  `identities` row is created or touched; a linked seat stays the guest's.
+- **Refused, invite link:** the person takes the seat as a **guest**
+  named from their Discord display name, with no `user_id` and no Discord
+  identity on the seat or the session, exactly as if they had typed that
+  name. The fragment is the invite flow's, with `name` and no `user_id`.
+  The session lasts `CMDCTRL_SESSION_TTL`.
+- **Outage:** **302** to `/#/request-access?retry=1`, in either flow,
+  and nothing is written. A sign-in fails closed.
+
+The re-check at renewal is under
+[`POST /me/session`](#post-mesession-adr-0110-1-items-5-and-6-s55).
+
+### `GET /community` (ADR 0156 §6)
+
+Public, no credential. The client's source for every Discord placement:
+
+```json
+{ "invite_url": "https://discord.gg/…", "gate": true }
+```
+
+`invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
+then hides every Discord link). `gate` is whether sign-up needs the
+admitting role. No guild, role or user id is ever in it. Answered with
+`Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`
 
@@ -3589,6 +4319,7 @@ after the report is filed and disappears when the game is evicted.
 
 ```json
 {
+  "status": "filed",
   "url": "https://github.com/krakenhavoc/cmd_and_ctrl/issues/123",
   "number": 123,
   "label": "bug",
@@ -3596,8 +4327,26 @@ after the report is filed and disappears when the game is evicted.
 }
 ```
 
+**Three successes** (ADR 0017 §10). The body's `status` says which:
+
+| Status | `status` | Meaning |
+|---|---|---|
+| 201 | `filed` | a new issue was opened (body above) |
+| 200 | `commented` | the same normalised title, or the same client error line, was filed inside the last 24 h, so a `+1` comment went on that issue instead. Body: `status`, `url`, `number` of the existing issue, `comment` (the comment's URL), `note`. Screenshots on a duplicate are not kept |
+| 202 | `queued` | over a limit, or filing is paused: the report was **kept for the admin and not filed**. Body: `status`, `report_id`, `note` (a sentence for the reporter that says so). No `url` or `number` |
+
+The limits are 5 reports per account per hour and 50 issues per UTC
+day across everyone, on top of the per-IP bucket below. A server with
+no `CMDCTRL_DATA_DIR` has nowhere to queue, so there those cases are
+`429` (a limit) and `503` (paused) instead of `202`.
+
+Every issue filed carries the `player-report` label as well as the
+kind's label; `label` in the body is still the kind's. The label must
+exist on the repo (ADR 0017 §10.4).
+
 `report_id` is present only when the report stored artifacts (images,
-a pinned replay, or both). It is the key for both routes below.
+a pinned replay, or both), and always on a `queued` response. It is the
+key for the routes below.
 
 `label` is the label the issue actually landed with, and is absent
 when none did — so a client can say "filed as enhancement" only when
@@ -3617,6 +4366,60 @@ that is true.
 A rejected attachment fails the whole report — no issue is filed — and
 a report whose GitHub call fails has its stored artifacts deleted, so
 an outage never leaves orphaned images at live URLs.
+
+### `GET /admin/bugreport`
+
+**Admin only.** The state of the throttle (ADR 0017 §10) and the
+reports kept instead of filed, newest first, at most 100.
+
+**Response 200**
+
+```json
+{
+  "paused": false,
+  "filed_today": 12,
+  "daily_cap": 50,
+  "account_max": 5,
+  "account_window_seconds": 3600,
+  "queue_enabled": true,
+  "queued": [
+    {
+      "report_id": "6f1c0b7e-9a2d-4c31-8f55-1b2d3e4f5a60",
+      "created_at": "2026-10-12T16:00:00Z",
+      "reason": "account limit",
+      "kind": "bug",
+      "label": "bug",
+      "reporter": "Alice",
+      "game_id": "…",
+      "title": "[in-app] cast dialog eats X value",
+      "body": "…the markdown body it would have been filed with…"
+    }
+  ]
+}
+```
+
+`reason` is `paused`, `account limit` or `daily cap`. `paused_at` is
+present while paused. `queue_enabled` is false on a server with no data
+dir, where `queued` is always empty. A queued report's pinned replay and
+game log are fetched with the routes below, by `report_id`.
+
+| Status | Reason |
+|---|---|
+| 401 | no valid session |
+| 403 | not an admin |
+
+### `PUT /admin/bugreport/paused`
+
+**Admin only.** The kill switch: `{"paused": true}` stops every GitHub
+write (issues and `+1` comments) without a redeploy and queues each
+report instead; `{"paused": false}` resumes. The flag survives a
+restart. Answers `{"paused": <bool>}`.
+
+| Status | Reason |
+|---|---|
+| 400 | `paused` missing |
+| 401 | no valid session |
+| 403 | not an admin |
 
 ### `GET /bugreport/att/{report_id}/{name}`
 
@@ -3696,6 +4499,13 @@ Served by the `cards` package. Both routes require authentication.
 
 Card metadata from the Scryfall bulk index. 404 if the card is
 unknown or the index has not been loaded yet.
+
+`artist` (#2982, additive, omitted when Scryfall prints none) is the
+illustrator's name, and each entry of `card_faces` carries its own
+`artist` for a double-faced card. The client credits it ("Illus.
+<artist>") wherever Scryfall's `art_crop` image, which drops the artist
+line, is the main view of a card: the board's art tiles and the stack
+lane's tiles. Full card images print the line themselves.
 
 ### `GET /cards/{id}/image?size=<name>`
 

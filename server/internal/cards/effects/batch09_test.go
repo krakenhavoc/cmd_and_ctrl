@@ -560,7 +560,7 @@ func TestB09SteelshapersGiftOffersOnlyEquipment(t *testing.T) {
 	}
 }
 
-func TestB09StoneforgeMysticTutorsAnEquipmentAndHasNoActivatedAbility(t *testing.T) {
+func TestB09StoneforgeMysticTutorsAnEquipment(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	seedSearchLibrary(me,
@@ -580,9 +580,10 @@ func TestB09StoneforgeMysticTutorsAnEquipmentAndHasNoActivatedAbility(t *testing
 	if !b02bHandHasNamed(me, "Sword") {
 		t.Error("the Equipment did not reach the hand")
 	}
+	// The {1}{W},{T} ability landed with #3138 (token_purposes_and_gaps_3138_test.go).
 	spec, _ := Lookup(b09StoneforgeMysticOracle)
-	if len(spec.Activated) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the put-onto-the-battlefield ability is a declared omission, not a half-built ability")
+	if len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("Stoneforge Mystic should carry its activated ability and grade full")
 	}
 }
 
@@ -696,7 +697,7 @@ func TestB09SyphonMindDrawsOnePerOpponentWhoDiscards(t *testing.T) {
 
 // --- Roiling Regrowth ---------------------------------------------
 
-func TestB09RoilingRegrowthSacrificesAtCastAndFetchesTwoTappedBasics(t *testing.T) {
+func TestB09RoilingRegrowthSacrificesOnResolutionAndFetchesTwoTappedBasics(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	fodder := seedLandOnBattlefield(g, me.ID, "Forest", "Basic Land — Forest")
@@ -706,11 +707,15 @@ func TestB09RoilingRegrowthSacrificesAtCastAndFetchesTwoTappedBasics(t *testing.
 		game.Card{Name: "Forest C", TypeLine: "Basic Land — Forest"},
 		game.Card{Name: "Bayou", TypeLine: "Land — Swamp Forest"},
 	)
-	castWithSacrifice(t, g, "Roiling Regrowth", "Instant", b09RoilingRegrowthOracle, fodder)
-	if g.Battlefield.Contains(fodder) {
-		t.Error("the sacrifice is a cost and is paid at announce")
+	castCatalogSpell(t, g, "Roiling Regrowth", "Instant", b09RoilingRegrowthOracle, nil)
+	if !g.Battlefield.Contains(fodder) {
+		t.Error("nothing is sacrificed at cast")
 	}
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, fodder)
+	if g.Battlefield.Contains(fodder) {
+		t.Error("the land is sacrificed as the spell resolves")
+	}
 	c := searchChoiceFor(g, me.ID)
 	if c == nil {
 		t.Fatal("no search prompt")

@@ -32,6 +32,11 @@ var ErrTooManyOpenTables = errors.New("lobby: too many open tables")
 // creator's 1-per-30-seconds bucket is empty.
 var ErrCreateRateLimited = errors.New("lobby: creating tables too quickly")
 
+// ErrCreateIPRateLimited is the same refusal from the per-IP bucket
+// (ADR 0148): one machine creating tables faster than the operator
+// allows, whichever accounts it signs in as.
+var ErrCreateIPRateLimited = errors.New("lobby: too many tables created from this address, try again in a moment")
+
 // TooManyOpenTablesError carries the tables that count against the
 // cap, so the 409 can name them.
 type TooManyOpenTablesError struct {

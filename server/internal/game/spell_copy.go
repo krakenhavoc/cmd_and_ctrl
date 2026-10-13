@@ -505,6 +505,7 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	copyCard.CounterStampedAt = nil
 	copyCard.LostLastCounter = false
 	copyCard.AttachedTo = TargetRef{}
+	copyCard.AttachedEpoch = 0
 	copyCard.effective = nil
 	// CR 707.2: a keyword an effect GAVE the original spell (ADR 0107
 	// §3) is not a copiable value. The next stack step gives the copy
@@ -612,6 +613,16 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	// at have become the target of one (CR 115.3), which is what a
 	// ward trigger or Monk Gyatso is watching for.
 	g.emitBecameTargetLocked(controller, copyCard.InstanceID, copyCard.InstanceID, meta.Targets)
+
+	// The copy is created, not cast (no EventCast), but "whenever you
+	// cast or copy" watches for it (magecraft). After the targets event
+	// so a ward trigger sorts first, as it does for a cast.
+	g.EmitEvent(Event{
+		Kind:   EventSpellCopied,
+		Actor:  controller,
+		Source: src.InstanceID,
+		CardID: copyCard.InstanceID,
+	})
 }
 
 // resolveCopyTargetsLocked is the submit half of the CR 707.10c

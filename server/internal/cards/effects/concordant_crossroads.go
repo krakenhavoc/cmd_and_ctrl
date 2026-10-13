@@ -22,6 +22,7 @@ func init() {
 		Name:         "Concordant Crossroads",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label: "All creatures have haste.",
 			Layer: game.Layer6Ability,
 			AppliesTo: func(target *game.Card, _ *game.Game, _ *game.Card) bool {
 				return target.IsCreature()

@@ -113,6 +113,9 @@ export function impulseGrantFor(
   if (zoneKind !== "exile" || !viewerID) return null;
   const grant = card.exile_play;
   if (!grant || grant.player !== viewerID) return null;
+  // #3192: a conditional grant whose condition is false is dormant, not
+  // gone. The server refuses the cast; the browser does not offer it.
+  if (grant.condition_unmet) return null;
   if (grant.not_before_seq !== undefined && turn !== undefined && turn < grant.not_before_seq) {
     return null;
   }

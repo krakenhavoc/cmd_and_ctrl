@@ -6,7 +6,10 @@
   // any, belongs on screen, measures that hint's anchor, places the card
   // (lib/hints/place.ts) and publishes it as `activeTip`. It draws the
   // card itself, except for a hint whose place is the Settings dialog,
-  // which the dialog's HintSlot draws inside its focus trap.
+  // which the dialog's HintSlot draws inside its focus trap, and a site
+  // page's hint when the page is in the site frame: that is published as
+  // "inline" and the frame's PageTipSlot draws it under the lede, never
+  // over the page's controls (ADR 0156 §3 item 5).
   //
   // What it reads, and nothing else: the route and the session (the
   // place and the context, with whether the person has a finished game:
@@ -37,6 +40,7 @@
     hintEngine,
     setActiveTip,
     TIP_BODY_ID,
+    TIP_SLOT_ATTR,
     type ActiveTip,
   } from "../../hints/runtime";
   import { anchorRect, labelSelector, resolveAnchor, sameRect } from "../../tutorialAnchor";
@@ -201,9 +205,16 @@
       height: card?.offsetHeight || 132,
     };
     const viewport = { width: window.innerWidth, height: window.innerHeight };
-    const placement = isPhone(viewport.width)
-      ? ({ kind: "strip" } as const)
-      : placeCard({ anchor: ring, card: size, viewport, avoid: avoidRects(anchor) });
+    // A site page in the frame draws its tips inside it, under the lede,
+    // never over its controls (ADR 0156 §3 item 5). The table, the
+    // Settings dialog and a page with no slot keep the floating card.
+    const inline =
+      place !== "table" && place !== "settings" && document.querySelector(`[${TIP_SLOT_ATTR}]`);
+    const placement: ActiveTip["placement"] | { kind: "wait" } = inline
+      ? { kind: "inline" }
+      : isPhone(viewport.width)
+        ? { kind: "strip" }
+        : placeCard({ anchor: ring, card: size, viewport, avoid: avoidRects(anchor) });
     if (placement.kind === "wait") {
       show(null, null);
       return;
@@ -240,7 +251,7 @@
 <!-- The polite live region: a tip is read out once when it appears. -->
 <div class="hint-live" aria-live="polite">{announcement}</div>
 
-{#if $activeTip && $activeTip.hint.place !== "settings"}
+{#if $activeTip && $activeTip.hint.place !== "settings" && $activeTip.placement.kind !== "inline"}
   <TipCard tip={$activeTip} />
 {/if}
 

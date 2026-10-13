@@ -1,7 +1,6 @@
 package effects
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -322,21 +321,20 @@ func TestB29HallowedHauntingGatesAtSevenAndSizesItsSpirits(t *testing.T) {
 	if got := b29CountNamed(g, me.ID, "Spirit Cleric"); got != 1 {
 		t.Errorf("a creature spell: %d Clerics, want 1", got)
 	}
-	if spec, _ := Lookup(b29HallowedHauntingOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the carried-sizing gap must be declared")
+	if spec, _ := Lookup(b29HallowedHauntingOracle); spec.Completeness != CompletenessFull {
+		t.Error("the Spirit Cleric sizes itself, so the Haunting is complete")
 	}
 }
 
-// #683: when the last Haunting leaves, its Spirit Clerics shrink to
-// 0/0. One that never had a counter lingers (the placeholder
-// convention); one that had counters and lost them all is no
-// placeholder (Card.LostLastCounter) and dies.
-func TestB29HauntingClericsShrinkAndASpentOneDies(t *testing.T) {
+// The Spirit Cleric's size is the TOKEN's own printed ability (ADR 0083),
+// so it keeps it when the last Haunting leaves, and a Cleric that gained and
+// lost counters is still no 0/0 stand-in.
+func TestB29SpiritClericKeepsItsSizeWhenTheHauntingLeaves(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	haunting := b29Push(g, me.ID, "Hallowed Haunting", "Enchantment", b29HallowedHauntingOracle, "{2}{W}{W}", 0, 0, "W")
 	g.WithWriteLock(func() {
-		_ = g.CreateTokenForEffect(me.ID, TokenCard("0/0 white Spirit Cleric"), 2)
+		_ = g.CreateTokenForEffect(me.ID, spiritClericToken(), 2)
 	})
 	var clerics []uuid.UUID
 	for _, c := range g.Battlefield.Cards {
@@ -351,7 +349,7 @@ func TestB29HauntingClericsShrinkAndASpentOneDies(t *testing.T) {
 
 	gainAndLoseACounter(t, g, spent)
 	if !g.Battlefield.Contains(spent) {
-		t.Fatal("while the Haunting sizes it, a Cleric survives losing its last counter")
+		t.Fatal("a Cleric survives losing its last counter while it has a size")
 	}
 	if got := effectiveToughness(t, g, spent); got != 2 {
 		t.Errorf("two Spirits: toughness %d, want 2", got)
@@ -359,14 +357,13 @@ func TestB29HauntingClericsShrinkAndASpentOneDies(t *testing.T) {
 
 	b15Destroy(t, g, haunting)
 	runStateChecksViaDraw(t, g)
-	if g.Battlefield.Contains(spent) {
-		t.Error("a Spirit Cleric that lost its counters survived shrinking to 0/0")
-	}
-	if !g.Battlefield.Contains(fresh) {
-		t.Error("a Spirit Cleric that never had a counter should linger as a 0/0")
-	}
-	if spec, _ := Lookup(b29HallowedHauntingOracle); len(spec.Caveats) != 1 || !strings.Contains(spec.Caveats[0], "lost them all dies") {
-		t.Errorf("the caveat must tell players the spent Cleric dies: %v", spec.Caveats)
+	for _, id := range []uuid.UUID{spent, fresh} {
+		if !g.Battlefield.Contains(id) {
+			t.Fatal("a Spirit Cleric died when the Haunting left; it carries its own size")
+		}
+		if got := effectiveToughness(t, g, id); got != 2 {
+			t.Errorf("the Haunting is gone: toughness %d, want 2 (two Spirits)", got)
+		}
 	}
 }
 
@@ -381,9 +378,11 @@ func TestB29ChitterspitterEatsATokenEachUpkeepAndGrowsSquirrels(t *testing.T) {
 		t.Fatalf("no acorns: power %d, want 1", got)
 	}
 	b12ToMyNextUpkeep(t, g)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	pickCard(t, g, me.ID, token)
+	passPriorityAroundTable(t, g)
+	if prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID); prompt == nil || prompt.ChooseMin != 0 || hasID(prompt.ChooseCards, squirrel) || !hasID(prompt.ChooseCards, token) {
+		t.Fatal("only tokens are offered, as the trigger resolves, with a floor of zero for the \"may\"")
+	}
+	answerOwnPermanents(t, g, me.ID, token)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(token) {
 		t.Error("the chosen token is sacrificed")
@@ -670,15 +669,17 @@ func TestB29ZiatoraFlingsAtTheEndStepThroughAReflexiveTrigger(t *testing.T) {
 	}
 	before := opp.Life
 	advanceToEndStepOf(t, g, 0)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	for _, id := range p.PickTargetCards {
+	passPriorityAroundTable(t, g)
+	p := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID)
+	if p == nil || p.ChooseMin != 0 {
+		t.Fatal("the sacrifice is asked as the trigger resolves, with a floor of zero for the \"may\"")
+	}
+	for _, id := range p.ChooseCards {
 		if id == ziatora {
 			t.Error("Ziatora herself is not \"another creature\"")
 		}
 	}
-	pickCard(t, g, me.ID, fodder)
+	answerOwnPermanents(t, g, me.ID, fodder)
 	// The end-step trigger resolves: the sacrifice, then the
 	// reflexive trigger asks for its target.
 	b04WaitForPick(t, g, me.ID)
@@ -692,6 +693,29 @@ func TestB29ZiatoraFlingsAtTheEndStepThroughAReflexiveTrigger(t *testing.T) {
 	}
 	if got := b29CountNamed(g, me.ID, "Treasure"); got != 3 {
 		t.Errorf("%d Treasures, want 3", got)
+	}
+}
+
+// The damage is the sacrificed creature's last-known power, so an
+// anthem counts: a 1/1 under a Glorious Anthem is a 2-power Fling.
+func TestB29ZiatoraCountsAnAnthemInTheDamage(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b29Push(g, me.ID, "Ziatora, the Incinerator", "Legendary Creature — Demon Dragon", b29ZiatoraOracle, "{3}{B}{R}{G}", 6, 6, "B", "R", "G")
+	fodder := b16Creature(g, me.ID, "Fodder", "Creature — Goblin", 1, 1, "R")
+	pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Glorious Anthem", TypeLine: "Enchantment",
+		OracleID: gloriousAnthemOracle, Owner: me.ID, Controller: me.ID,
+	})
+	before := opp.Life
+	advanceToEndStepOf(t, g, 0)
+	passPriorityAroundTable(t, g)
+	answerOwnPermanents(t, g, me.ID, fodder)
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("a 1/1 under an anthem: opponent life %d, want %d (power 2)", opp.Life, before-2)
 	}
 }
 

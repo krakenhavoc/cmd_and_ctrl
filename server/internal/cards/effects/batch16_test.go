@@ -630,6 +630,7 @@ func TestB16DemonicCounselTutorsADemonOrAnythingWithDelirium(t *testing.T) {
 	)
 	castCatalogSpell(t, g, "Demonic Counsel", "Sorcery", b16DemonicCounselOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !b02bHandHasNamed(me, "Griselbrand") {
 		t.Fatal("one Demon in the library: it goes straight to hand")
 	}
@@ -1041,6 +1042,7 @@ func TestB16HorizonExplorerMakesALanderPerAttackThatFetches(t *testing.T) {
 	seedSearchLibrary(me, searchTestLand("Forest", "Basic Land — Forest"))
 	declareAttack(t, g, opp.ID, explorer, bear)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if b16CountNamed(g, "Lander") != 1 {
 		t.Fatalf("two attackers make one Lander, got %d", b16CountNamed(g, "Lander"))
 	}
@@ -1051,6 +1053,7 @@ func TestB16HorizonExplorerMakesALanderPerAttackThatFetches(t *testing.T) {
 	advanceToMain(t, g)
 	b06AddMana(me, "C", "C")
 	b16Activate(t, g, me.ID, lander, 0, game.ActivateAbilityParams{})
+	takeSearchPrompts(t, g)
 	if g.Battlefield.Contains(lander) {
 		t.Error("the Lander is sacrificed as a cost")
 	}

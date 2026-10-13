@@ -32,10 +32,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // is put onto the battlefield attacking, never declared (CR 508.4), and
 // a delayed trigger sacrifices it at end of combat.
 //
-// Sandbox simplification, declared on the back face: CR 508.4 lets the
-// token's controller choose what it attacks; here it attacks the player
-// the enchanted creature was declared against — the player behind a
-// planeswalker or battle it attacked — as Leonin Warleader's Cats do.
+// CR 508.4 lets the token's controller choose what it attacks, and
+// CreateTokensAttackingYourChoice asks (what the enchanted creature
+// attacked first). No simplification.
 func init() {
 	Register(Spec{
 		OracleID:         dorotheaOracleID,
@@ -54,8 +53,7 @@ func init() {
 	Register(Spec{
 		OracleID:     dorotheaOracleID + "#1",
 		Name:         "Dorothea's Retribution",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Spirit token attacks the player the enchanted creature attacked rather than a player of your choice."},
+		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
 		Grants: []AbilityGrant{{
 			Key: dorotheasRetributionGrant,
@@ -64,12 +62,7 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return attackDeclared(ev, source)
 				},
-				Key: dorotheasRetributionLabel,
-				Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
-					item := game.NewTriggeredItem(source, dorotheasRetributionLabel)
-					item.Params.Player = b17DefendingPlayer(g, ev)
-					return item
-				},
+				Key:    dorotheasRetributionLabel,
 				Effect: dorotheasRetributionSpirit,
 			}},
 			Text: "Whenever this creature attacks, create a 4/4 white Spirit creature token with flying that's tapped and attacking. Sacrifice that token at end of combat.",

@@ -221,6 +221,17 @@ func DestroyTheModesTarget(item *game.StackItem, ctx *Context, occ int) error {
 	return DestroyTarget{Target: t.ID}.Apply(ctx)
 }
 
+// TapTheModesTarget is "tap target <thing>" as a modal bullet's body —
+// Three Bowls of Porridge's and Tiller Engine's tap bullets differ only
+// in the clause on the option.
+func TapTheModesTarget(_ *game.StackItem, ctx *Context, occ int) error {
+	t, ok := ModeTarget(ctx, occ)
+	if !ok {
+		return nil
+	}
+	return TapTarget{Target: t.ID}.Apply(ctx)
+}
+
 // TokenCopyTheModesTarget is "create a token that's a copy of target
 // <thing> you control" as a modal bullet's body — Sublime Epiphany's
 // creature bullet and Three Steps Ahead's artifact-or-creature bullet

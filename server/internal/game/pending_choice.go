@@ -686,6 +686,12 @@ type PendingChoice struct {
 	// Added in S16.5 (#159).
 	CopyOptions []uuid.UUID
 
+	// ExchangesText marks a PendingChoiceCopyTarget whose pick is the
+	// creature to exchange text boxes with rather than the object to
+	// copy (CopySelector.ExchangeText, ADR 0160 Decision 6). The answer
+	// is the same; only the wording differs. Wire `exchanges_text`.
+	ExchangesText bool
+
 	// ScryCards is the set of cards a PendingChoiceScry's chooser is
 	// looking at, in top-to-bottom library order (so the first entry
 	// is the card that would be drawn next if nothing moves).
@@ -724,6 +730,13 @@ type PendingChoice struct {
 	// IDs in resolution order. Added in S19 sub-PR 8.
 	TriggerOrderIDs []uuid.UUID
 
+	// TriggerOrderWhy is, for a PendingChoiceTriggerOrder, the one
+	// sentence that says why the prompt was asked, in the player's
+	// terms (#3015, trigger_order_why.go). Display text only: nothing
+	// reads it back, and it never changes whether the seat is asked.
+	// Empty on every other kind.
+	TriggerOrderWhy string
+
 	// triggerResume is the server-only continuation frame for a
 	// PendingChoiceTriggerPrompt entry: the captured event +
 	// source-card value copy + LKI characteristics + the Build
@@ -756,9 +769,16 @@ type PendingChoice struct {
 	SearchCards []uuid.UUID
 
 	// SearchMax is how many of SearchCards the chooser may take.
-	// The minimum is always zero: CR 701.23b lets a player fail to
-	// find however hard they looked.
 	SearchMax int
+
+	// SearchMin is how many of SearchCards the chooser MUST take
+	// (#3053). Zero — the common case — is CR 701.23b: a search of a
+	// hidden zone for a card with a stated quality may find nothing
+	// however many matches there are. It is above zero only for an
+	// unconditional search (CR 701.23d: "a card", "three cards"), where
+	// the searcher has to find that many, or as many as the library
+	// holds. See SearchLibrarySpec.floorFor.
+	SearchMin int
 
 	// searchResume is the server-only continuation for a
 	// PendingChoiceSearchLibrary: the whole SearchLibrarySpec, which
@@ -956,6 +976,19 @@ type PendingChoice struct {
 	// before the next voter is asked. Plain data, written to a restore
 	// point and shown to every seat; nil on every other prompt.
 	CouncilVote *CouncilVote
+
+	// AnyPlayerOffer makes a pay_unless one LINK of an "unless any
+	// player pays" offer (ADR 0150, any_player_pays.go): whose effect
+	// it is, the order the table is asked in and who has declined.
+	// Plain data, shown to every seat; nil on every other prompt.
+	AnyPlayerOffer *AnyPlayerOffer
+
+	// Assist makes a pay_amount an assist helper's prompt (ADR 0150 §4,
+	// assist.go): who is casting what, and the generic it has. Plain
+	// data, shown to every seat (the caster's waiting line reads it).
+	// Never captured: the prompt always carries a chooseValueResume
+	// frame, as every pay_amount does.
+	Assist *AssistPrompt
 
 	// chooseValueResume is the continuation for a resolution-time
 	// PendingChoiceColor (Wash Out's "return all permanents of the
@@ -3621,6 +3654,14 @@ func (g *Game) QueuePayUnlessForEffect(
 type payUnlessExtras struct {
 	onPay  func(g *Game) error
 	action *PayAction
+	// offer makes the prompt one link of an any-player offer (ADR
+	// 0150, any_player_pays.go): PendingChoice.AnyPlayerOffer.
+	offer *AnyPlayerOffer
+	// acceptLabel / declineLabel name the two answers when the card's
+	// words are not "Pay" and "Don't pay" (ADR 0150 §5: "Take 5
+	// damage", "Let them have it"): PendingChoice.AcceptLabel and
+	// DeclineLabel.
+	acceptLabel, declineLabel string
 }
 
 // queuePayUnlessLocked is the one body behind every pay-unless.
@@ -3630,9 +3671,10 @@ type payUnlessExtras struct {
 // upkeep_pay_unless.go); `guards` is the stack object whose fate the
 // decline decides, or uuid.Nil for the detached Rhystic shape (#951,
 // counter_unless_paid.go). They are separate because they are facts
-// about different parts of the board — the cursor and the stack — and
-// no caller sets both. Both are read LIVE by the gate, so neither can
-// hold the table after the thing it is about has gone.
+// about different parts of the board — the cursor and the stack. Only
+// an any-player offer about a spell sets both (ADR 0150 decision 2).
+// Both are read LIVE by the gate, so neither can hold the table after
+// the thing it is about has gone.
 func (g *Game) queuePayUnlessLocked(
 	chooser, source uuid.UUID,
 	cost, question string,
@@ -3677,6 +3719,9 @@ func (g *Game) queuePayUnlessLocked(
 		PayCost:         cost,
 		OwedInStep:      owed,
 		GuardsStackItem: guards,
+		AnyPlayerOffer:  extra.offer,
+		AcceptLabel:     extra.acceptLabel,
+		DeclineLabel:    extra.declineLabel,
 		payUnlessResume: &payUnlessFrame{
 			cost:      parsed,
 			onDecline: onDecline,
@@ -4030,7 +4075,7 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 	if frame != nil {
 		action = frame.action
 	}
-	if len(cardIDs) > 0 && (!apply || action == nil || action.Kind == PayActionEnergy) {
+	if len(cardIDs) > 0 && (!apply || action == nil || action.NamesNothing()) {
 		return ErrInvalidParam
 	}
 	// ADR 0131 §2: the life half of a mana payment, announced beside the
@@ -4049,10 +4094,11 @@ func (g *Game) resolvePayUnless(choiceID, chooserID uuid.UUID, apply bool, tapID
 		}
 	}
 	payable := false
-	if apply && action != nil && action.Kind == PayActionEnergy {
+	if apply && action.NamesNothing() {
 		// ADR 0129 §3: an energy payment names nothing. "Pay" is a
-		// payment exactly when the energy is there (CR 118.3).
-		payable = g.energyPaymentPayableLocked(chooserID, action)
+		// payment exactly when the energy is there (CR 118.3). ADR
+		// 0150 §3: so do life (CR 119.4, 119.8), damage and nothing.
+		payable = g.payActionPayableLocked(chooserID, action)
 	} else if apply && action != nil {
 		if len(cardIDs) > 0 || len(g.payActionOptionsLocked(chooserID, action)) >= action.Count {
 			if err := g.validatePayActionLocked(chooserID, action, cardIDs); err != nil {

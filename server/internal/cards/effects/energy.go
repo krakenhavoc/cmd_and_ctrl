@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -42,7 +40,7 @@ func EnergySymbols(n int) string {
 	if n <= 0 {
 		return ""
 	}
-	return strings.Repeat("{E}", n)
+	return game.RepeatMana("{E}", n)
 }
 
 // WhenThisEntersYouGetEnergy is the line most energy cards print: "When

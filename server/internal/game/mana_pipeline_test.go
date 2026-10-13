@@ -163,14 +163,14 @@ func scaledShape(symbol string) []ManaAbilityShape {
 	return []ManaAbilityShape{{
 		TapCost: true,
 		Label:   "Add " + symbol + " for each creature you control",
-		ProducedFunc: func(g *Game, controller, _ uuid.UUID) string {
+		ProducedFunc: func(g *Game, controller, _ uuid.UUID) ManaOutput {
 			out := ""
 			for _, c := range g.BattlefieldCardsForEffect() {
 				if c.Controller == controller && c.IsCreature() {
 					out += symbol
 				}
 			}
-			return out
+			return ManaOutput{Text: out}
 		},
 	}}
 }

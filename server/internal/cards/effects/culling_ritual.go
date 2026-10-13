@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -32,7 +30,7 @@ func init() {
 					if destroyed <= 0 {
 						return nil
 					}
-					return AddMana{Player: ctx.Controller(), Produced: strings.Repeat("{B|G}", destroyed)}.Apply(ctx)
+					return AddMana{Player: ctx.Controller(), Amount: ManaN(destroyed, "B", "G")}.Apply(ctx)
 				},
 			}.Apply(ctx)
 		},

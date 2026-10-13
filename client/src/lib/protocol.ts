@@ -197,6 +197,12 @@ export type ActionType =
   | "discard_selection"
   | "draw_card"
   | "end_vote"
+  // #672 (CR 506.4): take ONE creature out of combat; params
+  // `{instance_id}`. The per-card sibling of clear_combat.
+  | "remove_from_combat"
+  // #671: reveal a HAND card to the table, or show it to one player;
+  // params `{card_id, to?}`.
+  | "reveal_card"
   | "keep_hand"
   // ADR 0121 §3: the opening roll. `roll_opening` rolls the caller's
   // d20; `host_roll_remaining` (host or admin) rolls for every seat
@@ -225,6 +231,9 @@ export type ActionType =
   // answers to repeated prompts, replacing the list ("always" or
   // "never"; Ask is no rule). A setting, not a play: never undoable.
   | "set_auto_answers"
+  // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
+  // withdraws the request for help an assisted cast is parked on.
+  | "cancel_assist"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -397,6 +406,9 @@ export interface GameView {
   // The table's settings (ADR 0075 §2.2). Public: every viewer,
   // spectators included, gets the same object. Added in S35 (#1032).
   settings?: TableSettingsView;
+  // The table's Discord voice room (ADR 0159 §6), reduced by the server
+  // to this viewer's own access. Absent when the server offers none.
+  voice?: VoiceView;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -924,6 +936,11 @@ export type LogKind =
   // the card prints it (a word, or the name of the permanent or player
   // voted for) and `card_id` the card that called the vote.
   | "vote"
+  // ADR 0150 §5: `seat` paid, or didn't pay, an "unless any player pays"
+  // offer. `label` is the payment ("{2}") and `card_id` the card whose
+  // effect it was.
+  | "any_player_paid"
+  | "any_player_declined"
   // #1021: six silences the log kept until they were written down.
   // `control` names two seats — `seat` gained control, `target_seat`
   // lost it (CR 613.1b). `special_action` carries the printed action
@@ -951,6 +968,11 @@ export type LogKind =
   | "activate"
   | "cycle"
   | "counters"
+  // #3040: a count hit the table's ceiling and was pinned to it.
+  // `label` is the quantity ("+1/+1 counters", "mana"), `amount` the
+  // ceiling, `card_id` the object whose count was capped (or the mana's
+  // source).
+  | "count_capped"
   | "scry"
   | "surveil"
   // ADR 0099: a finished discover (CR 701.57b). `amount` is the N and
@@ -996,6 +1018,10 @@ export type LogKind =
   // a player announces out loud, and a reader scrolling back wants
   // to know when it happened.
   | "transform"
+  // ADR 0151 (#1892): a flip card on the battlefield was flipped
+  // (CR 710). `label` is the name it flipped FROM. Its own kind,
+  // never `flip`, which is a coin flip.
+  | "flip_permanent"
   // ADR 0145: two cards were melded into one permanent (CR 701.42a).
   // `card_id` is the melded permanent and `label` names the two cards
   // it was melded from.
@@ -1102,6 +1128,9 @@ export interface LogEvent {
   new_zone?: string;
   // True when a `damage` entry is combat damage (CR 510).
   combat?: boolean;
+  // ADR 0152 §2 (#1856): a `transform` entry whose turn-over was a
+  // convert (CR 701.28a). The rendered `text` already says "converted".
+  converted?: boolean;
   // Which combat damage step dealt a combat `damage` entry (CR 510.4).
   // Set only when that combat had a first-strike step; combat with no
   // first strike or double strike anywhere is untagged, so its
@@ -1236,8 +1265,9 @@ export interface PendingChoiceView {
     // the matching cards, sent ONLY to the chooser — a library is a
     // hidden zone and even the number of matches is private. Answered
     // with the generic {choice_id, card_ids} payload; an empty list
-    // is a legal "fail to find" (CR 701.23b), so search_max is the
-    // ceiling and the floor is zero.
+    // is a legal "fail to find" (CR 701.23b) unless search_min says the
+    // search must find, so search_max is the ceiling and search_min
+    // (default zero) the floor.
     | "search_library"
     // S28 cascade (CR 702.85): "you may cast it without paying its
     // mana cost". Answered with the shared yes/no {choice_id, apply}
@@ -1509,6 +1539,11 @@ export interface PendingChoiceView {
   // the client submits resolve_choice { order: string[] } of these
   // IDs in RESOLUTION order (first entry resolves first).
   trigger_options?: ReplacementOptionView[];
+  // #3015: for kind "trigger_order", one sentence in the player's
+  // terms that says why the game asked instead of ordering the batch
+  // itself ("Ajani's Pridemate watches life totals."). Display text,
+  // shown under the heading; absent when there is no reason.
+  trigger_order_why?: string;
   // S20 sub-PR 2: populated for kind "pick_target" — a targeted
   // trigger's controller chooses its target. The client enters the
   // board-click targeting flow with this legal set (no modal) and
@@ -1571,15 +1606,32 @@ export interface PendingChoiceView {
   // 0 {E} is a payment too, so 0 is present. A "Pay" from a seat with
   // less energy is a decline.
   pay_energy?: number;
+  // ADR 0150 §3: the other payments of a "pay_unless" that name nothing,
+  // each answered with { apply: true } alone. pay_life: pay that much
+  // life (a seat with less, or whose life can't change, can't pay).
+  // pay_damage: the prompt's source deals that much damage to the
+  // chooser, always a payment. pay_nothing: "yes" costs nothing
+  // (Distant Memories). At most one is present.
+  pay_life?: number;
+  pay_damage?: number;
+  pay_nothing?: boolean;
   // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
   // {E}". Answered with { amount }: 0, or min..max.
   pay_amount?: PayAmountView;
   // S22: populated for kind "search_library" — how many of `options`
-  // the searcher may take. The minimum is always zero, so the submit
-  // button is live from the first render. Absent for every other
-  // kind, and absent for non-chooser viewers, who are not told what
-  // the search is for.
+  // the searcher may take. Absent for every other kind, and absent for
+  // non-chooser viewers, who are not told what the search is for.
   search_max?: number;
+  // #3053: the fewest the searcher may take. Absent (zero) for a search
+  // for a card with a stated quality (CR 701.23b — "Find nothing" is a
+  // legal answer even against exactly one match). At least one only for
+  // an unconditional "a card" / "three cards" search (CR 701.23d), where
+  // an empty answer is refused and the client offers no such button.
+  search_min?: number;
+  // ADR 0160: a "copy_target" prompt whose pick is the creature to
+  // exchange text boxes with rather than the object to copy (Deadpool,
+  // Trading Card). Same {card_ids} answer, same empty decline.
+  exchanges_text?: boolean;
   // #996 / ADR 0088: populated for kind "put_in_library" — which lanes
   // the answer may use. "top" answers {top_order} alone, "bottom"
   // answers {bottom} alone (top-first), "top_or_bottom" answers both.
@@ -1612,6 +1664,18 @@ export interface PendingChoiceView {
    * each vote as it is cast.
    */
   council_vote?: CouncilVoteView;
+  /**
+   * ADR 0150: present when this pay_unless is one link of an "unless any
+   * player pays" offer: whose effect it is, everyone it may reach in the
+   * order asked, and who has declined. Public on every seat's view.
+   */
+  any_player_offer?: AnyPlayerOfferView;
+  /**
+   * ADR 0150 §5: present when this pay_amount asks an assist helper how
+   * much of another player's spell to pay: who is casting what. Public on
+   * every seat's view; the caster's dock shows a waiting line from it.
+   */
+  assist?: AssistPromptView;
 
   accept_label?: string;
   decline_label?: string;
@@ -1738,6 +1802,12 @@ export interface PickOptionView {
    * pay is refused and the prompt stays open.
    */
   mana_cost?: string;
+  /**
+   * What this option costs its chooser besides life and mana, in cards
+   * (#3140): the hint a bot reads on a villainous choice (CR 701.55).
+   * The client shows the option's label and nothing of this.
+   */
+  harm?: number;
 }
 
 export interface ReplacementOptionView {
@@ -1906,6 +1976,9 @@ export interface CouncilVoteView {
   // voting now.
   controller: string;
   voter: string;
+  // Where the cards the options name are, when not the battlefield
+  // ("graveyard": Custodi Squire). Absent otherwise.
+  zone?: string;
   // The vote's choices in printed order, and the votes each has so far.
   options: string[];
   tally: number[];
@@ -1919,6 +1992,46 @@ export interface CouncilVoteView {
   // option to win.
   for_controller?: number[];
   for_opponents?: number[];
+}
+
+// AnyPlayerOfferView is an "unless any player pays" offer in progress
+// (ADR 0150 §5), as its open link carries it. The link's chooser is the
+// player asked now.
+// AssistOfferView is a spell with assist's offer to its caster (ADR 0150
+// §5): "up to {max}", and the players who may be asked.
+export interface AssistOfferView {
+  // The generic part of the total cost for the default announcement out
+  // of this zone, commander tax and cost modifiers included.
+  max: number;
+  // Every other player still in the game, in seat order.
+  players: string[];
+}
+
+// AssistPromptView is an assist helper's prompt (ADR 0150 §5), as the
+// pay_amount carries it. The prompt's chooser is the helper.
+export interface AssistPromptView {
+  caster: string;
+  // The card being cast, its name and its total cost as announced.
+  spell: string;
+  spell_name: string;
+  mana_cost?: string;
+  // The generic part of the total cost; the prompt's max is the most
+  // the helper can pay, which may be less.
+  generic: number;
+}
+
+export interface AnyPlayerOfferView {
+  // The controller of the effect being paid against ("you" on the card).
+  controller: string;
+  // Everyone the offer may reach, in the order asked (APNAP from the
+  // active player), and those who have declined so far.
+  order: string[];
+  declined?: string[];
+  // "Any opponent may": the controller is not asked.
+  opponents?: boolean;
+  // Paying is what the controller wants (Icy Prison: it keeps the
+  // permanent), so the words say "keep", not "stop".
+  helps_controller?: boolean;
 }
 
 export interface VoteView {
@@ -2317,6 +2430,11 @@ export interface OptionalCostView {
   // and buyback, the multikicker cap above that. 1 renders a
   // checkbox, more renders a stepper.
   max_times?: number;
+  // #3232: the floor on the announced X while this cost is paid —
+  // Thieving Skydiver's "Kicker {X}. X can't be 0" is 1. Absent when the
+  // cost has no floor; meaningful only beside a `mana_cost` containing
+  // {X}. Read by optionalCostXFloor (targeting.ts).
+  x_min?: number;
   // ADR 0129 §5: the energy each payment charges (Reiterating Bolt's
   // replicate, 3). `max_times` is then capped at what the viewer's energy
   // pays for, and `energy_short` says it pays for none.
@@ -2367,6 +2485,10 @@ export interface OptionalCostView {
 export interface AlternativeCostView {
   key: string;
   label?: string;
+  // ADR 0152 §5: the printed face this offer casts, when it is not the
+  // face the card shows — disturb's and More Than Meets the Eye's back
+  // face. The picker names it ("casts Goldbug, Scrappy Scout").
+  casts_face?: number;
   mana_cost?: string;
   // The target clause the spell has WHEN THIS COST IS PAID, already
   // resolved server-side against the cost's rewrite. Absent means the
@@ -2457,6 +2579,13 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // #3225: the largest X the viewer may announce while claiming THIS
+  // offer — "you may cast this spell as though it had flash if X is 3
+  // or less" (CR 601.3c) — already folded with the card's printed
+  // `x_max`. The server refuses a larger X under the claim; the cast for
+  // the printed cost is not bound by it. Present only on an offer that
+  // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).
+  x_max?: number;
   // ADR 0126 §6: what the spell does when cast for this cost, where
   // that differs from the card's own purpose (overload). Bot data.
   purpose?: PurposeView;
@@ -2499,8 +2628,11 @@ export interface PayAmountView {
   min: number;
   max: number;
   goal?: number;
-  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
-  resource?: "energy" | "life" | "none";
+  // ADR 0150 §4: "assist" is {1} of another player's spell.
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other" | "assist";
+  // ADR 0150 §4: "mana" is generic mana an assist helper pays from their
+  // pool and then their untapped sources.
+  resource?: "energy" | "life" | "none" | "mana";
   no_max?: boolean;
   marks?: number[];
   self_damage?: boolean;
@@ -2625,6 +2757,13 @@ export interface ExilePlayView {
   // label. Absent: say "until end of turn", as before the field.
   until?: ExilePlayUntil;
   until_player?: string;
+  // #3192: the clause a CONDITIONAL grant is live under ("during a turn
+  // you attacked with a token"), and whether it is false right now. The
+  // card keeps its grant while the condition is false, so the client
+  // withholds the play button instead of hiding the grant. Absent for an
+  // unconditional grant.
+  condition?: string;
+  condition_unmet?: boolean;
 }
 
 // #2559: the windows `exile_play.until` names.
@@ -2659,6 +2798,12 @@ export interface ActivatedAbilityView {
   // this one (Necrotic Sliver's "{3}, Sacrifice this permanent: …" on
   // every Sliver). Absent on the permanent's own abilities.
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_self?: boolean;
   mana_cost?: string;
@@ -3040,6 +3185,9 @@ export interface PurposeView {
   awaken_land?: number;
   // #2480: cards it exiles that its controller may play this turn.
   impulse?: number;
+  // #3072: on a landfall row, what it pays for each land that enters
+  // under its controller's control.
+  landfall_payoff?: LandfallPayoffView;
   // ADR 0126 (amendment of 2026-10-08): what happens to each target,
   // one entry per target clause of the statement this purpose rides
   // on, keyed by the slot a move's `targets[].slot` names.
@@ -3074,6 +3222,19 @@ export interface TargetReturnView {
   life_equal_to_power?: boolean;
   lands?: number;
   lands_untapped?: number;
+}
+
+// LandfallPayoffView is what a landfall row pays its controller for each
+// land that enters under their control (#3072). Bot data; every field is
+// absent when zero.
+export interface LandfallPayoffView {
+  draws?: number;
+  life_gain?: number;
+  tokens?: number;
+  mana?: number;
+  counters?: number;
+  energy?: number;
+  damage_each_opponent?: number;
 }
 
 // ActivationPurposeView is ADR 0106's name for PurposeView.
@@ -3316,6 +3477,12 @@ export interface CastSurfaceView {
   // same picker the alternative costs open, because CR 601.2b
   // announces them together. Absent for nearly every card.
   optional_costs?: OptionalCostView[];
+  // ADR 0150 §5 (CR 702.132a): a spell with assist's offer to this
+  // caster — who may be asked to help pay its generic mana, and how
+  // much generic there is. The cast modal's Assist row reads it and the
+  // pick rides cast_spell as `assist_player`. Absent for every card
+  // without assist.
+  assist?: AssistOfferView;
   // #760 (ADR 0073 §7): the printed clause that stops this card being
   // cast from the zone it is in right now — "Each player can't cast
   // more than one spell each turn", "Cast this spell only if you
@@ -3517,6 +3684,9 @@ export interface CardView extends CastSurfaceView {
   // `scryfall_id`, that id is a resolved Scryfall TOKEN PRINTING
   // chosen for its art, not a card this player owns.
   is_token?: boolean;
+  // #3043: a token that is a copy of a real card (carries the original's
+  // art and frame). Always alongside is_token; public.
+  token_copy?: boolean;
   // Scryfall printed type line ("Legendary Creature — Human Wizard").
   // Used by the client to filter creature-only UIs (combat panel)
   // and to label cards. Omitted for placeholder demo cards. S08.
@@ -3603,6 +3773,9 @@ export interface CardView extends CastSurfaceView {
   // public and reaches every viewer, because an opponent has to see
   // the 2/2 to block it.
   known_by_you?: boolean;
+  // #671: the OTHER seats (player IDs, table order) that know this
+  // hand card. Sent on the viewer's own hand cards only.
+  known_by_seats?: string[];
   // Normalised battlefield position in [0, 1], stamped by
   // `set_battlefield_position`.
   //
@@ -3719,6 +3892,13 @@ export interface CardView extends CastSurfaceView {
   // "Add {X}" clause). Smart autopass reads it to hold the main phase
   // for "Cast anyway". Absent when false.
   may_make_mana_unautomated?: boolean;
+  // ADR 0153 §5: on a hand card that does something when a spell or
+  // ability an opponent controls makes its owner discard it. Declared by
+  // the card, never inferred: "battlefield" (put onto the battlefield
+  // instead), "library" (on top of its owner's library instead) or
+  // "trigger" (the discard triggers an ability of the card). Absent
+  // otherwise.
+  discard_by_opponent?: "battlefield" | "library" | "trigger";
   // #992: the announce surface of the face that is UP. Inherited
   // from CastSurfaceView, so every existing `card.legal_targets`
   // read is unchanged and `cardAsFace` has an identically shaped
@@ -3907,6 +4087,16 @@ export interface CardView extends CastSurfaceView {
   // CR 707.9a grant (no source). The one place a granted TRIGGER is
   // visible at all — it has no menu row. One entry per grantor.
   granted_abilities?: GrantedAbilityView[];
+  // ADR 0155 owner decision 2: the objects this permanent "has all activated
+  // abilities of" that the catalog does not automate. They lend nothing; the
+  // menu names each in a disabled "<lender>: not automated" line.
+  unautomated_lenders?: GrantedByView[];
+  // ADR 0160 (CR 612.5) — the object whose text box this permanent has
+  // when it is not its own (Exchange of Words, Deadpool, Trading Card).
+  // Its abilities, keywords and rows already are that text's; the
+  // printed oracle text the inspector fetches is not. Absent when the
+  // permanent has its own text.
+  text_box_from?: string;
   // #2219 — the card's non-keyword triggered, static and activated
   // abilities right now, triggered first, each with a short label the
   // SERVER wrote (the stack's label for a triggered or activated row).
@@ -4083,6 +4273,12 @@ export interface ManaAbilityView {
   // granted this one (Cryptolith Rite's "{T}: Add one mana of any
   // color." on every creature you control).
   granted_by?: GrantedByView;
+  // ADR 0155 Decision 10: present on a row ANOTHER object's abilities were
+  // lent as ("has all activated abilities of …", Necrotic Ooze): the lender
+  // by id and printed name. `granted_by` is then the borrowing permanent
+  // itself. Absent on every row that is not lent, and when the lender sits
+  // in a hidden zone.
+  borrowed_from?: GrantedByView;
   tap_cost?: boolean;
   sacrifice_cost?: boolean;
   // #1228: the "Exile this card from your hand" component of a mana
@@ -4342,6 +4538,20 @@ export function uuid(): string {
 // TableSettingsView is a table's configuration (ADR 0075 §2.2). The
 // keys match the settings patch the server accepts, so a client can
 // send back exactly the fields it read.
+// VoiceView is the table's Discord voice room on the game view (ADR 0159
+// §6). `url` reaches only a viewer who was let in, while the room is
+// ready.
+export interface VoiceView {
+  enabled: boolean;
+  status: VoiceStatus;
+  you?: VoiceAccess;
+  url?: string;
+}
+
+export type VoiceStatus = "off" | "pending" | "ready" | "idle" | "full" | "unavailable";
+
+export type VoiceAccess = "granted" | "not_in_server" | "no_discord" | "spectator" | "pending";
+
 export interface TableSettingsView {
   // Per-player per-turn undo budget. -1 is unlimited, 0 is no undos.
   undo_limit: number;

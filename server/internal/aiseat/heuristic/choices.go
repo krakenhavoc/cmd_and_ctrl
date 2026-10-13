@@ -21,6 +21,12 @@ import (
 // take the best of them for another, and the sign is the whole
 // decision.
 
+// searchTakeBonus is what any non-empty answer to a library search is
+// worth on top of its cards, so that taking something beats finding
+// nothing (the empty answer scores zero). Small against cardValue's
+// scale: it breaks the tie with "find nothing" and nothing else.
+const searchTakeBonus = 0.01
+
 // pending choice kinds, as they appear on the wire
 // (game.PendingChoiceKind).
 const (
@@ -142,6 +148,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if v, why, ok := costedOptionValue(ch, cp.OptionIndex); ok {
 			return v, why
 		}
+		// #3140: a villainous choice (villainous_choice.go).
+		if v, why, ok := st.villainousValue(ch, cp.OptionIndex); ok {
+			return v, why
+		}
 	case choiceEntryRiot:
 		return st.riotValue(ch, cp.Apply)
 	case choiceDamageAssignment:
@@ -220,6 +230,17 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		for _, id := range cp.CardIDs {
 			v += st.searchValue(p.cfg, lookup(id))
 		}
+		// #3053: a search for a stated quality may find nothing even
+		// against one match, so "find nothing" is on the menu for every
+		// tutor. It scores zero; a take must therefore never score at or
+		// below it, or a card the bot values at nothing would be declined
+		// for no reason. Taking is the default, and the best card is the
+		// best take: a value below zero is lifted to zero first, then the
+		// bonus is added, and two takes with positive values keep their
+		// order.
+		if len(cp.CardIDs) > 0 {
+			v = max(v, 0) + searchTakeBonus
+		}
 		return v, "search: take the best"
 
 	case choiceDiscardFromHand, choiceRevealedHandPick:
@@ -234,6 +255,10 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			sign, reason = -1.0, "pitch our worst"
 		}
 		var v float64
+		// ADR 0153 §5: an opponent's spell or ability is making the bot
+		// discard, so a card that does something when discarded that way
+		// is priced by what it does (discard_by_opponent.go).
+		forced := sign < 0 && st.opponentForcedDiscard(ch)
 		for _, id := range cp.CardIDs {
 			c := lookup(id)
 			if sign > 0 {
@@ -246,7 +271,7 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 			if sign < 0 {
 				// A discard the bot's own payoffs pay for
 				// (discard_payoff.go).
-				v += st.discardPayoff(p.cfg, c)
+				v += st.discardPayoff(p.cfg, c) + st.forcedDiscardCredit(p.cfg, c, forced)
 			}
 		}
 		return v, reason
@@ -492,6 +517,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		return p.entryPayLifeValue(st, m, cp.Apply)
 
 	case choiceCopyTarget:
+		// ADR 0160: the same prompt, asking whom to exchange text
+		// boxes with (Deadpool, Trading Card).
+		if ch != nil && ch.ExchangesText {
+			return st.textExchangeValue(cp.CardIDs, lookup)
+		}
 		// #2390: "enter as a copy of" — the best permanent on offer.
 		return st.copyTargetValue(cp.CardIDs, lookup)
 
@@ -511,6 +541,30 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// ADR 0136's amendment of 2026-10-09: an opponent's tax that
 		// would leave the turn plan's next member unpayable is weighed
 		// against that member (tax.go).
+		// ADR 0150 §6: an "unless any player pays" offer against the
+		// bot's own effect is never paid; an opponent's is paid like
+		// any tax, whoever is still to be asked (owner decision 7: no
+		// free-riding).
+		// Icy Prison's upkeep turns it round (HelpsController): paying
+		// keeps the controller's permanent, so the controller pays and
+		// an opponent never does.
+		if kind == choicePayUnless && ch != nil && ch.AnyPlayerOffer != nil {
+			o := ch.AnyPlayerOffer
+			yes := cp.Apply != nil && *cp.Apply
+			mine := o.Controller == st.me
+			switch {
+			case mine && !o.HelpsController:
+				if yes {
+					return 0.25, "any player: never pay against my own effect"
+				}
+				return 1, "any player: let my own effect happen"
+			case !mine && o.HelpsController:
+				if yes {
+					return 0.25, "any player: never pay for an opponent"
+				}
+				return 1, "any player: let an opponent's permanent go"
+			}
+		}
 		if kind == choicePayUnless {
 			if decline, why, ok := p.taxAgainstPlan(st, ch); ok {
 				yes := cp.Apply != nil && *cp.Apply
@@ -554,6 +608,22 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 					e = 0
 				}
 				return 1 - 0.4*e/(1+e), "pay the energy"
+			}
+			// ADR 0150 §6: a life price (Dash Hopes' 5 life, Temporal
+			// Extortion's half) or damage taken (Browbeat's 5) is
+			// priced as Phyrexian life is: declined below the floor,
+			// paid above it.
+			if kind == choicePayUnless && ch != nil && (ch.PayLife != nil || ch.PayDamage != nil) {
+				n := 0
+				if ch.PayLife != nil {
+					n = *ch.PayLife
+				} else {
+					n = *ch.PayDamage
+				}
+				if st.myLife()-n < phyrexianLifeFloor {
+					return phyrexianLifeDeclined, "the life would take it below the floor"
+				}
+				return 0.75, "pay with life"
 			}
 			// ADR 0131 §5: a mana payment that spends 2 life on a symbol
 			// (a ward {B} under K'rrik, a printed {B/P}) is the Phyrexian
@@ -650,6 +720,7 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 	if ch == nil || len(ch.Options) == 0 || ch.FromPlayer != st.me || st.seat == nil {
 		return 0, false
 	}
+	forced := st.opponentForcedDiscard(ch)
 	hand := st.seatHand()
 	held := make(map[string]*protocol.CardView, len(hand))
 	for i := range hand {
@@ -667,7 +738,7 @@ func (st *state) valueKeptInHand(cfg Config, ch *protocol.PendingChoiceView, nam
 		if slices.Contains(named, id) {
 			// Named is discarded: what the bot's own discard payoffs
 			// pay for it (discard_payoff.go) is kept too.
-			kept += st.discardPayoff(cfg, c)
+			kept += st.discardPayoff(cfg, c) + st.forcedDiscardCredit(cfg, c, forced)
 			continue
 		}
 		kept += st.handKeepValue(cfg, c)

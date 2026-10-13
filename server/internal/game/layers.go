@@ -210,6 +210,21 @@ type StaticAbility struct {
 	// appends to it.
 	GrantAbilities []string
 
+	// Borrows declares this static a "has all activated abilities of …"
+	// borrow (CR 113.10, ADR 0155): every object it applies to has every
+	// activated ability — mana abilities included (CR 605.1a) — that
+	// the borrow's lenders have right now. The engine reads the lenders'
+	// rows and writes the lent rows in the borrow step, the last step of
+	// the layer-6 bucket (borrowed_abilities.go), with this static's
+	// source as the lending effect's source.
+	//
+	// Only meaningful on a Layer6Ability static, and alone: effects.
+	// Register refuses it in any other layer, beside RemovesAbilities,
+	// GrantAbilities or an Apply, and inside a granted bundle (a bundle
+	// that lends abilities would put a borrow inside a borrow). Build one
+	// with effects.HasActivatedAbilitiesOf.
+	Borrows *AbilityBorrow
+
 	// DependsOnHandSize declares that this ability's OUTPUT changes
 	// when somebody's hand does — Psychosis Crawler's "power and
 	// toughness are each equal to the number of cards in your hand".
@@ -367,6 +382,25 @@ type StaticAbility struct {
 	// refuses one that is not a layer-6 keyword grant from the
 	// battlefield: the stack step applies keywords and nothing else.
 	AffectsSpells bool
+
+	// GrantZone declares a static whose recipients are CARDS in a zone
+	// other than the battlefield (CR 113.10, 613.1f, ADR 0093's
+	// amendment 2026-10-13, #3233): Satoru Umezawa's "Each creature
+	// card in your hand has ninjutsu {2}{U}{B}." It is a GrantAbilities
+	// static, with GrantAbilities naming the bundles and AppliesTo
+	// asked of each CARD in that zone; the difference is only where the
+	// recipients are. Empty is the battlefield, as for every earlier
+	// grant.
+	//
+	// The battlefield pass never gathers it, so a predicate written for
+	// a hand card cannot reach a permanent by accident. The zone grant
+	// step (zone_grants.go) runs after layer 2 has settled control, and
+	// stamps the result on Card.zoneGranted, which the one ability-row
+	// accessor reads (activatedAbilityRows), so the activation path, the
+	// wire's zone_abilities and the legal-move enumerator all see the
+	// row. Only ZoneHand, ZoneGraveyard and ZoneExile are walked;
+	// effects.Register refuses another at boot.
+	GrantZone ZoneKind
 
 	// Label is this static's player-facing wording, as a stack label
 	// is for a triggered or activated row: "Attacks each combat if
@@ -585,6 +619,12 @@ func (g *Game) activeStaticAbilitiesLocked() []ContinuousEffect {
 			if ab.AffectsSpells {
 				continue
 			}
+			// ADR 0093 amendment 2026-10-13: a static over CARDS in a
+			// hand, graveyard or exile is the zone grant step's
+			// (zone_grants.go), never the battlefield's.
+			if ab.GrantZone != "" {
+				continue
+			}
 			out = append(out, staticContinuousEffect{
 				ability:   ab,
 				source:    src,
@@ -732,12 +772,20 @@ func (g *Game) applyOneEffectLocked(eff ContinuousEffect, bucketIndex int, st *l
 			// this removal appends to the emptied slice and survives
 			// (CR 613.6), exactly as a granted keyword does.
 			target.effective.GrantedAbilities = nil
+			// ADR 0155: and every row another object lent it. The
+			// borrow step runs after the whole bucket, so this is
+			// empty here; the removal's timestamp, recorded below, is
+			// what keeps CR 613.6's order against a borrow.
+			target.effective.BorrowedAbilities = nil
 			// #1879: and every attack-target restriction it imposes
 			// on itself, which is one of its own abilities (Veiled
 			// Serpent's granted "can't attack unless …").
 			dropSelfAttackTargetRestrictions(target.effective, target)
 			target.effective.AbilitiesRemoved = true
 			st.recordRemoval(target, bucketIndex)
+			if l, _ := eff.Layer(); l == Layer6Ability {
+				st.recordRemovalTimestamp(target, eff.Timestamp())
+			}
 		}
 		eff.Apply(target.effective, target, g)
 		if definesPT {
@@ -898,6 +946,9 @@ func (g *Game) recomputeLayersLocked() {
 	// printed baseline BEFORE the pass, so layers 2-7 run on their
 	// result (CR 613.1a). See duration_copy.go.
 	g.materialiseDurationCopiesLocked()
+	// ADR 0160: layer 3's exchanged text boxes, after layer 1 and
+	// before the pass, whose static gather reads the key they decide.
+	g.materialiseTextBoxesLocked()
 	g.layerPassLocked()
 	changed := g.materialiseControlLocked()
 	// ADR 0104: layer 2 for the SPELLS on the stack — the same
@@ -910,6 +961,11 @@ func (g *Game) recomputeLayersLocked() {
 	// After layer 2, because "spells you control" reads the controller
 	// it settled (CR 613.1).
 	g.stackKeywordPassLocked()
+	// ADR 0093 amendment 2026-10-13: and layer 6 for the CARDS in a hand,
+	// a graveyard or exile — "each creature card in your hand has
+	// ninjutsu" (Satoru Umezawa). After layer 2 for the same reason: the
+	// "you" of a static reads the controller the pass just settled.
+	g.zoneGrantPassLocked()
 	// #1313: untap holds end with their CR 611.2b duration, and the
 	// board those durations read — who controls the source, whether it
 	// is still here — is settled only now, after layer 2 has been

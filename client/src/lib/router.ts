@@ -20,16 +20,29 @@ export type Route =
   // hash names; a value the server does not know is dropped here, so
   // it is never sent (lib/adminViews.ts).
   | { name: "adminViews"; view: AdminView }
-  // The site portal (#1386, ADR 0092): a public sitemap of link cards
-  // to everywhere else on the site, grouped by what you're trying to
-  // do. Exists alongside SiteHeader as a second entry point — the
-  // owner will pick between the two later.
+  // #/home was the site portal (#1386, ADR 0092). ADR 0156 §4 retired
+  // it: the front page serves visitors and the header everyone else.
+  // The route survives only so old links land somewhere: the router
+  // sends it on (signedInHome.ts's routeRedirect).
   | { name: "home" }
+  // The gate page (ADR 0156 §5): where the Discord callback sends a
+  // sign-in the role gate refused. `retry` is ?retry=1, the callback's
+  // word that Discord did not answer the check. Public.
+  | { name: "requestAccess"; retry?: true }
   // The public roadmap (PR 2 of the same plan): what the rules engine
   // automates today, what's partial, what's missing, and what's next.
   // Public like /catalog was meant to be closed — see ADR 0092 for why
   // this one is the opposite call.
   | { name: "roadmap" }
+  // The privacy notice (#2983, ADR 0149): what is stored, why, for how
+  // long, who it is shared with, and how a signed-in person deletes
+  // their account. Public: a stranger deciding whether to sign in has
+  // to be able to read it first, and the page holds no account data.
+  | { name: "privacy" }
+  // The About page (#2981): what this project is, what the engine does and
+  // does not do for you, where to send feedback, and the credits. Public:
+  // it is what a stranger reads before deciding to sign in.
+  | { name: "about" }
   // The one decks page (ADR 0112 §3): check a deck by link or paste,
   // its coverage report, "Request missing cards", "Save to my decks",
   // the saved library and the pre-built decks. Public like the roadmap:
@@ -44,13 +57,20 @@ export type Route =
   // #/deck-check?url=<link> for the full report, and every reply
   // already posted must keep working. router.test.ts pins it.
   | { name: "decks"; url?: string }
-  | { name: "lobby" }
+  // Tables, the signed-in home. `show: "history"` scrolls to its History
+  // section (ADR 0158 §1 item 5): #/lobby?show=history, where the old
+  // #/my-games redirects.
+  | { name: "lobby"; show?: "history" }
   // The tutorial's practice table (ADR 0076 §2.2): opening this route
   // opens a fresh practice game for the signed-in session and moves on
   // to it (routes/Practice.svelte, lib/practiceTable.ts). It is the
   // one door the lobby offer and Settings' replay (sub-PR 5) both use.
   | { name: "practice" }
-  | { name: "join"; gameID: string; inviteToken: string; spectator: boolean }
+  // serverFull is set only when the Discord callback sent the browser
+  // back here because the server is at its connection cap (ADR 0148,
+  // #3103): `?error=server_full`. Absent otherwise, so a plain join
+  // route compares equal to what it always did.
+  | { name: "join"; gameID: string; inviteToken: string; spectator: boolean; serverFull?: true }
   // Seat reclaim: an admin-minted, single-use, short-lived link that
   // puts a disconnected player back in their OWN seat at a table that
   // has already started. Public like /join — the ticket is the
@@ -67,9 +87,9 @@ export type Route =
   // `query` is #/catalog?q=<text>, which pre-fills the search box. The
   // roadmap links a signed-in viewer's example card names here.
   | { name: "catalog"; query?: string }
-  // "My games" (ADR 0051 decision 4, S34): every seat the signed-in
-  // person holds, with a way back into the open ones. Session-gated;
-  // the page itself explains what a guest or admin session is missing.
+  // The retired "My games" page (ADR 0051 decision 4, S34). Its list is
+  // Tables' History now (ADR 0158 §1 item 5), and #/my-games only
+  // redirects there (signedInHome.routeRedirect), so a bookmark lands.
   | { name: "myGames" }
   // S12.5: /auth/discord/callback (server-side) redirects here with
   // the session details in the URL fragment. App.svelte's effect
@@ -93,6 +113,7 @@ export type Route =
       userID?: string;
     };
 
+// "login" is the front page (ADR 0156 §4): #/ and #/login both open it.
 const defaultRoute: Route = { name: "login" };
 
 // parseHash is exported for tests; everything else reads `route`.
@@ -115,8 +136,16 @@ export function parseHash(hash: string): Route {
     }
     case "home":
       return { name: "home" };
+    case "request-access":
+      return params.get("retry") === "1"
+        ? { name: "requestAccess", retry: true }
+        : { name: "requestAccess" };
     case "roadmap":
       return { name: "roadmap" };
+    case "privacy":
+      return { name: "privacy" };
+    case "about":
+      return { name: "about" };
     // #/deck-check is a permanent alias of #/decks (see the Route type).
     case "decks":
     case "deck-check": {
@@ -124,7 +153,9 @@ export function parseHash(hash: string): Route {
       return u ? { name: "decks", url: u } : { name: "decks" };
     }
     case "lobby":
-      return { name: "lobby" };
+      return params.get("show") === "history"
+        ? { name: "lobby", show: "history" }
+        : { name: "lobby" };
     case "practice":
       return { name: "practice" };
     case "catalog": {
@@ -146,6 +177,7 @@ export function parseHash(hash: string): Route {
           gameID: parts[1],
           inviteToken: params.get("t") ?? "",
           spectator: params.get("spectator") === "1",
+          ...(params.get("error") === "server_full" ? { serverFull: true as const } : {}),
         };
       }
       if (parts.length >= 3 && parts[2] === "reclaim") {

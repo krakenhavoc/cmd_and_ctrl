@@ -364,6 +364,7 @@ func TestThunderherdMigrationFetchesABasicTapped(t *testing.T) {
 		t.Fatalf("CastSpell: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if c, ok := battlefieldCard(g, forest); !ok || !c.Tapped {
 		t.Fatalf("the basic land should be on the battlefield tapped (found %v, %+v)", ok, c)
 	}

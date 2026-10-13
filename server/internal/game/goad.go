@@ -39,7 +39,9 @@ func (c Card) IsGoaded() bool { return len(c.Goads) > 0 }
 
 // IsGoadedBy reports whether `player` has goaded the creature and that
 // goad has not ended.
-func (c Card) IsGoadedBy(player uuid.UUID) bool {
+func (c Card) IsGoadedBy(player uuid.UUID) bool { return isGoadedBy(&c, player) }
+
+func isGoadedBy(c *Card, player uuid.UUID) bool {
 	for _, gd := range c.Goads {
 		if gd.By == player {
 			return true
@@ -50,7 +52,9 @@ func (c Card) IsGoadedBy(player uuid.UUID) bool {
 
 // Goaders lists every player whose goad is on the creature, oldest goad
 // first. Nil when it is not goaded.
-func (c Card) Goaders() []uuid.UUID {
+func (c Card) Goaders() []uuid.UUID { return markerGoadersOf(&c) }
+
+func markerGoadersOf(c *Card) []uuid.UUID {
 	if len(c.Goads) == 0 {
 		return nil
 	}
@@ -97,9 +101,11 @@ func GoadRequirements(source *Card, by uuid.UUID) []AttackRequirement {
 //
 // Read off the effective characteristic, so the caller must have fresh
 // layers, as for every other post-layer read.
-func (c Card) StaticGoaders() []uuid.UUID {
+func (c Card) StaticGoaders() []uuid.UUID { return staticGoadersOf(&c) }
+
+func staticGoadersOf(c *Card) []uuid.UUID {
 	var out []uuid.UUID
-	for _, r := range effectiveOf(&c).AttackRequirements {
+	for _, r := range effectiveOf(c).AttackRequirements {
 		if r.GoadedBy == uuid.Nil || slices.Contains(out, r.GoadedBy) {
 			continue
 		}
@@ -128,14 +134,17 @@ func (c Card) Goaded() bool {
 // (#2733).
 //
 // Caller must have fresh layers.
-func (c Card) AllGoaders() []uuid.UUID {
+func (c Card) AllGoaders() []uuid.UUID { return AllGoadersOf(&c) }
+
+// AllGoadersOf is AllGoaders without the receiver copy (#2113).
+func AllGoadersOf(c *Card) []uuid.UUID {
 	var out []uuid.UUID
-	for _, p := range c.StaticGoaders() {
-		if !c.IsGoadedBy(p) {
+	for _, p := range staticGoadersOf(c) {
+		if !isGoadedBy(c, p) {
 			out = append(out, p)
 		}
 	}
-	return append(out, c.Goaders()...)
+	return append(out, markerGoadersOf(c)...)
 }
 
 // cloneGoads copies the slice so a clone never aliases the live card's

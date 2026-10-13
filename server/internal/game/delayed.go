@@ -89,6 +89,13 @@ type DelayedTrigger struct {
 	// never names a new object the card became while it waited.
 	SourceObject ObjectRef
 
+	// SourceTurnOvers is the source card's Card.TurnOvers when this
+	// delayed trigger was created (ADR 0152 §3): CR 701.28e's reference
+	// point for a delayed trigger is its creation, not the moment it is
+	// put on the stack. Stamped by ScheduleDelayedTriggerForEffect and
+	// copied onto the fired item.
+	SourceTurnOvers int
+
 	// Label is the stack-overlay copy, in the same shape ordinary
 	// triggers use: "Waterbender's Restoration — return the exiled
 	// creatures".
@@ -214,8 +221,12 @@ type DelayedTrigger struct {
 	// removed by the duration sweep, not by firing (ADR 0059 sub-PR
 	// 2b).
 	// ScheduleDelayedTriggerForEffect stamps UntilEndOfTurn on an
-	// event-conditioned trigger that names none, because every
-	// printed one says "this turn".
+	// event-conditioned trigger that names none, because most printed
+	// ones say "this turn". One that does not is handed
+	// IndefiniteDuration() by its caller: "When this Aura leaves the
+	// battlefield, that creature's controller sacrifices it" (Animate
+	// Dead, ADR 0154 decision 6) waits for as long as the game lasts,
+	// survives every cleanup step, and still fires once (CR 603.7b).
 	Duration *Duration
 
 	// --- CR 610.3: an "until" return (#1729, until_return.go) -------
@@ -256,6 +267,15 @@ type DelayedTrigger struct {
 	// suppressed match does not fire it and does not end it. It is not
 	// tied to its source: the spell that made it is in a graveyard.
 	Repeats bool
+
+	// OncePerBatch is CR 603.2c for a repeating trigger: the printed
+	// "whenever you ATTACK this turn" (Dalkovan Encampment) is one
+	// occurrence per declaration however many creatures were declared,
+	// and the engine emits one EventAttack per creature. With this set
+	// the trigger fires once for each event batch (the guard
+	// TriggeredAbility.OncePerBatch uses, keyed by the trigger's ID).
+	// Meaningful only with Repeats; a one-shot trigger fires once anyway.
+	OncePerBatch bool
 
 	// ManaTapSubtype and ManaAdds are the CR 605.1b twin: a triggered
 	// MANA ability a spell sets up for the turn. "Until end of turn,
@@ -314,10 +334,14 @@ func (g *Game) ScheduleDelayedTriggerForEffect(dt DelayedTrigger) uuid.UUID {
 	if dt.SourceObject.ID == uuid.Nil {
 		dt.SourceObject = g.delayedSourceObjectLocked(dt.SourceCardID)
 	}
-	// #663: "this turn" is the printed duration of every
-	// event-conditioned delayed trigger there is, and CR 514.2 ends
-	// it at cleanup whether or not it fired. A caller that means
-	// something longer hands over its own Duration.
+	// CR 701.28e: "for a delayed trigger, the reference point is when
+	// the delayed trigger was created" — now.
+	dt.SourceTurnOvers = g.TurnOversForEffect(dt.SourceCardID)
+	// #663: "this turn" is the printed duration of most
+	// event-conditioned delayed triggers, and CR 514.2 ends it at
+	// cleanup whether or not it fired. A caller that means something
+	// longer hands over its own Duration — IndefiniteDuration() for
+	// one with no end at all (Animate Dead, ADR 0154 decision 6).
 	if (len(dt.On) > 0 || dt.isManaTrigger()) && dt.Duration == nil {
 		d := g.UntilEndOfTurnDuration()
 		dt.Duration = &d
@@ -451,6 +475,8 @@ func (dt *DelayedTrigger) stackItem() *StackItem {
 		Effect:       bodyEffect(dt.Body.key, dt.Params),
 		Body:         dt.Body.key,
 		Params:       cloneEffectParams(dt.Params),
+		// ADR 0152 §3: the count from the trigger's creation.
+		SourceTurnOvers: dt.SourceTurnOvers,
 	}
 	for _, cardID := range dt.Cards {
 		if cardID == uuid.Nil {
@@ -473,6 +499,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		Controller:         dt.Controller,
 		SourceCardID:       dt.SourceCardID,
 		SourceObject:       dt.SourceObject,
+		SourceTurnOvers:    dt.SourceTurnOvers,
 		Label:              dt.Label,
 		At:                 dt.At,
 		ControllerTurnOnly: dt.ControllerTurnOnly,
@@ -488,6 +515,7 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		UntilLeaves:        dt.UntilLeaves,
 		Due:                dt.Due,
 		Repeats:            dt.Repeats,
+		OncePerBatch:       dt.OncePerBatch,
 		ManaTapSubtype:     dt.ManaTapSubtype,
 		ManaAdds:           dt.ManaAdds,
 	}
@@ -575,6 +603,13 @@ func (g *Game) fireEventDelayedTriggersLocked(pass *harvestPass) {
 			continue
 		}
 		if dt.matchesEventLocked(ev, g) && !g.delayedTriggerSuppressedLocked(pass, dt) {
+			// CR 603.2c: a "whenever you attack" fires once for the
+			// whole declaration. Test-and-set, so it sits last: a match
+			// the trigger did not take must not use the batch up.
+			if dt.OncePerBatch && !g.oncePerBatchAllowsLocked(ev.Batch, dt.ID, "delayed-once-per-batch") {
+				keep = append(keep, dt)
+				continue
+			}
 			fire = append(fire, dt)
 			if dt.Repeats {
 				// CR 603.7b: a stated duration ("this turn") keeps it
@@ -632,6 +667,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 	label, body, params := dt.Label, dt.Body.key, cloneEffectParams(dt.Params)
 	cards := append([]uuid.UUID(nil), dt.Cards...)
 	sourceObject := dt.SourceObject
+	sourceTurnOvers := dt.SourceTurnOvers
 	var optional *TriggerOptionalPrompt
 	if dt.OptionalQuestion != "" {
 		optional = &TriggerOptionalPrompt{Question: dt.OptionalQuestion}
@@ -649,6 +685,7 @@ func (g *Game) dispatchEventDelayedTriggerLocked(pass *harvestPass, dt *DelayedT
 			// Body (ADR 0041 P2).
 			item.Body, item.Params = body, params
 			item.SourceObject = sourceObject
+			item.SourceTurnOvers = sourceTurnOvers
 			for _, cardID := range cards {
 				if cardID != uuid.Nil {
 					item.Targets = append(item.Targets, TargetRef{Kind: TargetCard, ID: cardID})

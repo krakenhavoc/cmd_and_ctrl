@@ -47,7 +47,7 @@ type GrantedAbilityView struct {
 // grantor that has left (never the case for a static grant, whose
 // grantor's presence is the grant) is named by ID alone.
 func grantedByView(g *game.Game, o game.AbilityOrigin) *GrantedByView {
-	if !o.Granted() {
+	if !o.Granted() && !o.Borrowed {
 		return nil
 	}
 	v := &GrantedByView{}
@@ -83,7 +83,66 @@ func stampGrantedAbilities(g *game.Game, card game.Card, c *CardView) {
 			c.ManaAbilities[i].GrantedBy = &named
 		}
 	}
+	// ADR 0155 Decision 10: a borrowed mana row's lender, cleared when
+	// it sits where the table may not see it.
+	for i := range c.ManaAbilities {
+		if bf := c.ManaAbilities[i].BorrowedFrom; bf != nil && lenderHidden(g, bf.ID) {
+			c.ManaAbilities[i].BorrowedFrom = nil
+		}
+	}
 	c.GrantedAbilities = viewOfGrantedAbilities(g, card)
+	c.UnautomatedLenders = viewOfUnautomatedLenders(g, &card)
+}
+
+// viewOfUnautomatedLenders projects game.UnautomatedLendersOf: each lender
+// the catalog cannot lend from, by id and printed name, once per lender.
+// A lender in a hidden zone is left out, as borrowed_from clears it.
+func viewOfUnautomatedLenders(g *game.Game, card *game.Card) []GrantedByView {
+	lenders := g.UnautomatedLendersOf(card)
+	if len(lenders) == 0 {
+		return nil
+	}
+	out := make([]GrantedByView, 0, len(lenders))
+	seen := make(map[uuid.UUID]bool, len(lenders))
+	for _, l := range lenders {
+		if seen[l.InstanceID] || lenderHidden(g, l.InstanceID.String()) {
+			continue
+		}
+		seen[l.InstanceID] = true
+		out = append(out, GrantedByView{ID: l.InstanceID.String(), Name: l.Name})
+	}
+	return out
+}
+
+// borrowedFromView builds a borrowed row's borrowed_from: the lender's
+// ID and printed name, which the entry carries (ADR 0155 Decision 10).
+// Nil for a row that is not lent, and — with a game handle — for a
+// lender in a hidden zone. Without one (viewOfManaAbilitiesFromZone),
+// stampGrantedAbilities asks the zone afterwards.
+func borrowedFromView(g *game.Game, o game.AbilityOrigin) *GrantedByView {
+	if !o.Borrowed || o.Lent == nil || o.LentBy == uuid.Nil {
+		return nil
+	}
+	v := &GrantedByView{ID: o.LentBy.String(), Name: o.Lent.LenderName}
+	if g != nil && lenderHidden(g, v.ID) {
+		return nil
+	}
+	return v
+}
+
+// lenderHidden reports whether a lender sits in a zone whose contents
+// are hidden from the table (a hand or a library), where its identity is
+// not every viewer's to read. No lender in the current family is there:
+// graveyards and exile are public and a library top is lent only while
+// revealed. The projection asks anyway rather than assuming it, and
+// clears the field for everyone, which never leaks.
+func lenderHidden(g *game.Game, id string) bool {
+	lid, err := uuid.Parse(id)
+	if err != nil {
+		return true
+	}
+	z := g.FindCardZoneForEffect(lid)
+	return z != nil && hiddenZone(z.Kind)
 }
 
 // viewOfGrantedAbilities projects game.GrantedAbilitiesOf.

@@ -53,6 +53,14 @@ func TestMergeAccountServesItsSections(t *testing.T) {
 		got.SignIn.LastSignInAt != at(time.Hour).UnixMilli() || got.SignIn.DiscordLinkedAt == 0 || got.SignIn.SessionsInvalidBefore != 0 {
 		t.Errorf("account / sign-in = %+v / %+v", got.Account, got.SignIn)
 	}
+	// Never checked by the sign-up gate (ADR 0156 §1 item 7).
+	if got.SignIn.AccessResult != AccessUnchecked || got.SignIn.AccessCheckedAt != 0 {
+		t.Errorf("unchecked account: access %q at %d", got.SignIn.AccessResult, got.SignIn.AccessCheckedAt)
+	}
+	rows.AccessCheckedAt, rows.AccessResult = at(2*time.Hour), AccessNotMember
+	if c := MergeAccount(rows, nil, Overlay{}, t0).SignIn; c.AccessResult != AccessNotMember || c.AccessCheckedAt != at(2*time.Hour).UnixMilli() {
+		t.Errorf("checked account: access %q at %d", c.AccessResult, c.AccessCheckedAt)
+	}
 	if len(got.Playmats) != 2 || got.Playmats[0].URL != "/playmats/abc" || got.Playmats[0].Active ||
 		got.Playmats[1].Slot != 3 || !got.Playmats[1].Active {
 		t.Errorf("Playmats = %+v", got.Playmats)
@@ -190,6 +198,32 @@ func TestLiveSeatKeepsThePendingBit(t *testing.T) {
 	g := LiveGame(LiveTable{ID: uuid.New(), Seats: []LiveSeat{{Seat: 0, Kind: KindHuman, Name: "Dee", DiscordPending: true, DeckName: "Deck"}}}, Overlay{})
 	if s := g.Seats[0]; !s.DiscordPending || s.GuestName != "Dee" || s.DeckName != "Deck" {
 		t.Errorf("seat = %+v", s)
+	}
+}
+
+// A seat an admin removed from a started game (#3093) reads "removed",
+// on both the row-and-memory merge and the memory-only path (#3113).
+func TestRemovedSeatIsMarkedFromMemory(t *testing.T) {
+	id := uuid.New()
+	alice, bob := uuid.New(), uuid.New()
+	row := GameRow{ID: id, Name: "T", State: "active", CreatedAt: t0, Seats: []SeatRow{
+		{Seat: 0, PlayerID: alice.String(), GuestName: "Alice"},
+		{Seat: 1, PlayerID: bob.String(), GuestName: "Bob"},
+	}}
+	live := LiveTable{ID: id, State: "active", Seats: []LiveSeat{
+		{Seat: 0, PlayerID: alice, Kind: KindHuman, Name: "Alice"},
+		{Seat: 1, PlayerID: bob, Kind: KindHuman, Name: "Bob", Removed: true},
+	}}
+	got := MergeGame(row, Overlay{Tables: []LiveTable{live}})
+	if got.Seats[0].Removed || !got.Seats[1].Removed {
+		t.Errorf("merged seats = %+v / %+v, want only Bob removed", got.Seats[0], got.Seats[1])
+	}
+	if MergeGame(row, Overlay{}).Seats[1].Removed {
+		t.Error("a table not in memory claimed a removal it cannot know")
+	}
+	mem := LiveGame(live, Overlay{})
+	if mem.Seats[0].Removed || !mem.Seats[1].Removed {
+		t.Errorf("memory-only seats = %+v / %+v", mem.Seats[0], mem.Seats[1])
 	}
 }
 

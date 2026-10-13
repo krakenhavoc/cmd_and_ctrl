@@ -1269,7 +1269,13 @@ func TestB39ErebosDrawsForTwoLifeAndShrinksForASacrifice(t *testing.T) {
 
 	hand, life := me.Hand.Size(), me.Life
 	g.WithWriteLock(func() { _ = g.DestroyPermanentForEffect(fodder) })
-	b06AnswerAllTriggerPrompts(t, g, me.ID, true)
+	passPriorityAroundTable(t, g)
+	// The decision is made as the trigger resolves, not as it is put on
+	// the stack: nothing was paid or asked until now.
+	if me.Life != life {
+		t.Fatalf("life %d → %d before the trigger resolved", life, me.Life)
+	}
+	answerMayChoice(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
 	if me.Hand.Size() != hand+1 || me.Life != life-2 {
 		t.Errorf("another creature dying pays 2 life for a card: hand %d → %d, life %d → %d",
@@ -1283,7 +1289,8 @@ func TestB39ErebosDrawsForTwoLifeAndShrinksForASacrifice(t *testing.T) {
 		SacrificeIDs: []uuid.UUID{victim},
 		Targets:      cardRefs(bear),
 	})
-	b06AnswerAllTriggerPrompts(t, g, me.ID, false)
+	passPriorityAroundTable(t, g)
+	answerMayChoice(t, g, me.ID, false)
 	passPriorityAroundTable(t, g)
 	if got := effectivePower(t, g, bear); got != 0 {
 		t.Errorf("-2/-1 on a 2/2 leaves a 0/1: power %d", got)

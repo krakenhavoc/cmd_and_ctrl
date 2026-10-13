@@ -304,6 +304,38 @@ export function attachmentHostIDs(battlefield: readonly CardView[]): Set<string>
 }
 
 /**
+ * graveyardHostLabels names the card each Aura on the battlefield
+ * enchants in a graveyard (ADR 0154 decision 8, #1780): Animate Dead
+ * resolves attached to a creature card in a graveyard and stays there
+ * while its enters trigger waits, which is when an opponent decides
+ * whether to exile that card. Keyed by the Aura's instance id, valued
+ * "{card} in {owner}'s graveyard", for Card's ENCHANTING badge.
+ *
+ * Pure: the host is found by looking the `attached_to` id up in every
+ * seat's graveyard. A host on the battlefield is never in a graveyard,
+ * so ordinary Auras are absent.
+ */
+export function graveyardHostLabels(
+  battlefield: readonly CardView[] | undefined,
+  seats: readonly PlayerView[] | undefined,
+): Record<string, string> {
+  const where = new Map<string, string>();
+  for (const s of seats ?? []) {
+    for (const c of s.graveyard?.cards ?? []) {
+      where.set(c.instance_id, `${c.name} in ${s.name}'s graveyard`);
+    }
+  }
+  const out: Record<string, string> = {};
+  for (const c of battlefield ?? []) {
+    const host = c.attached_to;
+    if (host?.kind !== "card" || !host.id) continue;
+    const label = where.get(host.id);
+    if (label) out[c.instance_id] = label;
+  }
+  return out;
+}
+
+/**
  * buildSeatSummary assembles everything one opponent panel renders.
  *
  * An eliminated seat (CR 104.3, or a concession) keeps its identity

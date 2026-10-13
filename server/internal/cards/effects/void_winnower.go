@@ -39,6 +39,7 @@ func init() {
 		},
 		Static: []game.StaticAbility{
 			{
+				Label: "Your opponents can't block with creatures with even mana values.",
 				Layer: game.Layer6Ability,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 					return target.IsCreature() && target.Controller != source.Controller && target.ManaValue()%2 == 0

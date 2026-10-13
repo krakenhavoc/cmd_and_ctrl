@@ -13,6 +13,7 @@
   import {
     assignedTotal,
     boardDamageAssign,
+    stepGroupOnBoard,
     stepOnBoard,
     stepTrampleOnBoard,
   } from "../../damageAssignment";
@@ -22,22 +23,50 @@
     cardID: string;
     // The card's name, for the buttons' accessible names.
     name: string;
+    // A token group's card (#2958): every member it stands for. The
+    // card carries one stepper for the group. A press moves one point
+    // on one member, lethal-first in the group's order, through the
+    // same store the sheet reads (stepGroup).
+    memberIDs?: readonly string[];
   }
 
-  const { cardID, name }: Props = $props();
+  const { cardID, name, memberIDs }: Props = $props();
 
   const s = $derived($boardDamageAssign);
-  const isBlocker = $derived(!!s && cardID in s.shares.amounts);
-  const isAttacker = $derived(!!s && s.attackerID === cardID);
-  const amount = $derived(s && isBlocker ? s.shares.amounts[cardID] : 0);
-  const lethal = $derived(s && isBlocker ? (s.lethal[cardID] ?? null) : null);
-  const isLethal = $derived(lethal !== null && amount >= lethal);
+  const ids = $derived(memberIDs ?? [cardID]);
+  const grouped = $derived(!!memberIDs && memberIDs.length > 1);
+  // The members that are in this assignment.
+  const blockers = $derived(s ? ids.filter((id) => id in s.shares.amounts) : []);
+  const isBlocker = $derived(blockers.length > 0);
+  const isAttacker = $derived(!!s && ids.includes(s.attackerID));
+  const amount = $derived(s ? blockers.reduce((n, id) => n + s.shares.amounts[id], 0) : 0);
+  // The group's lethal is the sum of its members'; null when the server
+  // sent no figure for one of them.
+  const lethal = $derived.by(() => {
+    if (!s || !isBlocker) return null;
+    let n = 0;
+    for (const id of blockers) {
+      const l = s.lethal[id];
+      if (l === undefined) return null;
+      n += l;
+    }
+    return n;
+  });
+  // Every member at its own lethal, not just the total: 3 + 0 on two
+  // 2-toughness tokens is as many points as 2 + 2 and kills one.
+  const isLethal = $derived(
+    !!s &&
+      isBlocker &&
+      blockers.every((id) => s.lethal[id] !== undefined && s.shares.amounts[id] >= s.lethal[id]),
+  );
   const left = $derived(s ? s.power - assignedTotal(s.shares) : 0);
+  const label = $derived(grouped ? `${name} (group of ${blockers.length})` : name);
 
   function press(e: MouseEvent, delta: 1 | -1, trample = false): void {
     e.stopPropagation();
     e.preventDefault();
     if (trample) stepTrampleOnBoard(delta);
+    else if (grouped) stepGroupOnBoard(ids, delta);
     else stepOnBoard(cardID, delta);
   }
 </script>
@@ -47,28 +76,35 @@
     class="dmg blocker"
     class:lethal={isLethal}
     role="group"
-    aria-label={`damage to ${name}`}
+    aria-label={`damage to ${label}`}
     data-testid="damage-stepper"
   >
     <button
       type="button"
-      aria-label={L.removeDamage(name)}
+      aria-label={L.removeDamage(label)}
       disabled={amount <= 0}
       onclick={(e) => press(e, -1)}>−</button
     >
     <span
       class="amount"
       aria-live="polite"
-      title={lethal === null ? undefined : `lethal damage: ${lethal}`}
+      title={lethal === null
+        ? undefined
+        : grouped
+          ? `lethal damage: ${lethal} across ${blockers.length} tokens`
+          : `lethal damage: ${lethal}`}
     >
       <strong>{amount}</strong>
       {#if lethal !== null}
         <small>{isLethal ? "✓" : `/${lethal}`}</small>
       {/if}
+      {#if grouped}
+        <small class="members">×{blockers.length}</small>
+      {/if}
     </span>
     <button
       type="button"
-      aria-label={L.addDamage(name)}
+      aria-label={L.addDamage(label)}
       disabled={left <= 0 && s.shares.trample <= 0}
       onclick={(e) => press(e, 1)}>+</button
     >

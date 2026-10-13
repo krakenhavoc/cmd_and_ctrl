@@ -76,10 +76,10 @@ func TestHexproofFromVariantIsNotImportedAsFullHexproof(t *testing.T) {
 	}
 
 	want := map[string][]string{
-		// "Hexproof from black" is narrower than hexproof, and the
-		// engine can't express the quality, so the card gets neither
-		// — a simplification that errs weaker.
-		"Knight of Grace": {"first strike"},
+		// "Hexproof from black" is narrower than hexproof: the card
+		// gets the variant token (#3172, CR 702.11e) and NOT the broad
+		// one, which would be stronger than printed.
+		"Knight of Grace": {"first strike", "hexproof from black"},
 		// Bare hexproof, printed on its own comma-joined keyword
 		// line, is the real thing.
 		"Carnage Tyrant": {"trample", "hexproof"},
@@ -94,5 +94,38 @@ func TestHexproofFromVariantIsNotImportedAsFullHexproof(t *testing.T) {
 		if !sameSet(got, exp) {
 			t.Errorf("%s: keywords = %v, want %v", name, got, exp)
 		}
+	}
+}
+
+// A quality the hexproof-from grammar cannot parse mints no token and
+// no broad hexproof either (#3172): the card errs weaker.
+func TestHexproofFromAnUnparseableQualityImportsNothing(t *testing.T) {
+	c := knightOfGrace()
+	c.OracleText = "First strike\nHexproof from activated and triggered abilities"
+	list := &List{Mainboard: []cards.Card{c}}
+	got := list.ToGameCards()[0].Keywords
+	if !sameSet(got, []string{"first strike"}) {
+		t.Errorf("keywords = %v, want [first strike]", got)
+	}
+}
+
+// The colour-count qualities import too.
+func TestHexproofFromMonocoloredAndEachColorImport(t *testing.T) {
+	mono := knightOfGrace()
+	mono.Name = "Mono Knight"
+	mono.OracleText = "First strike\nHexproof from monocolored"
+	each := knightOfGrace()
+	each.Name = "Each Knight"
+	each.OracleText = "First strike\nHexproof from each color"
+	list := &List{Mainboard: []cards.Card{mono, each}}
+	byName := map[string][]string{}
+	for _, c := range list.ToGameCards() {
+		byName[c.Name] = c.Keywords
+	}
+	if !sameSet(byName["Mono Knight"], []string{"first strike", "hexproof from monocolored"}) {
+		t.Errorf("Mono Knight: %v", byName["Mono Knight"])
+	}
+	if !sameSet(byName["Each Knight"], []string{"first strike", "hexproof from each color"}) {
+		t.Errorf("Each Knight: %v", byName["Each Knight"])
 	}
 }

@@ -33,6 +33,7 @@ func init() {
 			AtEachUpkeep("Tendershoot Dryad — create a Saproling", Do(CreateToken{Template: b11GreenSaprolingToken(), N: 1})),
 		},
 		Static: []game.StaticAbility{{
+			Label:    "Saprolings you control get +2/+2 while you have the city's blessing.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: WhileCitysBlessing(func(target *game.Card, _ *game.Game, source *game.Card) bool {

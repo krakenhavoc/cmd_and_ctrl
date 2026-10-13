@@ -120,7 +120,7 @@ func (e *enumerator) waterbendAbilityPayment(
 ) (int, []uuid.UUID, bool) {
 	wb := ab.Cost.Waterbend
 	options := e.g.WaterbendOptionsForEffect(e.seat, game.AbilityWaterbendExclusion(source.InstanceID, ab.Cost), wb)
-	spend := game.ManaSpendForAbility(*source)
+	spend := e.abilitySpend(source)
 	payableAt := func(x int) func(taps []uuid.UUID) bool {
 		return func(taps []uuid.UUID) bool {
 			return e.canPayExcluding(game.WaterbendReduced(cost, x, len(taps)), 0, spend,

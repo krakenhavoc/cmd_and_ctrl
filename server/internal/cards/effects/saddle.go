@@ -117,6 +117,7 @@ func WhenBecomesSaddled(label string, effect func(g *game.Game, item *game.Stack
 func SaddledKeywords(keywords ...string) game.StaticAbility {
 	kws := append([]string(nil), keywords...)
 	return game.StaticAbility{
+		Label:      "Has " + joinWords(keywords) + " while saddled.",
 		Layer:      game.Layer6Ability,
 		ActiveWhen: Saddled(),
 		AppliesTo:  selfOnly,

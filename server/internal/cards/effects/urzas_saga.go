@@ -91,7 +91,6 @@ func urzasSagaSearch(g *game.Game, item *game.StackItem) error {
 		Dest:      game.ZoneBattlefield,
 		Limit:     1,
 		Shuffle:   true,
-		Optional:  true,
 		Reason:    "Urza's Saga — an artifact card with mana cost {0} or {1}",
 		Source:    item.SourceCardID,
 	}.Apply(NewContext(g, item))

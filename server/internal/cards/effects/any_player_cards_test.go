@@ -189,6 +189,42 @@ func TestFanFavoriteAnyPlayerPumps(t *testing.T) {
 	}
 }
 
+// ADR 0150 §4: Fan Favorite's assist, from the catalog's printed
+// keyword alone. Bob pays its {3}; the caster pays the {B}.
+func TestFanFavoriteAssistLetsAnotherPlayerPayTheGeneric(t *testing.T) {
+	g := newCatalogGame(t)
+	advanceToMain(t, g)
+	me := g.Seats[g.Turn.ActiveSeat]
+	bob := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	fan := game.NewCard("Fan Favorite", me.ID)
+	fan.OracleID = apaFanFavorite
+	fan.TypeLine = "Creature — Human Rogue"
+	fan.ManaCost = "{3}{B}"
+	me.Hand.PushTop(fan)
+	apaMana(me, "B")
+	apaMana(bob, "C", "C", "C")
+	if err := g.CastSpell(me.ID, fan.InstanceID, game.CastSpellParams{Strict: true, AssistPlayer: bob.ID}); err != nil {
+		t.Fatalf("cast: %v", err)
+	}
+	if len(g.PendingChoices) != 1 || g.PendingChoices[0].Assist == nil {
+		t.Fatalf("the cast did not wait for Bob: %d prompts", len(g.PendingChoices))
+	}
+	c := g.PendingChoices[0]
+	if c.Chooser != bob.ID || c.PayAmount.Max != 3 || c.Assist.Generic != 3 {
+		t.Fatalf("prompt to %v, max %d, generic %d", c.Chooser, c.PayAmount.Max, c.Assist.Generic)
+	}
+	if err := g.ResolvePayAmount(c.ID, bob.ID, 3); err != nil {
+		t.Fatalf("Bob helps: %v", err)
+	}
+	item := g.StackMeta[fan.InstanceID]
+	if item == nil || item.Paid.AssistedBy != bob.ID || item.Paid.AssistPaid != 3 {
+		t.Fatalf("stack item = %+v", item)
+	}
+	if len(me.ManaPool) != 0 || len(bob.ManaPool) != 0 {
+		t.Errorf("pools left %d and %d, want both spent", len(me.ManaPool), len(bob.ManaPool))
+	}
+}
+
 // The discard is the activator's: a card from THEIR hand pays.
 func TestOonasProwlerActivatorDiscardsFromTheirOwnHand(t *testing.T) {
 	g := newCatalogGame(t)

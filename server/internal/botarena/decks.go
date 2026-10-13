@@ -17,7 +17,7 @@ import (
 // Both are here rather than in the caller because which deck a seat
 // plays is a property of the MEASUREMENT, not of the harness: a win
 // rate measured on BattleDeck and a win rate measured on
-// izzet-aggro-vs-esper-control are two different numbers, and a
+// mono-red-aggro-vs-esper-control are two different numbers, and a
 // report that cannot say which one it took is not a report.
 
 // BattleDeck is 65 vanilla red cards with a real curve, some evasion
@@ -239,8 +239,8 @@ const (
 	oracleGrimMonolith   = "229d6627-1292-4ae1-8849-b0f956fa6540"
 )
 
-// CuratedDeck deals one of the four pre-built decks (docs/bot.md,
-// "The four curated decks"), which is what the model tiers are
+// CuratedDeck deals one of the pre-built decks (docs/bot.md,
+// "The curated decks"), which is what the model tiers are
 // actually configured for: the prompt's static block is that deck's
 // profile, so a model seat playing BattleDeck is being asked to
 // reason about a list it was never shown.

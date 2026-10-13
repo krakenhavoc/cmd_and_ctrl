@@ -82,8 +82,27 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
   }
 
   it("sends a signed-out visitor on a gated route to #/login", () => {
-    for (const hash of ["#/lobby", "#/games/g1", "#/catalog", "#/my-games", "#/practice"]) {
+    for (const hash of ["#/lobby", "#/games/g1", "#/catalog", "#/my-games"]) {
       expect(routeRedirect(parseHash(hash), null)).toBe("#/login");
+    }
+  });
+
+  // ADR 0156: the front page at #/, the gate page, and the practice door
+  // (a guest practice game, §2) are public; #/home is retired and sends
+  // a visitor to the front page and a session to the Lobby.
+  it("keeps a signed-out visitor on the front page, the gate page and the practice door", () => {
+    for (const hash of ["", "#/", "#/request-access", "#/request-access?retry=1", "#/practice"]) {
+      const r = parseHash(hash);
+      expect(isPublicRoute(r)).toBe(true);
+      expect(routeRedirect(r, null)).toBeNull();
+    }
+  });
+
+  it("sends #/home to the front page, or to the Lobby for a session", () => {
+    expect(routeRedirect(parseHash("#/home"), null)).toBe("#/");
+    for (const [, s] of SESSIONS) {
+      if (s === null) continue;
+      expect(routeRedirect(parseHash("#/home"), s)).toBe("#/lobby");
     }
   });
 
@@ -95,6 +114,14 @@ describe("routeRedirect: Login is for signed-out visitors only (§1 item 1)", ()
       expect(isPublicRoute(r)).toBe(true);
       expect(routeRedirect(r, null)).toBeNull();
     }
+  });
+
+  // #2983: a stranger deciding whether to sign in must be able to read
+  // the privacy notice first.
+  it("keeps a signed-out visitor on the privacy notice", () => {
+    const r = parseHash("#/privacy");
+    expect(isPublicRoute(r)).toBe(true);
+    expect(routeRedirect(r, null)).toBeNull();
   });
 
   it("leaves a session on a gated route alone", () => {

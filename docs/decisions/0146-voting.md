@@ -88,8 +88,8 @@ All nine ship Full.
 ## Out of scope
 
 1. **Secret council** (#2926): Mob Verdict, Círdan the Shipwright, Trap the Trespassers, Truth or Consequences, Vault 11: Voter's Dilemma, and Elrond of the White Council. Their ballots must stay hidden until everyone has voted, which is the opposite of decision 5.
-2. **"Whenever players finish voting"** (#2927): Grudge Keeper, Model of Unity, Erestor of the Council. No event marks the end of a vote and the finished ballots are not kept for a trigger to read.
-3. **The other voting cards** (#2928). Most are card work on this seam. Selvala's Stampede needs "reveal until you reveal N creature cards" and a put from hand of up to N cards at once; Custodi Squire votes for cards in a graveyard, and an option whose card is not on the battlefield is dropped from the offer today; Illusion of Choice makes one player choose every vote for a turn.
+2. **"Whenever players finish voting"** (#2927): Grudge Keeper, Model of Unity, Erestor of the Council. No event marked the end of a vote and the finished ballots were not kept for a trigger to read. **Shipped by the amendment of 2026-10-13 below.**
+3. **The other voting cards** (#2928). Most are card work on this seam. Selvala's Stampede needs "reveal until you reveal N creature cards" and a put from hand of up to N cards at once; Custodi Squire votes for cards in a graveyard, and an option whose card is not on the battlefield is dropped from the offer today; Illusion of Choice makes one player choose every vote for a turn. **The first twelve shipped in #3107; the last five (Selvala's Stampede, Custodi Squire, Trial of a Time Lord, Illusion of Choice, The Valeyard) by the second amendment of 2026-10-13 below.**
 
 ## Consequences
 
@@ -98,3 +98,93 @@ All nine ship Full.
 **Cost.** One `PendingChoice` field (`CouncilVote`, an additive v7 snapshot field `pendingChoices[].councilVote`), one effect-key registry, one event and log kind, one `CardDef`/`Spec` slot, one wire field, and the read-only form of the dock's vote request. No new prompt kind.
 
 **The thing most likely to be got wrong later.** Reading a ballot's index as an index into the vote's options. A ballot offers the options still there, plus "Don't vote again" on an optional vote; the vote's own index is `CouncilVote.OptionIndex(option)`, and on the wire `council_vote.offered[i]`.
+
+---
+
+## Amendment 2026-10-13 ([#2927](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2927)): "Whenever players finish voting"
+
+Grudge Keeper, Model of Unity and Erestor of the Council trigger when a vote ends and read who voted for what in the vote that just ended. Decision 5's `EventVoteCast` is the ballot as it is cast; nothing marked the end, and the vote itself is gone from the game once its continuation runs (`PendingChoice.CouncilVote` lives on the open ballot only).
+
+### 9. One event, carrying the ballots
+
+`finishVoteLocked` emits `EventVotesFinished` (`votes_finished`) when the last ballot is cast: `Actor` is the vote's controller, `Source` the card that called it, `Amount` how many ballots were cast, and the new `Event.Ballots` lists every ballot in the order cast. It is emitted **before** the vote's continuation runs, so the log reads the last ballot, the end of the vote, then what the ability did with it. A "finish voting" trigger goes on the stack once the ability that called the vote has finished resolving either way (CR 603.2); it is not a trigger of the vote's own resolution.
+
+The ballots ride the event rather than a record on the game, for three reasons:
+
+- A trigger's stack item keeps its event (`ctx.Trigger().Event`), so the ability reads the ballots **as it resolves**, not as they stand then. A second vote started in response, or another vote later in the turn, cannot change what this one read.
+- The event is plain data and so is copied when emitted; nothing aliases the vote it came from. The effect never captures a pointer, which is the rule for every triggered ability's `Effect`.
+- The event log and every queued trigger's event are already in the snapshot. The change is one additive key, `ballots`, on the `Event` paths of the v8 shape file (`events[]`, `pendingTriggers[].trigger.Event`, `stackMeta[].trigger.Event`, the last-known stack and the paused mode walk), absent from older files and from every other event, so no schema bump: a file without it reads as a vote with no ballots, and a binary before it that drops the key restores a game whose waiting trigger sees an empty vote, which is the worst case of the unchanged behaviour (nothing happens) and not a corruption.
+
+A vote that never began does not emit it: `RunVoteThenForEffect`, the path for a card with nothing to vote for (no permanent qualified), runs the continuation without announcing a finish, because nobody voted and nobody "finished voting". A vote that began and in which every ballot was dropped (each voter left, CR 800.4a) is a finished vote with no ballots, and does emit it.
+
+The public log does not narrate the event (`silentEventKinds`): every ballot is a `vote` line and the trigger is a `trigger` line when it is queued.
+
+### 10. Reading "a choice you voted for"
+
+`game.VotedFor(ballots, voter)` is the distinct options a player voted for. The two predicates the cards need are read against the same ballots:
+
+- `VotedForAChoiceVotedForBy(ballots, voter, you)`: some option the voter voted for is also one you voted for.
+- `VotedForAChoiceNotVotedForBy(ballots, voter, you)`: some option the voter voted for is not one you voted for.
+
+Three cases decide them, and the tests pin each:
+
+- **A player with an extra vote (CR 701.38d)** names every option either of their votes went to. A controller who voted for two options has both in "a choice you voted for"; an opponent who split two votes across one option the controller took and one it did not is in **both** groups, and Erestor gives them a Treasure *and* counts them in X. They did vote for each.
+- **A voter who cast no ballot** voted for nothing, so they are in neither group. Erestor's X does not count them.
+- **A controller who cast no ballot** has voted for no choice, so no opponent shares one (Model of Unity: only you scry; Erestor: no Treasures), and every choice an opponent voted for is "a choice you didn't vote for" (Grudge Keeper drains each opponent who voted at all).
+
+"Each opponent" is each opponent still in the game when the ability resolves (`Context.Opponents`), whoever called the vote: the abilities trigger on every vote at the table.
+
+### 11. The card side
+
+`effects.WheneverPlayersFinishVoting(label, effect)` is the trigger (always applies; one per vote, so extra ballots do not multiply it), `FinishedVoteBallots(ctx)` reads the event off the resolving item, and `OpponentsWhoVotedForAChoiceYouVotedFor` / `OpponentsWhoVotedForAChoiceYouDidntVoteFor` return the opponents in seat order. Model of Unity's "you and each opponent ... may scry 2" is a confirm and a scry per player in turn, you first, the next player asked once the previous scry is answered; each prompt is an ordinary confirm or scry addressed to its player, so the enumerator and the bot already answer it. Erestor puts its draw in the scry's `Then`, as Preordain does, so the draw sees the order the player chose.
+
+### Consequences
+
+Grudge Keeper, Model of Unity and Erestor of the Council ship Full. The `players-finish-voting` seam row is closed. A vote's continuation cannot see the event (it runs with the `VoteResult`, which already holds the ballots), and a future ability that wants "whenever you vote" wants `EventVoteCast`, not this.
+
+---
+
+## Amendment 2026-10-13 ([#2928](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2928), second slice): votes over graveyard cards, choosing how everyone votes, and the five cards
+
+Selvala's Stampede, Custodi Squire, Trial of a Time Lord, Illusion of Choice and The Valeyard each wanted one thing the vote did not have. This amendment adds exactly those, and nothing else about the ballot changes: still one option pick per ballot, still public, still a registered continuation.
+
+### 12. An object vote knows its zone
+
+Decision 4 said each ballot offers "a permanent still on the battlefield". Custodi Squire votes for cards in a graveyard, which that rule dropped from every ballot, so the vote now carries where its cards are.
+
+- `CouncilVote.Zone` (`VotePrompt.OptionZone`, `effects.Vote.Zone`) is the zone kind the options' cards are in. Empty means the battlefield, which is what every earlier vote meant, so no shipped card changes. `game.ZoneGraveyard` offers an option while its card is in a graveyard.
+- A card that leaves the zone while the players vote is not offered to the next ballot, and the continuation re-checks it before it acts (Custodi Squire does not return a card that was exiled meanwhile). It is a new object once it has left (CR 400.7).
+- The vote's controller's graveyard is read once, as the trigger resolves, as the options; the list is fixed then like every vote's.
+- Wire: `council_vote.zone` (`"graveyard"`), omitted for a vote over permanents, words or players. Snapshot: `pendingChoices[].councilVote.zone`, one additive key in v8 (shape file and drift test), absent from older files, which read as the battlefield.
+- The bot: a vote with a zone is not removal. The controller's bot votes for the best card, an opponent's for the worst, both leaning towards a card that already has votes (`aiseat/heuristic/vote.go`).
+
+### 13. "You choose how each player votes this turn"
+
+Illusion of Choice puts every ballot of every vote until end of turn in one player's hands, so it is turn-scoped state that must survive Clone and a snapshot. It is a stored scoped effect, the shape Jared Carthalion's "can't become the monarch" uses (ADR 0096 amendment, #2039), not a flag on the game:
+
+- `ModVoteChooser` (`"voteChooser"`), scope `ScopeGame`, `Player` the chooser, swept at cleanup (CR 514.2). `Game.ChooseHowEachPlayerVotesThisTurnForEffect` registers it. An older binary refuses a file naming a kind it does not know rather than letting every voter vote for themselves.
+- `voteChooserLocked(voter)` is read when each ballot is asked, so a vote that begins later the same turn is covered, and a chooser who leaves the game stops choosing (CR 800.4a: their effect has nothing to apply it). Where several records stand the newest wins (CR 613.7), so the last Illusion cast chooses.
+- The ballot is still the voter's: `CouncilVote.Voter`, the tally, the ballots and the log's `vote` line (Actor) all name the voter. What changes is whom the prompt is owed to: `PendingChoice.Chooser` and `FromPlayer` are the chooser, and the header says "you choose <name>'s vote". Order and extra votes (CR 701.38d) are untouched: the chooser is asked each of the voter's ballots in turn, optional ones included.
+- Departure. A chooser who leaves with a ballot open drops it like any chooser's, and the ballot goes back to the voter (the drop path re-asks it). A voter who leaves while the chooser holds their ballot has it withdrawn from the chooser (`dropChoicesForPlayerLocked`) and casts nothing; `castBallotLocked` also refuses an answer for a voter no longer in the game.
+- The wire needs nothing new: `council_vote.voter` is the voter and `chooser` on the prompt the chooser, so the dock reads "<chooser> is choosing <voter>'s vote" from fields that were already there. The enumerator offers the ballot to its chooser, one answer per option, and the bot answers it for its side: hints are read relative to the bot, whoever the voter is.
+
+### 14. Up to N from hand, and reveal until N
+
+Two primitives grew a count; neither needed a new one.
+
+- `effects.PutFromHandOntoBattlefield.Max` is "up to N" (exactly N when not optional), and N cards enter as one batch through the new `game.PutCardsFromHandOntoBattlefieldThenForEffect`, the hand twin of the library batch on the same entry machinery. Every CR 614 window sees the board as it stood before any of them arrived; every ETB fires after all have landed. `PutFromHandResult.EnteredAll` lists them.
+- `revealUntilCount` is `revealUntil` stopping at the Nth hit. `revealUntil` is its N = 1 case.
+
+### 15. The cards
+
+- **Selvala's Stampede** (Full). Wild reveals until a creature card for each wild vote and puts them all onto the battlefield, then shuffles the library; free puts up to that many permanent cards from hand at once, after the wild half has settled. With no wild vote nothing is revealed and the library is not shuffled, since there is no "rest" to shuffle into it.
+- **Custodi Squire** (Full). An object vote over the controller's artifact, creature and enchantment cards in their graveyard (decision 12); every card tied for the most votes and still there returns to hand.
+- **Trial of a Time Lord** (Full). Needs nothing new: a Saga is an ordinary chapter trigger and chapters I to III are the "until" exile (`ExileUntil`). Chapter IV is a will-of-the-council vote; guilty tucks "the cards exiled with this Saga" (read per chapter, as Skyclave Apparition reads its card, CR 607.2a) on the bottom of their owners' libraries as one exit, an owner of several ordering them (CR 401.4), through the same helper as Terminus. A tie is innocent. The Saga is not sacrificed while the vote is open, so the exile has not ended when the cards are tucked.
+- **Illusion of Choice** (Full). Decision 13, and a card.
+- **The Valeyard** (caveat). Its extra vote is `ExtraVoteYouMay`, as Ballot Broker's. "Face that choice an additional time" is not built: villainous choice (CR 701.55) is a keyword action nothing in the engine asks, and no card in the catalog could make an opponent face one, so the clause has no choice to double. That is weaker than printed, the safe direction, and the card says so. Building the keyword is its own seam. **Update 2026-10-13 ([#3140](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3140)):** the keyword is built ([ADR 0018](0018-triggers-on-the-stack.md)'s amendment of that date) and the caveat is gone; The Valeyard is Full.
+
+### Consequences
+
+Selvala's Stampede, Custodi Squire, Trial of a Time Lord and Illusion of Choice ship Full and The Valeyard ships with a caveat. Every cost is additive: one `CouncilVote` field, one scoped-effect kind, one wire key, one engine door (the hand batch), and two counts on existing primitives. A vote over cards in a zone other than the battlefield or a graveyard, or a chooser who answers some ballots and not others, is not built; the first card that wants either extends the same two fields.
+
+**Back-outs.** Each shape has a test that fails without it: `TestAVoteOverGraveyardCardsOffersWhatIsStillThere` (the zone), `TestAChosenVoteIsAnsweredByTheChooserForEachVoter` and `TestAVotersChosenBallotIsDroppedWhenTheyLeave` (the chooser), `TestSelvalasStampedePutsUpToOneCardPerFreeVote` (the count on the hand put) and `TestSelvalasStampedeRevealsUntilACreatureForEachWildVote` (the count on the reveal).

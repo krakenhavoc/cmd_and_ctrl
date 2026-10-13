@@ -229,22 +229,58 @@ func TestB35DreadSummonsMillsEveryoneAndZombifiesTheCreatureCards(t *testing.T) 
 	}
 }
 
-func TestB35AbandonAttachmentsDiscardsAsACostAndDrawsTwo(t *testing.T) {
+func TestB35AbandonAttachmentsMayDiscardAndIfSoDrawsTwo(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
+	fodder := handCardFull(me, "Fodder", "Sorcery", "", "", nil)
 	hand := me.Hand.Size()
-	_, paid := castWithDiscard(t, g, "Abandon Attachments", b35AbandonAttachmentsOracle, "Sorcery", 1)
-	if !me.Graveyard.Contains(paid[0]) {
-		t.Fatal("the discard is paid at announce")
+	castCatalogSpell(t, g, "Abandon Attachments", "Instant — Lesson", b35AbandonAttachmentsOracle, nil)
+	if !me.Hand.Contains(fodder) {
+		t.Fatal("nothing is discarded at cast")
 	}
 	passPriorityAroundTable(t, g)
-	// hand + fodder + spell, minus the fodder, minus the spell, plus two.
-	if me.Hand.Size() != hand+2 {
-		t.Errorf("hand %d → %d, want +2 net", hand, me.Hand.Size())
+	c := discardChoiceFor(g, me.ID)
+	if c == nil || c.ChooseMin != 0 {
+		t.Fatalf("a 'may discard' prompt with a floor of zero: %+v", c)
 	}
-	spec, _ := Lookup(b35AbandonAttachmentsOracle)
-	if spec.Completeness != CompletenessCaveats || spec.AdditionalCost == nil || spec.AdditionalCost.DiscardCards != 1 {
-		t.Error("the discard-as-cost is a declared gap")
+	answerDiscard(t, g, me.ID, fodder)
+	passPriorityAroundTable(t, g)
+	if !me.Graveyard.Contains(fodder) {
+		t.Error("the chosen card is discarded")
+	}
+	// hand before + the spell, minus the spell, minus the fodder, plus two.
+	if me.Hand.Size() != hand+1 {
+		t.Errorf("hand %d -> %d, want +1 net", hand, me.Hand.Size())
+	}
+}
+
+// "If you do": declining the discard draws nothing, and the card stays.
+func TestB35AbandonAttachmentsDeclinedDrawsNothing(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	fodder := handCardFull(me, "Fodder", "Sorcery", "", "", nil)
+	castCatalogSpell(t, g, "Abandon Attachments", "Instant — Lesson", b35AbandonAttachmentsOracle, nil)
+	hand := me.Hand.Size()
+	passPriorityAroundTable(t, g)
+	answerDiscard(t, g, me.ID)
+	passPriorityAroundTable(t, g)
+	if !me.Hand.Contains(fodder) || me.Hand.Size() != hand {
+		t.Errorf("declined: hand %d -> %d, fodder kept %v", hand, me.Hand.Size(), me.Hand.Contains(fodder))
+	}
+	if spec, _ := Lookup(b35AbandonAttachmentsOracle); spec.Completeness != CompletenessFull || spec.AdditionalCost != nil {
+		t.Error("the discard is an effect now, not a cost")
+	}
+}
+
+// Castable with no other card in hand, and countering it keeps the card.
+func TestB35AbandonAttachmentsCastableWithAnEmptyHand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	me.Hand.Cards = nil
+	castCatalogSpell(t, g, "Abandon Attachments", "Instant — Lesson", b35AbandonAttachmentsOracle, nil)
+	passPriorityAroundTable(t, g)
+	if discardChoiceFor(g, me.ID) != nil || me.Hand.Size() != 0 {
+		t.Errorf("an empty hand discards nothing and draws nothing: hand %d", me.Hand.Size())
 	}
 }
 
@@ -260,8 +296,32 @@ func TestB35ThirstForDiscoveryDrawsThreeAndOwesTwoDiscards(t *testing.T) {
 	if discardOwed(g, me.ID) != 2 {
 		t.Errorf("owes %d discards, want 2", discardOwed(g, me.ID))
 	}
-	if spec, _ := Lookup(b35ThirstForDiscoveryOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing basic-land alternative is a declared gap")
+	if spec, _ := Lookup(b35ThirstForDiscoveryOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the basic-land alternative is offered: nothing is left to declare")
+	}
+}
+
+// "Discard two cards unless you discard a basic land card": one basic
+// land card is a complete answer; a nonbasic land is not.
+func TestB35ThirstForDiscoveryAcceptsOneBasicLand(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	forest := handCardFull(me, "Forest", "Basic Land — Forest", "", "", nil)
+	temple := handCardFull(me, "Temple", "Land", "", "", nil)
+	castCatalogSpell(t, g, "Thirst for Discovery", "Instant", b35ThirstForDiscoveryOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := discardChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("no discard prompt")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{temple}); err == nil {
+		t.Fatal("a nonbasic land alone was accepted")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{forest}); err != nil {
+		t.Fatalf("one basic land card is a complete discard: %v", err)
+	}
+	if me.Hand.Contains(forest) || !me.Hand.Contains(temple) {
+		t.Error("only the basic land was discarded")
 	}
 }
 
@@ -759,6 +819,7 @@ func TestB35ScreamingNemesisReflectsDamageToAnyOtherTarget(t *testing.T) {
 	assertKeywords(t, g, nemesis, "haste")
 	life := opp.Life
 	b27Damage(g, theirs, nemesis, 1)
+	g.RunStateChecksForTest() // #3172: "dealt damage" triggers wait for the batch to settle
 	b04WaitForPick(t, g, me.ID)
 	b16PickPlayer(t, g, me.ID, opp.ID)
 	passPriorityAroundTable(t, g)
@@ -767,6 +828,7 @@ func TestB35ScreamingNemesisReflectsDamageToAnyOtherTarget(t *testing.T) {
 	}
 	// Choosing the Nemesis itself does nothing — "any OTHER target".
 	b27Damage(g, theirs, nemesis, 1)
+	g.RunStateChecksForTest() // #3172: "dealt damage" triggers wait for the batch to settle
 	b04WaitForPick(t, g, me.ID)
 	pickCard(t, g, me.ID, nemesis)
 	passPriorityAroundTable(t, g)
@@ -784,8 +846,8 @@ func TestB35ScreamingNemesisReflectsDamageToAnyOtherTarget(t *testing.T) {
 	if g.Battlefield.Contains(theirs) {
 		t.Error("the dead Nemesis still deals its 5 to the chosen creature")
 	}
-	if spec, _ := Lookup(b35ScreamingNemesisOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing no-lifegain clause is a declared gap")
+	if spec, _ := Lookup(b35ScreamingNemesisOracle); spec.Completeness != CompletenessFull {
+		t.Error("the no-lifegain clause and the batched damage both landed (#3172 cav-d)")
 	}
 }
 

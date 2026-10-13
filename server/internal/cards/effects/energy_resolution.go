@@ -57,14 +57,9 @@ func createServo(g *game.Game, item *game.StackItem) error {
 func sacrificeThisUnlessYouPayEnergy(name, permanent string, n int) Effect {
 	return func(g *game.Game, item *game.StackItem) error {
 		return PayEnergyUnless{
-			N:        n,
-			Question: name + " — pay " + EnergySymbols(n) + ", or sacrifice " + permanent + "?",
-			OnDecline: func(ctx *Context) error {
-				if !sourceIsStillThisPermanent(ctx.Game, ctx.Item) {
-					return nil
-				}
-				return SacrificePermanent{Target: ctx.Item.SourceCardID}.Apply(ctx)
-			},
+			N:         n,
+			Question:  name + " — pay " + EnergySymbols(n) + ", or sacrifice " + permanent + "?",
+			OnDecline: sacrificeThisIfStillHere,
 		}.Apply(NewContext(g, item))
 	}
 }

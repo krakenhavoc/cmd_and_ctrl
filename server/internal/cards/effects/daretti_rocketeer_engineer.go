@@ -25,6 +25,7 @@ func init() {
 		Name:         "Daretti, Rocketeer Engineer",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Power is equal to the greatest mana value among artifacts you control.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

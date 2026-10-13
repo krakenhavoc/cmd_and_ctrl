@@ -274,7 +274,8 @@ func TestAccountReadsSignInDecksAndDeckRequests(t *testing.T) {
 	s := openSeeded(t)
 	ann := s.user("Ann", t0, at(time.Hour))
 	s.identity(ann, "4242", at(time.Minute))
-	s.exec(`UPDATE users SET sessions_invalid_before = ? WHERE id = ?`, at(2*time.Hour).UnixMilli(), ann)
+	s.exec(`UPDATE users SET sessions_invalid_before = ?, access_checked_at = ?, access_result = 'no_role' WHERE id = ?`,
+		at(2*time.Hour).UnixMilli(), at(3*time.Hour).UnixMilli(), ann)
 	bea := s.user("Bea", t0, t0)
 	s.identity(bea, "5151", t0)
 
@@ -297,6 +298,13 @@ func TestAccountReadsSignInDecksAndDeckRequests(t *testing.T) {
 	}
 	if !rows.DiscordLinkedAt.Equal(at(time.Minute)) || !rows.SessionsInvalidBefore.Equal(at(2*time.Hour)) {
 		t.Errorf("sign-in: linked %v, invalid before %v", rows.DiscordLinkedAt, rows.SessionsInvalidBefore)
+	}
+	if !rows.AccessCheckedAt.Equal(at(3*time.Hour)) || rows.AccessResult != "no_role" {
+		t.Errorf("access check: %v %q, want %v no_role", rows.AccessCheckedAt, rows.AccessResult, at(3*time.Hour))
+	}
+	if never, err := NewSQLStore(s.d).Account(context.Background(), uuid.MustParse(bea)); err != nil ||
+		!never.AccessCheckedAt.IsZero() || never.AccessResult != "" {
+		t.Errorf("an account never checked: %v %q %v", never.AccessCheckedAt, never.AccessResult, err)
 	}
 	if len(rows.Decks) != 2 || rows.Decks[0].ID != "d2" || rows.Decks[0].SourceURL == "" ||
 		!slices.Equal(rows.Decks[0].Commanders, []string{"Kenrith", "Partner"}) || rows.Decks[1].SourceURL != "" {

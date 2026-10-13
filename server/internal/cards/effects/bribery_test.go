@@ -40,6 +40,7 @@ func TestBriberySearchesOpponentsLibraryAndTakesControl(t *testing.T) {
 		t.Fatalf("CastSpell Bribery: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	// A single creature match with Limit 1 needs no chooser prompt —
 	// SearchLibraryThenForEffect's "no decision to make" fast path —

@@ -1113,22 +1113,26 @@ func TestB10MountDoomThreeAbilities(t *testing.T) {
 	loseTheirs := seedCreature(g, "Lose Theirs", opp.ID)
 	if err := g.ActivateCatalogAbility(me.ID, doom, 1, game.ActivateAbilityParams{
 		SacrificeIDs: []uuid.UUID{rock},
-		Targets:      []game.TargetRef{{Kind: game.TargetCard, ID: keepMine}},
 	}); err == nil {
 		t.Fatal("a non-legendary artifact was accepted for the sacrifice")
 	}
 	if err := g.ActivateCatalogAbility(me.ID, doom, 1, game.ActivateAbilityParams{
 		SacrificeIDs: []uuid.UUID{ring},
-		Targets: []game.TargetRef{
-			{Kind: game.TargetCard, ID: keepMine},
-			{Kind: game.TargetCard, ID: keepTheirs},
-		},
 	}); err != nil {
 		t.Fatalf("wipe: %v", err)
 	}
 	if g.Battlefield.Contains(doom) || g.Battlefield.Contains(ring) {
 		t.Error("Mount Doom and the legendary artifact are sacrificed as the cost")
 	}
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Fatal("the survivors are not chosen while the ability is on the stack")
+	}
+	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || pick.ChooseMin != 0 || pick.ChooseMax != 2 || !hasID(pick.ChooseCards, loseTheirs) {
+		t.Fatalf("one pick of up to two over every creature, asked as the ability resolves: %+v", pick)
+	}
+	answerChooseCards(t, g, me.ID, keepMine, keepTheirs)
 	passPriorityAroundTable(t, g)
 	for _, id := range []uuid.UUID{keepMine, keepTheirs} {
 		if !g.Battlefield.Contains(id) {
@@ -1280,6 +1284,7 @@ func TestB10CityOfTraitorsGoesWhenYouPlayALandButNotWhenYouFetchOne(t *testing.T
 	pushLibraryCardForTest(me, game.Card{Name: "Forest", TypeLine: "Basic Land — Forest"})
 	castCatalogSpell(t, g, "Rampant Growth", "Sorcery", b10RampantGrowthOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if findBattlefieldByName(g, "Forest") == uuid.Nil {
 		t.Fatal("Rampant Growth should have fetched the Forest")
 	}

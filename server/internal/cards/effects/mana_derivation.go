@@ -232,9 +232,9 @@ func SourcePower(g *game.Game, _, source uuid.UUID) int {
 //
 // A count of zero returns "", which adds no mana and still taps the
 // land — the printed outcome for Gaea's Cradle with an empty board.
-func ProducedPerPermanent(symbol string, match func(game.Card) bool) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	slot := "{" + strings.ToUpper(symbol) + "}"
-	return func(g *game.Game, controller, _ uuid.UUID) string {
+func ProducedPerPermanent(symbol string, match func(game.Card) bool) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	opts := []string{strings.ToUpper(symbol)}
+	return func(g *game.Game, controller, _ uuid.UUID) game.ManaAmount {
 		n := 0
 		for _, c := range g.BattlefieldCardsForEffect() {
 			if c.Controller != controller {
@@ -244,7 +244,7 @@ func ProducedPerPermanent(symbol string, match func(game.Card) bool) func(*game.
 				n++
 			}
 		}
-		return strings.Repeat(slot, n)
+		return game.ManaAmount{Options: opts, N: n}
 	}
 }
 
@@ -323,14 +323,14 @@ func hasFold(xs []string, want string) bool {
 // it REMOVES its counters as a cost and is ProducedPerCounterRemoved.
 //
 // No counters returns "", which adds no mana and still taps the land.
-func ProducedPerCounterOnThis(kind, symbol string) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	slot := "{" + strings.ToUpper(symbol) + "}"
-	return func(g *game.Game, _, source uuid.UUID) string {
+func ProducedPerCounterOnThis(kind, symbol string) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	opts := []string{strings.ToUpper(symbol)}
+	return func(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 		c, ok := g.LookupCardForEffect(source)
 		if !ok {
-			return ""
+			return game.ManaAmount{}
 		}
-		return strings.Repeat(slot, c.Counters[kind])
+		return game.ManaAmount{Options: opts, N: c.Counters[kind]}
 	}
 }
 

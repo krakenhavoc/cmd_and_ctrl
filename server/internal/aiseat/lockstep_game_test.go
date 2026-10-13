@@ -210,8 +210,14 @@ func TestHeuristicMirrorResolvesInsideTheTurnBudget(t *testing.T) {
 //     against a lone commander on 3 (#2474): a commander trade, a turn
 //     waiting for mine to lose summoning sickness, then the kill. The
 //     attrition horizon sees that line now (HorizonPlaysFreeAnswer and
-//     HorizonRecastsCommander), and the games end on turns 7 and 6
-//     again.
+//     HorizonRecastsCommander), and the games ended on turns 7 and 6
+//     again, but on a misblock: the defender, on 3, blocked the Bear
+//     with its commander and died to the bot's (#3066). Its blocks are
+//     checked as a set now (BlockSetSurvives), so it trades commanders
+//     and lives on 1. Both commanders are cast again, the bot's in its
+//     second main phase, so it is not summoning sick by the bot's next
+//     turn and no turn is spent waiting: the Bear and the commander
+//     swing into one blocker and the games end on turns 8 and 7.
 func TestHeuristicWurmEdgeResolvesInsideTheTurnBudget(t *testing.T) {
 	requireGameTests(t)
 	const (

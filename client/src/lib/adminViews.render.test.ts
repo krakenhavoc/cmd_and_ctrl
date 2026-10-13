@@ -83,6 +83,7 @@ const LIVE: LiveNowResponse = {
   ],
   unbound_sockets: 0,
   totals: { players_connected: 2, spectators: 2, bot_seats: 1, practice_tables: 0, admin_views: 1 },
+  capacity: { load: 14, load_limit: 180, connections: 9, connection_limit: 0 },
 };
 
 const ROW = {
@@ -160,6 +161,8 @@ const ACCOUNT: AdminAccountResponse = {
     last_sign_in_at: NOW - 86_400_000,
     discord_linked_at: NOW - 30 * 86_400_000,
     revoke_path: `/admin/users/${USER}/revoke-sessions`,
+    access_checked_at: NOW - 3_600_000,
+    access_result: "no_role",
   },
   games: [{ ...ROW, their_seat: 0 }],
   games_truncated: false,
@@ -296,15 +299,21 @@ const button = (c: ParentNode, name: string): HTMLButtonElement | undefined =>
   [...c.querySelectorAll<HTMLButtonElement>("button")].find((b) => b.textContent?.trim() === name);
 
 describe("the tab strip", () => {
-  it("is navigation 'admin views' with Live now, Games and Accounts, the current one marked", async () => {
+  it("is navigation 'admin views' with Live now, Games, Accounts and Reports, the current one marked", async () => {
     const c = await show({ view: "game", id: GAME });
     const nav = c.querySelector('nav[aria-label="admin views"]')!;
     const links = [...nav.querySelectorAll("a")];
-    expect(links.map((a) => a.textContent?.trim())).toEqual(["Live now", "Games", "Accounts"]);
+    expect(links.map((a) => a.textContent?.trim())).toEqual([
+      "Live now",
+      "Games",
+      "Accounts",
+      "Reports",
+    ]);
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
       "#/admin/live",
       "#/admin/games",
       "#/admin/accounts",
+      "#/admin/reports",
     ]);
     expect(links[1].getAttribute("aria-current")).toBe("page");
   });
@@ -332,6 +341,9 @@ describe("Live now", () => {
     const t = text(region);
     expect(t).toContain("Players connected 2");
     expect(t).toContain("Bot seats 1");
+    // ADR 0148: the load and the sockets against their caps; a limit of 0 is "no cap".
+    expect(t).toContain("Table load 14 / 180");
+    expect(t).toContain("Connections 9 (no cap)");
     expect(t).toContain("Friday night");
     expect(t).toContain("Alice");
     expect(t).toContain("connected · since 4 min ago");
@@ -423,6 +435,7 @@ describe("one account", () => {
     const t = text(c);
     expect(t).toContain("zed");
     expect(t).toContain("no list on the server");
+    expect(t).toContain("refused: no role");
     expect(t).toContain("Atraxa superfriends");
     expect(t).toContain("moxfield:abc");
     expect(
@@ -514,17 +527,47 @@ describe("the gate", () => {
   });
 });
 
+// ADR 0156 §3: Admin is in the account menu, and in the site nav in admin mode (#3221).
 describe("the header's Admin link", () => {
   const adminLink = (c: HTMLElement) =>
-    [...c.querySelectorAll('nav[aria-label="Site"] a')].find((a) => a.textContent === "Admin");
+    [...c.querySelectorAll("#account-menu a")].find((a) => a.textContent?.trim() === "Admin");
+  const openAccount = (c: HTMLElement) => {
+    const btn = c.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]');
+    if (btn) click(btn);
+  };
 
-  it("is last in the site nav for the token and for admin mode, going to Live now", async () => {
+  it("is in the nav, as its own group, in admin mode, and current on admin routes", async () => {
+    for (const s of [token(), person(true)]) {
+      session.set(s);
+      location.hash = "#/lobby";
+      await new Promise((r) => setTimeout(r, 0));
+      const { container, destroy } = render(SiteHeader as never, {} as never);
+      await settle();
+      const groups = [...container.querySelectorAll('nav[aria-label="Site"] .grp')];
+      const last = groups[groups.length - 1];
+      expect([...last.querySelectorAll("a")].map((a) => a.textContent?.trim())).toEqual(["Admin"]);
+      const a = last.querySelector("a")!;
+      expect(a.getAttribute("href")).toBe("#/admin/live");
+      expect(a.getAttribute("aria-current")).toBeNull();
+      destroy();
+    }
+    session.set(person(true));
+    location.hash = "#/admin/live";
+    await new Promise((r) => setTimeout(r, 0));
+    const { container, destroy } = render(SiteHeader as never, {} as never);
+    await settle();
+    const link = container.querySelector('nav[aria-label="Site"] a.admin-link');
+    expect(link?.getAttribute("aria-current")).toBe("page");
+    destroy();
+    location.hash = "";
+  });
+
+  it("is in the account menu for the token and for admin mode, going to Live now", async () => {
     for (const s of [token(), person(true)]) {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
-      const links = [...container.querySelectorAll('nav[aria-label="Site"] a')];
-      expect(links.at(-1)?.textContent).toBe("Admin");
+      openAccount(container);
       expect(adminLink(container)?.getAttribute("href")).toBe("#/admin/live");
       destroy();
     }
@@ -535,6 +578,9 @@ describe("the header's Admin link", () => {
       session.set(s);
       const { container, destroy } = render(SiteHeader as never, {} as never);
       await settle();
+      const nav = [...container.querySelectorAll('nav[aria-label="Site"] a')];
+      expect(nav.map((a) => a.textContent?.trim())).not.toContain("Admin");
+      openAccount(container);
       expect(adminLink(container)).toBeUndefined();
       destroy();
     }

@@ -226,6 +226,7 @@ func TestSlice293ArchdruidsCharmFindsALandOntoTheBattlefieldTapped(t *testing.T)
 	if err := s293CastCharm(t, g, []int{0}, nil); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
+	takeSearchPrompts(t, g)
 	found := false
 	for _, c := range g.Battlefield.Cards {
 		if c.Name == "Forest" && c.Controller == me.ID {
@@ -247,6 +248,7 @@ func TestSlice293ArchdruidsCharmFindsACreatureIntoHand(t *testing.T) {
 	if err := s293CastCharm(t, g, []int{0}, nil); err != nil {
 		t.Fatalf("cast: %v", err)
 	}
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(id) {
 		t.Error("the creature card should be in hand")
 	}
@@ -516,6 +518,7 @@ func TestSlice293MuddleTheMixtureTransmutesForSameManaValue(t *testing.T) {
 		t.Fatal("no Transmute ability declared")
 	}
 	b16Activate(t, g, me.ID, muddle, idx, game.ActivateAbilityParams{})
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(needle) {
 		t.Error("transmute should have fetched the mana value 2 card")
 	}

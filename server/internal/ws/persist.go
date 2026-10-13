@@ -178,6 +178,14 @@ type RestoreOutcome struct {
 	Skipped string
 	Err     error
 
+	// Deferred is set on a game the restore pass chose NOT to bring
+	// back this boot because the table-load cap was full (ADR 0148,
+	// #2977). Its restore point is left on disk exactly as it was, so a
+	// later boot, or the same boot with a raised cap, restores it. It is
+	// neither Restored nor an error, and not Skipped (that is an ended
+	// game whose file was removed).
+	Deferred bool
+
 	// Reason categorises Err for LogRestoreSummary's tally (#524), so
 	// an operator can see AT A GLANCE how many abandonments were a
 	// rollback (schema_too_new — expected, rolls forward and comes
@@ -208,6 +216,8 @@ const (
 	ReasonNotRestorable     = "not_restorable"
 	ReasonUnknownEffectKey  = "unknown_effect_key"
 	ReasonOther             = "other"
+	// ReasonOverCapacity tags a Deferred outcome (ADR 0148).
+	ReasonOverCapacity = "over_capacity"
 )
 
 // Restored reports whether this game is live again.
@@ -239,6 +249,35 @@ func (o RestoreOutcome) Restored() bool { return o.Room != nil }
 // Errors are never fatal: a broken restore point must not stop the
 // server from starting.
 func (m *RoomManager) RestoreRooms() []RestoreOutcome {
+	return m.RestoreRoomsAdmitting(nil)
+}
+
+// RestoreCandidate is what the restore pass knows about a readable
+// restore point before it rebuilds the game: enough for the lobby to
+// decide whether the table fits under the load cap (ADR 0148).
+type RestoreCandidate struct {
+	GameID uuid.UUID
+	State  game.State
+	// TakenAt is when the restore point was captured, which is when the
+	// table last committed a move: "most recently active".
+	TakenAt time.Time
+	// Humans and Bots count the seats (an agent's seat is a human's).
+	Humans, Bots int
+}
+
+// RestoreAdmission decides which candidates the pass leaves on disk. It
+// is handed every readable restore point at once, so it can rank them,
+// and returns the ids to DEFER. Nil admits everything.
+type RestoreAdmission func(cands []RestoreCandidate) (deferred map[uuid.UUID]bool)
+
+// RestoreRoomsAdmitting is RestoreRooms with an admission step between
+// reading the restore points and rebuilding them. A file that cannot
+// be read or decoded yields its error outcome exactly as before and is
+// never offered to admit. A deferred game's file is not opened again,
+// not modified and not removed: that is the whole contract, because the
+// alternative (ending the table) throws away a game the server simply
+// had no room for yet.
+func (m *RoomManager) RestoreRoomsAdmitting(admit RestoreAdmission) []RestoreOutcome {
 	if m.dumpDir == "" {
 		return nil
 	}
@@ -251,18 +290,68 @@ func (m *RoomManager) RestoreRooms() []RestoreOutcome {
 		return nil
 	}
 
+	type loaded struct {
+		path string
+		file *restorePointFile
+	}
 	var out []RestoreOutcome
+	var files []loaded
 	for _, e := range entries {
 		name := e.Name()
 		if e.IsDir() || !strings.HasSuffix(name, ".json") {
 			continue
 		}
-		out = append(out, m.restoreOne(filepath.Join(dir, name)))
+		path := filepath.Join(dir, name)
+		file, bad := m.readRestorePoint(path)
+		if file == nil {
+			out = append(out, bad)
+			continue
+		}
+		// A table that already has a room is live: its restore point is
+		// the one it keeps writing, not a table waiting to come back. At
+		// boot nothing is registered, so this only matters for the hot
+		// pass (lobby.RestoreDeferred, ADR 0148's 2026-10-13 amendment),
+		// where rebuilding it would replace a running room with its own
+		// older self.
+		if m.Get(file.Snapshot.ID) != nil {
+			continue
+		}
+		files = append(files, loaded{path, file})
+	}
+
+	var deferred map[uuid.UUID]bool
+	if admit != nil && len(files) > 0 {
+		cands := make([]RestoreCandidate, 0, len(files))
+		for _, f := range files {
+			c := RestoreCandidate{GameID: f.file.Snapshot.ID, State: f.file.Snapshot.State, TakenAt: f.file.Snapshot.TakenAt}
+			for _, seat := range f.file.Snapshot.Seats {
+				if seat.IsBot {
+					c.Bots++
+				} else {
+					c.Humans++
+				}
+			}
+			cands = append(cands, c)
+		}
+		deferred = admit(cands)
+	}
+
+	for _, f := range files {
+		id := f.file.Snapshot.ID
+		if deferred[id] {
+			m.log.Warn("restore point left on disk: the table-load cap is full (free tables and POST /admin/capacity/restore-deferred, or raise the cap and restart)",
+				"game_id", id, "path", f.path, "restore_point_age", time.Since(f.file.Snapshot.TakenAt).Round(time.Second).String())
+			out = append(out, RestoreOutcome{GameID: id, Deferred: true, Reason: ReasonOverCapacity})
+			continue
+		}
+		out = append(out, m.restoreFile(f.path, f.file))
 	}
 	return out
 }
 
-func (m *RoomManager) restoreOne(path string) RestoreOutcome {
+// readRestorePoint reads and decodes one restore point. It returns the
+// file, or nil and the outcome that records why it could not.
+func (m *RoomManager) readRestorePoint(path string) (*restorePointFile, RestoreOutcome) {
 	var res RestoreOutcome
 
 	raw, err := os.ReadFile(path)
@@ -270,21 +359,28 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 		res.Err = fmt.Errorf("read %s: %w", path, err)
 		res.Reason = ReasonReadError
 		m.log.Error("restore point unreadable; game abandoned", "path", path, "err", err)
-		return res
+		return nil, res
 	}
 	var file restorePointFile
 	if err := json.Unmarshal(raw, &file); err != nil {
 		res.Err = fmt.Errorf("decode %s: %w", path, err)
 		res.Reason = ReasonDecodeError
 		m.log.Error("restore point undecodable; game abandoned", "path", path, "err", err)
-		return res
+		return nil, res
 	}
 	if file.Snapshot == nil {
 		res.Err = fmt.Errorf("%s: no snapshot in file", path)
 		res.Reason = ReasonEmptySnapshot
 		m.log.Error("restore point empty; game abandoned", "path", path)
-		return res
+		return nil, res
 	}
+	return &file, res
+}
+
+// restoreFile rebuilds one game from a restore point already read and
+// decoded by readRestorePoint, and registers its room.
+func (m *RoomManager) restoreFile(path string, file *restorePointFile) RestoreOutcome {
+	var res RestoreOutcome
 	res.GameID = file.Snapshot.ID
 
 	// An ended table comes back for EndedTableRetention, so the seats
@@ -419,8 +515,11 @@ func (m *RoomManager) restoreOne(path string) RestoreOutcome {
 // from the same tally, zeros included when there was nothing to
 // restore. The boot calls it once, so they are set once.
 func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
-	var restored, ended, failed, degradedGames, degradedCards int
-	defer func() { metrics.SetBootRestore(restored, ended, failed, degradedCards) }()
+	var restored, ended, failed, deferred, degradedGames, degradedCards int
+	defer func() {
+		metrics.SetBootRestore(restored, ended, failed, degradedCards)
+		metrics.SetBootRestoreDeferred(deferred)
+	}()
 	if len(outcomes) == 0 {
 		return
 	}
@@ -429,6 +528,8 @@ func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 		switch {
 		case o.Restored():
 			restored++
+		case o.Deferred:
+			deferred++
 		case o.Skipped != "":
 			ended++
 		default:
@@ -445,6 +546,9 @@ func LogRestoreSummary(log *slog.Logger, outcomes []RestoreOutcome) {
 		}
 	}
 	attrs := []any{"restored", restored, "ended", ended, "abandoned", failed}
+	if deferred > 0 {
+		attrs = append(attrs, "deferred_over_capacity", deferred)
+	}
 	if failed > 0 {
 		attrs = append(attrs, "abandoned_reasons", reasons)
 	}

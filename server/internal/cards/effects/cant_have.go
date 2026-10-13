@@ -31,6 +31,7 @@ import (
 // has no locked set, CR 611.3a).
 func LoseAndCantHave(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Affected creatures lose " + joinWords(keywords) + " and can't have or gain it.",
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply:     game.CantHaveKeywords(keywords...),

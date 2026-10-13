@@ -35,6 +35,7 @@ func init() {
 		PrintedKeywords: []string{"reach"},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
+			Label: "Modified creatures you control have trample.",
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.IsCreature() && target.Controller == source.Controller && b07IsModified(g, *target)
 			},

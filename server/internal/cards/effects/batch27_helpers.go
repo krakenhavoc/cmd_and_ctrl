@@ -385,21 +385,15 @@ func b27ExileTopUntilTotalManaValue(ctx *Context, player uuid.UUID, threshold in
 const b27GooseMotherAttackLabel = "The Goose Mother — sacrifice a Food to draw a card"
 
 // b27SacrificeChosenThenDraw is The Goose Mother's "you may sacrifice
-// a Food. If you do, draw a card": the Food chosen when the trigger
-// went on the stack is sacrificed if it is still there, and the
-// draw follows only from the sacrifice.
+// a Food. If you do, draw a card": the Food is chosen as the trigger
+// resolves (maySacrificeOne), and the draw follows only a Food that
+// really went.
 func b27SacrificeChosenThenDraw(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (SacrificePermanent{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
-	}
-	return nil
+	controller := item.Controller
+	return maySacrificeOne(g, item, "The Goose Mother — sacrifice a Food to draw a card?", HasSubtype("Food"), false,
+		func(ctx *Context, _ uuid.UUID) error {
+			return DrawCards{Player: controller, N: 1}.Apply(ctx)
+		})
 }
 
 // b27SacrificeSelfThenTutorColorlessCreature is Sanctum of Ugin's
@@ -547,8 +541,12 @@ func b27OtherArtifactCreaturesYouControl(target *game.Card, _ *game.Game, source
 func b27DuplicantStatics() []game.StaticAbility {
 	return []game.StaticAbility{
 		{
+			Label:     "This creature has the creature types of the last creature card exiled with it, and is still a Shapeshifter.",
 			Layer:     game.Layer4Type,
 			AppliesTo: selfOnly,
+			// A card leaving exile ends "exiled with this creature"; the
+			// layers are re-read when one does (#3172).
+			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
 					c.SetSubtypes(b27CreatureTypesPlusShapeshifter(exiled))
@@ -556,9 +554,12 @@ func b27DuplicantStatics() []game.StaticAbility {
 			},
 		},
 		{
+			Label:     "This creature has the power and toughness of the last creature card exiled with it.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7B_Set,
 			AppliesTo: selfOnly,
+			// As above.
+			DependsOnExile: true,
 			Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
 				if exiled, ok := b27LastCreatureCardExiledWith(g, source.InstanceID, b27DuplicantLabel); ok {
 					c.Power = exiled.Power

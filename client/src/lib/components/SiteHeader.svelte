@@ -1,26 +1,28 @@
 <script lang="ts">
-  // SiteHeader — the shared site nav (#1386, ADR 0092's dual-portal
-  // experiment). One of two competing entries into the app; the other
-  // is the #/home sitemap page. The owner will pick between them once
-  // both exist, so this stays deliberately small: a wordmark, the
-  // links, and an account control, reusing the session store and the
-  // existing logout paths rather than inventing either.
+  // SiteHeader — the site nav on every page outside the table (ADR 0156
+  // §3 item 3). Page.svelte draws it at the top of the page frame.
   //
-  // Session-aware: Lobby and Catalog need any session, "My games"
-  // needs one tied to a Discord user — a guest or admin session would
-  // otherwise land on a page that can only tell them to sign in.
-  // Decks, Roadmap and Home are public (ADR 0112 §3 made Decks, which
-  // took in ADR 0095's deck check, the one decks page), so a signed-out
-  // visitor still sees all three plus Sign in.
+  // Grouped, not flat:
+  //   - Signed in: the wordmark, then Tables | Decks, Catalog and
+  //     Roadmap. (My games is Tables' History since ADR 0158 §1.) On the right the C2 Discord, Help, and the
+  //     account menu. In admin mode an accent-tinted Admin link follows
+  //     as its own group, and the account menu keeps its Admin item.
+  //   - Signed out: the wordmark, then Decks, Roadmap and About. On the
+  //     right the C2 Discord, Help, and Sign in.
   //
-  // Not shown on Game — the board has its own command bar, and a
-  // second row of chrome above it would just eat table space.
+  // "Tables" is the Lobby (the route stays #/lobby); its name is a
+  // contract label (L.navTables). The Discord link shows only when the
+  // server names an invite (GET /community, lib/community.ts).
+  //
+  // Not shown on Game: the board has its own command bar.
   //
   // For a signed-in person the header is the portal (ADR 0112 §1 items
   // 4 and 5): the wordmark goes to the Lobby, the signed-in home, and
-  // the account controls that used to live on the Lobby's own command
-  // bar and the login page's signed-in card are one menu, opened from
-  // the button that shows the person's name.
+  // the account controls are one menu, opened from the button that
+  // shows the person's name.
+  //
+  // Below the 820px design target the row wraps; there is no separate
+  // phone layout (the tablet-minimum rule).
   import { onMount } from "svelte";
   import Wordmark from "./Wordmark.svelte";
   import { route, navigate } from "../router";
@@ -36,21 +38,30 @@
   import Icon from "./Icon.svelte";
   import AdminChip from "./AdminChip.svelte";
   import HelpMenu from "./HelpMenu.svelte";
+  import DeleteAccountDialog from "./DeleteAccountDialog.svelte";
+  import { PRIVACY_HASH } from "../privacy";
+  import { ABOUT_HASH } from "../about";
   import { isAdmin } from "../admin";
+  import { community } from "../community";
+  import { L } from "../labels";
 
-  let menuOpen = $state(false);
   let accountOpen = $state(false);
   let accountError = $state("");
+  // "Delete my account" (#2983, ADR 0149) opens a confirmation dialog.
+  let deleteOpen = $state(false);
   let accountEl = $state<HTMLElement | null>(null);
 
   const isSignedIn = $derived($session !== null);
   const hasLinkedUser = $derived(signedInUserID($session) !== null);
+  const invite = $derived($community.invite_url);
 
-  // "Sign in with a different Discord account" needs Discord sign-in on
-  // this server. Probed once, and only for a session that could use it.
+  // Whether this server has Discord sign-in. Probed once, for a session
+  // that could use "Sign in with a different Discord account", and for a
+  // signed-out visitor, whose Sign in starts Discord sign-in directly
+  // (the hero's OAuth start) and otherwise goes to the front page.
   let discordEnabled = $state(false);
   onMount(() => {
-    if (!hasLinkedUser) return;
+    if (isSignedIn && !hasLinkedUser) return;
     void discordAuthEnabled().then((on) => {
       discordEnabled = on;
     });
@@ -66,7 +77,7 @@
   });
 
   // What kind of session this is, in a player's words: the line under
-  // the name in the account menu. It replaces the Lobby's old role chip.
+  // the name in the account menu.
   const accountKind = $derived.by(() => {
     const s = $session;
     if (!s) return "";
@@ -83,13 +94,9 @@
   const adminOn = $derived(isAdmin($session));
   const acctLabel = $derived(`account menu: ${whoAmI}${adminOn ? " (admin mode on)" : ""}`);
 
-  // The wordmark is the way home: the Lobby for a session, the public
-  // site map without one (ADR 0112 §1 item 5).
-  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/home");
-
-  function closeMenu(): void {
-    menuOpen = false;
-  }
+  // The wordmark is the way home: the Lobby for a session, the
+  // front page without one (ADR 0112 §1 item 5, ADR 0156 §4).
+  const homeHref = $derived(isSignedIn ? "#/lobby" : "#/");
 
   function closeAccount(): void {
     accountOpen = false;
@@ -98,7 +105,6 @@
   function toggleAccount(): void {
     accountError = "";
     accountOpen = !accountOpen;
-    if (accountOpen) menuOpen = false;
   }
 
   // Escape closes the account menu and hands focus back to its button;
@@ -115,6 +121,8 @@
     closeAccount();
   }
 
+  const onAdminRoute = $derived($route.name === "adminViews" || $route.name === "adminLogin");
+
   function current(name: string): boolean {
     return $route.name === name;
   }
@@ -124,8 +132,12 @@
     openSettings();
   }
 
+  function openDelete(): void {
+    closeAccount();
+    deleteOpen = true;
+  }
+
   async function signOut(): Promise<void> {
-    closeMenu();
     closeAccount();
     await apiLogout();
     navigate("#/login");
@@ -149,93 +161,74 @@
 
 <svelte:window onkeydown={onWindowKey} onclick={onWindowClick} />
 
+{#snippet navLink(href: string, name: string, text: string)}
+  <a {href} class:current={current(name)} aria-current={current(name) ? "page" : undefined}
+    >{text}</a
+  >
+{/snippet}
+
 <header class="site-header">
   <div class="row">
-    <a class="wordmark" href={homeHref} aria-label="cmd_and_ctrl home" onclick={closeMenu}>
+    <a class="wordmark" href={homeHref} aria-label="cmd_and_ctrl home">
       <Wordmark size="header" />
     </a>
 
-    <button
-      type="button"
-      class="menu-toggle"
-      aria-expanded={menuOpen}
-      aria-controls="site-nav"
-      onclick={() => (menuOpen = !menuOpen)}
-    >
-      <Icon
-        name={menuOpen ? "x" : "menu"}
-        size={18}
-        label={menuOpen ? "close menu" : "open menu"}
-      />
-    </button>
-
-    <nav class="site-nav" id="site-nav" aria-label="Site" class:open={menuOpen}>
+    <nav class="site-nav" aria-label="Site">
       {#if isSignedIn}
-        <a
-          href="#/lobby"
-          class:current={current("lobby")}
-          aria-current={current("lobby") ? "page" : undefined}
-          onclick={closeMenu}>Lobby</a
-        >
-      {/if}
-      {#if hasLinkedUser}
-        <a
-          href="#/my-games"
-          class:current={current("myGames")}
-          aria-current={current("myGames") ? "page" : undefined}
-          onclick={closeMenu}>My games</a
-        >
-      {/if}
-      <!-- One public "Decks" link (ADR 0112 §3 item 2): the deck check
-           and the library are one page, and anyone may check a deck. -->
-      <a
-        href="#/decks"
-        class:current={current("decks")}
-        aria-current={current("decks") ? "page" : undefined}
-        onclick={closeMenu}>Decks</a
-      >
-      {#if isSignedIn}
-        <a
-          href="#/catalog"
-          class:current={current("catalog")}
-          aria-current={current("catalog") ? "page" : undefined}
-          onclick={closeMenu}>Catalog</a
-        >
-      {/if}
-      <a
-        href="#/roadmap"
-        class:current={current("roadmap")}
-        aria-current={current("roadmap") ? "page" : undefined}
-        onclick={closeMenu}>Roadmap</a
-      >
-      <a
-        href="#/home"
-        class:current={current("home")}
-        aria-current={current("home") ? "page" : undefined}
-        onclick={closeMenu}>Home</a
-      >
-      <!-- The admin views (ADR 0124 §7): last, for an admin only (the
-           token, or admin mode on). It goes when admin mode lapses,
-           through the same session store. Home gets no admin card. -->
-      {#if adminOn}
-        <a
-          href="#/admin/live"
-          class:current={current("adminViews")}
-          aria-current={current("adminViews") ? "page" : undefined}
-          onclick={closeMenu}>Admin</a
-        >
+        <!-- Play: your tables now, and the games you have played (ADR
+             0158 §1: My games is Tables' History). -->
+        <div class="grp">
+          {@render navLink("#/lobby", "lobby", L.navTables)}
+        </div>
+        <!-- Look things up: decks, the cards the engine plays, what's next. -->
+        <div class="grp">
+          {@render navLink("#/decks", "decks", "Decks")}
+          {@render navLink("#/catalog", "catalog", "Catalog")}
+          {@render navLink("#/roadmap", "roadmap", "Roadmap")}
+        </div>
+        {#if adminOn}
+          <!-- Admin mode is loud: its own group, in the accent. The same
+               condition as the account menu's Admin item (#3221). -->
+          <div class="grp">
+            <a
+              class="admin-link"
+              href="#/admin/live"
+              class:current={onAdminRoute}
+              aria-current={onAdminRoute ? "page" : undefined}>Admin</a
+            >
+          </div>
+        {/if}
+      {:else}
+        <div class="grp">
+          {@render navLink("#/decks", "decks", "Decks")}
+          {@render navLink("#/roadmap", "roadmap", "Roadmap")}
+          {@render navLink(ABOUT_HASH, "about", "About")}
+        </div>
       {/if}
     </nav>
 
     <div class="account">
-      <!-- Help (ADR 0125 §6), between the site nav and the account
-           control, for everyone: tips, a practice game, the keymap. -->
+      {#if invite}
+        <!-- ADR 0156 §6: the C2 Discord on every page outside the table.
+             Hidden when the server names no invite. -->
+        <a
+          class="discord-link"
+          href={invite}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="the C2 Discord server"
+          title="Join the C2 Discord server"
+        >
+          <Icon name="discord" size={18} />
+        </a>
+      {/if}
+      <!-- Help (ADR 0125 §6), for everyone: tips, a practice game, the keymap. -->
       <HelpMenu />
       <div class="acct" bind:this={accountEl}>
         {#if isSignedIn}
           <button
             type="button"
-            class="ghost sm acct-btn"
+            class="acct-btn"
             aria-haspopup="true"
             aria-expanded={accountOpen}
             aria-controls="account-menu"
@@ -260,6 +253,14 @@
                  person, or the token's static "Admin token" badge, first
                  in the menu. Renders nothing for anyone else. -->
               <AdminChip />
+              {#if adminOn}
+                <!-- The admin views (ADR 0124 §7), for an admin only (the
+                     token, or admin mode on). In the account menu since
+                     ADR 0156 §3; it goes when admin mode lapses. -->
+                <a class="acct-item" href="#/admin/live" onclick={closeAccount}>
+                  <Icon name="flag" size={14} /> Admin
+                </a>
+              {/if}
               <button type="button" class="acct-item" onclick={settings}>
                 <Icon name="gear" size={14} /> Settings
               </button>
@@ -282,37 +283,55 @@
                   onclick={signOutEverywhere}>Sign out everywhere</button
                 >
               {/if}
+              <div class="acct-sep" aria-hidden="true"></div>
+              <a class="acct-item" href={PRIVACY_HASH} onclick={closeAccount}>
+                Privacy and your data
+              </a>
+              {#if hasLinkedUser}
+                <button type="button" class="acct-item acct-danger" onclick={openDelete}>
+                  Delete my account
+                </button>
+              {/if}
               {#if accountError}
                 <p class="acct-error" role="alert">{accountError}</p>
               {/if}
             </div>
           {/if}
         {:else}
-          <a class="ghost-link" href="#/login">Sign in</a>
+          <a class="btn sm ghost sign-in" href={discordEnabled ? discordLoginHref() : "#/"}
+            >Sign in</a
+          >
         {/if}
       </div>
     </div>
   </div>
 </header>
 
+{#if deleteOpen}
+  <DeleteAccountDialog onclose={() => (deleteOpen = false)} />
+{/if}
+
 <style>
-  /* Bleeds to the edge of #app's 1080px column, the same negative-
-     margin convention Lobby's own `.bar` uses — this replaces that
-     bar's job on every page except Lobby, which keeps its own for
-     now (the dual-header overlap is deliberate; see ADR 0092). */
+  /* Edge to edge, its row centred at the page frame's wide width. Sticks
+     to the top so the nav is a glance away on a long page. */
   .site-header {
-    margin: -1.5rem -1.5rem 20px;
-    padding: 0 14px;
-    background: var(--bg-1);
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: color-mix(in srgb, var(--bg) 86%, transparent);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
   }
   .row {
-    min-height: 48px;
+    max-width: 1200px;
+    min-height: 60px;
+    margin: 0 auto;
+    padding: 8px var(--page-gutter);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 14px;
-    padding: 6px 0;
+    gap: 8px 24px;
+    box-sizing: content-box;
   }
   .wordmark {
     display: inline-flex;
@@ -322,12 +341,6 @@
     border-radius: var(--radius);
   }
 
-  .menu-toggle {
-    display: none;
-    margin-left: auto;
-    padding: 0.4rem 0.55rem;
-  }
-
   .site-nav {
     display: flex;
     flex-wrap: wrap;
@@ -335,16 +348,27 @@
     gap: 4px;
     margin-right: auto;
   }
+  /* The groups: a hairline between them, none before the first. */
+  .grp {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 2px;
+  }
+  .grp + .grp {
+    margin-left: 10px;
+    padding-left: 14px;
+    border-left: 1px solid var(--border);
+  }
   .site-nav a {
     display: inline-flex;
     align-items: center;
-    height: 30px;
-    padding: 0 10px;
+    height: 34px;
+    padding: 0 11px;
     border-radius: var(--radius);
     color: var(--fg-muted);
-    font-size: 12.5px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: 0.01em;
     text-decoration: none;
     white-space: nowrap;
   }
@@ -353,44 +377,76 @@
     color: var(--fg);
   }
   .site-nav a.current {
+    color: var(--fg);
+    background: var(--surface-raised);
+  }
+
+  /* Admin mode, visible from the nav: an accent-tinted pill. */
+  .site-nav a.admin-link {
     color: var(--accent-strong);
     background: var(--accent-soft);
+    border: 1px solid var(--accent-line);
+  }
+  .site-nav a.admin-link:hover,
+  .site-nav a.admin-link.current {
+    color: var(--accent-strong);
+    background: color-mix(in srgb, var(--accent) 28%, transparent);
+    border-color: var(--accent);
   }
 
   .account {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 8px;
     margin-left: auto;
+  }
+  .discord-link {
+    display: inline-grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--radius);
+    color: #aab3ff;
+    text-decoration: none;
+  }
+  .discord-link:hover {
+    color: #c9cfff;
+    background: color-mix(in srgb, #5865f2 18%, transparent);
+  }
+  .discord-link:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
   }
   .acct {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 10px;
   }
-  .who {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.04em;
-    color: var(--fg-muted);
-    white-space: nowrap;
-    max-width: 22ch;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  button.ghost.sm {
-    height: 28px;
-    padding: 0 10px;
-    font-size: 11.5px;
-  }
+  /* The name, in a pill. */
   .acct-btn {
     display: inline-flex;
     align-items: center;
     gap: 6px;
+    height: 34px;
+    padding: 0 10px 0 12px;
+    border-radius: 999px;
+    border: 1px solid var(--border-strong);
+    background: transparent;
+    color: var(--fg);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .acct-btn:hover {
+    background: var(--surface-hover);
   }
   .acct-btn.admin-on {
     border-color: var(--accent);
+  }
+  .who {
+    white-space: nowrap;
+    max-width: 22ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .admin-dot {
     width: 8px;
@@ -477,55 +533,12 @@
     margin: 4px 6px;
     background: var(--border);
   }
+  .acct-danger {
+    color: var(--danger);
+  }
   .acct-error {
     margin: 4px 10px 6px;
     font-size: 12px;
     color: var(--danger);
-  }
-  .ghost-link {
-    display: inline-flex;
-    align-items: center;
-    height: 28px;
-    padding: 0 10px;
-    border-radius: var(--radius);
-    color: var(--accent-strong);
-    font-size: 12px;
-    font-weight: 600;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  .ghost-link:hover {
-    background: var(--accent-soft);
-  }
-
-  /* Phone width and below: the wordmark and the account control stay
-     put (sign in/out is one tap, never buried), the links collapse
-     behind the toggle. */
-  @media (max-width: 700px) {
-    .menu-toggle {
-      display: inline-flex;
-      /* After the account control, at the far right: the two used to
-         split the free space and leave the toggle mid-row. */
-      order: 3;
-      margin-left: 0;
-    }
-    .site-nav {
-      display: none;
-      order: 10;
-      width: 100%;
-      margin: 0;
-      flex-direction: column;
-      align-items: stretch;
-      gap: 2px;
-      padding: 6px 0 10px;
-      border-top: 1px solid var(--border);
-    }
-    .site-nav.open {
-      display: flex;
-    }
-    .site-nav a {
-      height: 36px;
-      padding: 0 12px;
-    }
   }
 </style>

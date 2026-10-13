@@ -32,6 +32,7 @@ func init() {
 		LegendRuleExemptions: LegendRuleDoesntApplyToYours(),
 		Static: []game.StaticAbility{
 			{
+				Label:    "Each legendary creature you control gets +1/+1.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -43,6 +44,7 @@ func init() {
 				},
 			},
 			{
+				Label:    "Each nontoken creature you control gets +1/+1 for each other creature you control with the same name.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

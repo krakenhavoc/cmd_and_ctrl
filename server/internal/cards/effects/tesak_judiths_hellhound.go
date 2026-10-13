@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -41,7 +39,7 @@ func init() {
 				if n == 0 {
 					return nil
 				}
-				return AddMana{Player: item.Controller, Produced: strings.Repeat("{R}", n)}.Apply(NewContext(g, item))
+				return AddMana{Player: item.Controller, Amount: ManaN(n, "R")}.Apply(NewContext(g, item))
 			}),
 		},
 	})

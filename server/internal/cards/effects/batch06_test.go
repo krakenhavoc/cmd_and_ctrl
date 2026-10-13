@@ -957,6 +957,7 @@ func TestB06SpelunkingUntapsASolemnFetchedLand(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	answerLatestTriggerPrompt(t, g, me.ID, true)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	fetched := findBattlefieldByName(g, "Island")
 	if fetched == uuid.Nil {

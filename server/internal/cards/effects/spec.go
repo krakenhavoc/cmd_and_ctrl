@@ -839,6 +839,29 @@ type Spec struct {
 	// instance instead, through game.CastPermission.
 	CastableZones []game.ZoneKind
 
+	// CastableZonesIf is CastableZones for a zone the card opens only
+	// WHILE A CONDITION HOLDS — Lightwheel Enhancements' "Max speed —
+	// You may cast this card from your graveyard". Use it, not
+	// CastableZones plus a CastCondition, when the clause is the
+	// card's permission rather than a restriction on the spell: a
+	// CastCondition refuses every cast out of the zone, so a
+	// Snapcaster-granted flashback would be refused below max speed,
+	// which the printed card never does.
+	//
+	//	CastableZonesIf: []game.ConditionalCastZone{
+	//		MaxSpeedCastableFrom(game.ZoneGraveyard),
+	//	},
+	//
+	// The condition is asked of the card's owner and must be pure
+	// (reads the game it is handed, captures nothing). The engine, the
+	// view, the legal-move enumerator and the bot all read it through
+	// one predicate (game.Game.CardCastableFromAnyFaceLocked), so they
+	// cannot disagree. A zone-bound AlternativeCost may name a zone
+	// listed here or in CastableZones. Only the graveyard is accepted:
+	// hand and command are the format's, exile and the library are
+	// per-instance permissions.
+	CastableZonesIf []game.ConditionalCastZone
+
 	// SpecialActions are the CR 116.2 special actions this card
 	// offers from its owner's hand — foretell (CR 702.143) and
 	// suspend (CR 702.62). A special action does NOT use the stack
@@ -882,6 +905,13 @@ type Spec struct {
 	// Empty — every card but a handful — means the card has no
 	// madness.
 	Madness string
+
+	// MadnessLife is the "Pay N life" a madness cost adds to its mana
+	// (CR 702.35a, 119.4): Shadowgrange Archfiend's "Madness—{2}{B},
+	// Pay 8 life" is `Madness: "{2}{B}", MadnessLife: 8`. The offer
+	// charges both, and a player with less life than that cannot cast
+	// it for its madness cost. Zero for every other madness card.
+	MadnessLife int
 
 	// Activated is the list of CR 602 activated abilities the card
 	// offers from the battlefield — the fourth ability type, added
@@ -1040,6 +1070,15 @@ type Spec struct {
 	// Judged through CatalogAbilityKey, so a permanent that lost its
 	// abilities gives no extra vote.
 	ExtraVote game.ExtraVote
+
+	// OpponentsFaceVillainousChoicesAgain declares the printed static
+	// "If an opponent would face a villainous choice, they face that
+	// choice an additional time" (The Valeyard): CR 701.55c, #3140. Each
+	// such permanent adds one question to every opponent's villainous
+	// choice, counted when the choice is faced. Judged through
+	// CatalogAbilityKey, so a permanent that lost its abilities adds
+	// none.
+	OpponentsFaceVillainousChoicesAgain bool
 
 	// DamageCantBePrevented declares this permanent's printed "damage
 	// can't be prevented" statics (CR 615.12, ADR 0107 §5):
@@ -1342,6 +1381,20 @@ type Spec struct {
 	// which also means the answer is always about whatever is on top
 	// NOW — no library mutation has to invalidate anything.
 	LibraryTopVisible game.LibraryTopVisibility
+
+	// DiscardByOpponent declares what "if a spell or ability an
+	// opponent controls causes you to discard this card" does for this
+	// card while it sits in a hand: game.DiscardByOpponentBattlefield
+	// (Obstinate Baloth) or game.DiscardByOpponentTrigger (Sand
+	// Golem). It rides the wire as CardView.discard_by_opponent so the
+	// bot can price an opponent's discard (ADR 0153 §5). Declared by
+	// the card's constructor, never inferred from its text.
+	DiscardByOpponent game.DiscardByOpponentKind
+
+	// DiscardByOpponentForHand is the same declaration made for every
+	// card in this permanent's controller's hand while it is on the
+	// battlefield: game.DiscardByOpponentLibrary on Nephalia Academy.
+	DiscardByOpponentForHand game.DiscardByOpponentKind
 
 	// UntapStep declares the printed clause "untap <these> during
 	// each other player's untap step" — Seedborn Muse, Unwinding
@@ -1850,12 +1903,22 @@ type ManaAbility struct {
 	// than by hand.
 	ProducedFunc func(g *game.Game, controller, source uuid.UUID) string
 
+	// ProducedAmount is ProducedFunc for a count-driven output (#3042):
+	// it returns the slot and the count as data (game.ManaAmount), so a
+	// large count never becomes a string. Build one with
+	// ProducedPerPermanent, ProducedOneColor, ProducedPerCounterOnThis,
+	// ProducedChosenColorAmount, ProducedAnyCombinationOfColors or
+	// ManaOf. Wins over ProducedFunc; declare one or the other, never
+	// both (Register panics). Mixed or fixed output keeps ProducedFunc.
+	// Same read-only-under-g.mu contract.
+	ProducedAmount func(g *game.Game, controller, source uuid.UUID) game.ManaAmount
+
 	// ProducedForPaid computes Produced from what the cost actually
 	// PAID, for an ability whose printed text derives its output
 	// from the payment rather than from the board (#789):
 	//
 	//	Mage-Ring Network  "Add {C} for each storage counter removed
-	//	                    this way"  →  ProducedPerCounterRemoved("{C}")
+	//	                    this way"  →  ProducedPerCounterRemoved("C")
 	//
 	// Wins over ProducedFunc, which wins over Produced. It is handed
 	// the same game.PaidCost a stack item carries — a mana ability
@@ -1866,7 +1929,10 @@ type ManaAbility struct {
 	// 106.7's "could produce" reader evaluates it with the largest
 	// payment the source could make right now, so a Network with
 	// three counters could produce {C} and one with none could not.
-	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) string
+	//
+	// The result is a game.ManaOutput (#3112): text, or a ManaAmount for
+	// a count-driven output, which the engine caps before it allocates.
+	ProducedForPaid func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) game.ManaOutput
 
 	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting

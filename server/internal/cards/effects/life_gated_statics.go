@@ -22,6 +22,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // Righteous Valkyrie's +2/+2.
 func LifeGatedPump(applies func(target *game.Card, g *game.Game, source *game.Card) bool, power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:              "Gives " + signedPT(power, toughness) + " while your life total is high enough.",
 		Layer:              game.Layer7PT,
 		SubLayer:           game.SubLayer7C_Modify,
 		DependsOnLifeTotal: true,
@@ -41,6 +42,7 @@ func LifeGatedPump(applies func(target *game.Card, g *game.Game, source *game.Ca
 // one every other grant uses.
 func LifeGatedKeyword(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keyword string) game.StaticAbility {
 	ab := KeywordGrant(applies, keyword)
+	ab.Label = "Gives " + keyword + " while your life total is high enough."
 	ab.DependsOnLifeTotal = true
 	return ab
 }

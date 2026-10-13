@@ -8,6 +8,7 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 func init() {
 	doubler := DoublesDying(Creature())
 	doubler.Label = "Teysa Karlov"
+	doubler.RowLabel = "Abilities that trigger when a creature dies trigger an additional time."
 	Register(Spec{
 		OracleID:        "644eeefd-e684-4ca8-8aef-a892ca130c07",
 		Name:            "Teysa Karlov",

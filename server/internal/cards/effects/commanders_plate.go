@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Commander's Plate — Artifact — Equipment {1}:
 //
@@ -15,32 +19,37 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature. Both are ordinary Spec.Activated entries; nothing new
 // there.
 //
-// SIMPLIFICATION, DECLARED: the protection clause is not implemented.
-// "Protection from each color that's not in your commander's color
-// identity" needs a static ability that reads the controller's
-// commander's colour identity and grants protection from its
-// complement — and every commander-identity read in the catalog today
-// is the narrower NarrowToCommanderIdentity flag on a mana ability
-// (Arcane Signet, Commander's Sphere), which only filters a pipe of
-// colour CHOICES. There is no production-facing hook that hands a
-// Layer 6 StaticAbility.Apply the controller's commander's colours —
-// game.CommanderIdentityForTest exists only for cross-package tests,
-// by its own name and doc comment, and reaching for it here would be
-// exactly the kind of test-only shortcut that name exists to warn
-// off. Until that hook exists, the Plate ships as a plain +3/+3.
-//
-// The equip abilities and the pump are otherwise the whole card and
-// need nothing else.
+// The protection clause (#3172) is a layer 6 static reading the PLATE's
+// controller's commander identity (CR 109.5: "your" is the Plate's
+// controller, not the wearer's) through game.CommanderIdentityColorsForEffect
+// and granting "protection from <colour>" for each of the five colours
+// outside it. A controller with no commander has a colourless identity, so
+// the creature is protected from every colour, as the rules read it
+// (CR 903.4f); an identity the engine cannot read grants nothing, never
+// more than printed.
 func init() {
 	Register(Spec{
 		OracleID:     "cae166de-e681-40a0-83a8-3c17cf40e2fc",
 		Name:         "Commander's Plate",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The equipped creature doesn't get protection from colors outside your commander's color identity — only the +3/+3 is here.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			PumpAttached(3, 3),
+			{
+				Label:     "Equipped creature has protection from each color that's not in your commander's color identity.",
+				Layer:     game.Layer6Ability,
+				AppliesTo: AttachedToSource,
+				Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
+					identity, known := g.CommanderIdentityColorsForEffect(source.Controller)
+					if !known {
+						return
+					}
+					for _, col := range []string{"W", "U", "B", "R", "G"} {
+						if !slices.Contains(identity, col) {
+							c.Abilities = game.AppendKeywordAbility(c.Abilities, game.ProtectionFromColor(col))
+						}
+					}
+				},
+			},
 		},
 		Activated: []ActivatedAbility{
 			EquipOnlyAbility("Equip commander {3}", "{3}",

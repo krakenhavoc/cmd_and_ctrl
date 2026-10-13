@@ -22,7 +22,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Modes: ChooseOne(
 			Mode("Destroy target nonbasic land.", TargetPermanent("target nonbasic land", NonbasicLand())),
-			Mode("Create three 1/1 green Saproling creature tokens."),
+			ModeWithPurpose(Mode("Create three 1/1 green Saproling creature tokens."), game.Purpose{Tokens: 3}),
 			Mode("Prevent all damage a source of your choice would deal this turn."),
 		),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {

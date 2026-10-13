@@ -60,6 +60,19 @@ func departureBotDeck(seat int) []game.Card {
 // prompt must reach a seat that can answer it (CR 800.4g) and the table
 // must clear it and move on.
 func TestConcedeMidPromptLeavesTheBotTablePlaying(t *testing.T) {
+	leaveMidPromptLeavesTheBotTablePlaying(t, (*game.Game).Concede)
+}
+
+// TestRemoveSeatMidPromptLeavesTheBotTablePlaying is the same table
+// with an admin removing the seat instead of the seat conceding
+// (#3093): the removal is a concession, so the reassigned prompt
+// reaches a seat that can answer it and the bots finish it.
+func TestRemoveSeatMidPromptLeavesTheBotTablePlaying(t *testing.T) {
+	leaveMidPromptLeavesTheBotTablePlaying(t, (*game.Game).RemoveSeatFromGame)
+}
+
+func leaveMidPromptLeavesTheBotTablePlaying(t *testing.T, leave func(*game.Game, uuid.UUID) error) {
+	t.Helper()
 	g := game.NewGame()
 	for i := 0; i < 4; i++ {
 		if _, err := g.AddPlayer(fmt.Sprintf("Bot%d", i), departureBotDeck(i)); err != nil {
@@ -112,8 +125,8 @@ func TestConcedeMidPromptLeavesTheBotTablePlaying(t *testing.T) {
 
 	// The concede lands with the prompt open — the exact window the
 	// S31 arena kept wedging in.
-	if err := g.Concede(leaver.ID); err != nil {
-		t.Fatalf("Concede: %v", err)
+	if err := leave(g, leaver.ID); err != nil {
+		t.Fatalf("leaving: %v", err)
 	}
 
 	// The prompt must have MOVED, not vanished — otherwise the loop

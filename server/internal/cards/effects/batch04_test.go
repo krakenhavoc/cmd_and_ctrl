@@ -404,6 +404,7 @@ func TestB04ChordOfCallingFindsACreatureWithinX(t *testing.T) {
 
 	castXSpell(t, g, "Chord of Calling", "Instant", b04ChordOfCallingOracle, "{X}{G}{G}{G}", 2, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 
 	if _, ok := battlefieldCard(g, bear); !ok {
 		t.Error("the only creature with mana value ≤ 2 should have been put onto the battlefield")

@@ -191,6 +191,7 @@ func TestColourIdentity(t *testing.T) {
 func TestRegistryIsWellFormed(t *testing.T) {
 	knownArchetypes := map[string]bool{
 		"aggro": true, "ramp-stompy": true, "control": true, "aristocrats": true,
+		"stompy": true, "weenie": true, "voltron": true,
 	}
 	seen := map[string]bool{}
 	for _, d := range All() {
@@ -265,5 +266,30 @@ func TestLoadRejectsUnknownID(t *testing.T) {
 		t.Fatal("Load accepted an unknown deck ID")
 	} else if !strings.Contains(err.Error(), "unknown deck") {
 		t.Errorf("unhelpful error: %v", err)
+	}
+}
+
+// TestLegacyIDsResolveToTheirReplacement — a retired ID (#3071's
+// izzet-aggro) still seats its replacement, carries the new ID, and is
+// never offered by a picker.
+func TestLegacyIDsResolveToTheirReplacement(t *testing.T) {
+	current := map[string]bool{}
+	for _, id := range IDs() {
+		current[id] = true
+	}
+	for old, renamed := range legacyIDs {
+		if current[old] {
+			t.Errorf("legacy ID %q is still a current deck ID", old)
+		}
+		if !current[renamed] {
+			t.Errorf("legacy ID %q maps to %q, which is not a current deck ID", old, renamed)
+		}
+		d, ok := Lookup(old)
+		if !ok || d.ID != renamed {
+			t.Errorf("Lookup(%q) = %q, %v; want %q, true", old, d.ID, ok, renamed)
+		}
+	}
+	if d, ok := Lookup("izzet-aggro"); !ok || d.ID != "mono-red-aggro" {
+		t.Errorf("Lookup(izzet-aggro) = %q, %v; want mono-red-aggro", d.ID, ok)
 	}
 }

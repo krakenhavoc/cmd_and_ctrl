@@ -1588,7 +1588,7 @@
       "triggered": {
         "1cdd6bf0-ce14-454c-a840-0e944b3898b1#2|Rebound — cast Staggershock from exile": 1
       },
-      "firstEvent": 39,
+      "firstEvent": 35,
       "monarchAtStart": "00000000-0000-0000-0000-000000000000",
       "stepsBegun": {
         "untap": 1,
@@ -1871,48 +1871,6 @@
       },
       {
         "seq": 15,
-        "batch": 8,
-        "kind": "step_began",
-        "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "resolved_stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 1,
-        "round": 1,
-        "label": "declare_blockers",
-        "step": "declare_blockers",
-        "entered_from_owner": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 16,
-        "batch": 10,
-        "kind": "step_began",
-        "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "resolved_stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 1,
-        "round": 1,
-        "label": "combat_damage",
-        "step": "combat_damage",
-        "entered_from_owner": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 17,
         "batch": 11,
         "kind": "step_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -1933,7 +1891,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 18,
+        "seq": 16,
         "batch": 12,
         "kind": "step_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -1954,7 +1912,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 19,
+        "seq": 17,
         "batch": 13,
         "kind": "step_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -1975,7 +1933,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 20,
+        "seq": 18,
         "batch": 13,
         "kind": "begin_end_step",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -1992,7 +1950,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 21,
+        "seq": 19,
         "batch": 14,
         "kind": "step_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2013,7 +1971,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 22,
+        "seq": 20,
         "batch": 15,
         "kind": "turn_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2031,7 +1989,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 23,
+        "seq": 21,
         "batch": 15,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2052,7 +2010,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 24,
+        "seq": 22,
         "batch": 16,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2073,7 +2031,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 25,
+        "seq": 23,
         "batch": 16,
         "kind": "begin_upkeep",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2090,7 +2048,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 26,
+        "seq": 24,
         "batch": 17,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2111,7 +2069,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 27,
+        "seq": 25,
         "batch": 17,
         "kind": "draw_card",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2130,7 +2088,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 28,
+        "seq": 26,
         "batch": 17,
         "kind": "begin_draw_step",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2147,7 +2105,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 29,
+        "seq": 27,
         "batch": 18,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2168,7 +2126,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 30,
+        "seq": 28,
         "batch": 18,
         "kind": "begin_precombat_main",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2185,7 +2143,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 31,
+        "seq": 29,
         "batch": 19,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2206,7 +2164,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 32,
+        "seq": 30,
         "batch": 20,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2227,49 +2185,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 33,
-        "batch": 21,
-        "kind": "step_began",
-        "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "resolved_stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 2,
-        "round": 1,
-        "label": "declare_blockers",
-        "step": "declare_blockers",
-        "entered_from_owner": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 34,
-        "batch": 23,
-        "kind": "step_began",
-        "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "resolved_stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 2,
-        "round": 1,
-        "label": "combat_damage",
-        "step": "combat_damage",
-        "entered_from_owner": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 35,
+        "seq": 31,
         "batch": 24,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2290,7 +2206,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 36,
+        "seq": 32,
         "batch": 25,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2311,7 +2227,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 37,
+        "seq": 33,
         "batch": 26,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2332,7 +2248,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 38,
+        "seq": 34,
         "batch": 26,
         "kind": "begin_end_step",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2349,7 +2265,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 39,
+        "seq": 35,
         "batch": 27,
         "kind": "step_began",
         "actor": "bf1d9020-50cf-42a9-bae7-48e8211894b1",
@@ -2370,7 +2286,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 40,
+        "seq": 36,
         "batch": 28,
         "kind": "turn_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2388,7 +2304,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 41,
+        "seq": 37,
         "batch": 28,
         "kind": "step_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2409,7 +2325,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 42,
+        "seq": 38,
         "batch": 29,
         "kind": "step_began",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2430,7 +2346,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 43,
+        "seq": 39,
         "batch": 29,
         "kind": "trigger",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2448,7 +2364,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 44,
+        "seq": 40,
         "batch": 29,
         "kind": "begin_upkeep",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2465,7 +2381,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 45,
+        "seq": 41,
         "batch": 30,
         "kind": "resolve",
         "actor": "2a2ad169-8c7b-4698-b61e-d4d8fee3c4af",
@@ -2483,7 +2399,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       }
     ],
-    "eventSeq": 45,
+    "eventSeq": 41,
     "eventBatch": 30,
     "rng": {
       "kind": "keyed",

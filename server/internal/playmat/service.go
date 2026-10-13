@@ -572,3 +572,21 @@ func (s *Service) Open(id string) (*os.File, os.FileInfo, error) {
 	}
 	return s.files.Open(id)
 }
+
+// ForgetFiles removes the stored image files for the given ids and
+// returns the first error. It touches no row: account deletion (ADR
+// 0149) removes the user_playmats rows in its own transaction and hands
+// the ids here afterwards. An id that is not a stored playmat, or a
+// file already gone, is not an error.
+func (s *Service) ForgetFiles(ids []string) error {
+	if s == nil {
+		return nil
+	}
+	var first error
+	for _, id := range ids {
+		if err := s.files.Delete(id); err != nil && first == nil {
+			first = err
+		}
+	}
+	return first
+}

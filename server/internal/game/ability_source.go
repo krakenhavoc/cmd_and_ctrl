@@ -230,6 +230,7 @@ func (g *Game) stampSourceObjectLocked(item *StackItem) {
 		return
 	}
 	item.SourceObject = g.sourceObjectRefLocked(item.SourceCardID)
+	item.SourceTurnOvers = g.TurnOversForEffect(item.SourceCardID)
 }
 
 // SourceObjectForEffect names the object `item`'s ability came from

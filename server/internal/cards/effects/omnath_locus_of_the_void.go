@@ -41,7 +41,7 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Omnath, Locus of the Void — add {C}{C}", Do(AddMana{Produced: "{C}{C}"})),
+			LandfallPaying("Omnath, Locus of the Void — add {C}{C}", game.LandfallPayoff{Mana: 2}, Do(AddMana{Produced: "{C}{C}"})),
 		},
 	})
 }

@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { L } from "../../client/src/lib/labels";
 
 // Smoke tests validate the app boots and the router hands us the
 // expected entry view. They make no assumptions about server state
@@ -6,23 +7,65 @@ import { expect, test } from "@playwright/test";
 // freshly-started stack.
 //
 // Selector note: #244 ("art-forward dark redesign") rewrote the entry
-// pages. The wordmark is now "CMD & CTRL" and the admin panel heading
+// pages, and ADR 0156 replaced the sign-in page with the front page. The admin panel heading
 // (on #/admin only, since ADR 0112) is "Admin log in"; the
 // placeholders and button labels survived. The
 // assertions below deliberately lean on roles + form labels rather
 // than the decorative copy around them.
 
-test("landing page renders the player-first entry", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByRole("heading", { name: "CMD & CTRL", level: 1 })).toBeVisible();
-  // Players lead: the invite box is the first card on #/login. (With
-  // Discord configured a sign-in card sits above it; these stacks set
-  // no CMDCTRL_DISCORD_* values, so that button stays hidden.)
+test("landing page renders the front page", async ({ page }) => {
+  // ADR 0156 §4: #/ is the front page, and #/login an alias of it.
+  for (const path of ["/", "/#/login"]) {
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toContainText("over the wire");
+    // The invite box is the first card under the hero. (With Discord
+    // configured, Sign in with Discord leads the hero; these stacks set
+    // no CMDCTRL_DISCORD_* values, so that button stays hidden.)
+    await expect(page.getByRole("heading", { name: "Have an invite?" })).toBeVisible();
+    await expect(page.getByLabel("invite code or link")).toBeVisible();
+    await expect(page.getByRole("link", { name: L.tryPracticeGame })).toHaveAttribute(
+      "href",
+      "#/practice",
+    );
+    // No token form: it lives on #/admin only (ADR 0112 §2 item 8).
+    await expect(page.getByRole("heading", { name: "Admin log in" })).toHaveCount(0);
+    await expect(page.getByPlaceholder("admin token")).toHaveCount(0);
+  }
+});
+
+test("#/home is retired and goes to the front page", async ({ page }) => {
+  await page.goto("/#/home");
+  await expect(page).toHaveURL(/#\/$/);
   await expect(page.getByRole("heading", { name: "Have an invite?" })).toBeVisible();
-  await expect(page.getByLabel("invite code or link")).toBeVisible();
-  // No token form: it lives on #/admin only (ADR 0112 §2 item 8).
-  await expect(page.getByRole("heading", { name: "Admin log in" })).toHaveCount(0);
-  await expect(page.getByPlaceholder("admin token")).toHaveCount(0);
+});
+
+test("the gate page is public, and ?retry=1 leads with Discord not answering", async ({
+  page,
+}) => {
+  // ADR 0156 §5: where the Discord callback sends a refused sign-in.
+  await page.goto("/#/request-access");
+  await expect(page).toHaveURL(/#\/request-access$/);
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Ask for an account on our Discord",
+  );
+  await expect(page.getByRole("link", { name: L.tryPracticeGame })).toBeVisible();
+  await page.goto("/#/request-access?retry=1");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText(
+    "Discord didn't answer — try again",
+  );
+});
+
+test("a signed-out visitor opens a guest practice game from the front page", async ({ page }) => {
+  // ADR 0156 §2: no account, no sign-in: POST /games/practice/guest.
+  await page.goto("/");
+  await page.evaluate(() => localStorage.removeItem("cmdctrl.session"));
+  await page.goto("/");
+  await page.getByRole("link", { name: L.tryPracticeGame }).click();
+  await expect(page).toHaveURL(/#\/games\/[0-9a-f-]+$/, { timeout: 20_000 });
+  const role = await page.evaluate(
+    () => JSON.parse(localStorage.getItem("cmdctrl.session") ?? "null")?.principal?.role,
+  );
+  expect(role).toBe("player");
 });
 
 test("#/admin leads with the token form and hides the invite paste", async ({ page }) => {

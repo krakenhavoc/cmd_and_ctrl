@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -36,23 +34,23 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordUndying},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: nardoleProduced,
-			Restrictions: []string{ManaRestrictCast, ManaRestrictNotType("Creature")},
-			Label:        "Add {U} for each counter on Nardole. Spend this mana only to cast noncreature spells",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: nardoleProduced,
+			Restrictions:   []string{ManaRestrictCast, ManaRestrictNotType("Creature")},
+			Label:          "Add {U} for each counter on Nardole. Spend this mana only to cast noncreature spells",
 		}},
 	})
 }
 
 // nardoleProduced is one {U} per counter of any kind on the source.
-func nardoleProduced(g *game.Game, _, source uuid.UUID) string {
+func nardoleProduced(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
-		return ""
+		return game.ManaAmount{}
 	}
 	n := 0
 	for _, v := range c.Counters {
 		n += v
 	}
-	return strings.Repeat("{U}", n)
+	return game.ManaAmount{Options: []string{"U"}, N: n}
 }

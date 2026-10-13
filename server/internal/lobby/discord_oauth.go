@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 )
@@ -127,10 +128,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 
-	client := c.DiscordHTTPClient
-	if client == nil {
-		client = http.DefaultClient
-	}
+	client := c.discordClient()
 	token, err := c.Discord.ExchangeCode(r.Context(), client, code, entry.CodeVerifier)
 	if err != nil {
 		return httpError(http.StatusFailedDependency, err.Error())
@@ -138,6 +136,14 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	user, err := c.Discord.FetchUser(r.Context(), client, token.AccessToken)
 	if err != nil {
 		return httpError(http.StatusFailedDependency, err.Error())
+	}
+
+	// The sign-up gate (ADR 0156 §1 item 4), before anything is written
+	// about the person: a refusal answers the request itself, and
+	// leaves no users row behind.
+	admitted, gateChecked, err := signInGate(c, w, r, entry, user, token.AccessToken)
+	if err != nil || !admitted {
+		return err
 	}
 
 	identity := DiscordIdentity{
@@ -157,7 +163,7 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 	// is users.NoStore and u.ID is zero, which is today's session.
 	scopes := token.Scope
 	if scopes == "" {
-		scopes = discord.RequestedScopes
+		scopes = c.Discord.Scopes()
 	}
 	u, err := c.userStore().UpsertFromDiscord(r.Context(), user, token.RefreshToken, scopes)
 	if err != nil {
@@ -165,6 +171,12 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 		// gets a plain sentence and the log gets the detail.
 		c.logger().Error("record Discord sign-in failed", "discord_id", user.ID, "err", err)
 		return httpError(http.StatusInternalServerError, "could not record your sign-in; try again")
+	}
+
+	// The gate admitted them after asking Discord: say so on the
+	// account, for the admin view (ADR 0156 §1 item 7).
+	if gateChecked {
+		c.recordAccess(r.Context(), u.ID, discord.AccessAdmitted)
 	}
 
 	// Seats this snowflake claimed before it had a users row — every
@@ -215,6 +227,21 @@ func discordCallback(c Config, w http.ResponseWriter, r *http.Request) error {
 
 	if entry.Link() {
 		return finishDiscordLink(c, w, r, entry, identity, user, u.ID)
+	}
+
+	// At the connection cap the seat is not claimed: the socket it
+	// needs would be refused (ADR 0148 section 4). The person is sent
+	// back to the invite's own join page, which says the server is full
+	// in the one sentence every other refusal uses; a JSON 503 here
+	// would be shown to them as a blank page, since this is a browser
+	// navigation and not a fetch. The sign-in itself is recorded above,
+	// and the retry skips Discord's screen.
+	if c.Lobby.ConnectionsFull() {
+		back := url.Values{}
+		back.Set("t", entry.InviteToken)
+		back.Set("error", capacity.CodeServerFull)
+		http.Redirect(w, r, "/#/games/"+entry.GameID.String()+"/join?"+back.Encode(), http.StatusFound)
+		return nil
 	}
 
 	meta, playerID, err := c.Lobby.JoinAs(entry.GameID, entry.InviteToken, "", identity, u.ID)

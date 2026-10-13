@@ -32,18 +32,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //     creature, token or not, dealt by Kreat so it is red noncombat
 //     damage.
 //
-// Sandbox simplification, declared: the printed card lets the
-// controller choose which player (or planeswalker) the token
-// attacks; here it attacks the player the triggering Goblin was
-// declared against — the first Goblin's defender when several
-// attack at once. Weaker than printed (the choice is absent), never
-// stronger.
+// The controller chooses what the token attacks (CR 508.4) through
+// CreateTokensAttackingYourChoice, asking about what the first Goblin
+// attacked first. No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "da1c1c70-c2fa-4ba7-89fe-d9af3fb353b9",
 		Name:         "General Kreat, the Boltbringer",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Goblin token attacks the player your first Goblin attacked rather than a player of your choice."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			{
 				OncePerBatch: true,
@@ -53,7 +49,13 @@ func init() {
 				},
 				Key: b21KreatAttackLabel,
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return g.CreateTokensAttackingForEffect(item.Controller, b21TappedAttackingGoblin(), 1, item.Trigger.Event.Target)
+					return CreateTokensAttackingYourChoice{
+						Template: b21TappedAttackingGoblin(),
+						N:        1,
+						Tapped:   true,
+						Prefer:   triggerAttackTarget(item),
+						Label:    "General Kreat",
+					}.Apply(NewContext(g, item))
 				},
 			},
 			WheneverAnotherCreatureEntersUnderYourControl("General Kreat — 1 damage to each opponent", Do(DamageEachOpponent{N: 1})),

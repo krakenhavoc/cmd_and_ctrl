@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -144,6 +146,7 @@ func AttachedToSource(target *game.Card, _ *game.Game, source *game.Card) bool {
 // non-setting P/T change belongs (CR 613.4c).
 func PumpAttached(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Attached creature gets " + signedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: AttachedToSource,
@@ -166,6 +169,7 @@ func PumpAttached(power, toughness int) game.StaticAbility {
 // that already prints haste does not produce two badges.
 func GrantToAttached(keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Attached creature has " + joinWords(keywords) + ".",
 		Layer:     game.Layer6Ability,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -189,6 +193,7 @@ func GrantToAttached(keywords ...string) game.StaticAbility {
 // haste — but it does mean "loses flying" is not an absolute.
 func RemoveFromAttached(keywords ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Attached creature loses " + joinWords(keywords) + ".",
 		Layer:     game.Layer6Ability,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -247,6 +252,7 @@ func RemoveFromAttached(keywords ...string) game.StaticAbility {
 // the type change, and it belongs in layer 4 — see SetsBasicLandType.
 func LoseAllAbilities(keep ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:            "Attached permanent loses all abilities.",
 		Layer:            game.Layer6Ability,
 		RemovesAbilities: true,
 		// Every catalogued user of this helper prints it as one
@@ -283,6 +289,7 @@ func LoseAllAbilities(keep ...string) game.StaticAbility {
 // Transformation then set to Elk is an Elk (#670).
 func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     attachedTypesLabel(types, subtypes),
 		Layer:     game.Layer4Type,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -302,6 +309,7 @@ func SetAttachedTypes(types []string, subtypes []string) game.StaticAbility {
 // colourless is how it dodges a colour-restricted removal spell.
 func SetAttachedColors(colors ...string) game.StaticAbility {
 	return game.StaticAbility{
+		Label: "Attached permanent's color is changed.",
 		Layer: game.Layer5Color,
 		// CR 613.6: "is a colorless Forest land" is ONE continuous
 		// effect that starts in layer 4, so the colour half keeps
@@ -328,6 +336,7 @@ func SetAttachedColors(colors ...string) game.StaticAbility {
 // on it a real (bad) decision rather than a no-op.
 func SetAttachedBasePT(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:                 fmt.Sprintf("Attached creature has base power and toughness %d/%d.", power, toughness),
 		Layer:                 game.Layer7PT,
 		SubLayer:              game.SubLayer7B_Set,
 		ContinuesAfterRemoval: true,
@@ -363,6 +372,7 @@ func SetAttachedBasePT(power, toughness int) game.StaticAbility {
 // it now.
 func ControlAttachedBySource() game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "You control the enchanted permanent.",
 		Layer:     game.Layer2Control,
 		AppliesTo: AttachedToSource,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, source *game.Card) {
@@ -459,6 +469,19 @@ func attachedCreatureDealtCombatDamageToPlayer(ev game.Event, source *game.Card,
 	return g.PlayerByIDForEffect(ev.Target) != nil
 }
 
+// attachedCreatureDealtCombatDamageToPlayerOrBattle is the same condition
+// for "deals combat damage to a player or battle" (Beamtown Beatstick).
+func attachedCreatureDealtCombatDamageToPlayerOrBattle(ev game.Event, source *game.Card, g *game.Game) bool {
+	if attachedCreatureDealtCombatDamageToPlayer(ev, source, g) {
+		return true
+	}
+	if ev.Kind != game.EventDealDamage || !ev.Combat || ev.Amount <= 0 || !source.IsAttachedTo(ev.Source) {
+		return false
+	}
+	target, ok := g.LookupCardForEffect(ev.Target)
+	return ok && target.IsBattle()
+}
+
 // untapAllLandsControlledBy is Sword of Feast and Famine's back half
 // ("untap all lands you control"), which is a plain loop rather than
 // a primitive because nothing else in the catalog untaps a set.
@@ -529,6 +552,7 @@ func untapAllLandsControlledBy(g *game.Game, controller uuid.UUID, ctx *Context)
 // a Song'd Llanowar Elves is a Forest, not a Forest Elf Druid.
 func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *game.Card) bool, types []string, subtypes []string) game.StaticAbility {
 	return game.StaticAbility{
+		Label:            "Affected lands become " + joinWords(subtypes) + " and lose their other abilities.",
 		Layer:            game.Layer4Type,
 		RemovesAbilities: true,
 		AppliesTo:        applies,
@@ -563,6 +587,7 @@ func SetsBasicLandType(applies func(target *game.Card, g *game.Game, source *gam
 // the Equipment now, not off the creature's controller.
 func SetAttachedBasePTPer(value func(g *game.Game, source *game.Card) (power, toughness int)) game.StaticAbility {
 	return game.StaticAbility{
+		Label:                 "Attached creature's base power and toughness are set by a count on the board.",
 		Layer:                 game.Layer7PT,
 		SubLayer:              game.SubLayer7B_Set,
 		ContinuesAfterRemoval: true,

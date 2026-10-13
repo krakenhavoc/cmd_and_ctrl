@@ -341,6 +341,12 @@ type Config struct {
 	// ExtraLandDropRecurring is what one extra land drop on each later
 	// turn adds to a permanent's cast price.
 	ExtraLandDropRecurring float64
+	// PriceLandfallPayoffs adds, to every land the bot prices putting
+	// onto the battlefield, what its own declared landfall payoffs pay
+	// for it (#3072, landfall.go): a declared purpose's Lands (Burnished
+	// Hart, Harrow), an extra land drop's lands this turn, and a land put
+	// from hand. Off (the zero value) prices those lands as mana alone.
+	PriceLandfallPayoffs bool
 	// PlanTurnMana turns on ADR 0136's turn plan: in its own main phase
 	// with an empty stack, the bot picks the set of casts this turn's
 	// mana buys the most with, and makes that set's first move. Off (the
@@ -567,6 +573,14 @@ type Config struct {
 	// every attacker of mine dead and nothing of theirs, so no such
 	// exchange is ever acceptable.
 	HorizonPlaysFreeAnswer bool
+	// BlockSetSurvives checks the defender's blocks as a whole set
+	// against lethal damage (#3066, blockset.go): life, poison and 21
+	// from one commander. When finishing the declaration now would
+	// kill the bot, a block is chosen only among those after which some
+	// way of spending its free creatures survives, by the usual score,
+	// whenever one exists. Off (the zero value) scores each block on
+	// its own, so a set of good blocks can let lethal damage through.
+	BlockSetSurvives bool
 	// LethalBonus is the value of a line that would finish a seat
 	// outright — an alpha strike the defender cannot absorb, or a
 	// spell pointed at a player already inside FinishLife.
@@ -703,6 +717,7 @@ func DefaultConfig() Config {
 		PriceOwnPermanentPicks: true,
 		PriceExtraLandDrops:    true,
 		ExtraLandDropRecurring: 0.50,
+		PriceLandfallPayoffs:   true,
 
 		FuelFloor:  0.05,
 		FuelIdle:   0.30,
@@ -743,8 +758,10 @@ func DefaultConfig() Config {
 		// #2474: the attrition horizon trades commanders.
 		HorizonRecastsCommander: true,
 		HorizonPlaysFreeAnswer:  true,
-		LethalBonus:             25.00,
-		FinishLife:              3,
+		// #3066: the defender's blocks survive as a set.
+		BlockSetSurvives: true,
+		LethalBonus:      25.00,
+		FinishLife:       3,
 
 		LandsWanted:  5,
 		KeepMinLands: 2,
@@ -852,6 +869,8 @@ func BaselineConfig() Config {
 	// #2474: the attrition horizon never traded my commander.
 	c.HorizonRecastsCommander = false
 	c.HorizonPlaysFreeAnswer = false
+	// #3066: each block was scored on its own.
+	c.BlockSetSurvives = false
 	// #2677 and #2691: land searches by colour, discards by distance.
 	c.LandColorNeed = 0
 	c.DiscardByDistance = false
@@ -875,6 +894,8 @@ func BaselineConfig() Config {
 	c.PriceOwnPermanentPicks = false
 	c.PriceExtraLandDrops = false
 	c.ExtraLandDropRecurring = 0
+	// #3072: landfall payoffs.
+	c.PriceLandfallPayoffs = false
 	// #2693: the mulligan counted lands only.
 	c.KeepNeedsCast = false
 	c.KeepCastReach = 0

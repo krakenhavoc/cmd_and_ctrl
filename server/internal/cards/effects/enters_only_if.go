@@ -30,6 +30,8 @@ import (
 // entersOnlyIf builds the shared replacement around a choice.
 func entersOnlyIf(name, question string, choice *game.EntryCardChoice) game.ReplacementEffect {
 	return game.ReplacementEffect{
+		RowLabel:        "Enters only if you meet its extra requirement.",
+		EntryOnly:       true,
 		Watches:         []game.EventKind{game.EventZoneMove},
 		SelfReplacement: true,
 		Label:           name,

@@ -119,6 +119,17 @@ type TokenGroup struct {
 	Attacking uuid.UUID
 	// AttackOpponent limits creation-time attack choices to this player or their planeswalkers.
 	AttackOpponent uuid.UUID
+
+	// Blocking is the attacking creature this group's tokens are created
+	// BLOCKING (CR 506.3d, 509.5): Brimaz's "create a 1/1 Cat Soldier
+	// creature token with vigilance that's blocking that creature". It
+	// is stampEntryBlockerLocked's, once the token has landed: never
+	// declared as a blocker, so no "whenever this blocks" trigger fires
+	// for it, and an attacker that has left combat by then leaves the
+	// token on the battlefield not blocking (the instruction's other
+	// part still happens). Single-token entry only; a Together creation
+	// ignores it.
+	Blocking uuid.UUID
 }
 
 // TokenCreation is one "create N tokens" instruction — the whole
@@ -236,7 +247,7 @@ func (ev *ReplacementEvent) ReplaceTokenKindsWhere(pred func(Card) bool, templat
 			continue
 		}
 		for _, tmpl := range templates {
-			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking, AttackOpponent: grp.AttackOpponent})
+			out = append(out, TokenGroup{Template: tmpl, Count: grp.Count, Entry: grp.Entry, Attacking: grp.Attacking, AttackOpponent: grp.AttackOpponent, Blocking: grp.Blocking})
 		}
 	}
 	ev.TokenGroups = out
@@ -394,7 +405,7 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 			if target != uuid.Nil {
 				tok.AttackingTarget = target
 			}
-			batch = append(batch, stagedToken{card: tok, entry: grp.Entry})
+			batch = append(batch, stagedToken{card: tok, entry: grp.Entry, blocking: grp.Blocking})
 		}
 	}
 	if len(batch) == 0 {
@@ -423,6 +434,9 @@ func (g *Game) applyResolvedTokenCreationLocked(ev *ReplacementEvent) error {
 type stagedToken struct {
 	card  Card
 	entry TokenEntryOptions
+	// blocking is the attacker the token is put onto the battlefield
+	// blocking, applied after it lands (TokenGroup.Blocking).
+	blocking uuid.UUID
 }
 
 // mintTokenLocked builds one token object from a group's template.
@@ -549,6 +563,9 @@ func (g *Game) enterCreatedTokensLocked(batch []stagedToken, created []uuid.UUID
 		landed := created
 		if entered != uuid.Nil {
 			landed = append(append([]uuid.UUID(nil), created...), entered)
+			if next.blocking != uuid.Nil {
+				g.stampEntryBlockerLocked(entered, next.blocking)
+			}
 		}
 		return g.enterCreatedTokensLocked(rest, landed, source, done)
 	}}

@@ -132,6 +132,14 @@ const (
 	// a mana ability, an effect's AddMana, a colour pick, the snapshot —
 	// already carries riders, so the mark needs no second set of plumbing.
 	ManaRiderKeepUntilEndOfTurn ManaRiderKind = "keep_until_eot"
+
+	// ManaRiderKeepUntilEndOfCombat — "this mana lasts until end of
+	// combat" (firebending, #3172). The same kind of MARK as
+	// the one above, read by the same sweep: the token is kept across
+	// every step boundary that lands inside the combat phase and is an
+	// ordinary token at the first boundary outside it (the postcombat
+	// main phase, or the next turn if combat was skipped).
+	ManaRiderKeepUntilEndOfCombat ManaRiderKind = "keep_until_eoc"
 )
 
 // KnownManaRiderKind reports whether this binary reads a rider of
@@ -142,7 +150,7 @@ const (
 func KnownManaRiderKind(kind ManaRiderKind) bool {
 	switch kind {
 	case ManaRiderCantBeCountered, ManaRiderHaste, ManaRiderEntersWithCounters,
-		ManaRiderTrigger, ManaRiderSpellGains, ManaRiderKeepUntilEndOfTurn:
+		ManaRiderTrigger, ManaRiderSpellGains, ManaRiderKeepUntilEndOfTurn, ManaRiderKeepUntilEndOfCombat:
 		return true
 	}
 	return false

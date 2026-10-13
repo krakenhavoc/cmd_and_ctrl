@@ -913,6 +913,9 @@ func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, se
 		// The admin views (ADR 0124): a store with no rows, so admin
 		// mode reaches each handler's answer.
 		c.AdminViews = emptyAdminViews{}
+		// PUT /games/{id}/voice (ADR 0159): voice rooms on, so the
+		// route reaches its host-or-admin decision instead of a 503.
+		c.Lobby.SetVoiceRoomsEnabled(true)
 	}, listedDiscordID)
 	fx := &probeFixture{s: s, user: user}
 	var err error
@@ -1042,6 +1045,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"GET /games/{id}/creator", []string{"route:GET /games/{id}/creator"}, true, httpProbe("GET", "/games/{id}/creator?discord_id="+listedDiscordID, nil)},
 		{"GET /bugreport/{id}/replay", []string{"route:GET /bugreport/{id}/replay"}, true, httpProbe("GET", "/bugreport/abc/replay", nil)},
 		{"GET /bugreport/{id}/gamelog", []string{"route:GET /bugreport/{id}/gamelog"}, true, httpProbe("GET", "/bugreport/abc/gamelog", nil)},
+		// The bug-report kill switch and queue (ADR 0017 §10).
+		{"GET /admin/bugreport", []string{"route:GET /admin/bugreport"}, true, httpProbe("GET", "/admin/bugreport", nil)},
+		{"PUT /admin/bugreport/paused", []string{"route:PUT /admin/bugreport/paused"}, true, httpProbe("PUT", "/admin/bugreport/paused", func(*probeFixture) any { return map[string]bool{"paused": false} })},
 		{"POST /admin/users/{id}/revoke-sessions", []string{"route:POST /admin/users/{id}/revoke-sessions"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "POST", "/admin/users/"+uuid.New().String()+"/revoke-sessions", nil)
 		}},
@@ -1053,6 +1059,11 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /admin/users/{id}/playmats/{slot}", []string{"route:DELETE /admin/users/{id}/playmats/{slot}"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", "/admin/users/"+uuid.New().String()+"/playmats/2", nil)
 		}},
+		// The hosted-model spend guard (#2980).
+		{"GET /admin/bot/model", []string{"route:GET /admin/bot/model"}, true, httpProbe("GET", "/admin/bot/model", nil)},
+		{"PUT /admin/bot/model", []string{"route:PUT /admin/bot/model"}, true, httpProbe("PUT", "/admin/bot/model", func(*probeFixture) any {
+			return map[string]any{"enabled": true}
+		})},
 		{"GET /games/{id}/bot/stats", []string{"BotStatsHandler"}, true, httpProbe("GET", "/games/{id}/bot/stats", nil)},
 		// The admin views (ADR 0124 §8).
 		{"GET /admin/users", []string{"route:GET /admin/users"}, true, httpProbe("GET", "/admin/users?played=7d", nil)},
@@ -1064,6 +1075,13 @@ func sameAnswerProbes() []sameAnswerProbe {
 			return fx.call(t, "GET", "/admin/games/"+fx.table.ID.String(), nil)
 		}},
 		{"GET /admin/live", []string{"route:GET /admin/live"}, true, httpProbe("GET", "/admin/live", nil)},
+		// The hot restore of deferred tables (ADR 0148, #3103).
+		{"POST /admin/capacity/restore-deferred", []string{"route:POST /admin/capacity/restore-deferred"}, true, httpProbe("POST", "/admin/capacity/restore-deferred", nil)},
+		// Player reports (#2984).
+		{"GET /admin/reports", []string{"route:GET /admin/reports"}, true, httpProbe("GET", "/admin/reports", nil)},
+		{"DELETE /admin/reports/{id}", []string{"route:DELETE /admin/reports/{id}"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", "/admin/reports/"+uuid.New().String(), nil)
+		}},
 
 		// Handler checks through c.isAdmin.
 		{"POST /games/{id}/spawn", []string{"requireTableManager"}, true, httpProbe("POST", "/games/{id}/spawn", func(*probeFixture) any {
@@ -1080,6 +1098,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"PATCH /games/{id}/settings", []string{"updateTableSettings"}, true, httpProbe("PATCH", "/games/{id}/settings", func(*probeFixture) any {
 			return map[string]any{"undo_limit": 3}
 		})},
+		{"PUT /games/{id}/voice", []string{"putVoiceRoom"}, true, httpProbe("PUT", "/games/{id}/voice", func(*probeFixture) any {
+			return map[string]any{"enabled": true}
+		})},
 		{"GET /games", []string{"listGames"}, false, httpProbe("GET", "/games", nil)},
 		{"GET /games?archived=1", []string{"listGames"}, false, httpProbe("GET", "/games?archived=1", nil)},
 		{"GET /games/{id}", []string{"getGame"}, true, httpProbe("GET", "/games/{id}", nil)},
@@ -1091,6 +1112,22 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"POST /games/{id}/decks for Alice's seat", []string{"uploadDeck"}, true, httpProbe("POST", "/games/{id}/decks", func(fx *probeFixture) any {
 			return uploadDeckRequest{Format: "text", Source: "Commander:\n1 Test Commander\nMainboard:\n99 Plains\n", PlayerID: fx.alice}
 		})},
+		// #2785: removing someone's seat is the host's, the creator's or an
+		// admin's. Bob is the seat asked about, so admin mode removes him
+		// and player mode is refused.
+		{"DELETE /games/{id}/seats/{player}", []string{"removeSeat"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", fx.tablePath("/seats/"+fx.bob.String()), nil)
+		}},
+		// #3113: the block list and the unblock take the removal's authority;
+		// the spectator list is a seat's, and removing one the manager's.
+		{"GET /games/{id}/blocks", []string{"authorizeBlockManager"}, true, httpProbe("GET", "/games/{id}/blocks", nil)},
+		{"DELETE /games/{id}/blocks/{block_id}", []string{"authorizeBlockManager"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", fx.tablePath("/blocks/no-such-entry"), nil)
+		}},
+		{"GET /games/{id}/spectators", []string{"listSpectators"}, true, httpProbe("GET", "/games/{id}/spectators", nil)},
+		{"DELETE /games/{id}/spectators/{spectator}", []string{"removeSpectator"}, true, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "DELETE", fx.tablePath("/spectators/"+uuid.NewString()), nil)
+		}},
 		{"POST /games/{id}/seats/bot", []string{"botSeatAuthorised"}, true, httpProbe("POST", "/games/{id}/seats/bot", func(*probeFixture) any {
 			return addBotRequest{Tier: "random", Deck: "test-mono-white"}
 		})},

@@ -38,6 +38,13 @@ func printedWords(words string) string {
 	return `(?i)\b` + regexp.QuoteMeta(words) + `\b`
 }
 
+// flipPrinted matches a flip card's own flip instruction (CR 710, ADR
+// 0151): "flip it.", "flip this creature.", "flip Rune-Tail." and
+// Homura's "return it to the battlefield flipped". A bare "flip" would
+// catch every coin flip, whose wording ("Flip a coin.") never puts the
+// full stop straight after the next word.
+const flipPrinted = `(?i)\bflip (?:it|this creature|[a-z-]+)\.|\bbattlefield flipped\b`
+
 // declaresAnyPlayerActivation reports whether the spec prints an "Any
 // player may activate this ability" row (ADR 0106 §1, #1793).
 func declaresAnyPlayerActivation(s effects.Spec) bool {

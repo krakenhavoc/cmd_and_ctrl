@@ -66,11 +66,15 @@ const (
 	// RejectUpgradeFailed: the WebSocket handshake itself failed, a
 	// refused Origin included.
 	RejectUpgradeFailed = "upgrade_failed"
+	// RejectCapacity: the connection cap was reached and the caller had
+	// no seat (ADR 0148). The upgrade is accepted so the client can be
+	// told why (a frame, then close 1013).
+	RejectCapacity = "capacity"
 )
 
 var rejectLabels = []string{
 	RejectShuttingDown, RejectBadRequest, RejectUnauthorized, RejectForbidden, RejectRejected,
-	RejectNoManager, RejectGameNotFound, RejectPlayerNotInGame, RejectUpgradeFailed,
+	RejectNoManager, RejectGameNotFound, RejectPlayerNotInGame, RejectUpgradeFailed, RejectCapacity,
 }
 
 // Directions of cmdctrl_ws_frames_total.

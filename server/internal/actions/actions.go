@@ -72,7 +72,16 @@ const (
 	// active player still holds priority.
 	TypeFinishBlocks Type = "finish_blocks"
 	TypeClearCombat  Type = "clear_combat"
-	TypeAdvanceStep  Type = "advance_step"
+	// TypeRemoveFromCombat takes ONE creature out of combat (#672,
+	// CR 506.4). Params carry `{instance_id}`. Controller-gated like
+	// the declarations, unlike its table-wide sibling clear_combat.
+	TypeRemoveFromCombat Type = "remove_from_combat"
+	TypeAdvanceStep      Type = "advance_step"
+	// TypeRevealCard reveals a HAND card to the table, or shows it to
+	// one player (#671, ADR 0028's 2026-10-13 amendment). Params carry
+	// `{card_id, to?}`; omit `to` for the whole table. Controller-gated;
+	// a sandbox verb, so it is not enumerated for bots.
+	TypeRevealCard Type = "reveal_card"
 	// S10 Commander UX additions.
 	TypeSetMonarch    Type = "set_monarch"
 	TypeSetInitiative Type = "set_initiative"
@@ -185,6 +194,12 @@ const (
 	// set_trigger_order_preference: legal during the opening roll, mints
 	// no undo entry, carried across an undo, never a bot move.
 	TypeSetAutoAnswers Type = "set_auto_answers"
+	// ADR 0150 §4 (owner decision 5) — a caster withdraws the request
+	// for help their assisted cast is parked on, params
+	// `{choice_id?}` (the helper's prompt; absent is "my open
+	// request"). Nothing was moved or paid, so the cast simply is not
+	// made. Player-scoped; never a bot move, since bots never ask.
+	TypeCancelAssist Type = "cancel_assist"
 )
 
 // openingRollActions are the only action types Dispatch accepts while
@@ -520,6 +535,8 @@ var playerScopedActions = map[Type]struct{}{
 	// initiator is `Player`) but the "any caller may start a vote"
 	// posture matches set_monarch / set_initiative — not scoped.
 	TypeCastVote: {},
+	// ADR 0150 §4: a caster withdraws only their own request for help.
+	TypeCancelAssist: {},
 	// #1279: a seat finishes its OWN block declaration, never
 	// another seat's — finishing a defender early would decide their
 	// blocks for them.
@@ -692,6 +709,10 @@ func dispatch(g *game.Game, a Action) error {
 			// coloured half, which is what every client that predates
 			// hybrid Phyrexian mana sends.
 			PhyrexianLife int `json:"phyrexian_life,omitempty"`
+			// ADR 0150 §4 (CR 702.132a) — the player asked to help pay
+			// the generic mana of a spell with assist. Absent casts it
+			// alone, which is every cast but one with assist.
+			AssistPlayer string `json:"assist_player,omitempty"`
 		}
 		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
 			return err
@@ -752,6 +773,13 @@ func dispatch(g *game.Game, a Action) error {
 				return fmt.Errorf("cast_spell gift_opponent: %w", err)
 			}
 			params.GiftOpponent = id
+		}
+		if p.AssistPlayer != "" {
+			id, err := uuid.Parse(p.AssistPlayer)
+			if err != nil {
+				return fmt.Errorf("cast_spell assist_player: %w", err)
+			}
+			params.AssistPlayer = id
 		}
 		if len(p.AltCostIDs) > 0 {
 			params.AltCostIDs = make([]uuid.UUID, 0, len(p.AltCostIDs))
@@ -1029,6 +1057,28 @@ func dispatch(g *game.Game, a Action) error {
 		}
 		return fmt.Errorf("%w: %s trigger_order", ErrMissingParams, a.Type)
 
+	case TypeCancelAssist:
+		if a.Player == uuid.Nil {
+			return ErrInvalidPlayer
+		}
+		var p struct {
+			ChoiceID string `json:"choice_id,omitempty"`
+		}
+		if len(a.Params) > 0 {
+			if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+				return err
+			}
+		}
+		choiceID := uuid.Nil
+		if p.ChoiceID != "" {
+			id, err := uuid.Parse(p.ChoiceID)
+			if err != nil {
+				return fmt.Errorf("cancel_assist choice_id: %w", err)
+			}
+			choiceID = id
+		}
+		return g.CancelAssistRequest(a.Player, choiceID)
+
 	case TypeSetAutoAnswers:
 		if a.Player == uuid.Nil {
 			return ErrInvalidPlayer
@@ -1213,6 +1263,45 @@ func dispatch(g *game.Game, a Action) error {
 
 	case TypeClearCombat:
 		return g.ClearCombat()
+
+	case TypeRemoveFromCombat:
+		var p struct {
+			InstanceID string `json:"instance_id"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		instanceID, err := uuid.Parse(p.InstanceID)
+		if err != nil {
+			return fmt.Errorf("remove_from_combat instance_id: %w", err)
+		}
+		if err := requireCardController(g, a.Caller, instanceID); err != nil {
+			return err
+		}
+		return g.RemoveFromCombat(instanceID)
+
+	case TypeRevealCard:
+		var p struct {
+			CardID string `json:"card_id"`
+			To     string `json:"to"`
+		}
+		if err := unmarshalParams(a.Params, a.Type, &p); err != nil {
+			return err
+		}
+		cardID, err := uuid.Parse(p.CardID)
+		if err != nil {
+			return fmt.Errorf("reveal_card card_id: %w", err)
+		}
+		to := uuid.Nil
+		if p.To != "" {
+			if to, err = uuid.Parse(p.To); err != nil {
+				return fmt.Errorf("reveal_card to: %w", err)
+			}
+		}
+		if err := requireCardController(g, a.Caller, cardID); err != nil {
+			return err
+		}
+		return g.RevealHandCard(cardID, to)
 
 	case TypeAdvanceStep:
 		// Sandbox affordance: advance the step cursor by one without

@@ -1200,3 +1200,23 @@ it has flying") is decisions 6–8's `AddSubtype` and `AddKeyword`, so a Clone
 that copies it is a flying Bird too. The mana half — what "spent" means, and
 why a waived payment reads as zero — is
 [ADR 0068's amendment of the same date](0068-the-mana-spent-on-a-spell.md#amendment-2026-10-02-1735-the-total-spent-read-inside-the-entry-window).
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172)): a spell copy has an event
+
+A spell copy is created, not cast (CR 707.10), so it fires no `EventCast`, and "whenever you cast **or copy** an instant
+or sorcery spell" (magecraft, CR 207.2c) had nothing to watch. `createSpellCopyLocked` now emits `EventSpellCopied`
+(Actor the copy's controller, CardID the copy, Source the spell it copies) once the copy is on the stack. Nothing else
+watches it, and the public log says nothing (the copy is on the stack the table is looking at). `magecraftEvents` and
+`instantOrSorceryCastOrCopiedByYou` are the catalog side; Archmage Emeritus, Storm-Kiln Artist and Sedgemoor Witch use
+them. A copy of an ability emits nothing. Cards that say "cast" only keep `instantOrSorceryCastByYou`.
+
+Back-out: drop the emit; the magecraft cards stop seeing copies (`TestCavCMagecraftTriggersOnCopies` fails).
+
+## Amendment (2026-10-13, #3172, cav-g2): "except it's an artifact" replaces the types
+
+`PrintedValues.SetCardTypes(types...)` is the clause with no "in addition to its other types" (Machine God's Effigy: "except it's an
+artifact … (It's not a creature.)"): the copy's card types become exactly `types`, supertypes are kept and subtypes go with the types
+they belonged to (CR 205.3d). `AddCardType` stays the "in addition" form. The Effigy also takes a registered mana-ability grant
+(`AbilityGrant.Mana`, already merged by the copy-grant path) so the copy has "{T}: Add {U}" besides the copied card's abilities.
+
+Back-out: remove the `v.SetCardTypes("Artifact")` line; `TestMachineGodsEffigyCopiesACreatureAsANonCreatureArtifact` fails.

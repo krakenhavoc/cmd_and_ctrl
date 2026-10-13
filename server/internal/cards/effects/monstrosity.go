@@ -124,6 +124,7 @@ func MonstrosityXOf(item *game.StackItem) int {
 func MonstrousKeywords(keywords ...string) game.StaticAbility {
 	kws := append([]string(nil), keywords...)
 	return game.StaticAbility{
+		Label:      "Has " + joinWords(keywords) + " while monstrous.",
 		Layer:      game.Layer6Ability,
 		ActiveWhen: Monstrous(),
 		AppliesTo:  selfOnly,

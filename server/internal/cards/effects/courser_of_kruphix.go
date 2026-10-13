@@ -34,7 +34,7 @@ func init() {
 				"Play a land from the top of your library (Courser of Kruphix)"),
 		},
 		Triggered: []game.TriggeredAbility{
-			Landfall("Courser of Kruphix — you gain 1 life (landfall)", Do(GainLife{Amount: 1})),
+			LandfallPaying("Courser of Kruphix — you gain 1 life (landfall)", game.LandfallPayoff{LifeGain: 1}, Do(GainLife{Amount: 1})),
 		},
 	})
 }

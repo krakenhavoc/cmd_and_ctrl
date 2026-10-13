@@ -43,6 +43,7 @@ func init() {
 		StartingLoyalty: 4,
 		Static: []game.StaticAbility{
 			{
+				Label: "During your turn, this is a Human Soldier creature in addition to its other types.",
 				Layer: game.Layer4Type,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return gideonBlackbladeIsACreature(target, g, source)
@@ -58,8 +59,9 @@ func init() {
 					}
 				},
 			},
-			KeywordGrant(gideonBlackbladeIsACreature, "indestructible"),
+			Labelled(KeywordGrant(gideonBlackbladeIsACreature, "indestructible"), "During your turn, this has indestructible."),
 			{
+				Label:    "During your turn, this is a 4/4.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7B_Set,
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

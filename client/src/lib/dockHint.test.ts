@@ -3,7 +3,7 @@
 
 import { describe, it, expect } from "vitest";
 
-import { passHint } from "./dockHint";
+import { passHint, primaryKind } from "./dockHint";
 import type { CardView, GameView, StackItemView } from "./protocol";
 
 const zone = (kind: string, cards: CardView[] = []) => ({ kind, count: cards.length, cards });
@@ -39,6 +39,33 @@ const boltItem: StackItemView = {
   owner: "a",
   source_card_id: "bolt",
 };
+
+describe("primaryKind (#3267)", () => {
+  const bear = { instance_id: "bear", name: "Bear", attacking_target: "b" } as CardView;
+
+  it("is Pass while the stack holds something, whatever the step", () => {
+    const v = view("declare_attackers", {
+      stack: zone("stack", [bolt]) as GameView["stack"],
+      stack_items: [boltItem],
+    });
+    expect(primaryKind(v, 3)).toBe("pass");
+    expect(primaryKind(view("end", { stack_items: [boltItem] }), 0)).toBe("pass");
+  });
+
+  it("is No attacks in declare attackers when creatures could attack and none has", () => {
+    expect(primaryKind(view("declare_attackers"), 2)).toBe("noAttacks");
+  });
+
+  it("is Next once something attacks, with nothing ready, or outside declare attackers", () => {
+    const attacking = view("declare_attackers", {
+      battlefield: zone("battlefield", [bear]) as GameView["battlefield"],
+    });
+    expect(primaryKind(attacking, 2)).toBe("next");
+    expect(primaryKind(view("declare_attackers"), 0)).toBe("next");
+    expect(primaryKind(view("precombat_main"), 2)).toBe("next");
+    expect(primaryKind(null, 2)).toBe("next");
+  });
+});
 
 describe("passHint", () => {
   it("says nothing without priority, during mulligans, or with no view", () => {
@@ -143,5 +170,48 @@ describe("passHint while a commander is being decided (ADR 0115 PR 5)", () => {
   it("goes away with the question", () => {
     const v = view("precombat_main", { seats: two, pending_choices: [] });
     expect(passHint(v, true)).toBe("passing moves to Begin Combat");
+  });
+});
+
+describe("passHint while an any-player offer is open (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice", seat: 0 },
+    { id: "b", name: "Bob", seat: 1 },
+  ] as never;
+  const link = {
+    id: "c1",
+    kind: "pay_unless",
+    chooser: "a",
+    count: 1,
+    source: "src",
+    pay_cost: "{1}",
+    any_player_offer: { controller: "b", order: ["a", "b"] },
+  } as never;
+  const battlefield = { cards: [{ instance_id: "src", name: "Rhystic Circle" }] } as never;
+
+  it("names who is deciding and whose effect it is", () => {
+    const v = view("precombat_main", { seats, battlefield, pending_choices: [link] });
+    expect(passHint(v, false)).toBe("Alice is deciding whether to pay {1} (Bob's Rhystic Circle)");
+  });
+});
+
+describe("passHint while an assisted cast waits (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice", seat: 0 },
+    { id: "b", name: "Bob", seat: 1 },
+  ] as never;
+  const ask = {
+    id: "c1",
+    kind: "pay_amount",
+    chooser: "b",
+    count: 1,
+    source: "fan",
+    pay_amount: { min: 0, max: 3, unit: "assist", resource: "mana" },
+    assist: { caster: "a", spell: "fan", spell_name: "Fan Favorite", generic: 3 },
+  } as never;
+
+  it("names the helper, the caster and the spell", () => {
+    const v = view("precombat_main", { seats, pending_choices: [ask] });
+    expect(passHint(v, true)).toBe("Bob is deciding how much to help pay for Alice's Fan Favorite");
   });
 });

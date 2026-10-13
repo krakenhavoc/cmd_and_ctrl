@@ -21,7 +21,10 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/util/token"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
@@ -135,6 +138,17 @@ type GameMeta struct {
 	// somebody else's table. Omitted (false) for every response that
 	// does not go through redactMetaFor.
 	IsCreator bool `json:"is_creator,omitempty"`
+
+	// Turn is the turn number of a game in play (ADR 0158 §1 item 4):
+	// the game view's turn.number, the number the board shows. Set only
+	// by List, and only while the game is active; zero (omitted)
+	// otherwise, and during the opening roll, before turn 1 begins. Never persisted: the engine is the authority, and the
+	// list reads it fresh each time.
+	Turn int `json:"turn,omitempty"`
+	// VoiceRoom is whether the host asked for a Discord voice room
+	// (ADR 0159 §1). Public: a table list may show which tables have
+	// voice. The room's own state rides the game view (§6).
+	VoiceRoom bool `json:"voice_room,omitempty"`
 }
 
 // Archived reports whether the table has been retired from the
@@ -194,6 +208,12 @@ type SeatInfo struct {
 	// IsHost marks the table host (ADR 0075 §2.1). Never true on a bot
 	// or agent seat. Mirrors GameMeta.HostPlayerID.
 	IsHost bool `json:"is_host,omitempty"`
+
+	// Life is the seat's life total while the game is in play (ADR 0158
+	// §1 item 4), set by List alongside GameMeta.Turn. Nil (omitted) in
+	// the lobby, once the game has ended, and on every other route.
+	// Public at the table: every seat and spectator sees it.
+	Life *int `json:"life,omitempty"`
 
 	// UserID is the users row of the signed-in person holding the seat
 	// (seats.user_id, ADR 0051 sub-PR 4), or "" for a guest, a bot,
@@ -276,6 +296,13 @@ type Lobby struct {
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.
 	reclaims map[[sha256.Size]byte]reclaimEntry
+	// voiceOn is ADR 0159 §7: whether this server offers table voice
+	// rooms. Set once at boot by SetVoiceRoomsEnabled, before
+	// RestoreFromDisk, so a restored table gets its stamp back.
+	voiceOn bool
+	// voice is the voice manager (ADR 0159 §4), nil when voice rooms
+	// are off. Set once at boot by SetVoiceManager.
+	voice *VoiceManager
 	// store is where the lobby's half of a game survives the process:
 	// games, seats and invites rows (ADR 0051 decision 4). Also the
 	// only place an invite is validated against — see resolveInvite.
@@ -294,6 +321,17 @@ type Lobby struct {
 	// creates by one person cannot both pass the open-table cap. It is
 	// taken before l.mu and never while holding it.
 	createMu sync.Mutex
+	// limits, connCount and reserved are the capacity caps (capacity.go,
+	// ADR 0148): the installed limits, the hub's connection count, and
+	// the load that in-flight creates hold before their entry is
+	// registered. The zero limits are every cap off.
+	limits    capacity.Limits
+	connCount func() int
+	reserved  int
+	// restoreMu serialises RestoreDeferred (restore_deferred.go), so two
+	// admin clicks cannot both rebuild the same deferred table. It is
+	// taken before l.mu and never while holding it.
+	restoreMu sync.Mutex
 }
 
 // SetEvictor wires the hub in after construction, for the deletes the
@@ -330,7 +368,15 @@ func (l *Lobby) SetStateBroadcaster(b StateBroadcaster) {
 // which callers surface as-is: rare, and the mutation has already
 // happened).
 func (l *Lobby) applyLocked(id uuid.UUID, entry *gameEntry, fn func() error) (func(), error) {
-	view, seq, err := entry.room.ApplyExternal(fn)
+	view, seq, err := entry.room.ApplyExternal(func() error {
+		if err := fn(); err != nil {
+			return err
+		}
+		// ADR 0159 §6: a seat that just joined or left changes who may
+		// use the voice room, and this commit's capture should say so.
+		l.restampVoice(entry)
+		return nil
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -377,6 +423,22 @@ type gameEntry struct {
 	practice      bool
 	practiceOwner string
 	practiceHuman uuid.UUID
+
+	// blocks are the identities this table will not seat again (blocks.go,
+	// table_blocks). Guarded by l.mu like meta.
+	blocks map[blockKey]blockInfo
+
+	// voiceChannelID is the table's live Discord voice room
+	// (games.voice_channel_id, ADR 0159 §5), "" for none. Written by the
+	// voice manager; the lobby only persists it.
+	voiceChannelID string
+	// voiceReport is the voice manager's last word on the room: its
+	// status, link and each Discord member's access. nil until it
+	// reports. voicePushSeq is the room's sequence number after the
+	// push that report caused, so the idle check does not count it as
+	// activity.
+	voiceReport  *voiceReport
+	voicePushSeq uint64
 }
 
 // NewLobby constructs an empty Lobby backed by mgr and an in-memory
@@ -459,6 +521,13 @@ func (l *Lobby) CreateBy(name string, createdBy uuid.UUID) (GameMeta, error) {
 // (host_discord_id) and never served.
 func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID string) (GameMeta, error) {
 	name = trimToLimit(name, maxTableNameLen)
+	if name != "" {
+		// #2984: a typed table name goes through the name filter. The
+		// generated ones below are written by hand and checked by a test.
+		if err := moderation.Name(name); err != nil {
+			return GameMeta{}, err
+		}
+	}
 	if name == "" {
 		// A blank name is a request for a surprise (#2630): every create
 		// path converges here, so the site, the admin token and the
@@ -466,6 +535,14 @@ func (l *Lobby) CreateWith(name string, createdBy uuid.UUID, hostDiscordID strin
 		// display name fills it in first, for the personal templates.
 		name = SuggestTableName("")
 	}
+	// The cap comes first: a refused create must cost nothing, and a
+	// reservation closes the gap between this check and the entry
+	// appearing in l.games (capacity.go).
+	release, err := l.reserveLoad(l.Capacity().TableCost(0, 0), metrics.RefuseTableLoad)
+	if err != nil {
+		return GameMeta{}, err
+	}
+	defer release()
 	invite, err := token.Random(16)
 	if err != nil {
 		return GameMeta{}, err
@@ -722,12 +799,21 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	// Fall back to the Discord display name when the caller didn't
 	// pass an explicit override. This is the path the OAuth
 	// callback takes — the user never typed a name.
+	identity, err := cleanDiscordIdentity(identity)
+	if err != nil {
+		return GameMeta{}, uuid.Nil, err
+	}
 	if strings.TrimSpace(playerName) == "" && identity.Populated() {
 		playerName = identity.DisplayName()
 	}
 	playerName = trimToLimit(playerName, 40)
 	if playerName == "" {
 		return GameMeta{}, uuid.Nil, ErrEmptyName
+	}
+	// #2984: the name filter. A refused name is the joiner's to change,
+	// so it is told before any seat or lock is taken.
+	if err := moderation.Name(playerName); err != nil {
+		return GameMeta{}, uuid.Nil, err
 	}
 
 	// Registered BEFORE the lock defer so it runs after l.mu is
@@ -752,6 +838,12 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 	} else if rec.Kind != InvitePlayer {
 		return GameMeta{}, uuid.Nil, ErrInvalidInvite
 	}
+	// #2984: removed-and-blocked from this table. After the invite, which
+	// is the credential, so the refusal is only ever seen by someone who
+	// holds one.
+	if entry.blockedLocked(userID, identity.ID, playerName) {
+		return GameMeta{}, uuid.Nil, ErrBlockedFromTable
+	}
 	if entry.room.Game.CurrentState() != game.StateLobby {
 		return GameMeta{}, uuid.Nil, ErrGameStarted
 	}
@@ -771,7 +863,6 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 		game.NewCard("Placeholder Filler", uuid.Nil),
 	}
 	var p *game.Player
-	var err error
 	bindNamedHost := false
 	broadcast, err = l.applyLocked(id, entry, func() error {
 		added, addErr := entry.room.Game.AddPlayer(playerName, deck)
@@ -878,6 +969,15 @@ func (l *Lobby) join(id uuid.UUID, invite, playerName string, identity DiscordId
 // (lobby, active, ended) — there's no analogue to ErrGameStarted /
 // ErrGameFull. Added in S11.
 func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
+	return l.SpectateAs(id, invite, uuid.Nil, "", "")
+}
+
+// SpectateAs is Spectate for a caller whose identity is known: it also
+// refuses (ErrBlockedFromWatching) a person the table has removed and
+// blocked (#3113). userID is uuid.Nil for a guest and discordID is ""
+// without a Discord identity; name is the label they are watching under,
+// which only a guest's block matches on.
+func (l *Lobby) SpectateAs(id uuid.UUID, invite string, userID uuid.UUID, discordID, name string) (GameMeta, error) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 
@@ -891,6 +991,9 @@ func (l *Lobby) Spectate(id uuid.UUID, invite string) (GameMeta, error) {
 		return GameMeta{}, err
 	} else if rec.Kind != InviteSpectator {
 		return GameMeta{}, ErrInvalidInvite
+	}
+	if entry.blockedLocked(userID, discordID, name) {
+		return GameMeta{}, ErrBlockedFromWatching
 	}
 	return copyMeta(entry.meta), nil
 }
@@ -1235,6 +1338,11 @@ func (l *Lobby) AddBot(id uuid.UUID, name, tier, deckID, deckName string, cards 
 	if len(entry.meta.Players) >= game.MaxPlayers {
 		return GameMeta{}, uuid.Nil, ErrGameFull
 	}
+	// A bot is the expensive seat (capacity.go): refuse it when the
+	// load has no room, before the engine is touched.
+	if err := l.botSeatFitsLocked(); err != nil {
+		return GameMeta{}, uuid.Nil, err
+	}
 	var p *game.Player
 	var err error
 	broadcast, err = l.applyLocked(id, entry, func() error {
@@ -1414,6 +1522,7 @@ func (l *Lobby) list(archived bool) []GameMeta {
 		m := copyMeta(e.meta)
 		m.InviteToken = ""
 		m.SpectatorInvite = ""
+		glanceAt(e, &m)
 		out = append(out, m)
 	}
 	// Deterministic ordering by creation time helps the lobby UI
@@ -1454,7 +1563,8 @@ func (l *Lobby) SetArchived(id uuid.UUID, archived bool) (GameMeta, error) {
 
 	entry, ok := l.games[id]
 	if !ok {
-		return GameMeta{}, ErrGameNotFound
+		// A row the restore pass never brought back (#2987).
+		return l.setArchivedUnresidentLocked(id, archived)
 	}
 	switch {
 	case archived && !entry.meta.Archived():
@@ -1500,7 +1610,8 @@ func (l *Lobby) Delete(id uuid.UUID) error {
 	defer l.mu.Unlock()
 	entry, ok := l.games[id]
 	if !ok {
-		return ErrGameNotFound
+		// A row the restore pass never brought back (#2987).
+		return l.deleteUnresidentLocked(id)
 	}
 	// Deleting a running table closes it (ADR 0123 §3). One already
 	// archived was counted then, and a practice table never is.
@@ -1563,6 +1674,28 @@ func copyMeta(m GameMeta) GameMeta {
 	// be at the table yet; nobody reading the meta needs it.
 	out.HostDiscordID = ""
 	return out
+}
+
+// glanceAt adds the turn and the life totals of a game in play to its
+// listed meta m (ADR 0158 §1 item 4). It reads the game under the
+// game's own read lock while the caller holds l.mu, the order the lobby
+// always takes them in (syncStateLocked does the same). A game in the
+// lobby or ended gets neither field. m is the caller's copy: the
+// players slice is copyMeta's, so nothing here touches the lobby's meta.
+func glanceAt(e *gameEntry, m *GameMeta) {
+	if e.room == nil || e.room.Game == nil {
+		return
+	}
+	glance, ok := e.room.Game.Glance()
+	if !ok {
+		return
+	}
+	m.Turn = glance.Turn
+	for i := range m.Players {
+		if life, seated := glance.Life[m.Players[i].PlayerID]; seated {
+			m.Players[i].Life = &life
+		}
+	}
 }
 
 func sortMetaByCreatedAt(s []GameMeta) {

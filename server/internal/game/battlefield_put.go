@@ -100,6 +100,15 @@ type ZoneEntryOptions struct {
 	// artifact creatures". nil is CR 708.2a's default 2/2, which is
 	// what manifest and cloak get. Ignored without FaceDown. #1270.
 	FaceDownListed *FaceDownListing
+
+	// EntersWithCounters are counters the putting effect says the
+	// permanent enters with (Dodecapod's discard replacement: "put it
+	// onto the battlefield with two +1/+1 counters on it", ADR 0153).
+	// SEEDED onto every card's entry event, as Tapped is, so the
+	// counters are the entry's own and the entry's CR 614 window and
+	// the counter placement windows after it see them. Read-only: the
+	// batch copies it onto each event. nil for every other caller.
+	EntersWithCounters map[string]int
 }
 
 // LibraryEntryOptions are ZoneEntryOptions for a library source, named
@@ -354,6 +363,22 @@ func batchEntriesFrom(ids []uuid.UUID, from ZoneKind) []BatchEntry {
 // Caller must hold g.mu.
 func (g *Game) PutCardsFromLibraryOntoBattlefieldThenForEffect(ids []uuid.UUID, opts LibraryEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
 	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneLibrary), opts, then)
+}
+
+// PutCardsFromHandOntoBattlefieldThenForEffect puts every card in `ids`
+// from its owner's hand onto the battlefield as ONE simultaneous entry
+// ("put up to N permanent cards from your hand onto the battlefield",
+// Selvala's Stampede; ADR 0146 amendment 2026-10-13), and tells `then`
+// which permanents entered once the entry is complete. The hand twin of
+// PutCardsFromLibraryOntoBattlefieldThenForEffect, on the same batch
+// (entry_batch.go): every CR 614 window is evaluated against the board
+// as it stood before any card entered, every ETB fires after all have
+// landed, and a card whose window stops to ask a question waits for the
+// answer. `then` runs exactly once, including when the batch is refused.
+//
+// Caller must hold g.mu.
+func (g *Game) PutCardsFromHandOntoBattlefieldThenForEffect(ids []uuid.UUID, opts HandEntryOptions, then func(g *Game, entered []uuid.UUID) error) error {
+	return g.startEntryBatchLocked(batchEntriesFrom(ids, ZoneHand), opts, then)
 }
 
 // PutFromHandOntoBattlefieldThenForEffect is the hand door with a

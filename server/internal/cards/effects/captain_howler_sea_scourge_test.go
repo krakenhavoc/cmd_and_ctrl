@@ -8,12 +8,11 @@ import (
 
 const captainHowlerOracle = "46c99d67-8307-4af0-afd0-377714806614"
 
-// TestCaptainHowlerSeaScourgeBatchesToOneTriggerWithTheSingleCardAmount
-// pins the declared caveat: discarding two cards at once is
-// OncePerBatch'd to a single trigger (one target prompt, not two —
-// see the "batch size" engine seam), and the pump it applies is the
-// single-card +2/+0 rather than the printed +4/+0.
-func TestCaptainHowlerSeaScourgeBatchesToOneTriggerWithTheSingleCardAmount(t *testing.T) {
+// TestCaptainHowlerSeaScourgeTwoCardsAreOneTriggerAndPumpTwiceAsMuch
+// pins the batch reading (#3172): discarding two cards at once is ONE
+// trigger (one target prompt), and the pump is +2/+0 for each card
+// discarded — +4/+0 — as printed.
+func TestCaptainHowlerSeaScourgeTwoCardsAreOneTriggerAndPumpTwiceAsMuch(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	howler := pushDiesCreatureForTest(g, me.ID, "Captain Howler, Sea Scourge", captainHowlerOracle,
@@ -33,14 +32,12 @@ func TestCaptainHowlerSeaScourgeBatchesToOneTriggerWithTheSingleCardAmount(t *te
 	}
 
 	passPriorityAroundTable(t, g)
-	if p := effectivePower(t, g, bear); p != 4 {
-		t.Errorf("the declared caveat: a two-card discard still pumps by +2/+0, not +2/+0 per card: power %d, want 4", p)
+	if p := effectivePower(t, g, bear); p != 6 {
+		t.Errorf("two discarded cards are +4/+0: power %d, want 6", p)
 	}
 }
 
-// TestCaptainHowlerSeaScourgeOneCardIsExact confirms the ordinary,
-// non-caveated case: discarding exactly one card gets the exact
-// printed pump.
+// One card is the exact +2/+0.
 func TestCaptainHowlerSeaScourgeOneCardIsExact(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
@@ -54,5 +51,57 @@ func TestCaptainHowlerSeaScourgeOneCardIsExact(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	if p := effectivePower(t, g, bear); p != 4 {
 		t.Errorf("one discarded card is +2/+0 exactly: power %d, want 4", p)
+	}
+}
+
+// "Whenever that creature deals combat damage to a player this turn,
+// you draw a card": the pumped creature's hit draws, another creature's
+// does not.
+func TestCaptainHowlerSeaScourgeDrawsWhenTheChosenCreatureConnects(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushDiesCreatureForTest(g, me.ID, "Captain Howler, Sea Scourge", captainHowlerOracle,
+		"Legendary Creature — Shark Pirate", 5, 4)
+	chosen := pushVanillaCreature(g, me.ID, "Chosen Bear", 2, 2)
+	other := pushVanillaCreature(g, me.ID, "Other Bear", 2, 2)
+
+	g.WithWriteLock(func() { g.DiscardChoiceForEffect(me.ID, 1) })
+	discardFromHand(t, g, me.ID)
+	pickCard(t, g, me.ID, chosen)
+	passPriorityAroundTable(t, g)
+
+	hand := me.Hand.Size()
+	attackWith(t, g, opp.ID, other)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != hand {
+		t.Fatalf("an unchosen creature connected: hand %d, want %d", got, hand)
+	}
+}
+
+func TestCaptainHowlerSeaScourgeChosenCreatureHitDrawsACard(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	pushDiesCreatureForTest(g, me.ID, "Captain Howler, Sea Scourge", captainHowlerOracle,
+		"Legendary Creature — Shark Pirate", 5, 4)
+	chosen := pushVanillaCreature(g, me.ID, "Chosen Bear", 2, 2)
+
+	g.WithWriteLock(func() { g.DiscardChoiceForEffect(me.ID, 1) })
+	discardFromHand(t, g, me.ID)
+	pickCard(t, g, me.ID, chosen)
+	passPriorityAroundTable(t, g)
+
+	hand := me.Hand.Size()
+	attackWith(t, g, opp.ID, chosen)
+	passPriorityAroundTable(t, g)
+	if got := me.Hand.Size(); got != hand+1 {
+		t.Fatalf("the chosen creature connected: hand %d, want %d", got, hand+1)
+	}
+}
+
+// The ward is the one declared gap.
+func TestCaptainHowlerSeaScourgeKeepsOnlyTheWardCaveat(t *testing.T) {
+	spec, ok := Lookup(captainHowlerOracle)
+	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
+		t.Fatalf("want exactly the ward caveat: %v %v", spec.Completeness, spec.Caveats)
 	}
 }

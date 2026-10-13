@@ -46,10 +46,7 @@ func init() {
 	Register(Spec{
 		OracleID:     invasionOfTarkirOracleID,
 		Name:         "Invasion of Tarkir",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			SiegeTransformedCastCaveat,
-		},
+		Completeness: CompletenessFull,
 		Battle: &BattleSpec{
 			Defense: 5,
 			Subtype: BattleSubtypeSiege,

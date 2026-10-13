@@ -275,13 +275,28 @@ func activatedAbilityRefFor(source Card, index int, origins AbilityOrigins, ab A
 	o := origins.At(index)
 	ref := AbilityRef{Slot: AbilitySlotActivated, Ref: o.Ref, Name: ab.Label}
 	switch {
+	case o.Borrowed:
+		// ADR 0155 Decision 5: a lent row is stamped with the LENDER's
+		// catalog row — own:<i> under its key, or grant:<b>:<i>:0 under
+		// a bundle's — which resolveActivatedAbilityRef already reads,
+		// with the lender's own label as the name. So restore and the
+		// catalog/activated body need no lender (CR 113.7a).
+		if o.Lent == nil || o.Lent.Kind != LentCatalog || o.Lent.Key == "" {
+			return nil
+		}
+		ref.Key = o.Lent.Key
+		if strings.HasPrefix(ref.Key, GrantKeyPrefix) {
+			ref.Ref = GrantedAbilityRef(ref.Key, o.Lent.Index, 0)
+		} else {
+			ref.Ref = OwnAbilityRef(o.Lent.Index)
+		}
 	case o.Granted():
 		ref.Key = o.Grant
 	case strings.HasPrefix(o.Ref, abilityRefOwn):
 		// An own row is a catalog row only when the object reads its
 		// abilities from the catalog: a card carrying its own
 		// instance list (census:IntrinsicAbilityCards) indexes that.
-		if source.HasLostAllAbilities() || len(source.ActivatedAbilities) > 0 {
+		if source.HasLostAllAbilities() || (len(source.ActivatedAbilities) > 0 && source.TextBox == nil) {
 			return nil
 		}
 		ref.Key = CatalogKey(source)

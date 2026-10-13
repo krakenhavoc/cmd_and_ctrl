@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -82,8 +80,7 @@ func init() {
 						if color == "" {
 							return nil
 						}
-						return g.AddManaForEffect(player, source,
-							strings.Repeat("{"+color+"}", 3*paid))
+						return g.AddManaWithOptionsForEffect(player, source, "", game.AddManaOptions{Amount: ManaN(3*paid, color)})
 					})
 				return nil
 			},

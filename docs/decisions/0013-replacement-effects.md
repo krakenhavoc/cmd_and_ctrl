@@ -4688,11 +4688,11 @@ the live `*Game` (`resumeClause`'s contract).
 Conquest lose their caveats and are `CompletenessFull`. The roadmap row
 `graveyard-choice-after-a-sacrifice` is closed.
 
-**Not done.** Grapple with the Past ("mill three cards, then you may
-return a creature or land card") picks its card at cast, before the
-mill, in the posture Rise of the Witch-king had. It can move to the same
-helper inside its mill's continuation; it is not a sacrifice and is left
-to its own change.
+**Grapple with the Past (#2941).** Moved to the same helper afterwards.
+The mill is a synchronous primitive, so no continuation was needed: the
+spell mills, then `ReturnChosenFromGraveyard` (new `ToHand` field; any
+creature or land card, Min 0, Max 1) offers the graveyard as it then is.
+It has no target clause and is `CompletenessFull`.
 
 
 ## Amendment — 2026-10-12: individual expanded draws and first-draw exceptions (S58, #2033, #2077)
@@ -4721,3 +4721,44 @@ when a draw trigger is harvested. Notion Thief, Alhammarret's Archive and
 Orcish Bowmasters use these readers; their old all-draw-step caveats are
 removed. The tally is copied into undo and schema-v8 snapshots; an older
 snapshot reconstructs the current step's count from its event history.
+
+## Amendment 2026-10-13 — a duration grant of "enters with additional counters" (#3172)
+
+An entry replacement that a resolving ability creates for a duration
+("until your next turn, each creature you control enters with an additional
++1/+1 counter", Arlinn, the Pack's Hope's +1) cannot live on a permanent, which
+may leave, and has no source object to ask. It is a `PlayerStatic` payload
+(`CreaturesEnterWithCounters`, kind and count) with an ordinary duration, read
+by the built-in `playerEntryCountersReplacement`
+(`game/player_entry_counters.go`) on the entry event. The entering card is
+found through `LookupCardForEffect`, which also finds a token whose entry
+window is open, and the counters go through `ev.AddCounterAtETB`, so they ride
+the counter pipeline and a Doubling Season doubles them. The built-in is set
+aside by the trigger-independence check (`knownBuiltinReplacementLabels`): it
+exists only while a player static does, and any player static already makes the
+board opaque to that check.
+
+## Amendment — 2026-10-13: a replacement can leave a counter on the card it exiles (#3212)
+
+Dauthi Voidwalker's "if a card would be put into an opponent's graveyard from
+anywhere, instead exile it with a void counter on it" is
+`GraveyardBecomesExile` plus a counter on the card that lands.
+
+- **`ReplacementEvent.ExileCounter`** (a counter kind, empty for none) is
+  `ExiledWith`'s twin. A replacement runs before the card moves, so it cannot
+  write to the card; it leaves the kind on the event, and the two functions
+  that perform every replaced move's landing (`executeZoneRouteLocked` and
+  `executeBattlefieldLeaveLocked`) call `stampExileCounterLocked` once the card
+  has really landed in exile. A move a later replacement redirected to the
+  command zone, a library or a hand stamps nothing. The counter is one `+1` on
+  `Card.Counters`, so it is cleared by the next move like any counter off the
+  battlefield.
+- **`GraveyardBecomesExile.ExileCounter`** sets it. `Dauthi Voidwalker` is the
+  first user ("void").
+- `executeBattlefieldLeaveLocked` gains an `exileCounter string` parameter;
+  its three callers pass the event's value or `""`.
+- **Back-out.** Delete the `stampExileCounterLocked` call in
+  `executeZoneRouteLocked`: `TestDauthiVoidwalkerExilesOpponentsCardsWithAVoidCounter`
+  fails (no counter on a milled card). Delete the call in
+  `executeBattlefieldLeaveLocked`: `TestDauthiVoidwalkerExilesADyingOpponentCreature`
+  fails.

@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"strings"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -53,6 +55,7 @@ import (
 // unobservable for this whole family.
 func incarnationAnthem(keyword, land string) game.StaticAbility {
 	return game.StaticAbility{
+		Label: "While this is in your graveyard and you control " + articleFor(strings.ToLower(land)) + " " + land + ", creatures you control have " + keyword + ".",
 		Layer: game.Layer6Ability,
 		// CR 113.6c: this ability functions from a GRAVEYARD and
 		// nowhere else. #1221.

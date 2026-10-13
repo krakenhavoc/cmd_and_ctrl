@@ -373,6 +373,7 @@ func TestThreatsAroundEveryCornerFetchesALandForEachFaceDownPermanent(t *testing
 	passPriorityAroundTable(t, g)
 	answerChooseCards(t, g, me.ID, second)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	requireManifested(t, g, me, second)
 	f := findBattlefieldCardForTest(g, forest)
 	if f == nil || !f.Tapped {

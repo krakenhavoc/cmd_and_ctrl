@@ -110,6 +110,12 @@ type Room struct {
 	// URL (ADR 0128 amendment). Same guard.
 	playmatWashes map[uuid.UUID]int
 
+	// voice is the table's Discord voice room (ADR 0159 §6), set by the
+	// lobby through SetVoice and stamped on every capture. Guarded by
+	// voiceMu, never by mu, for the same reason as host. See voice.go.
+	voiceMu sync.Mutex
+	voice   *protocol.VoiceView
+
 	// lastRestorePoint is the seq and wall time of this room's most
 	// recently WRITTEN restore point (persist.go), so that a shutdown
 	// census (#524) can report how far a live table has drifted from
@@ -134,6 +140,10 @@ type Room struct {
 	// Guarded by its own mutex, never by mu. In memory only; a restart
 	// forgets it, which costs at most one extra roll.
 	tableRolls tableRollLimiter
+
+	// chat is the last few chat lines, for a player report's excerpt
+	// (chat_recent.go). Its own mutex; in memory only.
+	chat chatRing
 }
 
 // restorePointRecord is Room's bookkeeping about its own last written
@@ -499,6 +509,22 @@ func (r *Room) ApplyExternal(fn func() error) (protocol.GameView, uint64, error)
 	return r.ApplyExternalAction(ActionTag{fixedType: metrics.ActionTypeLobby, seatKind: metrics.SeatKindHuman}, fn)
 }
 
+// ApplyExternalClearingUndo is ApplyExternal for a mutation that must
+// not be taken back: on success it empties the undo ring. An admin
+// removing a seat from a started game (#3093) is that case. Every
+// entry already on the ring holds a clone from before the seat left,
+// so undoing one would restore the removed player to the table, and
+// their session would be refused while their seat played on.
+func (r *Room) ApplyExternalClearingUndo(fn func() error) (protocol.GameView, uint64, error) {
+	return r.ApplyExternal(func() error {
+		if err := fn(); err != nil {
+			return err
+		}
+		r.undoStack = nil
+		return nil
+	})
+}
+
 // ApplyExternalAction is ApplyExternal for an action that mints no undo
 // entry (actions.MintsNoUndo, the table settings), tagged as
 // ApplyAction tags one.
@@ -694,6 +720,7 @@ func (r *Room) ViewFor(viewerID string) protocol.GameView {
 	r.stampUndoAutoAnswerLocked(&view)
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
+	r.stampVoiceLocked(&view)
 	r.mu.Unlock()
 	return protocol.FilterViewFor(view, viewerID)
 }
@@ -739,6 +766,7 @@ func (r *Room) captureLocked(advanceSeq bool) (protocol.GameView, uint64, error)
 	r.stampUndoAutoAnswerLocked(&view)
 	r.stampUndoBlockedLocked(&view)
 	r.stampPlaymatsLocked(&view)
+	r.stampVoiceLocked(&view)
 
 	// Consume any annotation the committing caller left for this
 	// capture. Cleared unconditionally — including on the Snapshot

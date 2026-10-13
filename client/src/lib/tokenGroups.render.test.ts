@@ -19,6 +19,8 @@ import { modalDepth } from "./modalLayers";
 import { abilityPopover } from "./abilityPopover";
 import { get } from "svelte/store";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
+import { boardDamageAssign } from "./damageAssignment";
+import { L } from "./labels";
 
 afterEach(() => {
   targeting.set(null);
@@ -502,5 +504,34 @@ describe("a token group in the player's panel (#1724)", () => {
         params: expect.objectContaining({ card_id: "t2", ability_index: 0 }),
       },
     ]);
+  });
+});
+
+describe("a token group during a damage assignment (#2958)", () => {
+  afterEach(() => boardDamageAssign.set(null));
+
+  it("carries ONE damage stepper on the group's card, which steps the shared store", () => {
+    const cards = [soldier("s1"), soldier("s2"), soldier("s3")];
+    const { container } = mountRow(cards);
+    expect(container.querySelector('[data-testid="damage-stepper"]')).toBeNull();
+    boardDamageAssign.set({
+      choiceID: "c1",
+      attackerID: "vivi",
+      power: 4,
+      allowTrample: false,
+      blockerDivides: false,
+      lethal: { s1: 1, s2: 1, s3: 1 },
+      shares: { amounts: { s1: 0, s2: 0, s3: 0 }, trample: 0 },
+    });
+    flushSync();
+    expect(container.querySelectorAll('[data-testid="damage-stepper"]')).toHaveLength(1);
+    const add = container.querySelector<HTMLButtonElement>(
+      `button[aria-label="${L.addDamage("Soldier (group of 3)")}"]`,
+    );
+    expect(add).not.toBeNull();
+    click(add!);
+    click(add!);
+    flushSync();
+    expect(get(boardDamageAssign)?.shares.amounts).toEqual({ s1: 1, s2: 1, s3: 0 });
   });
 });

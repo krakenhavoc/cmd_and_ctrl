@@ -46,6 +46,7 @@ func init() {
 	// Face 0 — the enchantment.
 	doubler := DoublesEntering(nil)
 	doubler.Label = "Virtue of Knowledge"
+	doubler.RowLabel = "Abilities that trigger when a permanent enters trigger an additional time."
 	Register(Spec{
 		OracleID:        virtueOfKnowledgeOracleID,
 		Name:            "Virtue of Knowledge",

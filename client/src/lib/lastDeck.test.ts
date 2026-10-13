@@ -62,6 +62,14 @@ describe("a guest's last deck", () => {
     expect(readGuestLastDeck()).toBeNull();
   });
 
+  it("translates a retired pre-built ID to the deck that replaced it", () => {
+    localStorage.setItem(
+      GUEST_LAST_DECK_KEY,
+      JSON.stringify({ kind: "prebuilt", id: "izzet-aggro" }),
+    );
+    expect(readGuestLastDeck()).toEqual({ kind: "prebuilt", id: "mono-red-aggro" });
+  });
+
   it("is what a guest session loads, without asking the server", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);

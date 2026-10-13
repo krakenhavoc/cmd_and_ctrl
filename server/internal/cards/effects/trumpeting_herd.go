@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:        "69501650-ed48-4ebf-9287-b0338c5bc5d5",
 		Name:            "Trumpeting Herd",
+		Purpose:         game.Purpose{Tokens: 1},
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordRebound},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {

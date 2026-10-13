@@ -826,7 +826,7 @@ func (g *Game) harvestMatchLocked(pass *harvestPass, source Card, lki Characteri
 	// settle pass asks again with the final totals and comes back here
 	// with pass.settled set.
 	if t.AtBatchEnd != nil && !pass.settled && origin == triggerOfPermanent && t.Key != "" {
-		g.stageBatchEndTriggerLocked(pass.ev, source.InstanceID, t.Key)
+		g.stageBatchEndTriggerLocked(pass.ev, source.InstanceID, t.Key, t.AtBatchEnd.group(pass.ev))
 		return
 	}
 	if g.triggerSuppressedLocked(pass, source, lki, &t, origin) {
@@ -998,6 +998,9 @@ func stampTriggerSource(item *StackItem, source Card, tc TriggerContext) {
 		source.InstanceID == uuid.Nil || item.SourceCardID != source.InstanceID {
 		return
 	}
+	// ADR 0152 §3: CR 701.27f / 701.28e's reference point, off the
+	// same value copy.
+	item.SourceTurnOvers = source.TurnOvers
 	if obj := tc.Object; obj != nil && obj.ID == source.InstanceID {
 		item.SourceObject = obj.Ref()
 		return
@@ -1153,6 +1156,7 @@ func (g *Game) snapshotLKILocked(cardID uuid.UUID) {
 			TokenKey:   c.TokenKey,
 			ActiveFace: c.ActiveFace,
 			AttachedTo: c.AttachedTo,
+			TextBox:    c.TextBox,
 		}
 		// #1218: The Ozolith's "if it had counters on it" — snapshotted
 		// here, before MoveCard's battlefield-exit cleanup zeroes

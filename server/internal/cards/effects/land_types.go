@@ -302,6 +302,7 @@ func EnchantedLandIsTheChosenType() []game.StaticAbility {
 // types" over every permanent `applies` matches.
 func LosesAllLandTypes(applies func(target *game.Card, g *game.Game, source *game.Card) bool) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Affected lands lose all land types.",
 		Layer:     game.Layer4Type,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {
@@ -317,6 +318,7 @@ func LosesAllLandTypes(applies func(target *game.Card, g *game.Game, source *gam
 // one sentence with a layer-4 change (CR 613.6).
 func LosesAllAbilitiesAndHas(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keys ...string) game.StaticAbility {
 	s := LoseAllAbilities()
+	s.Label = "Affected permanents lose all abilities and have what the card says they have."
 	s.AppliesTo = applies
 	s.GrantAbilities = append([]string(nil), keys...)
 	return s

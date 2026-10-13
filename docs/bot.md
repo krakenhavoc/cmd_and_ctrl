@@ -278,6 +278,18 @@ cheapest by mana value, keeping the most mana for the rest of the turn
 branch: the creature survives and deals no combat damage. An option
 pick with no costed option keeps the enumerator's first answer.
 
+**A villainous choice (`option_pick` again, #3140, CR 701.55).** The
+player who faces it picks one of two bad options. The enumerator offers
+both whatever the seat's board, because the rules let a player pick an
+option they can't carry out (CR 701.55b); each answer carries its life as
+`cost.life`, and the card adds `pick_options[].harm`, what the option costs
+besides life and mana in cards (a card from hand is 1, a creature 2; zero
+for an option that would do nothing to this seat right now). The heuristic
+takes the cheapest loss: the life through `LifeCostValue` plus the harm as
+that many cards in hand, and never an option that costs its last life
+(`heuristic/villainous_choice.go`). A prompt whose options carry no harm
+keeps the enumerator's first answer.
+
 **A choose-a-player prompt (`option_pick` again, #929).** "Choose a
 player" / "choose an opponent" — Gluntch, Skullwinder, Slithermuse —
 is an option pick whose branches are SEATS, one option per eligible
@@ -481,7 +493,43 @@ server picks the local one when both are set.
 | `CMDCTRL_BOT_THINK` | `1` lets the model think before it picks a move. An experiment, off by default — see [Letting the model think](#letting-the-model-think-2196). |
 | `CMDCTRL_BOT_MAX_TOKENS` | The decision calls' reply budget in tokens. Unset keeps 128 routine / 256 frontier, or 8000 with `CMDCTRL_BOT_THINK` on. |
 | `CMDCTRL_BOT_IMPROVISE` | `0` turns [improvisation](#improvisation-and-why-an-undo-is-free) off. On by default for the model tiers. |
-| `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. |
+| `CMDCTRL_ANTHROPIC_API_KEY` | The hosted alternative. `CMDCTRL_ANTHROPIC_ENDPOINT` overrides the URL. Subject to the spend caps below. |
+| `CMDCTRL_BOT_MODEL_DAILY_TOKENS` | Cap on hosted-model tokens per UTC day. Default `1000000`; `0` turns it off. |
+| `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS` | Cap on hosted-model tokens per UTC month. Default `10000000`; `0` turns it off. |
+
+### Spend caps, the kill switch, and what is never charged for (#2980)
+
+A hosted model costs the operator money, so the server bounds it
+([ADR 0033](decisions/0033-ai-bot-seat.md), amendment 2026-10-12).
+
+- **What the server does with a key.** With `CMDCTRL_ANTHROPIC_API_KEY`
+  (or `ANTHROPIC_API_KEY`) set, `assisted` and `strong` call the hosted
+  model while under the caps. With neither key nor
+  `CMDCTRL_OPENAI_ENDPOINT`, they are `available:false` in
+  `GET /bot/options` and a request to seat one is a 422. Both unset is a
+  supported server, not a broken one. The code cannot see production's
+  environment: whoever runs the server confirms which of these it is.
+- **Daily and monthly caps**, counted in tokens from the API's `usage`
+  fields (input, output, cache reads and cache writes), per UTC day and
+  UTC month. **On by default** at 1,000,000 a day and 10,000,000 a month;
+  `CMDCTRL_BOT_MODEL_DAILY_TOKENS` and `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS`
+  change them, and `0` turns a cap off. They do not apply to a
+  self-hosted `CMDCTRL_OPENAI_ENDPOINT` model, which has no bill. The
+  counters live in the database and survive a restart.
+- **Over a cap**, the model tiers behave as they do with no key: a seat
+  already at a table keeps playing on the rules filter and the heuristic,
+  the picker greys the tiers out with a reason, and `GET /bot/options`
+  carries a `model_note` saying the budget is used up and when it resets
+  (00:00 UTC).
+- **The kill switch.** An admin turns every model call off without a
+  redeploy with `PUT /admin/bot/model {"enabled": false}` and reads the
+  counters with `GET /admin/bot/model`
+  ([lobby.md](lobby.md#get-and-put-adminbotmodel-admin-only)). It
+  survives a restart. Turning it back on does not lift a cap.
+- **No tier is ever paywalled.** All four tiers are free to every player
+  on a server that offers them. A cap protects the operator's bill; it is
+  not a product boundary, and nothing in the code checks for payment or
+  entitlement.
 
 **Thinking is turned off on the local transport, and that is a
 deadline decision.** Several strong local models — qwen3 among them —
@@ -857,7 +905,7 @@ Two prices go with the windows:
 The catalog declares a `purpose` on a card, a mode, an alternative cost
 or an activated row (`effects.Spec.Purpose`, [ADR 0126
 §6](decisions/0126-bots-that-play-their-decks.md)). It is declared by
-hand, like `Completeness`. In S66, every card in the four curated decks
+hand, like `Completeness`. In S66, every card in the first four curated decks
 in the priced classes declares one, and so does every catalog board
 wipe. A card with no purpose is priced as before: an instant or sorcery
 at `SpellPerMana` (0.60) times its mana value, with `SpellFloor` under
@@ -1049,6 +1097,20 @@ TokenWeight × tokens
 So with Mary Read out, the bot loots away the Island rather than the
 Mountain.
 
+A discard an opponent forces is priced by what the card does
+(`discard_by_opponent.go`, ADR 0153 §5,
+[#1861](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1861)). The
+hand card's `discard_by_opponent` is declared by the catalog
+(`battlefield`, `library` or `trigger`), never read from its name, and the
+bot uses it only when the prompt's `source` is a spell or ability an
+opponent controls. A `battlefield` card (Obstinate Baloth, Dodecapod) is
+put onto the battlefield instead of the graveyard, so discarding it gains
+`cardValue`: with a Baloth and a land in hand, an opponent's Mind Rot
+makes the bot pitch the Baloth. A `trigger` card costs less by what its
+`on_opponent_discard` row pays, in the units above (Metrognome's four
+Gnomes are `4 × TokenWeight`). `library` is declared and not priced. The
+bot does not hold a Baloth in hand to bait the discard.
+
 A card that can turn itself into a card is a cheaper discard
 (`SelfReplacingDiscards`, `self_replacing.go`, ADR 0126's amendment of
 2026-10-12, [#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)).
@@ -1173,6 +1235,34 @@ the bot has a land in hand for and could not otherwise play (its turn,
 lands in hand beyond the drops left), at `ManaSource` plus the ramp
 premium, and, for a permanent, `ExtraLandDropRecurring` (0.50) per drop
 while the bot has fewer than `RampWantCap` sources.
+
+### Landfall payoffs (#3072)
+
+A landfall row declares a `landfall_payoff`: what it pays for each land
+that enters under its controller's control (Tatyova's card and life,
+Lotus Cobra's mana, Tireless Tracker's Clue, Rampaging Baloths' Beast).
+With `PriceLandfallPayoffs` on (`landfall.go`), every land the bot
+prices putting onto the battlefield is also worth what its own
+battlefield's payoffs pay for it, per land:
+
+```
+Weights.Hand × draws
++ MarginalLife(own life) × life_gain
++ TokenWeight × tokens
++ 0.5 × TokenWeight × mana
++ (Weights.Power + Weights.Toughness) × counters
++ Weights.Energy × energy
++ DamageToOpponent × damage_each_opponent × live opponents
+```
+
+That is added to a declared purpose's `lands` (Burnished Hart's and
+Sakura-Tribe Elder's activations, Harrow, Cultivate, Solemn Simulacrum),
+to the lands an extra land drop lets the bot play this turn, and to a
+land put from hand. The ordinary land drop is not repriced: it is
+already taken before any cast. So with Tatyova out, Burnished Hart's
+activation on turn 8 with seven lands is +1.44 rather than −1.20, and
+the bot cracks it; with only Courser of Kruphix's life, or with an
+opponent's Tatyova, it keeps the Hart.
 
 ### An opponent's tax against the turn plan (ADR 0136, 2026-10-09)
 
@@ -1588,7 +1678,7 @@ first — a board where two seats have spent two cards answering one
 creature, and over-rating their answers is not a decision anyone is
 worried about.
 
-## The four curated decks
+## The curated decks
 
 Curated, not generated, and **every card in them is covered by a
 build-failing test**: a card whose oracle ID has no registered effect
@@ -1599,10 +1689,13 @@ time a spec was refactored.
 
 | ID | Name | Commander | Archetype |
 |---|---|---|---|
-| `izzet-aggro` | Raid and Ransack | Mary Read and Anne Bonny | Aggro (UR) — Pirates and Islands: loot and rummage away the cards you don't need, and every Island, Pirate or Vehicle you discard becomes a Treasure |
+| `mono-red-aggro` | Forge and Fury | Purphoros, God of the Forge | Aggro (R) — Goblins and tokens: every creature that enters is 2 damage to each opponent from Purphoros, and more from the pingers behind it. It was `izzet-aggro` (Raid and Ransack) until [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071); the old ID still resolves to it |
 | `simic-ramp` | Deep Roots | Tatyova, Benthic Druid | Ramp-stompy (UG) — landfall: extra land drops every turn, a card off each with Tatyova, and landfall payoffs that turn the lands into mana, tokens and threats |
 | `esper-control` | The Long Answer | Y'shtola, Night's Blessed | Control (WUB) — big spells: every noncreature spell of mana value 3 or more drains each opponent, so the answers also win the game |
 | `mono-black-aristocrats` | Body Count | Syr Konrad, the Grim | Aristocrats (B) — death triggers: sacrifice creatures for value, drain the table each time one dies, then reanimate the best of them |
+| `mono-green-stompy` | Stampede | Goreclaw, Terror of Qal Sisma | Stompy (G) — ramp into oversized creatures a turn early; Goreclaw makes every big spell cheaper and every big attacker hit harder |
+| `mono-white-weenie` | Strength in Numbers | Adeline, Resplendent Cathar | Weenie (W) — cheap white creatures and tokens; Adeline makes a Human every time you attack, and anthems turn the swarm lethal |
+| `boros-voltron` | Armed and Dangerous | Aurelia, the Law Above | Voltron (RW) — twenty-one Equipment and four Auras on one big flier, protected by instant-speed answers |
 
 The decks are "upgraded precons" ([#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436)):
 fetchlands and dual lands, but few tutors and little fast mana (Sol
@@ -1615,10 +1708,15 @@ the two partner Pirates, Ragavan and the two Artillerists), and that
 test fails the build when a card falls below it. A saved table setup
 names a deck by ID, so it seats the current list.
 
+The three added by [#554](https://github.com/krakenhavoc/cmd_and_ctrl/issues/554)
+(Stampede, Strength in Numbers, Armed and Dangerous) are held to a
+stricter bar than the four above: every non-basic card in them is graded
+`full`, with no entry on the minor-caveats list.
+
 Each is exactly 100 cards: one commander and ninety-nine mainboard.
 Deck IDs are wire values and will not be renamed.
 
-All four are in the picker. The `placeholder-mono-red` stand-in that
+All seven are in the picker. The `placeholder-mono-red` stand-in that
 sub-PR 4 shipped — a commander and ninety-nine Mountains — is gone
 from it.
 
@@ -1628,10 +1726,7 @@ paste into the upload box — and then parses, resolves and validates it
 against the same Scryfall index, so there is no second legality path
 to keep in sync.
 
-Not built, and for two different reasons. **Voltron / Equipment /
-Aura** is waiting on card count rather than on engine machinery: the
-attachment layer shipped, and so did the first seven attachments,
-which is seven short of a deck. **Combo** is out on principle — a bot
+Not built: **combo**, which is out on principle — a bot
 executing a combo line is a bad experience for the table regardless of
 how well the catalog supports it.
 
@@ -1948,7 +2043,7 @@ To take it, point a seat at a keyed endpoint and play:
 ```bash
 CMDCTRL_ANTHROPIC_API_KEY=sk-… \
   ./server/bin/boteval arena --seats assisted,heuristic,heuristic,heuristic \
-    --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+    --decks mono-red-aggro,simic-ramp,esper-control,mono-black-aristocrats \
     --games 4 --seed 1 --rotate --out ./arena-out
 ```
 
@@ -1984,7 +2079,7 @@ asks every bot PR to carry.
 
 ```
 boteval arena --seats assisted,heuristic,heuristic,heuristic \
-              --decks izzet-aggro,simic-ramp,esper-control,mono-black-aristocrats \
+              --decks mono-red-aggro,simic-ramp,esper-control,mono-black-aristocrats \
               --games 10 --seed 1 --rotate \
               --model qwen3:14b --endpoint http://192.168.1.18:11434/v1 \
               --max-think 20s --dump ../data/scryfall/default-cards.json \
@@ -2916,6 +3011,45 @@ a trampler's overflow as they go. A blocked attacker of the bot's lives
 into next turn only when its blockers plus every spare blocker that
 could join them cannot kill it.
 
+### Blocks that survive as a set (#3066)
+
+Blocks are declared one at a time, and each is scored on its own, so a
+defender could pick a set of good blocks that lets lethal damage
+through. In the full seed-1409 Wurm mirror the defender, on 3 with its
+3/3 commander, faced a Bear and a 3/3 commander. The Bear block scored
+best (+6.90: it kills the Bear and loses nothing), and the commander's
+3 killed it. Commander on commander takes 2 and lives.
+
+With `BlockSetSurvives`, the block planner first asks whether finishing
+the declaration now kills the bot: its life, ten poison counters from
+infect and toxic, or the table's commander damage (21) from one
+commander. A trampler's overflow, a double striker's second hit and a
+menace attacker with one blocker count as getting through. If finishing
+now survives, nothing changes, since blocking more never lets more
+through. If it kills, each block on offer is asked whether some way of
+spending the creatures still free after it survives. Which creature may
+block which attacker is read off the block moves on offer. The search
+stops at the first set that survives, prunes a branch whose free
+creatures could not stop enough damage even one attacker each, and gives
+up after 2000 boards (`blockSearchBudget`), when the block counts as
+unknown.
+
+- **Some block leaves a way to live:** the bot declares the best-scored
+  such block, even at a score of zero or less. When this changed the
+  pick, the reason says so:
+  `block: chump to survive, a set that survives (+6.00)`.
+- **None does:** the old decision, unchanged.
+
+| Switch | Default | What it counts |
+|---|---|---|
+| `BlockSetSurvives` | on | When finishing the declaration kills the bot, only blocks after which some set of blocks survives, whenever one exists. |
+
+`BaselineConfig()` turns it off. The decision and its numbers are in
+[ADR 0126's amendment on blocks that survive as a
+set](decisions/0126-bots-that-play-their-decks.md#amendment-2026-10-12-blocks-that-survive-as-a-set),
+accepted on 2026-10-12. The horizon's unneeded waiting turn the
+full Wurm mirror showed is #3080.
+
 ### Combat priced by what combat does (#2675, #2690, #2676)
 
 Three fixes from the 2026-10-08 review games, each a knob that
@@ -3298,7 +3432,7 @@ on offer. The move is enumerated either way; what is missing is the
 number, not the option.
 
 **No deckbuilding.** A bot never builds, tunes or swaps a deck. In the
-lobby, picking one of the four curated decks is the whole of the
+lobby, picking one of the curated decks is the whole of the
 customisation. The API also takes a pasted decklist instead of a
 curated one (`{tier, format, source}`, [above](#under-the-hood)). The
 test harness uses that path, and so can anyone trying a list that is

@@ -668,6 +668,7 @@ func TestIllTemperedLonerReflectsDamage(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	g.RunStateChecksForTest()
 	monSettle(t, g)
 	answerPickTargetPlayer(t, g, opp.ID)
 	monSettle(t, g)
@@ -698,6 +699,7 @@ func TestHowlpackAvengerReflectsDamageToOtherPermanents(t *testing.T) {
 			t.Fatal(err)
 		}
 	})
+	g.RunStateChecksForTest()
 	monSettle(t, g)
 	answerPickTargetPlayer(t, g, opp.ID)
 	monSettle(t, g)
@@ -846,8 +848,8 @@ func TestArlinnThePacksHopeMakesWolvesAndGrantsFlash(t *testing.T) {
 	if n, _ := countTokensNamed(g, me.ID, "Wolf"); n != 2 {
 		t.Errorf("Wolf tokens = %d, want 2", n)
 	}
-	spec, _ := Lookup(dnaArlinn)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("Arlinn keeps one caveat for the missing counter half: %v", spec.Caveats)
+	// The +1 counter half is pinned in cav_g1_test.go.
+	if spec, _ := Lookup(dnaArlinn); spec.Completeness != CompletenessFull {
+		t.Errorf("Arlinn is complete: %v", spec.Caveats)
 	}
 }

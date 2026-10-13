@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "bc00f29a-e9d2-4b86-bb22-33b686ac4365",
 		Name:             "Bestial Incursion",
+		Purpose:          game.Purpose{Tokens: 1},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{5}{G}")},

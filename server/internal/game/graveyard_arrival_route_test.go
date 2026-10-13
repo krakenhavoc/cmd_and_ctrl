@@ -47,6 +47,7 @@ func searchToGraveyard(t *testing.T, g *Game, p *Player, name string, dest ZoneK
 			t.Fatalf("SearchLibraryThenForEffect: %v", err)
 		}
 	})
+	takeSearchPrompts(t, g)
 	return &found, &ran
 }
 

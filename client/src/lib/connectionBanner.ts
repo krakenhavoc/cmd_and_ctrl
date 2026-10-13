@@ -21,6 +21,7 @@
 // offlineSendMessage from HERE, so turning this into a value import
 // would close a genuine runtime cycle. It stays `import type`.
 import { SIGNED_IN_RETURN_LINK } from "./joinRecovery";
+import { SERVER_FULL_MESSAGE } from "./serverFull";
 import type { ConnectionStatus } from "./ws";
 
 // OFFLINE_ERROR_CODE is the `code` on the lastError entry raised when
@@ -153,8 +154,19 @@ export function connectionBanner(
   status: ConnectionStatus,
   attempt: number,
   signedIn = false,
+  full = false,
 ): ConnectionBannerState | null {
   if (!boardIsStale(status)) return null;
+  // Turned away at the server's connection cap (ADR 0148): not a
+  // dropped link, so the banner says what is true instead.
+  if (full && status === "reconnecting") {
+    return {
+      tone: "retrying",
+      headline: SERVER_FULL_MESSAGE,
+      detail: attemptPhrase(attempt),
+      retryLabel: "Try now",
+    };
+  }
   if (status === "reconnecting") {
     return {
       tone: "retrying",
@@ -168,7 +180,7 @@ export function connectionBanner(
       tone: "ended",
       headline: "Your session ended — sign in again",
       detail: signedIn
-        ? `${STALE_BOARD_SENTENCE} Head to My games to get back to an open table.`
+        ? `${STALE_BOARD_SENTENCE} Head to Tables to get back to an open table.`
         : `${STALE_BOARD_SENTENCE} Nothing you do will reach the game until you sign in again.`,
       retryLabel: "",
       link: signedIn ? SIGNED_IN_RETURN_LINK : { href: "#/login", label: "Sign in" },

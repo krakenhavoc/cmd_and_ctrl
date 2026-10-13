@@ -13,6 +13,7 @@ import Join from "../routes/Join.svelte";
 import PrebuiltDeckPicker from "./components/PrebuiltDeckPicker.svelte";
 import YourDecksPicker from "./components/YourDecksPicker.svelte";
 import { GUEST_NAME_KEY } from "./guestName";
+import { SERVER_FULL_MESSAGE } from "./serverFull";
 import { GUEST_LAST_DECK_KEY } from "./lastDeck";
 import { setSession, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
@@ -137,7 +138,11 @@ describe("the lobby's create flow for a signed-in player", () => {
     const { container } = render(Lobby as never, {} as never);
     await settle();
 
-    const form = container.querySelector<HTMLFormElement>("form.create");
+    // The form opens from + New table (ADR 0158 §1 item 1).
+    expect(container.querySelector("form.new-table")).toBeNull();
+    click(container.querySelector<HTMLButtonElement>('button[aria-label="new table"]')!);
+    flushSync();
+    const form = container.querySelector<HTMLFormElement>('form[aria-label="create game"]');
     expect(form).not.toBeNull();
     const setupBox = container.querySelector<HTMLInputElement>(".use-setup input");
     expect(setupBox?.checked).toBe(true);
@@ -156,10 +161,13 @@ describe("the lobby's create flow for a signed-in player", () => {
     expect(container.textContent).toMatch(/Last setup: table settings applied, 1 bot added\./);
     // The creator's own table: links to share, a seat to take, and the
     // tablemate picker already open, with the last table's people first.
-    expect(container.textContent).toMatch(/copy invite/);
-    expect(container.textContent).toMatch(/take a seat/);
-    const picker = container.querySelector<HTMLDetailsElement>("details.invite-picker");
-    expect(picker?.open).toBe(true);
+    expect(container.textContent).toMatch(/Copy invite/);
+    // The form closed on success.
+    expect(container.querySelector("form.new-table")).toBeNull();
+    click(container.querySelector<HTMLButtonElement>('button[aria-label="more for Friday"]')!);
+    flushSync();
+    expect(container.querySelector('[role="menu"]')?.textContent).toMatch(/Take a seat/);
+    expect(container.querySelector(".invite-picker")).not.toBeNull();
     const mates = [...container.querySelectorAll(".mates li")].map((li) => li.textContent ?? "");
     expect(mates).toHaveLength(2);
     expect(mates[0]).toMatch(/Carol\s*at your last table/);
@@ -186,11 +194,16 @@ describe("the lobby's create flow for a signed-in player", () => {
     const { container } = render(Lobby as never, {} as never);
     await settle();
     // No last setup: no checkbox, the form still there.
-    expect(container.querySelector("form.create")).not.toBeNull();
+    click(container.querySelector<HTMLButtonElement>('button[aria-label="new table"]')!);
+    flushSync();
+    expect(container.querySelector("form.new-table")).not.toBeNull();
     expect(container.querySelector(".use-setup")).toBeNull();
 
+    // Take a seat is in the card's ⋯ menu.
+    click(container.querySelector<HTMLButtonElement>('button[aria-label="more for Friday"]')!);
+    flushSync();
     const seat = [...container.querySelectorAll("button")].find((b) =>
-      /take a seat/.test(b.textContent ?? ""),
+      /Take a seat/.test(b.textContent ?? ""),
     );
     expect(seat).toBeDefined();
     click(seat!);
@@ -207,8 +220,8 @@ describe("the lobby's create flow for a signed-in player", () => {
     stubServer();
     const { container } = render(Lobby as never, {} as never);
     await settle();
-    expect(container.querySelector("form.create")).toBeNull();
-    expect(container.textContent).toMatch(/ask for an invite link/);
+    expect(container.querySelector('button[aria-label="new table"]')).toBeNull();
+    expect(container.textContent).toMatch(/Ask for an invite link/);
   });
 });
 
@@ -379,5 +392,39 @@ describe("the Join page remembers a guest's name", () => {
     await settle();
     expect(container.querySelector('input[placeholder="your name"]')).toBeNull();
     expect(container.textContent).toMatch(/Join as Alice/);
+  });
+
+  // ADR 0148 / #3103: the Discord callback sends the browser back to the
+  // invite's own page when the server is at its connection cap. The page
+  // says so in the one sentence every other refusal uses, and offers the
+  // Discord button again for the retry.
+  it("opens with the server-full message after the Discord callback was refused at the cap", async () => {
+    routes = {
+      [`GET /games/${GAME}/preview?t=inv`]: () => preview,
+      "GET /auth/discord/config": () => ({ enabled: true }),
+    };
+    stubServer();
+    const { container } = render(
+      Join as never,
+      { gameID: GAME, inviteToken: "inv", spectator: false, serverFull: true } as never,
+    );
+    await settle();
+    const alert = container.querySelector('[role="alert"]');
+    expect(alert?.textContent).toBe(SERVER_FULL_MESSAGE);
+    expect(container.querySelector("a.discord-btn")).not.toBeNull();
+  });
+
+  it("shows no error on a plain visit", async () => {
+    routes = {
+      [`GET /games/${GAME}/preview?t=inv`]: () => preview,
+      "GET /auth/discord/config": () => ({ enabled: true }),
+    };
+    stubServer();
+    const { container } = render(
+      Join as never,
+      { gameID: GAME, inviteToken: "inv", spectator: false } as never,
+    );
+    await settle();
+    expect(container.querySelector('[role="alert"]')).toBeNull();
   });
 });

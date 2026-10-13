@@ -251,6 +251,7 @@ func TestPlanarEngineeringSearchesAfterTheLandsHaveGone(t *testing.T) {
 		}
 	}
 	answerSacrifice(t, g, me.ID, crypt)
+	takeSearchPrompts(t, g)
 	if onBattlefield() != len(basics) {
 		t.Errorf("%d of %d basics arrived once both lands had gone", onBattlefield(), len(basics))
 	}

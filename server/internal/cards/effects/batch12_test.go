@@ -1082,6 +1082,52 @@ func TestB12AllWillBeOneIgnoresOtherPlayersCountersAndRemovals(t *testing.T) {
 	}
 }
 
+// Counters put on a PLAYER fire it too (#3172): printed "on a permanent
+// or player". The damage is the number that landed, a removal is not a
+// placement, and an opposing placement is not yours.
+func TestB12AllWillBeOneFiresForCountersOnAPlayer(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	b12Push(g, me.ID, "All Will Be One", "Enchantment", b12AllWillBeOneOracle, 0, 0)
+	before := opp.Life
+
+	// You give the opponent two poison counters: one trigger for two.
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: me.ID})
+		_ = g.AddPlayerCounterByForEffect(me.ID, opp.ID, "poison", 2)
+	})
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-2 {
+		t.Errorf("two poison counters: opponent %d -> %d, want -2", before, opp.Life)
+	}
+
+	// Energy with no named placer falls back to the resolving player.
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: me.ID})
+		_ = g.AddPlayerCounterForEffect(me.ID, game.CounterEnergy, 3)
+	})
+	b04WaitForPick(t, g, me.ID)
+	pickPlayer(t, g, me.ID, opp.ID)
+	passPriorityAroundTable(t, g)
+	if opp.Life != before-5 {
+		t.Errorf("three energy: opponent life %d, want %d", opp.Life, before-5)
+	}
+
+	// A removal is not a placement, and an opponent's placement is not yours.
+	g.WithWriteLock(func() {
+		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: me.ID})
+		_ = g.AddPlayerCounterByForEffect(me.ID, opp.ID, "poison", -1)
+		g.EmitEvent(game.Event{Kind: game.EventResolve, Actor: opp.ID})
+		_ = g.AddPlayerCounterByForEffect(opp.ID, opp.ID, "poison", 1)
+	})
+	passPriorityAroundTable(t, g)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Fatal("a removal or an opponent's placement must not trigger it")
+	}
+}
+
 // --- Thousand-Year Storm -------------------------------------------
 
 func TestB12ThousandYearStormCopiesForEachEarlierSpell(t *testing.T) {

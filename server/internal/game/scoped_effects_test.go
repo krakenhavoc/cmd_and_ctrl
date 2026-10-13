@@ -98,6 +98,12 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("colors = %v, want [U]", c.Colors)
 			}
 		}},
+		{"addColors", []Mod{AddColorsMod("B", "B")}, func(t *testing.T, base, c Characteristic, _ *Game) {
+			want := append(append([]string(nil), base.Colors...), "B")
+			if !reflect.DeepEqual(c.Colors, want) {
+				t.Errorf("colors = %v, want %v (the base colours kept, black once)", c.Colors, want)
+			}
+		}},
 		{"addKeywords", []Mod{AddKeywordsMod("flying", "flying")}, func(t *testing.T, _, c Characteristic, _ *Game) {
 			n := 0
 			for _, a := range c.Abilities {
@@ -240,9 +246,9 @@ var attackRequirementTestPlayer = uuid.MustParse("00000000-0000-0000-0000-000000
 func TestEveryModKindHasATestCase(t *testing.T) {
 	covered := map[ModKind]bool{
 		ModSetController: true, ModAddTypes: true, ModRemoveTypes: true, ModAddSubtypes: true,
-		ModAllCreatureTypes: true, ModSetColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
+		ModAllCreatureTypes: true, ModSetColors: true, ModAddColors: true, ModAddKeywords: true, ModRemoveKeywords: true,
 		ModLoseAllAbilities: true, ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
-		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModGoad: true,
+		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
 		ModSetBasicLandTypes:                true,
@@ -268,6 +274,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// baseline before the pass rather than applied in it. Its cases
 		// are in duration_copy_test.go here and in cards/effects.
 		ModBecomeCopy: true,
+		// ADR 0160: textBox is layer 3, materialised onto the key before
+		// the pass. Its cases are in text_box_test.go here and in
+		// cards/effects.
+		ModExchangeText: true,
 		// ADR 0107 §5: rules gates and Flames of the Blood Hand's life
 		// replacement, read by no layer. Their cases are in
 		// unpreventable_damage_test.go and cant_gain_life_test.go.
@@ -304,6 +314,10 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		// ADR 0096 amendment (#2039): the monarch gate. Its cases are in
 		// monarch_test.go and jared_carthalion_test.go.
 		ModCantBecomeMonarch: true,
+		// ADR 0146 amendment (#2928): who casts each player's ballot.
+		// Its cases are in council_vote_zone_chooser_test.go and
+		// illusion_of_choice_test.go.
+		ModVoteChooser: true,
 		// #2562: cases above.
 		ModSetName: true, ModSetTypes: true,
 	}

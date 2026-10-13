@@ -1,5 +1,7 @@
 package effects
 
+import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+
 // Ulvenwald Tracker — Creature — Human Shaman {G}, 1/1 (EDHREC rank
 // 2970):
 //
@@ -14,25 +16,35 @@ package effects
 // blow lands, so the two are simultaneous as CR 701.14 asks — and a
 // creature that left in response fights nothing.
 //
-// DECLARED SIMPLIFICATION, weaker than printed — the Bite Down
-// posture: the two slots have different clauses ("a creature you
-// control", "another creature"), and a target spec is one predicate
-// over every slot, so the spec is "a creature" over both and the
-// "you control" half of slot 0 is checked at RESOLUTION rather than
-// refused at announce (b28FightChosenTargets). A pair whose first
-// creature is not yours makes the ability do nothing. Never
-// stronger: no line exists that the printed card forbids.
+// Two target CLAUSES (Clauses, the Bite Down shape): slot 0 carries
+// "you control" and slot 1 "another" (Distinct), each enforced at
+// announce (CR 601.2c) and re-checked per slot at resolution
+// (CR 608.2b), so a pair that does not fit is refused when activated
+// rather than doing nothing.
 func init() {
 	Register(Spec{
 		OracleID:     "63a37c08-7e38-4fe2-9a71-cc4604c4f831",
 		Name:         "Ulvenwald Tracker",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The first target must be a creature you control, but that isn't checked until the ability resolves — a pair that doesn't fit makes it do nothing."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
-			Label:   "{1}{G}, {T}: Target creature you control fights another target creature.",
-			Cost:    Plus(ManaCost("{1}{G}"), TapCost()),
-			Targets: TargetCreature("target creature you control, then another target creature").WithCount(2, 2),
-			Effect:  b28FightChosenTargets,
+			Label: "{1}{G}, {T}: Target creature you control fights another target creature.",
+			Cost:  Plus(ManaCost("{1}{G}"), TapCost()),
+			Targets: Clauses(
+				TargetCreature("target creature you control", YouControl()),
+				Distinct(TargetCreature("another target creature")),
+			),
+			Effect: func(g *game.Game, item *game.StackItem) error {
+				ctx := NewContext(g, item)
+				mine, ok := ctx.ClauseTarget(0)
+				if !ok || mine.Kind != game.TargetCard {
+					return nil
+				}
+				other, ok := ctx.ClauseTarget(1)
+				if !ok || other.Kind != game.TargetCard {
+					return nil
+				}
+				return b10Fight(ctx, mine.ID, other.ID)
+			},
 		}},
 	})
 }

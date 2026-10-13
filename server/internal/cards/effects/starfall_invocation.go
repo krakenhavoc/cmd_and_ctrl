@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Starfall Invocation — Sorcery {3}{W}{W} (EDHREC rank 2210):
 //
@@ -15,30 +19,52 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature dies as one event, so the aristocrats payoffs see all of
 // them.
 //
-// Sandbox simplification, declared: the GIFT is not offered. Gift
-// itself exists since ADR 0089 (#1267) — `Gift: GiftACard()` would
-// offer the promise and draw the opponent a card — but the promised
-// branch needs a pick among the creature cards THIS wipe put into
-// your graveyard, and a card that offered the promise without the
-// return would be a trap: the opponent draws and you get nothing. So
-// the spell stays its base mode — destroy all creatures — which is the
-// printed card with one option removed, weaker and never stronger.
-// Declaring the gift is one line the day the pick lands.
+// The gift is `Gift: GiftACard()` (ADR 0089): the opponent draws before
+// the spell's other effects. The return is the sweep's own `Then`
+// clause, which hears the creatures actually destroyed; the candidates
+// are the creature CARDS among them that now sit in the caster's
+// graveyard, so a token (it ceases to exist), a commander that went to
+// the command zone and a creature that was exiled instead are not
+// offered. One candidate returns outright, several are offered as an
+// exactly-one pick, and the creature comes back under the caster's
+// control.
 //
 // The catalog-wide one this used to carry alongside it (#446 — the
 // mass destroy path not consulting indestructible) was the engine
 // gap it said it was, and S30 (#470) landed the fix.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "7024532b-f99b-43a7-b0ed-5b3e7ec7592b",
 		Name:         "Starfall Invocation",
 		Purpose:      game.Purpose{Sweep: game.Sweep{Matches: game.SweepCreatures, How: game.SweepDestroy}},
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The gift can't be promised, so the spell only destroys all creatures — it never returns one of yours to the battlefield.",
-		},
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return DestroyAllMatching{Match: Creature()}.Apply(ctx)
+		Completeness: CompletenessFull,
+		Gift:         GiftACard(),
+		OnResolve: func(item *game.StackItem, ctx *Context) error {
+			promised := ctx.GiftPromised()
+			return DestroyAllMatching{Match: Creature(), Then: func(ctx *Context, swept []game.Card, _ int) error {
+				if !promised {
+					return nil
+				}
+				return starfallReturnOne(ctx, item, swept)
+			}}.Apply(ctx)
 		},
 	})
+}
+
+// starfallReturnOne is "return a creature card put into your graveyard
+// this way to the battlefield under your control": the destroyed
+// creature cards the caster owns that really are in their graveyard.
+func starfallReturnOne(ctx *Context, item *game.StackItem, swept []game.Card) error {
+	owner := item.Controller
+	was := map[uuid.UUID]bool{}
+	for _, c := range swept {
+		if c.Owner == owner && !IsToken(c) {
+			was[c.InstanceID] = true
+		}
+	}
+	ids := graveyardCardIDs(ctx, owner, func(c game.Card) bool { return was[c.InstanceID] && c.IsCreature() })
+	return b17ReanimateOneMilled(ctx.Game, item, owner,
+		"Starfall Invocation — return a creature card put into your graveyard this way", ids)
 }

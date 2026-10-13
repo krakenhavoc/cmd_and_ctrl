@@ -308,11 +308,9 @@ func TestApexWitchstalkerBasicLandcycles(t *testing.T) {
 	passPriorityAroundTable(t, g)
 	c := searchChoiceFor(g, me.ID)
 	if c == nil {
-		// One legal match resolves without a prompt.
-		if !me.Hand.Contains(ids[0]) {
-			t.Fatal("no basic land reached the hand")
-		}
-		return
+		// A search for a basic land asks even against one match (CR
+		// 701.23b, #3053).
+		t.Fatal("the landcycling search did not ask")
 	}
 	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{ids[0]}); err != nil {
 		t.Fatalf("ResolveSearchLibrary: %v", err)

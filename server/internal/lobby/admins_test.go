@@ -482,6 +482,7 @@ func TestRequireAdminOnEveryAdminRoute(t *testing.T) {
 		{"GET", "/admin/games?state=active", nil},
 		{"GET", "/admin/games/" + meta.ID.String(), nil},
 		{"GET", "/admin/live", nil},
+		{"POST", "/admin/capacity/restore-deferred", nil},
 		// Last: it deletes the table the others use.
 		{"DELETE", "/games/" + meta.ID.String(), nil},
 	}
@@ -763,7 +764,7 @@ func TestWSAdminParityForAnAllowlistedUser(t *testing.T) {
 		{"another game, watching", seated, "game=" + gameB.String(), ws.Binding{GameID: gameB, UserID: user, Admin: true}},
 		{"another game, as a seat", seated, "game=" + gameB.String() + "&player=" + seatB.String(), ws.Binding{GameID: gameB, PlayerID: seatB, UserID: user, Admin: true}},
 		{"identified, any game", identified, "game=" + gameB.String(), ws.Binding{GameID: gameB, UserID: user, Admin: true}},
-		{"own spectator session", watching, "game=" + gameA.String(), ws.Binding{GameID: gameA, ReadOnly: true, UserID: user, Admin: true}},
+		{"own spectator session", watching, "game=" + gameA.String(), ws.Binding{GameID: gameA, ReadOnly: true, UserID: user, DiscordID: listedDiscordID, Admin: true}},
 	}
 	for _, tc := range cases {
 		b, err := s.wsAuth.AuthorizeUpgrade(upgradeRequest(tc.token, tc.query))

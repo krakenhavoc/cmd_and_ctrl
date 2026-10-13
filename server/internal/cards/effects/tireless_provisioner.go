@@ -15,27 +15,34 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a spell. The fetchland case fires twice, once for the fetch land
 // and once for the basic it finds, as in paper.
 //
-// Sandbox simplification: ALWAYS a Treasure. The choice between the
-// two tokens is made when the trigger resolves, and the engine has
-// no resolution-time option prompt for a trigger (PendingChoice has
-// no "pick one of N labelled options" kind; the modal machinery is
-// cast-time only). Treasure is the pick a player makes in nearly
-// every game and the one the card is played for, and since the
-// printed card always allows it, this is never stronger than
-// printed — only less flexible. The day a resolution-time option
-// prompt lands, this trigger should offer FoodToken() as the other
-// answer.
+// The choice between the two tokens is made as the trigger resolves
+// (PickOption, CR 608.2c): Treasure first, which is the pick a bot makes
+// and the one the card is played for, then Food.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "ab8d5f5c-1976-4f77-8ed2-8d28ee666741",
 		Name:         "Tireless Provisioner",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Landfall always makes a Treasure — the Food token option is never offered."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Tireless Provisioner — create a Treasure (landfall)", Do(CreateToken{
-				Template: TreasureToken(),
-				N:        1,
-			})),
+			LandfallPaying("Tireless Provisioner — create a Treasure (landfall)", game.LandfallPayoff{Tokens: 1},
+				func(g *game.Game, item *game.StackItem) error {
+					return PickOption{
+						Question: "Tireless Provisioner — create a Food token or a Treasure token",
+						Options: []game.ChoiceOption{
+							{Label: "Create a Treasure token"},
+							{Label: "Create a Food token"},
+						},
+						Then: func(ctx *Context, index int) error {
+							template := TreasureToken()
+							if index == 1 {
+								template = FoodToken()
+							}
+							return CreateToken{Controller: item.Controller, Template: template, N: 1}.Apply(ctx)
+						},
+					}.Apply(NewContext(g, item))
+				}),
 		},
 	})
 }

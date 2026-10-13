@@ -26,11 +26,14 @@ type searchResumeFrame struct {
 // candidates the prompt offered.
 //
 // An empty `picks` is a legal answer, not a client bug — CR 701.23b
-// lets a player fail to find no matter what their library holds, and
-// declining is the whole content of a "you MAY search" clause. The
-// search still happened, so EventSearchLibrary still fires and the
-// library is still shuffled; that shuffle is the drawback the victim
-// of an Assassin's Trophy is accepting either way.
+// lets a player fail to find no matter what their library holds, when
+// the search names a quality, and declining is the whole content of a
+// "you MAY search" clause. The search still happened, so
+// EventSearchLibrary still fires and the library is still shuffled;
+// that shuffle is the drawback the victim of an Assassin's Trophy is
+// accepting either way. It is NOT legal for an unconditional search
+// (CR 701.23d, #3053): choice.SearchMin is the floor, and a short
+// answer is refused with ErrInvalidParam like any other illegal set.
 //
 // Validation rejects before dequeuing, so a client that submits an
 // illegal set (too many cards, a card that was never a candidate, a
@@ -117,6 +120,13 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 	if len(picks) > choice.SearchMax {
 		return ErrInvalidParam
 	}
+	// The floor (#3053, CR 701.23d). It is lowered by candidates that
+	// have left the library since the prompt opened (another seat's
+	// trigger milled one): the rule says "as many as possible", and
+	// refusing an answer nobody can give would wedge the table.
+	if len(picks) < g.searchFloorLocked(choice, p) {
+		return ErrInvalidParam
+	}
 	candidates := make(map[uuid.UUID]bool, len(choice.SearchCards))
 	for _, id := range choice.SearchCards {
 		candidates[id] = true
@@ -145,6 +155,40 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 	return nil
 }
 
+// searchFloorLocked is the fewest cards `choice` will accept right now:
+// its SearchMin, capped by how many of the candidates are still in the
+// searched library. Zero for every search for a stated quality.
+//
+// Caller must hold g.mu.
+func (g *Game) searchFloorLocked(choice *PendingChoice, p *Player) int {
+	if choice == nil || choice.SearchMin <= 0 {
+		return 0
+	}
+	inLibrary := 0
+	for _, id := range choice.SearchCards {
+		if p.Library.Contains(id) {
+			inLibrary++
+		}
+	}
+	return min(choice.SearchMin, inLibrary)
+}
+
+// SearchFloorLocked is searchFloorLocked for the enumerator: how few
+// cards an answer to `choice` may name. Zero means "find nothing" is a
+// legal answer.
+//
+// Caller must hold g.mu.
+func (g *Game) SearchFloorLocked(choice *PendingChoice) int {
+	if choice == nil || choice.searchResume == nil {
+		return 0
+	}
+	p := g.playerByIDLocked(choice.searchResume.spec.libraryOwnerID())
+	if p == nil {
+		return 0
+	}
+	return g.searchFloorLocked(choice, p)
+}
+
 // SearchPickLegalLocked reports whether `picks` is an answer
 // ResolveSearchLibrary would accept for `choice` right now. It is
 // the enumerator's read-only window onto the search's Validate hook,
@@ -153,9 +197,10 @@ func (g *Game) checkSearchPicksLocked(choice *PendingChoice, p *Player, picks []
 // handing internal/legal the frame itself would make every future
 // continuation field part of the enumerator's contract.
 //
-// An empty `picks` is always legal — CR 701.23b lets a player fail
-// to find — which is what gives a stuck seat an answer to fall back
-// on (see legal.Move.AlwaysLegal).
+// An empty `picks` is legal for a search for a stated quality — CR
+// 701.23b lets a player fail to find — which is what gives a stuck seat
+// an answer to fall back on (see legal.Move.AlwaysLegal). An
+// unconditional search has a floor (CR 701.23d, #3053) and refuses it.
 //
 // Caller must hold g's read lock; internal/legal calls it from
 // inside ReadSnapshot, like every other *ForEffect / *Locked surface

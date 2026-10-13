@@ -3,7 +3,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   autopassSuspended,
   blockDeclarationPending,
+  combatWindowHeld,
   hasDeclaredAttackers,
+  holdCombatWindow,
   loopNoticeText,
   owesAttackRequirement,
   owesBlockDecision,
@@ -389,6 +391,33 @@ describe("hasDeclaredAttackers", () => {
   it("is false for a null snapshot or viewer", () => {
     expect(hasDeclaredAttackers(null, "p0")).toBe(false);
     expect(hasDeclaredAttackers(snap({ step: "declare_attackers" }), null)).toBe(false);
+  });
+});
+
+// #672: taking the last attacker out of combat must not let smart
+// auto-pass close the step the correction was made in.
+describe("holdCombatWindow", () => {
+  beforeEach(() => _resetCacheForTests());
+
+  it("keeps hasPlay true in the window the edit was made in, and only there", () => {
+    const here = snap({
+      step: "begin_combat",
+      activeSeat: 0,
+      priorityHolder: 0,
+      moves: [pass],
+    });
+    expect(hasPlay(here, "p0", ALL_RESPONSES)).toBe(false);
+    holdCombatWindow(here);
+    expect(combatWindowHeld(here)).toBe(true);
+    expect(hasPlay(here, "p0", ALL_RESPONSES)).toBe(true);
+    const later = snap({
+      step: "end_combat",
+      activeSeat: 0,
+      priorityHolder: 0,
+      moves: [pass],
+    });
+    expect(combatWindowHeld(later)).toBe(false);
+    expect(hasPlay(later, "p0", ALL_RESPONSES)).toBe(false);
   });
 });
 

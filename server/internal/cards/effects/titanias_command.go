@@ -69,7 +69,6 @@ func init() {
 						Limit:         2,
 						TappedOnEntry: true,
 						Shuffle:       true,
-						Optional:      true,
 						Reason:        "Titania's Command — up to two land cards, onto the battlefield tapped",
 					}.Apply(ctx)
 				}), game.Purpose{Lands: 2}),

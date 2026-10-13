@@ -4,12 +4,14 @@ import type {
   ActivatedAbilityView,
   AdditionalCostView,
   AlternativeCostView,
+  AssistOfferView,
   CardView,
   DivideView,
   LegalTargetsView,
   ModeOptionView,
   OptionalCostView,
   PendingChoiceView,
+  PlayerView,
   TapCostView,
 } from "./protocol";
 import type { CounterPayment } from "./counterCost";
@@ -40,6 +42,9 @@ import { isBoardPickedCardSetKind } from "./boardAnsweredChoice";
 //                   Bolt Bend, Tale's End) — #1211
 //   "card_in_graveyard" — a card in any graveyard (Regrowth, Eternal
 //                         Witness)
+//   "card_in_exile" — a card in exile (The Darkness Crystal's "target
+//                     creature card exiled with ~"), picked in the zone
+//                     browser's exile tab like a graveyard card — #3259
 //
 // The three stack modes differ only in the sentence the banner
 // writes. They light the same surface (the stack overlay, which draws
@@ -55,7 +60,8 @@ export type TargetingMode =
   | "stack_spell"
   | "stack_ability"
   | "stack_item"
-  | "card_in_graveyard";
+  | "card_in_graveyard"
+  | "card_in_exile";
 
 // CastChoices bundles every announce-time decision collected before
 // targeting opens, so a cast rides one object instead of a growing
@@ -99,6 +105,10 @@ export interface CastChoices {
   // when `optionalCosts` claims the gift offer; the server rejects it
   // on a cast that does not.
   giftOpponent?: string;
+  // ADR 0150 §5 (CR 702.132a): the player asked to help pay the generic
+  // mana of a spell with assist — a player ID from the card's
+  // `assist.players`. Undefined casts it alone.
+  assistPlayer?: string;
   // ADR 0100 §2: which branch of an either/or additional cost is being
   // paid — an index into `additional_cost.branches`. Required by the
   // server on a card with branches and refused on any other, so it is
@@ -214,6 +224,10 @@ export function applyCastChoices(
   // error server-side, not a no-op.
   if (choices.giftOpponent !== undefined && choices.giftOpponent !== "")
     params.gift_opponent = choices.giftOpponent;
+  // ADR 0150 §5: omitted unless somebody was asked — the server refuses
+  // it on a spell without assist.
+  if (choices.assistPlayer !== undefined && choices.assistPlayer !== "")
+    params.assist_player = choices.assistPlayer;
   // ADR 0100: sent whenever chosen, branch 0 included — the server
   // never defaults a missing branch.
   if (choices.costBranch !== undefined) params.cost_branch = choices.costBranch;
@@ -1032,6 +1046,21 @@ export function optionalCostOpponentOptions(offer: OptionalCostView): string[] |
   return offer.opponent_options ?? [];
 }
 
+// assistOf is a spell with assist's offer (ADR 0150 §5): "up to {max}"
+// and the players who may be asked, or undefined for a card without
+// assist. A forced cast pays no mana, so it has nothing to help with.
+export function assistOf(card: CardView, forceCast = false): AssistOfferView | undefined {
+  if (forceCast || !card.assist || card.assist.max <= 0) return undefined;
+  return card.assist;
+}
+
+// assistPlayerLabel names one player in the Assist row. A bot always
+// answers 0 (ADR 0150 owner decision 8), so its seat says so.
+export function assistPlayerLabel(seat: Pick<PlayerView, "name" | "is_bot"> | undefined): string {
+  if (!seat) return "A player";
+  return seat.is_bot ? `${seat.name} (always declines)` : seat.name;
+}
+
 // TargetClauseOverride is the target-clause trio an offer carries when
 // paying it rewrites the spell's clause. AlternativeCostView and
 // OptionalCostView both satisfy it.
@@ -1210,6 +1239,15 @@ export function alternativeCostByKey(
   return alternativeCostsOf(card).find((a) => a.key === key);
 }
 
+// castsFaceName is the name of the face an offer casts, for the picker
+// (ADR 0152 §5): "Goldbug, Scrappy Scout" under More Than Meets the Eye,
+// the back face under disturb. Undefined when the offer casts the face
+// the card shows, or the card carries no such face.
+export function castsFaceName(card: CardView, offer: AlternativeCostView): string | undefined {
+  if (!offer.casts_face) return undefined;
+  return card.faces?.[offer.casts_face]?.name;
+}
+
 // altCostPayOptions returns the cards that can pay an offer's
 // card-shaped half, or undefined when the offer charges none — which
 // is every S22 keyword and most S28 ones. An empty array means the
@@ -1288,11 +1326,51 @@ export function modeOptionCastable(option: ModeOptionView): boolean {
 // own on a card whose printed cost has none — Avacyn's Judgment prints
 // {1}{R} and its madness cost is {X}{R}, and that X is also the damage
 // it divides. `altCost` is the key of the offer being claimed.
-export function hasXCost(card: CardView, altCost?: string): boolean {
+//
+// #3232 adds the fifth: a kicker whose cost is {X} (Thieving Skydiver,
+// Verdeloth the Ancient). The X belongs to the kicker, so it is asked
+// only once the kicker is among the optional costs the player chose
+// (`optionalCosts`, the indices already on the cast's choices); an
+// unkicked cast announces no X.
+export function hasXCost(card: CardView, altCost?: string, optionalCosts?: number[]): boolean {
   if (card.tap_cost?.demands_x) return true;
   if (card.additional_cost?.demands_x) return true;
   if ((alternativeCostByKey(card, altCost)?.mana_cost ?? "").includes("{X}")) return true;
+  if (chosenOptionalCosts(card, optionalCosts).some((o) => (o.mana_cost ?? "").includes("{X}")))
+    return true;
   return (card.mana_cost ?? "").includes("{X}");
+}
+
+// chosenOptionalCosts resolves the optional-cost indices a cast has
+// announced so far to their offers, skipping an index the card does not
+// have.
+function chosenOptionalCosts(card: CardView, indices: number[] | undefined): OptionalCostView[] {
+  const offers = optionalCostsOf(card);
+  const out: OptionalCostView[] = [];
+  for (const index of indices ?? []) {
+    const offer = offers.find((o) => o.index === index);
+    if (offer) out.push(offer);
+  }
+  return out;
+}
+
+// optionalCostXFloor is the smallest X the chosen optional costs allow
+// (#3232): the largest `x_min` among them, 0 when none names a floor.
+// The server refuses a kicked cast under it, so the X picker opens at
+// it rather than letting the player type a value the cast rejects.
+export function optionalCostXFloor(card: CardView, optionalCosts: number[] | undefined): number {
+  return chosenOptionalCosts(card, optionalCosts).reduce((m, o) => Math.max(m, o.x_min ?? 0), 0);
+}
+
+// xCeilingFor is the largest X the viewer may announce for this cast
+// (CR 601.2b), or undefined when nothing bounds it. A claimed offer that
+// carries its own ceiling (#3225: "as though it had flash if X is 3 or
+// less") wins — the server already folded the card's printed `x_max`
+// into it — and otherwise the card's own `x_max` applies. The cast for
+// the printed cost, which claims no offer, is therefore not bound by an
+// offer it is not using.
+export function xCeilingFor(card: CardView, altCost: string | undefined): number | undefined {
+  return alternativeCostByKey(card, altCost)?.x_max ?? card.x_max;
 }
 
 // castLocksXAtZero reports CR 107.3b: a spell with {X} in its mana
@@ -1411,7 +1489,12 @@ export function abilityModeSteps(
 // routing.
 export function isLegalCardTarget(t: TargetingState, instanceID: string): boolean {
   if (t.legal) return t.legal.cards.has(instanceID) && !breaksSetRule(t, instanceID);
-  return isTargetingCreature(t.mode) || isTargetingStack(t.mode) || isTargetingGraveyard(t.mode);
+  return (
+    isTargetingCreature(t.mode) ||
+    isTargetingStack(t.mode) ||
+    isTargetingGraveyard(t.mode) ||
+    isTargetingExile(t.mode)
+  );
 }
 
 export function isLegalPlayerTarget(t: TargetingState, playerID: string): boolean {
@@ -1574,6 +1657,7 @@ export function opensTargetPicker(mode: string | undefined | null): mode is Targ
     case "stack_ability":
     case "stack_item":
     case "card_in_graveyard":
+    case "card_in_exile":
       return true;
     default:
       return false;
@@ -1590,4 +1674,12 @@ export function isTargetingStack(mode: TargetingMode): boolean {
 
 export function isTargetingGraveyard(mode: TargetingMode): boolean {
   return mode === "card_in_graveyard";
+}
+
+// #3259: a card in exile is picked in the zone browser's exile tab, the
+// way a graveyard card is picked in its graveyard tab. Like the others
+// this is the free-form fallback; a structured clause's legal set, which
+// already leaves out a face-down card the viewer has not seen, decides.
+export function isTargetingExile(mode: TargetingMode): boolean {
+  return mode === "card_in_exile";
 }

@@ -227,3 +227,18 @@ func (c *AvatarCache) writeCacheHeaders(w http.ResponseWriter) {
 	w.Header().Set("Cache-Control", "public, max-age=86400, immutable")
 	w.Header().Set("Content-Type", "image/png")
 }
+
+// Forget removes every cached avatar for one Discord id (the whole
+// <Dir>/<id>/ directory), for account deletion (ADR 0149). The images
+// are public Discord CDN files, but the cache is keyed by the id, and a
+// deleted account should leave no file named after it. An id that fails
+// the key check, or a cache with no directory, does nothing.
+func (c *AvatarCache) Forget(id string) error {
+	if c == nil || c.Dir == "" || !avatarKeyPattern.MatchString(id) {
+		return nil
+	}
+	if err := os.RemoveAll(filepath.Join(c.Dir, id)); err != nil {
+		return fmt.Errorf("forget avatars: %w", err)
+	}
+	return nil
+}

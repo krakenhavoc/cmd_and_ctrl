@@ -42,6 +42,24 @@ func CatalogKey(c Card) string { return catalogKeyOf(&c) }
 // Internal callers that hold a *Card use this; CatalogKey stays the
 // exported by-value shape every catalog file and open branch calls.
 func catalogKeyOf(c *Card) string {
+	// CR 612.5, ADR 0160: a permanent whose text box was exchanged has
+	// the other object's rules text, and in this engine the rules text
+	// IS the key. Layer 3 applies after layer 1b (CR 613.1c), so this
+	// wins over the face-down silence below: a face-down creature
+	// exchanged with a face-up one has that one's text. The field is nil
+	// off the battlefield and for every permanent no exchange applies
+	// to, so this is one nil check on the hot path.
+	if c.TextBox != nil {
+		return c.TextBox.Key
+	}
+	return printedTextKeyOf(c)
+}
+
+// printedTextKeyOf is catalogKeyOf with no text-box exchange in the way:
+// the key of the rules text the object has of its own (printed, or set
+// by a copy effect's copiable values). An exchange reads it for the
+// text it hands over.
+func printedTextKeyOf(c *Card) string {
 	// CR 708.2a, ADR 0069 decision 4: a face-down permanent has NO
 	// TEXT — no triggered, activated, mana, static or replacement
 	// abilities, no cost modifiers, no "as enters" hook, no printed
@@ -512,7 +530,12 @@ type ManaAbilityShape struct {
 	// that is what "could" means — a Mage-Ring Network with three
 	// storage counters could produce {C}, and one with none could
 	// not.
-	ProducedForPaid func(g *Game, controller, source uuid.UUID, paid PaidCost) string
+	//
+	// #3112: the result is a ManaOutput, text OR a count, exactly as
+	// ProducedFunc's is. A payment-driven count ("for each counter
+	// removed") returns a ManaAmount so no text is built per counter.
+	// Still ONE hook per concern: the closure ratchet counts func fields.
+	ProducedForPaid func(g *Game, controller, source uuid.UUID, paid PaidCost) ManaOutput
 
 	// Condition gates activation — "Activate only if you control
 	// five or more lands" (Temple of the False God), "Activate only
@@ -549,7 +572,13 @@ type ManaAbilityShape struct {
 	// Same locking contract as Condition: read-only, under g.mu.
 	//
 	// Added in the S32 mana-pipeline pass (#352 sub-gaps 3 and 4).
-	ProducedFunc func(g *Game, controller, source uuid.UUID) string
+	//
+	// #3042: the result is a ManaOutput, text OR a count. A count-driven
+	// ability ("Add {G} for each Elf", "equal to this creature's power")
+	// returns a ManaAmount, so no text is built and re-parsed per mana
+	// and the engine applies the MaxProducedMana ceiling to N itself.
+	// This is ONE hook, not two: the closure ratchet counts func fields.
+	ProducedFunc func(g *Game, controller, source uuid.UUID) ManaOutput
 
 	// DerivesFromOtherSources marks an ability that asks OTHER
 	// permanents what THEY could produce — Exotic Orchard, Reflecting

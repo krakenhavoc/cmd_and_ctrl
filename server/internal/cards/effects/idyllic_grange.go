@@ -60,16 +60,7 @@ func init() {
 				On(game.EventETB, func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return b27SelfEnteredUntapped(ev, source)
 				}, "Idyllic Grange — put a +1/+1 counter on target creature you control",
-					func(g *game.Game, item *game.StackItem) error {
-						ctx := NewContext(g, item)
-						for _, t := range ctx.LegalTargets() {
-							if t.Kind != game.TargetCard {
-								continue
-							}
-							return AddCounter{Target: t.ID, Kind: game.CounterPlusOne, N: 1}.Apply(ctx)
-						}
-						return nil
-					}),
+					PlusOneCounterOnChosenTarget),
 				TargetCreature("target creature you control", YouControl())),
 		},
 	})

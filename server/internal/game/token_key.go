@@ -92,11 +92,14 @@ var CatalogTokenText func(key string) string
 // of a token carries the token key, so it shows the token's text,
 // while a token copying Llanowar Elves has an oracle ID, answers ""
 // here and renders Llanowar Elves' own printing.
-func TokenTextForCard(c Card) string {
+func TokenTextForCard(c Card) string { return TokenTextOf(&c) }
+
+// TokenTextOf is TokenTextForCard without the receiver copy (#2113).
+func TokenTextOf(c *Card) string {
 	if CatalogTokenText == nil {
 		return ""
 	}
-	key := CatalogKey(c)
+	key := catalogKeyOf(c)
 	if !IsTokenKey(key) {
 		return ""
 	}

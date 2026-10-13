@@ -15,6 +15,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/url"
+	"sort"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -24,8 +25,10 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/actions"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
 
@@ -98,6 +101,10 @@ type Hub struct {
 	// clock is what the legal_moves_request limit reads the time from
 	// (ADR 0122 §6.1). Nil is time.Now; a test sets it before serving.
 	clock func() time.Time
+
+	// maxConns is the live-connection ceiling (ADR 0148, #2977). 0 is
+	// no cap. Read on every upgrade, so it is an atomic.
+	maxConns atomic.Int64
 }
 
 // Binding is what the upgrade authorizer hands to the hub: the
@@ -120,6 +127,16 @@ type Binding struct {
 	ReadOnly bool
 	UserID   uuid.UUID
 	IssuedAt time.Time
+	// SpectatorID, SpectatorName and DiscordID describe the spectator
+	// session behind a read-only connection (#3113), so the table can
+	// list who is watching and the lobby can report, remove or block
+	// one. Zero / empty for everything that is not a spectator session.
+	// SpectatorName is the label the spectator gave or signed in with;
+	// DiscordID is their Discord snowflake when signed in, used to block
+	// them and never sent to a client.
+	SpectatorID   uuid.UUID
+	SpectatorName string
+	DiscordID     string
 	// Admin marks a connection authenticated as an admin: the shared
 	// token, or a signed-in person on the admin allowlist (ADR 0110 §3,
 	// lobby.WSAuthorizer decides). An admin may bind to a player's
@@ -375,6 +392,46 @@ func rejectReasonFor(status int) string {
 	return metrics.RejectRejected
 }
 
+// SetMaxConnections installs the live-connection ceiling. 0 (the
+// default) is no cap. The ceiling gates sockets from someone with no
+// seat; a seated player and an admin always connect. It is a soft cap:
+// the check and the admit are not one atomic step, so a burst of
+// simultaneous newcomers can overshoot it by the burst.
+func (h *Hub) SetMaxConnections(n int) { h.maxConns.Store(int64(n)) }
+
+// connectionsFull reports whether the live count has reached the cap.
+func (h *Hub) connectionsFull() bool {
+	max := h.maxConns.Load()
+	return max > 0 && int64(h.Count()) >= max
+}
+
+// refuseFull turns a newcomer away at the connection cap. A browser
+// cannot read the body of a refused handshake, so the upgrade is
+// ACCEPTED, one error frame carrying capacity.CodeServerFull is
+// written, and the socket closes with 1013 (try again later). The
+// client shows the frame's message and retries on its own ladder.
+func (h *Hub) refuseFull(w http.ResponseWriter, r *http.Request) {
+	metrics.WSUpgradeRejected(metrics.RejectCapacity)
+	metrics.CapacityRefused(metrics.RefuseWSConnections)
+	conn, err := h.upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		h.log.Warn("ws upgrade failed while refusing at the connection cap", "err", err, "remote", r.RemoteAddr)
+		return
+	}
+	defer func() { _ = conn.Close() }()
+	body, _ := json.Marshal(protocol.ErrorPayload{Code: capacity.CodeServerFull, Message: capacity.Message})
+	frame, err := json.Marshal(protocol.Frame{V: protocol.Version, Kind: protocol.KindError, Payload: body})
+	if err == nil {
+		_ = conn.SetWriteDeadline(time.Now().Add(writeWait))
+		_ = conn.WriteMessage(websocket.TextMessage, frame)
+	}
+	_ = conn.WriteControl(
+		websocket.CloseMessage,
+		websocket.FormatCloseMessage(websocket.CloseTryAgainLater, capacity.Message),
+		time.Now().Add(writeWait),
+	)
+}
+
 // Count returns the current number of connected clients.
 func (h *Hub) Count() int {
 	h.mu.RLock()
@@ -450,6 +507,17 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// The connection cap (ADR 0148). Checked before the snapshot is
+	// built, which is the expensive part of an admit, so a flood of
+	// refused sockets costs a handshake and a frame each. A seated
+	// player and an admin are never asked: the first is mid-game or
+	// reconnecting to a table that is already counted, the second is
+	// the operator looking at a full server.
+	if binding.PlayerID == uuid.Nil && !binding.Admin && h.connectionsFull() {
+		h.refuseFull(w, r)
+		return
+	}
+
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		metrics.WSUpgradeRejected(metrics.RejectUpgradeFailed)
@@ -467,6 +535,10 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request) {
 		admin:    binding.Admin,
 		userID:   binding.UserID,
 		issuedAt: binding.IssuedAt,
+
+		spectatorID:   binding.SpectatorID,
+		spectatorName: binding.SpectatorName,
+		discordID:     binding.DiscordID,
 	}
 
 	// Pre-stage the initial snapshot into the client's send channel
@@ -830,6 +902,12 @@ type Client struct {
 	userID   uuid.UUID
 	issuedAt time.Time
 
+	// spectatorID, spectatorName and discordID are Binding's, kept for
+	// Spectators and EvictSpectator (#3113).
+	spectatorID   uuid.UUID
+	spectatorName string
+	discordID     string
+
 	// connectedAt is when the hub admitted the connection (admit,
 	// under h.mu), for the admin views' Live now (ADR 0124 §5). Read
 	// only by LiveSockets, under the hub's read lock.
@@ -860,6 +938,10 @@ func (c *Client) binding() Binding {
 		Admin:    c.admin,
 		UserID:   c.userID,
 		IssuedAt: c.issuedAt,
+
+		SpectatorID:   c.spectatorID,
+		SpectatorName: c.spectatorName,
+		DiscordID:     c.discordID,
 	}
 }
 
@@ -959,8 +1041,8 @@ func (c *Client) handleChat(frame protocol.Frame) {
 	// of AuthorID to decide whether to apply seat-color styling.
 	authorName := "spectator"
 	authorID := ""
+	room := c.hub.resolveRoom(c)
 	if c.playerID != uuid.Nil {
-		room := c.hub.resolveRoom(c)
 		if room == nil {
 			c.sendError(frame.ID, protocol.CodeInternal, "game is no longer available")
 			return
@@ -971,11 +1053,20 @@ func (c *Client) handleChat(frame protocol.Frame) {
 		}
 	}
 
+	// #2984: a listed word is masked before anyone sees the line, the
+	// sender included, so what the table reads is what the report
+	// excerpt holds. Masking rather than refusing: the rest of the
+	// message still goes out and a false positive costs one word.
+	text, _ = moderation.Chat(text)
+
 	out := protocol.ChatPayload{
 		AuthorID:   authorID,
 		AuthorName: authorName,
 		Text:       text,
 		Timestamp:  time.Now().UTC().Format(time.RFC3339),
+	}
+	if room != nil {
+		room.RecordChat(out)
 	}
 	payload, err := json.Marshal(out)
 	if err != nil {
@@ -1627,6 +1718,131 @@ func (h *Hub) EvictGame(gameID uuid.UUID) int {
 		_ = c.conn.WriteControl(
 			websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, "game deleted"),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
+// SeatRemovedReason is the close-frame reason EvictSeat sends, with
+// code 1000. The client matches on it to show "you were removed from
+// this table" instead of a silent disconnect (#2785), and 1000 is
+// terminal on the client (ADR 0044 decision 2): redialling would
+// present a session whose seat is gone and be refused.
+const SeatRemovedReason = "removed from table"
+
+// EvictSeat closes every player connection bound to (gameID, playerID)
+// with close code 1000 and SeatRemovedReason, and returns how many it
+// closed. The lobby calls it after the host, the creator or the admin
+// removes a seat from a table (#2785, #3093).
+//
+// Admin connections are left alone: an admin may be bound to the seat
+// as a viewer (?player=), that is not the seat holder's session, and
+// the admin did not lose anything. Cleanup is the same as EvictGame's:
+// close the socket and let the read pump's deferred unregister drain.
+func (h *Hub) EvictSeat(gameID, playerID uuid.UUID) int {
+	if gameID == uuid.Nil || playerID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.gameID == gameID && c.playerID == playerID && !c.admin {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SeatRemovedReason),
+			time.Now().Add(writeWait),
+		)
+		_ = c.conn.Close()
+	}
+	return len(victims)
+}
+
+// LiveSpectator is one spectator session with a socket open at a table,
+// as the lobby's moderation routes read it (#3113).
+type LiveSpectator struct {
+	// ID is the session's Principal.SpectatorID.
+	ID uuid.UUID
+	// Name is the label the spectator gave, or their Discord display
+	// name when signed in. "" for a guest who gave none.
+	Name string
+	// UserID and DiscordID are set for a signed-in spectator. They are
+	// what a block holds against; neither is ever sent to a client.
+	UserID    uuid.UUID
+	DiscordID string
+	// Since is when the session's first socket here connected.
+	Since time.Time
+}
+
+// Spectators lists the spectator sessions with a live socket at gameID,
+// oldest first, one entry per session however many tabs it has open. An
+// admin's socket is never listed: an admin is not a spectator of the
+// table, and cannot be removed from it. A spectator session minted before
+// SpectatorID existed has no id and is left out, because nothing could
+// address it.
+func (h *Hub) Spectators(gameID uuid.UUID) []LiveSpectator {
+	if gameID == uuid.Nil {
+		return nil
+	}
+	h.mu.RLock()
+	seen := map[uuid.UUID]int{}
+	var out []LiveSpectator
+	for c := range h.clients {
+		if c.gameID != gameID || c.playerID != uuid.Nil || !c.readOnly || c.admin || c.spectatorID == uuid.Nil {
+			continue
+		}
+		if i, ok := seen[c.spectatorID]; ok {
+			if c.connectedAt.Before(out[i].Since) {
+				out[i].Since = c.connectedAt
+			}
+			continue
+		}
+		seen[c.spectatorID] = len(out)
+		out = append(out, LiveSpectator{
+			ID: c.spectatorID, Name: c.spectatorName,
+			UserID: c.userID, DiscordID: c.discordID, Since: c.connectedAt,
+		})
+	}
+	h.mu.RUnlock()
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].Since.Equal(out[j].Since) {
+			return out[i].Since.Before(out[j].Since)
+		}
+		return out[i].ID.String() < out[j].ID.String()
+	})
+	return out
+}
+
+// EvictSpectator closes every socket of one spectator session at gameID
+// with close code 1000 and SeatRemovedReason, and returns how many it
+// closed. The client treats the reason as it does a removed seat's: 1000
+// is terminal, and the removed-notice shows. The lobby calls it after the
+// host, the creator or an admin removes a spectator (#3113); the session
+// itself is refused from then on (auth.WithSeatCheck).
+func (h *Hub) EvictSpectator(gameID, spectatorID uuid.UUID) int {
+	if gameID == uuid.Nil || spectatorID == uuid.Nil {
+		return 0
+	}
+	h.mu.RLock()
+	victims := make([]*Client, 0)
+	for c := range h.clients {
+		if c.gameID == gameID && c.spectatorID == spectatorID && !c.admin {
+			victims = append(victims, c)
+		}
+	}
+	h.mu.RUnlock()
+
+	for _, c := range victims {
+		_ = c.conn.WriteControl(
+			websocket.CloseMessage,
+			websocket.FormatCloseMessage(websocket.CloseNormalClosure, SeatRemovedReason),
 			time.Now().Add(writeWait),
 		)
 		_ = c.conn.Close()

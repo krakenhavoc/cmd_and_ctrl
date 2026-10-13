@@ -6,6 +6,11 @@
 import { describe, it, expect, vi } from "vitest";
 
 import {
+  anyPlayerOfferLine,
+  anyPlayerOfferRequest,
+  anyPlayerWaiting,
+  assistRequest,
+  assistWaiting,
   ballotNote,
   choiceRequest,
   councilVoteRequest,
@@ -351,6 +356,33 @@ describe("voteRequest and gameOverRequest", () => {
     expect(ballotNote(choice({ kind: "option_pick" }), 0)).toBeUndefined();
   });
 
+  it("names who is choosing for whom when someone else casts the ballot (Illusion of Choice)", () => {
+    const ballot = choice({
+      kind: "option_pick",
+      chooser: "a",
+      reason: "Plea for Power — vote for time or knowledge — you choose Bob's vote",
+      pick_options: [{ label: "time" }, { label: "knowledge" }],
+      council_vote: {
+        controller: "a",
+        voter: "b",
+        options: ["time", "knowledge"],
+        tally: [0, 0],
+        offered: [0, 1],
+      },
+    });
+    const seats = [
+      { id: "a", name: "Ann" },
+      { id: "b", name: "Bob" },
+      { id: "c", name: "Cy" },
+    ];
+    // A seat that is neither sees who is choosing for whom.
+    expect(councilVoteRequest(ballot, "c", seats)?.detail).toBe("Ann is choosing Bob's vote");
+    // The chooser answers the ballot itself; the voter does not, so Bob
+    // is shown the same line as any watcher.
+    expect(councilVoteRequest(ballot, "a", seats)).toBeNull();
+    expect(councilVoteRequest(ballot, "b", seats)?.detail).toBe("Ann is choosing Bob's vote");
+  });
+
   it("game over is Back to lobby, with no Enter", () => {
     const back = vi.fn();
     const r = gameOverRequest(back);
@@ -367,5 +399,180 @@ describe("voteRequest and gameOverRequest", () => {
     expect(r.primary?.disabled).toBe(true);
     r.primary!.onPress();
     expect(back).not.toHaveBeenCalled();
+  });
+});
+
+describe("an unless-any-player-pays offer (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice" },
+    { id: "b", name: "Bob" },
+    { id: "c", name: "Carol" },
+    { id: "d", name: "Dan" },
+  ];
+  // Bob's Rhystic Tutor; Alice has declined, Carol is asked now.
+  const link = (over: Partial<PendingChoiceView> = {}) =>
+    choice({
+      kind: "pay_unless",
+      chooser: "c",
+      reason: "Rhystic Tutor — pay {2} to stop the search?",
+      pay_cost: "{2}",
+      any_player_offer: { controller: "b", order: ["a", "b", "c", "d"], declined: ["a", "b"] },
+      ...over,
+    });
+
+  it("tells the player asked whose effect it is and who else is asked", () => {
+    const r = choiceRequest(link(), { sourceName: "Rhystic Tutor", seats }, handlers());
+    expect(r.label).toBe("Rhystic Tutor — pay {2} to stop the search?");
+    expect(r.tag).toBe("any player pays");
+    expect(r.hint).toContain("Bob's Rhystic Tutor.");
+    expect(r.hint).toContain("Any player may pay {2}: Alice and Bob declined; then Dan.");
+    expect(r.primary?.label).toBe("Pay {2}");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Don't pay"]);
+  });
+
+  it("words the last link and an opponents-only offer", () => {
+    expect(
+      anyPlayerOfferLine(
+        link({ chooser: "d", any_player_offer: { controller: "b", order: ["a", "b", "c", "d"] } }),
+        seats,
+      ),
+    ).toBe("Any player may pay {2}: nobody after.");
+    expect(
+      anyPlayerOfferLine(
+        link({ any_player_offer: { controller: "b", order: ["c", "d", "a"], opponents: true } }),
+        seats,
+      ),
+    ).toBe("Any opponent may pay {2}: then Dan and Alice.");
+  });
+
+  it("is read-only for every other seat, and absent for the one asked", () => {
+    const r = anyPlayerOfferRequest(link(), "a", seats, "Rhystic Tutor");
+    expect(r?.rank).toBe("step");
+    expect(r?.row).toBeUndefined();
+    expect(r?.primary).toBeUndefined();
+    expect(r?.detail).toBe("Carol is deciding whether to pay {2} (Bob's Rhystic Tutor)");
+    expect(r?.hint).toBe("Any player may pay {2}: Alice and Bob declined; then Dan.");
+    expect(anyPlayerOfferRequest(link(), "c", seats, "Rhystic Tutor")).toBeNull();
+    expect(anyPlayerOfferRequest(choice({ kind: "pay_unless" }), "a", seats, "x")).toBeNull();
+  });
+
+  // ADR 0150 §3: life, damage, a sacrifice and an offer that costs nothing.
+  it("words a life payment and greys it for a seat without the life", () => {
+    const life = link({ pay_cost: "5 life", pay_life: 5, reason: "" });
+    const ok = choiceRequest(life, { sourceName: "Dash Hopes", seats, life: 20 }, handlers());
+    expect(ok.label).toBe("Dash Hopes — pay 5 life?");
+    expect(ok.hint).toContain("Any player may pay 5 life:");
+    expect(ok.hint).toContain("Pay 5 life, or don't.");
+    expect(ok.primary?.label).toBe("Pay 5 life");
+    expect(ok.primary?.disabled).toBeFalsy();
+    const short = choiceRequest(life, { sourceName: "Dash Hopes", seats, life: 4 }, handlers());
+    expect(short.primary?.disabled).toBe(true);
+    expect(short.hint).toContain("You have 4 life, so you can't pay 5.");
+  });
+
+  it("words damage with the card's own answers", () => {
+    const dmg = link({
+      pay_cost: "5 damage",
+      pay_damage: 5,
+      reason: "",
+      accept_label: "Take 5 damage",
+      decline_label: "Don't",
+    });
+    const r = choiceRequest(dmg, { sourceName: "Browbeat", seats }, handlers());
+    expect(r.label).toBe("Browbeat — take 5 damage?");
+    expect(r.hint).toContain("Any player may take 5 damage:");
+    expect(r.hint).toContain("Browbeat deals 5 damage to you if you take it.");
+    expect(r.primary?.label).toBe("Take 5 damage");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Don't"]);
+    expect(anyPlayerWaiting(dmg, seats, "Browbeat")).toBe(
+      "Carol is deciding whether to take 5 damage (Bob's Browbeat)",
+    );
+  });
+
+  it("words a sacrifice and an offer that costs nothing", () => {
+    expect(
+      anyPlayerOfferLine(
+        link({
+          pay_cost: "sacrifice a land",
+          pay_cards: { action: "sacrifice", count: 1, options: [] },
+        }),
+        seats,
+      ),
+    ).toBe("Any player may sacrifice a land: Alice and Bob declined; then Dan.");
+    const free = link({
+      pay_cost: "",
+      pay_nothing: true,
+      accept_label: "Let them have the card",
+      decline_label: "Let them draw three",
+      any_player_offer: { controller: "b", order: ["c", "d", "a"], opponents: true },
+    });
+    expect(anyPlayerOfferLine(free, seats)).toBe(
+      "Any opponent may let them have the card: then Dan and Alice.",
+    );
+    const r = choiceRequest(free, { sourceName: "Distant Memories", seats }, handlers());
+    expect(r.primary?.label).toBe("Let them have the card");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Let them draw three"]);
+    expect(r.hint).toContain("It costs you nothing.");
+  });
+});
+
+describe("assist (ADR 0150 §5)", () => {
+  const seats = [
+    { id: "a", name: "Alice" },
+    { id: "b", name: "Bob" },
+    { id: "c", name: "Carol" },
+  ];
+  // Alice casts Fan Favorite and asks Bob, who can pay up to {2}.
+  const ask = (over: Partial<PendingChoiceView> = {}) =>
+    choice({
+      kind: "pay_amount",
+      chooser: "b",
+      reason: "Alice asks you to help pay for Fan Favorite",
+      pay_amount: { min: 0, max: 2, unit: "assist", resource: "mana" },
+      assist: {
+        caster: "a",
+        spell: "s1",
+        spell_name: "Fan Favorite",
+        mana_cost: "{3}{B}",
+        generic: 3,
+      },
+      ...over,
+    });
+
+  it("asks the helper with the caster, the spell and its cost, and pays from a stepper", () => {
+    const h = { ...handlers(), onAmount: vi.fn() };
+    const r = choiceRequest(ask(), { sourceName: "a card", seats, payAmount: 2 }, h);
+    expect(r.label).toBe("Alice asks you to help pay for Fan Favorite ({3}{B})");
+    expect(r.tag).toBe("assist");
+    expect(r.hint).toContain("Pay up to {2} of its generic mana, or nothing.");
+    expect(r.primary?.label).toBe("Pay {2}");
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Don't help"]);
+    r.primary?.onPress();
+    r.secondary?.[0].onPress();
+    expect(h.onAmount.mock.calls).toEqual([[2], [0]]);
+    const none = choiceRequest(ask(), { sourceName: "x", seats, payAmount: 0 }, h);
+    expect(none.primary?.disabled).toBe(true);
+  });
+
+  it("gives the caster a waiting line with Cancel request", () => {
+    const cancel = vi.fn();
+    const r = assistRequest(ask(), "a", seats, cancel);
+    expect(r?.rank).toBe("step");
+    expect(r?.question).toBe("Waiting for Bob to help pay for Fan Favorite");
+    expect(r?.row?.map((a) => a.label)).toEqual(["Cancel request"]);
+    r?.row?.[0].onPress();
+    expect(cancel).toHaveBeenCalledOnce();
+  });
+
+  it("is read-only for everyone else, and absent for the helper", () => {
+    const r = assistRequest(ask(), "c", seats, vi.fn());
+    expect(r?.question).toBe("Bob is deciding how much to help pay for Alice's Fan Favorite");
+    expect(r?.row).toBeUndefined();
+    expect(r?.primary).toBeUndefined();
+    expect(assistRequest(ask(), "b", seats, vi.fn())).toBeNull();
+    expect(assistRequest(choice({ kind: "pay_amount" }), "a", seats, vi.fn())).toBeNull();
+    expect(assistWaiting(ask(), null, seats)).toBe(
+      "Bob is deciding how much to help pay for Alice's Fan Favorite",
+    );
   });
 });

@@ -234,6 +234,10 @@ var gameFields = plan(
 	// declaration whose triggers have fired, and one that invented it
 	// would let a re-made declaration skip its requirements.
 	"attacksDeclared", carried, "",
+	// #2899 / CR 508.8: whether anything attacked this combat. Carried
+	// with attacksDeclared: an undo across the declaration that
+	// dropped it would skip the blockers of a combat that had them.
+	"combatHadAttackers", carried, "",
 	// #716 combat damage step participation. Carried for the reason
 	// the three above are, and for one more: the window between the
 	// two combat damage steps is a priority window, so an undo or a
@@ -336,6 +340,11 @@ var cardFields = plan(
 	"Owner", carried, "",
 	"Controller", carried, "",
 	"Tapped", carried, "",
+	// ADR 0151: CR 110.5's flipped status. Carried: a restore that
+	// dropped it would leave a flipped flip card unable to say so, and
+	// a copy effect reading the copier's status would pick the wrong
+	// half (CR 707.3).
+	"Flipped", carried, "",
 	"NextUntapSkips", carried, "",
 	"BattleX", carried, "",
 	"BattleY", carried, "",
@@ -393,6 +402,11 @@ var cardFields = plan(
 	// the one direction this field must not fail in. Listed once: the
 	// row was written twice, and a map keeps the last one.
 	"ObjectEpoch", carried, "",
+	// ADR 0152 §3: how many times the permanent has transformed or
+	// converted in place, CR 701.27f / 701.28e's memory. Carried: a
+	// restore that zeroed it would let a "convert it" trigger already on
+	// the stack fire after the permanent had turned over.
+	"TurnOvers", carried, "",
 	// ADR 0108 §5: echo's "came under your control since the beginning
 	// of your last upkeep". Carried: a restore that dropped it would
 	// charge every echo permanent again, or never.
@@ -418,6 +432,9 @@ var cardFields = plan(
 	// a restore that dropped it would silently un-equip the board.
 	"AttachedTo", carried, "",
 	"AttachedAt", carried, "",
+	// ADR 0154 decision 3: the epoch of an off-battlefield host (Animate
+	// Dead's graveyard card), carried for AttachedTo's reason.
+	"AttachedEpoch", carried, "",
 	// The layer-2 control baseline. Carried rather than rebuilt: a
 	// restore that dropped it would re-capture the CURRENT (stolen)
 	// controller as the base, and the creature would never go home.
@@ -506,9 +523,16 @@ var cardFields = plan(
 	// ADR 0071 amendment 2026-10-09 (#2049): the CR 702.112b renowned
 	// designation, carried for Monstrous's reason.
 	"Renowned", carried, "",
+	// #3172: "has dealt combat damage", the object history behind Ruric
+	// Thar's conditional hexproof, carried for Renowned's reason.
+	"DealtCombatDamage", carried, "",
 	// ADR 0141 (#2862): CR 702.103b's bestowed status, carried for
 	// Monstrous's reason.
 	"Bestowed", carried, "",
+	// ADR 0154 decision 4: Animate Dead's gained enchant clause and the
+	// creature it names, carried for Bestowed's reason.
+	"EnchantSwapped", carried, "",
+	"EnchantReturned", carried, "",
 	// ADR 0071 amendment 2026-10-08 (#2695): the CR 702.171 saddled
 	// designation and the creatures that paid for it, carried for
 	// Monstrous's reason.
@@ -532,6 +556,10 @@ var cardFields = plan(
 	// come back wrong and say nothing.
 	"Prepared", carried, "",
 	"PrepareCopy", carried, "",
+	// #3258: a copy of a card made to be cast (CR 707.12). Carried for
+	// PrepareCopy's reason: a restore that dropped it would bring back
+	// a real card beside a permission that was meant to expire.
+	"CardCopy", carried, "",
 	"PreparedBy", carried, "",
 	// ADR 0091 (#1331): the hideaway link. Carried — the zero value is
 	// a legal state ("not hidden by anything"), so a restore that
@@ -564,8 +592,10 @@ var cardFields = plan(
 	"ManaAbilities", rebuilt, "closures; re-looked-up from the catalog by oracle ID, or by TokenKey for a token (#521), and censused only when the catalog cannot return them",
 	"ActivatedAbilities", rebuilt, "same as ManaAbilities",
 	"effective", rebuilt, "layer-engine characteristic cache; restore forces a recompute",
+	"TextBox", rebuilt, "ADR 0160: derived from the textBox records in ScopedEffects by materialiseTextBoxesLocked; restore forces a recompute",
 	"printed", rebuilt, "printed-characteristic cache (#1498); self-validating, rebuilt by restoreZone's stamp or on the next zone insertion",
 	"stackGranted", rebuilt, "the keywords the stack step gave a spell (ADR 0107 §3); rebuilt from the ScopedEffect records and battlefield statics by the recompute restore forces",
+	"zoneGranted", rebuilt, "the ability bundles a battlefield static gave this card in a hand, graveyard or exile (ADR 0093 amendment 2026-10-13); rebuilt from the battlefield statics by the recompute restore forces",
 )
 
 var playerFields = plan(
@@ -599,6 +629,10 @@ var playerFields = plan(
 	// (ADR 0108 §6): not derivable from the board.
 	"LastTurnAttacks", carried, "",
 	"Eliminated", carried, "",
+	// #3093: an admin removed the seat from a started game. Carried: the
+	// lobby refuses the seat's session on it, and a restart that forgot
+	// it would let the removed player straight back in.
+	"Removed", carried, "",
 	"HandKept", carried, "",
 	"MulliganDecided", carried, "",
 	"TriggerOrder", carried, "",
@@ -700,6 +734,9 @@ var stackItemFields = plan(
 	// included — the object "this" names. Carried for SourceEpoch's
 	// reason: it is a reading of a card that has since moved.
 	"SourceObject", carried, "",
+	// ADR 0152 §3: the source's Card.TurnOvers when the ability went on
+	// the stack (CR 701.27f / 701.28e). Plain data.
+	"SourceTurnOvers", carried, "",
 	// ADR 0109 §2: the object that granted an activated ability, so a
 	// restored Teferi's Talent −12 still makes the Talent's emblem.
 	// Carried: the grant may be gone from the restored board.
@@ -743,6 +780,7 @@ var stackItemFields = plan(
 	// spell to a graveyard instead of exile, and a card Snapcaster
 	// gave flashback to could then be flashed back again forever.
 	"AltCostExiles", carried, "",
+	"ExileWithCounter", carried, "",
 	"SplitSecond", carried, "",
 	// S30 spell copies (#95). Carried, and it has to be: a restore
 	// that lost the flag would route a resolving copy to a graveyard
@@ -794,6 +832,9 @@ var delayedTriggerFields = plan(
 	"Controller", carried, "",
 	"SourceCardID", carried, "",
 	"SourceObject", carried, "", // #1418, CR 603.7d
+	// ADR 0152 §3: CR 701.28e's reference point for a delayed trigger
+	// is its creation. Plain data.
+	"SourceTurnOvers", carried, "",
 	"Label", carried, "",
 	"At", carried, "",
 	"ControllerTurnOnly", carried, "",
@@ -821,6 +862,7 @@ var delayedTriggerFields = plan(
 	"UntilLeaves", carried, "",
 	"Due", carried, "",
 	"Repeats", carried, "", // #2169, CR 603.7b
+	"OncePerBatch", carried, "", // #3172, CR 603.2c
 	"ManaTapSubtype", carried, "", // #2169, CR 605.1b
 	"ManaAdds", carried, "",
 )
@@ -919,11 +961,17 @@ var pendingChoiceFields = plan(
 	// it a restored pick would gain nothing.
 	"PickMeasures", carried, "",
 	"CopyOptions", carried, "",
+	// ADR 0160: a copy_target prompt that exchanges text boxes. Carried
+	// with CopyOptions; only the wording reads it.
+	"ExchangesText", carried, "",
 	"ScryCards", carried, "",
 	"LibraryPlacement", carried, "",
 	"LibraryTopCount", carried, "",
 	"LibraryTopDepth", carried, "",
 	"TriggerOrderIDs", carried, "",
+	// #3015: the sentence under "Order your triggers". A restored
+	// prompt reads as the live one did.
+	"TriggerOrderWhy", carried, "",
 	"PayCost", carried, "",
 	// #997: the step a pay-or-else prompt has to be answered in
 	// (Stasis, Pact of Negation, cumulative upkeep). Carried so a
@@ -937,6 +985,7 @@ var pendingChoiceFields = plan(
 	"GuardsStackItem", carried, "",
 	"SearchCards", carried, "",
 	"SearchMax", carried, "",
+	"SearchMin", carried, "",
 	// S28 cascade: which card the "you may cast it without paying
 	// its mana cost" prompt is offering. Carried for the same reason
 	// SacrificeOptions is — the prompt is meaningless without it, and
@@ -977,6 +1026,8 @@ var pendingChoiceFields = plan(
 	// vote: a restored ballot that forgot it would be an option pick
 	// whose answer counts for nothing.
 	"CouncilVote", carried, "",
+	"AnyPlayerOffer", carried, "",
+	"Assist", dropped, "ADR 0150 §4: an assist helper's prompt is a pay_amount, which always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a
@@ -1140,6 +1191,11 @@ func TestEmbeddedDomainTypesStayPureData(t *testing.T) {
 	samples := []any{
 		Event{}, Turn{}, Vote{}, TargetRef{}, ManaToken{},
 		LifeChange{}, Characteristic{}, CastTally{},
+		// ADR 0155: Characteristic.BorrowedAbilities, carried with the
+		// rest of the last-known characteristic beside GrantedAbilities.
+		// Each entry names a catalog row; a closure (the borrow's
+		// Lenders) or an unexported field here would vanish on restore.
+		GrantedAbility{}, BorrowedAbility{},
 		// Event.CombatStep and DamageAssignmentFrame.CombatStep (#187)
 		// are carried through these two with no plan entry; their zero
 		// value "" is right for a file written before them, so no

@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -347,6 +348,7 @@ func TestB25RecklessHandlingTutorsThenDiscardsAtRandom(t *testing.T) {
 	me.Hand.Cards = nil
 	castCatalogSpell(t, g, "Reckless Handling", "Sorcery", b25RecklessHandlingOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if me.Hand.Contains(ring) || !me.Graveyard.Contains(ring) {
 		t.Error("the artifact was tutored to hand and then discarded at random")
 	}
@@ -560,8 +562,8 @@ func TestB25BladeHistorianGivesAttackersDoubleStrike(t *testing.T) {
 	if hasAbility(effectiveAbilities(t, g, theirs), "double strike") {
 		t.Error("an opponent's attacker is not yours")
 	}
-	if spec, _ := Lookup(b25BladeHistorianOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the attack-declaration gap is declared")
+	if spec, _ := Lookup(b25BladeHistorianOracle); spec.Completeness != CompletenessFull {
+		t.Error("Blade Historian is a layer 6 static now: nothing is left to declare")
 	}
 }
 
@@ -662,12 +664,12 @@ func TestB25TevalMillsReturnsALandAndMakesZombiesWhenCardsLeave(t *testing.T) {
 	library := me.Library.Size()
 	grave := me.Graveyard.Size()
 	declareAttack(t, g, opp.ID, teval)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, forest) || p.PickTargetMin != 0 {
-		t.Error("up to one land card in your graveyard")
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, forest) || p.ChooseMin != 0 || p.ChooseMax != 1 {
+		t.Fatal("you may return a land card: a floor of zero, asked after the mill")
 	}
-	pickCard(t, g, me.ID, forest)
+	answerChooseCards(t, g, me.ID, forest)
 	passPriorityAroundTable(t, g)
 	if me.Library.Size() != library-3 {
 		t.Errorf("mill three: library %d → %d", library, me.Library.Size())
@@ -695,15 +697,36 @@ func TestB25TevalMillsReturnsALandAndMakesZombiesWhenCardsLeave(t *testing.T) {
 	advanceToMainOf(t, g, 0)
 	library = me.Library.Size()
 	declareAttack(t, g, opp.ID, teval)
-	if latestPickTarget(g, me.ID) != nil {
+	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
 		t.Error("nothing to return: no prompt")
 	}
-	passPriorityAroundTable(t, g)
 	if me.Library.Size() != library-3 {
 		t.Error("the mill does not depend on a land being in the graveyard")
 	}
-	if spec, _ := Lookup(b25TevalOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the pick-before-mill gap is declared")
+	if spec, _ := Lookup(b25TevalOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the land is chosen after the mill: nothing is left to declare")
+	}
+}
+
+// The land is chosen after the mill, so one the trigger itself milled
+// is a legal pick, and "you may" lets the player take none.
+func TestB25TevalCanReturnALandItJustMilled(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	teval := b21Push(g, me.ID, "Teval, the Balanced Scale", "Legendary Creature — Spirit Dragon", b25TevalOracle, 4, 4, "B", "G", "U")
+	milled := b10LibraryTop(me, "Milled Swamp", "Basic Land — Swamp", "", 0, 0)
+	b10LibraryTop(me, "Filler A", "Instant", "{R}", 0, 0)
+	b10LibraryTop(me, "Filler B", "Instant", "{R}", 0, 0)
+	declareAttack(t, g, opp.ID, teval)
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, milled) {
+		t.Fatal("a land the trigger milled is offered")
+	}
+	answerChooseCards(t, g, me.ID, milled)
+	if !g.Battlefield.Contains(milled) || !b25Tapped(t, g, milled) {
+		t.Error("the milled land returns tapped")
 	}
 }
 
@@ -713,15 +736,21 @@ func TestB25VoraciousHydraFightsOrDoubles(t *testing.T) {
 	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
 	mine := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
 
+	// Choose the fight mode: a real "choose one" prompt, then the target.
 	hydra := castXSpell(t, g, "Voracious Hydra", "Creature — Hydra", b25VoraciousHydraOracle, "{X}{G}{G}", 3, nil)
 	passPriorityAroundTable(t, g)
 	if counterCount(g, hydra, "+1/+1") != 3 {
 		t.Fatalf("enters with X counters: %d", counterCount(g, hydra, "+1/+1"))
 	}
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil || !slices.Equal(c.ModeOptionIndex, []int{0, 1}) {
+		t.Fatalf("both modes are offered while an opponent has a creature: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 1)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, theirs) || hasID(p.PickTargetCards, mine) || p.PickTargetMin != 0 {
-		t.Error("up to one creature you don't control")
+	if !hasID(p.PickTargetCards, theirs) || hasID(p.PickTargetCards, mine) || p.PickTargetMin != 1 {
+		t.Error("exactly one creature you don't control")
 	}
 	pickCard(t, g, me.ID, theirs)
 	passPriorityAroundTable(t, g)
@@ -734,29 +763,32 @@ func TestB25VoraciousHydraFightsOrDoubles(t *testing.T) {
 	if counterCount(g, hydra, "+1/+1") != 3 {
 		t.Error("the fight mode does not double")
 	}
-	// Pick no target: the counters double instead.
+	// Choose the doubling mode: no target is asked, the counters double.
 	theirs2 := pushVanillaCreature(g, opp.ID, "Their Other Bear", 2, 2)
 	hydra2 := castXSpell(t, g, "Voracious Hydra", "Creature — Hydra", b25VoraciousHydraOracle, "{X}{G}{G}", 2, nil)
 	passPriorityAroundTable(t, g)
-	b04WaitForPick(t, g, me.ID)
-	p = latestPickTarget(g, me.ID)
-	if err := g.ResolvePickTargets(p.ID, me.ID, nil); err != nil {
-		t.Fatalf("picking no target: %v", err)
-	}
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 0)
 	passPriorityAroundTable(t, g)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Error("the doubling mode targets nothing")
+	}
 	if counterCount(g, hydra2, "+1/+1") != 4 {
-		t.Errorf("no target: 2 counters doubled to 4, got %d", counterCount(g, hydra2, "+1/+1"))
+		t.Errorf("doubling mode: 2 counters doubled to 4, got %d", counterCount(g, hydra2, "+1/+1"))
 	}
 	if !g.Battlefield.Contains(theirs2) {
 		t.Error("no fight")
 	}
-	// No creature to fight at all: no prompt, the counters double.
+	// No creature to fight at all: the fight mode is not offered.
 	b25Destroy(g, theirs2)
 	passPriorityAroundTable(t, g)
 	hydra3 := castXSpell(t, g, "Voracious Hydra", "Creature — Hydra", b25VoraciousHydraOracle, "{X}{G}{G}", 1, nil)
 	passPriorityAroundTable(t, g)
-	if latestPickTarget(g, me.ID) != nil {
-		t.Error("nothing to fight: no prompt")
+	if c := modePickChoiceFor(g, me.ID); c != nil {
+		if slices.Contains(c.ModeOptionIndex, 1) {
+			t.Fatalf("nothing to fight: the fight mode is not offered: %v", c.ModeOptionIndex)
+		}
+		answerMode(t, g, c, me.ID, 0)
+		passPriorityAroundTable(t, g)
 	}
 	if counterCount(g, hydra3, "+1/+1") != 2 {
 		t.Errorf("1 counter doubled to 2, got %d", counterCount(g, hydra3, "+1/+1"))
@@ -764,7 +796,7 @@ func TestB25VoraciousHydraFightsOrDoubles(t *testing.T) {
 	if !hasEffectiveKeyword(t, g, hydra3, "trample") {
 		t.Error("trample")
 	}
-	if spec, _ := Lookup(b25VoraciousHydraOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the X-on-resolve and mode-by-target gaps are declared")
+	if spec, _ := Lookup(b25VoraciousHydraOracle); spec.Completeness != CompletenessFull {
+		t.Error("the mode is a real choice now: nothing is declared")
 	}
 }

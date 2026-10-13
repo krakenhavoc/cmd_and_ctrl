@@ -161,6 +161,14 @@ const (
 	// amendment 2026-10-09, #2049. Appended so no existing kind's value
 	// moves.
 	DesignationRenowned
+
+	// DesignationHasntDealtCombatDamage is "as long as it hasn't dealt
+	// combat damage yet" (Ruric Thar, Magecrusher, #3172): the ability
+	// exists until the permanent has dealt combat damage, and not again
+	// until it is a new object. The one gate that is satisfied by the
+	// ABSENCE of a mark (Card.DealtCombatDamage). Appended so no existing
+	// kind's value moves.
+	DesignationHasntDealtCombatDamage
 )
 
 // DoorSide names which half of a Room a DesignationDoorUnlocked gate
@@ -227,6 +235,8 @@ func (d Designation) Active(c Card) bool {
 		return c.Saddled
 	case DesignationRenowned:
 		return c.Renowned
+	case DesignationHasntDealtCombatDamage:
+		return !c.DealtCombatDamage
 	case DesignationRingTempted:
 		return c.RingTemptations >= d.N
 	case DesignationChosenOption:
@@ -285,6 +295,12 @@ func Monstrous() Designation { return Designation{Kind: DesignationMonstrous} }
 // Renowned, which is the Card field.
 func RenownedGate() Designation { return Designation{Kind: DesignationRenowned} }
 
+// HasntDealtCombatDamage builds the gate for "as long as this creature
+// hasn't dealt combat damage yet" (#3172).
+func HasntDealtCombatDamage() Designation {
+	return Designation{Kind: DesignationHasntDealtCombatDamage}
+}
+
 // SaddledGate builds a CR 702.171 gate: the ability exists while the
 // Mount is saddled (#2695). Named for its kind rather than Saddled,
 // which is the Card field.
@@ -328,8 +344,13 @@ const (
 // that stopped being a Class keeps whatever level it had. What these
 // answer is "should the client show a level badge on this card",
 // which is a question about what the permanent is right now.
-func IsClass(c Card) bool { return c.HasSubtype(ClassSubtype) }
-func IsCase(c Card) bool  { return c.HasSubtype(CaseSubtype) }
+func IsClass(c Card) bool { return IsClassPtr(&c) }
+func IsCase(c Card) bool  { return IsCasePtr(&c) }
+
+// IsClassPtr and IsCasePtr are IsClass and IsCase without the receiver
+// copy (#2113).
+func IsClassPtr(c *Card) bool { return hasSubtype(c, ClassSubtype) }
+func IsCasePtr(c *Card) bool  { return hasSubtype(c, CaseSubtype) }
 
 // activeOnly drops the entries whose gate the object does not satisfy
 // — THE filter, shared by all four accessors.

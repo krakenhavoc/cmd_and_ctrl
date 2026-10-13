@@ -4,7 +4,7 @@
 **Issues:** [#2435](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2435) (this change). [#2436](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2436), the curated deck rebalance, waits on it. [#2437](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2437), a fifth curated deck, comes after both.
 **Owner direction:** 2026-10-06, on #2435: fix the pricing before the rebalance, write an ADR before changing any weight, and measure it with [ADR 0052](0052-bot-decision-harness-and-eval.md)'s arena report on the curated decks, with the nightly gates green.
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-06. I ran `git fetch --all --prune` and listed `docs/decisions/` on every remote head: 37 of them (`origin/develop`, `origin/main`, `pr/2326`, and 34 chore, docs, feat, fix, repro and wip branches). The highest number on any of them is 0125, on `origin/develop`, `origin/main` and `origin/feat/table-defaults-row-overlay`. This ADR takes **0126**.
-**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12).
+**Amendments:** 2026-10-06, [discard payoffs](#amendment-2026-10-06-discard-payoffs) (accepted). 2026-10-08, [purposes that follow a mode's target, and damage priced by whether it kills](#amendment-2026-10-08-purposes-that-follow-a-modes-target-and-damage-priced-by-whether-it-kills) ([#2689](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2689)): accepted (owner answers 2026-10-08). 2026-10-08, [what removal hands back](#amendment-2026-10-08-what-removal-hands-back) ([#2679](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2679)): accepted (owner decision on #2753). 2026-10-12, [the race sends the swing that ends the game soonest](#amendment-2026-10-12-the-race-sends-the-swing-that-ends-the-game-soonest) ([#2400](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2400)): accepted (owner decisions 2026-10-12). 2026-10-12, [cycling cards as cheaper discards, and the bot's own draw step](#amendment-2026-10-12-cycling-cards-as-cheaper-discards-and-the-bots-own-draw-step) ([#2457](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2457)): accepted (owner answers 2026-10-12). 2026-10-12, [the attrition horizon trades commanders](#amendment-2026-10-12-the-attrition-horizon-trades-commanders) ([#2474](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2474)): accepted (owner decisions 2026-10-12). 2026-10-12, [Izzet and Simic after the rebalance](#amendment-2026-10-12-izzet-and-simic-after-the-rebalance) ([#2480](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2480)): accepted (owner decisions 2026-10-12). 2026-10-12, [blocks that survive as a set](#amendment-2026-10-12-blocks-that-survive-as-a-set) ([#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066)): accepted (owner decisions 2026-10-12). 2026-10-12, [landfall payoffs](#amendment-2026-10-12-landfall-payoffs) ([#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072)): accepted (owner decisions 2026-10-13). 2026-10-13, [izzet-aggro rebuilt around Purphoros](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros) ([#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071)): accepted (owner decisions 2026-10-13).
 **Purpose gains a field:** [ADR 0142](0142-declared-answers-on-catalog-abilities.md), 2026-10-09 — `Purpose.Answers`, what an activated row can do in response, on the wire as `purpose.answers`. It is not an amount, so a purpose that declares only answers is not priced (`PurposeView.Priced`).
 **Builds on:** [ADR 0033](0033-ai-bot-seat.md) (the seat, §3's type gate, §5's funnel), [ADR 0052](0052-bot-decision-harness-and-eval.md) (the arena, the position suite, the report block every bot PR carries), [ADR 0106](0106-five-small-seams-from-the-s50-rechecks.md) §1 decision 8 (catalog-declared `purpose` on an activated row, read by the bot), [ADR 0037](0037-unimplemented-card-signal.md) (the `unimplemented` mark).
 
@@ -275,7 +275,7 @@ A mana ability with a sacrifice cost (the Altars) is used by the auto-tapper whe
 
 Every sub-PR from §1 onward carries ADR 0052's report block in its description, plus this ADR's two tables. The runs:
 
-1. **The four-deck rotation.** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,izzet-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1`. 64 games is 16 full rotations, so every deck sits in every chair 16 times. It reports per-deck win rates with intervals, the Cards table and the `never` counts. About 5 s a game, so about 6 minutes.
+1. **The four-deck rotation.** `boteval arena --seats heuristic,heuristic,heuristic,heuristic --decks esper-control,mono-red-aggro,mono-black-aristocrats,simic-ramp --games 64 --rotate --seed 1`. The aggro deck was `izzet-aggro` until [#3071](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros), and the measurements below that predate it name it so. 64 games is 16 full rotations, so every deck sits in every chair 16 times. It reports per-deck win rates with intervals, the Cards table and the `never` counts. About 5 s a game, so about 6 minutes.
 2. **New against baseline.** Two `heuristic` and two `heuristic-baseline` contestants, 48 games with the decks split one way and 48 with them swapped, so each policy plays each deck equally (96 games, 192 seat-games per policy). This measures strength, which run 1 cannot: four copies of one policy win 25% each by construction.
 3. **The position suite.** `boteval suite run --policy heuristic`. Every gated position passes. Overall agreement and each tag's agreement are not lower than before the PR. Each sub-PR adds the positions for its class (below), labelled from its own arena decision logs, and gates them.
 4. **The nightly gates.** `bot-games`, `bot-soak` (the heuristic gate's fixed seeds 101..120, the random soak of 100 games) and `catalog-soak` stay green on the PR's branch, run with `gh workflow run` before merge. If the catalog soak fails with an `EventEffectError` on a card the bot now casts for the first time, that is a real engine bug the pricing has uncovered. It is filed as its own issue and fixed, or the card's `Completeness` is corrected. It is not a reason to revert the price.
@@ -1018,6 +1018,255 @@ The owner accepted the amendment on 2026-10-12. They took the recommendation on 
 3. **Izzet is rebuilt:** [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071), in S67. The rebuild may swap the commander if that makes sense, and may start from scratch.
 4. **Simic does not change now.** The landfall payoff purpose is [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072), in S67.
 5. **Esper is not trimmed.**
+
+## Amendment 2026-10-12: blocks that survive as a set
+
+**Status:** Accepted (owner decisions 2026-10-12). The owner accepted the check with `BlockSetSurvives` on, and had the horizon's unneeded waiting turn filed as [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080); see [Owner decisions (#3066, 2026-10-12)](#owner-decisions-3066-2026-10-12) at the end of this amendment. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()` (§9).
+**Issue:** [#3066](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3066), filed from #2474 (PR #3065). Sprint S67. Tracker #890.
+**Amends:** the block planner (`decideBlock`, `heuristic/combat.go`), which [Out of scope](#out-of-scope) left alone, as the [#2675 knobs](#2675-2690-2676-combat-priced-by-what-combat-does-2026-10-08) and the two amendments of 2026-10-12 on the race and the attrition horizon did for the attack planner. No ADR covers the block planner, and `docs/bot.md` documents it.
+
+### The problem
+
+Blocks are declared one at a time, and `decideBlock` scores each block on its own: the damage it saves, the attacker it kills and the creatures it loses (#1548). Nothing checks that the blocks together leave the defender alive. The full seed-1409 Wurm mirror ends on this misblock ([Open (#2474)](#open-2474)):
+
+- **The defender:** on 3, with its 3/3 commander as its only creature.
+- **The attack:** a Bear 2/2 and a 3/3 commander.
+
+The Bear block scores +6.90: it kills the Bear and loses nothing. The commander block scores +6.00: the two commanders trade. So the defender blocks the Bear, takes 3 from the commander and dies. Commander on commander takes 2 and lives. The line #2474 found then takes another turn, which no whole game in the tree played.
+
+### Decision
+
+**The blocks survive as a set** (`BlockSetSurvives`, `heuristic/blockset.go`; on in `DefaultConfig`, off in `BaselineConfig`).
+
+1. **When it runs.** Before it scores the blocks on offer, the block planner asks whether finishing the declaration now kills the bot. If it does not, nothing changes: blocking more never lets more damage through, so every block on offer survives too.
+2. **What kills.** The bot's life, unless it can't lose for life (ADR 0057); ten poison counters from infect and toxic (CR 104.3d, 702.90b, 702.164c); and the table's commander damage, 21 by default, from one commander (CR 903.10a). A trampler's overflow counts (`connects`, CR 702.19b), a double striker deals its damage twice (CR 702.4b), and a menace attacker with one blocker counts as unblocked (CR 702.110b).
+3. **The search.** When finishing kills, each block on offer is asked whether some way of spending the bot's creatures that are still free after it survives (`survivable`). Each free creature blocks one attacker that still gets damage through, or nothing. Which creature may block which attacker is read off the block moves on offer, so the search never pairs creatures the enumerator would not let block. It stops at the first set that survives. It prunes a branch when its free creatures could not stop enough damage even if each stopped a whole attacker, and gives up after 2000 boards (`blockSearchBudget`). A block whose search gives up counts as unknown, and is neither chosen nor ruled out.
+4. **The choice.** If some block on offer survives, the bot declares the best-scored such block, even at a score of zero or less, since finishing kills. If the best-scored block overall survives, that is the same block with the same reason as before. When the check changed the pick, the reason says `…, a set that survives (+6.00)`. If no block survives, or every search gave up, the decision is the old one.
+
+On the issue's board, finishing now takes 5. The Bear block leaves no free creature and 3 through, which kills. The commander block leaves 2 through, which does not. So the bot blocks commander on commander.
+
+### Measured
+
+The tables, and every game that changes, are under [Measurements, #3066](#3066-blocks-that-survive-as-a-set-2026-10-12). In short, at `develop` `2b6f13831`, from non-race lockstep runs:
+
+| | 4-seat mean | 2-seat mean | Wurm + Ogre | full Wurm | Run 1 wins, esper / izzet / black / simic |
+|---|---:|---:|---|---|---|
+| `develop` | 16.17 | 13.25 | 5 / 6 | 7 / 6, on the misblock | 18 / 5 / 25 / 16 |
+| **`BlockSetSurvives`** | **16.08** | **13.33** | 5 / **7** | **8 / 7** | 18 / 5 / 25 / 16, every game the same |
+
+- **The full Wurm mirror plays the line out.** The defender trades commanders and lives on 1. Both commanders are cast again, the bot's in its own second main phase. The Bear and the commander then swing into one blocker, and the defender, with no surviving block left, dies. The games end on turns 8 and 7, one turn later than the misblock, with the same winners.
+- **The line is a turn shorter than the horizon planned.** The horizon counts the bot's commander summoning sick on the board after the trade and waits a turn for it (`afterExchange`, `afterWait`). The bot casts it again in the same turn's second main phase, so by its next turn the commander has been under its control since that turn began (CR 302.6), and no turn is spent waiting. `TestAttritionWaitsForTheCommanderItCastAgain` pins the decision on the board the horizon predicts, which the game never reaches.
+- **2 of the 24 gate games change, each at a block the check changed, and neither changes its winner.** Seed 104 ends a turn sooner (13 → 12) and seed 202 a turn later (13 → 14). On the mirrors, Wurm + Ogre with the edge on seat 1 ends a turn later (6 → 7): the defender, on 4 with its commander, chumps the Ogre and takes 3 instead of trading commanders and taking 4. Every other game plays move for move as on `develop`.
+- **Run 1 does not change.** All 64 games of §8's run 1 end on the same turn with the same winner, the same lives and the same number of decisions. Defenders facing lethal with a choice of blocks are rare at four seats with these decks.
+
+### Options considered and rejected
+
+- **Choosing the whole set at once**, declaring blocks from one search of every assignment. It would replace the planner's scores, which every gate game reads, rather than adding a check to them. The per-block declaration with a lookahead keeps today's choice wherever the bot survives, and the check costs nothing on a board where finishing survives.
+- **Minimising the damage taken when finishing kills.** That is a different objective, which would change every chump the bot makes when it is not in lethal range. The check only rules out blocks that leave no way to live.
+- **Checking only life.** Poison and commander damage kill as surely, and they are cheap to count from the public view (`PlayerView.poison`, `commander_damage`).
+
+### Open (#3066)
+
+- **The bot's own model of the defender does not change.** The race's `blockToSurvive` and the attrition horizon's free answer predict the defender's blocks with their own greedy, not with `decideBlock`. Where the two disagree the attacker misjudges a swing, as before.
+- **The horizon's waiting turn is pessimistic.** See the second bullet under Measured. It costs a line a turn of the horizon's three, so a line that needs a wait and two more exchanges is never found. It is not part of this amendment: it is [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080).
+
+### Questions for the owner (#3066, answered 2026-10-12)
+
+Each lists the recommended option first.
+
+1. **Accept the check, on in `DefaultConfig()`?**
+   - **(a) Recommended:** yes. It fixes the issue's misblock, the full Wurm mirror plays the line out, it moves no winner in any gate game or in run 1, and it runs only on a board where finishing the declaration kills.
+   - **(b)** Keep it as an off switch. The full Wurm mirror keeps ending on the misblock.
+2. **The horizon's waiting turn** (Open, second bullet).
+   - **(a) Recommended:** file it as its own issue: the horizon counts a commander the bot casts again in its second main phase as able to attack on its next turn. It changes the horizon's search, which needs its own gate measurements.
+   - **(b)** Leave it. The wait is pessimistic, so it only loses lines and never sends a bad one.
+
+### Owner decisions (#3066, 2026-10-12)
+
+The owner accepted the amendment on 2026-10-12 and took the recommendation on both questions. No section above changed.
+
+1. **The set-level block check is accepted.** `BlockSetSurvives` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
+2. **The horizon's waiting turn is its own issue:** [#3080](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3080), in Backlog. It changes the attrition horizon's search, not the block planner, so it is not part of this amendment.
+
+## Amendment 2026-10-12: landfall payoffs
+
+**Status:** Accepted (owner decisions 2026-10-13). The owner accepted the landfall price with `PriceLandfallPayoffs` on, and had the open items filed as [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146) and the random-bot game test's timeout as [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147); see [Owner decisions (#3072, 2026-10-13)](#owner-decisions-3072-2026-10-13) at the end of this amendment. The code is in the PR that adds this section, behind one switch, on in `DefaultConfig()` and off in `BaselineConfig()`.
+**Issue:** [#3072](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3072), filed from #2480's [owner decision 4](#owner-decisions-2480-2026-10-12). Sprint S67.
+**Amends:** §6 (a new purpose field, `landfall_payoff`, on a triggered row) and what §6's `lands`, #2678's extra land drop and #2680's put from hand are worth. No other price and no deck changes.
+
+### The problem
+
+[#2480](#why-the-cards-go-unused) found Burnished Hart's activation offered 346 times on simic-ramp and taken once. Its two lands are priced at `ManaSource` each plus the ramp premium, against the Hart's own body, and by the time Simic has the Hart and {3} to spare its deficit has closed. In 141 of the 150 windows of its own main phase with an empty stack it controlled a landfall payoff, 127 of them Tatyova, so those two lands were two cards and two life. Nothing priced that. Re-measured on `develop` at `489b289aa` (run 1, both seed blocks), Simic's Hart activation was taken in 5 of 1,047 windows, and in 540 of the 559 seed-1 windows the decision log can read, Simic controlled a payoff.
+
+### Decision
+
+**1. A landfall row declares what it pays** (`game.LandfallPayoff`, `purpose.landfall_payoff` on the wire). The amounts are per land that enters under its controller's control: `draws`, `life_gain`, `tokens`, `mana`, `counters` (on its source), `energy` and `damage_each_opponent`. It is declared by hand, like every purpose, and only on a triggered row (`effects.Register` refuses it anywhere else, and refuses one that pays nothing). A card file builds the row with `effects.LandfallPaying(label, payoff, effect)` in place of `Landfall(label, effect)`. It is declared on Simic's Tatyova, Lotus Cobra, Tireless Tracker, Tireless Provisioner, Sporemound, Rampaging Baloths and Courser of Kruphix (`TestCuratedDeckPurposes` holds each to it), and on the catalog's other fixed-amount landfall rows: Architect of the Untamed, Emeria Angel, Koth of the Homestead, Koth, the Geomancer (the damage only), Maja, Nesting Dragon, Nissa, Worldsoul Speaker, both Omnaths that pay a fixed amount, Primeval Bounty, Roil Cartographer, Sabotender, Sazh's Chocobo, Scute Swarm, The Necrobloom, Undergrowth Champion and Zendikar's Roil. A payoff counted at resolution (Avenger of Zendikar's counter on each Plant) or conditioned on the lands (Field of the Dead) declares none.
+
+**2. A land the bot puts onto the battlefield is worth what its payoffs pay** (`PriceLandfallPayoffs`, `aiseat/heuristic/landfall.go`). Per land, over the triggered rows of the bot's own permanents, in the units the policy already uses:
+
+```
+Weights.Hand × draws + MarginalLife(own life) × life_gain + TokenWeight × tokens
++ 0.5 × TokenWeight × mana + (Weights.Power + Weights.Toughness) × counters
++ Weights.Energy × energy + DamageToOpponent × damage_each_opponent × live opponents
+```
+
+It is added in the three places a land the bot puts down is priced: a declared purpose's `lands` (Burnished Hart's and Sakura-Tribe Elder's activations, Harrow, Cultivate, Solemn Simulacrum), the lands an extra land drop lets the bot play this turn (#2678), and a land put from hand (#2680). The ordinary land drop is not repriced: it is taken before any cast already. An opponent's payoff pays the opponent, so it adds nothing.
+
+On turn 8 with seven lands, the Hart's activation is −1.20 without a payoff and **+1.44** with Tatyova out (two cards and two life), so the bot cracks it. With only Courser of Kruphix it is −0.96, and with an opponent's Tatyova −1.20, so it keeps the Hart (`TestHartIsActivatedWithTatyovaOut`, `TestHartIsKeptWhenTheLandsPayLittle`).
+
+No weight is new. The one constant is `landfallManaShare` (0.5): a landfall mana empties at the end of the step, so it is half a Treasure.
+
+### Measured
+
+The tables are under [Measurements, #3072](#3072-landfall-payoffs-2026-10-12). In short, over run 1 at seeds 1 and 1001 (128 games) and run 2 at both seeds (384 `heuristic` seat-games):
+
+| | Simic, run 1 | Simic, every `heuristic` seat-game | Run 2 `heuristic` | Hart activation, Simic run 1 |
+|---|---|---|---|---|
+| `develop` `489b289aa` | 28 / 128, 21.9% (15.6%–29.8%) | 61 / 224, 27.2% (21.8%–33.4%) | 134 / 384, 34.9% (30.3%–39.8%) | 5 of 1,047 windows, in 5 of 27 games |
+| **`PriceLandfallPayoffs`** | **35 / 128, 27.3% (20.4%–35.6%)** | **70 / 224, 31.2% (25.5%–37.6%)** | 131 / 384, 34.1% (29.6%–39.0%) | **21 of 225 windows, in 21 of 26 games** |
+
+- **The Hart is used.** It is taken in 21 of the 26 games it is offered in, against 5 of 27, and it is offered in far fewer windows because it is cracked early. In run 2 the `heuristic` Simic's Hart goes from 2 of 19 games to 12 of 17.
+- **The other land-makers move with it.** Explosive Vegetation is cast in 50 of 67 games it is offered in (28 of 55 on `develop`), Sakura-Tribe Elder's sacrifice is used in 33 of 41 (17 of 42), and Harrow, Cultivate and Kodama's Reach are each cast a little more.
+- **Simic's win rate rises, within noise.** Every interval overlaps the one before. Mono-black's run-1 share falls from 49 to 46 of 128 and Esper's from 45 to 42, in games the change re-dealt.
+- **Run 2 is not detectably worse.** Half A (`heuristic` on Esper and Izzet, so no `heuristic` seat holds a payoff) plays every game as `develop` does at both seeds. Half B changes 34 and 38 of 48 games.
+- **Health:** 0 stalls and 0 rejected moves in every run, turns p50 unchanged (13 and 14 in run 1). The suite is 41 of 41, every tag at 100%, on both.
+
+### Options considered and rejected
+
+- **Deriving the payoff from the effect** (a `Do(DrawCards{N: 1})` body read at registration). Several payoffs are hand-written closures (Tatyova's is), and §6 says purposes are declared, never derived. `LandfallPaying` is the one-line declaration instead.
+- **Repricing the land drop.** It is already priced above every cast, so a payoff would change nothing.
+- **Pricing Ancient Greenwarden's doubling.** It is a static, not a landfall row, and it pays nothing alone. See Open.
+- **Declaring `lands: 1` on the fetch lands.** A fetch's activation is priced at the flat `ActivateBase` today and is cracked. A declared `lands` would make it pay for the land it sacrifices, and without a payoff it would fall under `PassThreshold`. That is a change to fetches, not to landfall.
+
+### Open (#3072)
+
+- **Ancient Greenwarden** doubles every landfall trigger and is in Simic's list. A doubler would need its own declaration (on the static, read with the payoffs).
+- **Casting a payoff** is still priced by its body. Tatyova cast before a turn of land drops is worth the cards she will draw, which nothing prices. The commander is cast in 63 of 64 games anyway.
+- **Fetch lands** (Simic has seven) are cracked at the flat `ActivateBase`, so a payoff does not make them more likely. They were not declared (see above).
+
+All three are [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146).
+
+### Questions for the owner (#3072, answered 2026-10-13)
+
+Each lists the recommended option first.
+
+1. **Accept the landfall price, with `PriceLandfallPayoffs` on in `DefaultConfig()`?**
+   - **(a) Recommended:** yes. The Hart and the other land-makers are used when a payoff is out, Simic's numbers move up within noise, and run 2 and the suite do not move.
+   - **(b)** Keep it as an off switch. The declarations stay, and the bot prices lands as before.
+2. **The open items** (Greenwarden's doubling, a payoff's own cast price, fetch lands).
+   - **(a) Recommended:** one Backlog issue for all three, measured together, since each changes Simic alone.
+   - **(b)** Leave them.
+
+### Owner decisions (#3072, 2026-10-13)
+
+The owner accepted the amendment on 2026-10-13 and took the recommendation on both questions. No section above changed.
+
+1. **The landfall price is accepted.** `PriceLandfallPayoffs` is on in `DefaultConfig()`, and off in `BaselineConfig()`.
+2. **The open items are one issue:** [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146), in Backlog: Ancient Greenwarden's doubling, a payoff's own cast price, and the fetch lands.
+3. **The random-bot game test's timeout is its own issue:** [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147), in Backlog. `TestFourRandomBotsPlayToAWinner` hits its wall clock on `develop` as on this branch ([Measurements](#3072-landfall-payoffs-2026-10-12)), so it is not part of this amendment.
+
+## Amendment 2026-10-13: izzet-aggro rebuilt around Purphoros
+
+**Status:** Accepted (owner decisions 2026-10-13). The owner took the Purphoros list, had the deck's ID renamed to `mono-red-aggro` in the same PR, accepted Simic's run-1 rate, and had the canary and the token makers filed as [#3164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3164) and [#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165); see [Owner decisions (#3071, 2026-10-13)](#owner-decisions-3071-2026-10-13) at the end of this amendment. The code is in the PR that adds this section: the deck list, its new ID with migration 0018 and an alias for the old one, the test lists that name its cards, and the docs that describe it. No price, weight or switch changes.
+**Issue:** [#3071](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3071), filed from #2480's [owner decision 3](#owner-decisions-2480-2026-10-12). Sprint S67.
+**Amends:** the izzet-aggro list #2436 set and #2480 swapped two cards of. No other deck changes.
+
+### The problem
+
+#2480 found that no swap of two to four cards moves izzet-aggro beyond noise, and the owner asked for a rebuild that may change the commander. Re-measured on `develop` at `f1bf51ff6`, with #3072's landfall price, over four seed blocks of §8's run 1 (64 games each, `--rotate --lockstep`):
+
+| Deck | Run 1, seeds 1, 1001, 2001, 3001 | Every `heuristic` seat-game (run 1 and run 2) |
+|---|---|---|
+| esper-control | 98 / 256, 38.3% (32.5%–44.4%) | 203 / 448, 45.3% (40.8%–49.9%) |
+| izzet-aggro | **9 / 256, 3.5% (1.9%–6.5%)** | **21 / 448, 4.7% (3.1%–7.1%)** |
+| mono-black-aristocrats | 81 / 256, 31.6% (26.3%–37.6%) | 169 / 448, 37.7% (33.4%–42.3%) |
+| simic-ramp | 68 / 256, 26.6% (21.5%–32.3%) | 137 / 448, 30.6% (26.5%–35.0%) |
+
+### Decision (proposed)
+
+**1. The commander is Purphoros, God of the Forge, and the deck is mono-red.** Whenever another creature enters under its controller's control, Purphoros deals 2 damage to each opponent. It is indestructible and costs four, and the bot casts it in every one of the 253 run-1 games in which it could, so the deck's engine is on the table by turn four or five whatever the library deals. Damage to each opponent is what the two strongest decks win with (#2480 question 3: Syr Konrad and Y'shtola), and a four-seat table pays it three times.
+
+**2. The 99 feeds that trigger.** It keeps 31 of the old list's non-basic cards and the Mountains, and the commander and 41 cards are new, every one graded `full` and legal in Commander; Path of Ancestry is still the deck's only minor-caveats card.
+
+- **Damage to each opponent when a creature or an artifact enters:** Impact Tremors, Witty Roastmaster, Molten Gatekeeper, Agate Instigator, Fanatic of Mogis (once, as it enters), and the kept Weftstalker Ardent and Reckless Fireweaver (a Treasure is an artifact entering).
+- **When a spell is cast:** Firebrand Archer, Kessig Flamebreather, Erebor Flamesmith, Coruscation Mage, Firespitter Whelp, Fiery Inscription, Brimstone Vandal, and the kept Guttersnipe.
+- **More per hit:** Torbran, Thane of Red Fell and Hellrider.
+- **Creatures that bring creatures:** Goblin Instigator, Beetleback Chief, Siege-Gang Commander, Legion Warboss, Goblin Rabblemaster, both Krenkos, Hanweir Garrison, Loyal Apprentice, Young Pyromancer, Person of Interest, Pashalik Mons, Fearless Liberator, Goblin Matron, and the token spells Hordeling Outburst, Krenko's Command and Dragon Fodder.
+- **Treasure and card flow:** Charming Scoundrel, Patron of the Arts, Rapacious Dragon, Seize the Spoils, Strike It Rich, Ruby Medallion, Fire Diamond, and the kept Captain Lannery Storm, Generous Plunderer, Professional Face-Breaker, Fable of the Mirror-Breaker, Goldspan Dragon, Big Score, Unexpected Windfall, Faithless Looting and four rocks.
+- **Removal:** the kept Lightning Bolt, Shock, Arc Trail, Abrade, Chaos Warp and Vandalblast, with Incinerate, Lightning Strike and Wild Slash.
+- **Out:** Mary Read and Anne Bonny and the whole Pirate and discard plan (the Pirates, Marauding Mako, Scrounging Skyray, Glint-Horn Buccaneer, Magmakin and Ingenious Artillerist, Monument to Endurance, Smuggler's Copter), every blue card (the counterspells, Cyclonic Rift, Pongify, Rapid Hybridization, Preordain, Frantic Search, Mulldrifter, Ledger Shredder), Windfall and Wheel of Fortune, Blaze, Solphim and Ancient Copper Dragon, and the Izzet lands. Ten non-basic lands stay; the rest are 27 Mountains.
+
+**3. The ID becomes `mono-red-aggro`** (owner decision 2, below), following the other mono-coloured decks' colour-archetype IDs; the name is now Forge and Fury and the summary is rewritten. A saved table setup and a player's last deck name a deck by ID, so migration 0018 rewrites `izzet-aggro` to `mono-red-aggro` in `users.last_deck` and in each bot of `table_setups`. `decks.Lookup` still answers `izzet-aggro` with the new deck (`legacyIDs`), for what the migration cannot reach: a guest's browser (which the client also translates as it reads it), an engine snapshot, an operator's script. `IDs()` and the pickers list only the new ID. The rename does not change a game: run 1 at seed 1 plays all 64 games move for move the same under either ID.
+
+### Measured
+
+The tables are under [Measurements, #3071](#3071-izzet-aggro-rebuilt-around-purphoros-2026-10-13). In short, over §8's run 1 and run 2 at seeds 1, 1001, 2001 and 3001:
+
+| | esper, run 1 | izzet, run 1 | mono-black, run 1 | simic, run 1 | Izzet, every `heuristic` seat-game | Run 2 `heuristic` |
+|---|---|---|---|---|---|---|
+| `develop` `f1bf51ff6` | 98 / 256, 38.3% | 9 / 256, 3.5% (1.9%–6.5%) | 81 / 256, 31.6% | 68 / 256, 26.6% | 21 / 448, 4.7% | 274 / 768, 35.7% (32.4%–39.1%) |
+| **the rebuild** | 66 / 256, 25.8% (20.8%–31.5%) | **77 / 256, 30.1% (24.8%–36.0%)** | 69 / 256, 27.0% (21.9%–32.7%) | 44 / 256, 17.2% (13.1%–22.3%) | **152 / 448, 33.9% (29.7%–38.4%)** | 289 / 768, 37.6% (34.3%–41.1%) |
+
+- **Izzet's interval overlaps every other deck's.** It is 29.7% to 31.2% in each seed block, against 1.6% to 6.2% before.
+- **Simic falls to 17.2% in run 1,** below the issue's 20%, and its interval (13.1%–22.3%) still holds 20%. Over every `heuristic` seat-game it is 24.3% (20.6%–28.5%), from 30.6%. The rebuild's wins come from all three decks, and Esper loses the most (38.3% to 25.8%), but Simic is the one that ends lowest. See question 3.
+- **The commander is what moved it.** Scouted with run 1, the same engine cards under a blue-red commander, in a list with blue card flow, won 8% to 10%, and two lighter versions of this list won as much as it does (below). Only Purphoros in the command zone took the deck past 25%.
+- **Run 2 is not worse.** `heuristic` wins 37.6% of its seat-games, against 35.7% on `develop`, and its lower bound clears 25% in every seed block.
+- **The cards are used.** The `never` lists hold at most two of Izzet's rows per seed block (Pashalik Mons's sacrifice and Fearless Liberator's boast), against two or three before. Hordeling Outburst is cast in 9 of the 37 games it is offered in, and Krenko, Mob Boss's activation is taken in 8 of 30; see question 5.
+- **Health:** 0 stalls, 0 rejected moves and 0 runner fallbacks in all 1,280 games. Turns p50 in run 1 is 12, from 13. The suite is 41 of 41, every tag at 100%.
+
+**Scouted variants** (run 1 only, pooled over the seed blocks named; the list measured above is the last row):
+
+| Variant | Seeds | esper | izzet | mono-black | simic |
+|---|---|---|---|---|---|
+| Vivi Ornitier (UR), a spells-and-tokens list on the same engine cards with blue card flow and counterspells | 1, 1001 | 38 / 128 | 10 / 128, 7.8% | 54 / 128 | 26 / 128 |
+| Gandalf the Grey (UR), the same list with Vivi in the 99 | 1, 1001 | 40 / 128 | 13 / 128, 10.2% | 47 / 128 | 28 / 128 |
+| Purphoros, the first draft (six of its cards never cast) | 1, 1001 | 37 / 128 | 37 / 128, 28.9% | 31 / 128 | 23 / 128, 18.0% |
+| Purphoros, the proposed cards in a different order (so every game is dealt differently) | 1, 1001, 2001 | 55 / 192 | 52 / 192, 27.1% | 48 / 192 | 37 / 192, 19.3% |
+| the same without Torbran, one more Mountain | 1, 1001, 2001 | 47 / 192 | 65 / 192, 33.9% | 43 / 192 | 37 / 192, 19.3% |
+| the proposed list without Torbran, Hellrider, Witty Roastmaster and Molten Gatekeeper, for Thrill of Possibility, Ox of Agonas, Commander's Sphere and a Mountain | 1–3001 | 55 / 256 | 86 / 256, 33.6% | 75 / 256 | 40 / 256, 15.6% |
+| the proposed list without Witty Roastmaster, Molten Gatekeeper and Agate Instigator, for three Mountains | 1–3001 | 78 / 256 | 77 / 256, 30.1% | 59 / 256 | 42 / 256, 16.4% |
+| **proposed** | 1–3001 | 66 / 256 | **77 / 256, 30.1%** | 69 / 256 | 44 / 256, 17.2% |
+
+A deck list's card order decides the shuffle, so a list in a new order is a new sample: the fourth row is the proposed cards in the scouting order, and it lands 3 points from the proposed row. Taking out the strongest cards did not make the deck weaker beyond that noise, and Simic sits between 15.6% and 19.3% under every Purphoros list.
+
+### Options considered and rejected
+
+- **Keeping a blue-red commander.** Vivi Ornitier and Gandalf the Grey, on the same engine cards, are 8% and 10%: better than 3.5%, and still far below the other decks. Saheeli, Jewel of Avishkar, the first choice, is not legal in Commander in the Scryfall dump.
+- **A weaker Purphoros list,** to leave Simic above 20%. Two were measured over four seed blocks (above), and neither moved Izzet or Simic beyond noise.
+- **More card swaps on the Mary Read list.** #2480 measured three sets and none moved it.
+
+### Questions for the owner (#3071, answered 2026-10-13)
+
+Each lists the recommended option first.
+
+1. **The rebuild.**
+   - **(a) Recommended:** accept the Purphoros list. Izzet's run-1 interval overlaps every other deck's, run 2 is not worse, and every card is graded `full`.
+   - **(b)** Keep the deck blue-red with Gandalf the Grey's list, at about 10%.
+   - **(c)** Reject. The deck stays as it is.
+2. **The ID and the name.** The deck is mono-red with the ID `izzet-aggro` and the name Forge and Fury.
+   - **(a) Recommended:** keep the ID now and file a follow-up to rename it (with a migration of saved table setups and last-deck records), so this PR changes the list and nothing that stores it.
+   - **(b)** Rename the ID in this PR.
+   - **(c)** Keep the ID for good; only the name says what the deck is.
+3. **Simic at 17.2% in run 1** (13.1%–22.3%; 24.3% over every `heuristic` seat-game).
+   - **(a) Recommended:** accept it as about 20%, and re-measure Simic when #3146 (Greenwarden's doubling, a payoff's cast price, fetch lands) is built, since it is the deck that issue strengthens.
+   - **(b)** Hold the rebuild until #3146 lands.
+   - **(c)** Look for a weaker Purphoros list. Two attempts did not move it.
+4. **The A3 canary.** Mary Read and Anne Bonny's loot (§8, A3) is in no curated deck now, so the arena report shows it as not offered.
+   - **(a) Recommended:** replace it with Faithless Looting (cast), the loot class in the rebuilt deck, in a follow-up.
+   - **(b)** Drop the canary.
+5. **Two token makers the heuristic undervalues.** Hordeling Outburst is cast in 9 of 37 games, and Krenko, Mob Boss's activation, which declares no token count because its X is counted at resolution, is taken in 8 of 30.
+   - **(a) Recommended:** one Backlog issue to price token-making activations by the tokens and what they trigger, measured on this deck.
+   - **(b)** Leave them.
+
+### Owner decisions (#3071, 2026-10-13)
+
+The owner accepted the amendment on 2026-10-13. They took the recommendation on questions 1, 3, 4 and 5, and option (b) on question 2. Decision 3 above was rewritten to match; no other section changed.
+
+1. **The rebuild is accepted:** the Purphoros list, as measured.
+2. **The ID is renamed in this PR,** to `mono-red-aggro`, with migration 0018 for saved table setups and last-deck records, and `izzet-aggro` kept as an alias that resolves to it (decision 3).
+3. **Simic's 17.2% in run 1 is accepted** as about 20%. It is re-measured when [#3146](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3146) is built, which a comment on that issue records.
+4. **The A3 loot canary becomes Faithless Looting (cast):** [#3164](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3164), in Backlog.
+5. **The token makers are one Backlog issue:** [#3165](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3165), pricing token-making spells and activations by what the tokens trigger.
 
 ## Consequences
 
@@ -2233,3 +2482,137 @@ Not detectably worse at either step: the lower bound clears 25% at `develop` and
 - `boteval suite run --policy heuristic`: 41 of 41 at step 2, every tag at 100%.
 - `go test ./...`: green, including `TestImpulseIsTakenInTheOwnMainPhase`, `TestImpulseIsNotTakenWhenTheCardWouldBeLost`, `TestImpulseNeedsBothSwitches` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`), so none was re-pinned.
 - With the dump, `go test ./internal/decks/`: green. `TestRealDumpDecksAreLegalCommanderDecks` now matches a double-faced card by its front face, as `Load`'s oracle-ID check does.
+
+### #3066: blocks that survive as a set (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-blocks-that-survive-as-a-set), accepted. `develop` is `2b6f13831`, with #3065's commander-trade horizon and #2480's impulse price. The branch is that tree with `BlockSetSurvives` on, so `develop` is the row with it off. The runs are #2400's and #2474's: non-race lockstep runs of `TestFourHeuristicBotsPlayToAWinner` (seeds 101–112) and `TestTwoHeuristicBotsPlayToAWinner` (seeds 201–212) with `AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12`, `TestHeuristicBeatsRandomHeadToHead`, and the seed-1409 mirrors in `lockstep_game_test.go`, each with `AISEAT_DEBUG=1` so the move logs can be compared. Run 1 is §8's (four `heuristic` seats, 64 games, seed 1, `--rotate --lockstep`, the real dump). A board is the turns with the edge on seat 0 / seat 1.
+
+| | 4-seat mean | 2-seat mean | Drake | Wurm + Bear | Wurm + Ogre | full Wurm |
+|---|---:|---:|---|---|---|---|
+| `develop` | 16.17 | 13.25 | 8 / 8 | 1 / 2 | 5 / 6 | 7 / 6 |
+| **`BlockSetSurvives`** | **16.08** | **13.33** | 8 / 8 | 1 / 2 | 5 / **7** | **8 / 7** |
+
+No gate game stalls, and heuristic beats random 12–0, on both.
+
+**Per game that changes** (turns / winner seat). Every other game plays move for move as on `develop`: the move logs differ only in these five games, and in each the first different move is a block the check changed.
+
+| Game | `develop` | `BlockSetSurvives` | The first different move |
+|---|---|---|---|
+| seed 104 | 13 / 2 | **12** / 2 | A defender with its commander as its only blocker faces a Wurm, an Ogre and a Bear. It chumps the Ogre (+3.65) where it blocked the Bear (+6.90), and lives through the combat that killed it on `develop`. |
+| seed 202 | 13 / 0 | **14** / 0 | The defender's fourth block: its commander chumps the second Ogre (+3.65) where it joined a Bear on the first to kill it (+4.35), which let lethal through. |
+| Wurm + Ogre, edge seat 1 | 6 / 1 | **7** / 1 | The defender, on 4 with its commander, faces an Ogre and a commander. It chumps the Ogre and takes 3 (+3.65) where it traded commanders and took 4 (+6.00). |
+| full Wurm, edge seat 0 | 7 / 0 | **8** / 0 | The issue's board. The defender, on 3, trades commanders and takes 2 (+6.00) where it blocked the Bear and took 3 (+6.90). |
+| full Wurm, edge seat 1 | 6 / 1 | **7** / 1 | The same board with the seats swapped. |
+
+**The full Wurm mirror, move by move** (edge on seat 0; seat 1 is the mirror image). Round 7: seat 0 sends the commander and the Bear (`attack: attrition — 0 of mine (1 cast again) for 0 of theirs and 2 sure now, a race within 2 exchange(s); crack-back 3 < my 6`). Seat 1 blocks commander on commander (`block: chump to survive, a set that survives (+6.00)`), takes 2 from the Bear and is on 1. Both commanders go to the command zone, and seat 0 casts its own again in its second main phase. Seat 1 casts its own in its turn. Round 8: seat 0's commander is not summoning sick, so seat 0 sends the Bear and the commander at once (`attack: all-in for the kill`). Seat 1 has one blocker and two attackers, no block survives, and it dies on −2. The horizon's planned line had a waiting turn between the two swings, which the game does not need ([the amendment](#amendment-2026-10-12-blocks-that-survive-as-a-set)).
+
+**Run 1, seed 1** (wins of 64): esper-control 18, izzet-aggro 5, mono-black-aristocrats 25, simic-ramp 16, on `develop` and on the branch. All 64 games end on the same turn with the same winner, the same lives and the same number of decisions for every seat. 0 stalls, turns p50 13, and the `never` lists are the same.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`.
+- `go test ./internal/aiseat/heuristic/ ./internal/aiseat/suite/...`: green. `TestBaselineConfigRanksTheSuiteAsBefore` holds, since `BaselineConfig()` turns the switch off. The new decision tests are in `heuristic/blockset_decide_test.go`: the issue's board (and, with the switch off, the old +6.90 Bear block), commander damage on 19 and on 18, the tenth poison counter from toxic, trample overflow, a set that needs two blockers, and a board where no set survives, which decides as with the switch off.
+- `AISEAT_GAME_TESTS=1 AISEAT_HEURISTIC_GAMES=12 AISEAT_H2H_GAMES=12 AISEAT_WALLCLOCK=600s` over `./internal/aiseat/` with `-race`: green, and its gate seeds and mirrors match the non-race runs above game for game. `./internal/aiseat/...` and `./internal/botarena/` are green too. Decision latency over 2294 decisions is p50 112µs, p99 9.75ms and max 51.8ms (`-race`, with the other `-race` packages running beside it), under the 50ms p99 bar.
+- **Latency without `-race`,** three runs of `TestHeuristicDecisionLatency` each, on the same box one after the other: `develop` p50 13.2–13.4µs, p99 1.10–1.14ms, max 5.0–5.5ms over 2389 decisions; the branch p50 13.8–14.2µs, p99 1.14–1.21ms, max 7.2–7.8ms over 2294 decisions. Its game (seed 4242) is one of the games a block changes, so the two are not the same decisions. The check runs only when finishing the declaration kills, and stops at the first set that survives.
+
+### #3072: landfall payoffs (2026-10-12)
+
+The [amendment of 2026-10-12](#amendment-2026-10-12-landfall-payoffs), accepted (owner decisions 2026-10-13). `develop` is `489b289aa`, with #3066's block check and #2480's impulse price. The branch is that tree with `PriceLandfallPayoffs` true in `DefaultConfig()` and false in `BaselineConfig()`, and the declarations; no weight is new. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). Each at seeds 1 and 1001. **0 stalls, 0 rejected moves and 0 runner fallbacks in every run.** The raw decision logs were deleted once the tables were extracted.
+
+**Run 1** (wins of 64, Wilson 95%):
+
+| Deck | Seed 1, `develop` | Seed 1, branch | Seed 1001, `develop` | Seed 1001, branch | Pooled, `develop` | Pooled, branch |
+|---|---|---|---|---|---|---|
+| esper-control | 18, 28.1% (18.6%–40.1%) | 18, 28.1% (18.6%–40.1%) | 27, 42.2% (30.9%–54.4%) | 24, 37.5% (26.7%–49.7%) | 45 / 128, 35.2% (27.4%–43.8%) | 42 / 128, 32.8% (25.3%–41.3%) |
+| izzet-aggro | 5, 7.8% (3.4%–17.0%) | 4, 6.2% (2.5%–15.0%) | 1, 1.6% (0.3%–8.3%) | 1, 1.6% (0.3%–8.3%) | 6 / 128, 4.7% (2.2%–9.8%) | 5 / 128, 3.9% (1.7%–8.8%) |
+| mono-black-aristocrats | 25, 39.1% (28.1%–51.3%) | 22, 34.4% (23.9%–46.6%) | 24, 37.5% (26.7%–49.7%) | 24, 37.5% (26.7%–49.7%) | 49 / 128, 38.3% (30.3%–46.9%) | 46 / 128, 35.9% (28.1%–44.5%) |
+| simic-ramp | 16, 25.0% (16.0%–36.8%) | 20, 31.2% (21.2%–43.4%) | 12, 18.8% (11.1%–30.0%) | 15, 23.4% (14.7%–35.1%) | 28 / 128, 21.9% (15.6%–29.8%) | **35 / 128, 27.3% (20.4%–35.6%)** |
+| games that differ from `develop` | — | 44 (20 winners) | — | 45 (15 winners) | | |
+| turns p50 | 13 | 13 | 14 | 14 | | |
+
+`never` lists are the same on both, apart from Izzet's at seed 1001, which Glint-Horn Buccaneer's and Reflection of Kiki-Jiki's activations leave on the branch (in games the change re-dealt). Burnished Hart's activation stays `never` on mono-black-aristocrats, which has no landfall payoff.
+
+**Run 2** (wins of 48 per deck):
+
+| | Seed 1, `develop` | Seed 1, branch | Seed 1001, `develop` | Seed 1001, branch |
+|---|---|---|---|---|
+| half A, `heuristic` esper / izzet | 17 / 5 | 17 / 5 | 27 / 3 | 27 / 3 |
+| half A, `heuristic-baseline` black / simic | 13 / 13 | 13 / 13 | 7 / 11 | 7 / 11 |
+| half B, `heuristic` black / simic | 25 / 20 | 20 / 20 | 24 / 13 | 24 / 15 |
+| half B, `heuristic-baseline` esper / izzet | 2 / 1 | 6 / 2 | 10 / 1 | 6 / 3 |
+| **`heuristic`** | **67 / 192, 34.9% (28.5%–41.9%)** | **62 / 192, 32.3% (26.1%–39.2%)** | **67 / 192, 34.9% (28.5%–41.9%)** | **69 / 192, 35.9% (29.5%–42.9%)** |
+| games that differ, halves A / B | — | 0 / 34 | — | 0 / 38 |
+
+Pooled over both seeds, `heuristic` is 134 / 384, 34.9% (30.3%–39.8%) on `develop` and 131 / 384, 34.1% (29.6%–39.0%) on the branch; `heuristic-baseline` 58 and 61 of 384. Half A plays every game as `develop` does, because no `heuristic` seat there holds a landfall payoff and `heuristic-baseline` has the switch off. Turns p50 is unchanged in every half.
+
+**Simic, every `heuristic` seat-game** (run 1 at both seeds and run 2's half B): 61 / 224, 27.2% (21.8%–33.4%) on `develop`; 70 / 224, 31.2% (25.5%–37.6%) on the branch.
+
+**Simic's land-makers** (`heuristic` seats; games used of games offered, and windows taken of windows offered):
+
+| Card | Run 1, `develop` | Run 1, branch | Run 2 half B, `develop` | Run 2 half B, branch |
+|---|---|---|---|---|
+| Burnished Hart, activation | 5 of 27 games (5 of 1,047 windows) | **21 of 26 (21 of 225)** | 2 of 19 (2 of 786) | **12 of 17 (12 of 140)** |
+| Sakura-Tribe Elder, activation | 17 of 42 | 33 of 41 | 13 of 31 | 23 of 26 |
+| Explosive Vegetation | 28 of 55 | 50 of 67 | 20 of 37 | 29 of 37 |
+| Harrow | 47 of 56 | 56 of 61 | 37 of 41 | 39 of 42 |
+| Cultivate | 48 of 61 | 58 of 65 | 30 of 45 | 35 of 43 |
+| Kodama's Reach | 34 of 47 | 49 of 58 | 36 of 46 | 39 of 45 |
+
+By seed, in run 1: the Hart's activation went from 3 of 13 games (3 of 728 windows) to 9 of 11 (9 of 64) at seed 1, and from 2 of 14 (2 of 319) to 12 of 15 (12 of 161) at seed 1001. From run 1's decision logs at seed 1, Simic controlled a landfall payoff in 540 of the 559 Hart windows the logs carry on `develop` (2 taken); on the branch, in 36 of 49 (8 taken), and the activation's price in those windows had a median of +1.04 against −0.80 on `develop`.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`.
+- `go test -race ./...`: green, including `TestHartIsActivatedWithTatyovaOut`, `TestHartIsKeptWhenTheLandsPayLittle`, `TestHartWithTatyovaNeedsTheSwitch`, `TestARampSpellIsWorthMoreWithTatyovaOut`, `TestEveryLandfallAmountIsPriced`, `TestLandfallPayoffDeclarations`, `TestLandfallPayoffGuard`, `TestLandfallPayoffOnTheWire` and `TestBaselineConfigRanksTheSuiteAsBefore`. No pinned arena digest moved (`opening_roll_pin_test.go`).
+- `AISEAT_GAME_TESTS=1` over `./internal/aiseat/` with `-race` and `-timeout=60m`: every game test passes but `TestFourRandomBotsPlayToAWinner`, whose three games (seeds 31000–31002) hit the 300 s wall clock at turns 19–20. It fails the same way on `develop` `489b289aa`, run alone on a quiet machine, and it seats the random policy, which reads no purpose. It is [#3147](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3147).
+
+### #3071: izzet-aggro rebuilt around Purphoros (2026-10-13)
+
+The [amendment of 2026-10-13](#amendment-2026-10-13-izzet-aggro-rebuilt-around-purphoros), accepted (owner decisions 2026-10-13). The runs below name the deck `izzet-aggro`: they were taken before the owner had the ID renamed to `mono-red-aggro`. `develop` is `f1bf51ff6`, with #3072's landfall price; the branch is that tree with the rebuilt list, and no price, weight or switch changes. Every run is `--rotate --lockstep` with the real dump. Run 1 is §8's (four `heuristic` seats, 64 games); run 2 is §8's, `--games 48` with `heuristic` on esper-control and izzet-aggro (half A), then on mono-black-aristocrats and simic-ramp (half B). Each at seeds 1, 1001, 2001 and 3001. **0 stalls, 0 rejected moves and 0 runner fallbacks in all 640 games on each side.** The raw run directories were deleted once the tables were extracted.
+
+**Run 1** (wins of 64 per seed block, Wilson 95%):
+
+| Deck | Seed 1, `develop` | Seed 1, rebuild | Seed 1001, `develop` | Seed 1001, rebuild | Seed 2001, `develop` | Seed 2001, rebuild | Seed 3001, `develop` | Seed 3001, rebuild | Pooled, `develop` | Pooled, rebuild |
+|---|---|---|---|---|---|---|---|---|---|---|
+| esper-control | 19, 29.7% (19.9%–41.8%) | 18, 28.1% (18.6%–40.1%) | 24, 37.5% (26.7%–49.7%) | 20, 31.2% (21.2%–43.4%) | 30, 46.9% (35.2%–58.9%) | 16, 25.0% (16.0%–36.8%) | 25, 39.1% (28.1%–51.3%) | 12, 18.8% (11.1%–30.0%) | 98 / 256, 38.3% (32.5%–44.4%) | 66 / 256, 25.8% (20.8%–31.5%) |
+| izzet-aggro | 4, 6.2% (2.5%–15.0%) | 19, 29.7% (19.9%–41.8%) | 1, 1.6% (0.3%–8.3%) | 19, 29.7% (19.9%–41.8%) | 2, 3.1% (0.9%–10.7%) | 20, 31.2% (21.2%–43.4%) | 2, 3.1% (0.9%–10.7%) | 19, 29.7% (19.9%–41.8%) | 9 / 256, 3.5% (1.9%–6.5%) | 77 / 256, 30.1% (24.8%–36.0%) |
+| mono-black-aristocrats | 21, 32.8% (22.6%–45.0%) | 13, 20.3% (12.3%–31.7%) | 24, 37.5% (26.7%–49.7%) | 17, 26.6% (17.3%–38.5%) | 17, 26.6% (17.3%–38.5%) | 16, 25.0% (16.0%–36.8%) | 19, 29.7% (19.9%–41.8%) | 23, 35.9% (25.3%–48.2%) | 81 / 256, 31.6% (26.3%–37.6%) | 69 / 256, 27.0% (21.9%–32.7%) |
+| simic-ramp | 20, 31.2% (21.2%–43.4%) | 14, 21.9% (13.5%–33.4%) | 15, 23.4% (14.7%–35.1%) | 8, 12.5% (6.5%–22.8%) | 15, 23.4% (14.7%–35.1%) | 12, 18.8% (11.1%–30.0%) | 18, 28.1% (18.6%–40.1%) | 10, 15.6% (8.7%–26.4%) | 68 / 256, 26.6% (21.5%–32.3%) | 44 / 256, 17.2% (13.1%–22.3%) |
+| turns p50 | 13 | 12 | 13 | 12 | 13 | 12 | 13 | 12 | | |
+| not ended / rejected / fallbacks | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | 0 / 0 / 0 | | |
+
+`never` lists for izzet-aggro. `develop`: Glint-Horn Buccaneer's, Marauding Mako's and Scrounging Skyray's activations at seed 1; Mako's and Skyray's at 1001 and 3001; Glint-Horn's, Reflection of Kiki-Jiki's and Skyray's at 2001. Rebuild: none at seed 1; Pashalik Mons's sacrifice at 1001; Fearless Liberator's boast at 2001; both at 3001. The other decks' lists are the same on both sides, apart from rows that come and go with the games dealt (Warren Soultrader's and Hedron Archive's activations, Burnished Hart's on mono-black).
+
+**Run 2** (wins of 48 per deck per half):
+
+| | Seed 1, `develop` | Seed 1, rebuild | Seed 1001, `develop` | Seed 1001, rebuild | Seed 2001, `develop` | Seed 2001, rebuild | Seed 3001, `develop` | Seed 3001, rebuild |
+|---|---|---|---|---|---|---|---|---|
+| half A, `heuristic` esper / izzet | 17 / 5 | 21 / 17 | 27 / 3 | 24 / 16 | 30 / 3 | 19 / 22 | 31 / 1 | 19 / 20 |
+| half A, `heuristic-baseline` black / simic | 13 / 13 | 5 / 5 | 7 / 11 | 3 / 5 | 11 / 4 | 5 / 2 | 8 / 8 | 4 / 5 |
+| half B, `heuristic` black / simic | 20 / 20 | 19 / 13 | 24 / 15 | 17 / 17 | 24 / 16 | 19 / 20 | 20 / 18 | 11 / 15 |
+| half B, `heuristic-baseline` esper / izzet | 6 / 2 | 5 / 11 | 6 / 3 | 6 / 8 | 6 / 2 | 4 / 5 | 9 / 1 | 6 / 16 |
+| **`heuristic`** | 62 / 192, 32.3% (26.1%–39.2%) | 70 / 192, 36.5% (30.0%–43.5%) | 69 / 192, 35.9% (29.5%–42.9%) | 74 / 192, 38.5% (31.9%–45.6%) | 73 / 192, 38.0% (31.5%–45.1%) | 80 / 192, 41.7% (34.9%–48.7%) | 70 / 192, 36.5% (30.0%–43.5%) | 65 / 192, 33.9% (27.5%–40.8%) |
+| **`heuristic-baseline`** | 34 / 192, 17.7% (13.0%–23.7%) | 26 / 192, 13.5% (9.4%–19.1%) | 27 / 192, 14.1% (9.8%–19.7%) | 22 / 192, 11.5% (7.7%–16.7%) | 23 / 192, 12.0% (8.1%–17.3%) | 16 / 192, 8.3% (5.2%–13.1%) | 26 / 192, 13.5% (9.4%–19.1%) | 31 / 192, 16.1% (11.6%–22.0%) |
+
+Pooled over the four seed blocks, `heuristic` is 274 / 768, 35.7% (32.4%–39.1%) on `develop` and 289 / 768, 37.6% (34.3%–41.1%) on the branch; `heuristic-baseline` 110 and 95 of 768. Every game in every run is dealt differently on the branch, since the Izzet library changed. Turns p50 in run 2 falls by one to three turns in half A and up to two in half B.
+
+**Every `heuristic` seat-game per deck** (run 1 and the `heuristic` half of run 2, four seed blocks):
+
+| Deck | `develop` | Rebuild |
+|---|---|---|
+| esper-control | 203 / 448, 45.3% (40.8%–49.9%) | 149 / 448, 33.3% (29.1%–37.7%) |
+| izzet-aggro | 21 / 448, 4.7% (3.1%–7.1%) | 152 / 448, 33.9% (29.7%–38.4%) |
+| mono-black-aristocrats | 169 / 448, 37.7% (33.4%–42.3%) | 135 / 448, 30.1% (26.1%–34.5%) |
+| simic-ramp | 137 / 448, 30.6% (26.5%–35.0%) | 109 / 448, 24.3% (20.6%–28.5%) |
+
+**Izzet's cards in run 1** (games used of games offered, four seed blocks): Purphoros cast in 253 of 253; Siege-Gang Commander 47 of 54, Krenko, Mob Boss 63 of 69, Impact Tremors 44 of 48, Torbran 42 of 45, Fanatic of Mogis 46 of 47, Goldspan Dragon 36 of 36. The least used: Pashalik Mons's sacrifice 2 of 34, Fearless Liberator's boast 1 of 5, Krenko, Mob Boss's activation 8 of 30, Hordeling Outburst 9 of 37, Seize the Spoils 14 of 38.
+
+**The scouted variants** in the amendment's table were each built as their own binary and run with run 1 only, at the seeds named. A list in another card order is another set of games, which is why the scouting order of the proposed cards is its own row.
+
+**Other gates on the branch:**
+
+- `boteval suite run --policy heuristic`: 41 of 41, every tag at 100%, as on `develop`. The positions are fixed boards, so a deck list does not change them.
+- `go test -race ./...`: green. No pinned arena digest moved (`opening_roll_pin_test.go` seats the synthetic battle deck), so none was re-pinned.
+- With the dump, `go test ./internal/decks/ ./internal/botarena/ ./internal/lobby/ ./internal/tablesetups/ ./cmd/boteval/`: green for izzet-aggro, including `TestLockstepRotatedSeedsReplay` (seeds 13 and 52 replay move for move), `TestRealDumpPurposeCuratedSpellList` and `TestRealDumpPurposeAudit`. `TestRealDumpDecksAreLegalCommanderDecks` and `TestTriageDecks` fail for mono-green-stompy, mono-white-weenie and boros-voltron, which this PR does not touch: the local dump (2026-09-24) calls a card in each not legal in Commander.
+- **The rename does not change a game.** Run 1 at seed 1, built once with the deck's ID put back to `izzet-aggro` and once with `mono-red-aggro`, plays all 64 games the same (turns, every seat's life and decision count), and both give esper 18, the aggro deck 19, mono-black 13 and Simic 14 wins, as in the table above. The ID is not part of the deal; the card order is.
+- **Migration 0018:** `TestMigration0018RenamesTheDeckInLastDeckRecords` and `TestMigration0018RenamesTheDeckInTableSetups` (a bot named after the old ID keeps its name; other bots, the setup's settings, tablemates, `game_id` and `updated_at` are unchanged). `TestLegacyIDsResolveToTheirReplacement` holds the alias, and the client's `lastDeck.test.ts` a guest's stored old ID.

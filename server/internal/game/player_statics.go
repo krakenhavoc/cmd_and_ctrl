@@ -159,6 +159,23 @@ type PlayerStatic struct {
 	// slice at all, exactly as Leyline of Sanctity's hexproof is not.
 	LifeTotalLocked bool `json:"lifeTotalLocked,omitempty"`
 
+	// LifeFloorOne is "damage that would reduce your life total to less
+	// than 1 reduces it to 1 instead" (Angel's Grace, #3172). Another
+	// payload-told kind of entry, like LifeTotalLocked, with no Keyword.
+	// The damage is still dealt in full (lifelink, "is dealt damage"
+	// triggers and the commander tally see all of it); only the life it
+	// costs is capped, so the part that cost no life rides the event as
+	// DamageNotLifeLoss. Its READER is playerLifeFloorLocked
+	// (life_floor.go).
+	LifeFloorOne bool `json:"lifeFloorOne,omitempty"`
+
+	// CreaturesEnterWithCounters is "each creature you control enters with
+	// N additional <kind> counters on it" for a duration (Arlinn, the
+	// Pack's Hope's +1, #3172). Another payload-told kind of entry; its
+	// READER is the playerEntryCountersReplacement built-in
+	// (player_entry_counters.go). Nil on every other kind of entry.
+	CreaturesEnterWithCounters *EntryCounterGrant `json:"creaturesEnterWithCounters,omitempty"`
+
 	// CastBan is a granted "you/they can't cast …" statement with a
 	// CR 611.2 duration — Avatar's Wrath's "until your next turn, your
 	// opponents can't cast spells from anywhere other than their
@@ -528,6 +545,23 @@ func (g *Game) canPlayerBeTargetedByLocked(p *Player, src TargetSource) bool {
 			// target the player as though they didn't have it
 			// (Kaya, Bane of the Dead; #1560).
 			if p.ID != src.Controller && !g.playerHexproofBypassedLocked(p, src.Controller) {
+				allowed = false
+				return false
+			}
+			return true
+		}
+		// CR 702.11e: "hexproof from [quality]" on a player (Veil of
+		// Summer). The opponent test is hexproof's, the quality test
+		// protection's, and the waiver is hexproof's too.
+		if IsHexproofFromToken(tok) {
+			hq, hok := ParseHexproofFromQuality(tok)
+			if !hok || p.ID == src.Controller {
+				return true
+			}
+			if !charsRead {
+				chars, charsRead = src.Characteristics(), true
+			}
+			if hq.Matches(chars) && !g.playerHexproofBypassedLocked(p, src.Controller) {
 				allowed = false
 				return false
 			}

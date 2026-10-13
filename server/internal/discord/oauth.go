@@ -20,19 +20,34 @@ var (
 	userEndpoint      = "https://discord.com/api/users/@me"
 )
 
-// discordScopes is the set we ask for on every authorize. `identify`
-// is the minimum to read the user's username, avatar, and global
-// display name via /users/@me. We deliberately do not ask for
+// discordScopes is the set we ask for when the sign-up gate is off.
+// `identify` is the minimum to read the user's username, avatar, and
+// global display name via /users/@me. We deliberately do not ask for
 // `email` or `guilds` — the hobby use case doesn't need them, and
 // asking for the minimum reduces the user-facing consent scope
 // (the Discord prompt reads "will see your username and avatar",
 // not "will see your email address").
-const discordScopes = "identify"
+//
+// With the gate on (ADR 0156 §1 item 2) gatedScopes adds
+// `guilds.members.read`, which is what lets the server read the
+// caller's own member record in the community server, roles included.
+// Discord's consent screen then also says the site "will read your
+// member info (nickname, avatar, roles…) in servers you're in"; that
+// line is the cost of the gate, and the privacy notice says so.
+const (
+	discordScopes = "identify"
+	gatedScopes   = "identify guilds.members.read"
+)
 
-// RequestedScopes is the scope string every authorize asks for. The
-// callback records it on the identity when Discord's token response
-// leaves `scope` out.
-const RequestedScopes = discordScopes
+// Scopes is the scope string every authorize asks for: gatedScopes
+// while the gate is on, discordScopes otherwise. The callback records
+// it on the identity when Discord's token response leaves `scope` out.
+func (c Config) Scopes() string {
+	if c.Gate.Enabled() {
+		return gatedScopes
+	}
+	return discordScopes
+}
 
 // Prompt is the authorize URL's `prompt` parameter (ADR 0110 §2).
 type Prompt string
@@ -57,9 +72,10 @@ const (
 // set response headers as needed.
 //
 // prompt is always sent (ADR 0110 §2, reversing the old rule of
-// leaving it out so that consent was asked every time). The scope
-// stays `identify`, so the screen PromptNone skips is one that only
-// ever asked for the username and avatar. What Discord does with
+// leaving it out so that consent was asked every time). The scope is
+// Scopes(): `identify` with the gate off, so the screen PromptNone
+// skips is one that only ever asked for the username and avatar, and
+// `identify guilds.members.read` with it on (ADR 0156 §1 item 2). What Discord does with
 // PromptNone for a user who never authorized the app is not
 // documented; the callback covers either answer by retrying once with
 // PromptConsent (lobby.discordCallback, StateStore.Retry). An empty
@@ -72,7 +88,7 @@ func (c Config) AuthorizeURL(state, codeChallenge string, prompt Prompt) string 
 	q.Set("response_type", "code")
 	q.Set("client_id", c.ClientID)
 	q.Set("redirect_uri", c.RedirectURI)
-	q.Set("scope", discordScopes)
+	q.Set("scope", c.Scopes())
 	q.Set("state", state)
 	q.Set("code_challenge", codeChallenge)
 	q.Set("code_challenge_method", "S256")
@@ -81,7 +97,8 @@ func (c Config) AuthorizeURL(state, codeChallenge string, prompt Prompt) string 
 }
 
 // TokenResponse is the subset of Discord's token-exchange response
-// we care about. The access token is used once, to read /users/@me,
+// we care about. The access token is used to read /users/@me (and,
+// with the sign-up gate on, the caller's member record; ADR 0156 §1),
 // and then dropped; the server mints its own session. The refresh
 // token is kept (ADR 0051 decision 5, S34): the callback hands it to
 // the user store, which stores it encrypted under

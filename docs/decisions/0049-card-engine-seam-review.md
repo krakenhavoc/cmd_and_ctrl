@@ -426,3 +426,11 @@ shipped with the gap as a declared caveat and a pinned test
 The Lady of Otaria's end-step trigger asks "if a land you controlled was put into a graveyard from the battlefield this turn" (CR 603.4). `PlayerTurnTally.PermanentsLeft` (#2148) counts every exit under a player's control and cannot say "a land" or "to a graveyard", and `PermanentsSacrificed` misses a land that was destroyed or put there another way.
 
 `PlayerTurnTally.LandsToGraveyard` is the missing cell, an additive field in snapshot schema 7. It is bumped in `turnTallyListener.OnEvent` from the same `EventLTB` branch that feeds `CreaturesDied`, once the destination is known to be a graveyard: the permanent is read as a land from `lastKnownBattlefield` (CR 608.2h, so an animated land that dies counts) and credited to the controller the exit stamped on the event (CR 603.10a). A bounce, an exile, a nonland permanent and an opponent's land do not count. It resets with the rest of the tally and is read through `Game.LandToGraveyardThisTurn`. Back-out: remove the bump and `TestTurnTallyCountsLandsPutIntoAGraveyard` and `TestTheLadyOfOtariaTakesDwarvesAndBottomsTheRest` fail.
+
+## Amendment 2026-10-13 — the previous turn's noncombat damage record (#3172)
+
+`TurnTally.PrevNoncombatVictims` is the players who were dealt noncombat damage
+during the PREVIOUS turn, stamped from `NoncombatDamage` (which now records the
+`Victim` of each entry) as the tally resets at the turn boundary. It clones,
+snapshots and undoes with the tally. `Game.WasDealtNoncombatDamageLastTurn`
+reads it. Command the Stage's graveyard upkeep trigger is the proof card.

@@ -101,6 +101,15 @@ import (
 // which still gives the digests above it (SelfReplacingDiscards, on,
 // changes no move in these seeds): every line before those is identical.
 //
+// #2899 (CR 508.8): a combat nothing attacks in no longer has a declare
+// blockers or combat damage step, so the passes a seat made in them
+// are gone. Seed 1503 now takes 287 moves to the same turn 3 (it was
+// 346) and seed 31 355 moves to the same turn 9 (it was 399); the
+// turns and the winner are unchanged. Seed 107 is pinned up to its
+// first declared attack, but the turns before it had combats nobody
+// attacked in: its first attack now comes after 399 moves instead of
+// 479.
+//
 // It is also a function of the policies, so a change to how the
 // heuristic attacks or blocks changes a long game after its opening.
 // The four-heuristic case is therefore pinned only up to its first
@@ -134,7 +143,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				},
 				Games: 1, Seed: 1503, TurnBudget: 2, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 346, turns: 3, winner: -1, digest: "82e0b2b6f5074e68ecb39c9987859470e52da06da4c71c3746e18b8566c71545",
+			moves: 287, turns: 3, winner: -1, digest: "4c86a35a2d738c0353bf1f9fe1a653c3a01110b0bab2b5fcaa80ba12264f0b87",
 		},
 		{
 			name: "two seats, eight rounds",
@@ -142,7 +151,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 				Seats: []botarena.SeatSpec{{Tier: tiers.Heuristic}, {Tier: tiers.Heuristic}},
 				Games: 1, Seed: 31, TurnBudget: 8, Wall: 2 * time.Minute, Lockstep: true,
 			},
-			moves: 399, turns: 9, winner: -1, digest: "031029803d1a756948485aece4ec1d4fefc0b6bdd8e0f73d9de5bd3d7a80a8e8",
+			moves: 355, turns: 9, winner: -1, digest: "c922c8e2af0469f731a784c510f48763039b45556f4385dda6237e5f0beaa1f7",
 		},
 		{
 			name: "four heuristic seats to a winner",
@@ -155,7 +164,7 @@ func TestArenaSeededGameIsTheSameGameAfterTheOpeningRollWindow(t *testing.T) {
 			},
 			// The whole pre-ADR-0121 game was 1971 moves, turn 15,
 			// winner 3, digest 45805e9a5f0e48125e8c6330c38df972d884df355fef683eac69c852b57acf08.
-			opening: true, moves: 479, digest: "c77bed159c0d4a0d8643583d33c34737d4163afc665fddf4804f701144850298",
+			opening: true, moves: 399, digest: "29e33501524a9011a5b5abd07797955fc3b0f1013d8f758c890143d00994c4b2",
 		},
 	}
 	for _, c := range cases {

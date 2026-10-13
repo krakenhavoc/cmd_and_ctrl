@@ -30,6 +30,7 @@ func init() {
 		},
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
+			Label:    "Other Pirates you control get +1/+1.",
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				if target.InstanceID == source.InstanceID {

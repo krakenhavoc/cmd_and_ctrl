@@ -709,10 +709,10 @@ func TestRFPBGideonOathlessPingsAnOpponentWhoActivatesALoyaltyAbility(t *testing
 	}
 }
 
-func TestRFPBGideonOathlessIsDeclaredWithItsWardCaveat(t *testing.T) {
+func TestRFPBGideonOathlessCarriesItsWard(t *testing.T) {
 	spec, ok := Lookup(rfpbGideonOathlessOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("Gideon the Oathless must ship with the ward caveat: %+v", spec.Caveats)
+	if !ok || spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Fatalf("Gideon the Oathless is complete since ward—discard landed (#3172): %+v", spec.Caveats)
 	}
 }
 
@@ -763,7 +763,23 @@ func TestRFPBLichsRelicPaidDestroysOnePerOpponent(t *testing.T) {
 	}
 	rfpbCastRelic(t, g, me, 2)
 	answerPayUnless(t, g, me.ID, true)
-	rfpbSettle(t, g, me.ID, refs...)
+	// One clause per opponent, asked one prompt at a time.
+	for i := 0; i < 8; i++ {
+		passPriorityAroundTable(t, g)
+		pick := latestPickTarget(g, me.ID)
+		if pick == nil {
+			break
+		}
+		var ref []game.TargetRef
+		for _, r := range refs {
+			if hasID(pick.PickTargetCards, r.ID) {
+				ref = []game.TargetRef{r}
+			}
+		}
+		if err := g.ResolvePickTargets(pick.ID, me.ID, ref); err != nil {
+			t.Fatalf("resolve the target prompt: %v", err)
+		}
+	}
 	for _, v := range victims {
 		if _, ok := battlefieldCard(g, v); ok {
 			t.Error("a victim survived the Relic")

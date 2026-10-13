@@ -62,12 +62,6 @@ a player right now.
 //
 // Key is Finding.Key() — "<card name> / <mechanic>".
 var adoptableGaps = map[string]string{
-	"Starfall Invocation / gift": `ADR 0089 (#1267) landed gift and adopted it on
-		six cards. Starfall's promised branch returns "a creature card
-		put into your graveyard this way", which needs a resolution-time
-		pick among the cards THIS wipe moved; offering the promise
-		without it would give the opponent a card for nothing, so the
-		card stays unpromisable until that pick is written.`,
 	"Lier, Disciple of the Drowned / flashback": `A phrase collision, pinned
 		rather than dodged (ADR 0106 PR 2, #1806). Lier's granted
 		flashback works (a standing CastPermission, Underworld Breach's
@@ -85,22 +79,6 @@ var adoptableGaps = map[string]string{
 		never will, so there is nothing to adopt — but narrowing the row's
 		phrases to dodge one caveat would blind it to "storm isn't
 		implemented" on the next card.`,
-	"Buster Sword / free cast": `Another phrase collision (slice 296-c, #892).
-		FreeIfYouControlCommander is "you may cast THIS spell without
-		paying its mana cost if you control a commander" — a
-		self-referential alternative cost paid at announce. Buster
-		Sword's declared gap is a different shape entirely: "draw a
-		card, then you may cast a DIFFERENT spell from your hand,
-		chosen interactively, with mana value <= the damage dealt,
-		without paying its cost" — a resolution-time grant over a
-		card the effect has not seen yet, gated by a value only known
-		once the trigger resolves. game.CastPermission explicitly
-		never reaches hand (its own doc comment says so — CR 601.2
-		already allows casting from hand) so there is no adapter from
-		one shape to the other. Nothing to adopt from Deflecting
-		Swat's cycle; narrowing the probe to dodge this caveat would
-		blind it to a real "you control a commander" free cast on the
-		next card.`,
 }
 
 // TestAdoptableGapsArePinned fails on any movement in that set.

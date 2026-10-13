@@ -140,14 +140,26 @@ func Register(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q declares two alternative costs keyed %q", spec.Name, ac.Key))
 		}
 		seenAlt[ac.Key] = true
+		// #3225: a per-offer X ceiling bounds an X the offer's own
+		// price announces, so it needs an {X} to bound; on a cost
+		// without one the engine locks X at 0 (CR 107.3b) and the
+		// number would never be read. A negative is a typo.
+		if ac.XCeiling < 0 {
+			panic(fmt.Sprintf("effects.Register: %q offers %q with a negative XCeiling", spec.Name, ac.Key))
+		}
+		if ac.XCeiling > 0 {
+			if pc, err := game.ParseCost(ac.ManaCost); err != nil || pc.XSlots == 0 {
+				panic(fmt.Sprintf("effects.Register: %q offers %q with an XCeiling but a mana cost %q that has no {X} to bound", spec.Name, ac.Key, ac.ManaCost))
+			}
+		}
 		// S29: an offer bound to a zone the card cannot be cast from
 		// is unclaimable — the cast path rejects the zone before it
 		// ever looks at the price. A card file that wrote one meant
 		// to list the zone as well, and finding out at boot is far
 		// cheaper than finding out when a flashback button never
 		// appears.
-		if ac.FromZone != "" && ac.FromZone != game.ZoneHand && !zoneDeclared(spec.CastableZones, ac.FromZone) {
-			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones",
+		if ac.FromZone != "" && ac.FromZone != game.ZoneHand && !zoneDeclared(spec.CastableZones, ac.FromZone) && !conditionalZoneDeclared(spec.CastableZonesIf, ac.FromZone) {
+			panic(fmt.Sprintf("effects.Register: %q offers %q from %s but does not list that zone in CastableZones or CastableZonesIf",
 				spec.Name, ac.Key, ac.FromZone))
 		}
 		// #1727: an offer's card component rides ONE wire list
@@ -221,6 +233,18 @@ func Register(spec Spec) {
 		if z == game.ZoneExile {
 			panic(fmt.Sprintf("effects.Register: %q declares ZoneExile in CastableZones — an exile cast is a per-instance game.CastPermission, never a card-level declaration (#659, ADR 0066)",
 				spec.Name))
+		}
+	}
+	// ADR 0066 amendment (2026-10-13): a conditional zone is a card-level
+	// declaration too, so the same refusals apply, plus a nil condition,
+	// which would be an unconditional zone written the long way round.
+	for _, cz := range spec.CastableZonesIf {
+		switch {
+		case cz.Zone != game.ZoneGraveyard:
+			panic(fmt.Sprintf("effects.Register: %q declares %s in CastableZonesIf — only a graveyard is a card-level conditional cast zone (hand and command are the format's, exile and the library are per-instance permissions, ADR 0066)",
+				spec.Name, cz.Zone))
+		case cz.Cond == nil:
+			panic(fmt.Sprintf("effects.Register: %q declares %s in CastableZonesIf with no condition — list it in CastableZones", spec.Name, cz.Zone))
 		}
 	}
 	// ADR 0073: the optional additional costs. Six boot checks, each
@@ -305,6 +329,19 @@ func Register(spec Spec) {
 		// payments per cast is a wire shape nothing asks for.
 		if oc.MaxPayments() > 1 && oc.CardsDemanded() {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q repeats and demands cards or permanents — only a mana-only cost may repeat", spec.Name, oc.Key))
+		}
+		// #3232: an {X} in an optional cost is the caster's one announced
+		// X (CR 107.3a), so it is paid at most once — "X, paid three
+		// times" is not a card — and a floor on X is meaningful only on
+		// a cost that charges one. A negative floor is a typo.
+		if oc.MinX < 0 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has a negative MinX", spec.Name, oc.Key))
+		}
+		if oc.MinX > 0 && !game.OptionalCostHasX(oc) {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q declares MinX but its mana cost %q has no {X}", spec.Name, oc.Key, oc.ManaCost))
+		}
+		if game.OptionalCostHasX(oc) && oc.MaxPayments() > 1 {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q has an {X} and repeats — X is one announced number, so it may be paid at most once", spec.Name, oc.Key))
 		}
 		// PayLifeX rides the shared XValue slot (ADR 0021 §3), and two
 		// claimants on one number is a bug waiting to be written.
@@ -434,6 +471,11 @@ func Register(spec Spec) {
 		// auto-tapper another.
 		if ma.PainToYou < 0 || (ma.PainToYou > 0 && ma.Rider != nil) {
 			panic(fmt.Sprintf("effects.Register: %q mana ability %d: PainToYou must be positive and replaces Rider — set one", spec.Name, i))
+		}
+		// #3042: two computed outputs would leave the precedence
+		// (ProducedAmount wins) as the only thing deciding which one runs.
+		if ma.ProducedAmount != nil && ma.ProducedFunc != nil {
+			panic(fmt.Sprintf("effects.Register: %q mana ability %d declares both ProducedAmount and ProducedFunc — set one", spec.Name, i))
 		}
 		// ADR 0130 §4: as for an activated ability, an exert beside a
 		// cost that moves the source is not modelled.
@@ -770,6 +812,9 @@ func Register(spec Spec) {
 	// rewrites a static the way a suspend declaration grows a
 	// trigger — Spec.Static is what the layer pass gathers.
 	game.IndexStaticZones(spec.OracleID, spec.Static)
+	// ADR 0093 amendment 2026-10-13: and the zone-grant statics, so the
+	// layer pass finds a Satoru by one map read per permanent.
+	game.IndexZoneGrants(spec.OracleID, spec.Static)
 	// #623 / CR 114: a card that makes an emblem files a SECOND def
 	// for the emblem object, under "emblem:<this key>". It goes in
 	// `defs` and not in `registry`, so the engine finds the emblem's
@@ -870,7 +915,7 @@ func checkStaticZones(card, what string, statics []game.StaticAbility) {
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells but has no AppliesTo or Apply", card, what, i))
 			case len(s.Zones) > 0:
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells from a declared zone — only the battlefield's statics over spells are gathered", card, what, i))
-			case s.RemovesAbilities || len(s.GrantAbilities) > 0:
+			case s.RemovesAbilities || len(s.GrantAbilities) > 0 || s.Borrows != nil:
 				panic(fmt.Sprintf("effects.Register: %q %s %d affects spells with a removal or an ability bundle — the stack step applies keywords only", card, what, i))
 			}
 		}
@@ -1248,6 +1293,16 @@ func checkTapOthersClause(card, where string, tc *game.TapOthersCost, allowX boo
 func zoneDeclared(zones []game.ZoneKind, zone game.ZoneKind) bool {
 	for _, z := range zones {
 		if z == zone {
+			return true
+		}
+	}
+	return false
+}
+
+// conditionalZoneDeclared is zoneDeclared for Spec.CastableZonesIf.
+func conditionalZoneDeclared(zones []game.ConditionalCastZone, zone game.ZoneKind) bool {
+	for _, z := range zones {
+		if z.Zone == zone {
 			return true
 		}
 	}
@@ -1740,6 +1795,9 @@ func checkPlayerKeywords(spec Spec) {
 			continue
 		}
 		if _, ok := game.ParseProtectionQuality(kw); ok {
+			continue
+		}
+		if _, ok := game.ParseHexproofFromQuality(kw); ok {
 			continue
 		}
 		panic(fmt.Sprintf("effects.Register: %q PlayerKeywords[%d] = %q is not a player ability the engine honours — "+

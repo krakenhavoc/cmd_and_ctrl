@@ -43,7 +43,9 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 )
 
 var (
@@ -187,6 +189,13 @@ func (l *Lobby) CreatePractice(human PracticeHuman, bot PracticeBot) (GameMeta, 
 	}
 	if open >= limits.MaxTables {
 		return GameMeta{}, uuid.Nil, ErrPracticeTablesFull
+	}
+	// A practice table is a table and a bot runner like any other, so
+	// it is held to the load cap too (capacity.go). The caller's own
+	// previous table was dropped above and no longer counts.
+	if !l.limits.Fits(l.loadLocked(), l.limits.TableCost(1, 1)) {
+		metrics.CapacityRefused(metrics.RefuseTableLoad)
+		return GameMeta{}, uuid.Nil, capacity.ErrServerFull
 	}
 
 	g := game.NewGame()

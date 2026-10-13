@@ -119,10 +119,11 @@ func TestHerosBladeDoesNotOfferToAttachToAnOrdinaryCreature(t *testing.T) {
 	}
 }
 
-// --- Dragonfire Blade: the pump ships, the two undeclared clauses --
-// -- do not --------------------------------------------------------
+// --- Dragonfire Blade: the pump and "hexproof from monocolored" ----
+// (#3172 closed the last caveat; the targeting half is in
+// hexproof_from_cards_test.go) ---------------------------------------
 
-func TestDragonfireBladePumpsAndEquipsWithNoHexproofGranted(t *testing.T) {
+func TestDragonfireBladePumpsAndGrantsHexproofFromMonocoloredOnly(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	advanceToMain(t, g)
@@ -137,11 +138,14 @@ func TestDragonfireBladePumpsAndEquipsWithNoHexproofGranted(t *testing.T) {
 	if got := effectiveToughness(t, g, bear); got != 4 {
 		t.Errorf("toughness %d, want 4 (2 base + 2)", got)
 	}
-	// #259: the undeclared "hexproof from monocolored" must not leak
-	// out as plain hexproof, which would be a strictly stronger card
-	// than what is printed.
-	if ab := effectiveAbilities(t, g, bear); containsString(ab, "hexproof") {
-		t.Errorf("abilities %v grant hexproof — the caveated clause must not leak in", ab)
+	ab := effectiveAbilities(t, g, bear)
+	if !containsString(ab, game.HexproofFromMonocolored) {
+		t.Errorf("abilities %v lack %q", ab, game.HexproofFromMonocolored)
+	}
+	// #259: it must not leak out as plain hexproof, which would be a
+	// strictly stronger card than what is printed.
+	if containsString(ab, "hexproof") {
+		t.Errorf("abilities %v grant plain hexproof", ab)
 	}
 }
 

@@ -90,6 +90,13 @@ type Principal struct {
 	GameID   uuid.UUID `json:"game_id,omitempty"`
 	PlayerID uuid.UUID `json:"player_id,omitempty"`
 	Name     string    `json:"name,omitempty"`
+	// SpectatorID names ONE spectator session, minted at POST
+	// /games/{id}/spectate (#3113). It is what lets a table report,
+	// remove or block a spectator, who holds no seat and so has no
+	// PlayerID. Random, carried in the signed token and nowhere else; a
+	// spectator session minted before it existed has none and cannot be
+	// addressed (it ages out with its TTL). Zero for every other role.
+	SpectatorID uuid.UUID `json:"spectator_id,omitempty"`
 
 	// Discord* fields are populated when a RolePlayer session is
 	// minted via the OAuth flow (S12.5). All four are optional —
@@ -124,6 +131,10 @@ var (
 	// user has since signed out everywhere or been removed by an
 	// admin (ADR 0051 decision 6). Only WithRevocation returns it.
 	ErrRevokedCredential = errors.New("auth: revoked credential")
+	// ErrSeatRemoved is a genuine, unexpired player session whose seat
+	// the table's host, creator or the admin has since removed (#2785).
+	// Only WithSeatCheck returns it; the 401 carries SeatRemovedMessage.
+	ErrSeatRemoved = errors.New("auth: seat removed")
 )
 
 // Authenticator mints and validates credentials. Implementations must

@@ -26,7 +26,11 @@ export interface CardMeta {
   toughness?: string;
   loyalty?: string;
   color_identity?: string[];
+  /** Illustrator, from Scryfall. Credited wherever an art crop is the
+   * main view of a card (#2982); the crop itself drops the line. */
+  artist?: string;
   card_faces?: Array<{
+    artist?: string;
     name: string;
     type_line?: string;
     oracle_text?: string;

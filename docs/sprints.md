@@ -3671,6 +3671,33 @@ From the tracker, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/298
 
 ---
 
+## S71 — A front door: site shell, front page and a Discord gate
+
+**Phase:** 7 · **Goal:** one page frame and header across the non-game pages, a front page that merges Login and Home, the C2 Discord server made visible, and sign-up gated by a Discord role. Tracking issue [#3177](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3177); design in [ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md).
+
+Opened 2026-10-13, when the owner asked for the site to be tidied, the Discord server to stop being hidden, and players to ask to be let in through it.
+
+- [ ] ADR 0156
+- [ ] Server: the Discord role gate, re-checked at renewal
+- [ ] Server: guest practice game
+- [ ] Client: page frame, grouped header, footer
+- [ ] Client: front page, gate page, Discord placements
+- [ ] Client: page passes
+
+### Exit criteria
+
+1. With the gate on, a Discord account with only the Planeswalker role cannot create an account. It reaches the gate page, and no `users` row is written for it. The same account with Elder Dragon Highlander signs in.
+2. Removing the role ends that person's access at their next renewal. A Discord outage during a renewal signs nobody out.
+3. A signed-out visitor with no Discord account can play a practice game from the front page, and can join a host's table by invite link.
+4. Every non-game page uses the shared frame. The before and after screenshots at 1440 and 820 px are attached to the slices' PRs.
+5. With `CMDCTRL_DISCORD_INVITE_URL` unset, no Discord placement shows. With the guild and role unset, sign-in behaves as it did before S71.
+
+### Status
+
+**Planned** (2026-10-13).
+
+---
+
 ## Backlog — parked on a dependency or a single card
 
 Not a sprint and has no tracker. The GitHub milestone *Backlog — parked on a dependency or a single card* holds issues that wait on something outside the engine (a keyed or local model endpoint, an owner decision) or that are one card each: [#612](https://github.com/krakenhavoc/cmd_and_ctrl/issues/612), [#735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/735), [#837](https://github.com/krakenhavoc/cmd_and_ctrl/issues/837), [#1735](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1735), [#1815](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1815), [#1824](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1824), [#1841](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1841), [#1852](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1852), [#1859](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1859), [#1863](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1863), [#1864](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1864), [#1865](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1865), [#1866](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1866), [#1893](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1893) (Phylactery Lich: as this enters, put a counter on another permanent you choose). #837 and #735 came from S47 on 2026-10-01. Pull one into a sprint when its dependency clears.

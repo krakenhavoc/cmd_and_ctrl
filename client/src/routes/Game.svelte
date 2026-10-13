@@ -9,8 +9,10 @@
   import { recordClientError } from "../lib/clientErrors";
   import { describeThrown } from "../lib/guardedStore";
   import { navigate } from "../lib/router";
+  import { HISTORY_HASH } from "../lib/tablesPage";
   import { isPracticeGame, practiceTable } from "../lib/practiceTable";
-  import { session } from "../lib/session";
+  import { removedNotice, session } from "../lib/session";
+  import { serverFull } from "../lib/serverFull";
   import {
     adminChipFor,
     adminNotice,
@@ -22,7 +24,15 @@
   import { seatColor } from "../lib/colors";
   import DeckUploadForm from "../lib/components/DeckUploadForm.svelte";
   import BugReportModal from "../lib/components/BugReportModal.svelte";
-  import { discordAuthEnabled, discordLinkHref, fetchBugReportConfig } from "../lib/api";
+  import {
+    discordAuthEnabled,
+    discordLinkHref,
+    fetchBugReportConfig,
+    reportPlayer,
+    fetchSpectators,
+    removeSpectator,
+  } from "../lib/api";
+  import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
   import { castPreviewParamsFromPayload } from "../lib/castPreview";
   import { stampManaEnforcement } from "../lib/manaEnforcement";
@@ -47,11 +57,15 @@
     type TableSettingsPatch,
   } from "../lib/tableSettings";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
+  import VoiceRoom from "../lib/components/VoiceRoom.svelte";
+  import { refreshVoiceRoom, setVoiceRoom, voiceChip } from "../lib/voiceRoom";
+  import { community, loadCommunity } from "../lib/community";
   import CardSpawner from "../lib/components/CardSpawner.svelte";
   import { cardImageURL } from "../lib/cardImage";
   import { cardArt } from "../lib/cardArt";
   import Board from "../lib/components/board/Board.svelte";
   import ConnectionBanner from "../lib/components/ConnectionBanner.svelte";
+  import RemovedNotice from "../lib/components/RemovedNotice.svelte";
   import { actionsDisabled } from "../lib/connectionBanner";
   import DiscardPromptModal from "../lib/components/board/DiscardPromptModal.svelte";
   import ChoicePromptModal from "../lib/components/board/ChoicePromptModal.svelte";
@@ -69,8 +83,11 @@
   import DockSheet from "../lib/components/board/DockSheet.svelte";
   import { combatMotion, stepChangePlaysCombatSound } from "../lib/combatStrikes";
   import { attackRowRequest, blockRequest, combatSelectionRequest } from "../lib/combatDock";
+  import { findCardView } from "../lib/commanderReturn";
   import {
     GAME_OVER_GRACE_MS,
+    anyPlayerOfferRequest,
+    assistRequest,
     councilVoteRequest,
     gameOverRequest,
     inlineRefusal,
@@ -103,6 +120,7 @@
   import {
     autopassSuspended,
     blockDeclarationPending,
+    holdCombatWindow,
     loopNoticeText,
     owesBlockDecision,
     owesAttackRequirement,
@@ -684,6 +702,9 @@
         lastCastByCardID.set(instanceID, { ...stash });
       }
     }
+    // #672: pulling a creature out of combat must not let smart
+    // auto-pass close the window the correction was made in.
+    if (type === "remove_from_combat") holdCombatWindow(view);
     client.sendAction(type, player, params);
   };
 
@@ -1190,6 +1211,29 @@
   function patchTableSettingsOverSocket(patch: TableSettingsPatch): void {
     client.sendAction("set_table_settings", undefined, patch);
   }
+
+  // ---- The table's Discord voice room (ADR 0159 §6) ----
+  // Its state rides the game view; the two calls here only ask, and the
+  // answer arrives on the next snapshot. The invite is for a player who
+  // is not in the community server yet.
+  void loadCommunity();
+  const voice = $derived(view?.voice);
+  const voiceBarChip = $derived(voiceChip(voice));
+  let voiceBusy = $state(false);
+  let voiceError = $state<string | null>(null);
+  async function voiceCall(fn: () => Promise<void>): Promise<void> {
+    voiceBusy = true;
+    voiceError = null;
+    try {
+      await fn();
+    } catch (err) {
+      voiceError = err instanceof Error ? err.message : "the voice room request failed";
+    } finally {
+      voiceBusy = false;
+    }
+  }
+  const toggleVoice = (enabled: boolean) => voiceCall(() => setVoiceRoom(gameID, enabled));
+  const refreshVoice = () => voiceCall(() => refreshVoiceRoom(gameID));
   // Spectator sessions (S11) are read-only — the server rejects every
   // action frame with bad_request, so the toolbar / mulligan / deck-
   // import / quick-action surfaces all hide here too. Bound by role,
@@ -1822,6 +1866,26 @@
         )
       : null,
   );
+  // ADR 0150 §5: an "unless any player pays" offer, read-only for every
+  // seat but the one asked now, whose own prompt is a pay_unless.
+  const anyPlayerOfferDockRequest = $derived.by(() => {
+    if (!view || !viewerID) return null;
+    const link = view.pending_choices?.find((c) => c.any_player_offer) ?? null;
+    if (!link) return null;
+    const name = findCardView(view, link.source)?.name || "a card";
+    return anyPlayerOfferRequest(link, viewerID, view.seats, name);
+  });
+  // ADR 0150 §5: a cast parked on an assist helper. The caster's line
+  // carries Cancel request (owner decision 5); every other seat but the
+  // helper, whose own prompt is the pay_amount, reads it.
+  const assistDockRequest = $derived.by(() => {
+    if (!view || !viewerID) return null;
+    const ask = view.pending_choices?.find((c) => c.assist) ?? null;
+    if (!ask) return null;
+    return assistRequest(ask, viewerID, view.seats, () =>
+      client.sendAction("cancel_assist", viewerID ?? undefined, { choice_id: ask.id }),
+    );
+  });
   // #2919: Back to lobby is held for a moment after the game ends, so a
   // click meant for `next`, whose corner it takes, cannot leave the table.
   let gameOverArmed = $state(false);
@@ -1876,6 +1940,18 @@
       ? { href: discordLinkHref(gameID), label: linkDiscordLabel(Boolean(viewerSeat?.discord_id)) }
       : null,
     myGames: signedInUserID(sess) !== null,
+    // #2984: report another human seat to the server's admins. The
+    // practice table's only other seat is a bot, so it offers none.
+    reportTargets: dockShown ? reportTargets(seats, viewerID) : [],
+    onReport: async (targetID, reason, kind) => {
+      await reportPlayer(gameID, targetID, reason, kind === "spectator" ? "spectator" : "seat");
+    },
+    // #3113: who is watching, to report one, and (host or admin) to
+    // remove or block one in any game state. A practice table has none.
+    loadSpectators:
+      dockShown && $practiceTable?.gameID !== gameID ? () => fetchSpectators(gameID) : undefined,
+    canRemoveSpectators: canManage && $practiceTable?.gameID !== gameID,
+    onRemoveSpectator: (spectatorID, block) => removeSpectator(gameID, spectatorID, { block }),
     adminMode: adminChip?.kind === "switch" ? { on: adminChip.on } : null,
     onAdminMode: () => void toggleAdminMode(),
     voteOpen: !!view?.vote,
@@ -1905,7 +1981,7 @@
     onLifeHistory: () => (showLifeHistory = true),
     onTableSettings: () => (tableSettingsOpen = true),
     onSpawn: () => (spawnerOpen = true),
-    onMyGames: () => navigate("#/my-games"),
+    onMyGames: () => navigate(HISTORY_HASH),
     onBack: back,
     onConcede: concede,
     onStartVote: (topic, options) =>
@@ -1965,6 +2041,27 @@
          indistinguishable from a drawn one; what the table gets
          instead is this, plus a named line in the game log for every
          use. -->
+    <!-- ADR 0159 §6: the voice room, for a seated player. A link straight
+         into Discord once they are let in; otherwise it opens the panel
+         that says what to do. -->
+    {#if voiceBarChip}
+      {#if voiceBarChip.href}
+        <a
+          class="tag tag-voice"
+          href={voiceBarChip.href}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={voiceBarChip.title}>{voiceBarChip.label}</a
+        >
+      {:else}
+        <button
+          type="button"
+          class="tag tag-voice"
+          title={voiceBarChip.title}
+          onclick={() => (tableSettingsOpen = true)}>{voiceBarChip.label}</button
+        >
+      {/if}
+    {/if}
     {#if spawningOn}
       <span
         class="tag tag-spawn"
@@ -2119,12 +2216,20 @@
     />
   {/if}
 
-  <ConnectionBanner
-    status={$status}
-    attempt={$reconnectAttempt}
-    onRetry={() => client.retryNow()}
-    signedIn={lastKnownSignedIn}
-  />
+  <!-- #2785: a removed seat's socket closes for good, and the plain
+       "Disconnected — Reconnect" banner would offer a redial that is
+       refused. The notice says what happened instead. -->
+  {#if $removedNotice}
+    <RemovedNotice withLink />
+  {:else}
+    <ConnectionBanner
+      status={$status}
+      attempt={$reconnectAttempt}
+      onRetry={() => client.retryNow()}
+      signedIn={lastKnownSignedIn}
+      full={$serverFull}
+    />
+  {/if}
 
   <div class="play-area">
     {#if view}
@@ -2382,6 +2487,12 @@
         {#if councilVoteDockRequest}
           <DockRequest request={councilVoteDockRequest} />
         {/if}
+        {#if anyPlayerOfferDockRequest}
+          <DockRequest request={anyPlayerOfferDockRequest} />
+        {/if}
+        {#if assistDockRequest}
+          <DockRequest request={assistDockRequest} />
+        {/if}
         {#if fanfare && !fanfareDismissed}
           <GameEndFanfare
             {fanfare}
@@ -2401,6 +2512,7 @@
           {autopassEnabled}
           {loopNotice}
           {readyActions}
+          attackersReady={attackAllReady ? attackPlan.eligible.length : 0}
           onPassPriority={passPriority}
           onPassTurn={passTurn}
           onToggleAutopass={toggleAutopass}
@@ -2561,6 +2673,18 @@
           gameState={gameEnded ? "ended" : "active"}
           onpatch={patchTableSettingsOverSocket}
         />
+        {#if voice}
+          <VoiceRoom
+            {voice}
+            {canManage}
+            ended={gameEnded}
+            inviteURL={$community.invite_url}
+            ontoggle={toggleVoice}
+            onrefresh={refreshVoice}
+            busy={voiceBusy}
+            error={voiceError}
+          />
+        {/if}
         <div class="confirm-actions">
           <button onclick={() => (tableSettingsOpen = false)}>Done</button>
         </div>
@@ -2757,6 +2881,23 @@
     border: 1px solid var(--border, #273049);
     border-radius: var(--radius, 8px);
     overflow: hidden;
+  }
+  /* ADR 0159 §6: the voice room, in Discord's blurple. */
+  .tag-voice {
+    background: rgba(88, 101, 242, 0.16);
+    color: #a5b0ff;
+    border: 1px solid rgba(88, 101, 242, 0.6);
+    font-size: 0.75em;
+    font-weight: 600;
+    padding: 0.15rem 0.6rem;
+    border-radius: 999px;
+    text-decoration: none;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .tag-voice:hover,
+  .tag-voice:focus-visible {
+    background: rgba(88, 101, 242, 0.3);
   }
   .tag-spawn {
     background: rgba(255, 208, 122, 0.14);

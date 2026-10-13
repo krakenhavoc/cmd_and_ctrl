@@ -40,7 +40,22 @@
 //	                        as NULL, with a warning on every boot. Too short
 //	                        or reused: boot fails. Rotating it makes stored
 //	                        refresh tokens unreadable; nothing else breaks.
-//	CMDCTRL_SEED_DEMO    — if "1", seed a 4-player demo game at startup.
+//	                        With the sign-up gate on it is also what lets a
+//	                        renewal re-check the role (ADR 0156 §1 item 5).
+//	CMDCTRL_DISCORD_COMMUNITY_GUILD_ID / CMDCTRL_DISCORD_PLAYER_ROLE_ID
+//	                      — the sign-up gate (ADR 0156 §1): signing in
+//	                        needs this role in this server. Both set: on.
+//	                        Neither: off. One alone, or a malformed
+//	                        snowflake: boot fails.
+//	CMDCTRL_DISCORD_INVITE_URL — the community server's invite, served by
+//	                        GET /community. Unset hides it; not an https
+//	                        URL: boot fails.
+//	CMDCTRL_DISCORD_VOICE_CATEGORY_ID — the category in the community
+//	                        server that table voice rooms go in (ADR
+//	                        0159). Needs CMDCTRL_DISCORD_COMMUNITY_GUILD_ID
+//	                        (boot fails without it, or on a malformed id)
+//	                        and the bot token (off without it).
+//	CMDCTRL_SEED_DEMO   — if "1", seed a 4-player demo game at startup.
 //	                        Useful for the gamecli dev loop when you want a
 //	                        ready-to-go room without going through the lobby.
 //
@@ -81,6 +96,14 @@
 //	CMDCTRL_ANTHROPIC_API_KEY  — hosted alternative (falls back to
 //	                             ANTHROPIC_API_KEY). CMDCTRL_ANTHROPIC_ENDPOINT
 //	                             overrides the API URL.
+//	CMDCTRL_BOT_MODEL_DAILY_TOKENS / CMDCTRL_BOT_MODEL_MONTHLY_TOKENS
+//	                           — caps on HOSTED model spend, in tokens counted
+//	                             from the API's usage fields, per UTC day and
+//	                             month (#2980). Default 1000000 / 10000000; 0
+//	                             turns a cap off. Over a cap the model tiers
+//	                             play the heuristic and leave the picker.
+//	                             Persisted in the database. Not applied to a
+//	                             local endpoint.
 //	CMDCTRL_BOT_MODEL          — model id for routine windows. REQUIRED for a
 //	                             local endpoint (the served model's name);
 //	                             optional for Anthropic, which has defaults.
@@ -132,14 +155,17 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/budget"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/decisionlog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/deckprofile"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/model"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat/tiers"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 
 	// effects/wire.go's init() populates the S14 EffectResolver /
@@ -301,6 +327,10 @@ func main() {
 	if revocations != nil {
 		authenticator = auth.WithRevocation(authenticator, revocations)
 	}
+	// A seat the host, the creator or an admin removed from a
+	// table stops validating (#2785). Same placement rule as above: wrapped
+	// before anything takes a reference to authenticator.
+	authenticator = auth.WithSeatCheck(authenticator, l)
 	// Admin mode (ADR 0112 §2): an allowlisted person is an admin only
 	// while they have switched admin mode on, for 12 hours at a time.
 	// Loaded once here and written through on every switch. A failed
@@ -312,6 +342,17 @@ func main() {
 
 	hub := ws.NewHub(log)
 	hub.SetManager(mgr)
+	// The capacity caps (ADR 0148): installed on the lobby and the hub
+	// BEFORE RestoreFromDisk, which sizes the boot restore against the
+	// load cap.
+	l.SetCapacity(cfg.Capacity, hub.Count)
+	hub.SetMaxConnections(cfg.Capacity.MaxConns)
+	log.Info("capacity caps",
+		"max_table_load", cfg.Capacity.MaxLoad,
+		"weight_table", cfg.Capacity.TableWeight,
+		"weight_human_seat", cfg.Capacity.HumanSeatWeight,
+		"weight_bot_seat", cfg.Capacity.BotSeatWeight,
+		"max_ws_connections", cfg.Capacity.MaxConns)
 	// The admin allowlist (ADR 0110 §3) and admin modes (ADR 0112 §2).
 	// The same *Admins goes to the WebSocket authorizer and the lobby
 	// routes, so the two can never disagree about who is an admin. It
@@ -332,6 +373,10 @@ func main() {
 	// row and closes the person's admin sockets with 4001 so the admin
 	// menu goes away at the table too.
 	go lobby.RunAdminModeSweeper(ctx, admins, hub, log, lobby.AdminModeSweepInterval)
+	// Player reports are kept for lobby.ReportRetention (90 days, stated
+	// on the privacy page). The prune also runs when one is filed or the
+	// list is read; this sweep keeps the promise on a quiet server.
+	go lobby.RunReportSweeper(ctx, l, log, lobby.ReportSweepInterval)
 	// Lobby HTTP mutations (join/deck/start) broadcast through the
 	// hub so clients already on the game page see them immediately.
 	l.SetStateBroadcaster(hub)
@@ -343,6 +388,15 @@ func main() {
 	// table's seats get their owners' mats back.
 	playmats := newPlaymatService(log, cfg.DataDir, database)
 	l.SetPlaymats(playmats)
+	// Table voice rooms (ADR 0159): the manager is attached before
+	// RestoreFromDisk, so a resumed table's game view carries its voice
+	// state again, and started after it, so its boot reconcile sees
+	// every restored table.
+	var voiceRooms *lobby.VoiceManager
+	if cfg.Voice.Enabled() {
+		voiceRooms = lobby.NewVoiceManager(cfg.Voice, log)
+		l.SetVoiceManager(voiceRooms)
+	}
 	// The state gauges (ADR 0123 §3): restore points, games, players and
 	// WebSocket, read from the rooms, the lobby, the hub and the
 	// database at scrape time.
@@ -383,7 +437,8 @@ func main() {
 	// carries its own decklist with oracle text, and before
 	// RestoreFromDisk because a restored bot seat relaunches its
 	// runner and must get the policy its tier names.
-	bots.SetPolicyFactory(botFactory(log, cfg, cardIdx))
+	botPolicies, botBudget := botFactory(log, cfg, cardIdx, database)
+	bots.SetPolicyFactory(botPolicies)
 	// The decision log, when an operator asked for one. Off by
 	// default; a failure to open the directory is logged and the
 	// server boots without it, because a diagnostic is never worth a
@@ -443,6 +498,9 @@ func main() {
 	restoreStart := time.Now()
 	n := l.RestoreFromDisk(log)
 	log.Info("restore from disk complete", "duration", time.Since(restoreStart).Round(time.Millisecond).String(), "resumed", n)
+	if voiceRooms != nil {
+		voiceRooms.Start(ctx)
+	}
 
 	// Optional demo game for the gamecli dev path. Creates a game
 	// directly (bypassing the lobby's invite flow) so you can dial
@@ -455,10 +513,37 @@ func main() {
 	}
 
 	discordCfg := discord.ConfigFromEnv()
+	discordCfg.Gate = cfg.Gate
 	if discordCfg.Enabled() {
 		log.Info("discord oauth enabled", "redirect_uri", discordCfg.RedirectURI)
 	} else {
 		log.Info("discord oauth disabled — set CMDCTRL_DISCORD_CLIENT_ID/SECRET/REDIRECT_URI to enable")
+	}
+	// ADR 0156 §1: said once, either way, like the DM invites below.
+	switch {
+	case !cfg.Gate.Enabled():
+		log.Info("sign-up gate off: any Discord account may sign in; set "+
+			discord.CommunityGuildEnv+" and "+discord.PlayerRoleEnv+" to require the admitting role",
+			"vars", []string{discord.CommunityGuildEnv, discord.PlayerRoleEnv})
+	case database == nil:
+		log.Warn("sign-up gate on with no user database: sign-in is checked, but nothing can be re-checked at renewal")
+	default:
+		log.Info("sign-up gate on: signing in needs the admitting role in the community server, re-checked at renewal",
+			"scopes", discordCfg.Scopes())
+	}
+	if cfg.CommunityInviteURL == "" {
+		log.Info("community invite unset: the client hides its Discord links", "var", discord.InviteURLEnv)
+	}
+	// ADR 0159 §7: said once, either way.
+	switch {
+	case cfg.Voice.Enabled():
+		log.Info("table voice rooms on: hosts may give a table a private room in the community server",
+			"var", discord.VoiceCategoryEnv)
+	case cfg.Voice.MissingToken():
+		log.Info("table voice rooms off: "+discord.VoiceCategoryEnv+" is set but "+discord.BotTokenEnv+
+			" is not (it is provisioned on production only)", "var", discord.BotTokenEnv)
+	default:
+		log.Info("table voice rooms off; set "+discord.VoiceCategoryEnv+" to enable", "var", discord.VoiceCategoryEnv)
 	}
 
 	// The bot token the server itself uses for direct-message invites
@@ -565,8 +650,13 @@ func main() {
 		Cards:       cardIdx,
 		Tokens:      effects.Tokens(),
 		Evictor:     hub,
+		Capacity:    cfg.Capacity,
 		Discord:     discordCfg,
 		DiscordBot:  discordBot,
+		// GET /community (ADR 0156 §6).
+		CommunityInviteURL: cfg.CommunityInviteURL,
+		// Table voice rooms (ADR 0159).
+		DiscordVoice: cfg.Voice,
 		// The DM invite's link is built against the same public origin
 		// bug-report attachments use, and for the same reason there is
 		// no default: a wrong origin produces a DM full of dead links.
@@ -576,12 +666,15 @@ func main() {
 		Users:             userStore,
 		Revocations:       lobbyRevoker(revocations),
 		SessionEvictor:    hub,
+		SeatEvictor:       hub,
+		SpectatorHub:      hub,
 		AdminSockets:      hub,
 		LiveSockets:       hub,
 		DeckLibrary:       deckLibrary,
 		UserSettings:      newUserSettingsStore(database),
 		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
+		Accounts:          newAccountDeleter(database),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -589,6 +682,7 @@ func main() {
 		AdminViews:        newAdminViewStore(database),
 		Log:               log,
 		Bots:              bots,
+		BotBudget:         botBudget,
 		// The four curated archetype decks from S31 sub-PR 5. This
 		// replaced aiseat.PlaceholderDecks() — the ninety-nine
 		// Mountains stand-in sub-PR 4 shipped while the real decks
@@ -761,6 +855,19 @@ type config struct {
 	// whose Discord ID is on it is an admin, like the shared token.
 	// Empty is a supported state. A malformed entry fails the boot.
 	Admins *lobby.AdminList
+	// Gate is ADR 0156 §1's sign-up gate: CMDCTRL_DISCORD_COMMUNITY_GUILD_ID
+	// and CMDCTRL_DISCORD_PLAYER_ROLE_ID, both or neither. One without
+	// the other, or a malformed snowflake, fails the boot.
+	Gate discord.Gate
+	// CommunityInviteURL is CMDCTRL_DISCORD_INVITE_URL, served by GET
+	// /community. Empty hides the client's Discord placements; a value
+	// that is not an https URL fails the boot.
+	CommunityInviteURL string
+	// Voice is ADR 0159 §7's table voice rooms:
+	// CMDCTRL_DISCORD_VOICE_CATEGORY_ID in the community guild, with the
+	// bot token. A malformed id, or a category without the guild, fails
+	// the boot; no bot token leaves it off.
+	Voice discord.Voice
 	// SessionTTL is the lifetime of a session with no user: guest
 	// seats and spectators, admin-token and reclaim-ticket sessions
 	// (CMDCTRL_SESSION_TTL). Default 12h.
@@ -799,6 +906,11 @@ type config struct {
 	// Both zero is the shipped behaviour.
 	BotThink     bool
 	BotMaxTokens int
+	// BotModelLimits are the daily and monthly caps on hosted model
+	// spend, in tokens (CMDCTRL_BOT_MODEL_DAILY_TOKENS /
+	// CMDCTRL_BOT_MODEL_MONTHLY_TOKENS, #2980). On by default; 0
+	// turns a window's cap off. Not applied to a self-hosted model.
+	BotModelLimits budget.Limits
 	// BotDecisionLog is the directory the per-game bot decision log
 	// is written to (CMDCTRL_BOT_DECISION_LOG). Empty is off, which
 	// is the default: the file holds every bot seat's view of one
@@ -815,6 +927,11 @@ type config struct {
 	// Features are the dev-only capabilities this deployment exposes,
 	// derived entirely from Env. Always zero in production.
 	Features appenv.Features
+	// Capacity is the caps and table-creation rates (ADR 0148, #2977):
+	// CMDCTRL_MAX_TABLE_LOAD, the three CMDCTRL_LOAD_WEIGHT_* weights,
+	// CMDCTRL_MAX_WS_CONNECTIONS and the CMDCTRL_CREATE_* rates. Every
+	// one defaults, and a malformed value fails the boot.
+	Capacity capacity.Limits
 	// MetricsAddr is where /metrics is served (CMDCTRL_METRICS_ADDR,
 	// ADR 0123 §2): its own listener, loopback only. Empty is off.
 	MetricsAddr string
@@ -883,6 +1000,13 @@ func loadConfig(log *slog.Logger) config {
 	// Same posture again for the thinking experiment: a run that
 	// asked for thinking and silently got the default would report the
 	// baseline under the experiment's name.
+	lim, lerr := budget.LimitsFromEnv()
+	if lerr != nil {
+		log.Error("bot model spend caps invalid", "err", lerr)
+		os.Exit(1)
+	}
+	c.BotModelLimits = lim
+
 	think, maxTokens, terr := model.ThinkingFromEnv()
 	if terr != nil {
 		log.Error("bot thinking config invalid", "err", terr)
@@ -958,6 +1082,15 @@ func loadConfig(log *slog.Logger) config {
 		c.DataDir = "./data"
 	}
 
+	// A typo in a cap must stop the boot, not leave the server quietly
+	// uncapped (ADR 0148).
+	capLim, cerr := capacity.FromEnv(os.Getenv)
+	if cerr != nil {
+		log.Error("capacity config invalid", "err", cerr)
+		os.Exit(1)
+	}
+	c.Capacity = capLim
+
 	if raw := os.Getenv("CMDCTRL_ALLOWED_ORIGINS"); raw != "" {
 		for _, s := range strings.Split(raw, ",") {
 			if s = strings.TrimSpace(s); s != "" {
@@ -976,6 +1109,27 @@ func loadConfig(log *slog.Logger) config {
 		os.Exit(1)
 	}
 	c.Admins = admins
+
+	// The sign-up gate (ADR 0156 §1 item 1). Half a gate would admit
+	// everyone or no one without saying which, so it stops the boot.
+	gate, gerr := discord.GateFromEnv(os.Getenv)
+	if gerr != nil {
+		log.Error("sign-up gate config invalid", "err", gerr)
+		os.Exit(1)
+	}
+	c.Gate = gate
+	invite, ierr := discord.InviteURLFromEnv(os.Getenv)
+	if ierr != nil {
+		log.Error("community invite invalid", "err", ierr)
+		os.Exit(1)
+	}
+	c.CommunityInviteURL = invite
+	voice, verr := discord.VoiceFromEnv(os.Getenv)
+	if verr != nil {
+		log.Error("voice room config invalid", "err", verr)
+		os.Exit(1)
+	}
+	c.Voice = voice
 
 	if c.AdminToken == "" {
 		log.Error("CMDCTRL_ADMIN_TOKEN is required — set it to a long random string before starting the server")
@@ -1125,6 +1279,17 @@ func newTableSetupStore(database *db.DB) tablesetups.Store {
 	return tablesetups.NewSQLStore(database)
 }
 
+// newAccountDeleter builds self-serve account deletion (ADR 0149,
+// migration 0015). No database returns nil, which keeps it a nil
+// interface: with no database no session has a user, so the route
+// answers 403 before it would ask.
+func newAccountDeleter(database *db.DB) accountdelete.Store {
+	if database == nil {
+		return nil
+	}
+	return accountdelete.NewSQLStore(database)
+}
+
 // newDeckRequestStore builds ADR 0095's deck-request store (migration
 // 0006). No database returns nil, which the lobby reads as "deck
 // requests are off": their rate limit and deduplication live in it.
@@ -1195,7 +1360,7 @@ const (
 //     path.
 //   - neither — `random` and `heuristic` only. Not a broken server:
 //     a smaller one, which says so in the picker.
-func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
+func botFactory(log *slog.Logger, cfg config, idx *cards.Index, database *db.DB) (*tiers.Factory, lobby.BotModelBudget) {
 	var client model.Client
 	local := false
 	switch oc, ac := model.NewOpenAIClient(), model.NewAnthropicClient(); {
@@ -1245,6 +1410,35 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 			"max_think", maxThink)
 	}
 
+	// The spend guard (#2980). Only when there is a transport to
+	// guard. A self-hosted model has no bill, so it gets no caps, but
+	// it keeps the kill switch and the readout.
+	var guard *budget.Budget
+	if client != nil {
+		lim := cfg.BotModelLimits
+		if local {
+			lim = budget.Limits{}
+		}
+		var store budget.Store
+		if database != nil {
+			store = budget.NewSQLStore(database)
+		}
+		guard = budget.New(lim, store, budget.WithLogger(log))
+		client = guard.Wrap(client)
+		st := guard.Status()
+		switch {
+		case local:
+			log.Info("bot model spend caps: none (self-hosted model); the admin kill switch is available", "state", string(st.State))
+		case store == nil:
+			log.Warn("bot model spend caps are on but not persisted (no CMDCTRL_DATA_DIR): a restart resets today's count",
+				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens)
+		default:
+			log.Info("bot model spend caps on",
+				"daily_limit", lim.DailyTokens, "monthly_limit", lim.MonthlyTokens,
+				"day_tokens", st.DailyTokens, "month_tokens", st.MonthlyTokens, "state", string(st.State))
+		}
+	}
+
 	models := tiers.Models{Routine: cfg.BotModel, Frontier: cfg.BotFrontierModel}
 	if local && models.Routine == "" {
 		log.Warn("no bot model id configured; set CMDCTRL_BOT_MODEL to the id your endpoint serves (e.g. the name you `ollama pull`ed). Until then the Anthropic defaults are sent and the endpoint will answer 404.")
@@ -1267,8 +1461,13 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 		log.Info("bot improvisation is on for the model tiers: an uncatalogued spell a bot casts is applied by hand, announced in chat, and undoable by any player for free. Set CMDCTRL_BOT_IMPROVISE=0 to turn it off.")
 	}
 
+	var gate tiers.ModelGate
+	if guard != nil {
+		gate = guard
+	}
 	f := tiers.NewFactory(tiers.FactoryOptions{
 		Client:      client,
+		Gate:        gate,
 		Models:      models,
 		MaxThink:    maxThink,
 		NoImprovise: cfg.BotNoImprovise,
@@ -1286,7 +1485,10 @@ func botFactory(log *slog.Logger, cfg config, idx *cards.Index) *tiers.Factory {
 		}
 	}
 	log.Info("bot tiers available", "tiers", available, "decks", len(decks.IDs()))
-	return f
+	if guard == nil {
+		return f, nil
+	}
+	return f, guard
 }
 
 // loadCardAssets boots the card index and image cache from the data

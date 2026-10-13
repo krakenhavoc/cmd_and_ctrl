@@ -1,6 +1,10 @@
 package protocol
 
 import (
+	"slices"
+
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -176,60 +180,142 @@ type RevealedCardView struct {
 // silently blank itself the moment the library was shuffled, which is
 // the one thing the frame exists to prevent.
 //
+// Like the public log, the projection is split in two and only the
+// first half is cached (#3131). The GROUPING — which events belong to
+// which reveal, on which turn, by which seat — depends on nothing but
+// the events and the seat order, so a revealFold keeps it in the same
+// game-owned slot the log fold lives in and a view pays for the events
+// emitted since the previous one. Before this, every view re-scanned
+// the whole game's events. The RESOLUTION — names, cost, art — depends
+// on the current board, so it runs on a copy of the window every time.
+//
 // Caller must hold the read lock ViewOfGame already holds.
 func publicRevealsOf(g *game.Game, v *GameView) []RevealView {
 	if g == nil || v == nil {
 		return nil
 	}
-	seatOf := seatIndexer(v)
-	turn := 0
+	seatIDs := seatIDsOf(v)
 	var groups []RevealView
-	index := make(map[uint64]int)
+	g.LogProjectionCache().Do(func(slot *any) {
+		c, _ := (*slot).(*logCache)
+		if c == nil {
+			c = &logCache{}
+			*slot = c
+		}
+		if !c.reveals.extends(g, seatIDs) {
+			c.reveals = newRevealFold(seatIDs, g.EventLogGeneration())
+		}
+		c.reveals.feed(g.Events)
+		groups = c.reveals.window(g.Turn.Seq)
+	})
+	if len(groups) == 0 {
+		return nil
+	}
+	resolveRevealCards(groups, v)
+	return groups
+}
 
-	for _, ev := range g.Events {
+// revealFold is the reveal grouping's forward fold over g.Events,
+// stopped at `cursor` and resumable from there (#3131). The validity
+// rules are the log fold's (see logFold.extends): same event-log
+// generation, a log at least as long as the cursor, the same Seq at the
+// last folded event, and the same seat order, because a group carries a
+// seat INDEX.
+type revealFold struct {
+	gen     uint64
+	seatIDs []uuid.UUID
+	seatOf  func(uuid.UUID) int
+	cursor  int
+	lastSeq uint64
+
+	// turn is the running turn number the most recent EventStepBegan
+	// announced; groups are stamped with it as they open.
+	turn int
+	// groups is every reveal the game has made, in order. Only the
+	// tail is ever read (window), so it is not pruned: it holds one
+	// small struct per reveal, not per event.
+	groups []RevealView
+	index  map[uint64]int
+}
+
+func newRevealFold(seatIDs []uuid.UUID, gen uint64) *revealFold {
+	return &revealFold{
+		gen:     gen,
+		seatIDs: seatIDs,
+		seatOf:  seatIndexerOf(seatIDs),
+		index:   make(map[uint64]int),
+	}
+}
+
+// extends reports whether g's event log is the log f folded, possibly
+// grown since, under the same seat order. A nil fold extends nothing.
+func (f *revealFold) extends(g *game.Game, seatIDs []uuid.UUID) bool {
+	if f == nil || f.gen != g.EventLogGeneration() || len(g.Events) < f.cursor {
+		return false
+	}
+	if f.cursor > 0 && g.Events[f.cursor-1].Seq != f.lastSeq {
+		return false
+	}
+	return slices.Equal(seatIDs, f.seatIDs)
+}
+
+// feed folds events[f.cursor:] into the groups. events must extend the
+// list folded so far (see extends).
+func (f *revealFold) feed(events []game.Event) {
+	start := f.cursor
+	for i := start; i < len(events); i++ {
+		ev := &events[i]
 		if ev.Kind == game.EventStepBegan {
-			turn = ev.Amount
+			f.turn = ev.Amount
 			continue
 		}
 		if ev.Kind != game.EventRevealCards || ev.RevealSeq == 0 {
 			continue
 		}
-		at, ok := index[ev.RevealSeq]
+		at, ok := f.index[ev.RevealSeq]
 		if !ok {
-			groups = append(groups, RevealView{
+			f.groups = append(f.groups, RevealView{
 				Seq:      ev.RevealSeq,
-				Turn:     turn,
-				Seat:     seatOf(ev.Actor),
+				Turn:     f.turn,
+				Seat:     f.seatOf(ev.Actor),
 				Reason:   ev.Label,
 				From:     string(ev.OldZone),
 				To:       string(ev.RevealTo),
 				sourceID: uuidStringOrEmpty(ev.Source),
 			})
-			at = len(groups) - 1
-			index[ev.RevealSeq] = at
+			at = len(f.groups) - 1
+			f.index[ev.RevealSeq] = at
 		}
-		groups[at].cardIDs = append(groups[at].cardIDs, uuidStringOrEmpty(ev.CardID))
+		f.groups[at].cardIDs = append(f.groups[at].cardIDs, uuidStringOrEmpty(ev.CardID))
 	}
+	if len(events) > start {
+		f.cursor = len(events)
+		f.lastSeq = events[len(events)-1].Seq
+	}
+}
 
-	// This turn only, most recent PublicRevealMax. Both bounds are
-	// applied from the end, so a turn with a dozen reveals keeps the
-	// four the table is most likely still looking at.
+// window returns the reveals the frame carries, oldest-first, as the
+// caller's own copy: this turn only (turnSeq is g.Turn.Seq), most recent
+// PublicRevealMax. Both bounds are applied from the end, so a turn with
+// a dozen reveals keeps the four the table is most likely still looking
+// at. The card-ID lists are copied because a later feed appends to the
+// fold's own.
+func (f *revealFold) window(turnSeq int) []RevealView {
 	out := make([]RevealView, 0, PublicRevealMax)
-	for i := len(groups) - 1; i >= 0 && len(out) < PublicRevealMax; i-- {
-		if groups[i].Turn != g.Turn.Seq {
+	for i := len(f.groups) - 1; i >= 0 && len(out) < PublicRevealMax; i-- {
+		if f.groups[i].Turn != turnSeq {
 			break
 		}
-		out = append(out, groups[i])
+		r := f.groups[i]
+		r.cardIDs = slices.Clone(r.cardIDs)
+		out = append(out, r)
 	}
 	if len(out) == 0 {
 		return nil
 	}
 	// Collected newest-first above; the wire wants oldest-first, the
 	// same order the log ships in.
-	for i, j := 0, len(out)-1; i < j; i, j = i+1, j-1 {
-		out[i], out[j] = out[j], out[i]
-	}
-	resolveRevealCards(out, v)
+	slices.Reverse(out)
 	return out
 }
 

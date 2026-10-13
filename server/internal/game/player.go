@@ -204,6 +204,15 @@ type Player struct {
 	// an effect wins it (CR 104.2b), which eliminates nobody.
 	Eliminated bool
 
+	// Removed is set when an admin removed this seat from a game that
+	// had started (#3093, ADR 0060's 2026-10-12 amendment). The player
+	// left through Concede, so Eliminated is true as well; Removed is
+	// what tells the lobby that the SEAT was taken away rather than
+	// given up, which is the difference between a conceded player who
+	// may keep spectating their own table and one whose session is
+	// refused. Never cleared. It does not ride the wire.
+	Removed bool
+
 	// HandKept is true once the player has committed to their opening
 	// hand. False during the mulligan-decision window between Start
 	// and the first turn-1 action. Mulligan resets it to false (the

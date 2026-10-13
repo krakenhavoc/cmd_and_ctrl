@@ -27,7 +27,7 @@ func costedHook(oracleID string) []ManaAbilityShape {
 		}
 	case "zz-cube": // Doubling Cube: a computed output, never planned
 		return []ManaAbilityShape{{TapCost: true, ManaCost: "{1}", Label: "{1}, {T}: Double",
-			ProducedFunc: func(*Game, uuid.UUID, uuid.UUID) string { return "{C}{C}{C}" }}}
+			ProducedFunc: func(*Game, uuid.UUID, uuid.UUID) ManaOutput { return ManaOutput{Text: "{C}{C}{C}"} }}}
 	case "zz-plains":
 		return []ManaAbilityShape{{TapCost: true, Produced: "{W}", Label: "Add {W}"}}
 	case "zz-swamp":

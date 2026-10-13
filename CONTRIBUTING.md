@@ -95,8 +95,8 @@ Use the in-app **Report a bug** button, which attaches the client log and a repl
 
 ## License
 
-C2 is licensed under the [GNU AGPL v3.0 or later](LICENSE), with the GSAP permission described
-in [NOTICE](NOTICE).
+C2 is licensed under the [GNU AGPL v3.0 or later](LICENSE); [NOTICE](NOTICE) lists what the license
+does not cover.
 
 - **Your contributions:** by opening a pull request, you agree that your contribution is licensed
   under those same terms.

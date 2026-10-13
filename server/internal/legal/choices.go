@@ -277,35 +277,51 @@ func (e *enumerator) choiceMoves() bool {
 			// through the predicate the engine pays with, and it
 			// carries the energy it spends; the decline is always
 			// there.
-			if action := c.PayAction(); action != nil && action.Kind == game.PayActionEnergy {
-				if game.EnergyShortfall(playerByID(g, c.Chooser), action.Count) == nil {
+			// ADR 0150 §3: life, damage and nothing name nothing
+			// either, and "Pay" is a move exactly when the engine
+			// would take it as a payment (CR 119.4, 119.8 for life).
+			if action := c.PayAction(); action.NamesNothing() {
+				payVerb, declineVerb := payNamingNothingVerbs(g, c, action, e.seat)
+				if g.PayActionPayableForEffect(c.Chooser, action) {
 					a := true
 					p := base()
 					p.Apply = &a
+					var price *MoveCost
+					switch action.Kind {
+					case game.PayActionEnergy:
+						price = withEnergy(nil, action.Count)
+					case game.PayActionLife:
+						if action.Count > 0 {
+							price = &MoveCost{Life: action.Count}
+						}
+					}
 					e.add(Move{
 						Type:   TypeResolveChoice,
 						Player: e.seat,
 						Kind:   KindChoice,
-						Label:  reason + ": pay " + c.PayCost,
+						Label:  reason + ": " + payVerb,
 						Source: c.Source,
 						Params: mustJSON(p),
-						Cost:   withEnergy(nil, action.Count),
+						Cost:   price,
 					})
 				}
 				a := false
 				p := base()
 				p.Apply = &a
-				e.addChoice(c, reason+": decline", p)
+				e.addChoice(c, reason+": "+declineVerb, p)
 				continue
 			}
 			if action := c.PayAction(); action != nil {
 				pool := g.PayActionOptionsForEffect(c.Chooser, action)
+				// ADR 0150 §6: an any-player sacrifice or discard says
+				// whose effect it stops, as a mana link does.
+				payVerb, declineVerb := anyPlayerVerbs(g, c, c.PayCost, e.seat)
 				for _, set := range e.combos(pool, action.Count, action.Count, e.opts.MaxExpansionPerSource, CapPerSource) {
 					a := true
 					p := base()
 					p.Apply = &a
 					p.CardIDs = idStrings(set)
-					label := reason + ": " + c.PayCost + " —"
+					label := reason + ": " + payVerb + " —"
 					for _, id := range set {
 						label += " " + cardNameFor(g, id, e.seat)
 					}
@@ -314,7 +330,7 @@ func (e *enumerator) choiceMoves() bool {
 				a := false
 				p := base()
 				p.Apply = &a
-				e.addChoice(c, reason+": decline", p)
+				e.addChoice(c, reason+": "+declineVerb, p)
 				continue
 			}
 			// Paying is only a move if the cost is payable; the engine
@@ -364,9 +380,9 @@ func (e *enumerator) choiceMoves() bool {
 				a := apply
 				p := base()
 				p.Apply = &a
-				verb := "decline"
+				payVerb, verb := anyPlayerVerbs(g, c, "pay "+c.PayCost, e.seat)
 				if apply {
-					verb = "pay " + c.PayCost
+					verb = payVerb
 					if len(taps) > 0 {
 						verb += fmt.Sprintf(" (waterbending with %d)", len(taps))
 						p.TapIDs = idStrings(taps)
@@ -575,12 +591,19 @@ func (e *enumerator) choiceMoves() bool {
 			}
 
 		case game.PendingChoiceSearchLibrary:
-			// CR 701.23: take up to SearchMax of the matching cards;
-			// failing to find (an empty list) is always legal, which
-			// is what makes it this choice's AlwaysLegal answer.
-			p := base()
-			p.CardIDs = []string{}
-			e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+			// CR 701.23: take up to SearchMax of the matching cards.
+			// Failing to find (an empty list) is legal for a search
+			// for a stated quality (CR 701.23b, #3053) — which is what
+			// makes it this choice's AlwaysLegal answer — and NOT for
+			// an unconditional one (CR 701.23d), whose floor the
+			// resolver enforces. The floor is read from the engine,
+			// not re-derived here.
+			floor := g.SearchFloorLocked(c)
+			if floor == 0 {
+				p := base()
+				p.CardIDs = []string{}
+				e.addAlwaysLegalChoice(c, reason+": fail to find", p)
+			}
 			// Every offered pick is run past the engine's own
 			// acceptance check first. A search may carry a Validate
 			// hook for a clause no per-card predicate can express —
@@ -588,7 +611,7 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := e.filteredCombos(c.SearchCards, 1, c.SearchMax, e.opts.MaxExpansionPerSource,
+			picks := e.filteredCombos(c.SearchCards, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
 			for _, set := range picks {
 				p := base()
@@ -2221,4 +2244,39 @@ func (e *enumerator) mostValuableFirst(pool []uuid.UUID) []uuid.UUID {
 	}
 	sort.SliceStable(out, func(i, j int) bool { return score[out[i]] > score[out[j]] })
 	return out
+}
+
+// anyPlayerVerbs are a pay_unless's two move words, `pay` (the payment
+// itself: "pay {2}", "take 6 damage") and "decline". On a link of an
+// any-player offer (ADR 0150 §6) both say whose effect the payment is
+// about, so a model can price it: "pay {2} to stop Bob's Rhystic
+// Tutor", "decline (let Bob's Rhystic Tutor happen)".
+func anyPlayerVerbs(g *game.Game, c *game.PendingChoice, pay string, seat uuid.UUID) (string, string) {
+	offer := c.AnyPlayerOffer
+	if offer == nil {
+		return pay, "decline"
+	}
+	whose := playerName(g, offer.Controller) + "'s " + cardNameFor(g, c.Source, seat)
+	if offer.HelpsController {
+		return pay + " to keep " + whose, "decline (" + whose + " goes)"
+	}
+	return pay + " to stop " + whose, "decline (let " + whose + " happen)"
+}
+
+// payNamingNothingVerbs are anyPlayerVerbs for a payment that names no
+// cards: energy, life, damage (ADR 0150 §3: "take 6 damage", since the
+// payer is dealt it rather than paying it) or nothing, where the card's
+// own words name the answer ("let them have the card").
+func payNamingNothingVerbs(g *game.Game, c *game.PendingChoice, a *game.PayAction, seat uuid.UUID) (string, string) {
+	pay := "pay " + c.PayCost
+	switch a.Kind {
+	case game.PayActionDamage:
+		pay = "take " + c.PayCost
+	case game.PayActionNothing:
+		pay = "yes"
+		if c.AcceptLabel != "" {
+			pay = strings.ToLower(c.AcceptLabel[:1]) + c.AcceptLabel[1:]
+		}
+	}
+	return anyPlayerVerbs(g, c, pay, seat)
 }

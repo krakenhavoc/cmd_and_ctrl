@@ -17,10 +17,12 @@ import (
 
 	"github.com/google/uuid"
 
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/accountdelete"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/adminview"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/bugstore"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/cards"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/catalog"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/deck"
@@ -30,6 +32,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
@@ -124,6 +127,13 @@ type Config struct {
 	// from the lobby + room manager but existing sockets linger
 	// until their next action hits "game no longer available".
 	Evictor GameEvictor
+	// Capacity carries the table-creation rates (capacity.Limits'
+	// Account and IP fields, ADR 0148). The load and connection caps
+	// are installed on the Lobby itself (Lobby.SetCapacity) because the
+	// lobby enforces them; the rates are the handler's. A zero field
+	// takes its default, so a Config that never set it creates at the
+	// shipped rate.
+	Capacity capacity.Limits
 	// DeckHTTPClient is the outbound client used by the S06.5 URL-
 	// based deck import (`format: "url"`). Nil falls back to a
 	// sensible default with a 10 s timeout and the project's User-Agent.
@@ -148,6 +158,14 @@ type Config struct {
 	// http.DefaultClient. The DM-invite route shares it; nil there
 	// means a client with a short timeout.
 	DiscordHTTPClient *http.Client
+	// CommunityInviteURL is the C2 Discord server's public invite
+	// (CMDCTRL_DISCORD_INVITE_URL, ADR 0156 §1 item 1), served by GET
+	// /community. "" hides every Discord placement in the client. The
+	// sign-up gate itself is Discord.Gate.
+	CommunityInviteURL string
+	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
+	// off: GET /community says so and the client offers no room.
+	DiscordVoice discord.Voice
 	// DiscordBot is the server's bot-token credential, for ADR 0051
 	// decision 5's direct-message invites (S34 sub-PR 6). The zero
 	// value means CMDCTRL_DISCORD_BOT_TOKEN is unset, which is a
@@ -182,6 +200,16 @@ type Config struct {
 	// open. Nil leaves them up until they next reconnect, when the
 	// upgrade is refused.
 	SessionEvictor UserSessionEvictor
+	// SeatEvictor closes the sockets of a seat the host, the creator or
+	// an admin removed from a table (#2785; from a started game, an admin only, #3093), with close
+	// reason ws.SeatRemovedReason. Nil leaves them up until they next
+	// reconnect, when the upgrade is refused.
+	SeatEvictor SeatEvictor
+	// SpectatorHub lists who is watching a table and closes the sockets
+	// of a spectator the host, the creator or an admin removed (#3113),
+	// with close reason ws.SeatRemovedReason. Nil: the spectator routes
+	// list nobody and refuse a removal with 503.
+	SpectatorHub SpectatorHub
 
 	// AdminViews is the admin views' read-only store (ADR 0124 §5),
 	// behind GET /admin/users, /admin/users/{id}, /admin/games and
@@ -224,6 +252,12 @@ type Config struct {
 	// finds none.
 	TableSetups tablesetups.Store
 
+	// Accounts is self-serve account deletion (ADR 0149, migration
+	// 0015), behind DELETE /me/account. Nil answers 503: with no
+	// database no principal carries a UserID, so the route answers 403
+	// first and this is only reached by a misconfigured deployment.
+	Accounts accountdelete.Store
+
 	// DiscordAvatars is the S12.5 avatar cache. Nil means
 	// /avatars/* returns 503; production wires a cache rooted at
 	// $CMDCTRL_DATA_DIR/avatars so disk-cached images persist
@@ -247,6 +281,11 @@ type Config struct {
 	// /bugreport/config reports attachments:false so the modal hides
 	// its file picker. See ADR 0017 §6.
 	BugStore *bugstore.Store
+
+	// BugLimits tunes the throttle in front of POST /bugreport (ADR
+	// 0017 §10): per-account window, daily cap, dedupe window. The zero
+	// value means the defaults; production sets nothing.
+	BugLimits BugLimits
 
 	// DeckRequestFiler files and joins ADR 0095's deck-request issues.
 	// Nil turns POST /deck-requests off (503 naming
@@ -282,6 +321,12 @@ type Config struct {
 	// Nil means the picker lists no decks and `deck` is refused; the
 	// raw-decklist path still works.
 	BotDecks aiseat.DeckSource
+
+	// BotBudget is the hosted-model spend guard (#2980): the admin
+	// kill switch and readout (GET and PUT /admin/bot/model) and the
+	// note GET /bot/options carries while the model tiers are off. Nil
+	// leaves both out.
+	BotBudget BotModelBudget
 }
 
 // GameEvictor is the subset of *ws.Hub that the lobby needs to close
@@ -303,10 +348,16 @@ type GameEvictor interface {
 //	POST /games/{id}/setup  — signed in, host / creator / admin: apply the caller's last setup
 //	POST /games/{id}/archive — admin: retire the table from the listing
 //	DELETE /games/{id}/archive — admin: put it back
+//	GET  /games/{id}/blocks — host / creator / admin: who this table has blocked
+//	DELETE /games/{id}/blocks/{block_id} — the same: lift one block
+//	GET  /games/{id}/spectators — a seat / host / creator / admin: who is watching
+//	DELETE /games/{id}/spectators/{spectator} — host / creator / admin: remove one (?block=true)
 //	POST /games/{id}/seats/{player}/reclaim — admin: mint a seat-reclaim link
 //	POST /games/{id}/reclaim — redeem one: a session for that seat
 //	POST /games/{id}/invites/rotate — admin: revoke + re-mint one invite kind
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
+//	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
+//	POST /games/{id}/voice/refresh — a seat: check my server membership again, or reopen an idle room
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -315,6 +366,7 @@ type GameEvictor interface {
 //	PUT  /me/admin-mode     — allowlisted person: switch admin mode on or off
 //	GET  /me/decks          — authenticated: the caller's deck library
 //	POST /me/decks          — signed in: save a checked deck (a link or a pasted list) to it
+//	DELETE /me/account      — signed in: delete the caller's own account (ADR 0149)
 //	GET  /me/settings       — signed in: the caller's account settings
 //	PUT  /me/settings       — signed in: replace them, If-Match: <revision>
 //	GET  /me/playmats       — signed in: the caller's saved playmats (ADR 0128 §11), up to three, which is active, and the wash
@@ -328,7 +380,8 @@ type GameEvictor interface {
 //	GET  /me/tablemates     — signed in: the people you have shared a table with
 //	GET  /me/setup          — signed in: the caller's last table setup
 //	GET  /me/last-deck      — signed in: the deck the caller last seated
-//	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life
+//	POST /me/session        — signed in: reinstall the session cookie, renewing it past half-life (re-checking the sign-up gate, ADR 0156 §1)
+//	GET  /community         — public: the C2 Discord invite and whether sign-up is gated (ADR 0156 §6)
 //	POST /logout            — revoke the caller's session server-side
 //	POST /logout/everywhere — withdraw every session the caller's user holds
 //	POST /admin/users/{id}/revoke-sessions — admin: the same, for any user
@@ -406,6 +459,10 @@ func Handler(c Config) http.Handler {
 	// screen. Constant and secret-free in production.
 	mux.Handle("GET /config", handlerFunc(c, clientConfig))
 	mux.Handle("GET /auth/discord/config", handlerFunc(c, discordConfig))
+	// The community server's invite and whether sign-up is gated (ADR
+	// 0156 §6). Public, constant per deploy, and cacheable for five
+	// minutes; it carries no ids.
+	mux.Handle("GET /community", handlerFunc(c, community))
 	mux.Handle("GET /auth/discord/start", limit.Middleware(handlerFunc(c, discordStart)))
 	mux.Handle("GET /auth/discord/callback", limit.Middleware(handlerFunc(c, discordCallback)))
 	// Linking Discord to a seat already held (S34 sub-PR 4, from S12.5
@@ -429,8 +486,18 @@ func Handler(c Config) http.Handler {
 	// check); the shared token is a server credential, not a person,
 	// and is held to neither. It rides the deck bucket as well,
 	// because applying a setup seats decks.
-	createLimit := newLimiter(1.0/30, 3)
-	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit)))))
+	//
+	// The rate and the burst are the operator's (ADR 0148:
+	// CMDCTRL_CREATE_ACCOUNT_BURST / _INTERVAL), defaulting to the
+	// 1 per 30 s with a burst of 3 this line has always had. A second
+	// bucket, per client IP (CMDCTRL_CREATE_IP_BURST / _INTERVAL), is
+	// what bounds a guest, who cannot create a table but does open
+	// practice tables, and one machine minting accounts to get round
+	// the per-account one. The shared token is exempt from both.
+	rates := c.Capacity.WithCreateDefaults()
+	createLimit := newLimiter(1/rates.AccountEvery.Seconds(), float64(rates.AccountBurst))
+	createIPLimit := newLimiter(1/rates.IPEvery.Seconds(), float64(rates.IPBurst))
+	mux.Handle("POST /games", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, createGameWith(createLimit, createIPLimit)))))
 	// A suggested table name for the create form's dice button (#2630).
 	// The same gate as POST /games; a light route, so it rides its own
 	// generous per-caller bucket.
@@ -501,6 +568,15 @@ func Handler(c Config) http.Handler {
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
+	// ADR 0159 §1: the table's Discord voice room, on or off. Host or
+	// admin, authorised inside the handler with CanManageTable.
+	mux.Handle("PUT /games/{id}/voice", auth.Middleware(c.Auth)(handlerFunc(c, putVoiceRoom)))
+	// ADR 0159 §3: a seat that just joined the Discord server, or wants
+	// an idle room back. Each one asks Discord about the caller, so it
+	// is limited per caller: one every ten seconds, burst of three.
+	voiceRefreshLimit := newLimiter(1.0/10, 3)
+	mux.Handle("POST /games/{id}/voice/refresh",
+		auth.Middleware(c.Auth)(perCallerLimit(voiceRefreshLimit, handlerFunc(c, refreshVoiceRoom))))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it
@@ -541,6 +617,24 @@ func Handler(c Config) http.Handler {
 	// player already seated at the table.
 	mux.Handle("POST /games/{id}/seats/bot", deckLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, addBot))))
 	mux.Handle("DELETE /games/{id}/seats/bot/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeBot)))
+	// #2785: the host, the creator or an admin removes a human or agent
+	// seat from an unstarted table; an admin alone from a started game, by
+	// conceding it out (#3093, seat_remove.go).
+	mux.Handle("DELETE /games/{id}/seats/{player}", auth.Middleware(c.Auth)(handlerFunc(c, removeSeat)))
+	// #3113: the block list and the unblock (blocks_http.go), and
+	// spectators: who is watching, and removing one (spectators.go).
+	mux.Handle("GET /games/{id}/blocks", auth.Middleware(c.Auth)(handlerFunc(c, listBlocks)))
+	mux.Handle("DELETE /games/{id}/blocks/{block_id}", auth.Middleware(c.Auth)(handlerFunc(c, unblock)))
+	mux.Handle("GET /games/{id}/spectators", auth.Middleware(c.Auth)(handlerFunc(c, listSpectators)))
+	mux.Handle("DELETE /games/{id}/spectators/{spectator}", auth.Middleware(c.Auth)(handlerFunc(c, removeSpectator)))
+	// #2984: "report player". A seat at the table files it; it goes to
+	// the admin Reports list (reports.go). One report per five minutes
+	// per reporter, burst of three: a person has a few real complaints
+	// in a night, and a flood is the abuse this route must not become.
+	reportLimit := newLimiter(1/reportEvery.Seconds(), reportBurst)
+	mux.Handle("POST /games/{id}/reports", auth.Middleware(c.Auth)(perCallerLimit(reportLimit, handlerFunc(c, reportPlayer))))
+	mux.Handle("GET /admin/reports", requireAdmin(c, handlerFunc(c, adminListReports)))
+	mux.Handle("DELETE /admin/reports/{id}", requireAdmin(c, handlerFunc(c, adminDismissReport)))
 	// The tutorial's practice table (ADR 0076 §2.2, practice_http.go).
 	// Any session may open one: that is what a tutorial is for. It
 	// installs two decklists, so it rides the deck bucket, and a
@@ -550,7 +644,16 @@ func Handler(c Config) http.Handler {
 	// rides the join bucket, like every other unauthenticated route.
 	practiceLimit := newLimiter(1.0/5, 3)
 	mux.Handle("POST /games/practice",
-		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, handlerFunc(c, createPractice)))))
+		deckLimit.Middleware(auth.Middleware(c.Auth)(perCallerLimit(practiceLimit, createIPGate(createIPLimit, handlerFunc(c, createPractice))))))
+	// The guest's practice table (ADR 0156 §2): public, no session. It
+	// mints the session it seats, so it sits outside auth.Middleware.
+	// Per client IP, 3 per 10 minutes (the limiter honours
+	// CMDCTRL_TRUST_FORWARDED and CMDCTRL_DEV_RELAX_RATE_LIMITS like
+	// every other); the operator's per-IP creation bucket and the deck
+	// bucket apply too, and CreatePractice holds it to ADR 0148's caps.
+	guestPracticeLimit := newLimiter(3.0/600, 3)
+	mux.Handle("POST /games/practice/guest",
+		guestPracticeLimit.Middleware(deckLimit.Middleware(createIPGate(createIPLimit, handlerFunc(c, createGuestPractice)))))
 	mux.Handle("POST /games/{id}/practice/leave", limit.Middleware(handlerFunc(c, leavePractice)))
 	// #505 part 3: admin-only latency/token readout for every bot seat
 	// at this table. BotStatsHandler wraps its own
@@ -558,6 +661,9 @@ func Handler(c Config) http.Handler {
 	// this is the one line that mounts it, matching every other admin
 	// route above.
 	mux.Handle(BotStatsRoute, BotStatsHandler(c))
+	// #2980: the hosted-model spend guard's readout and kill switch.
+	mux.Handle("GET /admin/bot/model", requireAdmin(c, handlerFunc(c, botModelStatus)))
+	mux.Handle("PUT /admin/bot/model", requireAdmin(c, handlerFunc(c, botModelSwitch)))
 	// What the picker needs before it can offer anything: the tier
 	// list (including the ones that are declared but not built, so
 	// the UI can grey them out) and the curated deck catalog.
@@ -626,6 +732,13 @@ func Handler(c Config) http.Handler {
 	// its checks, so a refused request costs nothing.
 	settingsLimit := newLimiter(1, 5)
 	mux.Handle("GET /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, mySettings)))
+	// Delete my account (ADR 0149, #2983). Any authenticated role
+	// reaches the handler, which refuses a session with no user: it acts
+	// on the caller's own account and names no one else. A bucket of
+	// one try every 10 seconds, burst 3, stops a script guessing the
+	// confirmation phrase and costs a person nothing.
+	accountDeleteLimit := newLimiter(0.1, 3)
+	mux.Handle("DELETE /me/account", auth.Middleware(c.Auth)(perCallerLimit(accountDeleteLimit, handlerFunc(c, deleteMyAccount))))
 	mux.Handle("PUT /me/settings", auth.Middleware(c.Auth)(handlerFunc(c, putMySettings(settingsLimit))))
 	// Playmats (ADR 0128, §11: three slots). The writes that decode an
 	// image (upload, link, fit) are rate-limited per person (a burst of
@@ -721,7 +834,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /me/decks", libraryLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, deckChecks.saveDeck))))
 
 	mux.Handle("GET /bugreport/config", handlerFunc(c, bugReportConfig))
-	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugReport))))
+	bugs := newBugGate(c)
+	mux.Handle("POST /bugreport", bugLimit.Middleware(auth.Middleware(c.Auth)(handlerFunc(c, bugs.report))))
+	// The kill switch and the queue of reports kept instead of filed (ADR 0017 §10).
+	mux.Handle("GET /admin/bugreport", requireAdmin(c, handlerFunc(c, bugs.adminBugReport)))
+	mux.Handle("PUT /admin/bugreport/paused", requireAdmin(c, handlerFunc(c, bugs.adminSetBugPaused)))
 	// Unauthenticated by necessity — Camo presents no session. The
 	// report ID in the path is the capability, and it only ever
 	// appears inside a private-repo issue. bugstore enforces the
@@ -761,8 +878,27 @@ func Handler(c Config) http.Handler {
 	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
 	// from memory, with names from the database when there is one.
 	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))
+	// Brings back the tables the boot left on disk because the load cap
+	// was full, as load frees up (ADR 0148, #3103; restore_deferred.go).
+	mux.Handle("POST /admin/capacity/restore-deferred", requireAdmin(c, handlerFunc(c, adminRestoreDeferred)))
 
 	return mux
+}
+
+// createIPGate throttles table-creating routes by client IP with the
+// operator's per-IP creation bucket (ADR 0148). POST /games spends the
+// same bucket inside its handler, where it can exempt the shared
+// token; the practice route has no such caller and takes it here.
+func createIPGate(l *ratelimit.Limiter, next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !l.AllowRequest(r) {
+			metrics.CapacityRefused(metrics.RefuseCreateIP)
+			w.Header().Set("Retry-After", "30")
+			writeLobbyError(w, ErrCreateIPRateLimited)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 // handlerFunc adapts a (Config, w, r) → error closure into an
@@ -850,6 +986,10 @@ type createGameRequest struct {
 	// new table (ADR 0110 §5 item 2), exactly as POST
 	// /games/{id}/setup would. Empty applies nothing.
 	Setup string `json:"setup,omitempty"`
+	// VoiceRoom asks for a Discord voice room for the table (ADR 0159
+	// §1), as PUT /games/{id}/voice would. Ignored when the server
+	// offers none: the client only shows the box when it does.
+	VoiceRoom bool `json:"voice_room,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -993,7 +1133,7 @@ func adminLogin(c Config, w http.ResponseWriter, r *http.Request) error {
 //     429).
 //
 // Everyone else, a guest seat or spectator with no user, is a 403.
-func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
+func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 	return func(c Config, w http.ResponseWriter, r *http.Request) error {
 		p, ok := auth.PrincipalFromContext(r.Context())
 		if !ok {
@@ -1002,6 +1142,11 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 		server := isServerCredential(p)
 		if !server && !isSignedInPerson(p) {
 			return httpError(http.StatusForbidden, "sign in with Discord to create a table")
+		}
+		if !server && !ipLimit.AllowRequest(r) {
+			metrics.CapacityRefused(metrics.RefuseCreateIP)
+			w.Header().Set("Retry-After", "30")
+			return ErrCreateIPRateLimited
 		}
 		var body createGameRequest
 		if err := decodeJSON(w, r, &body); err != nil {
@@ -1030,6 +1175,7 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 			meta, err = c.Lobby.CreateCapped(body.Name, p.UserID, p.DiscordID, MaxOpenTablesPerCreator,
 				func() bool { return limit.Allow(key) })
 			if errors.Is(err, ErrCreateRateLimited) {
+				metrics.CapacityRefused(metrics.RefuseCreateAccount)
 				w.Header().Set("Retry-After", "30")
 			}
 		}
@@ -1044,6 +1190,15 @@ func createGameWith(limit *ratelimit.Limiter) lobbyHandler {
 		}
 
 		out := createGameResponse{GameMeta: meta}
+		if body.VoiceRoom {
+			// ADR 0159 §1. The creator is the table's manager until a
+			// host sits down; a server with voice off ignores the ask.
+			if voiced, verr := c.Lobby.SetVoiceRoom(meta.ID, true); verr == nil {
+				out.GameMeta = voiced
+			} else if !errors.Is(verr, ErrVoiceRoomsOff) {
+				c.Log.Warn("voice room on create failed", "game_id", meta.ID.String(), "err", verr)
+			}
+		}
 		if from == setupFromLast {
 			res := applyLastSetup(r.Context(), c, p, meta.ID)
 			out.Setup = &res
@@ -1182,6 +1337,13 @@ func joinGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
+	// A newcomer is turned away with the friendly message at the
+	// connection cap, before a seat is claimed that the socket it
+	// needs would then be refused (ADR 0148). A seated player coming
+	// back does not pass through here.
+	if c.Lobby.ConnectionsFull() {
+		return capacity.ErrServerFull
+	}
 
 	// An agent's MCP client (ADR 0122 §7) joins as a guest, never as a
 	// signed-in person: a session that would give the seat a user or a
@@ -1281,6 +1443,9 @@ func joinByCode(c Config, w http.ResponseWriter, r *http.Request) error {
 	gameID, err := c.Lobby.FindByInvite(body.InviteToken)
 	if err != nil {
 		return err
+	}
+	if c.Lobby.ConnectionsFull() {
+		return capacity.ErrServerFull
 	}
 
 	// ADR 0122 §7, as on POST /games/{id}/join. Checked before the 409
@@ -1403,10 +1568,8 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	if err := decodeJSON(w, r, &body); err != nil {
 		return err
 	}
-
-	meta, err := c.Lobby.Spectate(id, body.InviteToken)
-	if err != nil {
-		return err
+	if c.Lobby.ConnectionsFull() {
+		return capacity.ErrServerFull
 	}
 
 	// A signed-in person who watches stays signed in (ADR 0110 §1
@@ -1418,12 +1581,21 @@ func spectateGame(c Config, w http.ResponseWriter, r *http.Request) error {
 	identity, source := signedInIdentity(c, r)
 	p := auth.Principal{
 		Role:   auth.RoleSpectator,
-		GameID: meta.ID,
+		GameID: id,
 		Name:   trimToLimit(body.Name, 40),
+		// One id per session (#3113): what lets the table report, remove
+		// or block this spectator, who holds no seat.
+		SpectatorID: uuid.New(),
 	}
 	if source != nil {
 		p.UserID = source.UserID
 		p = withIdentity(p, identity)
+	}
+	// A table that removed-and-blocked this person (as a seat or as a
+	// spectator) does not let them watch either (#3113).
+	meta, err := c.Lobby.SpectateAs(id, body.InviteToken, p.UserID, p.DiscordID, p.Name)
+	if err != nil {
+		return err
 	}
 	tok, issued, err := issueFor(r.Context(), c, p, source)
 	if err != nil {
@@ -2124,7 +2296,7 @@ func autoTapPreview(c Config, w http.ResponseWriter, r *http.Request) error {
 	// #2581: the spell's printed X ceiling, read now for this caster —
 	// the count CastSpell refuses above — so the picker stops at it.
 	var xMax *int
-	if ceiling, ok := g.SpellXCeiling(p.PlayerID, game.CatalogKey(price.Card)); ok {
+	if ceiling, ok := g.SpellXCeilingForCast(p.PlayerID, card, params); ok {
 		xMax = &ceiling
 	}
 	return writeAutoTapPreview(g, p.PlayerID, cost, xValue, excluded,
@@ -2467,8 +2639,21 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 	admin := c.isAdmin(p)
+	viewerID := replayViewerID(p)
 	if !admin && p.GameID != id {
-		return httpError(http.StatusForbidden, "not a seat in this game")
+		// A signed-in person whose session is bound elsewhere may still
+		// download a game they sat at, seen from their own seat: the
+		// Tables page's History offers Replay on every finished game
+		// (ADR 0158 §1 item 3), as the seat's own session always could.
+		meta, err := c.Lobby.Get(id)
+		if err != nil {
+			return httpError(http.StatusForbidden, "not a seat in this game")
+		}
+		seat, ok := seatOfUser(meta.Players, p.UserID)
+		if !ok || seat.IsBot {
+			return httpError(http.StatusForbidden, "not a seat in this game")
+		}
+		viewerID = seat.PlayerID.String()
 	}
 	room := c.Lobby.RoomOf(id)
 	if room == nil {
@@ -2513,7 +2698,7 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
 		return nil
 	}
-	streamFilteredReplay(c, w, f, replayViewerID(p))
+	streamFilteredReplay(c, w, f, viewerID)
 	return nil
 }
 
@@ -3172,6 +3357,28 @@ type myDeckInfo struct {
 	// Coverage is absent when this server has no card index or the
 	// stored list no longer parses.
 	Coverage *myDeckCoverageInfo `json:"coverage,omitempty"`
+	// CommanderCards is each commander resolved against the card index
+	// (ADR 0158 §2): the printing whose art crop leads the deck's card
+	// on the Decks page, and its colour identity. Present on GET and
+	// POST /me/decks, in the order of Commanders; omitted when there
+	// is no card index or no commander.
+	CommanderCards []myDeckCommander `json:"commander_cards,omitempty"`
+	// ColorIdentity is the union of the resolved commanders' colour
+	// identities, in WUBRG order. Empty for a colourless deck and for
+	// one whose commanders did not resolve; CommanderCards says which.
+	ColorIdentity []string `json:"color_identity,omitempty"`
+}
+
+// myDeckCommander is one commander on a GET /me/decks entry.
+type myDeckCommander struct {
+	Name string `json:"name"`
+	// ScryfallID is a printing with an image, for /cards/{id}/image.
+	// Empty when the name did not resolve or no printing has one.
+	ScryfallID string `json:"scryfall_id,omitempty"`
+	// ColorIdentity is the commander's WUBRG letters: [] for a
+	// colourless one, null when the name did not resolve, so the page
+	// can tell colourless (steel) from unknown (neutral).
+	ColorIdentity []string `json:"color_identity"`
 }
 
 // myDecksResponse is the body of GET /me/decks.
@@ -3274,6 +3481,7 @@ func libraryDeckInfo(c Config, d decklibrary.Deck, verdicts map[string]catalog.E
 		UpdatedAt:  d.UpdatedAt,
 		SourceURL:  d.SourceURL,
 	}
+	info.CommanderCards, info.ColorIdentity = libraryCommanders(c.Cards, d.Commanders)
 	if verdicts != nil {
 		if rep, rerr := libraryDeckReport(c, d, verdicts); rerr == nil {
 			n, m := rep.AsPrinted()
@@ -3374,6 +3582,63 @@ func renameMyDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		ID: renamed.ID.String(), Name: renamed.Name, Commanders: nonNil(renamed.Commanders),
 		CardCount: renamed.CardCount, UpdatedAt: renamed.UpdatedAt, SourceURL: renamed.SourceURL,
 	})
+}
+
+// libraryCommanders resolves a saved deck's commander names against
+// idx for the Decks page's art and aura (ADR 0158 §2). The index's
+// name lookup already prefers a playable printing; when that printing
+// carries no image, the oracle's representative printing is tried
+// before giving up, so the client gets an id it can always draw or no
+// id at all, never one that 404s. A name that does not resolve keeps
+// its row, with no id and no colours.
+func libraryCommanders(idx *cards.Index, names []string) ([]myDeckCommander, []string) {
+	if idx == nil || len(names) == 0 {
+		return nil, nil
+	}
+	out := make([]myDeckCommander, 0, len(names))
+	seen := map[string]bool{}
+	for _, name := range names {
+		if strings.TrimSpace(name) == "" {
+			continue
+		}
+		cmd := myDeckCommander{Name: name}
+		if card, ok := idx.FindByName(name); ok {
+			cmd.ColorIdentity = nonNil(card.ColorIdentity)
+			for _, l := range card.ColorIdentity {
+				seen[l] = true
+			}
+			if !cardHasImage(card) {
+				if alt, ok := idx.FindByOracleID(card.OracleID); ok && cardHasImage(alt) {
+					card = alt
+				}
+			}
+			if cardHasImage(card) {
+				cmd.ScryfallID = card.ID.String()
+			}
+		}
+		out = append(out, cmd)
+	}
+	var identity []string
+	for _, l := range []string{"W", "U", "B", "R", "G"} {
+		if seen[l] {
+			identity = append(identity, l)
+		}
+	}
+	return out, identity
+}
+
+// cardHasImage reports whether the image route can serve card: an
+// image on the card itself or on any face.
+func cardHasImage(c cards.Card) bool {
+	if len(c.ImageURIs) > 0 {
+		return true
+	}
+	for _, f := range c.CardFaces {
+		if len(f.ImageURIs) > 0 {
+			return true
+		}
+	}
+	return false
 }
 
 func nonNil(s []string) []string {
@@ -3518,6 +3783,12 @@ type botOptionsResponse struct {
 	// which case the client hides the Add-bot control rather than
 	// offering a button that 503s.
 	Enabled bool `json:"enabled"`
+	// ModelNote is set while the model tiers are off because a spend
+	// cap is used up or an admin switched model calls off (#2980):
+	// one sentence saying so and, for a cap, when it resets. Each
+	// model tier's own reason carries the same text. Omitted
+	// otherwise.
+	ModelNote string `json:"model_note,omitempty"`
 }
 
 // botOptions handles GET /bot/options. Added in S31 sub-PR 4.
@@ -3552,6 +3823,9 @@ func botOptions(c Config, w http.ResponseWriter, _ *http.Request) error {
 		if decks := c.BotDecks.List(); len(decks) > 0 {
 			out.Decks = decks
 		}
+	}
+	if c.BotBudget != nil {
+		out.ModelNote = c.BotBudget.Status().Note
 	}
 	return writeJSON(w, http.StatusOK, out)
 }
@@ -3872,6 +4146,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusUnauthorized
 	case errors.Is(err, ErrGameFull),
 		errors.Is(err, ErrGameStarted),
+		errors.Is(err, ErrGameNotInProgress),
 		errors.Is(err, ErrSeatTaken),
 		errors.Is(err, ErrAlreadySeated),
 		errors.Is(err, ErrDeckNotUploaded),
@@ -3881,10 +4156,30 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusConflict
 	case errors.Is(err, ErrPlayerNotInGame):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrNotTableManager), errors.Is(err, ErrNotInviteManager):
+	case errors.Is(err, ErrBlockedFromTable), errors.Is(err, ErrBlockedFromWatching):
+		// 403 with the stable code the join page matches (#2984).
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusForbidden)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": CodeBlockedFromTable})
+		return
+	case errors.Is(err, moderation.ErrNameNotAllowed), errors.Is(err, ErrDiscordNameNotAllowed):
+		// A name is a request body the caller can fix: 400, like an
+		// empty one, with a code the forms match (#2984).
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": msg, "code": CodeNameNotAllowed})
+		return
+	case errors.Is(err, ErrNotTableManager), errors.Is(err, ErrNotInviteManager), errors.Is(err, ErrNotSeatManager):
 		status = http.StatusForbidden
-	case errors.Is(err, ErrHostIneligible):
+	case errors.Is(err, ErrHostIneligible), errors.Is(err, ErrCannotRemoveHost), errors.Is(err, ErrSeatIsBotRoute),
+		errors.Is(err, ErrReportSelf), errors.Is(err, ErrReportTarget):
 		status = http.StatusUnprocessableEntity
+	case errors.Is(err, ErrReportReasonEmpty):
+		status = http.StatusBadRequest
+	case errors.Is(err, ErrSpectatorNotWatching), errors.Is(err, ErrBlockNotFound):
+		status = http.StatusNotFound
+	case errors.Is(err, ErrNoSpectatorHub):
+		status = http.StatusServiceUnavailable
 	// ADR 0075 §2.3, the two halves of a refused settings patch. A
 	// value outside its range is a malformed request (400); a
 	// starting-life change after Start is a well-formed request the
@@ -3903,8 +4198,16 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusBadRequest
 	case errors.Is(err, ErrGameArchived), errors.Is(err, ErrTooManyOpenTables):
 		status = http.StatusConflict
-	case errors.Is(err, ErrCreateRateLimited):
+	case errors.Is(err, ErrCreateRateLimited), errors.Is(err, ErrCreateIPRateLimited):
 		status = http.StatusTooManyRequests
+	case errors.Is(err, capacity.ErrServerFull):
+		// ADR 0148: a stable code the client matches, and a Retry-After
+		// so a polite client does not make a full server fuller.
+		w.Header().Set("Retry-After", strconv.Itoa(capacity.RetryAfterSeconds))
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusServiceUnavailable)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": capacity.Message, "code": capacity.CodeServerFull})
+		return
 	case errors.Is(err, ErrTooManyReclaims):
 		status = http.StatusTooManyRequests
 	case errors.Is(err, ErrEmptyName), errors.Is(err, ErrInvalidInviteKind):
@@ -3912,6 +4215,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	case errors.Is(err, auth.ErrInvalidCredential),
 		errors.Is(err, auth.ErrExpiredCredential),
 		errors.Is(err, auth.ErrRevokedCredential),
+		errors.Is(err, auth.ErrSeatRemoved),
 		errors.Is(err, auth.ErrUnknownPrincipal):
 		status = http.StatusUnauthorized
 	}

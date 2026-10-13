@@ -20,16 +20,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // "Seven or more Plains" reads effective subtypes, so any land with
 // the Plains type counts (a Savannah, a Plateau), as printed.
 //
-// Land Tax's intervening-if posture: the Plains count is checked
-// when the trigger would go on the stack and not again at
-// resolution, the same declared corner every intervening-if card in
-// the catalog takes.
+// "If you control seven or more Plains" is an intervening "if"
+// (CR 603.4): checked when the trigger would go on the stack and again
+// as it resolves, so losing a Plains in response stops the return.
 func init() {
 	Register(Spec{
 		OracleID:     "cc999cf2-c99b-4911-8c52-6cc4a99fcc7b",
 		Name:         "Emeria, the Sky Ruin",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Plains count is checked only when the upkeep trigger goes on the stack, so losing a Plains in response won't stop the return."},
+		Completeness: CompletenessFull,
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
@@ -46,6 +44,9 @@ func init() {
 			Key:            "Emeria, the Sky Ruin — return a creature card to the battlefield",
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				if len(item.Targets) == 0 || item.Targets[0].Kind != game.TargetCard {
+					return nil
+				}
+				if b08LandsWithSubtypeControlled(g, item.Controller, "Plains") < 7 {
 					return nil
 				}
 				return ReturnFromGraveyard{Target: item.Targets[0].ID, Dest: game.ZoneBattlefield}.Apply(NewContext(g, item))

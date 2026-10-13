@@ -103,11 +103,11 @@ func (m *MeldPrint) clone() *MeldPrint {
 
 // IsMelded reports whether this object is a melded permanent: one
 // object represented by two cards (CR 712.4a).
-func (c Card) IsMelded() bool { return len(c.MeldedFrom) > 0 }
+func (c Card) IsMelded() bool { return IsMeldedPtr(&c) }
 
 // IsMeldCard reports whether this card is half of a meld pair — a CARD
 // whose printing is a meld card, not an object that is copying one.
-func (c Card) IsMeldCard() bool { return c.Meld != nil && c.Meld.ResultOracleID != "" }
+func (c Card) IsMeldCard() bool { return IsMeldCardPtr(&c) }
 
 // CanMeld reports whether two cards form a meld pair (CR 701.42b): two
 // meld cards, neither a token, whose printings name the same combined

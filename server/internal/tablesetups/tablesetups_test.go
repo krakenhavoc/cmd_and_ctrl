@@ -49,7 +49,7 @@ func TestPutThenGetRoundTrips(t *testing.T) {
 
 	want := Setup{
 		Settings:   json.RawMessage(`{"starting_life":40,"bot_pace":"normal"}`),
-		Bots:       []Bot{{Tier: "heuristic", DeckID: "izzet-aggro", Name: "Bot 1"}, {Tier: "random", DeckID: "tutorial", Name: "Bot 2"}},
+		Bots:       []Bot{{Tier: "heuristic", DeckID: "mono-red-aggro", Name: "Bot 1"}, {Tier: "random", DeckID: "tutorial", Name: "Bot 2"}},
 		Tablemates: []uuid.UUID{mate},
 	}
 	if err := s.Put(ctx, u, game, want); err != nil {

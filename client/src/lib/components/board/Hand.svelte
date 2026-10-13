@@ -21,6 +21,7 @@
   import { play } from "../../sounds";
   import { settings } from "../../settings";
   import { emit as tutorialEmit } from "../../tutorialBus";
+  import { openAbilityPopover, popoverSurface } from "../../abilityPopover";
   import {
     canCastFromHand,
     castAnywayBlocked,
@@ -152,6 +153,11 @@
   // the reconcile, the sorts, the storage and its failures — is
   // handOrder.ts.
   const gameID = $derived(snap?.id ?? null);
+
+  // #671: seat IDs on a hand card's known_by_seats, as names.
+  function knownByNames(ids: string[]): string {
+    return ids.map((id) => snap?.seats.find((s) => s.id === id)?.name ?? "a player").join(", ");
+  }
   const orderKey = $derived(gameID && viewerID ? handOrderKey(gameID, viewerID) : "");
   const storedOrder = $derived(isSelf ? loadHandOrder(gameID, viewerID) : null);
   let orderOverride = $state<{ key: string; ids: string[] } | null>(null);
@@ -275,6 +281,35 @@
   function handleCardClick(card: CardView): void {
     if (!isSelf) return;
     onPlayCard?.(card);
+  }
+
+  // #3280: a card that cannot be played or cast right now but has
+  // something else to do from the hand (cycling on a land once the land
+  // drop is spent, a foretell, a Spirit Guide's mana) opens its ability
+  // popover on a left-click, the one route into those rows a plain click
+  // can reach. Before this, such a card was lit (its pip, its ring) and
+  // not dimmed, yet a click did nothing and the only words anywhere were
+  // the tooltip's "No land plays left this turn". A card that CAN be
+  // played keeps its click as the play: the popover is the right-click and
+  // the pip, as it is for a creature with cycling.
+  const surface = popoverSurface();
+  function handCanOpenMenu(card: CardView): boolean {
+    return (
+      isSelf &&
+      ((card.zone_abilities?.length ?? 0) > 0 ||
+        (card.zone_mana_abilities?.length ?? 0) > 0 ||
+        (card.special_actions?.length ?? 0) > 0) &&
+      handHasAction(legalGate, card.instance_id)
+    );
+  }
+  function openHandMenu(card: CardView): void {
+    openAbilityPopover(card.instance_id, surface);
+  }
+  // The tooltip on a card that is not playable: the reason, and the
+  // pointer to what it can do instead.
+  function slotTitle(card: CardView, reason: string): string {
+    if (!handCanOpenMenu(card)) return reason;
+    return reason ? `${reason}. Click for its other abilities.` : "Click for its other abilities.";
   }
 
   // legalityFor computes the cast-from-hand legality for a single
@@ -659,7 +694,7 @@
       class:drag-source={dragging && dragCardID === c.instance_id}
       class:gap-left={shift < 0}
       class:gap-right={shift > 0}
-      title={isSelf && !leg.legal ? leg.reason : undefined}
+      title={isSelf && !leg.legal ? slotTitle(c, leg.reason ?? "") : undefined}
       onpointerdown={dragEnabled ? (ev) => onSlotPointerDown(ev, c, i) : undefined}
       onclickcapture={dragEnabled ? onSlotClickCapture : undefined}
       style:transform={layout === "stacked"
@@ -669,7 +704,7 @@
     >
       <!-- #2396: .rise lifts the card on hover while the slot stays put
            and keeps the pointer. Inner wrapper (.deal-wrap) carries the
-           deal-in / deal-out transforms (inline, from GSAP) so they
+           deal-in / deal-out transforms (inline) so they
            don't fight the .hand-slot's fan-layout transform or the
            lift. -->
       <div class="rise">
@@ -701,9 +736,19 @@
             readyZone="hand"
             ready={isSelf && (legal.castableFrom(c.instance_id, "hand") || hasPips(cPips))}
             idleHint={isSelf ? idleReadyHint(legal, c.instance_id, "hand") : undefined}
-            onClick={isSelf && leg.legal ? () => handleCardClick(c) : undefined}
+            onClick={isSelf && leg.legal
+              ? () => handleCardClick(c)
+              : handCanOpenMenu(c)
+                ? () => openHandMenu(c)
+                : undefined}
           />
         </div>
+        {#if isSelf && (c.known_by_seats?.length ?? 0) > 0}
+          <!-- #671: which other seats currently know this card. -->
+          <span class="known-by" title="Known by {knownByNames(c.known_by_seats ?? [])}">
+            {c.known_by_seats?.length}
+          </span>
+        {/if}
       </div>
     </div>
   {/each}
@@ -786,7 +831,14 @@
        width is bounded by --hand-overlap below; this is the backstop
        for the case where it is not. */
     max-width: 100%;
-    overflow: hidden;
+    /* #3241: clip, not hidden. A hidden box is still a scroll container,
+       so anything that scrolls a card into view (keyboard focus on a
+       card, a test driver's scroll-into-view) scrolled the strip and
+       left it scrolled: the resting cards sat up to the hidden share
+       higher than they should, and dropped by that much the moment a
+       hover set overflow: visible, out from under the pointer that
+       hovered them. A clipped box cannot be scrolled at all. */
+    overflow: clip;
     position: relative;
     z-index: 1;
     transition:
@@ -833,7 +885,24 @@
     z-index: 20;
   }
   .rise {
+    position: relative;
     transition: transform 220ms var(--ease);
+  }
+  /* #671: the count of other seats that know this hand card; the
+     tooltip names them. Purely informational, so it takes no clicks. */
+  .known-by {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 1.2em;
+    padding: 0 0.35em;
+    border-radius: 999px;
+    background: rgba(0, 0, 0, 0.7);
+    color: #fff;
+    font-size: 0.7rem;
+    line-height: 1.4;
+    text-align: center;
+    pointer-events: none;
   }
   .hand:not(.opponent):not(.scroll):hover > .hand-slot > .rise {
     transform: rotate(calc(-1 * var(--slot-rot, 0deg))) translateY(var(--hand-rise))
@@ -876,7 +945,7 @@
      peek/reveal interaction would feel wrong on someone else's hand. */
   .hand.opponent {
     max-height: calc(var(--card-h, 168px) * var(--hand-peek, 0.55));
-    overflow: hidden;
+    overflow: clip;
   }
   /* #956 — the overlap is handOverlap()'s answer, published by the
      markup as --hand-overlap, rather than three hard-coded per-layout

@@ -67,6 +67,28 @@ func TestImageURIForFace(t *testing.T) {
 	}
 }
 
+// TestImageURIForFaceOfAFlipCard pins ADR 0151 §7: a flip card has one
+// printed image, at the top level, and its card_faces carry none. Face
+// 1 (the flipped half) is that same image — the hover inset asked for
+// it and got a 404 before — and a face it does not have is still empty.
+func TestImageURIForFaceOfAFlipCard(t *testing.T) {
+	c := Card{
+		ID:        uuid.New(),
+		Name:      "Akki Lavarunner // Tok-Tok, Volcano Born",
+		Layout:    "flip",
+		ImageURIs: map[string]string{"normal": "https://cards.scryfall.io/flip"},
+		CardFaces: []CardFace{{Name: "Akki Lavarunner"}, {Name: "Tok-Tok, Volcano Born"}},
+	}
+	for face := 0; face <= 1; face++ {
+		if got := ImageURIForFace(c, "normal", face); got != "https://cards.scryfall.io/flip" {
+			t.Errorf("face %d = %q, want the card's one printed image", face, got)
+		}
+	}
+	if got := ImageURIForFace(c, "normal", 2); got != "" {
+		t.Errorf("out-of-range face = %q, want empty", got)
+	}
+}
+
 // TestImageCacheKeyIncludesFace is the poisoning guard.
 func TestImageCacheKeyIncludesFace(t *testing.T) {
 	cdn, hits := spyCDN(t, []byte("bytes"))

@@ -23,18 +23,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //   - Magecraft is a cast trigger of Beast Whisperer's shape, gated
 //     on the spell's type read off the stack.
 //
-// Sandbox simplification: the "or COPY" half of magecraft is not
-// implemented. The engine has no spell-copy event (nothing in the
-// catalog copies a spell), so a copied instant makes no Treasure.
-// Weaker than printed until spell copying exists.
+// The "or copy" half of magecraft rides EventSpellCopied
+// (createSpellCopyLocked), so a copy of an instant or sorcery you
+// control makes a Treasure too (CR 207.2c). No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "a145ff8c-5812-4bcb-bd16-9839dc25121d",
 		Name:         "Storm-Kiln Artist",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"Copied instants and sorceries make no Treasure; only spells you actually cast trigger it."},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
+			Label:    "Gets +1/+0 for each artifact you control.",
 			SubLayer: game.SubLayer7C_Modify,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID
@@ -44,12 +43,8 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				if ev.Actor != source.Controller {
-					return false
-				}
-				spell, ok := g.LookupCardForEffect(ev.CardID)
-				return ok && (spell.IsInstant() || spell.IsSorcery())
+			OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return instantOrSorceryCastOrCopiedByYou(ev, source, g)
 			}, "Storm-Kiln Artist — create a Treasure", Do(CreateToken{
 				Template: TreasureToken(),
 				N:        1,

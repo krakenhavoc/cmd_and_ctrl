@@ -31,3 +31,13 @@ func SwapBotAPIBaseForTesting(base string) func() {
 	botAPIBase = base
 	return func() { botAPIBase = orig }
 }
+
+// SwapMemberEndpointForTesting overrides the root of the gate's member
+// check (GET {base}/{guild}/member, ADR 0156 §1 item 3) and returns a
+// function that restores the original. For lobby's gate tests, which
+// serve it from the same httptest.Server as the token and user stubs.
+func SwapMemberEndpointForTesting(base string) func() {
+	orig := memberEndpointBase
+	memberEndpointBase = base
+	return func() { memberEndpointBase = orig }
+}

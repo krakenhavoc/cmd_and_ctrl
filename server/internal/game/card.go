@@ -198,6 +198,15 @@ type Card struct {
 	// anything, which is all of them but a handful.
 	GrantedAbilities []string
 
+	// TextBox is the text box this permanent has when it is not its own
+	// (CR 612.5, ADR 0160): the result of the textBox records, written
+	// by materialiseTextBoxesLocked and read by catalogKeyOf and the
+	// layer-0 keyword merge. Derived, never persisted — a restore
+	// rebuilds it from ScopedEffects — and cleared on every battlefield
+	// exit (CR 400.7). IMMUTABLE once set: replaced, never written
+	// through, so Clone shares the pointer.
+	TextBox *TextBoxValues
+
 	// ColorCDADropped lives in the bool block at the end of Card, for alignment.
 
 	// NeedsEffect lives in the bool block at the end of Card, for alignment.
@@ -425,6 +434,27 @@ type Card struct {
 	// of it are equal.
 	ObjectEpoch int
 
+	// TurnOvers counts how many times this card has turned over in
+	// place on the battlefield — transformed or converted (CR 701.27a,
+	// 701.28a; ADR 0152 §3). turnOverInPlaceLocked is its one writer.
+	//
+	// It is CR 701.27f / 701.28e's memory: an ability of a permanent
+	// that tries to transform or convert it does so only if the
+	// permanent "hasn't transformed or converted since the ability was
+	// put onto the stack" (for a delayed trigger, since it was
+	// created). StackItem.SourceTurnOvers and
+	// DelayedTrigger.SourceTurnOvers record this count at that moment,
+	// and effects.TransformThis / ConvertThis do nothing once it has
+	// moved. A face check cannot answer the question when the permanent
+	// has turned over twice since.
+	//
+	// Never reset, like ObjectEpoch: a zone move is a new object
+	// (CR 400.7), which the SourceObject check already answers, and only
+	// whether two readings are equal matters. Zero in a restore point
+	// written before the field existed, and so on every item stamped
+	// then: the two still agree.
+	TurnOvers int
+
 	// ControlledSinceUpkeep is the value of the controller's
 	// Player.UpkeepsBegun when this permanent last came under that
 	// player's control: as it entered the battlefield, and at each
@@ -564,6 +594,26 @@ type Card struct {
 	// 7b "set" that meets a 7c "modify" is right by construction.
 	// Added in S24, per ADR 0036 decision 2.
 	AttachedAt int64
+
+	// AttachedEpoch is the host's Card.ObjectEpoch at the moment of the
+	// attach, for a host that is NOT on the battlefield: the creature card
+	// in a graveyard an Animate Dead enchants (ADR 0154 decision 3,
+	// CR 400.7). attachmentLegalLocked reads it only for an off-battlefield
+	// host, where a card that left the graveyard and came back with the
+	// same instance ID is a new object the Aura never enchanted
+	// (CR 303.4c). Zero for every battlefield host: the epoch pin on
+	// battlefield attachments is #3159, not this field.
+	//
+	// Set by AttachForEffect and cleared wherever AttachedTo is.
+	AttachedEpoch int
+
+	// EnchantReturned is the creature the resolution of Animate Dead's
+	// enters trigger put onto the battlefield (instance and epoch): the
+	// "creature put onto the battlefield with this Aura" the swapped
+	// clause names (EnchantSwapped, in the bool block below; ADR 0154
+	// decision 4). Zero when nothing came back. Cleared with
+	// EnchantSwapped at both CR 400.7 sites.
+	EnchantReturned ObjectRef
 
 	// FaceTurnedAt is the CR 613.7f timestamp: "a permanent receives
 	// a new timestamp each time it turns face up or face down". The
@@ -1073,6 +1123,21 @@ type Card struct {
 	// object (CR 400.7).
 	stackGranted []string
 
+	// zoneGranted is the ability bundles the zone grant step of the
+	// layer pass gave this CARD while it sits in a hand, a graveyard or
+	// exile (CR 113.10, 613.1f, ADR 0093's amendment 2026-10-13, #3233):
+	// Satoru Umezawa's "each creature card in your hand has ninjutsu".
+	// Written by zoneGrantPassLocked (zone_grants.go), read by
+	// activatedAbilityRows beside the layered grants a permanent has.
+	// Plain data (bundle key, grantor, activator), never a closure.
+	//
+	// A derived cache like `effective` and `stackGranted`: never
+	// snapshotted (a restore forces a recompute, which rebuilds it from
+	// the battlefield statics), always replaced with a fresh slice and
+	// never written in place, and cleared by MoveCard on every zone
+	// change, because a grant to a card ends with the object (CR 400.7).
+	zoneGranted []GrantedAbility
+
 	// --- bools --------------------------------------------------------
 	//
 	// Every bool on Card lives here, together, rather than beside the
@@ -1125,6 +1190,21 @@ type Card struct {
 	// Tapped is the usual MTG tap state. Only meaningful for cards on
 	// the battlefield; ignored in other zones.
 	Tapped bool
+
+	// Flipped is CR 110.5's flipped/unflipped status (ADR 0151). Only
+	// a permanent has it (CR 110.5d); a card enters the battlefield
+	// unflipped unless the effect putting it there says otherwise (CR
+	// 110.5b, ReturnFromGraveyardFlippedForEffect), and it is cleared
+	// by every move to a zone other than the battlefield (CR 710.4).
+	// It is not a characteristic (CR 110.5a) and is never copied (CR
+	// 707.2): the copy rules read the COPIER's status to pick the
+	// half of a copied flip card (CR 707.3, setPrintedValues).
+	//
+	// For a flip card (IsFlipCard) ActiveFace is 1 exactly when this
+	// is true; every other card's ActiveFace ignores it. A permanent
+	// that is not a flip card keeps it once set, irrelevant (CR
+	// 110.5c). Written only by flip.go and MoveCard.
+	Flipped bool
 
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
@@ -1352,6 +1432,18 @@ type Card struct {
 	// Carried by the snapshot.
 	PrepareCopy bool
 
+	// CardCopy marks a COPY OF A CARD made to be cast (CR 707.12; ADR 0066's
+	// 2026-10-13 card-copy amendment, #3258): Mizzix's Mastery's "copy it, and
+	// you may cast the copy", Arcane Bombardment, Kaervek, Spellweaver Volute.
+	// It is NOT A CARD (CR 707.12, 704.5e), so cardCopySweepSBALocked removes
+	// it from any zone it sits in unless a stored cast permission still names
+	// it; once cast, its spell is a StackItem with IsCopy set and ceases to
+	// exist as it leaves the stack (a permanent spell becomes a token as it
+	// resolves, CR 707.10b). Unlike PrepareCopy it keeps ALL the copied
+	// card's copiable values, so its oracle ID — and with it every catalog
+	// hook — is the original's. Carried by the snapshot.
+	CardCopy bool
+
 	// PhasedOutIndirect records that this permanent phased out WITH
 	// the permanent it is attached to rather than on its own
 	// (CR 702.26g, "phasing out indirectly"), and so "won't phase in
@@ -1464,6 +1556,17 @@ type Card struct {
 	// snapshot. Here for alignment, beside the other bools.
 	Renowned bool
 
+	// DealtCombatDamage is "has dealt combat damage" (#3172): the
+	// object-history fact behind Ruric Thar's "has hexproof as long as
+	// they haven't dealt combat damage yet". Set by emitDealDamageLocked
+	// when combat damage this permanent was the source of actually
+	// landed, and kept until the permanent leaves the battlefield (CR
+	// 400.7: a new object has dealt nothing). Not a characteristic, so a
+	// copy never takes it (CopiableValuesOf never reads it); carried by
+	// clone and the snapshot like Renowned. Read through the
+	// HasntDealtCombatDamage gate.
+	DealtCombatDamage bool
+
 	// Bestowed is CR 702.103b's "bestowed" status (ADR 0141, #2862): a
 	// spell cast for its bestow cost, and the permanent that spell
 	// becomes, is an Aura enchantment with enchant creature and not a
@@ -1479,6 +1582,22 @@ type Card struct {
 	// spell copy gets by copying the card. Carried by clone and the
 	// snapshot. Here for alignment, beside the other bools.
 	Bestowed bool
+
+	// EnchantSwapped is ADR 0154 decision 4: this Aura has lost its
+	// printed enchant clause and gained "enchant creature put onto the
+	// battlefield with this Aura" (Animate Dead's and Dance of the
+	// Dead's enters trigger). attachmentLegalLocked reads it before the
+	// catalog clause, as it reads Bestowed: the Aura is legal only on the
+	// permanent EnchantReturned names, and AttachForEffect refuses to move
+	// it anywhere else (CR 701.3b).
+	//
+	// A continuous effect from a resolved ability (CR 611.2c) whose
+	// affected object is this Aura, so it ends when the Aura changes
+	// zones: cleared at both CR 400.7 sites, beside Bestowed. Not a
+	// copiable value. Carried by clone and the snapshot.
+	// EnchantReturned (the creature it names) sits beside AttachedEpoch,
+	// for alignment.
+	EnchantSwapped bool
 }
 
 // AddKnower marks `viewerID` as having seen this card. No-op for
@@ -1567,10 +1686,12 @@ func ptWithCounters(eff Characteristic, counters map[string]int) (power, toughne
 	power, toughness = eff.Power, eff.Toughness
 	if counters != nil {
 		dp, dt := PTCounterDelta(counters)
-		power += dp
-		toughness += dt
+		power = SaturatingAdd(power, dp)
+		toughness = SaturatingAdd(toughness, dt)
 	}
-	return power, toughness
+	// #3040: pinned even with no counters — a layer 7 effect that
+	// scales on the board can overflow on its own.
+	return ClampCount(power), ClampCount(toughness)
 }
 
 // PowerToughness is CurrentPower, PowerForComparison and
@@ -1783,7 +1904,7 @@ func (c Card) IsPermanent() bool {
 // that check runs, a token tucked into a library (Chaos Warp) is
 // still sitting there as an object, and a move that promises "a
 // permanent card" out of a hidden zone refuses it with this.
-func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
+func (c Card) IsToken() bool { return IsTokenPtr(&c) }
 
 // HasCardType reports whether the card's effective card types
 // include `lowerType`, which MUST be lowercase (every caller in
@@ -1836,33 +1957,36 @@ func hasCardType(c *Card, lowerType string) bool {
 // on both branches because 702.73a works in every zone — a Woodland
 // Changeling in a graveyard really is an Elf, which is what a tribal
 // reanimator or a lord counting from exile has to see.
-func (c Card) HasSubtype(subtype string) bool {
+func (c Card) HasSubtype(subtype string) bool { return hasSubtype(&c, subtype) }
+
+// hasSubtype is HasSubtype without the receiver copy (#2113).
+func hasSubtype(c *Card, subtype string) bool {
 	// CR 708.2: a face-down permanent has no subtypes but the ones an
 	// effect LISTED for it (#1270) — Cyber Conversion's Cyberman,
 	// Yedora's Forest — so it is not a Human, not an Elf, and — the
 	// reason this branch precedes the changeling check below — not
 	// every creature type either: the card underneath's changeling is
 	// text the object does not have.
-	if c.FaceDownIsPermanent() {
+	if c.faceDownPermanent() {
 		if c.effective != nil {
 			return typeListHas(c.effective.Subtypes, subtype)
 		}
-		return typeListHas(faceDownCharacteristic(c).Subtypes, subtype)
+		return typeListHas(faceDownCharacteristic(*c).Subtypes, subtype)
 	}
 	if c.effective == nil {
 		// ADR 0141, CR 702.103b: a bestowed spell is an Aura and has no
 		// creature types, changeling or not (bestow.go).
 		if c.Bestowed {
-			return typeListHas(bestowBaseline(&c).Subtypes, subtype)
+			return typeListHas(bestowBaseline(c).Subtypes, subtype)
 		}
-		_, _, printed := printedTypeParts(&c)
+		_, _, printed := printedTypeParts(c)
 		if typeListHas(printed, subtype) {
 			return true
 		}
 	} else if typeListHas(c.effective.Subtypes, subtype) {
 		return true
 	}
-	return IsCreatureType(subtype) && HasAllCreatureTypes(&c)
+	return IsCreatureType(subtype) && HasAllCreatureTypes(c)
 }
 
 // HasSupertype reports whether the card's effective supertypes

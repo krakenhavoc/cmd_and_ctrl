@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -84,11 +82,11 @@ func init() {
 		Name:         "Vivi Ornitier",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{},
-			ProducedFunc: viviManaFromPower,
-			Label:        "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn",
-			OncePerTurn:  true,
-			Condition:    DuringYourTurn(),
+			Cost:           ManaAbilityCost{},
+			ProducedAmount: viviManaFromPower,
+			Label:          "{0}: Add X mana in any combination of {U} and/or {R}, where X is Vivi Ornitier's power. Activate only during your turn and only once each turn",
+			OncePerTurn:    true,
+			Condition:      DuringYourTurn(),
 		}},
 		Triggered: []game.TriggeredAbility{
 			WheneverYouCast(Noncreature(), "Vivi Ornitier — +1/+1 counter and 1 damage to each opponent",
@@ -105,10 +103,13 @@ func init() {
 // Read-only under g.mu, like every ProducedFunc. CurrentPower clamps
 // at zero, so a Vivi shrunk below 0 produces nothing rather than
 // asking strings.Repeat for a negative count.
-func viviManaFromPower(g *game.Game, _, source uuid.UUID) string {
+// viviColors is the {U|R} slot, shared by every slot built from it.
+var viviColors = []string{"U", "R"}
+
+func viviManaFromPower(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
-		return ""
+		return game.ManaAmount{}
 	}
-	return strings.Repeat("{U|R}", c.CurrentPower())
+	return game.ManaAmount{Options: viviColors, N: c.CurrentPower()}
 }

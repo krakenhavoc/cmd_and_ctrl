@@ -282,7 +282,13 @@ func TestPR7aEnergyArcIsOneRecordOverThoseCreatures(t *testing.T) {
 	attacker := pushVanillaCreature(g, me.ID, "Attacker", 4, 4)
 	blocker := pushVanillaCreature(g, opp.ID, "Blocker", 3, 5)
 	pr7aBlockedCombat(t, g, opp.ID, attacker, blocker)
-	castCatalogSpell(t, g, "Energy Arc", "Instant", pr7aEnergyArc, []game.TargetRef{pr7aCard(attacker), pr7aCard(blocker)})
+	// Cast in the declare blockers step it is meant for: the generic
+	// helper would walk on to a main phase, and with the combat damage
+	// step skipped when nothing attacks (CR 508.8) that walk would
+	// never come back to this combat's damage.
+	if err := s58p6CastNow(g, me, "Energy Arc", "Instant", pr7aEnergyArc, []game.TargetRef{pr7aCard(attacker), pr7aCard(blocker)}); err != nil {
+		t.Fatalf("Energy Arc in the declare blockers step: %v", err)
+	}
 	passPriorityAroundTable(t, g)
 	if n := pr7aShields(g); n != 1 {
 		t.Fatalf("%d shields, want one", n)

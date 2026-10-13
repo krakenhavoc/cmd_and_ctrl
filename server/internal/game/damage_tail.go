@@ -808,6 +808,9 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// though its source had infect (Phyrexian Unlife), read as it lands
 	// (damage_as_though.go).
 	poison, lifeLoss := g.damageResultAsThoughLocked(ev, t).DamageToPlayer(ev.DamageAmount, t.combat)
+	// Angel's Grace (#3172): the damage stays whole and only the life it
+	// costs is capped at the floor of 1.
+	lifeLoss = g.capLifeLossByFloorLocked(p, lifeLoss)
 	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
 	lost := 0
 	if loseLife {
@@ -960,6 +963,8 @@ func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLife
 	// here and gone from the emitted Event.
 	if !t.combat {
 		g.recordNoncombatDamageLocked(ev, ev.DamageAmount)
+	} else {
+		g.markDealtCombatDamageLocked(ev.DamageSource)
 	}
 	g.EmitEvent(Event{
 		Kind:              EventDealDamage,
@@ -968,9 +973,38 @@ func (g *Game) emitDealDamageLocked(ev *ReplacementEvent, t *damageTail, notLife
 		Target:            ev.DamageTarget,
 		Amount:            ev.DamageAmount,
 		DamageNotLifeLoss: notLifeLoss,
+		DamageInstance:    ev.DamageInstance,
 		Combat:            t.combat,
 		CombatStep:        t.combatStep,
 	})
+}
+
+// markDealtCombatDamageLocked records that a permanent has dealt combat
+// damage (Card.DealtCombatDamage, #3172) and, for a permanent with a gated static, schedules a layer pass,
+// because the "hasn't dealt combat damage yet" gate it feeds changes
+// which of the permanent's statics are in play. A source that is not on
+// the battlefield (it left before the damage settled) has no object to
+// mark. Idempotent: only the first marking schedules the pass.
+//
+// Caller must hold g.mu.
+func (g *Game) markDealtCombatDamageLocked(source uuid.UUID) {
+	c := g.findBattlefieldCardLocked(source)
+	if c == nil || c.DealtCombatDamage {
+		return
+	}
+	c.DealtCombatDamage = true
+	// Only a permanent with a static behind this gate changes what it
+	// has, so only that one schedules a pass; every other connecting
+	// creature leaves the layer version where it was.
+	if CatalogStaticAbilities == nil {
+		return
+	}
+	for _, st := range CatalogStaticAbilities(catalogAbilityKeyOf(c)) {
+		if st.ActiveWhen.Kind == DesignationHasntDealtCombatDamage {
+			g.layerVersion.Add(1)
+			return
+		}
+	}
 }
 
 // creditLifelinkLocked credits the tail's lifelink beneficiary with

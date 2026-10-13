@@ -38,6 +38,7 @@ func init() {
 		Static: []game.StaticAbility{
 			{
 				Layer: game.Layer4Type,
+				Label: "All permanents are artifacts in addition to their other types.",
 				AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 					return true // all permanents
 				},

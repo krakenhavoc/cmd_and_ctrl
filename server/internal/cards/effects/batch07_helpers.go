@@ -77,6 +77,7 @@ func b07TripleDamageFromYourSources() game.ReplacementEffect {
 			ev.DamageAmount *= 3
 			return nil
 		},
+		RowLabel: "If a source you control would deal damage to a permanent or player, it deals triple that damage instead.",
 		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
 			return src.Controller
 		},
@@ -119,11 +120,11 @@ func b07SearchBasicOntoBattlefield(g *game.Game, item *game.StackItem, player uu
 // the caster's own library. Serialising is also what the printed
 // text does: the offer is made to each opponent in turn order.
 //
-// "Who searches" is read as "who took a land": an opponent's decline
-// and an opponent's search-and-take-nothing both come back as an
-// empty find, and the engine cannot tell them apart. Weaker than
-// printed (an opponent who searched for nothing would owe the caster
-// a land), never stronger, and declared on the card.
+// "Who searches" is its own question: each opponent is first asked
+// whether to search at all (a confirm prompt), and only a "yes" owes the
+// caster a land. The search that follows is not optional — it names a
+// quality, so the searcher may still fail to find (CR 701.23b) and the
+// caster gets their land all the same, as printed.
 //
 // A package-level func, not a closure over the Context: the chain
 // lives on pending choices that outlive the resolution that started
@@ -135,22 +136,27 @@ func b07TemptWithDiscoveryOffer(g *game.Game, controller, source uuid.UUID, oppo
 	next := func(g *game.Game) error {
 		return b07TemptWithDiscoveryOffer(g, controller, source, opponents, i+1)
 	}
-	return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-		Player:   opponents[i],
+	g.QueueConfirmForEffect(game.ConfirmPrompt{
+		Chooser:  opponents[i],
 		Source:   source,
-		Pred:     b03IsLandCard,
-		Dest:     game.ZoneBattlefield,
-		Limit:    1,
-		Shuffle:  true,
-		Optional: true,
-		Reason:   "Tempt with Discovery — you may search for a land (the caster gets one too if you do)",
-		Then: func(g *game.Game, found []uuid.UUID) error {
-			if len(found) == 0 {
-				return next(g)
-			}
-			return b07TemptWithDiscoveryCasterSearch(g, controller, source, next)
+		Question: "Tempt with Discovery — search your library for a land (the caster gets one too if you do)?",
+		OnAccept: func(g *game.Game) error {
+			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
+				Player:  opponents[i],
+				Source:  source,
+				Pred:    b03IsLandCard,
+				Dest:    game.ZoneBattlefield,
+				Limit:   1,
+				Shuffle: true,
+				Reason:  "Tempt with Discovery — a land onto the battlefield",
+				Then: func(g *game.Game, _ []uuid.UUID) error {
+					return b07TemptWithDiscoveryCasterSearch(g, controller, source, next)
+				},
+			})
 		},
+		OnDecline: next,
 	})
+	return nil
 }
 
 // b07TemptWithDiscoveryCasterSearch is the caster's own "search your

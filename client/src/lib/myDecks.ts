@@ -47,6 +47,23 @@ export interface MyDeckInfo {
   source_url?: string;
   /** Absent when the server has no card index or the list no longer parses. */
   coverage?: MyDeckCoverage;
+  /**
+   * Each commander resolved against the card index (ADR 0158 §2), in the
+   * order of `commanders`. Absent when the server has no card index; a
+   * rename's answer never carries it.
+   */
+  commander_cards?: MyDeckCommander[];
+  /** The commanders' identities, unioned, in WUBRG order. Absent when empty. */
+  color_identity?: string[];
+}
+
+/** One commander on a saved deck, as GET /me/decks resolves it. */
+export interface MyDeckCommander {
+  name: string;
+  /** A printing with an image; absent when none resolved. */
+  scryfall_id?: string;
+  /** WUBRG letters: [] for colourless, null when the name did not resolve. */
+  color_identity: string[] | null;
 }
 
 export interface MyDecksResponse {

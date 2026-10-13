@@ -71,6 +71,11 @@ var (
 		Name: "cmdctrl_users_created_total",
 		Help: "New accounts: first Discord sign-ins, each a new users row.",
 	})
+
+	playerReports = prometheus.NewCounter(prometheus.CounterOpts{
+		Name: "cmdctrl_player_reports_total",
+		Help: "Player reports stored (ADR 0075 section 2.6): one per accepted \"report player\", before any admin reads it. A rejected report is not counted.",
+	})
 )
 
 func init() {
@@ -117,3 +122,8 @@ func GameEnded(outcome string, length time.Duration) {
 
 // UserCreated counts a new users row.
 func UserCreated() { usersCreated.Inc() }
+
+// PlayerReported counts one player report stored (ADR 0075 §2.6,
+// #3113). It carries no label: the reporter, the reported seat, the
+// table and the reason are all rows an admin reads, never series.
+func PlayerReported() { playerReports.Inc() }

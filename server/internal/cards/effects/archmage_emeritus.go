@@ -13,18 +13,17 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the stack above the spell that caused it and resolves first, so
 // the card is in hand before the spell resolves — as in paper.
 //
-// Sandbox simplification: the "or COPY" half is not implemented —
-// the engine has no spell-copy event. Weaker than printed until
-// spell copying exists; Storm-Kiln Artist declares the same gap.
+// The "or copy" half rides EventSpellCopied (createSpellCopyLocked), so
+// a copy of an instant or sorcery you control draws too (CR 207.2c). No
+// simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "8305d576-21d8-4ce7-8eda-a7cd9793aca5",
 		Name:         "Archmage Emeritus",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The draw trigger only fires on instants and sorceries you cast, not on copies of them."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
-				return instantOrSorceryCastByYou(ev, source, g)
+			OnAny(magecraftEvents, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+				return instantOrSorceryCastOrCopiedByYou(ev, source, g)
 			}, "Archmage Emeritus — draw a card (magecraft)", Do(DrawCards{N: 1})),
 		},
 	})

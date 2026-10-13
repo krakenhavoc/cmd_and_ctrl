@@ -3404,3 +3404,239 @@ Additive within v7. The new kind is one more on-disk identity (ADR 0041 phase 3)
 - **Knowledge Pool** and **Etali, Primal Conqueror** cast another player's exiled card or a card
   exiled by a different trigger; **Shaman's Trance** bans a graveyard rather than a hand and opens other
   players' graveyards (`play-from-other-players-graveyards`).
+
+## Amendment — 2026-10-13 (#3105): a cast zone a card opens only while a condition holds
+
+Lightwheel Enhancements ("Max speed — You may cast this card from your graveyard"), Gravecrawler ("as long
+as you control a Zombie") and Marang River Prowler ("as long as you control a black or green permanent")
+print a graveyard permission that depends on the game. `Spec.CastableZones` is unconditional and its hook
+(`CatalogCastableZones`) takes an oracle ID with no game, so the zone could not depend on state. No number
+is taken: this amends the S29 declaration this ADR already owns.
+
+### Decision 1 — a second declaration, not a wider hook
+
+`Spec.CastableZonesIf []game.ConditionalCastZone{Zone, Cond}`, with `Cond func(g *Game, owner uuid.UUID,
+card Card) bool`, reaches the engine through a second catalog hook (`CatalogCastableZonesIf`). The
+unconditional hook keeps its signature and every existing card is untouched: nothing in `CastableZones`,
+`CastableZonesFor` or `CardCastableFromZone` changed meaning. `CardCastableFromZone` stays the answer to
+"does the card open this zone UNCONDITIONALLY"; its three engine-side callers moved to the new predicate.
+
+### Decision 2 — one predicate, asked by everyone
+
+`Game.cardOpensZoneLocked(card, key, zone)` is the unconditional declaration OR a conditional entry whose
+condition holds. It is read by `validateCastPathLocked` (the engine), `castUsesGrantLocked` (is a permission
+the REASON the cast is legal), `CardCastableFromAnyFaceLocked` (the legal-move enumerator, so a bot, and the
+view's `castable_here`, so the client's button) and the delve ordering. That is #1171's lesson applied
+before the divergence rather than after it: the condition cannot hold for the engine and fail for the bot.
+`CardCastableFromAnyFace` became a method on the game for the same reason (it needs the game to answer); it
+is the exported `CardCastableFromAnyFaceLocked`, caller holding `g.mu`, and has two callers.
+
+### Decision 3 — the owner is asked, and the condition is data about the game, not state
+
+A card's own text opens its owner's zone and nobody else's, so `Cond` receives `card.Owner`; "max speed" is
+the owner's (ADR 0138 §5). The condition reads the game it is handed, captures nothing and is stored
+nowhere: nothing is added to `Game`, `Card` or the snapshot, so Clone, undo and the bot's look-ahead answer
+from the copy they hold (`TestConditionalZoneFollowsTheCloneNotTheOriginal`), and the cast button follows a
+speed change on the next frame with no invalidation. The closure lives on `CardDef` beside `CastCondition`;
+it is not reachable from `Game`, so the closure ratchet is untouched and no ceiling moved.
+
+### Decision 4 — why not `CastCondition`
+
+Oathsworn Vampire and The Indomitable already gate a graveyard cast with `CastCondition` plus a lookup of the
+card's own zone. That refuses every cast out of the graveyard while the condition is false, including one a
+permission opens: Snapcaster Mage's flashback over a Gravecrawler with no Zombie in play would be refused,
+which the printed cards never do (CR 601.2, and rule 4 of `validateCastPathLocked`: a permission must never
+take away a path, and must never be blocked by a condition on a path it is not using). The conditional zone
+gates only the card's own opening, so a permission still opens the zone
+(`TestAPermissionStillOpensAConditionalZoneThatIsClosed`) and a one-spell permission is spent only when it was the
+reason (`TestALimitedGrantIsSpentOnlyWhileAConditionalZoneIsClosed`). The two existing cards were left on
+`CastCondition`: moving them is a behaviour change to cards this issue does not own, and the stricter
+reading is the safe direction.
+
+### Decision 5 — only a graveyard, and a condition is required
+
+`Register` panics on a `CastableZonesIf` zone that is not the graveyard (hand and command are the format's,
+exile and the library are per-instance permissions, as for `CastableZones`) and on a nil `Cond`, which would
+be an unconditional zone written the long way round. A zone-bound `AlternativeCost` (flashback, escape) may
+name a zone listed in either field.
+
+### Snapshot
+
+None. Nothing is stored.
+
+### Out of scope, stated
+
+- **Ebondeath, Dracolich** ("if a creature not named Ebondeath died this turn") and **Eelectrocute** ("as long
+  as you've rolled a 6 this turn") need a per-turn record the engine does not keep (deaths by name, die
+  results); **Undead Sprinter**, **Glimpse the Cosmos** and **Haakon, Stromgald Scourge** also change the price
+  or open other cards. The conditional zone would carry their gates once those records exist.
+- **Moving Oathsworn Vampire and The Indomitable** onto `CastableZonesIf` (Decision 4).
+
+## Amendment — 2026-10-13 (#3192): a granted permission that is live only while a condition holds
+
+Neyali ("during any turn you attacked with a token, you may play that card"), Boros Strike-Captain, Goblin
+Researcher, Robber of the Rich, Neriv, Pick Up the Pace, Possibility Technician and Summon: Brynhildr print
+an exile permission that is neither an until-end-of-turn window nor "for as long as it remains exiled": it
+is live on some turns and not others, and the card stays exiled the whole time. Before this a card was
+re-granted by a trigger that had to resolve on the right turn, which is weaker than printed (it needs the
+source on the battlefield and the trigger to resolve). #3105 solved the same question for the zone a card's
+own text opens (`Spec.CastableZonesIf`); this is the per-instance counterpart. No number is taken: it amends
+the `CastPermission` model this ADR owns.
+
+### Decision 1 — a condition is a key plus plain parameters, on the permission
+
+`CastPermission.Condition *PermissionCondition` carries a registered key (`game.PermissionConditionKey`,
+`RegisterPermissionCondition`) and parameters (`Subtype`, `N`, `ObjectID`/`ObjectEpoch`). A permission is
+stored state, mirrored into the snapshot, so a closure is not available (that is why `CastPermissionGate`
+exists only for catalog-declared standing permissions); the registry is the `RegisterCastFollowUp` shape, so
+the closure-field ratchet does not move. A restore naming a key this binary never registered is refused
+(`ErrUnknownEffectKey`), and an unknown key at run time fails closed (dormant), never open.
+
+### Decision 2 — evaluated in the one liveness test
+
+`CastPermissionActiveForEffect` is already the test the cast path, the view's castable flags and `exile_play`
+stamp, the legal-move enumerator (and so the bot), the library-top look and the hand branch all read. The
+condition is checked there, beside `NotBeforeSeq` and `RequiresNoSpellsCast`, and nowhere else. The
+permission is not dropped when the condition is false: the sweep keys on the duration and the named objects,
+not on the condition, so the same grant is live again on the next turn the condition holds
+(`TestConditionalPermissionFlipsAcrossTurns`).
+
+### Decision 3 — attack history is recorded as the attacker is declared
+
+"Attacked with a token / a commander / a Rogue" is a question about the attacker AS IT WAS DECLARED, asked
+later in the turn when a token that traded in combat is gone (CR 704.5d). `PlayerTurnTally.TokensAttacked`
+and `CommandersAttacked` and `TurnTally.AttackedSubtypes` (the `EnteredSubtypes` keys and changeling rule)
+are written from `EventAttack`; "N or more creatures" and "this specific creature" read the existing
+`TurnTally.Attacks` list (distinct objects, so a second combat does not double count; the epoch makes a
+blinked creature a new object). "Put a lore counter on this Saga" reads `TurnTally.LoreCounterPut`, written
+in `loreCountersPutLocked`, the one choke point for lore counters. All reset at the turn boundary with the
+rest of `TurnTally`. "You control a <subtype>" is a pure battlefield read.
+
+### Decision 4 — a spell-type gate is a Filter, not a condition
+
+"If it's a creature spell" (Vivien, Champion of the Wilds) and "if it's an instant or sorcery spell" (Nivix) are
+properties of the card, not of the game. `PermissionFilter` already expresses them for a standing permission;
+`CoversCard` now applies it to a named-cards permission as well (the zero filter matches everything, so no
+existing grant changes).
+
+### Decision 5 — "for as long as you control <source>" needed nothing
+
+`Duration{ForAsLongAs, WhileYouControlSource | WhileSourceOnBattlefield}` is read by the same liveness test and
+ends for good when the source leaves or changes hands (CR 611.2b). Lightning, Security Sergeant, Victor Mancha
+and Pick Up the Pace use it as is; a source already gone when the trigger resolves gets a window that never
+started, so the card is exiled and never playable (`effects.forAsLongAsYouControlWindow`).
+
+### Decision 6 — the wire says the grant is dormant
+
+`exile_play` gains `condition` (the printed clause) and `condition_unmet`. The grant is still public; the
+client withholds the play button while the condition is false. Castable flags are per holder and read the
+liveness test, so a dormant grant stamps none.
+
+### Snapshot
+
+Additive within v8, omitted when empty: `seats[].castPermissions[].condition`, `turnTally.attackedSubtypes`,
+`turnTally.loreCounterPut`, `turnTally.players[*].tokensAttacked` and `commandersAttacked`.
+
+### Out of scope, stated
+
+- **Summon: Brynhildr** needs a "when you next cast a creature spell this turn, it gains haste" delayed cast
+  trigger for its chapters II and III as well; the lore-counter condition (`CondLoreCounterOnObject`) is
+  ready and pinned in the engine tests.
+- **Gandalf, Goblins' Bane, Intet, Gwen Stacy, Taster of Wares, Kotose, Hama, The Day of the Doctor and
+  Vivien, Champion of the Wilds** use this plus other pieces (a face-down adventure exile, an optional
+  payment, a transforming face, a reveal-and-choose, a graveyard/hand/library search by name, waterbend on a
+  granted cast, a legendary-card dig, a loyalty ability's pick-from-three) and were left for later slices.
+- **A dormant grant's client caption** (why the card is not playable now) is the printed `condition` text only.
+
+## Amendment (2026-10-13, #3172, cav-g2): a Siege's transformed cast is a window, not a main-phase cast
+
+`SiegeDefeated` now grants the back-face cast with `Timing: TimingFlash` and `LapseOnPass: LapseStaysInExile`, the grant rebound
+and cascade use. The cast ignores the card's timing, as the printed "cast it transformed" does, and the window closes the next time
+its holder passes priority, leaving the card exiled. A Siege defeated on someone else's turn is no longer lost, and the
+end-of-turn duration remains as a backstop. The four Sieges lose `SiegeTransformedCastCaveat`.
+
+Back-out: drop `Timing` and `LapseOnPass` from the grant; `TestSiegeDefeatedOnAnotherPlayersTurnCanStillBeCast` fails.
+
+## Amendment — 2026-10-13: a madness cost can charge life beside its mana (#3212)
+
+Shadowgrange Archfiend prints "Madness—{2}{B}, Pay 8 life" (CR 702.35a: any
+cost, and a life payment is a cost, CR 119.4).
+
+- **`Spec.Madness` stays the mana string.** `Spec.MadnessLife` (an int) is the
+  life, copied into `CardDef.MadnessLife` and read through
+  `game.MadnessLifeFor(oracleID)`, a catalog hook like `XMattersFor`.
+- **The grant is unchanged.** `CastPermission` gains no field (so the snapshot
+  shape does not change): `AlternativeCostFor` adds `Life` to the synthesised
+  offer when `AltCostKey` is `madness`, by asking the catalog, so a restored
+  table prices the cast the same way. The offer is an `AlternativeCost.Life`,
+  which the existing gates already honour: a player with fewer than N life
+  cannot claim it (`lifePayableBy`), and the life is paid with the mana as
+  part of the cast.
+- The may-cast prompt names it ("madness cost {2}{B} and 8 life").
+- **Back-out.** Delete the `AltCostKeyMadness` block in `AlternativeCostFor`:
+  `TestShadowgrangeArchfiendMadnessChargesEightLife/enough_life` fails
+  (life stays 20, not 12) and `/not_enough_life` succeeds in casting.
+
+## Amendment — 2026-10-13 (#3258): casting a copy of a card
+
+Mizzix's Mastery and Arcane Bombardment print "copy it, and you may cast the copy" over one card or a whole set. Until now the
+engine copied a CARD in one place only, the prepare spell (ADR 0090, CR 722.3c), kept alive by a derived permission that reads a
+prepared permanent. Every other cast permission opened the card itself. This amendment generalises that copy to one made by an
+effect and kept alive by an ordinary stored permission. No new rule, and no new permission field.
+
+### Decision 1 — the copy is a real object marked `Card.CardCopy`
+
+`Game.CopyCardsAndOfferCastsForEffect(CardCopyOffer, cards)` (`game/card_copy.go`) makes a copy of each named card that is in exile
+or a graveyard, in the zone the card is in (CR 707.12; a graveyard copy goes to the creating player's graveyard), from the card's
+copiable values (CR 707.2). It keeps every one of them, unlike the prepare copy, so its oracle ID is the original's and every
+catalog hook resolves it as the original: a copy of a Lightning Bolt is a Lightning Bolt. It carries no counters, status, "exiled
+with" link or permission. It is created, not moved, so no zone-move event announces it and nothing "was exiled" (the prepare copy
+does the same).
+
+### Decision 2 — the offer is the existing `ScopeCards` permission, one per copy
+
+"Any number of the copies" needs no new shape: the grants are independent, casting one leaves the others, and the order the
+player casts them in is the order they go on the stack (the last cast resolves first). The cast is the ordinary cast out of the
+zone, so casting triggers fire, targets and modes are chosen, the bot enumerator and the client's cast offers see it, and a `{0}`
+price locks X at 0 (CR 107.3b). `CardCopyOffer` carries `Cost` (`{0}` for "without paying its mana cost", empty for "cast the
+copy" at the printed cost), `Timing`, `Lapse` and `FollowUp`, all straight onto the permission. The window is the one discover,
+cascade and the Siege grants use: `TimingFlash` with `LapseStaysInExile`, the grant model's stand-in for CR 608.2g.
+
+### Decision 3 — the sweep is CR 704.5e, keyed on the offer
+
+`cardCopySweepSBALocked` removes a `CardCopy` in any zone that no stored permission names. Every way a window can close then ends
+the copy with no per-site code: the holder passing (`closePassWindowsLocked` also runs the sweep directly, since a pass may reach
+no state check before the table looks), the end of the turn (`sweepCastPermissionsLocked`), or the copy leaving its zone. A copy
+that is cast is the spell on the stack (`StackItem.IsCopy`, now `card.PrepareCopy || card.CardCopy`) and ceases on resolution; a
+permanent spell becomes a token (CR 707.10b), through the path Twincast's copies already use.
+
+### Decision 4 — the effects door is `effects.CopyAndCast`
+
+`CopyAndCast{Cards, Player, Free, FollowUp}` is the card-facing primitive. It always uses `TimingFlash` and `LapseStaysInExile`.
+Mizzix's Mastery feeds it the cards its exile really landed (`ExileCardsThenForEffect`'s continuation, so a card a replacement
+sent elsewhere is not copied). Arcane Bombardment feeds it every card still exiled with the enchantment (`b27ExiledWith`), so the
+copies are made again from the same originals on every trigger.
+
+### Decision 5 — the first-instant-or-sorcery clock
+
+`CastTally.InstantSorcery` counts the instant and sorcery spells a player cast this turn, bumped beside `Artifact` as each spell
+becomes cast, so `== 1` on the cast event means "your first".
+
+### Snapshot
+
+Additive within v8, omitted when zero: `cardCopy` on every card path and `spellsCastThisTurn{}.instantSorcery`.
+
+### Out of scope, stated
+
+- **The window closes on the holder's next priority pass** instead of being an inline cast inside the resolution, the posture
+  every "you may cast it" a resolution offers takes (ADR 0091, discover.go). A cast on another player's turn can be preceded by
+  responses.
+- **A total mana value budget** (Uldaros Theorix's "total mana value 6 or less") is the separate `budgeted-free-casts` seam (#2017).
+- **Paradigm** (#1866) needs a recurring offer at each first main phase over a card that stays in exile, plus a self-exile and a
+  per-name record. **Spellweaver Volute** (#3157) needs its sorcery-cast trigger and the CR 303.4f re-attach (#3158).
+  **Kaervek, the Punisher** (#2947) is `CopyAndCast{Free: false, FollowUp: …}` plus the crime fix (#2944).
+- **A copy in a hand or a library** is not made; no card asks.
+- **Cast from a copy made in another seat's graveyard** is not modelled; the copy goes to the creator's.
+
+Back-out: remove `card.CardCopy` from the `IsCopy` line in `CastSpell`, and `TestCardCopyOfAPermanentCardResolvesAsAToken` fails;
+remove the sweep call in `runStateChecksLocked`, and `TestCardCopyWithNoOfferCeasesAtTheNextStateCheck` fails.

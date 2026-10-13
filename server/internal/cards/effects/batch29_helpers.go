@@ -79,31 +79,6 @@ func b29CreaturesYouControlWithSevenEnchantments(target *game.Card, g *game.Game
 	return b16CreaturesYouControl(target, g, source) && b29EnchantmentsControlled(g, source.Controller) >= 7
 }
 
-// b29SpiritClericSizing is the Spirit Cleric token's printed
-// "this token's power and toughness are each equal to the number of
-// Spirits you control", carried by Hallowed Haunting on the tokens'
-// behalf: a layer 7a set over the 0/0 Spirit Cleric tokens its
-// controller controls, applied by the FIRST Haunting the controller
-// controls only, so two Hauntings size a token once. Layer 7a so
-// counters and anthems still stack on top, the way they do on a
-// printed characteristic-defining ability.
-func b29SpiritClericSizing() game.StaticAbility {
-	return game.StaticAbility{
-		Layer:    game.Layer7PT,
-		SubLayer: game.SubLayer7A_CDA,
-		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
-			return target.Controller == source.Controller && IsToken(*target) && target.Name == "Spirit Cleric" &&
-				target.IsCreature() && target.Power == 0 && target.Toughness == 0 &&
-				b15IsFirstOfItsNameControlledBy(g, source)
-		},
-		Apply: func(c *game.Characteristic, _ *game.Card, g *game.Game, source *game.Card) {
-			n := b29SpiritsControlled(g, source.Controller)
-			c.Power = n
-			c.Toughness = n
-		},
-	}
-}
-
 // --- state reads ---------------------------------------------------
 
 // b29EnchantmentsControlled counts the enchantments `controller`
@@ -217,8 +192,8 @@ func b29CreatureWithMinusCounterDied(ev game.Event, g *game.Game) bool {
 // reflexive trigger resolves well after the parent ability created
 // it, by which time the sacrificed creature is in the graveyard with
 // its counters cleared — which is why the second branch exists. A
-// static bonus from another permanent is not in that branch;
-// declared on the card that reads this.
+// anthem's or an Equipment's bonus is in it, because the departure record
+// holds the post-layer power (CR 608.2h).
 func b29PowerAsItLastStood(g *game.Game, cardID uuid.UUID) int {
 	if onBattlefield(g, cardID) {
 		if c, ok := g.LookupCardForEffect(cardID); ok {
@@ -359,32 +334,24 @@ func b29SearchAuraAttachedToSource(g *game.Game, item *game.StackItem) error {
 // trigger.
 const b29ZiatoraSacrificeLabel = "Ziatora, the Incinerator — sacrifice another creature"
 
-// b29SacrificeChosenCreature is Ziatora's end-step body: the
-// creature chosen when the trigger went on the stack is sacrificed
-// if it is still there and still legal, and — because it was — the
-// printed "when you do" goes on the stack as a CR 603.12 reflexive
-// trigger with its own "any target" clause, carrying the creature
-// that just died as its payload.
+// b29SacrificeChosenCreature is Ziatora's end-step body: "you may
+// sacrifice another creature", asked as the trigger resolves
+// (maySacrificeOne), and — because one really went — the printed
+// "when you do" goes on the stack as a CR 603.12 reflexive trigger
+// with its own "any target" clause, carrying the creature that just
+// died as its payload.
 //
-// Nothing follows when the chosen creature has already left: "when
-// you do" is conditional on the doing, so a creature removed in
-// response takes the damage and the Treasures with it.
+// Nothing follows when nothing was sacrificed: "when you do" is
+// conditional on the doing.
 func b29SacrificeChosenCreature(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard || t.ID == item.SourceCardID {
-			continue
-		}
-		if err := (SacrificePermanent{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		return ReflexiveTrigger{
-			Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
-			Cards: []uuid.UUID{t.ID},
-			Body:  ziatoraFlingBody,
-		}.Apply(ctx)
-	}
-	return nil
+	return maySacrificeOne(g, item, "Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?", Creature(), true,
+		func(ctx *Context, sacrificed uuid.UUID) error {
+			return ReflexiveTrigger{
+				Label: "Ziatora, the Incinerator — damage equal to the sacrificed creature's power to any target, and three Treasures",
+				Cards: []uuid.UUID{sacrificed},
+				Body:  ziatoraFlingBody,
+			}.Apply(ctx)
+		})
 }
 
 // b29ZiatoraFling is Ziatora's reflexive body: damage equal to the
@@ -407,24 +374,18 @@ func b29ZiatoraFling(g *game.Game, item *game.StackItem) error {
 }
 
 // b29SacrificeChosenTokenThenAcorn is Chitterspitter's upkeep body:
-// the token chosen when the trigger went on the stack is sacrificed
-// if it is still there, and only then does an acorn counter go on
-// the Chitterspitter — if it is still on the battlefield.
+// "you may sacrifice a token. If you do, put an acorn counter on this
+// artifact". The token is chosen as the trigger resolves (maySacrificeOne),
+// and the counter follows only a token that really went, and only while
+// the Chitterspitter is still in play.
 func b29SacrificeChosenTokenThenAcorn(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if err := (SacrificePermanent{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		if onBattlefield(g, t.ID) || !onBattlefield(g, item.SourceCardID) {
-			return nil
-		}
-		return AddCounter{Target: item.SourceCardID, Kind: "acorn", N: 1}.Apply(ctx)
-	}
-	return nil
+	return maySacrificeOne(g, item, "Chitterspitter — sacrifice a token to put an acorn counter on it?", IsTokenPredicate(), false,
+		func(ctx *Context, _ uuid.UUID) error {
+			if !onBattlefield(ctx.Game, item.SourceCardID) {
+				return nil
+			}
+			return AddCounter{Target: item.SourceCardID, Kind: "acorn", N: 1}.Apply(ctx)
+		})
 }
 
 // b29FoodForSacrificedCreature is Witch's Oven's activation: one

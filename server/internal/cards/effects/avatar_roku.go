@@ -13,35 +13,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // reached only through chapter III's exile-and-return
 // (the_legend_of_roku.go).
 //
-// SANDBOX SIMPLIFICATIONS, and this is why the card is not Full:
-//
-//   - Firebending's mana does not persist through combat. AddMana
-//     puts the four red mana in the pool exactly as Dark Ritual does,
-//     and it empties with the pool at the end of the step it was
-//     added in (CR 106.4) — the declare-attackers step here. "This
-//     mana lasts until end of combat" needs a mana-pool exception this
-//     engine has nowhere to hang, so the mana is real and spendable
-//     immediately but gone before blockers are declared, rather than
-//     lasting the rest of combat as printed. Weaker than printed
-//     (#259): nothing spends mana it never received.
+// Firebending's mana lasts until end of combat (#3172): the four red
+// mana carry the KeepManaUntilEndOfCombat mark, which the step-boundary
+// sweep (game/mana_keep.go) honours through every step of the combat
+// phase and drops at the first boundary outside it, so it can pay for
+// instants and abilities in the declare blockers and damage steps and is
+// gone by the postcombat main phase, as printed.
 //
 // The Dragon token DOES carry its own firebending 4 since ADR 0083
 // (#1248): it is a catalog template under `token:dragon-firebending`,
 // and its attack trigger is found through `game.CatalogKey`'s
 // token-key fallback like a printed card's. Before that this card
 // declared a second caveat for it — the "Triggered and static
-// abilities on non-copy tokens" seam. The token inherits the mana
-// caveat above, because it is the same firebending.
+// abilities on non-copy tokens" seam. Its mana is marked the
+// same way.
 func init() {
 	Register(Spec{
 		OracleID:     theLegendOfRokuOracleID + "#1",
 		Name:         "Avatar Roku",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Firebending's mana empties at the end of the declare attackers step instead of lasting until end of combat, both on Avatar Roku and on the Dragon token it creates.",
-		},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Avatar Roku — firebending 4", Do(AddMana{Produced: "{R}{R}{R}{R}"})),
+			WheneverThisAttacks("Avatar Roku — firebending 4", Do(firebending(4))),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{8}: Create a 4/4 red Dragon creature token with flying and firebending 4.",
@@ -72,9 +64,18 @@ func printedFirebendingDragonToken() tokenTemplate {
 			Keywords:  []string{"flying"},
 		},
 		Triggered: []game.TriggeredAbility{
-			WheneverThisAttacks("Dragon — firebending 4", Do(AddMana{Produced: "{R}{R}{R}{R}"})),
+			WheneverThisAttacks("Dragon — firebending 4", Do(firebending(4))),
 		},
 		Text: "Flying\nFirebending 4 (Whenever this creature attacks, add {R}{R}{R}{R}. " +
 			"This mana lasts until end of combat.)",
+	}
+}
+
+// firebending is "Firebending N": add N red mana that lasts until end of
+// combat.
+func firebending(n int) AddMana {
+	return AddMana{
+		Produced: game.RepeatMana("{R}", n),
+		Riders:   []game.ManaSpendRider{KeepManaUntilEndOfCombat()},
 	}
 }

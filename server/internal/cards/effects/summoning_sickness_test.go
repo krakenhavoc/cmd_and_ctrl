@@ -79,6 +79,7 @@ func TestFreshFabledPassageActivatesTheTurnItIsPlayed(t *testing.T) {
 		t.Fatalf("crack a Passage played this turn: %v", err)
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if _, ok := battlefieldCard(g, basic); !ok {
 		t.Error("the fetch did not resolve")
 	}

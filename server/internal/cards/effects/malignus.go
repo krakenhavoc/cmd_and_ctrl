@@ -22,6 +22,7 @@ func init() {
 		Name:         "Malignus",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Power and toughness are each equal to half the highest life total among your opponents, rounded up.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

@@ -637,6 +637,23 @@ type Game struct {
 	// it would re-judge a declaration whose triggers have already fired.
 	attacksDeclared bool
 
+	// combatHadAttackers is whether any creature has been declared as an
+	// attacker, or put onto the battlefield attacking, in THIS combat
+	// phase (CR 508.8, #2899). It is the one fact the declare blockers
+	// and combat damage steps are skipped on: stepExistsLocked answers
+	// false for them while it is unset and nothing is attacking.
+	//
+	// A flag rather than a live scan because the rule is about the
+	// declaration: an attacker that dies or is removed from combat in
+	// the declare attackers step's own priority window was still
+	// declared, so the steps still happen. Set by
+	// noteAttackAnnouncedLocked (the one door both a declaration and an
+	// entry "attacking" go through), cleared with the rest of combat.
+	// Carried by Clone / RestoreFrom and the persisted snapshot for
+	// attacksDeclared's reason: an undo across the declaration that
+	// dropped it would walk a real combat past its blockers.
+	combatHadAttackers bool
+
 	// firstStrikeStepParticipants is THIS combat's CR 510.4 / 702.7c
 	// participation record: the attacking and blocking creatures that
 	// had first strike or double strike as the FIRST combat damage
@@ -1084,6 +1101,9 @@ func NewGame() *Game {
 		// in applyResolvedDamageToPlayerLocked, because damage does
 		// not fire this window (CR 120.3).
 		lifeTotalCantChangeReplacement,
+		// #3172 (Arlinn, the Pack's Hope): a duration grant of "each
+		// creature you control enters with an additional counter".
+		playerEntryCountersReplacement,
 	)
 	return g
 }
@@ -1687,6 +1707,31 @@ type CastTally struct {
 	// 708.4). Call Forth the Tempest's "the total mana value of other
 	// spells you've cast this turn" subtracts its own (#2743).
 	ManaValue int `json:"manaValue,omitempty"`
+	// InstantSorcery counts the instant and sorcery spells the player cast
+	// this turn, read as each spell became cast like Artifact (#3258).
+	// Arcane Bombardment's "whenever you cast your first instant or
+	// sorcery spell each turn" is InstantSorcery == 1 once the tally is
+	// bumped, which is before EventCast.
+	InstantSorcery int `json:"instantSorcery,omitempty"`
+	// ManaSpent is the total mana the player spent to cast spells this
+	// turn (#3172), counted as each spell became cast off its payment
+	// record, so a cost reduction, X and every additional cost's mana all
+	// count and a free or waived payment counts 0. ManaSpentLast is the
+	// share of it that the MOST RECENT spell paid. Together they answer
+	// expend's "as you spend your Nth total mana to cast spells during a
+	// turn" (an ability word of Bloomburrow, with no rule of its own
+	// beyond the trigger text): the Nth mana was spent by this spell
+	// exactly when ManaSpent >= N and ManaSpent-ManaSpentLast < N. Read
+	// through CastTally.Expended.
+	ManaSpent     int `json:"manaSpent,omitempty"`
+	ManaSpentLast int `json:"manaSpentLast,omitempty"`
+}
+
+// Expended reports whether the spell just cast spent the player's Nth
+// total mana on spells this turn (expend N, #3172): the running total
+// reached N with this spell and had not reached it before.
+func (t CastTally) Expended(n int) bool {
+	return n > 0 && t.ManaSpent >= n && t.ManaSpent-t.ManaSpentLast < n
 }
 
 // CastInstantOrSorceryOfColor reports whether the tally includes an
@@ -1736,24 +1781,64 @@ func (g *Game) ForetoldCountThisTurn(playerID uuid.UUID) int {
 // announces, no turn-based action runs, and no player receives
 // priority in it.
 //
-// One step answers false today. CR 506.1 / 510.4: a combat phase has
-// TWO combat damage steps, the first of them for first strike, only
-// "if at least one attacking or blocking creature has first strike or
-// double strike as the combat damage step begins". The cursor is at
-// that moment right now, so the check is the live board — which is
-// also why it is a predicate here rather than a flag set when blockers
-// were declared: a creature can gain or lose first strike during the
-// declare-blockers step's own priority window.
+// Three steps can answer false:
 //
-// The regular combat damage step always exists (every combat has one),
-// and so does every other step in turnSequence.
+//   - StepDeclareBlockers, StepFirstStrikeDamage and StepCombatDamage
+//     when nothing attacked this combat (CR 508.8, #2899): "if no
+//     creatures are declared as attackers or put onto the battlefield
+//     attacking, skip the declare blockers step and the combat damage
+//     step." The record is combatHadAttackers, set by the one door both
+//     a declaration and an entry "attacking" pass through; a creature
+//     currently attacking counts too, so a board staged by hand (and a
+//     declaration not yet announced) reads as an attack. The end of
+//     combat step is NOT skipped: the rule names two steps. Because the
+//     check is on entry, an attacker that leaves combat in the declare
+//     attackers step's own priority window does not bring the skip back - it
+//     was declared, so the steps still happen.
+//   - StepFirstStrikeDamage otherwise. CR 506.1 / 510.4: a combat phase
+//     has TWO combat damage steps, the first of them for first strike,
+//     only "if at least one attacking or blocking creature has first
+//     strike or double strike as the combat damage step begins". The
+//     cursor is at that moment right now, so the check is the live
+//     board - which is also why it is a predicate here rather than a
+//     flag set when blockers were declared: a creature can gain or lose
+//     first strike during the declare-blockers step's own priority
+//     window.
+//
+// Every other step in turnSequence always exists.
 //
 // Caller must hold g.mu.
 func (g *Game) stepExistsLocked(s Step) bool {
-	if s != StepFirstStrikeDamage {
+	switch s {
+	case StepDeclareBlockers, StepCombatDamage:
+		return g.combatHasAttackersLocked()
+	case StepFirstStrikeDamage:
+		return g.combatHasAttackersLocked() && len(g.firstStrikeStepParticipantSetLocked()) > 0
+	}
+	return true
+}
+
+// combatHasAttackersLocked is CR 508.8's question: has any creature
+// been declared as an attacker, or put onto the battlefield attacking,
+// in this combat phase? The recorded fact (combatHadAttackers) or a
+// creature attacking right now - the second covers an attack declared
+// but not yet announced, and a battlefield whose AttackingTarget was
+// written without going through a declaration.
+//
+// Caller must hold g.mu.
+func (g *Game) combatHasAttackersLocked() bool {
+	if g.combatHadAttackers {
 		return true
 	}
-	return len(g.firstStrikeStepParticipantSetLocked()) > 0
+	if g.Battlefield == nil {
+		return false
+	}
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].AttackingTarget != uuid.Nil {
+			return true
+		}
+	}
+	return false
 }
 
 // runStepEntryHooksLocked dispatches the per-step side effects that
@@ -2201,6 +2286,37 @@ func (g *Game) WinnerSeat() (seat int, ok bool) {
 		return 0, false
 	}
 	return found, true
+}
+
+// TableGlance is what the lobby's table list shows of a game in play
+// (ADR 0158 §1 item 4): the turn number and each seat's life total.
+// Both are public at the table, so nothing here is filtered.
+type TableGlance struct {
+	// Turn is the game view's turn.number (Turn.Round): the number the
+	// board shows, which every seat has reached.
+	Turn int
+	// Life is each seated player's life total, by player ID.
+	Life map[uuid.UUID]int
+}
+
+// Glance reads TableGlance under the game's read lock. ok is false
+// unless the game is active: a game in the lobby or ended has no turn
+// worth showing. The caller may hold the lobby's lock (the lobby always
+// takes its own lock before a game's, never the other way round).
+func (g *Game) Glance() (TableGlance, bool) {
+	g.mu.RLock()
+	defer g.mu.RUnlock()
+	if g.State != StateActive {
+		return TableGlance{}, false
+	}
+	out := TableGlance{Turn: g.Turn.Round, Life: make(map[uuid.UUID]int, len(g.Seats))}
+	for _, p := range g.Seats {
+		if p == nil {
+			continue
+		}
+		out.Life[p.ID] = p.Life
+	}
+	return out, true
 }
 
 // ActivePlayer returns the player whose turn it currently is, or nil

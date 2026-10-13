@@ -16,23 +16,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // search to hand with the chooser deciding which basics and how
 // many — "up to three" is the chooser's zero minimum.
 //
-// Sandbox simplification, the Garruk's Uprising posture: the
-// intervening-if is checked when the trigger would go on the stack
-// and not again on resolution. Playing a land in response to make
-// the counts equal should make the trigger do nothing; here the
-// search still happens. A corner case, and the direction is
-// stronger, so it is declared rather than hidden: no re-check hook on
-// a built StackItem exists.
+// The intervening-if is checked twice (CR 603.4): when the trigger
+// would go on the stack, in AppliesTo, and again when it resolves, at
+// the top of the Effect. So a land played in response to even out the
+// counts makes the trigger do nothing, as printed. (Until #3138 this
+// file declared that second check as missing; it never needed engine
+// support, because the Effect already runs at resolution and reads the
+// live board.)
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "d2d9ecea-7925-420e-98b9-2f87f41f387c",
 		Name:         "Land Tax",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The land-count check happens only when the trigger goes on the stack, so playing a land in response won't stop the search."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
 			Optional(On(game.EventBeginUpkeep, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return ev.Actor == source.Controller && b03OpponentControlsMoreLands(g, source.Controller)
 			}, "Land Tax — search for up to three basic lands", func(g *game.Game, item *game.StackItem) error {
+				if !b03OpponentControlsMoreLands(g, item.Controller) {
+					return nil // CR 603.4: the condition no longer holds on resolution
+				}
 				return SearchLibrary{
 					Player:    item.Controller,
 					Predicate: IsBasicLand,

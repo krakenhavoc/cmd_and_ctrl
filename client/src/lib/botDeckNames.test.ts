@@ -53,7 +53,7 @@ describe("botDeckLabel", () => {
   });
 
   it("falls back to the raw id before the catalog has loaded at all", () => {
-    expect(botDeckLabel("izzet-aggro", new Map())).toBe("izzet-aggro");
+    expect(botDeckLabel("mono-red-aggro", new Map())).toBe("mono-red-aggro");
   });
 
   it("falls back to the raw id when the catalog has an entry with a blank name", () => {

@@ -24,6 +24,7 @@ func eventMetrics() []prometheus.Collector {
 		gamesEnded,
 		gameDuration,
 		usersCreated,
+		playerReports,
 		wsConnects,
 		wsDisconnects,
 		wsRejections,
@@ -36,6 +37,9 @@ func eventMetrics() []prometheus.Collector {
 		triggerOrderPrompts,
 		bootRestoreGames,
 		bootRestoreDegradedCards,
+		// capacity.go
+		capacityRefusals,
+		bootRestoreDeferred,
 		// bots.go
 		botDecisions,
 		botDecisionSeconds,

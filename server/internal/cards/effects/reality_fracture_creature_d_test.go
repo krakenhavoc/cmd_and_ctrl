@@ -384,6 +384,7 @@ func TestRFDPiaAetherAsceticDiscardsToTutorAnEnchantment(t *testing.T) {
 	}
 	answerDiscard(t, g, me.ID, me.Hand.Cards[0].InstanceID)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !me.Hand.Contains(ench) {
 		t.Error("the enchantment should have been searched into hand")
 	}
@@ -628,8 +629,8 @@ func TestRFDRuricTharMagecrusherCantBeCounteredAndHasItsKeywords(t *testing.T) {
 			t.Errorf("missing %s", kw)
 		}
 	}
-	if hasAbility(effectiveAbilities(t, g, ruric), "hexproof") {
-		t.Error("the declared caveat is that it never has hexproof; granting it would be a stronger card")
+	if !hasAbility(effectiveAbilities(t, g, ruric), "hexproof") {
+		t.Error("it has hexproof until it deals combat damage (#3172); ruric_thar_hexproof_test.go covers the turn-off")
 	}
 }
 

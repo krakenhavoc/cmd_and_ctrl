@@ -16,23 +16,27 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // creature-or-planeswalker statement Hero's Downfall and Dreadbore
 // both use.
 //
-// Declared simplification, weaker than printed: CONNIVE (CR 702.146)
-// is not implemented anywhere in the engine — no primitive draws,
-// discards and conditionally counters a specific creature as one
-// unit — so the convoking creatures get none of it. The destroy half
-// is unaffected and is the whole reason the card is cast.
+// "Each creature that convoked this spell" is the cast's own record
+// (PaidCost.Convoked, #3172): the creatures tapped for convoke, in the
+// order named. They connive one after another (ConniveEach), each
+// completing its draw, discard and counter before the next begins; a
+// convoker that has since left still draws and discards, with no
+// counter. The destroy comes first, as printed. A copy of the spell was
+// not cast, so nothing convoked it and nothing connives (CR 707.10).
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "c4660b3c-a234-4a3e-83e7-e2fa9d556685",
 		Name:         "Lethal Scheme",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Creatures that convoked this spell don't connive — draw a card, discard a card, and get a +1/+1 counter for discarding a nonland card — that ability isn't implemented.",
-		},
-		TapCost: Convoke(),
-		Targets: TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
+		Completeness: CompletenessFull,
+		TapCost:      Convoke(),
+		Targets:      TargetPermanent("target creature or planeswalker", Or(Creature(), Planeswalker())),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
-			return destroyChosenPermanent(ctx.Game, item)
+			if err := destroyChosenPermanent(ctx.Game, item); err != nil {
+				return err
+			}
+			return ConniveEach{Controller: item.Controller, Creatures: ctx.Paid().Convoked}.Apply(ctx)
 		},
 	})
 }

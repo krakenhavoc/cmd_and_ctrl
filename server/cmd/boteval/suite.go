@@ -103,7 +103,7 @@ func parseSuiteRun(args []string) (suiteRunOpts, error) {
 	fs.SetOutput(os.Stderr)
 	fs.StringVar(&o.Dir, "dir", defaultPositionsDir, "directory of position files")
 	fs.StringVar(&o.Policy, "policy", "heuristic", "policy to ask: heuristic, assisted or strong")
-	fs.StringVar(&o.Deck, "deck", "izzet-aggro", "curated deck whose list becomes the static prompt block (model tiers only)")
+	fs.StringVar(&o.Deck, "deck", "mono-red-aggro", "curated deck whose list becomes the static prompt block (model tiers only)")
 	fs.StringVar(&o.Dump, "dump", "", "Scryfall bulk dump for oracle text (default: $CMDCTRL_SCRYFALL_DUMP)")
 	fs.DurationVar(&o.MaxThink, "max-think", 0, "hard deadline per position (default: $CMDCTRL_BOT_MAX_THINK, else the suite's own 60s, or 120s with --think)")
 	fs.BoolVar(&o.Think, "think", false, "let the model THINK before it answers (default: $CMDCTRL_BOT_THINK); model tiers only")
@@ -421,7 +421,7 @@ func parseSuiteRender(args []string) (suiteRenderOpts, error) {
 	fs := flag.NewFlagSet("suite render", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
 	fs.StringVar(&o.Pos, "pos", "", "position file to render (required)")
-	fs.StringVar(&o.Deck, "deck", "izzet-aggro", "curated deck whose list becomes the static prompt block")
+	fs.StringVar(&o.Deck, "deck", "mono-red-aggro", "curated deck whose list becomes the static prompt block")
 	fs.StringVar(&o.Dump, "dump", "", "Scryfall bulk dump for oracle text (default: $CMDCTRL_SCRYFALL_DUMP)")
 	if err := fs.Parse(args); err != nil {
 		return o, err

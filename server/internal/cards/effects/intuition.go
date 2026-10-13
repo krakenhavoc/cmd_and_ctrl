@@ -26,9 +26,10 @@ import (
 //     ceiling one, whose continuation moves both halves and then
 //     shuffles.
 //
-// "Search for three cards" is still subject to CR 701.23b — a searcher
-// may always fail to find, and may find fewer than three — so the
-// prompt's ceiling is whatever was actually revealed.
+// "Search for three cards" names no quality, so it is CR 701.23d's
+// quantity search (#3053): the searcher must find three, or as many as
+// the library holds — no Predicate, no fail to find. A library of fewer
+// than three is taken whole without a prompt.
 //
 // No simplification.
 func init() {

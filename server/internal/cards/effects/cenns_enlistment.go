@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "49fe9f5a-5821-4586-b913-7d8aef1f8669",
 		Name:             "Cenn's Enlistment",
+		Purpose:          game.Purpose{Tokens: 2},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Retrace("{3}{W}")},

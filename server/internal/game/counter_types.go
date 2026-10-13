@@ -69,6 +69,11 @@ const (
 	// (CR 400.7), so a suspended creature never enters the
 	// battlefield carrying them.
 	CounterTime = "time"
+	// CounterDream is the dream counter (Goliath Daydreamer): put on a
+	// spell's card as it is exiled instead of going to the graveyard.
+	// It marks the card as one Goliath Daydreamer may cast from exile.
+	// MoveCard clears counters on the way out of exile (CR 400.7).
+	CounterDream = "dream"
 )
 
 // Player-level counter type identifiers.
@@ -118,6 +123,7 @@ var KnownCardCounters = []string{
 	CounterLore,
 	CounterAge,
 	CounterTime,
+	CounterDream,
 }
 
 // KnownPlayerCounters is the slice form of the player-level counter

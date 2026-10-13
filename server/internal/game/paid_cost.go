@@ -275,6 +275,25 @@ type PaidCost struct {
 	// discarded, and since §7 a random discard's cards follow the named
 	// ones (Pyromancy's "the mana value of the discarded card").
 	Discarded []uuid.UUID `json:"discarded,omitempty"`
+
+	// Convoked is the creatures tapped to convoke the spell (CR 702.51,
+	// #3172), in the order named: Lethal Scheme's "each creature that
+	// convoked this spell connives". Instance IDs only, because the
+	// reader asks whether each is still there to act on. Nil for a cast
+	// that convoked nothing (nearly all of them), for waterbend (a
+	// different keyword with no such payoff), and for a COPY of the
+	// spell: a copy is not cast and was not convoked (CR 707.10), so
+	// spell_copy.go does not carry it.
+	Convoked []uuid.UUID `json:"convoked,omitempty"`
+
+	// AssistedBy is the player who helped pay for the spell with assist
+	// (CR 702.132a, ADR 0150 §4), and AssistPaid how much of its generic
+	// mana they paid. Their mana is in Mana with the caster's, since it
+	// was spent to cast the spell. Zero for a cast nobody helped with,
+	// and for a COPY (CR 707.10), which spell_copy.go does not carry it
+	// onto.
+	AssistedBy uuid.UUID `json:"assistedBy,omitempty"`
+	AssistPaid int       `json:"assistPaid,omitempty"`
 }
 
 // PaidCostBranch reports whether the either/or branch keyed `key` was
@@ -417,7 +436,8 @@ func (p PaidCost) IsZero() bool {
 		p.Sacrificed == 0 && len(p.SacrificedObjects) == 0 && len(p.AltCostObjects) == 0 &&
 		p.ReturnedAttacking == uuid.Nil && len(p.OptionalCosts) == 0 &&
 		len(p.TappedOthers) == 0 && len(p.Exiled) == 0 && len(p.Delved) == 0 &&
-		p.CostBranch == 0 && len(p.Discarded) == 0
+		p.CostBranch == 0 && len(p.Discarded) == 0 && len(p.Convoked) == 0 &&
+		p.AssistedBy == uuid.Nil && p.AssistPaid == 0
 }
 
 // clonePaidCost deep-copies the record. The ManaToken slice is
@@ -446,6 +466,9 @@ func clonePaidCost(p PaidCost) PaidCost {
 	}
 	if len(p.AltCostObjects) > 0 {
 		out.AltCostObjects = append([]ObjectRef(nil), p.AltCostObjects...)
+	}
+	if len(p.Convoked) > 0 {
+		out.Convoked = append([]uuid.UUID(nil), p.Convoked...)
 	}
 	if len(p.Discarded) > 0 {
 		out.Discarded = append([]uuid.UUID(nil), p.Discarded...)

@@ -17,6 +17,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "494050f4-0a55-415d-9ae9-feb17e61c4e1",
 		Name:             "Savage Conception",
+		Purpose:          game.Purpose{Tokens: 1},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Retrace("{3}{G}{G}")},

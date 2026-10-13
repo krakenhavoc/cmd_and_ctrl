@@ -39,6 +39,7 @@ func init() {
 		Name:         "Lord of Extinction",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Power and toughness are each equal to the number of cards in all graveyards.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

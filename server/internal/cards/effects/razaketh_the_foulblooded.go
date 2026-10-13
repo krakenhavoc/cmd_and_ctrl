@@ -35,12 +35,11 @@ func init() {
 			}),
 			Effect: func(g *game.Game, item *game.StackItem) error {
 				return SearchLibrary{
-					Player:    item.Controller,
-					Predicate: func(game.Card) bool { return true },
-					Dest:      game.ZoneHand,
-					Limit:     1,
-					Shuffle:   true,
-					Reason:    "Razaketh, the Foulblooded — a card, to hand",
+					Player:  item.Controller,
+					Dest:    game.ZoneHand,
+					Limit:   1,
+					Shuffle: true,
+					Reason:  "Razaketh, the Foulblooded — a card, to hand",
 				}.Apply(NewContext(g, item))
 			},
 		}},

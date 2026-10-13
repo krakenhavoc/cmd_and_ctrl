@@ -28,6 +28,7 @@ func init() {
 		),
 		Static: []game.StaticAbility{{
 			Layer:    game.Layer7PT,
+			Label:    "Power is the number of permanent cards in your graveyard; toughness is that plus 1.",
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID

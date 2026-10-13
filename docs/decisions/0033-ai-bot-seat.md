@@ -4,6 +4,7 @@
 **Amended:** 2026-09-16 · S31 closeout: accepted as built. §6's no-endpoint tiers are refused, not downgraded (#514), the §7 deck path is corrected, §10's field names are corrected, and the loop guard is descoped (see the amendment at the end) · 2026-09-19 · §1's threat ordering is built as an injected hook and the "choose target" move is refused (#687), and the enumerator casts from every zone at every payable price (#673)
 **Amended:** 2026-09-19 · #986: a colour prompt's answers are ordered by the card's declared `ColorPurpose`, by one function in `legal` that the enumerator and the wire projection both call (see the amendment at the end)
 **Amended:** 2026-09-19 · #1013: a bot chooses WHICH cards an alternative cost eats — the payments are priced through a second injected hook and the cap rises to three (see the amendment at the end)
+**Amended:** 2026-10-12 · #2980: hosted model calls are capped per day and per month, behind an admin kill switch; over the cap the model tiers fall back to the heuristic and leave the picker (see the last amendment)
 **Amended:** 2026-09-19 · #1060 / #735: an optional Policy extension survives being wrapped — a wrapper declares what it wraps and the lookup walks the chain — and a game's model spend is one record, split into deciding and improvising (see the amendment at the end)
 **Supersedes:** the architecture section of [S31](../sprints.md#s31--ai-bot-seat-legal-move-enumeration--tiered-policy) (heuristic-only, gated behind S27–S30).
 **Depends on:** [ADR 0010](0010-card-effect-catalog.md) (effect specs), [ADR 0019](0019-structured-targeting.md) (target specs), [ADR 0020](0020-activated-abilities.md).
@@ -1464,3 +1465,101 @@ fresh object fails CI and names the function.
 
 The smaller item #1401 also noted, `LookupCardForEffect`'s linear zone
 scan per card in the view, is not addressed here.
+
+## Amendment (2026-10-12, #2980): hosted model spend is capped, switchable, and never sold
+
+*Amends §6 (the tier table's "Cost" column) and §5's cost argument.*
+
+A public launch must not be able to run up an unbounded bill, and the
+two tiers that call a paid API must never be paywalled either. This
+amendment is the guard for the first and the statement of the second.
+
+### What a deployment does today (what the code does, not what prod has)
+
+The code cannot say what production's environment file holds; **the
+owner must confirm it** (`CMDCTRL_ANTHROPIC_API_KEY`, then
+`ANTHROPIC_API_KEY`, and whether `CMDCTRL_OPENAI_ENDPOINT` is set).
+What the code does with each:
+
+| Configuration | `assisted` / `strong` in `GET /bot/options` | A model seat that exists |
+|---|---|---|
+| No endpoint and no key | `available:false`, reason "needs a model…"; a request to seat one is a 422 | cannot be created |
+| `CMDCTRL_OPENAI_ENDPOINT` (a local LLM) | available; no bill, so no caps | calls the local model |
+| An Anthropic key | available while under the caps | calls the hosted model while under the caps; over them, plays Layer B |
+
+A server with neither is supported, not broken (§6 amendment 2026-09-16);
+since this amendment the same is true of a keyed server that has spent its
+allowance.
+
+### Decision 1: the guard sits on the client, where the call is made
+
+`aiseat/budget.Budget.Wrap` decorates the hosted `model.Client`. Every
+call (decision calls and §8 improvisation alike) asks the budget first and
+reports the response's `usage` after. There is no second path to the
+network, so there is no seat or tier that can bypass it.
+
+### Decision 2: tokens, not dollars
+
+The caps count tokens: `input + output + cache_read + cache_write` from
+the API response. The code has no price table, prices differ by model and
+move, and a dollar cap built on a stale table fails silently. The sum
+over-counts (a cache read is billed at a tenth of an input token and
+counted as one), which makes the cap trip early, the safe side. Windows
+are the UTC day and the UTC month.
+
+**Defaults are on:** 1,000,000 tokens a day and 10,000,000 a month
+(`CMDCTRL_BOT_MODEL_DAILY_TOKENS`, `CMDCTRL_BOT_MODEL_MONTHLY_TOKENS`;
+`0` turns that window's cap off; a non-number fails the boot). These are
+an order-of-magnitude ceiling, not a measurement: §5's per-game figure is
+still pending a keyed run (#735). They are not applied to a self-hosted
+model, which has no bill.
+
+It does not reserve tokens before a call. The calls in flight when the
+line is crossed finish, so a cap can be overrun by a few replies. That is
+the price of not serialising four seats behind one lock.
+
+### Decision 3: over the cap is exactly "no key"
+
+The refused call returns `model.ErrBudgetExceeded` without sending
+anything. `model.Policy` plays Layer B's answer, which it had computed
+before it asked (§5), records `FallbackBudgetCapped`, and logs at debug
+rather than warning once per window. A seat already at the table keeps
+playing, on the heuristic. The tier factory reports the model tiers
+`available:false` with the cap's own note as the reason, so the picker
+greys them out with an explanation, and `GET /bot/options` also carries a
+top-level `model_note`. `NewPolicy` is deliberately **not** gated: a seat
+added before the cap tripped must still be built when its game starts, or
+the table would stall behind an idle seat.
+
+### Decision 4: the counters persist; the switch persists
+
+Both are rows in the existing SQLite database (`bot_model_budget`,
+migration 0014), written on every response, one day row, one month row
+and the switch. A restart is a deploy, and a cap that a deploy resets is
+no cap. Rolling over is a different key, not a reset job, and each save
+prunes the old periods. With no data directory the counters live in
+memory only, and the boot says so.
+
+### Decision 5: an admin kill switch
+
+`GET /admin/bot/model` reads the status; `PUT /admin/bot/model
+{"enabled": false}` turns every model call off, for every table, at once,
+without a redeploy. `requireAdmin` guards both. A missing `enabled` is a
+400, never a silent off. Switching back on does not lift a cap.
+
+### Decision 6: no tier is gated behind payment
+
+`random` and `heuristic` need nothing and are never touched by any of
+this. `assisted` and `strong` are free to every player on a server that
+offers them. A cap is a budget on the operator's bill, not a product
+boundary: when it trips the tiers fall back, they are not sold. No code
+path in this repository checks entitlement, and one must not be added.
+
+### Back-outs
+
+| Remove | Effect |
+|---|---|
+| `Wrap` in `botFactory` | the caps and the switch stop applying to calls |
+| the `errors.Is(cerr, ErrBudgetExceeded)` branch in `Policy.Decide` | a refused call becomes a counted error and a warning per window |
+| `Gate` in `FactoryOptions` | the picker keeps offering the model tiers over a cap |
+| the `SaveTokens` call in `Record` | a restart forgets the day's spend |

@@ -247,9 +247,8 @@ func TestAvatarRokuDragonTokenHasItsOwnFirebending(t *testing.T) {
 	dragon := pushToken(g, me.ID, firebendingDragonToken())
 
 	// Declared and locked in, then ONE priority round to resolve the
-	// trigger — still inside the declare-attackers step, because the
-	// card's standing caveat is that firebending's mana empties with
-	// the step instead of lasting until end of combat.
+	// trigger. (The mana lasting until end of combat is pinned in
+	// cav_g1_test.go.)
 	declareAttack(t, g, opp.ID, dragon)
 	passPriorityAroundTable(t, g)
 

@@ -26,6 +26,7 @@ func init() {
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
+				Label:    "Power and toughness are each equal to the number of artifacts you control.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7A_CDA,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
@@ -38,6 +39,7 @@ func init() {
 				},
 			},
 			{
+				Label:    "Other artifact creatures you control get +1/+1.",
 				Layer:    game.Layer7PT,
 				SubLayer: game.SubLayer7C_Modify,
 				AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

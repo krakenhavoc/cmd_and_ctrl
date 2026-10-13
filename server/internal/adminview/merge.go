@@ -38,6 +38,8 @@ type LiveSeat struct {
 	// DiscordPending is a Discord seat whose person has no users row
 	// yet; the snowflake is not carried.
 	DiscordPending bool
+	// Removed is a seat an admin removed from a started game.
+	Removed bool
 }
 
 // Socket is one live WebSocket, as far as the table rows need it.
@@ -141,6 +143,31 @@ type SignIn struct {
 	DiscordLinkedAt       int64  `json:"discord_linked_at,omitempty"`
 	SessionsInvalidBefore int64  `json:"sessions_invalid_before,omitempty"`
 	RevokePath            string `json:"revoke_path"`
+	// AccessCheckedAt is when the sign-up gate last had an answer from
+	// Discord for this account; absent for never (ADR 0156 §1 item 7).
+	AccessCheckedAt int64 `json:"access_checked_at,omitempty"`
+	// AccessResult is that answer: AccessAdmitted, AccessNotMember,
+	// AccessNoRole, or AccessUnchecked when there has been none (the
+	// gate was off, or the account is an exempt admin).
+	AccessResult string `json:"access_result"`
+}
+
+// The sign-up gate's answers as the account view serves them. The first
+// three are users.access_result's values; the client words them
+// ("admitted", "refused: not a member", "refused: no role").
+const (
+	AccessAdmitted  = "admitted"
+	AccessNotMember = "not_member"
+	AccessNoRole    = "no_role"
+	AccessUnchecked = "unchecked"
+)
+
+// accessResult is the stored answer as served: "" (NULL) is unchecked.
+func accessResult(stored string) string {
+	if stored == "" {
+		return AccessUnchecked
+	}
+	return stored
 }
 
 // Deck is a saved deck without its list (§3.2).
@@ -220,6 +247,10 @@ type Seat struct {
 	AgentClient    string      `json:"agent_client,omitempty"`
 	DeckName       string      `json:"deck_name,omitempty"`
 	Host           bool        `json:"host"`
+	// Removed marks a seat an admin removed from a game under way
+	// (#3093), so the views read "removed" and not "left". Loaded
+	// tables only: it lives in the engine's snapshot.
+	Removed bool `json:"removed,omitempty"`
 	// Connected is the live sockets bound to this seat: loaded tables
 	// only, and only when the server knows its sockets.
 	Connected *int `json:"connected,omitempty"`
@@ -393,6 +424,8 @@ func MergeAccount(rows AccountRows, live []string, ov Overlay, now time.Time) Ac
 			DiscordLinkedAt:       ms(rows.DiscordLinkedAt),
 			SessionsInvalidBefore: ms(rows.SessionsInvalidBefore),
 			RevokePath:            "/admin/users/" + rows.Account.ID + "/revoke-sessions",
+			AccessCheckedAt:       ms(rows.AccessCheckedAt),
+			AccessResult:          accessResult(rows.AccessResult),
 		},
 		Games:                 make([]Game, 0, len(rows.Games)),
 		GamesTruncated:        rows.GamesTruncated,
@@ -584,6 +617,7 @@ func rowSeat(s SeatRow, hostPlayerID string) Seat {
 func overlaySeat(seat *Seat, ls LiveSeat) {
 	seat.Kind = ls.Kind
 	seat.Host = ls.Host
+	seat.Removed = ls.Removed
 	switch ls.Kind {
 	case KindBot:
 		if ls.BotTier != "" {
@@ -601,7 +635,7 @@ func overlaySeat(seat *Seat, ls LiveSeat) {
 
 // liveSeat is a seat from memory alone.
 func liveSeat(ls LiveSeat, accounts map[string]AccountRef) Seat {
-	seat := Seat{Seat: ls.Seat, Kind: ls.Kind, DeckName: ls.DeckName, Host: ls.Host}
+	seat := Seat{Seat: ls.Seat, Kind: ls.Kind, DeckName: ls.DeckName, Host: ls.Host, Removed: ls.Removed}
 	if seat.Kind == "" {
 		seat.Kind = KindHuman
 	}

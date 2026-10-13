@@ -26,7 +26,8 @@ func init() {
 		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDealDamage},
+			RowLabel: "If a source you control would deal damage to an opponent or a permanent an opponent controls, it deals double that damage instead.",
+			Watches:  []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
 				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 {
 					return false

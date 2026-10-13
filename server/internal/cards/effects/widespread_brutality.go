@@ -29,19 +29,18 @@ import (
 // ordering is `finishAmassLocked`'s contract and not this file's
 // arrangement.
 //
-// Sandbox simplification, declared: the damage is dealt creature by
-// creature in battlefield order rather than simultaneously, so a
-// creature that dies to it is gone before the next one is dealt to —
-// visible only through a death trigger that changes the Army's power
-// mid-sweep (a +1/+1 counter from a Vampiric Rites-style death
-// payoff). Every other catalog card that deals one source's damage to
-// many creatures takes the same posture.
+// The damage is one instruction: widespreadBrutalitySweep deals it inside
+// a single DamageInstanceForEffect scope, so every victim's event shares
+// one damage instance (CR 120.3), the victims are snapshotted before the
+// first point lands (CR 608.2), and nothing dies until the state-based
+// actions run after the spell finishes (CR 704.3). The earlier caveat
+// that it hit "creature by creature in battlefield order" described the
+// primitive before the scope existed; the test pins the shared instance.
 func init() {
 	Register(Spec{
 		OracleID:     "3a06f4c1-2af1-495f-914f-1ac4e26f87d4",
 		Name:         "Widespread Brutality",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The Army's damage hits each creature one after another rather than all at once."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return Amass{Subtype: "Zombie", N: 2, Then: widespreadBrutalitySweep}.Apply(ctx)
 		},

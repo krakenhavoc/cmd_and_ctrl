@@ -86,8 +86,9 @@ func TestBugReportKindSelectsLabel(t *testing.T) {
 			if out.Label != tc.wantLabel {
 				t.Errorf("response label = %q, want %q", out.Label, tc.wantLabel)
 			}
-			if len(rep.labels) != 1 || len(rep.labels[0]) != 1 || rep.labels[0][0] != tc.wantLabel {
-				t.Fatalf("labels = %v, want [%s]", rep.labels, tc.wantLabel)
+			// The kind's label, then the one every player report carries.
+			if len(rep.labels) != 1 || len(rep.labels[0]) != 2 || rep.labels[0][0] != tc.wantLabel || rep.labels[0][1] != bugPlayerLabel {
+				t.Fatalf("labels = %v, want [%s %s]", rep.labels, tc.wantLabel, bugPlayerLabel)
 			}
 			// The prefix is deliberately NOT varied by kind: every
 			// issue this feature has ever filed carries it and people

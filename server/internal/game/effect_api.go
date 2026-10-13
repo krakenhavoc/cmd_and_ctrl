@@ -2171,6 +2171,42 @@ func (g *Game) ReturnFromGraveyardWithCountersForEffect(cardID, controller uuid.
 // enters with. FaceDownNone is every face-up return; nil counters is
 // every return that names none.
 func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int) (uuid.UUID, error) {
+	return g.returnFromGraveyardEntryLocked(cardID, dest, controller, tapped, faceDown, listed, counters, nil)
+}
+
+// ReturnFromGraveyardToBattlefieldThenForEffect is
+// ReturnFromGraveyardTappedForEffect to the battlefield with the rest of
+// the effect as a continuation, the graveyard twin of
+// ReturnFromExileToBattlefieldThenForEffect: `then` is told the entering
+// permanent's ID (a graveyard return keeps the instance ID) once the
+// entry is complete, or uuid.Nil when nothing entered.
+//
+// Animate Dead is the caller (ADR 0154 decision 5): "return enchanted
+// creature card to the battlefield under your control and attach this
+// Aura to it" must attach to the permanent, and a returning Clone or a
+// creature with a pay-life entry pauses the entry, so the attach cannot
+// be written on the line after the return.
+//
+// `then` runs exactly once: at once when nothing paused, from the resume
+// when something did, and with uuid.Nil when the card is not in a
+// graveyard, when a replacement cancelled or redirected the entry, or
+// when the prompt was taken away.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromGraveyardToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
+	if z := g.findCardZoneLocked(cardID); z == nil || z.Kind != ZoneGraveyard {
+		if then != nil {
+			return then(g, uuid.Nil)
+		}
+		return nil
+	}
+	_, err := g.returnFromGraveyardEntryLocked(cardID, ZoneBattlefield, controller, tapped, FaceDownNone, nil, nil, then)
+	return err
+}
+
+// returnFromGraveyardEntryLocked is the body of every graveyard return,
+// with the caller's continuation for a battlefield entry (nil for none).
+func (g *Game) returnFromGraveyardEntryLocked(cardID uuid.UUID, dest ZoneKind, controller uuid.UUID, tapped bool, faceDown FaceDownKind, listed *FaceDownListing, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	src := g.findCardZoneLocked(cardID)
 	if src == nil || src.Kind != ZoneGraveyard {
 		return uuid.Nil, ErrCardNotFound
@@ -2248,6 +2284,11 @@ func (g *Game) returnFromGraveyardFaceLocked(cardID uuid.UUID, dest ZoneKind, co
 		// before the window opens so a counter replacement sees it.
 		for name, n := range counters {
 			ev.AddCounterAtETB(name, n)
+		}
+		if then != nil {
+			// ADR 0154: the caller's continuation, run from the landing
+			// whether the entry settled inline or on a resume.
+			ev.entryTail = &entryTail{then: then}
 		}
 		return g.enterBattlefieldThroughPipelineLocked(ev)
 	}
@@ -2370,11 +2411,26 @@ type SearchLibrarySpec struct {
 	// "additional" means. CR 614.1c, 122.6.
 	EntersWithCounters map[string]int
 
-	// Optional marks a "you MAY search" (CR 701.23b). It forces the
-	// prompt even when the pick is otherwise forced, so the searcher
-	// can decline — Assassin's Trophy's victim keeps the right to
-	// refuse the land and the shuffle.
+	// Optional marks a "you MAY search" — the whole search is optional,
+	// which is a different thing from failing to find (#3053).
+	//
+	// Failing to find is the engine's default for any search that
+	// names a quality (Pred or Validate set; CR 701.23b): the prompt
+	// always carries a "find nothing" answer, even with exactly one
+	// match, with no flag needed. So Optional is NOT how a card gets
+	// "fail to find" any more. Set it only when the printed text says
+	// "you may search" — Assassin's Trophy's victim, Path to Exile,
+	// Solemn Simulacrum — or when an UNCONDITIONAL search ("a card")
+	// is itself optional, since that is the one case the quality rule
+	// does not already cover.
 	Optional bool
+
+	// UpTo is "search your library for UP TO N cards" with no stated
+	// quality (#3053). A quality-bearing search already allows fewer
+	// than N (CR 701.23b); this is for the unconditional ones, where
+	// CR 701.23d would otherwise make the searcher find all N. "Up to"
+	// is what lets the count come out short.
+	UpTo bool
 
 	// Reason is the prompt's banner copy. Defaults to a generic
 	// "Search your library".
@@ -2418,6 +2474,49 @@ type SearchLibrarySpec struct {
 	// 0 and 1 are the top and a library shorter than Depth takes the
 	// card on the bottom. Meaningful only with ToTop.
 	Depth int
+}
+
+// statedQuality reports whether the search names something the card
+// has to match — a card type, a name, a mana value, a land type, a
+// "share a type" clause. CR 701.23b is about exactly these: a search
+// for cards with a stated quality, as opposed to CR 701.23d's search
+// "simply for a quantity of cards". The engine reads it off the spec:
+// a nil Pred with no Validate is the unconditional search (Demonic
+// Tutor, Gamble, Entomb, Intuition).
+func (spec SearchLibrarySpec) statedQuality() bool {
+	return spec.Pred != nil || spec.Validate != nil
+}
+
+// floor is the fewest cards the searcher may take when `matches` cards
+// are on offer (#3053). It is the one place the find / fail-to-find
+// rule is decided; the prompt, the resolver and the enumerator all
+// read it from the choice, not from their own opinion of the card.
+func (spec SearchLibrarySpec) floor(matches int) int {
+	return searchFloor(true, spec.statedQuality(), spec.Optional || spec.UpTo || spec.Unbounded,
+		spec.Limit, matches)
+}
+
+// searchFloor is CR 701.23b and 701.23d as a pure function, so the rule
+// can be pinned (and the public-zone half exercised) without a game.
+//
+//   - hiddenZone: the zone searched is hidden (a library). A public
+//     zone (a graveyard, the battlefield) has no fail to find: the
+//     searcher can see everything, so they must find a valid card
+//     when one is present. The engine's only search primitive reads a
+//     library today, so every real caller passes true; the parameter
+//     is the rule written down for the day a public-zone search lands.
+//   - statedQuality: the search names a quality (CR 701.23b).
+//   - mayFindFewer: the clause itself permits a short count — "up to
+//     N", "any number", "you may search".
+//
+// A short count is always allowed when the clause says so. Beyond that,
+// only a hidden-zone search for a stated quality may come up empty;
+// everything else must find min(limit, matches).
+func searchFloor(hiddenZone, statedQuality, mayFindFewer bool, limit, matches int) int {
+	if mayFindFewer || (hiddenZone && statedQuality) {
+		return 0
+	}
+	return min(limit, matches)
 }
 
 // libraryOwnerID is the seat whose library this search actually reads
@@ -2496,12 +2595,16 @@ func (g *Game) SearchLibraryForEffectWithOptions(
 // basic happened to be. That simplification is gone: when the library
 // offers a real choice, the searcher gets a prompt.
 //
-// "A real choice" means: more matches than the effect may take, or
-// an Optional ("you may search") clause, or a Validate constraint the
-// whole match set does not already satisfy. With nothing to decide —
-// a Rampant Growth into a library holding exactly one Forest — the
-// engine takes the match and moves on, because a modal offering one
-// button is worse than no modal.
+// "A real choice" means: more matches than the effect may take, or a
+// search the searcher is allowed to come up short on, or a Validate
+// constraint the whole match set does not already satisfy. The second
+// is every search for a card with a stated quality (CR 701.23b): the
+// searcher may find nothing even when exactly one match is there, so a
+// Rampant Growth into a library holding exactly one Forest asks, with
+// "find nothing" beside the Forest (#3053; this used to take the Forest
+// without asking). The engine takes the match unasked only where the
+// rules force it — an unconditional search (CR 701.23d), or a public
+// zone with a card present — and there is nothing to choose.
 //
 // Hidden information (CR 400.2): a library is a hidden zone, and the
 // prompt does not change that for anybody but the searcher. The
@@ -2546,9 +2649,14 @@ func (g *Game) SearchLibraryThenForEffect(spec SearchLibrarySpec) error {
 		// whole match set rather than a forced take-all.
 		spec.Limit = len(matches)
 	}
-	if !spec.Optional && !spec.Unbounded && len(matches) <= spec.Limit &&
+	if spec.floor(len(matches)) == len(matches) && len(matches) <= spec.Limit &&
 		(spec.Validate == nil || spec.Validate(matched)) {
-		// No decision to make — take them all. The take finishes the
+		// No decision to make — the rules force the searcher to take
+		// every match (CR 701.23d: an unconditional "a card" against a
+		// library of exactly that many). A search for a stated quality
+		// never lands here, however few matches there are: it may
+		// always find nothing (CR 701.23b, #3053), so it always asks.
+		// Take them all. The take finishes the
 		// search itself (#478): a battlefield destination is an entry
 		// and an entry can pause, so "then shuffle" is the last link of
 		// a chain rather than the line after the loop.
@@ -2621,6 +2729,7 @@ func (g *Game) queueSearchChoiceLocked(spec SearchLibrarySpec, p *Player, matche
 		Reason:       reason,
 		SearchCards:  append([]uuid.UUID(nil), matches...),
 		SearchMax:    spec.Limit,
+		SearchMin:    spec.floor(len(matches)),
 		searchResume: &searchResumeFrame{spec: spec},
 	})
 }
@@ -3026,6 +3135,21 @@ func (g *Game) CreateTokensAttackingForEffect(controller uuid.UUID, template Car
 	}, nil)
 }
 
+// CreateTokensBlockingForEffect creates n copies of template under
+// controller's control, each BLOCKING the attacking creature `attacker`
+// (CR 506.3d): Brimaz's "create a 1/1 white Cat Soldier creature token
+// with vigilance that's blocking that creature". The tokens were never
+// declared as blockers, so nothing that watches block declarations sees
+// them; see stampEntryBlockerLocked for the rest of the rule.
+//
+// Caller must hold g.mu.
+func (g *Game) CreateTokensBlockingForEffect(controller uuid.UUID, template Card, n int, attacker uuid.UUID) error {
+	return g.CreateTokensThenForEffect(TokenCreation{
+		Controller: controller,
+		Groups:     []TokenGroup{{Template: template, Count: n, Blocking: attacker}},
+	}, nil)
+}
+
 // ScryForEffect performs a scry N (CR 701.22): the player looks at the
 // top N cards of their library and then decides which go to the bottom
 // and in what order the rest go back on top.
@@ -3352,7 +3476,7 @@ func lookAtTopReasonFor(kind PendingChoiceKind) func(int) string {
 //
 // Caller must hold g.mu. Added in S22.
 func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUID, tapped bool) (uuid.UUID, error) {
-	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil)
+	return g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, nil)
 }
 
 // ReturnFromExileToBattlefieldThenForEffect is the exile return with the
@@ -3378,7 +3502,23 @@ func (g *Game) ReturnFromExileToBattlefieldForEffect(cardID, controller uuid.UUI
 //
 // Caller must hold g.mu.
 func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) error {
-	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, then)
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, nil, then)
+	return err
+}
+
+// ReturnFromExileWithCountersThenForEffect is the exile return for "put
+// it onto the battlefield ... with two additional +1/+1 counters on it"
+// (The Darkness Crystal, #3213). The counters are a CR 614.1c "enters
+// with", so they ride the entry event exactly as
+// ReturnFromGraveyardWithCountersForEffect's do: an enters trigger
+// finds them already on the permanent, a counter replacement (Doubling
+// Season) sees them, and a paused entry still places them. A nil or
+// empty map is ReturnFromExileToBattlefieldThenForEffect. `then` is the
+// same exactly-once continuation, told the new object's ID.
+//
+// Caller must hold g.mu.
+func (g *Game) ReturnFromExileWithCountersThenForEffect(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) error {
+	_, err := g.returnFromExileToBattlefieldLocked(cardID, controller, tapped, counters, then)
 	return err
 }
 
@@ -3386,13 +3526,13 @@ func (g *Game) ReturnFromExileToBattlefieldThenForEffect(cardID, controller uuid
 // doors.
 //
 // Caller must hold g.mu.
-func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
+func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, tapped bool, counters map[string]int, then func(g *Game, entered uuid.UUID) error) (uuid.UUID, error) {
 	// CR 712.21c (ADR 0145): a return that finds the card a melded
 	// permanent left exile as finds both its cards, and returns each.
 	// The other card goes first and on its own; the card the effect
 	// named is the one whose new ID the caller is told.
 	if partner := g.meldSplitPartnerInExileLocked(cardID); partner != uuid.Nil {
-		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
+		if _, err := g.returnFromExileToBattlefieldLocked(partner, controller, tapped, nil, nil); err != nil && !errors.Is(err, ErrCardNotFound) {
 			return uuid.Nil, err
 		}
 	}
@@ -3441,13 +3581,14 @@ func (g *Game) returnFromExileToBattlefieldLocked(cardID, controller uuid.UUID, 
 	// the card, so a Thassa blink that paused would otherwise come back
 	// untapped.
 	return g.enterBattlefieldThroughPipelineLocked(&ReplacementEvent{
-		Kind:           RepEventMove,
-		Actor:          newController,
-		CardID:         cardID,
-		OldZone:        ZoneExile,
-		NewZone:        ZoneBattlefield,
-		EntersTapped:   tapped,
-		entryResumable: true,
+		Kind:               RepEventMove,
+		Actor:              newController,
+		CardID:             cardID,
+		OldZone:            ZoneExile,
+		NewZone:            ZoneBattlefield,
+		EntersTapped:       tapped,
+		EntersWithCounters: copyCounterMap(counters),
+		entryResumable:     true,
 		// CR 400.7: the returning permanent is a NEW OBJECT. The
 		// finisher mints the ID and strips the old object's
 		// battlefield state, on the inline path and the resumed one
@@ -3611,6 +3752,14 @@ type AddManaOptions struct {
 	// pick carries them on the queued PendingChoice, as a mana
 	// ability's pick does.
 	Riders []ManaSpendRider
+
+	// Amount is the count form of the produced mana (#3112): "Add {R}
+	// for each ...", "add N mana of any one color". When it has Options
+	// it is used INSTEAD of the produced string, and the slots are built
+	// straight from the count with the MaxProducedMana ceiling applied
+	// to N before anything is allocated, then the same walk and the same
+	// announcement as the text path. No text exists at any point.
+	Amount ManaAmount
 }
 
 // AddManaWithOptionsForEffect is AddManaForEffect with options.
@@ -3622,6 +3771,10 @@ func (g *Game) AddManaWithOptionsForEffect(playerID, source uuid.UUID, produced 
 	p := g.playerByIDLocked(playerID)
 	if p == nil || p.Eliminated {
 		return nil
+	}
+	if opts.Amount.Options != nil {
+		slots, capped := slotsFromAmount(opts.Amount)
+		return g.addManaEntriesLocked(p, source, slots, capped, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
 	}
 	return g.addManaSlotsLocked(p, source, produced, opts.NarrowToCommanderIdentity, opts.Restrictions, opts.Riders, nil, addManaReason)
 }
@@ -3656,9 +3809,31 @@ func (g *Game) addManaSlotsLocked(
 	pending *[]ColorRequirement,
 	reason func(ProducedManaEntry) string,
 ) error {
-	slots, err := ParseProducedMana(produced)
+	slots, capped, err := parseProducedMana(produced)
 	if err != nil {
 		return err
+	}
+	return g.addManaEntriesLocked(p, source, slots, capped, narrow, restrictions, riders, pending, reason)
+}
+
+// addManaEntriesLocked is addManaSlotsLocked's body once the slots
+// exist, whether they were parsed from text or built from a ManaAmount
+// (#3112). `capped` says the ceiling bit while they were made; it is
+// announced here, once, for both forms.
+func (g *Game) addManaEntriesLocked(
+	p *Player,
+	source uuid.UUID,
+	slots []ProducedManaEntry,
+	capped bool,
+	narrow bool,
+	restrictions []string,
+	riders []ManaSpendRider,
+	pending *[]ColorRequirement,
+	reason func(ProducedManaEntry) string,
+) error {
+	if capped {
+		// #3040: the production passed MaxProducedMana and was cut.
+		g.emitCountCappedLocked("mana", source, p.ID, MaxProducedMana)
 	}
 	// Read once, and only when a slot could use it: the identity read
 	// walks every zone, and Dark Ritual's three "{B}" slots have

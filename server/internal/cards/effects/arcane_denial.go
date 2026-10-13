@@ -36,19 +36,15 @@ import (
 // a TargetCard ref would fail the CR 608.2b existence re-check and
 // fizzle the trigger.
 //
-// Sandbox simplification: "may draw UP TO two" is resolved as "draws
-// two". There is no resolution-time number prompt for a trigger, and
-// the only game in which a player declines a free draw is the one
-// where their library is nearly empty — so this is weaker than
-// printed for the caster in every ordinary game (the victim is never
-// short-changed) and stronger only in the decking corner, which is
-// declared here rather than hidden.
+// "May draw UP TO two" is a real number prompt (ChooseNumber, 0 to 2)
+// asked of the countered spell's controller when the trigger resolves;
+// the caster's own draw follows the answer, so the two draws keep the
+// printed order. A victim who has left the table is not asked.
 func init() {
 	Register(Spec{
 		OracleID:     "ab1cc360-b9de-48d9-9983-4dfe4a7d2a37",
 		Name:         "Arcane Denial",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The countered spell's controller always draws two cards and can't choose to draw fewer, which matters only with a nearly empty library."},
+		Completeness: CompletenessFull,
 		Targets:      TargetSpell("target spell"),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			if len(item.Targets) == 0 {
@@ -75,18 +71,36 @@ func init() {
 }
 
 // arcaneDenialDraws builds the delayed trigger's effect: the
-// countered spell's controller draws two, then the item's controller
-// draws one. The victim is a copied ID, not a pointer, so the
-// closure survives Clone / undo — see the card comment. A victim who
-// has left the table, or who was never a player (a countered
-// ability), is skipped.
+// countered spell's controller chooses how many cards to draw, up to
+// two, then the item's controller draws one. The victim is a copied
+// ID, not a pointer, so the closure survives Clone / undo — see the
+// card comment. A victim who has left the table, or who was never a
+// player (a countered ability), is skipped.
 func arcaneDenialDraws(g *game.Game, item *game.StackItem, p game.EffectParams) error {
 	ctx := NewContext(g, item)
 	victim := p.Player
-	if victim != uuid.Nil && g.PlayerByIDForEffect(victim) != nil {
-		if err := (DrawCards{Player: victim, N: 2}).Apply(ctx); err != nil {
-			return err
-		}
+	if victim == uuid.Nil || g.PlayerByIDForEffect(victim) == nil {
+		return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
 	}
-	return DrawCards{Player: item.Controller, N: 1}.Apply(ctx)
+	return ChooseNumber{
+		Chooser:  victim,
+		Min:      0,
+		Max:      2,
+		Question: "Arcane Denial — draw up to two cards",
+		Unit:     game.PayAmountCards,
+		Goal: func(ctx *Context) int {
+			if v := ctx.Game.PlayerByIDForEffect(victim); v != nil && v.Library != nil && v.Library.Size() < 2 {
+				return v.Library.Size()
+			}
+			return 2
+		},
+		Then: func(ctx *Context, n int) error {
+			if n > 0 {
+				if err := (DrawCards{Player: victim, N: n}).Apply(ctx); err != nil {
+					return err
+				}
+			}
+			return DrawCards{Player: ctx.Controller(), N: 1}.Apply(ctx)
+		},
+	}.Apply(ctx)
 }

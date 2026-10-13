@@ -80,6 +80,11 @@ async function stage(
   const first = await joinAsPlayer(browser, game.id, game.invite_token, "Seat One", seed);
   holder.first = first;
   const second = await joinAsPlayer(browser, game.id, game.invite_token, "Seat Two", seed);
+  // #3092: at the default 1280x720 the damage sheet (anchored right) covers
+  // the defender's creature row since #3032 mirrored the boards, so the
+  // on-board steppers cannot be clicked. A wider window keeps the sheet
+  // clear of the row; the overlap itself is tracked separately.
+  for (const p of [first, second]) await p.page.setViewportSize({ width: 1600, height: 900 });
   holder.second = second;
   for (const p of [first, second]) await watchForSheet(p.page);
   await uploadDeckAs(request, adminToken, game.id, first.playerID, makeDeck());

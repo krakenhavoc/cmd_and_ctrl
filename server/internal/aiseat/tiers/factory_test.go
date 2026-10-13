@@ -91,19 +91,19 @@ func TestNewPolicyResolvesTheSeatsDeckProfile(t *testing.T) {
 		Client: model.AlwaysIndex(0),
 		DeckProfile: func(id string) (model.DeckProfile, bool) {
 			asked = append(asked, id)
-			return model.DeckProfile{Name: "Raid and Ransack"}, true
+			return model.DeckProfile{Name: "Forge and Fury"}, true
 		},
 	})
 
-	if _, err := f.NewPolicy(botSeat("assisted", "izzet-aggro")); err != nil {
+	if _, err := f.NewPolicy(botSeat("assisted", "mono-red-aggro")); err != nil {
 		t.Fatal(err)
 	}
-	if len(asked) != 1 || asked[0] != "izzet-aggro" {
-		t.Fatalf("deck profile lookups: %v, want [izzet-aggro]", asked)
+	if len(asked) != 1 || asked[0] != "mono-red-aggro" {
+		t.Fatalf("deck profile lookups: %v, want [mono-red-aggro]", asked)
 	}
 	// A free tier has no prompt, so it must not go looking for one,
 	// and a seat with a pasted decklist has no ID to look up.
-	if _, err := f.NewPolicy(botSeat("heuristic", "izzet-aggro")); err != nil {
+	if _, err := f.NewPolicy(botSeat("heuristic", "mono-red-aggro")); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := f.NewPolicy(botSeat("assisted", "")); err != nil {

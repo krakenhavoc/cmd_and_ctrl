@@ -82,6 +82,26 @@ export const session: Writable<Session | null> = guardedWritable(loadSession(), 
 // mid-game. Cleared on the next successful setSession.
 export const expiryNotice: Writable<string> = guardedWritable("", "expiryNotice");
 
+// SEAT_REMOVED_MESSAGE is the exact string the server uses when the
+// table's host, creator or an admin removed this session's seat from an
+// unstarted table (#2785): the 401 body's `error` from any request made
+// with the old token (auth.SeatRemovedMessage), and the WebSocket close
+// reason on code 1000 (ws.SeatRemovedReason). Matching on it is how the
+// client tells "you were removed" from "your session expired".
+export const SEAT_REMOVED_MESSAGE = "removed from table";
+
+// REMOVED_NOTICE is what the removed player reads. Plain, and it says
+// what happened and who did it, because the alternative this replaces
+// was a silent disconnect.
+export const REMOVED_NOTICE = "You were removed from this table.";
+
+// removedNotice holds REMOVED_NOTICE from the moment the client learns
+// its seat is gone until the player dismisses it. It lives here, not on
+// the GameClient, because the news arrives two ways: the table's socket
+// closing, and the lobby's next request coming back 401. Both land in
+// the same banner (RemovedNotice.svelte).
+export const removedNotice: Writable<string> = guardedWritable("", "removedNotice");
+
 // Track the pending expiry timer so we cancel + rearm it on every
 // setSession call. Module-scoped rather than per-subscriber so there
 // is always exactly one timer in flight.
@@ -521,6 +541,11 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
   }
   const res = await fetch(input, { ...init, headers, credentials: "same-origin" });
   if (res.status === 401) {
+    if (await isSeatRemovedResponse(res)) {
+      removedNotice.set(REMOVED_NOTICE);
+      dropDeadSession(s, REMOVED_NOTICE);
+      throw new LobbyApiError(401, SEAT_REMOVED_MESSAGE);
+    }
     dropDeadSession(s);
     throw new LobbyApiError(401, "session expired");
   }
@@ -552,11 +577,23 @@ export async function authFetch(input: string, init: RequestInit = {}): Promise<
 // no user and a saved identity is waiting behind it, swapped for that
 // identity (sessionDied). A session installed while the request was in
 // flight is left alone, because the 401 was about a different token.
-export function dropDeadSession(sent: Session | null): void {
+export function dropDeadSession(sent: Session | null, notice = ""): void {
   const live = get(session);
   if (live === null) return;
   if (sent !== null && live.token !== sent.token) return;
-  sessionDied(live, "");
+  sessionDied(live, notice);
+}
+
+// isSeatRemovedResponse reads a 401's JSON body for the seat-removed
+// message. It reads a clone, so the caller's response is untouched, and
+// a body that is not JSON is simply not that.
+async function isSeatRemovedResponse(res: Response): Promise<boolean> {
+  try {
+    const body = (await res.clone().json()) as { error?: unknown };
+    return body.error === SEAT_REMOVED_MESSAGE;
+  } catch {
+    return false;
+  }
 }
 
 // SessionCheckResult is the answer to "is this session still good, as

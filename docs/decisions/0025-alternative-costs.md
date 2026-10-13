@@ -279,3 +279,86 @@ and Demon of Death's Gate. Still not covered: emerge (CR 702.119 —
 the sacrificed creature's mana value reduces the mana half), Firecat
 Blitz's "Flashback—{R}{R}, Sacrifice X Mountains", and Cabal Therapy
 (its front half needs a card-name choice at resolution).
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172)): dash, freerunning, a flash surcharge, and what a payment remembers
+
+Four small pieces landed with the "cav-b" caveat slice of the card-completeness tracker, each on a shape this ADR
+already has.
+
+**Dash (CR 702.109).** `AlternativeCost.Dash`, built only by `effects.Dash(cost)`, is the third sibling of
+`SacrificeOnEntry` and `WarpExile`: a clause attached to the permanent's entry, applied in
+`queueAltCostEntryTriggerLocked` (`game/dash.go`). It registers a layer-6 haste scoped effect for as long as the
+creature remains on the battlefield, pinned to the object (`ForAsLongAsOnBattlefieldDuration`), and schedules a
+CR 603.7 delayed trigger at the next end step (`dash/return`, a registered body) that returns the creature to its
+owner's hand. The trigger records the creature's `ObjectEpoch` when it is scheduled and returns it only if it is still
+that object (CR 400.7), so a dashed creature that died or was flickered stays where it is. The delayed trigger uses the
+stack, so any player may respond. A granted offer may not carry `Dash`.
+
+**Freerunning (CR 702.173).** `effects.Freerunning(cost, creatureType)` is an alternative cost with a `Condition`, shaped
+like Spectacle. The condition reads the turn tally of who dealt combat damage to which player (`CombatDamagedPlayers`),
+which already recorded the dealer's name and subtypes; it gains a third identity, "was a commander"
+(`PlayersDealtCombatDamageThisTurnByCommander`), so an Assassin that died in the same combat still counts.
+
+**Flash for more.** "You may cast this spell as though it had flash if you pay {N} more" is an offer priced at the
+printed cost plus {N} with `AsThoughFlash` (`effects.FlashForMore`), the engine path ADR 0129 §5 built for Primal
+Prayers. Casting for the printed cost stays sorcery-speed only (CR 601.3c). Modelling a surcharge as an alternative
+cost means it cannot be combined with another alternative cost on the same spell; cost reductions apply to it as they
+would to the printed cost plus {N}.
+
+**What a payment remembers.** `PaidCost.Convoked` records the creatures tapped to convoke a spell, in the order named
+(Lethal Scheme's "each creature that convoked this spell connives"); a copy of the spell does not carry it (CR 707.10).
+`CastTally` gains `ManaSpent` and `ManaSpentLast`, the mana spent on spells this turn read from each spell's payment
+record as it became cast, so "whenever you expend N" is a cast whose running total crossed N (`CastTally.Expended`,
+`effects.WheneverYouExpend`). A payment the engine waived counts as no mana: weaker than printed, never stronger.
+
+Back-out: remove the `Dash` clause and constructor and Ragavan reverts to caveated; each other piece is one constructor
+or one field with the test named below.
+
+Tests: `cards/effects/cav_b_dash_test.go`, `cav_b_test.go` (flash surcharge, freerunning, delirium discount, gift),
+`cav_b_connive_test.go`, `cav_b_expend_test.go`.
+
+## Amendment (2026-10-13, [#3225](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3225)): a per-offer X ceiling, for "as though it had flash if X is N or less"
+
+Silver Scrutiny prints "You may cast this spell as though it had flash if X is 3 or less." CR 601.3c lets the caster
+BEGIN the cast at instant speed and then requires the announced X to satisfy the condition. The two "as though it had
+flash" shapes the engine had could not express that: a flat grant (`CastKindAsThoughFlash`) opens the window for every X,
+and the offer that opens it for one claim (`AlternativeCost.AsThoughFlash`, `FlashForMore`) bounded nothing. Shipping
+either would let a player draw ten cards at instant speed, which is stronger than printed, so the card shipped as a
+sorcery with a declared caveat.
+
+**`AlternativeCost.XCeiling int`** (zero is no ceiling) is the condition, carried on the offer. The offer is priced at the
+card's own mana cost with `AsThoughFlash`, so claiming it costs nothing extra, and an X above the ceiling is refused
+WHILE THAT OFFER IS CLAIMED. The ordinary sorcery-speed cast for the printed cost is not the offer and takes any X, which
+is why the number lives on the offer and not on `Spec.XCeiling` (`game/x_ceiling.go`, #2581), which would bound
+every cast of the spell. `effects.FlashIfXAtMost(cost, max)` builds it; hand-rolling the offer compiles and casts for
+nothing extra, but forgets either half (the window or the bound).
+
+**One function answers every reader.** `game.SpellXCeilingForOfferLocked(caster, key, offer)` is the smaller of the card's
+printed ceiling and the offer's, and these now ask through it with the offer in hand:
+
+- the announce gate in `castSpellLocked` (after CR 107.3b's free-cast lock, before the optional costs), refusing with
+  `ErrInvalidParam`;
+- the enumerator's `printedXCeiling` (`legal/x.go`), which folds it into the ceiling slot a cost already fills and only
+  where the cost being searched has an {X}, so at instant speed no move announces X above it and no open range exceeds it;
+- the view, which stamps it on the offer as `alternative_costs[].x_max` (already folded with the card's `x_max`; present
+  only on an offer that carries one);
+- the auto-tap preview, through `Game.SpellXCeilingForCast`, which resolves the claimed offer from the query's
+  `alternative_cost` exactly as the cast does, so `x_max` in the preview is the claimed offer's.
+
+The client's X picker takes `xCeilingFor(card, altCost)`: the claimed offer's `x_max`, else the card's. The offer's number
+beats the card's because the server already folded the card's into it.
+
+`Register` refuses a negative `XCeiling` and one on a cost with no {X} (the engine locks X at 0 there, so the number
+would never be read). A granted offer may not carry one (`checkGrantedAlternativeCosts`): none has been needed, and the
+seam has never been checked against it. `onlyMana` treats an offer with a ceiling as more than a price, so
+`duplicatesListedPrice` never folds it into the printed row.
+
+Silver Scrutiny is the card (`full`). Claiming the offer in a main phase is still the offer: X is bounded by the claim,
+not by the speed it is cast at.
+
+Back-out: pass `nil` for the offer at each of the four readers and the offer stops being bounded (the named test per
+reader fails); drop the field and `FlashIfXAtMost`, and Silver Scrutiny returns to a sorcery with its caveat.
+
+Tests: `cards/effects/flash_if_x_at_most_test.go` (gate, `Register` checks, the card), `legal/offer_x_ceiling_test.go`,
+`protocol/offer_x_ceiling_view_test.go`, `lobby/auto_tap_preview_offer_x_ceiling_test.go`,
+`client/src/lib/xCeilingForOffer.test.ts`.

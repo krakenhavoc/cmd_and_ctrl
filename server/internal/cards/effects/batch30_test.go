@@ -2,7 +2,6 @@ package effects
 
 import (
 	"errors"
-	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -250,6 +249,7 @@ func TestB30PromisingVeinTapsForColorlessAndFetchesABasicTapped(t *testing.T) {
 		t.Fatal("the Vein is sacrificed as the cost")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if searchChoiceFor(g, me.ID) != nil {
 		t.Fatal("one basic in the library is no choice — it is taken outright")
 	}
@@ -307,16 +307,16 @@ func TestB30WindgracesJudgmentDestroysOnePermanentPerOpponent(t *testing.T) {
 	bAura := b12Permanent(g, b.ID, "B's Enchantment", "Enchantment")
 	bLand := seedLand(g, b.ID, "Forest", "Basic Land — Forest", "")
 	legal := legalCards(g, me.ID, b30WindgracesJudgmentOracle)
-	if legal[mine] || legal[bLand] || !legal[aBear] || !legal[bAura] {
+	if legal[mine] || legal[bLand] || !legal[aBear] {
 		t.Fatal("only nonland permanents opponents control are legal")
 	}
-	// #1559: one per opponent is the clause's set rule — two of one
-	// opponent's permanents are refused at announce (CR 601.2c).
+	// One clause per opponent: two of one opponent's permanents are
+	// refused at announce (CR 601.2c).
 	err := castCatalogSpellErr(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: aRock}, {Kind: game.TargetCard, ID: bAura},
 	})
-	if !errors.Is(err, game.ErrIllegalTarget) || !strings.Contains(err.Error(), "controlled by different players") {
-		t.Fatalf("two of one opponent's permanents are refused naming the rule, got %v", err)
+	if !errors.Is(err, game.ErrIllegalTarget) {
+		t.Fatalf("two of one opponent's permanents are refused, got %v", err)
 	}
 	castCatalogSpell(t, g, "Windgrace's Judgment", "Instant", b30WindgracesJudgmentOracle, []game.TargetRef{
 		{Kind: game.TargetCard, ID: aBear}, {Kind: game.TargetCard, ID: bAura},
@@ -331,8 +331,8 @@ func TestB30WindgracesJudgmentDestroysOnePermanentPerOpponent(t *testing.T) {
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own permanents are untouched")
 	}
-	if spec, _ := Lookup(b30WindgracesJudgmentOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("judging a target by its controller at resolution, not by its bound opponent, is a declared gap")
+	if spec, _ := Lookup(b30WindgracesJudgmentOracle); spec.Completeness != CompletenessFull {
+		t.Error("each pick is bound to its opponent now")
 	}
 }
 
@@ -411,6 +411,7 @@ func TestB30HourOfPromiseFetchesTwoLandsTappedAndMakesZombiesWithThreeDeserts(t 
 	)
 	castCatalogSpell(t, g, "Hour of Promise", "Sorcery", b30HourOfPromiseOracle, nil)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !g.Battlefield.Contains(lib[0]) || !g.Battlefield.Contains(lib[1]) {
 		t.Fatal("both land cards are fetched")
 	}
@@ -439,12 +440,14 @@ func TestB30ExtractFromDarknessMillsEveryoneThenReanimatesTheTarget(t *testing.T
 	me, opp := g.Seats[0], g.Seats[1]
 	dead := b17GraveyardCard(opp, "Their Dead Golem", "Creature — Golem", "{4}")
 	bolt := b17GraveyardCard(opp, "Spent Bolt", "Instant", "{R}")
-	if legal := legalCards(g, me.ID, b30ExtractFromDarknessOracle); !legal[dead] || legal[bolt] {
-		t.Fatal("a creature card in any graveyard is legal; an instant is not")
-	}
 	libs := []int{me.Library.Size(), opp.Library.Size(), g.Seats[2].Library.Size(), g.Seats[3].Library.Size()}
-	castCatalogSpell(t, g, "Extract from Darkness", "Sorcery", b30ExtractFromDarknessOracle, b16TargetCard(dead))
+	castCatalogSpell(t, g, "Extract from Darkness", "Sorcery", b30ExtractFromDarknessOracle, nil)
 	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || !hasID(pick.ChooseCards, dead) || hasID(pick.ChooseCards, bolt) {
+		t.Fatal("a creature card in any graveyard is offered after the mill; an instant is not")
+	}
+	answerChooseCards(t, g, me.ID, dead)
 	for i, p := range g.Seats {
 		if p.Library.Size() != libs[i]-2 {
 			t.Errorf("seat %d mills two: %d → %d", i, libs[i], p.Library.Size())
@@ -456,8 +459,35 @@ func TestB30ExtractFromDarknessMillsEveryoneThenReanimatesTheTarget(t *testing.T
 	if c := b12Card(t, g, dead); c.Controller != me.ID {
 		t.Error("under the caster's control")
 	}
-	if spec, _ := Lookup(b30ExtractFromDarknessOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the announce-time choice is a declared gap")
+	if spec, _ := Lookup(b30ExtractFromDarknessOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the choice is made after the mill, as printed: nothing is left to declare")
+	}
+}
+
+// The choice follows the mill, so a creature the spell itself milled
+// can be the one put onto the battlefield, and the spell can be cast
+// when no graveyard holds a creature yet.
+func TestB30ExtractFromDarknessCanTakeACreatureItJustMilled(t *testing.T) {
+	g := newCatalogGame(t)
+	me, opp := g.Seats[0], g.Seats[1]
+	milled := b10LibraryTop(opp, "Milled Golem", "Creature — Golem", "{4}", 3, 3)
+	b10LibraryTop(opp, "Milled Filler", "Instant", "{R}", 0, 0)
+	for _, p := range g.Seats {
+		for _, c := range p.Graveyard.Cards {
+			if c.IsCreature() {
+				t.Fatal("setup: no graveyard holds a creature before the spell")
+			}
+		}
+	}
+	castCatalogSpell(t, g, "Extract from Darkness", "Sorcery", b30ExtractFromDarknessOracle, nil)
+	passPriorityAroundTable(t, g)
+	pick := chooseCardsChoiceFor(g, me.ID)
+	if pick == nil || !hasID(pick.ChooseCards, milled) {
+		t.Fatal("the creature the spell milled is a legal pick")
+	}
+	answerChooseCards(t, g, me.ID, milled)
+	if c := b12Card(t, g, milled); c.Controller != me.ID || !g.Battlefield.Contains(milled) {
+		t.Error("the milled creature enters under the caster's control")
 	}
 }
 

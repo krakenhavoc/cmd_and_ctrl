@@ -11,7 +11,9 @@ import (
 	"testing"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/auth"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/discord"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
@@ -31,6 +33,40 @@ type discordStub struct {
 	tokenBody   string
 	userStatus  int
 	userBody    string
+	// The sign-up gate's two calls (ADR 0156 §1): the member endpoint,
+	// and the token endpoint answering a refresh_token grant. Counted so
+	// a test can show a call was, or was not, made.
+	memberStatus  int
+	memberBody    string
+	memberCalls   int
+	refreshStatus int
+	refreshBody   string
+	refreshCalls  int
+	lastRefresh   string // the refresh_token the last refresh grant carried
+}
+
+// setMember changes what the member endpoint answers.
+func (s *discordStub) setMember(status int, body string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.memberStatus, s.memberBody = status, body
+}
+
+// setRefresh changes what a refresh_token grant answers.
+func (s *discordStub) setRefresh(status int, body string) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.refreshStatus, s.refreshBody = status, body
+}
+
+// calls returns how many member checks and refresh grants were made,
+// and resets both counts.
+func (s *discordStub) calls() (member, refresh int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	member, refresh = s.memberCalls, s.refreshCalls
+	s.memberCalls, s.refreshCalls = 0, 0
+	return member, refresh
 }
 
 // setUser changes the Discord account /users/@me reports.
@@ -66,11 +102,25 @@ func newDiscordTestStackWith(t *testing.T, configure func(*Config)) (*httptest.S
 		tokenBody:   `{"access_token":"tok-stub","token_type":"Bearer","expires_in":3600,"scope":"identify"}`,
 		userStatus:  http.StatusOK,
 		userBody:    `{"id":"discord-99","username":"alice","global_name":"Alice","avatar":"avhash"}`,
+		// Off-gate tests never reach these; a gated test sets them.
+		memberStatus:  http.StatusNotFound,
+		memberBody:    `{"message":"Unknown Guild"}`,
+		refreshStatus: http.StatusOK,
+		refreshBody:   `{"access_token":"at-refreshed","token_type":"Bearer","expires_in":3600,"refresh_token":"rt-rotated","scope":"identify guilds.members.read"}`,
 	}
 	stubMux := http.NewServeMux()
-	stubMux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, _ *http.Request) {
+	stubMux.HandleFunc("/oauth2/token", func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
 		stub.mu.Lock()
 		defer stub.mu.Unlock()
+		if r.PostForm.Get("grant_type") == "refresh_token" {
+			stub.refreshCalls++
+			stub.lastRefresh = r.PostForm.Get("refresh_token")
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(stub.refreshStatus)
+			_, _ = w.Write([]byte(stub.refreshBody))
+			return
+		}
 		stub.tokenCalled = true
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(stub.tokenStatus)
@@ -84,11 +134,20 @@ func newDiscordTestStackWith(t *testing.T, configure func(*Config)) (*httptest.S
 		w.WriteHeader(stub.userStatus)
 		_, _ = w.Write([]byte(stub.userBody))
 	})
+	stubMux.HandleFunc("GET /users/@me/guilds/{guild}/member", func(w http.ResponseWriter, _ *http.Request) {
+		stub.mu.Lock()
+		defer stub.mu.Unlock()
+		stub.memberCalls++
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(stub.memberStatus)
+		_, _ = w.Write([]byte(stub.memberBody))
+	})
 	stub.srv = httptest.NewServer(stubMux)
 	t.Cleanup(stub.srv.Close)
 
 	// Point the discord package at the stub.
 	t.Cleanup(swapDiscordEndpoints(stub.srv.URL+"/oauth2/token", stub.srv.URL+"/users/@me"))
+	t.Cleanup(discord.SwapMemberEndpointForTesting(stub.srv.URL + "/users/@me/guilds"))
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	mgr := ws.NewRoomManager(log, "")
@@ -232,6 +291,63 @@ func TestDiscordCallbackHappyPath(t *testing.T) {
 	}
 	if p.DiscordAvatarHash != "avhash" {
 		t.Errorf("DiscordAvatarHash: got %q", p.DiscordAvatarHash)
+	}
+}
+
+// At the connection cap the callback does not claim a seat. It sends the
+// browser back to the invite's own join page with the capacity code, which
+// the client words as "the server is full" (client/src/routes/Join.svelte),
+// instead of answering a navigation with a JSON 503 (ADR 0148, #3103).
+func TestDiscordCallbackAtTheConnectionCapRedirectsToTheJoinPageWithoutSeating(t *testing.T) {
+	srv, l, _, store := newDiscordTestStack(t)
+	meta, _ := l.Create("FNM")
+	lim := capacity.Defaults()
+	lim.MaxConns = 5
+	l.SetCapacity(lim, func() int { return 5 })
+
+	state, _, err := store.Start(meta.ID, meta.InviteToken)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	client := *srv.Client()
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	before := refused(t, metrics.RefuseJoinConnections)
+	resp, err := client.Get(srv.URL + "/auth/discord/callback?state=" + state + "&code=code-1")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status: got %d, want 302", resp.StatusCode)
+	}
+	want := "/#/games/" + meta.ID.String() + "/join?error=server_full&t=" + meta.InviteToken
+	if loc := resp.Header.Get("Location"); loc != want {
+		t.Errorf("Location = %q, want %q", loc, want)
+	}
+	if strings.Contains(resp.Header.Get("Location"), "token=") {
+		t.Error("a refused join handed out a session")
+	}
+	if got, _ := l.Get(meta.ID); len(got.Players) != 0 {
+		t.Errorf("a refused join took %d seat(s)", len(got.Players))
+	}
+	if got := refused(t, metrics.RefuseJoinConnections); got != before+1 {
+		t.Errorf("join_connections refusals = %v, want %v", got, before+1)
+	}
+
+	// Room again: the same flow seats the person as usual.
+	l.SetCapacity(lim, func() int { return 4 })
+	state, _, err = store.Start(meta.ID, meta.InviteToken)
+	if err != nil {
+		t.Fatalf("Start: %v", err)
+	}
+	resp2, err := client.Get(srv.URL + "/auth/discord/callback?state=" + state + "&code=code-1")
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	defer resp2.Body.Close()
+	if loc := resp2.Header.Get("Location"); !strings.HasPrefix(loc, "/#/oauth-complete?") {
+		t.Errorf("with room the join should complete, Location = %q", loc)
 	}
 }
 

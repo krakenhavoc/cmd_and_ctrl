@@ -21,9 +21,9 @@ func init() {
 		Name:         "Frodo Baggins",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
-			BlockRequirementWhere(game.BlockRequirementMustBeBlocked, func(target *game.Card, _ *game.Game, source *game.Card) bool {
+			Labelled(BlockRequirementWhere(game.BlockRequirementMustBeBlocked, func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID && game.IsRingBearerOf(*target, source.Controller)
-			}),
+			}), "While he's your Ring-bearer, must be blocked if able."),
 		},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventETB, frodoOrAnotherLegendaryCreatureYouControlEntered, "Frodo Baggins — the Ring tempts you", Do(TheRingTemptsYou{})),

@@ -253,12 +253,26 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}ActionDock.svelte`],
     doc: "the dock's Skip to my turn toggle (ADR 0143 §4.2, formerly autopass; state in aria-pressed): passes for you until your next main phase; the tutorial's let-the-bot-play step anchors here, within actions",
   }),
-  next: label({
-    name: "next",
+  pass: label({
+    name: "Pass",
     kind: "aria",
     role: "button",
     owners: [`${BOARD}ActionDock.svelte`],
-    doc: "the dock's primary: pass priority (its visible text and its aria-label); the tutorial's stack step anchors here, within actions",
+    doc: "the dock's primary while the stack holds something (#3267): pass priority so the top item can resolve (its visible text and its aria-label); the tutorial's stack step anchors here, within actions",
+  }),
+  next: label({
+    name: "Next",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary on an empty stack (#3267): pass priority so the game moves to the next step (its visible text and its aria-label); the tutorial's stack step anchors here too, within actions",
+  }),
+  noAttacks: label({
+    name: "No attacks",
+    kind: "aria",
+    role: "button",
+    owners: [`${BOARD}ActionDock.svelte`],
+    doc: "the dock's primary in declare attackers while creatures could attack and none has (#3267): pass priority with no attackers, which skips the rest of combat (CR 508.8)",
   }),
   attackAll: dynamicLabel({
     stem: " with all ",
@@ -655,6 +669,13 @@ export const LABEL_SPECS = {
     owners: ["routes/Admin.svelte"],
     doc: "the admin views' tab for every account",
   }),
+  adminReportsTab: label({
+    name: "Reports",
+    kind: "text",
+    role: "link",
+    owners: ["routes/Admin.svelte"],
+    doc: "the admin views' tab for what players have reported at their tables (#2984)",
+  }),
   liveNow: label({
     name: "live now",
     kind: "aria",
@@ -683,7 +704,14 @@ export const LABEL_SPECS = {
     kind: "aria",
     role: "form",
     owners: ["routes/Lobby.svelte"],
-    doc: "the Lobby's create-a-table form; the lobby.create hint points at it",
+    doc: "the Tables page's new-table form, opened by + New table (ADR 0158 §1 item 1)",
+  }),
+  newTable: label({
+    name: "new table",
+    kind: "aria",
+    role: "button",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Tables page head's + New table, which opens the new-table form; the lobby.create hint points at it",
   }),
   suggestTableName: label({
     name: "suggest a name",
@@ -736,6 +764,45 @@ export const LABEL_SPECS = {
     doc: "the Lobby's title (its visible text is Tables); the lobby.practice hint anchors here",
   }),
 
+  // -- The site header (ADR 0156 §3) --
+  navTables: label({
+    name: "Tables",
+    kind: "text",
+    role: "link",
+    owners: ["lib/components/SiteHeader.svelte"],
+    doc: "the site header's link to #/lobby, first in the signed-in nav (it read Lobby before ADR 0156)",
+  }),
+
+  // -- The front door (ADR 0156 §4–6) --
+  signInWithDiscord: label({
+    name: "Sign in with Discord",
+    kind: "text",
+    role: "link",
+    owners: ["routes/FrontPage.svelte"],
+    doc: "the front page's Discord sign-in, shown when the server has Discord sign-in configured",
+  }),
+  joinDiscordServer: label({
+    name: "Join our Discord server",
+    kind: "text",
+    role: "link",
+    owners: ["routes/FrontPage.svelte"],
+    doc: "the front page's link to the C2 Discord invite; hidden when GET /community names none",
+  }),
+  tryPracticeGame: label({
+    name: "Try a practice game",
+    kind: "text",
+    role: "link",
+    owners: ["routes/FrontPage.svelte", "routes/RequestAccess.svelte"],
+    doc: "the front page's and the gate page's way in without an account: #/practice, a guest practice game when signed out",
+  }),
+  findAPod: label({
+    name: "Find a pod",
+    kind: "text",
+    role: "link",
+    owners: ["routes/Lobby.svelte"],
+    doc: "the Lobby's empty state: the C2 Discord invite, in the No pod yet? card; hidden when GET /community names none",
+  }),
+
   // -- Help (ADR 0125 §6) --
   help: label({
     name: "help",
@@ -769,8 +836,8 @@ export const LABEL_SPECS = {
     name: "Practice game",
     kind: "text",
     role: "menuitem",
-    owners: ["lib/components/HelpMenu.svelte", "routes/Home.svelte"],
-    doc: "Help, and Home's Help tile: opens a practice table; signed out it reads Practice game (sign in first) and goes to sign in",
+    owners: ["lib/components/HelpMenu.svelte", "routes/Lobby.svelte"],
+    doc: "Help, and the Lobby's empty-state card: opens a practice table, a guest one when signed out (ADR 0156 §2)",
   }),
   keyboardShortcutsItem: label({
     name: "Keyboard shortcuts",
@@ -786,6 +853,13 @@ export const LABEL_SPECS = {
     owners: [`${BOARD}GameMenu.svelte`, "lib/components/Settings.svelte"],
     doc: "Settings → Advanced, and the ⋯ menu on the practice table only: opens a fresh practice table",
   }),
+  legalNotice: label({
+    name: "Legal notice",
+    kind: "text",
+    role: "menuitem",
+    owners: [`${BOARD}GameMenu.svelte`],
+    doc: "the ⋯ menu's Help group: opens the fan-content notice, which the site footer carries everywhere else (#2982)",
+  }),
   showTips: label({
     name: "Show tips",
     kind: "text",
@@ -797,8 +871,8 @@ export const LABEL_SPECS = {
     name: "Start practice",
     kind: "text",
     role: "link",
-    owners: ["routes/LobbyPractice.hint.ts"],
-    doc: "the lobby.practice tip's action, to #/practice; the tip's Got it reads Not now beside it",
+    owners: ["routes/LobbyPractice.hint.ts", "routes/Lobby.svelte"],
+    doc: "the lobby.practice tip's action, to #/practice, and the Lobby's Practice game card; the tip's Got it reads Not now beside it",
   }),
 
   // -- Everywhere --

@@ -100,6 +100,7 @@ This is how the privacy rules in ADR 0017 §9 and AGENTS.md §5 carry over to me
 | `cmdctrl_users` | gauge *(collector)* | — | Registered accounts: **"players total"**. Read from SQLite and cached 60 s. |
 | `cmdctrl_users_played` | gauge *(collector)* | `window` = `1d\|7d\|30d` | Distinct accounts seated at a table that was active in the window (seats joined to games on `started_at` / `ended_at`). It doesn't use `last_seen_at`, which counts only sign-ins. Cached 60 s. |
 | `cmdctrl_users_created_total` | counter | — | First Discord sign-ins (new `users` rows). |
+| `cmdctrl_player_reports_total` | counter | — | Player reports stored (ADR 0075 §2.6, #3113): one per accepted "report player". No label: who and why are rows an admin reads, never series. |
 
 "Games per day" and "new users per day" are `increase(…[1d])` over the counters. History older than the metrics' year stays answerable from SQLite.
 
@@ -112,6 +113,9 @@ This is how the privacy rules in ADR 0017 §9 and AGENTS.md §5 carry over to me
 | `cmdctrl_ws_connections` | gauge *(collector)* | `role` = `seat\|spectator\|admin` |
 | `cmdctrl_ws_connects_total` / `cmdctrl_ws_disconnects_total` | counter | `role` |
 | `cmdctrl_ws_upgrade_rejections_total` | counter | `reason` (the hub's existing rejection cases, as a closed set) |
+| `cmdctrl_capacity_limit` / `cmdctrl_capacity_used` | gauge *(collector)* | `resource` = `table_load\|ws_connections` *([ADR 0148](0148-capacity-limits-for-a-public-launch.md): the cap, 0 = off, and what is carried against it)* |
+| `cmdctrl_capacity_refusals_total` | counter | `reason` = `table_load\|bot_seat\|ws_connections\|join_connections\|create_account\|create_ip` *(ADR 0148)* |
+| `cmdctrl_boot_restore_deferred_games` | gauge | — *(ADR 0148: tables the boot left on disk because the load cap was full)* |
 | `cmdctrl_ws_frames_total` | counter | `direction` = `in\|out`, `type` (protocol frame types) |
 | `cmdctrl_ws_broadcast_seconds` | histogram | — |
 | Go runtime and process | `collectors.NewGoCollector`, `NewProcessCollector` | — |
@@ -198,6 +202,9 @@ The rules live in `deploy/monitoring/rules/*.yml`. Alertmanager groups by `alert
 | `UnitFailed` | a `cmd-and-ctrl*` unit in systemd state `failed`. This becomes possible once #598 item 2 bounds the restarts. | critical |
 | `RestoreAbandonedGames` | `cmdctrl_boot_restore_games{outcome="abandoned"} > 0` within 15 m of a start | warning |
 | `RestorePointLagging` | `cmdctrl_restore_point_age_seconds > 600` for 10 m | warning |
+| `RestoreDeferredGames` | `cmdctrl_boot_restore_deferred_games > 0`: tables the boot left on disk because the load cap was full (ADR 0148). It stays until they are restored | warning |
+| `CapacityHigh` | `cmdctrl_capacity_used / cmdctrl_capacity_limit > 0.8` for 10 m, per `resource`, ignoring a cap that is off. A first guess | warning |
+| `PlayerReportFiled` | `increase(cmdctrl_player_reports_total[15m]) > 0` on prod. A first guess | warning |
 | `OffsiteBackupStale` | the backup's last success is older than 36 h, or its last exit was non-zero | warning |
 | `DiskFilling` | any filesystem under 15% free for 15 m | warning |
 | `MonitoringConfigSyncFailing` | the config-sync timer's last success is older than 1 h | warning |
@@ -386,3 +393,12 @@ PRs 2, 3, 4, 5 and 7 have merged into `develop` (#2284, #2286, #2287, #2285, #22
 - **The heartbeat's first beat** reached `CMDCTRL_MONITORING_HEARTBEAT` at 10:54:41Z. The first run, at 10:49, had found Prometheus not yet started.
 - **The blackbox probes** see both sites up.
 - **The app hosts' Alloy** waited on the push-password secrets, which were first set in HomeLab rather than here. They are now set in this repo's `prod` and `dev` environments. Dev ships from the deploy after this change; prod ships with the next promotion.
+
+## Amendment (2026-10-13): capacity and moderation alerts (#3103, #3113)
+
+Three alerts and one counter, added to §3 and §7 above:
+
+- `cmdctrl_player_reports_total`, a label-free counter ([ADR 0075](0075-table-settings-and-host-controls.md)'s 2026-10-13 amendment).
+- `RestoreDeferredGames`, `CapacityHigh` and `PlayerReportFiled`, each with a `promtool` test (a firing case and a quiet case; `CapacityHigh` also pins that a resource whose cap is off, limit 0, stays quiet).
+- The thresholds (80% for 10 minutes; any report in 15 minutes) are first guesses and the rule annotations say so. [ADR 0148](0148-capacity-limits-for-a-public-launch.md)'s amendment of the same date says how they are to be tuned.
+- `cmdctrl_boot_restore_deferred_games` is still "tables not restored because the load cap was full", but it is no longer set only at boot: the hot restore route (`POST /admin/capacity/restore-deferred`) sets it to the tables still waiting after it runs. The name stays; it is the contract.

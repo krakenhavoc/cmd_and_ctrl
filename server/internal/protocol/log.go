@@ -255,6 +255,13 @@ const (
 	// card that called the vote. One line per vote, as it is cast, so
 	// the table sees the tally move.
 	LogVote LogKind = "vote"
+	// LogAnyPlayerPaid / LogAnyPlayerDeclined — one player's answer to
+	// an "unless any player pays" offer (ADR 0150 §5). `Seat` answered,
+	// `CardID` is the card whose effect it was and `Label` the payment
+	// ("{2}"). One line per answer, in the order asked, so a table
+	// reading back sees who paid and who let it happen.
+	LogAnyPlayerPaid     LogKind = "any_player_paid"
+	LogAnyPlayerDeclined LogKind = "any_player_declined"
 	// LogControl — a permanent changed controller (CR 613.1b).
 	// `Seat` is the player who GAINED control and `TargetSeat` the
 	// one who lost it, which is one sentence for a gain, an
@@ -310,6 +317,14 @@ const (
 	// different number. Not every kind gets one — see
 	// counterKindIsNarrated.
 	LogCounters LogKind = "counters"
+	// LogCountCapped — a count hit the table's ceiling and was pinned to
+	// it (#3040): +1/+1 counters, power, or the mana one production
+	// adds. `Label` is the quantity ("+1/+1 counters", "mana"),
+	// `Amount` the ceiling it was pinned to, and `CardID` the object
+	// whose count was capped or the mana's source. Narrated so a capped
+	// table is told it is capped rather than left to wonder why a
+	// number stopped growing.
+	LogCountCapped LogKind = "count_capped"
 	// LogScry / LogSurveil — a player finished a scry (CR 701.22)
 	// or a surveil (CR 701.25). NEVER a card, for anyone: the cards
 	// are hidden at both ends and the entry carries no card
@@ -378,6 +393,12 @@ const (
 	// scrolling back wants to know WHEN it happened, which the board
 	// alone cannot say. Added in S46 (ADR 0079, #343).
 	LogTransform LogKind = "transform"
+	// LogFlipPermanent — a flip card on the battlefield was flipped (CR
+	// 710, ADR 0151 decision 5). `Label` is the name it flipped FROM.
+	// Narrated for LogTransform's reason and CR 710.3's: whether a
+	// permanent is flipped must be clear at all times. Not "flip", which
+	// is LogFlip, a coin flip.
+	LogFlipPermanent LogKind = "flip_permanent"
 	// LogMeld — two cards were melded into one permanent (CR 701.42a).
 	// `CardID` is the melded permanent and `Label` names the two cards
 	// it was melded from, which no other line says: the exile and the
@@ -611,6 +632,10 @@ type LogEvent struct {
 	NewZone string `json:"new_zone,omitempty"`
 	// Combat marks a LogDamage entry as combat damage (CR 510).
 	Combat bool `json:"combat,omitempty"`
+	// Converted marks a LogTransform entry whose turn-over was a
+	// convert (CR 701.28a, ADR 0152 §2): the line says "converted"
+	// rather than "transformed". Copied from game.Event.Converted.
+	Converted bool `json:"converted,omitempty"`
 	// CombatStep says which combat damage step dealt a combat LogDamage
 	// entry: "first_strike" or "regular" (CR 510.4). Copied from
 	// game.Event.CombatStep, and set only when that combat had a
@@ -804,14 +829,17 @@ func publicLogOf(g *game.Game, v *GameView) []LogEvent {
 	return finishLog(out, v)
 }
 
-// logCache is what publicLogOf keeps in the game's projection slot: the
-// current fold, and how many events every fold of this game has
+// logCache is what publicLogOf and publicRevealsOf keep in the game's
+// projection slot: the current fold, and how many events every fold of this game has
 // projected. The count outlives a refold, which is what lets the cost
 // test see one (TestPublicLogViewFoldsOnlyNewEvents); production never
 // reads it.
 type logCache struct {
 	fold   *logFold
 	folded int
+	// reveals is the reveal window's grouping fold (#3131), kept in the
+	// same slot because it is valid under the same conditions.
+	reveals *revealFold
 }
 
 // finishLog resolves names and knower sets out of v and renders every
@@ -823,7 +851,7 @@ func finishLog(out []LogEvent, v *GameView) []LogEvent {
 	}
 	resolveLogNames(out, v)
 	for i := range out {
-		out[i].Text = renderLogText(out[i], out[i].cardName, out[i].targetName)
+		out[i].Text = renderLogTextOf(&out[i], out[i].cardName, out[i].targetName)
 	}
 	return out
 }
@@ -1384,6 +1412,17 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		}
 		return base, true
 
+	case game.EventAnyPlayerPaid, game.EventAnyPlayerDeclined:
+		// ADR 0150 §5. Actor answered, Source is the card whose effect
+		// was offered, Label the payment's printed words.
+		base.Kind = LogAnyPlayerDeclined
+		if ev.Kind == game.EventAnyPlayerPaid {
+			base.Kind = LogAnyPlayerPaid
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventVoteCast:
 		// ADR 0146. Actor voted, Source called the vote, Label is the
 		// option. The option's label is public: a word printed on the
@@ -1564,6 +1603,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Amount = ev.Amount
 		return base, true
 
+	case game.EventCountCapped:
+		base.Kind = LogCountCapped
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		base.Amount = ev.Amount
+		return base, true
+
 	case game.EventScry, game.EventSurveil:
 		// CR 701.22 / CR 701.25, and the one arm in this switch that
 		// deliberately names NO card, for anyone — not the cards that
@@ -1691,6 +1737,15 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		// says it — this is the only line the table gets, and without
 		// it a permanent silently becomes a different card.
 		base.Kind = LogTransform
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		base.Converted = ev.Converted
+		return base, true
+
+	case game.EventFlipPermanent:
+		// CR 710, ADR 0151. Not a zone move and not a transform, so this
+		// is the only line that says the permanent is now its other half.
+		base.Kind = LogFlipPermanent
 		base.CardID = uuidStringOrEmpty(ev.CardID)
 		base.Label = ev.Label
 		return base, true
@@ -1881,11 +1936,14 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		return seatNames[i]
 	}
 
-	cards := make(map[string]CardView, len(wanted))
+	// Pointers into the view's own zones, not copies: a CardView is
+	// large, and the lookups below ran once or twice per entry per
+	// frame (#3131). Nothing here writes through them.
+	cards := make(map[string]*CardView, len(wanted))
 	if len(wanted) > 0 {
-		indexCardsInto(cards, wanted, v.Battlefield, v.Stack, v.Exile)
+		indexCardPtrsInto(cards, wanted, v.Battlefield, v.Stack, v.Exile)
 		for _, s := range v.Seats {
-			indexCardsInto(cards, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
+			indexCardPtrsInto(cards, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
 		}
 	}
 
@@ -1902,12 +1960,12 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 			}
 		}
 		if c, ok := cards[e.CardID]; ok {
-			e.cardName = logNameOf(c)
+			e.cardName = logNameOf(*c)
 			e.cardKnowers = c.knowers
 			e.cardFound = true
 		}
 		if c, ok := cards[e.Target]; ok {
-			e.targetName = logNameOf(c)
+			e.targetName = logNameOf(*c)
 			e.targetKnowers = c.knowers
 		}
 		// Revealed cards are looked up in every zone, hands and
@@ -1920,7 +1978,11 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 				if j >= logRevealNamesMax {
 					break
 				}
-				e.revealNames = append(e.revealNames, cards[id].Name)
+				name := ""
+				if c, ok := cards[id]; ok {
+					name = c.Name
+				}
+				e.revealNames = append(e.revealNames, name)
 			}
 			e.revealIDs = nil
 		}
@@ -2025,6 +2087,19 @@ func (e *LogEvent) setTarget(id uuid.UUID, seatOf func(uuid.UUID) int) {
 		return
 	}
 	e.Target = id.String()
+}
+
+// indexCardPtrsInto is indexCardsInto without the copies: it records a
+// pointer to each wanted card in the view's own zone slice.
+func indexCardPtrsInto(dst map[string]*CardView, wanted map[string]bool, zones ...ZoneView) {
+	for _, z := range zones {
+		for i := range z.Cards {
+			c := &z.Cards[i]
+			if wanted[c.InstanceID] {
+				dst[c.InstanceID] = c
+			}
+		}
+	}
 }
 
 // indexCardsInto adds every card of the given zones whose ID is in
@@ -2153,6 +2228,14 @@ func shortCardName(name string) string {
 // An unknown card renders as "a card" — the entry still says that
 // SOMETHING moved, which is public, without saying what.
 func renderLogText(e LogEvent, cardName, targetName string) string {
+	return renderLogTextOf(&e, cardName, targetName)
+}
+
+// renderLogTextOf is renderLogText over a pointer: finishLog renders every
+// entry of the ring on every frame, and a LogEvent is large enough that
+// copying it per entry showed up in the profile (#3131). Nothing here
+// writes through e.
+func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 	card := nameOr(cardName, "a card")
 	actor := nameOr(e.actorName, "someone")
 	// A target is either a seated player or a card; exactly one of the
@@ -2164,11 +2247,11 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 
 	switch e.Kind {
 	case LogRoll, LogFlip:
-		return renderRandomLogText(e, actor, card)
+		return renderRandomLogText(*e, actor, card)
 	case LogOpeningRoll, LogStartingPlayer:
-		return renderOpeningRollLogText(e, actor, target)
+		return renderOpeningRollLogText(*e, actor, target)
 	case LogTableRoll:
-		return renderTableRollLogText(e, actor)
+		return renderTableRollLogText(*e, actor)
 	case LogStep:
 		// "Turn" counts turns and the round rides beside it, the same
 		// two numbers in the same words as the agent's board header,
@@ -2177,9 +2260,9 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		if e.Round == 0 || e.Turn == 0 {
 			// Backward-compatible rendering for persisted pre-ADR-0059
 			// EventStepBegan entries, which carry only Amount.
-			return fmt.Sprintf("Turn %d — %s · %s", e.Turn, actor, prettyStep(e.Step))
+			return "Turn " + strconv.Itoa(e.Turn) + " — " + actor + " · " + prettyStep(e.Step)
 		}
-		return fmt.Sprintf("Turn %d (round %d) — %s · %s", e.Turn, e.Round, actor, prettyStep(e.Step))
+		return "Turn " + strconv.Itoa(e.Turn) + " (round " + strconv.Itoa(e.Round) + ") — " + actor + " · " + prettyStep(e.Step)
 	case LogCast:
 		// ADR 0118 owner decision 4: an unpaid cast says so, in these
 		// words, after the zone.
@@ -2209,7 +2292,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 		return fmt.Sprintf("%s countered %s", card, target)
 	case LogZone:
-		return renderZoneText(e, card)
+		return renderZoneText(*e, card)
 	case LogSacrifice:
 		return fmt.Sprintf("%s sacrificed %s", actor, card)
 	case LogExert:
@@ -2239,7 +2322,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogToken:
 		return fmt.Sprintf("%s created %s", actor, card)
 	case LogEliminated:
-		return renderEliminatedText(e, actor, cardName)
+		return renderEliminatedText(*e, actor, cardName)
 	case LogGameOver:
 		switch e.Cause {
 		case game.OutcomeCauseAllLost:
@@ -2255,7 +2338,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
 			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
 	case LogReveal:
-		return renderRevealText(e, actor)
+		return renderRevealText(*e, actor)
 	case LogChooseColor:
 		return fmt.Sprintf("%s chose %s for %s", actor, nameOr(game.ColorName(e.Choice), "a color"), card)
 	case LogChooseType:
@@ -2295,6 +2378,8 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 		}
 	case LogVote:
 		return fmt.Sprintf("%s voted for %s (%s)", actor, nameOr(e.Choice, "an option"), card)
+	case LogAnyPlayerPaid, LogAnyPlayerDeclined:
+		return anyPlayerAnswerText(e.Kind == LogAnyPlayerPaid, actor, e.Label, card)
 	case LogRingTempted:
 		// ADR 0114 §9 and owner decision 2: "The Ring tempts Alice (2)
 		// — Alice chooses Nazgûl as their Ring-bearer". The engine
@@ -2333,7 +2418,7 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogCycle:
 		return fmt.Sprintf("%s cycled %s", actor, card)
 	case LogAutoAnswer:
-		return renderAutoAnswerText(e, actor, cardName)
+		return renderAutoAnswerText(*e, actor, cardName)
 	case LogTrigger:
 		line := fmt.Sprintf("%s's trigger: %s", actor, abilityName(e.Label, cardName))
 		if e.Label == "" && cardName == "" {
@@ -2347,9 +2432,14 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogActivate:
 		return fmt.Sprintf("%s activated %s", actor, abilityName(e.Label, cardName))
 	case LogCounters:
-		return renderCountersText(e, card)
+		return renderCountersText(*e, card)
+	case LogCountCapped:
+		if e.CardID == "" {
+			return fmt.Sprintf("%s capped at %d", e.Label, e.Amount)
+		}
+		return fmt.Sprintf("%s: %s capped at %d", card, e.Label, e.Amount)
 	case LogScry, LogSurveil:
-		return renderLookText(e, actor)
+		return renderLookText(*e, actor)
 	case LogDiscover:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s discovered %d and found nothing", actor, e.Amount)
@@ -2379,9 +2469,9 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 	case LogRoomFullyUnlocked:
 		return fmt.Sprintf("%s is fully unlocked", card)
 	case LogSettings:
-		return renderSettingsText(e)
+		return renderSettingsText(*e)
 	case LogSpawn:
-		return renderSpawnText(e, target)
+		return renderSpawnText(*e, target)
 	case LogStorm:
 		// "Grapeshot — storm count 3". The em dash is the separator
 		// every storm-shaped stack label in the catalog already uses,
@@ -2445,15 +2535,28 @@ func renderLogText(e LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s was melded", card)
 		}
 		return fmt.Sprintf("%s melded into %s", e.Label, card)
+	case LogFlipPermanent:
+		// The card name is the half it flipped INTO; Label is the one
+		// it flipped from, cleared on a redacted entry.
+		if e.Label == "" {
+			return fmt.Sprintf("%s flipped", card)
+		}
+		return fmt.Sprintf("%s flipped into %s", e.Label, card)
 	case LogTransform:
 		// The card name is the face it turned INTO — viewOfCard reads
 		// the active face — and Label is the one it turned from. Label
 		// is cleared with the name on a redacted entry, so the fallback
 		// is the line a viewer who may not identify the card reads.
-		if e.Label == "" {
-			return fmt.Sprintf("%s transformed", card)
+		// A convert (CR 701.28a, ADR 0152 §2) says so: the cards print
+		// "convert", and the action is not called transforming.
+		verb := "transformed"
+		if e.Converted {
+			verb = "converted"
 		}
-		return fmt.Sprintf("%s transformed into %s", e.Label, card)
+		if e.Label == "" {
+			return fmt.Sprintf("%s %s", card, verb)
+		}
+		return fmt.Sprintf("%s %s into %s", e.Label, verb, card)
 	default:
 		return card
 	}
@@ -2935,4 +3038,35 @@ func renderAutoAnswerText(e LogEvent, actor, cardName string) string {
 		subject = abilityName(e.Label, cardName)
 	}
 	return fmt.Sprintf("%s answered %s to %s (automatic)", actor, answer, subject)
+}
+
+// anyPlayerAnswerText is one answer to an any-player offer (ADR 0150
+// §5), worded for its payment: "Alice paid {2} for Rhystic Tutor",
+// "Alice paid 5 life for Dash Hopes", "Alice took 6 damage from Book
+// Burning", "Alice chose to sacrifice a land for Argothian Wurm", and
+// "Alice said yes to Distant Memories" for an offer that costs
+// nothing. A decline is the same sentence negated.
+func anyPlayerAnswerText(paid bool, actor, label, card string) string {
+	switch {
+	case label == "":
+		if paid {
+			return fmt.Sprintf("%s said yes to %s", actor, card)
+		}
+		return fmt.Sprintf("%s said no to %s", actor, card)
+	case strings.HasSuffix(label, " damage"):
+		if paid {
+			return fmt.Sprintf("%s took %s from %s", actor, label, card)
+		}
+		return fmt.Sprintf("%s didn't take %s from %s", actor, label, card)
+	case label[0] >= 'a' && label[0] <= 'z':
+		// A verb: "sacrifice a land", "discard three cards".
+		if paid {
+			return fmt.Sprintf("%s chose to %s for %s", actor, label, card)
+		}
+		return fmt.Sprintf("%s chose not to %s for %s", actor, label, card)
+	}
+	if paid {
+		return fmt.Sprintf("%s paid %s for %s", actor, label, card)
+	}
+	return fmt.Sprintf("%s didn't pay %s for %s", actor, label, card)
 }

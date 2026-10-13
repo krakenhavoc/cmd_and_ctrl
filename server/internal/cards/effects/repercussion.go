@@ -16,24 +16,22 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // event's amount to that player on resolution: red noncombat damage
 // from an enchantment, as printed.
 //
-// Sandbox simplification, declared, the Wrathful Red Dragon posture:
-// the engine emits one damage event per SOURCE, so a creature blocked
-// by two attackers fires twice — once per blocker's damage — where
-// the printed card fires once for the total. The same damage lands
-// either way; only the split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and deals the creature's controller the
+// TOTAL the creature was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	Register(Spec{
 		OracleID:     "f6069a4f-744e-43e8-9f8b-7c13b8b0187f",
 		Name:         "Repercussion",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If two or more sources damage a creature at the same time, its controller takes each source's damage separately instead of the total in one go."},
+		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{{
 			Watches: []game.EventKind{game.EventDealDamage},
 			AppliesTo: func(ev game.Event, _ *game.Card, _ game.Characteristic, g *game.Game) bool {
 				_, ok := b28CreatureWasDealtDamage(ev, g)
 				return ok
 			},
-			Key: "Repercussion — that much damage to the creature's controller",
+			Key:        "Repercussion — that much damage to the creature's controller",
+			AtBatchEnd: ThatMuchDamage(),
 			Build: func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) *game.StackItem {
 				c, ok := b28CreatureWasDealtDamage(ev, g)
 				if !ok {

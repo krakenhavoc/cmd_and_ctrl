@@ -32,7 +32,12 @@ import (
 // Cast Through Time); nil is every spell. The predicate reads the
 // spell's card as it sits on the stack.
 func SpellsYouControlHave(spell CardPredicate, keywords ...string) game.StaticAbility {
+	who := "Spells you control"
+	if spell != nil {
+		who = "Certain spells you control"
+	}
 	return game.StaticAbility{
+		Label:         who + " have " + joinWords(keywords) + ".",
 		Layer:         game.Layer6Ability,
 		AffectsSpells: true,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {

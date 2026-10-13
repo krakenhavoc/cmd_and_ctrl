@@ -163,3 +163,87 @@ the replacement pipeline yet
   the new prompt frame.
 - Library-top vs library-bottom destination split when S22 adds
   the engine distinction.
+
+## Amendment 2026-10-13 — a search may find nothing; "up to N" may take fewer (#3053, #3081)
+
+§4 above deferred the library-search prompt to S22, which built it
+(`PendingChoiceSearchLibrary`, `SearchLibrary`, `ResolveSearchLibrary`).
+S22 kept one shortcut from the old auto-pick: when the library held no
+more matches than the effect could take, the search resolved
+synchronously and took them, unasked. This amendment removes it for the
+searches it was wrong for. The owner's decision on #3053 (option 1 of
+the three the issue lists) is the rule; this records how the engine
+implements it.
+
+### The rule (CR 701.23b, 701.23d)
+
+- A search of a **hidden zone** (a library) for cards with a **stated
+  quality** — a type, a name, a land type, a mana value — may find
+  nothing even when matches are there, including exactly one match. An
+  "up to N" search with a stated quality may take any number from 0 to N.
+- A search **simply for a quantity** ("a card", "three cards": Demonic
+  Tutor, Entomb, Intuition) must find that many, or as many as the zone
+  holds. "Up to N cards" with no quality may take fewer: "up to" is what
+  the clause says, and CR 701.23d speaks only of a plain quantity.
+- A search of a **public zone** must find a valid card when one is
+  present. The engine has no public-zone search; the rule is encoded in
+  `searchFloor` and tested there for the day one lands.
+- Whatever is found, the rest of the instruction happens: the shuffle,
+  `EventSearchLibrary`, the continuation (`Then`), life loss.
+
+### The shape: an engine rule, not a per-card flag
+
+`SearchLibrarySpec.statedQuality()` is `Pred != nil || Validate != nil`.
+`spec.floor(matches)` is the fewest cards the searcher may take, from
+`searchFloor(hiddenZone, statedQuality, mayFindFewer, limit, matches)`:
+zero when the clause allows a short count (`Optional`, `UpTo`,
+`Unbounded`) or the search names a quality in a hidden zone; otherwise
+`min(limit, matches)`.
+
+- **The shortcut** now takes the matches unasked only when the floor
+  equals the match count — an unconditional search against a library of
+  exactly that many. Every stated-quality search prompts, however few
+  matches there are.
+- **`PendingChoice.SearchMin`** (wire `search_min`, omitempty) carries the
+  floor; `SearchMax` is unchanged. `checkSearchPicksLocked` refuses a
+  short answer, with the floor lowered by candidates that left the library
+  since the prompt opened (milled by another seat's trigger) — a rule that
+  says "as many as possible" must not wedge the table on an answer nobody
+  can give. `SearchFloorLocked` exposes it to the enumerator, which
+  offers "fail to find" (the choice's `AlwaysLegal` answer) only when the
+  floor is zero and enumerates picks of size `max(floor, 1)`..`SearchMax`.
+- **`Optional` is demoted to its real meaning**: "you MAY search". It was
+  doing double duty as the only way to get "fail to find" onto a
+  stated-quality search. Review of the 42 `Optional: true` search sites
+  removed it from the 9 sites on 7 cards that were only standing in for that (Cultivate,
+  Point the Way, Reshape the Earth, Shared Summons, Titania's Command,
+  Urza's Saga III, Axgard Armory) and kept it on every card whose text
+  says "may search". A new field `UpTo` covers the one case the quality
+  rule does not: "up to N" with no quality.
+- **Seven catalog cards passed `func(game.Card) bool { return true }`**
+  for "a card" (Case of the Stashed Skeleton, Demonic Counsel's
+  delirium half, Hour of Victory, Lagomos, Razaketh, Tamiyo's Journal,
+  Vile Entomber). The engine reads that as a stated quality, so they
+  could have failed to find. They now omit `Predicate`.
+
+### #3081
+
+The 17 "up to N" cards the issue lists (Blighted Woodland, Burnished
+Hart, Circuitous Route, Cycle of Renewal, Encroaching Dragonstorm,
+Explosive Vegetation, Harrow, Myriad Landscape, Roiling Regrowth,
+Skyshroud Claim, Emergent Ultimatum, Gifts Ungiven, Saheeli Rai, Entish
+Restoration, Scapeshift, Traverse the Outlands, Fblthp Knows the Way)
+all search for a stated quality, so the engine rule covers them with no
+per-card change; the oracle text of each says "up to". The issue's
+suggested `UpTo` flag exists but is for the unconditional case only.
+
+### Client and bots
+
+One prompt per tutor is the accepted cost; there is no setting. The
+search sheet opens with the matches already taken when they all fit under
+the ceiling (the cases that used to resolve silently), so Enter takes
+them; "Find nothing" is a separate secondary button, shown whether or not
+a card is picked, and absent when `search_min` is above zero. The
+heuristic bot's score for a take is positive and for "find nothing" is
+zero, so it takes the best card unless there is a reason not to; the
+enumerator offers both answers.

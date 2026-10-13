@@ -130,15 +130,24 @@ func TestFakeModelFailuresAreClassifiedByTheFunnel(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			// A tiny call budget, so the timeout case costs
-			// milliseconds rather than the tier's real deadline.
+			// Only the timeout case wants a short call budget (its
+			// fake blocks until the budget ends). The other two reply
+			// at once, so they get a budget no loaded machine can
+			// overrun (#2842): at 10ms a scheduling stall turned
+			// them into "error" or "timeout" outcomes (34 of 41
+			// positions came back out-of-range, 7 errored). The
+			// think deadline is generous for the same reason; the
+			// timeout case is ended by MaxCall, not by MaxThink.
 			cfg := model.DefaultConfig()
-			cfg.Reserve, cfg.MinBudget, cfg.MaxCall = time.Millisecond, time.Millisecond, 10*time.Millisecond
+			cfg.Reserve, cfg.MinBudget, cfg.MaxCall = time.Millisecond, time.Millisecond, time.Minute
+			if tc.want == OutcomeTimeout {
+				cfg.MaxCall = 10 * time.Millisecond
+			}
 			pol, err := tiers.New(tiers.Assisted, tiers.Options{Client: tc.client, Config: &cfg})
 			if err != nil {
 				t.Fatalf("build the assisted tier: %v", err)
 			}
-			rep := Run(context.Background(), positions, pol, RunOptions{MaxThink: 100 * time.Millisecond, Parallel: 8})
+			rep := Run(context.Background(), positions, pol, RunOptions{MaxThink: time.Minute, Parallel: 8})
 			if got := tc.count(rep); got != rep.Labelled {
 				t.Errorf("%d/%d positions came back %s; want all of them\n%s", got, rep.Labelled, tc.want, rep.Markdown())
 			}

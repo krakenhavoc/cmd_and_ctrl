@@ -23,8 +23,13 @@ export interface ActiveTip {
   body: string;
   /** The anchor's rect, for the ring. */
   ring: Rect;
-  /** Where the card goes; never "wait" (a hint that cannot be placed is not drawn). */
-  placement: Exclude<Placement, { kind: "wait" }>;
+  /**
+   * Where the card goes; never "wait" (a hint that cannot be placed is
+   * not drawn). "inline" is a site page's tip, drawn inside the page
+   * frame under the lede by its PageTipSlot rather than over the page
+   * (ADR 0156 §3 item 5).
+   */
+  placement: Exclude<Placement, { kind: "wait" }> | { kind: "inline" };
   /** The phone strip's distance from the bottom edge (the dock bar at the table). */
   stripBottom: number;
   reduceMotion: boolean;
@@ -49,6 +54,13 @@ export function hintEngine(): HintEngine {
 
 /** The id the tip's body carries, for the anchor's aria-describedby. */
 export const TIP_BODY_ID = "hint-tip-body";
+
+/**
+ * The attribute a site page's frame puts on its tip slot (Page.svelte,
+ * ADR 0156 §3 item 5). On a page that has one, HintLayer draws the page's
+ * tips there, as a line under the lede, instead of over the controls.
+ */
+export const TIP_SLOT_ATTR = "data-tip-slot";
 
 /** markHintSeen records a hint as dismissed at its current version. */
 export function markHintSeen(h: Pick<Hint, "id" | "version">): void {

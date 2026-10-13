@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -277,7 +278,7 @@ func TestB31LeoninWarleaderAttacksWithTwoLifelinkCats(t *testing.T) {
 	if n := triggersOnStackFrom(g, warleader); n != 1 {
 		t.Fatalf("one attack trigger, got %d", n)
 	}
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	cats := battlefieldIDsNamed(g, "Cat")
 	if len(cats) != 2 {
 		t.Fatalf("%d Cats, want 2", len(cats))
@@ -414,10 +415,16 @@ func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me, opp := g.Seats[0], g.Seats[1]
 	engine := b31Push(g, me.ID, "Tiller Engine", "Artifact Creature — Construct", b31TillerEngineOracle, "{2}", 1, 3)
-	// No opponent nonland permanent: the trigger is the untap alone.
+	// No opponent nonland permanent: only the untap is offered.
 	mire := playLandFromHand(t, g, "Haunted Mire", b11HauntedMireOracle)
 	if !b31Tapped(t, g, mire) {
 		t.Fatal("Haunted Mire enters tapped")
+	}
+	if c := modePickChoiceFor(g, me.ID); c != nil {
+		if slices.Contains(c.ModeOptionIndex, 1) {
+			t.Fatalf("nothing to tap: the tap mode is not offered: %v", c.ModeOptionIndex)
+		}
+		answerMode(t, g, c, me.ID, 0)
 	}
 	if triggerOnStack(g, engine) == nil {
 		t.Fatal("the choice is a trigger with a response window")
@@ -426,11 +433,16 @@ func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	if b31Tapped(t, g, mire) {
 		t.Error("no nonland permanent to tap: the land is untapped")
 	}
-	// An opponent's nonland permanent: pick it to tap it instead.
+	// An opponent's nonland permanent: choose the tap mode and pick it.
 	theirs := b31Push(g, opp.ID, "Their Bear", "Creature — Bear", "", "{1}{G}", 2, 2, "G")
 	theirLand := b31Push(g, opp.ID, "Their Forest", "Basic Land — Forest", "", "", 0, 0)
 	b12ToMyNextUpkeep(t, g)
 	mire2 := playLandFromHand(t, g, "Haunted Mire", b11HauntedMireOracle)
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil || !slices.Equal(c.ModeOptionIndex, []int{0, 1}) {
+		t.Fatalf("both modes are offered: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 1)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
 	if !hasID(p.PickTargetCards, theirs) || hasID(p.PickTargetCards, theirLand) || hasID(p.PickTargetCards, engine) {
@@ -444,19 +456,21 @@ func TestB31TillerEngineUntapsOrTapsWhenALandEntersTapped(t *testing.T) {
 	if !b31Tapped(t, g, mire2) {
 		t.Error("the tap mode was chosen: the land stays tapped")
 	}
-	// Decline the pick: the untap mode.
+	// The untap mode, with a target available: asks for none.
 	b12ToMyNextUpkeep(t, g)
 	mire3 := playLandFromHand(t, g, "Haunted Mire", b11HauntedMireOracle)
-	b04WaitForPick(t, g, me.ID)
-	b26DeclinePickTarget(t, g, me.ID)
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 0)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Error("the untap mode targets nothing")
+	}
 	passPriorityAroundTable(t, g)
 	if b31Tapped(t, g, mire3) {
-		t.Error("no target chosen: the land is untapped")
+		t.Error("untap mode: the land is untapped")
 	}
 	// A land that enters untapped is not a trigger.
 	b12ToMyNextUpkeep(t, g)
 	playLandFromHand(t, g, "Forest", "")
-	if triggerOnStack(g, engine) != nil || len(g.PendingTriggers) != 0 || latestPickTarget(g, me.ID) != nil {
+	if triggerOnStack(g, engine) != nil || len(g.PendingTriggers) != 0 || latestPickTarget(g, me.ID) != nil || modePickChoiceFor(g, me.ID) != nil {
 		t.Error("an untapped entry: no trigger")
 	}
 }
@@ -700,12 +714,12 @@ func TestB31BlossomingTortoiseMillsAndReturnsALandOnEntryAndAttack(t *testing.T)
 	seedGraveyardCard(t, g, "Bear", "Creature — Bear", "")
 	library := me.Library.Size()
 	tortoise := castAndResolveCreature(t, g, "Blossoming Tortoise", "Creature — Turtle", b31BlossomingTortoiseOracle)
-	b04WaitForPick(t, g, me.ID)
-	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, swamp) || len(p.PickTargetCards) != 1 {
-		t.Errorf("only land cards in your graveyard are offered: %v", p.PickTargetCards)
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, swamp) || len(p.ChooseCards) != 1 || p.ChooseMin != 1 {
+		t.Fatalf("only land cards in your graveyard are offered, and the return is not optional: %+v", p)
 	}
-	pickCard(t, g, me.ID, swamp)
+	answerChooseCards(t, g, me.ID, swamp)
 	passPriorityAroundTable(t, g)
 	if got := me.Library.Size(); got != library-3 {
 		t.Errorf("mill three: library %d → %d", library, got)
@@ -719,15 +733,67 @@ func TestB31BlossomingTortoiseMillsAndReturnsALandOnEntryAndAttack(t *testing.T)
 	advanceTo(t, g, game.StepPrecombatMain)
 	library = me.Library.Size()
 	declareAttack(t, g, opp.ID, tortoise)
-	if latestPickTarget(g, me.ID) != nil {
-		t.Error("no land card: no pick (the untargeted declaration)")
-	}
 	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("no land card: no pick")
+	}
 	if got := me.Library.Size(); got != library-3 {
 		t.Errorf("the attack mills three: library %d → %d", library, got)
 	}
-	if spec, _ := Lookup(b31BlossomingTortoiseOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the pick-before-mill and discount gaps must be declared")
+	if spec, _ := Lookup(b31BlossomingTortoiseOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the land is chosen after the mill and the discount is in: nothing is left to declare")
+	}
+}
+
+// The land is chosen after the mill, so one the trigger itself milled
+// is the only legal pick when the graveyard held none before.
+func TestB31BlossomingTortoiseCanReturnALandItJustMilled(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	milled := b10LibraryTop(me, "Milled Swamp", "Basic Land — Swamp", "", 0, 0)
+	b10LibraryTop(me, "Filler A", "Instant", "{R}", 0, 0)
+	b10LibraryTop(me, "Filler B", "Instant", "{R}", 0, 0)
+	castAndResolveCreature(t, g, "Blossoming Tortoise", "Creature — Turtle", b31BlossomingTortoiseOracle)
+	passPriorityAroundTable(t, g)
+	p := chooseCardsChoiceFor(g, me.ID)
+	if p == nil || !hasID(p.ChooseCards, milled) {
+		t.Fatal("a land the trigger milled is offered")
+	}
+	answerChooseCards(t, g, me.ID, milled)
+	if !g.Battlefield.Contains(milled) || !b31Tapped(t, g, milled) {
+		t.Error("the milled land returns tapped")
+	}
+}
+
+// Activated abilities of lands you control cost {1} less: Mount Doom's
+// {1}{B}{R} is {B}{R} with the Tortoise out. From a pool of exactly three,
+// one is left with the Tortoise and none without it; the discount is only
+// generic mana.
+func TestB31BlossomingTortoiseDiscountsLandActivations(t *testing.T) {
+	for _, withTortoise := range []bool{true, false} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		if withTortoise {
+			b31Push(g, me.ID, "Blossoming Tortoise", "Creature — Turtle", b31BlossomingTortoiseOracle, "{2}{G}{G}", 3, 3, "G")
+		}
+		doom := pushCatalogPermanent(g, me.ID, "Mount Doom", "Legendary Land", "995c8dac-fd27-468a-abd4-02372cf0c850", false)
+		advanceToMain(t, g)
+		floatForTest(g, me, "BRC")
+		lifeBefore := opp.Life
+		if err := g.ActivateCatalogAbility(me.ID, doom, 0, game.ActivateAbilityParams{}); err != nil {
+			t.Fatalf("Mount Doom (Tortoise %v): %v", withTortoise, err)
+		}
+		want := 0
+		if withTortoise {
+			want = 1
+		}
+		if len(me.ManaPool) != want {
+			t.Errorf("Tortoise %v: %d mana left, want %d", withTortoise, len(me.ManaPool), want)
+		}
+		passPriorityAroundTable(t, g)
+		if opp.Life != lifeBefore-1 {
+			t.Errorf("Tortoise %v: the ability resolved, opponent life %d want %d", withTortoise, opp.Life, lifeBefore-1)
+		}
 	}
 }
 

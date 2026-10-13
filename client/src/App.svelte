@@ -5,19 +5,21 @@
   //
   // The routing rules are intentionally small, and live in
   // lib/signedInHome.ts: most unauthenticated routes redirect to
-  // /login, and a session on /login goes to the Lobby.
+  // /login (the front page), and a session on it goes to the Lobby.
 
   import { applyFavicon } from "./lib/favicon";
-  import Login from "./routes/Login.svelte";
+  import FrontPage from "./routes/FrontPage.svelte";
+  import RequestAccess from "./routes/RequestAccess.svelte";
+  import AdminLogin from "./routes/AdminLogin.svelte";
   import Lobby from "./routes/Lobby.svelte";
   import Join from "./routes/Join.svelte";
   import Reclaim from "./routes/Reclaim.svelte";
   import Game from "./routes/Game.svelte";
   import Catalog from "./routes/Catalog.svelte";
-  import MyGames from "./routes/MyGames.svelte";
   import Decks from "./routes/Decks.svelte";
-  import Home from "./routes/Home.svelte";
   import Roadmap from "./routes/Roadmap.svelte";
+  import Privacy from "./routes/Privacy.svelte";
+  import About from "./routes/About.svelte";
   import Practice from "./routes/Practice.svelte";
   import Admin from "./routes/Admin.svelte";
   import Settings from "./lib/components/Settings.svelte";
@@ -36,12 +38,18 @@
   import { applyRootSettings } from "./lib/rootSettings";
   import { armMusicOnFirstGesture } from "./lib/music";
   import { loadAppConfig } from "./lib/env";
+  import { loadCommunity } from "./lib/community";
 
   // Ask the server which deployment this is, once, at shell mount.
   // Deliberately not awaited: every consumer defaults to production
   // (no dev features, no badge), so a slow or missing /config delays
   // nothing and degrades to the safe answer. See lib/env.ts.
   loadAppConfig();
+
+  // The C2 Discord's invite and whether sign-up is gated (ADR 0156 §6),
+  // once, the same way: until it answers, and on any failure, every
+  // Discord placement stays hidden.
+  void loadCommunity();
 
   // Ambient music spans the entire app shell (login → lobby →
   // game), so arm it here rather than in Game.svelte where SFX
@@ -134,16 +142,24 @@
   });
 </script>
 
+<!-- Every route but #/admin's token form and the table draws its own
+     frame (Page.svelte, ADR 0156 §3); the token form keeps its centred
+     column. "login" is the front page, at #/ and #/login (§4). #/home
+     renders nothing: the router sends it on (signedInHome.ts). -->
 {#if $route.name === "login"}
-  <Login />
+  <FrontPage />
+{:else if $route.name === "requestAccess"}
+  <RequestAccess retry={$route.retry === true} />
 {:else if $route.name === "adminLogin"}
-  <Login admin />
+  <div class="app-column"><AdminLogin /></div>
 {:else if $route.name === "adminViews"}
   <Admin view={$route.view} />
-{:else if $route.name === "home"}
-  <Home />
 {:else if $route.name === "roadmap"}
   <Roadmap />
+{:else if $route.name === "privacy"}
+  <Privacy />
+{:else if $route.name === "about"}
+  <About />
 {:else if $route.name === "decks"}
   <Decks />
 {:else if $route.name === "lobby"}
@@ -152,10 +168,13 @@
   <Practice />
 {:else if $route.name === "catalog"}
   <Catalog />
-{:else if $route.name === "myGames"}
-  <MyGames />
 {:else if $route.name === "join"}
-  <Join gameID={$route.gameID} inviteToken={$route.inviteToken} spectator={$route.spectator} />
+  <Join
+    gameID={$route.gameID}
+    inviteToken={$route.inviteToken}
+    spectator={$route.spectator}
+    serverFull={$route.serverFull === true}
+  />
 {:else if $route.name === "reclaim"}
   <Reclaim gameID={$route.gameID} ticket={$route.ticket} />
 {:else if $route.name === "game"}

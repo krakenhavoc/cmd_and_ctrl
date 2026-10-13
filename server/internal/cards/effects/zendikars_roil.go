@@ -20,7 +20,7 @@ func init() {
 		Name:         "Zendikar's Roil",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Zendikar's Roil — create a 2/2 Elemental (landfall)", Do(CreateToken{Template: TokenCard("2/2 green Elemental"), N: 1})),
+			LandfallPaying("Zendikar's Roil — create a 2/2 Elemental (landfall)", game.LandfallPayoff{Tokens: 1}, Do(CreateToken{Template: TokenCard("2/2 green Elemental"), N: 1})),
 		},
 	})
 }

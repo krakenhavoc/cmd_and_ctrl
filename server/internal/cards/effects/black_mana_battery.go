@@ -32,8 +32,9 @@ func init() {
 				Tap:            true,
 				RemoveCounters: RemoveCountersXFromThis(game.CounterCharge, 0).RemoveCounters,
 			},
-			ProducedForPaid: func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) string {
-				return "{B}" + ProducedPerCounterRemoved("{B}")(g, controller, source, paid)
+			ProducedForPaid: func(g *game.Game, controller, source uuid.UUID, paid game.PaidCost) game.ManaOutput {
+				// One {B} always, plus one per counter that came off.
+				return game.ManaOutput{Amount: game.ManaAmount{Options: []string{"B"}, N: 1 + paid.CountersRemoved}}
 			},
 			Label: "Remove any number of charge counters: Add {B}, then {B} for each",
 		}},

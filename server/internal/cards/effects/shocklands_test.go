@@ -447,6 +447,7 @@ func TestEveryShocklandEntrySiteOffersThePayment(t *testing.T) {
 						t.Fatalf("SearchLibraryForEffectWithOptions: %v", err)
 					}
 				})
+				takeSearchPrompts(t, g)
 				return id
 			},
 		},

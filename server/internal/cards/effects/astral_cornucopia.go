@@ -29,9 +29,9 @@ func init() {
 			XCounters(game.CounterCharge),
 		},
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedOneColor(chargeCountersOn),
-			Label:        "Choose a color. Add one mana of that color for each charge counter on this artifact",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: ProducedOneColor(chargeCountersOn),
+			Label:          "Choose a color. Add one mana of that color for each charge counter on this artifact",
 		}},
 	})
 }

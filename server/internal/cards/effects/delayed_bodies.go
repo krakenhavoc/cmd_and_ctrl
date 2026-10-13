@@ -2,7 +2,6 @@ package effects
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
@@ -111,7 +110,7 @@ var (
 			if p.Amount > maxManaDrainRefund {
 				return fmt.Errorf("mana-drain/refund: implausible amount %d", p.Amount)
 			}
-			return AddMana{Produced: strings.Repeat("{C}", p.Amount)}.Apply(NewContext(g, item))
+			return AddMana{Amount: ManaN(p.Amount, "C")}.Apply(NewContext(g, item))
 		})
 
 	// The event condition of "when you NEXT CAST a <filter> spell this
@@ -147,6 +146,11 @@ var (
 	// "Exile the creature" after it died (Whippoorwill): exile each
 	// listed card that is still in a graveyard (CR 603.7c).
 	exileListedFromGraveyardBody = game.SimpleDelayedBody("dies/exile-from-graveyard", exileListedCardsFromGraveyard)
+
+	// "Flip this creature" after the creature it damaged died (Initiate of
+	// Blood, #3216): the scheduling source flips if it is still that
+	// object.
+	flipTheSourceBody = game.SimpleDelayedBody("flip/the-source", flipTheSource)
 
 	// "Manifest dread" after the creature died (Turn Inside Out, #2570):
 	// the trigger's controller manifests dread.

@@ -44,6 +44,10 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := copyModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// ADR 0160: a text-box mod carries exactly one text box.
+			if problem := textBoxModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 			for _, v := range m.Copy {
 				for _, k := range v.GrantedAbilities {
 					if k == "" || catalogDef(GrantKey(k)) == nil {
@@ -128,6 +132,16 @@ func (s *GameSnapshot) checkEffectKeys() error {
 	// a player static's, an untap hold's — is one this binary can read,
 	// or the file is refused (snapshot_durations.go).
 	unknown = append(unknown, s.unknownDurations()...)
+	// #3192: a cast permission's condition is a key too. One this binary
+	// never registered would restore as an unconditional grant, which is
+	// stronger than the file's writer meant, so the file is refused.
+	for _, seat := range s.Seats {
+		for _, perm := range seat.CastPermissions {
+			if perm.Condition != nil && !perm.Condition.Key.Known() {
+				unknown = append(unknown, "cast-permission condition "+string(perm.Condition.Key))
+			}
+		}
+	}
 	// ADR 0109 §11: a mana spend rider's kind, and a counted rider's
 	// count key, are keys too — wherever a token is carried
 	// (snapshot_mana_riders.go).

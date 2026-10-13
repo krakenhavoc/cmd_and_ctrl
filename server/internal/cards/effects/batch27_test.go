@@ -344,8 +344,17 @@ func TestB27DuplicantWearsTheExiledCreature(t *testing.T) {
 	if !containsString(types, "Artifact") || !containsString(types, "Creature") {
 		t.Errorf("Duplicant stays an artifact creature: %v", types)
 	}
-	if spec, _ := Lookup(b27DuplicantOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the stale-record corner must be declared")
+	// The imprinted card leaves exile for its owner's library: the borrowed
+	// body is given back at once (#3172), with no battlefield change.
+	g.WithWriteLock(func() { _ = g.TuckToLibraryForEffect(wizard, false) })
+	if got := effectivePower(t, g, dup); got != 2 {
+		t.Errorf("Duplicant power %d after the card left exile, want its own 2", got)
+	}
+	if got := effectiveToughness(t, g, dup); got != 4 {
+		t.Errorf("Duplicant toughness %d after the card left exile, want its own 4", got)
+	}
+	if containsString(effectiveSubtypes(t, g, dup), "Wizard") {
+		t.Error("Duplicant keeps the Wizard type after the card left exile")
 	}
 }
 
@@ -1069,10 +1078,12 @@ func TestB27TheGooseMotherEntersWithCountersFoodAndEatsToDraw(t *testing.T) {
 	}
 	hand := me.Hand.Size()
 	declareAttack(t, g, opp.ID, goose)
-	answerLatestTriggerPrompt(t, g, me.ID, true)
-	b04WaitForPick(t, g, me.ID)
+	passPriorityAroundTable(t, g)
 	food := findBattlefieldByName(g, "Food")
-	pickCard(t, g, me.ID, food)
+	if prompt := latestChoiceOfKindFor(g, game.PendingChoiceOwnPermanents, me.ID); prompt == nil || prompt.ChooseMin != 0 || !hasID(prompt.ChooseCards, food) {
+		t.Fatal("the Food is chosen as the trigger resolves, with a floor of zero for the \"may\"")
+	}
+	answerOwnPermanents(t, g, me.ID, food)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(food) || b27CountNamed(g, me.ID, "Food") != 1 {
 		t.Error("the chosen Food is sacrificed")

@@ -2,9 +2,10 @@
   import { onMount } from "svelte";
   import { startPractice } from "../lib/practiceTable";
   import { navigate } from "../lib/router";
-  import { LobbyApiError } from "../lib/session";
+  import { session } from "../lib/session";
+  import { lobbyErrorMessage } from "../lib/serverFull";
   import Icon from "../lib/components/Icon.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
   import { markHintSeen } from "../lib/hints/runtime";
   import practiceOffer from "./LobbyPractice.hint";
 
@@ -17,6 +18,11 @@
   // session) is recorded and swapped by lib/practiceTable.ts, which
   // also owns every way back out. This page only shows progress and a
   // failure.
+  //
+  // It is public (ADR 0156 §2): a visitor with no session gets a guest
+  // practice game, which startPractice opens through POST
+  // /games/practice/guest. The front page, the gate page and Help link
+  // here for everyone.
   let error = $state("");
 
   let ran = false;
@@ -34,21 +40,13 @@
       const id = await startPractice();
       navigate(`#/games/${id}`);
     } catch (err) {
-      error =
-        err instanceof LobbyApiError ? err.message : "could not open a practice game — try again";
+      error = lobbyErrorMessage(err, "could not open a practice game — try again");
     }
   }
 </script>
 
-<SiteHeader />
-
-<section class="entry">
+<Page eyebrow="Practice game" title="Setting the table" width="prose">
   <div class="stack">
-    <div class="head">
-      <p class="eyebrow">Practice game</p>
-      <h1>setting the table</h1>
-    </div>
-
     <div class="card">
       {#if error}
         <p class="notice err" role="alert">
@@ -56,50 +54,26 @@
           <span>{error}</span>
         </p>
         <div class="frow">
-          <a class="btn-link" href="#/lobby">Back to the lobby</a>
+          {#if $session}
+            <a class="btn-link" href="#/lobby">Back to the lobby</a>
+          {:else}
+            <a class="btn-link" href="#/">Back to the front page</a>
+          {/if}
         </div>
       {:else}
         <p class="help" aria-live="polite">Shuffling two decks and seating a practice bot…</p>
       {/if}
     </div>
   </div>
-</section>
+</Page>
 
 <style>
   /* Reclaim.svelte's shell: another page that does one thing on
      mount and moves on. */
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(860px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(24px, 6vh, 60px);
-    align-items: center;
-  }
-  .head {
-    text-align: center;
-  }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 10.5px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-  }
-  h1 {
-    margin: 6px 0 0;
-    font-family: var(--font-display);
-    font-size: 28px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--fg);
   }
   .card {
     width: min(600px, 100%);

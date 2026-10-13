@@ -5,7 +5,7 @@
 // spectator, reclaim or Discord link; the Discord round trip from the
 // login page lands on the Lobby; the Lobby's "Join a table" card, its
 // "your tables" list and its empty state; the header's account menu and
-// wordmark; the login page with no token card; and Home's join card.
+// wordmark; the front page with no token card; and #/home's redirect.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { anchorOf, emptyContext } from "./hints/hint";
@@ -14,8 +14,8 @@ import CREATE_HINT from "../routes/Lobby.hint";
 
 import App from "../App.svelte";
 import Lobby from "../routes/Lobby.svelte";
-import Login from "../routes/Login.svelte";
-import Home from "../routes/Home.svelte";
+import FrontPage from "../routes/FrontPage.svelte";
+import AdminLogin from "../routes/AdminLogin.svelte";
 import SiteHeader from "./components/SiteHeader.svelte";
 import { currentSession, setSession, type Session } from "./session";
 import { cleanup, click, flushSync, render } from "./test/render.svelte";
@@ -272,14 +272,14 @@ describe("the router (§1 items 1 and 2)", () => {
 });
 
 describe("the lobby.create hint", () => {
-  it("anchors on the create form a signed-in person sees", async () => {
+  it("anchors on + New table, which a signed-in person sees", async () => {
     setSession(sess("player", USER));
     stubServer();
     const { container } = render(Lobby as never, {} as never);
     await settle();
     const a = anchorOf(CREATE_HINT, { ...emptyContext("lobby"), signedIn: true });
     expect(resolveAnchor(a!, container)).toBe(
-      container.querySelector('form[aria-label="create game"]'),
+      container.querySelector('button[aria-label="new table"]'),
     );
   });
 });
@@ -351,8 +351,8 @@ describe("the Lobby's Join a table card (§1 item 3)", () => {
     await settle();
     expect(container.querySelector('input[aria-label="invite code or link"]')).toBeNull();
     expect(container.querySelector('input[aria-label="invite link"]')).toBeNull();
-    // The create form is still there.
-    expect(container.querySelector('input[aria-label="game name"]')).not.toBeNull();
+    // + New table is still there.
+    expect(container.querySelector('button[aria-label="new table"]')).not.toBeNull();
   });
 
   it("has no command bar of its own", async () => {
@@ -396,14 +396,17 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
 
     const names = [...container.querySelectorAll(".tname")].map((n) => n.textContent);
     expect(names).toEqual(["Created", "Seat elsewhere", "Seat in the lobby"]);
-    expect(container.textContent).not.toMatch(/Other pod/);
+    // The ended table they sat at is History's (ADR 0158 §1 item 3).
+    expect(container.querySelector(".now")?.textContent).not.toMatch(/Other pod/);
+    expect(container.querySelector("#history")?.textContent).toMatch(/Other pod/);
 
     const card = [...container.querySelectorAll("li.tcard")].find((li) =>
       /Seat elsewhere/.test(li.textContent ?? ""),
     )!;
-    const open = buttonNamed(card, /^\s*Open\s*$/);
+    // A game in play resumes (ADR 0158 §1 item 2).
+    const open = buttonNamed(card, /^\s*Resume\s*$/);
     expect(open).toBeDefined();
-    // Open is the only way in: no "open table", which would watch as a
+    // Resume is the only way in: no "open table", which would watch as a
     // stranger.
     expect(buttonNamed(card, /open table|enter table/)).toBeUndefined();
     click(open!);
@@ -432,8 +435,8 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     await settle();
     expect(currentSession()?.gameID).toBe(G4);
     expect(location.hash).toBe("#/lobby");
-    expect(buttonNamed(container, /^\s*Open\s*$/)).toBeUndefined();
-    expect(container.querySelector("details.deck-upload")).not.toBeNull();
+    // Seated now, with no deck yet: the deck panel is open.
+    expect(container.querySelector(".deck-upload")).not.toBeNull();
   });
 
   it("shows the admin token every table", async () => {
@@ -457,18 +460,19 @@ describe("the Lobby lists your tables (§1 item 6, owner answer 3)", () => {
     expect(empty.querySelector("p")?.textContent?.replace(/\s+/g, " ").trim()).toBe(
       "You're not at a table yet. Paste an invite code above, or create a table and invite your pod.",
     );
-    const links = [...empty.querySelectorAll("a")].map((a) => [
+    // ADR 0156 §6: Practice game and Bring a deck; the No pod yet? card
+    // only with an invite (frontDoor.render.test.ts covers both cases).
+    const links = [...container.querySelectorAll(".empty-cards a")].map((a) => [
       a.textContent?.trim(),
       a.getAttribute("href"),
     ]);
     expect(links).toEqual([
-      ["Practice against bots", "#/practice"],
-      ["Check a deck", "#/decks"],
-      ["My games", "#/my-games"],
+      ["Start practice", "#/practice"],
+      ["Decks", "#/decks"],
     ]);
-    // The Join and Create cards are above it.
+    // The join box and + New table are in the head above it.
     expect(container.querySelector('input[aria-label="invite code or link"]')).not.toBeNull();
-    expect(container.querySelector('input[aria-label="game name"]')).not.toBeNull();
+    expect(container.querySelector('button[aria-label="new table"]')).not.toBeNull();
   });
 });
 
@@ -477,12 +481,12 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
     return container.querySelector<HTMLButtonElement>('button[aria-controls="account-menu"]')!;
   }
 
-  it("sends the wordmark to the Lobby for a session, and home without one", async () => {
+  it("sends the wordmark to the Lobby for a session, and the front page without one", async () => {
     stubServer();
     const out = render(SiteHeader as never, {} as never);
     await settle();
-    expect(out.container.querySelector(".wordmark")?.getAttribute("href")).toBe("#/home");
-    expect(out.container.querySelector('a[href="#/login"]')?.textContent).toMatch(/Sign in/);
+    expect(out.container.querySelector(".wordmark")?.getAttribute("href")).toBe("#/");
+    expect(out.container.querySelector("a.sign-in")?.textContent).toMatch(/Sign in/);
     out.destroy();
 
     setSession(sess("player", USER));
@@ -512,6 +516,9 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
       "Sign in with a different Discord account",
       "Sign out",
       "Sign out everywhere",
+      // #2983: the privacy notice, and deleting the account.
+      "Privacy and your data",
+      "Delete my account",
     ]);
     expect(menu.querySelector("a")?.getAttribute("href")).toBe(
       "/auth/discord/start?prompt=consent",
@@ -533,7 +540,8 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
     const items = [...container.querySelectorAll("#account-menu .acct-item")].map((el) =>
       el.textContent?.trim(),
     );
-    expect(items).toEqual(["Settings", "Sign out"]);
+    // A guest has no account to delete, but can read the privacy notice (#2983).
+    expect(items).toEqual(["Settings", "Sign out", "Privacy and your data"]);
     expect(container.querySelector("#account-menu")?.textContent).toMatch(/guest seat/);
   });
 
@@ -554,7 +562,7 @@ describe("the header's account menu and wordmark (§1 items 4 and 5)", () => {
 describe("the login page and #/admin", () => {
   it("has no token card for a signed-out visitor", async () => {
     stubServer();
-    const { container } = render(Login as never, {} as never);
+    const { container } = render(FrontPage as never, {} as never);
     await settle();
     expect(container.textContent).not.toMatch(/Admin log in/);
     expect(container.textContent).not.toMatch(/token/i);
@@ -563,7 +571,7 @@ describe("the login page and #/admin", () => {
 
   it("shows #/admin's token form signed out, with no note", async () => {
     stubServer();
-    const { container } = render(Login as never, { admin: true } as never);
+    const { container } = render(AdminLogin as never, {} as never);
     await settle();
     expect(container.querySelector('input[placeholder="admin token"]')).not.toBeNull();
     expect(container.querySelector('[role="note"]')).toBeNull();
@@ -573,7 +581,7 @@ describe("the login page and #/admin", () => {
   it("tells a signed-in person on #/admin that the token replaces their session", async () => {
     setSession(sess("identified", USER));
     stubServer();
-    const { container } = render(Login as never, { admin: true } as never);
+    const { container } = render(AdminLogin as never, {} as never);
     await settle();
     expect(container.querySelector('input[placeholder="admin token"]')).not.toBeNull();
     expect(container.querySelector('[role="note"]')?.textContent).toMatch(
@@ -584,7 +592,7 @@ describe("the login page and #/admin", () => {
   it("tells a guest the same, without a sign-in to set aside", async () => {
     setSession(sess("player", NIL, { name: "Guest" }));
     stubServer();
-    const { container } = render(Login as never, { admin: true } as never);
+    const { container } = render(AdminLogin as never, {} as never);
     await settle();
     const note = container.querySelector('[role="note"]')?.textContent ?? "";
     expect(note).toMatch(/replaces this browser's session/);
@@ -592,21 +600,24 @@ describe("the login page and #/admin", () => {
   });
 });
 
-describe("Home's join card", () => {
-  it("links the Lobby for a session, and sign-in without one", async () => {
+// ADR 0156 §4: #/home is retired. Old links land on the front page, or
+// on the Lobby for a session.
+describe("#/home", () => {
+  it("goes to the front page signed out", async () => {
     stubServer();
-    const out = render(Home as never, {} as never);
+    await goTo("#/home");
+    const { container } = render(App as never, {} as never);
     await settle();
-    const join = () =>
-      [...document.querySelectorAll("a.tile")].find((a) =>
-        /Join with an invite/.test(a.textContent ?? ""),
-      );
-    expect(join()?.getAttribute("href")).toBe("#/login");
-    out.destroy();
+    expect(location.hash).toBe("#/");
+    expect(container.textContent).toMatch(/Have an invite\?/);
+  });
 
+  it("goes to the Lobby for a session", async () => {
     setSession(sess("player", NIL, { name: "Guest" }));
-    render(Home as never, {} as never);
+    stubServer();
+    await goTo("#/home");
+    render(App as never, {} as never);
     await settle();
-    expect(join()?.getAttribute("href")).toBe("#/lobby");
+    expect(location.hash).toBe("#/lobby");
   });
 });

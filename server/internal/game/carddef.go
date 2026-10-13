@@ -170,6 +170,11 @@ type CardDef struct {
 	// through CatalogAbilityKey; see targeting_restriction.go.
 	TargetingRestrictions []TargetingRestriction
 	CastableZones         []ZoneKind
+	// CastableZonesIf are the zones the card opens for itself only
+	// while a condition holds (Lightwheel Enhancements, "Max speed —
+	// You may cast this card from your graveyard"). Read through
+	// cardOpensZoneLocked, beside CastableZones.
+	CastableZonesIf []ConditionalCastZone
 
 	// SpecialActions are the CR 116.2 special actions the card offers
 	// from its owner's hand — foretell (CR 702.143a) and suspend
@@ -289,6 +294,12 @@ type CardDef struct {
 	// 701.38d, ADR 0146). Read from the battlefield through
 	// CatalogExtraVote, keyed by CatalogAbilityKey; see council_vote.go.
 	ExtraVote ExtraVote
+	// OpponentsFaceVillainousChoicesAgain is this permanent's printed
+	// "If an opponent would face a villainous choice, they face that
+	// choice an additional time" (CR 701.55c, #3140). Read from the
+	// battlefield through CatalogExtraVillainousChoice, keyed by
+	// CatalogAbilityKey; see villainous_choice.go.
+	OpponentsFaceVillainousChoicesAgain bool
 	// DamageCantBePrevented are this permanent's printed "damage can't
 	// be prevented" statics (CR 615.12, ADR 0107 §5). Read from the
 	// battlefield through CatalogUnpreventableDamage, keyed by
@@ -376,6 +387,10 @@ type CardDef struct {
 	// effects.Spec.XMatters and internal/legal/x.go.
 	XMatters bool
 
+	// MadnessLife is the "Pay N life" a madness cost adds to its mana
+	// (effects.Spec.MadnessLife), read through MadnessLifeFor.
+	MadnessLife int
+
 	// XCeiling is the spell's printed "X can't be greater than
 	// <count>" (#2581), read at announce through XCeilingFor; see
 	// x_ceiling.go. Nil for nearly every card.
@@ -461,6 +476,15 @@ type CardDef struct {
 	// LibraryTopRevealed. Read through CatalogLibraryTopVisible; see
 	// library_top.go.
 	LibraryTopVisible LibraryTopVisibility
+
+	// DiscardByOpponent and DiscardByOpponentForHand are what the card
+	// declares about "if a spell or ability an opponent controls causes
+	// you to discard" (ADR 0153 §5): its own shape while it sits in a
+	// hand, and the shape it gives every card in its controller's hand
+	// while it is on the battlefield (Nephalia Academy). Read through
+	// CatalogDiscardByOpponent; see discard_by_opponent.go.
+	DiscardByOpponent        DiscardByOpponentKind
+	DiscardByOpponentForHand DiscardByOpponentKind
 }
 
 // CatalogLookup is the one production hook: the catalog's definition
@@ -719,6 +743,12 @@ func init() {
 		}
 		return nil
 	}
+	CatalogCastableZonesIf = func(key string) []ConditionalCastZone {
+		if d := catalogDef(key); d != nil {
+			return d.CastableZonesIf
+		}
+		return nil
+	}
 	CatalogSpecialActions = func(key string) []SpecialAction {
 		if d := catalogDef(key); d != nil {
 			return d.SpecialActions
@@ -843,6 +873,10 @@ func init() {
 		}
 		return ExtraVoteNone
 	}
+	CatalogExtraVillainousChoice = func(key string) bool {
+		d := catalogDef(key)
+		return d != nil && d.OpponentsFaceVillainousChoicesAgain
+	}
 	CatalogUnpreventableDamage = func(key string) []UnpreventableDamageStatic {
 		if d := catalogDef(key); d != nil {
 			return d.DamageCantBePrevented
@@ -917,6 +951,12 @@ func init() {
 		d := catalogDef(key)
 		return d != nil && d.XMatters
 	}
+	CatalogMadnessLife = func(key string) int {
+		if d := catalogDef(key); d != nil {
+			return d.MadnessLife
+		}
+		return 0
+	}
 	CatalogXCeiling = func(key string) *XCeiling {
 		if d := catalogDef(key); d != nil {
 			return d.XCeiling
@@ -952,6 +992,12 @@ func init() {
 			return d.OpeningHand
 		}
 		return nil
+	}
+	CatalogDiscardByOpponent = func(key string) (DiscardByOpponentKind, DiscardByOpponentKind) {
+		if d := catalogDef(key); d != nil {
+			return d.DiscardByOpponent, d.DiscardByOpponentForHand
+		}
+		return DiscardByOpponentNone, DiscardByOpponentNone
 	}
 	CatalogLibraryTopVisible = func(key string) LibraryTopVisibility {
 		if d := catalogDef(key); d != nil {

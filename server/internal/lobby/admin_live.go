@@ -70,6 +70,17 @@ type liveNowResponse struct {
 	// hold. It should be 0.
 	UnboundSockets int           `json:"unbound_sockets"`
 	Totals         liveNowTotals `json:"totals"`
+	// Capacity is the load and the connections against their caps
+	// (ADR 0148), the same numbers as cmdctrl_capacity_used and
+	// cmdctrl_capacity_limit. A limit of 0 means that cap is off.
+	Capacity liveNowCapacity `json:"capacity"`
+}
+
+type liveNowCapacity struct {
+	Load            int `json:"load"`
+	LoadLimit       int `json:"load_limit"`
+	Connections     int `json:"connections"`
+	ConnectionLimit int `json:"connection_limit"`
 }
 
 type liveNowTable struct {
@@ -102,6 +113,9 @@ type liveNowSeat struct {
 	AgentClient    string          `json:"agent_client,omitempty"`
 	DeckName       string          `json:"deck_name,omitempty"`
 	Host           bool            `json:"host"`
+	// Removed is a seat an admin removed from a game under way (#3093):
+	// the page says "removed", not "not connected".
+	Removed bool `json:"removed,omitempty"`
 	// Connected is the number of live sockets bound to the seat, an
 	// admin's included; Since is the earliest of their connection
 	// times, absent when there is none.
@@ -153,6 +167,8 @@ func adminLive(c Config, w http.ResponseWriter, r *http.Request) error {
 		}
 	}
 	out.fillNames(names)
+	u := c.Lobby.CapacityUsage()
+	out.Capacity = liveNowCapacity{Load: u.Load, LoadLimit: u.LoadLimit, Connections: u.Conns, ConnectionLimit: u.ConnLimit}
 	out.GeneratedAt = c.now().UnixMilli()
 	return writeJSON(w, http.StatusOK, out)
 }
@@ -225,7 +241,7 @@ func buildLiveNow(tables []LiveTable, sockets []ws.LiveSocket) (liveNowResponse,
 		seatOf := map[uuid.UUID]int{}
 		for _, s := range t.Seats {
 			seat := liveNowSeat{
-				Seat: s.Seat, Kind: s.Kind, DiscordPending: s.DiscordPending,
+				Seat: s.Seat, Kind: s.Kind, DiscordPending: s.DiscordPending, Removed: s.Removed,
 				BotTier: s.BotTier, AgentClient: s.AgentClient, DeckName: s.DeckName, Host: s.Host,
 			}
 			if id, err := uuid.Parse(s.UserID); err == nil && id != uuid.Nil {

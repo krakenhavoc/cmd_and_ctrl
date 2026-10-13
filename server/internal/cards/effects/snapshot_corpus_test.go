@@ -330,6 +330,12 @@ func corpusBoards() []corpusBoard {
 		// Carthalion's cantBecomeMonarch record naming his controller,
 		// beside the opponent he crowned.
 		{"cant_become_monarch", corpusCantBecomeMonarch},
+		// v8, added by #2928 (ADR 0146 amendment 2026-10-13) as a new
+		// file: a vote over cards in a graveyard (Custodi Squire's
+		// councilVote.zone) waiting on a ballot that Illusion of Choice
+		// puts to its caster (a voteChooser record, and a prompt owed by
+		// the chooser for another voter).
+		{"vote_zone_chooser", corpusVoteZoneChooser},
 		// v7, added by #2559 (ADR 0066 amendment 2026-10-10) as a new
 		// file: a resolved Memory Vessel — the cantPlayFromHand record
 		// (a game-scope rule kind naming every player) and each player's
@@ -923,9 +929,13 @@ func corpusNarset(t *testing.T) *game.Game {
 	g := newCorpusGame(t)
 	me := g.Seats[g.Turn.ActiveSeat]
 	toMain(t, g)
-	waiting := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 6)
+	// The frozen v8 fixture records the type line the old helper built
+	// from the name ("— Narset Transcendent"), and a fixture is never
+	// edited, so this board keeps building exactly that (#2803).
+	const fixtureLine = "Legendary Planeswalker — Narset Transcendent"
+	waiting := pushCatalogWalkerWithLine(g, me.ID, "Narset Transcendent", fixtureLine, narsetOracle, 6)
 	b16Activate(t, g, me.ID, waiting, 1, game.ActivateAbilityParams{})
-	ultimate := pushCatalogWalker(g, me.ID, "Narset Transcendent", narsetOracle, 9)
+	ultimate := pushCatalogWalkerWithLine(g, me.ID, "Narset Transcendent", fixtureLine, narsetOracle, 9)
 	b16Activate(t, g, me.ID, ultimate, 2, game.ActivateAbilityParams{})
 	if len(g.DelayedTriggers) != 1 || me.Emblems == nil || len(me.Emblems.Cards) != 1 {
 		t.Fatalf("setup: %d delayed triggers and an emblem zone %v, want one of each", len(g.DelayedTriggers), me.Emblems)
@@ -1366,6 +1376,37 @@ func corpusCantBecomeMonarch(t *testing.T) *game.Game {
 	return g
 }
 
+// corpusVoteZoneChooser is #2928's two stored shapes at once: a
+// councilVote over graveyard cards, and the voteChooser record that
+// makes its open ballot the caster's.
+func corpusVoteZoneChooser(t *testing.T) *game.Game {
+	g := newCorpusGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	opp := g.Seats[(g.Turn.ActiveSeat+1)%len(g.Seats)]
+	source := pushBattlefieldCardWithTimestamp(g, game.Card{
+		InstanceID: uuid.New(), Name: "Custodi Squire", TypeLine: "Creature — Spirit Cleric",
+		OracleID: custodiSquireOracle, Power: 3, Toughness: 3, Owner: me.ID, Controller: me.ID,
+	})
+	bear := pushGraveyardTyped(me, "Grizzly Bears", "Creature — Bear")
+	rock := pushGraveyardTyped(me, "Sol Ring", "Artifact")
+	g.WithWriteLock(func() {
+		g.ChooseHowEachPlayerVotesThisTurnForEffect(uuid.Nil, opp.ID, "Illusion of Choice — you choose how each player votes this turn")
+		err := g.StartVoteForEffect(game.VotePrompt{
+			Starting:   me.ID,
+			Controller: me.ID,
+			Source:     source,
+			Question:   "Custodi Squire — vote for an artifact, creature, or enchantment card in its controller's graveyard",
+			Options:    VoteForPermanents(g, []uuid.UUID{bear, rock}),
+			OptionZone: game.ZoneGraveyard,
+			Then:       custodiSquireVoted,
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+	})
+	return g
+}
+
 // corpusMemoryVessel is #2559's stored shapes: the hand ban and one
 // permission per player.
 func corpusMemoryVessel(t *testing.T) *game.Game {
@@ -1400,6 +1441,18 @@ func corpusCounterShields(t *testing.T) *game.Game {
 	passPriorityAroundTable(t, g)
 	castCatalogSpell(t, g, "Veil of Summer", "Instant", cgVeilOfSummerOracle, nil)
 	passPriorityAroundTable(t, g)
+	// Veil of Summer also grants hexproof from blue and from black
+	// (#3172). This board is about the counter shield, and its fixture
+	// predates that half ("never edit the fixture"), so the board keeps
+	// building what the fixture holds: only the shield grant stays.
+	kept := me.Statics[:0:0]
+	for _, st := range me.Statics {
+		if st.Keyword == "" {
+			kept = append(kept, st)
+		}
+	}
+	me.Statics = kept
+	g.ScopedEffects = nil
 	village := pushCatalogPermanent(g, me.ID, "Mistrise Village", "Land", cgMistriseVillageOracle, false)
 	shusher := pushCatalogPermanent(g, me.ID, "Vexing Shusher", "Creature — Goblin Shaman", cgVexingShusherOracle, false)
 	bear := castCatalogSpell(t, g, "Grizzly Bears", "Creature — Bear", "", nil)

@@ -39,8 +39,8 @@ func init() {
 		AsEnters:     ChooseCardNameAsEnters("Alpine Moon — choose a nonbasic land card name"),
 		Grants:       []AbilityGrant{AnyColorManaGrant(alpineMoonAnyColor)},
 		Static: []game.StaticAbility{
-			LosesAllLandTypes(alpineMoonApplies),
-			LosesAllAbilitiesAndHas(alpineMoonApplies, alpineMoonAnyColor),
+			Labelled(LosesAllLandTypes(alpineMoonApplies), "Lands your opponents control with the chosen name lose all land types and abilities and have \"{T}: Add one mana of any color.\""),
+			Labelled(LosesAllAbilitiesAndHas(alpineMoonApplies, alpineMoonAnyColor), "Those lands lose all abilities and have \"{T}: Add one mana of any color.\""),
 		},
 	})
 }

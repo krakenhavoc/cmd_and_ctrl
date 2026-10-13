@@ -57,7 +57,8 @@ export type AdminView =
   | { view: "games"; filter: GamesFilter }
   | { view: "game"; id: string }
   | { view: "accounts"; filter: AccountsFilter }
-  | { view: "account"; id: string };
+  | { view: "account"; id: string }
+  | { view: "reports" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -117,6 +118,8 @@ export function parseAdminView(rest: string[], params: URLSearchParams): AdminVi
     case "accounts":
       if (id !== undefined) return id ? { view: "account", id } : null;
       return { view: "accounts", filter: accountsFilterFrom(params) };
+    case "reports":
+      return id === undefined ? { view: "reports" } : null;
     default:
       return null;
   }
@@ -192,13 +195,17 @@ export function adminViewHash(v: AdminView): string {
       return accountsHash(v.filter);
     case "account":
       return accountHash(v.id);
+    case "reports":
+      return REPORTS_HASH;
   }
 }
 
 export const LIVE_HASH = "#/admin/live";
+/** The Reports view (#2984): what players have reported at their tables. */
+export const REPORTS_HASH = "#/admin/reports";
 
 /** The tab a view belongs to in the `navigation "admin views"` strip. */
-export type AdminTab = "live" | "games" | "accounts";
+export type AdminTab = "live" | "games" | "accounts" | "reports";
 
 export function tabOf(v: AdminView): AdminTab {
   if (v.view === "game") return "games";
@@ -207,6 +214,40 @@ export function tabOf(v: AdminView): AdminTab {
 }
 
 // --- the responses (docs/lobby.md, "Admin views" and "Live now") ------
+
+/** One side of a report: the seat's name, and its account when it had one. */
+export interface AdminReportParty {
+  player_id: string;
+  user_id?: string;
+  name: string;
+}
+
+/** One chat line in a report's excerpt, as the table saw it (already masked). */
+export interface AdminReportLine {
+  author: string;
+  text: string;
+  /** RFC 3339, as the server stamped the line. */
+  at: string;
+}
+
+/** One report (`GET /admin/reports`, docs/lobby.md "Moderation"). */
+export interface AdminReport {
+  id: string;
+  /** Unix milliseconds. */
+  created_at: number;
+  game_id: string;
+  game_name: string;
+  reporter: AdminReportParty;
+  reported: AdminReportParty;
+  reason: string;
+  excerpt: AdminReportLine[];
+}
+
+export interface AdminReportsResponse {
+  reports: AdminReport[];
+  /** How long a report is kept before the server removes it. */
+  retention_days: number;
+}
 
 /** A person's account as a row names it. */
 export interface AdminAccountRef {
@@ -226,6 +267,8 @@ export interface AdminSeat {
   agent_client?: string;
   deck_name?: string;
   host: boolean;
+  /** an admin removed this seat from a game under way: say "removed", not "left" (#3113) */
+  removed?: boolean;
   /** live sockets bound to the seat; a loaded table only, absent never means zero */
   connected?: number;
   /** the earliest of those sockets' connection times (Live now) */
@@ -294,6 +337,27 @@ export interface AdminSignIn {
   discord_linked_at?: number;
   sessions_invalid_before?: number;
   revoke_path: string;
+  /** When the sign-up gate last had an answer from Discord (ADR 0156 §1 item 7). */
+  access_checked_at?: number;
+  /** That answer; "unchecked" when there has been none. */
+  access_result: AdminAccessResult;
+}
+
+/** The sign-up gate's last answer for an account (lobby adminview.Access*). */
+export type AdminAccessResult = "admitted" | "not_member" | "no_role" | "unchecked";
+
+/** How the account view words each answer. */
+export function accessResultLabel(r: AdminAccessResult | undefined): string {
+  switch (r) {
+    case "admitted":
+      return "admitted";
+    case "not_member":
+      return "refused: not a member";
+    case "no_role":
+      return "refused: no role";
+    default:
+      return "unchecked";
+  }
 }
 
 export interface AdminDeck {
@@ -364,11 +428,25 @@ export interface LiveTotals {
   admin_views: number;
 }
 
+/** LiveCapacity is the load and the sockets against their caps (ADR 0148). A limit of 0 is "no cap". */
+export interface LiveCapacity {
+  load: number;
+  load_limit: number;
+  connections: number;
+  connection_limit: number;
+}
+
 export interface LiveNowResponse {
   generated_at: number;
   tables: LiveTable[];
   unbound_sockets: number;
   totals: LiveTotals;
+  capacity: LiveCapacity;
+}
+
+/** capacityText is "used / limit", or "used (no cap)" when the cap is off. */
+export function capacityText(used: number, limit: number): string {
+  return limit > 0 ? `${used} / ${limit}` : `${used} (no cap)`;
 }
 
 // --- labels -----------------------------------------------------------

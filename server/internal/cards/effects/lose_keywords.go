@@ -26,6 +26,7 @@ import (
 func LoseKeywords(applies func(target *game.Card, g *game.Game, source *game.Card) bool, keywords ...string) game.StaticAbility {
 	lost := append([]string(nil), keywords...)
 	return game.StaticAbility{
+		Label:     "Affected creatures lose " + joinWords(keywords) + ".",
 		Layer:     game.Layer6Ability,
 		AppliesTo: applies,
 		Apply: func(c *game.Characteristic, _ *game.Card, _ *game.Game, _ *game.Card) {

@@ -38,6 +38,7 @@ func init() {
 			SpacecraftAt(12, 0, 8),
 			ThresholdKeywords(12, "flying"),
 			game.StaticAbility{
+				Label:     "Gets +1/+0 for each artifact you control.",
 				Layer:     game.Layer7PT,
 				SubLayer:  game.SubLayer7C_Modify,
 				AppliesTo: selfOnly,

@@ -26,20 +26,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // pipeline without being cast, and the rest go to the bottom in an
 // order drawn from the game's seeded RNG.
 //
-// DECLARED SIMPLIFICATION on the front face, weaker than printed: the
-// grant to other legendary creatures is not implemented. Vigilance
-// could be granted, but the "{T}: Add one mana of any color" half is a
-// granted MANA ABILITY, and the engine can grant keywords but not
-// abilities (the granted-ability seam). Granting half of the static
-// would make the text read as if it worked, so the whole grant is
-// omitted and declared; Esika herself is a whole vigilant mana dork.
+// The front face's static (#3172) is two layer 6 statics over "other
+// legendary creatures you control": a keyword grant of vigilance, and the
+// quoted mana ability as an ADR 0093 ability grant (a granted mana ability
+// is the same Cryptolith Rite shape). "Other" is by instance, so a second
+// Esika is a recipient; "legendary" is read off the effective supertypes.
 func init() {
 	Register(Spec{
 		OracleID:        esikaGodOfTheTreeOracleID,
 		Name:            "Esika, God of the Tree",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"Other legendary creatures you control don't gain vigilance or the mana ability."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"vigilance"},
+		Grants:          []AbilityGrant{AnyColorManaGrant(esikaGrant)},
+		Static: []game.StaticAbility{
+			Labelled(KeywordGrant(otherLegendaryCreaturesYouControl, "vigilance"),
+				"Other legendary creatures you control have vigilance."),
+			Labelled(GrantAbilities(otherLegendaryCreaturesYouControl, esikaGrant),
+				"Other legendary creatures you control have \"{T}: Add one mana of any color.\""),
+		},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true},
 			Produced: "{W|U|B|R|G}",
@@ -64,3 +68,12 @@ const esikaGodOfTheTreeOracleID = "92023a5d-a143-4950-a71b-d736e6b8e959"
 
 // prismaticBridgeHit is "a creature or planeswalker card".
 func prismaticBridgeHit(c game.Card) bool { return c.IsCreature() || c.IsPlaneswalker() }
+
+// esikaGrant is the bundle key of Esika's granted mana ability.
+const esikaGrant = "esika-god-of-the-tree/any-color"
+
+// otherLegendaryCreaturesYouControl is Esika's recipient set.
+func otherLegendaryCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Card) bool {
+	return target.InstanceID != source.InstanceID && target.Controller == source.Controller &&
+		target.IsCreature() && target.IsLegendary()
+}

@@ -25,25 +25,23 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // It shipped with #749 carrying a second caveat saying players could
 // respond; #1519 cleared it.
 //
-// ONE CLAUSE IS MISSING, and it makes the card WEAKER than printed:
-// the life floor ("damage that would reduce your life total to less
-// than 1 reduces it to 1 instead") is a damage-RESULT replacement that
-// has to keep lifelink whole (the 2021-03-19 ruling). That is a
-// separate seam — ADR 0057 Decision 8 scoped it out. Without it the
-// caster still can't LOSE this turn; they just end the turn at 0 or
-// less life and lose at the first check after it unless they gain life
-// first.
+// The life floor (#3172) is a third PlayerStatic payload
+// (PlayerStatic.LifeFloorOne, game/life_floor.go) granted until end of
+// turn with the two gates. It caps the life the damage COSTS, not the
+// damage: the 2021-03-19 ruling keeps lifelink whole, and the part that
+// cost no life rides the damage event as DamageNotLifeLoss.
 func init() {
 	Register(Spec{
 		OracleID:        "66ca8a60-e028-4a5f-8177-860b888cb9d1",
 		Name:            "Angel's Grace",
-		Completeness:    CompletenessCaveats,
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{game.KeywordSplitSecond},
-		Caveats: []string{
-			"Damage can still reduce your life total below 1 this turn; you just can't lose the game until the turn ends.",
-		},
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			return CantLoseAndOpponentsCantWinThisTurn{Label: "Angel's Grace"}.Apply(ctx)
+			if err := (CantLoseAndOpponentsCantWinThisTurn{Label: "Angel's Grace"}).Apply(ctx); err != nil {
+				return err
+			}
+			ctx.Game.GrantLifeFloorForEffect(ctx.Controller(), "Angel's Grace: damage can't reduce your life total below 1", ctx.Source(), ctx.Game.UntilEndOfTurnDuration())
+			return nil
 		},
 	})
 }

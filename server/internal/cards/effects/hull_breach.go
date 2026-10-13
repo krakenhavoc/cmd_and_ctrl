@@ -1,6 +1,12 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"slices"
+
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Hull Breach — Sorcery {R}{G} (EDHREC rank 2402):
 //
@@ -10,39 +16,38 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 • Destroy target artifact and target enchantment."
 //
 // The Gruul two-for-one. Three modes, each with its own target
-// clause; the first two are the plain shapes. The third names two
-// "target" words with DIFFERENT predicates, and a TargetSpec carries
-// one predicate for every slot — the per-slot predicate is the
-// Bushwhack / Ram Through seam — so the third mode's picker accepts
-// any two artifacts or enchantments and the resolution destroys the
-// first artifact and the first enchantment among them.
-//
-// Declared simplification (weaker than printed, never stronger): a
-// third-mode pick of two artifacts, or two enchantments, destroys
-// only the first. An artifact enchantment picked for one slot fills
-// the artifact slot (the first that matches wins), never both.
+// clause. The third names two "target" words with DIFFERENT
+// predicates, so it is two clauses in one statement (Clauses): slot 0
+// is the artifact, slot 1 the enchantment, each checked against its
+// own predicate at announce and again at resolution. One artifact
+// enchantment may fill both slots (CR 115.3 forbids repeating an
+// object only within one instance of "target"); it is then destroyed
+// once.
 func init() {
 	Register(Spec{
 		OracleID:     "2da232d8-580f-4116-b977-2c59cd21b5a4",
 		Name:         "Hull Breach",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The third mode's picker accepts any two artifacts or enchantments, but only the first artifact and the first enchantment you pick are destroyed — two of the same kind destroy just one."},
+		Completeness: CompletenessFull,
 		Modes: ChooseOne(
-			Mode("Destroy target artifact.", TargetPermanent("target artifact", Artifact())),
-			Mode("Destroy target enchantment.", TargetPermanent("target enchantment", Enchantment())),
-			Mode("Destroy target artifact and target enchantment.",
-				TargetPermanent("target artifact and target enchantment", Or(Artifact(), Enchantment())).WithCount(2, 2)),
+			ModeDoing("Destroy target artifact.", TargetPermanent("target artifact", Artifact()), DestroyTheModesTarget),
+			ModeDoing("Destroy target enchantment.", TargetPermanent("target enchantment", Enchantment()), DestroyTheModesTarget),
+			ModeDoing("Destroy target artifact and target enchantment.",
+				Clauses(
+					TargetPermanent("target artifact", Artifact()),
+					TargetPermanent("target enchantment", Enchantment()),
+				),
+				func(_ *game.StackItem, ctx *Context, occ int) error {
+					var ids []uuid.UUID
+					for slot := 0; slot < 2; slot++ {
+						t, ok := ModeClauseTarget(ctx, occ, slot)
+						if !ok || !onBattlefield(ctx.Game, t.ID) || slices.Contains(ids, t.ID) {
+							continue
+						}
+						ids = append(ids, t.ID)
+					}
+					// Both at once, as one sentence: one destroy leg.
+					return ctx.Game.DestroyPermanentsThenForEffect(ids, func(*game.Game, []uuid.UUID) error { return nil })
+				}),
 		),
-		OnResolve: func(_ *game.StackItem, ctx *Context) error {
-			if ctx.HasMode(2) {
-				return b22DestroyFirstArtifactAndFirstEnchantment(ctx)
-			}
-			for _, t := range ctx.LegalTargets() {
-				if t.Kind == game.TargetCard {
-					return DestroyTarget{Target: t.ID}.Apply(ctx)
-				}
-			}
-			return nil
-		},
 	})
 }

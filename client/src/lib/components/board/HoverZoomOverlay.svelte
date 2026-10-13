@@ -19,7 +19,9 @@
 
   import { hoveredCard } from "../../cardTypes";
   import { cardImageURL } from "../../cardImage";
+  import { isFlippedFlipCard, LAYOUT_FLIP } from "../../faces";
   import { cardArt } from "../../cardArt";
+  import { isToken } from "../../tokenGroups";
   import { metaFor, type CardMeta } from "../../cardMetaCache";
   import type { GameView, PlayerView } from "../../protocol";
   import { playerColor } from "../../avatarColor";
@@ -35,6 +37,10 @@
 
   const card = $derived($hoveredCard);
   const imgSrc = $derived(cardImageURL(card, "normal"));
+  // ADR 0151 (owner decision 2): a flipped flip card's one image is
+  // shown turned 180 degrees, as on the board, so the half that is up
+  // reads the right way up.
+  const flippedArt = $derived(isFlippedFlipCard(card));
   // The OTHER face of a multi-face card, if there is one — the back
   // of a modal DFC being previewed from hand, or the front of one
   // already flipped onto the battlefield. Null for the ~33,000
@@ -44,7 +50,11 @@
     if (!faces || faces.length < 2) return null;
     const active = card?.active_face ?? 0;
     const idx = active === 0 ? 1 : 0;
-    return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx) };
+    // A flip card's other half is the same image turned the other way
+    // (ADR 0151 section 7): upside down beside its top half, upright
+    // beside a flipped permanent.
+    const turned = card?.layout === LAYOUT_FLIP && !flippedArt;
+    return { index: idx, face: faces[idx], src: cardImageURL(card, "normal", idx), turned };
   });
 
   // ADR 0145 — meld. A melded permanent shows the two cards it is
@@ -185,6 +195,7 @@
           <img
             src={imgSrc}
             alt=""
+            class:flipped={flippedArt}
             fetchpriority="high"
             use:cardArt={{ url: imgSrc, interactive: false }}
           />
@@ -215,6 +226,7 @@
             <img
               src={otherFace.src}
               alt={otherFace.face.name}
+              class:flipped={otherFace.turned}
               use:cardArt={{ url: otherFace.src, interactive: false }}
             />
           {/key}
@@ -235,6 +247,13 @@
         {#if meta?.mana_cost}<span class="cost"><ManaCost cost={meta.mana_cost} size={13} /></span
           >{/if}
       </div>
+      <!-- ADR 0160: an exchanged text box. The oracle text below is
+           what the card prints, which is no longer what it does. -->
+      {#if card.text_box_from}
+        <div class="text-box-from">
+          Has the text box of {card.text_box_from} — the printed text below doesn't apply.
+        </div>
+      {/if}
       {#if meta?.oracle_text}
         <div class="oracle">{meta.oracle_text}</div>
       {:else if meta === null}
@@ -262,8 +281,15 @@
       {#if card.unimplemented}
         <div class="not-implemented">rules not implemented — resolve this card by hand</div>
       {/if}
-      {#if card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
+      {#if isToken(card) || card.tapped || card.attacking_target || card.blocking_target || card.goaded_by || card.is_commander || counterChips.length > 0 || noUntapLines.length > 0 || chosen.length > 0 || damage || meldedFromNames}
         <footer class="info-foot">
+          {#if isToken(card)}
+            <!-- #3043: a token copy shows the original's art and oracle
+                 text, so the panel has to say it is not the card. -->
+            <span class="state state-token" title="token (CR 111)"
+              >{card.token_copy ? "token copy" : "token"}</span
+            >
+          {/if}
           {#if card.is_commander}
             <span class="state state-cmd">commander</span>
           {/if}
@@ -428,6 +454,10 @@
     object-fit: cover;
     display: block;
   }
+  /* ADR 0151: a flip card's image turned to show its other half. */
+  img.flipped {
+    transform: rotate(180deg);
+  }
 
   /* ADR 0145: a melded permanent's two cards (or a meld card's combined
      back face), stacked down the same top-right corner as the other
@@ -532,6 +562,16 @@
     color: var(--fg-dim);
     font-style: italic;
   }
+  /* ADR 0160: an exchanged text box, set apart like a grant. */
+  .text-box-from {
+    margin: 4px 0;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px dashed var(--border, var(--fg-dim));
+    font-size: 11px;
+    line-height: 1.35;
+    color: var(--fg);
+  }
   /* ADR 0093: granted abilities, read like oracle text but set apart
      from it — the card did not print them. */
   .granted {
@@ -583,6 +623,11 @@
   .state-damage {
     color: var(--danger);
     border-color: color-mix(in srgb, var(--danger) 50%, transparent);
+  }
+  /* #3043: matches the teal TOKEN badge on the board tile. */
+  .state-token {
+    color: #bff3ea;
+    border-color: rgba(110, 220, 200, 0.6);
   }
   .state-cmd {
     color: var(--accent-strong);

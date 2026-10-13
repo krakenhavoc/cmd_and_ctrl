@@ -973,8 +973,22 @@ func TestB22SlaughterTheStrongKeepsLowestPowerWithinFour(t *testing.T) {
 
 	castCatalogSpell(t, g, "Slaughter the Strong", "Sorcery", b22SlaughterTheStrongOracle, nil)
 	passPriorityAroundTable(t, g)
-	// Me: 0 + 1 + 2 = 3 fits; the next 2 would make 5, so it and the
-	// 5/5 go.
+	// Each player chooses; the active player's prompt comes first and
+	// the set rule is total power 4 or less.
+	mine := chooseCardsChoiceFor(g, me.ID)
+	theirs := chooseCardsChoiceFor(g, opp.ID)
+	if mine == nil || theirs == nil || mine.ChooseMin != 0 {
+		t.Fatalf("every player with creatures is asked, for any number: %+v %+v", mine, theirs)
+	}
+	if err := g.ResolveChooseCards(mine.ID, me.ID, []uuid.UUID{myBig, myTwo}); err == nil {
+		t.Fatal("a set with total power 7 was accepted")
+	}
+	// Me: 0 + 1 + 2 = 3 fits.
+	answerChooseCards(t, g, me.ID, myZero, myOne, myTwo)
+	// Them: one 4-power creature over the 1/1: the player's choice, which
+	// the old lowest-power auto-pick could not make.
+	answerChooseCards(t, g, opp.ID, theirFour)
+	passPriorityAroundTable(t, g)
 	for _, keep := range []uuid.UUID{myZero, myOne, myTwo} {
 		if !g.Battlefield.Contains(keep) {
 			t.Errorf("%s should be kept", keep)
@@ -985,14 +999,13 @@ func TestB22SlaughterTheStrongKeepsLowestPowerWithinFour(t *testing.T) {
 			t.Errorf("%s should be sacrificed", gone)
 		}
 	}
-	// Them: 1 fits; 1 + 4 = 5 does not.
-	if !g.Battlefield.Contains(theirOne) || g.Battlefield.Contains(theirFour) {
-		t.Error("each player keeps their own lowest-power set")
+	if !g.Battlefield.Contains(theirFour) || g.Battlefield.Contains(theirOne) {
+		t.Error("each player keeps the set they chose")
 	}
 	if !g.Battlefield.Contains(rock) {
 		t.Error("only creatures are sacrificed")
 	}
-	if !me.Graveyard.Contains(myBig) || !opp.Graveyard.Contains(theirFour) {
+	if !me.Graveyard.Contains(myBig) || !opp.Graveyard.Contains(theirOne) {
 		t.Error("a sacrifice goes to its owner's graveyard")
 	}
 }
@@ -1078,21 +1091,29 @@ func TestB22HullBreachThreeModes(t *testing.T) {
 	// Mode 3: an artifact AND an enchantment.
 	rock3 := b12Permanent(g, opp.ID, "Rock 3", "Artifact")
 	castModal(t, g, "Hull Breach", "Sorcery", b22HullBreachOracle, []int{2},
-		[]game.TargetRef{{Kind: game.TargetCard, ID: aura2}, {Kind: game.TargetCard, ID: rock2}})
+		[]game.TargetRef{{Kind: game.TargetCard, ID: rock2}, {Kind: game.TargetCard, ID: aura2}})
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(rock2) || g.Battlefield.Contains(aura2) {
 		t.Error("mode 3 destroys both")
 	}
-	// Two artifacts in mode 3: the declared gap — only the first dies.
+	// Two artifacts in mode 3 are refused: each slot has its own
+	// predicate now.
 	rock4 := b12Permanent(g, opp.ID, "Rock 4", "Artifact")
-	castModal(t, g, "Hull Breach", "Sorcery", b22HullBreachOracle, []int{2},
-		[]game.TargetRef{{Kind: game.TargetCard, ID: rock3}, {Kind: game.TargetCard, ID: rock4}})
-	passPriorityAroundTable(t, g)
-	if g.Battlefield.Contains(rock3) {
-		t.Error("the first artifact picked is destroyed")
+	if err := b22TryModal(g, b22HullBreachOracle, []int{2},
+		[]game.TargetRef{{Kind: game.TargetCard, ID: rock3}, {Kind: game.TargetCard, ID: rock4}}); err == nil {
+		t.Error("two artifacts cannot fill 'target artifact and target enchantment'")
 	}
-	if !g.Battlefield.Contains(rock4) {
-		t.Error("a second artifact fills no slot — weaker than printed, never two artifacts")
+	aura3 := b12Permanent(g, opp.ID, "Aura 3", "Enchantment")
+	aura4 := b12Permanent(g, opp.ID, "Aura 4", "Enchantment")
+	if err := b22TryModal(g, b22HullBreachOracle, []int{2},
+		[]game.TargetRef{{Kind: game.TargetCard, ID: aura3}, {Kind: game.TargetCard, ID: aura4}}); err == nil {
+		t.Error("two enchantments cannot fill it either")
+	}
+	if !g.Battlefield.Contains(rock3) || !g.Battlefield.Contains(rock4) {
+		t.Error("a refused cast destroys nothing")
+	}
+	if spec, _ := Lookup(b22HullBreachOracle); spec.Completeness != CompletenessFull {
+		t.Error("the per-slot predicate landed: nothing is deferred")
 	}
 }
 

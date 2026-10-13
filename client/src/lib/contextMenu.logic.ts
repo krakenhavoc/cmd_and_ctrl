@@ -30,7 +30,8 @@ import {
   seatLabel,
 } from "./attackAll";
 import { L } from "./labels";
-import { grantedFromLabel } from "./abilityRef";
+import { grantedFromLabel, isBorrowedRow } from "./abilityRef";
+import { collapseBorrowed, splitBorrowed, unautomatedLines } from "./borrowedRows";
 import { CAST_ANYWAY_LABEL, CAST_ANYWAY_TITLE } from "./castAnyway";
 import {
   castStripCastAnywayBlocked,
@@ -161,6 +162,30 @@ export interface MenuAction {
 // MenuPrompt marks an item that needs one more piece of input before
 // it can fire. The component renders a tiny inline form for it.
 export type MenuPrompt = "custom_counter" | "mark_damage";
+
+// revealItems builds a hand card's "Reveal to table" row and one
+// "Show to <player>" row per OTHER seated, non-eliminated player
+// (#671). Eliminated seats are skipped here as the server refuses them.
+function revealItems(view: GameView, card: CardView): MenuItem[] {
+  const items: MenuItem[] = [
+    {
+      id: "reveal-table",
+      label: "Reveal to table",
+      hint: "every player sees it; stays known until it leaves your hand",
+      action: { type: "reveal_card", params: { card_id: card.instance_id } },
+    },
+  ];
+  for (const s of view.seats) {
+    if (s.id === card.owner || s.eliminated) continue;
+    items.push({
+      id: `reveal-to-${s.id}`,
+      label: `Show to ${s.name}`,
+      hint: "only they see it",
+      action: { type: "reveal_card", params: { card_id: card.instance_id, to: s.id } },
+    });
+  }
+  return items;
+}
 
 // MenuActivate marks an item that hands off to the board's existing
 // ability flows instead of sending a bare action. Activating an
@@ -355,7 +380,8 @@ export function menuAbilityRows(
   card: CardView,
   viewerID: string | null | undefined,
 ): ActivatedAbilityView[] {
-  const rows = card.activated_abilities ?? card.zone_abilities ?? [];
+  // ADR 0155 owner decision 3: identical lent rows are shown once.
+  const rows = collapseBorrowed(card.activated_abilities ?? card.zone_abilities ?? []);
   if (viewerID === undefined || !card.activated_abilities) return rows;
   if (viewerID === null) return [];
   if ((card.controller || card.owner) === viewerID) return rows;
@@ -381,7 +407,7 @@ export function menuManaRows(
   card: CardView,
   viewerID: string | null | undefined,
 ): ManaAbilityView[] {
-  const rows = card.mana_abilities ?? card.zone_mana_abilities ?? [];
+  const rows = collapseBorrowed(card.mana_abilities ?? card.zone_mana_abilities ?? []);
   if (viewerID === undefined) return rows;
   if (viewerID === null) return [];
   return (card.controller || card.owner) === viewerID ? rows : [];
@@ -1044,9 +1070,20 @@ function timingReason(loyalty: LoyaltyContext): string {
 
 // withGrantor labels a row another permanent granted (ADR 0093
 // Decision 8): "Add one mana of any color (from Cryptolith Rite)".
-// One row per grantor, so two Rites read as two labelled rows.
-function withGrantor(label: string, row: { granted_by?: { name?: string } }): string {
-  const from = grantedFromLabel(row);
+// One row per grantor, so two Rites read as two labelled rows. A row lent
+// by "has all activated abilities of …" (ADR 0155) is left bare: its lender
+// is the heading of the section it sits in.
+function withGrantor(
+  label: string,
+  row: {
+    ref?: string;
+    granted_by?: { id?: string; name?: string };
+    borrowed_from?: { name?: string };
+  },
+  selfID?: string,
+): string {
+  if (isBorrowedRow(row)) return label;
+  const from = grantedFromLabel(row, selfID);
   return from ? `${label} (${from})` : label;
 }
 
@@ -1301,12 +1338,12 @@ export function manualLoyaltyRows(
 // nothing (highlights off, no digest) leaves the menu exactly as it
 // was. It never greys a row: the row fields keep that job, because
 // they supply the sentence.
-function abilityItems(
+function abilityRowItems(
   card: CardView,
   view: GameView,
   viewerID: string | null,
   legal: LegalActions = NO_LEGAL_ACTIONS,
-): MenuItem[] {
+): { own: MenuItem[]; groups: MenuSection[] } {
   const readyMana = legal.readyManaRefs(card.instance_id);
   const readyAbilities = legal.readyAbilityRefs(card.instance_id);
   const isReady = (blocked: string, refs: readonly string[], ref: string | undefined) =>
@@ -1330,38 +1367,97 @@ function abilityItems(
     payerLife: view.seats.find((s) => s.id === (card.controller || card.owner))?.life,
     loyalty: { card, view, viewerID },
   };
-  const items: MenuItem[] = [];
-  // #1228: a card projects EITHER the battlefield mana list or the
-  // in-zone one, never both — the server filters by the zone the card
-  // is in (CR 113.6) — so one loop covers a permanent's "{T}: Add {G}"
-  // and a Spirit Guide's "Exile this card from your hand: Add {R}",
-  // and the index means the same thing to the engine either way. The
-  // same shape the activated loop below has had since #660.
-  for (const a of card.mana_abilities ?? card.zone_mana_abilities ?? []) {
+  // ADR 0155 owner decisions 2 and 3: identical lent rows are shown once,
+  // and the rest sit under "From <lender>" in a section of their own.
+  const manaRows = splitBorrowed(
+    collapseBorrowed(card.mana_abilities ?? card.zone_mana_abilities ?? []),
+  );
+  const activatedRows = splitBorrowed(
+    collapseBorrowed(card.activated_abilities ?? card.zone_abilities ?? []),
+  );
+  const manaItem = (a: ManaAbilityView): MenuItem => {
     const blocked = abilityRowBlocked(a, "mana", ctx);
     // #1190: a discount note when the engine charges less than the
     // printed cost — shown only on an unblocked row, so a "why is
     // this greyed" reason never loses to a price note.
-    items.push({
+    return {
       id: `mana-${a.index}`,
-      // ADR 0093: a row another permanent granted says so.
-      label: withGrantor(a.label || a.produced || "add mana", a),
+      // ADR 0093: a row another permanent granted says so. A lent row
+      // sits under its lender's heading instead.
+      label: withGrantor(a.label || a.produced || "add mana", a, card.instance_id),
       hint: blocked || chargedManaCostNote(a) || undefined,
       disabled: !!blocked,
       ready: isReady(blocked, readyMana, a.ref) || undefined,
       activate: { kind: "mana", index: a.index },
+    };
+  };
+  const abilityItem = (a: ActivatedAbilityView): MenuItem => {
+    const blocked = abilityRowBlocked(a, "activated", ctx);
+    return activatedItem(a, blocked, isReady(blocked, readyAbilities, a.ref), card.instance_id);
+  };
+  // #1228: a card projects EITHER the battlefield mana list or the
+  // in-zone one, never both — the server filters by the zone the card
+  // is in (CR 113.6) — so one loop covers a permanent's "{T}: Add {G}"
+  // and a Spirit Guide's "Exile this card from your hand: Add {R}",
+  // and the index means the same thing to the engine either way.
+  // #660: and the same for the activated list (a hand card's cycling).
+  const own = readyFirst(
+    [...manaRows.own.map(manaItem), ...activatedRows.own.map(abilityItem)],
+    (i) => i.ready === true,
+  );
+  const byLender = new Map<string, { heading: string; items: MenuItem[] }>();
+  const note = (lenderID: string, heading: string, item: MenuItem) => {
+    const key = lenderID || heading;
+    let group = byLender.get(key);
+    if (!group) {
+      group = { heading, items: [] };
+      byLender.set(key, group);
+    }
+    group.items.push(item);
+  };
+  for (const g of manaRows.groups) for (const a of g.rows) note(g.lenderID, g.heading, manaItem(a));
+  for (const g of activatedRows.groups)
+    for (const a of g.rows) note(g.lenderID, g.heading, abilityItem(a));
+  const groups: MenuSection[] = [];
+  for (const [key, group] of byLender) {
+    groups.push({
+      id: `abilities-from-${key}`,
+      label: group.heading,
+      items: readyFirst(group.items, (i) => i.ready === true),
     });
   }
-  // #660: a card projects EITHER the battlefield list or the hand
-  // list, never both — the server filters by the zone the card is in
-  // (CR 113.6) — so one loop covers a permanent's abilities and a
-  // hand card's cycling, and the index means the same thing to the
-  // engine either way.
-  for (const a of card.activated_abilities ?? card.zone_abilities ?? []) {
-    const blocked = abilityRowBlocked(a, "activated", ctx);
-    items.push(activatedItem(a, blocked, isReady(blocked, readyAbilities, a.ref)));
-  }
-  return readyFirst(items, (i) => i.ready === true);
+  return { own, groups };
+}
+
+// abilityItems is the "abilities" section: the permanent's own and
+// granted rows, then a disabled "<lender>: not automated" line for each
+// object it borrows from that the catalog does not automate (ADR 0155
+// owner decision 2). Its lent rows are borrowedAbilitySections.
+function abilityItems(
+  card: CardView,
+  view: GameView,
+  viewerID: string | null,
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+): MenuItem[] {
+  const { own } = abilityRowItems(card, view, viewerID, legal);
+  const notAutomated: MenuItem[] = unautomatedLines(card).map((l) => ({
+    id: l.id,
+    label: l.label,
+    hint: l.hint,
+    disabled: true,
+  }));
+  return [...own, ...notAutomated];
+}
+
+// borrowedAbilitySections is one section per lender the permanent has
+// abilities from, headed "From <lender>" (ADR 0155 owner decision 3).
+function borrowedAbilitySections(
+  card: CardView,
+  view: GameView,
+  viewerID: string | null,
+  legal: LegalActions = NO_LEGAL_ACTIONS,
+): MenuSection[] {
+  return abilityRowItems(card, view, viewerID, legal).groups;
 }
 
 // EFFECT_STOPS_ABILITIES is the reason on a row an Arrest-style "its
@@ -1385,10 +1481,15 @@ export const ABILITY_NOT_RIGHT_NOW = "Can't activate this right now";
 // activatedItem is one CR 602 activated-ability row of the menu.
 // #1296: a price that depends on the target (Dragonfire Blade) says
 // its range in the hint; the targeting banner names each target's.
-function activatedItem(a: ActivatedAbilityView, blocked: string, ready: boolean): MenuItem {
+function activatedItem(
+  a: ActivatedAbilityView,
+  blocked: string,
+  ready: boolean,
+  selfID?: string,
+): MenuItem {
   return {
     id: `ability-${a.index}`,
-    label: withGrantor(a.label || "activate", a),
+    label: withGrantor(a.label || "activate", a, selfID),
     hint:
       blocked ||
       targetPriceRange(a.target_charged_mana_costs) ||
@@ -1806,6 +1907,18 @@ function combatItems(view: GameView, card: CardView, gate: LegalActions): MenuIt
       })),
     });
   }
+  // #672 (CR 506.4): take THIS creature back out of combat, leaving
+  // every other declaration alone. Offered only on a creature that is
+  // attacking or blocking — on anything else the server refuses it.
+  // The menu itself is already behind canOverride.
+  if (card.attacking_target || card.blocking_target || (card.blocking_targets?.length ?? 0) > 0) {
+    items.push({
+      id: "combat-remove",
+      label: "Remove from combat",
+      hint: "this creature only — no combat damage dealt or taken",
+      action: { type: "remove_from_combat", params: { instance_id: card.instance_id } },
+    });
+  }
   items.push({
     id: "combat-clear",
     label: "Clear ALL combat",
@@ -2034,6 +2147,7 @@ export function buildMenuSections(
     if (abilities.length > 0) {
       sections.push({ id: "abilities", label: "abilities", items: abilities });
     }
+    sections.push(...borrowedAbilitySections(card, view, viewerID, legal));
     const loyalty = loyaltyAbilityItems(card, view, viewerID);
     if (loyalty.length > 0) {
       sections.push({ id: "loyalty", label: "loyalty abilities", items: loyalty });
@@ -2067,6 +2181,10 @@ export function buildMenuSections(
     if (special.length > 0) {
       sections.push({ id: "special_actions", label: "special actions", items: special });
     }
+    // #671 (ADR 0028, 2026-10-13): show the card to the table, or to
+    // one other seated player. The menu is already behind canOverride,
+    // and the server re-checks the controller.
+    sections.push({ id: "reveal", label: "reveal", items: revealItems(view, card) });
   }
 
   // ADR 0118 §2: with admin overrides on, a right-click opens this menu

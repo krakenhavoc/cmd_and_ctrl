@@ -28,19 +28,15 @@ import (
 // simultaneous batch of damage from the enchanted creature, each
 // opponent hit for the amount the creature was dealt.
 //
-// One declared simplification, weaker than printed and the same one
-// Screaming Nemesis carries: the engine emits one damage event per
-// SOURCE, so an enchanted creature blocked by two creatures reflects
-// twice, once per blocker's damage, where the printed card reflects
-// once for the total. The same damage is dealt either way; only the
-// split differs.
+// The engine emits one damage event per SOURCE, so the trigger waits for
+// the damage to finish (AtBatchEnd, ThatMuchDamage) and reflects the
+// TOTAL the enchanted creature was dealt at the same time, as printed (CR 120.3, CR 510.2).
 func init() {
 	const etbLabel = "Pain for All — enchanted creature deals damage equal to its power to any other target"
 	Register(Spec{
 		OracleID:     "4eedf21c-0ad1-48da-a9fe-2ffdbf8371e9",
 		Name:         "Pain for All",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"If two or more sources damage the enchanted creature at the same time, it reflects each source's damage separately instead of the total in one go."},
+		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(YouControl()),
 		Triggered: []game.TriggeredAbility{
 			{
@@ -63,8 +59,9 @@ func init() {
 				AppliesTo: func(ev game.Event, source *game.Card, _ game.Characteristic, _ *game.Game) bool {
 					return ev.Amount > 0 && source.AttachedTo.Kind == game.TargetCard && source.AttachedTo.ID == ev.Target
 				},
-				Key:    "Pain for All — enchanted creature deals that much damage to each opponent",
-				Effect: painForAllReflect,
+				Key:        "Pain for All — enchanted creature deals that much damage to each opponent",
+				AtBatchEnd: ThatMuchDamage(),
+				Effect:     painForAllReflect,
 			},
 		},
 	})

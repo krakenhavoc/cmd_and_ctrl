@@ -110,6 +110,10 @@ describe("service worker routing", () => {
     // show yesterday's coverage numbers after a deploy taught the
     // server better, which is the one thing that route must not do.
     "/decks",
+    // The C2 Discord invite and the sign-up gate (ADR 0156 §6). The
+    // server's own Cache-Control lets the browser keep it five minutes;
+    // the worker keeping it longer would outlive a changed invite.
+    "/community",
   ];
 
   it.each(apiPaths)("never caches the API route %s", (path) => {

@@ -28,6 +28,8 @@ func registerGameMetrics(reg prometheus.Registerer, log *slog.Logger, mgr *ws.Ro
 	// How far a deploy now would rewind the live tables.
 	reg.MustRegister(metrics.NewRestorePointCollector(mgr))
 	reg.MustRegister(metrics.NewTablesCollector(l, hub))
+	// The caps and what is carried against them (ADR 0148).
+	reg.MustRegister(metrics.NewCapacityCollector(l))
 	if database == nil {
 		return
 	}

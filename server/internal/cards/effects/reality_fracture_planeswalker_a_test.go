@@ -427,6 +427,7 @@ func TestRFAEntrustTheSparkSacrificesAWalkerForAnother(t *testing.T) {
 	answerMayChoice(t, g, me.ID, true)
 	answerSacrifice(t, g, me.ID, old)
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if rfaOnBattlefield(g, old) {
 		t.Error("the old walker was sacrificed")
 	}

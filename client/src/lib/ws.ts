@@ -3,7 +3,13 @@ import { recordClientError } from "./clientErrors";
 import { OFFLINE_ERROR_CODE, offlineSendMessage, REWIND_NOTICE } from "./connectionBanner";
 import { describeThrown, guardedWritable } from "./guardedStore";
 import { redactSecrets, redactURL } from "./redact";
-import { checkSessionAlive, currentSession } from "./session";
+import {
+  checkSessionAlive,
+  currentSession,
+  REMOVED_NOTICE,
+  removedNotice,
+  SEAT_REMOVED_MESSAGE,
+} from "./session";
 import {
   PROTOCOL_VERSION,
   uuid,
@@ -18,6 +24,7 @@ import {
   type ChatKind,
   type GameView,
 } from "./protocol";
+import { SERVER_FULL_CODE, serverFull } from "./serverFull";
 
 // "reconnecting" is the automatic-retry state after a non-deliberate
 // close (network blip, server restart). Deliberate teardown via
@@ -503,6 +510,9 @@ export class GameClient {
       // one, so it takes the retry ladder like any other drop.
       this.socket = null;
       if (isTerminalClose(ev.code)) {
+        // #2785: the host removed this seat. Say so, rather than leave a
+        // "disconnected" banner offering a reconnect that would be refused.
+        if (ev.reason === SEAT_REMOVED_MESSAGE) removedNotice.set(REMOVED_NOTICE);
         this.append(
           "info",
           `socket closed by server (${ev.code}${ev.reason ? `: ${ev.reason}` : ""})`,
@@ -967,6 +977,9 @@ export class GameClient {
           this.append("error", "snapshot frame had no payload");
           break;
         }
+        // Admitted: whatever the connection cap said a moment ago is
+        // over (ADR 0148).
+        serverFull.set(false);
         // #523 / ADR 0044 decision 5: seq is monotonically
         // non-decreasing only WITHIN one restore generation. A
         // generation this client has not seen before means the
@@ -1058,6 +1071,10 @@ export class GameClient {
         const p = frame.payload as ErrorPayload | undefined;
         const code = p?.code ?? "?";
         const message = p?.message ?? "?";
+        // A newcomer turned away at the connection cap (ADR 0148): the
+        // banner words itself from this, and the close that follows
+        // takes the ordinary retry ladder.
+        if (code === SERVER_FULL_CODE) serverFull.set(true);
         this.append("error", `server error code=${code} message=${message}`);
         // Surface visibly so the user sees why an action was
         // rejected. raiseError resets the auto-clear timer so a fresh

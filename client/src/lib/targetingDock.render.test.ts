@@ -307,7 +307,7 @@ describe("targeting in the dock (ADR 0111 §6)", () => {
     expect(done.disabled).toBe(true);
     expect(buttons(dlg, "Cancel")).toHaveLength(1);
     // It takes the bar: next and Pass turn give way.
-    expect(buttons(c, "next")).toHaveLength(0);
+    expect(buttons(c, "Next")).toHaveLength(0);
 
     // Nothing in the strip asks about it any more, and there is one of
     // each on the page.
@@ -321,7 +321,7 @@ describe("targeting in the dock (ADR 0111 §6)", () => {
     flushSync();
     expect(get(targeting)).toBeNull();
     expect(dock.querySelector('[role="dialog"]')).toBeNull();
-    expect(buttons(c, "next")).toHaveLength(1);
+    expect(buttons(c, "Next")).toHaveLength(1);
   });
 
   it("Done confirms once enough are picked", async () => {
@@ -397,7 +397,7 @@ describe("the one Enter / Escape handler", () => {
 
   it("never presses next: Enter and Escape with no request send nothing", async () => {
     const c = await mountGame(mainPhase());
-    expect(buttons(dockOf(c), "next")[0]!.disabled).toBe(false);
+    expect(buttons(dockOf(c), "Next")[0]!.disabled).toBe(false);
     const before = FakeSocket.last!.actions().length;
     keydown("Enter");
     keydown("Escape");
@@ -551,6 +551,6 @@ describe("No blocks, one click (owner decision 2026-10-02)", () => {
     snapshot(blockersFor({ staged: true, pending: [2], declared: [0], holder: 0 }));
     expect(FakeSocket.last!.actions()).toEqual(["finish_blocks"]);
     // next is back, for the player to pass when they choose.
-    expect(buttons(dockOf(c), "next")).toHaveLength(1);
+    expect(buttons(dockOf(c), "Next")).toHaveLength(1);
   });
 });

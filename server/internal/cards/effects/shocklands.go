@@ -82,6 +82,8 @@ import (
 // effect putting the land onto the battlefield.
 func EntersTappedUnlessYouPayLife(name string, life int) game.ReplacementEffect {
 	return game.ReplacementEffect{
+		RowLabel:        fmt.Sprintf("Enters tapped unless you pay %d life.", life),
+		EntryOnly:       true,
 		Watches:         []game.EventKind{game.EventZoneMove},
 		SelfReplacement: true,
 		EntryLifeCost:   life,

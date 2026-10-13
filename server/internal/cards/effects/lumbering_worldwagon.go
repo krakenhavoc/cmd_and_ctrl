@@ -49,6 +49,7 @@ func init() {
 		Name:         "Lumbering Worldwagon",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:    "Power is equal to the number of lands you control.",
 			Layer:    game.Layer7PT,
 			SubLayer: game.SubLayer7A_CDA,
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {

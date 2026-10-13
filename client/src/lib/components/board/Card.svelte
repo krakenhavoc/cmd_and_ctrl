@@ -24,6 +24,8 @@
   import type { CantAttackChip } from "../../cantAttack";
   import { cardImageURL, tableImageSize } from "../../cardImage";
   import { cardArt } from "../../cardArt";
+  import { isToken } from "../../tokenGroups";
+  import { creditText, useArtist } from "../../artistCredit.svelte";
   import { showsCardBack } from "../../cardBack";
   import { hoveredCard } from "../../cardTypes";
   import { animateTap } from "../../animations";
@@ -68,7 +70,7 @@
   import RoomDoorStrip from "./RoomDoorStrip.svelte";
   import DamageStepper from "./DamageStepper.svelte";
   import { boardDamageAssign } from "../../damageAssignment";
-  import { displayName } from "../../faces";
+  import { displayName, isFlippedFlipCard } from "../../faces";
   import { ICONS } from "../../icons";
   import { ringBearerTitle } from "../../ringEmblem";
   import {
@@ -463,6 +465,15 @@
   // knowing faces exist.
   const imgSize = $derived(tableImageSize(card, size, artOnly));
   const imgSrc = $derived(cardImageURL(card, imgSize));
+  // ADR 0151 (owner decision 2): a flipped flip card shows its one
+  // printed image turned 180°, as the physical card is, so the flipped
+  // half reads the right way up. Only the image turns — the badges,
+  // counters and pips stay upright — and the tile's own tap rotation
+  // composes with it, so a tapped flipped permanent's art is at 270°
+  // (CR 710.3: whether it is flipped must be clear tapped or not). An
+  // art tile shows the crop, which has no halves to read, and its name
+  // strip already names the half that is up, so it is not turned.
+  const flippedArt = $derived(isFlippedFlipCard(card));
   // #2209: the art tile. The crop has no frame, so the tile draws the
   // name itself in a strip along the top, and every top-anchored mark
   // (CMD, GOAD, counters, the designation, the pips) steps down below
@@ -471,8 +482,23 @@
   // — is the same markup a full card draws. A card with no art (a
   // token with no printing) keeps the name fallback, as before.
   const artTile = $derived(imgSize === "art_crop" && !!imgSrc && !showsCardBack(card, faceDown));
+  // #2982: Scryfall's art crop drops the artist line and its image
+  // guidelines ask that it not be hidden, so a tile credits the artist
+  // itself. Only a tile asks: a full card prints the line on the card.
+  const artist = useArtist(() => ({
+    id: artTile ? card.scryfall_id : null,
+    face: card.active_face ?? 0,
+  }));
 
-  // Real MTG card back bundled as a static asset under client/public.
+  // The tooltip repeats the credit: a compact tile is too narrow to print it.
+  const tipName = $derived(
+    artTile && artist.value
+      ? `${displayName(card)} (${creditText(artist.value)})`
+      : displayName(card),
+  );
+
+  // The card back is our own (the C2 mark, client/tools/gen-card-back.py), bundled as a static asset under client/public;
+  // it replaced a scan of Wizards' back, whose logo does not belong on this site (#2982).
   // Two sizes to keep hand/battlefield thumbnails snappy while the
   // hover-zoom overlay gets a crisper back. Served at /card-back*.jpg
   // by Vite and in production by whoever serves the built client.
@@ -493,6 +519,16 @@
   // to it, so the click affordance is withheld here rather than by
   // every parent remembering to withhold it.
   const phasedOut = $derived(card.phased_out === true);
+  // #3043: a token copy wears the original's art and frame, so the art
+  // alone cannot say which one is the token. Every token carries a mark;
+  // a copy of a real card says so.
+  const tokenMark = $derived(
+    isToken(card)
+      ? card.token_copy
+        ? { label: "TOKEN COPY", title: "a token that is a copy of a card" }
+        : { label: "TOKEN", title: "a token" }
+      : null,
+  );
   // ADR 0108: "exiled if it dies this turn" / "can't be regenerated
   // this turn" — what killing this permanent does is already decided.
   const deathMark = $derived(deathMarkBadge(card));
@@ -752,7 +788,7 @@
     onClick?.(card, ev as unknown as MouseEvent);
   }
 
-  // Drive the tap rotation with GSAP so it eases instead of snapping
+  // Drive the tap rotation with a Web Animation so it eases instead of snapping
   // and so future combat / damage effects can sequence against it.
   // The rotation lives in --tap-rot (animated) while the hover lift
   // lives in --hover-scale (CSS-only); composing via custom properties
@@ -787,6 +823,7 @@
   class="card"
   class:face-down={showBack}
   class:art-tile={artTile}
+  class:has-credit={artTile && !!artist.value}
   class:tapped={card.tapped}
   class:selected
   class:targetable
@@ -808,11 +845,7 @@
   role={interactive ? "button" : "img"}
   tabindex={interactive ? 0 : undefined}
   aria-label={accessibleName}
-  title={showBack
-    ? ""
-    : ready && idleHint
-      ? `${displayName(card)} — ${idleHint}`
-      : displayName(card)}
+  title={showBack ? "" : ready && idleHint ? `${displayName(card)} — ${idleHint}` : tipName}
   onpointerenter={handleEnter}
   onpointerleave={handleLeave}
   onclick={handleClick}
@@ -840,6 +873,7 @@
     <img
       src={imgSrc}
       alt={displayName(card)}
+      class:flipped={flippedArt && !artTile}
       loading="lazy"
       decoding="async"
       draggable="false"
@@ -850,6 +884,11 @@
       <!-- #2209: the art crop has no title bar. Hidden from assistive
            tech because the card's own accessible name already is it. -->
       <span class="art-name" aria-hidden="true">{displayName(card)}</span>
+      {#if artist.value}
+        <!-- #2982: "Illus. <artist>". Hidden from assistive tech like the
+             name strip beside it; the tile's tooltip carries it too. -->
+        <span class="art-credit" aria-hidden="true">{creditText(artist.value)}</span>
+      {/if}
     {/if}
     {#if showFaceDownBadge}
       <!-- ADR 0069: the viewer may look at this face (CR 708.5 for a
@@ -873,6 +912,17 @@
         aria-label="phased out"
       >
         PHASED
+      </span>
+    {/if}
+    {#if tokenMark}
+      <span
+        class="badge token-mark"
+        class:copy={card.token_copy}
+        class:with-phased={phasedOut}
+        title={tokenMark.title}
+        aria-label={tokenMark.title}
+      >
+        {tokenMark.label}
       </span>
     {/if}
     {#if card.is_commander}
@@ -1038,6 +1088,17 @@
         aria-label={`face down: ${faceDownLabel}`}
       >
         {faceDownLabel}
+      </span>
+    {/if}
+    {#if tokenMark}
+      <span
+        class="badge token-mark"
+        class:copy={card.token_copy}
+        class:with-phased={phasedOut}
+        title={tokenMark.title}
+        aria-label={tokenMark.title}
+      >
+        {tokenMark.label}
       </span>
     {/if}
     {#if card.goaded_by}
@@ -1286,10 +1347,11 @@
          controller's (CR 709.5e). -->
     <RoomDoorStrip {card} canUnlock={!!viewerID && card.controller === viewerID} />
   {/if}
-  {#if $boardDamageAssign && !!onClick && readyZone === "battlefield" && !memberIDs}
+  {#if $boardDamageAssign && !!onClick && readyZone === "battlefield"}
     <!-- #2956: combat damage ticked up and down on the blockers
-         themselves, and the running total on the attacker. -->
-    <DamageStepper cardID={card.instance_id} name={displayName(card)} />
+         themselves, and the running total on the attacker. #2958: a
+         token group's card carries one stepper for all its members. -->
+    <DamageStepper cardID={card.instance_id} name={displayName(card)} {memberIDs} />
   {/if}
   {#if manaMenuOpen && hasMenu}
     <div class="mana-menu-anchor" use:anchoredMenu>
@@ -1347,7 +1409,7 @@
     transform-origin: center center;
     user-select: none;
     -webkit-user-select: none;
-    /* Compose tap rotation (animated by GSAP via --tap-rot) with the
+    /* Compose tap rotation (animated via --tap-rot) with the
        CSS-only hover lift (--hover-scale). The lift grows the card
        from its own bottom edge (the translateY pair moves the scale's
        origin from the centre, where the tap turns, to the bottom
@@ -1401,12 +1463,21 @@
   .card.art-tile {
     --art-name-size: clamp(9px, calc(var(--card-w, 80px) * 0.085), 13px);
     --art-strip-h: calc(var(--art-name-size) + 7px);
-    --face-top: var(--art-strip-h);
+    --face-top: calc(var(--art-strip-h) + var(--art-credit-h, 0px));
+  }
+  /* #2982: the artist line sits directly under the name strip and the
+     top-anchored marks step down below both. Its height is 0 on a tile
+     narrower than 70px (the compact rows), where the text could not be
+     read: calc(width - 70px) * 1000 is a length that clamps to 0 at or
+     under 70px and to the full height just above it. The hover zoom is
+     the full card, which prints the artist itself. */
+  .card.art-tile.has-credit {
+    --art-credit-h: clamp(0px, calc((var(--card-w, 80px) - 70px) * 1000), 11px);
   }
   /* The failed-art pip steps under the strip with everything else. A
      tapped tile keeps its own 58% (below). */
   .card.art-tile:not(.tapped) {
-    --art-error-top: calc(22px + var(--art-strip-h));
+    --art-error-top: calc(22px + var(--art-strip-h) + var(--art-credit-h, 0px));
   }
   .card.tapped {
     /* A tapped tile turns 90° clockwise: its left edge becomes its top
@@ -1476,6 +1547,10 @@
     display: block;
     pointer-events: none;
   }
+  /* ADR 0151: a flipped flip card's image, upside down. */
+  img.flipped {
+    transform: rotate(180deg);
+  }
   /* #2209: the name strip. Drawn over art, never over the page, so its
      colours are fixed rather than themed: near-white type on a
      near-opaque dark band reads over any art in every theme. Ellipsis,
@@ -1503,6 +1578,29 @@
     overflow: hidden;
     text-overflow: ellipsis;
     pointer-events: none;
+  }
+  .art-credit {
+    position: absolute;
+    top: var(--art-strip-h);
+    left: 0;
+    right: 0;
+    z-index: 2;
+    box-sizing: border-box;
+    height: var(--art-credit-h, 0px);
+    padding: 0 5px;
+    font-size: 8px;
+    line-height: var(--art-credit-h, 0px);
+    font-style: italic;
+    color: #e6e0cf;
+    background: rgba(6, 9, 18, 0.62);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+  }
+  :global(:root[data-theme="high-contrast"]) .art-credit {
+    color: #fff;
+    background: #000;
   }
   :global(:root[data-theme="high-contrast"]) .art-name {
     color: #fff;
@@ -1574,6 +1672,31 @@
     background: rgba(12, 22, 44, 0.9);
     border-color: rgba(145, 195, 255, 0.55);
     font-size: 7px;
+  }
+  .badge.token-mark {
+    /* #3043. Bottom-left, with PHASED (which it lifts above when both
+       apply). Teal, a colour no other badge uses, so "this is a token"
+       is not confused with a state. A copy is solid, because that is
+       the case the art gets wrong. */
+    top: auto;
+    bottom: 3px;
+    max-width: calc(100% - 6px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: #bff3ea;
+    background: rgba(8, 40, 38, 0.92);
+    border-color: rgba(110, 220, 200, 0.6);
+    font-size: 7px;
+    padding: 1px 4px;
+  }
+  .badge.token-mark.copy {
+    color: #06231f;
+    background: rgba(120, 228, 208, 0.95);
+    border-color: rgba(255, 255, 255, 0.55);
+  }
+  .badge.token-mark.with-phased {
+    bottom: 16px;
   }
   .badge.phased {
     /* #1199. Bottom-left, clear of FACE DOWN / GOAD / CMD at the top

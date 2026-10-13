@@ -58,6 +58,14 @@ type PurposeView struct {
 	// whenever its controller discards a card it matches (ADR 0126's
 	// amendment of 2026-10-06).
 	DiscardPayoff *DiscardPayoffView `json:"discard_payoff,omitempty"`
+	// OnOpponentDiscard is present on a triggered row of a card that
+	// pays out when an opponent's spell or ability makes its controller
+	// discard that card, in discard_payoff's units (ADR 0153 §5).
+	OnOpponentDiscard *DiscardPayoffView `json:"on_opponent_discard,omitempty"`
+	// LandfallPayoff is present on a triggered row that pays out
+	// whenever a land enters under its controller's control, and says
+	// what it pays for each land (#3072).
+	LandfallPayoff *LandfallPayoffView `json:"landfall_payoff,omitempty"`
 	// Pump is what the row gives its own source until end of turn
 	// (ADR 0130's amendment of 2026-10-07).
 	Pump *PumpView `json:"pump,omitempty"`
@@ -191,6 +199,27 @@ type DiscardPayoffView struct {
 	DamageEachOpponent int `json:"damage_each_opponent,omitempty"`
 }
 
+// LandfallPayoffView is game.LandfallPayoff on the wire: what a landfall
+// row pays its controller for each land that enters under their control
+// (#3072). Every field is omitted when zero.
+type LandfallPayoffView struct {
+	// Draws is the cards its controller draws per land.
+	Draws int `json:"draws,omitempty"`
+	// LifeGain is the life its controller gains per land.
+	LifeGain int `json:"life_gain,omitempty"`
+	// Tokens is the tokens it creates for its controller per land.
+	Tokens int `json:"tokens,omitempty"`
+	// Mana is the mana it adds per land.
+	Mana int `json:"mana,omitempty"`
+	// Counters is the +1/+1 counters it puts on its source per land.
+	Counters int `json:"counters,omitempty"`
+	// Energy is the energy counters its controller gets per land.
+	Energy int `json:"energy,omitempty"`
+	// DamageEachOpponent is the damage its source deals to each
+	// opponent per land.
+	DamageEachOpponent int `json:"damage_each_opponent,omitempty"`
+}
+
 // ActivationPurposeView is ADR 0106's name for PurposeView, from when a
 // purpose was declared on any-player rows alone. Kept so a reader of
 // that ADR finds the type.
@@ -250,6 +279,21 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 			Tokens:             d.Tokens,
 			Counters:           d.Counters,
 			DamageEachOpponent: d.DamageEachOpponent,
+		}
+	}
+	if d := p.OnOpponentDiscard; d != nil {
+		v.OnOpponentDiscard = &DiscardPayoffView{
+			Any:                d.Any,
+			Types:              append([]string(nil), d.Types...),
+			Tokens:             d.Tokens,
+			Counters:           d.Counters,
+			DamageEachOpponent: d.DamageEachOpponent,
+		}
+	}
+	if l := p.LandfallPayoff; l != nil {
+		v.LandfallPayoff = &LandfallPayoffView{
+			Draws: l.Draws, LifeGain: l.LifeGain, Tokens: l.Tokens, Mana: l.Mana,
+			Counters: l.Counters, Energy: l.Energy, DamageEachOpponent: l.DamageEachOpponent,
 		}
 	}
 	if ts := p.Targets.List(); len(ts) > 0 {

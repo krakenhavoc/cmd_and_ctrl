@@ -209,6 +209,8 @@ before any ssh.
 | this repo | `CMDCTRL_DISCORD_BOT_TOKEN` | secret; **production only**, written to **both** `bot.env` (the gateway bot) and `/etc/cmd_and_ctrl/env` (the server's DM-invite route — see below). Unset skips the bot env sync with a notice; set turns a host that cannot run the bot into a CD warning (never a failure) |
 | this repo | `CMDCTRL_DISCORD_APP_ID`, `CMDCTRL_DISCORD_GUILD_IDS` | variables; **production only**, written to `bot.env`. The app ID equals the sign-in client ID; guild IDs are comma-separated |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`, `CMDCTRL_DISCORD_PLAYER_ROLE_ID` | variables; Discord snowflakes. The **sign-up gate** on **both** hosts ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §1): with both set, an account needs that role (Elder Dragon Highlander on the C2 server) in that server. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (community)", which refuses one without the other or a malformed id before writing. Both unset is supported: the gate is off |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_INVITE_URL` | variable; the C2 Discord server's `https://discord.gg/…` invite, served by `GET /community`. Written by the same step, empty included; refused unless it is an `https` URL. Unset hides the client's Discord links |
 | this repo | `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variable; **production only**, bot-only, written to `bot.env` on every deploy, empty included. Comma-separated role snowflakes — who may run `/c2-end` (#614) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_REPOSITORY` | environment variable, set in each; the restic repository URL for that host's bucket, `s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>`. See [Backups](#backups) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_ACCESS_KEY_ID`, `CMDCTRL_R2_SECRET_ACCESS_KEY` | environment secrets, set in each; an R2 API token scoped to that host's bucket. Written to `backup.env` |
@@ -859,6 +861,62 @@ nothing points at, and can be deleted. Rolling forward again recreates
 the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
+
+Migration 0020 (ADR 0159, table voice rooms) adds `games.voice_room`
+(0 or 1, default 0) and `games.voice_channel_id` (nullable). An older
+binary refuses the v20 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN voice_room; ALTER TABLE games DROP COLUMN voice_channel_id; DELETE FROM schema_migrations WHERE version = 20;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+An older binary knows nothing of voice rooms, so any live ones stay in
+the Discord category until they are deleted there by hand. Rolling
+forward again recreates both columns with voice off on every table, and
+its boot reconcile deletes every channel in the category, since no table
+claims one. `TestMigration0020RollbackByHand` runs exactly this sequence
+and then rolls forward.
+
+Migration 0019 (ADR 0156, the sign-up gate) adds two nullable columns,
+`users.access_checked_at` and `users.access_result`, the gate's last
+answer for each person. An older binary refuses the v19 schema. Drop
+them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE users DROP COLUMN access_checked_at; ALTER TABLE users DROP COLUMN access_result; DELETE FROM schema_migrations WHERE version = 19;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+It costs only the admin view's "Discord role" line. An older binary
+also has no gate, so anyone can sign in until the newer one is back.
+Rolling forward again recreates both columns empty ("unchecked").
+`TestMigration0019RollbackByHand` runs exactly this sequence and then
+rolls forward.
+
+Migration 0018 (#3071) changes data only: the pre-built deck
+`izzet-aggro` was renamed `mono-red-aggro`, and the migration rewrites
+that ID in `users.last_deck` and in the bots of `table_setups`. An older
+binary refuses the v18 schema. To roll back, put the old ID back and
+forget the version:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "UPDATE users SET last_deck = json_set(last_deck, '$.id', 'izzet-aggro') WHERE json_valid(last_deck) AND json_extract(last_deck, '$.kind') = 'prebuilt' AND json_extract(last_deck, '$.id') = 'mono-red-aggro'; UPDATE table_setups SET body = replace(body, '\"deck_id\":\"mono-red-aggro\"', '\"deck_id\":\"izzet-aggro\"'); DELETE FROM schema_migrations WHERE version = 18;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Skipping the two updates costs only a preselection: an older binary
+does not know `mono-red-aggro`, so those people's last deck and the
+remembered bots' deck are not found. Rolling forward again renames them.
 
 **Session lifetimes.** A Discord sign-in from the login page mints an
 identity session that lasts `CMDCTRL_IDENTITY_TTL` (default `720h`, 30

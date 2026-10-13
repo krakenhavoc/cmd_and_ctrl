@@ -22,9 +22,12 @@
     exertCostWords,
     judgeAbilityRows,
     type AbilityRowContext,
+    type JudgedRow,
     type MenuAction,
     type MenuItem,
   } from "../../contextMenu.logic";
+  import { isBorrowedRow } from "../../abilityRef";
+  import { fromHeading, unautomatedLines } from "../../borrowedRows";
   import { NO_LEGAL_ACTIONS, type LegalActions } from "../../legalActions";
   import { PAY_LIFE_LABEL, PAY_LIFE_TITLE } from "../../payLifeForMana";
   import { maxPhyrexianLife, phyrexianLifeCost } from "../../phyrexianLife";
@@ -204,6 +207,40 @@
     judgeAbilityRows(activated, "activated", ctx, legal.readyAbilityRefs(cardID)),
   );
 
+  // ADR 0155 owner decisions 2 and 3: a row another object's abilities were
+  // lent as sits under its lender ("From Llanowar Elves") rather than among
+  // the permanent's own, and a lender the catalog does not automate is a
+  // disabled line. Identical lent rows were already collapsed by the lists
+  // this popover is handed (menuManaRows, menuAbilityRows).
+  const ownMana = $derived(manaRows.filter((r) => !isBorrowedRow(r.a)));
+  const ownActivated = $derived(activatedRows.filter((r) => !isBorrowedRow(r.a)));
+  interface LenderGroup {
+    key: string;
+    heading: string;
+    mana: JudgedRow<ManaAbilityView>[];
+    activated: JudgedRow<ActivatedAbilityView>[];
+  }
+  const lenderGroups = $derived.by(() => {
+    const groups = new Map<string, LenderGroup>();
+    const groupOf = (from: ManaAbilityView["borrowed_from"]): LenderGroup => {
+      const key = from?.id ?? "";
+      let group = groups.get(key);
+      if (!group) {
+        group = { key, heading: fromHeading(from), mana: [], activated: [] };
+        groups.set(key, group);
+      }
+      return group;
+    };
+    for (const r of manaRows) if (isBorrowedRow(r.a)) groupOf(r.a.borrowed_from).mana.push(r);
+    for (const r of activatedRows)
+      if (isBorrowedRow(r.a)) groupOf(r.a.borrowed_from).activated.push(r);
+    return [...groups.values()];
+  });
+  const hasOwnRows = $derived(
+    ownMana.length > 0 || ownActivated.length > 0 || manualLoyalty.length > 0,
+  );
+  const notAutomated = $derived(card ? unautomatedLines(card) : []);
+
   function fireLoyalty(item: MenuItem): void {
     if (item.disabled || !item.action) return;
     onMenuAction?.(item.action);
@@ -283,7 +320,7 @@
   {#if special.length > 0 && (abilities.length > 0 || activated.length > 0 || manualLoyalty.length > 0)}
     <div class="divider" role="separator"></div>
   {/if}
-  {#each manaRows as { a, blocked, ready } (a.index)}
+  {#snippet manaRowView({ a, blocked, ready }: JudgedRow<ManaAbilityView>)}
     {@const costNote = chargedManaCostNote(a)}
     <button
       type="button"
@@ -360,56 +397,62 @@
         >
       </button>
     {/each}
+  {/snippet}
+  {#snippet activatedRowView({ a, blocked, ready }: JudgedRow<ActivatedAbilityView>)}
+    {@const costNote = chargedManaCostNote(a)}
+    <button
+      type="button"
+      class="menu-item"
+      class:ready
+      role="menuitem"
+      disabled={!!blocked}
+      title={blocked || a.label}
+      data-kind="activated"
+      onclick={(ev) => {
+        ev.stopPropagation();
+        if (!blocked) activateAbility(a.index);
+      }}
+    >
+      <span class="label">{a.label || "activate"}</span>
+      {#if ready}<span class="sr-only">, available</span>{/if}
+      {#if a.tap_cost}
+        <span class="cost" aria-label="tap cost">↻</span>
+      {/if}
+      {#if a.mana_cost}
+        <!-- #1190: same chip as the mana list above — the row's
+             Label text already prints the ability's cost baked in
+             by hand, so this is the ONE place a discount that made
+             the printed text stale is visible. -->
+        <span class="cost" title={costNote || `mana cost ${a.mana_cost}`}>
+          <ManaCost cost={chargedManaCostLabel(a)} size={13} />
+        </span>
+      {/if}
+      {#if a.energy_cost || a.energy_cost_x}
+        <!-- ADR 0129 §8: "Pay N {E}" / "Pay X {E}" as energy pips.
+             Advisory; a seat short of energy has the row greyed by
+             the server's cant_activate. -->
+        {@const energy = energyCostSymbols(a)}
+        <span class="cost" title={energyCostWords(a)}>
+          <ManaCost cost={energy} size={13} label={energyCostWords(a)} />
+        </span>
+      {/if}
+      {#if a.exert}
+        <!-- ADR 0130 §4: "Exert this creature" (Steward of Solidarity). -->
+        <span class="cost exert" title={exertCostWords(a)} aria-label={exertCostWords(a)}
+          >exert</span
+        >
+      {/if}
+    </button>
+  {/snippet}
+  {#each ownMana as row (row.a.index)}
+    {@render manaRowView(row)}
   {/each}
-  {#if activated.length > 0 || manualLoyalty.length > 0}
-    {#if abilities.length > 0}
+  {#if ownActivated.length > 0 || manualLoyalty.length > 0}
+    {#if ownMana.length > 0}
       <div class="divider" role="separator"></div>
     {/if}
-    {#each activatedRows as { a, blocked, ready } (a.index)}
-      {@const costNote = chargedManaCostNote(a)}
-      <button
-        type="button"
-        class="menu-item"
-        class:ready
-        role="menuitem"
-        disabled={!!blocked}
-        title={blocked || a.label}
-        data-kind="activated"
-        onclick={(ev) => {
-          ev.stopPropagation();
-          if (!blocked) activateAbility(a.index);
-        }}
-      >
-        <span class="label">{a.label || "activate"}</span>
-        {#if ready}<span class="sr-only">, available</span>{/if}
-        {#if a.tap_cost}
-          <span class="cost" aria-label="tap cost">↻</span>
-        {/if}
-        {#if a.mana_cost}
-          <!-- #1190: same chip as the mana list above — the row's
-               Label text already prints the ability's cost baked in
-               by hand, so this is the ONE place a discount that made
-               the printed text stale is visible. -->
-          <span class="cost" title={costNote || `mana cost ${a.mana_cost}`}>
-            <ManaCost cost={chargedManaCostLabel(a)} size={13} />
-          </span>
-        {/if}
-        {#if a.energy_cost || a.energy_cost_x}
-          <!-- ADR 0129 §8: "Pay N {E}" / "Pay X {E}" as energy pips.
-               Advisory; a seat short of energy has the row greyed by
-               the server's cant_activate. -->
-          {@const energy = energyCostSymbols(a)}
-          <span class="cost" title={energyCostWords(a)}>
-            <ManaCost cost={energy} size={13} label={energyCostWords(a)} />
-          </span>
-        {/if}
-        {#if a.exert}
-          <!-- ADR 0130 §4: "Exert this creature" (Steward of Solidarity). -->
-          <span class="cost exert" title={exertCostWords(a)} aria-label={exertCostWords(a)}
-            >exert</span
-          >
-        {/if}
-      </button>
+    {#each ownActivated as row (row.a.index)}
+      {@render activatedRowView(row)}
     {/each}
     {#each manualLoyalty as item (item.id)}
       <!-- ADR 0117 §3: a real activate_loyalty with a delta, whose text
@@ -430,6 +473,36 @@
       </button>
     {/each}
   {/if}
+  {#each lenderGroups as group, gi (group.key)}
+    <!-- ADR 0155 owner decision 3: the abilities another object lent, one
+         group per lender. -->
+    {#if gi > 0 || hasOwnRows}
+      <div class="divider" role="separator"></div>
+    {/if}
+    <div class="lender" role="group" aria-label={group.heading}>
+      <span class="section-label">{group.heading}</span>
+      {#each group.mana as row (row.a.index)}
+        {@render manaRowView(row)}
+      {/each}
+      {#each group.activated as row (row.a.index)}
+        {@render activatedRowView(row)}
+      {/each}
+    </div>
+  {/each}
+  {#each notAutomated as line (line.id)}
+    <!-- ADR 0155 owner decision 2: a lender the catalog has no entry for
+         lends nothing, and says so. -->
+    <button
+      type="button"
+      class="menu-item"
+      role="menuitem"
+      disabled
+      title={line.hint}
+      data-not-automated
+    >
+      <span class="label">{line.label}</span>
+    </button>
+  {/each}
   {#if payLife && onPayLife}
     <!-- ADR 0131 §4: the name is a label contract (AGENTS.md §5). It is a
          payment choice, not a sandbox override, so it has its own group. -->
@@ -507,7 +580,8 @@
     background: color-mix(in srgb, var(--accent) 35%, transparent);
   }
 
-  .sandbox {
+  .sandbox,
+  .lender {
     display: flex;
     flex-direction: column;
     gap: 2px;

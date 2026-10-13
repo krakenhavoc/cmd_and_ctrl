@@ -70,6 +70,21 @@ func MaxSpeedCondition() ActivationCondition {
 	}
 }
 
+// MaxSpeedCastableFrom is "Max speed — You may cast this card from
+// your graveyard" (Lightwheel Enhancements): a Spec.CastableZonesIf
+// entry that opens `zone` only while the card's owner has max speed
+// (CR 702.178a, CR 702.179e). The owner is "you" because the card is
+// not on the battlefield (the glossary's "Max Speed"). The cast button
+// appears and disappears as the speed changes, with no state of its own.
+func MaxSpeedCastableFrom(zone game.ZoneKind) game.ConditionalCastZone {
+	return game.ConditionalCastZone{
+		Zone: zone,
+		Cond: func(g *game.Game, owner uuid.UUID, _ game.Card) bool {
+			return YouHaveMaxSpeed(g, owner)
+		},
+	}
+}
+
 // MaxSpeedActivated is "Max speed — [activated ability]": the ability
 // can be activated only while its activator has max speed. The check
 // is ANDed with any condition the ability already carries, so a
@@ -109,6 +124,7 @@ func MaxSpeedStatic(s game.StaticAbility) game.StaticAbility {
 // Raider, Nesting Bot, Walking Sarcophagus).
 func MaxSpeedSelfPump(power, toughness int) game.StaticAbility {
 	return MaxSpeedStatic(game.StaticAbility{
+		Label:     "Gets " + signedPT(power, toughness) + " at max speed.",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: thisPermanent,

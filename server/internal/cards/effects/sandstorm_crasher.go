@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Sandstorm Crasher — Creature — Minotaur Berserker Wizard {3}{R}, 3/4:
 //
@@ -20,18 +24,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // resolves it is removed from the stack and the Crasher stays exerted
 // (CR 603.3d, 608.2b).
 //
-// Caveat: CR 508.4 lets the token's controller choose which defending
-// player, planeswalker or battle it attacks. The engine has it join
-// whatever the Crasher is attacking (the same reading Sauron, the
-// Necromancer and Dalkovan Encampment use), so at a table of several
-// opponents the choice is narrower than printed.
+// CR 508.4 lets the token's controller choose which defending player,
+// planeswalker or battle it attacks, and CreateTokensAttackingYourChoice
+// asks (the Crasher's own target first; a bot sends it there). No
+// simplification.
 func init() {
 	const label = "Sandstorm Crasher — a tapped and attacking token copy of target creature you control; sacrifice it at the next end step"
 	Register(Spec{
 		OracleID:        "d1597137-5609-4012-93bb-19c49c9cf2c3",
 		Name:            "Sandstorm Crasher",
-		Completeness:    CompletenessCaveats,
-		Caveats:         []string{"The token copy always attacks whatever Sandstorm Crasher is attacking; you can't send it at another opponent."},
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"trample"},
 		ExertOnAttack:   ExertAsItAttacks(),
 		Triggered: []game.TriggeredAbility{
@@ -56,18 +58,21 @@ func sandstormCrasherCopy(g *game.Game, item *game.StackItem) error {
 	if !ok {
 		return nil
 	}
-	tmpl.Tapped = true
-	cursor := b25LastEventSeq(g)
-	if err := g.CreateTokensAttackingForEffect(item.Controller, tmpl, 1, item.Trigger.Event.Target); err != nil {
-		return err
-	}
-	tokens := b27TokensCreatedByAfter(g, item.Controller, cursor)
-	if len(tokens) == 0 {
-		return nil
-	}
-	return ScheduleDelayedTrigger{
-		Label: "Sandstorm Crasher — sacrifice the token",
-		Cards: tokens,
-		Body:  sacrificeListedCardsBody,
+	return CreateTokensAttackingYourChoice{
+		Template: tmpl,
+		N:        1,
+		Tapped:   true,
+		Prefer:   triggerAttackTarget(item),
+		Label:    "Sandstorm Crasher",
+		Then: func(ctx *Context, created []uuid.UUID) error {
+			if len(created) == 0 {
+				return nil
+			}
+			return ScheduleDelayedTrigger{
+				Label: "Sandstorm Crasher — sacrifice the token",
+				Cards: created,
+				Body:  sacrificeListedCardsBody,
+			}.Apply(ctx)
+		},
 	}.Apply(ctx)
 }

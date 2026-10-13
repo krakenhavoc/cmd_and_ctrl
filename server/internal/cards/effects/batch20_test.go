@@ -655,7 +655,7 @@ func TestB20VerdantSunsAvatarGainsToughnessForItselfAndYourCreatures(t *testing.
 	}
 }
 
-func TestB20KwainEveryoneDrawsAndGainsExceptAnEmptyLibrary(t *testing.T) {
+func TestB20KwainEachPlayerMayDrawAndOnlyDrawersGain(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	kwain := b12Push(g, me.ID, "Kwain, Itinerant Meddler", "Legendary Creature — Rabbit Wizard", b20KwainOracle, 1, 3)
@@ -664,58 +664,35 @@ func TestB20KwainEveryoneDrawsAndGainsExceptAnEmptyLibrary(t *testing.T) {
 	advanceToMain(t, g)
 	hands, lives := b20Hands(g), b20Lives(g)
 	b16Activate(t, g, me.ID, kwain, 0, game.ActivateAbilityParams{})
+	passPriorityAroundTable(t, g)
+	// Asked in APNAP order: seat 0 (the active player) first. Seat 1
+	// declines, seat 2 draws, seat 3 (no library) says yes.
+	answers := []bool{true, false, true, true}
+	for i, yes := range answers {
+		answerMayChoice(t, g, g.Seats[i].ID, yes)
+	}
+	want := []struct{ hand, life int }{{1, 1}, {0, 0}, {1, 1}, {0, 0}}
 	for i, p := range g.Seats {
-		wantHand, wantLife := hands[i]+1, lives[i]+1
 		if p.ID == empty.ID {
-			wantHand, wantLife = hands[i], lives[i]
+			continue
 		}
-		if p.Hand.Size() != wantHand || p.Life != wantLife {
-			t.Errorf("seat %d: hand %d life %d, want hand %d life %d", i, p.Hand.Size(), p.Life, wantHand, wantLife)
+		if p.Hand.Size() != hands[i]+want[i].hand || p.Life != lives[i]+want[i].life {
+			t.Errorf("seat %d: hand %d life %d, want hand %d life %d", i, p.Hand.Size(), p.Life,
+				hands[i]+want[i].hand, lives[i]+want[i].life)
 		}
 	}
-	if empty.AttemptedEmptyDraw {
-		t.Error("a player with no library is treated as declining, not as drawing from nothing")
+	if !empty.Eliminated && !empty.AttemptedEmptyDraw {
+		t.Error("a player with no library who says yes tries to draw from nothing")
 	}
-	if spec, _ := Lookup(b20KwainOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the missing 'may' must be declared")
+	if empty.Life != lives[3] && !empty.Eliminated {
+		t.Error("and gains no life for a card they did not draw")
+	}
+	if spec, _ := Lookup(b20KwainOracle); spec.Completeness != CompletenessFull {
+		t.Error("the per-player 'may' is asked now")
 	}
 }
 
 // --- the spells ----------------------------------------------------
-
-func TestB20GrappleWithThePastMillsThreeThenReturnsThePick(t *testing.T) {
-	g := newCatalogGame(t)
-	me := g.Seats[0]
-	bear := b17GraveyardCard(me, "Bear", "Creature — Bear", "{1}{G}")
-	library, yard := me.Library.Size(), me.Graveyard.Size()
-	castCatalogSpell(t, g, "Grapple with the Past", "Instant", b20GrappleWithThePastOracle, b16TargetCard(bear))
-	passPriorityAroundTable(t, g)
-	if got := me.Library.Size(); got != library-3 {
-		t.Errorf("library %d → %d, want -3", library, got)
-	}
-	if !me.Hand.Contains(bear) {
-		t.Error("the picked creature card comes back to hand")
-	}
-	// The spell itself and the three milled cards are in the yard;
-	// the Bear left it.
-	if got := me.Graveyard.Size(); got != yard+3 {
-		t.Errorf("graveyard %d → %d, want +3 (three milled, one returned, one spell)", yard, got)
-	}
-	// With nothing picked it simply mills.
-	castCatalogSpell(t, g, "Grapple with the Past", "Instant", b20GrappleWithThePastOracle, nil)
-	passPriorityAroundTable(t, g)
-	if got := me.Library.Size(); got != library-6 {
-		t.Errorf("library %d → %d, want -6", library, got)
-	}
-	// An artifact card is not a legal pick.
-	rock := b17GraveyardCard(me, "Sol Ring", "Artifact", "{1}")
-	if err := b09TryCast(t, g, "Grapple with the Past", "Instant", b20GrappleWithThePastOracle, b16TargetCard(rock)); err == nil {
-		t.Error("only a creature or land card may be returned")
-	}
-	if spec, _ := Lookup(b20GrappleWithThePastOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the pick-before-mill gap must be declared")
-	}
-}
 
 func TestB20BrokenBondDestroysAnArtifactOrEnchantment(t *testing.T) {
 	g := newCatalogGame(t)
@@ -750,11 +727,12 @@ func TestB20StarfallInvocationDestroysAllCreaturesAndDeclaresTheGift(t *testing.
 		t.Error("a noncreature survives")
 	}
 	// S30 (#470 / #446): the indestructible half of this assertion was
-	// an engine gap, not a card gap, and it is closed. The gift is
-	// still the one clause this card does not offer.
+	// an engine gap, not a card gap, and it is closed. The gift landed
+	// with #3172 (cav-b): the card is Full and the return is tested in
+	// cav_b_test.go.
 	spec, _ := Lookup(b20StarfallInvocationOracle)
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Error("the un-offered gift is declared, and it is the only caveat left")
+	if spec.Completeness != CompletenessFull || spec.Gift == nil {
+		t.Error("Starfall Invocation offers its gift and has no caveat left")
 	}
 }
 

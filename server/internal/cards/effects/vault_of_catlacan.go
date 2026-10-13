@@ -34,9 +34,9 @@ func init() {
 				Label:    "{T}: Add one mana of any color",
 			},
 			{
-				Cost:         ManaAbilityCost{Tap: true},
-				ProducedFunc: ProducedPerPermanent("U", MatchArtifact),
-				Label:        "{T}: Add {U} for each artifact you control",
+				Cost:           ManaAbilityCost{Tap: true},
+				ProducedAmount: ProducedPerPermanent("U", MatchArtifact),
+				Label:          "{T}: Add {U} for each artifact you control",
 			},
 		},
 	})

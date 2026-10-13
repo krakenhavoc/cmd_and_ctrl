@@ -677,6 +677,37 @@ describe("buildMenuSections — combat", () => {
     expect(item?.items).toBeUndefined();
   });
 
+  // #672: the per-creature sibling of "Clear ALL combat".
+  it("offers Remove from combat only on an attacking or blocking creature", () => {
+    const attacker = card("c1", "a", { attacking_target: "b" });
+    const blocker = card("c2", "a", { blocking_target: "c9" });
+    const idle = card("c3", "a");
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [attacker, blocker, idle],
+      step: "declare_blockers",
+    });
+    for (const c of [attacker, blocker]) {
+      expect(itemById(buildMenuSections(v, c, "a", false), "combat-remove")?.action).toEqual({
+        type: "remove_from_combat",
+        params: { instance_id: c.instance_id },
+      });
+    }
+    const sections = buildMenuSections(v, idle, "a", false);
+    expect(itemById(sections, "combat-remove")).toBeUndefined();
+    // The table-wide reset stays beside it.
+    expect(itemById(sections, "combat-clear")).toBeDefined();
+  });
+
+  it("hides Remove from combat where the viewer cannot override the card", () => {
+    const foreign = card("c1", "b", { attacking_target: "a" });
+    const v = view([seat("a", "Alice"), seat("b", "Bob")], {
+      battlefield: [foreign],
+      step: "declare_blockers",
+    });
+    const sections = buildMenuSections(v, foreign, "a", false);
+    expect(itemById(sections, "combat-remove")).toBeUndefined();
+  });
+
   it("always offers the clear-combat escape hatch during combat", () => {
     const c = card("c1", "a");
     const v = view([seat("a", "Alice")], { battlefield: [c], step: "combat_damage" });
@@ -750,11 +781,11 @@ describe("buildMenuSections — move payloads", () => {
 });
 
 describe("buildMenuSections — non-battlefield zones", () => {
-  it("gives a hand card move options only", () => {
+  it("gives a hand card reveal and move options", () => {
     const c = card("h1", "a");
     const v = view([seat("a", "Alice", { hand: [c] })]);
     const sections = buildMenuSections(v, c, "a", false);
-    expect(sectionIDs(sections)).toEqual(["move"]);
+    expect(sectionIDs(sections)).toEqual(["reveal", "move"]);
     expect(itemById(sections, "move-hand")).toBeUndefined();
     expect(itemById(sections, "move-battlefield")).toBeDefined();
   });
@@ -769,7 +800,7 @@ describe("buildMenuSections — non-battlefield zones", () => {
     };
     const v = view([seat("a", "Alice", { hand: [c] })]);
     const sections = buildMenuSections(v, c, "a", false);
-    expect(sectionIDs(sections)).toEqual(["special_actions", "move"]);
+    expect(sectionIDs(sections)).toEqual(["special_actions", "reveal", "move"]);
     const row = itemById(sections, "special-foretell");
     expect(row?.label).toBe("Foretell {2}");
     expect(row?.disabled).toBeFalsy();
@@ -879,5 +910,46 @@ describe("buildMenuSections — non-battlefield zones", () => {
       dst: { kind: "graveyard", owner: "a" },
       instance_id: "s1",
     });
+  });
+});
+
+describe("reveal rows on a hand card (#671)", () => {
+  function seats(c: CardView) {
+    return [
+      seat("a", "Alice", { hand: [c] }),
+      seat("b", "Bob"),
+      { ...seat("c", "Cara"), eliminated: true },
+      seat("d", "Dan"),
+    ];
+  }
+
+  it("offers Reveal to table and one Show row per other live seat", () => {
+    const c = card("h1", "a");
+    const sections = buildMenuSections(view(seats(c)), c, "a", false);
+    expect(itemById(sections, "reveal-table")?.action).toEqual({
+      type: "reveal_card",
+      params: { card_id: "h1" },
+    });
+    expect(itemById(sections, "reveal-to-b")?.label).toBe("Show to Bob");
+    expect(itemById(sections, "reveal-to-b")?.action).toEqual({
+      type: "reveal_card",
+      params: { card_id: "h1", to: "b" },
+    });
+    expect(itemById(sections, "reveal-to-d")?.label).toBe("Show to Dan");
+    // Not yourself, not an eliminated seat.
+    expect(itemById(sections, "reveal-to-a")).toBeUndefined();
+    expect(itemById(sections, "reveal-to-c")).toBeUndefined();
+  });
+
+  it("is a hand-only section", () => {
+    const bf = card("bf", "a");
+    const v = view(seats(card("h1", "a")), { battlefield: [bf] });
+    expect(sectionIDs(buildMenuSections(v, bf, "a", false))).not.toContain("reveal");
+  });
+
+  it("is withheld where the viewer cannot override the card", () => {
+    const c = card("h1", "b");
+    const v = view([seat("a", "Alice"), seat("b", "Bob", { hand: [c] })]);
+    expect(buildMenuSections(v, c, "a", false)).toEqual([]);
   });
 });

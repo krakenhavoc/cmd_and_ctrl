@@ -14,7 +14,8 @@ import { closeAll, joinAsPlayer, type JoinedPlayer } from "./players";
 // hints: the first-use hints on the real pages (ADR 0125 §8, #1085).
 //
 // Site pages, in one fresh browser context per kind of session: each
-// page's hint appears beside its anchor, "Got it" dismisses it, a
+// page's hint appears in the page frame under the lede (ADR 0156 §3
+// item 5) without covering its anchor, "Got it" dismisses it, a
 // reload does not bring it back, and Help → Tips for this page shows it
 // again. The Settings dialog has no Help button over it, so its hint
 // comes back through Settings → Advanced → Show all tips again.
@@ -72,6 +73,10 @@ async function expectTipBeside(
   await expect(tip).toBeVisible();
   await expect(tip).toContainText(title);
   await expect(anchor).toHaveAttribute("aria-describedby", /hint-tip-body/);
+  // On a site page the tip is a line in the page frame, under the lede
+  // (ADR 0156 §3 item 5), not a card beside the anchor: it must still not
+  // cover it, but it may be anywhere above it.
+  const inline = await tip.evaluate((el) => el.classList.contains("inline"));
   // The card follows its anchor on the layer's poll, so an anchor that
   // is still settling (a sheet folding away) is measured again.
   await expect(async () => {
@@ -90,6 +95,7 @@ async function expectTipBeside(
       a!.y < t!.y + t!.height &&
       t!.y < a!.y + a!.height;
     expect(overlaps, `the "${title}" tip covers its anchor`).toBe(false);
+    if (inline) return;
     expect(
       Math.hypot(dx, dy),
       `the "${title}" tip is beside its anchor`,
@@ -185,18 +191,32 @@ test.describe("first-use hints", () => {
     try {
       const help = page.getByRole("button", { name: L.help, exact: true });
 
-      // Home, signed out: no hint of its own, so the site's Help tip.
-      await pageCycle(page, { url: "/#/home", title: SITE_HELP, anchor: help });
+      // The front page is the sign-in page (ADR 0156 §4), which shows no
+      // tip at all (ADR 0125 §3.8), not even the site's.
+      await page.goto("/#/");
+      await expectNoTipThisVisit(page, help);
 
-      // The public pages.
-      await pageCycle(page, {
-        url: "/#/roadmap",
-        title: "What comes next",
-        anchor: page.getByRole("textbox", {
-          name: L.searchRoadmap,
-          exact: true,
-        }),
+      // The roadmap: its own hint first, and the site's Help tip on the
+      // next visit (one tip a visit). Then the usual cycle: nothing on
+      // a reload, and Help → Tips for this page shows both again.
+      const roadmapSearch = page.getByRole("textbox", {
+        name: L.searchRoadmap,
+        exact: true,
       });
+      await page.goto("/#/roadmap");
+      await expectTipBeside(page, "What comes next", roadmapSearch);
+      await dismiss(page);
+      await page.reload();
+      await expectTipBeside(page, SITE_HELP, help);
+      await dismiss(page);
+      await page.reload();
+      await expectNoTipThisVisit(page, roadmapSearch);
+      await tipsForThisPage(page);
+      await expectTipBeside(page, "What comes next", roadmapSearch);
+      await dismiss(page);
+      await expectTipBeside(page, SITE_HELP, help);
+      await dismiss(page);
+      await expect(tipOf(page)).toHaveCount(0);
       await pageCycle(page, {
         url: "/#/decks",
         title: "Check a deck",

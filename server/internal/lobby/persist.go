@@ -120,6 +120,9 @@ func gameRecordLocked(entry *gameEntry) GameRecord {
 		// room's effective host before any write that matters.
 		HostPlayerID:  entry.meta.HostPlayerID,
 		HostDiscordID: entry.meta.HostDiscordID,
+		// ADR 0159 §5.
+		VoiceRoom:      entry.meta.VoiceRoom,
+		VoiceChannelID: entry.voiceChannelID,
 	}
 	return rec
 }
@@ -134,6 +137,7 @@ func (l *Lobby) persistSeatsLocked(entry *gameEntry) {
 	if entry.practice {
 		return // practice.go: a practice table has no rows
 	}
+	l.voiceChangedLocked(entry)
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.ReplaceSeats(ctx, entry.meta.ID, seatRecords(entry.meta.Players)); err != nil {
@@ -148,6 +152,7 @@ func (l *Lobby) persistGameLocked(entry *gameEntry) {
 	if entry.practice {
 		return // practice.go: a practice table has no rows
 	}
+	l.voiceChangedLocked(entry)
 	ctx, cancel := storeCtx()
 	defer cancel()
 	if err := l.store.UpdateGame(ctx, gameRecordLocked(entry)); err != nil {
@@ -230,6 +235,10 @@ func (l *Lobby) dropEntryLocked(id uuid.UUID) {
 	if e, ok := l.games[id]; ok {
 		close(e.stop)
 		delete(l.games, id)
+		// ADR 0159 §2: a deleted table's room goes with it.
+		if l.voice != nil && !e.practice {
+			l.voice.notify(id)
+		}
 	}
 }
 
@@ -264,17 +273,26 @@ type legacyImporter interface {
 //  1. Import any ADR 0041 lobby/*.json into the store (import.go), so
 //     the first boot of this binary finds metadata for games the old
 //     one was running.
-//  2. RoomManager.RestoreRooms decides WHICH games come back,
-//     applying the version-skew policy (see ws/persist.go).
+//  2. RoomManager.RestoreRoomsAdmitting decides WHICH games come back,
+//     applying the version-skew policy (see ws/persist.go) and the
+//     table-load cap (restore_capacity.go, ADR 0148): a table there is
+//     no room for is DEFERRED, its restore point and rows left exactly
+//     as they were, so a boot after a crash cannot rebuild the load that
+//     caused it.
 //  3. Each restored room is paired with its games and seats rows. A
 //     room with no row is dropped and unregistered — a game nobody
 //     can produce an invite for is not a game.
+//  4. Any unfinished row still without a room is marked ended.
 //
-// Rows whose game did not come back are kept. A finished game has no
-// restore point by design (ws.Room drops it at the end), and its row
-// is the history "my games" reads (ADR 0051 decision 4). ADR 0041
-// pruned the equivalent files; that is the one behaviour this does not
-// carry over.
+// Rows whose game did not come back are kept, and so is a finished
+// game's: it has no restore point by design (ws.Room drops it at the
+// end) and its row is the history "my games" reads (ADR 0051 decision
+// 4). But a row still saying lobby or active with no room behind it is
+// a table nobody can reach, so step 4 marks it ended (#2987): the
+// process died before the table's first restore point was written, or
+// the file was unusable, or it would not pair with its row. The one
+// exception is a restore point left on disk for a roll-forward
+// (schema_too_new, unknown_effect_key), whose row is left alone.
 //
 // A store that is not durable has no metadata to pair with, so the
 // restore is skipped and the restore points are left untouched on
@@ -311,63 +329,96 @@ func (l *Lobby) RestoreFromDisk(log *slog.Logger) int {
 		}
 	}
 
-	outcomes := l.mgr.RestoreRooms()
+	outcomes := l.mgr.RestoreRoomsAdmitting(l.restoreAdmission(log))
 	ws.LogRestoreSummary(log, outcomes)
 
 	restored := 0
+	// Games whose restore point stays on disk for a roll-forward keep
+	// their rows as they are; so does every row if a file could not be
+	// read at all (it names no game, so no row can be ruled out).
+	keep := map[uuid.UUID]bool{}
+	unattributable := false
 	for _, o := range outcomes {
+		if keepsRestorePointForRollForward(o) || o.Deferred {
+			// A deferred table (the load cap, ADR 0148) is the same
+			// promise as a roll-forward one: its file stays on disk and
+			// its row stays as it is, for a boot that has room.
+			keep[o.GameID] = true
+		}
+		if o.Reason == ws.ReasonReadError {
+			unattributable = true
+		}
 		if !o.Restored() {
 			continue
 		}
-		entry, err := l.loadEntry(o.GameID, o.Room)
-		if err != nil {
-			log.Error("restored game has no usable lobby metadata; dropping it (nobody could be invited back in)",
-				"game_id", o.GameID, "err", err)
-			l.mgr.Delete(o.GameID)
-			continue
+		if l.adoptRestored(log, o) {
+			restored++
 		}
+	}
 
-		// The host rides the games row, not the engine snapshot; hand it
-		// back to the room so is_host and the host gates survive the
-		// restart (ADR 0075 §2.1).
-		o.Room.SetHost(entry.meta.HostPlayerID)
-		l.mu.Lock()
-		l.games[o.GameID] = entry
-		// The engine is authoritative for lifecycle state; the row can
-		// be stale if the process died between the two writes.
-		l.syncStateLocked(entry)
-		l.syncHostLocked(entry)
-		// Bot seats do not come back on their own. The seat itself is
-		// carried — Player.IsBot / BotTier ride the engine snapshot
-		// and seats.bot_tier rides the row — but the runner was a
-		// goroutine in the process that died, so an active game with a
-		// bot seat would otherwise resume with the bot's chair occupied
-		// and nobody in it, and the table would hang the first time
-		// priority reached it. Relaunch here, under the same guard
-		// Start uses.
-		// An archived table is retired: it is hidden from the listing
-		// and SetArchived stopped its runners on the way out. Booting
-		// them again here would resurrect exactly the goroutines
-		// archiving exists to stop.
-		var startBots func()
-		if o.Room.Game.CurrentState() == game.StateActive {
-			l.startWatchLocked(entry)
-			if !entry.meta.Archived() {
-				startBots = l.botStartLocked(entry)
-			}
-		}
-		l.mu.Unlock()
-		if startBots != nil {
-			startBots()
-			log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
-		}
-		restored++
+	// Whatever the database calls unfinished and the lobby does not
+	// hold now is unreachable: retire the row (#2987).
+	if unattributable {
+		log.Warn("a restore point could not be read; leaving unrestored game rows as they are this boot")
+	} else if n := l.closeUnresidentRows(log, keep); n > 0 {
+		log.Warn("closed game rows the restore pass did not bring back", "games", n)
 	}
 
 	if restored > 0 {
 		log.Info("lobby restored from disk", "games", restored)
 	}
 	return restored
+}
+
+// adoptRestored pairs one restored room with its games and seats rows,
+// registers the table in the lobby, and relaunches its bot runners. It
+// is the second half of a restore, shared by the boot pass
+// (RestoreFromDisk) and the hot pass (RestoreDeferred). A room with no
+// usable row is dropped and unregistered, and false is returned.
+func (l *Lobby) adoptRestored(log *slog.Logger, o ws.RestoreOutcome) bool {
+	entry, err := l.loadEntry(o.GameID, o.Room)
+	if err != nil {
+		log.Error("restored game has no usable lobby metadata; dropping it (nobody could be invited back in)",
+			"game_id", o.GameID, "err", err)
+		l.mgr.Delete(o.GameID)
+		return false
+	}
+
+	// The host rides the games row, not the engine snapshot; hand it
+	// back to the room so is_host and the host gates survive the
+	// restart (ADR 0075 §2.1).
+	o.Room.SetHost(entry.meta.HostPlayerID)
+	l.mu.Lock()
+	l.games[o.GameID] = entry
+	// The engine is authoritative for lifecycle state; the row can
+	// be stale if the process died between the two writes.
+	l.syncStateLocked(entry)
+	l.syncHostLocked(entry)
+	// Bot seats do not come back on their own. The seat itself is
+	// carried — Player.IsBot / BotTier ride the engine snapshot
+	// and seats.bot_tier rides the row — but the runner was a
+	// goroutine in the process that died, so an active game with a
+	// bot seat would otherwise resume with the bot's chair occupied
+	// and nobody in it, and the table would hang the first time
+	// priority reached it. Relaunch here, under the same guard
+	// Start uses.
+	// An archived table is retired: it is hidden from the listing
+	// and SetArchived stopped its runners on the way out. Booting
+	// them again here would resurrect exactly the goroutines
+	// archiving exists to stop.
+	var startBots func()
+	if o.Room.Game.CurrentState() == game.StateActive {
+		l.startWatchLocked(entry)
+		if !entry.meta.Archived() {
+			startBots = l.botStartLocked(entry)
+		}
+	}
+	l.mu.Unlock()
+	if startBots != nil {
+		startBots()
+		log.Info("relaunched bot runners for a restored game", "game_id", o.GameID)
+	}
+	return true
 }
 
 // loadEntry rebuilds one restored game's lobby entry from its rows and
@@ -404,6 +455,8 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// the room, which decides whether it still stands.
 		HostPlayerID:  rec.HostPlayerID,
 		HostDiscordID: rec.HostDiscordID,
+		// ADR 0159 §5: the host's choice survives a restart.
+		VoiceRoom: rec.VoiceRoom,
 		// CreatedBy (#1098): rec.CreatedBy is "" for an admin-created
 		// or file-imported game (Nil, matching CreateWith), and a
 		// stored UUID otherwise. A row somehow holding something
@@ -450,7 +503,7 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		}
 		meta.Players = append(meta.Players, info)
 	}
-	return &gameEntry{
+	entry := &gameEntry{
 		meta:       meta,
 		room:       room,
 		stop:       make(chan struct{}),
@@ -466,5 +519,12 @@ func (l *Lobby) loadEntry(id uuid.UUID, room *ws.Room) (*gameEntry, error) {
 		// The previous process counted an end it recorded, or an
 		// archive (metrics.go).
 		endCounted: rec.EndedAt != nil || rec.ArchivedAt != nil,
-	}, nil
+		// The identities this table refused to seat again (blocks.go).
+		blocks: l.loadBlocks(id),
+		// ADR 0159 §5: the voice manager adopts it if the channel is
+		// still in the category.
+		voiceChannelID: rec.VoiceChannelID,
+	}
+	l.restampVoice(entry)
+	return entry, nil
 }

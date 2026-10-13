@@ -62,13 +62,7 @@ func (c Card) IsRole() bool {
 // anything. The zero TargetRef (Kind == "") is the unattached
 // sentinel, and TargetNone / TargetSelf are treated as unattached
 // too — neither names a host.
-func (c Card) IsAttached() bool {
-	switch c.AttachedTo.Kind {
-	case TargetCard, TargetPlayer:
-		return c.AttachedTo.ID != uuid.Nil
-	}
-	return false
-}
+func (c Card) IsAttached() bool { return IsAttachedPtr(&c) }
 
 // IsAttachedTo reports whether this card is attached to the named
 // card. The common shape in a catalog AppliesTo predicate —
@@ -118,11 +112,19 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	if g.Battlefield == nil {
 		return ErrCardNotFound
 	}
+	// offEpoch is the host's CR 400.7 epoch when the host is a card
+	// OFF the battlefield (ADR 0154), and stays 0 for a battlefield host.
+	offEpoch := 0
+	offBattlefield := false
 	switch host.Kind {
 	case TargetCard:
 		if findCardOnBattlefield(g, host.ID) < 0 {
-			g.emitAttachSkippedLocked(attachmentID, host, "host is not on the battlefield")
-			return nil
+			epoch, ok := g.offBattlefieldHostLocked(attachmentID, host)
+			if !ok {
+				g.emitAttachSkippedLocked(attachmentID, host, "host is not on the battlefield")
+				return nil
+			}
+			offEpoch, offBattlefield = epoch, true
 		}
 	case TargetPlayer:
 		if g.playerByIDLocked(host.ID) == nil {
@@ -142,8 +144,24 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 		g.emitAttachSkippedLocked(attachmentID, host, "a permanent cannot be attached to itself")
 		return nil
 	}
-	moved := c.AttachedTo != host
+	// ADR 0154 decision 4, CR 701.3b: an Aura whose enchant clause is
+	// "enchant creature put onto the battlefield with this Aura" can't be
+	// attached to anything else, and an attempt to move it leaves it where
+	// it is (Animate Dead's 2016-06-08 ruling). Only the swapped clause;
+	// the general check for every Aura is #3160.
+	if c.EnchantSwapped && !g.swappedEnchantAdmitsLocked(c, host) {
+		g.emitAttachSkippedLocked(attachmentID, host, "this Aura can enchant only the creature put onto the battlefield with it")
+		return nil
+	}
+	// CR 400.7, CR 701.3c: the same instance ID as a NEW OBJECT is a
+	// different object, so re-attaching to it is a move (a new timestamp,
+	// and the "As this becomes attached" clause runs). The epoch is only
+	// recorded for an off-battlefield host (ADR 0154 Question 2), so an
+	// Aura that leaves a graveyard card for the permanent that card became
+	// moves too.
+	moved := c.AttachedTo != host || c.AttachedEpoch != offEpoch
 	c.AttachedTo = host
+	c.AttachedEpoch = offEpoch
 	c.AttachedAt = timeNowUnixNano()
 	g.EmitEvent(Event{
 		Kind:   EventAttach,
@@ -156,7 +174,10 @@ func (g *Game) AttachForEffect(attachmentID uuid.UUID, host TargetRef) error {
 	// creature, …" clause (Dinosaur Headdress). Not for a re-attach to
 	// the host it is already on: CR 701.3c, that attach does nothing,
 	// so nothing became attached.
-	if moved && host.Kind == TargetCard {
+	//
+	// Not for an off-battlefield host either (ADR 0154 decision 2): "As
+	// this becomes attached to a creature" reads a permanent.
+	if moved && host.Kind == TargetCard && !offBattlefield {
 		g.runAsAttachedLocked(attachmentID)
 	}
 	return nil
@@ -265,6 +286,7 @@ func (g *Game) UnattachForEffect(attachmentID uuid.UUID) error {
 	g.unbestowLocked(c)
 	c.AttachedTo = TargetRef{}
 	c.AttachedAt = 0
+	c.AttachedEpoch = 0
 	g.EmitEvent(Event{
 		Kind:   EventUnattach,
 		Actor:  c.Controller,
@@ -423,6 +445,22 @@ func (g *Game) attachmentLegalLocked(c *Card) bool {
 			if _, refused := g.PlayerProtectedFromLocked(host, SourceCharacteristics(c)); refused {
 				return false
 			}
+		}
+	}
+	// ADR 0154 decision 4: an Aura that lost its printed clause and
+	// gained "enchant creature put onto the battlefield with this Aura"
+	// is judged by that clause alone. Read first, as bestow's is.
+	if c.EnchantSwapped {
+		return g.swappedEnchantAdmitsLocked(c, c.AttachedTo)
+	}
+	// ADR 0154 decision 3, CR 400.7 / CR 303.4c: a host OFF the
+	// battlefield (Animate Dead's graveyard card) is the object it was at
+	// the attach only while its epoch is unchanged. A card that left the
+	// graveyard and came back is a new object the Aura never enchanted.
+	// Battlefield hosts are not pinned here (#3159).
+	if c.AttachedTo.Kind == TargetCard && findCardOnBattlefield(g, c.AttachedTo.ID) < 0 {
+		if epoch := g.cardObjectEpochLocked(c.AttachedTo.ID); epoch < 0 || epoch != c.AttachedEpoch {
+			return false
 		}
 	}
 	// ADR 0141, CR 702.103b: a bestowed Aura's enchant clause is the
@@ -599,6 +637,7 @@ func (g *Game) attachmentSBALocked() bool {
 			controller := c.Controller
 			c.AttachedTo = TargetRef{}
 			c.AttachedAt = 0
+			c.AttachedEpoch = 0
 			g.EmitEvent(Event{
 				Kind:   EventUnattach,
 				Actor:  controller,

@@ -170,6 +170,16 @@ type ChoiceOption struct {
 	// between the question and the answer. No {X}, and never on the
 	// first option, which is the always-legal way out.
 	ManaCost string `json:",omitempty"`
+
+	// Harm is what this branch costs the chooser besides life and
+	// mana, as the card's own estimate in cards (1 is about one card
+	// from hand, 2 about a creature), or 0 for a branch that costs
+	// nothing a policy could price (#3140). It exists for the prompts
+	// whose branches are both bad — a villainous choice (CR 701.55) —
+	// so a bot can take the lesser. It is a hint on the wire and
+	// nothing more: the engine never reads it, the branch does the
+	// harm.
+	Harm int `json:",omitempty"`
 }
 
 // cloneChoiceOptions deep-copies an option list. Each option owns a
@@ -368,8 +378,15 @@ func (g *Game) defaultDroppedChoiceLocked(c *PendingChoice) {
 		err = c.chooseValueResume.runWithNoChoice(g)
 	case c.Kind == PendingChoiceOptionPick && c.CouncilVote != nil:
 		// ADR 0146: a ballot whose voter left casts nothing, and the
-		// vote goes on to the next player (CR 800.4a).
-		err = g.castBallotLocked(c.CouncilVote, c.Chooser, nil)
+		// vote goes on to the next player (CR 800.4a). When someone was
+		// choosing FOR the voter (Illusion of Choice) and it is that
+		// chooser who left, the voter has not: their ballot goes back to
+		// them, and the next one is asked as an ordinary vote.
+		if v := c.CouncilVote; c.Chooser != v.Voter && g.playerInGameLocked(v.Voter) {
+			err = g.askNextBallotLocked(v)
+		} else {
+			err = g.castBallotLocked(v, v.Voter, nil)
+		}
 	case c.Kind == PendingChoiceOptionPick && c.PickThen != "":
 		// #2854: a keyed option pick, run with nobody's choice.
 		err = runOptionPickThen(g, c.PickThen, OptionPicked{
@@ -650,7 +667,7 @@ func (g *Game) ResolveOptionPick(choiceID, chooserID uuid.UUID, index int) error
 	if v := choice.CouncilVote; v != nil {
 		// ADR 0146: a ballot. Cast it, then ask the next one.
 		g.dequeueChoiceLocked(idx)
-		g.emitChoiceEffectErrorLocked(chooserID, source, g.castBallotLocked(v, chooserID, &chosen))
+		g.emitChoiceEffectErrorLocked(chooserID, source, g.castBallotLocked(v, v.Voter, &chosen))
 		g.runStateChecksLocked()
 		return nil
 	}

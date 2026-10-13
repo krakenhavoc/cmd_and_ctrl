@@ -14,6 +14,7 @@
  */
 
 import type { CardView } from "./protocol";
+import { LAYOUT_FLIP } from "./faces";
 
 /** Scryfall image sizes the server's `?size=` accepts. */
 export type CardImageSize = "small" | "normal" | "large" | "png" | "art_crop" | "border_crop";
@@ -32,13 +33,23 @@ export type CardImageSize = "small" | "normal" | "large" | "png" | "art_crop" | 
  * which side is up. Pass an explicit face only to show a side that
  * is NOT currently up — the picker showing both halves, or the hover
  * overlay's back-face panel.
+ *
+ * A FLIP card (ADR 0151) always asks for face 0, whichever half is up
+ * or asked for: it has one printed image, and its flipped half is that
+ * image turned upside down (Card.svelte and the hover panel turn it).
+ * One URL per printing keeps the browser and service-worker caches to
+ * one copy of it.
  */
 export function cardImageURL(
-  card: Pick<CardView, "scryfall_id" | "active_face"> | null | undefined,
+  card:
+    | (Pick<CardView, "scryfall_id" | "active_face"> & Partial<Pick<CardView, "layout">>)
+    | null
+    | undefined,
   size: CardImageSize = "normal",
   face?: number,
 ): string | null {
   if (!card?.scryfall_id) return null;
+  if (card.layout === LAYOUT_FLIP) return scryfallImageURL(card.scryfall_id, size, 0);
   return scryfallImageURL(card.scryfall_id, size, face ?? card.active_face ?? 0);
 }
 

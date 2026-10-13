@@ -107,6 +107,7 @@ func TestIngeniousArtilleristPings(t *testing.T) {
 	pushCatalogPermanent(g, me.ID, "Ingenious Artillerist", "Creature — Human Artificer", ingeniousArtilleristOracle, false)
 	before := lifeOfOpponents(g)
 	g.WithWriteLock(func() { _ = g.CreateTokenForEffect(me.ID, ClueToken(), 1) })
+	g.RunStateChecksForTest()
 	passPriorityAroundTable(t, g)
 	for i, b := range before {
 		if got := g.Seats[i+1].Life; got != b-1 {

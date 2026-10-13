@@ -26,7 +26,7 @@ func init() {
 		Name:         "Lotus Cobra",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Lotus Cobra — add one mana of any color (landfall)", Do(AddMana{Produced: "{W|U|B|R|G}"})),
+			LandfallPaying("Lotus Cobra — add one mana of any color (landfall)", game.LandfallPayoff{Mana: 1}, Do(AddMana{Produced: "{W|U|B|R|G}"})),
 		},
 	})
 }

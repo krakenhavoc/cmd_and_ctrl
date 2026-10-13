@@ -34,6 +34,7 @@ import {
   type AdminAccountsResponse,
   type AdminGameResponse,
   type AdminGamesResponse,
+  type AdminReportsResponse,
   type GamesFilter,
   type LiveNowResponse,
 } from "./adminViews";
@@ -76,10 +77,16 @@ export interface GameMeta {
   // creator. Lets the creator rotate their own table's invites, same
   // as the admin.
   is_creator?: boolean;
+  // ADR 0159 §1: the host asked for a Discord voice room.
+  voice_room?: boolean;
   // The tutorial's practice table (ADR 0076 §2.2): one seat, one
   // `random` bot, never listed and never persisted. Mirrors
   // lobby.GameMeta.Practice.
   practice?: boolean;
+  // The turn number of a game in play (ADR 0158 §1 item 4): the game
+  // view's turn.number. GET /games only, only while active, and absent
+  // during the opening roll.
+  turn?: number;
 }
 
 export interface SeatInfo {
@@ -106,6 +113,9 @@ export interface SeatInfo {
   agent_client?: string;
   // True on the table host's seat (ADR 0075 §2.1). Never on a bot.
   is_host?: boolean;
+  // The seat's life total while the game is in play (ADR 0158 §1 item
+  // 4). GET /games only; absent in the lobby and once the game ends.
+  life?: number;
 }
 
 // BotTierInfo mirrors aiseat.TierInfo. Every declared tier is listed,
@@ -266,13 +276,15 @@ export interface CreateGameResponse extends GameMeta {
 // createGame creates a table (POST /games). Any signed-in person may
 // (ADR 0110 §5 item 4, owner answer 2): a 409 names their open tables
 // when they already have three, and a 429 says they are creating too
-// quickly. `setup: "last"` applies their remembered setup to it.
+// quickly. `setup: "last"` applies their remembered setup to it, and
+// `voiceRoom` asks for a Discord voice room (ADR 0159 §1).
 export async function createGame(
   name: string,
-  opts: { setup?: "last" } = {},
+  opts: { setup?: "last"; voiceRoom?: boolean } = {},
 ): Promise<CreateGameResponse> {
-  const body: { name: string; setup?: string } = { name };
+  const body: { name: string; setup?: string; voice_room?: boolean } = { name };
   if (opts.setup) body.setup = opts.setup;
+  if (opts.voiceRoom) body.voice_room = true;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),
@@ -343,8 +355,13 @@ export async function joinGame(
 // /games/practice, ADR 0076 §2.2) and returns its seat's session.
 // Unlike joinGame it does NOT install the session: lib/practiceTable.ts
 // does, after it has recorded the session and settings to put back.
-export async function createPracticeTable(): Promise<Session> {
-  const res = await authFetch("/games/practice", { method: "POST" });
+//
+// `guest` is a visitor with no session (ADR 0156 §2): POST
+// /games/practice/guest mints a guest seat and opens the same table in
+// one step, and answers exactly as POST /games/practice does.
+export async function createPracticeTable(opts: { guest?: boolean } = {}): Promise<Session> {
+  const path = opts.guest ? "/games/practice/guest" : "/games/practice";
+  const res = await authFetch(path, { method: "POST" });
   const body = (await res.json()) as SessionResponse;
   return {
     token: body.token,
@@ -573,6 +590,121 @@ export async function addBotSeat(
 export async function removeBotSeat(gameID: string, playerID: string): Promise<GameMeta> {
   const res = await authFetch(`/games/${gameID}/seats/bot/${playerID}`, { method: "DELETE" });
   return (await res.json()) as GameMeta;
+}
+
+// removeSeat takes a human or agent seat off a table (#2785, #3093).
+// On an unstarted table the server lets the table host, the game's
+// creator or an admin do it. On a started game only an admin may, and
+// it concedes the seat out of the game (CR 800.4a); the host and the
+// creator are answered 409. An ended game (409), the host's own seat
+// and a bot (422) are refused. The seat's session stops working and its
+// sockets close; the invite is untouched.
+//
+// With `block: true` (#2984) the same call also blocks the removed seat
+// from taking a seat at THIS table again: the account, for a signed-in
+// person; the folded name, for a guest. A guest who types another name
+// gets past it, so the control says to mint a new invite too.
+export async function removeSeat(
+  gameID: string,
+  playerID: string,
+  opts: { block?: boolean } = {},
+): Promise<GameMeta> {
+  const q = opts.block ? "?block=true" : "";
+  const res = await authFetch(`/games/${gameID}/seats/${playerID}${q}`, { method: "DELETE" });
+  return (await res.json()) as GameMeta;
+}
+
+// reportPlayer files a report against another seat at the table (#2984),
+// or, with kind "spectator", against a spectator watching it (#3113: the
+// id is the one GET /games/{id}/spectators gave). A seat at that table
+// only; one report per five minutes, burst of three (429 past it).
+// Nobody is told who reported. Returns the report id.
+export async function reportPlayer(
+  gameID: string,
+  targetID: string,
+  reason: string,
+  kind: "seat" | "spectator" = "seat",
+): Promise<{ id: string }> {
+  const target = kind === "spectator" ? { spectator_id: targetID } : { player_id: targetID };
+  const res = await authFetch(`/games/${gameID}/reports`, {
+    method: "POST",
+    body: JSON.stringify({ ...target, reason }),
+  });
+  return (await res.json()) as { id: string };
+}
+
+// One line of a table's block list (#3113). The label is an account's
+// display name or a guest's folded name; the server never sends a
+// Discord id.
+export interface BlockEntry {
+  id: string;
+  label: string;
+  /** "account" holds against the account; "guest" holds against the name only. */
+  kind: "account" | "guest";
+  /** Unix milliseconds */
+  created_at: number;
+}
+
+// fetchBlocks lists who a table has blocked: the host, the creator and an
+// admin on a table that has not started, an admin alone on any other
+// (403 otherwise, 409 for the host on a started table).
+export async function fetchBlocks(gameID: string): Promise<BlockEntry[]> {
+  const res = await authFetch(`/games/${gameID}/blocks`, { method: "GET" });
+  return ((await res.json()) as { blocks: BlockEntry[] }).blocks;
+}
+
+// unblock lifts one block, with the same authority as the list. Returns
+// the list as it now stands.
+export async function unblock(gameID: string, blockID: string): Promise<BlockEntry[]> {
+  const res = await authFetch(`/games/${gameID}/blocks/${encodeURIComponent(blockID)}`, {
+    method: "DELETE",
+  });
+  return ((await res.json()) as { blocks: BlockEntry[] }).blocks;
+}
+
+// A spectator with a socket open at the table (#3113). The id is the
+// session's, random, and good only for the report and remove routes.
+export interface SpectatorLine {
+  id: string;
+  name: string;
+  signed_in?: boolean;
+  /** Unix milliseconds */
+  since: number;
+}
+
+// fetchSpectators lists who is watching the table, for a seat there or
+// anyone who manages it.
+export async function fetchSpectators(gameID: string): Promise<SpectatorLine[]> {
+  const res = await authFetch(`/games/${gameID}/spectators`, { method: "GET" });
+  return ((await res.json()) as { spectators: SpectatorLine[] }).spectators;
+}
+
+// removeSpectator takes a spectator off the table: their session stops
+// working and their socket closes. The host, the creator or an admin, in
+// ANY game state (a spectator is not in the game). With `block: true` it
+// also blocks them from the table; `blocked` in the answer is false for a
+// guest who gave no name, who has nothing a block can hold.
+export async function removeSpectator(
+  gameID: string,
+  spectatorID: string,
+  opts: { block?: boolean } = {},
+): Promise<{ blocked: boolean; spectators: SpectatorLine[] }> {
+  const q = opts.block ? "?block=true" : "";
+  const res = await authFetch(`/games/${gameID}/spectators/${spectatorID}${q}`, {
+    method: "DELETE",
+  });
+  return (await res.json()) as { blocked: boolean; spectators: SpectatorLine[] };
+}
+
+// fetchAdminReports lists the player reports, newest first. Admin only.
+export async function fetchAdminReports(): Promise<AdminReportsResponse> {
+  const res = await authFetch("/admin/reports", { method: "GET" });
+  return (await res.json()) as AdminReportsResponse;
+}
+
+// dismissAdminReport removes one report. Admin only.
+export async function dismissAdminReport(id: string): Promise<void> {
+  await authFetch(`/admin/reports/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
 // replayURL returns an authenticated download URL for a game's
@@ -1061,8 +1193,15 @@ export async function fetchBugReportConfig(): Promise<BugReportConfig> {
 // `reportID` is present only when the report stored artifacts — it is
 // the key the operator uses to pull the pinned replay.
 export interface BugReportResult {
-  url: string;
-  number: number;
+  // "filed": a new issue. "commented": a recent report already opened
+  // one, so this became a +1 on it. "queued": the server is over a
+  // limit or paused, so the report is kept for the admin and NOT filed
+  // (no url/number).
+  status: "filed" | "commented" | "queued";
+  url?: string;
+  number?: number;
+  // The server's own sentence for commented/queued; shown verbatim.
+  note?: string;
   reportID?: string;
   // The label the issue actually landed with. Absent when the label
   // was rejected upstream and the server re-filed unlabelled — so the
@@ -1123,14 +1262,19 @@ export async function submitBugReport(draft: BugReportDraft): Promise<BugReportR
   }
   const res = await authFetch("/bugreport", { method: "POST", body });
   const parsed = (await res.json()) as {
-    url: string;
-    number: number;
+    status?: BugReportResult["status"];
+    url?: string;
+    number?: number;
+    note?: string;
     report_id?: string;
     label?: string;
   };
   return {
+    // A server older than the throttle sends no status; it only ever filed.
+    status: parsed.status ?? "filed",
     url: parsed.url,
     number: parsed.number,
+    note: parsed.note,
     reportID: parsed.report_id,
     label: parsed.label,
   };
@@ -1336,6 +1480,42 @@ export async function logoutEverywhere(): Promise<void> {
     credentials: "same-origin",
   });
   if (res.ok || res.status === 401) {
+    clearSavedIdentity();
+    setSession(null);
+    return;
+  }
+  let message = `${res.status} ${res.statusText}`;
+  try {
+    const body = (await res.json()) as { error?: string };
+    if (body.error) message = body.error;
+  } catch {
+    // not JSON — keep the status line
+  }
+  throw new LobbyApiError(res.status, message);
+}
+
+// deleteMyAccount deletes the signed-in person's own account (DELETE
+// /me/account, ADR 0149, #2983). `confirm` is the typed phrase; the
+// server checks it again. On success the account, its sessions and this
+// browser's saved sign-in are gone, so the local session is dropped.
+//
+// It bypasses authFetch like logout does, because a 401 here is an
+// answer ("you are already signed out"), not a reason to throw "session
+// expired" from underneath a dialog that is mid-confirmation. A refusal
+// (the person still holds a seat at a live table: 409) keeps the
+// session and surfaces the server's sentence, which names the table.
+export async function deleteMyAccount(confirm: string): Promise<void> {
+  await sessionSettled();
+  const s = currentSession();
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (s?.token) headers.Authorization = `Bearer ${s.token}`;
+  const res = await fetch("/me/account", {
+    method: "DELETE",
+    headers,
+    body: JSON.stringify({ confirm }),
+    credentials: "same-origin",
+  });
+  if (res.ok) {
     clearSavedIdentity();
     setSession(null);
     return;

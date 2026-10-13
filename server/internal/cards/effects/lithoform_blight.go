@@ -44,8 +44,8 @@ func init() {
 			},
 		},
 		Static: []game.StaticAbility{
-			LosesAllLandTypes(AttachedToSource),
-			LosesAllAbilitiesAndHas(AttachedToSource, lithoformBlightColorless, lithoformBlightAnyColor),
+			Labelled(LosesAllLandTypes(AttachedToSource), "Enchanted land loses all land types and abilities and has \"{T}: Add {C}\" and \"{T}, Pay 1 life: Add one mana of any color.\""),
+			Labelled(LosesAllAbilitiesAndHas(AttachedToSource, lithoformBlightColorless, lithoformBlightAnyColor), "Enchanted land loses all abilities and has \"{T}: Add {C}\" and \"{T}, Pay 1 life: Add one mana of any color.\""),
 		},
 		Triggered: []game.TriggeredAbility{
 			WhenThisEnters("Lithoform Blight — draw a card", Do(DrawCards{N: 1})),

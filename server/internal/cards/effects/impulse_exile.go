@@ -49,6 +49,9 @@ type ExileTopWithPermission struct {
 	FaceDown    bool
 	WhileExiled bool
 	Free        bool
+	Condition   *game.PermissionCondition
+	Window      *game.Duration
+	Filter      game.PermissionFilter
 }
 
 func (e ExileTopWithPermission) Apply(ctx *Context) error {
@@ -66,6 +69,11 @@ func (e ExileTopWithPermission) Apply(ctx *Context) error {
 	if e.WhileExiled {
 		perm.Duration = game.WhileInZoneDuration()
 	}
+	if e.Window != nil {
+		perm.Duration = *e.Window
+	}
+	perm.Condition = e.Condition
+	perm.Filter = e.Filter
 	if e.Free {
 		// "{0}", not empty: an empty Cost means "pay the printed
 		// cost", which is the opposite of what this clause grants.

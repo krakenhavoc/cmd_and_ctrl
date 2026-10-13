@@ -70,6 +70,14 @@ func nullInt(p *int) sql.NullInt64 {
 	return sql.NullInt64{Int64: int64(*p), Valid: true}
 }
 
+// boolInt is a NOT NULL 0/1 column's value.
+func boolInt(b bool) int {
+	if b {
+		return 1
+	}
+	return 0
+}
+
 func intPtr(n sql.NullInt64) *int {
 	if !n.Valid {
 		return nil
@@ -87,11 +95,12 @@ type execer interface {
 func insertGame(ctx context.Context, x execer, g GameRecord) error {
 	_, err := x.ExecContext(ctx,
 		`INSERT INTO games (id, name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		                    outcome, host_player_id, host_discord_id)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		                    outcome, host_player_id, host_discord_id, voice_room, voice_channel_id)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		g.ID.String(), g.Name, nullString(g.CreatedBy), g.State, toMillis(g.CreatedAt),
 		nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt), nullInt(g.WinnerSeat),
-		nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID))
+		nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID),
+		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID))
 	return err
 }
 
@@ -151,10 +160,11 @@ func (s *SQLStore) CreateGame(ctx context.Context, g GameRecord, invites []Invit
 func (s *SQLStore) UpdateGame(ctx context.Context, g GameRecord) error {
 	res, err := s.db.ExecContext(ctx,
 		`UPDATE games SET name = ?, state = ?, started_at = ?, ended_at = ?, archived_at = ?, winner_seat = ?,
-		                  outcome = ?, host_player_id = ?, host_discord_id = ?
+		                  outcome = ?, host_player_id = ?, host_discord_id = ?, voice_room = ?, voice_channel_id = ?
 		 WHERE id = ?`,
 		g.Name, g.State, nullMillis(g.StartedAt), nullMillis(g.EndedAt), nullMillis(g.ArchivedAt),
-		nullInt(g.WinnerSeat), nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID), g.ID.String())
+		nullInt(g.WinnerSeat), nullString(g.Outcome), nullUUID(g.HostPlayerID), nullString(g.HostDiscordID),
+		boolInt(g.VoiceRoom), nullString(g.VoiceChannelID), g.ID.String())
 	if err != nil {
 		return err
 	}
@@ -180,6 +190,7 @@ func (s *SQLStore) DeleteGame(ctx context.Context, id uuid.UUID) error {
 		for _, q := range []string{
 			`DELETE FROM seats WHERE game_id = ?`,
 			`DELETE FROM invites WHERE game_id = ?`,
+			`DELETE FROM table_blocks WHERE game_id = ?`,
 			`DELETE FROM games WHERE id = ?`,
 		} {
 			if _, err := tx.ExecContext(ctx, q, id.String()); err != nil {
@@ -199,13 +210,15 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		winner                         sql.NullInt64
 		hostPlayer, hostDiscord        sql.NullString
 		outcome                        sql.NullString
+		voiceRoom                      int
+		voiceChannel                   sql.NullString
 	)
 	err := s.db.QueryRowContext(ctx,
 		`SELECT name, created_by, state, created_at, started_at, ended_at, archived_at, winner_seat,
-		        outcome, host_player_id, host_discord_id
+		        outcome, host_player_id, host_discord_id, voice_room, voice_channel_id
 		 FROM games WHERE id = ?`, id.String()).
 		Scan(&g.Name, &createdBy, &g.State, &createdAt, &startedAt, &endedAt, &archivedAt, &winner,
-			&outcome, &hostPlayer, &hostDiscord)
+			&outcome, &hostPlayer, &hostDiscord, &voiceRoom, &voiceChannel)
 	if errors.Is(err, sql.ErrNoRows) {
 		return GameRecord{}, nil, ErrStoreNotFound
 	}
@@ -226,6 +239,8 @@ func (s *SQLStore) LoadGame(ctx context.Context, id uuid.UUID) (GameRecord, []Se
 		g.HostPlayerID = h
 	}
 	g.HostDiscordID = hostDiscord.String
+	g.VoiceRoom = voiceRoom == 1
+	g.VoiceChannelID = voiceChannel.String
 
 	rows, err := s.db.QueryContext(ctx,
 		`SELECT seat, player_id, user_id, guest_name, bot_tier, deck_id, deck_name, pending_discord_id, agent_client

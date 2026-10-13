@@ -129,6 +129,19 @@ func altCost(key string) func(effects.Spec) bool {
 	}
 }
 
+// livingMetalDeclared reports whether a Spec declares effects.LivingMetal(),
+// read off its label (a StaticAbility is closures and a label, and the
+// label is the constructor's own).
+func livingMetalDeclared(s effects.Spec) bool {
+	label := effects.LivingMetal().Label
+	for _, st := range s.Static {
+		if st.Label == label {
+			return true
+		}
+	}
+	return false
+}
+
 // mechanics is the table. Order is the order failures are reported
 // in.
 var mechanics = []Mechanic{
@@ -268,6 +281,22 @@ var mechanics = []Mechanic{
 		Adopt:      `AlternativeCosts: []game.AlternativeCost{Warp("{cost}")} — the exile clause rides the constructor`,
 	},
 	{
+		Name:       "dash",
+		Phrases:    []string{"dash"},
+		Implements: altCost("dash"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "dash") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Dash("{cost}")} — the haste and the return-to-hand ride the constructor (#3172)`,
+	},
+	{
+		Name:       "freerunning",
+		Phrases:    []string{"freerunning"},
+		Implements: altCost("freerunning"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "freerunning") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{Freerunning("{cost}", "Assassin")} — the Assassin-or-commander gate rides the constructor (#3172)`,
+	},
+	{
 		// ADR 0107 §4 (#1855): CR 702.146, an alternative cost bound to
 		// the graveyard that casts the card's back face.
 		Name:       "disturb",
@@ -276,6 +305,32 @@ var mechanics = []Mechanic{
 		Evidence:   `game.AlternativeCostByKey(oracleID, "disturb") resolves`,
 		Confidence: Exact,
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard} plus Disturb("{cost}") on the front face, and DisturbedExile(name) on the back face's "<oracle_id>#1" entry`,
+	},
+	{
+		// ADR 0152 §1 (#1856): CR 702.162, disturb's back-face offer with
+		// no zone binding.
+		Name:       "more than meets the eye",
+		Phrases:    []string{"more than meets the eye", "cast converted", "cast it converted"},
+		Implements: altCost("more_than_meets_the_eye"),
+		Evidence:   `game.AlternativeCostByKey(oracleID, "more_than_meets_the_eye") resolves`,
+		Confidence: Exact,
+		Adopt:      `AlternativeCosts: []game.AlternativeCost{MoreThanMeetsTheEye("{cost}")} on the front face`,
+	},
+	{
+		// ADR 0152 §4 (#1856): CR 702.161, a layer-4 static the card
+		// file declares on the back face's "<oracle_id>#1" entry.
+		Name:    "living metal",
+		Phrases: []string{"living metal"},
+		Implements: func(s effects.Spec) bool {
+			if livingMetalDeclared(s) {
+				return true
+			}
+			back, ok := effects.Lookup(s.OracleID + "#1")
+			return ok && livingMetalDeclared(back)
+		},
+		Evidence:   "the Spec or its back face's entry declares effects.LivingMetal()",
+		Confidence: Exact,
+		Adopt:      `Static: []game.StaticAbility{LivingMetal()} on the back face's "<oracle_id>#1" entry`,
 	},
 	{
 		Name:       "miracle",
@@ -311,6 +366,26 @@ var mechanics = []Mechanic{
 		Evidence:   `game.AlternativeCostByKey(oracleID, "bestow") resolves`,
 		Confidence: Exact,
 		Adopt:      `Bestow("{cost}") — it bundles the enchant creature target and the Aura spell (ADR 0141)`,
+	},
+	{
+		// ADR 0154 (#1780): an Aura whose enchant clause is a card in a
+		// graveyard (Animate Dead, Dance of the Dead).
+		Name:    "graveyard aura",
+		Phrases: []string{"enchant creature card in a graveyard", "enchants a card in a graveyard"},
+		Implements: func(s effects.Spec) bool {
+			if s.Targets == nil || !strings.HasPrefix(s.Targets.Label, "enchant ") {
+				return false
+			}
+			for _, z := range s.Targets.Zones {
+				if z == game.ZoneGraveyard {
+					return true
+				}
+			}
+			return false
+		},
+		Evidence:   "the spec's enchant clause (Targets) lists game.ZoneGraveyard",
+		Confidence: Exact,
+		Adopt:      `Targets: EnchantCardInGraveyard("creature", Creature()) — the Aura resolves attached to the card (ADR 0154)`,
 	},
 	{
 		Name:       "overload",
@@ -383,9 +458,14 @@ var mechanics = []Mechanic{
 					return true
 				}
 			}
+			for _, z := range s.CastableZonesIf {
+				if z.Zone == game.ZoneGraveyard {
+					return true
+				}
+			}
 			return false
 		},
-		Evidence:   "the spec lists game.ZoneGraveyard in CastableZones",
+		Evidence:   "the spec lists game.ZoneGraveyard in CastableZones or CastableZonesIf",
 		Confidence: Exact,
 		Adopt:      `CastableZones: []game.ZoneKind{game.ZoneGraveyard}`,
 	},

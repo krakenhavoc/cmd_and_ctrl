@@ -14,7 +14,9 @@ test.describe("admin login", () => {
   });
 
   test("wrong token surfaces a visible error", async ({ page }) => {
-    await page.getByPlaceholder("admin token").fill("not-the-real-token-but-long");
+    await page
+      .getByPlaceholder("admin token")
+      .fill("not-the-real-token-but-long");
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page.getByRole("alert")).toBeVisible();
     // We stay on the admin page — no redirect to lobby.
@@ -25,9 +27,11 @@ test.describe("admin login", () => {
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);
-    await expect(page.getByRole("heading", { name: /cmd_and_ctrl · lobby/ })).toBeVisible();
-    // Admin-only UI surfaces — create-game form should be present.
-    await expect(page.getByRole("heading", { name: "create game" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: /cmd_and_ctrl · lobby/ }),
+    ).toBeVisible();
+    // Admin-only UI surfaces — + New table should be present.
+    await expect(page.getByRole("button", { name: "new table" })).toBeVisible();
     // The token is not a person, so the Lobby offers it no join box.
     await expect(page.getByLabel("invite code or link")).toHaveCount(0);
     await expect(page.getByLabel("invite link")).toHaveCount(0);
@@ -40,12 +44,14 @@ test.describe("admin login", () => {
 
     await page.reload();
     await expect(page).toHaveURL(/#\/lobby$/);
-    await expect(page.getByRole("heading", { name: "create game" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "new table" })).toBeVisible();
   });
 
   // ADR 0124 §7: the token's session on #/admin goes to the admin views'
   // Live now; on #/login it still goes to the Lobby.
-  test("a session on #/login goes to the lobby, and on #/admin to Live now", async ({ page }) => {
+  test("a session on #/login goes to the lobby, and on #/admin to Live now", async ({
+    page,
+  }) => {
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);
@@ -66,7 +72,9 @@ test.describe("admin login", () => {
     await expect(page).toHaveURL(/#\/lobby$/);
   });
 
-  test("signing out from the account menu clears the session", async ({ page }) => {
+  test("signing out from the account menu clears the session", async ({
+    page,
+  }) => {
     await page.getByPlaceholder("admin token").fill(ADMIN_TOKEN);
     await page.getByRole("button", { name: "log in" }).click();
     await expect(page).toHaveURL(/#\/lobby$/);
@@ -89,11 +97,15 @@ test.describe("signed-out login page", () => {
     await page.goto("/#/login");
   });
 
-  test("pasting a full invite URL navigates to the join view", async ({ page }) => {
+  test("pasting a full invite URL navigates to the join view", async ({
+    page,
+  }) => {
     const url = `${page.url().split("#")[0]}#/games/11111111-2222-3333-4444-555555555555/join?t=xyz`;
     await page.getByLabel("invite code or link").fill(url);
     await page.getByRole("button", { name: "join" }).click();
     await expect(page).toHaveURL(/#\/games\/[0-9a-f-]+\/join\?t=xyz$/);
-    await expect(page.getByRole("heading", { name: "join game" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "join game" }),
+    ).toBeVisible();
   });
 });

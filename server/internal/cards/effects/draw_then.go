@@ -42,7 +42,59 @@ func drawThenDiscard(g *game.Game, player, source uuid.UUID, draw, discard int, 
 	return g.DrawNThenForEffect(player, draw, game.DrawThen{Ref: ref, Player: player, Source: source, N: discard})
 }
 
+// discardTwoUnlessOne registers "then discard two cards unless you
+// discard <a card matching qualifies>" (Thirst for Knowledge, Thirst for
+// Discovery): a prompt whose floor is one and whose set rule accepts a
+// single card only when it qualifies, or two cards of any kind (the
+// Compulsive Research shape). A hand of one card is discarded whole, and
+// an empty one asks nothing (CR 701.9a).
+func discardTwoUnlessOne(key, question string, qualifies func(game.Card) bool) game.DrawThenRef {
+	return game.RegisterDrawThen(key, func(g *game.Game, d game.DrawThen) error {
+		p := g.PlayerByIDForEffect(d.Player)
+		if p == nil {
+			return nil
+		}
+		switch held := len(p.Hand.Cards); {
+		case held == 0:
+			return nil
+		case held == 1:
+			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{Player: d.Player, Source: d.Source, N: 1, Question: question})
+		default:
+			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+				Player:   d.Player,
+				Source:   d.Source,
+				N:        d.N,
+				Min:      1,
+				Question: question,
+				Validate: func(picked []game.Card) bool {
+					switch len(picked) {
+					case d.N:
+						return true
+					case 1:
+						return qualifies(picked[0])
+					default:
+						return false
+					}
+				},
+			})
+		}
+		return nil
+	})
+}
+
 var (
+	// "then discard two cards unless you discard an artifact card" —
+	// Thirst for Knowledge.
+	drawThenDiscardTwoUnlessArtifact = discardTwoUnlessOne("discard-two-unless-artifact",
+		"Thirst for Knowledge — discard two cards, or one artifact card",
+		func(c game.Card) bool { return c.IsArtifact() })
+
+	// "then discard two cards unless you discard a basic land card" —
+	// Thirst for Discovery.
+	drawThenDiscardTwoUnlessBasicLand = discardTwoUnlessOne("discard-two-unless-basic-land",
+		"Thirst for Discovery — discard two cards, or one basic land card",
+		IsBasicLand)
+
 	// "then, unless you attacked this turn, discard N" — Chart a Course.
 	drawThenDiscardUnlessAttacked = game.RegisterDrawThen("discard-unless-attacked", func(g *game.Game, d game.DrawThen) error {
 		if b18AttackedThisTurn(g, d.Player) {

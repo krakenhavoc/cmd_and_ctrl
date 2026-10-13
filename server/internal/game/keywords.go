@@ -168,6 +168,24 @@ var canonicalKeywords = map[string]bool{
 	// table in this file, so the token's job is the badge and the ADR
 	// 0037 coverage signal.
 	"disturb": true,
+	// more than meets the eye (CR 702.162) and living metal (CR
+	// 702.161) join with #1856 (ADR 0152 §1, §4), in the same change
+	// that teaches the engine to honour them: the first is disturb's
+	// back-face offer with no zone binding (effects.MoreThanMeetsTheEye),
+	// the second a layer-4 static the card file declares on the back
+	// face (effects.LivingMetal, owner decision 3). Same reasoning as
+	// disturb above — the consumer is the card file, so the token's job
+	// is the badge and the ADR 0037 coverage signal.
+	"more than meets the eye": true,
+	"living metal":            true,
+	// assist (CR 702.132a) joins with #1857 (ADR 0150 §4), in the same
+	// change that teaches the cast path to honour it: cast_spell's
+	// `assist_player`, the cast parked on the helper's pay_amount, and
+	// the re-run that pays both players or neither (assist.go). Its
+	// consumer is castSpellLocked, which reads it off the card being
+	// cast (HasAssist), so a printed assist stamped by the importer
+	// works with no catalog entry.
+	KeywordAssist: true,
 	// plot (CR 702.170) joins with #1342, in the same change that
 	// teaches the engine to honour it: the CR 116.2 special action
 	// from hand (SpecialActionPlot, plot.go) and the free later cast
@@ -379,6 +397,8 @@ const KeywordChangeling = "changeling"
 //     abilities AT ALL, its own controller's included.
 //   - hexproof (CR 702.11b) — can't be the target of spells or
 //     abilities your OPPONENTS control.
+//   - hexproof from [quality] (CR 702.11e) — the same, but only for a
+//     source with the quality (hexproof_from.go).
 //   - protection (CR 702.16b) — can't be the target of spells with
 //     the stated quality, or of abilities from a SOURCE with it.
 //
@@ -463,6 +483,14 @@ func canBeTargetedBy(g *Game, c *Card, zone ZoneKind, src TargetSource) bool {
 		return false
 	}
 	if HasKeyword(c, "hexproof") && c.Controller != src.Controller && !g.hexproofBypassedLocked(c, src.Controller) {
+		return false
+	}
+	// CR 702.11e: "hexproof from [quality]" is hexproof that refuses
+	// only a source with the quality, so it asks the source, as
+	// protection does, and the opponent test, as hexproof does. It
+	// takes the same waiver: "as though it didn't have hexproof"
+	// waives the variant too (hexproof_from.go).
+	if hexproofFromRefuses(c, src) && !g.hexproofBypassedLocked(c, src.Controller) {
 		return false
 	}
 	// CR 702.16b. The pre-test is cheap and the snapshot is not, so
@@ -566,6 +594,14 @@ func CanonicalKeywords(s string) ([]string, bool) {
 	}
 	if toks, ok := ProtectionTokens(s); ok {
 		return toks, true
+	}
+	// Hexproof from [quality] (CR 702.11e) is parameterised the same
+	// way: Scryfall's array says only "Hexproof from" and the quality
+	// is in the oracle line, so a card's token comes from the line scan
+	// and a bare "hexproof from" is refused (ADR 0038 §6 and its
+	// amendment of 2026-10-13).
+	if q, ok := ParseHexproofFromQuality(s); ok {
+		return []string{HexproofFromToken(q)}, true
 	}
 	return nil, false
 }

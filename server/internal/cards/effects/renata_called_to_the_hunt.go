@@ -30,6 +30,7 @@ func init() {
 		Name:         "Renata, Called to the Hunt",
 		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{{
+			Label:     "Power is equal to your devotion to green.",
 			Layer:     game.Layer7PT,
 			SubLayer:  game.SubLayer7A_CDA,
 			AppliesTo: selfOnly,

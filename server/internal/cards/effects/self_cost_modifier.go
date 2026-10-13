@@ -351,6 +351,16 @@ func YouGainedLifeThisTurn() CostPredicate {
 	}
 }
 
+// YouHaveDelirium passes when four or more card types appear among the
+// cards in the caster's graveyard (delirium is an ability word, not a keyword) — Drag to the Roots' "costs {2} less as long as there
+// are four or more card types among cards in your graveyard". Printed
+// type lines, as every graveyard read: a card there has no layers.
+func YouHaveDelirium() CostPredicate {
+	return func(q game.CostQuery) bool {
+		return q.Game != nil && b16CardTypesInGraveyard(q.Game, q.Controller) >= 4
+	}
+}
+
 // AnOpponentControlsNoBasicLands passes when at least one of the
 // caster's opponents controls no basic land — Hagra Mauling.
 func AnOpponentControlsNoBasicLands() CostPredicate {

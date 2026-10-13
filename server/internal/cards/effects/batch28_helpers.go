@@ -330,10 +330,10 @@ func b28AddCountersToDamageAtOpponents(label, kind string) game.ReplacementEffec
 // devotion to <color>" — Karametra's Acolyte. Devotion is read at
 // activation (devotionTo, CR 700.5: hybrid symbols count for every
 // colour they offer); zero devotion adds nothing and still taps.
-func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	slot := "{" + strings.ToUpper(color) + "}"
-	return func(g *game.Game, controller, _ uuid.UUID) string {
-		return strings.Repeat(slot, devotionTo(g, controller, color))
+func b28ProducedDevotion(color string) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	opts := []string{strings.ToUpper(color)}
+	return func(g *game.Game, controller, _ uuid.UUID) game.ManaAmount {
+		return game.ManaAmount{Options: opts, N: devotionTo(g, controller, color)}
 	}
 }
 
@@ -360,28 +360,6 @@ func b28CopyEachLegalTargetXTimes(ctx *Context) error {
 		}
 	}
 	return nil
-}
-
-// b28FightChosenTargets is Ulvenwald Tracker's body: slot 0 must be a
-// creature the controller controls and slot 1 another creature; both
-// still legal as the ability resolves, or nothing fights. The "you
-// control" half of slot 0 is checked here rather than refused at
-// announce (the Bite Down posture — one predicate over both slots).
-func b28FightChosenTargets(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if len(item.Targets) < 2 {
-		return nil
-	}
-	mine, other := item.Targets[0], item.Targets[1]
-	if mine.Kind != game.TargetCard || other.Kind != game.TargetCard || mine.ID == other.ID ||
-		!ctx.IsTargetLegal(mine) || !ctx.IsTargetLegal(other) {
-		return nil
-	}
-	c, ok := g.LookupCardForEffect(mine.ID)
-	if !ok || !c.IsCreature() || c.Controller != item.Controller {
-		return nil
-	}
-	return b10Fight(ctx, mine.ID, other.ID)
 }
 
 // b28PutCountersOnEachCreatureYouControl puts n +1/+1 counters on

@@ -18,7 +18,7 @@ func init() {
 		Name:         "Architect of the Untamed",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Architect of the Untamed — you get {E}", ebYouGetEnergy(1)),
+			LandfallPaying("Architect of the Untamed — you get {E}", game.LandfallPayoff{Energy: 1}, ebYouGetEnergy(1)),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "Pay eight {E}: Create a 6/6 colorless Beast artifact creature token.",

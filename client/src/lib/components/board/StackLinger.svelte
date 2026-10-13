@@ -26,12 +26,12 @@
 
   import { onDestroy, untrack } from "svelte";
   import { get } from "svelte/store";
-  import { gsap } from "gsap";
   import type { GameView } from "../../protocol";
   import { buildStackLane } from "../../stackLane";
   import { settings } from "../../settings";
   import { findAnchor, hasSize } from "../../boardAnchor";
   import { etbPulse, flyTo } from "../../animations";
+  import { cancelAnimations } from "../../motion";
   import {
     LINGER_FADE_MS,
     LINGER_FLIGHT_MS,
@@ -210,7 +210,7 @@
 
   function removeGhost(key: string): void {
     const el = els.get(key);
-    if (el) gsap.killTweensOf(el);
+    if (el) cancelAnimations(el);
     ghosts = ghosts.filter((g) => g.key !== key);
   }
 
@@ -263,7 +263,7 @@
     els.set(key, node);
     return {
       destroy() {
-        gsap.killTweensOf(node);
+        cancelAnimations(node);
         els.delete(key);
       },
     };

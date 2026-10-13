@@ -1,8 +1,6 @@
 package effects
 
 import (
-	"strings"
-
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -37,9 +35,9 @@ func init() {
 		},
 		ManaAbilities: []ManaAbility{
 			{
-				Cost:         ManaAbilityCost{Tap: true},
-				ProducedFunc: everflowingChaliceProduced,
-				Label:        "{T}: Add {C} for each charge counter on this artifact",
+				Cost:           ManaAbilityCost{Tap: true},
+				ProducedAmount: everflowingChaliceProduced,
+				Label:          "{T}: Add {C} for each charge counter on this artifact",
 			},
 		},
 	})
@@ -47,10 +45,10 @@ func init() {
 
 // everflowingChaliceProduced is "Add {C} for each charge counter on
 // this artifact" — read off the ability's own source, not the board.
-func everflowingChaliceProduced(g *game.Game, _, source uuid.UUID) string {
+func everflowingChaliceProduced(g *game.Game, _, source uuid.UUID) game.ManaAmount {
 	c, ok := g.LookupCardForEffect(source)
 	if !ok {
-		return ""
+		return game.ManaAmount{}
 	}
-	return strings.Repeat("{C}", c.Counters[game.CounterCharge])
+	return game.ManaAmount{Options: []string{"C"}, N: c.Counters[game.CounterCharge]}
 }

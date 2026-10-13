@@ -51,7 +51,7 @@ import (
 //	"draw"         — RepEventDraw    — DrawPlayer, DrawCount (CR 121.2)
 //	"produce_mana" — RepEventProduceMana — ManaPlayer, ManaSource, ManaColors (CR 106.12b)
 //	"move"         — RepEventMove    — CardID, OldZone, NewZone, NewZoneOwner, EntersTapped, EntersAttacking, EntersWithCounters, asCommanderMove
-//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, NewZone, NewZoneOwner (CR 701.9)
+//	"discard"      — RepEventDiscard — CardID, DiscardPlayer, DiscardCause, DiscardCauseController, Source, NewZone, NewZoneOwner, EntersWithCounters (CR 701.9)
 //	"counter"      — RepEventCounter — CounterTarget OR CounterPlayer,
 //	                 CounterName, CounterDelta, CounterPlacer,
 //	                 CounterFromCombatDamage
@@ -450,6 +450,16 @@ type ReplacementEvent struct {
 	// the permanent (CR 400.7).
 	ExiledWith PermissionCardRef
 
+	// ExileCounter is a replacement's declaration that a card it sent to
+	// EXILE arrives there with one counter of this kind on it: Dauthi
+	// Voidwalker's "instead exile it with a void counter on it". Like
+	// ExiledWith it rides the event, because the replacement runs before
+	// the card moves, and the two landing functions stamp it once the
+	// card has really landed in exile (stampExileCounterLocked). A move
+	// a later replacement redirected elsewhere stamps nothing. Empty
+	// declares none.
+	ExileCounter string
+
 	// Destruction says this battlefield exit is a DESTRUCTION
 	// (CR 701.7a), as opposed to the other things that take the same
 	// exit — a sacrifice (CR 701.21a), the legend rule, an illegally
@@ -606,6 +616,13 @@ type ReplacementEvent struct {
 	// it like any entry copy, and settleTimedEntryCopyLocked re-files
 	// it as a duration copy once the permanent has its entry stamp.
 	copyUntilEndOfTurn bool
+
+	// exchangeTextWith names the creature an "as this enters, you may
+	// exchange its text box and another creature's" choice picked (ADR
+	// 0160 Decision 6, CopySelector.ExchangeText). Consumed by
+	// settleEntryTextExchangeLocked once the zone move has stamped the
+	// entering object, before EventETB.
+	exchangeTextWith uuid.UUID
 
 	// stackItem is the resolving spell's StackItem, carried across a
 	// paused entry so the resume can finish the two jobs only stack
@@ -767,10 +784,30 @@ type ReplacementEvent struct {
 	// the voluntary/involuntary framing #160 was written around, and
 	// ADR 0061.
 	//
-	// Source names the card whose effect or cost asked for it, so the
-	// Obstinate Baloth family ("a spell or ability an opponent controls
-	// causes you to discard") can read its controller.
+	// Source (above) names the card whose effect or cost asked for the
+	// discard. It is set on every discard since ADR 0153; before that
+	// this comment claimed it was and it was not. It is NOT how the
+	// Obstinate Baloth family reads who caused the discard: the card's
+	// controller and the controller of the spell or ability that made
+	// the player discard can differ (CR 113.8: a stolen permanent's
+	// ability, a copied spell). DiscardCauseController below is that.
+	//
+	// A discard replacement that puts the card onto the battlefield
+	// (NewZone = ZoneBattlefield, ADR 0153 §2) may also ask for counters
+	// through AddCounterAtETB on this event (Dodecapod's "with two +1/+1
+	// counters on it"). The engine seeds them onto the battlefield
+	// entry it starts, so they are the entry's own counters and the
+	// entry's CR 614 window (Hardened Scales) sees them.
 	DiscardCause DiscardCause
+
+	// DiscardCauseController is the controller of the resolving spell
+	// or ability whose instruction is making the player discard
+	// (CR 113.8 / 602.2 / 603.3a: the STACK ITEM's controller, never
+	// the controller of the card it came from). uuid.Nil when the
+	// discard is not an effect's: a cost, the cleanup step's
+	// turn-based action (CR 514.1), a manual move. Read it through
+	// DiscardCausedByOpponent. ADR 0153 §1.
+	DiscardCauseController uuid.UUID
 
 	// --- RepEventCreateTokens fields ---
 
@@ -1426,6 +1463,20 @@ type ReplacementEffect struct {
 	// the wire carries it; no localisation yet.
 	Label string
 
+	// EntryOnly marks a replacement that does all its work as the
+	// object enters the battlefield and has nothing to say afterwards
+	// ("This land enters tapped", CR 614.12). The art tile's ◆ chip
+	// drops it once the object is in play (#2410,
+	// game.AbilityRowsOnBattlefield). Display only: the replacement
+	// pipeline never reads it.
+	EntryOnly bool
+
+	// RowLabel is the replacement's wording on the art tile's ◆ chip
+	// ("Enters tapped."), in the Caveats tone: a sentence a player
+	// reads. Label stays the CR 616 prompt header and is only the chip's
+	// fallback. Display only, like EntryOnly.
+	RowLabel string
+
 	// entryKeyword names the keyword an engine-derived entry
 	// replacement stands for — KeywordRiot or KeywordUnleash (ADR 0109
 	// §10, riot.go). Empty for every catalog, scoped and built-in
@@ -1668,6 +1719,12 @@ func (g *Game) applyReplacementsLocked(ev *ReplacementEvent) (*ReplacementEvent,
 	}
 
 	for iter := 0; iter < maxReplacementIters; iter++ {
+		// #3040: a stack of doublers multiplies CounterDelta once per
+		// pass; pin it each round so the chain itself cannot wrap
+		// before the placement's own ceiling sees the number.
+		if ev.Kind == RepEventCounter && ev.CounterDelta > MaxCount {
+			ev.CounterDelta = MaxCount
+		}
 		g.splitExpandedDrawLocked(ev)
 		if ev.Canceled {
 			return nil, nil

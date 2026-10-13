@@ -28,9 +28,9 @@ func init() {
 		Name:         "City of Shadows",
 		Completeness: CompletenessFull,
 		ManaAbilities: []ManaAbility{{
-			Cost:         ManaAbilityCost{Tap: true},
-			ProducedFunc: ProducedPerCounterOnThis(game.CounterStorage, "C"),
-			Label:        "Add {C} for each storage counter on this land",
+			Cost:           ManaAbilityCost{Tap: true},
+			ProducedAmount: ProducedPerCounterOnThis(game.CounterStorage, "C"),
+			Label:          "Add {C} for each storage counter on this land",
 		}},
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Exile a creature you control: Put a storage counter on this land.",

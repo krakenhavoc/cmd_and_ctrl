@@ -1,5 +1,5 @@
-// router.test.ts — parseHash coverage for the site portal (#1386):
-// #/home and #/roadmap, plus a couple of the existing routes so a
+// router.test.ts — parseHash coverage: the front page and the gate page
+// (ADR 0156), #/roadmap, plus a couple of the existing routes so a
 // regression here doesn't silently start returning the default
 // (login) route for either of them.
 
@@ -8,12 +8,53 @@ import { describe, expect, it } from "vitest";
 import { parseHash } from "./router";
 
 describe("parseHash", () => {
-  it("parses #/home", () => {
+  // ADR 0156 §4: #/ is the front page and #/login an alias of it (the
+  // OAuth error path and the e2e suite use it). #/home still parses, so
+  // the router can send old links on (signedInHome.test.ts).
+  it("parses #/ and #/login as the front page, and keeps #/home for its redirect", () => {
+    expect(parseHash("#/")).toEqual({ name: "login" });
+    expect(parseHash("")).toEqual({ name: "login" });
+    expect(parseHash("#/login")).toEqual({ name: "login" });
     expect(parseHash("#/home")).toEqual({ name: "home" });
+  });
+
+  // ADR 0156 §5: the gate page, and ?retry=1 when Discord did not answer.
+  it("parses #/request-access, with and without ?retry=1", () => {
+    expect(parseHash("#/request-access")).toEqual({ name: "requestAccess" });
+    expect(parseHash("#/request-access?retry=1")).toEqual({ name: "requestAccess", retry: true });
+    expect(parseHash("#/request-access?retry=0")).toEqual({ name: "requestAccess" });
+  });
+
+  // ADR 0148 / #3103: the Discord callback lands the browser back on the
+  // invite's join page with the capacity code. Only that code is read; any
+  // other `error` value is ignored, and a plain join route is unchanged.
+  it("parses a join link, and the server_full code the Discord callback adds", () => {
+    expect(parseHash("#/games/g1/join?t=inv")).toEqual({
+      name: "join",
+      gameID: "g1",
+      inviteToken: "inv",
+      spectator: false,
+    });
+    expect(parseHash("#/games/g1/join?error=server_full&t=inv")).toEqual({
+      name: "join",
+      gameID: "g1",
+      inviteToken: "inv",
+      spectator: false,
+      serverFull: true,
+    });
+    expect(parseHash("#/games/g1/join?error=something_else&t=inv")).toEqual(
+      parseHash("#/games/g1/join?t=inv"),
+    );
   });
 
   it("parses #/roadmap", () => {
     expect(parseHash("#/roadmap")).toEqual({ name: "roadmap" });
+  });
+
+  // #2983: the privacy notice.
+  it("parses #/privacy", () => {
+    expect(parseHash("#/privacy")).toEqual({ name: "privacy" });
+    expect(parseHash("#/about")).toEqual({ name: "about" });
   });
 
   // ADR 0112 §3 item 2: the decks page is #/decks, and #/deck-check

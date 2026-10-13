@@ -16,6 +16,7 @@ func init() {
 	Register(Spec{
 		OracleID:         "75d667ec-86f4-4850-a3b6-e7a9fc7053b0",
 		Name:             "Army of the Damned",
+		Purpose:          game.Purpose{Tokens: 13},
 		Completeness:     CompletenessFull,
 		CastableZones:    []game.ZoneKind{game.ZoneGraveyard},
 		AlternativeCosts: []game.AlternativeCost{Flashback("{7}{B}{B}{B}")},

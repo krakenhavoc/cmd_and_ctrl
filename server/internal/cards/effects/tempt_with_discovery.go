@@ -24,19 +24,16 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // the same library (Cultivate's rule), which is also how the offer
 // is made in paper: to each opponent in turn.
 //
-// Sandbox simplification, declared: "searches a library this way"
-// is read as "took a land". The engine's optional search returns an
-// empty find both for an opponent who declined and for one who
-// searched and took nothing, so the second — who in paper would
-// still owe the caster a land — earns nothing here. Weaker, never
-// stronger. Each search shuffles as it finishes rather than all at
-// the end; nothing can observe the difference.
+// Each opponent is asked first whether to search (a confirm prompt);
+// "searches a library this way" is that yes, so an opponent who
+// searches and takes no land still earns the caster a land. Each search
+// shuffles as it finishes rather than all at the end; nothing can
+// observe the difference.
 func init() {
 	Register(Spec{
 		OracleID:     "4baa6145-216e-476b-b178-aaaa1e633701",
 		Name:         "Tempt with Discovery",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"An opponent who searches but takes no land doesn't count as having searched, so you get an extra land only for opponents who actually take one."},
+		Completeness: CompletenessFull,
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			controller, source, opponents := ctx.Controller(), ctx.Source(), ctx.Opponents()
 			return b07TemptWithDiscoveryCasterSearch(ctx.Game, controller, source,

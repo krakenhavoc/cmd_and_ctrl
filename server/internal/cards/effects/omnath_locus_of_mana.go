@@ -24,6 +24,7 @@ func init() {
 			{Kind: game.ManaPoolKeep, Colors: []string{"G"}},
 		},
 		Static: []game.StaticAbility{{
+			Label:             "Gets +1/+1 for each unspent green mana you have.",
 			Layer:             game.Layer7PT,
 			SubLayer:          game.SubLayer7C_Modify,
 			AppliesTo:         selfOnly,

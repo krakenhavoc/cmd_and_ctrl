@@ -37,6 +37,7 @@ func init() {
 		PlayerKeywords:  []string{game.ProtectionFromTheChosenCardType},
 		Static: []game.StaticAbility{{
 			Layer: game.Layer6Ability,
+			Label: "You and creatures you control have protection from the chosen card type.",
 			AppliesTo: func(target *game.Card, _ *game.Game, source *game.Card) bool {
 				return source.ChosenOption != "" && target.Controller == source.Controller && target.IsCreature()
 			},

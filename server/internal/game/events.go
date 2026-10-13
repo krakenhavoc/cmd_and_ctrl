@@ -293,6 +293,18 @@ const (
 	// happened. Added in S16.5 (#159).
 	EventCopyApplied EventKind = "copy_applied"
 
+	// EventSpellCopied — a spell was COPIED (CR 707.10): the copy is a
+	// new spell on the stack that was created, not cast, so it fires no
+	// EventCast. Actor is the copy's controller, CardID is the copy and
+	// Source the spell it copies. It exists for "whenever you cast OR
+	// COPY an instant or sorcery spell" (magecraft: Archmage Emeritus,
+	// Storm-Kiln Artist, Sedgemoor Witch), which watches this beside
+	// EventCast. A copy of an ABILITY (CR 707.10) is not a spell and
+	// emits nothing here. Emitted by createSpellCopyLocked, after the
+	// copy is on the stack. The log says nothing: the copy is on the
+	// stack the table is looking at.
+	EventSpellCopied EventKind = "spell_copied"
+
 	// EventStorm — a storm trigger resolved and settled on its count
 	// (CR 702.40a). Actor is the player who cast the storm spell,
 	// Source and CardID are that spell, and Amount is how many other
@@ -680,6 +692,14 @@ const (
 	// created it and Amount the turn's ExtraTurn.Ref. Emitted by the
 	// rotation seam when the RepEventExtraTurn window cancels.
 	EventExtraTurnSkipped EventKind = "extra_turn_skipped"
+
+	// EventCountCapped — a count hit the table's ceiling and was pinned
+	// to it (#3040, saturate.go). Label names the quantity ("+1/+1
+	// counters", "power", "mana"), Source is the object whose count was
+	// capped (uuid.Nil when there is none), Actor the player involved
+	// (the mana's owner), and Amount the ceiling it was pinned to.
+	// Narrated as LogCountCapped so a capped table is told it is capped.
+	EventCountCapped EventKind = "count_capped"
 
 	// EventKeywordAction is the second engine-internal sentinel of
 	// the same shape, and the replacement-watch key for a KEYWORD
@@ -1111,7 +1131,28 @@ const (
 	// "whenever this transforms" (CR 701.27e) writable — no new
 	// constructor was needed, because the harvester already watches
 	// any kind a TriggeredAbility names. Added in S46 (ADR 0079, #343).
+	//
+	// A CONVERT (CR 701.28a) is this kind too, with Event.Converted set
+	// (ADR 0152 §2, owner decision 1).
 	EventTransform EventKind = "transform"
+
+	// EventFlipPermanent — CardID, a flip card on the battlefield, was
+	// flipped (CR 710, ADR 0151). Actor is its controller and Label is
+	// the name it flipped FROM, the only place that name survives.
+	//
+	// NOT "flip": rngStreamFlip and EventFlipCoin already mean a coin
+	// flip, and a log reader or trigger author must not confuse the
+	// two. Not a zone change and not a transform (CR 701.27 is about
+	// double-faced cards; a flip card is single-faced), so "whenever
+	// this transforms" never sees it.
+	//
+	// Two consumers. layerVersionBump invalidates the layer engine, for
+	// EventTransform's reason: the printed name, type line, P/T and
+	// catalog entry changed wholesale with the permanent sitting still.
+	// And the log narrates it (CR 710.3: whether a permanent is flipped
+	// must be clear at all times). No printed card triggers on a
+	// permanent flipping, so no trigger constructor ships.
+	EventFlipPermanent EventKind = "flip_permanent"
 
 	// EventMeld — two cards were melded (CR 701.42a) and CardID is the
 	// melded permanent that has just entered the battlefield. Actor is
@@ -1385,6 +1426,18 @@ type Event struct {
 	// the life loss it was taken for when it was written.
 	DamageNotLifeLoss int `json:"damage_not_life_loss,omitempty"`
 
+	// DamageInstance is the ADR 0108 damage instance an EventDealDamage
+	// was dealt in (2026-10-13 amendment): every damage event one
+	// instruction or one combat damage step opens shares it, which is
+	// what CR 120.3 / 510.2 mean by "at the same time". A "whenever ~
+	// is dealt damage" ability that reads the total (BatchTotalDamage,
+	// life_batch.go) groups on (Batch, Target, DamageInstance).
+	//
+	// TRANSIENT, like the counter it names: never serialised, so an
+	// event restored from a snapshot reads as zero and groups on the
+	// batch alone — the ADR 0107 behaviour, never more than the batch.
+	DamageInstance DamageInstance `json:"-"`
+
 	// Round is the table-facing round for EventStepBegan. Amount carries
 	// the turn sequence on EventStepBegan and EventTurnBegan; keeping the
 	// display value separate lets same-seat and extra turns retain distinct
@@ -1443,6 +1496,16 @@ type Event struct {
 	// Seats are the seat indexes an EventOpeningRoll names: the seats
 	// that tied, or the seats the host rolled for (ADR 0121 §3).
 	Seats []int `json:"seats,omitempty"`
+
+	// Ballots are every vote of a finished vote, in the order cast, on
+	// EventVotesFinished (ADR 0146, amendment 2026-10-13): the record
+	// a "whenever players finish voting" trigger reads as it resolves,
+	// who voted for which option. Each ballot's Option indexes the
+	// vote's own option list, so two ballots with the same Option are
+	// votes for the same choice. Copied when the event is emitted, so
+	// nothing aliases the vote it came from. Empty on every other kind,
+	// and on a vote nobody cast a ballot in.
+	Ballots []VoteBallot `json:"ballots,omitempty"`
 
 	// RollID is an EventTableRoll's identity (ADR 0121 §5): the
 	// game's tableRollNext after the roll, so 1 for the first table
@@ -1613,6 +1676,17 @@ type Event struct {
 	// binary that drops the key from a restored trigger's event loses
 	// nothing it acts on.
 	Loyalty bool `json:"loyalty,omitempty"`
+
+	// Converted marks an EventTransform whose turn-over was a CONVERT
+	// (CR 701.28a, ADR 0152 §2, owner decision 1) rather than a
+	// transform. A convert follows the rules for transforming, so every
+	// reader EventTransform already has — the layer bump, a "transforms
+	// into" trigger (CR 701.27e names both actions), the "as this
+	// transforms" clause (CR 712.20) — sees it with no second case. A
+	// plain "whenever this transforms" reader checks !Converted, and
+	// the log says "converted" instead of "transformed". False on every
+	// other event.
+	Converted bool `json:"converted,omitempty"`
 
 	// CombatStep names which combat damage step dealt a combat
 	// EventDealDamage: CombatStepFirstStrike or CombatStepRegular

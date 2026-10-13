@@ -1462,9 +1462,7 @@
       "monarchAtStart": "00000000-0000-0000-0000-000000000000",
       "stepsBegun": {
         "begin_combat": 1,
-        "combat_damage": 1,
         "declare_attackers": 1,
-        "declare_blockers": 1,
         "draw": 1,
         "end": 1,
         "end_combat": 1,
@@ -1645,48 +1643,6 @@
       },
       {
         "seq": 9,
-        "batch": 7,
-        "kind": "step_began",
-        "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "resolved_stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 1,
-        "round": 1,
-        "label": "declare_blockers",
-        "step": "declare_blockers",
-        "entered_from_owner": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 10,
-        "batch": 9,
-        "kind": "step_began",
-        "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
-        "source": "00000000-0000-0000-0000-000000000000",
-        "target": "00000000-0000-0000-0000-000000000000",
-        "card_id": "00000000-0000-0000-0000-000000000000",
-        "stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "resolved_stack_item_id": "00000000-0000-0000-0000-000000000000",
-        "amount": 1,
-        "round": 1,
-        "label": "combat_damage",
-        "step": "combat_damage",
-        "entered_from_owner": "00000000-0000-0000-0000-000000000000",
-        "cause_controller": "00000000-0000-0000-0000-000000000000",
-        "cause_item": "00000000-0000-0000-0000-000000000000",
-        "attacking_target": "00000000-0000-0000-0000-000000000000",
-        "blocking_target": "00000000-0000-0000-0000-000000000000",
-        "last_known_controller": "00000000-0000-0000-0000-000000000000"
-      },
-      {
-        "seq": 11,
         "batch": 10,
         "kind": "step_began",
         "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
@@ -1707,7 +1663,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 12,
+        "seq": 10,
         "batch": 11,
         "kind": "step_began",
         "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
@@ -1728,7 +1684,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 13,
+        "seq": 11,
         "batch": 12,
         "kind": "step_began",
         "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
@@ -1749,7 +1705,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 14,
+        "seq": 12,
         "batch": 12,
         "kind": "trigger",
         "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
@@ -1767,7 +1723,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       },
       {
-        "seq": 15,
+        "seq": 13,
         "batch": 12,
         "kind": "begin_end_step",
         "actor": "b47d46be-dff7-4929-8d73-d930e3233db4",
@@ -1784,7 +1740,7 @@
         "last_known_controller": "00000000-0000-0000-0000-000000000000"
       }
     ],
-    "eventSeq": 15,
+    "eventSeq": 13,
     "eventBatch": 12,
     "rng": {
       "kind": "keyed",

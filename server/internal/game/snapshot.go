@@ -506,6 +506,14 @@ type GameSnapshot struct {
 	// for. No schema bump.
 	AttacksDeclared bool `json:"attacksDeclared,omitempty"`
 
+	// CombatHadAttackers is whether anything has attacked this combat
+	// phase (CR 508.8, #2899, Game.combatHadAttackers) - what keeps the
+	// declare blockers and combat damage steps in the turn after every
+	// attacker has left. A file written before it restores as false,
+	// which is right outside combat and, mid-combat, falls back to the
+	// live board (stepExistsLocked reads both). No schema bump.
+	CombatHadAttackers bool `json:"combatHadAttackers,omitempty"`
+
 	// AttackDefenders is each attacker's defending player as its
 	// attack was last pointed (#1364, Game.attackDefenders) — what
 	// lets a creature whose planeswalker or battle has left still be
@@ -649,7 +657,11 @@ type playerSnapshot struct {
 	// attacked last turn" until the player's next turn ends.
 	LastTurnAttacks []AttackRecord `json:"lastTurnAttacks,omitempty"`
 	Eliminated      bool           `json:"eliminated"`
-	HandKept        bool           `json:"handKept"`
+	// Removed is Player.Removed (#3093): an admin removed the seat from
+	// a started game. Additive: a file written before it restores with
+	// false for every seat, which is what none of them were.
+	Removed  bool `json:"removed,omitempty"`
+	HandKept bool `json:"handKept"`
 	// MulliganDecided is Player.MulliganDecided (#2237). Additive: a
 	// file written before it restores with false for every seat, which
 	// reads as a fresh round of decisions.
@@ -784,6 +796,10 @@ type cardSnapshot struct {
 	BattleX           float64             `json:"battleX"`
 	BattleY           float64             `json:"battleY"`
 	Counters          map[string]int      `json:"counters,omitempty"`
+	// Flipped is Card.Flipped (ADR 0151, CR 110.5): the flipped status.
+	// Additive within v8; absent means unflipped, which is true of every
+	// file written before flip cards could flip.
+	Flipped bool `json:"flipped,omitempty"`
 	// CounterStampedAt is Card.CounterStampedAt (ADR 0101): the CR
 	// 613.7c timestamp of each keyword counter kind. Additive within v7;
 	// an older file has none, and an unstamped keyword counter is
@@ -823,19 +839,30 @@ type cardSnapshot struct {
 	// permanents by enteredBattlefieldAt (entry_ordinal.go).
 	EntryOrdinal int64 `json:"entryOrdinal,omitempty"`
 	ObjectEpoch  int   `json:"objectEpoch,omitempty"`
+	// TurnOvers is Card.TurnOvers (ADR 0152 §3): how many times the
+	// permanent has transformed or converted in place. Absent from every
+	// earlier file, which restores it as 0, as it does every stack
+	// item's and delayed trigger's SourceTurnOvers, so they still agree.
+	TurnOvers int `json:"turnOvers,omitempty"`
 	// ControlledSinceUpkeep is Card.ControlledSinceUpkeep (ADR 0108
 	// §5): echo's "came under your control since your last upkeep".
 	// Absent from every earlier file, which restores as 0.
-	ControlledSinceUpkeep    int              `json:"controlledSinceUpkeep,omitempty"`
-	SummonedThisTurn         bool             `json:"summonedThisTurn"`
-	MarkedLethalByDeathtouch bool             `json:"markedLethalByDeathtouch"`
-	LostLastCounter          bool             `json:"lostLastCounter,omitempty"`
-	PrintedPTKnown           bool             `json:"printedPTKnown,omitempty"`
-	AttachedTo               TargetRef        `json:"attachedTo,omitempty"`
-	AttachedAt               int64            `json:"attachedAt,omitempty"`
-	BaseController           uuid.UUID        `json:"baseController,omitempty"`
-	FaceDownListed           *FaceDownListing `json:"faceDownListed,omitempty"`
-	FaceTurnedAt             int64            `json:"faceTurnedAt,omitempty"`
+	ControlledSinceUpkeep    int       `json:"controlledSinceUpkeep,omitempty"`
+	SummonedThisTurn         bool      `json:"summonedThisTurn"`
+	MarkedLethalByDeathtouch bool      `json:"markedLethalByDeathtouch"`
+	LostLastCounter          bool      `json:"lostLastCounter,omitempty"`
+	PrintedPTKnown           bool      `json:"printedPTKnown,omitempty"`
+	AttachedTo               TargetRef `json:"attachedTo,omitempty"`
+	AttachedAt               int64     `json:"attachedAt,omitempty"`
+	// AttachedEpoch is Card.AttachedEpoch (ADR 0154 decision 3): the
+	// CR 400.7 epoch of an off-battlefield host (Animate Dead's graveyard
+	// card) at the attach. Additive within v8 and absent at zero, which is
+	// every battlefield host and every file written before it: no
+	// catalogued Aura could be attached off the battlefield then.
+	AttachedEpoch  int              `json:"attachedEpoch,omitempty"`
+	BaseController uuid.UUID        `json:"baseController,omitempty"`
+	FaceDownListed *FaceDownListing `json:"faceDownListed,omitempty"`
+	FaceTurnedAt   int64            `json:"faceTurnedAt,omitempty"`
 	// NamedTribe is the CR 614.12 "as this enters, choose a creature
 	// type" answer (S26). Carried rather than rebuilt: the choice was
 	// made by a player and nothing in the catalog can re-derive it, so
@@ -951,6 +978,12 @@ type cardSnapshot struct {
 	// would let a renowned creature's renown trigger a second time.
 	// Additive within v7: an older binary ignores the key.
 	Renowned bool `json:"renowned,omitempty"`
+	// DealtCombatDamage is "has dealt combat damage" (#3172), carried
+	// for Renowned's reason: "has not" is a legal zero value, so a
+	// restore that dropped it would hand Ruric Thar its hexproof back
+	// after it had connected. Additive within v8: an older binary
+	// ignores the key.
+	DealtCombatDamage bool `json:"dealtCombatDamage,omitempty"`
 	// Bestowed is CR 702.103b's bestowed status (ADR 0141, #2862): a
 	// spell cast bestowed, or the Aura it became. Carried because "not
 	// bestowed" is a legal zero value: a restore that dropped it would
@@ -958,6 +991,16 @@ type cardSnapshot struct {
 	// and a bestowed spell on the stack into a creature spell. Additive
 	// within v7: an older binary ignores the key.
 	Bestowed bool `json:"bestowed,omitempty"`
+	// EnchantSwapped and EnchantReturned are ADR 0154 decision 4's gained
+	// clause, "enchant creature put onto the battlefield with this Aura",
+	// and the creature it names. Carried for Bestowed's reason: a restore
+	// that dropped them would give a resolved Animate Dead its printed
+	// graveyard clause back, which its returned creature fails, and bury
+	// it. Additive within v8 and absent at zero (a pointer, so a zero ref
+	// is omitted); a file without them restores the printed clause, which
+	// is every Aura before this change.
+	EnchantSwapped  bool       `json:"enchantSwapped,omitempty"`
+	EnchantReturned *ObjectRef `json:"enchantReturned,omitempty"`
 	// Saddled and SaddledBy are the CR 702.171 saddled designation and
 	// the creatures that paid for it this turn (ADR 0071 amendment
 	// 2026-10-08, #2695), carried for Monstrous's reason: a restore
@@ -997,6 +1040,9 @@ type cardSnapshot struct {
 	// which is what every game before ADR 0090 was.
 	Prepared    bool `json:"prepared,omitempty"`
 	PrepareCopy bool `json:"prepareCopy,omitempty"`
+	// CardCopy is a copy of a card made to be cast (CR 707.12, #3258):
+	// the not-a-card marker, carried for PrepareCopy's reason. Additive.
+	CardCopy bool `json:"cardCopy,omitempty"`
 	// No `omitzero` on PreparedBy or HiddenBy below — see Provenance's
 	// comment above (#1492).
 	PreparedBy PermissionCardRef `json:"preparedBy"`
@@ -1233,6 +1279,10 @@ type stackItemSnapshot struct {
 	SourceCardID   uuid.UUID  `json:"sourceCardId"`
 	SourceEpoch    int        `json:"sourceEpoch,omitempty"`
 	SourceObject   *ObjectRef `json:"sourceObject,omitempty"` // #1418; nil = unstamped
+	// SourceTurnOvers is StackItem.SourceTurnOvers (ADR 0152 §3, CR
+	// 701.27f / 701.28e). Absent from earlier files, which restore it
+	// as 0 with every card's TurnOvers.
+	SourceTurnOvers int `json:"sourceTurnOvers,omitempty"`
 	// GrantedBy is StackItem.GrantedBy (ADR 0109 §2): the object that
 	// granted an activated ability. A pointer so it is omitted for every
 	// item that has no grantor — nearly all of them — and a binary that
@@ -1270,9 +1320,13 @@ type stackItemSnapshot struct {
 	SplitSecond   bool         `json:"splitSecond"`
 	IsCopy        bool         `json:"isCopy,omitempty"`
 	Uncopyable    bool         `json:"uncopyable,omitempty"` // #1574
-	Seq           uint64       `json:"seq"`
-	Ordered       bool         `json:"ordered"`
-	Commutes      bool         `json:"commutes,omitempty"` // #1511
+	// ExileWithCounter (#3213) is Goliath Daydreamer's mark. Carried: a
+	// restore that lost it would send the marked spell to the
+	// graveyard as it resolves.
+	ExileWithCounter string `json:"exileWithCounter,omitempty"`
+	Seq              uint64 `json:"seq"`
+	Ordered          bool   `json:"ordered"`
+	Commutes         bool   `json:"commutes,omitempty"` // #1511
 
 	// TargetsAnnouncePending is StackItem.TargetsAnnouncePending
 	// (#1539): a queued trigger whose targets are chosen and whose
@@ -1327,7 +1381,8 @@ type delayedTriggerSnapshot struct {
 	ID                 uuid.UUID  `json:"id"`
 	Controller         uuid.UUID  `json:"controller"`
 	SourceCardID       uuid.UUID  `json:"sourceCardId"`
-	SourceObject       *ObjectRef `json:"sourceObject,omitempty"` // #1418
+	SourceObject       *ObjectRef `json:"sourceObject,omitempty"`    // #1418
+	SourceTurnOvers    int        `json:"sourceTurnOvers,omitempty"` // ADR 0152 §3
 	Label              string     `json:"label,omitempty"`
 	At                 Step       `json:"at"`
 	ControllerTurnOnly bool       `json:"controllerTurnOnly"`
@@ -1375,6 +1430,7 @@ type delayedTriggerSnapshot struct {
 	// drops the keys and fires a repeating trigger once (weaker, never
 	// stronger) and reads a mana record as a no-op.
 	Repeats        bool   `json:"repeats,omitempty"`
+	OncePerBatch   bool   `json:"oncePerBatch,omitempty"`
 	ManaTapSubtype string `json:"manaTapSubtype,omitempty"`
 	ManaAdds       string `json:"manaAdds,omitempty"`
 }
@@ -1455,6 +1511,7 @@ type pendingChoiceSnapshot struct {
 	PickThen          string          `json:"pickThen,omitempty"`
 	PickMeasures      []int           `json:"pickMeasures,omitempty"`
 	CopyOptions       []uuid.UUID     `json:"copyOptions,omitempty"`
+	ExchangesText     bool            `json:"exchangesText,omitempty"`
 	ScryCards         []uuid.UUID     `json:"scryCards,omitempty"`
 	// ADR 0088: which lanes a put_in_library answer may use.
 	LibraryPlacement LibraryPlacement `json:"libraryPlacement,omitempty"`
@@ -1462,9 +1519,12 @@ type pendingChoiceSnapshot struct {
 	LibraryTopCount int         `json:"libraryTopCount,omitempty"`
 	LibraryTopDepth int         `json:"libraryTopDepth,omitempty"`
 	TriggerOrderIDs []uuid.UUID `json:"triggerOrderIds,omitempty"`
+	// #3015: the sentence under "Order your triggers".
+	TriggerOrderWhy string      `json:"triggerOrderWhy,omitempty"`
 	PayCost         string      `json:"payCost,omitempty"`
 	SearchCards     []uuid.UUID `json:"searchCards,omitempty"`
 	SearchMax       int         `json:"searchMax"`
+	SearchMin       int         `json:"searchMin,omitempty"`
 	MayCastCard     uuid.UUID   `json:"mayCastCard,omitempty"`
 	MayCastKeyword  string      `json:"mayCastKeyword,omitempty"`
 	AcceptLabel     string      `json:"acceptLabel,omitempty"`
@@ -1503,6 +1563,10 @@ type pendingChoiceSnapshot struct {
 	// ADR 0146: a ballot's vote so far (CR 701.38). Its continuation
 	// key is checked like pickThen's.
 	CouncilVote *CouncilVote `json:"councilVote,omitempty"`
+	// ADR 0150: a pay_unless link of an any-player offer. Its branches
+	// are closures, so a table waiting on one is not a restore point;
+	// the data rides the undo clone like every other field.
+	AnyPlayerOffer *AnyPlayerOffer `json:"anyPlayerOffer,omitempty"`
 	// #804 CR 732 shortcut: which run the answer's allowance attaches
 	// to, how many resolutions had happened when it was asked, and
 	// whether this is the turn's second ask.
@@ -1806,6 +1870,7 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 	s.BlocksDeclared = copyBoolMap(g.blocksDeclared)
 	s.BlockDeclarationClosed = g.blockDeclarationClosed
 	s.AttacksDeclared = g.attacksDeclared
+	s.CombatHadAttackers = g.combatHadAttackers
 	s.FirstStrikeStepParticipants = copyBoolMap(g.firstStrikeStepParticipants)
 	cen := &s.Continuations
 
@@ -2078,6 +2143,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		Flipped:                  c.Flipped,
 		NextUntapSkips:           snapshotUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
@@ -2101,6 +2167,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
+		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -2108,6 +2175,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		PrintedPTKnown:           c.PrintedPTKnown,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		AttachedEpoch:            c.AttachedEpoch,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -2126,7 +2194,10 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
+		DealtCombatDamage:        c.DealtCombatDamage,
 		Bestowed:                 c.Bestowed,
+		EnchantSwapped:           c.EnchantSwapped,
+		EnchantReturned:          snapshotObjectRefPtr(c.EnchantReturned),
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -2137,6 +2208,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -2187,6 +2259,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		EndStepTurn:           p.EndStepTurn,
 		LastTurnAttacks:       append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:            p.Eliminated,
+		Removed:               p.Removed,
 		HandKept:              p.HandKept,
 		MulliganDecided:       p.MulliganDecided,
 		TriggerOrderAlwaysAsk: p.TriggerOrder == TriggerOrderAlways,
@@ -2240,43 +2313,45 @@ func snapshotStackItem(g *Game, s *StackItem, cen *ContinuationCensus) stackItem
 // no zone at all).
 func snapshotStackItemAs(s *StackItem, oracleID string, cen *ContinuationCensus) stackItemSnapshot {
 	out := stackItemSnapshot{
-		ID:             s.ID,
-		Kind:           s.Kind,
-		Controller:     s.Controller,
-		BaseController: s.BaseController,
-		Owner:          s.Owner,
-		SourceCardID:   s.SourceCardID,
-		SourceEpoch:    s.SourceEpoch,
-		SourceObject:   s.SourceObject.stamped(),
-		GrantedBy:      uuidPtrOrNil(s.GrantedBy),
-		Label:          s.Label,
-		DoubledBy:      s.DoubledBy,
-		DoubledByName:  s.DoubledByName,
-		Targets:        copyTargetRefs(s.Targets),
-		Payload:        copyTargetRefs(s.Payload),
-		Trigger:        cloneTriggerContext(s.Trigger),
-		Modes:          copyInts(s.Modes),
-		XValue:         s.XValue,
-		Distribution:   copyIntMap(s.Distribution),
-		HoldPriority:   s.HoldPriority,
-		CastFromZone:   s.CastFromZone,
-		AltCost:        s.AltCost,
-		Foretold:       s.Foretold,
-		FaceDown:       s.FaceDown,
-		AltCostExiles:  s.AltCostExiles,
-		SplitSecond:    s.SplitSecond,
-		IsCopy:         s.IsCopy,
-		Uncopyable:     s.Uncopyable,
-		Seq:            s.Seq,
-		Ordered:        s.Ordered,
-		Commutes:       s.Commutes,
-		Paid:           clonePaidCost(s.Paid),
-		HasEffect:      s.Effect != nil,
-		HasTargetSpec:  s.targetSpec != nil,
-		HasModeSpec:    s.modeSpec != nil,
-		OracleID:       oracleID,
-		Body:           s.Body,
-		Params:         effectParamsOrNil(s.Params),
+		ID:               s.ID,
+		Kind:             s.Kind,
+		Controller:       s.Controller,
+		BaseController:   s.BaseController,
+		Owner:            s.Owner,
+		SourceCardID:     s.SourceCardID,
+		SourceEpoch:      s.SourceEpoch,
+		SourceObject:     s.SourceObject.stamped(),
+		SourceTurnOvers:  s.SourceTurnOvers,
+		GrantedBy:        uuidPtrOrNil(s.GrantedBy),
+		Label:            s.Label,
+		DoubledBy:        s.DoubledBy,
+		DoubledByName:    s.DoubledByName,
+		Targets:          copyTargetRefs(s.Targets),
+		Payload:          copyTargetRefs(s.Payload),
+		Trigger:          cloneTriggerContext(s.Trigger),
+		Modes:            copyInts(s.Modes),
+		XValue:           s.XValue,
+		Distribution:     copyIntMap(s.Distribution),
+		HoldPriority:     s.HoldPriority,
+		CastFromZone:     s.CastFromZone,
+		AltCost:          s.AltCost,
+		Foretold:         s.Foretold,
+		FaceDown:         s.FaceDown,
+		AltCostExiles:    s.AltCostExiles,
+		SplitSecond:      s.SplitSecond,
+		IsCopy:           s.IsCopy,
+		Uncopyable:       s.Uncopyable,
+		ExileWithCounter: s.ExileWithCounter,
+		Seq:              s.Seq,
+		Ordered:          s.Ordered,
+		Commutes:         s.Commutes,
+		Paid:             clonePaidCost(s.Paid),
+		HasEffect:        s.Effect != nil,
+		HasTargetSpec:    s.targetSpec != nil,
+		HasModeSpec:      s.modeSpec != nil,
+		OracleID:         oracleID,
+		Body:             s.Body,
+		Params:           effectParamsOrNil(s.Params),
 	}
 	out.CantBeCountered = copyCounterShieldMarks(s.CantBeCountered) // ADR 0106 §4 (#1806)
 	out.PromisedCounters = copyPromisedCounters(s.PromisedCounters) // #1852
@@ -2375,6 +2450,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
 		SourceObject:       d.SourceObject.stamped(),
+		SourceTurnOvers:    d.SourceTurnOvers,
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
@@ -2391,6 +2467,7 @@ func snapshotDelayedTrigger(d *DelayedTrigger, cen *ContinuationCensus) delayedT
 		UntilLeaves:        d.UntilLeaves.stamped(),
 		Due:                d.Due,
 		Repeats:            d.Repeats,
+		OncePerBatch:       d.OncePerBatch,
 		ManaTapSubtype:     d.ManaTapSubtype,
 		ManaAdds:           d.ManaAdds,
 	}
@@ -2470,14 +2547,17 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,
 		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
+		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
+		SearchMin:            c.SearchMin,
 		MayCastCard:          c.MayCastCard,
 		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
@@ -2494,6 +2574,7 @@ func snapshotPendingChoice(c *PendingChoice, cen *ContinuationCensus) pendingCho
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -2687,6 +2768,7 @@ func (s *GameSnapshot) restoreGame() *Game {
 	g.blocksDeclared = copyBoolMap(s.BlocksDeclared)
 	g.blockDeclarationClosed = s.BlockDeclarationClosed
 	g.attacksDeclared = s.AttacksDeclared
+	g.combatHadAttackers = s.CombatHadAttackers
 	g.firstStrikeStepParticipants = copyBoolMap(s.FirstStrikeStepParticipants)
 
 	g.Battlefield = restoreZone(s.Battlefield, ZoneBattlefield)
@@ -2950,6 +3032,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Owner:                    c.Owner,
 		Controller:               c.Controller,
 		Tapped:                   c.Tapped,
+		Flipped:                  c.Flipped,
 		NextUntapSkips:           restoreUntapSkips(c.NextUntapSkips),
 		BattleX:                  c.BattleX,
 		BattleY:                  c.BattleY,
@@ -2972,6 +3055,7 @@ func restoreCard(c *cardSnapshot) Card {
 		EnteredBattlefieldAt:     c.EnteredBattlefieldAt,
 		EntryOrdinal:             c.EntryOrdinal,
 		ObjectEpoch:              c.ObjectEpoch,
+		TurnOvers:                c.TurnOvers,
 		ControlledSinceUpkeep:    c.ControlledSinceUpkeep,
 		SummonedThisTurn:         c.SummonedThisTurn,
 		MarkedLethalByDeathtouch: c.MarkedLethalByDeathtouch,
@@ -2979,6 +3063,7 @@ func restoreCard(c *cardSnapshot) Card {
 		PrintedPTKnown:           c.PrintedPTKnown,
 		AttachedTo:               c.AttachedTo,
 		AttachedAt:               c.AttachedAt,
+		AttachedEpoch:            c.AttachedEpoch,
 		BaseController:           c.BaseController,
 		NamedTribe:               c.NamedTribe,
 		Provenance:               c.Provenance.Clone(),
@@ -2997,7 +3082,10 @@ func restoreCard(c *cardSnapshot) Card {
 		Harnessed:                c.Harnessed,
 		Monstrous:                c.Monstrous,
 		Renowned:                 c.Renowned,
+		DealtCombatDamage:        c.DealtCombatDamage,
 		Bestowed:                 c.Bestowed,
+		EnchantSwapped:           c.EnchantSwapped,
+		EnchantReturned:          restoreObjectRefPtr(c.EnchantReturned),
 		Saddled:                  c.Saddled,
 		SaddledBy:                append([]ObjectRef(nil), c.SaddledBy...),
 		Suspected:                c.Suspected,
@@ -3008,6 +3096,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Fused:                    c.Fused,
 		Prepared:                 c.Prepared,
 		PrepareCopy:              c.PrepareCopy,
+		CardCopy:                 c.CardCopy,
 		PreparedBy:               c.PreparedBy,
 		HiddenBy:                 c.HiddenBy,
 		ExiledWith:               c.ExiledWith,
@@ -3090,6 +3179,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		EndStepTurn:        p.EndStepTurn,
 		LastTurnAttacks:    append([]AttackRecord(nil), p.LastTurnAttacks...),
 		Eliminated:         p.Eliminated,
+		Removed:            p.Removed,
 		HandKept:           p.HandKept,
 		MulliganDecided:    p.MulliganDecided,
 		TriggerOrder:       restoredTriggerOrder(p.TriggerOrder, p.TriggerOrderAlwaysAsk),
@@ -3159,39 +3249,41 @@ func restorePlayer(p *playerSnapshot) *Player {
 // caller flags its source.
 func restoreStackItem(s *stackItemSnapshot) (*StackItem, bool) {
 	out := &StackItem{
-		ID:             s.ID,
-		Kind:           s.Kind,
-		Controller:     s.Controller,
-		BaseController: s.BaseController,
-		Owner:          s.Owner,
-		SourceCardID:   s.SourceCardID,
-		SourceEpoch:    s.SourceEpoch,
-		SourceObject:   s.SourceObject.value(),
-		GrantedBy:      uuidOrNil(s.GrantedBy),
-		Label:          s.Label,
-		DoubledBy:      s.DoubledBy,
-		DoubledByName:  s.DoubledByName,
-		Targets:        copyTargetRefs(s.Targets),
-		Payload:        copyTargetRefs(s.Payload),
-		Trigger:        cloneTriggerContext(s.Trigger),
-		Modes:          copyInts(s.Modes),
-		XValue:         s.XValue,
-		Distribution:   copyIntMap(s.Distribution),
-		HoldPriority:   s.HoldPriority,
-		CastFromZone:   s.CastFromZone,
-		AltCost:        s.AltCost,
-		Foretold:       s.Foretold,
-		FaceDown:       s.FaceDown,
-		AltCostExiles:  s.AltCostExiles,
-		SplitSecond:    s.SplitSecond,
-		IsCopy:         s.IsCopy,
-		Uncopyable:     s.Uncopyable,
-		Seq:            s.Seq,
-		Ordered:        s.Ordered,
-		Commutes:       s.Commutes,
-		Paid:           clonePaidCost(s.Paid),
-		Body:           s.Body,
-		Params:         effectParamsValue(s.Params),
+		ID:               s.ID,
+		Kind:             s.Kind,
+		Controller:       s.Controller,
+		BaseController:   s.BaseController,
+		Owner:            s.Owner,
+		SourceCardID:     s.SourceCardID,
+		SourceEpoch:      s.SourceEpoch,
+		SourceObject:     s.SourceObject.value(),
+		SourceTurnOvers:  s.SourceTurnOvers,
+		GrantedBy:        uuidOrNil(s.GrantedBy),
+		Label:            s.Label,
+		DoubledBy:        s.DoubledBy,
+		DoubledByName:    s.DoubledByName,
+		Targets:          copyTargetRefs(s.Targets),
+		Payload:          copyTargetRefs(s.Payload),
+		Trigger:          cloneTriggerContext(s.Trigger),
+		Modes:            copyInts(s.Modes),
+		XValue:           s.XValue,
+		Distribution:     copyIntMap(s.Distribution),
+		HoldPriority:     s.HoldPriority,
+		CastFromZone:     s.CastFromZone,
+		AltCost:          s.AltCost,
+		Foretold:         s.Foretold,
+		FaceDown:         s.FaceDown,
+		AltCostExiles:    s.AltCostExiles,
+		SplitSecond:      s.SplitSecond,
+		IsCopy:           s.IsCopy,
+		Uncopyable:       s.Uncopyable,
+		ExileWithCounter: s.ExileWithCounter,
+		Seq:              s.Seq,
+		Ordered:          s.Ordered,
+		Commutes:         s.Commutes,
+		Paid:             clonePaidCost(s.Paid),
+		Body:             s.Body,
+		Params:           effectParamsValue(s.Params),
 		// Effect stays nil unless the item is keyed. A SPELL does not
 		// need one — resolution dispatches through EffectResolver by
 		// oracle ID — but an ability does, which is why a stack item
@@ -3237,6 +3329,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		Controller:         d.Controller,
 		SourceCardID:       d.SourceCardID,
 		SourceObject:       d.SourceObject.value(),
+		SourceTurnOvers:    d.SourceTurnOvers,
 		Label:              d.Label,
 		At:                 d.At,
 		ControllerTurnOnly: d.ControllerTurnOnly,
@@ -3254,6 +3347,7 @@ func restoreDelayedTrigger(d *delayedTriggerSnapshot) *DelayedTrigger {
 		UntilLeaves:      d.UntilLeaves.value(),
 		Due:              d.Due,
 		Repeats:          d.Repeats,
+		OncePerBatch:     d.OncePerBatch,
 		ManaTapSubtype:   d.ManaTapSubtype,
 		ManaAdds:         d.ManaAdds,
 	}
@@ -3324,14 +3418,17 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickThen:             c.PickThen,
 		PickMeasures:         copyInts(c.PickMeasures),
 		CopyOptions:          copyUUIDs(c.CopyOptions),
+		ExchangesText:        c.ExchangesText,
 		ScryCards:            copyUUIDs(c.ScryCards),
 		LibraryPlacement:     c.LibraryPlacement,
 		LibraryTopCount:      c.LibraryTopCount,
 		LibraryTopDepth:      c.LibraryTopDepth,
 		TriggerOrderIDs:      copyUUIDs(c.TriggerOrderIDs),
+		TriggerOrderWhy:      c.TriggerOrderWhy,
 		PayCost:              c.PayCost,
 		SearchCards:          copyUUIDs(c.SearchCards),
 		SearchMax:            c.SearchMax,
+		SearchMin:            c.SearchMin,
 		MayCastCard:          c.MayCastCard,
 		MayCastKeyword:       c.MayCastKeyword,
 		AcceptLabel:          c.AcceptLabel,
@@ -3348,6 +3445,7 @@ func restorePendingChoice(c *pendingChoiceSnapshot) *PendingChoice {
 		PickOptions:          cloneChoiceOptions(c.PickOptions),
 		OptionCarry:          copyUUIDs(c.OptionCarry),
 		CouncilVote:          cloneCouncilVote(c.CouncilVote),
+		AnyPlayerOffer:       cloneAnyPlayerOffer(c.AnyPlayerOffer),
 		LoopShortcutKey:      c.LoopShortcutKey,
 		LoopShortcutCount:    c.LoopShortcutCount,
 		LoopShortcutRepeat:   c.LoopShortcutRepeat,
@@ -3436,6 +3534,9 @@ func copyCharacteristic(in *Characteristic) *Characteristic {
 	out.Abilities = copyStrings(in.Abilities)
 	if len(in.GrantedAbilities) > 0 {
 		out.GrantedAbilities = append([]GrantedAbility(nil), in.GrantedAbilities...)
+	}
+	if len(in.BorrowedAbilities) > 0 {
+		out.BorrowedAbilities = append([]BorrowedAbility(nil), in.BorrowedAbilities...)
 	}
 	return &out
 }
@@ -3555,4 +3656,22 @@ func copyPrintedValues(in *PrintedValues) *PrintedValues {
 	}
 	out := in.Clone()
 	return &out
+}
+
+// snapshotObjectRefPtr carries a Card ObjectRef field that is omitted
+// at its zero value (Card.EnchantReturned): nil for the zero ref.
+func snapshotObjectRefPtr(r ObjectRef) *ObjectRef {
+	if r == (ObjectRef{}) {
+		return nil
+	}
+	return &r
+}
+
+// restoreObjectRefPtr is snapshotObjectRefPtr's inverse: the zero ref
+// for an absent key.
+func restoreObjectRefPtr(r *ObjectRef) ObjectRef {
+	if r == nil {
+		return ObjectRef{}
+	}
+	return *r
 }

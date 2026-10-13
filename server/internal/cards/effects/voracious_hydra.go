@@ -17,50 +17,43 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // #1002), so they are on the permanent before EventETB and the ETB
 // trigger below doubles a Hydra that already has them.
 //
-// The modal ETB has no mode prompt of its own — a triggered ability
-// cannot carry a "choose one" — so the choice is made through the
-// trigger's target prompt instead: the trigger targets "up to one
-// creature you don't control", and picking a creature is the fight
-// mode while picking none is the doubling mode
-// (b25DoubleCountersOrFightChosen). It is declared TWICE for the
-// reason Hazel's Brewmaster gives: the engine drops a targeted
-// trigger whose legal set is empty, which would drop the doubling
-// with it, so the targeted entry fires only while an opponent
-// controls a creature and the untargeted doubling-only entry fires
-// only when none does. Exactly one applies to any entry, and exactly
-// one mode ever happens. A fight target that became illegal in
-// response counters the trigger (CR 608.2b) — no fight AND no
-// doubling, which is what the printed card does when its chosen
-// mode's target is gone. The fight is b10Fight (both amounts read
-// before either lands); the doubling goes through AddCounter, so a
-// counter doubler applies to it, as printed.
-//
-// One declared simplification, weaker than printed: the mode is
-// chosen through the target prompt rather than a mode picker — choose
-// a creature to fight it, choose none to double the counters.
+// The modal ETB is a real "choose one" (TriggeredAbility.Modes, CR
+// 603.3c): the controller picks the mode as the trigger goes on the
+// stack, and the fight bullet's target is picked then too, so an
+// opponent can respond to the choice. The fight bullet is not offered
+// when no opponent controls a creature, which leaves the doubling as
+// the only mode; the fight is b10Fight (both amounts read before
+// either lands) and the doubling goes through AddCounter, so a
+// counter doubler applies to it, as printed. A fight target that
+// became illegal in response leaves the fight bullet doing nothing
+// (CR 608.2b), and nothing doubles.
 func init() {
 	Register(Spec{
-		OracleID:     "ff8f5a4b-112a-425e-b489-7ee26d1d9fb3",
-		Name:         "Voracious Hydra",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The mode is chosen through the target prompt: pick a creature you don't control to fight it, or pick no target to double the Hydra's +1/+1 counters instead.",
-		},
+		OracleID:                   "ff8f5a4b-112a-425e-b489-7ee26d1d9fb3",
+		Name:                       "Voracious Hydra",
+		Completeness:               CompletenessFull,
 		PrintedKeywords:            []string{"trample"},
 		EntersWithCountersFromCast: []game.EntryCountersFromCast{XCounters(game.CounterPlusOne)},
-		Triggered: []game.TriggeredAbility{
-			{
-				Watches: []game.EventKind{game.EventETB},
-				Key:     b25VoraciousHydraLabel,
-				AppliesTo: func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-					return b06SelfETB(ev, source, lki, g) && b25OpponentControlsACreature(g, source.Controller)
-				},
-				Targets: TargetCreature("up to one target creature you don't control to fight (none: double the counters)", OpponentControls()).WithCount(0, 1),
-				Effect:  b25DoubleCountersOrFightChosen,
-			},
-			On(game.EventETB, func(ev game.Event, source *game.Card, lki game.Characteristic, g *game.Game) bool {
-				return b06SelfETB(ev, source, lki, g) && !b25OpponentControlsACreature(g, source.Controller)
-			}, b25VoraciousHydraLabel, b25DoubleCountersOrFightChosen),
-		},
+		Triggered: []game.TriggeredAbility{{
+			Watches:   []game.EventKind{game.EventETB},
+			AppliesTo: b06SelfETB,
+			Key:       b25VoraciousHydraLabel,
+			Effect:    func(*game.Game, *game.StackItem) error { return nil },
+			Modes: ChooseOne(
+				ModeDoing("Double the number of +1/+1 counters on this creature.", nil,
+					func(item *game.StackItem, ctx *Context, _ int) error {
+						return b23DoublePlusOneCountersOn(ctx, item.SourceCardID)
+					}),
+				ModeDoing("This creature fights target creature you don't control.",
+					TargetCreature("target creature you don't control", OpponentControls()),
+					func(item *game.StackItem, ctx *Context, occ int) error {
+						t, ok := ModeTarget(ctx, occ)
+						if !ok {
+							return nil
+						}
+						return b10Fight(ctx, item.SourceCardID, t.ID)
+					}),
+			),
+		}},
 	})
 }

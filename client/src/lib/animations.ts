@@ -1,4 +1,5 @@
-// S09 polish-pass animation helpers, all backed by GSAP.
+// S09 polish-pass animation helpers, backed by the Web Animations API
+// (motion.ts; GSAP was dropped in #3076).
 //
 // The Card.svelte component composes its `transform` from CSS custom
 // properties so multiple effects can stack without fighting each
@@ -6,14 +7,21 @@
 //
 //   transform: rotate(var(--tap-rot, 0deg)) translateY(50%) scale(var(--hover-scale, 1)) translateY(-50%)
 //
-// CSS owns the static state (hover lift, base rotation). GSAP drives
-// the animated transitions by tweening the relevant custom property,
-// so a CSS hover and an in-flight tap animation compose cleanly. This
-// also means a reduced-motion fallback can short-circuit the GSAP
-// call and just snap the var to its target value.
+// CSS owns the static state (hover lift, base rotation). The animated
+// transitions tween the relevant custom property (registered with
+// @property in app.css so it interpolates), so a CSS hover and an
+// in-flight tap animation compose cleanly. This also means a
+// reduced-motion fallback can short-circuit the animation and just
+// snap the var to its target value.
+//
+// Motion that is not a custom property uses the individual CSS
+// transform properties (`translate`, `rotate`, `scale`), which apply
+// before the element's own `transform`, so a card or popup that keeps
+// a CSS transform of its own (translateX(-50%) on the damage popup)
+// is moved on top of it, never over it.
 
-import { gsap } from "gsap";
 import { backOut, cubicIn, cubicOut } from "svelte/easing";
+import { EASE, backOut as backOutCss, cancelAnimations, canAnimate, run } from "./motion";
 import type { TransitionConfig } from "svelte/transition";
 import type { Action } from "svelte/action";
 
@@ -74,22 +82,53 @@ function gatedDuration(baseMs: number, perEffect: boolean): number {
 const TAP_DURATION = 0.18;
 
 // animateTap rotates the given element to 90° (tapped) or 0° (untapped)
-// by tweening the --tap-rot CSS var. Idempotent — calling it with the
-// already-current state just no-ops the in-flight tween. Returns the
-// gsap tween so callers can chain or kill if needed; most callers can
-// ignore the return value.
-export function animateTap(el: HTMLElement, tapped: boolean): gsap.core.Tween {
+// by animating the --tap-rot CSS var from where it stands now. A tap
+// that arrives mid-rotation replaces the one in flight and starts from
+// the angle it had reached. Returns the animation, or null when it
+// snapped (motion off, already there, or no Web Animations); most
+// callers can ignore the return value.
+const tapping = new WeakMap<HTMLElement, Animation>();
+export function animateTap(el: HTMLElement, tapped: boolean): Animation | null {
   // Per-effect gate distinguishes tap (cardTap) from untap
   // (cardUntap) so a user who likes the tap motion but finds untap-
   // all visually noisy at end-of-turn can disable just that side.
   const allowed = tapped ? cfg.cardTap : cfg.cardUntap;
   const dur = cfg.enabled && allowed ? TAP_DURATION * cfg.speed : 0;
-  return gsap.to(el, {
-    "--tap-rot": tapped ? "90deg" : "0deg",
-    duration: dur,
-    ease: "power2.out",
-    overwrite: "auto",
+  const target = tapped ? "90deg" : "0deg";
+  // Read where the rotation stands before the old animation is dropped.
+  const from = canAnimate(el) ? getComputedStyle(el).getPropertyValue("--tap-rot").trim() : "";
+  tapping.get(el)?.cancel();
+  tapping.delete(el);
+  el.style.setProperty("--tap-rot", target);
+  if (dur <= 0 || from === "" || from === target) return null;
+  const a = el.animate([{ "--tap-rot": from }, { "--tap-rot": target }], {
+    duration: dur * 1000,
+    easing: EASE.power2Out,
   });
+  tapping.set(el, a);
+  const clear = () => {
+    if (tapping.get(el) === a) tapping.delete(el);
+  };
+  a.onfinish = clear;
+  a.oncancel = clear;
+  return a;
+}
+
+// pose paints one frame of a Svelte transition's tick. Svelte owns the
+// timing; this only writes the values, on the individual transform
+// properties so the element's own `transform` is left alone. At rest
+// (t = 1) it clears them, so a settled element carries no inline style
+// from the transition.
+function pose(node: HTMLElement, t: number, y: number, scale: number): void {
+  if (t >= 1) {
+    node.style.removeProperty("translate");
+    node.style.removeProperty("scale");
+    node.style.removeProperty("opacity");
+    return;
+  }
+  node.style.translate = `0px ${y}px`;
+  node.style.scale = String(scale);
+  node.style.opacity = String(t);
 }
 
 // dealIn is the Svelte transition applied to a card slot the first
@@ -102,8 +141,8 @@ export function animateTap(el: HTMLElement, tapped: boolean): gsap.core.Tween {
 //
 // Implementation note: Svelte transitions with a `tick` callback
 // receive t in [0, 1] (0 at the start of an in-transition, 1 at the
-// end). gsap.set is fire-and-forget here — Svelte owns the timing,
-// gsap just paints the per-frame values.
+// end). pose() is fire-and-forget here — Svelte owns the timing,
+// pose just paints the per-frame values.
 const DEAL_IN_DURATION = 360;
 const DEAL_OUT_DURATION = 220;
 export function dealIn(node: HTMLElement): TransitionConfig {
@@ -112,11 +151,7 @@ export function dealIn(node: HTMLElement): TransitionConfig {
     easing: backOut,
     tick: (t: number) => {
       const u = 1 - t;
-      gsap.set(node, {
-        y: u * 48,
-        scale: 1 - u * 0.18,
-        opacity: t,
-      });
+      pose(node, t, u * 48, 1 - u * 0.18);
     },
   };
 }
@@ -139,11 +174,7 @@ export function dealOut(node: HTMLElement): TransitionConfig {
     easing: cubicIn,
     tick: (t: number) => {
       const u = 1 - t;
-      gsap.set(node, {
-        y: -u * 32,
-        scale: 1 - u * 0.12,
-        opacity: t,
-      });
+      pose(node, t, -u * 32, 1 - u * 0.12);
     },
   };
 }
@@ -152,7 +183,7 @@ export function dealOut(node: HTMLElement): TransitionConfig {
 // battlefield card. The action fires when the keyed each-block mounts
 // a new DOM node — i.e. exactly when a fresh permanent enters the
 // battlefield (or, on initial snapshot, when the existing board first
-// renders). gsap drives a one-shot scale punch with backOut overshoot
+// renders). A Web Animation drives a one-shot scale punch with backOut overshoot
 // so the card "pops" into existence rather than appearing flat.
 //
 // Action (vs. transition) chosen because there's no symmetric
@@ -162,25 +193,22 @@ export function dealOut(node: HTMLElement): TransitionConfig {
 // in `out:` if/when desired.
 const ETB_DURATION = 0.32;
 export const etbPulse: Action<HTMLElement> = (node) => {
-  if (!cfg.enabled || !cfg.particlesEtb) {
-    // Skip the punch — but still snap to the final state so the
-    // permanent doesn't render at scale 0.55 / opacity 0.
-    gsap.set(node, { scale: 1, opacity: 1 });
-    return;
+  // Replace a punch still running, so a snapshot-driven re-mount
+  // mid-animation cleanly restarts it instead of layering on top.
+  cancelAnimations(node);
+  // Skipping the punch leaves the permanent at its own style (scale 1,
+  // opacity 1): the animation is the only thing that ever moves it off.
+  if (cfg.enabled && cfg.particlesEtb) {
+    run(
+      node,
+      [
+        { scale: 0.55, opacity: 0 },
+        { scale: 1, opacity: 1 },
+      ],
+      { duration: ETB_DURATION * cfg.speed * 1000, easing: backOutCss(2.2) },
+    );
   }
-  gsap.fromTo(
-    node,
-    { scale: 0.55, opacity: 0 },
-    {
-      scale: 1,
-      opacity: 1,
-      duration: ETB_DURATION * cfg.speed,
-      ease: "back.out(2.2)",
-      // overwrite so a snapshot-driven re-mount mid-animation cleanly
-      // restarts the punch instead of layering on top.
-      overwrite: "auto",
-    },
-  );
+  return { destroy: () => cancelAnimations(node) };
 };
 
 // floatUp / fadeOut drive the damage / heal popup over a player's
@@ -197,11 +225,7 @@ export function floatUp(node: HTMLElement): TransitionConfig {
     easing: backOut,
     tick: (t: number) => {
       const u = 1 - t;
-      gsap.set(node, {
-        y: u * 14,
-        scale: 0.7 + t * 0.3,
-        opacity: t,
-      });
+      pose(node, t, u * 14, 0.7 + t * 0.3);
     },
   };
 }
@@ -211,10 +235,7 @@ export function fadeOut(node: HTMLElement): TransitionConfig {
     easing: cubicOut,
     tick: (t: number) => {
       const u = 1 - t;
-      gsap.set(node, {
-        y: -u * 22,
-        opacity: t,
-      });
+      pose(node, t, -u * 22, 1);
     },
   };
 }
@@ -226,27 +247,25 @@ export function fadeOut(node: HTMLElement): TransitionConfig {
 // travels there and fades as it lands. Gated by cardPlay under the
 // master switch and scaled by speed, like every other card motion;
 // with motion off it settles at once. Resolves when the flight is over.
-const FLIGHT_EASE = "power2.inOut";
 export function flyTo(
   el: HTMLElement,
   to: { x: number; y: number; scale: number },
   baseMs: number,
 ): Promise<void> {
   const ms = gatedDuration(baseMs, cfg.cardPlay);
-  return new Promise((resolve) => {
-    gsap.to(el, {
-      x: to.x,
-      y: to.y,
-      scale: to.scale,
-      opacity: 0.35,
-      transformOrigin: "0 0",
-      duration: ms / 1000,
-      ease: FLIGHT_EASE,
-      overwrite: "auto",
-      onComplete: () => resolve(),
-      onInterrupt: () => resolve(),
-    });
-  });
+  // Replace a flight already under way; the old one's promise settles.
+  cancelAnimations(el);
+  el.style.transformOrigin = "0 0";
+  // One keyframe: the flight starts from wherever the copy is.
+  const kf = { translate: `${to.x}px ${to.y}px`, scale: String(to.scale), opacity: 0.35 };
+  if (!canAnimate(el)) {
+    Object.assign(el.style, { translate: kf.translate, scale: kf.scale, opacity: "0.35" });
+    return Promise.resolve();
+  }
+  // forwards: the copy stays where it landed until its owner removes it.
+  return run(el, [kf], { duration: ms, easing: EASE.power2InOut, fill: "forwards" }).done.then(
+    () => undefined,
+  );
 }
 
 // ---- Combat strikes (ADR 0134 §2) ----
@@ -309,29 +328,37 @@ export function lunge(
     return Promise.resolve();
   }
   const s = strikeSpeed();
-  return new Promise((resolve) => {
-    const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
-    tl.to(el, { x: to.x, y: to.y, duration: (STRIKE_OUT_MS * s) / 1000, ease: "power2.in" });
-    if (opts.flash) {
-      if (opts.lethal) opts.flash.style.setProperty("--impact-wash", IMPACT_LETHAL_WASH);
-      tl.fromTo(
-        opts.flash,
-        { "--impact-glow": IMPACT_GLOW },
-        {
-          "--impact-glow": 0,
-          duration: ((opts.lethal ? IMPACT_LETHAL_SHAKE_MS : IMPACT_SHAKE_MS) * s) / 1000,
-          ease: "power1.out",
-        },
-        // At contact: the end of the out phase.
-        (STRIKE_OUT_MS * s) / 1000,
-      );
-    }
-    tl.to(
-      el,
-      { x: 0, y: 0, duration: (STRIKE_BACK_MS * s) / 1000, ease: "power3.out" },
-      ((STRIKE_OUT_MS + STRIKE_HOLD_MS) * s) / 1000,
+  const at = `${to.x}px ${to.y}px`;
+  const home = "0px 0px";
+  // One animation, four keyframes: out (power2.in), the contact hold,
+  // back (power3.out). A keyframe's easing shapes the stretch after it.
+  const flight = run(
+    el,
+    [
+      { translate: home, offset: 0, easing: EASE.power2In },
+      { translate: at, offset: STRIKE_OUT_MS / STRIKE_MS, easing: EASE.linear },
+      {
+        translate: at,
+        offset: (STRIKE_OUT_MS + STRIKE_HOLD_MS) / STRIKE_MS,
+        easing: EASE.power3Out,
+      },
+      { translate: home, offset: 1 },
+    ],
+    { duration: STRIKE_MS * s },
+  );
+  const parts = [flight.done];
+  if (opts.flash) {
+    if (opts.lethal) opts.flash.style.setProperty("--impact-wash", IMPACT_LETHAL_WASH);
+    // At contact (the end of the out phase) the flash starts and settles.
+    parts.push(
+      run(opts.flash, [{ "--impact-glow": IMPACT_GLOW }, { "--impact-glow": 0 }], {
+        delay: STRIKE_OUT_MS * s,
+        duration: (opts.lethal ? IMPACT_LETHAL_SHAKE_MS : IMPACT_SHAKE_MS) * s,
+        easing: EASE.power1Out,
+      }).done,
     );
-  });
+  }
+  return Promise.all(parts).then(() => undefined);
 }
 
 // impactShake is the hit landing on a tile or an avatar disc: --impact-x
@@ -345,33 +372,32 @@ export function lunge(
 export function impactShake(el: HTMLElement, opts: { lethal?: boolean } = {}): Promise<void> {
   if (!strikeAllowed()) return Promise.resolve();
   const lethal = opts.lethal === true;
-  const t = ((lethal ? IMPACT_LETHAL_SHAKE_MS : IMPACT_SHAKE_MS) * strikeSpeed()) / 1000;
+  const t = (lethal ? IMPACT_LETHAL_SHAKE_MS : IMPACT_SHAKE_MS) * strikeSpeed();
   const px = lethal ? IMPACT_LETHAL_SHAKE_PX : IMPACT_SHAKE_PX;
   if (lethal) el.style.setProperty("--impact-wash", IMPACT_LETHAL_WASH);
-  return new Promise((resolve) => {
-    // Cleared, not zeroed: an unset --impact-x is what leaves the avatar
-    // disc's `translate` at none (PlayerIdentity.svelte).
-    const done = () => {
-      el.style.removeProperty("--impact-x");
-      el.style.removeProperty("--impact-glow");
-      el.style.removeProperty("--impact-wash");
-      resolve();
-    };
-    const tl = gsap.timeline({ onComplete: done, onInterrupt: done });
-    tl.fromTo(
-      el,
-      { "--impact-x": "0px" },
-      { "--impact-x": `${px}px`, duration: t / 6, ease: "sine.inOut" },
-    );
-    tl.to(el, { "--impact-x": `${-px}px`, duration: t / 3, ease: "sine.inOut" });
-    tl.to(el, { "--impact-x": `${px}px`, duration: t / 3, ease: "sine.inOut" });
-    tl.to(el, { "--impact-x": "0px", duration: t / 6, ease: "sine.inOut" });
-    tl.fromTo(
-      el,
-      { "--impact-glow": IMPACT_GLOW },
-      { "--impact-glow": 0, duration: t, ease: "power1.out" },
-      0,
-    );
+  // --impact-x is pointed at the registered, animated --impact-shake
+  // for the length of the shake and cleared after: an unset --impact-x
+  // is what leaves the avatar disc's `translate` at none
+  // (PlayerIdentity.svelte), so it must not be registered or left set.
+  el.style.setProperty("--impact-x", "var(--impact-shake)");
+  const shake = run(
+    el,
+    [
+      { "--impact-shake": "0px", offset: 0, easing: EASE.sineInOut },
+      { "--impact-shake": `${px}px`, offset: 1 / 6, easing: EASE.sineInOut },
+      { "--impact-shake": `${-px}px`, offset: 1 / 2, easing: EASE.sineInOut },
+      { "--impact-shake": `${px}px`, offset: 5 / 6, easing: EASE.sineInOut },
+      { "--impact-shake": "0px", offset: 1 },
+    ],
+    { duration: t },
+  );
+  const glow = run(el, [{ "--impact-glow": IMPACT_GLOW }, { "--impact-glow": 0 }], {
+    duration: t,
+    easing: EASE.power1Out,
+  });
+  return Promise.all([shake.done, glow.done]).then(() => {
+    el.style.removeProperty("--impact-x");
+    el.style.removeProperty("--impact-wash");
   });
 }
 
@@ -395,7 +421,7 @@ export interface CrumbleShardMotion {
 // gone.
 export function crumble(face: HTMLElement, shards: readonly CrumbleShardMotion[]): Promise<void> {
   if (!strikeAllowed()) return Promise.resolve();
-  const total = (STRIKE_CRUMBLE_MS * strikeSpeed()) / 1000;
+  const total = STRIKE_CRUMBLE_MS * strikeSpeed();
   const src = face.querySelector("img")?.getAttribute("src") ?? null;
   const made: HTMLElement[] = [];
   for (const sh of shards) {
@@ -414,25 +440,27 @@ export function crumble(face: HTMLElement, shards: readonly CrumbleShardMotion[]
     made.push(el);
   }
   face.classList.add("crumbling");
-  return new Promise((resolve) => {
-    const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
-    made.forEach((el, i) => {
+  // Each shard lets go at its own moment and all land together at the
+  // end of the crumble. forwards: a fallen shard stays gone.
+  return Promise.all(
+    made.map((el, i) => {
       const sh = shards[i];
       const at = sh.delay * total;
-      tl.to(
+      return run(
         el,
+        [
+          { translate: "0px 0px", rotate: "0deg", opacity: 1 },
+          { translate: `${sh.dx}px ${sh.dy}px`, rotate: `${sh.rot}deg`, opacity: 0 },
+        ],
         {
-          x: sh.dx,
-          y: sh.dy,
-          rotation: sh.rot,
-          opacity: 0,
-          duration: Math.max(0.001, total - at),
-          ease: "power2.in",
+          delay: at,
+          duration: Math.max(1, total - at),
+          easing: EASE.power2In,
+          fill: "forwards",
         },
-        at,
-      );
-    });
-  });
+      ).done;
+    }),
+  ).then(() => undefined);
 }
 
 // streak draws trample's streak: `el` is a bar laid along the segment,
@@ -441,13 +469,16 @@ export function crumble(face: HTMLElement, shards: readonly CrumbleShardMotion[]
 export function streak(el: HTMLElement): Promise<void> {
   if (!strikeAllowed()) return Promise.resolve();
   const s = strikeSpeed();
-  return new Promise((resolve) => {
-    const tl = gsap.timeline({ onComplete: () => resolve(), onInterrupt: () => resolve() });
-    tl.fromTo(
-      el,
-      { scaleX: 0, opacity: 1 },
-      { scaleX: 1, duration: (STREAK_DRAW_MS * s) / 1000, ease: "power1.out" },
-    );
-    tl.to(el, { opacity: 0, duration: (STREAK_FADE_MS * s) / 1000, ease: "power1.in" });
-  });
+  // Draw (scale 0 → 1 along x, power1.out) then fade (power1.in), as
+  // one animation: a keyframe's easing shapes the stretch after it.
+  const draw = STREAK_DRAW_MS / (STREAK_DRAW_MS + STREAK_FADE_MS);
+  return run(
+    el,
+    [
+      { scale: "0 1", opacity: 1, offset: 0, easing: EASE.power1Out },
+      { scale: "1 1", opacity: 1, offset: draw, easing: EASE.power1In },
+      { scale: "1 1", opacity: 0, offset: 1 },
+    ],
+    { duration: (STREAK_DRAW_MS + STREAK_FADE_MS) * s, fill: "forwards" },
+  ).done.then(() => undefined);
 }

@@ -120,54 +120,6 @@ func b32ArtifactOrEnchantmentOfPlayerHitByYourTrygonPredator(g *game.Game, caste
 	return b32PlayersDealtCombatDamageThisTurnByYourCreatureNamed(g, caster, "Trygon Predator")[c.Controller]
 }
 
-// b32CardsInExileLastExiledDuring is the set of cards currently in
-// exile whose most recent arrival there happened while an ability
-// labelled `label` controlled by `controller` was resolving — the
-// cards Neyali, Suns' Vanguard has exiled, however many turns ago.
-//
-// Walked off the event log newest-first: the first exile-entry seen
-// for a card is its latest, and it counts only when the nearest
-// earlier resolution is the labelled ability's (nothing else
-// resolves between an ability's EventResolve and the moves its
-// body makes). A card Neyali exiled that was later played and then
-// exiled again by something else has that something else's
-// resolution nearest its latest arrival, so it is not claimed —
-// which is what keeps a stale grant off a card that is no longer
-// Neyali's.
-func b32CardsInExileLastExiledDuring(g *game.Game, controller uuid.UUID, label string) []uuid.UUID {
-	seen := map[uuid.UUID]bool{}
-	var out []uuid.UUID
-	for i := len(g.Events) - 1; i >= 0; i-- {
-		ev := g.Events[i]
-		if ev.Kind != game.EventZoneMove || ev.NewZone != game.ZoneExile || ev.CardID == uuid.Nil || seen[ev.CardID] {
-			continue
-		}
-		seen[ev.CardID] = true
-		if !b32NearestResolutionIs(g, i, controller, label) {
-			continue
-		}
-		if z := g.FindCardZoneForEffect(ev.CardID); z == nil || z.Kind != game.ZoneExile {
-			continue
-		}
-		out = append(out, ev.CardID)
-	}
-	return out
-}
-
-// b32NearestResolutionIs reports whether the nearest EventResolve
-// before index `at` in the log is the resolution of an ability
-// labelled `label` controlled by `controller`.
-func b32NearestResolutionIs(g *game.Game, at int, controller uuid.UUID, label string) bool {
-	for j := at - 1; j >= 0; j-- {
-		prev := g.Events[j]
-		if prev.Kind != game.EventResolve {
-			continue
-		}
-		return prev.Actor == controller && prev.Label == label
-	}
-	return false
-}
-
 // --- trigger conditions ------------------------------------------
 
 // b32CreatureYouControlBecameTapped is Quest for Renewal's
@@ -292,71 +244,6 @@ func b32CounterTargetThenControllerMills(ctx *Context, n int) error {
 // trigger.
 const b32ErtaiLabel = "Ertai Resurrected — counter a spell, or destroy a creature or planeswalker; its controller draws"
 
-// b32CounterOrDestroyChosenThenControllerDraws is Ertai
-// Resurrected's body. The mode is whatever was chosen: a spell on
-// the stack is countered and its controller draws; a permanent on
-// the battlefield is destroyed and its controller draws. Nothing
-// chosen ("up to one") does nothing. The controller is read before
-// the counter or destruction moves the card, and draws even when an
-// indestructible creature survives the destroy — the draw is not
-// conditional on the removal, as printed. "Another" is enforced by
-// the target clause's name filter.
-func b32CounterOrDestroyChosenThenControllerDraws(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		if spell := g.StackItemForEffect(t.ID); spell != nil {
-			controller := spell.Controller
-			if err := (CounterTarget{StackID: t.ID}).Apply(ctx); err != nil {
-				return err
-			}
-			return DrawCards{Player: controller, N: 1}.Apply(ctx)
-		}
-		c, ok := g.LookupCardForEffect(t.ID)
-		if !ok || !onBattlefield(g, t.ID) {
-			return nil
-		}
-		controller := c.Controller
-		if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
-			return err
-		}
-		return DrawCards{Player: controller, N: 1}.Apply(ctx)
-	}
-	return nil
-}
-
-// b32TargetSpellOrAnotherCreatureOrPlaneswalker is Ertai
-// Resurrected's target clause: "up to one" of a spell on the stack
-// or a creature or planeswalker on the battlefield that is not Ertai
-// himself. Two zones in one clause, Aang, Swift Savior's shape, and
-// Mode "any" for the reason that card gives — the client's Mode
-// string decides which surfaces enter targeting, and legality still
-// comes from CardOK. Players is left false, so "any" cannot point at
-// a player.
-func b32TargetSpellOrAnotherCreatureOrPlaneswalker(label string) *game.TargetSpec {
-	permanent := Or(Creature(), Planeswalker())
-	// "Another": the object this trigger belongs to is not a pick. A
-	// spell on the stack is never the source, so only the battlefield
-	// half is affected.
-	return Another(&game.TargetSpec{
-		Mode:  "any",
-		Label: label,
-		Zones: []game.ZoneKind{game.ZoneBattlefield, game.ZoneStack},
-		CardOK: func(g *game.Game, caster uuid.UUID, c game.Card, zone game.ZoneKind) bool {
-			if zone == game.ZoneStack {
-				// Every card on the stack is a spell; abilities
-				// live in StackMeta with no card and cannot be
-				// picked — the Disallow gap, declared on the card.
-				return true
-			}
-			return permanent(g, caster, c)
-		},
-		Min: 0, Max: 1,
-	})
-}
-
 // b32PutCountersPerElfOnChosenCreature is Immaculate Magistrate's
 // body: one +1/+1 counter on the chosen creature, if it is still
 // legal, for each Elf the controller controls as the ability
@@ -401,44 +288,26 @@ func b32DestroyChosenIfControlledByTriggerVictim(g *game.Game, item *game.StackI
 }
 
 // b32NeyaliLabel is the stack label of Neyali's attack trigger —
-// the "one or more" dedup keys on it, and so does the exile-permission
-// walk that finds the cards earlier resolutions of it exiled.
-const b32NeyaliLabel = "Neyali, Suns' Vanguard — attacking tokens have double strike; exile the top card"
+// the "one or more" dedup keys on it.
+const b32NeyaliLabel = "Neyali, Suns' Vanguard — exile the top card"
 
-// b32NeyaliAttack is Neyali, Suns' Vanguard's attack body, both
-// printed sentences on one stack item:
-//
-//   - every attacking creature token the controller controls gains
-//     double strike until end of turn (the static's stand-in — an
-//     attack declaration does not rebuild the layer cache, so a
-//     static that read "attacking" would not see it);
-//   - if a token is attacking a PLAYER, the top card of the
-//     controller's library is exiled with permission to play it this
-//     turn, and every card an earlier resolution of this trigger
-//     exiled that is still in exile is re-granted for this turn —
-//     which is "during any turn you attacked with a token", read as
-//     "any turn this trigger resolved".
+// b32NeyaliAttack is Neyali, Suns' Vanguard's attack body, the trigger
+// sentence (the "attacking tokens have double strike" sentence is a
+// layer 6 static on the card): if a token is attacking a PLAYER, the
+// top card of the controller's library is exiled with a permission to
+// play it during any turn they attacked with a token. The permission
+// is the conditional exile play (game.CondAttackedWithToken, #3192): it
+// lasts as long as the card stays exiled, is dormant on a turn no token
+// attacked, and does not need Neyali, or her trigger, to still be there.
 func b32NeyaliAttack(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	if err := (GrantKeywordUntilEOT{
-		Match:    b32AttackingTokenYouControl,
-		Keywords: []string{"double strike"},
-		Label:    "Neyali, Suns' Vanguard — attacking tokens have double strike",
-	}).Apply(ctx); err != nil {
-		return err
-	}
 	if !b32TokenYouControlAttacksAPlayer(g, item.Controller) {
 		return nil
 	}
-	if _, err := g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, 1, game.CastPermission{}); err != nil {
-		return err
-	}
-	for _, id := range b32CardsInExileLastExiledDuring(g, item.Controller, b32NeyaliLabel) {
-		if err := g.ExileCardWithPermissionForEffect(id, game.CastPermission{Player: item.Controller, Duration: g.UntilEndOfTurnDuration()}); err != nil {
-			return err
-		}
-	}
-	return nil
+	_, err := g.ExileTopWithPermissionForEffect(item.Controller, item.Controller, 1, game.CastPermission{
+		Duration:  game.WhileInZoneDuration(),
+		Condition: &game.PermissionCondition{Key: game.CondAttackedWithToken},
+	})
+	return err
 }
 
 // b32CreateTokenBody is the body of one of Transmutation Font's
@@ -465,19 +334,17 @@ func b32SearchAuraThenEquipmentToHand(g *game.Game, item *game.StackItem) error 
 		Dest:      game.ZoneHand,
 		Limit:     1,
 		Reveal:    true,
-		Optional:  true,
 		Reason:    "Axgard Armory — choose up to one Aura card to put into your hand",
 		Then: func(g *game.Game, _ []uuid.UUID) error {
 			return g.SearchLibraryThenForEffect(game.SearchLibrarySpec{
-				Player:   controller,
-				Source:   source,
-				Pred:     func(c game.Card) bool { return c.HasSubtype("Equipment") },
-				Dest:     game.ZoneHand,
-				Limit:    1,
-				Reveal:   true,
-				Shuffle:  true,
-				Optional: true,
-				Reason:   "Axgard Armory — choose up to one Equipment card to put into your hand",
+				Player:  controller,
+				Source:  source,
+				Pred:    func(c game.Card) bool { return c.HasSubtype("Equipment") },
+				Dest:    game.ZoneHand,
+				Limit:   1,
+				Reveal:  true,
+				Shuffle: true,
+				Reason:  "Axgard Armory — choose up to one Equipment card to put into your hand",
 			})
 		},
 	}.Apply(NewContext(g, item))

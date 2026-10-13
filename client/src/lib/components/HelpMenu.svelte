@@ -7,9 +7,8 @@
   //     and past the one-per-visit rule, because the person asked.
   //   - Show all tips again: forgets every dismissed tip and switches
   //     tips back on. They then appear as pages are visited.
-  //   - Practice game: #/practice. A practice table needs a session, so
-  //     signed out it reads "Practice game (sign in first)" and goes to
-  //     #/login.
+  //   - Practice game: #/practice, for everyone. Signed out it opens a
+  //     guest practice game (ADR 0156 §2).
   //   - Keyboard shortcuts: the `?` overlay.
   //
   // The menu is named by its button (aria-labelledby), so the one
@@ -20,7 +19,6 @@
 
   import { tick } from "svelte";
   import { route, navigate } from "../router";
-  import { session } from "../session";
   import { openShortcutsHelp } from "../shortcutRuntime";
   import { HINTS } from "../hints";
   import { placeOfRoute, type Hint } from "../hints/hint";
@@ -42,7 +40,6 @@
   // Login, the invite and reclaim doors and the practice door have no
   // tips (ADR 0125 §3.8), and neither has a place with none to show.
   const pageTips = $derived(place === null ? [] : replayableTips(place, hints));
-  const hasSession = $derived($session !== null);
 
   function items(): HTMLElement[] {
     return [...(root?.querySelectorAll<HTMLElement>('[role="menuitem"]') ?? [])].filter(
@@ -76,7 +73,7 @@
   function practice(e: MouseEvent): void {
     e.preventDefault();
     close(false);
-    navigate(hasSession ? "#/practice" : "#/login");
+    navigate("#/practice");
   }
 
   function shortcuts(): void {
@@ -158,8 +155,8 @@
       <button type="button" class="mi" role="menuitem" onclick={allTipsAgain}>
         {L.showAllTipsAgain}
       </button>
-      <a class="mi" role="menuitem" href={hasSession ? "#/practice" : "#/login"} onclick={practice}>
-        {hasSession ? L.practiceGame : `${L.practiceGame} (sign in first)`}
+      <a class="mi" role="menuitem" href="#/practice" onclick={practice}>
+        {L.practiceGame}
       </a>
       <button type="button" class="mi" role="menuitem" onclick={shortcuts}>
         {L.keyboardShortcutsItem}

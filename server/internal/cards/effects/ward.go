@@ -58,6 +58,9 @@ import (
 //   - "Ward—Sacrifice a creature" (Vein Ripper) — the same Confirm,
 //     whose accept branch chains a PendingChoiceChooseCards over the
 //     payer's own creatures.
+//   - "Ward—Discard a card" (Graveyard Trespasser, Gideon the
+//     Oathless, #3172) — the same Confirm, whose accept branch queues
+//     the payer's own discard prompt over their hand.
 //
 // The mana, life and sacrifice shapes needed no engine work: the
 // Confirm and ChooseCards kinds take any Chooser, have bot enumerator
@@ -82,6 +85,9 @@ type WardCost struct {
 	Life int
 	// Sacrifice is "ward—sacrifice a <thing>".
 	Sacrifice *WardSacrificeCost
+	// Discard is "ward—discard N cards" (#3172): the payer discards
+	// that many cards from their own hand, their choice (CR 701.9a).
+	Discard int
 }
 
 // WardSacrificeCost is the "sacrifice a <thing>" half of a ward cost:
@@ -139,6 +145,12 @@ func WardSacrificeN(n int, label string, preds ...CardPredicate) WardCost {
 	return WardCost{Sacrifice: &WardSacrificeCost{Label: label, OK: And(preds...), Count: n}}
 }
 
+// WardDiscard builds the "ward—discard N cards" cost (Graveyard
+// Trespasser, Gideon the Oathless: "Ward—Discard a card"). The payer
+// picks which cards go, and a payer holding fewer than N cannot pay at
+// all (CR 118.3), so the spell is countered with no prompt.
+func WardDiscard(n int) WardCost { return WardCost{Discard: n} }
+
 // validate panics on a cost with zero or several components. It runs
 // from Ward() at catalog init, so a malformed card fails at boot rather
 // than charging the first component it happens to check.
@@ -156,8 +168,11 @@ func (c WardCost) validate() {
 	if c.Sacrifice != nil {
 		n++
 	}
+	if c.Discard > 0 {
+		n++
+	}
 	if n != 1 || (c.Sacrifice != nil && c.Sacrifice.OK == nil) {
-		panic(fmt.Sprintf("effects: a ward cost needs exactly one of Mana, Waterbend, Life or Sacrifice: %+v", c))
+		panic(fmt.Sprintf("effects: a ward cost needs exactly one of Mana, Waterbend, Life, Sacrifice or Discard: %+v", c))
 	}
 }
 
@@ -328,6 +343,8 @@ func wardPayOrCounter(g *game.Game, item *game.StackItem, targetingItem, payer u
 		return wardPayLifeOrCounter(g, item.SourceCardID, payer, cost.Life, targetingItem, counter)
 	case cost.Sacrifice != nil:
 		return wardSacrificeOrCounter(g, item.SourceCardID, payer, *cost.Sacrifice, targetingItem, counter)
+	case cost.Discard > 0:
+		return wardDiscardOrCounter(g, item.SourceCardID, payer, cost.Discard, targetingItem, counter)
 	}
 	if cost.Waterbend != "" {
 		// #1311: "Ward—Waterbend {N}" is the mana payment below with
@@ -460,6 +477,60 @@ func wardSacrificeOrCounter(g *game.Game, source, payer uuid.UUID, sac WardSacri
 					}
 					return nil
 				},
+			})
+			return nil
+		},
+		OnDecline: counter,
+	})
+	return nil
+}
+
+// wardDiscardOrCounter is "counter it unless that player discards <N
+// cards>": a Confirm whose accept branch queues the payer's own
+// discard prompt, the way the sacrifice ward chains its pick.
+//
+// A payer with fewer cards in hand than the cost names cannot pay, so
+// the spell is countered with no prompt (CR 118.3 — a cost is paid in
+// full or not at all; "as many as you can" is CR 701.9a's rule for an
+// instruction, not for a cost). Accepting commits the payer to the
+// discard: the prompt it queues has no floor below N, and the hand is
+// re-read when the answer arrives.
+//
+// A cost is not an instruction to a player, so nothing here targets:
+// hexproof and protection are irrelevant, and the cards are the
+// payer's own.
+func wardDiscardOrCounter(g *game.Game, source, payer uuid.UUID, n int, targetingItem uuid.UUID, counter func(*game.Game) error) error {
+	handSize := func(g *game.Game) int {
+		if p := g.PlayerByIDForEffect(payer); p != nil && p.Hand != nil {
+			return p.Hand.Size()
+		}
+		return 0
+	}
+	if handSize(g) < n {
+		return counter(g)
+	}
+	label := "a card"
+	if n > 1 {
+		label = fmt.Sprintf("%d cards", n)
+	}
+	g.QueueConfirmForEffect(game.ConfirmPrompt{
+		Chooser:      payer,
+		Source:       source,
+		Question:     "Ward — discard " + label + ", or it is countered",
+		AcceptLabel:  "Discard " + label,
+		DeclineLabel: "Let it be countered",
+		OnAccept: func(g *game.Game) error {
+			if g.StackItemForEffect(targetingItem) == nil {
+				return nil
+			}
+			if handSize(g) < n {
+				return counter(g)
+			}
+			g.QueueDiscardChoiceForEffect(game.DiscardPrompt{
+				Player:   payer,
+				Source:   source,
+				N:        n,
+				Question: "Ward — discard " + label,
 			})
 			return nil
 		},

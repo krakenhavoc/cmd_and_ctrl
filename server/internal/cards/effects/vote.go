@@ -48,6 +48,13 @@ type Vote struct {
 	// first word.
 	ForController, ForOpponents []int
 
+	// Zone is where the cards the Options name are, for an object vote
+	// over cards that are not permanents: game.ZoneGraveyard for
+	// "votes for a creature card in your graveyard" (Custodi Squire).
+	// Empty is the battlefield. A card that has left that zone is no
+	// longer offered.
+	Zone game.ZoneKind
+
 	// Then is the rest of the card, run with the tally.
 	Then game.VoteThen
 
@@ -82,6 +89,7 @@ func (v Vote) Apply(ctx *Context) error {
 		Options:       opts,
 		ForController: v.ForController,
 		ForOpponents:  v.ForOpponents,
+		OptionZone:    v.Zone,
 		Then:          v.Then,
 		Carry:         v.Carry,
 	})
@@ -104,8 +112,9 @@ func VoteResultThen(key string, body func(ctx *Context, r game.VoteResult) error
 }
 
 // VoteForPermanents is an object vote's option list: one option per
-// permanent, labelled with its name, in battlefield order. Caller holds
-// g.mu.
+// card, labelled with its name, in the order given. It is the list for
+// permanents (the battlefield) and, with Vote.Zone, for cards in a
+// graveyard. Caller holds g.mu.
 func VoteForPermanents(g *game.Game, ids []uuid.UUID) []game.ChoiceOption {
 	out := make([]game.ChoiceOption, 0, len(ids))
 	for _, id := range ids {

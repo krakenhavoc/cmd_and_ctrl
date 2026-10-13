@@ -17,41 +17,61 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // with a spell on the stack and his entry trigger goes on the stack
 // above it.
 //
-// The modal entry trigger has no mode prompt of its own — a
-// triggered ability cannot carry a "choose one" — so the mode is
-// the target: one clause spanning the stack and the battlefield
-// (Aang, Swift Savior's two-zone shape), "up to one" so declining is
-// a legal answer. Picking a spell is the counter mode; picking a
-// creature or planeswalker is the destroy mode; picking nothing is
-// "up to one" doing nothing. The victim's controller is read before
-// the counter or the destruction moves the card, and draws whether
-// or not an indestructible creature survives — the draw is not
+// The modal entry trigger is a real "choose up to one" (Modes with a
+// floor of zero, CR 603.3c). The counter bullet takes a spell OR an
+// ability (TargetSpellOrAbility, #1211); the destroy bullet takes
+// another creature or planeswalker. The victim's controller is read
+// before the counter or the destruction moves anything, and draws
+// whether or not an indestructible creature survives — the draw is not
 // conditional on the removal, as printed. A target gone in response
-// counters the trigger (CR 608.2b), so no draw then.
-//
-// Sandbox simplifications, declared, both weaker than printed:
-//
-//   - Only a spell can be countered. An activated or triggered
-//     ability on the stack is a StackMeta item with no card, and a
-//     target clause enumerates cards — Disallow's posture.
-//   - The mode is chosen through the target prompt rather than a
-//     mode picker.
+// does nothing and draws nothing (CR 608.2b).
 func init() {
 	Register(Spec{
-		OracleID:     "3d038f7c-95fa-4b71-8f74-b9b4dd45cde0",
-		Name:         "Ertai Resurrected",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Only a spell can be countered — an activated or triggered ability on the stack can't be picked.",
-			"The mode is chosen through the target prompt: pick a spell to counter it, pick a creature or planeswalker to destroy it, or pick nothing.",
-		},
+		OracleID:        "3d038f7c-95fa-4b71-8f74-b9b4dd45cde0",
+		Name:            "Ertai Resurrected",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flash"},
 		Triggered: []game.TriggeredAbility{{
 			Watches:   []game.EventKind{game.EventETB},
 			AppliesTo: b06SelfETB,
-			Targets:   b32TargetSpellOrAnotherCreatureOrPlaneswalker("up to one target spell, or another target creature or planeswalker"),
 			Key:       b32ErtaiLabel,
-			Effect:    b32CounterOrDestroyChosenThenControllerDraws,
+			Effect:    func(*game.Game, *game.StackItem) error { return nil },
+			Modes: ChooseN("Choose up to one", 0, 1,
+				ModeDoing("Counter target spell, activated ability, or triggered ability. Its controller draws a card.",
+					TargetSpellOrAbility("target spell, activated ability, or triggered ability"),
+					func(_ *game.StackItem, ctx *Context, occ int) error {
+						t, ok := ModeTarget(ctx, occ)
+						if !ok {
+							return nil
+						}
+						victim := ctx.Game.StackItemForEffect(t.ID)
+						if victim == nil {
+							return nil
+						}
+						controller := victim.Controller
+						if err := (CounterTarget{StackID: t.ID}).Apply(ctx); err != nil {
+							return err
+						}
+						return DrawCards{Player: controller, N: 1}.Apply(ctx)
+					}),
+				ModeDoing("Destroy another target creature or planeswalker. Its controller draws a card.",
+					Another(TargetPermanent("another target creature or planeswalker", Or(Creature(), Planeswalker()))),
+					func(_ *game.StackItem, ctx *Context, occ int) error {
+						t, ok := ModeTarget(ctx, occ)
+						if !ok || !onBattlefield(ctx.Game, t.ID) {
+							return nil
+						}
+						c, ok := ctx.Game.LookupCardForEffect(t.ID)
+						if !ok {
+							return nil
+						}
+						controller := c.Controller
+						if err := (DestroyTarget{Target: t.ID}).Apply(ctx); err != nil {
+							return err
+						}
+						return DrawCards{Player: controller, N: 1}.Apply(ctx)
+					}),
+			),
 		}},
 	})
 }

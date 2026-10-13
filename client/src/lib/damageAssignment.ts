@@ -97,6 +97,39 @@ export function stepBlocker(
   return s;
 }
 
+/**
+ * stepGroup is a stepper on a token group's card (#2958): one press on
+ * the card stands for one point on one member. Up goes lethal-first,
+ * member by member in the group's order (the first still short of its
+ * lethal; once all are there, the last, as the canonical split dumps the
+ * rest on the last blocker). Down gives back from the last member that
+ * has any, so a press undoes the one before it. The point itself moves
+ * through stepBlocker, so power, the trample bucket and "nothing to
+ * change" behave exactly as for a lone blocker; only members that are in
+ * the assignment count (a group's members all block the same attackers,
+ * so that is all of them or none).
+ */
+export function stepGroup(
+  s: DamageShares,
+  ids: readonly string[],
+  delta: 1 | -1,
+  power: number,
+  lethal: Record<string, number>,
+): DamageShares {
+  const members = ids.filter((id) => id in s.amounts);
+  if (members.length === 0) return s;
+  let pick: string | undefined;
+  if (delta > 0) {
+    pick =
+      members.find((id) => lethal[id] !== undefined && s.amounts[id] < lethal[id]) ??
+      members.find((id) => lethal[id] === undefined && s.amounts[id] === 0) ??
+      members[members.length - 1];
+  } else {
+    pick = [...members].reverse().find((id) => s.amounts[id] > 0);
+  }
+  return pick === undefined ? s : stepBlocker(s, pick, delta, power);
+}
+
 /** stepTrample ticks the trample bucket; up only from unassigned damage. */
 export function stepTrample(s: DamageShares, delta: 1 | -1, power: number): DamageShares {
   if (delta < 0) return s.trample > 0 ? { ...s, trample: s.trample - 1 } : s;
@@ -293,6 +326,15 @@ export function stepOnBoard(id: string, delta: 1 | -1): void {
   boardDamageAssign.update((s) => {
     if (!s) return s;
     const shares = stepBlocker(s.shares, id, delta, s.power);
+    return shares === s.shares ? s : { ...s, shares };
+  });
+}
+
+/** stepGroupOnBoard is a stepper press on a token group's card. */
+export function stepGroupOnBoard(ids: readonly string[], delta: 1 | -1): void {
+  boardDamageAssign.update((s) => {
+    if (!s) return s;
+    const shares = stepGroup(s.shares, ids, delta, s.power, s.lethal);
     return shares === s.shares ? s : { ...s, shares };
   });
 }

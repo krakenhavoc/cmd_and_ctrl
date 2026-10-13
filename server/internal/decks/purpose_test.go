@@ -35,11 +35,10 @@ var curatedInstantsAndSorceries = []string{
 	"Austere Command", "Farewell", "Cyclonic Rift", "Aetherize", "Read the Bones",
 	"Ambition's Cost", "Divination", "Pull from Tomorrow", "Fact or Fiction",
 	"Sphinx's Revelation", "Treasure Cruise", "Dig Through Time", "Diabolic Tutor",
-	// izzet-aggro
-	"Lightning Bolt", "Shock", "Abrade", "Arc Trail", "Blaze", "Izzet Charm", "Fiery Temper",
-	"Prismari Command", "Chaos Warp", "Pyroblast", "Swan Song", "Preordain",
-	"Frantic Search", "Faithless Looting", "Big Score", "Unexpected Windfall", "Windfall",
-	"Wheel of Fortune", "Vandalblast", "Rapid Hybridization", "Pongify",
+	// mono-red-aggro
+	"Lightning Bolt", "Shock", "Abrade", "Arc Trail", "Incinerate", "Lightning Strike",
+	"Chaos Warp", "Vandalblast", "Hordeling Outburst", "Krenko's Command", "Dragon Fodder",
+	"Strike It Rich", "Faithless Looting", "Big Score", "Unexpected Windfall", "Seize the Spoils",
 	// mono-black-aristocrats
 	"Reanimate", "Zombify", "Dread Return", "Stitch Together", "Living Death",
 	"Rise of the Dark Realms", "Dread Summons", "Entomb", "Altar's Reap", "Deadly Dispute",
@@ -49,7 +48,15 @@ var curatedInstantsAndSorceries = []string{
 	"Rampant Growth", "Nature's Lore", "Three Visits", "Farseek", "Cultivate", "Kodama's Reach",
 	"Explosive Vegetation", "Harrow", "Hour of Promise", "Circuitous Route", "Titania's Command",
 	"Overrun", "Return of the Wildspeaker", "Shamanic Revelation", "Eureka Moment", "Harmonize",
-	"Beast Within", "Krosan Grip",
+	"Beast Within", "Krosan Grip", "Swan Song", "Preordain", "Frantic Search", "Pongify",
+	"Rapid Hybridization",
+	// mono-green-stompy
+	"Naturalize", "Bite Down",
+	// mono-white-weenie
+	"Call the Coppercoats", "Secure the Wastes", "Raise the Alarm", "Increasing Devotion",
+	"Council's Judgment", "Fateful Absence", "Flawless Maneuver",
+	// boros-voltron
+	"Akroma's Will", "Boros Charm", "Lightning Helix", "Wild Slash", "Teferi's Protection",
 }
 
 // valueIsTheirTarget is ADR 0126 §6's short, named list of curated
@@ -66,7 +73,6 @@ var valueIsTheirTarget = map[string]string{
 	"Force of Negation":         "counterspell",
 	"Fierce Guardianship":       "counterspell",
 	"Absorb":                    "counterspell",
-	"Pyroblast":                 "counterspell or removal, by mode",
 	// Chaos Warp gives its target's owner a random permanent from the
 	// top of their library, which no printed amount says (#2679).
 	"Doom Blade":         "removal",
@@ -88,6 +94,13 @@ var valueIsTheirTarget = map[string]string{
 	"Zombify":            "reanimation of the target",
 	"Dread Return":       "reanimation of the target",
 	"Stitch Together":    "reanimation of the target, or its return to hand",
+	// The first three are stompy and weenie removal; Council's Judgment
+	// has no target at all (each player votes), but it is removal and
+	// its value is the permanent the table picks.
+	"Naturalize":         "removal",
+	"Bite Down":          "removal",
+	"Fateful Absence":    "removal",
+	"Council's Judgment": "removal",
 }
 
 // noPrintedAmount is the curated spells that do something in a priced
@@ -100,15 +113,17 @@ var noPrintedAmount = map[string]string{
 	"Sphinx's Revelation":       "draws X",
 	"Fact or Fiction":           "an opponent splits five cards; how many reach the hand is theirs to decide",
 	"Dread Summons":             "each player mills X; the Zombies are counted at resolution",
-	"Windfall":                  "each player discards a hand and draws as many as the largest; no fixed amount",
-	"Wheel of Fortune":          "each player discards a hand and draws seven; its value is the hands, which no amount says",
 	"Exsanguinate":              "drains X",
-	"Blaze":                     "deals X damage to any target",
 	"Living Death":              "a symmetric mass reanimation: a sweep purpose would price the sacrifice and miss the return",
 	"Rise of the Dark Realms":   "mass reanimation from every graveyard",
 	"Overrun":                   "a combat pump: its value is the attack (ADR 0126 Out of scope)",
 	"Return of the Wildspeaker": "draws as many as the greatest power, or a pump",
 	"Shamanic Revelation":       "draws one per creature, counted at resolution",
+	"Call the Coppercoats":      "makes one token per creature the chosen opponents control, counted at resolution",
+	"Secure the Wastes":         "makes X tokens",
+	"Flawless Maneuver":         "a protection spell: indestructible for the team, no fixed amount",
+	"Teferi's Protection":       "a protection spell: phases out the controller's permanents, no fixed amount",
+	"Akroma's Will":             "a team keyword grant or protection, by mode: no fixed amount",
 }
 
 // curatedTargetPurposes is every curated spell whose value depends on
@@ -116,25 +131,23 @@ var noPrintedAmount = map[string]string{
 // answer 5, first half): a gift that is good or bad by whom it is
 // aimed at, and burn, which kills or does not by how much it deals.
 // Each declares a target entry (Purpose.Targets) on the slot named.
-// Blaze cannot, and says why on noPrintedAmount. Removal that hands its
-// target's controller something back declares that as the entry's
-// Returns (#2679).
+// Removal that hands its target's controller something back declares
+// that as the entry's Returns (#2679).
 var curatedTargetPurposes = map[string]string{
-	"Prismari Command":     "modes",
 	"Sign in Blood":        "card",
 	"Lightning Bolt":       "card",
 	"Shock":                "card",
-	"Fiery Temper":         "card",
+	"Incinerate":           "card",
+	"Lightning Strike":     "card",
 	"Abrade":               "modes",
-	"Izzet Charm":          "modes",
 	"Arc Trail":            "card",
 	"Swords to Plowshares": "card",
 	"Path to Exile":        "card",
 	"Generous Gift":        "card",
 	"Stroke of Midnight":   "card",
+	"Beast Within":         "card",
 	"Rapid Hybridization":  "card",
 	"Pongify":              "card",
-	"Beast Within":         "card",
 }
 
 // targetEntriesIn counts the target entries a spell declares in `slot`:
@@ -200,28 +213,24 @@ func landsUntappedIn(s effects.Spec) int {
 
 // curatedPermanentPurposes is every curated permanent in a class ADR
 // 0126 prices (ramp, draw, loot, tutor, wipe, death payoff, discard
-// payoff) that
-// declares a purpose, with the slot it declares it in. Mana rocks and
+// payoff, landfall payoff) that declares a purpose, with the slot it
+// declares it in. Mana rocks and
 // dorks are not here: their mana abilities already say what they make.
 var curatedPermanentPurposes = map[string]string{
 	// enters effects, on the card
 	"Baleful Strix":          "card",
 	"Mulldrifter":            "card",
 	"Solemn Simulacrum":      "card",
-	"Corsair Captain":        "card",
 	"Bastion of Remembrance": "card",
 	"Vile Entomber":          "card",
 	"Woe Strider":            "card",
 	// activated rows
-	"Mary Read and Anne Bonny": "activated, discard payoff",
-	"Loran of the Third Path":  "activated",
-	"Glint-Horn Buccaneer":     "activated, discard payoff",
-	"Geier Reach Sanitarium":   "activated",
-	"Warren Soultrader":        "activated",
-	"Sakura-Tribe Elder":       "activated",
-	"Burnished Hart":           "activated",
-	"Spectral Sailor":          "activated",
-	"Teferi, Master of Time":   "activated",
+	"Loran of the Third Path": "activated",
+	"Geier Reach Sanitarium":  "activated",
+	"Warren Soultrader":       "activated",
+	"Sakura-Tribe Elder":      "activated",
+	"Burnished Hart":          "activated",
+	"Teferi, Master of Time":  "activated",
 	// #2480: its Treasure-for-a-card row declares `impulse: 1`.
 	"Professional Face-Breaker": "activated",
 	// death payoffs, on the triggered row
@@ -235,13 +244,18 @@ var curatedPermanentPurposes = map[string]string{
 	"Mirkwood Bats":        "death payoff",
 	"Falkenrath Noble":     "death payoff",
 	"Vindictive Vampire":   "death payoff",
-	// discard payoffs, on the triggered row (ADR 0126's amendment of
-	// 2026-10-06)
-	"Marauding Mako":       "discard payoff",
-	"Scrounging Skyray":    "discard payoff",
-	"Magmakin Artillerist": "discard payoff",
-	// #2480.
-	"Monument to Endurance": "discard payoff",
+	// landfall payoffs, on the triggered row (#3072). Avenger of
+	// Zendikar's counters are counted at resolution and Field of the
+	// Dead's Zombie needs seven differently named lands, so neither
+	// declares one; Ancient Greenwarden doubles the others' triggers
+	// and pays nothing itself.
+	"Tatyova, Benthic Druid": "landfall payoff",
+	"Lotus Cobra":            "landfall payoff",
+	"Tireless Tracker":       "landfall payoff",
+	"Tireless Provisioner":   "landfall payoff",
+	"Sporemound":             "landfall payoff",
+	"Rampaging Baloths":      "landfall payoff",
+	"Courser of Kruphix":     "landfall payoff",
 	// an opponent's tax, on the triggered row: what a decline gives
 	// (ADR 0136's amendment of 2026-10-09)
 	"Rhystic Study":    "tax gift",
@@ -298,6 +312,12 @@ func declaresIn(s effects.Spec, slot string) bool {
 	case "discard payoff":
 		for _, t := range s.Triggered {
 			if t.Purpose.DiscardPayoff != nil {
+				return true
+			}
+		}
+	case "landfall payoff":
+		for _, t := range s.Triggered {
+			if t.Purpose.LandfallPayoff != nil {
 				return true
 			}
 		}

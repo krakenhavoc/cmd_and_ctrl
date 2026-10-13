@@ -40,10 +40,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // printed "another" — and he is very often not a creature anyway.
 // Tokens count: the clause has no nontoken rider.
 //
-// "YOU MAY PAY 2 LIFE. IF YOU DO, DRAW" is a COST (CR 118.3), so it
-// goes through the life-payment path: a controller at 2 or less life
-// cannot pay and does not draw, and the payment finishes before the
-// draw begins.
+// "YOU MAY PAY 2 LIFE. IF YOU DO, DRAW" is a COST (CR 118.3), asked
+// as the trigger RESOLVES (MayChoice, CR 608.2c) and paid through the
+// life-payment path: a controller below 2 life is not asked and does not
+// draw, and the payment finishes before the draw begins.
 //
 // The activated ability's "-2/-1 until end of turn" is the S32
 // turn-scoped registry, swept at cleanup (CR 514.2). It can target
@@ -55,22 +55,15 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (#350). A token copy of Erebos would also be refused as fodder,
 // which is weaker than printed and never stronger.
 //
-// SANDBOX SIMPLIFICATION, DECLARED — Crossway Troublemakers'. The
-// "you may pay 2 life" decision is taken when the trigger goes on the
-// stack rather than as it resolves, because the engine's optional
-// trigger prompt is the announce-time one. Opponents therefore see
-// the answer before the trigger resolves. It never changes what you
-// can pay, only when you say so.
+// No simplification.
 func init() {
 	Register(Spec{
-		OracleID:     "a5690dc9-f12e-4ecc-b528-f2f83c79c3c8",
-		Name:         "Erebos, Bleak-Hearted",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"Whether to pay 2 life for the card is decided when the trigger goes on the stack, not as it resolves.",
-		},
+		OracleID:        "a5690dc9-f12e-4ecc-b528-f2f83c79c3c8",
+		Name:            "Erebos, Bleak-Hearted",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"indestructible"},
 		Static: []game.StaticAbility{{
+			Label: "As long as your devotion to black is less than five, this isn't a creature.",
 			Layer: game.Layer4Type,
 			AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 				return target.InstanceID == source.InstanceID &&
@@ -85,12 +78,23 @@ func init() {
 			},
 		}},
 		Triggered: []game.TriggeredAbility{
-			Optional(On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
+			On(game.EventLTB, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				return b39AnotherCreatureYouControlDied(ev, source, g)
 			}, "Erebos, Bleak-Hearted — pay 2 life, draw a card", func(g *game.Game, item *game.StackItem) error {
-				return payLifeThenDraw(NewContext(g, item), 2, 1)
+				ctx := NewContext(g, item)
+				if p := g.PlayerByIDForEffect(item.Controller); p == nil || p.Eliminated || p.Life < 2 {
+					return nil
+				}
+				return MayChoice{
+					Question: "Erebos, Bleak-Hearted — another creature died. Pay 2 life to draw a card?",
+					YesLabel: "Pay 2 life",
+					NoLabel:  "Don't pay",
+					LifeCost: 2,
+					OnYes: func(ctx *Context) error {
+						return payLifeThenDraw(ctx, 2, 1)
+					},
+				}.Apply(ctx)
 			}),
-				"Erebos, Bleak-Hearted — another creature died. Pay 2 life to draw a card?"),
 		},
 		Activated: []ActivatedAbility{{
 			Label:   "{1}{B}, Sacrifice another creature: Target creature gets -2/-1 until end of turn.",

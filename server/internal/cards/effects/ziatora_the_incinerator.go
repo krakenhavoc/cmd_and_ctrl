@@ -12,11 +12,10 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //	 tokens."
 //
 // The Riveteers' Fling engine. Flying rides PrintedKeywords. The
-// end-step trigger is Ruthless Technomancer's shape: the "you may"
-// is the trigger's optional prompt, the creature is chosen as the
-// trigger's target (any other creature you control — the picker
-// the engine has for a choice among your own permanents), and on
-// resolution it is sacrificed (b29SacrificeChosenCreature).
+// end-step trigger is Ruthless Technomancer's shape: "you may
+// sacrifice another creature" is asked as the trigger RESOLVES
+// (maySacrificeOne, CR 608.2c), over whatever you control then, and
+// the creature is sacrificed (b29SacrificeChosenCreature).
 //
 // The printed "when you do" is a CR 603.12 REFLEXIVE trigger, and
 // since #636 it is exactly that: the end-step ability creates it as
@@ -28,18 +27,11 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // (b29PowerAsItLastStood) and makes the three Treasures whether or
 // not the damage lands.
 //
-// Two sandbox simplifications, declared, both weaker than printed:
+// No simplification. The damage is the sacrificed creature's
+// last-known power (CR 608.2h), so an anthem or an Equipment counts as
+// a counter does (b29PowerAsItLastStood).
 //
-//   - The creature to sacrifice is chosen when the end-step trigger
-//     goes on the stack, not on resolution (the Technomancer's
-//     caveat): an opponent who removes it in response fizzles the
-//     trigger, where printed you would pick another. A second
-//     Ziatora cannot be chosen — "another" is by name.
-//   - A static power bonus from another permanent (an anthem, an
-//     Equipment) is not in the sacrificed creature's last-known
-//     power; counters are.
-//
-// What is no longer a simplification: the reflexive half used to be
+// History: the reflexive half used to be
 // a second ability harvested off Ziatora on the battlefield, so a
 // Ziatora removed in response to her own end-step trigger took the
 // damage and the Treasures with her. The trigger now belongs to the
@@ -47,20 +39,12 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // — which is what the card says.
 func init() {
 	Register(Spec{
-		OracleID:     "d46c3fb6-f1c7-4a96-ae42-5bce17fc7c1d",
-		Name:         "Ziatora, the Incinerator",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"You pick the creature to sacrifice when the end-step trigger goes on the stack rather than on resolution, so opponents can respond to the choice.",
-			"The sacrificed creature's power is read from its printed value and its counters only — a bonus from another permanent isn't counted in the damage.",
-		},
+		OracleID:        "d46c3fb6-f1c7-4a96-ae42-5bce17fc7c1d",
+		Name:            "Ziatora, the Incinerator",
+		Completeness:    CompletenessFull,
 		PrintedKeywords: []string{"flying"},
 		Triggered: []game.TriggeredAbility{
-			Optional(
-				Targeting(
-					AtYourEndStep(b29ZiatoraSacrificeLabel, b29SacrificeChosenCreature),
-					Another(TargetCreature("another creature you control", YouControl()))),
-				"Ziatora, the Incinerator — sacrifice another creature to deal damage equal to its power and make three Treasures?"),
+			AtYourEndStep(b29ZiatoraSacrificeLabel, b29SacrificeChosenCreature),
 		},
 	})
 }

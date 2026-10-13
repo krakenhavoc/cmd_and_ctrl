@@ -10,13 +10,14 @@
   } from "../lib/api";
   import { navigate } from "../lib/router";
   import { LobbyApiError, session } from "../lib/session";
+  import { lobbyErrorMessage, SERVER_FULL_MESSAGE } from "../lib/serverFull";
   import { canJoinByCode, signedInUserID } from "../lib/myGames";
   import { GUEST_RETURN_ADVICE, SIGNED_IN_RETURN_LINK } from "../lib/joinRecovery";
   import { loadGuestName, rememberGuestName } from "../lib/guestName";
   import { seatColor } from "../lib/colors";
   import Icon from "../lib/components/Icon.svelte";
   import AgentChip from "../lib/components/AgentChip.svelte";
-  import SiteHeader from "../lib/components/SiteHeader.svelte";
+  import Page from "../lib/components/Page.svelte";
 
   // Props carried from the route parser (lib/router.ts). The
   // `spectator` flag flips the page from a player join (claims a
@@ -27,15 +28,20 @@
     gameID: string;
     inviteToken: string;
     spectator: boolean;
+    // The Discord callback bounced the browser back here because the
+    // server is at its connection cap (ADR 0148, #3103). The page opens
+    // with the one "server is full" sentence instead of a blank failure.
+    serverFull?: boolean;
   }
-  const { gameID, inviteToken, spectator }: Props = $props();
+  const { gameID, inviteToken, spectator, serverFull = false }: Props = $props();
 
   // A guest's last typed name, pre-filled (ADR 0110 §5 item 6, owner
   // answer 8). A signed-in person is never asked: their seat takes the
   // Discord name, so the field is not shown to them at all.
   let name = $state(loadGuestName());
   let busy = $state(false);
-  let error = $state("");
+  // svelte-ignore state_referenced_locally
+  let error = $state(serverFull ? SERVER_FULL_MESSAGE : "");
 
   // discordEnabled gates the "Sign in with Discord" button. Probed
   // once on mount from /auth/discord/config — a deploy without the
@@ -120,7 +126,7 @@
         navigate("#/lobby");
       }
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "join failed";
+      error = lobbyErrorMessage(err, "join failed");
     } finally {
       busy = false;
     }
@@ -146,50 +152,46 @@
         navigate("#/lobby");
       }
     } catch (err) {
-      error = err instanceof LobbyApiError ? err.message : "join failed";
+      error = lobbyErrorMessage(err, "join failed");
     } finally {
       busy = false;
     }
   }
 </script>
 
-<SiteHeader />
-
-<section class="entry">
-  <div class="stack">
-    <div class="head">
-      <p class="eyebrow">{spectator ? "You have a spectator link" : "You're invited to a table"}</p>
-      <h1>
-        {#if preview}
-          <span class="table-name">{preview.game.name}</span>
-          <span class="sr-only">— {spectator ? "spectate game" : "join game"}</span>
-        {:else}
-          {spectator ? "spectate game" : "join game"}
-        {/if}
-      </h1>
-      <div class="chips">
-        {#if preview?.game.state === "active"}
-          <span class="chip live"><i class="dot"></i> in progress</span>
-        {:else if preview?.game.state === "ended"}
-          <span class="chip">ended</span>
-        {:else}
-          <span class="chip">lobby</span>
-        {/if}
-        {#if spectator}
-          <span class="chip ro"><Icon name="exile" size={11} /> read-only</span>
-        {/if}
-        {#if preview}
-          <span class="meta">
-            {seated.length} of {maxSeats} seats{preview.game.state === "lobby"
-              ? " · starts when everyone's deck is in"
-              : ""}
-          </span>
-        {:else}
-          <span class="meta">game <code>{gameID.slice(0, 8)}</code></span>
-        {/if}
-      </div>
+<Page eyebrow={spectator ? "You have a spectator link" : "You're invited to a table"} width="prose">
+  {#snippet title()}
+    {#if preview}
+      <span class="table-name">{preview.game.name}</span>
+      <span class="sr-only">— {spectator ? "spectate game" : "join game"}</span>
+    {:else}
+      {spectator ? "Spectate game" : "Join game"}
+    {/if}
+  {/snippet}
+  {#snippet meta()}
+    <div class="chips">
+      {#if preview?.game.state === "active"}
+        <span class="chip live"><i class="dot"></i> in progress</span>
+      {:else if preview?.game.state === "ended"}
+        <span class="chip">ended</span>
+      {:else}
+        <span class="chip">lobby</span>
+      {/if}
+      {#if spectator}
+        <span class="chip ro"><Icon name="exile" size={11} /> read-only</span>
+      {/if}
+      {#if preview}
+        <span class="meta">
+          {seated.length} of {maxSeats} seats{preview.game.state === "lobby"
+            ? " · starts when everyone's deck is in"
+            : ""}
+        </span>
+      {:else}
+        <span class="meta">game <code>{gameID.slice(0, 8)}</code></span>
+      {/if}
     </div>
-
+  {/snippet}
+  <div class="stack">
     {#if preview}
       <ul class="seats" aria-label="seats at this table">
         {#each seated as p (p.seat)}
@@ -341,26 +343,17 @@
       {/if}
     </div>
   </div>
-</section>
+</Page>
 
 <style>
-  .entry {
-    position: relative;
-    min-height: calc(100vh - 3rem - 68px);
-    display: flex;
-    justify-content: center;
-  }
   .stack {
-    width: min(860px, 100%);
     display: flex;
     flex-direction: column;
     gap: 22px;
-    margin-top: clamp(24px, 6vh, 60px);
   }
   .card {
     width: min(600px, 100%);
     box-sizing: border-box;
-    align-self: center;
     margin-top: 6px;
   }
   .table-name {
@@ -493,33 +486,11 @@
   .help.dim {
     color: var(--fg-dim);
   }
-  .head {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-  }
-  .eyebrow {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--accent-strong);
-    font-weight: 600;
-  }
-  .head h1 {
-    margin: 0;
-    font-family: var(--font-display);
-    font-size: 34px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    color: var(--fg);
-    line-height: 1.05;
-  }
   .chips {
     display: flex;
     align-items: center;
     gap: 10px;
+    margin-top: 12px;
   }
   .chip {
     display: inline-flex;

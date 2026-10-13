@@ -121,6 +121,15 @@ type PlayerTurnTally struct {
 	// each turn": set as this player's inherent speed trigger is
 	// queued (speedTriggerLocked). ADR 0138. Additive within schema v7.
 	SpeedTriggered bool `json:"speedTriggered,omitempty"`
+	// TokensAttacked and CommandersAttacked count the creatures this
+	// player declared as attackers this turn that were a token / a
+	// commander AS THEY ATTACKED (#3192): the answer to "during any turn
+	// you attacked with a token" outlives the attacker, which a token
+	// that traded in combat does not (CR 704.5d). Read by the conditional
+	// cast permissions (cast_permission_condition.go). Additive within
+	// schema v8.
+	TokensAttacked     int `json:"tokensAttacked,omitempty"`
+	CommandersAttacked int `json:"commandersAttacked,omitempty"`
 }
 
 // TurnTally is the per-turn record on Game. Reset on turn advance.
@@ -184,6 +193,18 @@ type TurnTally struct {
 	// because every other cell of the tally is, and because "how many
 	// times" is the question the next card asks.
 	Entered map[uuid.UUID]int `json:"entered,omitempty"`
+	// AttackedSubtypes is the subtype tally of the creatures each player
+	// declared as attackers this turn, per subtype they had as they
+	// attacked (#3192): Robber of the Rich's "during any turn you attacked
+	// with a Rogue". Same keys and changeling rule as EnteredSubtypes;
+	// read through Game.AttackedWithSubtypeThisTurn. Additive.
+	AttackedSubtypes map[string]int `json:"attackedSubtypes,omitempty"`
+	// LoreCounterPut lists the Saga objects a lore counter was put on this
+	// turn (#3192, CR 714.2b): Summon: Brynhildr's "during any turn you put
+	// a lore counter on this Saga". One entry per placement, carrying the
+	// epoch so a Saga that left and returned is a new object. Read through
+	// Game.LoreCounterPutOnThisTurn. Additive.
+	LoreCounterPut []PermissionCardRef `json:"loreCounterPut,omitempty"`
 	// SacrificedSubtypes is the same tally for the other end of a
 	// permanent's life: the permanents each player SACRIFICED this
 	// turn, per subtype they had as they were sacrificed. Read
@@ -199,6 +220,22 @@ type TurnTally struct {
 	// condition silently stopped being true for the commonest case
 	// the card was printed for.
 	SacrificedSubtypes map[string]int `json:"sacrificedSubtypes,omitempty"`
+	// DiedPowerBySubtype is the table-wide total POWER of the creatures
+	// that died this turn (went from the battlefield to a graveyard),
+	// per creature type they had as they died, keyed by the lower-cased
+	// subtype; a creature with every creature type is counted once under
+	// enteredAllCreatureTypes (#3143, Genesis of the Daleks' "the total
+	// power of Daleks that died this turn"). Read through
+	// Game.DiedPowerWithSubtypeThisTurn.
+	//
+	// Power and types are the permanent as it last existed on the
+	// battlefield (CR 608.2h, CR 603.10a): the exit's departure record
+	// carries the power with counters and layers applied, the event
+	// carries the post-layer subtypes. A tally rather than a graveyard
+	// walk because a token that died is gone from the graveyard by the
+	// time anything asks (CR 704.5d), and a card there has none of the
+	// power or types it died with. Additive within the current schema.
+	DiedPowerBySubtype map[string]int `json:"diedPowerBySubtype,omitempty"`
 	// CombatDamagedPlayers records which players were dealt combat
 	// damage this turn and by WHAT, keyed by combatDamageTallyKey:
 	// one cell per (the dealing creature's controller, an identity it
@@ -333,6 +370,13 @@ type TurnTally struct {
 	// log, so it clones, snapshots and undoes with the rest of the
 	// turn's record. uuid.Nil when nobody was.
 	MonarchAtStart uuid.UUID `json:"monarchAtStart,omitempty"`
+	// PrevNoncombatVictims are the players who were dealt noncombat
+	// damage during the PREVIOUS turn (#3172, Command the Stage's "if an
+	// opponent was dealt noncombat damage last turn"). A stamp taken in
+	// resetTurnTallyLocked from the turn that is ending, so it clones,
+	// snapshots and undoes with the rest of the tally. Read through
+	// Game.WasDealtNoncombatDamageLastTurn.
+	PrevNoncombatVictims []uuid.UUID `json:"prevNoncombatVictims,omitempty"`
 	// ModesChosen is "choose one that hasn't been chosen this turn"
 	// (ADR 0097, #1749): the option indexes each modal ability has
 	// chosen this turn, ascending, keyed by ObjectTallyKey(source,
@@ -639,20 +683,12 @@ func subtypeTallyKey(player uuid.UUID, subtype string) string {
 // that had every creature type counts for any creature type.
 //
 // "As they entered" is the characteristics the permanent carried at
-// its EventETB: its printed values, with a copy effect it entered
-// under (CR 707.2) and the face it entered on already applied. The
-// layer cache is rebuilt after an entry, not during it, so continuous
-// effects from static abilities are NOT part of that reading. That
-// makes a type GRANTED at the moment of entry invisible — a Soldier
-// that entered while its controller's Maskwood Nexus was on the
-// battlefield counts as a Soldier only, where the printed rules count
-// it as every type — which is weaker than the rules, and a card that
-// reads this declares it. The opposite case, a static that REMOVES a
-// subtype from a permanent as it enters, would read stronger; no
-// catalog card removes a creature type from anything but the
-// permanent an Aura is already attached to, or from itself only while
-// a condition holds (Arixmethes, The Warring Triad), and a reader for
-// those types has to account for it.
+// its EventETB with the layer pass applied (#2940): its printed values,
+// a copy effect it entered under (CR 707.2), the face it entered on, and
+// every continuous effect already in force — a Soldier that enters
+// under Maskwood Nexus counts as every creature type. The pass is a dry
+// run (enteredWithLayersLocked); the opposite case, a static that
+// REMOVES a subtype from a permanent as it enters, is read the same way.
 //
 // Caller must hold g.mu.
 func (g *Game) EnteredWithSubtypeThisTurn(playerID uuid.UUID, subtype string) int {
@@ -730,6 +766,17 @@ func (g *Game) PlayersDealtCombatDamageThisTurnBySubtype(controller uuid.UUID, s
 	return g.combatDamagedPlayersLocked(controller, combatDamageSubtypeKey(subtype), IsCreatureType(subtype))
 }
 
+// PlayersDealtCombatDamageThisTurnByCommander is the same set for a
+// COMMANDER: a creature that was a commander (Card.IsCommander, whoever
+// owns it) and was under `controller`'s control as it dealt the damage
+// — freerunning's "with an Assassin or commander" (CR 702.173a,
+// #3172).
+//
+// Caller must hold g.mu.
+func (g *Game) PlayersDealtCombatDamageThisTurnByCommander(controller uuid.UUID) map[uuid.UUID]bool {
+	return g.combatDamagedPlayersLocked(controller, combatDamageCommanderKey, false)
+}
+
 // combatDamagedPlayersLocked collects the seated players with a
 // non-empty cell under one identity, folding in the changeling
 // bucket when the caller asked about a creature type. Seats are
@@ -776,6 +823,9 @@ type NoncombatDamageRecord struct {
 	Controller uuid.UUID `json:"controller"`
 	Colors     []string  `json:"colors,omitempty"`
 	Amount     int       `json:"amount"`
+	// Victim is the player the damage was dealt to, or uuid.Nil when it
+	// was dealt to a permanent (#3172).
+	Victim uuid.UUID `json:"victim,omitempty"`
 }
 
 // recordNoncombatDamageLocked notes `amount` of noncombat damage dealt
@@ -793,12 +843,25 @@ func (g *Game) recordNoncombatDamageLocked(ev *ReplacementEvent, amount int) {
 	if src == nil {
 		return
 	}
+	var victim uuid.UUID
+	if g.playerByIDLocked(ev.DamageTarget) != nil {
+		victim = ev.DamageTarget
+	}
 	g.TurnTally.NoncombatDamage = append(g.TurnTally.NoncombatDamage, NoncombatDamageRecord{
 		Source:     ev.DamageSource,
 		Controller: src.Controller,
 		Colors:     append([]string(nil), src.Colors...),
 		Amount:     amount,
+		Victim:     victim,
 	})
+}
+
+// WasDealtNoncombatDamageLastTurn reports whether `player` was dealt
+// noncombat damage during the previous turn (#3172): the whole previous
+// turn, whoever's it was. False on the first turn of the game. Caller
+// must hold g.mu.
+func (g *Game) WasDealtNoncombatDamageLastTurn(player uuid.UUID) bool {
+	return slices.Contains(g.TurnTally.PrevNoncombatVictims, player)
 }
 
 // NoncombatDamageThisTurnForEffect is how much noncombat damage sources
@@ -936,6 +999,11 @@ func combatDamageNameKey(name string) string { return "n:" + strings.ToLower(nam
 
 func combatDamageSubtypeKey(subtype string) string { return "s:" + strings.ToLower(subtype) }
 
+// combatDamageCommanderKey is the third identity: the dealer was a
+// commander as it dealt the damage (freerunning, CR 702.173a). Its tag
+// cannot collide with a card name ("n:") or a subtype ("s:").
+const combatDamageCommanderKey = "c:commander"
+
 // recordCombatDamageToPlayerLocked records one creature's combat
 // damage to one player under every identity a reader may ask for: its
 // name, and each subtype it has right now. A creature with every
@@ -954,6 +1022,9 @@ func (g *Game) recordCombatDamageToPlayerLocked(controller uuid.UUID, dealer *Ca
 	}
 	if dealer.Name != "" {
 		bump(combatDamageNameKey(dealer.Name))
+	}
+	if dealer.IsCommander {
+		bump(combatDamageCommanderKey)
 	}
 	all := HasAllCreatureTypes(dealer)
 	for _, s := range dealer.Effective().Subtypes {
@@ -975,6 +1046,72 @@ func subtypeTallyCount(m map[string]int, playerID uuid.UUID, subtype string) int
 		n += m[subtypeTallyKey(playerID, enteredAllCreatureTypes)]
 	}
 	return n
+}
+
+// DiedPowerWithSubtypeThisTurn is the total power of the creatures with
+// creature type `subtype` that died this turn, whoever controlled them
+// — Genesis of the Daleks' "the total power of Daleks that died this
+// turn". A creature with every creature type (a changeling) counts for
+// any creature type. Each creature's power is the one it last had on
+// the battlefield, +1/+1 counters and layers included, so a token that
+// has already ceased to exist still counts. The total is floored at
+// zero: "loses life equal to" a negative number loses none.
+//
+// Caller must hold g.mu.
+func (g *Game) DiedPowerWithSubtypeThisTurn(subtype string) int {
+	if subtype == "" {
+		return 0
+	}
+	n := g.TurnTally.DiedPowerBySubtype[strings.ToLower(subtype)]
+	if IsCreatureType(subtype) {
+		n += g.TurnTally.DiedPowerBySubtype[enteredAllCreatureTypes]
+	}
+	if n < 0 {
+		return 0
+	}
+	return n
+}
+
+// recordDiedPowerLocked adds the creature an EventLTB to the graveyard
+// names to TurnTally.DiedPowerBySubtype, once per creature type it
+// had, with the power it last had on the battlefield. The caller has
+// already decided it was a creature.
+//
+// The departure record is the normal source of the power. An exit that
+// left none (a hand-built fixture moving a card by hand) falls back to
+// the CR 603.10 snapshot's power, the same number whenever no counter
+// is involved, and the subtypes come from the event, or from that
+// snapshot for an event that carries none.
+//
+// Caller must hold g.mu.
+func (g *Game) recordDiedPowerLocked(ev Event) {
+	var subtypes []string
+	all := false
+	power := 0
+	if lki, ok := g.lastKnownBattlefield[ev.CardID]; ok {
+		subtypes, all, power = lki.Subtypes, lki.AllCreatureTypes, lki.Power
+	}
+	if ev.LastKnownTypes != nil {
+		subtypes, all = ev.LastKnownSubtypes, ev.LastKnownAllCreatureTypes
+	}
+	if info, ok := g.LastKnownPermanentForEffect(ev.CardID); ok {
+		power = info.Power
+	}
+	bump := func(key string) {
+		if g.TurnTally.DiedPowerBySubtype == nil {
+			g.TurnTally.DiedPowerBySubtype = map[string]int{}
+		}
+		g.TurnTally.DiedPowerBySubtype[key] += power
+	}
+	for _, s := range subtypes {
+		if all && IsCreatureType(s) {
+			continue
+		}
+		bump(strings.ToLower(s))
+	}
+	if all {
+		bump(enteredAllCreatureTypes)
+	}
 }
 
 // EnteredWithCardTypeThisTurn reports how many permanents entered the
@@ -1009,6 +1146,51 @@ func (g *Game) recordEnteredCardTypesLocked(controller uuid.UUID, c *Card) {
 // TurnTally.EnteredSubtypes under `controller`.
 func (g *Game) recordEnteredSubtypesLocked(controller uuid.UUID, c *Card) {
 	recordSubtypeTally(&g.TurnTally.EnteredSubtypes, controller, c)
+}
+
+// enteredWithLayersLocked is the entering permanent with the layer pass
+// applied to it (#2940). The tally listener runs ahead of
+// layerVersionBump, so at EventETB the permanent's layer cache is still
+// empty or stale and Effective() would read its printed values — a
+// Soldier entering under Maskwood Nexus would count as a Soldier only.
+// The pass runs over a COPY of the battlefield slice (the same dry-run
+// idiom as entryCharacteristicsLocked), so no real card's cache, no
+// timestamp and no event is touched; the entry stamp the real listener
+// has not yet given the card is borrowed from lookAheadEntryStampLocked
+// so it sorts after every permanent already there (CR 613.7d). A card
+// that is not on the battlefield (a hand-written event in a test) is
+// returned as is.
+//
+// Caller must hold g.mu (write).
+func (g *Game) enteredWithLayersLocked(c *Card) *Card {
+	if c == nil || g.Battlefield == nil {
+		return c
+	}
+	idx := -1
+	for i := range g.Battlefield.Cards {
+		if g.Battlefield.Cards[i].InstanceID == c.InstanceID {
+			idx = i
+			break
+		}
+	}
+	if idx < 0 {
+		return c
+	}
+	orig := g.Battlefield.Cards
+	dry := make([]Card, len(orig))
+	copy(dry, orig)
+	dry[idx].effective = nil
+	if dry[idx].EnteredBattlefieldAt == 0 {
+		dry[idx].EnteredBattlefieldAt = g.lookAheadEntryStampLocked()
+	}
+	g.Battlefield.Cards = dry
+	defer func() { g.Battlefield.Cards = orig }()
+	g.layerPassLocked()
+	out := dry[idx]
+	if out.effective == nil {
+		return c
+	}
+	return &out
 }
 
 // recordSacrificedSubtypesLocked adds one sacrificed permanent to
@@ -1103,7 +1285,13 @@ func (g *Game) SpellsCastBeforeThisTurn(spellID uuid.UUID) int {
 // resetTurnTallyLocked starts a fresh tally at the current end of the
 // event log. Caller must hold g.mu.
 func (g *Game) resetTurnTallyLocked() {
-	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch}
+	var prevVictims []uuid.UUID
+	for _, r := range g.TurnTally.NoncombatDamage {
+		if r.Victim != uuid.Nil && !slices.Contains(prevVictims, r.Victim) {
+			prevVictims = append(prevVictims, r.Victim)
+		}
+	}
+	g.TurnTally = TurnTally{FirstEvent: len(g.Events), MonarchAtStart: g.Monarch, PrevNoncombatVictims: prevVictims}
 	// #628: the loop notice is a claim about THIS turn's resolutions,
 	// so it dies with the counts it was derived from. A table that
 	// stepped its way past a loop by hand starts the next turn with
@@ -1121,10 +1309,16 @@ func cloneTurnTally(t TurnTally) TurnTally {
 		}
 	}
 	out.Resolved = copyStringIntMap(t.Resolved)
+	out.PrevNoncombatVictims = append([]uuid.UUID(nil), t.PrevNoncombatVictims...)
 	out.EnteredSubtypes = copyStringIntMap(t.EnteredSubtypes)
 	out.EnteredCardTypes = copyStringIntMap(t.EnteredCardTypes)
 	out.Entered = copyUUIDIntMap(t.Entered)
 	out.SacrificedSubtypes = copyStringIntMap(t.SacrificedSubtypes)
+	out.AttackedSubtypes = copyStringIntMap(t.AttackedSubtypes)
+	if len(t.LoreCounterPut) > 0 {
+		out.LoreCounterPut = append([]PermissionCardRef(nil), t.LoreCounterPut...)
+	}
+	out.DiedPowerBySubtype = copyStringIntMap(t.DiedPowerBySubtype)
 	out.CombatDamagedPlayers = copyStringIntMap(t.CombatDamagedPlayers)
 	if len(t.DamageDealers) > 0 {
 		out.DamageDealers = append([]DamageDealtRecord(nil), t.DamageDealers...)
@@ -1249,6 +1443,22 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		}
 	case EventAttack:
 		g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) { p.AttacksDeclared++ })
+		// #3192: what the attacker was as it was declared, for the
+		// conditional cast permissions ("during any turn you attacked with
+		// a token / a commander / a Rogue"). The creature is on the
+		// battlefield now and may not be by the time anyone asks.
+		if c := g.findCardByIDLocked(ev.CardID); c != nil && ev.Actor != uuid.Nil {
+			token, commander := IsTokenPtr(c), c.IsCommander
+			g.bumpPlayerTally(ev.Actor, func(p *PlayerTurnTally) {
+				if token {
+					p.TokensAttacked++
+				}
+				if commander {
+					p.CommandersAttacked++
+				}
+			})
+			recordSubtypeTally(&g.TurnTally.AttackedSubtypes, ev.Actor, c)
+		}
 		// ADR 0059 Decision 8: the per-object attack history. A fresh
 		// slice every time, never an append into shared capacity: the
 		// undo clone holds this backing array too (#1238's reason).
@@ -1321,8 +1531,8 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 		if controller == uuid.Nil {
 			controller = ev.Actor
 		}
-		g.recordEnteredSubtypesLocked(controller, c)
-		g.recordEnteredCardTypesLocked(controller, c)
+		g.recordEnteredSubtypesLocked(controller, g.enteredWithLayersLocked(c))
+		g.recordEnteredCardTypesLocked(controller, g.enteredWithLayersLocked(c))
 	case EventLTB:
 		if ev.CardID == uuid.Nil {
 			return
@@ -1359,6 +1569,7 @@ func (turnTallyListener) OnEvent(g *Game, ev Event) {
 			return
 		}
 		g.TurnTally.CreaturesDied++
+		g.recordDiedPowerLocked(ev)
 		// #1682 / CR 603.10a: "died under your control" is the
 		// controller the permanent had as it left, which the exit
 		// stamped on the event — not the graveyard card's field, which

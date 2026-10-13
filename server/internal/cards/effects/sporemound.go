@@ -17,7 +17,7 @@ func init() {
 		Name:         "Sporemound",
 		Completeness: CompletenessFull,
 		Triggered: []game.TriggeredAbility{
-			Landfall("Sporemound — create a 1/1 green Saproling", b34CreateTokens(b11GreenSaprolingToken, 1)),
+			LandfallPaying("Sporemound — create a 1/1 green Saproling", game.LandfallPayoff{Tokens: 1}, b34CreateTokens(b11GreenSaprolingToken, 1)),
 		},
 	})
 }

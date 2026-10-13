@@ -497,8 +497,47 @@ func TestB18ThirstForKnowledgeDrawsThreeThenOwesTwo(t *testing.T) {
 	if discardOwed(g, me.ID) != 2 {
 		t.Errorf("discard owed = %d, want 2", discardOwed(g, me.ID))
 	}
-	if spec, _ := Lookup(b18ThirstForKnowledgeOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the artifact-discard gap must be declared")
+	if spec, _ := Lookup(b18ThirstForKnowledgeOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("the artifact-discard alternative is offered: nothing is left to declare")
+	}
+}
+
+// "Discard two cards unless you discard an artifact card": one artifact
+// card is a complete answer, one other card is not, and two of anything
+// is.
+func TestB18ThirstForKnowledgeAcceptsOneArtifactOrTwoCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	rock := handCardFull(me, "Sol Ring", "Artifact", "{1}", "", nil)
+	bear := handCardFull(me, "Bear", "Creature — Bear", "{1}{G}", "", nil)
+	other := handCardFull(me, "Bolt", "Instant", "{R}", "", nil)
+	castCatalogSpell(t, g, "Thirst for Knowledge", "Instant", b18ThirstForKnowledgeOracle, nil)
+	passPriorityAroundTable(t, g)
+	c := discardChoiceFor(g, me.ID)
+	if c == nil || c.ChooseMin != 1 || c.ChooseMax != 2 {
+		t.Fatalf("a floor of one and a ceiling of two: %+v", c)
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{bear}); err == nil {
+		t.Fatal("one non-artifact card was accepted")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{rock}); err != nil {
+		t.Fatalf("one artifact card is a complete discard: %v", err)
+	}
+	if me.Hand.Contains(rock) || !me.Hand.Contains(bear) || !me.Hand.Contains(other) {
+		t.Error("only the artifact card was discarded")
+	}
+}
+
+func TestB18ThirstForKnowledgeAcceptsTwoOrdinaryCards(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	bear := handCardFull(me, "Bear", "Creature — Bear", "{1}{G}", "", nil)
+	other := handCardFull(me, "Bolt", "Instant", "{R}", "", nil)
+	castCatalogSpell(t, g, "Thirst for Knowledge", "Instant", b18ThirstForKnowledgeOracle, nil)
+	passPriorityAroundTable(t, g)
+	answerDiscard(t, g, me.ID, bear, other)
+	if me.Hand.Contains(bear) || me.Hand.Contains(other) {
+		t.Error("two cards of any kind are a complete discard")
 	}
 }
 
@@ -569,7 +608,7 @@ func TestB18ManyPartingsFetchesABasicToHandAndMakesAFood(t *testing.T) {
 	}
 }
 
-func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
+func TestB18CycleOfRenewalSacrificesALandOnResolutionAndFetchesTwoTapped(t *testing.T) {
 	g := newCatalogGame(t)
 	me := g.Seats[0]
 	land := b12Permanent(g, me.ID, "Old Forest", "Basic Land — Forest")
@@ -581,16 +620,18 @@ func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
 	id := uuid.New()
 	me.Hand.PushTop(game.Card{InstanceID: id, Name: "Cycle of Renewal", TypeLine: "Instant — Lesson",
 		OracleID: b18CycleOfRenewalOracle, Owner: me.ID, Controller: me.ID})
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err == nil {
-		t.Fatal("the land sacrifice is an additional cost")
-	}
-	if err := g.CastSpell(me.ID, id, game.CastSpellParams{SacrificeIDs: []uuid.UUID{land}}); err != nil {
+	if err := g.CastSpell(me.ID, id, game.CastSpellParams{}); err != nil {
 		t.Fatalf("CastSpell: %v", err)
 	}
-	if g.Battlefield.Contains(land) {
-		t.Error("the land is sacrificed on cast")
+	if !g.Battlefield.Contains(land) {
+		t.Error("nothing is sacrificed at cast")
 	}
 	passPriorityAroundTable(t, g)
+	answerSacrifice(t, g, me.ID, land)
+	if g.Battlefield.Contains(land) {
+		t.Error("the land is sacrificed as the spell resolves")
+	}
+	takeSearchPrompts(t, g)
 	for _, name := range []string{"Forest", "Plains"} {
 		l := findBattlefieldByName(g, name)
 		if l == uuid.Nil {
@@ -600,8 +641,8 @@ func TestB18CycleOfRenewalSacrificesALandAndFetchesTwoTapped(t *testing.T) {
 			t.Errorf("%s enters tapped", name)
 		}
 	}
-	if spec, _ := Lookup(b18CycleOfRenewalOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the cost-not-effect posture must be declared")
+	if spec, _ := Lookup(b18CycleOfRenewalOracle); spec.Completeness != CompletenessFull {
+		t.Error("the sacrifice is part of the effect now")
 	}
 }
 
@@ -731,8 +772,9 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 	if !g.Battlefield.Contains(mine) {
 		t.Error("your own creatures are untouched")
 	}
-	// The opponent who lost two creatures runs one two-card search;
-	// the one who lost one has exactly one basic and needs no prompt.
+	// The opponent who lost two creatures runs one two-card search; the
+	// one who lost one has exactly one basic and is asked too: a search
+	// for a basic land may find nothing (CR 701.23b, #3053).
 	pc := searchChoiceFor(g, opp.ID)
 	if pc == nil || pc.Count != 2 {
 		t.Fatalf("opp's search = %+v, want a two-card prompt", pc)
@@ -741,9 +783,13 @@ func TestB18WindsOfAbandonOverloadedExilesEachCreatureYouDontControl(t *testing.
 	if findBattlefieldByName(g, "Forest") == uuid.Nil || findBattlefieldByName(g, "Plains") == uuid.Nil {
 		t.Error("opp's two basics arrive")
 	}
+	if findBattlefieldByName(g, "Swamp") != uuid.Nil {
+		t.Error("the other player's single basic waits for their answer")
+	}
+	answerSearchNamed(t, g, other.ID, "Swamp")
 	swamp := findBattlefieldByName(g, "Swamp")
 	if swamp == uuid.Nil || !b16Tapped(t, g, swamp) {
-		t.Error("the other player's single basic arrives tapped without a prompt")
+		t.Error("the other player's single basic arrives tapped once they take it")
 	}
 }
 

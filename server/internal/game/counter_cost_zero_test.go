@@ -16,8 +16,8 @@ func zeroRemovalSource(g *Game, me *Player, counters map[string]int, floor int) 
 	return pushManaSource(g, me, ManaAbilityShape{
 		TapCost:        true,
 		RemoveCounters: &CounterRemovalCost{Counter: "storage", N: floor, Variable: true},
-		ProducedForPaid: func(_ *Game, _, _ uuid.UUID, paid PaidCost) string {
-			return "{B}" + map[bool]string{true: "{B}", false: ""}[paid.CountersRemoved > 0]
+		ProducedForPaid: func(_ *Game, _, _ uuid.UUID, paid PaidCost) ManaOutput {
+			return ManaOutput{Text: "{B}" + map[bool]string{true: "{B}", false: ""}[paid.CountersRemoved > 0]}
 		},
 	}, counters)
 }

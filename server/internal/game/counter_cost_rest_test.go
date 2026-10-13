@@ -295,11 +295,11 @@ func TestVariableCounterCostReachesTheProducedMana(t *testing.T) {
 	land := pushManaSource(g, me, ManaAbilityShape{
 		TapCost:        true,
 		RemoveCounters: &CounterRemovalCost{Counter: "storage", N: 0, Variable: true},
-		ProducedForPaid: func(_ *Game, _, _ uuid.UUID, paid PaidCost) string {
+		ProducedForPaid: func(_ *Game, _, _ uuid.UUID, paid PaidCost) ManaOutput {
 			if paid.CountersRemoved <= 0 {
-				return ""
+				return ManaOutput{}
 			}
-			return "{C" + itoaForTest(paid.CountersRemoved) + "}"
+			return ManaOutput{Text: "{C" + itoaForTest(paid.CountersRemoved) + "}"}
 		},
 	}, map[string]int{"storage": 4})
 

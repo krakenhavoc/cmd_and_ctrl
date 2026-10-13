@@ -1,6 +1,10 @@
 package effects
 
-import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+import (
+	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+)
 
 // Chain of Smog — Sorcery {1}{B}:
 //
@@ -18,20 +22,19 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // The copy is controlled by the player who made it (CR 707.10b), which
 // is what lets the chain walk around the table.
 //
-// Declared simplification: the two cards discarded are chosen at
-// random rather than by the discarding player. That is
-// `DiscardCards`' behaviour everywhere in the catalog, not something
-// this card introduces, and it is the reason the entry is not
-// `CompletenessFull`.
+// The discarding player chooses the two cards (CR 701.9a: the player
+// discarding picks, unless the text says "at random"), through the same
+// discard prompt Thirst for Knowledge uses; the copy offer follows once
+// the cards are in the graveyard, and also for a hand too small to ask
+// about, because the copy clause is not conditional on the discard.
+//
+// No simplification.
 func init() {
 	Register(Spec{
 		OracleID:     "ea14c26b-bf2f-48b4-b879-6e63069ded1f",
 		Name:         "Chain of Smog",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The two cards discarded are picked at random rather than chosen by the player discarding them.",
-		},
-		Targets: TargetPlayer("target player"),
+		Completeness: CompletenessFull,
+		Targets:      TargetPlayer("target player"),
 		OnResolve: func(_ *game.StackItem, ctx *Context) error {
 			return chainOfSmogDiscard(ctx)
 		},
@@ -51,12 +54,19 @@ func chainOfSmogDiscard(ctx *Context) error {
 	} else if t.Kind != game.TargetPlayer {
 		return nil
 	}
-	if err := (DiscardCards{Player: player, N: 2}).Apply(ctx); err != nil {
-		return err
-	}
-	return MayChoice{
+	item := ctx.Item
+	ctx.Game.QueueDiscardChoiceForEffect(game.DiscardPrompt{
 		Player:   player,
-		Question: "Chain of Smog — copy it? (you may choose a new target for the copy)",
-		OnYes:    copyThisSpellFor(player),
-	}.Apply(ctx)
+		Source:   ctx.Source(),
+		N:        2,
+		Question: "Chain of Smog — discard two cards",
+		Then: func(g *game.Game, _ uuid.UUID, _ []uuid.UUID) error {
+			return MayChoice{
+				Player:   player,
+				Question: "Chain of Smog — copy it? (you may choose a new target for the copy)",
+				OnYes:    copyThisSpellFor(player),
+			}.Apply(NewContext(g, item))
+		},
+	})
+	return nil
 }

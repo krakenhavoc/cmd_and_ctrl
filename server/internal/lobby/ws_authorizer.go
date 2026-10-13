@@ -165,7 +165,10 @@ func bindingFor(p auth.Principal, requestedGame uuid.UUID) (ws.Binding, error) {
 		if requestedGame != uuid.Nil && requestedGame != p.GameID {
 			return ws.Binding{}, ws.StatusError(http.StatusForbidden, "session is not for this game")
 		}
-		return ws.Binding{GameID: p.GameID, ReadOnly: true, UserID: p.UserID, IssuedAt: p.IssuedAt}, nil
+		return ws.Binding{
+			GameID: p.GameID, ReadOnly: true, UserID: p.UserID, IssuedAt: p.IssuedAt,
+			SpectatorID: p.SpectatorID, SpectatorName: spectatorLabel(p), DiscordID: p.DiscordID,
+		}, nil
 
 	case auth.RoleIdentified:
 		// A Discord sign-in that hasn't claimed a seat yet: no game,

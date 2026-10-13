@@ -45,16 +45,9 @@ func init() {
 			Effect:  putIndestructibleCounterOnSource(),
 		}},
 		Replacements: []game.ReplacementEffect{{
-			Watches: []game.EventKind{game.EventDealDamage},
-			AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
-				if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.IsCombatDamage {
-					return false
-				}
-				if !damageSourceControlledBy(ev, g, src.Controller) {
-					return false
-				}
-				return damageHitsAnOpponentOf(ev, g, src.Controller)
-			},
+			Watches:   []game.EventKind{game.EventDealDamage},
+			RowLabel:  "Noncombat damage your sources would deal to an opponent or their permanents is doubled.",
+			AppliesTo: noncombatDamageFromYourSourceToAnOpponent,
 			Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
 				ev.DamageAmount *= 2
 				return nil
@@ -64,6 +57,19 @@ func init() {
 			},
 		}},
 	})
+}
+
+// noncombatDamageFromYourSourceToAnOpponent is the AppliesTo of "if a
+// source you control would deal noncombat damage to an opponent or a
+// permanent an opponent controls" (Solphim, Artist's Talent's level 3).
+func noncombatDamageFromYourSourceToAnOpponent(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+	if ev.Kind != game.RepEventDamage || ev.DamageAmount <= 0 || ev.IsCombatDamage {
+		return false
+	}
+	if !damageSourceControlledBy(ev, g, src.Controller) {
+		return false
+	}
+	return damageHitsAnOpponentOf(ev, g, src.Controller)
 }
 
 // damageHitsAnOpponentOf reports whether the damage target is a

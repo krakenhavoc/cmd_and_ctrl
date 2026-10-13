@@ -43,7 +43,7 @@
   import { get } from "svelte/store";
   import type { CardView, GameView } from "../../protocol";
   import { blockedAttackersOf } from "../../attackTargets";
-  import { gsap } from "gsap";
+  import { EASE, cancelAnimations, canAnimate, run } from "../../motion";
   import { settings } from "../../settings";
   import { cardAnchors, cardSelector, findAnchor, seatSelector } from "../../boardAnchor";
   import { boardExpandLayout } from "../../boardExpand";
@@ -407,23 +407,24 @@
   // then removes itself. Only ever mounted in "full" mode.
   function beatEffect(node: SVGPathElement, effect: BeatEffect) {
     const peak = effect.style === "pulse" ? 0.85 : 0.5;
-    const tween = gsap.fromTo(
+    // In to the peak and back out within the beat, each half eased.
+    const anim = run(
       node,
-      { opacity: 0 },
-      {
-        opacity: peak,
-        duration: effect.durationMs / 2000,
-        ease: "sine.inOut",
-        yoyo: true,
-        repeat: 1,
-        onComplete: () => {
-          effects = effects.filter((e) => e.key !== effect.key);
-        },
-      },
+      [
+        { opacity: 0, offset: 0, easing: EASE.sineInOut },
+        { opacity: peak, offset: 0.5, easing: EASE.sineInOut },
+        { opacity: 0, offset: 1 },
+      ],
+      { duration: effect.durationMs },
     );
+    // A cancelled one (the node went first) does not clear the effect:
+    // the teardown that cancelled it owns that.
+    void anim.done.then((finished) => {
+      if (finished) effects = effects.filter((e) => e.key !== effect.key);
+    });
     return {
       destroy() {
-        tween.kill();
+        anim.cancel();
       },
     };
   }
@@ -479,18 +480,20 @@
     }
   }
 
-  function drawOn(node: SVGPathElement): void {
+  function drawOn(node: SVGPathElement) {
     const len = node.getTotalLength();
-    gsap.fromTo(
-      node,
-      { strokeDasharray: len, strokeDashoffset: len },
-      {
-        strokeDashoffset: 0,
-        duration: 0.34,
-        ease: "power2.out",
-        overwrite: "auto",
-      },
-    );
+    // Replace a draw still running on this node, then leave it fully
+    // drawn: the animation only walks the dash offset from len to 0.
+    cancelAnimations(node);
+    node.style.strokeDasharray = String(len);
+    node.style.strokeDashoffset = "0";
+    if (canAnimate(node)) {
+      run(node, [{ strokeDashoffset: len }, { strokeDashoffset: 0 }], {
+        duration: 340,
+        easing: EASE.power2Out,
+      });
+    }
+    return { destroy: () => cancelAnimations(node) };
   }
 </script>
 

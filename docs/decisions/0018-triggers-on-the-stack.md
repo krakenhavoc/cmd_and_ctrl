@@ -6,6 +6,9 @@
 **Amendment:** 2026-09-24 · **Accepted** · [A batch that commutes needs no CR 603.3b order](#amendment-2026-09-24--a-batch-that-commutes-needs-no-cr-6033b-order--accepted--s48) · [#1511](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1511)
 **Amendment:** 2026-09-24 · **Accepted** · [A trigger still announcing holds its batch (CR 603.3b / 603.3d)](#amendment-2026-09-24--a-trigger-still-announcing-holds-its-batch-cr-6033b--6033d--accepted--s39) · [#1529](https://github.com/krakenhavoc/cmd_and_ctrl/issues/1529)
 **Amendment:** 2026-10-11 · **Accepted** · [The independence check, on the boards people play](#amendment-2026-10-11--the-independence-check-on-the-boards-people-play-3013--accepted) · [#3013](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3013)
+**Amendment:** 2026-10-12 · **Accepted** · [An identical batch is asked again when its copies read their subjects](#amendment-2026-10-12--an-identical-batch-is-asked-again-when-its-copies-read-their-subjects-3021--accepted) · [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021)
+**Amendment:** 2026-10-13 · **Accepted** · [The order prompt says why it asked](#amendment-2026-10-13--the-order-prompt-says-why-it-asked-3015--accepted) · [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015)
+**Amendment:** 2026-10-13 (second) · **Accepted** · [The six remaining villainous-choice cards](#amendment-2026-10-13-second--the-six-remaining-villainous-choice-cards-3143--accepted--backlog) · [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143)
 
 ## Context
 
@@ -4335,3 +4338,201 @@ control) as a read, so a token maker beside it conflicts.
 
 What a step would need: the trigger context to snapshot the damage source as its object (a `TriggerContext` change,
 so a snapshot field and a closure-fields entry), after which `GainLifeEqualToSubject{SubjectToughness}` fits.
+
+## Amendment 2026-10-12 — an identical batch is asked again when its copies read their subjects (#3021) · Accepted
+
+Issue [#3021](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3021). Found by #3020 (the #3013 amendment's
+sub-PR 2), which recorded it as "still not covered".
+
+### The question
+
+Sub-PR 8 skips the CR 603.3b order prompt when every item in a seat's batch has one source card and one label. Its
+argument is that such items are interchangeable. That holds when the copies differ only in their source and
+read nothing that differs between them. It does not hold when each copy reads its own triggering subject.
+Two Righteous Valkyrie triggers, for two Angels that enter together, are one source and one label. Each gains life
+equal to a different creature's toughness. Valkyrie's anthem (+2/+2 while you have 7 more life than you started
+with) is a layer-7 static that reads the life total, so the first gain can cross the line and change what the
+second one reads. The order shows, and sub-PR 8 skipped it without looking.
+
+### Decision
+
+**Yes. The same-source, same-label skip also passes the characteristic test of the #3013 amendment when the items read
+their triggering subjects.** Nothing else of the independence check is added to it.
+
+- `Game.identicalBatchOrderShowsLocked` (`game/trigger_independence.go`) runs only for a batch the pure
+  `seatNeedsTriggerOrder` has just skipped. It asks (reason `characteristic`) when all of these hold:
+  - the seat's mode is "when it matters" (an unknown mode behaves as that one; "never" and "always" are untouched),
+  - at least one item is unanswered and every item is identical by the sub-PR 8 test (`identicalItems`),
+  - every item is one the footprint check can describe, and at least one reads a characteristic of its subject
+    (`triggerAccess.charReads`, set by `GainLifeEqualToSubject`),
+  - for some pair, `characteristicReadConflict` holds: one copy changes something a static on the board could read
+    (any change for a layer-7, copy or ability-removal static, and only a life total when the only static
+    declares `DependsOnLifeTotal`; an item that only moves life passes the first kind).
+  `characteristicReadConflict` is the test #3020 added, lifted out of `accessesConflictLocked` so both callers share
+  one definition.
+- **The narrowing is the point.** The full check is not run on an identical batch. It would add object ties (two
+  counters on one permanent), reactors and the rest to boards that have never asked, for items that really are
+  interchangeable. An item the check cannot describe keeps the old skip, for the same reason. So the prompt
+  appears only for a copy that reads a different creature's toughness beside a static that can move it:
+  Righteous Valkyrie's own batch. Trostani, Verdant Sun's Avatar and Wolverine Riders beside no such static,
+  or beside a lord that does not read life (Elvish Archdruid), stay unasked, and so do two Bident draws, two
+  prowess pumps and two Annihilator triggers.
+- No wire or client change. The prompt is the existing `trigger_order`, and the enumerator (`legal/choices.go`) and
+  the heuristic (`aiseat/heuristic/choices.go`) already answer it for any batch. It is counted under the existing
+  `characteristic` metric label.
+- Where the old rule is stated above (the sub-PR 2 note's "Still not covered", the #1968 amendment's "Only the
+  existing identical skip still ignores the trigger context") it was true on 2026-10-11 and is superseded here for
+  the subject-reading case only.
+
+### Tests
+
+`cards/effects/trigger_independence_3021_test.go`: two Valkyrie gains for two Angels ask and are counted under
+`characteristic`; the bot is offered both orders and the engine accepts one; "never" does not ask; an answered batch
+is not asked again; Trostani alone and Riders beside Elvish Archdruid do not ask. The unchanged-skip cases are
+`game/trigger_order_test.go` (identical draws) and `cards/effects/annihilator_test.go`.
+
+
+## Amendment 2026-10-13 — the order prompt says why it asked (#3015) · Accepted
+
+Issue [#3015](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3015). The owner chose it on 2026-10-11 (decision 5 of
+the #3013 amendment), to build after sub-PR 1's reason counter. #3021's `characteristic` case (above) is covered too.
+
+### The question
+
+The CR 603.3b "Order your triggers" prompt says only that. A player who is asked for an order that looks irrelevant
+(two life gains, a counter) cannot tell whether the game found a real conflict or gave up on a card it cannot read.
+The engine already knows: `triggerOrderAskLocked` returns a `TriggerOrderReason`, and the drain counts it. The prompt
+should say it.
+
+### Decision
+
+**Yes. Each prompt carries one sentence, built on the server from the reason, in the player's terms.**
+
+- `PendingChoice.TriggerOrderWhy` (`game/pending_choice.go`) holds the sentence. It rides the snapshot
+  (`pendingChoices[].triggerOrderWhy`, `omitempty`, an additive change that zero-values to "no sentence") and the
+  wire as `trigger_order_why` on the `trigger_order` pending choice (`docs/protocol.md`). The client shows it under
+  the heading. Server-side because the prompt's other text (`reason`, the labels) is built there, and because the
+  facts a sentence needs (the card behind a static, the event a watcher watches) exist only where the check runs.
+- **The check carries the facts it already found.** `triggerOrderConflictLocked` and `accessesConflictLocked` return a
+  `triggerOrderWhy` (the reason plus the card, the event, the life direction or the player the sentence names)
+  instead of the bare reason. `somethingReactsLocked` became `reactorLocked`, which returns the card and event kind
+  it matched; `triggerOrderBoardOpaqueLocked` returns the first card that made the board opaque;
+  `characteristicReadConflict` returns the card behind the static it found. The yes/no decision and the reason are
+  unchanged (`triggerOrderAskLocked` is now a wrapper over `triggerOrderAskWhyLocked`), and the metric counts the
+  same labels. Where the old code took the first of a map, it now takes the first in a fixed order, so the sentence
+  is stable; no decision depends on which.
+- **The words** (`game/trigger_order_why.go`, `triggerOrderSentenceLocked`). Every `TriggerOrderReason` has one, plus
+  a generic fallback for a reason this binary has no case for. None uses the check's vocabulary (a test fails on
+  "footprint", "characteristic", "batch", "engine" and the reason labels).
+
+  | Reason | Sentence |
+  |---|---|
+  | `always` | You've set your triggers to ask every time. |
+  | `undescribed` | *Wolverine Riders'* trigger is handled by the players, so the game can't tell whether the order matters. |
+  | `board_opaque` | *Humility* could change how these triggers resolve. |
+  | `reactor` | *Ajani's Pridemate* watches life totals. Named by the family of event the card declares it watches (life totals, damage, cards being drawn, permanents entering, and so on), never by a direction. A token the items create is "A token these triggers create watches …". |
+  | `ripple` | Something else in play is keeping track of *Oblivion Ring*. |
+  | `elimination` | You (or the player's name) could leave the game partway through these triggers, which changes what the rest do. |
+  | `object_tie` | These triggers both change *Marwyn*. (One writes and one reads: "One of these triggers changes *Marwyn*, which another looks at.") |
+  | `rules` | *Sokka's* trigger changes the rules the other triggers resolve under. |
+  | `library` | These triggers both work on the same library or graveyard. |
+  | `monarch` | These triggers both make you the monarch. |
+  | `characteristic` | The life gain from one trigger can change *Righteous Valkyrie's* bonus, which another trigger counts. For an identical batch (#3021): "The first life gain can change …". |
+
+  A legend is named by the part of its name before the comma ("Marwyn", "Sokka"); a face-down permanent is
+  "a face-down permanent", because every seat reads the sentence (CR 708.2). A reason with no card to name (a player
+  static, a delayed trigger) gets the same sentence with "Something in play".
+- **What the sentence is not.** Display text. It is not read back, not part of the resolve payload, and not shown to
+  the enumerator or a bot: `legal/choices.go` and the heuristic read `TriggerOrderIDs` only, and the #3021 test that
+  offers a bot both orders runs against a prompt that now carries the sentence. A `reactor` sentence names the family of event the
+  card watches and never a direction in it. A card's declared watch is an event kind (`change_life`), which does not
+  say whether it cares about a gain or a loss, and the check cannot evaluate the card's own condition (which is why
+  it asked). "Reacts to life gain" would be false for a card that watches life loss when the batch only gains, so the
+  sentence says "watches life totals" for every watcher of the kind. If a watcher's direction is ever declared as
+  data, the specific wording can return for it alone; until then the family wording is used everywhere. (The
+  `characteristic` sentence does say "life gain" or "life loss": that is what the item itself does, which is known.)
+- **A prompt queued before this change** has no sentence and shows the old heading alone.
+
+### Tests
+
+`game/trigger_order_why_test.go`: every reason in `TriggerOrderReasons()` has a case with the exact sentence, the
+banned-word check, the fallbacks, the sentence stored on a queued prompt (and unchanged by the held drain), the
+legend short name. `cards/effects/trigger_order_why_3015_test.go`: the real boards each reason can reach (reactor three
+ways, undescribed, object tie, characteristic two ways, library, elimination, rules, always) produce their sentence.
+`protocol/trigger_order_why_view_test.go`: the field rides the wire and is omitted when empty or on another kind.
+`ChoicePromptModal` render test in `client/src/lib/choiceSheets.render.test.ts`.
+
+## Amendment 2026-10-13 — villainous choice (#3140, CR 701.55) · Accepted · Backlog
+
+Issue [#3140](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3140). `option_pick` (decision 6 above) owns "choose one of the following" addressed to a seat that is not the controller, so a villainous choice is an option pick and not a new kind. Numbering: no ADR was reserved; this amends the ADR that owns the prompt.
+
+### The rules
+
+From the pinned Comprehensive Rules (`MagicCompRules 20260925.txt`):
+
+- **CR 701.55a:** "[A player] faces a villainous choice — [option A], or [option B]" means "[A player] chooses [option A] or [option B]. Then all actions in the chosen option are performed."
+- **CR 701.55b:** "While facing a villainous choice, a player may choose an option that is illegal or impossible. In that case, they perform as much of the action as is possible. This is an exception to rule 608.2d."
+- **CR 701.55c:** "A replacement effect may replace an instruction to face a villainous choice with an instruction to face that choice some number of additional times. In that case, the entire process described in rule 701.55a is performed for that player the appropriate number of times one at a time."
+- **CR 701.55d:** "If more than one player is instructed to face a villainous choice, the entire process described in rule 701.55a is performed for each of those players one at a time in APNAP order. This is an exception to rule 608.2e."
+
+### Decisions
+
+1. **A registered pair, faced through an option pick.** `effects.NewVillainousChoice(key, question, A, B)` registers one keyed option-pick continuation (`option-pick/villainous-<key>`, ledger line `option <key>`) holding the two bodies. `effects.FaceVillainousChoice{Players, Choice, Carry}` queues the question for the first player, addressed to them and not to the controller. Each option is a `VillainousOption`: the printed label, a `Body(ctx, Facing)` that captures nothing, and three hints for a bot. Nothing is a closure on the prompt, so a table waiting on the answer is a restore point (the prompt carries `pickThen` and `optionCarry`, both already on the wire since #2854).
+2. **Both options are always offered (CR 701.55b).** The queue prunes nothing and the enumerator already offers every option of an option pick, so a player with no creature may pick "sacrifice a creature" and sacrifice nothing. This is the general rule 608.2d's exception, and the bodies do as much as they can. `VillainousOption.Possible` does not hide an option: it zeroes the bot hints of one that would do nothing to this player, so a bot takes the free one.
+3. **One at a time, in APNAP order (CR 701.55c, d).** The prompt's carry is the players still to face the choice, `uuid.Nil`, then the card's own data. `FaceVillainousChoice` lists the players in APNAP order, each repeated once per time they face it, and each answer's continuation performs the chosen body and then asks the next entry. A player who has left the game is skipped (CR 800.4a). No count is stored: the list is the order.
+4. **"An additional time" is a count read when the choice is faced.** `Spec.OpponentsFaceVillainousChoicesAgain` (The Valeyard) is read through `CatalogExtraVillainousChoice` and `CatalogAbilityKey`, as `ExtraVote` is: `Game.VillainousChoiceTimesForEffect(facing)` is one plus one for each such permanent under the control of someone other than the facing player. Two Valeyards make three questions, which is what two replacement effects give (CR 614.5 stops one effect applying to an event twice, not a second effect applying to the modified instruction). The count is fixed when the instruction is performed.
+5. **The hints.** `ChoiceOption.Harm` (additive, omitted when 0; wire `pick_options[].harm`) is what an option costs the chooser besides life and mana, in cards, and `LifeCost` is the life. The engine never reads either. The heuristic (`aiseat/heuristic/villainous_choice.go`) takes the cheapest loss, prices life through `LifeCostValue`, and refuses an option that costs its last life. A prompt whose options carry no harm keeps the enumerator's first answer. The hints may not read a hidden zone: the controller's hand is never read into one.
+6. **A follow-up question is not sequenced.** A body that asks one (a sacrifice, a discard) leaves it open beside the next question in the chain. The engine has no "after every prompt this body opened" seam; the effect is the same as the rules' because each answer stands alone, and the open question is a limit to lift if a card ever depends on the order.
+
+### The cards
+
+The Valeyard (its caveat is gone: Full), Damocles Base, Sword of Kang, The Dalek Emperor, This Is How It Ends, Sycorax Commander, Dr. Eggman, Davros, Dalek Creator and Great Intelligence's Plan, all Full. The Dalek token is a new `tokens_table.go` row. Six of the fourteen on #3140 are left for a card slice, with what each needs: Missy (a creature card put onto the battlefield from a graveyard face down and tapped with a listed Cyberman body; the library put is the only one that carries a listing today), Hunted by The Family (a no-duration "becomes a 1/1 white Human creature and loses all abilities" on up to four targets, each faced by its own controller), Genesis of the Daleks (the total power of Daleks that died this turn), The Master, Gallifrey's End (choosing the opponent with the most life, with the tie going to the controller), Midnight Crusader Shuttle (a creature put into an attack already declared, attacking that player) and Ensnared by the Mara (exile until a nonland card from an opponent's library, then a free cast from exile).
+
+### Consequences
+
+Additive in the wire (`harm`), the snapshot (`ChoiceOption.Harm` in `pickOptions` and `councilVote.options`, recorded in `testdata/snapshot_shape/v8.txt`; a binary before it drops the key and restores the same question) and the effect-key ledger (seven `option` lines). An older binary refuses a restore point with a villainous question open, as for any keyed option pick it lacks the key for. No client change beyond the `harm?` field on the type: the prompt is an ordinary option pick.
+
+**Back-outs.** Each shape has a test that fails without it: `TestAVillainousChoiceIsAskedOfTheFacingPlayerNotTheController` (the addressee), `TestAnImpossibleOptionIsStillOnOfferAndCostsNothing` (both options offered), `TestTheValeyardMakesAnOpponentFaceTheChoiceAnAdditionalTime` and `TestTheAdditionalTimeIsCountedWhenTheChoiceIsFaced` (the count), `TestSeveralPlayersFaceItOneAtATimeInTurnOrder` and `TestEachPlayersAdditionalTimesAreAskedBeforeTheNextPlayer` (APNAP and one at a time), `TestAVillainousChoiceSurvivesCloneAndARestoreAndCarriesOn` (the keyed continuation), and the heuristic's `TestTheBotTakesTheCheaperOfTwoBadOptions`.
+
+## Amendment 2026-10-13 (second) — the six remaining villainous-choice cards (#3143) · Accepted · Backlog
+
+Issue [#3143](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3143). The six cards the first amendment left each needed one piece besides the keyword action. Numbering: no ADR was reserved; this amends the ADR that owns the prompt. All six ship Full.
+
+### Decisions
+
+1. **One choice per target is a chain.** Hunted by The Family has a villainous choice for each of up to four targets, each faced by its own controller, and CR 701.55d wants them in APNAP order, one at a time. The card sorts the targets by their controllers' seat order and carries them; each option body starts the next target's question once its own last question is answered. `Facing.Remaining` (new, the number of questions this `FaceVillainousChoice` has still to ask, counting only players still in the game) is the signal: a Valeyard's additional times (CR 701.55c) repeat the same target and must not start the next one more than once. Later steps re-check each target by the clause (a creature on the battlefield the caster does not control), not by the stack item's target list, because the spell has left the stack by then. The choice is built from `init`, since its bodies read it again.
+2. **A tally of the power that died, by creature type.** `TurnTally.DiedPowerBySubtype` is the table-wide total power of creatures that went from the battlefield to a graveyard this turn, per creature type they had as they died (a changeling under one `*` bucket, as `EnteredSubtypes` does), read through `Game.DiedPowerWithSubtypeThisTurn`. Power is the departure record's (layers and counters, CR 608.2h), types are the event's (CR 603.10a). A tally and not a graveyard walk, because a token that died is gone by the time anyone asks (CR 704.5d). Additive within the current snapshot schema (`diedPowerBySubtype`, omitted when empty), carried by `cloneTurnTally`. Genesis of the Daleks reads it after its own sweep, so the Daleks that option destroys are among those that died.
+3. **Putting a creature that is already in play into combat.** `Game.PutOnBattlefieldAttackingForEffect(id, defender)` is the second door onto `stampEntryAttackerLocked`, the CR 506.3c rule ninjutsu and attacking tokens use: the creature attacks without having been declared, so no "whenever ~ attacks" trigger fires. It runs the layer pass first, so a control change registered by the same effect is applied before the stamp and cannot take the creature out of combat afterwards (CR 506.4). Midnight Crusader Shuttle gains control until end of turn, checks the control actually changed, taps the creature and calls it.
+4. **A tied "most life" opponent.** `effects.OpponentsWithTheMostLife` lists them; one is the answer and several go to `ChoosePlayer{Only: tied}` for the controller to break the tie. `ChoosePlayer.Only` is new: a pool computed from the board, in place of `Among`.
+5. **A dies trigger that acts on "it".** `eventCardTriggerItem` and `deadCardInGraveyard` (`dead_card_trigger.go`) record the card and its object epoch when the trigger fires and find it again when it resolves, as Ares' own copy of the shape does; The Master (exile it, then the choice) and Missy (return it face down) use them.
+6. **Nothing else was needed.** Missy's graveyard put was already `ReturnFromGraveyardFaceDownForEffect` (the issue was written before it was seen); Hunted by The Family's no-duration effect is `ScopedEffectFor` with `IndefiniteDuration` pinned to the object and the existing type, colour, ability and base-P/T mods; Ensnared by the Mara is `MillToZone` with an `Until` and the free-cast grant Emergent Ultimatum uses. "Chaos ensues" (Missy) is Planechase's planar die: it does something only with a planar deck, which a Commander game on this engine does not have, so the clause has nothing to perform.
+
+### The cards
+
+The Master, Gallifrey's End; Genesis of the Daleks; Hunted by The Family; Midnight Crusader Shuttle; Ensnared by the Mara; Missy. All Full.
+
+### Consequences
+
+One additive field in the snapshot (`turnTally.diedPowerBySubtype`), six effect-key `option` lines, no wire change.
+
+**Back-outs.** Each shape has a test that fails without it: `TestDiedPowerTotalsTheDalekPowerThatDiedThisTurn` and `TestDiedPowerIsThePowerItHadWithCounters` (the tally and its LKI power), `TestPutIntoCombatSurvivesTheControlChangeBeingApplied` (the layer pass first), `TestHuntedByTheFamilyWithTheValeyardAsksEachControllerTwiceAndChainsOnce` (`Facing.Remaining`), `TestHuntedByTheFamilyAsksEachControllerInTurnOrderAndSkipsATargetThatLeft` (the chain and the re-check), `TestTheMasterAsksTheControllerToBreakATieAmongTheTiedOnly` (`ChoosePlayer.Only`).
+
+## Amendment 2026-10-13 (third) — choices made as the ability resolves, not as it goes on the stack (#3172) · Accepted · Backlog
+
+Issue [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), slice "cav-a, choices made at the right time". Twenty-four catalog cards carried a caveat that came down to one of three things: a choice settled when the ability went on the stack (as its target) instead of as it resolved, a choice replaced by a fixed rule, or a condition read once instead of twice. Numbering: no ADR was reserved; this amends the ADR that owns triggers on the stack. All twenty-four ship Full.
+
+### Decisions
+
+1. **A resolution-time "may sacrifice" is one helper.** `maySacrificeOne` (`may_sacrifice.go`) is `ChoosePermanents` with a floor of zero over the controller's own permanents, then the ordinary simultaneous sacrifice, and it runs the card's `then` only for a permanent that really left (`SacrificeAllThenForEffect`'s landed list, not the pick). Ruthless Technomancer, Disciple of Freyalise, Chitterspitter, The Goose Mother and Ziatora use it. The creature's power is its last-known information (`departedCreaturePower`).
+2. **A keep-set is asked once per seat, then the rest are sacrificed together.** `keepCreaturesThenSacrificeTheRest` (`keep_creatures_sacrifice_rest.go`) runs `ChooseCardsRunThenForEffect` with one leg per seat in APNAP order, `most` as the ceiling and a set rule (`totalPowerAtMost`) as `Validate`, then sacrifices everything not kept in one batch so a Blood Artist sees every death. It replaces Archfiend of Depravity's "sacrifice one at a time until two remain" and Slaughter the Strong's lowest-power auto-pick.
+3. **"Any number of counters" is a number per kind.** `chooseCounters` (`choose_counters.go`) asks a `ChooseNumber` for each kind of counter on the permanent, in sorted order, bounded by what it has and what is left of the ceiling. Glissa Sunslayer removes up to three; Resourceful Defense moves any number. No new prompt kind.
+4. **"Discard two unless you discard a <kind> card" is a set rule.** `discardTwoUnlessOne` registers a draw-then continuation whose discard prompt has a floor of one and a `Validate` that accepts a single card only when it qualifies. A hand of one is discarded whole, an empty hand asks nothing (CR 701.9a).
+5. **Resolution-time re-checks of an intervening "if"** (CR 603.4) for Thopter Spy Network and Emeria, the Sky Ruin: the second read sits at the top of the `Effect`.
+6. **Cards that needed no engine change.** Expel the Interlopers asks its number with `ChooseNumber` (0 to 10, a bot suggestion that trades their creatures against yours); Mount Doom, Breena, Teval, Blossoming Tortoise, Extract from Darkness, Command Beacon, Erebos, Chain of Smog and Tireless Provisioner use `QueueChooseCardsForEffect`, `ChoosePermanents`, `MayChoice`, `PickOption` and the discard prompt as they stand. Blossoming Tortoise's discount is `ActivationCostsLess` over lands you control. Breena's per-turn tally was removed: the batch guard already resets with each step, so an additional combat triggers her again.
+7. **Three caveats were already false.** Buried Alive asks "up to three" at any library size (a search that names a quality may find fewer, #3053), Ziatora's damage already counted an anthem (the departure record holds the post-layer power), and Resourceful Defense already triggers for a token that leaves. Each now has a test.
+
+### Consequences
+
+No wire change, no snapshot change, no new prompt kind, no effect-key ledger line. Prompts a closure holds (`maySacrificeOne`'s `then`, `chooseCounters`' `then`) make the table unrestorable while they are open, as every `Then`-closure prompt already does (the Volcano Hellion posture).
+
+**Back-outs.** Each shape has a test that fails without it: `TestRuthlessTechnomancerPaysNothingForACancelledSacrifice` (the landed list, not the pick), `TestB22SlaughterTheStrongKeepsLowestPowerWithinFour` (the set rule), `TestB18ThirstForKnowledgeAcceptsOneArtifactOrTwoCards` (the unless rule), `TestCavAEmeriaRechecksThePlainsOnResolution` and `TestCavAThopterSpyNetworkRechecksTheArtifactOnResolution` (the re-checks), `TestCavAGlissaChoosesHowManyCountersOfEachKind` (the ceiling), `TestB17BreenaTriggersAgainInAnAdditionalCombat` (no per-turn tally), `TestB31BlossomingTortoiseDiscountsLandActivations` (the discount).

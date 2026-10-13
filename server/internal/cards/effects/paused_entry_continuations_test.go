@@ -304,6 +304,7 @@ func TestFetchedCommanderEntryWaitsBesideACommandZonePrompt(t *testing.T) {
 			func(c game.Card) bool { return c.Name == "Fetched Commander" },
 			game.ZoneBattlefield, 1, false, true)
 	})
+	takeSearchPrompts(t, g)
 	if b06ReplacementOrderFor(g, me.ID) == nil {
 		t.Fatal("the fetched commander's entry queues the ordering prompt")
 	}
@@ -358,6 +359,7 @@ func TestEntryPromptIsPrunedWhenTheCardLeavesTheLibrary(t *testing.T) {
 			Then:    func(_ *game.Game, _ []uuid.UUID) error { thenRan++; return nil },
 		})
 	})
+	takeSearchPrompts(t, g)
 	if b06ReplacementOrderFor(g, me.ID) == nil {
 		t.Fatal("the entry queues the ordering prompt")
 	}
@@ -417,6 +419,7 @@ func TestASecondFetchWaitsForTheFirstEntrysPrompt(t *testing.T) {
 			func(c game.Card) bool { return c.HasSubtype("Gate") },
 			game.ZoneBattlefield, 2, false, true)
 	})
+	takeSearchPrompts(t, g)
 
 	if onBattlefield() != 0 {
 		t.Fatal("nothing moves while the first entry's question is open")
@@ -456,6 +459,7 @@ func TestAFetchedLandThatPausesIsStillNotALandDrop(t *testing.T) {
 			func(c game.Card) bool { return c.HasSubtype("Gate") },
 			game.ZoneBattlefield, 1, false, true)
 	})
+	takeSearchPrompts(t, g)
 	peAnswerOrder(t, g, me.ID)
 
 	if !g.Battlefield.Contains(gate) {

@@ -28,6 +28,8 @@ var allTypes = []Type{
 	TypeDeclareBlockers,
 	TypeFinishBlocks,
 	TypeClearCombat,
+	TypeRemoveFromCombat,
+	TypeRevealCard,
 	TypeAdvanceStep,
 	TypeSetMonarch,
 	TypeSetInitiative,
@@ -60,6 +62,7 @@ var allTypes = []Type{
 	TypeRollTableDie,
 	TypeSetTriggerOrderPreference,
 	TypeSetAutoAnswers,
+	TypeCancelAssist,
 }
 
 // Types returns every action type, in declaration order. The slice is

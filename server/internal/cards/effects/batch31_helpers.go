@@ -1,6 +1,8 @@
 package effects
 
 import (
+	"fmt"
+
 	"github.com/google/uuid"
 
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
@@ -93,6 +95,7 @@ func b31LandCreaturesYouControl(target *game.Card, _ *game.Game, source *game.Ca
 // moment the layer cache next rebuilds.
 func b31NotACreatureWhileGraveyardBelow(n int) game.StaticAbility {
 	return game.StaticAbility{
+		Label: fmt.Sprintf("Isn't a creature unless you have %d or more cards in your graveyard.", n),
 		Layer: game.Layer4Type,
 		AppliesTo: func(target *game.Card, g *game.Game, source *game.Card) bool {
 			return target.InstanceID == source.InstanceID && b31GraveyardSize(g, source.Controller) < n
@@ -132,20 +135,6 @@ func b31CurrentPowerOf(g *game.Game, cardID uuid.UUID) int {
 		return 0
 	}
 	return c.CurrentPower()
-}
-
-// b31OpponentControlsNonlandPermanent reports whether any nonland
-// permanent on the battlefield is controlled by someone other than
-// `controller` — the question Tiller Engine's targeted declaration
-// asks before it is declared, so the untap is never dropped with an
-// empty legal set.
-func b31OpponentControlsNonlandPermanent(g *game.Game, controller uuid.UUID) bool {
-	for _, c := range g.BattlefieldCardsForEffect() {
-		if c.Controller != controller && !c.IsLand() {
-			return true
-		}
-	}
-	return false
 }
 
 // --- trigger conditions ------------------------------------------
@@ -206,38 +195,10 @@ func b31YouPlayedALandOrCastASpell(ev game.Event, source *game.Card, g *game.Gam
 // Tiller Engine's trigger share.
 const b31TillerEngineLabel = "Tiller Engine — untap that land, or tap a nonland permanent an opponent controls"
 
-// b31TapChosenOrUntapLandEffect is Tiller Engine's body for one land:
-// with a nonland permanent chosen (and still legal) it is tapped; with
-// none chosen, the land that entered is untapped — if it is still on
-// the battlefield and still tapped. A chosen permanent that became
-// illegal never reaches here — the engine counters the trigger first
-// (CR 608.2b) — so the untap can only run for a trigger whose
-// controller chose it. The land that entered is read off the item's
-// triggering event (item.Trigger.Event.CardID, ADR 0041 P9) rather
-// than captured, so a table with this trigger waiting on the stack is
-// a restore point.
-func b31TapChosenOrUntapLandEffect(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		return TapTarget{Target: t.ID}.Apply(ctx)
-	}
-	entered := item.Trigger.Event.CardID
-	if !onBattlefield(g, entered) {
-		return nil
-	}
-	if c, ok := g.LookupCardForEffect(entered); !ok || !c.Tapped {
-		return nil
-	}
-	return UntapTarget{Target: entered}.Apply(ctx)
-}
-
 // b31BlossomingTortoiseLabel is the stack label both declarations
 // of Blossoming Tortoise's trigger share. The trigger's body is no
 // longer a batch 31 helper: once #767 removed its library clamp it
-// matched Teval's, so both use b25MillThreeThenReturnChosenLandTapped.
+// matched Teval's, so both use b25MillThreeThenReturnLandTapped.
 const b31BlossomingTortoiseLabel = "Blossoming Tortoise — mill three, then return a land card tapped"
 
 // b31LifeBecomes sets `player`'s life total to `total` the way CR

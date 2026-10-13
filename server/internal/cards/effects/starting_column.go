@@ -28,7 +28,7 @@ func init() {
 				Purpose: game.Purpose{Answers: game.AnswerValue},
 				Cost:    Plus(TapCost(), SacrificeThis()),
 				Effect: func(g *game.Game, item *game.StackItem) error {
-					return b16DrawThenDiscard(g, item, 2, 1)
+					return b16DrawThenDiscard(g, item, 2)
 				},
 			}),
 		},

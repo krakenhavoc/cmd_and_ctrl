@@ -108,21 +108,42 @@ func (p *Policy) notePlan(st *state, moves []legal.Move, plan []aiseat.PlanMembe
 // answered as before. decline is the answer, and why the reason.
 func (p *Policy) taxAgainstPlan(st *state, ch *protocol.PendingChoiceView) (decline bool, why string, ok bool) {
 	if !p.cfg.PlanWeighTaxes || ch == nil || ch.Kind != choicePayUnless || ch.Chooser != st.me ||
-		ch.PayCost == "" || ch.PayCards != nil || ch.PayEnergy != nil || ch.TapCost != nil || ch.PhyrexianSymbols > 0 {
+		ch.PayCost == "" || ch.PayCards != nil || ch.PayEnergy != nil || ch.PayLife != nil || ch.PayDamage != nil || ch.PayNothing || ch.TapCost != nil || ch.PhyrexianSymbols > 0 {
 		return false, "", false
 	}
-	src := st.bf[ch.Source]
-	if src == nil || src.Controller == st.me || src.Controller == "" {
-		return false, "", false
-	}
-	if st.targetedByMe(src.InstanceID) {
-		// Ward: the decline counters the bot's own spell, not a gift
-		// the source's rows describe.
-		return false, "", false
-	}
-	gift, ok := declineGift(src)
-	if !ok {
-		return false, "", false
+	var (
+		owner string
+		gift  giftAmounts
+	)
+	if o := ch.AnyPlayerOffer; o != nil {
+		// ADR 0150 §6: an any-player offer is weighed the same way,
+		// against what its source declares for the effect's
+		// controller, who is not necessarily the source's controller
+		// now (a spell has already gone to the graveyard).
+		owner = o.Controller
+		if owner == st.me || owner == "" {
+			return false, "", false
+		}
+		g, found := offerGift(st.bf[ch.Source], st.graveyard[ch.Source])
+		if !found {
+			return false, "", false
+		}
+		gift = g
+	} else {
+		src := st.bf[ch.Source]
+		if src == nil || src.Controller == st.me || src.Controller == "" {
+			return false, "", false
+		}
+		if st.targetedByMe(src.InstanceID) {
+			// Ward: the decline counters the bot's own spell, not a
+			// gift the source's rows describe.
+			return false, "", false
+		}
+		g, found := declineGift(src)
+		if !found {
+			return false, "", false
+		}
+		owner, gift = src.Controller, g
 	}
 	t := p.tail
 	if t == nil || t.seat != st.me || t.turn != st.view.Turn.Seq || t.phase != st.view.Turn.PhaseID {
@@ -165,7 +186,7 @@ func (p *Policy) taxAgainstPlan(st *state, ch *protocol.PendingChoiceView) (decl
 	if _, still := payMana(rest, next.cost, nil); still {
 		return false, "", false
 	}
-	cost := -p.giftsValue(st, map[string]*giftAmounts{src.Controller: &gift}, nil)
+	cost := -p.giftsValue(st, map[string]*giftAmounts{owner: &gift}, nil)
 	what := "a card"
 	if gift.draws == 0 {
 		what = "a token"
@@ -190,6 +211,40 @@ func declineGift(src *protocol.CardView) (giftAmounts, bool) {
 		if !found || r.Purpose.Draws+r.Purpose.Tokens > best.draws+best.tokens {
 			best = giftAmounts{draws: r.Purpose.Draws, tokens: r.Purpose.Tokens}
 			found = true
+		}
+	}
+	return best, found
+}
+
+// offerGift is what an any-player offer's source declares for its
+// controller when nobody pays (ADR 0150 §6): a spell's own Purpose
+// (Rhystic Tutor's tutor counts as a card) or, for a permanent, its
+// largest triggered or activated row. False when it declares neither a
+// card nor a token, and the offer is answered as any tax is.
+func offerGift(onBattlefield, inGraveyard *protocol.CardView) (giftAmounts, bool) {
+	var best giftAmounts
+	found := false
+	consider := func(pv *protocol.PurposeView) {
+		if pv == nil {
+			return
+		}
+		cards := pv.Draws + pv.Tutors
+		if cards <= 0 && pv.Tokens <= 0 {
+			return
+		}
+		if !found || cards+pv.Tokens > best.draws+best.tokens {
+			best = giftAmounts{draws: cards, tokens: pv.Tokens}
+			found = true
+		}
+	}
+	if c := inGraveyard; c != nil && onBattlefield == nil {
+		consider(c.Purpose)
+	}
+	if c := onBattlefield; c != nil {
+		for i := range c.AbilityRows {
+			if r := &c.AbilityRows[i]; r.Kind == "triggered" || r.Kind == "activated" {
+				consider(r.Purpose)
+			}
 		}
 	}
 	return best, found

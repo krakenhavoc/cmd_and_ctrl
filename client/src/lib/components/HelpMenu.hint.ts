@@ -1,6 +1,7 @@
 // HelpMenu.hint.ts — the tip about tips (ADR 0125 §3.7 `site.help`,
 // §6). A "site" hint, so any site page offers it once that page's own
-// hints are seen or do not apply; Home, which has none, offers it first.
+// hints are seen or do not apply. The front page is the sign-in page
+// and offers no tips (ADR 0125 §3.8, ADR 0156 §4).
 
 import { L } from "../labels";
 import type { Hint } from "../hints/hint";

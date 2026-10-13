@@ -304,10 +304,8 @@ func (g *Game) delvePaymentOrderLocked(p *Player, ids []uuid.UUID) []uuid.UUID {
 // (flashback, escape, Gravecrawler), or a permission its owner holds
 // does. Used only to ORDER delve candidates; nothing is refused on it.
 func castableFromOwnGraveyardLocked(g *Game, p *Player, c Card) bool {
-	for _, z := range CastableZonesFor(CatalogKey(c)) {
-		if z == ZoneGraveyard {
-			return true
-		}
+	if g.cardOpensZoneLocked(c, CatalogKey(c), ZoneGraveyard) {
+		return true
 	}
 	return g.CastPermissionForLocked(p.ID, c, ZoneGraveyard) != nil
 }

@@ -552,8 +552,8 @@ func TestB28BenevolentHydraEntersWithXAndGivesOthersAnExtraCounter(t *testing.T)
 	}
 	// #625: the counter-moving tap ability ships; counter_cost_cards_test.go
 	// drives it. The X-counter timing is still a declared caveat.
-	if spec, _ := Lookup(b28BenevolentHydraOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessCaveats {
-		t.Error("the tap ability ships, and the X-counter caveat is still declared")
+	if spec, _ := Lookup(b28BenevolentHydraOracle); len(spec.Activated) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the tap ability ships and the card is complete")
 	}
 }
 
@@ -576,14 +576,25 @@ func TestB28UlvenwaldTrackerMakesYourCreatureFightAnother(t *testing.T) {
 	if !b12Card(t, g, tracker).Tapped {
 		t.Error("the Tracker tapped to activate")
 	}
-	// Their creature first is the wrong way round: nothing happens.
+	// Their creature first is the wrong way round: refused at announce.
 	g.WithWriteLock(func() { _ = g.UntapTargetForEffect(tracker) })
 	other := pushVanillaCreature(g, opp.ID, "Their Ox", 3, 3)
-	b16Activate(t, g, me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{
+	if err := g.ActivateCatalogAbility(me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{
 		{Kind: game.TargetCard, ID: other}, {Kind: game.TargetCard, ID: mine},
-	}})
-	if c := b12Card(t, g, other); c.DamageMarked != 0 {
-		t.Error("slot 0 must be yours — a pair that doesn't fit does nothing")
+	}}); err == nil {
+		t.Error("slot 0 must be yours — a pair that doesn't fit is refused")
+	}
+	// A creature cannot fight itself: "another".
+	if err := g.ActivateCatalogAbility(me.ID, tracker, 0, game.ActivateAbilityParams{Targets: []game.TargetRef{
+		{Kind: game.TargetCard, ID: mine}, {Kind: game.TargetCard, ID: mine},
+	}}); err == nil {
+		t.Error("the second target is another creature")
+	}
+	if b12Card(t, g, tracker).Tapped {
+		t.Error("a refused activation costs nothing")
+	}
+	if spec, _ := Lookup(b28UlvenwaldTrackerOracle); spec.Completeness != CompletenessFull {
+		t.Error("the per-slot clauses landed")
 	}
 }
 
@@ -846,7 +857,7 @@ func TestB28BrimazMakesAnAttackingCatAndABlockingOne(t *testing.T) {
 	assertKeywords(t, g, brimaz, "vigilance")
 	before := opp.Life
 	declareAttack(t, g, opp.ID, brimaz)
-	passPriorityAroundTable(t, g)
+	passAndSettleAttackSplit(t, g, me.ID)
 	if got := b28TokensNamed(g, me.ID, "Cat Soldier"); got != 1 {
 		t.Fatalf("one Cat Soldier: %d", got)
 	}
@@ -880,8 +891,32 @@ func TestB28BrimazMakesAnAttackingCatAndABlockingOne(t *testing.T) {
 	if got := b28TokensNamed(g, me.ID, "Cat Soldier"); got != 2 {
 		t.Errorf("a second Cat Soldier for the block: %d", got)
 	}
-	if spec, _ := Lookup(b28BrimazOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the not-blocking token is a declared gap")
+	// The second Cat Soldier is put onto the battlefield BLOCKING the
+	// raider (CR 506.3d), not an untapped bystander.
+	var blocker *game.Card
+	for i := range g.Battlefield.Cards {
+		c := &g.Battlefield.Cards[i]
+		if c.Name == "Cat Soldier" && IsToken(*c) && c.BlockingTarget != uuid.Nil {
+			blocker = c
+		}
+	}
+	if blocker == nil || blocker.BlockingTarget != raider {
+		t.Fatalf("the Cat Soldier Brimaz makes when it blocks should be blocking the raider: %+v", blocker)
+	}
+	if n := triggersOnStackFrom(g, brimaz); n != 0 || len(g.PendingTriggers) != 0 {
+		t.Error("a token put onto the battlefield blocking was never declared a blocker")
+	}
+	life := me.Life
+	advanceTo(t, g, game.StepCombatDamage)
+	passPriorityAroundTable(t, g)
+	if g.Battlefield.Contains(raider) {
+		t.Error("Brimaz (3) and the blocking Cat Soldier (1) kill the 2/2 raider")
+	}
+	if me.Life != life {
+		t.Errorf("the raider was blocked: the defender took %d", life-me.Life)
+	}
+	if spec, _ := Lookup(b28BrimazOracle); spec.Completeness != CompletenessFull {
+		t.Error("Brimaz works as printed")
 	}
 }
 

@@ -439,6 +439,12 @@ func TestTirelessProvisionerMakesATreasureOnLandfall(t *testing.T) {
 
 	playLandFromHand(t, g, "Forest", "")
 	passPriorityAroundTable(t, g)
+	// The token is chosen as the trigger resolves: Treasure first, then Food.
+	c := latestOptionPickFor(g, me.ID)
+	if c == nil || len(c.PickOptions) != 2 || c.PickOptions[0].Label != "Create a Treasure token" {
+		t.Fatalf("a Food-or-Treasure choice, Treasure first: %+v", c)
+	}
+	answerOptionPick(t, g, me.ID, 0)
 	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 {
 		t.Fatal("a land drop should make one Treasure")
 	}
@@ -448,8 +454,24 @@ func TestTirelessProvisionerMakesATreasureOnLandfall(t *testing.T) {
 		_ = g.CreateTokenForEffect(opp.ID, game.Card{Name: "Forest", TypeLine: "Token Land — Forest"}, 1)
 	})
 	passPriorityAroundTable(t, g)
-	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 {
+	if countBattlefieldNamed(g, me.ID, "Treasure") != 1 || latestOptionPickFor(g, me.ID) != nil {
 		t.Error("an opponent's land triggered my landfall")
+	}
+}
+
+// The other answer is a Food token.
+func TestTirelessProvisionerCanMakeAFoodOnLandfall(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[0]
+	pushCatalogPermanent(g, me.ID, "Tireless Provisioner", "Creature — Elf Scout", tirelessProvisionerOracle, false)
+	playLandFromHand(t, g, "Forest", "")
+	passPriorityAroundTable(t, g)
+	answerOptionPick(t, g, me.ID, 1)
+	if countBattlefieldNamed(g, me.ID, "Food") != 1 || countBattlefieldNamed(g, me.ID, "Treasure") != 0 {
+		t.Error("choosing Food makes a Food and no Treasure")
+	}
+	if spec, _ := Lookup(tirelessProvisionerOracle); spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Error("both tokens are offered: nothing is left to declare")
 	}
 }
 
@@ -624,6 +646,20 @@ func TestArcaneDenialCountersAndBothPlayersDrawAtTheNextUpkeep(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
+	// "May draw up to two": a number prompt to the victim; the caster's
+	// own card follows the answer.
+	pa := payAmountPrompt(g, opp.ID)
+	if pa == nil || pa.PayAmount.Min != 0 || pa.PayAmount.Max != 2 {
+		t.Fatalf("the victim is asked for 0..2: %+v", pa)
+	}
+	if me.Hand.Size() != meBefore {
+		t.Error("the caster draws after the victim's answer, not before")
+	}
+	if err := g.ResolvePayAmount(pa.ID, opp.ID, 2); err != nil {
+		t.Fatal(err)
+	}
+	passPriorityAroundTable(t, g)
+
 	if got := opp.Hand.Size(); got != oppBefore+2 {
 		t.Errorf("the countered spell's controller drew %d, want 2", got-oppBefore)
 	}
@@ -632,6 +668,40 @@ func TestArcaneDenialCountersAndBothPlayersDrawAtTheNextUpkeep(t *testing.T) {
 	}
 	if n := len(g.DelayedTriggers); n != 0 {
 		t.Errorf("delayed triggers left queued: %d", n)
+	}
+}
+
+// The victim may draw FEWER (the old caveat): zero and one are answers,
+// and the caster still draws their card.
+func TestArcaneDenialVictimMayDrawFewer(t *testing.T) {
+	for _, n := range []int{0, 1} {
+		g := newCatalogGame(t)
+		me, opp := g.Seats[0], g.Seats[1]
+		bolt := batch01OpponentCasts(t, g, opp, "Lightning Bolt", lightningBoltOracle, "",
+			[]game.TargetRef{{Kind: game.TargetPlayer, ID: me.ID}})
+		castCatalogSpell(t, g, "Arcane Denial", "Instant", arcaneDenialOracle,
+			[]game.TargetRef{{Kind: game.TargetCard, ID: bolt}})
+		passPriorityAroundTable(t, g)
+		advanceToUpkeepOf(t, g, 1)
+		oppBefore, meBefore := opp.Hand.Size(), me.Hand.Size()
+		passPriorityAroundTable(t, g)
+		pa := payAmountPrompt(g, opp.ID)
+		if pa == nil {
+			t.Fatal("no number prompt")
+		}
+		if err := g.ResolvePayAmount(pa.ID, opp.ID, n); err != nil {
+			t.Fatal(err)
+		}
+		passPriorityAroundTable(t, g)
+		if got := opp.Hand.Size() - oppBefore; got != n {
+			t.Errorf("chose %d, drew %d", n, got)
+		}
+		if got := me.Hand.Size() - meBefore; got != 1 {
+			t.Errorf("chose %d: the caster drew %d, want 1", n, got)
+		}
+	}
+	if spec, _ := Lookup(arcaneDenialOracle); spec.Completeness != CompletenessFull {
+		t.Error("the up-to-two choice landed")
 	}
 }
 
@@ -1230,6 +1300,7 @@ func TestCropRotationSacrificesALandAndFetchesOne(t *testing.T) {
 		t.Error("the additional cost must sacrifice the land at announce (CR 601.2f)")
 	}
 	passPriorityAroundTable(t, g)
+	takeSearchPrompts(t, g)
 	if !g.Battlefield.Contains(want) {
 		t.Error("the fetched land did not reach the battlefield")
 	}
@@ -1249,13 +1320,15 @@ func TestAshBarrensBasicLandcyclesFromHand(t *testing.T) {
 	}
 	passPriorityAroundTable(t, g)
 
-	// One basic in the library is fewer matches than the limit, so the
-	// search chooser takes it without asking; a prompt appears only
-	// when there is a real choice to make.
-	if c := searchChoiceFor(g, me.ID); c != nil {
-		if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{basic}); err != nil {
-			t.Fatalf("ResolveSearchLibrary: %v", err)
-		}
+	// Basic landcycling searches for a basic land card, a stated
+	// quality, so even one basic in the library asks: the cycler may
+	// find nothing (CR 701.23b, #3053).
+	c := searchChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("landcycling against one basic did not ask")
+	}
+	if err := g.ResolveSearchLibrary(c.ID, me.ID, []uuid.UUID{basic}); err != nil {
+		t.Fatalf("ResolveSearchLibrary: %v", err)
 	}
 	if !me.Hand.Contains(basic) {
 		t.Error("basic landcycling did not put the basic into hand")
@@ -1477,7 +1550,7 @@ func TestNykthosProducesPerColourDevotion(t *testing.T) {
 	if spec.ManaAbilities[1].Cost.Mana != "{2}" {
 		t.Errorf("the devotion ability costs %q, want {2}", spec.ManaAbilities[1].Cost.Mana)
 	}
-	if got := spec.ManaAbilities[1].ProducedFunc(g, me.ID, id); got != "{G2}" {
+	if got := producedOf(spec.ManaAbilities[1], g, me.ID, id); got != "{G2}" {
 		t.Errorf("produced = %q, want {G2} (devotion to green is two)", got)
 	}
 }
@@ -1495,7 +1568,7 @@ func TestThreeTreeCityScalesWithTheNamedTribe(t *testing.T) {
 		})
 	}
 	spec, _ := Lookup(threeTreeCityOracle)
-	if got := spec.ManaAbilities[1].ProducedFunc(g, me.ID, id); got != OneColorOfAmount(3) {
+	if got := producedOf(spec.ManaAbilities[1], g, me.ID, id); got != OneColorOfAmount(3) {
 		t.Errorf("produced = %q, want %q", got, OneColorOfAmount(3))
 	}
 }
@@ -1830,11 +1903,11 @@ func TestGemstoneCavernsNeedsALuckCounterForColour(t *testing.T) {
 	me := g.Seats[g.Turn.ActiveSeat]
 	id := seedPermanentWithOracle(g, me.ID, "Gemstone Caverns", "Legendary Land", gemstoneCavernsOracle)
 	spec, _ := Lookup(gemstoneCavernsOracle)
-	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, id); got != "{C}" {
+	if got := producedOf(spec.ManaAbilities[0], g, me.ID, id); got != "{C}" {
 		t.Errorf("produced without a luck counter = %q, want {C}", got)
 	}
 	g.WithWriteLock(func() { _ = g.AddCounterForEffect(id, "luck", 1) })
-	if got := spec.ManaAbilities[0].ProducedFunc(g, me.ID, id); got != "{W|U|B|R|G}" {
+	if got := producedOf(spec.ManaAbilities[0], g, me.ID, id); got != "{W|U|B|R|G}" {
 		t.Errorf("produced with a luck counter = %q, want the five-colour pick", got)
 	}
 }

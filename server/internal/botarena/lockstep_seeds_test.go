@@ -35,7 +35,7 @@ func TestLockstepRotatedSeedsReplay(t *testing.T) {
 		t.Fatalf("load %s: %v", dump, err)
 	}
 	var seats []botarena.SeatSpec
-	for _, d := range []string{"izzet-aggro", "mono-black-aristocrats", "simic-ramp", "esper-control"} {
+	for _, d := range []string{"mono-red-aggro", "mono-black-aristocrats", "simic-ramp", "esper-control"} {
 		seats = append(seats, botarena.SeatSpec{Tier: tiers.Heuristic, Deck: d})
 	}
 	cfg := botarena.Config{

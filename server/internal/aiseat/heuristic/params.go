@@ -32,6 +32,10 @@ type targetRef struct {
 type castParams struct {
 	InstanceID string `json:"instance_id"`
 	FromZone   string `json:"from_zone"`
+	// Face is the printed face the move casts (ADR 0034). It is the
+	// face the card sits as unless an offer casts another: disturb's
+	// back face, and More Than Meets the Eye's (ADR 0152 §6).
+	Face int `json:"face"`
 	// AlternativeCost is the CR 118.9 price this cast claims —
 	// "flashback", "escape", "overload", "pitch" — or "" for the
 	// printed mana cost (#673). The policy reads it to tell a

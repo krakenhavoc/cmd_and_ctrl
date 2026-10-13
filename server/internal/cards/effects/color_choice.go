@@ -101,6 +101,7 @@ func ProducedColorOrChosen(color string) func(*game.Game, uuid.UUID, uuid.UUID) 
 // source. An unchosen colour matches nothing.
 func ChosenColorAnthem(power, toughness int) game.StaticAbility {
 	return game.StaticAbility{
+		Label:     "Creatures you control of the chosen color get " + signedPT(power, toughness) + ".",
 		Layer:     game.Layer7PT,
 		SubLayer:  game.SubLayer7C_Modify,
 		AppliesTo: CreatureYouControlOfChosenColor,
@@ -120,7 +121,7 @@ func CreatureYouControlOfChosenColor(target *game.Card, _ *game.Game, source *ga
 	return target.Controller == source.Controller && target.HasColor(source.ChosenColor)
 }
 
-// ProducedOneColor is the ProducedFunc for "Add N mana of any one
+// ProducedOneColor is the ProducedAmount for "Add N mana of any one
 // color", where N is computed at activation (Mona Lisa's power, White
 // Lotus Tile's largest tribe) — one pick, N tokens of the picked
 // colour. N of zero or less produces nothing.
@@ -128,9 +129,9 @@ func CreatureYouControlOfChosenColor(target *game.Card, _ *game.Game, source *ga
 // It narrows to nothing: every printed card in this family says "any
 // one color", with no commander-identity clause, so the ability that
 // uses it leaves NarrowToCommanderIdentity off.
-func ProducedOneColor(n func(g *game.Game, controller, source uuid.UUID) int) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	return func(g *game.Game, controller, source uuid.UUID) string {
-		return OneColorOfAmount(n(g, controller, source))
+func ProducedOneColor(n func(g *game.Game, controller, source uuid.UUID) int) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	return func(g *game.Game, controller, source uuid.UUID) game.ManaAmount {
+		return game.ManaAmount{Options: game.AllColors, N: n(g, controller, source), OneColor: true}
 	}
 }
 
@@ -186,10 +187,11 @@ func AnyCombinationOfColors(n int) string {
 	if n <= 0 {
 		return ""
 	}
-	return strings.Repeat("{"+strings.Join(game.AllColors, "|")+"}", n)
+	slot := "{" + strings.Join(game.AllColors, "|") + "}"
+	return strings.Repeat(slot, min(n, game.MaxProducedMana+1))
 }
 
-// ProducedAnyCombinationOfColors is the ProducedFunc for "Add X mana
+// ProducedAnyCombinationOfColors is the ProducedAmount for "Add X mana
 // in any combination of colors", where X is computed at activation
 // (Selvala's greatest power among creatures you control).
 //
@@ -197,9 +199,9 @@ func AnyCombinationOfColors(n int) string {
 // every printed card in this family says "any combination of colors"
 // with no identity clause, so the ability leaves
 // NarrowToCommanderIdentity off.
-func ProducedAnyCombinationOfColors(n func(g *game.Game, controller, source uuid.UUID) int) func(*game.Game, uuid.UUID, uuid.UUID) string {
-	return func(g *game.Game, controller, source uuid.UUID) string {
-		return AnyCombinationOfColors(n(g, controller, source))
+func ProducedAnyCombinationOfColors(n func(g *game.Game, controller, source uuid.UUID) int) func(*game.Game, uuid.UUID, uuid.UUID) game.ManaAmount {
+	return func(g *game.Game, controller, source uuid.UUID) game.ManaAmount {
+		return game.ManaAmount{Options: game.AllColors, N: n(g, controller, source)}
 	}
 }
 

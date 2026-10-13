@@ -4,6 +4,9 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/ws"
 )
 
 // LiveTable is one table the lobby holds in memory, as the admin views
@@ -53,6 +56,10 @@ type LiveSeat struct {
 	// yet (seats.pending_discord_id, seatRecords' rule). The snowflake
 	// itself is not copied.
 	DiscordPending bool
+	// Removed is a seat an admin removed from a game that was under way
+	// (game.Player.Removed, #3093): the person did not leave, they were
+	// taken out, and the admin views say so.
+	Removed bool
 }
 
 // LiveTables copies every table the lobby holds, practice tables
@@ -63,8 +70,11 @@ type LiveSeat struct {
 // sockets reads them before or after, never while holding this.
 func (l *Lobby) LiveTables() []LiveTable {
 	l.mu.Lock()
-	defer l.mu.Unlock()
 	out := make([]LiveTable, 0, len(l.games))
+	// Parallel to out: the room of each table that has started, nil for
+	// the rest, so the engine's Removed flag can be read once l.mu is let
+	// go (#3113). A game lock is never taken under l.mu here.
+	rooms := make([]*ws.Room, 0, len(l.games))
 	for _, e := range l.games {
 		t := LiveTable{
 			ID:        e.meta.ID,
@@ -97,6 +107,20 @@ func (l *Lobby) LiveTables() []LiveTable {
 			t.Seats = append(t.Seats, seat)
 		}
 		out = append(out, t)
+		if e.meta.State != string(game.StateLobby) && e.room != nil {
+			rooms = append(rooms, e.room)
+		} else {
+			rooms = append(rooms, nil)
+		}
+	}
+	l.mu.Unlock()
+	for i, room := range rooms {
+		if room == nil {
+			continue
+		}
+		for j := range out[i].Seats {
+			out[i].Seats[j].Removed = room.Game.SeatMarkedRemoved(out[i].Seats[j].PlayerID)
+		}
 	}
 	return out
 }
