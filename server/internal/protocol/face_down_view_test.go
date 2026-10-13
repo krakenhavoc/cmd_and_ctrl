@@ -398,6 +398,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 			XLockedAtZero:      true, PhyrexianSymbols: 1, PhyrexianGranted: 1,
 			// #1686.
 			TimingClosed: true,
+			// #3225.
+			XMax: new(3),
 			// ADR 0126 §6.
 			Purpose: &PurposeView{Sweep: &SweepView{Matches: "nonland_permanents", How: "bounce", OpponentsOnly: true}},
 		}},
@@ -426,6 +428,8 @@ func everyFieldCastSurface(lt *LegalTargetsView) CastSurfaceView {
 		CastPrices: []CastPriceView{{AlternativeCost: "foretell", Label: "Foretell", Cost: "{1}{U}", Life: 1, Energy: 1, Printed: true}},
 		// #2581: the viewer's own printed X ceiling.
 		XMax: new(int),
+		// ADR 0150 §5: the viewer's own assist offer.
+		Assist: &AssistOfferView{Max: 3, Players: []string{"p"}},
 	}
 }
 
@@ -831,6 +835,8 @@ var castSurfaceScopes = map[string]castSurfaceScope{
 	"CastPrices": surfacePrivate,
 	// #2581: a count read off the asking seat's board.
 	"XMax": surfacePrivate,
+	// ADR 0150 §5: who the asking seat may ask to help pay.
+	"Assist": surfacePrivate,
 	// #2167: which types a per-type permission leaves is the holder's
 	// own budget.
 	"PermissionTypes": surfacePrivate,
@@ -957,6 +963,9 @@ var alternativeCostScopes = map[string]castSurfaceScope{
 	// #1686: same reasoning as PrintedCostTimingClosed above — public
 	// board state, not per-viewer.
 	"TimingClosed": surfacePublicPile,
+	// #3225: the offer's X ceiling folded with the card's board-set one,
+	// the same per-seat number the card's own x_max is.
+	"XMax": surfacePrivate,
 	// ADR 0126 §6: what the spell does when cast for this cost, read
 	// off the printed card like Label.
 	"Purpose": surfacePublicPile,

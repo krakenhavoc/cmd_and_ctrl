@@ -73,7 +73,14 @@
     sameSelection,
     selectionLegal,
   } from "../../boardChoicePick";
-  import { ballotNote, choiceRequest, inlineRefusal, isInlineChoice } from "../../choiceDock";
+  import {
+    anyPlayerOfferLine,
+    anyPlayerWhose,
+    ballotNote,
+    choiceRequest,
+    inlineRefusal,
+    isInlineChoice,
+  } from "../../choiceDock";
   import { get } from "svelte/store";
   import { settings, updateSettings } from "../../settings";
   import { rememberedRule, ruleRefusalText, withRule } from "../../autoAnswerPref";
@@ -1890,7 +1897,9 @@
         ? L.energyToPay
         : payAmountUnit === "life"
           ? L.lifeToPay
-          : L.numberToChoose}
+          : payAmountUnit === "mana"
+            ? "mana to pay"
+            : L.numberToChoose}
     >
       <button
         type="button"
@@ -1924,6 +1933,10 @@
         <span class="pay-amount-of">of {viewerEnergy} {"{E}"}</span>
       {:else if payAmountUnit === "life"}
         <span class="pay-amount-of">of {payAmountView.max} life</span>
+      {:else if payAmountUnit === "mana"}
+        <!-- ADR 0150 §5: an assist helper's generic mana, up to what
+             their pool and untapped sources can make. -->
+        <span class="pay-amount-of">up to {"{"}{payAmountView.max}{"}"} generic</span>
       {:else if !payAmountView.no_max}
         <span class="pay-amount-of">up to {payAmountView.max}</span>
       {/if}
@@ -2208,6 +2221,16 @@
       </ul>
     {:else if isPayUnless}
       {#if payCards}
+        {#if active.any_player_offer}
+          <!-- ADR 0150 §5: a sacrifice or discard offered to the table
+               says whose effect it is and who else is asked. -->
+          <p class="prompt-hint">
+            {anyPlayerWhose(active, snap.seats ?? [], triggerSourceName(active.source))}. {anyPlayerOfferLine(
+              active,
+              snap.seats ?? [],
+            )}
+          </p>
+        {/if}
         <p class="prompt-hint">
           Pay — {active.pay_cost ?? "the cost"} — or don't and let {triggerSourceName(
             active.source,

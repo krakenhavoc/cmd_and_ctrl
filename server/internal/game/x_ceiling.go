@@ -104,3 +104,59 @@ func (g *Game) SpellXCeiling(caster uuid.UUID, key string) (ceiling int, ok bool
 func (g *Game) SpellXCeilingForEffect(caster uuid.UUID, key string) (int, bool) {
 	return g.SpellXCeilingLocked(caster, key)
 }
+
+// SpellXCeilingForOfferLocked is SpellXCeilingLocked for a cast that
+// claims `offer` (#3225): the smaller of the card's printed ceiling and
+// the offer's own AlternativeCost.XCeiling, and ok when either exists.
+// A nil offer, or one with no ceiling, answers exactly as
+// SpellXCeilingLocked does.
+//
+// "You may cast this spell as though it had flash if X is 3 or less"
+// (Silver Scrutiny) is CR 601.3c: the caster begins the cast at instant
+// speed and the announced X must then satisfy the condition. The
+// condition belongs to the CLAIM, not to the card — the same spell cast
+// for its printed cost at sorcery speed may announce any X — so the
+// offer carries the number and every reader of the ceiling asks through
+// here with the offer in hand: the announce gate in castSpellLocked,
+// the enumerator's printedXCeiling and the view's per-offer `x_max`.
+//
+// Caller must hold g.mu (read or write) with fresh layers.
+func (g *Game) SpellXCeilingForOfferLocked(caster uuid.UUID, key string, offer *AlternativeCost) (ceiling int, ok bool) {
+	ceiling, ok = g.SpellXCeilingLocked(caster, key)
+	if offer == nil || offer.XCeiling <= 0 {
+		return ceiling, ok
+	}
+	if !ok || offer.XCeiling < ceiling {
+		return offer.XCeiling, true
+	}
+	return ceiling, true
+}
+
+// SpellXCeilingForOfferEffect is SpellXCeilingForOfferLocked on the
+// *ForEffect surface, for the legal-move enumerator and the protocol
+// view.
+//
+// Caller must hold g.mu (read or write) with fresh layers.
+func (g *Game) SpellXCeilingForOfferEffect(caster uuid.UUID, key string, offer *AlternativeCost) (int, bool) {
+	return g.SpellXCeilingForOfferLocked(caster, key, offer)
+}
+
+// SpellXCeilingForCast is the ceiling on the X of the cast `params`
+// announces, for a caller holding no lock — the auto-tap preview, whose
+// query carries the alternative cost the player claimed before the X
+// picker opened. The offer is resolved exactly as CastSpell resolves
+// it; a key that does not resolve is read as no offer (the cast itself
+// is refused elsewhere, and the picker only needs the card's own
+// ceiling then).
+func (g *Game) SpellXCeilingForCast(caster uuid.UUID, card Card, params CastSpellParams) (ceiling int, ok bool) {
+	g.ReadSnapshot(func() {
+		srcKind, _ := castZoneFromWire(params.FromZone)
+		grant := g.CastPermissionForClaimLocked(caster, card, srcKind, params.AlternativeCost)
+		alt, err := g.resolveAlternativeCostLocked(caster, card, srcKind, grant, params.AlternativeCost, params.Targets)
+		if err != nil {
+			alt = nil
+		}
+		ceiling, ok = g.SpellXCeilingForOfferLocked(caster, CatalogKey(card), alt)
+	})
+	return ceiling, ok
+}

@@ -536,6 +536,21 @@ type PendingChoiceView struct {
 	// Absent for every other pay-unless.
 	PayEnergy *int `json:"pay_energy,omitempty"`
 
+	// PayLife, PayDamage and PayNothing are the other payments of a
+	// "pay_unless" that name nothing (ADR 0150 §3), each answered with
+	// `{apply: true}` alone:
+	//   - PayLife: pay that much life. With less life than that, or a
+	//     life total that can't change, "Pay" is a decline (CR 119.4,
+	//     119.8).
+	//   - PayDamage: the prompt's source deals that much damage to the
+	//     chooser. Always a payment.
+	//   - PayNothing: "yes" costs nothing (Distant Memories' "any
+	//     opponent may have you put that card into your hand").
+	// At most one is present, and none for every other pay-unless.
+	PayLife    *int `json:"pay_life,omitempty"`
+	PayDamage  *int `json:"pay_damage,omitempty"`
+	PayNothing bool `json:"pay_nothing,omitempty"`
+
 	// PayAmount populates the "pay_amount" kind (ADR 0129 §3): "you may
 	// pay any amount of {E}". The chooser answers `{amount: n}` with
 	// min <= n <= max. Absent for other kinds.
@@ -717,6 +732,9 @@ type PendingChoiceView struct {
 	// who has been asked. Public: every seat sees who is deciding.
 	// Absent on every other prompt.
 	AnyPlayerOffer *AnyPlayerOfferView `json:"any_player_offer,omitempty"`
+	// Assist marks a pay_amount as an assist helper's prompt (ADR 0150
+	// §5): who is casting what. Public. Absent on every other prompt.
+	Assist *AssistPromptView `json:"assist,omitempty"`
 }
 
 // AnyPlayerOfferView is an any-player offer in progress
@@ -1498,6 +1516,15 @@ type AlternativeCostView struct {
 	// picker drops an offer this is set on exactly as it drops the
 	// printed row when PrintedCostTimingClosed is set.
 	TimingClosed bool `json:"timing_closed,omitempty"`
+
+	// XMax is the largest X the viewer may announce while claiming THIS
+	// offer, set only for an offer that carries a ceiling of its own
+	// (#3225: Silver Scrutiny's "as though it had flash if X is 3 or
+	// less", CR 601.3c) and already folded with the card's printed
+	// `x_max` — the same number CastSpell refuses above. The X picker
+	// reads it for the claimed offer; the card's own `x_max` still
+	// bounds the cast for the printed cost. Absent for every other offer.
+	XMax *int `json:"x_max,omitempty"`
 }
 
 // TapCostView is the wire shape of game.TapPermanentsCost — the
@@ -1583,6 +1610,36 @@ type PayAmountView struct {
 	Marks []int `json:"marks,omitempty"`
 	// SelfDamage says each point is also dealt to the chooser.
 	SelfDamage bool `json:"self_damage,omitempty"`
+}
+
+// AssistOfferView is a spell with assist's offer to its caster
+// (ADR 0150 §5).
+type AssistOfferView struct {
+	// Max is the generic part of the total cost for the default
+	// announcement out of this zone (commander tax and cost modifiers
+	// included): "up to {Max}". The prompt to the helper caps it again
+	// at what they can make.
+	Max int `json:"max"`
+	// Players are the players the caster may ask: every other player
+	// still in the game, in seat order.
+	Players []string `json:"players"`
+}
+
+// AssistPromptView marks a pay_amount as an assist helper's prompt
+// (ADR 0150 §5). Public: the caster's dock shows a waiting line from
+// it, and every other seat a read-only one.
+type AssistPromptView struct {
+	// Caster is the player casting the spell; the prompt's chooser is
+	// the helper.
+	Caster string `json:"caster"`
+	// Spell is the card being cast, SpellName its name and ManaCost its
+	// total cost as announced ("{3}{B}").
+	Spell     string `json:"spell"`
+	SpellName string `json:"spell_name"`
+	ManaCost  string `json:"mana_cost,omitempty"`
+	// Generic is the generic part of the total cost. The prompt's own
+	// max is the most the helper can pay, which may be less.
+	Generic int `json:"generic"`
 }
 
 // DelveView is the wire shape of a card's delve (CR 702.66, ADR 0100
@@ -3397,6 +3454,13 @@ type CastSurfaceView struct {
 	// `alternative_costs`, because the client asks both questions in
 	// one modal.
 	OptionalCosts []OptionalCostView `json:"optional_costs,omitempty"`
+	// Assist is a spell with assist's offer to this caster (CR
+	// 702.132a, ADR 0150 §5): who may be asked to help pay its generic
+	// mana and how much generic there is. Read by the cast flow's
+	// Assist row, which sends the pick as `assist_player`. Absent for
+	// every card without assist. Per viewer: the players and the total
+	// are this caster's.
+	Assist *AssistOfferView `json:"assist,omitempty"`
 	// CantCast is the printed clause that stops this card being cast
 	// from the zone it is in right now (CR 101.2, ADR 0073 §7) —
 	// "Each player can't cast more than one spell each turn", "Cast
@@ -5362,6 +5426,8 @@ func (s castStamps) publicIn(kind game.ZoneKind) castStamps {
 	s.CastPrices = nil
 	// #2581: and so is an X ceiling read off one seat's board.
 	s.XMax = nil
+	// ADR 0150 §5: and assist's offer, which is "who may YOU ask".
+	s.Assist = nil
 	// #1221: an activation row is the same kind of answer as
 	// `castable_here` — "what may YOU announce from here" — and it
 	// carries legal sets of its own. None of it is public.
@@ -5462,6 +5528,9 @@ func publicAlternativeCosts(offers []AlternativeCostView) []AlternativeCostView 
 		o.TapOptions = nil
 		// ADR 0135 §4: an emerge price per creature YOU control.
 		o.SacrificePrices = nil
+		// #3225: folded with the card's board-set ceiling, so it is the
+		// asking seat's number like the card's own `x_max`.
+		o.XMax = nil
 		out[i] = o
 	}
 	return out
@@ -5897,6 +5966,17 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// the mandatory one and read by the same modal the alternative
 	// costs open, because CR 601.2b announces all of them together.
 	out.OptionalCosts = viewOfOptionalCosts(g, caster, src, key)
+	// ADR 0150 §5: assist's "choose another player", asked in the same
+	// modal as the gift's opponent. The total is the engine's own
+	// (AssistGenericLocked), so "up to {N}" is the cap the park uses.
+	if haveLive {
+		if most, players, ok := g.AssistOfferLocked(caster, live, kind); ok {
+			out.Assist = &AssistOfferView{Max: most, Players: cardIDStrings(players)}
+			if out.Assist.Players == nil {
+				out.Assist.Players = []string{}
+			}
+		}
+	}
 	// #2581: the printed X ceiling, read for this caster now — the
 	// count CastSpell will read as X is announced (CR 601.2b).
 	if ceiling, ok := g.SpellXCeilingForEffect(caster, key); ok {
@@ -6673,6 +6753,11 @@ func viewOfAlternativeCosts(g *game.Game, caster uuid.UUID, src game.TargetSourc
 			// the "or 2 life" count the client's stepper is bounded
 			// by.
 			Purpose: viewOfPurpose(ac.Purpose),
+		}
+		if ac.XCeiling > 0 && live != nil {
+			if ceiling, ok := g.SpellXCeilingForOfferEffect(caster, game.CatalogKey(*live), &ac); ok {
+				v.XMax = &ceiling
+			}
 		}
 		v.PhyrexianSymbols, v.PhyrexianGranted = phyrexianSymbolsIn(g, caster, ac.ManaCost)
 		if spec := game.TargetSpecUnderAlternativeCost(offerBase, &ac); spec != nil {
@@ -7866,9 +7951,19 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		// ADR 0108 §5: the discard or sacrifice half of a pay-unless;
 		// ADR 0129 §3: or its energy.
-		if a := c.PayAction(); a != nil && a.Kind == game.PayActionEnergy {
+		// ADR 0150 §3: or its life, its damage, or nothing at all.
+		if a := c.PayAction(); a != nil && a.NamesNothing() {
 			n := a.Count
-			v.PayEnergy = &n
+			switch a.Kind {
+			case game.PayActionEnergy:
+				v.PayEnergy = &n
+			case game.PayActionLife:
+				v.PayLife = &n
+			case game.PayActionDamage:
+				v.PayDamage = &n
+			case game.PayActionNothing:
+				v.PayNothing = true
+			}
 		} else if a != nil {
 			v.PayCards = &PayCardsView{
 				Action:  string(a.Kind),
@@ -8007,7 +8102,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.MaxUsefulWins = c.CoinMaxUsefulWins
 			v.Wins = c.CoinWins
 		}
-		if c.Kind == game.PendingChoiceConfirm {
+		// ADR 0150 §5: an any-player link may name its answers ("Take 5
+		// damage").
+		if c.Kind == game.PendingChoiceConfirm || c.Kind == game.PendingChoicePayUnless {
 			v.AcceptLabel = c.AcceptLabel
 			v.DeclineLabel = c.DeclineLabel
 			v.LifeCost = c.LifeCost
@@ -8139,6 +8236,15 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 				Opponents:  o.Opponents,
 
 				HelpsController: o.HelpsController,
+			}
+		}
+		if a := c.Assist; a != nil {
+			v.Assist = &AssistPromptView{
+				Caster:    a.Caster.String(),
+				Spell:     a.Spell.String(),
+				SpellName: a.SpellName,
+				ManaCost:  a.ManaCost,
+				Generic:   a.Generic,
 			}
 		}
 		if c.Kind == game.PendingChoiceEntryController {
@@ -9562,6 +9668,8 @@ func redactCardForViewer(c CardView, known bool) CardView {
 	out.TapCost = nil
 	// ADR 0100: "delve" names the card as loudly as its mana cost.
 	out.Delve = nil
+	// ADR 0150: and so does "assist".
+	out.Assist = nil
 	// #916: derived from the mana cost, which is cleared above, so
 	// it goes with it — "two Phyrexian symbols" on a face-down card
 	// would name Dismember out loud.

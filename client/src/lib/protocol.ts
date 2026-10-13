@@ -231,6 +231,9 @@ export type ActionType =
   // answers to repeated prompts, replacing the list ("always" or
   // "never"; Ask is no rule). A setting, not a play: never undoable.
   | "set_auto_answers"
+  // ADR 0150 §4 (owner decision 5): `{choice_id?}` — the caster
+  // withdraws the request for help an assisted cast is parked on.
+  | "cancel_assist"
   | "sacrifice_permanent"
   | "set_goaded"
   | "set_initiative"
@@ -1600,6 +1603,15 @@ export interface PendingChoiceView {
   // 0 {E} is a payment too, so 0 is present. A "Pay" from a seat with
   // less energy is a decline.
   pay_energy?: number;
+  // ADR 0150 §3: the other payments of a "pay_unless" that name nothing,
+  // each answered with { apply: true } alone. pay_life: pay that much
+  // life (a seat with less, or whose life can't change, can't pay).
+  // pay_damage: the prompt's source deals that much damage to the
+  // chooser, always a payment. pay_nothing: "yes" costs nothing
+  // (Distant Memories). At most one is present.
+  pay_life?: number;
+  pay_damage?: number;
+  pay_nothing?: boolean;
   // ADR 0129 §3: a "pay_amount" prompt, "you may pay any amount of
   // {E}". Answered with { amount }: 0, or min..max.
   pay_amount?: PayAmountView;
@@ -1651,6 +1663,12 @@ export interface PendingChoiceView {
    * order asked, and who has declined. Public on every seat's view.
    */
   any_player_offer?: AnyPlayerOfferView;
+  /**
+   * ADR 0150 §5: present when this pay_amount asks an assist helper how
+   * much of another player's spell to pay: who is casting what. Public on
+   * every seat's view; the caster's dock shows a waiting line from it.
+   */
+  assist?: AssistPromptView;
 
   accept_label?: string;
   decline_label?: string;
@@ -1972,6 +1990,29 @@ export interface CouncilVoteView {
 // AnyPlayerOfferView is an "unless any player pays" offer in progress
 // (ADR 0150 §5), as its open link carries it. The link's chooser is the
 // player asked now.
+// AssistOfferView is a spell with assist's offer to its caster (ADR 0150
+// §5): "up to {max}", and the players who may be asked.
+export interface AssistOfferView {
+  // The generic part of the total cost for the default announcement out
+  // of this zone, commander tax and cost modifiers included.
+  max: number;
+  // Every other player still in the game, in seat order.
+  players: string[];
+}
+
+// AssistPromptView is an assist helper's prompt (ADR 0150 §5), as the
+// pay_amount carries it. The prompt's chooser is the helper.
+export interface AssistPromptView {
+  caster: string;
+  // The card being cast, its name and its total cost as announced.
+  spell: string;
+  spell_name: string;
+  mana_cost?: string;
+  // The generic part of the total cost; the prompt's max is the most
+  // the helper can pay, which may be less.
+  generic: number;
+}
+
 export interface AnyPlayerOfferView {
   // The controller of the effect being paid against ("you" on the card).
   controller: string;
@@ -2526,6 +2567,13 @@ export interface AlternativeCostView {
   // cost's. Read by the cost picker via castableAlternativeCostsOf
   // (targeting.ts), which drops an offer this is set on.
   timing_closed?: boolean;
+  // #3225: the largest X the viewer may announce while claiming THIS
+  // offer — "you may cast this spell as though it had flash if X is 3
+  // or less" (CR 601.3c) — already folded with the card's printed
+  // `x_max`. The server refuses a larger X under the claim; the cast for
+  // the printed cost is not bound by it. Present only on an offer that
+  // carries a ceiling of its own. Read by xCeilingFor (targeting.ts).
+  x_max?: number;
   // ADR 0126 §6: what the spell does when cast for this cost, where
   // that differs from the card's own purpose (overload). Bot data.
   purpose?: PurposeView;
@@ -2568,8 +2616,11 @@ export interface PayAmountView {
   min: number;
   max: number;
   goal?: number;
-  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other";
-  resource?: "energy" | "life" | "none";
+  // ADR 0150 §4: "assist" is {1} of another player's spell.
+  unit: "damage" | "counters" | "cards" | "power" | "tax" | "other" | "assist";
+  // ADR 0150 §4: "mana" is generic mana an assist helper pays from their
+  // pool and then their untapped sources.
+  resource?: "energy" | "life" | "none" | "mana";
   no_max?: boolean;
   marks?: number[];
   self_damage?: boolean;
@@ -3408,6 +3459,12 @@ export interface CastSurfaceView {
   // same picker the alternative costs open, because CR 601.2b
   // announces them together. Absent for nearly every card.
   optional_costs?: OptionalCostView[];
+  // ADR 0150 §5 (CR 702.132a): a spell with assist's offer to this
+  // caster — who may be asked to help pay its generic mana, and how
+  // much generic there is. The cast modal's Assist row reads it and the
+  // pick rides cast_spell as `assist_player`. Absent for every card
+  // without assist.
+  assist?: AssistOfferView;
   // #760 (ADR 0073 §7): the printed clause that stops this card being
   // cast from the zone it is in right now — "Each player can't cast
   // more than one spell each turn", "Cast this spell only if you

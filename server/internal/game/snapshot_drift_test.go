@@ -1017,6 +1017,7 @@ var pendingChoiceFields = plan(
 	// whose answer counts for nothing.
 	"CouncilVote", carried, "",
 	"AnyPlayerOffer", carried, "",
+	"Assist", dropped, "ADR 0150 §4: an assist helper's prompt is a pay_amount, which always carries a chooseValueResume frame, so a table holding one is not a restore point (ContinuationCensus.ChoiceResumeFrames)",
 	// #804's CR 732 shortcut prompt. Carried for the reason
 	// LoopNotice is: the key is the only way back to the run the
 	// answer is about, and a restored game that forgot it would put a

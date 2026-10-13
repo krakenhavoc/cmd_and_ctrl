@@ -269,10 +269,12 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
         // ADR 0150 §5: the payer is usually not the controller, so the
         // header says whose effect it is and who else is asked.
         const seats = ctx.seats ?? [];
+        const short = lifeShortBy(c, ctx) > 0;
         return {
-          title: reason || `${ctx.sourceName} — pay ${c.pay_cost ?? ""}?`,
+          title: reason || `${ctx.sourceName} — ${payPhrase(c)}?`,
           tag: "any player pays",
-          hint: `${anyPlayerWhose(c, seats, ctx.sourceName)}. ${anyPlayerOfferLine(c, seats)} Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't.`,
+          hint: `${anyPlayerWhose(c, seats, ctx.sourceName)}. ${anyPlayerOfferLine(c, seats)} ${anyPlayerHowToPay(c, ctx)}`,
+          hintWarn: short,
         };
       }
       return {
@@ -288,6 +290,16 @@ function copyFor(c: PendingChoiceView, ctx: ChoiceDockContext): Copy {
     case "pay_amount": {
       const pa = c.pay_amount;
       const resource = pa ? payAmountResource(pa) : "energy";
+      if (c.assist) {
+        // ADR 0150 §5: "Alice asks you to help pay for Fan Favorite
+        // ({3}{B})." The spell is in Alice's hand, so its name comes
+        // with the prompt rather than from the board.
+        return {
+          title: assistAskLine(c, ctx.seats ?? []),
+          tag: "assist",
+          hint: pa ? payAmountHint(pa, c.assist.spell_name) : undefined,
+        };
+      }
       const what = resource === "none" ? "choose a number" : `pay ${resource}`;
       return {
         title: reason || `${ctx.sourceName} — ${what}?`,
@@ -389,7 +401,13 @@ function answersFor(
         secondary: [no(c.decline_label || "No")],
       };
     case "pay_unless": {
-      const pay = yes(`Pay ${c.pay_cost ?? ""}`.trim());
+      const pay = yes(c.accept_label || payButtonLabel(c));
+      // ADR 0150 §3: a life payment the seat can't make (CR 119.4) is
+      // greyed with the reason, as a short energy payment is.
+      if (lifeShortBy(c, ctx) > 0) {
+        pay.disabled = true;
+        pay.title = `You have ${ctx.life ?? 0} life; this costs ${c.pay_life ?? 0}`;
+      }
       // ADR 0129 §8: greyed with the reason when the seat is short, so
       // the button, the key and the server agree (a short "Pay" would
       // be read as Don't pay).
@@ -409,7 +427,7 @@ function answersFor(
           onPress: () => h.onAnswer(true, k),
         });
       }
-      return { primary: pay, secondary: [...lifeAnswers, no("Don't pay")] };
+      return { primary: pay, secondary: [...lifeAnswers, no(c.decline_label || "Don't pay")] };
     }
     case "pay_amount": {
       // ADR 0129 §3 (owner decision 3): the stepper in the body sets the
@@ -422,6 +440,19 @@ function answersFor(
       const onAmount = h.onAmount ?? (() => {});
       const min = c.pay_amount?.min ?? 0;
       const resource = c.pay_amount ? payAmountResource(c.pay_amount) : "energy";
+      if (resource === "mana") {
+        // ADR 0150 §5: an assist helper pays {n} of the generic, or
+        // doesn't help (0).
+        return {
+          primary: {
+            id: "pay",
+            label: `Pay {${n}}`,
+            disabled: n <= 0 || ctx.payAmountAnswerable === false,
+            onPress: () => onAmount(n),
+          },
+          secondary: [{ id: "none", label: "Don't help", onPress: () => onAmount(0) }],
+        };
+      }
       if (resource === "none") {
         return {
           primary: {
@@ -709,7 +740,59 @@ export function anyPlayerOfferLine(c: PendingChoiceView, seats: Seats): string {
   const at = o.order.indexOf(c.chooser);
   const later = at < 0 ? [] : o.order.slice(at + 1).map((id) => anyPlayerSeatName(seats, id));
   parts.push(later.length > 0 ? `then ${nameList(later)}` : "nobody after");
-  return `${who} may pay ${c.pay_cost ?? "the cost"}: ${parts.join("; ")}.`;
+  return `${who} may ${payPhrase(c)}: ${parts.join("; ")}.`;
+}
+
+function lowerFirst(s: string): string {
+  return s ? s[0].toLowerCase() + s.slice(1) : s;
+}
+
+// payPhrase is what paying a pay_unless means, as a verb phrase (ADR 0150
+// §3): "pay {2}", "pay 5 life", "take 6 damage", "sacrifice a land", or
+// the card's own words for an offer that costs nothing.
+export function payPhrase(
+  c: Pick<
+    PendingChoiceView,
+    "pay_cost" | "pay_damage" | "pay_nothing" | "pay_cards" | "accept_label"
+  >,
+): string {
+  const cost = c.pay_cost ?? "";
+  if (c.pay_damage !== undefined && c.pay_damage !== null) {
+    return `take ${cost || `${c.pay_damage} damage`}`;
+  }
+  if (c.pay_nothing) return c.accept_label ? lowerFirst(c.accept_label) : "say yes";
+  if (c.pay_cards) return lowerFirst(cost) || "pay the cost";
+  return `pay ${cost || "the cost"}`;
+}
+
+// payButtonLabel is a pay_unless's "Pay" button when the card names no
+// answer of its own: "Pay {2}", "Pay 5 life", "Take 6 damage", "Yes".
+function payButtonLabel(c: PendingChoiceView): string {
+  if (c.pay_nothing) return "Yes";
+  const p = payPhrase(c);
+  return p[0].toUpperCase() + p.slice(1);
+}
+
+// lifeShortBy is how much life a pay_life payment is short by for the
+// viewer (CR 119.4), or 0.
+function lifeShortBy(c: PendingChoiceView, ctx: ChoiceDockContext): number {
+  if (c.pay_life === undefined || c.pay_life === null || ctx.life === undefined) return 0;
+  return Math.max(0, c.pay_life - ctx.life);
+}
+
+// anyPlayerHowToPay is the last sentence of an any-player link's hint:
+// how the payment is made.
+function anyPlayerHowToPay(c: PendingChoiceView, ctx: ChoiceDockContext): string {
+  if (c.pay_life !== undefined && c.pay_life !== null) {
+    return lifeShortBy(c, ctx) > 0
+      ? `You have ${ctx.life ?? 0} life, so you can't pay ${c.pay_life}.`
+      : `Pay ${c.pay_life} life, or don't.`;
+  }
+  if (c.pay_damage !== undefined && c.pay_damage !== null) {
+    return `${ctx.sourceName} deals ${c.pay_damage} damage to you if you take it.`;
+  }
+  if (c.pay_nothing) return "It costs you nothing.";
+  return `Pay ${c.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short), or don't.`;
 }
 
 // anyPlayerOfferRequest is the offer as every seat but the one asked sees
@@ -729,7 +812,7 @@ export function anyPlayerOfferRequest(
     label: "any player pays",
     tag: "any player pays",
     tone: "plain",
-    question: c.reason || `${sourceName} — pay ${c.pay_cost ?? ""}?`,
+    question: c.reason || `${sourceName} — ${payPhrase(c)}?`,
     detail: anyPlayerWaiting(c, seats, sourceName),
     hint: anyPlayerOfferLine(c, seats),
   };
@@ -739,7 +822,60 @@ export function anyPlayerOfferRequest(
 // Tutor)", the line a seat with nothing to answer reads while a link is
 // open.
 export function anyPlayerWaiting(c: PendingChoiceView, seats: Seats, sourceName: string): string {
-  return `${anyPlayerSeatName(seats, c.chooser)} is deciding whether to pay ${c.pay_cost ?? "the cost"} (${anyPlayerWhose(c, seats, sourceName)})`;
+  return `${anyPlayerSeatName(seats, c.chooser)} is deciding whether to ${payPhrase(c)} (${anyPlayerWhose(c, seats, sourceName)})`;
+}
+
+// ---- assist (ADR 0150 §5) --------------------------------------------------
+//
+// A spell with assist is parked while the player asked decides how much
+// of its generic mana to pay. The helper answers an ordinary pay_amount
+// (resource "mana"); the caster sees a waiting line with Cancel request
+// (owner decision 5), and everyone else the same line read-only.
+
+// assistAskLine is the helper's header: "Alice asks you to help pay for
+// Fan Favorite ({3}{B})".
+export function assistAskLine(c: PendingChoiceView, seats: Seats): string {
+  const a = c.assist;
+  if (!a) return c.reason ?? "";
+  const cost = a.mana_cost ? ` (${a.mana_cost})` : "";
+  return `${anyPlayerSeatName(seats, a.caster)} asks you to help pay for ${a.spell_name}${cost}`;
+}
+
+// assistWaiting is the line every seat but the helper reads while the
+// request is open: "Waiting for Bob to help pay for Fan Favorite" for the
+// caster, "Bob is deciding how much to help pay for Alice's Fan
+// Favorite" for everyone else.
+export function assistWaiting(c: PendingChoiceView, viewerID: string | null, seats: Seats): string {
+  const a = c.assist;
+  if (!a) return "";
+  const helper = anyPlayerSeatName(seats, c.chooser);
+  if (a.caster === viewerID) return `Waiting for ${helper} to help pay for ${a.spell_name}`;
+  return `${helper} is deciding how much to help pay for ${anyPlayerSeatName(seats, a.caster)}'s ${a.spell_name}`;
+}
+
+// assistRequest is the open request as every seat but the helper sees
+// it: the caster's carries Cancel request, which withdraws it; everyone
+// else's has no buttons. Null when `c` is not an assist prompt or the
+// viewer is the helper (their own prompt answers it).
+export function assistRequest(
+  c: PendingChoiceView | null | undefined,
+  viewerID: string | null,
+  seats: Seats,
+  onCancel: () => void,
+): DockRequest | null {
+  if (!c || !c.assist || c.chooser === viewerID) return null;
+  const mine = c.assist.caster === viewerID;
+  return {
+    rank: "step",
+    label: "assist",
+    tag: "assist",
+    tone: "plain",
+    question: assistWaiting(c, viewerID, seats),
+    hint: mine
+      ? `Nothing is paid until they answer. Up to {${c.pay_amount?.max ?? c.assist.generic}} of its generic mana.`
+      : undefined,
+    row: mine ? [{ id: "cancel-assist", label: "Cancel request", onPress: onCancel }] : undefined,
+  };
 }
 
 // ---- the game's end ---------------------------------------------------------
