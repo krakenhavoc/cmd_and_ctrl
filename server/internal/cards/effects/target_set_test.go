@@ -59,7 +59,7 @@ func TestTargetSetProofCardsAreRegistered(t *testing.T) {
 		{oracleBeholdSinisterSix, "Behold the Sinister Six!", true},
 		{oracleMoltenPrimordial, "Molten Primordial", true},
 		{oracleRunAwayTogether, "Run Away Together", true},
-		{oracleWindgracesJudgment, "Windgrace's Judgment", false},
+		{oracleWindgracesJudgment, "Windgrace's Judgment", true},
 	} {
 		spec, ok := Lookup(tc.oracle)
 		if !ok || spec.Name != tc.name {

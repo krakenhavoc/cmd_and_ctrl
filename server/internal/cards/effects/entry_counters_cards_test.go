@@ -65,7 +65,7 @@ func TestXEntryCounterCardsEnterWithTheirCounters(t *testing.T) {
 		{"Wildwood Scourge", "Creature — Hydra", "b9dec104-c636-4770-a7fc-7a3331face15", "{X}{G}", game.CounterPlusOne, 3},
 		{"Benevolent Hydra", "Creature — Hydra", "01dbf1bc-ca62-4fb6-959c-ef7c0dc03bb0", "{X}{G}{G}", game.CounterPlusOne, 3},
 		{"Shivan Devastator", "Creature — Dragon Hydra", "b7daa74c-6142-4107-9355-be98af6ccf13", "{X}{R}", game.CounterPlusOne, 3},
-		{"Voracious Hydra", "Creature — Hydra", "ff8f5a4b-112a-425e-b489-7ee26d1d9fb3", "{X}{G}{G}", game.CounterPlusOne, 6},
+		{"Voracious Hydra", "Creature — Hydra", "ff8f5a4b-112a-425e-b489-7ee26d1d9fb3", "{X}{G}{G}", game.CounterPlusOne, 3},
 		{"The Goose Mother", "Legendary Creature — Bird Hydra", "de595f1b-3f7d-45e0-a31b-ed23e5d1ee48", "{X}{G}{U}", game.CounterPlusOne, 3},
 		{"Fated Firepower", "Enchantment", "13daa21c-278d-45bd-9a6e-a77d6a558453", "{X}{R}{R}{R}", "fire", 3},
 	}

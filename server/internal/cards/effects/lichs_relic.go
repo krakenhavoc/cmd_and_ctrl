@@ -26,16 +26,15 @@ import (
 // rule that no two picks share a controller — Windgrace's Judgment's
 // shape.
 //
-// DECLARED SIMPLIFICATION: the one-per-opponent rule is judged on who
-// controls each pick when the ability resolves, not on which opponent it
-// was chosen for, so a permanent that changes hands in response to the
-// trigger is judged by its new controller.
+// Each pick is bound to its opponent (perOpponentClauses): a creature
+// or planeswalker that changes hands in response is an illegal target
+// for the clause it was chosen under, even if it moved to another
+// opponent (CR 608.2b).
 func init() {
 	Register(Spec{
 		OracleID:     "0540eaca-0e03-4831-955a-192ae2b87d35",
 		Name:         "Lich's Relic",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"A permanent that changes control before the destroy trigger resolves is judged by its new controller, not by the opponent you chose it for."},
+		Completeness: CompletenessFull,
 		Static:       []game.StaticAbility{PumpAttached(2, 1)},
 		Activated: []ActivatedAbility{
 			EquipAbility("{2}"),
@@ -52,14 +51,10 @@ var lichsRelicDestroyBody = game.ReflexiveBody("lichs-relic/destroy", simpleBody
 	return lichsRelicClause(p.Amount)
 })
 
-// lichsRelicClause is "up to one target creature or planeswalker per
-// opponent", with no two picks under the same player's control.
+// lichsRelicClause is "up to one target creature or planeswalker for
+// each opponent", one clause per opponent bound to that opponent.
 func lichsRelicClause(opponents int) *game.TargetSpec {
-	if opponents < 1 {
-		opponents = 1
-	}
-	return TargetPermanent("up to one target creature or planeswalker for each opponent", Or(Creature(), Planeswalker()), OpponentControls()).
-		WithCount(0, opponents).EachDifferent(EachDifferentController())
+	return perOpponentClauses(opponents, true, "creature or planeswalker", Or(Creature(), Planeswalker()))
 }
 
 func lichsRelicMayPay(g *game.Game, item *game.StackItem) error {

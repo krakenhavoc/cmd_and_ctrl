@@ -1,6 +1,7 @@
 package effects
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -735,15 +736,21 @@ func TestB25VoraciousHydraFightsOrDoubles(t *testing.T) {
 	theirs := pushVanillaCreature(g, opp.ID, "Their Bear", 2, 2)
 	mine := pushVanillaCreature(g, me.ID, "My Bear", 2, 2)
 
+	// Choose the fight mode: a real "choose one" prompt, then the target.
 	hydra := castXSpell(t, g, "Voracious Hydra", "Creature — Hydra", b25VoraciousHydraOracle, "{X}{G}{G}", 3, nil)
 	passPriorityAroundTable(t, g)
 	if counterCount(g, hydra, "+1/+1") != 3 {
 		t.Fatalf("enters with X counters: %d", counterCount(g, hydra, "+1/+1"))
 	}
+	c := modePickChoiceFor(g, me.ID)
+	if c == nil || !slices.Equal(c.ModeOptionIndex, []int{0, 1}) {
+		t.Fatalf("both modes are offered while an opponent has a creature: %+v", c)
+	}
+	answerMode(t, g, c, me.ID, 1)
 	b04WaitForPick(t, g, me.ID)
 	p := latestPickTarget(g, me.ID)
-	if !hasID(p.PickTargetCards, theirs) || hasID(p.PickTargetCards, mine) || p.PickTargetMin != 0 {
-		t.Error("up to one creature you don't control")
+	if !hasID(p.PickTargetCards, theirs) || hasID(p.PickTargetCards, mine) || p.PickTargetMin != 1 {
+		t.Error("exactly one creature you don't control")
 	}
 	pickCard(t, g, me.ID, theirs)
 	passPriorityAroundTable(t, g)
@@ -756,29 +763,32 @@ func TestB25VoraciousHydraFightsOrDoubles(t *testing.T) {
 	if counterCount(g, hydra, "+1/+1") != 3 {
 		t.Error("the fight mode does not double")
 	}
-	// Pick no target: the counters double instead.
+	// Choose the doubling mode: no target is asked, the counters double.
 	theirs2 := pushVanillaCreature(g, opp.ID, "Their Other Bear", 2, 2)
 	hydra2 := castXSpell(t, g, "Voracious Hydra", "Creature — Hydra", b25VoraciousHydraOracle, "{X}{G}{G}", 2, nil)
 	passPriorityAroundTable(t, g)
-	b04WaitForPick(t, g, me.ID)
-	p = latestPickTarget(g, me.ID)
-	if err := g.ResolvePickTargets(p.ID, me.ID, nil); err != nil {
-		t.Fatalf("picking no target: %v", err)
-	}
+	answerMode(t, g, modePickChoiceFor(g, me.ID), me.ID, 0)
 	passPriorityAroundTable(t, g)
+	if latestPickTarget(g, me.ID) != nil {
+		t.Error("the doubling mode targets nothing")
+	}
 	if counterCount(g, hydra2, "+1/+1") != 4 {
-		t.Errorf("no target: 2 counters doubled to 4, got %d", counterCount(g, hydra2, "+1/+1"))
+		t.Errorf("doubling mode: 2 counters doubled to 4, got %d", counterCount(g, hydra2, "+1/+1"))
 	}
 	if !g.Battlefield.Contains(theirs2) {
 		t.Error("no fight")
 	}
-	// No creature to fight at all: no prompt, the counters double.
+	// No creature to fight at all: the fight mode is not offered.
 	b25Destroy(g, theirs2)
 	passPriorityAroundTable(t, g)
 	hydra3 := castXSpell(t, g, "Voracious Hydra", "Creature — Hydra", b25VoraciousHydraOracle, "{X}{G}{G}", 1, nil)
 	passPriorityAroundTable(t, g)
-	if latestPickTarget(g, me.ID) != nil {
-		t.Error("nothing to fight: no prompt")
+	if c := modePickChoiceFor(g, me.ID); c != nil {
+		if slices.Contains(c.ModeOptionIndex, 1) {
+			t.Fatalf("nothing to fight: the fight mode is not offered: %v", c.ModeOptionIndex)
+		}
+		answerMode(t, g, c, me.ID, 0)
+		passPriorityAroundTable(t, g)
 	}
 	if counterCount(g, hydra3, "+1/+1") != 2 {
 		t.Errorf("1 counter doubled to 2, got %d", counterCount(g, hydra3, "+1/+1"))
@@ -786,7 +796,7 @@ func TestB25VoraciousHydraFightsOrDoubles(t *testing.T) {
 	if !hasEffectiveKeyword(t, g, hydra3, "trample") {
 		t.Error("trample")
 	}
-	if spec, _ := Lookup(b25VoraciousHydraOracle); spec.Completeness != CompletenessCaveats {
-		t.Error("the X-on-resolve and mode-by-target gaps are declared")
+	if spec, _ := Lookup(b25VoraciousHydraOracle); spec.Completeness != CompletenessFull {
+		t.Error("the mode is a real choice now: nothing is declared")
 	}
 }
