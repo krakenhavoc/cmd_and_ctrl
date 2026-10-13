@@ -330,6 +330,24 @@ type StaticAbility struct {
 	// manaPoolStaticIsLiveLocked.
 	DependsOnManaPool bool
 
+	// DependsOnEvents is DependsOnHandSize for a condition that is
+	// "has this happened this turn" or "is this blocking" — Surveillance
+	// Phantasm's "as long as you've scried or surveilled this turn"
+	// (EventScry, EventSurveil), Whiplash Wordsmith's "as long as an
+	// opponent was dealt noncombat damage this turn" (EventDealDamage)
+	// and Sting's "as long as it's blocking or blocked by a Goblin or
+	// Orc" (EventBlock). The listed kinds each bump the layer version
+	// while a permanent declaring them is in play; the turn's own
+	// advance already bumps unconditionally, which clears the first two.
+	// EventBlock also covers the other exit of a block, combat ending or
+	// a blocker leaving combat (invalidateLayersForAttackChangeLocked).
+	//
+	// Same contract and same reason as the flags above; the list keeps
+	// a third and fourth card from needing a flag each. Only these four
+	// kinds are read by the listener (its EventScry arm), so any other
+	// kind here would do nothing.
+	DependsOnEvents []EventKind
+
 	// ActiveWhen is the CR 716 / 719 / 721 / 709.5 designation gate:
 	// this static exists only while its source permanent has the
 	// designation named — level N or greater, solved, N or more

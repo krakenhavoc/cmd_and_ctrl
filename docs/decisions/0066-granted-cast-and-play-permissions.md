@@ -3640,3 +3640,19 @@ Additive within v8, omitted when zero: `cardCopy` on every card path and `spells
 
 Back-out: remove `card.CardCopy` from the `IsCopy` line in `CastSpell`, and `TestCardCopyOfAPermanentCardResolvesAsAToken` fails;
 remove the sweep call in `runStateChecksLocked`, and `TestCardCopyWithNoOfferCeasesAtTheNextStateCheck` fails.
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), cav-h2): "mana of any type", and a flash window bound to a target
+
+**Any type.** `AnyColorSpendStatic.AnyType` is the grant Vizier of the Menagerie prints, "you can spend mana of any type to
+cast creature spells": the colour grant plus colourless being a type, so coloured mana also pays a `{C}` symbol.
+`spendGrantLocked` reports whether a covering grant is the any-type kind and `widenForAnyColorSpend(cost, anyType)` then
+widens the `{C}` requirement too (Oath of Nissa and the other colour grants still leave it alone). `YouMaySpendManaAsAnyTypeToCast`
+is the constructor.
+
+**Flash if it targets.** `FlashIfTargets(cost, what, clause)` is [ADR 0025](0025-alternative-costs.md)'s flash-window
+offer (`AsThoughFlash`) carrying the narrower target clause the flash cast must satisfy (`AlternativeCost.Targets`). Timely Ward
+offers `{2}{W}` with "enchant creature" narrowed to a commander (`ACommander`); the printed cast is sorcery-speed with
+any creature.
+
+Back-out: `AnyType` false makes `TestVizierOfTheMenagerieLetsAnyManaPayACreatureSpellsColorlessSymbol` fail; the flash offer
+removed returns Timely Ward to its caveat.

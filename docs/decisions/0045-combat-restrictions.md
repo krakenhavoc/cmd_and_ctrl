@@ -4804,3 +4804,28 @@ Back-out: drop the `stampEntryBlockerLocked` call (Brimaz reverts to a token tha
 `combatDamagePower` call (Ghalta deals damage by power).
 
 Tests: `cards/effects/cav_c_cards_test.go` (Ghalta), `TestB28BrimazMakesAnAttackingCatAndABlockingOne`.
+
+## Amendment (2026-10-13, [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), cav-h2): "can't be attacked", and statics that read block status or this turn's events
+
+Two small pieces of the layer and combat machinery, each added for caveated cards.
+
+**`Characteristic.CantBeAttacked`** is the target-keyed twin of `AttackTargetRestrictions` (which is keyed on the
+attacker). A layer 6 static on the permanent itself sets it; `canAttackTargetLocked` refuses a planeswalker or battle
+whose effective characteristic carries it, and every caller (both declaration verbs, `AttackTargetsForEffect` and so the
+view and the enumerator) goes through that function. The Aetherspark sets it while it is attached to a creature, and the
+attach and unattach events already wake the layer cache.
+
+**`StaticAbility.DependsOnEvents`** is `DependsOnHandSize`'s family for conditions that are "has this happened this
+turn" or "is it blocking": a list of event kinds. While a permanent that lists a kind is in play, that kind bumps the layer
+version (`layerVersionBump.OnEvent`, one arm for `EventScry`, `EventSurveil`, `EventDealDamage` and `EventBlock`). Listing
+`EventBlock` also covers the exits that carry no event of their own, a block ending with combat or a blocker leaving combat,
+through `invalidateLayersForAttackChangeLocked`. The turn's own advance already bumps unconditionally, which clears the
+first three at end of turn. A granted static may not declare it (`GrantedStaticProblem`), like the other hints.
+
+Cards: The Aetherspark (`CantBeAttacked`); Surveillance Phantasm (scried or surveilled this turn: `defender` is granted
+unless it holds), Whiplash Wordsmith (an opponent dealt noncombat damage this turn, read through the new
+`Game.WasDealtNoncombatDamageThisTurn`) and Sting, the Glinting Dagger (`first strike` while the equipped creature is
+blocking or blocked by a Goblin or Orc) use `DependsOnEvents`.
+
+Back-out: stop the listener arm and the three event-keyed cards' tests fail (the Sting, Phantasm and Whiplash tests);
+drop the `CantBeAttacked` check in `canAttackTargetLocked` and `TestAethersparkCantBeAttackedOnlyWhileAttached` fails.

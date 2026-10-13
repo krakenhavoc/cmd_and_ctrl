@@ -18,16 +18,14 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // it last stood is its printed toughness plus its counters
 // (b29LastKnownToughnessOffBattlefield).
 //
-// Sandbox simplification, declared, weaker than printed: a static
-// toughness bonus from another permanent (an anthem, an Equipment)
-// is not in that read, so a 3/3 wearing a +1/+1 anthem makes one
-// Food where printed it makes two. Counters are counted.
+// Toughness is the sacrificed creature's last-known value, post-layer
+// and with counters (PermanentInfo.Toughness, CR 603.10), so an anthem or
+// an Equipment bonus counts toward the two-Food threshold.
 func init() {
 	Register(Spec{
 		OracleID:     "8fa0fe02-2452-4386-8e0c-165757b0f0a3",
 		Name:         "Witch's Oven",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The sacrificed creature's toughness is read from its printed value and its counters only — a bonus from another permanent isn't counted toward the two-Food threshold."},
+		Completeness: CompletenessFull,
 		Activated: []ActivatedAbility{{
 			Label:   "{T}, Sacrifice a creature: Create a Food token. If the sacrificed creature's toughness was 4 or greater, create two Food tokens instead.",
 			Purpose: game.Purpose{Answers: game.AnswerSacOutlet},

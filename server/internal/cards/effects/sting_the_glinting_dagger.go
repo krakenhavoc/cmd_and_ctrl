@@ -16,30 +16,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // captured at Build, since which creature is equipped can change
 // between combats.
 //
-// SIMPLIFICATION, DECLARED: the conditional first strike is not
-// implemented. "As long as it's blocking or blocked by a Goblin or
-// Orc" is a condition on live block-declaration state
-// (Card.BlockingTarget, set at CR 509), and the layer engine has no
-// invalidation hook for that state changing — StaticAbility carries
-// DependsOnLifeTotal, DependsOnHandSize, DependsOnAttackingStatus and
-// DependsOnSpellsCast (layer_listener.go), and none of those fire when
-// a block is declared or locked in. A static built on
-// Card.BlockingTarget without that hook would read whatever the layer
-// cache last computed — right only when some UNRELATED event happens
-// to force a recompute in the same window — which is a coin flip, not
-// an implementation. Left out until a DependsOnBlockStatus-shaped hook
-// exists.
+// The conditional first strike is a GrantToAttachedWhile over live block
+// state: the host is blocking an attacker that is a Goblin or an Orc, or
+// is an attacker blocked by one (Card.BlockingTarget / AlsoBlocking, read
+// through IsBlockingAttacker, so a creature that blocks several
+// attackers counts each). DependsOnEvents lists EventBlock, which wakes
+// the layer cache when blockers are declared and again when a block ends
+// (combat ending, a blocker leaving combat), so the keyword is live at
+// the first-strike damage step and gone after combat. Changelings count
+// (Card.HasSubtype).
 func init() {
 	Register(Spec{
 		OracleID:     "973c49a1-8425-40b9-8bdc-2c2434222314",
 		Name:         "Sting, the Glinting Dagger",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The equipped creature doesn't gain first strike from blocking or being blocked by a Goblin or Orc.",
-		},
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			PumpAttached(1, 1),
 			GrantToAttached("haste"),
+			stingFirstStrike(),
 		},
 		Triggered: []game.TriggeredAbility{
 			AtBeginningOfEachCombat("Sting, the Glinting Dagger — untap equipped creature", untapAttachedHost),
@@ -48,4 +42,28 @@ func init() {
 			EquipAbility("{2}"),
 		},
 	})
+}
+
+// stingFirstStrike is "Equipped creature has first strike as long as it's
+// blocking or blocked by a Goblin or Orc."
+func stingFirstStrike() game.StaticAbility {
+	st := GrantToAttachedWhile(func(host *game.Card, g *game.Game, _ *game.Card) bool {
+		isGoblinOrOrc := func(c *game.Card) bool { return c.HasSubtype("Goblin") || c.HasSubtype("Orc") }
+		if g.Battlefield == nil {
+			return false
+		}
+		for i := range g.Battlefield.Cards {
+			c := &g.Battlefield.Cards[i]
+			switch {
+			case host.IsBlockingAttacker(c.InstanceID) && isGoblinOrOrc(c):
+				return true
+			case c.IsBlockingAttacker(host.InstanceID) && isGoblinOrOrc(c):
+				return true
+			}
+		}
+		return false
+	}, "first strike")
+	st.Label = "Attached creature has first strike as long as it's blocking or blocked by a Goblin or Orc."
+	st.DependsOnEvents = []game.EventKind{game.EventBlock}
+	return st
 }

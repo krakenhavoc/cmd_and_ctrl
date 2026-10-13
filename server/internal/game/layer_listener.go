@@ -402,6 +402,14 @@ func (layerVersionBump) OnEvent(g *Game, ev Event) {
 		if attackingStatusStaticIsLiveLocked(g) {
 			g.layerVersion.Add(1)
 		}
+	case EventScry, EventSurveil, EventDealDamage, EventBlock:
+		// StaticAbility.DependsOnEvents: "has this happened this turn"
+		// and "is it blocking" have a new answer the moment the event
+		// is in the log. Gated, so a table with no such permanent pays
+		// one walk of the battlefield per event and no recompute.
+		if eventStaticIsLiveLocked(g, ev.Kind) {
+			g.layerVersion.Add(1)
+		}
 	case EventCast:
 		// #1325: a static reading "you haven't cast a spell this
 		// turn" (Stoic Sphinx) has a new answer the instant a spell
@@ -516,6 +524,20 @@ func attackingStatusStaticIsLiveLocked(g *Game) bool {
 	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool { return ab.DependsOnAttackingStatus })
 }
 
+// eventStaticIsLiveLocked is handSizeStaticIsLiveLocked for a static that
+// lists `kind` in DependsOnEvents (Surveillance Phantasm, Whiplash
+// Wordsmith, Sting).
+func eventStaticIsLiveLocked(g *Game, kind EventKind) bool {
+	return staticOnBattlefieldLocked(g, func(ab StaticAbility) bool {
+		for _, k := range ab.DependsOnEvents {
+			if k == kind {
+				return true
+			}
+		}
+		return false
+	})
+}
+
 // spellsCastStaticIsLiveLocked is handSizeStaticIsLiveLocked for the
 // per-turn spells-cast count. Stoic Sphinx's "hexproof as long as you
 // haven't cast a spell this turn" is the card that makes it matter.
@@ -588,7 +610,7 @@ func (g *Game) invalidateLayersForLifeChangeLocked() {
 //
 // Caller must hold g.mu.
 func (g *Game) invalidateLayersForAttackChangeLocked() {
-	if attackingStatusStaticIsLiveLocked(g) {
+	if attackingStatusStaticIsLiveLocked(g) || eventStaticIsLiveLocked(g, EventBlock) {
 		g.layerVersion.Add(1)
 	}
 }

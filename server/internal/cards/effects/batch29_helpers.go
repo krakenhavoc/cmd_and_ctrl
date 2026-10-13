@@ -390,7 +390,7 @@ func b29SacrificeChosenTokenThenAcorn(g *game.Game, item *game.StackItem) error 
 
 // b29FoodForSacrificedCreature is Witch's Oven's activation: one
 // Food, or two if the creature sacrificed to pay had toughness 4 or
-// greater as it last stood — printed toughness plus its counters
+// greater as it last stood — post-layer toughness with its counters
 // (b29LastKnownToughnessOffBattlefield).
 func b29FoodForSacrificedCreature(g *game.Game, item *game.StackItem) error {
 	n := 1

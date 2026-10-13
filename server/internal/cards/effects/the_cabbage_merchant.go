@@ -21,18 +21,24 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // a Gingerbread Cabin is a Food but not a token, so it is not
 // offered; with no Food token the trigger does nothing.
 //
-// Declared simplification (weaker than printed): the mana ability is
-// not offered. "Tap two untapped Foods you control" is a cost that
-// taps two OTHER permanents, and neither ManaAbilityCost nor
-// AbilityCost has a tap-another component (the Springleaf Drum
-// seam); a cost with no shape is left out rather than priced at
-// nothing (#259).
+// The mana ability is Heritage Druid's shape: a TapOthers cost of two
+// untapped Foods, no {T} of its own (the Merchant is not tapped), and
+// the any-colour pipe slot. It is a mana ability (no target, produces
+// mana), so it skips the stack.
 func init() {
 	Register(Spec{
 		OracleID:     "e31808bb-fb6e-487b-a973-db44961c84ee",
 		Name:         "The Cabbage Merchant",
-		Completeness: CompletenessCaveats,
-		Caveats:      []string{"The mana ability isn't available — tapping two Foods for a mana of any color isn't a cost the engine can pay."},
+		Completeness: CompletenessFull,
+		ManaAbilities: []ManaAbility{{
+			Cost: ManaAbilityCost{TapOthers: &game.TapOthersCost{
+				Count:  2,
+				Filter: TargetPermanent("two untapped Foods you control", Subtype("Food")),
+				Label:  "two untapped Foods you control",
+			}},
+			Produced: "{W|U|B|R|G}",
+			Label:    "Tap two untapped Foods you control: Add one mana of any color",
+		}},
 		Triggered: []game.TriggeredAbility{
 			On(game.EventCast, func(ev game.Event, source *game.Card, _ game.Characteristic, g *game.Game) bool {
 				if !b15OpponentCastSpell(ev, source) {

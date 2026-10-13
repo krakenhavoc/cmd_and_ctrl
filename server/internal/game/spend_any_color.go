@@ -77,6 +77,11 @@ type AnyColorSpendStatic struct {
 	// A context with no object (an "unless pays" cost, an attack tax)
 	// is a payment a narrowed grant does not reach.
 	Covers func(ManaSpendContext) bool
+	// AnyType makes it "as though it were mana of any TYPE" (Vizier of
+	// the Menagerie): colourless is a type too, so coloured mana may also
+	// pay a {C} symbol (CR 106.1b no longer stops it). False is the
+	// colour grant, which leaves {C} alone.
+	AnyType bool
 }
 
 // CatalogAnyColorSpend returns the spend statics a permanent with the
@@ -89,8 +94,15 @@ var CatalogAnyColorSpend func(key string) []AnyColorSpendStatic
 //
 // Caller must hold g.mu (read or write). Reads only.
 func (g *Game) spendsManaAsAnyColorLocked(payer uuid.UUID, ctx ManaSpendContext) bool {
+	found, _ := g.spendGrantLocked(payer, ctx)
+	return found
+}
+
+// spendGrantLocked is the reader behind spendsManaAsAnyColorLocked, also
+// reporting whether a covering grant is the any-TYPE kind.
+func (g *Game) spendGrantLocked(payer uuid.UUID, ctx ManaSpendContext) (found, anyType bool) {
 	if CatalogAnyColorSpend == nil || g.Battlefield == nil || payer == uuid.Nil {
-		return false
+		return false, false
 	}
 	for i := range g.Battlefield.Cards {
 		src := &g.Battlefield.Cards[i]
@@ -111,10 +123,13 @@ func (g *Game) spendsManaAsAnyColorLocked(payer uuid.UUID, ctx ManaSpendContext)
 			if s.Covers != nil && !s.Covers(ctx) {
 				continue
 			}
-			return true
+			found = true
+			if s.AnyType {
+				return true, true
+			}
 		}
 	}
-	return false
+	return found, false
 }
 
 // SpendsManaAsAnyColorForEffect is the *ForEffect surface over the
@@ -133,10 +148,11 @@ func (g *Game) SpendsManaAsAnyColorForEffect(payer uuid.UUID, ctx ManaSpendConte
 // no colour to spend mana as though it were. Generic and {X} need no
 // widening. Idempotent, and it returns `cost` itself when there is
 // nothing to widen.
-func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
+func widenForAnyColorSpend(cost ParsedCost, anyType bool) ParsedCost {
+	colourless := func(r ColorRequirement) bool { return !anyType && requiresColorless(r) }
 	need := false
 	for _, r := range cost.Required {
-		if !r.AnyMana && !requiresColorless(r) && !unpayableByAnyMana(r) {
+		if !r.AnyMana && !colourless(r) && !unpayableByAnyMana(r) {
 			need = true
 			break
 		}
@@ -147,7 +163,7 @@ func widenForAnyColorSpend(cost ParsedCost) ParsedCost {
 	out := cost
 	out.Required = make([]ColorRequirement, len(cost.Required))
 	for i, r := range cost.Required {
-		if !requiresColorless(r) && !unpayableByAnyMana(r) {
+		if !colourless(r) && !unpayableByAnyMana(r) {
 			r.AnyMana = true
 		}
 		out.Required[i] = r
@@ -183,10 +199,14 @@ func (g *Game) costAsPaidByLocked(payer uuid.UUID, ctx ManaSpendContext, cost Pa
 	// marked: life never pays generic mana (the 2019-08-23 ruling).
 	cost = g.grantLifeForManaLocked(payer, cost)
 	cost = cost.foldSpendOnly(x)
-	if len(cost.Required) == 0 || !g.spendsManaAsAnyColorLocked(payer, ctx) {
+	if len(cost.Required) == 0 {
 		return cost
 	}
-	return widenForAnyColorSpend(cost)
+	found, anyType := g.spendGrantLocked(payer, ctx)
+	if !found {
+		return cost
+	}
+	return widenForAnyColorSpend(cost, anyType)
 }
 
 // CostAsPaidByForEffect is costAsPaidByLocked for a caller that already

@@ -35,12 +35,15 @@ const (
 // permanents — and this list is the price of that: a card that reaches
 // a player event has to say so here.
 //
-// Both entries print the clause. Vorinclex is "counters on a permanent
+// Each entry prints the clause. Vorinclex is "counters on a permanent
 // OR PLAYER", twice; Lae'zel is "on a creature or planeswalker you
 // control OR ON YOURSELF".
 var countersOnOptIns = map[string]string{
 	"Vorinclex, Monstrous Raider": `"If you would put one or more counters on a permanent
 		or player" — both halves of the card name players.`,
+	"Winding Constrictor": `"If you would get one or more counters, you get that many
+		plus one of each of those kinds of counters instead" — the second half
+		of the card names the controller.`,
 	"Lae'zel, Vlaakith's Champion": `"on a creature or planeswalker you control or on
 		yourself" — the "or on yourself" clause was dead before ADR 0056
 		and shipped as a declared caveat.`,

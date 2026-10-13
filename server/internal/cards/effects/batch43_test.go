@@ -1271,8 +1271,8 @@ func TestB43VizkopaGuildmageGrantsLifelinkUntilEndOfTurn(t *testing.T) {
 	mage := b43Catalog(g, me.ID, "Vizkopa Guildmage", "Creature — Human Wizard", b43VizkopaGuildmageOracle, 2, 2)
 	bear := b43Creature(g, me.ID, "Bear", "Creature — Bear", 2, 2)
 	spec, _ := Lookup(b43VizkopaGuildmageOracle)
-	if len(spec.Activated) != 1 {
-		t.Fatalf("only the lifelink half ships (declared caveat): %d abilities", len(spec.Activated))
+	if len(spec.Activated) != 2 {
+		t.Fatalf("both abilities ship: %d", len(spec.Activated))
 	}
 	advanceToMain(t, g)
 	b06AddMana(me, "W", "B", "C")

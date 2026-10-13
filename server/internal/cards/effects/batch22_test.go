@@ -725,8 +725,8 @@ func TestB22CabbageMerchantMakesFoodAndLosesItToCombatDamage(t *testing.T) {
 		t.Error("a Bolt is not combat damage")
 	}
 	spec, _ := Lookup(b22CabbageMerchantOracle)
-	if len(spec.ManaAbilities) != 0 || spec.Completeness != CompletenessCaveats {
-		t.Error("the tap-two-Foods mana ability is a declared gap")
+	if len(spec.ManaAbilities) != 1 || spec.Completeness != CompletenessFull {
+		t.Error("the tap-two-Foods mana ability ships and the card is complete (#3172)")
 	}
 }
 
