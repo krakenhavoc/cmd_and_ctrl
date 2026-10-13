@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math/bits"
 	"sync"
 
 	"github.com/google/uuid"
@@ -7619,6 +7620,40 @@ var landTypeMana = [...]struct{ Subtype, Color, Produced, Label string }{
 	{"Forest", "G", "{G}", "Add {G}"},
 }
 
+// intrinsicLandRows is the one-row answer intrinsicLandManaAbilities
+// gives a land with a single basic land type, one slice per entry of
+// landTypeMana (#2113). The slices are SHARED and READ-ONLY: every such
+// land in every zone of every game gets the same backing array, so a
+// consumer that wrote through an element would change every land's
+// ability at once. None does — the rows are read like the catalog's own
+// declared slice always has been — and TestIntrinsicLandRowsAreNeverMutated
+// pins it through a full view build. Capacity is clipped to the length so
+// an append reallocates instead of writing into the shared array.
+//
+// intrinsicLandOrigins is the parallel origin row ManaAbilitiesWithOrigins
+// hands back for the same land when nothing else is in the list.
+var intrinsicLandRows, intrinsicLandOrigins = func() (rows [len(landTypeMana)][]ManaAbilityShape, origins [len(landTypeMana)]AbilityOrigins) {
+	for i, lt := range landTypeMana {
+		rows[i] = []ManaAbilityShape{{TapCost: true, Produced: lt.Produced, Label: lt.Label}}[:1:1]
+		origins[i] = AbilityOrigins{{Ref: IntrinsicLandAbilityRef(lt.Color)}}[:1:1]
+	}
+	return rows, origins
+}()
+
+// intrinsicLandOriginsFor is the shared origin row for a one-row
+// intrinsic answer, or nil when the row is not one of intrinsicLandRows.
+func intrinsicLandOriginsFor(rows []ManaAbilityShape) AbilityOrigins {
+	if len(rows) != 1 {
+		return nil
+	}
+	for i := range intrinsicLandRows {
+		if &intrinsicLandRows[i][0] == &rows[0] {
+			return intrinsicLandOrigins[i]
+		}
+	}
+	return nil
+}
+
 // intrinsicLandManaAbilities builds the CR 305.6 abilities a land's
 // EFFECTIVE subtypes grant it: "{T}: Add {W}" for Plains, "{T}: Add
 // {U}" for Island, and so on, one per distinct basic land type.
@@ -7660,11 +7695,30 @@ func intrinsicLandManaAbilities(c *Card) []ManaAbilityShape {
 	if len(subtypes) == 0 {
 		return nil
 	}
-	var out []ManaAbilityShape
 	// One bit per entry in landTypeMana rather than a map: this runs
 	// once per land per card view, and five lands is already a
 	// thousand map allocations a minute at snapshot rates.
 	var seen uint8
+	for _, sub := range subtypes {
+		for i, lt := range landTypeMana {
+			if equalFoldASCII(sub, lt.Subtype) {
+				seen |= 1 << i
+			}
+		}
+	}
+	// #2113: the common land has exactly one basic land type, and its
+	// one-row answer is the same slice every time. Hand back the shared
+	// read-only row instead of allocating a fresh one per land per view.
+	if seen != 0 && seen&(seen-1) == 0 {
+		return intrinsicLandRows[bits.TrailingZeros8(seen)]
+	}
+	if seen == 0 {
+		return nil
+	}
+	var out []ManaAbilityShape
+	// A land with several basic land types gets one row per type, in
+	// the order the subtypes name them.
+	seen = 0
 	for _, sub := range subtypes {
 		for i, lt := range landTypeMana {
 			if !equalFoldASCII(sub, lt.Subtype) || seen&(1<<i) != 0 {

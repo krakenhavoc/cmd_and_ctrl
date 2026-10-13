@@ -7147,7 +7147,7 @@ func stampZoneAbilities(g *game.Game, seats []PlayerView, exile *ZoneView) {
 			// pass, because it is the same question about the same
 			// card — "what may you activate here" — and a second walk
 			// of every hand would be a second answer to keep in step.
-			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(card, game.ZoneHand))
+			c.stampZoneManaAbilitiesFor(owner, viewOfManaAbilitiesFromZone(&card, game.ZoneHand))
 			c.SpecialActions = viewOfSpecialActions(g, card, owner, game.ZoneHand)
 		}
 		stampLibraryTopSpecialActions(g, &seat.Library, owner)
@@ -7191,7 +7191,7 @@ func stampZoneAbilitiesInPile(g *game.Game, zone *ZoneView, kind game.ZoneKind, 
 		// is the hand alone, so the zone predicate answers no here —
 		// and the call is made anyway so that adding a zone to that
 		// list is adding it in one place rather than two.
-		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(card, kind))
+		c.stampZoneManaAbilitiesFor(you, viewOfManaAbilitiesFromZone(&card, kind))
 	}
 }
 
@@ -8692,8 +8692,12 @@ func viewOfZone(z *game.Zone) ZoneView {
 	cards := make([]CardView, len(z.Cards))
 	onBattlefield := z.Kind == game.ZoneBattlefield
 	phasedOut := z.Kind == game.ZonePhasedOut
-	for i, c := range z.Cards {
-		cards[i] = viewOfCard(c)
+	for i := range z.Cards {
+		// #2113: by pointer. Card is over a kilobyte and this loop ran
+		// a copy of it per card per frame, then handed it on to a
+		// dozen by-value helpers that each copied it again.
+		c := &z.Cards[i]
+		cards[i] = viewOfCardPtr(c)
 		// #1199: read off the zone rather than off the card, because
 		// the card carries no flag — ADR 0084 keeps phasing as a
 		// membership rather than as a bit several subsystems have to
@@ -8714,15 +8718,15 @@ func viewOfZone(z *game.Zone) ZoneView {
 		// #2219: the art tile's ability chips, on the two zones a tile
 		// is drawn in.
 		if onBattlefield {
-			cards[i].AbilityRows = viewOfBattlefieldAbilityRows(c)
+			cards[i].AbilityRows = viewOfBattlefieldAbilityRowsPtr(c)
 		} else if z.Kind == game.ZoneHand {
-			cards[i].AbilityRows = viewOfAbilityRows(c)
+			cards[i].AbilityRows = viewOfAbilityRowsPtr(c)
 		}
 		// ADR 0126 §6: what the card does, where a seat decides to
 		// cast it (the hand), prices it as a permanent (the
 		// battlefield) or sees it coming (the stack).
 		if onBattlefield || z.Kind == game.ZoneHand || z.Kind == game.ZoneStack {
-			cards[i].Purpose = viewOfPurpose(game.CardPurposeOf(c))
+			cards[i].Purpose = viewOfPurpose(game.CardPurposeOfPtr(c))
 		}
 	}
 	owner := ""
@@ -9765,7 +9769,16 @@ func keepKnownInHandZone(z ZoneView) ZoneView {
 	return out
 }
 
-func viewOfCard(c game.Card) CardView {
+// viewOfCard is viewOfCardPtr for a caller holding a card by value: the
+// pickers that project a handful of looked-up cards, and the tests.
+func viewOfCard(c game.Card) CardView { return viewOfCardPtr(&c) }
+
+// viewOfCardPtr projects one card. It takes a pointer and reads through
+// pointer twins (game/card_ptr_reads.go) because Card is over a
+// kilobyte: a by-value parameter plus the ten by-value helpers it used
+// to call copied it eleven times per card per frame (#2113, ~4.5% of a
+// bot table's CPU). Nothing here writes to the card.
+func viewOfCardPtr(c *game.Card) CardView {
 	var counters map[string]int
 	if len(c.Counters) > 0 {
 		counters = make(map[string]int, len(c.Counters))
@@ -9787,7 +9800,7 @@ func viewOfCard(c game.Card) CardView {
 	// from the layered type fields. Cards with no static type
 	// changes (the vast majority) reproduce the printed type-line
 	// byte-for-byte via the parser round-trip.
-	eff := c.Effective()
+	eff := game.EffectiveOf(c)
 	// One read for all three P/T fields below (#1498).
 	power, powerForComparison, toughness := c.PowerToughness()
 	view := CardView{
@@ -9796,10 +9809,10 @@ func viewOfCard(c game.Card) CardView {
 		Owner:      c.Owner.String(),
 		Controller: c.Controller.String(),
 		ScryfallID: c.ScryfallID,
-		IsToken:    c.IsToken(),
+		IsToken:    game.IsTokenPtr(c),
 		TypeLine:   effectiveTypeLine(c, eff),
 		Colors:     append([]string(nil), eff.Colors...),
-		Protection: viewOfProtection(&c),
+		Protection: viewOfProtection(c),
 		// S16 sub-PR 1 + hotfix: CardView.power / .toughness is the
 		// COMBAT-RELEVANT value — effective P/T from the layer engine
 		// PLUS the +1/+1 / -1/-1 counter delta. S13.2's CurrentPower /
@@ -9824,9 +9837,9 @@ func viewOfCard(c game.Card) CardView {
 		FaceDownKind:        string(c.FaceDownKind),
 		// #522: a card a restore stripped of abilities is not
 		// presented as automated for the rest of the game.
-		Auto:                   game.IsAutoCard(game.CatalogKey(c)) && !c.AbilitiesLostOnRestore,
-		Unimplemented:          game.Unimplemented(c),
-		MayMakeManaUnautomated: game.MayMakeManaUnautomated(c),
+		Auto:                   game.IsAutoCard(game.CatalogKeyOf(c)) && !c.AbilitiesLostOnRestore,
+		Unimplemented:          game.UnimplementedOf(c),
+		MayMakeManaUnautomated: game.MayMakeManaUnautomatedOf(c),
 		// #992: `target_mode` is the one announce field this
 		// function stamps, because it is a pure catalog read and
 		// every zone wants it — a spell on the stack renders its
@@ -9835,16 +9848,16 @@ func viewOfCard(c game.Card) CardView {
 		// the same face; the difference is that they can answer for
 		// a face the card is NOT showing and this cannot.
 		CastSurfaceView: CastSurfaceView{
-			TargetMode: game.TargetModeFor(game.CatalogKey(c)),
+			TargetMode: game.TargetModeFor(game.CatalogKeyOf(c)),
 		},
 		oracleID:      c.OracleID,
 		ManaCost:      c.ManaCost,
 		ManaAbilities: viewOfManaAbilities(c),
-		SummoningSick: game.HasSummoningSickness(&c),
+		SummoningSick: game.HasSummoningSickness(c),
 		Abilities:     viewOfAbilityBadges(eff),
 		Restrictions:  eff.Restrictions.Names(),
 		// ADR 0106 §2 (#1794): the owner chip's data, resolved here.
-		AttackTargetRestrictions: viewOfAttackTargetRestrictions(&c, eff),
+		AttackTargetRestrictions: viewOfAttackTargetRestrictions(c, eff),
 		// #781. Straight off the card, with no zone gate and no
 		// catalog lookup: both are cleared on every battlefield exit
 		// (game/zone.go, game/entry_tail.go), so "non-empty" already
@@ -9868,7 +9881,7 @@ func viewOfCard(c game.Card) CardView {
 		// text, so fixing a token's wording reaches a game already in
 		// progress; empty for every printed card and every vanilla
 		// token, which is what keeps the field additive.
-		TokenText: game.TokenTextForCard(c),
+		TokenText: game.TokenTextOf(c),
 	}
 	if c.AttackingTarget != uuid.Nil {
 		view.AttackingTarget = c.AttackingTarget.String()
@@ -9883,7 +9896,7 @@ func viewOfCard(c game.Card) CardView {
 	if c.ProtectorPlayerID != uuid.Nil {
 		view.ProtectorPlayer = c.ProtectorPlayerID.String()
 	}
-	if c.IsBattle() {
+	if game.IsBattlePtr(c) {
 		view.Defense = c.Counters[game.CounterDefense]
 	}
 	// ADR 0071. Both read straight off the card, like the battle pair
@@ -9900,10 +9913,10 @@ func viewOfCard(c game.Card) CardView {
 	// had, but a level badge on it would be describing a card that
 	// is not there any more.
 	if c.EnteredBattlefieldAt != 0 {
-		if game.IsClass(c) {
-			view.ClassLevel = game.ClassLevelOf(c)
+		if game.IsClassPtr(c) {
+			view.ClassLevel = game.ClassLevelOf(*c)
 		}
-		if game.IsCase(c) {
+		if game.IsCasePtr(c) {
 			view.Solved = c.Solved
 		}
 		view.Harnessed = c.Harnessed
@@ -9913,7 +9926,7 @@ func viewOfCard(c game.Card) CardView {
 		view.Suspected = c.Suspected
 		view.Prepared = c.Prepared
 		// ADR 0103: a face-up Room's doors.
-		if game.HasSharedTypeLine(c) {
+		if game.HasSharedTypeLineOf(c) {
 			view.Doors = &RoomDoorsView{
 				Left:  c.Unlocked.Has(game.DoorLeft),
 				Right: c.Unlocked.Has(game.DoorRight),
@@ -9928,8 +9941,8 @@ func viewOfCard(c game.Card) CardView {
 			view.BlockingTargets = append(view.BlockingTargets, id.String())
 		}
 	}
-	if c.IsCreature() {
-		switch n := game.BlockCapacity(&c); {
+	if game.IsCreaturePtr(c) {
+		switch n := game.BlockCapacity(c); {
 		case n == 0:
 			view.BlocksAnyNumber = true
 		case n > 1:
@@ -9940,14 +9953,14 @@ func viewOfCard(c game.Card) CardView {
 	// goad too. AllGoaders lists those first, so the last entry, which
 	// the legacy single field repeats, is the latest marker goader
 	// whenever there is one.
-	if goaders := c.AllGoaders(); len(goaders) > 0 {
+	if goaders := game.AllGoadersOf(c); len(goaders) > 0 {
 		view.GoadedBy = goaders[len(goaders)-1].String()
 		view.Goaders = make([]string, len(goaders))
 		for i, id := range goaders {
 			view.Goaders[i] = id.String()
 		}
 	}
-	if c.IsAttached() {
+	if game.IsAttachedPtr(c) {
 		id := ""
 		if c.AttachedTo.ID != uuid.Nil {
 			id = c.AttachedTo.ID.String()
@@ -10251,7 +10264,7 @@ func grantedFace(c game.Card, perm *game.CastPermission) game.Card {
 // pre-S16).
 //
 // Added in S16 sub-PR 4.
-func effectiveTypeLine(c game.Card, eff game.Characteristic) string {
+func effectiveTypeLine(c *game.Card, eff game.Characteristic) string {
 	if len(eff.Types) == 0 && len(eff.Subtypes) == 0 && len(eff.Supertypes) == 0 {
 		return c.TypeLine
 	}
@@ -10928,8 +10941,8 @@ func withoutID(ids []string, drop string) []string {
 
 // viewOfMeldedFrom projects a melded permanent's two cards (ADR 0145).
 // nil for every other card.
-func viewOfMeldedFrom(c game.Card) []CardFaceView {
-	if !c.IsMelded() {
+func viewOfMeldedFrom(c *game.Card) []CardFaceView {
+	if !game.IsMeldedPtr(c) {
 		return nil
 	}
 	out := make([]CardFaceView, 0, len(c.MeldedFrom))
@@ -10951,8 +10964,8 @@ func viewOfMeldedFrom(c game.Card) []CardFaceView {
 
 // viewOfMeldsInto projects a meld card's combined back face (ADR
 // 0145). nil for every other card, and for a melded permanent.
-func viewOfMeldsInto(c game.Card) *CardFaceView {
-	if !c.IsMeldCard() || c.IsMelded() {
+func viewOfMeldsInto(c *game.Card) *CardFaceView {
+	if !game.IsMeldCardPtr(c) || game.IsMeldedPtr(c) {
 		return nil
 	}
 	r := c.Meld.Result
@@ -10973,7 +10986,7 @@ func viewOfMeldsInto(c game.Card) *CardFaceView {
 // wire. Returns nil for single-faced cards, which is every one of
 // the ~33,000 ordinary oracle IDs — the field is omitempty, so their
 // CardView is byte-identical to what it was before ADR 0034.
-func viewOfFaces(c game.Card) []CardFaceView {
+func viewOfFaces(c *game.Card) []CardFaceView {
 	if len(c.Faces) < 2 {
 		return nil
 	}
@@ -11017,7 +11030,7 @@ func viewOfAbilityBadges(eff game.Characteristic) []string {
 	return append(append([]string(nil), eff.Abilities...), game.KeywordChangeling)
 }
 
-func viewOfManaAbilities(c game.Card) []ManaAbilityView {
+func viewOfManaAbilities(c *game.Card) []ManaAbilityView {
 	return viewOfManaAbilitiesFromZone(c, game.ZoneBattlefield)
 }
 
@@ -11036,8 +11049,8 @@ func viewOfManaAbilities(c game.Card) []ManaAbilityView {
 // way, which is what the engine validates against — so a filtered
 // list never renumbers, exactly as viewOfActivatedAbilities' does
 // not.
-func viewOfManaAbilitiesFromZone(c game.Card, zone game.ZoneKind) []ManaAbilityView {
-	raw, origins := game.ManaAbilitiesWithOrigins(c)
+func viewOfManaAbilitiesFromZone(c *game.Card, zone game.ZoneKind) []ManaAbilityView {
+	raw, origins := game.ManaAbilitiesWithOriginsOf(c)
 	if len(raw) == 0 {
 		return nil
 	}

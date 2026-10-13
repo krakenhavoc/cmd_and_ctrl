@@ -92,14 +92,18 @@ func NeedsCatalogEffect(typeLine string, texts ...string) bool {
 // import) makes every card look uncatalogued. That is not a bug in
 // this predicate — with no catalog wired, nothing auto-resolves, and
 // every card really is unimplemented in that binary.
-func Unimplemented(c Card) bool {
+func Unimplemented(c Card) bool { return UnimplementedOf(&c) }
+
+// UnimplementedOf is Unimplemented without the receiver copy: Card is
+// over a kilobyte, and the view asks this once per card (#2113).
+func UnimplementedOf(c *Card) bool {
 	// CR 708.2a: a face-down permanent has no printed rules for the
 	// engine to fail to carry out, so it is never flagged. The guard
 	// is explicit rather than left to CatalogKey's empty key, which
 	// would make the answer `c.NeedsEffect` — flagging every
 	// face-down permanent that happens to be a card with text, and
 	// telling the table something about a card it cannot read.
-	if c.FaceDownIsPermanent() {
+	if c.faceDownPermanent() {
 		return false
 	}
 	// #522: a restore brought this card back with fewer catalog
@@ -110,7 +114,7 @@ func Unimplemented(c Card) bool {
 	if c.AbilitiesLostOnRestore {
 		return true
 	}
-	return c.NeedsEffect && !IsAutoCard(CatalogKey(c))
+	return c.NeedsEffect && !IsAutoCard(catalogKeyOf(c))
 }
 
 // UnimplementedNames returns the distinct names of the cards in the
@@ -251,6 +255,10 @@ func PrintsManaText(typeLine string, texts ...string) bool {
 // flag. Over-approximates by design: a card with one automated mana
 // ability and one unautomated rule still reads true while it lacks a
 // Spec. #2258, ADR 0118 decision 8.
-func MayMakeManaUnautomated(c Card) bool {
-	return c.PrintsManaAbility && Unimplemented(c)
+func MayMakeManaUnautomated(c Card) bool { return MayMakeManaUnautomatedOf(&c) }
+
+// MayMakeManaUnautomatedOf is MayMakeManaUnautomated without the
+// receiver copy (#2113).
+func MayMakeManaUnautomatedOf(c *Card) bool {
+	return c.PrintsManaAbility && UnimplementedOf(c)
 }

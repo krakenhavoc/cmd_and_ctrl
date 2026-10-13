@@ -400,8 +400,11 @@ var SweepHows = []SweepHow{SweepDestroy, SweepExile, SweepBounce, SweepDamage, S
 //
 // The card's OWN key, not CatalogAbilityKey's merged one: a layer-6
 // grant gives a permanent abilities, not a different resolution.
-func CardPurposeOf(c Card) Purpose {
-	d := catalogDef(catalogKeyOf(&c))
+func CardPurposeOf(c Card) Purpose { return CardPurposeOfPtr(&c) }
+
+// CardPurposeOfPtr is CardPurposeOf without the receiver copy (#2113).
+func CardPurposeOfPtr(c *Card) Purpose {
+	d := catalogDef(catalogKeyOf(c))
 	if d == nil {
 		return Purpose{}
 	}

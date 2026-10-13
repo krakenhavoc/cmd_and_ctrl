@@ -1785,7 +1785,7 @@ func (c Card) IsPermanent() bool {
 // that check runs, a token tucked into a library (Chaos Warp) is
 // still sitting there as an object, and a move that promises "a
 // permanent card" out of a hidden zone refuses it with this.
-func (c Card) IsToken() bool { return typeLineHas(c.TypeLine, "token") }
+func (c Card) IsToken() bool { return IsTokenPtr(&c) }
 
 // HasCardType reports whether the card's effective card types
 // include `lowerType`, which MUST be lowercase (every caller in
@@ -1838,33 +1838,36 @@ func hasCardType(c *Card, lowerType string) bool {
 // on both branches because 702.73a works in every zone — a Woodland
 // Changeling in a graveyard really is an Elf, which is what a tribal
 // reanimator or a lord counting from exile has to see.
-func (c Card) HasSubtype(subtype string) bool {
+func (c Card) HasSubtype(subtype string) bool { return hasSubtype(&c, subtype) }
+
+// hasSubtype is HasSubtype without the receiver copy (#2113).
+func hasSubtype(c *Card, subtype string) bool {
 	// CR 708.2: a face-down permanent has no subtypes but the ones an
 	// effect LISTED for it (#1270) — Cyber Conversion's Cyberman,
 	// Yedora's Forest — so it is not a Human, not an Elf, and — the
 	// reason this branch precedes the changeling check below — not
 	// every creature type either: the card underneath's changeling is
 	// text the object does not have.
-	if c.FaceDownIsPermanent() {
+	if c.faceDownPermanent() {
 		if c.effective != nil {
 			return typeListHas(c.effective.Subtypes, subtype)
 		}
-		return typeListHas(faceDownCharacteristic(c).Subtypes, subtype)
+		return typeListHas(faceDownCharacteristic(*c).Subtypes, subtype)
 	}
 	if c.effective == nil {
 		// ADR 0141, CR 702.103b: a bestowed spell is an Aura and has no
 		// creature types, changeling or not (bestow.go).
 		if c.Bestowed {
-			return typeListHas(bestowBaseline(&c).Subtypes, subtype)
+			return typeListHas(bestowBaseline(c).Subtypes, subtype)
 		}
-		_, _, printed := printedTypeParts(&c)
+		_, _, printed := printedTypeParts(c)
 		if typeListHas(printed, subtype) {
 			return true
 		}
 	} else if typeListHas(c.effective.Subtypes, subtype) {
 		return true
 	}
-	return IsCreatureType(subtype) && HasAllCreatureTypes(&c)
+	return IsCreatureType(subtype) && HasAllCreatureTypes(c)
 }
 
 // HasSupertype reports whether the card's effective supertypes

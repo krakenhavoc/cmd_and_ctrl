@@ -56,6 +56,10 @@ func isSplitCard(c *Card) bool {
 // text (CR 708.2a) and has no halves to lock or unlock.
 func HasSharedTypeLine(c Card) bool { return hasSharedTypeLine(&c) }
 
+// HasSharedTypeLineOf is HasSharedTypeLine without the receiver copy
+// (#2113).
+func HasSharedTypeLineOf(c *Card) bool { return hasSharedTypeLine(c) }
+
 // hasSharedTypeLine is HasSharedTypeLine without the copy, for
 // catalogKeyOf.
 func hasSharedTypeLine(c *Card) bool {

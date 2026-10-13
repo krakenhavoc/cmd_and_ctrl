@@ -34,16 +34,19 @@ type AbilityRowView struct {
 // on the two zones a tile is drawn in, the battlefield and the hand,
 // and nowhere else: a graveyard card is never a tile, and the list
 // would only make every frame longer.
-func viewOfAbilityRows(c game.Card) []AbilityRowView {
-	return viewOfAbilityRowList(game.AbilityRowsOf(c))
+func viewOfAbilityRows(c game.Card) []AbilityRowView { return viewOfAbilityRowsPtr(&c) }
+
+// viewOfAbilityRowsPtr is viewOfAbilityRows without the card copy (#2113).
+func viewOfAbilityRowsPtr(c *game.Card) []AbilityRowView {
+	return viewOfAbilityRowList(game.AbilityRowsOfPtr(c))
 }
 
-// viewOfBattlefieldAbilityRows is viewOfAbilityRows for a card on the
+// viewOfBattlefieldAbilityRowsPtr is viewOfAbilityRows for a card on the
 // battlefield (#2410): a replacement spent as the permanent entered
 // ("This land enters tapped") is no longer one of its abilities, so the
-// ◆ chip leaves it out. The hand tile keeps it.
-func viewOfBattlefieldAbilityRows(c game.Card) []AbilityRowView {
-	return viewOfAbilityRowList(game.AbilityRowsOnBattlefield(c))
+// ◆ chip leaves it out. The hand tile keeps it. By pointer (#2113).
+func viewOfBattlefieldAbilityRowsPtr(c *game.Card) []AbilityRowView {
+	return viewOfAbilityRowList(game.AbilityRowsOnBattlefieldPtr(c))
 }
 
 func viewOfAbilityRowList(rows []game.AbilityRow) []AbilityRowView {

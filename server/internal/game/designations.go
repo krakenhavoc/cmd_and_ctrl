@@ -328,8 +328,13 @@ const (
 // that stopped being a Class keeps whatever level it had. What these
 // answer is "should the client show a level badge on this card",
 // which is a question about what the permanent is right now.
-func IsClass(c Card) bool { return c.HasSubtype(ClassSubtype) }
-func IsCase(c Card) bool  { return c.HasSubtype(CaseSubtype) }
+func IsClass(c Card) bool { return IsClassPtr(&c) }
+func IsCase(c Card) bool  { return IsCasePtr(&c) }
+
+// IsClassPtr and IsCasePtr are IsClass and IsCase without the receiver
+// copy (#2113).
+func IsClassPtr(c *Card) bool { return hasSubtype(c, ClassSubtype) }
+func IsCasePtr(c *Card) bool  { return hasSubtype(c, CaseSubtype) }
 
 // activeOnly drops the entries whose gate the object does not satisfy
 // — THE filter, shared by all four accessors.
