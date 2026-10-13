@@ -627,6 +627,17 @@ func (p *Policy) decideTraced(ctx context.Context, in aiseat.Input) (aiseat.Deci
 	defer cancel()
 	callStarted := time.Now()
 	resp, cerr := p.cfg.Client.Complete(callCtx, req)
+	if errors.Is(cerr, ErrBudgetExceeded) {
+		// The spend guard refused before any request left the process
+		// (#2980): not an attempt, not an error, and not worth a WARN
+		// per window while the cap stays spent. Layer B's answer was
+		// computed first, so this costs nothing but the lookup.
+		rec.Fallback = FallbackBudgetCapped
+		rec.Model, tr.Model = "", ""
+		p.cfg.Log.Debug("bot model call skipped: spend cap reached or model calls switched off", "tier", p.cfg.Tier)
+		d, tr := finish(base)
+		return d, tr, nil
+	}
 	rec.Attempted = true
 	rec.ModelLatency = time.Since(callStarted)
 	rec.Usage = resp.Usage
