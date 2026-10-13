@@ -2612,8 +2612,21 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		return httpError(http.StatusInternalServerError, "missing principal")
 	}
 	admin := c.isAdmin(p)
+	viewerID := replayViewerID(p)
 	if !admin && p.GameID != id {
-		return httpError(http.StatusForbidden, "not a seat in this game")
+		// A signed-in person whose session is bound elsewhere may still
+		// download a game they sat at, seen from their own seat: the
+		// Tables page's History offers Replay on every finished game
+		// (ADR 0158 §1 item 3), as the seat's own session always could.
+		meta, err := c.Lobby.Get(id)
+		if err != nil {
+			return httpError(http.StatusForbidden, "not a seat in this game")
+		}
+		seat, ok := seatOfUser(meta.Players, p.UserID)
+		if !ok || seat.IsBot {
+			return httpError(http.StatusForbidden, "not a seat in this game")
+		}
+		viewerID = seat.PlayerID.String()
 	}
 	room := c.Lobby.RoomOf(id)
 	if room == nil {
@@ -2658,7 +2671,7 @@ func downloadReplay(c Config, w http.ResponseWriter, r *http.Request) error {
 		http.ServeContent(w, r, id.String()+".jsonl", info.ModTime(), f)
 		return nil
 	}
-	streamFilteredReplay(c, w, f, replayViewerID(p))
+	streamFilteredReplay(c, w, f, viewerID)
 	return nil
 }
 
