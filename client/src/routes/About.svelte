@@ -14,8 +14,9 @@
   import Page from "../lib/components/Page.svelte";
   import LegalNotice from "../lib/components/LegalNotice.svelte";
   import { fetchRoadmap, type RoadmapCardCounts } from "../lib/roadmap";
-  import { DISCORD_INVITE_URL, ISSUES_URL, NEVER_PAYWALLED_URL, REPO_URL } from "../lib/about";
+  import { ISSUES_URL, NEVER_PAYWALLED_URL, REPO_URL } from "../lib/about";
   import { PRIVACY_HASH } from "../lib/privacy";
+  import { community } from "../lib/community";
 
   let cards = $state<RoadmapCardCounts | null>(null);
 
@@ -104,11 +105,18 @@
           You can also open an issue yourself on
           <a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">GitHub</a>.
         </li>
-        <li>
-          Chat with us on
-          <a href={DISCORD_INVITE_URL} target="_blank" rel="noopener noreferrer">Discord</a>.
-        </li>
       </ul>
+      {#if $community.invite_url}
+        <p class="discord" data-testid="about-discord">
+          <a
+            class="btn discord"
+            href={$community.invite_url}
+            target="_blank"
+            rel="noopener noreferrer">Join the C2 Discord</a
+          >
+          <span>Chat with the people who play here.</span>
+        </p>
+      {/if}
     </section>
 
     <section aria-labelledby="credits-title">
@@ -140,12 +148,25 @@
     flex-direction: column;
     gap: 24px;
   }
+  /* The shared section head: the display face, as the roadmap's. app.css
+     styles a bare h2 as a small mono label, so say what this one is. */
   h2 {
     margin: 0 0 10px;
-    font-size: 18px;
-    letter-spacing: -0.01em;
+    font-family: var(--font-display);
+    font-size: 19px;
+    font-weight: 800;
+    letter-spacing: -0.005em;
     text-transform: none;
-    color: var(--accent);
+    color: var(--fg);
+  }
+  .discord {
+    margin: 14px 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    color: var(--fg-muted);
+    font-size: 13.5px;
   }
   .points {
     margin: 0;

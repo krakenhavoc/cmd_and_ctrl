@@ -95,7 +95,7 @@
 </script>
 
 <Page
-  eyebrow="What the engine plays"
+  eyebrow="Cards"
   title="Card catalogue"
   lede="Every card wired into the rules engine, and how completely each one is implemented. Cards not listed here still work in the sandbox — you just resolve them by hand."
   width="wide"

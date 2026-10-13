@@ -61,6 +61,24 @@
     missing: "Not built yet, and the cards known to be waiting on it.",
   };
 
+  // Each status section starts closed: its heading and count are the page
+  // until the reader opens it (ADR 0156 §7). "Up next" is not a status
+  // section and stays open. While a search or chip filter is active every
+  // section with a match opens, so a result is never hidden behind a
+  // closed heading; the reader can still close one by hand afterwards.
+  let open = $state<Record<RoadmapStatus, boolean>>({
+    implemented: false,
+    partial: false,
+    missing: false,
+  });
+
+  $effect(() => {
+    if (!filtered) return;
+    for (const s of STATUSES) {
+      if (groups[s].length > 0) open[s] = true;
+    }
+  });
+
   function reset() {
     query = "";
     kinds = [];
@@ -118,7 +136,7 @@
   {/if}
 {/snippet}
 
-<Page eyebrow="Engine roadmap" title="What the engine plays, and what's next" width="wide">
+<Page eyebrow="Cards" title="What the engine plays, and what's next" width="wide">
   {#snippet lede()}
     Every keyword, mechanic and engine gap the rules engine knows about.
     <strong class="t-implemented">Implemented</strong> means it resolves on its own.
@@ -265,15 +283,16 @@
 
       {#each STATUSES as s (s)}
         {#if groups[s].length > 0}
-          <section class="status-sec {s}" aria-labelledby="rm-{s}">
-            <div class="sec-head">
+          <details class="status-sec {s}" bind:open={open[s]} data-status={s}>
+            <summary class="sec-head">
+              <span class="chev" aria-hidden="true"></span>
               <h2 id="rm-{s}">
                 <span class="dot {s}" aria-hidden="true"></span>
                 {STATUS_LABELS[s]}
                 <span class="sec-n">{groups[s].length}</span>
               </h2>
-              <p class="sec-note">{SECTION_NOTES[s]}</p>
-            </div>
+              <span class="sec-note">{SECTION_NOTES[s]}</span>
+            </summary>
 
             <ul class="items {s}">
               {#each groups[s] as it (it.slug)}
@@ -333,7 +352,7 @@
                 </li>
               {/each}
             </ul>
-          </section>
+          </details>
         {/if}
       {/each}
     {/if}
@@ -500,6 +519,41 @@
     align-items: baseline;
     gap: 4px 14px;
     margin-bottom: 12px;
+  }
+  summary.sec-head {
+    cursor: pointer;
+    list-style: none;
+    margin-bottom: 0;
+    padding: 12px 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    align-items: center;
+  }
+  summary.sec-head::-webkit-details-marker {
+    display: none;
+  }
+  summary.sec-head:hover {
+    border-color: var(--border-strong);
+  }
+  summary.sec-head:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  details[open] > summary.sec-head {
+    margin-bottom: 12px;
+  }
+  .chev {
+    width: 7px;
+    height: 7px;
+    border-right: 2px solid var(--fg-dim);
+    border-bottom: 2px solid var(--fg-dim);
+    transform: rotate(-45deg);
+    transition: transform 0.12s;
+    flex: none;
+  }
+  details[open] > summary .chev {
+    transform: rotate(45deg);
   }
   .sec-head h2 {
     margin: 0;
