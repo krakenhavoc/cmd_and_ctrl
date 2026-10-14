@@ -58,7 +58,7 @@ func TestARunnerPostsItsPolicysNoticeOnceAsTheSeat(t *testing.T) {
 	cancel()
 	<-r.Done()
 
-	lines := bc.lines(protocol.ChatKindSay)
+	lines := bc.lines(protocol.ChatKindBotNotice)
 	if len(lines) != 1 {
 		t.Fatalf("got %d chat lines, want exactly 1: %+v", len(lines), lines)
 	}

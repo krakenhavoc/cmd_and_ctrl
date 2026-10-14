@@ -15,6 +15,10 @@
 //     Debug output. Hidden unless the viewer turned on
 //     settings.gameplay.showBotReasoning.
 //
+//   bot_notice — the bot telling the table about the seat itself, such
+//     as an own-key seat falling back to the heuristic (ADR 0182).
+//     Always shown, like an improvisation, but dismissable.
+//
 // The reasoning attached to an improvisation follows the same rule as
 // a reasoning line: shown only behind the setting. The announcement
 // itself is complete without it.
@@ -22,7 +26,7 @@
 // Kept as plain functions over plain data so the rules above are
 // unit-testable without mounting a component.
 
-import { CHAT_BOT_IMPROVISATION, CHAT_BOT_REASONING } from "./protocol";
+import { CHAT_BOT_IMPROVISATION, CHAT_BOT_NOTICE, CHAT_BOT_REASONING } from "./protocol";
 import type { ChatMessage } from "./ws";
 
 // BOT_FEED_LIMIT caps how many lines the on-table feed shows at once.
@@ -45,7 +49,11 @@ export interface BotLine {
 // isBotLine reports whether a chat message came from a bot seat
 // rather than from a person.
 export function isBotLine(msg: ChatMessage): boolean {
-  return msg.kind === CHAT_BOT_IMPROVISATION || msg.kind === CHAT_BOT_REASONING;
+  return (
+    msg.kind === CHAT_BOT_IMPROVISATION ||
+    msg.kind === CHAT_BOT_REASONING ||
+    msg.kind === CHAT_BOT_NOTICE
+  );
 }
 
 // isImprovisation reports whether a message is a mandatory
@@ -59,7 +67,7 @@ export function isImprovisation(msg: ChatMessage): boolean {
 //
 // `showReasoning` adds the bot_reasoning lines and attaches the
 // `reason` field to the improvisations. It never removes an
-// improvisation.
+// improvisation or a notice.
 export function visibleBotLines(
   chat: readonly ChatMessage[],
   showReasoning: boolean,
@@ -69,7 +77,7 @@ export function visibleBotLines(
   for (const msg of chat) {
     if (!isBotLine(msg)) continue;
     const improvised = isImprovisation(msg);
-    if (!improvised && !showReasoning) continue;
+    if (msg.kind === CHAT_BOT_REASONING && !showReasoning) continue;
     out.push({
       id: msg.id,
       authorID: msg.authorID,
