@@ -453,7 +453,10 @@ func (s *Seat) statusLocked() (Result, bool) {
 		return textResult("status: eliminated",
 			"Your seat is out of the game; the others play on. Call leave to disconnect, or keep calling wait_for_decision to watch for game_over."), true
 	}
-	if w := s.win; w != nil && w.key == s.key && w.state == winDecision {
+	// A held decision is not offered while the socket is down: act would
+	// refuse it as not_sent, so the seat waits (notReadyLocked says
+	// reconnecting) until the redial's snapshot wakes it.
+	if w := s.win; s.isConnected && w != nil && w.key == s.key && w.state == winDecision {
 		return s.decisionTextLocked(w), true
 	}
 	return Result{}, false
@@ -555,7 +558,7 @@ func (s *Seat) GetState(_ context.Context, in GetStateInput) (Result, error) {
 	}
 	me := s.sess.PlayerID.String()
 	header := fmt.Sprintf("table state: %s", s.view.State)
-	if w := s.win; w != nil && w.key == s.key && w.state == winDecision {
+	if w := s.win; s.isConnected && w != nil && w.key == s.key && w.state == winDecision {
 		header += fmt.Sprintf("; open decision: window %s (%s)", w.token, w.kind)
 	}
 	switch in.Detail {
