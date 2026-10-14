@@ -315,6 +315,7 @@ function gates(over: Partial<AutopassGates> = {}): AutopassGates {
     hasPendingChoice: false,
     owesBlockDecision: false,
     owesAttackRequirement: false,
+    owesFreeCast: false,
     loopSuspended: false,
     step: "upkeep",
     autopassToggle: false,
