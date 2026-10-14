@@ -37,24 +37,42 @@ type conformanceCase struct {
 	// subject gives the item a triggering event about a 2/3 creature of
 	// its controller's that just entered (GainLifeEqualToSubject).
 	subject bool
+	// targetPlayer puts an opponent on the item as its one player
+	// target (TargetPlayerLosesLife).
+	targetPlayer bool
+	// departed destroys the item's source before the probe, so a damage
+	// step deals its damage as the source last existed (CR 608.2h).
+	departed bool
+	// movedOn then exiles it from the graveyard, so no last-known record
+	// matches the card any more (a commander gone to the command zone).
+	movedOn bool
 }
 
 // footprintConformanceCases has one case per type that implements
 // footprinter, keyed by the type's name.
 // TestEveryFootprinterHasAConformanceCase keeps the two lists equal.
 var footprintConformanceCases = map[string]conformanceCase{
-	"GainLife":              {step: GainLife{Amount: 3}},
-	"DrawCards":             {step: DrawCards{N: 2}},
-	"MillCards":             {step: MillCards{N: 2}},
-	"Scry":                  {step: Scry{N: 2}},
-	"Surveil":               {step: Surveil{N: 2}},
-	"GetEnergy":             {step: GetEnergy{N: 2}},
-	"CreateToken":           {step: CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 2}},
-	"BecomeTheMonarch":      {step: BecomeTheMonarch{}},
-	"CounterOnThis":         {step: CounterOnThis{Kind: game.CounterPlusOne, N: 2}},
-	"DamageEachOpponent":    {step: DamageEachOpponent{N: 2}},
-	"EachOpponentLosesLife": {step: EachOpponentLosesLife{N: 2}},
-	"ExileChosenTarget":     {step: ExileChosenTarget{}, target: true},
+	"GainLife":           {step: GainLife{Amount: 3}},
+	"DrawCards":          {step: DrawCards{N: 2}},
+	"MillCards":          {step: MillCards{N: 2}},
+	"Scry":               {step: Scry{N: 2}},
+	"Surveil":            {step: Surveil{N: 2}},
+	"GetEnergy":          {step: GetEnergy{N: 2}},
+	"CreateToken":        {step: CreateToken{Template: TokenCard("1/1 green Elf Warrior"), N: 2}},
+	"BecomeTheMonarch":   {step: BecomeTheMonarch{}},
+	"CounterOnThis":      {step: CounterOnThis{Kind: game.CounterPlusOne, N: 2}},
+	"DamageEachOpponent": {step: DamageEachOpponent{N: 2}},
+	"DamageEachOpponent:departed": {
+		step: DamageEachOpponent{N: 2}, departed: true,
+	},
+	"DamageController": {step: DamageController{N: 2}},
+	"DamageEachOpponent:moved-on": {
+		step: DamageEachOpponent{N: 2}, departed: true, movedOn: true,
+	},
+	"DamageController:departed": {step: DamageController{N: 2}, departed: true},
+	"TargetPlayerLosesLife":     {step: TargetPlayerLosesLife{N: 2}, targetPlayer: true},
+	"EachOpponentLosesLife":     {step: EachOpponentLosesLife{N: 2}},
+	"ExileChosenTarget":         {step: ExileChosenTarget{}, target: true},
 	"GainLifeEqualToSubject": {
 		step: GainLifeEqualToSubject{Stat: SubjectToughness}, subject: true,
 	},
@@ -270,6 +288,21 @@ func TestFootprintStepsDoOnlyWhatTheyDeclare(t *testing.T) {
 			if c.target {
 				victim := pushBattlefieldCreature(g, opp.ID)
 				item.Targets = []game.TargetRef{{Kind: game.TargetCard, ID: victim}}
+			}
+			if c.targetPlayer {
+				item.Targets = []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}
+			}
+			if c.departed {
+				g.WithWriteLock(func() {
+					if err := g.DestroyPermanentForEffect(src); err != nil {
+						t.Fatalf("destroying the source: %v", err)
+					}
+					if c.movedOn {
+						if err := g.ExileCardForEffect(src); err != nil {
+							t.Fatalf("exiling the source: %v", err)
+						}
+					}
+				})
 			}
 			if c.subject {
 				subject := b21Push(g, me.ID, "Conformance Subject", "Creature — Elf", "", 2, 3)

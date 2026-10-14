@@ -3581,8 +3581,11 @@ footprint, and the registry derives one only from an `effects.Do` of
 primitives that declare a step (`cards/effects/footprint.go`):
 `CounterOnThis`, `GainLife`, `DrawCards`, `MillCards`, `Scry`,
 `Surveil`, `GetEnergy`, `CreateToken`, `BecomeTheMonarch`,
-`DamageEachOpponent`, `EachOpponentLosesLife` (a drain is
+`DamageEachOpponent`, `DamageController` ("~ deals N damage to
+you"), `EachOpponentLosesLife` (a drain is
 `Do(EachOpponentLosesLife{N: 1}, GainLife{Amount: 1})`),
+`TargetPlayerLosesLife` (the targeted drain is
+`Do(TargetPlayerLosesLife{N: 1}, GainLife{Amount: 1})`),
 `ExileChosenTarget` and `GainLifeEqualToSubject`
 ("you gain life equal to its toughness", read off the trigger's
 subject as it resolves). A hand-written closure

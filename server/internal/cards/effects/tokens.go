@@ -393,9 +393,7 @@ func printedPestToken() tokenTemplate {
 			Colors:    []string{"B", "G"},
 		},
 		Triggered: []game.TriggeredAbility{
-			WhenThisDies("Pest — you gain 1 life", func(g *game.Game, item *game.StackItem) error {
-				return GainLife{Player: item.Controller, Amount: 1}.Apply(NewContext(g, item))
-			}),
+			WhenThisDies("Pest — you gain 1 life", Do(GainLife{Amount: 1})),
 		},
 		Text: "When this token dies, you gain 1 life.",
 	}
