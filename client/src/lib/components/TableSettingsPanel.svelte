@@ -38,12 +38,14 @@
     describeFreeMulligans,
     FREE_MULLIGANS_UNLIMITED,
     MAX_FREE_MULLIGANS,
+    MAX_AWAY_AFTER_MINUTES,
     settingsDiff,
     settingsPatchError,
     startingLifeLocked,
     type TableSettingsPatch,
   } from "../tableSettings";
   import type { TableSettingsView } from "../protocol";
+  import { DEFAULT_AWAY_AFTER, describeAwayAfter } from "../away";
 
   interface Props {
     settings: TableSettingsView;
@@ -85,6 +87,8 @@
   $effect(() => void (cmdDraft = settings.commander_damage));
   $effect(() => void (undoDraft = settings.undo_limit));
   $effect(() => void (freeDraft = settings.free_mulligans ?? 0));
+  let awayDraft = $state(untrack(() => settings.away_after ?? DEFAULT_AWAY_AFTER));
+  $effect(() => void (awayDraft = settings.away_after ?? DEFAULT_AWAY_AFTER));
 
   // A locally-caught range problem, shown under the field that
   // produced it instead of travelling to the server and coming back
@@ -311,6 +315,26 @@
         {describeFreeMulligans(settings.free_mulligans)}
       {/if}
     </p>
+  </section>
+
+  <!-- ADR 0177 §7: changeable at any time, and it applies to the clocks
+       already running. -->
+  <section class="tsp-field" data-field="away_after">
+    <div class="tsp-row">
+      <label class="tsp-label" for="tsp-away-after">Move on after (minutes)</label>
+      <span class="tsp-control">
+        <input
+          id="tsp-away-after"
+          type="number"
+          min={0}
+          max={MAX_AWAY_AFTER_MINUTES}
+          {disabled}
+          bind:value={awayDraft}
+          onchange={() => commitNumber(awayDraft, "away_after")}
+        />
+      </span>
+    </div>
+    <p class="tsp-hint">{describeAwayAfter(settings.away_after)}</p>
   </section>
 
   {#if shownError}

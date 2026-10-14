@@ -34,7 +34,11 @@
     offerRematch,
     acceptRematch,
     leaveRematch,
+    answerAwaySeat,
+    takeBackSeat,
   } from "../lib/api";
+  import { awayOfferFor, awayOfferRequest, standInSelf, type AwayAction } from "../lib/away";
+  import StandInBanner from "../lib/components/board/StandInBanner.svelte";
   import { rematchPlan } from "../lib/rematch";
   import { reportTargets } from "../lib/moderation";
   import { canLinkDiscord, linkDiscordLabel, signedInUserID } from "../lib/myGames";
@@ -2238,6 +2242,62 @@
     const name = findCardView(view, link.source)?.name || "a card";
     return anyPlayerOfferRequest(link, viewerID, view.seats, name);
   });
+  // ADR 0177 §2: the table may move on without a player who is gone.
+  // Offered only to the seats that decide (§3); the server checks again.
+  // A minute clock keeps the sheet's "offline for N minutes" current.
+  let awayNow = $state(Date.now());
+  let awayBusy = $state(false);
+  let awayError = $state<string | null>(null);
+  const awaySeat = $derived(awayOfferFor(view, viewerID, isAdmin));
+  $effect(() => {
+    if (!awaySeat) return;
+    awayNow = Date.now();
+    const t = setInterval(() => (awayNow = Date.now()), 15000);
+    return () => clearInterval(t);
+  });
+  // A new seat, or the same seat gone again, starts with no error.
+  $effect(() => {
+    void awaySeat?.id;
+    awayError = null;
+  });
+  async function answerAway(seatID: string, action: AwayAction): Promise<void> {
+    awayBusy = true;
+    awayError = null;
+    try {
+      await answerAwaySeat(gameID, seatID, action);
+    } catch (e) {
+      awayError = e instanceof Error ? e.message : String(e);
+    } finally {
+      awayBusy = false;
+    }
+  }
+  const awayDockRequest = $derived.by(() => {
+    const s = awaySeat;
+    if (!s || gameEnded) return null;
+    return awayOfferRequest({
+      seat: s,
+      now: awayNow,
+      busy: awayBusy,
+      error: awayError,
+      onAnswer: (action) => void answerAway(s.id, action),
+    });
+  });
+  // ADR 0177 §6: the viewer's own seat, while a bot plays it.
+  const standInSeat = $derived(gameEnded ? null : standInSelf(view, viewerID));
+  let takeBackBusy = $state(false);
+  let takeBackError = $state<string | null>(null);
+  async function takeBack(): Promise<void> {
+    takeBackBusy = true;
+    takeBackError = null;
+    try {
+      await takeBackSeat(gameID);
+    } catch (e) {
+      takeBackError = e instanceof Error ? e.message : String(e);
+    } finally {
+      takeBackBusy = false;
+    }
+  }
+
   // ADR 0150 §5: a cast parked on an assist helper. The caster's line
   // carries Cancel request (owner decision 5); every other seat but the
   // helper, whose own prompt is the pay_amount, reads it.
@@ -2652,6 +2712,14 @@
       full={$serverFull}
     />
   {/if}
+  {#if standInSeat}
+    <StandInBanner
+      since={standInSeat.stand_in?.since}
+      busy={takeBackBusy}
+      error={takeBackError}
+      onTakeBack={() => void takeBack()}
+    />
+  {/if}
 
   <div class="play-area">
     {#if view}
@@ -2924,6 +2992,9 @@
         {#if anyPlayerOfferDockRequest}
           <DockRequest request={anyPlayerOfferDockRequest} />
         {/if}
+        {#if awayDockRequest}
+          <DockRequest request={awayDockRequest} />
+        {/if}
         {#if assistDockRequest}
           <DockRequest request={assistDockRequest} />
         {/if}
@@ -2969,7 +3040,7 @@
           <TutorialCoach {view} {viewerID} onSize={onCoachSize} autopass={autopassEnabled} />
         {/if}
       {/if}
-      {#if viewerNeedsToDecide && dockShown}
+      {#if viewerNeedsToDecide && dockShown && !standInSeat}
         <!-- ADR 0111 PR 6 (decision 2): the opening hand is a sheet of the
              dock, with Keep hand (Enter) and Mulligan in its action bar.
              The dialog keeps its name, "keep or mulligan your hand", and
