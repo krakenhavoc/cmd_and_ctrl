@@ -90,6 +90,17 @@ type GraveyardBecomesExile struct {
 	// card discarded from a hand goes to the graveyard as usual.
 	SelfOnly bool
 
+	// CardsOnly leaves tokens alone: "if a CARD would be put into an
+	// opponent's graveyard" (Leyline of the Void, Dauthi Voidwalker,
+	// Forbidden Crypt, Valgavoth). A token is not a card (CR 108.2), so
+	// it goes to the graveyard, dies there as far as every "dies"
+	// trigger is concerned (CR 700.4), and then ceases to exist
+	// (CR 704.5d). False is Rest in Peace's and Necrodominance's "a
+	// card OR TOKEN". Found by an agent-played game: an opponent's
+	// Dauthi Voidwalker swallowed Teysa's sacrificed Soldier token and
+	// every Blood Artist trigger with it.
+	CardsOnly bool
+
 	// LinkExiled makes the exiled card "exiled with" the source
 	// (CR 607.2a): Valgavoth, Terror Eater's "you may play cards exiled
 	// with Valgavoth". The link is Card.ExiledWith, naming the source
@@ -130,6 +141,11 @@ func (r GraveyardBecomesExile) Build() game.ReplacementEffect {
 			}
 			if r.SelfOnly && (src == nil || ev.CardID != src.InstanceID) {
 				return false
+			}
+			if r.CardsOnly {
+				if moving, ok := g.LookupCardForEffect(ev.CardID); ok && moving.IsToken() {
+					return false
+				}
 			}
 			if r.YoursOnly && (ev.NewZoneOwner == uuid.Nil || ev.NewZoneOwner != src.Controller) {
 				return false

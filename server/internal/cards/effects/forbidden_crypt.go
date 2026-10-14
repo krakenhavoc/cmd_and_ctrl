@@ -54,6 +54,7 @@ func init() {
 			},
 			GraveyardBecomesExile{
 				YoursOnly: true,
+				CardsOnly: true,
 				Label:     "Forbidden Crypt: exile instead of your graveyard",
 			}.Build(),
 		},
