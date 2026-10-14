@@ -378,6 +378,15 @@ included if the runners share a host or a user. Do neither without
 first giving test jobs runners of their own, on a machine or user that
 holds no deploy key.
 
+**Actions.** Every workflow uses only GitHub's own `actions/*`, and
+the repository allows no others (Settings → Actions → General). Each
+`uses:` is pinned to a full commit SHA, with its release tag in a
+trailing comment (`actions/checkout@<sha> # v7.0.1`), so a moved tag
+cannot change what runs in a job that holds a deploy key. Dependabot
+(`.github/dependabot.yml`) opens one grouped PR into `develop` a week
+that bumps the SHAs and their comments. Pin a new `uses:` line the
+same way, with the SHA from `gh api repos/<owner>/<repo>/commits/<tag> -q .sha`.
+
 **Credentials.**
 
 | Credential | Where it lives | Who can read it |

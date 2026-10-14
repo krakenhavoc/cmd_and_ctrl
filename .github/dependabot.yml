@@ -1,0 +1,26 @@
+# Dependabot version updates (#3335).
+#
+# GitHub Actions only. Every `uses:` is pinned to a full commit SHA with
+# the release tag in a trailing comment, so a moved or hijacked tag
+# cannot change what runs. This keeps those pins current: Dependabot
+# reads the comment, and opens one grouped PR a week that bumps the SHA
+# and the comment together.
+#
+# target-branch is develop because feature PRs into main fail the
+# required promotion-guard check (AGENTS.md, Branches and environments).
+# Go and npm are left to Dependabot security updates, which the owner
+# turns on in the repository settings. Version-update PRs for those
+# would be noise.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: develop
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ["*"]
