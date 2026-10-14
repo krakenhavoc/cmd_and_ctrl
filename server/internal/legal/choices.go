@@ -626,9 +626,16 @@ func (e *enumerator) choiceMoves() bool {
 			// type" — and enumerating a pick the resolver will reject
 			// breaks this package's one promise (#544). The rule is
 			// not re-derived here; the engine is asked.
-			picks := e.filteredCombos(c.SearchCards, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
+			pool, keyOf := interchangeableSearchPool(g, c.SearchCards, max(c.SearchMax, 1))
+			picks := e.filteredCombos(pool, max(floor, 1), c.SearchMax, e.opts.MaxExpansionPerSource,
 				func(set []uuid.UUID) bool { return g.SearchPickLegalLocked(c, set) })
+			seenPick := map[string]bool{}
 			for _, set := range picks {
+				if k := pickKey(set, keyOf); seenPick[k] {
+					continue
+				} else {
+					seenPick[k] = true
+				}
 				p := base()
 				p.CardIDs = idStrings(set)
 				label := reason + ": take"
@@ -1327,6 +1334,50 @@ func (e *enumerator) choiceMoves() bool {
 // modeLabel renders a mode selection for the move list: the chosen
 // bullets in order, so a bot's log says what it picked rather than
 // which indexes it picked.
+// interchangeableSearchPool trims a search's matches to at most `keep`
+// copies of each interchangeable card (the same name and oracle, read
+// off the card and not the seat's view of it, so hidden cards are never
+// merged) and returns, for every card kept, its interchangeability key.
+// A Commander library repeats only its basics, so an Evolving Wilds
+// search was twelve "take Swamp" moves, and Cultivate's pairs spent
+// the expansion budget on interchangeable Forest pairs. Any copy of a
+// card answers the search the same way.
+func interchangeableSearchPool(g *game.Game, cards []uuid.UUID, keep int) ([]uuid.UUID, map[uuid.UUID]string) {
+	keyOf := make(map[uuid.UUID]string, len(cards))
+	kept := map[string]int{}
+	pool := make([]uuid.UUID, 0, len(cards))
+	for _, id := range cards {
+		key := id.String()
+		if card, ok := g.LookupCardForEffect(id); ok && card.Name != "" && !card.FaceDown {
+			// The zone too: a search of the library and the graveyard
+			// offers the same card from each.
+			zone := ""
+			if z := g.FindCardZoneForEffect(id); z != nil {
+				zone = string(z.Kind)
+			}
+			key = zone + "|" + card.OracleID + "|" + card.Name
+		}
+		if kept[key] >= keep {
+			continue
+		}
+		kept[key]++
+		keyOf[id] = key
+		pool = append(pool, id)
+	}
+	return pool, keyOf
+}
+
+// pickKey is a search pick as a multiset of interchangeability keys, so
+// two picks of the same kinds of card are one move.
+func pickKey(set []uuid.UUID, keyOf map[uuid.UUID]string) string {
+	keys := make([]string, len(set))
+	for i, id := range set {
+		keys[i] = keyOf[id]
+	}
+	sort.Strings(keys)
+	return strings.Join(keys, "\x00")
+}
+
 // pileOrder names a pile in the order an answer leaves it, with the card
 // at index first pulled to the front (-1 leaves it as it is): "A, B, C".
 func pileOrder(g *game.Game, cards []uuid.UUID, first int) string {
