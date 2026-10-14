@@ -214,6 +214,8 @@ before any ssh.
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_ADMIN_USER_IDS` | variable; comma-separated Discord user snowflakes. The **server's admin allowlist** on **both** hosts ([ADR 0110](decisions/0110-remember-me.md) §3; a listed person is an admin only while they have admin mode on, [ADR 0112](decisions/0112-signed-in-home-player-mode-and-one-decks-page.md) §2), written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (admin allowlist)", which refuses a malformed value before writing it. On production it is also written to `bot.env`: who may run `/c2-end` (#614). An environment-level value overrides the repo-level one, so the two hosts can differ. Unset is supported: only the shared token is admin, and `/c2-end` refuses every caller rather than failing open |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID`, `CMDCTRL_DISCORD_PLAYER_ROLE_ID` | variables; Discord snowflakes. The **sign-up gate** on **both** hosts ([ADR 0156](decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §1): with both set, an account needs that role (Elder Dragon Highlander on the C2 server) in that server. Written to `/etc/cmd_and_ctrl/env` on every deploy, **empty included**, by "Sync server env (community)", which refuses one without the other or a malformed id before writing. Both unset is supported: the gate is off |
 | this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_INVITE_URL` | variable; the C2 Discord server's `https://discord.gg/…` invite, served by `GET /community`. Written by the same step, empty included; refused unless it is an `https` URL. Unset hides the client's Discord links |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_LFG_CHANNEL_ID`, `CMDCTRL_DISCORD_LFG_ROLE_ID` | variables; Discord snowflakes. The community server's #lfg channel and the role a new post pings ([ADR 0161](decisions/0161-an-lfg-board-in-discord.md) §7). Written by "Sync server env (community)", empty included; the channel needs the guild, the role needs the channel. Unset is supported: the board is off |
+| this repo, or **environments `prod` and `dev`** | `CMDCTRL_DISCORD_RESULTS_CHANNEL_ID` | variable; a Discord snowflake. The community server's #game-results channel, where the bot posts a finished game's results for a table whose host opted in ([ADR 0174](decisions/0174-a-game-results-feed-in-discord.md) §6). Written by the same step, empty included; refused without the guild or unless it is a snowflake. The server also needs `CMDCTRL_DISCORD_BOT_TOKEN` (production only). Unset is supported: the feed is off and `GET /community` says `"results": false` |
 | this repo | `CMDCTRL_DISCORD_ADMIN_ROLE_IDS` | variable; **production only**, bot-only, written to `bot.env` on every deploy, empty included. Comma-separated role snowflakes — who may run `/c2-end` (#614) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_REPOSITORY` | environment variable, set in each; the restic repository URL for that host's bucket, `s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>`. See [Backups](#backups) |
 | this repo, **environments `prod` and `dev`** | `CMDCTRL_R2_ACCESS_KEY_ID`, `CMDCTRL_R2_SECRET_ACCESS_KEY` | environment secrets, set in each; an R2 API token scoped to that host's bucket. Written to `backup.env` |
@@ -1041,6 +1043,23 @@ It costs every switch: rolling forward again recreates the table empty,
 so everyone is back to off and has to opt in again.
 `TestMigration0022RollbackByHand` runs exactly this sequence and then
 rolls forward.
+
+Migration 0024 (ADR 0174, the results feed) adds `games.results` (0 or 1,
+default 0). An older binary refuses the v24 schema. Drop it by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "ALTER TABLE games DROP COLUMN results; DELETE FROM schema_migrations WHERE version = 24;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Nothing else is stored: a results post is made once, when the game ends,
+and a post already in #game-results stays there. Rolling forward again
+recreates the column with every table opted out.
+`TestMigration0024RollbackByHand` runs exactly this sequence and then rolls
+forward.
 
 Migration 0021 (ADR 0161, the #lfg board) adds `games.lfg` (0 or 1,
 default 0) and `games.lfg_message_id` (nullable). An older binary refuses

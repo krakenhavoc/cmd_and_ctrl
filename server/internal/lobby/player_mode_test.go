@@ -919,6 +919,9 @@ func newProbeFixture(t *testing.T, idx *cards.Index, caller sameAnswerCaller, se
 		// PUT /games/{id}/lfg (ADR 0161): the board on, over a fake
 		// channel, for the same reason.
 		c.Lobby.SetLFGManager(newLFGManager(newFakeLFG(), nil, lfgBase, quietLogger(), time.Now))
+		// PUT /games/{id}/results (ADR 0174): the feed on, likewise.
+		resultsFeed, _ := quietFeed(newFakeResults())
+		c.Lobby.SetResultsFeed(resultsFeed)
 	}, listedDiscordID)
 	fx := &probeFixture{s: s, user: user}
 	var err error
@@ -1106,6 +1109,9 @@ func sameAnswerProbes() []sameAnswerProbe {
 			return map[string]any{"enabled": true}
 		})},
 		{"PUT /games/{id}/lfg", []string{"putLFG"}, true, httpProbe("PUT", "/games/{id}/lfg", func(*probeFixture) any {
+			return map[string]any{"enabled": false}
+		})},
+		{"PUT /games/{id}/results", []string{"putResults"}, true, httpProbe("PUT", "/games/{id}/results", func(*probeFixture) any {
 			return map[string]any{"enabled": false}
 		})},
 		{"GET /games", []string{"listGames"}, false, httpProbe("GET", "/games", nil)},

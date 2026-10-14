@@ -1539,6 +1539,9 @@ jobs:
       # 0161 §7) are the #lfg channel hosts post tables to and the role a
       # new post pings; the channel needs the guild, the role needs the
       # channel, and the board too stays off without the bot token.
+      # CMDCTRL_DISCORD_RESULTS_CHANNEL_ID (ADR 0174 §6) is the channel a
+      # finished game's results are posted to, for the tables whose host
+      # opted in; it needs the guild, and is off without the bot token.
       #
       # BOTH hosts, and ALWAYS written, empty included, exactly like the
       # admin allowlist above: clearing a variable must turn the gate off
@@ -1552,9 +1555,10 @@ jobs:
       #
       # Checked here before anything is written, with the server's own rules
       # (discord.GateFromEnv, discord.InviteURLFromEnv, discord.VoiceFromEnv,
-      # discord.LFGFromEnv): both ids or neither, each 1-20 digits (every
-      # exempt entry too), an https invite, a voice category or an #lfg
-      # channel only with the guild, and an LFG role only with the channel.
+      # discord.LFGFromEnv, discord.ResultsFromEnv): both ids or neither,
+      # each 1-20 digits (every exempt entry too), an https invite, a voice
+      # category, an #lfg channel or a results channel only with the guild,
+      # and an LFG role only with the channel.
       # The server
       # refuses to boot on
       # any of those, so a deploy that fails in this step leaves the running
@@ -1567,6 +1571,7 @@ jobs:
           CMDCTRL_DISCORD_VOICE_CATEGORY_ID: ${{ vars.CMDCTRL_DISCORD_VOICE_CATEGORY_ID }}
           CMDCTRL_DISCORD_LFG_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_LFG_CHANNEL_ID }}
           CMDCTRL_DISCORD_LFG_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_LFG_ROLE_ID }}
+          CMDCTRL_DISCORD_RESULTS_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_RESULTS_CHANNEL_ID }}
           CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS: ${{ vars.CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS }}
         run: |
           trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
@@ -1588,6 +1593,11 @@ jobs:
           fi
           lfg_channel="$(trim "${CMDCTRL_DISCORD_LFG_CHANNEL_ID}")"
           lfg_role="$(trim "${CMDCTRL_DISCORD_LFG_ROLE_ID}")"
+          results_channel="$(trim "${CMDCTRL_DISCORD_RESULTS_CHANNEL_ID}")"
+          if [ -n "${results_channel}" ] && [ -z "${guild}" ]; then
+            echo "::error::CMDCTRL_DISCORD_RESULTS_CHANNEL_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set the guild too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
+          fi
           if [ -n "${lfg_channel}" ] && [ -z "${guild}" ]; then
             echo "::error::CMDCTRL_DISCORD_LFG_CHANNEL_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set the guild too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
@@ -1604,7 +1614,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_PLAYER_ROLE_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set both (gate on) or neither (gate off) in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}"; do
             name="${pair%%=*}"; id="${pair#*=}"
             if [ -n "${id}" ] && ! [[ "${id}" =~ ^[0-9]{1,20}$ ]]; then
               echo "::error::${name} is not a Discord id (digits only, at most 20); the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
@@ -1615,7 +1625,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_INVITE_URL must be an https URL such as https://discord.gg/<code>; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
             name="${pair%%=*}"; value="${pair#*=}"
             printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
@@ -1625,7 +1635,8 @@ jobs:
           if [ -n "${voice}" ]; then rooms=set; else rooms=unset; fi
           if [ -n "${lfg_channel}" ]; then board=set; else board=unset; fi
           if [ -n "${lfg_role}" ]; then ping=set; else ping=unset; fi
-          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, ${#exempt_ids[@]} exempt id(s))"
+          if [ -n "${results_channel}" ]; then feed=set; else feed=unset; fi
+          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, ${#exempt_ids[@]} exempt id(s))"
 
       # ADR 0123 §2 and §10: the server's /metrics listener, which the
       # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server

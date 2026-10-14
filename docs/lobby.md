@@ -966,6 +966,59 @@ message no row names: #lfg is shared.
 | 409 | turning it on for a table that is not waiting in the lobby, has no empty seat, has a guest host, or whose invite link this server no longer holds (turning it off is always allowed) |
 | 503 | the board is off on this server: `CMDCTRL_DISCORD_LFG_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set (and `CMDCTRL_PUBLIC_BASE_URL`, which the join link is built on) |
 
+### `PUT /games/{id}/results`
+
+Opt the table in to a **results post** in the community server's
+**#game-results** channel, or out of it
+([ADR 0174](decisions/0174-a-game-results-feed-in-discord.md) §1). **Host or
+admin only** (`CanManageTable`). `POST /games` takes the same choice as
+`"results": true`, which a server without the channel ignores. Off by
+default. Unlike `lfg` it needs no Discord sign-in: the post names seats, not
+accounts, so a guest host may opt in.
+
+Turning it on needs a table whose game has not ended, that is not archived
+and is not the practice table. Turning it off is always allowed.
+
+**The post.** Made once, by the server's bot, when the game ends, from the
+same moment and the same computed record as the game's statistics (ADR
+0165): an embed titled with the table's name, the winner (or the draw), one
+line per seat in placing order with its seat name as the table shows it (an
+AI agent or a bot seat is marked as one), its commander name(s) and how it
+left (conceded or eliminated, and the turn), and the turn count and the
+duration. No content line, no mention, and `allowed_mentions: {"parse": []}`,
+so no one is pinged, whatever a seat is called. No card images.
+
+**Never posted:** a practice table; a table whose host did not opt in; a game
+that ended with no outcome (closed by its host or an admin, not played out);
+a game with a concession before turn 3 (`resultsMinTurns`).
+
+**Failures.** The post runs off the lobby lock on the statistics goroutine. A
+429 waits its `retry_after` (capped at 30 s) and a 5xx or timeout waits 2 s,
+three tries in all; a 403 or 404 is tried once. A dropped post is logged at
+WARN and not tried again, and a restart between the end and the post loses
+it. The game and its statistics are unaffected.
+
+**Durability.** `games.results` (migration 0024). Nothing else is stored.
+
+**Request**
+
+```json
+{ "enabled": true }
+```
+
+**Response 200**: the updated `GameMeta`, with `results` (omitted when off).
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 409 | turning it on for a practice table, an ended game or an archived table |
+| 503 | the feed is off on this server: `CMDCTRL_DISCORD_RESULTS_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set |
+
 ### `PATCH /games/{id}/settings`
 
 Change the table's settings
@@ -4333,14 +4386,14 @@ The re-check at renewal is under
 Public, no credential. The client's source for every Discord placement:
 
 ```json
-{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true }
+{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true, "results": true }
 ```
 
 `invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
 then hides every Discord link). `gate` is whether sign-up needs the
 admitting role. `voice` is whether a host may give a table a voice room
 (ADR 0159), and `lfg` whether a host may post a table to #lfg (ADR 0161,
-[`PUT /games/{id}/lfg`](#put-gamesidlfg)). No guild, role or user id is ever in it. Answered with
+[`PUT /games/{id}/lfg`](#put-gamesidlfg)), and `results` whether a host may opt a table in to a results post in #game-results (ADR 0174, [`PUT /games/{id}/results`](#put-gamesidresults)). No guild, role or user id is ever in it. Answered with
 `Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`

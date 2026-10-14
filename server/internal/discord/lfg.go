@@ -165,11 +165,14 @@ func (p LFGPost) Full() bool { return p.Seats > 0 && p.Seated >= p.Seats }
 // lfgEmbed and the types below are Discord's message JSON, the part a
 // post uses.
 type lfgEmbed struct {
-	Title     string          `json:"title"`
-	Color     int             `json:"color"`
-	Fields    []lfgEmbedField `json:"fields"`
-	Footer    lfgEmbedFooter  `json:"footer"`
-	Timestamp string          `json:"timestamp,omitempty"`
+	Title string `json:"title"`
+	// Description is the text under the title. Only the results post
+	// (results.go) uses it.
+	Description string          `json:"description,omitempty"`
+	Color       int             `json:"color"`
+	Fields      []lfgEmbedField `json:"fields"`
+	Footer      lfgEmbedFooter  `json:"footer"`
+	Timestamp   string          `json:"timestamp,omitempty"`
 }
 
 type lfgEmbedField struct {
