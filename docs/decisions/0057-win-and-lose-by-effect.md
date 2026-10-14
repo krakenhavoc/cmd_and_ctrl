@@ -674,7 +674,7 @@ spells), so they are not redacted.
   text to it, and the poison cause is `"poison"` (`LossPoison`) in both
   ADRs.
 - A new `LogGameOver` ("game_over") entry: "Alice won the game (Felidar
-  Sovereign)", "Alice won the game: every opponent has left", "The game
+  Sovereign)", "Alice won the game: last player standing", "The game
   is a draw".
 - A new `LogWinPrevented` ("win_prevented") entry: "Alice would have won
   the game (Laboratory Maniac), but can't (Platinum Angel)". It is logged

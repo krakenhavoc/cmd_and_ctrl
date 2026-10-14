@@ -2447,7 +2447,7 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			}
 			return fmt.Sprintf("%s won the game", actor)
 		}
-		return fmt.Sprintf("%s won the game: every opponent has left", actor)
+		return fmt.Sprintf("%s won the game: last player standing", actor)
 	case LogWinPrevented:
 		return fmt.Sprintf("%s would have won the game (%s), but can't (%s)",
 			actor, nameOr(cardName, "an effect"), nameOr(targetName, "an effect"))
