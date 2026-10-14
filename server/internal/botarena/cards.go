@@ -368,7 +368,7 @@ type Canary struct {
 var Canaries = []Canary{
 	{Name: "Sol Ring", Action: ActionCast, Class: "mana rock"},
 	{Name: "Rhystic Study", Action: ActionCast, Class: "enchantment engine"},
-	{Name: "Mary Read and Anne Bonny", Action: ActionActivate, Class: "loot"},
+	{Name: "Faithless Looting", Action: ActionCast, Class: "loot"},
 	{Name: "Entomb", Action: ActionCast, Class: "tutor"},
 	{Name: "Harrow", Action: ActionCast, Class: "ramp spell"},
 	{Name: "Viscera Seer", Action: ActionCast, Class: "sacrifice outlet"},

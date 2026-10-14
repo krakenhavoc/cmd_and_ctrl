@@ -286,7 +286,7 @@ Every sub-PR from §1 onward carries ADR 0052's report block in its description,
 |---|---|---|---|---|
 | A1 | `never` count per deck (run 1) | 19–30 | **≤ 5 for every deck** | Some cards are legitimately held: a counterspell with nothing to counter, a removal spell with no target worth it, Kismet. Five per deck leaves room for those and nothing else. |
 | A2 | Mana rocks and dorks (run 1) | used in 0% of games where offered | **used in ≥ 80% of the games in which each was offered** (amended for S66 on 2026-10-07: see [Exit decisions](#exit-decisions-2026-10-07)) | Casting a rock is almost always right. 80% leaves room for a turn where a land and a bigger spell use all the mana. |
-| A3 | The six canaries: Sol Ring, Rhystic Study, Mary Read's loot, Entomb, Harrow, Viscera Seer (run 1) | 0 uses | **each used in ≥ 50% of the games in which it was offered** | They name the six classes. If one stays dead, its class is not fixed. |
+| A3 | The six canaries: Sol Ring, Rhystic Study, Faithless Looting (cast, for Mary Read's loot, see the note below), Entomb, Harrow, Viscera Seer (run 1) | 0 uses | **each used in ≥ 50% of the games in which it was offered** | They name the six classes. If one stays dead, its class is not fixed. |
 | A4 | Wipes (suite) | always cast | **both new wipe positions pass, and are gated** | Arena games rarely set up the bad-wipe board, so a fixed position is the reliable test. |
 | A5 | New against baseline (run 2) | n/a | **`beats null: yes` for `heuristic`**: the Wilson interval's lower bound above 25% | The claim is that the bot plays its deck better, so it must beat the old bot in a fair seating. With 192 seat-games, that needs about 31% or more (about 60 of 96 games). |
 | A6 | Balance (run 1) | mono-black 63%, interval 49.9%–75.2% | **no deck's interval lies entirely above 50%** | The pricing must not widen black's lead. Making the decks even is #2436's job. This bar only says this ADR did not make it worse. |
@@ -296,6 +296,8 @@ Every sub-PR from §1 onward carries ADR 0052's report block in its description,
 Each intermediate sub-PR must hold A7 and A8, and its run 2 must not be detectably worse: the `heuristic` interval's upper bound must not fall below 25%. Its own class's canaries should move, and the PR says by how much. A1 to A6 are judged at the end, because the classes interact. Casting rocks means more mana for engines, and the `never` count only falls far once all of them land.
 
 If A5 or A6 fails at the end, the owner decides whether to ship, retune or narrow the scope, with the numbers in [Measurements](#measurements).
+
+**Canary swap (2026-10-13, #3071 question 4; #3164).** Mary Read and Anne Bonny left every curated deck when #3071 rebuilt izzet-aggro as `mono-red-aggro` around Purphoros, so her loot canary was in no deck and the arena report marked it `not offered`. The owner replaced it with **Faithless Looting (cast)**, the loot in the rebuilt deck. The class stays "loot" and the bar stays 50%. Mary Read's loot is still priced by the discard-payoff amendment, but it is no longer measured as a canary.
 
 **Positions added, one or more per sub-PR**, each harvested from that PR's run-1 decision logs with `boteval suite harvest`, labelled, and gated for `heuristic`:
 
