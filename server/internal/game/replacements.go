@@ -982,6 +982,13 @@ type ReplacementEvent struct {
 	// affectedPlayerForEvent.
 	CounterPlayer uuid.UUID
 
+	// StartingLoyalty marks the one counter placement that is a
+	// planeswalker's starting loyalty as it enters (CR 306.5b), the
+	// event stampStartingLoyaltyLocked opens. Compleated reads it
+	// (CR 702.150a, ADR 0183), so it never touches a later +1. Doublers
+	// ignore it and see the placement they always saw.
+	StartingLoyalty bool
+
 	// counterTail is the counter half's answer to lifeTail and
 	// tokenTail: the rest of the effect that asked for the placement,
 	// run with the delta the window settled on once the counters land.
