@@ -4,7 +4,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { GameMeta, SeatInfo } from "./api";
-import { LFG_GUEST_HINT, lfgBlocked, lfgStatusLine, setLFG } from "./lfgPost";
+import { LFG_GUEST_HINT, lfgBlocked, lfgHeader, lfgStatusLine, setLFG } from "./lfgPost";
 
 function seat(over: Partial<SeatInfo> = {}): SeatInfo {
   return { player_id: "p1", name: "Alice", seat: 0, deck_uploaded: false, ...over };
@@ -20,6 +20,40 @@ function table(over: Partial<GameMeta> = {}): GameMeta {
     ...over,
   } as GameMeta;
 }
+
+describe("lfgHeader", () => {
+  it("offers a Post button on an unposted lobby table", () => {
+    expect(lfgHeader(table())).toEqual({
+      kind: "post",
+      disabled: false,
+      title: expect.stringMatching(/#lfg/),
+    });
+  });
+
+  it("disables the button and says why when the table can't be posted", () => {
+    const h = lfgHeader(table({ players: [seat({ is_host: true })] }));
+    expect(h).toEqual({ kind: "post", disabled: true, title: LFG_GUEST_HINT });
+  });
+
+  it("shows the post's state once it is posted", () => {
+    expect(lfgHeader(table({ lfg: true, lfg_status: "posted" }))).toMatchObject({
+      kind: "posted",
+      label: "In #lfg",
+    });
+    expect(lfgHeader(table({ lfg: true, lfg_status: "pending" }))).toMatchObject({
+      label: "Posting…",
+    });
+    expect(lfgHeader(table({ lfg: true, lfg_status: "unavailable" }))).toMatchObject({
+      label: "#lfg unavailable",
+      title: expect.stringMatching(/withdraw/),
+    });
+  });
+
+  it("is nothing once the table has started or been archived", () => {
+    expect(lfgHeader(table({ state: "active" }))).toBeNull();
+    expect(lfgHeader(table({ archived_at: "2026-10-13T21:00:00Z" }))).toBeNull();
+  });
+});
 
 describe("lfgBlocked", () => {
   it("lets a Discord host post a lobby table with an empty seat", () => {

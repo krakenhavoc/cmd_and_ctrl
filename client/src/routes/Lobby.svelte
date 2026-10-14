@@ -69,7 +69,7 @@
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import TablematePicker from "../lib/components/TablematePicker.svelte";
   import LfgPost from "../lib/components/LfgPost.svelte";
-  import { LFG_GUEST_HINT, setLFG } from "../lib/lfgPost";
+  import { LFG_GUEST_HINT, lfgHeader, setLFG } from "../lib/lfgPost";
   import Icon from "../lib/components/Icon.svelte";
   import MoreMenu, { type MoreItem } from "../lib/components/MoreMenu.svelte";
   import RemovedNotice from "../lib/components/RemovedNotice.svelte";
@@ -290,14 +290,18 @@
   // reports it.
   let lfgBusy = $state(false);
   let lfgError = $state<string | null>(null);
+  // The table the last #lfg error belongs to, so the card shows it too.
+  let lfgErrorFor = $state<string | null>(null);
   async function toggleLFG(gameID: string, enabled: boolean): Promise<void> {
     lfgBusy = true;
     lfgError = null;
+    lfgErrorFor = null;
     try {
       await setLFG(gameID, enabled);
       await refresh();
     } catch (e) {
       lfgError = lobbyErrorMessage(e, "the #lfg request failed");
+      lfgErrorFor = gameID;
     } finally {
       lfgBusy = false;
     }
@@ -752,6 +756,14 @@
         onclick: () => (confirmRotate = { gameID: g.id, kind: "spectator" }),
       });
     }
+    if ($community.lfg && canManageTableFor(g) && g.lfg && g.state === "lobby") {
+      items.push({
+        label: "Withdraw from #lfg",
+        title: "take this table's post down from the CMD & CTRL Discord's #lfg channel",
+        disabled: lfgBusy,
+        onclick: () => void toggleLFG(g.id, false),
+      });
+    }
     if (canManageTableFor(g)) {
       items.push({
         label: settingsFor === g.id ? "Hide table settings" : "Table settings",
@@ -1086,6 +1098,7 @@
             {@const items = moreFor(g)}
             {@const reason = startReason(g)}
             {@const panel = panelFor(g)}
+            {@const lfg = $community.lfg && canManageTableFor(g) ? lfgHeader(g) : null}
             <li class="tcard" class:mine={myNo !== null}>
               <div class="thead">
                 <div class="tid">
@@ -1113,6 +1126,22 @@
                         <Icon name="link" size={13} /> Copy invite
                       {/if}
                     </button>
+                  {/if}
+                  {#if lfg?.kind === "post"}
+                    <button
+                      type="button"
+                      class="btn ghost sm"
+                      disabled={lfg.disabled || lfgBusy}
+                      title={lfg.title}
+                      onclick={() => toggleLFG(g.id, true)}
+                    >
+                      <Icon name="discord" size={13} /> Post to #lfg
+                    </button>
+                  {:else if lfg?.kind === "posted"}
+                    <span class="lfg-state" title={lfg.title} data-testid="lfg-state">
+                      <Icon name="discord" size={13} />
+                      {lfg.label}
+                    </span>
                   {/if}
                   {#if items.length > 0}
                     <MoreMenu label={`more for ${g.name}`} {items} />
@@ -1269,6 +1298,8 @@
                 </div>
               {:else if botError}
                 <div class="bot-error">{botError}</div>
+              {:else if lfgError && lfgErrorFor === g.id && settingsFor !== g.id}
+                <div class="bot-error" role="alert">{lfgError}</div>
               {/if}
 
               {#if settingsFor === g.id}
@@ -1857,6 +1888,14 @@
     align-items: center;
     gap: 8px;
     margin-left: auto;
+  }
+  .lfg-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: var(--mint);
+    white-space: nowrap;
   }
   .tact .btn.on {
     color: var(--mint);

@@ -37,6 +37,43 @@ export function lfgBlocked(g: GameMeta): string | null {
   return null;
 }
 
+/** What the table card's header shows for the #lfg post. */
+export type LFGHeader =
+  | { kind: "post"; disabled: boolean; title: string }
+  | { kind: "posted"; label: string; title: string };
+
+// lfgHeader is the table card's #lfg control, beside Copy invite, for a
+// host or admin of a table waiting to start; null when there is none.
+// Unposted, it is a button that posts. Posted, it is a status, and the
+// ⋯ menu's "Withdraw from #lfg" takes the post down.
+export function lfgHeader(g: GameMeta): LFGHeader | null {
+  if (g.state !== "lobby" || g.archived_at) return null;
+  if (!g.lfg) {
+    const blocked = lfgBlocked(g);
+    return {
+      kind: "post",
+      disabled: blocked !== null,
+      title: blocked ?? "post this table to the CMD & CTRL Discord's #lfg channel and ping LFG",
+    };
+  }
+  switch (g.lfg_status) {
+    case "posted":
+      return {
+        kind: "posted",
+        label: "In #lfg",
+        title: "posted in #lfg; it comes down when the game starts",
+      };
+    case "unavailable":
+      return {
+        kind: "posted",
+        label: "#lfg unavailable",
+        title: "Discord refused the post or didn't answer; withdraw and post again to retry",
+      };
+    default:
+      return { kind: "posted", label: "Posting…", title: "posting to #lfg" };
+  }
+}
+
 // lfgStatusLine is the panel's one-sentence account of the post, or
 // null when the table is not posted.
 export function lfgStatusLine(g: GameMeta): string | null {
