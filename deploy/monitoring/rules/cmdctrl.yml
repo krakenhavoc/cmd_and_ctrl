@@ -176,6 +176,133 @@ groups:
           summary: "{{ $labels.env }}: {{ $labels.resource }} on {{ $labels.host }} is at {{ $value | humanizePercentage }} of its cap"
           description: "{{ $labels.resource }} on {{ $labels.host }} ({{ $labels.env }}) has been over 80% of its capacity cap for 10 minutes (now {{ $value | humanizePercentage }}). At 100% new tables, bot seats or newcomers are turned away. The 80% and 10 minutes are a first guess (ADR 0148), not a measured threshold."
 
+  # What a player meets first once the site is public (#3350). Prod only:
+  # a dev deploy, a tester and a half-built branch would trip all of these.
+  # Every threshold is a FIRST GUESS, set before a week of prod traffic
+  # existed; each rule also needs a floor of traffic, so one failed
+  # request on a quiet night is not "100% errors". Tune them from the
+  # Overview and Server dashboards.
+  - name: cmdctrl-traffic
+    rules:
+      # The 5xx share of all requests (the WebSocket upgrade included).
+      - alert: HighErrorRate
+        expr: >-
+          sum by (env, host) (rate(cmdctrl_http_requests_total{job="cmdctrl-server", env="prod", code="5xx"}[5m]))
+          / sum by (env, host) (rate(cmdctrl_http_requests_total{job="cmdctrl-server", env="prod"}[5m]))
+          > 0.05
+          and sum by (env, host) (increase(cmdctrl_http_requests_total{job="cmdctrl-server", env="prod"}[5m])) > 20
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }}: {{ $value | humanizePercentage }} of requests on {{ $labels.host }} are failing (5xx)"
+          description: "More than 5% of HTTP requests to the {{ $labels.env }} server on {{ $labels.host }} have been answered 5xx for 5 minutes (now {{ $value | humanizePercentage }}). The 5% is a first guess."
+
+      # Per route, so the message says which one is slow. The WebSocket is
+      # not timed (its duration is a session). A route needs about one
+      # request every 20 s, or a single slow call is its own p95.
+      - alert: HighLatency
+        expr: >-
+          histogram_quantile(0.95, sum by (le, env, host, route) (rate(cmdctrl_http_request_seconds_bucket{job="cmdctrl-server", env="prod"}[5m])))
+          > 2
+          and on (env, host, route)
+          sum by (env, host, route) (rate(cmdctrl_http_request_seconds_count{job="cmdctrl-server", env="prod"}[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $labels.route }} on {{ $labels.host }} is slow (p95 {{ $value | humanizeDuration }})"
+          description: "The 95th-percentile time to serve {{ $labels.route }} on {{ $labels.host }} ({{ $labels.env }}) has been over 2 seconds for 10 minutes (now {{ $value | humanizeDuration }}). The 2 s is a first guess."
+
+      # A limiter turning people away. The code label is only a class
+      # (4xx), so the server counts 429s on their own.
+      - alert: RateLimitSpike
+        expr: sum by (env, host) (increase(cmdctrl_http_rate_limited_total{job="cmdctrl-server", env="prod"}[5m])) > 100
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $value | humanize }} requests on {{ $labels.host }} were rate limited (429) in 5 minutes"
+          description: "The {{ $labels.env }} server on {{ $labels.host }} answered over 100 requests 429 in 5 minutes, for 5 minutes running. Either one client is hammering a route, or a limiter is too tight for real players. cmdctrl_http_rate_limited_total by route says which. The 100 is a first guess."
+
+      # Discord sign-in failing on our side or Discord's. The role gate
+      # fails closed with a redirect, which no HTTP metric shows, so these
+      # are counted on their own. Someone who lacks the role is not here.
+      - alert: AuthFailures
+        expr: increase(cmdctrl_auth_failures_total{job="cmdctrl-server", env="prod"}[10m]) > 2
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: Discord sign-in is failing on {{ $labels.host }} ({{ $labels.reason }})"
+          description: "{{ $value | humanize }} sign-ins failed with reason {{ $labels.reason }} on {{ $labels.host }} ({{ $labels.env }}) in the last 10 minutes. oauth_exchange and oauth_profile: Discord or the client secret. gate_check: Discord did not answer the role check, so sign-in fails closed. signin_record: the database. The 3-in-10-minutes is a first guess."
+
+  - name: cmdctrl-bots
+    rules:
+      # The spend guard counts tokens, not money (ADR 0033 section 5). The
+      # caps are CMDCTRL_BOT_MODEL_DAILY_TOKENS and _MONTHLY_TOKENS; a cap
+      # that is off reports a limit of 0 and is ignored.
+      - alert: BotModelSpendHigh
+        expr: >-
+          cmdctrl_bot_budget_tokens{job="cmdctrl-server", env="prod"}
+          / (cmdctrl_bot_budget_limit_tokens{job="cmdctrl-server", env="prod"} > 0)
+          > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: hosted-model spend is at {{ $value | humanizePercentage }} of the {{ $labels.period }} cap"
+          description: "The {{ $labels.env }} bots have used {{ $value | humanizePercentage }} of this {{ $labels.period }}'s token cap. At 100% the model tiers stop and the bots play the heuristic. The 80% is a first guess."
+
+      # Model calls refused: a cap was reached, or the admin kill switch is
+      # off (PUT /admin/bot/model). The switch is deliberate, but left off
+      # it silently downgrades every model bot.
+      - alert: BotModelBlocked
+        expr: cmdctrl_bot_budget_blocked{job="cmdctrl-server", env="prod"} == 1
+        for: 15m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: hosted-model calls have been refused for 15 minutes"
+          description: "The {{ $labels.env }} spend guard is refusing model calls: a daily or monthly token cap is reached, or the kill switch is off. Model-backed bots play the heuristic meanwhile. GET /admin/bot/model says which."
+
+      # A bot seat that has a legal move and has played none. The table
+      # waits on it (#544). 2 minutes is past the slowest think deadline
+      # (120 s with thinking on is the ceiling).
+      - alert: BotSeatWedged
+        expr: cmdctrl_bot_seat_owed_seconds_max{job="cmdctrl-server", env="prod"} > 120
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.env }}: a bot seat on {{ $labels.host }} has been stuck for {{ $value | humanizeDuration }}"
+          description: "A bot seat on the {{ $labels.env }} server on {{ $labels.host }} has had a legal move for {{ $value | humanizeDuration }} and played none, so its table is waiting. The Logs dashboard has the bot's WARN lines; GET /games/{id}/bot/stats shows its counters. Archiving the table frees the players."
+
+      - alert: BotSeatWedged
+        expr: cmdctrl_bot_seat_owed_seconds_max{job="cmdctrl-server", env="dev"} > 120
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: a bot seat on {{ $labels.host }} has been stuck for {{ $value | humanizeDuration }}"
+          description: "A bot seat on the {{ $labels.env }} server on {{ $labels.host }} has had a legal move for {{ $value | humanizeDuration }} and played none."
+
+      # Windows where the runner replaced the policy's answer: it timed
+      # out, errored or answered out of range. The model funnel's own
+      # fallbacks (model-*) are a dashboard panel. Floor of 10 so a
+      # quiet hour's one timeout is not 100%.
+      - alert: BotFallbackRising
+        expr: >-
+          sum by (env, host, tier) (increase(cmdctrl_bot_fallbacks_total{job="cmdctrl-server", env="prod", cause=~"timeout|policy-error|out-of-range"}[15m]))
+          / sum by (env, host, tier) (increase(cmdctrl_bot_decisions_total{job="cmdctrl-server", env="prod"}[15m]))
+          > 0.1
+          and sum by (env, host, tier) (increase(cmdctrl_bot_fallbacks_total{job="cmdctrl-server", env="prod", cause=~"timeout|policy-error|out-of-range"}[15m])) >= 10
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.env }}: {{ $value | humanizePercentage }} of {{ $labels.tier }} bot moves on {{ $labels.host }} are fallbacks"
+          description: "The runner replaced the policy's answer (timeout, policy-error or out-of-range) for {{ $value | humanizePercentage }} of {{ $labels.tier }} bot decisions on {{ $labels.host }} ({{ $labels.env }}) over 15 minutes. cmdctrl_bot_fallbacks_total by cause says which; the Engine and bots dashboard has the model's latency. The 10% is a first guess."
+
   - name: cmdctrl-moderation
     rules:
       # ADR 0075 section 2.6 (#3113): a "report player" lands in the admin
@@ -215,6 +342,20 @@ groups:
         annotations:
           summary: "{{ $labels.env }}: the last off-site backup on {{ $labels.host }} failed (exit {{ $value }})"
           description: "scripts/backup-offsite.sh on {{ $labels.host }} ({{ $labels.env }}) exited {{ $value }} on its last run. journalctl -u cmd-and-ctrl-backup says why."
+
+      # A comparison on a series that does not exist never fires: a host
+      # whose textfile was never written, or that stopped writing it
+      # (the series ages out of the scrape), would be silent. Prod only: a
+      # dev host may not run the backup at all.
+      - alert: OffsiteBackupStale
+        expr: absent(cmdctrl_offsite_backup_last_success_timestamp_seconds{job="node", env="prod"})
+        for: 2h
+        labels:
+          severity: warning
+          cause: missing
+        annotations:
+          summary: "{{ $labels.env }}: no off-site backup has ever been reported"
+          description: "The off-site backup's success timestamp has been missing from {{ $labels.env }} for 2 hours: the backup has never run there, or the node scrape does not carry its textfile. systemctl list-timers cmd-and-ctrl-backup.timer on the host says whether it is scheduled."
 
       # Every real filesystem on every host, the monitoring VM's included.
       - alert: DiskFilling
