@@ -1536,6 +1536,9 @@ export interface PendingChoiceView {
   // it"). `options` stays the whole revealed hand. Absent means every
   // option (a prompt from before the filter).
   eligible?: string[];
+  // ADR 0175: public permanent picks made by earlier selectors in an
+  // ordered choice run. Resolve names through this viewer's filtered board.
+  earlier_choices?: Array<{ player_id: string; card_ids: string[] }>;
   // ADR 0116: what `eligible` holds, as the card prints it — "nonland
   // card", "card with mana value 3 or greater".
   eligible_label?: string;

@@ -386,6 +386,12 @@ type PendingChoiceView struct {
 	// EligibleLabel names what Eligible holds, the way the card
 	// prints it: "nonland card".
 	EligibleLabel string `json:"eligible_label,omitempty"`
+	// EarlierChoices are the public permanent choices made by prior
+	// selectors in an ordered choice run (ADR 0175). The IDs point only
+	// at public battlefield objects; names are resolved from each
+	// viewer's already-filtered board rather than copied onto this wire
+	// payload, so a face-down permanent stays anonymous.
+	EarlierChoices []EarlierChoiceView `json:"earlier_choices,omitempty"`
 	// PickDestination populates the "revealed_hand_pick" kind (#2115):
 	// where the chosen card goes, "discard" or "exile". Exiling it is
 	// not a discard.
@@ -786,6 +792,14 @@ type PendingChoiceView struct {
 	// Assist marks a pay_amount as an assist helper's prompt (ADR 0150
 	// §5): who is casting what. Public. Absent on every other prompt.
 	Assist *AssistPromptView `json:"assist,omitempty"`
+}
+
+// EarlierChoiceView identifies one prior selector and the permanents
+// they chose in an ordered choice run. Card identities are not included;
+// consumers resolve IDs against their filtered GameView.
+type EarlierChoiceView struct {
+	PlayerID string   `json:"player_id"`
+	CardIDs  []string `json:"card_ids"`
 }
 
 // AnyPlayerOfferView is an any-player offer in progress
@@ -8204,6 +8218,16 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			AskedByHand:      string(c.AskedByHand),
 			PrivateText:      c.PrivateText(),
 			ExchangesText:    c.ExchangesText,
+		}
+		for _, earlier := range c.EarlierPermanentChoicesForEffect() {
+			entry := EarlierChoiceView{
+				PlayerID: earlier.Seat.String(),
+				CardIDs:  make([]string, 0, len(earlier.Cards)),
+			}
+			for _, cardID := range earlier.Cards {
+				entry.CardIDs = append(entry.CardIDs, cardID.String())
+			}
+			v.EarlierChoices = append(v.EarlierChoices, entry)
 		}
 		// ADR 0131 §2: the life half of a mana payment.
 		if c.Kind == game.PendingChoicePayUnless && c.PayAction() == nil {

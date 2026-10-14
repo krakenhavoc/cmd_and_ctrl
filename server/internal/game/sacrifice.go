@@ -151,14 +151,12 @@ func (g *Game) SacrificePermanent(playerID, cardID uuid.UUID) error {
 // EachPlayerSacrificesThenForEffect (#1019, sacrifice_run.go), which
 // is this queue loop with the rest of the card attached.
 //
-// The choices are queued in APNAP order and answered in whatever
-// order the players click. Strictly, CR 701.21a makes the sacrifices
-// simultaneous after all choices are made; sequential resolution is
-// observable only through a payoff that counts them (a Blood Artist
-// sees the same number of deaths either way, just spread across more
-// trigger batches). Simultaneous choice-then-sacrifice would need the
-// whole fan-out held in a resume frame, which is a lot of machinery
-// for a difference no card in the catalog can see today.
+// The choices are queued in APNAP order and answered as players click.
+// Moves happen on each answer. A dies payoff that leaves early may miss
+// later deaths; this legacy fan-out does not provide a simultaneous action.
+// A caller requiring public choices followed by one shared exit uses
+// ChoosePermanentsInOrderThenForEffect and SacrificeAllThenForEffect
+// (ADR 0175), as Liliana, Dreadhorde General does.
 //
 // Caller must hold g.mu (it is an effect-time helper).
 func (g *Game) EachPlayerSacrificesForEffect(source uuid.UUID, except uuid.UUID, spec *TargetSpec, reason string) int {

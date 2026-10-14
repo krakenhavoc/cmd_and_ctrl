@@ -327,6 +327,22 @@
   // are sent separately and can differ.
   const isChooseCards = $derived(active?.kind === "choose_cards");
 
+  // ADR 0175: a later seat making a simultaneous choice can see what
+  // earlier seats chose. This is viewer-filtered protocol data; only
+  // resolve IDs against the current public battlefield snapshot, and
+  // let Card render any face-down permanent as its redacted back.
+  const earlierChoices = $derived.by(() => {
+    if (!isChooseCards || !active) return [];
+    const choices = active.earlier_choices ?? [];
+    return choices.map((choice, index) => ({
+      key: `${choice.player_id}-${index}`,
+      player: snap.seats.find((seat) => seat.id === choice.player_id)?.name ?? "A player",
+      cards: choice.card_ids.map(
+        (id) => snap.battlefield.cards.find((card) => card.instance_id === id) ?? null,
+      ),
+    }));
+  });
+
   // #826 untap_choice — CR 502.3's "the active player determines which
   // permanents they control will untap", asked when a cap ("players
   // can't untap more than one land") or an opt-out ("you may choose
@@ -2677,6 +2693,36 @@
           them all.
         {/if}
       </p>
+      {#if isChooseCards && earlierChoices.length > 0}
+        <section class="earlier-choices" aria-label="Earlier choices">
+          <h3>Earlier choices</h3>
+          {#each earlierChoices as choice (choice.key)}
+            <div class="earlier-choice">
+              <strong>{choice.player}</strong>
+              <div class="earlier-choice-cards">
+                {#if choice.cards.length === 0}
+                  <span>Chose nothing</span>
+                {:else}
+                  {#each choice.cards as card, i (`${choice.key}-${i}`)}
+                    {#if card}
+                      <div class="earlier-choice-card">
+                        <Card {card} size="small" faceDown={card.face_down === true} />
+                        {#if card.face_down}
+                          <span>Face-down permanent</span>
+                        {:else}
+                          <PickName {card} />
+                        {/if}
+                      </div>
+                    {:else}
+                      <span>Selected permanent</span>
+                    {/if}
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </section>
+      {/if}
       <div class="card-grid">
         {#if isSearch}
           {#each searchGroups as group ((searchGraveyardIDs.has(group[0].instance_id) ? "gy:" : "lib:") + (group[0].name || group[0].instance_id))}
@@ -3072,5 +3118,31 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+  .earlier-choices {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-sunken);
+  }
+  .earlier-choices h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+  }
+  .earlier-choice + .earlier-choice {
+    margin-top: 8px;
+  }
+  .earlier-choice-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+  }
+  .earlier-choice-card {
+    width: 72px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--fg-muted);
   }
 </style>
