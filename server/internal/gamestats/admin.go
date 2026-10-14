@@ -15,6 +15,9 @@ import (
 	"strings"
 )
 
+// DeletedPlayersName labels the one row that holds every deleted account.
+const DeletedPlayersName = "Deleted players"
+
 // AdminListMax caps every list in an Overview.
 const AdminListMax = 25
 
@@ -42,7 +45,9 @@ type AdminGame struct {
 }
 
 // PersonRecord is one person's (or guest label's, or bot tier's) record.
-// Kind is "account", "guest" or "bot".
+// Kind is "account", "guest", "bot", "agent" or "deleted". Every deleted
+// account (ADR 0149) is folded into the one "deleted" row, so a deleted
+// person's history cannot be picked out (ADR 0165 §9).
 type PersonRecord struct {
 	Name string `json:"name"`
 	Kind string `json:"kind"`
@@ -116,7 +121,8 @@ func (s *SQLStore) Overview(ctx context.Context) (Overview, error) {
 
 	// Every counted seat, with the person it belongs to.
 	rows, err = s.db.QueryContext(ctx,
-		`SELECT s.user_id, u.display_name, s.guest_name, s.bot_tier, ss.result, ss.place, ss.commanders
+		`SELECT s.user_id, u.display_name, u.deleted_at, s.guest_name, s.bot_tier, s.agent_client,
+		        ss.result, ss.place, ss.commanders
 		 FROM seat_stats ss
 		 JOIN seats s ON s.game_id = ss.game_id AND s.seat = ss.seat
 		 LEFT JOIN users u ON u.id = s.user_id
@@ -127,24 +133,29 @@ func (s *SQLStore) Overview(ctx context.Context) (Overview, error) {
 	people, cmdrs := map[string]*PersonRecord{}, map[string]*Group{}
 	for rows.Next() {
 		var (
-			userID, display, guest, tier sql.NullString
-			result, cmdrJSON             string
-			place                        sql.NullInt64
+			userID, display, guest, tier, agent sql.NullString
+			deletedAt                           sql.NullInt64
+			result, cmdrJSON                    string
+			place                               sql.NullInt64
 		)
-		if err := rows.Scan(&userID, &display, &guest, &tier, &result, &place, &cmdrJSON); err != nil {
+		if err := rows.Scan(&userID, &display, &deletedAt, &guest, &tier, &agent, &result, &place, &cmdrJSON); err != nil {
 			_ = rows.Close()
 			return fail("seats", err)
 		}
 		p := intPtr(place)
 		var key, name, kind string
 		switch {
+		case agent.String != "":
+			key, name, kind = "a:"+agent.String, "AI agent ("+agent.String+")", "agent"
+		case tier.String != "":
+			key, name, kind = "b:"+tier.String, "Bot ("+tier.String+")", "bot"
+		case userID.String != "" && deletedAt.Valid:
+			key, name, kind = "deleted", DeletedPlayersName, "deleted"
 		case userID.String != "":
 			key, name, kind = "u:"+userID.String, display.String, "account"
 			if name == "" {
 				name = "Unknown player"
 			}
-		case tier.String != "":
-			key, name, kind = "b:"+tier.String, "Bot ("+tier.String+")", "bot"
 		default:
 			name = guest.String
 			if name == "" {
@@ -164,7 +175,8 @@ func (s *SQLStore) Overview(ctx context.Context) (Overview, error) {
 			_ = rows.Close()
 			return fail("commanders", err)
 		}
-		if len(names) > 0 {
+		// Commanders count human seats only.
+		if len(names) > 0 && tier.String == "" && agent.String == "" {
 			cn := strings.Join(names, " / ")
 			grp := cmdrs[cn]
 			if grp == nil {
@@ -210,8 +222,10 @@ func (s *SQLStore) Overview(ctx context.Context) (Overview, error) {
 	out.CommandersWins = ranked(func(g Group) int { return g.Wins })
 
 	rows, err = s.db.QueryContext(ctx,
-		`SELECT name, SUM(casts), COUNT(DISTINCT game_id) FROM seat_card_stats
-		 GROUP BY name ORDER BY SUM(casts) DESC, name LIMIT ?`, AdminListMax)
+		`SELECT c.name, SUM(c.casts), COUNT(DISTINCT c.game_id) FROM seat_card_stats c
+		 JOIN seats s ON s.game_id = c.game_id AND s.seat = c.seat
+		 WHERE s.bot_tier IS NULL AND s.agent_client IS NULL
+		 GROUP BY c.name ORDER BY SUM(c.casts) DESC, c.name LIMIT ?`, AdminListMax)
 	if err != nil {
 		return fail("cards", err)
 	}

@@ -103,7 +103,7 @@ func (s *SQLStore) ForUser(ctx context.Context, userID string) (UserStats, error
 		 JOIN seat_stats ss ON ss.game_id = s.game_id AND ss.seat = s.seat
 		 JOIN game_stats gs ON gs.game_id = s.game_id
 		 JOIN games g ON g.id = s.game_id
-		 WHERE s.user_id = ?
+		 WHERE s.user_id = ? AND s.bot_tier IS NULL AND s.agent_client IS NULL
 		 ORDER BY COALESCE(g.ended_at, gs.computed_at) DESC, s.game_id`, userID)
 	if err != nil {
 		return UserStats{}, fmt.Errorf("gamestats: user stats: %w", err)
