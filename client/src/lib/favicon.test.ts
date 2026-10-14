@@ -21,6 +21,12 @@ describe("favicon", () => {
     expect(transforms(faviconSvg(c))).toEqual(transforms(file));
   });
 
+  it("adds the attention dot only when asked", () => {
+    expect(faviconSvg(c)).not.toContain("<circle");
+    expect(faviconSvg(c, true)).toContain("<circle");
+    expect(decodeURIComponent(faviconDataUrl(c, true))).toContain("<circle");
+  });
+
   it("is a data URL that decodes to the svg", () => {
     const url = faviconDataUrl(c);
     expect(url.startsWith("data:image/svg+xml,")).toBe(true);
