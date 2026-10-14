@@ -67,6 +67,9 @@ export const LIFE_POPUP_MAX_LINES = 4;
 export const LIFE_POPUP_HOLD_MS = 1100;
 export const LIFE_POPUP_HOLD_PER_EXTRA_MS = 450;
 export const LIFE_POPUP_HOLD_MAX_MS = 3000;
+// LIFE_POPUP_HOLD_CAUSE_MS is what a named cause adds (#3379): a card
+// name takes longer to read than a number.
+export const LIFE_POPUP_HOLD_CAUSE_MS = 600;
 
 // LifeTracker is one seat's watermark over the life log.
 export interface LifeTracker {
@@ -168,10 +171,24 @@ export function trackLife(
 
 export type LifeTone = "loss" | "gain";
 
+// shortCause is a card name as the popup prints it under its number:
+// a legendary's name without its title ("Purphoros, God of the Forge"
+// → "Purphoros"), a split or double-faced card's first face. The rail
+// the popup sits in is about 110px wide.
+export function shortCause(name: string): string {
+  const face = name.split(" // ")[0];
+  const comma = face.indexOf(", ");
+  return (comma > 0 ? face.slice(0, comma) : face).trim();
+}
+
 export interface LifePopupLine {
   // "-3" / "+2", already signed for display.
   text: string;
   tone: LifeTone;
+  // #3379: the card that caused it, when lifeCause.ts could name one
+  // this viewer can see, shortened for the avatar's narrow rail
+  // (shortCause). The announcement keeps the full name.
+  cause?: string;
 }
 
 export interface LifePopupView {
@@ -202,19 +219,22 @@ function toneOf(delta: number): LifeTone {
   return delta < 0 ? "loss" : "gain";
 }
 
-function phrase(delta: number): string {
-  return delta < 0 ? `lost ${-delta}` : `gained ${delta}`;
+function phrase(delta: number, cause?: string | null): string {
+  const base = delta < 0 ? `lost ${-delta}` : `gained ${delta}`;
+  return cause ? `${base} from ${cause}` : base;
 }
 
 // lifePopupLabel is the one-sentence announcement for the popup.
 // Words, not glyphs: "-3" is read inconsistently, "lost 3 life" is
-// not.
-export function lifePopupLabel(popup: LifePopup): string {
+// not. `causes` lines up with the deltas (#3379).
+export function lifePopupLabel(popup: LifePopup, causes: readonly (string | null)[] = []): string {
   const parts: string[] = [];
   if (popup.deltas.length === 1) {
-    parts.push(`${phrase(popup.deltas[0])} life`);
+    const d = popup.deltas[0];
+    const base = d < 0 ? `lost ${-d} life` : `gained ${d} life`;
+    parts.push(causes[0] ? `${base} from ${causes[0]}` : base);
   } else {
-    const each = popup.deltas.map(phrase).join(", ");
+    const each = popup.deltas.map((d, i) => phrase(d, causes[i])).join(", ");
     const net = popup.total === 0 ? "no net change" : `${phrase(popup.total)} life in all`;
     parts.push(`${each} — ${net}`);
   }
@@ -225,23 +245,36 @@ export function lifePopupLabel(popup: LifePopup): string {
 
 // lifePopupView is everything the component needs to render one
 // popup. Split from trackLife so the presentation choice — stack the
-// deltas, collapse a long run — is testable on its own.
-export function lifePopupView(popup: LifePopup, maxLines = LIFE_POPUP_MAX_LINES): LifePopupView {
+// deltas, collapse a long run — is testable on its own. `causes`
+// (#3379, lifeCause.ts) names the card behind each delta, aligned
+// with them; a collapsed run keeps a cause only when every change in
+// it had the same one.
+export function lifePopupView(
+  popup: LifePopup,
+  maxLines = LIFE_POPUP_MAX_LINES,
+  causes: readonly (string | null)[] = [],
+): LifePopupView {
   const count = popup.deltas.length;
   const collapsed = count > Math.max(1, maxLines);
+  const withCause = (line: LifePopupLine, cause: string | null | undefined): LifePopupLine =>
+    cause ? { ...line, cause: shortCause(cause) } : line;
+  const shared =
+    causes.length === count && causes.every((c) => c && c === causes[0]) ? causes[0] : null;
   const lines: LifePopupLine[] = collapsed
-    ? [{ text: signed(popup.total), tone: toneOf(popup.total) }]
-    : popup.deltas.map((d) => ({ text: signed(d), tone: toneOf(d) }));
+    ? [withCause({ text: signed(popup.total), tone: toneOf(popup.total) }, shared)]
+    : popup.deltas.map((d, i) => withCause({ text: signed(d), tone: toneOf(d) }, causes[i]));
   return {
     lines,
     collapsed,
     count,
     gap: popup.gap,
-    label: lifePopupLabel(popup),
+    label: lifePopupLabel(popup, causes),
     sound: popup.deltas.some((d) => d < 0) ? "damage" : "heal",
     holdMs: Math.min(
       LIFE_POPUP_HOLD_MAX_MS,
-      LIFE_POPUP_HOLD_MS + (lines.length - 1) * LIFE_POPUP_HOLD_PER_EXTRA_MS,
+      LIFE_POPUP_HOLD_MS +
+        (lines.length - 1) * LIFE_POPUP_HOLD_PER_EXTRA_MS +
+        (lines.some((l) => l.cause) ? LIFE_POPUP_HOLD_CAUSE_MS : 0),
     ),
   };
 }
