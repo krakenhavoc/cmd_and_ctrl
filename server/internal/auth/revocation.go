@@ -27,8 +27,10 @@ type RevocationList interface {
 // principal with a non-zero UserID whose user has revoked it, with
 // ErrRevokedCredential. Everything else passes straight through:
 //
-//   - Issue is inner's. A token is always minted; whether it is still
-//     good is decided when it is presented.
+//   - Issue is inner's, except that a token minted in the same
+//     millisecond as its user's watermark is minted again once the clock
+//     has passed it, so a fresh sign-in is never born revoked. Whether a
+//     token is still good is otherwise decided when it is presented.
 //   - Revoke is inner's, so still advisory for HMAC sessions. Per-user
 //     revocation is a different operation (users.Revocations.RevokeAll)
 //     because it withdraws every session a person holds, not one token.
@@ -44,20 +46,51 @@ func WithRevocation(inner Authenticator, list RevocationList) Authenticator {
 	if list == nil {
 		return inner
 	}
-	return &revokingAuthenticator{inner: inner, list: list}
+	return &revokingAuthenticator{inner: inner, list: list, pause: func() { time.Sleep(time.Millisecond) }}
 }
 
 type revokingAuthenticator struct {
 	inner Authenticator
 	list  RevocationList
+	// pause waits out one issue-time tick (a millisecond). Injected so
+	// tests with a fake clock can move it on.
+	pause func()
+}
+
+// maxTieRetries bounds how long a mint waits for the clock to pass its
+// user's watermark. One retry is enough for a real clock; the cap only
+// stops a clock that is behind the watermark from looping.
+const maxTieRetries = 5
+
+// mint issues a token with mk and makes sure it is not born revoked.
+//
+// IssuedAt and the watermark are both whole milliseconds, and Revoked
+// refuses "at or before" the watermark, so a token minted in the very
+// millisecond of a revocation is refused. It must be: a token minted
+// just before the revoke in that millisecond is indistinguishable from
+// it, so the comparison cannot be loosened. Instead a session minted
+// into a tie is thrown away and minted again once the clock has moved
+// on, which makes its IssuedAt strictly after the watermark. Every token
+// that validates was therefore issued after the revoke, and every token
+// issued before it is still refused. The discarded token was never
+// returned, so nothing is leaked.
+func (a *revokingAuthenticator) mint(p Principal, mk func() (string, Principal, error)) (string, Principal, error) {
+	for i := 0; ; i++ {
+		tok, issued, err := mk()
+		if err != nil || p.UserID == uuid.Nil || i >= maxTieRetries ||
+			!a.list.Revoked(p.UserID, issued.IssuedAt) {
+			return tok, issued, err
+		}
+		a.pause()
+	}
 }
 
 func (a *revokingAuthenticator) Issue(ctx context.Context, p Principal, ttl time.Duration) (string, Principal, error) {
-	return a.inner.Issue(ctx, p, ttl)
+	return a.mint(p, func() (string, Principal, error) { return a.inner.Issue(ctx, p, ttl) })
 }
 
 func (a *revokingAuthenticator) IssueUntil(ctx context.Context, p Principal, expiresAt time.Time) (string, Principal, error) {
-	return a.inner.IssueUntil(ctx, p, expiresAt)
+	return a.mint(p, func() (string, Principal, error) { return a.inner.IssueUntil(ctx, p, expiresAt) })
 }
 
 func (a *revokingAuthenticator) Validate(ctx context.Context, credential string) (Principal, error) {
