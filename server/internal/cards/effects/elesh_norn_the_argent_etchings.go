@@ -119,8 +119,8 @@ func init() {
 						Label:    "The Argent Etchings — double strike",
 					}.Apply(ctx)
 				}),
-			ChapterTrigger(3, SagaChapterLabel("The Argent Etchings", 3, "destroy all other permanents except artifacts, lands, and Phyrexians, then exile this Saga and return it front face up"),
-				argentEtchingsChapterThree),
+			TriggerWithPurpose(ChapterTrigger(3, SagaChapterLabel("The Argent Etchings", 3, "destroy all other permanents except artifacts, lands, and Phyrexians, then exile this Saga and return it front face up"),
+				argentEtchingsChapterThree), game.Purpose{Sweep: game.Sweep{Matches: game.SweepNonlandPermanents, How: game.SweepDestroy, Partial: true}}),
 		},
 	})
 }
