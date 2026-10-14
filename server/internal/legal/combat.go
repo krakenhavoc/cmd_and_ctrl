@@ -82,6 +82,13 @@ func (e *enumerator) combatMoves() {
 		if !isActiveSeat(g, e.seat) || !holdsPriority(g, e.seat) {
 			return
 		}
+		// #3621 / CR 508.1: once the declaration is locked in (its
+		// attack triggers on the stack or resolved) it is over, and
+		// the verb refuses a late attacker — the window back to the
+		// active player after the triggers resolve offers none.
+		if g.AttackDeclarationOverForEffect() {
+			return
+		}
 		// #1571 / CR 508.1d: while the declaration owes a requirement,
 		// the attacks that would answer it. Nil at every table with no
 		// requirement to meet, which is nearly all of them.

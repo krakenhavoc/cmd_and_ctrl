@@ -467,6 +467,15 @@ var (
 	// what is, in the end, a no-op. Added in S31 for #318.
 	ErrNoLegalAttackers = errors.New("game: no creature in the declaration is able to attack")
 
+	// ErrAttackersAlreadyDeclared is returned by the declaration verbs
+	// once this combat's attack declaration is over (CR 508.1, #3621):
+	// the active player passed to finish it, or it was locked in with no
+	// requirement left owed, so its "attacks" triggers are on the stack
+	// or already resolved. A creature declared now would be tapped and
+	// announced on its own, with its triggers firing late. clear_combat
+	// is the sandbox's way back.
+	ErrAttackersAlreadyDeclared = errors.New("game: attackers have already been declared this combat")
+
 	// ErrAttackTaxUnpaid is returned by the declaration verbs when the
 	// attacking player cannot pay the CR 508.1a cost of the
 	// declaration they submitted — Propaganda's "{2} for each creature

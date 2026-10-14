@@ -747,6 +747,36 @@ func (g *Game) attackRequirementsUnmetLocked() *AttackRequirementError {
 	return &AttackRequirementError{}
 }
 
+// AttackDeclarationOverForEffect reports whether this combat's attack
+// declaration is over (CR 508.1, #3621): locked in with no requirement
+// left owed, or finished by the active player's pass. The declaration
+// verbs refuse with ErrAttackersAlreadyDeclared from then on, so the
+// enumerator offers no further attacks — the same function the verb
+// reads (#544).
+//
+// Caller must hold g.mu.
+func (g *Game) AttackDeclarationOverForEffect() bool {
+	return g.attackDeclarationOverLocked()
+}
+
+// attackDeclarationOverLocked is the one test behind the refusal and
+// the enumerator's silence: the declaration has passed its checkpoint
+// (attacksDeclared) AND announced at least one attacker. The second
+// half is deliberate. A pass with NOTHING declared is the active
+// player declining to attack, which the step's table of responses can
+// still outlive (an instant resolves, priority comes back); closing
+// the declaration on it would turn "pass, let a trick resolve, then
+// attack" — which this engine has always allowed — into a refusal for
+// no rules reason the issues name. combatHadAttackers, not a scan of
+// announcedAttacks, because an announced attacker that has since
+// died (killed in response to its own trigger) left the declaration
+// closed all the same.
+//
+// Caller must hold g.mu.
+func (g *Game) attackDeclarationOverLocked() bool {
+	return g.attacksDeclared && g.combatHadAttackers
+}
+
 // AttackRequirementsUnmetForEffect is attackRequirementsUnmetLocked
 // for the enumerator (which withholds the active player's pass while
 // it is non-nil) and the view.
