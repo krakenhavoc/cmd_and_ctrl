@@ -94,6 +94,7 @@
   import AutoPassNotice from "../lib/components/board/AutoPassNotice.svelte";
   import {
     ATTACK_PASS_REASON,
+    NO_ATTACKS_PASS_REASON,
     MANUAL_PASS_REASON,
     NO_BLOCKS_PASS_REASON,
     autopassReason,
@@ -176,6 +177,7 @@
   } from "../lib/attackAll";
   import { hasPassMove, stackEmpty } from "../lib/timing";
   import { consumeManualStop, manualStops } from "../lib/priorityStops";
+  import { attackDefaultStep, attackStepKey } from "../lib/attackDefault";
   import { shouldSignal, showTurnSignal } from "../lib/turnSignal";
   import {
     autopassDecision,
@@ -1796,6 +1798,47 @@
   // everything shouldn't have to click the full button and wait for
   // the rejection first.
   let attackPickerDefenderID = $state<string | null>(null);
+
+  // #3586: what the declare-attackers step starts with, once per step.
+  // `attackDefaultKey` latches the first frame of this step on which the
+  // viewer could declare (turn sequence and number, see attackStepKey),
+  // whatever was done then, so a player who un-stages is not re-staged
+  // and an empty declaration the server refuses is not sent again. It
+  // resets when the step ends, so an extra combat gets its own.
+  let attackDefaultKey: string | null = null;
+  $effect(() => {
+    const key = attackStepKey(view?.turn);
+    if (key !== null && (attackDefaultKey === key || attackCommit)) return;
+    const step = attackDefaultStep(attackDefaultKey, key, {
+      mode: $settings.gameplay.attackDefault,
+      canDeclare: canDeclareAttackers,
+      plan: attackPlan,
+      // The stops grid's declare attackers box (our own turn's column)
+      // or a manual pin; the same two the autopass decision reads.
+      stopped:
+        stepStopFor($settings.gameplay, "declare_attackers", true) === true ||
+        $manualStops.has("declare_attackers"),
+      holding: $holdPriority,
+      promptOpen:
+        !!view?.pending_choices?.some((c) => c.chooser === viewerID) ||
+        owesAttackRequirement(view, viewerID) ||
+        combatSelection !== null ||
+        attackPickerDefenderID !== null,
+    });
+    attackDefaultKey = step.latch;
+    const act = step.action;
+    if (!act) return;
+    if (act.kind === "stage") {
+      attackStage = act.stage;
+    } else {
+      // The "No attacks" primary: a plain pass, which the server takes
+      // as declaring no attackers.
+      const seq = $lastSeq;
+      if (seq === lastAutoPassedSeq) return;
+      lastAutoPassedSeq = seq;
+      passPriority(NO_ATTACKS_PASS_REASON);
+    }
+  });
 
   // #1533: the server's sentence for the limit refusal the picker was
   // opened from, shown at its top. Null for any other opening.
