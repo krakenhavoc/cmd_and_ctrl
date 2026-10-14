@@ -38,6 +38,7 @@ func init() {
 		Completeness:   CompletenessFull,
 		AdditionalCost: ExileCreatureYouControlCost(),
 		Targets:        TargetCardInGraveyard("target creature card from your graveyard", Creature(), YouOwn()),
+		Purpose:        ForTargets(Reanimates(0)),
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			wasThrull := false
 			for _, info := range ctx.ExiledPermanents() {

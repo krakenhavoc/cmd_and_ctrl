@@ -157,6 +157,11 @@ func (p *Policy) pricedTargetsGross(st *state, targets []targetRef, entryOf func
 	for _, t := range targets {
 		e := entryOf(t)
 		if t.Kind != "player" {
+			if v, ok := p.reanimationValue(st, t.ID, e); ok {
+				cards += v
+				priced = true
+				continue
+			}
 			if lethality && e != nil && e.Damage > 0 {
 				if v, ok := p.damageCardValue(st, t.ID, e.Damage, source); ok {
 					cards += v
@@ -241,6 +246,28 @@ func (p *Policy) giftsValue(st *state, gifts map[string]*giftAmounts, self *prot
 		after[seat] = &cp
 	}
 	return st.w.ScoreEval(after, st.me) - st.w.ScoreEval(st.evals, st.me) + lethal
+}
+
+// reanimationValue is a declared reanimation's price at the graveyard
+// card `id` (#3161): the permanent it becomes, whoever owns the pile.
+// Reanimate, Animate Dead and the rest of the family return the card
+// under the caster's control (a creature's value, undiscounted: an
+// expensive one is the point), so an opponent's graveyard is worth as
+// much as the bot's own. False for a pick it does not price: no
+// declared reanimation, or a card the view does not show in a
+// graveyard; targetsValue prices those as before.
+func (p *Policy) reanimationValue(st *state, id string, e *protocol.TargetPurposeView) (float64, bool) {
+	if !p.cfg.PriceReanimation || e == nil || !e.Reanimates {
+		return 0, false
+	}
+	c := st.graveyard[id]
+	if c == nil {
+		return 0, false
+	}
+	if isCreature(c) {
+		return st.w.CreatureValue(c), true
+	}
+	return st.w.permanentValue(c), true
 }
 
 // damageCardValue is a declared damage entry's price at permanent `id`

@@ -263,6 +263,11 @@ type TargetPurpose struct {
 	// land. Declared on a clause that targets a permanent; the zero
 	// value is "nothing comes back".
 	Returns TargetReturn
+	// Reanimates is set when the spell puts the picked graveyard card
+	// onto the battlefield under the caster's control, whoever owns the
+	// graveyard (#3161): Reanimate, Animate Dead, Zombify. The bot prices
+	// the pick as the permanent it becomes, not as a card it would cast.
+	Reanimates bool
 }
 
 // TargetReturn is what a removal spell hands the controller of the
@@ -298,7 +303,7 @@ func (r TargetReturn) IsZero() bool { return r == TargetReturn{} }
 
 // IsZero reports whether the entry says nothing about its target.
 func (t TargetPurpose) IsZero() bool {
-	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero()
+	return !t.HasPlayerAmount() && t.Damage == 0 && !t.DamageIsX && t.Returns.IsZero() && !t.Reanimates
 }
 
 // HasPlayerAmount reports whether the entry names an amount only a

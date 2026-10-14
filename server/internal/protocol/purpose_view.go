@@ -176,6 +176,9 @@ type TargetPurposeView struct {
 	// Returns is what the target's controller is given when the target
 	// is removed (#2679). Absent when nothing comes back.
 	Returns *TargetReturnView `json:"returns,omitempty"`
+	// Reanimates: the spell puts the picked graveyard card onto the
+	// battlefield under its caster's control (#3161).
+	Reanimates bool `json:"reanimates,omitempty"`
 }
 
 // TargetReturnView is game.TargetReturn on the wire: what a removal
@@ -328,7 +331,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		for i, t := range ts {
 			out[i] = TargetPurposeView{
 				Slot: t.Slot, Draws: t.Draws, Discards: t.Discards, Tokens: t.Tokens,
-				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX,
+				LifeGain: t.LifeGain, LifeLoss: t.LifeLoss, Damage: t.Damage, DamageIsX: t.DamageIsX, Reanimates: t.Reanimates,
 			}
 			if r := t.Returns; !r.IsZero() {
 				out[i].Returns = &TargetReturnView{

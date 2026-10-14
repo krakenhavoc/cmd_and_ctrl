@@ -3415,6 +3415,8 @@ export interface TargetPurposeView {
   damage?: number;
   // #1944: the damage is the announced X; `damage` is then absent.
   damage_is_x?: boolean;
+  // #3161: the spell puts the picked graveyard card onto the battlefield under its caster.
+  reanimates?: boolean;
   // #2679: what the target's controller is given when it is removed.
   returns?: TargetReturnView;
 }

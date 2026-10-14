@@ -3400,6 +3400,7 @@ opponent.
 | `life_loss` | life the target player loses (not damage) | Sign in Blood 2 |
 | `damage` | damage dealt to the target, player or permanent | Lightning Bolt 3 |
 | `damage_is_x` | the damage dealt to the target is the announced X (#1944); `damage` is then absent | Chandra, Awakened Inferno's −X |
+| `reanimates` | the spell puts the picked graveyard card onto the battlefield under its caster's control (#3161); the bot prices the pick as the permanent it becomes, whoever owns the graveyard | Reanimate, Animate Dead |
 | `returns` | what the target's **controller** is given when the target is removed (#2679), an object below; absent when nothing comes back | Rapid Hybridization's 3/3 |
 
 `returns` holds printed amounts, each omitted when zero:

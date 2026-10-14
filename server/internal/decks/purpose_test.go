@@ -40,7 +40,7 @@ var curatedInstantsAndSorceries = []string{
 	"Chaos Warp", "Vandalblast", "Hordeling Outburst", "Krenko's Command", "Dragon Fodder",
 	"Strike It Rich", "Faithless Looting", "Big Score", "Unexpected Windfall", "Seize the Spoils",
 	// mono-black-aristocrats
-	"Reanimate", "Zombify", "Dread Return", "Stitch Together", "Living Death",
+	"Stitch Together", "Living Death",
 	"Rise of the Dark Realms", "Dread Summons", "Entomb", "Altar's Reap", "Deadly Dispute",
 	"Night's Whisper", "Sign in Blood", "Exsanguinate", "Doom Blade", "Ashes to Ashes",
 	"Demonic Tutor",
@@ -90,9 +90,6 @@ var valueIsTheirTarget = map[string]string{
 	"Chaos Warp":         "removal",
 	"Krosan Grip":        "removal",
 	"Ashes to Ashes":     "removal",
-	"Reanimate":          "reanimation of the target",
-	"Zombify":            "reanimation of the target",
-	"Dread Return":       "reanimation of the target",
 	"Stitch Together":    "reanimation of the target, or its return to hand",
 	// The first three are stompy and weenie removal; Council's Judgment
 	// has no target at all (each player votes), but it is removal and
