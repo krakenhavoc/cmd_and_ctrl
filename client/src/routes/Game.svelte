@@ -68,6 +68,7 @@
   } from "../lib/tableSettings";
   import TableSettingsPanel from "../lib/components/TableSettingsPanel.svelte";
   import VoiceRoom from "../lib/components/VoiceRoom.svelte";
+  import NotificationsNudge from "../lib/components/NotificationsNudge.svelte";
   import { refreshVoiceRoom, setVoiceRoom, voiceChip } from "../lib/voiceRoom";
   import { community, loadCommunity } from "../lib/community";
   import CardSpawner from "../lib/components/CardSpawner.svelte";
@@ -2573,6 +2574,11 @@
       <!-- ADR 0111: the action dock, a sibling of the board in the
            play area's bottom-right corner. Outside the boundary on
            purpose: `next` keeps working when the table fails to draw. -->
+      <!-- ADR 0162 §1: the one-time Discord DM suggestion, for a seated
+           player at a real table. It decides the rest itself. -->
+      {#if dockShown && !gameEnded && $practiceTable?.gameID !== gameID && !isPracticeGame(gameID)}
+        <NotificationsNudge />
+      {/if}
       {#if dockShown}
         <!-- The dock's requests (lib/dock.ts). Each is open for as long
              as its block is mounted; the dock draws the strongest. -->
