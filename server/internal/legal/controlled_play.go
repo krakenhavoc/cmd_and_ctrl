@@ -123,6 +123,11 @@ func (e *enumerator) controlledChoiceMoves() bool {
 		if e.g.ControllerOfPlayerLocked(p.ID) != e.seat {
 			continue
 		}
+		// ADR 0167 §7: a turn's controller gets the whole of that
+		// seat's run (controlledTurnMoves), prompts included.
+		if e.g.ControlUntilOfPlayerLocked(p.ID) == game.ControlUntilTurn {
+			continue
+		}
 		sub := enumeratorAs(e.g, p.ID, e.opts)
 		if sub == nil {
 			continue
@@ -136,4 +141,27 @@ func (e *enumerator) controlledChoiceMoves() bool {
 		e.added += sub.added
 	}
 	return owed
+}
+
+// controlledTurnMoves appends, after e's own run, the full run of each
+// seat whose turn e's seat is playing (ADR 0167 §7): everything that
+// seat would be offered if it decided for itself, each move's Player
+// set to that seat, so the actions layer runs it as them. Only one seat
+// holds priority at a time, so the two lists are non-empty together
+// only for prompts, and Player tells them apart. Caller must hold g.mu.
+func (e *enumerator) controlledTurnMoves() {
+	for _, seat := range e.g.TurnControlledByLocked(e.seat) {
+		sub := enumeratorAs(e.g, seat, e.opts)
+		if sub == nil {
+			continue
+		}
+		sub.report = e.report
+		sub.run()
+		for i := range sub.out {
+			sub.out[i].Player = seat
+		}
+		e.out = append(e.out, sub.out...)
+		e.cuts = append(e.cuts, sub.cuts...)
+		e.added += sub.added
+	}
 }

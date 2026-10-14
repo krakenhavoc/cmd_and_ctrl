@@ -179,22 +179,108 @@ func TestSunbirdsInvocationRevealsTopXAndCastsOneFree(t *testing.T) {
 	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{bear}); err != nil {
 		t.Fatalf("ResolveChooseCards: %v", err)
 	}
-	if !inExile(g, bear) {
-		t.Fatal("the chosen card is held in exile for its free cast")
+	if inExile(g, bear) {
+		t.Fatal("the chosen card is cast from the library, not exiled first")
+	}
+	if i := libraryIndex(me, bear); i != len(me.Library.Cards)-1 {
+		t.Fatalf("the chosen card stays on top of the library, found at index %d", i)
 	}
 	for _, id := range []uuid.UUID{forest, wurm} {
 		if i := libraryIndex(me, id); i < 0 || i > 1 {
 			t.Errorf("the rest should be on the bottom of the library, found at index %d", i)
 		}
 	}
+	if err := g.CastSpell(me.ID, wurm, game.CastSpellParams{FromZone: "library"}); err == nil {
+		t.Error("the grant opens the chosen card and no other card in the library")
+	}
 	// The window closes on the caster's next pass, so the Bear is cast
 	// now, with the Three Drop still on the stack beneath it.
-	if err := castFromExile(t, g, me.ID, bear); err != nil {
-		t.Fatalf("free cast of the revealed card: %v", err)
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "library"}); err != nil {
+		t.Fatalf("free cast of the revealed card from the library: %v", err)
+	}
+	if libraryIndex(me, bear) >= 0 {
+		t.Error("the cast takes the card off the library")
 	}
 	passPriorityAroundTable(t, g)
 	if !g.Battlefield.Contains(bear) {
 		t.Error("the free spell should resolve")
+	}
+}
+
+// The cast event names the library as where the spell came from, which
+// is what a "cast from your library" reader and Sunbird's own
+// hand-only trigger both read.
+func TestSunbirdsInvocationCastComesFromTheLibrary(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, me.ID, "Sunbird's Invocation", "Enchantment", sunbirdsInvocationOracle, false)
+	ids := sunbirdLibrary(me,
+		game.Card{Name: "Cheap Sorcery", TypeLine: "Sorcery", ManaCost: "{R}"},
+		game.Card{Name: "Filler", TypeLine: "Basic Land — Mountain"},
+	)
+	sorcery := ids[0]
+	castSpellWithCost(t, g, "Two Drop", "Sorcery", "", "{1}{R}", nil)
+	passPriorityUntilChoice(t, g)
+	c := chooseCardsChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the reveal should offer a free cast")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{sorcery}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if err := g.CastSpell(me.ID, sorcery, game.CastSpellParams{FromZone: "library"}); err != nil {
+		t.Fatalf("free cast from the library: %v", err)
+	}
+	var from game.ZoneKind
+	for _, ev := range g.Events {
+		if ev.Kind == game.EventCast && ev.CardID == sorcery {
+			from = ev.OldZone
+		}
+	}
+	if from != game.ZoneLibrary {
+		t.Errorf("the free spell was cast from %q, want the library", from)
+	}
+	passPriorityAroundTable(t, g)
+	if chooseCardsChoiceFor(g, me.ID) != nil {
+		t.Error("a spell cast from the library does not trigger Sunbird's Invocation again")
+	}
+}
+
+// Passing without casting closes the window and bottoms the chosen card
+// out of the library, as the rest were.
+func TestSunbirdsInvocationUncastPickGoesToTheBottom(t *testing.T) {
+	g := newCatalogGame(t)
+	me := g.Seats[g.Turn.ActiveSeat]
+	pushCatalogPermanent(g, me.ID, "Sunbird's Invocation", "Enchantment", sunbirdsInvocationOracle, false)
+	for range 5 {
+		me.Library.PushTop(game.Card{InstanceID: uuid.New(), Name: "Deep Card", TypeLine: "Basic Land — Mountain",
+			Owner: me.ID, Controller: me.ID})
+	}
+	ids := sunbirdLibrary(me,
+		game.Card{Name: "Cheap Bear", TypeLine: "Creature — Bear", ManaCost: "{1}{G}"},
+		game.Card{Name: "Filler", TypeLine: "Basic Land — Forest"},
+	)
+	bear := ids[0]
+	castSpellWithCost(t, g, "Two Drop", "Sorcery", "", "{1}{R}", nil)
+	passPriorityUntilChoice(t, g)
+	c := chooseCardsChoiceFor(g, me.ID)
+	if c == nil {
+		t.Fatal("the reveal should offer a free cast")
+	}
+	if err := g.ResolveChooseCards(c.ID, me.ID, []uuid.UUID{bear}); err != nil {
+		t.Fatalf("ResolveChooseCards: %v", err)
+	}
+	if i := libraryIndex(me, bear); i != len(me.Library.Cards)-1 {
+		t.Fatalf("the pick waits on top of the library, found at index %d", i)
+	}
+	if err := g.PassPriority(); err != nil {
+		t.Fatalf("PassPriority: %v", err)
+	}
+	if i := libraryIndex(me, bear); i != 0 {
+		t.Errorf("an uncast pick goes to the bottom of the library, found at index %d", i)
+	}
+	if err := g.CastSpell(me.ID, bear, game.CastSpellParams{FromZone: "library"}); err == nil {
+		t.Error("the window closed on the pass")
 	}
 }
 

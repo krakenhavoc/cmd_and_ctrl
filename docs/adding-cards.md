@@ -9375,8 +9375,10 @@ DelayedOnEvent{On: []game.EventKind{game.EventChangeLife}, Condition: c, Body: b
   (`PermanentInfo.Copiable`); Unstable Shapeshifter reads it.
 - **A cost of tapping several named permanents is a mana ability's `TapOthers`** (Heritage Druid's shape, The Cabbage Merchant's two
   Foods), and a discard is `DiscardACard()` in `Plus(...)` (Trading Post).
-- **Cards that stay caveated**, with the gap named: Sunbird's Invocation (the chosen card is cast from exile because a revealed
-  non-top library card has no client affordance to cast from), Transmutation Font (a "different names" rule over a three-permanent
+- **"Cast one of the revealed cards" from the library, as printed:** bottom the rest first, so the pick IS the top card (still
+  known from the reveal, so its owner's pile shows it), then grant a `ScopeCards` permission in `ZoneLibrary` with
+  `LapseOnPass: LapseToLibraryBottom`; the lapse bottoms an uncast pick out of the zone the grant opens. Sunbird's Invocation.
+- **Cards that stay caveated**, with the gap named: Transmutation Font (a "different names" rule over a three-permanent
   sacrifice), The Warring Triad (mill as an activated-ability cost), Vorinclex, Monstrous Raider (counter placements that name no
   placer). Tower Winder landed Full with #3217.
 
