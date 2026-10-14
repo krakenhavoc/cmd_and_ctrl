@@ -37,7 +37,7 @@ func init() {
 		OracleID:            "58a2d15f-1b4b-4303-b524-8cc0d1b3e7d2",
 		Name:                "Painful Truths",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so Painful Truths draws nothing — turn strict mana on for it to count colours."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so Painful Truths draws nothing — turn on “Charge mana costs” for it to count colours."},
 		WantsDistinctColors: true,
 		OnResolve: func(item *game.StackItem, ctx *Context) error {
 			x := ctx.ColorsSpentCount()

@@ -24,7 +24,7 @@ func init() {
 		OracleID:     "36937483-30cb-449a-8028-75017a124922",
 		Name:         "Boseiju, Who Shelters All",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so an instant or sorcery cast with Boseiju's mana can still be countered."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so an instant or sorcery cast with Boseiju's mana can still be countered."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Life: 2},

@@ -37,7 +37,7 @@ func init() {
 		OracleID:     "aa6723a2-75da-49f5-a1ba-cbfa82c55301",
 		Name:         "Opal Palace",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so your commander gets no extra +1/+1 counters."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so your commander gets no extra +1/+1 counters."},
 		ManaAbilities: []ManaAbility{
 			{
 				Cost:     ManaAbilityCost{Tap: true},

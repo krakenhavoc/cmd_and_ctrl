@@ -24,7 +24,7 @@ func init() {
 		OracleID:     "68ac061a-e4a3-46df-9169-62f6a8481584",
 		Name:         "Generator Servant",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature never gains haste."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature never gains haste."},
 		ManaAbilities: []ManaAbility{{
 			Cost:     ManaAbilityCost{Tap: true, Sacrifice: true},
 			Produced: "{C}{C}",

@@ -30,7 +30,7 @@ func init() {
 		OracleID:     "32fe7ac4-86f5-44af-9f73-ee8f6a9ce2ba",
 		Name:         "Hall of the Bandit Lord",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so the creature never gains haste."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so the creature never gains haste."},
 		Replacements: []game.ReplacementEffect{SelfEntersTapped()},
 		ManaAbilities: []ManaAbility{{
 			Cost:        ManaAbilityCost{Tap: true, Life: 3},
