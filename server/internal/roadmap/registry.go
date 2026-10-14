@@ -2159,13 +2159,12 @@ var items = []Item{
 		EngineNotes: "every `game.ModeSpec` is chosen by a player (a spell at CR 601.2b, an activation at 602.2b, a trigger through the `mode_pick` prompt at 603.3c). \"Choose one at random\" needs the engine to pick among the bullets with a legal target, from the keyed random stream (`ChooseAtRandomForEffect`) so undo replays it, as the trigger goes on the stack and before its targets are chosen. Summon: Magus Sisters also waits on shield counters (#2000). Found building the Tidus deck request (#3246).",
 	},
 	{
-		Slug: "resolved-cant-attack-you", Name: "\"Can't attack you\" from a spell, held by a counter", Kind: KindSeam, Status: StatusMissing,
-		Summary:     "A spell that stops creatures attacking you for as long as they keep a counter, such as Promise of Loyalty's vow counters.",
-		Missing:     "A creature's own rules text can stop it attacking a player, but a spell can't put that rule on it.",
+		Slug: "resolved-cant-attack-you", Name: "\"Can't attack you\" from a spell, held by a counter", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "A spell that stops creatures attacking you for as long as they keep a counter, such as Promise of Loyalty's vow counters: the chosen creatures can't attack you or your planeswalkers until the last vow counter leaves.",
 		Rules:       []string{"508.1c", "611.2b"},
 		Issue:       3400,
-		Waiting:     []string{"Promise of Loyalty"},
-		EngineNotes: "`Characteristic.AttackTargetRestrictions` is written only by layer-6 statics (`CantAttackItsOwner`, ADR 0106 §2); a resolved effect has no mod kind for it (docs/adding-cards.md says so for Elrond of the White Council). Promise of Loyalty needs that mod naming the caster and their planeswalkers, timed by the existing counter-held duration (`game.WhilePinnedHasCounter` with the vow counter, ADR 0109 §2). Each player's own choice is Summon: Valefor's chained `ChoosePermanents`. Found building the Tidus deck request (#3246).",
+		Examples:    []string{"Promise of Loyalty"},
+		EngineNotes: "**Shipped** (#3400). The `ScopedEffect` mod kind `cantAttackPlayer` (`game.CantAttackPlayerMod`, layer 6) reads `Mod.Player`, the protected player, fixed when the spell resolves (CR 611.2c), and appends `AttackTargetRestriction{NotPlayer}` to the pinned creature, attributed to the record's source. `canAttackTargetWithLocked` reads it with the other restrictions, so both declaration verbs, the CR 508.1d search and the enumerator follow; it refuses the player and the planeswalkers they control, not a battle they protect. The card shows the CAN'T ATTACK chip. The duration is `WhilePinnedHasCounter` through `effects.CounterThenWhileItHasIt`, so it ends for good with the last vow counter. Shipped on Promise of Loyalty (each player's own creature is Summon: Valefor's chained `ChoosePermanents`). Elrond of the White Council (#2926) wants the sibling \"can't attack its owner\" mod, which needs a clause naming the creature's owner rather than a fixed player.",
 	},
 	{
 		Slug: "control-while-source-tapped", Name: "Effects that last while a permanent stays tapped", Kind: KindSeam, Status: StatusImplemented,

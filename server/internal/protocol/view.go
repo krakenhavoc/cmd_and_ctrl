@@ -6684,11 +6684,24 @@ type AttackTargetRestrictionView struct {
 // restrictions. Nil for nearly every card, and for a restriction that
 // names the creature's own controller, which CR 506.2 already forbids.
 func viewOfAttackTargetRestrictions(c *game.Card, eff game.Characteristic) []AttackTargetRestrictionView {
-	if len(eff.AttackTargetRestrictions) == 0 || c.Owner == uuid.Nil || c.Owner == c.Controller {
+	if len(eff.AttackTargetRestrictions) == 0 {
 		return nil
 	}
 	var out []AttackTargetRestrictionView
 	for _, r := range eff.AttackTargetRestrictions {
+		// #3400: a fixed player the creature can't attack, and their
+		// planeswalkers (Promise of Loyalty). Not the creature's own
+		// controller, whom CR 506.2 already forbids.
+		if r.NotPlayer != uuid.Nil && r.NotPlayer != c.Controller {
+			out = append(out, AttackTargetRestrictionView{
+				Player:        r.NotPlayer.String(),
+				Planeswalkers: true,
+				Source:        r.SourceName,
+			})
+		}
+		if c.Owner == uuid.Nil || c.Owner == c.Controller {
+			continue
+		}
 		// Every printed owner row forbids the owner; a planeswalkers-only
 		// row has no card behind it and no chip that would say it right.
 		// A "defending player controls" row (ADR 0107 §2) needs the

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
@@ -142,6 +144,8 @@ func attackTargetLabel(r game.AttackTargetRestriction) string {
 		return "Can't attack its owner or its owner's planeswalkers."
 	case r.NotOwner:
 		return "Can't attack its owner."
+	case r.NotPlayer != uuid.Nil:
+		return "Can't attack a certain player or their planeswalkers."
 	case len(r.DefenderMustControl) > 0:
 		if n := queriesNoun(r.DefenderMustControl); n != "" {
 			return "Can't attack unless defending player controls " + articleFor(strings.ToLower(n)) + " " + n + "."

@@ -936,6 +936,7 @@ lastKnownBattlefield{}.AttackTargetRestrictions[].DefenderMustControl[].Types[]	
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwner	bool
 lastKnownBattlefield{}.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
+lastKnownBattlefield{}.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownBattlefield{}.AttackTargetRestrictions[].SourceName	string
 lastKnownBattlefield{}.BlockRequirements	array
@@ -1055,6 +1056,7 @@ lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].DefenderMustCo
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwner	bool
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
+lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 lastKnownPermanents{}[].characteristic.AttackTargetRestrictions[].SourceName	string
 lastKnownPermanents{}[].characteristic.BlockRequirements	array
@@ -2145,6 +2147,7 @@ pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].DefenderM
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotAlreadyAttackedThisTurn	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwner	bool
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotOwnersPlaneswalkers	bool
+pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].NotPlayer	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].Source	custom(uuid.UUID)
 pendingChoices[].damageAssignment.SourceLKI.AttackTargetRestrictions[].SourceName	string
 pendingChoices[].damageAssignment.SourceLKI.BlockRequirements	array
