@@ -531,6 +531,21 @@ const (
 	// and the turn bar will not move to it; without this line the
 	// promise just vanishes.
 	LogExtraTurnSkipped LogKind = "extra_turn_skipped"
+	// LogTurnSkip — an effect made a player skip their next turns (CR
+	// 614.10, ADR 0188 Decision 1, #3559: Magosi, the Waterveil, Lethal
+	// Vapors). `seat` is the player who will skip, `card_id` the card whose
+	// effect wrote the debt and `amount` how many turns it adds.
+	// Narrated because it changes the turn's structure: the next seat
+	// clockwise will not be the next to play, and the table needs to know
+	// why before the turn bar moves.
+	LogTurnSkip LogKind = "turn_skip"
+	// LogTurnSkipped — a player's turn was skipped because they owed a
+	// skip (CR 614.10a, ADR 0188 Decision 1). `seat` is the player who
+	// would have taken it and `card_id` the card whose effect wrote the
+	// debt. `label` is "extra" when the turn skipped was an extra turn.
+	// Narrated because the LogTurnSkip line promised it and the turn bar
+	// moves on without a turn beginning.
+	LogTurnSkipped LogKind = "turn_skipped"
 	// LogExtraPhase — an effect added phases or a step to the current
 	// turn (CR 500.8 / 500.9, ADR 0059 Decision 11). `seat` is the
 	// active player, whose turn gets them, and `card_id` the card whose
@@ -1917,6 +1932,22 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventTurnSkipAdded:
+		// ADR 0188 Decision 1. Amount is how many turns the debt adds.
+		base.Kind = LogTurnSkip
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Amount = ev.Amount
+		return base, true
+
+	case game.EventTurnSkipped:
+		// Label "extra" marks a skipped extra turn; Amount is then its
+		// ExtraTurn.Ref, which a reader has no use for, so it is not
+		// carried onto the line.
+		base.Kind = LogTurnSkipped
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventPlayerControlScheduled, game.EventPlayerControlBegan, game.EventPlayerControlEnded:
 		// ADR 0167. Actor controls Target. Not setTarget, for
 		// EventPlayerChosen's reason: the controlled player is a seat.
@@ -2691,6 +2722,24 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s skips their extra turn", actor)
 		}
 		return fmt.Sprintf("%s skips their extra turn (%s)", actor, card)
+	case LogTurnSkip:
+		turns := "turn"
+		if e.Amount > 1 {
+			turns = fmt.Sprintf("%d turns", e.Amount)
+		}
+		if e.CardID == "" {
+			return fmt.Sprintf("%s will skip their next %s", actor, turns)
+		}
+		return fmt.Sprintf("%s will skip their next %s (%s)", actor, turns, card)
+	case LogTurnSkipped:
+		turn := "turn"
+		if e.Label == "extra" {
+			turn = "extra turn"
+		}
+		if e.CardID == "" {
+			return fmt.Sprintf("%s skips their %s", actor, turn)
+		}
+		return fmt.Sprintf("%s skips their %s (%s)", actor, turn, card)
 	case LogTurnEnded:
 		if e.CardID == "" {
 			return fmt.Sprintf("%s's turn ends", actor)

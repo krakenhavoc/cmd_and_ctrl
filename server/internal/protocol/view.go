@@ -2115,6 +2115,11 @@ type PlayerView struct {
 	// seat. Never cleared once set, and never true on a bot seat.
 	IsAgent     bool   `json:"is_agent,omitempty"`
 	AgentClient string `json:"agent_client,omitempty"`
+	// TurnSkips is how many of this player's next turns they will skip
+	// (CR 614.10, ADR 0188 Decision 9, #3559): Magosi, the Waterveil's
+	// and Lethal Vapors' "skip your next turn". Omitted at zero. Public
+	// and identical for every viewer: the effect that wrote it was.
+	TurnSkips int `json:"turn_skips,omitempty"`
 	// CitysBlessing is the city's blessing (CR 702.131c): a player
 	// designation ascend gives, kept for the rest of the game. Public
 	// and identical for every viewer, like the monarch. #2696.
@@ -9185,6 +9190,7 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		IsAgent:               p.Agent,
 		AgentClient:           p.AgentClient,
 		CitysBlessing:         p.CitysBlessing,
+		TurnSkips:             g.TurnSkipsForLocked(p.ID),
 		CommanderCasts:        cmdrCasts,
 		Counters:              cloneStringIntMap(p.Counters),
 		MaxHandSize:           g.EffectiveMaxHandSizeLocked(p),

@@ -742,7 +742,9 @@ reads the `combat_damage` stop and has no grid row of its own).
   the Promised End).
 - **"Skip your next turn"** and skipping steps of an extra turn (Savor
   the Moment). The step-transition replacement can express the latter,
-  but binding it to "that turn" is a card-PR question.
+  but binding it to "that turn" is a card-PR question. (Both are now
+  built or decided by [ADR 0188](0188-skipped-turns-and-turn-bound-effects.md):
+  Decision 1 for the skip, Decision 3a for the step.)
 - **The CR 514.3a extra cleanup step.** It could be a plan splice, but
   [ADR 0035](0035-until-end-of-turn-effects.md)'s simplification stands.
 - ~~**Skipping declare blockers and combat damage when nobody attacks**

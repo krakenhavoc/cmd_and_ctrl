@@ -1113,6 +1113,16 @@ export type LogKind =
   // beginning (Trouble in Pairs). `seat` is who would have taken it,
   // `card_id` the card whose effect created it.
   | "extra_turn_skipped"
+  // ADR 0188 Decision 1 (#3559, CR 614.10): an effect made a player
+  // skip their next turns (Magosi, the Waterveil; Lethal Vapors). `seat`
+  // is who will skip, `card_id` the card whose effect wrote the debt and
+  // `amount` how many turns it adds.
+  | "turn_skip"
+  // ADR 0188 Decision 1 (CR 614.10a): a turn was skipped because its
+  // player owed a skip. `seat` is who would have taken it, `card_id` the
+  // card whose effect wrote the debt, and `label` is "extra" when the
+  // turn skipped was an extra turn.
+  | "turn_skipped"
   // ADR 0059 Decision 11 (#753): an effect added phases or a step to
   // the current turn (CR 500.8 / 500.9). `seat` is the active player,
   // `card_id` the card whose effect added them, and `label` what was
@@ -2270,6 +2280,10 @@ export interface PlayerView {
   // ascend gives and nothing takes away. Public, identical for every
   // viewer; absent until the seat has it.
   citys_blessing?: boolean;
+  // ADR 0188 Decision 9 (#3559, CR 614.10): how many of this player's
+  // next turns they will skip. Public, identical for every viewer; absent
+  // at zero.
+  turn_skips?: number;
   // The playmat the seat's signed-in owner chose (ADR 0128): a
   // same-origin path, /playmats/<uuid>, drawn behind that seat's
   // battlefield. Public and identical for every viewer. Absent for a

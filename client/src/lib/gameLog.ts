@@ -162,6 +162,9 @@ const LOG_TONE: Record<LogKind, string> = {
   extra_turn: "tone-step",
   // #2529. A skipped extra turn is the same structure changing back.
   extra_turn_skipped: "tone-step",
+  // ADR 0188 (#3559). A skipped turn is the turn structure changing too.
+  turn_skip: "tone-step",
+  turn_skipped: "tone-step",
   // Added phases change the turn's structure too — another combat is
   // coming — so they are toned like the step spine as well.
   extra_phase: "tone-step",
