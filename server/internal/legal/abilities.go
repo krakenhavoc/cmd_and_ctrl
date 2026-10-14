@@ -1743,6 +1743,35 @@ func counterPaymentChoices(opts []game.CounterCostOption, rc *game.CounterRemova
 	if rc == nil {
 		return []counterChoice{{}}
 	}
+	if rc.Among && rc.Variable {
+		// #3276: a variable among cost is printed on cards that turn
+		// counters into mana, so, as for the single-permanent
+		// variable form below, the one payment worth offering is the
+		// largest: every counter of the kind on every matched
+		// permanent, in one part each. The announced total is their
+		// sum, and it must reach the floor.
+		var parts []counterPart
+		total, best := 0, 0
+		for _, o := range opts {
+			for _, k := range o.Kinds {
+				if rc.Counter != "" && k.Kind != rc.Counter {
+					continue
+				}
+				parts = append(parts, counterPart{cardID: o.CardID, kind: k.Kind, n: k.Count})
+				total += k.Count
+				if k.Count > best {
+					best = k.Count
+				}
+			}
+		}
+		if total < rc.N || total < 1 {
+			return nil
+		}
+		return []counterChoice{{
+			parts: parts, total: total, count: best,
+			fromOther: true, anyKind: rc.Counter == "", explicitCounts: true,
+		}}
+	}
 	if rc.Among {
 		// One pool, drained biggest first. For a printed kind the
 		// pool is that kind's counters; for an any-kind among cost

@@ -65,6 +65,38 @@ func TestRegisterRejectsACounterCostOfZero(t *testing.T) {
 	})
 }
 
+// A variable AMONG cost is a shape for a printed kind and a floor of one
+// (#3276); the shapes nobody prints stay refused.
+func TestRegisterAcceptsOnlyThePrintedVariableAmongShape(t *testing.T) {
+	among := func(kind string, n int) game.AbilityCost {
+		c := RemoveCountersAmong(kind, n, "artifacts you control", Artifact())
+		c.RemoveCounters.Variable = true
+		return c
+	}
+	mustPanic(t, "of any kind from among", func() {
+		Register(Spec{
+			OracleID: "counter-cost-test-variable-among-any",
+			Name:     "Variable Among Any Kind",
+			Activated: []ActivatedAbility{{
+				Label:  "Remove counters from among artifacts you control: do nothing",
+				Cost:   among("", 1),
+				Effect: func(*game.Game, *game.StackItem) error { return nil },
+			}},
+		})
+	})
+	mustPanic(t, "any number", func() {
+		Register(Spec{
+			OracleID: "counter-cost-test-variable-among-zero",
+			Name:     "Variable Among Zero Floor",
+			Activated: []ActivatedAbility{{
+				Label:  "Remove any number of counters from among artifacts you control: do nothing",
+				Cost:   among("+1/+1", 0),
+				Effect: func(*game.Game, *game.StackItem) error { return nil },
+			}},
+		})
+	})
+}
+
 // An any-kind cost of more than one counter might be paid with two
 // DIFFERENT kinds, and one kind choice at announce cannot say so.
 // Register refuses it rather than let a card file claim the shape.

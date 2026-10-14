@@ -1036,8 +1036,15 @@ func checkCounterCost(card, where string, rc *game.CounterRemovalCost, ac *game.
 			if rc.From == nil {
 				panic(fmt.Sprintf("effects.Register: %q %s splits a counter removal among nothing — an Among cost needs its \"from among …\" clause", card, where))
 			}
-			if rc.Variable {
-				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters from among several permanents — no printed card does, and it has no shape", card, where))
+			// A variable count split across permanents is a shape since
+			// #3276 (Jetfire, Ingenious Scientist: "one or more +1/+1
+			// counters from among artifacts you control"). Only the
+			// printed form is: one kind, and a floor of at least one.
+			if rc.Variable && rc.Counter == "" {
+				panic(fmt.Sprintf("effects.Register: %q %s removes a variable number of counters of any kind from among several permanents — no printed card does", card, where))
+			}
+			if rc.Variable && rc.N < 1 {
+				panic(fmt.Sprintf("effects.Register: %q %s removes \"any number\" of counters from among several permanents — no printed card does; a variable among cost prints \"one or more\" (floor 1)", card, where))
 			}
 		}
 	}
