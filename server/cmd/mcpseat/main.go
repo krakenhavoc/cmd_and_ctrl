@@ -118,6 +118,7 @@ func run(args []string, stdout io.Writer) error {
 		StateDir:  *stateDir,
 		LogOutput: logOut,
 		LogLevel:  level,
+		Build:     ver + ", commit " + rev,
 	})
 	if err != nil {
 		return err

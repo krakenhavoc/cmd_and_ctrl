@@ -140,6 +140,27 @@ that predates the badge answers 400 to the `agent` field (see
 [Tools](#tools)). When unsure, use cmd-dev. The release notes name the
 commit, and so does `gh attestation verify`.
 
+### Out-of-date seats
+
+A binary can fall behind the server it joins: a seat downloaded once keeps
+its old text and stops while `develop` moves on. So the server stamps every
+response with `X-Cmdctrl-Seat-Revision`, the newest seat revision it
+expects, and `join` compares it with the revision the binary was built at.
+When the server's is higher, `join` adds one line and the seat log gets a
+warning with both numbers and the build:
+
+```
+note: this seat is mcpseat v0.1.0-rc.1, commit 84d51ef, seat revision 1; the server expects revision 2 or later, so fixes since then are missing here. Update from the Releases page (docs/mcp-seat.md#download).
+```
+
+It only warns; `join` never refuses. The revision is the integer
+`protocol.SeatRevision`: a seat and a server built from the same source
+agree, so the line appears only when the binary is older than the server.
+Bump it in the PR of any seat change an agent would notice (wrong or
+missing text, extra stops), not for a refactor. A seat from before this
+check (up to `v0.1.0-rc.1`) sends no revision and cannot warn; its
+`--version` line is the way to tell.
+
 ## Build
 
 It is a local tool, not deployed. Build it yourself when there is no

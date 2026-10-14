@@ -172,6 +172,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -215,6 +216,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/modelkeys"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/roadmap"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/supportlinks"
@@ -966,7 +968,19 @@ func newPublicHandler(hub *ws.Hub, authenticator auth.Authenticator, cardIdx *ca
 	// The lobby: everything not routed above. Its own mux records its
 	// own patterns, so a lobby route is labelled as itself, not "/".
 	mux.Handle("/", lobbyHandler)
-	return metrics.InstrumentHTTP(mux, wsRoute)
+	return advertiseSeatRevision(metrics.InstrumentHTTP(mux, wsRoute))
+}
+
+// advertiseSeatRevision stamps every response with the newest MCP seat
+// revision this server expects, so an out-of-date seat can warn its agent
+// on join (#3608). It rides a header because the seat already calls the
+// join and /me routes and needs no new endpoint.
+func advertiseSeatRevision(next http.Handler) http.Handler {
+	rev := strconv.Itoa(protocol.SeatRevision)
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set(protocol.SeatRevisionHeader, rev)
+		next.ServeHTTP(w, r)
+	})
 }
 
 // config is the minimal set of env-derived values main() needs. Kept

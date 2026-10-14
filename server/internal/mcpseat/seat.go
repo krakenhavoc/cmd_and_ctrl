@@ -41,6 +41,12 @@ type Config struct {
 	// AckTimeout bounds act's wait for the server's ack or error (§6.4).
 	// Past it, act answers `unknown` and the model reads the state.
 	AckTimeout time.Duration
+	// Build names this binary ("v0.1.0, commit abc"), for the out-of-date
+	// note on join. Empty means "this seat".
+	Build string
+	// Revision is the seat revision this binary was built at; 0 means
+	// protocol.SeatRevision. A test sets it lower to be an old seat.
+	Revision int
 	// Now is the clock; nil means time.Now.
 	Now func() time.Time
 }

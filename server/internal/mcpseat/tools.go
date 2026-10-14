@@ -151,7 +151,28 @@ func (s *Seat) Join(ctx context.Context, in JoinInput) (Result, error) {
 		r := s.installDeck(ctx, *in.Deck)
 		deckNote = append(deckNote, r.Text)
 	}
-	return s.joinedText(resumed, append(s.deckCatalogLines(ctx), deckNote...)), nil
+	extra := append(s.outdatedLines(), s.deckCatalogLines(ctx)...)
+	return s.joinedText(resumed, append(extra, deckNote...)), nil
+}
+
+// outdatedLines is the one-line warning for a seat older than its server
+// (#3608): the server advertised a newer seat revision than this binary
+// was built at. It warns and logs, and never refuses the join.
+func (s *Seat) outdatedLines() []string {
+	have := s.cfg.Revision
+	if have <= 0 {
+		have = protocol.SeatRevision
+	}
+	want := int(s.api.serverRev.Load())
+	if want <= have {
+		return nil
+	}
+	name := "this seat"
+	if s.cfg.Build != "" {
+		name = "this seat is mcpseat " + s.cfg.Build
+	}
+	s.log.Warn("the seat is older than the server expects", "seat_revision", have, "server_revision", want, "build", s.cfg.Build)
+	return []string{fmt.Sprintf("note: %s, seat revision %d; the server expects revision %d or later, so fixes since then are missing here. Update from the Releases page (docs/mcp-seat.md#download).", name, have, want)}
 }
 
 // deckCatalogLines names the pre-built decks set_deck's {id} takes, while

@@ -10,6 +10,17 @@ import "encoding/json"
 // different v field are rejected.
 const Version = 0
 
+// SeatRevision is the revision of the MCP seat (cmd/mcpseat) this source
+// tree ships, and a server advertises it in the SeatRevisionHeader of every
+// response (#3608). A seat built from older source sees a higher number
+// than its own and tells its agent to update. Bump it when a seat change
+// fixes something an agent would notice (wrong text, extra stops), never
+// for a refactor. docs/mcp-seat.md#out-of-date-seats has the rule.
+const SeatRevision = 1
+
+// SeatRevisionHeader carries the server's SeatRevision on its responses.
+const SeatRevisionHeader = "X-Cmdctrl-Seat-Revision"
+
 // Kind is the discriminator for a frame.
 type Kind string
 
