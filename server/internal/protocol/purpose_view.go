@@ -107,6 +107,10 @@ type PurposeView struct {
 	// declares only answers is not Priced. A pointer so PurposeView
 	// stays comparable.
 	Answers *[]string `json:"answers,omitempty"`
+	// Aura is "benefit" or "harm" on an Aura card (#3309): what it does
+	// to the permanent it enchants. Absent when the card declares none.
+	// Not an amount, like Answers.
+	Aura string `json:"aura,omitempty"`
 }
 
 // Priced reports whether the purpose declares anything the bot prices:
@@ -120,6 +124,7 @@ func (p *PurposeView) Priced() bool {
 	}
 	q := *p
 	q.Answers = nil
+	q.Aura = ""
 	return q != PurposeView{}
 }
 
@@ -268,6 +273,7 @@ func viewOfPurpose(p game.Purpose) *PurposeView {
 		AwakenLand:                p.AwakenLand,
 		ExtraLandDrops:            p.ExtraLandDrops,
 		Impulse:                   p.Impulse,
+		Aura:                      string(p.Aura),
 	}
 	if pm := p.Pump; pm != nil {
 		v.Pump = &PumpView{Power: pm.Power, Toughness: pm.Toughness, Keywords: append([]string(nil), pm.Keywords...)}

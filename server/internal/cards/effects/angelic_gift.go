@@ -30,6 +30,7 @@ func init() {
 		Name:         "Angelic Gift",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			GrantToAttached("flying"),
 		},

@@ -183,7 +183,27 @@ type Purpose struct {
 	// refuses it on a spell, a mode, an alternative cost and a
 	// triggered row, which nothing reads it on yet (ADR 0142 §2).
 	Answers Answers
+
+	// Aura says which way an Aura cuts for the permanent it enchants
+	// (#3309): a buff helps its host (Rancor), a curse hurts it
+	// (Pacifism). Nothing on the wire tells the two apart, so the bot
+	// priced every Aura's host as a target to hit. Declared on the card
+	// of an Aura only; the zero value is "not declared" and keeps that
+	// price. effects.Register refuses it off the card.
+	Aura AuraPurpose
 }
+
+// AuraPurpose is Purpose.Aura: what an Aura does to what it enchants.
+type AuraPurpose string
+
+const (
+	// AuraBenefit helps its host: a pump, a keyword, protection. A bot
+	// enchants its own permanent with it.
+	AuraBenefit AuraPurpose = "benefit"
+	// AuraHarm hurts its host: Pacifism, Arrest. A bot enchants an
+	// opponent's permanent with it.
+	AuraHarm AuraPurpose = "harm"
+)
 
 // TargetPurposes is a statement's target entries (Purpose.Targets), at
 // most one per clause.

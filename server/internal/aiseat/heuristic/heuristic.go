@@ -234,6 +234,12 @@ type Config struct {
 	// below nothing. Zero (the baseline) prices the bestowed target as
 	// any other pick, an opponent's creature as removal.
 	BestowShare float64
+	// PriceAuraPurpose prices an Aura's host by what the Aura does to it
+	// (#3309, aura_host.go): a card that declares itself a buff goes on
+	// the bot's own permanent and never an opponent's, and one that
+	// declares itself a curse is never put on the bot's own. Off (the
+	// baseline) prices every Aura's host as a target to hit.
+	PriceAuraPurpose bool
 	// PriceSweeps turns on ADR 0126 §4: a declared sweep is priced as
 	// the change in ScoreEval with the permanents it removes taken off
 	// the board (sweepValue), so the bot stops casting a wipe onto its
@@ -673,6 +679,7 @@ func DefaultConfig() Config {
 		PricePurposes:       true,
 		NetLandSwaps:        true,
 		PriceTargetPurposes: true,
+		PriceAuraPurpose:    true,
 		DamageByLethality:   true,
 		DamageChip:          0.00,
 		NetRemoval:          true,
@@ -824,6 +831,8 @@ func BaselineConfig() Config {
 	// ADR 0126's amendment of 2026-10-08: a target priced by what the
 	// purpose does to it.
 	c.PriceTargetPurposes = false
+	// #3309: an Aura's host priced by what the Aura does to it.
+	c.PriceAuraPurpose = false
 	c.DamageByLethality = false
 	c.DamageChip = 0
 	// #2679: removal net of what its target's controller gets back.

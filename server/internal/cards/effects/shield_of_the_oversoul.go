@@ -49,6 +49,7 @@ func init() {
 		Name:         "Shield of the Oversoul",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			b43PumpAttachedWhen(green, 1, 1),
 			b43GrantToAttachedWhen(green, "indestructible"),

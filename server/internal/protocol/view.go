@@ -441,6 +441,11 @@ type PendingChoiceView struct {
 	// Absent on every other kind.
 	ControlPurpose string `json:"control_purpose,omitempty"`
 
+	// AuraPurpose populates the "aura_host" kind (#3309): what the
+	// entering Aura does to its host, "benefit" or "harm", from the
+	// card's declared Purpose.Aura. Absent when it declares none.
+	AuraPurpose string `json:"aura_purpose,omitempty"`
+
 	// EntryKeyword names the entry keyword an "entry_riot",
 	// "entry_read_ahead" or "optional_replacement" prompt is asking
 	// about — "riot", "unleash" (ADR 0109 §10) or "read ahead" (#2123)
@@ -8633,6 +8638,9 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 		}
 		if c.Kind == game.PendingChoiceEntryController {
 			v.ControlPurpose = string(c.ControlPurpose)
+		}
+		if c.Kind == game.PendingChoiceAuraHost {
+			v.AuraPurpose = string(g.AuraHostPurpose(c))
 		}
 		// ADR 0109 §10: riot's two answers, and which keyword a riot or
 		// unleash question is about.

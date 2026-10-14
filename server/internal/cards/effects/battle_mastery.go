@@ -26,6 +26,7 @@ func init() {
 		Name:         "Battle Mastery",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			GrantToAttached("double strike"),
 		},

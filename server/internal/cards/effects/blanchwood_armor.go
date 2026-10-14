@@ -30,6 +30,7 @@ func init() {
 		Name:         "Blanchwood Armor",
 		Completeness: CompletenessFull,
 		Targets:      EnchantCreature(),
+		Purpose:      game.Purpose{Aura: game.AuraBenefit},
 		Static: []game.StaticAbility{
 			PumpAttachedPer(1, 1, forestsControlledBy),
 		},

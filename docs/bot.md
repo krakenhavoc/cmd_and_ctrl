@@ -459,8 +459,13 @@ every Aura with a graveyard clause returns that card under the bot's
 control: Animate Dead takes the best creature in any graveyard. A
 permanent or a player is read the way an Aura spell's target is: an
 opponent's creature as answered, the bot's own at `OwnPermanentTarget`
-with its best creature first. Like the cast, it cannot tell a buff Aura
-from a curse, because nothing on the wire says which.
+with its best creature first. An Aura that declares `purpose.aura`
+(`"benefit"` or `"harm"`, #3309; the prompt carries it as `aura_purpose`)
+is priced by it on a battlefield permanent, in the cast and here: a buff
+(Rancor) is worth the creature's value on the bot's own and costs it on
+an opponent's, a curse (Pacifism) costs the value of the bot's own
+creature and keeps the removal price on an opponent's. `PriceAuraPurpose`
+turns it off. An Aura that declares nothing keeps the old reading.
 
 **Whether to reveal (`entry_reveal_from_hand`, #1198, CR 614.1c).** The
 one card-set pick whose answer is FREE, and the reason it is a branch
