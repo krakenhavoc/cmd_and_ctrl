@@ -902,6 +902,36 @@ and games that end afterwards get a record. Older games need the
 backfill (#3365). `TestMigration0023RollbackByHand` runs exactly this
 sequence and then rolls forward.
 
+**Backfilling game statistics** (ADR 0165 §6, #3365). Games that ended
+before migration 0023 have no statistics record, and a bump of
+`gamestats.Version` makes every older record stale.
+`cmd/statsbackfill` computes them from each ended game's replay
+(`<data dir>/replays/<game id>.jsonl`) and stores them with
+`source = replay`. It skips games that already have a current-version
+record, so it is safe to run again. `-dry-run` prints what it would
+compute and writes no records. (It still opens the database the way the
+server does, which applies any pending migrations; run it from the same
+release the server is on.) The binary is not part of CD. Build it
+on a workstation and copy it to the host:
+
+```sh
+cd server && CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o statsbackfill ./cmd/statsbackfill
+scp statsbackfill <host>:/tmp/
+# on the host
+sudo -u cmdctrl /tmp/statsbackfill -data-dir /var/lib/cmd_and_ctrl/data -dry-run
+sudo -u cmdctrl /tmp/statsbackfill -data-dir /var/lib/cmd_and_ctrl/data
+```
+
+Run it as `cmdctrl`, the owner of the 0600 database. The server can
+keep running: the database is in WAL mode with a 5 s busy timeout on
+every connection, each game's record is one short transaction, and the
+tool writes only the three statistics tables. Stop the server only if
+you see `database is locked` failures; a failed game is reported and the
+run goes on, and the exit status is 1 if any failed. A record whose log
+had a hole is stored with `log_complete = 0` (the summary marks it).
+Games with no replay file, such as ones whose files were deleted with
+the game, are skipped.
+
 Migration 0022 (ADR 0162, Discord DM notifications) adds the
 `notification_prefs` table: each person's three notification switches
 and when Discord last refused a DM to them. An older binary refuses the
