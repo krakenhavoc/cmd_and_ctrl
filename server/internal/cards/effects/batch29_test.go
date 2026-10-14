@@ -995,8 +995,8 @@ func TestB29CorneredByBlackMagesEdictsAndLeavesAWizard(t *testing.T) {
 	if c == nil {
 		t.Fatal("the opponent gets a sacrifice prompt")
 	}
-	if len(c.SacrificeOptions) != 2 {
-		t.Errorf("%d options, want the opponent's 2 creatures", len(c.SacrificeOptions))
+	if len(sacrificeOptions(c)) != 2 {
+		t.Errorf("%d options, want the opponent's 2 creatures", len(sacrificeOptions(c)))
 	}
 	answerSacrifice(t, g, opp.ID, fodder)
 	if g.Battlefield.Contains(fodder) || !g.Battlefield.Contains(keep) {

@@ -688,4 +688,9 @@ const (
 	// The client says "Manifest"; the bot prices the pick as cards it
 	// gives up, because a face-down 2/2 is not the card.
 	ChooseManifest ChooseDestination = "manifest"
+	// ChooseSacrifice: the named permanents are sacrificed, together
+	// with every other player's picks, once the last player in APNAP
+	// order has chosen (CR 101.4, 608.2e; #3664). The client says so;
+	// the bot prices the pick as the permanents it gives up.
+	ChooseSacrifice ChooseDestination = "sacrifice"
 )

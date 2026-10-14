@@ -547,7 +547,7 @@ func untappedCount(g *game.Game, ids []uuid.UUID) int {
 
 func hasSacrificeChoiceFor(g *game.Game, player uuid.UUID) bool {
 	for _, c := range g.PendingChoices {
-		if c.Kind == game.PendingChoiceSacrifice && c.Chooser == player {
+		if isSacrificePrompt(c) && c.Chooser == player {
 			return true
 		}
 	}

@@ -376,6 +376,18 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		// answer is always chosen: a seat owing a choice is offered
 		// nothing else, and a policy with no opinion must still pick
 		// (#544).
+		// #3664: an edict's pick ("each player sacrifices a creature")
+		// is a sacrifice, priced as the sacrifice_choice kind above
+		// prices one: give up the least.
+		if ch != nil && ch.ChooseDestination == chooseSacrifice {
+			var v float64
+			for _, id := range cp.CardIDs {
+				if c := lookup(id); c != nil {
+					v -= st.permanentValue(c)
+				}
+			}
+			return v, "sacrifice the least"
+		}
 		// #2680: a prompt that says the named card goes onto the
 		// battlefield is not a discard (puts.go).
 		if v, ok := p.valuePutOntoBattlefield(st, ch, cp.CardIDs); ok {
@@ -973,6 +985,10 @@ const chooseFromOutside = "outside"
 // chooseManifest is game.ChooseManifest on the wire: the named cards
 // from the bot's own hand are manifested (Kozilek, the Broken Reality).
 const chooseManifest = "manifest"
+
+// chooseSacrifice is game.ChooseSacrifice on the wire: the named
+// permanents are sacrificed (an "each player sacrifices" edict, #3664).
+const chooseSacrifice = "sacrifice"
 
 // --- "choose a color" (#780) -----------------------------------------
 

@@ -37,18 +37,21 @@ func TestShadowgrangeArchfiendEachOpponentSacrificesAndYouGainTheGreatestPower(t
 	castAndResolveCreature(t, g, "Shadowgrange Archfiend", "Creature — Demon", shadowgrangeOracle)
 	passPriorityAroundTable(t, g)
 
-	pa := sacrificeChoiceFor(g, a.ID)
-	if pa == nil || len(pa.SacrificeOptions) != 1 || pa.SacrificeOptions[0] != aBig {
-		t.Fatalf("A must sacrifice the Giant, the only greatest-power creature: %+v", pa)
+	// A's Giant is the only greatest-power creature: a forced pick,
+	// collected unasked, that waits for B (ADR 0175, #3664).
+	if pa := sacrificeChoiceFor(g, a.ID); pa != nil {
+		t.Errorf("A has no choice to make and is asked anyway: %+v", pa)
+	}
+	if !g.Battlefield.Contains(aBig) {
+		t.Error("A's Giant was sacrificed before B had chosen")
 	}
 	pb := sacrificeChoiceFor(g, b.ID)
-	if pb == nil || len(pb.SacrificeOptions) != 2 {
+	if pb == nil || len(sacrificeOptions(pb)) != 2 {
 		t.Fatalf("B's two Bears tie for greatest and B chooses: %+v", pb)
 	}
 	if sacrificeChoiceFor(g, c.ID) != nil {
 		t.Error("C has no creature and must not be asked")
 	}
-	answerSacrifice(t, g, a.ID, aBig)
 	answerSacrifice(t, g, b.ID, bTwo)
 	passPriorityAroundTable(t, g)
 

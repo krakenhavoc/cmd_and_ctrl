@@ -1361,11 +1361,16 @@ func (p GuardedPayUnless) Apply(ctx *Context) error {
 // "each opponent sacrifices a creature" (Butcher of Malakir) — CR
 // 701.21a.
 //
-// Every affected player chooses their own, so this fans out one prompt
-// per player rather than picking for them; that is the whole rules
-// content of the card, and it is why the effect is not targeted. A
-// creature with hexproof or protection is still a legal choice, and
-// the effect resolves whether or not anyone has a creature.
+// Every affected player chooses their own, so this asks each player
+// rather than picking for them; that is the whole rules content of the
+// card, and it is why the effect is not targeted. A creature with
+// hexproof or protection is still a legal choice, and the effect
+// resolves whether or not anyone has a creature.
+//
+// The players choose one at a time in APNAP order, each seeing the
+// earlier choices, and every chosen permanent is sacrificed together
+// after the last (CR 101.4, 608.2e; ADR 0175's ordered collector,
+// #3664). A player with exactly one candidate is not asked.
 //
 // Set ExceptController for "each OTHER player" / "each opponent".
 // Leave Match nil for "a permanent"; pass Creature() for the usual

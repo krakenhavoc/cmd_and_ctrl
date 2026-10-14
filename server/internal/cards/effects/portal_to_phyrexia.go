@@ -15,12 +15,12 @@ import (
 //	 in addition to its other types."
 //
 // The entry trigger is Ember Swallower's edict with opponents only:
-// one prompted run, each opponent asked three times in APNAP order
-// (game.PlayersSacrificeThenForEffect), and a player with fewer than
-// three creatures sacrifices what they have (CR 701.21a). Not targeted,
-// so a hexproof creature is as sacrificeable as any other. Like every
-// "each player sacrifices" in the engine, the choices are made and
-// carried out one prompt at a time.
+// each opponent names three creatures, one opponent at a time in APNAP
+// order, and every named creature is sacrificed together once the last
+// has chosen (game.PlayersSacrificeThenForEffect, CR 101.4, #3664). A
+// player with fewer than three creatures sacrifices what they have (CR
+// 701.21a). Not targeted, so a hexproof creature is as sacrificeable as
+// any other.
 //
 // The upkeep trigger targets a creature card in any graveyard as it
 // goes on the stack, so with none it is removed (CR 603.3d). The card

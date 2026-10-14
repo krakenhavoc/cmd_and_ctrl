@@ -4350,10 +4350,13 @@ EachPlayerSacrifices{ExceptController: true, Match: Creature(), Label: "a creatu
 EachPlayerSacrifices{Match: Creature(), Label: "a creature"}                          // Fleshbag Marauder
 ```
 
-"Of their choice" is the rules content: it fans out one
-`PendingChoiceSacrifice` per affected player, each addressed to that
-player and offering only their own permanents, so nobody picks for
-anyone else. `ExceptController` is the difference between "each other
+"Of their choice" is the rules content: each affected player is asked
+with a `choose_cards` pick (`ChooseSacrifice` destination) offering only
+their own permanents, so nobody picks for anyone else. Since #3664 the
+players are asked one at a time in APNAP order through ADR 0175's
+ordered collector, and every chosen permanent is sacrificed together
+after the last answer (CR 101.4, 608.2e); a player with exactly as many
+candidates as they owe is not asked. `ExceptController` is the difference between "each other
 player" / "each opponent" and "each player" (Fleshbag includes you, and
 is a legal answer to its own trigger).
 
@@ -4865,7 +4868,10 @@ except, spec, reason, then)` for the APNAP fan-out,
 `g.PlayersSacrificeThenForEffect(source, players, …)` for a named set
 of seats, `g.PlayerSacrificesThenForEffect(source, player, spec,
 reason, count, then)` for one seat asked N times, and
-`effects.EachPlayerSacrifices.Then` card-side. One run is ONE printed
+`effects.EachPlayerSacrifices.Then` card-side. A multi-seat
+instruction ("each of these players sacrifices") belongs in ONE call
+of the first two, never one call per seat: one call is what lets the
+seats choose in APNAP order and sacrifice together (#3664). One run is ONE printed
 instruction however many prompts it takes, and `then` runs once —
 after the last seat has answered AND the permanents they named have
 finished moving, so a replacement's prompt on a sacrificed permanent

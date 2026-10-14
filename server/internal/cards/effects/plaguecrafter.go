@@ -11,8 +11,9 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 //
 // Fleshbag Marauder that also answers planeswalkers and never whiffs.
 // The sacrifice half is the EachPlayerSacrifices primitive with the
-// match widened to "a creature or planeswalker" — one prompt per
-// player, each choosing from their own permanents, the Plaguecrafter
+// match widened to "a creature or planeswalker" — each player choosing
+// from their own permanents, one at a time in APNAP order, and every
+// choice sacrificed together after the last (#3664), the Plaguecrafter
 // itself a legal answer to its own trigger. The "who can't" half is
 // decided at resolution from the board: a player with neither a
 // creature nor a planeswalker gets the ordinary discard-a-card prompt

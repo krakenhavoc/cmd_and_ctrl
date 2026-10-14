@@ -185,6 +185,8 @@ func TestPriestOfForgottenGodsEdictsDrainsAddsManaAndDraws(t *testing.T) {
 	a := sacNCreature(g, me.ID, "Bear A")
 	b := sacNCreature(g, me.ID, "Bear B")
 	victim := sacNCreature(g, opp.ID, "Their Bear")
+	// A second creature, so the target has a real choice to be asked.
+	sacNCreature(g, opp.ID, "Their Spare")
 	target := []game.TargetRef{{Kind: game.TargetPlayer, ID: opp.ID}}
 
 	// "Two OTHER creatures": the Priest is not one of them.

@@ -88,7 +88,7 @@ func b19TriggerQueuedFrom(g *game.Game, source uuid.UUID) bool {
 // sacrifice prompt.
 func b19SacrificeOptions(g *game.Game, chooser uuid.UUID) []uuid.UUID {
 	if c := sacrificeChoiceFor(g, chooser); c != nil {
-		return c.SacrificeOptions
+		return sacrificeOptions(c)
 	}
 	return nil
 }
@@ -310,11 +310,15 @@ func TestB19CracklingDoomPingsAndEdictsTheBiggest(t *testing.T) {
 	if len(options) != 2 || !hasID(options, bigA) || !hasID(options, bigB) || hasID(options, small) {
 		t.Errorf("the opponent may sacrifice only a creature tied for greatest power (counters count): %v", options)
 	}
-	if b19SacrificeOptions(g, other.ID) == nil || sacrificeChoiceFor(g, third.ID) != nil || sacrificeChoiceFor(g, me.ID) != nil {
-		t.Error("each opponent with a creature sacrifices; the caster and a creatureless opponent do not")
+	// #3664: one opponent chooses at a time; the Lone Elf's controller
+	// has no choice to make, so their pick is collected unasked.
+	if sacrificeChoiceFor(g, other.ID) != nil || sacrificeChoiceFor(g, third.ID) != nil || sacrificeChoiceFor(g, me.ID) != nil {
+		t.Error("only the opponent with a real choice is asked, and only one seat at a time")
+	}
+	if !g.Battlefield.Contains(only) {
+		t.Error("nothing is sacrificed until every opponent has chosen")
 	}
 	answerSacrifice(t, g, opp.ID, bigB)
-	answerSacrifice(t, g, other.ID, only)
 	passPriorityAroundTable(t, g)
 	if g.Battlefield.Contains(bigB) || g.Battlefield.Contains(only) || !g.Battlefield.Contains(bigA) || !g.Battlefield.Contains(mine) {
 		t.Error("the chosen creatures are sacrificed and nothing else")

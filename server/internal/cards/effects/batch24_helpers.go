@@ -256,12 +256,13 @@ func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 	return nil
 }
 
-// b24PlayerSacrificesGreatestPowerCreatureAndLosesLife is one
-// opponent's share of Will of the Abzan's first mode: they choose a
-// creature with the greatest power among the creatures they control
+// b24PlayersSacrificeGreatestPowerCreatureAndLoseLife is Will of the
+// Abzan's first mode: each of `players` chooses a creature with the
+// greatest power among the creatures they control
 // (GreatestPowerYouControl is evaluated for the CHOOSER — the
 // sacrifice prompt passes them as the caster — so ties are theirs to
-// break) and lose `life`.
+// break), the choices are sacrificed together (CR 101.4, #3664), and
+// then each loses `life`, in the order given.
 //
 // The loss waits for the sacrifice since #1019. It is a clause about a
 // PLAYER, so it happens whichever way the prompt is answered (ADR 0013
@@ -270,13 +271,19 @@ func b24TapAllLandsControlledBy(ctx *Context, player uuid.UUID) error {
 // Blood Artist's drain and this loss used to arrive in the wrong
 // sequence, and an opponent at 2 life lost it before choosing what to
 // sacrifice.
-func b24PlayerSacrificesGreatestPowerCreatureAndLosesLife(g *game.Game, item *game.StackItem, player uuid.UUID, life int) error {
+func b24PlayersSacrificeGreatestPowerCreatureAndLoseLife(g *game.Game, item *game.StackItem, players []uuid.UUID, life int) error {
 	source := item.SourceCardID
-	return g.PlayersSacrificeThenForEffect(source, []uuid.UUID{player},
+	players = append([]uuid.UUID(nil), players...)
+	return g.PlayersSacrificeThenForEffect(source, players,
 		sacrificeSpec("a creature with the greatest power among creatures you control", GreatestPowerYouControl()),
 		"Will of the Abzan — sacrifice a creature with the greatest power",
 		func(g *game.Game, _ game.PromptedSacrifices) error {
-			return g.ChangePlayerLifeForEffect(source, player, -life)
+			for _, player := range players {
+				if err := g.ChangePlayerLifeForEffect(source, player, -life); err != nil {
+					return err
+				}
+			}
+			return nil
 		})
 }
 
