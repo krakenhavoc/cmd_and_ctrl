@@ -998,16 +998,12 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 			t := *f.ev.mill
 			ev.mill = &t
 		}
-		if f.ev.zoneRoute != nil {
-			r := *f.ev.zoneRoute
-			if r.simultaneousEntry != nil {
-				entry := *r.simultaneousEntry
-				r.simultaneousEntry = &entry
-			}
-			if len(f.ev.zoneRoute.simultaneousExit) > 0 {
-				r.simultaneousExit = append([]Card(nil), f.ev.zoneRoute.simultaneousExit...)
-			}
-			ev.zoneRoute = &r
+		ev.zoneRoute = cloneZoneRoute(f.ev.zoneRoute)
+		if len(f.ev.lifeAfterMove) > 0 {
+			// ADR 0178: the life instructions a replacement declared on
+			// this move. Its own backing array, so an instruction the
+			// live game declares later cannot reach the snapshot's event.
+			ev.lifeAfterMove = append([]lifeInstruction(nil), f.ev.lifeAfterMove...)
 		}
 		// #478: and the ENTRY tail, for exactly the reason the route
 		// gets a copy. runEntryTailLocked nils `then` on the tail rather
@@ -1032,6 +1028,25 @@ func cloneReplacementResume(f *replacementResumeFrame) *replacementResumeFrame {
 		out.ev = &ev
 	}
 	return &out
+}
+
+// cloneZoneRoute gives an undo snapshot its own copy of a paused
+// route: its continuation is cleared through the pointer as it runs,
+// and the simultaneous entry and exit it carries are consumed on the
+// live game.
+func cloneZoneRoute(src *zoneRoute) *zoneRoute {
+	if src == nil {
+		return nil
+	}
+	r := *src
+	if r.simultaneousEntry != nil {
+		entry := *r.simultaneousEntry
+		r.simultaneousEntry = &entry
+	}
+	if len(src.simultaneousExit) > 0 {
+		r.simultaneousExit = append([]Card(nil), src.simultaneousExit...)
+	}
+	return &r
 }
 
 func cloneVote(v *Vote) *Vote {

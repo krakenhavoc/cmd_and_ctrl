@@ -2288,6 +2288,29 @@ object whose static it is, CR 400.7); "that creature" (the recipient) is
 `Then` without `ThenPer`, and `TestPreventionStaticsOnlyPrevent` fails a
 prevention static whose `Replace` does anything but change the event.
 
+#### "Instead exile it and you gain 2 life" (ADR 0178, #2950)
+
+A zone-change replacement whose modified event also changes a player's
+life (The Darkness Crystal) must not change the life inside `Replace`.
+The gain is a life event of its own: it can pause on a CR 616 question,
+and it has to land after the card moves (CR 608.2c). Declare it on the
+event instead:
+
+```go
+Replace: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) error {
+    ev.NewZone = game.ZoneExile
+    ev.NewZoneOwner = uuid.Nil
+    return g.ChangeLifeAfterReplacedMoveForEffect(ev, src.InstanceID, src.Controller, 2)
+},
+```
+
+The move's finisher lands the card, then runs each declared change
+through the life pipeline, then the move's own continuation (the
+destroying spell's "then draw a card"), which waits if a change asks a
+question. Player and source are fixed when the replacement applies. The
+change still happens if a later replacement redirects or cancels the
+move (CR 614.6). A move paid as a cost settles it without asking.
+
 ### "Enters under the control of an opponent of your choice" (ADR 0102, #1759)
 
 Captive Audience, Pendant of Prosperity, Abby, Merciless Soldier and

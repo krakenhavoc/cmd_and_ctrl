@@ -2820,7 +2820,9 @@ func (g *Game) finishSettledReplacementLocked(ev, out *ReplacementEvent) error {
 		// through the entry tail.
 		g.restoreEntryControllerLocked(ev)
 		g.dropEnteringTokenLocked(ev.CardID)
-		if err := g.runRouteTailLocked(ev.zoneRoute); err != nil {
+		// ADR 0178: a life change a replacement declared before the
+		// cancel still happens, and the route waits for it.
+		if err := g.runMoveTailLocked(ev); err != nil {
 			return err
 		}
 		return g.runEntryTailLocked(ev, uuid.Nil)

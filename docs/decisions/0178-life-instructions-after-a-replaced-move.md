@@ -77,3 +77,46 @@ origin/feat/playmats, origin/fix/2948-liliana-simultaneous-sacrifice,
 origin/fix/3159-3160-attachments, origin/fix/3338-tablet-card-reading,
 origin/fix/caddy-reload-admin-off, origin/main, origin/wip/836-one-click-default.
 0175–0177 were occupied; 0178 was the first free number.
+
+## Implementation (2026-10-14, #2950)
+
+Finished from Ian Robinson's design commit, unchanged above. The names
+and the places it landed:
+
+- `Game.ChangeLifeAfterReplacedMoveForEffect(ev, source, player, delta)`
+  is the locked-context helper (decision 1). It refuses any event but
+  `RepEventMove` and appends a `lifeInstruction` value to the
+  unexported `ReplacementEvent.lifeAfterMove`. The Darkness Crystal's
+  `Replace` calls it instead of `ChangePlayerLifeForEffect`.
+- `runMoveTailLocked(ev)` replaces `runRouteTailLocked(ev.zoneRoute)`
+  at each terminal outcome of a zone change: the battlefield-leave
+  finisher, the routed-move finisher, the cancel branches of both entry
+  points and of the CR 616 resume, and the sandbox move (decisions 2
+  and 4). With instructions present it takes the route's continuation
+  off the route, lands any paired simultaneous entry with the exit,
+  then runs the instructions in order.
+- The continuation (decision 3) is `moveLifeSequence{remaining, route,
+  mustSettleNow}`, a value holding the instructions not yet run and a
+  COPY of the route. It rides each life change's existing
+  `lifeTail.then`, captured by value. No mutable parent event or route
+  pointer is captured, and each run copies the route again before
+  running its tail. So an undo snapshot that shares the tail
+  (`cloneReplacementResume` copies the tail pointer) replays the same
+  continuation instead of finding it consumed. A typed field on
+  `lifeTail` was tried first. It added two new routes from Game to a
+  closure, and the ADR 0041 P3 ratchet (`closure_fields.txt`) does not
+  let the `ChoiceResumeFrames` class grow. The last instruction runs
+  the route's tail inside the route's simultaneous exit.
+- `cloneReplacementResume` copies `lifeAfterMove` (decision 6), and its
+  route copy moved into `cloneZoneRoute`.
+- An abandoned move (its prompt taken away) still goes through
+  `abandonZoneRouteLocked`, which discards the instructions and settles
+  the route (decision 4).
+
+Found while testing, and out of scope here: catalog replacement IDs are
+packed from the battlefield index (`encodeCatalogReplacementID`). If a
+permanent earlier on the battlefield leaves while a CR 616 prompt is
+open, the paused event's once-per-event marks and the prompt's IDs then
+name the wrong card, so an applied replacement can apply again. This
+happens with any paused life event, not only this one, and is filed as
+its own bug (#3482).
