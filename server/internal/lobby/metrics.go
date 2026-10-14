@@ -31,6 +31,7 @@ import (
 // recordStartLocked counts the entry's start. Callers hold l.mu and
 // call it once, when started_at is stamped.
 func (l *Lobby) recordStartLocked(entry *gameEntry) {
+	metrics.TableStarted(entry.practice)
 	if entry.practice {
 		return
 	}
