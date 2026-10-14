@@ -822,6 +822,43 @@ sudo systemctl start cmd-and-ctrl
 Check `hostname` first. The command is identical on both boxes, which
 is convenient right up until it isn't.
 
+### Rolling back production
+
+(#3339.) Every deploy sets the release it replaces aside on the host, under
+`/opt/cmd_and_ctrl` (owned by `krkn`): `server/bin/cmd_and_ctrl-server.prev`,
+`bot/bin/cmd_and_ctrl-bot.prev` (production) and `prev/client/` (a copy of
+the web root). One release back, no more. A re-run of the same release
+(a failed job, a retry) leaves them alone, so they always hold the last
+*different* release. `scripts/keep-previous-release.sh` does it.
+
+To undo a bad production deploy: Actions, "cmd_and_ctrl rollback prod",
+Run workflow on branch `main`, type `rollback`. It uses the `prod`
+environment, so it has the same deploy key, branch policy and reviewers
+as `cmdctrl-cd-prod`. It swaps server, client and bot back
+(`scripts/rollback-release.sh`), restarts, and runs the authenticated
+smoke request (`scripts/smoke-release.sh`: `GET /config` reports the
+right env, then an admin login and `GET /games`). That is the same
+request every deploy now makes after its restart. No build, no CI.
+
+- **It is a swap.** The release you rolled back from becomes the new
+  `.prev`, so running it again rolls forward.
+- **Revert main next.** The rollback moves the host, not the branch; the
+  next promotion would redeploy the bad release. Open a `hotfix/*` PR
+  reverting it first.
+- **The database is not rolled back.** If the bad release ran a migration
+  the older binary may refuse to start, and the smoke request then fails.
+  Follow "Rolling back past ..." below for that migration (stop the
+  service, run its steps, start it), then re-run the smoke by hand.
+- **Nothing kept yet?** On a host that has not deployed since #3339 landed
+  there is no `.prev` and the job fails saying so. The first deploy
+  after it writes one.
+- **Further back than one release.** `main` builds are kept 7 days as
+  workflow artifacts (develop's are still deleted after the deploy): download
+  `cmdctrl-server-bin` from the run page, or revert and promote.
+- **A hand rollback** is the same swap: `mv` each `.prev` over its file,
+  `rsync -a --delete /opt/cmd_and_ctrl/prev/client/ /var/www/cmdctrl-client/`,
+  `sudo systemctl restart cmd-and-ctrl`.
+
 **Rolling back past the lobby database.** Since S34 sub-PR 3
 ([ADR 0051](decisions/0051-user-database.md) decision 4) the lobby's
 half of a game is rows in `db/cmdctrl.sqlite`. The first boot of that
