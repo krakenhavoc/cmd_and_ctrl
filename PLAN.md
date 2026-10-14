@@ -1,153 +1,154 @@
-# cmd_and_ctrl — Project Plan
+# C2 — charter
 
-A high-polish digital client for **Magic: The Gathering Commander (EDH)** multiplayer. Built first for the author and friends, and in an open beta since October 2026.
-
----
-
-## 1. Project goal and constraints
-
-**Goal.** Build something that feels as good as MTG Arena but is tailored to 4-player Commander — a format Arena has never supported and MTGO serves poorly.
-
-**Hard constraint: free and non-commercial.** This started as a private tool for the author and friends. Since S70 (October 2026) it is an open beta: strangers can play a practice game, and joining the C2 Discord and getting the player role lets them create tables ([ADR 0156](docs/decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md)). It is still not a product. Nothing is ever sold, and no tier or feature is paid. This reframes the project significantly:
-
-- It is unofficial fan content under the Wizards Fan Content Policy, which requires free access and lets Wizards revoke permission at any time. Cockatrice, Forge and XMage are tolerated in the same territory rather than licensed. Scryfall's guidelines add: no paywall or chat-server gate on card data, and no cropping of the artist credit. Keep guest play, the notices and the artist credit (S70, [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)).
-- Scale is small and capped. One 2 vCPU / 4 GB VM holds about 30 tables / 120 players ([ADR 0148](docs/decisions/0148-capacity-limits-for-a-public-launch.md)). Growing past that is a decision made from measured load.
-- No content treadmill. New cards can lag official releases by days or weeks.
-- Realistic hobby-project scope. Not a startup.
-
-The three hard problems that remain are: **game state and multiplayer sync**, **the UX polish that is actually the point**, and — on a long horizon — **incremental rules enforcement**.
+A living charter for *cmd & ctrl* (**C2**) as it is now: what it is, who the
+public beta is for, what is in and out of scope, and how we will know the beta
+is working. It replaces the day-one plan of 2026-04-10 (see [History](#history)).
+Change it in a PR, like code, when the owner changes direction.
 
 ---
 
-## 2. The central architectural decision
+## 1. What C2 is
 
-One decision dominates everything else: how do we handle the rules engine?
+C2 is a browser table for four-player **Magic: The Gathering Commander**. It
+is free, unofficial fan content and open source.
 
-### The three options
+- **An automation-first rules engine.** An original Go server holds the
+  authoritative game. Cards in the catalog resolve on their own: stack,
+  priority, combat, triggers, layers, replacement effects. A card the engine
+  doesn't know yet still plays. It resolves with no effect and the table
+  settles it by hand, so a game never stalls on a missing card.
+- **Bots.** An empty seat can be filled with a bot that plays its deck: the
+  heuristic tiers by default, model-backed tiers where a budget allows. That
+  means one person can play a full game.
+- **A Discord community.** The C2 Discord server is where people find each
+  other, ask for access and report problems. The `/c2-…` bot commands open
+  tables and check decks.
 
-**Option A — Reuse XMage as the backend.** Thin protocol bridge to XMage's Java server. Inherits ~28,000 implemented cards, full rules enforcement, commander support, multiplayer sync. *Rejected after S01 discovery* — see §2.2.
+## 2. Who the public beta is for
 
-**Option B — Sandbox-style client.** Server-authoritative game state, but no rules enforcement. Players tap their own cards, resolve their own triggers, track their own mana. Like Cockatrice, but built around 4-player Commander with better UX.
+**Commander players who want a four-player table online, with or without a
+pod of their own.** They come in by one of three doors:
 
-**Option C — Custom rules engine.** Build rules enforcement from scratch. Forge has been at this 15+ years; XMage the same. A solo hobbyist cannot out-build either.
+1. **Members.** They join the C2 Discord and are given the *Elder Dragon
+   Highlander* role, which lets them sign in with Discord, host tables, keep
+   decks and play with others from the server
+   ([ADR 0156](docs/decisions/0156-a-front-door-site-shell-front-page-and-a-discord-gate.md) §1).
+2. **Invited guests.** A member sends them a table's invite link. They sit at
+   that one table with no account.
+3. **Visitors.** Anyone can play a practice game against bots from the front
+   page, with no sign-in.
 
-### 2.1 The decision: **B first, C grafted on incrementally**
+The beta is small on purpose: a soft launch to 20–50 players (S70), sized to
+one VM capped at about 30 tables
+([ADR 0148](docs/decisions/0148-capacity-limits-for-a-public-launch.md)).
 
-Build Option B fully — a polished sandbox client with authoritative multiplayer state and world-class Commander UX. Ship it, play real games on it, and then **layer rules enforcement on top, card by card and mechanic by mechanic, driven entirely by what actually appears at our table.**
+## 3. Scope
 
-This is a deliberate inversion of PLAN.md v1's recommendation. The original plan chose Option A (reuse XMage) on the reasoning that rules enforcement is the hardest problem and should be delegated. That's still true in the abstract — but the coupling cost is real (see §2.2), and a manual-first, rules-grafted-in-later path has properties the original plan undervalued:
+**In scope:** four-player Commander (two- and three-seat tables are allowed);
+the rules engine and card catalog, which grow with the decks people bring;
+bots; deck import and coverage checks; Commander affordances (command zone,
+commander damage, politics, monarch and initiative); accounts, saved decks
+and settings; the public roadmap, About, privacy and legal pages; moderation;
+operating one public host safely: capacity caps, monitoring, backups.
 
-- **First playable in ~3 months** instead of ~6. Real games with friends drive every subsequent priority decision.
-- **No "stuck" state, ever.** Manual override is the fallback for any interaction the engine doesn't understand yet. Games don't halt because of an unimplemented card — players resolve it by hand and move on.
-- **Rules work is prioritised by pain.** You implement the cards and interactions that actually annoyed you last weekend, not a speculative coverage goal.
-- **The long tail is small in practice.** A playgroup's 8 decks share maybe 400–800 unique cards. That's a tractable target over years — not 28,000.
-- **All original stack.** No JBoss Remoting. No Maven wart on the VPS. Go backend, TypeScript client, one deployable per service.
+**Out of scope, and staying out:**
 
-The risk this accepts: **full rules enforcement may never arrive**, in the sense that XMage-level coverage is years away. That's fine if the sandbox itself is the compelling product — and Option B's analysis already makes that case: the playgroup knows the rules, so enforcement is not the value-add.
-
-### 2.2 Why not Option A (the S01 discovery)
-
-S01 was originally scoped as "clone XMage, play a game, capture protocol, confirm Option A". The clone-and-read-source portion surfaced a blocker before any protocol capture happened:
-
-- XMage's wire protocol is **JBoss Remoting 2.5.4** (dependency declared in `Mage.Common/pom.xml:31`) with **Java object serialization** (`Connection.java:36`: `?serializationtype=java`).
-- The "protocol" is remote Java method calls on interfaces like `Session`, `GamePlay`, `PlayerActions` (see `Mage.Common/src/main/java/mage/remote/`), invoked via `TransporterClient.createTransporterClient(...)` in `SessionImpl.java:371`.
-- JBoss Remoting 2 was deprecated around 2013. The library is unmaintained. It is not reimplementable in Go or Node as a client — the only practical client is the original Java library.
-
-This forces any XMage-based bridge onto the JVM (Java or Kotlin), which in turn forces a JVM runtime on the VPS alongside Go/Node. The coupling isn't catastrophic, but it imposes a permanent Java dependency on a project whose whole appeal is a clean, modern stack. Combined with the B-then-C path being more playable sooner, Option A is no longer the recommendation.
-
-**Keep as a fallback:** if Option B stalls on game-state or sync problems we haven't anticipated, re-evaluating Option A remains on the table.
-
-### 2.3 Why not Option C (straight custom rules engine)
-
-Same reason the original plan rejected it: 28,000 cards × hand-written rules × 15 years of edge cases is not reachable by one person at 10 hrs/week. Attempting it means zero playability for 2+ years with no user feedback — the classic infra-first trap. **Option C as the starting point is rejected.** Option C *as the destination* — incrementally grown on top of Option B — is the plan.
-
----
-
-## 3. Competitive landscape
-
-| Tool | Rules | Multiplayer | UX | Commander-tailored | Notes |
-|---|---|---|---|---|---|
-| MTG Arena | Full | 1v1 | Excellent | No (by design) | Unity, WotC. Historic Brawl is the closest; no 4-player. |
-| MTGO | Full | Up to 4p | Poor (2004-era) | Yes | The only "official" Commander client; universally complained about. |
-| XMage | Full (~28k) | Up to 10p | Poor (Java/Swing) | Yes | Technically excellent, visually dated. Considered and rejected as a backend in S01. |
-| Cockatrice | Sandbox | Up to 10p | Dated | Partial | C++/Qt, GPLv2. Server-authoritative but no enforcement. Closest sibling to what we're building. |
-| Forge | Full-ish | Local mostly | Dated | Partial | Data-driven card scripts, strong AI, weak multiplayer. |
-| Spelltable | None (webcam) | 4p | OK | Yes | WotC-owned. Paper play over video. |
-| Tabletop Simulator | None | 4p | Clunky | Partial | Generic VTT with MTG mods. |
-
-**The gap we're targeting:** a Cockatrice-class sandbox with an Arena-class UX, built from the ground up around 4-player Commander, with a credible long-term path to rules enforcement. Nobody is in that quadrant.
-
----
+- **XMage, or any JVM component.** Rejected in S01 ([History](#history)).
+- **Payments of any kind.** Nothing is sold. Hosted model bots are budget-capped
+  and switchable, never paywalled
+  ([ADR 0033](docs/decisions/0033-ai-bot-seat.md)).
+- **Generated card art or card text.** Card data and images come from
+  Scryfall, credited, within the Wizards **Fan Content Policy** (the S70 terms
+  check on [#2985](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2985)).
+- **Gating card data.** Scryfall's guidelines allow no paywall and no sign-in or
+  chat-server gate in front of card data, and no cropping of the artist credit.
+  Guest play stays, and so do the legal notices and the artist credit.
+- **Phone-width table layouts.** A tablet is the minimum screen.
+- **Other formats** (1v1 constructed, limited, cubes) and native app stores.
+- **Scale beyond one VM** before the beta goals call for it.
 
 ## 4. Tech stack
 
-- **Game server:** **Go** (stdlib + [gorilla/websocket](https://github.com/gorilla/websocket) or similar). Authoritative game state, WebSocket+JSON protocol to clients, room/lobby management. Hosted on a $5–10/mo VPS.
-- **Protocol:** WebSocket per client, JSON frames (our schema, versioned). Server-authoritative; clients submit actions, server emits state deltas.
-- **Client:** TypeScript + Vite. [React](https://react.dev) or [Svelte](https://svelte.dev) for menus, lobby, deck manager, chat. [PixiJS](https://pixijs.com) canvas for the play area and animations.
-- **Card data and images:** [Scryfall](https://scryfall.com/docs/api) bulk data ("default cards" JSON, ~200 MB), refreshed weekly via cron. Images downloaded on-demand, cached locally.
-- **Deck import:** Moxfield and Archidekt exports (open text formats), `.cod`, `.dek`, plain text.
-- **Auth:** single shared password or magic-link email. It is 4–8 people. Do not over-engineer.
-- **State storage:** in-memory during a game, JSON snapshots to disk for replays and crash recovery. No database until there's a reason for one.
-- **Animations and juice:** GSAP + PixiJS. Card flips, tap/untap, damage numbers, combat arrows.
-- **Rules enforcement (B→C path, from S13+):** grafted onto the Go game server incrementally. Each rule lives as a pure function of game state; mechanics ship one at a time. Manual override is the permanent fallback for anything the engine doesn't know yet.
-- **Later packaging:** Tauri or Electron wrap for desktop; Capacitor for mobile. Same codebase.
+A Go server (WebSocket + JSON, server-authoritative), a Svelte 5 + TypeScript
+client, SQLite (one file, nightly off-site backup), Scryfall bulk data,
+Discord sign-in, and Prometheus and Grafana for monitoring. One VM per
+environment: `develop` deploys to cmd-dev, `main` to prod
+([docs/environments.md](docs/environments.md)).
 
----
+## 5. Principles
 
-## 5. Commander-specific UX goals (the differentiator)
+1. **Automation first, the sandbox as the fallback.** The engine does what it
+   can and the table can always take over. A manual action is never removed
+   while it is the only way through.
+2. **Rules fidelity.** Where the engine automates, it follows the
+   Comprehensive Rules (pinned edition, cited by number). When a choice is
+   between a faithful answer and a smaller one, take the faithful one. A
+   card the engine can't express exactly is left out, never shipped
+   stronger than printed.
+3. **UX polish is the point.** A feature that works but feels bad isn't done.
+4. **Honest coverage.** The catalog, roadmap and deck checks say what is
+   automated, partial and manual, and tests keep them honest.
+5. **Small and boring operations.** One VM, one database, one deployable per
+   service, every limit an environment variable with a safe default.
 
-Where MTGO and XMage have Commander but no feel, and Cockatrice has feel but no Commander-specific affordances, the differentiator is doing both.
+## 6. Beta goals (four weeks)
 
-- **4-player table layout** that gives proper spatial sense of opponents. Not a 1v1 view bodged sideways.
-- **Command zone** as a first-class prominent UI element, not an afterthought.
-- **Commander damage grid** (4×4 matrix) always visible.
-- **Life-total ticker** starting at 40, with change history, poison, infect, energy.
-- **Politics UI:** deal buttons, promise tokens, voting UI for council's dilemma, goad / monarch / initiative markers.
-- **Priority visualization:** clear indicator of who has priority, "any responses?" across 3 opponents. (In Option B: priority is advanced manually via a pass button until S13+ rules work automates it.)
-- **Intent preview:** hover a card to preview what it would do. Starts as "show full Oracle text and current state" in Option B; becomes true intent simulation as the rules engine grows in the B→C phase.
-- **Undo / take-back:** one-click rewind to last snapshot for casual play.
-- **Deck stats sidebar:** lands left, cards in hand, average CMC drawn.
-- **Chat and reactions:** Discord-tier chat in-game. Table-talk is half of Commander.
-- **Replays and screenshots:** auto-saved game logs and a "share this turn" button.
-- **Spectator mode:** friends can watch and narrate on voice.
+The owner set these on 2026-10-13. Each one can be computed
+from data the server already keeps: the `games` and `seats` tables (practice
+tables are never stored, so they're excluded from all three), the
+`cmdctrl_*` metrics, and the `player-report` label on GitHub issues.
 
----
-
-## 6. Phased roadmap
-
-Assumes ~10 hours/week part-time.
-
-| Phase | Scope | Rough duration |
+| Goal | Target | How it is measured |
 |---|---|---|
-| **0 — Server + client architecture spike** | Pick Go WS stack, scaffold `server/` and `client/`, echo an action through both. Decision gate on framework and protocol schema v0. | 2 weeks |
-| **1 — Core game server** | Authoritative in-memory game state: players, zones, turn/phase/step state machine, action protocol, state deltas over WebSocket. No rules enforcement — all actions valid. | 4 weeks |
-| **2 — Lobby, auth, Scryfall pipeline** | Create/join game, shared-password auth, weekly Scryfall pull, card image cache. | 2 weeks |
-| **3 — Core play UI** | PixiJS play area: hand, battlefield, libraries, graveyards, exile, command zone. 4-player layout. Functional, not pretty. Deck import. | 6–8 weeks |
-| **4 — First playable sandbox** | 2-player game end-to-end in browser, played across two tabs. No rules enforcement; players resolve everything manually. Milestone. | — |
-| **5 — Polish pass 1** | Animations, sound, hover previews, commander damage grid, life tracker, politics UI, monarch/initiative markers. Make it feel good. | 4–6 weeks |
-| **6 — 4-player and go live with friends** | Deploy to VPS. Real 4-player Commander games. Triage pain points into the S13+ backlog. | 2 weeks |
-| **7 — B→C rules graft (ongoing)** | Incremental rules enforcement. Start with auto-untap, auto-draw step, auto-tap lands for mana. Grow into combat resolution, target validation, triggered abilities, the long tail of cards. Priorities come from real games. | indefinite |
+| **People come back** | ≥ 15 signed-in players a week by week 4, and ≥ 40% of each week's players also played in an earlier beta week | Distinct `seats.user_id` at tables with `games.started_at` in the week; "returning" means also seated in an earlier week. `cmdctrl_users_played{window="7d"}` is the live view of the first number |
+| **Games reach an end** | ≥ 60% of started tables end with a result | Tables started in the window with `games.outcome IN ('win','draw')`, over all tables started. The live view is `cmdctrl_games_ended_total{outcome}` against `cmdctrl_games_started_total` |
+| **Tables hold up** | ≤ 1 in-app bug report per 10 started tables, with each one triaged within 3 days | Issues labelled `player-report` and `bug` opened in the window, over `cmdctrl_games_started_total` for the window. Reports from cmd-dev land in the same repo, so leave those out |
 
-Realistic "first real game with friends on the sandbox": **~3 months part-time**. First "this feels premium": **~6 months**. First "the engine is taking over meaningful chunks of the rules": **~12+ months**.
+The beta's four weeks start when the soft-launch post goes up. At the end the
+owner reviews the three numbers and decides to widen, hold or fix. That
+decision and the next targets go back in this section.
 
----
+## 7. How sprints relate to the goals
 
-## 7. Open decisions
+Sprints stay as they are ([docs/sprints.md](docs/sprints.md)): one milestone,
+one tracking issue, and exit criteria. During the beta, a new sprint names in
+its goal line the beta goal it moves, or says it is upkeep: catalog growth,
+hygiene, operations. Player reports and Discord feedback come first in
+triage. When a goal misses, the next sprint is planned around it.
 
-Before writing serious code, the following need calls:
+## 8. Where the details are
 
-1. **Go WebSocket library:** stdlib `net/http` + `gorilla/websocket`, or something higher-level like `nhooyr.io/websocket`. Recommendation: gorilla — boring, battle-tested.
-2. **Client framework:** React, Svelte, or Vue? Familiarity beats theoretical best.
-3. **Delivery target:** web browser only, or also desktop (Tauri) or mobile (Capacitor)? Recommendation: web-only first.
-4. **Art direction:** Scryfall art as-is (traditional look), or stylize the table, backgrounds, and VFX?
-5. **Playgroup shape:** 4 fixed friends or rotating 6–8? Affects whether we bother with a real lobby system.
+- [AGENTS.md](AGENTS.md): how to work in this repo (branches, commit and PR
+  format, tiers, commands, environment variables).
+- [docs/sprints.md](docs/sprints.md): every sprint, its scope and status.
+- [docs/decisions/](docs/decisions/): the ADRs. Read the relevant ones before
+  proposing architecture.
+- [docs/environments.md](docs/environments.md): hosts, deploys, secrets,
+  backups and capacity.
+- [docs/adding-cards.md](docs/adding-cards.md) and
+  [docs/engine-seams.md](docs/engine-seams.md): growing the catalog and the
+  engine.
+- [docs/protocol.md](docs/protocol.md), [docs/lobby.md](docs/lobby.md) and
+  [docs/bot.md](docs/bot.md): the wire format, the HTTP API and the bots.
+- [docs/monitoring.md](docs/monitoring.md): metrics, dashboards and alerts.
+- The public pages: About (`#/about`), the roadmap
+  ([ADR 0092](docs/decisions/0092-public-roadmap-and-site-portal.md)) and the
+  privacy notice ([ADR 0149](docs/decisions/0149-privacy-notice-and-account-deletion.md)).
 
----
+## History
 
-## 8. Immediate next step — Phase 0 (S01)
-
-1. Scaffold `server/` (Go module) and `client/` (Vite + TS) with lint, format, test.
-2. Draft `docs/protocol.md` — v0 schema for action frames and state delta frames.
-3. Echo demo: client sends a `ping` action over WebSocket; server broadcasts a state delta; client renders a change. Proves the seam.
-4. Resolve the framework decisions in §7 items 1 and 2, record them in `docs/decisions/`.
-5. End of S01: a repo with both services scaffolded, one round-trip working, and a written v0 protocol.
+C2 started on 2026-04-10 as a private sandbox for one playgroup: at most
+eight users, a shared password and no database. The plan was to build a
+polished manual table first (Option B) and grow rules enforcement on top of
+it from S13 (Option C as the destination). Reusing XMage as the backend
+(Option A) was rejected in S01, because its wire protocol is JBoss Remoting
+with Java serialization and would have tied the stack to the JVM. A
+from-scratch engine as the *starting* point was rejected too, because there
+would have been nothing to play for years. The full reasoning, including the
+competitive landscape and the original phased roadmap, is in the
+[original plan](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md)
+(see its [§2.2](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#22-why-not-option-a-the-s01-discovery),
+[§2.3](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#23-why-not-option-c-straight-custom-rules-engine)
+and [§6](https://github.com/krakenhavoc/cmd_and_ctrl/blob/ddd802370bb42ee5952d0da21d26f8a5e1607308/PLAN.md#6-phased-roadmap)).
+Since then the engine has taken over most of the rules. Bots, a user
+database, Discord sign-in, monitoring and a public beta (S70, S71) followed.
