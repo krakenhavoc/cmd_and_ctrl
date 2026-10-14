@@ -1019,7 +1019,12 @@
     --rail-w: 112px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) var(--rail-w);
-    grid-template-rows: minmax(0, 1fr) auto auto;
+    /* #3045: the creature row takes its own height (less on a short
+       panel, where it scrolls), the back row sits right under it, and the
+       panel's spare height opens between the back row and the hand,
+       at the panel's outer edge. A row shrunk to fit its width (rowFit)
+       used to leave that spare as a band at the table's centre line. */
+    grid-template-rows: minmax(0, auto) minmax(min-content, 1fr) auto;
     grid-template-areas:
       "creatures rail"
       "middle    rail"
@@ -1187,7 +1192,7 @@
     --thumb-w: calc(var(--thumb-h) * 5 / 7);
     --avatar-size-base: 84px;
     --rail-w: 112px;
-    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(min-content, 1fr) minmax(0, auto);
     grid-template-areas:
       "bottom    rail"
       "middle    rail"
@@ -1233,6 +1238,11 @@
      its far edge. */
   .flipped .grid-creatures {
     justify-content: flex-end;
+  }
+  /* #3045: the back row hugs the creature row, the way yours does turned
+     180°; the spare height sits between it and the hand. */
+  .flipped .grid-middle {
+    align-items: flex-end;
   }
   .grid-middle {
     grid-area: middle;
@@ -1429,7 +1439,7 @@
   @media (min-width: 600px) {
     .panel.opponent.flipped {
       grid-template-columns: var(--rail-w) minmax(0, 1fr) auto;
-      grid-template-rows: auto auto minmax(0, 1fr);
+      grid-template-rows: auto minmax(min-content, 1fr) minmax(0, auto);
       /* #2491: the piles sit in the hand's row, against the top edge
          like the hand, not in the back row under it. */
       grid-template-areas:
