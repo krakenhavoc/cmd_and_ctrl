@@ -103,6 +103,9 @@ type GameRecord struct {
 	// LFGMessageID is the table's live #lfg post, "" (NULL) for none
 	// (ADR 0161 §6). Mutable.
 	LFGMessageID string
+	// Results is whether the host opted the table in to the Discord
+	// results feed (ADR 0174 §1, migration 0024). Mutable.
+	Results bool
 }
 
 // SeatRecord is one seats row.

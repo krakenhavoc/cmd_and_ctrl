@@ -367,6 +367,7 @@ type GameEvictor interface {
 //	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
 //	POST /games/{id}/voice/refresh — a seat: check my server membership again, or reopen an idle room
 //	PUT  /games/{id}/lfg    — host / admin: post the table to the Discord #lfg board, or withdraw it (ADR 0161)
+//	PUT  /games/{id}/results — host / admin: opt the table in to a results post in Discord when its game ends, or out (ADR 0174)
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -597,6 +598,9 @@ func Handler(c Config) http.Handler {
 	// ADR 0161 §1: the table's #lfg post, on or off. Host or admin,
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("PUT /games/{id}/lfg", auth.Middleware(c.Auth)(handlerFunc(c, putLFG)))
+	// ADR 0174 §1: the table's results post, on or off. Host or admin,
+	// authorised inside the handler with CanManageTable.
+	mux.Handle("PUT /games/{id}/results", auth.Middleware(c.Auth)(handlerFunc(c, putResults)))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it
@@ -1021,6 +1025,11 @@ type createGameRequest struct {
 	// PUT /games/{id}/lfg would. Ignored when the server has no board:
 	// the client only shows the box when it does.
 	LFG bool `json:"lfg,omitempty"`
+	// Results opts the table in to a results post in Discord when its
+	// game ends (ADR 0174 §1), as PUT /games/{id}/results would. Ignored
+	// when the server has no results channel: the client only shows the
+	// box when it does.
+	Results bool `json:"results,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1238,6 +1247,15 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 				out.LFG, out.LFGStatus = posted.LFG, posted.LFGStatus
 			} else if !errors.Is(lerr, ErrLFGOff) && c.Log != nil {
 				c.Log.Warn("lfg post on create failed", "game_id", meta.ID.String(), "err", lerr)
+			}
+		}
+		if body.Results {
+			// ADR 0174 §1. A guest host is fine: the post names seats,
+			// not Discord accounts.
+			if opted, rerr := c.Lobby.SetResults(meta.ID, true); rerr == nil {
+				out.Results = opted.Results
+			} else if !errors.Is(rerr, ErrResultsOff) && c.Log != nil {
+				c.Log.Warn("results opt-in on create failed", "game_id", meta.ID.String(), "err", rerr)
 			}
 		}
 		if from == setupFromLast {
