@@ -25,13 +25,17 @@ func TestAFinishedGameGetsAStatsRecord(t *testing.T) {
 	if _, _, err := room.Apply(alice, func() error { return room.Game.Concede(alice) }); err != nil {
 		t.Fatalf("conceding: %v", err)
 	}
+	// Poll the store, not the WaitGroup: the end is recorded on the room's
+	// watcher goroutine, and a Wait racing its Add(1) from zero is a data
+	// race. Once the record is there the Add has happened, so the Wait
+	// after the loop only lets the write's goroutine finish.
 	var rec gamestats.Game
 	waitFor(t, func() bool {
-		l.WaitGameStats()
 		got, err := stats.Get(context.Background(), meta.ID)
 		rec = got
 		return err == nil
 	})
+	l.WaitGameStats()
 
 	if rec.Source != gamestats.SourceLive || !rec.LogComplete || rec.Version != gamestats.Version {
 		t.Errorf("record header %+v", rec)
