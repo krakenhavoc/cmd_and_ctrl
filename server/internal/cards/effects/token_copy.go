@@ -141,7 +141,7 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 	if !ok {
 		return game.Card{}, false
 	}
-	return game.Card{
+	out := game.Card{
 		Name:               src.Name,
 		ScryfallID:         src.ScryfallID,
 		OracleID:           src.OracleID,
@@ -155,7 +155,24 @@ func TokenCopyTemplate(g *game.Game, cardID uuid.UUID) (game.Card, bool) {
 		Keywords:           append([]string(nil), src.Keywords...),
 		ManaAbilities:      append([]game.ManaAbilityShape(nil), src.ManaAbilities...),
 		ActivatedAbilities: append([]game.ActivatedAbilityShape(nil), src.ActivatedAbilities...),
-	}, true
+	}
+	if src.OracleID == "" && src.TokenKey != "" {
+		// A copy of a TOKEN (CR 707.2) takes the token's catalog
+		// identity: with no oracle ID the key is the only thing its
+		// abilities are found by. It also takes a double-faced token's
+		// BOTH faces and which one is up (CR 707.8a, ADR 0185): a copy
+		// of an Incubator is an Incubator that can transform, entering
+		// with whichever face the original shows, and none of the
+		// original's counters (counters are not copiable).
+		out.TokenKey = src.TokenKey
+		out.PrintedPTKnown = src.PrintedPTKnown
+		if src.Layout == game.LayoutTransform && len(src.Faces) == 2 {
+			out.Layout = src.Layout
+			out.Faces = game.CopiableValuesOf(src).Clone().Faces
+			out.ActiveFace = src.ActiveFace
+		}
+	}
+	return out, true
 }
 
 // tokenTypeLine prepends the "Token" supertype to a printed type

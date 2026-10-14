@@ -397,6 +397,9 @@ Each of these stays on the seam registry's transform row after this ADR lands.
    closed with it, not here. `CanTransform` refuses one today because a token has
    no `Layout`.
 
+   **Closed by [ADR 0185](0185-double-faced-tokens-and-incubate.md) (2026-10-14, #2417):**
+   a token template can carry a back face, and the Incubator is the first one.
+
    That neighbouring gap bites one of this ADR's own proof cards, which is worth
    naming: Fable of the Mirror-Breaker's chapter I makes *"a 2/2 red Goblin Shaman
    creature token with 'Whenever this creature attacks, create a Treasure token'"*.

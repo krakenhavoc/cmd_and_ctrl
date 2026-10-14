@@ -104,6 +104,14 @@ func printedTextKeyOf(c *Card) string {
 		base = FusedCatalogKey(c.OracleID)
 	case c.ActiveFace != 0 && c.OracleID != "" && !hasSharedTypeLine(c):
 		base = c.OracleID + "#" + strconv.Itoa(c.ActiveFace)
+	case c.ActiveFace != 0 && c.OracleID == "" && c.TokenKey != "" && c.Layout == LayoutTransform:
+		// ADR 0185: a DOUBLE-FACED TOKEN's back face keys as
+		// "<token key>#<face>", exactly as a card's does, so the
+		// Phyrexian Token an Incubator turns into reads its own entry
+		// (which may be empty) rather than the Incubator's "{2}:
+		// Transform" row. The oracle ID still wins above, so a token
+		// copying a real double-faced card keeps resolving to that card.
+		base = c.TokenKey + "#" + strconv.Itoa(c.ActiveFace)
 	}
 	// CR 707.9a, #665: an ability a copy effect GRANTED is part of
 	// the object's copiable values and has no oracle ID of its own,
