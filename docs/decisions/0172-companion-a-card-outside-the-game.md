@@ -1,6 +1,6 @@
 # ADR 0172 — Companion: a card outside the game
 
-**Status:** Proposed (draft for the owner's review) · 2026-10-14 · S58 — Deck requests, October batch.
+**Status:** Accepted · 2026-10-14 (proposed and accepted the same day; the owner's answers are in [Owner decisions](#owner-decisions-2026-10-14)) · S58 — Deck requests, October batch.
 **Issue:** [#3401](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3401) (the `companion` seam). Requested card: Jegantha, the Wellspring ([#2034](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2034), shipped with the companion caveat in #2170).
 **Numbering:** checked with the AGENTS.md §4 sweep on 2026-10-14. I ran `git fetch --all --prune` and listed every file `docs/decisions/` has held on every remote head (`git log --remotes --name-only -- docs/decisions/`; 12 refs, then 15 on the re-check before pushing), and read the files of the open PRs (#3421, #3420, #3418, #3356). `develop` ends at 0171 and no branch or open PR holds a higher number, so this ADR takes **0172**.
 **Builds on:** [ADR 0062](0062-abilities-and-special-actions-from-the-hand.md) Decision 4 (one `special_action` verb), [ADR 0082](0082-casting-face-down-and-turning-face-up.md) decision 6 (the per-kind zone table), [ADR 0064](0064-emblems.md) (a second container a `ZoneRef` can't reach), [ADR 0041](0041-game-persistence.md) and [ADR 0044](0044-surviving-a-deploy.md) (restore points and the snapshot rules), [ADR 0095](0095-deck-coverage-and-deck-requests.md) (deck coverage), [ADR 0110](0110-remember-me.md) and [ADR 0112](0112-signed-in-home-player-mode-and-one-decks-page.md) (saved decks as source text), [ADR 0144](0144-choose-a-background-and-the-partner-pairings.md) (the last deck-format change to the command zone), [ADR 0033](0033-ai-bot-seat.md) and [ADR 0122](0122-an-agent-at-the-table-a-local-mcp-seat.md) (the enumerator, bots and the MCP seat), and [ADR 0167](0167-controlling-another-players-turn-emrakul-the-promised-end.md) §5 (a "card from outside the game" offers a controller nothing hidden).
@@ -94,16 +94,27 @@ Accept a companion line and either drop it with a warning or put the card in the
 
 **Recommendation: Option B.** It costs one more container than A and saves an audit of every command-zone reader. Validation is the same work in either option.
 
-## Decision (proposed)
+## Decision
+
+Option B, with the owner's answers of 2026-10-14 folded in (see [Owner decisions](#owner-decisions-2026-10-14)).
 
 ### 1. The deck format: one companion slot
 
 - `deck.List` gains `Companion *cards.Card` (`json:"companion,omitempty"`), and `deck.Entry` gains `IsCompanion bool`. A list holds at most one companion (CR 103.2b).
 - **Pasted text** (`ParseText`). Add a `Companion` section header in the same forms as the others: `Companion`, `Companion:` and `// Companion`. That is the header MTG Arena exports use. No suffix marker is invented. `List.Text()` writes a `Companion:` section after `Commander:`, so a fetched deck saves and reseats with its companion.
-- **Moxfield JSON** (`ParseMoxfield`). The `companions` board becomes `IsCompanion` entries instead of `ErrUnsupportedMechanic`. The fetch is still blocked, so in practice this is the pasted JSON path and the fixture tests.
-- **Moxfield plain text.** This is the route people actually use. How Moxfield's "Copy plain text" export labels a companion (its own section, the sideboard, or nothing) has not been checked against a real export. The implementation PR adds a real export as `deck/testdata` and parses whatever it shows. See owner question 4.
-- **Archidekt** (`ParseArchidekt`). A `Companion` category (case-insensitive, first recognised category wins, as with `Commander`) maps to `IsCompanion`. Whether Archidekt users label a companion that way also needs a real public deck in `deck/testdata` before merge.
-- **A companion in the sideboard.** Commander has no sideboard (CR 903.5e), and builders commonly put the companion there. The proposal is that when no row is marked companion and the sideboard holds exactly one card, and that card prints a companion ability, it is read as the companion and a warning says so (`companion_from_sideboard`). In every other case the sideboard keeps today's `sideboard_not_supported_in_commander` warning. See owner question 3.
+- **Moxfield JSON** (`ParseMoxfield`). The `companions` board becomes `IsCompanion` entries instead of `ErrUnsupportedMechanic`. Moxfield usually lists the companion on the `sideboard` board as well (see the findings below), so a sideboard row naming the companion is dropped rather than read as a second card. The fetch is still blocked from the production host, so in practice this is the pasted JSON path and the fixture tests.
+- **Moxfield plain text.** This is the route people actually use. What the export does with a companion is recorded under [Import formats: what the real exports do](#import-formats-what-the-real-exports-do): it has no companion section, so the companion arrives in `SIDEBOARD:` or not at all. The text parser also learns Moxfield's trailing commander block (below), without which no Moxfield text export with a sideboard parses a commander.
+- **Archidekt** (`ParseArchidekt`). A `Companion` category (case-insensitive, first recognised category wins, as with `Commander`) maps to `IsCompanion`. Real public decks use exactly that category name (findings below).
+- **A companion in the sideboard.** Commander has no sideboard (CR 903.5e), and builders commonly put the companion there. When no row is marked companion and the sideboard holds exactly one card, and that card prints a companion ability, it is read as the companion and a warning says so (`companion_from_sideboard`, non-fatal). In every other case the sideboard keeps today's `sideboard_not_supported_in_commander` warning (owner decision 3). An explicit `Companion` section, board or category always wins over the sideboard.
+
+### Import formats: what the real exports do
+
+Checked on 2026-10-14 against public decks, through Moxfield's public API (`api2.moxfield.com`, reachable from a workstation though not from the production host) and Archidekt's (`archidekt.com/api/decks/<id>/`). Trimmed copies are the parser fixtures in `server/internal/deck/testdata/` (names, quantities and categories or boards only).
+
+- **Moxfield's deck JSON** has a `companions` board. Of 40 public Commander decks that matched "jegantha", 16 had Jegantha on that board. 13 of those 16 also had it on the `sideboard` board: alone in 10, among other sideboard cards in 3. Fixtures: [WuFgkXDyCUOl8kMaiqIioA](https://moxfield.com/decks/WuFgkXDyCUOl8kMaiqIioA) (Sisay, Weatherlight Captain; Jegantha on `companions` and alone on `sideboard`) and [FLgGtSxE1U60V4mLbBPSLw](https://moxfield.com/decks/FLgGtSxE1U60V4mLbBPSLw) (Sisay; Jegantha on `companions` only).
+- **Moxfield's text export** (the deck's export download, `GET /v2/decks/all/<id>/download?exportId=…`) writes the mainboard as `1 Name` rows, then a `SIDEBOARD:` block if the sideboard board has cards, then a blank line and the commander rows with no header. There is no companion section. So a companion on both boards arrives as a `SIDEBOARD:` row, and a companion on the `companions` board alone is **left out of the export**. The site's "Copy plain text" button builds its text in the browser and could not be fetched; the download is the server's rendering of the same deck. Fixtures: the WuFgk export (lone `SIDEBOARD:` Jegantha), [YBEeDoM8JU2dnV20-r5vXA](https://moxfield.com/decks/YBEeDoM8JU2dnV20-r5vXA)'s export (Jegantha among 15 sideboard cards, so not read as the companion) and the FLgGt export (no Jegantha at all).
+- **The trailing commander block.** Because the export ends with the commander after a blank line and no header, `ParseText` reads a final block of one or two rows, after a blank line, as the commanders when no row anywhere is marked commander. Before this, such a list parsed with no commander and failed `missing_commander`, so the rule only changes lists that were refused. MTGO's Commander export has the same shape.
+- **Archidekt** has no built-in companion board. Builders use a category: 30 public Commander decks containing Jegantha, sorted by views, had it in a `Companion` category in 3 (deck 14378554, "Infinite Guideline Station"; 15014290; 1772375), in `Sideboard` as its first board category in 8 (5 of the 8 checked had it alone there), and in an ordinary category (the deck or a maybeboard) in the rest. The `Companion` category is created with "included in deck" off. Fixtures: deck [14378554](https://archidekt.com/decks/14378554) (category `Companion`, listed before `Commander` on the same card; first recognised category wins, so it is the companion) and deck [6839975](https://archidekt.com/decks/6839975) ("Painbow", Jenson Carthalion; Jegantha alone in `Sideboard`).
 - **`Resolve`** stops refusing a commander that prints companion. That card is in the starting deck and its companion ability does nothing (ruling). `mentionsUnsupportedMechanic` is kept for companions whose condition isn't implemented yet (§2).
 - **Saved decks** need no migration, because a saved deck is source text and the text dialect gains the section. The decks page shows the companion beside the commanders. That can be derived when the row is written, as `Commanders` is, or with an additive column. The implementation picks one, and if it adds a column, it goes in a migration of its own.
 
@@ -115,17 +126,17 @@ Accept a companion line and either drop it with a warning or put the card in the
 |---|---|---|
 | `not_a_companion` | yes | the card has no companion ability |
 | `too_many_companions` | yes | more than one companion row |
-| `companion_is_commander` | yes | the companion row names a commander of the same list (see owner question 5) |
+| `companion_is_commander` | yes | the companion row names a commander of the same list (owner decision 5) |
 | `companion_condition_not_met` | yes | the condition fails. The message names the condition, and `Card` names the first offender. The violation list carries up to 10 offenders, one row each |
 | `companion_not_legal` | yes | the card is not legal in Commander (Scryfall `legalities.commander`, as for every other card) |
-| `companion_color_identity` | yes | outside the commander's colour identity (see owner question 2) |
+| `companion_color_identity` | yes | outside the commander's colour identity (owner decision 2) |
 | `unsupported_mechanic` | yes | a companion whose condition is not implemented yet (today's code, now only for those cards) |
 
 The 100-card count, singleton and the colour identity of the 100 are unchanged. The companion is not one of the 100 cards (ruling), so it is excluded from all three.
 
 **The condition registry.** Conditions are code in `internal/deck` (new `companion.go`), keyed by oracle ID, one `func(starting []cards.Card) []string` per companion. The function returns the offending card names. "Starting deck" is `Commanders` plus `Mainboard` (702.139b). The registry is the list of supported companions: a companion with no entry is `unsupported_mechanic`. It reads only Scryfall data (`mana_cost`, `cmc`, `type_line`, the faces), the same data the colour-identity check reads. It does not read the effects catalog: `internal/deck` can't import it (see the `deckcoverage` package comment), and a deck condition is about printed characteristics, not engine support.
 
-**What a failure does.** At seat time a fatal violation refuses the deck, as any other fatal violation does today, and the client highlights the row. The player can fix the list or delete the companion line. The deck checker (ADR 0095) reports the violations without blocking, as it does now. The bot's built-in decks have no companions. See owner question 1 on whether to check conditions at all.
+**What a failure does.** At seat time a fatal violation refuses the deck, as any other fatal violation does today, and the client highlights the row. The player can fix the list or delete the companion line. The deck checker (ADR 0095) reports the violations without blocking, as it does now. One built-in bot deck carries Jegantha as its companion so the path runs in ordinary games (owner decision 8); its list satisfies the condition and the colour identity, and the bot-deck test checks both.
 
 **Deck coverage.** `deckcoverage.Report` gains `companion *Card` (additive, ADR 0095 §1 style). It is bucketed like any card but kept out of `Cards`, `Counts` and `Copies`, so `Copies` still totals 100 for a legal deck. The deck request checklist lists it under its own heading.
 
@@ -144,11 +155,11 @@ The 100-card count, singleton and the colour identity of the 100 are unchanged. 
   - *Older file, new binary.* The key is absent, which means no companion. That is right for every file written before this change.
   - *New file, older binary (a rollback).* The older binary drops the key, and the player loses the option to take their companion: weaker than printed, never stronger. A companion already in the hand, graveyard or battlefield is an ordinary card and survives. `Card.IsCompanion` is an omitempty bool whose absence means no badge.
 
-  The shape is recorded in `testdata/snapshot_shape/v8.txt` (`-update-shape`) in the same change. A corpus board with a companion waiting is added to the v8 set (the writer adds a file for a new board without a bump), and `TestSnapshotCorpusBoardsStillMatchTheirFixtures` guards it from then on. No fixture is edited. The closure ratchet sees nothing new, because the zone and the card are plain data. See owner question 6 if the owner wants a bump anyway.
+  The shape is recorded in `testdata/snapshot_shape/v8.txt` (`-update-shape`) in the same change. A corpus board with a companion waiting is added to the v8 set (the writer adds a file for a new board without a bump), and `TestSnapshotCorpusBoardsStillMatchTheirFixtures` guards it from then on. No fixture is edited. The closure ratchet sees nothing new, because the zone and the card are plain data. No version bump (owner decision 6).
 
 ### 5. The reveal
 
-When the game starts (`start`, after the opening roll has settled the starting player and before libraries are shuffled and hands drawn: CR 103.2b before 103.3), each seat with a companion emits `EventCompanionRevealed` in seat order from the starting player, as the ruling orders it. Its log line is "Alice reveals Jegantha, the Wellspring as her companion". Declaring a companion in the deck list *is* the choice to reveal it, so there is no pre-game prompt. See owner question 7.
+When the game starts (`start`, after the opening roll has settled the starting player and before libraries are shuffled and hands drawn: CR 103.2b before 103.3), each seat with a companion emits `EventCompanionRevealed` in seat order from the starting player, as the ruling orders it. Its log line is "Alice reveals Jegantha, the Wellspring as her companion". Declaring a companion in the deck list *is* the choice to reveal it, so there is no pre-game prompt (owner decision 7).
 
 The companion is public: it is revealed and remains revealed. `PlayerView` gains `companion *CardView` (`json:"companion,omitempty"`), unredacted for every viewer, with the same posture as `emblems`. `special_actions` on it are filled for the owner only, as `redactCardForViewer` already does for every card. Under an ADR 0167 controlled turn the controller sees what everyone sees. The card isn't hidden information, so 723.4's "outside the game" sentence has nothing to withhold.
 
@@ -204,7 +215,7 @@ The tests cover each of these against the real Scryfall dump. After that, Jegant
 
 ## Implementation slices
 
-1. **Deck format and validation** (`internal/deck`, `deckcoverage`, lobby upload response). Add the companion slot, the parsers, `Text()`, the condition registry with Jegantha, the violations and the coverage field. Real Moxfield-text and Archidekt fixtures go in `deck/testdata`. The deck still seats without the companion in the game until slice 2. This slice could merge on its own, with a non-fatal `companion_not_in_game_yet` warning, but the recommendation is to land 1–3 together so a deck never says it has a companion the table can't use.
+1. **Deck format and validation** (`internal/deck`, `deckcoverage`, lobby upload response). Add the companion slot, the parsers, `Text()`, the condition registry with Jegantha, the violations and the coverage field. Real Moxfield-text and Archidekt fixtures go in `deck/testdata`. The slices ship together (owner decision 9): one PR, or a stack merged back to back with nothing in between, so a deck never says it has a companion the table can't use. There is no `companion_not_in_game_yet` warning.
 2. **The engine:** `ZoneOutside`, `Player.Companion`, seating, clone, snapshot shape and corpus board, the reveal event, `SpecialActionCompanion` with its three table rows, and the view field. Fix the stale CR 116.2g citation in `special_action.go`.
 3. **Moves and play surfaces:** the enumerator walk, the bot pricing, boardtext, the client strips, lobby labels and `docs/protocol.md`. Remove Jegantha's caveat, close the roadmap seam and close #3401.
 
@@ -228,14 +239,18 @@ The tests cover each of these against the real Scryfall dump. After that, Jegant
 - `ZoneOutside` is the first container for "outside the game". It holds only a revealed companion. It is **not** a general sideboard, and nothing here makes Extrapolate the Impossible, Spawnsire of Ulamog's {20} ability or wishes work. Those need a decision about what a casual player's "outside the game" is (their whole collection), which this ADR does not take.
 - The deck checker can now give a precise reason for refusing a companion deck, where today it gives a blanket `unsupported_mechanic`.
 
-## Open owner questions
+## Owner decisions (2026-10-14)
 
-1. **Validate the condition at all?** The recommendation is yes: the server checks the condition, failure is fatal at seating and reported by the deck checker. The alternative is to trust the player, warn only, and seat the companion anyway. That is sandbox-friendly, but it lets any deck use any companion.
-2. **Colour identity.** CR 903.5c covers cards *in* the deck, and the companion isn't one. The Commander format's own guidance has companions follow the commander's colour identity, but this ADR could not confirm that page's current text. Enforce `companion_color_identity`? The recommendation is yes.
-3. **A lone companion in the sideboard.** Read it as the companion with a warning (the proposal), or require an explicit `Companion` section or board?
-4. **Moxfield plain-text export.** Can you paste a real Moxfield plain-text export of a companion deck (and an Archidekt link, if handy)? The parsers should match what the exports actually emit, not a guess.
-5. **The same card as commander and companion.** The commander card itself can never be the companion (103.2b before 103.2c). A second copy of the same name as the companion is arguably legal, since singleton covers only the 100. Refuse it (`companion_is_commander`, the proposal, which also keeps a pasted list unambiguous) or allow it?
-6. **Snapshot version.** Keep the companion additive in v8 (the proposal: on a rollback the companion option is lost, weaker than printed), or bump to v9 so an older binary refuses the file?
-7. **No pre-game reveal prompt.** Declaring a companion in the list is the choice to reveal it. Is that enough, or do you want a pre-game "reveal your companion?" prompt that lets a player sit it out for one game without editing the deck?
-8. **Bots.** Should any built-in bot deck (`internal/decks`) get a companion, so the bot path runs in normal games, or is a test deck enough?
-9. **Scope of the first PR.** Ship slices 1–3 together (the proposal), or let slice 1 merge alone with the `companion_not_in_game_yet` warning?
+The owner answered the draft's nine questions on 2026-10-14. Each answer is a decision, and the sections above are written to match.
+
+1. **Validate the condition on the server.** A failed condition is fatal when the deck is seated, like every other fatal violation. The deck checker reports it without blocking. Conditions live in a per-card registry in `internal/deck`, starting with Jegantha (§2).
+2. **Colour identity.** The companion must fit the commander's colour identity (`companion_color_identity`, fatal).
+3. **Declaration.** An explicit `Companion` section, board or category wins. A lone companion-keyword card in the sideboard (the sideboard holds that one card and nothing else) is read as the companion, with the `companion_from_sideboard` warning.
+4. **Import formats.** Checked against real public Moxfield and Archidekt decks rather than guessed. The findings and the fixtures are in [Import formats: what the real exports do](#import-formats-what-the-real-exports-do).
+5. **The same card as commander and companion.** A second copy of the commander's card as the companion is refused (`companion_is_commander`). The commander itself can never be its own companion (CR 103.2b runs before 103.2c).
+6. **Snapshot version.** Stay on v8 with an additive field. A rollback to an older binary loses the companion option, which is weaker than printed. No version bump.
+7. **The reveal.** The deck list is the reveal: a declared companion is shown to the table when the game starts. There is no pre-game prompt.
+8. **Bots.** One fitting built-in bot deck gets Jegantha as its companion, to exercise the path in ordinary games. The deck must satisfy Jegantha's condition and colour identity.
+9. **Ship together.** The deck format and validation, the engine zone and special action, and the client, bot and MCP pieces go live together, never separately.
+
+The owner also asked the implementation to lift `deck.Resolve`'s refusal of Jegantha as a commander (§1) and to fix `special_action.go`'s citation for turning a card face up (CR 116.2b; 116.2g is companion).
