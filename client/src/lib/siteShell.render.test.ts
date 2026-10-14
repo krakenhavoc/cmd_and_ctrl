@@ -146,7 +146,7 @@ describe("the C2 Discord in the shell", () => {
     expect(icon?.getAttribute("target")).toBe("_blank");
     expect(icon?.getAttribute("rel")).toContain("noopener");
     const links = [...footer.container.querySelectorAll("nav a")].map((a) => a.textContent?.trim());
-    expect(links).toEqual(["Discord", "Guide", "About", "Privacy", "Terms", "GitHub"]);
+    expect(links).toEqual(["Discord", "Guide", "About", "Privacy", "Terms", "Funding", "GitHub"]);
     expect(discordLink(footer.container)).not.toBeNull();
   });
 });

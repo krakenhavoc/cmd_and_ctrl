@@ -20,7 +20,7 @@
 // registerGameMetrics (cmd/server/metrics_state.go). Today that is
 // engine.go's restore-point collector (the rooms), tables.go's (the
 // lobby and the hub), and, only when there is a database, users.go's
-// and db.go's. Collectors lists everything else.
+// and db.go's, plus growth.go's. Collectors lists everything else.
 //
 // The server serves Registry on its own loopback-only listener
 // (CMDCTRL_METRICS_ADDR, listen.go), never on the public mux.

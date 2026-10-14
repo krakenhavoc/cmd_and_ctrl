@@ -933,9 +933,12 @@ func TestB16AureliaFiresOncePerDeclarationAtThreeAndFive(t *testing.T) {
 		}
 	}
 	lockInAttacks(t, g)
-	// Two DIFFERING triggers from one controller stop on the CR
-	// 603.3b order prompt before they reach the stack.
-	answerTriggerOrderInOfferedOrder(t, g)
+	// Two differing triggers from one controller, but a draw and a
+	// drain commute (both rows declare footprints, ADR 0018's
+	// 2026-10-14 amendment), so no CR 603.3b prompt holds them.
+	if ch := triggerOrderPrompt(g); ch != nil {
+		t.Fatalf("a draw and a drain asked for an order: %+v", ch)
+	}
 	if n := triggersOnStackFrom(g, aurelia); n != 2 {
 		t.Fatalf("five attackers: %d triggers, want 2 (draw + drain, one each)", n)
 	}

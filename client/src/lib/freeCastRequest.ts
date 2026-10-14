@@ -15,13 +15,16 @@ import type { AlternativeCostView, CardView, PendingChoiceView } from "./protoco
 export const freeCastRequest = guardedWritable<string | null>(null, "freeCastRequest");
 
 // MayCastKeywordsThatOpenACast are the may_cast keywords whose accept
-// branch is a free cast from exile, as opposed to madness's paid cast
-// or an offer the card's own text words.
+// branch is a cast from exile the client starts at once: the free casts,
+// and "paid_or_else" (#3510, Chandra, Torch of Defiance), a cast at the
+// card's own cost during the resolution. Not madness's paid cast or an
+// offer the card's own text words.
 export const mayCastKeywordsThatOpenACast: ReadonlySet<string> = new Set([
   "discover",
   "cascade",
   "exile_until",
   "free_or_hand",
+  "paid_or_else",
   "suspend",
   "rebound",
 ]);

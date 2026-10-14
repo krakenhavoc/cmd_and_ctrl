@@ -1389,6 +1389,41 @@ jobs:
           printf '%s' "${BUGREPORT_TOKEN}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
             "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_GITHUB_TOKEN ${ENV_FILE}"
 
+      # The GitHub App that files reports as its bot (#3493), which the
+      # server prefers over the PAT above. All three or none: none skips
+      # (the PAT, if any, keeps filing); a partial set fails the run,
+      # since the server refuses to boot on one. The key secret is the
+      # app's .pem pasted as is; the env file is line-oriented, so it is
+      # base64-encoded onto one line here (the server reads either).
+      # Over stdin like the token, never argv.
+      - name: Sync server env (GitHub App)
+        env:
+          APP_ID: ${{ vars.CMDCTRL_GITHUB_APP_ID }}
+          APP_INSTALLATION_ID: ${{ vars.CMDCTRL_GITHUB_APP_INSTALLATION_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.CMDCTRL_GITHUB_APP_PRIVATE_KEY }}
+        run: |
+          set_n=0
+          for v in "${APP_ID}" "${APP_INSTALLATION_ID}" "${APP_PRIVATE_KEY}"; do
+            [ -n "$v" ] && set_n=$((set_n + 1))
+          done
+          if [ "$set_n" -eq 0 ]; then
+            echo "GitHub App not configured; skipping (reports file with CMDCTRL_GITHUB_TOKEN, if set)."
+            exit 0
+          fi
+          if [ "$set_n" -ne 3 ]; then
+            echo "::error::CMDCTRL_GITHUB_APP_ID, CMDCTRL_GITHUB_APP_INSTALLATION_ID (variables) and CMDCTRL_GITHUB_APP_PRIVATE_KEY (secret) must all be set, or none"
+            exit 1
+          fi
+          for pair in "CMDCTRL_GITHUB_APP_ID:${APP_ID}" "CMDCTRL_GITHUB_APP_INSTALLATION_ID:${APP_INSTALLATION_ID}"; do
+            case "${pair#*:}" in
+              ''|*[!0-9]*) echo "::error::${pair%%:*} must be a number"; exit 1 ;;
+            esac
+            printf '%s' "${pair#*:}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${pair%%:*} ${ENV_FILE}"
+          done
+          printf '%s' "${APP_PRIVATE_KEY}" | base64 -w0 | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh CMDCTRL_GITHUB_APP_PRIVATE_KEY ${ENV_FILE}"
+
       # Bug-report screenshots need a PUBLIC origin: a GitHub issue can
       # only render an image its proxy can fetch, so the server has to
       # know the URL it is reachable at from the outside. Not a secret —
@@ -1781,6 +1816,45 @@ jobs:
           if [ -n "${tcg}" ]; then t=set; else t=unset; fi
           if [ -n "${ck}" ]; then c=set; else c=unset; fi
           echo "set the shop link variables (TCGplayer ${t}, Card Kingdom ${c})"
+
+      # #3558: optional supporter links for the funding page. Each an
+      # https URL on that service's own domain (ko-fi.com, patreon.com;
+      # www allowed). Served by GET /config; empty (the default) shows
+      # no link.
+      #
+      # BOTH hosts, ALWAYS written, empty included, like the shop links:
+      # clearing one must remove it on the next deploy. A GitHub
+      # environment's value overrides the repo's. Checked here with the
+      # server's own rule (supportlinks.Validate) before anything is
+      # written; the server refuses to boot on a malformed one.
+      - name: Sync server env (support links)
+        env:
+          CMDCTRL_SUPPORT_KOFI: ${{ vars.CMDCTRL_SUPPORT_KOFI }}
+          CMDCTRL_SUPPORT_PATREON: ${{ vars.CMDCTRL_SUPPORT_PATREON }}
+        run: |
+          export LC_ALL=C
+          trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+          check() {
+            local name="$1" v="$2" domain="$3"
+            [ -z "${v}" ] && return 0
+            if [ "${#v}" -gt 512 ] || ! [[ "${v}" =~ ^https://(www\.)?${domain//./\\.}([/?#][!-~]*)?$ ]] \
+              || [[ "${v}" == *[\"\'\`\\\<\>\{\}\|^]* ]]; then
+              echo "::error::${name} is not a valid support link: use an https URL on ${domain} (or www.${domain}) such as https://${domain}/yourname, with no spaces. The server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+              exit 1
+            fi
+          }
+          kofi="$(trim "${CMDCTRL_SUPPORT_KOFI}")"
+          patreon="$(trim "${CMDCTRL_SUPPORT_PATREON}")"
+          check CMDCTRL_SUPPORT_KOFI "${kofi}" ko-fi.com
+          check CMDCTRL_SUPPORT_PATREON "${patreon}" patreon.com
+          for pair in "CMDCTRL_SUPPORT_KOFI=${kofi}" "CMDCTRL_SUPPORT_PATREON=${patreon}"; do
+            name="${pair%%=*}"; value="${pair#*=}"
+            printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
+          done
+          if [ -n "${kofi}" ]; then k=set; else k=unset; fi
+          if [ -n "${patreon}" ]; then p=set; else p=unset; fi
+          echo "set the support link variables (Ko-fi ${k}, Patreon ${p})"
 
       # ADR 0123 §2 and §10: the server's /metrics listener, which the
       # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server

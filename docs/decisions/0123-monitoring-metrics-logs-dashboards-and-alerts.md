@@ -410,3 +410,21 @@ The 2026-10-13 audit found the rules covered the host and the restore path but n
 - Metrics: `cmdctrl_http_rate_limited_total{route}` (a counter of 429s, because the `code` label is only a class), `cmdctrl_auth_failures_total{reason}` (`oauth_exchange|oauth_profile|gate_check|signin_record`; the role gate fails closed with a redirect, which no HTTP metric shows), `cmdctrl_bot_seat_owed_seconds_max` (the longest any bot seat has had a legal move and played none), and, only where a spend guard exists, `cmdctrl_bot_budget_tokens{period}`, `cmdctrl_bot_budget_limit_tokens{period}` (0 = no cap) and `cmdctrl_bot_budget_blocked`. Spend is in tokens, as the guard counts it, not money.
 - Alerts, all prod-only except `BotSeatWedged` (dev warning after 5 m): `HighErrorRate` (5xx over 5% for 5 m, at least 20 requests), `HighLatency` (route p95 over 2 s for 10 m), `RateLimitSpike` (over 100 429s in 5 m, for 5 m), `AuthFailures` (3 or more in 10 m), `BotModelSpendHigh` (over 80% of a cap for 5 m), `BotModelBlocked` (calls refused for 15 m), `BotSeatWedged` (owed over 2 m, for 1 m), `BotFallbackRising` (runner fallbacks over 10% of a tier's decisions, at least 10, for 10 m), and `OffsiteBackupStale` gains `cause=missing` via `absent()` (2 h).
 - Every threshold is a first guess, set before prod traffic existed; each alert has a firing and a quiet `promtool` case, and the traffic alerts carry a floor so a quiet hour's single failure is not a rate.
+
+## Amendment (2026-10-14): growth and engagement series (#3557)
+
+Usage tracking lives in Prometheus and Grafana (the `Growth` dashboard, `cmdctrl-growth`), never on the in-app Admin page. Everything added is an aggregate count; no series carries a person, a name or a game id, and the only new labels are closed sets (`age`, plus `kind` and `reason` scoped to their own families in `labels.go`). Nothing here needs a change to the Privacy notice, which already says the counts the operator watches carry no names.
+
+State gauges, from one cached collector over SQLite (`metrics/growth.go`; 5-minute cache, 10-second query bound, registered only with a database, like the users collector). "Played" is as in `cmdctrl_users_played`: seated at a started table that ended or was archived in the window.
+
+- `cmdctrl_players_new{window}` and `cmdctrl_players_returning{window}` (`1d|7d|30d`): accounts that played in the window whose first finished game was inside it, or before it.
+- `cmdctrl_retention_previous_players` and `cmdctrl_retention_retained_players`: accounts that played in the 7 days before the last 7, and those of them that played in the last 7 as well. Retention is the ratio, taken in the dashboard.
+- `cmdctrl_signup_cohort_accounts{age}` and `cmdctrl_signup_cohort_active{age}` (`1w|4w|8w`): accounts created in the 7-day band that ended `age` weeks ago, and those that played in the last 7 days.
+- `cmdctrl_finished_games{window}`, `cmdctrl_finished_game_seats{window}`, `cmdctrl_finished_game_turns{window}`, `cmdctrl_finished_game_rounds{window}`, `cmdctrl_finished_game_players{window}`: games with recorded statistics (`game_stats`) that ended in the window, their seats, turns and rounds, and the distinct signed-in accounts seated at them. Games per player, seats per game and game length are ratios taken in the dashboard.
+
+Counters, each incremented where the action already happens:
+
+- `cmdctrl_tables_started_total{kind}` (`real|practice`), `cmdctrl_rematches_offered_total`, `cmdctrl_stats_page_loads_total` (`GET /me/stats` answered).
+- `cmdctrl_own_key_seats_added_total` and `cmdctrl_own_key_fallbacks_total{reason}` ([ADR 0182](0182-your-own-model-key-for-ai-seats.md)). `reason` is a short code for each of `modelkeys`' fixed sentences: `refused|quota|model|unreadable|private|unreachable|timeout|rate_limited|bad_reply|removed|daily_limit|call_limit`, and `other` for anything else.
+
+Not added: shop-link clicks. [ADR 0179](0179-shop-links-for-real-cards.md) and the Privacy notice promise the click is not tracked; the dashboard says so in a text panel. No recording or alert rules: these are read by eye, not paged on.

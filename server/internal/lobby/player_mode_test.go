@@ -1148,6 +1148,15 @@ func sameAnswerProbes() []sameAnswerProbe {
 		{"DELETE /games/{id}/seats/bot/{player}", []string{"botSeatAuthorised"}, true, func(t *testing.T, fx *probeFixture) answer {
 			return fx.call(t, "DELETE", fx.tablePath("/seats/bot/"+fx.bob.String()), nil)
 		}},
+		// ADR 0177: the admin may always answer the away offer, but the
+		// table here has not started, so nobody is away and every caller
+		// is told so. The take-back reads the admin only to redact.
+		{"POST /games/{id}/seats/{player}/away", []string{"answerAwaySeat"}, false, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "POST", fx.tablePath("/seats/"+fx.bob.String()+"/away"), map[string]string{"action": "wait"})
+		}},
+		{"POST /games/{id}/seats/me/take-back", []string{"takeBackSeat"}, false, func(t *testing.T, fx *probeFixture) answer {
+			return fx.call(t, "POST", fx.tablePath("/seats/me/take-back"), nil)
+		}},
 		// /me: admin reads false in player mode. admin_allowed stays
 		// true for the allowlisted person, on purpose (§2 item 9), so
 		// the comparison is of `admin` alone.

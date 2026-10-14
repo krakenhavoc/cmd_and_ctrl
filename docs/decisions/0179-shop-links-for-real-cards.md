@@ -96,6 +96,14 @@ The same builder, store, `ShopLinks.svelte` and `ShopNote.svelte`; the rules of 
 - **The pre-built decks' lists** ride on `GET /decks` as `cards` (name and copies, commander first). Bot decks are the same registry, so the Add bot picker looks its list up there.
 - **Most-cast cards.** `GET /me/stats` gains `top_cards`: at most ten, most casts first, from `seat_card_stats` over the caller's own counted human seats only (the filter `user.go` already applies: no `bot_tier`, no `agent_client`, a result other than `none`).
 
+### 8. Supporter links and the funding page (#3558)
+
+A public page, `#/funding` ("How CMD & CTRL is funded"), linked from the footer beside Privacy and Terms, says in plain words (no numbers) that playing is free and never requires paying, what running it costs, the ways to help, that support is a thank-you which unlocks nothing, and who runs it (`legalNotice.ts`). The ways to help are GitHub Sponsors (as in `.github/FUNDING.yml`), the shop links of this ADR with the same disclosure, and two optional links from the server:
+
+- `CMDCTRL_SUPPORT_KOFI` and `CMDCTRL_SUPPORT_PATREON`: each an `https` URL on that service's own domain (`ko-fi.com` / `patreon.com`, with or without `www`; no credentials, no port).
+- Validated at boot by `server/internal/supportlinks` (a bad value stops the boot naming the variable) and in CD by "Sync server env (support links)", written on every deploy, empty included, environment value over repo value. Served on `GET /config` as `"support":{"kofi","patreon"}`; `{}` when unset. The client re-checks the host and drops a link that fails (`lib/supportLinks.ts`).
+- Terms and the privacy notice each say, beside the shop-link wording, that a support link goes to a third party under its own terms.
+
 ## Calls made here
 
 - **Boot fails on a malformed template** rather than dropping it with a log line: the same posture as every other optional server URL, and CD checks first.

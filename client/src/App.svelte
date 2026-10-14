@@ -18,6 +18,7 @@
   import Stats from "./routes/Stats.svelte";
   import Privacy from "./routes/Privacy.svelte";
   import Terms from "./routes/Terms.svelte";
+  import Funding from "./routes/Funding.svelte";
   import About from "./routes/About.svelte";
   import Guide from "./routes/Guide.svelte";
   import Practice from "./routes/Practice.svelte";
@@ -179,6 +180,8 @@
   <Privacy />
 {:else if $route.name === "terms"}
   <Terms />
+{:else if $route.name === "funding"}
+  <Funding />
 {:else if $route.name === "about"}
   <About />
 {:else if $route.name === "guide"}

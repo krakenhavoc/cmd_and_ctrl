@@ -269,6 +269,29 @@ func TestBugReportUpstreamFailureIs424(t *testing.T) {
 	}
 }
 
+// TestRenderBugIssueBodyNamesThePage — #3492: a report from the site
+// header has no game, and says which page it came from instead.
+func TestRenderBugIssueBodyNamesThePage(t *testing.T) {
+	p := auth.Principal{Role: auth.RoleIdentified, Name: "Alice"}
+	body := renderBugIssueBody(bugIssue{
+		Principal: p, Kind: bugKinds["bug"], Desc: "desc",
+		Ctx: &bugReportContext{Page: "decks"}, Now: time.Unix(0, 0).UTC(),
+	})
+	if !strings.Contains(body, "- Page: `decks`\n") {
+		t.Errorf("no Page row:\n%s", body)
+	}
+	if strings.Contains(body, "- Game:") {
+		t.Errorf("a Game row with no game:\n%s", body)
+	}
+	hostile := renderBugIssueBody(bugIssue{
+		Principal: p, Desc: "desc", Now: time.Unix(0, 0).UTC(),
+		Ctx: &bugReportContext{Page: "lobby\n- Fake row" + strings.Repeat("b", 200)},
+	})
+	if strings.Contains(hostile, "\n- Fake row") {
+		t.Error("a newline in page must not create a fake list row")
+	}
+}
+
 func TestRenderBugIssueBodyClipsHostileContext(t *testing.T) {
 	p := auth.Principal{Role: auth.RolePlayer, Name: "Mallory"}
 	bctx := &bugReportContext{

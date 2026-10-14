@@ -389,7 +389,7 @@ func init() {
 			panic(fmt.Sprintf("effects: two token templates claim %q", key))
 		}
 		for i, ab := range t.Activated {
-			checkActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab)
+			checkActivatedAnswers(t.Slug+" token", fmt.Sprintf("activated ability %d", i), ab, false)
 		}
 		for i, m := range t.Mana {
 			checkManaAnswers(t.Slug+" token", fmt.Sprintf("mana ability %d", i), m)
@@ -397,7 +397,7 @@ func init() {
 		fileDef(key, buildTokenDef(t))
 		if b := t.Back; b != nil && b.hasAbilities() {
 			for i, ab := range b.Activated {
-				checkActivatedAnswers(t.Slug+" token back face", fmt.Sprintf("activated ability %d", i), ab)
+				checkActivatedAnswers(t.Slug+" token back face", fmt.Sprintf("activated ability %d", i), ab, false)
 			}
 			for i, m := range b.Mana {
 				checkManaAnswers(t.Slug+" token back face", fmt.Sprintf("mana ability %d", i), m)

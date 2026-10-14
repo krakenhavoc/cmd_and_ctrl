@@ -31,6 +31,14 @@ describe("mayCastCopy (ADR 0099 §7)", () => {
     expect(mayCastKeywordsThatOpenACast.has("free_or_hand")).toBe(true);
   });
 
+  it("words a paid-or-else prompt as a paid cast and opens the cast chain", () => {
+    const c = mayCastCopy("paid_or_else", undefined, "Don't cast it (2 damage to each opponent)");
+    expect(c.accept).toBe("Cast it");
+    expect(c.decline).toBe("Don't cast it (2 damage to each opponent)");
+    expect(c.hint).toContain("paying its mana cost");
+    expect(mayCastKeywordsThatOpenACast.has("paid_or_else")).toBe(true);
+  });
+
   it("words a rebound prompt around staying in exile", () => {
     const c = mayCastCopy("rebound");
     expect(c.source).toContain("702.88");

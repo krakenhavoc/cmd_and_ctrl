@@ -74,6 +74,7 @@ func TestRenderBugIssueBodyNeverContainsAToken(t *testing.T) {
 			Phase:      "main1",
 			Step:       "main",
 			Connection: "wss://h/ws?token=" + leakedToken,
+			Page:       "lobby token=" + leakedToken,
 		},
 		Log:       leakyLog(),
 		UserAgent: "test-browser/1.0 token=" + leakedToken,

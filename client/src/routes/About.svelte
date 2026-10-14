@@ -16,6 +16,7 @@
   import { fetchRoadmap, type RoadmapCardCounts } from "../lib/roadmap";
   import { ISSUES_URL, NEVER_PAYWALLED_URL, REPO_URL } from "../lib/about";
   import { PRIVACY_HASH } from "../lib/privacy";
+  import { L } from "../lib/labels";
   import { community } from "../lib/community";
 
   let cards = $state<RoadmapCardCounts | null>(null);
@@ -95,9 +96,10 @@
       <h2 id="feedback-title">Feedback</h2>
       <ul class="points">
         <li>
-          In a game, the bug button on the toolbar (“Report a bug or idea”) lets you report a bug,
-          suggest an improvement, or ask a question. It files an issue in the project's GitHub
-          repository, so what you write is <strong>public</strong>
+          The bug button (“{L.reportABug}”), in a game's toolbar or, when you are signed in, at the
+          top of every other page, lets you report a bug, suggest an improvement, or ask a question.
+          It files an issue in the project's GitHub repository, so what you write is
+          <strong>public</strong>
           (see <a href={PRIVACY_HASH}>Privacy and your data</a>).
         </li>
         <li>

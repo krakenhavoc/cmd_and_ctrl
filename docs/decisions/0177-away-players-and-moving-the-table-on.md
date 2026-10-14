@@ -1,6 +1,6 @@
 # ADR 0177 — Away players: showing who is gone, and moving the table on without them
 
-**Status:** Proposed · 2026-10-14 · Backlog
+**Status:** Accepted · 2026-10-14 · slice 2 (server) built; see the [amendment](#amendment-2026-10-14--slice-2-the-server-3337)
 **Issue:** [#3337](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3337) (found by the 2026-10-13 audit).
 **Owner decisions:** the four answers of 2026-10-14 are quoted under [Owner decisions](#owner-decisions-2026-10-14). They are binding. Calls this ADR makes on its own are listed under [Calls made here](#calls-made-here) for the owner to overturn in review, before slice 2 lands.
 **Numbering:** the AGENTS.md §4 sweep on 2026-10-14 (12 remote heads) found 0174 claimed by the Discord results feed (#3322), 0175 on `fix/2948-liliana-simultaneous-sacrifice` and 0176 on develop (the movable stack). This is **0177**, claimed on #3337.
@@ -147,3 +147,15 @@ When the person's session reconnects to a stand-in seat:
 | 2 | **Server:** `presence` stamped on the view from `Hub.SeatAway`; the `away_after` setting; the movable-seat clock (reusing the notifier's waiting-on-seat); `POST /games/{id}/seats/{player}/away` with `{"action": "stand_in" \| "concede" \| "wait"}` and the decider check; `StandIn` on `GameMeta`, runner start on hand-over and on restore, runner stop and `POST /games/{id}/seats/me/take-back`; the log lines; docs/protocol.md and docs/lobby.md | Opus | 1 |
 | 3 | **Client:** the presence chip and "offline" over "considering…"; the offer sheet for deciders; the take-back banner; the `away_after` field in the table settings panel | Sonnet | 2 |
 | 4 | **E2E:** a three-seat table where one page closes. After `away_after` (set to 1 minute) the host sees the offer, and each action does what it says; then the closed page reopens and takes its seat back | Sonnet | 2, 3 |
+
+## Amendment 2026-10-14 — slice 2, the server (#3337)
+
+Slice 2 is built. Where the decisions above left the mechanism open, it does this:
+
+- **How the offer reaches the deciders.** A movable seat carries `presence.movable: true` on every frame. The client offers the sheet to the seats §3 names; the server checks the same rule when the answer arrives. `POST /games/{id}/seats/{player}/away` takes `stand_in`, `concede` or `wait`. A seat that is no longer movable answers 409, so the first answer accepted is the only one.
+- **When frames go out.** The hub stamps presence on every frame, but it does not send one when a connection opens or closes. The lobby's away clock looks at every table every 5 seconds. It sends a table a frame at its current seq when a seat's presence or a movable mark changed. So a chip or an offer is at most 5 seconds late, and a reload costs the table one frame.
+- **Offline since when.** For `offline`, `since` is when the seat's last connection closed, not when its tab went hidden before that. A seat the server has not seen leave since it started is away from the moment the server first looked, which is how the notifier counts it.
+- **The stand-in runner.** It runs beside the table's own bots, through `StartStandIn` and `StopStandIn` on the bot host. `StartBots` replaces a game's whole set, which would restart the other bots. Take back cancels the runner and waits for it to exit. The runner never cancels between choosing a move and sending it.
+- **A stand-in seat's own actions are refused** with the `stand_in` error until the player presses Take it back. Otherwise a player who reconnects and the bot would both drive the seat. The admin is not held to it.
+- **Deciders must still be in the game.** A player who has been eliminated, or whose seat was removed, does not decide for the table.
+- **Statistics.** The hand-over and the take-back are lines in the game's log (`EventAwaySeat`), so a statistics pass can tell which seats a bot played part of. Recording it on `seat_stats` is left to #3370.

@@ -350,3 +350,27 @@ The eleven rows are declared from their effect:
 | Yawgmoth, Thran Physician | `sac_outlet`, `remove` | sacrifices a creature as its cost; a -1/-1 counter shrinks a creature (ruling 1) |
 
 Famished Ghoul sacrifices only itself, so its cost needs no `sac_outlet`.
+
+## Amendment 2026-10-14 — loyalty rows a card opens at instant speed · Accepted
+
+A bot arena replay (eight seeded four-seat games, every priority window put through the client's
+`autopassDecision` on default settings) found Teferi, Master of Time's +1, a loot, stopping its controller on 57
+opponent stack items, of which the bot acted on one. The guard treated every loyalty row as sorcery speed (CR
+606.3): it refused the row a declaration and the ratchet left it out of scope. But Teferi, Master of Time and The
+Wandering Emperor open their own loyalty abilities at instant speed, so the enumerator offers those rows while an
+opponent's item waits on the stack. An undeclared row interacts (owner answer 3), so the +1 stopped him every
+time.
+
+1. **`game.ActivationTiming.OwnLoyalty`** marks a statement that opens its own source's loyalty abilities at
+   instant speed. `effects.ThisSourcesLoyaltyAbilitiesAtInstantSpeed` sets it. `Covers` is still what the engine
+   reads; the flag exists so the guard can know without running a closure.
+2. **A loyalty row of such a card is in scope** (`sorcerySpeedRow`, `answersInScope`, `ownLoyaltyAtInstant`): it may
+   and must declare. A statement that opens every planeswalker's loyalty abilities (Teferi, Temporal Archmage's
+   emblem) is about other cards' rows and does not count.
+3. **The declarations.** Teferi, Master of Time: +1 and −10 `value`. The Wandering Emperor: +1 `pump`,
+   `combat_grant` (an "up to one" row, declared like any other); −1 `makes_blocker`. Rows that must name a target
+   (Teferi's −3, the Emperor's −2) still declare nothing.
+
+**Back-outs.** `TestTeferiMasterOfTimesLootDoesNotInteract` (internal/legal) fails without the declaration, and
+`TestEveryAnswersRowDeclares` fails on the four rows without item 2's scope.
+

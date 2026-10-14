@@ -13,6 +13,7 @@ tests-e2e/
 ├── tsconfig.json
 └── tests/
     ├── auth.spec.ts           # admin login, logout, invite-URL paste
+    ├── away-seat-3337.spec.ts # ADR 0177: a closed page shows offline, the host is offered a way on after the away time (1 minute here): keep waiting, a bot, the player taking it back; and conceding for them
     ├── board-expand-2208.spec.ts # ADR 0120: a seat's board expanded over the table (peek, pin, pick, Escape)
     ├── board-layout.spec.ts   # HTML/CSS board: zones, pile buttons, draw-to-hand
     ├── board-pick-2880.spec.ts # #2880: a sacrifice picked by clicking the creature on the board, confirmed in the dock
