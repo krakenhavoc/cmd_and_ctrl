@@ -7,7 +7,7 @@
 //
 //   - the preferences (this file, store_sql.go): three switches per
 //     person, every one off by default, and when Discord last refused a
-//     DM to them. Their own table (migration 0021), because the
+//     DM to them. Their own table (migration 0022), because the
 //     user_settings body is opaque to the server (ADR 0110 §4).
 //   - the Notifier (notifier.go): a goroutine that looks at the live
 //     tables every few seconds, keeps the per-seat clocks and the

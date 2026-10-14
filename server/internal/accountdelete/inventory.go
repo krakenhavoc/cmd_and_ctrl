@@ -62,6 +62,8 @@ var Inventory = join(
 		"host_discord_id"),
 	cols("games", NotPersonal, "the table's choice of a Discord voice room and the room's channel id (ADR 0159); neither names a person",
 		"voice_room", "voice_channel_id"),
+	cols("games", NotPersonal, "the table's choice of the Discord #lfg board and its post's message id (ADR 0161); neither names a person",
+		"lfg", "lfg_message_id"),
 
 	cols("seats", Kept, "the seat keeps its place in the game",
 		"game_id", "seat", "player_id", "bot_tier", "agent_client", "deck_name"),

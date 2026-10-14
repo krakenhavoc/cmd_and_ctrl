@@ -1,4 +1,4 @@
--- Migration 0021: Discord DM notification preferences (ADR 0162 §5,
+-- Migration 0022: Discord DM notification preferences (ADR 0162 §5,
 -- #3320).
 --
 --   notification_prefs   one row per person who has saved the

@@ -785,6 +785,8 @@ func (g *Game) harvestCastFromStack(pass *harvestPass) {
 			}
 			g.harvestMatchLocked(pass, *card, lki, t, triggerOfSpell)
 		}
+		// #3245: casualty's copy is the engine's, read off the record.
+		g.harvestCasualtyLocked(pass, card, lki)
 		return
 	}
 }

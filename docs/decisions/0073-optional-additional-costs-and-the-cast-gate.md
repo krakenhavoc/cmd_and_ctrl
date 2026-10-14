@@ -1486,3 +1486,43 @@ this way" (a distinct-colours cap with no shape, [ADR 0040](0040-mana-pipeline.m
 
 Tests: `cards/effects/kicker_x_test.go`, `legal/kicker_x_test.go`, `protocol/optional_cost_x_min_view_test.go`,
 `client/src/lib/kickerX.test.ts`.
+
+## Amendment 2026-10-13: optional costs a permanent grants, and casualty (#3245)
+
+Silverquill, the Disputant: "Each instant and sorcery spell you cast has casualty 1." Casualty (CR 702.153a) is an
+optional sacrifice cost plus "when you cast this spell, if a casualty cost was paid for it, copy it". Here the cost comes
+from a PERMANENT, not from the card, and the permanent may be the creature sacrificed to pay it.
+
+**Decision.**
+
+1. **A granted optional cost.** `CardDef.GrantedOptionalCosts []GrantedOptionalCost` (`Spells` filter, `Cost`, `Label`),
+   built card-side with `effects.SpellsYouCastHave(label, spells, cost)`. `Game.OptionalCostsForCastLocked(caster,
+   card)` is the card's own list followed by one entry per key granted by a permanent the caster controls, each marked
+   `AdditionalCost.Granted`. Every CAST-TIME reader uses it: the enumerator (`legal/cast.go`), the cast view
+   (`protocol.viewOfOptionalCosts`, which now takes the list), and `castSpellLocked`'s validation, targets and payment
+   plan and `printedCostLocked`'s pricing. The announcement's index space is "printed, then granted", the same list
+   everywhere. One grant per key; two Silverquills give one casualty cost.
+2. **The record is keyed.** A paid granted cost is filed on `PaidCost.GrantedOptional []string` by its Key
+   (`paidWithOptionalCosts`) and kept out of `PaidCost.OptionalCosts`, whose indices every RESOLUTION reader resolves
+   against the card's own list. Kicker, buyback, mode counts and target swaps read exactly what they did before, and a
+   grant whose source has since left still reads as paid. `GrantedOptionalTimesPaid(paid, key)` reads it.
+3. **Casualty is the engine's.** `game.CasualtyKey` is the cost's key; `effects.Casualty(n)` is the cost (sacrifice a
+   creature with power N or greater). The trigger is an engine keyword trigger like prowess (`game/casualty.go`): fired
+   from `harvestCastFromStack` on the spell's own EventCast when the record shows casualty paid (by index or by key), one
+   copy per payment, copied from last-known information with new targets offered, under the registered body
+   `casualty/copy`. It belongs to the spell, so Silverquill sacrificed to pay its own grant still copies the spell. A
+   card printing "Casualty N" declares only `OptionalCosts: []game.AdditionalCost{Casualty(N)}`.
+
+**Not covered.** A granted cost that changes a spell's TARGETS or MODES (a granted gift or kicker with `WhenPaid`) would
+need the resolution readers to see it; none exists. Convoke and other tap costs are not optional costs, so "spells you
+cast from exile have convoke" (Hoarding Broodlord, Dazzling Theater) stays open.
+
+**Snapshot impact.** `PaidCost.GrantedOptional` is additive (`grantedOptional`, omitted when empty). The body key
+`casualty/copy` joins the effect-key ledger.
+
+**Back-out.** Read the card's own list in `castSpellLocked` and the casualty cast is refused
+(`TestSilverquillGivesAnInstantCasualtyAndCopiesIt`); fire the copy off the board instead of the record and
+`TestSilverquillCanPayItsOwnCasualty` fails; drop the grant from the enumerator and `TestSilverquillCasualtyIsEnumerated`
+fails.
+
+Tests: `cards/effects/silverquill_test.go`.

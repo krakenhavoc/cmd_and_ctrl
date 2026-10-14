@@ -12,7 +12,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/db"
 )
 
-// SQLStore is the notification_prefs table from migration 0021. Every
+// SQLStore is the notification_prefs table from migration 0022. Every
 // *_at column is Unix milliseconds.
 type SQLStore struct {
 	db  *sql.DB

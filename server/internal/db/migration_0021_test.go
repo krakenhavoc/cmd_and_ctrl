@@ -2,66 +2,110 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"testing"
 )
 
-// Tests for migration 0021 (Discord DM notification preferences, ADR
-// 0162 §5): the new table's defaults are every switch off, a switch
-// takes only 0 or 1, the row needs a real user, and the hand rollback
-// in docs/environments.md.
+// Tests for migration 0021 (a table's #lfg post, ADR 0161 §6):
+// games.lfg defaults to 0 on every row old and new and takes only 0 or
+// 1; games.lfg_message_id is nullable; and the hand rollback in
+// docs/environments.md.
 
-// notifyPrefsVersion is this migration's number.
-const notifyPrefsVersion = 21
-
-func TestMigration0021AddsNotificationPrefsOffByDefault(t *testing.T) {
-	d := openAtVersion(t, notifyPrefsVersion-1)
-	mustExec(t, d, `INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u1', 'A', 1, 1)`)
+func TestMigration0021PreservesAPopulatedV20DatabaseWithLFGOff(t *testing.T) {
+	d := openAtVersion(t, 20)
+	mustExec(t, d, `INSERT INTO games (id, name, state, created_at, voice_room, voice_channel_id)
+		VALUES ('g1', 'Friday', 'lobby', 1, 1, '444')`)
 	if err := migrate(context.Background(), d); err != nil {
-		t.Fatalf("migrate to latest: %v", err)
+		t.Fatalf("migrate v20 -> latest: %v", err)
 	}
-	mustExec(t, d, `INSERT INTO notification_prefs (user_id, updated_at) VALUES ('u1', 5)`)
-	var turn, ready, filled int
-	var failed *int64
-	if err := d.QueryRow(`SELECT turn, table_ready, table_filled, dm_failed_at FROM notification_prefs WHERE user_id = 'u1'`).
-		Scan(&turn, &ready, &filled, &failed); err != nil {
+	assertLFGShape(t, d)
+	lfg, message := lfgColumns(t, d, "g1")
+	if lfg != 0 || message.Valid {
+		t.Errorf("an existing game after the migration: lfg %d, message %v; want 0 and NULL", lfg, message)
+	}
+	var (
+		name    string
+		voice   int
+		channel string
+	)
+	if err := d.QueryRow(`SELECT name, voice_room, voice_channel_id FROM games WHERE id = 'g1'`).Scan(&name, &voice, &channel); err != nil {
 		t.Fatal(err)
 	}
-	if turn != 0 || ready != 0 || filled != 0 || failed != nil {
-		t.Errorf("a new row: turn %d ready %d filled %d failed %v; want every switch off and no failure", turn, ready, filled, failed)
+	if name != "Friday" || voice != 1 || channel != "444" {
+		t.Errorf("g1 lost its columns: %q %d %q", name, voice, channel)
 	}
-	assertForeignKeysOnEveryConn(t, d)
 }
 
-func TestMigration0021AcceptsOnlyOnOrOffAndARealUser(t *testing.T) {
+func TestMigration0021AcceptsOnlyOnOrOff(t *testing.T) {
 	d := openAtVersion(t, 0)
-	mustExec(t, d, `INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u1', 'A', 1, 1)`)
-	mustExec(t, d, `INSERT INTO notification_prefs (user_id, turn, table_ready, table_filled, updated_at) VALUES ('u1', 1, 1, 1, 5)`)
-	for _, col := range []string{"turn", "table_ready", "table_filled"} {
-		for _, bad := range []any{2, -1, "yes", nil} {
-			if _, err := d.Exec(`UPDATE notification_prefs SET `+col+` = ? WHERE user_id = 'u1'`, bad); err == nil {
-				t.Errorf("%s = %v accepted", col, bad)
-			}
+	mustExec(t, d, `INSERT INTO games (id, name, state, created_at) VALUES ('g1', 'A', 'lobby', 1)`)
+	mustExec(t, d, `UPDATE games SET lfg = 1, lfg_message_id = '900' WHERE id = 'g1'`)
+	mustExec(t, d, `UPDATE games SET lfg = 0, lfg_message_id = NULL WHERE id = 'g1'`)
+	for _, bad := range []any{2, -1, "yes"} {
+		if _, err := d.Exec(`UPDATE games SET lfg = ? WHERE id = 'g1'`, bad); err == nil {
+			t.Errorf("lfg %v accepted", bad)
 		}
 	}
-	if _, err := d.Exec(`INSERT INTO notification_prefs (user_id, updated_at) VALUES ('nobody', 5)`); err == nil {
-		t.Error("a row for a user that does not exist was accepted")
+	if _, err := d.Exec(`UPDATE games SET lfg = NULL WHERE id = 'g1'`); err == nil {
+		t.Error("lfg NULL accepted")
 	}
 }
 
 func TestMigration0021RollbackByHand(t *testing.T) {
 	ctx := context.Background()
-	d := openAtVersion(t, notifyPrefsVersion)
-	mustExec(t, d, `INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u1', 'A', 1, 1)`)
-	mustExec(t, d, `INSERT INTO notification_prefs (user_id, turn, updated_at) VALUES ('u1', 1, 5)`)
-	mustExec(t, d, `DROP TABLE notification_prefs`)
-	mustExec(t, d, `DELETE FROM schema_migrations WHERE version = ?`, notifyPrefsVersion)
-	if v, _ := currentSchemaVersion(ctx, d); v != notifyPrefsVersion-1 {
-		t.Fatalf("after the rollback the version is %d, want %d", v, notifyPrefsVersion-1)
+	d := openAtVersion(t, 21)
+	mustExec(t, d, `INSERT INTO games (id, name, state, created_at, lfg, lfg_message_id)
+		VALUES ('g1', 'A', 'lobby', 1, 1, '900')`)
+	for _, q := range []string{
+		`ALTER TABLE games DROP COLUMN lfg`,
+		`ALTER TABLE games DROP COLUMN lfg_message_id`,
+		`DELETE FROM schema_migrations WHERE version = 21`,
+	} {
+		mustExec(t, d, q)
+	}
+	if v, _ := currentSchemaVersion(ctx, d); v != 20 {
+		t.Fatalf("after the rollback the version is %d, want 20", v)
 	}
 	if err := migrate(ctx, d); err != nil {
 		t.Fatalf("rolling forward again: %v", err)
 	}
-	if n := countRows(t, d, "notification_prefs"); n != 0 {
-		t.Errorf("after the round trip notification_prefs has %d rows, want none", n)
+	assertLFGShape(t, d)
+	if lfg, message := lfgColumns(t, d, "g1"); lfg != 0 || message.Valid {
+		t.Errorf("after the round trip: %d %v, want lfg off and no message", lfg, message)
 	}
+}
+
+func lfgColumns(t *testing.T, d *sql.DB, id string) (int, sql.NullString) {
+	t.Helper()
+	var (
+		lfg     int
+		message sql.NullString
+	)
+	if err := d.QueryRow(`SELECT lfg, lfg_message_id FROM games WHERE id = ?`, id).Scan(&lfg, &message); err != nil {
+		t.Fatalf("read lfg columns for %s: %v", id, err)
+	}
+	return lfg, message
+}
+
+func assertLFGShape(t *testing.T, d *sql.DB) {
+	t.Helper()
+	for col, want := range map[string]struct {
+		typ     string
+		notNull int
+	}{
+		"lfg":            {"INTEGER", 1},
+		"lfg_message_id": {"TEXT", 0},
+	} {
+		var (
+			typ     string
+			notNull int
+		)
+		if err := d.QueryRow(`SELECT type, "notnull" FROM pragma_table_info('games') WHERE name = ?`, col).Scan(&typ, &notNull); err != nil {
+			t.Fatalf("games.%s missing: %v", col, err)
+		}
+		if typ != want.typ || notNull != want.notNull {
+			t.Errorf("games.%s = %s notnull=%d, want %s notnull=%d", col, typ, notNull, want.typ, want.notNull)
+		}
+	}
+	assertForeignKeysOnEveryConn(t, d)
 }

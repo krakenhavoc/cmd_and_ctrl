@@ -237,7 +237,7 @@ type Config struct {
 	UserSettings usersettings.Store
 
 	// Notifications is a signed-in person's Discord DM notification
-	// switches (ADR 0162 §5, migration 0021), behind GET and PUT
+	// switches (ADR 0162 §5, migration 0022), behind GET and PUT
 	// /me/notifications. Nil means the feature is off: both routes
 	// answer 503 with "available": false. main sets it only when the
 	// bot token, the public origin and the database are all there.
@@ -366,6 +366,7 @@ type GameEvictor interface {
 //	POST /games/{id}/invites/dm — seated / creator / admin: DM a person the game's invite link
 //	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
 //	POST /games/{id}/voice/refresh — a seat: check my server membership again, or reopen an idle room
+//	PUT  /games/{id}/lfg    — host / admin: post the table to the Discord #lfg board, or withdraw it (ADR 0161)
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -587,6 +588,9 @@ func Handler(c Config) http.Handler {
 	voiceRefreshLimit := newLimiter(1.0/10, 3)
 	mux.Handle("POST /games/{id}/voice/refresh",
 		auth.Middleware(c.Auth)(perCallerLimit(voiceRefreshLimit, handlerFunc(c, refreshVoiceRoom))))
+	// ADR 0161 §1: the table's #lfg post, on or off. Host or admin,
+	// authorised inside the handler with CanManageTable.
+	mux.Handle("PUT /games/{id}/lfg", auth.Middleware(c.Auth)(handlerFunc(c, putLFG)))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it
@@ -1005,6 +1009,10 @@ type createGameRequest struct {
 	// §1), as PUT /games/{id}/voice would. Ignored when the server
 	// offers none: the client only shows the box when it does.
 	VoiceRoom bool `json:"voice_room,omitempty"`
+	// LFG posts the table to the Discord #lfg board (ADR 0161 §1), as
+	// PUT /games/{id}/lfg would. Ignored when the server has no board:
+	// the client only shows the box when it does.
+	LFG bool `json:"lfg,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1212,6 +1220,16 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 				out.GameMeta = voiced
 			} else if !errors.Is(verr, ErrVoiceRoomsOff) {
 				c.Log.Warn("voice room on create failed", "game_id", meta.ID.String(), "err", verr)
+			}
+		}
+		if body.LFG {
+			// ADR 0161 §1. Asked after the voice room, so the first post
+			// already says whether the table has one. A guest-hosted
+			// table (the admin token naming no host) is not posted.
+			if posted, lerr := c.Lobby.SetLFG(meta.ID, true); lerr == nil {
+				out.LFG, out.LFGStatus = posted.LFG, posted.LFGStatus
+			} else if !errors.Is(lerr, ErrLFGOff) && c.Log != nil {
+				c.Log.Warn("lfg post on create failed", "game_id", meta.ID.String(), "err", lerr)
 			}
 		}
 		if from == setupFromLast {

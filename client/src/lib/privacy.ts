@@ -10,6 +10,8 @@
 // something about a person, accountdelete.Inventory fails first; then
 // update the page in the same change (ADR 0149 §6).
 
+import { LEGAL_CONTACT_EMAIL, LEGAL_CONTACT_URL } from "./legalNotice";
+
 /** The hash route of the notice. */
 export const PRIVACY_HASH = "#/privacy";
 
@@ -17,15 +19,12 @@ export const PRIVACY_HASH = "#/privacy";
 export const DELETE_PHRASE = "delete my account";
 
 /**
- * The contact the notice gives.
- *
- * TODO(owner): contact. The notice says "see the project's GitHub" and links
- * the repository, because no contact address has been chosen. Put the
- * address (or form) here and in the page, and update the PR trail in
- * ADR 0149. Nobody invented one on the owner's behalf.
+ * The contact the notice gives: the operator's legal address (#3358),
+ * which lives in lib/legalNotice.ts with the operator's name so the
+ * terms of service and this notice cannot name different ones.
  */
-export const CONTACT_URL = "https://github.com/krakenhavoc/cmd_and_ctrl";
-export const CONTACT_TEXT = "see the project's GitHub";
+export const CONTACT_URL = LEGAL_CONTACT_URL;
+export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
 
 /**
  * The database schema version (the highest server/internal/db/migrations
@@ -48,12 +47,18 @@ export const CONTACT_TEXT = "see the project's GitHub";
  * paragraph comes with the voice manager (ADR 0159 §8), which is what
  * sends seated players' Discord ids to Discord.
  *
- * 21 (#3320, ADR 0162 §5) adds notification_prefs: a person's three
+ * 21 (#3319, ADR 0161 §6) adds games.lfg and games.lfg_message_id: a
+ * table's choice of the Discord #lfg board and its post's message id.
+ * Neither is about a person; the Discord row now says what a post shows
+ * the community server (the host's Discord account among it) and when
+ * it is deleted (ADR 0161 §8).
+ *
+ * 22 (#3320, ADR 0162 §5) adds notification_prefs: a person's three
  * Discord DM notification switches and when Discord last refused one.
  * The notice's "Your Discord notifications" row names it, and the
  * Discord paragraph says what the messages carry (§6).
  */
-export const PRIVACY_SCHEMA_VERSION = 21;
+export const PRIVACY_SCHEMA_VERSION = 22;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each

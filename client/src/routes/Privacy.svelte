@@ -16,6 +16,8 @@
   import Page from "../lib/components/Page.svelte";
   import DeleteAccount from "../lib/components/DeleteAccount.svelte";
   import { CONTACT_TEXT, CONTACT_URL, PRIVACY_FACTS as F } from "../lib/privacy";
+  import { OPERATOR_NAME, OPERATOR_STATE } from "../lib/legalNotice";
+  import { TERMS_HASH } from "../lib/terms";
 
   interface Row {
     what: string;
@@ -67,7 +69,7 @@
       why: "So the server only messages you when you asked it to, stops when Discord says it cannot reach you, and sends at most one message per table every ten minutes.",
       howLong:
         "Until you delete your account. What is kept in memory is gone when the server restarts.",
-      source: "migration 0021 notification_prefs; notify/notifier.go; ws/presence.go",
+      source: "migration 0022 notification_prefs; notify/notifier.go; ws/presence.go",
     },
     {
       what: "Your playmats",
@@ -154,7 +156,7 @@
     },
     {
       who: "Discord",
-      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included. If you turn on notifications, the server asks Discord’s bot to send you direct messages naming the table and its turn number, with a link back to it; Discord holds those messages under its own policy.",
+      what: "Sign-in goes through Discord, which learns that you signed in to this site. After that the server, not your browser, fetches your avatar picture from Discord’s image servers and keeps a copy. When sign-up needs that role, the server also asks Discord whether you hold it, at sign-in and each time your sign-in is renewed. When a table’s host turns on a voice room, the server asks Discord to make a private voice channel in the C2 Discord server, named after the table, and lets in the seated players who are members of that server, by the Discord ids it already holds. To do that it asks Discord whether each of them is a member, and whether they are connected to that channel. The channel and its text chat are deleted after the game. The server’s owner and administrators can see every channel there, private ones included. When a table’s host posts it to #lfg, the bot posts the table’s name, the host’s Discord account and the seat count in that channel, where every member of the CMD & CTRL Discord server can see it; the post is deleted when the game starts or the host withdraws it. If you turn on notifications, the server asks Discord’s bot to send you direct messages naming the table and its turn number, with a link back to it; Discord holds those messages under its own policy.",
     },
     {
       who: "GitHub",
@@ -182,14 +184,16 @@
 <Page
   eyebrow="Privacy"
   title="What is stored about you, and how to delete it"
-  lede="cmd_and_ctrl is a hobby Magic: The Gathering Commander table run by one person. This page says what it stores, why, for how long, who else sees it, and how to delete it. We do not sell data, show ads or run analytics. The only cookie is the session cookie. If this page and the code ever disagree, that is a bug."
+  lede="cmd_and_ctrl is a hobby Magic: The Gathering Commander table. This page says what it stores, why, for how long, who else sees it, and how to delete it. We do not sell data, show ads or run analytics. The only cookie is the session cookie. If this page and the code ever disagree, that is a bug."
   width="prose"
 >
   {#snippet meta()}
-    <!-- TODO(owner): contact. No address has been chosen, so this points at
-         the project's GitHub rather than inventing one. -->
+    <!-- The operator and its contact (#3358) come from lib/legalNotice.ts,
+         the same constants the terms of service use. -->
     <p class="contact" id="contact">
-      Contact: <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">{CONTACT_TEXT}</a>.
+      Run by {OPERATOR_NAME}, a {OPERATOR_STATE} limited liability company. Contact:
+      <a href={CONTACT_URL}>{CONTACT_TEXT}</a>. See also the
+      <a href={TERMS_HASH}>terms of service</a>.
     </p>
   {/snippet}
   <div class="stack">
@@ -247,8 +251,7 @@
     </section>
 
     <p class="help dim">
-      Contact: <a href={CONTACT_URL} target="_blank" rel="noopener noreferrer">{CONTACT_TEXT}</a>.
-      Questions about what is stored are welcome.
+      Contact: <a href={CONTACT_URL}>{CONTACT_TEXT}</a>. Questions about what is stored are welcome.
     </p>
   </div>
 </Page>
