@@ -568,14 +568,18 @@ jobs:
 
       # Only the CD jobs in this same run download these. develop sees
       # hundreds of pushes a week, so anything longer than a day piles
-      # up gigabytes of dead artifacts against the storage quota.
+      # up gigabytes of dead artifacts against the storage quota. main
+      # moves only on a promotion, so its builds are kept for a week
+      # (#3339): the exact binaries of recent releases stay downloadable
+      # from the run page if a rollback needs more than the one release
+      # kept on the host (docs/environments.md#rolling-back-production).
       - name: Upload server binary
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v7
         with:
           name: cmdctrl-server-bin
           path: server/bin/cmd_and_ctrl-server
-          retention-days: 1
+          retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
       - name: Upload bot binary
         if: github.event_name == 'push'
@@ -583,7 +587,7 @@ jobs:
         with:
           name: cmdctrl-bot-bin
           path: server/bin/cmd_and_ctrl-bot
-          retention-days: 1
+          retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
       - name: Upload client dist
         if: github.event_name == 'push'
@@ -591,7 +595,7 @@ jobs:
         with:
           name: cmdctrl-client-dist
           path: client/dist/
-          retention-days: 1
+          retention-days: ${{ github.ref == 'refs/heads/main' && 7 || 1 }}
 
   # The monitoring config (ADR 0123 §11): the alert rules and dashboards
   # the monitoring VM syncs from main (deploy/monitoring/), and the Alloy
@@ -1127,6 +1131,22 @@ jobs:
 
       - name: Restore server binary exec bit
         run: chmod +x server/bin/cmd_and_ctrl-server server/bin/cmd_and_ctrl-bot
+
+      # Set the live release aside before replacing it (#3339), so the
+      # rollback-prod workflow can put it back in minutes. One release
+      # back, on the host, under ${DEPLOY_ROOT}; the script says what and
+      # why it skips a re-run of the same release.
+      - name: Keep the previous release
+        run: |
+          server_sha=$(sha256sum server/bin/cmd_and_ctrl-server | cut -d' ' -f1)
+          bot_sha=-
+          if [ "${IS_DEV}" != "true" ]; then
+            bot_sha=$(sha256sum server/bin/cmd_and_ctrl-bot | cut -d' ' -f1)
+          fi
+          client_sha=$(cd client/dist && find . -type f -print0 | sort -z | xargs -0 sha256sum | sha256sum | cut -d' ' -f1)
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "DEPLOY_ROOT=${DEPLOY_ROOT} WEB_ROOT=${WEB_ROOT} bash -s -- ${server_sha} ${bot_sha} ${client_sha}" \
+            < scripts/keep-previous-release.sh
 
       - name: Deploy server binary
         run: |
@@ -1982,6 +2002,15 @@ jobs:
           esac
           echo "Confirmed: ${CMDCTRL_HOST} is running ${SERVICE} as ${APP_ENV}."
 
+      # One authenticated request after the restart (#3339): GET /config
+      # above proves the process is listening, this proves it can open its
+      # database and issue a session. Same script as the rollback workflow.
+      - name: Authenticated smoke request
+        run: |
+          ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+            "ENV_FILE=${ENV_FILE} LOCAL_PORT=${LOCAL_PORT} APP_ENV=${APP_ENV} bash -s" \
+            < scripts/smoke-release.sh
+
       # Nightly off-node backup of the data dir to Cloudflare R2 with
       # restic (#1031, ADR 0051 decision 1). Runs on BOTH hosts, each into
       # its own bucket. Runbook: docs/environments.md#backups.
@@ -2229,7 +2258,11 @@ jobs:
       # ~30 times a day, so even 1-day retention overflows it. Drop the
       # build artifacts once deployed. Skipped on failure so a re-run of
       # this job can still download them.
+      #
+      # Not on main (#3339): production builds keep their 7 days, a few a
+      # week at most, so they stay downloadable for a rollback.
       - name: Delete this run's artifacts
+        if: github.ref != 'refs/heads/main'
         uses: actions/github-script@v9
         with:
           script: |
