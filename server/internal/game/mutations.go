@@ -4982,6 +4982,13 @@ func (g *Game) runStateChecksLocked() (sbaFired bool) {
 //
 // Caller must hold g.mu.
 func (g *Game) stateChecksLocked(drain bool) (sbaFired bool) {
+	// #3665, CR 510.2: a combat damage step held behind its
+	// damage-assignment prompts whose last prompt has gone without an
+	// answer (its chooser left the game) is dealt now, before anything
+	// below reads the board. ResolveDamageAssignment settles the
+	// answered case itself; this is the backstop. No-op when nothing is
+	// held, or while a prompt is still open.
+	g.settleHeldCombatDamageLocked()
 	// ADR 0107 §6, CR 615.5: the instance of damage is over before a
 	// player receives priority, so the next-damage shields' "the damage
 	// prevented this way" runs now, once per shield with the total —
@@ -9524,7 +9531,9 @@ func (c *Card) combatDamagePower() int {
 //     the attacker's damage lands only after resolve.
 //
 // Blockers deal their power back to the attacker simultaneously
-// (CR 510.1d). Lifelink and deathtouch are dispatched inside the
+// (CR 510.1d). When the step queues any prompt, none of its damage is
+// dealt until the last one is answered (#3665, CR 510.2): see
+// combat_damage_hold.go. Lifelink and deathtouch are dispatched inside the
 // damage-marking helpers so they fire uniformly via the replacement
 // pipeline.
 //
@@ -9602,10 +9611,38 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 		}
 	}
 
+	// #3665, CR 510.1-510.2: every assignment of the step comes before
+	// any of its damage is dealt. The damage the step decides by itself
+	// is collected here, and the prompts it needs are queued after the
+	// walk. With no prompt the marks are dealt at once, in this order;
+	// with one they are held until the last prompt is answered
+	// (combat_damage_hold.go).
+	var marks []heldCombatMark
+	var prompts []func()
+	mark := func(target, source uuid.UUID, amount int) {
+		if amount > 0 {
+			marks = append(marks, heldCombatMark{source: source, target: target, amount: amount})
+		}
+	}
+	assignedTo := func(id uuid.UUID) int {
+		n := 0
+		for _, m := range marks {
+			if m.target == id && !m.toAttackTarget {
+				n += m.amount
+			}
+		}
+		return n
+	}
+	markAttackTarget := func(target, source uuid.UUID, amount int) {
+		if amount > 0 {
+			marks = append(marks, heldCombatMark{source: source, target: target, amount: amount, toAttackTarget: true})
+		}
+	}
+
 	for _, atkID := range attackerIDs {
 		atk := findBattlefieldCard(g, atkID)
 		if atk == nil {
-			continue // died during this step's iteration
+			continue
 		}
 		atkParticipates := g.participatesInStepLocked(atk, firstStrike)
 		atkPower := power[atkID]
@@ -9641,7 +9678,7 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				// as it always did.
 				blocked := g.attackerBlockedLocked(atkID)
 				if atkPower > 0 && (!blocked || HasKeyword(atk, "trample")) {
-					g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, atkPower, step)
+					markAttackTarget(atk.AttackingTarget, atkID, atkPower)
 				}
 			} else if len(liveBlockers) == 1 {
 				// Single blocker: attacker assigns all power. Trample
@@ -9650,7 +9687,10 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 				blkID := liveBlockers[0]
 				blk := findBattlefieldCard(g, blkID)
 				if blk != nil && atkPower > 0 {
-					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked
+					// CR 702.19b: lethal counts the damage other
+					// attackers have already been assigned to it in
+					// this step, which is not marked yet (#3665).
+					lethalThreshold := blk.CurrentToughness() - blk.DamageMarked - assignedTo(blkID)
 					if HasKeyword(atk, "deathtouch") && lethalThreshold > 1 {
 						lethalThreshold = 1
 					}
@@ -9664,27 +9704,28 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 						toPlayer = atkPower - lethalThreshold
 					}
 					if toBlocker > 0 {
-						g.markCombatDamageOnCardLocked(blkID, toBlocker, atkID, step)
+						mark(blkID, atkID, toBlocker)
 					}
 					if toPlayer > 0 {
-						g.dealCombatDamageToAttackTargetLocked(atk.AttackingTarget, atkID, toPlayer, step)
+						markAttackTarget(atk.AttackingTarget, atkID, toPlayer)
 					}
 				}
 			} else if atkPower > 0 {
 				// A multi-blocked attacker that assigns 0 has nothing to
 				// divide (CR 510.1a), so it queues no prompt.
-				// Multi-blocker → queue damage-assignment prompt.
-				// Server pauses here; the resume path fires the actual
-				// marks. The prompt blocks the table
-				// (choice_gate.go), so the cursor cannot leave this
-				// damage step until it is answered — which is what
-				// stops a first-strike assignment being overtaken by
-				// the regular step (#702). Until resume, the
-				// attacker's damage is NOT applied. Blocker damage
-				// still flows (simultaneous)
-				// because blockers deal power back regardless of
-				// attacker's assignment (CR 510.1d).
-				g.queueDamageAssignmentPromptLocked(atk, liveBlockers, atkPower, step)
+				// Multi-blocker → a damage-assignment prompt. The
+				// prompt blocks the table (choice_gate.go), so the
+				// cursor cannot leave this damage step until it is
+				// answered — which is what stops a first-strike
+				// assignment being overtaken by the regular step
+				// (#702). The blockers' damage back is assigned below
+				// as usual, but held with the rest of the step's until
+				// the answer (#3665): nothing is dealt, and nothing
+				// dies, while an assignment is still open.
+				atk, blockers, p := atk, liveBlockers, atkPower
+				prompts = append(prompts, func() {
+					g.queueDamageAssignmentPromptLocked(atk, blockers, p, step)
+				})
 			}
 		}
 
@@ -9706,28 +9747,42 @@ func (g *Game) assignAndDealCombatDamageLocked(step string) {
 			if blkPower <= 0 {
 				continue
 			}
-			g.markCombatDamageOnCardLocked(atkID, blkPower, blkID, step)
+			mark(atkID, blkID, blkPower)
 		}
 	}
 
 	// #1706, CR 510.1d: a blocker blocking two or more attackers
 	// assigns its combat damage "divided as its controller chooses
 	// among them". The CR 510.1c prompt carries it, with the roles
-	// turned round (queueBlockerDamageDivisionLocked). Its set is
-	// re-read now, after the attackers' damage, because the
-	// simultaneity is the prompt's: every mark it makes is on the same
-	// board the other blockers' marks landed on, and SBAs run only once
-	// the step's marks are all down.
+	// turned round (queueBlockerDamageDivisionLocked), and its damage
+	// is held with the rest of the step's until it is answered.
 	for _, blkID := range dividing {
 		blk := findBattlefieldCard(g, blkID)
 		if blk == nil || !g.participatesInStepLocked(blk, firstStrike) || power[blkID] <= 0 {
 			continue
 		}
 		if live := g.liveBlockedAttackersLocked(blk); len(live) >= 2 {
-			g.queueBlockerDamageDivisionLocked(blk, live, power[blkID], step)
+			p := power[blkID]
+			prompts = append(prompts, func() {
+				g.queueBlockerDamageDivisionLocked(blk, live, p, step)
+			})
 		} else if len(live) == 1 {
-			g.markCombatDamageOnCardLocked(live[0], power[blkID], blkID, step)
+			mark(live[0], blkID, power[blkID])
 		}
+	}
+
+	if len(prompts) == 0 {
+		for _, m := range marks {
+			g.dealCombatMarkLocked(m, step)
+		}
+		return
+	}
+	// #3665: hold the step's damage before the prompts open, so the
+	// state checks the step runs next find nothing dealt and nothing
+	// to settle. The last answer deals it all (combat_damage_hold.go).
+	g.heldCombatDamage = &heldCombatDamage{step: step, marks: marks}
+	for _, q := range prompts {
+		q()
 	}
 }
 
@@ -9965,6 +10020,9 @@ func (g *Game) clearCombatLocked() {
 	// #716: and so does the combat damage steps' participation
 	// record — it describes these same attackers and blockers.
 	g.firstStrikeStepParticipants = nil
+	// #3665: a hold is settled before the cursor can leave its step;
+	// one still here describes a combat that is over.
+	g.heldCombatDamage = nil
 }
 
 // Concede marks the given player as eliminated (CR 104.3a). If one

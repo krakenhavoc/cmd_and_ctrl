@@ -691,6 +691,14 @@ type Game struct {
 	// first-striker hit twice.
 	firstStrikeStepParticipants map[uuid.UUID]bool
 
+	// heldCombatDamage is a combat damage step's damage waiting on its
+	// damage-assignment prompts (#3665, CR 510.2): nothing of the step
+	// is dealt until the last one is answered. Nil otherwise. Carried
+	// by Clone / RestoreFrom; the persisted snapshot drops it and
+	// counts it in ContinuationCensus.ChoiceResumeFrames, so a table
+	// holding one is not a restore point. See combat_damage_hold.go.
+	heldCombatDamage *heldCombatDamage
+
 	// Listeners is the per-game event subscriber list. Populated by
 	// RegisterListener; walked by notifyListenersLocked under the
 	// write lock. S14 ships the registry infrastructure with zero

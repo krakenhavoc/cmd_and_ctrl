@@ -136,9 +136,12 @@ func TestBrashTaunterDoubleBlockedReflectsTheTotalOnce(t *testing.T) {
 	}
 	life := opp.Life
 	advanceTo(t, g, game.StepCombatDamage)
+	// The Taunter's own damage among its two blockers. No damage is
+	// dealt until it is assigned (#3665, CR 510.2), so the trigger
+	// comes after.
+	b26AnswerDamageAssignments(t, g)
 	b04WaitForPick(t, g, me.ID)
 	pickPlayer(t, g, me.ID, opp.ID)
-	b26AnswerDamageAssignments(t, g) // the Taunter's own damage among its two blockers
 	passPriorityAroundTable(t, g)
 	if latestPickTarget(g, me.ID) != nil {
 		t.Error("a second target pick was queued: the two blockers' damage should be one trigger")

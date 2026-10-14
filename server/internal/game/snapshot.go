@@ -2025,6 +2025,14 @@ func (g *Game) captureSnapshotLocked() *GameSnapshot {
 			s.PendingChoices = append(s.PendingChoices, snapshotPendingChoice(c, cen))
 		}
 	}
+	// #3665: a combat damage step's damage held behind its
+	// damage-assignment prompts. Not carried: the table is not a
+	// restore point while it waits, so a restart rewinds to before the
+	// step rather than dealing half of it.
+	if g.heldCombatDamage != nil {
+		cen.ChoiceResumeFrames++
+		cen.note("combat damage step holds its damage behind damage_assignment prompts")
+	}
 	// #2789: a modal item's later bullets parked behind one of those
 	// prompts (mode_walk.go).
 	s.PausedModeWalk = snapshotModeWalk(g, g.pausedModeWalk, cen)

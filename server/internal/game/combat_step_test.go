@@ -341,7 +341,11 @@ func TestCombatStepAssignmentPromptResumesRegular(t *testing.T) {
 	}, 1); err != nil {
 		t.Fatalf("ResolveDamageAssignment: %v", err)
 	}
+	// #3665: the blockers' damage back is held with the step's and
+	// dealt with the answer, so it is in the same batch.
 	assertCombatDamage(t, combatDamageSince(g, seq), []wantDamage{
+		{bear1, wurm, 2, CombatStepRegular},
+		{bear2, wurm, 3, CombatStepRegular},
 		{wurm, bear1, 2, CombatStepRegular},
 		{wurm, bear2, 3, CombatStepRegular},
 		{wurm, def.ID, 1, CombatStepRegular},
@@ -488,8 +492,10 @@ func TestCombatStepPreFieldAssignmentPromptResumesUntagged(t *testing.T) {
 	_ = declareCombat(t, g, []uuid.UUID{knight, big}, map[uuid.UUID]uuid.UUID{bear1: big, bear2: big})
 
 	prompt := pendingOfKind(t, g, PendingChoiceDamageAssignment)
-	// What a pre-field snapshot decodes to.
+	// What a pre-field snapshot decodes to. It is also from before
+	// #3665, so no hold: the step's other damage was dealt already.
 	prompt.DamageAssignment.CombatStep = ""
+	g.heldCombatDamage = nil
 
 	seq := lastSeq(g)
 	if err := g.ResolveDamageAssignment(prompt.ID, atk.ID, []DamageAssignmentEntry{
