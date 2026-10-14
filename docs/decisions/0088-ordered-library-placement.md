@@ -387,7 +387,7 @@ ends up under Spell Crumple instead of over it.
 
 ### Still out of scope
 
-- Library of Leng's multi-card discard order (unchanged, above).
+- Library of Leng's multi-card discard order (unchanged, above; closed by the 2026-10-14 amendment below).
 - Lost Days and Wan Shi Tong, All-Knowing are A2 card work. Wan Shi Tong's "whenever one or more
   cards are put into a library from anywhere" has no batched event yet.
 
@@ -413,3 +413,40 @@ ends up under Spell Crumple instead of over it.
   Done, the depth names the lane, and another player's library is not "your next draw".
 - `cards/effects/library_top_leftovers_test.go` — one test per proof card, and all four of Jace's
   abilities.
+
+## Amendment 2026-10-14 (#2949): a discard batch's library placements
+
+Library of Leng: "If an effect causes you to discard a card, discard it, but you may put it on top
+of your library instead of into your graveyard." When one effect discards several cards and more
+than one is put on top, CR 401.4 applies: "If an effect puts two or more cards in a specific
+position in a library at the same time, the owner of those cards may arrange them in any order.
+That library's owner doesn't reveal the order in which the cards go into the library." The 2026-09
+amendment left this out of scope as "a replacement-pipeline question". It turns out not to need
+the pipeline.
+
+**Decision.** The replacement stays per card: a discard's CR 614 window is per card, and Leng's
+"may" is asked per card. The order is settled once the batch has finished, by the discard batch
+itself (`discardBatchLocked`). When the last leg lands, the batch lists the cards it discarded
+that are now the top of the discarding player's library (`discardBatchOnTopOfLibraryLocked`). If
+there are two or more, it raises this ADR's `put_in_library` prompt over exactly those cards:
+chooser the owner, placement `top`, `From: ZoneLibrary`, so the cards are reordered in place with
+no window and no event. The batch's own continuation (the `then` behind the discard, a rummage's
+draw) runs from the prompt's `Then`, so it waits for the order.
+
+- The discard is unchanged. Each card still fires `EventDiscardCard` with its real destination,
+  counts as "discarded this way" and is seen by every payoff (CR 701.9a). Only the order moves.
+- Privacy is the prompt's: the owner is the only knower of two or more cards in one lane, and
+  nobody else learns the order.
+- No prompt for zero or one saved card, for a cost or cleanup discard (Leng does not apply), or
+  when the saved cards are not exactly the top of the library. In that last case another
+  replacement sent one of them elsewhere in the library (a shuffle-in), so they are no longer one
+  placement at one position.
+- The prompt is the ordinary paused frame: undo, restore and a chooser leaving the game behave as
+  for every other `put_in_library` prompt.
+
+**Cards.** Library of Leng is now Full; its one caveat is gone.
+
+**Test plan.** `cards/effects/library_of_leng_order_test.go`: two and three saved cards in a
+chosen non-default order, with the effect's "then" waiting for it; one saved and one declined
+(no prompt); the discard events still fire and opponents do not know the ordered cards. The
+existing Leng, Bone Miser, Lion's Eye Diamond and Mox Diamond tests still pass.

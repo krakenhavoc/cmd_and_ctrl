@@ -133,9 +133,9 @@ func TestLibraryOfLengOnlyReplacesItsControllersDiscards(t *testing.T) {
 	}
 }
 
-// TestLibraryOfLengIsDeclaredWithItsOneCaveat — the ordering clause for
-// a multi-card save is the only thing it does not do.
-func TestLibraryOfLengIsDeclaredWithItsOneCaveat(t *testing.T) {
+// TestLibraryOfLengIsDeclaredFull — the multi-card order is the
+// owner's since #2949, so nothing is left out.
+func TestLibraryOfLengIsDeclaredFull(t *testing.T) {
 	spec, ok := Lookup(libraryOfLengOracle)
 	if !ok {
 		t.Fatal("Library of Leng is not registered")
@@ -143,7 +143,7 @@ func TestLibraryOfLengIsDeclaredWithItsOneCaveat(t *testing.T) {
 	if !spec.NoMaxHandSize {
 		t.Error("the first line — no maximum hand size — is missing")
 	}
-	if spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Errorf("completeness %q with %d caveat(s), want caveats with exactly 1", spec.Completeness, len(spec.Caveats))
+	if spec.Completeness != CompletenessFull || len(spec.Caveats) != 0 {
+		t.Errorf("completeness %q with %d caveat(s), want full with none", spec.Completeness, len(spec.Caveats))
 	}
 }
