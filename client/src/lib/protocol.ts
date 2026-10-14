@@ -1773,7 +1773,10 @@ export interface PendingChoiceView {
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
+  // For pay_unless, mandatory life paid alongside pay_cost.
   life_cost?: number;
+  // Computed affordability of the mandatory life, including life locks.
+  life_cost_unpayable?: boolean;
   // #74: populated for kinds "choose_cards", "untap_choice",
   // "entry_reveal_from_hand", #1214's three resolution-time picks
   // ("reveal_pick", "their_permanents", "own_permanents") and ADR 0107's
@@ -4667,10 +4670,11 @@ export interface TableSettingsView {
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).
   allow_spawn: boolean;
-  // A two-player table's free first mulligan, the house rule (#3387).
-  // A multiplayer table has it by the rules either way. Fixed once the
-  // game is active. Absent from an older server.
-  free_first_mulligan?: boolean;
+  // Free mulligans, the house rule (#3387): 0 or absent is the rules
+  // (one free in a multiplayer game, none at two players), N gives N
+  // free at any table, -1 makes every mulligan free. Fixed once the
+  // game is active.
+  free_mulligans?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.

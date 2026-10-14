@@ -173,7 +173,7 @@ func (g *Game) runPromptBranchLocked(origin string, fn func()) {
 // symbol, guarding no spell, owed in no step, and paid with nothing
 // but mana.
 func payUnlessCovered(c *PendingChoice) bool {
-	if c.GuardsStackItem != uuid.Nil || c.OwedInStep != (TurnStep{}) {
+	if c.GuardsStackItem != uuid.Nil || c.OwedInStep != (TurnStep{}) || c.LifeCost != 0 {
 		return false
 	}
 	f := c.payUnlessResume

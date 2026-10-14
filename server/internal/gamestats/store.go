@@ -24,6 +24,11 @@ type Store interface {
 	// Get reads one game's record, seats in seat order and each seat's
 	// cards by name. ErrNotFound if there is none.
 	Get(ctx context.Context, id uuid.UUID) (Game, error)
+	// ForUser summarises the finished games of the seats whose
+	// seats.user_id is userID, and no one else's (ADR 0165 §7).
+	ForUser(ctx context.Context, userID string) (UserStats, error)
+	// Overview summarises every game for an operator (ADR 0165 §8).
+	Overview(ctx context.Context) (Overview, error)
 }
 
 // NoStore is the Store for a deployment with no database: Put keeps
@@ -35,6 +40,11 @@ func (NoStore) Put(context.Context, Game) error { return nil }
 
 // Get implements Store; there is never a record.
 func (NoStore) Get(context.Context, uuid.UUID) (Game, error) { return Game{}, ErrNotFound }
+
+// ForUser implements Store; there is nothing to summarise.
+func (NoStore) ForUser(context.Context, string) (UserStats, error) {
+	return UserStats{ByDeck: []Group{}, ByCommander: []Group{}, Recent: []RecentGame{}}, nil
+}
 
 var _ Store = NoStore{}
 

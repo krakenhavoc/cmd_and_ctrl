@@ -91,6 +91,7 @@
   import AttackDeclarationModal from "../lib/components/board/AttackDeclarationModal.svelte";
   import GameLogPanel from "../lib/components/board/GameLogPanel.svelte";
   import ActionDock from "../lib/components/board/ActionDock.svelte";
+  import PhaseDisplay from "../lib/components/board/PhaseDisplay.svelte";
   import TutorialCoach from "../lib/components/tutorial/TutorialCoach.svelte";
   import DockRequest from "../lib/components/board/DockRequest.svelte";
   import GameMenu from "../lib/components/board/GameMenu.svelte";
@@ -227,7 +228,12 @@
   import { devFeature } from "../lib/env";
   import { gameWSURL } from "../lib/gameURL";
   import { firstTurnHeadline, openingRollText, openingRollWinner } from "../lib/startingPlayer";
-  import { keepCostText, mulliganCostText, mulliganWaitingText } from "../lib/mulliganTurn";
+  import {
+    freeMulliganCount,
+    keepCostText,
+    mulliganCostText,
+    mulliganWaitingText,
+  } from "../lib/mulliganTurn";
   import DevDock from "../lib/components/dev/DevDock.svelte";
   import type { ReplayFrame } from "../lib/replay";
   import { L } from "../lib/labels";
@@ -2371,6 +2377,26 @@
     <span class="bar-sep" aria-hidden="true"></span>
     <span class="wordmark" aria-hidden="true"><Wordmark size="bar" /></span>
     <h1 class="crumb"><b>/</b><span class="mono">{gameID.slice(0, 8)}</span></h1>
+    <!-- #3378: a spectator has no action dock, so nothing else says
+         whose turn it is or which step. The dock's own header, read
+         only, laid out on one line. -->
+    {#if isSpectator && view && !dockShown}
+      <div class="bar-phase">
+        <PhaseDisplay
+          readOnly
+          inline
+          turn={view.turn}
+          seats={view.seats}
+          mulligansOpen={view.mulligans_open === true}
+          damageCantBePrevented={view.damage_cant_be_prevented ?? []}
+          exileIfCreaturesDie={view.exile_if_creatures_die ?? []}
+          damageShields={view.damage_shields ?? []}
+          damageMultipliers={view.damage_multipliers ?? []}
+          damageRedirections={view.damage_redirections ?? []}
+          dayNight={view.day_night}
+        />
+      </div>
+    {/if}
     <span class="bar-spacer"></span>
     {#if isSpectator}
       <span
@@ -2852,6 +2878,7 @@
             {fanfare}
             motion={$settings.animations.enabled && !$settings.accessibility.reduceMotion}
             armed={gameOverArmed}
+            rematch={{ plan: rematch, busy: rematchBusy, ...rematchActions }}
             onback={back}
             ondismiss={() => (fanfareDismissed = true)}
           />
@@ -2918,7 +2945,7 @@
         >
           <div class="mulligan-copy">
             {#if mulliganWaiting}
-              <p class="first-turn" role="status">{mulliganWaiting}</p>
+              <p class="mulligan-waiting" role="status">{mulliganWaiting}</p>
             {/if}
             {#if openingRoll}
               <p class="first-turn">{firstTurnHeadline(openingRoll, viewerSeat?.seat)}</p>
@@ -2960,14 +2987,14 @@
                  mulligan_bottom cards; the dock asks which, and in what
                  order, once the seat has kept. -->
             {#if keepCostText(viewerSeat?.mulligan_bottom ?? 0)}
-              <p class="muted">{keepCostText(viewerSeat?.mulligan_bottom ?? 0)}</p>
+              <p class="keep-cost">{keepCostText(viewerSeat?.mulligan_bottom ?? 0)}</p>
             {/if}
-            <p class="muted">
+            <p>
               {mulliganCostText(
                 viewerSeat?.mulligans_taken ?? 0,
                 viewerSeat?.mulligan_bottom ?? 0,
                 // CR 103.5c, or the table's house rule (#3387).
-                seats.length > 2 || tableSettings.free_first_mulligan === true,
+                freeMulliganCount(seats.length, tableSettings.free_mulligans),
               )}
             </p>
           </div>
@@ -3198,6 +3225,13 @@
   }
   .bar-spacer {
     flex: 1;
+  }
+  .bar-phase {
+    min-width: 0;
+    margin-left: 18px;
+    padding-left: 18px;
+    border-left: 1px solid var(--border);
+    font-size: 13px;
   }
   .status {
     display: inline-flex;
@@ -3635,6 +3669,42 @@
     letter-spacing: -0.02em;
     color: var(--fg);
   }
+  /* The cost lines sit over the board's art, so they get a frosted
+     panel and full-strength text: a dim line on a busy background was
+     hard to read, and the cost is the one thing a player must not
+     miss. The keep cost is what applies now, so it leads. */
+  /* Whose decision it is, when it is not yours: a status line, not a
+     second headline over "You go first". */
+  .mulligan-copy .mulligan-waiting {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--fg);
+  }
+  .mulligan-cost {
+    padding: 6px 14px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--surface) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--border);
+    color: var(--fg);
+    max-width: min(640px, 92vw);
+    margin-inline: auto;
+  }
+  .mulligan-cost p {
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  /* A laptop screen (#2959's 1280×720): two cost lines under the fan
+     have to clear the dock, so the headline gives up some height. */
+  @media (max-height: 800px) {
+    .mulligan-copy .first-turn {
+      font-size: clamp(26px, 3.2vw, 40px);
+    }
+  }
+  .mulligan-cost .keep-cost {
+    font-weight: 700;
+  }
   .mulligan-copy .opening-roll-copy {
     display: inline-flex;
     align-items: center;
@@ -3654,6 +3724,14 @@
     align-items: flex-start;
     min-height: 0;
     padding: 28px 0 48px;
+  }
+  /* Short screens: a smaller fan, so the headline above it and the cost
+     panel below it both fit inside the sheet. */
+  @media (max-height: 800px) {
+    .mulligan-cards {
+      --fan-w: min(calc((100vw - 160px) / (var(--n, 7) * 0.95)), 220px, calc(32vh * 5 / 7));
+      padding: 16px 0 32px;
+    }
   }
   .mulligan-card {
     position: relative;

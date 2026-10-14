@@ -865,7 +865,9 @@
     <!-- Hand sits inline with the dock cell; its clipped-bottom
          line coincides with the panel edge. flex: 1 lets it absorb
          the width the rail freed up. -->
-    <div class="hand-zone">
+    <!-- data-hand-owner: where a spell cast from this hand flies from
+         (#3381, castFlight.ts). -->
+    <div class="hand-zone" data-hand-owner={seat.id}>
       <Hand
         hand={seat.hand}
         {isSelf}

@@ -98,9 +98,12 @@ describe("settingsPatchError", () => {
     expect(settingsPatchError({ starting_life: 30 }, "lobby")).toBeNull();
   });
 
-  it("refuses a free-first-mulligan change once the game has started (#3387)", () => {
-    expect(settingsPatchError({ free_first_mulligan: true }, "active")).toMatch(/already started/i);
-    expect(settingsPatchError({ free_first_mulligan: true }, "lobby")).toBeNull();
+  it("refuses a free-mulligans change once the game has started, or out of range (#3387)", () => {
+    expect(settingsPatchError({ free_mulligans: 2 }, "active")).toMatch(/already started/i);
+    expect(settingsPatchError({ free_mulligans: 2 }, "lobby")).toBeNull();
+    expect(settingsPatchError({ free_mulligans: -1 }, "lobby")).toBeNull();
+    expect(settingsPatchError({ free_mulligans: -2 }, "lobby")).not.toBeNull();
+    expect(settingsPatchError({ free_mulligans: 8 }, "lobby")).not.toBeNull();
   });
 
   it("says nothing about the fields that are always legal", () => {

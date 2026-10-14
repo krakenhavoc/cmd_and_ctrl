@@ -687,6 +687,13 @@ export const LABEL_SPECS = {
     owners: ["routes/Admin.svelte"],
     doc: "the admin views' tab for what players have reported at their tables (#2984)",
   }),
+  adminStatsTab: label({
+    name: "Stats",
+    kind: "text",
+    role: "link",
+    owners: ["routes/Admin.svelte"],
+    doc: "the admin views' tab for game statistics (ADR 0165 §8, #3425)",
+  }),
   liveNow: label({
     name: "live now",
     kind: "aria",

@@ -2086,6 +2086,19 @@ effect. (A shielded COMMANDER used to prompt because CR 903.9 applied
 to the same event; since ADR 0115 a destroyed commander is not
 replaced, so the shield alone applies and no order is asked.)
 
+**A shield counter is engine-owned too** (#2000, ADR 0173, CR 122.1c). Put one on
+with `AddCounter{Target: id, Kind: game.CounterShield, N: 1}`; that is
+the whole card side. The two built-ins in
+`server/internal/game/shield_counters.go` do the rest: a destruction by
+an effect is cancelled and a counter removed (a state-based destruction,
+from lethal damage or deathtouch, is not), and damage is prevented and a
+counter removed. Damage that can't be prevented is dealt and a counter is
+still removed (CR 615.12). Damage from several sources at the same time
+costs one counter.
+"For as long as it has a shield counter on it" (Shield Broker) is the
+counter-held duration, `DurationWhileItHasCounter(ctx, id,
+game.CounterShield)`.
+
 **"It can't be regenerated" is a rider on the destroy, not a keyword**
 (CR 701.19c). Write `DestroyTarget{Target: id, CantBeRegenerated:
 true}` or `DestroyAllMatching{Match: …, CantBeRegenerated: true}` on
@@ -2743,8 +2756,13 @@ variant (Knight of Grace), and never the broad `hexproof` beside it.
 **Ward costs** (`effects.Ward(cost, label)`): `WardMana("{2}")`,
 `WardWaterbend`, `WardLife(2)`, `WardSacrifice("a creature", Creature())`
 and, since #3172, `WardDiscard(1)` ("Ward—Discard a card"). Each is one
-component; a composite such as Captain Howler's "{2}, Pay 2 life" is not
-built. A discard ward asks the caster to confirm, then to pick the card
+component. `WardManaAndLife("{2}", 2)` declares one compound cost
+(Gisa and Captain Howler, #2945, ADR 0171): one prompt requires both
+components, checks the complete mana plan and life total before charging,
+and combines mandatory life with any optional Phyrexian-symbol payment.
+`CounterUnlessPaidPrompt.LifeCost` carries the fixed amount; the legal
+move price, bot text and human payment button include it. Other mixtures
+remain unsupported. A discard ward asks the caster to confirm, then to pick the card
 from their own hand; a caster with fewer cards than the cost is
 countered with no prompt.
 
@@ -3364,6 +3382,13 @@ conditions is `OnAny([]game.EventKind{…}, …)`. `Targeting(t, spec)`
 adds a target clause; the effect then reads `item.Targets[0]`, so it
 is a closure rather than `Do`. Add a missing shape or predicate to
 `triggers_common.go`, not to the card file.
+
+For a graveyard watcher that must have been there before a creature died,
+use `g.InSameSimultaneousExitForEffect(source.InstanceID, ev.CardID)` to
+exclude an actual shared exit (#3417, ADR 0018 amendment). `Event.Batch`
+spans an entire resolution and cannot distinguish its separate instructions.
+Check both IDs: an outer exit can stay published while a later instruction
+runs. Keep the usual graveyard, owner and object-identity checks too.
 
 **Triggers in other zones (#925, CR 113.6):** a trigger watches from
 the battlefield unless it says otherwise, and the ones that say

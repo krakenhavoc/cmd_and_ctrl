@@ -692,23 +692,40 @@ jobs:
 
   # Discussion #1231 P1a / #1247, repaired per Luke's review
   # (2026-09-23, points 2 and 3). This job holds the ONLY write
-  # permission in this workflow, and only for a push to develop or
-  # main -- a same-repository pull_request run of cmdctrl-ci never
-  # reaches it, because it `needs` that job to have already confirmed
+  # permission in this workflow, and only for a push to develop
+  # (#3335; it used to be develop or main) -- a same-repository
+  # pull_request run of cmdctrl-ci never reaches it, because it `needs` that job to have already confirmed
   # `server-test` passed (gofmt, vet, lint live in `server-check`;
   # CENSUS_ENFORCE=1 lives in `server-test`) on this exact commit.
   #
   # It pushes with its own credential (a repository deploy key,
   # `secrets.CENSUS_DEPLOY_KEY`) rather than the workflow's GITHUB_TOKEN,
   # so the ruleset bypass this needs can be scoped to "the census
-  # publisher" -- a `Deploy keys` bypass actor on develop and main --
+  # publisher" -- a `Deploy keys` bypass actor on develop --
   # instead of `always` for the whole GitHub Actions app, which is what
   # #1247 asked for and Luke's review point 2 correctly rejected: that
   # bypass would have covered every push this workflow makes, not just
   # this one docs-only commit.
+  #
+  # #3335: develop only, and the key lives in the `census` environment.
+  # As a repository secret any same-repository workflow run could read
+  # it, a topic branch's included, and the key bypasses the branch
+  # rulesets. The `census` environment's deployment branch policy admits
+  # `develop` alone, so only this job, on a push to develop, can read
+  # it. It no longer publishes to main, which lets the `main` ruleset
+  # drop its deploy-key bypass: main is only ever a merge of develop
+  # (plus the odd hotfix), so its census is develop's: the main runs
+  # checked for #3335 all ended "census block unchanged; nothing to
+  # publish".
+  # A hotfix that changes the catalog gets its census on develop once
+  # main is merged back, which docs/environments.md already requires.
+  # Until the owner creates the environment's secret, GitHub falls back
+  # to the repository secret of the same name, so this works before
+  # and after that step.
   census-publish:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: cmdctrl-ci
+    environment: census
     permissions:
       # The push below authenticates with the deploy key over SSH, not
       # with GITHUB_TOKEN, so this job needs nothing more than the
@@ -716,9 +733,7 @@ jobs:
       # implicit so a future job added near this one cannot inherit a
       # wider permission by copy-pasting from the wrong neighbour.
       contents: read
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     # One publisher per branch at a time, so two runs finishing close
     # together don't race the same push (the retry below handles one
     # lost race, not a pile-up). Its own group on purpose: reusing the
@@ -941,7 +956,17 @@ jobs:
   # develop red with the broken build on the preview until the fix
   # lands, which is what the preview is for.
   cmdctrl-cd-dev:
-    runs-on: self-hosted
+    # Which self-hosted runners may take a deploy (#3335). Until the
+    # repository variable CMDCTRL_DEPLOY_RUNNER_LABEL is set this is any
+    # self-hosted runner, exactly as before. Once the owner has given the
+    # chosen runners that label (Settings -> Actions -> Runners) and set
+    # the variable to it, a deploy runs only there. Label first, variable
+    # second: the other order queues every deploy with no runner to take
+    # it. No test job uses a self-hosted runner any more (the nightly's
+    # moved to hosted in the same change), so the deploy runners run
+    # only this, cmdctrl-cd-prod and scryfall-refresh.yml.
+    # docs/environments.md#runners-and-credentials.
+    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
     needs: build
     # actions: write is only for deleting this run's artifacts at the end.
     permissions:
@@ -1071,6 +1096,16 @@ jobs:
           echo "Deploy root:   ${DEPLOY_ROOT}"
           echo "Web root:      ${WEB_ROOT}"
           echo "Env file:      ${ENV_FILE}"
+
+      # The key krkn logs in with, from this job's environment (`dev` or
+      # `prod`), not from the runner's ~/.ssh (#3335). Each environment
+      # admits only its own branch, so a topic branch, a pull request or
+      # a nightly test job never sees it. Unset falls back to the
+      # runner's own key with a ::warning::; the script says why.
+      - name: Load the deploy SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.CMDCTRL_DEPLOY_SSH_KEY }}
+        run: scripts/load-deploy-key.sh
 
       - name: Download server binary
         uses: actions/download-artifact@v8
@@ -2138,11 +2173,18 @@ jobs:
               core.info(`deleted ${a.name} (${a.size_in_bytes} bytes)`);
             }
 
+      # The runner empties $RUNNER_TEMP between jobs too; this is so the
+      # key is gone the moment the deploy is, failed or not (#3335).
+      - name: Remove the deploy SSH key
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/deploy_ssh_key"
+
   # main: the same deploy (the aliases below are cmdctrl-cd-dev's env and
   # steps), gated on the whole of CI passing. Production only moves on a
   # promotion, so it can afford to wait.
   cmdctrl-cd-prod:
-    runs-on: self-hosted
+    # Same runners as cmdctrl-cd-dev; see there.
+    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
     needs: [build, cmdctrl-ci]
     permissions:
       contents: read

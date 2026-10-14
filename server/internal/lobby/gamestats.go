@@ -8,6 +8,8 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
@@ -59,3 +61,31 @@ func (l *Lobby) recordStatsLocked(entry *gameEntry) {
 // WaitGameStats blocks until every record started so far is written.
 // For tests and shutdown.
 func (l *Lobby) WaitGameStats() { l.statsWG.Wait() }
+
+// UserStats is the caller's own game statistics (GET /me/stats, ADR
+// 0165 §7). A server with no stats store has none to show.
+func (l *Lobby) UserStats(userID uuid.UUID) (gamestats.UserStats, error) {
+	l.mu.Lock()
+	store := l.gameStats
+	l.mu.Unlock()
+	if store == nil || userID == uuid.Nil {
+		return gamestats.NoStore{}.ForUser(context.Background(), "")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
+	defer cancel()
+	return store.ForUser(ctx, userID.String())
+}
+
+// StatsOverview is every game's statistics for an operator (GET
+// /admin/stats, ADR 0165 §8). A server with no stats store has none.
+func (l *Lobby) StatsOverview() (gamestats.Overview, error) {
+	l.mu.Lock()
+	store := l.gameStats
+	l.mu.Unlock()
+	if store == nil {
+		return gamestats.EmptyOverview(), nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
+	defer cancel()
+	return store.Overview(ctx)
+}

@@ -268,6 +268,30 @@ export function flyTo(
   );
 }
 
+// flyFrom is flyTo run backwards, for a card ARRIVING on the stack
+// (#3381): the copy is drawn where it lands, starts at `from` (the
+// translation and scale that put it on where it came from) and travels
+// home, growing as it comes. Same gate and speed as flyTo. Resolves
+// when the flight is over.
+export function flyFrom(
+  el: HTMLElement,
+  from: { x: number; y: number; scale: number },
+  baseMs: number,
+): Promise<void> {
+  const ms = gatedDuration(baseMs, cfg.cardPlay);
+  cancelAnimations(el);
+  el.style.transformOrigin = "0 0";
+  if (!canAnimate(el)) return Promise.resolve();
+  return run(
+    el,
+    [
+      { translate: `${from.x}px ${from.y}px`, scale: String(from.scale), opacity: 0.5 },
+      { translate: "0px 0px", scale: "1", opacity: 1 },
+    ],
+    { duration: ms, easing: EASE.power2InOut },
+  ).done.then(() => undefined);
+}
+
 // ---- Combat strikes (ADR 0134 §2) ----
 //
 // An attacker's art-only copy lunges to contact with what it hit, holds

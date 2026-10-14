@@ -1115,6 +1115,10 @@ func NewGame() *Game {
 		// #3172 (Arlinn, the Pack's Hope): a duration grant of "each
 		// creature you control enters with an additional counter".
 		playerEntryCountersReplacement,
+		// #2000, CR 122.1c. Appended, never inserted: a CR 616 prompt
+		// names a built-in by its index here.
+		shieldCounterDestroyReplacement,
+		shieldCounterPreventsDamageReplacement,
 	)
 	return g
 }

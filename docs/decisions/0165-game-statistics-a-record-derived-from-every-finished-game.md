@@ -53,11 +53,33 @@ Every ended, non-practice game with a `games` row, including bot and guest seats
 
 - The tables hold numbers and card names about games, keyed by game and seat. **They are part of the game record the other players keep**, so `accountdelete.Inventory` lists every column as **Kept**, with that note. A deleted person's seats already point at the tombstone ("Deleted player"), and so do these rows through the join.
 - The privacy notice gains a "Game statistics" row. `PRIVACY_SCHEMA_VERSION` moves to 23.
-- Nothing here is shown to anyone yet. Showing stats (#3366) must show a person their own seats, and other players only in aggregate or by consent. Rankings or leaderboards will be **opt-in**, in their own ADR.
+- Showing stats (#3366, §7) shows a person their own seats, and other players only in aggregate or by consent. Rankings or leaderboards will be **opt-in**, in their own ADR.
 
-### 6. Backfill (#3365, next PR)
+### 6. Backfill (#3365)
 
 A one-shot `cmd/statsbackfill` reads each ended game's replay JSONL, merges the `log` arrays by `Seq`, takes the last line's view as the final view, and runs the same `Compute` with `source = replay`. A gap in `Seq` sets `log_complete = 0`. It skips games with a current-version record, and recomputes records with an older `stats_version`.
+
+As built: a Seq gap cannot be read off consecutive numbers, because a collapsed run of draws and the events that log nothing leave holes in a whole log. Each frame's `log` is a window of the last 200 entries (`protocol.PublicLogMax`), so the tool merges windows and sets `log_complete = 0` when a full window starts above the previous frame's newest `Seq` (frames were lost) or the first window is already full (older entries had been dropped). A later frame replaces everything at or above its window's lowest `Seq`, so a growing draw run keeps its latest `Amount` and an undo's rewound `Seq`s leave no stale entries. Only games with a `games` row in state `ended` are considered, so practice tables never are.
+
+### 7. A stats page for your own games (#3366)
+
+A signed-in person sees their own record at `#/stats` (ADR 0158's page frame, in the signed-in header after Tables). It is a free feature of every account.
+
+- **Route.** `GET /me/stats` reads `seat_stats` joined to `seats` on the caller's `user_id` (and to `game_stats` and `games`). It never reads another person's seat, a bot's or a guest's, and it is documented in docs/lobby.md.
+- **What counts.** A game counts when the caller's seat has a result of `win`, `loss` or `draw`. A `none` seat (a table that ended with no outcome) is left out of the record and the breakdowns and is reported separately as `unfinished`. Games played is the count of counted seats.
+- **Average place** is the mean of `place` over counted seats that have one, and is empty when none do. Surviving seats in a draw share place 1, as §3 says.
+- **By deck** groups seats by `seats.deck_id`, falling back to `seats.deck_name` when the saved deck was deleted or the seat used an upload. The name shown is the newest one. **By commander** groups by the seat's commander names joined with ` / `, so a partner pair is one entry. Both lists put the most-played first.
+- **Recent games** are the latest 20 counted games, newest first, with turns, place, deck and commanders.
+- **Empty state.** A person with no counted games gets zeros and empty lists, and the page says to play a game.
+
+### 8. An admin view of every game (#3425)
+
+Operators read the statistics from the **Stats** tab of the admin page (`#/admin/stats`, ADR 0124's tab strip), with no shell on the database.
+
+- **Route.** `GET /admin/stats`, read-only, behind `requireAdmin` like every other `/admin/` route (the shared token, or an allowlisted person with admin mode on). It is documented in docs/lobby.md.
+- **What it shows.** Totals: games with a record, by `source` and by `log_complete`, and the count of ended games with a `games` row but no record (what `cmd/statsbackfill` would fill in). The latest 25 games with turns and rounds. A record per person (accounts by display name, guests by seat name, bots by tier). The top 25 commanders by games and by wins, and the 25 most-cast cards (sum of casts, distinct games).
+- **Definitions are §7's.** Only a win, loss or draw counts, average place is over counted seats that have a place, and a commander is the seat's commander names joined with ` / `. The aggregation is `gamestats.Tally`, shared with `GET /me/stats`.
+- **Privacy.** This is the one place stats are read against other people's seats, and it shows display names beside records, so the privacy notice's "Game statistics" row says server admins can read them. No new table and no new stored column.
 
 ## Consequences
 
@@ -68,4 +90,4 @@ A one-shot `cmd/statsbackfill` reads each ended game's replay JSONL, merges the 
 
 ## Sprint
 
-Outside the numbered sprints: the owner asked for game statistics on 2026-10-13, ahead of S72/S73. It touches no engine rules and no client yet, so it does not compete with S70/S71's front-door work.
+Outside the numbered sprints: the owner asked for game statistics on 2026-10-13, ahead of S72/S73. It touches no engine rules, and its one client page (§7) is small, so it does not compete with S70/S71's front-door work.

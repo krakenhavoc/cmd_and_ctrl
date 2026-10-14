@@ -5172,6 +5172,7 @@ settings.allowSpawn	bool
 settings.botPace	string
 settings.commanderDamage	number:int
 settings.freeFirstMulligan	bool
+settings.freeMulligans	number:int
 settings.startingLife	number:int
 settings.undoLimit	number:int
 settings.undoScope	string

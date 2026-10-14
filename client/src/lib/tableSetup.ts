@@ -31,7 +31,7 @@ export interface SetupSettings {
   commander_damage?: number;
   bot_pace?: string;
   allow_spawn?: boolean;
-  free_first_mulligan?: boolean;
+  free_mulligans?: number;
 }
 
 /** A remembered setup, as GET /me/setup serves it. */
@@ -115,7 +115,10 @@ export function setupSummary(
     parts.push(`${s.bot_pace} table pace`);
   }
   if (s.allow_spawn === true) parts.push("spawning on");
-  if (s.free_first_mulligan === true) parts.push("free first mulligan");
+  if (s.free_mulligans === -1) parts.push("unlimited free mulligans");
+  else if (s.free_mulligans !== undefined && s.free_mulligans > 0) {
+    parts.push(`${s.free_mulligans} free mulligan${s.free_mulligans === 1 ? "" : "s"}`);
+  }
   return parts.join(" · ");
 }
 

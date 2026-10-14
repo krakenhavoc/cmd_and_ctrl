@@ -67,6 +67,11 @@
     // ADR 0111 §8: at phone width the track is folded away until the
     // dock's ▴ opens it. Ignored above 600px, where it always shows.
     trackOpen?: boolean;
+    // #3378: a spectator's copy in the top bar. readOnly draws no pins
+    // and takes no clicks (a spectator holds no priority to stop at);
+    // inline lays the turn line and the track out side by side.
+    readOnly?: boolean;
+    inline?: boolean;
   }
 
   const {
@@ -81,6 +86,8 @@
     dayNight = undefined,
     readyActions = 0,
     trackOpen = false,
+    readOnly = false,
+    inline = false,
   }: Props = $props();
 
   // ADR 0105 §7: "N actions available", once per arrival. The
@@ -186,10 +193,11 @@
   // toggle (#526) so the viewer can "fake a game action" — stop to
   // think / bluff / respond even when the engine sees nothing to do.
   // Consumed on step transition by the consumer in Game.svelte.
-  const pinned = $derived($manualStops);
+  const pinned = $derived(readOnly ? new Set<StepID>() : $manualStops);
+  const canPin = (id: StepID): boolean => !readOnly && canManuallyStop(id);
 
   function onIconClick(id: StepID): void {
-    if (!canManuallyStop(id)) return;
+    if (!canPin(id)) return;
     toggleManualStop(id);
   }
 </script>
@@ -197,6 +205,7 @@
 <div
   class="phase-display"
   class:track-open={trackOpen}
+  class:inline
   aria-label={L.turnPhase}
   style:--active-player-color={activeColor}
 >
@@ -252,7 +261,7 @@
       >
         <div class="phase-steps">
           {#each phase.steps as id (id)}
-            {@const clickable = canManuallyStop(id)}
+            {@const clickable = canPin(id)}
             {@const isPinned = pinned.has(id)}
             <button
               type="button"
@@ -261,11 +270,13 @@
               class:pinned={isPinned}
               class:clickable
               disabled={!clickable}
-              title={clickable
-                ? isPinned
-                  ? `${STEP_LABELS[id]} — click to unpin`
-                  : `${STEP_LABELS[id]} — click to pin a one-time stop`
-                : `${STEP_LABELS[id]} — no priority`}
+              title={readOnly
+                ? STEP_LABELS[id]
+                : clickable
+                  ? isPinned
+                    ? `${STEP_LABELS[id]} — click to unpin`
+                    : `${STEP_LABELS[id]} — click to pin a one-time stop`
+                  : `${STEP_LABELS[id]} — no priority`}
               aria-current={turn.step === id ? "step" : undefined}
               aria-pressed={clickable ? isPinned : undefined}
               data-step={id}
@@ -516,6 +527,29 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+
+  /* #3378: the spectator's copy in the top bar — the turn line and
+     the track on one row, the step label last. The turn rules stay
+     on their own rows under it. */
+  .phase-display.inline {
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: 14px;
+    row-gap: 2px;
+  }
+  .inline .summary {
+    flex-wrap: nowrap;
+  }
+  .inline .step-label {
+    margin-left: 6px;
+  }
+  .inline .track {
+    padding: 0;
+  }
+  .inline .turn-rule {
+    flex-basis: 100%;
   }
 
   /* ADR 0111 §8: at phone width the header folds to one line

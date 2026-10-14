@@ -139,8 +139,23 @@ export const DEFAULT_TABLE_SETTINGS: TableSettingsView = {
   commander_damage: 21,
   bot_pace: "normal",
   allow_spawn: false,
-  free_first_mulligan: false,
+  free_mulligans: 0,
 };
+
+// Free mulligans (#3387): -1 is unlimited, otherwise 0..7, the
+// engine's game.MaxFreeMulligans.
+export const FREE_MULLIGANS_UNLIMITED = -1;
+export const MAX_FREE_MULLIGANS = 7;
+
+/** The free-mulligans setting in words, for the panel's hint. */
+export function describeFreeMulligans(n: number | undefined): string {
+  if (n === FREE_MULLIGANS_UNLIMITED) return "Every mulligan is free: nothing goes to the bottom.";
+  if (!n) {
+    return "The rules: one free mulligan in a game of three or more, none at two players.";
+  }
+  const which = n === 1 ? "The first mulligan is" : `The first ${n} mulligans are`;
+  return `${which} free at any table size, then each one costs a card.`;
+}
 
 // ADR 0143 §2.6: the pace of the table on screen, for Settings →
 // Gameplay → Reading time. Game.svelte sets it from every frame and
@@ -254,10 +269,16 @@ export function settingsPatchError(
       return "The game has already started, so starting life is fixed. Use the life controls on each seat.";
     }
   }
-  // #3387: the mulligan window opens at Start, so the free first
-  // mulligan is fixed from then on, like starting life.
-  if (patch.free_first_mulligan !== undefined && startingLifeLocked(state)) {
-    return "The game has already started, so the free first mulligan is fixed.";
+  // #3387: the mulligan window opens at Start, so free mulligans are
+  // fixed from then on, like starting life.
+  if (patch.free_mulligans !== undefined) {
+    const n = patch.free_mulligans;
+    if (!Number.isInteger(n) || n < FREE_MULLIGANS_UNLIMITED || n > MAX_FREE_MULLIGANS) {
+      return `Free mulligans are ${FREE_MULLIGANS_UNLIMITED} for unlimited, or 0–${MAX_FREE_MULLIGANS}.`;
+    }
+    if (startingLifeLocked(state)) {
+      return "The game has already started, so free mulligans are fixed.";
+    }
   }
   if (patch.commander_damage !== undefined) {
     const n = patch.commander_damage;

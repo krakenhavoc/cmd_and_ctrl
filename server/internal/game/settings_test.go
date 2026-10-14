@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -371,28 +372,72 @@ func TestCloneCopiesSettings(t *testing.T) {
 	}
 }
 
-// #3387: the free first mulligan is set in the lobby and fixed from
-// Start, because the mulligan window opens there.
-func TestUpdateSettingsFreeFirstMulliganLocksAtStart(t *testing.T) {
-	on := true
+// #3387: free mulligans are set in the lobby and fixed from Start,
+// because the mulligan window opens there.
+func TestUpdateSettingsFreeMulligansLocksAtStart(t *testing.T) {
 	g := newLobbyGame(t, 2)
-	if err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeFirstMulligan: &on}); err != nil {
-		t.Fatalf("FreeFirstMulligan in lobby: %v", err)
+	if err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeMulligans: intPtr(2)}); err != nil {
+		t.Fatalf("FreeMulligans in lobby: %v", err)
 	}
-	if !g.Settings.FreeFirstMulligan {
-		t.Fatal("FreeFirstMulligan not applied in the lobby")
+	if g.Settings.FreeMulligans != 2 {
+		t.Fatalf("FreeMulligans = %d after the lobby patch, want 2", g.Settings.FreeMulligans)
 	}
 	startLobbyGame(t, g)
-	off := false
-	err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeFirstMulligan: &off, UndoLimit: intPtr(4)})
+	err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeMulligans: intPtr(0), UndoLimit: intPtr(4)})
 	if !errors.Is(err, ErrFreeMulliganLocked) {
-		t.Fatalf("FreeFirstMulligan change after Start = %v, want ErrFreeMulliganLocked", err)
+		t.Fatalf("FreeMulligans change after Start = %v, want ErrFreeMulliganLocked", err)
 	}
-	if !g.Settings.FreeFirstMulligan || g.Settings.UndoLimit != DefaultUndoLimit {
+	if g.Settings.FreeMulligans != 2 || g.Settings.UndoLimit != DefaultUndoLimit {
 		t.Errorf("a refused patch applied something: %+v", g.Settings)
 	}
 	// The current value is not a change.
-	if err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeFirstMulligan: &on}); err != nil {
-		t.Errorf("unchanged FreeFirstMulligan after Start = %v, want nil", err)
+	if err := g.UpdateSettings(uuid.Nil, SettingsPatch{FreeMulligans: intPtr(2)}); err != nil {
+		t.Errorf("unchanged FreeMulligans after Start = %v, want nil", err)
+	}
+}
+
+func TestFreeMulligansRange(t *testing.T) {
+	for _, n := range []int{FreeMulligansUnlimited, 0, 1, MaxFreeMulligans} {
+		if err := (SettingsPatch{FreeMulligans: intPtr(n)}).Validate(); err != nil {
+			t.Errorf("FreeMulligans %d refused: %v", n, err)
+		}
+	}
+	for _, n := range []int{-2, MaxFreeMulligans + 1} {
+		if err := (SettingsPatch{FreeMulligans: intPtr(n)}).Validate(); !errors.Is(err, ErrInvalidSetting) {
+			t.Errorf("FreeMulligans %d = %v, want ErrInvalidSetting", n, err)
+		}
+	}
+}
+
+// A snapshot written while the setting was the bool freeFirstMulligan
+// reads as one free mulligan.
+func TestLegacyFreeFirstMulliganReadsAsOne(t *testing.T) {
+	g := newLobbyGame(t, 2)
+	snap := g.CaptureSnapshot()
+	snap.Settings.LegacyFreeFirstMulligan = true
+	data, err := json.Marshal(snap)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(data), `"freeFirstMulligan":true`) {
+		t.Fatalf("the legacy key is not in the snapshot: %s", data)
+	}
+	var back GameSnapshot
+	if err := json.Unmarshal(data, &back); err != nil {
+		t.Fatal(err)
+	}
+	r, err := back.Restore()
+	if err != nil {
+		t.Fatalf("Restore: %v", err)
+	}
+	if got := r.Settings.EffectiveFreeMulligans(); got != 1 {
+		t.Fatalf("restored settings %+v read as %d free mulligans, want 1", r.Settings, got)
+	}
+	// A count set afterwards replaces it, 0 included.
+	if err := r.UpdateSettings(uuid.Nil, SettingsPatch{FreeMulligans: intPtr(0)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.Settings.EffectiveFreeMulligans(); got != 0 || r.Settings.LegacyFreeFirstMulligan {
+		t.Fatalf("after a 0 patch: %+v reads as %d, want 0 and the legacy bool cleared", r.Settings, got)
 	}
 }

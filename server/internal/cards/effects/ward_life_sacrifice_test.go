@@ -337,15 +337,16 @@ func TestSacrificeWardCountersWithoutAPromptWhenTheCasterHasNoCreature(t *testin
 
 // --- construction ----------------------------------------------------
 
-// A ward cost is exactly one component. Anything else fails at catalog
+// A ward cost is one component or mana plus fixed life. Other mixtures fail at catalog
 // init rather than charging whichever component the resolver checks
 // first.
-func TestWardCostMustHaveExactlyOneComponent(t *testing.T) {
+func TestWardCostRejectsUnsupportedMixtures(t *testing.T) {
 	for name, cost := range map[string]WardCost{
-		"empty":         {},
-		"mana and life": {Mana: "{1}", Life: 1},
-		"life and sac":  {Life: 2, Sacrifice: &WardSacrificeCost{Label: "a creature", OK: Creature()}},
-		"nil predicate": {Sacrifice: &WardSacrificeCost{Label: "a creature"}},
+		"empty":              {},
+		"negative life":      {Mana: "{2}", Life: -1},
+		"mana and sacrifice": {Mana: "{1}", Sacrifice: &WardSacrificeCost{Label: "a creature", OK: Creature()}},
+		"life and sac":       {Life: 2, Sacrifice: &WardSacrificeCost{Label: "a creature", OK: Creature()}},
+		"nil predicate":      {Sacrifice: &WardSacrificeCost{Label: "a creature"}},
 	} {
 		func() {
 			defer func() {
@@ -356,7 +357,7 @@ func TestWardCostMustHaveExactlyOneComponent(t *testing.T) {
 			Ward(cost, "")
 		}()
 	}
-	for _, ok := range []WardCost{WardMana("{2}"), WardLife(3), WardSacrifice("a creature", Creature())} {
+	for _, ok := range []WardCost{WardMana("{2}"), WardManaAndLife("{2}", 2), WardLife(3), WardSacrifice("a creature", Creature())} {
 		Ward(ok, "")
 	}
 }

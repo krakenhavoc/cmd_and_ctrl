@@ -998,7 +998,7 @@ out is untouched, which is why this is a `PATCH` and not a `PUT`.
 | `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
 | `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | The table pace (shown as **Table pace**, formerly "Bot speed"): bot think time, and the stack hold every seat, person or bot, waits before auto-passing another player's spell: fast 0 s, normal 2 s, slow 3 s ([ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6). |
 | `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
-| `free_first_mulligan` | bool | Gives a two-player table the free first mulligan a multiplayer game has by the rules (CR 103.5c; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendment, #3387). Default false. Omitted from the response when false. **Rejected once the game is active.** |
+| `free_mulligans` | `-1`, or 0..7 | How many of each seat's mulligans are free (#3387; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendments). `0`, the default, is the rules: one free in a game of three or more (CR 103.5c), none at two players. `N` gives N at any table, never fewer than the rules. `-1` makes every mulligan free. Omitted from the response when 0. **Rejected once the game is active.** |
 
 The **whole patch is validated first**, so a patch with one bad field changes
 nothing — including the good fields beside it.
@@ -1034,7 +1034,7 @@ settings forward rather than rolling them back.
 | 401 | unauthenticated |
 | 403 | caller is neither the host of this table nor the admin |
 | 404 | game not found |
-| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals. Likewise `free_first_mulligan`, because the mulligan window opens at `start` |
+| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals. Likewise `free_mulligans`, because the mulligan window opens at `start` |
 
 ### `POST /games/{id}/spawn`
 
@@ -2525,6 +2525,40 @@ authenticated, you are just not a person.
   process and not archived. It is the path to POST for a seat session.
 - No invite token appears anywhere in the response.
 
+### `GET /me/stats`
+
+The caller's own game statistics ([ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md)
+§7): `seat_stats` joined to `seats` on the caller's `user_id`, so only
+seats that person held. Same caller rule as `GET /me/games` (401 with no
+credential, 403 for anyone who is not a signed-in person). A person with
+no finished games gets an empty record, not an error.
+
+**Response 200**
+
+```json
+{
+  "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4,
+  "unfinished": 1,
+  "by_deck": [{ "name": "Atraxa Superfriends", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "by_commander": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "recent": [
+    {
+      "game_id": "<game uuid>", "name": "Friday Night Commander", "ended_at": 1789825000000,
+      "result": "win", "place": 1, "turns": 9, "players": 4,
+      "deck": "Atraxa Superfriends", "commanders": ["Atraxa, Praetors' Voice"]
+    }
+  ]
+}
+```
+
+- A game counts when the seat's result is `win`, `loss` or `draw`; a
+  table that ended with no outcome is only `unfinished`.
+- `avg_place` is the mean over counted seats that have a place, and
+  `null` when none do. `place` is `null` when unknown.
+- `by_deck` groups by the seat's saved deck id (its name when none),
+  `by_commander` by the commander names joined with ` / `. Both list the
+  most-played first. `recent` is the latest 20, newest first.
+
 ### `POST /me/games/{id}/session`
 
 Seat reclaim by user ([ADR 0051](decisions/0051-user-database.md)
@@ -3747,6 +3781,36 @@ works, so rotate it
 A blocked person who tries to watch is refused **403**
 `{"error": "you were removed from this table and can't watch it again",
 "code": "blocked_from_table"}`.
+
+### `GET /admin/stats` *(admin only)*
+
+Game statistics across every game, for the admin **Stats** tab
+(`#/admin/stats`; [ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md)
+§8). `requireAdmin`, so an allowlisted person in player mode gets a
+non-admin's 403 and a signed-out caller a 401. Read-only. With no stats
+store it answers an empty overview.
+
+```json
+{
+  "totals": { "games": 40, "live": 38, "replay": 2, "log_complete": 39, "log_incomplete": 1, "unrecorded": 3 },
+  "recent": [{ "game_id": "<uuid>", "name": "Friday night", "ended_at": 1791868000000, "turns": 21, "rounds": 6, "source": "live" }],
+  "people": [{ "name": "Alice", "kind": "account", "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4 }],
+  "commanders_by_games": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "commanders_by_wins": [],
+  "cards": [{ "name": "Sol Ring", "casts": 61, "games": 30 }]
+}
+```
+
+- `totals.unrecorded` counts ended games with a `games` row and no
+  record: run `statsbackfill` to fill them in.
+- `people` is keyed by account (its display name), else a guest's seat
+  name (`kind: "guest"`), else a bot tier (`"bot"`). The counting rules
+  are `GET /me/stats`'s: only a win, loss or draw counts, and
+  `avg_place` is over seats that have a place.
+- Commanders are the seat's commander names joined with ` / `. Every list
+  is capped at 25 rows (`gamestats.AdminListMax`): `recent` newest first,
+  `people` and `commanders_by_games` most games first,
+  `commanders_by_wins` most wins first, `cards` most casts first.
 
 ### `GET /admin/reports` *(admin only)*
 

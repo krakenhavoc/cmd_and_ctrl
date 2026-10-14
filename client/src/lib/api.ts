@@ -1,3 +1,4 @@
+import type { MyStats } from "./myStats";
 import {
   authFetch,
   clearSavedIdentity,
@@ -35,6 +36,7 @@ import {
   type AdminGameResponse,
   type AdminGamesResponse,
   type AdminReportsResponse,
+  type AdminStatsResponse,
   type GamesFilter,
   type LiveNowResponse,
 } from "./adminViews";
@@ -709,6 +711,12 @@ export async function fetchAdminReports(): Promise<AdminReportsResponse> {
   return (await res.json()) as AdminReportsResponse;
 }
 
+// fetchAdminStats reads the game statistics overview (ADR 0165 §8). Admin only.
+export async function fetchAdminStats(): Promise<AdminStatsResponse> {
+  const res = await authFetch("/admin/stats", { method: "GET" });
+  return (await res.json()) as AdminStatsResponse;
+}
+
 // dismissAdminReport removes one report. Admin only.
 export async function dismissAdminReport(id: string): Promise<void> {
   await authFetch(`/admin/reports/${encodeURIComponent(id)}`, { method: "DELETE" });
@@ -788,6 +796,14 @@ export async function installPrebuiltDeck(
 export async function fetchMyDecks(): Promise<MyDecksResponse> {
   const res = await authFetch("/me/decks");
   return (await res.json()) as MyDecksResponse;
+}
+
+// fetchMyStats reads the signed-in caller's own game statistics (ADR
+// 0165 §7, GET /me/stats). A guest or an admin gets a 403 whose message
+// the page shows.
+export async function fetchMyStats(): Promise<MyStats> {
+  const res = await authFetch("/me/stats");
+  return (await res.json()) as MyStats;
 }
 
 // renameMyDeck renames a saved deck (PATCH /me/decks/{id}). A name the

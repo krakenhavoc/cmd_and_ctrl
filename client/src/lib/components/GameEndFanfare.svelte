@@ -13,7 +13,13 @@
   // `armed` is the dock's game-over grace (#2919, GAME_OVER_GRACE_MS):
   // Back to lobby stays disabled, and a press is refused, until a click
   // meant for the last pass can no longer take the player off the table.
+  //
+  // `rematch` (#3419) is the dock's rematch (#3285, ADR 0164): the same
+  // plan, busy flag and handlers, so the card offers what the dock does
+  // while the dock keeps its controls for after the card is dismissed.
+  // The rematch buttons wait for `armed` as Back to lobby does.
   import { onMount } from "svelte";
+  import type { GameOverRematch } from "../choiceDock";
   import type { Fanfare } from "../gameEndFanfare";
   import Icon from "./Icon.svelte";
 
@@ -21,10 +27,15 @@
     fanfare: Fanfare;
     motion: boolean;
     armed?: boolean;
+    rematch?: GameOverRematch;
     onback: () => void;
     ondismiss: () => void;
   }
-  let { fanfare, motion, armed = true, onback, ondismiss }: Props = $props();
+  let { fanfare, motion, armed = true, rematch, onback, ondismiss }: Props = $props();
+
+  const plan = $derived(rematch?.plan);
+  const busy = $derived(rematch?.busy ?? false);
+  const rematchOff = $derived(!armed || busy);
 
   // A fixed fan of pieces: position, delay and drift are arithmetic on
   // the index, so a render is the same every time and tests can count.
@@ -85,6 +96,9 @@
       {fanfare.headline}
     </h2>
     <p id="fanfare-detail" class="detail">{fanfare.detail}</p>
+    {#if rematch && plan?.kind === "ask"}
+      <p class="offer" data-testid="fanfare-rematch-offer">{plan.hostName} offered a rematch</p>
+    {/if}
     <div class="actions">
       <button
         type="button"
@@ -94,6 +108,44 @@
           if (armed) onback();
         }}>Back to lobby</button
       >
+      {#if rematch && plan?.kind === "offer"}
+        <button
+          type="button"
+          data-testid="fanfare-rematch"
+          title="Play again with the same decks and settings"
+          disabled={rematchOff}
+          onclick={() => {
+            if (!rematchOff) rematch.onOffer();
+          }}>Rematch</button
+        >
+      {:else if rematch && plan?.kind === "open-table"}
+        {@const gameID = plan.gameID}
+        <button
+          type="button"
+          data-testid="fanfare-rematch-open"
+          disabled={rematchOff}
+          onclick={() => {
+            if (!rematchOff) rematch.onOpen(gameID);
+          }}>Open rematch table</button
+        >
+      {:else if rematch && plan?.kind === "ask"}
+        <button
+          type="button"
+          data-testid="fanfare-rematch-join"
+          disabled={rematchOff}
+          onclick={() => {
+            if (!rematchOff) rematch.onAccept();
+          }}>Join the rematch</button
+        >
+        <button
+          type="button"
+          data-testid="fanfare-rematch-leave"
+          disabled={busy}
+          onclick={() => {
+            if (!busy) rematch.onLeave();
+          }}>No thanks</button
+        >
+      {/if}
       <button type="button" bind:this={keep} onclick={ondismiss}>Keep looking at the board</button>
     </div>
   </div>
@@ -162,6 +214,10 @@
   .detail {
     margin: 0 0 20px;
     opacity: 0.85;
+  }
+  .offer {
+    margin: -8px 0 14px;
+    color: var(--gold);
   }
   .actions {
     display: flex;
