@@ -45,6 +45,10 @@ var (
 	// ADR 0172 §3).
 	ErrTooManyCompanions = errors.New("game: a deck can have only one companion")
 
+	// ErrSideboardTooLarge is returned when a deck seats more than
+	// MaxSideboardSize cards outside the game (ADR 0191 §5).
+	ErrSideboardTooLarge = errors.New("game: a sideboard can hold at most 15 cards")
+
 	// ErrCardNotFound is returned when a zone operation references a
 	// card instance that does not exist in the zone.
 	ErrCardNotFound = errors.New("game: card instance not found in zone")

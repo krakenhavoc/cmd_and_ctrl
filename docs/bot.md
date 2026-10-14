@@ -2976,6 +2976,22 @@ spell of the same size, so it does not skip a cast for it. The model
 tiers see every seat's companion in the board text, one
 `companion (outside the game): <name>` line per seat that has one.
 
+## Taking a card from the sideboard (ADR 0191)
+
+A deck's sideboard is the cards the seat owns outside the game
+([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md)).
+A wish or Extrapolate the Impossible asks the seat for them with a
+`choose_cards` prompt that declares `choose_destination: "outside"`; the
+enumerator offers `choose nothing` (when the card says "may") and every set
+the engine accepts, so a pair with the same name is never offered. The
+heuristic prices an answer as the cards it takes
+(`valueTakenFromOutside`): each named card is worth its `cardValue` plus the
+library-take floor, so the seat takes the best card rather than none. The
+built-in bot decks have no sideboard, so the prompt only reaches a bot with
+a deck someone built for it. The model tiers see their own sideboard in the
+board text (`your sideboard (outside the game): …`) and an opponent's as a
+count.
+
 ## Never offered a banned cast (#760)
 
 The announce-time cast gate (`game.CastGateLocked`) is called once per

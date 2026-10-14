@@ -355,6 +355,8 @@ var cardFields = plan(
 	"IsCommander", carried, "",
 	// ADR 0172 §4: the companion stamp; the badge reads it.
 	"IsCompanion", carried, "",
+	// ADR 0191 §3: the sideboard stamp; it routes seating only.
+	"IsSideboard", carried, "",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -628,6 +630,10 @@ var playerFields = plan(
 	// whether a player still has the option is not derivable from the
 	// board. Written only while it holds a card.
 	"Companion", carried, "",
+	// ADR 0191 §4: the cards the deck owns outside the game. Carried,
+	// for Companion's reason: nothing else on the board says what an
+	// effect could still bring in. Written only while it holds a card.
+	"Sideboard", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on

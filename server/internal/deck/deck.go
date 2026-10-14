@@ -30,6 +30,11 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 )
 
+// MaxSideboard is the most sideboard cards a deck may carry (ADR 0191
+// §5): the engine's cap (game.MaxSideboardSize), so the deck checker and
+// the seat agree.
+const MaxSideboard = game.MaxSideboardSize
+
 // List is a parsed, resolved decklist. Cards are by reference to the
 // Scryfall index; the UI and the game package dereference them via
 // cards.Card.ID. Instance IDs are allocated on game-start, not here.
@@ -269,10 +274,12 @@ func hasCompanionLine(text string) bool {
 // client-side image lookup, and IsCommander is set on each
 // commander card. The companion, when there is one, comes last with
 // IsCompanion set, which seats it outside the game rather than in the
-// library (ADR 0172 §3). Owner / Controller are left as uuid.Nil — the
-// game package re-stamps them at seat time.
+// library (ADR 0172 §3). The sideboard comes after it, each card with
+// IsSideboard set, which seats it outside the game as well (ADR 0191
+// §3). Owner / Controller are left as uuid.Nil — the game package
+// re-stamps them at seat time.
 func (l *List) ToGameCards() []game.Card {
-	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard)+1)
+	out := make([]game.Card, 0, len(l.Commanders)+len(l.Mainboard)+len(l.Sideboard)+1)
 	for _, c := range l.Commanders {
 		out = append(out, toGameCard(c, true))
 	}
@@ -283,6 +290,11 @@ func (l *List) ToGameCards() []game.Card {
 		companion := toGameCard(*l.Companion, false)
 		companion.IsCompanion = true
 		out = append(out, companion)
+	}
+	for _, c := range l.Sideboard {
+		card := toGameCard(c, false)
+		card.IsSideboard = true
+		out = append(out, card)
 	}
 	return out
 }

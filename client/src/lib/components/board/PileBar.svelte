@@ -159,6 +159,11 @@
   function openExile(): void {
     openZoneBrowser({ zoneKind: "exile", ownerID: seat.id, ownerName: seat.name });
   }
+  // ADR 0191: only the seat's own view carries the cards.
+  const sideboardCards = $derived<CardView[]>(seat.sideboard ?? []);
+  function openSideboard(): void {
+    openZoneBrowser({ zoneKind: "sideboard", ownerID: seat.id, ownerName: seat.name });
+  }
 </script>
 
 <svelte:window onpointerdown={onWindowPointer} onresize={closeLibraryMenu} />
@@ -252,6 +257,26 @@
     readyCount={exileReady}
     note={exileHeld > 0 ? `${exileHeld} theirs to play` : undefined}
   />
+  {#if isSelf && sideboardCards.length > 0}
+    <!-- ADR 0191: the cards your deck owns outside the game. Yours alone
+         (the server sends a count to everyone else), face down because
+         it is not a zone anyone else may look into, and it opens the
+         read-only zone browser tab. -->
+    <PileButton
+      label="sideboard"
+      pile="sideboard"
+      owner={seat.id}
+      zone={{
+        kind: "outside",
+        owner: seat.id,
+        count: sideboardCards.length,
+        cards: sideboardCards,
+      }}
+      faceDown
+      onClick={openSideboard}
+      note="outside the game"
+    />
+  {/if}
 </div>
 
 <style>

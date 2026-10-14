@@ -131,6 +131,7 @@ Player.Emblems                               census:IntrinsicAbilityCards       
 Player.Graveyard                             census:IntrinsicAbilityCards       # Game.Seats.Graveyard
 Player.Hand                                  census:IntrinsicAbilityCards       # Game.Seats.Hand
 Player.Library                               census:IntrinsicAbilityCards       # Game.Seats.Library
+Player.Sideboard                             census:IntrinsicAbilityCards       # Game.Seats.Sideboard
 ProjectionCache.v                            rebuilt                            # Game.logProjection.v
 ReplacementEffect.AppliesTo                  census:ChoiceResumeFrames          # Game.BuiltinReplacements.AppliesTo
 ReplacementEffect.Controller                 census:ChoiceResumeFrames          # Game.BuiltinReplacements.Controller

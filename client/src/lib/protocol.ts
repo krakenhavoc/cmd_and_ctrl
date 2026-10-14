@@ -2331,6 +2331,16 @@ export interface PlayerView {
   // (companion)", kind "companion") for the owner only, and the row
   // sends `special_action { card_id, kind: "companion" }`.
   companion?: CardView;
+  // ADR 0191 §7: the cards this seat owns outside the game, its deck's
+  // sideboard. OWNER ONLY: present on your own seat and absent on every
+  // other, for a spectator and for the controller of your turn. Only an
+  // effect that brings a card in from outside the game (a wish,
+  // Extrapolate the Impossible) can reach them; the zone browser shows
+  // them read-only.
+  sideboard?: CardView[];
+  // How many cards this seat owns outside the game. Public, like a
+  // hand's size. Absent for a seat with none.
+  sideboard_count?: number;
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the

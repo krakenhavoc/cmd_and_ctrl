@@ -343,7 +343,7 @@ func resolveRevealCards(entries []RevealView, v *GameView) {
 	all := make(map[string]CardView, len(wanted))
 	indexCardsInto(all, wanted, v.Battlefield, v.Stack, v.Exile)
 	for _, s := range v.Seats {
-		indexCardsInto(all, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
+		indexCardsInto(all, wanted, s.Hand, s.Library, s.Graveyard, s.Command, ZoneView{Cards: s.Sideboard})
 	}
 	// The SOURCE is looked up only in zones the table can see. A
 	// reveal is caused by a resolving spell or a permanent, so it is

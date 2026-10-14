@@ -174,6 +174,16 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 				fmt.Fprintf(&b, "  companion (outside the game): %s\n", co)
 			}
 		}
+		// ADR 0191 §8: the sideboard is the seat's own to read (the
+		// cards an effect can bring in from outside the game); every
+		// other seat shows its size, which is all the view gives.
+		if s.ID == me {
+			if sb := describeCards(s.Sideboard, max, opts); sb != "" {
+				fmt.Fprintf(&b, "  your sideboard (outside the game): %s\n", sb)
+			}
+		} else if s.SideboardCount > 0 {
+			fmt.Fprintf(&b, "  sideboard (outside the game): %d cards\n", s.SideboardCount)
+		}
 		if s.ID == me {
 			if hand := describeCards(s.Hand.Cards, max, opts); hand != "" {
 				fmt.Fprintf(&b, "  your hand: %s\n", hand)

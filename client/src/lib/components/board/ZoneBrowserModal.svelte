@@ -156,6 +156,8 @@
         return "command zone";
       case "stack":
         return "stack";
+      case "sideboard":
+        return "sideboard";
     }
   });
 
@@ -310,11 +312,20 @@
 
   // Tabs switch zones for the same owner without closing (the stack
   // is a shared zone with no owner, so it stays a single view).
-  const tabs: { kind: BrowsableZone; label: string }[] = [
-    { kind: "graveyard", label: "graveyard" },
-    { kind: "exile", label: "exile" },
-    { kind: "command", label: "command" },
-  ];
+  // ADR 0191: the viewer's own sideboard is a fourth tab, offered only on
+  // their own seat and only while it holds cards. It is read-only.
+  const tabs = $derived.by<{ kind: BrowsableZone; label: string }[]>(() => {
+    const base: { kind: BrowsableZone; label: string }[] = [
+      { kind: "graveyard", label: "graveyard" },
+      { kind: "exile", label: "exile" },
+      { kind: "command", label: "command" },
+    ];
+    const own = view.seats.find((s) => s.id === ownerSeat.id);
+    if (viewerID && viewerID === ownerSeat.id && (own?.sideboard?.length ?? 0) > 0) {
+      base.push({ kind: "sideboard", label: "sideboard" });
+    }
+    return base;
+  });
   const showTabs = $derived(zoneKind !== "stack");
   function switchZone(kind: BrowsableZone): void {
     if (kind === zoneKind) return;
@@ -394,6 +405,12 @@
     {#each targetBans as ban (ban)}
       <p class="zb-ban" role="note">{ban}</p>
     {/each}
+    {#if zoneKind === "sideboard"}
+      <p class="zb-ban" role="note">
+        Cards you own outside the game. Only an effect that brings a card in from outside the game
+        can reach them.
+      </p>
+    {/if}
     {#if zoneCards.length === 0}
       <p class="empty">No cards in this zone.</p>
     {:else if shown.length === 0}
@@ -405,7 +422,7 @@
             <Card
               {card}
               ready={legal.isReady(card.instance_id)}
-              readyZone={zoneKind === "stack" ? undefined : zoneKind}
+              readyZone={zoneKind === "stack" || zoneKind === "sideboard" ? undefined : zoneKind}
               onClick={onTargetCard ? () => void onTargetCard?.(card) : undefined}
               onActivateAbility={activateHandlerFor(card)}
               {sorcerySpeedBlocked}

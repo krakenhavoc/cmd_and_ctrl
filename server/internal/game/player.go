@@ -143,6 +143,16 @@ type Player struct {
 	// answers both the same way.
 	Companion *Zone
 
+	// Sideboard holds the cards this player's deck owns outside the
+	// game (ADR 0191): kind ZoneOutside, a second container beside
+	// Companion and for the same reason, so no ZoneRef resolves to it
+	// and the card index does not cover it (CR 400.11c). Only an
+	// effect that brings a card in from outside the game reads it
+	// (sideboard.go), and a card that leaves it never comes back. Nil
+	// until a deck with a sideboard is seated, and nil again after a
+	// restore of a seat with none: every reader asks SideboardCards.
+	Sideboard *Zone
+
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
 	// (CR 903.10a). See the note above the struct.

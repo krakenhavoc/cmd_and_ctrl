@@ -68,8 +68,8 @@ func countCompanions(deck []Card) int {
 }
 
 // seatDeckCard puts one card of a deck being seated where it starts the
-// game: a commander in the command zone, a companion outside the game,
-// anything else in the library.
+// game: a commander in the command zone, a companion or a sideboard
+// card outside the game, anything else in the library.
 func seatDeckCard(p *Player, c Card) {
 	switch {
 	case c.IsCommander:
@@ -79,6 +79,15 @@ func seatDeckCard(p *Player, c Card) {
 			p.Companion = newZone(ZoneOutside, p.ID)
 		}
 		p.Companion.PushTop(c)
+	case c.IsSideboard:
+		// ADR 0191 §3: the deck's sideboard, outside the game. Its
+		// owner may look at it at any time, so they are a knower of
+		// each card from the start; nobody else is.
+		if p.Sideboard == nil {
+			p.Sideboard = newZone(ZoneOutside, p.ID)
+		}
+		c.AddKnower(p.ID)
+		p.Sideboard.PushTop(c)
 	default:
 		p.Library.PushTop(c)
 	}

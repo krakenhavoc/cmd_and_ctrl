@@ -585,6 +585,9 @@ func (g *Game) checkChooseCardsPicksLocked(choice *PendingChoice, picks []uuid.U
 	chosen := make([]Card, 0, len(picks))
 	for _, id := range picks {
 		card, ok := g.LookupCardForEffect(id)
+		if !ok && frame.zone == ZoneOutside {
+			card, ok = g.LookupOutsideCardForEffect(id)
+		}
 		if !ok {
 			return ErrCardNotFound
 		}
@@ -614,6 +617,11 @@ func (g *Game) pickStillInPickZoneLocked(choice *PendingChoice, zone ZoneKind, i
 		if c == nil || !exists || c.ObjectEpoch != epoch {
 			return false
 		}
+	}
+	if zone == ZoneOutside {
+		// ADR 0191: a pick over the chooser's sideboard. No indexed
+		// zone holds the card (CR 400.11c), so ask the container.
+		return g.pickStillOutsideLocked(choice, id)
 	}
 	z := g.findCardZoneLocked(id)
 	if z == nil || z.Kind != zone {

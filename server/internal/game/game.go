@@ -1127,8 +1127,11 @@ func NewGame() *Game {
 // starting decklist. The deck is placed into the player's library in
 // the order supplied; commanders (Card.IsCommander == true) are routed
 // to the command zone instead, and a companion (Card.IsCompanion) to
-// Player.Companion, outside the game (ADR 0172 §3). A deck with more
-// than one companion is ErrTooManyCompanions.
+// Player.Companion, outside the game (ADR 0172 §3), and a sideboard
+// card (Card.IsSideboard) to Player.Sideboard, also outside the game
+// (ADR 0191 §3). A deck with more than one companion is
+// ErrTooManyCompanions, and one with more than MaxSideboardSize
+// sideboard cards is ErrSideboardTooLarge.
 //
 // Returns the newly-seated player. AddPlayer is only valid in the
 // lobby state; calling it after Start returns ErrGameNotInLobby.
@@ -1156,6 +1159,9 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 
 	if countCompanions(deck) > 1 {
 		return nil, ErrTooManyCompanions
+	}
+	if countSideboard(deck) > MaxSideboardSize {
+		return nil, ErrSideboardTooLarge
 	}
 
 	// Stamp every card with its owner (overwriting whatever the caller
@@ -1201,6 +1207,9 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	if countCompanions(deck) > 1 {
 		return ErrTooManyCompanions
 	}
+	if countSideboard(deck) > MaxSideboardSize {
+		return ErrSideboardTooLarge
+	}
 
 	// Reset the zones in-place. Reusing the existing *Zone pointers
 	// keeps any external references (logs, snapshots mid-serialise)
@@ -1209,6 +1218,7 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 	p.Library.Cards = p.Library.Cards[:0]
 	p.Command.Cards = p.Command.Cards[:0]
 	p.Companion = nil
+	p.Sideboard = nil
 
 	for i, c := range deck {
 		c.Owner = p.ID

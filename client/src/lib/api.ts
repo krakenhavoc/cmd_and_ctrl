@@ -207,6 +207,9 @@ export interface UploadDeckResponse {
   // ADR 0172 §3: the deck's companion, which seats outside the game
   // rather than in the library. Absent for none.
   companion?: string;
+  // ADR 0191 §3: how many sideboard cards the deck seats outside the
+  // game (not part of card_count). Absent for none.
+  sideboard?: number;
   warnings?: ApiViolation[];
   // Distinct names of the accepted deck's cards that print rules the
   // engine will not carry out. Not an error and not a warning — the

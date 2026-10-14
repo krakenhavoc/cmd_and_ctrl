@@ -267,6 +267,12 @@ What to know about how they behave:
   `companion`. In your main phase with an empty stack and {3} to spend,
   the list offers `Pay {3}: put <name> into your hand (companion)`, once
   per game. No new tool.
+- **A sideboard is on the board and answerable.** The cards your deck owns
+  outside the game ([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md))
+  show as `your sideboard (outside the game): <names>`, an opponent's as a
+  count, and `get_state` carries your own `sideboard` and everyone's
+  `sideboard_count`. A wish or Extrapolate the Impossible puts a card choice
+  in the move list. No new tool.
 - **A server that predates the badge (#2249) refuses the join** with a
   400 about an unknown `agent` field. The binary says so and does not
   retry without the field.

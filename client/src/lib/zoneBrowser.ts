@@ -13,7 +13,9 @@
 import { type Writable } from "svelte/store";
 import { guardedWritable } from "./guardedStore";
 
-export type BrowsableZone = "graveyard" | "exile" | "command" | "stack";
+// "sideboard" is the viewer's OWN cards outside the game (ADR 0191): read
+// only, with no card actions, and never offered for another seat.
+export type BrowsableZone = "graveyard" | "exile" | "command" | "stack" | "sideboard";
 
 export interface ZoneBrowserOpen {
   zoneKind: BrowsableZone;

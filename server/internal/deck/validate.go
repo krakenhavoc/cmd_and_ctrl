@@ -32,6 +32,10 @@ const (
 	CodeSingleton            = "singleton_violation"
 	CodeNotLegalInFormat     = "not_legal_in_format"
 	CodeSideboardUnsupported = "sideboard_not_supported_in_commander"
+	// CodeSideboardTooLarge flags a sideboard of more than
+	// MaxSideboard cards (ADR 0191 §5). Fatal, and names the count: a
+	// silent trim would choose which cards to lose for the player.
+	CodeSideboardTooLarge = "sideboard_too_large"
 	// CodeUnsupportedLayout names cards whose printing carries more
 	// faces than the engine can play (ADR 0034). Non-fatal: the card
 	// imports as its front face and works as that half. The message
@@ -263,13 +267,24 @@ func Validate(list *List) error {
 		}
 	}
 
-	// Sideboard warning (surfaced as a violation too, but non-fatal
-	// at the caller's discretion). We emit it so the client can show
-	// a yellow banner rather than silently discard the sideboard.
-	if len(list.Sideboard) > 0 {
+	// The sideboard (ADR 0191). Commander uses none (CR 903.5e), so the
+	// cards are not part of the deck, but they are not dropped either:
+	// they wait outside the game as the player's own pool, and only an
+	// effect that brings a card in from outside the game (a wish,
+	// Extrapolate the Impossible) can reach them. The note is
+	// non-fatal, and says so, so the player is told what the section
+	// does rather than that it does nothing. A sideboard over the cap is
+	// fatal.
+	if n := len(list.Sideboard); n > MaxSideboard {
 		vs = append(vs, Violation{
-			Code:    CodeSideboardUnsupported,
-			Message: fmt.Sprintf("deck has %d sideboard cards; Commander doesn't use a sideboard and they will be ignored", len(list.Sideboard)),
+			Code:    CodeSideboardTooLarge,
+			Message: fmt.Sprintf("deck has %d sideboard cards; a sideboard holds at most %d, so remove %d", n, MaxSideboard, n-MaxSideboard),
+		})
+	} else if n > 0 {
+		vs = append(vs, Violation{
+			Code: CodeSideboardUnsupported,
+			Message: fmt.Sprintf("deck has %d sideboard cards; Commander doesn't use a sideboard, so they stay outside the game and "+
+				"only a card that brings one in from outside the game (a wish, Extrapolate the Impossible) can use them", n),
 		})
 	}
 
