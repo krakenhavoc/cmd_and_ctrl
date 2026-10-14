@@ -1810,8 +1810,8 @@ answer for every table — so the client fetches it once.
   "tiers": [
     { "tier": "random", "label": "Random", "description": "…", "available": true },
     { "tier": "heuristic", "label": "Heuristic", "description": "…", "available": true },
-    { "tier": "assisted", "label": "Assisted", "description": "…", "available": false, "reason": "needs a model: set CMDCTRL_OPENAI_ENDPOINT … or CMDCTRL_ANTHROPIC_API_KEY …" },
-    { "tier": "strong", "label": "Strong", "description": "…", "available": false, "reason": "needs a model: …" }
+    { "tier": "assisted", "label": "Assisted (experimental)", "description": "…", "available": false, "reason": "needs a model: set CMDCTRL_OPENAI_ENDPOINT … or CMDCTRL_ANTHROPIC_API_KEY …" },
+    { "tier": "strong", "label": "Strong (experimental)", "description": "…", "available": false, "reason": "needs a model: …" }
   ],
   "decks": [
     { "id": "mono-red-aggro", "name": "Forge and Fury", "description": "aggro — …", "colors": ["R"], "commander": "Purphoros, God of the Forge" },
