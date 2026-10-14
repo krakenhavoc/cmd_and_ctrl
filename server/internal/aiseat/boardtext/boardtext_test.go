@@ -133,6 +133,21 @@ func TestRenderCompoundWardLifeCost(t *testing.T) {
 	}
 }
 
+// #3015: a trigger-order prompt says why it was asked, as the browser's
+// prompt does. An agent seat saw only "Order your triggers (choose 2)".
+func TestRenderSaysWhyTheTriggerOrderWasAsked(t *testing.T) {
+	v := view()
+	why := "Tireless Provisioner's trigger is handled by the players, so the game can't tell whether the order matters."
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		ID: "order", Kind: "trigger_order", Chooser: "a", Reason: "Order your triggers", Count: 2,
+		TriggerOrderWhy: why,
+	}}
+	got := boardtext.Render(v, "a", boardtext.Options{})
+	if !strings.Contains(got, "Order your triggers ("+why+")") {
+		t.Fatalf("the reason is missing: %s", got)
+	}
+}
+
 // #2794: the MCP seat asks for each owed choice's id, the handle its
 // legal_moves(choice) takes; the bot's prompt keeps the kind alone.
 func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {

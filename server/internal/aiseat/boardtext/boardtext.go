@@ -218,6 +218,11 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Kind == "optional_replacement" && ch.PlayableFromZone {
 			b.WriteString(" (if you say no it goes to your hand, where you can cast it without the commander tax)")
 		}
+		// #3015: why the order was asked, the sentence the browser's
+		// prompt shows. The moves name each ordering by its triggers.
+		if ch.Kind == "trigger_order" && ch.TriggerOrderWhy != "" {
+			fmt.Fprintf(&b, " (%s)", ch.TriggerOrderWhy)
+		}
 		// ADR 0129 §3: what an energy payment asks, beside the energy
 		// the seat line already shows.
 		if ch.PayEnergy != nil {
