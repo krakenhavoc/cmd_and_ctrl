@@ -1847,7 +1847,7 @@ client hides the Add-bot control rather than offering a button that
 only the raw-decklist form of the add request works.
 
 A deck's `description` leads with its archetype — `aggro`,
-`ramp-stompy`, `control`, `aristocrats`, `stompy`, `weenie`, `voltron` — because the names are
+`ramp-stompy`, `control`, `aristocrats`, `stompy`, `weenie`, `voltron`, `tribal` — because the names are
 flavour and the archetype is what the player is actually choosing
 between. The catalog is the pre-built decks in
 `server/internal/decks` — the same ones `GET /decks` offers a human,

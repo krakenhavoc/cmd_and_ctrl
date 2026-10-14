@@ -56,6 +56,14 @@ func buildPrebuiltDeckIndex(t *testing.T, d decks.Deck) *cards.Index {
 			ColorIdentity: identity,
 			Legalities:    map[string]string{"commander": "legal"},
 		}
+		if d.Companion != nil && c.Name == d.Companion.Name {
+			// A deck's companion (ADR 0172) is a legendary creature that prints
+			// the keyword. The synthetic costs are empty, so Jegantha's
+			// condition holds trivially here; the decks package checks it
+			// against the recorded real costs.
+			card.TypeLine = "Legendary Creature — Test Companion"
+			card.Keywords = []string{"Companion"}
+		}
 		if c.OracleID != "" {
 			if parsed, err := uuid.Parse(c.OracleID); err == nil {
 				card.OracleID = parsed
@@ -66,6 +74,9 @@ func buildPrebuiltDeckIndex(t *testing.T, d decks.Deck) *cards.Index {
 	put(d.Commander, true)
 	for _, c := range d.Mainboard {
 		put(c, false)
+	}
+	if d.Companion != nil {
+		put(*d.Companion, false)
 	}
 	return idx
 }
