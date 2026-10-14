@@ -109,7 +109,28 @@ func (g *Game) runReplaceLocked(ev *ReplacementEvent, a activeReplacement) {
 // in it: the case whose Replace the apply loop measures.
 func (g *Game) preventionStaticLocked(ev *ReplacementEvent, a activeReplacement) bool {
 	return ev != nil && ev.Kind == RepEventDamage && !ev.Canceled &&
-		a.effect.Prevention && a.effect.Then.key != "" && a.source != nil
+		a.effect.Prevention && a.effect.Then.key != "" && g.followUpObjectLocked(ev, a) != nil
+}
+
+// builtinFollowUpSlot is the Slot a built-in's follow-up is keyed on
+// (ReplacementEffect.thenOnDamaged). A catalog slot is never negative,
+// so it never merges with the object's own static's entry.
+const builtinFollowUpSlot = -1
+
+// followUpObjectLocked is the object a prevention static's follow-up is
+// owed on: the static's own permanent, or for a built-in that declares
+// thenOnDamaged, the permanent the damage would be dealt to. Nil when
+// there is none.
+//
+// Caller must hold g.mu.
+func (g *Game) followUpObjectLocked(ev *ReplacementEvent, a activeReplacement) *Card {
+	if a.source != nil {
+		return a.source
+	}
+	if a.effect.thenOnDamaged && ev != nil {
+		return findBattlefieldCard(g, ev.DamageTarget)
+	}
+	return nil
 }
 
 // oweStaticFollowUpLocked owes a prevention static's additional effect
@@ -120,15 +141,19 @@ func (g *Game) preventionStaticLocked(ev *ReplacementEvent, a activeReplacement)
 //
 // Caller must hold g.mu (write).
 func (g *Game) oweStaticFollowUpLocked(ev *ReplacementEvent, a activeReplacement, prevented, damage int) {
-	if a.source == nil || a.effect.Then.key == "" || ev == nil {
+	obj := g.followUpObjectLocked(ev, a)
+	if obj == nil || a.effect.Then.key == "" || ev == nil {
 		return
 	}
 	f := g.newPreventionFollowUpLocked(ev, a.effect.Then.key, prevented, damage)
 	f.Static = true
-	f.Source = a.source.InstanceID
-	f.Epoch = a.source.ObjectEpoch
+	f.Source = obj.InstanceID
+	f.Epoch = obj.ObjectEpoch
 	f.Slot = a.identity.slot
-	f.Controller = a.source.Controller
+	if a.source == nil {
+		f.Slot = builtinFollowUpSlot
+	}
+	f.Controller = obj.Controller
 	f.Label = a.effect.Label
 	f.Unit = preventionUnitKey(a.effect.ThenPer, ev)
 	g.owePreventionFollowUpLocked(f)

@@ -31,7 +31,7 @@ func init() {
 		OracleID:     "d7dddeac-c6ed-4111-ba40-e2830c08d480",
 		Name:         "Deceit",
 		Completeness: CompletenessCaveats,
-		Caveats:      []string{"When mana payment is skipped, the game doesn't see which mana you spent, so neither of Deceit's enters abilities happens."},
+		Caveats:      []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't see which mana you spent, so neither of Deceit's enters abilities happens."},
 		AlternativeCosts: []game.AlternativeCost{
 			Evoke("{U/B}{U/B}"),
 		},

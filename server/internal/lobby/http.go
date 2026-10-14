@@ -36,6 +36,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/notify"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/playmat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/shoplinks"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/tablesetups"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/users"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/usersettings"
@@ -164,6 +165,10 @@ type Config struct {
 	// /community. "" hides every Discord placement in the client. The
 	// sign-up gate itself is Discord.Gate.
 	CommunityInviteURL string
+	// Shops is the operator's shop link templates (CMDCTRL_SHOP_*, ADR
+	// 0179), checked at boot and served by GET /config. Nil or empty:
+	// the client renders no shop link.
+	Shops []shoplinks.Shop
 	// DiscordVoice is ADR 0159's table voice rooms. The zero value is
 	// off: GET /community says so and the client offers no room.
 	DiscordVoice discord.Voice
@@ -367,6 +372,7 @@ type GameEvictor interface {
 //	PUT  /games/{id}/voice  — host / admin: turn the table's Discord voice room on or off (ADR 0159)
 //	POST /games/{id}/voice/refresh — a seat: check my server membership again, or reopen an idle room
 //	PUT  /games/{id}/lfg    — host / admin: post the table to the Discord #lfg board, or withdraw it (ADR 0161)
+//	PUT  /games/{id}/results — host / admin: opt the table in to a results post in Discord when its game ends, or out (ADR 0174)
 //	POST /games/practice    — authenticated: open the tutorial's practice table, seated
 //	POST /games/{id}/practice/leave — abandon it and restore the caller's session cookie
 //	GET  /decks             — authenticated: pre-built decks + their engine coverage
@@ -400,6 +406,7 @@ type GameEvictor interface {
 //	GET  /admin/users/{id}  — admin: one account, its games, decks and deck requests
 //	GET  /admin/games       — admin: tables, newest first, filtered and paginated
 //	GET  /admin/games/{id}  — admin: one table
+//	GET  /admin/stats       — admin: game statistics overview (ADR 0165 §8)
 //
 // Routes that mutate state accept JSON bodies; read-only routes use
 // query params / path params. All responses are JSON.
@@ -581,6 +588,11 @@ func Handler(c Config) http.Handler {
 	mux.Handle("POST /games/{id}/rematch", auth.Middleware(c.Auth)(handlerFunc(c, offerRematch)))
 	mux.Handle("POST /games/{id}/rematch/accept", auth.Middleware(c.Auth)(handlerFunc(c, acceptRematch)))
 	mux.Handle("POST /games/{id}/rematch/leave", auth.Middleware(c.Auth)(handlerFunc(c, leaveRematch)))
+	// #3429, ADR 0176: where a seat has dragged its stack panel. The caller
+	// is the seat; one drag is one write, so the cheap bucket's rate.
+	stackPosLimit := newLimiter(2, 10)
+	mux.Handle("PUT /games/{id}/stack-position", auth.Middleware(c.Auth)(perCallerLimit(stackPosLimit, handlerFunc(c, putStackPosition))))
+	mux.Handle("DELETE /games/{id}/stack-position", auth.Middleware(c.Auth)(perCallerLimit(stackPosLimit, handlerFunc(c, deleteStackPosition))))
 	// ADR 0075 §2.1: hand the table to another seat. Host or admin;
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("POST /games/{id}/host", auth.Middleware(c.Auth)(handlerFunc(c, transferHost)))
@@ -596,6 +608,9 @@ func Handler(c Config) http.Handler {
 	// ADR 0161 §1: the table's #lfg post, on or off. Host or admin,
 	// authorised inside the handler with CanManageTable.
 	mux.Handle("PUT /games/{id}/lfg", auth.Middleware(c.Auth)(handlerFunc(c, putLFG)))
+	// ADR 0174 §1: the table's results post, on or off. Host or admin,
+	// authorised inside the handler with CanManageTable.
+	mux.Handle("PUT /games/{id}/results", auth.Middleware(c.Auth)(handlerFunc(c, putResults)))
 	// ADR 0075 §2.3: change the table's settings. Host or admin,
 	// authorised inside the handler with CanManageTable. PATCH
 	// because the body is a partial — an absent field is "leave it
@@ -714,6 +729,10 @@ func Handler(c Config) http.Handler {
 	// /me/* is in deploy/Caddyfile's @api matcher; /me in the Vite
 	// proxy and the service worker's API_PATH already covers it.
 	mux.Handle("GET /me/games", auth.Middleware(c.Auth)(handlerFunc(c, myGames)))
+	mux.Handle("GET /me/stats", auth.Middleware(c.Auth)(handlerFunc(c, myStats)))
+	// The cards an ended game's opponents cast, for the shop links
+	// after a game (ADR 0179 §7). Under /me/, so already in the proxies.
+	mux.Handle("GET /me/games/{id}/cards", auth.Middleware(c.Auth)(handlerFunc(c, myGameCards)))
 	// The invite picker's list (ADR 0051 decision 8, S34 sub-PR 6):
 	// the people the caller has shared a table with. Same caller rule
 	// as the rest of /me/*.
@@ -899,6 +918,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /admin/users/{id}", requireAdmin(c, handlerFunc(c, adminViewAccount)))
 	mux.Handle("GET /admin/games", requireAdmin(c, handlerFunc(c, adminViewGames)))
 	mux.Handle("GET /admin/games/{id}", requireAdmin(c, handlerFunc(c, adminViewGame)))
+	mux.Handle("GET /admin/stats", requireAdmin(c, handlerFunc(c, adminStats)))
 	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
 	// from memory, with names from the database when there is one.
 	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))
@@ -1018,6 +1038,11 @@ type createGameRequest struct {
 	// PUT /games/{id}/lfg would. Ignored when the server has no board:
 	// the client only shows the box when it does.
 	LFG bool `json:"lfg,omitempty"`
+	// Results opts the table in to a results post in Discord when its
+	// game ends (ADR 0174 §1), as PUT /games/{id}/results would. Ignored
+	// when the server has no results channel: the client only shows the
+	// box when it does.
+	Results bool `json:"results,omitempty"`
 }
 
 // createGameResponse is the new table's meta, flattened, plus what
@@ -1235,6 +1260,15 @@ func createGameWith(limit, ipLimit *ratelimit.Limiter) lobbyHandler {
 				out.LFG, out.LFGStatus = posted.LFG, posted.LFGStatus
 			} else if !errors.Is(lerr, ErrLFGOff) && c.Log != nil {
 				c.Log.Warn("lfg post on create failed", "game_id", meta.ID.String(), "err", lerr)
+			}
+		}
+		if body.Results {
+			// ADR 0174 §1. A guest host is fine: the post names seats,
+			// not Discord accounts.
+			if opted, rerr := c.Lobby.SetResults(meta.ID, true); rerr == nil {
+				out.Results = opted.Results
+			} else if !errors.Is(rerr, ErrResultsOff) && c.Log != nil {
+				c.Log.Warn("results opt-in on create failed", "game_id", meta.ID.String(), "err", rerr)
 			}
 		}
 		if from == setupFromLast {
@@ -2408,6 +2442,10 @@ func castParamsFromPreviewQuery(r *http.Request, xValue int) (game.CastSpellPara
 	if params.BlightIDs, err = uuidListParam(q.Get("blight_ids"), "blight_ids"); err != nil {
 		return params, err
 	}
+	// #3402: and the permanents an exile-a-permanent cost takes.
+	if params.ExilePermanentIDs, err = uuidListParam(q.Get("exile_permanent_ids"), "exile_permanent_ids"); err != nil {
+		return params, err
+	}
 	// ADR 0135 §4: the alternative cost's named payment. An emerge
 	// creature changes the PRICE (its mana value comes off), and every
 	// payment changes what the auto-tapper may spend: a creature named to
@@ -2873,6 +2911,9 @@ type uploadDeckResponse struct {
 	// name.
 	DeckID     string   `json:"deck_id,omitempty"`
 	Commanders []string `json:"commanders"`
+	// Companion names the deck's companion (ADR 0172 §3), which seats
+	// outside the game rather than in the library. Empty for none.
+	Companion string `json:"companion,omitempty"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
@@ -2969,10 +3010,8 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				}
 				return nil, nil, true, writeDeckViolations(w, perr.Error(), []deck.Violation{v}, nil)
 			}
-			// Unknown-mechanic inside the fetched payload (e.g. a
-			// Moxfield deck with a companion slot) bubbles through
-			// here; fall into the existing Resolve-failure path
-			// below by leaving perr set.
+			// Anything else falls into the parse-failure path below
+			// by leaving perr set.
 		}
 	default:
 		return nil, nil, false, httpError(http.StatusBadRequest, fmt.Sprintf("unknown deck format %q", format))
@@ -2989,10 +3028,6 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 		var uce *deck.UnknownCardError
 		if errors.As(err, &uce) {
 			return nil, nil, true, writeDeckViolations(w, err.Error(), uce.Violations(), nil)
-		}
-		var ume *deck.UnsupportedMechanicError
-		if errors.As(err, &ume) {
-			return nil, nil, true, writeDeckViolations(w, err.Error(), ume.Violations(), nil)
 		}
 		return nil, nil, false, httpError(http.StatusBadRequest, err.Error())
 	}
@@ -3028,8 +3063,12 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				// says so. Rejecting a whole deck over a card that
 				// is merely cosmetically simplified is the wrong
 				// trade; saying nothing is what produced #265.
+				//
+				// ADR 0172 adds the third: a lone sideboard card read
+				// as the companion is said, not refused.
 				if v.Code == deck.CodeSideboardUnsupported ||
-					v.Code == deck.CodeUnsupportedLayout {
+					v.Code == deck.CodeUnsupportedLayout ||
+					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
 					continue
 				}
@@ -3044,6 +3083,14 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 	}
 
 	return list, warnings, false, nil
+}
+
+// companionName is the list's companion, or "" (ADR 0172 §3).
+func companionName(list *deck.List) string {
+	if list == nil || list.Companion == nil {
+		return ""
+	}
+	return list.Companion.Name
 }
 
 // uploadDeck handles POST /games/{id}/decks. Accepts either plain-
@@ -3160,6 +3207,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        deckID,
 		Commanders:    commanders,
+		Companion:     companionName(list),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3357,6 +3405,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		CardCount:     len(list.Commanders) + len(list.Mainboard),
 		DeckID:        saved.ID.String(),
 		Commanders:    commanders,
+		Companion:     companionName(list),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})
@@ -4226,7 +4275,7 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 	// disabling the control.
 	case errors.Is(err, game.ErrInvalidSetting):
 		status = http.StatusBadRequest
-	case errors.Is(err, game.ErrStartingLifeLocked):
+	case errors.Is(err, game.ErrStartingLifeLocked), errors.Is(err, game.ErrFreeMulliganLocked):
 		status = http.StatusUnprocessableEntity
 	case errors.Is(err, ErrGameNotActiveForSpawn):
 		status = http.StatusConflict
@@ -4240,6 +4289,12 @@ func writeLobbyError(w http.ResponseWriter, err error) {
 		status = http.StatusForbidden
 	case errors.Is(err, ErrNoRematch):
 		status = http.StatusNotFound
+	case errors.Is(err, ErrStackPositionNotSeated):
+		status = http.StatusForbidden
+	case errors.Is(err, ErrBadStackPosition):
+		status = http.StatusBadRequest
+	case errors.Is(err, ErrStackPositionEnded):
+		status = http.StatusConflict
 	case errors.Is(err, ErrRematchNotEnded), errors.Is(err, ErrRematchUnavailable), errors.Is(err, ErrRematchOffered),
 		errors.Is(err, ErrRematchClosed), errors.Is(err, ErrRematchAccepted):
 		status = http.StatusConflict

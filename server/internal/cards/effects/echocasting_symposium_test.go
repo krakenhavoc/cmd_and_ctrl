@@ -56,15 +56,3 @@ func TestEchocastingSymposiumOnlyCopiesACreatureYouControl(t *testing.T) {
 		t.Fatal("copying a creature you do not control is refused at announce")
 	}
 }
-
-// Paradigm is declared as a caveat and nothing pretends to implement
-// it: no alternative cost, no self-exile, no delayed trigger.
-func TestEchocastingSymposiumDeclaresItsParadigmGap(t *testing.T) {
-	spec, ok := Lookup(echocastingSymposiumOracle)
-	if !ok || spec.Completeness != CompletenessCaveats || len(spec.Caveats) != 1 {
-		t.Fatalf("one caveat, on a caveats card: %v / %v", spec.Completeness, spec.Caveats)
-	}
-	if len(spec.AlternativeCosts) != 0 || len(spec.CastableZones) != 0 {
-		t.Error("paradigm is deferred, not half-declared as a cost or a cast zone")
-	}
-}

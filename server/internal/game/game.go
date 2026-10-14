@@ -1115,6 +1115,10 @@ func NewGame() *Game {
 		// #3172 (Arlinn, the Pack's Hope): a duration grant of "each
 		// creature you control enters with an additional counter".
 		playerEntryCountersReplacement,
+		// #2000, CR 122.1c. Appended, never inserted: a CR 616 prompt
+		// names a built-in by its index here.
+		shieldCounterDestroyReplacement,
+		shieldCounterPreventsDamageReplacement,
 	)
 	return g
 }
@@ -1122,7 +1126,9 @@ func NewGame() *Game {
 // AddPlayer seats a new player at the table with the given name and
 // starting decklist. The deck is placed into the player's library in
 // the order supplied; commanders (Card.IsCommander == true) are routed
-// to the command zone instead.
+// to the command zone instead, and a companion (Card.IsCompanion) to
+// Player.Companion, outside the game (ADR 0172 §3). A deck with more
+// than one companion is ErrTooManyCompanions.
 //
 // Returns the newly-seated player. AddPlayer is only valid in the
 // lobby state; calling it after Start returns ErrGameNotInLobby.
@@ -1148,17 +1154,17 @@ func (g *Game) AddPlayer(name string, deck []Card) (*Player, error) {
 	p := newPlayer(name, seat)
 	p.Life = g.Settings.StartingLife
 
+	if countCompanions(deck) > 1 {
+		return nil, ErrTooManyCompanions
+	}
+
 	// Stamp every card with its owner (overwriting whatever the caller
 	// set) and route commanders vs. library cards.
 	for i, c := range deck {
 		c.Owner = p.ID
 		c.Controller = p.ID
 		g.setDeckSourceOrdinalLocked(c.InstanceID, seat, i)
-		if c.IsCommander {
-			p.Command.PushTop(c)
-		} else {
-			p.Library.PushTop(c)
-		}
+		seatDeckCard(p, c)
 	}
 
 	g.Seats = append(g.Seats, p)
@@ -1192,21 +1198,23 @@ func (g *Game) ReplaceDeck(playerID uuid.UUID, deck []Card) error {
 		return ErrPlayerNotFound
 	}
 
+	if countCompanions(deck) > 1 {
+		return ErrTooManyCompanions
+	}
+
 	// Reset the zones in-place. Reusing the existing *Zone pointers
 	// keeps any external references (logs, snapshots mid-serialise)
-	// from dangling.
+	// from dangling. The companion goes with the deck it came in
+	// (ADR 0172 §3).
 	p.Library.Cards = p.Library.Cards[:0]
 	p.Command.Cards = p.Command.Cards[:0]
+	p.Companion = nil
 
 	for i, c := range deck {
 		c.Owner = p.ID
 		c.Controller = p.ID
 		g.setDeckSourceOrdinalLocked(c.InstanceID, p.Seat, i)
-		if c.IsCommander {
-			p.Command.PushTop(c)
-		} else {
-			p.Library.PushTop(c)
-		}
+		seatDeckCard(p, c)
 	}
 	p.DeckImported = true
 	return nil

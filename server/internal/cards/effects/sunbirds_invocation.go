@@ -18,9 +18,10 @@ import (
 //
 // The trigger is a cast trigger narrowed to a spell cast from HAND: the
 // cast event records where the spell came from (CR 601.2a), so a spell
-// cast from exile, a graveyard or the command zone does not fire it.
-// That is also what ends the chain: the free spell this ability lets you
-// cast is cast from outside your hand and cannot trigger it again.
+// cast from exile, a graveyard, a library or the command zone does not
+// fire it. That is also what ends the chain: the free spell this
+// ability lets you cast is cast from your library and cannot trigger it
+// again.
 //
 // X is that spell's mana value, read as the trigger goes on the stack
 // (CR 202.3e counts an X in the cost while the spell is on the stack)
@@ -42,10 +43,17 @@ import (
 //     keyed stream, so an undone or restored game bottoms them the same
 //     way.
 //
-// The one place it differs from the printed card: the chosen card is
-// exiled from the library to be cast, where the printed card casts it
-// from the library. The grant machinery casts from exile, so a "cast
-// from your library" watcher would not see this cast.
+// The chosen card is cast from the LIBRARY, as printed, rather than
+// exiled first the way a cascade hit is. It stays where it was
+// revealed, and once the rest are bottomed it is the top card, still
+// known to every seat from the reveal, so its owner's pile shows it and
+// the view stamps it castable. The grant names that object (ScopeCards
+// in ZoneLibrary) rather than the top position, so it opens that card
+// and no other, and the cast reaches the stack from the library, where
+// a "cast from your library" reader looks for it.
+//
+// No simplification beyond the grant posture every resolution-time
+// "you may cast" takes.
 func init() {
 	t := On(game.EventCast, sunbirdsCastFromHand,
 		"Sunbird's Invocation — reveal the top X cards and cast one free", sunbirdsReveal)
@@ -57,11 +65,8 @@ func init() {
 	Register(Spec{
 		OracleID:     "10d482fd-e034-4187-b148-51fe15885360",
 		Name:         "Sunbird's Invocation",
-		Completeness: CompletenessCaveats,
-		Caveats: []string{
-			"The card you choose to cast is exiled first and cast from exile, so it isn't cast from your library.",
-		},
-		Triggered: []game.TriggeredAbility{t},
+		Completeness: CompletenessFull,
+		Triggered:    []game.TriggeredAbility{t},
 	})
 }
 
@@ -105,13 +110,11 @@ func sunbirdsReveal(g *game.Game, item *game.StackItem) error {
 	return nil
 }
 
-// sunbirdsFinisher is what happens once the pick is known: the chosen
-// card, if any, is exiled and given its free cast only if it really
-// reached exile (a CR 614 replacement or a commander's CR 903.9 offer
-// can send it elsewhere), and the rest of the revealed cards go to the
-// bottom in a random order. Everything it captures is an ID or a
-// scalar, so an undo across the prompt resolves against the restored
-// game.
+// sunbirdsFinisher is what happens once the pick is known: the rest of
+// the revealed cards go to the bottom in a random order, and the chosen
+// card, if any, keeps its place (now the top of the library) and gets
+// its free cast there. Everything it captures is an ID or a scalar, so
+// an undo across the prompt resolves against the restored game.
 func sunbirdsFinisher(controller, source uuid.UUID, x int, revealed []uuid.UUID) func(g *game.Game, picked []uuid.UUID) error {
 	return func(g *game.Game, picked []uuid.UUID) error {
 		var chosen uuid.UUID
@@ -124,33 +127,32 @@ func sunbirdsFinisher(controller, source uuid.UUID, x int, revealed []uuid.UUID)
 				rest = append(rest, id)
 			}
 		}
-		bottomRest := func(g *game.Game) error {
-			return g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest)
+		if err := g.PutOnBottomInRandomOrderForEffect(controller, game.ZoneLibrary, rest); err != nil {
+			return err
 		}
-		if chosen == uuid.Nil {
-			return bottomRest(g)
+		if chosen != uuid.Nil {
+			sunbirdsGrantFreeCast(g, controller, source, chosen, x)
 		}
-		return g.ExileCardThenForEffect(chosen, func(g *game.Game, exiled bool) error {
-			if exiled {
-				sunbirdsGrantFreeCast(g, controller, source, chosen, x)
-			}
-			return bottomRest(g)
-		})
+		return nil
 	}
 }
 
-// sunbirdsGrantFreeCast stamps the free cast on the exiled card, the
-// shape cascade's grant has, with Sunbird's own mana value cap.
+// sunbirdsGrantFreeCast stamps the free cast on the chosen card where it
+// sits in its owner's library: cascade's grant shape with Sunbird's own
+// mana value cap, pointed at the library. A card that has left the
+// library since the reveal gets nothing. An uncast card is bottomed on
+// the holder's next pass (lapseCastPermissionLocked reads the zone the
+// grant opens).
 func sunbirdsGrantFreeCast(g *game.Game, controller, source, cardID uuid.UUID, x int) {
 	z := g.FindCardZoneForEffect(cardID)
 	c, ok := g.LookupCardForEffect(cardID)
-	if !ok || z == nil || z.Kind != game.ZoneExile {
+	if !ok || z == nil || z.Kind != game.ZoneLibrary {
 		return
 	}
 	limit := x
 	g.GrantCastPermissionToCardsForEffect(game.CastPermission{
 		Player:            controller,
-		Zone:              game.ZoneExile,
+		Zone:              game.ZoneLibrary,
 		Duration:          g.UntilEndOfTurnDuration(),
 		Cost:              "{0}",
 		Timing:            game.TimingFlash,

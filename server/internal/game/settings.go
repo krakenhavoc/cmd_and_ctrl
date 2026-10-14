@@ -54,7 +54,14 @@ const (
 	MaxStartingLife    = 999
 	MinCommanderDamage = 1
 	MaxCommanderDamage = 99
+	// MaxFreeMulligans is the most free mulligans a count may give;
+	// past it a table means FreeMulligansUnlimited.
+	MaxFreeMulligans = 7
 )
+
+// FreeMulligansUnlimited is the FreeMulligans value meaning every
+// mulligan is free (#3387's follow-up).
+const FreeMulligansUnlimited = -1
 
 // The settings keys. They are the snake_case wire names, and they are
 // what EventSettingsChanged carries in Label so the log can say which
@@ -66,6 +73,7 @@ const (
 	SettingCommanderDamage = "commander_damage"
 	SettingBotPace         = "bot_pace"
 	SettingAllowSpawn      = "allow_spawn"
+	SettingFreeMulligans   = "free_mulligans"
 )
 
 // TableSettings is one table's configuration (ADR 0075 §2.2). The JSON
@@ -90,6 +98,29 @@ type TableSettings struct {
 	// AllowSpawn lets the host and admin spawn cards and tokens on a
 	// live table, each spawn announced in the log (ADR 0075 §2.4).
 	AllowSpawn bool `json:"allowSpawn"`
+	// FreeMulligans is how many of each seat's mulligans cost nothing,
+	// the house rule many Commander playgroups use (ADR 0168's
+	// amendments). 0, the default, is the rules: none in a two-player
+	// game, one in a multiplayer game (CR 103.5c). A count N gives N at
+	// any table, and never fewer than the rules give.
+	// FreeMulligansUnlimited (-1) makes every mulligan free. Fixed once
+	// the game is active, because the mulligan window opens at Start.
+	FreeMulligans int `json:"freeMulligans,omitempty"`
+	// LegacyFreeFirstMulligan is the bool this count replaced, kept so
+	// a snapshot written while it existed still reads: true with no
+	// count reads as one free mulligan (EffectiveFreeMulligans). Any
+	// FreeMulligans patch clears it. Read the setting only through
+	// EffectiveFreeMulligans.
+	LegacyFreeFirstMulligan bool `json:"freeFirstMulligan,omitempty"`
+}
+
+// EffectiveFreeMulligans is the FreeMulligans setting, with a legacy
+// freeFirstMulligan snapshot read as one.
+func (s TableSettings) EffectiveFreeMulligans() int {
+	if s.FreeMulligans == 0 && s.LegacyFreeFirstMulligan {
+		return 1
+	}
+	return s.FreeMulligans
 }
 
 // DefaultTableSettings is what every new game starts with.
@@ -112,6 +143,8 @@ type SettingsPatch struct {
 	CommanderDamage *int       `json:"commander_damage,omitempty"`
 	BotPace         *BotPace   `json:"bot_pace,omitempty"`
 	AllowSpawn      *bool      `json:"allow_spawn,omitempty"`
+	// FreeMulligans is refused after Start (ErrFreeMulliganLocked).
+	FreeMulligans *int `json:"free_mulligans,omitempty"`
 }
 
 // Validate range-checks every present field. It does not know the
@@ -143,6 +176,10 @@ func (p SettingsPatch) Validate() error {
 			return fmt.Errorf("%w: %s %q", ErrInvalidSetting, SettingBotPace, *p.BotPace)
 		}
 	}
+	if p.FreeMulligans != nil && (*p.FreeMulligans < FreeMulligansUnlimited || *p.FreeMulligans > MaxFreeMulligans) {
+		return fmt.Errorf("%w: %s %d (want %d for unlimited, or 0..%d)",
+			ErrInvalidSetting, SettingFreeMulligans, *p.FreeMulligans, FreeMulligansUnlimited, MaxFreeMulligans)
+	}
 	return nil
 }
 
@@ -153,7 +190,8 @@ func (p SettingsPatch) Validate() error {
 //
 // The whole patch is validated before anything is applied, so a patch
 // with one bad field changes nothing. A StartingLife change after
-// Start is refused with ErrStartingLifeLocked; a StartingLife in the
+// Start is refused with ErrStartingLifeLocked, and a FreeMulligans
+// change with ErrFreeMulliganLocked; a StartingLife in the
 // lobby also resets every already-seated player's life, because that
 // is the value Start would otherwise have stamped.
 //
@@ -181,6 +219,9 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	if patch.StartingLife != nil && *patch.StartingLife != g.Settings.StartingLife && g.State != StateLobby {
 		return ErrStartingLifeLocked
 	}
+	if patch.FreeMulligans != nil && *patch.FreeMulligans != g.Settings.EffectiveFreeMulligans() && g.State != StateLobby {
+		return ErrFreeMulliganLocked
+	}
 	old := g.Settings
 	next := old
 	if patch.UndoLimit != nil {
@@ -200,6 +241,10 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	}
 	if patch.AllowSpawn != nil {
 		next.AllowSpawn = *patch.AllowSpawn
+	}
+	if patch.FreeMulligans != nil {
+		next.FreeMulligans = *patch.FreeMulligans
+		next.LegacyFreeFirstMulligan = false
 	}
 	g.Settings = next
 
@@ -236,6 +281,7 @@ func (g *Game) updateSettingsLocked(actor uuid.UUID, patch SettingsPatch) error 
 	emit(SettingCommanderDamage, strconv.Itoa(old.CommanderDamage), strconv.Itoa(next.CommanderDamage))
 	emit(SettingBotPace, string(old.BotPace), string(next.BotPace))
 	emit(SettingAllowSpawn, strconv.FormatBool(old.AllowSpawn), strconv.FormatBool(next.AllowSpawn))
+	emit(SettingFreeMulligans, strconv.Itoa(old.EffectiveFreeMulligans()), strconv.Itoa(next.EffectiveFreeMulligans()))
 	return nil
 }
 

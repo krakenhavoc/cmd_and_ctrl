@@ -48,6 +48,8 @@
   import { showAllTipsAgain } from "../hints/runtime";
   import { L } from "../labels";
   import { navigate } from "../router";
+  import { configuredShops } from "../shopLinksStore";
+  import { SHOP_DISCLOSURE } from "../shopLinks";
 
   // ADR 0143 §3.2: the table pace's names, for the Reading time line.
   const PACE_NAMES: Record<TablePace, string> = {
@@ -851,6 +853,19 @@
               Show card art in your hand (hover for the full card)
               {#if isFresh("display.handArt")}<span class="saved">✓ saved</span>{/if}
             </label>
+
+            <!-- ADR 0179: only where the operator configured a shop. -->
+            {#if $configuredShops.length > 0}
+              <label>
+                <input
+                  type="checkbox"
+                  checked={$settings.display.shopLinks}
+                  onchange={(e) => change("display", "shopLinks", e.currentTarget.checked)}
+                />
+                Show shop links on the Decks and Catalog pages. {SHOP_DISCLOSURE}
+                {#if isFresh("display.shopLinks")}<span class="saved">✓ saved</span>{/if}
+              </label>
+            {/if}
           {:else if activeTab === "playmat"}
             <PlaymatSettings />
           {:else if activeTab === "notifications" && $notificationPrefs.available}

@@ -69,7 +69,7 @@
     type DockAction,
   } from "../../dock";
   import { foreignModalOpen } from "../../modalLayers";
-  import { tick } from "svelte";
+  import { tick, untrack } from "svelte";
   import { formatUndoCount, isUnlimitedUndo } from "../../tableSettings";
   import { holdPriority, setHoldPriority, toggleHoldPriority } from "../../holdPriority";
   import { bluffStatus, bluffStatusText } from "../../bluff";
@@ -261,12 +261,17 @@
   // dock moves to the bottom centre under it while it is up. Minimised,
   // both go back to normal: the sheet is the restore chip in the corner.
   const staged = $derived(sheetOpen && !minimised && !!req?.sheet?.stage);
+  // The parent's callback is untracked: whatever state it reads (Game's
+  // own `stageUp`, to skip a no-op write) must not become this effect's
+  // dependency. Svelte 5.57 tracks reads inside a called function, and
+  // tracked, the write re-ran this effect, whose cleanup wrote it back:
+  // an effect_update_depth_exceeded loop on the opening hand.
   $effect(() => {
     if (!onStage) return;
     const up = staged;
-    onStage(up);
+    untrack(() => onStage(up));
     return () => {
-      if (up) onStage(false);
+      if (up) untrack(() => onStage(false));
     };
   });
   let sheetEl: HTMLElement | null = $state(null);
@@ -359,14 +364,15 @@
 
   // The open sheet's width, for the hover zoom (§4: it moves left of
   // an open sheet, so hovering a card in a scry shows it beside it).
+  // The callback is untracked for the same reason as onStage's above.
   $effect(() => {
     const el = sheetEl;
     if (!onSheet) return;
     if (!el || !sheetOpen || minimised) {
-      onSheet(0);
+      untrack(() => onSheet(0));
       return;
     }
-    const report = (): void => onSheet(el.offsetWidth);
+    const report = (): void => untrack(() => onSheet(el.offsetWidth));
     report();
     if (typeof ResizeObserver === "undefined") return () => onSheet(0);
     const ro = new ResizeObserver(report);

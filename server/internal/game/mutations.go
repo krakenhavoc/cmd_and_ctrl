@@ -369,6 +369,13 @@ type CastSpellParams struct {
 	TeamworkIDs []uuid.UUID
 	BlightIDs   []uuid.UUID
 
+	// ExilePermanentIDs names the permanents paid to a mandatory
+	// ExilePermanents additional cost (#3402) — Soul Exchange's "exile a
+	// creature you control". Validated at announce by the activation's own
+	// validator and paid with the spell on the stack. On the wire as
+	// `exile_permanent_ids`, the name an activation already uses.
+	ExilePermanentIDs []uuid.UUID
+
 	// RevealIDs names the ONE card an announced reveal / behold cost
 	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
 	// in the caster's hand, or — to behold — a matching permanent they
@@ -1337,6 +1344,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3402: and the exile-a-permanent cost, with every permanent another
+	// component of this cast already pays with (CR 118.3).
+	if err := g.validateCastExilePermanentsLocked(playerID, cardID, costPlan, params.ExilePermanentIDs,
+		append(append([]uuid.UUID(nil), params.SacrificeIDs...), params.AltCostIDs...)); err != nil {
+		slog.Warn("cast_spell rejected: bad exile-a-permanent payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"exile_permanents_received", len(params.ExilePermanentIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad reveal payment",
 			"card_name", card.Name,
@@ -1558,6 +1577,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// ADR 0100: and the graveyard cards delve exiles — a delved
 	// commander is asked about CR 903.9 before anything is paid.
 	moving = append(moving, params.DelveIDs...)
+	// #3402: and the permanents an exile-a-permanent cost takes.
+	moving = append(moving, params.ExilePermanentIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1777,7 +1798,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// component pays with, named while they are still where they were
 		// — Adipose Offspring's "the sacrificed creature's toughness".
 		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
-			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.GiftOpponent),
+			paidWithGift(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.GiftOpponent),
 			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
@@ -1823,6 +1844,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"err", err,
 		)
 		return err
+	}
+	// #3402: the exile-a-permanent cost, beside the sacrifices and for the
+	// same reason — with the spell on the stack, so a leaves-the-battlefield
+	// watcher lands above it. Not a sacrifice: nothing dies.
+	if len(params.ExilePermanentIDs) > 0 {
+		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// ADR 0129 §5: the plan's energy (replicate, once per payment),
 	// through the one path that pays energy, checked above with the
@@ -4020,7 +4054,12 @@ func (g *Game) routeStackCardToGraveyardLocked(c Card, item *StackItem, resolved
 		// rule, not by an effect).
 		Cause: MoveCause{Kind: MoveCauseRule},
 	}
-	if altCostExilesFromStack(c, item) {
+	if resolved && spellHasParadigm(c, item) {
+		// CR 702.192a: the spell exiles itself as part of its own
+		// resolution, so nothing is left for flashback, rebound,
+		// buyback or the Adventure to replace (paradigm.go).
+		paradigmRouteLocked(c, item, &r)
+	} else if altCostExilesFromStack(c, item) {
 		r.Dst, r.DstOwner, r.Actor = ZoneExile, uuid.Nil, c.Owner
 	} else if resolved {
 		// The three "as it resolves" exits (resolution_exits.go). Two
@@ -5594,8 +5633,9 @@ func (g *Game) routeBattlefieldExitInBatchThenLocked(cardID uuid.UUID, r zoneRou
 		// re-derived downstream, because every exit off the
 		// battlefield ends in the same graveyard by the same route
 		// and nothing else can tell a destruction from a sacrifice.
-		Destruction:       r.Destruction,
-		CantBeRegenerated: r.CantBeRegenerated,
+		Destruction:           r.Destruction,
+		CantBeRegenerated:     r.CantBeRegenerated,
+		StateBasedDestruction: r.StateBased,
 		// A sacrifice paid as a cost is an indivisible CR 602.2b
 		// payment. Carry the route's posture onto the replacement
 		// event just as routeCardToZoneLocked does for non-battlefield
@@ -5972,7 +6012,16 @@ func (g *Game) drainPendingTriggersAPNAPLocked() bool {
 	held := false
 	for seat, items := range bySeat {
 		p := g.Seats[seat]
-		ask, why := g.triggerOrderAskWhyLocked(items, p.TriggerOrder)
+		// ADR 0167 §4: the preference read is the answerer's. While
+		// another player controls p, the ordering is theirs to make
+		// (CR 723.5), so their "always" or "never" applies.
+		pref := p.TriggerOrder
+		if ans := g.ControllerOfPlayerLocked(p.ID); ans != p.ID {
+			if c := g.playerByIDLocked(ans); c != nil {
+				pref = c.TriggerOrder
+			}
+		}
+		ask, why := g.triggerOrderAskWhyLocked(items, pref)
 		if !ask {
 			continue
 		}
@@ -9951,9 +10000,15 @@ func (g *Game) PassTurn() error {
 }
 
 // Mulligan shuffles the player's entire hand back into their library
-// and draws newHandSize cards. This is the simplified "London
-// mulligan" shape without the card-to-bottom penalty — S08 keeps the
-// penalty out of scope; rules enforcement arrives in S13+.
+// and draws a new hand.
+//
+// Inside the opening-hand window it is the London mulligan (CR 103.5,
+// ADR 0168): the new hand is always OpeningHandSize, newHandSize is
+// ignored, and the cost is paid at KeepHand, which puts the counted
+// mulligans' worth of cards on the bottom. Once the counted mulligans
+// reach the starting hand size it is refused with ErrNoMoreMulligans.
+// Outside the window it is the ⋯ menu's sandbox "Mulligan to N" and
+// draws newHandSize, as it always did.
 //
 // Mulligan increments MulligansTaken and resets HandKept to false:
 // taking a mulligan is a fresh decision, so the player must commit
@@ -9978,6 +10033,14 @@ func (g *Game) Mulligan(playerID uuid.UUID, newHandSize int) error {
 	if g.MulligansOpen && g.MulliganDeciderLocked() != p.Seat {
 		// CR 103.5: decisions go in turn order.
 		return ErrNotYourMulligan
+	}
+	if g.MulligansOpen {
+		// ADR 0168 decision 1: the window's mulligan draws seven, and
+		// stops where the opening hand would be zero cards.
+		if !g.MulliganAllowedLocked(p) {
+			return ErrNoMoreMulligans
+		}
+		newHandSize = OpeningHandSize
 	}
 	for _, c := range p.Hand.Cards {
 		p.Library.PushTop(c)
@@ -10045,8 +10108,13 @@ func (g *Game) KeepHand(playerID uuid.UUID) error {
 	}
 	p.HandKept = true
 	p.MulliganDecided = true
-	// Close the window once every live seat has kept; otherwise move
-	// the turn to the next decider. Eliminated seats don't gate it.
+	if g.MulligansOpen {
+		// ADR 0168 decision 2: the London mulligan's cost, paid now.
+		g.queueMulliganBottomLocked(p, g.MulliganBottomCountLocked(p))
+	}
+	// Close the window once every live seat has kept (and bottomed);
+	// otherwise move the turn to the next decider. Eliminated seats
+	// don't gate it.
 	g.settleMulliganLocked()
 	return nil
 }
@@ -10498,7 +10566,10 @@ func (g *Game) RemovePlayer(playerID uuid.UUID) error {
 		p.Seat = i
 		// Lobby seats compact after a departure. Keep deck source ordinals
 		// aligned so a later join cannot reuse a surviving card's ordinal.
-		for _, zone := range []*Zone{p.Library, p.Command} {
+		for _, zone := range []*Zone{p.Library, p.Command, p.Companion} {
+			if zone == nil {
+				continue
+			}
 			for _, card := range zone.Cards {
 				if ordinal, ok := g.sourceOrdinals[card.InstanceID]; ok && ordinal>>32 == 0 {
 					g.setDeckSourceOrdinalLocked(card.InstanceID, i, int(ordinal&0xffff))

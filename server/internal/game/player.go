@@ -129,6 +129,20 @@ type Player struct {
 	// S40 (#623).
 	Emblems *Zone
 
+	// Companion holds the companion this player revealed (CR 702.139a,
+	// 103.2b), zero or one card, outside the game: kind ZoneOutside
+	// (ADR 0172 §4). Built the way Emblems is, and for the same
+	// reason: no ZoneRef resolves to it and the card index does not
+	// cover it, so no effect, move verb or admin tool can reach the
+	// card (CR 400.11c). The companion special action (companion.go)
+	// is the only way out, and nothing puts a card back, so an empty
+	// container is "no companion, or already taken" — CR 116.2g's
+	// once per game, with no separate flag. Nil until a deck with a
+	// companion is seated (seatDeckCard), and nil again after a restore
+	// of a seat with none: every reader asks CompanionCard, which
+	// answers both the same way.
+	Companion *Zone
+
 	// CommanderDamage maps commander INSTANCE ID → total damage that
 	// one commander has dealt to this player across the game
 	// (CR 903.10a). See the note above the struct.
@@ -249,10 +263,17 @@ type Player struct {
 	AutoAnswers map[string]AutoAnswer
 
 	// MulligansTaken is the count of Mulligan calls this player has
-	// made in the current opening-hand window. Reset at Start. Used
-	// by the UI to show "mulligans taken: N" and is the seed for a
-	// future London-style bottom-N penalty (S13+ if it lands).
+	// made in the current opening-hand window. Reset at Start. The UI
+	// shows it, and it is what the London mulligan's bottom count is
+	// read from (MulliganBottomCountLocked, ADR 0168).
 	MulligansTaken int
+
+	// mulliganBottoming is true from this player's keep until the cards
+	// the London mulligan owes are on the bottom of its library (ADR
+	// 0168 decision 4): the window does not close while it is set. Not
+	// persisted: it is set only while the bottoming prompts are open,
+	// and a table waiting on them is not a restore point.
+	mulliganBottoming bool
 
 	// DeckImported is true once the player has had a real deck
 	// installed via ReplaceDeck. False after AddPlayer (which only

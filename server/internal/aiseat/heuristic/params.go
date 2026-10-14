@@ -55,6 +55,10 @@ type castParams struct {
 	XValue       int         `json:"x_value"`
 	DiscardIDs   []string    `json:"discard_ids"`
 	SacrificeIDs []string    `json:"sacrifice_ids"`
+	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
+	// additional cost gives up (#3402) — gone from the board exactly as a
+	// sacrificed one is, and priced the same way.
+	ExilePermanentIDs []string `json:"exile_permanent_ids"`
 }
 
 type activateParams struct {

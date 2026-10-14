@@ -18,6 +18,7 @@
   import { CONTACT_TEXT, CONTACT_URL, PRIVACY_FACTS as F } from "../lib/privacy";
   import { OPERATOR_NAME, OPERATOR_STATE } from "../lib/legalNotice";
   import { TERMS_HASH } from "../lib/terms";
+  import { SHOP_DISCLOSURE } from "../lib/shopLinks";
 
   interface Row {
     what: string;
@@ -90,12 +91,21 @@
     {
       what: "Game statistics",
       details:
-        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. They are stored by game and seat, with no names, and point at your seat through the game record above.",
-      why: "So you can see how your decks and games go.",
+        "When a table ends, the server works out numbers about the game from its record: how many turns it took, and for each seat its result and place, when it was knocked out, its life gained and lost, the damage it dealt, the spells it cast and which cards by name, the cards it drew, its attacks, tokens and mulligans, and its commanders. They are stored by game and seat, with no names, and point at your seat through the game record above. The Stats page shows you the numbers for your own seats, and nobody else’s. Server admins can read the numbers for all games, with the display names of the people who sat at them, on an admin page.",
+      why: "So you can see how your decks and games go, on your Stats page.",
       howLong:
         "As long as the game’s record is kept. Deleting the table deletes them. Deleting your account turns your seat into “Deleted player”, and these numbers then belong to that seat, as the rest of the game does.",
       source:
         "migration 0023 game_stats, seat_stats, seat_card_stats; gamestats/gamestats.go Compute",
+    },
+    {
+      what: "Results post in Discord",
+      details:
+        "Only if the host of a table turns it on, and only on a server that has a results channel: when the game ends, the bot posts the table’s name, each seat’s name, its commander names and how it placed, the turn count and how long the game ran, in the CMD & CTRL Discord server’s results channel. Seat names are whatever each person set at the table, guests and AI agents included. Nobody is mentioned or pinged. A table’s page shows when this is on.",
+      why: "So a finished game can be shown off to the community.",
+      howLong:
+        "The server keeps only the host’s on or off choice, with the table. The post itself is a Discord message that stays until a Discord moderator deletes it; deleting your account or the table does not remove a post already made.",
+      source: "migration 0024 games.results; lobby/results_feed.go; discord/results.go",
     },
     {
       what: "Chat",
@@ -187,6 +197,14 @@
     {
       who: "Scryfall, Moxfield and Archidekt",
       what: "Card data and pictures come from Scryfall through this server’s cache, and a deck imported by link is fetched by the server. They see the server, not you.",
+    },
+    {
+      // ADR 0179: lib/shopLinks.ts (the link is built in the browser from
+      // card names), components/ShopLinks.svelte (rel="noopener
+      // noreferrer"), settings.ts display.shopLinks. No server route
+      // sees the click.
+      who: "Card shops, if you follow a shop link",
+      what: `Where the site is set up for them, the Decks and Catalog pages show links to buy the cards at a shop such as TCGplayer or Card Kingdom. ${SHOP_DISCLOSURE} Following one takes you to the shop’s own site, sometimes through the shop’s partner network on the way, and from there the shop’s own privacy terms and cookies apply. The link holds card names and nothing about you, and it opens without telling the shop which page you came from. CMD & CTRL does not track the click: following a link sends nothing to this server and nothing is recorded. You can hide the links in Settings, under Display. That choice is kept with your settings: with your account if you are signed in, otherwise only in this browser.`,
     },
   ];
 </script>

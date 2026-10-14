@@ -56,6 +56,14 @@ func buildPrebuiltDeckIndex(t *testing.T, d decks.Deck) *cards.Index {
 			ColorIdentity: identity,
 			Legalities:    map[string]string{"commander": "legal"},
 		}
+		if d.Companion != nil && c.Name == d.Companion.Name {
+			// A deck's companion (ADR 0172) is a legendary creature that prints
+			// the keyword. The synthetic costs are empty, so Jegantha's
+			// condition holds trivially here; the decks package checks it
+			// against the recorded real costs.
+			card.TypeLine = "Legendary Creature — Test Companion"
+			card.Keywords = []string{"Companion"}
+		}
 		if c.OracleID != "" {
 			if parsed, err := uuid.Parse(c.OracleID); err == nil {
 				card.OracleID = parsed
@@ -66,6 +74,9 @@ func buildPrebuiltDeckIndex(t *testing.T, d decks.Deck) *cards.Index {
 	put(d.Commander, true)
 	for _, c := range d.Mainboard {
 		put(c, false)
+	}
+	if d.Companion != nil {
+		put(*d.Companion, false)
 	}
 	return idx
 }
@@ -97,6 +108,16 @@ func TestPrebuiltDecksListsEveryDeckWithItsCoverage(t *testing.T) {
 		}
 		if got.CardCount != 100 {
 			t.Errorf("%s: card_count %d, want 100", got.ID, got.CardCount)
+		}
+		// The list the "Play this deck in paper" links are built from:
+		// commander first, every copy counted.
+		total := 0
+		for _, c := range got.Cards {
+			total += c.Count
+		}
+		if len(got.Cards) == 0 || got.Cards[0].Name != got.Commander || total != got.CardCount {
+			t.Errorf("%s: cards = %d rows holding %d copies, first %q; want the commander first and %d copies",
+				got.ID, len(got.Cards), total, got.Cards[0].Name, got.CardCount)
 		}
 		// The coverage profile is the point of the route. A zeroed
 		// one would render as "0 cards" and quietly promise nothing.

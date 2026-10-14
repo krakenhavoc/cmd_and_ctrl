@@ -21,7 +21,9 @@ import (
 //
 // DAMAGE is not this window. A Lightning Helix's three damage is
 // neither reduced nor doubled by a life replacement (CR 120.3); only
-// its three life of gain is.
+// its three life of gain is. The life the damage COSTS its target is a
+// loss and does run this window (ADR 0169), which a gain replacement
+// never matches.
 
 // LifeGainBecomes is "if <Scope> would gain life, they gain
 // <Amount(n)> life instead" — with the arithmetic as a function.
@@ -54,9 +56,8 @@ const (
 	// Faithmender, Alhammarret's Archive.
 	LifeGainByController LifeGainScope = "controller"
 
-	// LifeGainByOpponents is "if an OPPONENT would gain life". No
-	// printed card in this family, but it is the third of three and
-	// costs one arm.
+	// LifeGainByOpponents is "if an OPPONENT would gain life" —
+	// Plague Drone's Rot Fly, which turns the gain into a loss.
 	LifeGainByOpponents LifeGainScope = "opponents"
 )
 
@@ -103,4 +104,39 @@ func (l LifeGainBecomes) scopeMatches(gainer uuid.UUID, src *game.Card) bool {
 // that much life instead" — Rhox Faithmender, Alhammarret's Archive.
 func YouGainTwiceThatMuchLife(label string) game.ReplacementEffect {
 	return LifeGainBecomes{Amount: timesTwo, Scope: LifeGainByController, Label: label}.Build()
+}
+
+// OpponentsLoseTwiceThatMuchLifeDuringYourTurn is "if an opponent would
+// lose life during your turn, they lose twice that much life instead"
+// (Bloodletter of Aclazotz). A CR 614 replacement on a life LOSS (a
+// negative delta) for a player other than the source's controller,
+// while that controller is the active player.
+//
+// Every way a player loses life runs this window: a drain, "each
+// opponent loses N", a life payment (CR 119.4, payLifeAsCostLocked) and,
+// since ADR 0169, the life that damage costs (CR 120.3a). The damage
+// itself is not doubled, so lifelink and "is dealt damage" triggers
+// still see the damage dealt. Two copies quadruple without a prompt
+// (#792).
+func OpponentsLoseTwiceThatMuchLifeDuringYourTurn(label string) game.ReplacementEffect {
+	return game.ReplacementEffect{
+		Watches: []game.EventKind{game.EventChangeLife},
+		AppliesTo: func(ev *game.ReplacementEvent, g *game.Game, src *game.Card) bool {
+			if ev.Kind != game.RepEventLife || ev.LifeDelta >= 0 {
+				return false
+			}
+			if src == nil || src.Controller == uuid.Nil || ev.LifePlayer == src.Controller {
+				return false
+			}
+			return isActivePlayer(g, src.Controller)
+		},
+		Replace: func(ev *game.ReplacementEvent, _ *game.Game, _ *game.Card) error {
+			ev.LifeDelta = timesTwo(ev.LifeDelta)
+			return nil
+		},
+		Controller: func(_ *game.ReplacementEvent, _ *game.Game, src *game.Card) uuid.UUID {
+			return src.Controller
+		},
+		Label: label,
+	}
 }

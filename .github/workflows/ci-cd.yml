@@ -692,23 +692,40 @@ jobs:
 
   # Discussion #1231 P1a / #1247, repaired per Luke's review
   # (2026-09-23, points 2 and 3). This job holds the ONLY write
-  # permission in this workflow, and only for a push to develop or
-  # main -- a same-repository pull_request run of cmdctrl-ci never
-  # reaches it, because it `needs` that job to have already confirmed
+  # permission in this workflow, and only for a push to develop
+  # (#3335; it used to be develop or main) -- a same-repository
+  # pull_request run of cmdctrl-ci never reaches it, because it `needs` that job to have already confirmed
   # `server-test` passed (gofmt, vet, lint live in `server-check`;
   # CENSUS_ENFORCE=1 lives in `server-test`) on this exact commit.
   #
   # It pushes with its own credential (a repository deploy key,
   # `secrets.CENSUS_DEPLOY_KEY`) rather than the workflow's GITHUB_TOKEN,
   # so the ruleset bypass this needs can be scoped to "the census
-  # publisher" -- a `Deploy keys` bypass actor on develop and main --
+  # publisher" -- a `Deploy keys` bypass actor on develop --
   # instead of `always` for the whole GitHub Actions app, which is what
   # #1247 asked for and Luke's review point 2 correctly rejected: that
   # bypass would have covered every push this workflow makes, not just
   # this one docs-only commit.
+  #
+  # #3335: develop only, and the key lives in the `census` environment.
+  # As a repository secret any same-repository workflow run could read
+  # it, a topic branch's included, and the key bypasses the branch
+  # rulesets. The `census` environment's deployment branch policy admits
+  # `develop` alone, so only this job, on a push to develop, can read
+  # it. It no longer publishes to main, which lets the `main` ruleset
+  # drop its deploy-key bypass: main is only ever a merge of develop
+  # (plus the odd hotfix), so its census is develop's: the main runs
+  # checked for #3335 all ended "census block unchanged; nothing to
+  # publish".
+  # A hotfix that changes the catalog gets its census on develop once
+  # main is merged back, which docs/environments.md already requires.
+  # Until the owner creates the environment's secret, GitHub falls back
+  # to the repository secret of the same name, so this works before
+  # and after that step.
   census-publish:
     runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     needs: cmdctrl-ci
+    environment: census
     permissions:
       # The push below authenticates with the deploy key over SSH, not
       # with GITHUB_TOKEN, so this job needs nothing more than the
@@ -716,9 +733,7 @@ jobs:
       # implicit so a future job added near this one cannot inherit a
       # wider permission by copy-pasting from the wrong neighbour.
       contents: read
-    if: >-
-      github.event_name == 'push' &&
-      (github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/main')
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
     # One publisher per branch at a time, so two runs finishing close
     # together don't race the same push (the retry below handles one
     # lost race, not a pile-up). Its own group on purpose: reusing the
@@ -941,7 +956,17 @@ jobs:
   # develop red with the broken build on the preview until the fix
   # lands, which is what the preview is for.
   cmdctrl-cd-dev:
-    runs-on: self-hosted
+    # Which self-hosted runners may take a deploy (#3335). Until the
+    # repository variable CMDCTRL_DEPLOY_RUNNER_LABEL is set this is any
+    # self-hosted runner, exactly as before. Once the owner has given the
+    # chosen runners that label (Settings -> Actions -> Runners) and set
+    # the variable to it, a deploy runs only there. Label first, variable
+    # second: the other order queues every deploy with no runner to take
+    # it. No test job uses a self-hosted runner any more (the nightly's
+    # moved to hosted in the same change), so the deploy runners run
+    # only this, cmdctrl-cd-prod and scryfall-refresh.yml.
+    # docs/environments.md#runners-and-credentials.
+    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
     needs: build
     # actions: write is only for deleting this run's artifacts at the end.
     permissions:
@@ -1071,6 +1096,16 @@ jobs:
           echo "Deploy root:   ${DEPLOY_ROOT}"
           echo "Web root:      ${WEB_ROOT}"
           echo "Env file:      ${ENV_FILE}"
+
+      # The key krkn logs in with, from this job's environment (`dev` or
+      # `prod`), not from the runner's ~/.ssh (#3335). Each environment
+      # admits only its own branch, so a topic branch, a pull request or
+      # a nightly test job never sees it. Unset falls back to the
+      # runner's own key with a ::warning::; the script says why.
+      - name: Load the deploy SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.CMDCTRL_DEPLOY_SSH_KEY }}
+        run: scripts/load-deploy-key.sh
 
       - name: Download server binary
         uses: actions/download-artifact@v8
@@ -1504,6 +1539,9 @@ jobs:
       # 0161 §7) are the #lfg channel hosts post tables to and the role a
       # new post pings; the channel needs the guild, the role needs the
       # channel, and the board too stays off without the bot token.
+      # CMDCTRL_DISCORD_RESULTS_CHANNEL_ID (ADR 0174 §6) is the channel a
+      # finished game's results are posted to, for the tables whose host
+      # opted in; it needs the guild, and is off without the bot token.
       #
       # BOTH hosts, and ALWAYS written, empty included, exactly like the
       # admin allowlist above: clearing a variable must turn the gate off
@@ -1517,9 +1555,10 @@ jobs:
       #
       # Checked here before anything is written, with the server's own rules
       # (discord.GateFromEnv, discord.InviteURLFromEnv, discord.VoiceFromEnv,
-      # discord.LFGFromEnv): both ids or neither, each 1-20 digits (every
-      # exempt entry too), an https invite, a voice category or an #lfg
-      # channel only with the guild, and an LFG role only with the channel.
+      # discord.LFGFromEnv, discord.ResultsFromEnv): both ids or neither,
+      # each 1-20 digits (every exempt entry too), an https invite, a voice
+      # category, an #lfg channel or a results channel only with the guild,
+      # and an LFG role only with the channel.
       # The server
       # refuses to boot on
       # any of those, so a deploy that fails in this step leaves the running
@@ -1532,6 +1571,7 @@ jobs:
           CMDCTRL_DISCORD_VOICE_CATEGORY_ID: ${{ vars.CMDCTRL_DISCORD_VOICE_CATEGORY_ID }}
           CMDCTRL_DISCORD_LFG_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_LFG_CHANNEL_ID }}
           CMDCTRL_DISCORD_LFG_ROLE_ID: ${{ vars.CMDCTRL_DISCORD_LFG_ROLE_ID }}
+          CMDCTRL_DISCORD_RESULTS_CHANNEL_ID: ${{ vars.CMDCTRL_DISCORD_RESULTS_CHANNEL_ID }}
           CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS: ${{ vars.CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS }}
         run: |
           trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
@@ -1553,6 +1593,11 @@ jobs:
           fi
           lfg_channel="$(trim "${CMDCTRL_DISCORD_LFG_CHANNEL_ID}")"
           lfg_role="$(trim "${CMDCTRL_DISCORD_LFG_ROLE_ID}")"
+          results_channel="$(trim "${CMDCTRL_DISCORD_RESULTS_CHANNEL_ID}")"
+          if [ -n "${results_channel}" ] && [ -z "${guild}" ]; then
+            echo "::error::CMDCTRL_DISCORD_RESULTS_CHANNEL_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set the guild too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
+          fi
           if [ -n "${lfg_channel}" ] && [ -z "${guild}" ]; then
             echo "::error::CMDCTRL_DISCORD_LFG_CHANNEL_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set the guild too, or clear the channel, in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
@@ -1569,7 +1614,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_PLAYER_ROLE_ID is set but CMDCTRL_DISCORD_COMMUNITY_GUILD_ID is not; the server would refuse to boot. Set both (gate on) or neither (gate off) in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}"; do
             name="${pair%%=*}"; id="${pair#*=}"
             if [ -n "${id}" ] && ! [[ "${id}" =~ ^[0-9]{1,20}$ ]]; then
               echo "::error::${name} is not a Discord id (digits only, at most 20); the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
@@ -1580,7 +1625,7 @@ jobs:
             echo "::error::CMDCTRL_DISCORD_INVITE_URL must be an https URL such as https://discord.gg/<code>; the server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
             exit 1
           fi
-          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
+          for pair in "CMDCTRL_DISCORD_COMMUNITY_GUILD_ID=${guild}" "CMDCTRL_DISCORD_PLAYER_ROLE_ID=${role}" "CMDCTRL_DISCORD_INVITE_URL=${invite}" "CMDCTRL_DISCORD_VOICE_CATEGORY_ID=${voice}" "CMDCTRL_DISCORD_LFG_CHANNEL_ID=${lfg_channel}" "CMDCTRL_DISCORD_LFG_ROLE_ID=${lfg_role}" "CMDCTRL_DISCORD_RESULTS_CHANNEL_ID=${results_channel}" "CMDCTRL_DISCORD_GATE_EXEMPT_USER_IDS=${exempt}"; do
             name="${pair%%=*}"; value="${pair#*=}"
             printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
               "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
@@ -1590,7 +1635,65 @@ jobs:
           if [ -n "${voice}" ]; then rooms=set; else rooms=unset; fi
           if [ -n "${lfg_channel}" ]; then board=set; else board=unset; fi
           if [ -n "${lfg_role}" ]; then ping=set; else ping=unset; fi
-          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, ${#exempt_ids[@]} exempt id(s))"
+          if [ -n "${results_channel}" ]; then feed=set; else feed=unset; fi
+          echo "set the community variables (sign-up gate ${gate}, invite ${shown}, voice category ${rooms}, lfg channel ${board}, lfg role ${ping}, results channel ${feed}, ${#exempt_ids[@]} exempt id(s))"
+
+      # ADR 0179: optional shop links. One URL template per retailer,
+      # holding {url} exactly once: an https wrapper with {url} after the
+      # host (https://partner.example/c/123?u={url}), or {url} first plus
+      # &name=value pairs ({url}&partner=cmdctrl). Served by GET /config;
+      # empty (the default) shows no shop link anywhere.
+      #
+      # BOTH hosts, ALWAYS written, empty included, like the community
+      # variables: clearing one must turn that shop off on the next deploy.
+      # A GitHub environment's value overrides the repo's, so the preview
+      # and production can differ. Checked here with the server's own rules
+      # (shoplinks.ValidateTemplate) before anything is written; the server
+      # refuses to boot on a malformed one.
+      - name: Sync server env (shop links)
+        env:
+          CMDCTRL_SHOP_TCGPLAYER: ${{ vars.CMDCTRL_SHOP_TCGPLAYER }}
+          CMDCTRL_SHOP_CARDKINGDOM: ${{ vars.CMDCTRL_SHOP_CARDKINGDOM }}
+        run: |
+          export LC_ALL=C
+          trim() { local v="${1#"${1%%[![:space:]]*}"}"; printf '%s' "${v%"${v##*[![:space:]]}"}"; }
+          bad() {
+            echo "::error::$1 is not a valid shop link template ($2): use an https URL holding {url} once after the host, such as https://partner.example/c/123?u={url}, or {url} followed by &name=value pairs. The server would refuse to boot. Fix the variable in the '${APP_ENV}' environment (or the repo) and rerun."
+            exit 1
+          }
+          check() {
+            local name="$1" v="$2" rest tail
+            [ -z "${v}" ] && return 0
+            [ "${#v}" -le 1024 ] || bad "${name}" "longer than 1024 bytes"
+            [[ "${v}" == *"{url}"* ]] || bad "${name}" "no {url}"
+            rest="${v/\{url\}/}"
+            [[ "${rest}" == *"{url}"* ]] && bad "${name}" "{url} more than once"
+            [[ "${rest}" =~ ^[!-~]*$ ]] || bad "${name}" "spaces or non-ASCII characters"
+            case "${rest}" in
+              *[\"\'\`\\\<\>\{\}\|^]*) bad "${name}" "a quote, backslash, brace, bar, caret or angle bracket" ;;
+            esac
+            if [[ "${v}" == "{url}"* ]]; then
+              tail="${v#\{url\}}"
+              [ -z "${tail}" ] && return 0
+              [[ "${tail}" =~ ^(\&[^\&=\;]+(=[^\&\;]*)?)+$ ]] || bad "${name}" "after a leading {url}, only &name=value pairs"
+              [[ "${tail}" =~ %([^0-9A-Fa-f]|[0-9A-Fa-f][^0-9A-Fa-f]|[0-9A-Fa-f]?$) ]] && bad "${name}" "a broken %-escape"
+              return 0
+            fi
+            [[ "${v}" =~ ^https://[^/?#@{}]+[/?#] ]] || bad "${name}" "not an https URL with {url} after the host"
+            return 0
+          }
+          tcg="$(trim "${CMDCTRL_SHOP_TCGPLAYER}")"
+          ck="$(trim "${CMDCTRL_SHOP_CARDKINGDOM}")"
+          check CMDCTRL_SHOP_TCGPLAYER "${tcg}"
+          check CMDCTRL_SHOP_CARDKINGDOM "${ck}"
+          for pair in "CMDCTRL_SHOP_TCGPLAYER=${tcg}" "CMDCTRL_SHOP_CARDKINGDOM=${ck}"; do
+            name="${pair%%=*}"; value="${pair#*=}"
+            printf '%s' "${value}" | ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
+              "sudo ${DEPLOY_ROOT}/scripts/set-server-env.sh ${name} ${ENV_FILE}"
+          done
+          if [ -n "${tcg}" ]; then t=set; else t=unset; fi
+          if [ -n "${ck}" ]; then c=set; else c=unset; fi
+          echo "set the shop link variables (TCGplayer ${t}, Card Kingdom ${c})"
 
       # ADR 0123 §2 and §10: the server's /metrics listener, which the
       # monitoring agent (Grafana Alloy) scrapes. Loopback only: the server
@@ -2138,11 +2241,18 @@ jobs:
               core.info(`deleted ${a.name} (${a.size_in_bytes} bytes)`);
             }
 
+      # The runner empties $RUNNER_TEMP between jobs too; this is so the
+      # key is gone the moment the deploy is, failed or not (#3335).
+      - name: Remove the deploy SSH key
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/deploy_ssh_key"
+
   # main: the same deploy (the aliases below are cmdctrl-cd-dev's env and
   # steps), gated on the whole of CI passing. Production only moves on a
   # promotion, so it can afford to wait.
   cmdctrl-cd-prod:
-    runs-on: self-hosted
+    # Same runners as cmdctrl-cd-dev; see there.
+    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
     needs: [build, cmdctrl-ci]
     permissions:
       contents: read

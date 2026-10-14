@@ -683,6 +683,10 @@ func dispatch(g *game.Game, a Action) error {
 			// card from your hand or pay {3}"). Absent unless the
 			// chosen cost_branch reveals.
 			RevealIDs []string `json:"reveal_ids,omitempty"`
+			// #3402 — the permanents a mandatory exile-a-permanent
+			// additional cost exiles ("exile a creature you control").
+			// The name an activate_ability already uses.
+			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -732,9 +736,11 @@ func dispatch(g *game.Game, a Action) error {
 			return err
 		}
 		if p.ControlledPlay == "" {
-			if a.Actor != a.Caller {
-				// A controller casts as the player they control only to
-				// make the play the effect demands.
+			// A controller casts as the player they control only to
+			// make the play the effect demands (ADR 0166), or while
+			// they play that player's whole turn (ADR 0167 §4), when
+			// the cast is gated exactly as it would be for that player.
+			if a.Actor != a.Caller && g.ControlUntilOfPlayer(a.Caller) != game.ControlUntilTurn {
 				return game.ErrPlayerControlled
 			}
 			if err := requirePriorityHolder(g, a.Caller); err != nil {
@@ -833,6 +839,7 @@ func dispatch(g *game.Game, a Action) error {
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
+			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {
@@ -2330,12 +2337,14 @@ func dispatch(g *game.Game, a Action) error {
 				// the land enter tapped, so it is routed here ahead
 				// of the count guards like the two above it.
 				return g.ResolveEntryRevealFromHand(choiceID, a.Player, ids)
-			case game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice:
+			case game.PendingChoiceEntryDiscardFromHand, game.PendingChoiceEntrySacrifice,
+				game.PendingChoiceEntryChoosePermanents:
 				// ADR 0098: "you may discard a land card instead"
 				// (Mox Diamond, floor zero — the empty list is the
 				// decline that puts it into its owner's graveyard) and
 				// "sacrifice a Forest instead" (floor N). The same
-				// payload and resolver as the reveal above.
+				// payload and resolver as the reveal above. ADR 0170's
+				// entry_choose_permanents (Phylactery Lich, Sin) too.
 				return g.ResolveEntryCardChoice(choiceID, a.Player, ids)
 			case game.PendingChoiceRevealPick:
 				// #1214, CR 608.2 / CR 701.20: "an opponent chooses

@@ -40,6 +40,54 @@ const handlers = () => ({
   onLoop: vi.fn(),
 });
 
+describe("compound mana and life payments", () => {
+  it("shows and charges the mandatory life beside mana", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({ kind: "pay_unless", pay_cost: "{2}", life_cost: 2 }),
+      { sourceName: "Gisa", life: 40 },
+      h,
+    );
+    expect(r.primary?.label).toBe("Pay {2} and 2 life");
+    expect(r.hint).toContain("and 2 life");
+    r.primary!.onPress();
+    expect(h.onAnswer).toHaveBeenCalledWith(true);
+  });
+
+  it("disables a life payment that is unavailable", () => {
+    for (const [life, locked] of [
+      [1, false],
+      [40, true],
+    ] as const) {
+      const r = choiceRequest(
+        choice({ kind: "pay_unless", pay_cost: "{2}", life_cost: 2, life_cost_unpayable: locked }),
+        { sourceName: "Gisa", life },
+        handlers(),
+      );
+      expect(r.primary?.disabled).toBe(true);
+      expect(r.secondary?.at(-1)?.label).toBe("Don't pay");
+    }
+  });
+
+  it("reserves fixed life before offering Phyrexian symbol payments", () => {
+    const h = handlers();
+    const r = choiceRequest(
+      choice({
+        kind: "pay_unless",
+        pay_cost: "{B}{B}",
+        life_cost: 2,
+        phyrexian_symbols: 2,
+        phyrexian_granted: 2,
+      }),
+      { sourceName: "Gisa", life: 5 },
+      h,
+    );
+    expect(r.secondary?.map((a) => a.label)).toEqual(["Pay with 4 life", "Don't pay"]);
+    r.secondary![0].onPress();
+    expect(h.onAnswer).toHaveBeenCalledWith(true, 1);
+  });
+});
+
 describe("isInlineChoice", () => {
   it("takes the yes/no family, coin, loop, mana and colour", () => {
     for (const kind of [

@@ -53,6 +53,12 @@ func (e *enumerator) specialActionMoves() {
 	if p.Library != nil && len(p.Library.Cards) > 0 {
 		e.specialActionMovesForCard(p.Library.Cards[len(p.Library.Cards)-1], game.ZoneLibrary)
 	}
+	// ADR 0172 §7: the seat's companion, outside the game. The same
+	// walk as the hand, asked about ZoneOutside, so the engine's own
+	// timing table and pricing decide the move (#544).
+	if c, ok := p.CompanionCard(); ok {
+		e.specialActionMovesForCard(c, game.ZoneOutside)
+	}
 	// ADR 0082 decision 6: turn_face_up is the first kind whose card
 	// is not in a hand. The seat's own FACE-DOWN permanents are the
 	// only battlefield cards that offer anything —
@@ -115,7 +121,11 @@ func (e *enumerator) specialActionMovesForCard(card game.Card, zone game.ZoneKin
 		// would read "Turn face up {1}{U} " with a dangling space.
 		// The label alone is the whole of what the seat is choosing
 		// between.
-		if card.Name != "" && sa.Kind != game.SpecialActionUnlock {
+		switch {
+		case sa.Kind == game.SpecialActionCompanion:
+			// ADR 0172 §7: one sentence a seat can choose by.
+			label = "Pay " + sa.Cost + ": put " + card.Name + " into your hand (companion)"
+		case card.Name != "" && sa.Kind != game.SpecialActionUnlock:
 			label += " " + card.Name
 		}
 		params := specialActionParams{

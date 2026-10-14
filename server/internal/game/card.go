@@ -697,6 +697,20 @@ type Card struct {
 	// Added for #980; see ADR 0072 §7.
 	ChosenPlayer uuid.UUID
 
+	// ChosenSecondPlayer is the SECOND player of an "as this enters,
+	// choose two players" instruction (CR 614.12) — Sower of Discord.
+	// The first rides ChosenPlayer; the pair is read together with
+	// ChosenPlayersOf. uuid.Nil when none has been chosen, which is
+	// also what a one-player card, a table with one player left to
+	// choose, and the window before the second answer all read as.
+	//
+	// Exactly ChosenPlayer's lifecycle: per INSTANCE, carried by the
+	// snapshot and by clone, cleared when the permanent leaves the
+	// battlefield (CR 400.7), and not a copiable value (CR 707.2), so a
+	// copy of Sower chooses its own pair. Written by the as-enters
+	// prompt in choose_player.go and by nothing else. Added for #3389.
+	ChosenSecondPlayer uuid.UUID
+
 	// ChosenName is the CARD NAME chosen for this permanent by an "as
 	// this enters, choose a card name" instruction (CR 614.12) —
 	// Pithing Needle, Phyrexian Revoker, Sorcerous Spyglass, Meddling
@@ -1230,6 +1244,14 @@ type Card struct {
 	// IsCommander marks a card as a commander for the Commander format.
 	// Commanders live in the command zone at game start.
 	IsCommander bool
+
+	// IsCompanion marks the card a deck revealed as its companion (CR
+	// 702.139a, ADR 0172 §3). It routes the card into Player.Companion
+	// when the deck is seated, the way IsCommander routes a commander
+	// into the command zone, and it stays on the card after the
+	// companion special action puts it into a hand: the log, the game
+	// statistics and the client's badge read it. It grants nothing.
+	IsCompanion bool
 
 	// CommanderReturnDue is CR 903.9a's "put into that zone since the
 	// last time state-based actions were checked" for a commander in a

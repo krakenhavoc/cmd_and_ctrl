@@ -115,6 +115,14 @@ func (s *GameSnapshot) checkEffectKeys() error {
 			if problem := becomeNamedModProblem(m); problem != "" {
 				unknown = append(unknown, problem)
 			}
+			// #2144: a creature-type set naming no creature type.
+			if problem := setCreatureTypesModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
+			// #3398: an attack tax with no player or an unreadable cost.
+			if problem := attackTaxModProblem(m); problem != "" {
+				unknown = append(unknown, problem)
+			}
 		}
 		// ADR 0107 §3: a stack pin may carry only what this binary's
 		// stack step applies (layer 2 control, layer-6 keywords). A

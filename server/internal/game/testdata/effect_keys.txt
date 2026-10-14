@@ -229,3 +229,8 @@ body havengul-lich/gains-its-abilities
 condition havengul-lich/you-cast-it
 pick revealed-pick/word-of-command-play
 body casualty/copy
+body paradigm/copy
+body shirei/return-if-still-on-the-battlefield
+body auron-venerated-guardian/exile
+body yunas-whistle/counters
+body shield-counter/remove

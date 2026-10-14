@@ -241,7 +241,7 @@
       // answer a player takes nearly every time — and the player's click
       // is the deviation.
       selected =
-        active?.kind === "proliferate"
+        active?.kind === "proliferate" || active?.kind === "entry_choose_permanents"
           ? new Set(active.choose_suggested ?? [])
           : preselect || searchPreselect
             ? new Set(options.map((c) => c.instance_id))
@@ -327,6 +327,22 @@
   // are sent separately and can differ.
   const isChooseCards = $derived(active?.kind === "choose_cards");
 
+  // ADR 0175: a later seat making a simultaneous choice can see what
+  // earlier seats chose. This is viewer-filtered protocol data; only
+  // resolve IDs against the current public battlefield snapshot, and
+  // let Card render any face-down permanent as its redacted back.
+  const earlierChoices = $derived.by(() => {
+    if (!isChooseCards || !active) return [];
+    const choices = active.earlier_choices ?? [];
+    return choices.map((choice, index) => ({
+      key: `${choice.player_id}-${index}`,
+      player: snap.seats.find((seat) => seat.id === choice.player_id)?.name ?? "A player",
+      cards: choice.card_ids.map(
+        (id) => snap.battlefield.cards.find((card) => card.instance_id === id) ?? null,
+      ),
+    }));
+  });
+
   // #826 untap_choice — CR 502.3's "the active player determines which
   // permanents they control will untap", asked when a cap ("players
   // can't untap more than one land") or an opt-out ("you may choose
@@ -352,6 +368,10 @@
   // (floor = ceiling: not a "may").
   const isEntryDiscard = $derived(active?.kind === "entry_discard_from_hand");
   const isEntrySacrifice = $derived(active?.kind === "entry_sacrifice");
+  // ADR 0170 — the same entry pause with permanents that are only NAMED:
+  // Phylactery Lich's artifact, Sin's any number of countered permanents.
+  // The card's suggested pick is pre-selected.
+  const isEntryChoose = $derived(active?.kind === "entry_choose_permanents");
 
   // #1214 — the three resolution-time picks (CR 608.2). Same
   // {choice_id, card_ids} payload and the same choose_min / choose_max
@@ -413,6 +433,7 @@
       isEntryReveal ||
       isEntryDiscard ||
       isEntrySacrifice ||
+      isEntryChoose ||
       isRevealPick ||
       isPermanentPick ||
       isChooseSource ||
@@ -807,9 +828,12 @@
   // ADR 0129 §3: the viewer's energy, for an energy payment's Pay (and
   // the pay_amount stepper's ceiling, which the server sends as max).
   const viewerEnergy = $derived(snap.seats?.find((s) => s.id === viewerID)?.energy ?? 0);
+  const viewerLife = $derived(snap.seats?.find((s) => s.id === viewerID)?.life ?? 0);
   const payBlocked = $derived(
     (payCards !== null && !payCardsReady(payCards, payCardPicks)) ||
-      (isPayUnless && energyShortBy(active, viewerEnergy) > 0),
+      (isPayUnless && energyShortBy(active, viewerEnergy) > 0) ||
+      (isPayUnless &&
+        ((active?.life_cost ?? 0) > viewerLife || active?.life_cost_unpayable === true)),
   );
   const payTapCost = $derived(isPayUnless ? (active?.tap_cost ?? null) : null);
   const payTapLimit = $derived(payTapCost ? waterbendLimit(payTapCost, undefined) : 0);
@@ -1688,7 +1712,8 @@
         width: 560,
         primary: {
           id: "yes",
-          label: `Pay ${c.pay_cost ?? ""}`.trim(),
+          label:
+            `Pay ${c.pay_cost ?? ""}${(c.life_cost ?? 0) > 0 ? ` and ${c.life_cost} life` : ""}`.trim(),
           disabled: payBlocked,
           keyShortcuts: "Y",
           cap: "Y",
@@ -1770,22 +1795,24 @@
                 ? [c.reason || "Discard a card so it enters?", "discard · CR 614"]
                 : isEntrySacrifice
                   ? [c.reason || "Sacrifice so it enters", "sacrifice · CR 614"]
-                  : isChooseCards
-                    ? [c.reason || "Choose cards", "choose"]
-                    : isRevealPick
-                      ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
-                      : isPermanentPick
-                        ? [c.reason || "Choose permanents", "choose · CR 608.2"]
-                        : isChooseSource
-                          ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
-                          : isRingBearer
-                            ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
-                            : isProliferate
-                              ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
-                              : [
-                                  `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
-                                  isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
-                                ];
+                  : isEntryChoose
+                    ? [c.reason || "Choose permanents as it enters", "as it enters · CR 614"]
+                    : isChooseCards
+                      ? [c.reason || "Choose cards", "choose"]
+                      : isRevealPick
+                        ? [c.reason || "Choose from the revealed cards", "reveal · CR 701.20"]
+                        : isPermanentPick
+                          ? [c.reason || "Choose permanents", "choose · CR 608.2"]
+                          : isChooseSource
+                            ? [c.reason || "Choose a source of damage", "source · CR 609.7a"]
+                            : isRingBearer
+                              ? [c.reason || "choose your Ring-bearer", "the Ring · CR 701.54"]
+                              : isProliferate
+                                ? [c.reason || "Proliferate", "proliferate · CR 701.34"]
+                                : [
+                                    `${c.reason || "Choose"} — pick ${c.count} card${s(c.count)}`,
+                                    isExilePick ? "exile" : isSelfSource ? "discard" : "reveal",
+                                  ];
     const verb = isSacrifice
       ? L.sacrifice
       : isSearch
@@ -1810,17 +1837,21 @@
                   : "Discard"
                 : isEntrySacrifice
                   ? L.sacrifice
-                  : isChooseSource
-                    ? "Choose this source"
-                    : isProliferate
-                      ? none
-                        ? "Proliferate nothing"
-                        : "Proliferate"
-                      : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
-                        ? "Choose"
-                        : isRevealedVariant && none && pickMin === 0
-                          ? "Choose nothing"
-                          : "Confirm";
+                  : isEntryChoose
+                    ? none
+                      ? "Choose nothing"
+                      : "Choose"
+                    : isChooseSource
+                      ? "Choose this source"
+                      : isProliferate
+                        ? none
+                          ? "Proliferate nothing"
+                          : "Proliferate"
+                        : isChooseCards || isRevealPick || isPermanentPick || isRingBearer
+                          ? "Choose"
+                          : isRevealedVariant && none && pickMin === 0
+                            ? "Choose nothing"
+                            : "Confirm";
     const clearable =
       isSearch || isCopyTarget || ((isCardSetPick || isRevealedVariant) && pickMin === 0);
     return {
@@ -2293,8 +2324,10 @@
       {:else}
         <!-- A waterbend tap list without card picks (#1311). -->
         <p class="prompt-hint">
-          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short),
-          or don't and let {triggerSourceName(active.source)} do its thing.
+          Pay {active.pay_cost ?? "the cost"} from your pool (untapped sources auto-tap if it's short)
+          {#if (active.life_cost ?? 0) > 0}
+            and {active.life_cost} life
+          {/if}, or don't and let {triggerSourceName(active.source)} do its thing.
         </p>
       {/if}
       {#if payTapCost}
@@ -2546,6 +2579,16 @@
           Sacrifice {pickMax === 1 ? "one of these" : `${pickMax} of these`} and {enteringCardName(
             active.source,
           )} enters the battlefield. This isn't optional.
+        {:else if isEntryChoose}
+          {enteringCardName(active.source)} is entering the battlefield, and what it does to
+          {pickMin === pickMax
+            ? pickMax === 1
+              ? "the permanent you pick"
+              : `the ${pickMax} permanents you pick`
+            : pickMin === 0
+              ? "the permanents you pick (any number, or none)"
+              : `the permanents you pick (${pickMin} to ${pickMax})`} happens before it arrives. The card
+          says what that is above.
         {:else if isChooseCards}
           {#if pickMin === pickMax}
             Pick {pickMax} of these.
@@ -2558,6 +2601,11 @@
             The card you pick is cast right now without paying its mana cost, whatever its timing,
             and you choose its targets next. If you don't cast it now you can't later. Pick none to
             cast nothing.
+          {:else if active.choose_destination === "library_bottom"}
+            <!-- ADR 0168: the London mulligan's cost. -->
+            The cards you pick go on the bottom of your library{pickMax > 1
+              ? ", and you choose their order next"
+              : ""}. The rest are your opening hand.
           {:else}
             What happens to them is the card's business, and it will tell you next — choosing them
             costs nothing on its own.
@@ -2645,6 +2693,36 @@
           them all.
         {/if}
       </p>
+      {#if isChooseCards && earlierChoices.length > 0}
+        <section class="earlier-choices" aria-label="Earlier choices">
+          <h3>Earlier choices</h3>
+          {#each earlierChoices as choice (choice.key)}
+            <div class="earlier-choice">
+              <strong>{choice.player}</strong>
+              <div class="earlier-choice-cards">
+                {#if choice.cards.length === 0}
+                  <span>Chose nothing</span>
+                {:else}
+                  {#each choice.cards as card, i (`${choice.key}-${i}`)}
+                    {#if card}
+                      <div class="earlier-choice-card">
+                        <Card {card} size="small" faceDown={card.face_down === true} />
+                        {#if card.face_down}
+                          <span>Face-down permanent</span>
+                        {:else}
+                          <PickName {card} />
+                        {/if}
+                      </div>
+                    {:else}
+                      <span>Selected permanent</span>
+                    {/if}
+                  {/each}
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </section>
+      {/if}
       <div class="card-grid">
         {#if isSearch}
           {#each searchGroups as group ((searchGraveyardIDs.has(group[0].instance_id) ? "gy:" : "lib:") + (group[0].name || group[0].instance_id))}
@@ -3040,5 +3118,31 @@
     clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
+  }
+  .earlier-choices {
+    margin: 0 0 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-sunken);
+  }
+  .earlier-choices h3 {
+    margin: 0 0 8px;
+    font-size: 13px;
+  }
+  .earlier-choice + .earlier-choice {
+    margin-top: 8px;
+  }
+  .earlier-choice-cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 5px;
+  }
+  .earlier-choice-card {
+    width: 72px;
+    text-align: center;
+    font-size: 10px;
+    color: var(--fg-muted);
   }
 </style>

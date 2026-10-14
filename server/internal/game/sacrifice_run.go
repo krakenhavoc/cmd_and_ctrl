@@ -239,16 +239,7 @@ func (g *Game) sacrificeRunLocked(
 //
 // Caller must hold g.mu.
 func (g *Game) queueSacrificePromptLocked(source, playerID uuid.UUID, spec *TargetSpec, reason string, run uuid.UUID) bool {
-	p := g.playerByIDLocked(playerID)
-	if p == nil || p.Eliminated {
-		return false
-	}
-	// #2178: an opponent's spell or ability can't make this player
-	// sacrifice. Costs never reach this queue.
-	if g.effectSacrificeBlockedLocked(playerID) {
-		return false
-	}
-	options := g.sacrificeCandidatesLocked(playerID, spec)
+	options := g.EffectSacrificeCandidatesForEffect(playerID, spec)
 	if len(options) == 0 {
 		return false
 	}

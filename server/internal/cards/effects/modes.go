@@ -106,6 +106,16 @@ func ChooseNRepeating(prompt string, min, max int, options ...game.ModeOption) *
 	return &game.ModeSpec{Prompt: prompt, Options: options, Min: min, Max: max, Repeatable: true}
 }
 
+// ChooseOneAtRandom — "Choose one at random —" (CR 700.2, Summon:
+// Magus Sisters, #3399). The engine picks the bullet as the triggered
+// ability goes on the stack, among those with a legal target, from the
+// seeded random stream; the picked bullet's own target clause is then
+// asked. For a triggered ability only: effects.Register refuses it on
+// a spell or an activated ability.
+func ChooseOneAtRandom(options ...game.ModeOption) *game.ModeSpec {
+	return &game.ModeSpec{Prompt: "Choose one at random", Options: options, Min: 1, Max: 1, AtRandom: true}
+}
+
 // ChooseOneNotChosenThisTurn — "Choose one that hasn't been chosen
 // this turn —" (ADR 0097: Gala Greeters, Monument to Endurance,
 // Kargan Intimidator). For a TRIGGERED or ACTIVATED ability only:

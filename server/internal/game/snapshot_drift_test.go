@@ -353,6 +353,8 @@ var cardFields = plan(
 	"Counters", carried, "",
 	"CounterStampedAt", carried, "",
 	"IsCommander", carried, "",
+	// ADR 0172 §4: the companion stamp; the badge reads it.
+	"IsCompanion", carried, "",
 	// ADR 0115 §8: CR 903.9a's "put into that zone since the last
 	// check" mark. Carried: a restore that dropped it would skip the
 	// owner's question.
@@ -471,6 +473,9 @@ var cardFields = plan(
 	// entered. A player's choice, so nothing can rebuild it — and it
 	// is the whole of what True-Name Nemesis's protection reads.
 	"ChosenPlayer", carried, "",
+	// #3389: the second player of "choose two players". A player's
+	// choice, so nothing can rebuild it.
+	"ChosenSecondPlayer", carried, "",
 	// #1210, CR 614.12: the card NAME named as the permanent entered.
 	// A player's choice, so nothing can rebuild it — and unlike the
 	// three above there is not even a vocabulary to rebuild it from,
@@ -619,6 +624,10 @@ var playerFields = plan(
 	// anything else on the board, and a restore that dropped them
 	// would quietly un-ultimate a planeswalker.
 	"Emblems", carried, "",
+	// ADR 0172 §4: the companion waiting outside the game. Carried:
+	// whether a player still has the option is not derivable from the
+	// board. Written only while it holds a card.
+	"Companion", carried, "",
 	"CommanderDamage", carried, "",
 	"LifeHistory", carried, "",
 	// The seat-turn counter "until your next turn" durations end on
@@ -643,6 +652,7 @@ var playerFields = plan(
 	"TriggerOrder", carried, "",
 	"AutoAnswers", carried, "",
 	"MulligansTaken", carried, "",
+	"mulliganBottoming", dropped, "ADR 0168: set only from a keep until the London mulligan's bottom cards are down, while the choose_cards and put_in_library prompts that clear it are open; their continuations are counted in ContinuationCensus.ChoiceResumeFrames, so no restore point is taken with it set",
 	"DeckImported", carried, "",
 	"UndosRemaining", carried, "",
 	"DiscordID", carried, "",

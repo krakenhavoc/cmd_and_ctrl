@@ -63,6 +63,7 @@ describe("the table settings panel", () => {
       "commander_damage",
       "bot_pace",
       "allow_spawn",
+      "free_mulligans",
     ]) {
       expect(field(container, name)).toBeTruthy();
     }
@@ -90,8 +91,12 @@ describe("the table settings panel", () => {
     const { container } = mount({ gameState: "active" });
     expect(control(container, "starting_life").disabled).toBe(true);
     expect(field(container, "starting_life").textContent).toMatch(/already been dealt/i);
+    // #3387: the free first mulligan is fixed with it, because the
+    // mulligan window opens at Start.
+    expect(control(container, "free_mulligans").disabled).toBe(true);
+    expect(field(container, "free_mulligans").textContent).toMatch(/already been dealt/i);
     // Every other control is still live mid-game — settings change at
-    // any time (§2.3); starting life is the one exception.
+    // any time (§2.3); those two are the exceptions.
     expect(control(container, "commander_damage").disabled).toBe(false);
     expect(control(container, "allow_spawn").disabled).toBe(false);
   });
@@ -99,6 +104,21 @@ describe("the table settings panel", () => {
   it("leaves starting life editable in the lobby", () => {
     const { container } = mount({ gameState: "lobby" });
     expect(control(container, "starting_life").disabled).toBe(false);
+    expect(control(container, "free_mulligans").disabled).toBe(false);
+  });
+
+  it("sends free mulligans as a count, and ∞ as -1 (#3387)", () => {
+    const onpatch = vi.fn();
+    const { container } = mount({ gameState: "lobby", onpatch });
+    expect(control(container, "free_mulligans").value).toBe("0");
+    expect(field(container, "free_mulligans").textContent).toMatch(/the rules/i);
+    click(field(container, "free_mulligans").querySelector("button")!);
+    expect(onpatch).toHaveBeenCalledWith({ free_mulligans: -1 });
+  });
+
+  it("says what a count of free mulligans means", () => {
+    const { container } = mount({ gameState: "lobby", settings: { free_mulligans: 2 } });
+    expect(field(container, "free_mulligans").textContent).toMatch(/first 2 mulligans are free/i);
   });
 
   it("renders an unlimited budget as ∞ rather than as -1 take-backs", () => {

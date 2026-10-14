@@ -133,3 +133,20 @@ func MonstrousKeywords(keywords ...string) game.StaticAbility {
 		},
 	}
 }
+
+// MonstrosityXWhere is "[cost]: Monstrosity X, where X is …" with X
+// counted as the ability resolves rather than announced (Maester
+// Seymour's "the number of counters among creatures you control"). The
+// cost carries no {X}; `label` is the printed line without reminder
+// text.
+func MonstrosityXWhere(cost game.AbilityCost, label string, x func(g *game.Game, item *game.StackItem) int) ActivatedAbility {
+	a := monstrosityAbility(cost, "X", func(*game.StackItem) int { return 0 })
+	a.Label = label
+	a.Effect = func(g *game.Game, item *game.StackItem) error {
+		if sourceIsNewObject(g, item) {
+			return nil
+		}
+		return g.MonstrosityForEffect(item.SourceCardID, x(g, item))
+	}
+	return a
+}

@@ -1102,11 +1102,11 @@ var characteristicModKinds = map[ModKind]bool{
 	ModLoseOwnAbility: true, ModAddRestrictions: true, ModSetBasePower: true,
 	ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 	ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
-	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true,
+	ModGrantAbilities: true, ModBorrowAbilities: true, ModCantAttackUnlessDefenderControls: true, ModCantAttackPlayer: true,
 	ModSetBasicLandTypes: true, ModLoseLandTypes: true, ModCantHaveKeywords: true,
 	ModBecomeCopy: true, ModExchangeText: true, ModCantBeBlockedExceptBy: true,
 	ModLimitBlockersPerDefender: true, ModCantBeBlockedByPlayer: true,
-	ModCantBeBlockedByPower: true,
+	ModCantBeBlockedByPower: true, ModSetCreatureTypes: true,
 }
 
 // knownBuiltinReplacementLabels are the engine's own replacement effects
@@ -1207,6 +1207,15 @@ func (g *Game) reactorLocked(emits map[EventKind]bool) (card string, kind EventK
 	for i := range g.BuiltinReplacements {
 		r := &g.BuiltinReplacements[i]
 		k, ok := watches(r.Watches)
+		if r.Label == shieldCounterLabel {
+			// CR 122.1c's effects apply only to a permanent with a
+			// shield counter on it (#2000, ADR 0173): set aside on a
+			// board with none.
+			if ok && g.anyShieldCounterLocked() {
+				return "", k, true
+			}
+			continue
+		}
 		if !knownBuiltinReplacementLabels[r.Label] && (len(r.Watches) == 0 || ok) {
 			return "", k, true
 		}

@@ -11,6 +11,7 @@
   // step 10 spotlights the bot's portrait by it too (tutorialSteps.ts,
   // ADR 0076 §2.4), so keep it on the element a player clicks to attack.
 
+  import { untrack } from "svelte";
   import type { ActionPayload, ActionType, PlayerView } from "../../protocol";
   import { seatColor } from "../../colors";
   import { floatUp, fadeOut } from "../../animations";
@@ -19,7 +20,14 @@
   import { scryfallImageURL } from "../../cardImage";
   import { targeting, isLegalPlayerTarget, isPicked } from "../../targeting";
   import { settings } from "../../settings";
-  import { emptyLifeTracker, lifePopupView, trackLife, type LifePopupView } from "../../lifePopup";
+  import {
+    LIFE_POPUP_MAX_LINES,
+    emptyLifeTracker,
+    lifePopupView,
+    trackLife,
+    type LifePopupView,
+  } from "../../lifePopup";
+  import { lifeCauseLookup } from "../../lifeCause";
   import { botDeckNames, botDeckLabel, ensureBotDeckNamesLoaded } from "../../botDeckNames";
   import { playerKeywordBadges } from "../../playerKeywordBadges";
   import { isLevelledEmblem } from "../../ringEmblem";
@@ -202,11 +210,15 @@
   let tracker = emptyLifeTracker();
   let popup = $state<{ key: number; view: LifePopupView } | null>(null);
   let popupTimer: ReturnType<typeof setTimeout> | null = null;
+  // #3379: names the card behind each delta. Absent with no Board
+  // above (a unit test), and then the popup is bare numbers.
+  const causesFor = lifeCauseLookup();
   $effect(() => {
     const frame = trackLife(tracker, seat.life_history);
     tracker = frame.tracker;
     if (!frame.popup) return;
-    const view = lifePopupView(frame.popup);
+    const causes = untrack(() => causesFor?.(seat.id, frame.popup!.deltas) ?? []);
+    const view = lifePopupView(frame.popup, LIFE_POPUP_MAX_LINES, causes);
     popup = { key: frame.popup.key, view };
     play(view.sound);
     if (popupTimer) clearTimeout(popupTimer);
@@ -286,6 +298,7 @@
     <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
     <div
       class="avatar-wrap"
+      class:has-keywords={keywordBadges.length > 0}
       data-seat-id={seat.id}
       role={interactive ? "button" : "group"}
       tabindex={interactive ? 0 : undefined}
@@ -396,7 +409,9 @@
             aria-hidden="true"
           >
             {#each popup.view.lines as line, i (i)}
-              <span class="dmg-line {line.tone}">{line.text}</span>
+              <span class="dmg-line {line.tone}"
+                >{line.text}{#if line.cause}<span class="dmg-cause">{line.cause}</span>{/if}</span
+              >
             {/each}
             {#if popup.view.collapsed}
               <span class="dmg-note">×{popup.view.count}</span>
@@ -741,10 +756,11 @@
   }
 
   /* Life row overlays the bottom third of the avatar circle: the life
-     chip itself, plus (#1201) any keyword badges beside it. Anchored
-     as a row rather than each child positioning itself, so the
-     badges sit flush against the chip instead of needing their own
-     copy of this math. */
+     chip itself, centred on the avatar whatever else is shown. Any
+     keyword badges (#1201) hang on their own wrapping line under the
+     chip (#3262): beside it, two text badges ("NO GAIN", "NO HAND
+     MAX") widened the centred row until the life total slid out of
+     the panel. */
   .life-row {
     position: absolute;
     left: 50%;
@@ -752,7 +768,11 @@
     transform: translateX(-50%);
     display: flex;
     align-items: center;
-    gap: 4px;
+  }
+  /* Room under the circle for the badge line, so it pushes what is
+     below down instead of covering it. */
+  .avatar-wrap.has-keywords {
+    margin-bottom: 18px;
   }
   /* Ellipse backdrop sits flush with the circle's lower arc so the
      number reads as part of the identity disc rather than a floating
@@ -780,9 +800,17 @@
      which has nothing to do with sitting beside a life chip, so only
      the class names and their declarations are reused here. */
   .seat-keywords {
+    position: absolute;
+    top: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
     display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
     align-items: center;
     gap: 2px;
+    width: max-content;
+    max-width: calc(var(--avatar-size) * 1.8);
   }
   .kw-badge {
     display: inline-flex;
@@ -899,6 +927,25 @@
   }
   .dmg-line.gain {
     color: #7aff9a;
+  }
+  /* #3379: what caused the change, under its number. Small and plain
+     so the number stays the headline. Under, not beside: the rail
+     clips sideways, so a line wider than it lost its number. */
+  .dmg-line {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    white-space: nowrap;
+  }
+  .dmg-cause {
+    max-width: 104px;
+    margin-top: -1px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    color: var(--fg);
   }
   /* The "×7" on a collapsed run, and the "…" that says older changes
      have rolled off the server's log. */

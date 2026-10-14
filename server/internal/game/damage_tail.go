@@ -785,9 +785,9 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// event fires, the CR 903.10a tally accrues, lifelink credits, a
 	// "whenever ~ is dealt damage" trigger sees it — and only the life
 	// loss CR 120.3a would have caused does not happen. Platinum
-	// Emperion's printed ruling, and the reason this is a branch here
-	// rather than an arm of the life built-in: damage does not fire
-	// the CR 614 life window at all, so the rule has two consumers.
+	// Emperion's printed ruling. Since ADR 0169 the life the damage
+	// costs runs the CR 614 life window, where the life built-in
+	// cancels it; this branch stays as the same rule's direct reader.
 	//
 	// ADR 0056 Decision 4, CR 120.3a / 120.3b / 120.3g: infect turns
 	// the life loss into that much poison, and toxic adds its total in
@@ -808,14 +808,21 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	// though its source had infect (Phyrexian Unlife), read as it lands
 	// (damage_as_though.go).
 	poison, lifeLoss := g.damageResultAsThoughLocked(ev, t).DamageToPlayer(ev.DamageAmount, t.combat)
+	// ADR 0169: the life the damage costs is a life LOSS (CR 120.3a),
+	// so a "would lose life" replacement (Bloodletter of Aclazotz)
+	// sees it through the CR 614 life window. The damage itself is
+	// settled and stays whole.
+	lifeLoss = g.damageLifeLossThroughReplacementsLocked(p.ID, ev.DamageSource, lifeLoss)
 	// Angel's Grace (#3172): the damage stays whole and only the life it
-	// costs is capped at the floor of 1.
+	// costs is capped at the floor of 1, after the window (ADR 0169 §3).
 	lifeLoss = g.capLifeLossByFloorLocked(p, lifeLoss)
 	loseLife := lifeLoss > 0 && !g.playerLifeTotalCantChangeLocked(p)
 	lost := 0
 	if loseLife {
 		lost = lifeLoss
 	}
+	// Negative when a replacement made the loss larger than the damage
+	// (ADR 0169 §4): DamageLifeLoss() then reads the whole loss.
 	notLost := ev.DamageAmount - lost
 	if t.combat {
 		if loseLife {
@@ -843,6 +850,49 @@ func (g *Game) applyResolvedDamageToPlayerLocked(ev *ReplacementEvent, t *damage
 	g.placeDamageResultCountersLocked(ev, t, CounterPoison, poison)
 	g.creditLifelinkLocked(t, ev.DamageSource, ev.DamageAmount)
 	return ev.DamageAmount, nil
+}
+
+// damageLifeLossThroughReplacementsLocked runs the life `lifeLoss` of
+// damage would cost `player` through the CR 614 life window and reports
+// the loss that results (ADR 0169). A new RepEventLife event, not a
+// nested one: the damage event's own window has settled, as it has for
+// the result's counters (placeDamageResultCountersLocked).
+//
+// It settles inline (mustSettleNow): the damage tail has no resume
+// between the damage and its result. The lock ("your life total can't
+// change") cancels it here as its preemptive built-in, so a cancelled
+// event costs nothing. A replacement that turned the loss into a gain
+// costs nothing and gains nothing; no printed card does that to damage.
+//
+// Caller must hold g.mu.
+func (g *Game) damageLifeLossThroughReplacementsLocked(player, source uuid.UUID, lifeLoss int) int {
+	if lifeLoss <= 0 {
+		return lifeLoss
+	}
+	lev := &ReplacementEvent{
+		Kind:          RepEventLife,
+		Source:        source,
+		LifePlayer:    player,
+		LifeDelta:     -lifeLoss,
+		mustSettleNow: true,
+	}
+	out, err := g.applyReplacementsLocked(lev)
+	if err != nil && !errors.Is(err, ErrReplacementIterationExceeded) {
+		// mustSettleNow forecloses errReplacementPending, so this is a
+		// broken pipeline: the damage costs what it did before the
+		// window, weaker than printed and never stronger.
+		g.clearReplacementEventLocked(lev.ID)
+		g.EmitEvent(Event{
+			Kind:     EventEffectError,
+			ErrorMsg: "damage life loss: " + err.Error(),
+		})
+		return lifeLoss
+	}
+	defer g.clearReplacementEventLocked(lev.ID)
+	if out == nil || out.Canceled {
+		return 0
+	}
+	return max(-out.LifeDelta, 0)
 }
 
 // applyResolvedDamageToPermanentLocked lands settled damage on a

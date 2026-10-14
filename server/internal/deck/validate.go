@@ -56,9 +56,20 @@ const (
 	// translated into the 422 violations[] list so the client can
 	// highlight every offending row at once.
 	CodeUnknownCard = "unknown_card"
-	// CodeUnsupportedMechanic flags a resolved card that leans on a
-	// mechanic (companion) the server hasn't modeled yet.
+	// CodeUnsupportedMechanic flags a companion whose condition the
+	// server does not check yet (ADR 0172 §2): companionConditions has
+	// no entry for it. Fatal, because seating it would be on trust.
 	CodeUnsupportedMechanic = "unsupported_mechanic"
+	// The companion codes (ADR 0172 §2). Each is fatal but
+	// CodeCompanionFromSideboard, the warning that a lone sideboard
+	// card was read as the companion (owner decision 3).
+	CodeNotACompanion            = "not_a_companion"
+	CodeTooManyCompanions        = "too_many_companions"
+	CodeCompanionIsCommander     = "companion_is_commander"
+	CodeCompanionConditionNotMet = "companion_condition_not_met"
+	CodeCompanionNotLegal        = "companion_not_legal"
+	CodeCompanionColorIdentity   = "companion_color_identity"
+	CodeCompanionFromSideboard   = "companion_from_sideboard"
 	// CodeUnknownSource flags a URL-based import whose host isn't
 	// one of the supported deck-builders (S06.5). Carries the offending
 	// URL in the `card` field so the client can echo it back.
@@ -121,6 +132,10 @@ func (e *ValidationError) Error() string {
 //     legalities.commander != "banned" and != "not_legal".
 //  6. Every card's color_identity is a subset of the commander's
 //     color identity (the union of a pair's, CR 702.124c).
+//
+// A companion (ADR 0172) is outside the 100: the count, singleton and
+// colour identity of the deck never include it, and companionViolations
+// judges it on its own.
 //
 // Sideboard cards are surfaced as a warning, not an error — Commander
 // doesn't use a sideboard but "I accidentally pasted a Standard deck"
@@ -270,6 +285,10 @@ func Validate(list *List) error {
 
 	// ADR 0145: a meld pair's combined back face is not a card.
 	vs = append(vs, meldBackFaceViolations(list)...)
+
+	// ADR 0172: the companion, judged on its own. It is not one of
+	// the 100, so none of the checks above saw it.
+	vs = append(vs, companionViolations(list)...)
 
 	if len(vs) == 0 {
 		return nil

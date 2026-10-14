@@ -1,3 +1,5 @@
+import type { GameCards } from "./gameCards";
+import type { MyStats } from "./myStats";
 import {
   authFetch,
   clearSavedIdentity,
@@ -25,7 +27,7 @@ import type { MySetupResponse, SetupResult } from "./tableSetup";
 import type { LastDeck } from "./lastDeck";
 import type { AutoTapCastParams } from "./castPreview";
 import type { TableSettingsPatch, SpawnZone } from "./tableSettings";
-import type { TableSettingsView, TargetRefView } from "./protocol";
+import type { StackPositionView, TableSettingsView, TargetRefView } from "./protocol";
 import {
   accountsQuery,
   gamesQuery,
@@ -35,6 +37,7 @@ import {
   type AdminGameResponse,
   type AdminGamesResponse,
   type AdminReportsResponse,
+  type AdminStatsResponse,
   type GamesFilter,
   type LiveNowResponse,
 } from "./adminViews";
@@ -84,6 +87,10 @@ export interface GameMeta {
   // absent when the table is not posted.
   lfg?: boolean;
   lfg_status?: "pending" | "posted" | "unavailable";
+  // ADR 0174 §1: the host opted the table in to a results post in the
+  // Discord's #game-results channel when its game ends
+  // (lib/resultsPost.ts). Absent when the table is not opted in.
+  results?: boolean;
   // The tutorial's practice table (ADR 0076 §2.2): one seat, one
   // `random` bot, never listed and never persisted. Mirrors
   // lobby.GameMeta.Practice.
@@ -183,6 +190,9 @@ export interface UploadDeckResponse {
   // player pressed, rather than inferring it from the name.
   deck_id?: string;
   commanders: string[];
+  // ADR 0172 §3: the deck's companion, which seats outside the game
+  // rather than in the library. Absent for none.
+  companion?: string;
   warnings?: ApiViolation[];
   // Distinct names of the accepted deck's cards that print rules the
   // engine will not carry out. Not an error and not a warning — the
@@ -283,15 +293,23 @@ export interface CreateGameResponse extends GameMeta {
 // when they already have three, and a 429 says they are creating too
 // quickly. `setup: "last"` applies their remembered setup to it,
 // `voiceRoom` asks for a Discord voice room (ADR 0159 §1), and `lfg`
-// posts it to the Discord's #lfg board (ADR 0161 §1).
+// posts it to the Discord's #lfg board (ADR 0161 §1), and `results` opts
+// it in to a results post when its game ends (ADR 0174 §1).
 export async function createGame(
   name: string,
-  opts: { setup?: "last"; voiceRoom?: boolean; lfg?: boolean } = {},
+  opts: { setup?: "last"; voiceRoom?: boolean; lfg?: boolean; results?: boolean } = {},
 ): Promise<CreateGameResponse> {
-  const body: { name: string; setup?: string; voice_room?: boolean; lfg?: boolean } = { name };
+  const body: {
+    name: string;
+    setup?: string;
+    voice_room?: boolean;
+    lfg?: boolean;
+    results?: boolean;
+  } = { name };
   if (opts.setup) body.setup = opts.setup;
   if (opts.voiceRoom) body.voice_room = true;
   if (opts.lfg) body.lfg = true;
+  if (opts.results) body.results = true;
   const res = await authFetch("/games", {
     method: "POST",
     body: JSON.stringify(body),
@@ -709,6 +727,12 @@ export async function fetchAdminReports(): Promise<AdminReportsResponse> {
   return (await res.json()) as AdminReportsResponse;
 }
 
+// fetchAdminStats reads the game statistics overview (ADR 0165 §8). Admin only.
+export async function fetchAdminStats(): Promise<AdminStatsResponse> {
+  const res = await authFetch("/admin/stats", { method: "GET" });
+  return (await res.json()) as AdminStatsResponse;
+}
+
 // dismissAdminReport removes one report. Admin only.
 export async function dismissAdminReport(id: string): Promise<void> {
   await authFetch(`/admin/reports/${encodeURIComponent(id)}`, { method: "DELETE" });
@@ -788,6 +812,22 @@ export async function installPrebuiltDeck(
 export async function fetchMyDecks(): Promise<MyDecksResponse> {
   const res = await authFetch("/me/decks");
   return (await res.json()) as MyDecksResponse;
+}
+
+// fetchMyStats reads the signed-in caller's own game statistics (ADR
+// 0165 §7, GET /me/stats). A guest or an admin gets a 403 whose message
+// the page shows.
+export async function fetchMyStats(): Promise<MyStats> {
+  const res = await authFetch("/me/stats");
+  return (await res.json()) as MyStats;
+}
+
+// fetchGameCards reads the commanders and cards a finished game's
+// opponents cast (GET /me/games/{id}/cards, ADR 0179 §7). A game that is
+// still running is a 409 and a game the caller did not sit at a 403.
+export async function fetchGameCards(gameID: string): Promise<GameCards> {
+  const res = await authFetch(`/me/games/${encodeURIComponent(gameID)}/cards`);
+  return (await res.json()) as GameCards;
 }
 
 // renameMyDeck renames a saved deck (PATCH /me/decks/{id}). A name the
@@ -1143,6 +1183,20 @@ export async function leaveRematch(gameID: string): Promise<void> {
   await authFetch(`/games/${encodeURIComponent(gameID)}/rematch/leave`, { method: "POST" });
 }
 
+// The stack panel's placement (#3429, ADR 0176). The caller is the seat;
+// the server keeps the spot for the rest of the game and sends it back on
+// that seat's own view (GameView.stack_positions). Both answer 204.
+export async function saveStackPosition(gameID: string, pos: StackPositionView): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/stack-position`, {
+    method: "PUT",
+    body: JSON.stringify({ x: pos.x, y: pos.y }),
+  });
+}
+
+export async function clearStackPosition(gameID: string): Promise<void> {
+  await authFetch(`/games/${encodeURIComponent(gameID)}/stack-position`, { method: "DELETE" });
+}
+
 // fetchTablemates reads the people the signed-in caller has shared a
 // table with (ADR 0051 decision 8, S34 sub-PR 6, GET /me/tablemates),
 // most recently shared table first. 401s for anyone without a user_id,
@@ -1434,6 +1488,10 @@ export async function fetchAutoTapPreview(
     }
     if (cast.blightIDs && cast.blightIDs.length > 0) {
       params.set("blight_ids", cast.blightIDs.join(","));
+    }
+    // #3402: a creature exiled to pay a spell's cost cannot also tap for mana.
+    if (cast.exilePermanentIDs && cast.exilePermanentIDs.length > 0) {
+      params.set("exile_permanent_ids", cast.exilePermanentIDs.join(","));
     }
     // ADR 0135 §4: an emerge creature lowers the price by its mana value.
     if (cast.altCostIDs && cast.altCostIDs.length > 0) {

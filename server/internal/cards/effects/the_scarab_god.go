@@ -88,26 +88,7 @@ func scarabGodZombieCount(g *game.Game, controller uuid.UUID) int {
 }
 
 func scarabGodReanimateAsZombie(g *game.Game, item *game.StackItem) error {
-	ctx := NewContext(g, item)
-	for _, t := range ctx.LegalTargets() {
-		if t.Kind != game.TargetCard {
-			continue
-		}
-		id := t.ID
-		controller := item.Controller
-		return ExileTarget{Target: id, Then: func(ctx *Context, exiled bool) error {
-			if !exiled {
-				return nil
-			}
-			return CreateTokenCopy{
-				Controller: controller,
-				Copy:       id,
-				N:          1,
-				Except:     scarabGodZombieException,
-			}.Apply(ctx)
-		}}.Apply(ctx)
-	}
-	return nil
+	return ExileTargetThenTokenCopy(g, item, scarabGodZombieException)
 }
 
 // scarabGodZombieException is "except it's a 4/4 black Zombie" —

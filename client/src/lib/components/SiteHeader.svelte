@@ -179,6 +179,9 @@
              0158 §1: My games is Tables' History). -->
         <div class="grp">
           {@render navLink("#/lobby", "lobby", L.navTables)}
+          {#if hasLinkedUser}
+            {@render navLink("#/stats", "stats", "Stats")}
+          {/if}
         </div>
         <!-- Look things up: decks, the cards the engine plays, what's next. -->
         <div class="grp">

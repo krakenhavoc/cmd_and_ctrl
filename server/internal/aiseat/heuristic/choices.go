@@ -51,6 +51,7 @@ const (
 	choiceEntryRevealFromHand = "entry_reveal_from_hand"
 	choiceEntryDiscard        = "entry_discard_from_hand"
 	choiceEntrySacrifice      = "entry_sacrifice"
+	choiceEntryChoose         = "entry_choose_permanents"
 	choiceColor               = "choose_color"
 	choiceCoinCall            = "coin_call"
 	choiceEntryController     = "entry_controller"
@@ -200,6 +201,15 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 	case choiceProliferate:
 		// #2525: the engine's suggested pick (proliferate.go).
 		return proliferateValue(ch, cp.CardIDs), "proliferate what helps us and hurts them"
+
+	case choiceEntryChoose:
+		// ADR 0170: "as this enters, put a phylactery counter on an
+		// artifact you control" (Phylactery Lich), "remove all counters
+		// from any number of …" (Sin). The card's declaration knows
+		// which answer serves the seat (its Suggest) and sends it as
+		// choose_suggested, so the bot scores overlap with it exactly
+		// as it does a proliferate.
+		return proliferateValue(ch, cp.CardIDs), "the card's suggested permanents"
 
 	case choiceRingBearer:
 		// ADR 0114 §7: the creature that attacks hardest carries the

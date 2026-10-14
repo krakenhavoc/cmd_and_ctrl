@@ -49,6 +49,16 @@ type prebuiltDeckInfo struct {
 	// Counted per distinct card, which is why its totals do not add
 	// up to CardCount: thirty Forests are one basic-land row.
 	Coverage decks.Coverage `json:"coverage"`
+	// Cards is the whole list, commander first, one row per distinct
+	// card with its copies. The client builds the "Play this deck in
+	// paper" shop links from it (ADR 0179 §7); no price rides with it.
+	Cards []prebuiltCard `json:"cards"`
+}
+
+// prebuiltCard is one row of a pre-built deck's list.
+type prebuiltCard struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
 }
 
 // prebuiltDecksResponse is the body of GET /decks.
@@ -68,6 +78,11 @@ func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 		for _, ch := range d.Identity {
 			colors = append(colors, string(ch))
 		}
+		cards := make([]prebuiltCard, 0, len(d.Mainboard)+1)
+		cards = append(cards, prebuiltCard{Name: d.Commander.Name, Count: d.Commander.Copies()})
+		for _, c := range d.Mainboard {
+			cards = append(cards, prebuiltCard{Name: c.Name, Count: c.Copies()})
+		}
 		out = append(out, prebuiltDeckInfo{
 			ID:        d.ID,
 			Name:      d.Name,
@@ -77,6 +92,7 @@ func prebuiltDeckCatalog(c Config) []prebuiltDeckInfo {
 			Colors:    colors,
 			CardCount: d.Size(),
 			Coverage:  covs[d.ID],
+			Cards:     cards,
 		})
 	}
 	return out

@@ -98,6 +98,10 @@ type CounterUnlessPaidPrompt struct {
 	// ParseCost and auto-tapped for like any other pay-unless.
 	Cost string
 
+	// LifeCost is mandatory fixed life paid alongside Cost in one
+	// payment. It is distinct from optional Phyrexian-symbol payments.
+	LifeCost int
+
 	// Question is the dialog header.
 	Question string
 
@@ -130,6 +134,9 @@ type CounterUnlessPaidPrompt struct {
 //
 // Caller must hold g.mu. Added in #951.
 func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error {
+	if p.LifeCost < 0 {
+		return ErrInvalidParam
+	}
 	guarded := g.StackItemForEffect(p.StackItem)
 	if guarded == nil {
 		return nil
@@ -151,7 +158,7 @@ func (g *Game) QueueCounterUnlessPaidForEffect(p CounterUnlessPaidPrompt) error 
 	}
 	return g.queuePayUnlessLocked(chooser, p.Source, p.Cost, p.Question,
 		decline,
-		TurnStep{}, stackID, p.Waterbend)
+		TurnStep{}, stackID, p.Waterbend, payUnlessExtras{lifeCost: p.LifeCost})
 }
 
 // counterIfStillOnStackLocked counters `stackID` unless it has

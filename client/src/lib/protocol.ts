@@ -421,6 +421,10 @@ export interface GameView {
   // by the server to this viewer's own part. Absent until one is offered,
   // and for a spectator.
   rematch?: RematchView;
+  // Where this viewer dragged the stack panel to (#3429, ADR 0176), keyed
+  // by seat id. The server keeps only the viewer's own entry; absent when
+  // the panel is at its default and for a spectator.
+  stack_positions?: Record<string, StackPositionView>;
   // Seat index that took the first turn. Used by the server to enforce
   // the CR 103.8a turn-1 skip-draw rule — in two-player games only,
   // since CR 103.8c has nobody skip at a larger table. Added in S13.
@@ -491,7 +495,13 @@ export interface GameView {
   // ADR 0166 (CR 723): who is making whose decisions right now. A
   // prompt the controlled player owes arrives with `chooser` set to the
   // controller and `on_behalf_of` to the controlled player.
-  player_controls?: { controller: string; controlled: string; source?: string }[];
+  // ADR 0167: `until` is "resolution" (Word of Command) or "turn" (the
+  // whole of a turn another player plays, Emrakul, the Promised End).
+  // One entry per controlled player: the effect that applies now.
+  player_controls?: PlayerControlView[];
+  // ADR 0167 §8: turn-long controls still waiting for the controlled
+  // player's next turn. Public; grants no visibility.
+  scheduled_player_controls?: ScheduledPlayerControlView[];
   // S31: the closed list of moves THE VIEWER'S OWN SEAT may make
   // right now, enumerated server-side by `internal/legal`. The server
   // never ships another seat's list — an opponent's moves name the
@@ -515,6 +525,11 @@ export interface GameView {
   // never "nothing is legal". Read through lib/legalActions.ts, never
   // directly, so every highlight comes from one lookup.
   legal_actions?: LegalActionsView;
+  // ADR 0167 §7: while the viewer plays another seat's turn,
+  // legal_moves also holds that seat's moves (each with `player` set to
+  // it) and legal_actions digests only the viewer's own. This maps each
+  // controlled seat's player ID to the digest of its moves.
+  controlled_legal_actions?: Record<string, LegalActionsView>;
   // The public game log (S31 sub-PR 0, ADR 0033 §4): the last ~200
   // table-visible events, oldest first. Every card reference in it has
   // been through the same visibility filter as the zones above, so an
@@ -973,6 +988,10 @@ export type LogKind =
   // the chapter or level in `amount`.
   | "control"
   | "special_action"
+  // ADR 0172 §5: a seat revealed its companion as the game began
+  // ("Alice revealed Jegantha, the Wellspring as their companion").
+  // `card_id` is the companion, public from then on.
+  | "companion_revealed"
   // ADR 0106 §1 decision 6 (#1793): a player activated the "Any player
   // may activate this ability" row of a permanent another player
   // controls — "Bob activated Alice's Xantcha, Sleeper Agent".
@@ -1097,7 +1116,14 @@ export type LogKind =
   // turned face up by an EFFECT (CR 708.8). `card_id` is the permanent, public
   // again by then; `target` is the object that did it. The special action has
   // no line of this kind (its `special_action` line carries it).
-  | "turn_face_up";
+  | "turn_face_up"
+  // ADR 0167 (CR 723.1): a turn-long player control was created, began
+  // with the controlled player's turn, and ended as the next turn
+  // began. `seat` is the controller, `target_seat` the controlled
+  // player, `card_id` the card whose effect it is (Emrakul).
+  | "player_control_scheduled"
+  | "player_control_began"
+  | "player_control_ended";
 
 // LogEvent mirrors `protocol.LogEvent` — one line of the public game
 // log. `text` is the rendered, already-redacted sentence; the
@@ -1407,6 +1433,12 @@ export interface PendingChoiceView {
     // candidates are the chooser's own permanents, so every seat sees
     // them.
     | "entry_sacrifice"
+    // ADR 0170: "as this enters, put a phylactery counter on an artifact
+    // you control" (Phylactery Lich), "remove all counters from any
+    // number of artifacts, creatures, and enchantments" (Sin). Public
+    // permanents, answered with card_ids before the permanent is on the
+    // battlefield; choose_suggested is the card's recommended pick.
+    | "entry_choose_permanents"
     // #1214 CR 608.2 / CR 701.20: an opponent picks from a set you
     // revealed — "target opponent chooses two of those cards" (Gifts
     // Ungiven), and the first leg of a Fact or Fiction pile split.
@@ -1504,6 +1536,9 @@ export interface PendingChoiceView {
   // it"). `options` stays the whole revealed hand. Absent means every
   // option (a prompt from before the filter).
   eligible?: string[];
+  // ADR 0175: public permanent picks made by earlier selectors in an
+  // ordered choice run. Resolve names through this viewer's filtered board.
+  earlier_choices?: Array<{ player_id: string; card_ids: string[] }>;
   // ADR 0116: what `eligible` holds, as the card prints it — "nonland
   // card", "card with mana value 3 or greater".
   eligible_label?: string;
@@ -1749,7 +1784,10 @@ export interface PendingChoiceView {
   // charges (Sylvan Library's 4). Absent when the branch costs no
   // life. The label already says it; this is the number, for anything
   // that needs to reason about the price rather than print it.
+  // For pay_unless, mandatory life paid alongside pay_cost.
   life_cost?: number;
+  // Computed affordability of the mandatory life, including life locks.
+  life_cost_unpayable?: boolean;
   // #74: populated for kinds "choose_cards", "untap_choice",
   // "entry_reveal_from_hand", #1214's three resolution-time picks
   // ("reveal_pick", "their_permanents", "own_permanents") and ADR 0107's
@@ -1766,7 +1804,8 @@ export interface PendingChoiceView {
   // your hand without paying its mana cost" — answering with a card
   // opens its cast at once). Absent on a plain discard or look.
   choose_destination?: string;
-  // #2525: kind "proliferate" only. The seats on offer beside
+  // #2525: kind "proliferate" (and ADR 0170's "entry_choose_permanents",
+  // suggestion only). The seats on offer beside
   // `options` (player IDs), and the engine's suggested answer
   // (instance IDs and player IDs) for the modal to pre-select. A
   // default, not a rule: any subset is a legal answer.
@@ -2125,6 +2164,10 @@ export interface PlayerView {
   // mulligan. Mulligan decisions go in turn order, starting player
   // first. Omitempty: absent on every other seat.
   mulligan_turn?: boolean;
+  // ADR 0168: how many cards this seat puts on the bottom of its library
+  // if it keeps now (the London mulligan, CR 103.5). Omitempty: absent
+  // when zero, outside the window, and once the seat has kept.
+  mulligan_bottom?: number;
   // #1968: this seat's trigger-order mode, "always" or "never"; absent
   // means the default, "when_it_matters". Present only in the seat's OWN
   // view; the server blanks it for everyone else.
@@ -2238,6 +2281,13 @@ export interface PlayerView {
   // The board shows these as chips beside the player identity, with
   // `text` as the hover. Public: every seat sees every emblem.
   emblems?: EmblemView[];
+  // ADR 0172 §5: the companion this seat revealed, while it waits
+  // outside the game (CR 702.139a). Absent for a seat with none and
+  // once it has been put into the hand. Public: every seat sees the
+  // card. Its `special_actions` carry the {3} row ("Put into your hand
+  // (companion)", kind "companion") for the owner only, and the row
+  // sends `special_action { card_id, kind: "companion" }`.
+  companion?: CardView;
   // #1197/#1201 (CR 702.11d, CR 702.16i): the abilities this SEAT has
   // right now — bare engine tokens, "hexproof" or a general
   // "protection from <quality>" ("protection from everything" is the
@@ -2454,6 +2504,13 @@ export interface AdditionalCostView {
   reveal?: boolean;
   behold?: boolean;
   reveal_options?: LegalTargetsView;
+  // #3402: an "exile a creature you control" additional cost (Soul
+  // Exchange). `exile_permanent_options` lists the permanents that could
+  // pay it, in payment order, min / max the clause's count; the picks ride
+  // cast_spell as `exile_permanent_ids`. Present-and-empty means the cost
+  // cannot be paid right now.
+  exile_permanent_label?: string;
+  exile_permanent_options?: LegalTargetsView;
   payable?: boolean;
 }
 
@@ -3757,6 +3814,9 @@ export interface CardView extends CastSurfaceView {
   no_untap?: NoUntapView;
   counters?: Record<string, number>;
   is_commander?: boolean;
+  // ADR 0172 §3: a deck's revealed companion, outside the game or after
+  // it has come into the game. Public; drives the "Companion" badge.
+  is_companion?: boolean;
   // Damage marked on this creature for the lethal-damage SBA (S13.1,
   // CR 704.5g). Cleaned up in cleanup step (S13.2, CR 514.2). Only
   // meaningful on the battlefield; omitted when zero.
@@ -4614,6 +4674,13 @@ export interface RematchView {
   you?: RematchPart;
 }
 
+// StackPositionView is the stack panel's top-left corner as a fraction of
+// the board's width and height, each 0..1 (#3429, ADR 0176).
+export interface StackPositionView {
+  x: number;
+  y: number;
+}
+
 export type RematchPart = "host" | "undecided" | "accepted" | "declined";
 
 export interface TableSettingsView {
@@ -4631,10 +4698,33 @@ export interface TableSettingsView {
   // Whether the host and admin may spawn cards and tokens on a live
   // table (every spawn is announced in the log).
   allow_spawn: boolean;
+  // Free mulligans, the house rule (#3387): 0 or absent is the rules
+  // (one free in a multiplayer game, none at two players), N gives N
+  // free at any table, -1 makes every mulligan free. Fixed once the
+  // game is active.
+  free_mulligans?: number;
 }
 
 // ADR 0127: why a prompt with a standing answer is asked by hand.
-export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone";
+// "controlled" (ADR 0167 §4): another player controls the chooser, so
+// their standing answer does not apply.
+export type AskedByHand = "no_mana" | "empty_library" | "loop" | "undone" | "controlled";
+
+/** ADR 0166 / 0167: one player making another's decisions right now. */
+export interface PlayerControlView {
+  controller: string;
+  controlled: string;
+  source?: string;
+  source_name?: string;
+  until: "resolution" | "turn";
+}
+
+/** ADR 0167 §8: a turn-long control waiting for the controlled player's next turn. */
+export interface ScheduledPlayerControlView {
+  controller: string;
+  controlled: string;
+  source_name?: string;
+}
 
 // ADR 0127 §3: one of a seat's standing answers, as the server holds it.
 export interface AutoAnswerRuleView {

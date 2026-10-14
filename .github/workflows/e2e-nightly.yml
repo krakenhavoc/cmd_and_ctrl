@@ -254,13 +254,19 @@ jobs:
   # The catalog soak (#601) needs the local Scryfall dump: a registered
   # Spec carries an oracle ID and a name, not a type line or a mana
   # cost, so without the dump there is no card to deal and the test
-  # skips. That is the one thing the hosted image above can't supply,
-  # so this job stays self-hosted (#1456) rather than pinning all of
-  # `bot-games` back down for it. Same cache key as the realdump and
+  # skips. It has its own job (#1456) rather than pinning all of
+  # `bot-games` to the dump. Same cache key as the realdump and
   # playwright jobs below — they all run on the same day's dump, and
   # whichever starts first populates it.
+  #
+  # Hosted since #3335, like every other test job. The dump never
+  # needed the self-hosted box: every job fetches it the same way (the
+  # day-keyed actions/cache entry, then scripts/scryfall-refresh.sh on
+  # a miss), which is exactly what ci-cd.yml's hosted
+  # `token-dump-check` already does. What it did need to stop doing is
+  # run test code on the runners that hold the deploy credentials.
   catalog-soak:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     env:
       AISEAT_GAME_TESTS: "1"
       AISEAT_CATALOG_GAMES: "2"
@@ -280,14 +286,14 @@ jobs:
         with:
           ref: ${{ env.TESTED_REF }}
 
-      # cache: false — self-hosted, so $HOME persists between runs and
-      # actions/cache untarring over Go's read-only module cache fails
-      # (see ci-cd.yml's `Set up Go` comment for the exact error).
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version: "1.27"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -331,10 +337,10 @@ jobs:
   # The three checks that compare checked-in data with the real
   # Scryfall dump. They used to be the playwright job's first steps,
   # ~4 minutes the browser suite waited behind every night; #2661 gave
-  # them their own self-hosted job (the dump is on disk there, as for
-  # `catalog-soak`), so Playwright starts as soon as its servers do.
+  # them their own job, so Playwright starts as soon as its servers do.
+  # Hosted since #3335; see catalog-soak above.
   realdump:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     env:
       CMDCTRL_DATA_DIR: ${{ github.workspace }}/data
       CMDCTRL_SCRYFALL_DUMP: ${{ github.workspace }}/data/scryfall/default-cards.json
@@ -344,12 +350,14 @@ jobs:
         with:
           ref: ${{ env.TESTED_REF }}
 
-      # cache: false — self-hosted; see catalog-soak above.
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version: "1.27"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
       - name: Compute Scryfall cache key
         id: scryfall-stamp
@@ -767,13 +775,14 @@ jobs:
   soak-tracker:
     needs: [bot-soak-seed, bot-soak-4p, bot-soak-2p]
     if: ${{ failure() && github.event_name == 'schedule' }}
-    runs-on: self-hosted
+    # Hosted since #3335: curl, jq and the API are all it needs.
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     permissions:
       issues: write
     steps:
       # curl is the house style for talking to the API from a workflow
       # (see issue-triage.yml, which explains why: no gh, no
-      # actions/github-script, self-hosted runners). That file also says
+      # actions/github-script). That file also says
       # "no jq", because its writes are idempotent and need no
       # read-modify-write. This one does need one — "comment if it
       # exists, else create" — and jq is already a hard dependency of
@@ -856,15 +865,21 @@ jobs:
   # four jobs; inside each, `workers: 1` and the serial order are
   # unchanged, since the server's lobby state is still per process.
   #
-  # Each shard starts its own Go server and Vite client. The self-hosted
-  # runners share one host, so each shard also gets its own pair of
-  # ports (CMDCTRL_DEV_SERVER_PORT / CMDCTRL_DEV_CLIENT_PORT, read by
-  # tests-e2e/playwright.config.ts, tests-e2e/tests/env.ts and
-  # client/vite.config.ts; 8080 and 5173 when unset). The server's data
-  # dir, and so its SQLite file, is `<workspace>/data`, and each runner
-  # has its own workspace.
+  # Each shard starts its own Go server and Vite client, on its own
+  # pair of ports (CMDCTRL_DEV_SERVER_PORT / CMDCTRL_DEV_CLIENT_PORT,
+  # read by tests-e2e/playwright.config.ts, tests-e2e/tests/env.ts and
+  # client/vite.config.ts; 8080 and 5173 when unset). The ports date
+  # from the self-hosted runners, which shared one host; on a hosted
+  # runner each shard has a VM to itself and they are merely harmless.
+  # The server's data dir, and so its SQLite file, is
+  # `<workspace>/data`.
+  #
+  # Hosted since #3335. This is the job the move was for: `npm ci` and
+  # `npx playwright install --with-deps` run third-party install
+  # scripts, and on a self-hosted runner they ran beside the deploy
+  # credentials.
   playwright:
-    runs-on: self-hosted
+    runs-on: ${{ github.event.repository.private && 'self-hosted' || vars.CI_RUNNER || 'ubuntu-latest' }}
     strategy:
       # A red shard must not cancel the other three: their results are
       # what tells a flake from a regression.
@@ -882,28 +897,22 @@ jobs:
         with:
           ref: ${{ env.TESTED_REF }}
 
-      # cache: false on purpose. These are self-hosted runners, so
-      # $HOME survives between jobs and ~/go/pkg/mod is already warm --
-      # there is nothing for a cache to restore that is not already
-      # there. Worse, Go marks the module cache read-only (files 0444,
-      # dirs 0555), so actions/cache untarring over it fails with
-      #   /usr/bin/tar: .../openpgp/errors: Cannot mkdir: No such file
-      #   ##[warning]Failed to restore: "/usr/bin/tar" ... exit code 2
-      # on every run, then silently re-downloads the whole module set.
-      # Note the Scryfall cache below is NOT affected and stays on: its
-      # path is inside the workspace, not $HOME.
+      # Cached on a hosted runner only (#1434); see bot-games above for
+      # why a self-hosted one stays cache: false.
       - name: Set up Go
         uses: actions/setup-go@v7
         with:
           go-version: "1.27"
-          cache: false
+          cache: ${{ runner.environment == 'github-hosted' }}
+          cache-dependency-path: server/go.sum
 
-      # No `cache:` input, for the same reason as Go above -- ~/.npm
-      # persists on a self-hosted runner and restoring over it fails the
-      # same way. Note setup-node's `cache` is an enum of package
-      # managers (npm/yarn/pnpm), NOT a boolean: `cache: false` is a
-      # hard error ("Caching for 'false' is not supported"). Omitting
-      # the input is how you turn it off.
+      # No `cache:` input. It used to be off because ~/.npm persists on
+      # a self-hosted runner and restoring over it fails the way Go's
+      # module cache does; on a hosted runner the two `npm ci`s simply
+      # download, which is a minute at most. Note setup-node's `cache`
+      # is an enum of package managers (npm/yarn/pnpm), NOT a boolean:
+      # `cache: false` is a hard error ("Caching for 'false' is not
+      # supported"). Omitting the input is how you turn it off.
       - name: Set up Node.js
         uses: actions/setup-node@v7
         with:

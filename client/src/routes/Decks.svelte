@@ -10,7 +10,9 @@
   //      /deck-requests) and "Save to my decks" (POST /me/decks) with a
   //      name field. A check writes nothing; saving is always the
   //      explicit button (owner answer 2), and neither button does the
-  //      other's job (§3 item 6).
+  //      other's job (§3 item 6). Then, when the operator configured a
+  //      shop and the viewer has not hidden them, "Buy this deck" and a
+  //      small Buy link on each card row (ADR 0179).
   //   4. Your decks: a grid led by each commander's art, in an aura of
   //      its colour identity, with a coverage ring, the report, a request
   //      button when something is manual, and Rename / Delete in a ⋯
@@ -41,6 +43,8 @@
   import Icon from "../lib/components/Icon.svelte";
   import Page from "../lib/components/Page.svelte";
   import DeckCard from "../lib/components/decks/DeckCard.svelte";
+  import ShopLinks from "../lib/components/ShopLinks.svelte";
+  import { visibleShops } from "../lib/shopLinksStore";
   import { DECK_SORTS, sortDecks, type DeckSort } from "../lib/deckGrid";
   import {
     checkDeck,
@@ -533,6 +537,10 @@
               )}
             </p>
           {/if}
+          {#if report.companion}
+            <!-- ADR 0172 §2: the companion, outside the 100. -->
+            <p class="commanders">Companion: {report.companion.name}</p>
+          {/if}
           {#if report.source_url}
             <a
               class="source-link"
@@ -680,6 +688,15 @@
           </div>
         {/if}
 
+        <!-- ADR 0179: the whole list as a cart at each shop. Its
+             disclosure also covers the per-card links in the rows below.
+             Renders nothing with no shop configured or links hidden. -->
+        {#if $visibleShops.length > 0}
+          <div class="shop-row">
+            <ShopLinks list={report.cards} label="Buy this deck" />
+          </div>
+        {/if}
+
         {#each BUCKET_ORDER as b (b)}
           {#if groups[b].length > 0}
             <section class="bucket-sec {b}" aria-labelledby="bk-{b}">
@@ -698,6 +715,7 @@
                       {@render cardName(c.name)}
                       {#if c.count > 1}<span class="count">×{c.count}</span>{/if}
                     </span>
+                    <ShopLinks card={c.name} compact note={false} />
                     {#if c.caveats && c.caveats.length > 0}
                       <ul class="caveats">
                         {#each c.caveats as cav (cav)}
@@ -838,6 +856,8 @@
                             Not found in the card index: {libReport.unknown.join(", ")}
                           </p>
                         {/if}
+                        <!-- ADR 0179: the saved deck as a cart at each shop. -->
+                        <ShopLinks list={libReport.cards} label="Buy this deck" />
                       {/if}
                     </div>
                   {/if}
@@ -895,6 +915,9 @@
                     <div class="cov tone-{cov.tone}">{cov.headline}</div>
                     {#if cov.detail}
                       <div class="cov-detail">{cov.detail}</div>
+                    {/if}
+                    {#if p.cards && p.cards.length > 0}
+                      <ShopLinks list={p.cards} label="Play this deck in paper" />
                     {/if}
                   </li>
                 {/each}
@@ -1380,6 +1403,12 @@
     padding: 6px 0;
     border-bottom: 1px solid var(--border);
     min-width: 0;
+  }
+  .shop-row {
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    background: var(--surface);
+    border: 1px solid var(--border);
   }
   .card-name {
     display: flex;

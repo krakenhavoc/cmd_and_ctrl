@@ -511,8 +511,11 @@ func (p *Policy) payoffOf(st *state, m legal.Move) (float64, string) {
 		// affordability, so anything that reaches here is a move the
 		// engine will accept (#544).
 		sp := decode[specialActionParams](m.Params)
-		if sp.Kind == "unlock" {
+		switch sp.Kind {
+		case "unlock":
 			return p.valueOfUnlock(st, sp)
+		case "companion":
+			return p.valueOfCompanion(st, sp)
 		}
 		return p.cfg.SpecialActionValue, "special action: " + sp.Kind
 
@@ -658,6 +661,9 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		v += st.discardPayoff(p.cfg, st.mine[id])
 	}
 	v -= p.sacrificeCost(st, cp.SacrificeIDs)
+	// #3402: and the permanent an exile-a-permanent additional cost
+	// gives up leaves the board as surely.
+	v -= p.sacrificeCost(st, cp.ExilePermanentIDs)
 	v += targetV
 	if cp.FromZone == "command" {
 		// Each cast from the command zone makes the next one cost
@@ -1054,6 +1060,25 @@ func colorSymbols(cards []protocol.CardView) map[string]int {
 		}
 	}
 	return out
+}
+
+// valueOfCompanion prices the companion special action (CR 116.2g,
+// ADR 0172 §7): pay {3} and put a known card into your hand. That is a
+// card drawn, so it is worth a card in hand (Weights.Hand), plus a
+// little for what the card is: a tenth of the hand-card weight per
+// point of its mana value, so a bigger companion is a bigger draw. It
+// sits above the flat special-action price and below a real spell of
+// any size, so the bot takes it with mana it would otherwise leave
+// unused and does not skip a cast for it. The card is the bot's own
+// companion, which its seat view shows (PlayerView.Companion).
+func (p *Policy) valueOfCompanion(st *state, sp specialActionParams) (float64, string) {
+	v := st.w.Hand
+	if st.seat != nil && st.seat.Companion != nil && st.seat.Companion.InstanceID == sp.CardID {
+		c := st.seat.Companion
+		v += st.w.Hand * 0.1 * float64(manaValue(c.ManaCost, 0))
+		return v, "take companion " + c.Name
+	}
+	return v, "take companion"
 }
 
 // valueOfUnlock prices the CR 709.5e unlock special action (ADR 0103,

@@ -705,6 +705,7 @@ func enumerateLocked(g *game.Game, seat uuid.UUID, opts Options) []Move {
 		return nil
 	}
 	e.run()
+	e.controlledTurnMoves()
 	return e.out
 }
 
@@ -745,8 +746,13 @@ func (e *enumerator) run() {
 
 	// The mulligan window is its own world: the cursor is parked on
 	// Untap, nobody holds priority, and the only verbs are keep and
-	// mulligan.
+	// mulligan. ADR 0168: a seat that kept and owes its London
+	// mulligan's bottom cards answers those prompts first; they are its
+	// only moves.
 	if g.MulligansOpen {
+		if e.choiceMoves() {
+			return
+		}
 		e.mulliganMoves()
 		return
 	}

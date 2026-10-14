@@ -40,6 +40,11 @@ var (
 	// ErrEmptyDeck is returned when a player is added without a deck.
 	ErrEmptyDeck = errors.New("game: deck cannot be empty")
 
+	// ErrTooManyCompanions is returned when a deck carries more than
+	// one companion card: a player reveals at most one (CR 103.2b,
+	// ADR 0172 §3).
+	ErrTooManyCompanions = errors.New("game: a deck can have only one companion")
+
 	// ErrCardNotFound is returned when a zone operation references a
 	// card instance that does not exist in the zone.
 	ErrCardNotFound = errors.New("game: card instance not found in zone")
@@ -108,6 +113,12 @@ var (
 	// be a different feature (ADR 0075 §2.3). Nothing in the patch is
 	// applied. Added in S35 (#1032).
 	ErrStartingLifeLocked = errors.New("game: starting life cannot change once the game has started")
+
+	// ErrFreeMulliganLocked is returned by UpdateSettings when a patch
+	// changes FreeMulligans after Start: the mulligan window opens
+	// at Start, and a cost that moved mid-decision would be unfair.
+	// Nothing in the patch is applied. Added for #3387.
+	ErrFreeMulliganLocked = errors.New("game: free mulligans cannot change once the game has started")
 
 	// ErrNoPriority is returned by PassPriority when called during a
 	// step that does not grant priority (currently Untap and Cleanup

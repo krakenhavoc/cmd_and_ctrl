@@ -95,6 +95,7 @@ func (c Config) tableSetups() tablesetups.Store {
 // which is what a setup stores: applying it reproduces the table's
 // settings whatever the new table's defaults are.
 func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
+	free := ts.EffectiveFreeMulligans()
 	return game.SettingsPatch{
 		UndoLimit:       &ts.UndoLimit,
 		UndoScope:       &ts.UndoScope,
@@ -102,6 +103,8 @@ func completeSettingsPatch(ts game.TableSettings) game.SettingsPatch {
 		CommanderDamage: &ts.CommanderDamage,
 		BotPace:         &ts.BotPace,
 		AllowSpawn:      &ts.AllowSpawn,
+
+		FreeMulligans: &free,
 	}
 }
 

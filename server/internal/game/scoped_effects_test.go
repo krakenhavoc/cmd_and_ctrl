@@ -214,6 +214,13 @@ func TestEveryModKindAppliesInItsLayer(t *testing.T) {
 				t.Errorf("type line = %v %v — %v, want Legendary Artifact — Equipment", c.Supertypes, c.Types, c.Subtypes)
 			}
 		}},
+		// #2144: CR 205.1a for the creature types alone: the Bear goes,
+		// the Frog comes, and the card types stay.
+		{"setCreatureTypes", []Mod{SetCreatureTypesMod("Frog")}, func(t *testing.T, _, c Characteristic, _ *Game) {
+			if !reflect.DeepEqual(c.Types, []string{"Creature"}) || !reflect.DeepEqual(c.Subtypes, []string{"Frog"}) {
+				t.Errorf("type line = %v — %v, want Creature — Frog", c.Types, c.Subtypes)
+			}
+		}},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -251,6 +258,7 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModSetBaseToughness: true, ModModifyPT: true, ModAddAttackRequirement: true, ModAttackPlayerIfAble: true, ModGoad: true,
 		ModAddBlockRequirement: true, ModAddBlockCapacity: true, ModBlockAnyNumber: true,
 		ModCantAttackUnlessDefenderControls: true,
+		ModCantAttackPlayer:                 true, // #3400: cases in cards/effects/promise_of_loyalty_test.go
 		ModSetBasicLandTypes:                true,
 		ModLoseLandTypes:                    true,
 		// ADR 0093 PR 4 (#1584): its cases are in scoped_grants_test.go,
@@ -324,6 +332,11 @@ func TestEveryModKindHasATestCase(t *testing.T) {
 		ModVoteChooser: true,
 		// #2562: cases above.
 		ModSetName: true, ModSetTypes: true,
+		// #2144: case above.
+		ModSetCreatureTypes: true,
+		// #3398: the duration attack tax. Its cases are in
+		// attack_tax_duration_test.go.
+		ModAttackTax: true,
 	}
 	for _, k := range ModKinds() {
 		if !covered[k] {

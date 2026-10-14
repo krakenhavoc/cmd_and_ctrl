@@ -22,8 +22,8 @@ var archidektAPIHost = "https://archidekt.com"
 // pull only what the importer needs.
 //
 // Category names in Archidekt are user-configurable, but the
-// conventional set includes "Commander", "Sideboard", and
-// "Maybeboard"; a card with no categories or an explicit
+// conventional set includes "Commander", "Companion", "Sideboard",
+// and "Maybeboard"; a card with no categories or an explicit
 // "Mainboard" label goes to the mainboard. We match on the first
 // recognised category so a card tagged "Commander,Legendary" (the
 // user added their own "Legendary" tag) still lands in the command
@@ -69,6 +69,8 @@ func ParseArchidekt(raw []byte) (name string, entries []Entry, err error) {
 			entry.IsCommander = true
 		case boardSideboard:
 			entry.IsSideboard = true
+		case boardCompanion:
+			entry.IsCompanion = true
 		case boardMaybeboard:
 			// Maybeboard cards aren't part of the deck list; skip so
 			// validation doesn't complain about card-count overflow.
@@ -82,7 +84,7 @@ func ParseArchidekt(raw []byte) (name string, entries []Entry, err error) {
 	return doc.Name, entries, nil
 }
 
-// board discriminates the three Archidekt category families we act
+// board discriminates the four Archidekt category families we act
 // on. Anything else falls through to mainboard.
 type board int
 
@@ -91,10 +93,14 @@ const (
 	boardCommander
 	boardSideboard
 	boardMaybeboard
+	// boardCompanion is a `Companion` category (ADR 0172 §1). Archidekt
+	// has no companion board of its own, and public decks that declare
+	// a companion use a category by that name.
+	boardCompanion
 )
 
 // archidektBoard picks the first recognised category on a card.
-// User-defined categories are ignored — we only look for the three
+// User-defined categories are ignored — we only look for the four
 // board-relevant names. Case-insensitive because Archidekt's UI
 // preserves capitalisation as typed by the user but the common
 // names are consistent in practice.
@@ -107,6 +113,8 @@ func archidektBoard(categories []string) board {
 			return boardSideboard
 		case "maybeboard":
 			return boardMaybeboard
+		case "companion":
+			return boardCompanion
 		}
 	}
 	return boardMainboard

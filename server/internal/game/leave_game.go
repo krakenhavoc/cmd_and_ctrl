@@ -186,6 +186,9 @@ func (g *Game) removeObjectsOwnedByLocked(playerID uuid.UUID) int {
 		// zone, so they leave with their owner like everything else.
 		// This is the ONLY thing in the game that removes one.
 		sweep(p.Emblems)
+		// ADR 0172: a companion still outside the game goes with its
+		// owner too.
+		sweep(p.Companion)
 	}
 	if removed > 0 {
 		g.recomputeSplitSecondLocked()
@@ -645,6 +648,10 @@ var choiceDepartureDecisions = map[PendingChoiceKind]choiceDepartureRule{
 	// it would have named went with them (CR 800.4a).
 	PendingChoiceEntryDiscardFromHand: {},
 	PendingChoiceEntrySacrifice:       {},
+	// ADR 0170: the entering permanent is the departed player's own and
+	// leaves the game with them (CR 800.4a); the frame rides
+	// replacementResume like its three siblings'.
+	PendingChoiceEntryChoosePermanents: {},
 	// aura_host (CR 303.4f, #3158) is entry_controller's row for its
 	// reason: the chooser is the would-be controller of the entering
 	// Aura, normally their own card, which leaves the game with them

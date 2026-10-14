@@ -359,7 +359,7 @@ func (e *enumerator) choiceMoves() bool {
 						lifeCost := g.LifeGrantedCostForEffect(e.seat, cost)
 						for n := 1; n <= lifeCost.PhyrexianSymbols(); n++ {
 							reduced, life := game.PhyrexianLifePlan(lifeCost, e.p.ManaPool, game.ManaSpendContext{}, n)
-							if !g.CanPayLifeLocked(e.p, life) {
+							if !g.CanPayLifeLocked(e.p, life+c.LifeCost) {
 								break
 							}
 							if e.canPay(reduced, 0, game.ManaSpendContext{}) {
@@ -376,6 +376,7 @@ func (e *enumerator) choiceMoves() bool {
 					taps, canPay = e.waterbendPayUnlessPayment(c, cost)
 				}
 			}
+			canPay = canPay && g.CanPayLifeLocked(e.p, c.LifeCost+payLife*game.PhyrexianLifePerSymbol)
 			for _, apply := range []bool{true, false} {
 				if apply && !canPay {
 					continue
@@ -383,7 +384,11 @@ func (e *enumerator) choiceMoves() bool {
 				a := apply
 				p := base()
 				p.Apply = &a
-				payVerb, verb := anyPlayerVerbs(g, c, "pay "+c.PayCost, e.seat)
+				payment := "pay " + c.PayCost
+				if c.LifeCost > 0 {
+					payment += fmt.Sprintf(" and %d life", c.LifeCost)
+				}
+				payVerb, verb := anyPlayerVerbs(g, c, payment, e.seat)
 				if apply {
 					verb = payVerb
 					if len(taps) > 0 {
@@ -397,7 +402,7 @@ func (e *enumerator) choiceMoves() bool {
 				}
 				var price *MoveCost
 				if apply {
-					price = withPhyrexianLife(nil, payLife)
+					price = withPhyrexianLife(moveCost(c.LifeCost, 0), payLife)
 				}
 				e.addChoiceCost(c, reason+": "+verb, p, price)
 			}
@@ -792,7 +797,7 @@ func (e *enumerator) choiceMoves() bool {
 			game.PendingChoiceEntrySacrifice, game.PendingChoiceRevealPick,
 			game.PendingChoiceTheirPermanents, game.PendingChoiceOwnPermanents,
 			game.PendingChoiceChooseSource, game.PendingChoiceRingBearer,
-			game.PendingChoiceProliferate:
+			game.PendingChoiceProliferate, game.PendingChoiceEntryChoosePermanents:
 			// "Choose N of these cards." The bounds ride on the
 			// choice, and a prompt may also carry a set-level
 			// Validate hook ("discard two unless you discard a
@@ -884,6 +889,14 @@ func (e *enumerator) choiceMoves() bool {
 			if c.Kind == game.PendingChoiceProliferate {
 				sets = withSuggestedFirst(g, c, sets)
 				verb = ": proliferate"
+			}
+			if c.Kind == game.PendingChoiceEntryChoosePermanents {
+				// ADR 0170: Phylactery Lich's artifact, Sin's any
+				// number of permanents. The declaration's suggested
+				// set is always offered, for proliferate's reason: an
+				// "any number" walk stops at the cap long before the
+				// large set a policy wants.
+				sets = withSuggestedFirst(g, c, sets)
 			}
 			for _, set := range sets {
 				p := base()
@@ -2152,10 +2165,11 @@ func (e *enumerator) cardSetPickPool(c *game.PendingChoice) []uuid.UUID {
 		// ADR 0114 §7: the seat's own creatures, best Ring-bearer
 		// first — the opposite end from own_permanents'.
 		return e.bestRingBearerFirst(c.ChooseCards)
-	case game.PendingChoiceProliferate:
+	case game.PendingChoiceProliferate, game.PendingChoiceEntryChoosePermanents:
 		// #2525: permanents AND seats, the engine's suggestion first so
 		// its members survive MaxExpansionPerSource (and withSuggestedFirst
-		// offers the whole suggested set regardless).
+		// offers the whole suggested set regardless). ADR 0170's entry
+		// choice has no seats and the same suggestion.
 		return proliferatePool(c)
 	}
 	return c.ChooseCards

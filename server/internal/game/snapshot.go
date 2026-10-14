@@ -631,6 +631,13 @@ type playerSnapshot struct {
 	// emblems existed had one. See SnapshotSchemaVersion for why the
 	// schema was bumped anyway.
 	Emblems *zoneSnapshot `json:"emblems,omitempty"`
+	// Companion is Player.Companion (ADR 0172 §4): the revealed
+	// companion still outside the game. Written only while it holds a
+	// card. Additive within v8: absent means no companion waiting,
+	// which is right for every file written before companions could be
+	// seated, and an older binary that drops it loses only the option
+	// to take the companion (weaker than printed, owner decision 6).
+	Companion *zoneSnapshot `json:"companion,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
@@ -811,6 +818,11 @@ type cardSnapshot struct {
 	// ordered at its permanent's own timestamp.
 	CounterStampedAt map[string]int64 `json:"counterStampedAt,omitempty"`
 	IsCommander      bool             `json:"isCommander"`
+	// IsCompanion is Card.IsCompanion (ADR 0172 §4). Additive within
+	// v8; absent means not a companion, which is every card in every
+	// file written before companions could be seated. An older binary
+	// drops it and loses only the badge.
+	IsCompanion bool `json:"isCompanion,omitempty"`
 	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
 	// CR 903.9a check is owed to this commander. Additive within v7;
 	// an older file has none, which is what every game before it was.
@@ -886,6 +898,12 @@ type cardSnapshot struct {
 	// say what went. Old snapshots have no key and their zero uuid
 	// reads correctly as "nobody chosen".
 	ChosenPlayer uuid.UUID `json:"chosenPlayer,omitempty"`
+	// ChosenSecondPlayer is the second answer of "as this enters,
+	// choose two players" (#3389). Carried for ChosenPlayer's reason:
+	// it is half of what Sower of Discord's trigger reads, so a restore
+	// that lost it would silently turn the pair into one player. Old
+	// snapshots have no key and read "nobody chosen".
+	ChosenSecondPlayer uuid.UUID `json:"chosenSecondPlayer,omitempty"`
 	// ChosenName is the CR 614.12 "as this enters, choose a card
 	// name" answer (#1210). Carried for ChosenPlayer's reason and one
 	// more: it is free text, so there is not even a vocabulary a
@@ -1271,6 +1289,7 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.Graveyard)
 		walk(p.Command)
 		walk(p.Emblems)
+		walk(p.Companion)
 	}
 	return out
 }
@@ -2042,6 +2061,25 @@ func snapshotRNGCounters(m map[string]uint64) map[string]uint64 {
 	return cloneRNGCounters(m)
 }
 
+// snapshotCompanionZone is snapshotZone for Player.Companion, which is
+// written only while it holds a card (ADR 0172 §4), so a file with no
+// companion waiting is byte-for-byte the shape it was before.
+func snapshotCompanionZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
+	if z == nil || len(z.Cards) == 0 {
+		return nil
+	}
+	return snapshotZone(z, cen)
+}
+
+// restoreCompanionZone is restoreZone for Player.Companion: absent
+// stays nil, which is "no companion waiting" (ADR 0172 §4).
+func restoreCompanionZone(z *zoneSnapshot) *Zone {
+	if z == nil {
+		return nil
+	}
+	return restoreZone(z, ZoneOutside)
+}
+
 func snapshotZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
 	if z == nil {
 		return nil
@@ -2162,6 +2200,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		IsCompanion:              c.IsCompanion,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -2196,6 +2235,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		MeldSplitFrom:            objectRefPtr(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
@@ -2266,6 +2306,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Graveyard:             snapshotZone(p.Graveyard, cen),
 		Command:               snapshotZone(p.Command, cen),
 		Emblems:               snapshotZone(p.Emblems, cen),
+		Companion:             snapshotCompanionZone(p.Companion, cen),
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
@@ -3054,6 +3095,7 @@ func restoreCard(c *cardSnapshot) Card {
 		Counters:                 copyStringIntMap(c.Counters),
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
+		IsCompanion:              c.IsCompanion,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -3087,6 +3129,7 @@ func restoreCard(c *cardSnapshot) Card {
 		MeldSplitFrom:            objectRefValue(c.MeldSplitFrom),
 		ChosenColor:              c.ChosenColor,
 		ChosenPlayer:             c.ChosenPlayer,
+		ChosenSecondPlayer:       c.ChosenSecondPlayer,
 		ChosenName:               c.ChosenName,
 		ChosenOption:             c.ChosenOption,
 		ChosenNumber:             c.ChosenNumber,
@@ -3190,6 +3233,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Graveyard:          restoreZone(p.Graveyard, ZoneGraveyard),
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
+		Companion:          restoreCompanionZone(p.Companion),
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,

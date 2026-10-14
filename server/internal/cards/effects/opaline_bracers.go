@@ -17,7 +17,7 @@ func init() {
 		OracleID:            "a4d6cb66-698d-4b76-b922-f799ad9d8805",
 		Name:                "Opaline Bracers",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Static: []game.StaticAbility{

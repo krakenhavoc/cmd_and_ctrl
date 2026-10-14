@@ -258,6 +258,15 @@ What to know about how they behave:
 - **No sandbox verbs, no improvisation.** The agent cannot move cards,
   change life, force a cast or undo. When a card is marked as not run by
   the engine, its recourse is to say in chat what it should have done.
+- **A companion is on the board and in the list.** A deck may declare a
+  companion ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md)):
+  a `Companion` section in a `{list}` deck, Moxfield's companions board,
+  or a lone companion card in the sideboard. Every seat's revealed
+  companion shows on the board as `companion (outside the game): <name>`
+  until it is taken, and `get_state` carries it as the seat's
+  `companion`. In your main phase with an empty stack and {3} to spend,
+  the list offers `Pay {3}: put <name> into your hand (companion)`, once
+  per game. No new tool.
 - **A server that predates the badge (#2249) refuses the join** with a
   400 about an unknown `agent` field. The binary says so and does not
   retry without the field.

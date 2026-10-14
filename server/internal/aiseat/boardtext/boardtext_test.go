@@ -115,6 +115,24 @@ func TestRenderEnergyPrompts(t *testing.T) {
 	}
 }
 
+func TestRenderCompoundWardLifeCost(t *testing.T) {
+	v := view()
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		ID: "ward", Kind: "pay_unless", Chooser: "a", Reason: "Ward — pay {2}",
+		PayCost: "{2}", LifeCost: 2,
+	}}
+	for _, blocked := range []bool{false, true} {
+		v.PendingChoices[0].LifeCostUnpayable = blocked
+		got := boardtext.Render(v, "a", boardtext.Options{})
+		if !strings.Contains(got, "Ward — pay {2} (also pay 2 life)") {
+			t.Fatalf("mandatory life payment missing: %s", got)
+		}
+		if strings.Contains(got, "life payment unavailable") != blocked {
+			t.Fatalf("life payment availability missing: %s", got)
+		}
+	}
+}
+
 // #2794: the MCP seat asks for each owed choice's id, the handle its
 // legal_moves(choice) takes; the bot's prompt keeps the kind alone.
 func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {
@@ -126,6 +144,37 @@ func TestRenderChoiceIDsOnlyWhenAsked(t *testing.T) {
 	}
 	if got := boardtext.Render(v, "a", boardtext.Options{}); strings.Contains(got, "c-1") {
 		t.Errorf("the bot's board printed the choice id:\n%s", got)
+	}
+}
+
+func TestRenderEarlierPermanentChoicesFromFilteredView(t *testing.T) {
+	v := view()
+	v.Battlefield.Cards = []protocol.CardView{
+		{InstanceID: "forest-id", Name: "Forest", Controller: "a", TypeLine: "Basic Land — Forest"},
+		{
+			InstanceID: "face-down-id", Name: "Hidden Assassin", Controller: "b",
+			FaceDown: true, FaceDownKind: "morphed",
+		},
+	}
+	v.PendingChoices = []protocol.PendingChoiceView{{
+		Kind: "choose_cards", Chooser: "b", Reason: "Liliana, Dreadhorde General",
+		EarlierChoices: []protocol.EarlierChoiceView{
+			{PlayerID: "a", CardIDs: []string{"forest-id"}},
+			{PlayerID: "b", CardIDs: []string{"face-down-id"}},
+		},
+	}}
+
+	got := boardtext.Render(v, "b", boardtext.Options{})
+	for _, want := range []string{
+		"YOU OWE A CHOICE: choose_cards — Liliana, Dreadhorde General",
+		"earlier choices: Ann chose Forest; Bo (YOU) chose a face-down 2/2 creature",
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q in\n%s", want, got)
+		}
+	}
+	if strings.Contains(got, "Hidden Assassin") {
+		t.Errorf("the filtered face-down card identity leaked into the prompt:\n%s", got)
 	}
 }
 

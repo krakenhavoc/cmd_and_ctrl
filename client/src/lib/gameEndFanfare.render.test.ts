@@ -10,6 +10,7 @@ import GameEndFanfare from "./components/GameEndFanfare.svelte";
 import { seatColor } from "./colors";
 import { fanfareFor, type Fanfare } from "./gameEndFanfare";
 import type { GameView, PlayerView } from "./protocol";
+import type { RematchPlan } from "./rematch";
 import { cleanup, flushSync, render } from "./test/render.svelte";
 
 afterEach(cleanup);
@@ -144,5 +145,97 @@ describe("GameEndFanfare", () => {
   it("is not a modal, so the dock under it stays reachable", () => {
     const { q } = mount(fanfareFor(ended(WIN), "b")!, false);
     expect(q("[role=dialog]")?.getAttribute("aria-modal")).toBe("false");
+  });
+});
+
+// #3419: the dock's rematch controls (#3285, ADR 0164), on the card.
+describe("GameEndFanfare rematch", () => {
+  const handlers = () => ({
+    onOffer: vi.fn(),
+    onOpen: vi.fn(),
+    onAccept: vi.fn(),
+    onLeave: vi.fn(),
+  });
+  const mountRematch = (plan: RematchPlan, armed = true, busy = false) => {
+    const h = handlers();
+    const r = render(
+      GameEndFanfare as never,
+      {
+        fanfare: fanfareFor(ended(WIN), "a")!,
+        motion: false,
+        armed,
+        rematch: { plan, busy, ...h },
+        onback: vi.fn(),
+        ondismiss: vi.fn(),
+      } as never,
+    );
+    const btn = (label: string) =>
+      [...r.container.querySelectorAll("button")].find((b) => b.textContent?.trim() === label);
+    return { r, h, btn };
+  };
+
+  it("host: a Rematch button next to Back to lobby", () => {
+    const { h, btn } = mountRematch({ kind: "offer" });
+    expect(btn("Back to lobby")).toBeTruthy();
+    btn("Rematch")!.click();
+    expect(h.onOffer).toHaveBeenCalledTimes(1);
+  });
+
+  it("ask: names the host, and Join / No thanks call the handlers", () => {
+    const { r, h, btn } = mountRematch({ kind: "ask", hostName: "Bob", gameID: "g2" });
+    expect(r.container.textContent).toContain("Bob offered a rematch");
+    btn("Join the rematch")!.click();
+    btn("No thanks")!.click();
+    expect(h.onAccept).toHaveBeenCalledTimes(1);
+    expect(h.onLeave).toHaveBeenCalledTimes(1);
+  });
+
+  it("open-table: opens the new table", () => {
+    const { h, btn } = mountRematch({ kind: "open-table", gameID: "g2" });
+    btn("Open rematch table")!.click();
+    expect(h.onOpen).toHaveBeenCalledWith("g2");
+  });
+
+  it("none: nothing extra", () => {
+    const { r } = mountRematch({ kind: "none" });
+    expect([...r.container.querySelectorAll("button")].map((b) => b.textContent?.trim())).toEqual([
+      "Back to lobby",
+      "Keep looking at the board",
+    ]);
+  });
+
+  it("without a rematch prop (practice, spectator): nothing extra", () => {
+    const { q } = mount(fanfareFor(ended(WIN), "a")!, false);
+    expect(q("[data-testid^=fanfare-rematch]")).toBeNull();
+  });
+
+  it("updates live when the offer arrives after the card opened", () => {
+    const h = handlers();
+    const r = render(
+      GameEndFanfare as never,
+      {
+        fanfare: fanfareFor(ended(WIN), "a")!,
+        motion: false,
+        rematch: { plan: { kind: "none" } as RematchPlan, ...h },
+        onback: vi.fn(),
+        ondismiss: vi.fn(),
+      } as never,
+    );
+    expect(r.container.textContent).not.toContain("offered a rematch");
+    r.setProps({
+      rematch: { plan: { kind: "ask", hostName: "Bob", gameID: "g2" }, ...h },
+    } as never);
+    expect(r.container.textContent).toContain("Bob offered a rematch");
+    expect(r.container.querySelector("[data-testid=fanfare-rematch-join]")).not.toBeNull();
+  });
+
+  it("holds the rematch buttons until armed, and while busy", () => {
+    const off = mountRematch({ kind: "offer" }, false);
+    expect(off.btn("Rematch")!.disabled).toBe(true);
+    off.btn("Rematch")!.click();
+    expect(off.h.onOffer).not.toHaveBeenCalled();
+    const busy = mountRematch({ kind: "ask", hostName: "Bob", gameID: "g2" }, true, true);
+    expect(busy.btn("Join the rematch")!.disabled).toBe(true);
+    expect(busy.btn("No thanks")!.disabled).toBe(true);
   });
 });

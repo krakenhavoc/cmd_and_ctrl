@@ -24,6 +24,18 @@
   // paying board space every turn for a read that only happens while
   // the stack is live.
   //
+  // #3429, ADR 0176 — movable. The header is a drag handle (pointer
+  // events, so touch works). A drag takes the card out of the strip's
+  // flow and pins it where it was dropped, as a fraction of the board
+  // (lib/stackPosition.ts), clamped to stay on screen. The saved spot
+  // comes in as `position` (the server's, per seat) and a drop goes out
+  // through `onSave`; a spectator passes no `onSave`, so the card moves
+  // for them and nothing is kept. Double-clicking the header, or the
+  // reset button that shows once a spot exists, puts it back.
+  //
+  // The drag is captured on the header, so the release can never click a
+  // stack item under the pointer.
+  //
   // For an ability item the previewed card is the source permanent
   // (abilities have no card of their own on the stack) — the same
   // card artCardFor() already draws the thumb from.
@@ -35,7 +47,9 @@
   // cannot say different things about the same stack. The #322 hover
   // bookkeeping is lib/stackHover.ts for the same reason.
 
-  import type { PlayerView, StackItemView, ZoneView } from "../../protocol";
+  import type { PlayerView, StackItemView, StackPositionView, ZoneView } from "../../protocol";
+  import { stackPixels, type Size } from "../../stackPosition";
+  import { createStackPlacement } from "../../stackPlacement.svelte";
   import { cardImageURL } from "../../cardImage";
   import { cardArt } from "../../cardArt";
   import Icon from "../Icon.svelte";
@@ -68,6 +82,13 @@
     // has decided is "considering a response" — a public-timing
     // read, never a hint about whether they actually have one.
     priorityHolderConsidering?: boolean;
+    // #3429: the board the card is placed on, the seat's saved spot, and
+    // what a drop and a reset do about it. Without a board the card stays
+    // docked.
+    boardEl?: HTMLElement | null;
+    position?: StackPositionView | null;
+    onSave?: (pos: StackPositionView) => void | Promise<void>;
+    onReset?: () => void | Promise<void>;
   }
 
   const {
@@ -83,6 +104,10 @@
     onTargetStackItem,
     priorityHolderName = null,
     priorityHolderConsidering = false,
+    boardEl = null,
+    position = null,
+    onSave,
+    onReset,
   }: Props = $props();
 
   // The docked card never says "your", so it needs no viewer; the
@@ -114,6 +139,69 @@
   const triggers = $derived(model.pendingTriggers);
   const visible = $derived(displayItems.length > 0 || triggers.length > 0 || stack.count > 0);
 
+  // ---- #3429 movable --------------------------------------------
+  // The drag, save and reset are lib/stackPlacement.svelte.ts, shared with
+  // the floating lane.
+  let overlayEl = $state<HTMLDivElement | undefined>();
+  let geom = $state<{ board: Size; panel: Size; ox: number; oy: number } | null>(null);
+
+  const move = createStackPlacement({
+    position: () => position,
+    onSave: () => onSave,
+    onReset: () => onReset,
+    panel: () => overlayEl,
+    board: () => boardEl,
+    before: () => measure(),
+  });
+  const placed = $derived(move.placed);
+  const placedStyle = $derived.by(() => {
+    if (!placed || !geom) return null;
+    const px = stackPixels(placed, geom.board, geom.panel);
+    return `left:${geom.ox + px.left}px;top:${geom.oy + px.top}px`;
+  });
+
+  // The card's offset parent is the strip; the saved spot is relative to
+  // the board, so both rects go into one offset.
+  function measure(): void {
+    const el = overlayEl;
+    const parent = el?.offsetParent;
+    if (!el || !boardEl || !(parent instanceof HTMLElement)) return;
+    const b = boardEl.getBoundingClientRect();
+    const p = parent.getBoundingClientRect();
+    const next = {
+      board: { width: b.width, height: b.height },
+      panel: { width: el.offsetWidth, height: el.offsetHeight },
+      ox: b.left - p.left,
+      oy: b.top - p.top,
+    };
+    const g = geom;
+    if (
+      g &&
+      g.board.width === next.board.width &&
+      g.board.height === next.board.height &&
+      g.panel.width === next.panel.width &&
+      g.panel.height === next.panel.height &&
+      g.ox === next.ox &&
+      g.oy === next.oy
+    ) {
+      return;
+    }
+    geom = next;
+  }
+
+  // Placed or not, keep the geometry current: the board resizes with the
+  // window and the card with its stack.
+  $effect(() => {
+    const el = overlayEl;
+    if (!el || !boardEl) return;
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(boardEl);
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
+
   // ---- #322 hover preview -------------------------------------
   // The overlay pins top-right and the strip pins top-left, so the
   // big preview lands beside the stack rather than over it.
@@ -143,8 +231,30 @@
 {#if visible}
   <!-- data-stack-overlay: lib/stackPile.ts leaves this card out when it
        measures the strip's content (ADR 0119 §1). -->
-  <div class="overlay" data-stack-overlay aria-label={L.stackPile(displayItems.length)}>
-    <header class="stack-head">
+  <div
+    class="overlay"
+    class:placed={placed !== null}
+    class:dragging={move.dragging}
+    data-stack-overlay
+    aria-label={L.stackPile(displayItems.length)}
+    style={placedStyle}
+    bind:this={overlayEl}
+  >
+    <!-- #3429: the header is the drag handle; double-click resets. The
+         keyboard route is the reset button below, so the pointer handlers
+         need no role. -->
+    <!-- svelte-ignore a11y_no_static_element_interactions -->
+    <header
+      class="stack-head"
+      class:movable={boardEl !== null}
+      data-stack-handle
+      title={boardEl ? "drag to move the stack · double-click to reset" : undefined}
+      onpointerdown={move.onPointerDown}
+      onpointermove={move.onPointerMove}
+      onpointerup={move.onPointerUp}
+      onpointercancel={move.onPointerCancel}
+      ondblclick={boardEl ? move.reset : undefined}
+    >
       <span class="label">stack <b class="count">{displayItems.length}</b></span>
       {#if splitSecondActive}
         <span class="hint split-second" title="no responses allowed (split second is active)">
@@ -160,6 +270,17 @@
             {priorityHolderName} holds priority
           {/if}
         </span>
+      {/if}
+      {#if placed}
+        <button
+          type="button"
+          class="reset-pos"
+          title="Reset position"
+          aria-label="Reset stack position"
+          onclick={move.reset}
+        >
+          <Icon name="undo" size={12} />
+        </button>
       {/if}
       <!-- ADR 0111 §7: no hold or Pass here. Both live in the action
            dock (bottom right), and its `next` is the one pass button. -->
@@ -281,6 +402,45 @@
     font-size: 12px;
     overflow: hidden;
     box-sizing: border-box;
+  }
+  /* #3429: a placed card leaves the strip's flow; the script sets its
+     left and top from the saved spot, and the width stays the strip's. */
+  .overlay.placed {
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 1;
+  }
+  .overlay.dragging {
+    box-shadow: var(--shadow-lg), var(--ring);
+    user-select: none;
+  }
+  .stack-head.movable {
+    cursor: grab;
+    touch-action: none;
+  }
+  .overlay.dragging .stack-head.movable {
+    cursor: grabbing;
+  }
+  .reset-pos {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface-raised);
+    color: var(--fg-dim);
+    cursor: pointer;
+  }
+  .reset-pos:hover,
+  .reset-pos:focus-visible {
+    color: var(--fg);
+    border-color: var(--border-strong);
   }
   .stack-head {
     display: flex;

@@ -26,7 +26,7 @@ func init() {
 		OracleID:            "159427f7-27fe-490d-ac78-fed092952f51",
 		Name:                "Spinal Parasite",
 		Completeness:        CompletenessCaveats,
-		Caveats:             []string{"When mana payment is skipped, the game doesn't track which mana you spent, so it enters with no counters at all."},
+		Caveats:             []string{"When “Charge mana costs” is off, or you choose Cast anyway, the game doesn't track which mana you spent, so it enters with no counters at all."},
 		WantsDistinctColors: true,
 		PrintedKeywords:     []string{game.KeywordSunburst},
 		Activated: []ActivatedAbility{{

@@ -16,8 +16,8 @@ import (
 //	 Equip {2}{U}"
 //
 // Sword of Feast and Famine's equipped-creature damage trigger, with
-// Sunbird's Invocation's look-choose-exile-bottom-cast sequence behind
-// it. The count is the damage dealt, read off the triggering event. The
+// a look-choose-exile-bottom-cast sequence behind it (Sunbird's
+// Invocation's shape, but this card exiles its pick as printed). The count is the damage dealt, read off the triggering event. The
 // chosen card is exiled first, the rest go to the bottom in a random
 // order, and then the free cast is offered as part of the resolution
 // (CR 608.2g): the permission lapses on the controller's next priority

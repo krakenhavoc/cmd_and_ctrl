@@ -35,6 +35,9 @@
     UNDO_UNLIMITED,
     describeUndoLimit,
     isUnlimitedUndo,
+    describeFreeMulligans,
+    FREE_MULLIGANS_UNLIMITED,
+    MAX_FREE_MULLIGANS,
     settingsDiff,
     settingsPatchError,
     startingLifeLocked,
@@ -48,7 +51,8 @@
     // is the host or the server admin.
     canManage: boolean;
     // The game's lifecycle state: "lobby" | "active" | "ended". Only
-    // starting life reads it, and only to lock itself. Named
+    // starting life and free mulligans read it, and only to lock
+    // themselves. Named
     // `gameState` rather than `state` because a local binding called
     // `state` turns every `$state(...)` rune in this file into a
     // store subscription.
@@ -76,9 +80,11 @@
   let lifeDraft = $state(untrack(() => settings.starting_life));
   let cmdDraft = $state(untrack(() => settings.commander_damage));
   let undoDraft = $state(untrack(() => settings.undo_limit));
+  let freeDraft = $state(untrack(() => settings.free_mulligans ?? 0));
   $effect(() => void (lifeDraft = settings.starting_life));
   $effect(() => void (cmdDraft = settings.commander_damage));
   $effect(() => void (undoDraft = settings.undo_limit));
+  $effect(() => void (freeDraft = settings.free_mulligans ?? 0));
 
   // A locally-caught range problem, shown under the field that
   // produced it instead of travelling to the server and coming back
@@ -268,6 +274,42 @@
       Lets the host put cards and tokens straight onto the table — for the cards the engine can't
       make yet, and for fixing a misplay. While it is on, everyone at the table sees a badge saying
       so, and every spawn is named in the game log.
+    </p>
+  </section>
+
+  <section class="tsp-field" data-field="free_mulligans" class:locked={lifeLocked}>
+    <div class="tsp-row">
+      <label class="tsp-label" for="tsp-free-mull">Free mulligans</label>
+      <span class="tsp-control">
+        <input
+          id="tsp-free-mull"
+          type="number"
+          min={FREE_MULLIGANS_UNLIMITED}
+          max={MAX_FREE_MULLIGANS}
+          disabled={disabled || lifeLocked}
+          bind:value={freeDraft}
+          onchange={() => commitNumber(freeDraft, "free_mulligans")}
+        />
+        <button
+          type="button"
+          class="tsp-chip"
+          class:on={settings.free_mulligans === FREE_MULLIGANS_UNLIMITED}
+          disabled={disabled || lifeLocked}
+          aria-label="unlimited free mulligans"
+          aria-pressed={settings.free_mulligans === FREE_MULLIGANS_UNLIMITED}
+          title="every mulligan is free"
+          onclick={() => apply({ free_mulligans: FREE_MULLIGANS_UNLIMITED })}>∞</button
+        >
+      </span>
+    </div>
+    <p class="tsp-hint">
+      {#if lifeLocked}
+        Fixed — the opening hands have already been dealt. {describeFreeMulligans(
+          settings.free_mulligans,
+        )}
+      {:else}
+        {describeFreeMulligans(settings.free_mulligans)}
+      {/if}
     </p>
   </section>
 

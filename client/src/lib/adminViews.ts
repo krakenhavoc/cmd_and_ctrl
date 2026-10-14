@@ -58,7 +58,8 @@ export type AdminView =
   | { view: "game"; id: string }
   | { view: "accounts"; filter: AccountsFilter }
   | { view: "account"; id: string }
-  | { view: "reports" };
+  | { view: "reports" }
+  | { view: "stats" };
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -120,6 +121,8 @@ export function parseAdminView(rest: string[], params: URLSearchParams): AdminVi
       return { view: "accounts", filter: accountsFilterFrom(params) };
     case "reports":
       return id === undefined ? { view: "reports" } : null;
+    case "stats":
+      return id === undefined ? { view: "stats" } : null;
     default:
       return null;
   }
@@ -197,6 +200,8 @@ export function adminViewHash(v: AdminView): string {
       return accountHash(v.id);
     case "reports":
       return REPORTS_HASH;
+    case "stats":
+      return STATS_HASH;
   }
 }
 
@@ -204,8 +209,11 @@ export const LIVE_HASH = "#/admin/live";
 /** The Reports view (#2984): what players have reported at their tables. */
 export const REPORTS_HASH = "#/admin/reports";
 
+/** The Stats view (ADR 0165 §8, #3425): game statistics for operators. */
+export const STATS_HASH = "#/admin/stats";
+
 /** The tab a view belongs to in the `navigation "admin views"` strip. */
-export type AdminTab = "live" | "games" | "accounts" | "reports";
+export type AdminTab = "live" | "games" | "accounts" | "reports" | "stats";
 
 export function tabOf(v: AdminView): AdminTab {
   if (v.view === "game") return "games";
@@ -247,6 +255,46 @@ export interface AdminReportsResponse {
   reports: AdminReport[];
   /** How long a report is kept before the server removes it. */
   retention_days: number;
+}
+
+/** Counts of results over some games (mirrors gamestats.Tally). */
+export interface AdminStatsTally {
+  games: number;
+  wins: number;
+  losses: number;
+  draws: number;
+  /** Mean place over the games that have one; null when none do. */
+  avg_place: number | null;
+}
+
+/** `GET /admin/stats` (ADR 0165 §8): every list holds at most 25 rows. */
+export interface AdminStatsResponse {
+  totals: {
+    /** games with a record */
+    games: number;
+    live: number;
+    replay: number;
+    log_complete: number;
+    log_incomplete: number;
+    /** ended games with no record: what the backfill would fill in */
+    unrecorded: number;
+  };
+  recent: {
+    game_id: string;
+    name: string;
+    /** Unix milliseconds */
+    ended_at: number;
+    turns: number;
+    rounds: number;
+    source: string;
+  }[];
+  people: (AdminStatsTally & {
+    name: string;
+    kind: "account" | "guest" | "bot" | "agent" | "deleted";
+  })[];
+  commanders_by_games: (AdminStatsTally & { name: string })[];
+  commanders_by_wins: (AdminStatsTally & { name: string })[];
+  cards: { name: string; casts: number; games: number }[];
 }
 
 /** A person's account as a row names it. */

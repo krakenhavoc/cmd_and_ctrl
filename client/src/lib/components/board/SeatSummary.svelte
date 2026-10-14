@@ -40,6 +40,7 @@
   import { heldPlayableCount } from "../../exileGrants";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import CommandStrip from "./CommandStrip.svelte";
+  import CompanionSlot from "./CompanionSlot.svelte";
   import { seatColor } from "../../colors";
   import { L } from "../../labels";
 
@@ -256,6 +257,8 @@
     <!-- #2349: the seat's commander, face up with its tax, as it sits
          beside the hand on a full board. -->
     <CommandStrip {seat} compact />
+    <!-- ADR 0172: the seat's revealed companion, public, view only. -->
+    <CompanionSlot {seat} compact />
     <button
       class="expand"
       type="button"

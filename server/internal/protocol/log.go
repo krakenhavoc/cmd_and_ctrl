@@ -272,6 +272,11 @@ const (
 	// it ("Foretell {2}"), and the entry is the only thing that
 	// says WHICH action a card leaving a hand for exile was.
 	LogSpecialAction LogKind = "special_action"
+	// LogCompanionRevealed — a player revealed their companion as the
+	// game began (CR 103.2b, ADR 0172 §5): "Alice revealed Jegantha,
+	// the Wellspring as their companion". `card_id` is the companion,
+	// which is public from then on.
+	LogCompanionRevealed LogKind = "companion_revealed"
 	// LogActivateAcross — a player activated the "Any player may
 	// activate this ability" row of a permanent ANOTHER player controls
 	// (ADR 0106 §1 decision 6, CR 602.2): "Bob activated Alice's Xantcha,
@@ -526,6 +531,18 @@ const (
 	// to cleanup, and without this line the exile lines and the jump
 	// arrive unexplained. A turn that ends normally has no such line.
 	LogTurnEnded LogKind = "turn_ended"
+	// LogPlayerControlScheduled — a player will control another during
+	// that player's next turn (CR 723.1, ADR 0167: Emrakul, the Promised
+	// End). `seat` is the controller, `target_seat` the controlled
+	// player and `card_id` the card whose effect it is. Narrated because
+	// it decides who plays a turn the table has not reached yet.
+	LogPlayerControlScheduled LogKind = "player_control_scheduled"
+	// LogPlayerControlBegan — that turn began, and the controller makes
+	// the controlled player's decisions for all of it. Fields as above.
+	LogPlayerControlBegan LogKind = "player_control_began"
+	// LogPlayerControlEnded — the controlled turn is over and the
+	// control with it, as the next turn begins. Fields as above.
+	LogPlayerControlEnded LogKind = "player_control_ended"
 )
 
 // The three choose-a-value kinds are separate rather than one "chose
@@ -1490,6 +1507,13 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.Label = ev.Label
 		return base, true
 
+	case game.EventCompanionRevealed:
+		// ADR 0172 §5. The card is public, so the line names it.
+		base.Kind = LogCompanionRevealed
+		base.CardID = uuidStringOrEmpty(ev.CardID)
+		base.Label = ev.Label
+		return base, true
+
 	case game.EventSpawned:
 		// ADR 0075 §2.4. The whole justification for allowing a
 		// production spawn is that the table can see it happen: a
@@ -1804,6 +1828,23 @@ func projectEvent(ev game.Event, seatOf func(uuid.UUID) int, turn *int, step *st
 		base.CardID = uuidStringOrEmpty(ev.Source)
 		return base, true
 
+	case game.EventPlayerControlScheduled, game.EventPlayerControlBegan, game.EventPlayerControlEnded:
+		// ADR 0167. Actor controls Target. Not setTarget, for
+		// EventPlayerChosen's reason: the controlled player is a seat.
+		switch ev.Kind {
+		case game.EventPlayerControlScheduled:
+			base.Kind = LogPlayerControlScheduled
+		case game.EventPlayerControlBegan:
+			base.Kind = LogPlayerControlBegan
+		default:
+			base.Kind = LogPlayerControlEnded
+		}
+		base.CardID = uuidStringOrEmpty(ev.Source)
+		if seat := seatOf(ev.Target); seat != NoSeat {
+			base.TargetSeat = &seat
+		}
+		return base, true
+
 	case game.EventTurnEnded:
 		base.Kind = LogTurnEnded
 		base.CardID = uuidStringOrEmpty(ev.Source)
@@ -1944,6 +1985,11 @@ func resolveLogNames(entries []LogEvent, v *GameView) {
 		indexCardPtrsInto(cards, wanted, v.Battlefield, v.Stack, v.Exile)
 		for _, s := range v.Seats {
 			indexCardPtrsInto(cards, wanted, s.Hand, s.Library, s.Graveyard, s.Command)
+			// ADR 0172: a companion still outside the game is in no
+			// zone, and its reveal line names it.
+			if c := s.Companion; c != nil && wanted[c.InstanceID] {
+				cards[c.InstanceID] = c
+			}
 		}
 	}
 
@@ -2408,6 +2454,16 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s took a special action on %s", actor, card)
 		}
 		return fmt.Sprintf("%s used %s on %s", actor, e.Label, card)
+	case LogCompanionRevealed:
+		// The view always holds a revealed companion, outside the game
+		// or later in play, so the name comes from the card; the label
+		// is the name as it was revealed, for a card the view no longer
+		// holds (a seat that left).
+		name := cardName
+		if name == "" {
+			name = nameOr(e.Label, "a card")
+		}
+		return fmt.Sprintf("%s revealed %s as their companion", actor, name)
 	case LogActivateAcross:
 		// "Bob activated Alice's Xantcha, Sleeper Agent". `target` is
 		// the controller's seat name (or "a player").
@@ -2511,6 +2567,22 @@ func renderLogTextOf(e *LogEvent, cardName, targetName string) string {
 			return fmt.Sprintf("%s's turn ends", actor)
 		}
 		return fmt.Sprintf("%s's turn ends (%s)", actor, card)
+	case LogPlayerControlScheduled, LogPlayerControlBegan, LogPlayerControlEnded:
+		// `target` is the controlled player's seat name (or "a
+		// player"), as in LogChoosePlayer.
+		var line string
+		switch e.Kind {
+		case LogPlayerControlScheduled:
+			line = fmt.Sprintf("%s will control %s during %s's next turn", actor, target, target)
+		case LogPlayerControlBegan:
+			line = fmt.Sprintf("%s controls %s this turn", actor, target)
+		default:
+			line = fmt.Sprintf("%s no longer controls %s", actor, target)
+		}
+		if e.CardID == "" {
+			return line
+		}
+		return fmt.Sprintf("%s (%s)", line, card)
 	case LogExtraPhase:
 		what := describeAddedPhases(e.Label)
 		if e.CardID == "" {
@@ -2612,6 +2684,16 @@ func renderSettingsText(e LogEvent) string {
 			return fmt.Sprintf("%s allowed spawning", who)
 		}
 		return fmt.Sprintf("%s disallowed spawning", who)
+	case game.SettingFreeMulligans:
+		switch e.Choice {
+		case strconv.Itoa(game.FreeMulligansUnlimited):
+			return fmt.Sprintf("%s made every mulligan free", who)
+		case "0":
+			return fmt.Sprintf("%s set mulligans to follow the rules", who)
+		case "1":
+			return fmt.Sprintf("%s made the first mulligan free", who)
+		}
+		return fmt.Sprintf("%s made the first %s mulligans free", who, e.Choice)
 	}
 	if e.Label == "" {
 		return fmt.Sprintf("%s changed a table setting", who)

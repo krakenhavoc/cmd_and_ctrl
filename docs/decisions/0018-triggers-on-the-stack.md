@@ -4536,3 +4536,23 @@ Issue [#3172](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3172), slice "c
 No wire change, no snapshot change, no new prompt kind, no effect-key ledger line. Prompts a closure holds (`maySacrificeOne`'s `then`, `chooseCounters`' `then`) make the table unrestorable while they are open, as every `Then`-closure prompt already does (the Volcano Hellion posture).
 
 **Back-outs.** Each shape has a test that fails without it: `TestRuthlessTechnomancerPaysNothingForACancelledSacrifice` (the landed list, not the pick), `TestB22SlaughterTheStrongKeepsLowestPowerWithinFour` (the set rule), `TestB18ThirstForKnowledgeAcceptsOneArtifactOrTwoCards` (the unless rule), `TestCavAEmeriaRechecksThePlainsOnResolution` and `TestCavAThopterSpyNetworkRechecksTheArtifactOnResolution` (the re-checks), `TestCavAGlissaChoosesHowManyCountersOfEachKind` (the ceiling), `TestB17BreenaTriggersAgainInAnAdditionalCombat` (no per-turn tally), `TestB31BlossomingTortoiseDiscountsLandActivations` (the discount).
+
+## Amendment 2026-10-13 — Graveyard watchers use the actual exit set (#3417) — Accepted
+
+`Event.Batch` spans a whole resolution and cannot tell whether two battlefield
+exits were simultaneous. Nether Traitor must see a creature that dies in a
+later instruction after the Traitor has entered the graveyard, including when
+both instructions belong to one resolving spell.
+
+Expose `Game.InSameSimultaneousExitForEffect(a, b)` as a read-only query over
+the already published simultaneous-exit copies. A graveyard watcher is
+excluded only when both it and the qualifying exiting creature are members of
+that exit. Checking both IDs matters: an outer batch can remain published
+while its continuation starts a later instruction. Existing graveyard scope,
+last-known owner/type checks, resolution-time payment and object-epoch guards
+remain the authoritative checks for their respective questions.
+
+This adds no event or persisted state and introduces no second batching
+system. Tests distinguish sequential instructions inside one resolution from
+an actual simultaneous wipe/sacrifice, and retain the existing recursion
+regressions. Clear Nether Traitor's ordering caveat only with those tests.

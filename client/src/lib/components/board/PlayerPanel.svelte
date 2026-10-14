@@ -74,6 +74,7 @@
   import Hand from "./Hand.svelte";
   import ExileStrip from "./ExileStrip.svelte";
   import CommandStrip from "./CommandStrip.svelte";
+  import CompanionSlot from "./CompanionSlot.svelte";
   import type { CastSourceZone } from "../../targeting";
   import PlayerIdentity from "./PlayerIdentity.svelte";
   import { seatColor } from "../../colors";
@@ -865,7 +866,9 @@
     <!-- Hand sits inline with the dock cell; its clipped-bottom
          line coincides with the panel edge. flex: 1 lets it absorb
          the width the rail freed up. -->
-    <div class="hand-zone">
+    <!-- data-hand-owner: where a spell cast from this hand flies from
+         (#3381, castFlight.ts). -->
+    <div class="hand-zone" data-hand-owner={seat.id}>
       <Hand
         hand={seat.hand}
         {isSelf}
@@ -896,11 +899,23 @@
         {sorcerySpeedBlocked}
         legalGate={rowGate}
       />
+      <!-- ADR 0172 §8: your companion, outside the game, with the {3}
+           special action that puts it into your hand. Renders nothing
+           without one. -->
+      <CompanionSlot
+        {seat}
+        onSpecialAction={sendSpecialAction}
+        {legal}
+        legalGate={rowGate}
+        {sorcerySpeedBlocked}
+      />
     {/if}
     {#if !isSelf}
       <!-- #2349: this seat's commander, beside its hand, where yours
            is beside yours. -->
       <CommandStrip {seat} />
+      <!-- ADR 0172 §8: and its revealed companion, view only. -->
+      <CompanionSlot {seat} />
       <PromisesRow {view} {viewerID} opponentID={seat.id} {sendAction} />
     {/if}
     {#if docked}

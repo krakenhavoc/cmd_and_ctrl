@@ -966,6 +966,59 @@ message no row names: #lfg is shared.
 | 409 | turning it on for a table that is not waiting in the lobby, has no empty seat, has a guest host, or whose invite link this server no longer holds (turning it off is always allowed) |
 | 503 | the board is off on this server: `CMDCTRL_DISCORD_LFG_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set (and `CMDCTRL_PUBLIC_BASE_URL`, which the join link is built on) |
 
+### `PUT /games/{id}/results`
+
+Opt the table in to a **results post** in the community server's
+**#game-results** channel, or out of it
+([ADR 0174](decisions/0174-a-game-results-feed-in-discord.md) §1). **Host or
+admin only** (`CanManageTable`). `POST /games` takes the same choice as
+`"results": true`, which a server without the channel ignores. Off by
+default. Unlike `lfg` it needs no Discord sign-in: the post names seats, not
+accounts, so a guest host may opt in.
+
+Turning it on needs a table whose game has not ended, that is not archived
+and is not the practice table. Turning it off is always allowed.
+
+**The post.** Made once, by the server's bot, when the game ends, from the
+same moment and the same computed record as the game's statistics (ADR
+0165): an embed titled with the table's name, the winner (or the draw), one
+line per seat in placing order with its seat name as the table shows it (an
+AI agent or a bot seat is marked as one), its commander name(s) and how it
+left (conceded or eliminated, and the turn), and the turn count and the
+duration. No content line, no mention, and `allowed_mentions: {"parse": []}`,
+so no one is pinged, whatever a seat is called. No card images.
+
+**Never posted:** a practice table; a table whose host did not opt in; a game
+that ended with no outcome (closed by its host or an admin, not played out);
+a game with a concession before turn 3 (`resultsMinTurns`).
+
+**Failures.** The post runs off the lobby lock on the statistics goroutine. A
+429 waits its `retry_after` (capped at 30 s) and a 5xx or timeout waits 2 s,
+three tries in all; a 403 or 404 is tried once. A dropped post is logged at
+WARN and not tried again, and a restart between the end and the post loses
+it. The game and its statistics are unaffected.
+
+**Durability.** `games.results` (migration 0024). Nothing else is stored.
+
+**Request**
+
+```json
+{ "enabled": true }
+```
+
+**Response 200**: the updated `GameMeta`, with `results` (omitted when off).
+
+**Errors**
+
+| Status | Reason |
+|---|---|
+| 400 | `enabled` missing |
+| 401 | unauthenticated |
+| 403 | caller is neither the host of this table nor the admin |
+| 404 | game not found |
+| 409 | turning it on for a practice table, an ended game or an archived table |
+| 503 | the feed is off on this server: `CMDCTRL_DISCORD_RESULTS_CHANNEL_ID`, `CMDCTRL_DISCORD_COMMUNITY_GUILD_ID` and `CMDCTRL_DISCORD_BOT_TOKEN` must all be set |
+
 ### `PATCH /games/{id}/settings`
 
 Change the table's settings
@@ -998,6 +1051,7 @@ out is untouched, which is why this is a `PATCH` and not a `PUT`.
 | `commander_damage` | 1..99 | Damage from one commander that loses the game. Read at the next state-based action check, so lowering it can lose somebody the game at that check. |
 | `bot_pace` | `"fast"` \| `"normal"` \| `"slow"` | The table pace (shown as **Table pace**, formerly "Bot speed"): bot think time, and the stack hold every seat, person or bot, waits before auto-passing another player's spell: fast 0 s, normal 2 s, slow 3 s ([ADR 0143](decisions/0143-gameplay-settings-overhaul.md) §2.6). |
 | `allow_spawn` | bool | Whether the host and admin may spawn cards and tokens on a live table. |
+| `free_mulligans` | `-1`, or 0..7 | How many of each seat's mulligans are free (#3387; [ADR 0168](decisions/0168-the-london-mulligan.md)'s amendments). `0`, the default, is the rules: one free in a game of three or more (CR 103.5c), none at two players. `N` gives N at any table, never fewer than the rules. `-1` makes every mulligan free. Omitted from the response when 0. **Rejected once the game is active.** |
 
 The **whole patch is validated first**, so a patch with one bad field changes
 nothing — including the good fields beside it.
@@ -1033,7 +1087,7 @@ settings forward rather than rolling them back.
 | 401 | unauthenticated |
 | 403 | caller is neither the host of this table nor the admin |
 | 404 | game not found |
-| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals |
+| 422 | `starting_life` changed after the game started — the value has already been applied; use the life controls to adjust totals. Likewise `free_mulligans`, because the mulligan window opens at `start` |
 
 ### `POST /games/{id}/spawn`
 
@@ -1329,6 +1383,34 @@ closes, and for four hours after the game ended if nobody offers.
 | 409 | the game is not over; a rematch was already offered; the table cannot be rematched any more (a practice or archived table, a restart, or too long ago); the offer is closed or already answered; the new table is full or has started; leaving after accepting |
 | 503 | the server is at its capacity |
 
+### Stack position: `PUT` and `DELETE /games/{id}/stack-position` (ADR 0176, #3429)
+
+A seat drags the stack (the docked card or the floating lane, whichever style it plays) somewhere else on its board and the table remembers
+where for the rest of the game. Called with a **seat session at the table**; the
+seat is the session's, never one named in the request, so nobody can place
+another seat's card. The admin token and a spectator are refused (403), and so is
+a bot or an agent seat.
+
+| Route | Body | Answers |
+|---|---|---|
+| `PUT /games/{id}/stack-position` | `{"x": 0..1, "y": 0..1}`, both required | 204 |
+| `DELETE /games/{id}/stack-position` | none | 204, also when nothing was saved |
+
+`x` and `y` are the card's top-left corner as fractions of the board's width and
+height. The spot is kept on the room, in memory, and rides the game view as
+`GameView.stack_positions` ([protocol.md](protocol.md)), reduced to the caller's
+own entry; it is not in the snapshot, `undo` does not touch it, it is dropped
+when the game ends, and a server restart forgets it. Rate limited per caller.
+
+| Status | Reason |
+|---|---|
+| 400 | `x` or `y` missing or outside 0..1; an unknown field |
+| 401 | no session |
+| 403 | not a seat in this game (a spectator, the admin token) |
+| 404 | game not found |
+| 409 | the game is over |
+| 429 | too many requests |
+
 ### `POST /games/{id}/setup` (ADR 0110 §5)
 
 Apply the caller's last setup to an unstarted table: its settings through the
@@ -1447,7 +1529,18 @@ Private decks (upstream 401/403) and unsupported hosts surface as
 ```
 
 `deck_id` echoes the pre-built deck that was installed and is absent
-for an uploaded list.
+for an uploaded list. `companion` ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md),
+omitempty) names the deck's companion, which is seated outside the
+game rather than in the library; `card_count` never counts it.
+
+A list declares its companion in a `Companion` section (`Companion`,
+`Companion:` or `// Companion`), on Moxfield's `companions` board or in
+an Archidekt `Companion` category. A list with no companion declared
+whose sideboard is exactly one card with a companion ability reads that
+card as the companion, with a `companion_from_sideboard` warning. A
+pasted text with no row marked commander reads a last block of one or
+two rows after a blank line as its commanders, which is how Moxfield's
+and MTGO's text exports end.
 
 **Errors**
 
@@ -1500,9 +1593,21 @@ Violation codes (stable strings, keyable by the client):
   Two commanders with no partner ability and no Background are
   `too_many_commanders`, and a Background alone is
   `not_a_legal_commander` (CR 702.124k)
-- `unsupported_mechanic` — resolved commander uses companion, deferred
-  to a later sprint (carries `card`). Every partner ability is
-  supported (ADR 0144)
+- `unsupported_mechanic` — a companion whose deck condition the server
+  does not check yet (carries `card`). Jegantha, the Wellspring is the
+  one companion supported so far ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md)).
+  A card that prints companion is an ordinary commander and an ordinary
+  card in the deck
+- `not_a_companion`, `too_many_companions`, `companion_is_commander`,
+  `companion_condition_not_met`, `companion_not_legal`,
+  `companion_color_identity` — the companion is judged on its own,
+  outside the 100 (ADR 0172 §2): it must print companion, be the only
+  one, not be the commander's own card, meet its condition over the
+  commanders and the main deck (one `companion_condition_not_met` row
+  per offending card, up to ten, each naming it), be legal in
+  Commander, and fit the commander's colour identity. All fatal
+- `companion_from_sideboard` — **warning only**: a lone companion card
+  in the sideboard was read as the companion
 - `unknown_source` — URL-based import (S06.5+) whose host is not one
   of the supported deck-builders; carries the URL in `card`
 - `deck_not_found` — URL-based import where the upstream returned
@@ -1641,6 +1746,7 @@ deck, not an empty picker implying there are none.
       "commander": "Purphoros, God of the Forge",
       "colors": ["R"],
       "card_count": 100,
+      "cards": [{ "name": "Purphoros, God of the Forge", "count": 1 }, { "name": "Mountain", "count": 30 }],
       "coverage": {
         "cards": 88,
         "full": 55,
@@ -1657,6 +1763,11 @@ deck, not an empty picker implying there are none.
   ]
 }
 ```
+
+`cards` is the whole list, commander first, one row per distinct card
+with its copies. It feeds the optional "Play this deck in paper" shop
+links ([ADR 0179](decisions/0179-shop-links-for-real-cards.md) §7); it
+carries no price.
 
 **Reading the coverage block.** Counts are per distinct card, not per
 copy, which is why they do not add up to `card_count`: a deck's ten
@@ -1742,7 +1853,7 @@ client hides the Add-bot control rather than offering a button that
 only the raw-decklist form of the add request works.
 
 A deck's `description` leads with its archetype — `aggro`,
-`ramp-stompy`, `control`, `aristocrats`, `stompy`, `weenie`, `voltron` — because the names are
+`ramp-stompy`, `control`, `aristocrats`, `stompy`, `weenie`, `voltron`, `tribal` — because the names are
 flavour and the archetype is what the player is actually choosing
 between. The catalog is the pre-built decks in
 `server/internal/decks` — the same ones `GET /decks` offers a human,
@@ -2523,6 +2634,70 @@ authenticated, you are just not a person.
 - `rejoin` is present only while the table is still open: live in this
   process and not archived. It is the path to POST for a seat session.
 - No invite token appears anywhere in the response.
+
+### `GET /me/stats`
+
+The caller's own game statistics ([ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md)
+§7): `seat_stats` joined to `seats` on the caller's `user_id`, so only
+seats that person held. Same caller rule as `GET /me/games` (401 with no
+credential, 403 for anyone who is not a signed-in person). A person with
+no finished games gets an empty record, not an error.
+
+**Response 200**
+
+```json
+{
+  "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4,
+  "unfinished": 1,
+  "by_deck": [{ "name": "Atraxa Superfriends", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "by_commander": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "recent": [
+    {
+      "game_id": "<game uuid>", "name": "Friday Night Commander", "ended_at": 1789825000000,
+      "result": "win", "place": 1, "turns": 9, "players": 4,
+      "deck": "Atraxa Superfriends", "commanders": ["Atraxa, Praetors' Voice"]
+    }
+  ],
+  "top_cards": [{ "name": "Sol Ring", "casts": 31 }]
+}
+```
+
+`top_cards` is the caller's most-cast cards (at most 10, most casts
+first, then by name) over the same counted human seats; a bot's or an
+agent's seat and an unfinished table add nothing
+([ADR 0179](decisions/0179-shop-links-for-real-cards.md) §7).
+
+- A game counts when the seat's result is `win`, `loss` or `draw`; a
+  table that ended with no outcome is only `unfinished`.
+- `avg_place` is the mean over counted seats that have a place, and
+  `null` when none do. `place` is `null` when unknown.
+- `by_deck` groups by the seat's saved deck id (its name when none),
+  `by_commander` by the commander names joined with ` / `. Both list the
+  most-played first. `recent` is the latest 20, newest first.
+
+### `GET /me/games/{id}/cards`
+
+The commanders and the cards the caller's **opponents** cast in a game
+that has ended, from `seat_card_stats`
+([ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md),
+[ADR 0179](decisions/0179-shop-links-for-real-cards.md) §7), for the
+optional shop links in History. Same caller rule as `GET /me/games`
+(401 with no credential, 403 for anyone who is not a signed-in person,
+and 403 when the person held no seat at that game). **409 while the
+game has not ended**: nothing is ever returned during play. The
+caller's own seat is left out and no opponent is named.
+
+```json
+{
+  "ready": true,
+  "opponents": [
+    { "commanders": ["Atraxa, Praetors' Voice"], "cards": [{ "name": "Sol Ring", "casts": 2 }] }
+  ]
+}
+```
+
+`ready` is false (and `opponents` empty) while the game's record is not
+written yet, or on a server that keeps none.
 
 ### `POST /me/games/{id}/session`
 
@@ -3747,6 +3922,36 @@ A blocked person who tries to watch is refused **403**
 `{"error": "you were removed from this table and can't watch it again",
 "code": "blocked_from_table"}`.
 
+### `GET /admin/stats` *(admin only)*
+
+Game statistics across every game, for the admin **Stats** tab
+(`#/admin/stats`; [ADR 0165](decisions/0165-game-statistics-a-record-derived-from-every-finished-game.md)
+§8). `requireAdmin`, so an allowlisted person in player mode gets a
+non-admin's 403 and a signed-out caller a 401. Read-only. With no stats
+store it answers an empty overview.
+
+```json
+{
+  "totals": { "games": 40, "live": 38, "replay": 2, "log_complete": 39, "log_incomplete": 1, "unrecorded": 3 },
+  "recent": [{ "game_id": "<uuid>", "name": "Friday night", "ended_at": 1791868000000, "turns": 21, "rounds": 6, "source": "live" }],
+  "people": [{ "name": "Alice", "kind": "account", "games": 12, "wins": 4, "losses": 7, "draws": 1, "avg_place": 2.4 }],
+  "commanders_by_games": [{ "name": "Atraxa, Praetors' Voice", "games": 8, "wins": 3, "losses": 5, "draws": 0, "avg_place": 2.1 }],
+  "commanders_by_wins": [],
+  "cards": [{ "name": "Sol Ring", "casts": 61, "games": 30 }]
+}
+```
+
+- `totals.unrecorded` counts ended games with a `games` row and no
+  record: run `statsbackfill` to fill them in.
+- `people` is keyed by account (its display name), else a guest's seat
+  name (`kind: "guest"`), else a bot tier (`"bot"`). The counting rules
+  are `GET /me/stats`'s: only a win, loss or draw counts, and
+  `avg_place` is over seats that have a place.
+- Commanders are the seat's commander names joined with ` / `. Every list
+  is capped at 25 rows (`gamestats.AdminListMax`): `recent` newest first,
+  `people` and `commanders_by_games` most games first,
+  `commanders_by_wins` most wins first, `cards` most casts first.
+
 ### `GET /admin/reports` *(admin only)*
 
 The reports, newest first, for the admin **Reports** tab (`#/admin/reports`).
@@ -4268,14 +4473,14 @@ The re-check at renewal is under
 Public, no credential. The client's source for every Discord placement:
 
 ```json
-{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true }
+{ "invite_url": "https://discord.gg/…", "gate": true, "voice": true, "lfg": true, "results": true }
 ```
 
 `invite_url` is `CMDCTRL_DISCORD_INVITE_URL`, `""` when unset (the client
 then hides every Discord link). `gate` is whether sign-up needs the
 admitting role. `voice` is whether a host may give a table a voice room
 (ADR 0159), and `lfg` whether a host may post a table to #lfg (ADR 0161,
-[`PUT /games/{id}/lfg`](#put-gamesidlfg)). No guild, role or user id is ever in it. Answered with
+[`PUT /games/{id}/lfg`](#put-gamesidlfg)), and `results` whether a host may opt a table in to a results post in #game-results (ADR 0174, [`PUT /games/{id}/results`](#put-gamesidresults)). No guild, role or user id is ever in it. Answered with
 `Cache-Control: public, max-age=300`; it changes only on a deploy.
 
 ### `GET /auth/discord/config`

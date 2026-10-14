@@ -32,6 +32,17 @@ func (g *Game) PlayerByIDForEffect(id uuid.UUID) *Player {
 	return g.playerByIDLocked(id)
 }
 
+// InSameSimultaneousExitForEffect reports whether both cards belong to
+// the currently published battlefield exit. Event.Batch spans an entire
+// resolution, so it cannot answer this question for graveyard watchers.
+// Both IDs are checked because an outer exit can stay published while
+// its continuation performs a later instruction. Caller must hold g.mu.
+func (g *Game) InSameSimultaneousExitForEffect(a, b uuid.UUID) bool {
+	_, first := g.simultaneousExitCardLocked(a)
+	_, second := g.simultaneousExitCardLocked(b)
+	return first && second
+}
+
 // TurnsBegunFor reports the per-seat turn count from an already-locked
 // effect callback. It is the card-facing meaning of "your Nth turn".
 func (g *Game) TurnsBegunFor(player uuid.UUID) int {

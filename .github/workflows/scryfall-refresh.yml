@@ -22,7 +22,14 @@ concurrency:
 
 jobs:
   refresh:
-    runs-on: self-hosted
+    # The deploy runners only, once CMDCTRL_DEPLOY_RUNNER_LABEL is set;
+    # see cmdctrl-cd-dev in ci-cd.yml (#3335).
+    runs-on: ${{ vars.CMDCTRL_DEPLOY_RUNNER_LABEL && fromJSON(format('["self-hosted","{0}"]', vars.CMDCTRL_DEPLOY_RUNNER_LABEL)) || 'self-hosted' }}
+    # This job logs in to production, so it takes production's deploy
+    # key from the `prod` environment (#3335). That environment admits
+    # `main` only; the schedule always runs from main, and a manual run
+    # must be dispatched from main too.
+    environment: prod
     env:
       CMDCTRL_HOST: ${{ vars.CMDCTRL_HOST }}
       # Must match CMDCTRL_DATA_DIR in the systemd unit's
@@ -49,6 +56,13 @@ jobs:
         env:
           HOST_KEY: ${{ vars.CMDCTRL_HOST_KEY }}
         run: scripts/pin-host-key.sh "${CMDCTRL_HOST}" CMDCTRL_HOST_KEY
+
+      # From the `prod` environment, not the runner's ~/.ssh (#3335).
+      # Unset falls back to the runner's own key with a ::warning::.
+      - name: Load the deploy SSH key
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.CMDCTRL_DEPLOY_SSH_KEY }}
+        run: scripts/load-deploy-key.sh
 
       - name: Run scryfall-refresh on deploy host
         # sudo -u cmdctrl so the dump is created with the same
@@ -79,3 +93,7 @@ jobs:
         run: |
           ssh ${SSH_OPTS} krkn@${CMDCTRL_HOST} \
             'systemctl is-active cmd-and-ctrl && systemctl status cmd-and-ctrl --no-pager --lines=5'
+
+      - name: Remove the deploy SSH key
+        if: always()
+        run: rm -f "${RUNNER_TEMP}/deploy_ssh_key"

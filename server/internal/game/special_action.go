@@ -7,16 +7,21 @@ import (
 // special_action.go — CR 116.2 special actions, ADR 0062 Decision 4.
 //
 // A special action is a game action a player takes WITHOUT using the
-// stack and without passing priority. CR 116.2 lists seven of them;
-// four are built here:
+// stack and without passing priority. CR 116.2 lists them; six are
+// built here:
 //
 //	foretell      CR 116.2h, 702.143a  pay {2}, exile the card face down
 //	suspend       CR 116.2f, 702.62a   pay the suspend cost, exile it with
 //	                                   N time counters
 //	plot          CR 702.170a          pay the plot cost, exile the card
 //	                                   face up; it becomes plotted
-//	turn_face_up  CR 116.2g, 708.6     pay a face-down permanent's morph
+//	turn_face_up  CR 116.2b, 708.6     pay a face-down permanent's morph
 //	                                   cost and turn it face up
+//	unlock        CR 116.2m, 709.5e    pay a locked door's cost and
+//	                                   unlock it
+//	companion     CR 116.2g, 702.139a  pay {3} and put your companion
+//	                                   into your hand from outside the
+//	                                   game (companion.go, ADR 0172)
 //
 // ONE VERB, not one per keyword. The rules group these precisely
 // because their contract is identical — no stack, no announce, no
@@ -41,7 +46,7 @@ import (
 //	                                   instant timing for an instant — and
 //	                                   therefore NOT legal under split
 //	                                   second
-//	turn_face_up  CR 702.37c, 116.2g   any time you have priority, on any
+//	turn_face_up  CR 702.37c, 116.2b   any time you have priority, on any
 //	                                   turn, with anything on the stack;
 //	                                   LEGAL under split second, for the
 //	                                   same reason foretell is
@@ -49,6 +54,9 @@ import (
 //	                                   YOUR main phase while the stack is
 //	                                   empty — sorcery timing, whatever
 //	                                   the card's own type or flash says
+//	companion     CR 116.2g            the same window as plot: your main
+//	                                   phase, priority, an empty stack;
+//	                                   once per game
 //
 // The split-second asymmetry is the one thing in this file that is
 // easy to get wrong and invisible when you do. CR 702.61b stops
@@ -74,7 +82,7 @@ const (
 	// counters on it.
 	SpecialActionSuspend SpecialActionKind = "suspend"
 
-	// SpecialActionTurnFaceUp is CR 116.2g / CR 708.6 — pay a
+	// SpecialActionTurnFaceUp is CR 116.2b / CR 708.6 — pay a
 	// face-down permanent's morph cost and turn it face up.
 	//
 	// The first kind that is not a hand keyword: its card is on the
@@ -191,6 +199,11 @@ func SpecialActionsOfferedByCard(c Card) []SpecialAction {
 	if up := TurnFaceUpOffer(c); up != nil {
 		out = append(out, *up)
 	}
+	// ADR 0172: a revealed companion's {3} is derived from the card
+	// being one. Asked only outside the game (specialActionZone).
+	if co := CompanionOffer(c); co != nil {
+		out = append(out, *co)
+	}
 	// ADR 0103: the unlock offers are derived from the card too — a
 	// face-up Room with a locked door (CR 709.5e).
 	out = append(out, UnlockOffers(c)...)
@@ -216,6 +229,9 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 	if kind == SpecialActionTurnFaceUp {
 		return TurnFaceUpOffer(c)
 	}
+	if kind == SpecialActionCompanion {
+		return CompanionOffer(c)
+	}
 	if kind == SpecialActionUnlock {
 		if offers := UnlockOffers(c); len(offers) > 0 {
 			return &offers[0]
@@ -235,6 +251,7 @@ func SpecialActionOffered(c Card, kind SpecialActionKind) *SpecialAction {
 //
 //	foretell, suspend  the actor's HAND  CR 702.143a, CR 702.62a
 //	turn_face_up       the BATTLEFIELD   CR 708.6
+//	companion          OUTSIDE the game  CR 116.2g (Player.Companion)
 //
 // The third per-kind table, beside the timing table and the performer
 // switch, and the only thing a kind that is not a hand keyword
@@ -251,6 +268,8 @@ func specialActionZone(kind SpecialActionKind) ZoneKind {
 		return ZoneHand
 	case SpecialActionTurnFaceUp, SpecialActionUnlock:
 		return ZoneBattlefield
+	case SpecialActionCompanion:
+		return ZoneOutside
 	}
 	return ""
 }
@@ -362,6 +381,14 @@ func (g *Game) SpecialActionTimingOKLocked(playerID uuid.UUID, card Card, kind S
 		// stack, and this window needs the stack empty. Effects that
 		// stop casting or activating do not stop it (a special action
 		// is neither), and nothing here asks them.
+		return g.SorcerySpeedOpenLocked(playerID)
+
+	case SpecialActionCompanion:
+		// CR 116.2g: "any time they have priority and the stack is
+		// empty during a main phase of their turn" — the plot and
+		// unlock row exactly. "Only if they haven't done so yet this
+		// game" is not a window: the card has left Player.Companion,
+		// so there is nothing left to offer (companion.go).
 		return g.SorcerySpeedOpenLocked(playerID)
 	}
 	return false
@@ -504,6 +531,8 @@ func specialActionPerformer(kind SpecialActionKind) func(*Game, *Player, uuid.UU
 		return (*Game).plotLocked
 	case SpecialActionUnlock:
 		return (*Game).unlockLocked
+	case SpecialActionCompanion:
+		return (*Game).companionLocked
 	}
 	return nil
 }
@@ -546,6 +575,17 @@ func (g *Game) specialActionCardLocked(p *Player, cardID uuid.UUID, kind Special
 				return Card{}, "", ErrCardNotFound
 			}
 			return c, zone, nil
+		}
+		return Card{}, "", ErrCardNotFound
+	case ZoneOutside:
+		// ADR 0172: the container holds only its owner's companion,
+		// so finding the card there is the ownership check.
+		if p.Companion != nil {
+			for _, c := range p.Companion.Cards {
+				if c.InstanceID == cardID {
+					return c, zone, nil
+				}
+			}
 		}
 		return Card{}, "", ErrCardNotFound
 	}

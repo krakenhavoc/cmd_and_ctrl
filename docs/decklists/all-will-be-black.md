@@ -5,38 +5,39 @@ Commander: Yawgmoth, Thran Physician.
 Tracking: [#2910](https://github.com/krakenhavoc/cmd_and_ctrl/issues/2910),
 S58 — Deck requests, October batch follow-up.
 
-## Audit — 2026-10-13
+## Audit — 2026-10-14
 
-Measured with `deck.ParseArchidekt` and `deckcoverage.Build` using the fresh
-deck export, local Scryfall index, and this branch's live catalog. Sideboard
-and maybeboard cards are excluded. The report has no unresolved names.
+Measured with `deck.ParseArchidekt` and `deckcoverage.Build` against a fresh
+Archidekt export, the real Scryfall index and the catalog on this branch,
+including merged Gisa PR #3329, Nether Traitor PR #3418 and this Liliana fix. Sideboard and
+maybeboard cards are excluded. There are no unresolved names or violations.
 
 | Coverage bucket | Distinct cards | Copies in the 100-card deck |
 | --- | ---: | ---: |
-| Automated, complete | 66 | 66 |
-| Automated with caveats | 2 | 2 |
+| Declared automated, full | 70 | 70 |
+| Automated with caveats | 1 | 1 |
 | No effect to implement (Swamp) | 1 | 27 |
-| Manual only | 5 | 5 |
+| Manual only | 2 | 2 |
 | Unreviewed | 0 | 0 |
 
-**93 of 100 copies are complete on this branch.** The previously merged
-19-card batches and two review stamps are present. This change adds
-Forsaken Miner through the corrected crime-announcement event (#2944).
-Copies and retargeting still cause ordinary target events, but do not commit
-new crimes. One qualifying announcement commits one crime, even if it has
-several qualifying targets, including opponents' stack abilities.
+**The live catalog reports 97 of 100 copies complete on this branch.**
+Gisa's compound ward, crime trigger, tapped two-color tokens and tribal buffs
+are merged (#2945, PR #3329), as is Nether Traitor's distinction between
+successive and simultaneous deaths (#3417, PR #3418). This change completes
+Liliana's public APNAP choices and one shared sacrifice for both loyalty
+abilities (#2948), retaining forced-sacrifice protection and multitype choices.
+
+The Darkness Crystal's tracked behavior gap still reproduces: its life gain
+can pause while the original effect continues (#2950), despite its Full stamp.
+That issue remains open. Catalog declarations alone do not close the request.
 
 ## Remaining work
 
 | Card | Tracked gap |
 | --- | --- |
-| Gisa, the Hellraiser | One ward payment combining mana and life (#2945). |
-| Vraska, Betrayal's Sting | Compleated entry loyalty from exact Phyrexian-symbol payments (#2946). |
+| Vraska, Betrayal's Sting | Compleated entry loyalty from precise Phyrexian-symbol payment provenance (#2946). |
 | Kaervek, the Punisher | Cast a copy of an exiled card during resolution, then continue (#2947). |
-| Liliana, Dreadhorde General | Gather every affected player's choices before simultaneous sacrifices (#2948). |
-| The Darkness Crystal | A move replacement with resumable additional life gain and linked reanimation (#2950). |
 | Library of Leng | Choose the relative order of several cards discarded to the library (#2949). |
-| Nether Traitor | Distinguish separate death instructions in one resolution from simultaneous deaths. |
+| The Darkness Crystal (cataloged Full) | Wait for additional life gain before the enclosing effect resumes (#2950). |
 
-The deck request remains open. No remaining caveat or manual card has been
-relabeled complete to increase the reported percentage.
+The deck request remains open until these printed behaviors are complete.

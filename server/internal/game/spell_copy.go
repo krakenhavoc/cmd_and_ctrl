@@ -599,6 +599,13 @@ func (g *Game) createSpellCopyLocked(src Card, item *StackItem, controller uuid.
 	if len(item.Paid.SacrificedObjects) > 0 {
 		meta.Paid.SacrificedObjects = append([]ObjectRef(nil), item.Paid.SacrificedObjects...)
 	}
+	// #3402: and the permanents an exile-a-permanent additional cost took.
+	if len(item.Paid.Exiled) > 0 {
+		meta.Paid.Exiled = append([]uuid.UUID(nil), item.Paid.Exiled...)
+	}
+	if len(item.Paid.ExiledObjects) > 0 {
+		meta.Paid.ExiledObjects = append([]ObjectRef(nil), item.Paid.ExiledObjects...)
+	}
 	// ADR 0135 §4: and the objects the original's alternative cost paid
 	// with — a copied emerge spell reads the creature the original
 	// sacrificed (CR 707.10).

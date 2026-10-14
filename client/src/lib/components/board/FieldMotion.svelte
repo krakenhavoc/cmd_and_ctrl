@@ -38,7 +38,7 @@
     DEPART_FLIGHT_MAX,
     DEPART_FLIGHT_MS,
     DEPART_HOLD_MS,
-    departureCaption,
+    departureCaptions,
     emptyFieldTracker,
     fieldLandingSelectors,
     trackField,
@@ -62,7 +62,8 @@
     key: string;
     dep: FieldDeparture;
     box: Box;
-    caption: string;
+    /** Null: another copy of this frame carries the shared caption. */
+    caption: string | null;
     fading: boolean;
   }
 
@@ -215,11 +216,12 @@
     const s = get(settings);
     if (!s.animations.enabled || deps.length === 0) return;
     const fly = flightAllowed(s);
-    const added: Ghost[] = deps.map((dep) => ({
+    const captions = departureCaptions(deps);
+    const added: Ghost[] = deps.map((dep, i) => ({
       key: `field-${++serial}`,
       dep,
       box: uprightBox(dep.card),
-      caption: departureCaption(dep),
+      caption: captions[i],
       fading: false,
     }));
     ghosts = [...ghosts, ...added];
@@ -330,7 +332,9 @@
           <img src={g.dep.card.image} alt="" decoding="async" />
         {/if}
       </div>
-      <span class="caption" data-dest={g.dep.dest?.zone ?? "none"}>{g.caption}</span>
+      {#if g.caption}
+        <span class="caption" data-dest={g.dep.dest?.zone ?? "none"}>{g.caption}</span>
+      {/if}
     </div>
   {/each}
 </div>

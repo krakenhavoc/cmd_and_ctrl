@@ -162,6 +162,18 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ex := cardNames(playableExileOf(v, s.ID), max, opts); ex != "" {
 			fmt.Fprintf(&b, "  may play from exile: %s\n", ex)
 		}
+		// ADR 0172 §7: a revealed companion is public, so every seat's
+		// is shown while it waits outside the game; the seat's own with
+		// its text, since it is a card that seat can take.
+		if s.Companion != nil {
+			describe := cardNames
+			if s.ID == me {
+				describe = describeCards
+			}
+			if co := describe([]protocol.CardView{*s.Companion}, max, opts); co != "" {
+				fmt.Fprintf(&b, "  companion (outside the game): %s\n", co)
+			}
+		}
 		if s.ID == me {
 			if hand := describeCards(s.Hand.Cards, max, opts); hand != "" {
 				fmt.Fprintf(&b, "  your hand: %s\n", hand)
@@ -195,6 +207,7 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.Reason != "" {
 			fmt.Fprintf(&b, " — %s", ch.Reason)
 		}
+		earlier := earlierChoicesText(v, ch.EarlierChoices, me)
 		// ADR 0115 decision 4: the one fact the CR 903.9a question
 		// carries beyond its card.
 		if ch.Kind == "commander_return" && ch.PlayableFromZone {
@@ -210,12 +223,17 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 		if ch.PayEnergy != nil {
 			fmt.Fprintf(&b, " (pay %d energy)", *ch.PayEnergy)
 		}
-		// ADR 0150 §3: a life or damage payment, priced in life.
 		if ch.PayLife != nil {
 			fmt.Fprintf(&b, " (pay %d life)", *ch.PayLife)
 		}
 		if ch.PayDamage != nil {
 			fmt.Fprintf(&b, " (take %d damage)", *ch.PayDamage)
+		}
+		if ch.Kind == "pay_unless" && ch.LifeCost > 0 {
+			fmt.Fprintf(&b, " (also pay %d life)", ch.LifeCost)
+			if ch.LifeCostUnpayable {
+				b.WriteString(" (life payment unavailable)")
+			}
 		}
 		if pa := ch.PayAmount; pa != nil {
 			writePayAmount(&b, pa)
@@ -224,9 +242,44 @@ func Render(v *protocol.GameView, seat string, opts Options) string {
 			fmt.Fprintf(&b, " (choose %d)", ch.Count)
 		}
 		b.WriteByte('\n')
+		if earlier != "" {
+			fmt.Fprintf(&b, "  earlier choices: %s\n", earlier)
+		}
 	}
 
 	return b.String()
+}
+
+// earlierChoicesText names prior selectors and their chosen permanents
+// from the viewer-filtered battlefield. CardName preserves the public
+// face-down object description without exposing its underlying identity.
+func earlierChoicesText(v *protocol.GameView, choices []protocol.EarlierChoiceView, me string) string {
+	if len(choices) == 0 {
+		return ""
+	}
+	entries := make([]string, 0, len(choices))
+	for _, choice := range choices {
+		selected := make([]string, 0, len(choice.CardIDs))
+		for _, id := range choice.CardIDs {
+			selected = append(selected, nameOfPermanent(v, id))
+		}
+		what := "nothing"
+		if len(selected) > 0 {
+			what = strings.Join(selected, ", ")
+		}
+		entries = append(entries, SeatLabelByID(v, choice.PlayerID, me)+" chose "+what)
+	}
+	return strings.Join(entries, "; ")
+}
+
+func nameOfPermanent(v *protocol.GameView, id string) string {
+	for i := range v.Battlefield.Cards {
+		card := &v.Battlefield.Cards[i]
+		if card.InstanceID == id {
+			return CardName(card)
+		}
+	}
+	return "a permanent"
 }
 
 // writePayAmount describes a pay_amount prompt's answers (ADR 0129 §3

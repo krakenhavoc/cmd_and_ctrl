@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"strings"
 
+	"github.com/google/uuid"
+
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/legal"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
 )
@@ -40,6 +42,22 @@ func MoveAnswers(v *protocol.GameView, m legal.Move) []string {
 		return nil
 	}
 	return nil
+}
+
+// ActingAsNote is "as Bob" for a move made for another seat: one whose
+// Player is a seat the viewer controls (CR 723, ADR 0167 §7: the turn of
+// a player the seat is playing, or Word of Command's forced play), and
+// "" for the viewer's own moves. Read from the view alone.
+func ActingAsNote(v *protocol.GameView, m legal.Move, me string) string {
+	if v == nil || m.Player == uuid.Nil || m.Player.String() == me {
+		return ""
+	}
+	for i := range v.Seats {
+		if v.Seats[i].ID == m.Player.String() {
+			return "as " + SeatLabel(&v.Seats[i], me)
+		}
+	}
+	return "as another player"
 }
 
 // AnswersNote is MoveAnswers as the text a move line carries,

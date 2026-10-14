@@ -175,6 +175,33 @@ func TestStartingLifeSentence(t *testing.T) {
 	if got, want := lines[0].Text, host.Name+" (host) set starting life to 30"; got != want {
 		t.Errorf("line = %q, want %q", got, want)
 	}
+
+	// #3387: free mulligans are locked at Start too, so their
+	// sentences are written here as well.
+	wantFree := []struct {
+		n    int
+		text string
+	}{
+		{1, "made the first mulligan free"},
+		{3, "made the first 3 mulligans free"},
+		{game.FreeMulligansUnlimited, "made every mulligan free"},
+		{0, "set mulligans to follow the rules"},
+	}
+	for _, w := range wantFree {
+		n := w.n
+		if err := g.UpdateSettings(host.ID, game.SettingsPatch{FreeMulligans: &n}); err != nil {
+			t.Fatalf("UpdateSettings FreeMulligans %d: %v", n, err)
+		}
+	}
+	lines = settingsLines(t, g, "")
+	if len(lines) != 1+len(wantFree) {
+		t.Fatalf("%d lines, want %d: %v", len(lines), 1+len(wantFree), texts(lines))
+	}
+	for i, w := range wantFree {
+		if got, want := lines[1+i].Text, host.Name+" (host) "+w.text; got != want {
+			t.Errorf("line = %q, want %q", got, want)
+		}
+	}
 }
 
 func texts(entries []LogEvent) []string {
