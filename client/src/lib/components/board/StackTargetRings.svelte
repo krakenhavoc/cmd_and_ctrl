@@ -12,6 +12,13 @@
   // not inside StackLaneHost, so the one owner of the rings is this
   // component, which the board mounts once for every style.
   //
+  // It also marks the other end (#3380): each stack item's caster
+  // avatar, and an ability's source permanent (CR 113.7), carry
+  // `data-stack-source` and glow in the caster's seat colour, pulsing
+  // for the top item, so an item is tied to a seat on the table and
+  // not only to a name in the stack panel (planSourceMarks /
+  // findSourceMarks / syncSourceMarks).
+  //
   // Renders nothing. Re-syncs on every snapshot and on board resize
   // (a seat collapsing or expanding remounts its cards), and clears
   // every mark it set when it is destroyed.
@@ -19,7 +26,12 @@
   import { onDestroy, untrack } from "svelte";
   import type { GameView } from "../../protocol";
   import { buildStackLane } from "../../stackLane";
-  import { findTargetMarks, syncTargetMarks } from "../../stackArrows";
+  import {
+    findSourceMarks,
+    findTargetMarks,
+    syncSourceMarks,
+    syncTargetMarks,
+  } from "../../stackArrows";
 
   interface Props {
     view: GameView;
@@ -46,10 +58,12 @@
   );
 
   let marked = new Set<HTMLElement>();
+  let sources = new Set<HTMLElement>();
 
   function sync(): void {
     const board = boardEl;
     marked = syncTargetMarks(marked, board ? findTargetMarks(board, items) : []);
+    sources = syncSourceMarks(sources, board ? findSourceMarks(board, items) : []);
   }
 
   const raf: (cb: () => void) => number =
@@ -83,6 +97,7 @@
   onDestroy(() => {
     cancelRaf(pending);
     marked = syncTargetMarks(marked, []);
+    sources = syncSourceMarks(sources, []);
   });
 </script>
 
@@ -96,5 +111,55 @@
     filter: drop-shadow(
       0 0 8px color-mix(in srgb, var(--stack-lane-ring, var(--accent)) 55%, transparent)
     );
+  }
+
+  /* #3380: who put it there. A glow, not a ring, in the caster's seat
+     colour, so it never reads as "targeted". The top item's pulses.
+     The targeting prompt's gold source glow wins while it is open. */
+  :global([data-stack-source]:not([data-targeting-source])) {
+    filter: drop-shadow(
+        0 0 4px color-mix(in srgb, var(--stack-source-glow, var(--accent)) 90%, transparent)
+      )
+      drop-shadow(
+        0 0 12px color-mix(in srgb, var(--stack-source-glow, var(--accent)) 55%, transparent)
+      );
+  }
+  :global([data-stack-source="next"]:not([data-targeting-source])) {
+    animation: -global-stack-source-pulse 1.6s ease-in-out infinite alternate;
+  }
+  @keyframes -global-stack-source-pulse {
+    from {
+      filter: drop-shadow(
+          0 0 3px color-mix(in srgb, var(--stack-source-glow, var(--accent)) 75%, transparent)
+        )
+        drop-shadow(
+          0 0 8px color-mix(in srgb, var(--stack-source-glow, var(--accent)) 35%, transparent)
+        );
+    }
+    to {
+      filter: drop-shadow(0 0 6px var(--stack-source-glow, var(--accent)))
+        drop-shadow(
+          0 0 16px color-mix(in srgb, var(--stack-source-glow, var(--accent)) 70%, transparent)
+        );
+    }
+  }
+  /* Both a target and a source (a player who targets themself): the
+     ring's outline stays, and the two glows stack. */
+  :global([data-stack-lane-target][data-stack-source]:not([data-targeting-source])) {
+    filter: drop-shadow(
+        0 0 8px color-mix(in srgb, var(--stack-lane-ring, var(--accent)) 55%, transparent)
+      )
+      drop-shadow(
+        0 0 6px color-mix(in srgb, var(--stack-source-glow, var(--accent)) 90%, transparent)
+      );
+    animation: none;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    :global([data-stack-source]) {
+      animation: none;
+    }
+  }
+  :global(:root[data-reduce-motion="1"] [data-stack-source]) {
+    animation: none;
   }
 </style>
