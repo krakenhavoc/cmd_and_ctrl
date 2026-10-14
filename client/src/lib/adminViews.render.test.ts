@@ -308,12 +308,14 @@ describe("the tab strip", () => {
       "Games",
       "Accounts",
       "Reports",
+      "Stats",
     ]);
     expect(links.map((a) => a.getAttribute("href"))).toEqual([
       "#/admin/live",
       "#/admin/games",
       "#/admin/accounts",
       "#/admin/reports",
+      "#/admin/stats",
     ]);
     expect(links[1].getAttribute("aria-current")).toBe("page");
   });

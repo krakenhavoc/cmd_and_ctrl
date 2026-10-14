@@ -400,6 +400,7 @@ type GameEvictor interface {
 //	GET  /admin/users/{id}  — admin: one account, its games, decks and deck requests
 //	GET  /admin/games       — admin: tables, newest first, filtered and paginated
 //	GET  /admin/games/{id}  — admin: one table
+//	GET  /admin/stats       — admin: game statistics overview (ADR 0165 §8)
 //
 // Routes that mutate state accept JSON bodies; read-only routes use
 // query params / path params. All responses are JSON.
@@ -900,6 +901,7 @@ func Handler(c Config) http.Handler {
 	mux.Handle("GET /admin/users/{id}", requireAdmin(c, handlerFunc(c, adminViewAccount)))
 	mux.Handle("GET /admin/games", requireAdmin(c, handlerFunc(c, adminViewGames)))
 	mux.Handle("GET /admin/games/{id}", requireAdmin(c, handlerFunc(c, adminViewGame)))
+	mux.Handle("GET /admin/stats", requireAdmin(c, handlerFunc(c, adminStats)))
 	// The admin views' Live now (ADR 0124 §3.4): who is connected now,
 	// from memory, with names from the database when there is one.
 	mux.Handle("GET /admin/live", requireAdmin(c, handlerFunc(c, adminLive)))

@@ -75,3 +75,17 @@ func (l *Lobby) UserStats(userID uuid.UUID) (gamestats.UserStats, error) {
 	defer cancel()
 	return store.ForUser(ctx, userID.String())
 }
+
+// StatsOverview is every game's statistics for an operator (GET
+// /admin/stats, ADR 0165 §8). A server with no stats store has none.
+func (l *Lobby) StatsOverview() (gamestats.Overview, error) {
+	l.mu.Lock()
+	store := l.gameStats
+	l.mu.Unlock()
+	if store == nil {
+		return gamestats.EmptyOverview(), nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), statsTimeout)
+	defer cancel()
+	return store.Overview(ctx)
+}

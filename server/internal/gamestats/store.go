@@ -27,6 +27,8 @@ type Store interface {
 	// ForUser summarises the finished games of the seats whose
 	// seats.user_id is userID, and no one else's (ADR 0165 §7).
 	ForUser(ctx context.Context, userID string) (UserStats, error)
+	// Overview summarises every game for an operator (ADR 0165 §8).
+	Overview(ctx context.Context) (Overview, error)
 }
 
 // NoStore is the Store for a deployment with no database: Put keeps

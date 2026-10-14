@@ -73,6 +73,17 @@ func myStats(c Config, w http.ResponseWriter, r *http.Request) error {
 	return writeJSON(w, http.StatusOK, stats)
 }
 
+// adminStats is GET /admin/stats: every game's statistics for an
+// operator (ADR 0165 §8). Read-only, behind requireAdmin.
+func adminStats(c Config, w http.ResponseWriter, _ *http.Request) error {
+	ov, err := c.Lobby.StatsOverview()
+	if err != nil {
+		c.logger().Error("reading the game statistics overview failed", "err", err)
+		return httpError(http.StatusInternalServerError, "could not load the statistics; try again")
+	}
+	return writeJSON(w, http.StatusOK, ov)
+}
+
 // myGameSession is POST /me/games/{id}/session: seat reclaim by user
 // (ADR 0051 decision 3). A signed-in person gets a fresh player session
 // for the seat whose user_id is theirs, at any live table, without the

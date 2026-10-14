@@ -1,0 +1,93 @@
+package gamestats
+
+import (
+	"context"
+	"fmt"
+	"testing"
+)
+
+func TestOverviewAggregatesAFixture(t *testing.T) {
+	s, d := openStore(t)
+	for _, u := range []string{"u-me", "u-other"} {
+		if _, err := d.Exec(`INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES (?, ?, 1, 1)`, u, "name-"+u); err != nil {
+			t.Fatal(err)
+		}
+	}
+	seedSeat(t, d, 1000, "A", "u-me", "d1", "D", "win", 1, 7, `["Atraxa"]`)
+	seedSeat(t, d, 2000, "B", "u-me", "d1", "D", "loss", 3, 9, `["Atraxa"]`)
+	seedSeat(t, d, 3000, "C", "u-me", "", "", "draw", nil, 4, `["Tymna","Thrasios"]`)
+	seedSeat(t, d, 4000, "D", "u-me", "", "", "none", nil, 0, `[]`)
+	seedSeat(t, d, 5000, "E", "u-other", "", "", "win", 1, 5, `["Secret Commander"]`)
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := d.Exec(q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	// One replay record with an incomplete log, one ended game with no
+	// record, and one still running (neither counts as unrecorded).
+	exec(`UPDATE game_stats SET source = 'replay', log_complete = 0 WHERE game_id = (SELECT id FROM games WHERE name = 'B')`)
+	exec(`INSERT INTO games (id, name, state, created_at, ended_at) VALUES ('g-unrecorded', 'U', 'ended', 1, 6000)`)
+	exec(`INSERT INTO games (id, name, state, created_at) VALUES ('g-running', 'R', 'active', 1)`)
+	// Cards: Sol Ring cast in two games, Bolt in one.
+	exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = 'A'), 0, 'Sol Ring', NULL, 3, 1)`)
+	exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = 'B'), 0, 'Sol Ring', NULL, 2, 1)`)
+	exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = 'A'), 0, 'Lightning Bolt', NULL, 1, 2)`)
+
+	got, err := s.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := (Totals{Games: 5, Live: 4, Replay: 1, LogComplete: 4, LogIncomplete: 1, Unrecorded: 1}); got.Totals != want {
+		t.Errorf("totals = %+v, want %+v", got.Totals, want)
+	}
+	if len(got.Recent) != 5 || got.Recent[0].Name != "E" || got.Recent[4].Name != "A" || got.Recent[1].Turns != 0 || got.Recent[3].Turns != 9 {
+		t.Errorf("recent = %+v", got.Recent)
+	}
+	// Five unnamed seats (the losers) share one guest label; D's own seat
+	// are not counted.
+	if len(got.People) != 3 {
+		t.Fatalf("people = %+v", got.People)
+	}
+	guest, me, other := got.People[0], got.People[1], got.People[2]
+	if guest.Kind != "guest" || guest.Games != 5 || guest.Losses != 5 || guest.AvgPlace == nil || *guest.AvgPlace != 2 {
+		t.Errorf("guest = %+v", guest)
+	}
+	if me.Name != "name-u-me" || me.Kind != "account" || me.Games != 3 || me.Wins != 1 || me.Losses != 1 || me.Draws != 1 || me.AvgPlace == nil || *me.AvgPlace != 2 {
+		t.Errorf("me = %+v", me)
+	}
+	if other.Name != "name-u-other" || other.Games != 1 || other.Wins != 1 {
+		t.Errorf("other = %+v", other)
+	}
+	if len(got.CommandersGames) != 4 || got.CommandersGames[0].Name != "Other Person's Commander" || got.CommandersGames[0].Games != 5 ||
+		got.CommandersGames[1].Name != "Atraxa" || got.CommandersGames[1].Games != 2 {
+		t.Errorf("commanders by games = %+v", got.CommandersGames)
+	}
+	if got.CommandersWins[0].Name != "Atraxa" || got.CommandersWins[0].Wins != 1 || got.CommandersWins[1].Name != "Secret Commander" {
+		t.Errorf("commanders by wins = %+v", got.CommandersWins)
+	}
+	if len(got.Cards) != 2 || got.Cards[0] != (CardCasts{Name: "Sol Ring", Casts: 5, Games: 2}) || got.Cards[1].Name != "Lightning Bolt" {
+		t.Errorf("cards = %+v", got.Cards)
+	}
+}
+
+func TestOverviewEmptyAndCapped(t *testing.T) {
+	s, d := openStore(t)
+	got, err := s.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Totals != (Totals{}) || got.Recent == nil || got.People == nil || got.CommandersGames == nil || got.CommandersWins == nil || got.Cards == nil {
+		t.Errorf("empty overview = %+v, want zero totals and empty lists", got)
+	}
+	for i := 0; i < AdminListMax+5; i++ {
+		seedSeat(t, d, int64(1000+i), fmt.Sprintf("G%d", i), "", "", "", "win", 1, 3, fmt.Sprintf(`["Cmdr %02d"]`, i))
+	}
+	got, err = s.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Recent) != AdminListMax || len(got.CommandersGames) != AdminListMax || len(got.CommandersWins) != AdminListMax {
+		t.Errorf("lists = %d/%d/%d, want %d", len(got.Recent), len(got.CommandersGames), len(got.CommandersWins), AdminListMax)
+	}
+}
