@@ -118,13 +118,6 @@ func tovolarUpkeep(g *game.Game, item *game.StackItem) error {
 			}
 			return out, 0, len(out)
 		},
-		Then: func(ctx *Context, picked game.PromptedPicks) error {
-			for _, id := range picked.Cards() {
-				if err := (Transform{Target: id}).Apply(ctx); err != nil {
-					return err
-				}
-			}
-			return nil
-		},
+		Then: TransformPicked,
 	}.Apply(ctx)
 }
