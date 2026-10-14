@@ -38,6 +38,8 @@ const STATS: AdminStatsResponse = {
   people: [
     { name: "Alice", kind: "account", ...tally(3, 2, 1, 0, 1.5) },
     { name: "Bot (heuristic)", kind: "bot", ...tally(2, 0, 2, 0, null) },
+    { name: "AI agent (claude-code)", kind: "agent", ...tally(1, 1, 0, 0, 1) },
+    { name: "Deleted players", kind: "deleted", ...tally(2, 1, 1, 0, 2) },
   ],
   commanders_by_games: [{ name: "Tymna / Thrasios", ...tally(3, 1, 1, 1, 2) }],
   commanders_by_wins: [{ name: "Atraxa", ...tally(2, 2, 0, 0, 1) }],
@@ -116,6 +118,12 @@ describe("the Stats tab", () => {
     expect(rows[0]).toContain("1.5");
     expect(rows[1]).toContain("Bot (heuristic)");
     expect(rows[1]).toContain("bot");
+    expect(rows[2]).toContain("AI agent (claude-code)");
+    expect(rows[2]).toContain("agent");
+    expect(rows[3]).toContain("Deleted players");
+    expect(rows[3]).toContain("deleted");
+    expect(text(container)).toContain("Top commanders by games (human seats only)");
+    expect(text(container)).toContain("Most-cast cards (human seats only)");
 
     expect(text(container.querySelector("table[aria-label='commanders by games']"))).toContain(
       "Tymna / Thrasios",

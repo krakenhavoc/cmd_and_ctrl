@@ -288,7 +288,10 @@ export interface AdminStatsResponse {
     rounds: number;
     source: string;
   }[];
-  people: (AdminStatsTally & { name: string; kind: "account" | "guest" | "bot" })[];
+  people: (AdminStatsTally & {
+    name: string;
+    kind: "account" | "guest" | "bot" | "agent" | "deleted";
+  })[];
   commanders_by_games: (AdminStatsTally & { name: string })[];
   commanders_by_wins: (AdminStatsTally & { name: string })[];
   cards: { name: string; casts: number; games: number }[];

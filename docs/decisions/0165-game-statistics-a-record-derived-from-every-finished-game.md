@@ -81,6 +81,17 @@ Operators read the statistics from the **Stats** tab of the admin page (`#/admin
 - **Definitions are §7's.** Only a win, loss or draw counts, average place is over counted seats that have a place, and a commander is the seat's commander names joined with ` / `. The aggregation is `gamestats.Tally`, shared with `GET /me/stats`.
 - **Privacy.** This is the one place stats are read against other people's seats, and it shows display names beside records, so the privacy notice's "Game statistics" row says server admins can read them. No new table and no new stored column.
 
+### 9. Privacy pass (#3434)
+
+The two readers (§7, §8) follow these rules:
+
+- **Deleted accounts.** `GET /admin/stats` folds every seat whose `users.deleted_at` is set into one anonymous "Deleted players" row (kind `deleted`), so a deleted person's record cannot be picked out from the others'.
+- **Agent seats.** A seat with `seats.agent_client` set is its own kind, "AI agent (<client>)" (kind `agent`), keyed by client and not by seat name as a guest.
+- **Human seats only.** The admin commander lists and the most-cast cards count seats with no `bot_tier` and no `agent_client`, and the view says so.
+- **`/me/stats`** ignores a seat with `bot_tier` or `agent_client` set even if it carries the caller's `user_id`, so a person's record is only games they played themselves.
+- **Opponents are never named** on a person's page: it reads the person's own seats and each game's seat count, nothing else.
+- **Future rankings.** Any leaderboard or rating is opt-in per person and hides deleted accounts.
+
 ## Consequences
 
 - A game's stats exist seconds after it ends, from the complete log, with no new engine state and no change to the wire protocol.

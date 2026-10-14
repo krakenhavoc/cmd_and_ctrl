@@ -91,3 +91,69 @@ func TestOverviewEmptyAndCapped(t *testing.T) {
 		t.Errorf("lists = %d/%d/%d, want %d", len(got.Recent), len(got.CommandersGames), len(got.CommandersWins), AdminListMax)
 	}
 }
+
+// ADR 0165 §9: deleted accounts fold into one row, agent seats are their
+// own kind, and bot and agent seats stay out of the commander and card
+// lists.
+func TestOverviewKeepsDeletedBotsAndAgentsOutOfHumanStats(t *testing.T) {
+	s, d := openStore(t)
+	exec := func(q string, args ...any) {
+		t.Helper()
+		if _, err := d.Exec(q, args...); err != nil {
+			t.Fatalf("%s: %v", q, err)
+		}
+	}
+	for _, u := range []string{"u-gone1", "u-gone2"} {
+		exec(`INSERT INTO users (id, display_name, created_at, last_seen_at, deleted_at) VALUES (?, 'Deleted player', 1, 1, 5)`, u)
+	}
+	exec(`INSERT INTO users (id, display_name, created_at, last_seen_at) VALUES ('u-live', 'Live', 1, 1)`)
+	seedSeat(t, d, 1000, "A", "u-gone1", "", "", "win", 1, 5, `["Gone One Cmdr"]`)
+	seedSeat(t, d, 2000, "B", "u-gone2", "", "", "loss", 2, 5, `["Gone Two Cmdr"]`)
+	seedSeat(t, d, 3000, "C", "u-live", "", "", "win", 1, 5, `["Human Cmdr"]`)
+	seedSeat(t, d, 4000, "D", "", "", "", "win", 1, 5, `["Agent Cmdr"]`)
+	seedSeat(t, d, 5000, "E", "", "", "", "win", 1, 5, `["Bot Cmdr"]`)
+	exec(`UPDATE seats SET agent_client = 'claude-code', guest_name = 'Agent Seat' WHERE seat = 0 AND game_id = (SELECT id FROM games WHERE name = 'D')`)
+	exec(`UPDATE seats SET bot_tier = 'heuristic' WHERE seat = 0 AND game_id = (SELECT id FROM games WHERE name = 'E')`)
+	exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = 'C'), 0, 'Human Card', NULL, 2, 1)`)
+	exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = 'D'), 0, 'Agent Card', NULL, 9, 1)`)
+	exec(`INSERT INTO seat_card_stats VALUES ((SELECT id FROM games WHERE name = 'E'), 0, 'Bot Card', NULL, 9, 1)`)
+
+	got, err := s.Overview(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	byKind := map[string][]PersonRecord{}
+	for _, p := range got.People {
+		byKind[p.Kind] = append(byKind[p.Kind], p)
+		if p.Name == "Deleted player" || p.Name == "Agent Seat" {
+			t.Errorf("person row %+v leaks a tombstone or seat name", p)
+		}
+	}
+	if d := byKind["deleted"]; len(d) != 1 || d[0].Name != "Deleted players" || d[0].Games != 2 || d[0].Wins != 1 || d[0].Losses != 1 {
+		t.Errorf("deleted = %+v, want one row of both accounts", d)
+	}
+	if a := byKind["agent"]; len(a) != 1 || a[0].Name != "AI agent (claude-code)" || a[0].Games != 1 || a[0].Wins != 1 {
+		t.Errorf("agent = %+v", a)
+	}
+	if b := byKind["bot"]; len(b) != 1 || b[0].Name != "Bot (heuristic)" {
+		t.Errorf("bot = %+v", b)
+	}
+	if l := byKind["account"]; len(l) != 1 || l[0].Name != "Live" {
+		t.Errorf("account = %+v", l)
+	}
+	for _, g := range append(append([]Group{}, got.CommandersGames...), got.CommandersWins...) {
+		if g.Name == "Agent Cmdr" || g.Name == "Bot Cmdr" {
+			t.Errorf("commander %q is from a bot or agent seat", g.Name)
+		}
+	}
+	found := false
+	for _, g := range got.CommandersGames {
+		found = found || g.Name == "Human Cmdr"
+	}
+	if !found {
+		t.Errorf("human commander missing: %+v", got.CommandersGames)
+	}
+	if len(got.Cards) != 1 || got.Cards[0].Name != "Human Card" {
+		t.Errorf("cards = %+v, want only the human seat's", got.Cards)
+	}
+}
