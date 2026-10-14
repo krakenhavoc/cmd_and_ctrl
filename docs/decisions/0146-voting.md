@@ -87,7 +87,7 @@ All nine ship Full.
 
 ## Out of scope
 
-1. **Secret council** (#2926): Mob Verdict, Círdan the Shipwright, Trap the Trespassers, Truth or Consequences, Vault 11: Voter's Dilemma, and Elrond of the White Council. Their ballots must stay hidden until everyone has voted, which is the opposite of decision 5.
+1. **Secret council** (#2926): Mob Verdict, Círdan the Shipwright, Trap the Trespassers, Truth or Consequences, Vault 11: Voter's Dilemma, and Elrond of the White Council. Their ballots must stay hidden until everyone has voted, which is the opposite of decision 5. **Shipped by [ADR 0180](0180-secret-council.md) (#2926).**
 2. **"Whenever players finish voting"** (#2927): Grudge Keeper, Model of Unity, Erestor of the Council. No event marked the end of a vote and the finished ballots were not kept for a trigger to read. **Shipped by the amendment of 2026-10-13 below.**
 3. **The other voting cards** (#2928). Most are card work on this seam. Selvala's Stampede needs "reveal until you reveal N creature cards" and a put from hand of up to N cards at once; Custodi Squire votes for cards in a graveyard, and an option whose card is not on the battlefield is dropped from the offer today; Illusion of Choice makes one player choose every vote for a turn. **The first twelve shipped in #3107; the last five (Selvala's Stampede, Custodi Squire, Trial of a Time Lord, Illusion of Choice, The Valeyard) by the second amendment of 2026-10-13 below.**
 

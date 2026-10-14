@@ -118,3 +118,41 @@ func TestHeuristicVotesForCardsInAGraveyardBySide(t *testing.T) {
 		t.Errorf("an opponent's bot voted for %q, want the card that helps the controller least", got)
 	}
 }
+
+// A secret vote (ADR 0180): the bot sees a zero tally and only its own
+// ballots, so it votes on the card's hints and the board alone. With
+// `self_best` (Círdan) it votes for itself; on a vote for "up to one" it
+// votes for nothing only when nothing of theirs is on offer.
+func TestHeuristicVotesInASecretVote(t *testing.T) {
+	me, them := seatID(0).String(), seatID(1).String()
+	players := []protocol.PickOptionView{{Label: "Them", Player: them}, {Label: "Me", Player: me}}
+	vote := protocol.CouncilVoteView{
+		Options: []string{"Them", "Me"}, Tally: []int{0, 0}, Offered: []int{0, 1}, Secret: true, SelfBest: true,
+	}
+	vote.Controller = them
+	in := ballotInput(t, vote, players)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Me" {
+		t.Errorf("with self_best the bot voted for %q, want itself", got)
+	}
+
+	big := creature("s-big", 1, "Big", 6, 6)
+	mine := creature("s-mine", 0, "Mine", 8, 8)
+	opts := []protocol.PickOptionView{
+		{Label: "Big", Cards: []protocol.CardView{big}},
+		{Label: "Mine", Cards: []protocol.CardView{mine}},
+		{Label: "No creature"},
+	}
+	vote = protocol.CouncilVoteView{
+		Options: []string{"Big", "Mine"}, Tally: []int{0, 0}, Offered: []int{0, 1, -2}, Secret: true, Abstain: "No creature",
+	}
+	vote.Controller = them
+	in = ballotInput(t, vote, opts, big, mine)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "Big" {
+		t.Errorf("the bot voted for %q, want their creature over nothing", got)
+	}
+	vote.Offered = []int{1, -2}
+	in = ballotInput(t, vote, opts[1:], mine)
+	if got := chose(t, in, decide(t, heuristic.New(), in)); got != "No creature" {
+		t.Errorf("with only its own creature on offer the bot voted for %q, want nothing", got)
+	}
+}

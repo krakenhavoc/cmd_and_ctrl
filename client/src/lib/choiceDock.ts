@@ -528,11 +528,17 @@ function answersFor(
 
 // ballotNote is a ballot option's vote count so far (ADR 0146), or
 // undefined on a prompt that is not a ballot and on "Don't vote again".
+// A secret vote (ADR 0180) has no count to show: the note marks the
+// option the viewer has already voted for, from their own ballots,
+// the only ones their wire carries.
 export function ballotNote(c: PendingChoiceView, i: number): string | undefined {
   const v = c.council_vote;
   if (!v) return undefined;
   const opt = v.offered[i] ?? -1;
   if (opt < 0) return undefined;
+  if (v.secret) {
+    return (v.ballots ?? []).some((b) => b.option === opt) ? "your vote" : undefined;
+  }
   return String(v.tally[opt] ?? 0);
 }
 
@@ -640,6 +646,10 @@ export interface VoteRequestInput {
   tally?: number[];
   label?: string;
   detail?: string;
+  // ADR 0180: a secret rules vote shows no counts, only the options the
+  // viewer has voted for themselves (`secretMine`).
+  secret?: boolean;
+  secretMine?: number[];
 }
 
 export function voteRequest(input: VoteRequestInput): DockRequest {
@@ -653,17 +663,18 @@ export function voteRequest(input: VoteRequestInput): DockRequest {
   }
   const mine = viewerID && onCast ? (vote.ballots?.[viewerID] ?? null) : null;
   const initiator = seats.find((s) => s.id === vote.initiator)?.name ?? "?";
-  const row: DockAction[] = vote.options.map(
-    (option, i): DockAction => ({
+  const row: DockAction[] = vote.options.map((option, i): DockAction => {
+    const secretlyMine = input.secret === true && (input.secretMine ?? []).includes(i);
+    return {
       id: `vote-${i}`,
       label: option,
-      note: String(counts[i] ?? 0),
+      note: input.secret ? (secretlyMine ? "your vote" : undefined) : String(counts[i] ?? 0),
       pressed: onCast ? mine === i : undefined,
-      emphasis: mine === i,
+      emphasis: mine === i || secretlyMine,
       disabled: !onCast,
       onPress: () => onCast?.(i),
-    }),
-  );
+    };
+  });
   if (onEnd) row.push({ id: "end-vote", label: "end vote", alignEnd: true, onPress: onEnd });
   return {
     rank: "step",
@@ -691,10 +702,37 @@ export function councilVoteRequest(
   const voter = nameOf(c.chooser);
   // Illusion of Choice (ADR 0146, second amendment): the player answering
   // is not the player whose vote it is.
-  const detail =
+  let detail =
     v.voter && v.voter !== c.chooser
       ? `${voter} is choosing ${nameOf(v.voter)}'s vote`
       : `${voter} is voting`;
+  if (v.secret) {
+    // ADR 0180: who has voted is public, what they voted for is not.
+    // The viewer's wire carries only their own ballots.
+    const mine = (v.ballots ?? []).map((b) => b.option);
+    const voted = v.voted?.length ?? 0;
+    detail = `${voter} is voting in secret · ${voted} voted so far`;
+    if (mine.length > 0) {
+      const what = mine.map((o) => (o >= 0 ? (v.options[o] ?? "?") : (v.abstain ?? "nothing")));
+      detail += ` · you voted for ${what.join(" and ")}, waiting for the others`;
+    }
+    return voteRequest({
+      vote: {
+        id: c.id,
+        topic: c.reason ?? "",
+        options: v.options,
+        initiator: v.controller,
+        ballots: {},
+      },
+      viewerID,
+      seats,
+      tally: v.tally,
+      label: "secret vote",
+      detail,
+      secret: true,
+      secretMine: mine,
+    });
+  }
   return voteRequest({
     vote: {
       id: c.id,

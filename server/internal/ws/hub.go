@@ -1198,6 +1198,9 @@ func (c *Client) handleAction(frame protocol.Frame) {
 			case errors.Is(err, ErrNotYourUndo):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"you can only undo your own most recent action")
+			case errors.Is(err, ErrUndoPastSecretVote):
+				c.sendError(frame.ID, protocol.CodeBadRequest,
+					"that action revealed a secret vote and can't be taken back")
 			case errors.Is(err, game.ErrNoUndosRemaining):
 				c.sendError(frame.ID, protocol.CodeBadRequest,
 					"no undos remaining this turn")

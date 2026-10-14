@@ -55,6 +55,24 @@ type Vote struct {
 	// longer offered.
 	Zone game.ZoneKind
 
+	// Secret is secret council (ADR 0180): "each player secretly votes
+	// for …, then those votes are revealed". No ballot is shown to
+	// anyone but its voter until the last one is in.
+	Secret bool
+
+	// OthersOnly is "votes for another player" (Mob Verdict): no voter
+	// is offered the option naming them.
+	OthersOnly bool
+
+	// Abstain is the label of a "vote for nothing" option on every
+	// ballot, for "votes for up to one creature" (Vault 11). Empty for
+	// every other vote.
+	Abstain string
+
+	// SelfBest tells a bot that a voter wants the option naming
+	// themselves (Círdan: the votes you receive draw you cards).
+	SelfBest bool
+
 	// Then is the rest of the card, run with the tally.
 	Then game.VoteThen
 
@@ -90,9 +108,50 @@ func (v Vote) Apply(ctx *Context) error {
 		ForController: v.ForController,
 		ForOpponents:  v.ForOpponents,
 		OptionZone:    v.Zone,
+		Secret:        v.Secret,
+		OthersOnly:    v.OthersOnly,
+		Abstain:       v.Abstain,
+		SelfBest:      v.SelfBest,
 		Then:          v.Then,
 		Carry:         v.Carry,
 	})
+}
+
+// VoteForPlayers is a vote over players' option list ("votes for a
+// player", Círdan; "another player", Mob Verdict with OthersOnly): one
+// option per player still in the game, labelled with their name, in
+// turn order. Caller holds g.mu.
+func VoteForPlayers(g *game.Game) []game.ChoiceOption {
+	var out []game.ChoiceOption
+	for _, p := range g.Seats {
+		if p == nil || p.Eliminated {
+			continue
+		}
+		out = append(out, game.ChoiceOption{Label: p.Name, Player: p.ID})
+	}
+	return out
+}
+
+// voterStillIn reports whether a player a vote named is still in the
+// game (CR 800.4a: a player who has left is not affected). Caller
+// holds g.mu.
+func voterStillIn(g *game.Game, id uuid.UUID) bool {
+	p := g.PlayerByIDForEffect(id)
+	return p != nil && !p.Eliminated
+}
+
+// VotesReceived counts the votes each player option got, by player:
+// "each player draws a card for each vote they received".
+func VotesReceived(r game.VoteResult) map[uuid.UUID]int {
+	out := map[uuid.UUID]int{}
+	for _, b := range r.Ballots {
+		if b.Option >= 0 && b.Option < len(r.Options) {
+			if p := r.Options[b.Option].Player; p != uuid.Nil {
+				out[p]++
+			}
+		}
+	}
+	return out
 }
 
 // VoteResultThen registers a vote's continuation, as a card file's

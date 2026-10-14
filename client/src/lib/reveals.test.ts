@@ -107,6 +107,30 @@ describe("trackRandomEvents", () => {
     expect(s.cues).toHaveLength(0);
   });
 
+  it("announces a secret vote's reveal (ADR 0180) once, and not the secret ballots before it", () => {
+    const ballot: LogEvent = {
+      seq: 20,
+      kind: "vote_secret",
+      seat: 1,
+      text: "Bob cast a secret vote (Mob Verdict)",
+    };
+    const reveal: LogEvent = {
+      seq: 21,
+      kind: "votes_revealed",
+      seat: 0,
+      text: "Votes revealed (Mob Verdict): Ann for Bob, Bob for Ann",
+      seats: [0, 1],
+      votes: ["Bob", "Ann"],
+    };
+    let s = trackRandomEvents(emptyRandomState(), [ballot], 0);
+    expect(s.cues).toHaveLength(0);
+    s = trackRandomEvents(s, [ballot, reveal], 100);
+    expect(s.cues.map((c) => c.log.seq)).toEqual([21]);
+    s = trackRandomEvents(s, [ballot, reveal], 200);
+    expect(s.cues).toHaveLength(1);
+    expect(trackRandomEvents(primeRandomEvents([reveal]), [reveal], 0).cues).toHaveLength(0);
+  });
+
   it("keeps only the newest random batches", () => {
     const s = trackRandomEvents(emptyRandomState(), [randomLog(1), randomLog(2), randomLog(3)], 0);
     expect(RANDOM_CUE_LIMIT).toBe(2);

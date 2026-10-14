@@ -280,6 +280,12 @@ var ErrNotYourUndo = errSentinel("ws: top of undo stack is another seat's action
 // mistakes.
 var ErrGameOverUndo = errSentinel("ws: the game is over; only the admin can undo past its end")
 
+// ErrUndoPastSecretVote is returned by Undo when the seated caller's
+// entry is the commit that revealed a secret vote (ADR 0180 decision
+// 4): taking it back would let the last voter vote again knowing every
+// other ballot. The admin (caller == uuid.Nil) can still undo.
+var ErrUndoPastSecretVote = errSentinel("ws: that action revealed a secret vote and can't be taken back")
+
 type errSentinel string
 
 func (e errSentinel) Error() string { return string(e) }
@@ -685,6 +691,9 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 	if caller != uuid.Nil && top.caller != uuid.Nil && top.caller != caller {
 		return protocol.GameView{}, 0, ErrNotYourUndo
 	}
+	if caller != uuid.Nil && r.revealedSecretVoteSinceLocked(top) {
+		return protocol.GameView{}, 0, ErrUndoPastSecretVote
+	}
 
 	// Budget pre-check (peek, don't decrement). We need to know the
 	// pre-restore game has budget so the undo isn't half-applied:
@@ -725,6 +734,17 @@ func (r *Room) undo(caller uuid.UUID) (protocol.GameView, uint64, error) {
 		}
 	}
 	return r.captureLocked(true)
+}
+
+// revealedSecretVoteSinceLocked reports whether the live game revealed
+// a secret vote after the entry's clone was taken (ADR 0180 decision 4).
+// The clone is the room's own and nobody else holds it. Caller MUST
+// hold r.mu.
+func (r *Room) revealedSecretVoteSinceLocked(e undoEntry) bool {
+	if e.pre == nil {
+		return false
+	}
+	return r.Game.RevealedSecretVoteAfter(e.pre.LastEventSeq())
 }
 
 // IsErrNothingToUndo reports whether err is one of the expected
@@ -1024,8 +1044,10 @@ func (r *Room) stampUndoAutoAnswerLocked(view *protocol.GameView) {
 func (r *Room) stampUndoBlockedLocked(view *protocol.GameView) {
 	ended := r.Game.CurrentState() == game.StateEnded
 	var top undoEntry
+	revealed := false
 	if len(r.undoStack) > 0 {
 		top = r.undoStack[len(r.undoStack)-1]
+		revealed = r.revealedSecretVoteSinceLocked(top)
 	}
 	for i := range view.Seats {
 		id, err := uuid.Parse(view.Seats[i].ID)
@@ -1036,6 +1058,8 @@ func (r *Room) stampUndoBlockedLocked(view *protocol.GameView) {
 			view.Seats[i].UndoBlocked = protocol.UndoBlockedGameOver
 		case err == nil && top.caller != uuid.Nil && top.caller != id:
 			view.Seats[i].UndoBlocked = protocol.UndoBlockedNotYours
+		case revealed:
+			view.Seats[i].UndoBlocked = protocol.UndoBlockedSecretVote
 		}
 	}
 }
