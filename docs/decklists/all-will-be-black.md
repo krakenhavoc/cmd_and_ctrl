@@ -13,14 +13,17 @@ and maybeboard cards are excluded. The report has no unresolved names.
 
 | Coverage bucket | Distinct cards | Copies in the 100-card deck |
 | --- | ---: | ---: |
-| Automated, complete | 67 | 67 |
+| Declared automated, full | 69 | 69 |
 | Automated with caveats | 1 | 1 |
 | No effect to implement (Swamp) | 1 | 27 |
-| Manual only | 5 | 5 |
+| Manual only | 3 | 3 |
 | Unreviewed | 0 | 0 |
 
-**94 of 100 copies are complete on this branch.** The previously merged
-19-card batches, review stamps and Forsaken Miner fix are present. This change
+**The live catalog reports 96 of 100 copies complete on this branch.** The previously merged
+19-card batches, review stamps and Forsaken Miner fix are present. Newer
+merged deck batches also register Liliana and The Darkness Crystal as Full.
+Their tracked simultaneous-sacrifice and paused-life-replacement cases
+(#2948 and #2950) still need verification before closing the deck request. This change
 completes Nether Traitor (#3417): a separate later death instruction in one
 resolution wakes a Traitor already in the graveyard, while an actual shared
 wipe or sacrifice does not. It uses existing simultaneous-exit data and
@@ -37,8 +40,8 @@ further complete card. Only the measured branch result is counted here.
 | Gisa, the Hellraiser | One ward payment combining mana and life (#2945). |
 | Vraska, Betrayal's Sting | Compleated entry loyalty from exact Phyrexian-symbol payments (#2946). |
 | Kaervek, the Punisher | Cast a copy of an exiled card during resolution, then continue (#2947). |
-| Liliana, Dreadhorde General | Gather every affected player's choices before simultaneous sacrifices (#2948). |
-| The Darkness Crystal | A move replacement with resumable additional life gain and linked reanimation (#2950). |
+| Liliana, Dreadhorde General (cataloged Full) | Verify that all −4 choices are gathered before simultaneous sacrifices (#2948). |
+| The Darkness Crystal (cataloged Full) | Verify that additional life gain pauses the original move/effect correctly (#2950). |
 | Library of Leng | Choose the relative order of several cards discarded to the library (#2949). |
 
 The deck request remains open. No remaining caveat or manual card has been
