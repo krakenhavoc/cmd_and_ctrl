@@ -86,6 +86,26 @@ export function canAnimate(el: Element): boolean {
   return typeof (el as { animate?: unknown }).animate === "function";
 }
 
+// settled resolves once every finite animation running on `el` or on
+// one of its ancestors has finished or been cancelled. A layout box read
+// while one of them is mid-flight carries its transform (an entrance pop
+// scales the card down), so a caller that measures `el` waits on this
+// first. Endless animations are skipped: they would never settle. Where
+// the environment has no document.getAnimations it resolves at once.
+export function settled(el: Element): Promise<void> {
+  if (typeof document === "undefined" || typeof document.getAnimations !== "function") {
+    return Promise.resolve();
+  }
+  const waits: Promise<unknown>[] = [];
+  for (const a of document.getAnimations()) {
+    const target = (a.effect as KeyframeEffect | null)?.target;
+    if (!(target instanceof Element) || !target.contains(el)) continue;
+    if (!Number.isFinite(a.effect?.getComputedTiming().endTime ?? Infinity)) continue;
+    waits.push(a.finished.catch(() => undefined));
+  }
+  return Promise.all(waits).then(() => undefined);
+}
+
 // run starts one animation on `el`. `fill: "forwards"` is up to the
 // caller: an animation that has to leave `el` in its end state passes
 // it (the element is removed by its owner), one that returns to the
