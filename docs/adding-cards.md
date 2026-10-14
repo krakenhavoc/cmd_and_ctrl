@@ -8276,6 +8276,23 @@ Three things to know:
   source, so a scope's "your" is the emblem's owner, and a refusal names
   the emblem by its label.
 
+### Compleated (CR 702.150a, ADR 0183, #2946)
+
+A compleated planeswalker declares the keyword and its replacement, and
+nothing else:
+
+```go
+PrintedKeywords: []string{"compleated"},
+Replacements:    []game.ReplacementEffect{Compleated()},
+```
+
+`Compleated()` lowers the starting-loyalty placement
+(`ReplacementEvent.StartingLoyalty`) by two for each printed Phyrexian
+symbol the cast paid with life (`Card.PhyrexianLifePaid`). It cancels
+the placement at zero. A planeswalker that was not cast enters with its
+printed loyalty. Doubling Season and other loyalty replacements are
+ordered against it by the controller (CR 616).
+
 ### A loyalty cost of −X (ADR 0032 amendment 2026-10-10, #1944)
 
 A "−X:" loyalty ability is `Cost: LoyaltyMinusX()`. The activator announces X with the activation

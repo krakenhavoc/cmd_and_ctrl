@@ -156,6 +156,16 @@ func (g *Game) AddCounterByThenForEffect(placer, cardID uuid.UUID, name string, 
 	if then != nil {
 		ev.counterTail = &counterTail{then: then}
 	}
+	return g.placeCountersThroughReplacementsLocked(ev)
+}
+
+// placeCountersThroughReplacementsLocked runs the CR 614 window on a
+// built counter event and lands it. The shared body of
+// AddCounterByThenForEffect and the starting-loyalty stamp, which marks
+// its event first (ReplacementEvent.StartingLoyalty, ADR 0183).
+//
+// Caller must hold g.mu.
+func (g *Game) placeCountersThroughReplacementsLocked(ev *ReplacementEvent) error {
 	out, err := g.applyReplacementsLocked(ev)
 	if errors.Is(err, errReplacementPending) {
 		// A prompt is queued and the resume owns the placement now.
