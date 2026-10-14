@@ -586,6 +586,31 @@ type CastPermission struct {
 	// casts.
 	MaxSpellManaValue *int `json:"maxSpellManaValue,omitempty"`
 
+	// ManaValueBudget is the total mana value this permission may still
+	// open across ALL the spells cast through it (#2017, ADR 0066's
+	// 2026-10-14 amendment): "you may cast any number of spells with
+	// total mana value 6 or less from among the copies without paying
+	// their mana costs" (Uldaros Theorix, CR 608.2g). MaxSpellManaValue
+	// is a ceiling on ONE spell and never changes; this is a running
+	// total that each cast spends, so it rides ONE permission naming
+	// every card of the set (an offer per card would give each its own
+	// total, which is the stronger-than-printed reading).
+	//
+	// It is the REMAINING budget, not the printed one: the cast that
+	// spends it replaces the stored permission with one holding a fresh
+	// pointer and the cast spell's card removed from Cards
+	// (spendManaValueBudgetLocked), because the backing array is shared
+	// with the undo snapshots. A spell is judged against the face being
+	// cast with X at zero, by the same gate as MaxSpellManaValue
+	// (spellManaValueWithinCap), so the cast path, the view's offers and
+	// the bot enumerator refuse the same casts.
+	//
+	// A pointer because 0 is a real remaining budget (only mana value 0
+	// spells fit). Nil means no budget, which is every permission written
+	// before the field existed. Meaningful on a ScopeCards permission
+	// with LapseOnPass, the only shape that spends it.
+	ManaValueBudget *int `json:"manaValueBudget,omitempty"`
+
 	// LapseOnPass closes the permission the next time its holder
 	// passes priority, and says where the card goes then (ADR 0099
 	// §4). It is the grant model's stand-in for CR 608.2g's "cast it
