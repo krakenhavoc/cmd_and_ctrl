@@ -1547,7 +1547,9 @@ Private decks (upstream 401/403) and unsupported hosts surface as
 ```
 
 `deck_id` echoes the pre-built deck that was installed and is absent
-for an uploaded list. `companion` ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md),
+for an uploaded list. `sideboard` ([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md),
+omitempty) is how many sideboard cards the deck seats outside the game;
+`card_count` never counts them. `companion` ([ADR 0172](decisions/0172-companion-a-card-outside-the-game.md),
 omitempty) names the deck's companion, which is seated outside the
 game rather than in the library; `card_count` never counts it.
 
@@ -1642,8 +1644,17 @@ Violation codes (stable strings, keyable by the client):
   Moxfield link says to export the list and paste it, and adds
   `"hint": "paste_list"`.
 - `sideboard_not_supported_in_commander` — **warning only**, delivered
-  under `warnings` on both success and 422 responses (the server
-  ignores the sideboard either way)
+  under `warnings` on both success and 422 responses. Commander uses no
+  sideboard (CR 903.5e), so its cards are not part of the deck, but they
+  are not dropped: they stay outside the game as the player's own pool,
+  and only an effect that brings a card in from outside the game (a wish,
+  Extrapolate the Impossible) can reach them
+  ([ADR 0191](decisions/0191-a-sideboard-is-the-outside-the-game-pool.md)).
+  The message says so; the code is unchanged.
+- `sideboard_too_large` — **warning only**: more than 15 sideboard cards.
+  The deck imports and seats, the sideboard is **not** carried into the
+  game (`sideboard` in the upload answer is omitted), and the message names
+  the count and the limit. The server never picks which cards to keep.
 
 ### The deck library (ADR 0051 decision 7, S34 sub-PR 5)
 

@@ -638,6 +638,13 @@ type playerSnapshot struct {
 	// seated, and an older binary that drops it loses only the option
 	// to take the companion (weaker than printed, owner decision 6).
 	Companion *zoneSnapshot `json:"companion,omitempty"`
+	// Sideboard is Player.Sideboard (ADR 0191 §4): the cards the deck
+	// owns outside the game. Written only while it holds a card.
+	// Additive within v8: absent means no sideboard, which is right for
+	// every file written before a sideboard could be seated. An older
+	// binary drops it, and the player loses the cards an effect could
+	// have brought in: weaker than printed, never stronger.
+	Sideboard *zoneSnapshot `json:"sideboard,omitempty"`
 	// CommanderDamage is keyed by commander card instance ID since
 	// S25 (#77). A snapshot written before that rekey restores with
 	// player-ID keys, which read as damage from commanders that do
@@ -823,6 +830,10 @@ type cardSnapshot struct {
 	// file written before companions could be seated. An older binary
 	// drops it and loses only the badge.
 	IsCompanion bool `json:"isCompanion,omitempty"`
+	// IsSideboard is Card.IsSideboard (ADR 0191 §3). Additive within
+	// v8; absent means not a sideboard card. An older binary drops it
+	// and loses nothing it read.
+	IsSideboard bool `json:"isSideboard,omitempty"`
 	// CommanderReturnDue is Card.CommanderReturnDue (ADR 0115 §8): the
 	// CR 903.9a check is owed to this commander. Additive within v7;
 	// an older file has none, which is what every game before it was.
@@ -1290,6 +1301,7 @@ func (s *GameSnapshot) AbilityShortfalls() []AbilityShortfall {
 		walk(p.Command)
 		walk(p.Emblems)
 		walk(p.Companion)
+		walk(p.Sideboard)
 	}
 	return out
 }
@@ -2074,6 +2086,7 @@ func snapshotRNGCounters(m map[string]uint64) map[string]uint64 {
 // snapshotCompanionZone is snapshotZone for Player.Companion, which is
 // written only while it holds a card (ADR 0172 §4), so a file with no
 // companion waiting is byte-for-byte the shape it was before.
+// Player.Sideboard rides the same pair (ADR 0191 §4).
 func snapshotCompanionZone(z *Zone, cen *ContinuationCensus) *zoneSnapshot {
 	if z == nil || len(z.Cards) == 0 {
 		return nil
@@ -2211,6 +2224,7 @@ func snapshotCard(c Card, cen *ContinuationCensus) cardSnapshot {
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
+		IsSideboard:              c.IsSideboard,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -2317,6 +2331,7 @@ func snapshotPlayer(p *Player, cen *ContinuationCensus) playerSnapshot {
 		Command:               snapshotZone(p.Command, cen),
 		Emblems:               snapshotZone(p.Emblems, cen),
 		Companion:             snapshotCompanionZone(p.Companion, cen),
+		Sideboard:             snapshotCompanionZone(p.Sideboard, cen),
 		CommanderDamage:       copyIntMap(p.CommanderDamage),
 		TurnsBegun:            p.TurnsBegun,
 		UpkeepsBegun:          p.UpkeepsBegun,
@@ -3109,6 +3124,7 @@ func restoreCard(c *cardSnapshot) Card {
 		CounterStampedAt:         copyStringInt64Map(c.CounterStampedAt),
 		IsCommander:              c.IsCommander,
 		IsCompanion:              c.IsCompanion,
+		IsSideboard:              c.IsSideboard,
 		CommanderReturnDue:       c.CommanderReturnDue,
 		AttackingTarget:          c.AttackingTarget,
 		ExertOnAttack:            c.ExertOnAttack,
@@ -3247,6 +3263,7 @@ func restorePlayer(p *playerSnapshot) *Player {
 		Command:            restoreZone(p.Command, ZoneCommand),
 		Emblems:            restoreZone(p.Emblems, ZoneCommand),
 		Companion:          restoreCompanionZone(p.Companion),
+		Sideboard:          restoreCompanionZone(p.Sideboard),
 		TurnsBegun:         p.TurnsBegun,
 		UpkeepsBegun:       p.UpkeepsBegun,
 		EndStepTurn:        p.EndStepTurn,

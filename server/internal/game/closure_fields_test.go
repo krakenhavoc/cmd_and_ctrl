@@ -131,7 +131,14 @@ var closureClassCeilings = map[string]int{
 	// lookup both include it) and counts its cards exactly as it
 	// counts a hand's. The owner chose this container over putting the
 	// companion in the command zone (ADR 0172, Option B).
-	"census:IntrinsicAbilityCards": 50,
+	//
+	// 51: + Player.Sideboard (ADR 0191 §4, #3506), the deck's cards
+	// outside the game, a second container of the same kind as
+	// Player.Companion and counted the same way: the census walks it
+	// (the snapshot's card walk and the ability-ref lookup both include
+	// it), and it is a container of ordinary cards, not a new kind of
+	// blocker.
+	"census:IntrinsicAbilityCards": 51,
 	"transient":                    1,
 }
 

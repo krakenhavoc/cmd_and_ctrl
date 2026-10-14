@@ -1253,6 +1253,13 @@ type Card struct {
 	// statistics and the client's badge read it. It grants nothing.
 	IsCompanion bool
 
+	// IsSideboard marks a card a deck owns outside the game (ADR 0191
+	// §3). It routes the card into Player.Sideboard when the deck is
+	// seated, the way IsCompanion routes the companion, and stays on
+	// the card after an effect brings it into a hand. It grants
+	// nothing.
+	IsSideboard bool
+
 	// CommanderReturnDue is CR 903.9a's "put into that zone since the
 	// last time state-based actions were checked" for a commander in a
 	// graveyard or in exile (ADR 0115 decision 1). MoveCard sets it as a

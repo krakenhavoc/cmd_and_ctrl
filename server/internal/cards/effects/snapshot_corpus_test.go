@@ -498,7 +498,65 @@ func corpusBoards() []corpusBoard {
 		// (cards[].isCompanion). Additive within v8: an older binary
 		// drops both keys.
 		{"companion_waiting", corpusCompanionWaiting},
+		// v8, added by ADR 0191 (#3506) as a new file: seat 0's
+		// sideboard outside the game (seats[].sideboard, three cards, one
+		// of them revealed to the table) and seat 1 with a sideboard card
+		// already brought into its hand (cards[].isSideboard). Additive
+		// within v8: an older binary drops both keys.
+		{"sideboard_outside_the_game", corpusSideboardOutsideTheGame},
 	}
+}
+
+// corpusSideboardOutsideTheGame is newCorpusGame's table with a
+// sideboard on each seat (ADR 0191): seat 0 keeps three cards outside
+// the game and has revealed one of them, seat 1 has already brought one
+// into its hand.
+func corpusSideboardOutsideTheGame(t *testing.T) *game.Game {
+	t.Helper()
+	g := game.NewGame()
+	for i, name := range []string{"P1", "P2"} {
+		deck := []game.Card{{
+			InstanceID:  uuid.New(),
+			Name:        fmt.Sprintf("Test Commander %d", i+1),
+			TypeLine:    "Legendary Creature — Test",
+			Power:       3,
+			Toughness:   3,
+			IsCommander: true,
+		}}
+		for range 11 {
+			deck = append(deck, game.Card{InstanceID: uuid.New(), Name: "Forest", TypeLine: "Basic Land — Forest"})
+		}
+		for _, side := range []struct{ name, typeLine string }{
+			{"Burning Wish", "Sorcery"}, {"Lightning Bolt", "Instant"}, {"Grizzly Bears", "Creature — Bear"},
+		} {
+			deck = append(deck, game.Card{
+				InstanceID: uuid.New(), Name: side.name, TypeLine: side.typeLine, IsSideboard: true,
+			})
+		}
+		if _, err := g.AddPlayer(name, deck); err != nil {
+			t.Fatalf("AddPlayer: %v", err)
+		}
+	}
+	if err := g.StartWithSource(rand.NewPCG(522, 7)); err != nil {
+		t.Fatalf("StartWithSource: %v", err)
+	}
+	for _, p := range g.Seats {
+		if err := g.KeepHand(p.ID); err != nil {
+			t.Fatalf("KeepHand: %v", err)
+		}
+	}
+	g.WithWriteLock(func() {
+		// Seat 0 revealed its Burning Wish.
+		g.RevealOutsideForEffect(game.RevealSpec{
+			Player: g.Seats[0].ID, Reason: "corpus — reveal a card from outside the game",
+			Cards: []uuid.UUID{g.Seats[0].SideboardCards()[0].InstanceID},
+		})
+		// Seat 1 brought its Grizzly Bears into its hand.
+		if err := g.BringFromOutsideForEffect(g.Seats[1].ID, g.Seats[1].SideboardCards()[2].InstanceID); err != nil {
+			t.Fatalf("bring in seat 1's card: %v", err)
+		}
+	})
+	return g
 }
 
 // corpusCompanionWaiting is newCorpusGame with a Jegantha, the

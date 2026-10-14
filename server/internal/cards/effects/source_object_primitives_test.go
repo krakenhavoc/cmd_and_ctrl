@@ -655,6 +655,8 @@ func TestNoCardActsOnItsOwnSourceThroughAGameMutatorWithoutAsking(t *testing.T) 
 		"yawgmoths_vile_offering.go": true,
 		// "Shuffle Beacon of Unrest into its owner's library." (#3209)
 		"beacon_of_unrest.go": true,
+		// "Exile Burning Wish." and "Exile Living Wish." (ADR 0191, #3506)
+		"burning_wish.go": true, "living_wish.go": true,
 	}
 	isSelf := func(e ast.Expr) bool {
 		s := exprString(e)

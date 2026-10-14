@@ -978,12 +978,11 @@ var items = []Item{
 		EngineNotes: "cost component: crew and saddle both pay through `validateCrewCostLocked` (`game/activated.go`), which sums each tapped creature's `CurrentPower()`. \"This creature saddles Mounts and crews Vehicles as though its power were 2 greater\" (the Pilot token and several Pilot creatures) and Interface Ace's \"using its toughness rather than its power\" need a per-creature contribution the payment reads. It has to reach the validator, the client's running total in `CrewCostModal` (`CardView.power` is the post-layer power and the picker adds it up client-side), the enumerator's `crewPayment` (`legal/abilities.go`) and the heuristic. The Pilot token prints the ability, so it is a `tokenTemplate` with a token ability (see `TreasureToken`). Canyon Vaulter and Reckless Velocitaur also need an event for \"saddles a Mount or crews a Vehicle\", which nothing emits: a creature tapped to pay a crew or saddle cost. Found building the saddle seam (#2695).",
 	},
 	{
-		Slug: "reality-fracture", Name: "Reality Fracture cards that wait on a mechanic", Kind: KindSeam, Status: StatusMissing,
+		Slug: "reality-fracture", Name: "Reality Fracture cards that wait on a mechanic", Kind: KindSeam, Status: StatusImplemented,
 		Summary:     "Reality Fracture cards that wait on a mechanic the engine doesn't have yet.",
-		Missing:     "These cards need a rule the game doesn't have yet, so they can't be played.",
 		Issue:       2795,
-		Waiting:     []string{"Extrapolate the Impossible"},
-		EngineNotes: "Extrapolate the Impossible: \"You may reveal exactly two cards you own with different names from outside the game\" has no zone to read from. A table starts with a deck and no sideboard, so there is no outside-the-game collection to offer, and a sandbox stand-in (a free pick from the card index) would be stronger than printed.Each blocker is listed here by card as slices land.",
+		Examples:    []string{"Extrapolate the Impossible", "Dack Fayden, Helping Hand", "Hall of Echoes"},
+		EngineNotes: "**Shipped** (#2795). Every Reality Fracture card that waited on a mechanic has it now. The last one, Extrapolate the Impossible, reads the sideboard as its outside-the-game pool (#3506, ADR 0191).",
 	},
 	{
 		// #2012: a NUMBERED dies-and-entry keyword the engine derives
@@ -2168,6 +2167,15 @@ var items = []Item{
 		ADR:         "0172-companion-a-card-outside-the-game.md",
 		Examples:    []string{"Jegantha, the Wellspring"},
 		EngineNotes: "**Shipped** (#3401, ADR 0172). A deck names its companion in a `Companion` section, Moxfield's `companions` board or an Archidekt `Companion` category, and a lone companion card in the sideboard is read as one with a warning. `deck.Validate` checks the condition from a per-card registry keyed by oracle ID (`deck/companion.go`), and the companion's colour identity and legality; a companion with no registered condition is `unsupported_mechanic`. The card seats in `Player.Companion`, a `ZoneOutside` container built like emblems that no `ZoneRef` or card lookup reaches, and is revealed in turn order as the game begins. The {3} is the sixth `special_action` kind, `companion`, at sorcery speed, and once per game because the card never goes back. The other nine companions need only a condition function and a card file each.",
+	},
+	{
+		Slug: "outside-the-game", Name: "A sideboard: cards outside the game", Kind: KindSeam, Status: StatusImplemented,
+		Summary:     "A deck's sideboard is the pool of cards you own from outside the game. Only an effect that brings a card in can reach it, such as Burning Wish's \"You may reveal a sorcery card you own from outside the game and put it into your hand\" or Extrapolate the Impossible's reveal of two cards, one of which an opponent chooses.",
+		Rules:       []string{"400.11", "400.11c", "903.5e"},
+		Issue:       3506,
+		ADR:         "0191-a-sideboard-is-the-outside-the-game-pool.md",
+		Examples:    []string{"Extrapolate the Impossible", "Burning Wish", "Living Wish", "Mastermind's Acquisition"},
+		EngineNotes: "**Shipped** (#3506, ADR 0191). A deck's `Sideboard` section reaches the game as `Player.Sideboard`, a `ZoneOutside` container beside the companion's that no `ZoneRef` or card lookup reaches, up to 15 cards (`deck.MaxSideboard`). Its owner may read it (`PlayerView.sideboard`); everyone else sees a count. `game.QueueOutsidePickForEffect` asks for a card (a `choose_cards` over the container), `RevealOutsideForEffect` shows it and `BringFromOutsideForEffect` moves it into the hand. A controller of the owner's turn is offered nothing (CR 723.4). **Still waiting:** Karn, the Great Creator (reveal or choose a face-up artifact card in exile), Spawnsire of Ulamog's {20} (cast spells from outside the game), Research // Development (shuffle cards from outside the game into the library), the learn Lessons and the other wishes (Cunning, Glittering, Golden, Death, Fae of Wishes // Granted, Wish, Coax from the Blind Eternities).",
 	},
 	{
 		Slug: "timed-attack-tax", Name: "Attack taxes that last for a while", Kind: KindSeam, Status: StatusImplemented,

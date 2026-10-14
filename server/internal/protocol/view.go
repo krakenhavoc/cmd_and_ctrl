@@ -2256,6 +2256,19 @@ type PlayerView struct {
 	// owner's `special_action {kind: "companion"}` names.
 	Companion *CardView `json:"companion,omitempty"`
 
+	// Sideboard is the cards this seat owns outside the game (ADR 0191
+	// §7): the deck's sideboard, which only an effect that brings a card
+	// in from outside the game can reach. OWNER-ONLY: FilterViewFor
+	// keeps it for the seat's own viewer and drops it for every other
+	// seat, every spectator and the admin view, the way a library is
+	// hidden. A controller of the seat's turn (ADR 0167) does not see it
+	// either (CR 723.4). Absent for a seat with none.
+	Sideboard []CardView `json:"sideboard,omitempty"`
+
+	// SideboardCount is how many cards this seat owns outside the game.
+	// PUBLIC, the way a hand's size is; absent for a seat with none.
+	SideboardCount int `json:"sideboard_count,omitempty"`
+
 	// Keywords are the abilities this PLAYER has right now
 	// (CR 702.11d, CR 702.16i) — engine tokens, "hexproof" or
 	// "protection from everything". Derived grants from a controlled
@@ -8532,7 +8545,14 @@ func viewOfPendingChoices(g *game.Game) []PendingChoiceView {
 			v.ChooseDestination = string(c.ChooseDestination)
 			v.Options = make([]CardView, 0, len(c.ChooseCards))
 			for _, id := range c.ChooseCards {
-				if card, ok := g.LookupCardForEffect(id); ok {
+				card, ok := g.LookupCardForEffect(id)
+				if !ok {
+					// ADR 0191: a pick over cards outside the game. They
+					// are in no zone, and are shown only through the
+					// same knower filter every Options list passes.
+					card, ok = g.LookupOutsideCardForEffect(id)
+				}
+				if ok {
 					v.Options = append(v.Options, viewOfCard(card))
 				}
 			}
@@ -9027,6 +9047,12 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		cv := viewOfCard(c)
 		companion = &cv
 	}
+	// ADR 0191 §7: the sideboard. FilterViewFor keeps the cards for the
+	// owner alone; the count is public.
+	var sideboard []CardView
+	for _, c := range p.SideboardCards() {
+		sideboard = append(sideboard, viewOfCard(c))
+	}
 	return PlayerView{
 		ID:                    p.ID.String(),
 		Name:                  p.Name,
@@ -9071,6 +9097,8 @@ func viewOfPlayer(g *game.Game, p *game.Player) PlayerView {
 		ManaPool:            manaPool,
 		Emblems:             emblems,
 		Companion:           companion,
+		Sideboard:           sideboard,
+		SideboardCount:      len(sideboard),
 		Keywords:            g.PlayerAbilitiesForEffect(p),
 		LifeTotalLocked:     g.PlayerLifeTotalCantChangeLocked(p),
 		CantGainLife:        g.PlayerCantGainLifeLocked(p),
@@ -9494,6 +9522,16 @@ func FilterViewFor(v GameView, viewerID string) GameView {
 			}
 			c.knowers = nil
 			out.Companion = &c
+		}
+		// ADR 0191 §7: the sideboard is its owner's to read and nobody
+		// else's: not an opponent, not a spectator, not the admin view,
+		// and not the controller of the owner's turn (CR 723.4).
+		out.Sideboard = nil
+		if p.ID == viewerID && len(p.Sideboard) > 0 {
+			out.Sideboard = make([]CardView, len(p.Sideboard))
+			for i, c := range p.Sideboard {
+				out.Sideboard[i] = redactCardForViewer(c, isKnower(c))
+			}
 		}
 		// Opponent hand: strip only UNREVEALED cards (seated-viewer
 		// path — Thoughtseize-style reveals survive via KnownBy);

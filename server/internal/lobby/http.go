@@ -3054,6 +3054,10 @@ type uploadDeckResponse struct {
 	// Companion names the deck's companion (ADR 0172 §3), which seats
 	// outside the game rather than in the library. Empty for none.
 	Companion string `json:"companion,omitempty"`
+	// Sideboard is how many sideboard cards the deck seats outside the
+	// game (ADR 0191 §3): not part of CardCount, read only by effects
+	// that bring a card in from outside the game. Zero for none.
+	Sideboard int `json:"sideboard,omitempty"`
 	// Warnings is a non-fatal violation list (e.g. sideboard ignored).
 	// The accepted deck is already installed when warnings is
 	// non-empty; treat it as advisory.
@@ -3206,7 +3210,11 @@ func resolveDeckSource(ctx context.Context, c Config, w http.ResponseWriter, for
 				//
 				// ADR 0172 adds the third: a lone sideboard card read
 				// as the companion is said, not refused.
+				//
+				// ADR 0191 adds the fourth: a sideboard over the cap is
+				// said and not seated, never a reason to refuse a deck.
 				if v.Code == deck.CodeSideboardUnsupported ||
+					v.Code == deck.CodeSideboardTooLarge ||
 					v.Code == deck.CodeUnsupportedLayout ||
 					v.Code == deck.CodeCompanionFromSideboard {
 					warnings = append(warnings, v)
@@ -3348,6 +3356,7 @@ func uploadDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		DeckID:        deckID,
 		Commanders:    commanders,
 		Companion:     companionName(list),
+		Sideboard:     len(list.SeatedSideboard()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 		LibraryNote:   libraryNote,
@@ -3546,6 +3555,7 @@ func seatLibraryDeck(c Config, w http.ResponseWriter, r *http.Request) error {
 		DeckID:        saved.ID.String(),
 		Commanders:    commanders,
 		Companion:     companionName(list),
+		Sideboard:     len(list.SeatedSideboard()),
 		Warnings:      warnings,
 		Unimplemented: game.UnimplementedNames(gameCards),
 	})

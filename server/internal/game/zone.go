@@ -21,10 +21,11 @@ const (
 	// ZoneOutside is NOT a zone (CR 400.11: "Outside the game is not
 	// a zone"). It is the kind of Player.Companion, the container a
 	// revealed companion waits in until the companion special action
-	// puts it into its owner's hand (ADR 0172 §4). zoneFromRefLocked
-	// has no case for it and the card index does not cover it, so
-	// nothing that moves or finds a card by reference can reach a card
-	// there (CR 400.11c).
+	// puts it into its owner's hand (ADR 0172 §4), and of
+	// Player.Sideboard, the cards a deck owns outside the game (ADR
+	// 0191). zoneFromRefLocked has no case for it and the card index
+	// does not cover it, so nothing that moves or finds a card by
+	// reference can reach a card there (CR 400.11c).
 	ZoneOutside ZoneKind = "outside"
 )
 

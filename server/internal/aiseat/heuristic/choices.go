@@ -376,6 +376,11 @@ func (p *Policy) valueOfChoice(st *state, m legal.Move) (float64, string) {
 		if v, ok := p.valuePutOntoBattlefield(st, ch, cp.CardIDs); ok {
 			return v, "put it onto the battlefield"
 		}
+		// ADR 0191: a pick over the bot's own sideboard brings the
+		// named cards in from outside the game.
+		if v, ok := st.valueTakenFromOutside(p.cfg, ch, cp.CardIDs); ok {
+			return v, "take the best from outside the game"
+		}
 		if v, ok := st.valueKeptInHand(p.cfg, ch, cp.CardIDs); ok {
 			return v, "name the worst, keep the rest"
 		}
@@ -912,6 +917,45 @@ func (st *state) valueTakenFromGraveyard(cfg Config, ch *protocol.PendingChoiceV
 	}
 	return v, true
 }
+
+// valueTakenFromOutside scores one choose_cards answer over the bot's own
+// sideboard by the total cardValue of the candidates it NAMES (ADR 0191):
+// a card named out of the cards the bot owns outside the game is a card
+// it brings in, so the sign is the library's, not the hand's. The
+// second return is false for any prompt that does not declare the
+// "outside" destination, or whose candidates are not all in the bot's
+// own sideboard.
+//
+// Min, Max and the set rule (Extrapolate the Impossible's exactly two
+// with different names) are the enumerator's: every answer reaching
+// here is one the engine accepts, so this is a preference over legal
+// sets. "You may reveal" takes the best card rather than none, because
+// a taken card is never worth less than nothing.
+func (st *state) valueTakenFromOutside(cfg Config, ch *protocol.PendingChoiceView, named []string) (float64, bool) {
+	if ch == nil || ch.ChooseDestination != chooseFromOutside || len(ch.Options) == 0 || st.seat == nil {
+		return 0, false
+	}
+	side := make(map[string]bool, len(st.seat.Sideboard))
+	for i := range st.seat.Sideboard {
+		side[st.seat.Sideboard[i].InstanceID] = true
+	}
+	opts := make(map[string]*protocol.CardView, len(ch.Options))
+	for i := range ch.Options {
+		id := ch.Options[i].InstanceID
+		if !side[id] {
+			return 0, false
+		}
+		opts[id] = &ch.Options[i]
+	}
+	var v float64
+	for _, id := range named {
+		v += libraryTakeFloor + st.cardValue(cfg, opts[id])
+	}
+	return v, true
+}
+
+// chooseFromOutside is game.ChooseFromOutside on the wire.
+const chooseFromOutside = "outside"
 
 // --- "choose a color" (#780) -----------------------------------------
 

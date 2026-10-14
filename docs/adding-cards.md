@@ -72,6 +72,7 @@ Each link goes to one subsection below. [AGENTS.md](../AGENTS.md) §7 points her
   - [Partner with (CR 702.124j, #2142)](#partner-with-cr-702124j-2142)
   - [Choose a Background, partner and Doctor's companion (ADR 0144, #2874)](#choose-a-background-partner-and-doctors-companion-adr-0144-2874)
   - [Companion (CR 702.139, ADR 0172, #3401)](#companion-cr-702139-adr-0172-3401)
+  - [Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)](#cards-from-outside-the-game-wishes-and-the-sideboard-adr-0191-3506)
   - [Renown (CR 702.112, #2049)](#renown-cr-702112-2049)
   - [Adding a Room or a split card (ADR 0103, #1756)](#adding-a-room-or-a-split-card-adr-0103-1756)
   - [Abilities from the hand (#660)](#abilities-from-the-hand-660)
@@ -9298,6 +9299,39 @@ split card's halves separately, a double-faced card's front face, an
 adventurer's main face). ADR 0172 §9 lists the other nine companions
 and how each condition would be written. Test the condition in
 `deck/companion_test.go` against the edge cases it names.
+
+### Cards from outside the game: wishes and the sideboard (ADR 0191, #3506)
+
+"A card you own from outside the game" reads the deck's sideboard, which
+seats in `Player.Sideboard`: a container no `ZoneRef`, card lookup or move
+verb reaches (CR 400.11c), so an effect never moves a card out of it
+itself. Use the three calls in `game/sideboard.go`, in this order, and
+nothing else:
+
+```go
+// "You may reveal a sorcery card you own from outside the game and put it
+// into your hand. Exile ~."  (Burning Wish)
+TakeFromOutside{Match: func(c game.Card) bool { return c.IsSorcery() }, Question: "…", Reveal: true}.Apply(ctx)
+exileThisSpell(item, ctx)
+```
+
+`TakeFromOutside` (`effects/outside_game.go`) is the whole of the common
+shape: it asks the owner (a `choose_cards` over their sideboard, `Required`
+for "put a card" with no "may"), reveals the choice when `Reveal` is set,
+and brings it into the hand. With nothing to choose from it asks nothing. A
+card that needs more composes the game-level calls itself:
+`QueueOutsidePickForEffect` (with a set-level `Validate`),
+`RevealOutsideForEffect` and `BringFromOutsideForEffect`, as Extrapolate
+the Impossible does (a pair with different names, then an opponent's
+`RevealPick`). Read a candidate with `LookupOutsideCardForEffect`, never
+`LookupCardForEffect`, which cannot see these cards on purpose.
+
+What is still missing: Karn, the Great Creator's "or choose a face-up
+artifact card you own in exile", Spawnsire of Ulamog's {20} (casting from
+outside the game), Research // Development (shuffling cards in from outside
+the game), learn, and the wishes that put a cost or a type clause beside
+the same shape (Cunning, Glittering, Golden and Death Wish, Fae of Wishes,
+Coax from the Blind Eternities, Wish).
 
 ### Renown (CR 702.112, #2049)
 

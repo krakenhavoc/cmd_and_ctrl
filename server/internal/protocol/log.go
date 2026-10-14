@@ -833,7 +833,7 @@ func stackItemOf(ev game.Event) string {
 // table at large. Mirrors the wholesale-hide rule FilterViewFor
 // applies to opponents' hands and libraries.
 func hiddenZone(z game.ZoneKind) bool {
-	return z == game.ZoneHand || z == game.ZoneLibrary
+	return z == game.ZoneHand || z == game.ZoneLibrary || z == game.ZoneOutside
 }
 
 // publicLogOf projects g.Events into the bounded public log, using v
