@@ -320,6 +320,7 @@ The workstation has no local Go. `scripts/go-docker.sh` is THE way to run it: `s
 ### Server (Go, `server/`)
 - `make -C server dev` — run locally on :8080 (seeds a 4-player demo game)
 - `make -C server test` — `go test -race -cover ./...`
+- `make -C server vulncheck` — govulncheck v1.9.0: known vulnerabilities the server can reach, in its Go standard library and modules; CI runs it in `server-check` (#3335). Without local Go: `scripts/go-docker.sh go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...`
 - `make -C server vet` — `go vet ./...`
 - `make -C server fmt` — `gofmt -s -w .`
 - `make -C server build` — produces `server/bin/cmd_and_ctrl-server`

@@ -1,4 +1,4 @@
-.PHONY: docker-test docker-lint all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
+.PHONY: docker-test docker-lint vulncheck all buildbuild-bot build-boteval build-mcpseat run dev dev-skip-validation test vet lint fmt fmt-check tidy clean
 
 BINARY := bin/cmd_and_ctrl-server
 BOT_BINARY := bin/cmd_and_ctrl-bot
@@ -88,6 +88,17 @@ GOLANGCI_LINT := github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.14.0
 
 lint:
 	go run $(GOLANGCI_LINT) run $(PKGS)
+
+# Pinned govulncheck (#3335): known vulnerabilities that the code can
+# actually reach, in the Go standard library of the toolchain running it
+# and in the modules go.mod requires. A finding exits non-zero. A
+# standard-library finding is fixed by the newest patch release, which
+# CI's setup-go "1.27" picks up on its own (locally: docker pull
+# golang:1.27). A module finding is fixed with `go get <module>@<fixed>`.
+GOVULNCHECK := golang.org/x/vuln/cmd/govulncheck@v1.9.0
+
+vulncheck:
+	go run $(GOVULNCHECK) $(PKGS)
 
 # No local Go? The same checks through the shared-cache Docker wrapper (#2035).
 docker-test:
