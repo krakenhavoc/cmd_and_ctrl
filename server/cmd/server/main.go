@@ -759,7 +759,7 @@ func main() {
 		Notifications:     notifications,
 		Playmats:          playmats,
 		TableSetups:       newTableSetupStore(database),
-		Accounts:          newAccountDeleter(database),
+		Accounts:          newAccountDeleter(database, cfg.DataDir),
 		BugReporter:       bugReporter,
 		BugStore:          bugStore,
 		DeckRequestFiler:  deckRequestFiler,
@@ -1446,11 +1446,17 @@ func newTableSetupStore(database *db.DB) tablesetups.Store {
 // migration 0015). No database returns nil, which keeps it a nil
 // interface: with no database no session has a user, so the route
 // answers 403 before it would ask.
-func newAccountDeleter(database *db.DB) accountdelete.Store {
+func newAccountDeleter(database *db.DB, dataDir string) accountdelete.Store {
 	if database == nil {
 		return nil
 	}
-	return accountdelete.NewSQLStore(database)
+	store := accountdelete.NewSQLStore(database)
+	// The ledger (#3340) survives a restore of an older database copy;
+	// without a data dir there is no backup to restore from.
+	if dataDir != "" {
+		store.WithLedger(accountdelete.NewLedger(dataDir))
+	}
+	return store
 }
 
 // newDeckRequestStore builds ADR 0095's deck-request store (migration

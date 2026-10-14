@@ -1247,6 +1247,7 @@ to both hosts on every deploy.
 | Script | [`scripts/backup-offsite.sh`](../scripts/backup-offsite.sh), deployed to `/opt/cmd_and_ctrl/scripts/` |
 | Units | [`deploy/cmd-and-ctrl-backup.service`](../deploy/cmd-and-ctrl-backup.service) and [`.timer`](../deploy/cmd-and-ctrl-backup.timer), installed by the CD step "Ensure off-site backup" |
 | Credentials | `/etc/cmd_and_ctrl/backup.env`, `root:cmdctrl 0640`, rewritten by CD on every deploy from the Actions secrets below. It is a separate file from the server's `env`, so the game server never loads R2 credentials |
+| Rehearsal | [`scripts/restore-rehearsal.sh`](../scripts/restore-rehearsal.sh) with its [service](../deploy/cmd-and-ctrl-restore-rehearsal.service) and [timer](../deploy/cmd-and-ctrl-restore-rehearsal.timer); see [Restore rehearsal](#restore-rehearsal) |
 | restic cache | `/var/cache/cmd-and-ctrl-backup` (the unit's `CacheDirectory=`) |
 
 The unit runs as `cmdctrl` with the data dir mounted read-only. It has
@@ -1265,6 +1266,8 @@ Relative to `/var/lib/cmd_and_ctrl/data`, whichever of these exist:
 | `lobby/` | game metadata and invite tokens |
 | `replays/` | replay logs |
 | `bugreports/` | reporter screenshots and pinned replays |
+| `playmats/` | uploaded playmat images (ADR 0128). The database only holds the pointer, so without this directory a restore leaves every uploaded mat a dead link (#3340) |
+| `deletions/` | the account-deletion ledger (ADR 0149, #3340): one line per deleted account, ids only. A restore re-applies it ([below](#restore-rehearsal)) |
 
 **Not backed up:**
 
@@ -1410,6 +1413,73 @@ In place of `restic snapshots` you can run:
 - `/opt/cmd_and_ctrl/scripts/backup-offsite.sh --check`, which runs a
   full backup with the check on any day of the week.
 
+### Restore rehearsal
+
+A backup nobody has restored is a hope. `scripts/restore-rehearsal.sh`,
+run on the 1st of each month at about 06:00 host time by
+`cmd-and-ctrl-restore-rehearsal.timer` (installed and enabled by CD
+together with the backup timer), restores the **latest snapshot of that
+host's own bucket** into a scratch directory under
+`/var/lib/cmd-and-ctrl-restore-rehearsal` and runs
+`/opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-restorecheck verify` on it:
+
+- opens the database copy with the *current* binary, which applies every
+  pending migration, so a migration that cannot run on real data fails
+  here and not in a disaster;
+- `PRAGMA integrity_check` and `foreign_key_check`;
+- re-applies the deletion ledger (below) to the scratch copy;
+- checks every `user_playmats` row has its image file in the snapshot.
+
+It never touches the live data dir. The result goes to
+`/var/lib/cmdctrl-metrics/restore-rehearsal.prom`:
+`cmdctrl_restore_rehearsal_last_exit_code` and
+`cmdctrl_restore_rehearsal_last_success_timestamp_seconds`. Alert
+`RestoreRehearsalStale` (warning) fires when the last run failed or no run
+has passed for 35 days. A host with no backup configured has no rehearsal
+either: the timer is disabled with the backup timer.
+
+```sh
+systemctl list-timers cmd-and-ctrl-restore-rehearsal.timer
+sudo systemctl start cmd-and-ctrl-restore-rehearsal      # run it now; blocks until done
+journalctl -u cmd-and-ctrl-restore-rehearsal -n 50 --no-pager
+```
+
+To rehearse an older snapshot, add
+`Environment=CMDCTRL_REHEARSAL_SNAPSHOT=<id>` with a drop-in
+(`systemctl edit`), run it, and remove the drop-in.
+
+### Deletions survive a restore
+
+Self-serve account deletion (ADR 0149) leaves a tombstone **in the
+database only**, so restoring an older database copy would bring
+deleted accounts back with their decks, settings and Discord links. The
+server therefore appends one line to `data/deletions/ledger.jsonl` after
+every committed deletion: the account id and the time, and nothing else
+(no name, no Discord id). The file is append-only and part of the
+nightly backup, so the latest snapshot's ledger is a superset of any
+older one's.
+
+After **any** restore of the database, and before starting the server,
+re-apply it:
+
+```sh
+sudo -u cmdctrl /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-restorecheck reapply \
+  -data-dir /var/lib/cmd_and_ctrl/data -dry-run      # what it would delete
+sudo -u cmdctrl /opt/cmd_and_ctrl/server/bin/cmd_and_ctrl-restorecheck reapply \
+  -data-dir /var/lib/cmd_and_ctrl/data
+```
+
+It runs the same deletion transaction as the server (it skips the
+"still seated at a live table" refusal, since the person asked to be
+deleted before the restore point), removes the playmat files, and is safe
+to run twice. If the database came from an *older* snapshot than the
+ledger, restore the ledger from `latest` and pass it with
+`-ledger /path/to/ledger.jsonl`. Limits: it covers the database and the
+playmat files; the engine files of past games (replays, restore points)
+that name the person are not rewritten, and a deletion in the last hours
+before a total loss is only as safe as the last nightly snapshot (up to
+about 25 hours).
+
 ### Restore runbook: production's latest snapshot onto the dev host
 
 Rehearse this at least once, which is the #1031 exit criterion, and
@@ -1464,7 +1534,7 @@ Run everything below **on the dev host**. Check `hostname` first.
 
    ```sh
    D=/var/lib/cmd_and_ctrl/data S=/var/tmp/cmdctrl-restore
-   for d in restore replays lobby bugreports games; do
+   for d in restore replays lobby bugreports games playmats deletions; do
      if [ -d "$S/$d" ]; then sudo rm -rf "$D/$d"; sudo cp -a "$S/$d" "$D/$d"; fi
    done
    sudo install -d -o cmdctrl -g cmdctrl -m 0700 "$D/db"
@@ -1476,10 +1546,14 @@ Run everything below **on the dev host**. Check `hostname` first.
    owners, which need not match dev's `cmdctrl` user.
 
    ```sh
-   sudo chown -R cmdctrl:cmdctrl "$D/db" "$D/restore" "$D/replays" "$D/lobby" "$D/bugreports" "$D/games"
+   sudo chown -R cmdctrl:cmdctrl "$D/db" "$D/restore" "$D/replays" "$D/lobby" "$D/bugreports" "$D/games" "$D/playmats" "$D/deletions"
    sudo chmod 0700 "$D/db"
    sudo chmod 0600 "$D/db/cmdctrl.sqlite"
    ```
+
+   Then **re-apply the account deletions** ([Deletions survive a
+   restore](#deletions-survive-a-restore)): `restorecheck reapply`,
+   dry run first. Skipping this is how deleted accounts come back.
 
 5. **Start and verify.**
 
@@ -1505,7 +1579,7 @@ Run everything below **on the dev host**. Check `hostname` first.
 
    ```sh
    sudo systemctl stop cmd-and-ctrl
-   for d in games lobby restore replays bugreports; do
+   for d in games lobby restore replays bugreports playmats deletions; do
      sudo find "/var/lib/cmd_and_ctrl/data/$d" -mindepth 1 -delete
    done
    sudo rm -f /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite* /var/lib/cmd_and_ctrl/data/db/cmdctrl.backup.sqlite

@@ -19,6 +19,12 @@
 #                                  -wal/-shm: a file copy of a live WAL
 #                                  database is not a consistent database.
 #        restore/ replays/ lobby/ bugreports/ games/
+#        playmats/                 uploaded playmat images (ADR 0128); the
+#                                  database only points at them (#3340)
+#        deletions/                the account-deletion ledger (ADR 0149,
+#                                  #3340): a restore re-applies it, so an
+#                                  older database copy does not bring
+#                                  deleted accounts back
 #      scryfall/, images/ and avatars/ are re-downloadable caches and
 #      are excluded explicitly. Snapshots are tagged `cmdctrl` and the
 #      environment (CMDCTRL_BACKUP_ENV: prod or dev).
@@ -190,6 +196,8 @@ candidates=(
   lobby
   bugreports
   games
+  playmats
+  deletions
 )
 paths=()
 for p in "${candidates[@]}"; do
