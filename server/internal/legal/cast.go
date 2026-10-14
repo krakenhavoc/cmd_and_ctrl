@@ -51,6 +51,9 @@ type castParams struct {
 	// RevealIDs is the one card a reveal / behold branch shows —
 	// CastSpellParams.RevealIDs.
 	RevealIDs []string `json:"reveal_ids,omitempty"`
+	// ExilePermanentIDs is the permanent a mandatory exile-a-permanent
+	// additional cost exiles (#3402) — CastSpellParams.ExilePermanentIDs.
+	ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 	// DelveIDs are the graveyard cards exiled to delve (CR 702.66a,
 	// ADR 0100 §6) — CastSpellParams.DelveIDs.
 	DelveIDs []string `json:"delve_ids,omitempty"`
@@ -1065,6 +1068,12 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	if !ok {
 		return
 	}
+	// #3402: an exile-a-permanent cost names its permanent from the
+	// engine's own walk. A seat with none to exile is not offered the cast.
+	exileIDs, ok := e.exileCastPayment(card.InstanceID, addCost)
+	if !ok {
+		return
+	}
 	// CR 702.120a: Collective Effort's taps, one creature per extra mode,
 	// on the same list teamwork's ride.
 	if escalate != nil && escalate.TapCreatures > 0 {
@@ -1084,7 +1093,7 @@ func (e *enumerator) castMovesPayingOptional(card game.Card, from string, perm *
 	}
 
 	total := e.opts.MaxExpansionPerSource
-	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, branch, addCost)
+	emit := e.castMoveEmitter(g, card, from, offer, optional, chosen, giftTo, teamIDs, blightIDs, revealIDs, exileIDs, branch, addCost)
 	// #1013: the first announcement the expansion makes, kept so the
 	// ALTERNATIVE cost payments can be offered against it below.
 	var first *announcedCast
@@ -1538,7 +1547,7 @@ func (e *enumerator) castMoveEmitter(
 	optional []game.AdditionalCost,
 	chosen []int,
 	giftTo uuid.UUID,
-	teamIDs, blightIDs, revealIDs []uuid.UUID,
+	teamIDs, blightIDs, revealIDs, exileIDs []uuid.UUID,
 	branch *int,
 	paying *game.AdditionalCost,
 ) castEmitter {
@@ -1582,6 +1591,9 @@ func (e *enumerator) castMoveEmitter(
 		if phyLife > 0 {
 			label += phyrexianLifeLabel(phyLife)
 		}
+		// #3402: the creature an exile-a-permanent cost gives up, named in
+		// the move so a bot trace, a model seat and an MCP client read it.
+		label += exileLabel(g, exileIDs)
 		// ADR 0100: the delved and the undelved casts are otherwise the
 		// same line in the move log.
 		if len(delve) > 0 {
@@ -1629,26 +1641,27 @@ func (e *enumerator) castMoveEmitter(
 			IdleHint:     idle,
 			Value:        xv,
 			Params: mustJSON(castParams{
-				InstanceID:      card.InstanceID.String(),
-				FromZone:        from,
-				AlternativeCost: offerKey(offer),
-				AltCostIDs:      idStrings(altPaid),
-				PhyrexianLife:   phyLife,
-				Targets:         wireTargets(targets),
-				Modes:           modes,
-				XValue:          setX,
-				DiscardIDs:      idStrings(discards),
-				SacrificeIDs:    idStrings(sacs),
-				OptionalCosts:   chosen,
-				CostBranch:      branch,
-				TeamworkIDs:     idStrings(teamIDs),
-				BlightIDs:       idStrings(blightIDs),
-				RevealIDs:       idStrings(revealIDs),
-				DelveIDs:        idStrings(delve),
-				Distribution:    distributionWire(dist),
-				GiftOpponent:    giftWire(giftTo),
-				Strict:          true,
-				AutoTap:         true,
+				InstanceID:        card.InstanceID.String(),
+				FromZone:          from,
+				AlternativeCost:   offerKey(offer),
+				AltCostIDs:        idStrings(altPaid),
+				PhyrexianLife:     phyLife,
+				Targets:           wireTargets(targets),
+				Modes:             modes,
+				XValue:            setX,
+				DiscardIDs:        idStrings(discards),
+				SacrificeIDs:      idStrings(sacs),
+				OptionalCosts:     chosen,
+				CostBranch:        branch,
+				TeamworkIDs:       idStrings(teamIDs),
+				BlightIDs:         idStrings(blightIDs),
+				RevealIDs:         idStrings(revealIDs),
+				ExilePermanentIDs: idStrings(exileIDs),
+				DelveIDs:          idStrings(delve),
+				Distribution:      distributionWire(dist),
+				GiftOpponent:      giftWire(giftTo),
+				Strict:            true,
+				AutoTap:           true,
 				// ADR 0034: `card` has already had SetFace applied by
 				// the caller, so ActiveFace IS the face this move casts.
 				Face: card.ActiveFace,

@@ -369,6 +369,13 @@ type CastSpellParams struct {
 	TeamworkIDs []uuid.UUID
 	BlightIDs   []uuid.UUID
 
+	// ExilePermanentIDs names the permanents paid to a mandatory
+	// ExilePermanents additional cost (#3402) — Soul Exchange's "exile a
+	// creature you control". Validated at announce by the activation's own
+	// validator and paid with the spell on the stack. On the wire as
+	// `exile_permanent_ids`, the name an activation already uses.
+	ExilePermanentIDs []uuid.UUID
+
 	// RevealIDs names the ONE card an announced reveal / behold cost
 	// shows (CR 701.20, ADR 0100 amendment 2026-10-07): a matching card
 	// in the caster's hand, or — to behold — a matching permanent they
@@ -1337,6 +1344,18 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		)
 		return err
 	}
+	// #3402: and the exile-a-permanent cost, with every permanent another
+	// component of this cast already pays with (CR 118.3).
+	if err := g.validateCastExilePermanentsLocked(playerID, cardID, costPlan, params.ExilePermanentIDs,
+		append(append([]uuid.UUID(nil), params.SacrificeIDs...), params.AltCostIDs...)); err != nil {
+		slog.Warn("cast_spell rejected: bad exile-a-permanent payment",
+			"card_name", card.Name,
+			"oracle_id", card.OracleID,
+			"exile_permanents_received", len(params.ExilePermanentIDs),
+			"err", err,
+		)
+		return err
+	}
 	if err := g.validateRevealLocked(playerID, cardID, costPlan, params.RevealIDs); err != nil {
 		slog.Warn("cast_spell rejected: bad reveal payment",
 			"card_name", card.Name,
@@ -1558,6 +1577,8 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 	// ADR 0100: and the graveyard cards delve exiles — a delved
 	// commander is asked about CR 903.9 before anything is paid.
 	moving = append(moving, params.DelveIDs...)
+	// #3402: and the permanents an exile-a-permanent cost takes.
+	moving = append(moving, params.ExilePermanentIDs...)
 	// #1445 / #1427: a card an EFFECT has already paused on its way
 	// out cannot pay — moved, or tapped to convoke / waterbend
 	// (TapIDs), tapped to teamwork or blighted (#1703). See
@@ -1777,7 +1798,7 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 		// component pays with, named while they are still where they were
 		// — Adipose Offspring's "the sacrificed creature's toughness".
 		Paid: paidWithAltCostObjects(paidWithBranchAndDiscards(
-			paidWithGift(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.GiftOpponent),
+			paidWithGift(paidWithExiledPermanents(paidWithSacrifices(paidWithOptionalCosts(paid, costPlan), g.sacrificeRefsLocked(params.SacrificeIDs)), params.ExilePermanentIDs, g.exiledRefsLocked(params.ExilePermanentIDs)), params.GiftOpponent),
 			params.CostBranch, params.DiscardIDs), g.sacrificeRefsLocked(params.AltCostIDs)),
 		Seq: g.nextStackSeqLocked(),
 		// S20: remember the clause the targets were validated under so
@@ -1823,6 +1844,19 @@ func (g *Game) castSpellLocked(playerID, cardID uuid.UUID, params CastSpellParam
 			"err", err,
 		)
 		return err
+	}
+	// #3402: the exile-a-permanent cost, beside the sacrifices and for the
+	// same reason — with the spell on the stack, so a leaves-the-battlefield
+	// watcher lands above it. Not a sacrifice: nothing dies.
+	if len(params.ExilePermanentIDs) > 0 {
+		if _, err := g.payExilePermanentsCostLocked(playerID, cardID, params.ExilePermanentIDs, params.commanderAnswers); err != nil {
+			slog.Error("cast_spell: exile-a-permanent cost failed after validation",
+				"card_name", card.Name,
+				"oracle_id", card.OracleID,
+				"err", err,
+			)
+			return err
+		}
 	}
 	// ADR 0129 §5: the plan's energy (replicate, once per payment),
 	// through the one path that pays energy, checked above with the

@@ -683,6 +683,10 @@ func dispatch(g *game.Game, a Action) error {
 			// card from your hand or pay {3}"). Absent unless the
 			// chosen cost_branch reveals.
 			RevealIDs []string `json:"reveal_ids,omitempty"`
+			// #3402 — the permanents a mandatory exile-a-permanent
+			// additional cost exiles ("exile a creature you control").
+			// The name an activate_ability already uses.
+			ExilePermanentIDs []string `json:"exile_permanent_ids,omitempty"`
 			// S22 — the untapped permanents tapped to help pay
 			// (convoke, waterbend). Optional even on a card that
 			// offers the cost: tapping nothing and paying the whole
@@ -835,6 +839,7 @@ func dispatch(g *game.Game, a Action) error {
 			{"teamwork_ids", p.TeamworkIDs, &params.TeamworkIDs},
 			{"blight_ids", p.BlightIDs, &params.BlightIDs},
 			{"reveal_ids", p.RevealIDs, &params.RevealIDs},
+			{"exile_permanent_ids", p.ExilePermanentIDs, &params.ExilePermanentIDs},
 			{"delve_ids", p.DelveIDs, &params.DelveIDs},
 		} {
 			for i, raw := range l.raw {

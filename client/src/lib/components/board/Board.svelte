@@ -138,6 +138,7 @@
     castTeamworkOffer,
     castBlightOffer,
     castRevealCost,
+    castExilePermanentCost,
     tapCostOf,
     tapCostLimit,
     alternativeCostsOf,
@@ -713,6 +714,28 @@
     );
   });
 
+  // #3402: "exile a creature you control" as a spell's additional cost
+  // (Soul Exchange) — the sacrifice picker with the verb "Exile", over the
+  // server's `exile_permanent_options`, the answer sent as
+  // `exile_permanent_ids`.
+  let exilePrompt = $state<{
+    card: CardView;
+    label: string;
+    count: number;
+    choices: CastChoices;
+  } | null>(null);
+  let exilePromptOptionIDs = $state<string[]>([]);
+  const exilePromptOptions = $derived.by(() =>
+    orderSacrificeOptions(view.battlefield.cards, exilePromptOptionIDs),
+  );
+
+  function confirmExilePermanent(ids: string[]): void {
+    const p = exilePrompt;
+    exilePrompt = null;
+    if (!p) return;
+    afterSacrificeCost(p.card, { ...p.choices, exilePermanentIDs: ids });
+  }
+
   function confirmReveal(ids: string[]): void {
     const p = revealPrompt;
     revealPrompt = null;
@@ -748,6 +771,12 @@
         label: rv.behold ? `${rv.label} (choose or reveal)` : rv.label,
         choices,
       };
+      return;
+    }
+    const ex = castExilePermanentCost(card, choices);
+    if (ex && choices.exilePermanentIDs === undefined) {
+      exilePromptOptionIDs = ex.options;
+      exilePrompt = { card, label: ex.label, count: ex.count, choices };
       return;
     }
     afterCastCosts(card, choices);
@@ -3627,6 +3656,16 @@
     verb="Choose"
     onConfirm={confirmReveal}
     onCancel={() => (revealPrompt = null)}
+  />
+  <!-- #3402: exile a creature you control, as a spell's additional cost. -->
+  <SacrificeCostModal
+    source={exilePrompt?.card ?? null}
+    label={exilePrompt?.label ?? "a permanent you control"}
+    options={exilePromptOptions}
+    count={exilePrompt?.count ?? 1}
+    verb="Exile"
+    onConfirm={confirmExilePermanent}
+    onCancel={() => (exilePrompt = null)}
   />
   <CounterCostModal
     card={counterPrompt?.card ?? manaCounterPrompt?.card ?? null}

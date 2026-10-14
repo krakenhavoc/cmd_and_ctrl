@@ -257,6 +257,26 @@ func BeholdCost(article, subtype string) *game.AdditionalCost {
 	}
 }
 
+// ExilePermanentCost is "As an additional cost to cast this spell, exile
+// a creature you control" (Soul Exchange, #3402): the activated ability's
+// ExilePermanentsCost on a cast's mandatory slot. The type is read off
+// the permanent's current characteristics. The caster names the creature
+// on cast_spell as exile_permanent_ids; it is exiled with the spell on
+// the stack (nothing dies, nothing is sacrificed) and read back at
+// resolution as last-known information through ctx.ExiledPermanents().
+func ExilePermanentCost(label, cardType string) *game.AdditionalCost {
+	return &game.AdditionalCost{
+		ExilePermanents: &game.ExilePermanentsCost{Count: 1, CardType: cardType, Label: label},
+		Label:           "Exile " + label,
+	}
+}
+
+// ExileCreatureYouControlCost is ExilePermanentCost for "a creature you
+// control".
+func ExileCreatureYouControlCost() *game.AdditionalCost {
+	return ExilePermanentCost("a creature you control", "creature")
+}
+
 // checkEitherCost is Register's guard for an either/or cost (ADR 0100
 // §2). Each refused shape compiles and then pays something the card
 // does not print:
@@ -275,6 +295,9 @@ func BeholdCost(article, subtype string) *game.AdditionalCost {
 // a fixed PayLife in an optional cost and a mandatory mana cost.
 func checkEitherCost(spec Spec) {
 	for _, oc := range spec.OptionalCosts {
+		if !oc.ExilePermanents.Empty() {
+			panic(fmt.Sprintf("effects.Register: %q optional cost %q exiles a permanent — only the mandatory slot may (#3402)", spec.Name, oc.Key))
+		}
 		if oc.PayLife != 0 || len(oc.Either) > 0 || oc.Reveal != nil {
 			panic(fmt.Sprintf("effects.Register: %q optional cost %q pays fixed life or has branches — both exist only on a branch of the mandatory EitherCost (ADR 0100)", spec.Name, oc.Key))
 		}
@@ -282,6 +305,12 @@ func checkEitherCost(spec Spec) {
 	ac := spec.AdditionalCost
 	if ac == nil {
 		return
+	}
+	if ec := ac.ExilePermanents; ec != nil {
+		checkExilePermanentsClause(spec.Name, "additional cost", ec)
+		if ec.FromGraveyard || ec.GraveyardOnly || ec.OrMore || ec.ShareCardType || len(ec.EachSubtype) > 0 || ec.Count < 1 {
+			panic(fmt.Sprintf("effects.Register: %q additional cost exiles craft materials or has no count — a cast exiles a fixed number of permanents (#3402)", spec.Name))
+		}
 	}
 	if !ac.Branched() {
 		if ac.Reveal != nil {
@@ -317,6 +346,8 @@ func checkEitherCost(spec Spec) {
 			panic(fmt.Sprintf("effects.Register: %q either/or branch %d has no Key — build it with .Keyed(\"…\")", spec.Name, i))
 		case seen[b.Key]:
 			panic(fmt.Sprintf("effects.Register: %q declares two either/or branches keyed %q", spec.Name, b.Key))
+		case !b.ExilePermanents.Empty():
+			panic(fmt.Sprintf("effects.Register: %q %s exiles a permanent — only the mandatory slot may, not a branch (#3402)", spec.Name, where))
 		case b.Teamwork != 0 || b.ChoosesOpponent || b.PayLifeX || b.BlightX || b.Targets != nil:
 			panic(fmt.Sprintf("effects.Register: %q %s carries a component a branch has no shape for (teamwork, gift, pay X life, a target rewrite)", spec.Name, where))
 		case b.Reveal != nil && (b.Reveal.Subtype == "" || b.Reveal.Color != ""):

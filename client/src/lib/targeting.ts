@@ -128,6 +128,9 @@ export interface CastChoices {
   // when `optionalCosts` claims that offer; the server refuses them on
   // a cast that does not.
   teamworkIDs?: string[];
+  // #3402: the permanents a mandatory "exile a creature you control"
+  // additional cost exiles. Rides cast_spell as `exile_permanent_ids`.
+  exilePermanentIDs?: string[];
   blightIDs?: string[];
   // ADR 0100 amendment 2026-10-07: the one card a chosen reveal / behold
   // branch shows. Set only after the branch is chosen; the server refuses
@@ -243,6 +246,8 @@ export function applyCastChoices(
     params.blight_ids = choices.blightIDs;
   if (choices.revealIDs !== undefined && choices.revealIDs.length > 0)
     params.reveal_ids = choices.revealIDs;
+  if (choices.exilePermanentIDs !== undefined && choices.exilePermanentIDs.length > 0)
+    params.exile_permanent_ids = choices.exilePermanentIDs;
   // #916: omitted at 0, which is the server default and what every
   // client that predates the stepper sends.
   if (choices.phyrexianLife !== undefined && choices.phyrexianLife > 0)
@@ -1218,6 +1223,32 @@ export function castRevealCost(
     label: branch.label ?? (branch.behold ? "Behold" : "Reveal a card from your hand"),
     behold: branch.behold === true,
     options: branch.reveal_options?.cards ?? [],
+  };
+}
+
+// ClaimedExilePermanentCost is the "exile a creature you control"
+// additional cost this cast pays (#3402): the clause as printed, how many
+// to pick and which permanents could pay it.
+export interface ClaimedExilePermanentCost {
+  label: string;
+  count: number;
+  options: string[];
+}
+
+// castExilePermanentCost is the exile-a-permanent cost a cast pays, if
+// any: the card's mandatory additional cost, or the chosen either/or
+// branch's. The prompt after the sacrifice step asks which to exile.
+export function castExilePermanentCost(
+  card: CardView,
+  choices: CastChoices | undefined,
+): ClaimedExilePermanentCost | undefined {
+  const cost = castAdditionalCost(card, choices);
+  const opts = cost?.exile_permanent_options;
+  if (!cost || !opts) return undefined;
+  return {
+    label: cost.exile_permanent_label ?? "a permanent you control",
+    count: opts.min ?? 1,
+    options: opts.cards ?? [],
   };
 }
 

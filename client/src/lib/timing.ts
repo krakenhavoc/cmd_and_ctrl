@@ -415,6 +415,15 @@ function castClauseDenial(
       need > 1 ? `Needs ${need} permanents to sacrifice` : "Nothing to sacrifice",
     );
   }
+  // #3402: an "exile a creature you control" cost with nothing to exile
+  // is the same verdict as a sacrifice with nothing to sacrifice.
+  const exileOK = (face: CardView): boolean => {
+    const opts = face.additional_cost?.exile_permanent_options;
+    return !opts || (opts.cards?.length ?? 0) >= (opts.min ?? 1);
+  };
+  if (!faces.some(exileOK)) {
+    return named(faces.find((f) => !exileOK(f)) ?? card, "Nothing to exile");
+  }
   // ADR 0100: an either/or additional cost none of whose branches the
   // viewer can pay — the server's own `payable` per branch.
   const branchOK = (face: CardView): boolean => {

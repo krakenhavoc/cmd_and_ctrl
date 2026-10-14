@@ -1218,6 +1218,17 @@ type AdditionalCostView struct {
 	// "sacrifice X lands" ships count_from_x, the number picked being
 	// the x_value the same cast_spell announces.
 	SacrificeOptions *LegalTargetsView `json:"sacrifice_options,omitempty"`
+	// ExilePermanentLabel / ExilePermanentOptions describe an "exile a
+	// creature you control" additional cost (#3402, Soul Exchange): the
+	// activated ability's field of the same names, off the same engine
+	// walk (game.ExilePermanentsOptionsForEffect). min / max are the
+	// clause's count, the cards come in payment order, and the picks ride
+	// back on cast_spell as `exile_permanent_ids`. Absent when the cost has
+	// no such component; present-and-empty means it cannot be paid right
+	// now, which makes the spell uncastable (CR 118.3). Not a target list:
+	// a hexproof creature you control is on it (CR 601.2h).
+	ExilePermanentLabel   string            `json:"exile_permanent_label,omitempty"`
+	ExilePermanentOptions *LegalTargetsView `json:"exile_permanent_options,omitempty"`
 	// DemandsX marks a "pay X life" clause (Toxic Deluge). The
 	// client must open its X prompt for this card even though the
 	// printed mana cost has no {X} in it, and the announced X is
@@ -7053,6 +7064,15 @@ func viewOfAdditionalCost(g *game.Game, caster, castID uuid.UUID, ac *game.Addit
 			// CastSpell will take, as a demand of exactly that many.
 			all := g.SacrificeAllCandidatesForEffect(caster, ac.Sacrifice)
 			out.SacrificeOptions = &LegalTargetsView{Min: len(all), Max: len(all), All: true, Cards: cardIDStrings(all)}
+		}
+	}
+	if ec := ac.ExilePermanents; !ec.Empty() {
+		// #3402: the activation's own walk and view, so the picker offers
+		// exactly the permanents the validator accepts (#544).
+		out.ExilePermanentLabel = ec.Label
+		out.ExilePermanentOptions = exilePermanentCostOptions(g, caster, castID, ec)
+		if out.ExilePermanentOptions == nil {
+			out.ExilePermanentOptions = &LegalTargetsView{Min: ec.Count, Max: ec.Count}
 		}
 	}
 	if ac.BlightX {

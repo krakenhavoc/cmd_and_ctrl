@@ -3789,6 +3789,17 @@ branch, and components on the branched cost itself. Reveal, behold,
 forage have no branch component yet: leave those cards out (the
 Either/or additional costs registry row lists them).
 
+**Exile a creature you control as an additional cost (#3402):** "As an
+additional cost to cast this spell, exile a creature you control" is
+`AdditionalCost: ExileCreatureYouControlCost()` (`ExilePermanentCost(label,
+cardType)` for another type): the activated ability's `ExilePermanentsCost`
+on a cast, so the walk and the payer are the ability's. The caster names it
+on `exile_permanent_ids`; it is exiled with the spell on the stack (nothing
+dies). Read it back with `ctx.ExiledPermanents()`, each as it last existed
+on the battlefield (Soul Exchange's "if the exiled creature was a Thrull"),
+or `ctx.Exiled()` for the bare IDs. Mandatory slot only; Register refuses
+it in an optional cost, an either/or branch and the craft forms.
+
 **Blight X (#2174):** "As an additional cost to cast this spell, blight X.
 X can't be greater than the greatest toughness among creatures you
 control" is `AdditionalCost: BlightXCost()` (Soul Immolation). X rides the
