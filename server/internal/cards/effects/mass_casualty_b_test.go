@@ -27,7 +27,7 @@ func TestMassCasualtySliceBIsRegistered(t *testing.T) {
 		mcBreachOracle:                 CompletenessFull,
 		mcAbdelOracle:                  CompletenessFull,
 		mcBeseechOracle:                CompletenessFull,
-		mcBroodlordOracle:              CompletenessCaveats,
+		mcBroodlordOracle:              CompletenessFull,
 	} {
 		spec, ok := Lookup(oracle)
 		if !ok {

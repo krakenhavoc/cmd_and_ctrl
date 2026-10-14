@@ -6045,7 +6045,13 @@ func castStampsFor(g *game.Game, caster uuid.UUID, c *CardView, f castFace, kind
 	// S22: convoke / waterbend. Stamped before the target clause
 	// because the caster pays it first, and the count of a "X target
 	// creatures" clause depends on what they paid.
-	if tc := game.TapPermanentsCostFor(key); !tc.Empty() {
+	tc := game.TapPermanentsCostFor(key)
+	if haveLive {
+		// A permanent may grant this spell convoke (Hoarding Broodlord's
+		// "spells you cast from exile", Dazzling Theater's creature spells).
+		tc = g.TapPermanentsCostForCastLocked(caster, live, kind)
+	}
+	if !tc.Empty() {
 		out.TapCost = viewOfTapCost(g, caster, f.manaCost, tc)
 	}
 	// ADR 0100 §4: delve. The options walk is the engine's own
