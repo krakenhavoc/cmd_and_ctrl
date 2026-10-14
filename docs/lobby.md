@@ -5118,6 +5118,26 @@ illustrator's name, and each entry of `card_faces` carries its own
 line, is the main view of a card: the board's art tiles and the stack
 lane's tiles. Full card images print the line themselves.
 
+`released_at`, `promo`, `full_art`, `digital`, `oversized` and
+`frame_effects` (#3605, [ADR 0192](decisions/0192-a-deck-names-its-printing.md),
+additive, each omitted when empty) are Scryfall's own words for how a
+printing looks. The server reads them to choose the printing that stands
+for a card name when a deck names none; nothing at the table does.
+
+**Which printing a deck shows.** A deck's source may name the printing of
+a card: an Archidekt `uid` / `editioncode` / `collectorNumber`, a
+Moxfield `scryfall_id` / `set` / `cn`, or a text row's trailing
+`(SET) number` (`1 Raffine, Scheming Seer (SNC) 213`). The seat's card
+then carries that printing's id, so the board, the stack and the Decks
+page draw it. A printing of a different card, one the index lacks, or a
+malformed id is ignored and the card keeps the default printing for its
+name; it can never change which card the deck holds. The default is the
+newest printing from the most ordinary kind of set (expansion, core,
+commander), not a Secret Lair, promo or showcase reprint. A deck saved
+from a link stores its list as text with `(SET) number` on each row, so
+a re-seated deck keeps its art; a deck saved before that has no suffix
+and shows the default.
+
 ### `GET /cards/{id}/image?size=<name>`
 
 Serves the card image bytes. On cache miss, downloads from Scryfall's
