@@ -671,8 +671,22 @@ func (p *Policy) valueOfCast(st *state, m legal.Move) (float64, string) {
 		// is the forward-looking half.
 		v -= st.w.CommanderTax * 0.5
 	}
+	// #3521: a cast the holder's next pass closes (discover, cascade,
+	// rebound, Chandra's paid cast) is taken before the mana goes
+	// elsewhere, because spending it first leaves the pass that closes
+	// the window. Only a cast worth making: a bad one is still declined.
+	if v > 0 && card != nil && card.ExilePlay != nil &&
+		card.ExilePlay.ClosesOnPass && card.ExilePlay.Player == st.me {
+		v += passClosedCastUrgency
+		reason += " (closes on pass)"
+	}
 	return v, reason
 }
+
+// passClosedCastUrgency lifts a pass-closed cast above every ordinary
+// cast and the land drop (LandValue), so the mana that would pay for it
+// is not spent first (#3521).
+const passClosedCastUrgency = 100.0
 
 // rampPremium is ADR 0126 §2's cast-time premium for a new repeatable
 // mana source: RampPerMana for each mana it makes, up to how short the
