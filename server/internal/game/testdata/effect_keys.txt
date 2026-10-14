@@ -241,3 +241,4 @@ vote vote/trap-the-trespassers
 vote vote/truth-or-consequences
 vote vote/vault-11-voters-dilemma
 pick revealed-pick/traumatic-revelation-incubate
+option option-pick/dack-fayden-helping-hand-opponent
