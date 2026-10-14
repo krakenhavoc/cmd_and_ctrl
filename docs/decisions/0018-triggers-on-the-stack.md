@@ -4597,3 +4597,27 @@ from there).
 `TestTwoTargetedDrainsAskWhenTheTargetCanDie` if the drain stopped being a player read, and the Syr Konrad test
 again without item 4 (Reaper's three draws). The draw-beside-scry case in `trigger_independence_draws_test.go`
 keeps item 4 from going further.
+
+## Amendment 2026-10-14 (second) — a tapland in play is not a reactor · Accepted
+
+A second arena replay (mono-green-stompy, mono-red-aggro, mono-white-weenie, boros-voltron; seeds 101–108) and the
+first round's games both had prompts whose reason was a land "watching cards changing zones": Myriad Landscape,
+Shipwreck Marsh. Their only replacement is "This land enters tapped" (`SelfEntersTapped` and its conditional
+siblings). It watches zone moves, so the reactor rule counted it for every batch that made a token or moved a
+card, as long as the land was on the battlefield.
+
+1. **`EntryOnly` replacements on a permanent in play are set aside** (`reactorLocked`). Such a replacement changes
+   only its own object's entry, which a permanent in play has already made, and no described footprint step puts
+   that object onto the battlefield again. `ReplacementEffect.EntryOnly` was display-only. It is now a promise the
+   check relies on, so `TestEntryOnlyReplacementsApplyOnlyToTheirOwnEntry` probes every catalog row that declares
+   it with another card entering, and fails if one applies.
+2. **Aurelia, the Law Above's** five-attacker drain moves onto `Do(DamageEachOpponent{N: 3}, GainLife{Amount: 3})`.
+   Beside her three-attacker draw it no longer asks (`TestB16AureliaFiresOncePerDeclarationAtThreeAndFive` now pins
+   that). Wearing Batterskull, her damage has lifelink and the batch still asks, as it should.
+
+Second round, same seeds: 16 → 13 prompts. In the first round's games, the Shipwreck Marsh batches now stop on the
+real reactor beside it (Smothering Tithe watches draws) instead.
+
+**Back-outs.** `TestATaplandInPlayIsNotAReactor` fails without item 1; `TestAureliasTriggersDeclareFootprints`
+without item 2.
+
