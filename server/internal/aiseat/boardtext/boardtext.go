@@ -674,6 +674,20 @@ func nameOfInstance(v *protocol.GameView, id string) string {
 			return CardName(&v.Stack.Cards[i])
 		}
 	}
+	// A graveyard or exile target is public too: Animate Dead, Victimize
+	// and Eternal Witness read "targets: something" until 2026-10-14.
+	for _, s := range v.Seats {
+		for i := range s.Graveyard.Cards {
+			if s.Graveyard.Cards[i].InstanceID == id {
+				return CardName(&s.Graveyard.Cards[i]) + " (in a graveyard)"
+			}
+		}
+	}
+	for i := range v.Exile.Cards {
+		if v.Exile.Cards[i].InstanceID == id {
+			return CardName(&v.Exile.Cards[i]) + " (in exile)"
+		}
+	}
 	return "something"
 }
 
