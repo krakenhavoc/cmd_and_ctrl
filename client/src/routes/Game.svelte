@@ -2873,6 +2873,7 @@
             {fanfare}
             motion={$settings.animations.enabled && !$settings.accessibility.reduceMotion}
             armed={gameOverArmed}
+            rematch={{ plan: rematch, busy: rematchBusy, ...rematchActions }}
             onback={back}
             ondismiss={() => (fanfareDismissed = true)}
           />
