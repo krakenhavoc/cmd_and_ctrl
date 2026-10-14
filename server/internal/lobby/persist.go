@@ -191,6 +191,11 @@ func (l *Lobby) syncStateLocked(entry *gameEntry) {
 		}
 		entry.outcome = entry.room.Game.OutcomeKind()
 		l.recordEndLocked(entry, metrics.EndOutcome(entry.outcome), now)
+		// The row must carry its outcome before the record that
+		// references it is written (ADR 0164 §2).
+		l.persistGameLocked(entry)
+		l.recordStatsLocked(entry)
+		return
 	}
 	l.persistGameLocked(entry)
 }

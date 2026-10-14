@@ -23,6 +23,7 @@ import (
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/aiseat"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/capacity"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
+	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/gamestats"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/metrics"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/moderation"
 	"github.com/krakenhavoc/cmd_and_ctrl/server/internal/protocol"
@@ -292,6 +293,11 @@ type Lobby struct {
 	// at boot via SetPlaymats, before RestoreFromDisk; nil means no seat
 	// carries one.
 	playmats PlaymatSource
+	// gameStats, when non-nil, keeps each stored game's statistics
+	// record (ADR 0164); recordStatsLocked writes it when the game ends.
+	// statsWG counts the writes still running (WaitGameStats).
+	gameStats gamestats.Store
+	statsWG   sync.WaitGroup
 	// reclaims holds the outstanding seat-reclaim tickets, keyed by
 	// the SHA-256 of the token (never the token). In memory only and
 	// deliberately so — see reclaim.go.

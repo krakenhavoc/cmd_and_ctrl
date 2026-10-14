@@ -884,6 +884,24 @@ the table and backfills the active mat into slot 1, so a person who had
 three is back to one. `TestMigration0013RollbackByHand` runs exactly
 this sequence and then rolls forward.
 
+Migration 0022 (ADR 0164, game statistics) adds three tables,
+`game_stats`, `seat_stats` and `seat_card_stats`, derived from finished
+games. An older binary refuses the v22 schema. Drop them by hand:
+
+```sh
+sudo systemctl stop cmd-and-ctrl
+sudo sqlite3 /var/lib/cmd_and_ctrl/data/db/cmdctrl.sqlite \
+  "DROP TABLE seat_card_stats; DROP TABLE seat_stats; DROP TABLE game_stats; DELETE FROM schema_migrations WHERE version = 22;"
+# install the older binary, then:
+sudo systemctl start cmd-and-ctrl
+```
+
+Nothing is lost that cannot be computed again: every row is derived from
+a game's record and replay. Rolling forward recreates the tables empty,
+and games that end afterwards get a record. Older games need the
+backfill (#3365). `TestMigration0022RollbackByHand` runs exactly this
+sequence and then rolls forward.
+
 Migration 0020 (ADR 0159, table voice rooms) adds `games.voice_room`
 (0 or 1, default 0) and `games.voice_channel_id` (nullable). An older
 binary refuses the v20 schema. Drop them by hand:

@@ -46,8 +46,15 @@ export const CONTACT_TEXT = LEGAL_CONTACT_EMAIL;
  * the room's channel id. Neither is about a person; the notice's voice
  * paragraph comes with the voice manager (ADR 0159 §8), which is what
  * sends seated players' Discord ids to Discord.
+ *
+ * 21 is the LFG board's migration (#3361), checked when it lands.
+ *
+ * 22 (#3364, ADR 0164) adds game_stats, seat_stats and seat_card_stats:
+ * numbers and card names derived from a finished game, keyed by game
+ * and seat, with no names or user ids. The notice's "Game statistics"
+ * row covers them.
  */
-export const PRIVACY_SCHEMA_VERSION = 20;
+export const PRIVACY_SCHEMA_VERSION = 22;
 
 /**
  * The numbers the notice states. privacy_facts_test.go (Go) checks each
