@@ -9420,8 +9420,19 @@ func (g *Game) participatesInStepLocked(c *Card, firstStrike bool) bool {
 // is the greater (CR 510.1c, Ghalta the Immovable). Everything the damage
 // pass does with "the attacker's power" - trample, deathtouch, lethal
 // damage assignment, lifelink, commander damage - reads this number.
+//
+// A negative power assigns no damage (CR 510.1a, the clamp in
+// CurrentPower) unless the creature says it assigns damage as though its
+// power were positive (Characteristic.DamageAsPositivePower, Loot, the
+// Anomaly), in which case the amount is the absolute value of the
+// unclamped power. That is the one creature the clamp is lifted for.
 func (c *Card) combatDamagePower() int {
 	p := c.CurrentPower()
+	if c.effective != nil && c.effective.DamageAsPositivePower {
+		if raw := c.PowerForComparison(); raw < 0 {
+			p = -raw
+		}
+	}
 	if c.effective != nil && c.effective.DamageByToughness {
 		if t := c.CurrentToughness(); t > p {
 			return t

@@ -4829,3 +4829,16 @@ blocking or blocked by a Goblin or Orc) use `DependsOnEvents`.
 
 Back-out: stop the listener arm and the three event-keyed cards' tests fail (the Sting, Phantasm and Whiplash tests);
 drop the `CantBeAttacked` check in `canAttackTargetLocked` and `TestAethersparkCantBeAttackedOnlyWhileAttached` fails.
+
+## Amendment (2026-10-14, [#3505](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3505)): "assigns combat damage as though its power were positive"
+
+CR 510.1a clamps a negative power to zero in `Card.CurrentPower`, and `combatDamagePower` starts from that. Loot, the
+Anomaly says "if Loot's power is negative, he assigns combat damage as though his power were positive", so
+`Characteristic.DamageAsPositivePower` (set by a layer 6 static on the creature itself, beside `DamageByToughness`) makes
+`combatDamagePower` answer with the absolute value of the unclamped `PowerForComparison()` when that is negative. It is
+per creature: a -3/4 that is not Loot still assigns nothing, and a Loot that has lost its abilities (CR 613.1f) loses the
+flag with the static. Trample, deathtouch, lifelink and commander damage read that number. The flag is an additive
+snapshot key inside `Characteristic` (shape v8 recorded).
+
+Back-out: drop the `DamageAsPositivePower` branch in `combatDamagePower` and `TestLootAssignsCombatDamageAsThoughPowerWerePositive`
+fails; the plain negative creature in the same test never changes.

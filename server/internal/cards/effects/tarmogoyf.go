@@ -24,10 +24,25 @@ import "github.com/krakenhavoc/cmd_and_ctrl/server/internal/game"
 // only carries numeric stats; the card file ships printed 0/1 and
 // the CDA overrides at recompute time. The wire effective P/T is
 // what shows.
+//
+// Reviewed against the oracle text (rf-a, 2026-10-14): everything
+// printed happens, so it is CompletenessFull. The count is the union of
+// card types over every player's graveyard (DistinctCardTypesInAllGraveyards),
+// recomputed whenever a card enters or leaves a graveyard (the layer
+// listener bumps on either direction). A split card there has both
+// halves' types (CR 709.4c); a modal or adventure card only its front
+// face; Kindred is a card type; Legendary, Basic and Snow are
+// supertypes and do not count. Pinned by the Tarmogoyf tests in
+// reality_fracture_rf_a_test.go. The one deviation the engine has
+// here is not this card's: the type-line parser reads the old word
+// "Tribal" as a supertype, so a graveyard holding only a pre-Kindred
+// "Tribal" card (two playtest cards, never Commander-legal) would count
+// one type short.
 func init() {
 	Register(Spec{
-		OracleID: "45900b2f-f6a9-4c42-9642-008f3c1cf6dd",
-		Name:     "Tarmogoyf",
+		OracleID:     "45900b2f-f6a9-4c42-9642-008f3c1cf6dd",
+		Name:         "Tarmogoyf",
+		Completeness: CompletenessFull,
 		Static: []game.StaticAbility{
 			{
 				Layer:    game.Layer7PT,

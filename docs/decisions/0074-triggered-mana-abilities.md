@@ -259,3 +259,16 @@ the real trigger, so the mana that arrives is the mana the cards say.
 | Utopia Sprawl | composition with #742's stored `Card.ChosenColor`, and an "Enchant Forest" host predicate |
 | Fertile Ground | a colour CHOICE inside the trigger — a prompt by hand, a greedy pick under the auto-tapper |
 | Mana Flare | the produced COLOUR being read (`ManaProduced.Colors`), and a trigger that fires on an OPPONENT's land |
+
+## Amendment (2026-10-14, [#3504](https://github.com/krakenhavoc/cmd_and_ctrl/issues/3504)): a spell-made mana trigger for its controller only
+
+`DelayedTrigger.ManaTapSubtype` / `ManaAdds` (built by `effects.TurnManaTrigger`, read by `fireManaTriggersLocked`) is the
+spell-made form of this mechanism: "until end of turn, whenever a player taps a Swamp for mana, that player adds an additional {B}"
+(Bubbling Muck, High Tide). Pyre Rhymer // Molten Tide prints "whenever **you** tap a Mountain", so the record gains
+`ManaTapControllerOnly`: when set, a production whose pool owner (`ManaProduced.Controller`) is not the record's
+`Controller` is skipped, and an opponent's Mountain neither triggers it nor receives the mana. The default is off, so the
+two older cards are unchanged. The field is an additive snapshot key (`manaTapControllerOnly`, shape v8 recorded).
+
+Back-out: drop the `ManaTapControllerOnly` check in `fireManaTriggersLocked` and
+`TestControllerOnlyManaTriggerFiresForYourMountainsOnly` and `TestPyreRhymerMoltenTideAddsForYourMountainsOnly` fail; the
+High Tide / Bubbling Muck tests keep passing.

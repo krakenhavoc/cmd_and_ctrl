@@ -287,6 +287,17 @@ type DelayedTrigger struct {
 	// Duration. Plain data, so it snapshots verbatim.
 	ManaTapSubtype string
 	ManaAdds       string
+
+	// ManaTapControllerOnly narrows a triggered mana record to the
+	// player who set it up: "until end of turn, whenever YOU tap a
+	// Mountain for mana, add an additional {R}" (Pyre Rhymer // Molten
+	// Tide, #3504). Unset it fires for every player's tap, which is what
+	// "a player" (High Tide, Bubbling Muck) prints. The record's
+	// Controller is the player compared against, so it follows the
+	// production's pool owner (ManaProduced.Controller), not the
+	// land's controller; they are the same player for every printed
+	// card, and the pool is who the extra mana lands with.
+	ManaTapControllerOnly bool
 }
 
 // isManaTrigger reports whether this record is a triggered mana
@@ -518,6 +529,8 @@ func cloneDelayedTrigger(dt *DelayedTrigger) *DelayedTrigger {
 		OncePerBatch:       dt.OncePerBatch,
 		ManaTapSubtype:     dt.ManaTapSubtype,
 		ManaAdds:           dt.ManaAdds,
+
+		ManaTapControllerOnly: dt.ManaTapControllerOnly,
 	}
 	if dt.Duration != nil {
 		d := *dt.Duration
