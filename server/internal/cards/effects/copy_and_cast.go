@@ -12,9 +12,10 @@ import (
 //
 // It is the card-facing door onto game.CopyCardsAndOfferCastsForEffect,
 // the one place the engine makes a copy of a CARD and offers a cast of it.
-// Mizzix's Mastery and Arcane Bombardment use it for a set of any size;
-// Kaervek, Spellweaver Volute and Uldaros Theorix are the same call with a
-// price, a follow-up or a budget added when they ship. It is NOT
+// Mizzix's Mastery and Arcane Bombardment use it for a set of any size,
+// and Kaervek, the Punisher with a price and a follow-up; Spellweaver
+// Volute and Uldaros Theorix are the same call with a budget added when
+// they ship. It is NOT
 // CopySpellForEffect (a copy of a spell already on the stack, which is
 // cast already) and NOT CreateTokenCopy (a permanent on the battlefield).
 //
