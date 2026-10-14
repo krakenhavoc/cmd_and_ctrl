@@ -1064,7 +1064,10 @@ func (e *enumerator) choiceMoves() bool {
 			cards := c.ScryCards
 			p := base()
 			p.TopOrder = idStrings(cards)
-			e.addChoice(c, reason+": leave the order alone", p)
+			// Each label names the whole pile, top first: until
+			// 2026-10-14 "leave the order alone" never named the card
+			// already on top, so a seat reading text could not see it.
+			e.addChoice(c, reason+": leave the order alone (top to bottom: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1076,7 +1079,7 @@ func (e *enumerator) choiceMoves() bool {
 						p.TopOrder = append(p.TopOrder, other.String())
 					}
 				}
-				e.addChoice(c, reason+": put "+cardName(g, id)+" on top", p)
+				e.addChoice(c, reason+": put "+cardName(g, id)+" on top (top to bottom: "+pileOrder(g, cards, i)+")", p)
 			}
 
 		case game.PendingChoicePutInLibrary:
@@ -1125,7 +1128,7 @@ func (e *enumerator) choiceMoves() bool {
 			}
 			p := base()
 			lane(&p, all)
-			e.addChoice(c, reason+": leave the order alone", p)
+			e.addChoice(c, reason+": leave the order alone (in this order: "+pileOrder(g, cards, -1)+")", p)
 			for i, id := range cards {
 				if i == 0 {
 					continue
@@ -1324,6 +1327,21 @@ func (e *enumerator) choiceMoves() bool {
 // modeLabel renders a mode selection for the move list: the chosen
 // bullets in order, so a bot's log says what it picked rather than
 // which indexes it picked.
+// pileOrder names a pile in the order an answer leaves it, with the card
+// at index first pulled to the front (-1 leaves it as it is): "A, B, C".
+func pileOrder(g *game.Game, cards []uuid.UUID, first int) string {
+	names := make([]string, 0, len(cards))
+	if first >= 0 {
+		names = append(names, cardName(g, cards[first]))
+	}
+	for i, id := range cards {
+		if i != first {
+			names = append(names, cardName(g, id))
+		}
+	}
+	return strings.Join(names, ", ")
+}
+
 // triggerOrderLabel names one ordering of a CR 603.3b prompt by its
 // triggers, in resolution order (the answer's order: first resolves
 // first, Game.ResolveTriggerOrder): "Order your triggers: resolve A
